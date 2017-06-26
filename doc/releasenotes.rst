@@ -10,6 +10,77 @@ Git master branch
 
 :git:`master <>`.
 
+
+Version 3.14.0
+==============
+
+20 June 2017: :git:`3.14.0 <../3.14.0>`.
+
+* Python 2.6 no longer supported.
+
+* The command-line tools :program:`ase-???` have been replaced by a
+  single :program:`ase` command with sub-commands (see :ref:`cli`).
+  For help, type::
+
+      $ ase --help
+      $ ase sub-command --help
+
+* The old :program:`ase-build` command which is now called
+  :program:`ase build` will no longer add vacuum by default.  Use
+  ``ase build -V 3.0`` to get the old behavior.
+
+* All methods of the :class:`~ase.Atoms` object that deal with angles now
+  have new API's that use degrees instead of radians as the unit of angle
+  (:meth:`~ase.Atoms.get_angle`, :meth:`~ase.Atoms.set_angle`,
+  :meth:`~ase.Atoms.get_dihedral`, :meth:`~ase.Atoms.set_dihedral`,
+  :meth:`~ase.Atoms.rotate_dihedral`, :meth:`~ase.Atoms.rotate`,
+  :meth:`~ase.Atoms.euler_rotate`).
+
+  The old way of calling these methods works as always, but will give
+  you a warning.  Example:
+
+  >>> water.get_angle(0, 1, 2)  # new API
+  104.52
+  >>> water.get_angle([0, 1, 2])  # old API
+  /home/jensj/ase/ase/atoms.py:1484: UserWarning: Please use new API (which will return the angle in degrees): atoms_obj.get_angle(a1,a2,a3)*pi/180 instead of atoms_obj.get_angle([a1,a2,a3])
+  1.8242181341844732
+
+  Here are the changes you need to make in order to get rid of warnings:
+
+  Old API:
+
+  >>> a1 = atoms.get_angle([0, 1, 2])
+  >>> atoms.set_angle([0, 1, 2], pi / 2)
+  >>> a2 = atoms.get_dihedral([0, 1, 2, 3])
+  >>> atoms.set_dihedral([0, 1, 2, 3], pi / 6)
+  >>> atoms.rotate_dihedral([0, 1, 2, 3], 10.5 * pi / 180)
+  >>> atoms.rotate('z', pi / 4)
+  >>> atoms.rotate_euler(phi=phi, theta=theta, psi=psi)
+
+  New API:
+
+  >>> a1 = atoms.get_angle(0, 1, 2) * pi / 180
+  >>> atoms.set_angle(0, 1, 2, angle=90)
+  >>> a2 = atoms.get_dihedral(0, 1, 2, 3) * pi / 180
+  >>> atoms.set_dihedral(0, 1, 2, 3, angle=30)
+  >>> atoms.rotate_dihedral(0, 1, 2, 3, angle=10.5)
+  >>> atoms.rotate(45, 'z')
+  >>> atoms.euler_rotate(phi=phi * 180 / pi,
+  ...                    theta=theta * 180 / pi,
+  ...                    psi=psi * 180 / pi)
+
+* The web-interface to the :mod:`ase.db` module now uses Bootstrap and looks
+  much nicer.  Querying the database is also much easier.  See
+  https://cmrdb.fysik.dtu.dk for an example.
+
+* The PostgreSQL backend for :mod:`ase.db` can now contain more than one ASE
+  database.
+
+* An ASE database can now have :ref:`metadata` describing the data.
+  Metadata is a dict with any of the following keys: ``title``,
+  ``key_descriptions``, ``default_columns``, ``special_keys`` and
+  ``layout``.
+
 * :data:`ase.data.atomic_masses` has been updated to IUPAC values from
   2016. Several elements will now have different weights which will affect
   dynamic calculations. The old values can be recovered like this:
@@ -23,6 +94,35 @@ Git master branch
 * New :func:`ase.eos.calculate_eos` helper function added.
 
 * Added DeltaCodesDFT data: :data:`ase.collections.dcdft`.
+
+* :mod:`ase.gui` can now load and display any sequence of :class:`~ase.Atoms`
+  objects; it is no longer restricted to sequences with a constant number
+  of atoms or same chemical composition.
+
+* Trajectory files can now store any sequence of :class:`~ase.Atoms`
+  objects.  Previously, atomic numbers, masses, and constraints were
+  only saved for the first image, and had to apply for all subsequent ones.
+
+* Added calculator interface for DMol\ :sup:`3`.
+
+* Added calculator interface for GULP.
+
+* Added file formats .car, .incoor, and .arc, related to DMol\ :sup:`3`.
+
+* New function for interpolating from Monkhors-Pack sampled values in the BZ
+  to arbitrary points in the BZ:
+  :func:`ase.dft.kpoints.monkhorst_pack_interpolate`.
+
+* New *band-structure* command for the :program:`ase` :ref:`cli`.
+
+* Two new functions for producing chemical formulas:
+  :func:`ase.utils.formula_hill` and :func:`ase.utils.formula_metal`.
+
+* The :func:`ase.dft.bandgap.get_band_gap` function is now deprecated.  Use
+  the new one called :func:`ase.dft.bandgap.bandgap` (it's more flexible and
+  returns also band indices).
+
+* New :mod:`Viewer for Jupyter notebooks <ase.visualize.nglview>`.
 
 
 Version 3.13.0
@@ -239,7 +339,7 @@ Version 3.9.0
   properties by use of template structures. Extension to other projects
   related to atomic simulations should be straightforward.
 
-* The :func:`ase.lattice.bulk` function can now build the Wurtzite structure.
+* The ``ase.lattice.bulk`` function can now build the Wurtzite structure.
 
 * The :class:`ase.utils.timing.Timer` was moved from GPAW to ASE.
 
@@ -286,7 +386,7 @@ Version 3.8.0
 * ASE's :mod:`gui <ase.gui>` renamed from ``ag`` to ``ase-gui``.
 * New :ref:`STM <stm>` module.
 * Python 2.6 is now a requirement.
-* The old :func:`ase.build.bulk` function is now deprecated.
+* The old ``ase.build.bulk`` function is now deprecated.
   Use the new one instead (:func:`ase.lattice.bulk`).
 * We're now using BuildBot for continuous integration:
   https://ase-buildbot.fysik.dtu.dk/waterfall
@@ -374,12 +474,12 @@ Version 3.5.0
   :class:`~ase.neighborlist.NeighborList` object and is
   now ASAP_ compatible.
 
-* :mod:`BFGSLineSearch <optimize.bfgslinesearch>` is now the default
+* :mod:`BFGSLineSearch <ase.optimize.bfgslinesearch>` is now the default
   (``QuasiNewton==BFGSLineSearch``).
 
 * There is a new interface to the LAMMPS molecular dynamics code.
 
-* New :mod:`phonons` module.
+* New :mod:`ase.phonons` module.
 
 * Van der Waals corrections for DFT, see GPAW_ usage.
 
@@ -393,7 +493,7 @@ Version 3.5.0
   * Enabled customization of colours and atomic radii.
   * Enabled user default settings via :file:`~/.ase/gui.py`.
 
-* :mod:`Database library <data>` expanded to include:
+* :mod:`Database library <ase.data>` expanded to include:
 
   * The s22, s26 and s22x5 sets of van der Waals bonded dimers and
     complexes by the Hobza group.

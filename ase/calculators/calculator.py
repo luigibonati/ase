@@ -26,17 +26,19 @@ all_changes = ['positions', 'numbers', 'cell', 'pbc',
 
 # Recognized names of calculators sorted alphabetically:
 names = ['abinit', 'aims', 'amber', 'asap', 'castep', 'cp2k', 'demon', 'dftb',
-         'eam', 'elk', 'emt', 'exciting', 'fleur', 'gaussian', 'gpaw',
-         'gromacs', 'hotbit', 'jacapo', 'lammps', 'lammpslib', 'lj', 'mopac',
-         'morse', 'nwchem', 'octopus', 'onetep', 'siesta', 'tip3p',
+         'dmol', 'eam', 'elk', 'emt', 'exciting', 'fleur', 'gaussian', 'gpaw',
+         'gromacs', 'gulp','hotbit', 'jacapo', 'lammps', 'lammpslib', 'lj',
+         'mopac', 'morse', 'nwchem', 'octopus', 'onetep', 'siesta', 'tip3p',
          'turbomole', 'vasp']
 
 
 special = {'cp2k': 'CP2K',
+           'dmol': 'DMol3',
            'eam': 'EAM',
            'elk': 'ELK',
            'emt': 'EMT',
            'fleur': 'FLEUR',
+           'gulp' : 'GULP',
            'lammps': 'LAMMPS',
            'lammpslib': 'LAMMPSlib',
            'lj': 'LennardJones',
@@ -185,18 +187,6 @@ class Parameters(dict):
 
     def __setattr__(self, key, value):
         self[key] = value
-
-    def update(self, other=None, **kwargs):
-        if isinstance(other, dict):
-            self.update(other.items())
-        else:
-            for key, value in other:
-                if isinstance(value, dict) and isinstance(self[key], dict):
-                    self[key].update(value)
-                else:
-                    self[key] = value
-        if kwargs:
-            self.update(kwargs)
 
     @classmethod
     def read(cls, filename):
@@ -426,8 +416,8 @@ class Calculator:
             if 'free_energy' not in self.results:
                 name = self.__class__.__name__
                 raise PropertyNotImplementedError(
-                    'Force consistent/free energy not provided by {0} '
-                    'calculator'.format(name))
+                    'Force consistent/free energy ("free_energy") '
+                    'not provided by {0} calculator'.format(name))
             return self.results['free_energy']
         else:
             return energy
@@ -453,7 +443,8 @@ class Calculator:
 
     def get_property(self, name, atoms=None, allow_calculation=True):
         if name not in self.implemented_properties:
-            raise PropertyNotImplementedError
+            raise PropertyNotImplementedError('{} property not implemented'
+                                              .format(name))
 
         if atoms is None:
             atoms = self.atoms
@@ -476,7 +467,8 @@ class Calculator:
         if name not in self.results:
             # For some reason the calculator was not able to do what we want,
             # and that is OK.
-            raise PropertyNotImplementedError
+            raise PropertyNotImplementedError('{} not present in this '
+                                              'calculation'.format(name))
 
         result = self.results[name]
         if isinstance(result, np.ndarray):
@@ -484,6 +476,7 @@ class Calculator:
         return result
 
     def calculation_required(self, atoms, properties):
+        assert not isinstance(properties, str)
         system_changes = self.check_state(atoms)
         if system_changes:
             return True
@@ -579,8 +572,14 @@ class Calculator:
 
     def band_structure(self):
         """Create band-structure object for plotting."""
-        from ase.dft.band_structure import BandStructure
-        return BandStructure(calc=self)
+        from ase.dft.band_structure import get_band_structure
+        # XXX This calculator is supposed to just have done a band structure
+        # calculation, but the calculator may not have the correct Fermi level
+        # if it updated the Fermi level after changing k-points.
+        # This will be a problem with some calculators (currently GPAW), and
+        # the user would have to override this by providing the Fermi level
+        # from the selfconsistent calculation.
+        return get_band_structure(calc=self)
 
 
 class FileIOCalculator(Calculator):
@@ -623,8 +622,8 @@ class FileIOCalculator(Calculator):
             os.chdir(olddir)
 
         if errorcode:
-            raise RuntimeError('%s returned an error: %d' %
-                               (self.name, errorcode))
+            raise RuntimeError('%s in %s returned an error: %d' %
+                               (self.name, self.directory, errorcode))
         self.read_results()
 
     def write_input(self, atoms, properties=None, system_changes=None):
