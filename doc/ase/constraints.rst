@@ -446,3 +446,24 @@ The exponential cell filter is an improved :class:`UnitCellFilter`
 which is parameter free.
 
 .. autoclass:: ExpCellFilter
+
+
+.. module:: ase.spacegroup.symmetrize
+
+The FixSymmetry class
+=====================
+
+.. autoclass:: ase.spacegroup.symmetrize.FixSymmetry
+
+The module also provides some utility functions to Prepare
+symmetrized configurations and to check symmetry.
+
+.. autofunction:: ase.spacegroup.symmetrize.refine
+
+.. autofunction:: ase.spacegroup.symmetrize.check
+
+Here is an example of using these tools to demonstrate the difference between
+minimising a perturbed fcc Al cell with and without symmetry-preservation.
+
+-.. literalinclude:: fix_symmetry_example.py
+
