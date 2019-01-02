@@ -307,10 +307,10 @@ def read_espresso_out(fileobj, index=-1, results_required=True):
 
                 if pwo_lines[bands_index].strip() == kpoints_warning:
                     continue
-
-                assert ibzkpts is not None
+                if ibzkpts is None:
+                    continue
+                #assert ibzkpts is not None
                 spin, bands, eigenvalues = 0, [], [[], []]
-
                 while True:
                     l = pwo_lines[bands_index].split()
                     if len(l) == 0:
@@ -331,9 +331,10 @@ def read_espresso_out(fileobj, index=-1, results_required=True):
                             break
                     bands_index += 1
 
-                if spin == 1:
+                if len(eigenvalues[0]) * 2 == len(ibzkpts):  # nspin = 1
                     assert len(eigenvalues[0]) == len(eigenvalues[1])
-                assert len(eigenvalues[0]) == len(ibzkpts)
+                else:  #nspin = 1
+                    assert len(eigenvalues[0]) == len(ibzkpts)
 
                 kpts = []
                 for s in range(spin + 1):
