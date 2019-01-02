@@ -278,7 +278,6 @@ def read_espresso_out(fileobj, index=-1, results_required=True):
 
                 if pwo_lines[kpts_index].strip() == kpoints_warning:
                     continue
-
                 # QE prints the k-points in units of 2*pi/alat
                 # with alat defined as the length of the first
                 # cell vector
@@ -295,7 +294,6 @@ def read_espresso_out(fileobj, index=-1, results_required=True):
                     ibzkpts.append(coord)
                 ibzkpts = np.array(ibzkpts)
                 weights = np.array(weights)
-
         # Bands
         kpts = None
         kpoints_warning = "Number of k-points >= 100: " + \
@@ -308,7 +306,8 @@ def read_espresso_out(fileobj, index=-1, results_required=True):
                 if pwo_lines[bands_index].strip() == kpoints_warning:
                     continue
                 if ibzkpts is None:
-                    continue
+                    print('No ibzkpts!')
+                    break
                 #assert ibzkpts is not None
                 spin, bands, eigenvalues = 0, [], [[], []]
                 while True:
@@ -330,10 +329,11 @@ def read_espresso_out(fileobj, index=-1, results_required=True):
                         except ValueError:
                             break
                     bands_index += 1
-
-                if len(eigenvalues[0]) * 2 == len(ibzkpts):  # nspin = 1
+                if len(eigenvalues[0]) == 0:
+                    break
+                if spin == 1:
                     assert len(eigenvalues[0]) == len(eigenvalues[1])
-                else:  #nspin = 1
+                else:
                     assert len(eigenvalues[0]) == len(ibzkpts)
 
                 kpts = []
