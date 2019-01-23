@@ -337,7 +337,7 @@ class Calculator(object):
     'Default parameters'
 
     def __init__(self, restart=None, ignore_bad_restart_file=False, label=None,
-                 atoms=None, **kwargs):
+                 atoms=None, autolabel=None, **kwargs):
         """Basic calculator implementation.
 
         restart: str
@@ -370,7 +370,9 @@ class Calculator(object):
         self.directory = None
         self.prefix = None
 
-        self.set_label(label)
+        self.autolabel = None
+        self.autolabel_counter = 0
+        self.set_label(label, autolabel)
 
         if self.parameters is None:
             # Use default parameters if they were not read from file:
@@ -391,7 +393,7 @@ class Calculator(object):
         if not hasattr(self, 'name'):
             self.name = self.__class__.__name__.lower()
 
-    def set_label(self, label):
+    def set_label(self, label, autolabel=None):
         """Set label and convert label to directory and prefix.
 
         Examples:
@@ -404,6 +406,10 @@ class Calculator(object):
         of label."""
 
         self.label = label
+
+        if autolabel != self.autolabel:
+            self.autolabel = autolabel
+            self.autolabel_counter = 0
 
         if label is None:
             self.directory = None
@@ -610,6 +616,11 @@ class Calculator(object):
         The subclass implementation should first call this
         implementation to set the atoms attribute.
         """
+
+        if self.autolabel is not None:
+            label = '{}.{:05d}'.format(self.autolabel, self.autolabel_counter)
+            self.set_label(label, self.autolabel)
+            self.autolabel_counter += 1
 
         if atoms is not None:
             self.atoms = atoms.copy()
