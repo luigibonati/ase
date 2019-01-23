@@ -985,12 +985,12 @@ class Octopus(FileIOCalculator, EigenvalOccupationMixin):
                                   command=command, **kwargs)
         # The above call triggers set() so we can update self.kwargs.
 
-    def set_label(self, label):
+    def set_label(self, label, autolabel=None):
         # Octopus does not support arbitrary namings of all the output files.
         # But we can decide that we always dump everything in a directory.
         if not label.endswith('/'):
             label += '/'
-        FileIOCalculator.set_label(self, label)
+        FileIOCalculator.set_label(self, label, autolabel=autolabel)
 
     def set(self, **kwargs):
         """Set octopus input file parameters."""
@@ -1250,6 +1250,7 @@ class Octopus(FileIOCalculator, EigenvalOccupationMixin):
     def write_input(self, atoms, properties=None, system_changes=None):
         FileIOCalculator.write_input(self, atoms, properties=properties,
                                      system_changes=system_changes)
+        print('write input', self.label, os.getcwd(), properties)
         octopus_keywords = self.octopus_keywords
         if octopus_keywords is None:
             # Will not do automatic pretty capitalization
