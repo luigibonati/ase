@@ -252,8 +252,11 @@ class SQLite3Database(Database, object):
             row = atoms
 
         if id:
-            self._delete(cur, [id], ['keys', 'text_key_values',
-                                     'number_key_values', 'species'])
+            if self.type == 'postgresql':
+                tables = ['systems']
+            else:
+                tables = None
+            self._delete(cur, [id], tables)
         else:
             if not key_value_pairs:
                 key_value_pairs = row.key_value_pairs
@@ -317,28 +320,29 @@ class SQLite3Database(Database, object):
             cur.execute('UPDATE systems SET {} WHERE id=?'.format(q),
                         values + (id,))
 
-        count = row.count_atoms()
-        if count:
-            species = [(atomic_numbers[symbol], n, id)
-                       for symbol, n in count.items()]
-            cur.executemany('INSERT INTO species VALUES (?, ?, ?)',
-                            species)
+        if not self.type == 'postgresql':
+            count = row.count_atoms()
+            if count:
+                species = [(atomic_numbers[symbol], n, id)
+                           for symbol, n in count.items()]
+                cur.executemany('INSERT INTO species VALUES (?, ?, ?)',
+                                species)
 
-        text_key_values = []
-        number_key_values = []
-        for key, value in key_value_pairs.items():
-            if isinstance(value, (numbers.Real, np.bool_)):
-                number_key_values.append([key, float(value), id])
-            else:
-                assert isinstance(value, basestring)
-                text_key_values.append([key, value, id])
+            text_key_values = []
+            number_key_values = []
+            for key, value in key_value_pairs.items():
+                if isinstance(value, (numbers.Real, np.bool_)):
+                    number_key_values.append([key, float(value), id])
+                else:
+                    assert isinstance(value, basestring)
+                    text_key_values.append([key, value, id])
 
-        cur.executemany('INSERT INTO text_key_values VALUES (?, ?, ?)',
-                        text_key_values)
-        cur.executemany('INSERT INTO number_key_values VALUES (?, ?, ?)',
-                        number_key_values)
-        cur.executemany('INSERT INTO keys VALUES (?, ?)',
-                        [(key, id) for key in key_value_pairs])
+            cur.executemany('INSERT INTO text_key_values VALUES (?, ?, ?)',
+                            text_key_values)
+            cur.executemany('INSERT INTO number_key_values VALUES (?, ?, ?)',
+                            number_key_values)
+            cur.executemany('INSERT INTO keys VALUES (?, ?)',
+                            [(key, id) for key in key_value_pairs])
 
         if self.connection is None:
             con.commit()
