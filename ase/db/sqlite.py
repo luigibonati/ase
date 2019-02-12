@@ -70,6 +70,12 @@ init_statements = [
     mass REAL,
     charge REAL)""",
 
+    """CREATE TABLE information (
+    name TEXT,
+    value TEXT)""",
+
+    "INSERT INTO information VALUES ('version', '{}')".format(VERSION),
+
     """CREATE TABLE species (
     Z INTEGER,
     n INTEGER,
@@ -91,13 +97,8 @@ init_statements = [
     key TEXT,
     value REAL,
     id INTEGER,
-    FOREIGN KEY (id) REFERENCES systems(id))""",
-
-    """CREATE TABLE information (
-    name TEXT,
-    value TEXT)""",
-
-    "INSERT INTO information VALUES ('version', '{}')".format(VERSION)]
+    FOREIGN KEY (id) REFERENCES systems(id))"""
+]
 
 index_statements = [
     'CREATE INDEX unique_id_index ON systems(unique_id)',
@@ -453,12 +454,21 @@ class SQLite3Database(Database, object):
                 where.append('systems.{} IS NOT NULL'.format(key))
             else:
                 if '-' not in key:
-                    q = 'systems.id in (select id from keys where key=?)'
+                    if self.type == 'postgresql':
+                        """$ is placeholder for ? operator in postgresql """
+                        q = "systems.key_value_pairs $ '{}'".format(key)
+                    else:
+                        q = 'systems.id in (select id from keys where key=?)'
+                        args.append(key)
                 else:
                     key = key.replace('-', '')
-                    q = 'systems.id not in (select id from keys where key=?)'
+                    if self.type == 'postgresql':
+                        q = "NOT systems.key_value_pairs $ '{}'".format(key)
+                    else:
+                        q = 'systems.id not in (select id from keys where key=?)'
+                        args.append(key)
+
                 where.append(q)
-                args.append(key)
 
         # Special handling of "H=0" and "H<2" type of selections:
         bad = {}
@@ -518,7 +528,7 @@ class SQLite3Database(Database, object):
                 args += [key, float(value)]
 
         if sort:
-            if sort_table != 'systems':
+            if sort_table != 'systems' and self.type != 'postgresql':
                 tables.append('{} AS sort_table'.format(sort_table))
                 where.append('systems.id=sort_table.id AND '
                              'sort_table.key=?')
@@ -530,9 +540,14 @@ class SQLite3Database(Database, object):
         if where:
             sql += '\n  WHERE\n  ' + ' AND\n  '.join(where)
         if sort:
-            # XXX use "?" instead of "{}"
-            sql += '\nORDER BY {0}.{1} IS NULL, {0}.{1} {2}'.format(
-                sort_table, sort, order)
+            if self.type == 'postgresql' and not sort_table == 'systems':
+                sql += """\nORDER BY systems.key_value_pairs->>'{0}' IS NULL,
+                systems.key_value_pairs->>'{0}' {1}"""\
+                    .format(sort, order)
+            else:
+                # XXX use "?" instead of "{}"
+                sql += '\nORDER BY {0}.{1} IS NULL, {0}.{1} {2}'\
+                       .format(sort_table, sort, order)
 
         return sql, args
 
@@ -612,7 +627,7 @@ class SQLite3Database(Database, object):
                 yield self._convert_tuple_to_row(tuple(values))
                 n += 1
 
-            if sort and sort_table != 'systems':
+            if sort and sort_table != 'systems' and self.type != 'postgresql':
                 # Yield rows without sort key last:
                 if limit is not None:
                     if n == limit:
@@ -645,7 +660,11 @@ class SQLite3Database(Database, object):
         if len(ids) == 0:
             return
         con = self._connect()
-        self._delete(con.cursor(), ids)
+        if self.type == 'postgresql':
+            tables = ['systems']
+        else:
+            tables = None
+        self._delete(con.cursor(), ids, tables)
         con.commit()
         con.close()
 
