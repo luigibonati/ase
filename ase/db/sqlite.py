@@ -253,9 +253,11 @@ class SQLite3Database(Database, object):
 
         if id:
             if self.type == 'postgresql':
-                tables = ['systems']
+                tables = []
             else:
-                tables = None
+                tables = ['keys', 'text_key_values',
+                          'number_key_values', 'species']
+
             self._delete(cur, [id], tables)
         else:
             if not key_value_pairs:
