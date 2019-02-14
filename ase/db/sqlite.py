@@ -254,9 +254,9 @@ class SQLite3Database(Database, object):
         if id and not self.type == 'postgresql':
             self._delete(cur, [id], ['keys', 'text_key_values',
                                      'number_key_values', 'species'])
-        else:
-            if not key_value_pairs:
-                key_value_pairs = row.key_value_pairs
+
+        if not id and not key_value_pairs:
+            key_value_pairs = row.key_value_pairs
 
         constraints = row._constraints
         if constraints:
