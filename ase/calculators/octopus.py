@@ -1250,7 +1250,6 @@ class Octopus(FileIOCalculator, EigenvalOccupationMixin):
     def write_input(self, atoms, properties=None, system_changes=None):
         FileIOCalculator.write_input(self, atoms, properties=properties,
                                      system_changes=system_changes)
-        print('write input', self.label, os.getcwd(), properties)
         octopus_keywords = self.octopus_keywords
         if octopus_keywords is None:
             # Will not do automatic pretty capitalization
