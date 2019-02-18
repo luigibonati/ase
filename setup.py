@@ -11,6 +11,7 @@ from setuptools import setup, find_packages, Extension
 from distutils.command.build_py import build_py as _build_py
 from glob import glob
 from os.path import join
+from pathlib import Path
 
 
 if sys.version_info < (3, 4, 0, 'final', 0):
@@ -80,7 +81,7 @@ setup(name='ase',
                                         'ase-info=ase.cli.main:old',
                                         'ase-build=ase.cli.main:old']},
       ext_modules=[Extension('_ase',
-                             ['c/_ase.c', 'c/dos.c'],
+                             [str(path) for path in Path('c').glob('*.c')],
                              optional=True)],
       long_description=long_description,
       cmdclass={'build_py': build_py},

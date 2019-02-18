@@ -1,16 +1,12 @@
+from pathlib import Path
 from cffi import FFI
 ffibuilder = FFI()
 
-ffibuilder.cdef("double dos(double* a, int n);")
+ffibuilder.cdef(Path('_ase.h').read_text())
 
-ffibuilder.set_source("_ase",  # name of the output C extension
-"""
-double dos(double* a, int n);
-""",
-    #include "pi.h"',
-    sources=['c/dos.c'],   # includes pi.c as additional sources
-    libraries=[])    # on Unix, link with the math library
+ffibuilder.set_source('_ase',
+                      '#include "_ase.h"\n',
+                      sources=[path for path in Path().glob('*.c')
+                               if path.name != '_ase.c'])
 
-if __name__ == "__main__":
-    ffibuilder.compile(verbose=True)
-    
+ffibuilder.emit_c_code('_ase.c')
