@@ -7,7 +7,7 @@ from __future__ import print_function
 import os
 import re
 import sys
-from setuptools import setup, find_packages
+from setuptools import setup, find_packages, Extension
 from distutils.command.build_py import build_py as _build_py
 from glob import glob
 from os.path import join
@@ -79,6 +79,9 @@ setup(name='ase',
                                         'ase-run=ase.cli.main:old',
                                         'ase-info=ase.cli.main:old',
                                         'ase-build=ase.cli.main:old']},
+      ext_modules=[Extension('_ase',
+                             ['c/_ase.c', 'c/dos.c'],
+                             optional=True)],
       long_description=long_description,
       cmdclass={'build_py': build_py},
       classifiers=[
