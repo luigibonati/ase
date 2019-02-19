@@ -4,7 +4,8 @@ import numpy as np
 def dos(a: np.ndarray):
     try:
         from _ase import lib, ffi
-        return lib.dos(ffi.from_buffer('double[]', a), len(a))
+        # return lib.dos(ffi.from_buffer('double[]', a), len(a))
+        return lib.dos(ffi.cast('double*', ffi.from_buffer(a)), len(a))
     except ImportError:
         pass
     print('Python')

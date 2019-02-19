@@ -18,6 +18,7 @@ python_3_oldlibs_tests:
     - pip install --no-deps .
     - python --version
     - ase test
+    - python -m ase.pdos
 
 # Check newest Python with all the standard dependencies at newest versions.
 python_3_tests:
@@ -29,6 +30,7 @@ python_3_tests:
     - ase test --strict
     - cd $CI_PROJECT_DIR
     - flake8 --ignore=E,W ase doc
+    - python -m ase.pdos
 
 conda_tests:
    image: continuumio/anaconda3
