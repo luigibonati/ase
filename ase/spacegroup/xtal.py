@@ -41,10 +41,8 @@ def crystal(symbols=None, basis=None, occupancies=None, spacegroup=1, setting=1,
         object.
     occupancies : list of site occupancies
         Occupancies of the unique sites. Defaults to 1.0 and thus no mixed
-        occupancies are considered if not explicitly assked for. If mixed
-        occupancies are given, this will result in atoms of different species
-        at identical positions -- be aware! Not needed, if *symbols* is an
-        atoms object with an `occupancy` array.
+        occupancies are considered if not explicitly asked for. If occupancies
+        are given, the most dominant species will yield the atomic number.
     spacegroup : int | string | Spacegroup instance
         Space group given either as its number in International Tables
         or as its Hermann-Mauguin symbol.
@@ -192,7 +190,11 @@ def crystal(symbols=None, basis=None, occupancies=None, spacegroup=1, setting=1,
     if primitive_cell:
         from ase.build import cut
         prim_cell = sg.scaled_primitive_cell
+
+        # Preserve calculator if present:
+        calc = atoms.calc
         atoms = cut(atoms, a=prim_cell[0], b=prim_cell[1], c=prim_cell[2])
+        atoms.calc = calc
 
     if size != (1, 1, 1):
         atoms = atoms.repeat(size)

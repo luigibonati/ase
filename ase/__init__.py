@@ -11,7 +11,7 @@ from ase.atom import Atom
 from ase.atoms import Atoms
 
 __all__ = ['Atoms', 'Atom']
-__version__ = '3.16.3b1'
+__version__ = '3.18.0b1'
 
 # import ase.parallel early to avoid circular import problems when
 # ase.parallel does "from gpaw.mpi import world":
@@ -20,4 +20,4 @@ ase.parallel  # silence pyflakes
 
 if LooseVersion(np.__version__) < '1.9':
     raise ImportError(
-        'ASE needs NumPy-1.9.0 or later. You have:', np.version)
+        'ASE needs NumPy-1.9.0 or later. You have: %s' % np.__version__)
