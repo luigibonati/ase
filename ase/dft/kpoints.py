@@ -32,7 +32,8 @@ def get_monkhorst_pack_size_and_offset(kpts):
     size = np.zeros(3, int)
     for c in range(3):
         # Determine increment between k-points along current axis
-        delta = max(np.diff(np.sort(kpts[:, c])))
+        diff = np.diff(np.sort(kpts[:, c]))
+        delta = max(np.mod(np.mod(diff, 1), 1))
 
         # Determine number of k-points as inverse of distance between kpoints
         if delta > 1e-8:
@@ -42,7 +43,7 @@ def get_monkhorst_pack_size_and_offset(kpts):
 
     if size.prod() == len(kpts):
         kpts0 = monkhorst_pack(size)
-        offsets = kpts - kpts0
+        offsets = np.mod(np.mod(kpts - kpts0, 1), 1)
 
         # All offsets must be identical:
         if (offsets.ptp(axis=0) < 1e-9).all():
