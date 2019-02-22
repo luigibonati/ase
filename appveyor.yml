@@ -55,6 +55,7 @@ test_script:
   - "cd %TEMP%"
   - "ase info"
   - "ase -T test"
+  - "python -m ase.pdos"
 
 after_test:
   # This step builds distribution.
