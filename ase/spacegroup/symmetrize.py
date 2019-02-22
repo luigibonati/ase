@@ -24,79 +24,70 @@ except ImportError:
 
 __all__ = ['refine', 'check', 'FixSymmetry']
 
-def refine(at, symprec=0.01):
+def refine(at, symprec=0.01, verbose=False):
     # test orig config with desired tol
     dataset = spglib.get_symmetry_dataset(at, symprec=symprec)
     if dataset is None:
-        raise ValueError("refine failed to get initial symmetry dataset " +
+        raise ValueError("refine failed to get initial symmetry dataset "+
                          spglib.get_error_message())
-    print("symmetry.refine_symmetry: loose ({}) initial symmetry group number"
-          "{}, international (Hermann-Mauguin) {} Hall {}".format(symprec,
-          dataset["number"], dataset["international"], dataset["hall"]))
+    if verbose:
+        print(("symmetry.refine_symmetry: loose ({}) initial symmetry group number {}, "+
+               "international (Hermann-Mauguin) {} Hall {}\n").format(symprec,
+                                                                    dataset["number"],
+                                                                    dataset["international"],
+                                                                    dataset["hall"]))
 
-    # make sure to use a consistent set of primitive cell,
-    # mapping to primitive, and (in the next section)
-    # rotation matrix derived from standard cell and transformation matrix
+    # set actual cell to symmetrized cell vectors by copying transformed and rotated standard cell
+    std_cell = dataset['std_lattice']
+    trans_std_cell = np.dot(dataset['transformation_matrix'].T, std_cell)
+    rot_trans_std_cell = np.dot(trans_std_cell, dataset['std_rotation_matrix'])
+    at.set_cell(rot_trans_std_cell, True)
+
+    # get new dataset and primitive cell
+    dataset = spglib.get_symmetry_dataset(at, symprec=symprec)
+    if dataset is None:
+        raise ValueError("refine failed to get symmetrized cell symmetry dataset "+
+                         spglib.get_error_message())
     (prim_cell, prim_scaled_pos, prim_types) = spglib.find_primitive(at,
-                                                               symprec=symprec)
-    mapping = dataset["mapping_to_primitive"]
+                                                                     symprec=symprec)
 
-    # symmetrize cell
-    # create symmetrized rotated cell from standard lattice
-    # and transformation matrix
-    transformed_std_cell = np.dot(dataset['std_lattice'].T,
-                                  dataset['transformation_matrix']).T
-    # SVD decompose transformation from symmetrized cell to original
-    # cell to extract rotation
-    # see https://igl.ethz.ch/projects/ARAP/svd_rot.pdf Eq. 17 and 21
-    # S = X Y^T, X = symm_cell.T, Y = orig_cell.T
-    (u, s, v_T) = np.linalg.svd(np.dot(transformed_std_cell.T, at.get_cell()))
-    rotation = np.dot(v_T.T, u.T)
-    # align symmetrized cell by rotating transformed standard cell
-    aligned_transformed_std_cell = np.dot(transformed_std_cell, rotation.T)
-    # set new cell to aligned symmetrized cell (approx. aligned with
-    # original directions, not axes)
-    at.set_cell(aligned_transformed_std_cell, True)
+    # calculate offset between standard cell and actual cell
+    std_cell = dataset['std_lattice']
+    rot_std_cell = np.dot(std_cell, dataset['std_rotation_matrix'])
+    rot_std_pos = np.dot(dataset['std_positions'], rot_std_cell)
+    dp0 = (at.get_positions()[list(dataset['mapping_to_primitive']).index(0)] -
+              rot_std_pos[list(dataset['std_mapping_to_primitive']).index(0)])
 
-    #rotate primitive cell (the same rotation as for the standard cell)
-    # to align with orig cell
-    aligned_prim_cell = np.dot(prim_cell, rotation.T)
-    aligned_prim_pos = np.dot(prim_scaled_pos, aligned_prim_cell)
+    # create aligned set of standard cell positions to figure out mapping
+    rot_prim_cell = np.dot(prim_cell, dataset['std_rotation_matrix'])
+    inv_rot_prim_cell = np.linalg.inv(rot_prim_cell)
+    aligned_std_pos = rot_std_pos + dp0
 
-    # calculate inverse prim cell matrix for transformations
-    aligned_prim_cell_inv = np.linalg.inv(aligned_prim_cell)
-
-    # vector to align atom 0 with corresponding atom in primitive cell
-    pos = at.get_positions()
-    alignment_vec = pos[0] - aligned_prim_pos[mapping[0]]
-
-    symm_pos = pos.copy()
+    # find ideal positions from position of corresponding std cell atom +
+    #    integer_vec . primitive cell vectors
+    # here we are assuming that primitive vectors returned by find_primitive are
+    #    compatible with std_lattice returned by get_symmetry_dataset
+    mapping_to_primitive = list(dataset['mapping_to_primitive'])
+    std_mapping_to_primitive = list(dataset['std_mapping_to_primitive'])
+    p = at.get_positions()
     for i_at in range(len(at)):
-        # pos =~ L . prim_cell + prim_pos[mapping] + alignment_vec
-        # where L is a vector of integers
-        # L = round( (pos - alignment_vec - prim_pos[mapping]) . prim_cell^-1 )
-        L_raw = np.dot(pos[i_at] - alignment_vec -
-                       aligned_prim_pos[mapping[i_at]], aligned_prim_cell_inv)
-        L = np.round(L_raw)
-        if np.linalg.norm(np.dot(L-L_raw,aligned_prim_cell)) > symprec*2.0:
-            raise ValueError("non-integer distance (in lattice coords) between "
-                             "original pos and corresponding primitive"
-                             " cell {}   {} {} {}".
-                             format(i_at,L_raw[0],L_raw[1],L_raw[2]))
-        symm_pos[i_at] = (np.dot(L, aligned_prim_cell) +
-                                aligned_prim_pos[mapping[i_at]] +
-                                alignment_vec)
-
-    at.set_positions(symm_pos)
+        std_i_at = std_mapping_to_primitive.index(mapping_to_primitive[i_at])
+        dp = aligned_std_pos[std_i_at] - p[i_at]
+        dp_s = np.dot(dp, inv_rot_prim_cell)
+        p[i_at] = aligned_std_pos[std_i_at] - np.dot(np.round(dp_s), rot_prim_cell)
+    at.set_positions(p)
 
     # test final config with tight tol
     dataset = spglib.get_symmetry_dataset(at, symprec=1.0e-4)
     if dataset is None:
-        raise ValueError("refine failed to get final symmetry dataset " +
-                         spglib.get_error_message())
-    print("symmetry.refine_symmetry: precise ({}) symmetrized symmetry group "
-          "number {}, international (Hermann-Mauguin) {} Hall {}".format(1.0e-4,
-          dataset["number"],dataset["international"],dataset["hall"]))
+        raise ValueError("refine failed to get final symmetry dataset "+spglib.get_error_message())
+    if verbose:
+        print(("symmetry.refine_symmetry: precise ({}) symmetrized symmetry group number {}, "+
+               "international (Hermann-Mauguin) {} Hall {}\n").format(1.0e-4,
+                                                                      dataset["number"],
+                                                                      dataset["international"],
+                                                                      dataset["hall"]))
+
 
 def check(at, symprec=1.0e-6):
     """
@@ -136,7 +127,7 @@ def prep(at, symprec=1.0e-6):
         symm_map.append(this_op_map)
     return (rotations, translations, symm_map)
 
-def symmetrize_forces(lattice, inv_lattice, forces, rot, trans, symm_map):
+def symmetrize_rank1(lattice, inv_lattice, forces, rot, trans, symm_map):
     """
     Return symmetrized forces
 
@@ -155,7 +146,7 @@ def symmetrize_forces(lattice, inv_lattice, forces, rot, trans, symm_map):
 
     return symmetrized_forces
 
-def symmetrize_stress(lattice, lattice_inv, stress_3_3, rot):
+def symmetrize_rank2(lattice, lattice_inv, stress_3_3, rot):
     """
     Return symmetrized stress
 
@@ -184,13 +175,27 @@ class FixSymmetry(FixConstraint):
         self.rotations, self.translations, self.symm_map = prep(atoms)
 
     def adjust_cell(self, atoms, cell):
-        pass
+        # symmetrize change in cell as a rank 2 tensor
+        dcell = cell - atoms.cell
+        symmetrized_dcell = symmetrize_rank2(atoms.get_cell(),
+                                                        atoms.get_reciprocal_cell().T,
+                                                        dcell, self.rotations)
+        cell[:] = self.cell + symmetrized_dcell
 
     def adjust_positions(self, atoms, new):
-        pass
+        # symmetrize changes in position as rank 1 tensors
+        dpos = new - atoms.postions
+        symmetrized_dpos = symmetrize_rank1(atoms.get_cell(),
+                                            atoms.get_reciprocal_cell().T,
+                                            dpos,
+                                            self.rotations,
+                                            self.translations,
+                                            self.symm_map)
+        new[:] = self.positions + symmetrized_dpos
 
     def adjust_forces(self, atoms, forces):
-        forces[:] = symmetrize_forces(atoms.get_cell(),
+        # symmetrize forces as rank 1 tensors
+        forces[:] = symmetrize_rank1(atoms.get_cell(),
                                       atoms.get_reciprocal_cell().T,
                                       forces,
                                       self.rotations,
@@ -198,13 +203,9 @@ class FixSymmetry(FixConstraint):
                                       self.symm_map)
 
     def adjust_stress(self, atoms, stress):
-        stress_3x3 = voigt_6_to_full_3x3_stress(stress)
-        stress_3x3[2] = 0.0
-        stress[:] = full_3x3_to_voigt_6_stress(stress_3x3)
-
-
+        # symmetrize stress as rank 2 tensor
         raw_stress = voigt_6_to_full_3x3_stress(stress)
-        symmetrized_stress = symmetrize_stress(atoms.get_cell(),
+        symmetrized_stress = symmetrize_rank2(atoms.get_cell(),
                                                atoms.get_reciprocal_cell().T,
                                                raw_stress, self.rotations)
         stress[:] = full_3x3_to_voigt_6_stress(symmetrized_stress)
