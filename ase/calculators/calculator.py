@@ -299,14 +299,6 @@ class Parameters(dict):
     def __setattr__(self, key, value):
         self[key] = value
 
-    @classmethod
-    def read(cls, filename):
-        """Read parameters from file."""
-        file = open(os.path.expanduser(filename))
-        parameters = cls(eval(file.read()))
-        file.close()
-        return parameters
-
     def tostring(self):
         keys = sorted(self)
         return 'dict(' + ',\n     '.join(
