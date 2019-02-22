@@ -169,7 +169,7 @@ class FixSymmetry(FixConstraint):
 
     Requires spglib package to be available.
     """
-    def __init__(self, atoms, symprec=1e-4):
+    def __init__(self, atoms, symprec=0.01):
         if not has_spglib:
             import spglib # generate ImportError to skip tests
         refine(at, symprec) # refine initial symmetry
