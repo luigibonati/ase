@@ -2001,8 +2001,8 @@ class UnitCellFilter(Filter):
         computed from the stress tensor.
         '''
 
-        atoms_forces = self.atoms.get_forces()
-        stress = self.atoms.get_stress()
+        atoms_forces = self.atoms.get_forces(apply_constraint=apply_constraint)
+        stress = self.atoms.get_stress(apply_constraint=apply_constraint)
 
         volume = self.atoms.get_volume()
         virial = -volume * (voigt_6_to_full_3x3_stress(stress) +
