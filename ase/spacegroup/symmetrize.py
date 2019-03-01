@@ -172,30 +172,37 @@ class FixSymmetry(FixConstraint):
     def __init__(self, atoms, symprec=0.01):
         if not has_spglib:
             import spglib # generate ImportError to skip tests
-        refine(at, symprec) # refine initial symmetry
+        refine(atoms, symprec) # refine initial symmetry
         self.rotations, self.translations, self.symm_map = prep(atoms)
 
     def adjust_cell(self, atoms, cell):
         # symmetrize change in cell as a rank 2 tensor
-        dcell = cell - atoms.cell
-        symmetrized_dcell = symmetrize_rank2(atoms.get_cell(),
-                                                        atoms.get_reciprocal_cell().T,
-                                                        dcell, self.rotations)
-        cell[:] = self.cell + symmetrized_dcell
+        step = cell - atoms.cell
+        symmetrized_step = symmetrize_rank2(atoms.get_cell(),
+                                            atoms.get_reciprocal_cell().T,
+                                            step, self.rotations)
+        # print('cell step', np.abs(step).max())
+        # print('cell sym step', np.abs(symmetrized_step).max())
+        # print('change in step', np.abs(symmetrized_step - step).max())
+        cell[:] = atoms.cell + symmetrized_step
 
     def adjust_positions(self, atoms, new):
         # symmetrize changes in position as rank 1 tensors
-        dpos = new - atoms.postions
-        symmetrized_dpos = symmetrize_rank1(atoms.get_cell(),
+        step = new - atoms.positions
+        symmetrized_step = symmetrize_rank1(atoms.get_cell(),
                                             atoms.get_reciprocal_cell().T,
-                                            dpos,
+                                            step,
                                             self.rotations,
                                             self.translations,
                                             self.symm_map)
-        new[:] = self.positions + symmetrized_dpos
+        # print('pos step', np.abs(step).max())
+        # print('pos sym step', np.abs(symmetrized_step).max())
+        # print('change in step', np.abs(symmetrized_step - step).max())
+        new[:] = atoms.positions + symmetrized_step
 
     def adjust_forces(self, atoms, forces):
         # symmetrize forces as rank 1 tensors
+        #print('adjusting forces')
         forces[:] = symmetrize_rank1(atoms.get_cell(),
                                       atoms.get_reciprocal_cell().T,
                                       forces,
@@ -205,6 +212,7 @@ class FixSymmetry(FixConstraint):
 
     def adjust_stress(self, atoms, stress):
         # symmetrize stress as rank 2 tensor
+        #print('adjusting stress')
         raw_stress = voigt_6_to_full_3x3_stress(stress)
         symmetrized_stress = symmetrize_rank2(atoms.get_cell(),
                                                atoms.get_reciprocal_cell().T,

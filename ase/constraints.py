@@ -1451,7 +1451,7 @@ class UnitCellFilter(Filter):
         self.atoms.set_cell(np.dot(self.orig_cell, self.deform_grad.T),
                             scale_atoms=True)
 
-    def get_forces(self, apply_constraint=False):
+    def get_forces(self, apply_constraint=True):
         '''
         returns an array with shape (natoms+3,3) of the atomic forces
         and unit cell stresses.
@@ -1461,8 +1461,8 @@ class UnitCellFilter(Filter):
         computed from the stress tensor.
         '''
 
-        atoms_forces = self.atoms.get_forces()
-        stress = self.atoms.get_stress()
+        atoms_forces = self.atoms.get_forces(apply_constraint=apply_constraint)
+        stress = self.atoms.get_stress(apply_constraint=apply_constraint)
 
         volume = self.atoms.get_volume()
         virial = -volume * voigt_6_to_full_3x3_stress(stress)
