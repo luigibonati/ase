@@ -92,10 +92,10 @@ class DOS:
 
         if emin is None:
             emin = self.energy.min()
+            emin -= 5 * width
         if emax is None:
             emax = self.energy.max()
-        emin -= 5 * width
-        emax += 5 * width
+            emax += 5 * width
 
         grid_uniform = DOS._make_uniform_grid(emin, emax, spacing=spacing,
                                               npts=npts, width=width)
@@ -103,83 +103,6 @@ class DOS:
         return self.sample(grid_uniform, width=width,
                            smearing=smearing, gridtype='uniform')
 
-    @staticmethod
-    def sample_many(doslist, grid, width=0.1, smearing='Gauss',
-                    gridtype='general'):
-        """Take list of DOS objects, and combine into 1, with same grid."""
-
-        # Count the total number of weights
-        n_weights = sum(len(dos.weights) for dos in doslist)
-
-        npts = len(grid)
-
-        weight_grid = np.zeros((n_weights, npts))
-        info_new = []
-        # Do sampling
-        ii = 0
-        for dos in doslist:
-            dos_sample = dos.sample(grid, width=width,
-                                    smearing=smearing)
-            info_new.extend(dos_sample.info)
-            for w_i in dos_sample.weights:
-                weight_grid[ii] = w_i
-                ii += 1
-        sampling = {'smearing': smearing,
-                    'width': width,
-                    'npts': npts,
-                    'type': gridtype}
-        return DOS(energy=grid, weights=weight_grid, info=info_new,
-                   sampling=sampling)
-
-    @staticmethod
-    def sample_many_grid(doslist, window=None, spacing=None,
-                         npts=None, width=0.1, smearing='Gauss'):
-        """Combine list of DOS objects onto uniform grid.
-
-        Takes the lowest and highest energies as grid range, if
-        no window is specified."""
-        dosen = [dos.energy for dos in doslist]
-        # Parse window
-        if window is None:
-            emin, emax = None, None
-        else:
-            emin, emax = window
-        if emin is None:
-            emin = np.min(dosen)
-        if emax is None:
-            emax = np.max(dosen)
-        # Add a little extra to avoid stopping midpeak
-        emin -= 5 * width
-        emax += 5 * width
-
-        grid_uniform = DOS._make_uniform_grid(emin, emax, spacing=spacing,
-                                              npts=npts, width=width)
-
-        return DOS.sample_many(doslist, grid_uniform, width=width,
-                               smearing=smearing, gridtype='uniform')
-
-    @staticmethod
-    def join(doslist, atol=1e-08):
-        """Join a list of DOS objects into one, without applying sampling.
-
-        Requires all energies to be identical"""
-
-        # Test if energies are the same
-        eneq = all(np.allclose(doslist[0].energy, dos.energy, atol=atol)
-                   for dos in doslist)
-        if not eneq:
-            msg = 'Energies must the the same in all DOS objects.'
-            raise ValueError(msg)
-
-        energy = doslist[0].energy     # Just use the first energy
-        weights = []
-        info = []
-        for dos in doslist:
-            for info_i, w_i in zip(dos.info, dos.weights):
-                weights.append(w_i)
-                info.append(info_i)
-
-        return DOS(energy, weights, info=info)
 
     @staticmethod
     def _make_uniform_grid(emin, emax, spacing=None, npts=None, width=0.1):
@@ -272,6 +195,93 @@ class DOS:
                    sampling=self.sampling)
 
 
+
+class DOSList:
+    def __init__(self, doslist):
+        self.doslist = doslist
+
+    def sample_grid(self, window=None, spacing=None,
+                    npts=None, width=0.1, smearing='Gauss'):
+        """Combine list of DOS objects onto uniform grid.
+
+        Takes the lowest and highest energies as grid range, if
+        no window is specified."""
+
+        doslist = self.doslist
+
+        dosen = [dos.energy for dos in doslist]
+        # Parse window
+        if window is None:
+            emin, emax = None, None
+        else:
+            emin, emax = window
+        if emin is None:
+            emin = np.min(dosen)
+        if emax is None:
+            emax = np.max(dosen)
+        # Add a little extra to avoid stopping midpeak
+        emin -= 5 * width
+        emax += 5 * width
+
+        grid_uniform = DOS._make_uniform_grid(emin, emax, spacing=spacing,
+                                              npts=npts, width=width)
+
+        return self.sample(grid_uniform, width=width,
+                           smearing=smearing, gridtype='uniform')
+
+
+    def sample(self, grid, width=0.1, smearing='Gauss',
+               gridtype='general'):
+        """Take list of DOS objects, and combine into 1, with same grid."""
+        doslist = self.doslist
+
+        # Count the total number of weights
+        n_weights = sum(len(dos.weights) for dos in doslist)
+
+        npts = len(grid)
+
+        weight_grid = np.zeros((n_weights, npts))
+        info_new = []
+        # Do sampling
+        ii = 0
+        for dos in doslist:
+            dos_sample = dos.sample(grid, width=width,
+                                    smearing=smearing)
+            info_new.extend(dos_sample.info)
+            for w_i in dos_sample.weights:
+                weight_grid[ii] = w_i
+                ii += 1
+        sampling = {'smearing': smearing,
+                    'width': width,
+                    'npts': npts,
+                    'type': gridtype}
+        return DOS(energy=grid, weights=weight_grid, info=info_new,
+                   sampling=sampling)
+
+
+    def join(self, atol=1e-08):
+        """Join a list of DOS objects into one, without applying sampling.
+
+        Requires all energies to be identical"""
+
+        # Test if energies are the same
+        eneq = all(np.allclose(self.doslist[0].energy, dos.energy, atol=atol)
+                   for dos in self.doslist)
+        if not eneq:
+            msg = 'Energies must the the same in all DOS objects.'
+            raise ValueError(msg)
+
+        energy = self.doslist[0].energy     # Just use the first energy
+        weights = []
+        info = []
+        for dos in self.doslist:
+            for info_i, w_i in zip(dos.info, dos.weights):
+                weights.append(w_i)
+                info.append(info_i)
+
+        return DOS(energy, weights, info=info)
+
+
 class DOSPlot:
     def __init__(self, dos, ax=None,
                  emin=None, emax=None,
@@ -331,8 +341,8 @@ class DOSPlot:
         if filename:
             plt.savefig(filename)
 
-        if show is None:
-            show = not filename
+        #if show is None:
+        #    show = not filename
 
         if show:
             plt.show()
