@@ -1,11 +1,40 @@
 import numpy as np
 
 
+def get_dos(calc):
+    # We'd rather do this differently, but for now we will have this shortcut
+    kpts = calc.get_ibz_k_points()
+
+    nkpts = len(kpts)
+    nspins = calc.get_number_of_spins()
+    nbands = calc.get_number_of_bands()
+
+    # XXX implement shortcut for getting energy array
+    energies = []
+    for s in range(nspins):
+        energies.append([calc.get_eigenvalues(kpt=k, spin=s)
+                         for k in range(nkpts)])
+    energies = np.array(energies)
+    assert energies.shape == (nspins, nkpts, nbands)
+
+    weights = np.empty(energies.shape)
+    kpt_weights = calc.get_k_point_weights()
+    weights[:, :, :] = kpt_weights[None, :, None]
+
+    energies = energies.reshape(2, -1)
+
+    doslist = []
+    for spin in range(nspins):
+        info = {'spin': spin} if nspins == 2 else {}
+        dos = DOS(energies[spin].ravel(),
+                  weights[0].ravel()[None],
+                  info=[info])
+        doslist.append(dos)
+    return DOSList(doslist)
+
+
 class DOS:
     def __init__(self, energy, weights, info=None, sampling={'type': 'raw'}):
-        """
-        Docstring here
-        """
         self.energy = np.asarray(energy)
         self.weights = np.asarray(weights)
         self.sampling = sampling
@@ -258,7 +287,6 @@ class DOSList:
         return DOS(energy=grid, weights=weight_grid, info=info_new,
                    sampling=sampling)
 
-
     def join(self, atol=1e-08):
         """Join a list of DOS objects into one, without applying sampling.
 
@@ -280,6 +308,9 @@ class DOSList:
                 info.append(info_i)
 
         return DOS(energy, weights, info=info)
+
+    def plot(self, **kwargs):
+        return self.sample_grid().plot(**kwargs)
 
 
 class DOSPlot:
@@ -340,9 +371,6 @@ class DOSPlot:
 
         if filename:
             plt.savefig(filename)
-
-        #if show is None:
-        #    show = not filename
 
         if show:
             plt.show()
