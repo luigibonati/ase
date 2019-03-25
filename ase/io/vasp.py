@@ -228,7 +228,7 @@ def read_vasp(filename='CONTCAR'):
     return atoms
 
 
-def read_vasp_out(filename='OUTCAR', index=-1, force_consistent=False):
+def read_vasp_out(filename='OUTCAR', index=-1):
     """Import OUTCAR type file.
 
     Reads unitcell, atom positions, energies, and forces from the OUTCAR file
@@ -290,18 +290,13 @@ def read_vasp_out(filename='OUTCAR', index=-1, force_consistent=False):
                 cell += [[float(temp[0]), float(temp[1]), float(temp[2])]]
             atoms.set_cell(cell)
         if 'FREE ENERGIE OF THE ION-ELECTRON SYSTEM' in line:
-            # choose between energy wigh smearing extrapolated to zero
-            # or free energy (latter is consistent with forces)
-            energy_zero = float(data[n + 4].split()[6])
-            energy_free = float(data[n + 2].split()[4])
-            energy = energy_zero
-            if force_consistent:
-                energy = energy_free
+            energy_zero = float(data[n + 4].split()[6])  # Extrapolated to 0 K
+            energy_free = float(data[n + 2].split()[4])  # Force consistent
             if ecount < poscount:
                 # reset energy for LAST set of atoms, not current one -
                 # VASP 5.11? and up
-                images[-1].calc.results['energy'] = energy
-                images[-1].calc.set(energy=energy)
+                images[-1].calc.results['free_energy'] = energy_free
+                images[-1].calc.results['energy'] = energy_zero
             ecount += 1
         if 'magnetization (x)' in line:
             magnetization = []
