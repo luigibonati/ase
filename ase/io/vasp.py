@@ -8,7 +8,7 @@ import os
 import re
 import ase.units
 
-from ase.utils import basestring
+from ase.utils import reader, writer
 
 
 def get_atomtypes(fname):
@@ -96,6 +96,7 @@ def get_atomtypes_from_formula(formula):
     return atomtypes
 
 
+@reader
 def read_vasp(filename='CONTCAR'):
     """Import POSCAR/CONTCAR type file.
 
@@ -109,11 +110,7 @@ def read_vasp(filename='CONTCAR'):
     from ase.data import chemical_symbols
     import numpy as np
 
-    if isinstance(filename, basestring):
-        f = open(filename)
-    else:  # Assume it's a file-like object
-        f = filename
-
+    f = filename
     # The first line is in principle a comment line, however in VASP
     # 4.x a common convention is to have it contain the atom symbols,
     # eg. "Ag Ge" in the same order as later in the file (and POTCAR
@@ -203,9 +200,6 @@ def read_vasp(filename='CONTCAR'):
             for flag in ac[3:6]:
                 curflag.append(flag == 'F')
             selective_flags[atom] = curflag
-    # Done with all reading
-    if isinstance(filename, basestring):
-        f.close()
     if cartesian:
         atoms_pos *= lattice_constant
     atoms = Atoms(symbols=atom_symbols, cell=basis_vectors, pbc=True)
@@ -228,6 +222,7 @@ def read_vasp(filename='CONTCAR'):
     return atoms
 
 
+@reader
 def read_vasp_out(filename='OUTCAR', index=-1):
     """Import OUTCAR type file.
 
@@ -246,15 +241,7 @@ def read_vasp_out(filename='OUTCAR', index=-1):
         except Exception:
             constr = None
 
-    opened = False
-    if isinstance(filename, basestring):
-        f = open(filename)
-        opened = True
-    else:  # Assume it's a file-like object
-        f = filename
-    data = f.readlines()
-    if opened:
-        f.close()
+    data = filename.readlines()
     natoms = 0
     images = []
     atoms = Atoms(pbc=True, constraint=constr)
@@ -358,7 +345,8 @@ def read_vasp_out(filename='OUTCAR', index=-1):
         return [images[i] for i in range(start, stop, step)]
 
 
-def read_vasp_xdatcar(filename, index=-1):
+@reader
+def read_vasp_xdatcar(filename='XDATCAR', index=-1):
     """Import XDATCAR file
 
        Reads all positions from the XDATCAR and returns a list of
@@ -372,42 +360,42 @@ def read_vasp_xdatcar(filename, index=-1):
     import numpy as np
     from ase import Atoms
 
+    f = filename
     images = list()
 
     cell = np.eye(3)
     atomic_formula = str()
 
-    with open(filename, 'r') as xdatcar:
+    while True:
+        comment_line = f.readline()
+        if "Direct configuration=" not in comment_line:
+            try:
+                lattice_constant = float(f.readline())
+            except Exception:
+                # XXX: When would this happen?
+                break
 
-        while True:
-            comment_line = xdatcar.readline()
-            if "Direct configuration=" not in comment_line:
-                try:
-                    lattice_constant = float(xdatcar.readline())
-                except:
-                    break
+            xx = [float(x) for x in f.readline().split()]
+            yy = [float(y) for y in f.readline().split()]
+            zz = [float(z) for z in f.readline().split()]
+            cell = np.array([xx, yy, zz]) * lattice_constant
 
-                xx = [float(x) for x in xdatcar.readline().split()]
-                yy = [float(y) for y in xdatcar.readline().split()]
-                zz = [float(z) for z in xdatcar.readline().split()]
-                cell = np.array([xx, yy, zz]) * lattice_constant
+            symbols = f.readline().split()
+            numbers = [int(n) for n in f.readline().split()]
+            total = sum(numbers)
 
-                symbols = xdatcar.readline().split()
-                numbers = [int(n) for n in xdatcar.readline().split()]
-                total = sum(numbers)
+            atomic_formula = str()
+            for n, sym in enumerate(symbols):
+                atomic_formula += '%s%s' % (sym, numbers[n])
 
-                atomic_formula = str()
-                for n, sym in enumerate(symbols):
-                    atomic_formula += '%s%s' % (sym, numbers[n])
+            f.readline()
 
-                xdatcar.readline()
+        coords = [np.array(f.readline().split(), np.float)
+                  for ii in range(total)]
 
-            coords = [np.array(xdatcar.readline().split(), np.float)
-                      for ii in range(total)]
-
-            image = Atoms(atomic_formula, cell=cell, pbc=True)
-            image.set_scaled_positions(np.array(coords))
-            images.append(image)
+        image = Atoms(atomic_formula, cell=cell, pbc=True)
+        image.set_scaled_positions(np.array(coords))
+        images.append(image)
 
     if not index:
         return images
@@ -667,6 +655,7 @@ def read_vasp_xml(filename='vasprun.xml', index=-1):
         yield atoms
 
 
+@writer
 def write_vasp(filename, atoms, label='', direct=False, sort=None,
                symbol_count=None, long_format=True, vasp5=False,
                ignore_constraints=False):
@@ -681,10 +670,7 @@ def write_vasp(filename, atoms, label='', direct=False, sort=None,
     import numpy as np
     from ase.constraints import FixAtoms, FixScaled, FixedPlane, FixedLine
 
-    if isinstance(filename, basestring):
-        f = open(filename, 'w')
-    else:  # Assume it's a 'file-like object'
-        f = filename
+    f = filename
 
     if isinstance(atoms, (list, tuple)):
         if len(atoms) > 1:
@@ -812,6 +798,3 @@ def write_vasp(filename, atoms, label='', direct=False, sort=None,
                     s = 'T'
                 f.write('%4s' % s)
         f.write('\n')
-
-    if isinstance(filename, basestring):
-        f.close()
