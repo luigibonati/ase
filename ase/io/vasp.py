@@ -258,13 +258,10 @@ def read_vasp_out(filename='OUTCAR', index=-1):
     natoms = 0
     images = []
     atoms = Atoms(pbc=True, constraint=constr)
-    energy_free = 0
-    energy_zero = 0
     species = []
     species_num = []
     stress = None
     symbols = []
-    ecount = 0
     poscount = 0
     magnetization = []
     magmom = None
