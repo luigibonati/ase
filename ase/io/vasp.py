@@ -241,7 +241,7 @@ def read_vasp_out(filename='OUTCAR', index=-1):
         except Exception:
             constr = None
 
-    data = filename.readlines()
+    f = filename
     natoms = 0
     images = []
     atoms = Atoms(pbc=True, constraint=constr)
@@ -253,10 +253,9 @@ def read_vasp_out(filename='OUTCAR', index=-1):
     magnetization = []
     magmom = None
 
-    for n, line in enumerate(data):
-        if re.search('[0-9]-[0-9]',line):
-            data[n] = re.sub('([0-9])-([0-9])',r'\1 -\2',line)
-    for n, line in enumerate(data):
+    for line in f:
+        if re.search('[0-9]-[0-9]', line):
+            line = re.sub('([0-9])-([0-9])',r'\1 -\2', line)
         if 'POTCAR:' in line:
             temp = line.split()[2]
             for c in ['.', '_', '1']:
@@ -275,13 +274,18 @@ def read_vasp_out(filename='OUTCAR', index=-1):
         if 'direct lattice vectors' in line:
             cell = []
             for i in range(3):
-                temp = data[n + 1 + i].split()
+                # Skip some lines
+                temp = f.readline().split()
                 cell += [[float(temp[0]), float(temp[1]), float(temp[2])]]
             atoms.set_cell(cell)
         if 'magnetization (x)' in line:
+            for _ in range(3):
+                # Skip some lines
+                f.readline()
             magnetization = []
             for i in range(natoms):
-                magnetization += [float(data[n + 4 + i].split()[4])]
+                parts = f.readline().split()
+                magnetization += [float(parts[4])]
         if 'number of electron' in line:
             parts = line.split()
             if len(parts) > 5 and parts[0].strip() != "NELECT":
@@ -292,16 +296,23 @@ def read_vasp_out(filename='OUTCAR', index=-1):
         if 'POSITION          ' in line:
             forces = []
             positions = []
+            f.readline()        # Skip line
             for iatom in range(natoms):
-                temp = data[n + 2 + iatom].split()
+                li = f.readline()
+                temp = li.split()
                 atoms += Atom(symbols[iatom],
                               [float(temp[0]), float(temp[1]), float(temp[2])])
                 forces += [[float(temp[3]), float(temp[4]), float(temp[5])]]
                 positions += [[float(temp[0]), float(temp[1]), float(temp[2])]]
         if 'FREE ENERGIE OF THE ION-ELECTRON SYSTEM' in line:
-            # Last section before next iteration
-            energy_zero = float(data[n + 4].split()[6])  # Extrapolated to 0 K
-            energy_free = float(data[n + 2].split()[4])  # Force consistent
+            # Last section before next ionic step
+            f.readline()        # Skip line
+            parts = f.readline().strip().split()
+            energy_free = float(parts[4])  # Force consistent
+
+            f.readline()        # Skip line
+            parts = f.readline().strip().split()
+            energy_zero = float(parts[6])  # Extrapolated to 0 K
             atoms.set_calculator(SinglePointCalculator(atoms,
                                                        energy=energy_zero,
                                                        free_energy=energy_free,
@@ -317,6 +328,7 @@ def read_vasp_out(filename='OUTCAR', index=-1):
             # Reset for next ionic step
             atoms = Atoms(pbc=True, constraint=constr)
             poscount += 1
+
     # return requested images, code borrowed from ase/io/trajectory.py
     if isinstance(index, int):
         return images[index]
