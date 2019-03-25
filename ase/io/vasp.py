@@ -246,15 +246,20 @@ def read_vasp_out(filename='OUTCAR', index=-1):
         except Exception:
             constr = None
 
+    opened = False
     if isinstance(filename, basestring):
         f = open(filename)
+        opened = True
     else:  # Assume it's a file-like object
         f = filename
     data = f.readlines()
+    if opened:
+        f.close()
     natoms = 0
     images = []
     atoms = Atoms(pbc=True, constraint=constr)
-    energy = 0
+    energy_free = 0
+    energy_zero = 0
     species = []
     species_num = []
     stress = None
@@ -289,15 +294,6 @@ def read_vasp_out(filename='OUTCAR', index=-1):
                 temp = data[n + 1 + i].split()
                 cell += [[float(temp[0]), float(temp[1]), float(temp[2])]]
             atoms.set_cell(cell)
-        if 'FREE ENERGIE OF THE ION-ELECTRON SYSTEM' in line:
-            energy_zero = float(data[n + 4].split()[6])  # Extrapolated to 0 K
-            energy_free = float(data[n + 2].split()[4])  # Force consistent
-            if ecount < poscount:
-                # reset energy for LAST set of atoms, not current one -
-                # VASP 5.11? and up
-                images[-1].calc.results['free_energy'] = energy_free
-                images[-1].calc.results['energy'] = energy_zero
-            ecount += 1
         if 'magnetization (x)' in line:
             magnetization = []
             for i in range(natoms):
@@ -318,20 +314,25 @@ def read_vasp_out(filename='OUTCAR', index=-1):
                               [float(temp[0]), float(temp[1]), float(temp[2])])
                 forces += [[float(temp[3]), float(temp[4]), float(temp[5])]]
                 positions += [[float(temp[0]), float(temp[1]), float(temp[2])]]
+        if 'FREE ENERGIE OF THE ION-ELECTRON SYSTEM' in line:
+            # Last section before next iteration
+            energy_zero = float(data[n + 4].split()[6])  # Extrapolated to 0 K
+            energy_free = float(data[n + 2].split()[4])  # Force consistent
             atoms.set_calculator(SinglePointCalculator(atoms,
-                                                       energy=energy,
+                                                       energy=energy_zero,
+                                                       free_energy=energy_free,
                                                        forces=forces,
                                                        stress=stress))
-            images += [atoms]
             if len(magnetization) > 0:
                 mag = np.array(magnetization, float)
-                images[-1].calc.magmoms = mag
-                images[-1].calc.results['magmoms'] = mag
+                atoms.calc.magmoms = mag
+                atoms.calc.results['magmoms'] = mag
             if magmom is not None:
-                images[-1].calc.results['magmom'] = magmom
+                atoms.calc.results['magmom'] = magmom
+            images += [atoms]
+            # Reset for next ionic step
             atoms = Atoms(pbc=True, constraint=constr)
             poscount += 1
-
     # return requested images, code borrowed from ase/io/trajectory.py
     if isinstance(index, int):
         return images[index]
