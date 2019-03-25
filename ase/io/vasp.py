@@ -253,10 +253,23 @@ def read_vasp_out(filename='OUTCAR', index=-1):
     magnetization = []
     magmom = None
 
-    for line in f:
+    def cl(line):
+        """Auxilary check line function.
+        See issue #179, https://gitlab.com/ase/ase/issues/179
+        Only call in cases we need the number values
+        """
         if re.search('[0-9]-[0-9]', line):
-            line = re.sub('([0-9])-([0-9])',r'\1 -\2', line)
+            line = re.sub('([0-9])-([0-9])', r'\1 -\2', line)
+        return line
+
+    def getline():
+        """Get line, in which we checked for number formatting"""
+        return cl(f.readline())
+
+    for line in f:
+        line = line.strip()
         if 'POTCAR:' in line:
+            # Get atomic species
             temp = line.split()[2]
             for c in ['.', '_', '1']:
                 if c in temp:
@@ -264,8 +277,8 @@ def read_vasp_out(filename='OUTCAR', index=-1):
             species += [temp]
         if 'ions per type' in line:
             species = species[:len(species) // 2]
-            temp = line.split()
-            ntypes = min(len(temp)-4, len(species))
+            temp = cl(line).split()
+            ntypes = min(len(temp) - 4, len(species))
             for ispecies in range(ntypes):
                 species_num += [int(temp[ispecies + 4])]
                 natoms += species_num[-1]
@@ -274,8 +287,7 @@ def read_vasp_out(filename='OUTCAR', index=-1):
         if 'direct lattice vectors' in line:
             cell = []
             for i in range(3):
-                # Skip some lines
-                temp = f.readline().split()
+                temp = getline().split()
                 cell += [[float(temp[0]), float(temp[1]), float(temp[2])]]
             atoms.set_cell(cell)
         if 'magnetization (x)' in line:
@@ -284,35 +296,34 @@ def read_vasp_out(filename='OUTCAR', index=-1):
                 f.readline()
             magnetization = []
             for i in range(natoms):
-                parts = f.readline().split()
+                parts = getline().split()
                 magnetization += [float(parts[4])]
         if 'number of electron' in line:
-            parts = line.split()
+            parts = cl(line).split()
             if len(parts) > 5 and parts[0].strip() != "NELECT":
                 magmom = float(parts[5])
         if 'in kB ' in line:
-            stress = -np.array([float(a) for a in line.split()[2:]])
+            stress = -np.array([float(a) for a in cl(line).split()[2:]])
             stress = stress[[0, 1, 2, 4, 5, 3]] * 1e-1 * ase.units.GPa
         if 'POSITION          ' in line:
             forces = []
-            positions = []
             f.readline()        # Skip line
+
             for iatom in range(natoms):
-                li = f.readline()
-                temp = li.split()
-                atoms += Atom(symbols[iatom],
-                              [float(temp[0]), float(temp[1]), float(temp[2])])
-                forces += [[float(temp[3]), float(temp[4]), float(temp[5])]]
-                positions += [[float(temp[0]), float(temp[1]), float(temp[2])]]
+                parts = list(map(float, getline().split()))
+                pos = parts[0:3]
+                atoms += Atom(symbols[iatom], pos)
+                forces += [parts[3:6]]
         if 'FREE ENERGIE OF THE ION-ELECTRON SYSTEM' in line:
             # Last section before next ionic step
             f.readline()        # Skip line
-            parts = f.readline().strip().split()
+            parts = getline().strip().split()
             energy_free = float(parts[4])  # Force consistent
 
             f.readline()        # Skip line
-            parts = f.readline().strip().split()
+            parts = getline().strip().split()
             energy_zero = float(parts[6])  # Extrapolated to 0 K
+
             atoms.set_calculator(SinglePointCalculator(atoms,
                                                        energy=energy_zero,
                                                        free_energy=energy_free,
