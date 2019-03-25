@@ -3939,11 +3939,9 @@ outcar_f.write(outcar)
 outcar_f.close()
 
 try:
-	a1 = read('OUTCAR', force_consistent=True)
-	assert abs(a1.get_potential_energy() - -68.22868532) < 1e-6
-
-	a2 = read('OUTCAR', force_consistent=False)
-	assert abs(a2.get_potential_energy() - -68.23102426) < 1e-6
+	a1 = read('OUTCAR')
+	assert abs(a1.get_potential_energy(force_consistent=True) - -68.22868532) < 1e-6
+	assert abs(a1.get_potential_energy(force_consistent=False) - -68.23102426) < 1e-6
 
 finally:
 	os.unlink('OUTCAR')
