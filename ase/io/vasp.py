@@ -244,12 +244,10 @@ def read_vasp_out(filename='OUTCAR', index=-1):
     f = filename
     natoms = 0
     images = []
-    atoms = Atoms(pbc=True, constraint=constr)
     species = []
     species_num = []
     stress = None
     symbols = []
-    poscount = 0
     magnetization = []
     magmom = None
 
@@ -266,10 +264,10 @@ def read_vasp_out(filename='OUTCAR', index=-1):
         """Get line, in which we checked for number formatting"""
         return cl(f.readline())
 
+    # Get atomic species
     for line in f:
         line = line.strip()
         if 'POTCAR:' in line:
-            # Get atomic species
             temp = line.split()[2]
             for c in ['.', '_', '1']:
                 if c in temp:
@@ -277,43 +275,47 @@ def read_vasp_out(filename='OUTCAR', index=-1):
             species += [temp]
         if 'ions per type' in line:
             species = species[:len(species) // 2]
-            temp = cl(line).split()
-            ntypes = min(len(temp) - 4, len(species))
+            parts = cl(line).split()
+            ntypes = min(len(parts) - 4, len(species))
             for ispecies in range(ntypes):
-                species_num += [int(temp[ispecies + 4])]
+                species_num += [int(parts[ispecies + 4])]
                 natoms += species_num[-1]
                 for iatom in range(species_num[-1]):
                     symbols += [species[ispecies]]
+            break
+
+    atoms = Atoms(symbols=symbols, pbc=True, constraint=constr)
+    forces = np.zeros((natoms, 3))
+    positions = np.zeros((natoms, 3))
+    # Parse each atoms object
+    for line in f:
+        line = line.strip()
         if 'direct lattice vectors' in line:
             cell = []
             for i in range(3):
                 temp = getline().split()
-                cell += [[float(temp[0]), float(temp[1]), float(temp[2])]]
+                cell += [list(map(float, temp[0:3]))]
             atoms.set_cell(cell)
         if 'magnetization (x)' in line:
             for _ in range(3):
                 # Skip some lines
                 f.readline()
-            magnetization = []
-            for i in range(natoms):
-                parts = getline().split()
-                magnetization += [float(parts[4])]
+            magnetization = [float(getline().split()[4])
+                             for i in range(natoms)]
         if 'number of electron' in line:
             parts = cl(line).split()
             if len(parts) > 5 and parts[0].strip() != "NELECT":
                 magmom = float(parts[5])
         if 'in kB ' in line:
-            stress = -np.array([float(a) for a in cl(line).split()[2:]])
+            stress = -np.asarray([float(a) for a in cl(line).split()[2:]])
             stress = stress[[0, 1, 2, 4, 5, 3]] * 1e-1 * ase.units.GPa
         if 'POSITION          ' in line:
-            forces = []
             f.readline()        # Skip line
-
             for iatom in range(natoms):
                 parts = list(map(float, getline().split()))
-                pos = parts[0:3]
-                atoms += Atom(symbols[iatom], pos)
-                forces += [parts[3:6]]
+                positions[iatom] = parts[0:3]
+                forces[iatom] = parts[3:6]
+            atoms.set_positions(positions)
         if 'FREE ENERGIE OF THE ION-ELECTRON SYSTEM' in line:
             # Last section before next ionic step
             f.readline()        # Skip line
@@ -330,15 +332,14 @@ def read_vasp_out(filename='OUTCAR', index=-1):
                                                        forces=forces,
                                                        stress=stress))
             if len(magnetization) > 0:
-                mag = np.array(magnetization, float)
+                mag = np.asarray(magnetization)
                 atoms.calc.magmoms = mag
                 atoms.calc.results['magmoms'] = mag
             if magmom is not None:
                 atoms.calc.results['magmom'] = magmom
             images += [atoms]
             # Reset for next ionic step
-            atoms = Atoms(pbc=True, constraint=constr)
-            poscount += 1
+            atoms = Atoms(symbols=symbols, pbc=True, constraint=constr)
 
     # return requested images, code borrowed from ase/io/trajectory.py
     if isinstance(index, int):
