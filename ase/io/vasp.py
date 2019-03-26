@@ -231,7 +231,7 @@ def read_vasp_out(filename='OUTCAR', index=-1):
     """
     import numpy as np
     from ase.calculators.singlepoint import SinglePointCalculator
-    from ase import Atoms, Atom
+    from ase import Atoms
 
     try:  # try to read constraints, first from CONTCAR, then from POSCAR
         constr = read_vasp('CONTCAR').constraints
