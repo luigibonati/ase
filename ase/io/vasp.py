@@ -236,9 +236,11 @@ def read_vasp_out(filename='OUTCAR', index=-1):
     try:  # try to read constraints, first from CONTCAR, then from POSCAR
         constr = read_vasp('CONTCAR').constraints
     except Exception:
+        # XXX: Which exceptions? OSError only?
         try:
             constr = read_vasp('POSCAR').constraints
         except Exception:
+            # XXX: Which exceptions? OSError only?
             constr = None
 
     f = filename
@@ -252,9 +254,9 @@ def read_vasp_out(filename='OUTCAR', index=-1):
     magmom = None
 
     def cl(line):
-        """Auxilary check line function.
+        """Auxiliary check line function.
         See issue #179, https://gitlab.com/ase/ase/issues/179
-        Only call in cases we need the number values
+        Only call in cases we need the numeric values
         """
         if re.search('[0-9]-[0-9]', line):
             line = re.sub('([0-9])-([0-9])', r'\1 -\2', line)
@@ -293,8 +295,8 @@ def read_vasp_out(filename='OUTCAR', index=-1):
         if 'direct lattice vectors' in line:
             cell = []
             for i in range(3):
-                temp = getline().split()
-                cell += [list(map(float, temp[0:3]))]
+                parts = getline().split()
+                cell += [list(map(float, parts[0:3]))]
             atoms.set_cell(cell)
         if 'magnetization (x)' in line:
             for _ in range(3):
@@ -428,7 +430,7 @@ def read_vasp_xdatcar(filename='XDATCAR', index=-1):
 
 
 def __get_xml_parameter(par):
-    """An auxillary function that enables convenient extraction of
+    """An auxiliary function that enables convenient extraction of
     parameter values from a vasprun.xml file with proper type
     handling.
 
