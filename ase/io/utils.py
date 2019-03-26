@@ -1,4 +1,5 @@
 import numpy as np
+from itertools import islice
 from math import sqrt
 from ase.utils import rotate
 from ase.data import covalent_radii, atomic_numbers
@@ -208,3 +209,35 @@ def make_patch_list(writer):
                     patch = PathPatch(Path((xy + hxy, xy - hxy)))
                 patch_list.append(patch)
     return patch_list
+
+
+class ImageIterator:
+    """"""
+    def __init__(self, ichunks):
+        self.ichunks = ichunks
+
+    def __call__(self, fd, indices=-1):
+        if not hasattr(indices, 'start'):
+            if indices < 0:
+                indices = slice(indices - 1, indices)
+            else:
+                indices = slice(indices, indices + 1)
+
+        for chunk in self._getslice(fd, indices):
+            yield chunk.build()
+
+    def _getslice(self, fd, indices):
+        try:
+            iterator = islice(self.ichunks(fd), indices.start, indices.stop,
+                              indices.step)
+        except ValueError:
+            # Negative indices.  Go through the whole thing to get the length,
+            # which allows us to evaluate the slice, and then read it again
+            startpos = fd.tell()
+            nchunks = 0
+            for chunk in self.ichunks(fd):
+                nchunks += 1
+            fd.seek(startpos)
+            indices_tuple = indices.indices(nchunks)
+            iterator = islice(self.ichunks(fd), *indices_tuple)
+        return iterator

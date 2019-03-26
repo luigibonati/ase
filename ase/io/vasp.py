@@ -6,9 +6,10 @@ Atoms object in VASP POSCAR format.
 
 import os
 import re
-import ase.units
 
+import ase.units
 from ase.utils import reader, writer
+from ase.io.utils import ImageIterator
 
 
 def get_atomtypes(fname):
@@ -220,6 +221,150 @@ def read_vasp(filename='CONTCAR'):
         if constraints:
             atoms.set_constraint(constraints)
     return atoms
+
+
+class OUTCARChunck:
+    def __init__(self, lines, natoms, symbols, constraints):
+        self.lines = lines
+        self.natoms = natoms
+        self.symbols = symbols
+        self.constraints = constraints
+
+    def build(self):
+        return _read_outcar_frame(self.lines, self.natoms,
+                                  self.symbols, self.constraints)
+
+
+def _read_outcar_frame(lines, natoms, symbols, constraints):
+    import numpy as np
+    from ase.calculators.singlepoint import SinglePointCalculator
+    from ase import Atoms
+
+    magnetization = []
+    magmom = None
+    stress = None
+    atoms = Atoms(symbols=symbols, pbc=True, constraint=constraints)
+
+    def cl(line):
+        """Auxiliary check line function.
+        See issue #179, https://gitlab.com/ase/ase/issues/179
+        Only call in cases we need the numeric values
+        """
+        if re.search('[0-9]-[0-9]', line):
+            line = re.sub('([0-9])-([0-9])', r'\1 -\2', line)
+        return line
+    # print(lines)
+    forces = np.zeros((natoms, 3))
+    positions = np.zeros((natoms, 3))
+    # Parse each atoms object
+    for n, line in enumerate(lines):
+        line = line.strip()
+        if 'direct lattice vectors' in line:
+            cell = []
+            for i in range(3):
+                parts = cl(lines[n + i + 1]).split()
+                print(parts)
+                cell += [list(map(float, parts[0:3]))]
+            atoms.set_cell(cell)
+        if 'magnetization (x)' in line:
+            nskip = 4           # Skip some lines
+            magnetization = [float(cl(lines[n + i + nskip]).split()[4])
+                             for i in range(natoms)]
+        if 'number of electron' in line:
+            parts = cl(line).split()
+            if len(parts) > 5 and parts[0].strip() != "NELECT":
+                magmom = float(parts[5])
+        if 'in kB ' in line:
+            stress = -np.asarray([float(a) for a in cl(line).split()[2:]])
+            stress = stress[[0, 1, 2, 4, 5, 3]] * 1e-1 * ase.units.GPa
+        if 'POSITION          ' in line:
+            nskip = 2
+            for i in range(natoms):
+                parts = list(map(float, cl(lines[n + i + nskip]).split()))
+                positions[i] = parts[0:3]
+                forces[i] = parts[3:6]
+            atoms.set_positions(positions)
+        if 'FREE ENERGIE OF THE ION-ELECTRON SYSTEM' in line:
+            # Last section before next ionic step
+            nskip = 2
+            parts = cl(lines[n + nskip]).strip().split()
+            energy_free = float(parts[4])  # Force consistent
+
+            nskip = 4
+            parts = cl(lines[n + nskip]).strip().split()
+            energy_zero = float(parts[6])  # Extrapolated to 0 K
+
+            atoms.set_calculator(SinglePointCalculator(atoms,
+                                                       energy=energy_zero,
+                                                       free_energy=energy_free,
+                                                       forces=forces,
+                                                       stress=stress))
+            if len(magnetization) > 0:
+                mag = np.asarray(magnetization)
+                atoms.calc.magmoms = mag
+                atoms.calc.results['magmoms'] = mag
+            if magmom is not None:
+                atoms.calc.results['magmom'] = magmom
+    return atoms
+
+
+def _read_outcar_header(fd):
+    constr = None               # Should we re-implement this?
+
+    def cl(line):
+        """Auxiliary check line function.
+        See issue #179, https://gitlab.com/ase/ase/issues/179
+        Only call in cases we need the numeric values
+        """
+        if re.search('[0-9]-[0-9]', line):
+            line = re.sub('([0-9])-([0-9])', r'\1 -\2', line)
+        return line
+    species = []
+    natoms = 0
+    species_num = []
+    symbols = []
+
+    # Get atomic species
+    for line in fd:
+        line = line.strip()
+        if 'POTCAR:' in line:
+            temp = line.split()[2]
+            for c in ['.', '_', '1']:
+                if c in temp:
+                    temp = temp[0:temp.find(c)]
+            species += [temp]
+        if 'ions per type' in line:
+            species = species[:len(species) // 2]
+            parts = cl(line).split()
+            ntypes = min(len(parts) - 4, len(species))
+            for ispecies in range(ntypes):
+                species_num += [int(parts[ispecies + 4])]
+                natoms += species_num[-1]
+                for iatom in range(species_num[-1]):
+                    symbols += [species[ispecies]]
+            break
+    return natoms, symbols, constr
+
+
+def outcarchunks(fd):
+    natoms, symbols, constr = _read_outcar_header(fd)  # First get header info
+    while True:
+        lines = []
+        try:
+            while True:
+                line = next(fd)
+                lines += [line]
+                if 'FREE ENERGIE OF THE ION-ELECTRON SYSTEM' in line:
+                    # Add 3 more lines to include energy
+                    for _ in range(4):
+                        lines += [next(fd)]
+                    break
+        except StopIteration:
+            raise ValueError('Why am i here???')
+        yield OUTCARChunck(lines, natoms, symbols, constr)
+
+
+iread_vasp_out = ImageIterator(outcarchunks)
 
 
 @reader
