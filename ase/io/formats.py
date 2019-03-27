@@ -29,6 +29,7 @@ import functools
 import inspect
 import os
 import sys
+from itertools import islice
 
 from ase.atoms import Atoms
 from ase.utils import import_module, basestring, PurePath
@@ -40,7 +41,8 @@ class UnknownFileTypeError(Exception):
 
 
 IOFormat = collections.namedtuple('IOFormat',
-                                  'read, write, single, acceptsfd, isbinary')
+                                  ('read, iread, write, single, '
+                                   'acceptsfd, isbinary'))
 ioformats = {}  # will be filled at run-time
 
 # 1=single, +=multiple, F=accepts a file-descriptor, S=needs a file-name str,
@@ -209,7 +211,12 @@ def initialize(format):
                          % (format, err))
 
     read = getattr(module, 'read_' + _format, None)
+    iread = getattr(module, 'iread_' + _format, None)
     write = getattr(module, 'write_' + _format, None)
+
+    if iread is None:
+        # No inherent iread version, fallback to read
+        iread = read
 
     if read and not inspect.isgeneratorfunction(read):
         read = functools.partial(wrap_read_function, read)
@@ -220,7 +227,8 @@ def initialize(format):
     assert code[1] in 'BFS'
     acceptsfd = code[1] != 'S'
     isbinary = code[1] == 'B'
-    ioformats[format] = IOFormat(read, write, single, acceptsfd, isbinary)
+    ioformats[format] = IOFormat(read, iread, write,
+                                 single, acceptsfd, isbinary)
 
 
 def get_ioformat(format):
@@ -464,8 +472,6 @@ def read(filename, index=None, format=None, parallel=True, **kwargs):
     of ``filename``. In this case the format cannot be auto-decected,
     so the ``format`` argument should be explicitly given."""
 
-    if isinstance(filename, PurePath):
-        filename = str(filename)
     if isinstance(index, basestring):
         try:
             index = string2index(index)
@@ -505,18 +511,25 @@ def iread(filename, index=None, format=None, parallel=True, **kwargs):
     format = format or filetype(filename)
     io = get_ioformat(format)
 
+    use_iread = False
+    if io.iread:
+        use_iread = True
+
     for atoms in _iread(filename, index, format, io, parallel=parallel,
-                        **kwargs):
+                        use_iread=use_iread, **kwargs):
         yield atoms
 
 
 @parallel_generator
 def _iread(filename, index, format, io, parallel=None, full_output=False,
-           **kwargs):
+           use_iread=False, **kwargs):
     if isinstance(filename, basestring):
         filename = os.path.expanduser(filename)
 
-    if not io.read:
+    # Pick "read" or "iread"
+    reader = 0 if not use_iread else 1
+
+    if not io[reader]:
         raise ValueError("Can't read from {}-format".format(format))
 
     if io.single:
@@ -540,7 +553,7 @@ def _iread(filename, index, format, io, parallel=None, full_output=False,
 
     # Make sure fd is closed in case loop doesn't finish:
     try:
-        for dct in io.read(fd, *args, **kwargs):
+        for dct in io[reader](fd, *args, **kwargs):
             if not isinstance(dct, dict):
                 dct = {'atoms': dct}
             if full_output:
@@ -553,6 +566,9 @@ def _iread(filename, index, format, io, parallel=None, full_output=False,
 
 
 def parse_filename(filename, index=None):
+    if isinstance(filename, PurePath):
+        filename = str(filename)
+
     if not isinstance(filename, basestring):
         return filename, index
 
@@ -729,3 +745,39 @@ def filetype(filename, read=True, guess=True):
         raise UnknownFileTypeError('Could not guess file type')
 
     return format
+
+
+class ImageIterator:
+    """"""
+    def __init__(self, ichunks):
+        self.ichunks = ichunks
+
+    def __call__(self, fd, index=None, **kwargs):
+        if isinstance(index, basestring):
+            index = string2index(index)
+
+        if index is None or index == ':':
+            index = slice(None, None, None)
+
+        if not isinstance(index, (slice, basestring)):
+            index = slice(index, (index + 1) or None)
+
+        for chunk in self._getslice(fd, index):
+            yield chunk.build(**kwargs)
+
+    def _getslice(self, fd, indices):
+        try:
+            iterator = islice(self.ichunks(fd),
+                              indices.start, indices.stop,
+                              indices.step)
+        except ValueError:
+            # Negative indices.  Go through the whole thing to get the length,
+            # which allows us to evaluate the slice, and then read it again
+            startpos = fd.tell()
+            nchunks = 0
+            for chunk in self.ichunks(fd):
+                nchunks += 1
+            fd.seek(startpos)
+            indices_tuple = indices.indices(nchunks)
+            iterator = islice(self.ichunks(fd), *indices_tuple)
+        return iterator

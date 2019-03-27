@@ -13,7 +13,6 @@ Contributed by James Kermode <james.kermode@gmail.com>
 
 from __future__ import print_function
 
-from itertools import islice
 import re
 import warnings
 
@@ -26,6 +25,7 @@ from ase.spacegroup.spacegroup import Spacegroup
 from ase.parallel import paropen
 from ase.utils import basestring
 from ase.constraints import FixAtoms, FixCartesian
+from ase.io.formats import ImageIterator
 
 __all__ = ['read_xyz', 'write_xyz', 'iread_xyz']
 
@@ -490,51 +490,19 @@ class XYZChunk:
 def ixyzchunks(fd):
     """Yield unprocessed chunks (header, lines) for each xyz image."""
     while True:
-        line = next(fd).strip()  # Raises StopIteration on empty file
         try:
-            natoms = int(line)
-        except ValueError:
-            raise XYZError('Expected integer, found "{0}"'.format(line))
-        try:
+            line = next(fd).strip()  # Raises StopIteration on empty file
+            try:
+                natoms = int(line)
+            except ValueError:
+                raise XYZError('Expected integer, found "{0}"'.format(line))
             lines = [next(fd) for _ in range(1 + natoms)]
         except StopIteration:
-            raise XYZError('Incomplete XYZ chunk')
+            break
         yield XYZChunk(lines, natoms)
 
 
-class ImageIterator:
-    """"""
-    def __init__(self, ichunks):
-        self.ichunks = ichunks
-
-    def __call__(self, fd, indices=-1):
-        if not hasattr(indices, 'start'):
-            if indices < 0:
-                indices = slice(indices - 1, indices)
-            else:
-                indices = slice(indices, indices + 1)
-
-        for chunk in self._getslice(fd, indices):
-            yield chunk.build()
-
-    def _getslice(self, fd, indices):
-        try:
-            iterator = islice(self.ichunks(fd), indices.start, indices.stop,
-                              indices.step)
-        except ValueError:
-            # Negative indices.  Go through the whole thing to get the length,
-            # which allows us to evaluate the slice, and then read it again
-            startpos = fd.tell()
-            nchunks = 0
-            for chunk in self.ichunks(fd):
-                nchunks += 1
-            fd.seek(startpos)
-            indices_tuple = indices.indices(nchunks)
-            iterator = islice(self.ichunks(fd), *indices_tuple)
-        return iterator
-
-
-iread_xyz = ImageIterator(ixyzchunks)
+iread_extxyz = ImageIterator(ixyzchunks)
 
 
 def read_xyz(fileobj, index=-1, properties_parser=key_val_str_to_dict):

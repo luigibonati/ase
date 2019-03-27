@@ -6,8 +6,9 @@ from numpy import zeros, isscalar
 from ase.atoms import Atoms
 from ase.data import chemical_symbols
 from ase.calculators.singlepoint import SinglePointCalculator
+from ase.io.formats import ImageIterator
 
-__all__ = ['read_dlp4', 'write_dlp4']
+__all__ = ['read_dlp4', 'iread_dlp_history', 'write_dlp4']
 
 # dlp4 labels will be registered in atoms.arrays[DLP4_LABELS_KEY]
 DLP4_LABELS_KEY = 'dlp4_labels'
@@ -67,13 +68,35 @@ def read_dlp_history(f, index=-1, symbols=None):
     return images
 
 
-def iread_dlp_history(f, symbols=None):
-    """Generator version of read_history"""
-    levcfg,imcon,natoms,pos = _get_frame_positions(f)
-    for p in pos:
-        f.seek(p+1)
-        yield read_single_image(f, levcfg, imcon, natoms, is_trajectory=True, symbols=symbols)
+class DLPchunk:
+    def __init__(self, f, p, levcfg, imcon, natoms):
+        self.f = f
+        self.p = p
+        self.levcfg = levcfg
+        self.imcon = imcon
+        self.natoms = natoms
 
+    def build(self, symbols=None):
+        # Bit of a hack, but it's how it was done originally
+        self.f.seek(self.p + 1)
+        return read_single_image(self.f, self.levcfg, self.imcon, self.natoms,
+                                 is_trajectory=True, symbols=symbols)
+
+
+def _dlpchunks(f):
+    levcfg, imcon, natoms, pos = _get_frame_positions(f)
+    pos = iter(pos)
+    while True:
+        try:
+            p = next(pos)
+            yield DLPchunk(f, p, levcfg, imcon, natoms)
+        except StopIteration:
+            return
+
+
+def iread_dlp_history(filename, index=-1, symbols=None):
+    it = ImageIterator(_dlpchunks)
+    return it(filename, index=index, symbols=symbols)
 
 
 def read_dlp4(f, symbols=None):

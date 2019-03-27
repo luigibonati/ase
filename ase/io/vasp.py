@@ -8,8 +8,8 @@ import os
 import re
 
 import ase.units
-from ase.utils import reader, writer
-from ase.io.utils import ImageIterator
+from ase.utils import basestring, reader, writer
+from ase.io.formats import ImageIterator
 
 
 def get_atomtypes(fname):
@@ -263,7 +263,6 @@ def _read_outcar_frame(lines, natoms, symbols, constraints):
             cell = []
             for i in range(3):
                 parts = cl(lines[n + i + 1]).split()
-                print(parts)
                 cell += [list(map(float, parts[0:3]))]
             atoms.set_cell(cell)
         if 'magnetization (x)' in line:
@@ -360,11 +359,14 @@ def outcarchunks(fd):
                         lines += [next(fd)]
                     break
         except StopIteration:
-            raise ValueError('Why am i here???')
+            # End of file
+            return
         yield OUTCARChunck(lines, natoms, symbols, constr)
 
 
-iread_vasp_out = ImageIterator(outcarchunks)
+def iread_vasp_out(filename, index=-1):
+    it = ImageIterator(outcarchunks)
+    return it(filename, index=index)
 
 
 @reader
@@ -374,9 +376,6 @@ def read_vasp_out(filename='OUTCAR', index=-1):
     Reads unitcell, atom positions, energies, and forces from the OUTCAR file
     and attempts to read constraints (if any) from CONTCAR/POSCAR, if present.
     """
-    import numpy as np
-    from ase.calculators.singlepoint import SinglePointCalculator
-    from ase import Atoms
 
     try:  # try to read constraints, first from CONTCAR, then from POSCAR
         constr = read_vasp('CONTCAR').constraints
@@ -389,131 +388,11 @@ def read_vasp_out(filename='OUTCAR', index=-1):
             constr = None
 
     f = filename
-    natoms = 0
-    images = []
-    species = []
-    species_num = []
-    stress = None
-    symbols = []
-    magnetization = []
-    magmom = None
-
-    def cl(line):
-        """Auxiliary check line function.
-        See issue #179, https://gitlab.com/ase/ase/issues/179
-        Only call in cases we need the numeric values
-        """
-        if re.search('[0-9]-[0-9]', line):
-            line = re.sub('([0-9])-([0-9])', r'\1 -\2', line)
-        return line
-
-    def getline():
-        """Get line, in which we checked for number formatting"""
-        return cl(f.readline())
-
-    # Get atomic species
-    for line in f:
-        line = line.strip()
-        if 'POTCAR:' in line:
-            temp = line.split()[2]
-            for c in ['.', '_', '1']:
-                if c in temp:
-                    temp = temp[0:temp.find(c)]
-            species += [temp]
-        if 'ions per type' in line:
-            species = species[:len(species) // 2]
-            parts = cl(line).split()
-            ntypes = min(len(parts) - 4, len(species))
-            for ispecies in range(ntypes):
-                species_num += [int(parts[ispecies + 4])]
-                natoms += species_num[-1]
-                for iatom in range(species_num[-1]):
-                    symbols += [species[ispecies]]
-            break
-
-    atoms = Atoms(symbols=symbols, pbc=True, constraint=constr)
-    forces = np.zeros((natoms, 3))
-    positions = np.zeros((natoms, 3))
-    # Parse each atoms object
-    for line in f:
-        line = line.strip()
-        if 'direct lattice vectors' in line:
-            cell = []
-            for i in range(3):
-                parts = getline().split()
-                cell += [list(map(float, parts[0:3]))]
-            atoms.set_cell(cell)
-        if 'magnetization (x)' in line:
-            for _ in range(3):
-                # Skip some lines
-                f.readline()
-            magnetization = [float(getline().split()[4])
-                             for i in range(natoms)]
-        if 'number of electron' in line:
-            parts = cl(line).split()
-            if len(parts) > 5 and parts[0].strip() != "NELECT":
-                magmom = float(parts[5])
-        if 'in kB ' in line:
-            stress = -np.asarray([float(a) for a in cl(line).split()[2:]])
-            stress = stress[[0, 1, 2, 4, 5, 3]] * 1e-1 * ase.units.GPa
-        if 'POSITION          ' in line:
-            f.readline()        # Skip line
-            for iatom in range(natoms):
-                parts = list(map(float, getline().split()))
-                positions[iatom] = parts[0:3]
-                forces[iatom] = parts[3:6]
-            atoms.set_positions(positions)
-        if 'FREE ENERGIE OF THE ION-ELECTRON SYSTEM' in line:
-            # Last section before next ionic step
-            f.readline()        # Skip line
-            parts = getline().strip().split()
-            energy_free = float(parts[4])  # Force consistent
-
-            f.readline()        # Skip line
-            parts = getline().strip().split()
-            energy_zero = float(parts[6])  # Extrapolated to 0 K
-
-            atoms.set_calculator(SinglePointCalculator(atoms,
-                                                       energy=energy_zero,
-                                                       free_energy=energy_free,
-                                                       forces=forces,
-                                                       stress=stress))
-            if len(magnetization) > 0:
-                mag = np.asarray(magnetization)
-                atoms.calc.magmoms = mag
-                atoms.calc.results['magmoms'] = mag
-            if magmom is not None:
-                atoms.calc.results['magmom'] = magmom
-            images += [atoms]
-            # Reset for next ionic step
-            atoms = Atoms(symbols=symbols, pbc=True, constraint=constr)
-
-    # return requested images, code borrowed from ase/io/trajectory.py
-    if isinstance(index, int):
-        return images[index]
+    g = iread_vasp_out(f, index=index)
+    if isinstance(index, (slice, basestring)):
+        return list(g)
     else:
-        step = index.step or 1
-        if step > 0:
-            start = index.start or 0
-            if start < 0:
-                start += len(images)
-            stop = index.stop or len(images)
-            if stop < 0:
-                stop += len(images)
-        else:
-            if index.start is None:
-                start = len(images) - 1
-            else:
-                start = index.start
-                if start < 0:
-                    start += len(images)
-            if index.stop is None:
-                stop = -1
-            else:
-                stop = index.stop
-                if stop < 0:
-                    stop += len(images)
-        return [images[i] for i in range(start, stop, step)]
+        return next(g)
 
 
 @reader
