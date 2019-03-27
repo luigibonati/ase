@@ -245,15 +245,8 @@ def _read_outcar_frame(lines, natoms, symbols, constraints):
     stress = None
     atoms = Atoms(symbols=symbols, pbc=True, constraint=constraints)
 
-    def cl(line):
-        """Auxiliary check line function.
-        See issue #179, https://gitlab.com/ase/ase/issues/179
-        Only call in cases we need the numeric values
-        """
-        if re.search('[0-9]-[0-9]', line):
-            line = re.sub('([0-9])-([0-9])', r'\1 -\2', line)
-        return line
-    # print(lines)
+    cl = _cl
+
     forces = np.zeros((natoms, 3))
     positions = np.zeros((natoms, 3))
     # Parse each atoms object
@@ -307,17 +300,21 @@ def _read_outcar_frame(lines, natoms, symbols, constraints):
     return atoms
 
 
+def _cl(line):
+    """Auxiliary check line function.
+    See issue #179, https://gitlab.com/ase/ase/issues/179
+    Only call in cases we need the numeric values
+    """
+    if re.search('[0-9]-[0-9]', line):
+        line = re.sub('([0-9])-([0-9])', r'\1 -\2', line)
+    return line
+
+
 def _read_outcar_header(fd):
     constr = None               # Should we re-implement this?
 
-    def cl(line):
-        """Auxiliary check line function.
-        See issue #179, https://gitlab.com/ase/ase/issues/179
-        Only call in cases we need the numeric values
-        """
-        if re.search('[0-9]-[0-9]', line):
-            line = re.sub('([0-9])-([0-9])', r'\1 -\2', line)
-        return line
+    cl = _cl
+
     species = []
     natoms = 0
     species_num = []
