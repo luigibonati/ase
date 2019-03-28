@@ -329,7 +329,7 @@ def _read_outcar_header(fd):
                 if c in temp:
                     temp = temp[0:temp.find(c)]
             species += [temp]
-        if 'ions per type' in line:
+        elif 'ions per type' in line:
             species = species[:len(species) // 2]
             parts = cl(line).split()
             ntypes = min(len(parts) - 4, len(species))
