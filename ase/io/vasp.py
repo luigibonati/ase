@@ -245,7 +245,7 @@ def _read_outcar_frame(lines, natoms, symbols, constraints):
     stress = None
     atoms = Atoms(symbols=symbols, pbc=True, constraint=constraints)
 
-    cl = _cl
+    cl = _cl                    # Aliasing
 
     forces = np.zeros((natoms, 3))
     positions = np.zeros((natoms, 3))
@@ -258,25 +258,25 @@ def _read_outcar_frame(lines, natoms, symbols, constraints):
                 parts = cl(lines[n + i + 1]).split()
                 cell += [list(map(float, parts[0:3]))]
             atoms.set_cell(cell)
-        if 'magnetization (x)' in line:
+        elif 'magnetization (x)' in line:
             nskip = 4           # Skip some lines
             magnetization = [float(cl(lines[n + i + nskip]).split()[4])
                              for i in range(natoms)]
-        if 'number of electron' in line:
+        elif 'number of electron' in line:
             parts = cl(line).split()
             if len(parts) > 5 and parts[0].strip() != "NELECT":
                 magmom = float(parts[5])
-        if 'in kB ' in line:
+        elif 'in kB ' in line:
             stress = -np.asarray([float(a) for a in cl(line).split()[2:]])
             stress = stress[[0, 1, 2, 4, 5, 3]] * 1e-1 * ase.units.GPa
-        if 'POSITION          ' in line:
+        elif 'POSITION          ' in line:
             nskip = 2
             for i in range(natoms):
                 parts = list(map(float, cl(lines[n + i + nskip]).split()))
                 positions[i] = parts[0:3]
                 forces[i] = parts[3:6]
             atoms.set_positions(positions)
-        if 'FREE ENERGIE OF THE ION-ELECTRON SYSTEM' in line:
+        elif 'FREE ENERGIE OF THE ION-ELECTRON SYSTEM' in line:
             # Last section before next ionic step
             nskip = 2
             parts = cl(lines[n + nskip]).strip().split()
@@ -313,7 +313,7 @@ def _cl(line):
 def _read_outcar_header(fd):
     constr = None               # Should we re-implement this?
 
-    cl = _cl
+    cl = _cl                    # Aliasing
 
     species = []
     natoms = 0
