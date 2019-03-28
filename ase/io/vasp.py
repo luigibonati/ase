@@ -12,6 +12,11 @@ from ase.utils import basestring, reader, writer
 from ase.io.formats import ImageIterator
 
 
+__all__ = ['read_vasp', 'read_vasp_out', 'iread_vasp_out',
+           'read_vasp_xdatcar', 'read_vasp_xml',
+           'write_vasp']
+
+
 def get_atomtypes(fname):
     """Given a file name, get the atomic symbols.
 
@@ -338,22 +343,26 @@ def _read_outcar_header(fd):
                 natoms += species_num[-1]
                 for iatom in range(species_num[-1]):
                     symbols += [species[ispecies]]
-            break
-    return natoms, symbols, constr
+            return natoms, symbols, constr
+
+    # Incomplete OUTCAR, we can't determine atoms
+    raise IOError('Header data missing from OUTCAR')
 
 
 def outcarchunks(fd):
     natoms, symbols, constr = _read_outcar_header(fd)  # First get header info
+
     while True:
-        lines = []
         try:
+            # Build chunck which contains 1 complete atoms object
+            lines = []
             while True:
                 line = next(fd)
-                lines += [line]
+                lines.append(line)
                 if 'FREE ENERGIE OF THE ION-ELECTRON SYSTEM' in line:
-                    # Add 3 more lines to include energy
+                    # Add 4 more lines to include energy
                     for _ in range(4):
-                        lines += [next(fd)]
+                        lines.append(next(fd))
                     break
         except StopIteration:
             # End of file
@@ -362,6 +371,7 @@ def outcarchunks(fd):
 
 
 def iread_vasp_out(filename, index=-1):
+    """Import OUTCAR type file, as a generator."""
     it = ImageIterator(outcarchunks)
     return it(filename, index=index)
 
