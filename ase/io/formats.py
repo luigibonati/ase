@@ -526,10 +526,10 @@ def _iread(filename, index, format, io, parallel=None, full_output=False,
     if isinstance(filename, basestring):
         filename = os.path.expanduser(filename)
 
-    # Pick "read" or "iread"
-    reader = 0 if not use_iread else 1
+    # Pick "iread" or "read"
+    reader = io.iread if use_iread else io.read
 
-    if not io[reader]:
+    if not reader:
         raise ValueError("Can't read from {}-format".format(format))
 
     if io.single:
@@ -553,7 +553,7 @@ def _iread(filename, index, format, io, parallel=None, full_output=False,
 
     # Make sure fd is closed in case loop doesn't finish:
     try:
-        for dct in io[reader](fd, *args, **kwargs):
+        for dct in reader(fd, *args, **kwargs):
             if not isinstance(dct, dict):
                 dct = {'atoms': dct}
             if full_output:
