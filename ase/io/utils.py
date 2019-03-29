@@ -1,5 +1,4 @@
 import numpy as np
-from itertools import islice
 from math import sqrt
 from ase.utils import rotate
 from ase.data import covalent_radii, atomic_numbers

@@ -397,9 +397,17 @@ def read_vasp_out(filename='OUTCAR', index=-1):
     f = filename
     g = iread_vasp_out(f, index=index)
     if isinstance(index, (slice, basestring)):
-        return list(g)
+        images = list(g)
+        if constr:
+            for image in images:
+                image.set_constraint(constr)
+        return images
     else:
-        return next(g)
+        image = next(g)
+        if constr:
+            image.set_constraint(constr)
+        return image
+
 
 
 @reader
