@@ -120,7 +120,7 @@ def write_xsf(fileobj, images, data=None):
     fileobj.write('END_BLOCK_DATAGRID_3D\n')
 
 
-def iread_xsf(fileobj, read_data=False):
+def _iread_xsf(fileobj, read_data=False):
     """Yield images and optionally data from xsf file.
 
     Yields image1, image2, ..., imageN[, data].
@@ -128,6 +128,8 @@ def iread_xsf(fileobj, read_data=False):
     Images are Atoms objects and data is a numpy array.
 
     Presently supports only a single 3D datagrid."""
+    # XXX: Does not currently support the correct format of an "iread" function!
+    # Renamed to _iread_xsf until it does
     if isinstance(fileobj, basestring):
         fileobj = open(fileobj)
 
@@ -255,9 +257,20 @@ def iread_xsf(fileobj, read_data=False):
 
 
 def read_xsf(fileobj, index=-1, read_data=False):
-    images = list(iread_xsf(fileobj, read_data=read_data))
+    images = list(_iread_xsf(fileobj, read_data=read_data))
     if read_data:
         array = images[-1]
         images = images[:-1]
         return array, images[index]
     return images[index]
+
+
+def iread_xsf(fileobj, index=-1, read_data=False):
+    # "Hack" to mimic _iread functionality, for backwards compatibility
+    if read_data:
+        arr, images = read_xsf(fileobj, index=index, read_data=read_data)
+        images.extend(arr)      # In the _iread version, array comes last
+        return iter(images)
+    else:
+        images = read_xsf(fileobj, index=index, read_data=read_data)
+        return iter(images)
