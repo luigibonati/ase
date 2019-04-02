@@ -214,10 +214,6 @@ def initialize(format):
     iread = getattr(module, 'iread_' + _format, None)
     write = getattr(module, 'write_' + _format, None)
 
-    if iread is None:
-        # No inherent iread version, fallback to read
-        iread = read
-
     if read and not inspect.isgeneratorfunction(read):
         read = functools.partial(wrap_read_function, read)
     if not read and not write:
@@ -511,9 +507,7 @@ def iread(filename, index=None, format=None, parallel=True, **kwargs):
     format = format or filetype(filename)
     io = get_ioformat(format)
 
-    use_iread = False
-    if io.iread:
-        use_iread = True
+    use_iread = True if io.iread else False
 
     for atoms in _iread(filename, index, format, io, parallel=parallel,
                         use_iread=use_iread, **kwargs):
