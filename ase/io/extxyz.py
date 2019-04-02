@@ -502,7 +502,7 @@ def ixyzchunks(fd):
         yield XYZChunk(lines, natoms)
 
 
-iread_extxyz = ImageIterator(ixyzchunks)
+iread_xyz = ImageIterator(ixyzchunks)
 
 
 def read_xyz(fileobj, index=-1, properties_parser=key_val_str_to_dict):
@@ -847,4 +847,5 @@ def write_xyz(fileobj, images, comment='', columns=None, write_info=True,
 
 # create aliases for read/write functions
 read_extxyz = read_xyz
+iread_extxyz = iread_xyz
 write_extxyz = write_xyz
