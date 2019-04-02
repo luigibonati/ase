@@ -3954,6 +3954,7 @@ try:
     assert len(a2) == 1
 
     gen = iread('OUTCAR', index=':')
+    assert not isinstance(gen, list)
     for fc in (True, False):
         for a3 in gen:
             assert isinstance(a3, Atoms)
