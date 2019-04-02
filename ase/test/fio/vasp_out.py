@@ -1,4 +1,5 @@
 import os
+import inspect
 import numpy as np
 from ase import Atoms
 from ase.io import read, iread
@@ -3953,12 +3954,13 @@ try:
     assert len(a2) == 1
 
     gen = iread('OUTCAR', index=':')
-    assert not isinstance(gen, list)
+    assert inspect.isgenerator(gen)
     for fc in (True, False):
         for a3 in gen:
             assert isinstance(a3, Atoms)
             assert np.isclose(a3.get_potential_energy(force_consistent=fc),
-                              a1.get_potential_energy(force_consistent=fc), atol=tol)
+                              a1.get_potential_energy(force_consistent=fc),
+                              atol=tol)
 
 finally:
     os.unlink('OUTCAR')
