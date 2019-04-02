@@ -759,8 +759,8 @@ class ImageIterator:
     """Iterate over chunks, to return the corresponding Atoms objects.
     Will only build the atoms objects which corresponds to the requested
     indices when called.
-    Assumes each ``chunk`` in ``ichunks`` is an ``ImageChunk`` class.
-    See extxyz.py:iread_xyz as an example.
+    Assumes ``ichunks`` is in iterator, which returns ``ImageChunk``
+    type objects. See extxyz.py:iread_xyz as an example.
     """
     def __init__(self, ichunks):
         self.ichunks = ichunks
