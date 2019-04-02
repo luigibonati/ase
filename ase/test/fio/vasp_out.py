@@ -1,5 +1,7 @@
 import os
-from ase.io import read
+import numpy as np
+from ase import Atoms
+from ase.io import read, iread
 
 outcar = """
  vasp.5.3.3 18Dez12gamma-only
@@ -3939,9 +3941,24 @@ outcar_f.write(outcar)
 outcar_f.close()
 
 try:
-    a1 = read('OUTCAR')
-    assert abs(a1.get_potential_energy(force_consistent=True) - -68.22868532) < 1e-6
-    assert abs(a1.get_potential_energy(force_consistent=False) - -68.23102426) < 1e-6
+    a1 = read('OUTCAR', index=-1)
+    assert isinstance(a1, Atoms)
+    assert np.isclose(a1.get_potential_energy(force_consistent=True),
+                      -68.22868532)
+    assert np.isclose(a1.get_potential_energy(force_consistent=False),
+                      -68.23102426)
+
+    a2 = read('OUTCAR', index=':')
+    assert isinstance(a2, list)
+    assert isinstance(a2[0], Atoms)
+    assert len(a2) == 1
+
+    gen = iread('OUTCAR', index=':')
+    for fc in (True, False):
+        for a3 in gen:
+            assert isinstance(a3, Atoms)
+            assert np.isclose(a3.get_potential_energy(force_consistent=fc),
+                              a1.get_potential_energy(force_consistent=fc))
 
 finally:
     os.unlink('OUTCAR')
