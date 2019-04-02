@@ -3936,9 +3936,8 @@ Space group operators:
                  Voluntary context switches:            0
 """
 
-outcar_f = open('OUTCAR', 'w')
-outcar_f.write(outcar)
-outcar_f.close()
+with open('OUTCAR', 'w') as outcar_f:
+    outcar_f.write(outcar)
 
 try:
     a1 = read('OUTCAR', index=-1)
