@@ -25,7 +25,7 @@ from ase.spacegroup.spacegroup import Spacegroup
 from ase.parallel import paropen
 from ase.utils import basestring
 from ase.constraints import FixAtoms, FixCartesian
-from ase.io.formats import ImageIterator
+from ase.io.formats import ImageIterator, ImageChunk
 
 __all__ = ['read_xyz', 'write_xyz', 'iread_xyz']
 
@@ -477,7 +477,7 @@ class XYZError(IOError):
     pass
 
 
-class XYZChunk:
+class XYZChunk(ImageChunk):
     def __init__(self, lines, natoms):
         self.lines = lines
         self.natoms = natoms

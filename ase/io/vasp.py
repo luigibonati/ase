@@ -12,7 +12,7 @@ import numpy as np
 import ase.units
 from ase import Atoms
 from ase.utils import basestring, reader, writer
-from ase.io.formats import ImageIterator
+from ase.io.formats import ImageIterator, ImageChunk
 
 
 __all__ = ['read_vasp', 'read_vasp_out', 'iread_vasp_out',
@@ -229,7 +229,7 @@ def read_vasp(filename='CONTCAR'):
     return atoms
 
 
-class OUTCARChunck:
+class OUTCARChunck(ImageChunk):
     def __init__(self, lines, natoms, symbols, constraints):
         self.lines = lines
         self.natoms = natoms

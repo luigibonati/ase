@@ -741,8 +741,27 @@ def filetype(filename, read=True, guess=True):
     return format
 
 
+class ImageChunk:
+    """Base Class for a file chunk which contains enough information to
+    reconstruct an atoms object."""
+
+    def __init__(self, *args, **kwargs):
+        # Store necessary information to build the atoms object
+        pass
+
+    def build(self, **kwargs):
+        """Construct the atoms object from the stored information,
+        and return it"""
+        pass
+
+
 class ImageIterator:
-    """"""
+    """Iterate over chunks, to return the corresponding Atoms objects.
+    Will only build the atoms objects which corresponds to the requested
+    indices when called.
+    Assumes each ``chunk`` in ``ichunks`` is an ``ImageChunk`` class.
+    See extxyz.py:iread_xyz as an example.
+    """
     def __init__(self, ichunks):
         self.ichunks = ichunks
 

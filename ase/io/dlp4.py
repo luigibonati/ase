@@ -6,7 +6,7 @@ from numpy import zeros, isscalar
 from ase.atoms import Atoms
 from ase.data import chemical_symbols
 from ase.calculators.singlepoint import SinglePointCalculator
-from ase.io.formats import ImageIterator
+from ase.io.formats import ImageIterator, ImageChunk
 
 __all__ = ['read_dlp4', 'iread_dlp_history', 'write_dlp4']
 
@@ -68,7 +68,7 @@ def read_dlp_history(f, index=-1, symbols=None):
     return images
 
 
-class DLPchunk:
+class DLPchunk(ImageChunk):
     def __init__(self, f, p, levcfg, imcon, natoms):
         self.f = f
         self.p = p
