@@ -7,7 +7,10 @@ Atoms object in VASP POSCAR format.
 import os
 import re
 
+import numpy as np
+
 import ase.units
+from ase import Atoms
 from ase.utils import basestring, reader, writer
 from ase.io.formats import ImageIterator
 
@@ -111,10 +114,8 @@ def read_vasp(filename='CONTCAR'):
     the atom types are read from OUTCAR or POTCAR file.
     """
 
-    from ase import Atoms
     from ase.constraints import FixAtoms, FixScaled
     from ase.data import chemical_symbols
-    import numpy as np
 
     f = filename
     # The first line is in principle a comment line, however in VASP
@@ -241,16 +242,14 @@ class OUTCARChunck:
 
 
 def _read_outcar_frame(lines, natoms, symbols, constraints):
-    import numpy as np
     from ase.calculators.singlepoint import SinglePointCalculator
-    from ase import Atoms
 
     magnetization = []
     magmom = None
     stress = None
     atoms = Atoms(symbols=symbols, pbc=True, constraint=constraints)
 
-    cl = _cl                    # Aliasing
+    cl = _outcar_check_line     # Aliasing
 
     forces = np.zeros((natoms, 3))
     positions = np.zeros((natoms, 3))
@@ -305,8 +304,8 @@ def _read_outcar_frame(lines, natoms, symbols, constraints):
     return atoms
 
 
-def _cl(line):
-    """Auxiliary check line function.
+def _outcar_check_line(line):
+    """Auxiliary check line function for OUTCAR numeric formatting.
     See issue #179, https://gitlab.com/ase/ase/issues/179
     Only call in cases we need the numeric values
     """
@@ -318,7 +317,7 @@ def _cl(line):
 def _read_outcar_header(fd):
     constr = None               # Should we re-implement this?
 
-    cl = _cl                    # Aliasing
+    cl = _outcar_check_line     # Aliasing
 
     species = []
     natoms = 0
@@ -383,7 +382,6 @@ def read_vasp_out(filename='OUTCAR', index=-1):
     Reads unitcell, atom positions, energies, and forces from the OUTCAR file
     and attempts to read constraints (if any) from CONTCAR/POSCAR, if present.
     """
-
     try:  # try to read constraints, first from CONTCAR, then from POSCAR
         constr = read_vasp('CONTCAR').constraints
     except Exception:
@@ -396,6 +394,7 @@ def read_vasp_out(filename='OUTCAR', index=-1):
 
     f = filename
     g = iread_vasp_out(f, index=index)
+    # Code borrowed from formats.py:read
     if isinstance(index, (slice, basestring)):
         images = list(g)
         if constr:
@@ -409,7 +408,6 @@ def read_vasp_out(filename='OUTCAR', index=-1):
         return image
 
 
-
 @reader
 def read_vasp_xdatcar(filename='XDATCAR', index=-1):
     """Import XDATCAR file
@@ -421,10 +419,6 @@ def read_vasp_xdatcar(filename='XDATCAR', index=-1):
        Constraints ARE NOT stored in the XDATCAR, and as such, Atoms
        objects retrieved from the XDATCAR will not have constraints set.
     """
-
-    import numpy as np
-    from ase import Atoms
-
     f = filename
     images = list()
 
@@ -510,9 +504,7 @@ def read_vasp_xml(filename='vasprun.xml', index=-1):
     from vasprun.xml file
     """
 
-    import numpy as np
     import xml.etree.ElementTree as ET
-    from ase import Atoms
     from ase.constraints import FixAtoms, FixScaled
     from ase.calculators.singlepoint import (SinglePointDFTCalculator,
                                              SinglePointKPoint)
@@ -732,7 +724,6 @@ def write_vasp(filename, atoms, label='', direct=False, sort=None,
     atomic species, e.g. 'C N H Cu'.
     """
 
-    import numpy as np
     from ase.constraints import FixAtoms, FixScaled, FixedPlane, FixedLine
 
     f = filename

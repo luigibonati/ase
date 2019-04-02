@@ -3,9 +3,10 @@ We use the implementation from extxyz module, which is backwards
 compatible with standard XYZ format."""
 
 from ase.atoms import Atoms
-from ase.io.extxyz import read_extxyz as read_xyz, write_extxyz as write_xyz
+from ase.io.extxyz import read_extxyz as read_xyz, write_extxyz as write_xyz, \
+    iread_extxyz as iread_xyz
 
-__all__ = ['read_xyz', 'write_xyz']
+__all__ = ['read_xyz', 'iread_xyz', 'write_xyz']
 
 
 def simple_read_xyz(fileobj, index):

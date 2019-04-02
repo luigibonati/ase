@@ -27,7 +27,7 @@ from ase.utils import basestring
 from ase.constraints import FixAtoms, FixCartesian
 from ase.io.formats import ImageIterator
 
-__all__ = ['read_xyz', 'write_xyz', 'iread_extxyz']
+__all__ = ['read_xyz', 'write_xyz', 'iread_xyz']
 
 PROPERTY_NAME_MAP = {'positions': 'pos',
                      'numbers': 'Z',
