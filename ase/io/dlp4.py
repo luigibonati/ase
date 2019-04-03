@@ -77,10 +77,14 @@ class DLPchunk(ImageChunk):
         self.natoms = natoms
 
     def build(self, symbols=None):
-        # Bit of a hack, but it's how it was done originally
-        self.f.seek(self.p + 1)
-        return read_single_image(self.f, self.levcfg, self.imcon, self.natoms,
-                                 is_trajectory=True, symbols=symbols)
+        curpos = self.f.tell()
+        try:
+            self.f.seek(self.p + 1)
+            return read_single_image(self.f, self.levcfg, self.imcon, self.natoms,
+                                     is_trajectory=True, symbols=symbols)
+        finally:
+            # Restore to old file position
+            self.f.seek(curpos)
 
 
 def _dlpchunks(f):
