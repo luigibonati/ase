@@ -153,4 +153,10 @@ def nanotube(n, m, length=1, bond=1.42, symbol='C', verbose=False,
         print('translation vector =', transvec)
         print('diameter = ', diameter)
         print('chiral angle = ', chiralangle)
+
+    # Hack for course 10031 to make visualization nicer
+    atoms.positions += [0.0, 0.0, 0.0001]
+    atoms.set_scaled_positions(atoms.get_scaled_positions()) # Force wrapping
+    atoms.positions -= [0.0, 0.0, 0.0001]
+
     return atoms
