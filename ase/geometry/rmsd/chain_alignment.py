@@ -90,8 +90,8 @@ def get_cost_matrix(us, vs):
 	Cy = np.zeros((n,n))
 	for i, u in enumerate(us):
 		for j, v in enumerate(vs):
-			Cx[i, j] = np.linalg.det([u, v])
-			Cy[i, j] = np.dot(u, v)
+			Cx[i, j] = 2 * np.linalg.det([u, v])
+			Cy[i, j] = 2 * np.dot(u, v)
 	return Cx, Cy
 
 
@@ -166,91 +166,18 @@ def _register(P, Q, eindices, cell_length, best):
 	Cs = []
 	for indices in eindices:
 
-		Cx, Cy = get_cost_matrix(P[indices, :2], Q[indices, :2])
+		p = P[indices]
+		q = Q[indices]
+		Cx, Cy = get_cost_matrix(p[:, :2], q[:, :2])
 
-		Cz = np.dot(P[indices, 2:], Q[indices, 2:].T)
-		Cz = np.minimum(Cz, np.dot(P[indices, 2:] - cell_length, Q[indices, 2:].T))
-		Cz = np.minimum(Cz, np.dot(P[indices, 2:] + cell_length, Q[indices, 2:].T))
+		Cz = cdist(p[:, 2:], q[:, 2:], metric='sqeuclidean')
+		Cz = np.minimum(Cz, cdist(p[:, 2:] - cell_length, q[:, 2:], metric='sqeuclidean'))
+		Cz = np.minimum(Cz, cdist(p[:, 2:] + cell_length, q[:, 2:], metric='sqeuclidean'))
+
+		norm_sum = np.sum(np.linalg.norm(Cx)**2) + np.sum(np.linalg.norm(Cy)**2)
+		Cz += norm_sum
 
 		Cs.append((Cx, Cy, Cz))
-
-	p0 = np.zeros(3)
-	for Cx, Cy, Cz in Cs:
-		p0 += [np.trace(Cx), np.trace(Cy), np.trace(Cz)]
-
-	print(P)
-	print(Q)
-
-	ps = np.array([p0])
-	perms = np.array([np.arange(n)])
-
-	ps = np.array([[0, 0, -1.]])
-	perms = np.array([-np.arange(n)])
-	while 1:
-		theta = np.random.uniform(0, 2 * np.pi, 1)
-		p, perm = optimize(eindices, Cs, np.sin(theta), np.cos(theta))
-		ps = np.concatenate((ps, [p]))
-		perms = np.concatenate((perms, [perm]))
-		print(ps)
-		print(perms)
-		print(np.linalg.matrix_rank(ps - ps[0]))
-		print()
-		if np.linalg.matrix_rank(ps - ps[0]) >= 3:
-			break
-		if len(ps) > 4: break
-
-	asdf
-
-	ps = np.array(ps)
-	simplices = scipy.spatial.ConvexHull(ps).simplices
-	extreme = np.unique(simplices)
-	ps = ps[extreme]
-	perms = perms[extreme]
-
-
-
-	points = np.array(initial)
-	finished = np.array([[0, 0, 0]])
-
-	extreme = np.unique(scipy.spatial.ConvexHull(points).simplices)
-	points = points[extreme]
-	print(points)
-
-	while 1:
-		simplices = np.sort(scipy.spatial.ConvexHull(points).simplices)
-		planes = [get_plane(points, s) for s in simplices]
-		todo = np.array([p for p in planes if all([np.linalg.norm(e - p) > 1E-6 for e in finished])])
-		todo = get_unique_points(todo)
-		print("num. todo:", len(todo))
-		print(todo)
-		if len(todo) == 0:
-			break
-
-		indices = np.argsort(np.abs(todo[:,2]))[::]
-		#indices = np.argsort(todo[:,2])[::]
-		#random.shuffle(indices)
-		todo = todo[indices]
-		plane = todo[0]
-		print(plane)
-		print("maxval:", np.max(np.dot(points, plane.T)))
-
-		kgb = plane[1]
-		kc = plane[2]
-
-		finished = np.concatenate((finished, [plane]))
-
-		trial = np.array([int(round(v.x)) for v in vs])
-		print("trial:", trial)
-
-		if all([np.linalg.norm(e - trial) > 1E-6 for e in points]):
-			points = np.concatenate((points, [trial]))
-			extreme = np.unique(scipy.spatial.ConvexHull(points).simplices)
-			new = extreme[-1] == len(points) - 1
-			points = points[extreme]
-			print("new points:\n", points)
-
-	print("points:")
-	print(points)
 
 
 def register_chain(P, Q, eindices, cell_length, best=None):
