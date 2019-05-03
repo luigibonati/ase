@@ -16,7 +16,6 @@ def invert_permutation(perm):
 
 def _calculate_rmsd(atoms0, atoms1, frame, ignore_stoichiometry, sign,
                     allow_rotation, num_chain_steps=None):
-
     
     res = standardize_atoms(atoms0.copy(), atoms1.copy(), ignore_stoichiometry)
     a, b, atomic_perms, axis_perm = res
@@ -122,7 +121,8 @@ def calculate_rmsd(atoms1, atoms2, frame='central', ignore_stoichiometry=False,
             lcm = np.lcm(n1, n2)
             atoms1 = atoms1 * [1, 1, lcm // n1]
             atoms2 = atoms2 * [1, 1, lcm // n2]
-            #TODO: find a meaningful way of representing this in results.  perhaps use multiplication vector?
+            # TODO: find a meaningful way of representing this in results.
+            # perhaps use multiplication vector?
 
     res = _calculate_rmsd(atoms1, atoms2, frame, ignore_stoichiometry, 1,
                           allow_rotation, num_chain_steps)
