@@ -81,7 +81,8 @@ def slide(s0, shift, num_atoms, pbc, index, i):
 
 
 def find_alignment(dim, pbc, imcell, s0, p1, shift, nbr_cells, eindices,
-                   p1_nbrs, numbers, cell_length, chain_rotation):
+                   p1_nbrs, numbers, cell_length, allow_rotation,
+                   num_chain_steps):
 
     num_atoms = len(s0)
 
@@ -92,6 +93,8 @@ def find_alignment(dim, pbc, imcell, s0, p1, shift, nbr_cells, eindices,
     if dim == 1:
         xindices = [0]
         yindices = [0]
+        if num_chain_steps is not None:
+            zindices = zindices[:num_chain_steps]
     elif dim == 2:
         zindices = [0]
 
@@ -104,7 +107,7 @@ def find_alignment(dim, pbc, imcell, s0, p1, shift, nbr_cells, eindices,
 
                 p0 = np.dot(s0, imcell)
 
-                if dim == 1 and chain_rotation:
+                if dim == 1 and allow_rotation:
 
                     b = (best[0], np.arange(num_atoms), np.eye(2))
                     rmsd, perm, u = register_chain(p0, p1, eindices,
@@ -125,7 +128,7 @@ def find_alignment(dim, pbc, imcell, s0, p1, shift, nbr_cells, eindices,
     return rmsd, perm, U, ijk
 
 
-def best_alignment(atoms0, atoms1, chain_rotation):
+def best_alignment(atoms0, atoms1, allow_rotation, num_chain_steps):
 
     pbc = atoms0.pbc
     dim = sum(pbc)
@@ -155,7 +158,8 @@ def best_alignment(atoms0, atoms1, chain_rotation):
     cell_length = imcell[2, 2]
     rmsd, perm, U, ijk = find_alignment(dim, pbc, imcell, s0, p1, scaled_shift,
                                         nbr_cells, eindices, p1_nbrs, numbers,
-                                        cell_length, chain_rotation)
+                                        cell_length, allow_rotation,
+                                        num_chain_steps)
 
     num_atoms = len(numbers)
     i, j, k = ijk

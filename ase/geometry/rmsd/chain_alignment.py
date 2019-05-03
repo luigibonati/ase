@@ -1,5 +1,4 @@
 import numpy as np
-import itertools
 from scipy.spatial.distance import cdist
 from ase.geometry.rmsd.assignment import linear_sum_assignment
 
@@ -34,17 +33,6 @@ def calculate_actual_cost(P, Q):
 	return nrmsdsq, U
 
 
-def optimal_permutation(P, Q, theta):
-
-	U = rotation_matrix(np.sin(theta), np.cos(theta))
-	RP = np.dot(P[:, :2], U.T)
-
-	linear_sum_assignment
-
-	nrmsdsq = np.sum((RP - Q[:, :2])**2)
-	return nrmsdsq
-
-
 # A helper function.  Used for tests.
 def calculate_nrmsdsq(P, Q, cell_length):
 
@@ -63,105 +51,61 @@ def concatenate_permutations(perms):
 	return np.array(perm)
 
 
-def limiting_permutation(P, Q, eindices, dzsqs, dthetas, theta):
-
-	U = rotation_matrix(np.sin(theta), np.cos(theta))
-
-	obj = 0
-	perms = []
-	for indices, dzsq in zip(eindices, dzsqs):
-
-		p = P[indices, :2]
-		rq = np.dot(Q[indices, :2], U.T)
-
-		cost = cdist(p, rq, metric='sqeuclidean') + dzsq
-		perm = linear_sum_assignment(cost)
-		obj += np.sum(cost[perm])
-		perms.append(perm[1])
-
-	#print("obj:", obj)
-	perm = concatenate_permutations(perms)
-	return perm
-
 def get_cost_matrix(us, vs):
 
-	n = len(us)
-	Cx = np.zeros((n,n))
-	Cy = np.zeros((n,n))
-	for i, u in enumerate(us):
-		for j, v in enumerate(vs):
-			Cx[i, j] = 2 * np.linalg.det([u, v])
-			Cy[i, j] = 2 * np.dot(u, v)
+	vf = vs[:,[1,0]]
+	vf[:,0] *= -1
+	Cx = -2 * np.dot(us, vf.T)
+	Cy = -2 * np.dot(us, vs.T)
 	return Cx, Cy
 
 
-def get_plane(points, s):
+def calculate_intercept(coeffs0, coeffs1):
 
-	midpoint = np.mean(points, axis=0)
-	ps = points[s]
-	u = ps[1] - ps[0]
-	v = ps[2] - ps[0]
-	plane = np.cross(u, v).astype(np.double)
-	if np.dot(ps[0] - midpoint, plane) < 0:
-		plane = -plane
-	plane /= np.linalg.norm(plane)
-	return plane
+	a, b, c = coeffs0 - coeffs1
 
+	K = np.sqrt(a * a + b * b)
+	if K < 1E-10:
+		return None
 
-def get_unique_points(ps):
+	phi = np.arctan2(b, a)
 
-	unique = [ps[0]]
+	#sin(x + phi) = -c / K
+	#y = x + phi
 
-	for p in ps[1:]:
-		if all([np.linalg.norm(e - p) > 1E-6 for e in unique]):
-			unique += [p]
-	return np.array(unique)
+	y = np.arcsin(-c / K)
+	return y - phi
 
 
-def optimize(eindices, Cs, sint, cost):
+#@profile
+def optimize_and_calc(eindices, Cs, theta):
 
-	point = np.zeros(3)
+	sint = np.sin(theta)
+	cost = np.cos(theta)
+
 	perms = []
+	c = np.zeros(3)
 	for indices, C in zip(eindices, Cs):
 
 		Cx, Cy, Cz = C
 		w = sint * Cx + cost * Cy + Cz
 
-		perm = linear_sum_assignment(-w)
+		perm = linear_sum_assignment(w)
 		perms.append(perm[1])
-		px = np.sum(Cx[perm])
-		py = np.sum(Cy[perm])
-		pz = np.sum(Cz[perm])
-		point += [px, py, pz]
+		dc = (np.sum(Cx[perm]), np.sum(Cy[perm]), np.sum(Cz[perm]))
+		c += dc
 
-	return point, concatenate_permutations(perms)
+	return perms, c
 
 
-def brute_force(P, Q, eindices, cell_length):
+def minimum_angle(a, b):
 
-	Cz = cdist(P[:, 2:], Q[:, 2:], metric='sqeuclidean')
-	Cz = np.minimum(Cz, cdist(P[:, 2:] - cell_length, Q[:, 2:], metric='sqeuclidean'))
-	Cz = np.minimum(Cz, cdist(P[:, 2:] + cell_length, Q[:, 2:], metric='sqeuclidean'))
-
-	gperm = [itertools.permutations(range(len(e))) for e in eindices]
-	perms = itertools.product(*gperm)
-
-	best = (float("inf"), None, None)
-	n = len(P)
-	for p in perms:
-		p = [np.array(e) for e in p]
-		perm = concatenate_permutations(p)
-		obj, U = calculate_actual_cost(P, Q[perm])
-		obj += np.sum(Cz[np.arange(n), perm])
-		best = min(best, (obj, perm, U), key=lambda x: x[0])
-	return best
+	d = (b - a) % (2 * np.pi)
+	return min(d, 2 * np.pi - d)
 
 
+#@profile
 def _register(P, Q, eindices, cell_length, best):
-
-	n = len(P)
-	if n <= 4:
-		return brute_force(P, Q, eindices, cell_length)
 
 	Cs = []
 	for indices in eindices:
@@ -173,11 +117,61 @@ def _register(P, Q, eindices, cell_length, best):
 		Cz = cdist(p[:, 2:], q[:, 2:], metric='sqeuclidean')
 		Cz = np.minimum(Cz, cdist(p[:, 2:] - cell_length, q[:, 2:], metric='sqeuclidean'))
 		Cz = np.minimum(Cz, cdist(p[:, 2:] + cell_length, q[:, 2:], metric='sqeuclidean'))
-
-		norm_sum = np.sum(np.linalg.norm(Cx)**2) + np.sum(np.linalg.norm(Cy)**2)
-		Cz += norm_sum
+		Cz += np.sum(p[:, :2]**2) + np.sum(q[:, :2]**2)
 
 		Cs.append((Cx, Cy, Cz))
+
+	seen = set()
+	pdict = {}
+	coeffs = {}
+
+	for theta in [0, np.pi]:
+		perm, c = optimize_and_calc(eindices, Cs, theta)
+		t = tuple(concatenate_permutations(perm))
+		coeffs[t] = c
+		seen.add(t)
+
+		pdict[theta] = t
+		if theta == 0:
+			pdict[2 * np.pi] = t
+
+	intervals = [(0, np.pi), (np.pi, 2 * np.pi)]
+
+
+	if pdict[0] != pdict[np.pi]:
+		while intervals:
+			theta0, theta1 = intervals.pop(0)
+			perm0, perm1 = pdict[theta0], pdict[theta1]
+
+			intercept = calculate_intercept(coeffs[perm0], coeffs[perm1])
+			if intercept is None:
+				continue
+
+			theta = intercept % (2 * np.pi)
+
+			if minimum_angle(theta, theta0) < 1E-9: continue
+			if minimum_angle(theta, theta1) < 1E-9: continue
+			#if theta < theta0 or theta > theta1:
+			#	print(theta0, theta1, theta)
+			#	raise Exception("oh dear")
+
+			perm, c = optimize_and_calc(eindices, Cs, theta)
+			t = tuple(concatenate_permutations(perm))
+			coeffs[t] = c
+
+			if t not in seen:
+				intervals.append((theta0, theta))
+				intervals.append((theta, theta1))
+				seen.add(t)
+				pdict[theta] = t
+
+	best = (float("inf"), None, None)
+	for perm in seen:
+		perm = np.array(perm)
+		obj, U = calculate_nrmsdsq(P, Q[perm], cell_length)
+		best = min(best, (obj, perm, U), key=lambda x: x[0])
+
+	return best
 
 
 def register_chain(P, Q, eindices, cell_length, best=None):

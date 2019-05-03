@@ -17,28 +17,17 @@ def standardize_axes(a, b):
     if sa != sb:
         warnings.warn('Cells have different handedness')
 
-    # verify that pbc's are equal (and correct)
-    assert (a.pbc == b.pbc).all()
-    assert (a.pbc >= 0).all()
-    assert (a.pbc <= 1).all()
-
-    # determine dimensionality type from periodic boundary conditions
-    pbc = a.pbc
-    dim = np.sum(pbc)
-    if dim == 0:
-        raise ValueError("Comparison not meaningful for an aperiodic cell")
-
-    assert dim >= 1 and dim <= 3
-
     # permute the axes such that the pbc's are ordered like this:
     #    1D: pbc = (0, 0, 1)
     #    2D: pbc = (1, 1, 0)
     #    3D: pbc = (1, 1, 1)
 
-    indices = [(tuple(np.roll(a.pbc, i)), i) for i in range(3)]
+    pbc = a.pbc
+    indices = [(tuple(np.roll(pbc, i)), i) for i in range(3)]
     indices = [e[1] for e in sorted(indices)]
     permutations = [np.roll(np.arange(3), i) for i in indices]
 
+    dim = np.sum(pbc)
     if dim == 1 and tuple(pbc) != tuple(sorted(pbc)):
         permutation = permutations[0]
         assert tuple(pbc[permutation]) == (0, 0, 1)

@@ -15,13 +15,15 @@ def invert_permutation(perm):
 
 
 def _calculate_rmsd(atoms0, atoms1, frame, ignore_stoichiometry, sign,
-                    allow_rotation):
+                    allow_rotation, num_chain_steps=None):
 
+    
     res = standardize_atoms(atoms0.copy(), atoms1.copy(), ignore_stoichiometry)
     a, b, atomic_perms, axis_perm = res
 
     pa, pb, celldist, mr_path = intermediate_representation(a, b, frame)
-    rmsd, assignment, U, translation = best_alignment(pa, pb, allow_rotation)
+    rmsd, assignment, U, translation = best_alignment(pa, pb, allow_rotation,
+                                                      num_chain_steps)
 
     # undo Minkowski-reduction
     inv_mr = np.linalg.inv(mr_path)
@@ -94,9 +96,36 @@ def calculate_rmsd(atoms1, atoms2, frame='central', ignore_stoichiometry=False,
     """
 
     assert frame in ['left', 'right', 'central']
+    assert len(atoms1) > 0
+    assert len(atoms2) > 0
+
+    # verify that pbc's are equal (and correct)
+    assert (atoms1.pbc == atoms2.pbc).all()
+    assert (atoms1.pbc >= 0).all()
+    assert (atoms1.pbc <= 1).all()
+
+    # determine dimensionality type from periodic boundary conditions
+    pbc = atoms1.pbc
+    dim = np.sum(pbc)
+    if dim == 0:
+        raise ValueError("Comparison not meaningful for an aperiodic cell")
+
+    assert dim >= 1 and dim <= 3
+
+    num_chain_steps = None
+    if dim == 1:
+        n1 = len(atoms1)
+        n2 = len(atoms2)
+        num_chain_steps = min(n1, n2)
+
+        if n1 != n2:
+            lcm = np.lcm(n1, n2)
+            atoms1 = atoms1 * [1, 1, lcm // n1]
+            atoms2 = atoms2 * [1, 1, lcm // n2]
+            #TODO: find a meaningful way of representing this in results.  perhaps use multiplication vector?
 
     res = _calculate_rmsd(atoms1, atoms2, frame, ignore_stoichiometry, 1,
-                          allow_rotation)
+                          allow_rotation, num_chain_steps)
     if not allow_reflection:
         return res
 
@@ -105,7 +134,7 @@ def calculate_rmsd(atoms1, atoms2, frame='central', ignore_stoichiometry=False,
     atoms1.set_scaled_positions(scaled)
 
     fres = _calculate_rmsd(atoms1, atoms2, frame, ignore_stoichiometry, -1,
-                           allow_rotation)
+                           allow_rotation, num_chain_steps)
     if fres.rmsd < res.rmsd:
         return fres
     else:
