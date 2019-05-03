@@ -15,7 +15,8 @@ def invert_permutation(perm):
 
 
 def _calculate_rmsd(atoms0, atoms1, frame, ignore_stoichiometry, sign,
-                    allow_rotation, num_chain_steps=None):
+                    allow_rotation, multiplier1, multiplier2,
+                    num_chain_steps=None):
     
     res = standardize_atoms(atoms0.copy(), atoms1.copy(), ignore_stoichiometry)
     a, b, atomic_perms, axis_perm = res
@@ -44,10 +45,11 @@ def _calculate_rmsd(atoms0, atoms1, frame, ignore_stoichiometry, sign,
     fractional = fractional[invaxis]
     basis = basis[invaxis][:, invaxis]
 
-    result = namedtuple('RMSDResult',
-                        'rmsd dcell cell basis translation permutation')
+    entries = 'rmsd dcell cell basis translation permutation mul1 mul2'
+    result = namedtuple('RMSDResult', entries)
     return result(rmsd=rmsd, dcell=celldist, cell=imcell, basis=basis,
-                  translation=fractional, permutation=assignment)
+                  translation=fractional, permutation=assignment,
+                  mul1=multiplier1, mul2=multiplier2)
 
 
 def calculate_rmsd(atoms1, atoms2, frame='central', ignore_stoichiometry=False,
@@ -59,9 +61,12 @@ def calculate_rmsd(atoms1, atoms2, frame='central', ignore_stoichiometry=False,
     determine the type of comparison to be made (along a line, in-plane, or a
     full three-dimensional).  Non-crystalline (or molecular) comparisons, i.e.
     comparisons with no periodicity, are not supported.  For 1D (chain-like)
-    structures the optimal rotation about the chain axis can optionally be
-    found.  Note that the comparison does not search over lattice
-    correspondences - only the input cells of the atoms objects are considered.
+    structures, the optimal rotation about the chain axis can optionally be
+    found.  Note that for 2D and 3D structures the comparison does not search
+    over lattice correspondences - only the input cells of the atoms objects
+    are considered.  For 1D chains, the optimal lattice correspondence is
+    determined by extending the cells along the chain axis, using the least
+    common multiple of the Atoms objects.
 
     atoms1:               The first atoms object.
     atoms2:               The second atoms object.
@@ -92,6 +97,10 @@ def calculate_rmsd(atoms1, atoms2, frame='central', ignore_stoichiometry=False,
             translation: the optimal translation of the fractional coordinates
                          of atoms1.
             permutation: the permutation of atoms1
+            mul1:        the multiplication vector of atoms1 (only used for
+                         chains of different sizes)
+            mul2:        the multiplication vector of atoms2 (only used for
+                         chains of different sizes)
     """
 
     assert frame in ['left', 'right', 'central']
@@ -111,21 +120,22 @@ def calculate_rmsd(atoms1, atoms2, frame='central', ignore_stoichiometry=False,
 
     assert dim >= 1 and dim <= 3
 
-    num_chain_steps = None
-    if dim == 1:
-        n1 = len(atoms1)
-        n2 = len(atoms2)
-        num_chain_steps = min(n1, n2)
+    n1 = len(atoms1)
+    n2 = len(atoms2)
+    num_chain_steps = min(n1, n2)
+    multiplier1 = [1, 1, 1]
+    multiplier2 = [1, 1, 1]
 
-        if n1 != n2:
-            lcm = np.lcm(n1, n2)
-            atoms1 = atoms1 * [1, 1, lcm // n1]
-            atoms2 = atoms2 * [1, 1, lcm // n2]
-            # TODO: find a meaningful way of representing this in results.
-            # perhaps use multiplication vector?
+    if dim == 1 and n1 != n2:
+        lcm = np.lcm(n1, n2)
+        multiplier1 = [1, 1, lcm // n1]
+        multiplier2 = [1, 1, lcm // n2]
+        atoms1 = atoms1 * multiplier1
+        atoms2 = atoms2 * multiplier2
 
     res = _calculate_rmsd(atoms1, atoms2, frame, ignore_stoichiometry, 1,
-                          allow_rotation, num_chain_steps)
+                          allow_rotation, multiplier1, multiplier2,
+                          num_chain_steps)
     if not allow_reflection:
         return res
 
@@ -134,7 +144,8 @@ def calculate_rmsd(atoms1, atoms2, frame='central', ignore_stoichiometry=False,
     atoms1.set_scaled_positions(scaled)
 
     fres = _calculate_rmsd(atoms1, atoms2, frame, ignore_stoichiometry, -1,
-                           allow_rotation, num_chain_steps)
+                           allow_rotation, multiplier1, multiplier2,
+                           num_chain_steps)
     if fres.rmsd < res.rmsd:
         return fres
     else:
