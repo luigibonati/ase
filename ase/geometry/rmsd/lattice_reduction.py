@@ -49,4 +49,3 @@ def find_lattice_reductions(atoms):
     return result(rmsd=rmsd, dcell=celldist, cell=imcell, basis=basis,
                   translation=fractional, permutation=assignment,
                   mul1=multiplier1, mul2=multiplier2)
-

@@ -1,4 +1,5 @@
 import numpy as np
+import heapq
 from scipy.spatial.distance import cdist
 from ase.geometry.rmsd.assignment import linear_sum_assignment
 
@@ -6,7 +7,7 @@ from ase.geometry.rmsd.assignment import linear_sum_assignment
 def minimum_angle(a, b):
 
     d = (b - a) % (2 * np.pi)
-    return min(d, 2 * np.pi - d)
+    return np.minimum(d, 2 * np.pi - d)
 
 
 def rotation_matrix(sint, cost):
@@ -90,7 +91,6 @@ def optimize_and_calc(eindices, Cs, theta):
     sint = np.sin(theta)
     cost = np.cos(theta)
 
-    obj = 0
     perms = []
     c = np.zeros(3)
     for indices, C in zip(eindices, Cs):
@@ -100,68 +100,70 @@ def optimize_and_calc(eindices, Cs, theta):
 
         perm = linear_sum_assignment(w)
         perms.append(perm[1])
-        obj += np.sum(w[perm])
         c += (np.sum(Cx[perm]), np.sum(Cy[perm]), np.sum(Cz[perm]))
 
-    #print("c:", c, obj)
     perm = concatenate_permutations(perms)
-    return perm, c, obj
+    return perm, c
 
 
-#@profile
-def compute_lb_cost(P, Q, interval):
+def compute_lb_cost(eindices, Cs, dthetas, interval):
 
-    n = len(P)
     t0, t1 = interval
 
-    thetasP = np.arctan2(P[:,1], P[:,0])
-    thetasQ = np.arctan2(Q[:,1], Q[:,0])
-    dtheta = np.array([thetasQ - p for p in thetasP]) % (2 * np.pi)
+    obj = 0
+    perms = []
+    for indices, C, dtheta in zip(eindices, Cs, dthetas):
 
-    #TODO: can probably remove one of these 2pi additions
-    db0 = np.min([np.abs(i * 2 * np.pi + dtheta - t0) for i in range(-1, 2)], axis=0)
-    db1 = np.min([np.abs(i * 2 * np.pi + dtheta - t1) for i in range(-1, 2)], axis=0)
+        Cx, Cy, Cz = C
 
-    boundary = t0 * np.ones(dtheta.shape)
-    indices = np.where(db1 < db0)
-    boundary[indices] = t1
+        db0 = minimum_angle(dtheta, t0)
+        db1 = minimum_angle(dtheta, t1)
+        indices = np.where(db1 < db0)
+        boundary = np.full_like(dtheta, t0)
+        boundary[indices] = t1
 
-    indices = np.where((dtheta < t0) | (dtheta > t1))
-    dtheta[indices] = boundary[indices]
-    assert (dtheta >= t0).all()
-    assert (dtheta <= t1).all()
+        indices = np.where((dtheta < t0) | (dtheta > t1))
+        dtheta[indices] = boundary[indices]
+        assert (dtheta >= t0).all()
+        assert (dtheta <= t1).all()
 
-    sint = np.sin(dtheta)
-    cost = np.cos(dtheta)
+        sint = np.sin(dtheta)
+        cost = np.cos(dtheta)
 
-    ppx = cost.T * P[:, 0] - sint.T * P[:, 1]
-    ppy = sint.T * P[:, 0] + cost.T * P[:, 1]
-    return (ppx.T - Q[:, 0])**2 + (ppy.T - Q[:, 1])**2
+        w = np.multiply(sint, Cx) + np.multiply(cost, Cy) + Cz
+        perm = linear_sum_assignment(w)
+        perms.append(perm[1])
+        obj += np.sum(w[perm])
+
+    return obj, concatenate_permutations(perms)
 
 
-#@profile
 def _register(P, Q, eindices, cell_length):
 
     n = len(P)
-    lb_dzsq = cdist(P[:,2:], Q[:,2:], metric='sqeuclidean')
-    for i in [-1, 1]:
-        d = cdist(P[:,2:] + i * cell_length, Q[:,2:], metric='sqeuclidean')
-        lb_dzsq = np.minimum(lb_dzsq, d)
-
 
     Cs = []
     for indices in eindices:
         Cs.append(get_cost_matrix(P[indices], Q[indices], cell_length))
 
+    dthetas = []
+    for indices in eindices:
+        p = P[indices]
+        q = Q[indices]
+        thetasP = np.arctan2(p[:, 1], p[:, 0])
+        thetasQ = np.arctan2(q[:, 1], q[:, 0])
+        dtheta = np.array([thetasQ - e for e in thetasP]) % (2 * np.pi)
+        dthetas.append(dtheta)
+
     seen = set()
     pdict = {}
     coeffs = {}
-    tobjs = {}
 
+    intervals = []
     best = (float("inf"), None, None)
 
     for theta in [0, np.pi]:
-        perm, c, tobj = optimize_and_calc(eindices, Cs, theta)
+        perm, c = optimize_and_calc(eindices, Cs, theta)
         t = tuple(perm)
         coeffs[t] = c
         seen.add(t)
@@ -169,20 +171,19 @@ def _register(P, Q, eindices, cell_length):
         obj, U = calculate_nrmsdsq(P, Q[perm], cell_length)
         best = min(best, (obj, perm, U), key=lambda x: x[0])
 
-        tobjs[theta] = tobj
+        heapq.heappush(intervals, (obj, theta, theta + np.pi))
+
         pdict[theta] = t
         if theta == 0:
             pdict[2 * np.pi] = t
-            tobjs[2 * np.pi] = tobj
 
     if pdict[0] == pdict[np.pi]:
         return best
 
-    visited = []
-    intervals = [(0, np.pi), (np.pi, 2 * np.pi)]
     while intervals:
-        visited.append(intervals[0])
-        theta0, theta1 = sorted(intervals.pop(0))
+
+        interval = sorted(intervals.pop(0)[1:])
+        theta0, theta1 = interval
         perm0, perm1 = pdict[theta0], pdict[theta1]
 
         intercept = calculate_intercept(coeffs[perm0], coeffs[perm1])
@@ -196,40 +197,31 @@ def _register(P, Q, eindices, cell_length):
         if minimum_angle(theta, theta1) < 1E-9:
             continue
 
-        #if theta < theta0 or theta > theta1:
+        # if theta < theta0 or theta > theta1:
         #    print(theta0, theta1, theta)
         #    raise Exception("interval failure")
 
-
         if n > 4 and abs(theta1 - theta0) < np.deg2rad(50):
-            lbcost = compute_lb_cost(P, Q, (theta0, theta1)) + lb_dzsq
-            lbperm = linear_sum_assignment(lbcost)
-            lbobj = np.sum(lbcost[lbperm])
-            #print("!@", best[0], lbobj)
+            lbobj, lbperm = compute_lb_cost(eindices, Cs, dthetas, interval)
             if lbobj > best[0]:
-                #print("got one", np.rad2deg(theta1 - theta0))
                 continue
 
-        perm, c, tobj = optimize_and_calc(eindices, Cs, theta)
-        t = tuple(perm)
-        visited.append(t)
+            obj, U = calculate_nrmsdsq(P, Q[lbperm], cell_length)
+            best = min(best, (obj, lbperm, U), key=lambda x: x[0])
 
+        perm, c = optimize_and_calc(eindices, Cs, theta)
+        t = tuple(perm)
         if t not in seen:
-            intervals.append((theta0, theta))
-            intervals.append((theta, theta1))
             pdict[theta] = t
-            tobjs[theta] = tobj
             coeffs[t] = c
             seen.add(t)
 
             obj, U = calculate_nrmsdsq(P, Q[perm], cell_length)
             best = min(best, (obj, perm, U), key=lambda x: x[0])
 
-    #for e in sorted(visited):
-    #    print(e)
-    #print("num. visited:", len(visited))
-    #print("best:", best)
-    #asdf
+            heapq.heappush(intervals, (obj, theta0, theta))
+            heapq.heappush(intervals, (obj, theta, theta1))
+
     return best
 
 
@@ -257,8 +249,3 @@ def register_chain(P, Q, eindices, cell_length, best=None):
         rmsd = float("inf")
 
     return rmsd, permutation, U
-
-#TODO:
-#    cache dtheta
-#    add eindices to lower bound calculation
-#    vectorize/generalize minimum angle calculation
