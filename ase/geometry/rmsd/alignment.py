@@ -99,8 +99,10 @@ def find_alignment(dim, pbc, imcell, s0, p1, shift, nbr_cells, eindices,
         zindices = [0]
 
     distances = None
+    permutations = None
     if store_distances:
         distances = np.zeros((len(xindices), len(yindices), len(zindices)))
+        permutations = {}
 
     U = np.eye(3)
     best = (float('inf'), None, None, None)
@@ -125,6 +127,7 @@ def find_alignment(dim, pbc, imcell, s0, p1, shift, nbr_cells, eindices,
 
                 if store_distances:
                     distances[ii, jj, kk] = rmsd
+                    permutations[(ii, jj, kk)] = perm
                 trial = (rmsd, perm, U, (ii, jj, kk))
                 best = min(best, trial, key=lambda x: x[0])
 
