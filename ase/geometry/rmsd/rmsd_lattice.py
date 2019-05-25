@@ -22,9 +22,8 @@ def _calculate_rmsd(atoms0, atoms1, frame, ignore_stoichiometry, sign,
     a, b, atomic_perms, axis_perm = res
 
     pa, pb, celldist, mr_path = intermediate_representation(a, b, frame)
-    rmsd, assignment, U, translation, _ = best_alignment(pa, pb,
-                                                         allow_rotation,
-                                                         num_chain_steps)
+    res = best_alignment(pa, pb, allow_rotation, num_chain_steps)
+    rmsd, assignment, U, translation, _, _ = res
 
     # undo Minkowski-reduction
     inv_mr = np.linalg.inv(mr_path)

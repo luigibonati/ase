@@ -101,8 +101,9 @@ def find_alignment(dim, pbc, imcell, s0, p1, shift, nbr_cells, eindices,
     distances = None
     permutations = None
     if store_distances:
-        distances = np.zeros((len(xindices), len(yindices), len(zindices)))
-        permutations = {}
+        nx, ny, nz = len(xindices), len(yindices), len(zindices)
+        distances = np.zeros((nx, ny, nz))
+        permutations = -np.ones((nx, ny, nz, num_atoms)).astype(np.int)
 
     U = np.eye(3)
     best = (float('inf'), None, None, None)
@@ -127,7 +128,8 @@ def find_alignment(dim, pbc, imcell, s0, p1, shift, nbr_cells, eindices,
 
                 if store_distances:
                     distances[ii, jj, kk] = rmsd
-                    permutations[(ii, jj, kk)] = perm
+                    permutations[ii, jj, kk, :] = perm
+
                 trial = (rmsd, perm, U, (ii, jj, kk))
                 best = min(best, trial, key=lambda x: x[0])
 
@@ -136,7 +138,7 @@ def find_alignment(dim, pbc, imcell, s0, p1, shift, nbr_cells, eindices,
         slide(s0, shift, num_atoms, pbc, k, 2)
 
     rmsd, perm, U, ijk = best
-    return rmsd, perm, U, ijk, distances
+    return rmsd, perm, U, ijk, distances, permutations
 
 
 def best_alignment(atoms0, atoms1, allow_rotation, num_chain_steps,
@@ -168,12 +170,10 @@ def best_alignment(atoms0, atoms1, allow_rotation, num_chain_steps,
                for nbr in nbr_cells]) for indices in eindices]
 
     cell_length = imcell[2, 2]
-    rmsd, perm, U, ijk, distances = find_alignment(dim, pbc, imcell, s0, p1,
-                                                   scaled_shift, nbr_cells,
-                                                   eindices, p1_nbrs, numbers,
-                                                   cell_length, allow_rotation,
-                                                   num_chain_steps,
-                                                   store_distances)
+    res = find_alignment(dim, pbc, imcell, s0, p1, scaled_shift, nbr_cells,
+                         eindices, p1_nbrs, numbers, cell_length,
+                         allow_rotation, num_chain_steps, store_distances)
+    rmsd, perm, U, ijk, distances, permutations = res
 
     num_atoms = len(numbers)
     i, j, k = ijk
@@ -182,4 +182,4 @@ def best_alignment(atoms0, atoms1, allow_rotation, num_chain_steps,
     translation -= j * shift[1] / num_atoms
     translation -= k * shift[2] / num_atoms
 
-    return rmsd, perm, U, translation, distances
+    return rmsd, perm, U, translation, distances, permutations

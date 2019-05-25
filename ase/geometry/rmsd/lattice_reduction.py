@@ -21,8 +21,8 @@ def find_lattice_reductions(atoms):
 
     pa, pb, celldist, mr_path = intermediate_representation(a, b, 'central')
     res = best_alignment(pa, pb, False, None, True)
-    rmsd, assignment, U, translation, distances = res
-    return distances
+    rmsd, assignment, U, translation, distances, permutations = res
+    return distances, permutations
 
     # undo Minkowski-reduction
     inv_mr = np.linalg.inv(mr_path)
