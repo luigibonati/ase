@@ -95,6 +95,7 @@ def run_single_test(filename, verbose, strict):
     # Hence, create new subdir for each test:
     cwd = os.getcwd()
     testsubdir = filename.replace(os.sep, '_').replace('.', '_')
+    result.workdir = os.path.abspath(testsubdir)
     os.mkdir(testsubdir)
     os.chdir(testsubdir)
     t1 = time.time()
@@ -151,7 +152,7 @@ def run_single_test(filename, verbose, strict):
 class Result:
     """Represents the result of a test; for communicating between processes."""
     attributes = ['name', 'pid', 'exception', 'traceback', 'time', 'status',
-                  'whyskipped']
+                  'whyskipped', 'workdir']
 
     def __init__(self, **kwargs):
         d = {key: None for key in self.attributes}
@@ -220,6 +221,7 @@ def print_test_result(result):
     if result.traceback:
         print('=' * 78)
         print('Error in {} on pid {}:'.format(result.name, result.pid))
+        print('Workdir: {}'.format(result.workdir))
         print(result.traceback.rstrip())
         print('=' * 78)
 
@@ -383,14 +385,16 @@ def cli(command, calculator_name=None):
     if (calculator_name is not None and
         calculator_name not in test_calculator_names):
         return
-    proc = subprocess.Popen(' '.join(command.split('\n')),
+    actual_command = ' '.join(command.split('\n')).strip()
+    proc = subprocess.Popen(actual_command,
                             shell=True,
                             stdout=subprocess.PIPE)
     print(proc.stdout.read().decode())
     proc.wait()
+
     if proc.returncode != 0:
-        raise RuntimeError('Failed running a shell command.  '
-                           'Please set you $PATH environment variable!')
+        raise RuntimeError('Command "{}" exited with error code {}'
+                           .format(actual_command, proc.returncode))
 
 
 class must_raise:

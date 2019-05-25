@@ -56,11 +56,13 @@ class LAMMPS(Calculator):
     """The LAMMPS calculators object
 
     files: list
-        Short explanation XXX
+        List of files typically containing relevant potentials for the calculation
     parameters: dict
-        Short explanation XXX
+        Dictionary of settings to be passed into the input file for calculation.
     specorder: list
-        Short explanation XXX
+        Within LAAMPS, atoms are identified by an integer value starting from 1.
+        This variable allows the user to define the order of the indices assigned to the
+        atoms in the calculation, with the default if not given being alphabetical
     keep_tmp_files: bool
         Retain any temporary files created. Mostly useful for debugging.
     tmp_dir: str
@@ -78,6 +80,35 @@ class LAMMPS(Calculator):
     always_triclinic: bool
         Force use of a triclinic cell in LAMMPS, even if the cell is
         a perfect parallelepiped.
+
+        **Example**
+
+Provided that the respective potential file is in the working directory, one
+can simply run (note that LAMMPS needs to be compiled to work with EAM
+potentials)
+
+::
+
+    from ase import Atom, Atoms
+    from ase.build import bulk
+    from ase.calculators.lammpsrun import LAMMPS
+
+    parameters = {'pair_style': 'eam/alloy',
+                  'pair_coeff': ['* * NiAlH_jea.eam.alloy H Ni']}
+
+    files = ['NiAlH_jea.eam.alloy']
+
+    Ni = bulk('Ni', cubic=True)
+    H = Atom('H', position=Ni.cell.diagonal()/2)
+    NiH = Ni + H
+
+    lammps = LAMMPS(parameters=parameters, files=files)
+
+    NiH.set_calculator(lammps)
+    print("Energy ", NiH.get_potential_energy())
+
+(Remember you also need to set :envar: `$LAMMPS_COMMAND`)
+
     """
 
     name = "lammpsrun"
@@ -197,7 +228,7 @@ class LAMMPS(Calculator):
     def get_lammps_command(self):
         cmd = self.parameters.get('command')
         if cmd is None:
-            envvar = 'ASE_{}_COMMAND'.format(self.name)
+            envvar = 'ASE_{}_COMMAND'.format(self.name.upper())
             cmd = os.environ.get(envvar)
 
         if cmd is None:
@@ -271,9 +302,13 @@ class LAMMPS(Calculator):
         if not self.parameters.keep_tmp_files or force:
             shutil.rmtree(self.parameters.tmp_dir)
 
-    def check_state(self, atoms, tol=1.0e-4):
-        # differenct convention for unit-cell and limit precision in
-        # LAMMPS-input file will lead to small rounding errors
+    def check_state(self, atoms, tol=1.0e-10):
+        # Transforming the unit cell to conform to LAMMPS' convention for
+        # orientation (c.f. https://lammps.sandia.gov/doc/Howto_triclinic.html)
+        # results in some precision loss, so we use bit larger tolerance than
+        # machine precision here.  Note that there can also be precision loss
+        # related to how many significant digits are specified for things in
+        # the LAMMPS input file.
         return Calculator.check_state(self, atoms, tol)
 
     def calculate(self, atoms=None, properties=None, system_changes=None):
@@ -533,6 +568,12 @@ class LAMMPS(Calculator):
         thermo_content = []
         line = fileobj.readline().decode("utf-8")
         while line and line.strip() != CALCULATION_END_MARK:
+            # check error
+            if 'ERROR:' in line:
+                if close_log_file:
+                    fileobj.close()
+                raise RuntimeError('LAMMPS exits with error message: {}'.format(line))
+
             # get thermo output
             if line.startswith(_custom_thermo_mark):
                 bool_match = True
