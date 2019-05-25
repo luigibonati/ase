@@ -12,6 +12,8 @@ def permute_axes(atoms, permutation):
 
 def standardize_axes(a, b):
 
+    tol = 1E-12
+
     sa = np.sign(np.linalg.det(a.cell))
     sb = np.sign(np.linalg.det(b.cell))
     if sa != sb:
@@ -31,37 +33,35 @@ def standardize_axes(a, b):
     if dim == 1 and tuple(pbc) != tuple(sorted(pbc)):
         permutation = permutations[0]
         assert tuple(pbc[permutation]) == (0, 0, 1)
-
-        permute_axes(a, permutation)
-        permute_axes(b, permutation)
-
     elif dim == 2 and tuple(pbc) != tuple(sorted(pbc, reverse=True)):
         permutation = permutations[-1]
         assert tuple(pbc[permutation]) == (1, 1, 0)
-
-        permute_axes(a, permutation)
-        permute_axes(b, permutation)
-
     else:
         permutation = np.arange(3)
 
-    # check that cell has appropriate structure (for chains and monolayers)
-    tol = 1E-12
-    bad_cell = False
+    for atoms in [a, b]:
+        lengths = np.linalg.norm(atoms.cell, axis=1)
+        if min(lengths) < tol:
+            raise Exception("Unit cell vectors may not have zero length")
 
-    # want cell in format:
-    # [X, X, 0]
-    # [X, X, 0]
-    # [0, 0, X]
     if dim <= 2:
-        for cell in [a.cell, b.cell]:
-            for i, j in [(0, 2), (1, 2), (2, 0), (2, 1)]:
-                if abs(cell[i, j]) > tol:
-                    bad_cell = True
-                cell[i, j] = 0
+        for atoms in [a, b]:
+            permute_axes(atoms, permutation)
 
-    if bad_cell:
-        warnings.warn('Bad cell: {}'.format(cell))
+            # check that cell has appropriate structure (for chains and monolayers)
+            bad_cell = False
+
+            # want cell in format:
+            # [X, X, 0]
+            # [X, X, 0]
+            # [0, 0, X]
+            for i, j in [(0, 2), (1, 2), (2, 0), (2, 1)]:
+                if abs(atoms.cell[i, j]) > tol:
+                    bad_cell = True
+                atoms.cell[i, j] = 0
+
+            if bad_cell:
+                warnings.warn('Bad cell: {}'.format(atoms.cell))
 
     return dim, a, b, permutation
 
