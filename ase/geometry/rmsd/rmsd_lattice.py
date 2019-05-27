@@ -6,12 +6,7 @@ from ase.geometry.rmsd.standard_form import standardize_atoms
 
 
 def invert_permutation(perm):
-
-    n = len(perm)
-    invperm = np.arange(n)
-    for i, e in enumerate(perm):
-        invperm[e] = i
-    return invperm
+    return np.argsort(perm)
 
 
 def _calculate_rmsd(atoms0, atoms1, frame, ignore_stoichiometry, sign,
