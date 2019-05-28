@@ -1,6 +1,8 @@
 import itertools
 import numpy as np
 from scipy.spatial.distance import cdist
+from collections import namedtuple
+
 from ase import Atoms
 from ase.geometry.rmsd.cell_projection import intermediate_representation
 from ase.geometry.rmsd.standard_form import standardize_atoms
@@ -334,6 +336,7 @@ def group_atoms(n, dim, H, lr):
 	return uf.get_components(relabel=True)
 
 
+# TODO: remove this if/when merged into Atoms object
 def pretty_translation(atoms):
 
 	n = len(atoms)
@@ -400,13 +403,12 @@ def reduced_layout(n, dim, lr, components, rmsd, H, numbers):
 	reduced = Atoms(positions=clustered_positions, numbers=clustered_numbers, cell=rcell, pbc=lr.pbc)
 	reduced.wrap()
 	pretty_translation(reduced)
-
-	from ase.visualize import view
-	view(reduced, block=1)
 	return reduced
 
 
 def find_lattice_reductions(atoms, keep_all=False):
+
+	Reduced = namedtuple('ReducedLattice', 'rmsd factor atoms')
 
 	n = len(atoms)
 	dim = sum(atoms.pbc)
@@ -423,11 +425,10 @@ def find_lattice_reductions(atoms, keep_all=False):
 
 		group_index = np.prod(n // np.diag(H))
 		key = [group_index, i][keep_all]
-		value = (rmsd, group_index, reduced_atoms)
+		entry = Reduced(rmsd=rmsd, factor=group_index, atoms=reduced_atoms)
 		if key not in reduced:
-			reduced[key] = value
+			reduced[key] = entry
 		else:
-			reduced[key] = min(reduced[key], value, key=lambda x:x[0])
+			reduced[key] = min(reduced[key], entry, key=lambda x: x.rmsd)
 
-	return sorted(reduced.values(), key=lambda x: x[1])
-
+	return sorted(reduced.values(), key=lambda x: x.factor)
