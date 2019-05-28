@@ -42,7 +42,7 @@ def closest_vector(t0, u, v):
 
         ds = np.linalg.norm(rs + t, axis=1)
         index = np.argmin(ds)
-        if index == 0 or ds[index] > dprev:
+        if index == 0 or ds[index] >= dprev:
             return a
 
         dprev = ds[index]
