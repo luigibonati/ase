@@ -61,17 +61,6 @@ class LatticeReducer:
 		distances = np.zeros((nx, ny, nz))
 		permutations = -np.ones((nx, ny, nz, num_atoms)).astype(np.int)
 
-		self.cindices = [xindices, yindices, zindices]
-		self.dim = dim
-		self.pbc = pbc
-		self.imcell = imcell
-		self.s0 = s0
-		self.shift = shift
-		self.scaled_shift = scaled_shift
-		self.nbr_cells = nbr_cells
-		self.eindices = eindices
-		self.p1_nbrs = p1_nbrs
-
 		if not lazy:
 			for kk, k in enumerate(zindices):
 				for jj, j in enumerate(yindices):
@@ -85,6 +74,16 @@ class LatticeReducer:
 					slide(s0, scaled_shift, num_atoms, pbc, j, 1)
 				slide(s0, scaled_shift, num_atoms, pbc, k, 2)
 
+		self.cindices = [xindices, yindices, zindices]
+		self.dim = dim
+		self.pbc = pbc
+		self.imcell = imcell
+		self.s0 = s0
+		self.shift = shift
+		self.scaled_shift = scaled_shift
+		self.nbr_cells = nbr_cells
+		self.eindices = eindices
+		self.p1_nbrs = p1_nbrs
 		self.distances = distances
 		self.permutations = permutations
 
@@ -335,7 +334,22 @@ def group_atoms(n, dim, H, lr):
 	return uf.get_components(relabel=True)
 
 
-def layout(n, dim, lr, components, rmsd, H, numbers):
+def pretty_translation(atoms):
+
+	n = len(atoms)
+	scaled = atoms.get_scaled_positions()
+
+	for i in range(3):
+		indices = np.argsort(scaled[:, i])
+		sp = scaled[indices, i]
+		widths = (np.roll(sp, 1) - sp) % 1.0
+		scaled[:, i] -= sp[np.argmin(widths)]
+
+	atoms.set_scaled_positions(scaled)
+	atoms.wrap(eps=0)
+
+
+def reduced_layout(n, dim, lr, components, rmsd, H, numbers):
 
 	#TODO: could also verify that elements are identical
 
@@ -352,7 +366,6 @@ def layout(n, dim, lr, components, rmsd, H, numbers):
 
 		atom_indices = np.where(c == components)[0]
 		csizes.append(len(atom_indices))
-
 
 		ps = np.dot(lr.s0, lr.imcell)
 
@@ -377,41 +390,44 @@ def layout(n, dim, lr, components, rmsd, H, numbers):
 	if len(np.unique(csizes)) > 1:
 		return None
 
-	if abs(rmsd - rmsd_check) > 1E-12:
+	tol = 1E-12
+	if abs(rmsd - rmsd_check) > tol:
 		return None
-
-	# TODO: find largest separation for best visual appeal
 
 	rcell = np.dot(H, lr.imcell) / n
 	print("check:", H.reshape(-1), rmsd, rmsd_check, abs(rmsd - rmsd_check) < 1E-12, len(np.unique(csizes)), np.prod([n // e for e in np.diag(H)]))
 
 	reduced = Atoms(positions=clustered_positions, numbers=clustered_numbers, cell=rcell, pbc=lr.pbc)
 	reduced.wrap()
+	pretty_translation(reduced)
+
+	from ase.visualize import view
+	view(reduced, block=1)
 	return reduced
 
-# TODO: add option to only select best reductions for each subgroup index
-def find_lattice_reductions(atoms):
+
+def find_lattice_reductions(atoms, keep_all=False):
 
 	n = len(atoms)
 	dim = sum(atoms.pbc)
 	reductions, lr = find_consistent_reductions(atoms)
 
-	for rmsd, group_index, H in reductions:
+	reduced = {}
+	for i, (rmsd, group_index, H) in enumerate(reductions):
 
-		#group atoms
 		components = group_atoms(n, dim, H, lr)
 
-		#find a spatially consistent layout
-		reduced = layout(n, dim, lr, components, rmsd, H, atoms.numbers)
-		if reduced is None:
+		reduced_atoms = reduced_layout(n, dim, lr, components, rmsd, H, atoms.numbers)
+		if reduced_atoms is None:
 			continue
 
-		#from ase.visualize import view
-		#view(reduced, block=1)
-	return
+		group_index = np.prod(n // np.diag(H))
+		key = [group_index, i][keep_all]
+		value = (rmsd, group_index, reduced_atoms)
+		if key not in reduced:
+			reduced[key] = value
+		else:
+			reduced[key] = min(reduced[key], value, key=lambda x:x[0])
 
-	if group_index not in data:
-		data[group_index] = value
-	else:
-		data[group_index] = max(value, data[group_index], key=lambda x:x[0])
+	return sorted(reduced.values(), key=lambda x: x[1])
 
