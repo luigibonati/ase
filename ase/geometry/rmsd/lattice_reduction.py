@@ -10,44 +10,6 @@ from ase.visualize import view
 from ase.geometry.rmsd.lattice_subgroups import find_consistent_reductions, get_group_elements
 
 
-# TODO: remove this if/when merged into Atoms object
-def _pretty_translation(scaled, pbc, eps):
-
-	scaled = np.copy(scaled)
-	for i in range(3):
-		if not pbc[i]:
-			continue
-
-		indices = np.argsort(scaled[:, i])
-		sp = scaled[indices, i]
-
-		widths = (np.roll(sp, 1) - sp)
-		indices = np.where(widths < -eps)[0]
-		widths[indices] %= 1.0
-		scaled[:, i] -= sp[np.argmin(widths)]
-
-	indices = np.where(scaled < -eps)
-	scaled[indices] %= 1.0
-	return scaled
-
-
-def pretty_translation(atoms, eps=1E-7):
-	"""Translates atoms such that scaled positions are minimized."""
-
-	scaled = atoms.get_scaled_positions()
-	pbc = atoms.pbc
-
-	# Don't use the tolerance unless it gives better results
-	s0 = _pretty_translation(scaled, pbc, 0)
-	s1 = _pretty_translation(scaled, pbc, eps)
-	if np.max(s0) < np.max(s1) + eps:
-		scaled = s0
-	else:
-		scaled = s1
-
-	atoms.set_scaled_positions(scaled)
-
-
 def group_atoms(n, lr, indices):
 
 	uf = DisjointSet(n)
@@ -126,8 +88,7 @@ def reduced_layout(n, dim, H, lr, rmsd):
 
 	reduced = Atoms(positions=positions, numbers=numbers,
 			cell=clustered.cell, pbc=clustered.pbc)
-	reduced.wrap()
-	pretty_translation(reduced)
+	reduced.wrap(pretty_translation=1)
 	return reduced
 
 
