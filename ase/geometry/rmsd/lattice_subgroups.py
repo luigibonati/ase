@@ -90,35 +90,6 @@ def get_divisors(n):
 	return [i for i in range(1, n+1) if n % i == 0]
 
 
-def _P(n):
-	gcd = np.gcd
-	return sum([gcd(k, n) for k in range(1, n+1)])
-
-
-def number_of_subgroups(dim, n):
-
-	assert dim in [1, 2, 3]
-
-	gcd = np.gcd
-	ds = get_divisors(n)
-
-	if dim == 1:
-		return len(ds)
-	elif dim == 2:
-		return sum([gcd(a, b) for a in ds for b in ds])
-	else:
-		total = 0
-		for a, b, c in itertools.product(ds, repeat=3):
-			A = gcd(a, n // b)
-			B = gcd(b, n // c)
-			C = gcd(a, n // c)
-			ABC = A * B * C
-
-			X = ABC // gcd(a * n // c, ABC)
-			total += ABC // X**2 * _P(X)
-		return total
-
-
 #TODO: clean this function up and test against old x-step function
 def get_group_elements(n, dim, H):
 
@@ -169,7 +140,7 @@ def get_group_elements(n, dim, H):
 	return indices
 
 
-def is_consistent(dim, H, lr):
+def permutationally_consistent(dim, H, lr):
 
 	n = len(lr.s0)
 	seen = -np.ones((3, n)).astype(np.int)
@@ -198,11 +169,35 @@ def consistent_first_rows(dim, n, ds, lr):
 	for a in ds:
 		H = np.zeros((dim, dim)).astype(np.int)
 		H[0, 0] = a
-		if is_consistent(dim, H, lr) >= 0:
+		if permutationally_consistent(dim, H, lr) >= 0:
 			yield a
 
 
+def solve_linear_congruence(n, a, b, c, s, v):
+
+	for u in range(a):
+		if (n // c * u) % a == (n * v * s // (b * c)) % a:
+			return u
+	raise Exception("u not found")
+
+
 def get_basis(dim, n, lr):
+	"""
+	The basis generation used here is described for two-dimensional lattices in:
+
+		Representing and counting the subgroups of the group Z_m x Z_n
+		Mario Hampejs, Nicki Holighaus, László Tóth, and Christoph Wiesmeyr
+		Journal of Numbers, vol. 2014, Article ID 491428
+		http://dx.doi.org./10.1155/2014/491428
+		https://arxiv.org/abs/1211.1797
+
+	and for three-dimensional lattices in:
+
+		On the subgroups of finite Abelian groups of rank three
+		Mario Hampejs and László Tóth
+		Annales Univ. Sci. Budapest., Sect. Comp. 39 (2013), 111–124
+		https://arxiv.org/abs/1304.2961
+	"""
 
 	assert dim in [1, 2, 3]
 
@@ -229,7 +224,6 @@ def get_basis(dim, n, lr):
 				B = gcd(b, n // c)
 				C = gcd(a, n // c)
 				ABC = A * B * C
-
 				X = ABC // gcd(a * n // c, ABC)
 
 				for t in range(A):
@@ -239,21 +233,13 @@ def get_basis(dim, n, lr):
 					H = np.zeros((dim, dim)).astype(np.int)
 					H[0] = [a, 0, 0]
 					H[1] = [s, b, 0]
-					if is_consistent(dim, H, lr) < 0:
+					if permutationally_consistent(dim, H, lr) < 0:
 						continue
 
 					for w in range(B * gcd(t, X) // X):
 
 						v = b * X * w // (B * gcd(t, X))
-
-						found = False
-						for u in range(a):
-							if (n // c * u) % a == (n * v * s // (b * c)) % a:
-								u0 = u
-								found = True
-								break
-						if not found:
-							raise Exception("u not found")
+						u0 = solve_linear_congruence(n, a, b, c, s, v)
 
 						for z in range(C):
 							u = u0 + a * z // C
@@ -263,25 +249,21 @@ def find_consistent_reductions(atoms):
 
 	n = len(atoms)
 	dim = sum(atoms.pbc)
-	r = number_of_subgroups(dim, n)
-	print(n, r)
-
 	lr = LatticeReducer(atoms)
 
 	it = 0
 	data = []
 	for H in get_basis(dim, n, lr):
-		#if np.sum(H) != np.trace(H): continue
 
 		it += 1
-		rmsd = is_consistent(dim, H, lr)
+		rmsd = permutationally_consistent(dim, H, lr)
 		if rmsd < 0:
 			continue
 
-		print(it, r, H.reshape(-1), rmsd)
+		print(it, H.reshape(-1), rmsd)
 
 		group_index = n**dim // np.prod(np.diag(H))
 		data.append((rmsd, group_index, H))
 
-	print(n, len(data), r, it)
+	print(n, len(data), it)
 	return data, lr
