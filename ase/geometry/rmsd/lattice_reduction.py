@@ -10,18 +10,6 @@ from ase.visualize import view
 from ase.geometry.rmsd.lattice_subgroups import find_consistent_reductions, get_group_elements
 
 
-def group_atoms(n, lr, indices):
-
-	uf = DisjointSet(n)
-
-	for c in zip(*indices):
-		p0 = lr.get_point(c)
-		for i, e in enumerate(p0):
-			uf.merge(i, e)
-
-	return uf.get_components(relabel=True)
-
-
 # TODO: remove this if/when merged into Atoms object
 def _pretty_translation(scaled, pbc, eps):
 
@@ -60,68 +48,84 @@ def pretty_translation(atoms, eps=1E-7):
 	atoms.set_scaled_positions(scaled)
 
 
-def reduced_layout(n, dim, H, lr, rmsd):
+def group_atoms(n, lr, indices):
 
-	#TODO: could also verify that elements are identical
+	uf = DisjointSet(n)
 
-	if dim == 2:
+	for c in indices:
+		p0 = lr.get_point(c)
+		for i, e in enumerate(p0):
+			uf.merge(i, e)
+
+	components = uf.get_components()
+	assert (lr.numbers == lr.numbers[components]).all()
+	return uf.get_components(relabel=True)
+
+
+def clustered_atoms(n, dim, H, lr):
+
+	if dim == 1:
+		raise Exception("not implemented yet")
+	elif dim == 2:
 		_H = np.diag([n, n, n])
 		_H[:dim, :dim] = H
 	elif dim == 3:
 		_H = np.copy(H)
-	else:
-		raise Exception("not implemented yet")
+
 	rcell = np.dot(_H, lr.imcell) / n
-
 	mr_cell, _ = minkowski_reduce(rcell, dim)
-	absolute = np.dot(lr.s0, lr.imcell)
-	clustered = Atoms(positions=absolute, cell=mr_cell, numbers=lr.numbers, pbc=lr.pbc)
-	clustered.wrap()
-	#view(clustered, block=1)
-	#asdf
 
+	positions = np.dot(lr.s0, lr.imcell)
+	clustered = Atoms(positions=positions, cell=mr_cell,
+				numbers=lr.numbers, pbc=lr.pbc)
+	clustered.wrap()
+	return clustered
+
+
+def cluster_component(indices, ps, lr, shifts, i):
+
+	positions = []
+	for c in indices:
+		j = lr.get_point(c)[i]
+		ds = np.linalg.norm(ps[i] - (ps[j] + shifts), axis=1)
+		shift_index = np.argmin(ds)
+		positions.append(ps[j] + shifts[shift_index])
+
+	meanpos = np.mean(positions, axis=0)
+	component_rmsd = np.sum(cdist(positions, positions, 'sqeuclidean'))
+	return meanpos, component_rmsd
+
+
+def reduced_layout(n, dim, H, lr, rmsd):
 
 	indices = get_group_elements(n, dim, H)
 	components = group_atoms(n, lr, indices)
-	nbr_cells = alignment.get_neighboring_cells(dim, clustered.cell)
+	if len(np.unique(np.bincount(components))) != 1:
+		# TODO: verify what is going on here
+		return None
 
+	clustered = clustered_atoms(n, dim, H, lr)
+	nbr_cells = alignment.get_neighboring_cells(dim, clustered.cell)
 	shift = alignment.get_shift_vectors(dim, clustered.cell)
 	shifts = [np.dot(shift.T, nbr) for nbr in nbr_cells]
 
-	rmsd_check = 0
-	csizes = []
-	clustered_numbers = []
-	clustered_positions = []
+	data = []
 	for c in np.unique(components):
-
-		atom_indices = np.where(c == components)[0]
-		csizes.append(len(atom_indices))
-		i = atom_indices[0]
-
-		positions = []
-		ps = clustered.get_positions()
-		for c in zip(*indices):
-			j = lr.get_point(c)[i]
-			ds = np.linalg.norm(ps[i] - (ps[j] + shifts), axis=1)
-			shift_index = np.argmin(ds)
-			positions.append(ps[j] + shifts[shift_index])
-
-		#average atoms
-		clustered_positions.append(np.mean(positions, axis=0))
-		clustered_numbers.append(clustered.numbers[i])
-		rmsd_check += np.sum(cdist(positions, positions, 'sqeuclidean'))
-	rmsd_check = np.sqrt(rmsd_check / n)
-
-	if len(np.unique(csizes)) > 1:
-		return None
+		i = list(components).index(c)
+		meanpos, crmsd = cluster_component(indices, clustered.get_positions(),
+							lr, shifts, i)
+		data.append((meanpos, clustered.numbers[i], crmsd))
+	positions, numbers, crmsd = zip(*data)
 
 	tol = 1E-12
+	rmsd_check = np.sqrt(sum(crmsd) / n)
 	if abs(rmsd - rmsd_check) > tol:
 		return None
 
-	print("check:", H.reshape(-1), rmsd, rmsd_check, abs(rmsd - rmsd_check) < 1E-12, len(np.unique(csizes)), np.prod([n // e for e in np.diag(H)]))
+	print("check:", H.reshape(-1), rmsd, rmsd_check, np.prod([n // e for e in np.diag(H)]))
 
-	reduced = Atoms(positions=clustered_positions, numbers=clustered_numbers, cell=rcell, pbc=lr.pbc)
+	reduced = Atoms(positions=positions, numbers=numbers,
+			cell=clustered.cell, pbc=clustered.pbc)
 	reduced.wrap()
 	pretty_translation(reduced)
 	return reduced
@@ -138,12 +142,9 @@ def find_lattice_reductions(atoms, keep_all=False):
 	reduced = {}
 	for i, (rmsd, group_index, H) in enumerate(reductions):
 
-		print()
 		reduced_atoms = reduced_layout(n, dim, H, lr, rmsd)
 		if reduced_atoms is None:
 			continue
-
-		if rmsd > 0.001: continue
 
 		group_index = np.prod(n // np.diag(H))
 		key = [group_index, i][keep_all]
@@ -153,4 +154,4 @@ def find_lattice_reductions(atoms, keep_all=False):
 		else:
 			reduced[key] = min(reduced[key], entry, key=lambda x: x.rmsd)
 
-	return sorted(reduced.values(), key=lambda x: x.factor, reverse=1)#[:1]
+	return sorted(reduced.values(), key=lambda x: x.factor)

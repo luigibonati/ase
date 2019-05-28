@@ -144,7 +144,7 @@ def get_group_elements(n, dim, H):
 			c += H[1]
 			c %= n
 		indices = np.where(x)
-		return indices
+		return list(zip(*indices))
 	else:
 		size = 1
 		for e in np.diag(H):
@@ -166,17 +166,16 @@ def get_group_elements(n, dim, H):
 			indices[:, 2] += H[2, 2] * (np.arange(size) // k)
 		indices %= n
 
-	return tuple(list(zip(*indices)))
+	return indices
 
 
 def is_consistent(dim, H, lr):
 
 	n = len(lr.s0)
 	seen = -np.ones((3, n)).astype(np.int)
-
 	indices = get_group_elements(n, dim, H)
 
-	for c in zip(*indices):
+	for c in indices:
 		p0 = lr.get_point(c)
 		invp0 = invert_permutation(p0)
 
@@ -190,6 +189,7 @@ def is_consistent(dim, H, lr):
 			elif (seen[i] != val).any():
 				return -float("inf")
 
+	indices = tuple(list(zip(*indices)))
 	return np.sqrt(np.sum(lr.distances[indices]**2))
 
 
