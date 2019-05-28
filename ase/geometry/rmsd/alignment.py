@@ -110,8 +110,6 @@ def find_alignment(dim, pbc, imcell, s0, p1, scaled_shift, nbr_cells, eindices,
                 if dim == 1 and allow_rotation:
 
                     b = (best[0], np.arange(num_atoms), np.eye(2))
-                    if store_distances:
-                        b = None
                     rmsd, perm, u = register_chain(p0, p1, eindices,
                                                    cell_length, b)
                     U = np.eye(3)
@@ -178,4 +176,4 @@ def best_alignment(atoms0, atoms1, allow_rotation, num_chain_steps):
     translation -= j * shift[1] / num_atoms
     translation -= k * shift[2] / num_atoms
 
-    return rmsd, perm, U, translation, distances, permutations
+    return rmsd, perm, U, translation
