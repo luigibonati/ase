@@ -6,44 +6,34 @@ from collections import namedtuple
 from ase import Atoms
 from ase.geometry.rmsd.cell_projection import intermediate_representation
 from ase.geometry.rmsd.standard_form import standardize_atoms
+from ase.geometry.rmsd.cell_projection import minkowski_reduce
 import ase.geometry.rmsd.alignment as alignment
 from ase.geometry.dimensionality.disjoint_set import DisjointSet
-
-
-def slide(s0, shift, num_atoms, pbc, index, i):
-
-	s0[index] += shift[i]
-	s0 -= shift[i] / num_atoms
-	if pbc[i]:
-		s0[:, i] % 1.0
+from ase.visualize import view
 
 
 def cherry_pick(dim, pbc, imcell, s0, shift, nbr_cells, eindices, p1_nbrs, cindices, shift_counts):
 
 	num_atoms = len(s0)
 	s0 = np.copy(s0)
-	q0 = np.copy(s0)
 	for i, index in enumerate(shift_counts):
 		indices = cindices[i][:index]
-		q0[indices] += shift[i]
-		q0 -= index * shift[i] / num_atoms
+		s0[indices] += shift[i]
+		s0 -= index * shift[i] / num_atoms
 		if pbc[i]:
-			q0[:, i] % 1.0
+			s0[:, i] % 1.0
 
-	p0 = np.dot(q0, imcell)
+	p0 = np.dot(s0, imcell)
 	return alignment.align(p0, eindices, p1_nbrs, nbr_cells)
 
 
 class LatticeReducer:
 
-	def __init__(self, atoms, lazy=True):
+	def __init__(self, atoms):
 
-		# TODO: can some of this be streamlined?
 		res = standardize_atoms(atoms.copy(), atoms.copy(), False)
 		a, b, atomic_perms, axis_perm = res
-
 		pa, pb, celldist, mr_path = intermediate_representation(a, b, 'central')
-		# ###
 
 		data = alignment.initialize(pa, pb)
 		pbc, dim, imcell, mean0, mean1, s0, numbers, eindices, shift, scaled_shift, nbr_cells, p1_nbrs = data
@@ -60,27 +50,21 @@ class LatticeReducer:
 			zindices = [0]
 
 		nx, ny, nz = len(xindices), len(yindices), len(zindices)
-		distances = np.zeros((nx, ny, nz))
-		permutations = -np.ones((nx, ny, nz, num_atoms)).astype(np.int)
-
-		if not lazy:
-			for kk, k in enumerate(zindices):
-				for jj, j in enumerate(yindices):
-					for ii, i in enumerate(xindices):
-
-						p0 = np.dot(s0, imcell)
-						rmsd, perm = alignment.align(p0, eindices, p1_nbrs, nbr_cells)
-						distances[ii, jj, kk] = rmsd
-						permutations[ii, jj, kk, :] = perm
-						slide(s0, scaled_shift, num_atoms, pbc, i, 0)
-					slide(s0, scaled_shift, num_atoms, pbc, j, 1)
-				slide(s0, scaled_shift, num_atoms, pbc, k, 2)
+		if dim == 3:
+			distances = np.zeros((nx, ny, nz))
+			permutations = -np.ones((nx, ny, nz, num_atoms)).astype(np.int)
+		elif dim == 2:
+			distances = np.zeros((nx, ny))
+			permutations = -np.ones((nx, ny, num_atoms)).astype(np.int)
+		else:
+			raise Exception("not implemented yet")
 
 		self.cindices = [xindices, yindices, zindices]
 		self.dim = dim
 		self.pbc = pbc
 		self.imcell = imcell
 		self.s0 = s0
+		self.numbers = numbers
 		self.shift = shift
 		self.scaled_shift = scaled_shift
 		self.nbr_cells = nbr_cells
@@ -92,15 +76,15 @@ class LatticeReducer:
 
 	def get_point(self, ijk):
 
-		i, j, k = ijk
-		if self.permutations[i, j, k, 0] != -1:
-			return self.permutations[i, j, k]
+		ijk = tuple(ijk)
+		if self.permutations[ijk][0] != -1:
+			return self.permutations[ijk]
 
 		rmsd, permutation = cherry_pick(self.dim, self.pbc, self.imcell, self.s0,
 						self.scaled_shift, self.nbr_cells,
 						self.eindices, self.p1_nbrs, self.cindices, ijk)
-		self.distances[i, j, k] = rmsd
-		self.permutations[i, j, k] = permutation
+		self.distances[ijk] = rmsd
+		self.permutations[ijk] = permutation
 		return permutation
 
 
@@ -142,7 +126,7 @@ def number_of_subgroups(dim, n):
 		return total
 
 
-#TODO: test this function against old x-step function
+#TODO: clean this function up and test against old x-step function
 #@profile
 def get_group_elements(n, dim, H):
 
@@ -156,6 +140,8 @@ def get_group_elements(n, dim, H):
 			x[tuple(c)] = 1
 			c += H[0]
 			c %= n
+		raise Exception("not implemented yet")
+
 	elif dim == 2:
 		while x[tuple(c)] == 0:
 			while x[tuple(c)] == 0:
@@ -165,6 +151,8 @@ def get_group_elements(n, dim, H):
 			x[tuple(c)] = 1
 			c += H[1]
 			c %= n
+		indices = np.where(x)
+		return indices
 	else:
 		size = 1
 		for e in np.diag(H):
@@ -214,27 +202,13 @@ def is_consistent(dim, H, lr):
 	return np.sqrt(np.sum(lr.distances[indices]**2))
 
 
-def check_1D_consistency(dim, n, lr, a):
-
-	H = np.zeros((dim, dim)).astype(np.int)
-	H[0, 0] = a
-
-	return is_consistent(dim, H, lr) >= 0
-
-
 def consistent_first_rows(dim, n, ds, lr):
 
 	for a in ds:
-		if check_1D_consistency(dim, n, lr, a):
+		H = np.zeros((dim, dim)).astype(np.int)
+		H[0, 0] = a
+		if is_consistent(dim, H, lr) >= 0:
 			yield a
-
-
-def check_2D_consistency(dim, n, lr, row1, row2):
-
-	H = np.zeros((dim, dim)).astype(np.int)
-	H[0] = row1
-	H[1] = row2
-	return is_consistent(dim, H, lr) >= 0
 
 
 def get_basis(dim, n, lr):
@@ -271,8 +245,10 @@ def get_basis(dim, n, lr):
 
 					s = a * t // A
 
-					consistent = check_2D_consistency(dim, n, lr, [a, 0, 0], [s, b, 0])
-					if not consistent:
+					H = np.zeros((dim, dim)).astype(np.int)
+					H[0] = [a, 0, 0]
+					H[1] = [s, b, 0]
+					if is_consistent(dim, H, lr) < 0:
 						continue
 
 					for w in range(B * gcd(t, X) // X):
@@ -305,7 +281,6 @@ def find_consistent_reductions(atoms):
 	it = 0
 	data = []
 	for H in get_basis(dim, n, lr):
-
 		#if np.sum(H) != np.trace(H): continue
 
 		it += 1
@@ -313,7 +288,7 @@ def find_consistent_reductions(atoms):
 		if rmsd < 0:
 			continue
 
-		print(it, r, H.reshape(-1))
+		print(it, r, H.reshape(-1), rmsd)
 
 		group_index = n**dim // np.prod(np.diag(H))
 		data.append((rmsd, group_index, H))
@@ -322,9 +297,7 @@ def find_consistent_reductions(atoms):
 	return data, lr
 
 
-def group_atoms(n, dim, H, lr):
-
-	indices = get_group_elements(n, dim, H)
+def group_atoms(n, lr, indices):
 
 	uf = DisjointSet(n)
 
@@ -337,57 +310,94 @@ def group_atoms(n, dim, H, lr):
 
 
 # TODO: remove this if/when merged into Atoms object
-def pretty_translation(atoms):
+def _pretty_translation(scaled, pbc, eps):
 
-	n = len(atoms)
-	scaled = atoms.get_scaled_positions()
-
+	scaled = np.copy(scaled)
 	for i in range(3):
+		if not pbc[i]:
+			continue
+
 		indices = np.argsort(scaled[:, i])
 		sp = scaled[indices, i]
-		widths = (np.roll(sp, 1) - sp) % 1.0
+
+		widths = (np.roll(sp, 1) - sp)
+		indices = np.where(widths < -eps)[0]
+		widths[indices] %= 1.0
 		scaled[:, i] -= sp[np.argmin(widths)]
 
+	indices = np.where(scaled < -eps)
+	scaled[indices] %= 1.0
+	return scaled
+
+
+def pretty_translation(atoms, eps=1E-7):
+	"""Translates atoms such that scaled positions are minimized."""
+
+	scaled = atoms.get_scaled_positions()
+	pbc = atoms.pbc
+
+	# Don't use the tolerance unless it gives better results
+	s0 = _pretty_translation(scaled, pbc, 0)
+	s1 = _pretty_translation(scaled, pbc, eps)
+	if np.max(s0) < np.max(s1) + eps:
+		scaled = s0
+	else:
+		scaled = s1
+
 	atoms.set_scaled_positions(scaled)
-	atoms.wrap(eps=0)
 
 
-def reduced_layout(n, dim, lr, components, rmsd, H, numbers):
+def reduced_layout(n, dim, H, lr, rmsd):
 
 	#TODO: could also verify that elements are identical
 
+	if dim == 2:
+		_H = np.diag([n, n, n])
+		_H[:dim, :dim] = H
+	elif dim == 3:
+		_H = np.copy(H)
+	else:
+		raise Exception("not implemented yet")
+	rcell = np.dot(_H, lr.imcell) / n
+	print(lr.s0, lr.numbers, lr.pbc)
+
+	mr_cell, _ = minkowski_reduce(rcell, dim)
+	absolute = np.dot(lr.s0, lr.imcell)
+	clustered = Atoms(positions=absolute, cell=mr_cell, numbers=lr.numbers, pbc=lr.pbc)
+	clustered.wrap()
+	view(clustered, block=1)
+	asdf
+
+
 	indices = get_group_elements(n, dim, H)
-	nbr_cells = alignment.get_neighboring_cells(dim, lr.imcell)
-	shifts = [np.dot(lr.shift.T, nbr) for nbr in nbr_cells]
+	components = group_atoms(n, lr, indices)
+	nbr_cells = alignment.get_neighboring_cells(dim, clustered.cell)
+
+	shift = alignment.get_shift_vectors(dim, clustered.cell)
+	shifts = [np.dot(shift.T, nbr) for nbr in nbr_cells]
 
 	rmsd_check = 0
 	csizes = []
-
 	clustered_numbers = []
 	clustered_positions = []
 	for c in np.unique(components):
 
 		atom_indices = np.where(c == components)[0]
 		csizes.append(len(atom_indices))
-
-		ps = np.dot(lr.s0, lr.imcell)
-
 		i = atom_indices[0]
-		positions = []
-		for c in zip(*indices):
-			perm = lr.get_point(c)
-			j = perm[i]
-			pj = ps[j] - np.sum([lr.imcell[ii] * c[ii] / n for ii in range(3)], axis=0)
 
-			ds = np.linalg.norm(ps[i] - (pj + shifts), axis=1)
+		positions = []
+		ps = clustered.get_positions()
+		for c in zip(*indices):
+			j = lr.get_point(c)[i]
+			ds = np.linalg.norm(ps[i] - (ps[j] + shifts), axis=1)
 			shift_index = np.argmin(ds)
-			positions.append(pj + shifts[shift_index])
+			positions.append(ps[j] + shifts[shift_index])
 
 		#average atoms
 		clustered_positions.append(np.mean(positions, axis=0))
-		clustered_numbers.append(numbers[i])
+		clustered_numbers.append(clustered.numbers[i])
 		rmsd_check += np.sum(cdist(positions, positions, 'sqeuclidean'))
-
 	rmsd_check = np.sqrt(rmsd_check / n)
 
 	if len(np.unique(csizes)) > 1:
@@ -397,7 +407,6 @@ def reduced_layout(n, dim, lr, components, rmsd, H, numbers):
 	if abs(rmsd - rmsd_check) > tol:
 		return None
 
-	rcell = np.dot(H, lr.imcell) / n
 	print("check:", H.reshape(-1), rmsd, rmsd_check, abs(rmsd - rmsd_check) < 1E-12, len(np.unique(csizes)), np.prod([n // e for e in np.diag(H)]))
 
 	reduced = Atoms(positions=clustered_positions, numbers=clustered_numbers, cell=rcell, pbc=lr.pbc)
@@ -417,11 +426,12 @@ def find_lattice_reductions(atoms, keep_all=False):
 	reduced = {}
 	for i, (rmsd, group_index, H) in enumerate(reductions):
 
-		components = group_atoms(n, dim, H, lr)
-
-		reduced_atoms = reduced_layout(n, dim, lr, components, rmsd, H, atoms.numbers)
+		print()
+		reduced_atoms = reduced_layout(n, dim, H, lr, rmsd)
 		if reduced_atoms is None:
 			continue
+
+		if rmsd > 0.001: continue
 
 		group_index = np.prod(n // np.diag(H))
 		key = [group_index, i][keep_all]
@@ -431,4 +441,4 @@ def find_lattice_reductions(atoms, keep_all=False):
 		else:
 			reduced[key] = min(reduced[key], entry, key=lambda x: x.rmsd)
 
-	return sorted(reduced.values(), key=lambda x: x.factor)
+	return sorted(reduced.values(), key=lambda x: x.factor, reverse=1)#[:1]

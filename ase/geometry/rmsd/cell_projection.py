@@ -4,12 +4,30 @@ from ase.geometry.rmsd.minkowski_reduction import gauss
 from ase.geometry.rmsd.minkowski_reduction import reduce_basis
 
 
-def apply_minkowski_reduction(atoms, mr_path):
+def apply_minkowski_reduction(atoms, mr_cell):
 
     apos = atoms.get_positions()
-    atoms.cell = np.dot(mr_path, atoms.cell)
+    atoms.cell = mr_cell
     atoms.set_positions(apos)
     atoms.wrap()
+
+
+def minkowski_reduce(cell, dim):
+
+    mr_path = np.eye(3).astype(np.int)
+    if dim == 1:
+        mr_cell = np.copy(cell)
+
+    elif dim == 2:
+        hu, hv = gauss(cell, mr_path[0], mr_path[1])
+        mr_path[0] = hu
+        mr_path[1] = hv
+        mr_cell = np.dot(mr_path, cell)
+
+    elif dim == 3:
+        _, mr_path = reduce_basis(cell)
+        mr_cell = np.dot(mr_path, cell)
+    return mr_cell, mr_path
 
 
 def parallelogram_area(a, b):
@@ -154,16 +172,9 @@ def intermediate_representation(a, b, frame):
     # perform a minkowski reduction of the intermediate cell
     mr_path = np.eye(3).astype(np.int)
     if dim >= 2:
-        if dim == 2:
-            hu, hv = gauss(imcell, mr_path[0], mr_path[1])
-            mr_path[0] = hu
-            mr_path[1] = hv
-
-        elif dim == 3:
-            _, mr_path = reduce_basis(imcell)
-
-        apply_minkowski_reduction(a, mr_path)
-        apply_minkowski_reduction(b, mr_path)
+        mr_cell, mr_path = minkowski_reduce(imcell, dim)
+        apply_minkowski_reduction(a, mr_cell)
+        apply_minkowski_reduction(b, mr_cell)
 
     celldist = cell_distance(a, b, frame)
     return a, b, celldist, mr_path

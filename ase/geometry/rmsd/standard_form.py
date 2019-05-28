@@ -5,7 +5,8 @@ import warnings
 def permute_axes(atoms, permutation):
 
     scaled = atoms.get_scaled_positions()
-    atoms.cell = atoms.cell[permutation, permutation]
+    atoms.cell = atoms.cell[permutation]
+    atoms.cell = atoms.cell[:, permutation]
     atoms.pbc = atoms.pbc[permutation]
     atoms.set_scaled_positions(scaled[:, permutation])
 
