@@ -180,20 +180,21 @@ class LatticeComparator:
 
 def best_alignment(atoms0, atoms1, allow_rotation, num_chain_steps):
 
-    lc = alignment.LatticeComparator(atoms0, atoms1)
+    lc = LatticeComparator(atoms0, atoms1)
 
-    cell_length = imcell[2, 2]
+    cell_length = lc.imcell[2, 2]
     res = find_alignment(lc.dim, lc.pbc, lc.imcell, lc.s0, lc.p1,
                          lc.scaled_shift, lc.nbr_cells, lc.eindices,
                          lc.p1_nbrs, lc.numbers,
+                         lc.xindices, lc.yindices, lc.zindices,
                          cell_length, allow_rotation, num_chain_steps)
     rmsd, perm, U, ijk = res
 
-    num_atoms = len(numbers)
+    num_atoms = len(lc.numbers)
     i, j, k = ijk
-    translation = -np.dot(U, mean0) + mean1
-    translation -= i * shift[0] / num_atoms
-    translation -= j * shift[1] / num_atoms
-    translation -= k * shift[2] / num_atoms
+    translation = -np.dot(U, lc.mean0) + lc.mean1
+    translation -= i * lc.shift[0] / num_atoms
+    translation -= j * lc.shift[1] / num_atoms
+    translation -= k * lc.shift[2] / num_atoms
 
     return rmsd, perm, U, translation
