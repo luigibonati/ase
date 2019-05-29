@@ -49,7 +49,7 @@ def standardize_axes(a, b):
         for atoms in [a, b]:
             permute_axes(atoms, permutation)
 
-            # check that cell has appropriate structure (for chains and monolayers)
+            # check that cell has appropriate structure
             bad_cell = False
 
             # want cell in format:

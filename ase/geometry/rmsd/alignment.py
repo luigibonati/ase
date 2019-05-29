@@ -72,6 +72,22 @@ def wrap(positions, cell, pbc):
     return np.dot(scaled, cell)
 
 
+def cherry_pick(pbc, imcell, s0, shift, nbr_cells, eindices, p1_nbrs,
+                cindices, shift_counts):
+
+    num_atoms = len(s0)
+    s0 = np.copy(s0)
+    for i, index in enumerate(shift_counts):
+        indices = cindices[i][:index]
+        s0[indices] += shift[i]
+        s0 -= index * shift[i] / num_atoms
+        if pbc[i]:
+            s0[:, i] % 1.0
+
+    p0 = np.dot(s0, imcell)
+    return align(p0, eindices, p1_nbrs, nbr_cells)
+
+
 def slide(s0, scaled_shift, num_atoms, pbc, index, i):
 
     s0[index] += scaled_shift[i]
@@ -81,22 +97,12 @@ def slide(s0, scaled_shift, num_atoms, pbc, index, i):
 
 
 def find_alignment(dim, pbc, imcell, s0, p1, scaled_shift, nbr_cells, eindices,
-                   p1_nbrs, numbers, cell_length, allow_rotation,
-                   num_chain_steps):
+                   p1_nbrs, numbers, xindices, yindices, zindices,
+                   cell_length, allow_rotation, num_chain_steps):
 
     num_atoms = len(s0)
-
-    xindices = np.argsort(s0[:, 0])
-    yindices = np.argsort(s0[:, 1])
-    zindices = np.argsort(s0[:, 2])
-
-    if dim == 1:
-        xindices = [0]
-        yindices = [0]
-        if num_chain_steps is not None:
-            zindices = zindices[:num_chain_steps]
-    elif dim == 2:
-        zindices = [0]
+    if dim == 1 and num_chain_steps is not None:
+        zindices = zindices[:num_chain_steps]
 
     U = np.eye(3)
     best = (float('inf'), None, None, None)
@@ -128,45 +134,59 @@ def find_alignment(dim, pbc, imcell, s0, p1, scaled_shift, nbr_cells, eindices,
     return rmsd, perm, U, ijk
 
 
-def initialize(atoms0, atoms1):
+class LatticeComparator:
 
-    pbc = atoms0.pbc
-    dim = sum(pbc)
-    imcell = atoms0.cell
+    def __init__(self, atoms0, atoms1):
 
-    # get centred atomic positions
-    p0 = atoms0.get_positions()
-    p1 = atoms1.get_positions()
-    mean0 = np.mean(p0, axis=0)
-    mean1 = np.mean(p1, axis=0)
-    p0 = wrap(p0 - mean0, imcell, pbc)
-    p1 = wrap(p1 - mean1, imcell, pbc)
+        self.pbc = atoms0.pbc
+        self.dim = sum(self.pbc)
+        self.imcell = atoms0.cell
 
-    s0 = np.linalg.solve(imcell.T, p0.T).T
+        # get centred atomic positions
+        p0 = atoms0.get_positions()
+        p1 = atoms1.get_positions()
+        self.mean0 = np.mean(p0, axis=0)
+        self.mean1 = np.mean(p1, axis=0)
+        p0 = wrap(p0 - self.mean0, self.imcell, self.pbc)
+        p1 = wrap(p1 - self.mean1, self.imcell, self.pbc)
+        self.p0 = p0
+        self.p1 = p1
 
-    numbers = atoms0.numbers
-    elements = np.unique(numbers)
-    eindices = [np.where(numbers == element)[0] for element in elements]
+        self.s0 = np.linalg.solve(self.imcell.T, p0.T).T
 
-    shift = get_shift_vectors(dim, imcell)
-    scaled_shift = np.linalg.solve(imcell.T, shift.T).T
+        self.numbers = atoms0.numbers
+        self.eindices = [np.where(self.numbers == element)[0]
+                         for element in np.unique(self.numbers)]
 
-    nbr_cells = get_neighboring_cells(dim, imcell)
-    p1_nbrs = [np.concatenate([p1[indices] + np.dot(shift.T, nbr)
-               for nbr in nbr_cells]) for indices in eindices]
+        self.shift = get_shift_vectors(self.dim, self.imcell)
+        self.scaled_shift = np.linalg.solve(self.imcell.T, self.shift.T).T
 
-    return pbc, dim, imcell, mean0, mean1, s0, numbers, eindices, shift, scaled_shift, nbr_cells, p1_nbrs
+        self.nbr_cells = get_neighboring_cells(self.dim, self.imcell)
+        self.p1_nbrs = [np.concatenate([p1[indices] + np.dot(self.shift.T, nbr)
+                        for nbr in self.nbr_cells])
+                        for indices in self.eindices]
+
+        xindices, yindices, zindices = np.argsort(self.s0, axis=0).T
+        if self.dim == 1:
+            xindices = [0]
+            yindices = [0]
+        elif self.dim == 2:
+            zindices = [0]
+
+        self.xindices = xindices
+        self.yindices = yindices
+        self.zindices = zindices
 
 
 def best_alignment(atoms0, atoms1, allow_rotation, num_chain_steps):
 
-    data = initialize(atoms0, atoms1)
-    pbc, dim, imcell, mean0, mean1, s0, numbers, eindices, shift, scaled_shift, nbr_cells, p1_nbrs = data
+    lc = alignment.LatticeComparator(atoms0, atoms1)
 
     cell_length = imcell[2, 2]
-    res = find_alignment(dim, pbc, imcell, s0, None, scaled_shift, nbr_cells,
-                         eindices, p1_nbrs, numbers, cell_length,
-                         allow_rotation, num_chain_steps)
+    res = find_alignment(lc.dim, lc.pbc, lc.imcell, lc.s0, lc.p1,
+                         lc.scaled_shift, lc.nbr_cells, lc.eindices,
+                         lc.p1_nbrs, lc.numbers,
+                         cell_length, allow_rotation, num_chain_steps)
     rmsd, perm, U, ijk = res
 
     num_atoms = len(numbers)
