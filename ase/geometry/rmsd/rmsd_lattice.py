@@ -1,7 +1,7 @@
 import numpy as np
 from collections import namedtuple
 from ase.geometry.rmsd.cell_projection import intermediate_representation
-from ase.geometry.rmsd.alignment import best_alignment
+from ase.geometry.rmsd.alignment import LatticeComparator
 from ase.geometry.rmsd.standard_form import standardize_atoms
 
 
@@ -17,7 +17,9 @@ def _calculate_rmsd(atoms0, atoms1, frame, ignore_stoichiometry, sign,
     a, b, atomic_perms, axis_perm = res
 
     pa, pb, celldist, mr_path = intermediate_representation(a, b, frame)
-    res = best_alignment(pa, pb, allow_rotation, num_chain_steps)
+
+    lc = LatticeComparator(pa, pb)
+    res = lc.best_alignment(allow_rotation, num_chain_steps)
     rmsd, assignment, U, translation = res
 
     # undo Minkowski-reduction

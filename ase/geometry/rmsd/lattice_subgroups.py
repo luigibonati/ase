@@ -3,7 +3,7 @@ import numpy as np
 
 from ase.geometry.rmsd.cell_projection import intermediate_representation
 from ase.geometry.rmsd.standard_form import standardize_atoms
-import ase.geometry.rmsd.alignment as alignment
+from ase.geometry.rmsd.alignment import LatticeComparator
 
 
 class LatticeReducer:
@@ -14,7 +14,7 @@ class LatticeReducer:
         a, b, atomic_perms, axis_perm = res
         pa, pb, _, _ = intermediate_representation(a, b, 'central')
 
-        lc = alignment.LatticeComparator(pa, pb)
+        lc = LatticeComparator(pa, pb)
         dim = lc.dim
 
         num_atoms = len(lc.numbers)
@@ -40,11 +40,7 @@ class LatticeReducer:
         if self.permutations[c][0] != -1:
             return self.permutations[c]
 
-        lc = self.lc
-        rmsd, permutation = alignment.cherry_pick(lc.pbc, lc.imcell, lc.s0,
-                                                  lc.scaled_shift,
-                                                  lc.nbr_cells, lc.eindices,
-                                                  lc.p1_nbrs, self.cindices, c)
+        rmsd, permutation = self.lc.cherry_pick(c)
         self.distances[c] = rmsd
         self.permutations[c] = permutation
         return permutation
