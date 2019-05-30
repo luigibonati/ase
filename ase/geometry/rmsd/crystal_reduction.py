@@ -84,9 +84,9 @@ def reduced_layout(n, dim, H, lr, rmsd):
     return reduced
 
 
-def find_lattice_reductions(atoms, keep_all=False):
+def find_crystal_reductions(atoms, keep_all=False):
 
-    Reduced = namedtuple('ReducedLattice', 'rmsd factor atoms')
+    Reduced = namedtuple('ReducedCrystal', 'rmsd factor atoms')
 
     n = len(atoms)
     dim = sum(atoms.pbc)
