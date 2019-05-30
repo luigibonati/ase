@@ -235,8 +235,6 @@ def find_consistent_reductions(atoms):
             continue
 
         # print(it, H.reshape(-1), rmsd)
-
-        rmsd /= 2 * n    # scaling from pairwise rmsd to cluster rmsd
         group_index = n**dim // np.prod(np.diag(H))
         data.append((rmsd, group_index, H))
 

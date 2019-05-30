@@ -99,6 +99,7 @@ def find_lattice_reductions(atoms, keep_all=False):
         if reduced_atoms is None:
             continue
 
+        rmsd /= 2 * n    # scaling from pairwise rmsd to cluster rmsd
         group_index = np.prod(n // np.diag(H))
         key = [group_index, i][keep_all]
         entry = Reduced(rmsd=rmsd, factor=group_index, atoms=reduced_atoms)
