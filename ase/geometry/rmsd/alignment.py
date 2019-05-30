@@ -2,6 +2,7 @@ import numpy as np
 from scipy.spatial.distance import cdist
 from ase.geometry.rmsd.chain_alignment import register_chain
 from ase.geometry.rmsd.assignment import linear_sum_assignment
+from ase.geometry import wrap_positions
 
 
 def concatenate_permutations(perms):
@@ -26,7 +27,7 @@ def get_shift_vectors(dim, imcell):
 
 def get_neighboring_cells(dim, imcell):
 
-    # Minkowski reduction means closest neighbours are sufficient
+    # Minkowski reduction means Voronoi-relevant vectors are sufficient
     xlim = ylim = zlim = 1
     if dim == 1:
         xlim = 0
@@ -56,21 +57,6 @@ def align(p0, eindices, p1_nbrs, nbr_cells):
     num_atoms = len(p0)
     rmsd = np.sqrt(nrmsdsq / num_atoms)
     return rmsd, concatenate_permutations(perms)
-
-
-# TODO: call ase.geometry.wrap_positions instead
-def wrap(positions, cell, pbc):
-
-    scaled = np.linalg.solve(cell.T, positions.T).T
-
-    for i, periodic in enumerate(pbc):
-        if periodic:
-            # Yes, we need to do it twice.
-            # See the scaled_positions.py test.
-            scaled[:, i] %= 1.0
-            scaled[:, i] %= 1.0
-
-    return np.dot(scaled, cell)
 
 
 def cherry_pick(pbc, imcell, s0, shift, nbr_cells, eindices, p1_nbrs,
@@ -160,8 +146,8 @@ class LatticeComparator:
         p1 = atoms1.get_positions()
         self.mean0 = np.mean(p0, axis=0)
         self.mean1 = np.mean(p1, axis=0)
-        p0 = wrap(p0 - self.mean0, self.imcell, self.pbc)
-        p1 = wrap(p1 - self.mean1, self.imcell, self.pbc)
+        p0 = wrap_positions(p0 - self.mean0, self.imcell, self.pbc, eps=0)
+        p1 = wrap_positions(p1 - self.mean1, self.imcell, self.pbc, eps=0)
         self.p0 = p0
         self.p1 = p1
 
@@ -194,7 +180,7 @@ class LatticeComparator:
 
         if allow_rotation:
             assert self.dim == 1
-            cell_length = self.imcell[2, 2]
+            cell_length = np.linalg.norm(self.imcell[2])
             res = find_chain_alignment(self.dim, self.pbc, self.imcell,
                                        self.s0, self.p1, self.scaled_shift,
                                        self.eindices, self.zindices,

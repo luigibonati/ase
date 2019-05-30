@@ -13,8 +13,6 @@ def permute_axes(atoms, permutation):
 
 def standardize_axes(a, b):
 
-    tol = 1E-12
-
     sa = np.sign(np.linalg.det(a.cell))
     sb = np.sign(np.linalg.det(b.cell))
     if sa != sb:
@@ -40,29 +38,19 @@ def standardize_axes(a, b):
     else:
         permutation = np.arange(3)
 
-    for atoms in [a, b]:
-        lengths = np.linalg.norm(atoms.cell, axis=1)
-        if min(lengths) < tol:
-            raise Exception("Unit cell vectors may not have zero length")
-
     if dim <= 2:
         for atoms in [a, b]:
             permute_axes(atoms, permutation)
 
-            # check that cell has appropriate structure
-            bad_cell = False
+            tol = 1E-10
+            if (np.dot(atoms.cell[: 2], atoms.cell[2]) >= tol).any():
+                if dim == 1:
+                    raise Exception("Off-axis cell vectors not perpendicular to axis cell vector")
+                elif dim == 2:
+                    raise Exception("Out-of-plane cell vector not perpendicular to in-plane vectors")
 
-            # want cell in format:
-            # [X, X, 0]
-            # [X, X, 0]
-            # [0, 0, X]
-            for i, j in [(0, 2), (1, 2), (2, 0), (2, 1)]:
-                if abs(atoms.cell[i, j]) > tol:
-                    bad_cell = True
-                atoms.cell[i, j] = 0
-
-            if bad_cell:
-                warnings.warn('Bad cell: {}'.format(atoms.cell))
+            if dim == 1 and np.dot(atoms.cell[0], atoms.cell[1]) >= tol:
+                    raise Exception("Off-axis cell vectors not perpendicular")
 
     return dim, a, b, permutation
 
@@ -86,7 +74,7 @@ ignore_stoichiometry=True")
         # sort atoms by atomic numbers
         for atoms in [a, b]:
             numbers = atoms.numbers
-            indices = np.argsort(numbers)
+            indices = np.argsort(numbers, kind='stable')
             perms.append(indices)
 
             atoms.numbers = numbers[indices]
