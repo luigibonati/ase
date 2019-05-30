@@ -79,7 +79,9 @@ def order_by_numbers(a, b, ignore_stoichiometry):
             perms.append(np.arange(n))
     else:
         # check stoichimetries are identical
-        assert(sorted(a.numbers) == sorted(b.numbers))
+        if sorted(a.numbers) != sorted(b.numbers):
+            raise Exception("Stoichiometries must be identical unless \
+ignore_stoichiometry=True")
 
         # sort atoms by atomic numbers
         for atoms in [a, b]:

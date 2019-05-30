@@ -58,6 +58,7 @@ def align(p0, eindices, p1_nbrs, nbr_cells):
     return rmsd, concatenate_permutations(perms)
 
 
+# TODO: call ase.geometry.wrap_positions instead
 def wrap(positions, cell, pbc):
 
     scaled = np.linalg.solve(cell.T, positions.T).T
@@ -73,8 +74,9 @@ def wrap(positions, cell, pbc):
 
 
 def cherry_pick(pbc, imcell, s0, shift, nbr_cells, eindices, p1_nbrs,
-                cindices, shift_counts):
+                xindices, yindices, zindices, shift_counts):
 
+    cindices = [xindices, yindices, zindices]
     num_atoms = len(s0)
     s0 = np.copy(s0)
     for i, index in enumerate(shift_counts):
@@ -96,42 +98,53 @@ def slide(s0, scaled_shift, num_atoms, pbc, index, i):
         s0[:, i] % 1.0
 
 
-def find_alignment(dim, pbc, imcell, s0, p1, scaled_shift, nbr_cells, eindices,
-                   p1_nbrs, numbers, xindices, yindices, zindices,
-                   cell_length, allow_rotation, num_chain_steps):
+def find_chain_alignment(dim, pbc, imcell, s0, p1, scaled_shift, eindices,
+                         zindices, cell_length, num_chain_steps):
 
     num_atoms = len(s0)
-    if dim == 1 and num_chain_steps is not None:
+    assert dim == 1
+    if num_chain_steps is not None:
         zindices = zindices[:num_chain_steps]
 
-    U = np.eye(3)
     best = (float('inf'), None, None, None)
+
+    for kk, k in enumerate(zindices):
+
+        p0 = np.dot(s0, imcell)
+        b = (best[0], np.arange(num_atoms), np.eye(2))
+        rmsd, perm, u = register_chain(p0, p1, eindices, cell_length, b)
+        U = np.eye(3)
+        U[:2, :2] = u
+
+        trial = (rmsd, perm, U, (0, 0, kk))
+        best = min(best, trial, key=lambda x: x[0])
+        slide(s0, scaled_shift, num_atoms, pbc, k, 2)
+
+    rmsd, perm, U, ijk = best
+    return rmsd, perm, U, ijk
+
+
+def find_alignment(dim, pbc, imcell, s0, p1, scaled_shift, nbr_cells, eindices,
+                   p1_nbrs, xindices, yindices, zindices):
+
+    num_atoms = len(s0)
+    best = (float('inf'), None, None)
 
     for kk, k in enumerate(zindices):
         for jj, j in enumerate(yindices):
             for ii, i in enumerate(xindices):
 
                 p0 = np.dot(s0, imcell)
-
-                if dim == 1 and allow_rotation:
-
-                    b = (best[0], np.arange(num_atoms), np.eye(2))
-                    rmsd, perm, u = register_chain(p0, p1, eindices,
-                                                   cell_length, b)
-                    U = np.eye(3)
-                    U[:2, :2] = u
-                else:
-                    rmsd, perm = align(p0, eindices, p1_nbrs, nbr_cells)
-
-                trial = (rmsd, perm, U, (ii, jj, kk))
+                rmsd, perm = align(p0, eindices, p1_nbrs, nbr_cells)
+                trial = (rmsd, perm, (ii, jj, kk))
                 best = min(best, trial, key=lambda x: x[0])
 
                 slide(s0, scaled_shift, num_atoms, pbc, i, 0)
             slide(s0, scaled_shift, num_atoms, pbc, j, 1)
         slide(s0, scaled_shift, num_atoms, pbc, k, 2)
 
-    rmsd, perm, U, ijk = best
-    return rmsd, perm, U, ijk
+    rmsd, perm, ijk = best
+    return rmsd, perm, np.eye(3), ijk
 
 
 class LatticeComparator:
@@ -177,24 +190,32 @@ class LatticeComparator:
         self.yindices = yindices
         self.zindices = zindices
 
+    def best_alignment(self, allow_rotation, num_chain_steps):
 
-def best_alignment(atoms0, atoms1, allow_rotation, num_chain_steps):
+        if allow_rotation:
+            assert self.dim == 1
+            cell_length = self.imcell[2, 2]
+            res = find_chain_alignment(self.dim, self.pbc, self.imcell,
+                                       self.s0, self.p1, self.scaled_shift,
+                                       self.eindices, self.zindices,
+                                       cell_length, num_chain_steps)
+        else:
+            res = find_alignment(self.dim, self.pbc, self.imcell, self.s0,
+                                 self.p1, self.scaled_shift, self.nbr_cells,
+                                 self.eindices, self.p1_nbrs,
+                                 self.xindices, self.yindices, self.zindices)
+        rmsd, perm, U, ijk = res
 
-    lc = LatticeComparator(atoms0, atoms1)
+        num_atoms = len(self.numbers)
+        i, j, k = ijk
+        translation = -np.dot(U, self.mean0) + self.mean1
+        translation -= i * self.shift[0] / num_atoms
+        translation -= j * self.shift[1] / num_atoms
+        translation -= k * self.shift[2] / num_atoms
 
-    cell_length = lc.imcell[2, 2]
-    res = find_alignment(lc.dim, lc.pbc, lc.imcell, lc.s0, lc.p1,
-                         lc.scaled_shift, lc.nbr_cells, lc.eindices,
-                         lc.p1_nbrs, lc.numbers,
-                         lc.xindices, lc.yindices, lc.zindices,
-                         cell_length, allow_rotation, num_chain_steps)
-    rmsd, perm, U, ijk = res
+        return rmsd, perm, U, translation
 
-    num_atoms = len(lc.numbers)
-    i, j, k = ijk
-    translation = -np.dot(U, lc.mean0) + lc.mean1
-    translation -= i * lc.shift[0] / num_atoms
-    translation -= j * lc.shift[1] / num_atoms
-    translation -= k * lc.shift[2] / num_atoms
-
-    return rmsd, perm, U, translation
+    def cherry_pick(self, c):
+        return cherry_pick(self.pbc, self.imcell, self.s0, self.scaled_shift,
+                           self.nbr_cells, self.eindices, self.p1_nbrs,
+                           self.xindices, self.xindices, self.zindices, c)

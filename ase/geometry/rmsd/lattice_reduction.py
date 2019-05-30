@@ -3,8 +3,10 @@ from collections import namedtuple
 from scipy.spatial.distance import cdist
 
 from ase import Atoms
-import ase.geometry.rmsd.alignment as alignment
-import ase.geometry.rmsd.lattice_subgroups as lattice_subgroups
+from ase.geometry.rmsd.alignment import get_shift_vectors
+from ase.geometry.rmsd.alignment import get_neighboring_cells
+from ase.geometry.rmsd.lattice_subgroups import get_group_elements
+from ase.geometry.rmsd.lattice_subgroups import find_consistent_reductions
 from ase.geometry.rmsd.cell_projection import minkowski_reduce
 from ase.geometry.dimensionality.disjoint_set import DisjointSet
 
@@ -59,13 +61,13 @@ def cluster_component(indices, ps, lr, shifts, i):
 
 def reduced_layout(n, dim, H, lr, rmsd):
 
-    indices = lattice_subgroups.get_group_elements(n, dim, H)
+    indices = get_group_elements(n, dim, H)
     components = assign_atoms_to_clusters(n, lr, indices)
     assert len(np.unique(np.bincount(components))) == 1
 
     clustered = clustered_atoms(n, dim, H, lr)
-    nbr_cells = alignment.get_neighboring_cells(dim, clustered.cell)
-    shift = alignment.get_shift_vectors(dim, clustered.cell)
+    nbr_cells = get_neighboring_cells(dim, clustered.cell)
+    shift = get_shift_vectors(dim, clustered.cell)
     shifts = [np.dot(shift.T, nbr) for nbr in nbr_cells]
 
     data = []
@@ -93,7 +95,7 @@ def find_lattice_reductions(atoms, keep_all=False):
 
     n = len(atoms)
     dim = sum(atoms.pbc)
-    reductions, lr = lattice_subgroups.find_consistent_reductions(atoms)
+    reductions, lr = find_consistent_reductions(atoms)
 
     reduced = {}
     for i, (rmsd, group_index, H) in enumerate(reductions):

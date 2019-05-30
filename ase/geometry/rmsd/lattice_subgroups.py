@@ -149,15 +149,15 @@ def get_basis(dim, n, lr):
     if dim == 1:
         for d in consistent_first_rows(dim, n, ds, lr):
             yield np.array([[d]])
-    elif dim == 2:
 
+    elif dim == 2:
         for a in consistent_first_rows(dim, n, ds, lr):
             for b in ds:
                 for t in range(gcd(a, n // b)):
                     s = t * a // gcd(a, n // b)
                     yield np.array([[a, 0], [s, b]])
-    elif dim == 3:
 
+    elif dim == 3:
         for a in consistent_first_rows(dim, n, ds, lr):
 
             for b, c in itertools.product(ds, repeat=2):
