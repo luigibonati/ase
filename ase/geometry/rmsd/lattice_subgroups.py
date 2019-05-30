@@ -84,6 +84,9 @@ def get_group_elements(n, dim, H):
 
 def permutationally_consistent(dim, H, lr):
 
+    if lr is None:  # Used for unit tests only
+        return 0
+
     n = len(lr.lc.s0)
     seen = -np.ones((3, n)).astype(np.int)
     indices = get_group_elements(n, dim, H)
@@ -188,6 +191,34 @@ def get_basis(dim, n, lr):
                             yield np.array([[a, 0, 0], [s, b, 0], [u, v, c]])
 
 
+def number_of_subgroups(dim, n):
+
+    def _P(n):
+        gcd = np.gcd
+        return sum([gcd(k, n) for k in range(1, n+1)])
+
+    assert dim in [1, 2, 3]
+
+    gcd = np.gcd
+    ds = get_divisors(n)
+
+    if dim == 1:
+        return len(ds)
+    elif dim == 2:
+        return sum([gcd(a, b) for a in ds for b in ds])
+    else:
+        total = 0
+        for a, b, c in itertools.product(ds, repeat=3):
+            A = gcd(a, n // b)
+            B = gcd(b, n // c)
+            C = gcd(a, n // c)
+            ABC = A * B * C
+
+            X = ABC // gcd(a * n // c, ABC)
+            total += ABC // X**2 * _P(X)
+        return total
+
+
 def find_consistent_reductions(atoms):
 
     n = len(atoms)
@@ -205,6 +236,7 @@ def find_consistent_reductions(atoms):
 
         # print(it, H.reshape(-1), rmsd)
 
+        rmsd /= 2 * n    # scaling from pairwise rmsd to cluster rmsd
         group_index = n**dim // np.prod(np.diag(H))
         data.append((rmsd, group_index, H))
 

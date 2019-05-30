@@ -27,13 +27,8 @@ def assign_atoms_to_clusters(n, lr, indices):
 
 def clustered_atoms(n, dim, H, lr):
 
-    if dim == 1:
-        raise Exception("not implemented yet")
-    elif dim == 2:
-        _H = np.diag([n, n, n])
-        _H[:dim, :dim] = H
-    elif dim == 3:
-        _H = np.copy(H)
+    _H = np.diag([n, n, n])
+    _H[:dim, :dim] = H
 
     rcell = np.dot(_H, lr.lc.imcell) / n
     mr_cell, _ = minkowski_reduce(rcell, dim)
