@@ -43,12 +43,13 @@ def standardize_axes(a, b):
             permute_axes(atoms, permutation)
 
             tol = 1E-10
-            if (np.dot(atoms.cell[: 2], atoms.cell[2]) >= tol).any():
-                if dim == 1:
-                    raise Exception("Off-axis cell vectors not perpendicular to axis cell vector")
-                elif dim == 2:
-                    raise Exception("Out-of-plane cell vector not perpendicular to in-plane vectors")
-
+            dot_products = np.dot(atoms.cell[: 2], atoms.cell[2])
+            if dim == 1 and (dot_products >= tol).any():
+                raise Exception("Off-axis cell vectors not perpendicular to \
+axis cell vector")
+            elif dim == 2 and (dot_products >= tol).any():
+                raise Exception("Out-of-plane cell vector not perpendicular \
+to in-plane vectors")
             if dim == 1 and np.dot(atoms.cell[0], atoms.cell[1]) >= tol:
                     raise Exception("Off-axis cell vectors not perpendicular")
 
