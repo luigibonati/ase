@@ -19,7 +19,8 @@ def _calculate_rmsd(atoms1, atoms2, frame, ignore_stoichiometry, sign,
     res = standardize_atoms(a, b, ignore_stoichiometry)
     atomic_perms, axis_perm = res
 
-    pa, pb, celldist, mr_path, _affine1, _affine2 = intermediate_representation(a, b, frame, allow_rotation)
+    res = intermediate_representation(a, b, frame, allow_rotation)
+    pa, pb, celldist, mr_path, linear_map1, linear_map2
 
     lc = LatticeComparator(pa, pb)
     res = lc.best_alignment(allow_rotation, num_chain_steps)
@@ -39,8 +40,8 @@ def _calculate_rmsd(atoms1, atoms2, frame, ignore_stoichiometry, sign,
     imcell = imcell[invaxis][:, invaxis]
     U = U[invaxis][:, invaxis]
     translation = translation[invaxis]
-    _affine1 = _affine1[invaxis][:, invaxis]
-    _affine2 = _affine2[invaxis][:, invaxis]
+    linear_map1 = linear_map1[invaxis][:, invaxis]
+    linear_map2 = linear_map2[invaxis][:, invaxis]
 
     # convert basis and translation to fractional coordinates
     fractional = np.linalg.solve(imcell.T, translation.T).T
@@ -50,10 +51,9 @@ def _calculate_rmsd(atoms1, atoms2, frame, ignore_stoichiometry, sign,
     affine1 = np.zeros((4, 4))
     affine2 = np.zeros((4, 4))
 
-    affine1[:3, :3] = np.dot(_affine1, U) * sign
+    affine1[:3, :3] = np.dot(linear_map1, U) * sign
     affine1[:3, 3] = translation
-    affine2[:3, :3] = _affine2
-
+    affine2[:3, :3] = linear_map2
 
     entries = 'rmsd dcell cell basis translation permutation mul1 mul2 affine1 affine2'
     result = namedtuple('RMSDResult', entries)

@@ -82,17 +82,6 @@ def cell_distance(atoms0, atoms1, frame, scale_invariant=False):
         return (dleft + dright) / 2
 
 
-def calculate_intermediate_cell_chain(a, b, frame):
-
-    if frame == 'left':
-        return a
-    elif frame == 'right':
-        return b
-
-    z = (np.linalg.norm(a[2]) + np.linalg.norm(b[2])) / 2
-    return z / np.linalg.norm(a[2]) * a
-
-
 def intermediate_representation(a, b, frame, allow_rotation):
 
     apos0 = a.get_positions(wrap=False)
@@ -124,18 +113,8 @@ unaligned chain axes and allow_rotation=False")
             atoms.set_cell(cell, scale_atoms=False)
 
     imcell = calculate_intermediate_cell(a.cell, b.cell, frame)
-
-    if dim == 1 and not allow_rotation:
-        imcell = calculate_intermediate_cell_chain(a.cell, b.cell, frame)
-
-        for atoms in [a, b]:
-            k = np.linalg.norm(imcell[2]) / np.linalg.norm(atoms.cell[2])
-            positions = atoms.get_positions(wrap=False)
-            atoms.set_cell(imcell, scale_atoms=False)
-            atoms.set_positions(k * positions)
-    else:
-        for atoms in [a, b]:
-            atoms.set_cell(imcell, scale_atoms=True)
+    for atoms in [a, b]:
+        atoms.set_cell(imcell, scale_atoms=True)
 
     apos1 = a.get_positions(wrap=False)
     bpos1 = b.get_positions(wrap=False)

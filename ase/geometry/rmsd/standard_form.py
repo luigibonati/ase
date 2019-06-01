@@ -98,8 +98,8 @@ ignore_stoichiometry=True")
 def standardize_atoms(a, b, ignore_stoichiometry):
     """This function orders the atoms by z-number and permutes the coordinate
     axes into a standard form: the z-axis is periodic for 1D systems, the x and
-    y-axes are periodic for 2D systems.  Standardization simplifies the code for
-    finding the optimal alignment."""
+    y-axes are periodic for 2D systems.  Standardization simplifies the code
+    for finding the optimal alignment."""
 
     permutation = standardize_axes(a, b)
     standardize_cells(a, b)

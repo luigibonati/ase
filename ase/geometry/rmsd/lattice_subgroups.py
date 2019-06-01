@@ -195,7 +195,7 @@ def number_of_subgroups(dim, n):
 
     def _P(n):
         gcd = np.gcd
-        return sum([gcd(k, n) for k in range(1, n+1)])
+        return sum([gcd(k, n) for k in range(1, n + 1)])
 
     assert dim in [1, 2, 3]
 
