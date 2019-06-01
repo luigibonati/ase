@@ -1047,6 +1047,20 @@ class Atoms(object):
 
         self.arrays['positions'] += np.array(displacement)
 
+
+    def affine_transformation(self, augmented):
+        """Apply an affine transformation to atomic positions and cell.
+
+        The argument is a 4x4 augmented matrix containing a linear map and a
+        translation.  The linear map is applied to the cell and the atomic
+        positions.  The translation is applied to the atomic positions only."""
+
+        A = augmented[:3, :3]
+        t = augmented[:3, 3]
+        self.set_positions(np.dot(self.get_positions(), A))
+        self.cell = np.dot(self.cell, A)
+        self.translate(t)
+
     def center(self, vacuum=None, axis=(0, 1, 2), about=None):
         """Center atoms in unit cell.
 

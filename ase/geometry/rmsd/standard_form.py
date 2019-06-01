@@ -13,11 +13,6 @@ def permute_axes(atoms, permutation):
 
 def standardize_axes(a, b):
 
-    sa = np.sign(np.linalg.det(a.cell))
-    sb = np.sign(np.linalg.det(b.cell))
-    if sa != sb:
-        warnings.warn('Cells have different handedness')
-
     # permute the axes such that the pbc's are ordered like this:
     #    1D: pbc = (0, 0, 1)
     #    2D: pbc = (1, 1, 0)
@@ -38,22 +33,38 @@ def standardize_axes(a, b):
     else:
         permutation = np.arange(3)
 
-    if dim <= 2:
-        for atoms in [a, b]:
-            permute_axes(atoms, permutation)
+    for atoms in [a, b]:
+        permute_axes(atoms, permutation)
 
-            tol = 1E-10
-            dot_products = np.dot(atoms.cell[: 2], atoms.cell[2])
-            if dim == 1 and (dot_products >= tol).any():
-                raise Exception("Off-axis cell vectors not perpendicular to \
+    return permutation
+
+
+def standardize_cells(a, b):
+
+    for atoms in [a, b]:
+        cell = atoms.cell.complete()
+        atoms.set_cell(cell, scale_atoms=False)
+
+    sa = np.sign(np.linalg.det(a.cell))
+    sb = np.sign(np.linalg.det(b.cell))
+    if sa != sb:
+        warnings.warn('Cells have different handedness')
+
+    dim = sum(a.pbc)
+    if dim == 3:
+        return
+
+    tol = 1E-10
+    for atoms in [a, b]:
+        dot_products = np.dot(atoms.cell[: 2], atoms.cell[2])
+        if dim == 1 and (dot_products >= tol).any():
+            raise Exception("Off-axis cell vectors not perpendicular to \
 axis cell vector")
-            elif dim == 2 and (dot_products >= tol).any():
-                raise Exception("Out-of-plane cell vector not perpendicular \
+        elif dim == 2 and (dot_products >= tol).any():
+            raise Exception("Out-of-plane cell vector not perpendicular \
 to in-plane vectors")
-            if dim == 1 and np.dot(atoms.cell[0], atoms.cell[1]) >= tol:
-                    raise Exception("Off-axis cell vectors not perpendicular")
-
-    return dim, a, b, permutation
+        if dim == 1 and np.dot(atoms.cell[0], atoms.cell[1]) >= tol:
+            raise Exception("Off-axis cell vectors not perpendicular")
 
 
 def order_by_numbers(a, b, ignore_stoichiometry):
@@ -66,20 +77,21 @@ def order_by_numbers(a, b, ignore_stoichiometry):
             n = len(atoms)
             atoms.numbers = np.ones(n).astype(np.int)
             perms.append(np.arange(n))
-    else:
-        # check stoichimetries are identical
-        if sorted(a.numbers) != sorted(b.numbers):
-            raise Exception("Stoichiometries must be identical unless \
+        return perms
+
+    # check stoichimetries are identical
+    if sorted(a.numbers) != sorted(b.numbers):
+        raise Exception("Stoichiometries must be identical unless \
 ignore_stoichiometry=True")
 
-        # sort atoms by atomic numbers
-        for atoms in [a, b]:
-            numbers = atoms.numbers
-            indices = np.argsort(numbers, kind='stable')
-            perms.append(indices)
+    # sort atoms by atomic numbers
+    for atoms in [a, b]:
+        numbers = atoms.numbers
+        indices = np.argsort(numbers, kind='stable')
+        perms.append(indices)
 
-            atoms.numbers = numbers[indices]
-            atoms.set_positions(atoms.get_positions()[indices])
+        atoms.numbers = numbers[indices]
+        atoms.set_positions(atoms.get_positions()[indices])
     return perms
 
 
@@ -89,9 +101,8 @@ def standardize_atoms(a, b, ignore_stoichiometry):
     y-axes are perodic for 2D systems.  Standardization simplifies the code for
     finding the optimal alignment."""
 
-    a = a.copy()
-    b = b.copy()
-    dim, a, b, permutation = standardize_axes(a, b)
+    permutation = standardize_axes(a, b)
+    standardize_cells(a, b)
 
     zperms = order_by_numbers(a, b, ignore_stoichiometry)
-    return a, b, zperms, permutation
+    return zperms, permutation

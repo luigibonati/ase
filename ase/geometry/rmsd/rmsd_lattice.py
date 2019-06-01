@@ -12,11 +12,18 @@ def invert_permutation(perm):
 def _calculate_rmsd(atoms0, atoms1, frame, ignore_stoichiometry, sign,
                     allow_rotation, multiplier1, multiplier2,
                     num_chain_steps=None):
-    
-    res = standardize_atoms(atoms0.copy(), atoms1.copy(), ignore_stoichiometry)
-    a, b, atomic_perms, axis_perm = res
 
-    pa, pb, celldist, mr_path = intermediate_representation(a, b, frame)
+    a = atoms0.copy()
+    b = atoms1.copy()
+    res = standardize_atoms(a, b, ignore_stoichiometry)
+    atomic_perms, axis_perm = res
+    #print(a.get_positions())
+    #print(b.get_positions())
+    #asdf
+
+    pa, pb, celldist, mr_path, _affine1, _affine2 = intermediate_representation(a, b, frame)
+    #print(pa.get_positions() - pb.get_positions())
+    #asdf
 
     lc = LatticeComparator(pa, pb)
     res = lc.best_alignment(allow_rotation, num_chain_steps)
@@ -26,11 +33,6 @@ def _calculate_rmsd(atoms0, atoms1, frame, ignore_stoichiometry, sign,
     inv_mr = np.linalg.inv(mr_path)
     imcell = np.dot(inv_mr, pa.cell)
 
-    # convert basis and translation to fractional coordinates
-    fractional = np.linalg.solve(imcell.T, translation.T).T
-    basis = np.dot(imcell, np.linalg.solve(imcell.T, U.T).T)
-    basis *= sign
-
     # undo atomic permutation
     left, right = atomic_perms
     invleft = invert_permutation(left)
@@ -39,14 +41,30 @@ def _calculate_rmsd(atoms0, atoms1, frame, ignore_stoichiometry, sign,
     # undo axis permutation
     invaxis = invert_permutation(axis_perm)
     imcell = imcell[invaxis][:, invaxis]
-    fractional = fractional[invaxis]
-    basis = basis[invaxis][:, invaxis]
+    U = U[invaxis][:, invaxis]
+    translation = translation[invaxis]
+    _affine1 = _affine1[invaxis][:, invaxis]
+    _affine2 = _affine2[invaxis][:, invaxis]
 
-    entries = 'rmsd dcell cell basis translation permutation mul1 mul2'
+    # convert basis and translation to fractional coordinates
+    fractional = np.linalg.solve(imcell.T, translation.T).T
+    basis = np.dot(imcell, np.linalg.solve(imcell.T, U.T).T)
+    basis *= sign
+
+    affine1 = np.zeros((4, 4))
+    affine2 = np.zeros((4, 4))
+
+    #print("trans:", U, axis_perm)
+    affine1[:3, :3] = np.dot(_affine1, U) * sign
+    affine1[:3, 3] = translation
+    affine2[:3, :3] = _affine2
+
+
+    entries = 'rmsd dcell cell basis translation permutation mul1 mul2 affine1 affine2'
     result = namedtuple('RMSDResult', entries)
     return result(rmsd=rmsd, dcell=celldist, cell=imcell, basis=basis,
                   translation=fractional, permutation=assignment,
-                  mul1=multiplier1, mul2=multiplier2)
+                  mul1=multiplier1, mul2=multiplier2, affine1=affine1, affine2=affine2)
 
 
 def calculate_rmsd(atoms1, atoms2, frame='central', ignore_stoichiometry=False,
