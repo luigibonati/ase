@@ -41,6 +41,11 @@ def standardize_axes(a, b):
 
 def standardize_cells(a, b):
 
+    dim = sum(a.pbc)
+    if dim == 3:
+        return
+
+    tol = 1E-10
     for atoms in [a, b]:
         cell = atoms.cell.complete()
         atoms.set_cell(cell, scale_atoms=False)
@@ -50,11 +55,6 @@ def standardize_cells(a, b):
     if sa != sb:
         warnings.warn('Cells have different handedness')
 
-    dim = sum(a.pbc)
-    if dim == 3:
-        return
-
-    tol = 1E-10
     for atoms in [a, b]:
         dot_products = np.dot(atoms.cell[: 2], atoms.cell[2])
         if dim == 1 and (dot_products >= tol).any():
@@ -91,14 +91,14 @@ ignore_stoichiometry=True")
         perms.append(indices)
 
         atoms.numbers = numbers[indices]
-        atoms.set_positions(atoms.get_positions()[indices])
+        atoms.set_positions(atoms.get_positions(wrap=False)[indices])
     return perms
 
 
 def standardize_atoms(a, b, ignore_stoichiometry):
     """This function orders the atoms by z-number and permutes the coordinate
     axes into a standard form: the z-axis is periodic for 1D systems, the x and
-    y-axes are perodic for 2D systems.  Standardization simplifies the code for
+    y-axes are periodic for 2D systems.  Standardization simplifies the code for
     finding the optimal alignment."""
 
     permutation = standardize_axes(a, b)

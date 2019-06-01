@@ -9,21 +9,17 @@ def invert_permutation(perm):
     return np.argsort(perm)
 
 
-def _calculate_rmsd(atoms0, atoms1, frame, ignore_stoichiometry, sign,
+def _calculate_rmsd(atoms1, atoms2, frame, ignore_stoichiometry, sign,
                     allow_rotation, multiplier1, multiplier2,
                     num_chain_steps=None):
 
-    a = atoms0.copy()
-    b = atoms1.copy()
+    a = atoms1.copy()
+    b = atoms2.copy()
+
     res = standardize_atoms(a, b, ignore_stoichiometry)
     atomic_perms, axis_perm = res
-    #print(a.get_positions())
-    #print(b.get_positions())
-    #asdf
 
-    pa, pb, celldist, mr_path, _affine1, _affine2 = intermediate_representation(a, b, frame)
-    #print(pa.get_positions() - pb.get_positions())
-    #asdf
+    pa, pb, celldist, mr_path, _affine1, _affine2 = intermediate_representation(a, b, frame, allow_rotation)
 
     lc = LatticeComparator(pa, pb)
     res = lc.best_alignment(allow_rotation, num_chain_steps)
@@ -54,7 +50,6 @@ def _calculate_rmsd(atoms0, atoms1, frame, ignore_stoichiometry, sign,
     affine1 = np.zeros((4, 4))
     affine2 = np.zeros((4, 4))
 
-    #print("trans:", U, axis_perm)
     affine1[:3, :3] = np.dot(_affine1, U) * sign
     affine1[:3, 3] = translation
     affine2[:3, :3] = _affine2
