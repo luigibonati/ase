@@ -399,7 +399,7 @@ def complete_cell(cell):
         sf = [s[0], 1, 1]
         cell = (V @ np.diag(sf) @ WT).T
         if np.sign(np.linalg.det(cell)) < 0:
-            cell[0] = -cell[0]
+            cell[missing[0]] = -cell[missing[0]]
     elif len(missing) == 1:
         i = missing[0]
         cell[i] = np.cross(cell[i - 2], cell[i - 1])
