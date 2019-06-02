@@ -1,4 +1,5 @@
 import numpy as np
+import warnings
 from scipy.linalg import polar, lstsq
 from ase.geometry.rmsd.minkowski_reduction import gauss
 from ase.geometry.rmsd.minkowski_reduction import reduce_basis
@@ -82,35 +83,121 @@ def cell_distance(atoms0, atoms1, frame, scale_invariant=False):
         return (dleft + dright) / 2
 
 
+def standardize_1D(a, b, allow_rotation):
+
+    tol = 1E-10
+    av = a.cell[2] / np.linalg.norm(a.cell[2])
+    bv = b.cell[2] / np.linalg.norm(b.cell[2])
+    dot = np.dot(av, bv)
+    axis_aligned = abs(dot - 1) < tol
+
+    if not axis_aligned:
+
+        zero = False
+        for atoms in [a, b]:
+            lengths = np.linalg.norm(atoms.cell[:2], axis=1)
+            zero |= (lengths < tol).any()
+
+        if zero and not allow_rotation:
+            raise Exception("Comparison meaningful for cells with unaligned \
+chain axes and allow_rotation=False")
+
+    for atoms in [a, b]:
+        cell = atoms.cell
+
+        # check for orthogonality
+        if np.dot(cell[0], cell[1]) >= tol:
+            raise Exception("Off-axis cell vectors not orthogonal")
+
+        if (np.dot(cell[: 2], cell[2]) >= tol).any():
+            raise Exception("Off-axis cell vectors not perpendicular to axis \
+cell vector")
+
+        # fill in missing entries
+        cell = cell.complete()
+
+        # make off-axis cell vectors same length as axis vector
+        for i in range(2):
+            cell[i] *= np.linalg.norm(cell[2]) / np.linalg.norm(cell[i])
+        atoms.set_cell(cell, scale_atoms=False)
+
+
+def standardize_2D(a, b):
+
+    '''
+        both out-of-plane cell vectors non-zero in both systems:
+            warn if different handedness
+            respect handedness
+
+        one is non-zero:
+            make other one have same handedness
+            emit warning
+
+        both zero:
+            set both to right-handed
+            don't warn
+    '''
+
+    tol = 1E-10
+    zeros = [np.linalg.norm(atoms.cell[2]) < tol for atoms in [a, b]]
+
+    if sum(zeros) == 1:
+
+        tempa, tempb = a, b
+        if not zeros[0]:
+            tempa, tempb = tempb, tempa
+
+        sign = np.sign(np.linalg.det(tempb.cell))
+        assert sign != 0
+        cell = tempa.cell
+        cell[2] = np.cross(cell[0], cell[1])
+        cell[2] *= sign
+        warnings.warn("One cell has zero-length out-of-plane vector. \
+The other does not.")
+
+    for atoms in [a, b]:
+
+        cell = atoms.cell
+        if (np.abs(np.dot(cell[: 2], cell[2])) >= tol).any():
+            raise Exception("Out-of-plane cell vector not perpendicular to \
+in-plane vectors")
+
+        sign = np.sign(np.linalg.det(cell))
+        cell[2] = np.cross(cell[0], cell[1])
+        cell[2] /= np.sqrt(np.linalg.norm(cell[2]))
+
+        if sign != 0:
+            cell[2] *= sign
+        atoms.set_cell(cell, scale_atoms=False)
+
+
+def standardize_cells(a, b, allow_rotation):
+
+    tol = 1E-10
+    for atoms in [a, b]:
+        for i in range(3):
+            if atoms.pbc[i] and np.linalg.norm(atoms.cell[i]) < tol:
+                raise Exception("Cell vector in periodic direction has zero \
+length")
+
+    dim = sum(a.pbc)
+    if dim == 1:
+        standardize_1D(a, b, allow_rotation)
+    elif dim == 2:
+        standardize_2D(a, b)
+
+    sa = np.sign(np.linalg.det(a.cell))
+    sb = np.sign(np.linalg.det(b.cell))
+    if sa != sb:
+        warnings.warn('Cells have different handedness')
+
+
 def intermediate_representation(a, b, frame, allow_rotation):
+
+    standardize_cells(a, b, allow_rotation)
 
     apos0 = a.get_positions(wrap=False)
     bpos0 = b.get_positions(wrap=False)
-
-    tol = 1E-10
-    dim = sum(a.pbc)
-    if dim == 1:
-        av = a.cell[2] / np.linalg.norm(a.cell[2])
-        bv = b.cell[2] / np.linalg.norm(b.cell[2])
-        dot = np.dot(av, bv)
-        axis_aligned = abs(dot - 1) < tol
-        if not axis_aligned and not allow_rotation:
-            raise Exception("Comparison not meaningful for cells with \
-unaligned chain axes and allow_rotation=False")
-
-        for atoms in [a, b]:
-            cell = np.copy(atoms.cell)
-            for i in range(2):
-                cell[i] *= np.linalg.norm(cell[2]) / np.linalg.norm(cell[i])
-            atoms.set_cell(cell, scale_atoms=False)
-
-    elif dim == 2:
-        for atoms in [a, b]:
-            for i in range(2):
-                cell = np.copy(atoms.cell)
-                cell[2] = np.cross(cell[0], cell[1])
-                cell[2] /= np.sqrt(np.linalg.norm(cell[2]))
-            atoms.set_cell(cell, scale_atoms=False)
 
     imcell = calculate_intermediate_cell(a.cell, b.cell, frame)
     for atoms in [a, b]:
@@ -119,13 +206,17 @@ unaligned chain axes and allow_rotation=False")
     apos1 = a.get_positions(wrap=False)
     bpos1 = b.get_positions(wrap=False)
 
-    affine1 = lstsq(apos0, apos1)[0]
-    affine2 = lstsq(bpos0, bpos1)[0]
+    linear_map1 = lstsq(apos0, apos1)[0]
+    linear_map2 = lstsq(bpos0, bpos1)[0]
+
+    print("!", np.linalg.norm(np.dot(apos0, linear_map1) - apos1))
+    print("!", np.linalg.norm(np.dot(bpos0, linear_map2) - bpos1))
 
     # perform a minkowski reduction of the intermediate cell
+    dim = sum(a.pbc)
     mr_cell, mr_path = minkowski_reduce(imcell, dim)
     a.set_cell(mr_cell, scale_atoms=False)
     b.set_cell(mr_cell, scale_atoms=False)
 
     celldist = cell_distance(a, b, frame)
-    return a, b, celldist, mr_path, affine1, affine2
+    return a, b, celldist, mr_path, linear_map1, linear_map2

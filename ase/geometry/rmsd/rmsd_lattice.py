@@ -20,7 +20,7 @@ def _calculate_rmsd(atoms1, atoms2, frame, ignore_stoichiometry, sign,
     atomic_perms, axis_perm = res
 
     res = intermediate_representation(a, b, frame, allow_rotation)
-    pa, pb, celldist, mr_path, linear_map1, linear_map2
+    pa, pb, celldist, mr_path, linear_map1, linear_map2 = res
 
     lc = LatticeComparator(pa, pb)
     res = lc.best_alignment(allow_rotation, num_chain_steps)

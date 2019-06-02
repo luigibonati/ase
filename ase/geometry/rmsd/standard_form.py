@@ -1,5 +1,4 @@
 import numpy as np
-import warnings
 
 
 def permute_axes(atoms, permutation):
@@ -39,34 +38,6 @@ def standardize_axes(a, b):
     return permutation
 
 
-def standardize_cells(a, b):
-
-    dim = sum(a.pbc)
-    if dim == 3:
-        return
-
-    tol = 1E-10
-    for atoms in [a, b]:
-        cell = atoms.cell.complete()
-        atoms.set_cell(cell, scale_atoms=False)
-
-    sa = np.sign(np.linalg.det(a.cell))
-    sb = np.sign(np.linalg.det(b.cell))
-    if sa != sb:
-        warnings.warn('Cells have different handedness')
-
-    for atoms in [a, b]:
-        dot_products = np.dot(atoms.cell[: 2], atoms.cell[2])
-        if dim == 1 and (dot_products >= tol).any():
-            raise Exception("Off-axis cell vectors not perpendicular to \
-axis cell vector")
-        elif dim == 2 and (dot_products >= tol).any():
-            raise Exception("Out-of-plane cell vector not perpendicular \
-to in-plane vectors")
-        if dim == 1 and np.dot(atoms.cell[0], atoms.cell[1]) >= tol:
-            raise Exception("Off-axis cell vectors not perpendicular")
-
-
 def order_by_numbers(a, b, ignore_stoichiometry):
 
     assert len(a) == len(b)
@@ -102,7 +73,5 @@ def standardize_atoms(a, b, ignore_stoichiometry):
     for finding the optimal alignment."""
 
     permutation = standardize_axes(a, b)
-    standardize_cells(a, b)
-
     zperms = order_by_numbers(a, b, ignore_stoichiometry)
     return zperms, permutation
