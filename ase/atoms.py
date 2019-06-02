@@ -1057,8 +1057,8 @@ class Atoms(object):
 
         A = augmented[:3, :3]
         t = augmented[:3, 3]
-        self.set_positions(np.dot(self.get_positions(), A))
-        self.cell = np.dot(self.cell, A)
+        self.set_positions(np.dot(self.get_positions(), A.T))
+        self.cell = np.dot(self.cell, A.T)
         self.translate(t)
 
     def center(self, vacuum=None, axis=(0, 1, 2), about=None):

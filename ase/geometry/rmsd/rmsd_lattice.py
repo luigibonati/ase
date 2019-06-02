@@ -40,8 +40,8 @@ def _calculate_rmsd(atoms1, atoms2, frame, ignore_stoichiometry, sign,
     imcell = imcell[invaxis][:, invaxis]
     U = U[invaxis][:, invaxis]
     translation = translation[invaxis]
-    linear_map1 = linear_map1[invaxis][:, invaxis]
-    linear_map2 = linear_map2[invaxis][:, invaxis]
+    linear_map1 = linear_map1[invaxis][:, invaxis].T
+    linear_map2 = linear_map2[invaxis][:, invaxis].T
 
     # convert basis and translation to fractional coordinates
     fractional = np.linalg.solve(imcell.T, translation.T).T
