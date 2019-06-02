@@ -121,6 +121,12 @@ cell vector")
             cell[i] *= np.linalg.norm(cell[2]) / np.linalg.norm(cell[i])
         atoms.set_cell(cell, scale_atoms=False)
 
+        sign = np.sign(np.linalg.det(atoms.cell))
+        P = sign * polar(sign * atoms.cell)[1]
+        atoms.set_cell(P, scale_atoms=True)
+        assert np.sign(np.linalg.det(atoms.cell)) == sign
+        
+
 
 def standardize_2D(a, b):
 
@@ -194,10 +200,10 @@ length")
 
 def intermediate_representation(a, b, frame, allow_rotation):
 
-    standardize_cells(a, b, allow_rotation)
-
     apos0 = a.get_positions(wrap=False)
     bpos0 = b.get_positions(wrap=False)
+
+    standardize_cells(a, b, allow_rotation)
 
     imcell = calculate_intermediate_cell(a.cell, b.cell, frame)
     for atoms in [a, b]:
@@ -208,9 +214,6 @@ def intermediate_representation(a, b, frame, allow_rotation):
 
     linear_map1 = lstsq(apos0, apos1)[0]
     linear_map2 = lstsq(bpos0, bpos1)[0]
-
-    print("!", np.linalg.norm(np.dot(apos0, linear_map1) - apos1))
-    print("!", np.linalg.norm(np.dot(bpos0, linear_map2) - bpos1))
 
     # perform a minkowski reduction of the intermediate cell
     dim = sum(a.pbc)

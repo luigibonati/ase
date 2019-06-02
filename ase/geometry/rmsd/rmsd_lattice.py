@@ -46,7 +46,7 @@ def _calculate_rmsd(atoms1, atoms2, frame, ignore_stoichiometry, sign,
     affine1 = np.zeros((4, 4))
     affine2 = np.zeros((4, 4))
 
-    affine1[:3, :3] = np.dot(linear_map1, U) * sign
+    affine1[:3, :3] = np.dot(U, linear_map1) * sign
     affine1[:3, 3] = translation
     affine2[:3, :3] = linear_map2
 
