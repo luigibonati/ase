@@ -43,11 +43,6 @@ def _calculate_rmsd(atoms1, atoms2, frame, ignore_stoichiometry, sign,
     linear_map1 = linear_map1[invaxis][:, invaxis].T
     linear_map2 = linear_map2[invaxis][:, invaxis].T
 
-    # convert basis and translation to fractional coordinates
-    fractional = np.linalg.solve(imcell.T, translation.T).T
-    basis = np.dot(imcell, np.linalg.solve(imcell.T, U.T).T)
-    basis *= sign
-
     affine1 = np.zeros((4, 4))
     affine2 = np.zeros((4, 4))
 
@@ -55,11 +50,11 @@ def _calculate_rmsd(atoms1, atoms2, frame, ignore_stoichiometry, sign,
     affine1[:3, 3] = translation
     affine2[:3, :3] = linear_map2
 
-    entries = 'rmsd dcell cell basis translation permutation mul1 mul2 affine1 affine2'
+    entries = 'rmsd dcell permutation affine1 affine2 mul1 mul2'
     result = namedtuple('RMSDResult', entries)
-    return result(rmsd=rmsd, dcell=celldist, cell=imcell, basis=basis,
-                  translation=fractional, permutation=assignment,
-                  mul1=multiplier1, mul2=multiplier2, affine1=affine1, affine2=affine2)
+    return result(rmsd=rmsd, dcell=celldist, permutation=assignment,
+                  affine1=affine1, affine2=affine2,
+                  mul1=multiplier1, mul2=multiplier2)
 
 
 def calculate_rmsd(atoms1, atoms2, frame='central', ignore_stoichiometry=False,
