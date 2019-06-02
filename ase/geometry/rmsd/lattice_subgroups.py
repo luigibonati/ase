@@ -10,9 +10,12 @@ class LatticeReducer:
 
     def __init__(self, atoms):
 
-        res = standardize_atoms(atoms.copy(), atoms.copy(), False)
-        a, b, atomic_perms, axis_perm = res
-        pa, pb, _, _ = intermediate_representation(a, b, 'central')
+        a = atoms.copy()
+        b = atoms.copy()
+        res = standardize_atoms(a, b, False)
+        atomic_perms, axis_perm = res
+        res = intermediate_representation(a, b, 'central', False)
+        pa, pb, _, _, _, _ = res
 
         lc = LatticeComparator(pa, pb)
         dim = lc.dim
