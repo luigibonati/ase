@@ -102,6 +102,7 @@ def standardize_1D(a, b, allow_rotation):
             raise Exception("Comparison meaningful for cells with unaligned \
 chain axes and allow_rotation=False")
 
+    Qs = []
     for atoms in [a, b]:
         cell = atoms.cell
 
@@ -122,10 +123,12 @@ cell vector")
         atoms.set_cell(cell, scale_atoms=False)
 
         sign = np.sign(np.linalg.det(atoms.cell))
-        P = sign * polar(sign * atoms.cell)[1]
+        Q, P = polar(sign * atoms.cell)
+        P *= sign
         atoms.set_cell(P, scale_atoms=True)
         assert np.sign(np.linalg.det(atoms.cell)) == sign
-        
+        Qs.append(Q)
+    return Qs        
 
 
 def standardize_2D(a, b):
@@ -186,9 +189,10 @@ def standardize_cells(a, b, allow_rotation):
                 raise Exception("Cell vector in periodic direction has zero \
 length")
 
+    Qs = [np.eye(3)] * 2
     dim = sum(a.pbc)
     if dim == 1:
-        standardize_1D(a, b, allow_rotation)
+        Qs = standardize_1D(a, b, allow_rotation)
     elif dim == 2:
         standardize_2D(a, b)
 
@@ -196,24 +200,22 @@ length")
     sb = np.sign(np.linalg.det(b.cell))
     if sa != sb:
         warnings.warn('Cells have different handedness')
+    return Qs
 
 
 def intermediate_representation(a, b, frame, allow_rotation):
 
-    apos0 = a.get_positions(wrap=False)
-    bpos0 = b.get_positions(wrap=False)
-
-    standardize_cells(a, b, allow_rotation)
+    Qs = standardize_cells(a, b, allow_rotation)
 
     imcell = calculate_intermediate_cell(a.cell, b.cell, frame)
+    res1 = np.linalg.solve(a.cell, imcell)
+    res2 = np.linalg.solve(b.cell, imcell)
+
     for atoms in [a, b]:
         atoms.set_cell(imcell, scale_atoms=True)
 
-    apos1 = a.get_positions(wrap=False)
-    bpos1 = b.get_positions(wrap=False)
-
-    linear_map1 = lstsq(apos0, apos1)[0]
-    linear_map2 = lstsq(bpos0, bpos1)[0]
+    linear_map1 = np.dot(Qs[0].T, res1)
+    linear_map2 = np.dot(Qs[1].T, res2)
 
     # perform a minkowski reduction of the intermediate cell
     dim = sum(a.pbc)
