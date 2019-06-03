@@ -1,6 +1,6 @@
 import numpy as np
 import warnings
-from scipy.linalg import polar, lstsq
+from scipy.linalg import polar
 from ase.geometry.rmsd.minkowski_reduction import gauss
 from ase.geometry.rmsd.minkowski_reduction import reduce_basis
 
@@ -128,7 +128,7 @@ cell vector")
         atoms.set_cell(P, scale_atoms=True)
         assert np.sign(np.linalg.det(atoms.cell)) == sign
         Qs.append(Q)
-    return Qs        
+    return Qs
 
 
 def standardize_2D(a, b):
