@@ -108,13 +108,15 @@ def find_consistent_reductions(atoms):
 	return data, lr
 
 
-def find_crystal_reductions(atoms, keep_all=False):
+def find_line_group(atoms, keep_all=False):
 
-    Reduced = namedtuple('ReducedCrystal', 'rmsd factor atoms')
+    Reduced = namedtuple('LineGroup', 'rmsd factor atoms')  #TODO: add line group
 
     n = len(atoms)
     dim = sum(atoms.pbc)
     reductions, lr = find_consistent_reductions(atoms)
+    asdf
+
 
     reduced = {}
     for i, (rmsd, group_index, H) in enumerate(reductions):
