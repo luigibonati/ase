@@ -157,7 +157,7 @@ class GPModel(GaussianProcess):
                 self.noise = ratio * self.kernel.weight
 
     @parallel_function
-    def get_atoms_predictions(self, test_atoms):
+    def get_atoms_predictions(self, test_atoms, get_uncertainty=True):
         """
         Obtain predictions from the model.
         """
@@ -166,7 +166,7 @@ class GPModel(GaussianProcess):
         list_pred_r = []
         list_pred_fmax = []
         for i in test_atoms:
-            i.set_calculator(GPCalculator(parameters=self, get_variance=True))
+            i.set_calculator(GPCalculator(parameters=self, get_variance=get_uncertainty))
             list_pred_e.append(i.get_potential_energy(force_consistent=self.force_consistent))
             list_pred_r.append(i.positions.reshape(-1))
             list_pred_fmax.append(np.sqrt((i.get_forces()**2).sum(axis=1).max()))

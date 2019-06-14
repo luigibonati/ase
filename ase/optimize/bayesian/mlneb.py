@@ -224,15 +224,15 @@ class MLNEB:
                 self.atoms_pool = io.read(self.restart, ':')
 
             # 2. Build a ML model from a list of Atoms objects (i.e. atoms_pool).
-
             self.model.extract_features(train_atoms=self.atoms_pool,
                                         force_consistent=self.force_consistent)
             self.model.train_model()
 
             # 3. Get predictions for the geometries to be tested.
-            self.model.get_atoms_predictions(test_atoms=self.images)
-            self.model.get_atoms_predictions(test_atoms=self.images)
+            self.model.get_atoms_predictions(test_atoms=self.images, get_uncertainty=True)
             neb_pred_uncertainty = self.model.pred_uncertainty   # Check uncertainty of the path.
+            neb_pred_uncertainty[0] = 0.0  # Initial end-point with zero uncertainty.
+            neb_pred_uncertainty[-1] = 0.0  # Final end-point with zero uncertainty.
             climbing_neb = False
 
             # Climbing image NEB mode is risky when the model is trained with a few data points.
@@ -240,6 +240,11 @@ class MLNEB:
             if np.max(neb_pred_uncertainty) <= unc_convergence:
                 parprint('Climbing image is now activated.')
                 climbing_neb = True
+
+            # Switch off calculating the predicted uncertainty to make it lighter.
+            for i in self.images:
+                i.get_calculator().get_variance = False
+
             ml_neb = NEB(self.images, climb=climbing_neb, method=self.neb_method, k=self.spring)
             neb_opt = MDMin(ml_neb, dt=dt, trajectory=trajectory)
 
@@ -252,10 +257,10 @@ class MLNEB:
                 parprint('Elapsed time optimizing predicted NEB:', end-start)
 
             # 4. Print output predictions.
-            self.model.get_atoms_predictions(test_atoms=self.images)
+            self.model.get_atoms_predictions(test_atoms=self.images, get_uncertainty=True)
             neb_pred_uncertainty = self.model.pred_uncertainty
-            neb_pred_uncertainty[0] = 0.0  # End-points no uncertainty.
-            neb_pred_uncertainty[-1] = 0.0  # End-points no uncertainty.
+            neb_pred_uncertainty[0] = 0.0  # Initial end-point with zero uncertainty.
+            neb_pred_uncertainty[-1] = 0.0  # Final end-point with zero uncertainty.
             neb_pred_energy = self.model.pred_energy
 
             # 7. Print output.
@@ -273,14 +278,6 @@ class MLNEB:
             parprint("fmax:", get_fmax(self.atoms_pool[-1]))
             msg = "--------------------------------------------------------\n"
             parprint(msg)
-
-
-            # import matplotlib.pyplot as plt
-            # x = np.arange(len(neb_pred_uncertainty))
-            # y = neb_pred_energy
-            # plt.figure()
-            # plt.errorbar(x, y, neb_pred_uncertainty)
-            # plt.show()
 
             # 5. Check convergence.
             # Max. forces and NEB uncertainty must be below fmax and unc_convergence thresholds.
