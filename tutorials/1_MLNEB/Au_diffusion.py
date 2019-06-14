@@ -5,7 +5,7 @@ from ase.constraints import FixAtoms
 from ase.neb import NEB
 from ase.optimize import BFGS
 import matplotlib.pyplot as plt
-from ase.optimize.mlneb import MLNEB
+from ase.optimize.bayesian.mlneb import MLNEB
 from ase.neb import NEBTools
 
 """ 
@@ -68,7 +68,7 @@ qn_ase.run(fmax=0.05)
 
 # 2.B. ML-NEB.
 mlneb = MLNEB(start='initial.traj', end='final.traj', restart=None,
-              ase_calc=EMT(), interpolation='idpp', n_images=n_images)
+              calculator=EMT(), interpolation='idpp', n_images=n_images)
 mlneb.run(fmax=0.05, trajectory='ML-NEB.traj')
 
 # 3. Summary of the results.
