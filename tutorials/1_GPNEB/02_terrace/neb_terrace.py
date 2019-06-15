@@ -4,8 +4,7 @@ from ase.constraints import FixAtoms
 from ase.optimize import BFGS, MDMin
 from ase.neb import NEB, NEBTools
 from ase.io import read
-from ase.optimize.bayesian.mlneb import MLNEB
-
+from ase.optimize.bayesian.gpneb import GPNEB
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -46,8 +45,7 @@ slab[-1].y += 6.930
 qn = BFGS(slab, trajectory='final_opt.traj')
 qn.run(fmax=0.02)
 
-
-# 1. A. NEB.
+# 2.A. NEB.
 initial_ase = read('initial_opt.traj')
 final_ase = read('final_opt.traj')
 
@@ -63,34 +61,34 @@ neb_ase.interpolate(method='idpp', mic=False)
 qn_ase = MDMin(neb_ase, trajectory='neb_ase.traj')
 qn_ase.run(fmax=0.05)
 
-# 2.B. ML-NEB.
-mlneb = MLNEB(start='initial_opt.traj',
+# 2.B. GPNEB.
+gpneb = GPNEB(start='initial_opt.traj', mic=True,
                  end='final_opt.traj',
-                 ase_calc=EMT(),
+                 calculator=EMT(),
                  n_images=n_images,
                  interpolation='idpp',
-                 restart=None)
-mlneb.run(fmax=0.05, trajectory='ML-NEB.traj')
+                 )
+gpneb.run(fmax=0.05, trajectory='GPNEB.traj')
 
 # Plot ASE NEB.
 nebtools = NEBTools(images_ase)
 nebtools.plot_band()
 plt.show()
 
-# Plot ML-NEB predicted path.
-nebtools_mlneb = NEBTools(mlneb.images)
-S_mlneb, E_mlneb, Sf_ase, Ef_ase, lines = nebtools_mlneb.get_fit()
-Ef_neb_ase, dE_neb_ase = nebtools_mlneb.get_barrier(fit=False)
-Ef_mlneb, dE_mlneb = nebtools_mlneb.get_barrier(fit=False)
+# Plot GPNEB predicted path.
+nebtools_gpneb = NEBTools(gpneb.images)
+S_gpneb, E_gpneb, Sf_ase, Ef_ase, lines = nebtools_gpneb.get_fit()
+Ef_neb_ase, dE_neb_ase = nebtools_gpneb.get_barrier(fit=False)
+Ef_gpneb, dE_gpneb = nebtools_gpneb.get_barrier(fit=False)
 fig, ax = plt.subplots()
 
 uncertainty_neb = []
-for i in mlneb.images:
+for i in gpneb.images:
     uncertainty_neb += [i.info['uncertainty']/2.0]
 
 # Add predictions' uncertainty to the plot.
-ax.errorbar(S_mlneb, E_mlneb, uncertainty_neb, alpha=0.8,
+ax.errorbar(S_gpneb, E_gpneb, uncertainty_neb, alpha=0.8,
             markersize=0.0, ecolor='midnightblue', ls='',
             elinewidth=3.0, capsize=1.0)
-nebtools_mlneb.plot_band(ax=ax)
+nebtools_gpneb.plot_band(ax=ax)
 plt.show()

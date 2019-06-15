@@ -3,18 +3,17 @@ from ase.parallel import parallel_function, rank, parprint
 import numpy as np
 import datetime
 
-
 @parallel_function
-def dump_atoms(atoms, filename):
-    if filename is not None and filename is not False and rank == 0:
-        try:
-            prev_atoms = io.read(filename, ':')
-            if atoms not in prev_atoms:  # Avoid duplicates.
-                parprint('Updating atoms pool...')
-                new_atoms = prev_atoms + [atoms]
-                io.write(filename=filename, images=new_atoms)
-        except Exception:
-            io.write(filename=filename, images=atoms)  # Create new atoms pool.
+def dump_experience(atoms, filename):
+    filename = filename.split('.')[0] + '_experiences.traj'
+    try:
+        prev_atoms = io.read(filename, ':')
+        if atoms not in prev_atoms:  # Avoid duplicates.
+            parprint('Updating images (experiences) pool...')
+            new_atoms = prev_atoms + [atoms]
+            io.write(filename=filename, images=new_atoms)
+    except Exception:
+        io.write(filename=filename, images=atoms)  # Create new atoms pool.
 
 
 @parallel_function
@@ -36,7 +35,7 @@ def print_time():
 def print_cite_neb():
     msg = "-----------------------------------------------------------"
     msg += "-----------------------------------------------------------\n"
-    msg += "You are using ML-NEB. Please cite: \n"
+    msg += "You are using GPNEB. Please cite: \n"
     msg += "[1] J. A. Garrido Torres, M. H. Hansen, P. C. Jennings, "
     msg += "J. R. Boes and T. Bligaard. Phys. Rev. Lett. 122, 156001. "
     msg += "https://doi.org/10.1103/PhysRevLett.122.156001 \n"

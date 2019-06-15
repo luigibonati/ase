@@ -1,10 +1,11 @@
-from scipy.linalg import solve_triangular
 from ase.optimize.gpmin.kernel import SquaredExponential
 from ase.optimize.gpmin.gp import GaussianProcess
 from ase.optimize.gpmin.prior import ConstantPrior
 from ase.calculators.calculator import Calculator, all_changes
 from ase.parallel import parallel_function, parprint
+from scipy.linalg import solve_triangular
 import numpy as np
+
 
 class GPModel(GaussianProcess):
     """ GP model parameters
@@ -34,8 +35,9 @@ class GPModel(GaussianProcess):
 
             options:
                 'maximum': update the prior to the maximum sampled energy
-                'init' : fix the prior to the initial energy
                 'average': use the average of sampled energies as prior
+                'init' : fix the prior to the initial energy
+                'last' : fix the prior to the last sampled energy
 
         update_hyperparams: boolean
             Update the scale of the Squared exponential kernel
@@ -54,11 +56,28 @@ class GPModel(GaussianProcess):
             constraint (1-bound)*t_0 <= t <= (1+bound)*t_0
             where t_0 is the value of the hyperparameter in the previous
             step. If bounds is None, no constraints are set in the
-            optimization of the hyperparameters."""
+            optimization of the hyperparameters.
 
-    def __init__(self, prior=None, update_prior_strategy='maximum', weight=1.0, scale=0.35,
+        max_training data: int
+            Number of experiences that will effectively be included in the GP model. See also
+            *max_data_stratagy*.
+
+        max_train_data_strategy: string
+            Strategy to decide the experiences that will be included in the model.
+
+            options:
+                'last_experiences': selects the last experiences collected by the surrogate.
+                'lowest_energy': selects the lowest energy experiences collected by the surrogate.
+
+            For instance, if *max_train_data* is set to 50 and *max_train_data_strategy* to 'lowest
+            energy', the surrogate model will be built in each iteration with the 50 lowest
+            energy experiences collected so far.
+
+            """
+
+    def __init__(self, prior=None, update_prior_strategy='maximum', weight=1.0, scale=0.4,
                  noise=0.005, update_hyperparams=False, batch_size=5, bounds=None, kernel=None,
-                 max_training_data=None):
+                 max_training_data=None, max_train_data_strategy='last_experiences'):
         self.prior = prior
         self.strategy = update_prior_strategy
         self.weight = weight
@@ -76,8 +95,8 @@ class GPModel(GaussianProcess):
         self.pred_positions = []
         self.pred_fmax = []
         self.force_consistent = None
-        self.max_training_data = max_training_data
-        self.atoms_mask = None
+        self.max_data = max_training_data
+        self.max_data_strategy = max_train_data_strategy
 
         # Set kernel and prior.
         if kernel is None:
@@ -96,58 +115,53 @@ class GPModel(GaussianProcess):
         # Set initial hyperparameters.
         self.set_hyperparams(np.array([weight, scale, noise]))
 
+    def extract_features(self, train_images, atoms_mask=None, force_consistent=None):
+        self.force_consistent = force_consistent  # Must be consistent with the the test data.
+        self.atoms_mask = atoms_mask  # Must be also consistent with the test data.
+        self.train_x = []
+        self.train_y = []
+
+        for i in train_images:
+            r = i.get_positions().reshape(-1)
+            e = i.get_potential_energy(force_consistent=self.force_consistent)
+            f = i.get_forces()
+            self.train_x.append(r[self.atoms_mask])
+            y = np.append(np.array(e).reshape(-1), -f.reshape(-1)[self.atoms_mask])
+            self.train_y.append(y)
+
     @parallel_function
-    def extract_features(self, train_atoms, force_consistent=None):
-        self.force_consistent = force_consistent  # We need to keep it for the test data.
-        positions = []
-        gradients = []
-        targets = []
-        for i in train_atoms:
-            positions.append(i.get_positions().reshape(-1))
-            targets.append(i.get_potential_energy(force_consistent=self.force_consistent))
-            gradients.append(-i.get_forces().reshape(-1))
+    def train_model(self):
 
-        positions = np.reshape(positions, (len(positions), -1))
-        gradients = np.reshape(gradients,  (len(gradients), -1))
-        targets = np.reshape(targets, (len(targets), -1))
+        # Max number of data points to be added
+        # if self.max_data is not None:
+        #     self.train_x = self.train_x[]
 
-        # Create mask to hide atoms that do not participate in the model (constraints):
-        self.atoms_mask = create_mask(train_atoms[0])
-
-        if self.atoms_mask is not None:
-            positions = apply_mask(list_to_mask=positions, mask_index=self.atoms_mask)
-            gradients = apply_mask(list_to_mask=gradients, mask_index=self.atoms_mask)
-
-        self.train_x = positions
-        self.train_y = np.block([targets, gradients])
 
         # Set/update the constant for the prior.
         if self.update_prior:
             if self.strategy == 'average':
-                av_e = np.mean(np.array(targets)[:, 0])
+                av_e = np.mean(np.array(self.train_y)[:, 0])
                 self.prior.set_constant(av_e)
             elif self.strategy == 'maximum':
-                max_e = np.max(np.array(targets)[:, 0])
+                max_e = np.max(np.array(self.train_y)[:, 0])
                 self.prior.set_constant(max_e)
             elif self.strategy == 'init':
-                self.prior.set_constant(targets[0])
+                self.prior.set_constant(np.array(self.train_y)[:, 0][0])
+                self.update_prior = False
+            elif self.strategy == 'last':
+                self.prior.set_constant(np.array(self.train_y)[:, 0][-1])
                 self.update_prior = False
 
-    @parallel_function
-    def train_model(self):
-        train_x = np.array(self.train_x)
-        train_y = np.array(self.train_y)
-
         # Train the model.
-        self.train(self.train_x, self.train_y, noise=self.noise)
+        self.train(np.array(self.train_x), np.array(self.train_y), noise=self.noise)
 
         # Optimize hyperparameters (optional).
-        if self.update_hp and len(train_x) % self.nbatch == 0 and len(train_x) != 0:
+        if self.update_hp and len(self.train_x) % self.nbatch == 0 and len(self.train_x) != 0:
             parprint('Optimizing GP hyperparameters...')
             ratio = self.noise / self.kernel.weight
             try:
-                self.fit_hyperparameters(np.asarray(train_x),
-                                         np.asarray(train_y),
+                self.fit_hyperparameters(np.asarray(self.train_x),
+                                         np.asarray(self.train_y),
                                          eps=self.eps)
             except Exception:
                 pass
@@ -157,7 +171,7 @@ class GPModel(GaussianProcess):
                 self.noise = ratio * self.kernel.weight
 
     @parallel_function
-    def get_atoms_predictions(self, test_atoms, get_uncertainty=True):
+    def get_images_predictions(self, test_images, get_uncertainty=True):
         """
         Obtain predictions from the model.
         """
@@ -165,7 +179,7 @@ class GPModel(GaussianProcess):
         list_pred_e = []
         list_pred_r = []
         list_pred_fmax = []
-        for i in test_atoms:
+        for i in test_images:
             i.set_calculator(GPCalculator(parameters=self, get_variance=get_uncertainty))
             list_pred_e.append(i.get_potential_energy(force_consistent=self.force_consistent))
             list_pred_r.append(i.positions.reshape(-1))
@@ -203,9 +217,7 @@ class GPCalculator(Calculator):
         x = self.atoms.get_positions().reshape(-1)
 
         # Mask geometry to be compatible with the trained GP.
-        if self.gp.atoms_mask is not None:
-            index_mask = self.gp.atoms_mask
-            x = apply_mask([x], mask_index=index_mask)[0]
+        x = x[self.gp.atoms_mask]
 
         # Get predictions.
         X = self.gp.X
@@ -221,8 +233,8 @@ class GPCalculator(Calculator):
 
         forces = -f[1:].reshape(-1)
         forces_empty = np.zeros_like(self.atoms.get_positions().flatten())
-        for i in range(len(index_mask)):
-            forces_empty[index_mask[i]] = forces[i]
+        for i in range(len(self.gp.atoms_mask)):
+            forces_empty[self.gp.atoms_mask[i]] = forces[i]
         forces = forces_empty.reshape(-1, 3)
 
         uncertainty = 0.0
@@ -245,6 +257,7 @@ class GPCalculator(Calculator):
         self.results['uncertainty'] = uncertainty
 
 
+@parallel_function
 def create_mask(atoms):
     constraints = atoms.constraints
     mask_constraints = np.ones_like(atoms.positions, dtype=bool)
@@ -268,13 +281,4 @@ def create_mask(atoms):
             mask_constraints[constraints[-1].a] = ~constraints[-1].mask
         except Exception:
             pass
-    mask_constraints = mask_constraints.reshape(-1)
-    atoms_mask_constraints = np.argwhere(mask_constraints)
-    return atoms_mask_constraints
-
-
-def apply_mask(list_to_mask=None, mask_index=None):
-    masked_list = np.zeros((len(list_to_mask), len(mask_index)))
-    for i in range(0, len(list_to_mask)):
-        masked_list[i] = list_to_mask[i][mask_index].flatten()
-    return masked_list
+    return np.argwhere(mask_constraints.reshape(-1)).reshape(-1)

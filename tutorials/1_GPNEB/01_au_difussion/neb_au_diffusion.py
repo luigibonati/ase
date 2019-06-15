@@ -5,7 +5,7 @@ from ase.constraints import FixAtoms
 from ase.neb import NEB
 from ase.optimize import BFGS
 import matplotlib.pyplot as plt
-from ase.optimize.bayesian.mlneb import MLNEB
+from ase.optimize.bayesian.gpneb import GPNEB
 from ase.neb import NEBTools
 
 """ 
@@ -14,7 +14,7 @@ from ase.neb import NEBTools
     1. Optimization of the initial and final end-points of the reaction path. 
     2.A. NEB optimization using CI-NEB. 
     2.B. NEB optimization using a machine-learning surrogate model.
-    3. Comparison between the CI-NEB and the ML-NEB algorithm.
+    3. Comparison between the CI-NEB and the GPNEB algorithm.
 """
 
 # 1. Structural relaxation.
@@ -44,7 +44,7 @@ qn = BFGS(slab, trajectory='final.traj')
 qn.run(fmax=0.01)
 
 # Set number of images:
-n_images = 11
+n_images = 7
 
 # 2.A. Original CI-NEB.
 initial_ase = read('initial.traj')
@@ -66,10 +66,10 @@ neb_ase.interpolate(method='idpp')
 qn_ase = BFGS(neb_ase, trajectory='neb_ase.traj')
 qn_ase.run(fmax=0.05)
 
-# 2.B. ML-NEB.
-mlneb = MLNEB(start='initial.traj', end='final.traj', restart=None,
+# 2.B. GPNEB.
+gpneb = GPNEB(start=initial_ase, end='final.traj',
               calculator=EMT(), interpolation='idpp', n_images=n_images)
-mlneb.run(fmax=0.05, trajectory='ML-NEB.traj')
+gpneb.run(fmax=0.05, trajectory='GPNEB.traj')
 
 # 3. Summary of the results.
 
@@ -79,29 +79,29 @@ atoms_ase = read('neb_ase.traj', ':')
 n_eval_ase = int(len(atoms_ase) - 2 * (len(atoms_ase)/n_images))
 print('Number of function evaluations CI-NEB:', n_eval_ase)
 
-# ML-NEB Function evaluations:
-n_eval_mlneb = mlneb.function_calls
-print('Number of function evaluations ML-NEB:', n_eval_mlneb)
+# GPNEB Function evaluations:
+n_eval_gpneb = gpneb.function_calls
+print('Number of function evaluations GPNEB:', n_eval_gpneb)
 
 # Plot ASE NEB.
-nebtools_mlneb = NEBTools(images_ase)
-nebtools_mlneb.plot_band()
+nebtools_gpneb = NEBTools(images_ase)
+nebtools_gpneb.plot_band()
 plt.show()
 
-# Plot ML-NEB predicted path.
-nebtools_mlneb = NEBTools(mlneb.images)
-S_mlneb, E_mlneb, Sf_ase, Ef_ase, lines = nebtools_mlneb.get_fit()
-Ef_neb_ase, dE_neb_ase = nebtools_mlneb.get_barrier(fit=False)
-Ef_mlneb, dE_mlneb = nebtools_mlneb.get_barrier(fit=False)
+# Plot GPNEB predicted path.
+nebtools_gpneb = NEBTools(gpneb.images)
+S_gpneb, E_gpneb, Sf_ase, Ef_ase, lines = nebtools_gpneb.get_fit()
+Ef_neb_ase, dE_neb_ase = nebtools_gpneb.get_barrier(fit=False)
+Ef_gpneb, dE_gpneb = nebtools_gpneb.get_barrier(fit=False)
 fig, ax = plt.subplots()
 
 uncertainty_neb = []
-for i in mlneb.images:
+for i in gpneb.images:
     uncertainty_neb += [i.info['uncertainty']]
 
 # Add predictions' uncertainty to the plot.
-ax.errorbar(S_mlneb, E_mlneb, uncertainty_neb, alpha=0.8,
+ax.errorbar(S_gpneb, E_gpneb, uncertainty_neb, alpha=0.8,
             markersize=0.0, ecolor='red', ls='',
             elinewidth=3.0, capsize=1.0)
-nebtools_mlneb.plot_band(ax=ax)
+nebtools_gpneb.plot_band(ax=ax)
 plt.show()

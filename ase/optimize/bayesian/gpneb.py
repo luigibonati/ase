@@ -1,28 +1,29 @@
 import numpy as np
 import time
 from ase.neb import NEB
-from ase.io import read, write
 from ase.atoms import Atoms
 from ase.geometry import distance
-from ase.parallel import parprint, rank, parallel_function
+from ase.parallel import parprint, parallel_function
 from ase.optimize import MDMin
 from ase import io
-from ase.optimize.bayesian.io import print_cite_neb, dump_atoms, get_fmax, print_time
-from ase.optimize.bayesian.model import GPModel
+from ase.optimize.bayesian.io import print_cite_neb, dump_experience, get_fmax
+from ase.optimize.bayesian.model import GPModel, create_mask
+import copy
 
+class GPNEB:
 
-class MLNEB:
-
-    def __init__(self, start, end, calculator=None, restart='evaluated_structures.traj',
-                 model=None, interpolation='linear', n_images=0.25, k=None, mic=False,
-                 neb_method='aseneb', remove_rotation_and_translation=False,
+    def __init__(self, start, end, calculator=None, model=None, interpolation='linear',
+                 n_images=0.25, k=None, mic=False, neb_method='aseneb',
+                 remove_rotation_and_translation=False,
                  force_consistent=None):
 
         """
         Machine Learning Nudged elastic band (NEB).
-        Optimize NEB using the ML-NEB algorithm [1, 2], which uses
-        both potential energies and forces information to build a PES
-        via Gaussian Process (GP) regression and then optimizes a NEB.
+        Optimize a NEB using a surrogate machine learning model [1, 2]. Potential energies and
+        forces information are used to build a predicted PES via Gaussian Process (GP) regression.
+        The surrogate relies on NEB theory to optimize the images along the path in the predicted
+        PES. Once the predicted NEB is optimized the acquisition function collect a new
+        experience based on the predicted energies and uncertainties of the optimized images.
         [1] J. A. Garrido Torres, M. H. Hansen, P. C. Jennings, J. R. Boes
         and T. Bligaard. Phys. Rev. Lett. 122, 156001.
         https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.122.156001
@@ -39,15 +40,6 @@ class MLNEB:
 
         end: Trajectory file (in ASE format) or Atoms object.
             Final end-point of the NEB path.
-
-        restart: string or None
-            Name of trajectory file (in ASE format) to store/read the data
-            that can be used to restart the calculation. If None the
-            optimizer won't save a restart file and hence the calculation
-            can't be restarted. If a file is defined the optimizer saves a
-            trajectory which the training data is saved. If the calculation
-            is restarted the optimizer reads the restart file and continues
-            from there.
 
         model: Model object.
             Model to be used for predicting the potential energy surface. The default is None which
@@ -112,6 +104,7 @@ class MLNEB:
             interp_path = 'initial_path.traj'
 
         # Predictive model parameters:
+        self.model = model
         if model is None:
             self.model = GPModel()
 
@@ -129,8 +122,8 @@ class MLNEB:
         # General setup.
         self.ase_calc = calculator
         self.atoms_template = io.read(self.start)
+        self.atoms_template.get_potential_energy(force_consistent=force_consistent)
         self.constraints = self.atoms_template.constraints
-        self.restart = restart
 
         # Optimization.
         self.function_calls = 0
@@ -169,10 +162,14 @@ class MLNEB:
             self.spring = (np.sqrt(self.n_images-1) / d_start_end)
 
         # Initialize the set of evaluated atoms structures with the initial and final endpoints.
-        self.atoms_pool = [self.i_endpoint, self.e_endpoint]
+        self.images_pool = [self.i_endpoint, self.e_endpoint]
+
+        # Create mask to hide atoms that do not participate in the model (constraints):
+        if self.constraints is not None:
+            self.atoms_mask = create_mask(self.atoms_template)
 
     def run(self, fmax=0.05, unc_convergence=0.05, dt=0.05, ml_steps=200,
-            max_step=0.5, trajectory='ML-NEB.traj'):
+            max_step=0.5, trajectory='GPNEB.traj'):
 
         """
         Executing run will start the NEB optimization process.
@@ -180,7 +177,7 @@ class MLNEB:
         Parameters
         ----------
         fmax : float
-            Convergence criteria (in eV/Angs).
+            Convergence criteria (in eV/Angstrom).
 
         unc_convergence: float
             Maximum uncertainty for convergence (in eV). The algorithm's
@@ -206,8 +203,11 @@ class MLNEB:
 
         trajectory: string
             Filename to store the predicted NEB paths. Note: The energy
-            uncertainty in each image can be accessed in image.info[
-            'uncertainty'].
+            uncertainty in each image can be accessed in image.info['uncertainty'].
+            WARNING: A *trajectory_experiences.traj* file is automatically generated and contains
+            the experiences collected by the surrogate. If this file is found in the working
+            directory it will be used to continue the NEB optimization from a previous run. If you
+            want to start the NEB optimization from scratch you need to delete the file.
 
         Returns
         -------
@@ -217,19 +217,29 @@ class MLNEB:
 
         while True:
 
-            # 1. Load and save atoms. Check evaluated atoms structures from previous runs.
-            for i in self.atoms_pool:
-                dump_atoms(atoms=i, filename=self.restart)
-            if self.restart is not None and self.restart is not False and rank == 0:
-                self.atoms_pool = io.read(self.restart, ':')
+            # 1. Load/save experiences. Serves to restart from a previous (and/or parallel) runs.
+            start = time.time()
+            for i in self.images_pool:
+                dump_experience(atoms=i, filename=trajectory)
+                self.images_pool = io.read(trajectory.split('.')[0] + '_experiences.traj', ':')
+            end = time.time()
 
-            # 2. Build a ML model from a list of Atoms objects (i.e. atoms_pool).
-            self.model.extract_features(train_atoms=self.atoms_pool,
+            parprint('Time reading and writing atoms images to build a model:', end-start)
+
+            # 2. Build a ML model from a list of Atoms objects (i.e. images_pool).
+            start = time.time()
+            self.model.extract_features(train_images=self.images_pool, atoms_mask=self.atoms_mask,
                                         force_consistent=self.force_consistent)
+            end = time.time()
+            parprint('Elapsed time featurizing data:', end-start)
+
+            start = time.time()
             self.model.train_model()
+            end = time.time()
+            parprint('Elapsed time training the model:', end-start)
 
             # 3. Get predictions for the geometries to be tested.
-            self.model.get_atoms_predictions(test_atoms=self.images, get_uncertainty=True)
+            self.model.get_images_predictions(test_images=self.images, get_uncertainty=True)
             neb_pred_uncertainty = self.model.pred_uncertainty   # Check uncertainty of the path.
             neb_pred_uncertainty[0] = 0.0  # Initial end-point with zero uncertainty.
             neb_pred_uncertainty[-1] = 0.0  # Final end-point with zero uncertainty.
@@ -241,14 +251,13 @@ class MLNEB:
                 parprint('Climbing image is now activated.')
                 climbing_neb = True
 
-            # Switch off calculating the predicted uncertainty to make it lighter.
-            for i in self.images:
-                i.get_calculator().get_variance = False
+            # Switch off calculating the predicted uncertainty to make faster predictions.
+            self.model.get_images_predictions(test_images=self.images, get_uncertainty=False)
 
             ml_neb = NEB(self.images, climb=climbing_neb, method=self.neb_method, k=self.spring)
             neb_opt = MDMin(ml_neb, dt=dt, trajectory=trajectory)
 
-            if np.max(neb_pred_uncertainty) <= max_step:
+            if np.max(neb_pred_uncertainty) <= max_step:  # Safe check to optimize the images.
                 start = time.time()
                 parprint('Optimizing NEB in the model potential...')
                 neb_opt.run(fmax=(fmax * 0.80), steps=ml_steps)  # Run the optimization process.
@@ -257,10 +266,10 @@ class MLNEB:
                 parprint('Elapsed time optimizing predicted NEB:', end-start)
 
             # 4. Print output predictions.
-            self.model.get_atoms_predictions(test_atoms=self.images, get_uncertainty=True)
+            self.model.get_images_predictions(test_images=self.images, get_uncertainty=True)
             neb_pred_uncertainty = self.model.pred_uncertainty
             neb_pred_uncertainty[0] = 0.0  # Initial end-point with zero uncertainty.
-            neb_pred_uncertainty[-1] = 0.0  # Final end-point with zero uncertainty.
+            neb_pred_uncertainty[-1] = 0.0  # Final end-point with zero uncertainty.s
             neb_pred_energy = self.model.pred_energy
 
             # 7. Print output.
@@ -275,13 +284,13 @@ class MLNEB:
             parprint('Predicted barrier (<--):', pbb)
             parprint('Max. uncertainty:', np.max(neb_pred_uncertainty))
             parprint('Number of images:', len(self.images))
-            parprint("fmax:", get_fmax(self.atoms_pool[-1]))
+            parprint("fmax:", get_fmax(self.images_pool[-1]))
             msg = "--------------------------------------------------------\n"
             parprint(msg)
 
             # 5. Check convergence.
-            # Max. forces and NEB uncertainty must be below fmax and unc_convergence thresholds.
-            if len(self.atoms_pool) > 2 and get_fmax(self.atoms_pool[-1]) <= fmax:
+            # Max. forces and NEB uncertainty must be below *fmax* and *unc_convergence* thresholds.
+            if len(self.images_pool) > 2 and get_fmax(self.images_pool[-1]) <= fmax:
                 parprint('A saddle point was found.')
                 if np.max(neb_pred_uncertainty[1:-1]) < unc_convergence:
                     parprint('Uncertainty of the images above threshold. NEB converged.')
@@ -292,7 +301,7 @@ class MLNEB:
                     break
 
             # 6. Collect predicted values from the optimized ML NEB.
-            self.model.get_atoms_predictions(test_atoms=self.images)
+            self.model.get_images_predictions(test_images=self.images)
             neb_pred_energy = self.model.pred_energy
             neb_pred_uncertainty = self.model.pred_uncertainty
 
@@ -313,12 +322,13 @@ class MLNEB:
             eval_atoms = Atoms(self.atoms_template, positions=positions_to_evaluate,
                                calculator=self.ase_calc)
             eval_atoms.get_potential_energy(force_consistent=self.force_consistent)
-            self.atoms_pool += [eval_atoms]
+
+            self.images_pool += [copy.deepcopy(eval_atoms)]
             self.function_calls += 1
             self.force_calls += 1
             parprint('Single-point calculation finished.')
 
-        # Print final output when converged.
+        # Print final output when the surrogate is converged.
         print_cite_neb()
         parprint('The converged NEB path can be found in:', trajectory)
         msg = "Visualize the last path using 'ase gui " + trajectory + "@-"
