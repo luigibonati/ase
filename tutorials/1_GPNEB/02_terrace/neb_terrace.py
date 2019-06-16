@@ -66,9 +66,9 @@ gpneb = GPNEB(start='initial_opt.traj', mic=True,
                  end='final_opt.traj',
                  calculator=EMT(),
                  n_images=n_images,
-                 interpolation='idpp',
+                 interpolation='idpp'
                  )
-gpneb.run(fmax=0.05, trajectory='GPNEB.traj')
+gpneb.run(fmax=0.05, trajectory='GPNEB.traj', restart=False)
 
 # Plot ASE NEB.
 nebtools = NEBTools(images_ase)

@@ -68,8 +68,8 @@ images_ase.append(final_ase)
 neb_ase = NEB(images_ase, climb=True)
 neb_ase.interpolate(method='idpp')
 
-# qn_ase = MDMin(neb_ase, trajectory='neb_ase.traj')
-# qn_ase.run(fmax=0.05)
+qn_ase = MDMin(neb_ase, trajectory='neb_ase.traj')
+qn_ase.run(fmax=0.05)
 
 # 2.B. GPNEB.
 gpneb = GPNEB(start='initial.traj', end='final.traj',
@@ -77,7 +77,7 @@ gpneb = GPNEB(start='initial.traj', end='final.traj',
               n_images=n_images,
               interpolation='idpp')
 
-gpneb.run(fmax=0.05, trajectory='GPNEB.traj')
+gpneb.run(fmax=0.05, trajectory='GPNEB.traj', restart=False)
 
 # 3. Summary of the results.
 

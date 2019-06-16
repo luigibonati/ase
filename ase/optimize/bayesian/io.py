@@ -2,18 +2,21 @@ from ase import io
 from ase.parallel import parallel_function, rank, parprint
 import numpy as np
 import datetime
+from ase.io.trajectory import Trajectory, TrajectoryWriter, TrajectoryReader
 
 @parallel_function
-def dump_experience(atoms, filename):
+def dump_experiences(images, filename, restart):
     filename = filename.split('.')[0] + '_experiences.traj'
-    try:
-        prev_atoms = io.read(filename, ':')
-        if atoms not in prev_atoms:  # Avoid duplicates.
-            parprint('Updating images (experiences) pool...')
-            new_atoms = prev_atoms + [atoms]
-            io.write(filename=filename, images=new_atoms)
-    except Exception:
-        io.write(filename=filename, images=atoms)  # Create new atoms pool.
+    if restart is True:
+        try:
+            prev_atoms = io.read(filename, ':')
+            for atoms in images:
+                if atoms not in prev_atoms:  # Avoid duplicates.
+                    parprint('Updating images (experiences) pool...')
+                    new_atoms = prev_atoms + [atoms]
+                    io.write(filename=filename, images=new_atoms)
+        except Exception:
+            io.write(filename=filename, images=images)  # Create new atoms pool.
 
 
 @parallel_function
