@@ -205,3 +205,41 @@ class LatticeComparator:
         return cherry_pick(self.pbc, self.imcell, self.s0, self.scaled_shift,
                            self.nbr_cells, self.eindices, self.p1_nbrs,
                            self.xindices, self.xindices, self.zindices, c)
+
+    def cherry_pick_line_group(self, c):
+        return cherry_pick_line_group(self.pbc, self.imcell, self.s0, self.scaled_shift,
+                           self.nbr_cells, self.eindices, self.p1_nbrs,
+                           self.xindices, self.xindices, self.zindices, c)
+
+def cherry_pick_line_group(pbc, imcell, s0, shift, nbr_cells, eindices, p1_nbrs,
+                xindices, yindices, zindices, shift_counts):
+
+    cindices = [xindices, yindices, zindices]
+    num_atoms = len(s0)
+    s0 = np.copy(s0)
+
+    # translation
+    i = 2
+    index = shift_counts[i]
+    indices = cindices[i][:index]
+    s0[indices] += shift[i]
+    s0 -= index * shift[i] / num_atoms
+
+    # reflection
+    reflect = shift_counts[0] > 0
+    if reflect:
+        s0[:, 2] *= -1
+
+    if pbc[i]:
+        s0[:, i] % 1.0
+
+    p0 = np.dot(s0, imcell)
+
+    # rotation
+    t = shift_counts[0] * 2 * np.pi / shift_counts[1]
+    sint = np.sin(t)
+    cost = np.cos(t)
+    U = np.array([[cost, -sint, 0], [sint, cost, 0], [0, 0, 1]])
+    #p0 = np.dot(p0, U.T)
+
+    return align(p0, eindices, p1_nbrs, nbr_cells)
