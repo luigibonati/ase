@@ -2,7 +2,6 @@ from ase import io
 from ase.parallel import parallel_function, rank, parprint
 import numpy as np
 import datetime
-from ase.io.trajectory import Trajectory, TrajectoryWriter, TrajectoryReader
 
 @parallel_function
 def dump_experiences(images, filename, restart):
@@ -16,7 +15,9 @@ def dump_experiences(images, filename, restart):
                     new_atoms = prev_atoms + [atoms]
                     io.write(filename=filename, images=new_atoms)
         except Exception:
-            io.write(filename=filename, images=images)  # Create new atoms pool.
+            io.write(filename=filename, images=images)  # Make atoms pool.
+    if restart is False:
+        io.write(filename=filename, images=images)  # Make atoms pool.
 
 
 @parallel_function
@@ -50,4 +51,22 @@ def print_cite_neb():
     msg += "-----------------------------------------------------------"
     msg += "-----------------------------------------------------------"
     parprint(msg)
+
+
+@parallel_function
+def print_cite_min():
+    msg = "-----------------------------------------------------------"
+    msg += "-----------------------------------------------------------\n"
+    msg += "You are using LGPMin. Please cite: \n"
+    msg += "[1] E. Garijo del Rio, J. J. Mortensen and K. W. Jacobsen. "
+    msg += "arXiv:1808.08588. https://arxiv.org/abs/1808.08588. \n"
+    msg += "[1] M. H. Hansen, J. A. Garrido Torres, P. C. Jennings, "
+    msg += "J. R. Boes, O. G. Mamun and T. Bligaard. arXiv:1904.00904. "
+    msg += "https://arxiv.org/abs/1904.00904 \n"
+    msg += "-----------------------------------------------------------"
+    msg += "-----------------------------------------------------------"
+    parprint(msg)
+
+
+
 

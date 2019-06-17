@@ -132,11 +132,6 @@ class GPModel(GaussianProcess):
     @parallel_function
     def train_model(self):
 
-        # Max number of data points to be added
-        # if self.max_data is not None:
-        #     self.train_x = self.train_x[]
-
-
         # Set/update the constant for the prior.
         if self.update_prior:
             if self.strategy == 'average':
@@ -151,6 +146,24 @@ class GPModel(GaussianProcess):
             elif self.strategy == 'last':
                 self.prior.set_constant(np.array(self.train_y)[:, 0][-1])
                 self.update_prior = False
+
+        # Max number of data points to be added
+        if self.max_data is not None:
+            # Get only the last experiences.
+            if self.max_data_strategy == 'last_experiences':
+                self.train_x = self.train_x.copy()[-self.max_data:]
+                self.train_y = self.train_y.copy()[-self.max_data:]
+
+            # Get the minimum energy experiences.
+            if self.max_data_strategy == 'lowest_energy':
+                e_list = []
+                for i in self.train_y:
+                    e_list.append(i[0])
+                arg_low_e = np.argsort(e_list)[:self.max_data]
+                x = [self.train_x[i] for i in arg_low_e]
+                y = [self.train_y[i] for i in arg_low_e]
+                self.train_x = x.copy()
+                self.train_y = y.copy()
 
         # Train the model.
         self.train(np.array(self.train_x), np.array(self.train_y), noise=self.noise)

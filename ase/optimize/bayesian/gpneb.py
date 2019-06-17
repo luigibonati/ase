@@ -354,10 +354,11 @@ class GPNEB:
             # 8. Evaluate the target function and add it to the pool of
             # evaluated atoms structures.
             parprint('Performing evaluation on the real landscape...')
-            eval_atoms = Atoms(self.atoms_template, positions=positions_to_evaluate,
-                               calculator=copy.deepcopy(self.ase_calc))
+            eval_atoms = Atoms(self.atoms_template,
+                               positions=positions_to_evaluate,
+                               calculator=self.ase_calc)
             eval_atoms.get_potential_energy(force_consistent=self.force_consistent)
-            self.images_pool += [eval_atoms]
+            self.images_pool += [copy.deepcopy(eval_atoms)]
             self.function_calls += 1
             self.force_calls += 1
             parprint('Single-point calculation finished.')
