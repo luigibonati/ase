@@ -3,7 +3,7 @@ from ase.constraints import FixAtoms
 
 from ase.calculators.emt import EMT
 from ase.optimize import *
-from ase.optimize.bayesian.lgpmin import LGPMin, GPModel
+from ase.optimize.activelearning.lgpmin import LGPMin, GPModel
 import time
 
 """ 

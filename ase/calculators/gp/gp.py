@@ -1,12 +1,12 @@
 from __future__ import print_function
-from ase.optimize.gpmin.kernel import SquaredExponential
+from ase.calculators.gp.kernel import SquaredExponential
 
 import numpy as np
 
 from scipy.optimize import minimize
 from scipy.linalg import solve_triangular, cho_factor, cho_solve
 
-from ase.optimize.gpmin.prior import ZeroPrior
+from ase.calculators.gp.prior import ZeroPrior
 
 class GaussianProcess():
 

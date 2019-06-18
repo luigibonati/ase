@@ -4,7 +4,7 @@ from ase.constraints import FixAtoms
 from ase.optimize import BFGS, MDMin
 from ase.neb import NEB, NEBTools
 from ase.io import read
-from ase.optimize.bayesian.gpneb import GPNEB
+from ase.optimize.activelearning.gpneb import GPNEB
 import matplotlib.pyplot as plt
 import numpy as np
 

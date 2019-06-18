@@ -2,8 +2,8 @@ from ase.build import fcc100, add_adsorbate
 from ase.io import read
 from ase.constraints import FixAtoms
 from ase.optimize import BFGS
-from ase.optimize.bayesian.gpneb import GPNEB
-from ase.optimize.bayesian.model import GPModel
+from ase.optimize.activelearning.gpneb import GPNEB
+from ase.optimize.activelearning.model import GPModel
 from gpaw import GPAW
 from ase.visualize import view
 

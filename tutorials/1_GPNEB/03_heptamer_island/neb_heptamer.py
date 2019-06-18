@@ -3,7 +3,7 @@ from ase.io import read
 from ase.neb import NEB
 from ase.optimize import BFGS, MDMin
 import matplotlib.pyplot as plt
-from ase.optimize.bayesian.gpneb import GPNEB
+from ase.optimize.activelearning.gpneb import GPNEB
 from ase.neb import NEBTools
 from ase.build import fcc111, add_adsorbate
 from ase.constraints import FixAtoms

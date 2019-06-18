@@ -1,13 +1,13 @@
-from ase.optimize.gpmin.kernel import SquaredExponential
-from ase.optimize.gpmin.gp import GaussianProcess
-from ase.optimize.gpmin.prior import ConstantPrior
+from ase.calculators.gp.kernel import SquaredExponential
+from ase.calculators.gp.gp import GaussianProcess
+from ase.calculators.gp.prior import ConstantPrior
 from ase.calculators.calculator import Calculator, all_changes
 from ase.parallel import parallel_function, parprint
 from scipy.linalg import solve_triangular
 import numpy as np
 
 
-class GPModel(GaussianProcess):
+class GPCalculator(Calculator, GaussianProcess):
     """ GP model parameters
         -------------------
         prior: Prior object or None
@@ -75,9 +75,16 @@ class GPModel(GaussianProcess):
 
             """
 
-    def __init__(self, prior=None, update_prior_strategy='maximum', weight=1.0, scale=0.4,
-                 noise=0.005, update_hyperparams=False, batch_size=5, bounds=None, kernel=None,
-                 max_training_data=None, max_train_data_strategy='last_experiences'):
+    implemented_properties = ['energy', 'forces', 'uncertainty']
+    nolabel = True
+
+    def __init__(self, train_images=None, prior=None,
+                 update_prior_strategy='maximum', weight=1.0,
+                 scale=0.4, noise=0.005, update_hyperparams=False,
+                 batch_size=5, bounds=None, kernel=None,
+                 max_training_data=None, force_consistent=None,
+                 max_train_data_strategy='last_experiences', **kwargs):
+
         self.prior = prior
         self.strategy = update_prior_strategy
         self.weight = weight
@@ -85,43 +92,38 @@ class GPModel(GaussianProcess):
         self.noise = noise
         self.update_hp = update_hyperparams
         self.nbatch = batch_size
-        self.eps = bounds
+        self.hyperbounds = bounds
+        self.force_consistent = force_consistent
+        self.max_data = max_training_data
+        self.max_data_strategy = max_train_data_strategy
+        self.train_images = train_images
+        self.kernel_init = kernel
+        Calculator.__init__(self, **kwargs)
 
         # Initialize:
         self.train_x = []
         self.train_y = []
-        self.pred_energy = []
-        self.pred_uncertainty = []
-        self.pred_positions = []
-        self.pred_fmax = []
-        self.force_consistent = None
-        self.max_data = max_training_data
-        self.max_data_strategy = max_train_data_strategy
 
         # Set kernel and prior.
-        if kernel is None:
-            kernel = SquaredExponential()
+        if self.kernel_init is None:
+            self.kernel_init = SquaredExponential()
 
-        if prior is None:
+        if self.prior is None:
             self.update_prior = True
-            prior = ConstantPrior(constant=None)
+            self.prior = ConstantPrior(constant=None)
 
         else:
             self.update_prior = False
 
         # Set kernel and prior.
-        GaussianProcess.__init__(self, prior, kernel)
+        GaussianProcess.__init__(self, self.prior, self.kernel_init)
 
         # Set initial hyperparameters.
-        self.set_hyperparams(np.array([weight, scale, noise]))
+        self.set_hyperparams(np.array([self.weight, self.scale, self.noise]))
 
-    def extract_features(self, train_images, atoms_mask=None, force_consistent=None):
-        self.force_consistent = force_consistent  # Must be consistent with the the test data.
-        self.atoms_mask = atoms_mask  # Must be also consistent with the test data.
-        self.train_x = []
-        self.train_y = []
+    def extract_features(self):
 
-        for i in train_images:
+        for i in self.train_images:
             r = i.get_positions().reshape(-1)
             e = i.get_potential_energy(force_consistent=self.force_consistent)
             f = i.get_forces()
@@ -175,49 +177,13 @@ class GPModel(GaussianProcess):
             try:
                 self.fit_hyperparameters(np.asarray(self.train_x),
                                          np.asarray(self.train_y),
-                                         eps=self.eps)
+                                         eps=self.hyperbounds)
             except Exception:
                 pass
 
             else:
                 # Keeps the ratio between noise and weight fixed.
                 self.noise = ratio * self.kernel.weight
-
-    @parallel_function
-    def get_images_predictions(self, test_images, get_uncertainty=True):
-        """
-        Obtain predictions from the model.
-        """
-        list_pred_u = []
-        list_pred_e = []
-        list_pred_r = []
-        list_pred_fmax = []
-        for i in test_images:
-            i.set_calculator(GPCalculator(parameters=self, get_variance=get_uncertainty))
-            list_pred_e.append(i.get_potential_energy(force_consistent=self.force_consistent))
-            list_pred_r.append(i.positions.reshape(-1))
-            list_pred_fmax.append(np.sqrt((i.get_forces()**2).sum(axis=1).max()))
-            uncertainty = i.get_calculator().results['uncertainty']
-            list_pred_u.append(uncertainty)
-            i.info['uncertainty'] = uncertainty
-        self.pred_energy = list_pred_e
-        self.pred_uncertainty = list_pred_u
-        self.pred_positions = list_pred_r
-        self.pred_fmax = list_pred_fmax
-
-
-class GPCalculator(Calculator):
-    """
-    Gaussian Process calculator.
-    """
-    implemented_properties = ['energy', 'forces', 'uncertainty']
-    nolabel = True
-
-    def __init__(self, parameters, get_variance=False, **kwargs):
-
-        Calculator.__init__(self, **kwargs)
-        self.gp = parameters
-        self.get_variance = get_variance
 
     def calculate(self, atoms=None,
                   properties=['energy', 'forces', 'uncertainty'],
@@ -227,71 +193,61 @@ class GPCalculator(Calculator):
         self.atoms = atoms
         Calculator.calculate(self, atoms, properties, system_changes)
 
-        x = self.atoms.get_positions().reshape(-1)
-
         # Mask geometry to be compatible with the trained GP.
-        x = x[self.gp.atoms_mask]
+        x = self.atoms.get_positions().reshape(-1)[self.atoms_mask]
 
         # Get predictions.
-        X = self.gp.X
-        kernel = self.gp.kernel
-        prior = self.gp.prior
-        a = self.gp.a
-
-        n = X.shape[0]
-        k = kernel.kernel_vector(x, X, n)
-        f = prior.prior(x) + np.dot(k, a)
+        n = self.X.shape[0]
+        k = self.kernel.kernel_vector(x, self.X, n)
+        f = self.prior.prior(x) + np.dot(k, self.a)
 
         energy = f[0]
-
         forces = -f[1:].reshape(-1)
         forces_empty = np.zeros_like(self.atoms.get_positions().flatten())
-        for i in range(len(self.gp.atoms_mask)):
-            forces_empty[self.gp.atoms_mask[i]] = forces[i]
+        for i in range(len(self.atoms_mask)):
+            forces_empty[self.atoms_mask[i]] = forces[i]
         forces = forces_empty.reshape(-1, 3)
-
-        uncertainty = 0.0
-
-        if self.get_variance:
-            v = k.T.copy()
-            L = self.gp.L
-            v = solve_triangular(L, v, lower=True, check_finite=False)
-            variance = kernel.kernel(x, x)
-            covariance = np.tensordot(v, v, axes=(0, 0))
-            V = variance - covariance
-            uncertainty = np.sqrt(V[0][0])
-            uncertainty -= self.gp.noise
-            if uncertainty < 0.0:
-                uncertainty = 0.0
 
         # Results:
         self.results['energy'] = energy
         self.results['forces'] = forces
-        self.results['uncertainty'] = uncertainty
 
+    def get_uncertainty(self):
+        x = self.atoms.get_positions().reshape(-1)[self.atoms_mask]
+        n = self.X.shape[0]
+        k = self.kernel.kernel_vector(x, self.X, n)
+        v = k.T.copy()
+        v = solve_triangular(self.L, v, lower=True, check_finite=False)
+        variance = self.kernel.kernel(x, x)
+        covariance = np.tensordot(v, v, axes=(0, 0))
+        V = variance - covariance
+        uncertainty = np.sqrt(V[0][0])
+        uncertainty -= self.noise
+        if uncertainty < 0.0:
+            uncertainty = 0.0
+        return uncertainty
 
-@parallel_function
-def create_mask(atoms):
-    constraints = atoms.constraints
-    mask_constraints = np.ones_like(atoms.positions, dtype=bool)
-    for i in range(0, len(constraints)):
-        try:
-            mask_constraints[constraints[i].a] = ~constraints[i].mask
-        except Exception:
-            pass
+    def create_mask(atoms):
+        constraints = atoms.constraints
+        mask_constraints = np.ones_like(atoms.positions, dtype=bool)
+        for i in range(0, len(constraints)):
+            try:
+                mask_constraints[constraints[i].a] = ~constraints[i].mask
+            except Exception:
+                pass
 
-        try:
-            mask_constraints[constraints[i].index] = False
-        except Exception:
-            pass
+            try:
+                mask_constraints[constraints[i].index] = False
+            except Exception:
+                pass
 
-        try:
-            mask_constraints[constraints[0].a] = ~constraints[0].mask
-        except Exception:
-            pass
+            try:
+                mask_constraints[constraints[0].a] = ~constraints[0].mask
+            except Exception:
+                pass
 
-        try:
-            mask_constraints[constraints[-1].a] = ~constraints[-1].mask
-        except Exception:
-            pass
-    return np.argwhere(mask_constraints.reshape(-1)).reshape(-1)
+            try:
+                mask_constraints[constraints[-1].a] = ~constraints[-1].mask
+            except Exception:
+                pass
+        return np.argwhere(mask_constraints.reshape(-1)).reshape(-1)

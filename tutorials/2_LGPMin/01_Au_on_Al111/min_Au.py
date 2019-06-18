@@ -1,8 +1,8 @@
 from ase.build import fcc100, add_adsorbate
 from ase.calculators.emt import EMT
 from ase.constraints import FixAtoms
-from ase.optimize.bayesian.lgpmin import LGPMin
-from ase.optimize.bayesian.model import GPModel
+from ase.optimize.activelearning.lgpmin import LGPMin
+from ase.optimize.activelearning.model import GPModel
 from ase.optimize.gpmin.gpmin import GPMin
 import time
 """ 

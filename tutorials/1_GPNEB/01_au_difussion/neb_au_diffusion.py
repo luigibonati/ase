@@ -5,7 +5,7 @@ from ase.constraints import FixAtoms
 from ase.neb import NEB
 from ase.optimize import BFGS
 import matplotlib.pyplot as plt
-from ase.optimize.bayesian.gpneb import GPNEB
+from ase.optimize.activelearning.gpneb import GPNEB
 from ase.neb import NEBTools
 
 """ 
@@ -95,13 +95,13 @@ Ef_neb_ase, dE_neb_ase = nebtools_gpneb.get_barrier(fit=False)
 Ef_gpneb, dE_gpneb = nebtools_gpneb.get_barrier(fit=False)
 fig, ax = plt.subplots()
 
-uncertainty_neb = []
-for i in gpneb.images:
-    uncertainty_neb += [i.info['uncertainty']]
-
-# Add predictions' uncertainty to the plot.
-ax.errorbar(S_gpneb, E_gpneb, uncertainty_neb, alpha=0.8,
-            markersize=0.0, ecolor='red', ls='',
-            elinewidth=3.0, capsize=1.0)
+# uncertainty_neb = []
+# for i in gpneb.images:
+#     uncertainty_neb += [i.info['uncertainty']]
+#
+# # Add predictions' uncertainty to the plot.
+# ax.errorbar(S_gpneb, E_gpneb, uncertainty_neb, alpha=0.8,
+#             markersize=0.0, ecolor='red', ls='',
+#             elinewidth=3.0, capsize=1.0)
 nebtools_gpneb.plot_band(ax=ax)
 plt.show()

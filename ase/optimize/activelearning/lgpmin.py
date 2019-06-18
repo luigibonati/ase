@@ -4,8 +4,8 @@ from ase.parallel import parprint
 from ase import io
 from ase.atoms import Atoms
 from ase.optimize import LBFGS
-from ase.optimize.bayesian.io import print_cite_min, dump_experiences, get_fmax
-from ase.optimize.bayesian.model import GPModel, create_mask
+from ase.optimize.activelearning.io import print_cite_min, dump_experiences, get_fmax
+from ase.optimize.activelearning.model import GPModel, create_mask
 
 
 class LGPMin:
@@ -29,7 +29,7 @@ class LGPMin:
             Predictive model to be used to build a PES for the surrogate.
             The default is None which uses a GP model with the Squared
             Exponential Kernel and other default parameters. See
-            *ase.optimize.bayesian.model* GPModel for default GP parameters.
+            *ase.optimize.activelearning.model* GPModel for default GP parameters.
 
         force_consistent: boolean or None
             Use force-consistent energy calls (as opposed to the energy
@@ -127,7 +127,7 @@ class LGPMin:
             test_atoms = copy.deepcopy(self.images_pool[-1])
             self.model.get_images_predictions([test_atoms],
                                               get_uncertainty=True)
-            print(test_atoms.get_stresses())
+            print(test_atoms.get_uncertainty())
             exit()
 
             # 4. Optimize predicted PES.
