@@ -233,6 +233,7 @@ class GPCalculator(Calculator, GaussianProcess):
             forces_empty[self.atoms_mask[i]] = forces[i]
         forces = forces_empty.reshape(-1, 3)
 
+        uncertainty = 0.0
         if self.calculate_uncertainty is True:
             x = self.atoms.get_positions().reshape(-1)[self.atoms_mask]
             n = self.X.shape[0]
@@ -246,11 +247,11 @@ class GPCalculator(Calculator, GaussianProcess):
             uncertainty -= self.noise
             if uncertainty < 0.0:
                 uncertainty = 0.0
-            self.results['uncertainty'] = uncertainty
 
         # Results:
         self.results['energy'] = energy
         self.results['forces'] = forces
+        self.results['uncertainty'] = uncertainty
 
     def create_mask(self):
         atoms = self.train_images[0]

@@ -1,13 +1,12 @@
 import numpy as np
 import copy
 import time
+from ase import io
 from ase.atoms import Atoms
 from ase.calculators.gp.calculator import GPCalculator
-from ase import io
 from ase.neb import NEB
-from ase.optimize import MDMin
 from ase.geometry import distance
-
+from ase.optimize import MDMin
 from ase.optimize.activelearning.io import dump_experience, attach_calculator
 from ase.optimize.activelearning.acquisition import acquisition
 from ase.parallel import parprint, parallel_function
@@ -22,7 +21,7 @@ class GPNEB:
                  force_consistent=None):
 
         """
-        Machine Learning Nudged elastic band (NEB).
+        Machine Learning accelerated Nudged Elastic Band (NEB) optimizer.
         Optimize a NEB using a surrogate machine learning model [1,2].
         Potential energies and forces information are used to build a
         predicted PES via Gaussian Process (GP) regression. The surrogate
@@ -299,13 +298,13 @@ class GPNEB:
             if len(train_images) > 2 and get_fmax(train_images[-1]) <= fmax:
                 parprint('A saddle point was found.')
                 if np.max(neb_pred_uncertainty[1:-1]) < unc_convergence:
+                    io.write(trajectory, self.images)
                     parprint('Uncertainty of the images above threshold.')
                     parprint('NEB converged.')
                     parprint('The converged NEB path can be found in:',
                              trajectory)
                     msg = "Visualize the last path using 'ase gui "
-                    msg += trajectory + "@-"
-                    msg += str(self.n_images) + ":'"
+                    msg += trajectory
                     parprint(msg)
                     break
 
@@ -315,11 +314,13 @@ class GPNEB:
             if np.max(neb_pred_uncertainty) > unc_convergence:
                 sorted_candidates = acquisition(train_images=train_images,
                                                 candidates=candidates,
-                                                mode='max_uncertainty')
+                                                mode='uncertainty',
+                                                objective='max')
             else:
                 sorted_candidates = acquisition(train_images=train_images,
                                                 candidates=candidates,
-                                                mode='max_energy_ucb')
+                                                mode='ucb',
+                                                objective='max')
             best_candidate = sorted_candidates.pop(0)
 
             # Save the other candidates.
@@ -337,13 +338,6 @@ class GPNEB:
             self.force_calls += 1
             parprint('Single-point calculation finished.')
 
-        # Print final output when the surrogate is converged.
-        print_cite_neb()
-        parprint('The converged NEB path can be found in:', trajectory)
-        msg = "Visualize the last path using 'ase gui " + trajectory + "@-"
-        msg += str(self.n_images) + ":'"
-        parprint(msg)
-
 
 @parallel_function
 def make_neb(self, images_interpolation=None):
@@ -360,6 +354,7 @@ def make_neb(self, images_interpolation=None):
     imgs.append(self.e_endpoint[:])
     return imgs
 
+
 @parallel_function
 def get_neb_predictions(images):
     neb_pred_energy = []
@@ -370,7 +365,7 @@ def get_neb_predictions(images):
         neb_pred_unc.append(unc)
     neb_pred_unc[0] = 0.0
     neb_pred_unc[-1] = 0.0
-    predictions = {'energy': neb_pred_energy, 'uncertainty':neb_pred_unc}
+    predictions = {'energy': neb_pred_energy, 'uncertainty': neb_pred_unc}
     return predictions
 
 

@@ -1,7 +1,7 @@
 import numpy as np
+import random
 
-
-def acquisition(train_images, candidates, mode='min_energy'):
+def acquisition(train_images, candidates, mode='min_energy', objective='min'):
     """
     Acquisition function class.
     This function is in charge of ordering a list of Atoms candidates to
@@ -17,15 +17,17 @@ def acquisition(train_images, candidates, mode='min_energy'):
     mode: string
         Name of the acquisition function in charge of ordering the candidates.
         Modes available are:
-            - 'max_energy': Sort candidates by predicted energy (from max. to min.).
-            - 'min_energy': Sort candidates by predicted energy (from min to max.).
-            - 'max_uncertainty': Sort candidates by predicted uncertainty (from max. to min.).
-            - 'min_uncertainty': Sort candidates by predicted uncertainty (from min. to max.).
+            - 'energy': Sort candidates by predicted energy.
+            - 'uncertainty': Sort candidates by predicted uncertainty.
             - 'random': Randomly shuffles the candidates list.
-            - 'max_energy_ucb': Sort candidate by predicted energy plus uncertainty. (from max. to min.)
-            - 'max_energy_lcb': Sort candidate by predicted energy minus uncertainty. (from max. to min.)
-            - 'min_energy_ucb': Sort candidate by predicted energy plus uncertainty. (from min. to max.)
-            - 'min_energy_lcb': Sort candidate by predicted energy minus uncertainty. (from min. to max.)
+            - 'ucb': Sort candidate by predicted energy plus uncertainty.
+            - 'lcb': Sort candidate by predicted energy minus uncertainty.
+    objective: string
+         Objective of the acquisition function. Options:
+            - 'min': If our goal is to minimize the target function.
+            - 'max': If our goal is to maximize the target function.
+
+
     Returns
     -------
     Sorted candidates: list
@@ -47,38 +49,43 @@ def acquisition(train_images, candidates, mode='min_energy'):
         x.append(i.get_positions().reshape(-1))
         y.append(i.get_potential_energy())
 
-    implemented_acq = ['min_energy', 'max_energy', 'max_energy_ucb',
-                       'max_energy_lcb', 'min_energy_ucb', 'min_energy_lcb',
-                       'max_uncertainty', 'min_uncertainty', 'random']
+    implemented_acq = ['energy', 'uncertainty', 'ucb', 'lcb', 'random']
 
     if mode not in implemented_acq:
         msg = 'The selected acquisition function is not implemented. ' \
               'Implemented are: ' + str(implemented_acq)
         raise NotImplementedError(msg)
 
-    if mode == 'min_energy':
-        score_index = np.argsort(pred_y)
-    if mode == 'max_energy':
-        score_index = list(reversed(np.argsort(pred_y)))
+    if mode == 'energy':
+        if objective == 'min':
+            score_index = np.argsort(pred_y)
+        if objective == 'max':
+            score_index = list(reversed(np.argsort(pred_y)))
 
-    if mode == 'max_uncertainty':
-        score_index = list(reversed(np.argsort(pred_unc)))
-    if mode == 'min_uncertainty':
-        score_index = np.argsort(pred_unc)
+    if mode == 'uncertainty':
+        if objective == 'min':
+            score_index = np.argsort(pred_unc)
+        if objective == 'max':
+            score_index = list(reversed(np.argsort(pred_unc)))
 
-    if mode == 'min_energy_ucb':
-        score_index = np.argsort(np.array(pred_y) + np.array(pred_unc))
-
-    if mode == 'min_energy_lcb':
-        score_index = np.argsort(np.array(pred_y) - np.array(pred_unc))
-
-    if mode == 'max_energy_ucb':
+    if mode == 'ucb':
         e_plus_u = np.array(pred_y) + np.array(pred_unc)
-        score_index = list(reversed(np.argsort(e_plus_u)))
+        if objective == 'min':
+            score_index = np.argsort(e_plus_u)
+        if objective == 'max':
+            score_index = list(reversed(np.argsort(e_plus_u)))
 
-    if mode == 'max_energy_ucb':
+    if mode == 'lcb':
         e_minus_u = np.array(pred_y) - np.array(pred_unc)
-        score_index = list(reversed(np.argsort(e_minus_u)))
+        if objective == 'min':
+            score_index = np.argsort(e_minus_u)
+        if objective == 'max':
+            score_index = list(reversed(np.argsort(e_minus_u)))
+
+    mode = 'random'
+    if mode == 'random':
+        ordered_index = list(range(len(candidates)))
+        score_index = random.sample(ordered_index, len(ordered_index))
 
     # Order candidates (from best to worst candidates):
     ordered_images = []
