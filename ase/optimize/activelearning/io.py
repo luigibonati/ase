@@ -5,19 +5,18 @@ import copy
 
 
 @parallel_function
-def dump_experiences(images, filename, restart):
+def dump_experience(atoms, filename, restart):
     if restart is True:
         try:
-            prev_atoms = io.read(filename, ':')
-            for atoms in images:
-                if atoms not in prev_atoms:  # Avoid duplicates.
-                    parprint('Updating images (experiences) pool...')
-                    new_atoms = prev_atoms + [atoms]
-                    io.write(filename=filename, images=new_atoms)
+            prev_atoms = io.read(filename, ':')  # Actively searching.
+            if atoms not in prev_atoms:  # Avoid duplicates.
+                parprint('Updating images (experiences) pool...')
+                new_atoms = prev_atoms + [atoms]
+                io.write(filename=filename, images=new_atoms)
         except Exception:
-            io.write(filename=filename, images=images)  # Make atoms pool.
+            io.write(filename=filename, images=atoms, append=True)
     if restart is False:
-        io.write(filename=filename, images=images)  # Make atoms pool.
+        io.write(filename=filename, images=atoms, append=False)
 
 
 @parallel_function

@@ -69,7 +69,7 @@ qn_ase.run(fmax=0.05)
 # 2.B. GPNEB.
 gpneb = GPNEB(start=initial_ase, end='final.traj',
               calculator=EMT(), interpolation='idpp', n_images=n_images)
-gpneb.run(fmax=0.05, trajectory='GPNEB.traj', restart=False)
+gpneb.run(fmax=0.05, trajectory='GPNEB.traj', restart=True)
 
 # 3. Summary of the results.
 
@@ -95,13 +95,13 @@ Ef_neb_ase, dE_neb_ase = nebtools_gpneb.get_barrier(fit=False)
 Ef_gpneb, dE_gpneb = nebtools_gpneb.get_barrier(fit=False)
 fig, ax = plt.subplots()
 
-# uncertainty_neb = []
-# for i in gpneb.images:
-#     uncertainty_neb += [i.info['uncertainty']]
-#
-# # Add predictions' uncertainty to the plot.
-# ax.errorbar(S_gpneb, E_gpneb, uncertainty_neb, alpha=0.8,
-#             markersize=0.0, ecolor='red', ls='',
-#             elinewidth=3.0, capsize=1.0)
+uncertainty_neb = []
+for i in gpneb.images:
+    uncertainty_neb += [i.get_calculator().results['uncertainty']]
+
+# Add predictions' uncertainty to the plot.
+ax.errorbar(S_gpneb, E_gpneb, uncertainty_neb, alpha=0.8,
+            markersize=0.0, ecolor='red', ls='',
+            elinewidth=3.0, capsize=1.0)
 nebtools_gpneb.plot_band(ax=ax)
 plt.show()

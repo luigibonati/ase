@@ -1,14 +1,17 @@
 import numpy as np
 import copy
 import time
-from ase.parallel import parprint, parallel_function
-from ase import io
 from ase.atoms import Atoms
+from ase.calculators.gp.calculator import GPCalculator
+from ase import io
 from ase.neb import NEB
 from ase.optimize import MDMin
 from ase.geometry import distance
-from ase.optimize.activelearning.io import dump_experiences, attach_calculator
-from ase.calculators.gp.calculator import GPCalculator
+
+from ase.optimize.activelearning.io import dump_experience, attach_calculator
+from ase.optimize.activelearning.acquisition import acquisition
+from ase.parallel import parprint, parallel_function
+
 
 
 class GPNEB:
@@ -128,9 +131,9 @@ class GPNEB:
         self.function_calls = 0
         self.force_calls = 0
         self.ase_calc = calculator
-        self.atoms_template = io.read(self.start, '-1')
+        self.atoms = io.read(self.start, '-1')
 
-        self.constraints = self.atoms_template.constraints
+        self.constraints = self.atoms.constraints
         self.force_consistent = force_consistent
 
         # Calculate the distance between the initial and final endpoints.
@@ -163,9 +166,6 @@ class GPNEB:
         # Guess spring constant (k) if not defined by the user.
         if self.spring is None:
             self.spring = (np.sqrt(self.n_images-1) / d_start_end)
-
-        # Create a pool of images containing all the experiences collected.
-        self.images_pool = [self.i_endpoint, self.e_endpoint]
 
     def run(self, fmax=0.05, unc_convergence=0.05, dt=0.05, ml_steps=200,
             max_step=0.5, trajectory='GPNEB.traj', restart=False):
@@ -222,23 +222,27 @@ class GPNEB:
 
         """
         trajectory_main = trajectory.split('.')[0]
-        trajectory_experiences = trajectory_main +'_experiences.traj'
+        trajectory_experiences = trajectory_main + '_experiences.traj'
         trajectory_candidates = trajectory_main + '_candidates.traj'
+
+        # Start by saving the initial and final states.
+        dump_experience(atoms=self.i_endpoint,
+                        filename=trajectory_experiences, restart=restart)
+        restart = True  # Switch on active learning.
+        dump_experience(atoms=self.e_endpoint,
+                        filename=trajectory_experiences, restart=restart)
 
         while True:
 
             # 1. Experiences. Restart from a previous (and/or parallel) runs.
             start = time.time()
-            dump_experiences(images=self.images_pool,
-                             filename=trajectory_experiences, restart=restart)
-            if restart is True:
-                self.images_pool = io.read(trajectory_experiences, ':')
+            train_images = io.read(trajectory_experiences, ':')
             end = time.time()
             parprint('Time reading and writing atoms images to build a model:',
                      end-start)
 
             # 2. Prepare a calculator.
-            self.images = attach_calculator(train_images=self.images_pool,
+            self.images = attach_calculator(train_images=train_images,
                                             calculator=self.model_calculator,
                                             test_images=self.images)
 
@@ -261,10 +265,6 @@ class GPNEB:
 
             # Safe check to optimize the images.
             if np.max(neb_pred_uncertainty) <= max_step:
-                # Do not calculate images uncertainty (faster predictions).
-                for i in self.images:
-                    i.get_calculator().calculate_uncertainty = False
-                    i.get_potential_energy()
                 start = time.time()
                 parprint('Optimizing NEB in the model potential...')
                 neb_opt.run(fmax=(fmax * 0.80), steps=ml_steps)
@@ -272,7 +272,6 @@ class GPNEB:
                 end = time.time()
                 parprint('Elapsed time optimizing predicted NEB:', end-start)
 
-            # 4. Get optimized NEB predictions.
             predictions = get_neb_predictions(self.images)
             neb_pred_energy = predictions['energy']
             neb_pred_uncertainty = predictions['uncertainty']
@@ -290,14 +289,14 @@ class GPNEB:
             parprint('Predicted barrier (<--):', pbb)
             parprint('Max. uncertainty:', np.max(neb_pred_uncertainty))
             parprint('Number of images:', len(self.images))
-            parprint("fmax:", get_fmax(self.images_pool[-1]))
+            parprint("fmax:", get_fmax(train_images[-1]))
             msg = "--------------------------------------------------------\n"
             parprint(msg)
 
             # 6. Check convergence.
             # Max.forces and NEB images uncertainty must be below *fmax* and
             # *unc_convergence* thresholds.
-            if len(self.images_pool) > 2 and get_fmax(self.images_pool[-1]) <= fmax:
+            if len(train_images) > 2 and get_fmax(train_images[-1]) <= fmax:
                 parprint('A saddle point was found.')
                 if np.max(neb_pred_uncertainty[1:-1]) < unc_convergence:
                     parprint('Uncertainty of the images above threshold.')
@@ -311,28 +310,29 @@ class GPNEB:
                     break
 
             # 7. Select next point to train (acquisition function):
-            e_plus_unc_pred_neb = np.array(neb_pred_energy)
-            e_plus_unc_pred_neb += np.array(neb_pred_uncertainty)
-            img_max_unc = self.images[np.argmax(neb_pred_uncertainty)]
-            img_max_e_plus_unc = self.images[np.argmax(e_plus_unc_pred_neb)]
+            candidates = copy.deepcopy(self.images)
 
-            # Select image with max. uncertainty until we reach the
-            # unc_convergence threshold.
             if np.max(neb_pred_uncertainty) > unc_convergence:
-                positions_to_evaluate = img_max_unc.positions
-            # Select top energy images when the unc_convergence threshold
-            # has been satisfied.
+                sorted_candidates = acquisition(train_images=train_images,
+                                                candidates=candidates,
+                                                mode='max_uncertainty')
             else:
-                positions_to_evaluate = img_max_e_plus_unc.positions
+                sorted_candidates = acquisition(train_images=train_images,
+                                                candidates=candidates,
+                                                mode='max_energy_ucb')
+            best_candidate = sorted_candidates.pop(0)
+
+            # Save the other candidates.
+            io.write(trajectory_candidates, sorted_candidates)
 
             # 8. Evaluate the target function and add it to the pool of
             # evaluated atoms structures.
             parprint('Performing evaluation on the real landscape...')
-            eval_atoms = Atoms(self.atoms_template,
-                               positions=positions_to_evaluate,
-                               calculator=self.ase_calc)
-            eval_atoms.get_potential_energy(force_consistent=self.force_consistent)
-            self.images_pool += [copy.deepcopy(eval_atoms)]
+            self.atoms.positions = best_candidate.get_positions()
+            self.atoms.set_calculator(self.ase_calc)
+            self.atoms.get_potential_energy(force_consistent=self.force_consistent)
+            dump_experience(atoms=self.atoms,
+                            filename=trajectory_experiences, restart=restart)
             self.function_calls += 1
             self.force_calls += 1
             parprint('Single-point calculation finished.')

@@ -233,7 +233,6 @@ class GPCalculator(Calculator, GaussianProcess):
             forces_empty[self.atoms_mask[i]] = forces[i]
         forces = forces_empty.reshape(-1, 3)
 
-        self.calculate_uncertainty = True
         if self.calculate_uncertainty is True:
             x = self.atoms.get_positions().reshape(-1)[self.atoms_mask]
             n = self.X.shape[0]
