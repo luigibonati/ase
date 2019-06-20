@@ -1,18 +1,19 @@
-import copy
+import numpy as np
 import time
-from ase.parallel import parprint
 from ase import io
-from ase.atoms import Atoms
-from ase.optimize import LBFGS
-from ase.optimize.activelearning.io import print_cite_min, dump_experiences, get_fmax
-from ase.optimize.activelearning.model import GPModel, create_mask
+from ase.calculators.gp.calculator import GPCalculator
+from ase.optimize.lbfgs import LBFGS
+from ase.optimize.activelearning.io import dump_observation, attach_calculator
+from ase.parallel import parprint, parallel_function
 
 
 class LGPMin:
 
-    def __init__(self, atoms, model=None, force_consistent=None):
-
-        """ Optimize atomic structure using a surrogate machine learning
+    def __init__(self, atoms, model_calculator=None, force_consistent=None,
+                 max_train_data=25,
+                 max_train_data_strategy='last_observations'):
+        """
+        Optimize atomic structure using a surrogate machine learning
         model [1,2]. Potential energies and forces information are used to
         build a predicted PES via Gaussian Process (GP) regression.
         [1] E. Garijo del Rio, J. J. Mortensen and K. W. Jacobsen.
@@ -25,11 +26,11 @@ class LGPMin:
         atoms: Atoms object
             The Atoms object to relax.
 
-        model: Model object.
-            Predictive model to be used to build a PES for the surrogate.
-            The default is None which uses a GP model with the Squared
+        model_calculator: Model object.
+            Model calculator to be used for predicting the potential energy
+            surface. The default is None which uses a GP model with the Squared
             Exponential Kernel and other default parameters. See
-            *ase.optimize.activelearning.model* GPModel for default GP parameters.
+            *ase.calculator.gp.calculator* GPModel for default GP parameters.
 
         force_consistent: boolean or None
             Use force-consistent energy calls (as opposed to the energy
@@ -38,28 +39,27 @@ class LGPMin:
             falls back on force_consistent=False if not.
 
         """
-        # Predictive model parameters:
-        self.model = model
-        if model is None:
-            self.model = GPModel()
 
-        # General setup.
-        atoms.get_potential_energy(force_consistent=force_consistent)
-        self.ase_calc = atoms.get_calculator()
-        self.constraints = atoms.constraints
+        # Default GP Calculator parameters if not specified by the user.
+        self.model_calculator = model_calculator
+        if model_calculator is None:
+            self.model_calculator = GPCalculator(
+                               train_images=[],
+                               max_train_data_strategy=max_train_data_strategy,
+                               max_train_data=max_train_data)
+        # GPMin does not uses uncertainty (switch off for faster predictions).
+        self.model_calculator.calculate_uncertainty = False
 
-        # Optimization.
+        # Active Learning setup (Single-point calculations).
         self.function_calls = 0
         self.force_calls = 0
+        self.ase_calc = atoms.get_calculator()
+        self.atoms = atoms
+
+        self.constraints = self.atoms.constraints
         self.force_consistent = force_consistent
 
-        self.images_pool = [copy.deepcopy(atoms)]
-
-        # Create mask to hide atoms that do not participate in the model:
-        if self.constraints is not None:
-            self.atoms_mask = create_mask(atoms)
-
-    def run(self, fmax=0.05, ml_steps=200, trajectory='LGPMin.traj',
+    def run(self, fmax=0.05, ml_steps=1000, trajectory='LGPMin.traj',
             restart=False):
 
         """
@@ -71,92 +71,107 @@ class LGPMin:
             Convergence criteria (in eV/Angstrom).
 
         ml_steps: int
-            Maximum number of steps for the Atoms optimization on the GP
-            predicted potential energy surface.
+            Maximum number of steps for the optimization (using LBFGS) on
+            the GP predicted potential energy surface.
 
         trajectory: string
-            Filename to store the optimization of the predicted PES.
+            Filename to store the predicted optimization.
                 Additional information:
                 - Energy uncertain: The energy uncertainty in each image can be
                   accessed in image.info['uncertainty'].
 
-        restart: bool
-            A *trajectory_experiences.traj* file is automatically generated
-            which contains the experiences collected by the surrogate. If
-            *restart* is True and a *trajectory_experiences.traj* file is
+        restart: boolean
+            A *trajectory_observations.traj* file is automatically generated
+            which contains the observations collected by the surrogate. If
+            *restart* is True and a *trajectory_observations.traj* file is
             found in the working directory it will be used to continue the
             optimization from previous run(s). In order to start the
             optimization from scratch *restart* should be set to False or
-            alternatively the *trajectory_experiences.traj* file must be
+            alternatively the *trajectory_observations.traj* file must be
             deleted.
 
         Returns
         -------
-        Optimized Atoms structure.
+        Optimized structure. The optimization process can be followed in
+        *trajectory_observations.traj*.
 
         """
+        trajectory_main = trajectory.split('.')[0]
+        trajectory_observations = trajectory_main + '_observations.traj'
+        trajectory_candidates = trajectory_main + '_candidates.traj'
 
-        while get_fmax(self.images_pool[-1]) > fmax:
+        # Start by saving the initial configurations.
+        # If restart is True it will read previous observations from
+        # *trajectory_observations.traj* if the file is found in the working
+        # directory. If restart is False it will overwrite any previous
+        # *trajectory_observations.traj* and will start the optimization from
+        # scratch.
 
-            # 1. Experiences. Restart from a previous (and/or parallel) runs.
+        self.atoms.get_potential_energy(force_consistent=self.force_consistent)
+        dump_observation(atoms=self.atoms,
+                         filename=trajectory_observations, restart=restart)
+        train_images = io.read(trajectory_observations, ':')
+
+        while not fmax > get_fmax(train_images[-1]):
+
+            # 1. Collect observations.
+            # This serves to restart from a previous (and/or parallel) runs.
             start = time.time()
-            dump_experiences(images=self.images_pool,
-                             filename=trajectory, restart=restart)
-            if restart is True:
-                self.images_pool = io.read(trajectory.split('.')[0] +
-                                           '_experiences.traj', ':')
+            train_images = io.read(trajectory_observations, ':')
             end = time.time()
-            parprint('Elapsed time dumping/reading images to build a model:',
+            parprint('Time reading and writing atoms images to build a model:',
                      end-start)
 
-            # 2. Build a ML model from Atoms images (i.e. images_pool).
-            start = time.time()
-            self.model.extract_features(train_images=self.images_pool,
-                                        atoms_mask=self.atoms_mask,
-                                        force_consistent=self.force_consistent)
-            end = time.time()
-            parprint('Elapsed time featurizing data:', end-start)
+            # 2. Update GP calculator.
+            self.atoms = attach_calculator(train_images=train_images,
+                                           calculator=self.model_calculator,
+                                           test_images=[self.atoms])[0]
 
-            # 3. Train the model.
-            start = time.time()
-            self.model.train_model()
-            end = time.time()
-            parprint('Elapsed time training the model:', end-start)
+            # 3. Optimize the structure in the predicted PES.
+            ml_opt = LBFGS(self.atoms, trajectory=trajectory_candidates)
+            ml_opt.run(fmax=(fmax * 0.5), steps=ml_steps)
 
-            # Attach ML calculator to the Atoms to be optimize.
-            test_atoms = copy.deepcopy(self.images_pool[-1])
-            self.model.get_images_predictions([test_atoms],
-                                              get_uncertainty=True)
-            print(test_atoms.get_uncertainty())
-            exit()
-
-            # 4. Optimize predicted PES.
-            opt = LBFGS(test_atoms, trajectory=trajectory, logfile=None)
-            start = time.time()
-            opt.run(fmax=fmax*0.5, steps=ml_steps)
-            end = time.time()
-            parprint('Elapsed time optimizing predicted PES:', end-start)
-
-            # 5. Acquisition function. Greedy last optimized structure.
-            positions_to_evaluate = test_atoms.positions
-
-            # 6. Evaluate the target function and add it to the pool of
-            # evaluated atoms structures.
-            eval_atoms = Atoms(test_atoms, positions=positions_to_evaluate,
-                               calculator=self.ase_calc)
-            eval_atoms.get_potential_energy(force_consistent=self.force_consistent)
-            self.images_pool += [copy.deepcopy(eval_atoms)]
+            # 4. Evaluate the target function and save it in *observations*.
+            parprint('Performing evaluation on the real landscape...')
+            self.atoms.set_calculator(self.ase_calc)
+            self.atoms.get_potential_energy(force_consistent=self.force_consistent)
+            dump_observation(atoms=self.atoms,
+                             filename=trajectory_observations, restart=True)
             self.function_calls += 1
             self.force_calls += 1
+            parprint('Single-point calculation finished.')
 
-            # 7. Print output.
-            parprint('LGPMin:', self.function_calls,
-                     time.strftime("%H:%M:%S", time.localtime()),
-                     self.images_pool[-1].get_potential_energy(
-                                    force_consistent=self.force_consistent),
-                     get_fmax(self.images_pool[-1]))
+            # 6. Print output.
+            msg = "--------------------------------------------------------"
+            parprint(msg)
+            parprint('Step:', self.function_calls)
+            parprint('Time:', time.strftime("%m/%d/%Y, %H:%M:%S",
+                                            time.localtime()))
+            parprint('Energy', self.atoms.get_potential_energy(self.force_consistent))
+            parprint("fmax:", get_fmax(train_images[-1]))
+            msg = "--------------------------------------------------------\n"
+            parprint(msg)
 
-        # Print final output when the surrogate is converged.
-        print_cite_min()
-        parprint('The optimization can be found in:',
-                 trajectory.split('.')[0] + '_experiences.traj')
+
+@parallel_function
+def get_fmax(atoms):
+    """
+    Returns fmax for a given atoms structure.
+    """
+    forces = atoms.get_forces()
+    return np.sqrt((forces**2).sum(axis=1).max())
+
+
+@parallel_function
+def print_cite_min():
+    msg = "-----------------------------------------------------------"
+    msg += "-----------------------------------------------------------\n"
+    msg += "You are using LGPMin. Please cite: \n"
+    msg += "[1] E. Garijo del Rio, J. J. Mortensen and K. W. Jacobsen. "
+    msg += "arXiv:1808.08588. https://arxiv.org/abs/1808.08588. \n"
+    msg += "[1] M. H. Hansen, J. A. Garrido Torres, P. C. Jennings, "
+    msg += "J. R. Boes, O. G. Mamun and T. Bligaard. arXiv:1904.00904. "
+    msg += "https://arxiv.org/abs/1904.00904 \n"
+    msg += "-----------------------------------------------------------"
+    msg += "-----------------------------------------------------------"
+    parprint(msg)

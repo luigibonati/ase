@@ -7,10 +7,9 @@ from ase.calculators.gp.calculator import GPCalculator
 from ase.neb import NEB
 from ase.geometry import distance
 from ase.optimize import MDMin
-from ase.optimize.activelearning.io import dump_experience, attach_calculator
+from ase.optimize.activelearning.io import dump_observation, attach_calculator
 from ase.optimize.activelearning.acquisition import acquisition
 from ase.parallel import parprint, parallel_function
-
 
 
 class GPNEB:
@@ -27,7 +26,7 @@ class GPNEB:
         predicted PES via Gaussian Process (GP) regression. The surrogate
         relies on NEB theory to optimize the images along the path in the
         predicted PES. Once the predicted NEB is optimized the acquisition
-        function collect a new experience based on the predicted energies
+        function collect a new observation based on the predicted energies
         and uncertainties of the optimized images.
         [1] J. A. Garrido Torres, M. H. Hansen, P. C. Jennings, J. R. Boes
         and T. Bligaard. Phys. Rev. Lett. 122, 156001.
@@ -50,7 +49,7 @@ class GPNEB:
             Model calculator to be used for predicting the potential energy
             surface. The default is None which uses a GP model with the Squared
             Exponential Kernel and other default parameters. See
-            ase.calculator.gp.calculator GPModel for default GP parameters.
+            *ase.calculator.gp.calculator* GPModel for default GP parameters.
 
         interpolation: string or Atoms list or Trajectory
             NEB interpolation.
@@ -205,14 +204,14 @@ class GPNEB:
                 - Energy uncertain: The energy uncertainty in each image can be
                   accessed in image.info['uncertainty'].
 
-        restart: bool
-            A *trajectory_experiences.traj* file is automatically generated
-            which contains the experiences collected by the surrogate. If
-            *restart* is True and a *trajectory_experiences.traj* file is
+        restart: boolean
+            A *trajectory_observations.traj* file is automatically generated
+            which contains the observations collected by the surrogate. If
+            *restart* is True and a *trajectory_observations.traj* file is
             found in the working directory it will be used to continue the
             optimization from previous run(s). In order to start the
             optimization from scratch *restart* should be set to False or
-            alternatively the *trajectory_experiences.traj* file must be
+            alternatively the *trajectory_observations.traj* file must be
             deleted.
 
         Returns
@@ -221,21 +220,23 @@ class GPNEB:
 
         """
         trajectory_main = trajectory.split('.')[0]
-        trajectory_experiences = trajectory_main + '_experiences.traj'
+        trajectory_observations = trajectory_main + '_observations.traj'
         trajectory_candidates = trajectory_main + '_candidates.traj'
 
         # Start by saving the initial and final states.
-        dump_experience(atoms=self.i_endpoint,
-                        filename=trajectory_experiences, restart=restart)
+        dump_observation(atoms=self.i_endpoint,
+                         filename=trajectory_observations, restart=restart)
         restart = True  # Switch on active learning.
-        dump_experience(atoms=self.e_endpoint,
-                        filename=trajectory_experiences, restart=restart)
+        dump_observation(atoms=self.e_endpoint,
+                         filename=trajectory_observations, restart=restart)
 
         while True:
 
-            # 1. Experiences. Restart from a previous (and/or parallel) runs.
+            # 1. Collect observations.
+            # This serves to restart from a previous (and/or parallel) runs.
+
             start = time.time()
-            train_images = io.read(trajectory_experiences, ':')
+            train_images = io.read(trajectory_observations, ':')
             end = time.time()
             parprint('Time reading and writing atoms images to build a model:',
                      end-start)
@@ -321,19 +322,21 @@ class GPNEB:
                                                 candidates=candidates,
                                                 mode='ucb',
                                                 objective='max')
+
+            # Select the best candidate.
             best_candidate = sorted_candidates.pop(0)
 
-            # Save the other candidates.
+            # Save the other candidates for multi-task optimization.
             io.write(trajectory_candidates, sorted_candidates)
 
-            # 8. Evaluate the target function and add it to the pool of
-            # evaluated atoms structures.
+            # 8. Evaluate the target function and save it in *observations*.
             parprint('Performing evaluation on the real landscape...')
             self.atoms.positions = best_candidate.get_positions()
             self.atoms.set_calculator(self.ase_calc)
             self.atoms.get_potential_energy(force_consistent=self.force_consistent)
-            dump_experience(atoms=self.atoms,
-                            filename=trajectory_experiences, restart=restart)
+            dump_observation(atoms=self.atoms,
+                             filename=trajectory_observations,
+                             restart=restart)
             self.function_calls += 1
             self.force_calls += 1
             parprint('Single-point calculation finished.')
@@ -394,4 +397,3 @@ def print_cite_neb():
     msg += "-----------------------------------------------------------"
     msg += "-----------------------------------------------------------"
     parprint(msg)
-

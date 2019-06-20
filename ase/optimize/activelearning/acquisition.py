@@ -38,18 +38,23 @@ def acquisition(train_images, candidates, mode='min_energy', objective='min'):
     y = []
     pred_x = []
     pred_y = []
+    pred_fmax = []
     pred_unc = []
 
     # Gather all required information to decide the order of the candidates.
     for i in candidates:
         pred_x.append(i.get_positions().reshape(-1))
         pred_y.append(i.get_potential_energy())
-        pred_unc.append(i.get_calculator().results['uncertainty'])
+        if mode =='uncertainty' or mode == 'ucb' or mode == 'lcb':
+            pred_unc.append(i.get_calculator().results['uncertainty'])
+        if mode == 'fmax':
+            pred_fmax.append(np.sqrt((i.get_forces()**2).sum(axis=1).max()))
+
     for i in train_images:
         x.append(i.get_positions().reshape(-1))
         y.append(i.get_potential_energy())
 
-    implemented_acq = ['energy', 'uncertainty', 'ucb', 'lcb', 'random']
+    implemented_acq = ['energy', 'fmax', 'uncertainty', 'ucb', 'lcb', 'random']
 
     if mode not in implemented_acq:
         msg = 'The selected acquisition function is not implemented. ' \
@@ -68,6 +73,12 @@ def acquisition(train_images, candidates, mode='min_energy', objective='min'):
         if objective == 'max':
             score_index = list(reversed(np.argsort(pred_unc)))
 
+    if mode == 'fmax':
+        if objective == 'min':
+            score_index = np.argsort(pred_fmax)
+        if objective == 'max':
+            score_index = list(reversed(np.argsort(pred_fmax)))
+
     if mode == 'ucb':
         e_plus_u = np.array(pred_y) + np.array(pred_unc)
         if objective == 'min':
@@ -82,7 +93,6 @@ def acquisition(train_images, candidates, mode='min_energy', objective='min'):
         if objective == 'max':
             score_index = list(reversed(np.argsort(e_minus_u)))
 
-    mode = 'random'
     if mode == 'random':
         ordered_index = list(range(len(candidates)))
         score_index = random.sample(ordered_index, len(ordered_index))

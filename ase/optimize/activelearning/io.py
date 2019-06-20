@@ -1,16 +1,28 @@
 from ase import io
 from ase.parallel import parallel_function, parprint
-import datetime
 import copy
 
 
 @parallel_function
-def dump_experience(atoms, filename, restart):
+def dump_observation(atoms, filename, restart):
+    """
+    Saves a trajectory file containing the atoms observations.
+
+    Parameters
+    ----------
+    atoms: object
+        Atoms object to be appended to previous observations.
+    filename: string
+        Name of the trajectory file to save the observations.
+    restart: boolean
+        Append mode (true or false).
+     """
+
     if restart is True:
         try:
             prev_atoms = io.read(filename, ':')  # Actively searching.
             if atoms not in prev_atoms:  # Avoid duplicates.
-                parprint('Updating images (experiences) pool...')
+                parprint('Updating observations...')
                 new_atoms = prev_atoms + [atoms]
                 io.write(filename=filename, images=new_atoms)
         except Exception:
@@ -20,9 +32,29 @@ def dump_experience(atoms, filename, restart):
 
 
 @parallel_function
-def attach_calculator(train_images, calculator, test_images):
-    """ When including the train_images we avoid training multiple times the
-    same process"""
+def attach_calculator(train_images, test_images, calculator):
+    """
+    Create duplicate of a calculator which contained a trained model and
+    appends this calculator to different Atoms objects. This avoids training
+    the same process for multiple images that contain the same training
+    observations.
+
+    Parameters
+    ----------
+    train_images: list
+        List of Atoms containing the observations to build the model.
+    test_images: list
+        List of Atoms to be tested.
+    calculator: object
+        Calculator to be appended to the different test images. This is
+        usually the calculator containing the model (e.g. a GPCalculator).
+
+    Returns
+    -------
+    test_images: list
+        List of Atoms with a model calculator attached.
+
+    """
     calc = copy.deepcopy(calculator)
     calc.update_train_data(train_images)
 
@@ -30,28 +62,3 @@ def attach_calculator(train_images, calculator, test_images):
         i.set_calculator(copy.deepcopy(calc))
         i.get_potential_energy()
     return test_images
-
-
-@parallel_function
-def print_time():
-    now = datetime.datetime.now()
-    return now.strftime("%Y-%m-%d %H:%M:%S")
-
-
-@parallel_function
-def print_cite_min():
-    msg = "-----------------------------------------------------------"
-    msg += "-----------------------------------------------------------\n"
-    msg += "You are using LGPMin. Please cite: \n"
-    msg += "[1] E. Garijo del Rio, J. J. Mortensen and K. W. Jacobsen. "
-    msg += "arXiv:1808.08588. https://arxiv.org/abs/1808.08588. \n"
-    msg += "[1] M. H. Hansen, J. A. Garrido Torres, P. C. Jennings, "
-    msg += "J. R. Boes, O. G. Mamun and T. Bligaard. arXiv:1904.00904. "
-    msg += "https://arxiv.org/abs/1904.00904 \n"
-    msg += "-----------------------------------------------------------"
-    msg += "-----------------------------------------------------------"
-    parprint(msg)
-
-
-
-

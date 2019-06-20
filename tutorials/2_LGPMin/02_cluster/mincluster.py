@@ -3,7 +3,8 @@ from ase.constraints import FixAtoms
 
 from ase.calculators.emt import EMT
 from ase.optimize import *
-from ase.optimize.activelearning.lgpmin import LGPMin, GPModel
+from ase.optimize.activelearning.lgpmin import LGPMin
+from ase.calculators.gp.calculator import GPCalculator
 import time
 
 """ 
@@ -22,7 +23,7 @@ calc = EMT()
 surfaces = [(1, 0, 0), (1, 1, 0), (1, 1, 1)]
 esurf = [1.0, 1.1, 0.9]
 lc = 4.0
-size = 200
+size = 50
 atoms = wulff_construction('Au', surfaces, esurf,
                            size, 'fcc',
                            rounding='above', latticeconstant=lc)
@@ -39,14 +40,13 @@ atoms.set_constraint(c)
 # 2.A. Optimize structure using LGPMin.
 initial_lgpmin = atoms.copy()
 initial_lgpmin.set_calculator(calc)
-gp_model = GPModel(scale=0.4, max_training_data=10,
-                   max_train_data_strategy='lowest_energy')
-lgpmin_opt = LGPMin(initial_lgpmin, model=gp_model)
+gp_model = GPCalculator(scale=0.4, max_train_data=15,
+                        max_train_data_strategy='lowest_energy')
+lgpmin_opt = LGPMin(initial_lgpmin, model_calculator=gp_model)
 start = time.time()
 lgpmin_opt.run(fmax=0.01, restart=False)
 end = time.time()
 print('Time LGPMin: ', end-start)
-
 
 # 2.A. Optimize structure using GPMin.
 initial_gpmin = atoms.copy()
