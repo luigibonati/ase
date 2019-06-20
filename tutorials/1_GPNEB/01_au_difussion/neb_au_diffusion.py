@@ -7,6 +7,8 @@ from ase.optimize import BFGS
 import matplotlib.pyplot as plt
 from ase.optimize.activelearning.gpneb import GPNEB
 from ase.neb import NEBTools
+from ase.calculators.gp.calculator import GPCalculator
+
 
 """ 
     Toy model for the diffusion of a Au atom on an Al(111) surface.  
@@ -67,7 +69,8 @@ qn_ase = BFGS(neb_ase, trajectory='neb_ase.traj')
 qn_ase.run(fmax=0.05)
 
 # 2.B. GPNEB.
-gpneb = GPNEB(start=initial_ase, end='final.traj',
+gp_model = GPCalculator(scale=0.4)
+gpneb = GPNEB(start=initial_ase, end='final.traj', model_calculator=gp_model,
               calculator=EMT(), interpolation='idpp', n_images=n_images)
 gpneb.run(fmax=0.05, trajectory='GPNEB.traj', restart=False)
 

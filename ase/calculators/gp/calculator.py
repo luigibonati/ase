@@ -1,16 +1,21 @@
+import numpy as np
+import time
 from ase.calculators.gp.kernel import SquaredExponential
 from ase.calculators.gp.gp import GaussianProcess
 from ase.calculators.gp.prior import ConstantPrior
 from ase.calculators.calculator import Calculator, all_changes
 from scipy.linalg import solve_triangular
-import numpy as np
-import time
+from scipy.spatial.distance import euclidean
 
 
 class GPCalculator(Calculator, GaussianProcess):
     """
     GP model parameters
     -------------------
+    train_images: list
+        List of Atoms objects containing the observations which will be use
+        to train the model.
+
     prior: Prior object or None
         Prior for the GP regression of the PES surface. See
         ase.optimize.activelearning.prior. If *Prior* is None, then it is set
@@ -66,12 +71,13 @@ class GPCalculator(Calculator, GaussianProcess):
             the surrogate.
             'lowest_energy': selects the lowest energy observations
             collected by the surrogate.
+            'nearest_observations': selects the observations which
+            positions are nearest to the positions of the Atoms to test.
 
         For instance, if *max_train_data* is set to 50 and
         *max_train_data_strategy* to 'lowest energy', the surrogate model
         will be built in each iteration with the 50 lowest energy
         observations collected so far.
-
     """
 
     implemented_properties = ['energy', 'forces', 'uncertainty']
@@ -146,10 +152,11 @@ class GPCalculator(Calculator, GaussianProcess):
         end = time.time()
         print('Elapsed time featurizing data:', end-start)
 
-    def update_train_data(self, train_images):
+    def update_train_data(self, train_images, test_images=None):
         """ Update the model with observations (feeding new training images),
         after instantiating the GPCalculator class."""
 
+        self.test_images = test_images
         self.train_images = self.old_train_images
         for i in train_images:
             if i not in self.train_images:
@@ -192,6 +199,30 @@ class GPCalculator(Calculator, GaussianProcess):
                 self.train_x = x
                 self.train_y = y
 
+            # 2.c. Get the nearest observations to the test structure.
+            if self.max_data_strategy == 'nearest_observations':
+                arg_nearest = []
+                if self.test_images is None:
+                    self.test_images = [self.atoms]
+                for i in self.test_images:
+                    pos_test = i.get_positions().reshape(-1)
+                    d_i_j = []
+                    for j in self.train_images:
+                        pos_train = j.get_positions().reshape(-1)
+                        d_i_j.append(euclidean(pos_test, pos_train))
+                    arg_nearest += list(np.argsort(d_i_j)[:self.max_data])
+
+                # Include the first train.
+                # arg_nearest = np.append(arg_nearest, 0)
+                # Include the last train.
+                # arg_nearest = np.append(arg_nearest, len(self.train_images)-1)
+                # Remove duplicates.
+                arg_nearest = np.unique(arg_nearest)
+                x = [self.train_x[i] for i in arg_nearest]
+                y = [self.train_y[i] for i in arg_nearest]
+                self.train_x = x
+                self.train_y = y
+
         # 3. Train a Gaussian Process.
         start = time.time()
         self.train(np.array(self.train_x), np.array(self.train_y),
@@ -222,6 +253,9 @@ class GPCalculator(Calculator, GaussianProcess):
         *atoms.get_forces()* and uncertainties using
         *atoms.get_calculator().results['uncertainty'].
         """
+        # Atoms object.
+        self.atoms = atoms
+        Calculator.calculate(self, atoms, properties, system_changes)
 
         # Execute training process when *calculate* is called.
         if self.train_images is not None:
@@ -230,10 +264,6 @@ class GPCalculator(Calculator, GaussianProcess):
             self.train_model()
             self.old_train_images = self.train_images.copy()
             self.train_images = None  # Remove the training list of images.
-
-        # Atoms object.
-        self.atoms = atoms
-        Calculator.calculate(self, atoms, properties, system_changes)
 
         # Mask geometry to be compatible with the trained GP (reduce memory).
         x = self.atoms.get_positions().reshape(-1)[self.atoms_mask]

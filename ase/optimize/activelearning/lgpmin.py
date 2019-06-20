@@ -40,17 +40,18 @@ class LGPMin:
 
         """
 
-        # Default GP Calculator parameters if not specified by the user.
         self.model_calculator = model_calculator
+        # Default GP Calculator parameters if not specified by the user.
         if model_calculator is None:
             self.model_calculator = GPCalculator(
                                train_images=[],
                                max_train_data_strategy=max_train_data_strategy,
                                max_train_data=max_train_data)
-        # GPMin does not uses uncertainty (switch off for faster predictions).
+
+        # GPMin does not use uncertainty (switched off for faster predictions).
         self.model_calculator.calculate_uncertainty = False
 
-        # Active Learning setup (Single-point calculations).
+        # Active Learning setup (single-point calculations).
         self.function_calls = 0
         self.force_calls = 0
         self.ase_calc = atoms.get_calculator()
@@ -125,11 +126,13 @@ class LGPMin:
 
             # 2. Update GP calculator.
             gp_calc = copy.deepcopy(self.model_calculator)
-            gp_calc.update_train_data(train_images=train_images)
+            gp_calc.update_train_data(train_images=train_images,
+                                      test_images=[self.atoms])
             self.atoms.set_calculator(gp_calc)
 
             # 3. Optimize the structure in the predicted PES.
-            ml_opt = LBFGS(self.atoms, trajectory=trajectory_candidates)
+            ml_opt = LBFGS(self.atoms, trajectory=trajectory_candidates,
+                           logfile=None)
             ml_opt.run(fmax=(fmax * 0.5), steps=ml_steps)
 
             # 4. Evaluate the target function and save it in *observations*.

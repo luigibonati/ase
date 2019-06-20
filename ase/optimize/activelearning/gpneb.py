@@ -123,8 +123,9 @@ class GPNEB:
         self.e_endpoint.get_forces()
 
         # GP calculator:
+        self.model_calculator = model_calculator
         if model_calculator is None:
-            self.model_calculator = GPCalculator(train_images=[])
+            self.model_calculator = GPCalculator()
 
         # Active Learning setup (Single-point calculations).
         self.function_calls = 0
@@ -235,12 +236,10 @@ class GPNEB:
 
             # 1. Collect observations.
             # This serves to restart from a previous (and/or parallel) runs.
-
             start = time.time()
             train_images = io.read(trajectory_observations, ':')
             end = time.time()
-            parprint('Time reading and writing atoms images to build a model:',
-                     end-start)
+            parprint('Time read/write images to build a model:', end-start)
 
             # 2. Prepare a calculator.
             calc = copy.deepcopy(self.model_calculator)
@@ -251,7 +250,6 @@ class GPNEB:
                 i.set_calculator(copy.deepcopy(calc))
 
             # 3. Optimize the NEB in the predicted PES.
-
             # Get path uncertainty for deciding whether NEB or CI-NEB.
             predictions = get_neb_predictions(self.images)
             neb_pred_uncertainty = predictions['uncertainty']
@@ -308,8 +306,7 @@ class GPNEB:
                     io.write(trajectory, self.images)
                     parprint('Uncertainty of the images above threshold.')
                     parprint('NEB converged.')
-                    parprint('The converged NEB path can be found in:',
-                             trajectory)
+                    parprint('The NEB path can be found in:', trajectory)
                     msg = "Visualize the last path using 'ase gui "
                     msg += trajectory
                     parprint(msg)

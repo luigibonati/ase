@@ -7,6 +7,8 @@ from ase.io import read
 from ase.optimize.activelearning.gpneb import GPNEB
 import matplotlib.pyplot as plt
 import numpy as np
+from ase.calculators.gp.calculator import GPCalculator
+
 
 """ 
     Toy model for the diffusion of a Au atom on an Pt(211) surface.   
@@ -58,16 +60,17 @@ images_ase.append(final_ase)
 
 neb_ase = NEB(images_ase, climb=True, method='improvedtangent')
 neb_ase.interpolate(method='idpp', mic=False)
-qn_ase = MDMin(neb_ase, trajectory='neb_ase.traj')
-qn_ase.run(fmax=0.05)
+# qn_ase = MDMin(neb_ase, trajectory='neb_ase.traj')
+# qn_ase.run(fmax=0.05)
 
 # 2.B. GPNEB.
-gpneb = GPNEB(start='initial_opt.traj', mic=True,
-                 end='final_opt.traj',
-                 calculator=EMT(),
-                 n_images=n_images,
-                 interpolation='idpp'
-                 )
+gp_model = GPCalculator(scale=0.4, max_train_data=10,
+                        max_train_data_strategy='nearest_train')
+gpneb = GPNEB(start='initial_opt.traj', mic=True, model_calculator=gp_model,
+              end='final_opt.traj',
+              calculator=EMT(),
+              n_images=n_images,
+              interpolation='idpp')
 gpneb.run(fmax=0.05, trajectory='GPNEB.traj', restart=False)
 
 # Plot ASE NEB.
