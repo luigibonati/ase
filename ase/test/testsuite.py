@@ -14,7 +14,7 @@ import warnings
 
 import numpy as np
 
-from ase.calculators.calculator import names as calc_names, get_calculator
+from ase.calculators.calculator import names as calc_names, get_calculator_class
 from ase.utils import devnull, ExperimentalFeatureWarning
 from ase.cli.info import print_info
 
@@ -179,7 +179,8 @@ def runtests_subprocess(task_queue, result_queue, verbose, strict):
             #  * gui/run may deadlock for unknown reasons in subprocess
 
             t = test.replace('\\', '/')
-            if t in ['bandstructure.py', 'bandstructure2.py',
+            if t in ['bandstructure.py',
+                     'bandstructure_many.py',
                      'doctests.py', 'gui/run.py',
                      'matplotlib_plot.py', 'fio/oi.py', 'fio/v_sim.py',
                      'forcecurve.py',
@@ -364,7 +365,7 @@ def disable_calculators(names):
         if name in ['emt', 'lj', 'eam', 'morse', 'tip3p']:
             continue
         try:
-            cls = get_calculator(name)
+            cls = get_calculator_class(name)
         except ImportError:
             pass
         else:

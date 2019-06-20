@@ -131,7 +131,18 @@ special = {'cp2k': 'CP2K',
            'tip3p': 'TIP3P'}
 
 
-def get_calculator(name):
+external_calculators = {}
+
+
+def register_calculator_class(name, cls):
+    """ Add the class into the database. """
+    assert name not in external_calculators
+    external_calculators[name] = cls
+    names.append(name)
+    names.sort()
+
+
+def get_calculator_class(name):
     """Return calculator class."""
     if name == 'asap':
         from asap3 import EMT as Calculator
@@ -143,6 +154,8 @@ def get_calculator(name):
         from ase.calculators.vasp import Vasp2 as Calculator
     elif name == 'ace':
         from ase.calculators.acemolecule import ACE as Calculator
+    elif name in external_calculators:
+        Calculator = external_calculators[name]
     else:
         classname = special.get(name, name.title())
         module = __import__('ase.calculators.' + name, {}, None, [classname])
@@ -363,8 +376,7 @@ class Calculator(object):
     'Default parameters'
 
     def __init__(self, restart=None, ignore_bad_restart_file=False, label=None,
-                 directory='.',
-                 atoms=None, **kwargs):
+                 atoms=None, directory='.', **kwargs):
         """Basic calculator implementation.
 
         restart: str
@@ -402,8 +414,10 @@ class Calculator(object):
         self.prefix = None
         if label is not None:
             if directory != '.' and '/' in label:
-                raise ValueError('Both directory and label imply a '
-                                 'directory.  Please omit "/" in label.')
+                raise ValueError('Directory redundantly specified though '
+                                 'directory="{}" and label="{}".  '
+                                 'Please omit "/" in label.'
+                                 .format(directory, label))
             self.set_label(label)
 
         if self.parameters is None:
@@ -442,6 +456,11 @@ class Calculator(object):
 
     @label.setter
     def label(self, label):
+        if label is None:
+            self.directory = '.'
+            self.prefix = None
+            return
+
         tokens = label.rsplit('/', 1)
         if len(tokens) == 2:
             directory, prefix = tokens
@@ -461,9 +480,10 @@ class Calculator(object):
 
         * label='abc': (directory='.', prefix='abc')
         * label='dir1/abc': (directory='dir1', prefix='abc')
+        * label=None: (directory='.', prefix=None)
 
         Calculators that must write results to files with fixed names
-        can overwrite this method so that the directory is set to all
+        can override this method so that the directory is set to all
         of label."""
         self.label = label
 
@@ -764,7 +784,9 @@ class FileIOCalculator(Calculator):
                 'Please set ${} environment variable '
                 .format('ASE_' + self.name.upper() + '_COMMAND') +
                 'or supply the command keyword')
-        command = self.command.replace('PREFIX', self.prefix)
+        command = self.command
+        if 'PREFIX' in command:
+            command = command.replace('PREFIX', self.prefix)
         errorcode = subprocess.call(command, shell=True, cwd=self.directory)
 
         if errorcode:
