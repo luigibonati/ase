@@ -1,8 +1,8 @@
 import numpy as np
 import warnings
 from scipy.linalg import polar
-from ase.geometry.rmsd.minkowski_reduction import gauss
-from ase.geometry.rmsd.minkowski_reduction import reduce_basis
+from ase.geometry.minkowski_reduction import gauss
+from ase.geometry import minkowski_reduce as reduce_basis
 
 
 def minkowski_reduce(cell, dim):
