@@ -23,7 +23,7 @@ calc = EMT()
 surfaces = [(1, 0, 0), (1, 1, 0), (1, 1, 1)]
 esurf = [1.0, 1.1, 0.9]
 lc = 4.0
-size = 50
+size = 15
 atoms = wulff_construction('Au', surfaces, esurf,
                            size, 'fcc',
                            rounding='above', latticeconstant=lc)
@@ -40,8 +40,8 @@ atoms.set_constraint(c)
 # 2.A. Optimize structure using LGPMin.
 initial_lgpmin = atoms.copy()
 initial_lgpmin.set_calculator(calc)
-gp_model = GPCalculator(scale=0.4, max_train_data=15,
-                        max_train_data_strategy='lowest_energy')
+gp_model = GPCalculator(scale=0.4, max_train_data=20,
+                        max_train_data_strategy='last_observations')
 lgpmin_opt = LGPMin(initial_lgpmin, model_calculator=gp_model)
 start = time.time()
 lgpmin_opt.run(fmax=0.01, restart=False)

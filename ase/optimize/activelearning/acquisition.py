@@ -1,6 +1,7 @@
 import numpy as np
 import random
 
+
 def acquisition(train_images, candidates, mode='min_energy', objective='min'):
     """
     Acquisition function class.
@@ -20,8 +21,8 @@ def acquisition(train_images, candidates, mode='min_energy', objective='min'):
             - 'energy': Sort candidates by predicted energy.
             - 'uncertainty': Sort candidates by predicted uncertainty.
             - 'random': Randomly shuffles the candidates list.
-            - 'ucb': Sort candidate by predicted energy plus uncertainty.
-            - 'lcb': Sort candidate by predicted energy minus uncertainty.
+            - 'ucb': Sort candidates by predicted energy plus uncertainty.
+            - 'lcb': Sort candidates by predicted energy minus uncertainty.
     objective: string
          Objective of the acquisition function. Options:
             - 'min': If our goal is to minimize the target function.

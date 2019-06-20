@@ -178,8 +178,8 @@ class GPCalculator(Calculator, GaussianProcess):
         if self.max_data is not None:
             # 2.a. Get only the last observations.
             if self.max_data_strategy == 'last_observations':
-                self.train_x = self.train_x.copy()[-self.max_data:]
-                self.train_y = self.train_y.copy()[-self.max_data:]
+                self.train_x = self.train_x[-self.max_data:]
+                self.train_y = self.train_y[-self.max_data:]
 
             # 2.b. Get the minimum energy observations.
             if self.max_data_strategy == 'lowest_energy':
@@ -189,8 +189,8 @@ class GPCalculator(Calculator, GaussianProcess):
                 arg_low_e = np.argsort(e_list)[:self.max_data]
                 x = [self.train_x[i] for i in arg_low_e]
                 y = [self.train_y[i] for i in arg_low_e]
-                self.train_x = x.copy()
-                self.train_y = y.copy()
+                self.train_x = x
+                self.train_y = y
 
         # 3. Train a Gaussian Process.
         start = time.time()

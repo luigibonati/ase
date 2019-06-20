@@ -7,7 +7,6 @@ from ase.calculators.gp.calculator import GPCalculator
 from ase.neb import NEB
 from ase.geometry import distance
 from ase.optimize import MDMin
-from ase.optimize.activelearning.io import dump_observation, attach_calculator
 from ase.optimize.activelearning.acquisition import acquisition
 from ase.parallel import parprint, parallel_function
 
@@ -118,8 +117,10 @@ class GPNEB:
         self.spring = k
         self.i_endpoint = io.read(self.start, '-1')
         self.i_endpoint.get_potential_energy(force_consistent=force_consistent)
+        self.i_endpoint.get_forces()
         self.e_endpoint = io.read(self.end, '-1')
         self.e_endpoint.get_potential_energy(force_consistent=force_consistent)
+        self.e_endpoint.get_forces()
 
         # GP calculator:
         if model_calculator is None:
@@ -242,9 +243,12 @@ class GPNEB:
                      end-start)
 
             # 2. Prepare a calculator.
-            self.images = attach_calculator(train_images=train_images,
-                                            calculator=self.model_calculator,
-                                            test_images=self.images)
+            calc = copy.deepcopy(self.model_calculator)
+            # Train only one process.
+            calc.update_train_data(train_images)
+            # Attach the calculator (already trained) to each image.
+            for i in self.images:
+                i.set_calculator(copy.deepcopy(calc))
 
             # 3. Optimize the NEB in the predicted PES.
 
@@ -278,8 +282,10 @@ class GPNEB:
 
             # 5. Print output.
             max_e = np.max(neb_pred_energy)
-            pbf = max_e - self.i_endpoint.get_potential_energy()
-            pbb = max_e - self.e_endpoint.get_potential_energy()
+            pbf = max_e - self.i_endpoint.get_potential_energy(
+                                        force_consistent=self.force_consistent)
+            pbb = max_e - self.e_endpoint.get_potential_energy(
+                                        force_consistent=self.force_consistent)
             msg = "--------------------------------------------------------"
             parprint(msg)
             parprint('Step:', self.function_calls)
@@ -310,6 +316,8 @@ class GPNEB:
                     break
 
             # 7. Select next point to train (acquisition function):
+
+            # Candidates are the optimized NEB images in the predicted PES.
             candidates = copy.deepcopy(self.images)
 
             if np.max(neb_pred_uncertainty) > unc_convergence:
@@ -334,13 +342,14 @@ class GPNEB:
             self.atoms.positions = best_candidate.get_positions()
             self.atoms.set_calculator(self.ase_calc)
             self.atoms.get_potential_energy(force_consistent=self.force_consistent)
+            self.atoms.get_forces()
             dump_observation(atoms=self.atoms,
                              filename=trajectory_observations,
                              restart=restart)
             self.function_calls += 1
             self.force_calls += 1
             parprint('Single-point calculation finished.')
-
+        print_cite_neb()
 
 @parallel_function
 def make_neb(self, images_interpolation=None):
@@ -382,9 +391,35 @@ def get_fmax(atoms):
 
 
 @parallel_function
+def dump_observation(atoms, filename, restart):
+    """
+    Saves a trajectory file containing the atoms observations.
+
+    Parameters
+    ----------
+    atoms: object
+        Atoms object to be appended to previous observations.
+    filename: string
+        Name of the trajectory file to save the observations.
+    restart: boolean
+        Append mode (true or false).
+     """
+
+    if restart is True:
+        try:
+            prev_atoms = io.read(filename, ':')  # Actively searching.
+            if atoms not in prev_atoms:  # Avoid duplicates.
+                # Update observations.
+                new_atoms = prev_atoms + [atoms]
+                io.write(filename=filename, images=new_atoms)
+        except Exception:
+            io.write(filename=filename, images=atoms, append=False)
+    if restart is False:
+        io.write(filename=filename, images=atoms, append=False)
+
+@parallel_function
 def print_cite_neb():
-    msg = "-----------------------------------------------------------"
-    msg += "-----------------------------------------------------------\n"
+    msg = "\n" + "-" * 79 + "\n"
     msg += "You are using GPNEB. Please cite: \n"
     msg += "[1] J. A. Garrido Torres, M. H. Hansen, P. C. Jennings, "
     msg += "J. R. Boes and T. Bligaard. Phys. Rev. Lett. 122, 156001. "
@@ -394,6 +429,5 @@ def print_cite_neb():
     msg += "https://doi.org/10.1063/1.4986787 \n"
     msg += "[3] E. Garijo del Rio, J. J. Mortensen and K. W. Jacobsen. "
     msg += "arXiv:1808.08588. https://arxiv.org/abs/1808.08588v1. \n"
-    msg += "-----------------------------------------------------------"
-    msg += "-----------------------------------------------------------"
+    msg += "-" * 79 + '\n'
     parprint(msg)
