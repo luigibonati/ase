@@ -378,7 +378,7 @@ class Calculator(object):
     'Default parameters'
 
     def __init__(self, restart=None, ignore_bad_restart_file=False, label=None,
-                 atoms=None, directory=None, **kwargs):
+                 atoms=None, directory=None, prefix=None, **kwargs):
         """Basic calculator implementation.
 
         restart: str
@@ -389,11 +389,13 @@ class Calculator(object):
             error if the restart file is missing or broken.
         directory: str
             Working directory in which to read and write files and
-            perform calculations.
+            perform calculations.  Defaults to '.'
+        prefix: str
+            Name prefix used for all files.  Not supported by all calculators.
+            Defaults to None.
         label: str
-            Name used for all files.  Not supported by all calculators.
-            May contain a directory, but please use the directory parameter
-            for that instead.
+            Deprecated.  Use directory and prefix keywords instead.
+            See the documentation for set_label().
         atoms: Atoms object
             Optional Atoms object to which the calculator will be
             attached.  When restarting, atoms will get its positions and
@@ -416,7 +418,7 @@ class Calculator(object):
             if directory is None:
                 directory = '.'
             self.directory = directory
-            self.prefix = None
+            self.prefix = prefix
         else:
             if directory is not None:
                 raise ValueError('Cannot specify both directory and label')
@@ -477,6 +479,9 @@ class Calculator(object):
 
     def set_label(self, label):
         """Set label and convert label to directory and prefix.
+
+        This feature will be deprecated in favour of setting
+        directory and prefix independently.
 
         Examples:
 
@@ -550,7 +555,7 @@ class Calculator(object):
         is returned.
 
         Subclasses must implement a set() method that will look at the
-        chaneged parameters and decide if a call to reset() is needed.
+        changed parameters and decide if a call to reset() is needed.
         If the changed parameters are harmless, like a change in
         verbosity, then there is no need to call reset().
 
@@ -562,6 +567,15 @@ class Calculator(object):
             parameters = Parameters.read(filename)
             parameters.update(kwargs)
             kwargs = parameters
+
+        if 'label' in kwargs:
+            self.label = kwargs.pop('label')
+
+        if 'directory' in kwargs:
+            self.directory = kwargs.pop('directory')
+
+        if 'prefix' in kwargs:
+            self.prefix = kwargs.pop('prefix')
 
         changed_parameters = {}
 
