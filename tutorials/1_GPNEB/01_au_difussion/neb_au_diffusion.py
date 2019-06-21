@@ -71,8 +71,9 @@ qn_ase.run(fmax=0.05)
 # 2.B. GPNEB.
 gp_model = GPCalculator(scale=0.4)
 gpneb = GPNEB(start=initial_ase, end='final.traj', model_calculator=gp_model,
-              calculator=EMT(), interpolation='idpp', n_images=n_images)
-gpneb.run(fmax=0.05, trajectory='GPNEB.traj', restart=False)
+              calculator=EMT(), interpolation='idpp', n_images=n_images,
+              restart=False)
+gpneb.run(fmax=0.05)
 
 # 3. Summary of the results.
 

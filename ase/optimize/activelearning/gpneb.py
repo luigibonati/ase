@@ -16,7 +16,8 @@ class GPNEB:
     def __init__(self, start, end, model_calculator=None, calculator=None,
                  interpolation='linear', n_images=0.25, k=None, mic=False,
                  neb_method='aseneb', remove_rotation_and_translation=False,
-                 force_consistent=None):
+                 force_consistent=None, trajectory='GPNEB.traj',
+                 restart=False):
 
         """
         Machine Learning accelerated Nudged Elastic Band (NEB) optimizer.
@@ -92,6 +93,22 @@ class GPNEB:
             force-consistent energies if available in the calculator, but
             falls back on force_consistent=False if not.
 
+        trajectory: string
+            Filename to store the predicted NEB paths.
+                Additional information:
+                - Energy uncertain: The energy uncertainty in each image can be
+                  accessed in image.info['uncertainty'].
+
+        restart: boolean
+            A *trajectory_observations.traj* file is automatically generated
+            which contains the observations collected by the surrogate. If
+            *restart* is True and a *trajectory_observations.traj* file is
+            found in the working directory it will be used to continue the
+            optimization from previous run(s). In order to start the
+            optimization from scratch *restart* should be set to False or
+            alternatively the *trajectory_observations.traj* file must be
+            deleted.
+
         """
         # Convert Atoms and list of Atoms to trajectory files.
         if isinstance(start, Atoms):
@@ -135,6 +152,8 @@ class GPNEB:
 
         self.constraints = self.atoms.constraints
         self.force_consistent = force_consistent
+        self.restart = restart
+        self.trajectory = trajectory
 
         # Calculate the distance between the initial and final endpoints.
         d_start_end = distance(self.i_endpoint, self.e_endpoint)
@@ -168,7 +187,7 @@ class GPNEB:
             self.spring = (np.sqrt(self.n_images-1) / d_start_end)
 
     def run(self, fmax=0.05, unc_convergence=0.05, dt=0.05, ml_steps=200,
-            max_step=0.5, trajectory='GPNEB.traj', restart=False):
+            max_step=0.5):
 
         """
         Executing run will start the NEB optimization process.
@@ -200,37 +219,23 @@ class GPNEB:
             exploring very uncertain regions which can lead to probe
             unrealistic structures.
 
-        trajectory: string
-            Filename to store the predicted NEB paths.
-                Additional information:
-                - Energy uncertain: The energy uncertainty in each image can be
-                  accessed in image.info['uncertainty'].
-
-        restart: boolean
-            A *trajectory_observations.traj* file is automatically generated
-            which contains the observations collected by the surrogate. If
-            *restart* is True and a *trajectory_observations.traj* file is
-            found in the working directory it will be used to continue the
-            optimization from previous run(s). In order to start the
-            optimization from scratch *restart* should be set to False or
-            alternatively the *trajectory_observations.traj* file must be
-            deleted.
-
         Returns
         -------
         Minimum Energy Path from the initial to the final states.
 
         """
-        trajectory_main = trajectory.split('.')[0]
+        trajectory_main = self.trajectory.split('.')[0]
         trajectory_observations = trajectory_main + '_observations.traj'
         trajectory_candidates = trajectory_main + '_candidates.traj'
 
         # Start by saving the initial and final states.
         dump_observation(atoms=self.i_endpoint,
-                         filename=trajectory_observations, restart=restart)
-        restart = True  # Switch on active learning.
+                         filename=trajectory_observations,
+                         restart=self.restart)
+        self.restart = True  # Switch on active learning.
         dump_observation(atoms=self.e_endpoint,
-                         filename=trajectory_observations, restart=restart)
+                         filename=trajectory_observations,
+                         restart=self.restart)
 
         while True:
 
@@ -263,7 +268,7 @@ class GPNEB:
                 climbing_neb = True
             ml_neb = NEB(self.images, climb=climbing_neb,
                          method=self.neb_method, k=self.spring)
-            neb_opt = MDMin(ml_neb, dt=dt, trajectory=trajectory)
+            neb_opt = MDMin(ml_neb, dt=dt, trajectory=self.trajectory)
 
             # Safe check to optimize the images.
             if np.max(neb_pred_uncertainty) <= max_step:
@@ -303,12 +308,12 @@ class GPNEB:
             if len(train_images) > 2 and get_fmax(train_images[-1]) <= fmax:
                 parprint('A saddle point was found.')
                 if np.max(neb_pred_uncertainty[1:-1]) < unc_convergence:
-                    io.write(trajectory, self.images)
+                    io.write(self.trajectory, self.images)
                     parprint('Uncertainty of the images above threshold.')
                     parprint('NEB converged.')
-                    parprint('The NEB path can be found in:', trajectory)
+                    parprint('The NEB path can be found in:', self.trajectory)
                     msg = "Visualize the last path using 'ase gui "
-                    msg += trajectory
+                    msg += self.trajectory
                     parprint(msg)
                     break
 
@@ -342,7 +347,7 @@ class GPNEB:
             self.atoms.get_forces()
             dump_observation(atoms=self.atoms,
                              filename=trajectory_observations,
-                             restart=restart)
+                             restart=self.restart)
             self.function_calls += 1
             self.force_calls += 1
             parprint('Single-point calculation finished.')

@@ -11,7 +11,9 @@ class LGPMin:
 
     def __init__(self, atoms, model_calculator=None, force_consistent=None,
                  max_train_data=20,
-                 max_train_data_strategy='last_observations'):
+                 max_train_data_strategy='nearest_observations',
+                 trajectory='LGPMin.traj',
+                 restart=False):
         """
         Optimize atomic structure using a surrogate machine learning
         model [1,2]. Potential energies and forces information are used to
@@ -38,6 +40,22 @@ class LGPMin:
             force-consistent energies if available in the calculator, but
             falls back on force_consistent=False if not.
 
+                trajectory: string
+            Filename to store the predicted optimization.
+                Additional information:
+                - Energy uncertain: The energy uncertainty in each image can be
+                  accessed in image.info['uncertainty'].
+
+        restart: boolean
+            A *trajectory_observations.traj* file is automatically generated
+            which contains the observations collected by the surrogate. If
+            *restart* is True and a *trajectory_observations.traj* file is
+            found in the working directory it will be used to continue the
+            optimization from previous run(s). In order to start the
+            optimization from scratch *restart* should be set to False or
+            alternatively the *trajectory_observations.traj* file must be
+            deleted.
+
         """
 
         self.model_calculator = model_calculator
@@ -59,9 +77,10 @@ class LGPMin:
 
         self.constraints = self.atoms.constraints
         self.force_consistent = force_consistent
+        self.trajectory = trajectory
+        self.restart = restart
 
-    def run(self, fmax=0.05, ml_steps=1000, trajectory='LGPMin.traj',
-            restart=False):
+    def run(self, fmax=0.05, ml_steps=1000, steps=200):
 
         """
         Executing run will start the optimization process.
@@ -75,21 +94,8 @@ class LGPMin:
             Maximum number of steps for the optimization (using LBFGS) on
             the GP predicted potential energy surface.
 
-        trajectory: string
-            Filename to store the predicted optimization.
-                Additional information:
-                - Energy uncertain: The energy uncertainty in each image can be
-                  accessed in image.info['uncertainty'].
-
-        restart: boolean
-            A *trajectory_observations.traj* file is automatically generated
-            which contains the observations collected by the surrogate. If
-            *restart* is True and a *trajectory_observations.traj* file is
-            found in the working directory it will be used to continue the
-            optimization from previous run(s). In order to start the
-            optimization from scratch *restart* should be set to False or
-            alternatively the *trajectory_observations.traj* file must be
-            deleted.
+        steps: int
+            Maximum number of steps for the surrogate.
 
         Returns
         -------
@@ -97,7 +103,7 @@ class LGPMin:
         *trajectory_observations.traj*.
 
         """
-        trajectory_main = trajectory.split('.')[0]
+        trajectory_main = self.trajectory.split('.')[0]
         trajectory_observations = trajectory_main + '_observations.traj'
         trajectory_candidates = trajectory_main + '_candidates.traj'
 
@@ -111,7 +117,8 @@ class LGPMin:
         self.atoms.get_potential_energy(force_consistent=self.force_consistent)
         self.atoms.get_forces()
         dump_observation(atoms=self.atoms,
-                         filename=trajectory_observations, restart=restart)
+                         filename=trajectory_observations,
+                         restart=self.restart)
         train_images = io.read(trajectory_observations, ':')
 
         while not fmax > get_fmax(train_images[-1]):
@@ -156,6 +163,10 @@ class LGPMin:
             parprint("fmax:", get_fmax(train_images[-1]))
             msg = "--------------------------------------------------------\n"
             parprint(msg)
+
+            if self.function_calls >= steps:
+                parprint('Maximum number of steps reached.')
+                break
         print_cite_min()
 
 
