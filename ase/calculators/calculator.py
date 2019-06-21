@@ -378,7 +378,7 @@ class Calculator(object):
     'Default parameters'
 
     def __init__(self, restart=None, ignore_bad_restart_file=False, label=None,
-                 atoms=None, directory='.', **kwargs):
+                 atoms=None, directory=None, **kwargs):
         """Basic calculator implementation.
 
         restart: str
@@ -412,14 +412,14 @@ class Calculator(object):
                 else:
                     raise
 
-        self.directory = directory
-        self.prefix = None
-        if label is not None:
-            if directory != '.' and '/' in label:
-                raise ValueError('Directory redundantly specified though '
-                                 'directory="{}" and label="{}".  '
-                                 'Please omit "/" in label.'
-                                 .format(directory, label))
+        if label is None:
+            if directory is None:
+                directory = '.'
+            self.directory = directory
+            self.prefix = None
+        else:
+            if directory is not None:
+                raise ValueError('Cannot specify both directory and label')
             self.set_label(label)
 
         if self.parameters is None:
