@@ -216,9 +216,9 @@ class GPCalculator(Calculator, GaussianProcess):
                     arg_nearest += list(np.argsort(d_i_j)[:self.max_data])
 
                 # Include the first train.
-                # arg_nearest = np.append(arg_nearest, 0)
+                arg_nearest = np.append(arg_nearest, 0)
                 # Include the last train.
-                # arg_nearest = np.append(arg_nearest, len(self.train_images)-1)
+                arg_nearest = np.append(arg_nearest, len(self.train_images)-1)
                 # Remove duplicates.
                 arg_nearest = np.unique(arg_nearest)
                 x = [self.train_x[i] for i in arg_nearest]
