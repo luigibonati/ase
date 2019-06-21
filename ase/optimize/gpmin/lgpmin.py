@@ -1,6 +1,6 @@
 from ase.optimize.gpmin.gpmin import GPMin 
-from ase.optimize.gpmin.kernel import SE_kernel, SquaredExponential
-from ase.optimize.gpmin.prior import ConstantPrior
+from ase.optimize.gpmin.kernel import SE_kernel
+
 
 import numpy as np
 import random 
