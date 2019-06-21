@@ -241,10 +241,7 @@ class GPNEB:
 
             # 1. Collect observations.
             # This serves to restart from a previous (and/or parallel) runs.
-            start = time.time()
             train_images = io.read(trajectory_observations, ':')
-            end = time.time()
-            parprint('Time read/write images to build a model:', end-start)
 
             # 2. Prepare a calculator.
             calc = copy.deepcopy(self.model_calculator)
@@ -272,12 +269,7 @@ class GPNEB:
 
             # Safe check to optimize the images.
             if np.max(neb_pred_uncertainty) <= max_step:
-                start = time.time()
-                parprint('Optimizing NEB in the model potential...')
                 neb_opt.run(fmax=(fmax * 0.80), steps=ml_steps)
-                parprint('Optimized NEB in the model potential.')
-                end = time.time()
-                parprint('Elapsed time optimizing predicted NEB:', end-start)
 
             predictions = get_neb_predictions(self.images)
             neb_pred_energy = predictions['energy']

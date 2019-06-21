@@ -1,5 +1,4 @@
 import numpy as np
-import time
 from ase.calculators.gp.kernel import SquaredExponential
 from ase.calculators.gp.gp import GaussianProcess
 from ase.calculators.gp.prior import ConstantPrior
@@ -138,7 +137,6 @@ class GPCalculator(Calculator, GaussianProcess):
         collect the positions, energies and forces required to train the
         Gaussian Process. """
 
-        start = time.time()
         for i in self.train_images:
             r = i.get_positions().reshape(-1)
             e = i.get_potential_energy(force_consistent=self.force_consistent)
@@ -147,10 +145,6 @@ class GPCalculator(Calculator, GaussianProcess):
             y = np.append(np.array(e).reshape(-1),
                           -f.reshape(-1)[self.atoms_mask])
             self.train_y.append(y)
-        # self.train_x = np.unique(self.train_x, axis=0)  # Remove duplicates.
-        # self.train_y = np.unique(self.train_x, axis=0)  # Remove duplicates.
-        end = time.time()
-        print('Elapsed time featurizing data:', end-start)
 
     def update_train_data(self, train_images, test_images=None):
         """ Update the model with observations (feeding new training images),
@@ -183,6 +177,15 @@ class GPCalculator(Calculator, GaussianProcess):
 
         # 2. Max number of observations consider for training (low memory).
         if self.max_data is not None:
+            # Check if the max_train_data_strategy is implemented.
+            implemented_strategies = ['last_observations', 'lowest_energy',
+                                      'nearest_observations']
+            if self.max_data_strategy not in implemented_strategies:
+                msg = 'The selected max_train_data_strategy is not'
+                msg += 'implemented. '
+                msg += 'Implemented are: ' + str(implemented_strategies)
+                raise NotImplementedError(msg)
+
             # 2.a. Get only the last observations.
             if self.max_data_strategy == 'last_observations':
                 self.train_x = self.train_x[-self.max_data:]
@@ -224,11 +227,8 @@ class GPCalculator(Calculator, GaussianProcess):
                 self.train_y = y
 
         # 3. Train a Gaussian Process.
-        start = time.time()
         self.train(np.array(self.train_x), np.array(self.train_y),
                    noise=self.noise)
-        end = time.time()
-        print('Elapsed time training process:', end-start)
 
         # 4. (optional) Optimize model hyperparameters.
         if self.update_hp and len(self.train_x) % self.nbatch == 0 and len(self.train_x) != 0:

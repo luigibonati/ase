@@ -10,7 +10,7 @@ from ase.parallel import parprint, parallel_function
 class LGPMin:
 
     def __init__(self, atoms, model_calculator=None, force_consistent=None,
-                 max_train_data=20,
+                 max_train_data=25,
                  max_train_data_strategy='nearest_observations',
                  trajectory='LGPMin.traj',
                  restart=False):
@@ -125,11 +125,7 @@ class LGPMin:
 
             # 1. Collect observations.
             # This serves to restart from a previous (and/or parallel) runs.
-            start = time.time()
             train_images = io.read(trajectory_observations, ':')
-            end = time.time()
-            parprint('Time reading and writing atoms images to build a model:',
-                     end-start)
 
             # 2. Update GP calculator.
             gp_calc = copy.deepcopy(self.model_calculator)
