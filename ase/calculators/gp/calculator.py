@@ -6,7 +6,6 @@ from ase.calculators.calculator import Calculator, all_changes
 from scipy.linalg import solve_triangular
 from scipy.spatial.distance import euclidean
 
-
 class GPCalculator(Calculator, GaussianProcess):
     """
     GP model parameters
@@ -205,6 +204,7 @@ class GPCalculator(Calculator, GaussianProcess):
             # 2.c. Get the nearest observations to the test structure.
             if self.max_data_strategy == 'nearest_observations':
                 arg_nearest = []
+
                 if self.test_images is None:
                     self.test_images = [self.atoms]
                 for i in self.test_images:
@@ -215,10 +215,6 @@ class GPCalculator(Calculator, GaussianProcess):
                         d_i_j.append(euclidean(pos_test, pos_train))
                     arg_nearest += list(np.argsort(d_i_j)[:self.max_data])
 
-                # Include the first train.
-                arg_nearest = np.append(arg_nearest, 0)
-                # Include the last train.
-                arg_nearest = np.append(arg_nearest, len(self.train_images)-1)
                 # Remove duplicates.
                 arg_nearest = np.unique(arg_nearest)
                 x = [self.train_x[i] for i in arg_nearest]

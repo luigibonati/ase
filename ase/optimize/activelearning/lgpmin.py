@@ -80,7 +80,7 @@ class LGPMin:
         self.trajectory = trajectory
         self.restart = restart
 
-    def run(self, fmax=0.05, ml_steps=1000, steps=200):
+    def run(self, fmax=0.05, ml_steps=200, steps=200):
 
         """
         Executing run will start the optimization process.
@@ -128,6 +128,7 @@ class LGPMin:
             train_images = io.read(trajectory_observations, ':')
 
             # 2. Update GP calculator.
+            self.atoms = train_images[-1]
             gp_calc = copy.deepcopy(self.model_calculator)
             gp_calc.update_train_data(train_images=train_images,
                                       test_images=[self.atoms])
@@ -136,10 +137,9 @@ class LGPMin:
             # 3. Optimize the structure in the predicted PES.
             ml_opt = LBFGS(self.atoms, trajectory=trajectory_candidates,
                            logfile=None)
-            ml_opt.run(fmax=(fmax * 0.5), steps=ml_steps)
+            ml_opt.run(fmax=(fmax * 0.01), steps=ml_steps)
 
             # 4. Evaluate the target function and save it in *observations*.
-            parprint('Performing evaluation on the real landscape...')
             self.atoms.set_calculator(self.ase_calc)
             self.atoms.get_potential_energy(force_consistent=self.force_consistent)
             self.atoms.get_forces()
@@ -147,7 +147,6 @@ class LGPMin:
                              filename=trajectory_observations, restart=True)
             self.function_calls += 1
             self.force_calls += 1
-            parprint('Single-point calculation finished.')
 
             # 6. Print output.
             msg = "--------------------------------------------------------"

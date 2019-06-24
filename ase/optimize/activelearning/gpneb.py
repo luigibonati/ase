@@ -245,8 +245,13 @@ class GPNEB:
 
             # 2. Prepare a calculator.
             calc = copy.deepcopy(self.model_calculator)
+
+            # Detach calculator from the prev. optimized images (speed up).
+            for i in self.images:
+                i.set_calculator(None)
             # Train only one process.
-            calc.update_train_data(train_images)
+            calc.update_train_data(train_images,
+                                   test_images=copy.deepcopy(self.images))
             # Attach the calculator (already trained) to each image.
             for i in self.images:
                 i.set_calculator(copy.deepcopy(calc))
@@ -332,7 +337,6 @@ class GPNEB:
             io.write(trajectory_candidates, sorted_candidates)
 
             # 8. Evaluate the target function and save it in *observations*.
-            parprint('Performing evaluation on the real landscape...')
             self.atoms.positions = best_candidate.get_positions()
             self.atoms.set_calculator(self.ase_calc)
             self.atoms.get_potential_energy(force_consistent=self.force_consistent)
@@ -342,8 +346,8 @@ class GPNEB:
                              restart=self.restart)
             self.function_calls += 1
             self.force_calls += 1
-            parprint('Single-point calculation finished.')
         print_cite_neb()
+
 
 @parallel_function
 def make_neb(self, images_interpolation=None):
