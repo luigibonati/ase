@@ -175,6 +175,8 @@ class vdWTkatchenko09prl(Calculator):
         if sR is None:
             try:
                 xc_name = self.calculator.get_xc_functional()
+                if type(xc_name) is dict:
+                    xc_name = xc_name['name']
                 self.sR = sR_opt[xc_name]
             except KeyError:
                 raise ValueError('Tkatchenko-Scheffler dispersion correction not implemented for %s functional' % xc_name)
