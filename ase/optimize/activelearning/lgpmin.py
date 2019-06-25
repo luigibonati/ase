@@ -163,6 +163,7 @@ class LGPMin:
                 parprint('Maximum number of steps reached.')
                 break
         print_cite_min()
+        io.write(self.trajectory, self.atoms)
 
 
 @parallel_function
