@@ -209,7 +209,7 @@ def print_cite_min():
     msg += "You are using LGPMin. Please cite: \n"
     msg += "[1] E. Garijo del Rio, J. J. Mortensen and K. W. Jacobsen. "
     msg += "arXiv:1808.08588. https://arxiv.org/abs/1808.08588. \n"
-    msg += "[1] M. H. Hansen, J. A. Garrido Torres, P. C. Jennings, "
+    msg += "[2] M. H. Hansen, J. A. Garrido Torres, P. C. Jennings, "
     msg += "J. R. Boes, O. G. Mamun and T. Bligaard. arXiv:1904.00904. "
     msg += "https://arxiv.org/abs/1904.00904 \n"
     msg += "-" * 79 + "\n"
