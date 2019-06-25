@@ -86,7 +86,7 @@ class GPCalculator(Calculator, GaussianProcess):
                  scale=0.4, noise=0.005, update_hyperparams=False,
                  batch_size=5, bounds=None, kernel=None,
                  max_train_data=None, force_consistent=None,
-                 max_train_data_strategy='last_observations', **kwargs):
+                 max_train_data_strategy='nearest_observations', **kwargs):
 
         Calculator.__init__(self, **kwargs)
         self.prior = prior
@@ -258,7 +258,7 @@ class GPCalculator(Calculator, GaussianProcess):
             self.initialize()
             self.extract_features()
             self.train_model()
-            self.old_train_images = self.train_images.copy()
+            self.old_train_images = self.train_images[:]
             self.train_images = None  # Remove the training list of images.
 
         # Mask geometry to be compatible with the trained GP (reduce memory).
@@ -283,7 +283,7 @@ class GPCalculator(Calculator, GaussianProcess):
             x = self.atoms.get_positions().reshape(-1)[self.atoms_mask]
             n = self.X.shape[0]
             k = self.kernel.kernel_vector(x, self.X, n)
-            v = k.T.copy()
+            v = k.T[:]
             v = solve_triangular(self.L, v, lower=True, check_finite=False)
             variance = self.kernel.kernel(x, x)
             covariance = np.tensordot(v, v, axes=(0, 0))

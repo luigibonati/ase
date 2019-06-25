@@ -16,7 +16,9 @@ class GPNEB:
     def __init__(self, start, end, model_calculator=None, calculator=None,
                  interpolation='linear', n_images=0.25, k=None, mic=False,
                  neb_method='aseneb', remove_rotation_and_translation=False,
-                 force_consistent=None, trajectory='GPNEB.traj',
+                 max_train_data=20, force_consistent=None,
+                 max_train_data_strategy='nearest_observations',
+                 trajectory='GPNEB.traj',
                  restart=False):
 
         """
@@ -109,6 +111,26 @@ class GPNEB:
             alternatively the *trajectory_observations.traj* file must be
             deleted.
 
+        max_train_data: int
+            Number of observations that will effectively be included in the GP
+            model. See also *max_data_strategy*.
+
+        max_train_data_strategy: string
+            Strategy to decide the observations that will be included in the model.
+
+            options:
+                'last_observations': selects the last observations collected by
+                the surrogate.
+                'lowest_energy': selects the lowest energy observations
+                collected by the surrogate.
+                'nearest_observations': selects the observations which
+                positions are nearest to the positions of the Atoms to test.
+
+            For instance, if *max_train_data* is set to 50 and
+            *max_train_data_strategy* to 'lowest energy', the surrogate model
+            will be built in each iteration with the 50 lowest energy
+            observations collected so far.
+
         """
         # Convert Atoms and list of Atoms to trajectory files.
         if isinstance(start, Atoms):
@@ -142,7 +164,10 @@ class GPNEB:
         # GP calculator:
         self.model_calculator = model_calculator
         if model_calculator is None:
-            self.model_calculator = GPCalculator()
+            self.model_calculator = GPCalculator(
+                               train_images=[],
+                               max_train_data_strategy=max_train_data_strategy,
+                               max_train_data=max_train_data)
 
         # Active Learning setup (Single-point calculations).
         self.function_calls = 0
@@ -186,8 +211,8 @@ class GPNEB:
         if self.spring is None:
             self.spring = (np.sqrt(self.n_images-1) / d_start_end)
 
-    def run(self, fmax=0.05, unc_convergence=0.05, dt=0.05, ml_steps=200,
-            max_step=0.5):
+    def run(self, fmax=0.05, unc_convergence=0.05, dt=0.05, ml_steps=100,
+            max_step=2.0):
 
         """
         Executing run will start the NEB optimization process.
@@ -356,7 +381,7 @@ def make_neb(self, images_interpolation=None):
     """
     imgs = [self.i_endpoint[:]]
     for i in range(1, self.n_images-1):
-        image = self.i_endpoint.copy()
+        image = self.i_endpoint[:]
         if images_interpolation is not None:
             image.set_positions(images_interpolation[i].get_positions())
         image.set_constraint(self.constraints)
