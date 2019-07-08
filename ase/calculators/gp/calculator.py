@@ -223,6 +223,7 @@ class GPCalculator(Calculator, GaussianProcess):
                 self.train_y = y
 
         # 3. Train a Gaussian Process.
+        print('Training data size: ', len(self.train_x))
         self.train(np.array(self.train_x), np.array(self.train_y),
                    noise=self.noise)
 

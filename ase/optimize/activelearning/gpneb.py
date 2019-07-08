@@ -58,7 +58,7 @@ class GPNEB:
 
             options:
                 - 'linear' linear interpolation.
-                - 'idpp'  image dependent pair potential interpolation.
+                - 'idpp'image dependent pair potential interpolation.
                 - Trajectory file (in ASE format) or list of Atoms.
                 Trajectory or list of Atoms containing the images along the
                 path.

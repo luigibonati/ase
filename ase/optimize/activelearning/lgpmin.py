@@ -154,7 +154,7 @@ class LGPMin:
             parprint('Step:', self.function_calls)
             parprint('Time:', time.strftime("%m/%d/%Y, %H:%M:%S",
                                             time.localtime()))
-            parprint('Energy', self.atoms.get_potential_energy(self.force_consistent))
+            parprint('Energy:', self.atoms.get_potential_energy(self.force_consistent))
             parprint("fmax:", get_fmax(train_images[-1]))
             msg = "--------------------------------------------------------\n"
             parprint(msg)
