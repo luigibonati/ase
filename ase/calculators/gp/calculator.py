@@ -86,7 +86,8 @@ class GPCalculator(Calculator, GaussianProcess):
                  scale=0.4, noise=0.005, update_hyperparams=False,
                  batch_size=5, bounds=None, kernel=None,
                  max_train_data=None, force_consistent=None,
-                 max_train_data_strategy='nearest_observations', **kwargs):
+                 max_train_data_strategy='nearest_observations',
+                 wrap_positions=False, **kwargs):
 
         Calculator.__init__(self, **kwargs)
         self.prior = prior
@@ -104,6 +105,7 @@ class GPCalculator(Calculator, GaussianProcess):
         self.train_images = train_images
         self.old_train_images = []
         self.calculate_uncertainty = True
+        self.wrap = wrap_positions
 
     def initialize(self):
         """ Initialize the calculator, including model parameters. """
@@ -125,9 +127,6 @@ class GPCalculator(Calculator, GaussianProcess):
         # Set Gaussian Process parameters.
         GaussianProcess.__init__(self, self.prior, self.kernel)
 
-        # Set initial hyperparameters.
-        self.set_hyperparams(np.array([self.weight, self.scale, self.noise]))
-
         # Masks the coordinates of the atoms that are kept fixed (memory).
         self.atoms_mask = self.create_mask()
 
@@ -135,9 +134,8 @@ class GPCalculator(Calculator, GaussianProcess):
         """ From the training images (which include the observations),
         collect the positions, energies and forces required to train the
         Gaussian Process. """
-
         for i in self.train_images:
-            r = i.get_positions().reshape(-1)
+            r = i.get_positions(wrap=self.wrap).reshape(-1)
             e = i.get_potential_energy(force_consistent=self.force_consistent)
             f = i.get_forces()
             self.train_x.append(r[self.atoms_mask])
@@ -159,7 +157,10 @@ class GPCalculator(Calculator, GaussianProcess):
     def train_model(self):
         """ Train a model with the previously fed observations."""
 
-        # 1. Set/update the the prior.
+        # 1. Set initial hyperparameters.
+        self.set_hyperparams(np.array([self.weight, self.scale, self.noise]))
+
+        # 2. Set/update the the prior.
         if self.update_prior:
             if self.strategy == 'average':
                 av_e = np.mean(np.array(self.train_y)[:, 0])
@@ -174,7 +175,7 @@ class GPCalculator(Calculator, GaussianProcess):
                 self.prior.set_constant(np.array(self.train_y)[:, 0][-1])
                 self.update_prior = False
 
-        # 2. Max number of observations consider for training (low memory).
+        # 3. Max number of observations consider for training (low memory).
         if self.max_data is not None:
             # Check if the max_train_data_strategy is implemented.
             implemented_strategies = ['last_observations', 'lowest_energy',
@@ -185,12 +186,12 @@ class GPCalculator(Calculator, GaussianProcess):
                 msg += 'Implemented are: ' + str(implemented_strategies)
                 raise NotImplementedError(msg)
 
-            # 2.a. Get only the last observations.
+            # 3.a. Get only the last observations.
             if self.max_data_strategy == 'last_observations':
                 self.train_x = self.train_x[-self.max_data:]
                 self.train_y = self.train_y[-self.max_data:]
 
-            # 2.b. Get the minimum energy observations.
+            # 3.b. Get the minimum energy observations.
             if self.max_data_strategy == 'lowest_energy':
                 e_list = []
                 for i in self.train_y:
@@ -201,17 +202,17 @@ class GPCalculator(Calculator, GaussianProcess):
                 self.train_x = x
                 self.train_y = y
 
-            # 2.c. Get the nearest observations to the test structure.
+            # 3.c. Get the nearest observations to the test structure.
             if self.max_data_strategy == 'nearest_observations':
                 arg_nearest = []
 
                 if self.test_images is None:
                     self.test_images = [self.atoms]
                 for i in self.test_images:
-                    pos_test = i.get_positions().reshape(-1)
+                    pos_test = i.get_positions(wrap=self.wrap).reshape(-1)
                     d_i_j = []
                     for j in self.train_images:
-                        pos_train = j.get_positions().reshape(-1)
+                        pos_train = j.get_positions(wrap=self.wrap).reshape(-1)
                         d_i_j.append(euclidean(pos_test, pos_train))
                     arg_nearest += list(np.argsort(d_i_j)[:self.max_data])
 
@@ -222,12 +223,12 @@ class GPCalculator(Calculator, GaussianProcess):
                 self.train_x = x
                 self.train_y = y
 
-        # 3. Train a Gaussian Process.
+        # 4. Train a Gaussian Process.
         print('Training data size: ', len(self.train_x))
         self.train(np.array(self.train_x), np.array(self.train_y),
                    noise=self.noise)
 
-        # 4. (optional) Optimize model hyperparameters.
+        # 5. (optional) Optimize model hyperparameters.
         if self.update_hp and len(self.train_x) % self.nbatch == 0 and len(self.train_x) != 0:
             ratio = self.noise / self.kernel.weight
             try:
@@ -263,7 +264,7 @@ class GPCalculator(Calculator, GaussianProcess):
             self.train_images = None  # Remove the training list of images.
 
         # Mask geometry to be compatible with the trained GP (reduce memory).
-        x = self.atoms.get_positions().reshape(-1)[self.atoms_mask]
+        x = self.atoms.get_positions(wrap=self.wrap).reshape(-1)[self.atoms_mask]
 
         # Get predictions.
         n = self.X.shape[0]
@@ -273,7 +274,7 @@ class GPCalculator(Calculator, GaussianProcess):
         # Obtain energy and forces for the given geometry.
         energy = f[0]
         forces = -f[1:].reshape(-1)
-        forces_empty = np.zeros_like(self.atoms.get_positions().flatten())
+        forces_empty = np.zeros_like(self.atoms.get_positions(wrap=self.wrap).flatten())
         for i in range(len(self.atoms_mask)):
             forces_empty[self.atoms_mask[i]] = forces[i]
         forces = forces_empty.reshape(-1, 3)
@@ -281,7 +282,7 @@ class GPCalculator(Calculator, GaussianProcess):
         # Get uncertainty for the given geometry.
         uncertainty = 0.0
         if self.calculate_uncertainty is True:
-            x = self.atoms.get_positions().reshape(-1)[self.atoms_mask]
+            x = self.atoms.get_positions(wrap=self.wrap).reshape(-1)[self.atoms_mask]
             n = self.X.shape[0]
             k = self.kernel.kernel_vector(x, self.X, n)
             v = k.T[:]
