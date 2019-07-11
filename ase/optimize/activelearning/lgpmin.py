@@ -3,16 +3,16 @@ import time
 import copy
 from ase import io
 from ase.calculators.gp.calculator import GPCalculator
-from ase.optimize.lbfgs import LBFGS
 from ase.parallel import parprint, parallel_function
-
+from ase.optimize import *
+from ase.optimize.minimahopping import ComparePositions
 
 class LGPMin:
 
     def __init__(self, atoms, model_calculator=None, force_consistent=None,
-                 max_train_data=25,
+                 max_train_data=25, optimizer=FIRE,
                  max_train_data_strategy='nearest_observations',
-                 trajectory='LGPMin.traj',
+                 trajectory='LGPMin.traj', geometry_threshold=None,
                  restart=False):
         """
         Optimize atomic structure using a surrogate machine learning
@@ -74,6 +74,8 @@ class LGPMin:
         self.force_calls = 0
         self.ase_calc = atoms.get_calculator()
         self.atoms = atoms
+        self.optimizer = optimizer
+        self.geometry_threshold = geometry_threshold
 
         self.constraints = self.atoms.constraints
         self.force_consistent = force_consistent
@@ -105,7 +107,7 @@ class LGPMin:
         """
         trajectory_main = self.trajectory.split('.')[0]
         trajectory_observations = trajectory_main + '_observations.traj'
-        trajectory_candidates = trajectory_main + '_candidates.traj'
+        trajectory_minima = trajectory_main + '_found_minima.traj'
 
         # Start by saving the initial configurations.
         # If restart is True it will read previous observations from
@@ -135,14 +137,27 @@ class LGPMin:
             self.atoms.set_calculator(gp_calc)
 
             # 3. Optimize the structure in the predicted PES.
-            ml_opt = LBFGS(self.atoms, trajectory=trajectory_candidates,
-                           logfile=None)
-            ml_opt.run(fmax=(fmax * 0.01), steps=ml_steps)
+            ml_opt = self.optimizer(self.atoms, logfile=None, trajectory=None)
+            ml_opt.run(fmax=(fmax * 0.1), steps=ml_steps)
+
+            # 3.1. Check whether the optimized structure is close to other.
+            if self.geometry_threshold is not None:
+                observations = io.read(trajectory_minima, ':')
+                geom_converged = False
+                for observation in observations:
+                    compare = ComparePositions(translate=True)
+                    dmax = compare(atoms1=self.atoms, atoms2=observation)
+                    if dmax <= self.geometry_threshold:
+                        parprint('Atoms near to another sampled minima.')
+                        geom_converged = True
+                if geom_converged:
+                    break
 
             # 4. Evaluate the target function and save it in *observations*.
             self.atoms.set_calculator(self.ase_calc)
             self.atoms.get_potential_energy(force_consistent=self.force_consistent)
             self.atoms.get_forces()
+
             dump_observation(atoms=self.atoms,
                              filename=trajectory_observations, restart=True)
             self.function_calls += 1
@@ -162,7 +177,7 @@ class LGPMin:
             if self.function_calls >= steps:
                 parprint('Maximum number of steps reached.')
                 break
-        print_cite_min()
+        # print_cite_min()
         io.write(self.trajectory, self.atoms)
 
 

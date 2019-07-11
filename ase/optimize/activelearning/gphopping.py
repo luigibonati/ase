@@ -10,14 +10,15 @@ from ase.md import VelocityVerlet
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from ase.optimize import QuasiNewton
 from scipy.signal import find_peaks
+from ase.data import covalent_radii
 from ase.optimize.minimahopping import ComparePositions
-
+from ase.optimize.activelearning.lgpmin import LGPMin
 
 class GPHopping:
 
     def __init__(self, atoms, calculator, model_calculator=None,
                  force_consistent=None, optimizer=QuasiNewton,
-                 trajectory='GPHopping.traj', T0=500., beta1=1.01, beta2=0.99,
+                 trajectory='GPHopping.traj', T0=500., beta1=1.01, beta2=0.95,
                  energy_threshold=10., geometry_threshold=0.5, mdmin=4,
                  timestep=1.0, maxtime=1000., maxstep=0.5, maxoptsteps=300,
                  hop_strategy='lowest_energy_minimum'):
@@ -67,7 +68,19 @@ class GPHopping:
         self.model_calculator = model_calculator
         # Default GP Calculator parameters if not specified by the user.
         if model_calculator is None:
+            # Automatically select the scale according to the Atoms type.
+            atomic_numbers = []
+            for atom in atoms:
+                atomic_numbers.append(atom.number)
+            atomic_numbers = np.unique(atomic_numbers)
+
+            vdw_scale = np.average(covalent_radii[atomic_numbers]) / 2.
+            if vdw_scale < 0.5:
+                vdw_scale = 0.5
+            parprint('vdW Scale:', vdw_scale)
+
             self.model_calculator = GPCalculator(train_images=[],
+                                                 scale=vdw_scale,
                                                  wrap_positions=True)
         self.model_calculator.calculate_uncertainty = True
 
@@ -125,104 +138,101 @@ class GPHopping:
             gp_calc = copy.deepcopy(self.model_calculator)
             gp_calc.update_train_data(train_images=train_images)
 
-            prev_minima = io.read(trajectory_minima, ':')
-
-            if self.hop_strategy == 'lowest_energy_minimum':
-                e_prev = []
-                for i in prev_minima:
-                    e_prev.append(i.get_potential_energy(force_consistent=self.force_consistent))
-                parprint('Starting from prev. minima number: ', np.argmin(e_prev))
-                self.atoms = prev_minima[np.argmin(e_prev)]
-
-            if self.hop_strategy == 'last_minimum':
-                parprint('Starting from last minima found...')
-                self.atoms = io.read(trajectory_minima, -1)
-
-            if self.hop_strategy == 'initial_minimum':
-                parprint('Starting from last minima found...')
-                self.atoms = io.read(trajectory_minima, 0)
-
             # 3. Perform MD simulation in the predicted PES.
-            self.atoms.set_calculator(gp_calc)
-            self.atoms.get_potential_energy(force_consistent=self.force_consistent)
 
             # 3.1 Optimize output from MD simulation to find candidates.
 
-            candidates = []
+            # Do optimization starting from each minimum found.
             np.random.seed(self.function_calls)
+            cumulative_candidates = []
+            prev_minima = io.read(trajectory_minima, ':')
 
-            while len(candidates) < 1:
-                md_atoms = copy.deepcopy(self.atoms)
-                md_results = mdsim(atoms=md_atoms,
-                                   temperature=temperature,
-                                   maxstep=self.maxstep,
-                                   timestep=self.timestep,
-                                   maxtime=self.maxtime,
-                                   mdmin=self.mdmin,
-                                   energy_threshold=self.energy_threshold,
-                                   trajectory='md_simulation.traj',
-                                   force_consistent=self.force_consistent)
+            for prev_minimum in prev_minima:
 
-                parprint('Stopping reason:', md_results['stop_reason'])
+                candidates = []
+                prev_minimum.set_calculator(gp_calc)
+                prev_minimum.get_potential_energy(force_consistent=self.force_consistent)
 
-                for index in md_results['indexes_minima']:
-                    atoms = copy.deepcopy(self.atoms)
-                    atoms.positions = md_results['positions'][index]
-                    candidates += [atoms]
+                while len(candidates) < 1:
+                    md_atoms = copy.deepcopy(prev_minimum)
+                    md_results = mdsim(atoms=md_atoms,
+                                       temperature=temperature,
+                                       maxstep=self.maxstep,
+                                       timestep=self.timestep,
+                                       maxtime=self.maxtime,
+                                       mdmin=self.mdmin,
+                                       energy_threshold=self.energy_threshold,
+                                       trajectory='md_simulation.traj',
+                                       force_consistent=self.force_consistent)
 
-                if md_results['stop_reason'] == 'max_time_reached':
-                    parprint('Increasing temp. due to max. time reached.')
-                    temperature *= self.beta1  # Increase temperature.
+                    parprint('Stopping reason:', md_results['stop_reason'])
 
-                if md_results['stop_reason'] == 'max_energy_reached':
-                    parprint('Decreasing temp. due to max. energy reached.')
-                    temperature *= self.beta2  # Decrease temperature.
+                    for index in md_results['indexes_minima']:
+                        atoms = copy.deepcopy(prev_minimum)
+                        atoms.positions = md_results['positions'][index]
+                        candidates += [copy.deepcopy(atoms)]
 
-                # Optimize candidates.
+                    if md_results['stop_reason'] == 'max_time_reached':
+                        parprint('Increasing temp. due to max. time reached.')
+                        temperature *= self.beta1  # Increase temperature.
 
-                optimized_candidates = []
-                for i in range(0, len(candidates)):
-                    atoms = copy.deepcopy(candidates[i])
-                    atoms.get_potential_energy(force_consistent=self.force_consistent)
-                    atoms = optimize_atoms(atoms=atoms, maxstep=self.maxstep,
-                                           fmax=fmax*0.01,
-                                           optimizer=self.optimizer,
-                                           maxoptsteps=self.maxoptsteps,
-                                           force_consistent=self.force_consistent)
-                    optimized_candidates += [copy.deepcopy(atoms)]
-                candidates = copy.deepcopy(optimized_candidates)
+                    if md_results['stop_reason'] == 'max_energy_reached':
+                        parprint('Decreasing temp. due to max. energy reached.')
+                        temperature *= self.beta2  # Decrease temperature.
 
-                # Remove candidates that are close to the other found minima.
-                filtered_candidates = []
-                for i in candidates:
-                    unique_candidate = True
-                    for j in prev_minima:
-                        compare = ComparePositions(translate=True)
-                        dmax = compare(atoms1=i, atoms2=j)
-                        if dmax <= self.geometry_threshold:
-                            unique_candidate = False
+                    # Optimize candidates.
+                    optimized_candidates = []
+                    for i in range(0, len(candidates)):
+                        atoms = copy.deepcopy(candidates[i])
+                        atoms.get_potential_energy(force_consistent=self.force_consistent)
+                        atoms = optimize_atoms(atoms=atoms, maxstep=self.maxstep,
+                                               fmax=fmax*0.1,
+                                               optimizer=self.optimizer,
+                                               maxoptsteps=self.maxoptsteps,
+                                               force_consistent=self.force_consistent)
+                        optimized_candidates += [copy.deepcopy(atoms)]
+                    candidates = copy.deepcopy(optimized_candidates)
+
+                    # Remove candidates that are close to prev. found minima.
+                    filtered_candidates = []
+                    for i in candidates:
+                        unique_candidate = True
+                        for j in prev_minima:
+                            compare = ComparePositions(translate=True)
+                            dmax = compare(atoms1=i, atoms2=j)
+                            if dmax <= self.geometry_threshold:
+                                unique_candidate = False
+                        if unique_candidate is True:
+                            filtered_candidates += [copy.deepcopy(i)]
+                    if md_results['stop_reason'] == 'mdmin_found':
+                        if len(filtered_candidates) == 0:
                             parprint('Re-found minima. Increasing temperature')
                             temperature *= self.beta1  # Increase temperature.
-                    if unique_candidate is True:
-                        filtered_candidates += [copy.deepcopy(i)]
-                candidates = copy.deepcopy(filtered_candidates)
+                    candidates = copy.deepcopy(filtered_candidates)
 
-                if md_results['stop_reason'] == 'max_uncertainty_reached':
-                    atoms = copy.deepcopy(self.atoms)
-                    atoms.positions = md_results['positions'][-1]
-                    candidates += [atoms]
-                    temperature *= self.beta2  # Decrease temperature.
+                    if md_results['stop_reason'] == 'max_uncertainty_reached':
+                        atoms = copy.deepcopy(prev_minimum)
+                        atoms.positions = md_results['positions'][-1]
+                        candidates += [atoms]
+                        temperature *= self.beta2  # Decrease temperature.
 
-                # No candidates? Increase temperature.
-                if len(candidates) == 0:
-                    temperature *= self.beta1  # Increase temperature.
+                    # No candidates? Increase temperature.
+                    if len(candidates) == 0:
+                        temperature *= self.beta1  # Increase temperature.
 
-                parprint('Current temperature:', temperature)
+                    # Obey threshold of minimum temperature.
+                    if temperature < self.T0:
+                        temperature = self.T0
+
+                    parprint('Current temperature:', temperature)
+                cumulative_candidates += copy.deepcopy(candidates)
+
+            candidates = copy.deepcopy(cumulative_candidates)
 
             # 4. Order candidates using acquisition function:
             sorted_candidates = acquisition(train_images=train_images,
                                             candidates=candidates,
-                                            mode='energy',
+                                            mode='lcb',
                                             objective='min')
 
             # Select the best candidate.
@@ -243,9 +253,30 @@ class GPHopping:
             self.force_calls += 1
 
             # If the last evaluated structure is below fmax:
-            if get_fmax(self.atoms) <= fmax:
-                dump_trajectory(atoms=self.atoms,
+            last_observation = io.read(trajectory_observations, -1)
+            if get_fmax(last_observation) <= fmax:
+                dump_trajectory(atoms=last_observation,
                                 filename=trajectory_minima, restart=True)
+
+            # Greedy optimization if found a point with min energy.
+            energies_prev_minima = []
+            for i in prev_minima:
+                e = i.get_potential_energy(force_consistent=self.force_consistent)
+                energies_prev_minima.append(e)
+            best_minima_energy = np.min(energies_prev_minima)
+            if self.atoms.get_potential_energy(
+                force_consistent=self.force_consistent) < best_minima_energy or \
+                    get_fmax(self.atoms) < 1.:
+                opt = LGPMin(self.atoms, trajectory=self.trajectory,
+                             restart=True,
+                             geometry_threshold=self.geometry_threshold)
+                opt.run(fmax=fmax)
+
+            last_observation = io.read(trajectory_observations, -1)
+            if get_fmax(last_observation) <= fmax:
+                dump_trajectory(atoms=last_observation,
+                                filename=trajectory_minima, restart=True)
+
             # 6. Print output.
             msg = "--------------------------------------------------------"
             parprint(msg)
@@ -260,19 +291,11 @@ class GPHopping:
 
 
 @parallel_function
-def optimize_atoms(atoms, optimizer, fmax, maxstep=0.4, maxoptsteps=1000,
+def optimize_atoms(atoms, optimizer, fmax, maxoptsteps=1000,
                    trajectory=None, logfile=None, force_consistent=None):
-    converged = False
-    step = 0
-    while converged is False:
-        if get_fmax(atoms) <= fmax or step > maxoptsteps or \
-                atoms.get_calculator().results['uncertainty'] >= maxstep:
-            converged = True
-        else:
-            opt = optimizer(atoms=atoms, logfile=logfile,
-            trajectory=trajectory, force_consistent=force_consistent)
-            opt.run(fmax=fmax, steps=1)
-            step += 1
+    opt = optimizer(atoms=atoms, logfile=logfile,
+                    trajectory=trajectory, force_consistent=force_consistent)
+    opt.run(fmax=fmax, steps=maxoptsteps)
     return atoms
 
 
@@ -361,4 +384,3 @@ def dump_trajectory(atoms, filename, restart):
             io.write(filename=filename, images=atoms, append=False)
     if restart is False:
         io.write(filename=filename, images=atoms, append=False)
-
