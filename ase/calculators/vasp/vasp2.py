@@ -37,7 +37,7 @@ from ase.calculators.calculator import (Calculator, ReadError,
                                         all_changes, CalculatorSetupError,
                                         CalculationFailed)
 
-from ase.calculators.vasp.create_input import GenerateVaspInput
+from ase.calculators.vasp.create_input2 import GenerateVaspInput
 
 
 class Vasp2(GenerateVaspInput, Calculator):
@@ -332,17 +332,20 @@ class Vasp2(GenerateVaspInput, Calculator):
 
     def _store_param_state(self):
         """Store current parameter state"""
+        # self.param_state = dict(
+        #     float_params=self.float_params.copy(),
+        #     exp_params=self.exp_params.copy(),
+        #     string_params=self.string_params.copy(),
+        #     int_params=self.int_params.copy(),
+        #     input_params=self.input_params.copy(),
+        #     bool_params=self.bool_params.copy(),
+        #     list_int_params=self.list_int_params.copy(),
+        #     list_bool_params=self.list_bool_params.copy(),
+        #     list_float_params=self.list_float_params.copy(),
+        #     dict_params=self.dict_params.copy())
         self.param_state = dict(
-            float_params=self.float_params.copy(),
-            exp_params=self.exp_params.copy(),
-            string_params=self.string_params.copy(),
-            int_params=self.int_params.copy(),
-            input_params=self.input_params.copy(),
-            bool_params=self.bool_params.copy(),
-            list_int_params=self.list_int_params.copy(),
-            list_bool_params=self.list_bool_params.copy(),
-            list_float_params=self.list_float_params.copy(),
-            dict_params=self.dict_params.copy())
+            ase_params=self.ase_params.copy(),
+            vasp_params=self.vasp_params.copy())
 
     def asdict(self):
         """Return a dictionary representation of the calculator state.
@@ -492,9 +495,9 @@ class Vasp2(GenerateVaspInput, Calculator):
 
     def update_atoms(self, atoms):
         """Update the atoms object with new positions and cell"""
-        if (self.int_params['ibrion'] is not None and
-                self.int_params['nsw'] is not None):
-            if self.int_params['ibrion'] > -1 and self.int_params['nsw'] > 0:
+        if (self.get('ibrion') is not None and
+                self.get('nsw') is not None):
+            if self.get('ibrion') > -1 and self.get('nsw') > 0:
                 # Update atomic positions and unit cell with the ones read
                 # from CONTCAR.
                 atoms_sorted = read(self._indir('CONTCAR'))
@@ -582,7 +585,7 @@ class Vasp2(GenerateVaspInput, Calculator):
     @property
     def encut(self):
         """Direct access to the encut parameter"""
-        return self.float_params['encut']
+        return self.get('encut', None)
 
     @encut.setter
     def encut(self, encut):
@@ -816,7 +819,7 @@ class Vasp2(GenerateVaspInput, Calculator):
                 ldau_luj[symbol] = {'L': int(L[i]),
                                     'U': float(U[i]),
                                     'J': float(J[i])}
-            self.dict_params['ldau_luj'] = ldau_luj
+            self.ase_params['ldau_luj'] = ldau_luj
 
         self.ldau = ldau
         self.ldauprint = ldauprint
@@ -832,10 +835,10 @@ class Vasp2(GenerateVaspInput, Calculator):
         pseudopotentials (LDA, PW91 or PBE) is returned.
         The string is always cast to uppercase for consistency
         in checks."""
-        if self.input_params.get('xc', None):
-            return self.input_params['xc'].upper()
-        elif self.input_params.get('pp', None):
-            return self.input_params['pp'].upper()
+        if self.get('xc'):
+            return self.get('xc').upper()
+        elif self.get('pp', None):
+            return self.get('pp').upper()
         else:
             raise ValueError('No xc or pp found.')
 
@@ -919,12 +922,12 @@ class Vasp2(GenerateVaspInput, Calculator):
     def read_mag(self, lines=None):
         if not lines:
             lines = self.load_file('OUTCAR')
-        p = self.int_params
-        q = self.list_float_params
+        # p = self.int_params
+        # q = self.list_float_params
         if self.spinpol:
             magnetic_moment = self._read_magnetic_moment(lines=lines)
-            if ((p['lorbit'] is not None and p['lorbit'] >= 10) or
-                (p['lorbit'] is None and q['rwigs'])):
+            if ((self.get('lorbit') is not None and self.get('lorbit') >= 10) or
+                (self.get('lorbit') is None and self.get('rwigs'))):
                 magnetic_moments = self._read_magnetic_moments(lines=lines)
             else:
                 warn(('Magnetic moment data not written in OUTCAR (LORBIT<10),'
@@ -1016,8 +1019,8 @@ class Vasp2(GenerateVaspInput, Calculator):
                     continue
         # Then if ibrion in [1,2,3] check whether ionic relaxation
         # condition been fulfilled
-        if ((self.int_params['ibrion'] in [1, 2, 3] and
-             self.int_params['nsw'] not in [0])):
+        if ((self.get('ibrion') in [1, 2, 3] and
+             self.get('nsw') not in [0])):
             if not self.read_relaxed():
                 converged = False
             else:
