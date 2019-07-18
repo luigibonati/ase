@@ -6,6 +6,7 @@ from ase.calculators.calculator import Calculator, all_changes
 from scipy.linalg import solve_triangular
 from scipy.spatial.distance import euclidean
 
+
 class GPCalculator(Calculator, GaussianProcess):
     """
     GP model parameters
@@ -37,6 +38,7 @@ class GPCalculator(Calculator, GaussianProcess):
 
         options:
             'maximum': update the prior to the maximum sampled energy.
+            'minimum' : update the prior to the minimum sampled energy.
             'average': use the average of sampled energies as prior.
             'init' : fix the prior to the initial energy.
             'last' : fix the prior to the last sampled energy.
@@ -82,8 +84,8 @@ class GPCalculator(Calculator, GaussianProcess):
     nolabel = True
 
     def __init__(self, train_images=None, prior=None,
-                 update_prior_strategy='maximum', weight=1.0,
-                 scale=0.4, noise=0.005, update_hyperparams=False,
+                 update_prior_strategy='maximum', weight=2.,
+                 scale=0.3, noise=0.004, update_hyperparams=False,
                  batch_size=5, bounds=None, kernel=None,
                  max_train_data=None, force_consistent=None,
                  max_train_data_strategy='nearest_observations',
@@ -98,12 +100,13 @@ class GPCalculator(Calculator, GaussianProcess):
         self.update_hp = update_hyperparams
         self.nbatch = batch_size
         self.hyperbounds = bounds
-        self.force_consistent = force_consistent
+        self.fc = force_consistent
         self.max_data = max_train_data
         self.max_data_strategy = max_train_data_strategy
         self.kernel = kernel
         self.train_images = train_images
         self.old_train_images = []
+        self.prev_train_y = []  # Do not retrain model if same data.
         self.calculate_uncertainty = True
         self.wrap = wrap_positions
 
@@ -136,7 +139,7 @@ class GPCalculator(Calculator, GaussianProcess):
         Gaussian Process. """
         for i in self.train_images:
             r = i.get_positions(wrap=self.wrap).reshape(-1)
-            e = i.get_potential_energy(force_consistent=self.force_consistent)
+            e = i.get_potential_energy(force_consistent=self.fc)
             f = i.get_forces()
             self.train_x.append(r[self.atoms_mask])
             y = np.append(np.array(e).reshape(-1),
@@ -168,6 +171,9 @@ class GPCalculator(Calculator, GaussianProcess):
             elif self.strategy == 'maximum':
                 max_e = np.max(np.array(self.train_y)[:, 0])
                 self.prior.set_constant(max_e)
+            elif self.strategy == 'minimum':
+                min_e = np.min(np.array(self.train_y)[:, 0])
+                self.prior.set_constant(min_e)
             elif self.strategy == 'init':
                 self.prior.set_constant(np.array(self.train_y)[:, 0][0])
                 self.update_prior = False
@@ -205,7 +211,6 @@ class GPCalculator(Calculator, GaussianProcess):
             # 3.c. Get the nearest observations to the test structure.
             if self.max_data_strategy == 'nearest_observations':
                 arg_nearest = []
-
                 if self.test_images is None:
                     self.test_images = [self.atoms]
                 for i in self.test_images:
@@ -213,6 +218,7 @@ class GPCalculator(Calculator, GaussianProcess):
                     d_i_j = []
                     for j in self.train_images:
                         pos_train = j.get_positions(wrap=self.wrap).reshape(-1)
+                        # d_i_j.append(np.linalg.norm(pos_train-pos_test))
                         d_i_j.append(euclidean(pos_test, pos_train))
                     arg_nearest += list(np.argsort(d_i_j)[:self.max_data])
 
@@ -223,24 +229,28 @@ class GPCalculator(Calculator, GaussianProcess):
                 self.train_x = x
                 self.train_y = y
 
-        # 4. Train a Gaussian Process.
-        print('Training data size: ', len(self.train_x))
-        self.train(np.array(self.train_x), np.array(self.train_y),
-                   noise=self.noise)
+        # Check whether is the same train process than before:
+        if not np.array_equal(self.train_y, self.prev_train_y):
+            # 4. Train a Gaussian Process .
+            print('Training data size: ', len(self.train_x))
+            self.train(np.array(self.train_x), np.array(self.train_y),
+                       noise=self.noise)
 
-        # 5. (optional) Optimize model hyperparameters.
-        if self.update_hp and len(self.train_x) % self.nbatch == 0 and len(self.train_x) != 0:
-            ratio = self.noise / self.kernel.weight
-            try:
-                self.fit_hyperparameters(np.asarray(self.train_x),
-                                         np.asarray(self.train_y),
-                                         eps=self.hyperbounds)
-            except Exception:
-                pass
+            # 5. (optional) Optimize model hyperparameters.
+            if self.update_hp and len(self.train_x) % self.nbatch == 0 and len(self.train_x) != 0:
+                ratio = self.noise / self.kernel.weight
+                try:
+                    self.fit_hyperparameters(np.asarray(self.train_x),
+                                             np.asarray(self.train_y),
+                                             eps=self.hyperbounds)
+                except Exception:
+                    pass
 
-            else:
-                # Keeps the ratio between noise and weight fixed.
-                self.noise = ratio * self.kernel.weight
+                else:
+                    # Keeps the ratio between noise and weight fixed.
+                    self.noise = ratio * self.kernel.weight
+
+        self.prev_train_y = self.train_y[:]
 
     def calculate(self, atoms=None,
                   properties=['energy', 'forces', 'uncertainty'],

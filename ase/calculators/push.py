@@ -6,8 +6,8 @@ from ase.data import covalent_radii, atomic_numbers
 class Push(Calculator):
     """
     Simple potential to push apart atoms to minimal distance.
-    Based on TS ASE tools by Henkelman et al.
-    Here we use the atomic radii of each element to determine the bond length.
+    Based on TS ASE tools by Henkelman et al. However, here we use the
+    atomic radii of each element to determine the bond length.
     """
 
     implemented_properties = ['energy', 'forces']
@@ -42,12 +42,7 @@ class Push(Calculator):
                 # Get the vector and distance between the two atoms.
                 radii_i = covalent_radii[atomic_numbers[atoms[i].symbol]]
                 radii_j = covalent_radii[atomic_numbers[atoms[j].symbol]]
-                print('atom i', atoms[i].symbol)
-                print('atom j', atoms[j].symbol)
-                print('radii i', radii_i)
-                print('radii j', radii_j)
                 z = (radii_i + radii_j) / self.bond_factor
-                print('z', z)
                 v = self.atoms.positions[i] - self.atoms.positions[j]
                 vr = np.linalg.solve(self.atoms.get_cell().T, v)
                 v = np.dot(vr - np.round(vr) * self.atoms.get_pbc(),

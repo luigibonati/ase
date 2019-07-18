@@ -16,7 +16,7 @@ class GPNEB:
     def __init__(self, start, end, model_calculator=None, calculator=None,
                  interpolation='linear', n_images=0.25, k=None, mic=False,
                  neb_method='aseneb', remove_rotation_and_translation=False,
-                 max_train_data=20, force_consistent=None,
+                 max_train_data=5, force_consistent=None,
                  max_train_data_strategy='nearest_observations',
                  trajectory='GPNEB.traj',
                  restart=False):
@@ -58,7 +58,7 @@ class GPNEB:
 
             options:
                 - 'linear' linear interpolation.
-                - 'idpp'image dependent pair potential interpolation.
+                - 'idpp'  image dependent pair potential interpolation.
                 - Trajectory file (in ASE format) or list of Atoms.
                 Trajectory or list of Atoms containing the images along the
                 path.
@@ -165,7 +165,7 @@ class GPNEB:
         self.model_calculator = model_calculator
         if model_calculator is None:
             self.model_calculator = GPCalculator(
-                               train_images=[],
+                               train_images=[], scale=0.3, weight=2.0,
                                max_train_data_strategy=max_train_data_strategy,
                                max_train_data=max_train_data)
 
@@ -190,7 +190,8 @@ class GPNEB:
             if self. n_images <= 3:
                 self.n_images = 3
             self.images = make_neb(self)
-            neb_interpolation = NEB(self.images)
+            neb_interpolation = NEB(self.images,
+                                    remove_rotation_and_translation=self.rrt)
             neb_interpolation.interpolate(method=interpolation, mic=self.mic)
 
         # B) Alternatively, the user can manually decide the initial path.
@@ -210,6 +211,19 @@ class GPNEB:
         # Guess spring constant (k) if not defined by the user.
         if self.spring is None:
             self.spring = (np.sqrt(self.n_images-1) / d_start_end)
+
+        trajectory_main = self.trajectory.split('.')[0]
+        self.trajectory_observations = trajectory_main + '_observations.traj'
+        self.trajectory_candidates = trajectory_main + '_candidates.traj'
+
+        # Start by saving the initial and final states.
+        dump_observation(atoms=self.i_endpoint,
+                         filename=self.trajectory_observations,
+                         restart=self.restart)
+        self.restart = True  # Switch on active learning.
+        dump_observation(atoms=self.e_endpoint,
+                         filename=self.trajectory_observations,
+                         restart=self.restart)
 
     def run(self, fmax=0.05, unc_convergence=0.05, dt=0.05, ml_steps=100,
             max_step=2.0):
@@ -249,24 +263,12 @@ class GPNEB:
         Minimum Energy Path from the initial to the final states.
 
         """
-        trajectory_main = self.trajectory.split('.')[0]
-        trajectory_observations = trajectory_main + '_observations.traj'
-        trajectory_candidates = trajectory_main + '_candidates.traj'
-
-        # Start by saving the initial and final states.
-        dump_observation(atoms=self.i_endpoint,
-                         filename=trajectory_observations,
-                         restart=self.restart)
-        self.restart = True  # Switch on active learning.
-        dump_observation(atoms=self.e_endpoint,
-                         filename=trajectory_observations,
-                         restart=self.restart)
 
         while True:
 
             # 1. Collect observations.
             # This serves to restart from a previous (and/or parallel) runs.
-            train_images = io.read(trajectory_observations, ':')
+            train_images = io.read(self.trajectory_observations, ':')
 
             # 2. Prepare a calculator.
             calc = copy.deepcopy(self.model_calculator)
@@ -294,7 +296,8 @@ class GPNEB:
                 parprint('Climbing image is now activated.')
                 climbing_neb = True
             ml_neb = NEB(self.images, climb=climbing_neb,
-                         method=self.neb_method, k=self.spring)
+                         method=self.neb_method, k=self.spring,
+                         remove_rotation_and_translation=self.rrt)
             neb_opt = MDMin(ml_neb, dt=dt, trajectory=self.trajectory)
 
             # Safe check to optimize the images.
@@ -359,7 +362,7 @@ class GPNEB:
             best_candidate = sorted_candidates.pop(0)
 
             # Save the other candidates for multi-task optimization.
-            io.write(trajectory_candidates, sorted_candidates)
+            io.write(self.trajectory_candidates, sorted_candidates)
 
             # 8. Evaluate the target function and save it in *observations*.
             self.atoms.positions = best_candidate.get_positions()
@@ -367,7 +370,7 @@ class GPNEB:
             self.atoms.get_potential_energy(force_consistent=self.force_consistent)
             self.atoms.get_forces()
             dump_observation(atoms=self.atoms,
-                             filename=trajectory_observations,
+                             filename=self.trajectory_observations,
                              restart=self.restart)
             self.function_calls += 1
             self.force_calls += 1
@@ -439,6 +442,7 @@ def dump_observation(atoms, filename, restart):
             io.write(filename=filename, images=atoms, append=False)
     if restart is False:
         io.write(filename=filename, images=atoms, append=False)
+
 
 @parallel_function
 def print_cite_neb():
