@@ -238,6 +238,7 @@ class GPHopping:
 
                 if opt_unique:
                     self.atoms.positions = opt_min_greedy.atoms.positions
+                    # self.atoms.set_calculator(self.ase_calc)
                     if get_fmax(prev_opt) <= self.fmax:
                         self.temperature *= self.beta3
                         parprint('Re-starting temperature...')
