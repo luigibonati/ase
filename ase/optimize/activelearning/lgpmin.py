@@ -4,15 +4,16 @@ import copy
 from ase import io
 from ase.calculators.gp.calculator import GPCalculator
 from ase.parallel import parprint, parallel_function
+from scipy.spatial.distance import euclidean
 from ase.optimize import *
 
 
 class LGPMin:
 
     def __init__(self, atoms, model_calculator=None, force_consistent=None,
-                 max_train_data=25, optimizer=QuasiNewton,
+                 max_train_data=5, optimizer=QuasiNewton,
                  max_train_data_strategy='nearest_observations',
-                 trajectory='LGPMin.traj',
+                 geometry_threshold=0.001, trajectory='LGPMin.traj',
                  restart=False):
         """
         Optimize atomic structure using a surrogate machine learning
@@ -80,6 +81,7 @@ class LGPMin:
         self.fc = force_consistent
         self.trajectory = trajectory
         self.restart = restart
+        self.geometry_threshold = geometry_threshold
 
         trajectory_main = self.trajectory.split('.')[0]
         self.trajectory_observations = trajectory_main + '_observations.traj'
@@ -91,7 +93,7 @@ class LGPMin:
                          filename=self.trajectory_observations,
                          restart=self.restart)
 
-    def run(self, fmax=0.05, ml_steps=200, steps=200, logfile=False):
+    def run(self, fmax=0.05, ml_steps=1000, steps=200, logfile=False):
 
         """
         Executing run will start the optimization process.
@@ -117,12 +119,10 @@ class LGPMin:
         self.fmax = fmax
         self.steps = steps
 
-        # Start by saving the initial configurations.
-        # If restart is True it will read previous observations from
-        # *trajectory_observations.traj* if the file is found in the working
-        # directory. If restart is False it will overwrite any previous
-        # *trajectory_observations.traj* and will start the optimization from
-        # scratch.
+
+        # Always start from 'atoms' positions.
+        starting_atoms = io.read(self.trajectory_observations, -1)
+        starting_atoms.positions = copy.deepcopy(self.atoms.positions)
 
         while not self.fmax >= get_fmax(self.atoms):
 
@@ -131,23 +131,40 @@ class LGPMin:
             train_images = io.read(self.trajectory_observations, ':')
 
             # 2. Update GP calculator.
-            self.atoms = train_images[-1]
+            # Probed positions are used for low-memory.
 
-            gp_calc = copy.deepcopy(self.model_calculator)
-            gp_calc.update_train_data(train_images=train_images,
-                                      test_images=[self.atoms])
-            self.atoms.set_calculator(gp_calc)
+            ml_converged = False
 
-            # 3. Optimize the structure in the predicted PES.
-            ml_opt = self.optimizer(self.atoms, logfile=None, trajectory=None)
-            ml_opt.run(fmax=(fmax * 0.01), steps=ml_steps)
             surrogate_positions = self.atoms.positions
+            probed_atoms = [copy.deepcopy(starting_atoms)]
+            probed_atoms[0].positions = copy.deepcopy(self.atoms.positions)
+
+            while not ml_converged:
+                gp_calc = copy.deepcopy(self.model_calculator)
+                gp_calc.update_train_data(train_images=train_images,
+                                          test_images=probed_atoms)
+                self.atoms.set_calculator(gp_calc)
+
+                # 3. Optimize the structure in the predicted PES.
+                ml_opt = self.optimizer(self.atoms,
+                                        logfile=None, trajectory=None)
+                ml_opt.run(fmax=(fmax * 0.01), steps=ml_steps)
+                surrogate_positions = self.atoms.positions
+
+                if len(probed_atoms) >= 2:
+                    l1_probed_pos = probed_atoms[-1].positions.reshape(-1)
+                    l2_probed_pos = probed_atoms[-2].positions.reshape(-1)
+                    dl1l2 = euclidean(l1_probed_pos, l2_probed_pos)
+                    if dl1l2 <= self.geometry_threshold:
+                        ml_converged = True
+
+                probed = copy.deepcopy(probed_atoms[0])
+                probed.positions = copy.deepcopy(self.atoms.positions)
+                probed_atoms += [probed]
 
             # Update step (this allows to stop algorithm before evaluating).
             if self.step >= self.steps:
                 break
-
-
 
             # 4. Evaluate the target function and save it in *observations*.
             # Update the new positions.
@@ -217,4 +234,3 @@ def _log(self):
     parprint("fmax:", get_fmax(self.atoms))
     msg = "-" * 26 + "\n"
     parprint(msg)
-

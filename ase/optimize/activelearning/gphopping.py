@@ -19,8 +19,8 @@ class GPHopping:
                  force_consistent=None, max_train_data=50,
                  max_train_data_strategy='nearest_observations',
                  trajectory='GPHopping.traj', T0=500.,
-                 beta1=1.01, beta2=0.98, beta3=0.9, energy_threshold=10.,
-                 geometry_threshold=1., maxstep=1.0, timestep=1.0,
+                 beta1=1.01, beta2=0.98, beta3=0.75, energy_threshold=10.,
+                 geometry_threshold=1., maxstep=.5, timestep=1.0,
                  maxtime=1000., maxoptsteps=500):
         """
         Parameters
@@ -133,7 +133,7 @@ class GPHopping:
             prev_minima = io.read(self.trajectory_minima, ':')
 
             # Perform optimizations starting from each minimum found.
-            np.random.seed(int(len(prev_minima) * self.temperature))
+            # np.random.seed(int(len(prev_minima) * self.temperature))
 
             candidates = []
             while len(candidates) < 1:
@@ -163,7 +163,7 @@ class GPHopping:
 
                 if stop_reason == 'max_energy_reached':
                     parprint('Decreasing temp. due to max. energy reached.')
-                    self.temperature *= self.beta2  # Decrease temperature.
+                    self.temperature = self.T0  # Decrease temperature.
 
                 if stop_reason == 'max_uncertainty_reached':
                     candidates += [copy.deepcopy(md_guess)]
@@ -182,15 +182,15 @@ class GPHopping:
                                 opt_atoms])
                     opt_atoms.positions = md_guess.positions
                     gp_calc_min = copy.deepcopy(model_min)
-                    gp_calc_min.update_train_data(
-                        train_images=train_images, test_images=[opt_atoms])
+                    gp_calc_min.update_train_data(train_images=train_images,
+                                                  test_images=[opt_atoms])
                     opt_atoms.set_calculator(gp_calc_min)
                     opt_min = QuasiNewton(opt_atoms, logfile=None)
                     opt_min.run(fmax=self.fmax*0.01)
 
                     # Check whether duplicate.
                     unique_candidate = _check_unique_minima_found(self,
-                                       atoms=opt_min.atoms)
+                                                          atoms=opt_min.atoms)
                     if unique_candidate is True:
                         candidates += [opt_min.atoms]
                     else:
@@ -219,9 +219,8 @@ class GPHopping:
                                             scale=0.3, weight=2.,
                                             prior=ConstantPrior(min_prior),
                                             update_prior_strategy=None,
-                                            max_train_data=25,
+                                            max_train_data=15,
                                             wrap_positions=False)
-
             while True:
                 opt_min_greedy = LGPMin(self.atoms, restart=True,
                                         trajectory=self.trajectory,
@@ -232,13 +231,14 @@ class GPHopping:
                 prev_opt = io.read(self.trajectory_observations, '-1')
 
                 if not opt_unique:
-                    parprint('Found the structure...do not evaluate atoms.')
+                    parprint('Previously found structure...do not evaluate.')
                     self.temperature *= self.beta1
                     break
 
                 if opt_unique:
                     self.atoms.positions = opt_min_greedy.atoms.positions
-                    # self.atoms.set_calculator(self.ase_calc)
+                    self.atoms.set_calculator(self.ase_calc)
+                    self.atoms.get_potential_energy(force_consistent=self.fc)
                     if get_fmax(prev_opt) <= self.fmax:
                         self.temperature *= self.beta3
                         parprint('Re-starting temperature...')
