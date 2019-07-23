@@ -137,74 +137,70 @@ class GPHopping:
 
             candidates = []
             while len(candidates) < 1:
-                pos_i = self.atoms.positions.reshape(-1)
-                all_dist = []
-                for j in prev_minima:
-                    pos_j = j.positions.reshape(-1)
-                    all_dist.append(euclidean(pos_i, pos_j))
+                for index_minimum in range(0, len(prev_minima)):
+                    parprint('Starting from minimum:', index_minimum)
+                    md_guess = copy.deepcopy(prev_minima[index_minimum])
+                    md_guess.set_calculator(gp_calc)
+                    md_guess.get_potential_energy(force_consistent=self.fc)
+                    stop_reason = mdsim(atoms=md_guess, maxstep=self.maxstep,
+                                        train_images=train_images,
+                                        temperature=self.temperature,
+                                        timestep=self.timestep,
+                                        maxtime=self.maxtime,
+                                        energy_threshold=self.energy_threshold,
+                                        trajectory='md_simulation.traj',
+                                        force_consistent=self.fc)
 
-                md_guess = copy.deepcopy(prev_minima[np.argmin(all_dist)])
-                md_guess.set_calculator(gp_calc)
-                md_guess.get_potential_energy(force_consistent=self.fc)
-                stop_reason = mdsim(atoms=md_guess, maxstep=self.maxstep,
-                                    train_images=train_images,
-                                    temperature=self.temperature,
-                                    timestep=self.timestep,
-                                    maxtime=self.maxtime,
-                                    energy_threshold=self.energy_threshold,
-                                    trajectory='md_simulation.traj',
-                                    force_consistent=self.fc)
+                    parprint('MD stopping reason:', stop_reason)
 
-                parprint('MD stopping reason:', stop_reason)
+                    if stop_reason == 'max_time_reached':
+                        parprint('Increasing temp. due to max. time reached.')
+                        self.temperature *= self.beta1  # Increase temperature.
 
-                if stop_reason == 'max_time_reached':
-                    parprint('Increasing temp. due to max. time reached.')
-                    self.temperature *= self.beta1  # Increase temperature.
+                    if stop_reason == 'max_energy_reached':
+                        parprint('Decreasing temp. due to max. energy reached.')
+                        self.temperature = self.T0  # Decrease temperature.
 
-                if stop_reason == 'max_energy_reached':
-                    parprint('Decreasing temp. due to max. energy reached.')
-                    self.temperature = self.T0  # Decrease temperature.
+                    if stop_reason == 'max_uncertainty_reached':
+                        candidates += [copy.deepcopy(md_guess)]
+                        self.temperature *= self.beta2
+                        # self.temperature = self.T0
 
-                if stop_reason == 'max_uncertainty_reached':
-                    candidates += [copy.deepcopy(md_guess)]
-                    self.temperature *= self.beta2
-                    # self.temperature = self.T0
+                    if stop_reason == 'mdmin_found':
+                        opt_atoms = io.read(self.trajectory_minima, -1)
+                        model_min = GPCalculator(train_images=[],
+                                                 scale=0.3, weight=2.,
+                                                 update_prior_strategy='maximum',
+                                                 max_train_data=50,
+                                                 wrap_positions=False)
+                        model_min.update_train_data(
+                                    train_images=train_images, test_images=[
+                                    opt_atoms])
+                        opt_atoms.positions = md_guess.positions
+                        gp_calc_min = copy.deepcopy(model_min)
+                        gp_calc_min.update_train_data(train_images=train_images,
+                                                      test_images=[opt_atoms])
+                        opt_atoms.set_calculator(gp_calc_min)
+                        opt_min = QuasiNewton(opt_atoms, logfile=None)
+                        opt_min.run(fmax=self.fmax*0.01)
 
-                if stop_reason == 'mdmin_found':
-                    opt_atoms = io.read(self.trajectory_minima, -1)
-                    model_min = GPCalculator(train_images=[],
-                                             scale=0.3, weight=2.,
-                                             update_prior_strategy='maximum',
-                                             max_train_data=50,
-                                             wrap_positions=False)
-                    model_min.update_train_data(
-                                train_images=train_images, test_images=[
-                                opt_atoms])
-                    opt_atoms.positions = md_guess.positions
-                    gp_calc_min = copy.deepcopy(model_min)
-                    gp_calc_min.update_train_data(train_images=train_images,
-                                                  test_images=[opt_atoms])
-                    opt_atoms.set_calculator(gp_calc_min)
-                    opt_min = QuasiNewton(opt_atoms, logfile=None)
-                    opt_min.run(fmax=self.fmax*0.01)
+                        # Check whether duplicate.
+                        unique_candidate = _check_unique_minima_found(self,
+                                                              atoms=opt_min.atoms)
+                        if unique_candidate is True:
+                            candidates += [opt_min.atoms]
+                        else:
+                            print('Re-found minima...increasing temperature.')
+                            self.temperature *= self.beta1
 
-                    # Check whether duplicate.
-                    unique_candidate = _check_unique_minima_found(self,
-                                                          atoms=opt_min.atoms)
-                    if unique_candidate is True:
-                        candidates += [opt_min.atoms]
-                    else:
-                        print('Re-found minima...increasing temperature.')
-                        self.temperature *= self.beta1
-
-                    # Obey threshold of minimum temperature.
-                    if self.temperature < self.T0:
-                        self.temperature = self.T0
+                        # Obey threshold of minimum temperature.
+                        if self.temperature < self.T0:
+                            self.temperature = self.T0
 
             sorted_candidates = acquisition(train_images=train_images,
                                             candidates=candidates,
-                                            mode='lcb',
-                                            objective='min')
+                                            mode='ucb',
+                                            objective='max')
 
             best_candidate = sorted_candidates.pop(0)
 
