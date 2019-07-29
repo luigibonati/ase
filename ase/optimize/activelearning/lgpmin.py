@@ -196,7 +196,7 @@ def get_fmax(atoms):
 
 
 @parallel_function
-def dump_observation(atoms, filename, restart):
+def dump_observation(atoms, filename, restart, method='min'):
     """
     Saves a trajectory file containing the atoms observations.
 
@@ -209,6 +209,7 @@ def dump_observation(atoms, filename, restart):
     restart: boolean
         Append mode (true or false).
      """
+    atoms.info['method'] = method
 
     if restart is True:
         try:

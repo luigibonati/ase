@@ -172,6 +172,7 @@ class GPNEB:
         # Active Learning setup (Single-point calculations).
         self.function_calls = 0
         self.force_calls = 0
+        self.step = 0
         self.ase_calc = calculator
         self.atoms = io.read(self.start, '-1')
 
@@ -330,7 +331,7 @@ class GPNEB:
             # 6. Check convergence.
             # Max.forces and NEB images uncertainty must be below *fmax* and
             # *unc_convergence* thresholds.
-            if len(train_images) > 2 and get_fmax(train_images[-1]) <= fmax:
+            if self.step > 1 and get_fmax(train_images[-1]) <= fmax:
                 parprint('A saddle point was found.')
                 if np.max(neb_pred_uncertainty[1:-1]) < unc_convergence:
                     io.write(self.trajectory, self.images)
@@ -374,6 +375,7 @@ class GPNEB:
                              restart=self.restart)
             self.function_calls += 1
             self.force_calls += 1
+            self.step += 1
         print_cite_neb()
 
 
@@ -417,7 +419,7 @@ def get_fmax(atoms):
 
 
 @parallel_function
-def dump_observation(atoms, filename, restart):
+def dump_observation(atoms, filename, restart, method='neb'):
     """
     Saves a trajectory file containing the atoms observations.
 
@@ -430,7 +432,7 @@ def dump_observation(atoms, filename, restart):
     restart: boolean
         Append mode (true or false).
      """
-
+    atoms.info['method'] = method
     if restart is True:
         try:
             prev_atoms = io.read(filename, ':')  # Actively searching.
