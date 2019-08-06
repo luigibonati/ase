@@ -9,9 +9,9 @@ from ase.dimer import DimerControl, MinModeAtoms, MinModeTranslate
 
 class GPDimer:
 
-    def __init__(self, atoms, atoms_vector, vector_length=0.1,
+    def __init__(self, atoms, atoms_vector, vector_length=0.01,
                  model_calculator=None, force_consistent=None,
-                 max_train_data=25,
+                 max_train_data=50,
                  max_train_data_strategy='nearest_observations',
                  trajectory='GPDimer.traj',
                  restart=False):
@@ -90,17 +90,20 @@ class GPDimer:
         mask_atoms = []
 
         for atom in range(0, len(atoms)):
-            vect_atom = (atoms[atom].position - atoms_vector[atom].position)
+            vect_atom = (atoms_vector[atom].position - atoms[atom].position)
             displacement_vector += [vect_atom.tolist()]
             if np.array_equal(np.array(vect_atom), np.array([0, 0, 0])):
                 mask_atoms += [0]
             else:
                 mask_atoms += [1]
-        max_vector = np.max(displacement_vector)
+
+        max_vector = np.max(np.abs(displacement_vector))
         normalized_vector = (np.array(displacement_vector) / max_vector)
         normalized_vector *= vector_length
         self.displacement_vector = normalized_vector
+
         self.mask_atoms = mask_atoms
+        self.vector_length = vector_length
 
         # Optimization settings.
         self.ase_calc = atoms.get_calculator()
@@ -165,7 +168,9 @@ class GPDimer:
             # 3. Optimize dimer in the predicted PES.
             d_control = DimerControl(initial_eigenmode_method='displacement',
                                      displacement_method='vector',
-                                     logfile=None,
+                                     logfile=None, use_central_forces=False,
+                                     extrapolate_forces=False,
+                                     displacement_radius=self.vector_length,
                                      mask=self.mask_atoms)
             d_atoms = MinModeAtoms(self.atoms, d_control)
             d_atoms.displace(displacement_vector=self.displacement_vector)

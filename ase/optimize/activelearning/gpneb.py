@@ -6,7 +6,7 @@ from ase.atoms import Atoms
 from ase.calculators.gp.calculator import GPCalculator
 from ase.neb import NEB
 from ase.geometry import distance
-from ase.optimize import MDMin
+from ase.optimize import FIRE
 from ase.optimize.activelearning.acquisition import acquisition
 from ase.parallel import parprint, parallel_function
 
@@ -182,18 +182,28 @@ class GPNEB:
         self.trajectory = trajectory
 
         # Calculate the distance between the initial and final endpoints.
-        d_start_end = distance(self.i_endpoint, self.e_endpoint)
-
+        d_start_end = np.linalg.norm(self.i_endpoint.positions.reshape(-1) -
+                                     self.e_endpoint.positions.reshape(-1))
         # A) Create images using interpolation if user do defines a path.
         if interp_path is None:
             if isinstance(self.n_images, float):
-                self.n_images = int(d_start_end/self.n_images)
+                self.n_images = int(d_start_end/self.n_images) + 2
             if self. n_images <= 3:
                 self.n_images = 3
             self.images = make_neb(self)
-            neb_interpolation = NEB(self.images,
+
+            # Guess spring constant (k) if not defined by the user.
+            if self.spring is None:
+                self.spring = (np.sqrt(self.n_images-1) / d_start_end)
+
+            neb_interpolation = NEB(self.images, climb=False, k=self.spring,
                                     remove_rotation_and_translation=self.rrt)
-            neb_interpolation.interpolate(method=interpolation, mic=self.mic)
+            neb_interpolation.interpolate(method='linear',
+                                          mic=self.mic)
+            if interpolation == 'idpp':
+                neb_interpolation = NEB(self.images, climb=True, k=self.spring,
+                                        remove_rotation_and_translation=self.rrt)
+                neb_interpolation.idpp_interpolate(optimizer=FIRE)
 
         # B) Alternatively, the user can manually decide the initial path.
         if interp_path is not None:
@@ -226,8 +236,7 @@ class GPNEB:
                          filename=self.trajectory_observations,
                          restart=self.restart)
 
-    def run(self, fmax=0.05, unc_convergence=0.05, dt=0.05, ml_steps=100,
-            max_step=2.0):
+    def run(self, fmax=0.05, unc_convergence=0.05, ml_steps=100, max_step=2.0):
 
         """
         Executing run will start the NEB optimization process.
@@ -299,7 +308,7 @@ class GPNEB:
             ml_neb = NEB(self.images, climb=climbing_neb,
                          method=self.neb_method, k=self.spring,
                          remove_rotation_and_translation=self.rrt)
-            neb_opt = MDMin(ml_neb, dt=dt, trajectory=self.trajectory)
+            neb_opt = FIRE(ml_neb, trajectory=self.trajectory)
 
             # Safe check to optimize the images.
             if np.max(neb_pred_uncertainty) <= max_step:

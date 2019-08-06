@@ -12,10 +12,10 @@ class GaussianProcess():
 
     '''Gaussian Process Regression
     It is recomended to be used with other Priors and Kernels
-    from ase.optimize.gpmin    
+    from ase.optimize.gpmin
 
     Parameters:
-    
+
     prior: Prior class, as in ase.optimize.gpmin.prior
         Defaults to ZeroPrior
 
@@ -36,8 +36,8 @@ class GaussianProcess():
             self.prior = prior
 
     def set_hyperparams(self, params):
-        '''Set hyperparameters of the regression. 
-        This is a list containing the parameters of the 
+        '''Set hyperparameters of the regression.
+        This is a list containing the parameters of the
         kernel and the regularization (noise)
         of the method as the last entry. '''
 
@@ -49,13 +49,13 @@ class GaussianProcess():
         '''Produces a PES model from data.
 
         Given a set of observations, X, Y, compute the K matrix
-        of the Kernel given the data (and its cholesky factorization) 
+        of the Kernel given the data (and its cholesky factorization)
         This method should be executed whenever more data is added.
 
         Parameters:
- 
+
         X: observations(i.e. positions). numpy array with shape: nsamples x D
-        Y: targets (i.e. energy and forces). numpy array with 
+        Y: targets (i.e. energy and forces). numpy array with
             shape (nsamples, D+1)
         noise: Noise parameter in the case it needs to be restated. '''
 
@@ -67,7 +67,7 @@ class GaussianProcess():
 
         n = self.X.shape[0]
         D = self.X.shape[1]
-        regularization = np.array(n*([self.noise*self.kernel.l**2] 
+        regularization = np.array(n*([self.noise*self.kernel.l]
                                       + D*[self.noise]))
 
         K[range(K.shape[0]), range(K.shape[0])] += regularization**2
@@ -80,7 +80,7 @@ class GaussianProcess():
                   overwrite_b=True, check_finite=True)
 
     def predict(self, x, get_variance = False):
-        '''Given a trained Gaussian Process, it predicts the value and the 
+        '''Given a trained Gaussian Process, it predicts the value and the
         uncertainty at point x.
         It returns f and V:
         f : prediction: [y, grady]
@@ -97,23 +97,23 @@ class GaussianProcess():
         k = self.kernel.kernel_vector(x, self.X, n)
 
         f = self.prior.prior(x) + np.dot(k, self.a)
-        
+
         if get_variance:
             v = k.T.copy()
             v = solve_triangular(self.L, v, lower = True, check_finite = False)
 
             variance = self.kernel.kernel(x,x)
             #covariance = np.matmul(v.T, v)
-            covariance = np.tensordot(v,v, axes = (0,0))  
+            covariance = np.tensordot(v,v, axes = (0,0))
             V = variance - covariance
-          
+
             return f, V
         return f
 
 
     def neg_log_likelihood(self, params, *args):
         '''Negative logarithm of the marginal likelihood and its derivative.
-        It has been built in the form that suits the best its optimization, 
+        It has been built in the form that suits the best its optimization,
         with the scipy minimize module, to find the optimal hyperparameters.
 
         Parameters:
@@ -153,35 +153,44 @@ class GaussianProcess():
         Parameters:
 
         X: observations(i.e. positions). numpy array with shape: nsamples x D
-        Y: targets (i.e. energy and forces). 
+        Y: targets (i.e. energy and forces).
            numpy array with shape (nsamples, D+1)
         tol: tolerance on the maximum component of the gradient of the log-likelihood.
            (See scipy's L-BFGS-B documentation:
            https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html )
         eps: include bounds to the hyperparameters as a +- a percentage of hyperparameter
             if eps is None, there are no bounds in the optimization
+
+        Returns:
+
+        result (dict) :
+              result = {'hyperparameters': (numpy.array) New hyperparameters,
+                        'converged': (bool) True if it converged,
+                                            False otherwise
+                       }
+
+
         '''
 
         params = np.copy(self.hyperparams)[:2]
         arguments = (X, Y)
-        
+
         if eps is not None:
             bounds = [((1-eps)*p, (1+eps)*p) for p in params]
         else:
             bounds = None
 
         result = minimize(self.neg_log_likelihood, params, args=arguments,
-                          method='L-BFGS-B', jac=True, bounds = bounds, 
+                          method='L-BFGS-B', jac=True, bounds = bounds,
                           options = {'gtol':tol, 'ftol':0.01*tol})
 
         if not result.success:
-            print(result)
-            raise NameError("The Gaussian Process could not be fitted.")
+            converged = False
+
         else:
+            converged = True
             self.hyperparams = np.array(
-                [result.x.copy()[0], result.x.copy()[1], self.noise]) # review this line
-            
+                [result.x.copy()[0], result.x.copy()[1], self.noise])
+
         self.set_hyperparams(self.hyperparams)
-        return self.hyperparams
-
-
+        return {'hyperparameters': self.hyperparams, 'converged': converged}
