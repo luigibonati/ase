@@ -70,7 +70,7 @@ class AIDTS:
         # Default GP Calculator parameters if not specified by the user.
         if model_calculator is None:
             self.model_calculator = GPCalculator(
-                               train_images=[], scale=0.3, weight=2.0,
+                               train_images=[], scale=0.35, weight=2.0,
                                max_train_data_strategy=max_train_data_strategy,
                                max_train_data=max_train_data,
                                update_prior_strategy='maximum')

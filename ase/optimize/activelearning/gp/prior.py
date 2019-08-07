@@ -2,7 +2,7 @@ import numpy as np
 
 
 class Prior():
-    '''Base class for all priors for the activelearning optimizer.
+    '''Base class for all priors for the bayesian optimizer.
 
        The __init__ method and the prior method are implemented here.
        Each child class should implement its own potential method, 
