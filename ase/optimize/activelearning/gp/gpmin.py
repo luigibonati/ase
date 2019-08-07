@@ -6,9 +6,9 @@ from scipy.optimize import minimize
 
 from ase.parallel import rank
 
-from ase.optimize.gpmin.gp import GaussianProcess
-from ase.optimize.gpmin.kernel import SquaredExponential
-from ase.optimize.gpmin.prior import ConstantPrior
+from ase.calculators.gp.gp import GaussianProcess
+from ase.calculators.gp.kernel import SquaredExponential
+from ase.calculators.gp.prior import ConstantPrior
 
 import pickle
 

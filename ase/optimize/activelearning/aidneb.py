@@ -3,33 +3,33 @@ import copy
 import time
 from ase import io
 from ase.atoms import Atoms
-from ase.calculators.gp.calculator import GPCalculator
+from ase.optimize.activelearning.gp.calculator import GPCalculator
 from ase.neb import NEB
-from ase.geometry import distance
 from ase.optimize import FIRE
 from ase.optimize.activelearning.acquisition import acquisition
 from ase.parallel import parprint, parallel_function
+from ase.optimize.activelearning.io import get_fmax, dump_observation
 
 
-class GPNEB:
+class AIDNEB:
 
     def __init__(self, start, end, model_calculator=None, calculator=None,
                  interpolation='linear', n_images=0.25, k=None, mic=False,
                  neb_method='aseneb', remove_rotation_and_translation=False,
                  max_train_data=5, force_consistent=None,
                  max_train_data_strategy='nearest_observations',
-                 trajectory='GPNEB.traj',
-                 restart=False):
+                 trajectory='AIDNEB.traj', restart=False):
 
         """
-        Machine Learning accelerated Nudged Elastic Band (NEB) optimizer.
+        Artificial Intelligence-Driven Nudged Elastic Band (AID-NEB) algorithm.
         Optimize a NEB using a surrogate machine learning model [1,2].
-        Potential energies and forces information are used to build a
-        predicted PES via Gaussian Process (GP) regression. The surrogate
-        relies on NEB theory to optimize the images along the path in the
-        predicted PES. Once the predicted NEB is optimized the acquisition
-        function collect a new observation based on the predicted energies
-        and uncertainties of the optimized images.
+        Potential energies and forces at a given position are
+        supplied to the model calculator to build a modelled PES in an
+        active-learning fashion. This surrogate relies on NEB theory to
+        optimize the images along the path in the predicted PES. Once the
+        predicted NEB is optimized the acquisition function collect a new
+        observation based on the predicted energies and uncertainties of the
+        optimized images.
         [1] J. A. Garrido Torres, M. H. Hansen, P. C. Jennings, J. R. Boes
         and T. Bligaard. Phys. Rev. Lett. 122, 156001.
         https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.122.156001
@@ -41,16 +41,16 @@ class GPNEB:
 
         NEB Parameters
         --------------
-        start: Trajectory file (in ASE format) or Atoms object.
+        initial: Trajectory file (in ASE format) or Atoms object.
             Initial end-point of the NEB path.
 
-        end: Trajectory file (in ASE format) or Atoms object.
+        final: Trajectory file (in ASE format) or Atoms object.
             Final end-point of the NEB path.
 
         model_calculator: Model object.
             Model calculator to be used for predicting the potential energy
-            surface. The default is None which uses a GP model with the Squared
-            Exponential Kernel and other default parameters. See
+            surface. The default value is None which uses a GP model with the
+            Squared Exponential Kernel and other default parameters. See
             *ase.calculator.gp.calculator* GPModel for default GP parameters.
 
         interpolation: string or Atoms list or Trajectory
@@ -79,7 +79,7 @@ class GPNEB:
                 interpolated initial path divided by the spacing (Ang^-1).
 
         k: float or list
-            Spring constant(s) in eV/Ang.
+            Spring constant(s) in eV/Angstrom.
 
         neb_method: string
             NEB method as implemented in ASE. ('aseneb', 'improvedtangent'
@@ -112,7 +112,7 @@ class GPNEB:
             deleted.
 
         max_train_data: int
-            Number of observations that will effectively be included in the GP
+            Number of observations that will effectively be included in the
             model. See also *max_data_strategy*.
 
         max_train_data_strategy: string
@@ -135,7 +135,7 @@ class GPNEB:
         # Convert Atoms and list of Atoms to trajectory files.
         if isinstance(start, Atoms):
             io.write('initial.traj', start)
-            start = 'initial.traj'
+            initial = 'initial.traj'
         if isinstance(end, Atoms):
             io.write('final.traj', end)
             end = 'final.traj'
@@ -161,8 +161,9 @@ class GPNEB:
         self.e_endpoint.get_potential_energy(force_consistent=force_consistent)
         self.e_endpoint.get_forces()
 
-        # GP calculator:
+        # Model calculator:
         self.model_calculator = model_calculator
+        # Default GP Calculator parameters if not specified by the user.
         if model_calculator is None:
             self.model_calculator = GPCalculator(
                                train_images=[], scale=0.3, weight=2.0,
@@ -177,7 +178,7 @@ class GPNEB:
         self.atoms = io.read(self.start, '-1')
 
         self.constraints = self.atoms.constraints
-        self.force_consistent = force_consistent
+        self.fc = force_consistent
         self.restart = restart
         self.trajectory = trajectory
 
@@ -228,15 +229,15 @@ class GPNEB:
         self.trajectory_candidates = trajectory_main + '_candidates.traj'
 
         # Start by saving the initial and final states.
-        dump_observation(atoms=self.i_endpoint,
+        dump_observation(atoms=self.i_endpoint, method='neb',
                          filename=self.trajectory_observations,
                          restart=self.restart)
         self.restart = True  # Switch on active learning.
-        dump_observation(atoms=self.e_endpoint,
+        dump_observation(atoms=self.e_endpoint, method='neb',
                          filename=self.trajectory_observations,
                          restart=self.restart)
 
-    def run(self, fmax=0.05, unc_convergence=0.05, ml_steps=100, max_step=2.0):
+    def run(self, fmax=0.05, unc_convergence=0.05, ml_steps=50, max_step=2.0):
 
         """
         Executing run will start the NEB optimization process.
@@ -252,49 +253,43 @@ class GPNEB:
             on any of the NEB images in the predicted path is above this
             threshold.
 
-        dt : float
-            dt parameter for MDMin.
-
         ml_steps: int
-            Maximum number of steps for the MDMin/NEB optimization on the GP
-            predicted potential energy surface.
+            Maximum number of steps for the NEB optimization on the
+            modelled potential energy surface.
 
         max_step: float
             Safe control parameter. This parameter controls whether the
-            optimization of the NEB will be performed in the predicted
+            optimization of the NEB will be performed in the modelled
             potential energy surface. If the uncertainty of the NEB lies
             above the 'max_step' threshold the NEB won't be optimized and
             the image with maximum uncertainty is evaluated. This prevents
             exploring very uncertain regions which can lead to probe
             unrealistic structures.
-
-        Returns
-        -------
-        Minimum Energy Path from the initial to the final states.
-
         """
 
         while True:
 
-            # 1. Collect observations.
+            # 1. Gather observations in every iteration.
             # This serves to restart from a previous (and/or parallel) runs.
             train_images = io.read(self.trajectory_observations, ':')
 
-            # 2. Prepare a calculator.
+            # 2. Prepare the model calculator (train and attach to images).
             calc = copy.deepcopy(self.model_calculator)
 
             # Detach calculator from the prev. optimized images (speed up).
             for i in self.images:
                 i.set_calculator(None)
-            # Train only one process.
+
+            # Train only one process at the time.
             calc.update_train_data(train_images,
                                    test_images=copy.deepcopy(self.images))
+
             # Attach the calculator (already trained) to each image.
             for i in self.images:
                 i.set_calculator(copy.deepcopy(calc))
 
             # 3. Optimize the NEB in the predicted PES.
-            # Get path uncertainty for deciding whether NEB or CI-NEB.
+            # Get path uncertainty for selecting within NEB or CI-NEB.
             predictions = get_neb_predictions(self.images)
             neb_pred_uncertainty = predictions['uncertainty']
 
@@ -314,6 +309,7 @@ class GPNEB:
             if np.max(neb_pred_uncertainty) <= max_step:
                 neb_opt.run(fmax=(fmax * 0.80), steps=ml_steps)
 
+            # 4. Get predicted energies and uncertainties of the NEB images.
             predictions = get_neb_predictions(self.images)
             neb_pred_energy = predictions['energy']
             neb_pred_uncertainty = predictions['uncertainty']
@@ -321,11 +317,10 @@ class GPNEB:
             # 5. Print output.
             max_e = np.max(neb_pred_energy)
             pbf = max_e - self.i_endpoint.get_potential_energy(
-                                        force_consistent=self.force_consistent)
+                                                      force_consistent=self.fc)
             pbb = max_e - self.e_endpoint.get_potential_energy(
-                                        force_consistent=self.force_consistent)
-            msg = "--------------------------------------------------------"
-            parprint(msg)
+                                                      force_consistent=self.fc)
+            parprint("-" * 26)
             parprint('Step:', self.function_calls)
             parprint('Time:', time.strftime("%m/%d/%Y, %H:%M:%S",
                                             time.localtime()))
@@ -334,12 +329,12 @@ class GPNEB:
             parprint('Max. uncertainty:', np.max(neb_pred_uncertainty))
             parprint('Number of images:', len(self.images))
             parprint("fmax:", get_fmax(train_images[-1]))
-            msg = "--------------------------------------------------------\n"
-            parprint(msg)
+            parprint("-" * 26)
 
             # 6. Check convergence.
-            # Max.forces and NEB images uncertainty must be below *fmax* and
-            # *unc_convergence* thresholds.
+            # The uncertainty of all NEB images must be below the
+            # *unc_convergence* threshold and the climbing image must
+            # satisfy the *fmax* convergence criteria.
             if self.step > 1 and get_fmax(train_images[-1]) <= fmax:
                 parprint('A saddle point was found.')
                 if np.max(neb_pred_uncertainty[1:-1]) < unc_convergence:
@@ -352,11 +347,13 @@ class GPNEB:
                     parprint(msg)
                     break
 
-            # 7. Select next point to train (acquisition function):
+            # 7. Convergence criteria not satisfied?
+            #  Then, select a new geometry to evaluate (acquisition function):
 
             # Candidates are the optimized NEB images in the predicted PES.
-            candidates = copy.deepcopy(self.images)
+            candidates = self.images
 
+            # This acquisition function has been tested in Ref. [1].
             if np.max(neb_pred_uncertainty) > unc_convergence:
                 sorted_candidates = acquisition(train_images=train_images,
                                                 candidates=candidates,
@@ -377,9 +374,9 @@ class GPNEB:
             # 8. Evaluate the target function and save it in *observations*.
             self.atoms.positions = best_candidate.get_positions()
             self.atoms.set_calculator(self.ase_calc)
-            self.atoms.get_potential_energy(force_consistent=self.force_consistent)
+            self.atoms.get_potential_energy(force_consistent=self.fc)
             self.atoms.get_forces()
-            dump_observation(atoms=self.atoms,
+            dump_observation(atoms=self.atoms, method='neb',
                              filename=self.trajectory_observations,
                              restart=self.restart)
             self.function_calls += 1
@@ -391,7 +388,7 @@ class GPNEB:
 @parallel_function
 def make_neb(self, images_interpolation=None):
     """
-    Creates a NEB from a set of images.
+    Creates a NEB path from a set of images.
     """
     imgs = [self.i_endpoint[:]]
     for i in range(1, self.n_images-1):
@@ -406,6 +403,9 @@ def make_neb(self, images_interpolation=None):
 
 @parallel_function
 def get_neb_predictions(images):
+    """
+    Collects the predicted energy values and uncertainties of the NEB images.
+    """
     neb_pred_energy = []
     neb_pred_unc = []
     for i in images:
@@ -419,46 +419,9 @@ def get_neb_predictions(images):
 
 
 @parallel_function
-def get_fmax(atoms):
-    """
-    Returns fmax for a given atoms structure.
-    """
-    forces = atoms.get_forces()
-    return np.sqrt((forces**2).sum(axis=1).max())
-
-
-@parallel_function
-def dump_observation(atoms, filename, restart, method='neb'):
-    """
-    Saves a trajectory file containing the atoms observations.
-
-    Parameters
-    ----------
-    atoms: object
-        Atoms object to be appended to previous observations.
-    filename: string
-        Name of the trajectory file to save the observations.
-    restart: boolean
-        Append mode (true or false).
-     """
-    atoms.info['method'] = method
-    if restart is True:
-        try:
-            prev_atoms = io.read(filename, ':')  # Actively searching.
-            if atoms not in prev_atoms:  # Avoid duplicates.
-                # Update observations.
-                new_atoms = prev_atoms + [atoms]
-                io.write(filename=filename, images=new_atoms)
-        except Exception:
-            io.write(filename=filename, images=atoms, append=False)
-    if restart is False:
-        io.write(filename=filename, images=atoms, append=False)
-
-
-@parallel_function
 def print_cite_neb():
     msg = "\n" + "-" * 79 + "\n"
-    msg += "You are using GPNEB. Please cite: \n"
+    msg += "You are using AID-NEB. Please cite: \n"
     msg += "[1] J. A. Garrido Torres, M. H. Hansen, P. C. Jennings, "
     msg += "J. R. Boes and T. Bligaard. Phys. Rev. Lett. 122, 156001. "
     msg += "https://doi.org/10.1103/PhysRevLett.122.156001 \n"

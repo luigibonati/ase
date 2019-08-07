@@ -1,25 +1,25 @@
 import numpy as np
 import copy
 import os
-from ase.calculators.gp.calculator import GPCalculator, ConstantPrior
+from ase.optimize.activelearning.gp.calculator import GPCalculator
+from ase.optimize.activelearning.gp.calculator import ConstantPrior
 from ase import io, units
 from ase.parallel import parprint, parallel_function
 from ase.optimize.activelearning.acquisition import acquisition
 from ase.md import VelocityVerlet
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from ase.optimize.minimahopping import ComparePositions
-from ase.optimize.activelearning.lgpmin import LGPMin
+from ase.optimize.activelearning.aidmin import AIDMin
 from ase.optimize import *
-from scipy.spatial.distance import euclidean
 
 
-class GPHopping:
+class AIDHopping:
 
     def __init__(self, atoms, calculator, model_calculator=None,
                  force_consistent=None, max_train_data=50,
                  max_train_data_strategy='nearest_observations',
-                 trajectory='GPHopping.traj', T0=500.,
-                 beta1=1.01, beta2=0.98, beta3=0.75, energy_threshold=10.,
+                 trajectory='AIDHopping.traj', T0=500., beta1=1.01,
+                 beta2=0.98, beta3=0.75, energy_threshold=10.,
                  geometry_threshold=1., maxstep=.5, timestep=1.0,
                  maxtime=1000., maxoptsteps=500):
         """
@@ -119,7 +119,7 @@ class GPHopping:
 
         if not os.path.exists(self.trajectory_minima):
             self.atoms.set_calculator(self.ase_calc)
-            opt = LGPMin(self.atoms, trajectory=self.trajectory, restart=True)
+            opt = AIDMin(self.atoms, trajectory=self.trajectory, restart=True)
             opt.run(fmax=self.fmax)
             dump_trajectory(opt.atoms, filename=self.trajectory_minima,
                             restart=False)
@@ -218,7 +218,7 @@ class GPHopping:
                                             max_train_data=15,
                                             wrap_positions=False)
             while True:
-                opt_min_greedy = LGPMin(self.atoms, restart=True,
+                opt_min_greedy = AIDMin(self.atoms, restart=True,
                                         trajectory=self.trajectory,
                                         model_calculator=copy.deepcopy(model_min_greedy))
                 opt_min_greedy.run(fmax=self.fmax, steps=0)

@@ -1,24 +1,27 @@
-import numpy as np
 import time
 import copy
-from ase import io
-from ase.calculators.gp.calculator import GPCalculator
-from ase.parallel import parprint, parallel_function
 from scipy.spatial.distance import euclidean
+from ase import io
+from ase.optimize.activelearning.gp.calculator import GPCalculator
+from ase.parallel import parprint
 from ase.optimize import *
+from ase.optimize.activelearning.io import get_fmax, dump_observation
 
 
-class LGPMin:
+class AIDMin:
 
     def __init__(self, atoms, model_calculator=None, force_consistent=None,
                  max_train_data=5, optimizer=QuasiNewton,
                  max_train_data_strategy='nearest_observations',
-                 geometry_threshold=0.001, trajectory='LGPMin.traj',
+                 geometry_threshold=0.001, trajectory='AIDMin.traj',
                  restart=False):
         """
+        Artificial Intelligence-Driven energy minimizer (AID-Min) algorithm.
         Optimize atomic structure using a surrogate machine learning
         model [1,2]. Potential energies and forces information are used to
-        build a predicted PES via Gaussian Process (GP) regression.
+        build a modelled potential energy surface (PES) that can be
+        optimized to obtain new suggested structures towards finding a local
+        minima in the targeted PES.
         [1] E. Garijo del Rio, J. J. Mortensen and K. W. Jacobsen.
         arXiv:1808.08588.
         [2] M. H. Hansen, J. A. Garrido Torres, P. C. Jennings, Z. Wang,
@@ -44,7 +47,7 @@ class LGPMin:
                 trajectory: string
             Filename to store the predicted optimization.
                 Additional information:
-                - Energy uncertain: The energy uncertainty in each image can be
+                - Uncertainty: The energy uncertainty in each image can be
                   accessed in image.info['uncertainty'].
 
         restart: boolean
@@ -58,6 +61,7 @@ class LGPMin:
             deleted.
 
         """
+        # Model calculator:
         self.model_calculator = model_calculator
         # Default GP Calculator parameters if not specified by the user.
         if model_calculator is None:
@@ -66,7 +70,7 @@ class LGPMin:
                                max_train_data_strategy=max_train_data_strategy,
                                max_train_data=max_train_data)
 
-        # GPMin does not use uncertainty (switched off for faster predictions).
+        # AID-Min does't use uncertainty (switched off for faster predictions).
         self.model_calculator.calculate_uncertainty = False
 
         # Active Learning setup (single-point calculations).
@@ -89,7 +93,7 @@ class LGPMin:
         self.atoms.get_potential_energy()
         self.atoms.get_forces()
 
-        dump_observation(atoms=self.atoms,
+        dump_observation(atoms=self.atoms, method='min',
                          filename=self.trajectory_observations,
                          restart=self.restart)
 
@@ -104,8 +108,8 @@ class LGPMin:
             Convergence criteria (in eV/Angstrom).
 
         ml_steps: int
-            Maximum number of steps for the optimization (using LBFGS) on
-            the GP predicted potential energy surface.
+            Maximum number of steps for the optimization on the modelled
+            potential energy surface.
 
         steps: int
             Maximum number of steps for the surrogate.
@@ -120,22 +124,22 @@ class LGPMin:
         self.steps = steps
 
 
-        # Always start from 'atoms' positions.
+        # Always start from 'atoms' positions. (&&&)
         starting_atoms = io.read(self.trajectory_observations, -1)
         starting_atoms.positions = copy.deepcopy(self.atoms.positions)
 
         while not self.fmax >= get_fmax(self.atoms):
 
-            # 1. Collect observations.
+            # 1. Gather observations in every iteration.
             # This serves to restart from a previous (and/or parallel) runs.
             train_images = io.read(self.trajectory_observations, ':')
 
-            # 2. Update GP calculator.
-            # Probed positions are used for low-memory.
+            # 2. Update model calculator.
 
             ml_converged = False
-
             surrogate_positions = self.atoms.positions
+
+            # Probed positions are used for low-memory.
             probed_atoms = [copy.deepcopy(starting_atoms)]
             probed_atoms[0].positions = copy.deepcopy(self.atoms.positions)
 
@@ -167,13 +171,12 @@ class LGPMin:
                 break
 
             # 4. Evaluate the target function and save it in *observations*.
-            # Update the new positions.
             self.atoms.positions = surrogate_positions
             self.atoms.set_calculator(self.ase_calc)
             self.atoms.get_potential_energy(force_consistent=self.fc)
             self.atoms.get_forces()
 
-            dump_observation(atoms=self.atoms,
+            dump_observation(atoms=self.atoms, method='min',
                              filename=self.trajectory_observations,
                              restart=True)
 
@@ -183,55 +186,11 @@ class LGPMin:
 
             # 5. Print output.
             if logfile is True:
-                _log(self)
-
-
-@parallel_function
-def get_fmax(atoms):
-    """
-    Returns fmax for a given atoms structure.
-    """
-    forces = atoms.get_forces()
-    return np.sqrt((forces**2).sum(axis=1).max())
-
-
-@parallel_function
-def dump_observation(atoms, filename, restart, method='min'):
-    """
-    Saves a trajectory file containing the atoms observations.
-
-    Parameters
-    ----------
-    atoms: object
-        Atoms object to be appended to previous observations.
-    filename: string
-        Name of the trajectory file to save the observations.
-    restart: boolean
-        Append mode (true or false).
-     """
-    atoms.info['method'] = method
-
-    if restart is True:
-        try:
-            prev_atoms = io.read(filename, ':')  # Actively searching.
-            if atoms not in prev_atoms:  # Avoid duplicates.
-                # Update observations.
-                new_atoms = prev_atoms + [atoms]
-                io.write(filename=filename, images=new_atoms)
-        except Exception:
-            io.write(filename=filename, images=atoms, append=False)
-    if restart is False:
-        io.write(filename=filename, images=atoms, append=False)
-
-
-@parallel_function
-def _log(self):
-    msg = "-" * 26
-    parprint(msg)
-    parprint('Step:', self.step)
-    parprint('Function calls:', self.function_calls)
-    parprint('Time:', time.strftime("%m/%d/%Y, %H:%M:%S", time.localtime()))
-    parprint('Energy:', self.atoms.get_potential_energy(self.fc))
-    parprint("fmax:", get_fmax(self.atoms))
-    msg = "-" * 26 + "\n"
-    parprint(msg)
+                parprint("-" * 26)
+                parprint('Step:', self.step)
+                parprint('Function calls:', self.function_calls)
+                parprint('Time:', time.strftime("%m/%d/%Y, %H:%M:%S",
+                                                time.localtime()))
+                parprint('Energy:', self.atoms.get_potential_energy(self.fc))
+                parprint("fmax:", get_fmax(self.atoms))
+                parprint("-" * 26 + "\n")

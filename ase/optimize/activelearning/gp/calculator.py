@@ -1,7 +1,7 @@
 import numpy as np
-from ase.calculators.gp.kernel import SquaredExponential
-from ase.calculators.gp.gp import GaussianProcess
-from ase.calculators.gp.prior import ConstantPrior
+from ase.optimize.activelearning.gp.kernel import SquaredExponential
+from ase.optimize.activelearning.gp.gp import GaussianProcess
+from ase.optimize.activelearning.gp.prior import ConstantPrior
 from ase.calculators.calculator import Calculator, all_changes
 from scipy.linalg import solve_triangular
 from scipy.spatial.distance import euclidean
@@ -218,7 +218,6 @@ class GPCalculator(Calculator, GaussianProcess):
                     d_i_j = []
                     for j in self.train_images:
                         pos_train = j.get_positions(wrap=self.wrap).reshape(-1)
-                        # d_i_j.append(np.linalg.norm(pos_train-pos_test))
                         d_i_j.append(euclidean(pos_test, pos_train))
                     arg_nearest += list(np.argsort(d_i_j)[:self.max_data])
 
