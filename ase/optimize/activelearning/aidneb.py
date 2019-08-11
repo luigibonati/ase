@@ -18,7 +18,7 @@ class AIDNEB:
                  neb_method='aseneb', remove_rotation_and_translation=False,
                  max_train_data=5, force_consistent=None,
                  max_train_data_strategy='nearest_observations',
-                 trajectory='AIDNEB.traj', restart=False):
+                 trajectory='AID.traj', use_previous_observations=False):
 
         """
         Artificial Intelligence-Driven Nudged Elastic Band (AID-NEB) algorithm.
@@ -101,15 +101,16 @@ class AIDNEB:
                 - Energy uncertain: The energy uncertainty in each image can be
                   accessed in image.info['uncertainty'].
 
-        restart: boolean
+        use_previous_observations: boolean
+            If False. The optimization starts from scratch.
             A *trajectory_observations.traj* file is automatically generated
-            which contains the observations collected by the surrogate. If
-            *restart* is True and a *trajectory_observations.traj* file is
-            found in the working directory it will be used to continue the
-            optimization from previous run(s). In order to start the
-            optimization from scratch *restart* should be set to False or
-            alternatively the *trajectory_observations.traj* file must be
-            deleted.
+            in each step of the optimization, which contains the
+            observations collected by the surrogate. If
+            *use_previous_observations* is True and a
+            *trajectory_observations.traj* file is found in the working
+            directory it will be used to continue the optimization from
+            previous run(s). In order to start the optimization from scratch
+            *use_previous_observations* should be set to False.
 
         max_train_data: int
             Number of observations that will effectively be included in the
@@ -135,7 +136,7 @@ class AIDNEB:
         # Convert Atoms and list of Atoms to trajectory files.
         if isinstance(start, Atoms):
             io.write('initial.traj', start)
-            initial = 'initial.traj'
+            start = 'initial.traj'
         if isinstance(end, Atoms):
             io.write('final.traj', end)
             end = 'final.traj'
@@ -166,7 +167,8 @@ class AIDNEB:
         # Default GP Calculator parameters if not specified by the user.
         if model_calculator is None:
             self.model_calculator = GPCalculator(
-                               train_images=[], scale=0.35, weight=2.0,
+                               train_images=[], scale=0.4, weight=1.,
+                               noise=0.004, update_prior_strategy='maximum',
                                max_train_data_strategy=max_train_data_strategy,
                                max_train_data=max_train_data)
 
@@ -179,7 +181,7 @@ class AIDNEB:
 
         self.constraints = self.atoms.constraints
         self.fc = force_consistent
-        self.restart = restart
+        self.use_prev_obs = use_previous_observations
         self.trajectory = trajectory
 
         # Calculate the distance between the initial and final endpoints.
@@ -231,13 +233,13 @@ class AIDNEB:
         # Start by saving the initial and final states.
         dump_observation(atoms=self.i_endpoint, method='neb',
                          filename=self.trajectory_observations,
-                         restart=self.restart)
-        self.restart = True  # Switch on active learning.
+                         restart=self.use_prev_obs)
+        self.use_prev_obs = True  # Switch on active learning.
         dump_observation(atoms=self.e_endpoint, method='neb',
                          filename=self.trajectory_observations,
-                         restart=self.restart)
+                         restart=self.use_prev_obs)
 
-    def run(self, fmax=0.05, unc_convergence=0.05, ml_steps=50, max_step=2.0):
+    def run(self, fmax=0.05, unc_convergence=0.025, ml_steps=100, max_step=.5):
 
         """
         Executing run will start the NEB optimization process.
@@ -270,7 +272,8 @@ class AIDNEB:
         while True:
 
             # 1. Gather observations in every iteration.
-            # This serves to restart from a previous (and/or parallel) runs.
+            # This serves to use the previous observations (useful for
+            # continuing calculations and/or for parallel runs).
             train_images = io.read(self.trajectory_observations, ':')
 
             # 2. Prepare the model calculator (train and attach to images).
@@ -378,7 +381,7 @@ class AIDNEB:
             self.atoms.get_forces()
             dump_observation(atoms=self.atoms, method='neb',
                              filename=self.trajectory_observations,
-                             restart=self.restart)
+                             restart=self.use_prev_obs)
             self.function_calls += 1
             self.force_calls += 1
             self.step += 1

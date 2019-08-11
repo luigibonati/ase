@@ -10,11 +10,11 @@ from ase.optimize.activelearning.io import get_fmax, dump_observation
 
 class AIDTS:
 
-    def __init__(self, atoms, atoms_vector, vector_length=0.01,
+    def __init__(self, atoms, atoms_vector, vector_length=0.7,
                  model_calculator=None, force_consistent=None,
                  trajectory='AIDTS.traj', max_train_data=50,
                  max_train_data_strategy='nearest_observations',
-                 restart=False):
+                 use_previous_observations=False):
         """
         Artificial Intelligence-Driven dimer (AID-TS) algorithm.
         Dimer optimization of an atomic structure using a surrogate machine
@@ -55,25 +55,30 @@ class AIDTS:
                 - Uncertainty: The energy uncertainty in each image can be
                   accessed in image.info['uncertainty'].
 
-        restart: boolean
+        use_previous_observations: boolean
+            If False. The optimization starts from scratch.
             A *trajectory_observations.traj* file is automatically generated
-            which contains the observations collected by the surrogate. If
-            *restart* is True and a *trajectory_observations.traj* file is
-            found in the working directory it will be used to continue the
-            optimization from previous run(s). In order to start the
-            optimization from scratch *restart* should be set to False or
-            alternatively the *trajectory_observations.traj* file must be
-            deleted.
+            in each step of the optimization, which contains the
+            observations collected by the surrogate. If
+            *use_previous_observations* is True and a
+            *trajectory_observations.traj* file is found in the working
+            directory it will be used to continue the optimization from
+            previous run(s). In order to start the optimization from scratch
+            *use_previous_observations* should be set to False.
 
         """
         self.model_calculator = model_calculator
         # Default GP Calculator parameters if not specified by the user.
         if model_calculator is None:
             self.model_calculator = GPCalculator(
-                               train_images=[], scale=0.35, weight=2.0,
+                               train_images=[], scale=0.4, weight=1.,
+                               noise=0.004,
                                max_train_data_strategy=max_train_data_strategy,
                                max_train_data=max_train_data,
-                               update_prior_strategy='maximum')
+                               update_prior_strategy='maximum',
+                               update_hyperparams=True, batch_size=1,
+                               bounds=0.3
+                               )
 
         # AID-TS doesn't use uncertainty (switched off for faster predictions).
         self.model_calculator.calculate_uncertainty = False
@@ -110,7 +115,7 @@ class AIDTS:
         self.ase_calc = atoms.get_calculator()
         self.fc = force_consistent
         self.trajectory = trajectory
-        self.restart = restart
+        self.use_prev_obs = use_previous_observations
 
         trajectory_main = self.trajectory.split('.')[0]
         self.trajectory_observations = trajectory_main + '_observations.traj'
@@ -121,7 +126,7 @@ class AIDTS:
 
         dump_observation(atoms=self.atoms, method='dimer',
                          filename=self.trajectory_observations,
-                         restart=self.restart)
+                         restart=self.use_prev_obs)
 
     def run(self, fmax=0.05, steps=200, logfile=True):
 
@@ -145,7 +150,7 @@ class AIDTS:
         self.fmax = fmax
         self.steps = steps
 
-        initial_atoms = copy.deepcopy(self.atoms)
+        initial_atoms_positions = copy.deepcopy(self.atoms.positions)
 
         # Probed atoms are used to know the path followed for low memory.
         probed_atoms = [io.read(self.trajectory_observations, '-1')]
@@ -159,7 +164,7 @@ class AIDTS:
             # 2. Update model calculator.
 
             # Start from initial structure positions.
-            self.atoms.positions = initial_atoms.positions
+            self.atoms.positions = initial_atoms_positions
 
             gp_calc = copy.deepcopy(self.model_calculator)
             gp_calc.update_train_data(train_images=train_images,
@@ -171,11 +176,11 @@ class AIDTS:
                                      displacement_method='vector',
                                      logfile=None, use_central_forces=False,
                                      extrapolate_forces=False,
-                                     displacement_radius=self.vector_length,
+                                     maximum_translation=0.1,
                                      mask=self.mask_atoms)
             d_atoms = MinModeAtoms(self.atoms, d_control)
             d_atoms.displace(displacement_vector=self.displacement_vector)
-            dim_rlx = MinModeTranslate(d_atoms, trajectory=None)
+            dim_rlx = MinModeTranslate(d_atoms, trajectory=None, logfile=None)
             dim_rlx.run(fmax=fmax*0.1)
 
             surrogate_positions = self.atoms.positions
