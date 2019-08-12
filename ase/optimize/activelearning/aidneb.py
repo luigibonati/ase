@@ -5,7 +5,7 @@ from ase import io
 from ase.atoms import Atoms
 from ase.optimize.activelearning.gp.calculator import GPCalculator
 from ase.neb import NEB
-from ase.optimize import FIRE
+from ase.optimize import FIRE, MDMin
 from ase.optimize.activelearning.acquisition import acquisition
 from ase.parallel import parprint, parallel_function
 from ase.optimize.activelearning.io import get_fmax, dump_observation
@@ -15,8 +15,9 @@ class AIDNEB:
 
     def __init__(self, start, end, model_calculator=None, calculator=None,
                  interpolation='linear', n_images=0.25, k=None, mic=False,
-                 neb_method='aseneb', remove_rotation_and_translation=False,
-                 max_train_data=5, force_consistent=None,
+                 neb_method='aseneb',
+                 remove_rotation_and_translation=False,
+                 max_train_data=20, force_consistent=None,
                  max_train_data_strategy='nearest_observations',
                  trajectory='AID.traj', use_previous_observations=False):
 
@@ -168,7 +169,7 @@ class AIDNEB:
         if model_calculator is None:
             self.model_calculator = GPCalculator(
                                train_images=[], scale=0.4, weight=1.,
-                               noise=0.004, update_prior_strategy='maximum',
+                               noise=0.005, update_prior_strategy='maximum',
                                max_train_data_strategy=max_train_data_strategy,
                                max_train_data=max_train_data)
 
@@ -239,7 +240,8 @@ class AIDNEB:
                          filename=self.trajectory_observations,
                          restart=self.use_prev_obs)
 
-    def run(self, fmax=0.05, unc_convergence=0.025, ml_steps=100, max_step=.5):
+    def run(self, fmax=0.05, unc_convergence=0.025, ml_steps=200,
+            max_step=0.5):
 
         """
         Executing run will start the NEB optimization process.
@@ -306,7 +308,7 @@ class AIDNEB:
             ml_neb = NEB(self.images, climb=climbing_neb,
                          method=self.neb_method, k=self.spring,
                          remove_rotation_and_translation=self.rrt)
-            neb_opt = FIRE(ml_neb, trajectory=self.trajectory)
+            neb_opt = MDMin(ml_neb, trajectory=self.trajectory, dt=0.050)
 
             # Safe check to optimize the images.
             if np.max(neb_pred_uncertainty) <= max_step:
