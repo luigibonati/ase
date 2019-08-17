@@ -16,16 +16,18 @@ class AIDMin:
                  geometry_threshold=0.001, trajectory='AID.traj',
                  use_previous_observations=False):
         """
-        Artificial Intelligence-Driven energy minimizer (AID-Min) algorithm.
+        Artificial Intelligence-Driven energy Minimizer (AID-Min) algorithm.
         Optimize atomic structure using a surrogate machine learning
-        model [1,2]. Potential energies and forces information are used to
-        build a modelled potential energy surface (PES) that can be
-        optimized to obtain new suggested structures towards finding a local
-        minima in the targeted PES.
+        model [1,2]. Atomic positions, potential energies and forces
+        information are used to build a modelled potential energy surface (
+        PES) that can be optimized to obtain new suggested structures
+        towards finding a local minima in the targeted PES.
+
         [1] E. Garijo del Rio, J. J. Mortensen and K. W. Jacobsen.
         arXiv:1808.08588.
-        [2] M. H. Hansen, J. A. Garrido Torres, P. C. Jennings, Z. Wang,
-        J. R. Boes, O. G. Mamun and T. Bligaard. arXiv:1904.00904.
+        [2] J. A. Garrido Torres, E. Garijo del Rio, A. H. Larsen,
+        V. Streibel, J. J. Mortensen, M. Bajdich, F. Abild-Pedersen,
+        K. W. Jacobsen, T. Bligaard. (submitted).
 
         Parameters
         --------------
@@ -36,7 +38,8 @@ class AIDMin:
             Model calculator to be used for predicting the potential energy
             surface. The default is None which uses a GP model with the Squared
             Exponential Kernel and other default parameters. See
-            *ase.calculator.gp.calculator* GPModel for default GP parameters.
+            *ase.optimize.activelearning.gp.calculator* GPModel for default GP
+            parameters.
 
         force_consistent: boolean or None
             Use force-consistent energy calls (as opposed to the energy
@@ -55,13 +58,14 @@ class AIDMin:
             A *trajectory_observations.traj* file is automatically generated
             in each step of the optimization, which contains the
             observations collected by the surrogate. If
-            *use_previous_observations* is True and a
+            (a) *use_previous_observations* is True and (b) a previous
             *trajectory_observations.traj* file is found in the working
-            directory it will be used to continue the optimization from
-            previous run(s). In order to start the optimization from scratch
-            *use_previous_observations* should be set to False.
+            directory: the algorithm will be use the previous observations
+            to train the model with all the information collected in
+            *trajectory_observations.traj*.
 
         """
+
         # Model calculator:
         self.model_calculator = model_calculator
         # Default GP Calculator parameters if not specified by the user.
@@ -72,7 +76,7 @@ class AIDMin:
                                max_train_data_strategy=max_train_data_strategy,
                                max_train_data=max_train_data)
 
-        # AID-Min does't use uncertainty (switched off for faster predictions).
+        # Uncertainty is switched off for faster predictions (AID-Min).
         self.model_calculator.calculate_uncertainty = False
 
         # Active Learning setup (single-point calculations).
@@ -125,7 +129,6 @@ class AIDMin:
         self.fmax = fmax
         self.steps = steps
 
-
         # Always start from 'atoms' positions.
         starting_atoms = io.read(self.trajectory_observations, -1)
         starting_atoms.positions = copy.deepcopy(self.atoms.positions)
@@ -138,7 +141,6 @@ class AIDMin:
             train_images = io.read(self.trajectory_observations, ':')
 
             # 2. Update model calculator.
-
             ml_converged = False
             surrogate_positions = self.atoms.positions
 
@@ -187,7 +189,7 @@ class AIDMin:
             self.force_calls = self.function_calls
             self.step += 1
 
-            # 5. Print output.
+            # 5. Print simple output.
             parprint("-" * 26)
             parprint('Step:', self.step)
             parprint('Function calls:', self.function_calls)

@@ -18,12 +18,20 @@ class AIDTS:
         """
         Artificial Intelligence-Driven dimer (AID-TS) algorithm.
         Dimer optimization of an atomic structure using a surrogate machine
-        learning model. Potential energies and forces information are used to
-        build a model potential energy surface (PES). A dimer is launched
-        from an initial 'atoms' structure toward the direction of the
-        'atoms_vector' structure with a magnitude of 'vector_length'.
-        The code automatically recognizes the atoms that are not involved
-        in the displacement and their constraints.
+        learning model. Atomic positions, potential energies and forces
+        information are used to build a model potential energy surface (
+        PES). A dimer is launched from an initial 'atoms' structure toward
+        the direction of the 'atoms_vector' structure with a magnitude of
+        'vector_length'. The code automatically recognizes the atoms that
+        are not involved in the displacement and their constraints. By
+        default Gaussian Process Regression is used to build the model as
+        implemented in [2].
+
+        [1] J. A. Garrido Torres, E. Garijo del Rio, A. H. Larsen,
+        V. Streibel, J. J. Mortensen, M. Bajdich, F. Abild-Pedersen,
+        K. W. Jacobsen, T. Bligaard. (submitted).
+        [2] E. Garijo del Rio, J. J. Mortensen and K. W. Jacobsen.
+        arXiv:1808.08588.
 
         Parameters
         --------------
@@ -38,10 +46,11 @@ class AIDTS:
             direction of the 'atoms_vector'.
 
         model_calculator: Model object.
-            Model calculator to be used for predicting the PES. The default
-            is None which uses a GP model with the Squared Exponential
-            Kernel and other default parameters. See
-            *ase.calculator.gp.calculator* GPModel for default GP parameters.
+            Model calculator to be used for predicting the potential energy
+            surface. The default is None which uses a GP model with the Squared
+            Exponential Kernel and other default parameters. See
+            *ase.optimize.activelearning.gp.calculator* GPModel for default GP
+            parameters.
 
         force_consistent: boolean or None
             Use force-consistent energy calls (as opposed to the energy
@@ -60,13 +69,14 @@ class AIDTS:
             A *trajectory_observations.traj* file is automatically generated
             in each step of the optimization, which contains the
             observations collected by the surrogate. If
-            *use_previous_observations* is True and a
+            (a) *use_previous_observations* is True and (b) a previous
             *trajectory_observations.traj* file is found in the working
-            directory it will be used to continue the optimization from
-            previous run(s). In order to start the optimization from scratch
-            *use_previous_observations* should be set to False.
+            directory: the algorithm will be use the previous observations
+            to train the model with all the information collected in
+            *trajectory_observations.traj*.
 
         """
+
         self.model_calculator = model_calculator
         # Default GP Calculator parameters if not specified by the user.
         if model_calculator is None:

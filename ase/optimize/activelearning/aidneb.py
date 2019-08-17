@@ -15,7 +15,8 @@ class AIDNEB:
 
     def __init__(self, start, end, model_calculator=None, calculator=None,
                  interpolation='linear', n_images=0.25, k=None, mic=False,
-                 neb_method='aseneb',
+                 neb_method='aseneb', dynamic_relaxation=False,
+                 scale_fmax=0.0,
                  remove_rotation_and_translation=False,
                  max_train_data=20, force_consistent=None,
                  max_train_data_strategy='nearest_observations',
@@ -23,22 +24,27 @@ class AIDNEB:
 
         """
         Artificial Intelligence-Driven Nudged Elastic Band (AID-NEB) algorithm.
-        Optimize a NEB using a surrogate machine learning model [1,2].
+        Optimize a NEB using a surrogate machine learning model [1-3].
         Potential energies and forces at a given position are
         supplied to the model calculator to build a modelled PES in an
         active-learning fashion. This surrogate relies on NEB theory to
         optimize the images along the path in the predicted PES. Once the
         predicted NEB is optimized the acquisition function collect a new
         observation based on the predicted energies and uncertainties of the
-        optimized images.
+        optimized images. By default Gaussian Process Regression is used to
+        build the model as implemented in [4].
+
         [1] J. A. Garrido Torres, M. H. Hansen, P. C. Jennings, J. R. Boes
         and T. Bligaard. Phys. Rev. Lett. 122, 156001.
         https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.122.156001
         [2] O. Koistinen, F. B. Dagbjartsdottir, V. Asgeirsson, A. Vehtari
         and H. Jonsson. J. Chem. Phys. 147, 152720.
         https://doi.org/10.1063/1.4986787
-        [3] E. Garijo del Rio, J. J. Mortensen and K. W. Jacobsen.
-        arXiv:1808.08588
+        [3] J. A. Garrido Torres, E. Garijo del Rio, A. H. Larsen,
+        V. Streibel, J. J. Mortensen, M. Bajdich, F. Abild-Pedersen,
+        K. W. Jacobsen, T. Bligaard. (submitted).
+        [4] E. Garijo del Rio, J. J. Mortensen and K. W. Jacobsen.
+        arXiv:1808.08588.
 
         NEB Parameters
         --------------
@@ -50,9 +56,10 @@ class AIDNEB:
 
         model_calculator: Model object.
             Model calculator to be used for predicting the potential energy
-            surface. The default value is None which uses a GP model with the
-            Squared Exponential Kernel and other default parameters. See
-            *ase.calculator.gp.calculator* GPModel for default GP parameters.
+            surface. The default is None which uses a GP model with the Squared
+            Exponential Kernel and other default parameters. See
+            *ase.optimize.activelearning.gp.calculator* GPModel for default GP
+            parameters.
 
         interpolation: string or Atoms list or Trajectory
             NEB interpolation.
@@ -61,8 +68,9 @@ class AIDNEB:
                 - 'linear' linear interpolation.
                 - 'idpp'  image dependent pair potential interpolation.
                 - Trajectory file (in ASE format) or list of Atoms.
-                Trajectory or list of Atoms containing the images along the
-                path.
+                The user can also supply a manual interpolation by passing
+                the name of the trajectory file  or a list of Atoms (ASE
+                format) containing the interpolation images.
 
         mic: boolean
             Use mic=True to use the Minimum Image Convention and calculate the
@@ -76,8 +84,8 @@ class AIDNEB:
                 images include the two (initial and final) end-points of the
                 NEB path.
                 - float: Spacing of the images along the NEB. The number of
-                images is therefore calculated as the length of the
-                interpolated initial path divided by the spacing (Ang^-1).
+                images is calculated as the length of the interpolated
+                initial path divided by the spacing (Ang^-1).
 
         k: float or list
             Spring constant(s) in eV/Angstrom.
@@ -85,6 +93,21 @@ class AIDNEB:
         neb_method: string
             NEB method as implemented in ASE. ('aseneb', 'improvedtangent'
             or 'eb'). See https://wiki.fysik.dtu.dk/ase/ase/neb.html.
+
+        dynamic_relaxation: boolean
+            TRUE calculates the norm of the forces acting on each image in
+            the band. An image is optimized only if its norm is above the
+            convergence criterion. The list fmax_images is updated every
+            force call; if a previously converged image goes out of
+            tolerance (due to spring adjustments between the image and its
+            neighbors), it will be optimized again. This routine can speed
+            up calculations if convergence is non-uniform. Convergence
+            criterion should be the same as that given to the optimizer. Not
+            efficient when parallelizing over images.
+
+        scale_fmax: float
+            Scale convergence criteria along band based on the distance
+            between a state and the state with the highest potential energy.
 
         calculator: ASE calculator Object.
             ASE calculator.
@@ -99,26 +122,27 @@ class AIDNEB:
         trajectory: string
             Filename to store the predicted NEB paths.
                 Additional information:
-                - Energy uncertain: The energy uncertainty in each image can be
-                  accessed in image.info['uncertainty'].
+                - Energy uncertain: The energy uncertainty in each image
+                position can be accessed in image.info['uncertainty'].
 
         use_previous_observations: boolean
             If False. The optimization starts from scratch.
             A *trajectory_observations.traj* file is automatically generated
             in each step of the optimization, which contains the
             observations collected by the surrogate. If
-            *use_previous_observations* is True and a
+            (a) *use_previous_observations* is True and (b) a previous
             *trajectory_observations.traj* file is found in the working
-            directory it will be used to continue the optimization from
-            previous run(s). In order to start the optimization from scratch
-            *use_previous_observations* should be set to False.
+            directory: the algorithm will be use the previous observations
+            to train the model with all the information collected in
+            *trajectory_observations.traj*.
 
         max_train_data: int
             Number of observations that will effectively be included in the
             model. See also *max_data_strategy*.
 
         max_train_data_strategy: string
-            Strategy to decide the observations that will be included in the model.
+            Strategy to decide the observations that will be included in the
+            model.
 
             options:
                 'last_observations': selects the last observations collected by
@@ -134,6 +158,7 @@ class AIDNEB:
             observations collected so far.
 
         """
+
         # Convert Atoms and list of Atoms to trajectory files.
         if isinstance(start, Atoms):
             io.write('initial.traj', start)
@@ -155,6 +180,8 @@ class AIDNEB:
         self.mic = mic
         self.rrt = remove_rotation_and_translation
         self.neb_method = neb_method
+        self.scale_fmax = scale_fmax
+        self.dynamic_relaxation = dynamic_relaxation
         self.spring = k
         self.i_endpoint = io.read(self.start, '-1')
         self.i_endpoint.get_potential_energy(force_consistent=force_consistent)
@@ -200,16 +227,15 @@ class AIDNEB:
             if self.spring is None:
                 self.spring = (np.sqrt(self.n_images-1) / d_start_end)
 
-            neb_interpolation = NEB(self.images, climb=False, k=self.spring,
-                                    remove_rotation_and_translation=self.rrt)
-            neb_interpolation.interpolate(method='linear',
-                                          mic=self.mic)
+            neb_interp = NEB(self.images, climb=False, k=self.spring,
+                             remove_rotation_and_translation=self.rrt)
+            neb_interp.interpolate(method='linear', mic=self.mic)
             if interpolation == 'idpp':
-                neb_interpolation = NEB(self.images, climb=True, k=self.spring,
-                                        remove_rotation_and_translation=self.rrt)
-                neb_interpolation.idpp_interpolate(optimizer=FIRE)
+                neb_interp = NEB(self.images, climb=True, k=self.spring,
+                                 remove_rotation_and_translation=self.rrt)
+                neb_interp.idpp_interpolate(optimizer=FIRE)
 
-        # B) Alternatively, the user can manually decide the initial path.
+        # B) Alternatively, the user can manually supply the initial path.
         if interp_path is not None:
             images_path = io.read(interp_path, ':')
             first_image = images_path[0].get_positions().reshape(-1)
@@ -223,10 +249,12 @@ class AIDNEB:
             self.n_images = len(images_path)
             self.images = make_neb(self, images_interpolation=images_path)
 
-        # Guess spring constant (k) if not defined by the user.
+        # Automatically adjust spring constant (k) if not defined by the user.
         if self.spring is None:
             self.spring = (np.sqrt(self.n_images-1) / d_start_end)
 
+        # Filenames of the trajectories containing the observations and
+        # candidates.
         trajectory_main = self.trajectory.split('.')[0]
         self.trajectory_observations = trajectory_main + '_observations.traj'
         self.trajectory_candidates = trajectory_main + '_candidates.traj'
@@ -262,20 +290,20 @@ class AIDNEB:
             modelled potential energy surface.
 
         max_step: float
-            Safe control parameter. This parameter controls whether the
-            optimization of the NEB will be performed in the modelled
-            potential energy surface. If the uncertainty of the NEB lies
-            above the 'max_step' threshold the NEB won't be optimized and
-            the image with maximum uncertainty is evaluated. This prevents
-            exploring very uncertain regions which can lead to probe
-            unrealistic structures.
+            Safe control parameter. This parameter controls the degree of
+            freedom of the NEB optimization in the modelled potential energy
+            surface or the. If the uncertainty of the NEB lies above the
+            'max_step' threshold the NEB won't be optimized and the image
+            with maximum uncertainty is evaluated. This prevents exploring
+            very uncertain regions which can lead to probe unrealistic
+            structures.
         """
 
         while True:
 
-            # 1. Gather observations in every iteration.
-            # This serves to use the previous observations (useful for
-            # continuing calculations and/or for parallel runs).
+            # 1. Gather observations in every iteration. This serves to use
+            # the previous observations (useful for continuing calculations
+            # and/or for parallel runs).
             train_images = io.read(self.trajectory_observations, ':')
 
             # 2. Prepare the model calculator (train and attach to images).
@@ -304,10 +332,15 @@ class AIDNEB:
             climbing_neb = False
             if np.max(neb_pred_uncertainty) <= unc_convergence:
                 parprint('Climbing image is now activated.')
-                climbing_neb = True
-            ml_neb = NEB(self.images, climb=climbing_neb,
-                         method=self.neb_method, k=self.spring,
-                         remove_rotation_and_translation=self.rrt)
+                ml_neb = NEB(self.images, climb=True,
+                             dynamic_relaxation=self.dynamic_relaxation,
+                             scale_fmax=self.scale_fmax,
+                             method=self.neb_method, k=self.spring,
+                             remove_rotation_and_translation=self.rrt)
+            else:
+                ml_neb = NEB(self.images, climb=climbing_neb,
+                             method=self.neb_method, k=self.spring,
+                             remove_rotation_and_translation=self.rrt)
             neb_opt = MDMin(ml_neb, trajectory=self.trajectory, dt=0.050)
 
             # Safe check to optimize the images.
@@ -387,7 +420,6 @@ class AIDNEB:
             self.function_calls += 1
             self.force_calls += 1
             self.step += 1
-        print_cite_neb()
 
 
 @parallel_function
@@ -421,19 +453,3 @@ def get_neb_predictions(images):
     neb_pred_unc[-1] = 0.0
     predictions = {'energy': neb_pred_energy, 'uncertainty': neb_pred_unc}
     return predictions
-
-
-@parallel_function
-def print_cite_neb():
-    msg = "\n" + "-" * 79 + "\n"
-    msg += "You are using AID-NEB. Please cite: \n"
-    msg += "[1] J. A. Garrido Torres, M. H. Hansen, P. C. Jennings, "
-    msg += "J. R. Boes and T. Bligaard. Phys. Rev. Lett. 122, 156001. "
-    msg += "https://doi.org/10.1103/PhysRevLett.122.156001 \n"
-    msg += "[2] O. Koistinen, F. B. Dagbjartsdottir, V. Asgeirsson, A. Vehtari"
-    msg += " and H. Jonsson. J. Chem. Phys. 147, 152720. "
-    msg += "https://doi.org/10.1063/1.4986787 \n"
-    msg += "[3] E. Garijo del Rio, J. J. Mortensen and K. W. Jacobsen. "
-    msg += "arXiv:1808.08588. https://arxiv.org/abs/1808.08588v1. \n"
-    msg += "-" * 79 + '\n'
-    parprint(msg)
