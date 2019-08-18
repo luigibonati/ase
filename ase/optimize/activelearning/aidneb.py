@@ -18,7 +18,7 @@ class AIDNEB:
                  neb_method='aseneb', dynamic_relaxation=False,
                  scale_fmax=0.0,
                  remove_rotation_and_translation=False,
-                 max_train_data=20, force_consistent=None,
+                 max_train_data=5, force_consistent=None,
                  max_train_data_strategy='nearest_observations',
                  trajectory='AID.traj', use_previous_observations=False):
 
@@ -225,7 +225,7 @@ class AIDNEB:
 
             # Guess spring constant (k) if not defined by the user.
             if self.spring is None:
-                self.spring = (np.sqrt(self.n_images-1) / d_start_end)
+                self.spring = 2. * (np.sqrt(self.n_images-1) / d_start_end)
 
             neb_interp = NEB(self.images, climb=False, k=self.spring,
                              remove_rotation_and_translation=self.rrt)
@@ -268,7 +268,7 @@ class AIDNEB:
                          filename=self.trajectory_observations,
                          restart=self.use_prev_obs)
 
-    def run(self, fmax=0.05, unc_convergence=0.025, ml_steps=200,
+    def run(self, fmax=0.05, unc_convergence=0.05, ml_steps=100,
             max_step=0.5):
 
         """
@@ -329,7 +329,14 @@ class AIDNEB:
             # Climbing image NEB mode is risky when the model is trained
             # with a few data points. Switch on climbing image (CI-NEB) only
             # when the uncertainty of the NEB is low.
-            climbing_neb = False
+
+            ml_neb = NEB(self.images, climb=False,
+                         method=self.neb_method, k=self.spring,
+                         remove_rotation_and_translation=self.rrt)
+            neb_opt = MDMin(ml_neb, trajectory=self.trajectory, dt=0.025)
+            if np.max(neb_pred_uncertainty) <= max_step:
+                neb_opt.run(fmax=(fmax * 0.80), steps=ml_steps)
+
             if np.max(neb_pred_uncertainty) <= unc_convergence:
                 parprint('Climbing image is now activated.')
                 ml_neb = NEB(self.images, climb=True,
@@ -337,15 +344,9 @@ class AIDNEB:
                              scale_fmax=self.scale_fmax,
                              method=self.neb_method, k=self.spring,
                              remove_rotation_and_translation=self.rrt)
-            else:
-                ml_neb = NEB(self.images, climb=climbing_neb,
-                             method=self.neb_method, k=self.spring,
-                             remove_rotation_and_translation=self.rrt)
-            neb_opt = MDMin(ml_neb, trajectory=self.trajectory, dt=0.050)
-
-            # Safe check to optimize the images.
-            if np.max(neb_pred_uncertainty) <= max_step:
-                neb_opt.run(fmax=(fmax * 0.80), steps=ml_steps)
+                neb_opt = MDMin(ml_neb, trajectory=self.trajectory, dt=0.025)
+                if np.max(neb_pred_uncertainty) <= max_step:
+                    neb_opt.run(fmax=(fmax * 0.80), steps=ml_steps)
 
             # 4. Get predicted energies and uncertainties of the NEB images.
             predictions = get_neb_predictions(self.images)
