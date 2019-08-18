@@ -15,9 +15,8 @@ class AIDNEB:
 
     def __init__(self, start, end, model_calculator=None, calculator=None,
                  interpolation='linear', n_images=0.25, k=None, mic=False,
-                 neb_method='aseneb', dynamic_relaxation=False,
-                 scale_fmax=0.0,
-                 remove_rotation_and_translation=False,
+                 neb_method='improvedtangent', dynamic_relaxation=False,
+                 scale_fmax=0.0, remove_rotation_and_translation=False,
                  max_train_data=5, force_consistent=None,
                  max_train_data_strategy='nearest_observations',
                  trajectory='AID.traj', use_previous_observations=False):
@@ -381,7 +380,7 @@ class AIDNEB:
                     parprint('Uncertainty of the images above threshold.')
                     parprint('NEB converged.')
                     parprint('The NEB path can be found in:', self.trajectory)
-                    msg = "Visualize the last path using 'ase gui "
+                    msg = "Visualize the last path using 'ase gui' "
                     msg += self.trajectory
                     parprint(msg)
                     break
