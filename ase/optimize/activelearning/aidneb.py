@@ -251,7 +251,7 @@ class AIDNEB:
 
         # Automatically adjust spring constant (k) if not defined by the user.
         if self.spring is None:
-            self.spring = (np.sqrt(self.n_images-1) / d_start_end)
+            self.spring = 2. * (np.sqrt(self.n_images-1) / d_start_end)
 
         # Filenames of the trajectories containing the observations and
         # candidates.
