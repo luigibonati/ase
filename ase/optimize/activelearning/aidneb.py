@@ -14,7 +14,7 @@ from ase.optimize.activelearning.io import get_fmax, dump_observation
 class AIDNEB:
 
     def __init__(self, start, end, model_calculator=None, calculator=None,
-                 interpolation='linear', n_images=0.25, k=None, mic=False,
+                 interpolation='linear', n_images=0.4, k=None, mic=False,
                  neb_method='improvedtangent', dynamic_relaxation=False,
                  scale_fmax=0.0, remove_rotation_and_translation=False,
                  max_train_data=5, force_consistent=None,
