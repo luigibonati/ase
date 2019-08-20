@@ -162,7 +162,7 @@ def write_castep_cell(fd, atoms, positions_frac=False, force_write=False,
     """
 
     if atoms is None:
-        print('Atoms object not initialized')
+        warnings.warn('Atoms object not initialized')
         return False
     if isinstance(atoms, list):
         if len(atoms) > 1:
@@ -244,8 +244,8 @@ def write_castep_cell(fd, atoms, positions_frac=False, force_write=False,
 
         for constr in constraints:
             if not isinstance(constr, _supported_constraints):
-                print('Warning: you have constraints in your atoms, that are')
-                print('         not supported by the CASTEP ase interface')
+                warnings.warn('Warning: you have constraints in your atoms, that are')
+                warnings.warn('         not supported by the CASTEP ase interface')
                 break
             if isinstance(constr, FixAtoms):
                 for i in constr.index:
@@ -414,11 +414,11 @@ def read_castep_cell(fd, index=None, calculator_args={}, find_spg=False,
 
     if calc.cell.castep_version == 0 and calc._kw_tol < 3:
         # No valid castep_keywords.json was found
-        print('read_cell: Warning - Was not able to validate CASTEP input.')
-        print('           This may be due to a non-existing '
+        warnings.warn('read_cell: Warning - Was not able to validate CASTEP input.')
+        warnings.warn('           This may be due to a non-existing '
               '"castep_keywords.json"')
-        print('           file or a non-existing CASTEP installation.')
-        print('           Parsing will go on but keywords will not be '
+        warnings.warn('           file or a non-existing CASTEP installation.')
+        warnings.warn('           Parsing will go on but keywords will not be '
               'validated and may cause problems if incorrect during a CASTEP '
               'run.')
 
@@ -656,7 +656,7 @@ def read_castep_cell(fd, index=None, calculator_args={}, find_spg=False,
         if len(value) == 3:
             # Check if they are linearly independent
             if np.linalg.det(value) == 0:
-                print('Error: Found linearly dependent constraints attached '
+                warnings.warn('Error: Found linearly dependent constraints attached '
                       'to atoms %s' % (absolute_nr))
                 continue
             fixed_atoms.append(absolute_nr)
@@ -664,7 +664,7 @@ def read_castep_cell(fd, index=None, calculator_args={}, find_spg=False,
             direction = np.cross(value[0], value[1])
             # Check if they are linearly independent
             if np.linalg.norm(direction) == 0:
-                print('Error: Found linearly dependent constraints attached '
+                warnings.warn('Error: Found linearly dependent constraints attached '
                       'to atoms %s' % (absolute_nr))
                 continue
             constraint = ase.constraints.FixedLine(
@@ -677,7 +677,7 @@ def read_castep_cell(fd, index=None, calculator_args={}, find_spg=False,
                 direction=np.array(value[0], dtype=np.float32))
             constraints.append(constraint)
         else:
-            print('Error: Found %s statements attached to atoms %s'
+            warnings.warn('Error: Found %s statements attached to atoms %s'
                   % (len(value), absolute_nr))
 
     # we need to sort the fixed atoms list in order not to raise an assertion
@@ -729,7 +729,7 @@ def read_castep_castep(fd, index=None):
         calc = Castep()
     except Exception as e:
         # No CASTEP keywords found?
-        print('WARNING:\n{0}\nUsing fallback .castep reader...'.format(e))
+        warnings.warn('WARNING:\n{0}\nUsing fallback .castep reader...'.format(e))
         # Fall back on the old method
         return read_castep_castep_old(fd, index)
 
@@ -1253,8 +1253,8 @@ def write_param(filename, param, check_checkfile=False,
         if a restart file exists in the same directory
     """
     if os.path.isfile(filename) and not force_write:
-        print('ase.io.castep.write_param: Set optional argument')
-        print('force_write=True to overwrite %s.' % filename)
+        warnings.warn('ase.io.castep.write_param: Set optional argument')
+        warnings.warn('force_write=True to overwrite %s.' % filename)
         return False
 
     out = paropen(filename, 'w')
@@ -1343,8 +1343,8 @@ def read_seed(seed, new_seed=None, ignore_internal_keys=False):
         # setting without a castep file...
         pass
         # No print statement required in these cases
-        print('Corresponding *.castep file not found.')
-        print('Atoms object will be restored from *.cell and *.param only.')
+        warnings.warn('Corresponding *.castep file not found.')
+        warnings.warn('Atoms object will be restored from *.cell and *.param only.')
     atoms.calc.push_oldstate()
 
     return atoms
