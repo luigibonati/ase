@@ -14,7 +14,7 @@ from ase.optimize.activelearning.io import get_fmax, dump_observation
 class AIDNEB:
 
     def __init__(self, start, end, model_calculator=None, calculator=None,
-                 interpolation='linear', n_images=0.4, k=None, mic=False,
+                 interpolation='idpp', n_images=0.25, k=None, mic=False,
                  neb_method='improvedtangent', dynamic_relaxation=False,
                  scale_fmax=0.0, remove_rotation_and_translation=False,
                  max_train_data=5, force_consistent=None,
@@ -329,12 +329,16 @@ class AIDNEB:
             # with a few data points. Switch on climbing image (CI-NEB) only
             # when the uncertainty of the NEB is low.
 
+            # Switch off uncertainty speed up.
+            for i in self.images:
+                i.get_calculator().calculate_uncertainty = False
+
             ml_neb = NEB(self.images, climb=False,
                          method=self.neb_method, k=self.spring,
                          remove_rotation_and_translation=self.rrt)
-            neb_opt = MDMin(ml_neb, trajectory=self.trajectory, dt=0.025)
+            neb_opt = MDMin(ml_neb, trajectory=self.trajectory, dt=0.03)
             if np.max(neb_pred_uncertainty) <= max_step:
-                neb_opt.run(fmax=(fmax * 0.80), steps=ml_steps)
+                neb_opt.run(fmax=(fmax * 0.9), steps=ml_steps)
 
             if np.max(neb_pred_uncertainty) <= unc_convergence:
                 parprint('Climbing image is now activated.')
@@ -343,9 +347,15 @@ class AIDNEB:
                              scale_fmax=self.scale_fmax,
                              method=self.neb_method, k=self.spring,
                              remove_rotation_and_translation=self.rrt)
-                neb_opt = MDMin(ml_neb, trajectory=self.trajectory, dt=0.025)
+                neb_opt = MDMin(ml_neb, trajectory=self.trajectory, dt=0.03)
                 if np.max(neb_pred_uncertainty) <= max_step:
-                    neb_opt.run(fmax=(fmax * 0.80), steps=ml_steps)
+                    neb_opt.run(fmax=(fmax * 0.8), steps=ml_steps)
+
+            # Switch on uncertainty again speed up.
+            for i in self.images:
+                i.get_calculator().calculate_uncertainty = True
+                i.get_calculator().results = {}
+                i.get_potential_energy()
 
             # 4. Get predicted energies and uncertainties of the NEB images.
             predictions = get_neb_predictions(self.images)
@@ -380,8 +390,8 @@ class AIDNEB:
                     parprint('Uncertainty of the images above threshold.')
                     parprint('NEB converged.')
                     parprint('The NEB path can be found in:', self.trajectory)
-                    msg = "Visualize the last path using 'ase gui' "
-                    msg += self.trajectory
+                    msg = "Visualize the last path using 'ase gui "
+                    msg += self.trajectory + "'"
                     parprint(msg)
                     break
 

@@ -74,10 +74,8 @@ class AIDMin:
                                train_images=[], scale=0.3, weight=2.,
                                noise=0.004,
                                max_train_data_strategy=max_train_data_strategy,
-                               max_train_data=max_train_data)
-
-        # Uncertainty is switched off for faster predictions (AID-Min).
-        self.model_calculator.calculate_uncertainty = False
+                               max_train_data=max_train_data,
+                               calculate_uncertainty=False)
 
         # Active Learning setup (single-point calculations).
         self.function_calls = 0
@@ -103,7 +101,7 @@ class AIDMin:
                          filename=self.trajectory_observations,
                          restart=self.use_prev_obs)
 
-    def run(self, fmax=0.05, ml_steps=1000, steps=200):
+    def run(self, fmax=0.05, ml_steps=500, steps=200):
 
         """
         Executing run will start the optimization process.

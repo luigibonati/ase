@@ -87,11 +87,9 @@ class AIDTS:
                                max_train_data=max_train_data,
                                update_prior_strategy='maximum',
                                update_hyperparams=True, batch_size=1,
-                               bounds=0.3
+                               bounds=0.3,
+                               calculate_uncertainty=False
                                )
-
-        # AID-TS doesn't use uncertainty (switched off for faster predictions).
-        self.model_calculator.calculate_uncertainty = False
 
         # Active Learning setup (single-point calculations).
         self.function_calls = 0

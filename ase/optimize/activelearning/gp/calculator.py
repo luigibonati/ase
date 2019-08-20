@@ -89,7 +89,8 @@ class GPCalculator(Calculator, GaussianProcess):
                  batch_size=5, bounds=None, kernel=None,
                  max_train_data=None, force_consistent=None,
                  max_train_data_strategy='nearest_observations',
-                 wrap_positions=False, **kwargs):
+                 wrap_positions=False, calculate_uncertainty=True,
+                 **kwargs):
 
         Calculator.__init__(self, **kwargs)
         self.prior = prior
@@ -107,7 +108,7 @@ class GPCalculator(Calculator, GaussianProcess):
         self.train_images = train_images
         self.old_train_images = []
         self.prev_train_y = []  # Do not retrain model if same data.
-        self.calculate_uncertainty = True
+        self.calculate_uncertainty = calculate_uncertainty
         self.wrap = wrap_positions
 
     def initialize(self):
@@ -228,6 +229,9 @@ class GPCalculator(Calculator, GaussianProcess):
                 self.train_x = x
                 self.train_y = y
 
+        # Speed up detaching test images.
+        self.test_images = []
+
         # Check whether is the same train process than before:
         if not np.array_equal(self.train_y, self.prev_train_y):
             # 4. Train a Gaussian Process .
@@ -289,7 +293,7 @@ class GPCalculator(Calculator, GaussianProcess):
         forces = forces_empty.reshape(-1, 3)
 
         # Get uncertainty for the given geometry.
-        uncertainty = 0.0
+        uncertainty = None
         if self.calculate_uncertainty is True:
             x = self.atoms.get_positions(wrap=self.wrap).reshape(-1)[self.atoms_mask]
             n = self.X.shape[0]
