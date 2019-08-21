@@ -4,15 +4,17 @@ from ase.optimize.gpmin.kernel import SE_kernel
 
 
 import numpy as np
-import random 
 
 class LGPMin(GPMin):
     """ Right now it only works if we do not update """
     def __init__(self, atoms, restart=None, logfile='-', trajectory=None, prior=None,
                  master=None, noise=0.005, weight=1., update_prior_strategy='maximum',
                  scale=0.4, force_consistent=None, batch_size=5, bounds = None,
-                 update_hyperparams=False, memory = None, use_woodbury = False):
+                 update_hyperparams=False, memory = None, use_woodbury = False,rng=None):
 
+         """
+         Some nice doc string should come here!
+         rng: Random number generator """
 
          GPMin.__init__(self, atoms, restart, logfile, trajectory, prior, master,
                         noise, weight, update_prior_strategy, scale, force_consistent, 
@@ -25,8 +27,11 @@ class LGPMin(GPMin):
              self.memory = memory
 
          self.K = None
+         
          self.generation = int(np.around(np.sqrt(self.memory)))
-         random.seed(42)
+         if rng is None:
+             rng = np.random.RandomState(42)
+         self.rng = rng
 
          self.use_woodbury = use_woodbury
 
@@ -73,7 +78,7 @@ class LGPMin(GPMin):
                self.row_list = []
 
            for j in range(self.generation):
-               i = random.randrange(len(self.x_population))
+               i = self.rng.randint(len(self.x_population))
                self.replace(self.x_population[i], self.y_population[i], 1.1)
 
            self.replace(x,y)
