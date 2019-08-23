@@ -195,7 +195,7 @@ class AIDNEB:
         if model_calculator is None:
             self.model_calculator = GPCalculator(
                                train_images=[], scale=0.4, weight=1.,
-                               noise=0.005, update_prior_strategy='maximum',
+                               noise=0.010, update_prior_strategy='maximum',
                                max_train_data_strategy=max_train_data_strategy,
                                max_train_data=max_train_data)
 
@@ -267,7 +267,7 @@ class AIDNEB:
                          filename=self.trajectory_observations,
                          restart=self.use_prev_obs)
 
-    def run(self, fmax=0.05, unc_convergence=0.05, ml_steps=100,
+    def run(self, fmax=0.05, unc_convergence=0.05, ml_steps=200,
             max_step=0.5):
 
         """
