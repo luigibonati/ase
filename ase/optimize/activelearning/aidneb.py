@@ -195,7 +195,7 @@ class AIDNEB:
         if model_calculator is None:
             self.model_calculator = GPCalculator(
                                train_images=[], scale=0.4, weight=1.,
-                               noise=0.002, update_prior_strategy='maximum',
+                               noise=0.010, update_prior_strategy='maximum',
                                max_train_data_strategy=max_train_data_strategy,
                                max_train_data=max_train_data)
 
