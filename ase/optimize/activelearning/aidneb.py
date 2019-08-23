@@ -17,7 +17,7 @@ class AIDNEB:
                  interpolation='idpp', n_images=0.25, k=None, mic=False,
                  neb_method='improvedtangent', dynamic_relaxation=False,
                  scale_fmax=0.0, remove_rotation_and_translation=False,
-                 max_train_data=5, force_consistent=None,
+                 max_train_data=10, force_consistent=None,
                  max_train_data_strategy='nearest_observations',
                  trajectory='AID.traj', use_previous_observations=False):
 
@@ -195,7 +195,7 @@ class AIDNEB:
         if model_calculator is None:
             self.model_calculator = GPCalculator(
                                train_images=[], scale=0.4, weight=1.,
-                               noise=0.010, update_prior_strategy='maximum',
+                               noise=0.005, update_prior_strategy='maximum',
                                max_train_data_strategy=max_train_data_strategy,
                                max_train_data=max_train_data)
 
@@ -402,15 +402,17 @@ class AIDNEB:
             candidates = self.images
 
             # This acquisition function has been tested in Ref. [1].
-            if np.max(neb_pred_uncertainty) > unc_convergence:
+
+            if np.max(neb_pred_uncertainty) < unc_convergence \
+               and self.step % 2 == 0:
                 sorted_candidates = acquisition(train_images=train_images,
                                                 candidates=candidates,
-                                                mode='uncertainty',
+                                                mode='ucb',
                                                 objective='max')
             else:
                 sorted_candidates = acquisition(train_images=train_images,
                                                 candidates=candidates,
-                                                mode='ucb',
+                                                mode='uncertainty',
                                                 objective='max')
 
             # Select the best candidate.

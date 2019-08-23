@@ -82,7 +82,7 @@ class AIDTS:
         if model_calculator is None:
             self.model_calculator = GPCalculator(
                                train_images=[], scale=0.4, weight=1.,
-                               noise=0.010,
+                               noise=0.003,
                                max_train_data_strategy=max_train_data_strategy,
                                max_train_data=max_train_data,
                                update_prior_strategy='maximum',
