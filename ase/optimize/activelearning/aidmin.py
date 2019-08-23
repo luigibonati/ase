@@ -72,7 +72,7 @@ class AIDMin:
         if model_calculator is None:
             self.model_calculator = GPCalculator(
                                train_images=[], scale=0.3, weight=2.,
-                               noise=0.004,
+                               noise=0.002,
                                max_train_data_strategy=max_train_data_strategy,
                                max_train_data=max_train_data,
                                calculate_uncertainty=False)
