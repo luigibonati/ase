@@ -17,7 +17,7 @@ class AIDNEB:
                  interpolation='idpp', n_images=0.25, k=None, mic=False,
                  neb_method='improvedtangent', dynamic_relaxation=False,
                  scale_fmax=0.0, remove_rotation_and_translation=False,
-                 max_train_data=5, force_consistent=None,
+                 max_train_data=10, force_consistent=None,
                  max_train_data_strategy='nearest_observations',
                  trajectory='AID.traj', use_previous_observations=False):
 
