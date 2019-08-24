@@ -14,10 +14,10 @@ from ase.optimize.activelearning.io import get_fmax, dump_observation
 class AIDNEB:
 
     def __init__(self, start, end, model_calculator=None, calculator=None,
-                 interpolation='idpp', n_images=0.2, k=None, mic=False,
+                 interpolation='idpp', n_images=0.25, k=None, mic=False,
                  neb_method='improvedtangent', dynamic_relaxation=False,
                  scale_fmax=0.0, remove_rotation_and_translation=False,
-                 max_train_data=5, update_hyperparameters=False,
+                 max_train_data=20, update_hyperparameters=False,
                  force_consistent=None,
                  max_train_data_strategy='nearest_observations',
                  trajectory='AID.traj', use_previous_observations=False):
@@ -195,8 +195,8 @@ class AIDNEB:
         # Default GP Calculator parameters if not specified by the user.
         if model_calculator is None:
             self.model_calculator = GPCalculator(
-                               train_images=[], scale=0.35, weight=2.,
-                               noise=0.010, update_prior_strategy='maximum',
+                               train_images=[], scale=0.4, weight=1.,
+                               noise=0.004, update_prior_strategy='maximum',
                                update_hyperparams=update_hyperparameters,
                                batch_size=1,
                                bounds=0.2,
@@ -273,7 +273,7 @@ class AIDNEB:
                          filename=self.trajectory_observations,
                          restart=self.use_prev_obs)
 
-    def run(self, fmax=0.05, unc_convergence=0.05, ml_steps=200,
+    def run(self, fmax=0.05, unc_convergence=0.05, ml_steps=250,
             max_step=0.5):
 
         """
@@ -342,7 +342,7 @@ class AIDNEB:
             ml_neb = NEB(self.images, climb=False,
                          method=self.neb_method, k=self.spring,
                          remove_rotation_and_translation=self.rrt)
-            neb_opt = MDMin(ml_neb, trajectory=self.trajectory, dt=0.03)
+            neb_opt = FIRE(ml_neb, trajectory=self.trajectory)
             if np.max(neb_pred_uncertainty) <= max_step:
                 neb_opt.run(fmax=(fmax * 0.8), steps=ml_steps)
 
@@ -353,7 +353,7 @@ class AIDNEB:
                              scale_fmax=self.scale_fmax,
                              method=self.neb_method, k=self.spring,
                              remove_rotation_and_translation=self.rrt)
-                neb_opt = MDMin(ml_neb, trajectory=self.trajectory, dt=0.03)
+                neb_opt = FIRE(ml_neb, trajectory=self.trajectory)
                 if np.max(neb_pred_uncertainty) <= max_step:
                     neb_opt.run(fmax=(fmax * 0.8), steps=ml_steps)
 
