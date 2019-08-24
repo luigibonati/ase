@@ -17,7 +17,8 @@ class AIDNEB:
                  interpolation='idpp', n_images=0.2, k=None, mic=False,
                  neb_method='improvedtangent', dynamic_relaxation=False,
                  scale_fmax=0.0, remove_rotation_and_translation=False,
-                 max_train_data=10, force_consistent=None,
+                 max_train_data=5, update_hyperparameters=False,
+                 force_consistent=None,
                  max_train_data_strategy='nearest_observations',
                  trajectory='AID.traj', use_previous_observations=False):
 
@@ -194,9 +195,10 @@ class AIDNEB:
         # Default GP Calculator parameters if not specified by the user.
         if model_calculator is None:
             self.model_calculator = GPCalculator(
-                               train_images=[], scale=0.4, weight=1.,
-                               noise=0.005, update_prior_strategy='maximum',
-                               update_hyperparams=True, batch_size=1,
+                               train_images=[], scale=0.35, weight=2.,
+                               noise=0.010, update_prior_strategy='maximum',
+                               update_hyperparams=update_hyperparameters,
+                               batch_size=1,
                                bounds=0.2,
                                max_train_data_strategy=max_train_data_strategy,
                                max_train_data=max_train_data)
