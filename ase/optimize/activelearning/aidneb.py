@@ -14,7 +14,7 @@ from ase.optimize.activelearning.io import get_fmax, dump_observation
 class AIDNEB:
 
     def __init__(self, start, end, model_calculator=None, calculator=None,
-                 interpolation='idpp', n_images=0.25, k=None, mic=False,
+                 interpolation='idpp', n_images=0.2, k=None, mic=False,
                  neb_method='improvedtangent', dynamic_relaxation=False,
                  scale_fmax=0.0, remove_rotation_and_translation=False,
                  max_train_data=10, force_consistent=None,
@@ -195,7 +195,9 @@ class AIDNEB:
         if model_calculator is None:
             self.model_calculator = GPCalculator(
                                train_images=[], scale=0.4, weight=1.,
-                               noise=0.010, update_prior_strategy='maximum',
+                               noise=0.005, update_prior_strategy='maximum',
+                               update_hyperparams=True, batch_size=1,
+                               bounds=0.2,
                                max_train_data_strategy=max_train_data_strategy,
                                max_train_data=max_train_data)
 
@@ -218,6 +220,8 @@ class AIDNEB:
         if interp_path is None:
             if isinstance(self.n_images, float):
                 self.n_images = int(d_start_end/self.n_images) + 2
+                if self.n_images % 2 == 0:
+                    self.n_images += 1
             if self. n_images <= 3:
                 self.n_images = 3
             self.images = make_neb(self)
@@ -338,7 +342,7 @@ class AIDNEB:
                          remove_rotation_and_translation=self.rrt)
             neb_opt = MDMin(ml_neb, trajectory=self.trajectory, dt=0.03)
             if np.max(neb_pred_uncertainty) <= max_step:
-                neb_opt.run(fmax=(fmax * 0.9), steps=ml_steps)
+                neb_opt.run(fmax=(fmax * 0.8), steps=ml_steps)
 
             if np.max(neb_pred_uncertainty) <= unc_convergence:
                 parprint('Climbing image is now activated.')
