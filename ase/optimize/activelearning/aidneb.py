@@ -15,7 +15,7 @@ class AIDNEB:
 
     def __init__(self, start, end, model_calculator=None, calculator=None,
                  interpolation='idpp', n_images=0.25, k=None, mic=False,
-                 neb_method='improvedtangent', dynamic_relaxation=False,
+                 neb_method='aseneb', dynamic_relaxation=False,
                  scale_fmax=0.0, remove_rotation_and_translation=False,
                  max_train_data=20, update_hyperparameters=False,
                  force_consistent=None,
@@ -196,7 +196,7 @@ class AIDNEB:
         if model_calculator is None:
             self.model_calculator = GPCalculator(
                                train_images=[], scale=0.4, weight=1.,
-                               noise=0.004, update_prior_strategy='maximum',
+                               noise=0.005, update_prior_strategy='maximum',
                                update_hyperparams=update_hyperparameters,
                                batch_size=1,
                                bounds=0.2,
@@ -230,7 +230,7 @@ class AIDNEB:
 
             # Guess spring constant (k) if not defined by the user.
             if self.spring is None:
-                self.spring = 2. * (np.sqrt(self.n_images-1) / d_start_end)
+                self.spring = np.sqrt(self.n_images-1) / d_start_end
 
             neb_interp = NEB(self.images, climb=False, k=self.spring,
                              remove_rotation_and_translation=self.rrt)
@@ -256,7 +256,7 @@ class AIDNEB:
 
         # Automatically adjust spring constant (k) if not defined by the user.
         if self.spring is None:
-            self.spring = 2. * (np.sqrt(self.n_images-1) / d_start_end)
+            self.spring = (np.sqrt(self.n_images-1) / d_start_end)
 
         # Filenames of the trajectories containing the observations and
         # candidates.
@@ -273,7 +273,7 @@ class AIDNEB:
                          filename=self.trajectory_observations,
                          restart=self.use_prev_obs)
 
-    def run(self, fmax=0.05, unc_convergence=0.05, ml_steps=250,
+    def run(self, fmax=0.05, unc_convergence=0.025, ml_steps=200,
             max_step=0.5):
 
         """
@@ -339,23 +339,18 @@ class AIDNEB:
             for i in self.images:
                 i.get_calculator().calculate_uncertainty = False
 
-            ml_neb = NEB(self.images, climb=False,
-                         method=self.neb_method, k=self.spring,
-                         remove_rotation_and_translation=self.rrt)
-            neb_opt = FIRE(ml_neb, trajectory=self.trajectory)
-            if np.max(neb_pred_uncertainty) <= max_step:
-                neb_opt.run(fmax=(fmax * 0.8), steps=ml_steps)
-
+            climbing_neb = False
             if np.max(neb_pred_uncertainty) <= unc_convergence:
                 parprint('Climbing image is now activated.')
-                ml_neb = NEB(self.images, climb=True,
-                             dynamic_relaxation=self.dynamic_relaxation,
-                             scale_fmax=self.scale_fmax,
-                             method=self.neb_method, k=self.spring,
-                             remove_rotation_and_translation=self.rrt)
-                neb_opt = FIRE(ml_neb, trajectory=self.trajectory)
-                if np.max(neb_pred_uncertainty) <= max_step:
-                    neb_opt.run(fmax=(fmax * 0.8), steps=ml_steps)
+                climbing_neb = True
+            ml_neb = NEB(self.images, climb=climbing_neb,
+                         method=self.neb_method, k=self.spring,
+                         remove_rotation_and_translation=self.rrt)
+            neb_opt = MDMin(ml_neb, trajectory=self.trajectory, dt=0.050)
+
+            # Safe check to optimize the images.
+            if np.max(neb_pred_uncertainty) <= max_step:
+                neb_opt.run(fmax=(fmax * 0.80), steps=ml_steps)
 
             # Switch on uncertainty again speed up.
             for i in self.images:
