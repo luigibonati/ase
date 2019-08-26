@@ -1,5 +1,6 @@
 from __future__ import print_function
 from ase.optimize.activelearning.gp.kernel import SquaredExponential
+import warnings
 
 import numpy as np
 
@@ -46,7 +47,7 @@ class GaussianProcess():
         self.kernel.set_params(params[:-1])
         self.noise = params[-1]
 
-    def train(self, X, Y, noise=None):
+    def train(self, X, Y, noise=None, update_prior = False):
         '''Produces a PES model from data.
 
         Given a set of observations, X, Y, compute the K matrix
@@ -58,7 +59,10 @@ class GaussianProcess():
         X: observations(i.e. positions). numpy array with shape: nsamples x D
         Y: targets (i.e. energy and forces). numpy array with
             shape (nsamples, D+1)
-        noise: Noise parameter in the case it needs to be restated. '''
+        noise: Noise parameter in the case it needs to be restated.
+        update_prior: boolean.
+            If set to True, the prior is set to maximize the marginal likehood of
+            the model with the other hyperparameters fixed. Defaults to False. '''
 
         if noise is not None:
             self.noise = noise  # Set noise atribute to a different value
@@ -73,9 +77,17 @@ class GaussianProcess():
 
         K[range(K.shape[0]), range(K.shape[0])] += regularization**2
 
-        self.m = self.prior.prior(X)
-
         self.L, self.lower = cho_factor(K, lower=True, check_finite=True)
+
+        if update_prior:
+            if hasattr(self.prior, 'update'):
+                self.prior.update(X,Y,self.L)
+            else:
+                warning('The prior does not have implemented and update method ',
+                        'the prior has thus not been updated.')
+                warnings.warn(warning)
+
+        self.m = self.prior.prior(X)
         self.a = Y.flatten() - self.m
         cho_solve((self.L, self.lower), self.a,
                   overwrite_b=True, check_finite=True)
