@@ -68,17 +68,28 @@ class ConstantPrior(Prior):
 
     def update(self, x, y, L):
         """Update the constant to maximize the marginal likelihood.
+
+        The optimization problem: 
+        m = argmax [-½ (y-m).T K⁻¹(y-m)]
+
+        can be turned into an algebraic problem
+        m = [ u.T K⁻¹y]/[u.T K^-1 u]
+
+        where u is the constant prior with energy 1 (eV). 
+
         parameters:
         ------------
         y: training targets
         L: Cholesky factor of the kernel """
 
-        #get u
+        # Get derivative of prior respect to constant: we call it u
         self.set_constant(1.)
         u = self.prior(x)
 
+        # w = K\u
         w = cho_solve((L,True), u, check_finite = False)
 
+        # Set constant
         m = np.dot(w,y.flatten())/np.dot(w,u)
         self.set_constant(m)
 
