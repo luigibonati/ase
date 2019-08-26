@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.linalg import solve_triangular, cho_factor, cho_solve
 
 
 class Prior():
@@ -64,6 +65,23 @@ class ConstantPrior(Prior):
 
     def set_constant(self, constant):
         self.constant = constant
+
+    def update(self, x, y, L):
+        """Update the constant to maximize the marginal likelihood.
+        parameters:
+        ------------
+        y: training targets
+        L: Cholesky factor of the kernel """
+
+        #get u
+        self.set_constant(1.)
+        u = self.prior(x)
+
+        w = cho_solve((L,True), u, check_finite = False)
+
+        m = np.dot(w,y.flatten())/np.dot(w,u)
+        self.set_constant(m)
+
 
 
 class CalculatorPrior(Prior):
