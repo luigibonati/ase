@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.linalg import solve_triangular, cho_factor, cho_solve
 
+import warnings
 
 class Prior():
     '''Base class for all priors for the bayesian optimizer.
@@ -16,7 +17,9 @@ class Prior():
     def __init__(self):
         '''Basic prior implementation. 
         '''
-        pass
+        
+        # By default, do not let the prior use the update method
+        self.use_update = False
 
     def prior(self, x):
         ''' Actual prior function, common to all Priors'''
@@ -28,6 +31,14 @@ class Prior():
 
         else:
             return self.potential(x)
+
+    def let_update(self):
+        if hasattr(self, 'update'):
+            self.use_update = True
+        else:
+            warning = ('The prior does not have implemented an update method ',
+                       'the prior has thus not been updated')
+            warnings.warn(warning)
 
 
 class ZeroPrior(Prior):
@@ -68,17 +79,28 @@ class ConstantPrior(Prior):
 
     def update(self, x, y, L):
         """Update the constant to maximize the marginal likelihood.
+
+        The optimization problem: 
+        m = argmax [-½ (y-m).T K⁻¹(y-m)]
+
+        can be turned into an algebraic problem
+        m = [ u.T K⁻¹y]/[u.T K^-1 u]
+
+        where u is the constant prior with energy 1 (eV). 
+
         parameters:
         ------------
         y: training targets
         L: Cholesky factor of the kernel """
 
-        #get u
+        # Get derivative of prior respect to constant: we call it u
         self.set_constant(1.)
         u = self.prior(x)
 
+        # w = K\u
         w = cho_solve((L,True), u, check_finite = False)
 
+        # Set constant
         m = np.dot(w,y.flatten())/np.dot(w,u)
         self.set_constant(m)
 

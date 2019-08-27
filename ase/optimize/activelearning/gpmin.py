@@ -233,7 +233,6 @@ class GPMin(Optimizer, GaussianProcess):
         self.y_list.append(y)
 
         # Set/update the constant for the prior
-        use_likelihood = False            #This variable is a flag
         if self.update_prior:
             if self.strategy == 'average':
                 av_e = np.mean(np.array(self.y_list)[:, 0])
@@ -245,19 +244,14 @@ class GPMin(Optimizer, GaussianProcess):
                 self.prior.set_constant(e)
                 self.update_prior = False
             elif self.strategy == 'fit':
-               if self.update_hp:
-                   error = ('prior update strategy FIT togehter with updating hyperparameters ',
-                           'of the kernel has not been implemented yet')
-                   raise NotImplementedError(error)
-               else:
-                   use_likelihood = True
+                self.prior.let_update()
 
         # update hyperparams
         if self.update_hp and self.function_calls % self.nbatch == 0 and self.function_calls != 0:
             self.fit_to_batch()
 
         # build the model
-        self.train(np.array(self.x_list), np.array(self.y_list), update_prior = use_likelihood)
+        self.train(np.array(self.x_list), np.array(self.y_list))
 
     def relax_model(self, r0):
 

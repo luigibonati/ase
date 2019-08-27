@@ -166,8 +166,6 @@ class GPCalculator(Calculator, GaussianProcess):
         self.set_hyperparams(np.array([self.weight, self.scale, self.noise]))
 
         # 2. Set/update the the prior.
-        #    2.a Set the use_likelihood option to False by default
-        use_likelihood = False
         if self.update_prior:
             if self.strategy == 'average':
                 av_e = np.mean(np.array(self.train_y)[:, 0])
@@ -186,12 +184,7 @@ class GPCalculator(Calculator, GaussianProcess):
                 self.update_prior = False
             # 2.b Only set use_likelihood to True if we use it and it is implemented
             elif self.strategy == 'fit':
-                if self.update_hp:
-                    error = ('prior update strategy FIT together with updating hyperparameters ',
-                             ' of the kernel has not been implemented yet')
-                    raise NotImplementedError(error)
-                else:
-                    use_likelihood = True
+                self.prior.let_update()
 
         # 3. Max number of observations consider for training (low memory).
         if self.max_data is not None:
@@ -248,7 +241,7 @@ class GPCalculator(Calculator, GaussianProcess):
             # 4. Train a Gaussian Process .
             print('Training data size: ', len(self.train_x))
             self.train(np.array(self.train_x), np.array(self.train_y),
-                       noise=self.noise, update_prior = use_likelihood)
+                       noise=self.noise)
 
             # 5. (optional) Optimize model hyperparameters.
             if self.update_hp and len(self.train_x) % self.nbatch == 0 and len(self.train_x) != 0:
