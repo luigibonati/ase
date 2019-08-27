@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.linalg import solve_triangular, cho_factor, cho_solve
 
+import warnings
 
 class Prior():
     '''Base class for all priors for the bayesian optimizer.
@@ -16,7 +17,9 @@ class Prior():
     def __init__(self):
         '''Basic prior implementation. 
         '''
-        pass
+        
+        # By default, do not let the prior use the update method
+        self.use_update = False
 
     def prior(self, x):
         ''' Actual prior function, common to all Priors'''
@@ -28,6 +31,14 @@ class Prior():
 
         else:
             return self.potential(x)
+
+    def let_update(self):
+        if hasattr(self, 'update'):
+            self.use_update = True
+        else:
+            warning = ('The prior does not have implemented an update method ',
+                       'the prior has thus not been updated')
+            warnings.warn(warning)
 
 
 class ZeroPrior(Prior):
