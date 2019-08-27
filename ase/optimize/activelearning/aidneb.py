@@ -184,11 +184,11 @@ class AIDNEB:
         self.dynamic_relaxation = dynamic_relaxation
         self.spring = k
         self.i_endpoint = io.read(self.start, '-1')
-        self.i_endpoint.get_potential_energy(force_consistent=force_consistent)
-        self.i_endpoint.get_forces()
+        # self.i_endpoint.get_potential_energy(force_consistent=force_consistent)
+        # self.i_endpoint.get_forces()
         self.e_endpoint = io.read(self.end, '-1')
-        self.e_endpoint.get_potential_energy(force_consistent=force_consistent)
-        self.e_endpoint.get_forces()
+        # self.e_endpoint.get_potential_energy(force_consistent=force_consistent)
+        # self.e_endpoint.get_forces()
 
         # Model calculator:
         self.model_calculator = model_calculator
@@ -310,6 +310,10 @@ class AIDNEB:
             # the previous observations (useful for continuing calculations
             # and/or for parallel runs).
             train_images = io.read(self.trajectory_observations, ':')
+
+            # Update constraints in case they have changed from previous runs.
+            for img in train_images:
+                img.set_constraint(self.constraints)
 
             # 2. Prepare the model calculator (train and attach to images).
             calc = copy.deepcopy(self.model_calculator)

@@ -12,7 +12,7 @@ class AIDTS:
 
     def __init__(self, atoms, atoms_vector, vector_length=0.7,
                  model_calculator=None, force_consistent=None,
-                 trajectory='AIDTS.traj', max_train_data=50,
+                 trajectory='AID.traj', max_train_data=50,
                  max_train_data_strategy='nearest_observations',
                  use_previous_observations=False):
         """
@@ -97,6 +97,7 @@ class AIDTS:
         self.step = 0
 
         self.atoms = atoms
+        self.constraints = atoms.contraints
         self.atoms_vector = atoms_vector
 
         # Calculate displacement vector and mask automatically.
@@ -168,6 +169,10 @@ class AIDTS:
             # 1. Collect observations.
             # This serves to restart from a previous (and/or parallel) runs.
             train_images = io.read(self.trajectory_observations, ':')
+
+            # Update constraints in case they have changed from previous runs.
+            for img in train_images:
+                img.set_constraint(self.constraints)
 
             # 2. Update model calculator.
 
