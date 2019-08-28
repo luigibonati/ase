@@ -1,12 +1,13 @@
 from ase.io import read, write
 from scipy.spatial.distance import euclidean
 import numpy as np
+from ase.optimize.activelearning.io import get_fmax
 
 
 class CleanObservations:
     def __init__(self, trajectory,
                  output_trajectory='clean_observations.traj',
-                 distance_threshold=0.1,
+                 distance_threshold=0.1, fmax_threshold=0.05,
                  remove_outliers=True):
         """ Sparse observations. Reduce the number of observations by
         removing the observations that are too close to each other.
@@ -32,23 +33,45 @@ class CleanObservations:
             If True will remove the images that satisfy the outlier criterion:
             Energy > median_e + 2.5 * mad_e (non-normally distribution).
 
+        fmax_threshold: float
+            Structures with fmax below fmax_threshold will be added to the
+            clean data set (if not duplicated).
+
         """
         self.trajectory = trajectory
         self.distance_threshold = distance_threshold
         self.remove_outliers = remove_outliers
         self.output_trajectory = output_trajectory
+        self.fmax_threshold = fmax_threshold
 
     def clean(self):
         """Start the cleaning process. Returns the list of cleaned
            structures."""
         all_structures = read(self.trajectory, ':')
         all_energies = []
+        all_fmax = []
         clean_structures = []
 
+        # Start by including all the structures with fmax below fmax_threshold.
+        for structure in all_structures:
+            if get_fmax(structure) <= self.fmax_threshold:
+                is_good = True
+                for clean_structure in clean_structures:
+                    too_close = images_too_close(image1=structure,
+                                                 image2=clean_structure,
+                                                 distance_threshold=self.distance_threshold)
+                    if too_close is True:
+                        is_good = False
+                if is_good is True:
+                    clean_structures += [structure]
+                    print('Converged structure found...')
+
+        # Remove outliers (optional).
         if self.remove_outliers is True:
             structures_without_outliers = []
             for structure in all_structures:
                 all_energies += [structure.get_potential_energy()]
+                all_fmax += [get_fmax(structure)]
 
             median_e = np.median(all_energies)
             mad_e = mad(all_energies)
@@ -58,17 +81,20 @@ class CleanObservations:
                     structures_without_outliers += [all_structures[e_index]]
             all_structures = structures_without_outliers
 
+        # Get clean list of atoms:
         for structure in all_structures:
             all_energies += [structure.get_potential_energy()]
             is_good = True
             for clean_structure in clean_structures:
-                too_close = images_too_close(image1=structure, image2=clean_structure, distance_threshold=self.distance_threshold)
+                too_close = images_too_close(image1=structure,
+                                             image2=clean_structure,
+                                             distance_threshold=self.distance_threshold)
                 if too_close is True:
                     is_good = False
             if is_good is True:
                 clean_structures += [structure]
             else:
-                print('Too close')
+                print('Atoms structure too close to a previous structure.')
 
         write(self.output_trajectory, clean_structures)
         return clean_structures

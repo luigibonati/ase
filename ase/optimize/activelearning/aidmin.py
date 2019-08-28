@@ -83,6 +83,7 @@ class AIDMin:
         self.step = 0
 
         self.atoms = atoms
+        self.constraints = atoms.constraints
         self.ase_calc = atoms.get_calculator()
         self.optimizer = optimizer
 
@@ -137,6 +138,10 @@ class AIDMin:
             # This serves to use the previous observations (useful for
             # continuing calculations and/or for parallel runs).
             train_images = io.read(self.trajectory_observations, ':')
+
+            # Update constraints in case they have changed from previous runs.
+            for img in train_images:
+                img.set_constraint(self.constraints)
 
             # 2. Update model calculator.
             ml_converged = False
