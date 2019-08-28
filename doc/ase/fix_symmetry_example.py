@@ -4,7 +4,7 @@ import numpy as np
 
 from ase.atoms import Atoms
 from ase.calculators.lj import LennardJones
-from ase.spacegroup.symmetrize import FixSymmetry, check
+from ase.spacegroup.symmetrize import FixSymmetry, check_symmetry
 from ase.optimize import BFGS
 from ase.constraints import UnitCellFilter
 
@@ -45,10 +45,10 @@ print("Energy", at_sym.get_potential_energy())
 print("position difference", np.linalg.norm(at_unsym.get_positions()-at_sym.get_positions()))
 
 print("initial symmetry at 1e-6")
-d_init6 = check(at_init, 1.0e-6)
+d_init6 = check_symmetry(at_init, 1.0e-6)
 print("initial symmetry at 1e-8")
-d_init8 = check(at_init, 1.0e-8)
+d_init8 = check_symmetry(at_init, 1.0e-8)
 print("unsym symmetry")
-d_unsym = check(at_unsym)
+d_unsym = check_symmetry(at_unsym)
 print("sym symmetry")
-d_sym = check(at_sym)
+d_sym = check_symmetry(at_sym)

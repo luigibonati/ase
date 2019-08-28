@@ -1,5 +1,5 @@
 """
-Provides FixSymmetry class to preserve spagegroup symmetry during optimisation
+Provides FixSymmetry class to preserve spacegroup symmetry during optimisation
 """
 from __future__ import print_function
 import sys
@@ -22,11 +22,11 @@ except ImportError:
     except ImportError:
         pass
 
-__all__ = ['refine', 'check', 'FixSymmetry']
+__all__ = ['refine', 'check_symmetry', 'FixSymmetry']
 
-def refine(at, symprec=0.01, verbose=False):
+def refine(atoms, symprec=0.01, verbose=False):
     # test orig config with desired tol
-    dataset = spglib.get_symmetry_dataset(at, symprec=symprec)
+    dataset = spglib.get_symmetry_dataset(atoms, symprec=symprec)
     if dataset is None:
         raise ValueError("refine failed to get initial symmetry dataset "+
                          spglib.get_error_message())
@@ -41,22 +41,22 @@ def refine(at, symprec=0.01, verbose=False):
     std_cell = dataset['std_lattice']
     trans_std_cell = np.dot(dataset['transformation_matrix'].T, std_cell)
     rot_trans_std_cell = np.dot(trans_std_cell, dataset['std_rotation_matrix'])
-    at.set_cell(rot_trans_std_cell, True)
+    atoms.set_cell(rot_trans_std_cell, True)
 
     # get new dataset and primitive cell
-    dataset = spglib.get_symmetry_dataset(at, symprec=symprec)
+    dataset = spglib.get_symmetry_dataset(atoms, symprec=symprec)
     if dataset is None:
         raise ValueError("refine failed to get symmetrized cell symmetry dataset "+
                          spglib.get_error_message())
-    (prim_cell, prim_scaled_pos, prim_types) = spglib.find_primitive(at,
+    (prim_cell, prim_scaled_pos, prim_types) = spglib.find_primitive(atoms,
                                                                      symprec=symprec)
 
     # calculate offset between standard cell and actual cell
     std_cell = dataset['std_lattice']
     rot_std_cell = np.dot(std_cell, dataset['std_rotation_matrix'])
     rot_std_pos = np.dot(dataset['std_positions'], rot_std_cell)
-    dp0 = (at.get_positions()[list(dataset['mapping_to_primitive']).index(0)] -
-              rot_std_pos[list(dataset['std_mapping_to_primitive']).index(0)])
+    dp0 = (atoms.get_positions()[list(dataset['mapping_to_primitive']).index(0)] -
+           rot_std_pos[list(dataset['std_mapping_to_primitive']).index(0)])
 
     # create aligned set of standard cell positions to figure out mapping
     rot_prim_cell = np.dot(prim_cell, dataset['std_rotation_matrix'])
@@ -69,16 +69,16 @@ def refine(at, symprec=0.01, verbose=False):
     #    compatible with std_lattice returned by get_symmetry_dataset
     mapping_to_primitive = list(dataset['mapping_to_primitive'])
     std_mapping_to_primitive = list(dataset['std_mapping_to_primitive'])
-    p = at.get_positions()
-    for i_at in range(len(at)):
+    p = atoms.get_positions()
+    for i_at in range(len(atoms)):
         std_i_at = std_mapping_to_primitive.index(mapping_to_primitive[i_at])
         dp = aligned_std_pos[std_i_at] - p[i_at]
         dp_s = np.dot(dp, inv_rot_prim_cell)
         p[i_at] = aligned_std_pos[std_i_at] - np.dot(np.round(dp_s), rot_prim_cell)
-    at.set_positions(p)
+    atoms.set_positions(p)
 
     # test final config with tight tol
-    dataset = spglib.get_symmetry_dataset(at, symprec=1.0e-4)
+    dataset = spglib.get_symmetry_dataset(atoms, symprec=1.0e-4)
     if dataset is None:
         raise ValueError("refine failed to get final symmetry dataset "+spglib.get_error_message())
     if verbose:
@@ -89,36 +89,36 @@ def refine(at, symprec=0.01, verbose=False):
                                                                       dataset["hall"]))
 
 
-def check(at, symprec=1.0e-6):
+def check_symmetry(atoms, symprec=1.0e-6):
     """
     Check symmetry of `at` with precision `symprec` using `spglib`
 
     Prints a summary and returns result of `spglib.get_symmetry_dataset()`
     """
-    dataset = spglib.get_symmetry_dataset(at, symprec=symprec)
+    dataset = spglib.get_symmetry_dataset(atoms, symprec=symprec)
     print("ase.spacegroup.symmetrize.check: prec", symprec,
           "got symmetry group number", dataset["number"],
           ", international (Hermann-Mauguin)", dataset["international"],
           ", Hall ",dataset["hall"])
     return dataset
 
-def prep(at, symprec=1.0e-6):
+def prep(atoms, symprec=1.0e-6):
     """
     Prepare `at` for symmetry-preserving minimisation at precision `symprec`
 
     Returns a tuple `(rotations, translations, symm_map)`
     """
-    dataset = spglib.get_symmetry_dataset(at, symprec=symprec)
+    dataset = spglib.get_symmetry_dataset(atoms, symprec=symprec)
     print("symmetry.prep: symmetry group number",dataset["number"],
           ", international (Hermann-Mauguin)", dataset["international"],
           ", Hall", dataset["hall"])
     rotations = dataset['rotations'].copy()
     translations = dataset['translations'].copy()
     symm_map=[]
-    scaled_pos = at.get_scaled_positions()
+    scaled_pos = atoms.get_scaled_positions()
     for (r, t) in zip(rotations, translations):
-        this_op_map = [-1] * len(at)
-        for i_at in range(len(at)):
+        this_op_map = [-1] * len(atoms)
+        for i_at in range(len(atoms)):
             new_p = np.dot(r, scaled_pos[i_at,:]) + t
             dp = scaled_pos - new_p
             dp -= np.round(dp)
