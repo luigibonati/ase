@@ -10,7 +10,7 @@ from ase.md import VelocityVerlet
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from ase.optimize.minimahopping import ComparePositions
 from ase.optimize.activelearning.aidmin import AIDMin
-from ase.optimize import *
+from ase.optimize import QuasiNewton
 from ase.optimize.activelearning.io import get_fmax, dump_observation
 
 

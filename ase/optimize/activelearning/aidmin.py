@@ -4,7 +4,7 @@ from scipy.spatial.distance import euclidean
 from ase import io
 from ase.optimize.activelearning.gp.calculator import GPCalculator
 from ase.parallel import parprint
-from ase.optimize import *
+from ase.optimize import QuasiNewton
 from ase.optimize.activelearning.io import get_fmax, dump_observation
 
 
