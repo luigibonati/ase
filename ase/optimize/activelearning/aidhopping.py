@@ -19,8 +19,8 @@ class AIDHopping:
     def __init__(self, atoms, calculator, model_calculator=None,
                  force_consistent=None, max_train_data=50,
                  max_train_data_strategy='nearest_observations',
-                 trajectory='AIDHopping.traj', T0=500., beta1=1.01,
-                 beta2=0.98, beta3=0.75, energy_threshold=10.,
+                 trajectory='AID.traj', T0=500., beta1=1.01,
+                 beta2=0.98, beta3=0.75, beta4=0.02, energy_threshold=2.5,
                  geometry_threshold=1., maxstep=.5, timestep=1.0,
                  maxtime=1000., maxoptsteps=500):
         """
@@ -62,6 +62,7 @@ class AIDHopping:
         self.beta1 = beta1  # Increase temperature.
         self.beta2 = beta2  # Decrease temperature.
         self.beta3 = beta3  # Decrease temperature after finding a new minimum.
+        self.beta4 = beta4  # Increase energy threshold (in eV).
         self.geometry_threshold = geometry_threshold
 
         # Model parameters.
@@ -163,6 +164,11 @@ class AIDHopping:
                     if stop_reason == 'max_energy_reached':
                         parprint('Decrease temp. due to max. energy reached.')
                         self.temperature = self.T0  # Decrease temperature.
+                        parprint('Increase energy threshold to explore '
+                                 'higher energy regions.')
+                        self.energy_threshold += self.beta4  # Increase energy.
+                        parprint('Current energy threshold is: ',
+                                 self.energy_threshold)
 
                     if stop_reason == 'max_uncertainty_reached':
                         candidates += [copy.deepcopy(md_guess)]
@@ -228,7 +234,7 @@ class AIDHopping:
                                             scale=0.3, weight=2.,
                                             prior=ConstantPrior(min_prior),
                                             update_prior_strategy=None,
-                                            max_train_data=15,
+                                            max_train_data=5,
                                             wrap_positions=False
                                             )
             while True:
