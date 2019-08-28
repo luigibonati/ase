@@ -293,7 +293,7 @@ def mdsim(atoms, temperature,  train_images, timestep=1.0, maxstep=0.5,
                                         force_consistent=force_consistent
                                         )
     current_time = 0.0  # Initial time.
-    energies, uncertainties, positions, indexes_minima = [], [], [], []
+    energies, uncertainties,  indexes_minima = [], [], []
     stop_reason = None
 
     MaxwellBoltzmannDistribution(atoms, temp=temperature * units.kB,
