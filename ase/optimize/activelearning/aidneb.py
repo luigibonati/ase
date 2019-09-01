@@ -197,7 +197,7 @@ class AIDNEB:
         if model_calculator is None:
             if update_hyperparameters is False:
                 self.model_calculator = GPCalculator(
-                               train_images=[], scale=0.4, weight=2.,
+                               train_images=[], scale=0.4, weight=1.,
                                noise=0.005, update_prior_strategy='fit',
                                update_hyperparams=False,
                                max_train_data_strategy=max_train_data_strategy,
@@ -282,7 +282,7 @@ class AIDNEB:
                          restart=self.use_prev_obs)
 
     def run(self, fmax=0.05, unc_convergence=0.050, ml_steps=200,
-            max_step=0.9):
+            max_step=0.5):
 
         """
         Executing run will start the NEB optimization process.
@@ -359,14 +359,19 @@ class AIDNEB:
                          method=self.neb_method, k=self.spring,
                          remove_rotation_and_translation=self.rrt)
 
-            neb_opt = SciPyFminCG(ml_neb, trajectory=self.trajectory)
-
             # Safe check to optimize the images.
             if np.max(neb_pred_uncertainty) <= max_step:
-                try:
-                    neb_opt.run(fmax=(fmax * 0.5), steps=ml_steps)
-                except (OptimizerConvergenceError, Converged):
-                    pass
+                if climbing_neb is False:
+                    try:
+                        neb_opt = SciPyFminCG(ml_neb,
+                                              trajectory=self.trajectory)
+                        neb_opt.run(fmax=(fmax * 0.5), steps=ml_steps)
+                    except (OptimizerConvergenceError, Converged):
+                        pass
+                if climbing_neb is True:
+                    neb_opt = MDMin(ml_neb, trajectory=self.trajectory,
+                                    dt=0.050)
+                    neb_opt.run(fmax=(fmax * 0.8), steps=ml_steps)
 
             # Switch on uncertainty again speed up.
             for i in self.images:
