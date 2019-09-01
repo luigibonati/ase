@@ -81,10 +81,10 @@ class ConstantPrior(Prior):
         """Update the constant to maximize the marginal likelihood.
 
         The optimization problem: 
-        m = argmax [-½ (y-m).T K⁻¹(y-m)]
+        m = argmax [-1/2 (y-m).T K^-1(y-m)]
 
         can be turned into an algebraic problem
-        m = [ u.T K⁻¹y]/[u.T K^-1 u]
+        m = [ u.T K^-1 y]/[u.T K^-1 u]
 
         where u is the constant prior with energy 1 (eV). 
 
