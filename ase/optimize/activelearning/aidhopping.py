@@ -17,11 +17,11 @@ from ase.optimize.activelearning.io import get_fmax, dump_observation
 class AIDHopping:
 
     def __init__(self, atoms, calculator, model_calculator=None,
-                 force_consistent=None, max_train_data=50,
+                 force_consistent=None, max_train_data=500,
                  max_train_data_strategy='nearest_observations',
                  trajectory='AID.traj', T0=500., beta1=1.01,
                  beta2=0.98, beta3=0.75, beta4=0.02, energy_threshold=2.5,
-                 geometry_threshold=1., maxstep=.5, timestep=1.0,
+                 geometry_threshold=1., maxstep=1., timestep=1.0,
                  maxtime=1000., maxoptsteps=500):
         """
         Parameters

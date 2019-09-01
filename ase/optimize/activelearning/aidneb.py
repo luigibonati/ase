@@ -6,6 +6,7 @@ from ase.atoms import Atoms
 from ase.optimize.activelearning.gp.calculator import GPCalculator
 from ase.neb import NEB
 from ase.optimize import FIRE, MDMin
+from ase.optimize.sciopt import *
 from ase.optimize.activelearning.acquisition import acquisition
 from ase.parallel import parprint, parallel_function
 from ase.optimize.activelearning.io import get_fmax, dump_observation
@@ -14,10 +15,10 @@ from ase.optimize.activelearning.io import get_fmax, dump_observation
 class AIDNEB:
 
     def __init__(self, start, end, model_calculator=None, calculator=None,
-                 interpolation='idpp', n_images=0.25, k=None, mic=False,
+                 interpolation='idpp', n_images=0.5, k=None, mic=False,
                  neb_method='aseneb', dynamic_relaxation=False,
                  scale_fmax=0.0, remove_rotation_and_translation=False,
-                 max_train_data=20, update_hyperparameters=False,
+                 max_train_data=10, update_hyperparameters=False,
                  force_consistent=None,
                  max_train_data_strategy='nearest_observations',
                  trajectory='AID.traj', use_previous_observations=False):
@@ -194,12 +195,19 @@ class AIDNEB:
         self.model_calculator = model_calculator
         # Default GP Calculator parameters if not specified by the user.
         if model_calculator is None:
-            self.model_calculator = GPCalculator(
-                               train_images=[], scale=0.4, weight=1.,
-                               noise=0.005, update_prior_strategy='maximum',
-                               update_hyperparams=update_hyperparameters,
-                               batch_size=1,
-                               bounds=0.2,
+            if update_hyperparameters is False:
+                self.model_calculator = GPCalculator(
+                               train_images=[], scale=0.4, weight=2.,
+                               noise=0.005, update_prior_strategy='fit',
+                               update_hyperparams=False,
+                               max_train_data_strategy=max_train_data_strategy,
+                               max_train_data=max_train_data)
+            if update_hyperparameters is True:
+                self.model_calculator = GPCalculator(
+                               train_images=[], update_hyperparams=True,
+                               scale=0.4, weight=2., noise=0.005,
+                               batch_size=10, bounds=0.5,
+                               update_prior_strategy='fit',
                                max_train_data_strategy=max_train_data_strategy,
                                max_train_data=max_train_data)
 
@@ -273,8 +281,8 @@ class AIDNEB:
                          filename=self.trajectory_observations,
                          restart=self.use_prev_obs)
 
-    def run(self, fmax=0.05, unc_convergence=0.025, ml_steps=200,
-            max_step=0.5):
+    def run(self, fmax=0.05, unc_convergence=0.050, ml_steps=200,
+            max_step=0.9):
 
         """
         Executing run will start the NEB optimization process.
@@ -350,11 +358,15 @@ class AIDNEB:
             ml_neb = NEB(self.images, climb=climbing_neb,
                          method=self.neb_method, k=self.spring,
                          remove_rotation_and_translation=self.rrt)
-            neb_opt = MDMin(ml_neb, trajectory=self.trajectory, dt=0.050)
+
+            neb_opt = SciPyFminCG(ml_neb, trajectory=self.trajectory)
 
             # Safe check to optimize the images.
             if np.max(neb_pred_uncertainty) <= max_step:
-                neb_opt.run(fmax=(fmax * 0.80), steps=ml_steps)
+                try:
+                    neb_opt.run(fmax=(fmax * 0.5), steps=ml_steps)
+                except (OptimizerConvergenceError, Converged):
+                    pass
 
             # Switch on uncertainty again speed up.
             for i in self.images:
@@ -407,18 +419,17 @@ class AIDNEB:
             candidates = self.images
 
             # This acquisition function has been tested in Ref. [1].
-
-            if np.max(neb_pred_uncertainty) < unc_convergence \
-               and self.step % 2 == 0:
-                sorted_candidates = acquisition(train_images=train_images,
-                                                candidates=candidates,
-                                                mode='ucb',
-                                                objective='max')
+            if np.max(neb_pred_uncertainty) > unc_convergence:
+                acq_mode = 'uncertainty'
             else:
-                sorted_candidates = acquisition(train_images=train_images,
-                                                candidates=candidates,
-                                                mode='uncertainty',
-                                                objective='max')
+                if self.step % 5 == 0:
+                    acq_mode = 'uncertainty'
+                else:
+                    acq_mode = 'ucb'
+            sorted_candidates = acquisition(train_images=train_images,
+                                            candidates=candidates,
+                                            mode=acq_mode,
+                                            objective='max')
 
             # Select the best candidate.
             best_candidate = sorted_candidates.pop(0)

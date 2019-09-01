@@ -307,8 +307,7 @@ class GPCalculator(Calculator, GaussianProcess):
             variance = self.kernel.kernel(x, x)
             covariance = np.tensordot(v, v, axes=(0, 0))
             V = variance - covariance
-            uncertainty = np.sqrt(V[0][0])
-            uncertainty -= self.noise
+            uncertainty = np.sqrt(V[0][0]) - self.noise**2
             if uncertainty < 0.0:
                 uncertainty = 0.0
 
