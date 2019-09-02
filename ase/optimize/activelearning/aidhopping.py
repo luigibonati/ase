@@ -10,7 +10,7 @@ from ase.md import VelocityVerlet
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from ase.optimize.minimahopping import ComparePositions
 from ase.optimize.activelearning.aidmin import AIDMin
-from ase.optimize import *
+from ase.optimize import QuasiNewton
 from ase.optimize.activelearning.io import get_fmax, dump_observation
 
 
@@ -293,7 +293,7 @@ def mdsim(atoms, temperature,  train_images, timestep=1.0, maxstep=0.5,
                                         force_consistent=force_consistent
                                         )
     current_time = 0.0  # Initial time.
-    energies, uncertainties, positions, indexes_minima = [], [], [], []
+    energies, uncertainties, indexes_minima = [], [], []
     stop_reason = None
 
     MaxwellBoltzmannDistribution(atoms, temp=temperature * units.kB,

@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.linalg import solve_triangular, cho_factor, cho_solve
+from scipy.linalg import  cho_solve
 
 import warnings
 
