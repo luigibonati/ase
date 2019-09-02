@@ -72,7 +72,7 @@ class AIDHopping:
             self.model_calculator = GPCalculator(
                             train_images=[],
                             scale=1., weight=2.,
-                            update_prior_strategy='maximum',
+                            update_prior_strategy='fit',
                             max_train_data=max_train_data,
                             max_train_data_strategy=max_train_data_strategy,
                             wrap_positions=False)
