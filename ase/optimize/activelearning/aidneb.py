@@ -286,7 +286,7 @@ class AIDNEB:
                          restart=self.use_prev_obs)
 
     def run(self, fmax=0.05, unc_convergence=0.05, ml_steps=100,
-            max_step=2.):
+            max_step=0.25):
 
         """
         Executing run will start the NEB optimization process.
