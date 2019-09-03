@@ -17,9 +17,9 @@ class AIDNEB:
 
     def __init__(self, start, end, model_calculator=None, calculator=None,
                  interpolation='idpp', n_images=0.5, k=None, mic=False,
-                 neb_method='aseneb', dynamic_relaxation=False,
+                 neb_method='improvedtangent', dynamic_relaxation=False,
                  scale_fmax=0.0, remove_rotation_and_translation=False,
-                 max_train_data=5, update_hyperparameters=True,
+                 max_train_data=5, update_hyperparameters=False,
                  force_consistent=None,
                  max_train_data_strategy='nearest_observations',
                  trajectory='AID.traj', use_previous_observations=False):
@@ -198,17 +198,17 @@ class AIDNEB:
         if model_calculator is None:
             if update_hyperparameters is False:
                 self.model_calculator = GPCalculator(
-                               train_images=[], scale=0.4, weight=1.,
-                               noise=0.005, update_prior_strategy='maximum',
+                               train_images=[], scale=0.35, weight=2.,
+                               noise=0.005, update_prior_strategy='fit',
                                update_hyperparams=False,
                                max_train_data_strategy=max_train_data_strategy,
                                max_train_data=max_train_data)
             if update_hyperparameters is True:
                 self.model_calculator = GPCalculator(
                                train_images=[], update_hyperparams=True,
-                               scale=0.4, weight=1., noise=0.010,
+                               scale=0.35, weight=2., noise=0.005,
                                batch_size=1, bounds=0.1,
-                               update_prior_strategy='maximum',
+                               update_prior_strategy='fit',
                                max_train_data_strategy=max_train_data_strategy,
                                max_train_data=max_train_data)
 
@@ -225,8 +225,8 @@ class AIDNEB:
         self.trajectory = trajectory
 
         # Calculate the distance between the initial and final endpoints.
-        d_start_end = np.linalg.norm(self.i_endpoint.positions.reshape(-1) -
-                                     self.e_endpoint.positions.reshape(-1))
+        d_start_end = euclidean(self.i_endpoint.positions.reshape(-1),
+                                self.e_endpoint.positions.reshape(-1))
         # A) Create images using interpolation if user do defines a path.
         if interp_path is None:
             if isinstance(self.n_images, float):
@@ -248,7 +248,7 @@ class AIDNEB:
                 neb_interp = NEB(self.images, climb=True, k=self.spring,
                                  remove_rotation_and_translation=self.rrt)
                 try:
-                    neb_interp.idpp_interpolate(optimizer=SciPyFminCG)
+                    neb_interp.idpp_interpolate(optimizer=FIRE)
                 except:
                     pass
 
@@ -286,7 +286,7 @@ class AIDNEB:
                          restart=self.use_prev_obs)
 
     def run(self, fmax=0.05, unc_convergence=0.05, ml_steps=300,
-            max_step=0.9):
+            max_step=0.3):
 
         """
         Executing run will start the NEB optimization process.
@@ -377,7 +377,7 @@ class AIDNEB:
                     ml_neb = NEB(self.images, climb=climbing_neb,
                                  method=self.neb_method, k=self.spring,
                                  remove_rotation_and_translation=self.rrt)
-                    neb_opt = SciPyFminCG(ml_neb, logfile=None,
+                    neb_opt = MDMin(ml_neb, logfile=None, dt=0.05,
                                           trajectory=self.trajectory)
 
                 # Safe check to optimize the images.
@@ -415,7 +415,6 @@ class AIDNEB:
                 if inner_steps > 10:
                     break
                 inner_steps += 1
-
 
             # 4. Get predicted energies and uncertainties of the NEB images.
             predictions = get_neb_predictions(self.images)
