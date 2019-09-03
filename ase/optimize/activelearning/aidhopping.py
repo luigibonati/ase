@@ -21,7 +21,7 @@ class AIDHopping:
                  max_train_data_strategy='nearest_observations',
                  trajectory='AID.traj', T0=500., beta1=1.01,
                  beta2=0.98, beta3=0.75, beta4=0.02, energy_threshold=2.5,
-                 geometry_threshold=1., maxstep=1., timestep=1.0,
+                 geometry_threshold=1., maxstep=0.5, timestep=1.0,
                  maxtime=1000., maxoptsteps=500):
         """
         Parameters
@@ -266,6 +266,7 @@ class AIDHopping:
                     if get_fmax(prev_opt) <= self.fmax:
                         self.temperature *= self.beta3
                         parprint('Re-starting temperature...')
+                        self.maxstep = 0.5
                         dump_observation(atoms=prev_opt,
                                          filename=self.trajectory_minima,
                                          restart=True)
