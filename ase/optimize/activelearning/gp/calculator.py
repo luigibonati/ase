@@ -85,7 +85,7 @@ class GPCalculator(Calculator, GaussianProcess):
     nolabel = True
 
     def __init__(self, train_images=None, prior=None,
-                 update_prior_strategy='fit', weight=1.,
+                 update_prior_strategy='maximum', weight=1.,
                  scale=0.4, noise=0.004, update_hyperparams=False,
                  batch_size=5, bounds=None, kernel=None,
                  max_train_data=None, force_consistent=None,
@@ -307,7 +307,7 @@ class GPCalculator(Calculator, GaussianProcess):
             variance = self.kernel.kernel(x, x)
             covariance = np.tensordot(v, v, axes=(0, 0))
             V = variance - covariance
-            uncertainty = np.sqrt(V[0][0]) - self.noise**2
+            uncertainty = np.sqrt(V[0][0])
             if uncertainty < 0.0:
                 uncertainty = 0.0
 

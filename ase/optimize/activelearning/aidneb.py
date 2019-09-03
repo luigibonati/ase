@@ -19,7 +19,7 @@ class AIDNEB:
                  interpolation='idpp', n_images=0.5, k=None, mic=False,
                  neb_method='aseneb', dynamic_relaxation=False,
                  scale_fmax=0.0, remove_rotation_and_translation=False,
-                 max_train_data=5, update_hyperparameters=False,
+                 max_train_data=5, update_hyperparameters=True,
                  force_consistent=None,
                  max_train_data_strategy='nearest_observations',
                  trajectory='AID.traj', use_previous_observations=False):
@@ -199,16 +199,16 @@ class AIDNEB:
             if update_hyperparameters is False:
                 self.model_calculator = GPCalculator(
                                train_images=[], scale=0.4, weight=1.,
-                               noise=0.005, update_prior_strategy='fit',
+                               noise=0.005, update_prior_strategy='maximum',
                                update_hyperparams=False,
                                max_train_data_strategy=max_train_data_strategy,
                                max_train_data=max_train_data)
             if update_hyperparameters is True:
                 self.model_calculator = GPCalculator(
                                train_images=[], update_hyperparams=True,
-                               scale=0.4, weight=1., noise=0.005,
-                               batch_size=10, bounds=0.5,
-                               update_prior_strategy='fit',
+                               scale=0.4, weight=1., noise=0.010,
+                               batch_size=1, bounds=0.1,
+                               update_prior_strategy='maximum',
                                max_train_data_strategy=max_train_data_strategy,
                                max_train_data=max_train_data)
 
@@ -285,8 +285,8 @@ class AIDNEB:
                          filename=self.trajectory_observations,
                          restart=self.use_prev_obs)
 
-    def run(self, fmax=0.05, unc_convergence=0.050, ml_steps=200,
-            max_step=0.5):
+    def run(self, fmax=0.05, unc_convergence=0.05, ml_steps=300,
+            max_step=0.9):
 
         """
         Executing run will start the NEB optimization process.
@@ -336,7 +336,9 @@ class AIDNEB:
                 i.set_calculator(None)
             probed_atoms = copy.deepcopy(self.images)
 
+            inner_steps = 0
             while not ml_converged:
+
                 model_calc = copy.deepcopy(self.model_calculator)
 
                 # Train only one process at the time.
@@ -370,12 +372,12 @@ class AIDNEB:
                                  method=self.neb_method, k=self.spring,
                                  remove_rotation_and_translation=self.rrt)
                     neb_opt = MDMin(ml_neb, trajectory=self.trajectory,
-                                    dt=0.050)
+                                    dt=0.050, logfile=None)
                 else:
                     ml_neb = NEB(self.images, climb=climbing_neb,
                                  method=self.neb_method, k=self.spring,
                                  remove_rotation_and_translation=self.rrt)
-                    neb_opt = SciPyFminCG(ml_neb,
+                    neb_opt = SciPyFminCG(ml_neb, logfile=None,
                                           trajectory=self.trajectory)
 
                 # Safe check to optimize the images.
@@ -400,6 +402,7 @@ class AIDNEB:
                         ml_converged = False
 
                 probed_atoms += copy.deepcopy(self.images)
+
                 for i in probed_atoms:  # Detach calculators. Speed up.
                     i.set_calculator(None)
 
@@ -409,8 +412,9 @@ class AIDNEB:
                     i.get_calculator().results = {}
                     i.get_potential_energy()
 
-
-            ######################
+                if inner_steps > 10:
+                    break
+                inner_steps += 1
 
 
             # 4. Get predicted energies and uncertainties of the NEB images.
