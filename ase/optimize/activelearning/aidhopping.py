@@ -72,7 +72,7 @@ class AIDHopping:
             self.model_calculator = GPCalculator(
                             train_images=[],
                             scale=1., weight=2.,
-                            update_prior_strategy='maximum',
+                            update_prior_strategy='init',
                             max_train_data=max_train_data,
                             max_train_data_strategy=max_train_data_strategy,
                             wrap_positions=False)
@@ -167,6 +167,7 @@ class AIDHopping:
                         parprint('Increase energy threshold to explore '
                                  'higher energy regions.')
                         self.energy_threshold += self.beta4  # Increase energy.
+                        self.maxstep -= 5 * self.beta4
                         parprint('Current energy threshold is: ',
                                  self.energy_threshold)
 
@@ -174,6 +175,7 @@ class AIDHopping:
                         candidates += [copy.deepcopy(md_guess)]
                         self.temperature *= self.beta2
                         # self.temperature = self.T0
+                        self.maxstep += 5 * self.beta4
 
                     if stop_reason == 'mdmin_found':
                         opt_atoms = io.read(self.trajectory_minima, -1)
@@ -232,8 +234,8 @@ class AIDHopping:
                                                       )
             model_min_greedy = GPCalculator(train_images=[],
                                             scale=0.3, weight=2.,
-                                            prior=ConstantPrior(min_prior),
-                                            update_prior_strategy=None,
+                                            # prior=ConstantPrior(min_prior),
+                                            update_prior_strategy='fit',
                                             max_train_data=5,
                                             wrap_positions=False
                                             )
