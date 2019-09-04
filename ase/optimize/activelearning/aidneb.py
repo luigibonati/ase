@@ -1,5 +1,3 @@
-import copy
-import time
 from ase import io
 from ase.atoms import Atoms
 from ase.optimize.activelearning.gp.calculator import GPCalculator
@@ -9,7 +7,10 @@ from ase.optimize.sciopt import *
 from ase.optimize.activelearning.acquisition import acquisition
 from ase.parallel import parprint, parallel_function
 from ase.optimize.activelearning.io import get_fmax, dump_observation
+
 from scipy.spatial.distance import euclidean
+import copy
+import time
 import numpy as np
 
 
@@ -285,7 +286,7 @@ class AIDNEB:
                          filename=self.trajectory_observations,
                          restart=self.use_prev_obs)
 
-    def run(self, fmax=0.05, unc_convergence=0.025, ml_steps=100,
+    def run(self, fmax=0.05, unc_convergence=0.050, ml_steps=100,
             max_step=0.25):
 
         """
@@ -374,23 +375,11 @@ class AIDNEB:
             # Climbing image NEB mode is risky when the model is trained
             # with a few data points. Switch on climbing image (CI-NEB)
             # only when the uncertainty of the NEB is low.
-            climbing_neb = False
-            if np.max(neb_pred_uncertainty) <= unc_convergence:
-                parprint('Climbing image is now activated.')
-                ml_neb = NEB(self.images, climb=True,
-                             dynamic_relaxation=self.dynamic_relaxation,
-                             scale_fmax=self.scale_fmax,
-                             method=self.neb_method, k=self.spring,
-                             remove_rotation_and_translation=self.rrt)
-                neb_opt = MDMin(ml_neb, trajectory=self.trajectory,
-                                dt=0.050, logfile=None)
-            else:
-                ml_neb = NEB(self.images, climb=climbing_neb,
-                             method=self.neb_method, k=self.spring,
-                             remove_rotation_and_translation=self.rrt)
-                neb_opt = SciPyFminCG(ml_neb, logfile=None,
-                                      trajectory=self.trajectory)
-
+            ml_neb = NEB(self.images, climb=False,
+                         method=self.neb_method, k=self.spring,
+                         remove_rotation_and_translation=self.rrt)
+            neb_opt = SciPyFminCG(ml_neb, logfile=None,
+                                  trajectory=self.trajectory)
             # Safe check to optimize the images.
             if np.max(neb_pred_uncertainty) <= max_step:
                 try:
@@ -403,6 +392,21 @@ class AIDNEB:
                 i.get_calculator().calculate_uncertainty = True
                 i.get_calculator().results = {}
                 i.get_potential_energy()
+            predictions = get_neb_predictions(self.images)
+            neb_pred_uncertainty = predictions['uncertainty']
+
+            if np.max(neb_pred_uncertainty) <= unc_convergence:
+                parprint('Climbing image is now activated.')
+                ml_neb = NEB(self.images, climb=True,
+                             dynamic_relaxation=self.dynamic_relaxation,
+                             scale_fmax=self.scale_fmax,
+                             method=self.neb_method, k=self.spring,
+                             remove_rotation_and_translation=self.rrt)
+                neb_opt = MDMin(ml_neb, trajectory=self.trajectory,
+                                dt=0.050, logfile=None)
+                neb_opt.run(fmax=(fmax * 0.80), steps=ml_steps)
+
+
 
             # 4. Get predicted energies and uncertainties of the NEB images.
             predictions = get_neb_predictions(self.images)
@@ -452,10 +456,7 @@ class AIDNEB:
             if np.max(neb_pred_uncertainty) > unc_convergence:
                 acq_mode = 'uncertainty'
             else:
-                if self.step % 2 == 0:
-                    acq_mode = 'uncertainty'
-                else:
-                    acq_mode = 'ucb'
+                acq_mode = 'ucb'
             sorted_candidates = acquisition(train_images=train_images,
                                             candidates=candidates,
                                             mode=acq_mode,
