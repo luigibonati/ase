@@ -86,7 +86,8 @@ class GPCalculator(Calculator, GaussianProcess):
 
     def __init__(self, train_images=None, prior=None,
                  update_prior_strategy='maximum', weight=1.,
-                 scale=0.4, noise=0.005, update_hyperparams=False,
+                 fit_weight='update', scale=0.4, noise=0.005,
+                 update_hyperparams=False,
                  batch_size=5, bounds=None, kernel=None,
                  max_train_data=None, force_consistent=None,
                  max_train_data_strategy='nearest_observations',
@@ -111,6 +112,7 @@ class GPCalculator(Calculator, GaussianProcess):
         self.prev_train_y = []  # Do not retrain model if same data.
         self.calculate_uncertainty = calculate_uncertainty
         self.wrap = wrap_positions
+        self.fit_weight = fit_weight
 
     def initialize(self):
         """ Initialize the calculator, including model parameters. """
@@ -238,10 +240,15 @@ class GPCalculator(Calculator, GaussianProcess):
 
         # Check whether is the same train process than before:
         if not np.array_equal(self.train_y, self.prev_train_y):
-            # 4. Train a Gaussian Process .
+            # 4. Train a Gaussian Process.
             print('Training data size: ', len(self.train_x))
             self.train(np.array(self.train_x), np.array(self.train_y),
                        noise=self.noise)
+
+            if self.fit_weight is not None:
+                self.fit_weight_only(np.asarray(self.train_x),
+                                     np.asarray(self.train_y),
+                                     option=self.fit_weight)
 
             # 5. (optional) Optimize model hyperparameters.
             if self.update_hp and len(self.train_x) % self.nbatch == 0 and len(self.train_x) != 0:
@@ -308,7 +315,7 @@ class GPCalculator(Calculator, GaussianProcess):
             covariance = np.tensordot(v, v, axes=(0, 0))
             V = variance - covariance
             uncertainty = np.sqrt(V[0][0])
-            uncertainty -= self.noise
+            # uncertainty -= self.noise
             if uncertainty < 0.0:
                 uncertainty = 0.0
 

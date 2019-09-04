@@ -16,10 +16,10 @@ import numpy as np
 class AIDNEB:
 
     def __init__(self, start, end, model_calculator=None, calculator=None,
-                 interpolation='idpp', n_images=0.5, k=None, mic=False,
-                 neb_method='aseneb', dynamic_relaxation=False,
+                 interpolation='linear', n_images=0.5, k=None, mic=False,
+                 neb_method='improvedtangent', dynamic_relaxation=False,
                  scale_fmax=0.0, remove_rotation_and_translation=False,
-                 max_train_data=50, update_hyperparameters=False,
+                 max_train_data=100, update_hyperparameters=False,
                  force_consistent=None,
                  max_train_data_strategy='nearest_observations',
                  trajectory='AID.traj', use_previous_observations=False):
@@ -198,7 +198,7 @@ class AIDNEB:
         if model_calculator is None:
             if update_hyperparameters is False:
                 self.model_calculator = GPCalculator(
-                               train_images=[], scale=0.4, weight=1.,
+                               train_images=[], scale=0.35, weight=1.,
                                noise=0.005, update_prior_strategy='maximum',
                                update_hyperparams=False,
                                max_train_data_strategy=max_train_data_strategy,
@@ -285,7 +285,7 @@ class AIDNEB:
                          filename=self.trajectory_observations,
                          restart=self.use_prev_obs)
 
-    def run(self, fmax=0.05, unc_convergence=0.05, ml_steps=100,
+    def run(self, fmax=0.05, unc_convergence=0.025, ml_steps=100,
             max_step=0.25):
 
         """
@@ -315,6 +315,23 @@ class AIDNEB:
             very uncertain regions which can lead to probe unrealistic
             structures.
         """
+        train_images = io.read(self.trajectory_observations, ':')
+        if len(train_images) == 2:
+            middle = int(self.n_images * (2./3.))
+            e_is = self.i_endpoint.get_potential_energy()
+            e_fs = self.e_endpoint.get_potential_energy()
+            if e_is >= e_fs:
+                middle = int(self.n_images * (1./3.))
+            self.atoms.positions = self.images[middle].get_positions()
+            self.atoms.set_calculator(self.ase_calc)
+            self.atoms.get_potential_energy(force_consistent=self.fc)
+            self.atoms.get_forces()
+            dump_observation(atoms=self.atoms, method='neb',
+                             filename=self.trajectory_observations,
+                             restart=self.use_prev_obs)
+            self.function_calls += 1
+            self.force_calls += 1
+            self.step += 1
 
         while True:
 
@@ -328,93 +345,63 @@ class AIDNEB:
                 img.set_constraint(self.constraints)
 
             # 2. Prepare the model calculator (train and attach to images).
-            # Probed positions are used for low-memory.
-            ml_converged = False
 
             # Detach calculator from the prev. optimized images (speed up).
             for i in self.images:
                 i.set_calculator(None)
-            probed_atoms = copy.deepcopy(self.images)
 
-            inner_steps = 0
-            while not ml_converged:
+            model_calc = copy.deepcopy(self.model_calculator)
 
-                model_calc = copy.deepcopy(self.model_calculator)
+            # Train only one process at the time.
+            model_calc.update_train_data(
+                                   train_images,
+                                   test_images=copy.deepcopy(self.images)
+                                   )
 
-                # Train only one process at the time.
-                model_calc.update_train_data(
-                                       train_images,
-                                       test_images=copy.deepcopy(probed_atoms)
-                                       )
+            # Attach the calculator (already trained) to each image.
+            for i in self.images:
+                i.set_calculator(copy.deepcopy(model_calc))
 
-                # Attach the calculator (already trained) to each image.
-                for i in self.images:
-                    i.set_calculator(copy.deepcopy(model_calc))
+            # 3. Optimize the NEB in the predicted PES.
+            # Get path uncertainty for selecting within NEB or CI-NEB.
+            predictions = get_neb_predictions(self.images)
+            neb_pred_uncertainty = predictions['uncertainty']
 
-                # 3. Optimize the NEB in the predicted PES.
-                # Get path uncertainty for selecting within NEB or CI-NEB.
-                predictions = get_neb_predictions(self.images)
-                neb_pred_uncertainty = predictions['uncertainty']
+            # Speed up (do not calculate uncertainty during optimization).
+            for i in self.images:
+                i.get_calculator().calculate_uncertainty = False
 
-                # Speed up (do not calculate uncertainty during optimization).
-                for i in self.images:
-                    i.get_calculator().calculate_uncertainty = False
+            # Climbing image NEB mode is risky when the model is trained
+            # with a few data points. Switch on climbing image (CI-NEB)
+            # only when the uncertainty of the NEB is low.
+            climbing_neb = False
+                parprint('Climbing image is now activated.')
+                ml_neb = NEB(self.images, climb=True,
+                             dynamic_relaxation=self.dynamic_relaxation,
+                             scale_fmax=self.scale_fmax,
+                             method=self.neb_method, k=self.spring,
+                             remove_rotation_and_translation=self.rrt)
+                neb_opt = MDMin(ml_neb, trajectory=self.trajectory,
+                                dt=0.050, logfile=None)
+            else:
+                ml_neb = NEB(self.images, climb=climbing_neb,
+                             method=self.neb_method, k=self.spring,
+                             remove_rotation_and_translation=self.rrt)
+                neb_opt = SciPyFminCG(ml_neb, logfile=None,
+                                      trajectory=self.trajectory)
 
-                # Climbing image NEB mode is risky when the model is trained
-                # with a few data points. Switch on climbing image (CI-NEB)
-                # only when the uncertainty of the NEB is low.
-                climbing_neb = False
-                if np.max(neb_pred_uncertainty) <= unc_convergence:
-                    parprint('Climbing image is now activated.')
-                    ml_neb = NEB(self.images, climb=True,
-                                 dynamic_relaxation=self.dynamic_relaxation,
-                                 scale_fmax=self.scale_fmax,
-                                 method=self.neb_method, k=self.spring,
-                                 remove_rotation_and_translation=self.rrt)
-                    neb_opt = MDMin(ml_neb, trajectory=self.trajectory,
-                                    dt=0.050, logfile=None)
-                else:
-                    ml_neb = NEB(self.images, climb=climbing_neb,
-                                 method=self.neb_method, k=self.spring,
-                                 remove_rotation_and_translation=self.rrt)
-                    neb_opt = MDMin(ml_neb, logfile=None, dt=0.05,
-                                          trajectory=self.trajectory)
+            # Safe check to optimize the images.
+            if np.max(neb_pred_uncertainty) <= max_step:
+                try:
+                    neb_opt.run(fmax=(fmax * 0.80), steps=ml_steps)
+                except (Converged, OptimizerConvergenceError):
+                    pass
 
-                # Safe check to optimize the images.
-                if np.max(neb_pred_uncertainty) <= max_step:
-                    try:
-                        neb_opt.run(fmax=(fmax * 0.80), steps=ml_steps)
-                    except (Converged, OptimizerConvergenceError):
-                        pass
-
-                # Check whether the distances between the last two
-                # iterations is below certain criteria.
-                self.geometry_threshold = 0.01
-                ml_converged = True
-
-                last_probed_atoms = probed_atoms[-len(self.images):]
-
-                for n in range(0, len(self.images)):
-                    l1_probed_pos = self.images[n].positions.reshape(-1)
-                    l2_probed_pos = last_probed_atoms[n].positions.reshape(-1)
-                    dl1l2 = euclidean(l1_probed_pos, l2_probed_pos)
-                    if dl1l2 >= self.geometry_threshold:
-                        ml_converged = False
-
-                probed_atoms += copy.deepcopy(self.images)
-
-                for i in probed_atoms:  # Detach calculators. Speed up.
-                    i.set_calculator(None)
-
-                # Switch on uncertainty again speed up.
-                for i in self.images:
-                    i.get_calculator().calculate_uncertainty = True
-                    i.get_calculator().results = {}
-                    i.get_potential_energy()
-
-                if inner_steps > 10:
-                    break
-                inner_steps += 1
+            # Switch on uncertainty again speed up.
+            for i in self.images:
+                i.get_calculator().calculate_uncertainty = True
+                i.get_calculator().results = {}
+                i.get_potential_energy()
 
             # 4. Get predicted energies and uncertainties of the NEB images.
             predictions = get_neb_predictions(self.images)
@@ -464,7 +451,7 @@ class AIDNEB:
             if np.max(neb_pred_uncertainty) > unc_convergence:
                 acq_mode = 'uncertainty'
             else:
-                if self.step % 5 == 0:
+                if self.step % 2 == 0:
                     acq_mode = 'uncertainty'
                 else:
                     acq_mode = 'ucb'

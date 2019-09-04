@@ -2,7 +2,6 @@ import numpy as np
 import copy
 import os
 from ase.optimize.activelearning.gp.calculator import GPCalculator
-from ase.optimize.activelearning.gp.calculator import ConstantPrior
 from ase import io, units
 from ase.parallel import parprint, parallel_function
 from ase.optimize.activelearning.acquisition import acquisition
@@ -73,6 +72,7 @@ class AIDHopping:
                             train_images=[],
                             scale=1., weight=2.,
                             update_prior_strategy='init',
+                            fit_weight=None,
                             max_train_data=max_train_data,
                             max_train_data_strategy=max_train_data_strategy,
                             wrap_positions=False)
@@ -184,7 +184,8 @@ class AIDHopping:
                                         scale=0.3, weight=2.,
                                         update_prior_strategy='maximum',
                                         max_train_data=50,
-                                        wrap_positions=False
+                                        wrap_positions=False,
+                                        fit_weight=None
                                         )
                         model_min.update_train_data(
                                         train_images=train_images,
@@ -237,6 +238,7 @@ class AIDHopping:
                                             # prior=ConstantPrior(min_prior),
                                             update_prior_strategy='fit',
                                             max_train_data=5,
+                                            fit_weight=None,
                                             wrap_positions=False
                                             )
             while True:
