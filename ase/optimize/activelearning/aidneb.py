@@ -1,4 +1,3 @@
-import numpy as np
 import copy
 import time
 from ase import io
@@ -11,6 +10,7 @@ from ase.optimize.activelearning.acquisition import acquisition
 from ase.parallel import parprint, parallel_function
 from ase.optimize.activelearning.io import get_fmax, dump_observation
 from scipy.spatial.distance import euclidean
+import numpy as np
 
 
 class AIDNEB:
@@ -199,7 +199,7 @@ class AIDNEB:
             if update_hyperparameters is False:
                 self.model_calculator = GPCalculator(
                                train_images=[], scale=0.4, weight=1.,
-                               noise=0.005, update_prior_strategy='fit',
+                               noise=0.005, update_prior_strategy='maximum',
                                update_hyperparams=False,
                                max_train_data_strategy=max_train_data_strategy,
                                max_train_data=max_train_data)
@@ -208,7 +208,7 @@ class AIDNEB:
                                train_images=[], update_hyperparams=True,
                                scale=0.4, weight=1., noise=0.005,
                                batch_size=1, bounds=0.1,
-                               update_prior_strategy='fit',
+                               update_prior_strategy='maximum',
                                max_train_data_strategy=max_train_data_strategy,
                                max_train_data=max_train_data)
 
