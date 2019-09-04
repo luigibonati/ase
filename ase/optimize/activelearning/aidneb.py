@@ -375,6 +375,7 @@ class AIDNEB:
             # with a few data points. Switch on climbing image (CI-NEB)
             # only when the uncertainty of the NEB is low.
             climbing_neb = False
+            if np.max(neb_pred_uncertainty) <= unc_convergence:
                 parprint('Climbing image is now activated.')
                 ml_neb = NEB(self.images, climb=True,
                              dynamic_relaxation=self.dynamic_relaxation,
