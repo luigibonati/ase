@@ -1,29 +1,26 @@
+import numpy as np
+import copy
+import time
 from ase import io
 from ase.atoms import Atoms
 from ase.optimize.activelearning.gp.calculator import GPCalculator
 from ase.neb import NEB
-from ase.optimize import FIRE, MDMin
-from ase.optimize.sciopt import *
+from ase.geometry import distance
+from ase.optimize import MDMin
 from ase.optimize.activelearning.acquisition import acquisition
 from ase.parallel import parprint, parallel_function
-from ase.optimize.activelearning.io import get_fmax, dump_observation
-
-from scipy.spatial.distance import euclidean
-import copy
-import time
-import numpy as np
+from ase.optimize.activelearning.io import dump_observation, get_fmax
 
 
 class AIDNEB:
 
     def __init__(self, start, end, model_calculator=None, calculator=None,
-                 interpolation='linear', n_images=0.5, k=None, mic=False,
-                 neb_method='improvedtangent', dynamic_relaxation=False,
-                 scale_fmax=0.0, remove_rotation_and_translation=False,
-                 max_train_data=100, update_hyperparameters=False,
-                 force_consistent=None,
+                 interpolation='linear', n_images=0.25, k=None, mic=False,
+                 neb_method='aseneb', remove_rotation_and_translation=False,
+                 max_train_data=20, force_consistent=None,
                  max_train_data_strategy='nearest_observations',
-                 trajectory='AID.traj', use_previous_observations=False):
+                 trajectory='AIDNEB.traj',
+                 use_previous_observations=False):
 
         """
         Artificial Intelligence-Driven Nudged Elastic Band (AID-NEB) algorithm.
@@ -97,21 +94,6 @@ class AIDNEB:
             NEB method as implemented in ASE. ('aseneb', 'improvedtangent'
             or 'eb'). See https://wiki.fysik.dtu.dk/ase/ase/neb.html.
 
-        dynamic_relaxation: boolean
-            TRUE calculates the norm of the forces acting on each image in
-            the band. An image is optimized only if its norm is above the
-            convergence criterion. The list fmax_images is updated every
-            force call; if a previously converged image goes out of
-            tolerance (due to spring adjustments between the image and its
-            neighbors), it will be optimized again. This routine can speed
-            up calculations if convergence is non-uniform. Convergence
-            criterion should be the same as that given to the optimizer. Not
-            efficient when parallelizing over images.
-
-        scale_fmax: float
-            Scale convergence criteria along band based on the distance
-            between a state and the state with the highest potential energy.
-
         calculator: ASE calculator Object.
             ASE calculator.
             See https://wiki.fysik.dtu.dk/ase/ase/calculators/calculators.html
@@ -183,77 +165,53 @@ class AIDNEB:
         self.mic = mic
         self.rrt = remove_rotation_and_translation
         self.neb_method = neb_method
-        self.scale_fmax = scale_fmax
-        self.dynamic_relaxation = dynamic_relaxation
         self.spring = k
         self.i_endpoint = io.read(self.start, '-1')
-        # self.i_endpoint.get_potential_energy(force_consistent=force_consistent)
-        # self.i_endpoint.get_forces()
+        self.i_endpoint.get_potential_energy(force_consistent=force_consistent)
+        self.i_endpoint.get_forces()
         self.e_endpoint = io.read(self.end, '-1')
-        # self.e_endpoint.get_potential_energy(force_consistent=force_consistent)
-        # self.e_endpoint.get_forces()
+        self.e_endpoint.get_potential_energy(force_consistent=force_consistent)
+        self.e_endpoint.get_forces()
 
-        # Model calculator:
+        # GP calculator:
         self.model_calculator = model_calculator
-        # Default GP Calculator parameters if not specified by the user.
         if model_calculator is None:
-            if update_hyperparameters is False:
-                self.model_calculator = GPCalculator(
-                               train_images=[], scale=0.35, weight=1.,
-                               noise=0.005, update_prior_strategy='maximum',
-                               update_hyperparams=False,
-                               max_train_data_strategy=max_train_data_strategy,
-                               max_train_data=max_train_data)
-            if update_hyperparameters is True:
-                self.model_calculator = GPCalculator(
-                               train_images=[], update_hyperparams=True,
-                               scale=0.4, weight=1., noise=0.005,
-                               batch_size=1, bounds=0.1,
-                               update_prior_strategy='maximum',
-                               max_train_data_strategy=max_train_data_strategy,
-                               max_train_data=max_train_data)
+            self.model_calculator = GPCalculator(
+                            train_images=[],
+                            prior=None,
+                            update_prior_strategy='maximum',
+                            weight=1.0, scale=0.4, noise=0.005,
+                            update_hyperparams=False, batch_size=5,
+                            bounds=None, kernel=None,
+                            max_train_data_strategy=max_train_data_strategy,
+                            max_train_data=max_train_data
+                            )
 
         # Active Learning setup (Single-point calculations).
         self.function_calls = 0
         self.force_calls = 0
-        self.step = 0
         self.ase_calc = calculator
         self.atoms = io.read(self.start, '-1')
 
         self.constraints = self.atoms.constraints
-        self.fc = force_consistent
-        self.use_prev_obs = use_previous_observations
+        self.force_consistent = force_consistent
+        self.use_previous_observations = use_previous_observations
         self.trajectory = trajectory
 
         # Calculate the distance between the initial and final endpoints.
-        d_start_end = euclidean(self.i_endpoint.positions.reshape(-1),
-                                self.e_endpoint.positions.reshape(-1))
+        d_start_end = distance(self.i_endpoint, self.e_endpoint)
+
         # A) Create images using interpolation if user do defines a path.
         if interp_path is None:
             if isinstance(self.n_images, float):
-                self.n_images = int(d_start_end/self.n_images) + 2
-                if self.n_images % 2 == 0:
-                    self.n_images += 1
+                self.n_images = int(d_start_end/self.n_images)
             if self. n_images <= 3:
                 self.n_images = 3
             self.images = make_neb(self)
+            neb_interpolation = NEB(self.images)
+            neb_interpolation.interpolate(method=interpolation, mic=self.mic)
 
-            # Guess spring constant (k) if not defined by the user.
-            if self.spring is None:
-                self.spring = np.sqrt(self.n_images-1) / d_start_end
-
-            neb_interp = NEB(self.images, climb=False, k=self.spring,
-                             remove_rotation_and_translation=self.rrt)
-            neb_interp.interpolate(method='linear', mic=self.mic)
-            if interpolation == 'idpp':
-                neb_interp = NEB(self.images, climb=True, k=self.spring,
-                                 remove_rotation_and_translation=self.rrt)
-                try:
-                    neb_interp.idpp_interpolate(optimizer=FIRE)
-                except:
-                    pass
-
-        # B) Alternatively, the user can manually supply the initial path.
+        # B) Alternatively, the user can manually decide the initial path.
         if interp_path is not None:
             images_path = io.read(interp_path, ':')
             first_image = images_path[0].get_positions().reshape(-1)
@@ -267,27 +225,12 @@ class AIDNEB:
             self.n_images = len(images_path)
             self.images = make_neb(self, images_interpolation=images_path)
 
-        # Automatically adjust spring constant (k) if not defined by the user.
+        # Guess spring constant (k) if not defined by the user.
         if self.spring is None:
             self.spring = (np.sqrt(self.n_images-1) / d_start_end)
 
-        # Filenames of the trajectories containing the observations and
-        # candidates.
-        trajectory_main = self.trajectory.split('.')[0]
-        self.trajectory_observations = trajectory_main + '_observations.traj'
-        self.trajectory_candidates = trajectory_main + '_candidates.traj'
-
-        # Start by saving the initial and final states.
-        dump_observation(atoms=self.i_endpoint, method='neb',
-                         filename=self.trajectory_observations,
-                         restart=self.use_prev_obs)
-        self.use_prev_obs = True  # Switch on active learning.
-        dump_observation(atoms=self.e_endpoint, method='neb',
-                         filename=self.trajectory_observations,
-                         restart=self.use_prev_obs)
-
-    def run(self, fmax=0.05, unc_convergence=0.050, ml_steps=100,
-            max_step=0.25):
+    def run(self, fmax=0.05, unc_convergence=0.05, dt=0.05, ml_steps=100,
+            max_step=2.0):
 
         """
         Executing run will start the NEB optimization process.
@@ -303,6 +246,9 @@ class AIDNEB:
             on any of the NEB images in the predicted path is above this
             threshold.
 
+        dt : float
+            dt parameter for MDMin.
+
         ml_steps: int
             Maximum number of steps for the NEB optimization on the
             modelled potential energy surface.
@@ -315,100 +261,65 @@ class AIDNEB:
             with maximum uncertainty is evaluated. This prevents exploring
             very uncertain regions which can lead to probe unrealistic
             structures.
+
+        Returns
+        -------
+        Minimum Energy Path from the initial to the final states.
+
         """
-        train_images = io.read(self.trajectory_observations, ':')
-        if len(train_images) == 2:
-            middle = int(self.n_images * (2./3.))
-            e_is = self.i_endpoint.get_potential_energy()
-            e_fs = self.e_endpoint.get_potential_energy()
-            if e_is >= e_fs:
-                middle = int(self.n_images * (1./3.))
-            self.atoms.positions = self.images[middle].get_positions()
-            self.atoms.set_calculator(self.ase_calc)
-            self.atoms.get_potential_energy(force_consistent=self.fc)
-            self.atoms.get_forces()
-            dump_observation(atoms=self.atoms, method='neb',
-                             filename=self.trajectory_observations,
-                             restart=self.use_prev_obs)
-            self.function_calls += 1
-            self.force_calls += 1
-            self.step += 1
+        trajectory_main = self.trajectory.split('.')[0]
+        trajectory_observations = trajectory_main + '_observations.traj'
+        trajectory_candidates = trajectory_main + '_candidates.traj'
+
+        # Start by saving the initial and final states.
+        dump_observation(atoms=self.i_endpoint,
+                         filename=trajectory_observations,
+                         restart=self.use_previous_observations)
+        self.use_previous_observations = True  # Switch on active learning.
+        dump_observation(atoms=self.e_endpoint,
+                         filename=trajectory_observations,
+                         restart=self.use_previous_observations)
 
         while True:
 
-            # 1. Gather observations in every iteration. This serves to use
-            # the previous observations (useful for continuing calculations
-            # and/or for parallel runs).
-            train_images = io.read(self.trajectory_observations, ':')
+            # 1. Collect observations.
+            # This serves to use_previous_observations from a previous
+            # (and/or parallel) runs.
+            train_images = io.read(trajectory_observations, ':')
 
-            # Update constraints in case they have changed from previous runs.
-            for img in train_images:
-                img.set_constraint(self.constraints)
-
-            # 2. Prepare the model calculator (train and attach to images).
+            # 2. Prepare a calculator.
+            calc = copy.deepcopy(self.model_calculator)
 
             # Detach calculator from the prev. optimized images (speed up).
             for i in self.images:
                 i.set_calculator(None)
-
-            model_calc = copy.deepcopy(self.model_calculator)
-
-            # Train only one process at the time.
-            model_calc.update_train_data(
-                                   train_images,
-                                   test_images=copy.deepcopy(self.images)
-                                   )
-
+            # Train only one process.
+            calc.update_train_data(train_images,
+                                   test_images=copy.deepcopy(self.images))
             # Attach the calculator (already trained) to each image.
             for i in self.images:
-                i.set_calculator(copy.deepcopy(model_calc))
+                i.set_calculator(copy.deepcopy(calc))
 
             # 3. Optimize the NEB in the predicted PES.
-            # Get path uncertainty for selecting within NEB or CI-NEB.
+            # Get path uncertainty for deciding whether NEB or CI-NEB.
             predictions = get_neb_predictions(self.images)
             neb_pred_uncertainty = predictions['uncertainty']
-
-            # Speed up (do not calculate uncertainty during optimization).
-            for i in self.images:
-                i.get_calculator().calculate_uncertainty = False
 
             # Climbing image NEB mode is risky when the model is trained
-            # with a few data points. Switch on climbing image (CI-NEB)
-            # only when the uncertainty of the NEB is low.
-            ml_neb = NEB(self.images, climb=False,
-                         method=self.neb_method, k=self.spring,
-                         remove_rotation_and_translation=self.rrt)
-            neb_opt = SciPyFminCG(ml_neb, logfile=None,
-                                  trajectory=self.trajectory)
-            # Safe check to optimize the images.
-            if np.max(neb_pred_uncertainty) <= max_step:
-                try:
-                    neb_opt.run(fmax=(fmax * 0.80), steps=ml_steps)
-                except (Converged, OptimizerConvergenceError):
-                    pass
-
-            # Switch on uncertainty again speed up.
-            for i in self.images:
-                i.get_calculator().calculate_uncertainty = True
-                i.get_calculator().results = {}
-                i.get_potential_energy()
-            predictions = get_neb_predictions(self.images)
-            neb_pred_uncertainty = predictions['uncertainty']
-
+            # with a few data points. Switch on climbing image (CI-NEB) only
+            # when the uncertainty of the NEB is low.
+            climbing_neb = False
             if np.max(neb_pred_uncertainty) <= unc_convergence:
                 parprint('Climbing image is now activated.')
-                ml_neb = NEB(self.images, climb=True,
-                             dynamic_relaxation=self.dynamic_relaxation,
-                             scale_fmax=self.scale_fmax,
-                             method=self.neb_method, k=self.spring,
-                             remove_rotation_and_translation=self.rrt)
-                neb_opt = MDMin(ml_neb, trajectory=self.trajectory,
-                                dt=0.050, logfile=None)
+                climbing_neb = True
+            ml_neb = NEB(self.images, climb=climbing_neb,
+                         method=self.neb_method, k=self.spring)
+            neb_opt = MDMin(ml_neb, dt=dt, trajectory=self.trajectory)
+
+            # Safe check to optimize the images.
+            if np.max(neb_pred_uncertainty) <= max_step:
                 neb_opt.run(fmax=(fmax * 0.80), steps=ml_steps)
 
-
-
-            # 4. Get predicted energies and uncertainties of the NEB images.
             predictions = get_neb_predictions(self.images)
             neb_pred_energy = predictions['energy']
             neb_pred_uncertainty = predictions['uncertainty']
@@ -416,10 +327,11 @@ class AIDNEB:
             # 5. Print output.
             max_e = np.max(neb_pred_energy)
             pbf = max_e - self.i_endpoint.get_potential_energy(
-                                                      force_consistent=self.fc)
+                                        force_consistent=self.force_consistent)
             pbb = max_e - self.e_endpoint.get_potential_energy(
-                                                      force_consistent=self.fc)
-            parprint("-" * 26)
+                                        force_consistent=self.force_consistent)
+            msg = "--------------------------------------------------------"
+            parprint(msg)
             parprint('Step:', self.function_calls)
             parprint('Time:', time.strftime("%m/%d/%Y, %H:%M:%S",
                                             time.localtime()))
@@ -428,13 +340,13 @@ class AIDNEB:
             parprint('Max. uncertainty:', np.max(neb_pred_uncertainty))
             parprint('Number of images:', len(self.images))
             parprint("fmax:", get_fmax(train_images[-1]))
-            parprint("-" * 26)
+            msg = "--------------------------------------------------------\n"
+            parprint(msg)
 
             # 6. Check convergence.
-            # The uncertainty of all NEB images must be below the
-            # *unc_convergence* threshold and the climbing image must
-            # satisfy the *fmax* convergence criteria.
-            if self.step > 1 and get_fmax(train_images[-1]) <= fmax:
+            # Max.forces and NEB images uncertainty must be below *fmax* and
+            # *unc_convergence* thresholds.
+            if len(train_images) > 2 and get_fmax(train_images[-1]) <= fmax:
                 parprint('A saddle point was found.')
                 if np.max(neb_pred_uncertainty[1:-1]) < unc_convergence:
                     io.write(self.trajectory, self.images)
@@ -442,49 +354,51 @@ class AIDNEB:
                     parprint('NEB converged.')
                     parprint('The NEB path can be found in:', self.trajectory)
                     msg = "Visualize the last path using 'ase gui "
-                    msg += self.trajectory + "'"
+                    msg += self.trajectory
                     parprint(msg)
                     break
 
-            # 7. Convergence criteria not satisfied?
-            #  Then, select a new geometry to evaluate (acquisition function):
+            # 7. Select next point to train (acquisition function):
 
             # Candidates are the optimized NEB images in the predicted PES.
-            candidates = self.images
+            candidates = copy.deepcopy(self.images)
 
-            # This acquisition function has been tested in Ref. [1].
             if np.max(neb_pred_uncertainty) > unc_convergence:
-                acq_mode = 'uncertainty'
+                sorted_candidates = acquisition(train_images=train_images,
+                                                candidates=candidates,
+                                                mode='uncertainty',
+                                                objective='max')
             else:
-                acq_mode = 'ucb'
-            sorted_candidates = acquisition(train_images=train_images,
-                                            candidates=candidates,
-                                            mode=acq_mode,
-                                            objective='max')
+                sorted_candidates = acquisition(train_images=train_images,
+                                                candidates=candidates,
+                                                mode='ucb',
+                                                objective='max')
 
             # Select the best candidate.
             best_candidate = sorted_candidates.pop(0)
 
             # Save the other candidates for multi-task optimization.
-            io.write(self.trajectory_candidates, sorted_candidates)
+            io.write(trajectory_candidates, sorted_candidates)
 
             # 8. Evaluate the target function and save it in *observations*.
             self.atoms.positions = best_candidate.get_positions()
             self.atoms.set_calculator(self.ase_calc)
-            self.atoms.get_potential_energy(force_consistent=self.fc)
+            self.atoms.get_potential_energy(
+                                    force_consistent=self.force_consistent
+                                    )
             self.atoms.get_forces()
-            dump_observation(atoms=self.atoms, method='neb',
-                             filename=self.trajectory_observations,
-                             restart=self.use_prev_obs)
+            dump_observation(atoms=self.atoms,
+                             filename=trajectory_observations,
+                             restart=self.use_previous_observations)
             self.function_calls += 1
             self.force_calls += 1
-            self.step += 1
+        print_cite_neb()
 
 
 @parallel_function
 def make_neb(self, images_interpolation=None):
     """
-    Creates a NEB path from a set of images.
+    Creates a NEB from a set of images.
     """
     imgs = [self.i_endpoint[:]]
     for i in range(1, self.n_images-1):
@@ -499,9 +413,6 @@ def make_neb(self, images_interpolation=None):
 
 @parallel_function
 def get_neb_predictions(images):
-    """
-    Collects the predicted energy values and uncertainties of the NEB images.
-    """
     neb_pred_energy = []
     neb_pred_unc = []
     for i in images:
@@ -512,3 +423,20 @@ def get_neb_predictions(images):
     neb_pred_unc[-1] = 0.0
     predictions = {'energy': neb_pred_energy, 'uncertainty': neb_pred_unc}
     return predictions
+
+
+@parallel_function
+def print_cite_neb():
+    msg = "\n" + "-" * 79 + "\n"
+    msg += "You are using AIDNEB. Please cite: \n"
+    msg += "[1] J. A. Garrido Torres, M. H. Hansen, P. C. Jennings, "
+    msg += "J. R. Boes and T. Bligaard. Phys. Rev. Lett. 122, 156001. "
+    msg += "https://doi.org/10.1103/PhysRevLett.122.156001 \n"
+    msg += "[2] O. Koistinen, F. B. Dagbjartsdottir, V. Asgeirsson, A. Vehtari"
+    msg += " and H. Jonsson. J. Chem. Phys. 147, 152720. "
+    msg += "https://doi.org/10.1063/1.4986787 \n"
+    msg += "[3] E. Garijo del Rio, J. J. Mortensen and K. W. Jacobsen. "
+    msg += "arXiv:1808.08588. https://arxiv.org/abs/1808.08588v1. \n"
+    msg += "-" * 79 + '\n'
+    parprint(msg)
+

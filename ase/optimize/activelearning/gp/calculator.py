@@ -42,7 +42,7 @@ class GPCalculator(Calculator, GaussianProcess):
             'average': use the average of sampled energies as prior.
             'init' : fix the prior to the initial energy.
             'last' : fix the prior to the last sampled energy.
-            'fit'  : update the prior s.t. it maximizes the marginal likelihood 
+            'fit'  : update the prior s.t. it maximizes the marginal likelihood
 
     update_hyperparams: boolean
         Update the scale of the Squared exponential kernel every
@@ -86,7 +86,7 @@ class GPCalculator(Calculator, GaussianProcess):
 
     def __init__(self, train_images=None, prior=None,
                  update_prior_strategy='maximum', weight=1.,
-                 fit_weight='update', scale=0.4, noise=0.005,
+                 fit_weight=None, scale=0.4, noise=0.005,
                  update_hyperparams=False,
                  batch_size=5, bounds=None, kernel=None,
                  max_train_data=None, force_consistent=None,
@@ -315,7 +315,7 @@ class GPCalculator(Calculator, GaussianProcess):
             covariance = np.tensordot(v, v, axes=(0, 0))
             V = variance - covariance
             uncertainty = np.sqrt(V[0][0])
-            # uncertainty -= self.noise
+            uncertainty -= self.noise
             if uncertainty < 0.0:
                 uncertainty = 0.0
 
