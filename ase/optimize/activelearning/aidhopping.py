@@ -147,8 +147,7 @@ class AIDHopping:
                 md_guess.get_potential_energy(force_consistent=self.fc)
 
                 md_atoms = md_simulation(atoms=md_guess, maxstep=self.maxstep,
-                                         temperature=self.temperature,
-                                         trajectory='md_simulation.traj')
+                                         temperature=self.temperature)
                 candidates += [md_atoms]
 
             sorted_candidates = acquisition(train_images=train_images,
