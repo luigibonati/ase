@@ -1,6 +1,8 @@
 import numpy as np
 from ase.parallel import parallel_function
 from ase import io
+from ase.io.trajectory import TrajectoryWriter
+import os
 
 
 @parallel_function
@@ -22,13 +24,14 @@ def dump_observation(atoms, filename, restart, method='-'):
     atoms.info['method'] = method
 
     if restart is True:
-        try:
+        if os.path.exists(filename):
             prev_atoms = io.read(filename, ':')  # Active learning.
             if atoms not in prev_atoms:  # Avoid duplicates.
                 # Update observations.
-                new_atoms = prev_atoms + [atoms]
-                io.write(filename=filename, images=new_atoms)
-        except Exception:
+                trj = TrajectoryWriter(atoms=atoms, filename=filename,
+                                       mode='a')
+                trj.write()
+        else:
             io.write(filename=filename, images=atoms, append=False)
     if restart is False:
         io.write(filename=filename, images=atoms, append=False)

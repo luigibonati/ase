@@ -9,8 +9,8 @@ from ase.md import VelocityVerlet
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from ase.optimize.minimahopping import ComparePositions
 from ase.optimize.activelearning.aidmin import AIDMin
-from ase.optimize import QuasiNewton
 from ase.optimize.activelearning.io import get_fmax, dump_observation
+from ase.optimize.activelearning.gp.prior import ConstantPrior
 
 
 class AIDHopping:
@@ -18,10 +18,8 @@ class AIDHopping:
     def __init__(self, atoms, calculator, model_calculator=None,
                  force_consistent=None, max_train_data=500,
                  max_train_data_strategy='nearest_observations',
-                 trajectory='AID.traj', T0=500., beta1=1.01,
-                 beta2=0.98, beta3=0.75, beta4=0.02, energy_threshold=2.5,
-                 geometry_threshold=1., maxstep=0.5, timestep=1.0,
-                 maxtime=1000., maxoptsteps=500):
+                 trajectory='AID.traj', T0=500., geometry_threshold=1.,
+                 maxstep=0.3):
         """
         Parameters
         --------------
@@ -51,32 +49,17 @@ class AIDHopping:
         # MD simulation parameters.
         self.T0 = T0
         self.temperature = T0
-        self.energy_threshold = energy_threshold
-        self.timestep = timestep
-        self.maxtime = maxtime
         self.maxstep = maxstep
-        self.maxoptsteps = maxoptsteps
+        self.initial_maxstep = maxstep
+        self.max_train_data = max_train_data
+        self.max_train_data_strategy = max_train_data_strategy
 
         # Hopping parameters.
-        self.beta1 = beta1  # Increase temperature.
-        self.beta2 = beta2  # Decrease temperature.
-        self.beta3 = beta3  # Decrease temperature after finding a new minimum.
-        self.beta4 = beta4  # Increase energy threshold (in eV).
         self.geometry_threshold = geometry_threshold
 
         # Model parameters.
         self.model_calculator = model_calculator
         # Default GP Calculator parameters if not specified by the user.
-        if model_calculator is None:
-            self.model_calculator = GPCalculator(
-                            train_images=[],
-                            scale=1., weight=2.,
-                            update_prior_strategy='init',
-                            fit_weight=None,
-                            max_train_data=max_train_data,
-                            max_train_data_strategy=max_train_data_strategy,
-                            wrap_positions=False)
-        self.model_calculator.calculate_uncertainty = True
 
         # Active Learning setup (single-point calculations).
         self.function_calls = 0
@@ -84,6 +67,7 @@ class AIDHopping:
         self.ase_calc = calculator
         self.atoms = atoms
         self.fmax = None
+        self.step = 0
 
         self.constraints = self.atoms.constraints
         self.fc = force_consistent
@@ -129,97 +113,48 @@ class AIDHopping:
                              restart=False)
 
         self.temperature = self.T0
-        while self.function_calls <= steps:
-
+        while self.step <= steps:
             train_images = io.read(self.trajectory_observations, ':')
-            gp_calc = copy.deepcopy(self.model_calculator)
-            gp_calc.update_train_data(train_images=train_images)
             prev_minima = io.read(self.trajectory_minima, ':')
 
             # Perform optimizations starting from each minimum found.
-            # np.random.seed(int(len(prev_minima) * self.temperature))
+            np.random.seed(int(len(prev_minima) * self.temperature))
 
             candidates = []
-            while len(candidates) < 1:
-                for index_minimum in range(0, len(prev_minima)):
-                    parprint('Starting from minimum:', index_minimum)
-                    md_guess = copy.deepcopy(prev_minima[index_minimum])
-                    md_guess.set_calculator(gp_calc)
-                    md_guess.get_potential_energy(force_consistent=self.fc)
-                    stop_reason = mdsim(atoms=md_guess, maxstep=self.maxstep,
-                                        train_images=train_images,
-                                        temperature=self.temperature,
-                                        timestep=self.timestep,
-                                        maxtime=self.maxtime,
-                                        energy_threshold=self.energy_threshold,
-                                        trajectory='md_simulation.traj',
-                                        force_consistent=self.fc)
+            for index_minimum in range(0, len(prev_minima)):
+                parprint('Starting from minimum:', index_minimum)
+                md_guess = copy.deepcopy(prev_minima[index_minimum])
 
-                    parprint('MD stopping reason:', stop_reason)
+                e_prior_minimum = prev_minima[
+                                    index_minimum].get_potential_energy()
+                prior = ConstantPrior(constant=e_prior_minimum)
 
-                    if stop_reason == 'max_time_reached':
-                        parprint('Increase temp. due to max. time reached.')
-                        self.temperature *= self.beta1  # Increase temperature.
+                gp_calc = GPCalculator(
+                        train_images=[],
+                        scale=1., weight=1.,
+                        update_prior_strategy=None,
+                        prior=prior,
+                        fit_weight=None,
+                        max_train_data=self.max_train_data,
+                        max_train_data_strategy=self.max_train_data_strategy,
+                        wrap_positions=False
+                        )
 
-                    if stop_reason == 'max_energy_reached':
-                        parprint('Decrease temp. due to max. energy reached.')
-                        self.temperature = self.T0  # Decrease temperature.
-                        parprint('Increase energy threshold to explore '
-                                 'higher energy regions.')
-                        self.energy_threshold += self.beta4  # Increase energy.
-                        self.maxstep -= 5 * self.beta4
-                        parprint('Current energy threshold is: ',
-                                 self.energy_threshold)
+                gp_calc.update_train_data(train_images=train_images,
+                                          test_images=[copy.deepcopy(
+                                                       md_guess)])
+                md_guess.set_calculator(gp_calc)
+                md_guess.get_potential_energy(force_consistent=self.fc)
 
-                    if stop_reason == 'max_uncertainty_reached':
-                        candidates += [copy.deepcopy(md_guess)]
-                        self.temperature *= self.beta2
-                        # self.temperature = self.T0
-                        self.maxstep += 5 * self.beta4
-
-                    if stop_reason == 'mdmin_found':
-                        opt_atoms = io.read(self.trajectory_minima, -1)
-                        model_min = GPCalculator(
-                                        train_images=[],
-                                        scale=0.3, weight=2.,
-                                        update_prior_strategy='maximum',
-                                        max_train_data=50,
-                                        wrap_positions=False,
-                                        fit_weight=None
-                                        )
-                        model_min.update_train_data(
-                                        train_images=train_images,
-                                        test_images=[opt_atoms]
-                                        )
-                        opt_atoms.positions = md_guess.positions
-                        gp_calc_min = copy.deepcopy(model_min)
-                        gp_calc_min.update_train_data(
-                                                     train_images=train_images,
-                                                     test_images=[opt_atoms]
-                                                     )
-                        opt_atoms.set_calculator(gp_calc_min)
-                        opt_min = QuasiNewton(opt_atoms, logfile=None)
-                        opt_min.run(fmax=self.fmax*0.01)
-
-                        # Check whether duplicate.
-                        unique_candidate = _check_unique_minima_found(
-                                                          self,
-                                                          atoms=opt_min.atoms
-                                                          )
-                        if unique_candidate is True:
-                            candidates += [opt_min.atoms]
-                        else:
-                            parprint('Re-found minima...increasing temp.')
-                            self.temperature *= self.beta1
-
-                        # Obey threshold of minimum temperature.
-                        if self.temperature < self.T0:
-                            self.temperature = self.T0
+                md_atoms = md_simulation(atoms=md_guess, maxstep=self.maxstep,
+                                         temperature=self.temperature,
+                                         trajectory='md_simulation.traj')
+                candidates += [md_atoms]
 
             sorted_candidates = acquisition(train_images=train_images,
                                             candidates=candidates,
-                                            mode='ucb',
-                                            objective='max'
+                                            mode='lcb',
+                                            objective='min'
                                             )
 
             best_candidate = sorted_candidates.pop(0)
@@ -230,17 +165,14 @@ class AIDHopping:
             self.atoms.get_potential_energy(force_consistent=self.fc)
             self.atoms.get_forces()
 
-            min_prior = self.atoms.get_potential_energy(
-                                                      force_consistent=self.fc
-                                                      )
             model_min_greedy = GPCalculator(train_images=[],
-                                            scale=0.3, weight=2.,
-                                            # prior=ConstantPrior(min_prior),
-                                            update_prior_strategy='fit',
+                                            scale=0.4, weight=1.,
+                                            update_prior_strategy='maximum',
                                             max_train_data=5,
                                             fit_weight=None,
                                             wrap_positions=False
                                             )
+
             while True:
                 opt_min_greedy = AIDMin(
                               self.atoms,
@@ -258,7 +190,6 @@ class AIDHopping:
 
                 if not opt_unique:
                     parprint('Previously found structure...do not evaluate.')
-                    self.temperature *= self.beta1
                     break
 
                 if opt_unique:
@@ -266,9 +197,6 @@ class AIDHopping:
                     self.atoms.set_calculator(self.ase_calc)
                     self.atoms.get_potential_energy(force_consistent=self.fc)
                     if get_fmax(prev_opt) <= self.fmax:
-                        self.temperature *= self.beta3
-                        parprint('Re-starting temperature...')
-                        self.maxstep = 0.5
                         dump_observation(atoms=prev_opt,
                                          filename=self.trajectory_minima,
                                          restart=True)
@@ -278,62 +206,28 @@ class AIDHopping:
             self.function_calls = len(file_function_calls)
             prev_minima = io.read(self.trajectory_minima, ':')
             parprint('-' * 78)
+            parprint('Step:', self.step)
             parprint('Function calls:', self.function_calls)
             parprint('Minima found:', len(prev_minima))
             parprint('-' * 78)
+            self.step += 1
 
 
 @parallel_function
-def mdsim(atoms, temperature,  train_images, timestep=1.0, maxstep=0.5,
-          maxtime=2000., energy_threshold=2.0, force_consistent=None,
-          trajectory='md_simulation.traj'):
-    """Performs a molecular dynamics simulation until any of the following
-    conditions is achieved: (A) 'mdmin' number of minima are found or  or (B)
-    'max_time' (in fs) has been reached or (C) energy threshold has been
-    crossed over ('energy_threshold') or (D) maximum uncertainty reached
-    (determined by 'max_step')."""
+def md_simulation(atoms, temperature,  maxstep):
+    """Performs a molecular dynamics simulation until maximum uncertainty
+    reached (determined by 'maxstep')."""
 
     parprint('Current temperature for MD:', temperature)
-    initial_energy = atoms.get_potential_energy(
-                                        force_consistent=force_consistent
-                                        )
-    current_time = 0.0  # Initial time.
-    energies, uncertainties, indexes_minima = [], [], []
-    stop_reason = None
-
     MaxwellBoltzmannDistribution(atoms, temp=temperature * units.kB,
                                  force_temp=True)
-    dyn = VelocityVerlet(atoms, timestep=timestep * units.fs,
-                         trajectory=trajectory)
-    step = 0
-    while stop_reason is None:
-        if step % 100 == 0:
-            atoms.get_calculator().update_train_data(train_images=train_images,
-                                                     test_images=[atoms])
-        energies.append(
-                  atoms.get_potential_energy(force_consistent=force_consistent)
-                  )
-        uncertainties.append(atoms.get_calculator().results['uncertainty'])
-        md_value = np.array(energies)
-        indexes_minima = passed_minimum(nup=5, ndown=5, energies=md_value)
+    dyn = VelocityVerlet(atoms, timestep=5. * units.fs,
+                         trajectory=None)
+    atoms_unc = atoms.get_calculator().results['uncertainty']
+    while atoms_unc < maxstep:
+        atoms_unc = atoms.get_calculator().results['uncertainty']
         dyn.run(1)  # Run MD step.
-
-        # A. Stop MD simulation if 'mdmin' number of minima are found.
-        if indexes_minima is not None:
-            stop_reason = 'mdmin_found'
-        # B. Stop if max. time has been reached.
-        elif current_time >= maxtime:
-            stop_reason = 'max_time_reached'
-        # C. Stop if energy threshold has been crossed over (e_threshold).
-        elif energies[-1] >= initial_energy + energy_threshold:
-            stop_reason = 'max_energy_reached'
-        # D. Max uncertainty reached.
-        elif uncertainties[-1] > maxstep:
-            stop_reason = 'max_uncertainty_reached'
-
-        current_time += timestep  # Update the time of the MD simulation.
-        step += 1
-    return stop_reason
+    return atoms
 
 
 @parallel_function
@@ -346,21 +240,3 @@ def _check_unique_minima_found(self, atoms):
         if dmax <= self.geometry_threshold:
             unique_candidate = False
     return unique_candidate
-
-
-@parallel_function
-def passed_minimum(nup=2, ndown=2, energies=None):
-    if len(energies) < (nup + ndown + 1):
-        return None
-    status = True
-    index = -1
-    for i_up in range(nup):
-        if energies[index] < energies[index - 1]:
-            status = False
-        index -= 1
-    for i_down in range(ndown):
-        if energies[index] > energies[index - 1]:
-            status = False
-        index -= 1
-    if status:
-        return (-nup - 1), energies[-nup - 1]
