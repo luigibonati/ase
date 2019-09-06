@@ -308,6 +308,11 @@ class AIDNEB:
             # Climbing image NEB mode is risky when the model is trained
             # with a few data points. Switch on climbing image (CI-NEB) only
             # when the uncertainty of the NEB is low.
+
+            # Deactivate uncertainty calculation (speed up).
+            for i in self.images:
+                i.get_calculator().calculate_uncertainty = False
+
             climbing_neb = False
             if np.max(neb_pred_uncertainty) <= unc_convergence:
                 parprint('Climbing image is now activated.')
@@ -319,6 +324,12 @@ class AIDNEB:
             # Safe check to optimize the images.
             if np.max(neb_pred_uncertainty) <= max_step:
                 neb_opt.run(fmax=(fmax * 0.80), steps=ml_steps)
+
+            # Switch on uncertainty calculation (speed up).
+            for i in self.images:
+                i.get_calculator().calculate_uncertainty = True
+                i.get_calculator().results = {}
+                i.get_potential_energy()
 
             predictions = get_neb_predictions(self.images)
             neb_pred_energy = predictions['energy']
