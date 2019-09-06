@@ -229,6 +229,16 @@ class AIDNEB:
         if self.spring is None:
             self.spring = (np.sqrt(self.n_images-1) / d_start_end)
 
+        # Write initial interpolation.
+        io.write('initial_interpolation.traj', self.images)
+        parprint('Starting AIDNEB calculation.')
+        parprint("Always double-check that your initial interpolation is "
+                 "sensible. If you have chosen 'idpp' or 'linear' the "
+                 "interpolation is automatically generated and can be found "
+                 "in 'initial_interpolation.traj'. Remember, you can always "
+                 "feed a set of images with your custom interpolation in "
+                 "*interpolation*. ")
+
     def run(self, fmax=0.05, unc_convergence=0.05, dt=0.05, ml_steps=100,
             max_step=2.0):
 
@@ -319,11 +329,12 @@ class AIDNEB:
                 climbing_neb = True
             ml_neb = NEB(self.images, climb=climbing_neb,
                          method=self.neb_method, k=self.spring)
-            neb_opt = MDMin(ml_neb, dt=dt, trajectory=self.trajectory)
+            neb_opt = MDMin(ml_neb, dt=dt, trajectory=None, logfile=None)
 
             # Safe check to optimize the images.
             if np.max(neb_pred_uncertainty) <= max_step:
                 neb_opt.run(fmax=(fmax * 0.80), steps=ml_steps)
+                io.write(self.trajectory, self.images)
 
             # Switch on uncertainty calculation (speed up).
             for i in self.images:
@@ -439,7 +450,7 @@ def get_neb_predictions(images):
 @parallel_function
 def print_cite_neb():
     msg = "\n" + "-" * 79 + "\n"
-    msg += "You are using AIDNEB. Please cite: \n"
+    msg += "Thanks for using AIDNEB. Please cite: \n"
     msg += "[1] J. A. Garrido Torres, M. H. Hansen, P. C. Jennings, "
     msg += "J. R. Boes and T. Bligaard. Phys. Rev. Lett. 122, 156001. "
     msg += "https://doi.org/10.1103/PhysRevLett.122.156001 \n"
