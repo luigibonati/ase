@@ -10,6 +10,7 @@ from ase.optimize import MDMin
 from ase.optimize.activelearning.acquisition import acquisition
 from ase.parallel import parprint, parallel_function
 from ase.optimize.activelearning.io import dump_observation, get_fmax
+from ase.optimize.sciopt import *
 
 
 class AIDNEB:
@@ -240,7 +241,7 @@ class AIDNEB:
                  "*interpolation*. ")
 
     def run(self, fmax=0.05, unc_convergence=0.05, dt=0.05, ml_steps=100,
-            max_step=2.0):
+            max_step=2.0, refine=True):
 
         """
         Executing run will start the NEB optimization process.
@@ -271,6 +272,12 @@ class AIDNEB:
             with maximum uncertainty is evaluated. This prevents exploring
             very uncertain regions which can lead to probe unrealistic
             structures.
+
+        refine: bool
+            Whether to refine NEB after finding the saddle point or not. If
+            True a second run is performed after finding the saddle point
+            using the 'improvedtagent' method and starting from the initial
+            path in order to preserve the initial images distances.
 
         Returns
         -------
@@ -329,11 +336,17 @@ class AIDNEB:
                 climbing_neb = True
             ml_neb = NEB(self.images, climb=climbing_neb,
                          method=self.neb_method, k=self.spring)
-            neb_opt = MDMin(ml_neb, dt=dt, trajectory=None, logfile=None)
+            if np.max(neb_pred_uncertainty) <= unc_convergence:
+                neb_opt = MDMin(ml_neb, dt=dt, trajectory=None, logfile=None)
+            else:
+                neb_opt = SciPyFminCG(ml_neb, trajectory=None, logfile=None)
 
             # Safe check to optimize the images.
             if np.max(neb_pred_uncertainty) <= max_step:
-                neb_opt.run(fmax=(fmax * 0.80), steps=ml_steps)
+                try:
+                    neb_opt.run(fmax=(fmax * 0.80), steps=ml_steps)
+                except (OptimizerConvergenceError, Converged):
+                    pass
                 io.write(self.trajectory, self.images)
 
             # Switch on uncertainty calculation (speed up).
@@ -373,12 +386,24 @@ class AIDNEB:
                 if np.max(neb_pred_uncertainty[1:-1]) < unc_convergence:
                     io.write(self.trajectory, self.images)
                     parprint('Uncertainty of the images above threshold.')
-                    parprint('NEB converged.')
-                    parprint('The NEB path can be found in:', self.trajectory)
-                    msg = "Visualize the last path using 'ase gui "
-                    msg += self.trajectory
-                    parprint(msg)
-                    break
+                    if refine is False:
+                        parprint('NEB converged.')
+                        parprint('The NEB path can be found in:', self.trajectory)
+                        msg = "Visualize the last path using 'ase gui "
+                        msg += self.trajectory
+                        parprint(msg)
+                        break
+                    else:
+                        parprint('Refining NEB...')
+                        self.neb_method = 'improvedtangent'
+                        self.images = make_neb(self,
+                        images_interpolation=io.read('initial_interpolation.traj', ':'))
+                        for i in self.images:
+                            i.set_calculator(copy.deepcopy(calc))
+                            i.get_potential_energy()
+                        refine = False
+
+
 
             # 7. Select next point to train (acquisition function):
 

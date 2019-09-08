@@ -19,7 +19,7 @@ class AIDHopping:
                  force_consistent=None, max_train_data=500,
                  max_train_data_strategy='nearest_observations',
                  trajectory='AID.traj', T0=500., geometry_threshold=1.,
-                 maxstep=0.3):
+                 maxstep=0.75):
         """
         Parameters
         --------------
@@ -113,47 +113,49 @@ class AIDHopping:
                              restart=False)
 
         self.temperature = self.T0
-        while self.step <= steps:
-            train_images = io.read(self.trajectory_observations, ':')
-            prev_minima = io.read(self.trajectory_minima, ':')
 
-            # Perform optimizations starting from each minimum found.
-            np.random.seed(int(len(prev_minima) * self.temperature))
+        # Start with random seed
+        prev_minima = io.read(self.trajectory_minima, ':')
+
+        random_direction = int(len(prev_minima) * self.temperature)
+
+        while self.step <= steps:
+
+            np.random.seed(random_direction)
+            parprint('Random direction seed:', random_direction)
+
+            train_images = io.read(self.trajectory_observations, ':')
 
             candidates = []
-            for index_minimum in range(0, len(prev_minima)):
-                parprint('Starting from minimum:', index_minimum)
-                md_guess = copy.deepcopy(prev_minima[index_minimum])
 
-                e_prior_minimum = prev_minima[
-                                    index_minimum].get_potential_energy()
-                prior = ConstantPrior(constant=e_prior_minimum)
+            md_guess = copy.deepcopy(prev_minima[-1])
+            e_prior_minimum = md_guess.get_potential_energy()
 
-                gp_calc = GPCalculator(
-                        train_images=[],
-                        scale=1., weight=1.,
-                        update_prior_strategy=None,
-                        prior=prior,
-                        fit_weight=None,
-                        max_train_data=self.max_train_data,
-                        max_train_data_strategy=self.max_train_data_strategy,
-                        wrap_positions=False
-                        )
+            prior = ConstantPrior(constant=e_prior_minimum)
+            gp_calc = GPCalculator(
+                    train_images=[],
+                    scale=0.5, weight=1., update_hyperparams=False,
+                    fit_weight=None,
+                    update_prior_strategy=None, prior=prior,
+                    max_train_data=self.max_train_data,
+                    max_train_data_strategy=self.max_train_data_strategy,
+                    wrap_positions=False
+                    )
 
-                gp_calc.update_train_data(train_images=train_images,
-                                          test_images=[copy.deepcopy(
-                                                       md_guess)])
-                md_guess.set_calculator(gp_calc)
-                md_guess.get_potential_energy(force_consistent=self.fc)
+            gp_calc.update_train_data(train_images=train_images,
+                                      test_images=[copy.deepcopy(
+                                                   md_guess)])
+            md_guess.set_calculator(gp_calc)
+            md_guess.get_potential_energy(force_consistent=self.fc)
 
-                md_atoms = md_simulation(atoms=md_guess, maxstep=self.maxstep,
-                                         temperature=self.temperature)
-                candidates += [md_atoms]
+            md_atoms = md_simulation(atoms=md_guess, maxstep=self.maxstep,
+                                     temperature=self.temperature)
+            candidates += [md_atoms]
 
             sorted_candidates = acquisition(train_images=train_images,
                                             candidates=candidates,
-                                            mode='lcb',
-                                            objective='min'
+                                            mode='fmax',
+                                            objective='max'
                                             )
 
             best_candidate = sorted_candidates.pop(0)
@@ -162,11 +164,12 @@ class AIDHopping:
             self.atoms.positions = best_candidate.positions
             self.atoms.set_calculator(self.ase_calc)
             self.atoms.get_potential_energy(force_consistent=self.fc)
+
             self.atoms.get_forces()
 
             model_min_greedy = GPCalculator(train_images=[],
-                                            scale=0.4, weight=1.,
-                                            update_prior_strategy='maximum',
+                                            scale=0.35, weight=2.,
+                                            update_prior_strategy='fit',
                                             max_train_data=5,
                                             fit_weight=None,
                                             wrap_positions=False
@@ -178,14 +181,13 @@ class AIDHopping:
                               use_previous_observations=True,
                               trajectory=self.trajectory,
                               model_calculator=copy.deepcopy(model_min_greedy)
-                              )
+                                       )
                 opt_min_greedy.run(fmax=self.fmax, steps=0)
 
                 opt_unique = _check_unique_minima_found(
                                                     self,
                                                     atoms=opt_min_greedy.atoms
-                                                    )
-                prev_opt = io.read(self.trajectory_observations, '-1')
+                                                        )
 
                 if not opt_unique:
                     parprint('Previously found structure...do not evaluate.')
@@ -195,11 +197,20 @@ class AIDHopping:
                     self.atoms.positions = opt_min_greedy.atoms.positions
                     self.atoms.set_calculator(self.ase_calc)
                     self.atoms.get_potential_energy(force_consistent=self.fc)
-                    if get_fmax(prev_opt) <= self.fmax:
-                        dump_observation(atoms=prev_opt,
+                    if get_fmax(self.atoms) <= self.fmax:
+                        dump_observation(atoms=self.atoms,
                                          filename=self.trajectory_minima,
                                          restart=True)
                         break
+
+
+                print('energy minima:', prev_minima[0].get_potential_energy())
+                print('energy now:', self.atoms.get_potential_energy())
+                print('delta', self.atoms.get_potential_energy() - prev_minima[0].get_potential_energy())
+                if self.atoms.get_potential_energy() - prev_minima[
+                                        0].get_potential_energy() > 1.5:
+                    random_direction += 1
+                    break
 
             file_function_calls = io.read(self.trajectory_observations, ':')
             self.function_calls = len(file_function_calls)
@@ -208,6 +219,9 @@ class AIDHopping:
             parprint('Step:', self.step)
             parprint('Function calls:', self.function_calls)
             parprint('Minima found:', len(prev_minima))
+            parprint('Energy:', self.atoms.get_potential_energy(
+                                            force_consistent=self.fc))
+
             parprint('-' * 78)
             self.step += 1
 
