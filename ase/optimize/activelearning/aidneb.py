@@ -16,7 +16,7 @@ class AIDNEB:
 
     def __init__(self, start, end, model_calculator=None, calculator=None,
                  interpolation='linear', n_images=15, k=None, mic=False,
-                 neb_method='improvedtangent',
+                 neb_method='aseneb',
                  remove_rotation_and_translation=False,
                  max_train_data=5, force_consistent=None,
                  max_train_data_strategy='nearest_observations',
