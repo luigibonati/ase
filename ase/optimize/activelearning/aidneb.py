@@ -6,19 +6,19 @@ from ase.atoms import Atoms
 from ase.optimize.activelearning.gp.calculator import GPCalculator
 from ase.neb import NEB
 from ase.geometry import distance
-from ase.optimize import MDMin
+from ase.optimize import MDMin, FIRE
 from ase.optimize.activelearning.acquisition import acquisition
 from ase.parallel import parprint, parallel_function
 from ase.optimize.activelearning.io import dump_observation, get_fmax
-from ase.optimize.sciopt import *
 
 
 class AIDNEB:
 
     def __init__(self, start, end, model_calculator=None, calculator=None,
-                 interpolation='linear', n_images=0.25, k=None, mic=False,
-                 neb_method='aseneb', remove_rotation_and_translation=False,
-                 max_train_data=20, force_consistent=None,
+                 interpolation='linear', n_images=15, k=None, mic=False,
+                 neb_method='improvedtangent',
+                 remove_rotation_and_translation=False,
+                 max_train_data=5, force_consistent=None,
                  max_train_data_strategy='nearest_observations',
                  trajectory='AIDNEB.traj',
                  use_previous_observations=False):
@@ -180,7 +180,8 @@ class AIDNEB:
             self.model_calculator = GPCalculator(
                             train_images=[],
                             prior=None,
-                            update_prior_strategy='maximum',
+                            fit_weight='update',
+                            update_prior_strategy='fit',
                             weight=1.0, scale=0.4, noise=0.005,
                             update_hyperparams=False, batch_size=5,
                             bounds=None, kernel=None,
@@ -189,6 +190,7 @@ class AIDNEB:
                             )
 
         # Active Learning setup (Single-point calculations).
+        self.step = 0
         self.function_calls = 0
         self.force_calls = 0
         self.ase_calc = calculator
@@ -202,17 +204,28 @@ class AIDNEB:
         # Calculate the distance between the initial and final endpoints.
         d_start_end = distance(self.i_endpoint, self.e_endpoint)
 
-        # A) Create images using interpolation if user do defines a path.
+        # A) Create images using interpolation if user does define a path.
         if interp_path is None:
             if isinstance(self.n_images, float):
                 self.n_images = int(d_start_end/self.n_images)
             if self. n_images <= 3:
                 self.n_images = 3
             self.images = make_neb(self)
-            neb_interpolation = NEB(self.images)
-            neb_interpolation.interpolate(method=interpolation, mic=self.mic)
+            self.spring = 2. * np.sqrt(self.n_images-1) / d_start_end
 
-        # B) Alternatively, the user can manually decide the initial path.
+            neb_interpolation = NEB(self.images, climb=False, k=self.spring,
+                                    method=self.neb_method,
+                                    remove_rotation_and_translation=self.rrt)
+            neb_interpolation.interpolate(method='linear', mic=self.mic)
+            if interpolation == 'idpp':
+                neb_interpolation = NEB(
+                                    self.images, climb=True,
+                                    k=self.spring, method=self.neb_method,
+                                    remove_rotation_and_translation=self.rrt
+                                    )
+                neb_interpolation.idpp_interpolate(optimizer=FIRE)
+
+        # B) Alternatively, the user can propose an initial path.
         if interp_path is not None:
             images_path = io.read(interp_path, ':')
             first_image = images_path[0].get_positions().reshape(-1)
@@ -228,20 +241,10 @@ class AIDNEB:
 
         # Guess spring constant (k) if not defined by the user.
         if self.spring is None:
-            self.spring = (np.sqrt(self.n_images-1) / d_start_end)
+            self.spring = 2. * (np.sqrt(self.n_images-1) / d_start_end)
 
-        # Write initial interpolation.
-        io.write('initial_interpolation.traj', self.images)
-        parprint('Starting AIDNEB calculation.')
-        parprint("Always double-check that your initial interpolation is "
-                 "sensible. If you have chosen 'idpp' or 'linear' the "
-                 "interpolation is automatically generated and can be found "
-                 "in 'initial_interpolation.traj'. Remember, you can always "
-                 "feed a set of images with your custom interpolation in "
-                 "*interpolation*. ")
-
-    def run(self, fmax=0.05, unc_convergence=0.05, dt=0.05, ml_steps=100,
-            max_step=2.0, refine=True):
+    def run(self, fmax=0.05, unc_convergence=0.005, dt=0.05, ml_steps=100,
+            max_step=2.0):
 
         """
         Executing run will start the NEB optimization process.
@@ -273,12 +276,6 @@ class AIDNEB:
             very uncertain regions which can lead to probe unrealistic
             structures.
 
-        refine: bool
-            Whether to refine NEB after finding the saddle point or not. If
-            True a second run is performed after finding the saddle point
-            using the 'improvedtagent' method and starting from the initial
-            path in order to preserve the initial images distances.
-
         Returns
         -------
         Minimum Energy Path from the initial to the final states.
@@ -296,6 +293,24 @@ class AIDNEB:
         dump_observation(atoms=self.e_endpoint,
                          filename=trajectory_observations,
                          restart=self.use_previous_observations)
+
+        train_images = io.read(trajectory_observations, ':')
+        if len(train_images) == 2:
+            middle = int(self.n_images * (2./3.))
+            e_is = self.i_endpoint.get_potential_energy()
+            e_fs = self.e_endpoint.get_potential_energy()
+            if e_is >= e_fs:
+                middle = int(self.n_images * (1./3.))
+            self.atoms.positions = self.images[middle].get_positions()
+            self.atoms.set_calculator(self.ase_calc)
+            self.atoms.get_potential_energy(force_consistent=self.force_consistent)
+            self.atoms.get_forces()
+            dump_observation(atoms=self.atoms, method='neb',
+                             filename=trajectory_observations,
+                             restart=self.use_previous_observations)
+            self.function_calls += 1
+            self.force_calls += 1
+            self.step += 1
 
         while True:
 
@@ -325,35 +340,17 @@ class AIDNEB:
             # Climbing image NEB mode is risky when the model is trained
             # with a few data points. Switch on climbing image (CI-NEB) only
             # when the uncertainty of the NEB is low.
-
-            # Deactivate uncertainty calculation (speed up).
-            for i in self.images:
-                i.get_calculator().calculate_uncertainty = False
-
             climbing_neb = False
             if np.max(neb_pred_uncertainty) <= unc_convergence:
                 parprint('Climbing image is now activated.')
                 climbing_neb = True
             ml_neb = NEB(self.images, climb=climbing_neb,
                          method=self.neb_method, k=self.spring)
-            if np.max(neb_pred_uncertainty) <= unc_convergence:
-                neb_opt = MDMin(ml_neb, dt=dt, trajectory=None, logfile=None)
-            else:
-                neb_opt = SciPyFminCG(ml_neb, trajectory=None, logfile=None)
+            neb_opt = MDMin(ml_neb, dt=dt, trajectory=self.trajectory)
 
             # Safe check to optimize the images.
             if np.max(neb_pred_uncertainty) <= max_step:
-                try:
-                    neb_opt.run(fmax=(fmax * 0.80), steps=ml_steps)
-                except (OptimizerConvergenceError, Converged):
-                    pass
-                io.write(self.trajectory, self.images)
-
-            # Switch on uncertainty calculation (speed up).
-            for i in self.images:
-                i.get_calculator().calculate_uncertainty = True
-                i.get_calculator().results = {}
-                i.get_potential_energy()
+                neb_opt.run(fmax=(fmax * 0.80), steps=ml_steps)
 
             predictions = get_neb_predictions(self.images)
             neb_pred_energy = predictions['energy']
@@ -386,24 +383,12 @@ class AIDNEB:
                 if np.max(neb_pred_uncertainty[1:-1]) < unc_convergence:
                     io.write(self.trajectory, self.images)
                     parprint('Uncertainty of the images above threshold.')
-                    if refine is False:
-                        parprint('NEB converged.')
-                        parprint('The NEB path can be found in:', self.trajectory)
-                        msg = "Visualize the last path using 'ase gui "
-                        msg += self.trajectory
-                        parprint(msg)
-                        break
-                    else:
-                        parprint('Refining NEB...')
-                        self.neb_method = 'improvedtangent'
-                        self.images = make_neb(self,
-                        images_interpolation=io.read('initial_interpolation.traj', ':'))
-                        for i in self.images:
-                            i.set_calculator(copy.deepcopy(calc))
-                            i.get_potential_energy()
-                        refine = False
-
-
+                    parprint('NEB converged.')
+                    parprint('The NEB path can be found in:', self.trajectory)
+                    msg = "Visualize the last path using 'ase gui "
+                    msg += self.trajectory
+                    parprint(msg)
+                    break
 
             # 7. Select next point to train (acquisition function):
 
@@ -475,7 +460,7 @@ def get_neb_predictions(images):
 @parallel_function
 def print_cite_neb():
     msg = "\n" + "-" * 79 + "\n"
-    msg += "Thanks for using AIDNEB. Please cite: \n"
+    msg += "You are using AIDNEB. Please cite: \n"
     msg += "[1] J. A. Garrido Torres, M. H. Hansen, P. C. Jennings, "
     msg += "J. R. Boes and T. Bligaard. Phys. Rev. Lett. 122, 156001. "
     msg += "https://doi.org/10.1103/PhysRevLett.122.156001 \n"
@@ -483,7 +468,8 @@ def print_cite_neb():
     msg += " and H. Jonsson. J. Chem. Phys. 147, 152720. "
     msg += "https://doi.org/10.1063/1.4986787 \n"
     msg += "[3] E. Garijo del Rio, J. J. Mortensen and K. W. Jacobsen. "
-    msg += "arXiv:1808.08588. https://arxiv.org/abs/1808.08588v1. \n"
+    msg += "Phys. Rev. B 100, 104103."
+    msg += "https://doi.org/10.1103/PhysRevB.100.104103. \n"
     msg += "-" * 79 + '\n'
     parprint(msg)
 
