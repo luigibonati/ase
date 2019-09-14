@@ -94,7 +94,7 @@ class Symbols:
         try:
             symbols = Symbols.fromsymbols(obj)
         except Exception:
-            # Typically this would happen if obj cannot be converged to
+            # Typically this would happen if obj cannot be converted to
             # atomic numbers.
             return False
         return self.numbers == symbols.numbers
