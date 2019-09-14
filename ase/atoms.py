@@ -528,6 +528,20 @@ class Atoms(object):
         else:
             return np.zeros(len(self), int)
 
+    @property
+    def tags(self):
+        from ase.magic import Tags
+        return Tags(self.arrays)
+
+    @tags.setter
+    def tags(self, value):
+        tags = np.zeros(len(self), int)
+        tags[:] = value
+        if any(tags):
+            self.set_tags(tags)
+        else:
+            self.arrays.pop('tags', None)
+
     def set_momenta(self, momenta, apply_constraint=True):
         """Set momenta."""
         if (apply_constraint and len(self.constraints) > 0 and
