@@ -18,7 +18,7 @@ class AIDNEB:
                  interpolation='linear', n_images=15, k=None, mic=False,
                  neb_method='aseneb',
                  remove_rotation_and_translation=False,
-                 max_train_data=5, force_consistent=None,
+                 max_train_data=150, force_consistent=None,
                  max_train_data_strategy='nearest_observations',
                  trajectory='AIDNEB.traj',
                  use_previous_observations=False):
