@@ -1,22 +1,20 @@
-from __future__ import print_function
 import warnings
 
 from ase.optimize.optimize import Optimizer
 import numpy as np
 from scipy.optimize import minimize
 
-from ase.parallel import rank
+from ase.parallel import world
 
-from ase.optimize.activelearning.gp.gp import GaussianProcess
-from ase.optimize.activelearning.gp.kernel import SquaredExponential
-from ase.optimize.activelearning.gp.prior import ConstantPrior
+from ase.optimize.gpmin.gp import GaussianProcess
+from ase.optimize.gpmin.kernel import SquaredExponential
+from ase.optimize.gpmin.prior import ConstantPrior
 
 import pickle
 
-
 class GPMin(Optimizer, GaussianProcess):
     def __init__(self, atoms, restart=None, logfile='-', trajectory=None, prior=None,
-                 kernel = None, master=None, noise=None, weight=None, scale = None,
+                 kernel = None, master=None, noise=None, weight=None, scale = None, 
                  force_consistent=None, batch_size=None, bounds = None,
                  update_prior_strategy = 'maximum', update_hyperparams=False):
 
@@ -84,11 +82,11 @@ class GPMin(Optimizer, GaussianProcess):
 
         kernel: Kernel object or None
             Kernel for the GP regression of the PES surface
-	    See ase.optimize.gpmin.kernel
+            See ase.optimize.gpmin.kernel
             If *kernel* is None, then it is set as the 
             SquaredExponential kernel.
             Note: It needs to be a kernel with derivatives!!!!!
-	
+
         noise: float
             Regularization parameter for the Gaussian Process Regression.
 
@@ -106,7 +104,6 @@ class GPMin(Optimizer, GaussianProcess):
                 'maximum': update the prior to the maximum sampled energy
                 'init' : fix the prior to the initial energy
                 'average': use the average of sampled energies as prior
-                'fit': update the prior s.t. it maximizes the marginal likelihood
 
         scale: float
             scale of the Squared Exponential Kernel
@@ -251,8 +248,6 @@ class GPMin(Optimizer, GaussianProcess):
             elif self.strategy == 'init':
                 self.prior.set_constant(e)
                 self.update_prior = False
-            elif self.strategy == 'fit':
-                self.prior.let_update()
 
         # update hyperparams
         if self.update_hp and self.function_calls % self.nbatch == 0 and self.function_calls != 0:
@@ -325,7 +320,7 @@ class GPMin(Optimizer, GaussianProcess):
 
     def dump(self):
         '''Save the training set'''
-        if rank == 0 and self.restart is not None:
+        if world.rank == 0 and self.restart is not None:
             with open(self.restart, 'wb') as fd:
                 pickle.dump((self.x_list, self.y_list), fd, protocol = 2)
 
