@@ -16,7 +16,7 @@ class AIDNEB:
 
     def __init__(self, start, end, model_calculator=None, calculator=None,
                  interpolation='linear', n_images=15, k=None, mic=False,
-                 neb_method='aseneb',
+                 neb_method='improvedtangent',
                  remove_rotation_and_translation=False,
                  max_train_data=150, force_consistent=None,
                  max_train_data_strategy='nearest_observations',
@@ -393,7 +393,7 @@ class AIDNEB:
             # 7. Select next point to train (acquisition function):
 
             # Candidates are the optimized NEB images in the predicted PES.
-            candidates = copy.deepcopy(self.images)
+            candidates = copy.deepcopy(self.images)[1:-1]
 
             if np.max(neb_pred_uncertainty) > unc_convergence:
                 sorted_candidates = acquisition(train_images=train_images,
@@ -401,10 +401,18 @@ class AIDNEB:
                                                 mode='uncertainty',
                                                 objective='max')
             else:
-                sorted_candidates = acquisition(train_images=train_images,
-                                                candidates=candidates,
-                                                mode='ucb',
-                                                objective='max')
+                if self.step % 5 == 0:
+                    sorted_candidates = acquisition(train_images=train_images,
+                                                    candidates=candidates,
+                                                    mode='fmax',
+                                                    objective='min')
+                else:
+                    sorted_candidates = acquisition(train_images=train_images,
+                                                    candidates=candidates,
+                                                    mode='ucb',
+                                                    objective='max')
+
+
 
             # Select the best candidate.
             best_candidate = sorted_candidates.pop(0)
