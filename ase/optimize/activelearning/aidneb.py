@@ -245,7 +245,7 @@ class AIDNEB:
         # Save initial interpolation.
         self.initial_interpolation = self.images[:]
 
-    def run(self, fmax=0.05, unc_convergence=0.010, dt=0.05, ml_steps=100,
+    def run(self, fmax=0.05, unc_convergence=0.025, dt=0.05, ml_steps=100,
             max_step=2.0):
 
         """
@@ -316,8 +316,8 @@ class AIDNEB:
 
         while True:
 
-            # 0. Start from initial interpolation every 10 steps.
-            if self.step % 10 == 0:
+            # 0. Start from initial interpolation every 20 steps.
+            if self.step % 20 == 0:
                 parprint('Starting from initial interpolation...')
                 self.images = copy.deepcopy(self.initial_interpolation)
 
