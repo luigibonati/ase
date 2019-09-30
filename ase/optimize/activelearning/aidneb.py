@@ -245,7 +245,7 @@ class AIDNEB:
         # Save initial interpolation.
         self.initial_interpolation = self.images[:]
 
-    def run(self, fmax=0.05, unc_convergence=0.005, dt=0.05, ml_steps=100,
+    def run(self, fmax=0.05, unc_convergence=0.010, dt=0.05, ml_steps=100,
             max_step=2.0):
 
         """
@@ -465,7 +465,7 @@ def get_neb_predictions(images):
     neb_pred_unc = []
     for i in images:
         neb_pred_energy.append(i.get_potential_energy())
-        unc = i.get_calculator().results['uncertainty']
+        unc = 2. * i.get_calculator().results['uncertainty']
         neb_pred_unc.append(unc)
     neb_pred_unc[0] = 0.0
     neb_pred_unc[-1] = 0.0
