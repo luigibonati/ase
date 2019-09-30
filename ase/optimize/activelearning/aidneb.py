@@ -242,6 +242,8 @@ class AIDNEB:
         # Guess spring constant (k) if not defined by the user.
         if self.spring is None:
             self.spring = 2. * (np.sqrt(self.n_images-1) / d_start_end)
+        # Save initial interpolation.
+        self.initial_interpolation = self.images[:]
 
     def run(self, fmax=0.05, unc_convergence=0.005, dt=0.05, ml_steps=100,
             max_step=2.0):
@@ -314,6 +316,11 @@ class AIDNEB:
 
         while True:
 
+            # 0. Start from initial interpolation every 10 steps.
+            if self.step % 10 == 0:
+                parprint('Starting from initial interpolation...')
+                self.images = copy.deepcopy(self.initial_interpolation)
+
             # 1. Collect observations.
             # This serves to use_previous_observations from a previous
             # (and/or parallel) runs.
@@ -364,7 +371,7 @@ class AIDNEB:
                                         force_consistent=self.force_consistent)
             msg = "--------------------------------------------------------"
             parprint(msg)
-            parprint('Step:', self.function_calls)
+            parprint('Step:', self.step)
             parprint('Time:', time.strftime("%m/%d/%Y, %H:%M:%S",
                                             time.localtime()))
             parprint('Predicted barrier (-->):', pbf)
@@ -432,6 +439,7 @@ class AIDNEB:
                              restart=self.use_previous_observations)
             self.function_calls += 1
             self.force_calls += 1
+            self.step += 1
         print_cite_neb()
 
 
