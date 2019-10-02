@@ -93,7 +93,7 @@ def reduction_full(B):
     raise RuntimeError("Reduced basis not found after %d iterations" % max_it)
 
 
-def minkowski_reduce(cell, pbc=None):
+def minkowski_reduce(cell, pbc=True):
     """Calculate a Minkowski-reduced lattice basis.  The reduced basis
     has the shortest possible vector lengths and has
     norm(a) <= norm(b) <= norm(c).
@@ -110,7 +110,7 @@ def minkowski_reduce(cell, pbc=None):
     B: array
         The lattice basis to reduce (in row-vector format).
     pbc: array, optional
-        The periodic boundary conditions of the cell (Default `None`).
+        The periodic boundary conditions of the cell (Default `True`).
         If `pbc` is provided, only periodic cell vectors are reduced.
 
     Returns:
@@ -120,22 +120,29 @@ def minkowski_reduce(cell, pbc=None):
     H: array
         The unimodular matrix transformation (R = H @ B).
     """
-    if pbc is None:
+    if pbc is True:
         dim = 3
     else:
         dim = np.sum(pbc)
 
     mr_path = np.eye(3).astype(np.int)
-    if dim <= 1:
-        mr_cell = np.copy(cell)
-    elif dim == 2:
+    if dim == 2:
         indices = np.argsort(pbc, kind='merge')[::-1]    # stable sort
-        _cell = cell[indices]
+
+        # TODO: this code would benefit from a `cell.permute_axes` function
+        _cell = cell.copy()
+        _cell = _cell[indices]
+        _cell = _cell[:, indices]
         hu, hv = reduction_gauss(_cell, mr_path[0], mr_path[1])
-        mr_path[indices[0]] = hu
-        mr_path[indices[1]] = hv
-        mr_cell = np.dot(mr_path, cell)
+
+        mr_path[0] = hu
+        mr_path[1] = hv
+        invperm = np.argsort(indices)
+        mr_path = mr_path[invperm]
+        mr_path = mr_path[:, invperm]
+
     elif dim == 3:
         _, mr_path = reduction_full(cell)
-        mr_cell = np.dot(mr_path, cell)
+
+    mr_cell = np.dot(mr_path, cell)
     return mr_cell, mr_path
