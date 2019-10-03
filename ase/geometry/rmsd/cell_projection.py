@@ -1,7 +1,7 @@
 import numpy as np
 import warnings
 from scipy.linalg import polar
-from ase.geometry.minkowski_reduction import gauss
+from ase.geometry.minkowski_reduction import reduction_gauss
 from ase.geometry import minkowski_reduce as reduce_basis
 
 
@@ -12,7 +12,7 @@ def minkowski_reduce(cell, dim):
         mr_cell = np.copy(cell)
 
     elif dim == 2:
-        hu, hv = gauss(cell, mr_path[0], mr_path[1])
+        hu, hv = reduction_gauss(cell, mr_path[0], mr_path[1])
         mr_path[0] = hu
         mr_path[1] = hv
         mr_cell = np.dot(mr_path, cell)
