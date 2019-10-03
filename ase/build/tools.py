@@ -572,12 +572,24 @@ def niggli_reduce_cell(cell, epsfactor=None):
                            .format(cell.tolist(), C.tolist()))
 
     abc = np.sqrt(g[:3])
-    cosangles = g[3:] / (2 * abc.prod() / abc)
+    # Prevent division by zero e.g. for cell==zeros((3, 3)):
+    abcprod = max(abc.prod(), 1e-100)
+    cosangles = abc * g[3:] / (2 * abcprod)
     angles = 180 * np.arccos(cosangles) / np.pi
     newcell = np.array(cellpar_to_cell(np.concatenate([abc, angles])),
                        dtype=float)
 
     return newcell, C
+
+
+def update_cell_and_positions(atoms, new_cell, op):
+    """Helper method for transforming cell and positions of atoms object."""
+    scpos = np.linalg.solve(op, atoms.get_scaled_positions().T).T
+    scpos %= 1.0
+    scpos %= 1.0
+
+    atoms.set_cell(new_cell)
+    atoms.set_scaled_positions(scpos)
 
 
 def niggli_reduce(atoms):
@@ -600,13 +612,21 @@ def niggli_reduce(atoms):
     """
 
     assert all(atoms.pbc), 'Can only reduce 3d periodic unit cells!'
-    new_cell, C = niggli_reduce_cell(atoms.cell)
-    scpos = np.linalg.solve(C, atoms.get_scaled_positions().T).T
-    scpos %= 1.0
-    scpos %= 1.0
+    new_cell, op = niggli_reduce_cell(atoms.cell)
+    update_cell_and_positions(atoms, new_cell, op)
 
-    atoms.set_cell(new_cell)
-    atoms.set_scaled_positions(scpos)
+
+def reduce_lattice(atoms, eps=2e-4):
+    """Reduce atoms object to canonical lattice.
+
+    This changes the cell and positions such that the atoms object has
+    the canonical form used for defining band paths but is otherwise
+    physically equivalent.  The eps parameter is used as a tolerance
+    for determining the cell's Bravais lattice."""
+    from ase.geometry.bravais_type_engine import identify_lattice
+    niggli_reduce(atoms)
+    lat, op = identify_lattice(atoms.cell, eps=eps)
+    update_cell_and_positions(atoms, lat.tocell(), np.linalg.inv(op))
 
 
 def sort(atoms, tags=None):

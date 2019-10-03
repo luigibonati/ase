@@ -106,10 +106,10 @@ all_changes = ['positions', 'numbers', 'cell', 'pbc',
 # Recognized names of calculators sorted alphabetically:
 names = ['abinit', 'ace', 'aims', 'amber', 'asap', 'castep', 'cp2k', 'crystal',
          'demon', 'dftb', 'dftd3', 'dmol', 'eam', 'elk', 'emt', 'espresso',
-         'exciting', 'fleur', 'gaussian', 'gpaw', 'gromacs', 'gulp',
-         'hotbit', 'jacapo', 'lammpsrun',
-         'lammpslib', 'lj', 'mopac', 'morse', 'nwchem', 'octopus', 'onetep',
-         'openmx', 'siesta', 'tip3p', 'turbomole', 'vasp']
+         'exciting', 'fleur', 'gaussian', 'gpaw', 'gromacs', 'gulp', 'hotbit',
+         'jacapo', 'lammpsrun', 'lammpslib', 'lj', 'mopac', 'morse', 'nwchem',
+         'octopus', 'onetep', 'openmx', 'qchem', 'siesta', 'tip3p',
+         'turbomole', 'vasp']
 
 
 special = {'cp2k': 'CP2K',
@@ -128,6 +128,7 @@ special = {'cp2k': 'CP2K',
            'morse': 'MorsePotential',
            'nwchem': 'NWChem',
            'openmx': 'OpenMX',
+           'qchem': 'QChem',
            'tip3p': 'TIP3P'}
 
 
@@ -154,6 +155,8 @@ def get_calculator_class(name):
         from ase.calculators.vasp import Vasp2 as Calculator
     elif name == 'ace':
         from ase.calculators.acemolecule import ACE as Calculator
+    elif name == 'Psi4':
+        from ase.calculators.psi4 import Psi4 as Calculator
     elif name in external_calculators:
         Calculator = external_calculators[name]
     else:
@@ -241,21 +244,41 @@ def kpts2sizeandoffsets(size=None, density=None, gamma=None, even=None,
 
     """
 
+    if size is not None and density is not None:
+        raise ValueError('Cannot specify k-point mesh size and '
+                         'density simultaneously')
+    elif density is not None and atoms is None:
+        raise ValueError('Cannot set k-points from "density" unless '
+                         'Atoms are provided (need BZ dimensions).')
+
     if size is None:
         if density is None:
             size = [1, 1, 1]
         else:
-            size = kptdensity2monkhorstpack(atoms, density, even)
+            size = kptdensity2monkhorstpack(atoms, density, None)
+
+    # Not using the rounding from kptdensity2monkhorstpack as it doesn't do
+    # rounding to odd numbers
+    if even is not None:
+        size = np.array(size)
+        remainder = size % 2
+        if even:
+            size += remainder
+        else:  # Round up to odd numbers
+            size += (1 - remainder)
 
     offsets = [0, 0, 0]
+    if atoms is None:
+        pbc = [True, True, True]
+    else:
+        pbc = atoms.pbc
 
     if gamma is not None:
         for i, s in enumerate(size):
-            if atoms.pbc[i] and s % 2 != bool(gamma):
+            if pbc[i] and s % 2 != bool(gamma):
                 offsets[i] = 0.5 / s
 
     return size, offsets
-
 
 @jsonable('kpoints')
 class KPoints:
@@ -340,9 +363,28 @@ class Parameters(dict):
     @classmethod
     def read(cls, filename):
         """Read parameters from file."""
-        file = open(os.path.expanduser(filename))
-        parameters = cls(eval(file.read()))
-        file.close()
+        # We use ast to evaluate literals, avoiding eval()
+        # for security reasons.
+        import ast
+        with open(filename) as fd:
+            txt = fd.read().strip()
+        assert txt.startswith('dict(')
+        assert txt.endswith(')')
+        txt = txt[5:-1]
+
+        # The tostring() representation "dict(...)" is not actually
+        # a literal, so we manually parse that along with the other
+        # formatting that we did manually:
+        dct = {}
+        for line in txt.splitlines():
+            key, val = line.split('=', 1)
+            key = key.strip()
+            val = val.strip()
+            if val[-1] == ',':
+                val = val[:-1]
+            dct[key] = ast.literal_eval(val)
+
+        parameters = cls(dct)
         return parameters
 
     def tostring(self):
