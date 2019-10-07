@@ -152,12 +152,12 @@ def get_layers(atoms, miller, tolerance=0.001):
 def find_mic(v, cell, pbc=True):
     """Finds the minimum-image representation of vector(s) v"""
 
-    if hasattr(pbc, "__len__"):
-        pbc = cell.any(1) & pbc
-    elif pbc is None or pbc:
-        pbc = [1, 1, 1]
-    else:
-        pbc = [0, 0, 0]
+    if not hasattr(pbc, "__len__"):
+        if pbc is None or pbc:
+            pbc = [1, 1, 1]
+        else:
+            pbc = [0, 0, 0]
+    pbc = cell.any(1) & pbc
 
     v = np.array(v)
     single = len(v.shape) == 1
