@@ -6,9 +6,9 @@ from ase.neighborlist import mic as NeighborListMic
 
 size = 2
 atoms = FaceCenteredCubic(size=[size, size, size],
-				symbol='Cu',
-				latticeconstant=2,
-				pbc=(1, 1, 1))
+                          symbol='Cu',
+                          latticeconstant=2,
+                          pbc=(1, 1, 1))
 
 d0 = atoms.get_distances(0, np.arange(len(atoms)), mic=True)
 
