@@ -15,10 +15,10 @@ from ase.optimize.activelearning.io import dump_observation, get_fmax
 class AIDNEB:
 
     def __init__(self, start, end, model_calculator=None, calculator=None,
-                 interpolation='linear', n_images=15, k=None, mic=False,
+                 interpolation='idpp', n_images=15, k=None, mic=False,
                  neb_method='improvedtangent',
                  remove_rotation_and_translation=False,
-                 max_train_data=150, force_consistent=None,
+                 max_train_data=25, force_consistent=None,
                  max_train_data_strategy='nearest_observations',
                  trajectory='AIDNEB.traj',
                  use_previous_observations=False):
@@ -223,7 +223,8 @@ class AIDNEB:
                                     k=self.spring, method=self.neb_method,
                                     remove_rotation_and_translation=self.rrt
                                     )
-                neb_interpolation.idpp_interpolate(optimizer=FIRE)
+                neb_interpolation.idpp_interpolate(optimizer=FIRE,
+                                                   mic=self.mic)
 
         # B) Alternatively, the user can propose an initial path.
         if interp_path is not None:
