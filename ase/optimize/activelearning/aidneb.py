@@ -420,8 +420,6 @@ class AIDNEB:
                                                     mode='ucb',
                                                     objective='max')
 
-
-
             # Select the best candidate.
             best_candidate = sorted_candidates.pop(0)
 
