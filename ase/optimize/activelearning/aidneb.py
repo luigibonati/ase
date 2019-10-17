@@ -5,7 +5,7 @@ from ase import io
 from ase.atoms import Atoms
 from ase.optimize.activelearning.gp.calculator import GPCalculator
 from ase.neb import NEB
-from ase.geometry import distance
+from scipy.spatial.distance import sqeuclidean
 from ase.optimize import MDMin, FIRE
 from ase.optimize.activelearning.acquisition import acquisition
 from ase.parallel import parprint, parallel_function
@@ -168,11 +168,7 @@ class AIDNEB:
         self.neb_method = neb_method
         self.spring = k
         self.i_endpoint = io.read(self.start, '-1')
-        self.i_endpoint.get_potential_energy(force_consistent=force_consistent)
-        self.i_endpoint.get_forces()
         self.e_endpoint = io.read(self.end, '-1')
-        self.e_endpoint.get_potential_energy(force_consistent=force_consistent)
-        self.e_endpoint.get_forces()
 
         # GP calculator:
         self.model_calculator = model_calculator
@@ -201,8 +197,31 @@ class AIDNEB:
         self.use_previous_observations = use_previous_observations
         self.trajectory = trajectory
 
+        # Make sure that the initial and endpoints are near the interpolation.
+        if self.mic is True:
+            mic_initial = self.i_endpoint[:]
+            mic_final = self.e_endpoint[:]
+            mic_images = [mic_initial]
+            for i in range(10000):
+                mic_images += [mic_initial.copy()]
+            mic_images += [mic_final]
+            neb_mic = NEB(mic_images, climb=False, method=self.neb_method,
+                          remove_rotation_and_translation=self.rrt)
+            neb_mic.interpolate(method='linear', mic=self.mic)
+            self.i_endpoint.positions = mic_images[1].positions[:]
+            self.e_endpoint.positions = mic_images[-2].positions[:]
+
+        # Calculate the initial and final end-points (if necessary).
+        self.i_endpoint.set_calculator(copy.deepcopy(self.ase_calc))
+        self.e_endpoint.set_calculator(copy.deepcopy(self.ase_calc))
+        self.i_endpoint.get_potential_energy(force_consistent=force_consistent)
+        self.i_endpoint.get_forces()
+        self.e_endpoint.get_potential_energy(force_consistent=force_consistent)
+        self.e_endpoint.get_forces()
+
         # Calculate the distance between the initial and final endpoints.
-        d_start_end = distance(self.i_endpoint, self.e_endpoint)
+        d_start_end = sqeuclidean(self.i_endpoint.positions.flatten(),
+                                  self.e_endpoint.positions.flatten())
 
         # A) Create images using interpolation if user does define a path.
         if interp_path is None:
