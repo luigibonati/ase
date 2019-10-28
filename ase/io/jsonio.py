@@ -93,6 +93,9 @@ def create_ase_object(objtype, dct):
     elif objtype == 'atoms':
         from ase import Atoms
         obj = Atoms.fromdict(dct)
+    elif objtype == 'fixatoms':
+        from ase.constraints import dict2constraint
+        obj = dict2constraint(dct)
     else:
         raise ValueError('Do not know how to decode object type {} '
                          'into an actual object'.format(objtype))

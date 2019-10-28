@@ -1,6 +1,7 @@
 from math import sqrt
 from warnings import warn
 from ase.geometry import find_mic, wrap_positions
+from ase.utils import jsonable
 from ase.calculators.calculator import PropertyNotImplementedError
 
 import numpy as np
@@ -97,6 +98,7 @@ class FixConstraintSingle(FixConstraint):
         return [self.a]
 
 
+@jsonable('fixatoms')
 class FixAtoms(FixConstraint):
     """Constraint object for fixing some chosen atoms."""
 
