@@ -58,7 +58,7 @@ class JSONDatabase(Database, object):
         if constraints:
             dct['constraints'] = constraints
 
-        dct['info'] = row.info
+        dct['info'] = row._info
 
         if id is None:
             id = nextid
