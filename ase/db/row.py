@@ -47,7 +47,7 @@ def atoms2dict(atoms):
     if atoms.constraints:
         dct['constraints'] = [c.todict() for c in atoms.constraints]
     if atoms.info:
-+        dct['info'] = atoms.info
+        dct['info'] = atoms.info
     if atoms.calc is not None:
         dct['calculator'] = atoms.calc.name.lower()
         dct['calculator_parameters'] = atoms.calc.todict()
