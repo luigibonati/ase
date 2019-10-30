@@ -223,6 +223,7 @@ class AtomsRow:
                       self.positions,
                       cell=self.cell,
                       pbc=self.pbc,
+                      info=self.info,
                       magmoms=self.get('initial_magmoms'),
                       charges=self.get('initial_charges'),
                       tags=self.get('tags'),
