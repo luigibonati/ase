@@ -79,6 +79,7 @@ class AtomsRow:
         self._constraints = dct.pop('constraints', [])
         self._constrained_forces = None
         self._data = dct.pop('data', {})
+        self._info = dct.pop('info', {})
         kvp = dct.pop('key_value_pairs', {})
         self._keys = list(kvp.keys())
         self.__dict__.update(kvp)
@@ -223,7 +224,7 @@ class AtomsRow:
                       self.positions,
                       cell=self.cell,
                       pbc=self.pbc,
-                      info=self.info,
+                      info=self._info,
                       magmoms=self.get('initial_magmoms'),
                       charges=self.get('initial_charges'),
                       tags=self.get('tags'),
@@ -244,7 +245,6 @@ class AtomsRow:
                 atoms.calc.name = self.get('calculator', 'unknown')
 
         if add_additional_information:
-            atoms.info = {}
             atoms.info['unique_id'] = self.unique_id
             if self._keys:
                 atoms.info['key_value_pairs'] = self.key_value_pairs
