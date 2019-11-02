@@ -24,6 +24,13 @@ def wrap_subprocess(calc):
 #        self.results = results
 
 class SubProcessPythonCalculator(Calculator):
+    """Calculator for running calculations in external processes.
+
+    TODO: This should work with arbitrary commands including MPI stuff.
+
+    This calculator runs a subprocess wherein it sets up an
+    actual calculator.  Calculations are forwarded through pickle
+    to that calculator, which returns results through pickle."""
     implemented_properties = all_properties
     def __init__(self, calc_input):
         super().__init__()
@@ -32,7 +39,6 @@ class SubProcessPythonCalculator(Calculator):
         self.proc = proc
         self.calc_input = calc_input
 
-        #self._write(calc_input)
         self._send(calc_input)
 
     def set(self, **kwargs):
@@ -65,7 +71,7 @@ class SubProcessPythonCalculator(Calculator):
     def calculate(self, atoms, properties, system_changes):
         Calculator.calculate(self, atoms, properties, system_changes)
         # We send a pickle of self.atoms because this is a fresh copy
-        # of the input, but without un unpicklable calculator:
+        # of the input, but without an unpicklable calculator:
         self._run_calculation(self.atoms, properties, system_changes)
         results = self._recv()
         self.results.update(results)
@@ -74,8 +80,9 @@ class SubProcessPythonCalculator(Calculator):
 def main():
     from ase.calculators.calculator import get_calculator_class
 
+    # We switch stdout so stray print statements won't interfere with outputs:
     binary_stdout = sys.stdout.buffer
-    sys.stdout = sys.stderr  # Print statements won't interfere with outputs
+    sys.stdout = sys.stderr
 
     def recv():
         return pickle.load(sys.stdin.buffer)
