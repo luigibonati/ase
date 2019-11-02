@@ -62,10 +62,11 @@ class SubProcessPythonCalculator(Calculator):
         self._send('calculate')
         self._send((atoms, properties, system_changes))
 
-    def calculate(self, atoms, properties=None, system_changes=None):
-        atoms = atoms.copy()  # Discards calculator
+    def calculate(self, atoms, properties, system_changes):
         Calculator.calculate(self, atoms, properties, system_changes)
-        self._run_calculation(atoms, properties, system_changes)
+        # We send a pickle of self.atoms because this is a fresh copy
+        # of the input, but without un unpicklable calculator:
+        self._run_calculation(self.atoms, properties, system_changes)
         results = self._recv()
         self.results.update(results)
 
@@ -73,17 +74,20 @@ class SubProcessPythonCalculator(Calculator):
 def main():
     from ase.calculators.calculator import get_calculator_class
 
+    binary_stdout = sys.stdout.buffer
+    sys.stdout = sys.stderr  # Print statements won't interfere with outputs
+
     def recv():
         return pickle.load(sys.stdin.buffer)
 
     def send(obj):
-        pickle.dump(obj, sys.stdout.buffer)
-        sys.stdout.flush()
-
+        pickle.dump(obj, binary_stdout)
+        binary_stdout.flush()
 
     calc_input = recv()
     cls = get_calculator_class(calc_input.name)
     calc = cls(**calc_input.kwargs)
+
     while True:
         instruction = recv()
         if instruction == 'stop':
@@ -93,7 +97,8 @@ def main():
 
         atoms, properties, system_changes = recv()
 
-        calc.calculate(atoms, properties, system_changes)
+        calc.calculate(atoms=atoms, properties=properties,
+                       system_changes=system_changes)
         results = calc.results
         send(results)
 
