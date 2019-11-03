@@ -1,3 +1,4 @@
+import sys
 import warnings
 from ase.io import read, write
 from ase.io.formats import ioformats
@@ -5,25 +6,64 @@ from ase.calculators.calculator import FileIOCalculator, PropertyNotPresent
 
 
 class CalculatorTemplate:
-    def __init__(self):
-        pass
+    def __init__(self, name, implemented_properties, command,
+                 input_file, output_file,
+                 input_format, output_format):
+        self.name = name
+        self.implemented_properties = implemented_properties
+        self.command = command
+
+        # Generalize: We need some kind of Writer and Reader
+        # to handle multiple files at a time.
+        self.input_file = input_file
+        self.output_file = output_file
+        self.input_format = input_format
+        self.output_format = output_format
+
+    def __repr__(self):
+        return 'CalculatorTemplate({})'.format(vars(self))
+
+    def new(self, **kwargs):
+        calc = CalculatorIndependentCalculator(template=self, **kwargs)
+        return calc
 
 
 def get_espresso_template():
-    template = CalculatorTemplate()
-    template.name = 'espresso'
-    template.implemented_properties = ['energy', 'forces', 'stress', 'magmoms']
-    template.command = 'pw.x -in PREFIX.pwi > PREFIX.pwo'
-    template.input_format = 'espresso-in'
-    template.output_format = 'espresso-out'
-    return template
+    from ase.calculators.espresso import Espresso
+    infile = 'espresso.pwi'
+    outfile = 'espresso.pwo'
+    return CalculatorTemplate(
+        name='espresso',
+        implemented_properties=Espresso.implemented_properties,
+        command='pw.x -in {} > {}'.format(infile, outfile),
+        input_file=infile,
+        output_file=outfile,
+        input_format='espresso-in',
+        output_format='espresso-out')
 
-espresso_template = get_espresso_template()
+
+def get_emt_template():
+    from ase.calculators.emt import EMT
+    infile = 'input.traj'
+    outfile = 'output.traj'
+    return CalculatorTemplate(
+        name='emt',
+        implemented_properties=EMT.implemented_properties,
+        command=('{} -m ase.calculators.emt {} {}'
+                 .format(sys.executable, infile, outfile)),
+        input_file=infile,
+        output_file=outfile,
+        input_format='traj',
+        output_format='traj')
+
 
 def new_espresso(**kwargs):
-    calc = CalculatorIndependentCalculator(espresso_template, **kwargs)
-    return calc
+    return get_espresso_template().new(**kwargs)
 
+def new_emt(**kwargs):
+    return get_emt_template().new(**kwargs)
+
+# TODO: More sensible class name
 class CalculatorIndependentCalculator(FileIOCalculator):
     implemented_properties = None
     command = None
@@ -52,15 +92,12 @@ class CalculatorIndependentCalculator(FileIOCalculator):
     def write_input(self, atoms, properties=None, system_changes=None):
         FileIOCalculator.write_input(self, atoms, properties, system_changes)
         fmt = ioformats[self.template.input_format]
-        ext = fmt.extensions[0]
-        fname = self.label + '.' + ext
-        write(fname, atoms, format=fmt.name, **self.parameters)
+        write(self.template.input_file, atoms, format=fmt.name,
+              **self.parameters)
 
     def read_results(self):
         fmt = ioformats[self.template.output_format]
-        ext = fmt.extensions[0]
-        fname = self.label + '.' + ext
-        output = read(fname, format=fmt.name)
+        output = read(self.template.output_file, format=fmt.name)
         self.cache = output.calc
         self.results = output.calc.results
 
