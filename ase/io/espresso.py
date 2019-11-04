@@ -13,6 +13,7 @@ ESPRESSO.
 
 import os
 import operator as op
+import re
 import warnings
 from collections import OrderedDict
 from os import path
@@ -424,12 +425,18 @@ def parse_pwo_start(lines, index=0):
                 [float(x) for x in lines[idx + 2].split()[3:6]],
                 [float(x) for x in lines[idx + 3].split()[3:6]]])
         elif 'positions (alat units)' in line:
-            info['symbols'] = [
-                label_to_symbol(at_line.split()[1])
-                for at_line in lines[idx + 1:idx + 1 + info['nat']]]
-            info['positions'] = [
-                [float(x) * info['celldm(1)'] for x in at_line.split()[6:9]]
-                for at_line in lines[idx + 1:idx + 1 + info['nat']]]
+            pat = re.compile(r'\s*\d+\s*(\S+)\s*tau\(\s*\d+\)\s*='
+                 r'\s*\(\s*(\S+)\s+(\S+)\s+(\S+)\s*\)')
+            info['symbols'], info['positions'] = [], []
+
+            for at_line in lines[idx + 1:idx + 1 + info['nat']]:
+                match = pat.match(at_line)
+                assert match is not None
+                sym, x, y, z = match.group(1, 2, 3, 4)
+                info['symbols'].append(label_to_symbol(sym))
+                info['positions'].append([float(x) * info['celldm(1)'],
+                                          float(y) * info['celldm(1)'],
+                                          float(z) * info['celldm(1)']])
             # This should be the end of interesting info.
             # Break here to avoid dealing with large lists of kpoints.
             # Will need to be extended for DFTCalculator info.
