@@ -34,7 +34,7 @@ def collect_atoms(n, H, atoms):
     return atoms
 
 
-def cluster_component(ps, permutations, shifts, i, group_index):
+def cluster_component(ps, permutations, shifts, i):
     ds = cdist(ps[i] - shifts, ps[permutations[:, i]])
     indices = np.argmin(ds, axis=0)
     positions = ps[permutations[:, i]] + shifts[indices]
@@ -61,8 +61,7 @@ def reduced_layout(cr, rmsd, group_index, H, permutations):
     for c in np.unique(components):
         i = list(components).index(c)
         meanpos, crmsd = cluster_component(collected.get_positions(),
-                                           permutations, shifts, i,
-                                           group_index)
+                                           permutations, shifts, i)
         data.append((meanpos, numbers[i], crmsd))
     positions, numbers, crmsd = zip(*data)
 
@@ -73,7 +72,7 @@ def reduced_layout(cr, rmsd, group_index, H, permutations):
     reduced = Atoms(positions=positions, numbers=numbers,
                     cell=collected.cell, pbc=collected.pbc)
     reduced.set_cell(cr.invop @ reduced.cell, scale_atoms=False)
-    reduced.wrap()
+    reduced.wrap(eps=0)
     return reduced, components
 
 
@@ -119,6 +118,7 @@ def find_crystal_reductions(atoms):
     cr = CrystalReducer(atoms)
     reductions = cr.find_consistent_reductions()
     Reduced = namedtuple('ReducedCrystal', 'rmsd factor atoms components')
+    invzperm = np.argsort(cr.zpermutation)
 
     reduced = {}
     for rmsd, group_index, H, permutations in reductions:
@@ -127,7 +127,7 @@ def find_crystal_reductions(atoms):
             reduced_atoms, components = result
             key = group_index
             entry = Reduced(rmsd=rmsd, factor=group_index, atoms=reduced_atoms,
-                            components=components)
+                            components=components[invzperm])
             if key not in reduced:
                 reduced[key] = entry
             else:

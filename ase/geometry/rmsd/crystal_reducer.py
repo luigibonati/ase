@@ -56,17 +56,20 @@ def calculate_rmsd(positions, zindices, mapped_nbrs, num_cells):
 
 
 def standardize(atoms, subtract_barycenter=False):
-    atoms = atoms[np.argsort(atoms.numbers, kind='merge')]
-    rcell, op = atoms.cell.minkowski_reduce()
-    invop = np.linalg.inv(op)
-    atoms.set_cell(rcell, scale_atoms=False)
+    zpermutation = np.argsort(atoms.numbers, kind='merge')
+    atoms = atoms[zpermutation]
+    atoms.wrap(eps=0)
 
     barycenter = np.mean(atoms.get_positions(), axis=0)
     if subtract_barycenter:
         atoms.positions -= barycenter
 
+    rcell, op = atoms.cell.minkowski_reduce()
+    invop = np.linalg.inv(op)
+    atoms.set_cell(rcell, scale_atoms=False)
+
     atoms.wrap(eps=0)
-    return atoms, invop, barycenter
+    return atoms, invop, barycenter, zpermutation
 
 
 def expand_coordinates(c, pbc):
@@ -86,13 +89,16 @@ def expand_coordinates(c, pbc):
 
 class CrystalReducer:
 
-    def __init__(self, atoms):
+    def __init__(self, atoms, invert=False):
+        self.invert = invert
         self.distances = {}
         self.permutations = {}
-        self.atoms, self.invop, barycenter = standardize(atoms)
-        atoms = self.atoms
+        atoms, invop, barycenter, zpermutation = standardize(atoms,
+                                                             self.invert)
+        self.atoms = atoms
+        self.invop = invop
+        self.zpermutation = zpermutation
         self.scaled = atoms.get_scaled_positions()
-        self.n = reduce_gcd(atoms.symbols.formula.count().values())
 
         positions = atoms.get_positions()
         self.nbr_cells = get_neighboring_cells(atoms.pbc)
@@ -101,6 +107,11 @@ class CrystalReducer:
         self.nbr_pos = [np.concatenate([positions[indices] + e @ atoms.cell
                                        for e in self.nbr_cells])
                         for indices in self.zindices]
+        if invert:
+            self.n = len(atoms)
+            self.barycenter = barycenter
+        else:
+            self.n = reduce_gcd(atoms.symbols.formula.count().values())
 
     def get_point(self, c):
         """Calculates the minimum-cost permutation at a desired translation.
@@ -113,7 +124,8 @@ class CrystalReducer:
         pbc = self.atoms.pbc
         c = expand_coordinates(c, pbc)
 
-        transformed = self.scaled + c / self.n
+        sign = [1, -1][self.invert]
+        transformed = sign * self.scaled + c / self.n
         for i, index in enumerate(c):
             if pbc[i]:
                 transformed[:, i] %= 1.0
@@ -121,8 +133,9 @@ class CrystalReducer:
 
         rmsd, permutation = calculate_rmsd(positions, self.zindices,
                                            self.nbr_pos, len(self.nbr_cells))
-        self.distances[key] = rmsd
-        self.permutations[key] = permutation
+        if not self.invert:
+            self.distances[key] = rmsd
+            self.permutations[key] = permutation
         return rmsd, permutation
 
     def is_consistent(self, H):
