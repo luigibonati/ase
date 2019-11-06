@@ -94,6 +94,7 @@ Uncategorized
    defects/defects
    qmmm/qmmm
    dimensionality/dimensionality
+   crystal_reduction/crystal_reduction
    deltacodesdft/deltacodesdft
    wannier/wannier
    tut03_vibrations/vibrations
