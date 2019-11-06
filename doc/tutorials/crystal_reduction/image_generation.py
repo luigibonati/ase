@@ -37,7 +37,7 @@ def save_figure(name, factor=None):
         path = "{0}.png".format(name)
 
     plt.savefig(path)
-    plt.clf()
+    plt.close()
 
 
 atoms = graphene(size=(2, 2, 1))
