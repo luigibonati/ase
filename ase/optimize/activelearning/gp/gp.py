@@ -1,4 +1,3 @@
-from __future__ import print_function
 from ase.optimize.activelearning.gp.kernel import SquaredExponential
 
 import numpy as np
