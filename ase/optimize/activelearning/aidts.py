@@ -224,7 +224,7 @@ class AIDTS:
             self.step += 1
 
             # 5. Print output.
-            if logfile is True:
+            if logfile:
                 parprint("-" * 26)
                 parprint('Step:', self.step)
                 parprint('Function calls:', self.function_calls)

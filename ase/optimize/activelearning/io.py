@@ -23,7 +23,7 @@ def dump_observation(atoms, filename, restart, method='-'):
      """
     atoms.info['method'] = method
 
-    if restart is True:
+    if restart:
         if os.path.exists(filename):
             prev_atoms = io.read(filename, ':')  # Active learning.
             if atoms not in prev_atoms:  # Avoid duplicates.

@@ -60,14 +60,14 @@ class CleanObservations:
                     too_close = images_too_close(image1=structure,
                                                  image2=clean_structure,
                                                  distance_threshold=self.distance_threshold)
-                    if too_close is True:
+                    if too_close:
                         is_good = False
-                if is_good is True:
+                if is_good:
                     clean_structures += [structure]
                     print('Converged structure found...')
 
         # Remove outliers (optional).
-        if self.remove_outliers is True:
+        if self.remove_outliers:
             structures_without_outliers = []
             for structure in all_structures:
                 all_energies += [structure.get_potential_energy()]
@@ -89,9 +89,9 @@ class CleanObservations:
                 too_close = images_too_close(image1=structure,
                                              image2=clean_structure,
                                              distance_threshold=self.distance_threshold)
-                if too_close is True:
+                if too_close:
                     is_good = False
-            if is_good is True:
+            if is_good:
                 clean_structures += [structure]
             else:
                 print('Atoms structure too close to a previous structure.')

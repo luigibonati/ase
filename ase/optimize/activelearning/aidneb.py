@@ -198,7 +198,7 @@ class AIDNEB:
         self.trajectory = trajectory
 
         # Make sure that the initial and endpoints are near the interpolation.
-        if self.mic is True:
+        if self.mic:
             mic_initial = self.i_endpoint[:]
             mic_final = self.e_endpoint[:]
             mic_images = [mic_initial]
