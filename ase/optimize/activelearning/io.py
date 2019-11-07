@@ -33,7 +33,7 @@ def dump_observation(atoms, filename, restart, method='-'):
                 trj.write()
         else:
             io.write(filename=filename, images=atoms, append=False)
-    if restart is False:
+    if not restart:
         io.write(filename=filename, images=atoms, append=False)
 
 
