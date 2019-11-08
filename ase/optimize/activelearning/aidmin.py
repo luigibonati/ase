@@ -91,9 +91,11 @@ class AIDMin:
         self.geometry_threshold = geometry_threshold
 
         # Initialize training set
-        trajectory_main = self.trajectory.split('.')[0]
+
         if trainingset is None:
-            self.train = TrainingSet([], use_previous_observations = False)
+            trajectory_main = self.trajectory.split('.')[0]
+            self.train = TrainingSet(trajectory_main + '_observations.traj',
+                    use_previous_observations = False)
         else:
             self.train = TrainingSet(trainingset,
                         use_previous_observations=use_previous_observations)
