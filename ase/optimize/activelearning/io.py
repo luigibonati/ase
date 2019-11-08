@@ -72,6 +72,7 @@ class TrainingSet:
                                "with a non empty list as destintion deletes "
                                "the content of the list. If this is an unwanted"
                                "behaviour, consider passing an empty list.")
+                    warnings.warn(warning)
 
                 self.destination = []
             else:
