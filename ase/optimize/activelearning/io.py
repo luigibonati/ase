@@ -4,7 +4,7 @@ from ase import io
 from ase.io.trajectory import TrajectoryWriter
 import os
 from copy import deepcopy
-
+import warnings
 
 @parallel_function
 def dump_observation(atoms, filename, restart, method='-'):
@@ -41,12 +41,38 @@ def dump_observation(atoms, filename, restart, method='-'):
 class TrainingSet:
 
     """
-    Beautiful documentation comes in here.
+    Training set class to store calculations as they are run
+    by the different AID methods.
+
+    It allows to save stuff to a trajectory file or to keep
+    observations in memory as a list. In the future it would
+    be nice to have them also stored to a database
+
+    TODO: Add a db mode.
+
+    Parameters:
+    -----------
+    destination: str or list
+        This is where the training set is going to be stored
+        options:
+            trajectory file name: atoms are stored in a traj file.
+                This is, written to disk.
+            list: atoms are kept in memory, kept in a list.
+    use_previous_observations: bool
+        This is some sort of restart for the dataset,
+        whether you would like to use the other stuff in your
+        destination or not.
     """
 
     def __init__(self, destination, use_previous_observations):
         if type(destination) is list:
             if not use_previous_observations:
+                if len(destination)>0:
+                    warning = ("use_previous_observations == False together "
+                               "with a non empty list as destintion deletes "
+                               "the content of the list. If this is an unwanted"
+                               "behaviour, consider passing an empty list.")
+
                 self.destination = []
             else:
                 self.destination = destination
@@ -63,6 +89,17 @@ class TrainingSet:
 
 
     def dump(self, atoms, method):
+        """
+        Saves the atoms observations into the training set.
+
+        Parameters
+        ----------
+        atoms: object
+            Atoms object to be appended to previous observations.
+        method: string
+            Label with the optimizer name to be appended in atoms.info['method'].
+         """
+
         if self.mode == 'list':
             atoms.info['method'] = method
             self.destination.append(deepcopy(atoms))
@@ -80,6 +117,13 @@ class TrainingSet:
 
 
     def load_set(self):
+        """
+        Loads the training set
+
+        Returns:
+        --------
+        A list of ase.Atoms objects
+        """
         if self.mode == 'list':
             return self.destination.copy()
         elif self.mode == 'traj':
@@ -88,6 +132,13 @@ class TrainingSet:
             raise NotImplementedError()
 
     def load_last(self):
+        """
+        Last entry written to the training set
+
+        Returns:
+        --------
+        An atoms object
+        """
         if self.mode == 'list':
             return self.destination[-1]
         elif self.mode == 'traj':

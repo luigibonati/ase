@@ -54,15 +54,22 @@ class AIDMin:
 
         use_previous_observations: boolean
             If False. The optimization starts from scratch.
-            A *trajectory_observations.traj* file is automatically generated
-            in each step of the optimization, which contains the
-            observations collected by the surrogate. If
-            (a) *use_previous_observations* is True and (b) a previous
-            *trajectory_observations.traj* file is found in the working
-            directory: the algorithm will be use the previous observations
-            to train the model with all the information collected in
-            *trajectory_observations.traj*.
+                If the observations were saved to a trajectory file,
+                it is overwritten. If they were kept in a list, they are
+                deleted.
+            If True. The optimization uses the information that was already
+                in the training set that is provided in the optimization.
 
+        trainingset: None, trajectory file or list
+            Where the training set is kept, either saved to disk in a trajectory
+            file or kept in memory in a list.
+            options:
+                None (default):
+                    A trajectory file named *trajectory*_observations.traj is
+                    automatically generated and the training set is saved to
+                    it while generated.
+                str: trajectory filename where to append the training set
+                list: list were to append the atoms objects.
         """
 
         # Model calculator:
