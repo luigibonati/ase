@@ -1,7 +1,6 @@
 import time
 import copy
 from scipy.spatial.distance import euclidean
-from ase import io
 from ase.optimize.activelearning.gp.calculator import GPCalculator
 from ase.parallel import parprint
 from ase.optimize import QuasiNewton
