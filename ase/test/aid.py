@@ -22,12 +22,14 @@ slab.set_constraint(FixAtoms(mask=mask))
 # 1.2. Optimize initial and final end-points.
 
 # Initial end-point:
-qn = AIDMin(slab, trajectory='initial.traj', use_previous_observations=False)
+qn = AIDMin(slab, trajectory='initial.traj', use_previous_observations=False,
+    trainingset = 'initial_observations.traj')
 qn.run(fmax=0.01)
 
 # Final end-point:
 slab[-1].x += slab.get_cell()[0, 0] / 2
-qn = AIDMin(slab, trajectory='final.traj', use_previous_observations=False)
+qn = AIDMin(slab, trajectory='final.traj', use_previous_observations=False,
+    trainingset = 'final_observations.traj')
 qn.run(fmax=0.01)
 
 # AIDNEB:
