@@ -3,6 +3,7 @@ from ase.parallel import parallel_function
 from ase import io
 from ase.io.trajectory import TrajectoryWriter
 import os
+from copy import deepcopy
 
 
 @parallel_function
@@ -44,28 +45,55 @@ class TrainingSet:
     """
 
     def __init__(self, destination, use_previous_observations):
-        if type(destination) is not str:
-            raise NotImplementedError("*destination* should be a file")
-        if not destination.endswith('.traj'):
-            raise NotImplementedError("*destination* should be a trajectory file")
+        if type(destination) is list:
+            if not use_previous_observations:
+                self.destination = []
+            else:
+                self.destination = destination
+            self.mode = 'list'
+        elif type(destination) is str:
+            if not destination.endswith('.traj'):
+                raise NotImplementedError("*destination* should be a trajectory file")
+            else:
+                self.destination = destination
+                self.use_prev_obs = use_previous_observations
+                self.mode = 'traj'
+        else:
+            raise NotImplementedError("*destination* should be a file or a list")
 
-        self.use_prev_obs = use_previous_observations
-        self.destination = destination
 
     def dump(self, atoms, method):
-        if not self.use_prev_obs:
-            dump_observation(atoms, filename = self.destination,
+        if self.mode == 'list':
+            atoms.info['method'] = method
+            self.destination.append(deepcopy(atoms))
+
+        elif self.mode == 'traj':
+            if not self.use_prev_obs:
+                dump_observation(atoms, filename = self.destination,
                          method = method, restart = False)
-            self.use_prev_obs = True
+                self.use_prev_obs = True
+            else:
+                dump_observation(atoms, filename = self.destination,
+                        method = method, restart = True)
         else:
-            dump_observation(atoms, filename = self.destination,
-                         method = method, restart = True)
+            raise NotImplementedError()
+
+
     def load_set(self):
-        return io.read(self.destination, ':')
+        if self.mode == 'list':
+            return self.destination.copy()
+        elif self.mode == 'traj':
+            return io.read(self.destination, ':')
+        else:
+            raise NotImplementedError()
 
     def load_last(self):
-        return io.read(self.destination, -1)
-
+        if self.mode == 'list':
+            return self.destination[-1]
+        elif self.mode == 'traj':
+            return io.read(self.destination, -1)
+        else:
+            raise NotImplementedError()
 
 @parallel_function
 def get_fmax(atoms):

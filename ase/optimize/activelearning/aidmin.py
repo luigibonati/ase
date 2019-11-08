@@ -13,7 +13,7 @@ class AIDMin:
                  max_train_data=5, optimizer=QuasiNewton,
                  max_train_data_strategy='nearest_observations',
                  geometry_threshold=0.001, trajectory='AID.traj',
-                 use_previous_observations=False):
+                 use_previous_observations=False, trainingset = None):
         """
         Artificial Intelligence-Driven energy Minimizer (AID-Min) algorithm.
         Optimize atomic structure using a surrogate machine learning
@@ -92,7 +92,10 @@ class AIDMin:
 
         # Initialize training set
         trajectory_main = self.trajectory.split('.')[0]
-        self.train = TrainingSet(trajectory_main+'_observations.traj',
+        if trainingset is None:
+            self.train = TrainingSet([], use_previous_observations = False)
+        else:
+            self.train = TrainingSet(trainingset,
                         use_previous_observations=use_previous_observations)
 
         self.atoms.get_potential_energy()
