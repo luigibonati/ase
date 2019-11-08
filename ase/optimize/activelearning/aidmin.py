@@ -5,7 +5,7 @@ from ase import io
 from ase.optimize.activelearning.gp.calculator import GPCalculator
 from ase.parallel import parprint
 from ase.optimize import QuasiNewton
-from ase.optimize.activelearning.io import get_fmax, dump_observation
+from ase.optimize.activelearning.io import get_fmax, TrainingSet
 
 
 class AIDMin:
@@ -89,18 +89,22 @@ class AIDMin:
 
         self.fc = force_consistent
         self.trajectory = trajectory
-        self.use_prev_obs = use_previous_observations
+        #self.use_prev_obs = use_previous_observations
         self.geometry_threshold = geometry_threshold
 
+        # Initialize training set
         trajectory_main = self.trajectory.split('.')[0]
-        self.trajectory_observations = trajectory_main + '_observations.traj'
+        self.train = TrainingSet(trajectory_main+'observations.traj',
+                        use_previous_observations=use_previous_observations)
+        #self.trajectory_observations = trajectory_main + '_observations.traj'
 
         self.atoms.get_potential_energy()
         self.atoms.get_forces()
 
-        dump_observation(atoms=self.atoms, method='min',
-                         filename=self.trajectory_observations,
-                         restart=self.use_prev_obs)
+        #dump_observation(atoms=self.atoms, method='min',
+        #                 filename=self.trajectory_observations,
+        #                 restart=self.use_prev_obs)
+        self.train.dump(atoms = self.atoms, method = 'min')
 
     def run(self, fmax=0.05, ml_steps=500, steps=200):
 
@@ -129,7 +133,8 @@ class AIDMin:
         self.steps = steps
 
         # Always start from 'atoms' positions.
-        starting_atoms = io.read(self.trajectory_observations, -1)
+        #starting_atoms = io.read(self.trajectory_observations, -1
+        starting_atoms = self.train.load_last()
         starting_atoms.positions = copy.deepcopy(self.atoms.positions)
 
         while not self.fmax >= get_fmax(self.atoms):
@@ -137,7 +142,8 @@ class AIDMin:
             # 1. Gather observations in every iteration.
             # This serves to use the previous observations (useful for
             # continuing calculations and/or for parallel runs).
-            train_images = io.read(self.trajectory_observations, ':')
+            # train_images = io.read(self.trajectory_observations, ':')
+            train_images = self.train.load_set()
 
             # Update constraints in case they have changed from previous runs.
             for img in train_images:
@@ -184,9 +190,10 @@ class AIDMin:
             self.atoms.get_potential_energy(force_consistent=self.fc)
             self.atoms.get_forces()
 
-            dump_observation(atoms=self.atoms, method='min',
-                             filename=self.trajectory_observations,
-                             restart=True)
+            self.train.dump(atoms = self.atoms, method = 'min')
+            #dump_observation(atoms=self.atoms, method='min',
+            #                 filename=self.trajectory_observations,
+            #                 restart=True)
 
             self.function_calls = len(train_images) + 1
             self.force_calls = self.function_calls

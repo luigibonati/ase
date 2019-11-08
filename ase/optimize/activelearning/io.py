@@ -37,6 +37,32 @@ def dump_observation(atoms, filename, restart, method='-'):
         io.write(filename=filename, images=atoms, append=False)
 
 
+class TrainingSet:
+
+    """
+    Beautiful documentation comes in here.
+    """
+
+    def __init__(self, destination, use_previous_observations):
+        if type(destination) is not str:
+            raise NotImplementedError("*destination* should be a file")
+        if not destination.endswith('.traj'):
+            raise NotImplementedError("*destination* should be a trajectory file")
+
+        self.use_prev_obs = use_previous_observations
+        self.destination = destination
+
+    def dump(self, atoms, method):
+        dump_observation(atoms, filename = self.destination,
+                         method = method,
+                         restart = self.use_previous_obs)
+    def load_set(self):
+        return io.read(self.destination, ':')
+
+    def load_last(self):
+        return io.read(self.destination, -1)
+
+
 @parallel_function
 def get_fmax(atoms):
     """
@@ -44,5 +70,3 @@ def get_fmax(atoms):
     """
     forces = atoms.get_forces()
     return np.sqrt((forces**2).sum(axis=1).max())
-
-
