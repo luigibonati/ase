@@ -93,7 +93,7 @@ class AIDMin:
 
         # Initialize training set
         trajectory_main = self.trajectory.split('.')[0]
-        self.train = TrainingSet(trajectory_main+'observations.traj',
+        self.train = TrainingSet(trajectory_main+'_observations.traj',
                         use_previous_observations=use_previous_observations)
 
         self.atoms.get_potential_energy()
