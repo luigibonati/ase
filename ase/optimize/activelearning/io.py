@@ -53,9 +53,13 @@ class TrainingSet:
         self.destination = destination
 
     def dump(self, atoms, method):
-        dump_observation(atoms, filename = self.destination,
-                         method = method,
-                         restart = self.use_previous_obs)
+        if not self.use_prev_obs:
+            dump_observation(atoms, filename = self.destination,
+                         method = method, restart = False)
+            self.use_prev_obs = True
+        else:
+            dump_observation(atoms, filename = self.destination,
+                         method = method, restart = True)
     def load_set(self):
         return io.read(self.destination, ':')
 
