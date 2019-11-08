@@ -97,7 +97,7 @@ class AIDTS:
         self.step = 0
 
         self.atoms = atoms
-        self.constraints = atoms.contraints
+        self.constraints = atoms.constraints
         self.atoms_vector = atoms_vector
 
         # Calculate displacement vector and mask automatically.
