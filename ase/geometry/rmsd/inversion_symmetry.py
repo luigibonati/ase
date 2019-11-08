@@ -39,7 +39,7 @@ def find_inversion_symmetry(atoms):
     root-mean-square (RMS) distance.
 
     The function finds the inversion axis and permutation which minimizes the
-    RMS distance from the input structure to the inverted structure.
+    RMS distance from the input structure to the symmetrized structure.
 
     Parameters:
 
