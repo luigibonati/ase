@@ -381,6 +381,8 @@ class SQLite3Database(Database, object):
         if self.connection is None:
             con.commit()
             con.close()
+        elif con.total_changes % 5000 == 0:
+            con.commit()
 
         return id
 
@@ -439,6 +441,8 @@ class SQLite3Database(Database, object):
         if self.connection is None:
             con.commit()
             con.close()
+        elif con.total_changes % 5000 == 0:
+            con.commit()
 
         return id
 
