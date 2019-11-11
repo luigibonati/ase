@@ -168,7 +168,7 @@ class SQLite3Database(Database, object):
         return array
 
     def _connect(self):
-        return sqlite3.connect(self.filename, timeout=600)
+        return sqlite3.connect(self.filename, timeout=20)
 
     def __enter__(self):
         assert self.connection is None
