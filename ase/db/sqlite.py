@@ -173,6 +173,7 @@ class SQLite3Database(Database, object):
     def __enter__(self):
         assert self.connection is None
         self.connection = self._connect()
+        self.change_count = 0
         return self
 
     def __exit__(self, exc_type, exc_value, tb):
@@ -381,8 +382,10 @@ class SQLite3Database(Database, object):
         if self.connection is None:
             con.commit()
             con.close()
-        elif con.total_changes % 5000 == 0:
-            con.commit()
+        else:
+            self.change_count += 1
+            if self.change_count % 1000 == 0:
+                con.commit()
 
         return id
 
@@ -441,8 +444,10 @@ class SQLite3Database(Database, object):
         if self.connection is None:
             con.commit()
             con.close()
-        elif con.total_changes % 5000 == 0:
-            con.commit()
+        else:
+            self.change_count += 1
+            if self.change_count % 1000 == 0:
+                con.commit()
 
         return id
 
