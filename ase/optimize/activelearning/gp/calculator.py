@@ -93,6 +93,7 @@ class GPCalculator(Calculator, GaussianProcess):
                  max_train_data=None, force_consistent=None,
                  max_train_data_strategy='nearest_observations',
                  wrap_positions=False, calculate_uncertainty=True,
+                 mask_constraints = True,
                  **kwargs):
 
         Calculator.__init__(self, **kwargs)
@@ -114,6 +115,7 @@ class GPCalculator(Calculator, GaussianProcess):
         self.calculate_uncertainty = calculate_uncertainty
         self.wrap = wrap_positions
         self.fit_weight = fit_weight
+        self.mask_constraints = mask_constraints
 
     def initialize(self):
         """ Initialize the calculator, including model parameters. """
@@ -136,7 +138,8 @@ class GPCalculator(Calculator, GaussianProcess):
         GaussianProcess.__init__(self, self.prior, self.kernel)
 
         # Masks the coordinates of the atoms that are kept fixed (memory).
-        self.atoms_mask = self.create_mask()
+        if self.mask_constraints:
+            self.atoms_mask = self.create_mask()
 
     def extract_features(self):
         """ From the training images (which include the observations),
