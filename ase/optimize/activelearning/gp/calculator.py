@@ -305,7 +305,7 @@ class GPCalculator(Calculator, GaussianProcess):
 
         # Get uncertainty for the given geometry.
         uncertainty = None
-        if self.calculate_uncertainty is True:
+        if self.calculate_uncertainty:
             x = self.atoms.get_positions(wrap=self.wrap).reshape(-1)[self.atoms_mask]
             n = self.X.shape[0]
             k = self.kernel.kernel_vector(x, self.X, n)
@@ -314,10 +314,13 @@ class GPCalculator(Calculator, GaussianProcess):
             variance = self.kernel.kernel(x, x)
             covariance = np.tensordot(v, v, axes=(0, 0))
             V = variance - covariance
-            uncertainty = np.sqrt(V[0][0])
-            # uncertainty -= self.noise
+
+            uncertainty = V[0][0]
             if uncertainty < 0.0:
                 uncertainty = 0.0
+                warning = ('Imaginary uncertainty has been set to zero')
+                warnings.warn(warning)
+            uncertainty = np.sqrt(uncertainty)
 
         # Results:
         self.results['energy'] = energy
