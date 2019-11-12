@@ -1,4 +1,5 @@
 import numpy as np
+import warnings
 from ase.optimize.activelearning.gp.kernel import SquaredExponential
 from ase.optimize.activelearning.gp.gp import GaussianProcess
 from ase.optimize.activelearning.gp.prior import ConstantPrior
