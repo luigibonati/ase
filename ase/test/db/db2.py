@@ -56,7 +56,16 @@ def test(name):
 
     c.delete([d.id for d in c.select(C=1)])
     chi = np.array([1 + 0.5j, 0.5])
-    id = c.write(ch4, data={'1-butyne': 'bla-bla', 'chi': chi})
+    if 'db' in name:
+        kvp = {'external_tables':
+               {'blabla': {'a': 1, 'b': 2, 'c': 3},
+                'lala': {'a': 0.01, 'b': 0.02, 'c': 0.0}}}
+
+    else:
+        kvp = {'a': 1}
+
+    id = c.write(ch4, key_value_pairs=kvp,
+                 data={'1-butyne': 'bla-bla', 'chi': chi})
 
     row = c.get(id)
     print(row.data['1-butyne'], row.data.chi)
@@ -123,4 +132,3 @@ test('testase.db')
 test('postgresql')
 test('mysql')
 test('mariadb')
-
