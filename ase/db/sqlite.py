@@ -440,7 +440,7 @@ class SQLite3Database(Database, object):
             cur = con.cursor()
             if id is None:
                 cur.execute('SELECT COUNT(*) FROM systems')
-                assert c.fetchone()[0] == 1
+                assert cur.fetchone()[0] == 1
                 cur.execute('SELECT * FROM systems')
             else:
                 cur.execute('SELECT * FROM systems WHERE id=?', (id,))
@@ -722,7 +722,6 @@ class SQLite3Database(Database, object):
 
     def analyse(self):
         with self.managed_connection() as con:
-            cur = con.cursor()
             con.execute('ANALYZE')
 
     @parallel_function
