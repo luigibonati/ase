@@ -311,27 +311,28 @@ class SQLite3Database(Database, object):
 
         if not data:
             data = row._data
-        if not isinstance(data, (str, bytes)):
-            data = encode(data, binary=self.version >= 9)
-
-        values += (row.get('energy'),
-                   row.get('free_energy'),
-                   blob(row.get('forces')),
-                   blob(row.get('stress')),
-                   blob(row.get('dipole')),
-                   blob(row.get('magmoms')),
-                   row.get('magmom'),
-                   blob(row.get('charges')),
-                   encode(key_value_pairs),
-                   data,
-                   len(row.numbers),
-                   float_if_not_none(row.get('fmax')),
-                   float_if_not_none(row.get('smax')),
-                   float_if_not_none(row.get('volume')),
-                   float(row.mass),
-                   float(row.charge))
 
         with self.managed_connection() as con:
+            if not isinstance(data, (str, bytes)):
+                data = encode(data, binary=self.version >= 9)
+
+            values += (row.get('energy'),
+                       row.get('free_energy'),
+                       blob(row.get('forces')),
+                       blob(row.get('stress')),
+                       blob(row.get('dipole')),
+                       blob(row.get('magmoms')),
+                       row.get('magmom'),
+                       blob(row.get('charges')),
+                       encode(key_value_pairs),
+                       data,
+                       len(row.numbers),
+                       float_if_not_none(row.get('fmax')),
+                       float_if_not_none(row.get('smax')),
+                       float_if_not_none(row.get('volume')),
+                       float(row.mass),
+                       float(row.charge))
+
             cur = con.cursor()
             if id is None:
                 q = self.default + ', ' + ', '.join('?' * len(values))
