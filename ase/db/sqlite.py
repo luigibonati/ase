@@ -174,6 +174,7 @@ class SQLite3Database(Database, object):
 
     def __enter__(self):
         assert self.connection is None
+        self.change_count = 0
         self.connection = self._connect()
         return self
 
@@ -186,21 +187,23 @@ class SQLite3Database(Database, object):
         self.connection = None
 
     @contextmanager
-    def managed_connection(self, commit_fequency=1000):
+    def managed_connection(self, commit_frequency=5000):
         try:
             con = self.connection or self._connect()
             self._initialize(con)
-            self.change_count = 0
             yield con
         except ValueError as exc:
-            # Close the connection without committing
             if self.connection is None:
                 con.close()
             raise exc
-        finally:
+        else:
             if self.connection is None:
                 con.commit()
                 con.close()
+            else:
+                self.change_count += 1
+                if self.change_count % commit_frequency == 0:
+                    con.commit()
 
     def _initialize(self, con):
         if self.initialized:
@@ -726,7 +729,7 @@ class SQLite3Database(Database, object):
     def delete(self, ids):
         if len(ids) == 0:
             return
-        table_names = all_tables + self._get_external_table_names()
+        table_names = self._get_external_table_names() + all_tables[::-1]
         with self.managed_connection() as con:
             self._delete(con.cursor(), ids,
                          tables=table_names)
