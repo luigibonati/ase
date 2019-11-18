@@ -162,7 +162,7 @@ class GPCalculator(Calculator, GaussianProcess):
         self.train_images = self.old_train_images
         for i in train_images:
             if i not in self.train_images:
-                self.train_images += train_images
+                self.train_images.append(i)
         self.calculate(atoms=self.train_images[0])  # Test one to attach.
 
     def train_model(self):

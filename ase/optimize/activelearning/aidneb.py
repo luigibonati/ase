@@ -353,8 +353,7 @@ class AIDNEB:
             for i in self.images:
                 i.set_calculator(None)
             # Train only one process.
-            calc.update_train_data(train_images,
-                                   test_images=copy.deepcopy(self.images))
+            calc.update_train_data(train_images, test_images=self.images)
             # Attach the calculator (already trained) to each image.
             for i in self.images:
                 i.set_calculator(copy.deepcopy(calc))
