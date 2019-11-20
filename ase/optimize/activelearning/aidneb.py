@@ -336,8 +336,8 @@ class AIDNEB:
 
         while True:
 
-            # 0. Start from initial interpolation every 20 steps.
-            if self.step % 20 == 0:
+            # 0. Start from initial interpolation every 50 steps.
+            if self.step % 50 == 0:
                 parprint('Starting from initial interpolation...')
                 self.images = copy.deepcopy(self.initial_interpolation)
 
@@ -356,7 +356,7 @@ class AIDNEB:
             calc.update_train_data(train_images, test_images=self.images)
             # Attach the calculator (already trained) to each image.
             for i in self.images:
-                i.set_calculator(copy.deepcopy(calc))
+                i.set_calculator(copy.copy(calc))
 
             # 3. Optimize the NEB in the predicted PES.
             # Get path uncertainty for deciding whether NEB or CI-NEB.
@@ -419,7 +419,7 @@ class AIDNEB:
             # 7. Select next point to train (acquisition function):
 
             # Candidates are the optimized NEB images in the predicted PES.
-            candidates = copy.deepcopy(self.images)[1:-1]
+            candidates = self.images[1:-1][:]
 
             if np.max(neb_pred_uncertainty) > unc_convergence:
                 sorted_candidates = acquisition(train_images=train_images,
