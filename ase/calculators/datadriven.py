@@ -24,7 +24,7 @@ class CalculatorTemplate:
         return 'CalculatorTemplate({})'.format(vars(self))
 
     def new(self, **kwargs):
-        calc = CalculatorIndependentCalculator(template=self, **kwargs)
+        calc = DataDrivenCalculator(template=self, **kwargs)
         return calc
 
 
@@ -64,7 +64,7 @@ def new_emt(**kwargs):
     return get_emt_template().new(**kwargs)
 
 # TODO: More sensible class name
-class CalculatorIndependentCalculator(FileIOCalculator):
+class DataDrivenCalculator(FileIOCalculator):
     implemented_properties = None
     command = None
 
