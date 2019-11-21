@@ -47,6 +47,8 @@ class ANSIColors:
     __getattr__ = get
 
 
+atom_colors = {1: 'white', 8: 'red', 6: 'dark gray'}
+
 ansi_nocolor = '\x1b[0m'
 ansi = ANSIColors()
 
@@ -111,8 +113,16 @@ def plot(atoms):
                     grid.put('-', i + x, j)
                 grid.put('-', i + x + ny, j + ny)
             k = 0
-    return '\n'.join([''.join([chr(x) for x in line])
-                      for line in np.transpose(grid.grid)[::-1]])
+
+    lines = []
+    for line in np.transpose(grid.grid)[::-1]:
+        tokens = []
+        for x in line:
+            tokens.append(chr(x))
+        line = ''.join(tokens)
+        lines.append(line)
+
+    return '\n'.join(lines)
 
 
 class Grid:
@@ -121,8 +131,10 @@ class Grid:
         self.grid[:] = ord(' ')
         self.depth = np.zeros((i, j))
         self.depth[:] = 1e10
+        self.color_key = np.zeros((i, j), int)
 
-    def put(self, c, i, j, depth=1e9):
+    def put(self, c, i, j, color_key=-1, depth=1e9):
         if depth < self.depth[i, j]:
             self.grid[i, j] = ord(c)
             self.depth[i, j] = depth
+            self.color_key[i, j] = color_key
