@@ -47,7 +47,7 @@ class ANSIColors:
     __getattr__ = get
 
 
-atom_colors = {1: 'white', 8: 'red', 6: 'dark gray'}
+atom_colors = {1: 'light gray', 8: 'light red', 6: 'dark gray'}
 
 ansi_nocolor = '\x1b[0m'
 ansi = ANSIColors()
@@ -89,7 +89,7 @@ def plot(atoms):
         i, j = ij[a]
         depth = positions[a, 1]
         for n, c in enumerate(symbol):
-            grid.put(c, i + n + 1, j, depth)
+            grid.put(c, i + n + 1, j, depth, Z)
     if plot_box:
         k = 0
         for i, j in [(1, 0), (1 + nx, 0)]:
