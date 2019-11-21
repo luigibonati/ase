@@ -115,10 +115,18 @@ def plot(atoms):
             k = 0
 
     lines = []
-    for line in np.transpose(grid.grid)[::-1]:
+
+    chargrid = grid.grid.T[::-1]
+    colorgrid = grid.color_key.T[::-1]
+
+    for line, linecolors in zip(chargrid, colorgrid):
         tokens = []
-        for x in line:
-            tokens.append(chr(x))
+        for x, color_key in zip(line, linecolors):
+            txt = chr(x)
+            if color_key != -1:
+                color = atom_colors[color_key]
+                txt = ansi[color](txt)
+            tokens.append(txt)
         line = ''.join(tokens)
         lines.append(line)
 
@@ -131,9 +139,9 @@ class Grid:
         self.grid[:] = ord(' ')
         self.depth = np.zeros((i, j))
         self.depth[:] = 1e10
-        self.color_key = np.zeros((i, j), int)
+        self.color_key = -np.ones((i, j), int)
 
-    def put(self, c, i, j, color_key=-1, depth=1e9):
+    def put(self, c, i, j, depth=1e9, color_key=-1):
         if depth < self.depth[i, j]:
             self.grid[i, j] = ord(c)
             self.depth[i, j] = depth
