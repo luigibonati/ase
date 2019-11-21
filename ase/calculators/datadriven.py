@@ -63,7 +63,7 @@ def new_espresso(**kwargs):
 def new_emt(**kwargs):
     return get_emt_template().new(**kwargs)
 
-# TODO: More sensible class name
+
 class DataDrivenCalculator(FileIOCalculator):
     implemented_properties = None
     command = None
