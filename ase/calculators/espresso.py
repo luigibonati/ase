@@ -4,9 +4,11 @@ Remember to:
 
 export ESPRESSO_HOME="/path/to/espresso/bin" (path that contains your pw.x)
 export ESPRESSO_PSEUDO="path/to/espresso/pseudo"
+
 """
 
 import os
+from io import TextIOWrapper
 import warnings
 import subprocess
 from ase import io
@@ -28,22 +30,22 @@ class EspressoProfile():
 
     def __init__(self):
         self.name = 'espresso'
+        self.command = None
         # Location of bin
         self.espresso_home = os.environ.get('ESPRESSO_HOME', '')
 
-        if os.path.isfile(self.espresso_home + '/pw.x'):
+        if os.environ.get('ASE_ESPRESSO_COMMAND'):
+            self.command = os.environ.get('ASE_ESPRESSO_COMMAND')
+        elif os.path.isfile(self.espresso_home + '/pw.x'):
             self.command = \
                 self.espresso_home + '/pw.x -in PREFIX.pwi > PREFIX.pwo'
-        else:
-            self.command = None
 
+        # Look for pseudopotential in different places
         self.pseudo_path = None
         home = os.environ.get('HOME', '')
-        pseudo_path = os.environ.get('ESPRESSO_PSEUDO')
-        # Looking for pseudopotential in different places
-        if pseudo_path:
-            if os.path.isdir(pseudo_path):
-                self.pseudo_path = pseudo_path
+        pseudo_path = os.environ.get('ESPRESSO_PSEUDO', '')
+        if os.path.isdir(pseudo_path):
+            self.pseudo_path = pseudo_path
         elif os.path.isdir(home + '/espresso/pseudo/'):
             self.pseudo_path = home + '/espresso/pseudo/'
         elif os.path.isdir(self.espresso_home.replace('/bin', '/pseudo')):
@@ -52,25 +54,19 @@ class EspressoProfile():
         self.version = self.get_version()
 
     def get_version(self):
+        version = None
         if not self.command:
-            return None
-        plain_command = self.espresso_home + '/pw.x'
+            return version
+        plain_command = self.command.split(' -in')[0]
 
-        proc = subprocess.Popen([plain_command], stdout=subprocess.PIPE)
+        proc = subprocess.Popen(plain_command.split(), stdout=subprocess.PIPE)
         # This is a little messy - running QE to get the version
         # from the output. It there a better way to do this?
-        try:
-            outs, errs = proc.communicate(timeout=1)
-        except subprocess.TimeoutExpired:
-            proc.kill()
-            outs, errs = proc.communicate()
-
-        lines = outs.splitlines()
-        version = None
-        for l in lines:
-            l = str(l)
-            if 'Program PWSCF' in str(l):
-                version = l.split('PWSCF ')[-1].split(' starts')[0]
+        for line in TextIOWrapper(proc.stdout):
+            if 'Program PWSCF' in str(line):
+                version = line.split('PWSCF ')[-1].split(' starts')[0]
+                break
+        proc.kill()
         return version
 
     def available(self):
