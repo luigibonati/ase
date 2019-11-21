@@ -4,17 +4,17 @@ from ase.build import bulk
 from ase.calculators.espresso import Espresso
 
 # Default pseudos can go in ~/espresso/pseudo
-# Get these from SSSP http://materialscloud.org/sssp/
-# Also: Debian/Ubuntu packages provide the below pseudopotential.
-# In /usr/share/espresso
-PSEUDO = {'Cu': 'Cu.pbe-kjpaw.UPF'}
+
+# Use pseudopotential that is part of standard distribution under q-e/pseudo
+# https://github.com/QEF/q-e.git
+PSEUDO = {'Au': 'Au.pz-rrkjus_aewfc.UPF'}
 
 # Don't forget to
-# export ASE_ESPRESSO_COMMAND="mpirun -n 4 $HOME/Compile/q-e/bin/pw.x -in PREFIX.pwi > PREFIX.pwo"
+# export ASE_ESPRESSO_COMMAND="mpirun -n 2 /path/to/q-e/bin/pw.x -in PREFIX.pwi > PREFIX.pwo"
 # export ESPRESSO_PSEUDO="/path/to/pseudos"
 
 def main():
-    gold = bulk('Cu')
+    gold = bulk('Au')
     input_data = {'system':{'occupations': 'smearing',
                             'smearing': 'fermi-dirac',
                             'degauss': 0.02}}

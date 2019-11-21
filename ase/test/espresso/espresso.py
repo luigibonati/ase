@@ -4,17 +4,12 @@ from ase.build import bulk
 from ase.calculators.espresso import Espresso
 
 # Default pseudos can go in ~/espresso/pseudo
-# Get these from SSSP http://materialscloud.org/sssp/
-#PSEUDO = {'Si': 'Si.pbe-n-rrkjus_psl.1.0.0.UPF'}
 
-# I am updating this so we use a file which is provided by the
-# Debian/Ubuntu package for QE.  Then it works out of the
-# box, which is good for testing.  --askhl
-PSEUDO = {'Si': 'Si.rel-pbe-rrkj.UPF'}
-# /usr/share/espresso/pseudo/Si.rel-pbe-rrkj.UPF
+# Use pseudopotential that is part of standard distribution under q-e/pseudo
+PSEUDO = {'Si': 'Si_r.upf'}
 
 # Don't forget to
-# export ASE_ESPRESSO_COMMAND="mpirun -n 4 $HOME/Compile/q-e/bin/pw.x -in PREFIX.pwi > PREFIX.pwo"
+# export ASE_ESPRESSO_COMMAND="mpirun -n 2 path/to/q-e/bin/pw.x -in PREFIX.pwi > PREFIX.pwo"
 # export ESPRESSO_PSEUDO="/path/to/pseudos"
 
 def main():
