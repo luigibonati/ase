@@ -67,7 +67,7 @@ def plot(atoms):
     if not atoms.cell or (cell_cv - np.diag(cell_cv.diagonal())).any():
         atoms = atoms.copy()
         atoms.cell = [1, 1, 1]
-        atoms.center(vacuum=2.0)
+        atoms.center(vacuum=0.0)
         cell_cv = atoms.get_cell()
         plot_box = False
     else:
@@ -126,7 +126,7 @@ def plot(atoms):
                 color = atom_colors[color_key]
                 txt = ansi[color](txt)
             tokens.append(txt)
-        line = ''.join(tokens)
+        line = ''.join(tokens).rstrip()
         lines.append(line)
 
     return '\n'.join(lines)
