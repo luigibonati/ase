@@ -17,6 +17,8 @@ def main():
     silicon = bulk('Si')
     calc = Espresso(pseudopotentials=PSEUDO,
                     ecutwfc=50.0)
+    assert calc.version is not None
+    assert calc.available
     silicon.set_calculator(calc)
     silicon.get_potential_energy()
 
