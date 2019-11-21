@@ -1,12 +1,14 @@
 """Quantum ESPRESSO Calculator
 
-export ASE_ESPRESSO_COMMAND="/path/to/pw.x -in PREFIX.pwi > PREFIX.pwo"
+Remember to:
 
-Run pw.x jobs.
+export ESPRESSO_HOME="/path/to/espresso/bin" (path that contains your pw.x)
+export ESPRESSO_PSEUDO="path/to/espresso/pseudo"
 """
 
-
+import os
 import warnings
+import subprocess
 from ase import io
 from ase.calculators.calculator import FileIOCalculator, PropertyNotPresent
 
@@ -19,11 +21,66 @@ warn_template = 'Property "%s" is None. Typically, this is because the ' \
                 'Espresso at a "low" verbosity level (the default). ' \
                 'Please try running Quantum Espresso with "high" verbosity.'
 
-class Espresso(FileIOCalculator):
+
+class EspressoProfile():
+    # Initial Espresso calculator profile based on Ask's template
+    # Not sure where this will go eventually
+
+    def __init__(self):
+        self.name = 'espresso'
+        # Location of bin
+        self.espresso_home = os.environ.get('ESPRESSO_HOME', '')
+
+        if os.path.isfile(self.espresso_home + '/pw.x'):
+            self.command = \
+                self.espresso_home + '/pw.x -in PREFIX.pwi > PREFIX.pwo'
+        else:
+            self.command = None
+
+        self.pseudo_path = None
+        home = os.environ.get('HOME', '')
+        pseudo_path = os.environ.get('ESPRESSO_PSEUDO')
+        # Looking for pseudopotential in different places
+        if pseudo_path:
+            if os.path.isdir(pseudo_path):
+                self.pseudo_path = pseudo_path
+        elif os.path.isdir(home + '/espresso/pseudo/'):
+            self.pseudo_path = home + '/espresso/pseudo/'
+        elif os.path.isdir(espresso_home.replace('/bin', '/pseudo')):
+            self.pseudo_path = espresso_home.replace('/bin', '/pseudo')
+
+        self.version = self.get_version()
+
+    def get_version(self):
+        if not self.command:
+            return None
+        plain_command = self.espresso_home + '/pw.x'
+
+        proc = subprocess.Popen([plain_command], stdout=subprocess.PIPE)
+        # This is a little messy - running QE to get the version
+        # from the output. It there a better way to do this?
+        try:
+            outs, errs = proc.communicate(timeout=1)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            outs, errs = proc.communicate()
+
+        lines = outs.splitlines()
+        version = None
+        for l in lines:
+            l = str(l)
+            if 'Program PWSCF' in str(l):
+                version = l.split('PWSCF ')[-1].split(' starts')[0]
+        return version
+
+    def available(self):
+        return bool(self.version) and bool(self.pseudo_path)
+
+
+class Espresso(FileIOCalculator, EspressoProfile):
     """
     """
     implemented_properties = ['energy', 'forces', 'stress', 'magmoms']
-    command = 'pw.x -in PREFIX.pwi > PREFIX.pwo'
 
     def __init__(self, restart=None, ignore_bad_restart_file=False,
                  label='espresso', atoms=None, **kwargs):
@@ -95,8 +152,11 @@ class Espresso(FileIOCalculator):
               >>> bs.plot()
 
         """
+
+        EspressoProfile.__init__(self)
         FileIOCalculator.__init__(self, restart, ignore_bad_restart_file,
                                   label, atoms, **kwargs)
+
         self.calc = None
 
     def set(self, **kwargs):
