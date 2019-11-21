@@ -46,8 +46,8 @@ class EspressoProfile():
                 self.pseudo_path = pseudo_path
         elif os.path.isdir(home + '/espresso/pseudo/'):
             self.pseudo_path = home + '/espresso/pseudo/'
-        elif os.path.isdir(espresso_home.replace('/bin', '/pseudo')):
-            self.pseudo_path = espresso_home.replace('/bin', '/pseudo')
+        elif os.path.isdir(self.espresso_home.replace('/bin', '/pseudo')):
+            self.pseudo_path = self.espresso_home.replace('/bin', '/pseudo')
 
         self.version = self.get_version()
 
