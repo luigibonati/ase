@@ -129,7 +129,8 @@ def plot(atoms):
         line = ''.join(tokens).rstrip()
         lines.append(line)
 
-    return '\n'.join(lines)
+    # We use \r for the benefit of curses
+    return '\r\n'.join(lines)
 
 
 class Grid:
@@ -145,3 +146,29 @@ class Grid:
             self.grid[i, j] = ord(c)
             self.depth[i, j] = depth
             self.color_key[i, j] = color_key
+
+
+def main(stdscr):
+    import sys
+    import time
+    from ase.io import read
+    fname = sys.argv[1]
+    atoms0 = read(fname)
+    #txt = plot(atoms)
+    #print(txt)
+
+    for i in range(200):
+        stdscr.clear()
+        atoms = atoms0.copy()
+        atoms.rotate(i, 'z', center='com')
+        txt = plot(atoms)
+        stdscr.addstr(0, 0, 'hello {}'.format(ansi.red(str(i))))
+        curses.doupdate()
+        #print(ansi.red('hello world'))
+        time.sleep(0.02)
+        stdscr.noutrefresh()
+        #stdscr.refresh()
+
+if __name__ == '__main__':
+    import curses
+    curses.wrapper(main)
