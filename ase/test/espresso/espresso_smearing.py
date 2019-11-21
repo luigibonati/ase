@@ -10,7 +10,7 @@ from ase.calculators.espresso import Espresso
 PSEUDO = {'Au': 'Au.pz-rrkjus_aewfc.UPF'}
 
 # Don't forget to
-# export ASE_ESPRESSO_COMMAND="mpirun -n 2 /path/to/q-e/bin/pw.x -in PREFIX.pwi > PREFIX.pwo"
+# export ESPRESSO_HOME="path/to/q-e/bin"
 # export ESPRESSO_PSEUDO="/path/to/pseudos"
 
 def main():

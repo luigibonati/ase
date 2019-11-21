@@ -6,10 +6,11 @@ from ase.calculators.espresso import Espresso
 # Default pseudos can go in ~/espresso/pseudo
 
 # Use pseudopotential that is part of standard distribution under q-e/pseudo
+# https://github.com/QEF/q-e.git
 PSEUDO = {'Si': 'Si_r.upf'}
 
 # Don't forget to
-# export ASE_ESPRESSO_COMMAND="mpirun -n 2 path/to/q-e/bin/pw.x -in PREFIX.pwi > PREFIX.pwo"
+# export ESPRESSO_HOME="path/to/q-e/bin"
 # export ESPRESSO_PSEUDO="/path/to/pseudos"
 
 def main():
