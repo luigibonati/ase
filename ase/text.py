@@ -81,7 +81,6 @@ def plot(atoms):
     nx, ny, nz = n = (s * cell * (1.0, 0.25, 0.5) + 0.5).astype(int)
     sx, sy, sz = n / cell
     grid = Grid(nx + ny + 4, nz + ny + 1)
-    positions = (positions % cell + cell) % cell
     ij = np.dot(positions, [(sx, 0), (sy, sy), (0, sz)])
     ij = np.around(ij).astype(int)
     for a, Z in enumerate(numbers):
