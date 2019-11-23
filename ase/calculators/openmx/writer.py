@@ -31,25 +31,6 @@ keys = [param.tuple_integer_keys, param.tuple_float_keys,
         param.list_bool_keys, param.list_float_keys, param.matrix_keys]
 
 
-def write_openmx_input(fd, atoms, properties=None, label=None,
-                       parameters=None):
-    from ase.calculators.openmx import parameters as param
-    if parameters is None:
-        parameters = {}
-    filtered_keywords = parameters_to_keywords(label=label, atoms=atoms,
-                                               parameters=parameters,
-                                               properties=properties)
-    keys = ['string', 'bool', 'integer', 'float',
-            'tuple_integer', 'tuple_float', 'tuple_bool',
-            'matrix', 'list_int', 'list_bool', 'list_float']
-    # Write 1-line keywords
-    for fltrd_keyword in filtered_keywords.keys():
-        for key in keys:
-            openmx_keywords = getattr(param, key+'_keys')
-            write = globals()['write_'+key]
-            for omx_keyword in openmx_keywords:
-                if fltrd_keyword == get_standard_key(omx_keyword):
-                    write(fd, omx_keyword, filtered_keywords[fltrd_keyword])
 
 def write_openmx(label=None, atoms=None, parameters=None, properties=None,
                  system_changes=None):
@@ -64,11 +45,12 @@ def write_openmx(label=None, atoms=None, parameters=None, properties=None,
         - properties   : The properties which should be calculated.
         - system_changes : List of properties changed since last run.
     """
+    from ase.io.openmx import write_openmx_in
     filename = get_file_name('.dat', label)
     with open(filename, 'w') as fd:
-        write_openmx_input(fd, atoms, properties,
-                           parameters=parameters,
-                           label=label)
+        write_openmx_in(fd, atoms, properties,
+                        parameters=parameters,
+                        label=label)
 
 
 def parameters_to_keywords(label=None, atoms=None, parameters=None,
@@ -520,66 +502,6 @@ def get_kpath(self, kpts=None, symbols=None, band_kpath=None, eps=1e-5):
         else:
             raise KeyError('You should specify band_kpath or kpts')
             return band_kpath
-
-
-def write_string(f, key, value):
-    f.write("        ".join([key, value]))
-    f.write("\n")
-
-
-def write_tuple_integer(f, key, value):
-    f.write("        ".join([key, "%d %d %d" % value]))
-    f.write("\n")
-
-
-def write_tuple_float(f, key, value):
-    f.write("        ".join([key, "%.4f %.4f %.4f" % value]))
-    f.write("\n")
-
-
-def write_tuple_bool(f, key, value):
-    omx_bl = {True: 'On', False: 'Off'}
-    f.write("        ".join([key, "%s %s %s" % [omx_bl[bl] for bl in value]]))
-    f.write("\n")
-
-
-def write_integer(f, key, value):
-    f.write("        ".join([key, "%d" % value]))
-    f.write("\n")
-
-
-def write_float(f, key, value):
-    f.write("        ".join([key, "%.8g" % value]))
-    f.write("\n")
-
-
-def write_bool(f, key, value):
-    omx_bl = {True: 'On', False: 'Off'}
-    f.write("        ".join([key, "%s" % omx_bl[value]]))
-    f.write("\n")
-
-
-def write_list_int(f, key, value):
-    f.write("".join(key) + "     ".join(map(str, value)))
-
-
-def write_list_bool(f, key, value):
-    omx_bl = {True: 'On', False: 'Off'}
-    f.write("".join(key) + "     ".join([omx_bl[bl] for bl in value]))
-
-
-def write_list_float(f, key, value):
-    f.write("".join(key) + "     ".join(map(str, value)))
-
-
-def write_matrix(f, key, value):
-    f.write('<' + key)
-    f.write("\n")
-    for line in value:
-        f.write("    "+"  ".join(map(str, line)))
-        f.write("\n")
-    f.write(key + '>')
-    f.write("\n\n")
 
 
 def get_openmx_key(key):
