@@ -56,12 +56,27 @@ def get_emt_template():
         input_format='traj',
         output_format='traj')
 
+def get_openmx_template():
+    runfile = 'openmx.dat'
+    outfile = 'openmx.log'
+    return CalculatorTemplate(
+        name='openmx',
+        implemented_properties=['energy', 'free_energy', 'forces'],
+        command='openmx {} > {}'.format(runfile, outfile),
+        input_file=runfile,
+        output_file=outfile,
+        input_format='openmx-in',
+        output_format='openmx-out')
+
 
 def new_espresso(**kwargs):
     return get_espresso_template().new(**kwargs)
 
 def new_emt(**kwargs):
     return get_emt_template().new(**kwargs)
+
+def new_openmx(**kwargs):
+    return get_openmx_template().new(**kwargs)
 
 
 class DataDrivenCalculator(FileIOCalculator):
