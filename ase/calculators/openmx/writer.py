@@ -31,6 +31,26 @@ keys = [param.tuple_integer_keys, param.tuple_float_keys,
         param.list_bool_keys, param.list_float_keys, param.matrix_keys]
 
 
+def write_openmx_input(fd, atoms, properties=None, label=None,
+                       parameters=None):
+    from ase.calculators.openmx import parameters as param
+    if parameters is None:
+        parameters = {}
+    filtered_keywords = parameters_to_keywords(label=label, atoms=atoms,
+                                               parameters=parameters,
+                                               properties=properties)
+    keys = ['string', 'bool', 'integer', 'float',
+            'tuple_integer', 'tuple_float', 'tuple_bool',
+            'matrix', 'list_int', 'list_bool', 'list_float']
+    # Write 1-line keywords
+    for fltrd_keyword in filtered_keywords.keys():
+        for key in keys:
+            openmx_keywords = getattr(param, key+'_keys')
+            write = globals()['write_'+key]
+            for omx_keyword in openmx_keywords:
+                if fltrd_keyword == get_standard_key(omx_keyword):
+                    write(fd, omx_keyword, filtered_keywords[fltrd_keyword])
+
 def write_openmx(label=None, atoms=None, parameters=None, properties=None,
                  system_changes=None):
     """
@@ -44,25 +64,11 @@ def write_openmx(label=None, atoms=None, parameters=None, properties=None,
         - properties   : The properties which should be calculated.
         - system_changes : List of properties changed since last run.
     """
-    from ase.calculators.openmx import parameters as param
-    filtered_keywords = parameters_to_keywords(label=label, atoms=atoms,
-                                               parameters=parameters,
-                                               properties=properties,
-                                               system_changes=system_changes)
-    keys = ['string', 'bool', 'integer', 'float',
-            'tuple_integer', 'tuple_float', 'tuple_bool',
-            'matrix', 'list_int', 'list_bool', 'list_float']
-    # Start writing the file
     filename = get_file_name('.dat', label)
-    with open(filename, 'w') as f:
-        # Write 1-line keywords
-        for fltrd_keyword in filtered_keywords.keys():
-            for key in keys:
-                openmx_keywords = getattr(param, key+'_keys')
-                write = globals()['write_'+key]
-                for omx_keyword in openmx_keywords:
-                    if fltrd_keyword == get_standard_key(omx_keyword):
-                        write(f, omx_keyword, filtered_keywords[fltrd_keyword])
+    with open(filename, 'w') as fd:
+        write_openmx_input(fd, atoms, properties,
+                           parameters=parameters,
+                           label=label)
 
 
 def parameters_to_keywords(label=None, atoms=None, parameters=None,
