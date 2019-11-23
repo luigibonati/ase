@@ -8,7 +8,10 @@ atoms = molecule('H2O')
 atoms.center(vacuum=2.5)
 
 #calc = OpenMX()
-calc = new_openmx()
+calc = new_openmx(
+    scf_energycutoff=150,
+    scf_mixing_type='Rmm-Diis',
+    scf_criterion=1e-6)
 
 atoms.calc = calc
 with workdir('omx-work', mkdir=True):
