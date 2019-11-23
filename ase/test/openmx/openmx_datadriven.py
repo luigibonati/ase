@@ -2,6 +2,7 @@ import numpy as np
 from ase.calculators.openmx import OpenMX
 from ase.calculators.datadriven import new_openmx
 from ase.build import molecule
+from ase.utils import workdir
 
 atoms = molecule('H2O')
 atoms.center(vacuum=2.5)
@@ -10,8 +11,10 @@ atoms.center(vacuum=2.5)
 calc = new_openmx()
 
 atoms.calc = calc
-e = atoms.get_potential_energy()
-f = atoms.get_forces()
+with workdir('omx-work', mkdir=True):
+    e = atoms.get_potential_energy()
+    f = atoms.get_forces()
+
 print(e)
 print(f)
 eref = -474.2232383806571
