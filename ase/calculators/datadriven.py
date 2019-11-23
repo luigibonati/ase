@@ -1,3 +1,4 @@
+import inspect
 import sys
 import warnings
 from ase.io import read, write
@@ -105,10 +106,17 @@ class DataDrivenCalculator(FileIOCalculator):
             self.reset()
 
     def write_input(self, atoms, properties=None, system_changes=None):
+        assert properties is not None
+        assert system_changes is not None
+
         FileIOCalculator.write_input(self, atoms, properties, system_changes)
         fmt = ioformats[self.template.input_format]
+        kwargs = self.parameters
+        if 'properties' in fmt.write.__code__.co_varnames:
+            kwargs = dict(kwargs)
+            kwargs['properties'] = properties
         write(self.template.input_file, atoms, format=fmt.name,
-              **self.parameters)
+              **kwargs)
 
     def read_results(self):
         fmt = ioformats[self.template.output_format]
