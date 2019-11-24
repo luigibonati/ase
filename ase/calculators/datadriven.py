@@ -1,9 +1,7 @@
-import inspect
 import sys
-import warnings
 from ase.io import read, write
 from ase.io.formats import ioformats
-from ase.calculators.calculator import FileIOCalculator, PropertyNotPresent
+from ase.calculators.calculator import FileIOCalculator
 
 
 class CalculatorTemplate:
@@ -134,38 +132,26 @@ class DataDrivenCalculator(FileIOCalculator):
         self.results = output.calc.results
 
     def get_fermi_level(self):
-        if self.cache is None:
-            raise PropertyNotPresent(error_template % 'Fermi level')
-        return self.cache.get_fermi_level()
+        efermi = self.cache.get_fermi_level()
+        assert efermi is not None
+        return efermi
 
     def get_ibz_k_points(self):
-        if self.cache is None:
-            raise PropertyNotPresent(error_template % 'IBZ k-points')
         ibzkpts = self.cache.get_ibz_k_points()
-        if ibzkpts is None:
-            warnings.warn(warn_template % 'IBZ k-points')
+        assert ibzkpts is not None
         return ibzkpts
 
     def get_k_point_weights(self):
-        if self.cache is None:
-            raise PropertyNotPresent(error_template % 'K-point weights')
         k_point_weights = self.cache.get_k_point_weights()
-        if k_point_weights is None:
-            warnings.warn(warn_template % 'K-point weights')
+        assert k_point_weights is not None
         return k_point_weights
 
     def get_eigenvalues(self, **kwargs):
-        if self.cache is None:
-            raise PropertyNotPresent(error_template % 'Eigenvalues')
         eigenvalues = self.cache.get_eigenvalues(**kwargs)
-        if eigenvalues is None:
-            warnings.warn(warn_template % 'Eigenvalues')
+        assert eigenvalues is not None
         return eigenvalues
 
     def get_number_of_spins(self):
-        if self.cache is None:
-            raise PropertyNotPresent(error_template % 'Number of spins')
         nspins = self.cache.get_number_of_spins()
-        if nspins is None:
-            warnings.warn(warn_template % 'Number of spins')
+        assert nspins is not None
         return nspins
