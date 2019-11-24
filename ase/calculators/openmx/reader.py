@@ -25,7 +25,7 @@ from ase.units import Ha, Bohr, Debye
 from ase.utils import basestring
 
 
-def read_openmx(filename=None, debug=False):
+def read_openmx(filename: str, debug=False):
     from ase.calculators.openmx import OpenMX
     from ase import Atoms
     """
@@ -244,7 +244,7 @@ def read_scfout_file(filename=None):
     def floa(byte, shape=None):
         return easyReader(byte, 'd', shape)
 
-    def readOverlap(atomnum, Total_NumOrbs, FNAN, natn, f):
+    def readOverlap(atomnum, Total_NumOrbs, FNAN, natn, fd):
             myOLP = []
             myOLP.append([])
             for ct_AN in range(1, atomnum + 1):
@@ -255,10 +255,10 @@ def read_scfout_file(filename=None):
                     Gh_AN = natn[ct_AN][h_AN]
                     TNO2 = Total_NumOrbs[Gh_AN]
                     for i in range(TNO1):
-                        myOLP[ct_AN][h_AN].append(floa(f.read(8*TNO2)))
+                        myOLP[ct_AN][h_AN].append(floa(fd.read(8*TNO2)))
             return myOLP
 
-    def readHam(SpinP_switch, FNAN, atomnum, Total_NumOrbs, natn, f):
+    def readHam(SpinP_switch, FNAN, atomnum, Total_NumOrbs, natn, fd):
         Hks = []
         for spin in range(SpinP_switch + 1):
             Hks.append([])
@@ -271,40 +271,40 @@ def read_scfout_file(filename=None):
                     Gh_AN = natn[ct_AN][h_AN]
                     TNO2 = Total_NumOrbs[Gh_AN]
                     for i in range(TNO1):
-                        Hks[spin][ct_AN][h_AN].append(floa(f.read(8*TNO2)))
+                        Hks[spin][ct_AN][h_AN].append(floa(fd.read(8*TNO2)))
         return Hks
 
-    f = open(filename, mode='rb')
-    atomnum, SpinP_switch = inte(f.read(8))
-    Catomnum, Latomnum, Ratomnum, TCpyCell = inte(f.read(16))
-    atv = floa(f.read(8*4*(TCpyCell+1)), shape=(TCpyCell+1, 4))
-    atv_ijk = inte(f.read(4*4*(TCpyCell+1)), shape=(TCpyCell+1, 4))
-    Total_NumOrbs = np.insert(inte(f.read(4*(atomnum))), 0, 1, axis=0)
-    FNAN = np.insert(inte(f.read(4*(atomnum))), 0, 0, axis=0)
-    natn = ins(spl(inte(f.read(4*sum(FNAN[1:] + 1))), cum(FNAN[1:] + 1)),
+    fd = open(filename, mode='rb')
+    atomnum, SpinP_switch = inte(fd.read(8))
+    Catomnum, Latomnum, Ratomnum, TCpyCell = inte(fd.read(16))
+    atv = floa(fd.read(8*4*(TCpyCell+1)), shape=(TCpyCell+1, 4))
+    atv_ijk = inte(fd.read(4*4*(TCpyCell+1)), shape=(TCpyCell+1, 4))
+    Total_NumOrbs = np.insert(inte(fd.read(4*(atomnum))), 0, 1, axis=0)
+    FNAN = np.insert(inte(fd.read(4*(atomnum))), 0, 0, axis=0)
+    natn = ins(spl(inte(fd.read(4*sum(FNAN[1:] + 1))), cum(FNAN[1:] + 1)),
                0, zeros(FNAN[0] + 1), axis=0)[:-1]
-    ncn = ins(spl(inte(f.read(4*np.sum(FNAN[1:] + 1))), cum(FNAN[1:] + 1)),
+    ncn = ins(spl(inte(fd.read(4*np.sum(FNAN[1:] + 1))), cum(FNAN[1:] + 1)),
               0, np.zeros(FNAN[0] + 1), axis=0)[:-1]
-    tv = ins(floa(f.read(8*3*4), shape=(3, 4)), 0, [0, 0, 0, 0], axis=0)
-    rtv = ins(floa(f.read(8*3*4), shape=(3, 4)), 0, [0, 0, 0, 0], axis=0)
-    Gxyz = ins(floa(f.read(8*(atomnum)*4), shape=(atomnum, 4)), 0,
+    tv = ins(floa(fd.read(8*3*4), shape=(3, 4)), 0, [0, 0, 0, 0], axis=0)
+    rtv = ins(floa(fd.read(8*3*4), shape=(3, 4)), 0, [0, 0, 0, 0], axis=0)
+    Gxyz = ins(floa(fd.read(8*(atomnum)*4), shape=(atomnum, 4)), 0,
                [0., 0., 0., 0.], axis=0)
-    Hks = readHam(SpinP_switch, FNAN, atomnum, Total_NumOrbs, natn, f)
+    Hks = readHam(SpinP_switch, FNAN, atomnum, Total_NumOrbs, natn, fd)
     iHks = []
     if SpinP_switch == 3:
-        iHks = readHam(SpinP_switch, FNAN, atomnum, Total_NumOrbs, natn, f)
-    OLP = readOverlap(atomnum, Total_NumOrbs, FNAN, natn, f)
-    OLPpox = readOverlap(atomnum, Total_NumOrbs, FNAN, natn, f)
-    OLPpoy = readOverlap(atomnum, Total_NumOrbs, FNAN, natn, f)
-    OLPpoz = readOverlap(atomnum, Total_NumOrbs, FNAN, natn, f)
-    DM = readHam(SpinP_switch, FNAN, atomnum, Total_NumOrbs, natn, f)
-    Solver = inte(f.read(4))
-    ChemP, E_Temp = floa(f.read(8*2))
-    dipole_moment_core = floa(f.read(8*3))
-    dipole_moment_background = floa(f.read(8*3))
-    Valence_Electrons, Total_SpinS = floa(f.read(8*2))
+        iHks = readHam(SpinP_switch, FNAN, atomnum, Total_NumOrbs, natn, fd)
+    OLP = readOverlap(atomnum, Total_NumOrbs, FNAN, natn, fd)
+    OLPpox = readOverlap(atomnum, Total_NumOrbs, FNAN, natn, fd)
+    OLPpoy = readOverlap(atomnum, Total_NumOrbs, FNAN, natn, fd)
+    OLPpoz = readOverlap(atomnum, Total_NumOrbs, FNAN, natn, fd)
+    DM = readHam(SpinP_switch, FNAN, atomnum, Total_NumOrbs, natn, fd)
+    Solver = inte(fd.read(4))
+    ChemP, E_Temp = floa(fd.read(8*2))
+    dipole_moment_core = floa(fd.read(8*3))
+    dipole_moment_background = floa(fd.read(8*3))
+    Valence_Electrons, Total_SpinS = floa(fd.read(8*2))
 
-    f.close()
+    fd.close()
     scf_out = {'atomnum': atomnum, 'SpinP_switch': SpinP_switch,
                'Catomnum': Catomnum, 'Latomnum': Latomnum, 'Hks': Hks,
                'Ratomnum': Ratomnum, 'TCpyCell': TCpyCell, 'atv': atv,
@@ -326,19 +326,19 @@ def read_band_file(filename=None):
         return {}
     band_kpath = []
     eigen_bands = []
-    with open(filename, 'r') as f:
-        line = f.readline().split()
+    with open(filename, 'r') as fd:
+        line = fd.readline().split()
         nkpts = 0
         nband = int(line[0])
         nspin = int(line[1]) + 1
         band_data['nband'] = nband
         band_data['nspin'] = nspin
-        line = f.readline().split()
+        line = fd.readline().split()
         band_data['band_kpath_unitcell'] = [line[:3], line[3:6], line[6:9]]
-        line = f.readline().split()
+        line = fd.readline().split()
         band_data['band_nkpath'] = int(line[0])
         for i in range(band_data['band_nkpath']):
-            line = f.readline().split()
+            line = fd.readline().split()
             band_kpath.append(line)
             nkpts += int(line[0])
         band_data['nkpts'] = nkpts
@@ -347,9 +347,9 @@ def read_band_file(filename=None):
         eigen_bands = np.zeros((nspin, nkpts, nband))
         for i in range(nspin):
             for j in range(nkpts):
-                line = f.readline()
+                line = fd.readline()
                 kpts[j] = np.array(line.split(), dtype=float)[1:]
-                line = f.readline()
+                line = fd.readline()
                 eigen_bands[i, j] = np.array(line.split(), dtype=float)[:]
         band_data['eigenvalues'] = eigen_bands
         band_data['band_kpts'] = kpts
@@ -359,9 +359,9 @@ def read_band_file(filename=None):
 def read_electron_valency(filename='H_CA13'):
     array = []
     with open(os.path.join(os.environ['OPENMX_DFT_DATA_PATH'],
-                           'VPS/' + filename + '.vps'), 'r') as f:
-        array = f.readlines()
-        f.close()
+                           'VPS/' + filename + '.vps'), 'r') as fd:
+        array = fd.readlines()
+        fd.close()
     required_line = ''
     for line in array:
         if 'valence.electron' in line:
@@ -430,46 +430,46 @@ def read_list_bool(line):
     return [read_bool(x) for x in line.split()[1:]]
 
 
-def read_matrix(line, key, f):
+def read_matrix(line, key, fd):
     matrix = []
-    line = f.readline()
+    line = fd.readline()
     while key not in line:
         matrix.append(line.split())
-        line = f.readline()
+        line = fd.readline()
     return matrix
 
 
-def read_stress_tensor(line, f, debug=None):
-    f.readline()  # passing empty line
-    f.readline()
-    line = f.readline()
+def read_stress_tensor(line, fd, debug=None):
+    fd.readline()  # passing empty line
+    fd.readline()
+    line = fd.readline()
     xx, xy, xz = read_tuple_float(line)
-    line = f.readline()
+    line = fd.readline()
     yx, yy, yz = read_tuple_float(line)
-    line = f.readline()
+    line = fd.readline()
     zx, zy, zz = read_tuple_float(line)
     stress = [xx, yy, zz, (zy + yz)/2, (zx + xz)/2, (yx + xy)/2]
     return stress
 
 
-def read_magmoms_and_total_magmom(line, f, debug=None):
+def read_magmoms_and_total_magmom(line, fd, debug=None):
     total_magmom = read_float(line)
-    f.readline()  # Skip empty lines
-    f.readline()
-    line = f.readline()
+    fd.readline()  # Skip empty lines
+    fd.readline()
+    line = fd.readline()
     magmoms = []
     while not(line == '' or line.isspace()):
         magmoms.append(read_float(line))
-        line = f.readline()
+        line = fd.readline()
     return magmoms, total_magmom
 
 
-def read_energy(line, f, debug=None):
+def read_energy(line, fd, debug=None):
     # It has Hartree unit yet
     return read_float(line)
 
 
-def read_eigenvalues(line, f, debug=False):
+def read_eigenvalues(line, fd, debug=False):
     """
     Read the Eigenvalues in the `.out` file and returns the eigenvalue
     First, it assumes system have two spins and start reading until it reaches
@@ -488,23 +488,23 @@ def read_eigenvalues(line, f, debug=False):
     if 'Hartree' in line:
         return None
     prind("Read eigenvalue output")
-    current_line = f.tell()
-    f.seek(0)  # Seek for the kgrid information
+    current_line = fd.tell()
+    fd.seek(0)  # Seek for the kgrid information
     while line != '':
-        line = f.readline().lower()
+        line = fd.readline().lower()
         if 'scf.kgrid' in line:
             break
-    f.seek(current_line)  # Retrun to the original position
+    fd.seek(current_line)  # Retrun to the original position
 
     kgrid = read_tuple_integer(line)
     prind('scf.Kgrid is %d, %d, %d' % kgrid)
 
-    line = f.readline()
-    line = f.readline()
+    line = fd.readline()
+    line = fd.readline()
     if '1' not in line:  # Non - Gamma point calculation
         prind('Non-Gamma point calculation')
         gamma_flag = False
-        f.seek(f.tell()+57)
+        fd.seek(fd.tell()+57)
     else:                        # Gamma point calculation case
         prind('Gamma point calculation')
         gamma_flag = True
@@ -514,19 +514,19 @@ def read_eigenvalues(line, f, debug=False):
     eigenvalues.append([])  # Assume two spins
     i = 0
     while 'Mulliken' not in line:
-        line = f.readline()
+        line = fd.readline()
         prind(line)
         eigenvalues[0].append([])
         eigenvalues[1].append([])
         while not (line == '' or line.isspace()):
             eigenvalues[0][i].append(float(rn(line, 2)))
             eigenvalues[1][i].append(float(rn(line, 1)))
-            line = f.readline()
+            line = fd.readline()
             prind(line)
         i += 1
-        f.readline()
-        f.readline()
-        line = f.readline()
+        fd.readline()
+        fd.readline()
+        line = fd.readline()
         prind(line)
     if gamma_flag:
         return np.asarray(eigenvalues)
@@ -544,38 +544,38 @@ def read_eigenvalues(line, f, debug=False):
     return eigen_values
 
 
-def read_forces(line, f, debug=None):
+def read_forces(line, fd, debug=None):
     # It has Hartree per Bohr unit yet
     forces = []
-    f.readline()  # Skip Empty line
-    line = f.readline()
+    fd.readline()  # Skip Empty line
+    line = fd.readline()
     while 'coordinates.forces>' not in line:
         forces.append(read_tuple_float(line))
-        line = f.readline()
+        line = fd.readline()
     return np.array(forces)
 
 
-def read_dipole(line, f, debug=None):
+def read_dipole(line, fd, debug=None):
     dipole = []
     while 'Total' not in line:
-        line = f.readline()
+        line = fd.readline()
     dipole.append(read_tuple_float(line))
     return dipole
 
 
-def read_scaled_positions(line, f, debug=None):
+def read_scaled_positions(line, fd, debug=None):
     scaled_positions = []
-    f.readline()  # Skip Empty lines
-    f.readline()
-    f.readline()
-    line = f.readline()
+    fd.readline()  # Skip Empty lines
+    fd.readline()
+    fd.readline()
+    line = fd.readline()
     while not(line == '' or line.isspace()):  # Detect empty line
         scaled_positions.append(read_tuple_float(line))
-        line = f.readline()
+        line = fd.readline()
     return scaled_positions
 
 
-def read_chemical_potential(line, f, debug=None):
+def read_chemical_potential(line, fd, debug=None):
     return read_float(line)
 
 
