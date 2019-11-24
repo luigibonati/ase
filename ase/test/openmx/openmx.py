@@ -7,7 +7,7 @@ atoms = molecule('H2O')
 atoms.center(vacuum=2.5)
 calc = OpenMX()
 atoms.calc = calc
-with workdir('omx-old', mkdir=True):
+with workdir('omx-orig', mkdir=True):
     e = atoms.get_potential_energy()
     f = atoms.get_forces()
 print(e)

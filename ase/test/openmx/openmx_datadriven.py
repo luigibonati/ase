@@ -12,7 +12,7 @@ calc = new_openmx(
     scf_criterion=1e-6)
 
 atoms.calc = calc
-with workdir('omx-work', mkdir=True):
+with workdir('omx-dd', mkdir=True):
     e = atoms.get_potential_energy()
     f = atoms.get_forces()
 
