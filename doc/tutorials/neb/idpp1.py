@@ -1,11 +1,12 @@
 from ase.build import molecule
 from ase.neb import NEB
-from ase.calculators.emt import EMT
+# from ase.calculators.emt import EMT
+from ase.calculators.dftb import Dftb
 from ase.optimize.fire import FIRE as QuasiNewton
 
 # Optimise molecule
 initial = molecule('C2H6')
-initial.set_calculator(EMT())
+initial.set_calculator(Dftb())
 relax = QuasiNewton(initial)
 relax.run(fmax=0.05)
 
@@ -20,8 +21,8 @@ for i in range(9):
     images.append(initial.copy())
 
 for image in images:
-    image.set_calculator(EMT())
-   
+    image.set_calculator(Dftb())
+
 images.append(final)
 
 # Run IDPP interpolation
