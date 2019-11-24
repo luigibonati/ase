@@ -1,5 +1,4 @@
 import numpy as np
-from ase.calculators.openmx import OpenMX
 from ase.calculators.datadriven import new_openmx
 from ase.build import molecule
 from ase.utils import workdir
@@ -7,7 +6,6 @@ from ase.utils import workdir
 atoms = molecule('H2O')
 atoms.center(vacuum=2.5)
 
-#calc = OpenMX()
 calc = new_openmx(
     scf_energycutoff=150,
     scf_mixing_type='Rmm-Diis',
