@@ -66,6 +66,9 @@ def parameters_to_keywords(label=None, atoms=None, parameters=None,
     """
     from ase.calculators.openmx.parameters import matrix_keys
     from collections import OrderedDict
+    if properties is None:
+        properties = ['energy']
+
     keywords = OrderedDict()
     sequence = ['system_currentdirectory', 'system_name', 'data_path',
                 'species_number', 'definition_of_atomic_species',
