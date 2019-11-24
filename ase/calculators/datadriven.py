@@ -111,10 +111,19 @@ class DataDrivenCalculator(FileIOCalculator):
 
         FileIOCalculator.write_input(self, atoms, properties, system_changes)
         fmt = ioformats[self.template.input_format]
-        kwargs = self.parameters
+        kwargs = {}
+
+        # We should make properties mandatory
         if 'properties' in fmt.write.__code__.co_varnames:
             kwargs = dict(kwargs)
             kwargs['properties'] = properties
+
+        # We should make 'parameters' mandatory instead of **kwargs,
+        # to more clearly separate things.
+        if 'parameters' in fmt.write.__code__.co_varnames:
+            kwargs['parameters'] = self.parameters.copy()
+        else:
+            kwargs.update(self.parameters)
         write(self.template.input_file, atoms, format=fmt.name,
               **kwargs)
 

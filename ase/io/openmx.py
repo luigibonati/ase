@@ -2,11 +2,11 @@ from ase.calculators.openmx.writer import (parameters_to_keywords,
                                            get_standard_key)
 
 
-def write_openmx_in(fd, atoms, properties=None, label=None,
+def write_openmx_in(fd, atoms, properties=None, label='openmx',
                     parameters=None):
-    from ase.calculators.openmx import parameters as param
     if parameters is None:
         parameters = {}
+    from ase.calculators.openmx import parameters as param
     filtered_keywords = parameters_to_keywords(label=label, atoms=atoms,
                                                parameters=parameters,
                                                properties=properties)

@@ -112,8 +112,10 @@ def parameters_to_keywords(label=None, atoms=None, parameters=None,
     # Set up standard parameters to openmx keyword
     keywords['scf_maxiter'] = parameters.get('maxiter')
     keywords['scf_xctype'] = get_xc(parameters.get('xc'))
-    keywords['scf_energycutoff'] = parameters.get('energy_cutoff') / Ry
-    keywords['scf_criterion'] = parameters.get('convergence') / Ha
+    if 'energy_cutoff' in parameters:
+        keywords['scf_energycutoff'] = parameters.get('energy_cutoff') / Ry
+    if 'convergence' in parameters:
+        keywords['scf_criterion'] = parameters.get('convergence') / Ha
     keywords['scf_kgrid'] = get_scf_kgrid(
                                         kpts=parameters.get('kpts'),
                                         scf_kgrid=parameters.get('scf_kgrid'),
@@ -121,7 +123,8 @@ def parameters_to_keywords(label=None, atoms=None, parameters=None,
     keywords['scf_eigenvaluesolver'] = get_eigensolver(atoms, parameters)
     keywords['scf_spinpolarization'] = get_spinpol(atoms, parameters)
     keywords['scf_external_fields'] = parameters.get('external')
-    keywords['scf_mixing_type'] = parameters.get('mixer')
+    if 'mixer' in parameters:
+        keywords['scf_mixing_type'] = parameters.get('mixer')
     keywords['scf_electronic_temperature'] = parameters.get('smearing')
     keywords['scf_system_charge'] = parameters.get('charge')
     if parameters.get('band_kpath') is not None:
