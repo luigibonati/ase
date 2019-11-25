@@ -19,7 +19,7 @@ class SinglePointCalculator(Calculator):
         Calculator.__init__(self)
         self.results = {}
         for property, value in results.items():
-            assert property in all_properties
+            assert property in all_properties, property
             if value is None:
                 continue
             if property in ['energy', 'magmom', 'free_energy']:
