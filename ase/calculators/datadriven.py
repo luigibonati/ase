@@ -2,12 +2,26 @@ import sys
 from ase.io import read, write
 from ase.io.formats import ioformats
 from ase.calculators.calculator import FileIOCalculator
+from ase.calculators.singlepoint import SinglePointCalculator
+
+
+class SingleFileReader:
+    def __init__(self, output_file, fmt):
+        self.output_file = output_file
+        self.fmt = fmt
+
+    def read(self):
+        #fmt = ioformats[self.fmt]
+        output = read(self.output_file, format=self.fmt)
+        cache = output.calc
+        results = output.calc.results
+        return results
+
 
 
 class CalculatorTemplate:
     def __init__(self, name, implemented_properties, command,
-                 input_file, output_file,
-                 input_format, output_format):
+                 input_file, input_format, reader):
         self.name = name
         self.implemented_properties = implemented_properties
         self.command = command
@@ -15,9 +29,8 @@ class CalculatorTemplate:
         # Generalize: We need some kind of Writer and Reader
         # to handle multiple files at a time.
         self.input_file = input_file
-        self.output_file = output_file
         self.input_format = input_format
-        self.output_format = output_format
+        self.reader = reader
 
     def __repr__(self):
         return 'CalculatorTemplate({})'.format(vars(self))
@@ -36,9 +49,9 @@ def get_espresso_template():
         implemented_properties=Espresso.implemented_properties,
         command='pw.x -in {} > {}'.format(infile, outfile),
         input_file=infile,
-        output_file=outfile,
+        #output_file=outfile,
         input_format='espresso-in',
-        output_format='espresso-out')
+        reader=SingleFileReader(outfile, 'espresso-out'))
 
 
 def get_emt_template():
@@ -51,9 +64,8 @@ def get_emt_template():
         command=('{} -m ase.calculators.emt {} {}'
                  .format(sys.executable, infile, outfile)),
         input_file=infile,
-        output_file=outfile,
         input_format='traj',
-        output_format='traj')
+        reader=SingleFileReader(outfile, 'traj'))
 
 def get_openmx_template():
     runfile = 'openmx.dat'
@@ -63,9 +75,9 @@ def get_openmx_template():
         implemented_properties=['energy', 'free_energy', 'forces'],
         command='openmx {} > {}'.format(runfile, outfile),
         input_file=runfile,
-        output_file=outfile,
-        input_format='openmx-in',
-        output_format='openmx-out')
+        #output_file=outfile,
+        input_format='openmx-in'),
+        #output_format='openmx-out')
 
 
 def new_espresso(**kwargs):
@@ -129,10 +141,8 @@ class DataDrivenCalculator(FileIOCalculator):
               **kwargs)
 
     def read_results(self):
-        fmt = ioformats[self.template.output_format]
-        output = read(self.template.output_file, format=fmt.name)
-        self.cache = output.calc
-        self.results = output.calc.results
+        reader = self.template.reader
+        self.results = reader.read()
 
     def get_fermi_level(self):
         efermi = self.cache.get_fermi_level()
