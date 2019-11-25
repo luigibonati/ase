@@ -90,6 +90,9 @@ class DataDrivenCalculator(FileIOCalculator):
                                   command=template.command,
                                   **kwargs)
 
+    def __repr__(self):
+        return '{}({})'.format(type(self).__name__, self.template.name)
+
     @property
     def implemented_properties(self):
         return self.template.implemented_properties
