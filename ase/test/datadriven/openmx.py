@@ -2,7 +2,7 @@ import numpy as np
 from ase.calculators.datadriven import new_openmx
 from ase.test.datadriven.main import test_singlepoint
 from ase.build import molecule
-from ase.utils import workdir
+
 
 atoms = molecule('H2O')
 atoms.center(vacuum=2.5)

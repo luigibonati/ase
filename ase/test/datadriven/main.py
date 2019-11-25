@@ -1,6 +1,4 @@
-from ase.calculators.datadriven import new_emt
 from ase.calculators.calculator import get_calculator_class
-from ase.build import bulk
 from ase.utils import workdir
 
 
