@@ -77,6 +77,17 @@ def get_openmx_template():
         reader=OpenMXReader(label))
 
 
+def get_octopus_template():
+    from ase.io.octopus import OctopusReader
+    return CalculatorTemplate(
+        name='octopus',
+        implemented_properties=['energy', 'free_energy', 'forces'],
+        command='octopus 1> oct.out 2> oct.err',
+        input_file='inp',
+        input_format='octopus-in',
+        reader=OctopusReader())
+
+
 def new_espresso(**kwargs):
     return get_espresso_template().new(**kwargs)
 
@@ -86,6 +97,9 @@ def new_emt(**kwargs):
 def new_openmx(**kwargs):
     return get_openmx_template().new(**kwargs)
 
+
+def new_octopus(**kwargs):
+    return get_octopus_template().new(**kwargs)
 
 class DataDrivenCalculator(FileIOCalculator):
     implemented_properties = None
@@ -116,6 +130,7 @@ class DataDrivenCalculator(FileIOCalculator):
             self.reset()
 
     def write_input(self, atoms, properties=None, system_changes=None):
+        assert atoms is not None
         assert properties is not None
         assert system_changes is not None
 
@@ -139,7 +154,16 @@ class DataDrivenCalculator(FileIOCalculator):
 
     def read_results(self):
         reader = self.template.reader
-        self.cache = reader.read()
+        if hasattr(reader, 'read_with_atoms'):
+            # We can't count on the output parser to have the atoms.
+            # So we allow it to implement a method which require atoms
+            # as context.  However it might be better if we get rid of
+            # that, and convert reuslts into SinglePointDFTCalculator
+            # centrally, i.e., here.
+            cache = reader.read_with_atoms(self.atoms)
+        else:
+            cache = reader.read()
+        self.cache = cache
         self.results = self.cache.results
 
     def get_fermi_level(self):
