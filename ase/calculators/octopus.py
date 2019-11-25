@@ -731,7 +731,7 @@ def generate_input(atoms, kwargs, normalized2pretty):
         # Most datatypes are straightforward but blocks require some attention.
         if isinstance(val, list):
             append('')
-            dict_data = list2block(normalized2pretty[key], val)
+            dict_data = list2block(normalized2pretty.get(key, key), val)
             extend(dict_data)
         else:
             setvar(key, str(val))
