@@ -4,6 +4,10 @@ from ase.build import bulk
 from ase.utils import workdir
 
 
+ref_template = """\
+energy = {!r}
+force = np.{!r}"""
+
 def skip_if_not_enabled(name):
     cls = get_calculator_class(name)
     cls()  # the test suite monkeypatches these classes so this raises SkipTest
@@ -16,5 +20,4 @@ def test_singlepoint(name, atoms):
         e = atoms.get_potential_energy()
         f = atoms.get_forces()
 
-    print(e)
-    print(f)
+    print(ref_template.format(e, f))
