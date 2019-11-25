@@ -23,9 +23,10 @@ import struct
 import numpy as np
 from ase.units import Ha, Bohr, Debye
 from ase.utils import basestring
+from ase.calculators.singlepoint import SinglePointCalculator
 
 
-def read_openmx(filename: str, debug=False):
+def read_openmx(filename: str, debug=False, as_singlepoint=False):
     from ase.calculators.openmx import OpenMX
     from ase import Atoms
     """
@@ -64,7 +65,11 @@ def read_openmx(filename: str, debug=False):
                           dat_data=dat_data, band_data=band_data)
 
     atoms = Atoms(**atomic_formula)
-    atoms.set_calculator(OpenMX(**parameters))
+    if as_singlepoint:
+        calc = SinglePointCalculator(atoms, **results)
+    else:
+        calc = OpenMX(**parameters)
+    atoms.calc = calc
     atoms.calc.results = results
     return atoms
 
