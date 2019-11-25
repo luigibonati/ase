@@ -180,14 +180,18 @@ def runtests_subprocess(task_queue, result_queue, verbose, strict):
             #  * doctest exceptions appear to be unpicklable.
             #    Probably they contain a reference to a module or something.
             #  * gui/run may deadlock for unknown reasons in subprocess
+            #  * Anything that uses matplotlib (we don't know why)
+            #  * pubchem (https://gitlab.com/ase/ase/merge_requests/1477)
 
             t = test.replace('\\', '/')
+
             if t in ['bandstructure.py',
                      'bandstructure_many.py',
                      'doctests.py', 'gui/run.py',
                      'matplotlib_plot.py', 'fio/oi.py', 'fio/v_sim.py',
                      'forcecurve.py',
-                     'fio/animate.py', 'db/db_web.py', 'x3d.py']:
+                     'fio/animate.py', 'db/db_web.py', 'x3d.py',
+                     'pubchem.py']:
                 result = Result(name=test, status='please run on master')
                 result_queue.put(result)
                 continue

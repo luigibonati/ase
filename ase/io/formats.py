@@ -214,9 +214,9 @@ def get_ioformat(name):
 
 F = define_io_format
 F('abinit', 'ABINIT input file', '1F'),
-F('aims', 'FHI-aims geometry file', '1S'),
+F('aims', 'FHI-aims geometry file', '1S',ext='in'),
 F('aims-output', 'FHI-aims output', '+S',
-  module='aims', ext='in', magic=b'*Invoking FHI-aims ...'),
+  module='aims', magic=b'*Invoking FHI-aims ...'),
 F('bundletrajectory', 'ASE bundle trajectory', '+S'),
 F('castep-castep', 'CASTEP output file', '+F',
   module='castep', ext='castep'),
@@ -260,8 +260,7 @@ F('espresso-in', 'Quantum espresso in file', '1F',
 F('espresso-out', 'Quantum espresso out file', '+F',
   module='espresso', ext=['pwo','out'], magic=b'*Program PWSCF'),
 F('etsf', 'ETSF format', '1S'),
-F('exciting', 'exciting input', '1S',
-  ext='exi'),
+F('exciting', 'exciting input', '1S',glob='input.xml'),
 F('extxyz', 'Extended XYZ file', '+F'),
 F('findsym', 'FINDSYM-format', '+F'),
 F('gaussian', 'Gaussian com (input) file', '1S',
@@ -286,10 +285,12 @@ F('html', 'X3DOM HTML', '1F', module='x3d'),
 F('iwm', '?', '1F', glob='atoms.dat'),
 F('json', 'ASE JSON database file', '+F', module='db'),
 F('jsv', 'JSV file format', '1F'),
-F('lammps-dump', 'LAMMPS dump file', '+F',
+F('lammps-dump-text', 'LAMMPS text dump file', '+F',
   module='lammpsrun', magic=b'*\nITEM: TIMESTEP\n'),
+F('lammps-dump-binary', 'LAMMPS binary dump file', '+B',
+  module='lammpsrun')
 F('lammps-data', 'LAMMPS data file', '1F', module='lammpsdata',
-  #encoding='ascii'  # XXX which encoding?
+  encoding='ascii'
 ),
 F('magres', 'MAGRES ab initio NMR data file', '1F'),
 F('mol', 'MDL Molfile', '1F'),
@@ -566,9 +567,9 @@ def read(filename, index=None, format=None, parallel=True, **kwargs):
             * ``index=0``: first configuration
             * ``index=-2``: second to last
             * ``index=':'`` or ``index=slice(None)``: all
-            * ``index='-3:`` or ``index=slice(-3, None)``: three last
-            * ``index='::2`` or ``index=slice(0, None, 2)``: even
-            * ``index='1::2`` or ``index=slice(1, None, 2)``: odd
+            * ``index='-3:'`` or ``index=slice(-3, None)``: three last
+            * ``index='::2'`` or ``index=slice(0, None, 2)``: even
+            * ``index='1::2'`` or ``index=slice(1, None, 2)``: odd
     format: str
         Used to specify the file-format.  If not given, the
         file-format will be guessed by the *filetype* function.
@@ -693,6 +694,7 @@ def parse_filename(filename, index=None):
 
 
 def string2index(string):
+    """Convert index string to either int or slice"""
     if ':' not in string:
         return int(string)
     i = []
