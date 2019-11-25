@@ -2,7 +2,6 @@ import sys
 from ase.io import read, write
 from ase.io.formats import ioformats
 from ase.calculators.calculator import FileIOCalculator
-from ase.calculators.singlepoint import SinglePointCalculator
 
 
 class SingleFileReader:
@@ -46,7 +45,6 @@ def get_espresso_template():
         implemented_properties=Espresso.implemented_properties,
         command='pw.x -in {} > {}'.format(infile, outfile),
         input_file=infile,
-        #output_file=outfile,
         input_format='espresso-in',
         reader=SingleFileReader(outfile, 'espresso-out'))
 
@@ -64,17 +62,19 @@ def get_emt_template():
         input_format='traj',
         reader=SingleFileReader(outfile, 'traj'))
 
+
 def get_openmx_template():
-    runfile = 'openmx.dat'
-    outfile = 'openmx.log'
+    from ase.calculators.openmx.reader import OpenMXReader
+    label = 'openmx'
+    runfile = '{}.dat'.format(label)
+    outfile = '{}.log'.format(label)
     return CalculatorTemplate(
         name='openmx',
         implemented_properties=['energy', 'free_energy', 'forces'],
         command='openmx {} > {}'.format(runfile, outfile),
         input_file=runfile,
-        #output_file=outfile,
-        input_format='openmx-in'),
-        #output_format='openmx-out')
+        input_format='openmx-in',
+        reader=OpenMXReader(label))
 
 
 def new_espresso(**kwargs):
@@ -140,10 +140,7 @@ class DataDrivenCalculator(FileIOCalculator):
     def read_results(self):
         reader = self.template.reader
         self.cache = reader.read()
-
-    @property
-    def results(self):
-        return self.cache.results
+        self.results = self.cache.results
 
     def get_fermi_level(self):
         efermi = self.cache.get_fermi_level()

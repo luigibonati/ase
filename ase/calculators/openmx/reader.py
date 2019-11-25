@@ -23,7 +23,17 @@ import struct
 import numpy as np
 from ase.units import Ha, Bohr, Debye
 from ase.utils import basestring
-from ase.calculators.singlepoint import SinglePointCalculator
+from ase.calculators.singlepoint import SinglePointDFTCalculator
+
+
+class OpenMXReader:
+    def __init__(self, filename):
+        self.filename = filename
+
+    def read(self):
+        from ase.calculators.openmx.reader import read_openmx
+        atoms = read_openmx(self.filename, as_singlepoint=True)
+        return atoms.calc
 
 
 def read_openmx(filename: str, debug=False, as_singlepoint=False):
@@ -66,11 +76,16 @@ def read_openmx(filename: str, debug=False, as_singlepoint=False):
 
     atoms = Atoms(**atomic_formula)
     if as_singlepoint:
-        calc = SinglePointCalculator(atoms, **results)
+        dct = {}
+        # XXX improve support
+        for name in 'energy', 'free_energy', 'forces':
+            if name in results:
+                dct[name] = results[name]
+        calc = SinglePointDFTCalculator(atoms, **dct)
     else:
         calc = OpenMX(**parameters)
+        calc.results = results
     atoms.calc = calc
-    atoms.calc.results = results
     return atoms
 
 
