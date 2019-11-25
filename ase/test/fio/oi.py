@@ -77,7 +77,7 @@ os.mkdir(testdir)
 
 def test(format):
     if format in ['abinit', 'castep-cell', 'dftb', 'eon', 'gaussian',
-                  'lammps-data']:
+                  'lammps-data', 'openmx-in']:
         # Someone should do something ...
         return
 
@@ -153,4 +153,8 @@ for format in sorted(all_formats):
     with warnings.catch_warnings():
         if format in ['proteindatabank', 'netcdftrajectory']:
             warnings.simplefilter('ignore', UserWarning)
-        test(format)
+        try:
+            test(format)
+        except Exception as ex:
+            msg = 'Failure testing "{}" format'.format(format)
+            raise RuntimeError(msg) from ex
