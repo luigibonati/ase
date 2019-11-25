@@ -13,12 +13,9 @@ class SingleFileReader:
         self.fmt = fmt
 
     def read(self):
-        #fmt = ioformats[self.fmt]
         output = read(self.output_file, format=self.fmt)
         cache = output.calc
-        results = output.calc.results
-        return results
-
+        return cache
 
 class CalculatorTemplate:
     def __init__(self, name, implemented_properties, command,
@@ -119,7 +116,11 @@ class DataDrivenCalculator(FileIOCalculator):
 
     def read_results(self):
         reader = self.template.reader
-        self.results = reader.read()
+        self.cache = reader.read()
+
+    @property
+    def results(self):
+        return self.cache.results
 
     def get_fermi_level(self):
         if self.cache is None:
