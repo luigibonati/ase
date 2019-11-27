@@ -1,8 +1,8 @@
 from ase.build import molecule
+from ase.collections import g2
 from ase.text import plot
 
-atoms = molecule('CH3CH2OH')
-
-txt = plot(atoms)
-
-print(txt)
+for atoms in g2:
+    print()
+    print(plot(atoms))
+    print()
