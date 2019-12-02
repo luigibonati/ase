@@ -32,7 +32,9 @@ commands = [
     ('nomad-get', 'ase.cli.nomadget'),
     ('convert', 'ase.cli.convert'),
     ('reciprocal', 'ase.cli.reciprocal'),
-    ('completion', 'ase.cli.completion')]
+    ('completion', 'ase.cli.completion'),
+    ('diff', 'ase.cli.diff')
+    ]
 
 
 def main(prog='ase', description='ASE command line tool.',
