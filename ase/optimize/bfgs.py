@@ -85,7 +85,9 @@ class BFGS(Optimizer):
         # check for negative eigenvalues of the hessian
         if any(omega < 0):
             n_negative = len(omega[omega < 0])
-            msg = f'** BFGS Hessian has {n_negative} negative eigenvalues.'
+            msg = '** BFGS Hessian has {} negative eigenvalues.'.format(
+                n_negative
+            )
             warnings.warn(msg)
             if self.logfile is not None:
                 self.logfile.write(msg)
@@ -107,7 +109,16 @@ class BFGS(Optimizer):
         """
         maxsteplength = np.max(steplengths)
         if maxsteplength >= self.maxstep:
-            dr *= self.maxstep / maxsteplength
+            scale = self.maxstep / maxsteplength
+            msg = '** scale step by {:.3f} to be shorter than {}'.format(
+                scale, self.maxstep
+            )
+            warnings.warn(msg)
+            if self.logfile is not None:
+                self.logfile.write(msg)
+                self.logfile.flush()
+
+            dr *= scale
 
         return dr
 
