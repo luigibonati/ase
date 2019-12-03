@@ -81,6 +81,16 @@ class BFGS(Optimizer):
         f = f.reshape(-1)
         self.update(r.flat, f, self.r0, self.f0)
         omega, V = eigh(self.H)
+
+        # check for negative eigenvalues of the hessian
+        if any(omega < 0):
+            n_negative = len(omega[omega < 0])
+            msg = f'** BFGS Hessian has {n_negative} negative eigenvalues.'
+            warnings.warn(msg)
+            if self.logfile is not None:
+                self.logfile.write(msg)
+                self.logfile.flush()
+
         dr = np.dot(V, np.dot(f, V) / np.fabs(omega)).reshape((-1, 3))
         steplengths = (dr**2).sum(1)**0.5
         dr = self.determine_step(dr, steplengths)
