@@ -23,10 +23,10 @@ def collect_atoms(n, H, atoms):
     dim = sum(atoms.pbc)
     # Extend the subgroup basis to 3D (if not already)
     R = np.diag([n, n, n])
-    R[:dim, :dim] = H
-    indices = np.argsort(atoms.pbc, kind='merge')[::-1]
-    indices = np.argsort(indices, kind='merge')
-    R = R[indices][:, indices]
+    indices = np.where(atoms.pbc)[0]
+    for i in range(dim):
+        for j in range(dim):
+            R[indices[i], indices[j]] = H[i, j]
 
     # Perform an appropriate contraction of the unit cell and wrap the atoms
     atoms.set_cell(R @ atoms.cell / n, scale_atoms=False)
@@ -45,6 +45,7 @@ def cluster_component(ps, permutations, shifts, i):
 
 
 def reduced_layout(cr, rmsd, group_index, H, permutations):
+
     num_atoms = len(cr.atoms)
     numbers = cr.atoms.numbers
     components = assign_atoms_to_clusters(num_atoms, numbers, permutations)

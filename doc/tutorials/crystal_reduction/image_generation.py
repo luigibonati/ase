@@ -1,4 +1,4 @@
-# creates: rattled.png, translated_2.png, translated_4.csv, reduced_2.png, clustered_2.png, clustered_4.png, reduced_4.png
+# creates: rattled.png, translated_2.png, clustered_2.png, reduced_2.png, translated_4.png, clustered_4.png, reduced_4.png
 import itertools
 import numpy as np
 import matplotlib.pyplot as plt
