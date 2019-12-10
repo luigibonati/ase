@@ -1,7 +1,7 @@
 from ase.optimize.optimize import Optimizer
 from ase.optimize.bfgslinesearch import BFGSLineSearch
 from ase.optimize.activelearning.gp.calculator import GPCalculator
-from ase.optimize.activelearning.io import TrainingSet
+from ase.optimize.activelearning.trainingset import TrainingSet
 
 import warnings
 from scipy.optimize import minimize
@@ -16,7 +16,7 @@ class AIDMin(Optimizer):
                  master=None, force_consistent=None, model_calculator=None,
                  optimizer=BFGSLineSearch, use_previous_observations=False,
                  surrogate_starting_point='min', trainingset=None,
-                 print_format='ASE', optimizer_kwargs={}):
+                 print_format='ASE', fit_to='calc', optimizer_kwargs={}):
         """
         Artificial Intelligence-Driven energy Minimizer (AID-Min) algorithm.
         Optimize atomic structure using a surrogate machine learning
@@ -101,6 +101,14 @@ class AIDMin(Optimizer):
                   'AID': Original format of the AID module. More informative
                       in respect of ML process.
                       This option is advised for experienced users.
+        fit_to: string
+            Characteristics of the constrains in the training set.
+
+            options:
+                'calc' (default): fit to the output of the calculator, then
+                    run over the constrained surface.
+                'constrains': fit to the constrained atoms directly
+
         optimizer_kwargs: dict
             Dictionary with key-word arguments for the surrogate potential.
         """
@@ -159,6 +167,11 @@ class AIDMin(Optimizer):
             self.optkwargs['logfile'] = None
         if 'trajectory' not in self.optkwargs.items():
             self.optkwargs['trajectory'] = None
+
+        # Define what to fit to
+        if fit_to not in ('calc', 'constrains'):
+            raise ValueError("fit_to must be either 'calc' or 'constrains'.")
+        self.fit_to = fit_to
 
     def set_trainingset(self, trainingset, substitute=True, atoms=None):
         """
@@ -252,7 +265,10 @@ class AIDMin(Optimizer):
 
         # Remove constraints. TODO: do this in a more elegant way
         for img in train_images:
-            img.constraints = []
+            if self.fit_to == 'calc':
+                img.constraints = []
+            elif self.fit_to == 'constrains':
+                img.set_constraint(self.constraints)
 
         # 2. Update model calculator.
         self.model_calculator.update_train_data(train_images=train_images)
@@ -448,6 +464,7 @@ class GPMin(AIDMin):
                         use_previous_observations=False,
                         surrogate_starting_point='min',
                         trainingset=[], print_format='ASE',
+                        fit_to='constrains',
                         optimizer_kwargs={'fmax': 5e-4, 'method': 'L-BFGS-B'})
 
         """
