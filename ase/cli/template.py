@@ -54,6 +54,28 @@ for i in l3:
 
 fmt['el'] = fmt_class['conv']
 
+def prec_round(a,prec=2):
+    "To make hierarchical sorting different from non-hierarchical sorting with floats"
+    if a == 0:
+        return a
+    else:
+        s = 1 if a > 0 else -1
+        m = np.log(s*a) // 1
+        c = np.log(s*a) % 1
+    return s*np.round(np.exp(c),prec) * np.exp(m)
+
+prec_round = np.vectorize(prec_round)
+
+import string
+class DiffTemplate(string.Formatter):
+    """Changing string formatting method to convert numeric data field"""
+    def format_field(self, value, spec):
+        if spec.endswith('h'):
+            value = dct1[int(value)] # cast to int since it will be float
+            spec = spec[:-1] + 's'
+        return super(DiffTemplate, self).format_field(value, spec)
+
+formatter = DiffTemplate().format
 
 for field_spec in field_specs:
     if 'f' in field_spec:

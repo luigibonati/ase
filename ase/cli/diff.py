@@ -5,6 +5,17 @@ from ase.gui.images import Images
 dct1 = dict(zip(np.argsort(chemical_symbols),chemical_symbols))
 dct2 = {v: k for k, v in dct1.items()}
 
+def sort2rank(sort):
+    """
+    Given an argsort, return a list which gives the rank of the element at each position.
+    Also does the inverse problem (an involutive transform) of given a list of ranks of the elements, return an argsort.
+    """
+    n = len(sort)
+    rank = np.zeros(n,dtype=int)
+    for i in range(n):
+        rank[sort[i]] = i
+    return rank
+
 def get_data(atoms1,atoms2,field):
     if field[0] == 'r':
         field = field[1:]
@@ -30,7 +41,7 @@ def get_data(atoms1,atoms2,field):
         data = np.arange(len(atoms1))
 
     if rank_order:
-        return np.argsort(data)
+        return sort2rank(np.argsort(-data))
     else:
         return data
     
@@ -60,7 +71,7 @@ def get_images_data(images1,images2,counter,field):
     elif field == 'dfz':
         data = images.get_forces(atoms1)[:,2] - images.get_forces(atoms2)[:,2]
     elif field == 'df':
-        data = np.linalg.norm(images1.get_forces(atoms1)- images2.get_forces(atoms2),axis=1)
+        data = np.linalg.norm(images1.get_forces(atoms1) - images2.get_forces(atoms2),axis=1)
     elif field == 'afx':
         data = images.get_forces(atoms1)[:,0] + images.get_forces(atoms2)[:,0]
         data /= 2
@@ -75,48 +86,46 @@ def get_images_data(images1,images2,counter,field):
         data /=2
 
     if rank_order: 
-        return np.argsort(data)
+        return sort2rank(np.argsort(-data))
     else:
         return data
 
-#using only numpy with float datatype for ease
-import string
-class Template(string.Formatter):
-    def format_field(self, value, spec):
-        if spec.endswith('h'):
-            value = dct1[int(value)] # cast to int since it will be float
-            spec = spec[:-1] + 's'
-        return super(Template, self).format_field(value, spec)
-
-def format_body(rows,hier,scent):
-    #permute the keys for numpy's lexsort
-    s = [0]*len(rows) 
-    for c,i in enumerate(hier):
-        s[-(i+1)] = rows[c]*scent[c]
-
-    s = np.lexsort(s)
-    rows = [row[s] for row in rows]
-    return np.transpose(rows)
-
-from template import format_dict, format_dict_calc, fmt, fmt_class, header_alias, template
+from template import format_dict, format_dict_calc, fmt, fmt_class, header_alias, template, prec_round, formatter
 
 def format_table(table,fields):
     s = ''.join([fmt[field] for field in fields])
-    formatter = Template().format
     body = [ formatter(s,*row) for row in table]
     return '\n'.join(body)
 
-def render_table(field_specs,atoms1,atoms2,show_only = None):
-    hier = [int(spec.split(':')[1]) if len(spec.split(':')) > 1 else -1 for spec in field_specs]
-    scent = [int(spec.split(':')[2]) if len(spec.split(':')) > 2 else -1 for spec in field_specs]
+def parse_field_specs(field_specs):
+    fields=[]; hier = []; scent=[]; 
+    for fs in field_specs:
+        hsf = fs.split(':')
+        if len(hsf) == 3:
+            scent.append(int(hsf[2]))
+            hier.append(int(hsf[1]))
+            fields.append(hsf[0])
+        elif len(hsf) == 2:
+            scent.append(-1)
+            hier.append(int(hsf[1]))
+            fields.append(hsf[0])
+        elif len(hsf) == 1:
+            scent.append(-1)
+            hier.append(-1)
+            fields.append(hsf[0])
     mxm = max(hier)
     for c in range(len(hier)):
         if hier[c] < 0:
             mxm += 1
             hier[c] = mxm
-    fields = [spec.split(':')[0] for spec in field_specs]
-    data = [get_data(atoms1, atoms2, field) for field in fields]
-    table = format_body(data, hier, scent)
+    hier = np.array(hier)
+    return fields, sort2rank(np.array(hier)), scent
+
+def render_table(field_specs,atoms1,atoms2,show_only = None):
+    fields, hier, scent = parse_field_specs(field_specs)
+    fdata = np.array([get_data(atoms1, atoms2, field) for field in fields])
+    sorting_array = prec_round((np.array(scent)[:,np.newaxis]*fdata)[hier])
+    table = fdata[:, np.lexsort(sorting_array)].transpose()
     if show_only != None:
         table = table[:show_only]
     format_dict['body'] = format_table(table, fields)
@@ -125,16 +134,10 @@ def render_table(field_specs,atoms1,atoms2,show_only = None):
     return template.format(**format_dict)
 
 def render_table_calc(field_specs,images1,images2,counter, show_only = None):
-    hier = [int(spec.split(':')[1]) if len(spec.split(':')) > 1 else -1 for spec in field_specs]
-    scent = [int(spec.split(':')[2]) if len(spec.split(':')) > 2 else 1 for spec in field_specs]
-    mxm = max(hier)
-    for c in range(len(hier)):
-        if hier[c] < 0:
-            mxm += 1
-            hier[c] = mxm
-    fields = [spec.split(':')[0] for spec in field_specs]
-    data = [get_images_data(images1, images2, counter, field) for field in fields]
-    table = format_body(data, hier, scent)
+    fields, hier, scent = parse_field_specs(field_specs)
+    fdata = [get_images_data(images1, images2, counter, field) for field in fields]
+    sorting_array = prec_round((np.array(scent)[:,np.newaxis]*fdata)[hier])
+    table = fdata[:, np.lexsort(sorting_array)].transpose()
     if show_only != None:
         table = table[:show_only]
     format_dict_calc['body'] = format_table(table, fields)
@@ -254,12 +257,12 @@ class CLICommand:
             else:
                 if args.calculator_outputs == True:
                     for counter in range(len(images1)):
-                        print('images {}-{}'.format(counter+1,counter))
+                        print('images {}-{}'.format(counter+1,counter),file=out)
                         t = render_table_calc(field_specs,images1,images2,counter,show_only=args.show_only)
                         print(t,file=out)
                 else:
                     for counter in range(len(images1)):
-                        print('images {}-{}'.format(counter+1,counter))
+                        print('images {}-{}'.format(counter+1,counter),file=out)
                         t = render_table(field_specs,images1.get_atoms(counter),images2.get_atoms(counter),show_only=args.show_only)
                         print(t,file=out)
 
@@ -270,7 +273,7 @@ class CLICommand:
                 images = Images()
                 images.read([f1])
                 for counter in range(len(images) - 1):
-                    print('images {}-{}'.format(counter+1,counter))
+                    print('images {}-{}'.format(counter+1,counter),file=out)
                     t = render_table_calc(field_specs,images,images,counter,show_only=args.show_only)
                     print(t,file=out)
             else:
@@ -278,7 +281,7 @@ class CLICommand:
                 atoms_list = list(traj)
                 for counter in range(len(atoms_list)-1):
                     t = render_table(field_specs,atoms_list[counter],atoms_list[counter+1],show_only=args.show_only)
-                    print('images {}-{}'.format(counter+1,counter))
+                    print('images {}-{}'.format(counter+1,counter),file=out)
                     print(t,file=out)
 
 
