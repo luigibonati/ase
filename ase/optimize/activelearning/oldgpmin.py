@@ -203,7 +203,7 @@ class GPMin(Optimizer, GaussianProcess):
         self.set_hyperparams(np.array([weight, scale, noise]))
 
     def acquisition(self, r):
-        e = self.predict(r)
+        e, _ = self.predict(r)
         return e[0], e[1:]
 
     def update(self, r, e, f):
