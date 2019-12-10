@@ -83,6 +83,7 @@ def prec_round_1(a, prec=2):
 
 prec_round = np.vectorize(prec_round_1)
 
+# end most settings
 
 from ase.data import chemical_symbols
 num2sym = dict(zip(np.argsort(chemical_symbols),chemical_symbols))

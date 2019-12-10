@@ -1,5 +1,4 @@
 from argparse import RawTextHelpFormatter
-import numpy as np
 from ase.io import read, iread
 from ase.gui.images import Images
 
@@ -93,11 +92,11 @@ class CLICommand:
             images1.read([f1])
             images2 = Images()
             images2.read([f2])
-            if 1.e-14 < images1.get_energy(images1.get_atoms(0)) < 1.e14:
-                # this is a nan
+            from math import isnan
+            if isnan(images1.get_energy(images1.get_atoms(0))): #assuming trajectory files w/o calculated energies are not being compared
                 atoms1 = read(f1)
                 atoms2 = read(f2)
-                print('images {}-{}'.format(counter + 1, counter))
+                print('images {}-{}'.format(1,0))
                 t = render_table(
                     field_specs,
                     atoms1,
