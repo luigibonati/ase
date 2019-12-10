@@ -97,7 +97,7 @@ class GaussianProcess():
             covariance = np.tensordot(v, v, axes=(0, 0))
             V = variance - covariance
             return f, V
-        return f
+        return f, None
 
     def neg_log_likelihood(self, params, *args):
         """Negative logarithm of the marginal likelihood and its derivative.
