@@ -88,61 +88,61 @@ class Template(string.Formatter):
             spec = spec[:-1] + 's'
         return super(Template, self).format_field(value, spec)
 
-def format_body(rows,sort_order,scent):
+def format_body(rows,hier,scent):
     #permute the keys for numpy's lexsort
     s = [0]*len(rows) 
-    for c,i in enumerate(sort_order):
+    for c,i in enumerate(hier):
         s[-(i+1)] = rows[c]*scent[c]
-    
+
     s = np.lexsort(s)
     rows = [row[s] for row in rows]
     return np.transpose(rows)
 
-from template import fd, fd2, fmt1, fmt, header_rules, template
+from template import format_dict, format_dict_calc, fmt, fmt_class, header_alias, template
 
-def format_table(t,fields):
-    s = ''.join([fmt1[fmt[field]] for field in fields])
+def format_table(table,fields):
+    s = ''.join([fmt[field] for field in fields])
     formatter = Template().format
-    body = [ formatter(s,*row) for row in t]
+    body = [ formatter(s,*row) for row in table]
     return '\n'.join(body)
 
-def render_table(fields,atoms1,atoms2):
-    s = [int(field.split(':')[1]) if len(field.split(':')) > 1 else -1 for field in fields]
-    scent = [int(field.split(':')[2]) if len(field.split(':')) > 2 else 1 for field in fields]
-    rem = max(s)
-    for c in range(len(s)):
-        if s[c] < 0:
-            rem += 1
-            s[c] = rem
-    fields = [field.split(':')[0] for field in fields]
+def render_table(field_specs,atoms1,atoms2):
+    hier = [int(spec.split(':')[1]) if len(spec.split(':')) > 1 else -1 for spec in field_specs]
+    scent = [int(spec.split(':')[2]) if len(spec.split(':')) > 2 else 1 for spec in field_specs]
+    mxm = max(hier)
+    for c in range(len(hier)):
+        if hier[c] < 0:
+            mxm += 1
+            hier[c] = mxm
+    fields = [spec.split(':')[0] for spec in field_specs]
     data = [get_data(atoms1, atoms2, field) for field in fields]
-    mat = format_body(data, s, scent)
-    fd['body'] = format_table(mat, fields)
-    fd['header'] = (fmt1['str']*len(fields)).format(*[header_rules(field) for field in fields])
-    fd['summary'] = 'RMSD={:+.1E}'.format(np.sqrt(np.power(np.linalg.norm(atoms1.positions-atoms2.positions,axis=1),2).mean()))
-    return template.format(**fd)
+    table = format_body(data, hier, scent)
+    format_dict['body'] = format_table(table, fields)
+    format_dict['header'] = (fmt_class['str']*len(fields)).format(*[header_alias(field) for field in fields])
+    format_dict['summary'] = 'RMSD={:+.1E}'.format(np.sqrt(np.power(np.linalg.norm(atoms1.positions-atoms2.positions,axis=1),2).mean()))
+    return template.format(**format_dict)
 
-def render_table_calc(fields,images1,images2,counter):
-    s = [int(field.split(':')[1]) if len(field.split(':')) > 1 else -1 for field in fields]
-    scent = [int(field.split(':')[2]) if len(field.split(':')) > 2 else 1 for field in fields]
-    rem = len(s) - sum([1 if i != -1 else 0 for i in s])
-    for c in range(len(s)):
-        if s[c] == -1:
-            s[c] = rem
-            rem -= 1
-    fields = [field.split(':')[0] for field in fields]
+def render_table_calc(field_specs,images1,images2,counter):
+    hier = [int(spec.split(':')[1]) if len(spec.split(':')) > 1 else -1 for spec in field_specs]
+    scent = [int(spec.split(':')[2]) if len(spec.split(':')) > 2 else 1 for spec in field_specs]
+    mxm = max(hier)
+    for c in range(len(hier)):
+        if hier[c] < 0:
+            mxm += 1
+            hier[c] = mxm
+    fields = [spec.split(':')[0] for spec in field_specs]
     data = [get_images_data(images1, images2, counter, field) for field in fields]
-    mat = format_body(data, s, scent)
-    fd2['body'] = format_table(mat, fields)
-    fd2['header'] = (fmt1['str']*len(fields)).format(*[header_rules(field) for field in fields])
+    table = format_body(data, hier, scent)
+    format_dict_calc['body'] = format_table(table, fields)
+    format_dict_calc['header'] = (fmt_class['str']*len(fields)).format(*[header_alias(field) for field in fields])
     if images1 == images2:
         E1 = images1.get_energy(images1.get_atoms(counter))
         E2 = images2.get_energy(images2.get_atoms(counter+1))
     else:
         E1 = images1.get_energy(images1.get_atoms(counter))
         E2 = images2.get_energy(images2.get_atoms(counter))
-    fd2['summary'] = 'E{}={:+.1E}, E{}={:+.1E}, dE={:+.1E}'.format(counter, E1, counter + 1, E2, E2-E1)
-    return template.format(**fd2)
+    format_dict_calc['summary'] = 'E{}={:+.1E}, E{}={:+.1E}, dE={:+.1E}'.format(counter, E1, counter + 1, E2, E2-E1)
+    return template.format(**format_dict_calc)
 
 from argparse import RawTextHelpFormatter
 class CLICommand:
@@ -218,7 +218,9 @@ class CLICommand:
             import os
             homedir = os.environ['HOME']
             sys.path.insert(0,homedir+'/.ase.rc')
-            from templaterc import fd, fd2, fmt1, fmt, header_rules, template, fields, fields_calculator_outputs 
+            from templaterc import format_dict, format_dict_calc, fmt, \
+                    fmt_class, header_alias, template, \
+                    fields, fields_calculator_outputs
             #this has to be named differently because python does not redundantly load 
             if args.calculator_outputs == False:
                 fields = fields
