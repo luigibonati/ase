@@ -8,6 +8,7 @@ import warnings
 from ase.calculators.singlepoint import SinglePointCalculator, all_properties
 from ase.calculators.calculator import PropertyNotImplementedError
 
+
 @parallel_function
 def dump_observation(atoms, filename, restart, method='-'):
     """
@@ -41,11 +42,11 @@ def dump_observation(atoms, filename, restart, method='-'):
 
 
 def dump2list(atoms, destination, method):
-    """ 
-    Append the atoms object together with its calculator into 
+    """
+    Append the atoms object together with its calculator into
     a list. This is some sort of a copy and paste method.
     """
-    
+
     # Copy the calculator
     calc = atoms.get_calculator()
 
@@ -55,17 +56,16 @@ def dump2list(atoms, destination, method):
 
         for prop in all_properties:
             try:
-                x = calc.get_property(prop, atoms, 
-                                    allow_calculation=False)
+                x = calc.get_property(prop, atoms,
+                                      allow_calculation=False)
 
             except PropertyNotImplementedError:
-                x = None                
+                x = None
             results[prop] = x
             implemented_properties.append(prop)
         calculator = SinglePointCalculator(atoms, **results)
         calculator.name = calc.name
         calculator.implemented_properties = implemented_properties
-
 
         if hasattr(calc, 'parameters'):
             calculator.parameters.update(calc.parameters)
@@ -106,16 +106,17 @@ class TrainingSet:
         Atoms object to be written or dumpen into the training set
     """
 
-    def __init__(self, destination, use_previous_observations, atoms = None):
+    def __init__(self, destination, use_previous_observations, atoms=None):
 
         self.atoms = atoms
         if type(destination) is list:
             if not use_previous_observations:
-                if len(destination)>0:
+                if len(destination) > 0:
                     warning = ("use_previous_observations == False together "
                                "with a non empty list as destintion deletes "
-                               "the content of the list. If this is an unwanted"
-                               "behaviour, consider passing an empty list.")
+                               "the content of the list. If this is an "
+                               "unwanted behaviour, consider passing an empty "
+                               "list.")
                     warnings.warn(warning)
 
                 self.destination = []
@@ -124,14 +125,15 @@ class TrainingSet:
             self.mode = 'list'
         elif type(destination) is str:
             if not destination.endswith('.traj'):
-                raise NotImplementedError("*destination* should be a trajectory file")
+                msg = "*destination* should be a trajectory file"
+                raise NotImplementedError(msg)
             else:
                 self.destination = destination
                 self.use_prev_obs = use_previous_observations
                 self.mode = 'traj'
         else:
-            raise NotImplementedError("*destination* should be a file or a list")
-
+            msg = "*destination* should be a file or a list"
+            raise NotImplementedError(msg)
 
     def dump(self, atoms=None, method='-'):
         """
@@ -142,33 +144,33 @@ class TrainingSet:
         atoms: object
             Atoms object to be appended to previous observations.
         method: string
-            Label with the optimizer name to be appended in atoms.info['method'].
+            Label with the optimizer name to be appended in
+            atoms.info['method'].
          """
 
         if atoms is None:
             atoms = self.atoms
 
         if self.mode == 'list':
-            dump2list(atoms, destination = self.destination, method=method) 
+            dump2list(atoms, destination=self.destination, method=method)
 
         elif self.mode == 'traj':
             if not self.use_prev_obs:
-                dump_observation(atoms, filename = self.destination,
-                         method = method, restart = False)
+                dump_observation(atoms, filename=self.destination,
+                                 method=method, restart=False)
                 self.use_prev_obs = True
             else:
-                dump_observation(atoms, filename = self.destination,
-                        method = method, restart = True)
+                dump_observation(atoms, filename=self.destination,
+                                 method=method, restart=True)
         else:
             raise NotImplementedError()
 
     def write(self, atoms=None, method='-'):
         """
-        Copy of the dump method, 
+        Copy of the dump method,
         so that the training set can become an observer.
         """
         self.dump(atoms, method)
-
 
     def load_set(self):
         """
@@ -199,6 +201,7 @@ class TrainingSet:
             return io.read(self.destination, -1)
         else:
             raise NotImplementedError()
+
 
 @parallel_function
 def get_fmax(atoms):
