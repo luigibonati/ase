@@ -1,289 +1,297 @@
 import numpy as np
+from ase.data import chemical_symbols
 from ase.io import read, iread
+from ase.gui.images import Images
+dct1 = dict(zip(np.argsort(chemical_symbols),chemical_symbols))
+dct2 = {v: k for k, v in dct1.items()}
 
-# there are several packages for pretty printing text tables in python
-# pandas would make this very easy with to_csv
-# Cheetah templates allow for loops for variable number of table rows
-template = "{title}\n{toprule}\n{header}\n{midrule}\n{body}\n{bottomrule}\n{summary}"
-cwidth = 72
-tabwidth = 9
-fd = {}
-fd['title'] = 'Differences in Atomic Positions'
-fd['toprule'] = fd['bottomrule'] = '=' * cwidth
-fd['midrule'] = '-' * cwidth
-fmt = "{:^" + str(tabwidth) + "}"
-header = ['index', 'Δx', 'Δy', 'Δz', 'Δ', 'Δ rank', 'element']
-fd['header'] = ''.join(fmt * len(header)).format(*header)
-fd['row'] = '{0:^9}{1:^+9.1E}{2:^+9.1E}{3:^+9.1E}{4:^9.1E}{5:^9}{6:^9}'
-
-
-def table_gen(
-        elements,
-        positions1,
-        positions2,
-        order_by=None,
-        format_dictionary=fd,
-        show_only=None):
-    differences = np.array(positions2) - np.array(positions1)
-    magnitude_differences = np.array(
-        [np.linalg.norm(diff) for diff in differences])
-    n = len(differences)
-    pointers = sorted(range(n), key=lambda x:-magnitude_differences[x])
-    if show_only is not None:
-        cmax = show_only
+def get_data(atoms1,atoms2,field):
+    if field[0] == 'r':
+        field = field[1:]
+        rank_order = True
     else:
-        cmax = len(differences)
+        rank_order = False
 
-    fmt = fd['row'].format
-    c = 0
-    body = []
+    if field == 'dx':
+        data = atoms1.positions[:,0] - atoms2.positions[:,0]
+    elif field == 'dy':
+        data = atoms1.positions[:,1] - atoms2.positions[:,1]
+    elif field == 'dz':
+        data = atoms1.positions[:,2] - atoms2.positions[:,2]
+    elif field == 'd':
+        data = np.linalg.norm(atoms1.positions - atoms2.positions,axis=1)
+    elif field == 't':
+        data = atoms1.get_tags()
+    elif field == 'an':
+        data = atoms1.numbers
+    if field == 'el':
+        data = np.array([dct2[symb] for symb in atoms1.symbols])
+    elif field == 'i':
+        data = np.arange(len(atoms1))
 
-    if order_by is None:
-        while c < cmax:
-            body.append(fmt(c,
-                            *differences[c],
-                            magnitude_differences[c],
-                            pointers[c],
-                            elements[c]))
-            c += 1
-    elif order_by == 'delta':  # rank order
-        while c < cmax:
-            body.append(fmt(pointers[c],
-                            *differences[pointers[c]],
-                            magnitude_differences[pointers[c]],
-                            c,
-                            elements[pointers[c]]))
-            c += 1
+    if rank_order:
+        return np.argsort(data)
     else:
-        raise Exception(f'do not support ordering by {order_by}')
-
-    format_dictionary['body'] = '\n'.join(body)
-    sm = sum(magnitude_differences**2)
-    rmsd = np.sqrt(sm) / len(differences)
-    format_dictionary['summary'] = 'RMSD = {0:.2f} Å'.format(rmsd)
-
-    return template.format(**format_dictionary)
-
-#fd2 = {}
-#fd2['title'] = 'Forces and Energies'
-#fd2['toprule'] = fd2['bottomrule'] = '=' * cwidth
-#fd2['midrule'] = '-' * cwidth
-# fd2['header'] = '\t'.join(
-#    ['index', '   Fx   ', '   Fy   ', '   Fz   ', '   F   ', 'F rank', 'element'])
-#row2 = '{0}\t{1:+.1E}\t{2:+.1E}\t{3:+.1E}\t{4:.1E}\t{5}\t{6}'
-
-fd3 = {}
-fd3['title'] = 'Displacements, forces, and energies'
-fd3['toprule'] = fd3['bottomrule'] = '=' * cwidth
-fd3['midrule'] = '-' * cwidth
-fmt = "{:^" + str(tabwidth) + "}"
-header = ['index', 'Δ', 'Δ rank', 'F', 'F rank', 'ΔF', 'ΔF rank', 'element']
-fd3['header'] = ''.join(fmt * len(header)).format(*header)
-
-def table_gen_calc(
-        atomic_numbers,
-        positions1,
-        positions2,
-        forces1,
-        forces2,
-        energy1,
-        energy2,
-        order_by=None,
-        show_only=None,
-        verbose=False,
-        counter=1):
-    # sorting
-    n = len(atomic_numbers)
-    keys = [range(n),
-            atomic_numbers,
-            np.linalg.norm(positions2 - positions1, axis=1),
-            np.linalg.norm(forces2 - forces1, axis=1),
-            np.linalg.norm((forces2 + forces1) / 2, axis=1)]
-
-    nkeys = []
-    for key in keys[1:]:
-        nkeys.append(np.argsort(key))
-    keys += nkeys
-
-    if order_by == 'atomic number':
-        inds = keys[5]
-    elif order_by == 'delta':
-        inds = keys[6]
-    elif order_by == 'force delta':
-        inds = keys[7]
-    elif order_by == 'force average':
-        inds = keys[8]
+        return data
+    
+def get_images_data(images1,images2,counter,field):
+    if images1 == images2:
+        atoms1=images1.get_atoms(counter-1)
+        atoms2=images2.get_atoms(counter)
     else:
-        inds = keys[0]
+        atoms1=images1.get_atoms(counter)
+        atoms2=images2.get_atoms(counter)
 
-    t = np.transpose(keys)
-    t = t[inds]
-    from ase.data import chemical_symbols
-    body = []
-    if show_only != None:
-        t=t[:show_only]
+    atoms_props=['dx','dy','dz','d','t','an','i','el']
 
-    if verbose:
-        pass #may support adding more columns, 9 is already many
+    if field in (atoms_props + ['r'+p for p in atoms_props]):
+        return get_data(atoms1,atoms2,field)
 
-    for row in t:
-        i, an, D, DF, AF, _, RD, RDF, RAF = row
-        el = chemical_symbols[int(an)]
-        #fstrings require python >= 3.6
-        if verbose:
-#            row = f"{i:^9.0n}{D:^+9.1E}{RD:^9.0n}{DF:^+9.1E}{RDF:^9.0n}{AF:^+9.1E}{RAF:^9.0n}{el:^9}"
-            pass
-        else:
-#            row = f"{i:^9.0n}{D:^+9.1E}{RD:^9.0n}{DF:^+9.1E}{RDF:^9.0n}{AF:^+9.1E}{RAF:^9.0n}{el:^9}"
-            fmt = "{:^9.0n}{:^+9.1E}{:^9.0n}{:^+9.1E}{:^9.0n}{:^+9.1E}{:^9.0n}{:^9}".format
-            row = fmt(i,D,RD,DF,RDF,AF,RAF,el)
-            
-        body.append(row)
-    fd3['body'] = '\n'.join(body)
-    fd3['summary'] = f"E{counter} = {energy1:+.1E}, E{counter+1}  = {energy2:+.1E}, ΔE = {energy2-energy1:+.1E}"
-    return template.format(**fd3)
+    if field[0] == 'r':
+        field = field[1:]
+        rank_order = True
+    else:
+        rank_order = False
 
+    if field == 'dfx':
+        data = images.get_forces(atoms1)[:,0] - images.get_forces(atoms2)[:,0]
+    elif field == 'dfy':
+        data = images.get_forces(atoms1)[:,1] - images.get_forces(atoms2)[:,1]
+    elif field == 'dfz':
+        data = images.get_forces(atoms1)[:,2] - images.get_forces(atoms2)[:,2]
+    elif field == 'df':
+        data = np.linalg.norm(images1.get_forces(atoms1)- images2.get_forces(atoms2),axis=1)
+    elif field == 'afx':
+        data = images.get_forces(atoms1)[:,0] + images.get_forces(atoms2)[:,0]
+        data /= 2
+    elif field == 'afy':
+        data = images.get_forces(atoms1)[:,1] + images.get_forces(atoms2)[:,1]
+        data /= 2
+    elif field == 'afz':
+        data = images.get_forces(atoms1)[:,2] + images.get_forces(atoms2)[:,2]
+        data /= 2
+    elif field == 'af':
+        data = np.linalg.norm(images1.get_forces(atoms1) + images2.get_forces(atoms2),axis=1)
+        data /=2
 
+    if rank_order: 
+        return np.argsort(data)
+    else:
+        return data
+
+#using only numpy with float datatype for ease
+import string
+class Template(string.Formatter):
+    def format_field(self, value, spec):
+        if spec.endswith('h'):
+            value = dct1[int(value)] # cast to int since it will be float
+            spec = spec[:-1] + 's'
+        return super(Template, self).format_field(value, spec)
+
+def format_body(rows,sort_order,scent):
+    #permute the keys for numpy's lexsort
+    s = [0]*len(rows) 
+    for c,i in enumerate(sort_order):
+        s[-(i+1)] = rows[c]*scent[c]
+    
+    s = np.lexsort(s)
+    rows = [row[s] for row in rows]
+    return np.transpose(rows)
+
+from template import fd, fd2, fmt1, fmt, header_rules, template
+
+def format_table(t,fields):
+    s = ''.join([fmt1[fmt[field]] for field in fields])
+    formatter = Template().format
+    body = [ formatter(s,*row) for row in t]
+    return '\n'.join(body)
+
+def render_table(fields,atoms1,atoms2):
+    s = [int(field.split(':')[1]) if len(field.split(':')) > 1 else -1 for field in fields]
+    scent = [int(field.split(':')[2]) if len(field.split(':')) > 2 else 1 for field in fields]
+    rem = max(s)
+    for c in range(len(s)):
+        if s[c] < 0:
+            rem += 1
+            s[c] = rem
+    fields = [field.split(':')[0] for field in fields]
+    data = [get_data(atoms1, atoms2, field) for field in fields]
+    mat = format_body(data, s, scent)
+    fd['body'] = format_table(mat, fields)
+    fd['header'] = (fmt1['str']*len(fields)).format(*[header_rules(field) for field in fields])
+    fd['summary'] = 'RMSD={:+.1E}'.format(np.sqrt(np.power(np.linalg.norm(atoms1.positions-atoms2.positions,axis=1),2).mean()))
+    return template.format(**fd)
+
+def render_table_calc(fields,images1,images2,counter):
+    s = [int(field.split(':')[1]) if len(field.split(':')) > 1 else -1 for field in fields]
+    scent = [int(field.split(':')[2]) if len(field.split(':')) > 2 else 1 for field in fields]
+    rem = len(s) - sum([1 if i != -1 else 0 for i in s])
+    for c in range(len(s)):
+        if s[c] == -1:
+            s[c] = rem
+            rem -= 1
+    fields = [field.split(':')[0] for field in fields]
+    data = [get_images_data(images1, images2, counter, field) for field in fields]
+    mat = format_body(data, s, scent)
+    fd2['body'] = format_table(mat, fields)
+    fd2['header'] = (fmt1['str']*len(fields)).format(*[header_rules(field) for field in fields])
+    if images1 == images2:
+        E1 = images1.get_energy(images1.get_atoms(counter))
+        E2 = images2.get_energy(images2.get_atoms(counter+1))
+    else:
+        E1 = images1.get_energy(images1.get_atoms(counter))
+        E2 = images2.get_energy(images2.get_atoms(counter))
+    fd2['summary'] = 'E{}={:+.1E}, E{}={:+.1E}, dE={:+.1E}'.format(counter, E1, counter + 1, E2, E2-E1)
+    return template.format(**fd2)
+
+from argparse import RawTextHelpFormatter
 class CLICommand:
     """Print differences between atoms/calculations.
 
-    For those things which more than the difference is valuable, such as the magnitude of force, the average magnitude between two images is given. Given the difference and the average as x and y, the two values can be calculated as x + y/2 and x - y/2.
+    Supports taking differences between different calculation runs of the same system as well as neighboring geometric images for one calculation run of a system. For those things which more than the difference is valuable, such as the magnitude of force or energy, the average magnitude between two images or the value for both images is given. Given the difference and the average as x and y, the two values can be calculated as x + y/2 and x - y/2.
 
-    A final block for final specification.
+    It is possible to fully customize the order of the columns and the sorting of the rows by their column fields.
     """
 
     @staticmethod
     def add_arguments(parser):
         add = parser.add_argument
+        parser.formatter_class=RawTextHelpFormatter
         add('files', metavar='file(s)',
-            help='either one trajectory file or two non-trajectory files',
+            help="""
+            2 non-trajectory files: difference between them
+            1 trajectory file: difference between consecutive images
+            2 trajectory files: difference between corresponding image numbers""",
             nargs='+')
-        add('--rank-order', nargs='?', const='delta',
-            type=str, help="""order atoms by rank, possible ranks are
-            atomic number: self-explanatory
-            delta: change in position 
-            force delta: change in force
-            force average: average force in two iterations
-
-            default value, when specified, is delta
-            when not specified, ordering is the same as that provided by the generator
-            """)
+        add('-r','--rank-order', metavar='field', nargs='?', const='d',
+            type=str, help="""order atoms by rank, possible ranks are\n
+            an: atomic number
+            d: change in position
+            df: change in force
+            af: average force in two iterations
+            The default value, when specified, is d. 
+            When not specified, ordering is the same as that provided by the generator. 
+            For hiearchical sorting, see template.
+            """)#,formatter_class=RawTextHelpFormatter)
         add('-c', '--calculator-outputs', action="store_true",
             help="display calculator outputs of forces and energy")
-        add('-v', '--verbose', action="store_true",
-            help="verbosity, whether to show the components of position or force. Note the tables can get very wide.")
-        add('-s', '--show-only', type=int, help="show only so many lines (atoms) in each table, useful if rank ordering")
+        add('-s', '--show-only', metavar='n', type=int, help="show only so many lines (atoms) in each table, useful if rank ordering")
+        add('-t', '--template', metavar='template',nargs='?', const='rc', 
+        help="""
+        Without argument, looks for ~/.aserc/template.py.
+        Otherwise, expects the comma separated list of the columns to include in their left-to-right order.
+        Optionally, specify the lexicographical sort hierarchy (0 is outermost sort).
+
+        example: ase diff start.cif stop.cif --template i,el:0,dx,dy,dz,d,rd:1
+
+        possible columns:
+            i: index
+            dx,dy,dz,d: displacement/displacement components
+            dfx,dfy,dfz,df: difference force/force components
+            afx,afy,afz,af: average force/force components (between first and second iteration)
+            an: atomic number
+            el: atomic element
+            t: atom tag
+            r<col>: the rank of that atom with respect to the column
+
+        it is possible to change formatters in a template file.
+        """,
+        
+        )
+        add('-l', '--log-file', metavar='logfile', help="print table to file")
 
     @staticmethod
     def run(args, parser):
-        from ase.io.formats import UnknownFileTypeError
+        import sys 
+        #output
+        if args.log_file == None:
+            out=sys.stdout
+        else:
+            out=open(args.log_file,'w')
 
-        if len(args.files) == 1 and not args.calculator_outputs:
-            try:
-                traj = iread(args.files[0])
-            except UnknownFileTypeError:
-                raise UnknownFileTypeError
+        #templating
+        if args.template == None:
+            from template import fields, fields_calculator_outputs
+            if args.calculator_outputs == True:
+                fields = fields_calculator_outputs
+        elif args.template == 'rc':
+            import os
+            homedir = os.environ['HOME']
+            sys.path.insert(0,homedir+'/.ase.rc')
+            from templaterc import fd, fd2, fmt1, fmt, header_rules, template, fields, fields_calculator_outputs 
+            #this has to be named differently because python does not redundantly load 
+            if args.calculator_outputs == False:
+                fields = fields
+            else:
+                fields = fields_calculator_outputs
+        else:
+            fields = args.template.split(',')
+            #raise error if user specified fields which require calculation outputs but that was not in the command line option
+            #or just overwrite it
 
-            counter = 0
-            for atoms in traj:
-                elements = atoms.symbols
-                positions = atoms.positions
-                if counter > 0:
-                    # same number of atoms and order
-                    assert((elements == elements0).all())
-                    print('\n' * 2)
-                    print('Iteration/Image Numbers {}-{}'.format(counter + 1, counter))
-                    print(table_gen(
-                        elements,
-                        positions0,
-                        positions,
-                        order_by=args.rank_order,
-                        show_only=args.show_only
-                    ))
-                positions0 = positions
-                elements0 = elements
-                counter += 1
-
-        elif len(args.files) == 1 and args.calculator_outputs and not args.verbose:
-            # relies on the (undocumented) gui Images object
-            try:
-                from ase.gui.images import Images
-                images = Images()
-                images.read([args.files[0]])
-            except UnknownFileTypeError:
-                raise UnknownFileTypeError
-
-            counter = 0
-            for atoms in images:
-                atomic_numbers = atoms.numbers
-                positions = atoms.positions
-                forces = images.get_forces(atoms)
-                energy = images.get_energy(atoms)
-                if counter > 0:
-                    # same number of atoms and order
-                    assert((atomic_numbers == atomic_numbers0).all())
-                    print('\n' * 2)
-                    print('Iteration/Image Numbers {}-{}'.format(counter + 1, counter))
-                    print(
-                        table_gen_calc(atomic_numbers,
-                                    positions0,
-                                    positions,
-                                    forces0,
-                                    forces,
-                                    energy0,
-                                    energy,
-                                    order_by=args.rank_order,
-                                    show_only=args.show_only,
-                                    counter=counter))
-                positions0 = positions
-                atomic_numbers0 = atomic_numbers
-                forces0 = forces
-                energy0 = energy
-                counter += 1
-
-        elif len(args.files) == 2:
+        if len(args.files) == 2:
             f1 = args.files[0]
             f2 = args.files[1]
-            try:
+
+            images1 = Images()
+            images1.read([f1])
+            images2 = Images()
+            images2.read([f2])
+            if 1.e-14 < images1.get_energy(images1.get_atoms(0)) < 1.e14:
+                #this is a nan
                 atoms1 = read(f1)
-                elements = atoms1.symbols
-                positions1 = atoms1.positions
                 atoms2 = read(f2)
-                positions2 = atoms2.positions
-            except UnknownFileTypeError:
-                raise UnknownFileTypeError
+                t = render_table(fields,atoms1,atoms2)
+                print(t,file=out)
+            else:
+                if args.calculator_outputs == True:
+                    for counter in range(len(images1)):
+                        t = render_table_calc(fields,images1,images2,counter)
+                        print(t,file=out)
+                else:
+                    for counter in range(len(images1)):
+                        t = render_table(fields,images1.get_atoms(counter),images2.get_atoms(counter))
+                        print(t,file=out)
 
-            # same number of atoms and order
-            assert((atoms2.symbols == elements).all())
+        elif len(args.files) == 1:
+            f1 = args.files[0]
 
-            print(
-                table_gen(
-                    elements,
-                    positions1,
-                    positions2,
-                    order_by=args.rank_order,
-                    show_only=args.show_only))
-        else:
-            raise Exception('Pass either 1 or 2 positional arguments for files')
+            if args.calculator_outputs:
+                images = Images()
+                images.read([f1])
+                for counter in range(len(images) - 1):
+                    t = render_table_calc(fields,images,images,counter)
+                    print(t,file=out)
+            else:
+                traj = iread(f1)
+                atoms_list = list(traj)
+                for counter in range(len(atoms_list)-1):
+                    t = render_table(fields,atoms_list[counter],atoms_list[counter+1])
+                    print(t,file=out)
 
 
 if __name__ == "__main__":
-    #tests
-    import numpy as np
-    from ase.gui.images import Images
-    images = Images()
+    from ase.build import molecule
+    atoms1 = molecule('CH4')
+    atoms2 = molecule('CH4')
+    atoms2.positions += np.random.random((5,3))/10.
+    fields = ['dx','dy','dz','rd:1','i','an','t','el:0:1']
+    images=Images()
     images.read(['vasprun.xml'])
-    atomic_numbers = images[0].numbers
-    positions1 = images[0].positions
-    positions2 = images[1].positions
-    forces1 = images.get_forces(images[0])
-    forces2 = images.get_forces(images[1])
-    energy = images.get_energy(images[0])
-    t = table_gen_calc(
-        atomic_numbers,
-        positions1,
-        positions2,
-        forces1,
-        forces2,
-        energy)
-    print(t)
+
+    fields = ['dx','dy','dz','dfx','dfy','dfz','af', 'el:0:-1']
+    s = [int(field.split(':')[1]) if len(field.split(':')) > 1 else -1 for field in fields]
+    scent = [int(field.split(':')[2]) if len(field.split(':')) > 2 else 1 for field in fields]
+    rem = len(s) - sum([1 if i != -1 else 0 for i in s]) 
+    for c in range(len(s)):
+        if s[c] == -1:
+            s[c] = rem
+            rem -= 1
+    fields = [field.split(':')[0] for field in fields]
+    data = [get_images_data(images, 1, field) for field in fields]
+#    data = [get_data(atoms1, atoms2, field) for field in fields]
+    mat = body(data, s, scent)
+    body = format_table(mat, fields)
+    header = (fmt1['str']*len(fields)).format(*[header_rules(field) for field in fields])
+    print(header)
+    [print(row) for row in body]
