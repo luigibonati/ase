@@ -1,9 +1,7 @@
 import numpy as np
-from ase.data import chemical_symbols
 from ase.io import read, iread
 from ase.gui.images import Images
-dct1 = dict(zip(np.argsort(chemical_symbols),chemical_symbols))
-dct2 = {v: k for k, v in dct1.items()}
+from template import format_dict, format_dict_calc, fmt, fmt_class, header_alias, template, prec_round, formatter, num2sym, sym2num
 
 def sort2rank(sort):
     """
@@ -36,7 +34,7 @@ def get_data(atoms1,atoms2,field):
     elif field == 'an':
         data = atoms1.numbers
     if field == 'el':
-        data = np.array([dct2[symb] for symb in atoms1.symbols])
+        data = np.array([sym2num[sym] for sym in atoms1.symbols])
     elif field == 'i':
         data = np.arange(len(atoms1))
 
@@ -65,21 +63,21 @@ def get_images_data(images1,images2,counter,field):
         rank_order = False
 
     if field == 'dfx':
-        data = images.get_forces(atoms1)[:,0] - images.get_forces(atoms2)[:,0]
+        data = -images1.get_forces(atoms1)[:,0] + images2.get_forces(atoms2)[:,0]
     elif field == 'dfy':
-        data = images.get_forces(atoms1)[:,1] - images.get_forces(atoms2)[:,1]
+        data = -images1.get_forces(atoms1)[:,1] + images2.get_forces(atoms2)[:,1]
     elif field == 'dfz':
-        data = images.get_forces(atoms1)[:,2] - images.get_forces(atoms2)[:,2]
+        data = -images1.get_forces(atoms1)[:,2] + images2.get_forces(atoms2)[:,2]
     elif field == 'df':
         data = np.linalg.norm(images1.get_forces(atoms1) - images2.get_forces(atoms2),axis=1)
     elif field == 'afx':
-        data = images.get_forces(atoms1)[:,0] + images.get_forces(atoms2)[:,0]
+        data = images1.get_forces(atoms1)[:,0] + images2.get_forces(atoms2)[:,0]
         data /= 2
     elif field == 'afy':
-        data = images.get_forces(atoms1)[:,1] + images.get_forces(atoms2)[:,1]
+        data = images1.get_forces(atoms1)[:,1] + images2.get_forces(atoms2)[:,1]
         data /= 2
     elif field == 'afz':
-        data = images.get_forces(atoms1)[:,2] + images.get_forces(atoms2)[:,2]
+        data = images1.get_forces(atoms1)[:,2] + images2.get_forces(atoms2)[:,2]
         data /= 2
     elif field == 'af':
         data = np.linalg.norm(images1.get_forces(atoms1) + images2.get_forces(atoms2),axis=1)
@@ -90,7 +88,6 @@ def get_images_data(images1,images2,counter,field):
     else:
         return data
 
-from template import format_dict, format_dict_calc, fmt, fmt_class, header_alias, template, prec_round, formatter
 
 def format_table(table,fields):
     s = ''.join([fmt[field] for field in fields])
@@ -113,19 +110,26 @@ def parse_field_specs(field_specs):
             scent.append(-1)
             hier.append(-1)
             fields.append(hsf[0])
-    mxm = max(hier)
-    for c in range(len(hier)):
-        if hier[c] < 0:
-            mxm += 1
-            hier[c] = mxm
     hier = np.array(hier)
-    return fields, sort2rank(np.array(hier)), scent
+    if hier.all() == -1:
+        hier = []
+    else:
+        mxm = max(hier)
+        for c in range(len(hier)):
+            if hier[c] < 0:
+                mxm += 1
+                hier[c] = mxm
+        hier = sort2rank(np.array(hier))[::-1] #reversed by convention of numpy lexsort
+    return fields, hier, scent
 
 def render_table(field_specs,atoms1,atoms2,show_only = None):
     fields, hier, scent = parse_field_specs(field_specs)
     fdata = np.array([get_data(atoms1, atoms2, field) for field in fields])
-    sorting_array = prec_round((np.array(scent)[:,np.newaxis]*fdata)[hier])
-    table = fdata[:, np.lexsort(sorting_array)].transpose()
+    if hier != []:
+        sorting_array = prec_round((np.array(scent)[:,np.newaxis]*fdata)[hier])
+        table = fdata[:, np.lexsort(sorting_array)].transpose()
+    else:
+        table = fdata.transpose()
     if show_only != None:
         table = table[:show_only]
     format_dict['body'] = format_table(table, fields)
@@ -133,11 +137,14 @@ def render_table(field_specs,atoms1,atoms2,show_only = None):
     format_dict['summary'] = 'RMSD={:+.1E}'.format(np.sqrt(np.power(np.linalg.norm(atoms1.positions-atoms2.positions,axis=1),2).mean()))
     return template.format(**format_dict)
 
-def render_table_calc(field_specs,images1,images2,counter, show_only = None):
+def render_table_calc(field_specs,images1,images2,counter,show_only = None):
     fields, hier, scent = parse_field_specs(field_specs)
-    fdata = [get_images_data(images1, images2, counter, field) for field in fields]
-    sorting_array = prec_round((np.array(scent)[:,np.newaxis]*fdata)[hier])
-    table = fdata[:, np.lexsort(sorting_array)].transpose()
+    fdata = np.array([get_images_data(images1, images2, counter, field) for field in fields])
+    if hier != []:
+        sorting_array = prec_round((np.array(scent)[:,np.newaxis]*fdata)[hier])
+        table = fdata[:, np.lexsort(sorting_array)].transpose()
+    else:
+        table = fdata.transpose()
     if show_only != None:
         table = table[:show_only]
     format_dict_calc['body'] = format_table(table, fields)
@@ -171,11 +178,7 @@ class CLICommand:
             2 trajectory files: difference between corresponding image numbers""",
             nargs='+')
         add('-r','--rank-order', metavar='field', nargs='?', const='d',
-            type=str, help="""order atoms by rank, possible ranks are\n
-            an: atomic number
-            d: change in position
-            df: change in force
-            af: average force in two iterations
+            type=str, help="""order atoms by rank, see --template help for possible fields
             The default value, when specified, is d. 
             When not specified, ordering is the same as that provided by the generator. 
             For hiearchical sorting, see template.
@@ -185,14 +188,14 @@ class CLICommand:
         add('-s', '--show-only', metavar='n', type=int, help="show only so many lines (atoms) in each table, useful if rank ordering")
         add('-t', '--template', metavar='template',nargs='?', const='rc', 
         help="""
-        Without argument, looks for ~/.aserc/template.py.
-        Otherwise, expects the comma separated list of the columns to include in their left-to-right order.
+        Without argument, looks for ~/.ase/template.py.
+        Otherwise, expects the comma separated list of the fields to include in their left-to-right order.
         Optionally, specify the lexicographical sort hierarchy (0 is outermost sort) and if the sort should be ascending or descending (1 or -1).
-        By default, sorting is descending, which makes sense for most things except index and element.
+        By default, sorting is descending, which makes sense for most things except index (and rank, but one can just sort by the thing which is ranked to get ascending ranks).
 
         example: ase diff start.cif stop.cif --template i:0:1,el,dx,dy,dz,d,rd
 
-        possible columns:
+        possible fields:
             i: index
             dx,dy,dz,d: displacement/displacement components
             dfx,dfy,dfz,df: difference force/force components
@@ -219,19 +222,17 @@ class CLICommand:
 
         #templating
         if args.template == None:
-            from template import field_specs, field_specs_calc
-            if args.calculator_outputs == True:
-                field_specs = field_specs_calc
+            from template import field_specs_on_conditions
+            field_specs = field_specs_on_conditions(args.calculator_outputs,args.rank_order)
         elif args.template == 'rc':
             import os
             homedir = os.environ['HOME']
-            sys.path.insert(0,homedir+'/.ase.rc')
+            sys.path.insert(0,homedir+'/.ase')
             from templaterc import format_dict, format_dict_calc, fmt, \
                     fmt_class, header_alias, template, \
-                    field_specs, field_specs_calc
+                    field_specs_on_conditions
             #this has to be named differently because python does not redundantly load 
-            if args.calculator_outputs == True:
-                field_specs = field_specs_calc
+            field_specs = field_specs_on_conditions(args.calculator_outputs,args.rank_order)
         else:
             field_specs = args.template.split(',')
             if args.calculator_outputs == False:
@@ -283,30 +284,3 @@ class CLICommand:
                     t = render_table(field_specs,atoms_list[counter],atoms_list[counter+1],show_only=args.show_only)
                     print('images {}-{}'.format(counter+1,counter),file=out)
                     print(t,file=out)
-
-
-if __name__ == "__main__":
-    from ase.build import molecule
-    atoms1 = molecule('CH4')
-    atoms2 = molecule('CH4')
-    atoms2.positions += np.random.random((5,3))/10.
-    fields = ['dx','dy','dz','rd:1','i','an','t','el:0:1']
-    images=Images()
-    images.read(['vasprun.xml'])
-
-    fields = ['dx','dy','dz','dfx','dfy','dfz','af', 'el:0:-1']
-    s = [int(field.split(':')[1]) if len(field.split(':')) > 1 else -1 for field in fields]
-    scent = [int(field.split(':')[2]) if len(field.split(':')) > 2 else 1 for field in fields]
-    rem = len(s) - sum([1 if i != -1 else 0 for i in s]) 
-    for c in range(len(s)):
-        if s[c] == -1:
-            s[c] = rem
-            rem -= 1
-    fields = [field.split(':')[0] for field in fields]
-    data = [get_images_data(images, 1, field) for field in fields]
-#    data = [get_data(atoms1, atoms2, field) for field in fields]
-    mat = body(data, s, scent)
-    body = format_table(mat, fields)
-    header = (fmt1['str']*len(fields)).format(*[header_rules(field) for field in fields])
-    print(header)
-    [print(row) for row in body]
