@@ -1,5 +1,5 @@
 from ase.optimize.optimize import Optimizer
-from ase.optimize import BFGSLineSearch
+from ase.optimize.bfgslinesearch import BFGSLineSearch
 from ase.optimize.activelearning.gp.calculator import GPCalculator
 from ase.optimize.activelearning.io import TrainingSet
 
@@ -422,6 +422,9 @@ class GPMin(AIDMin):
                            'The value provived by the user '
                            'is being ignored.')
                 warnings.warn(warning, UserWarning)
+
+            # Set batch_size to 1 anyways
+            batch_size = 1
 
         # 3. Set GP calculator
         gp_calc = GPCalculator(train_images=[], scale=scale,
