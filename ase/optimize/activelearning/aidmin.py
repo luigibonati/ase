@@ -12,14 +12,11 @@ __all__ = ['AIDMin']
 
 class AIDMin(Optimizer):
 
-    def __init__(self, atoms, restart = None, logfile = '-',
-                 trajectory = None,
-                 master=None, force_consistent=None,
-                 model_calculator = None, optimizer = QuasiNewton,
-                 use_previous_observations = False,
-                 surrogate_starting_point = 'min',
-                 trainingset = None, print_format = 'ASE',
-                 optimizer_kwargs = {}):
+    def __init__(self, atoms, restart=None, logfile='-', trajectory=None,
+                 master=None, force_consistent=None, model_calculator=None,
+                 optimizer=QuasiNewton, use_previous_observations=False,
+                 surrogate_starting_point='min', trainingset=None,
+                 print_format='ASE', optimizer_kwargs={}):
         """
         Artificial Intelligence-Driven energy Minimizer (AID-Min) algorithm.
         Optimize atomic structure using a surrogate machine learning
@@ -79,12 +76,12 @@ class AIDMin(Optimizer):
                               last position
                      'min': start minimzation from the position with
                               the lowest energy of those visited. This option
-                              is the one chosen in GPMin [1] and is the recommended
-                              one to avoid extrapolation.
+                              is the one chosen in GPMin [1] and is the
+                              recommended one to avoid extrapolation.
 
         trainingset: None, trajectory file or list
-            Where the training set is kept, either saved to disk in a trajectory
-            file or kept in memory in a list.
+            Where the training set is kept, either saved to disk in a
+            trajectory file or kept in memory in a list.
             options:
                 None (default):
                     A trajectory file named *trajectory*_observations.traj is
@@ -94,18 +91,20 @@ class AIDMin(Optimizer):
                 list: list were to append the atoms objects.
 
         print_format: string
-            Printing format. It chooses how much information and in which format
-            is shown to the user.
+            Printing format. It chooses how much information and in which
+            format is shown to the user.
 
             options:
-                  'ASE' (default): information printed matches other ASE functions
-                      outside from the AID module. ML is transparent to the user.
-                  'AID': Original format of the AID module. More informative in respect
-                      of ML process. This option is advised for experienced users.
+                  'ASE' (default): information printed matches other ASE
+                      functions outside from the AID module. ML is transparent
+                      to the user.
+                  'AID': Original format of the AID module. More informative
+                      in respect of ML process.
+                      This option is advised for experienced users.
         optimizer_kwargs: dict
             Dictionary with key-word arguments for the surrogate potential.
         """
-        if print_format =='AID':
+        if print_format == 'AID':
             if logfile == '-':
                 logfile = None
             self.print_format = 'AID'
@@ -114,7 +113,7 @@ class AIDMin(Optimizer):
 
         # Initialize the optimizer class
         Optimizer.__init__(self, atoms, restart, logfile, trajectory,
-                            master, force_consistent)
+                           master, force_consistent)
 
         # Model calculator:
         self.model_calculator = model_calculator
@@ -123,8 +122,8 @@ class AIDMin(Optimizer):
             self.model_calculator = GPCalculator(
                         train_images=[], scale=0.3, weight=2.,
                         noise=0.003, update_prior_strategy='fit',
-                        max_train_data_strategy= 'nearest_observations',
-                        max_train_data = 5,
+                        max_train_data_strategy='nearest_observations',
+                        max_train_data=5,
                         calculate_uncertainty=False)
 
         if hasattr(self.model_calculator, 'print_format'):
@@ -144,23 +143,24 @@ class AIDMin(Optimizer):
         if trainingset is None:
             trajectory_main = trajectory.split('.')[0]
             self.train = TrainingSet(trajectory_main + '_observations.traj',
-                    use_previous_observations = False)
+                                     use_previous_observations=False)
         elif isinstance(trainingset, TrainingSet):
             self.train = trainingset
         else:
             self.train = TrainingSet(trainingset,
-                        use_previous_observations=use_previous_observations)
+                                     use_previous_observations=
+                                     use_previous_observations)
 
         # Make the training set an observer for the run
-        self.attach(self.train, atoms = atoms, method ='min')
+        self.attach(self.train, atoms=atoms, method='min')
 
-        #Default parameters for the surrogate optimizer
+        # Default parameters for the surrogate optimizer
         if 'logfile' not in self.optkwargs.items():
             self.optkwargs['logfile'] = None
         if 'trajectory' not in self.optkwargs.items():
             self.optkwargs['trajectory'] = None
 
-    def set_trainingset(self, trainingset, substitute=True, atoms = None):
+    def set_trainingset(self, trainingset, substitute=True, atoms=None):
         """
         Sets a new TrainingSet object to store the training set
         Parameters:
@@ -179,6 +179,7 @@ class AIDMin(Optimizer):
             atoms = self.atoms
 
         self.train = trainingset
+
         # Remove previous training set
         def isTrainingSet(observer):
             try:
@@ -188,12 +189,12 @@ class AIDMin(Optimizer):
 
         if substitute:
             self.observers[:] = [obs for obs in self.observers
-                                if not isTrainingSet(obs)]
-                                
-        # Attach new training set
-        self.attach(trainingset, atoms = atoms, method='min')
+                                 if not isTrainingSet(obs)]
 
-    def run(self, fmax = 0.05, steps = None, ml_steps = 500, ml_fmax = None):
+        # Attach new training set
+        self.attach(trainingset, atoms=atoms, method='min')
+
+    def run(self, fmax=0.05, steps=None, ml_steps=500, ml_fmax=None):
 
         """
         Executing run will start the optimization process.
@@ -236,8 +237,7 @@ class AIDMin(Optimizer):
         if self.start == 'min':
             self.check()
 
-        Optimizer.run(self,fmax, steps)
-
+        Optimizer.run(self, fmax, steps)
 
     def step(self):
 
@@ -255,7 +255,7 @@ class AIDMin(Optimizer):
             img.constraints = []
 
         # 2. Update model calculator.
-        self.model_calculator.update_train_data(train_images = train_images)
+        self.model_calculator.update_train_data(train_images=train_images)
 
         # 3. Optimize the structure in the predicted PES
         self.min_surrogate(self.atoms)
@@ -263,13 +263,12 @@ class AIDMin(Optimizer):
         # 4. Evaluate the target function
         self.atoms.get_potential_energy(force_consistent=self.force_consistent)
         self.atoms.get_forces()
-        self.function_calls = len(train_images) +1
+        self.function_calls = len(train_images) + 1
         self.force_calls = self.function_calls
 
         # 5. Check if the performance is sensible
         if self.start == 'min':
             self.check()
-
 
     def min_surrogate(self, atoms):
 
@@ -284,7 +283,7 @@ class AIDMin(Optimizer):
 
         # Optimize
         opt = self.optimizer(ml_atoms, **self.optkwargs)
-        ml_converged = opt.run(fmax = self.ml_fmax, steps = self.ml_steps)
+        ml_converged = opt.run(fmax=self.ml_fmax, steps=self.ml_steps)
 
         if not ml_converged:
             raise RuntimeError(
@@ -295,18 +294,18 @@ class AIDMin(Optimizer):
     def check(self):
 
         if self.nsteps == 0:
-            self.e0 = self.atoms.get_potential_energy(force_consistent =
-                                                        self.force_consistent)
+            self.e0 = self.atoms.get_potential_energy(force_consistent=
+                                                      self.force_consistent)
             self.p0 = self.atoms.get_positions()
             self.count = 0
         else:
-            e = self.atoms.get_potential_energy(force_consistent =
-                                                        self.force_consistent)
+            e = self.atoms.get_potential_energy(force_consistent=
+                                                self.force_consistent)
             if e < self.e0:
                 self.e0 = e
                 self.p0 = self.atoms.get_positions()
                 self.count = 0
-            elif self.count<30:
+            elif self.count < 30:
                 self.count += 1
             else:
                 raise RuntimeError('A descent model could not be built')
@@ -315,12 +314,13 @@ class AIDMin(Optimizer):
 class Converged(Exception):
     pass
 
+
 class SP(Optimizer):
     """
     Scipy optimizer taking atoms object as input
     """
-    def __init__(self, atoms, method = 'L-BFGS-B', logfile = None,
-                 trajectory = None, master = None, force_consistent = None):
+    def __init__(self, atoms, method='L-BFGS-B', logfile=None,
+                 trajectory=None, master=None, force_consistent=None):
         Optimizer.__init__(self, atoms, restart=None,
                            logfile=logfile, trajectory=trajectory,
                            master=master,
@@ -339,15 +339,15 @@ class SP(Optimizer):
             return True
         try:
             result = minimize(self.func,
-                     self.atoms.positions.ravel(),
-                     jac=True,
-                     method=self.method,
-                     tol=1e-10)
+                              self.atoms.positions.ravel(),
+                              jac=True,
+                              method=self.method,
+                              tol=1e-10)
         except Converged:
             return True
         else:
             if result.success is False:
-                raise RuntimeError('SciPy Error: '+ result.message)
+                raise RuntimeError('SciPy Error: ' + result.message)
             return False
 
     def step(self):
@@ -367,14 +367,14 @@ class SP(Optimizer):
 
 
 class GPMin(AIDMin):
-    def __init__(self, atoms, restart=None, logfile='-', trajectory=None, prior=None,
-                 kernel = None, master=None, noise=None, weight=None, scale = None,
-                 force_consistent=None, batch_size=None, bounds = None,
-                 update_prior_strategy = 'maximum', update_hyperparams=False):
-
+    def __init__(self, atoms, restart=None, logfile='-', trajectory=None,
+                 prior=None, kernel=None, master=None, noise=None, weight=None,
+                 scale=None, force_consistent=None, batch_size=None,
+                 bounds=None, update_prior_strategy='maximum',
+                 update_hyperparams=False):
 
         # 1. Warn the user if the number of atoms is very large
-        if len(atoms)>100:
+        if len(atoms) > 100:
             warning = ('Possible Memeroy Issue. There are more than '
                        '100 atoms in the unit cell. The memory '
                        'of the process will increase with the number '
@@ -394,12 +394,12 @@ class GPMin(AIDMin):
                 weight = 2.
 
             if bounds is None:
-               bounds = 0.1
+                bounds = 0.1
             elif bounds is False:
-               bounds = None
+                bounds = None
 
             if batch_size is None:
-               batch_size = 1
+                batch_size = 1
 
         #  2.B Un-updated GPMin
         else:
@@ -423,37 +423,32 @@ class GPMin(AIDMin):
                            'is being ignored.')
                 warnings.warn(warning, UserWarning)
 
-
         # 3. Set GP calculator
-        gp_calc = GPCalculator(train_images = [], scale = scale,
-                               weight = weight, noise = noise,
-                               update_prior_strategy = update_prior_strategy,
-                               calculate_uncertainty = False,
-                               prior = prior, kernel = kernel,
-                               update_hyperparams = update_hyperparams,
-                               bounds = bounds, batch_size=batch_size)
+        gp_calc = GPCalculator(train_images=[], scale=scale,
+                               weight=weight, noise=noise,
+                               update_prior_strategy=update_prior_strategy,
+                               calculate_uncertainty=False,
+                               prior=prior, kernel=kernel,
+                               update_hyperparams=update_hyperparams,
+                               bounds=bounds, batch_size=batch_size)
         """
         Thoughts:
-            1. I have not specified max_train_data_strategy and max_train_data to the calculator
-            2. I have not specified the batch size nor the bounds for the hyperparameters optimization
-        Both things need to be figured out
+            1. I have not specified max_train_data_strategy and max_train_data
+             to the calculator
         """
 
         # 4. Initialize AIDMin under this set of parameters
-        AIDMin.__init__(self, atoms, restart = restart, logfile = logfile,
-                 trajectory = trajectory,
-                 master = master, force_consistent=force_consistent,
-                 model_calculator = gp_calc,
-                 optimizer = SP,
-                 use_previous_observations = False,
-                 surrogate_starting_point = 'min',
-                 trainingset = [], print_format = 'ASE',  
-                 optimizer_kwargs = {'fmax':5e-4, 'method': 'L-BFGS-B'})
-
+        AIDMin.__init__(self, atoms, restart=restart, logfile=logfile,
+                        trajectory=trajectory, master=master,
+                        force_consistent=force_consistent,
+                        model_calculator=gp_calc, optimizer=SP,
+                        use_previous_observations=False,
+                        surrogate_starting_point='min',
+                        trainingset=[], print_format='ASE',
+                        optimizer_kwargs={'fmax': 5e-4, 'method': 'L-BFGS-B'})
 
         """
         Thoughts:
-              1. AIDMin takes something called max_train_data as an argument. Figure out what does it do.
-              2. Figure out what to do with geometry_threshold, max_train_data_strategy,
-              3. Check use_previous_observations still works
+              1. Check use_previous_observations still works
+              2. max_train_data and max_train_data_strategy
         """
