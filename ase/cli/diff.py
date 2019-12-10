@@ -1,7 +1,7 @@
 import numpy as np
 from ase.io import read, iread
 from ase.gui.images import Images
-from template import format_dict, format_dict_calc, fmt, fmt_class, header_alias, template, prec_round, formatter, num2sym, sym2num
+from ase.cli.template import format_dict, format_dict_calc, fmt, fmt_class, header_alias, template, prec_round, formatter, num2sym, sym2num
 
 def sort2rank(sort):
     """
@@ -22,11 +22,11 @@ def get_data(atoms1,atoms2,field):
         rank_order = False
 
     if field == 'dx':
-        data = atoms1.positions[:,0] - atoms2.positions[:,0]
+        data = -atoms1.positions[:,0] + atoms2.positions[:,0]
     elif field == 'dy':
-        data = atoms1.positions[:,1] - atoms2.positions[:,1]
+        data = -atoms1.positions[:,1] + atoms2.positions[:,1]
     elif field == 'dz':
-        data = atoms1.positions[:,2] - atoms2.positions[:,2]
+        data = -atoms1.positions[:,2] + atoms2.positions[:,2]
     elif field == 'd':
         data = np.linalg.norm(atoms1.positions - atoms2.positions,axis=1)
     elif field == 't':
@@ -164,7 +164,7 @@ class CLICommand:
 
     Supports taking differences between different calculation runs of the same system as well as neighboring geometric images for one calculation run of a system. For those things which more than the difference is valuable, such as the magnitude of force or energy, the average magnitude between two images or the value for both images is given. Given the difference and the average as x and y, the two values can be calculated as x + y/2 and x - y/2.
 
-    It is possible to fully customize the order of the columns and the sorting of the rows by their column fields.
+    It is possible to fully customize the order of the columns and the sorting of the rows by their column fields. A copy of the template file can be placed in ~/.ase where ~ is the user root directory.
     """
 
     @staticmethod
@@ -222,7 +222,7 @@ class CLICommand:
 
         #templating
         if args.template == None:
-            from template import field_specs_on_conditions
+            from ase.cli.template import field_specs_on_conditions
             field_specs = field_specs_on_conditions(args.calculator_outputs,args.rank_order)
         elif args.template == 'rc':
             import os
