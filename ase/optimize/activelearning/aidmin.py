@@ -1,5 +1,5 @@
 from ase.optimize.optimize import Optimizer
-from ase.optimize import QuasiNewton
+from ase.optimize import BFGSLineSearch
 from ase.optimize.activelearning.gp.calculator import GPCalculator
 from ase.optimize.activelearning.io import TrainingSet
 
@@ -14,7 +14,7 @@ class AIDMin(Optimizer):
 
     def __init__(self, atoms, restart=None, logfile='-', trajectory=None,
                  master=None, force_consistent=None, model_calculator=None,
-                 optimizer=QuasiNewton, use_previous_observations=False,
+                 optimizer=BFGSLineSearch, use_previous_observations=False,
                  surrogate_starting_point='min', trainingset=None,
                  print_format='ASE', optimizer_kwargs={}):
         """
