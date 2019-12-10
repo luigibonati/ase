@@ -3,8 +3,8 @@ import numpy as np
 template = "{title}\n{toprule}\n{header}\n{midrule}\n{body}\n{bottomrule}\n{summary}"
 twidth = 72 
 tw=str(9)
-fields = ['i:0','el','dx','dy','dz','d','rd']
-fields_calculator_outputs = ['i:0','el','d','rd','df','rdf']
+field_specs = ['i:0:1','el','dx','dy','dz','d','rd']
+field_specs_calc = ['i:0:1','el','d','rd','df','rdf']
 
 #template formatting dictionary (for coordinates only)
 format_dict={}
@@ -31,10 +31,12 @@ def header_alias(h):
         h = 'atomic #'
     elif h == 't':
         h = 'tag'
+    elif h == 'el':
+        h = 'element'
     elif h[0] == 'd':
         h = h.replace('d','Δ')
     elif h[0] == 'r':
-        h = h.replace('r','rank ')
+        h = 'rank ' + header_alias(h[1:])
     elif h[0] == 'a':
         h = h.replace('a','<')
         h+='>'
@@ -53,6 +55,6 @@ for i in l3:
 fmt['el'] = fmt_class['conv']
 
 
-for field in fields:
-    if 'f' in field:
+for field_spec in field_specs:
+    if 'f' in field_spec:
         raise Exception('setting of a calculator output in coordinate fields')

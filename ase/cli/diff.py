@@ -106,9 +106,9 @@ def format_table(table,fields):
     body = [ formatter(s,*row) for row in table]
     return '\n'.join(body)
 
-def render_table(field_specs,atoms1,atoms2):
+def render_table(field_specs,atoms1,atoms2,show_only = None):
     hier = [int(spec.split(':')[1]) if len(spec.split(':')) > 1 else -1 for spec in field_specs]
-    scent = [int(spec.split(':')[2]) if len(spec.split(':')) > 2 else 1 for spec in field_specs]
+    scent = [int(spec.split(':')[2]) if len(spec.split(':')) > 2 else -1 for spec in field_specs]
     mxm = max(hier)
     for c in range(len(hier)):
         if hier[c] < 0:
@@ -117,12 +117,14 @@ def render_table(field_specs,atoms1,atoms2):
     fields = [spec.split(':')[0] for spec in field_specs]
     data = [get_data(atoms1, atoms2, field) for field in fields]
     table = format_body(data, hier, scent)
+    if show_only != None:
+        table = table[:show_only]
     format_dict['body'] = format_table(table, fields)
     format_dict['header'] = (fmt_class['str']*len(fields)).format(*[header_alias(field) for field in fields])
     format_dict['summary'] = 'RMSD={:+.1E}'.format(np.sqrt(np.power(np.linalg.norm(atoms1.positions-atoms2.positions,axis=1),2).mean()))
     return template.format(**format_dict)
 
-def render_table_calc(field_specs,images1,images2,counter):
+def render_table_calc(field_specs,images1,images2,counter, show_only = None):
     hier = [int(spec.split(':')[1]) if len(spec.split(':')) > 1 else -1 for spec in field_specs]
     scent = [int(spec.split(':')[2]) if len(spec.split(':')) > 2 else 1 for spec in field_specs]
     mxm = max(hier)
@@ -133,6 +135,8 @@ def render_table_calc(field_specs,images1,images2,counter):
     fields = [spec.split(':')[0] for spec in field_specs]
     data = [get_images_data(images1, images2, counter, field) for field in fields]
     table = format_body(data, hier, scent)
+    if show_only != None:
+        table = table[:show_only]
     format_dict_calc['body'] = format_table(table, fields)
     format_dict_calc['header'] = (fmt_class['str']*len(fields)).format(*[header_alias(field) for field in fields])
     if images1 == images2:
@@ -180,9 +184,10 @@ class CLICommand:
         help="""
         Without argument, looks for ~/.aserc/template.py.
         Otherwise, expects the comma separated list of the columns to include in their left-to-right order.
-        Optionally, specify the lexicographical sort hierarchy (0 is outermost sort).
+        Optionally, specify the lexicographical sort hierarchy (0 is outermost sort) and if the sort should be ascending or descending (1 or -1).
+        By default, sorting is descending, which makes sense for most things except index and element.
 
-        example: ase diff start.cif stop.cif --template i,el:0,dx,dy,dz,d,rd:1
+        example: ase diff start.cif stop.cif --template i:0:1,el,dx,dy,dz,d,rd
 
         possible columns:
             i: index
@@ -194,7 +199,7 @@ class CLICommand:
             t: atom tag
             r<col>: the rank of that atom with respect to the column
 
-        it is possible to change formatters in a template file.
+        It is possible to change formatters in a template file.
         """,
         
         )
@@ -211,25 +216,25 @@ class CLICommand:
 
         #templating
         if args.template == None:
-            from template import fields, fields_calculator_outputs
+            from template import field_specs, field_specs_calc
             if args.calculator_outputs == True:
-                fields = fields_calculator_outputs
+                field_specs = field_specs_calc
         elif args.template == 'rc':
             import os
             homedir = os.environ['HOME']
             sys.path.insert(0,homedir+'/.ase.rc')
             from templaterc import format_dict, format_dict_calc, fmt, \
                     fmt_class, header_alias, template, \
-                    fields, fields_calculator_outputs
+                    field_specs, field_specs_calc
             #this has to be named differently because python does not redundantly load 
-            if args.calculator_outputs == False:
-                fields = fields
-            else:
-                fields = fields_calculator_outputs
+            if args.calculator_outputs == True:
+                field_specs = field_specs_calc
         else:
-            fields = args.template.split(',')
-            #raise error if user specified fields which require calculation outputs but that was not in the command line option
-            #or just overwrite it
+            field_specs = args.template.split(',')
+            if args.calculator_outputs == False:
+                for field_spec in field_specs:
+                    if 'f' in field_spec:
+                        raise Exception('field requiring calculation outputs without --calculator-outputs')
 
         if len(args.files) == 2:
             f1 = args.files[0]
@@ -243,16 +248,19 @@ class CLICommand:
                 #this is a nan
                 atoms1 = read(f1)
                 atoms2 = read(f2)
-                t = render_table(fields,atoms1,atoms2)
+                print('images {}-{}'.format(counter+1,counter))
+                t = render_table(field_specs,atoms1,atoms2,show_only = args.show_only)
                 print(t,file=out)
             else:
                 if args.calculator_outputs == True:
                     for counter in range(len(images1)):
-                        t = render_table_calc(fields,images1,images2,counter)
+                        print('images {}-{}'.format(counter+1,counter))
+                        t = render_table_calc(field_specs,images1,images2,counter,show_only=args.show_only)
                         print(t,file=out)
                 else:
                     for counter in range(len(images1)):
-                        t = render_table(fields,images1.get_atoms(counter),images2.get_atoms(counter))
+                        print('images {}-{}'.format(counter+1,counter))
+                        t = render_table(field_specs,images1.get_atoms(counter),images2.get_atoms(counter),show_only=args.show_only)
                         print(t,file=out)
 
         elif len(args.files) == 1:
@@ -262,13 +270,15 @@ class CLICommand:
                 images = Images()
                 images.read([f1])
                 for counter in range(len(images) - 1):
-                    t = render_table_calc(fields,images,images,counter)
+                    print('images {}-{}'.format(counter+1,counter))
+                    t = render_table_calc(field_specs,images,images,counter,show_only=args.show_only)
                     print(t,file=out)
             else:
                 traj = iread(f1)
                 atoms_list = list(traj)
                 for counter in range(len(atoms_list)-1):
-                    t = render_table(fields,atoms_list[counter],atoms_list[counter+1])
+                    t = render_table(field_specs,atoms_list[counter],atoms_list[counter+1],show_only=args.show_only)
+                    print('images {}-{}'.format(counter+1,counter))
                     print(t,file=out)
 
 
