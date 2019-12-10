@@ -81,14 +81,15 @@ class GPCalculator(Calculator, GaussianProcess):
         observations collected so far.
 
     print_format: string
-        Printing format. It chooses how much information and in which format 
+        Printing format. It chooses how much information and in which format
         is shown to the user.
 
         options:
               'ASE' (default): information printed matches other ASE functions
                   outside from the AID module. ML is transparent to the user.
-              'AID': Original format of the AID module. More informative in respect
-                  of ML process. This option is advised for experienced users.
+              'AID': Original format of the AID module. More informative in
+              respect of ML process. This option is advised for experienced
+              users.
     """
 
     implemented_properties = ['energy', 'forces', 'uncertainty']
@@ -102,13 +103,13 @@ class GPCalculator(Calculator, GaussianProcess):
                  max_train_data=None, force_consistent=None,
                  max_train_data_strategy='nearest_observations',
                  wrap_positions=False, calculate_uncertainty=True,
-                 print_format = 'ASE', mask_constraints = True,
+                 print_format='ASE', mask_constraints=True,
                  **kwargs):
 
         # Initialize the Calculator
         Calculator.__init__(self, **kwargs)
 
-        #Initialize the Gaussian Process
+        # Initialize the Gaussian Process
         if kernel is None:
             kernel = SquaredExponential()
         if prior is None:
@@ -117,16 +118,16 @@ class GPCalculator(Calculator, GaussianProcess):
         else:
             self.update_prior = False
         GaussianProcess.__init__(self, prior, kernel)
-        
+
         # Set initial hyperparameters.
         self.set_hyperparams(np.array([weight, scale, noise]))
 
         # Initialize training set
         self.train_x = []
-        self.train_y = []      
+        self.train_y = []
         self.train_images = train_images
         self.old_train_images = []
-        self.prev_train_y = [] # Do not retrain model if same data.
+        self.prev_train_y = []  # Do not retrain model if same data.
 
         # Initialize otger hyperparameters of the calculator
         self.strategy = update_prior_strategy
@@ -142,7 +143,6 @@ class GPCalculator(Calculator, GaussianProcess):
         self.print_format = print_format
 
         self.mask_constraints = mask_constraints
-
 
     def extract_features(self):
         """ From the training images (which include the observations),
@@ -161,7 +161,6 @@ class GPCalculator(Calculator, GaussianProcess):
             y = np.append(np.array(e).reshape(-1),
                           -f.reshape(-1)[self.atoms_mask])
             self.train_y.append(y)
-
 
     def update_train_data(self, train_images, test_images=None):
         """ Update the model with observations (feeding new training images),
@@ -194,7 +193,8 @@ class GPCalculator(Calculator, GaussianProcess):
             elif self.strategy == 'last':
                 self.prior.set_constant(np.array(self.train_y)[:, 0][-1])
                 self.update_prior = False
-            # 1.b Only set use_likelihood to True if we use it and it is implemented
+            # 1.b Only set use_likelihood to True if we use it and it is
+            # implemented
             elif self.strategy == 'fit':
                 self.prior.let_update()
 
@@ -262,13 +262,15 @@ class GPCalculator(Calculator, GaussianProcess):
                                      option=self.fit_weight)
 
             # 4. (optional) Optimize model hyperparameters.
-            if self.update_hp and len(self.train_x) % self.nbatch == 0 and len(self.train_x) != 0:
+            is_train_empty = len(self.train_x) != 0
+            is_module_batch = len(self.train_x) % self.nbatch == 0
+            if self.update_hp and is_module_batch and not is_train_empty:
                 ratio = self.noise / self.kernel.weight
-               
+
                 self.fit_hyperparameters(np.asarray(self.train_x),
-                                             np.asarray(self.train_y),
-                                             eps=self.hyperbounds)
-               
+                                         np.asarray(self.train_y),
+                                         eps=self.hyperbounds)
+
                 # Keeps the ratio between noise and weight fixed.
                 self.noise = ratio * self.kernel.weight
 
@@ -294,15 +296,17 @@ class GPCalculator(Calculator, GaussianProcess):
             self.train_images = None  # Remove the training list of images.
 
         # Mask geometry to be compatible with the trained GP (reduce memory).
-        x = self.atoms.get_positions(wrap=self.wrap).reshape(-1)[self.atoms_mask]
+        x = self.atoms.get_positions(wrap=self.wrap).reshape(-1)
+        x = x[self.atoms_mask]
 
         # Get predictions.
-        f, V = self.predict(x, get_variance = self.calculate_uncertainty)
+        f, V = self.predict(x, get_variance=self.calculate_uncertainty)
 
         # Obtain energy and forces for the given geometry.
         energy = f[0]
         forces = -f[1:].reshape(-1)
-        forces_empty = np.zeros_like(self.atoms.get_positions(wrap=self.wrap).flatten())
+        D = len(self.atoms.get_positions(wrap=self.wrap).flatten())
+        forces_empty = np.zeros(D)
         for i in range(len(self.atoms_mask)):
             forces_empty[self.atoms_mask[i]] = forces[i]
         forces = forces_empty.reshape(-1, 3)
@@ -352,4 +356,3 @@ class GPCalculator(Calculator, GaussianProcess):
             except Exception:
                 pass
         return np.argwhere(mask_constraints.reshape(-1)).reshape(-1)
-
