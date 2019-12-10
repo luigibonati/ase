@@ -294,13 +294,13 @@ class AIDMin(Optimizer):
     def check(self):
 
         if self.nsteps == 0:
-            self.e0 = self.atoms.get_potential_energy(force_consistent=
-                                                      self.force_consistent)
+            self.e0 = self.atoms.get_potential_energy(
+                                 force_consistent=self.force_consistent)
             self.p0 = self.atoms.get_positions()
             self.count = 0
         else:
-            e = self.atoms.get_potential_energy(force_consistent=
-                                                self.force_consistent)
+            e = self.atoms.get_potential_energy(
+                           force_consistent=self.force_consistent)
             if e < self.e0:
                 self.e0 = e
                 self.p0 = self.atoms.get_positions()
@@ -361,8 +361,8 @@ class SP(Optimizer):
         if self.converged(f):
             raise Converged
         self.nsteps += 1
-        e = self.atoms.get_potential_energy(force_consistent=
-                                            self.force_consistent)
+        e = self.atoms.get_potential_energy(
+                       force_consistent=self.force_consistent)
         return e, -f.ravel()
 
 
