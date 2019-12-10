@@ -1,8 +1,8 @@
 import numpy as np
 from scipy.optimize import minimize
 from scipy.linalg import solve_triangular, cho_factor, cho_solve
-from ase.optimize.gpmin.kernel import SquaredExponential
-from ase.optimize.gpmin.prior import ZeroPrior
+from ase.optimize.activelearning.gp.kernel import SquaredExponential
+from ase.optimize.activelearning.gp.prior import ZeroPrior
 
 
 class GaussianProcess():
