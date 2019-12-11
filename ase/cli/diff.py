@@ -106,13 +106,13 @@ class CLICommand:
             else:
                 if args.calculator_outputs:
                     for counter in range(len(images1)):
-                        print('images {}-{}'.format(counter + 1, counter), file=out)
+                        print('sys2-sys1 image # {}'.format(counter), file=out)
                         t = render_table_calc(
                             field_specs, images1, images2, counter, show_only=args.show_only)
                         print(t, file=out)
                 else:
                     for counter in range(len(images1)):
-                        print('images {}-{}'.format(counter + 1, counter), file=out)
+                        print('sys2-sys1 image # {}'.format(counter), file=out)
                         t = render_table(
                             field_specs,
                             images1.get_atoms(counter),
