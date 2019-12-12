@@ -7,10 +7,16 @@ from scipy.spatial.distance import cdist
 from ase.geometry.rmsd.assignment import linear_sum_assignment
 from ase.geometry.rmsd.subgroup_enumeration import (enumerate_subgroup_bases,
                                                     get_subgroup_elements)
+from ase.geometry.rmsd.standardization import standardize
 
 
 def reduce_gcd(x):
     return functools.reduce(math.gcd, x)
+
+
+def get_neighboring_cells(pbc):
+    pbc = pbc.astype(np.int)
+    return np.array(list(itertools.product(*[range(-p, p + 1) for p in pbc])))
 
 
 def concatenate_permutations(permutations: List[np.ndarray]) -> np.ndarray:
@@ -20,11 +26,6 @@ def concatenate_permutations(permutations: List[np.ndarray]) -> np.ndarray:
     for p in permutations:
         concatenated.extend(p + len(concatenated))
     return np.array(concatenated)
-
-
-def get_neighboring_cells(pbc):
-    pbc = pbc.astype(np.int)
-    return np.array(list(itertools.product(*[range(-p, p + 1) for p in pbc])))
 
 
 def minimum_cost_matching(positions, num_cells, nbr_positions):
@@ -55,23 +56,6 @@ def calculate_rmsd(positions, zindices, mapped_nbrs, num_cells):
     return rmsd, concatenate_permutations(permutations)
 
 
-def standardize(atoms, subtract_barycenter=False):
-    zpermutation = np.argsort(atoms.numbers, kind='merge')
-    atoms = atoms[zpermutation]
-    atoms.wrap(eps=0)
-
-    barycenter = np.mean(atoms.get_positions(), axis=0)
-    if subtract_barycenter:
-        atoms.positions -= barycenter
-
-    rcell, op = atoms.cell.minkowski_reduce()
-    invop = np.linalg.inv(op)
-    atoms.set_cell(rcell, scale_atoms=False)
-
-    atoms.wrap(eps=0)
-    return atoms, invop, barycenter, zpermutation
-
-
 def expand_coordinates(c, pbc):
     """Expands a 1D or 2D coordinate to 3D by filling in zeros where pbc=False.
     For inputs c=(1, 3) and pbc=[True, False, True] this returns
@@ -98,7 +82,7 @@ class CrystalReducer:
         self.atoms = atoms
         self.invop = invop
         self.zpermutation = zpermutation
-        self.scaled = atoms.get_scaled_positions()
+        self.scaled_positions = atoms.get_scaled_positions()
 
         positions = atoms.get_positions()
         self.nbr_cells = get_neighboring_cells(atoms.pbc)
@@ -125,7 +109,7 @@ class CrystalReducer:
         c = expand_coordinates(c, pbc)
 
         sign = [1, -1][self.invert]
-        transformed = sign * self.scaled + c / self.n
+        transformed = sign * self.scaled_positions + c / self.n
         for i, index in enumerate(c):
             if pbc[i]:
                 transformed[:, i] %= 1.0
@@ -144,9 +128,9 @@ class CrystalReducer:
         the subgroup basis."""
         n = self.n
         dims = [n] * sum(self.atoms.pbc)
-        num_atoms = len(self.scaled)
+        num_atoms = len(self.scaled_positions)
 
-        seen = -np.ones((3, num_atoms)).astype(np.int)
+        seen = -np.ones((3, num_atoms), dtype=int)
         elements = get_subgroup_elements(dims, H)
 
         for c1 in elements:
