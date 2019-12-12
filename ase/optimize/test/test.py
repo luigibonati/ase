@@ -65,6 +65,9 @@ class Wrapper:
     def get_positions(self):
         return self.atoms.get_positions()
 
+    def get_calculator(self):
+        return self.atoms.calc
+
     def __len__(self):
         return len(self.atoms)
 
