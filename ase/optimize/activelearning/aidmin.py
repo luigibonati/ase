@@ -102,12 +102,12 @@ class AIDMin(Optimizer):
                       in respect of ML process.
                       This option is advised for experienced users.
         fit_to: string
-            Characteristics of the constrains in the training set.
+            Characteristics of the constraints in the training set.
 
             options:
                 'calc' (default): fit to the output of the calculator, then
                     run over the constrained surface.
-                'constrains': fit to the constrained atoms directly
+                'constraints': fit to the constrained atoms directly
 
         optimizer_kwargs: dict
             Dictionary with key-word arguments for the surrogate potential.
@@ -169,8 +169,8 @@ class AIDMin(Optimizer):
             self.optkwargs['trajectory'] = None
 
         # Define what to fit to
-        if fit_to not in ('calc', 'constrains'):
-            raise ValueError("fit_to must be either 'calc' or 'constrains'.")
+        if fit_to not in ('calc', 'constraints'):
+            raise ValueError("fit_to must be either 'calc' or 'constraints'.")
         self.fit_to = fit_to
 
     def set_trainingset(self, trainingset, substitute=True, atoms=None):
@@ -267,7 +267,7 @@ class AIDMin(Optimizer):
         for img in train_images:
             if self.fit_to == 'calc':
                 img.constraints = []
-            elif self.fit_to == 'constrains':
+            elif self.fit_to == 'constraints':
                 img.set_constraint(self.constraints)
 
         # 2. Update model calculator.
@@ -464,7 +464,7 @@ class GPMin(AIDMin):
                         use_previous_observations=False,
                         surrogate_starting_point='min',
                         trainingset=[], print_format='ASE',
-                        fit_to='constrains',
+                        fit_to='constraints',
                         optimizer_kwargs={'fmax': 5e-4, 'method': 'L-BFGS-B'})
 
         """
