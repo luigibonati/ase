@@ -10,7 +10,7 @@ from ase.optimize.activelearning.gp.kernel import SquaredExponential
 from ase.optimize.activelearning.gp.prior import ConstantPrior
 
 
-class GPMin(Optimizer, GaussianProcess):
+class OldGPMin(Optimizer, GaussianProcess):
     def __init__(self, atoms, restart=None, logfile='-', trajectory=None,
                  prior=None, kernel=None, master=None, noise=None, weight=None,
                  scale=None, force_consistent=None, batch_size=None,
