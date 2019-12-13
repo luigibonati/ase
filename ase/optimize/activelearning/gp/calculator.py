@@ -152,6 +152,10 @@ class GPCalculator(Calculator, GaussianProcess):
         # Masks the coordinates of the atoms that are kept fixed (memory).
         if self.mask_constraints:
             self.atoms_mask = self.create_mask()
+        else:
+            #make null mask
+            mask = np.ones_like(self.atoms.get_positions(), dtype=bool)
+            self.atoms_mask = np.argwhere(mask.reshape(-1)).reshape(-1)
 
         # Initialize training features:
         self.train_x = []

@@ -449,7 +449,8 @@ class GPMin(AIDMin):
                                calculate_uncertainty=False,
                                prior=prior, kernel=kernel,
                                update_hyperparams=update_hyperparams,
-                               bounds=bounds, batch_size=batch_size)
+                               bounds=bounds, batch_size=batch_size,
+                               mask_constraints=False)
         """
         Thoughts:
             1. I have not specified max_train_data_strategy and max_train_data
