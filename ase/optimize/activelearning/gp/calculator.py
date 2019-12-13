@@ -153,6 +153,10 @@ class GPCalculator(Calculator, GaussianProcess):
         if self.mask_constraints:
             self.atoms_mask = self.create_mask()
 
+        # Initialize training features:
+        self.train_x = []
+        self.train_y = []
+
         for i in self.train_images:
             r = i.get_positions(wrap=self.wrap).reshape(-1)
             e = i.get_potential_energy(force_consistent=self.fc)
