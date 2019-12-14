@@ -1,8 +1,10 @@
 # flake8: noqa
+import ase
 from abc import abstractmethod, ABC
 import functools
 import warnings
 import numpy as np
+from typing import Dict, List, Sequence, Tuple
 
 from ase.cell import Cell
 from ase.build.bulk import bulk as newbulk
@@ -46,12 +48,13 @@ class BravaisLattice(ABC):
     """
     # These parameters can be set by the @bravais decorator for a subclass.
     # (We could also use metaclasses to do this, but that's more abstract)
-    name = None  # e.g. 'CUB', 'BCT', 'ORCF', ...
-    longname = None  # e.g. 'cubic', 'body-centred tetragonal', ...
-    parameters = None  # e.g. ('a', 'c')
-    variants = None  # e.g. {'BCT1': <variant object>,
-    #                        'BCT2': <variant object>}
-    ndim = None
+    name: str = None  # e.g. 'CUB', 'BCT', 'ORCF', ...
+    longname: str = None  # e.g. 'cubic', 'body-centred tetragonal', ...
+    parameters: Tuple[str] = None  # e.g. ('a', 'c')
+    variants: Dict[str, 'Variant'] = None  # e.g. {'BCT1': <variant object>,
+                                           #       'BCT2': <variant object>}
+    variant_names: List[str] = None
+    ndim: int = None
 
     def __init__(self, **kwargs):
         p = {}
@@ -70,7 +73,7 @@ class BravaisLattice(ABC):
             self._variant = self.variants[name]
 
     @property
-    def variant(self):
+    def variant(self) -> str:
         """Return name of lattice variant.
 
         >>> BCT(3, 5).variant
@@ -78,21 +81,21 @@ class BravaisLattice(ABC):
         """
         return self._variant.name
 
-    def __getattr__(self, name):
+    def __getattr__(self, name) -> float:
         if name in self._parameters:
             return self._parameters[name]
         return self.__getattribute__(name)  # Raises error
 
-    def vars(self):
+    def vars(self) -> Dict[str, float]:
         """Get parameter names and values of this lattice as a dictionary."""
         return dict(self._parameters)
 
-    def tocell(self):
+    def tocell(self) -> Cell:
         """Return this lattice as a :class:`~ase.cell.Cell` object."""
         cell = self._cell(**self._parameters)
         return Cell(cell)
 
-    def get_transformation(self, cell):
+    def get_transformation(self, cell) -> np.ndarray:
         # Get transformation matrix relating input cell to canonical cell
         T = cell.dot(np.linalg.pinv(self.tocell()))
         msg = 'This transformation changes the length/area/volume of the cell'
@@ -100,7 +103,7 @@ class BravaisLattice(ABC):
                                                  :self.ndim])), 1), msg
         return T
 
-    def cellpar(self):
+    def cellpar(self) -> np.ndarray:
         """Get cell lengths and angles as array of length 6.
 
         See :func:`ase.geometry.Cell.cellpar`."""
@@ -109,7 +112,7 @@ class BravaisLattice(ABC):
         return cell.cellpar()
 
     @property
-    def special_path(self):
+    def special_path(self) -> str:
         """Get default special k-point path for this lattice as a string.
 
         >>> BCT(3, 5).special_path
@@ -118,7 +121,7 @@ class BravaisLattice(ABC):
         return self._variant.special_path
 
     @property
-    def special_point_names(self):
+    def special_point_names(self) -> List[str]:
         """Return all special point names as a list of strings.
 
         >>> BCT(3, 5).special_point_names
@@ -129,7 +132,7 @@ class BravaisLattice(ABC):
         return labels[0]
 
 
-    def get_special_points_array(self):
+    def get_special_points_array(self) -> np.ndarray:
         """Return all special points for this lattice as an array.
 
         Ordering is consistent with special_point_names."""
@@ -149,7 +152,7 @@ class BravaisLattice(ABC):
         assert len(points) == len(self.special_point_names)
         return np.array(points)
 
-    def get_special_points(self):
+    def get_special_points(self) -> Dict[str, Sequence[float]]:
         """Return a dictionary of named special k-points for this lattice."""
         if self._variant.special_points is not None:
             return self._variant.special_points
@@ -159,15 +162,24 @@ class BravaisLattice(ABC):
 
         return dict(zip(labels, points))
 
-    def plot_bz(self, path=None, special_points=None, **plotkwargs):
+    def plot_bz(self,
+                path: str = None,
+                special_points: Dict[str, Sequence[float]] = None,
+                **plotkwargs):
         """Plot the reciprocal cell and default bandpath."""
         # Create a generic bandpath (no interpolated kpoints):
         bandpath = self.bandpath(path=path, special_points=special_points,
                                  npoints=0)
         return bandpath.plot(dimension=self.ndim, **plotkwargs)
 
-    def bandpath(self, path=None, npoints=None, special_points=None,
-                 density=None, transformation=None):
+    def bandpath(
+            self,
+            path: str = None,
+            npoints: int = None,
+            special_points: Dict[str, Sequence[float]] = None,
+            density: float = None,
+            transformation: np.ndarray = None,
+    ) -> 'ase.dft.kpoints.BandPath':
         """Return a :class:`~ase.dft.kpoints.BandPath` for this lattice.
 
         See :meth:`ase.cell.Cell.bandpath` for description of parameters.
@@ -200,13 +212,13 @@ class BravaisLattice(ABC):
         return bandpath.interpolate(npoints=npoints, density=density)
 
     @abstractmethod
-    def _cell(self, **kwargs):
-        """Return a Cell object from this Bravais lattice.
+    def _cell(self, **kwargs: Dict[str, float]) -> Sequence:
+        """Return a cell as 3x3 floats from this Bravais lattice.
 
         Arguments are the dictionary of Bravais parameters."""
         pass
 
-    def _special_points(self, **kwargs):
+    def _special_points(self, **kwargs) -> Sequence:
         """Return the special point coordinates as an npoints x 3 sequence.
 
         Subclasses typically return a nested list.
@@ -216,13 +228,13 @@ class BravaisLattice(ABC):
         Arguments are the dictionary of Bravais parameters and the variant."""
         raise NotImplementedError
 
-    def _variant_name(self, **kwargs):
+    def _variant_name(self, **kwargs) -> str:
         """Return the name (e.g. 'ORCF3') of variant.
 
         Arguments will be the dictionary of Bravais parameters."""
         raise NotImplementedError
 
-    def __format__(self, spec):
+    def __format__(self, spec) -> str:
         tokens = []
         if not spec:
             spec = '.6g'
@@ -233,13 +245,13 @@ class BravaisLattice(ABC):
             tokens.append(template.format(name, value))
         return '{}({})'.format(self.name, ', '.join(tokens))
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.__format__('')
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.__format__('.20g')
 
-    def description(self):
+    def description(self) -> str:
         """Return complete description of lattice and Brillouin zone."""
         points = self.get_special_points()
         labels = self.special_point_names
@@ -259,7 +271,7 @@ class BravaisLattice(ABC):
         return string
 
     @classmethod
-    def type_description(cls):
+    def type_description(cls) -> str:
         """Return complete description of this Bravais lattice type."""
         desc = """\
 Lattice name: {name}
@@ -285,7 +297,10 @@ Variant name: {name}
   Default path: {special_path}
 """
 
-    def __init__(self, name, special_point_names, special_path,
+    def __init__(self,
+                 name,
+                 special_point_names,
+                 special_path,
                  special_points=None):
         self.name = name
         self.special_point_names = special_point_names
@@ -298,7 +313,7 @@ Variant name: {name}
         # XXX Should make special_points available as a single array as well
         # (easier to transform that way)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.variant_desc.format(**vars(self))
 
 
@@ -307,8 +322,13 @@ bravais_lattices = {}
 bravais_classes = {}
 
 
-def bravaisclass(longname, crystal_family, lattice_system, pearson_symbol,
-                 parameters, variants, ndim=3):
+def bravaisclass(longname: str,
+                 crystal_family: str,
+                 lattice_system: str,
+                 pearson_symbol: str,
+                 parameters: Sequence[str],
+                 variants: List,
+                 ndim: int = 3):
     """Decorator for Bravais lattice classes.
 
     This sets a number of class variables and processes the information
@@ -1191,7 +1211,7 @@ class LatticeChecker:
     check_order = ['CUB', 'FCC', 'BCC', 'TET', 'BCT', 'HEX', 'RHL',
                    'ORC', 'ORCF', 'ORCI', 'ORCC', 'MCL', 'MCLC', 'TRI']
 
-    def __init__(self, cell, eps=2e-4):
+    def __init__(self, cell: Cell, eps: float = 2e-4) -> None:
         """Generate Bravais lattices that look (or not) like the given cell.
 
         The cell must be reduced to canonical form, i.e., it must
