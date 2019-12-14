@@ -1,4 +1,5 @@
 import warnings
+from typing import Union, List, Sequence, Iterable
 
 import numpy as np
 
@@ -6,12 +7,12 @@ from ase.data import atomic_numbers, chemical_symbols
 from ase.formula import Formula
 
 
-def string2symbols(s):
+def string2symbols(s: str) -> List[str]:
     """Convert string to list of chemical symbols."""
     return list(Formula(s))
 
 
-def symbols2numbers(symbols):
+def symbols2numbers(symbols: Sequence[str]) -> List[int]:
     if isinstance(symbols, str):
         symbols = string2symbols(symbols)
     numbers = []
@@ -53,20 +54,20 @@ class Symbols:
     formatting options and analysis.
 
     """
-    def __init__(self, numbers):
+    def __init__(self, numbers: np.ndarray) -> None:
         self.numbers = numbers
 
     @classmethod
-    def fromsymbols(cls, symbols):
+    def fromsymbols(cls, symbols: Sequence[str]) -> 'Symbols':
         numbers = symbols2numbers(symbols)
         return cls(np.array(numbers))
 
     @property
-    def formula(self):
+    def formula(self) -> Formula:
         """Formula object."""
         return Formula.from_list([chemical_symbols[Z] for Z in self.numbers])
 
-    def __getitem__(self, key):
+    def __getitem__(self, key) -> Union[str, 'Symbols']:
         num = self.numbers[key]
         if np.isscalar(num):
             return chemical_symbols[num]
@@ -78,13 +79,13 @@ class Symbols:
             numbers = numbers[0]
         self.numbers[key] = numbers
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.numbers)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.get_chemical_formula('reduce')
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return 'Symbols(\'{}\')'.format(self)
 
     def __eq__(self, obj):
@@ -99,7 +100,11 @@ class Symbols:
             return False
         return self.numbers == symbols.numbers
 
-    def get_chemical_formula(self, mode='hill', empirical=False):
+    def get_chemical_formula(
+            self,
+            mode: str = 'hill',
+            empirical: bool = False
+    ) -> str:
         """Get chemical formula.
 
         See documentation of ase.atoms.Atoms.get_chemical_formula()."""
