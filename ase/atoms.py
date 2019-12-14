@@ -11,9 +11,11 @@ import copy
 import numbers
 import warnings
 from math import cos, sin, pi
+from typing import List, Sequence, Union
 
 import numpy as np
 
+import ase
 import ase.units as units
 from ase.atom import Atom
 from ase.cell import Cell
@@ -244,7 +246,7 @@ class Atoms(object):
         self.set_calculator(calculator)
 
     @property
-    def symbols(self):
+    def symbols(self) -> Symbols:
         """Get chemical symbols as a :class:`ase.symbols.Symbols` object.
 
         The object works like ``atoms.numbers`` except its values
@@ -266,14 +268,14 @@ class Atoms(object):
         """Get currently attached calculator object."""
         return self._calc
 
-    def _del_calculator(self):
+    def _del_calculator(self) -> None:
         self._calc = None
 
     calc = property(get_calculator, set_calculator, _del_calculator,
                     doc='Calculator object.')
 
     @property
-    def number_of_lattice_vectors(self):
+    def number_of_lattice_vectors(self) -> int:
         """Number of (non-zero) lattice vectors."""
         return self.cell.rank
 
@@ -295,13 +297,13 @@ class Atoms(object):
     def _get_constraints(self):
         return self._constraints
 
-    def _del_constraints(self):
+    def _del_constraints(self) -> None:
         self._constraints = []
 
     constraints = property(_get_constraints, set_constraint, _del_constraints,
                            'Constraints of the atoms.')
 
-    def set_cell(self, cell, scale_atoms=False, apply_constraint=True):
+    def set_cell(self, cell, scale_atoms=False, apply_constraint=True) -> None:
         """Set unit cell vectors.
 
         Parameters:
@@ -356,16 +358,16 @@ class Atoms(object):
 
         self.cell[:] = cell
 
-    def set_celldisp(self, celldisp):
+    def set_celldisp(self, celldisp) -> None:
         """Set the unit cell displacement vectors."""
         celldisp = np.array(celldisp, float)
         self._celldisp = celldisp
 
-    def get_celldisp(self):
+    def get_celldisp(self) -> np.ndarray:
         """Get the unit cell displacement vectors."""
         return self._celldisp.copy()
 
-    def get_cell(self, complete=False):
+    def get_cell(self, complete=False) -> Cell:
         """Get the three unit cell vectors as a `class`:ase.cell.Cell` object.
 
         The Cell object resembles a 3x3 ndarray, and cell[i, j]
@@ -377,7 +379,7 @@ class Atoms(object):
 
         return cell
 
-    def get_cell_lengths_and_angles(self):
+    def get_cell_lengths_and_angles(self) -> np.ndarray:
         """Get unit cell parameters. Sequence of 6 numbers.
 
         First three are unit cell vector lengths and second three
@@ -389,7 +391,7 @@ class Atoms(object):
         """
         return self.cell.cellpar()
 
-    def get_reciprocal_cell(self):
+    def get_reciprocal_cell(self) -> np.ndarray:
         """Get the three reciprocal lattice vectors as a 3x3 ndarray.
 
         Note that the commonly used factor of 2 pi for Fourier
@@ -397,15 +399,15 @@ class Atoms(object):
 
         return self.cell.reciprocal()
 
-    def set_pbc(self, pbc):
+    def set_pbc(self, pbc) -> None:
         """Set periodic boundary condition flags."""
         self.cell._pbc[:] = pbc
 
-    def get_pbc(self):
+    def get_pbc(self) -> np.ndarray:
         """Get periodic boundary condition flags."""
         return self.pbc.copy()
 
-    def new_array(self, name, a, dtype=None, shape=None):
+    def new_array(self, name, a, dtype=None, shape=None) -> None:
         """Add new array.
 
         If *shape* is not *None*, the shape of *a* will be checked."""
@@ -435,7 +437,7 @@ class Atoms(object):
 
         self.arrays[name] = a
 
-    def get_array(self, name, copy=True):
+    def get_array(self, name: str, copy: bool = True) -> np.ndarray:
         """Get an array.
 
         Returns a copy unless the optional argument copy is false.
@@ -465,7 +467,7 @@ class Atoms(object):
                                      (name, a.shape, b.shape))
                 b[:] = a
 
-    def has(self, name):
+    def has(self, name: str) -> bool:
         """Check for existence of array.
 
         name must be one of: 'tags', 'momenta', 'masses', 'initial_magmoms',
@@ -473,25 +475,29 @@ class Atoms(object):
         # XXX extend has to calculator properties
         return name in self.arrays
 
-    def set_atomic_numbers(self, numbers):
+    def set_atomic_numbers(self, numbers: Sequence[int]) -> None:
         """Set atomic numbers."""
         self.set_array('numbers', numbers, int, ())
 
-    def get_atomic_numbers(self):
+    def get_atomic_numbers(self) -> np.ndarray:
         """Get integer array of atomic numbers."""
         return self.arrays['numbers'].copy()
 
-    def get_chemical_symbols(self):
+    def get_chemical_symbols(self) -> List[str]:
         """Get list of chemical symbol strings.
 
         Equivalent to ``list(atoms.symbols)``."""
         return list(self.symbols)
 
-    def set_chemical_symbols(self, symbols):
+    def set_chemical_symbols(self, symbols: Sequence[str]) -> None:
         """Set chemical symbols."""
         self.set_array('numbers', symbols2numbers(symbols), int, ())
 
-    def get_chemical_formula(self, mode='hill', empirical=False):
+    def get_chemical_formula(
+            self,
+            mode: str = 'hill',
+            empirical: bool = False
+    ) -> str:
         """Get the chemical formula as a string based on the chemical symbols.
 
         Parameters:
@@ -520,21 +526,21 @@ class Atoms(object):
         """
         return self.symbols.get_chemical_formula(mode, empirical)
 
-    def set_tags(self, tags):
+    def set_tags(self, tags) -> None:
         """Set tags for all atoms. If only one tag is supplied, it is
         applied to all atoms."""
         if isinstance(tags, int):
             tags = [tags] * len(self)
         self.set_array('tags', tags, int, ())
 
-    def get_tags(self):
+    def get_tags(self) -> np.ndarray:
         """Get integer array of tags."""
         if 'tags' in self.arrays:
             return self.arrays['tags'].copy()
         else:
             return np.zeros(len(self), int)
 
-    def set_momenta(self, momenta, apply_constraint=True):
+    def set_momenta(self, momenta, apply_constraint=True) -> None:
         """Set momenta."""
         if (apply_constraint and len(self.constraints) > 0 and
            momenta is not None):
@@ -651,7 +657,7 @@ class Atoms(object):
 
         self.set_array('positions', newpositions, shape=(3,))
 
-    def get_positions(self, wrap=False, **wrap_kw):
+    def get_positions(self, wrap: bool = False, **wrap_kw) -> np.ndarray:
         """Get array of positions.
 
         Parameters:
@@ -669,8 +675,11 @@ class Atoms(object):
         else:
             return self.arrays['positions'].copy()
 
-    def get_potential_energy(self, force_consistent=False,
-                             apply_constraint=True):
+    def get_potential_energy(
+            self,
+            force_consistent: bool = False,
+            apply_constraint: bool = True,
+    ) -> float:
         """Calculate potential energy.
 
         Ask the attached calculator to calculate the potential energy and
@@ -704,14 +713,14 @@ class Atoms(object):
             raise RuntimeError('Atoms object has no calculator.')
         return self._calc.get_potential_energies(self)
 
-    def get_kinetic_energy(self):
+    def get_kinetic_energy(self) -> float:
         """Get the kinetic energy."""
         momenta = self.arrays.get('momenta')
         if momenta is None:
             return 0.0
         return 0.5 * np.vdot(momenta, self.get_velocities())
 
-    def get_velocities(self):
+    def get_velocities(self) -> np.ndarray:
         """Get array of velocities."""
         momenta = self.arrays.get('momenta')
         if momenta is None:
@@ -721,11 +730,12 @@ class Atoms(object):
             m = atomic_masses[self.arrays['numbers']]
         return momenta / m.reshape(-1, 1)
 
-    def get_total_energy(self):
+    def get_total_energy(self) -> float:
         """Get the total energy - potential plus kinetic energy."""
         return self.get_potential_energy() + self.get_kinetic_energy()
 
-    def get_forces(self, apply_constraint=True, md=False):
+    def get_forces(self, apply_constraint: bool = True,
+                   md: bool = False) -> np.ndarray:
         """Calculate atomic forces.
 
         Ask the attached calculator to calculate the forces and apply
@@ -757,7 +767,12 @@ class Atoms(object):
     # Informs calculators (e.g. Asap) that ideal gas contribution is added here.
     _ase_handles_dynamic_stress = True
 
-    def get_stress(self, voigt=True, apply_constraint=True, include_ideal_gas=False):
+    def get_stress(
+            self,
+            voigt: bool = True,
+            apply_constraint: bool = True,
+            include_ideal_gas: bool = False
+    ) -> np.ndarray:
         """Calculate stress tensor.
 
         Returns an array of the six independent components of the
@@ -808,7 +823,7 @@ class Atoms(object):
                              (xy, yy, yz),
                              (xz, yz, zz)])
 
-    def get_stresses(self, include_ideal_gas=False):
+    def get_stresses(self, include_ideal_gas: bool = False) -> np.ndarray:
         """Calculate the stress-tensor of all the atoms.
 
         Only available with calculators supporting per-atom energies and
@@ -844,7 +859,7 @@ class Atoms(object):
             raise RuntimeError('Atoms object has no calculator.')
         return self._calc.get_dipole_moment(self)
 
-    def copy(self):
+    def copy(self) -> 'Atoms':
         """Return a copy."""
         atoms = self.__class__(cell=self.cell, pbc=self.pbc, info=self.info,
                                celldisp=self._celldisp.copy())
@@ -1100,7 +1115,7 @@ class Atoms(object):
         del self[i]
         return atom
 
-    def __imul__(self, m):
+    def __imul__(self, m: Union[int, Sequence[int]]) -> 'Atoms':
         """In-place repeat of atoms."""
         if isinstance(m, int):
             m = (m, m, m)
@@ -1132,7 +1147,7 @@ class Atoms(object):
 
         return self
 
-    def repeat(self, rep):
+    def repeat(self, rep: Union[int, Sequence[int]]) -> 'Atoms':
         """Create new repeated atoms object.
 
         The *rep* argument should be a sequence of three positive
@@ -1143,9 +1158,10 @@ class Atoms(object):
         atoms *= rep
         return atoms
 
-    __mul__ = repeat
+    def __mul__(self, m: Union[int, Sequence[int]]) -> 'Atoms':
+        return self.repeat(m)
 
-    def translate(self, displacement):
+    def translate(self, displacement: Sequence[float]) -> None:
         """Translate atomic positions.
 
         The displacement argument can be a float an xyz vector or an
