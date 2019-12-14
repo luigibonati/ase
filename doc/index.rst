@@ -68,6 +68,8 @@ See how to identify and convert old trajectory files here: :ref:`convert`.
 News
 ====
 
+* :ref:`ASE version 3.18.2 <releasenotes>` released (14 December 2019).
+
 * :ref:`ASE version 3.18.1 <releasenotes>` released (20 September 2019).
 
 * :ref:`ASE version 3.18.0 <releasenotes>` released (19 July 2019).
