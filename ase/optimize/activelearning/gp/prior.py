@@ -15,7 +15,9 @@ class Prior():
     """
     def __init__(self):
         """Basic prior implementation."""
-        pass
+
+        # By default, do not let the prior use the update method
+        self.use_update = False
 
     def prior(self, x):
         """Actual prior function, common to all Priors"""
