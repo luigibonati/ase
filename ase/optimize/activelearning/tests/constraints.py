@@ -7,9 +7,10 @@ from ase import Atoms
 from ase.calculators.tip3p import TIP3P, rOH, angleHOH
 from ase.constraints import FixInternals
 
-import ase.optimize.activelearning as aid
 from ase.optimize.test.test import Wrapper
 
+from ase.optimize.activelearning.oldgpmin import OldGPMin
+from ase.optimize.activelearning.aidmin import GPMin
 
 class NstepPrinter:
     """
@@ -33,7 +34,7 @@ aexp = 27
 D = np.linspace(2.5, 3.5, 30)
 
 calc = TIP3P()
-optimizers = [aid.oldgpmin.OldGPMin, aid.aidmin.GPMin]
+optimizers = [OldGPMin, GPMin]
 
 for optimizer in optimizers:
     dimer = Atoms('H2OH2O',
