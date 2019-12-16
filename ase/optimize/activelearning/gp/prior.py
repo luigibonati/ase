@@ -1,4 +1,6 @@
 import numpy as np
+from scipy.linalg import cho_solve
+import warnings
 
 
 class Prior():
@@ -23,6 +25,14 @@ class Prior():
         else:
             return self.potential(x)
 
+    def let_update(self):
+        if hasattr(self, 'update'):
+            self.use_update = True
+        else:
+            warning = ('The prior does not have implemented an update method ',
+                       'the prior has thus not been updated')
+            warnings.warn(warning)
+
 
 class ZeroPrior(Prior):
     """ZeroPrior object, consisting on a constant prior with 0eV energy."""
@@ -30,7 +40,7 @@ class ZeroPrior(Prior):
         Prior.__init__(self)
 
     def potential(self, x):
-        return np.zeros(x.shape[0]+1)
+        return np.zeros(x.shape[0] + 1)
 
 
 class ConstantPrior(Prior):
@@ -52,12 +62,40 @@ class ConstantPrior(Prior):
 
     def potential(self, x):
         d = x.shape[0]
-        output = np.zeros(d+1)
+        output = np.zeros(d + 1)
         output[0] = self.constant
         return output
 
     def set_constant(self, constant):
         self.constant = constant
+
+    def update(self, x, y, L):
+        """
+        Update the constant to maximize the marginal likelihood.
+        The optimization problem:
+        m = argmax [-1/2 (y-m).T K^-1(y-m)]
+        can be turned into an algebraic problem
+        m = [ u.T K^-1 y]/[u.T K^-1 u]
+
+        where u is the constant prior with energy 1 (eV).
+
+        parameters:
+        ------------
+        x: training features
+        y: training targets
+        L: Cholesky factor of the kernel
+        """
+
+        # Get derivative of prior respect to constant: we call it u
+        self.set_constant(1.)
+        u = self.prior(x)
+
+        # w = K\u
+        w = cho_solve((L, True), u, check_finite=False)
+
+        # Set constant
+        m = np.dot(w, y.flatten()) / np.dot(w, u)
+        self.set_constant(m)
 
 
 class CalculatorPrior(Prior):
