@@ -245,7 +245,7 @@ class AIDMin(Optimizer):
 
         # Finally, especify default option
         if self.ml_fmax is None:
-            self.ml_fmax = 0.01*fmax
+            self.ml_fmax = 0.01 * fmax
 
         if self.start == 'min':
             self.check()
@@ -312,12 +312,12 @@ class AIDMin(Optimizer):
 
         if self.nsteps == 0:
             self.e0 = self.atoms.get_potential_energy(
-                                 force_consistent=self.force_consistent)
+                force_consistent=self.force_consistent)
             self.p0 = self.atoms.get_positions()
             self.count = 0
         else:
             e = self.atoms.get_potential_energy(
-                           force_consistent=self.force_consistent)
+                force_consistent=self.force_consistent)
             if e < self.e0:
                 self.e0 = e
                 self.p0 = self.atoms.get_positions()
@@ -379,7 +379,7 @@ class SP(Optimizer):
             raise Converged
         self.nsteps += 1
         e = self.atoms.get_potential_energy(
-                       force_consistent=self.force_consistent)
+            force_consistent=self.force_consistent)
         return e, -f.ravel()
 
 

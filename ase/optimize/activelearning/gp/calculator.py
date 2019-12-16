@@ -153,7 +153,7 @@ class GPCalculator(Calculator, GaussianProcess):
         if self.mask_constraints:
             self.atoms_mask = self.create_mask()
         else:
-            #make null mask
+            # Make null mask
             mask = np.ones_like(self.atoms.get_positions(), dtype=bool)
             self.atoms_mask = np.argwhere(mask.reshape(-1)).reshape(-1)
 
@@ -179,7 +179,6 @@ class GPCalculator(Calculator, GaussianProcess):
         for i in train_images:
             if i not in self.train_images:
                 self.train_images.append(i)
-        #self.calculate(atoms=self.train_images[0])  # Test one to attach.
 
     def train_model(self):
         """ Train a model with the previously fed observations."""
