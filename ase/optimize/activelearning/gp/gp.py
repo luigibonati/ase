@@ -66,9 +66,14 @@ class GaussianProcess():
         K = self.kernel.kernel_matrix(X)  # Compute the kernel matrix
         K[range(K.shape[0]), range(K.shape[0])] += regularization**2
 
+        self.L, self.lower = cho_factor(K, lower=True, check_finite=True)
+
+        # Update the prior if it is allowed to update
+        if self.prior.use_update:
+            self.prior.update(X, Y, self.L)
+
         self.m = self.prior.prior(X)
         self.a = Y.flatten() - self.m
-        self.L, self.lower = cho_factor(K, lower=True, check_finite=True)
         cho_solve((self.L, self.lower), self.a, overwrite_b=True,
                   check_finite=True)
 
