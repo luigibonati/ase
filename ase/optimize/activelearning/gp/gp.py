@@ -184,3 +184,49 @@ class GaussianProcess():
                                          result.x.copy()[1], self.noise])
         self.set_hyperparams(self.hyperparams)
         return {'hyperparameters': self.hyperparams, 'converged': converged}
+
+    def fit_weight_only(self, X, Y, option='update'):
+        """
+        Fit weight of the kernel keeping all other hyperparameters fixed.
+        Here we assume the kernel k(x,x',theta) can be factorized as:
+                    k = weight**2 * f(x,x',other hyperparameters)
+        this is the case, for example, of the Squared Exponential Kernel.
+
+        Parameters:
+
+        X: observations(i.e. positions). numpy array with shape: nsamples x D
+        Y: targets (i.e. energy and forces).
+           numpy array with shape (nsamples, D+1)
+        option: Whether we just want the value or we want to update the
+           hyperparameter. Possible values:
+               update: change the weight of the kernel accordingly.
+                       Requires a trained Gaussian Process. It
+                       works with any kernel.
+                       NOTE: the model is RETRAINED
+
+               estimate: return the value of the weight that maximizes
+                         the marginal likelihood with all other variables
+                         fixed.
+                         Requires a trained Gaussian Process with a kernel of
+                         value 1.0
+
+        Returns:
+
+        weight: (float) The new weight.
+        """
+
+        w = self.kernel.weight
+        if option == 'estimate':
+            assert w == 1.0
+        y = Y.flatten()
+        m = self.prior.prior(X)
+        factor = np.sqrt(np.dot(y - m, self.a) / len(y))
+
+        if option == 'estimate':
+            return factor
+        elif option == 'update':
+            w *= factor
+            self.hyperparams[0] = w
+            self.set_hyperparams(self.hyperparams)
+            self.train(X, Y)
+            return w
