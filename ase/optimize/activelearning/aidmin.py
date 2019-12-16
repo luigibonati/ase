@@ -295,7 +295,8 @@ class AIDMin(Optimizer):
             ml_atoms.set_positions(self.p0)
 
         # Set constraints
-        ml_atoms.set_constraint(self.constraints)
+        if self.fit_to == 'constraints':
+            ml_atoms.set_constraint([])
 
         # Optimize
         opt = self.optimizer(ml_atoms, **self.optkwargs)
