@@ -174,16 +174,14 @@ class AIDNEB:
         self.model_calculator = model_calculator
         if model_calculator is None:
             self.model_calculator = GPCalculator(
-                            train_images=[],
-                            prior=None,
-                            fit_weight='update',
-                            update_prior_strategy='fit',
-                            weight=1.0, scale=0.4, noise=0.005,
-                            update_hyperparams=False, batch_size=5,
-                            bounds=None, kernel=None,
-                            max_train_data_strategy=max_train_data_strategy,
-                            max_train_data=max_train_data
-                            )
+                train_images=[],
+                prior=None, kernel=None,
+                fit_weight='update',
+                update_prior_strategy='fit',
+                weight=1.0, scale=0.4, noise=0.005,
+                update_hyperparams=False, batch_size=5, bounds=None,
+                max_train_data_strategy=max_train_data_strategy,
+                max_train_data=max_train_data)
 
         # Active Learning setup (Single-point calculations).
         self.step = 0
@@ -226,11 +224,11 @@ class AIDNEB:
         # A) Create images using interpolation if user does define a path.
         if interp_path is None:
             if isinstance(self.n_images, float):
-                self.n_images = int(d_start_end/self.n_images)
+                self.n_images = int(d_start_end / self.n_images)
             if self. n_images <= 3:
                 self.n_images = 3
             self.images = make_neb(self)
-            self.spring = 2. * np.sqrt(self.n_images-1) / d_start_end
+            self.spring = 2. * np.sqrt(self.n_images - 1) / d_start_end
 
             neb_interpolation = NEB(self.images, climb=False, k=self.spring,
                                     method=self.neb_method,
@@ -238,10 +236,10 @@ class AIDNEB:
             neb_interpolation.interpolate(method='linear', mic=self.mic)
             if interpolation == 'idpp':
                 neb_interpolation = NEB(
-                                    self.images, climb=True,
-                                    k=self.spring, method=self.neb_method,
-                                    remove_rotation_and_translation=self.rrt
-                                    )
+                    self.images, climb=True,
+                    k=self.spring, method=self.neb_method,
+                    remove_rotation_and_translation=self.rrt)
+
                 neb_interpolation.idpp_interpolate(optimizer=FIRE,
                                                    mic=self.mic)
 
@@ -261,7 +259,7 @@ class AIDNEB:
 
         # Guess spring constant (k) if not defined by the user.
         if self.spring is None:
-            self.spring = 2. * (np.sqrt(self.n_images-1) / d_start_end)
+            self.spring = 2. * (np.sqrt(self.n_images - 1) / d_start_end)
         # Save initial interpolation.
         self.initial_interpolation = self.images[:]
 
@@ -318,14 +316,15 @@ class AIDNEB:
 
         train_images = io.read(trajectory_observations, ':')
         if len(train_images) == 2:
-            middle = int(self.n_images * (2./3.))
+            middle = int(self.n_images * (2. / 3.))
             e_is = self.i_endpoint.get_potential_energy()
             e_fs = self.e_endpoint.get_potential_energy()
             if e_is >= e_fs:
-                middle = int(self.n_images * (1./3.))
+                middle = int(self.n_images * (1. / 3.))
             self.atoms.positions = self.images[middle].get_positions()
             self.atoms.set_calculator(self.ase_calc)
-            self.atoms.get_potential_energy(force_consistent=self.force_consistent)
+            self.atoms.get_potential_energy(
+                force_consistent=self.force_consistent)
             self.atoms.get_forces()
             dump_observation(atoms=self.atoms, method='neb',
                              filename=trajectory_observations,
@@ -385,9 +384,9 @@ class AIDNEB:
             # 5. Print output.
             max_e = np.max(neb_pred_energy)
             pbf = max_e - self.i_endpoint.get_potential_energy(
-                                        force_consistent=self.force_consistent)
+                force_consistent=self.force_consistent)
             pbb = max_e - self.e_endpoint.get_potential_energy(
-                                        force_consistent=self.force_consistent)
+                force_consistent=self.force_consistent)
             msg = "--------------------------------------------------------"
             parprint(msg)
             parprint('Step:', self.step)
@@ -448,8 +447,8 @@ class AIDNEB:
             self.atoms.positions = best_candidate.get_positions()
             self.atoms.set_calculator(self.ase_calc)
             self.atoms.get_potential_energy(
-                                    force_consistent=self.force_consistent
-                                    )
+                force_consistent=self.force_consistent)
+
             self.atoms.get_forces()
             dump_observation(atoms=self.atoms,
                              filename=trajectory_observations,
@@ -466,7 +465,7 @@ def make_neb(self, images_interpolation=None):
     Creates a NEB from a set of images.
     """
     imgs = [self.i_endpoint[:]]
-    for i in range(1, self.n_images-1):
+    for i in range(1, self.n_images - 1):
         image = self.i_endpoint[:]
         if images_interpolation is not None:
             image.set_positions(images_interpolation[i].get_positions())
@@ -505,4 +504,3 @@ def print_cite_neb():
     msg += "https://doi.org/10.1103/PhysRevB.100.104103. \n"
     msg += "-" * 79 + '\n'
     parprint(msg)
-
