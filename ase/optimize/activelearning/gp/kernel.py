@@ -32,8 +32,17 @@ class SE_kernel(Kernel):
             weight: prefactor of the exponential
             l : scale of the kernel
         """
-        self.weight = params[0]
-        self.l = params[1]
+        
+        if not hasattr(self, 'params'):
+            self.params = {}
+        for p in params:
+            self.params[p] = params[p]
+
+        self.weight = self.params.get('weight', None)
+        self.l = self.params.get('scale', None)
+
+        if self.weight is None or self.l is None:
+            raise ValueError('The parameters of the kernel have not been set')
 
     def squared_distance(self, x1, x2):
         """Returns the norm of x1-x2 using diag(l) as metric """
@@ -144,7 +153,8 @@ class SquaredExponential(SE_kernel):
                 k = self.kernel(X[i], X[j])
                 K[i * D1:(i + 1) * D1, j * D1:(j + 1) * D1] = k
                 K[j * D1:(j + 1) * D1, i * D1:(i + 1) * D1] = k.T
-            K[i * D1:(i + 1) * D1, i * D1:(i + 1) * D1] = self.kernel(X[i], X[i])
+            K[i * D1:(i + 1) * D1,
+              i * D1:(i + 1) * D1] = self.kernel(X[i], X[i])
         return K
 
     def kernel_vector(self, x, X, nsample):

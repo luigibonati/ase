@@ -178,8 +178,8 @@ class AIDNEB:
                 prior=None, kernel=None,
                 fit_weight='update',
                 update_prior_strategy='fit',
-                weight=1.0, scale=0.4, noise=0.005,
-                update_hyperparams=False, batch_size=5, bounds=None,
+                kernel_params={'weight': 1.0, 'scale': 0.4},
+                noise=0.005,
                 max_train_data_strategy=max_train_data_strategy,
                 max_train_data=max_train_data)
 

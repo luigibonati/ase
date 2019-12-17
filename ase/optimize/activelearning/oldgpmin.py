@@ -200,7 +200,7 @@ class OldGPMin(Optimizer, GaussianProcess):
         if kernel is None:
             kernel = SquaredExponential()
         GaussianProcess.__init__(self, prior, kernel)
-        self.set_hyperparams(np.array([weight, scale, noise]))
+        self.set_hyperparams({'weight': weight, 'scale': scale}, noise)
 
     def acquisition(self, r):
         e, _ = self.predict(r)
@@ -249,11 +249,13 @@ class OldGPMin(Optimizer, GaussianProcess):
 
     def fit_to_batch(self):
         """Fit hyperparameters keeping the ratio noise/weight fixed"""
-        ratio = self.noise/self.kernel.weight
-        self.fit_hyperparameters(np.array(self.x_list),
-                                 np.array(self.y_list), eps=self.eps)
-        self.noise = ratio*self.kernel.weight
 
+        # TODO: redo the eps thing here
+        self.fit_hyperparameters(np.array(self.x_list),
+                                 np.array(self.y_list),
+                                 ['weight', 'scale'],
+                                 bounds=self.eps)
+       
     def step(self, f=None):
         atoms = self.atoms
         if f is None:

@@ -96,9 +96,10 @@ class GPCalculator(Calculator, GaussianProcess):
     nolabel = True
 
     def __init__(self, train_images=None, prior=None,
-                 update_prior_strategy='maximum', weight=1.,
-                 fit_weight=None, scale=0.4, noise=0.005,
-                 update_hyperparams=False,
+                 update_prior_strategy='maximum',
+                 kernel_params={'weight': 1., 'scale': 0.4},
+                 fit_weight=None, noise=0.005,
+                 params_to_update={},
                  batch_size=5, bounds=None, kernel=None,
                  max_train_data=None, force_consistent=None,
                  max_train_data_strategy='nearest_observations',
@@ -120,7 +121,7 @@ class GPCalculator(Calculator, GaussianProcess):
         GaussianProcess.__init__(self, prior, kernel)
 
         # Set initial hyperparameters.
-        self.set_hyperparams(np.array([weight, scale, noise]))
+        self.set_hyperparams(kernel_params, noise)
 
         # Initialize training set
         self.train_x = []
@@ -131,7 +132,6 @@ class GPCalculator(Calculator, GaussianProcess):
 
         # Initialize otger hyperparameters of the calculator
         self.strategy = update_prior_strategy
-        self.update_hp = update_hyperparams
         self.nbatch = batch_size
         self.hyperbounds = bounds
         self.fc = force_consistent
@@ -141,6 +141,7 @@ class GPCalculator(Calculator, GaussianProcess):
         self.wrap = wrap_positions
         self.fit_weight = fit_weight
         self.print_format = print_format
+        self.params_to_update = params_to_update
 
         self.mask_constraints = mask_constraints
 
@@ -270,17 +271,15 @@ class GPCalculator(Calculator, GaussianProcess):
                                      option=self.fit_weight)
 
             # 4. (optional) Optimize model hyperparameters.
+            update_hp = len(self.params_to_update) != 0
             is_train_empty = len(self.train_x) == 0
             is_module_batch = len(self.train_x) % self.nbatch == 0
-            if self.update_hp and is_module_batch and not is_train_empty:
-                ratio = self.noise / self.kernel.weight
+            if update_hp and is_module_batch and not is_train_empty:
 
                 self.fit_hyperparameters(np.asarray(self.train_x),
                                          np.asarray(self.train_y),
-                                         eps=self.hyperbounds)
-
-                # Keeps the ratio between noise and weight fixed.
-                self.noise = ratio * self.kernel.weight
+                                         self.params_to_update,
+                                         bounds=self.hyperbounds)
 
         self.prev_train_y = self.train_y[:]
 

@@ -128,11 +128,11 @@ class AIDMin(Optimizer):
         # Default GP Calculator parameters if not specified by the user
         if model_calculator is None:
             self.model_calculator = GPCalculator(
-                        train_images=[], scale=0.3, weight=2.,
-                        noise=0.003, update_prior_strategy='fit',
-                        max_train_data_strategy='nearest_observations',
-                        max_train_data=5,
-                        calculate_uncertainty=False)
+                train_images=[],
+                kernel_params={'scale': 0.3, 'weight': 2.},
+                noise=0.003, update_prior_strategy='fit',
+                max_train_data_strategy='nearest_observations',
+                max_train_data=5, calculate_uncertainty=False)
 
         if hasattr(self.model_calculator, 'print_format'):
             self.model_calculator.print_format = print_format
@@ -156,8 +156,7 @@ class AIDMin(Optimizer):
             self.train = trainingset
         else:
             self.train = TrainingSet(trainingset,
-                                     use_previous_observations=
-                                     use_previous_observations)
+                         use_previous_observations=use_previous_observations)
 
         # Make the training set an observer for the run
         self.attach(self.train, atoms=atoms, method='min')
@@ -432,6 +431,8 @@ class GPMin(AIDMin):
             if batch_size is None:
                 batch_size = 1
 
+            params_to_update = ['weight', 'scale']
+
         #  2.B Un-updated GPMin
         else:
             if scale is None:
@@ -456,14 +457,16 @@ class GPMin(AIDMin):
 
             # Set batch_size to 1 anyways
             batch_size = 1
+            params_to_update = []
 
         # 3. Set GP calculator
-        gp_calc = GPCalculator(train_images=[], scale=scale,
-                               weight=weight, noise=noise,
+        gp_calc = GPCalculator(train_images=[], noise=noise,
+                               kernel_params={'weight': weight,
+                                              'scale': scale},
                                update_prior_strategy=update_prior_strategy,
                                calculate_uncertainty=False,
                                prior=prior, kernel=kernel,
-                               update_hyperparams=update_hyperparams,
+                               params_to_update=params_to_update,
                                bounds=bounds, batch_size=batch_size,
                                mask_constraints=False)
         """
@@ -481,7 +484,8 @@ class GPMin(AIDMin):
                         surrogate_starting_point='min',
                         trainingset=[], print_format='ASE',
                         fit_to='constraints',
-                        optimizer_kwargs={'fmax': 'scipy default', 'method': 'L-BFGS-B'})
+                        optimizer_kwargs={'fmax': 'scipy default',
+                                          'method': 'L-BFGS-B'})
 
         """
         Thoughts:

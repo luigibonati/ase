@@ -30,15 +30,25 @@ class GaussianProcess():
         else:
             self.prior = prior
 
-    def set_hyperparams(self, params):
+        self.hyperparams = {}
+
+    def set_hyperparams(self, params, noise):
         """Set hyperparameters of the regression.
         This is a list containing the parameters of the
         kernel and the regularization (noise)
         of the method as the last entry.
         """
-        self.hyperparams = params
-        self.kernel.set_params(params[:-1])
-        self.noise = params[-1]
+        for pstring in params.keys():
+            self.hyperparams[pstring] = params.get(pstring)
+        self.kernel.set_params(params)
+        self.noise = noise
+        
+        # Set noise-weight ratio:
+        if not hasattr(self, 'ratio'):
+            self.ratio = self.noise / self.hyperparams['weight']
+
+        # Keep noise-weight ratio as constant
+        self.noise = self.ratio * self.hyperparams['weight']
 
     def train(self, X, Y, noise=None):
         """Produces a PES model from data.
@@ -73,6 +83,7 @@ class GaussianProcess():
             self.prior.update(X, Y, self.L)
 
         self.m = self.prior.prior(X)
+
         self.a = Y.flatten() - self.m
         cho_solve((self.L, self.lower), self.a, overwrite_b=True,
                   check_finite=True)
@@ -105,7 +116,8 @@ class GaussianProcess():
         return f, None
 
     def neg_log_likelihood(self, params, *args):
-        """Negative logarithm of the marginal likelihood and its derivative.
+        """
+        Negative logarithm of the marginal likelihood and its derivative.
         It has been built in the form that suits the best its optimization,
         with the scipy minimize module, to find the optimal hyperparameters.
 
@@ -115,9 +127,17 @@ class GaussianProcess():
         *args: Should be a tuple containing the inputs and targets
                in the training set-
         """
-        X, Y = args
-        # Come back to this
-        self.kernel.set_params(np.array([params[0], params[1], self.noise]))
+
+        X, Y, params_to_update = args
+        
+        assert len(params) == len(params_to_update)
+    
+        paramdict = {}
+        for p, pstring in zip(params, params_to_update):
+            paramdict[pstring] = p
+
+        self.set_hyperparams(paramdict, self.noise)
+
         self.train(X, Y)
         y = Y.flatten()
 
@@ -138,7 +158,8 @@ class GaussianProcess():
         DlogP = 0.5 * np.trace(D_P_input - D_complexity, axis1=1, axis2=2)
         return -logP, -DlogP
 
-    def fit_hyperparameters(self, X, Y, tol=1e-2, eps=None):
+    def fit_hyperparameters(self, X, Y, params_to_update,
+                            bounds=None, tol=1e-2):
         """Given a set of observations, X, Y; optimize the scale
         of the Gaussian Process maximizing the marginal log-likelihood.
         This method calls TRAIN there is no need to call the TRAIN method
@@ -154,8 +175,7 @@ class GaussianProcess():
              log-likelihood.
              (See scipy's L-BFGS-B documentation:
              https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html)
-        eps: include bounds to the hyperparameters as a +- a percentage
-             if eps is None there are no bounds in the optimization
+        bounds: TODO: write pretty doc string here
 
         Returns:
 
@@ -165,24 +185,32 @@ class GaussianProcess():
                                             False otherwise
                        }
         """
-        params = np.copy(self.hyperparams)[:2]
-        arguments = (X, Y)
-        if eps is not None:
-            bounds = [((1 - eps) * p, (1 + eps) * p) for p in params]
-        else:
-            bounds = None
 
+        assert type(params_to_update[0]) == str
+
+        # Define arguments for neg_log_likelihood
+        arguments = (np.array(X), np.array(Y), params_to_update)
+        
+        # Define initial hyperparameters for minimization
+        params = []
+        for string in params_to_update:
+            params.append(self.hyperparams[string])
+
+        # Optimization
         result = minimize(self.neg_log_likelihood, params, args=arguments,
                           method='L-BFGS-B', jac=True, bounds=bounds,
                           options={'gtol': tol, 'ftol': 0.01 * tol})
 
+        # Collect result
         if not result.success:
             converged = False
         else:
             converged = True
-            self.hyperparams = np.array([result.x.copy()[0],
-                                         result.x.copy()[1], self.noise])
-        self.set_hyperparams(self.hyperparams)
+            optimalparams = {}
+            for p, pstring in zip(result.x, params_to_update):
+                optimalparams[pstring] = p
+                self.set_hyperparams(optimalparams, self.noise)
+
         return {'hyperparameters': self.hyperparams, 'converged': converged}
 
     def fit_weight_only(self, X, Y, option='update'):
@@ -215,7 +243,10 @@ class GaussianProcess():
         weight: (float) The new weight.
         """
 
-        w = self.kernel.weight
+        if not hasattr(self, 'a'):
+            self.train(X, Y)
+
+        w = self.hyperparams.get('weight')
         if option == 'estimate':
             assert w == 1.0
         y = Y.flatten()
@@ -226,7 +257,6 @@ class GaussianProcess():
             return factor
         elif option == 'update':
             w *= factor
-            self.hyperparams[0] = w
-            self.set_hyperparams(self.hyperparams)
+            self.set_hyperparams({'weight': w}, self.noise)
             self.train(X, Y)
             return w
