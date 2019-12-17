@@ -250,11 +250,16 @@ class OldGPMin(Optimizer, GaussianProcess):
     def fit_to_batch(self):
         """Fit hyperparameters keeping the ratio noise/weight fixed"""
 
-        # TODO: redo the eps thing here
+        if self.eps is not None:
+            bounds = [((1 - self.eps) * p, (1 + self.eps) * p)
+                      for p in self.hyperparams.values()]
+        else:
+            bounds = None
+
         self.fit_hyperparameters(np.array(self.x_list),
                                  np.array(self.y_list),
                                  ['weight', 'scale'],
-                                 bounds=self.eps)
+                                 bounds=bounds)
        
     def step(self, f=None):
         atoms = self.atoms
