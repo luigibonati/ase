@@ -130,19 +130,22 @@ class GPCalculator(Calculator, GaussianProcess):
         self.old_train_images = []
         self.prev_train_y = []  # Do not retrain model if same data.
 
-        # Initialize other hyperparameters of the calculator
-        self.strategy = update_prior_strategy
+        # Initialize hyperparameter update attributes
+        self.params_to_update = params_to_update
+        self.fit_weight = fit_weight
         self.nbatch = batch_size
         self.hyperbounds = bounds
-        self.fc = force_consistent
+
+        # Initialize prior and trainset attributes
+        self.strategy = update_prior_strategy
         self.max_data = max_train_data
         self.max_data_strategy = max_train_data_strategy
+
+        # Initialize other attributes
+        self.fc = force_consistent
         self.calculate_uncertainty = calculate_uncertainty
         self.wrap = wrap_positions
-        self.fit_weight = fit_weight
         self.print_format = print_format
-        self.params_to_update = params_to_update
-
         self.mask_constraints = mask_constraints
 
     def extract_features(self):
