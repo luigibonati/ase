@@ -12,16 +12,23 @@ from ase.optimize.test.test import Wrapper
 from ase.optimize.activelearning.oldgpmin import OldGPMin
 from ase.optimize.activelearning.aidmin import GPMin
 
-class NstepPrinter:
+class Tracker:
     """
-    Observer to print the number of steps on the fly
+    Observer to keep track of details of the
+    optimization on the fly.
     """
     def __init__(self, wrapper):
         self.wrapper = wrapper
+        self.f = []
+        self.e = []
 
     def __call__(self):
         print('%d force calls' % wrapper.nsteps)
-
+        fmax = (self.wrapper.get_forces() ** 2).sum(axis=1).max()
+        e = self.wrapper.get_potential_energy()
+        self.f.append(np.sqrt(fmax))
+        self.e.append(e)
+        
 
 r = rOH
 a = angleHOH * pi / 180
@@ -36,7 +43,8 @@ D = np.linspace(2.5, 3.5, 30)
 calc = TIP3P()
 optimizers = [OldGPMin, GPMin]
 
-for optimizer in optimizers:
+results = {}
+for i,optimizer in enumerate(optimizers):
     dimer = Atoms('H2OH2O',
                   [(r * cos(a), 0, r * sin(a)),
                    (r, 0, 0),
@@ -65,8 +73,15 @@ for optimizer in optimizers:
         angles=[(a, (0, 2, 1)), (a, (3, 5, 4))])
 
     wrapper = Wrapper(dimer)
-    countsteps = NstepPrinter(wrapper)
+    tracker = Tracker(wrapper)
 
-    opt = optimizer(wrapper)
-    opt.attach(countsteps)
+    opt = optimizer(wrapper, update_hyperparams=True)
+    opt.attach(tracker)
     opt.run(0.01)
+
+    #Check the result is the same
+    results[i] = {'e':np.array(tracker.e), 'f':np.array(tracker.f)}
+
+
+assert np.allclose(results[0]['e'], results[1]['e'])
+assert np.allclose(results[0]['f'], results[1]['f'], rtol=0.01)
