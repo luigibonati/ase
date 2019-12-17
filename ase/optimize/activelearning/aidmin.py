@@ -345,7 +345,17 @@ class SP(Optimizer):
         self.method = method
 
     def run(self, fmax=0.05, steps=100000000):
-        self.fmax = fmax
+
+        # Set convergence criterium
+        if fmax == 'scipy default':
+            # Scipys default convergence
+            self.fmax = 1e-8
+            tol = None
+        else:
+            # ASE's usual behaviour
+            self.fmax = fmax
+            tol = 1e-10
+
         self.max_steps = steps
 
         f = self.atoms.get_forces()
@@ -359,12 +369,16 @@ class SP(Optimizer):
                               self.atoms.positions.ravel(),
                               jac=True,
                               method=self.method,
-                              tol=1e-10)
+                              tol=tol)
         except Converged:
             return True
         else:
             if result.success is False:
                 raise RuntimeError('SciPy Error: ' + result.message)
+            elif tol is None:
+                # Scipy's default convergence was met
+                return True
+
             return False
 
     def step(self):
@@ -467,7 +481,7 @@ class GPMin(AIDMin):
                         surrogate_starting_point='min',
                         trainingset=[], print_format='ASE',
                         fit_to='constraints',
-                        optimizer_kwargs={'fmax': 5e-4, 'method': 'L-BFGS-B'})
+                        optimizer_kwargs={'fmax': 'scipy default', 'method': 'L-BFGS-B'})
 
         """
         Thoughts:
