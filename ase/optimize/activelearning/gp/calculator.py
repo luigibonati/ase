@@ -278,11 +278,18 @@ class GPCalculator(Calculator, GaussianProcess):
             is_train_empty = len(self.train_x) == 0
             is_module_batch = len(self.train_x) % self.nbatch == 0
             if update_hp and is_module_batch and not is_train_empty:
+                # TODO: come back to this later
+                if self.hyperbounds is not None:
+                    bounds = [((1 - self.hyperbounds) * p,
+                               (1 + self.hyperbounds) * p)
+                              for p in self.hyperparams.values()]
+                else:
+                    bounds = None
 
                 self.fit_hyperparameters(np.asarray(self.train_x),
                                          np.asarray(self.train_y),
                                          self.params_to_update,
-                                         bounds=self.hyperbounds)
+                                         bounds=bounds)
 
         self.prev_train_y = self.train_y[:]
 
