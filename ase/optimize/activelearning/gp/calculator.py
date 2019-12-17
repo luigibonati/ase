@@ -130,7 +130,7 @@ class GPCalculator(Calculator, GaussianProcess):
         self.old_train_images = []
         self.prev_train_y = []  # Do not retrain model if same data.
 
-        # Initialize otger hyperparameters of the calculator
+        # Initialize other hyperparameters of the calculator
         self.strategy = update_prior_strategy
         self.nbatch = batch_size
         self.hyperbounds = bounds
