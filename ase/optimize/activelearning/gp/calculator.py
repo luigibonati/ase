@@ -270,7 +270,7 @@ class GPCalculator(Calculator, GaussianProcess):
                                      option=self.fit_weight)
 
             # 4. (optional) Optimize model hyperparameters.
-            is_train_empty = len(self.train_x) != 0
+            is_train_empty = len(self.train_x) == 0
             is_module_batch = len(self.train_x) % self.nbatch == 0
             if self.update_hp and is_module_batch and not is_train_empty:
                 ratio = self.noise / self.kernel.weight
