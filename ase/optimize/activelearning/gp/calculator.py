@@ -280,9 +280,11 @@ class GPCalculator(Calculator, GaussianProcess):
             if update_hp and is_module_batch and not is_train_empty:
                 # TODO: come back to this later
                 if self.hyperbounds is not None:
+                    params = [self.hyperparams[pname]
+                              for pname in self.params_to_update]
                     bounds = [((1 - self.hyperbounds) * p,
                                (1 + self.hyperbounds) * p)
-                              for p in self.hyperparams.values()]
+                              for p in params]
                 else:
                     bounds = None
 
