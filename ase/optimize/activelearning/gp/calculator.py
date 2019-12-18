@@ -44,7 +44,8 @@ class GPCalculator(Calculator, GaussianProcess):
             'last' : fix the prior to the last sampled energy.
             'fit'  : update the prior s.t. it maximizes the marginal likelihood
 
-    update_hyperparams: boolean
+    update_hyperparams: boolean DEPRECATED
+    params_to_update: dictionary {param_name : bounds}
         Update the scale of the Squared exponential kernel every
         batch_size-th iteration by maximizing the marginal likelihood.
 
@@ -53,7 +54,7 @@ class GPCalculator(Calculator, GaussianProcess):
         Only relevant if the optimizer is executed in update
         mode: (update = True)
 
-    bounds: float, 0<bounds<1
+    bounds: float, 0<bounds<1 DEPRECATED
         Set bounds to the optimization of the hyperparameters. Let t be a
         hyperparameter. Then it is optimized under the constraint (
         1-bound)*t_0 <= t <= (1+bound)*t_0 where t_0 is the value of the
@@ -134,7 +135,6 @@ class GPCalculator(Calculator, GaussianProcess):
         self.params_to_update = params_to_update
         self.fit_weight = fit_weight
         self.nbatch = batch_size
-        self.hyperbounds = bounds
 
         # Initialize prior and trainset attributes
         self.strategy = update_prior_strategy
@@ -278,19 +278,28 @@ class GPCalculator(Calculator, GaussianProcess):
             is_train_empty = len(self.train_x) == 0
             is_module_batch = len(self.train_x) % self.nbatch == 0
             if update_hp and is_module_batch and not is_train_empty:
-                # TODO: come back to this later
-                if self.hyperbounds is not None:
-                    params = [self.hyperparams[pname]
-                              for pname in self.params_to_update]
-                    bounds = [((1 - self.hyperbounds) * p,
-                               (1 + self.hyperbounds) * p)
-                              for p in params]
-                else:
-                    bounds = None
+                bounds = []
+                params = []
+                for pname, bound in self.params_to_update.items():
+                    params.append(pname)
+                    if bound is None:
+                        bounds.append(bound)
+                    elif isinstance(bound, tuple):
+                        assert len(bound) == 2
+                        bounds.append(bound)
+                    elif isinstance(bound, float):
+                        assert bound > 0. and bound <= 1.
+                        pvalue = self.hyperparams[pname]
+                        b = ((1 - bound) * pvalue, (1 + bound) * pvalue)
+                        bounds.append(b)
+                    else:
+                        msg = 'bound for hyperparameter {}'.format(pname)
+                        msg += ' should be either int, tuple or None'
+                        raise TypeError(msg)
 
                 self.fit_hyperparameters(np.asarray(self.train_x),
                                          np.asarray(self.train_y),
-                                         self.params_to_update,
+                                         params_to_update=params,
                                          bounds=bounds)
 
         self.prev_train_y = self.train_y[:]

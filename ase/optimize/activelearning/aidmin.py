@@ -431,7 +431,7 @@ class GPMin(AIDMin):
             if batch_size is None:
                 batch_size = 1
 
-            params_to_update = ['weight', 'scale']
+            params_to_update = {'weight': bounds, 'scale': bounds}
 
         #  2.B Un-updated GPMin
         else:
