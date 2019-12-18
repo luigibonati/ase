@@ -213,7 +213,10 @@ def get_ioformat(name):
     return ioformats[name]
 
 F = define_io_format
-F('abinit', 'ABINIT input file', '1F'),
+F('abinit-in', 'ABINIT input file', '1F',
+  module='abinit', magic=b'*znucl *'),
+F('abinit-out', 'ABINIT output file', '1F',
+  module='abinit', magic=b'*.Version * of ABINIT'),
 F('aims', 'FHI-aims geometry file', '1S',ext='in'),
 F('aims-output', 'FHI-aims output', '+S',
   module='aims', magic=b'*Invoking FHI-aims ...'),
@@ -303,8 +306,11 @@ F('mysql', 'ASE MySQL database file', '+S',
 F('netcdftrajectory', 'AMBER NetCDF trajectory file', '+S'),
 F('nomad-json', 'JSON from Nomad archive', '+F',
   ext='nomad-json'),
-F('nwchem', 'NWChem input file', '1F',
-  ext='nw'),
+F('nwchem-in', 'NWChem input file', '1F',
+  module='nwchem', ext='nwi'),
+F('nwchem-out', 'NWChem output file', '+F',
+  module='nwchem', ext='nwo',
+  magic=b'*Northwest Computational Chemistry Package'),
 F('octopus', 'Octopus input file', '1F', glob='inp'),
 F('openmx-in', 'OpenMX input file', '1F',
   module='openmx'),
@@ -347,7 +353,6 @@ F('xsf', 'XCrySDen Structure File', '+F',
          b'*\nMOLECULE', b'*\nATOMS']),
 F('xtd', 'Materials Studio file', '+F'),
 F('xyz', 'XYZ-file', '+F')
-
 
 netcdfconventions2format = {
     'http://www.etsf.eu/fileformats': 'etsf',

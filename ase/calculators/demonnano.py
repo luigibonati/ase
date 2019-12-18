@@ -1,3 +1,4 @@
+# flake8: noqa
 """This module defines an ASE interface to deMon-nano.
 
 Link to the open-source DFTB code deMon-nano:
@@ -272,7 +273,7 @@ class DemonNano(FileIOCalculator):
           
        for i in range(len(lines)):
             if lines[i].startswith(' DFTB total energy [Hartree]'):
-                self.results['energy'] = float(lines[i+1])
+                self.results['energy'] = float(lines[i+1])*Hartree
                 break
 
     def read_forces(self, atoms):
