@@ -28,9 +28,9 @@ class SE_kernel(Kernel):
 
         Parameters:
 
-        params: [weight, l] Parameters of the kernel:
-            weight: prefactor of the exponential
-            l : scale of the kernel
+        params: (dictionary) Parameters of the kernel:
+            {'weight': prefactor of the exponential,
+             'scale' : scale of the kernel}
         """
         
         if not hasattr(self, 'params'):
