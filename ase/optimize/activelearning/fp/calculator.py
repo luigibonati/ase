@@ -123,7 +123,7 @@ class FPCalculator(Calculator, FPGaussianProcess):
             prior = ConstantPrior(constant=None)
         else:
             self.update_prior = False
-        GaussianProcess.__init__(self, prior, kernel)
+        FPGaussianProcess.__init__(self, prior, kernel)
 
         # Set initial hyperparameters.
         self.set_hyperparams(kernel_params, noise)
