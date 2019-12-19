@@ -159,7 +159,7 @@ class FPGaussianProcess():
             V = variance - covariance
 
             return f, V
-        return f
+        return f, None
 
 
     def neg_log_likelihood(self, params, *args):
