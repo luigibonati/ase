@@ -109,7 +109,7 @@ class FPCalculator(Calculator, FPGaussianProcess):
                  max_train_data=None, force_consistent=None,
                  max_train_data_strategy='nearest_observations',
                  wrap_positions=False, calculate_uncertainty=True,
-                 print_format='ASE', mask_constraints=True,
+                 print_format='ASE', mask_constraints=False,
                  **kwargs):
 
         # Initialize the Calculator
