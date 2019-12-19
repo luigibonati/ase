@@ -1,15 +1,15 @@
 from __future__ import print_function
-from kernel import SE_kernel
+from ase.optimize.activelearning.gp.kernel import SE_kernel, SquaredExponential
 
 import numpy as np
 
 from scipy.optimize import minimize
 from scipy.linalg import solve_triangular, cho_factor, cho_solve
 
-#from ase.optimize.activelearning.gp.prior import ZeroPrior
+from ase.optimize.activelearning.gp.prior import ZeroPrior
 
 
-class GaussianProcess():
+class FPGaussianProcess():
 
     '''Gaussian Process Regression
     It is recomended to be used with other Priors and Kernels
