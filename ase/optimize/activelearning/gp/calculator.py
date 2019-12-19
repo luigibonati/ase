@@ -44,22 +44,25 @@ class GPCalculator(Calculator, GaussianProcess):
             'last' : fix the prior to the last sampled energy.
             'fit'  : update the prior s.t. it maximizes the marginal likelihood
 
-    update_hyperparams: boolean DEPRECATED
     params_to_update: dictionary {param_name : bounds}
-        Update the scale of the Squared exponential kernel every
-        batch_size-th iteration by maximizing the marginal likelihood.
+        Hyperparameters of the kernel to be updated. If the dictionary 
+        is empty, hyperparameters are kept fixed. The new hyperparameters
+        are found maximizing the marginal likelihood of the model. 
+        If the optimization fails, the values of the hyperparameters are 
+        kept as they were.
+        Each hyperaparameter to be updated requires to have a bound specified.
+        There are three options for the bounds of each hyperparameter:
+            * None: The optimization on that hyperparameters is unconstrained.
+            * tuple (min, max): interval for updating the hyperparameters
+            * float between 0 and 1: Letting the hyperparameter vary a 
+                percentage. Let t be a hyperparameter. Then it is optimized
+                under the constraint (1-bound)*t_0 <= t <= (1+bound)*t_0 where
+                t_0 is the value of the hyperparameter in the previous step.
 
     batch_size: int
         Number of new points in the sample before updating the hyperparameters.
         Only relevant if the optimizer is executed in update
         mode: (update = True)
-
-    bounds: float, 0<bounds<1 DEPRECATED
-        Set bounds to the optimization of the hyperparameters. Let t be a
-        hyperparameter. Then it is optimized under the constraint (
-        1-bound)*t_0 <= t <= (1+bound)*t_0 where t_0 is the value of the
-        hyperparameter in the previous step. If bounds is None,
-        no constraints are set in the optimization of the hyperparameters.
 
     max_train_data: int
         Number of observations that will effectively be included in the GP

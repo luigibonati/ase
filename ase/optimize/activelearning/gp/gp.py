@@ -34,9 +34,13 @@ class GaussianProcess():
 
     def set_hyperparams(self, params, noise):
         """Set hyperparameters of the regression.
-        This is a list containing the parameters of the
-        kernel and the regularization (noise)
-        of the method as the last entry.
+        This is a dictionary containing the parameters of the
+        kernel as values and their names as keys. 
+        The regularization (noise) of the method is specified as
+        a separate value. 
+        The method defines as weight/noise ratio when it is 
+        initiallized, which is subsequently kept during optimization
+        of hyperparameters.
         """
         for pstring in params.keys():
             self.hyperparams[pstring] = params.get(pstring)
@@ -123,9 +127,9 @@ class GaussianProcess():
 
         Parameters:
 
-        l: The scale for which we compute the marginal likelihood
+        params: initial value of the hyperparameters to be updated.
         *args: Should be a tuple containing the inputs and targets
-               in the training set-
+               in the training set, and the hyperparameters to update.
         """
 
         X, Y, params_to_update = args
@@ -171,11 +175,16 @@ class GaussianProcess():
         X:   observations(i.e. positions). numpy array with shape: nsamples x D
         Y:   targets (i.e. energy and forces).
              numpy array with shape (nsamples, D+1)
+        params_to_update: list with the names of the hyperparameters to update.
+        bounds:  list with the boundaries for the optimization of the 
+                 hyperparameters to be updated. Each boundary should be 
+                 a tuple (min, max) or None if the optimization should
+                 be unconstrained.
         tol: tolerance on the maximum component of the gradient of the
              log-likelihood.
              (See scipy's L-BFGS-B documentation:
              https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html)
-        bounds: TODO: write pretty doc string here
+        
 
         Returns:
 
