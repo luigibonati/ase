@@ -174,7 +174,7 @@ class FPCalculator(Calculator, FPGaussianProcess):
 
         for i in self.train_images:
             self.fp.set_atoms(i)
-            r = copy.deepcopy(fp)
+            r = deepcopy(self.fp)
             e = i.get_potential_energy(force_consistent=self.fc)
             f = i.get_forces()
             self.train_x.append(r)
