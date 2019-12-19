@@ -197,9 +197,17 @@ class SquaredExponential(SE_kernel):
         """Return the derivative of K(X,X) respect of l"""
         return np.block([[self.dK_dl_matrix(x1, x2) for x2 in X] for x1 in X])
 
-    def gradient(self, X):
-        """Computes the gradient of matrix K given the data respect to the
-        hyperparameters. Note matrix K here is self.K(X,X).
-        Returns a 2-entry list of n(D+1) x n(D+1) matrices
+    def gradient(self, X, params_to_update=['weight','scale']):
         """
-        return [self.dK_dweight(X), self.dK_dl(X)]
+        Computes the gradient of matrix K given the data respect to the
+        hyperparameters. Note matrix K here is self.K(X,X).
+        Returns a list of n(D+1) x n(D+1) matrices, one for each partial
+        derivative
+        """
+        g = []
+        if 'weight' in params_to_update:
+            g.append(self.dK_dweight(X))
+        if 'scale' in params_to_update:
+            g.append(self.dK_dl(X))
+
+        return g

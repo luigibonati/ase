@@ -151,7 +151,7 @@ class GaussianProcess():
                 X.shape[0] * 0.5 * np.log(2 * np.pi))
 
         # Gradient of the loglikelihood
-        grad = self.kernel.gradient(X)
+        grad = self.kernel.gradient(X,params_to_update)
 
         # vectorizing the derivative of the log likelihood
         D_P_input = np.array([np.dot(np.outer(self.a, self.a), g)
