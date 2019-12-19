@@ -1,13 +1,14 @@
 import numpy as np
+from copy import deepcopy
 import warnings
-from ase.optimize.activelearning.gp.kernel import SquaredExponential
-from ase.optimize.activelearning.gp.gp import GaussianProcess
+from ase.optimize.activelearning.fp.kernel import FPKernel
+from ase.optimize.activelearning.fp.gp import FPGaussianProcess
 from ase.optimize.activelearning.gp.prior import ConstantPrior
 from ase.calculators.calculator import Calculator, all_changes
 from scipy.spatial.distance import euclidean
 
 
-class GPCalculator(Calculator, GaussianProcess):
+class FPCalculator(Calculator, FPGaussianProcess):
     """
     GP model parameters
     -------------------
@@ -103,7 +104,7 @@ class GPCalculator(Calculator, GaussianProcess):
                  update_prior_strategy='maximum',
                  kernel_params={'weight': 1., 'scale': 0.4},
                  fit_weight=None, noise=0.005,
-                 params_to_update={},
+                 params_to_update={}, fingerprint = None,
                  batch_size=5, bounds=None, kernel=None,
                  max_train_data=None, force_consistent=None,
                  max_train_data_strategy='nearest_observations',
@@ -116,7 +117,7 @@ class GPCalculator(Calculator, GaussianProcess):
 
         # Initialize the Gaussian Process
         if kernel is None:
-            kernel = SquaredExponential()
+            kernel = FPKernel()
         if prior is None:
             self.update_prior = True
             prior = ConstantPrior(constant=None)
@@ -138,6 +139,9 @@ class GPCalculator(Calculator, GaussianProcess):
         self.params_to_update = params_to_update
         self.fit_weight = fit_weight
         self.nbatch = batch_size
+
+        # Fingerprint
+        self.fp = fingerprint
 
         # Initialize prior and trainset attributes
         self.strategy = update_prior_strategy
@@ -169,10 +173,11 @@ class GPCalculator(Calculator, GaussianProcess):
         self.train_y = []
 
         for i in self.train_images:
-            r = i.get_positions(wrap=self.wrap).reshape(-1)
+            fp.set_atoms(i)
+            r = copy.deepcopy(fp)
             e = i.get_potential_energy(force_consistent=self.fc)
             f = i.get_forces()
-            self.train_x.append(r[self.atoms_mask])
+            self.train_x.append(r)
             y = np.append(np.array(e).reshape(-1),
                           -f.reshape(-1)[self.atoms_mask])
             self.train_y.append(y)
