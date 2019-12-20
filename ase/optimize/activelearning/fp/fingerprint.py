@@ -80,9 +80,7 @@ class OganovFP():
         ''' Extend the unit cell so that all the atoms within the limit
         are in the same cell, indexed properly.
         '''
-
-        # Determine unit cell parameters:
-        cell = self.atoms.cell.array
+ 
         lengths = self.atoms.cell.lengths()
         natoms = len(self.atoms)
 
@@ -507,7 +505,6 @@ class OganovFP():
 
     def dk_drm_drn_dDelta(self, fp2, index1, index2):
 
-        t0 = time.time()
         dD_dDelta = self.dD_dDelta(fp2)
         D = self.distance(self, fp2)
         first = - D / self.l**2 * dD_dDelta * self.kernel_hessian(fp2,
@@ -549,7 +546,6 @@ class OganovFP():
                                           d2[A1],
                                           axes=[0,0])
         third *= prefactor
-        t3 = time.time()
         #print(1, t1-t0)
         #print(2, t2-t1)
         # print("Time in dk_drm_drn_dDelta: %.04f sec" % (t3-t0))
