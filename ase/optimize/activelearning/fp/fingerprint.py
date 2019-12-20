@@ -163,8 +163,11 @@ class OganovFP():
                              0.0)
 
                 # Consider only the correct elements i and j
-                ms = np.array(self.atoms.get_chemical_symbols()) == self.elements[i]
-                ns = np.array(self.extendedatoms.get_chemical_symbols()) == self.elements[j]
+                at_symb = np.array(self.atoms.get_chemical_symbols())
+                ext_symb = np.array(self.extendedatoms.get_chemical_symbols())
+
+                ms = at_symb == self.elements[i]
+                ns = ext_symb == self.elements[j]
 
                 R = (R.T * ms).T
                 R = R * ns
