@@ -4,6 +4,7 @@ from scipy.spatial import distance_matrix
 import numpy as np
 from warnings import catch_warnings, simplefilter
 
+
 class OganovFP():
 
     def __init__(self, limit=10.0, delta=0.5, N=200, pbc=None):
@@ -43,9 +44,9 @@ class OganovFP():
         for i in range(self.Nmat.shape[0]):
             for j in range(self.Nmat.shape[1]):
                 self.Nmat[i, j] = (len([atom for atom in self.atoms if
-                                       atom.symbol==self.elements[i]]) *
-                                  len([atom for atom in self.atoms if
-                                       atom.symbol==self.elements[j]]))
+                                       atom.symbol == self.elements[i]]) *
+                                   len([atom for atom in self.atoms if
+                                       atom.symbol == self.elements[j]]))
 
         self.extend_positions()
         self.set_element_matrix()
@@ -101,25 +102,25 @@ class OganovFP():
     def set_element_matrix(self):
         ''' Form the matrix for Ni and Nj used in calculating self.h '''
 
-        ielements, icounts = np.unique(self.atoms.get_chemical_symbols(),
-                                       return_counts=True)
+        ielements, icount = np.unique(self.atoms.get_chemical_symbols(),
+                                      return_counts=True)
         sortindices = np.argsort(ielements)
         ielements = ielements[sortindices]
-        icounts = icounts[sortindices]
+        icount = icount[sortindices]
         
         def f(element):
-            return icounts[np.where(ielements == element)[0][0]]
+            return icount[np.where(ielements == element)[0][0]]
 
         counti = [f(e) for e in self.atoms.get_chemical_symbols()]
 
-        jelements, jcounts = np.unique(self.extendedatoms.get_chemical_symbols(),
-                                       return_counts=True)
+        jelements, jcount = np.unique(self.extendedatoms.get_chemical_symbols(),
+                                      return_counts=True)
         sortindices = np.argsort(jelements)
         jelements = jelements[sortindices]
-        jcounts = jcounts[sortindices]
+        jcount = jcount[sortindices]
 
         def f(element):
-            return jcounts[np.where(jelements == element)[0][0]]
+            return jcount[np.where(jelements == element)[0][0]]
 
         countj = [f(e) for e in self.extendedatoms.get_chemical_symbols()]
 
@@ -143,7 +144,7 @@ class OganovFP():
         ''' Calculate the Gaussian-broadened fingerprint. '''
 
         self.G = np.ndarray([self.n, self.n, self.N])
-        x = np.linspace(0, self.limit, self.N) # variable array
+        x = np.linspace(0, self.limit, self.N)  # variable array
 
         # Broadening of each peak:
         for i in range(self.n):
