@@ -548,11 +548,7 @@ class OganovFP():
                     third += np.tensordot(self.gradients[index1][A2],
                                           d2[A1],
                                           axes=[0,0])
-        third *= prefactor
-        #print(1, t1-t0)
-        #print(2, t2-t1)
-        # print("Time in dk_drm_drn_dDelta: %.04f sec" % (t3-t0))
-
+        third *= prefactor  
         return first + second + third
 
     
