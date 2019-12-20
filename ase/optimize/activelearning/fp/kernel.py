@@ -1,9 +1,5 @@
 from __future__ import print_function
 import numpy as np
-import numpy.linalg as la
-from scipy.spatial.distance import pdist
-import time
-
 from ase.optimize.activelearning.gp.kernel import SE_kernel
 
 class FPKernel(SE_kernel):

@@ -1,11 +1,7 @@
 from scipy.spatial.distance import pdist
-from scipy.signal import gaussian
-from scipy.ndimage.interpolation import shift
 from math import pi
-from matplotlib import pyplot as plt
 from scipy.spatial import distance_matrix
 import numpy as np
-import copy
 import time
 from warnings import catch_warnings, simplefilter
 
@@ -585,31 +581,6 @@ class OganovFP():
 
 
     def d_dDelta_dFP_drm(self, index):
-
-        # i = index
-        # A = list(self.elements).index(self.atoms[i].symbol)
-        # result = np.zeros([self.n, self.N, 3])
-
-        # elementlist = list(self.elements)
-        # jsymbols = np.array([elementlist.index(atom.symbol) for atom in self.extendedatoms])
-        # factors = np.ones([self.n, self.n]) + np.eye(self.n)
-
-        # for B in range(self.n):
-
-        #     jsum = np.zeros([self.N, 3])
-
-        #     for j in range(len(self.extendedatoms)):
-
-        #         if B != jsymbols[j]:
-        #            continue
-
-        #         jsum += np.outer(self.dGij_dDelta(i,j), -self.rm[i,j])
-
-        #     result[B] += factors[A,B] * jsum
-        
-        # return result
-
-
 
         # Precalculate:
         
