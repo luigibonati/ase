@@ -41,8 +41,8 @@ class FPKernel(SE_kernel):
         return hessian
 
     def kernel(self, x1, x2):
-        '''Squared exponential kernel including derivatives. 
-        This function returns a D+1 x D+1 matrix, 
+        '''Squared exponential kernel including derivatives.
+        This function returns a D+1 x D+1 matrix
         where D is the dimension of the manifold'''
 
         K = np.identity(self.D+1)
@@ -74,7 +74,7 @@ class FPKernel(SE_kernel):
                 K[i*(D+1):(i+1)*(D+1), j*(D+1):(j+1)*(D+1)] = k
                 K[j*(D+1):(j+1)*(D+1), i*(D+1):(i+1)*(D+1)] = k.T
 
-            K[i*(D+1):(i+1)*(D+1), 
+            K[i*(D+1):(i+1)*(D+1),
               i*(D+1):(i+1)*(D+1)] = self.kernel(X[i], X[i])
 
 
@@ -98,14 +98,14 @@ class FPKernel(SE_kernel):
     
     # ----Derivatives of the kernel function respect to the scale ---
     def dK_dl_k(self, x1, x2):
-        '''Returns the derivative of the kernel function respect to  l 
+        '''Returns the derivative of the kernel function respect to  l
         '''
         
         return x1.dk_dl(x2)
 
     
     def dK_dl_j(self, x1, x2):
-        '''Returns the derivative of the gradient of the kernel 
+        '''Returns the derivative of the gradient of the kernel
         function respect to l'''
 
         # prefactor = (self.distance(x1, x2)**2 / self.l**2 - 2) / self.l
@@ -119,7 +119,7 @@ class FPKernel(SE_kernel):
 
     
     def dK_dl_h(self, x1, x2):
-        '''Returns the derivative of the hessian of the kernel 
+        '''Returns the derivative of the hessian of the kernel
         function respect to l'''
         
         d = 3
@@ -161,7 +161,7 @@ class FPKernel(SE_kernel):
 
     
     def dK_dDelta_j(self, x1, x2):
-        '''Returns the derivative of the gradient of the kernel 
+        '''Returns the derivative of the gradient of the kernel
         function respect to Delta'''
 
         vector = np.zeros([len(x1.atoms), 3])
@@ -172,7 +172,7 @@ class FPKernel(SE_kernel):
 
     
     def dK_dDelta_h(self, x1, x2):
-        '''Returns the derivative of the hessian of the kernel 
+        '''Returns the derivative of the hessian of the kernel
         function respect to Delta'''
         
         d = 3
@@ -206,7 +206,7 @@ class FPKernel(SE_kernel):
     
     
     def gradient(self, X):
-        '''Computes the gradient of matrix K given 
+        '''Computes the gradient of matrix K given
         the data respect to the hyperparameters
         Note matrix K here is self.K(X,X)
 

@@ -42,9 +42,9 @@ class OganovFP():
         self.Nmat = np.ndarray([self.n, self.n])
         for i in range(self.Nmat.shape[0]):
             for j in range(self.Nmat.shape[1]):
-                self.Nmat[i, j] = (len([atom for atom in self.atoms if 
-                                       atom.symbol==self.elements[i]]) * 
-                                  len([atom for atom in self.atoms if 
+                self.Nmat[i, j] = (len([atom for atom in self.atoms if
+                                       atom.symbol==self.elements[i]]) *
+                                  len([atom for atom in self.atoms if
                                        atom.symbol==self.elements[j]]))
 
         self.extend_positions()
@@ -77,7 +77,7 @@ class OganovFP():
 
         # Number of cells needed to consider given the limit and pbc:
         ncells = [self.limit // lengths[i] + 1 for i in range(3)]
-        nx, ny, nz = [1 + 2 * int(n) * self.pbc[i] 
+        nx, ny, nz = [1 + 2 * int(n) * self.pbc[i]
                       for i, n in enumerate(ncells)]
 
         self.extendedatoms = self.atoms.repeat([nx, ny, nz])
@@ -184,7 +184,7 @@ class OganovFP():
                 for p in range(npeaks):
                     g += h[p] * np.exp(- (x - R[p])**2 / 2 / self.delta**2)
 
-                self.G[i, j] = g                
+                self.G[i, j] = g
         return self.G
 
     def get_fingerprint_vector(self):
@@ -219,7 +219,7 @@ class OganovFP():
                     continue
 
                 # position vector between atoms:
-                rij = self.rm[i, j] 
+                rij = self.rm[i, j]
                 Gij = self.Gij(i, j)
                 jsum += np.outer(Gij, -rij)
                 
@@ -326,7 +326,7 @@ class OganovFP():
         if D == 0:
             return 0
 
-        result = 0    
+        result = 0
         dFP_dDelta1 = self.dFP_dDelta()
         dFP_dDelta2 = fp2.dFP_dDelta()
         for A in range(self.n):
@@ -405,7 +405,7 @@ class OganovFP():
         second = prefactor * Bsum
 
         elementlist = list(self.elements)
-        jsymbols = [elementlist.index(atom.symbol) 
+        jsymbols = [elementlist.index(atom.symbol)
                     for atom in self.extendedatoms]
         Bsum = np.zeros(3)
         # Sum over elements:
@@ -418,7 +418,7 @@ class OganovFP():
                 if B != jsymbols[j]:
                     continue
 
-                rij = self.rm[i, j] 
+                rij = self.rm[i, j]
                 jsum += (1 + int(A == B)) * np.outer(self.dGij_dDelta(i, j), -rij)
 
             Bsum += (1 + int(A != B)) * np.tensordot(tildexvec,
@@ -435,8 +435,8 @@ class OganovFP():
 
         xvec = np.linspace(0., self.limit, self.N)
         diffvec = xvec - xij
-        Gij = ((2 / xij - diffvec / self.delta**2) * 
-               self.h[i, j] / xij * 
+        Gij = ((2 / xij - diffvec / self.delta**2) *
+               self.h[i, j] / xij *
                np.exp(- diffvec**2 / 2 / self.delta**2))
 
         return Gij
@@ -501,7 +501,7 @@ class OganovFP():
                     third += np.tensordot(self.gradients[index1][A2],
                                           d2[A1],
                                           axes=[0, 0])
-        third *= prefactor  
+        third *= prefactor
         return first + second + third
 
     def d_dDelta_D_dD_drm(self, fp2, index):

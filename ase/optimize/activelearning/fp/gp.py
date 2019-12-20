@@ -46,7 +46,7 @@ class FPGaussianProcess():
 
         self.hyperparams = {}
 
-        self.noisefactor = noisefactor 
+        self.noisefactor = noisefactor
         # noise ratio between energy and force regularization
 
     def set_hyperparams(self, params, noise):
@@ -135,7 +135,7 @@ class FPGaussianProcess():
         uncertainty at point x.
         It returns f and V:
         f : prediction: [y, grady]
-        V : Covariance matrix. 
+        V : Covariance matrix.
             Its diagonal is the variance of each component of f.
 
         Parameters:
@@ -191,7 +191,7 @@ class FPGaussianProcess():
 
         # Compute log likelihood
         logP = (-0.5 * np.dot(Y.flatten() - self.m, self.a)
-                - np.sum(np.log(np.diag(self.L))) 
+                - np.sum(np.log(np.diag(self.L)))
                 - X.shape[0] / 2 * np.log(2 * np.pi))
 
         print("Parameters:", txt1, "       -logP: %12.02f" % -logP)
@@ -204,7 +204,7 @@ class FPGaussianProcess():
         '''Given a set of observations, X, Y; optimize the scale
         of the Gaussian Process maximizing the marginal log-likelihood.
         This method calls TRAIN there is no need to call the TRAIN method again.
-        The method also sets the parameters of the Kernel 
+        The method also sets the parameters of the Kernel
         to their optimal value at the end of execution
 
         Parameters:
@@ -212,12 +212,12 @@ class FPGaussianProcess():
         X: observations(i.e. positions). numpy array with shape: nsamples x D
         Y: targets (i.e. energy and forces).
            numpy array with shape (nsamples, D+1)
-        tol: tolerance on the maximum component of the gradient of the 
+        tol: tolerance on the maximum component of the gradient of the
            log-likelihood.
            (See scipy's L-BFGS-B documentation:
            https://docs.scipy.org/doc/scipy/reference/generated/
               scipy.optimize.minimize.html )
-        eps: include bounds to the hyperparameters as a +- 
+        eps: include bounds to the hyperparameters as a +-
            a percentage of hyperparameter
             if eps is None, there are no bounds in the optimization
 
@@ -246,8 +246,8 @@ class FPGaussianProcess():
         for string in params_to_update:
             params.append(self.hyperparams[string])
 
-        result = minimize(self.neg_log_likelihood, 
-                          params, 
+        result = minimize(self.neg_log_likelihood,
+                          params,
                           args=arguments,
                           method='L-BFGS-B',
                           #jac=True,
@@ -285,16 +285,16 @@ class FPGaussianProcess():
         X: observations(i.e. positions). numpy array with shape: nsamples x D
         Y: targets (i.e. energy and forces).
            numpy array with shape (nsamples, D+1)
-        option: Whether we just want the value or we want to update the 
+        option: Whether we just want the value or we want to update the
            hyperparameter. Possible values:
-               update: change the weight of the kernel accordingly. 
+               update: change the weight of the kernel accordingly.
                        Requires a trained Gaussian Process. It
-                       works with any kernel. 
+                       works with any kernel.
                        NOTE: the model is RETRAINED
 
                estimate: return the value of the weight that maximizes
                          the marginal likelihood with all other variables
-                         fixed. 
+                         fixed.
                          Requires a trained Gaussian Process with a kernel of
                          value 1.0
 
