@@ -205,8 +205,8 @@ class OganovFP():
         return self.G.flatten()
 
 
-    ### ::: GRADIENTS ::: ###
-    ### ----------------- ###
+    # ::: GRADIENTS ::: #
+    # ----------------- #
 
     def calculate_gradient(self, index):
         '''
@@ -251,8 +251,8 @@ class OganovFP():
 
 
 
-    ### ::: KERNEL STUFF ::: ###
-    ### -------------------- ###
+    # ::: KERNEL STUFF ::: #
+    # -------------------- #
 
 
     def distance(self, x1, x2):
@@ -661,21 +661,17 @@ class CartesianCoordinatesFP():
 
         return
 
-
     def set_params(self):
         self.weight = self.params['weight']
         self.l = self.params['scale']
         self.lengthscale = self.params[self.lengthscaleparam]
         return
     
-
     def set_atoms(self, atoms):
         self.atoms = atoms
 
-
     def get_fingerprint_vector(self):
         return self.atoms.positions.flatten()
-
 
     def update(self, params={}):
         for param in params:
@@ -684,34 +680,29 @@ class CartesianCoordinatesFP():
         self.set_params()
         return
     
-
     def distance(self, x1, x2):
         return pdist([x1.get_fingerprint_vector(),
                       x2.get_fingerprint_vector()])
-
 
     def kernel(self, x1, x2):
         assert x1.l == x2.l
         return np.exp(-self.distance(x1, x2)**2 / 2 / self.l**2)
 
-    
     def kernel_gradient(self, fp2, index):
         """
         Calculates the derivative of the kernel between
         self and fp2 with respect to atom with index 'index' in atom set
         of self.
         """
-
         x1 = self.atoms[index].position
         x2 = fp2.atoms[index].position
         prefactor = -(x1 - x2) / self.l**2
         return prefactor * self.kernel(self, fp2)
 
-
     def kernel_hessian(self, fp2, index1, index2):
 
         x1 = self.atoms[index1].position - fp2.atoms[index1].position
-        x2 = self.atoms[index2].position - fp2.atoms[index2].position 
+        x2 = self.atoms[index2].position - fp2.atoms[index2].position
         P = np.outer(x1, x2) / self.l**2
         
         prefactor = (np.identity(3) * int(index1 == index2) - P) / self.l**2
@@ -720,4 +711,3 @@ class CartesianCoordinatesFP():
         assert prefactor.shape[1] == 3
 
         return prefactor * self.kernel(self, fp2)
-
