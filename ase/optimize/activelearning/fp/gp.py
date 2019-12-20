@@ -145,7 +145,6 @@ class FPGaussianProcess():
                             if True, the prediction f and the variance V are
                             returned: Note V is O(D*nsample2)'''
 
-        n = len(self.X)
         k = self.kernel.kernel_vector(x, self.X)
 
         priorarray = self.prior.prior(np.ones(len(x.atoms) * 3))
