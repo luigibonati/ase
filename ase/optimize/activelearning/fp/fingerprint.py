@@ -6,7 +6,6 @@ from warnings import catch_warnings, simplefilter
 
 class OganovFP():
 
-
     def __init__(self, limit=10.0, delta=0.5, N=200, pbc=None):
 
 
@@ -328,7 +327,7 @@ class OganovFP():
         Qm = np.zeros(3)
         Qn = np.zeros(3)
         for B in range(self.n):
-            Qm +=   (1 + int(B != A1)) * np.tensordot(tildexvec[B, A1], g1[B], axes=[0, 0])
+            Qm +=  (1 + int(B != A1)) * np.tensordot(tildexvec[B, A1], g1[B], axes=[0, 0])
             Qn += - (1 + int(B != A2)) * np.tensordot(tildexvec[B, A2], g2[B], axes=[0, 0])
             
         C = np.zeros([3, 3])
@@ -345,15 +344,12 @@ class OganovFP():
 
         return result
 
-
     # ---------------------------------------------------------
     # ------------- Derivatives w.r.t. Delta ------------------
     # ---------------------------------------------------------
 
-
     def dk_dDelta(self, fp2):
         return self.dk_dD(fp2) * self.dD_dDelta(fp2)
-
 
     def dD_dDelta(self, fp2):
         D = self.distance(self, fp2)
@@ -372,7 +368,6 @@ class OganovFP():
         result *= 1 / D
                 
         return result
-
 
     def dFP_dDelta(self):
 
@@ -476,7 +471,6 @@ class OganovFP():
 
         return Gij
 
-        
     def dGij_dDelta(self, i, j):
 
         xvec = np.linspace(0., self.limit, self.N)
@@ -487,15 +481,13 @@ class OganovFP():
 
         normsq = (xvec - xij)**2
 
-        first = 1 / self.delta * self.h[i, j] / xij
-                * np.exp(-normsq / 2 / self.delta**2)
+        first = 1 / self.delta * self.h[i, j] / xij * np.exp(-normsq / 2 / self.delta**2)
         second = 2 / xij * (normsq / self.delta**2 - 1) + (xvec - xij) / self.delta**2 * (3 - normsq / self.delta**2)
 
         return first * second
 
     # ----------------------------------------------
     # d_dDelta: Hessian
-
 
     def dk_drm_drn_dDelta(self, fp2, index1, index2):
 
@@ -542,7 +534,6 @@ class OganovFP():
         third *= prefactor  
         return first + second + third
 
-    
     def d_dDelta_D_dD_drm(self, fp2, index):
         i = index
         A = list(self.elements).index(self.atoms[i].symbol)
@@ -564,7 +555,6 @@ class OganovFP():
             Bsum += prefactor * np.tensordot(tildexvec, d2[B], axes=[0, 0])
             
         return Bsum
-
 
     def d_dDelta_dFP_drm(self, index):
 
@@ -599,16 +589,12 @@ class OganovFP():
         self.d_dDelta_dFP_drm_calculated = True
         return self.d_ddelta_dfp_drm[index]
 
-
     # Derivatives w.r.t. scale (l):
-    
-
     def dk_dl(self, fp2):
         result = (self.distance(self, fp2)**2
                   * 1 / self.l**3
                   * self.kernel(self, fp2))
         return result
-
 
     def d_dl_dk_drm(self, fp2, index):
         result = (1 / self.l
@@ -617,7 +603,6 @@ class OganovFP():
                   * self.dD_drm(fp2, index))
         return result
 
-    
     def d_dl_dk_drm_drn(self, fp2, index1, index2):
         Dscaled_squared = (self.distance(self, fp2) / self.l)**2
         first = (1 / self.l
@@ -632,7 +617,6 @@ class OganovFP():
 
         return first + second
         
-
     def dk_dweight(self, fp2):
         return self.kernel(self, fp2) * 2 # / self.weight
         
