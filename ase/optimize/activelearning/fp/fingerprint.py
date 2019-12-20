@@ -530,15 +530,15 @@ class OganovFP():
                                                    axes=[0, 0])
                 third += prefactor2 * np.tensordot(self.gradients[index1][B],
                                                    d2[B],
-                                                   axes=[0,0])
+                                                   axes=[0, 0])
             else:
                 if B in [A1, A2]:
                     third += np.tensordot(d1[A2],
                                           fp2.gradients[index2][A1],
-                                          axes=[0,0])
+                                          axes=[0, 0])
                     third += np.tensordot(self.gradients[index1][A2],
                                           d2[A1],
-                                          axes=[0,0])
+                                          axes=[0, 0])
         third *= prefactor  
         return first + second + third
 
@@ -557,11 +557,11 @@ class OganovFP():
         g = self.gradients[i]
 
         for B in range(self.n):
-            tildexvec = self.G[A,B] - fp2.G[A,B]
-            tildexvec_dDelta = dFP_dDelta1[A,B] - dFP_dDelta2[A,B]
+            tildexvec = self.G[A, B] - fp2.G[A, B]
+            tildexvec_dDelta = dFP_dDelta1[A, B] - dFP_dDelta2[A, B]
             prefactor = 1 + int(A != B)
-            Bsum += prefactor * np.tensordot(tildexvec_dDelta, g[B], axes=[0,0])
-            Bsum += prefactor * np.tensordot(tildexvec, d2[B], axes=[0,0])
+            Bsum += prefactor * np.tensordot(tildexvec_dDelta, g[B], axes=[0, 0])
+            Bsum += prefactor * np.tensordot(tildexvec, d2[B], axes=[0, 0])
             
         return Bsum
 
@@ -592,9 +592,9 @@ class OganovFP():
                     if B != jsymbols[j]:
                         continue
 
-                    jsum += np.outer(self.dGij_dDelta(i,j), -self.rm[i,j])
+                    jsum += np.outer(self.dGij_dDelta(i, j), -self.rm[i, j])
 
-                self.d_ddelta_dfp_drm[i][B] += factors[A,B] * jsum
+                self.d_ddelta_dfp_drm[i][B] += factors[A, B] * jsum
         
         self.d_dDelta_dFP_drm_calculated = True
         return self.d_ddelta_dfp_drm[index]
