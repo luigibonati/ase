@@ -633,7 +633,7 @@ class OganovFP():
                 for j in range(len(self.extendedatoms)):
 
                     if B != jsymbols[j]:
-                       continue
+                        continue
 
                     jsum += np.outer(self.dGij_dDelta(i,j), -self.rm[i,j])
 

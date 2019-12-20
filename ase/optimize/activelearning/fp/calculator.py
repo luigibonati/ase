@@ -46,16 +46,16 @@ class FPCalculator(Calculator, FPGaussianProcess):
             'fit'  : update the prior s.t. it maximizes the marginal likelihood
 
     params_to_update: dictionary {param_name : bounds}
-        Hyperparameters of the kernel to be updated. If the dictionary 
+        Hyperparameters of the kernel to be updated. If the dictionary
         is empty, hyperparameters are kept fixed. The new hyperparameters
-        are found maximizing the marginal likelihood of the model. 
-        If the optimization fails, the values of the hyperparameters are 
+        are found maximizing the marginal likelihood of the model.
+        If the optimization fails, the values of the hyperparameters are
         kept as they were.
         Each hyperaparameter to be updated requires to have a bound specified.
         There are three options for the bounds of each hyperparameter:
             * None: The optimization on that hyperparameters is unconstrained.
             * tuple (min, max): interval for updating the hyperparameters
-            * float between 0 and 1: Letting the hyperparameter vary a 
+            * float between 0 and 1: Letting the hyperparameter vary a
                 percentage. Let t be a hyperparameter. Then it is optimized
                 under the constraint (1-bound)*t_0 <= t <= (1+bound)*t_0 where
                 t_0 is the value of the hyperparameter in the previous step.
@@ -104,7 +104,7 @@ class FPCalculator(Calculator, FPGaussianProcess):
                  update_prior_strategy='maximum',
                  kernel_params={'weight': 1., 'scale': 0.4},
                  fit_weight=None, noise=0.005,
-                 params_to_update={}, fingerprint = None,
+                 params_to_update={}, fingerprint=None,
                  batch_size=5, bounds=None, kernel=None,
                  max_train_data=None, force_consistent=None,
                  max_train_data_strategy='nearest_observations',
