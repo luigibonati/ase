@@ -130,7 +130,7 @@ class FPGaussianProcess():
                   overwrite_b=True, check_finite=True)
 
 
-    def predict(self, x, get_variance = False):
+    def predict(self, x, get_variance=False):
         '''Given a trained Gaussian Process, it predicts the value and the
         uncertainty at point x.
         It returns f and V:
@@ -251,8 +251,8 @@ class FPGaussianProcess():
                           args=arguments,
                           method='L-BFGS-B',
                           #jac=True,
-                          bounds = bounds,
-                          options = {'gtol':tol, 'ftol':0.01*tol})
+                          bounds=bounds,
+                          options={'gtol': tol, 'ftol': 0.01*tol})
 
         print("Time spent minimizing neg log likelihood: %.02f sec" %
               (time.time()-t0))
@@ -274,7 +274,7 @@ class FPGaussianProcess():
         return {'hyperparameters': self.hyperparams, 'converged': converged}
 
 
-    def fit_weight_only(self, X, Y, option = 'update'):
+    def fit_weight_only(self, X, Y, option='update'):
         """Fit weight of the kernel keeping all other hyperparameters fixed.
         Here we assume the kernel k(x,x',theta) can be factorized as:
                     k = weight**2 * f(x,x',other hyperparameters)
