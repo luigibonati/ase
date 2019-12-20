@@ -129,7 +129,9 @@ class OganovFP():
         jelements = jelements[sortindices]
         jcounts = jcounts[sortindices]
 
-        f = lambda element: jcounts[np.where(jelements == element)[0][0]]
+        def f(element):
+            return jcounts[np.where(jelements == element)[0][0]]
+
         countj = [f(e) for e in self.extendedatoms.get_chemical_symbols()]
 
         self.em = np.outer(counti, countj).astype(int)
