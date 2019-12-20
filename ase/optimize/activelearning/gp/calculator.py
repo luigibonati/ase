@@ -104,7 +104,7 @@ class GPCalculator(Calculator, GaussianProcess):
                  kernel_params={'weight': 1., 'scale': 0.4},
                  fit_weight=None, noise=0.005,
                  params_to_update={},
-                 batch_size=5, bounds=None, kernel=None,
+                 batch_size=5, kernel=None,
                  max_train_data=None, force_consistent=None,
                  max_train_data_strategy='nearest_observations',
                  wrap_positions=False, calculate_uncertainty=True,

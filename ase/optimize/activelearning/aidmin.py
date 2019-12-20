@@ -467,7 +467,7 @@ class GPMin(AIDMin):
                                calculate_uncertainty=False,
                                prior=prior, kernel=kernel,
                                params_to_update=params_to_update,
-                               bounds=bounds, batch_size=batch_size,
+                               batch_size=batch_size,
                                mask_constraints=False)
         """
         Thoughts:
