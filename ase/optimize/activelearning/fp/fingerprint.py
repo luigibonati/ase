@@ -48,7 +48,7 @@ class OganovFP():
         self.Nmat = np.ndarray([self.n, self.n])
         for i in range(self.Nmat.shape[0]):
             for j in range(self.Nmat.shape[1]):
-                self.Nmat[i,j] = (len([atom for atom in self.atoms if 
+                self.Nmat[i, j] = (len([atom for atom in self.atoms if 
                                        atom.symbol==self.elements[i]]) * 
                                   len([atom for atom in self.atoms if 
                                        atom.symbol==self.elements[j]]))
@@ -85,7 +85,8 @@ class OganovFP():
 
         # Number of cells needed to consider given the limit and pbc:
         ncells = [self.limit // lengths[i] + 1 for i in range(3)]
-        nx, ny, nz = [1 + 2 * int(n) * self.pbc[i] for i,n in enumerate(ncells)]
+        nx, ny, nz = [1 + 2 * int(n) * self.pbc[i] 
+                      for i, n in enumerate(ncells)]
 
         self.extendedatoms = self.atoms.repeat([nx, ny, nz])
 
@@ -199,11 +200,9 @@ class OganovFP():
                 for p in range(npeaks):
                     g += h[p] * np.exp(- (x - R[p])**2 / 2 / self.delta**2)
 
-                self.G[i,j] = g
+                self.G[i, j] = g
                 
-
         return self.G
-        
 
     def get_fingerprint_vector(self):
         return self.G.flatten()
@@ -307,7 +306,7 @@ class OganovFP():
         for B in range(self.n):
             Bsum += (1 + int(A != B)) * np.tensordot(tildexvec[B, A],
                                                      gs[B],
-                                                     axes=[0,0])
+                                                     axes=[0, 0])
 
         result = Bsum / D
         
@@ -329,10 +328,10 @@ class OganovFP():
         Qm = np.zeros(3)
         Qn = np.zeros(3)
         for B in range(self.n):
-            Qm +=   (1 + int(B != A1)) * np.tensordot(tildexvec[B, A1], g1[B], axes=[0,0])
-            Qn += - (1 + int(B != A2)) * np.tensordot(tildexvec[B, A2], g2[B], axes=[0,0])
+            Qm +=   (1 + int(B != A1)) * np.tensordot(tildexvec[B, A1], g1[B], axes=[0, 0])
+            Qn += - (1 + int(B != A2)) * np.tensordot(tildexvec[B, A2], g2[B], axes=[0, 0])
             
-        C = np.zeros([3,3])
+        C = np.zeros([3, 3])
         for B in range(self.n): # sum over elements
 
             if A1 == A2:
@@ -347,15 +346,9 @@ class OganovFP():
         return result
 
 
-
-
-
-
-
     # ---------------------------------------------------------
     # ------------- Derivatives w.r.t. Delta ------------------
     # ---------------------------------------------------------
-
 
 
     def dk_dDelta(self, fp2):
@@ -372,8 +365,8 @@ class OganovFP():
         dFP_dDelta2 = fp2.dFP_dDelta()
         for A in range(self.n):
             for B in range(self.n):
-                first = self.G[A,B] - fp2.G[A,B]
-                second = dFP_dDelta1[A,B] - dFP_dDelta2[A,B]
+                first = self.G[A, B] - fp2.G[A, B]
+                second = dFP_dDelta1[A, B] - dFP_dDelta2[A, B]
                 result += first.dot(second)
 
         result *= 1 / D
@@ -404,7 +397,7 @@ class OganovFP():
                         if B != jsymbols[j]:
                             continue
 
-                        xij = self.dm[i,j]
+                        xij = self.dm[i, j]
 
                         if xij == 0 or xij > self.limit:
                             continue
@@ -413,8 +406,8 @@ class OganovFP():
                         subresult = np.exp(- normsq / 2 / self.delta**2)
                         subresult *= (normsq / self.delta**2 - 1) * self.h[i,j]
 
-                        result[A,B] += subresult
-                result[B,A] = result[A,B] # symmetric matrix
+                        result[A, B] += subresult
+                result[B, A] = result[A, B]   # symmetric matrix
                         
         result *= 1 / self.delta
 
