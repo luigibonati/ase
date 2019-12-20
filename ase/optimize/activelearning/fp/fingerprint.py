@@ -115,8 +115,10 @@ class OganovFP():
         sortindices = np.argsort(ielements)
         ielements = ielements[sortindices]
         icounts = icounts[sortindices]
+        
+        def f(element):
+            return icounts[np.where(ielements == element)[0][0]]
 
-        f = lambda element: icounts[np.where(ielements == element)[0][0]]
         counti = [f(e) for e in self.atoms.get_chemical_symbols()]
 
 
