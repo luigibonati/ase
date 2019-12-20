@@ -46,7 +46,8 @@ class FPKernel(SE_kernel):
 
     def kernel(self, x1, x2):
         '''Squared exponential kernel including derivatives. 
-        This function returns a D+1 x D+1 matrix, where D is the dimension of the manifold'''
+        This function returns a D+1 x D+1 matrix, 
+        where D is the dimension of the manifold'''
 
         K = np.identity(self.D+1)
 
@@ -209,7 +210,8 @@ class FPKernel(SE_kernel):
     
     
     def gradient(self, X):
-        '''Computes the gradient of matrix K given the data respect to the hyperparameters
+        '''Computes the gradient of matrix K given 
+        the data respect to the hyperparameters
         Note matrix K here is self.K(X,X)
 
         returns a 3-entry list of n(D+1) x n(D+1) matrices '''

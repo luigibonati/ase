@@ -46,7 +46,8 @@ class FPGaussianProcess():
 
         self.hyperparams = {}
 
-        self.noisefactor = noisefactor # noise ratio between energy and force regularization
+        self.noisefactor = noisefactor 
+        # noise ratio between energy and force regularization
 
     def set_hyperparams(self, params, noise):
         '''Set hyperparameters of the regression.
@@ -134,7 +135,8 @@ class FPGaussianProcess():
         uncertainty at point x.
         It returns f and V:
         f : prediction: [y, grady]
-        V : Covariance matrix. Its diagonal is the variance of each component of f.
+        V : Covariance matrix. 
+            Its diagonal is the variance of each component of f.
 
         Parameters:
 
@@ -193,22 +195,6 @@ class FPGaussianProcess():
                 - np.sum(np.log(np.diag(self.L))) 
                 - X.shape[0] / 2 * np.log(2 * np.pi))
 
-        # # Gradient of the loglikelihood
-        # grad = self.kernel.gradient(X)
-
-        # # vectorizing the derivative of the log likelyhood
-        # D_P_input = np.array([np.dot(np.outer(self.a, self.a), g) for g in grad])
-        # D_complexity = np.array([cho_solve((self.L, self.lower), g)
-        #                          for g in grad])
-
-        # DlogP = 0.5 * np.trace(D_P_input - D_complexity, axis1=1, axis2=2)
-        # txt2 = ""
-        # for value in DlogP:
-        #     txt2 += "%12.03f" % (-value)
-        # print("Parameters:", txt1, "       -logP: %12.02f       -DlogP: " % -logP, txt2)
-        # # print("Parameters:", txt1, "       -logP: %12.02f" % -logP)
-        # return -logP , -DlogP
-
         print("Parameters:", txt1, "       -logP: %12.02f" % -logP)
         return -logP
 
@@ -219,18 +205,21 @@ class FPGaussianProcess():
         '''Given a set of observations, X, Y; optimize the scale
         of the Gaussian Process maximizing the marginal log-likelihood.
         This method calls TRAIN there is no need to call the TRAIN method again.
-        The method also sets the parameters of the Kernel to their optimal value at
-        the end of execution
+        The method also sets the parameters of the Kernel 
+        to their optimal value at the end of execution
 
         Parameters:
 
         X: observations(i.e. positions). numpy array with shape: nsamples x D
         Y: targets (i.e. energy and forces).
            numpy array with shape (nsamples, D+1)
-        tol: tolerance on the maximum component of the gradient of the log-likelihood.
+        tol: tolerance on the maximum component of the gradient of the 
+           log-likelihood.
            (See scipy's L-BFGS-B documentation:
-           https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html )
-        eps: include bounds to the hyperparameters as a +- a percentage of hyperparameter
+           https://docs.scipy.org/doc/scipy/reference/generated/
+              scipy.optimize.minimize.html )
+        eps: include bounds to the hyperparameters as a +- 
+           a percentage of hyperparameter
             if eps is None, there are no bounds in the optimization
 
         Returns:
