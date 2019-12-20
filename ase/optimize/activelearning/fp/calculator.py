@@ -332,8 +332,8 @@ class FPCalculator(Calculator, FPGaussianProcess):
             self.train_images = None  # Remove the training list of images.
 
         # Mask geometry to be compatible with the trained GP (reduce memory).
-        x = self.atoms.get_positions(wrap=self.wrap).reshape(-1)
-        x = x[self.atoms_mask]
+        self.fp.set_atoms(self.atoms)
+        x = deepcopy(self.fp)
 
         # Get predictions.
         f, V = self.predict(x, get_variance=self.calculate_uncertainty)
