@@ -404,7 +404,7 @@ class OganovFP():
 
                         normsq = (xvec - xij)**2
                         subresult = np.exp(- normsq / 2 / self.delta**2)
-                        subresult *= (normsq / self.delta**2 - 1) * self.h[i,j]
+                        subresult *= (normsq / self.delta**2 - 1) * self.h[i, j]
 
                         result[A, B] += subresult
                 result[B, A] = result[A, B]   # symmetric matrix
@@ -414,8 +414,6 @@ class OganovFP():
         self.dfp_ddelta = result
         self.dFP_dDelta_calculated = True
         return result
-
-
 
     # ----------------------------------------------
     # d_dDelta: Gradient:
@@ -434,19 +432,20 @@ class OganovFP():
         
         Bsum = np.zeros(3)
         for B in range(self.n):
-            tildexvec = dFP_dDelta1[A,B] - dFP_dDelta2[A,B]
+            tildexvec = dFP_dDelta1[A, B] - dFP_dDelta2[A, B]
             jsum = self.gradients[index][B]
-            Bsum += (1 + int(A != B)) * np.tensordot(tildexvec, jsum, axes=[0,0])
+            Bsum += (1 + int(A != B)) * np.tensordot(tildexvec,
+                                                     jsum, axes=[0, 0])
 
         second = prefactor * Bsum
 
-
         elementlist = list(self.elements)
-        jsymbols = [elementlist.index(atom.symbol) for atom in self.extendedatoms]
+        jsymbols = [elementlist.index(atom.symbol) 
+                    for atom in self.extendedatoms]
         Bsum = np.zeros(3)
         # Sum over elements:
         for B in range(self.n):
-            tildexvec = self.G[A,B] - fp2.G[A,B]
+            tildexvec = self.G[A, B] - fp2.G[A, B]
             jsum = np.zeros([self.N, 3])
 
             for j in range(len(self.extendedatoms)):
@@ -454,19 +453,17 @@ class OganovFP():
                 if B != jsymbols[j]:
                     continue
 
-                rij = self.rm[i,j] #self.atoms[i].position - self.extendedatoms[j].position
-                jsum += (1 + int(A == B)) * np.outer(self.dGij_dDelta(i,j), -rij)
+                rij = self.rm[i, j] 
+                jsum += (1 + int(A == B)) * np.outer(self.dGij_dDelta(i, j), -rij)
 
-            Bsum += (1 + int(A != B)) * np.tensordot(tildexvec, jsum, axes=[0,0])        
+            Bsum += (1 + int(A != B)) * np.tensordot(tildexvec,
+                                                     jsum, axes=[0, 0])
 
         third = prefactor * Bsum
-
-
         return first + second + third
 
-
     def Gij(self, i, j):
-        xij = self.dm[i,j]
+        xij = self.dm[i, j]
 
         if xij == 0 or xij > self.limit:
             return 0.0
@@ -474,7 +471,7 @@ class OganovFP():
         xvec = np.linspace(0., self.limit, self.N)
         diffvec = xvec - xij
         Gij = ((2 / xij - diffvec / self.delta**2) * 
-               self.h[i,j] / xij * 
+               self.h[i, j] / xij * 
                np.exp(- diffvec**2 / 2 / self.delta**2))
 
         return Gij
@@ -483,14 +480,15 @@ class OganovFP():
     def dGij_dDelta(self, i, j):
 
         xvec = np.linspace(0., self.limit, self.N)
-        xij = self.dm[i,j]
+        xij = self.dm[i, j]
 
         if xij == 0 or xij > self.limit:
             return 0
 
         normsq = (xvec - xij)**2
 
-        first = 1 / self.delta * self.h[i,j] / xij * np.exp(-normsq / 2 / self.delta**2)
+        first = 1 / self.delta * self.h[i, j] / xij
+                * np.exp(-normsq / 2 / self.delta**2)
         second = 2 / xij * (normsq / self.delta**2 - 1) + (xvec - xij) / self.delta**2 * (3 - normsq / self.delta**2)
 
         return first * second
@@ -518,7 +516,7 @@ class OganovFP():
 
         # t2 = time.time()
 
-        third = np.zeros([3,3])
+        third = np.zeros([3, 3])
         A1 = list(self.elements).index(self.atoms[index1].symbol)
         A2 = list(fp2.elements).index(fp2.atoms[index2].symbol)
         d1 = self.d_dDelta_dFP_drm(index1)
@@ -529,7 +527,7 @@ class OganovFP():
                 prefactor2 = (1 + int(A1 != B))
                 third += prefactor2 * np.tensordot(d1[B],
                                                    fp2.gradients[index2][B],
-                                                   axes=[0,0])
+                                                   axes=[0, 0])
                 third += prefactor2 * np.tensordot(self.gradients[index1][B],
                                                    d2[B],
                                                    axes=[0,0])
