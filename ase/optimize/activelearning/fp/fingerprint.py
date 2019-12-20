@@ -2,7 +2,6 @@ from scipy.spatial.distance import pdist
 from math import pi
 from scipy.spatial import distance_matrix
 import numpy as np
-import time
 from warnings import catch_warnings, simplefilter
 
 class OganovFP():
