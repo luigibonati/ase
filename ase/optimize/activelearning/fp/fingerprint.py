@@ -7,13 +7,10 @@ from warnings import catch_warnings, simplefilter
 class OganovFP():
 
     def __init__(self, limit=10.0, delta=0.5, N=200, pbc=None):
-
-
         # constant parameters for fingerprint:
         self.limit = limit
         self.N = N
         self.pbc = pbc
-
 
         # modifiable parameters:
         self.params = {'weight': 1.0,
@@ -22,13 +19,11 @@ class OganovFP():
 
         self.set_params()
 
-
     def set_params(self):
         self.weight = self.params['weight']
         self.l = self.params['scale']
         self.delta = self.params['delta']
         return
-        
 
     def set_atoms(self, atoms):
         ''' Set new atoms and initialize '''
@@ -56,7 +51,6 @@ class OganovFP():
         self.set_element_matrix()
         self.update()
 
-
     def update(self, params=None):
         ''' Update method when parameters are changed '''
 
@@ -73,7 +67,6 @@ class OganovFP():
         self.dGij_dDelta_calculated = False
         self.d_dDelta_dFP_drm_calculated = False
         
-
     def extend_positions(self):
         ''' Extend the unit cell so that all the atoms within the limit
         are in the same cell, indexed properly.
@@ -103,9 +96,7 @@ class OganovFP():
             for j in range(len(self.extendedatoms)):
                 self.rm[i, j] = (self.atoms[i].position -
                                  self.extendedatoms[j].position)
-
         return
-
 
     def set_element_matrix(self):
         ''' Form the matrix for Ni and Nj used in calculating self.h '''
@@ -121,8 +112,6 @@ class OganovFP():
 
         counti = [f(e) for e in self.atoms.get_chemical_symbols()]
 
-
-
         jelements, jcounts = np.unique(self.extendedatoms.get_chemical_symbols(),
                                        return_counts=True)
         sortindices = np.argsort(jelements)
@@ -135,9 +124,7 @@ class OganovFP():
         countj = [f(e) for e in self.extendedatoms.get_chemical_symbols()]
 
         self.em = np.outer(counti, countj).astype(int)
-
         return self.em
-
 
     def set_peak_heights(self):
         ''' Calculate the delta peak heights self.h '''
@@ -150,9 +137,7 @@ class OganovFP():
                                            self.em *
                                            self.delta)),
                               0.0)
-
         return self.h
-
 
     def get_fingerprint(self):
         ''' Calculate the Gaussian-broadened fingerprint. '''
@@ -199,13 +184,11 @@ class OganovFP():
                 for p in range(npeaks):
                     g += h[p] * np.exp(- (x - R[p])**2 / 2 / self.delta**2)
 
-                self.G[i, j] = g
-                
+                self.G[i, j] = g                
         return self.G
 
     def get_fingerprint_vector(self):
         return self.G.flatten()
-
 
     # ::: GRADIENTS ::: #
     # ----------------- #
@@ -242,31 +225,21 @@ class OganovFP():
                 
             gradient[B] = (1 + int(A == B)) * jsum
 
-
         return gradient
-
 
     def calculate_all_gradients(self):
 
         self.gradients = np.array([self.calculate_gradient(atom.index) for atom in self.atoms])
         return self.gradients
 
-
-
     # ::: KERNEL STUFF ::: #
     # -------------------- #
-
 
     def distance(self, x1, x2):
         return pdist([x1.get_fingerprint_vector(),
                       x2.get_fingerprint_vector()])
 
-
     def kernel(self, x1, x2):
-
-        # return (self.weight**2
-        #         * np.exp(-self.distance(x1, x2)**2 / 2 / self.l**2))
-
         return np.exp(-self.distance(x1, x2)**2 / 2 / self.l**2)
 
     def kernel_gradient(self, fp2, index):
@@ -280,13 +253,11 @@ class OganovFP():
 
         return result
 
-
     def dk_dD(self, fp2):
         result = - (self.distance(self, fp2) / self.l**2
                     * self.kernel(self, fp2))
 
         return result
-
 
     def dD_drm(self, fp2, index):
 
@@ -311,7 +282,6 @@ class OganovFP():
         
         return result
     
-
     def kernel_hessian(self, fp2, index1, index2):
         
         prefactor = 1 / self.l**2 * self.kernel(self, fp2)
