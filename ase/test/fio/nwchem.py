@@ -1,13 +1,14 @@
-"""Checks that writing and reading of NWChem input files is consistent."""
+def test():
+    """Checks that writing and reading of NWChem input files is consistent."""
 
-from ase.build import molecule
-from ase import io
+    from ase.build import molecule
+    from ase import io
 
-atoms = molecule('CH3COOH')
-io.write('nwchem.nwi', atoms)
-atoms2 = io.read('nwchem.nwi')
+    atoms = molecule('CH3COOH')
+    io.write('nwchem.nwi', atoms)
+    atoms2 = io.read('nwchem.nwi')
 
-tol = 1e-8
+    tol = 1e-8
 
-check = sum(abs((atoms.positions - atoms2.positions).ravel()) > tol)
-assert check == 0
+    check = sum(abs((atoms.positions - atoms2.positions).ravel()) > tol)
+    assert check == 0
