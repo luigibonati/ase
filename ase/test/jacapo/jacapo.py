@@ -1,5 +1,6 @@
+# flake8: noqa
+
 def test():
-    # flake8: noqa
     import os
 
     from ase import Atoms, Atom

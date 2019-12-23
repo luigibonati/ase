@@ -5,34 +5,35 @@ def test():
     from ase.lattice.compounds import TRI_Fe2O3
 
 
-    rmc6f_input_text = """
-    (Version 6f format configuration file)
-    Metadata owner:     Joe Smith
-    Metadata date:      31-01-1900
-    Metadata material:  SF6
-    Metadata comment:  Some comments go here...
-    Metadata source:    GSAS
-    Number of moves generated:           89692
-    Number of moves tried:               85650
-    Number of moves accepted:            10074
-    Number of prior configuration saves: 0
-    Number of atoms:                     7
-    Number density (Ang^-3):                 0.068606
-    Supercell dimensions:                1 1 1
-    Cell (Ang/deg): 4.672816 4.672816 4.672816 90.0 90.0 90.0
-    Lattice vectors (Ang):
-        4.672816    0.000000    0.000000
-        0.000000    4.672816    0.000000
-        0.000000    0.000000    4.672816
-    Atoms:
-         1   S     0.600452    0.525100    0.442050     1   0   0   0
-         2   F     0.911952    0.450722    0.382733     2   0   0   0
-         3   F     0.283794    0.616712    0.500094     3   0   0   0
-         4   F     0.679823    0.854839    0.343915     4   0   0   0
-         5   F     0.531660    0.229024    0.535688     5   0   0   0
-         6   F     0.692514    0.584931    0.746683     6   0   0   0
-         7   F     0.509687    0.449350    0.111960     7   0   0   0
-    """
+    rmc6f_input_text = """\
+(Version 6f format configuration file)
+Metadata owner:     Joe Smith
+Metadata date:      31-01-1900
+Metadata material:  SF6
+Metadata comment:  Some comments go here...
+Metadata source:    GSAS
+Number of moves generated:           89692
+Number of moves tried:               85650
+Number of moves accepted:            10074
+Number of prior configuration saves: 0
+Number of atoms:                     7
+Number density (Ang^-3):                 0.068606
+Supercell dimensions:                1 1 1
+Cell (Ang/deg): 4.672816 4.672816 4.672816 90.0 90.0 90.0
+Lattice vectors (Ang):
+    4.672816    0.000000    0.000000
+    0.000000    4.672816    0.000000
+    0.000000    0.000000    4.672816
+Atoms:
+     1   S     0.600452    0.525100    0.442050     1   0   0   0
+     2   F     0.911952    0.450722    0.382733     2   0   0   0
+     3   F     0.283794    0.616712    0.500094     3   0   0   0
+     4   F     0.679823    0.854839    0.343915     4   0   0   0
+     5   F     0.531660    0.229024    0.535688     5   0   0   0
+     6   F     0.692514    0.584931    0.746683     6   0   0   0
+     7   F     0.509687    0.449350    0.111960     7   0   0   0
+"""
+
     # Information for system
     positions = [
         [0.600452, 0.525100, 0.442050],

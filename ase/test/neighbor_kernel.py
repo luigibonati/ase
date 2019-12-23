@@ -1,6 +1,6 @@
-def test():
-    # flake8: noqa
+# flake8: noqa
 
+def test():
     import numpy as np
 
     import ase
