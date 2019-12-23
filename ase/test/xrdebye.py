@@ -28,4 +28,4 @@ def test():
     # test SAXS
     obtained_saxs = xrd.calc_pattern(x=np.array([0.021, 0.09, 0.53]),
                                      mode='SAXS')
-    assert np.allclose(obtained_xrd, expected_xrd, rtol=tolerance)
+    assert np.allclose(obtained_saxs, expected_saxs, rtol=tolerance)
