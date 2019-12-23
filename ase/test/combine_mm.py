@@ -16,12 +16,12 @@ def test():
         r = rOH
         a = angleHOH * pi / 180
         dimer = Atoms('H2OH2O',
-    		  [(r * cos(a), 0, r * sin(a)),
-    		   (r, 0, 0),
-    		   (0, 0, 0),
-    		   (r * cos(a / 2), r * sin(a / 2), 0),
-    		   (r * cos(a / 2), -r * sin(a / 2), 0),
-    		   (0, 0, 0)])
+                      [(r * cos(a), 0, r * sin(a)),
+                       (r, 0, 0),
+                       (0, 0, 0),
+                       (r * cos(a / 2), r * sin(a / 2), 0),
+                       (r * cos(a / 2), -r * sin(a / 2), 0),
+                       (0, 0, 0)])
 
         dimer = dimer[[2, 0, 1, 5, 3, 4]]
         # put O-O distance in the cutoff range

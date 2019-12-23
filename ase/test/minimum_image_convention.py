@@ -37,7 +37,7 @@ def test():
 
     d3 = float("inf") * np.ones(len(atoms))
     for i, offset in zip(indices, offsets):
-    	p = atoms.positions[i] + offset @ atoms.get_cell()
-    	d = np.linalg.norm(p - atoms.positions[0])
-    	d3[i] = min(d3[i], d)
+        p = atoms.positions[i] + offset @ atoms.get_cell()
+        d = np.linalg.norm(p - atoms.positions[0])
+        d3[i] = min(d3[i], d)
     assert_allclose(d0, d3)

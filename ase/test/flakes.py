@@ -13,9 +13,7 @@ def test():
     except ImportError:
         raise unittest.SkipTest('flake8 module not available')
 
-
     asepath = Path(ase.__path__[0])
-
 
     def run_flake8():
         proc = Popen([sys.executable,
@@ -73,7 +71,6 @@ def test():
                                                      conclusion))
 
         assert errmsg == '', errmsg
-
 
     max_errors = {
         # do not compare types, use 'isinstance()'

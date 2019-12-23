@@ -7,7 +7,6 @@ import tempfile
 import unittest
 from glob import glob
 from distutils.version import LooseVersion
-import runpy
 import time
 import traceback
 import warnings
