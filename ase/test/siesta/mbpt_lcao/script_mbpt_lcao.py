@@ -69,7 +69,7 @@ def test():
 
 
     Na8.set_calculator(siesta)
-    e = Na8.get_potential_energy()
+    Na8.get_potential_energy()
     freq, pol = siesta.get_polarizability(mbpt_inp,
                                           format_output='txt',
                                           units='nm**2')

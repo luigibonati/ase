@@ -32,7 +32,7 @@ def test():
     # view(system)
 
     atoms = Octopus.read_atoms(directory)
-    errs = check_interface(atoms.calc)
+    check_interface(atoms.calc)
 
     changes = calc1.check_state(atoms)
     print('changes', changes)

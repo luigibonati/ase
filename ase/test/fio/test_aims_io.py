@@ -4,14 +4,12 @@ def test():
     from ase.build import bulk
     from ase.io.aims import read_aims as read
 
-    parent = Path(__file__).parent
     format = "aims"
 
     atoms = bulk("Si")
     atoms.positions[0, 0] -= 0.01
 
     file = "geometry.in"
-
 
     # check cartesian
     def test_cartesian(atoms=atoms):
