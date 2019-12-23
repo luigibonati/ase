@@ -20,6 +20,7 @@ def info(gui):
     atoms = gui.atoms
 
     tokens = []
+
     def add(token=''):
         tokens.append(token)
 
