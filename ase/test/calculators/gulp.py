@@ -1,5 +1,6 @@
+# flake8: noqa
+
 def test():
-    # flake8: noqa
     from ase.calculators.gulp import GULP, Conditions
     from ase import Atoms
     import numpy as np

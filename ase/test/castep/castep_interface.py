@@ -70,9 +70,9 @@ def test():
     symops = (np.eye(3)[None], np.zeros(3)[None])
     mock_ccell.symmetry_ops = symops
     assert """1.0 0.0 0.0
-    0.0 1.0 0.0
-    0.0 0.0 1.0
-    0.0 0.0 0.0""" in mock_ccell.symmetry_ops.value
+0.0 1.0 0.0
+0.0 0.0 1.0
+0.0 0.0 0.0""" in mock_ccell.symmetry_ops.value
 
     # check if the CastepOpt, CastepCell comparison mechanism works
     if castep_keywords:
