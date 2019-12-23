@@ -44,9 +44,9 @@ def test():
         smin.set_calculator(LennardJones())
         E = smin.get_potential_energy()
         assert abs(E - Emin) < 1e-15
-        smim = read(ftraj)
-        E = smin.get_potential_energy()
-        assert abs(E - Emin) < 1e-15
+        other = read(ftraj)  # Test something ab
+        E2 = other.get_potential_energy()
+        assert abs(E2 - Emin) < 1e-15
 
         # check that only minima were written
         last_energy = None
