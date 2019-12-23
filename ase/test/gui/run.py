@@ -151,7 +151,7 @@ def test():
         else:
             1 / 0
         print(name)
-        test = globals()[name]
+        test = locals()[name]
         gui = GUI()
 
         def f():
@@ -159,9 +159,6 @@ def test():
             if not args.pause:
                 gui.exit()
         gui.run(test=f)
-
-
-
 
 
     def window():
