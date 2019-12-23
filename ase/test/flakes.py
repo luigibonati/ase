@@ -160,7 +160,7 @@ def test():
         # ambiguous variable name 'O'
         'E741': 77,
         # too many blank lines (2)
-        'E303': 82,
+        'E303': 468,
         # expected 2 blank lines after class or function definition, found 1
         'E305': 83,
         # module level import not at top of file
@@ -180,6 +180,6 @@ def test():
         # missing whitespace around arithmetic operator
         'E226': 563,
         # line too long (93 > 79 characters)
-        'E501': 737}
+        'E501': 931}
 
     run_flake8()

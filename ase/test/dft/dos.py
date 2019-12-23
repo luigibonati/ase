@@ -16,4 +16,5 @@ def test():
     calc = SinglePointDFTCalculator(atoms, efermi=eFermi)
     calc.kpts = kpts
 
-    dos = DOS(calc)
+    DOS(calc)
+    # XXX We shouldn't ... test something?

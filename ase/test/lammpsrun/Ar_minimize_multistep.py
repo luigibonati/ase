@@ -16,7 +16,8 @@ def test():
     calc = LAMMPS(specorder=['Ar'], **params)
 
     ar_nc.set_calculator(calc)
-    F1_numer = calc.calculate_numerical_forces(ar_nc)
+    calc.calculate_numerical_forces(ar_nc)
+    # Can we check the numerical forces?
 
     assert_allclose(ar_nc.get_potential_energy(), -0.468147667942117,
                     atol=1e-4, rtol=1e-4)

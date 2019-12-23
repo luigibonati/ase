@@ -37,7 +37,7 @@ def test():
     h = 1.5
     initial += Atom('C', (d / 2, -b / 2, h))
     initial += Atom('O', (d / 2, +b / 2, h))
-    s = initial.copy()
+    # XXX These lines are suspected to be copies from another test!
     dyn = Optimizer(initial)
     dyn.run(fmax=0.05)
     # view(initial)

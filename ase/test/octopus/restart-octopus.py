@@ -28,7 +28,7 @@ def test():
     E = system.get_potential_energy()
     print('energy', E)
 
-    errs = check_interface(calc1)
+    check_interface(calc1)
     # view(system)
 
     atoms = Octopus.read_atoms(directory)

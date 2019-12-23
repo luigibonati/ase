@@ -31,7 +31,7 @@ def test():
     bud.set_calculator(calc)
 
     try:
-        e = bud.get_stress()
+        bud.get_stress()
     except PropertyNotImplementedError as err:
         raise unittest.SkipTest(err)
 
@@ -40,6 +40,6 @@ def test():
     dyn = QuasiNewton(ucf)
     dyn.attach(traj.write)
     dyn.run(fmax=0.02)
-    e = bud.get_potential_energy()
+    bud.get_potential_energy()
 
     traj.close()

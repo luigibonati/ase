@@ -47,4 +47,4 @@ def test():
     bud.set_calculator(calc)
     dyn = QuasiNewton(bud, trajectory=traj)
     dyn.run(fmax=0.02)
-    e = bud.get_potential_energy()
+    bud.get_potential_energy()

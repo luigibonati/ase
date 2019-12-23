@@ -18,5 +18,5 @@ def test():
     md.attach(f)
     md.attach(Trajectory('Cu2.traj', 'w', fcc).write, interval=3)
     md.run(steps=20)
-    fcc2 = Trajectory('Cu2.traj', 'r')[-1]
-
+    Trajectory('Cu2.traj', 'r')[-1]
+    # XXX maybe test something about the trajectory?

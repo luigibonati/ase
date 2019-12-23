@@ -32,7 +32,7 @@ def test():
 
     # check that the output exist
     atoms = io.read(fname)
-    p = io.read(fname).get_calculator().parameters
+    p = atoms.get_calculator().parameters
     p['calculator']
     p['xc']
     p['uncorrected_energy']

@@ -49,9 +49,17 @@ def test():
 
     #    plt.plot(D, E)
 
-        F1 = np.polyval(np.polyder(np.polyfit(D, E, 7)), D)
-        F2 = F[:, :3, 0].sum(1)
-        error = abs(F1 - F2).max()
+        # F1 = np.polyval(np.polyder(np.polyfit(D, E, 7)), D)
+        # F 2 = F[:, :3, 0].sum(1)
+        # What max error should we accept?
+        # error = abs(F1 - F2).max()
+        #
+        # Copy-paste alert !!
+        # We have three-fold repetition of these things between
+        #  * qmmm
+        #  * qmmm_tip4p
+        #  * turbomole/turbomole_qmmm
+        # Arrrgh !  We need to improve this.
 
         dimer.constraints = FixInternals(
             bonds=[(r, (0, 2)), (r, (1, 2)),

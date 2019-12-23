@@ -56,13 +56,14 @@ def test():
             E.append(dimer.get_potential_energy())
             F.append(dimer.get_forces())
 
-        F = np.array(F)
+        # F = np.array(F)
 
         # plt.plot(D, E)
 
-        F1 = np.polyval(np.polyder(np.polyfit(D, E, 7)), D)
-        F2 = F[:, :3, 0].sum(1)
-        error = abs(F1 - F2).max()
+        # F1 = np.polyval(np.polyder(np.polyfit(D, E, 7)), D)
+        # F2 = F[:, :3, 0].sum(1)
+        # error = abs(F1 - F2).max()
+        # XXX Can we check these errors??
 
         dimer.constraints = FixInternals(
             bonds=[(r, (0, 2)), (r, (1, 2)),

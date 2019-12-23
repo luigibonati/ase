@@ -51,8 +51,9 @@ def test():
     # and now for the actual test
     dc = DataConnection(db_file)
 
-    slab_get = dc.get_slab()
-    an_get = dc.get_atom_numbers_to_optimize()
+    dc.get_slab()
+    dc.get_atom_numbers_to_optimize()
+    # Test something about the return values of these two things?
 
     assert dc.get_number_of_unrelaxed_candidates() == 20
 

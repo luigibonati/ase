@@ -34,7 +34,6 @@ def test():
     h = 1.5
     slab += Atom('C', (d / 2, -b / 2, h))
     slab += Atom('O', (d / 2, +b / 2, h))
-    s = slab.copy()
     dyn = QuasiNewton(slab)
     dyn.run(fmax=0.05)
 

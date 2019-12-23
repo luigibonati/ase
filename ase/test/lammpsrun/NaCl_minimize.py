@@ -43,7 +43,7 @@ def test():
     assert_allclose(nacl.get_potential_energy(), -1896.216737561538,
                     atol=1e-4, rtol=1e-4)
 
-    E = nacl.get_potential_energy()
+    nacl.get_potential_energy()
 
     ucf = UnitCellFilter(nacl)
     dyn = QuasiNewton(ucf, force_consistent=False)

@@ -16,7 +16,8 @@ def test():
     print(b)
     print(b.get_positions())
 
-    calculator = Exciting(dir='excitingtestfiles',
-                          kpts=(4, 4, 3),
-                          # bin='/fshome/chm/git/exciting/bin/excitingser',
-                          maxscl=3)
+    Exciting(dir='excitingtestfiles',
+             kpts=(4, 4, 3),
+             # bin='/fshome/chm/git/exciting/bin/excitingser',
+             maxscl=3)
+    # XXX We are not testing anything about this calculator.

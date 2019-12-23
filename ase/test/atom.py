@@ -17,11 +17,11 @@ def test():
         assert c.tag == 42
         c.momentum = (1,2,3)
     assert m[0].tag == 42
-    momenta = m.get_momenta()
+    m.get_momenta()
     m = Atoms('LiH')
     for a in m:
         print(a.symbol)
-    for a in m:  
+    for a in m:
         if a.symbol == 'H':
             a.z = 0.75
     assert m.get_distance(0, 1) == 0.75
