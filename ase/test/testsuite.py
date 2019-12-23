@@ -41,7 +41,8 @@ def get_tests(files=None):
         files = list(files)
     else:
         files = glob(os.path.join(dirname, '*'))
-        files.remove(os.path.join(dirname, 'testsuite.py'))
+        for name in ['testsuite.py', 'conftest.py']:
+            files.remove(os.path.join(dirname, name))
 
     sdirtests = []  # tests from subdirectories: only one level assumed
     tests = []
@@ -62,6 +63,9 @@ def get_tests(files=None):
 
 
 def runtest_almost_no_magic(test):
+    import importlib
+    from pathlib import Path
+    testdir = Path(__file__).parent
     dirname, _ = os.path.split(__file__)
     path = os.path.join(dirname, test)
     # exclude some test for windows, not done automatic
@@ -71,8 +75,20 @@ def runtest_almost_no_magic(test):
                  'runpy.py', 'oi.py']
         if any(s in test for s in skip):
             raise unittest.SkipTest('not on windows')
+    assert path.endswith('.py')
+    path = Path(path)
+    path = path.relative_to(testdir)
+    path = str(path)
+    path = path.rsplit('.', 1)[0]
+    pymodule = 'ase.test.' + path.replace('/', '.')
+    print(pymodule)
+    #print(path)
     try:
-        runpy.run_path(path, run_name='test')
+        mod = importlib.import_module(pymodule)
+        if not hasattr(mod, 'test'):
+            return
+        mod.test()
+        #runpy.run_path(path, run_name='test')
     except ImportError as ex:
         module = ex.args[0].split()[-1].replace("'", '').split('.')[0]
         if module in ['matplotlib', 'Scientific', 'lxml', 'Tkinter',
