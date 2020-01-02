@@ -229,15 +229,17 @@ class BondExponential(SquaredExponential):
 
     # --- Define metric tensor ---
 
-    def init_metric(self, radii, interaction=None, eps=1e-12):
+    def init_metric(self, radii, interaction=None, eps=1e-12, normalize=True):
+        # Number of atoms
+        N = len(radii) 
 
         if interaction is None:
-            self.interaction = lambda x, y: 1.
-        else:
-            self.interaction = interaction
+            interaction = lambda x, y: 1.
+
+        if normalize:
+            self.interaction = lambda x, y: interaction(x, y) / N
 
         # 1. one-D metric g
-        N = len(radii)  # Number of atoms
         g = np.empty((N, N))
         d = np.zeros(N)
         for i, j in product(range(N), range(N)):
@@ -265,7 +267,7 @@ class BondExponential(SquaredExponential):
         # 3. Diagonalize and factorize G
         #   3.1 Diagonalize g
 
-        q, d = la.eigh(g)
+        d, q = la.eigh(g)
 
         assert np.allclose(g, np.matmul(q, np.matmul(np.diag(d), q.T)))
 
