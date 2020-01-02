@@ -1,5 +1,6 @@
 import numpy as np
 import numpy.linalg as la
+from itertools import product
 
 
 class Kernel():
@@ -46,19 +47,19 @@ class SE_kernel(Kernel):
 
     def squared_distance(self, x1, x2):
         """Returns the norm of x1-x2 using diag(l) as metric """
-        return np.sum((x1-x2) * (x1-x2))/self.l**2
+        return np.sum((x1 - x2) * (x1 - x2)) / self.l**2
 
     def kernel(self, x1, x2):
         """ This is the squared exponential function"""
-        return self.weight**2*np.exp(-0.5 * self.squared_distance(x1, x2))
+        return self.weight**2 * np.exp(-0.5 * self.squared_distance(x1, x2))
 
     def dK_dweight(self, x1, x2):
         """Derivative of the kernel respect to the weight """
-        return 2*self.weight*np.exp(-0.5 * self.squared_distance(x1, x2))
+        return 2 * self.weight * np.exp(-0.5 * self.squared_distance(x1, x2))
 
     def dK_dl(self, x1, x2):
         """Derivative of the kernel respect to the scale"""
-        return self.kernel*la.norm(x1-x2)**2/self.l**3
+        return self.kernel * la.norm(x1 - x2)**2 / self.l**3
 
 
 class SquaredExponential(SE_kernel):
@@ -107,7 +108,7 @@ class SquaredExponential(SE_kernel):
 
     def kernel_function(self, x1, x2):
         """ This is the squared exponential function"""
-        return self.weight**2*np.exp(-0.5 * self.squared_distance(x1, x2))
+        return self.weight**2 * np.exp(-0.5 * self.squared_distance(x1, x2))
 
     def kernel_function_gradient(self, x1, x2):
         """Gradient of kernel_function respect to the second entry.
@@ -129,13 +130,13 @@ class SquaredExponential(SE_kernel):
         This function returns a D+1 x D+1 matrix, where D is the dimension of
         the manifold.
         """
-        K = np.identity(self.D+1)
+        K = np.identity(self.D + 1)
         K[0, 1:] = self.kernel_function_gradient(x1, x2)
-        K[1:, 0] = -K[0, 1:]
-        # K[1:,1:] = self.kernel_function_hessian(x1, x2)
-        P = np.outer(x1-x2, x1-x2)/self.l**2
-        K[1:, 1:] = (K[1:, 1:]-P)/self.l**2
-        # return np.block([[k,j2],[j1,h]])*self.kernel_function(x1, x2)
+        K[1:, 0] = - K[0, 1:]
+        
+        P = np.outer(x1 - x2, x1 - x2) / self.l**2
+        K[1:, 1:] = (K[1:, 1:] - P) / self.l**2
+        
         return K * self.kernel_function(x1, x2)
 
     def kernel_matrix(self, X):
@@ -163,7 +164,7 @@ class SquaredExponential(SE_kernel):
     # ---------Derivatives--------
     def dK_dweight(self, X):
         """Return the derivative of K(X,X) respect to the weight """
-        return self.K(X, X)*2/self.weight
+        return self.K(X, X) * 2 / self.weight
 
     # ----Derivatives of the kernel function respect to the scale ---
     def dK_dl_k(self, x1, x2):
@@ -174,7 +175,7 @@ class SquaredExponential(SE_kernel):
         """Returns the derivative of the gradient of the kernel function
         respect to l
         """
-        prefactor = -2 * (1 - 0.5*self.squared_distance(x1, x2))/self.l
+        prefactor = -2 * (1 - 0.5 * self.squared_distance(x1, x2)) / self.l
         return self.kernel_function_gradient(x1, x2) * prefactor
 
     def dK_dl_h(self, x1, x2):
@@ -182,22 +183,22 @@ class SquaredExponential(SE_kernel):
         to l
         """
         I = np.identity(self.D)
-        P = np.outer(x1-x2, x1-x2)/self.l**2
-        prefactor = 1-0.5*self.squared_distance(x1, x2)
-        return -2*(prefactor*(I-P) - P)/self.l**3
+        P = np.outer(x1 - x2, x1 - x2) / self.l**2
+        prefactor = 1 - 0.5 * self.squared_distance(x1, x2)
+        return -2 * (prefactor * (I - P) - P) / self.l**3
 
     def dK_dl_matrix(self, x1, x2):
         k = np.asarray(self.dK_dl_k(x1, x2)).reshape((1, 1))
         j2 = self.dK_dl_j(x1, x2).reshape(1, -1)
         j1 = self.dK_dl_j(x2, x1).reshape(-1, 1)
         h = self.dK_dl_h(x1, x2)
-        return np.block([[k, j2], [j1, h]])*self.kernel_function(x1, x2)
+        return np.block([[k, j2], [j1, h]]) * self.kernel_function(x1, x2)
 
     def dK_dl(self, X):
         """Return the derivative of K(X,X) respect of l"""
         return np.block([[self.dK_dl_matrix(x1, x2) for x2 in X] for x1 in X])
 
-    def gradient(self, X, params_to_update=['weight','scale']):
+    def gradient(self, X, params_to_update=['weight', 'scale']):
         """
         Computes the gradient of matrix K given the data respect to the
         hyperparameters. Note matrix K here is self.K(X,X).
@@ -211,3 +212,122 @@ class SquaredExponential(SE_kernel):
             g.append(self.dK_dl(X))
 
         return g
+
+
+# --------------------------
+#      BondedKernel
+# --------------------------
+
+
+class BondExponential(SquaredExponential):
+    """
+    TODO: Nice documentation here
+    """
+    def ___init__(self, dimensionality=None):
+        # We use the SquaredExponential kernel as a basis
+        SquaredExponential.__init__(self)
+
+    # --- Define metric tensor ---
+
+    def init_metric(self, radii, interaction=None, eps=1e-12):
+
+        if interaction is None:
+            self.interaction = lambda x, y: 1.
+        else:
+            self.interaction = interaction
+
+        # 1. one-D metric g
+        N = len(radii)  # Number of atoms
+        g = np.empty((N, N))
+        d = np.zeros(N)
+        for i, j in product(range(N), range(N)):
+            if i == j:
+                continue
+            g[i, j] = -self.interaction(radii[i], radii[j])
+            d[i] += self.interaction(radii[i], radii[j])
+        np.fill_diagonal(g, d)
+
+        self.g = g
+
+        # 2. three-D metric G
+        #  2.1 Define permutation matrix
+        I = np.eye(3 * N)
+        P = np.vstack((I[0::3], I[1::3], I[2::3]))
+ 
+        #  2.2 Actual permutation matrix
+        o = np.zeros((N, N))
+        self.G = np.block([[g, o, o],
+                           [o, g, o],
+                           [o, o, g]])
+
+        self.G = np.matmul(P.T, np.matmul(self.G, P))
+         
+        # 3. Diagonalize and factorize G
+        #   3.1 Diagonalize g
+
+        q, d = la.eigh(g)
+
+        assert np.allclose(g, np.matmul(q, np.matmul(np.diag(d), q.T)))
+
+        Q = np.block([[q, o, o],
+                      [o, q, o],
+                      [o, o, q]])
+
+        #  3.2 Filter the 0 eigenvalue
+        d[d < eps * np.max(g)] = 0.0
+
+        #  3.3 sqrt of eig-values and factorization
+        dsqrt = np.sqrt(d)
+        Dsqrt = np.diag(np.hstack([dsqrt for i in range(3)]))
+
+        self.F = np.matmul(Dsqrt, np.matmul(Q.T, P))
+
+    # --- Kernel methods ---
+
+    def squared_distance(self, x1, x2):
+        """ Returns the norm of x1-x2 using G/l**2 as metric tensor """
+
+        return np.dot(x1 - x2, np.dot(self.G, x1 - x2)) / self.l**2
+
+    def kernel_function_gradient(self, x1, x2):
+        """
+        Gradient of kernel_function respect to the second entry
+        x1 : first data point
+        x2 : second data point
+        """
+        u1 = np.dot(self.F, x1)
+        u2 = np.dot(self.F, x2)
+        j = SquaredExponential.kernel_function_gradient(self, u1, u2)
+        return np.dot(self.F.T, j)
+
+    def kernel_function_hessian(self, x1, x2):
+        """
+        Second derivatives matrix of the kernel function
+        """
+        u1 = np.dot(self.F, x1)
+        u2 = np.dot(self.F, x2)
+        h = SquaredExponential.kernel_function_hessian(self, u1, u2)
+        return np.dot(self.F.T, np.dot(h, self.F))
+
+    def kernel(self, x1, x2):
+        """
+        Squared exponential kernel with the matrix G as a metric tensor
+        This function returns a D+a x D+1 matrix, where D is the dimension of
+        the manifold.
+        """
+
+        K = np.identity(self.D + 1)
+        K[0, 1:] = self.kernel_function_gradient(x1, x2)
+        K[1:, 0] = -K[0, 1:]
+
+        K[1:, 1:] = self.kernel_function_hessian(x1, x2)
+        return K * self.kernel_function(x1, x2)
+
+    # --- Kernel derivatives ---
+
+    def dK_dl_h(self, x1, x2):
+        u1 = np.dot(self.F, x1)
+        u2 = np.dot(self.F, x2)
+
+        dK_dl_h = SquaredExponential.dK_dl_h(self, u1, u2)
+        return np.dot(self.F.T, np.dot(dK_dl_h, self.F))
