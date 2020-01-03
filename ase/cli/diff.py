@@ -64,14 +64,14 @@ class CLICommand:
 
         # templating
         if args.template is None:
-            from ase.cli.template import render_table, render_table_calc, field_specs_on_conditions
+            from ase.cli.template import render_table, field_specs_on_conditions, rmsd, energy_delta
             field_specs = field_specs_on_conditions(
                 args.calculator_outputs, args.rank_order)
         elif args.template == 'rc':
             import os
             homedir = os.environ['HOME']
             sys.path.insert(0, homedir + '/.ase')
-            from templaterc import render_table, render_table_calc, field_specs_on_conditions
+            from templaterc import render_table, field_specs_on_conditions, rmsd, energy_delta
             # this has to be named differently because python does not
             # redundantly load packages
             field_specs = field_specs_on_conditions(
@@ -84,60 +84,60 @@ class CLICommand:
                         raise Exception(
                             'field requiring calculation outputs without --calculator-outputs')
 
-        if len(args.files) == 2:
-            f1 = args.files[0]
+        two_files = len(args.files) == 2
+
+        f1 = args.files[0]
+        a1 = read(f1, index = ':')
+        l1 = len(a1)
+
+        if two_files:
             f2 = args.files[1]
-
-            images1 = Images()
-            images1.read([f1])
-            images2 = Images()
-            images2.read([f2])
-            from math import isnan
-            if isnan(images1.get_energy(images1.get_atoms(0))): #assuming trajectory files w/o calculated energies are not being compared
-                atoms1 = read(f1)
-                atoms2 = read(f2)
-                print('images {}-{}'.format(1,0))
-                t = render_table(
-                    field_specs,
-                    atoms1,
-                    atoms2,
-                    show_only=args.show_only)
-                print(t, file=out)
-            else:
-                if args.calculator_outputs:
-                    for counter in range(len(images1)):
-                        print('sys2-sys1 image # {}'.format(counter), file=out)
-                        t = render_table_calc(
-                            field_specs, images1, images2, counter, show_only=args.show_only)
-                        print(t, file=out)
+            a2 = read(f2, index = ':')
+            l2 = len(a2)
+            same_length = l1 == l2
+            one_l_one = l1 or l2
+        
+            if not same_length and not one_l_one:
+                raise Exception("Trajectory files are not the same length and both > 1")
+            elif not same_length and one_l_one:
+                print("""One file contains one image and the other multiple images, 
+                    assuming you want to compare all images with one reference image""")
+                if l1 > l2:
+                    a2 = l1*a2
                 else:
-                    for counter in range(len(images1)):
-                        print('sys2-sys1 image # {}'.format(counter), file=out)
-                        t = render_table(
-                            field_specs,
-                            images1.get_atoms(counter),
-                            images2.get_atoms(counter),
-                            show_only=args.show_only)
-                        print(t, file=out)
-
-        elif len(args.files) == 1:
-            f1 = args.files[0]
-
-            if args.calculator_outputs:
-                images = Images()
-                images.read([f1])
-                for counter in range(len(images) - 1):
-                    print('images {}-{}'.format(counter + 1, counter), file=out)
-                    t = render_table_calc(
-                        field_specs, images, images, counter, show_only=args.show_only)
-                    print(t, file=out)
+                    a1 = l2*a1
+                def header_fmt(c):
+                    return 'sys-ref image # {}'.format(c)
             else:
-                traj = iread(f1)
-                atoms_list = list(traj)
-                for counter in range(len(atoms_list) - 1):
-                    t = render_table(field_specs,
-                                     atoms_list[counter],
-                                     atoms_list[counter + 1],
-                                     show_only=args.show_only)
-                    print('images {}-{}'.format(counter + 1, counter), file=out)
-                    print(t, file=out)
+                def header_fmt(c):
+                    return 'sys2-sys1 image # {}'.format(c)
+        else:
+            a2 = a1.copy()
+            a1 = a1[:-1]
+            a2 = a2[1:]
+            def header_fmt(c):
+                 return 'images {}-{}'.format(c+1,c)
+
+        from math import isnan
+        if a1[0].get_calculator() == None:
+            has_calc = False
+        else: 
+            has_calc = True
+
+
+        pairs = zip(a1, a2)
+        if has_calc and args.calculator_outputs:
+            for counter, pair in enumerate(pairs):
+                print(header_fmt(counter), file=out)
+                t = render_table(
+                    field_specs, *pair, show_only=args.show_only, summary_function = rmsd)
+                t += '\n'
+                t += render_table(
+                    field_specs, *pair, show_only=args.show_only, summary_function = energy_delta)
+                print(t, file=out)
+        else:
+            for counter,pair in enumerate(pairs):
+                print(header_fmt(counter), file=out)
+                t = render_table(
+                    field_specs, *pair, show_only=args.show_only, summary_function = rmsd)
+                print(t, file=out)

@@ -20,14 +20,11 @@ def field_specs_on_conditions(calculator_outputs,rank_order):
         field_specs[0] = field_specs[0]+':1'
     return field_specs
 
-# template formatting dictionary (for coordinates only)
+# template formatting dictionary
 format_dict = {}
 format_dict['toprule'] = format_dict['bottomrule'] = '=' * twidth
 format_dict['midrule'] = '-' * twidth
-format_dict['title'] = 'Coordinates Summary'
-
-format_dict_calc = format_dict.copy()
-format_dict_calc['title'] = 'Forces and Coordinates Summary'
+format_dict['title'] = ''
 
 pre = '{:^' + tw
 
@@ -135,21 +132,15 @@ def get_data(atoms1, atoms2, field):
         data = np.array([sym2num[sym] for sym in atoms1.symbols])
     elif field == 'i':
         data = np.arange(len(atoms1))
-
     if rank_order:
         return sort2rank(np.argsort(-data))
+
     return data
 
 
 atoms_props = ['dx', 'dy', 'dz', 'd', 't', 'an', 'i', 'el']
 
-def get_images_data(images1, images2, counter, field):
-    if images1 == images2:
-        atoms1 = images1.get_atoms(counter - 1)
-        atoms2 = images2.get_atoms(counter)
-    else:
-        atoms1 = images1.get_atoms(counter)
-        atoms2 = images2.get_atoms(counter)
+def get_atoms_data(atoms1, atoms2, field):
 
     if field.lstrip('r') in atoms_props:
         return get_data(atoms1, atoms2, field)
@@ -161,35 +152,35 @@ def get_images_data(images1, images2, counter, field):
         rank_order = False
 
     if field == 'dfx':
-        data = -images1.get_forces(atoms1)[:, 0] + \
-            images2.get_forces(atoms2)[:, 0]
+        data = -atoms1.get_forces(atoms1)[:, 0] + \
+            atoms2.get_forces(atoms2)[:, 0]
     elif field == 'dfy':
-        data = -images1.get_forces(atoms1)[:, 1] + \
-            images2.get_forces(atoms2)[:, 1]
+        data = -atoms1.get_forces(atoms1)[:, 1] + \
+            atoms2.get_forces(atoms2)[:, 1]
     elif field == 'dfz':
-        data = -images1.get_forces(atoms1)[:, 2] + \
-            images2.get_forces(atoms2)[:, 2]
+        data = -atoms1.get_forces(atoms1)[:, 2] + \
+            atoms2.get_forces(atoms2)[:, 2]
     elif field == 'df':
         data = np.linalg.norm(
-            images1.get_forces(atoms1) -
-            images2.get_forces(atoms2),
+            atoms1.get_forces(atoms1) -
+            atoms2.get_forces(atoms2),
             axis=1)
     elif field == 'afx':
-        data = images1.get_forces(
-            atoms1)[:, 0] + images2.get_forces(atoms2)[:, 0]
+        data = atoms1.get_forces(
+            atoms1)[:, 0] + atoms2.get_forces(atoms2)[:, 0]
         data /= 2
     elif field == 'afy':
-        data = images1.get_forces(
-            atoms1)[:, 1] + images2.get_forces(atoms2)[:, 1]
+        data = atoms1.get_forces(
+            atoms1)[:, 1] + atoms2.get_forces(atoms2)[:, 1]
         data /= 2
     elif field == 'afz':
-        data = images1.get_forces(
-            atoms1)[:, 2] + images2.get_forces(atoms2)[:, 2]
+        data = atoms1.get_forces(
+            atoms1)[:, 2] + atoms2.get_forces(atoms2)[:, 2]
         data /= 2
     elif field == 'af':
         data = np.linalg.norm(
-            images1.get_forces(atoms1) +
-            images2.get_forces(atoms2),
+            atoms1.get_forces(atoms1) +
+            atoms2.get_forces(atoms2),
             axis=1)
         data /= 2
 
@@ -236,9 +227,17 @@ def parse_field_specs(field_specs):
     return fields, hier, scent
 
 
-def render_table(field_specs, atoms1, atoms2, show_only=None):
+def rmsd(atoms1,atoms2):
+    return 'RMSD={:+.1E}'.format(np.sqrt(np.power(np.linalg.norm(atoms1.positions-atoms2.positions,axis=1),2).mean()))
+
+def energy_delta(atoms1,atoms2):
+    E1 = atoms1.get_potential_energy()
+    E2 = atoms2.get_potential_energy()
+    return 'E1 = {:+.1E}, E2 = {:+.1E}, dE = {:+1.1E}'.format(E1,E2,E2-E1)
+
+def render_table(field_specs, atoms1, atoms2, show_only=None, summary_function = rmsd):
     fields, hier, scent = parse_field_specs(field_specs)
-    fdata = np.array([get_data(atoms1, atoms2, field) for field in fields])
+    fdata = np.array([get_atoms_data(atoms1, atoms2, field) for field in fields])
     if hier != []:
         sorting_array = prec_round(
             (np.array(scent)[:, np.newaxis] * fdata)[hier])
@@ -251,41 +250,5 @@ def render_table(field_specs, atoms1, atoms2, show_only=None):
     format_dict['header'] = (fmt_class['str'] *
                              len(fields)).format(*
                                                  [header_alias(field) for field in fields])
-    format_dict['summary'] = 'RMSD={:+.1E}'.format(
-        np.sqrt(
-            np.power(
-                np.linalg.norm(
-                    atoms1.positions -
-                    atoms2.positions,
-                    axis=1),
-                2).mean()))
+    format_dict['summary'] = summary_function(atoms1,atoms2)
     return template.format(**format_dict)
-
-
-def render_table_calc(field_specs, images1, images2, counter, show_only=None):
-    fields, hier, scent = parse_field_specs(field_specs)
-    fdata = np.array([get_images_data(images1, images2, counter, field)
-                      for field in fields])
-    if hier != []:
-        sorting_array = prec_round(
-            (np.array(scent)[:, np.newaxis] * fdata)[hier])
-        table = fdata[:, np.lexsort(sorting_array)].transpose()
-    else:
-        table = fdata.transpose()
-    if show_only is not None:
-        table = table[:show_only]
-    format_dict_calc['body'] = format_table(table, fields)
-    format_dict_calc['header'] = (fmt_class['str'] *
-                                  len(fields)).format(*
-                                                      [header_alias(field) for field in fields])
-    if images1 == images2:
-        E1 = images1.get_energy(images1.get_atoms(counter))
-        E2 = images2.get_energy(images2.get_atoms(counter + 1))
-    else:
-        E1 = images1.get_energy(images1.get_atoms(counter))
-        E2 = images2.get_energy(images2.get_atoms(counter))
-    format_dict_calc['summary'] = 'E{}={:+.1E}, E{}={:+.1E}, dE={:+.1E}'.format(
-        counter, E1, counter + 1, E2, E2 - E1)
-    return template.format(**format_dict_calc)
-
-
