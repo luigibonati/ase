@@ -1,24 +1,28 @@
+from ase.data import chemical_symbols
 import string
 import numpy as np
 # settings
 template = "{title}\n{toprule}\n{header}\n{midrule}\n{body}\n{bottomrule}\n{summary}"
 twidth = 72
 tw = str(9)
-def field_specs_on_conditions(calculator_outputs,rank_order):
+
+
+def field_specs_on_conditions(calculator_outputs, rank_order):
     if calculator_outputs:
         field_specs = ['i:0', 'el', 'd', 'rd', 'df', 'rdf']
     else:
         field_specs = ['i:0', 'el', 'dx', 'dy', 'dz', 'd', 'rd']
-    if rank_order != None:
+    if rank_order is not None:
         if rank_order in field_specs:
-            for c,i in enumerate(field_specs):
+            for c, i in enumerate(field_specs):
                 if i == rank_order:
                     field_specs[c] = i + ':0:1'
         else:
-            field_specs.append(rank_order+':0:1')
+            field_specs.append(rank_order + ':0:1')
     else:
-        field_specs[0] = field_specs[0]+':1'
+        field_specs[0] = field_specs[0] + ':1'
     return field_specs
+
 
 # template formatting dictionary
 format_dict = {}
@@ -78,13 +82,14 @@ def prec_round_1(a, prec=2):
         c = np.log(s * a) % 1
     return s * np.round(np.exp(c), prec) * np.exp(m)
 
+
 prec_round = np.vectorize(prec_round_1)
 
 # end most settings
 
-from ase.data import chemical_symbols
-num2sym = dict(zip(np.argsort(chemical_symbols),chemical_symbols))
+num2sym = dict(zip(np.argsort(chemical_symbols), chemical_symbols))
 sym2num = {v: k for k, v in num2sym.items()}
+
 
 class DiffTemplate(string.Formatter):
     """Changing string formatting method to convert numeric data field"""
@@ -95,7 +100,9 @@ class DiffTemplate(string.Formatter):
             spec = spec[:-1] + 's'
         return super(DiffTemplate, self).format_field(value, spec)
 
+
 formatter = DiffTemplate().format
+
 
 def sort2rank(sort):
     """
@@ -139,6 +146,7 @@ def get_data(atoms1, atoms2, field):
 
 
 atoms_props = ['dx', 'dy', 'dz', 'd', 't', 'an', 'i', 'el']
+
 
 def get_atoms_data(atoms1, atoms2, field):
 
@@ -227,17 +235,32 @@ def parse_field_specs(field_specs):
     return fields, hier, scent
 
 
-def rmsd(atoms1,atoms2):
-    return 'RMSD={:+.1E}'.format(np.sqrt(np.power(np.linalg.norm(atoms1.positions-atoms2.positions,axis=1),2).mean()))
+def rmsd(atoms1, atoms2):
+    return 'RMSD={:+.1E}'.format(
+        np.sqrt(
+            np.power(
+                np.linalg.norm(
+                    atoms1.positions -
+                    atoms2.positions,
+                    axis=1),
+                2).mean()))
 
-def energy_delta(atoms1,atoms2):
+
+def energy_delta(atoms1, atoms2):
     E1 = atoms1.get_potential_energy()
     E2 = atoms2.get_potential_energy()
-    return 'E1 = {:+.1E}, E2 = {:+.1E}, dE = {:+1.1E}'.format(E1,E2,E2-E1)
+    return 'E1 = {:+.1E}, E2 = {:+.1E}, dE = {:+1.1E}'.format(E1, E2, E2 - E1)
 
-def render_table(field_specs, atoms1, atoms2, show_only=None, summary_function = rmsd):
+
+def render_table(
+        field_specs,
+        atoms1,
+        atoms2,
+        show_only=None,
+        summary_function=rmsd):
     fields, hier, scent = parse_field_specs(field_specs)
-    fdata = np.array([get_atoms_data(atoms1, atoms2, field) for field in fields])
+    fdata = np.array([get_atoms_data(atoms1, atoms2, field)
+                      for field in fields])
     if hier != []:
         sorting_array = prec_round(
             (np.array(scent)[:, np.newaxis] * fdata)[hier])
@@ -250,5 +273,5 @@ def render_table(field_specs, atoms1, atoms2, show_only=None, summary_function =
     format_dict['header'] = (fmt_class['str'] *
                              len(fields)).format(*
                                                  [header_alias(field) for field in fields])
-    format_dict['summary'] = summary_function(atoms1,atoms2)
+    format_dict['summary'] = summary_function(atoms1, atoms2)
     return template.format(**format_dict)
