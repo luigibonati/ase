@@ -114,11 +114,11 @@ def main(prog='ase', description='ASE command line tool.',
                       .format(prog, args.command))
                 parser.error(l1 + l2)
 
-
 from my_help_formatter import extended_help_formatter
 class Formatter(argparse.HelpFormatter):
     """Improved help formatter."""
     def _fill_text(self, text, width, indent):
+        """My custom docstring"""
         assert indent == ''
         out = ''
         blocks = text.split('\n\n')
@@ -140,6 +140,7 @@ class Formatter(argparse.HelpFormatter):
         return out[:-1]
 
         def _format_action(self, action):
+            """ My custom docstring """
             # determine the required width and the entry label
             help_position = min(self._action_max_length + 2,
                                 self._max_help_position)
@@ -168,14 +169,12 @@ class Formatter(argparse.HelpFormatter):
             parts = [action_header]
 
             # if there was help for the action, add lines of help text
-            print(action.help)
             if action.help:
                 help_text = self._expand_help(action)
             #    help_lines = self._split_lines(help_text, help_width)
             #    parts.append('%*s%s\n' % (indent_first, '', help_lines[0]))
             #    for line in help_lines[1:]:
             #        parts.append('%*s%s\n' % (help_position, '', line))
-                print('used ext help fmt')
                 parts.append(extended_help_formatter(help_text,
                     help_width,self.current_indent_))
 
