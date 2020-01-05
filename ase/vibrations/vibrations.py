@@ -8,13 +8,56 @@ from math import sin, pi, sqrt, log
 
 import numpy as np
 
+from ase.atoms import Atoms
 import ase.units as units
 from ase.io.trajectory import Trajectory
 from ase.parallel import world, paropen
+from ase.utils import jsonable
 
 from ase.utils import opencew, pickleload
 from ase.calculators.singlepoint import SinglePointCalculator
 
+@jsonable
+class VibrationsData(object):
+    """Class for storing and analyzing vibrational data (i.e. Atoms + Hessian)
+
+    This class is not responsible for calculating Hessians; the Hessian should
+    be computed by a Calculator or some other algorithm. Once the
+    VibrationsData has been constructed, this class provides some common
+    processing options; frequency calculation, mode animation, DOS etc.
+
+    If the Atoms object is a periodic supercell, VibrationsData may be 
+    converted to a PhononData using the VibrationsData.to_phonondata() method.
+    This provides access to q-point-dependent analyses such as phonon
+    dispersion plotting.
+
+    Args:
+        atoms (ase.atoms.Atoms): Equilibrium geometry of vibrating system
+        hessian (np.ndarray): Second-derivative in energy with respect to
+            nuclear movements as an (N, N, 3, 3) array. The third and fourth
+            axes correspond to the same Cartesian directions (x, y, z) as in
+            atoms.positions
+    """
+
+    def __init__(self, atoms, hessian):
+        self.atoms = atoms.copy()
+        
+        n_atoms = len(atoms)
+        if (isinstance(hessian, np.ndarray)
+            and hessian.shape() == (n_atoms, n_atoms, 3, 3)):
+            self.hessian = hessian
+        else:
+            raise ValueError("Hessian should be a {n:d}x{n:d}x3x3 "
+                             "numpy array.".format(n=n_atoms))
+
+    def todict(self):
+        return {'ase_objtype': 'vibrationsdata',
+                'atoms': atoms.todict(),
+                'hessian': hessian}
+
+    @classmethod
+    def fromdict(cls, data):
+        return cls(Atoms.fromdict(data['atoms']), data['hessian'])
 
 class Vibrations:
     """Class for calculating vibrational modes using finite difference.
