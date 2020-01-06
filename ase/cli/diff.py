@@ -20,7 +20,6 @@ class CLICommand:
     @staticmethod
     def add_arguments(parser):
         add = parser.add_argument
-#        parser.formatter_class = RawTextHelpFormatter
         add('files', metavar='file(s)',
             help="""Possible file entries are
             
@@ -42,7 +41,7 @@ class CLICommand:
         add('-s', '--show-only', metavar='n', type=int,
             help="show only so many lines (atoms) in each table, useful if rank ordering")
         add('-t', '--template', metavar='template', nargs='?', const='rc',
-            help="""Without argument,looks for ~/.ase/template.py.  Otherwise,
+            help="""Without argument, looks for ~/.ase/template.py.  Otherwise,
                     expects the comma separated list of the fields to include
                     in their left-to-right order.  Optionally, specify the
                     lexicographical sort hierarchy (0 is outermost sort) and if the

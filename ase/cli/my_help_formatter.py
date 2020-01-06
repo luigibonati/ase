@@ -1,5 +1,3 @@
-
-
 def remove_doubles(string):
     string2 = string.replace(' ' * 2, ' ')
     if string2 == string:
@@ -7,19 +5,18 @@ def remove_doubles(string):
     else:
         return remove_doubles(string2)
 
-
-def extended_help_formatter(help_text, width, position):
+def extended_help_formatter(help_text, width, indent):
     """Format the help to fit in columns when the help is more complicated
 (is long and contains lists) under the constraint that items are not
 broken between lines."""
 
-# Since the source code also has to follow some
-# indenting conventions first the input strings must have all whitespace
-# be removed.
+    # Since the source code also has to follow some
+    # indenting conventions first the input strings must have all whitespace
+    # be removed.
 
     help_text = remove_doubles(help_text)
-    blocks = [[line.strip() for line in block.split('\n')]
-              for block in help_text.split('\n\n')]
+    blocks = [[line for line in block.split('\n')]
+              for block in help_text.split('\n\n')] # how to deal with mid-sentence truncations?
 
     # then concatenate strings which don't start with '* ', the item
     # designator, to be formatted together
@@ -29,7 +26,7 @@ broken between lines."""
         new_block = []
         carry_string = ''
         for line in block:
-            if line[:2] == '* ':
+            if line[:3] == ' * ':
                 if carry_string != '':
                     new_block.append(carry_string)
                     carry_string = ''
@@ -54,10 +51,10 @@ broken between lines."""
             out += '\n' + tw(line)
         out += '\n'
 
-    # left justify
-    i = ' ' * position
-    s = ('\n' + i).join(out.split('\n'))
-    s = s.strip('\n')
+    # strip white space and left justify 
+    i = ' ' * indent
+    s = ('\n' + i).join([i.strip() for i in out.split('\n')])
+    s = s.strip('\n').rstrip(' ')
 
     return s
 
