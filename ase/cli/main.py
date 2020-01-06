@@ -1,4 +1,3 @@
-
 import argparse
 import sys
 import textwrap
@@ -34,7 +33,7 @@ commands = [
     ('reciprocal', 'ase.cli.reciprocal'),
     ('completion', 'ase.cli.completion'),
     ('diff', 'ase.cli.diff')
-    ]
+]
 
 
 def main(prog='ase', description='ASE command line tool.',
@@ -114,9 +113,18 @@ def main(prog='ase', description='ASE command line tool.',
                       .format(prog, args.command))
                 parser.error(l1 + l2)
 
-from my_help_formatter import extended_help_formatter
+
+def remove_doubles(string):
+    string2 = string.replace(' ' * 2, ' ')
+    if string2 == string:
+        return string2
+    else:
+        return remove_doubles(string2)
+
+
 class Formatter(argparse.HelpFormatter):
     """Improved help formatter."""
+
     def _fill_text(self, text, width, indent):
         assert indent == ''
         out = ''
@@ -137,6 +145,55 @@ class Formatter(argparse.HelpFormatter):
                 out += textwrap.fill(block, width=width) + '\n'
             out += '\n'
         return out[:-1]
+
+    def _extended_help_formatter(self, help_text, width, indent):
+        """Format the help to fit in columns when the help is more complicated
+    (is long and contains lists) under the constraint that items are not
+    broken between lines."""
+
+        # Since the source code also has to follow some
+        # indenting conventions first the input strings must have all whitespace
+        # be removed.
+
+        help_text = remove_doubles(help_text)
+        blocks = [[line for line in block.split('\n')] for block in help_text.split(
+            '\n\n')]  # how to deal with mid-sentence truncations?
+
+        # then concatenate strings which don't start with '* ', the item
+        # designator, to be formatted together
+
+        new_blocks = []
+        for block in blocks:
+            new_block = []
+            carry_string = ''
+            for line in block:
+                if line.lstrip()[:2] == '* ':
+                    if carry_string != '':
+                        new_block.append(carry_string)
+                        carry_string = ''
+                    new_block.append(line)
+                else:
+                    carry_string += line
+            new_block.append(carry_string)
+            new_blocks.append(new_block)
+
+        new_blocks = [[line for line in block if line != '']
+                      for block in new_blocks]  # clean up if logic is bad
+
+        # use an external text wrapper program
+
+        out = ''
+        for block in new_blocks:
+            for line in block:
+                out += '\n' + textwrap.fill(line, width=width)
+            out += '\n'
+
+        # strip white space and left justify
+        indent = ' ' * indent
+        s = ('\n' + indent).join([i.strip() for i in out.split('\n')])
+        s = s.strip('\n').rstrip(' ')
+
+        return s
 
     def _format_action(self, action):
         # determine the required width and the entry label
@@ -169,10 +226,11 @@ class Formatter(argparse.HelpFormatter):
         # if there was help for the action, add lines of help text
         if action.help:
             help_text = self._expand_help(action)
-            s = extended_help_formatter(help_text,help_width - 2,help_position)
+            s = self._extended_help_formatter(
+                help_text, help_width, help_position)
             if indent_first == 0:
                 s = s.lstrip()
-            parts.append(s) 
+            parts.append(s)
 
         # or add a newline if the description doesn't end with one
         elif not action_header.endswith('\n'):
@@ -183,9 +241,8 @@ class Formatter(argparse.HelpFormatter):
             parts.append(self._format_action(subaction))
 
         # return a single string
-        u = self._join_parts(parts)
-        print(repr(u))
-        return u
+        return self._join_parts(parts)
+
 
 def old():
     cmd = sys.argv[0].split('-')[-1]
