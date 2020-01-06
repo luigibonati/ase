@@ -17,6 +17,7 @@ from ase.utils import jsonable
 from ase.utils import opencew, pickleload
 from ase.calculators.singlepoint import SinglePointCalculator
 
+
 @jsonable
 class VibrationsData(object):
     """Class for storing and analyzing vibrational data (i.e. Atoms + Hessian)
@@ -26,7 +27,7 @@ class VibrationsData(object):
     VibrationsData has been constructed, this class provides some common
     processing options; frequency calculation, mode animation, DOS etc.
 
-    If the Atoms object is a periodic supercell, VibrationsData may be 
+    If the Atoms object is a periodic supercell, VibrationsData may be
     converted to a PhononData using the VibrationsData.to_phonondata() method.
     This provides access to q-point-dependent analyses such as phonon
     dispersion plotting.
@@ -34,30 +35,94 @@ class VibrationsData(object):
     Args:
         atoms (ase.atoms.Atoms): Equilibrium geometry of vibrating system
         hessian (np.ndarray): Second-derivative in energy with respect to
-            nuclear movements as an (N, N, 3, 3) array. The third and fourth
-            axes correspond to the same Cartesian directions (x, y, z) as in
-            atoms.positions
+            Cartesian nuclear movements as an (N, 3, N, 3) array.
     """
 
     def __init__(self, atoms, hessian):
         self.atoms = atoms.copy()
-        
+
         n_atoms = len(atoms)
         if (isinstance(hessian, np.ndarray)
-            and hessian.shape() == (n_atoms, n_atoms, 3, 3)):
-            self.hessian = hessian
+            and hessian.shape() == (n_atoms, 3, n_atoms, 3)):
+            self._hessian2d = hessian.reshape(3 * n_atoms, 3 * n_atoms).copy()
         else:
-            raise ValueError("Hessian should be a {n:d}x{n:d}x3x3 "
-                             "numpy array.".format(n=n_atoms))
+            raise ValueError("Hessian for these atoms should be a "
+                             "{n:d}x{n:d}x3x3 numpy array.".format(n=n_atoms))
+
+    @classmethod
+    def from_2d(cls, atoms, hessian_2d):
+        """Instantiate VibrationsData when the Hessian is in a 3Nx3N format
+
+        Args:
+            atoms(ase.atoms.Atoms): Equilibrium geometry of vibrating system
+        hessian (np.ndarray): Second-derivative in energy with respect to
+            Cartesian nuclear movements as a (3N, 3N) array.
+
+        returns:
+            ase.vibrations.VibrationsData
+        """
+        n_atoms = len(atoms)
+
+        if (isinstance(hessian_2d, np.ndarray)
+            and hessian_2d.shape() == (n_atoms * 3, n_atoms * 3)):
+            return cls(atoms, hessian_2d.reshape(n_atoms, 3, n_atoms, 3))
+
+        else:
+            raise ValueError("Hessian for these Atoms should be a {n:d}x{n:d} "
+                             "numpy array.".format(n=(n_atoms * 3)))
+
+    def get_hessian(self):
+        """Get the Hessian; second derivative of energy wrt positions
+
+        This format is preferred for iteration over atoms and when
+        addressing specific elements of the Hessian.
+
+        Returns:
+            numpy.ndarray with shape (n_atoms, 3, n_atoms, 3) where
+            - the first and third indices identify atoms in self.atoms
+            - the second and fourth indices cover the corresponding Cartesian
+              movements in x, y, z
+
+            e.g. the element h[0, 2, 1, 0] gives a harmonic force exerted on
+            atoms[1] in the x-direction in response to a movement in the
+            z-direction of atoms[0]
+
+        """
+        n_atoms = len(self.atoms)
+        return self._hessian2d.reshape(n_atoms, 3, n_atoms, 3).copy()
+
+    def get_hessian_2d(self):
+        """Get the Hessian as a 2-D array
+
+        This format may be preferred for use with standard linear algebra
+        functions
+
+        Returns:
+            numpy.ndarray with shape (n_atoms * 3, n_atoms * 3) where
+            the elements are ordered by atom and Cartesian direction
+
+            [[at1x_at1x, at1x_at1y, at1x_at1z, at1x_at2x, ...],
+             [at1y_at1x, at1y_at1y, at1y_at1z, at1y_at2x, ...],
+             [at1z_at1x, at1z_at1y, at1z_at1z, at1z_at2x, ...],
+             [at2x_at1x, at2x_at1y, at2x_at1z, at2x_at2x, ...],
+             ...]
+
+            e.g. the element h[2, 3] gives a harmonic force exerted on
+            atoms[1] in the x-direction in response to a movement in the
+            z-direction of atoms[0]
+
+        """
+        return self._hessian2d.copy()
 
     def todict(self):
         return {'ase_objtype': 'vibrationsdata',
-                'atoms': atoms.todict(),
-                'hessian': hessian}
+                'atoms': self.atoms.todict(),
+                'hessian': self.get_hessian()}
 
     @classmethod
     def fromdict(cls, data):
         return cls(Atoms.fromdict(data['atoms']), data['hessian'])
+
 
 class Vibrations:
     """Class for calculating vibrational modes using finite difference.
