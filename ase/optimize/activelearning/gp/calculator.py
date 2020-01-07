@@ -103,7 +103,7 @@ class GPCalculator(Calculator, GaussianProcess):
                  update_prior_strategy='maximum',
                  kernel_params={'weight': 1., 'scale': 0.4},
                  fit_weight=None, noise=0.005,
-                 params_to_update={},
+                 params_to_update=None,
                  batch_size=5, bounds=None, kernel=None,
                  max_train_data=None, force_consistent=None,
                  max_train_data_strategy='nearest_observations',
@@ -135,7 +135,10 @@ class GPCalculator(Calculator, GaussianProcess):
         self.prev_train_y = []  # Do not retrain model if same data.
 
         # Initialize hyperparameter update attributes
-        self.params_to_update = params_to_update
+        if params_to_update is not None:
+            self.params_to_update = params_to_update
+        else:
+            self.params_to_update = {}
         self.fit_weight = fit_weight
         self.nbatch = batch_size
 
