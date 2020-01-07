@@ -18,7 +18,7 @@ from ase.utils import opencew, pickleload
 from ase.calculators.singlepoint import SinglePointCalculator
 
 
-@jsonable
+@jsonable('vibrationsdata')
 class VibrationsData(object):
     """Class for storing and analyzing vibrational data (i.e. Atoms + Hessian)
 
@@ -36,21 +36,39 @@ class VibrationsData(object):
         atoms (ase.atoms.Atoms): Equilibrium geometry of vibrating system
         hessian (np.ndarray): Second-derivative in energy with respect to
             Cartesian nuclear movements as an (N, 3, N, 3) array.
+        indices (list or None): indices of atoms which are included in Hessian.
+            Default value (None) includes all atoms.
+
     """
 
-    def __init__(self, atoms, hessian):
+    def __init__(self, atoms, hessian, indices=None):
         self.atoms = atoms.copy()
+        self.indices = indices
 
-        n_atoms = len(atoms)
+        n_atoms = len(atoms[self._mask()])
         if (isinstance(hessian, np.ndarray)
-            and hessian.shape() == (n_atoms, 3, n_atoms, 3)):
+            and hessian.shape == (n_atoms, 3, n_atoms, 3)):
             self._hessian2d = hessian.reshape(3 * n_atoms, 3 * n_atoms).copy()
         else:
             raise ValueError("Hessian for these atoms should be a "
                              "{n:d}x{n:d}x3x3 numpy array.".format(n=n_atoms))
 
+    def _mask(self):
+        """Boolean mask of atoms selected by indices"""
+        return self._mask_from_indices(self.atoms, self.indices)
+
+    @staticmethod
+    def _mask_from_indices(atoms, indices):
+        """Boolean mask of atoms selected by indices"""
+        if indices is None:
+            return [True] * len(atoms)
+        else:
+            mask = np.full(len(atoms), False)
+            mask[indices] = True
+            return mask
+
     @classmethod
-    def from_2d(cls, atoms, hessian_2d):
+    def from_2d(cls, atoms, hessian_2d, **kwargs):
         """Instantiate VibrationsData when the Hessian is in a 3Nx3N format
 
         Args:
@@ -64,8 +82,9 @@ class VibrationsData(object):
         n_atoms = len(atoms)
 
         if (isinstance(hessian_2d, np.ndarray)
-            and hessian_2d.shape() == (n_atoms * 3, n_atoms * 3)):
-            return cls(atoms, hessian_2d.reshape(n_atoms, 3, n_atoms, 3))
+            and hessian_2d.shape == (n_atoms * 3, n_atoms * 3)):
+            return cls(atoms, hessian_2d.reshape(n_atoms, 3, n_atoms, 3),
+                       **kwargs)
 
         else:
             raise ValueError("Hessian for these Atoms should be a {n:d}x{n:d} "
@@ -88,7 +107,7 @@ class VibrationsData(object):
             z-direction of atoms[0]
 
         """
-        n_atoms = len(self.atoms)
+        n_atoms = len(self.atoms[self._mask()])
         return self._hessian2d.reshape(n_atoms, 3, n_atoms, 3).copy()
 
     def get_hessian_2d(self):
@@ -117,12 +136,43 @@ class VibrationsData(object):
     def todict(self):
         return {'ase_objtype': 'vibrationsdata',
                 'atoms': self.atoms.todict(),
-                'hessian': self.get_hessian()}
+                'hessian': self.get_hessian(),
+                'indices': self.indices}
 
     @classmethod
     def fromdict(cls, data):
-        return cls(Atoms.fromdict(data['atoms']), data['hessian'])
+        return cls(Atoms.fromdict(data['atoms']), data['hessian'],
+                   indices = data['indices'])
 
+    def get_energies_and_modes(self):
+        """Diagonalise the Hessian to obtain harmonic modes
+
+        Returns:
+            tuple (energies, modes)
+
+            Energies are given in units of eV. (To convert these to frequencies in
+            cm-1, divide by ase.units.invcm)
+
+            Modes are given in Cartesian coordinates as a (3N, N, 3) array
+            where indices correspond to the (mode_index, atom, direction).
+
+            Note that in this array only the moving atoms are included.
+
+        """
+        m = self.atoms[self._mask()].get_masses()
+        if not np.all(m):
+            raise RuntimeError('Zero mass encountered in one or more of '
+                               'the vibrated atoms. Use Atoms.set_masses()'
+                               ' to set all masses to non-zero values.')
+        mass_weights_row = np.repeat(m**-0.5, 3)
+        mass_weights = mass_weights_row[:, np.newaxis] * mass_weights_row
+        omega2, modes = np.linalg.eigh(self.get_hessian_2d() * mass_weights)
+
+        unit_conversion = units._hbar * units.m / sqrt(units._e * units._amu)
+        energies = unit_conversion * omega2.astype(complex)**0.5
+
+        n_atoms = len(self.atoms[self._mask()])
+        return (energies, modes.reshape(n_atoms * 3, n_atoms, 3))
 
 class Vibrations:
     """Class for calculating vibrational modes using finite difference.
@@ -462,6 +512,14 @@ class Vibrations:
         # Conversion factor:
         s = units._hbar * 1e10 / sqrt(units._e * units._amu)
         self.hnu = s * omega2.astype(complex)**0.5
+
+    def get_vibrations(self, method='standard', direction='central', **kw):
+        """Get vibrations as VibrationsData object"""
+        if (self.H is None or method.lower() != self.method or
+            direction.lower() != self.direction):
+            self.read(method, direction, **kw)
+
+        return VibrationsData.from_2d(self.atoms, self.H)
 
     def get_energies(self, method='standard', direction='central', **kw):
         """Get vibration energies in eV."""
