@@ -10,6 +10,7 @@ from ase.optimize import QuasiNewton
 from ase.vibrations import Vibrations, VibrationsData
 from ase.thermochemistry import IdealGasThermo
 
+
 class TestVibrationsClassic(unittest.TestCase):
     def setUp(self):
         self.n2 = Atoms('N2',
@@ -74,35 +75,36 @@ class TestVibrationsClassic(unittest.TestCase):
         finally:
             os.chdir(workdir)
 
+
 class TestVibrationsData(unittest.TestCase):
     def setUp(self):
-        self.n2 = Atoms('N2', positions=[[0., 0., 0.05095057],  
+        self.n2 = Atoms('N2', positions=[[0., 0., 0.05095057],
                                          [0., 0., 1.04904943]])
-        self.h_n2 = np.array([[[[ 4.67554672e-03,  0.0,  0.0],    
-                               [-4.67554672e-03,  0.0,  0.0]],   
-                                                                 
-                              [[ 0.0,  4.67554672e-03,  0.0],    
-                               [ 0.0, -4.67554672e-03,  0.0]],   
-                                                                 
-                              [[ 0.0,  0.0,  3.90392599e+01],    
-                               [ 0.0,  0.0, -3.90392599e+01]]],  
-                                                                 
-                             [[[-4.67554672e-03,  0.0,  0.0],    
-                               [ 4.67554672e-03,  0.0,  0.0]],   
-                                                                 
-                              [[ 0.0, -4.67554672e-03,  0.0],    
-                               [ 0.0,  4.67554672e-03,  0.0]],   
-                                                                 
-                              [[ 0.0,  0.0, -3.90392599e+01],    
-                               [ 0.0,  0.0,  3.90392599e+01]]]])
+        self.h_n2 = np.array([[[[4.67554672e-03, 0.0, 0.0],
+                                [-4.67554672e-03, 0.0, 0.0]],
+
+                              [[0.0, 4.67554672e-03, 0.0],
+                               [0.0, -4.67554672e-03, 0.0]],
+
+                              [[0.0, 0.0, 3.90392599e+01],
+                               [0.0, 0.0, -3.90392599e+01]]],
+
+                             [[[-4.67554672e-03, 0.0, 0.0],
+                               [4.67554672e-03, 0.0, 0.0]],
+
+                              [[0.0, -4.67554672e-03, 0.0],
+                               [0.0, 4.67554672e-03, 0.0]],
+
+                              [[0.0, 0.0, -3.90392599e+01],
+                               [0.0, 0.0, 3.90392599e+01]]]])
 
         # Frequencies in cm-1 from the Vibrations() test case
-        self.ref_frequencies =  [0.00000000e+00+0.j,
-                                 6.06775530e-08+0.j,
-                                 3.62010442e-06+0.j,
-                                 1.34737571e+01+0.j,
-                                 1.34737571e+01+0.j,
-                                 1.23118496e+03+0.j]
+        self.ref_frequencies = [0.00000000e+00 + 0.j,
+                                6.06775530e-08 + 0.j,
+                                3.62010442e-06 + 0.j,
+                                1.34737571e+01 + 0.j,
+                                1.34737571e+01 + 0.j,
+                                1.23118496e+03 + 0.j]
 
     def tearDown(self):
         pass
