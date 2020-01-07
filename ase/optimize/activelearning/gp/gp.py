@@ -35,10 +35,10 @@ class GaussianProcess():
     def set_hyperparams(self, params, noise):
         """Set hyperparameters of the regression.
         This is a dictionary containing the parameters of the
-        kernel as values and their names as keys. 
+        kernel as values and their names as keys.
         The regularization (noise) of the method is specified as
-        a separate value. 
-        The method defines as weight/noise ratio when it is 
+        a separate value.
+        The method defines as weight/noise ratio when it is
         initiallized, which is subsequently kept during optimization
         of hyperparameters.
         """
@@ -151,7 +151,7 @@ class GaussianProcess():
                 X.shape[0] * 0.5 * np.log(2 * np.pi))
 
         # Gradient of the loglikelihood
-        grad = self.kernel.gradient(X,params_to_update)
+        grad = self.kernel.gradient(X, params_to_update)
 
         # vectorizing the derivative of the log likelihood
         D_P_input = np.array([np.dot(np.outer(self.a, self.a), g)
@@ -176,8 +176,8 @@ class GaussianProcess():
         Y:   targets (i.e. energy and forces).
              numpy array with shape (nsamples, D+1)
         params_to_update: list with the names of the hyperparameters to update.
-        bounds:  list with the boundaries for the optimization of the 
-                 hyperparameters to be updated. Each boundary should be 
+        bounds:  list with the boundaries for the optimization of the
+                 hyperparameters to be updated. Each boundary should be
                  a tuple (min, max) or None if the optimization should
                  be unconstrained.
         tol: tolerance on the maximum component of the gradient of the
