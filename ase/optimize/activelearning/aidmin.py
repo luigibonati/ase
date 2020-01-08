@@ -112,7 +112,6 @@ class AIDMin(Optimizer):
         optimizer_kwargs: dict
             Dictionary with key-word arguments for the surrogate potential.
         """
-
         if print_format == 'AID':
             if logfile == '-':
                 logfile = None
@@ -144,7 +143,7 @@ class AIDMin(Optimizer):
 
         self.optimizer = optimizer
         if optimizer_kwargs is not None:
-            self.optkwargs = optimizer_kwargs
+            self.optkwargs = optimizer_kwargs.copy()
         else:
             self.optkwargs = {}
         self.start = surrogate_starting_point
@@ -240,11 +239,11 @@ class AIDMin(Optimizer):
         self.ml_steps = ml_steps
 
         # First set fmax according to __init__method
-        self.ml_fmax = self.optkwargs.pop('fmax', None)
+        self.ml_fmax = self.optkwargs.get('fmax', None)
 
         # Now correct it with user define choice in run
         if ml_fmax is not None:
-            self.ml_fmax = fmax
+            self.ml_fmax = ml_fmax
 
         # Finally, especify default option
         if self.ml_fmax is None:
@@ -301,8 +300,13 @@ class AIDMin(Optimizer):
         if self.fit_to == 'constraints':
             ml_atoms.set_constraint([])
 
+        # kwargs does not know fmax
+        kwargs = self.optkwargs.copy()
+        if 'fmax' in kwargs:
+            del kwargs['fmax']
+
         # Optimize
-        opt = self.optimizer(ml_atoms, **self.optkwargs)
+        opt = self.optimizer(ml_atoms, **kwargs)
         ml_converged = opt.run(fmax=self.ml_fmax, steps=self.ml_steps)
 
         if not ml_converged:

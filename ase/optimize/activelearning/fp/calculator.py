@@ -137,7 +137,7 @@ class FPCalculator(Calculator, FPGaussianProcess):
 
         # Initialize hyperparameter update attributes
         if params_to_update is not None:
-            self.params_to_update = params_to_update
+            self.params_to_update = params_to_update.copy()
         else:
             self.params_to_update = {}
         self.fit_weight = fit_weight
