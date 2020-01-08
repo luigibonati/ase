@@ -243,7 +243,7 @@ class AIDMin(Optimizer):
 
         # Now correct it with user define choice in run
         if ml_fmax is not None:
-            self.ml_fmax = fmax
+            self.ml_fmax = ml_fmax
 
         # Finally, especify default option
         if self.ml_fmax is None:
