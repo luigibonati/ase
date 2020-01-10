@@ -60,10 +60,12 @@ class VibrationsData(object):
     @staticmethod
     def _mask_from_indices(atoms, indices):
         """Boolean mask of atoms selected by indices"""
+        natoms = len(atoms)
         if indices is None:
-            return [True] * len(atoms)
+            return [True] * natoms
         else:
-            mask = np.full(len(atoms), False)
+            indices = indices % natoms  # Wrap indices to allow negative values
+            mask = np.full(natoms, False)
             mask[indices] = True
             return mask
 
@@ -79,7 +81,9 @@ class VibrationsData(object):
         returns:
             ase.vibrations.VibrationsData
         """
-        n_atoms = len(atoms)
+
+        indices = kwargs.get('indices', None)
+        n_atoms = len(atoms[cls._mask_from_indices(atoms, indices)])
 
         if (isinstance(hessian_2d, np.ndarray)
             and hessian_2d.shape == (n_atoms * 3, n_atoms * 3)):
@@ -161,7 +165,7 @@ class VibrationsData(object):
         """
         m = self.atoms[self._mask()].get_masses()
         if not np.all(m):
-            raise RuntimeError('Zero mass encountered in one or more of '
+            raise ValueError('Zero mass encountered in one or more of '
                                'the vibrated atoms. Use Atoms.set_masses()'
                                ' to set all masses to non-zero values.')
         mass_weights_row = np.repeat(m**-0.5, 3)
@@ -173,6 +177,12 @@ class VibrationsData(object):
 
         n_atoms = len(self.atoms[self._mask()])
         return (energies, modes.reshape(n_atoms * 3, n_atoms, 3))
+
+    def get_frequencies(self):
+        """Diagonalise the Hessian, returning only frequencies in cm-1"""
+
+        energies, _ = self.get_energies_and_modes()
+        return energies / units.invcm
 
 class Vibrations:
     """Class for calculating vibrational modes using finite difference.
@@ -519,7 +529,7 @@ class Vibrations:
             direction.lower() != self.direction):
             self.read(method, direction, **kw)
 
-        return VibrationsData.from_2d(self.atoms, self.H)
+        return VibrationsData.from_2d(self.atoms, self.H, indices=self.indices)
 
     def get_energies(self, method='standard', direction='central', **kw):
         """Get vibration energies in eV."""
