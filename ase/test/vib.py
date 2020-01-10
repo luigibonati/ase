@@ -122,6 +122,52 @@ class TestVibrationsData(unittest.TestCase):
             vib_data.atoms.set_masses([14, 0])
             vib_data.get_energies_and_modes()
 
+    def test_fixed_atoms(self):
+        vib_data = VibrationsData(self.n2.copy(), self.h_n2[1:, :, 1:, :],
+                                  indices=[1, ])
+        self.assertEqual(vib_data.indices, [1, ])
+        self.assertEqual(vib_data.mask.tolist(), [False, True])
+
+        vib_data = VibrationsData(self.n2.copy(), self.h_n2[:1, :, :1, :],
+                                  mask=[True, False])
+        self.assertEqual(vib_data.indices, [0, ])
+        self.assertEqual(vib_data.mask.tolist(), [True, False])
+
+        with self.assertRaises(ValueError):
+            vib_data = VibrationsData(self.n2.copy(), self.h_n2[:1, :, :1, :],
+                                      indices=[0, ], mask=[True, False])
+
+        with self.assertRaises(ValueError):
+            vib_data = VibrationsData(self.n2.copy(), self.h_n2[:1, :, :1, :],
+                                      mask=[True, False, True])
+
+    def test_edit_data(self):
+        # Check that it is possible to mutate the data and recalculate.
+
+        # --- Modify Hessian and mask to fix an atom ---
+        vib_data = VibrationsData(self.n2.copy(), self.h_n2)
+
+        vib_data.hessian = vib_data.hessian[:1, :, :1, :]
+        vib_data.mask = [True, False]
+        vib_data.get_energies_and_modes()
+
+        with self.assertRaises(ValueError):
+            vib_data.hessian = np.eye(4)
+
+        # --- Modify atoms and Hessian ---
+        vib_data = VibrationsData(self.n2.copy(), self.h_n2)
+
+        vib_data.hessian = vib_data.hessian[:1, :, :1, :]
+        vib_data.atoms = vib_data.atoms[:1]
+        vib_data.get_energies_and_modes()
+
+        # --- Modify mask/atoms without corresponding Hessian
+        vib_data = VibrationsData(self.n2.copy(), self.h_n2)
+        vib_data.mask = [True, False]
+
+        with self.assertRaises(ValueError):
+            vib_data.get_energies_and_modes()
+
     def test_todict(self):
         vib_data = VibrationsData(self.n2.copy(), self.h_n2)
         vib_data_dict = vib_data.todict()
@@ -141,10 +187,14 @@ class TestVibrationsData(unittest.TestCase):
         for attr in 'atoms', 'indices':
             self.assertEqual(getattr(vib_data, attr),
                              getattr(vib_data_roundtrip, attr))
-        for array_getter in 'get_hessian', 'get_hessian_2d':
+        for array_getter in ('get_hessian_2d',):
             assert_array_almost_equal(
                 getattr(vib_data, array_getter)(),
                 getattr(vib_data_roundtrip, array_getter)())
+        for array_attr in ('hessian',):
+            assert_array_almost_equal(
+                getattr(vib_data, array_attr),
+                getattr(vib_data_roundtrip, array_attr))
 
     def test_bad_hessian(self):
         bad_hessians = (None, 'fish', 1,

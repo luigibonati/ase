@@ -36,26 +36,86 @@ class VibrationsData(object):
         atoms (ase.atoms.Atoms): Equilibrium geometry of vibrating system
         hessian (np.ndarray): Second-derivative in energy with respect to
             Cartesian nuclear movements as an (N, 3, N, 3) array.
-        indices (list or None): indices of atoms which are included in Hessian.
-            Default value (None) includes all atoms.
+        indices (1-D array-like or None): indices of atoms which are included
+            in Hessian.  Default value (None) includes all atoms.
+        mask (1-D array-like, list or None): an alternative way of specifying
+            the atoms to include in Hessian; a Boolean mask. This is easier to
+            obtain with e.g. ``atoms.symbols == 'C'``.
 
     """
 
-    def __init__(self, atoms, hessian, indices=None):
+    def __init__(self, atoms, hessian, indices=None, mask=None):
         self.atoms = atoms.copy()
-        self.indices = indices
+        self.indices = self._indices_from_options(atoms,
+                                                  indices=indices, mask=mask)
 
-        n_atoms = len(atoms[self._mask()])
+        n_atoms = self._check_dimensions(self.atoms, self.indices, hessian)
+        self._hessian2d = hessian.reshape(3 * n_atoms, 3 * n_atoms).copy()
+
+    @classmethod
+    def _indices_from_options(cls, atoms, indices=None, mask=None):
+        if indices is not None and mask is not None:
+            raise ValueError("Cannot set both indices and mask: these are "
+                             "redundant options setting the same data.")
+        elif indices is not None:
+            return np.asarray(indices)
+        elif mask is not None:
+            return cls._indices_from_mask(mask, atoms)
+        else:
+            return None
+
+    @staticmethod
+    def _check_dimensions(atoms, indices, hessian, two_d=False):
+        """Sanity check on array shapes from input data
+
+        Args:
+            atoms (ase.Atoms): Structure
+            indices (1D array-like): Indices of atoms used in Hessian
+            hessian (np.ndarray): Proposed Hessian array
+
+        Returns:
+            (int) Number of atoms contributing to Hessian
+
+        Raises:
+            ValueError if Hessian dimensions are not (N, 3, N, 3)
+
+        """
+        if indices is None:
+            n_atoms = len(atoms)
+        else:
+            n_atoms = len(atoms[indices])
+
+        if two_d:
+            ref_shape = (n_atoms * 3, n_atoms * 3)
+            ref_shape_txt = '{n:d}x{n:d}'.format(n=(n_atoms * 3))
+
+        else:
+            ref_shape = (n_atoms, 3, n_atoms, 3)
+            ref_shape_txt = '{n:d}x3x{n:d}x3'.format(n=n_atoms)
+
         if (isinstance(hessian, np.ndarray)
-            and hessian.shape == (n_atoms, 3, n_atoms, 3)):
-            self._hessian2d = hessian.reshape(3 * n_atoms, 3 * n_atoms).copy()
+            and hessian.shape == ref_shape):
+            return n_atoms
         else:
             raise ValueError("Hessian for these atoms should be a "
-                             "{n:d}x{n:d}x3x3 numpy array.".format(n=n_atoms))
+                             "{} numpy array.".format(ref_shape_txt))
 
-    def _mask(self):
+    @property
+    def mask(self):
         """Boolean mask of atoms selected by indices"""
         return self._mask_from_indices(self.atoms, self.indices)
+
+    @mask.setter
+    def mask(self, values):
+        self.indices = self._indices_from_mask(values, self.atoms)
+
+    @staticmethod
+    def _indices_from_mask(mask, atoms):
+        """Indices corresponding to boolean mask"""
+        natoms = len(atoms)
+        if len(mask) != natoms:
+            raise ValueError("Mask size does not match number of atoms")
+        return list(np.arange(natoms)[mask])
 
     @staticmethod
     def _mask_from_indices(atoms, indices):
@@ -64,7 +124,8 @@ class VibrationsData(object):
         if indices is None:
             return [True] * natoms
         else:
-            indices = indices % natoms  # Wrap indices to allow negative values
+            # Wrap indices to allow negative values
+            indices = np.asarray(indices) % natoms
             mask = np.full(natoms, False)
             mask[indices] = True
             return mask
@@ -81,21 +142,17 @@ class VibrationsData(object):
         returns:
             ase.vibrations.VibrationsData
         """
+        indices = cls._indices_from_options(atoms,
+                                            indices=kwargs.get('indices'),
+                                            mask=kwargs.get('mask'))
 
-        indices = kwargs.get('indices', None)
-        n_atoms = len(atoms[cls._mask_from_indices(atoms, indices)])
+        n_atoms = cls._check_dimensions(atoms, indices, hessian_2d, two_d=True)
 
-        if (isinstance(hessian_2d, np.ndarray)
-            and hessian_2d.shape == (n_atoms * 3, n_atoms * 3)):
-            return cls(atoms, hessian_2d.reshape(n_atoms, 3, n_atoms, 3),
-                       **kwargs)
+        return cls(atoms, hessian_2d.reshape(n_atoms, 3, n_atoms, 3), **kwargs)
 
-        else:
-            raise ValueError("Hessian for these Atoms should be a {n:d}x{n:d} "
-                             "numpy array.".format(n=(n_atoms * 3)))
-
-    def get_hessian(self):
-        """Get the Hessian; second derivative of energy wrt positions
+    @property
+    def hessian(self):
+        """The Hessian; second derivative of energy wrt positions
 
         This format is preferred for iteration over atoms and when
         addressing specific elements of the Hessian.
@@ -111,8 +168,24 @@ class VibrationsData(object):
             z-direction of atoms[0]
 
         """
-        n_atoms = len(self.atoms[self._mask()])
+        n_atoms = len(self.atoms[self.mask])
         return self._hessian2d.reshape(n_atoms, 3, n_atoms, 3).copy()
+
+    @hessian.setter
+    def hessian(self, new_values):
+        # For once we _don't_ sanity-check the number of atoms because the
+        # user is mutating things and might decide to update the Hessian
+        # before the atoms.
+        new_values = np.asarray(new_values)
+        presumed_natoms = new_values.shape[0]
+        if (len(new_values.shape) == 4
+            and presumed_natoms == new_values.shape[2]
+            and new_values.shape[1] == new_values.shape[3]):
+
+            self._hessian2d = new_values.reshape(presumed_natoms * 3,
+                                                 presumed_natoms * 3)
+        else:
+            raise ValueError("Hessian must have dimensions (N,3,N,3)")
 
     def get_hessian_2d(self):
         """Get the Hessian as a 2-D array
@@ -140,13 +213,13 @@ class VibrationsData(object):
     def todict(self):
         return {'ase_objtype': 'vibrationsdata',
                 'atoms': self.atoms.todict(),
-                'hessian': self.get_hessian(),
+                'hessian': self.hessian,
                 'indices': self.indices}
 
     @classmethod
     def fromdict(cls, data):
         return cls(Atoms.fromdict(data['atoms']), data['hessian'],
-                   indices = data['indices'])
+                   indices=data['indices'])
 
     def get_energies_and_modes(self):
         """Diagonalise the Hessian to obtain harmonic modes
@@ -154,8 +227,8 @@ class VibrationsData(object):
         Returns:
             tuple (energies, modes)
 
-            Energies are given in units of eV. (To convert these to frequencies in
-            cm-1, divide by ase.units.invcm)
+            Energies are given in units of eV. (To convert these to frequencies
+            in cm-1, divide by ase.units.invcm.)
 
             Modes are given in Cartesian coordinates as a (3N, N, 3) array
             where indices correspond to the (mode_index, atom, direction).
@@ -163,11 +236,14 @@ class VibrationsData(object):
             Note that in this array only the moving atoms are included.
 
         """
-        m = self.atoms[self._mask()].get_masses()
+        n_atoms = self._check_dimensions(self.atoms, self.indices,
+                                         self.hessian)
+
+        m = self.atoms[self.mask].get_masses()
         if not np.all(m):
             raise ValueError('Zero mass encountered in one or more of '
-                               'the vibrated atoms. Use Atoms.set_masses()'
-                               ' to set all masses to non-zero values.')
+                             'the vibrated atoms. Use Atoms.set_masses()'
+                             ' to set all masses to non-zero values.')
         mass_weights_row = np.repeat(m**-0.5, 3)
         mass_weights = mass_weights_row[:, np.newaxis] * mass_weights_row
         omega2, modes = np.linalg.eigh(self.get_hessian_2d() * mass_weights)
@@ -175,7 +251,6 @@ class VibrationsData(object):
         unit_conversion = units._hbar * units.m / sqrt(units._e * units._amu)
         energies = unit_conversion * omega2.astype(complex)**0.5
 
-        n_atoms = len(self.atoms[self._mask()])
         return (energies, modes.reshape(n_atoms * 3, n_atoms, 3))
 
     def get_frequencies(self):
@@ -183,6 +258,7 @@ class VibrationsData(object):
 
         energies, _ = self.get_energies_and_modes()
         return energies / units.invcm
+
 
 class Vibrations:
     """Class for calculating vibrational modes using finite difference.
@@ -286,8 +362,8 @@ class Vibrations:
         case it is not found.
 
         If the program you want to use does not have a calculator in ASE, use
-        ``iterdisplace`` to get all displaced structures and calculate the forces
-        on your own.
+        ``iterdisplace`` to get all displaced structures and calculate the
+        forces on your own.
         """
 
         if op.isfile(self.name + '.all.pckl'):
