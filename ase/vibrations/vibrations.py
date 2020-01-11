@@ -38,7 +38,7 @@ class VibrationsData(object):
             Cartesian nuclear movements as an (N, 3, N, 3) array.
         indices (1-D array-like or None): indices of atoms which are included
             in Hessian.  Default value (None) includes all atoms.
-        mask (1-D array-like, list or None): an alternative way of specifying
+        mask (1-D array-like or None): an alternative way of specifying
             the atoms to include in Hessian; a Boolean mask. This is easier to
             obtain with e.g. ``atoms.symbols == 'C'``.
 
@@ -122,7 +122,7 @@ class VibrationsData(object):
         """Boolean mask of atoms selected by indices"""
         natoms = len(atoms)
         if indices is None:
-            return [True] * natoms
+            return np.full(natoms, True, dtype=bool)
         else:
             # Wrap indices to allow negative values
             indices = np.asarray(indices) % natoms
