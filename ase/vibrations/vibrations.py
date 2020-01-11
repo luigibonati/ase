@@ -126,7 +126,7 @@ class VibrationsData(object):
         else:
             # Wrap indices to allow negative values
             indices = np.asarray(indices) % natoms
-            mask = np.full(natoms, False)
+            mask = np.full(natoms, False, dtype=bool)
             mask[indices] = True
             return mask
 
