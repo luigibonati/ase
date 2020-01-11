@@ -136,8 +136,9 @@ class VibrationsData(object):
 
         Args:
             atoms(ase.atoms.Atoms): Equilibrium geometry of vibrating system
-        hessian (np.ndarray): Second-derivative in energy with respect to
-            Cartesian nuclear movements as a (3N, 3N) array.
+
+            hessian (np.ndarray): Second-derivative in energy with respect to
+                Cartesian nuclear movements as a (3N, 3N) array.
 
         returns:
             ase.vibrations.VibrationsData
@@ -258,6 +259,63 @@ class VibrationsData(object):
 
         energies, _ = self.get_energies_and_modes()
         return energies / units.invcm
+
+    def get_zero_point_energy(self, energies=None):
+        """Diagonalise the Hessian and sum hw/2 to obtain zero-point energy
+
+        Args:
+            energies (1-D array-like, optional):
+                Pre-computed energy eigenvalues. Use if available to avoid
+                re-calculating these from the Hessian.
+
+        Returns:
+            (float): zero-point energy in eV
+        """
+        if energies is None:
+            energies, _ = self.get_energies_and_modes()
+
+        return 0.5 * energies.real.sum()
+
+    def summary(self, energies=None, log=None, im_tol=1e-8):
+        """Print a summary of the vibrational frequencies.
+
+        Args:
+            energies (1-D array-like, optional):
+                Pre-computed set of energies. Use if available to avoid 
+                re-calculation from the Hessian.
+            log (str): if specified, write output to a different location than
+                stdout. Can be an object with a write() method or the name of a
+                file to create.
+            im_tol (float, optional):
+                Tolerance for imaginary frequency in eV. If frequency has a
+                larger imaginary component than im_tol, the imaginary component
+                is shown int the summary table.
+        """
+
+        if log is None:
+            log = sys.stdout
+        elif isinstance(log, str):
+            log = paropen(log, 'a')
+
+        if energies is None:
+            energies, _ = self.get_energies_and_modes()
+
+        log.write('---------------------\n')
+        log.write('  #    meV     cm^-1\n')
+        log.write('---------------------\n')
+        for n, e in enumerate(energies):
+            if abs(e.imag) > im_tol:
+                c = 'i'
+                e = e.imag
+            else:
+                c = ' '
+                e = e.real
+            log.write('{index:3d} {mev:6.1f}{im}  {cm:7.1f}{im}\n'.format(
+                index=n, mev=(e * 1e3), cm=(e / units.invcm), im=c))
+
+        log.write('---------------------\n')
+        log.write('Zero-point energy: {:.3f} eV\n'.format(
+              self.get_zero_point_energy(energies=energies)))
 
 
 class Vibrations:

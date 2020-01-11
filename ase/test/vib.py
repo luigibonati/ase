@@ -119,6 +119,9 @@ class TestVibrationsData(unittest.TestCase):
                                 1.34737571e+01 + 0.j,
                                 1.23118496e+03 + 0.j]
 
+        self.ref_zpe = 0.07799427233401508
+        self.report_file = 'vib-data-report.txt'
+
     def tearDown(self):
         pass
 
@@ -129,9 +132,19 @@ class TestVibrationsData(unittest.TestCase):
                                   energies / units.invcm,
                                   decimal=5)
 
+        self.assertAlmostEqual(vib_data.get_zero_point_energy(), self.ref_zpe)
+        self.assertAlmostEqual(
+            vib_data.get_zero_point_energy(energies=energies), self.ref_zpe)
+
+        vib_data.summary(log=self.report_file)
+        with open(self.report_file, 'rt') as f:
+            report_txt = f.read()
+        self.assertEqual(report_txt, vibrations_n2_log)
+
         with self.assertRaises(ValueError):
             vib_data.atoms.set_masses([14, 0])
             vib_data.get_energies_and_modes()
+
 
     def test_fixed_atoms(self):
         vib_data = VibrationsData(self.n2.copy(), self.h_n2[1:, :, 1:, :],
