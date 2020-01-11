@@ -13,10 +13,13 @@ from ase.thermochemistry import IdealGasThermo
 
 class TestVibrationsClassic(unittest.TestCase):
     def setUp(self):
+        self.logfile = 'vibrations-log.txt'
+        self.opt_logs = 'opt-logs.txt'
+
         self.n2 = Atoms('N2',
                         positions=[(0, 0, 0), (0, 0, 1.1)],
                         calculator=EMT())
-        QuasiNewton(self.n2).run(fmax=0.01)
+        QuasiNewton(self.n2, logfile=self.opt_logs).run(fmax=0.01)
 
     def get_emt_n2(self):
         atoms = self.n2.copy()
@@ -27,13 +30,15 @@ class TestVibrationsClassic(unittest.TestCase):
         for pattern in 'vib.*.pckl', 'vib.*.traj':
             for outfile in glob.glob(pattern):
                 os.remove(outfile)
+        for filename in (self.logfile, self.opt_logs):
+            if os.path.isfile(filename):
+                os.remove(filename)
 
     def test_vibrations(self):
         atoms = self.get_emt_n2()
         vib = Vibrations(atoms)
         vib.run()
         freqs = vib.get_frequencies()
-        vib.summary()
         vib.get_mode(-1)
         vib.write_mode(n=None, nimages=20)
         vib_energies = vib.get_energies()
@@ -43,7 +48,13 @@ class TestVibrationsClassic(unittest.TestCase):
 
         thermo = IdealGasThermo(vib_energies=vib_energies, geometry='linear',
                                 atoms=atoms, symmetrynumber=2, spin=0)
-        thermo.get_gibbs_energy(temperature=298.15, pressure=2 * 101325.)
+        thermo.get_gibbs_energy(temperature=298.15, pressure=2 * 101325.,
+                                verbose=False)
+
+        vib.summary(log=self.logfile)
+        with open(self.logfile, 'rt') as f:
+            log_txt = f.read()
+            self.assertEqual(log_txt, vibrations_n2_log)
 
         self.assertEqual(vib.clean(empty_files=True), 0)
         self.assertEqual(vib.clean(), 13)
@@ -290,6 +301,18 @@ n2_on_ag_data = {"positions": np.array([
              [0.0, 0.0, 0.0]],
     "pbc": [True, True, False]}
 
+vibrations_n2_log = """---------------------
+  #    meV     cm^-1
+---------------------
+  0    0.0       0.0 
+  1    0.0       0.0 
+  2    0.0       0.0 
+  3    1.7      13.5 
+  4    1.7      13.5 
+  5  152.6    1231.2 
+---------------------
+Zero-point energy: 0.078 eV
+"""
 
 # More unittest boilerplate before pytest arrives
 def suite():
