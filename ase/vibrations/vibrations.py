@@ -168,7 +168,7 @@ class VibrationsData(object):
             z-direction of atoms[0]
 
         """
-        n_atoms = len(self.atoms[self.mask])
+        n_atoms = int(self._hessian2d.shape[0] / 3)
         return self._hessian2d.reshape(n_atoms, 3, n_atoms, 3).copy()
 
     @hessian.setter
