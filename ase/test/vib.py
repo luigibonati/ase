@@ -5,6 +5,7 @@ import numpy as np
 from numpy.testing import assert_array_almost_equal
 
 from ase import units, Atoms
+import ase.io
 from ase.calculators.emt import EMT
 from ase.optimize import QuasiNewton
 from ase.vibrations import Vibrations, VibrationsData
@@ -39,8 +40,7 @@ class TestVibrationsClassic(unittest.TestCase):
         vib = Vibrations(atoms)
         vib.run()
         freqs = vib.get_frequencies()
-        vib.get_mode(-1)
-        vib.write_mode(n=None, nimages=20)
+        vib.write_mode(n=None, nimages=5)
         vib_energies = vib.get_energies()
 
         for image in vib.iterimages():
@@ -55,6 +55,20 @@ class TestVibrationsClassic(unittest.TestCase):
         with open(self.logfile, 'rt') as f:
             log_txt = f.read()
             self.assertEqual(log_txt, vibrations_n2_log)
+
+        mode1 = vib.get_mode(1)
+        assert_array_almost_equal(mode1, [[ 0.188935, -0.000213, 0.],
+                                          [ 0.188935, -0.000213, -0.]])
+
+        for i in range(3):
+            self.assertFalse(os.path.isfile('vib.{}.traj'.format(i)))
+        mode_traj = ase.io.read('vib.3.traj', index=':')
+        self.assertEqual(len(mode_traj), 5)
+        assert_array_almost_equal(mode_traj[0].get_all_distances(),
+                                  atoms.get_all_distances())
+        with self.assertRaises(AssertionError):
+            assert_array_almost_equal(mode_traj[4].get_all_distances(),
+                                      atoms.get_all_distances())
 
         self.assertEqual(vib.clean(empty_files=True), 0)
         self.assertEqual(vib.clean(), 13)
@@ -123,7 +137,8 @@ class TestVibrationsData(unittest.TestCase):
         self.report_file = 'vib-data-report.txt'
 
     def tearDown(self):
-        pass
+        if os.path.isfile(self.report_file):
+            os.remove(self.report_file)
 
     def test_energies(self):
         vib_data = VibrationsData(self.n2.copy(), self.h_n2)
