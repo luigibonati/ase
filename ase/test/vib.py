@@ -156,10 +156,6 @@ class TestVibrationsData(unittest.TestCase):
             report_txt = f.read()
         self.assertEqual(report_txt, vibrations_n2_log)
 
-        with self.assertRaises(ValueError):
-            vib_data.atoms.set_masses([14, 0])
-            vib_data.get_energies_and_modes()
-
     def test_clean_atom_copy(self):
         atoms = self.n2.copy()
         # Custom arrays should be removed from the Atoms attached to VibData
@@ -187,31 +183,21 @@ class TestVibrationsData(unittest.TestCase):
                                       mask=[True, False, True])
 
     def test_edit_data(self):
-        # Check that it is possible to mutate the data and recalculate.
-
         # --- Modify Hessian and mask to fix an atom ---
         vib_data = VibrationsData(self.n2.copy(), self.h_n2)
 
-        vib_data.hessian = vib_data.hessian[:1, :, :1, :]
-        vib_data.mask = [True, False]
-        vib_data.get_energies_and_modes()
+        with self.assertRaises(NotImplementedError):
+            vib_data.hessian = vib_data.hessian[:1, :, :1, :]
 
-        with self.assertRaises(ValueError):
-            vib_data.hessian = np.eye(4)
+        with self.assertRaises(NotImplementedError):
+            vib_data.mask = [True, False]
 
-        # --- Modify atoms and Hessian ---
-        vib_data = VibrationsData(self.n2.copy(), self.h_n2)
+        with self.assertRaises(NotImplementedError):
+            vib_data.indices = [0, 1]
 
-        vib_data.hessian = vib_data.hessian[:1, :, :1, :]
-        vib_data.atoms = vib_data.atoms[:1]
-        vib_data.get_energies_and_modes()
-
-        # --- Modify mask/atoms without corresponding Hessian
-        vib_data = VibrationsData(self.n2.copy(), self.h_n2)
-        vib_data.mask = [True, False]
-
-        with self.assertRaises(ValueError):
-            vib_data.get_energies_and_modes()
+        with self.assertRaises(NotImplementedError):
+            vib_data.atoms = ase.Atoms('H2', positions=[[0., 0., 0.],
+                                                        [0., 0., 0.8]])
 
     def test_todict(self):
         vib_data = VibrationsData(self.n2.copy(), self.h_n2)

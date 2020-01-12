@@ -46,17 +46,41 @@ class VibrationsData(object):
             obtain with e.g. ``atoms.symbols == 'C'``.
 
     """
-
     def __init__(self, atoms, hessian, indices=None, mask=None):
-        self.atoms = Atoms(cell=atoms.cell, pbc=atoms.pbc,
-                           masses=atoms.get_masses(),
-                           positions=atoms.positions)
+        self._atoms = Atoms(cell=atoms.cell, pbc=atoms.pbc,
+                            masses=atoms.get_masses(),
+                            positions=atoms.positions)
 
-        self.indices = self._indices_from_options(self.atoms,
+        self._indices = self._indices_from_options(self.atoms,
                                                   indices=indices, mask=mask)
 
         n_atoms = self._check_dimensions(self.atoms, self.indices, hessian)
         self._hessian2d = hessian.reshape(3 * n_atoms, 3 * n_atoms).copy()
+
+    _setter_error = ("VibrationsData properties cannot be modified: construct "
+                     "a new VibrationsData with consistent atoms, Hessian and "
+                     "(optionally) indices/mask.")
+
+    @classmethod
+    def from_2d(cls, atoms, hessian_2d, **kwargs):
+        """Instantiate VibrationsData when the Hessian is in a 3Nx3N format
+
+        Args:
+            atoms(ase.atoms.Atoms): Equilibrium geometry of vibrating system
+
+            hessian (np.ndarray): Second-derivative in energy with respect to
+                Cartesian nuclear movements as a (3N, 3N) array.
+
+        returns:
+            ase.vibrations.VibrationsData
+        """
+        indices = cls._indices_from_options(atoms,
+                                            indices=kwargs.get('indices'),
+                                            mask=kwargs.get('mask'))
+
+        n_atoms = cls._check_dimensions(atoms, indices, hessian_2d, two_d=True)
+
+        return cls(atoms, hessian_2d.reshape(n_atoms, 3, n_atoms, 3), **kwargs)
 
     @classmethod
     def _indices_from_options(cls, atoms, indices=None, mask=None):
@@ -69,6 +93,14 @@ class VibrationsData(object):
             return cls._indices_from_mask(mask, atoms)
         else:
             return None
+
+    @staticmethod
+    def _indices_from_mask(mask, atoms):
+        """Indices corresponding to boolean mask"""
+        natoms = len(atoms)
+        if len(mask) != natoms:
+            raise ValueError("Mask size does not match number of atoms")
+        return list(np.arange(natoms)[mask])
 
     @staticmethod
     def _check_dimensions(atoms, indices, hessian, two_d=False):
@@ -107,21 +139,32 @@ class VibrationsData(object):
                              "{} numpy array.".format(ref_shape_txt))
 
     @property
+    def atoms(self):
+        return self._atoms.copy()
+
+    @atoms.setter
+    def atoms(self, new_atoms):
+        raise NotImplementedError(self._setter_error)
+
+    @property
+    def indices(self):
+        if self._indices is None:
+            return None
+        else:
+            return self._indices.copy()
+
+    @indices.setter
+    def indices(self, new_indices):
+        raise NotImplementedError(self._setter_error)
+
+    @property
     def mask(self):
         """Boolean mask of atoms selected by indices"""
         return self._mask_from_indices(self.atoms, self.indices)
 
     @mask.setter
     def mask(self, values):
-        self.indices = self._indices_from_mask(values, self.atoms)
-
-    @staticmethod
-    def _indices_from_mask(mask, atoms):
-        """Indices corresponding to boolean mask"""
-        natoms = len(atoms)
-        if len(mask) != natoms:
-            raise ValueError("Mask size does not match number of atoms")
-        return list(np.arange(natoms)[mask])
+        raise NotImplementedError(self._setter_error)
 
     @staticmethod
     def _mask_from_indices(atoms, indices):
@@ -135,27 +178,6 @@ class VibrationsData(object):
             mask = np.full(natoms, False, dtype=bool)
             mask[indices] = True
             return mask
-
-    @classmethod
-    def from_2d(cls, atoms, hessian_2d, **kwargs):
-        """Instantiate VibrationsData when the Hessian is in a 3Nx3N format
-
-        Args:
-            atoms(ase.atoms.Atoms): Equilibrium geometry of vibrating system
-
-            hessian (np.ndarray): Second-derivative in energy with respect to
-                Cartesian nuclear movements as a (3N, 3N) array.
-
-        returns:
-            ase.vibrations.VibrationsData
-        """
-        indices = cls._indices_from_options(atoms,
-                                            indices=kwargs.get('indices'),
-                                            mask=kwargs.get('mask'))
-
-        n_atoms = cls._check_dimensions(atoms, indices, hessian_2d, two_d=True)
-
-        return cls(atoms, hessian_2d.reshape(n_atoms, 3, n_atoms, 3), **kwargs)
 
     @property
     def hessian(self):
@@ -180,19 +202,7 @@ class VibrationsData(object):
 
     @hessian.setter
     def hessian(self, new_values):
-        # For once we _don't_ sanity-check the number of atoms because the
-        # user is mutating things and might decide to update the Hessian
-        # before the atoms.
-        new_values = np.asarray(new_values)
-        presumed_natoms = new_values.shape[0]
-        if (len(new_values.shape) == 4
-            and presumed_natoms == new_values.shape[2]
-            and new_values.shape[1] == new_values.shape[3]):
-
-            self._hessian2d = new_values.reshape(presumed_natoms * 3,
-                                                 presumed_natoms * 3)
-        else:
-            raise ValueError("Hessian must have dimensions (N,3,N,3)")
+        raise NotImplementedError(self._setter_error)
 
     def get_hessian_2d(self):
         """Get the Hessian as a 2-D array
@@ -243,15 +253,15 @@ class VibrationsData(object):
             Note that in this array only the moving atoms are included.
 
         """
-        n_atoms = self._check_dimensions(self.atoms, self.indices,
-                                         self.hessian)
+        active_atoms = self.atoms[self.mask]
+        n_atoms = len(active_atoms)
+        masses = active_atoms.get_masses()
 
-        m = self.atoms[self.mask].get_masses()
-        if not np.all(m):
+        if not np.all(masses):
             raise ValueError('Zero mass encountered in one or more of '
                              'the vibrated atoms. Use Atoms.set_masses()'
                              ' to set all masses to non-zero values.')
-        mass_weights_row = np.repeat(m**-0.5, 3)
+        mass_weights_row = np.repeat(masses**-0.5, 3)
         mass_weights = mass_weights_row[:, np.newaxis] * mass_weights_row
         omega2, modes = np.linalg.eigh(self.get_hessian_2d() * mass_weights)
 
