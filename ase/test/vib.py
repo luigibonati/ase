@@ -57,8 +57,8 @@ class TestVibrationsClassic(unittest.TestCase):
             self.assertEqual(log_txt, vibrations_n2_log)
 
         mode1 = vib.get_mode(1)
-        assert_array_almost_equal(mode1, [[ 0.188935, -0.000213, 0.],
-                                          [ 0.188935, -0.000213, -0.]])
+        assert_array_almost_equal(mode1, [[0.188935, -0.000213, 0.],
+                                          [0.188935, -0.000213, -0.]])
 
         for i in range(3):
             self.assertFalse(os.path.isfile('vib.{}.traj'.format(i)))
@@ -160,6 +160,12 @@ class TestVibrationsData(unittest.TestCase):
             vib_data.atoms.set_masses([14, 0])
             vib_data.get_energies_and_modes()
 
+    def test_clean_atom_copy(self):
+        atoms = self.n2.copy()
+        # Custom arrays should be removed from the Atoms attached to VibData
+        atoms.arrays['bad idea'] = [10., 20.]
+        vib_data = VibrationsData(atoms, self.h_n2)
+        self.assertFalse('bad idea' in vib_data.atoms.arrays)
 
     def test_fixed_atoms(self):
         vib_data = VibrationsData(self.n2.copy(), self.h_n2[1:, :, 1:, :],
@@ -328,18 +334,20 @@ n2_on_ag_data = {"positions": np.array([
              [0.0, 0.0, 0.0]],
     "pbc": [True, True, False]}
 
+
 vibrations_n2_log = """---------------------
   #    meV     cm^-1
 ---------------------
-  0    0.0       0.0 
-  1    0.0       0.0 
-  2    0.0       0.0 
-  3    1.7      13.5 
-  4    1.7      13.5 
-  5  152.6    1231.2 
+  0    0.0       0.0
+  1    0.0       0.0
+  2    0.0       0.0
+  3    1.7      13.5
+  4    1.7      13.5
+  5  152.6    1231.2
 ---------------------
 Zero-point energy: 0.078 eV
 """
+
 
 # More unittest boilerplate before pytest arrives
 def suite():

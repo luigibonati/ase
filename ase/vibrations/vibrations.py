@@ -287,7 +287,7 @@ class VibrationsData(object):
 
         Args:
             energies (1-D array-like, optional):
-                Pre-computed set of energies. Use if available to avoid 
+                Pre-computed set of energies. Use if available to avoid
                 re-calculation from the Hessian.
             log (str): if specified, write output to a different location than
                 stdout. Can be an object with a write() method or the name of a
@@ -314,14 +314,14 @@ class VibrationsData(object):
                 c = 'i'
                 e = e.imag
             else:
-                c = ' '
+                c = ''
                 e = e.real
-            log.write('{index:3d} {mev:6.1f}{im}  {cm:7.1f}{im}\n'.format(
+            log.write('{index:3d} {mev:6.1f}{im:1s}  {cm:7.1f}{im}\n'.format(
                 index=n, mev=(e * 1e3), cm=(e / units.invcm), im=c))
 
         log.write('---------------------\n')
         log.write('Zero-point energy: {:.3f} eV\n'.format(
-              self.get_zero_point_energy(energies=energies)))
+            self.get_zero_point_energy(energies=energies)))
 
 
 class Vibrations:
@@ -483,7 +483,8 @@ class Vibrations:
             freq, noninPol, pol = self.get_polarizability()
         if world.rank == 0:
             if self.ir and self.ram:
-                pickle.dump([forces, dipole, freq, noninPol, pol], fd, protocol=2)
+                pickle.dump([forces, dipole, freq, noninPol, pol],
+                            fd, protocol=2)
                 sys.stdout.write(
                     'Writing %s, dipole moment = (%.6f %.6f %.6f)\n' %
                     (filename, dipole[0], dipole[1], dipole[2]))
@@ -721,9 +722,9 @@ class Vibrations:
                 c = 'i'
                 e = e.imag
             else:
-                c = ' '
+                c = ''
                 e = e.real
-            write('%3d %6.1f%s  %7.1f%s\n' % (n, 1000 * e, c, s * e, c))
+            write('%3d %6.1f%1s  %7.1f%s\n' % (n, 1000 * e, c, s * e, c))
         write('---------------------\n')
         write('Zero-point energy: %.3f eV\n' %
               self.get_zero_point_energy(freq=freq))
