@@ -811,10 +811,11 @@ class Vibrations:
             fd.write('%6d\n' % len(self.atoms))
             if f[n].imag != 0:
                 c = 'i'
-                f[n] = f[n].imag
+                f_n = float(f[n].imag)
             else:
+                f_n = float(f[n].real)
                 c = ' '
-            fd.write('Mode #%d, f = %.1f%s cm^-1' % (n, f[n], c))
+            fd.write('Mode #%d, f = %.1f%s cm^-1' % (n, f_n, c))
             if self.ir:
                 fd.write(', I = %.4f (D/Å)^2 amu^-1.\n' % self.intensities[n])
             else:
