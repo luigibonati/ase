@@ -211,7 +211,6 @@ class TestVibrationsData(unittest.TestCase):
         vib_data = VibrationsData(self.n2.copy(), self.h_n2)
         vib_data_dict = vib_data.todict()
 
-        self.assertEqual(vib_data_dict['ase_objtype'], 'vibrationsdata')
         self.assertEqual(vib_data_dict['indices'], None)
         assert_array_almost_equal(vib_data_dict['atoms']['positions'],
                                   self.n2.positions)
