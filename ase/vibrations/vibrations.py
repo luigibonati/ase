@@ -1,10 +1,11 @@
 """Vibrational modes."""
 
+from math import sin, pi, sqrt, log
 import os
 import os.path as op
 import pickle
 import sys
-from math import sin, pi, sqrt, log
+from typing import Optional, Union, List, Dict, Tuple
 
 import numpy as np
 
@@ -17,6 +18,9 @@ from ase.utils import jsonable
 from ase.utils import opencew, pickleload
 from ase.calculators.singlepoint import SinglePointCalculator
 
+# Define some useful type collections
+_indices_input = Union[None, List[int], np.ndarray]
+_mask_type = Union[List[bool], np.ndarray]
 
 @jsonable('vibrationsdata')
 class VibrationsData(object):
@@ -33,26 +37,31 @@ class VibrationsData(object):
     dispersion plotting.
 
     Args:
-        atoms (ase.atoms.Atoms):
+        atoms:
             Equilibrium geometry of vibrating system. This will be stored as a
             lightweight copy with just positions, masses, unit cell.
         
-        hessian (np.ndarray): Second-derivative in energy with respect to
+        hessian: Second-derivative in energy with respect to
             Cartesian nuclear movements as an (N, 3, N, 3) array.
-        indices (1-D array-like or None): indices of atoms which are included
+        indices: indices of atoms which are included
             in Hessian.  Default value (None) includes all atoms.
-        mask (1-D array-like or None): an alternative way of specifying
-            the atoms to include in Hessian; a Boolean mask. This is easier to
-            obtain with e.g. ``atoms.symbols == 'C'``.
+        mask: An alternative way of specifying the atoms to include in Hessian;
+            a 1-D Boolean mask array. This is easier to obtain with
+            e.g. ``atoms.symbols == 'C'``.
 
     """
-    def __init__(self, atoms, hessian, indices=None, mask=None):
+    def __init__(self,
+                 atoms: Atoms,
+                 hessian: np.ndarray,
+                 indices: Optional[_indices_input] = None,
+                 mask: Optional[Union[None, _mask_type]] = None,
+                 ) -> None:
         self._atoms = Atoms(cell=atoms.cell, pbc=atoms.pbc,
                             masses=atoms.get_masses(),
                             positions=atoms.positions)
 
         self._indices = self._indices_from_options(self.atoms,
-                                                  indices=indices, mask=mask)
+                                                   indices=indices, mask=mask)
 
         n_atoms = self._check_dimensions(self.atoms, self.indices, hessian)
         self._hessian2d = hessian.reshape(3 * n_atoms, 3 * n_atoms).copy()
@@ -62,17 +71,16 @@ class VibrationsData(object):
                      "(optionally) indices/mask.")
 
     @classmethod
-    def from_2d(cls, atoms, hessian_2d, **kwargs):
+    def from_2d(cls, atoms: Atoms, hessian_2d: np.ndarray,
+                **kwargs) -> 'VibrationsData':
         """Instantiate VibrationsData when the Hessian is in a 3Nx3N format
 
         Args:
-            atoms(ase.atoms.Atoms): Equilibrium geometry of vibrating system
+            atoms: Equilibrium geometry of vibrating system
 
-            hessian (np.ndarray): Second-derivative in energy with respect to
+            hessian: Second-derivative in energy with respect to
                 Cartesian nuclear movements as a (3N, 3N) array.
 
-        returns:
-            ase.vibrations.VibrationsData
         """
         indices = cls._indices_from_options(atoms,
                                             indices=kwargs.get('indices'),
@@ -83,7 +91,11 @@ class VibrationsData(object):
         return cls(atoms, hessian_2d.reshape(n_atoms, 3, n_atoms, 3), **kwargs)
 
     @classmethod
-    def _indices_from_options(cls, atoms, indices=None, mask=None):
+    def _indices_from_options(cls,
+                              atoms: Atoms,
+                              indices: Optional[_indices_input] = None,
+                              mask: Optional[Union[None, _mask_type]] = None
+                              ) -> Union[None, np.ndarray]:
         if indices is not None and mask is not None:
             raise ValueError("Cannot set both indices and mask: these are "
                              "redundant options setting the same data.")
@@ -95,7 +107,7 @@ class VibrationsData(object):
             return None
 
     @staticmethod
-    def _indices_from_mask(mask, atoms):
+    def _indices_from_mask(mask: _mask_type, atoms: Atoms) -> np.array:
         """Indices corresponding to boolean mask"""
         natoms = len(atoms)
         if len(mask) != natoms:
@@ -103,16 +115,19 @@ class VibrationsData(object):
         return list(np.arange(natoms)[mask])
 
     @staticmethod
-    def _check_dimensions(atoms, indices, hessian, two_d=False):
+    def _check_dimensions(atoms: Atoms,
+                          indices: _indices_input,
+                          hessian: np.ndarray,
+                          two_d: Optional[bool] = False) -> int:
         """Sanity check on array shapes from input data
 
         Args:
-            atoms (ase.Atoms): Structure
-            indices (1D array-like): Indices of atoms used in Hessian
-            hessian (np.ndarray): Proposed Hessian array
+            atoms: Structure
+            indices: Indices of atoms used in Hessian
+            hessian: Proposed Hessian array
 
         Returns:
-            (int) Number of atoms contributing to Hessian
+            Number of atoms contributing to Hessian
 
         Raises:
             ValueError if Hessian dimensions are not (N, 3, N, 3)
@@ -124,22 +139,22 @@ class VibrationsData(object):
             n_atoms = len(atoms[indices])
 
         if two_d:
-            ref_shape = (n_atoms * 3, n_atoms * 3)
+            ref_shape = [n_atoms * 3, n_atoms * 3]
             ref_shape_txt = '{n:d}x{n:d}'.format(n=(n_atoms * 3))
 
         else:
-            ref_shape = (n_atoms, 3, n_atoms, 3)
+            ref_shape = [n_atoms, 3, n_atoms, 3]
             ref_shape_txt = '{n:d}x3x{n:d}x3'.format(n=n_atoms)
 
         if (isinstance(hessian, np.ndarray)
-            and hessian.shape == ref_shape):
+            and hessian.shape == tuple(ref_shape)):
             return n_atoms
         else:
             raise ValueError("Hessian for these atoms should be a "
                              "{} numpy array.".format(ref_shape_txt))
 
     @property
-    def atoms(self):
+    def atoms(self) -> Atoms:
         return self._atoms.copy()
 
     @atoms.setter
@@ -147,7 +162,7 @@ class VibrationsData(object):
         raise NotImplementedError(self._setter_error)
 
     @property
-    def indices(self):
+    def indices(self) -> Union[None, np.ndarray]:
         if self._indices is None:
             return None
         else:
@@ -158,7 +173,7 @@ class VibrationsData(object):
         raise NotImplementedError(self._setter_error)
 
     @property
-    def mask(self):
+    def mask(self) -> np.ndarray:
         """Boolean mask of atoms selected by indices"""
         return self._mask_from_indices(self.atoms, self.indices)
 
@@ -167,7 +182,7 @@ class VibrationsData(object):
         raise NotImplementedError(self._setter_error)
 
     @staticmethod
-    def _mask_from_indices(atoms, indices):
+    def _mask_from_indices(atoms: Atoms, indices: Union[None]):
         """Boolean mask of atoms selected by indices"""
         natoms = len(atoms)
         if indices is None:
@@ -180,7 +195,7 @@ class VibrationsData(object):
             return mask
 
     @property
-    def hessian(self):
+    def hessian(self) -> np.ndarray:
         """The Hessian; second derivative of energy wrt positions
 
         This format is preferred for iteration over atoms and when
@@ -204,7 +219,7 @@ class VibrationsData(object):
     def hessian(self, new_values):
         raise NotImplementedError(self._setter_error)
 
-    def get_hessian_2d(self):
+    def get_hessian_2d(self) -> np.ndarray:
         """Get the Hessian as a 2-D array
 
         This format may be preferred for use with standard linear algebra
@@ -227,18 +242,18 @@ class VibrationsData(object):
         """
         return self._hessian2d.copy()
 
-    def todict(self):
-        return {'ase_objtype': 'vibrationsdata',
-                'atoms': self.atoms.todict(),
+    def todict(self) -> Dict[str, Union[str, dict, np.ndarray]]:
+        return {'atoms': self.atoms.todict(),
                 'hessian': self.hessian,
                 'indices': self.indices}
 
     @classmethod
-    def fromdict(cls, data):
+    def fromdict(cls, data: Dict[str, Union[str, dict, np.ndarray]]
+                 ) -> 'VibrationsData':
         return cls(Atoms.fromdict(data['atoms']), data['hessian'],
                    indices=data['indices'])
 
-    def get_energies_and_modes(self):
+    def get_energies_and_modes(self) -> Tuple[np.ndarray, np.ndarray]:
         """Diagonalise the Hessian to obtain harmonic modes
 
         Returns:
@@ -270,48 +285,54 @@ class VibrationsData(object):
 
         return (energies, modes.reshape(n_atoms * 3, n_atoms, 3))
 
-    def get_frequencies(self):
+    def get_frequencies(self) -> np.ndarray:
         """Diagonalise the Hessian, returning only frequencies in cm-1"""
 
         energies, _ = self.get_energies_and_modes()
         return energies / units.invcm
 
-    def get_zero_point_energy(self, energies=None):
+    def get_zero_point_energy(self,
+                              energies: Optional[Union[None,
+                                                       np.ndarray]] = None
+                              ) -> float:
         """Diagonalise the Hessian and sum hw/2 to obtain zero-point energy
 
         Args:
-            energies (1-D array-like, optional):
+            energies:
                 Pre-computed energy eigenvalues. Use if available to avoid
                 re-calculating these from the Hessian.
 
         Returns:
-            (float): zero-point energy in eV
+            zero-point energy in eV
         """
         if energies is None:
             energies, _ = self.get_energies_and_modes()
 
         return 0.5 * energies.real.sum()
 
-    def summary(self, energies=None, log=None, im_tol=1e-8):
+    def summary(self,
+                energies: Optional[Union[None, np.ndarray]] = None,
+                logfile: Optional[Union[None, str]] = None,
+                im_tol: Optional[float] = 1e-8) -> None:
         """Print a summary of the vibrational frequencies.
 
         Args:
-            energies (1-D array-like, optional):
+            energies:
                 Pre-computed set of energies. Use if available to avoid
                 re-calculation from the Hessian.
-            log (str): if specified, write output to a different location than
-                stdout. Can be an object with a write() method or the name of a
-                file to create.
+            logfile (str): if specified, write output to a different location
+                than stdout. Can be an object with a write() method or the name
+                of a file to create.
             im_tol (float, optional):
                 Tolerance for imaginary frequency in eV. If frequency has a
                 larger imaginary component than im_tol, the imaginary component
                 is shown int the summary table.
         """
 
-        if log is None:
+        if logfile is None:
             log = sys.stdout
-        elif isinstance(log, str):
-            log = paropen(log, 'a')
+        elif isinstance(logfile, str):
+            log = paropen(logfile, 'a')
 
         if energies is None:
             energies, _ = self.get_energies_and_modes()

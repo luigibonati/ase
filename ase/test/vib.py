@@ -151,7 +151,7 @@ class TestVibrationsData(unittest.TestCase):
         self.assertAlmostEqual(
             vib_data.get_zero_point_energy(energies=energies), self.ref_zpe)
 
-        vib_data.summary(log=self.report_file)
+        vib_data.summary(logfile=self.report_file)
         with open(self.report_file, 'rt') as f:
             report_txt = f.read()
         self.assertEqual(report_txt, vibrations_n2_log)
