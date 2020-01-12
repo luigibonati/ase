@@ -22,6 +22,7 @@ from ase.calculators.singlepoint import SinglePointCalculator
 _indices_input = Union[None, List[int], np.ndarray]
 _mask_type = Union[List[bool], np.ndarray]
 
+
 @jsonable('vibrationsdata')
 class VibrationsData(object):
     """Class for storing and analyzing vibrational data (i.e. Atoms + Hessian)
@@ -820,7 +821,7 @@ class Vibrations:
                 fd.write('.\n')
             mode = self.get_mode(n)
             for i, pos in enumerate(self.atoms.positions):
-                fd.write('%2s %12.5f %12.5f %12.5f %12.5f %12.5f %12.5f \n' %
+                fd.write('%2s %12.5f %12.5f %12.5f %12.5f %12.5f %12.5f\n' %
                          (symbols[i], pos[0], pos[1], pos[2],
                           mode[i, 0], mode[i, 1], mode[i, 2]))
         fd.close()

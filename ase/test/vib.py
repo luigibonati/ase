@@ -31,7 +31,7 @@ class TestVibrationsClassic(unittest.TestCase):
         for pattern in 'vib.*.pckl', 'vib.*.traj':
             for outfile in glob.glob(pattern):
                 os.remove(outfile)
-        for filename in (self.logfile, self.opt_logs):
+        for filename in (self.logfile, self.opt_logs, 'vib.xyz'):
             if os.path.isfile(filename):
                 os.remove(filename)
 
@@ -41,6 +41,7 @@ class TestVibrationsClassic(unittest.TestCase):
         vib.run()
         freqs = vib.get_frequencies()
         vib.write_mode(n=None, nimages=5)
+        vib.write_jmol()
         vib_energies = vib.get_energies()
 
         for image in vib.iterimages():
@@ -69,6 +70,10 @@ class TestVibrationsClassic(unittest.TestCase):
         with self.assertRaises(AssertionError):
             assert_array_almost_equal(mode_traj[4].get_all_distances(),
                                       atoms.get_all_distances())
+
+        with open('vib.xyz', 'rt') as f:
+            jmol_txt = f.read()
+            self.assertEqual(jmol_txt, jmol_txt_ref)
 
         self.assertEqual(vib.clean(empty_files=True), 0)
         self.assertEqual(vib.clean(), 13)
@@ -135,10 +140,25 @@ class TestVibrationsData(unittest.TestCase):
 
         self.ref_zpe = 0.07799427233401508
         self.report_file = 'vib-data-report.txt'
+        self.unstable_report_file = 'unstable-vib-data-report.txt'
+
+        self.n2_unstable = Atoms('N2', positions=[[0., 0., 0.45],
+                                                  [0., 0., -0.45]])
+        self.h_n2_unstable = np.array(
+            [-5.150829928323684, 0.0, -0.6867385017096544, 5.150829928323684,
+             0.0, 0.6867385017096544, 0.0, -5.158454318599951, 0.0, 0.0,
+             5.158454318599951, 0.0, -0.6867385017096544, 0.0,
+             56.65107699250456, 0.6867385017096544, 0.0, -56.65107699250456,
+             5.150829928323684, 0.0, 0.6867385017096544, -5.150829928323684,
+             0.0, -0.6867385017096544, 0.0, 5.158454318599951, 0.0, 0.0,
+             -5.158454318599951, 0.0, 0.6867385017096544, 0.0,
+             -56.65107699250456, -0.6867385017096544, 0.0, 56.65107699250456
+             ]).reshape((2, 3, 2, 3))
 
     def tearDown(self):
-        if os.path.isfile(self.report_file):
-            os.remove(self.report_file)
+        for logfile in (self.report_file, self.unstable_report_file):
+            if os.path.isfile(logfile):
+                os.remove(logfile)
 
     def test_energies(self):
         vib_data = VibrationsData(self.n2.copy(), self.h_n2)
@@ -155,6 +175,21 @@ class TestVibrationsData(unittest.TestCase):
         with open(self.report_file, 'rt') as f:
             report_txt = f.read()
         self.assertEqual(report_txt, vibrations_n2_log)
+
+    def test_imaginary_energies(self):
+        vib_data = VibrationsData(self.n2_unstable.copy(), self.h_n2_unstable)
+        vib_data.summary(logfile=self.unstable_report_file)
+
+        with open(self.unstable_report_file, 'rt') as f:
+            report_txt = f.read()
+        self.assertEqual(report_txt, unstable_n2_log)
+
+    def test_zero_mass(self):
+        atoms = self.n2.copy()
+        atoms.set_masses([0., 1.])
+        vib_data = VibrationsData(atoms, self.h_n2)
+        with self.assertRaises(ValueError):
+            vib_data.get_energies_and_modes()
 
     def test_clean_atom_copy(self):
         atoms = self.n2.copy()
@@ -334,6 +369,45 @@ vibrations_n2_log = """---------------------
   5  152.6    1231.2
 ---------------------
 Zero-point energy: 0.078 eV
+"""
+
+unstable_n2_log = """---------------------
+  #    meV     cm^-1
+---------------------
+  0   55.5i    447.5i
+  1   55.5i    447.5i
+  2    0.0       0.0
+  3    0.0       0.0
+  4    0.0       0.0
+  5  183.9    1483.2
+---------------------
+Zero-point energy: 0.092 eV
+"""
+
+jmol_txt_ref = """     2
+Mode #0, f = 0.0  cm^-1.
+ N      0.00000      0.00000      0.05095     -0.00000     -0.00000     -0.18894
+ N      0.00000      0.00000      1.04905      0.00000     -0.00000     -0.18894
+     2
+Mode #1, f = 0.0  cm^-1.
+ N      0.00000      0.00000      0.05095      0.18893     -0.00021      0.00000
+ N      0.00000      0.00000      1.04905      0.18893     -0.00021     -0.00000
+     2
+Mode #2, f = 0.0  cm^-1.
+ N      0.00000      0.00000      0.05095     -0.00021     -0.18893      0.00000
+ N      0.00000      0.00000      1.04905     -0.00021     -0.18893      0.00000
+     2
+Mode #3, f = 13.5  cm^-1.
+ N      0.00000      0.00000      0.05095     -0.18893     -0.00021      0.00000
+ N      0.00000      0.00000      1.04905      0.18893      0.00021      0.00000
+     2
+Mode #4, f = 13.5  cm^-1.
+ N      0.00000      0.00000      0.05095     -0.00021      0.18893      0.00000
+ N      0.00000      0.00000      1.04905      0.00021     -0.18893      0.00000
+     2
+Mode #5, f = 1231.2  cm^-1.
+ N      0.00000      0.00000      0.05095      0.00000      0.00000     -0.18894
+ N      0.00000      0.00000      1.04905      0.00000     -0.00000      0.18894
 """
 
 
