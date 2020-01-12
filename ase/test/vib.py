@@ -35,6 +35,19 @@ class TestVibrationsClassic(unittest.TestCase):
             if os.path.isfile(filename):
                 os.remove(filename)
 
+    def test_consistency_with_vibrationsdata(self):
+        atoms = self.get_emt_n2()
+        vib = Vibrations(atoms)
+        vib.run()
+        vib_data = vib.get_vibrations()
+
+        assert_array_almost_equal(vib.get_energies(),
+                                  vib_data.get_energies())
+
+        # Compare the last mode as the others may be re-ordered by negligible
+        # energy changes
+        assert_array_almost_equal(vib.get_mode(5), vib_data.get_modes()[5])
+
     def test_vibrations(self):
         atoms = self.get_emt_n2()
         vib = Vibrations(atoms)
@@ -141,6 +154,7 @@ class TestVibrationsData(unittest.TestCase):
         self.ref_zpe = 0.07799427233401508
         self.report_file = 'vib-data-report.txt'
         self.unstable_report_file = 'unstable-vib-data-report.txt'
+        self.jmol_file = 'vib-data.xyz'
 
         self.n2_unstable = Atoms('N2', positions=[[0., 0., 0.45],
                                                   [0., 0., -0.45]])
@@ -156,7 +170,9 @@ class TestVibrationsData(unittest.TestCase):
              ]).reshape((2, 3, 2, 3))
 
     def tearDown(self):
-        for logfile in (self.report_file, self.unstable_report_file):
+        for logfile in (self.report_file,
+                        self.unstable_report_file,
+                        self.jmol_file):
             if os.path.isfile(logfile):
                 os.remove(logfile)
 
@@ -166,10 +182,14 @@ class TestVibrationsData(unittest.TestCase):
         assert_array_almost_equal(self.ref_frequencies,
                                   energies / units.invcm,
                                   decimal=5)
+        assert_array_almost_equal(self.ref_frequencies,
+                                  vib_data.get_energies() / units.invcm,
+                                  decimal=5)
+        assert_array_almost_equal(self.ref_frequencies,
+                                  vib_data.get_frequencies(),
+                                  decimal=5)
 
         self.assertAlmostEqual(vib_data.get_zero_point_energy(), self.ref_zpe)
-        self.assertAlmostEqual(
-            vib_data.get_zero_point_energy(energies=energies), self.ref_zpe)
 
         vib_data.summary(logfile=self.report_file)
         with open(self.report_file, 'rt') as f:
@@ -262,6 +282,21 @@ class TestVibrationsData(unittest.TestCase):
             assert_array_almost_equal(
                 getattr(vib_data, array_attr),
                 getattr(vib_data_roundtrip, array_attr))
+
+    def test_jmol_roundtrip(self):
+        ir_intensities = np.random.random(6)
+
+        vib_data = VibrationsData(self.n2.copy(), self.h_n2)
+        vib_data.write_jmol(self.jmol_file, ir_intensities=ir_intensities)
+
+        images = ase.io.read(self.jmol_file, index=':')
+        for i, image in enumerate(images):
+            assert_array_almost_equal(image.positions,
+                                      vib_data.atoms.positions)
+            self.assertAlmostEqual(image.info['IR_intensity'],
+                                   ir_intensities[i])
+            assert_array_almost_equal(image.arrays['mode'],
+                                      vib_data.get_modes()[i])
 
     def test_bad_hessian(self):
         bad_hessians = (None, 'fish', 1,
