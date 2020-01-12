@@ -33,7 +33,10 @@ class VibrationsData(object):
     dispersion plotting.
 
     Args:
-        atoms (ase.atoms.Atoms): Equilibrium geometry of vibrating system
+        atoms (ase.atoms.Atoms):
+            Equilibrium geometry of vibrating system. This will be stored as a
+            lightweight copy with just positions, masses, unit cell.
+        
         hessian (np.ndarray): Second-derivative in energy with respect to
             Cartesian nuclear movements as an (N, 3, N, 3) array.
         indices (1-D array-like or None): indices of atoms which are included
@@ -45,8 +48,11 @@ class VibrationsData(object):
     """
 
     def __init__(self, atoms, hessian, indices=None, mask=None):
-        self.atoms = atoms.copy()
-        self.indices = self._indices_from_options(atoms,
+        self.atoms = Atoms(cell=atoms.cell, pbc=atoms.pbc,
+                           masses=atoms.get_masses(),
+                           positions=atoms.positions)
+
+        self.indices = self._indices_from_options(self.atoms,
                                                   indices=indices, mask=mask)
 
         n_atoms = self._check_dimensions(self.atoms, self.indices, hessian)
