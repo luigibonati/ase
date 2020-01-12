@@ -170,17 +170,19 @@ class TestVibrationsData(unittest.TestCase):
         self.assertEqual(vib_data.mask.tolist(), [False, True])
 
         vib_data = VibrationsData(self.n2.copy(), self.h_n2[:1, :, :1, :],
-                                  mask=[True, False])
+                                  mask=np.array([True, False], dtype=bool))
         self.assertEqual(vib_data.indices, [0, ])
         self.assertEqual(vib_data.mask.tolist(), [True, False])
 
         with self.assertRaises(ValueError):
             vib_data = VibrationsData(self.n2.copy(), self.h_n2[:1, :, :1, :],
-                                      indices=[0, ], mask=[True, False])
+                                      indices=[0, ],
+                                      mask=np.array([True, False], dtype=bool))
 
         with self.assertRaises(ValueError):
             vib_data = VibrationsData(self.n2.copy(), self.h_n2[:1, :, :1, :],
-                                      mask=[True, False, True])
+                                      mask=np.array([True, False, True],
+                                                    dtype=bool))
 
     def test_edit_data(self):
         # --- Modify Hessian and mask to fix an atom ---
