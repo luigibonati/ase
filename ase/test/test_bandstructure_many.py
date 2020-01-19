@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 
 @pytest.mark.parametrize("i, lat",
-                         [pytest.param(i, lat, id=str(lat))
+                         [pytest.param(i, lat, id=str(lat.variant))
                           for i, lat in enumerate(all_variants())
                           if lat.ndim == 3])
 def test_lattice_bandstructure(i, lat):
