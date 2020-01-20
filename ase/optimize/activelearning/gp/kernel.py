@@ -234,7 +234,11 @@ class BondExponential(SquaredExponential):
         N = len(radii)
 
         if interaction is None:
-            interaction = lambda x, y: 1.
+
+            def _interaction(x, y):
+                return 1.
+
+            interaction = _interaction
 
         if normalize:
             self.interaction = lambda x, y: interaction(x, y) / N
