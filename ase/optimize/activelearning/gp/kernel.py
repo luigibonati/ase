@@ -243,7 +243,7 @@ class BondExponential(SquaredExponential):
         if normalize:
 
             def _normalized(x, y):
-                return interaction(x, y)/ N
+                return interaction(x, y) / N
  
             self.interaction = _normalized
         else:
