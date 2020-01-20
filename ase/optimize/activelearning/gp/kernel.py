@@ -231,7 +231,7 @@ class BondExponential(SquaredExponential):
 
     def init_metric(self, radii, interaction=None, eps=1e-12, normalize=True):
         # Number of atoms
-        N = len(radii) 
+        N = len(radii)
 
         if interaction is None:
             interaction = lambda x, y: 1.
@@ -297,10 +297,7 @@ class BondExponential(SquaredExponential):
         x1 : first data point
         x2 : second data point
         """
-        u1 = np.dot(self.F, x1)
-        u2 = np.dot(self.F, x2)
-        j = SquaredExponential.kernel_function_gradient(self, u1, u2)
-        return np.dot(self.F.T, j)
+        return np.matmul(self.G, (x1 - x2)) / self.l ** 2
 
     def kernel_function_hessian(self, x1, x2):
         """
