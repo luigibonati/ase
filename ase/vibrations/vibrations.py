@@ -57,9 +57,11 @@ class VibrationsData(object):
                  indices: Optional[_indices_input] = None,
                  mask: Optional[Union[None, _mask_type]] = None,
                  ) -> None:
+
+        masses = atoms.get_masses() if atoms.has('masses') else None
         self._atoms = Atoms(cell=atoms.cell, pbc=atoms.pbc,
                             numbers=atoms.numbers,
-                            masses=atoms.get_masses(),
+                            masses=masses,
                             positions=atoms.positions)
 
         self._indices = self._indices_from_options(self.atoms,
@@ -439,7 +441,8 @@ class VibrationsData(object):
 
             # Custom masses are quite useful in vibration analysis, but will
             # show up in the xyz file unless we remove them
-            del image.arrays['masses']
+            if image.has('masses'):
+                del image.arrays['masses']
             
             if ir_intensities is not None:
                 image.info['IR_intensity'] = float(ir_intensities[i])
