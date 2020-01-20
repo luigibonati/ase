@@ -77,6 +77,66 @@ def test_is_symmetric(Natoms=2, Nsamples=1, gradient = False):
         assert np.allclose(g, g.T)
 
 
+def first_step(Nattempts=1, l=0.1):
+
+    from ase.data import covalent_radii, atomic_numbers
+    from ase.calculators.emt import EMT
+
+    from ase.build import bulk
+
+    from ase.optimize.activelearning.gp.calculator import GPCalculator
+    from ase.optimize.activelearning.aidmin import AIDMin, SP
+
+    # Define atoms object
+    rc = covalent_radii[atomic_numbers['C']]
+    atoms = bulk('C', 'fcc', 2*np.sqrt(2)*rc)
+    atoms *= (2,2,2)
+    atoms.rattle(0.2)
+    atoms.set_calculator(EMT())
+
+    # Define kernel
+    N = len(atoms)
+    interaction = lambda x, y: 1. / (x * y)
+    radii = N * [rc]
+
+    kernel = BondExponential(3*N)
+    params = {"weight": 1.0, "scale": l}
+    kernel.set_params(params)
+    kernel.init_metric(radii, interaction, normalize=True)
+
+    # Define ml calculator
+    calcparams = {'noise': 0.001,
+                  'kernel': kernel,
+                  'kernel_params' : params,
+                  'update_prior_strategy': 'maximum', 
+                  'train_images': [],
+                  'calculate_uncertainty': False,
+                  'mask_constraints': False}
+
+    ml_calculator = GPCalculator(**calcparams)
+
+    # Optimizer
+    opt_params = {'model_calculator': ml_calculator,
+                  'optimizer': SP, 
+                  'use_previous_observations': False,
+                  'surrogate_starting_point': 'min',
+                  'trainingset': [],
+                  'print_format': 'ASE', 
+                  'fit_to': 'constraints', 
+                  'optimizer_kwargs': {'fmax': 'scipy default',
+                                       'method': 'L-BFGS-B'}}
+
+    atoms0 = atoms.copy()
+    optimizer = AIDMin(atoms, logfile = None, **opt_params)
+    optimizer.run(fmax=0.01, steps=1)
+                  
+    x0 = atoms0.get_positions().flatten()
+    x1 = atoms.get_positions().flatten()
+
+    #print(np.sqrt(((x0-x1)**2).sum()))
+    #print(rc*l)
+
+    assert np.abs(np.sqrt(((x0-x1)**2).sum()) - rc*l) < 0.005
 
 if __name__ == "__main__":
 
@@ -87,3 +147,5 @@ if __name__ == "__main__":
     one_point_sample()
 
     test_is_symmetric()
+
+    first_step(l=0.1)
