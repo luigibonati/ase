@@ -287,30 +287,12 @@ class TestVibrationsData(unittest.TestCase):
         self.assertEqual(vib_data.indices, [1, ])
         self.assertEqual(vib_data.mask.tolist(), [False, True])
 
-        vib_data = VibrationsData(self.n2.copy(), self.h_n2[:1, :, :1, :],
-                                  mask=np.array([True, False], dtype=bool))
-        self.assertEqual(vib_data.indices, [0, ])
-        self.assertEqual(vib_data.mask.tolist(), [True, False])
-
-        with self.assertRaises(ValueError):
-            vib_data = VibrationsData(self.n2.copy(), self.h_n2[:1, :, :1, :],
-                                      indices=[0, ],
-                                      mask=np.array([True, False], dtype=bool))
-
-        with self.assertRaises(ValueError):
-            vib_data = VibrationsData(self.n2.copy(), self.h_n2[:1, :, :1, :],
-                                      mask=np.array([True, False, True],
-                                                    dtype=bool))
-
     def test_edit_data(self):
-        # --- Modify Hessian and mask to fix an atom ---
+        # --- Modify Hessian and indices to fix an atom ---
         vib_data = VibrationsData(self.n2.copy(), self.h_n2)
 
         with self.assertRaises(NotImplementedError):
             vib_data.hessian = vib_data.hessian[:1, :, :1, :]
-
-        with self.assertRaises(NotImplementedError):
-            vib_data.mask = [True, False]
 
         with self.assertRaises(NotImplementedError):
             vib_data.indices = [0, 1]

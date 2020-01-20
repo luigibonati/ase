@@ -5,7 +5,7 @@ import os
 import os.path as op
 import pickle
 import sys
-from typing import Optional, Union, List, Dict, Tuple
+from typing import Optional, Union, List, Dict, Tuple, Sequence
 
 import numpy as np
 
@@ -41,21 +41,17 @@ class VibrationsData(object):
         atoms:
             Equilibrium geometry of vibrating system. This will be stored as a
             lightweight copy with just positions, masses, unit cell.
-        
+
         hessian: Second-derivative in energy with respect to
             Cartesian nuclear movements as an (N, 3, N, 3) array.
         indices: indices of atoms which are included
             in Hessian.  Default value (None) includes all atoms.
-        mask: An alternative way of specifying the atoms to include in Hessian;
-            a 1-D Boolean mask array. This is easier to obtain with
-            e.g. ``atoms.symbols == 'C'``.
 
     """
     def __init__(self,
                  atoms: Atoms,
                  hessian: np.ndarray,
                  indices: Optional[_indices_input] = None,
-                 mask: Optional[Union[None, _mask_type]] = None,
                  ) -> None:
 
         masses = atoms.get_masses() if atoms.has('masses') else None
@@ -64,8 +60,7 @@ class VibrationsData(object):
                             masses=masses,
                             positions=atoms.positions)
 
-        self._indices = self._indices_from_options(self.atoms,
-                                                   indices=indices, mask=mask)
+        self._indices = indices
 
         n_atoms = self._check_dimensions(self.atoms, self.indices, hessian)
         self._hessian2d = hessian.reshape(3 * n_atoms, 3 * n_atoms).copy()
@@ -78,8 +73,9 @@ class VibrationsData(object):
                      "(optionally) indices/mask.")
 
     @classmethod
-    def from_2d(cls, atoms: Atoms, hessian_2d: np.ndarray,
-                **kwargs) -> 'VibrationsData':
+    def from_2d(cls, atoms: Atoms,
+                hessian_2d: np.ndarray,
+                indices: Sequence[int] = None) -> 'VibrationsData':
         """Instantiate VibrationsData when the Hessian is in a 3Nx3N format
 
         Args:
@@ -88,38 +84,39 @@ class VibrationsData(object):
             hessian: Second-derivative in energy with respect to
                 Cartesian nuclear movements as a (3N, 3N) array.
 
-        """
-        indices = cls._indices_from_options(atoms,
-                                            indices=kwargs.get('indices'),
-                                            mask=kwargs.get('mask'))
+            indices: Indices of (non-frozen) atoms included in Hessian
 
+        """
         n_atoms = cls._check_dimensions(atoms, indices, hessian_2d, two_d=True)
 
-        return cls(atoms, hessian_2d.reshape(n_atoms, 3, n_atoms, 3), **kwargs)
-
-    @classmethod
-    def _indices_from_options(cls,
-                              atoms: Atoms,
-                              indices: Optional[_indices_input] = None,
-                              mask: Optional[Union[None, _mask_type]] = None
-                              ) -> Union[None, np.ndarray]:
-        if indices is not None and mask is not None:
-            raise ValueError("Cannot set both indices and mask: these are "
-                             "redundant options setting the same data.")
-        elif indices is not None:
-            return np.asarray(indices)
-        elif mask is not None:
-            return cls._indices_from_mask(mask, atoms)
-        else:
-            return None
+        return cls(atoms, hessian_2d.reshape(n_atoms, 3, n_atoms, 3),
+                   indices=indices)
 
     @staticmethod
-    def _indices_from_mask(mask: _mask_type, atoms: Atoms) -> np.array:
-        """Indices corresponding to boolean mask"""
-        natoms = len(atoms)
-        if len(mask) != natoms:
-            raise ValueError("Mask size does not match number of atoms")
-        return list(np.arange(natoms)[mask])
+    def indices_from_mask(mask: _mask_type) -> np.array:
+        """Indices corresponding to boolean mask
+
+        This is provided as a convenience for instantiating VibrationsData with
+        a boolean mask. For example, if the Hessian data includes only the H
+        atoms in a structure::
+
+          h_mask = atoms.get_chemical_symbols() == 'H'
+          vib_data = VibrationsData(atoms, hessian,
+                                    VibrationsData.indices_from_mask(h_mask))
+
+        Take care to ensure that the length of the mask corresponds to the full
+        number of atoms; this function is only aware of the mask it has been
+        given.
+
+        Args:
+            mask: a sequence of True, False values
+
+        Returns:
+            indices of True elements
+
+        """
+
+        return np.arange(len(mask), dtype=int)[np.asarray(mask, dtype=bool)]
 
     @staticmethod
     def _check_dimensions(atoms: Atoms,
@@ -443,7 +440,7 @@ class VibrationsData(object):
             # show up in the xyz file unless we remove them
             if image.has('masses'):
                 del image.arrays['masses']
-            
+
             if ir_intensities is not None:
                 image.info['IR_intensity'] = float(ir_intensities[i])
 
