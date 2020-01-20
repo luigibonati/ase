@@ -134,9 +134,9 @@ class OganovFP():
         with catch_warnings():
             simplefilter("ignore", category=RuntimeWarning)
             self.h = np.where(self.dm > 0.0001,
-                              (self.Vuc / (4 * pi * self.dm**2 *
-                                           self.em *
-                                           self.delta)),
+                              (self.Vuc * self.N / (4 * pi * self.dm**2 *
+                                                    self.em *
+                                                    self.limit)),
                               0.0)
         return self.h
 
