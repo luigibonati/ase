@@ -242,6 +242,8 @@ class BondExponential(SquaredExponential):
 
         if normalize:
             self.interaction = lambda x, y: interaction(x, y) / N
+        else:
+            self.interaction = interaction
 
         # 1. one-D metric g
         g = np.empty((N, N))
