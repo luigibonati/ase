@@ -13,6 +13,13 @@ from ase.thermochemistry import IdealGasThermo
 
 
 class TestVibrationsClassic(unittest.TestCase):
+    """Tests for the ase.vibrations.Vibrations object
+
+    This object is to be phased out in favour of separate calculating/loading
+    and results/data objects. It therefore requires especially thorough
+    testing to ensure there are no unexpected losses/changes in the process.
+
+    """
     def setUp(self):
         self.logfile = 'vibrations-log.txt'
         self.opt_logs = 'opt-logs.txt'
@@ -28,7 +35,7 @@ class TestVibrationsClassic(unittest.TestCase):
         return atoms
 
     def tearDown(self):
-        for pattern in 'vib.*.pckl', 'vib.*.traj':
+        for pattern in 'vib.*.pckl', 'interrupt.*.pckl', 'vib.*.traj':
             for outfile in glob.glob(pattern):
                 os.remove(outfile)
         for filename in (self.logfile, self.opt_logs, 'vib.xyz'):
@@ -47,6 +54,58 @@ class TestVibrationsClassic(unittest.TestCase):
         # Compare the last mode as the others may be re-ordered by negligible
         # energy changes
         assert_array_almost_equal(vib.get_mode(5), vib_data.get_modes()[5])
+
+    def test_pickle_manipulation(self):
+        atoms = self.get_emt_n2()
+        vib = Vibrations(atoms, name='interrupt')
+        vib.run()
+
+        disp_file = 'interrupt.1x-.pckl'
+        comb_file = 'interrupt.all.pckl'
+        self.assertTrue(os.path.isfile(disp_file))
+        self.assertFalse(os.path.isfile(comb_file))
+
+        with self.assertRaises(RuntimeError):
+            vib.split()
+
+        # Build a combined file
+        self.assertEqual(vib.combine(), 13)
+
+        # Individual displacements should be gone, combination should exist
+        self.assertFalse(os.path.isfile(disp_file))
+        self.assertTrue(os.path.isfile(comb_file))
+
+        # Not allowed to run after data has been combined
+        with self.assertRaises(RuntimeError):
+            vib.run()
+        # But reading is allowed
+            vib.read()
+
+        # Splitting should fail if any split file already exists
+        with open(disp_file, 'w') as f:
+            f.write("hello")
+        with self.assertRaises(RuntimeError):
+            vib.split()
+        os.remove(disp_file)
+
+        # Now split() for real: replace .all.pckl file with displacements
+        vib.split()
+        self.assertTrue(os.path.isfile(disp_file))
+        self.assertFalse(os.path.isfile(comb_file))
+
+        # Not allowed to clobber existing combined file
+        with open(comb_file, 'w') as f:
+            f.write("Hello")
+        with self.assertRaises(RuntimeError):
+            vib.combine()
+        os.remove(comb_file)
+
+        # Combining data also fails if some data is missing
+        os.remove('interrupt.1x-.pckl')
+        with self.assertRaises(RuntimeError):
+            vib.combine()
+
+        vib.clean()
 
     def test_vibrations(self):
         atoms = self.get_emt_n2()
@@ -73,6 +132,11 @@ class TestVibrationsClassic(unittest.TestCase):
         mode1 = vib.get_mode(1)
         assert_array_almost_equal(mode1, [[0.188935, -0.000213, 0.],
                                           [0.188935, -0.000213, -0.]])
+
+        vib.show_as_force(-1, show=False)
+        assert_array_almost_equal(vib.atoms.get_forces(),
+                                  [[0., 0., -2.26722e-1],
+                                   [0., 0., 2.26722e-1]])
 
         for i in range(3):
             self.assertFalse(os.path.isfile('vib.{}.traj'.format(i)))
@@ -101,7 +165,6 @@ class TestVibrationsClassic(unittest.TestCase):
         vib2 = Vibrations(atoms2)
         vib2.run()
 
-        self.assertEqual(vib.combine(), 13)
         assert_array_almost_equal(freqs,
                                   vib.get_frequencies())
 
@@ -114,7 +177,7 @@ class TestVibrationsClassic(unittest.TestCase):
             os.chdir('run_from_here')
             vib = Vibrations(atoms3, name=os.path.join(os.pardir, 'vib'))
             assert_array_almost_equal(freqs, vib.get_frequencies())
-            self.assertEqual(vib.clean(), 1)
+            self.assertEqual(vib.clean(), 13)
         finally:
             os.chdir(workdir)
             if os.path.isdir('run_from_here'):

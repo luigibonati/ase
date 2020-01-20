@@ -890,11 +890,13 @@ class Vibrations:
         self.atoms.calc = calc
         traj.close()
 
-    def show_as_force(self, n, scale=0.2):
+    def show_as_force(self, n, scale=0.2, show=True):
         mode = self.get_mode(n) * len(self.hnu) * scale
         calc = SinglePointCalculator(self.atoms, forces=mode)
+
         self.atoms.calc = calc
-        self.atoms.edit()
+        if show:
+            self.atoms.edit()
 
     def write_jmol(self):
         """Writes file for viewing of the modes with jmol."""
