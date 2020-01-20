@@ -258,7 +258,6 @@ class VibrationsData(object):
         return cls(Atoms.fromdict(data['atoms']), data['hessian'],
                    indices=data['indices'])
 
-
     def _calculate_energies_and_modes(self) -> Tuple[np.ndarray, np.ndarray]:
         """Diagonalise the Hessian to obtain harmonic modes
 
@@ -288,7 +287,6 @@ class VibrationsData(object):
 
         return (energies, modes)
 
-
     def get_energies_and_modes(self) -> Tuple[np.ndarray, np.ndarray]:
         """Diagonalise the Hessian to obtain harmonic modes
 
@@ -302,7 +300,7 @@ class VibrationsData(object):
             in cm-1, divide by ase.units.invcm.)
 
             Modes are given in Cartesian coordinates as a (3N, N, 3) array
-            where indices correspond to the (mode_index, atom, direction). 
+            where indices correspond to the (mode_index, atom, direction).
 
             Note that in this array only the moving atoms are included.
 
@@ -408,7 +406,6 @@ class VibrationsData(object):
         log.write('Zero-point energy: {:.3f} eV\n'.format(
             self.get_zero_point_energy()))
 
-
     def write_jmol(self,
                    filename: Optional[str] = 'vib.xyz',
                    ir_intensities: Optional[Union[None, np.ndarray]] = None
@@ -417,7 +414,7 @@ class VibrationsData(object):
 
         This is an extended XYZ file with eigenvectors given as extra columns
         and metadata given in the label/comment line for each image. The format
-        is not quite human-friendly, but has the advantage that it can be 
+        is not quite human-friendly, but has the advantage that it can be
         imported back into ASE with ase.io.read.
 
         Args:
@@ -449,6 +446,7 @@ class VibrationsData(object):
 
             all_images.append(image)
         ase.io.write(filename, all_images, format='extxyz')
+
 
 class Vibrations:
     """Class for calculating vibrational modes using finite difference.
@@ -595,11 +593,11 @@ class Vibrations:
             for i in range(3):
                 for sign in [-1, 1]:
                     for ndis in range(1, self.nfree // 2 + 1):
-                        dispName = ('%s.%d%s%s' %
-                                    (self.name, a, 'xyz'[i],
-                                     ndis * ' +-'[sign]))
+                        disp_name = ('%s.%d%s%s' %
+                                     (self.name, a, 'xyz'[i],
+                                      ndis * ' +-'[sign]))
                         disp = ndis * sign * self.delta
-                        yield dispName, a, i, disp
+                        yield disp_name, a, i, disp
 
     def calculate(self, atoms, filename, fd):
         forces = self.calc.get_forces(atoms)
