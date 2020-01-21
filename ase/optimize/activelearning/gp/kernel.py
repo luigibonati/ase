@@ -293,10 +293,8 @@ class BondExponential(SquaredExponential):
         """
         Second derivatives matrix of the kernel function
         """
-        u1 = np.dot(self.F, x1)
-        u2 = np.dot(self.F, x2)
-        h = SquaredExponential.kernel_function_hessian(self, u1, u2)
-        return np.dot(self.F.T, np.dot(h, self.F))
+        u = np.matmul(self.G, (x1 - x2))
+        return (self.G - np.outer(u, u) / self.l**2) / self.l**2
 
     def kernel(self, x1, x2):
         """
