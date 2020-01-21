@@ -50,15 +50,19 @@ class VibrationsData(object):
                  indices: Sequence[int] = None,
                  ) -> None:
 
+        n_atoms = self._check_dimensions(atoms, indices, hessian)
+
         masses = atoms.get_masses() if atoms.has('masses') else None
         self._atoms = Atoms(cell=atoms.cell, pbc=atoms.pbc,
                             numbers=atoms.numbers,
                             masses=masses,
                             positions=atoms.positions)
 
-        self._indices = indices
+        if indices is None:
+            self._indices = None
+        else:
+            self._indices = list(indices)
 
-        n_atoms = self._check_dimensions(self.atoms, self.indices, hessian)
         self._hessian2d = hessian.reshape(3 * n_atoms, 3 * n_atoms).copy()
 
         self._energies = None
@@ -116,7 +120,7 @@ class VibrationsData(object):
 
     @staticmethod
     def _check_dimensions(atoms: Atoms,
-                          indices: Sequence[int],
+                          indices: Union[Sequence[int], None],
                           hessian: np.ndarray,
                           two_d: bool = False) -> int:
         """Sanity check on array shapes from input data
@@ -166,7 +170,7 @@ class VibrationsData(object):
         if self._indices is None:
             return None
         else:
-            return self._indices.copy()
+            return np.array(self._indices, dtype=int)
 
     @indices.setter
     def indices(self, new_indices) -> NoReturn:
@@ -251,6 +255,15 @@ class VibrationsData(object):
     @classmethod
     def fromdict(cls, data: Dict[str, Union[str, dict, np.ndarray]]
                  ) -> 'VibrationsData':
+
+        # mypy is understandably suspicious of data coming from a dict that
+        # holds so many types, but it can see if we sanity-check with 'assert'
+        assert isinstance(data['atoms'], dict)
+        assert isinstance(data['hessian'], np.ndarray)
+        if data['indices'] is not None:
+            assert (isinstance(data['indices'], list)
+                    and isinstance(data['indices'][0], int))
+
         return cls(Atoms.fromdict(data['atoms']), data['hessian'],
                    indices=data['indices'])
 
