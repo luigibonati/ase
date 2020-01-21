@@ -127,8 +127,13 @@ def first_step(Nattempts=1, l=0.1):
 
     # print(np.sqrt(((x0-x1)**2).sum()))
     # print(rc*l)
+    w, v = np.linalg.eigh(kernel.g)
+    w.sort()
 
+    assert np.allclose(w[0], 0.0)
+    assert np.allclose(w[1:], np.ones(N - 1) / rc**2)
     assert np.abs(np.sqrt(((x0-x1)**2).sum()) - rc*l) < 0.005
+
 
 if __name__ == "__main__":
 
