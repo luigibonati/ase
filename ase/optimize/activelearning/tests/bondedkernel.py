@@ -119,14 +119,14 @@ def first_step(Nattempts=1, l=0.1):
                                        'method': 'L-BFGS-B'}}
 
     atoms0 = atoms.copy()
-    optimizer = AIDMin(atoms, logfile = None, **opt_params)
+    optimizer = AIDMin(atoms, logfile=None, **opt_params)
     optimizer.run(fmax=0.01, steps=1)
 
     x0 = atoms0.get_positions().flatten()
     x1 = atoms.get_positions().flatten()
 
-    #print(np.sqrt(((x0-x1)**2).sum()))
-    #print(rc*l)
+    # print(np.sqrt(((x0-x1)**2).sum()))
+    # print(rc*l)
 
     assert np.abs(np.sqrt(((x0-x1)**2).sum()) - rc*l) < 0.005
 
