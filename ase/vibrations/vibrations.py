@@ -5,7 +5,7 @@ import os
 import os.path as op
 import pickle
 import sys
-from typing import Optional, Union, List, Dict, Tuple, Sequence
+from typing import Dict, NoReturn, Sequence, Tuple, Union
 
 import numpy as np
 
@@ -17,10 +17,6 @@ from ase.utils import jsonable
 
 from ase.utils import opencew, pickleload
 from ase.calculators.singlepoint import SinglePointCalculator
-
-# Define some useful type collections
-_indices_input = Union[None, List[int], np.ndarray]
-_mask_type = Union[List[bool], np.ndarray]
 
 
 @jsonable('vibrationsdata')
@@ -51,7 +47,7 @@ class VibrationsData(object):
     def __init__(self,
                  atoms: Atoms,
                  hessian: np.ndarray,
-                 indices: Optional[_indices_input] = None,
+                 indices: Sequence[int] = None,
                  ) -> None:
 
         masses = atoms.get_masses() if atoms.has('masses') else None
@@ -93,7 +89,7 @@ class VibrationsData(object):
                    indices=indices)
 
     @staticmethod
-    def indices_from_mask(mask: _mask_type) -> np.array:
+    def indices_from_mask(mask: Sequence[bool]) -> np.array:
         """Indices corresponding to boolean mask
 
         This is provided as a convenience for instantiating VibrationsData with
@@ -120,9 +116,9 @@ class VibrationsData(object):
 
     @staticmethod
     def _check_dimensions(atoms: Atoms,
-                          indices: _indices_input,
+                          indices: Sequence[int],
                           hessian: np.ndarray,
-                          two_d: Optional[bool] = False) -> int:
+                          two_d: bool = False) -> int:
         """Sanity check on array shapes from input data
 
         Args:
@@ -162,7 +158,7 @@ class VibrationsData(object):
         return self._atoms.copy()
 
     @atoms.setter
-    def atoms(self, new_atoms):
+    def atoms(self, new_atoms) -> NoReturn:
         raise NotImplementedError(self._setter_error)
 
     @property
@@ -173,7 +169,7 @@ class VibrationsData(object):
             return self._indices.copy()
 
     @indices.setter
-    def indices(self, new_indices):
+    def indices(self, new_indices) -> NoReturn:
         raise NotImplementedError(self._setter_error)
 
     @property
@@ -182,11 +178,12 @@ class VibrationsData(object):
         return self._mask_from_indices(self.atoms, self.indices)
 
     @mask.setter
-    def mask(self, values):
+    def mask(self, values) -> NoReturn:
         raise NotImplementedError(self._setter_error)
 
     @staticmethod
-    def _mask_from_indices(atoms: Atoms, indices: Union[None]):
+    def _mask_from_indices(atoms: Atoms,
+                           indices: Union[None, Sequence[int]]) -> np.ndarray:
         """Boolean mask of atoms selected by indices"""
         natoms = len(atoms)
         if indices is None:
@@ -206,7 +203,7 @@ class VibrationsData(object):
         addressing specific elements of the Hessian.
 
         Returns:
-            numpy.ndarray with shape (n_atoms, 3, n_atoms, 3) where
+            array with shape (n_atoms, 3, n_atoms, 3) where
             - the first and third indices identify atoms in self.atoms
             - the second and fourth indices cover the corresponding Cartesian
               movements in x, y, z
@@ -220,7 +217,7 @@ class VibrationsData(object):
         return self._hessian2d.reshape(n_atoms, 3, n_atoms, 3).copy()
 
     @hessian.setter
-    def hessian(self, new_values):
+    def hessian(self, new_values) -> NoReturn:
         raise NotImplementedError(self._setter_error)
 
     def get_hessian_2d(self) -> np.ndarray:
@@ -230,8 +227,8 @@ class VibrationsData(object):
         functions
 
         Returns:
-            numpy.ndarray with shape (n_atoms * 3, n_atoms * 3) where
-            the elements are ordered by atom and Cartesian direction
+            array with shape (n_atoms * 3, n_atoms * 3) where the elements are
+            ordered by atom and Cartesian direction
 
             [[at1x_at1x, at1x_at1y, at1x_at1z, at1x_at2x, ...],
              [at1y_at1x, at1y_at1y, at1y_at1z, at1y_at2x, ...],
@@ -364,18 +361,18 @@ class VibrationsData(object):
         return 0.5 * energies.real.sum()
 
     def summary(self,
-                logfile: Optional[Union[None, str]] = None,
-                im_tol: Optional[float] = 1e-8) -> None:
+                logfile: str = None,
+                im_tol: float = 1e-8) -> None:
         """Print a summary of the vibrational frequencies.
 
         Args:
             energies:
                 Pre-computed set of energies. Use if available to avoid
                 re-calculation from the Hessian.
-            logfile (str): if specified, write output to a different location
+            logfile: if specified, write output to a different location
                 than stdout. Can be an object with a write() method or the name
                 of a file to create.
-            im_tol (float, optional):
+            im_tol:
                 Tolerance for imaginary frequency in eV. If frequency has a
                 larger imaginary component than im_tol, the imaginary component
                 is shown int the summary table.
@@ -406,8 +403,8 @@ class VibrationsData(object):
             self.get_zero_point_energy()))
 
     def write_jmol(self,
-                   filename: Optional[str] = 'vib.xyz',
-                   ir_intensities: Optional[Union[None, np.ndarray]] = None
+                   filename: str = 'vib.xyz',
+                   ir_intensities: np.ndarray = None
                    ) -> None:
         """Writes file for viewing of the modes with jmol.
 
