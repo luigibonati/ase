@@ -134,8 +134,6 @@ if __name__ == "__main__":
 
     test_implementation()
 
-    test_graph_metric()
-
     one_point_sample()
 
     test_is_symmetric()
