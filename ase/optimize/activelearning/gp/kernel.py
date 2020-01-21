@@ -229,7 +229,7 @@ class BondExponential(SquaredExponential):
 
     # --- Define metric tensor ---
 
-    def init_metric(self, radii, interaction=None, eps=1e-12, normalize=True):
+    def init_metric(self, radii, interaction=None, normalize=True):
         # Number of atoms
         N = len(radii)
 
