@@ -19,25 +19,6 @@ def test_implementation():
     assert np.allclose(bk.gradient(X),      sq_k.gradient(X))
 
 
-def test_graph_metric(debug=False):
-    Natoms = 12
-    kernel = BondExponential(3*Natoms)
-    params = {"weight": 1.0, "scale": 0.4}
-    kernel.set_params(params)
-
-    r = [1.2]*Natoms
-    kernel.init_metric(r)
-
-    if debug:
-        print(kernel.g)
-
-    assert np.allclose(kernel.G, np.dot(kernel.F.T, kernel.F))
-
-    if debug:
-        X = np.asarray([np.random.rand(3*Natoms) for i in range(3)])
-        print(kernel.kernel_matrix(X))
-        print(kernel.gradient(X))
-
 def one_point_sample(Natoms=2):
     kernel = BondExponential(3*Natoms)
     params = {"weight": 1.0, "scale": 0.4}
@@ -48,12 +29,12 @@ def one_point_sample(Natoms=2):
 
     X = np.asarray([np.random.rand(3*Natoms)])
     K = kernel.kernel_matrix(X)
-    #print(K)
-    o = np.zeros(3*Natoms).reshape(1,-1)
-    true_K = np.block([[np.eye(1), o],[o.T, kernel.G/kernel.l**2]])
-    #print(true_K)
+    # print(K)
+    o = np.zeros(3*Natoms).reshape(1, -1)
+    true_K = np.block([[np.eye(1), o], [o.T, kernel.G/kernel.l**2]])
+    # print(true_K)
 
-    assert np.allclose(K,true_K)
+    assert np.allclose(K, true_K)
 
 
 def test_g_eigh(Natoms=2):
