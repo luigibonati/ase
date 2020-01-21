@@ -263,8 +263,8 @@ class BondExponential(SquaredExponential):
 
         # 2. three-D metric G
         #  2.1 Define permutation matrix
-        I = np.eye(3 * N)
-        P = np.vstack((I[0::3], I[1::3], I[2::3]))
+        Id = np.eye(3 * N)
+        P = np.vstack((Id[0::3], Id[1::3], Id[2::3]))
 
         #  2.2 Actual permutation matrix
         o = np.zeros((N, N))
