@@ -63,7 +63,11 @@ def test_g_eigh(Natoms=2):
     r = [1.2]*Natoms
     kernel.init_metric(r)
 
-def test_is_symmetric(Natoms=2, Nsamples=1, gradient = False):
+    assert np.allclose(kernel.g.sum(axis=1), np.zeros(Natoms))
+    assert np.allclose(kernel.G.sum(axis=1), np.zeros(3*Natoms))
+
+
+def test_is_symmetric(Natoms=2, Nsamples=1, gradient=False):
 
     kernel = BondExponential(3*Natoms)
     params = {"weight": 1.0, "scale": 0.4}
@@ -74,9 +78,9 @@ def test_is_symmetric(Natoms=2, Nsamples=1, gradient = False):
 
     X = np.asarray([np.random.rand(3*Natoms) for i in range(Nsamples)])
     K = kernel.kernel_matrix(X)
-    #print(K)
-    #print(kernel.G)
-    #print(kernel.K(X,X))
+    # print(K)
+    # print(kernel.G)
+    # print(kernel.K(X,X))
     assert np.allclose(K, K.T)
 
     if gradient:
@@ -97,7 +101,7 @@ def first_step(Nattempts=1, l=0.1):
     # Define atoms object
     rc = covalent_radii[atomic_numbers['C']]
     atoms = bulk('C', 'fcc', 2*np.sqrt(2)*rc)
-    atoms *= (2,2,2)
+    atoms *= (2, 2, 2)
     atoms.rattle(0.2)
     atoms.set_calculator(EMT())
 
@@ -114,7 +118,7 @@ def first_step(Nattempts=1, l=0.1):
     # Define ml calculator
     calcparams = {'noise': 0.001,
                   'kernel': kernel,
-                  'kernel_params' : params,
+                  'kernel_params': params,
                   'update_prior_strategy': 'maximum',
                   'train_images': [],
                   'calculate_uncertainty': False,
