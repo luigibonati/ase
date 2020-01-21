@@ -274,26 +274,6 @@ class BondExponential(SquaredExponential):
 
         self.G = np.matmul(P.T, np.matmul(self.G, P))
 
-        # 3. Diagonalize and factorize G
-        #   3.1 Diagonalize g
-
-        d, q = la.eigh(g)
-
-        assert np.allclose(g, np.matmul(q, np.matmul(np.diag(d), q.T)))
-
-        Q = np.block([[q, o, o],
-                      [o, q, o],
-                      [o, o, q]])
-
-        #  3.2 Filter the 0 eigenvalue
-        d[d < eps * np.max(g)] = 0.0
-
-        #  3.3 sqrt of eig-values and factorization
-        dsqrt = np.sqrt(d)
-        Dsqrt = np.diag(np.hstack([dsqrt for i in range(3)]))
-
-        self.F = np.matmul(Dsqrt, np.matmul(Q.T, P))
-
     # --- Kernel methods ---
 
     def squared_distance(self, x1, x2):
