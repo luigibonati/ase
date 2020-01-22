@@ -263,16 +263,10 @@ class BondExponential(SquaredExponential):
 
         # 2. three-D metric G
         #  2.1 Define permutation matrix
-        Id = np.eye(3 * N)
-        P = np.vstack((Id[0::3], Id[1::3], Id[2::3]))
-
-        #  2.2 Actual permutation matrix
-        o = np.zeros((N, N))
-        self.G = np.block([[g, o, o],
-                           [o, g, o],
-                           [o, o, g]])
-
-        self.G = np.matmul(P.T, np.matmul(self.G, P))
+        self.G = np.zeros((3 * N, 3 * N))
+        self.G[0::3, 0::3] = g[:, :]
+        self.G[1::3, 1::3] = g[:, :]
+        self.G[2::3, 2::3] = g[:, :]
 
     # --- Kernel methods ---
 
