@@ -381,7 +381,7 @@ class SP(Optimizer):
             return True
         else:
             if result.success is False:
-                raise RuntimeError('SciPy Error: ' + result.message)
+                raise RuntimeError('SciPy Error: ' + str(result.message))
             elif tol is None:
                 # Scipy's default convergence was met
                 return True
