@@ -69,6 +69,36 @@ def test_is_symmetric(Natoms=2, Nsamples=1, gradient=False):
         assert np.allclose(g, g.T)
 
 
+def check_permutation():
+    from ase.data import covalent_radii, atomic_numbers
+    rc = covalent_radii[atomic_numbers['C']]
+    N = 8
+    kernel = BondExponential(3 * N)
+    radii = N * [rc]
+    interaction = lambda x, y: 1. / (x * y)
+    kernel.init_metric(radii, interaction, normalize=True)
+
+    w, v = np.linalg.eigh(kernel.G)
+
+    # w[0:3] are the 0 eigenvalues.
+    # Can I write translations as l.c. of these 3?
+    t_x = np.array([[1., 0., 0.] for i in range(N)]).flatten()
+    t_y = np.array([[0., 1., 0.] for i in range(N)]).flatten()
+    t_z = np.array([[0., 0., 1.] for i in range(N)]).flatten()
+    r_x = t_x
+    r_y = t_y
+    r_z = t_z
+    for i in range(3):
+        vi = v[:, i]
+        r_x -= np.dot(vi, t_x)*vi
+        r_y -= np.dot(vi, t_y)*vi
+        r_z -= np.dot(vi, t_z)*vi
+
+    assert r_x.sum() < 0.01
+    assert r_y.sum() < 0.01
+    assert r_z.sum() < 0.01
+
+
 def first_step(Nattempts=1, l=0.1):
 
     from ase.data import covalent_radii, atomic_numbers
@@ -142,5 +172,7 @@ if __name__ == "__main__":
     one_point_sample()
 
     test_is_symmetric()
+
+    check_permutation()
 
     first_step(l=0.1)
