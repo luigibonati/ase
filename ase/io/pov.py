@@ -1,3 +1,4 @@
+# flake8: noqa
 """
 Module for povray file format support.
 
@@ -9,7 +10,6 @@ import numpy as np
 
 from ase.io.utils import PlottingVariables
 from ase.constraints import FixAtoms
-from ase.utils import basestring
 from ase import Atoms
 
 def pa(array):
@@ -19,7 +19,7 @@ def pa(array):
 
 def pc(array):
     """Povray color syntax"""
-    if isinstance(array, basestring):
+    if isinstance(array, str):
         return 'color ' + array
     if isinstance(array, float):
         return 'rgb <%.2f>*3' % array
@@ -536,7 +536,7 @@ def add_isosurface_to_pov(pov_fid, pov_obj,
 
             pov_fid.write(line)
 
-    ########## Start writting the mesh2
+    ########## Start writing the mesh2
     pov_fid.write('\n\nmesh2 {')
 
     ############ the vertex_vectors (floats) and the face_indices (ints)
