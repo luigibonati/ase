@@ -353,14 +353,13 @@ class SP(Optimizer):
 
     def run(self, fmax=0.05, steps=100000000):
 
+        self.fmax = fmax
         # Set convergence criterium
-        if fmax == 'scipy default':
+        if self.fmax == 'scipy default':
             # Scipys default convergence
-            self.fmax = 1e-8
             tol = None
         else:
             # ASE's usual behaviour
-            self.fmax = fmax
             tol = 1e-10
 
         self.max_steps = steps
@@ -390,6 +389,12 @@ class SP(Optimizer):
 
     def step(self):
         pass
+
+    def converged(self, forces=None):
+        if self.fmax == 'scipy default':
+            return False
+        else:
+            return Optimizer.converged(forces)
 
     def func(self, x):
         self.atoms.set_positions(x.reshape((-1, 3)))
