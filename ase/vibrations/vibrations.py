@@ -415,6 +415,32 @@ class VibrationsData(object):
         log.write('Zero-point energy: {:.3f} eV\n'.format(
             self.get_zero_point_energy()))
 
+    def show_as_force(self,
+                      mode: int,
+                      scale: float = 0.2,
+                      show: bool = True) -> ase.Atoms:
+        """Illustrate mode as "forces" on atoms
+
+        Args:
+            mode: mode index
+            scale: scale factor
+            show: if True, open the ASE GUI
+
+        Returns:
+            copy of input atoms with a SinglePointCalculator holding scaled
+            forces corresponding to mode eigenvectors. This is the structure
+            shown in the GUI when show=True.
+
+        """
+
+        atoms = self.atoms  # Spawns a copy to avoid mutating underlying data
+        mode = self.get_modes()[mode] * len(atoms) * 3 * scale
+        atoms.set_calculator(SinglePointCalculator(atoms, forces=mode))
+        if show:
+            self.atoms.edit()
+
+        return atoms
+
     def write_jmol(self,
                    filename: str = 'vib.xyz',
                    ir_intensities: np.ndarray = None

@@ -239,7 +239,7 @@ class TestVibrationsData(unittest.TestCase):
             if os.path.isfile(logfile):
                 os.remove(logfile)
 
-    def test_energies(self):
+    def test_energies_and_modes(self):
         vib_data = VibrationsData(self.n2.copy(), self.h_n2)
         energies, modes = vib_data.get_energies_and_modes()
         assert_array_almost_equal(self.ref_frequencies,
@@ -258,6 +258,18 @@ class TestVibrationsData(unittest.TestCase):
         with open(self.report_file, 'rt') as f:
             report_txt = f.read()
         self.assertEqual(report_txt, vibrations_n2_log)
+
+        atoms_with_forces = vib_data.show_as_force(-1, show=False)
+        ref_forces = np.array([[0., 0., -2.26722e-1],
+                               [0., 0., 2.26722e-1]])
+
+        try:
+            assert_array_almost_equal(atoms_with_forces.get_forces(),
+                                      ref_forces)
+        except AssertionError:
+            # Eigenvectors may be off by a sign change, which is allowed
+            assert_array_almost_equal(atoms_with_forces.get_forces(),
+                                      -ref_forces)
 
     def test_imaginary_energies(self):
         vib_data = VibrationsData(self.n2_unstable.copy(), self.h_n2_unstable)
