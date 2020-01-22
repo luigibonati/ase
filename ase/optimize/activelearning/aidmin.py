@@ -468,7 +468,7 @@ class GPMin(AIDMin):
             params_to_update = []
 
         # 3. Set GP calculator
-        gp_calc = GPCalculator(train_images=[], noise=noise,
+        gp_calc = GPCalculator(train_images=None, noise=noise,
                                kernel_params={'weight': weight,
                                               'scale': scale},
                                update_prior_strategy=update_prior_strategy,
