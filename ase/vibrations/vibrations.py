@@ -5,7 +5,7 @@ import os
 import os.path as op
 import pickle
 import sys
-from typing import Dict, NoReturn, Sequence, Tuple, Union
+from typing import Dict, NoReturn, Sequence, Tuple, Union, Any
 
 import numpy as np
 
@@ -247,25 +247,23 @@ class VibrationsData(object):
         """
         return self._hessian2d.copy()
 
-    def todict(self) -> Dict[str, Union[str, dict, np.ndarray]]:
-        return {'atoms': self.atoms.todict(),
+    def todict(self) -> Dict[str, Any]:
+        return {'atoms': self.atoms,
                 'hessian': self.hessian,
                 'indices': self.indices}
 
     @classmethod
-    def fromdict(cls, data: Dict[str, Union[str, dict, np.ndarray]]
-                 ) -> 'VibrationsData':
+    def fromdict(cls, data: Dict[str, Any]) -> 'VibrationsData':
 
         # mypy is understandably suspicious of data coming from a dict that
-        # holds so many types, but it can see if we sanity-check with 'assert'
-        assert isinstance(data['atoms'], dict)
+        # holds mixed types, but it can see if we sanity-check with 'assert'
+        assert isinstance(data['atoms'], Atoms)
         assert isinstance(data['hessian'], np.ndarray)
         if data['indices'] is not None:
             assert (isinstance(data['indices'], list)
                     and isinstance(data['indices'][0], int))
 
-        return cls(Atoms.fromdict(data['atoms']), data['hessian'],
-                   indices=data['indices'])
+        return cls(data['atoms'], data['hessian'], indices=data['indices'])
 
     def _calculate_energies_and_modes(self) -> Tuple[np.ndarray, np.ndarray]:
         """Diagonalise the Hessian to obtain harmonic modes
