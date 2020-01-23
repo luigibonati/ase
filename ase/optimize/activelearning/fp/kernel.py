@@ -2,6 +2,7 @@ from __future__ import print_function
 import numpy as np
 from ase.optimize.activelearning.gp.kernel import SE_kernel
 
+
 class FPKernel(SE_kernel):
 
     def __init__(self):
@@ -17,8 +18,15 @@ class FPKernel(SE_kernel):
 
     def set_fp_params(self, x):
 
-        if self.params != x.params:
-            x.update(self.params)
+        if hasattr(x, 'l'):
+            if self.params != x.params:
+                x.update(self.params)
+        else:
+            params = self.params.copy()
+            params.pop('scale')
+            params.pop('weight')
+            if params != x.params:
+                x.update(params)
 
     def kernel_function_gradient(self, x1, x2):
         '''Gradient of kernel_function respect to the second entry.
@@ -45,6 +53,11 @@ class FPKernel(SE_kernel):
         This function returns a D+1 x D+1 matrix
         where D is the dimension of the manifold'''
 
+        if not hasattr(x1, 'l'):
+            x1.update(self.params)
+        if not hasattr(x2,'l'):
+            x2.update(self.params)
+        
         K = np.identity(self.D+1)
 
         K[0, 0] = x1.kernel(x1, x2)

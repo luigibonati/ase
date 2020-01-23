@@ -14,15 +14,15 @@ class OganovFP():
         self.pbc = pbc
 
         # modifiable parameters:
-        self.params = {'weight': 1.0,
-                       'scale': 1.0,
-                       'delta': delta}
+        self.params = {'delta': delta}
 
         self.set_params()
 
     def set_params(self):
-        self.weight = self.params['weight']
-        self.l = self.params['scale']
+        if 'scale' in self.params.keys():
+            self.l = self.params['scale']
+        if 'weight' in self.params.keys():
+            self.weight = self.params['weight']
         self.delta = self.params['delta']
         return
 
@@ -57,7 +57,6 @@ class OganovFP():
 
         if params is not None:
             for param in params:
-
                 self.params[param] = params[param]
 
         self.set_params()
