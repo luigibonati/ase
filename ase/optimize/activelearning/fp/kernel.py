@@ -85,7 +85,7 @@ class FPKernel(SE_kernel):
     def kernel_vector(self, x, X):
         self.set_fp_params(x)
         for x2 in X:
-            self.set_fp_params(x)
+            self.set_fp_params(x2)
         return np.hstack([self.kernel(x, x2) for x2 in X])
 
 
