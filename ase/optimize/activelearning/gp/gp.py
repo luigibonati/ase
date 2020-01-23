@@ -46,7 +46,7 @@ class GaussianProcess():
             self.hyperparams[pstring] = params.get(pstring)
         self.kernel.set_params(params)
         self.noise = noise
-        
+
         # Set noise-weight ratio:
         if not hasattr(self, 'ratio'):
             self.ratio = self.noise / self.hyperparams['weight']
@@ -133,9 +133,9 @@ class GaussianProcess():
         """
 
         X, Y, params_to_update = args
-        
+
         assert len(params) == len(params_to_update)
-    
+
         paramdict = {}
         for p, pstring in zip(params, params_to_update):
             paramdict[pstring] = p
@@ -184,7 +184,7 @@ class GaussianProcess():
              log-likelihood.
              (See scipy's L-BFGS-B documentation:
              https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html)
-        
+
 
         Returns:
 
@@ -199,7 +199,7 @@ class GaussianProcess():
 
         # Define arguments for neg_log_likelihood
         arguments = (np.array(X), np.array(Y), params_to_update)
-        
+
         # Define initial hyperparameters for minimization
         params = []
         for string in params_to_update:

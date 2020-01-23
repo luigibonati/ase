@@ -33,7 +33,7 @@ class SE_kernel(Kernel):
             {'weight': prefactor of the exponential,
              'scale' : scale of the kernel}
         """
-        
+
         if not hasattr(self, 'params'):
             self.params = {}
         for p in params:
@@ -133,10 +133,10 @@ class SquaredExponential(SE_kernel):
         K = np.identity(self.D + 1)
         K[0, 1:] = self.kernel_function_gradient(x1, x2)
         K[1:, 0] = - K[0, 1:]
-        
+
         P = np.outer(x1 - x2, x1 - x2) / self.l**2
         K[1:, 1:] = (K[1:, 1:] - P) / self.l**2
-        
+
         return K * self.kernel_function(x1, x2)
 
     def kernel_matrix(self, X):
@@ -229,7 +229,7 @@ class BondExponential(SquaredExponential):
 
     # --- Define metric tensor ---
 
-    def init_metric(self, radii, interaction=None, eps=1e-12, normalize=True):
+    def init_metric(self, radii, interaction=None, normalize=True):
         # Number of atoms
         N = len(radii)
 
@@ -244,7 +244,7 @@ class BondExponential(SquaredExponential):
 
             def _normalized(x, y):
                 return interaction(x, y) / N
- 
+
             self.interaction = _normalized
         else:
             self.interaction = interaction
@@ -263,36 +263,10 @@ class BondExponential(SquaredExponential):
 
         # 2. three-D metric G
         #  2.1 Define permutation matrix
-        I = np.eye(3 * N)
-        P = np.vstack((I[0::3], I[1::3], I[2::3]))
- 
-        #  2.2 Actual permutation matrix
-        o = np.zeros((N, N))
-        self.G = np.block([[g, o, o],
-                           [o, g, o],
-                           [o, o, g]])
-
-        self.G = np.matmul(P.T, np.matmul(self.G, P))
-         
-        # 3. Diagonalize and factorize G
-        #   3.1 Diagonalize g
-
-        d, q = la.eigh(g)
-
-        assert np.allclose(g, np.matmul(q, np.matmul(np.diag(d), q.T)))
-
-        Q = np.block([[q, o, o],
-                      [o, q, o],
-                      [o, o, q]])
-
-        #  3.2 Filter the 0 eigenvalue
-        d[d < eps * np.max(g)] = 0.0
-
-        #  3.3 sqrt of eig-values and factorization
-        dsqrt = np.sqrt(d)
-        Dsqrt = np.diag(np.hstack([dsqrt for i in range(3)]))
-
-        self.F = np.matmul(Dsqrt, np.matmul(Q.T, P))
+        self.G = np.zeros((3 * N, 3 * N))
+        self.G[0::3, 0::3] = g[:, :]
+        self.G[1::3, 1::3] = g[:, :]
+        self.G[2::3, 2::3] = g[:, :]
 
     # --- Kernel methods ---
 
@@ -313,10 +287,8 @@ class BondExponential(SquaredExponential):
         """
         Second derivatives matrix of the kernel function
         """
-        u1 = np.dot(self.F, x1)
-        u2 = np.dot(self.F, x2)
-        h = SquaredExponential.kernel_function_hessian(self, u1, u2)
-        return np.dot(self.F.T, np.dot(h, self.F))
+        u = np.matmul(self.G, (x1 - x2))
+        return (self.G - np.outer(u, u) / self.l**2) / self.l**2
 
     def kernel(self, x1, x2):
         """
@@ -335,8 +307,11 @@ class BondExponential(SquaredExponential):
     # --- Kernel derivatives ---
 
     def dK_dl_h(self, x1, x2):
-        u1 = np.dot(self.F, x1)
-        u2 = np.dot(self.F, x2)
 
-        dK_dl_h = SquaredExponential.dK_dl_h(self, u1, u2)
-        return np.dot(self.F.T, np.dot(dK_dl_h, self.F))
+        """Returns the derivative of the hessian of the kernel function respect
+        to l
+        """
+        u = np.matmul(self.G, x1 - x2)
+        P = np.outer(u, u) / self.l**2
+        prefactor = 1 - 0.5 * self.squared_distance(x1, x2)
+        return -2 * (prefactor * (self.G - P) - P) / self.l**3
