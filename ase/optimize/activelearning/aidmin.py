@@ -3,6 +3,8 @@ from ase.optimize.bfgslinesearch import BFGSLineSearch
 from ase.optimize.activelearning.gp.calculator import GPCalculator
 from ase.optimize.activelearning.trainingset import TrainingSet
 
+from ase.calculators.calculator import compare_atoms
+
 import warnings
 from scipy.optimize import minimize
 
@@ -313,7 +315,13 @@ class AIDMin(Optimizer):
             raise RuntimeError(
                 "The minimization of the surrogate PES has not converged")
         else:
-            atoms.set_positions(ml_atoms.get_positions())
+            # Check that this was a meaningfull step
+            system_changes = compare_atoms(atoms, ml_atoms)
+
+            if not system_changes:
+                raise RuntimeError("Too small step: the atoms did not move")
+
+        atoms.set_positions(ml_atoms.get_positions())
 
     def check(self):
 
