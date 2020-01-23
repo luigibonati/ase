@@ -73,15 +73,13 @@ class Dynamics:
     def get_number_of_steps(self):
         return self.nsteps
 
-    def insert_observer(
-        self, function, position=0, interval=1, *args, **kwargs
-    ):
+    def insert_observer(self, function, *args, position=0, interval=1, **kwargs):
         """Insert an observer."""
         if not isinstance(function, collections.Callable):
             function = function.write
         self.observers.insert(position, (function, interval, args, kwargs))
 
-    def attach(self, function, interval=1, *args, **kwargs):
+    def attach(self, function, *args, interval=1, **kwargs):
         """Attach callback function.
 
         If *interval > 0*, at every *interval* steps, call *function* with
