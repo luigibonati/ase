@@ -17,12 +17,12 @@ with seterr(all='raise'):
     print(a.get_forces())
     md = VelocityVerlet(a, timestep=0.5 * fs, logfile='-', loginterval=500)
     traj = Trajectory('4N.traj', 'w', a)
-    md.attach(traj.write, 100)
+    md.attach(traj.write, interval=100)
     e0 = a.get_total_energy()
     md.run(steps=10000)
     del traj
     assert abs(read('4N.traj').get_total_energy() - e0) < 0.0001
-    
+
     qn = QuasiNewton(a)
     qn.run(0.001)
     assert abs(a.get_potential_energy() - 1.0) < 0.000002
