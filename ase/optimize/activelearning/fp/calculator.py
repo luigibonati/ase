@@ -1,5 +1,4 @@
 import numpy as np
-from copy import deepcopy
 import warnings
 from ase.optimize.activelearning.fp.kernel import FPKernel
 from ase.optimize.activelearning.fp.gp import FPGaussianProcess
@@ -158,6 +157,10 @@ class FPCalculator(Calculator, FPGaussianProcess):
         self.print_format = print_format
         self.mask_constraints = mask_constraints
 
+    def new_fingerprint(self):
+        # TODO: Deal with params
+        return self.fp(**fp_params)
+
     def extract_features(self):
         """ From the training images (which include the observations),
         collect the positions, energies and forces required to train the
@@ -176,8 +179,8 @@ class FPCalculator(Calculator, FPGaussianProcess):
         self.train_y = []
 
         for i in self.train_images:
-            self.fp.set_atoms(i)
-            r = deepcopy(self.fp)
+            r = self.new_fingerprint()
+            r.set_atoms(i)
             e = i.get_potential_energy(force_consistent=self.fc)
             f = i.get_forces()
             self.train_x.append(r)
@@ -335,8 +338,8 @@ class FPCalculator(Calculator, FPGaussianProcess):
             self.train_images = None  # Remove the training list of images.
 
         # Mask geometry to be compatible with the trained GP (reduce memory).
-        self.fp.set_atoms(self.atoms)
-        x = deepcopy(self.fp)
+        x = self.new_fingerprint()
+        x.set_atoms(self.atoms)
 
         # Get predictions.
         f, V = self.predict(x, get_variance=self.calculate_uncertainty)
