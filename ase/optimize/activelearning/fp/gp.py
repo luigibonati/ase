@@ -1,4 +1,3 @@
-from __future__ import print_function
 from ase.optimize.activelearning.gp.kernel import SE_kernel, SquaredExponential
 
 import numpy as np
@@ -107,12 +106,7 @@ class FPGaussianProcess():
             regularization = np.array(n * ([self.noise *
                                             self.noisefactor]))
         
-        # print("Min eigval of raw K: \t\t", np.min(np.linalg.eigvals(K)))
-
         K += np.diag(regularization**2)
-        
-        # print("Min eigval of regularized K: \t", np.min(np.linalg.eigvals(K)))
-        # exit()
         
         self.L, self.lower = cho_factor(K, lower=True, check_finite=True)
 
@@ -194,7 +188,6 @@ class FPGaussianProcess():
                 - np.sum(np.log(np.diag(self.L)))
                 - X.shape[0] / 2 * np.log(2 * np.pi))
 
-        # print("Parameters:", txt1, "       -logP: %12.02f" % -logP)
         return -logP
 
 
@@ -254,9 +247,6 @@ class FPGaussianProcess():
                           bounds=bounds,
                           options={'gtol': tol, 'ftol': 0.01*tol})
 
-        print("Time spent minimizing neg log likelihood: %.02f sec" %
-              (time.time()-t0))
-
         if not result.success:
             converged = False
 
@@ -270,7 +260,6 @@ class FPGaussianProcess():
         
             self.set_hyperparams(optimalparams, self.noise)
 
-        print(self.hyperparams, converged)
         return {'hyperparameters': self.hyperparams, 'converged': converged}
 
 
