@@ -36,7 +36,8 @@ for i in range(5):
 print('EMT energy: {}eV'.format(slab.get_potential_energy()))
 
 # Initialize fingerprint
-fp = OganovFP(limit=20.0, delta=0.2, N=200)
+fp = OganovFP
+fp_hp = dict(limit=20.0, delta=0.2, N=200)
 kernel = FPKernel()
 kernel_params = {'weight': 1.0, 'scale': 10000, 'delta': 0.2}
 
@@ -47,6 +48,7 @@ calc = FPCalculator(train_images=train_images, noise=1e-3,
                                       'scale': (0.01, np.inf)},
                     batch_size=1,
                     fingerprint=fp,
+                    fingerprint_params = fp_hp,
                     mask_constraints=False)
 
 slab.set_calculator(calc)

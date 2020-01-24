@@ -104,6 +104,7 @@ class FPCalculator(Calculator, FPGaussianProcess):
                  kernel_params={'weight': 1., 'scale': 0.4},
                  fit_weight=None, noise=0.005,
                  params_to_update=None, fingerprint=None,
+                 fingerprint_params=None,
                  batch_size=5, bounds=None, kernel=None,
                  max_train_data=None, force_consistent=None,
                  max_train_data_strategy='nearest_observations',
@@ -144,6 +145,7 @@ class FPCalculator(Calculator, FPGaussianProcess):
 
         # Fingerprint
         self.fp = fingerprint
+        self.fp_hp = fingerprint_params
 
         # Initialize prior and trainset attributes
         self.strategy = update_prior_strategy
@@ -158,8 +160,10 @@ class FPCalculator(Calculator, FPGaussianProcess):
         self.mask_constraints = mask_constraints
 
     def new_fingerprint(self):
-        # TODO: Deal with params
-        return self.fp(**fp_params)
+        if self.fp_hp:
+            return self.fp(**self.fp_hp)
+        else:
+            return self.fp()
 
     def extract_features(self):
         """ From the training images (which include the observations),
