@@ -44,9 +44,11 @@ kernel_params = {'weight': 1.0, 'scale': 10000, 'delta': 0.2}
 calc = FPCalculator(train_images=train_images, noise=1e-3,
                     kernel=kernel, kernel_params=kernel_params,
                     update_prior_strategy='maximum',
-                    params_to_udpate={'weight': (0.1, np.inf),
-                                      'scale': (0.01, np.inf)},
+                    params_to_update={'weight': (0.1, np.inf),
+                                      'scale': (0.01, np.inf),
+                                      'delta': (0.2, 0.4)},
                     batch_size=1,
+                    print_format = 'ASE',
                     fingerprint=fp,
                     fingerprint_params = fp_hp,
                     mask_constraints=False)
@@ -54,3 +56,5 @@ calc = FPCalculator(train_images=train_images, noise=1e-3,
 slab.set_calculator(calc)
 
 print('GP energy: {}eV'.format(slab.get_potential_energy()))
+
+print(fp_hp)

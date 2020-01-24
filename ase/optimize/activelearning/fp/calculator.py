@@ -295,6 +295,7 @@ class FPCalculator(Calculator, FPGaussianProcess):
             update_hp = len(self.params_to_update) != 0
             is_train_empty = len(self.train_x) == 0
             is_module_batch = len(self.train_x) % self.nbatch == 0
+
             if update_hp and is_module_batch and not is_train_empty:
                 bounds = []
                 params = []
@@ -319,6 +320,11 @@ class FPCalculator(Calculator, FPGaussianProcess):
                                          np.asarray(self.train_y),
                                          params_to_update=params,
                                          bounds=bounds)
+
+                p2update = set(self.params_to_update.keys())
+                keys_to_update = p2update.intersection(set(self.fp_hp.keys()))
+                for key in keys_to_update:
+                    self.fp_hp[key] = self.hyperparams[key]
 
         self.prev_train_y = self.train_y[:]
 
