@@ -194,7 +194,7 @@ class FPGaussianProcess():
                 - np.sum(np.log(np.diag(self.L)))
                 - X.shape[0] / 2 * np.log(2 * np.pi))
 
-        print("Parameters:", txt1, "       -logP: %12.02f" % -logP)
+        # print("Parameters:", txt1, "       -logP: %12.02f" % -logP)
         return -logP
 
 
