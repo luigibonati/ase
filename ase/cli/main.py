@@ -1,6 +1,7 @@
 import argparse
 import sys
 import textwrap
+import re
 
 from ase import __version__
 from ase.utils import import_module
@@ -114,14 +115,6 @@ def main(prog='ase', description='ASE command line tool.',
                 parser.error(l1 + l2)
 
 
-def remove_doubles(string):
-    string2 = string.replace(' ' * 2, ' ')
-    if string2 == string:
-        return string2
-    else:
-        return remove_doubles(string2)
-
-
 class Formatter(argparse.HelpFormatter):
     """Improved help formatter."""
 
@@ -155,7 +148,8 @@ class Formatter(argparse.HelpFormatter):
         # indenting conventions first the input strings must have all whitespace
         # be removed.
 
-        help_text = remove_doubles(help_text)
+
+        help_text = re.sub(r'[ \t]+', ' ', help_text)
         blocks = [[line for line in block.split('\n')] for block in help_text.split(
             '\n\n')]  # how to deal with mid-sentence truncations?
 

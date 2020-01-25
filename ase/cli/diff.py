@@ -20,7 +20,7 @@ class CLICommand:
     @staticmethod
     def add_arguments(parser):
         add = parser.add_argument
-        add('files', metavar='file(s)',
+        add('file',
             help="""Possible file entries are
             
                     * 2 non-trajectory files: difference between them
@@ -29,18 +29,18 @@ class CLICommand:
                     
                     """,
             nargs='+')
-        add('-r', '--rank-order', metavar='field', nargs='?', const='d', type=str,
+        add('-r', '--rank-order', metavar='FIELD', nargs='?', const='d', type=str,
             help="""Order atoms by rank, see --template help for possible
                     fields.
 
                     The default value, when specified, is d.  When not
                     specified, ordering is the same as that provided by the
-                    generator.  For hiearchical sorting, see template.""") 
+                    generator.  For hierarchical sorting, see template.""") 
         add('-c', '--calculator-outputs', action="store_true",
             help="display calculator outputs of forces and energy")
-        add('-s', '--show-only', metavar='n', type=int,
+        add('--max-lines', metavar='N', type=int,
             help="show only so many lines (atoms) in each table, useful if rank ordering")
-        add('-t', '--template', metavar='template', nargs='?', const='rc',
+        add('-t', '--template', metavar='TEMPLATE', nargs='?', const='rc',
             help="""Without argument, looks for ~/.ase/template.py.  Otherwise,
                     expects the comma separated list of the fields to include
                     in their left-to-right order.  Optionally, specify the
@@ -65,7 +65,7 @@ class CLICommand:
                     *    r<col>: the rank of that atom with respect to the column
 
                     It is possible to change formatters in a template file.""")
-        add('-l', '--log-file', metavar='logfile', help="print table to file")
+        add('--log-file', metavar='LOGFILE', help="print table to file")
 
     @staticmethod
     def run(args, parser):
@@ -98,18 +98,18 @@ class CLICommand:
                         raise Exception(
                             'field requiring calculation outputs without --calculator-outputs')
 
-        two_files = len(args.files) == 2
+        have_two_files = len(args.file) == 2
 
-        f1 = args.files[0]
-        a1 = read(f1, index=':')
-        l1 = len(a1)
+        file1 = args.file[0]
+        atoms1 = read(file1, index=':')
+        natoms1 = len(atoms1)
 
-        if two_files:
-            f2 = args.files[1]
-            a2 = read(f2, index=':')
-            l2 = len(a2)
-            same_length = l1 == l2
-            one_l_one = l1 or l2
+        if have_two_files:
+            file2 = args.file[1]
+            atoms2 = read(file2, index=':')
+            natoms2 = len(atoms2)
+            same_length = natoms1 == natoms2
+            one_l_one = natoms1 or natoms2
 
             if not same_length and not one_l_one:
                 raise Exception(
@@ -118,10 +118,10 @@ class CLICommand:
                 print(
                     """One file contains one image and the other multiple images,
                     assuming you want to compare all images with one reference image""")
-                if l1 > l2:
-                    a2 = l1 * a2
+                if natoms1 > natoms2:
+                    atoms2 = natoms1 * atoms2
                 else:
-                    a1 = l2 * a1
+                    atoms1 = natoms2 * atoms1
 
                 def header_fmt(c):
                     return 'sys-ref image # {}'.format(c)
@@ -129,31 +129,28 @@ class CLICommand:
                 def header_fmt(c):
                     return 'sys2-sys1 image # {}'.format(c)
         else:
-            a2 = a1.copy()
-            a1 = a1[:-1]
-            a2 = a2[1:]
+            atoms2 = atoms1.copy()
+            atoms1 = atoms1[:-1]
+            atoms2 = atoms2[1:]
 
             def header_fmt(c):
                 return 'images {}-{}'.format(c + 1, c)
 
-        if a1[0].get_calculator() is None:
-            has_calc = False
-        else:
-            has_calc = True
+        has_calc = atoms1[0].calc is not None
 
-        pairs = zip(a1, a2)
+        pairs = zip(atoms1, atoms2)
         if has_calc and args.calculator_outputs:
             for counter, pair in enumerate(pairs):
                 print(header_fmt(counter), file=out)
                 t = render_table(
                     field_specs,
                     *pair,
-                    show_only=args.show_only,
+                    show_only=args.max_lines,
                     summary_function=rmsd)
                 t += '\n'
                 t += render_table(field_specs,
                                   *pair,
-                                  show_only=args.show_only,
+                                  show_only=args.max_lines,
                                   summary_function=energy_delta)
                 print(t, file=out)
         else:
@@ -162,6 +159,6 @@ class CLICommand:
                 t = render_table(
                     field_specs,
                     *pair,
-                    show_only=args.show_only,
+                    show_only=args.max_lines,
                     summary_function=rmsd)
                 print(t, file=out)

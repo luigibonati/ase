@@ -20,3 +20,6 @@ qn.run(fmax=0.02)
 
 from ase.test import cli
 cli('ase diff mepi.traj mepf.traj -c')
+
+import os
+os.system('rm mepi.traj mepf.traj')
