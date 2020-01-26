@@ -18,5 +18,5 @@ qn.run(fmax=0.02)
 from ase.test import cli
 cli('ase diff mep0.traj -c')
 
-import os
-os.system('rm mep0.traj')
+#import os
+#os.system('rm mep0.traj')

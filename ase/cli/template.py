@@ -39,7 +39,6 @@ fmt_class = {'signed float': pre[:-1] + ' ' + pre[-1] + '.1E}',
              'str': pre + 's}',
              'conv': pre + 'h}'}
 
-
 def header_alias(h):
     if h == 'i':
         h = 'index'
@@ -256,7 +255,7 @@ def render_table(
         atoms1,
         atoms2,
         show_only=None,
-        summary_function=rmsd):
+        summary_functions=[rmsd]):
     fields, hier, scent = parse_field_specs(field_specs)
     fdata = np.array([get_atoms_data(atoms1, atoms2, field)
                       for field in fields])
@@ -272,5 +271,37 @@ def render_table(
     format_dict['header'] = (fmt_class['str'] *
                              len(fields)).format(*
                                                  [header_alias(field) for field in fields])
-    format_dict['summary'] = summary_function(atoms1, atoms2)
+    format_dict['summary'] = '\n'.join([summary_function(atoms1, atoms2) for summary_function in summary_functions])
     return template.format(**format_dict)
+
+class Table(object):
+    def __init__(self, max_lines, summary_functions, field_specs):
+        self.max_lines = max_lines
+        self.summary_functions = summary_functions
+        self.field_specs = field_specs
+    def make(self, atoms1, atoms2):
+        return render_table(self.field_specs,
+                atoms1,
+                atoms2,
+                show_only = self.max_lines,
+                summary_functions = self.summary_functions)
+
+def summary_functions_on_conditions(has_calc):
+    if has_calc:
+        return [rmsd, energy_delta]
+    return [rmsd]
+
+from ase.io.formats import parse_filename
+from ase.io import string2index
+
+default_index = string2index(':')
+
+def slice_split(filename):
+    if '@' in filename and 'postgres' not in filename or \
+       'postgres' in filename and filename.count('@') == 2:
+        filename, index = parse_filename(filename, None)
+    else:
+        filename, index = parse_filename(filename,
+                                                default_index)
+    return filename, index
+

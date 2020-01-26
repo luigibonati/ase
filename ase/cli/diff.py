@@ -27,6 +27,7 @@ class CLICommand:
                     * 1 trajectory file: difference between consecutive images
                     * 2 trajectory files: difference between corresponding image numbers
                     
+                    Use [FILE]@[SLICE] to select images.
                     """,
             nargs='+')
         add('-r', '--rank-order', metavar='FIELD', nargs='?', const='d', type=str,
@@ -75,23 +76,30 @@ class CLICommand:
         else:
             out = open(args.log_file, 'w')
 
-        # templating
+
+        from ase.io.formats import parse_filename
+        from ase.io import string2index
+        from template import slice_split
+
         if args.template is None:
-            from ase.cli.template import render_table, field_specs_on_conditions, rmsd, energy_delta
+            from ase.cli.template import render_table, field_specs_on_conditions, summary_functions_on_conditions, Table
             field_specs = field_specs_on_conditions(
                 args.calculator_outputs, args.rank_order)
+            summary_functions = summary_functions_on_conditions(args.calculator_outputs)
         elif args.template == 'rc':
             import os
             homedir = os.environ['HOME']
             sys.path.insert(0, homedir + '/.ase')
-            from templaterc import render_table, field_specs_on_conditions, rmsd, energy_delta
+            from templaterc import render_table, field_specs_on_conditions, summary_functions_on_conditions, Table
             # this has to be named differently because python does not
             # redundantly load packages
             field_specs = field_specs_on_conditions(
                 args.calculator_outputs, args.rank_order)
+            summary_functions = summary_functions_on_conditions(args.calculator_outputs)
         else:
-            from ase.cli.template import render_table, rmsd, energy_delta
+            from ase.cli.template import render_table, summary_functions_on_conditions, Table
             field_specs = args.template.split(',')
+            summary_functions = summary_functions_on_conditions(args.calculator_outputs)
             if not args.calculator_outputs:
                 for field_spec in field_specs:
                     if 'f' in field_spec:
@@ -101,19 +109,22 @@ class CLICommand:
         have_two_files = len(args.file) == 2
 
         file1 = args.file[0]
-        atoms1 = read(file1, index=':')
+        actual_filename, index = slice_split(file1)
+        atoms1 = read(actual_filename, index)
         natoms1 = len(atoms1)
 
         if have_two_files:
             file2 = args.file[1]
-            atoms2 = read(file2, index=':')
+            actual_filename, index = slice_split(file2)
+            atoms2 = read(actual_filename, index)
             natoms2 = len(atoms2)
+
             same_length = natoms1 == natoms2
-            one_l_one = natoms1 or natoms2
+            one_l_one = natoms1 == 1 or natoms2 == 1
 
             if not same_length and not one_l_one:
                 raise Exception(
-                    "Trajectory files are not the same length and both > 1")
+                    "Trajectory files are not the same length and both > 1\n{}!={}".format(natoms1,natoms2))
             elif not same_length and one_l_one:
                 print(
                     """One file contains one image and the other multiple images,
@@ -132,33 +143,20 @@ class CLICommand:
             atoms2 = atoms1.copy()
             atoms1 = atoms1[:-1]
             atoms2 = atoms2[1:]
+            natoms2 = natoms1 = natoms1 - 1
 
             def header_fmt(c):
                 return 'images {}-{}'.format(c + 1, c)
 
         has_calc = atoms1[0].calc is not None
 
-        pairs = zip(atoms1, atoms2)
-        if has_calc and args.calculator_outputs:
-            for counter, pair in enumerate(pairs):
-                print(header_fmt(counter), file=out)
-                t = render_table(
-                    field_specs,
-                    *pair,
-                    show_only=args.max_lines,
-                    summary_function=rmsd)
-                t += '\n'
-                t += render_table(field_specs,
-                                  *pair,
-                                  show_only=args.max_lines,
-                                  summary_function=energy_delta)
-                print(t, file=out)
-        else:
-            for counter, pair in enumerate(pairs):
-                print(header_fmt(counter), file=out)
-                t = render_table(
-                    field_specs,
-                    *pair,
-                    show_only=args.max_lines,
-                    summary_function=rmsd)
-                print(t, file=out)
+        natoms = natoms1 # = natoms2
+
+        output = ''
+        table = Table(args.max_lines, summary_functions, field_specs)
+
+        for counter in range(natoms):
+            print(counter)
+            output += header_fmt(counter) + '\n'
+            output += table.make(atoms1[counter],atoms2[counter]) + '\n'
+        print(output, file = out)

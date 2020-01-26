@@ -10,5 +10,5 @@ write('slab.cif',[slab,slab2])
 from ase.test import cli
 cli('ase diff slab.cif')
 
-import os
-os.system('rm slab.cif')
+#import os
+#os.system('rm slab.cif')
