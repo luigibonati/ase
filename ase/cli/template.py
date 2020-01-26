@@ -59,20 +59,20 @@ def header_alias(h):
     return h
 
 
-l1 = ['dx', 'dy', 'dz', 'dfx', 'dfy', 'dfz', 'afx', 'afy', 'afz']
-for i in l1:
-    fmt[i] = fmt_class['signed float']
-l2 = ['d', 'df', 'af']
-for i in l2:
-    fmt[i] = fmt_class['unsigned float']
-l3 = ['i', 'an', 't'] + ['r' + i for i in l1] + ['r' + i for i in l2]
-for i in l3:
+signed_floats = ['dx', 'dy', 'dz', 'dfx', 'dfy', 'dfz', 'afx', 'afy', 'afz']
+for sf in signed_floats:
+    fmt[sf] = fmt_class['signed float']
+unsigned_floats = ['d', 'df', 'af']
+for usf in unsigned_floats:
+    fmt[usf] = fmt_class['unsigned float']
+integers = ['i', 'an', 't'] + ['r' + sf for sf in signed_floats] + ['r' + usf for usf in unsigned_floats]
+for i in integers:
     fmt[i] = fmt_class['int']
 
 fmt['el'] = fmt_class['conv']
 
 
-def prec_round_1(a, prec=2):
+def prec_round(a, prec=2):
     "To make hierarchical sorting different from non-hierarchical sorting with floats"
     if a == 0:
         return a
@@ -82,8 +82,7 @@ def prec_round_1(a, prec=2):
         c = np.log(s * a) % 1
     return s * np.round(np.exp(c), prec) * np.exp(m)
 
-
-prec_round = np.vectorize(prec_round_1)
+prec_round = np.vectorize(prec_round)
 
 # end most settings
 
