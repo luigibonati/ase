@@ -5,8 +5,7 @@ from ase import io
 from ase.optimize.activelearning.gp.calculator import GPCalculator
 from ase.parallel import parprint
 from ase.dimer import DimerControl, MinModeAtoms, MinModeTranslate
-from ase.optimize.activelearning.io import get_fmax, dump_observation
-
+from ase.optimize.activelearning.io import get_fmax, TrainingSet
 
 class AIDTS:
 
@@ -14,6 +13,7 @@ class AIDTS:
                  model_calculator=None, force_consistent=None,
                  trajectory='AID.traj', max_train_data=50,
                  max_train_data_strategy='nearest_observations',
+                 trainingset=None,
                  use_previous_observations=False):
         """
         Artificial Intelligence-Driven dimer (AID-TS) algorithm.
@@ -129,13 +129,21 @@ class AIDTS:
         trajectory_main = self.trajectory.split('.')[0]
         self.trajectory_observations = trajectory_main + '_observations.traj'
 
+        # Initialize training set
+
+        if trainingset is None:
+            trajectory_main = self.trajectory.split('.')[0]
+            self.train = TrainingSet(trajectory_main + '_observations.traj',
+                    use_previous_observations=False)
+        else:
+            self.train = TrainingSet(trainingset,
+                        use_previous_observations=use_previous_observations)
+
         # First observation calculation.
         self.atoms.get_potential_energy()
         self.atoms.get_forces()
+        self.train.dump(atoms=self.atoms, method='dimer')
 
-        dump_observation(atoms=self.atoms, method='dimer',
-                         filename=self.trajectory_observations,
-                         restart=self.use_prev_obs)
 
     def run(self, fmax=0.05, steps=200, logfile=True):
 
@@ -215,9 +223,7 @@ class AIDTS:
             self.atoms.get_potential_energy(force_consistent=self.fc)
             self.atoms.get_forces()
 
-            dump_observation(atoms=self.atoms, method='dimer',
-                             filename=self.trajectory_observations,
-                             restart=True)
+            self.train.dump(atoms=self.atoms, method='dimer')
 
             self.function_calls = len(train_images) + 1
             self.force_calls = self.function_calls
