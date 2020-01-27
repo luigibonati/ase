@@ -167,9 +167,9 @@ class AIDMin(Optimizer):
         self.attach(self.train, atoms=atoms, method='min')
 
         # Default parameters for the surrogate optimizer
-        if 'logfile' not in self.optkwargs.items():
+        if 'logfile' not in self.optkwargs.keys():
             self.optkwargs['logfile'] = None
-        if 'trajectory' not in self.optkwargs.items():
+        if 'trajectory' not in self.optkwargs.keys():
             self.optkwargs['trajectory'] = None
 
         # Define what to fit to
