@@ -346,6 +346,9 @@ class AIDMin(Optimizer):
 class Converged(Exception):
     pass
 
+class MaxedOut(Exception):
+    pass
+
 
 class SP(Optimizer):
     """
@@ -386,6 +389,8 @@ class SP(Optimizer):
                               tol=tol)
         except Converged:
             return True
+        except MaxedOut
+            return False
         else:
             if result.success is False:
                 raise RuntimeError('SciPy Error: ' + str(result.message))
@@ -412,6 +417,9 @@ class SP(Optimizer):
         if self.converged(f):
             raise Converged
         self.nsteps += 1
+        if self.nsteps > self.max_steps:
+            raise MaxedOut
+
         e = self.atoms.get_potential_energy(
             force_consistent=self.force_consistent)
         return e, -f.ravel()
