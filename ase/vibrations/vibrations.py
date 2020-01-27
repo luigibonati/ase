@@ -1,11 +1,12 @@
 """Vibrational modes."""
 
 from math import sin, pi, sqrt, log
+import numbers
 import os
 import os.path as op
 import pickle
 import sys
-from typing import Dict, NoReturn, Sequence, Tuple, Union, Any
+from typing import Dict, NoReturn, Sequence, Tuple, Union, Any, Optional
 
 import numpy as np
 
@@ -17,6 +18,7 @@ from ase.utils import jsonable
 
 from ase.utils import opencew, pickleload
 from ase.calculators.singlepoint import SinglePointCalculator
+from ase.dft.pdos import DOS
 
 
 @jsonable('vibrationsdata')
@@ -260,8 +262,8 @@ class VibrationsData(object):
         assert isinstance(data['atoms'], Atoms)
         assert isinstance(data['hessian'], np.ndarray)
         if data['indices'] is not None:
-            assert (isinstance(data['indices'], list)
-                    and isinstance(data['indices'][0], int))
+            assert (isinstance(data['indices'], np.ndarray)
+                    and isinstance(data['indices'][0], numbers.Integral))
 
         return cls(data['atoms'], data['hessian'], indices=data['indices'])
 
@@ -480,6 +482,24 @@ class VibrationsData(object):
 
             all_images.append(image)
         ase.io.write(filename, all_images, format='extxyz')
+
+    def get_dos(self) -> DOS:
+        """Phonon DOS, including atomic contributions
+
+        """
+        energies = self.get_energies()
+        masses = self.atoms[self.mask].get_masses()
+
+        # Get weights as N_moving_atoms x N_modes array
+        vectors = self.get_modes() / masses[np.newaxis, :, np.newaxis]**-0.5
+        weights = np.linalg.norm(vectors, axis=-1)**2
+
+        a: Optional[str]
+        info = [{'index': i, 'symbol': a.symbol}
+                for i, a in enumerate(self.atoms) if self.mask[i]
+                ]
+
+        return DOS(energies, weights, info=info)
 
 
 class Vibrations:
