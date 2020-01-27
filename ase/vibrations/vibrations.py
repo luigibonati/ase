@@ -494,7 +494,6 @@ class VibrationsData(object):
         vectors = self.get_modes() / masses[np.newaxis, :, np.newaxis]**-0.5
         weights = np.linalg.norm(vectors, axis=-1)**2
 
-        a: Optional[str]
         info = [{'index': i, 'symbol': a.symbol}
                 for i, a in enumerate(self.atoms) if self.mask[i]
                 ]
