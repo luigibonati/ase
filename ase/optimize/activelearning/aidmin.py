@@ -416,9 +416,9 @@ class SP(Optimizer):
         self.call_observers()
         if self.converged(f):
             raise Converged
+        self.nsteps += 1
         if self.nsteps == self.max_steps:
             raise MaxedOut
-        self.nsteps +=1
 
         e = self.atoms.get_potential_energy(
             force_consistent=self.force_consistent)
