@@ -389,7 +389,7 @@ class SP(Optimizer):
                               tol=tol)
         except Converged:
             return True
-        except MaxedOut
+        except MaxedOut:
             return False
         else:
             if result.success is False:
