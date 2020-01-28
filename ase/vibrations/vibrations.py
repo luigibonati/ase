@@ -6,7 +6,7 @@ import os
 import os.path as op
 import pickle
 import sys
-from typing import Dict, NoReturn, Sequence, Tuple, Union, Any, Optional
+from typing import Dict, NoReturn, Sequence, Tuple, Union, Any
 
 import numpy as np
 
