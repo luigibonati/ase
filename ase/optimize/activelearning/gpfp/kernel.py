@@ -1,6 +1,62 @@
-from __future__ import print_function
 import numpy as np
-from ase.optimize.activelearning.gp.kernel import SE_kernel
+
+class Kernel():
+    def __init__(self):
+        pass
+
+    def set_params(self, params):
+        pass
+
+    def kernel(self, x1, x2):
+        """Kernel function to be fed to the Kernel matrix"""
+        pass
+
+    def K(self, X1, X2):
+        """Compute the kernel matrix """
+        return np.block([[self.kernel(x1, x2) for x2 in X2] for x1 in X1])
+
+
+class SE_kernel(Kernel):
+    """Squared exponential kernel without derivatives"""
+    def __init__(self):
+        Kernel.__init__(self)
+
+    def set_params(self, params):
+        """Set the parameters of the squared exponential kernel.
+
+        Parameters:
+
+        params: (dictionary) Parameters of the kernel:
+            {'weight': prefactor of the exponential,
+             'scale' : scale of the kernel}
+        """
+
+        if not hasattr(self, 'params'):
+            self.params = {}
+        for p in params:
+            self.params[p] = params[p]
+
+        self.weight = self.params.get('weight', None)
+        self.l = self.params.get('scale', None)
+
+        if self.weight is None or self.l is None:
+            raise ValueError('The parameters of the kernel have not been set')
+
+    def squared_distance(self, x1, x2):
+        """Returns the norm of x1-x2 using diag(l) as metric """
+        return np.sum((x1 - x2) * (x1 - x2)) / self.l**2
+
+    def kernel(self, x1, x2):
+        """ This is the squared exponential function"""
+        return self.weight**2 * np.exp(-0.5 * self.squared_distance(x1, x2))
+
+    def dK_dweight(self, x1, x2):
+        """Derivative of the kernel respect to the weight """
+        return 2 * self.weight * np.exp(-0.5 * self.squared_distance(x1, x2))
+
+    def dK_dl(self, x1, x2):
+        """Derivative of the kernel respect to the scale"""
+        return self.kernel * la.norm(x1 - x2)**2 / self.l**3
 
 
 class FPKernel(SE_kernel):

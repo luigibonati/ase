@@ -1,7 +1,7 @@
 import numpy as np
 import warnings
-from ase.optimize.activelearning.fp.kernel import FPKernel
-from ase.optimize.activelearning.fp.gp import FPGaussianProcess
+from ase.optimize.activelearning.gpfp.kernel import FPKernel
+from ase.optimize.activelearning.gpfp.gp import FPGaussianProcess
 from ase.optimize.activelearning.gp.prior import ConstantPrior
 from ase.calculators.calculator import Calculator, all_changes
 from scipy.spatial.distance import euclidean

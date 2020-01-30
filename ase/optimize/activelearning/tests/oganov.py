@@ -1,6 +1,6 @@
-from ase.optimize.activelearning.fp.fingerprint import OganovFP
-from ase.optimize.activelearning.fp.calculator import FPCalculator
-from ase.optimize.activelearning.fp.kernel import FPKernel
+from ase.optimize.activelearning.gpfp.fingerprint import OganovFP
+from ase.optimize.activelearning.gpfp.calculator import FPCalculator
+from ase.optimize.activelearning.gpfp.kernel import FPKernel
 import numpy as np
 import copy
 
