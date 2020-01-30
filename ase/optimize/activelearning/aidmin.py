@@ -346,6 +346,7 @@ class AIDMin(Optimizer):
 class Converged(Exception):
     pass
 
+
 class MaxedOut(Exception):
     pass
 
