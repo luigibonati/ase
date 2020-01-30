@@ -25,12 +25,6 @@ class Prior():
     def prior(self, x):
         ''' Actual prior function, common to all Priors'''
 
-        # if len(x.shape)>1:
-        #     n = x.shape[0]
-
-        #     return np.hstack([self.potential(x[i, :]) for i in range(n)])
-
-        # else:
         return self.potential(x)
 
 
@@ -125,10 +119,6 @@ class CalculatorPrior(Prior):
         self.use_forces = True
 
     def potential(self, x):
-        # self.atoms.set_positions(x.reshape(-1, 3))
-        # V = self.atoms.get_potential_energy(force_consistent=True)
-        # gradV = -self.atoms.get_forces().reshape(-1)
-        # return np.append(np.array(V).reshape(-1), gradV)
 
         d = len(x.atoms) * 3
         if self.use_forces:
