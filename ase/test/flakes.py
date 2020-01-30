@@ -34,6 +34,7 @@ def run_flake8():
 
     errors = defaultdict(int)
     files = defaultdict(int)
+    offenses = defaultdict(list)
     descriptions = {}
     for stdout_line in stdout.splitlines():
         tokens = stdout_line.split(':', 3)
@@ -43,6 +44,7 @@ def run_flake8():
         errors[e] += 1
         descriptions[e] = complaint
         files[filename] += 1
+        offenses[e] += [stdout_line]
 
     print('Bad files:')
     for f, n in sorted(files.items(), key=lambda i: i[1]):
@@ -54,48 +56,51 @@ def run_flake8():
               .format(descriptions[e][6:], e, n))
     print('}')
 
-    errmsg = None
+    errmsg = ''
     for err, nerrs in errors.items():
         nmaxerrs = max_errors.get(err, 0)
         if nerrs <= nmaxerrs:
             conclusion = 'OK'
         else:
             conclusion = 'FAILED'
-            errmsg = ('Maximum number of flake8 errors exceeded: '
-                      '{} {} errors; max is {}.  '
-                      'Please run flake8 on your code and clean up.'
-                      .format(nerrs, err, nmaxerrs))
+            errmsg += ('Maximum number of flake8 errors exceeded: '
+                       '{} {} errors; max is {}.  '
+                       'Please run flake8 on your code and clean up.\n'
+                       .format(nerrs, err, nmaxerrs))
+            errmsg += 'Offenses:\n' + '\n'.join(offenses[err]) + '\n'
         print('{:4s}: errs={} max={}: {}'.format(err, nerrs, nmaxerrs,
                                                  conclusion))
 
-    assert errmsg is None, errmsg
+    assert errmsg == '', errmsg
 
 
 max_errors = {
     # do not compare types, use 'isinstance()'
-    'E721': 1,
+    'E721': 0,
     # multiple imports on one line
-    'E401': 1,
+    'E401': 0,
     # multiple spaces before keyword
-    'E272': 1,
+    'E272': 0,
     # continuation line under-indented for hanging indent
-    'E121': 2,
+    'E121': 0,
     # whitespace before '('
-    'E211': 2,
+    'E211': 0,
     # continuation line with same indent as next logical line
-    'E125': 3,
+    'E125': 0,
     # comparison to True should be 'if cond is True:' or 'if cond:'
-    'E712': 3,
+    'E712': 0,
+    # 'name' imported but unused
+    'F401': 0,
     # no newline at end of file
-    'W292': 3,
+    'W292': 0,
     # missing whitespace after keyword
-    'E275': 3,
+    'E275': 0,
     # multiple spaces after operator
-    'E222': 4,
+    'E222': 0,
     # missing whitespace around modulo operator
-    'E228': 4,
+    'E228': 0,
     # expected 1 blank line before a nested definition, found 0
-    'E306': 5,
+    'E306': 0,
     # test for membership should be 'not in'
     'E713': 4,
     # multiple statements on one line (colon)
@@ -149,7 +154,7 @@ max_errors = {
     # multiple spaces after ','
     'E241': 50,
     # continuation line under-indented for visual indent
-    'E128': 53,
+    'E128': 54,
     # continuation line over-indented for visual indent
     'E127': 60,
     # missing whitespace around operator
@@ -161,7 +166,7 @@ max_errors = {
     # expected 2 blank lines after class or function definition, found 1
     'E305': 83,
     # module level import not at top of file
-    'E402': 91,
+    'E402': 97,
     # at least two spaces before inline comment
     'E261': 97,
     # expected 2 blank lines, found 1
