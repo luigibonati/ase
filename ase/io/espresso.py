@@ -27,7 +27,6 @@ from ase.dft.kpoints import kpoint_convert
 from ase.constraints import FixAtoms, FixCartesian
 from ase.data import chemical_symbols, atomic_numbers
 from ase.units import create_units
-from ase.utils import basestring
 
 
 # Quantum ESPRESSO uses CODATA 2006 internally
@@ -98,7 +97,7 @@ def read_espresso_out(fileobj, index=-1, results_required=True):
 
 
     """
-    if isinstance(fileobj, basestring):
+    if isinstance(fileobj, str):
         fileobj = open(fileobj, 'rU')
 
     # work with a copy in memory for faster random access
@@ -468,7 +467,7 @@ def read_espresso_in(fileobj):
         Raised for missing keys that are required to process the file
     """
     # TODO: use ase opening mechanisms
-    if isinstance(fileobj, basestring):
+    if isinstance(fileobj, str):
         fileobj = open(fileobj, 'rU')
 
     # parse namelist section and extract remaining lines
@@ -1115,7 +1114,7 @@ KEYS = Namelist((
 
 # Number of valence electrons in the pseudopotentials recommended by
 # http://materialscloud.org/sssp/. These are just used as a fallback for
-# calculating inital magetization values which are given as a fraction
+# calculating initial magetization values which are given as a fraction
 # of valence electrons.
 SSSP_VALENCE = [
     0, 1.0, 2.0, 3.0, 4.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 3.0, 4.0,
@@ -1406,7 +1405,7 @@ def kspacing_to_grid(atoms, spacing, calculated_spacing=None):
 
 def write_espresso_in(fd, atoms, input_data=None, pseudopotentials=None,
                       kspacing=None, kpts=None, koffset=(0, 0, 0),
-                      **kwargs):
+                      crystal_coordinates=False, **kwargs):
     """
     Create an input file for pw.x.
 
@@ -1461,6 +1460,11 @@ def write_espresso_in(fd, atoms, input_data=None, pseudopotentials=None,
     kpts: (int, int, int) or dict
         If kpts is a tuple (or list) of 3 integers, it is interpreted
         as the dimensions of a Monkhorst-Pack grid.
+        If ``kpts`` is set to ``None``, only the Γ-point will be included
+        and QE will use routines optimized for Γ-point-only calculations.
+        Compared to Γ-point-only calculations without this optimization
+        (i.e. with ``kpts=(1, 1, 1)``), the memory and CPU requirements
+        are typically reduced by half.
         If kpts is a dict, it will either be interpreted as a path
         in the Brillouin zone (*) if it contains the 'path' keyword,
         otherwise it is converted to a Monkhorst-Pack grid (**).
@@ -1469,6 +1473,9 @@ def write_espresso_in(fd, atoms, input_data=None, pseudopotentials=None,
     koffset: (int, int, int)
         Offset of kpoints in each direction. Must be 0 (no offset) or
         1 (half grid offset). Setting to True is equivalent to (1, 1, 1).
+    crystal_coordinates: bool
+        Whether the atomic positions should be written to the QE input file in
+        absolute (False, default) or relative (crystal) coordinates (True).
 
     """
 
@@ -1583,10 +1590,14 @@ def write_espresso_in(fd, atoms, input_data=None, pseudopotentials=None,
             else:
                 mask = ''
 
+            if crystal_coordinates:
+                coords = [atom.a, atom.b, atom.c]
+            else:
+                coords = atom.position
             atomic_positions_str.append(
                 '{atom.symbol} '
-                '{atom.x:.10f} {atom.y:.10f} {atom.z:.10f} '
-                '{mask}\n'.format(atom=atom, mask=mask))
+                '{coords[0]:.10f} {coords[1]:.10f} {coords[2]:.10f} '
+                '{mask}\n'.format(atom=atom, coords=coords, mask=mask))
 
     # Add computed parameters
     # different magnetisms means different types
@@ -1643,7 +1654,7 @@ def write_espresso_in(fd, atoms, input_data=None, pseudopotentials=None,
         else:
             kgrid = kpts
     else:
-        kgrid = (1, 1, 1)
+        kgrid = "gamma"
 
     # True and False work here and will get converted by ':d' format
     if isinstance(koffset, int):
@@ -1658,8 +1669,7 @@ def write_espresso_in(fd, atoms, input_data=None, pseudopotentials=None,
         for k in kgrid:
             pwi.append('{k[0]:.14f} {k[1]:.14f} {k[2]:.14f} 0\n'.format(k=k))
         pwi.append('\n')
-    elif all([x == 1 for x in kgrid]) and not any(koffset):
-        # QE defaults to gamma point, make it explicit
+    elif isinstance(kgrid, str) and (kgrid == "gamma"):
         pwi.append('K_POINTS gamma\n')
         pwi.append('\n')
     else:
@@ -1678,7 +1688,10 @@ def write_espresso_in(fd, atoms, input_data=None, pseudopotentials=None,
         pwi.append('\n')
 
     # Positions - already constructed, but must appear after namelist
-    pwi.append('ATOMIC_POSITIONS angstrom\n')
+    if crystal_coordinates:
+        pwi.append('ATOMIC_POSITIONS crystal\n')
+    else:
+        pwi.append('ATOMIC_POSITIONS angstrom\n')
     pwi.extend(atomic_positions_str)
     pwi.append('\n')
 

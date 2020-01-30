@@ -161,7 +161,7 @@ omx_parameter_defaults = dict(
     dos_kgrid=None,
     scf_electric_field=None,
     level_of_stdout=None,
-    level_of_fileout=None,
+    level_of_fileout=1,
     species_number=None,
     atoms_number=None,
     scf_maxiter=None,
@@ -248,11 +248,11 @@ omx_parameter_defaults = dict(
     band_kpath=None,
     mo_kpoint=None,
     wannier_initial_projectors=None,
-    xc='LDA',  # Begining of standard parameters
+    xc='LDA',  # Beginning of standard parameters
     maxiter=200,
     energy_cutoff=150 * Ry,
     kpts=(4, 4, 4),
-    band_kpts=tuple(),  # To seperate monkhorst and band kpts
+    band_kpts=tuple(),  # To separate monkhorst and band kpts
     eigensolver='Band',
     spinpol=None,
     convergence=1e-6 * Ha,
@@ -260,7 +260,7 @@ omx_parameter_defaults = dict(
     mixer='Rmm-Diis',
     charge=None,
     smearing=None,
-    restart=None,  # Begining of calculator parameters
+    restart=None,  # Beginning of calculator parameters
     mpi=None,
     pbs=None,
     debug=False,
@@ -293,7 +293,7 @@ class OpenMXParameters(Parameters):
             'LSDA-CA',
             'CA',
             'PW',
-        ]
+    ]
 
     def __init__(self, **kwargs):
         kw = omx_parameter_defaults.copy()

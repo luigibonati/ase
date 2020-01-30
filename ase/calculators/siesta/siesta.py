@@ -32,18 +32,32 @@ from ase.calculators.siesta.parameters import format_fdf
 meV = 0.001 * eV
 
 
-def get_siesta_version(command):
+def parse_siesta_version(output: bytes) -> str:
+    match = re.search(rb'Siesta Version\s*:\s*(\S+)', output)
+
+    if match is None:
+        raise RuntimeError('Could not get Siesta version info from output '
+                           '{!r}'.format(output))
+
+    string = match.group(1).decode('ascii')
+    return string
+
+
+def get_siesta_version(executable: str) -> str:
     """ Return SIESTA version number.
 
     Run the command, for instance 'siesta' and
     then parse the output in order find the
     version number.
     """
+    # XXX We need a test of this kind of function.  But Siesta().command
+    # is not enough to tell us how to run Siesta, because it could contain
+    # all sorts of mpirun and other weird parts.
 
     temp_dirname = tempfile.mkdtemp(prefix='siesta-version-check-')
     try:
         from subprocess import Popen, PIPE
-        proc = Popen(command,
+        proc = Popen([executable],
                      stdin=PIPE,
                      stdout=PIPE,
                      stderr=PIPE,
@@ -55,14 +69,7 @@ def get_siesta_version(command):
     finally:
         shutil.rmtree(temp_dirname)
 
-    match = re.search(rb'Siesta Version\s*:\s*(\S+)', output)
-
-    if match is None:
-        raise RuntimeError('Could not get Siesta version info from output '
-                           '{!r}'.format(output))
-
-    string = match.group(1).decode('ascii')
-    return string
+    return parse_siesta_version(output)
 
 
 def bandpath2bandpoints(path):
@@ -161,7 +168,14 @@ class SiestaParameters(Parameters):
 class Siesta(FileIOCalculator):
     """Calculator interface to the SIESTA code.
     """
-    allowed_basis_names = ['SZ', 'SZP', 'DZ', 'DZP', 'TZP']
+    # Siesta manual does not document many of the basis names.
+    # basis_specs.f has a ton of aliases for each.
+    # Let's just list one of each type then.
+    #
+    # Maybe we should be less picky about these keyword names.
+    allowed_basis_names = ['SZ', 'SZP',
+                           'DZ', 'DZP', 'DZP2',
+                           'TZ', 'TZP', 'TZP2', 'TZP3']
     allowed_spins = ['non-polarized', 'collinear',
                      'non-collinear', 'spin-orbit']
     allowed_xc = {
@@ -1379,7 +1393,7 @@ class Siesta(FileIOCalculator):
             **kw):
         r"""
         Perform TDDFT calculation using the pyscf.nao module for a molecule.
-        The external pertubation is created by a electron moving at
+        The external perturbation is created by a electron moving at
         the velocity velec and with an impact parameter b.
 
         Parameters
@@ -1537,7 +1551,7 @@ class Siesta(FileIOCalculator):
         Parameters
         ----------
         mbpt_inp : dict, optional
-            dictionnary of the input for the mbpt_lcao program
+            dictionary of the input for the mbpt_lcao program
             (http://mbpt-domiprod.wikidot.com/list-of-parameters)
             if mbpt_inp is None, the function read the output file
             from a previous mbpt_lcao run.
