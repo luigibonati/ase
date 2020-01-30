@@ -57,14 +57,7 @@ class ConstantPrior(Prior):
 
     Parameters:
     
-    constant: energy value for the constant. 
-    
-    Example:
-
-    
-    >>> from ase.optimize import GPMin
-    >>> from ase.optimize.gpmin.prior import ConstantPrior
-    >>> op = GPMin(atoms, Prior = ConstantPrior(10)
+    constant: energy value for the constant.
     '''
     def __init__(self, constant, use_forces=True):
         self.constant = constant
