@@ -1,11 +1,7 @@
 from ase.data import chemical_symbols
 import string
 import numpy as np
-# settings
-template = "{title}\n{toprule}\n{header}\n{midrule}\n{body}\n{bottomrule}\n{summary}"
-twidth = 72
-tw = str(9)
-
+# default fields
 
 def field_specs_on_conditions(calculator_outputs, rank_order):
     if calculator_outputs:
@@ -23,21 +19,15 @@ def field_specs_on_conditions(calculator_outputs, rank_order):
         field_specs[0] = field_specs[0] + ':1'
     return field_specs
 
+def summary_functions_on_conditions(has_calc):
+    if has_calc:
+        return [rmsd, energy_delta]
+    return [rmsd]
+
+
 
 # template formatting dictionary
-format_dict = {}
-format_dict['toprule'] = format_dict['bottomrule'] = '=' * twidth
-format_dict['midrule'] = '-' * twidth
-format_dict['title'] = ''
 
-pre = '{:^' + tw
-
-fmt = {}
-fmt_class = {'signed float': pre[:-1] + ' ' + pre[-1] + '.1E}',
-             'unsigned float': pre + '.1E}',
-             'int': pre + 'n}',
-             'str': pre + 's}',
-             'conv': pre + 'h}'}
 
 def header_alias(h):
     if h == 'i':
@@ -58,18 +48,6 @@ def header_alias(h):
     return h
 
 
-signed_floats = ['dx', 'dy', 'dz', 'dfx', 'dfy', 'dfz', 'afx', 'afy', 'afz']
-for sf in signed_floats:
-    fmt[sf] = fmt_class['signed float']
-unsigned_floats = ['d', 'df', 'af']
-for usf in unsigned_floats:
-    fmt[usf] = fmt_class['unsigned float']
-integers = ['i', 'an', 't'] + ['r' + sf for sf in signed_floats] + ['r' + usf for usf in unsigned_floats]
-for i in integers:
-    fmt[i] = fmt_class['int']
-
-fmt['el'] = fmt_class['conv']
-
 
 def prec_round(a, prec=2):
     "To make hierarchical sorting different from non-hierarchical sorting with floats"
@@ -85,22 +63,6 @@ prec_round = np.vectorize(prec_round)
 
 # end most settings
 
-num2sym = dict(zip(np.argsort(chemical_symbols), chemical_symbols))
-sym2num = {v: k for k, v in num2sym.items()}
-
-
-class DiffTemplate(string.Formatter):
-    """Changing string formatting method to convert numeric data field"""
-
-    def format_field(self, value, spec):
-        if spec.endswith('h'):
-            value = num2sym[int(value)]  # cast to int since it will be float
-            spec = spec[:-1] + 's'
-        return super(DiffTemplate, self).format_field(value, spec)
-
-
-formatter = DiffTemplate().format
-
 
 def sort2rank(sort):
     """
@@ -114,6 +76,9 @@ def sort2rank(sort):
     return rank
 
 
+num2sym = dict(zip(np.argsort(chemical_symbols), chemical_symbols))
+sym2num = {v: k for k, v in num2sym.items()}
+
 def get_data(atoms1, atoms2, field):
     if field[0] == 'r':
         field = field[1:]
@@ -121,14 +86,17 @@ def get_data(atoms1, atoms2, field):
     else:
         rank_order = False
 
+    if 'd' == field[0]:
+        dpositions = atoms2.positions - atoms1.positions
+
     if field == 'dx':
-        data = -atoms1.positions[:, 0] + atoms2.positions[:, 0]
+        data = dpositions[:,0]
     elif field == 'dy':
-        data = -atoms1.positions[:, 1] + atoms2.positions[:, 1]
+        data = dpositions[:,1]
     elif field == 'dz':
-        data = -atoms1.positions[:, 2] + atoms2.positions[:, 2]
+        data = dpositions[:,2]
     elif field == 'd':
-        data = np.linalg.norm(atoms1.positions - atoms2.positions, axis=1)
+        data = np.linalg.norm(dpositions, axis=1)
     elif field == 't':
         data = atoms1.get_tags()
     elif field == 'an':
@@ -157,49 +125,45 @@ def get_atoms_data(atoms1, atoms2, field):
     else:
         rank_order = False
 
+    if 'd' == field[0]:
+        dforces = atoms2.get_forces(atoms2) - atoms1.get_forces(atoms1)
+    else:
+        aforces = (atoms2.get_forces(atoms2) + atoms1.get_forces(atoms1))/2
+
     if field == 'dfx':
-        data = -atoms1.get_forces(atoms1)[:, 0] + \
-            atoms2.get_forces(atoms2)[:, 0]
+        data = dforces[:,0]
     elif field == 'dfy':
-        data = -atoms1.get_forces(atoms1)[:, 1] + \
-            atoms2.get_forces(atoms2)[:, 1]
+        data = dforces[:,1]
     elif field == 'dfz':
-        data = -atoms1.get_forces(atoms1)[:, 2] + \
-            atoms2.get_forces(atoms2)[:, 2]
+        data = dforces[:,2]
     elif field == 'df':
-        data = np.linalg.norm(
-            atoms1.get_forces(atoms1) -
-            atoms2.get_forces(atoms2),
-            axis=1)
+        data = np.linalg.norm(dforces,axis=1)
     elif field == 'afx':
-        data = atoms1.get_forces(
-            atoms1)[:, 0] + atoms2.get_forces(atoms2)[:, 0]
-        data /= 2
+        data = aforces[:,0]
     elif field == 'afy':
-        data = atoms1.get_forces(
-            atoms1)[:, 1] + atoms2.get_forces(atoms2)[:, 1]
-        data /= 2
+        data = aforces[:,1]
     elif field == 'afz':
-        data = atoms1.get_forces(
-            atoms1)[:, 2] + atoms2.get_forces(atoms2)[:, 2]
-        data /= 2
+        data = aforces[:,2]
     elif field == 'af':
-        data = np.linalg.norm(
-            atoms1.get_forces(atoms1) +
-            atoms2.get_forces(atoms2),
-            axis=1)
-        data /= 2
+        data = np.linalg.norm(aforces, axis=1)
 
     if rank_order:
         return sort2rank(np.argsort(-data))
+
     return data
 
 
-def format_table(table, fields):
-    s = ''.join([fmt[field] for field in fields])
-    body = [formatter(s, *row) for row in table]
-    return '\n'.join(body)
+# Summary Functions
 
+def rmsd(atoms1, atoms2):
+    dpositions = atoms2.positions - atoms1.positions
+    rmsd = ((np.linalg.norm(dpositions, axis=1)**2).mean())**(0.5)
+    return 'RMSD={:+.1E}'.format(rmsd)
+
+def energy_delta(atoms1, atoms2):
+    E1 = atoms1.get_potential_energy()
+    E2 = atoms2.get_potential_energy()
+    return 'E1 = {:+.1E}, E2 = {:+.1E}, dE = {:+1.1E}'.format(E1, E2, E2 - E1)
 
 def parse_field_specs(field_specs):
     fields = []
@@ -232,64 +196,108 @@ def parse_field_specs(field_specs):
         hier = sort2rank(np.array(hier))[::-1]
     return fields, hier, scent
 
+# Class definitions
 
-def rmsd(atoms1, atoms2):
-    return 'RMSD={:+.1E}'.format(
-        np.sqrt(
-            np.power(
-                np.linalg.norm(
-                    atoms1.positions -
-                    atoms2.positions,
-                    axis=1),
-                2).mean()))
+class DiffTemplate(string.Formatter):
+    """Changing string formatting method to convert numeric data field"""
 
+    # map set of strings to integers for numeric sorting and reverse map
 
-def energy_delta(atoms1, atoms2):
-    E1 = atoms1.get_potential_energy()
-    E2 = atoms2.get_potential_energy()
-    return 'E1 = {:+.1E}, E2 = {:+.1E}, dE = {:+1.1E}'.format(E1, E2, E2 - E1)
+    def format_field(self, value, spec):
+        if spec.endswith('h'):
+            value = num2sym[int(value)]  # cast to int since it will be float
+            spec = spec[:-1] + 's'
+        return super(DiffTemplate, self).format_field(value, spec)
 
-
-def render_table(
-        field_specs,
-        atoms1,
-        atoms2,
-        show_only=None,
-        summary_functions=[rmsd]):
-    fields, hier, scent = parse_field_specs(field_specs)
-    fdata = np.array([get_atoms_data(atoms1, atoms2, field)
-                      for field in fields])
-    if hier != []:
-        sorting_array = prec_round(
-            (np.array(scent)[:, np.newaxis] * fdata)[hier])
-        table = fdata[:, np.lexsort(sorting_array)].transpose()
-    else:
-        table = fdata.transpose()
-    if show_only is not None:
-        table = table[:show_only]
-    format_dict['body'] = format_table(table, fields)
-    format_dict['header'] = (fmt_class['str'] *
-                             len(fields)).format(*
-                                                 [header_alias(field) for field in fields])
-    format_dict['summary'] = '\n'.join([summary_function(atoms1, atoms2) for summary_function in summary_functions])
-    return template.format(**format_dict)
 
 class Table(object):
-    def __init__(self, max_lines, summary_functions, field_specs):
+    def __init__(self, 
+            field_specs,
+            summary_functions = rmsd, 
+            max_lines = None, 
+            title = '',
+            toprule = '=',
+            bottomrule = '=',
+            midrule = '-',
+            tablewidth = None,
+            columnwidth = 9,
+            precision = 2,
+            representation = 'E'):
+
         self.max_lines = max_lines
         self.summary_functions = summary_functions
         self.field_specs = field_specs
-    def make(self, atoms1, atoms2):
-        return render_table(self.field_specs,
-                atoms1,
-                atoms2,
-                show_only = self.max_lines,
-                summary_functions = self.summary_functions)
 
-def summary_functions_on_conditions(has_calc):
-    if has_calc:
-        return [rmsd, energy_delta]
-    return [rmsd]
+        self.fields, self.hier, self.scent = parse_field_specs(self.field_specs)
+        self.nfields = len(self.fields)
+
+        # formatting
+        self.precision = precision
+        self.representation = representation
+        self.columnwidth = columnwidth
+        if tablewidth == None:
+            self.tablewidth = columnwidth*self.nfields
+        else:
+            self.tablewidth = tablewidth
+        self.formatter = DiffTemplate().format
+        self.fmt_class = {'signed float': "{{: ^{}.{}{}}}".format(self.columnwidth,self.precision - 1, self.representation),
+                     'unsigned float': "{{:^{}.{}{}}}".format(self.columnwidth,self.precision - 1, self.representation),
+                     'int': "{{:^{}n}}".format(self.columnwidth),
+                     'str': "{{:^{}s}}".format(self.columnwidth),
+                     'conv': "{{:^{}h}}".format(self.columnwidth)}
+
+        self.fmt = self.make_fmt()
+        self.title = ''
+        self.header = self.make_header()
+        self.toprule = toprule * self.tablewidth
+        self.bottomrule = bottomrule * self.tablewidth
+        self.midrule = midrule * self.tablewidth
+
+
+    def make_fmt(self):
+        fmt = {}
+        signed_floats = ['dx', 'dy', 'dz', 'dfx', 'dfy', 'dfz', 'afx', 'afy', 'afz']
+        for sf in signed_floats:
+            fmt[sf] = self.fmt_class['signed float']
+        unsigned_floats = ['d', 'df', 'af']
+        for usf in unsigned_floats:
+            fmt[usf] = self.fmt_class['unsigned float']
+        integers = ['i', 'an', 't'] + ['r' + sf for sf in signed_floats] + ['r' + usf for usf in unsigned_floats]
+        for i in integers:
+            fmt[i] = self.fmt_class['int']
+        fmt['el'] = self.fmt_class['conv']
+        return fmt
+
+    def make(self, atoms1, atoms2):
+        body = self.make_body(atoms1,atoms2)
+        if self.max_lines != None:
+            body = body[:self.max_lines]
+        summary = self.make_summary(atoms1,atoms2)
+
+        return '\n'.join([self.title,self.toprule,self.header,self.midrule,body,self.bottomrule,summary])
+        
+    def make_header(self):
+        return self.formatter(self.fmt_class['str'] * self.nfields, *[header_alias(field) for field in self.fields])
+
+    def make_summary(self,atoms1,atoms2):
+        return '\n'.join([summary_function(atoms1,atoms2) for summary_function in self.summary_functions])
+        
+    def make_body(self,atoms1,atoms2):
+
+        fdata = np.array([get_atoms_data(atoms1, atoms2, field)
+                          for field in self.fields])
+        if self.hier != []:
+            sorting_array = prec_round(
+                (np.array(self.scent)[:, np.newaxis] * fdata)[self.hier])
+            table = fdata[:, np.lexsort(sorting_array)].transpose()
+        else:
+            table = fdata.transpose()
+
+        s = ''.join([self.fmt[field] for field in self.fields])
+        body = [self.formatter(s, *row) for row in table]
+        return '\n'.join(body)
+
+
 
 from ase.io.formats import parse_filename
 from ase.io import string2index
@@ -297,11 +305,8 @@ from ase.io import string2index
 default_index = string2index(':')
 
 def slice_split(filename):
-    if '@' in filename and 'postgres' not in filename or \
-       'postgres' in filename and filename.count('@') == 2:
+    if '@' in filename:
         filename, index = parse_filename(filename, None)
     else:
-        filename, index = parse_filename(filename,
-                                                default_index)
+        filename, index = parse_filename(filename, default_index)
     return filename, index
-

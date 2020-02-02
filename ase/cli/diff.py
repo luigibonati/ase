@@ -82,7 +82,7 @@ class CLICommand:
         from template import slice_split
 
         if args.template is None:
-            from ase.cli.template import render_table, field_specs_on_conditions, summary_functions_on_conditions, Table
+            from ase.cli.template import field_specs_on_conditions, summary_functions_on_conditions, Table
             field_specs = field_specs_on_conditions(
                 args.calculator_outputs, args.rank_order)
             summary_functions = summary_functions_on_conditions(args.calculator_outputs)
@@ -90,7 +90,7 @@ class CLICommand:
             import os
             homedir = os.environ['HOME']
             sys.path.insert(0, homedir + '/.ase')
-            from templaterc import render_table, field_specs_on_conditions, summary_functions_on_conditions, Table
+            from templaterc import field_specs_on_conditions, summary_functions_on_conditions, Table
             # this has to be named differently because python does not
             # redundantly load packages
             field_specs = field_specs_on_conditions(
@@ -153,10 +153,9 @@ class CLICommand:
         natoms = natoms1 # = natoms2
 
         output = ''
-        table = Table(args.max_lines, summary_functions, field_specs)
+        table = Table(field_specs, max_lines = args.max_lines, summary_functions = summary_functions)
 
         for counter in range(natoms):
-            print(counter)
             output += header_fmt(counter) + '\n'
             output += table.make(atoms1[counter],atoms2[counter]) + '\n'
         print(output, file = out)
