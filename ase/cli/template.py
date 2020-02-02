@@ -24,10 +24,7 @@ def summary_functions_on_conditions(has_calc):
         return [rmsd, energy_delta]
     return [rmsd]
 
-
-
 # template formatting dictionary
-
 
 def header_alias(h):
     if h == 'i':
@@ -183,17 +180,15 @@ def parse_field_specs(field_specs):
             scent.append(-1)
             hier.append(-1)
             fields.append(hsf[0])
+
     hier = np.array(hier)
-    if hier.all() == -1:
-        hier = []
-    else:
-        mxm = max(hier)
-        for c in range(len(hier)):
-            if hier[c] < 0:
-                mxm += 1
-                hier[c] = mxm
-        # reversed by convention of numpy lexsort
-        hier = sort2rank(np.array(hier))[::-1]
+    mxm = max(hier)
+    for c in range(len(hier)):
+        if hier[c] < 0:
+            mxm += 1
+            hier[c] = mxm
+    # reversed by convention of numpy lexsort
+    hier = sort2rank(np.array(hier))[::-1]
     return fields, hier, scent
 
 # Class definitions
@@ -283,20 +278,12 @@ class Table(object):
         return '\n'.join([summary_function(atoms1,atoms2) for summary_function in self.summary_functions])
         
     def make_body(self,atoms1,atoms2):
-
-        fdata = np.array([get_atoms_data(atoms1, atoms2, field)
-                          for field in self.fields])
-        if self.hier != []:
-            sorting_array = prec_round(
-                (np.array(self.scent)[:, np.newaxis] * fdata)[self.hier])
-            table = fdata[:, np.lexsort(sorting_array)].transpose()
-        else:
-            table = fdata.transpose()
-
-        s = ''.join([self.fmt[field] for field in self.fields])
-        body = [self.formatter(s, *row) for row in table]
+        fdata = np.array([get_atoms_data(atoms1, atoms2, field) for field in self.fields])
+        sorting_array = prec_round((np.array(self.scent)[:, np.newaxis] * fdata)[self.hier])
+        data = fdata[:, np.lexsort(sorting_array)].transpose()
+        rowformat = ''.join([self.fmt[field] for field in self.fields])
+        body = [self.formatter(rowformat, *row) for row in data]
         return '\n'.join(body)
-
 
 
 from ase.io.formats import parse_filename

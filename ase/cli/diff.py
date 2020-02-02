@@ -97,7 +97,7 @@ class CLICommand:
                 args.calculator_outputs, args.rank_order)
             summary_functions = summary_functions_on_conditions(args.calculator_outputs)
         else:
-            from ase.cli.template import render_table, summary_functions_on_conditions, Table
+            from ase.cli.template import summary_functions_on_conditions, Table
             field_specs = args.template.split(',')
             summary_functions = summary_functions_on_conditions(args.calculator_outputs)
             if not args.calculator_outputs:
@@ -156,6 +156,6 @@ class CLICommand:
         table = Table(field_specs, max_lines = args.max_lines, summary_functions = summary_functions)
 
         for counter in range(natoms):
-            output += header_fmt(counter) + '\n'
+            table.title = header_fmt(counter)
             output += table.make(atoms1[counter],atoms2[counter]) + '\n'
         print(output, file = out)
