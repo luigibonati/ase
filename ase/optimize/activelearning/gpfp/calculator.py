@@ -146,7 +146,7 @@ class GPCalculator(Calculator, GaussianProcess):
 
         # Fingerprint
         if fingerprint is None:
-            self.fp = CartesianCoordFP()
+            self.fp = CartesianCoordFP
         else:
             self.fp = fingerprint
         self.fp_hp = fingerprint_params
@@ -325,10 +325,11 @@ class GPCalculator(Calculator, GaussianProcess):
                                          params_to_update=params,
                                          bounds=bounds)
 
-                p2update = set(self.params_to_update.keys())
-                keys_to_update = p2update.intersection(set(self.fp_hp.keys()))
-                for key in keys_to_update:
-                    self.fp_hp[key] = self.hyperparams[key]
+                if self.fp_hp:
+                    p2update = set(self.params_to_update.keys())
+                    keys_to_update = p2update.intersection(set(self.fp_hp.keys()))
+                    for key in keys_to_update:
+                        self.fp_hp[key] = self.hyperparams[key]
 
         self.prev_train_y = self.train_y[:]
 
