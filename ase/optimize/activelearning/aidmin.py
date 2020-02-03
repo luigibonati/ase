@@ -1,6 +1,6 @@
 from ase.optimize.optimize import Optimizer
 from ase.optimize.bfgslinesearch import BFGSLineSearch
-from ase.optimize.activelearning.gp.calculator import GPCalculator
+from ase.optimize.activelearning.gpfp.calculator import GPCalculator
 from ase.optimize.activelearning.trainingset import TrainingSet
 
 from ase.calculators.calculator import compare_atoms
