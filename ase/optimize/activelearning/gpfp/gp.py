@@ -1,4 +1,4 @@
-from ase.optimize.activelearning.gp.kernel import SE_kernel, FPKernel
+from ase.optimize.activelearning.gpfp.kernel import SE_kernel, FPKernel
 
 import numpy as np
 
