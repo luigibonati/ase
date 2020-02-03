@@ -1,6 +1,7 @@
 import numpy as np
 import warnings
 from ase.optimize.activelearning.gpfp.kernel import FPKernel
+from ase.optimize.activelearning.gpfp.fingerprint import CartesianCoordFP
 from ase.optimize.activelearning.gpfp.gp import GaussianProcess
 from ase.optimize.activelearning.gpfp.prior import ConstantPrior
 from ase.calculators.calculator import Calculator, all_changes
@@ -144,7 +145,10 @@ class GPCalculator(Calculator, GaussianProcess):
         self.nbatch = batch_size
 
         # Fingerprint
-        self.fp = fingerprint
+        if fingerprint is None:
+            self.fp = CartesianCoordFP()
+        else:
+            self.fp = fingerprint
         self.fp_hp = fingerprint_params
 
         # Initialize prior and trainset attributes
