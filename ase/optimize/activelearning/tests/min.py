@@ -9,7 +9,7 @@ from ase.constraints import FixInternals
 
 from ase.optimize.test.test import Wrapper
 
-from ase.optimize.activelearning.oldgpmin import OldGPMin
+from ase.optimize import GPMin as OldGPMin
 from ase.optimize.activelearning.aidmin import GPMin
 
 class Tracker:
