@@ -7,7 +7,7 @@ from ase.calculators.calculator import Calculator, all_changes
 from scipy.spatial.distance import euclidean
 
 
-class GPCalculator(Calculator, GPGaussianProcess):
+class GPCalculator(Calculator, GaussianProcess):
     """
     GP model parameters
     -------------------
@@ -123,7 +123,7 @@ class GPCalculator(Calculator, GPGaussianProcess):
             prior = ConstantPrior(constant=None)
         else:
             self.update_prior = False
-        GPGaussianProcess.__init__(self, prior, kernel)
+        GaussianProcess.__init__(self, prior, kernel)
 
         # Set initial hyperparameters.
         self.set_hyperparams(kernel_params, noise)
