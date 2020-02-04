@@ -1,36 +1,37 @@
 import numpy as np
 from scipy.linalg import cho_solve
-
 import warnings
+from ase.calculators.calculator import PropertyNotImplementedError
 
 
 class Prior():
     '''Base class for all priors for the bayesian optimizer.
 
        The __init__ method and the prior method are implemented here.
-       Each child class should implement its own potential method, 
+       Each child class should implement its own potential method,
        that will be called by the prior method implemented here.
 
-       When used, the prior should be initialized outside the optimizer 
+       When used, the prior should be initialized outside the optimizer
        and the Prior object should be passed as a function to the optimizer.
     '''
 
-    def __init__(self):
-        '''Basic prior implementation. 
+    def __init__(self, **kwargs):
+        '''Basic prior implementation.
         '''
 
         # By default, do not let the prior use the update method
         self.use_update = False
 
+        self.use_forces = kwargs.get('use_forces')
+        if self.use_forces is None:
+            self.use_forces = True
+
     def prior(self, x):
-        ''' Actual prior function, common to all Priors'''
+        ''' Actual prior function, common to all Priors.
 
-        # if len(x.shape)>1:
-        #     n = x.shape[0]
+        Parameters:
 
-        #     return np.hstack([self.potential(x[i, :]) for i in range(n)])
-
-        # else:
+        x: Fingerprint object '''
         return self.potential(x)
 
     def let_update(self):
@@ -45,11 +46,16 @@ class Prior():
 class ZeroPrior(Prior):
     '''ZeroPrior object, consisting on a constant prior with 0eV energy.'''
 
-    def __init__(self):
-        Prior.__init__(self)
+    def __init__(self, **kwargs):
+        Prior.__init__(self, **kwargs)
 
     def potential(self, x):
-        return np.zeros(x.shape[0] + 1)
+        if self.use_forces:
+            d = len(x.atoms) * 3  # number of forces
+            output = np.zeros(d + 1)
+        else:
+            output = np.zeros(1)
+        return output
 
 
 class ConstantPrior(Prior):
@@ -57,24 +63,16 @@ class ConstantPrior(Prior):
 
     Parameters:
 
-    constant: energy value for the constant. 
-
-    Example:
-
-
-    >>> from ase.optimize import GPMin
-    >>> from ase.optimize.gpmin.prior import ConstantPrior
-    >>> op = GPMin(atoms, Prior = ConstantPrior(10)
+    constant: energy value for the constant.
     '''
 
-    def __init__(self, constant, use_forces=True):
+    def __init__(self, constant, **kwargs):
         self.constant = constant
-        self.use_forces = use_forces
-        Prior.__init__(self)
+        Prior.__init__(self, **kwargs)
 
     def potential(self, x):
-        d = x.shape[0]
         if self.use_forces:
+            d = len(x.atoms) * 3  # number of forces
             output = np.zeros(d + 1)
         else:
             output = np.zeros(1)
@@ -84,16 +82,16 @@ class ConstantPrior(Prior):
     def set_constant(self, constant):
         self.constant = constant
 
-    def update(self, x, y, L):
+    def update(self, X, Y, L):
         """Update the constant to maximize the marginal likelihood.
 
-        The optimization problem: 
+        The optimization problem:
         m = argmax [-1/2 (y-m).T K^-1(y-m)]
 
         can be turned into an algebraic problem
         m = [ u.T K^-1 y]/[u.T K^-1 u]
 
-        where u is the constant prior with energy 1 (eV). 
+        where u is the constant prior with energy 1 (eV).
 
         parameters:
         ------------
@@ -102,20 +100,20 @@ class ConstantPrior(Prior):
 
         # Get derivative of prior respect to constant: we call it u
         self.set_constant(1.)
-        u = self.prior(x)
+        u = np.hstack([self.potential(x) for x in X])
 
         # w = K\u
         w = cho_solve((L, True), u, check_finite=False)
 
         # Set constant
-        m = np.dot(w, y.flatten()) / np.dot(w, u)
+        m = np.dot(w, np.array(Y).flatten()) / np.dot(w, u)
         self.set_constant(m)
 
 
 class CalculatorPrior(Prior):
 
-    '''CalculatorPrior object, allows the user to 
-    use another calculator as prior function instead of the 
+    '''CalculatorPrior object, allows the user to
+    use another calculator as prior function instead of the
     default constant.
 
     Parameters:
@@ -123,27 +121,33 @@ class CalculatorPrior(Prior):
     atoms: the Atoms object
     calculator: one of ASE's calculators
 
+    TODO: Add update method
     '''
 
-    def __init__(self, calculator, use_forces=True):
+    def __init__(self, calculator, **kwargs):
 
-        Prior.__init__(self)
+        Prior.__init__(self, **kwargs)
         self.calculator = calculator
-        self.use_forces = True
+        self.constant = 0.0  # baseline
 
     def potential(self, x):
-        # self.atoms.set_positions(x.reshape(-1, 3))
-        # V = self.atoms.get_potential_energy(force_consistent=True)
-        # gradV = -self.atoms.get_forces().reshape(-1)
-        # return np.append(np.array(V).reshape(-1), gradV)
 
-        d = len(x.atoms) * 3
         if self.use_forces:
+            d = len(x.atoms) * 3  # number of forces
             output = np.zeros(d + 1)
         else:
             output = np.zeros(1)
 
         x.atoms.set_calculator(self.calculator)
-        output[0] = x.atoms.get_potential_energy()
+        output[0] = x.atoms.get_potential_energy() + self.constant
+
+        if self.use_forces:
+            try:
+                output[1:] = -x.atoms.get_forces().reshape(-1)
+            except PropertyNotImplementedError:
+                # warning = 'Prior Calculator does not support forces. '
+                # warning += 'Setting all prior forces to zero.'
+                # warnings.warn(warning)
+                pass
 
         return output
