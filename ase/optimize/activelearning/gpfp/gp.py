@@ -139,7 +139,6 @@ class GaussianProcess():
                             if True, the prediction f and the variance V are
                             returned: Note V is O(D*nsample2)'''
 
-        n = len(self.X)
         k = self.kernel.kernel_vector(x, self.X)
 
         priorarray = self.prior.prior(x)  # np.ones(len(x.atoms) * 3))
@@ -314,9 +313,6 @@ class GaussianProcess():
             assert w == 1.0
 
         y = np.array(Y).flatten()
-        n = len(X)  # number of training points
-        D = len(X[0].atoms) * 3  # number of derivatives
-        # m = list(self.prior.prior(np.ones(D))) * n
         m = list(np.hstack([self.prior.prior(x) for x in X]))
         factor = np.sqrt(np.dot(y - m, self.a) / len(y))
 
