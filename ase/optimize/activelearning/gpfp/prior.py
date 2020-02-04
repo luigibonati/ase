@@ -1,7 +1,8 @@
 import numpy as np
-from scipy.linalg import  cho_solve
+from scipy.linalg import cho_solve
 
 import warnings
+
 
 class Prior():
     '''Base class for all priors for the bayesian optimizer.
@@ -17,10 +18,9 @@ class Prior():
     def __init__(self):
         '''Basic prior implementation. 
         '''
-        
+
         # By default, do not let the prior use the update method
         self.use_update = False
-
 
     def prior(self, x):
         ''' Actual prior function, common to all Priors'''
@@ -33,7 +33,6 @@ class Prior():
         # else:
         return self.potential(x)
 
-
     def let_update(self):
         if hasattr(self, 'update'):
             self.use_update = True
@@ -45,27 +44,29 @@ class Prior():
 
 class ZeroPrior(Prior):
     '''ZeroPrior object, consisting on a constant prior with 0eV energy.'''
+
     def __init__(self):
         Prior.__init__(self)
 
     def potential(self, x):
-        return np.zeros(x.shape[0]+1)
+        return np.zeros(x.shape[0] + 1)
 
 
 class ConstantPrior(Prior):
     '''Constant prior, with energy = constant and zero forces
 
     Parameters:
-    
+
     constant: energy value for the constant. 
-    
+
     Example:
 
-    
+
     >>> from ase.optimize import GPMin
     >>> from ase.optimize.gpmin.prior import ConstantPrior
     >>> op = GPMin(atoms, Prior = ConstantPrior(10)
     '''
+
     def __init__(self, constant, use_forces=True):
         self.constant = constant
         self.use_forces = use_forces
@@ -74,7 +75,7 @@ class ConstantPrior(Prior):
     def potential(self, x):
         d = x.shape[0]
         if self.use_forces:
-            output = np.zeros(d+1)
+            output = np.zeros(d + 1)
         else:
             output = np.zeros(1)
         output[0] = self.constant
@@ -104,12 +105,11 @@ class ConstantPrior(Prior):
         u = self.prior(x)
 
         # w = K\u
-        w = cho_solve((L,True), u, check_finite = False)
+        w = cho_solve((L, True), u, check_finite=False)
 
         # Set constant
-        m = np.dot(w,y.flatten())/np.dot(w,u)
+        m = np.dot(w, y.flatten()) / np.dot(w, u)
         self.set_constant(m)
-
 
 
 class CalculatorPrior(Prior):
@@ -139,7 +139,7 @@ class CalculatorPrior(Prior):
 
         d = len(x.atoms) * 3
         if self.use_forces:
-            output = np.zeros(d+1)
+            output = np.zeros(d + 1)
         else:
             output = np.zeros(1)
 

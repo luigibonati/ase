@@ -9,11 +9,11 @@ import copy
 import time
 from warnings import catch_warnings, simplefilter
 
+
 class OganovFP():
 
-
-    def __init__(self, limit=10.0, Rlimit=4.0, 
-                 delta=0.5, ascale=0.2, 
+    def __init__(self, limit=10.0, Rlimit=4.0,
+                 delta=0.5, ascale=0.2,
                  N=200, Na=100, aweight=1.0,
                  pbc=None):
 
@@ -22,12 +22,12 @@ class OganovFP():
         self.N = N
         self.pbc = pbc
         self.nanglebins = Na
-        self.Rtheta = Rlimit # angstroms
+        self.Rtheta = Rlimit  # angstroms
 
         assert self.limit >= self.Rtheta
 
         self.aweight = aweight
-        self.ascale = ascale #rads
+        self.ascale = ascale  # rads
 
         self.gamma = 2
 
@@ -39,7 +39,6 @@ class OganovFP():
 
         self.set_params()
 
-
     def set_params(self):
         self.weight = self.params['weight']
         self.l = self.params['scale']
@@ -48,13 +47,12 @@ class OganovFP():
 
         return
 
-
     def set_atoms(self, atoms):
         ''' Set new atoms and initialize '''
 
         self.atoms = atoms
         self.Vuc = self.atoms.get_volume()
-        
+
         if self.pbc is None:
             self.pbc = self.atoms.pbc
         elif self.pbc is False:
@@ -66,16 +64,15 @@ class OganovFP():
         self.Nmat = np.ndarray([self.n, self.n])
         for i in range(self.Nmat.shape[0]):
             for j in range(self.Nmat.shape[1]):
-                self.Nmat[i,j] = (len([atom for atom in self.atoms if 
-                                       atom.symbol==self.elements[i]]) * 
-                                  len([atom for atom in self.atoms if 
-                                       atom.symbol==self.elements[j]]))
+                self.Nmat[i, j] = (len([atom for atom in self.atoms if
+                                        atom.symbol == self.elements[i]]) *
+                                   len([atom for atom in self.atoms if
+                                        atom.symbol == self.elements[j]]))
 
         self.extend_positions()
         self.set_angles()
         self.set_element_matrix()
         self.update()
-
 
     def update(self, params=None):
         ''' Update method when parameters are changed '''
@@ -86,7 +83,7 @@ class OganovFP():
                 self.params[param] = params[param]
 
         self.set_params()
-        
+
         self.set_peak_heights()
         self.get_fingerprint()
         self.calculate_all_gradients()
@@ -98,19 +95,15 @@ class OganovFP():
         self.dFP_dDelta_calculated = False
         self.dGij_dDelta_calculated = False
         self.d_dDelta_dFP_drm_calculated = False
-        
 
     def set_weight(self, weight):
         self.weight = weight
 
-
     def set_scale(self, l):
         self.l = l
 
-
     def set_delta(self, delta):
         self.delta = delta
-
 
     def extend_positions(self):
         ''' Extend the unit cell so that all the atoms within the limit
@@ -126,7 +119,8 @@ class OganovFP():
 
         # Number of cells needed to consider given the limit and pbc:
         ncells = [self.limit // lengths[i] + 1 for i in range(3)]
-        nx, ny, nz = [1 + 2 * int(n) * self.pbc[i] for i,n in enumerate(ncells)]
+        nx, ny, nz = [1 + 2 * int(n) * self.pbc[i]
+                      for i, n in enumerate(ncells)]
 
         self.extendedatoms = self.atoms.repeat([nx, ny, nz])
 
@@ -135,15 +129,14 @@ class OganovFP():
         self.atoms = self.extendedatoms[newstart:newend]
 
         # Distance matrix
-        self.dm = distance_matrix(x=self.atoms.positions, y=self.extendedatoms.positions)
-
+        self.dm = distance_matrix(
+            x=self.atoms.positions, y=self.extendedatoms.positions)
 
         # position vector matrix
-        self.rm = np.einsum('ilkl->ikl', np.subtract.outer(self.atoms.positions, 
+        self.rm = np.einsum('ilkl->ikl', np.subtract.outer(self.atoms.positions,
                                                            self.extendedatoms.positions))
 
         return
-
 
     def set_angles(self):
         """
@@ -154,14 +147,16 @@ class OganovFP():
 
         # Extended distance and displacement vector matrices:
         time0 = time.time()
-        self.edm = distance_matrix(x=self.extendedatoms.positions, y=self.extendedatoms.positions)
+        self.edm = distance_matrix(
+            x=self.extendedatoms.positions, y=self.extendedatoms.positions)
 
         ep = self.extendedatoms.positions
         self.erm = np.einsum('ilkl->ikl', np.subtract.outer(ep, ep))
 
         fcij = self.cutoff_function(self.dm)
         fcjk = self.cutoff_function(self.edm)
-        self.angleconstant = self.aweight * self.Vuc / (4 * pi) / (pi / self.nanglebins)
+        self.angleconstant = self.aweight * \
+            self.Vuc / (4 * pi) / (pi / self.nanglebins)
 
         # angle vector
         self.av = []
@@ -169,7 +164,6 @@ class OganovFP():
         mask1 = np.logical_or(self.dm == 0, self.dm > self.Rtheta)
         mask2 = self.dm == 0
         mask3 = np.logical_or(self.edm == 0, self.edm > self.Rtheta)
-
 
         for i in range(len(self.atoms)):
             for j in range(len(self.extendedatoms)):
@@ -185,7 +179,7 @@ class OganovFP():
                     if mask3[j, k]:
                         continue
 
-                    argument = (dot(self.rm[i, j], self.erm[k, j]) 
+                    argument = (dot(self.rm[i, j], self.erm[k, j])
                                 / self.dm[i, j] / self.edm[k, j])
 
                     # Handle numerical errors in perfect lattices:
@@ -194,7 +188,8 @@ class OganovFP():
                     elif argument <= -1.0:
                         argument = -1.0 + 1e-9
 
-                    self.av.append([i, j, k, fcij[i, j], fcjk[k, j], np.arccos(argument)])
+                    self.av.append(
+                        [i, j, k, fcij[i, j], fcjk[k, j], np.arccos(argument)])
 
         # print("Length of self.av: ", len(self.av))
         # print("Set angle vector time:", time.time()-time0)
@@ -204,22 +199,22 @@ class OganovFP():
     def set_element_matrix(self):
         ''' Form the matrix for Ni and Nj used in calculating self.h '''
 
-        ielements, icounts = np.unique(self.atoms.get_chemical_symbols(), return_counts=True)
+        ielements, icounts = np.unique(
+            self.atoms.get_chemical_symbols(), return_counts=True)
         sortindices = np.argsort(ielements)
         ielements = ielements[sortindices]
         icounts = icounts[sortindices]
 
-        f = lambda element: icounts[np.where(ielements == element)[0][0]]
+        def f(element): return icounts[np.where(ielements == element)[0][0]]
         counti = [f(e) for e in self.atoms.get_chemical_symbols()]
 
-
-
-        jelements, jcounts = np.unique(self.extendedatoms.get_chemical_symbols(), return_counts=True)
+        jelements, jcounts = np.unique(
+            self.extendedatoms.get_chemical_symbols(), return_counts=True)
         sortindices = np.argsort(jelements)
         jelements = jelements[sortindices]
         jcounts = jcounts[sortindices]
 
-        f = lambda element: jcounts[np.where(jelements == element)[0][0]]
+        def f(element): return jcounts[np.where(jelements == element)[0][0]]
         countj = [f(e) for e in self.extendedatoms.get_chemical_symbols()]
 
         self.em = np.outer(counti, countj).astype(int)
@@ -227,7 +222,6 @@ class OganovFP():
         # print(self.em)
 
         return self.em
-
 
     def set_peak_heights(self):
         ''' Calculate the delta peak heights self.h '''
@@ -244,28 +238,25 @@ class OganovFP():
 
         return self.h
 
-
     def cutoff_function(self, r):
         """ 
         Rtheta: cutoff radius, given in angstroms
         """
 
         return np.where(r <= self.Rtheta,
-                        (1 + self.gamma * (r / self.Rtheta)**(self.gamma+1) - 
+                        (1 + self.gamma * (r / self.Rtheta)**(self.gamma + 1) -
                          (self.gamma + 1) * (r / self.Rtheta)**self.gamma),
                         0.0)
-
 
     def get_fingerprint(self):
         ''' Calculate the Gaussian-broadened fingerprint. '''
 
         self.G = np.ndarray([self.n, self.n, self.N])
-        x = np.linspace(0, self.limit, self.N) # variable array
+        x = np.linspace(0, self.limit, self.N)  # variable array
 
         # Broadening of each peak:
         for i in range(self.n):
             for j in range(self.n):
-
 
                 # Get peak positions
                 R = np.where(self.dm < self.limit,
@@ -278,8 +269,10 @@ class OganovFP():
                              0.0)
 
                 # Consider only the correct elements i and j
-                ms = np.array(self.atoms.get_chemical_symbols()) == self.elements[i]
-                ns = np.array(self.extendedatoms.get_chemical_symbols()) == self.elements[j]
+                ms = np.array(self.atoms.get_chemical_symbols()
+                              ) == self.elements[i]
+                ns = np.array(
+                    self.extendedatoms.get_chemical_symbols()) == self.elements[j]
 
                 R = (R.T * ms).T
                 R = R * ns
@@ -294,25 +287,24 @@ class OganovFP():
                 R = R[nz]
                 h = h[nz]
 
-                npeaks = len(R) # number of peaks
-                
+                npeaks = len(R)  # number of peaks
+
                 g = np.zeros(self.N)
                 for p in range(npeaks):
                     g += h[p] * np.exp(- (x - R[p])**2 / 2 / self.delta**2)
 
-                self.G[i,j] = g
-                
+                self.G[i, j] = g
 
         return self.G
 
-
     def get_angle_fingerprint(self):
         self.H = np.zeros([self.n, self.n, self.n, self.nanglebins])
-        x = np.linspace(0, pi, self.nanglebins) # variable array
+        x = np.linspace(0, pi, self.nanglebins)  # variable array
 
         elementlist = list(self.elements)
         isymbols = [elementlist.index(atom.symbol) for atom in self.atoms]
-        jsymbols = [elementlist.index(atom.symbol) for atom in self.extendedatoms]
+        jsymbols = [elementlist.index(atom.symbol)
+                    for atom in self.extendedatoms]
         ksymbols = jsymbols
 
         # Broadening of each peak:
@@ -323,17 +315,16 @@ class OganovFP():
             B = jsymbols[j]
             C = ksymbols[k]
 
-            self.H[A, B, C] += fcij * fcjk * np.exp(- (x - theta)**2 / 2 / self.ascale**2)
+            self.H[A, B, C] += fcij * fcjk * \
+                np.exp(- (x - theta)**2 / 2 / self.ascale**2)
 
         self.H *= self.angleconstant
         return self.H
-
 
     def get_fingerprint_vector(self):
         # return self.G.flatten()
         # return self.H.flatten()
         return np.concatenate((self.G.flatten(), self.H.flatten()), axis=None)
-
 
     ### ::: GRADIENTS ::: ###
     ### ----------------- ###
@@ -350,7 +341,8 @@ class OganovFP():
         A = list(self.elements).index(self.atoms[i].symbol)
 
         elementlist = list(self.elements)
-        jsymbols = [elementlist.index(atom.symbol) for atom in self.extendedatoms]
+        jsymbols = [elementlist.index(atom.symbol)
+                    for atom in self.extendedatoms]
         # Sum over elements:
         for B in range(self.n):
 
@@ -364,45 +356,40 @@ class OganovFP():
                     continue
 
                 # position vector between atoms:
-                rij = self.rm[i, j] 
+                rij = self.rm[i, j]
                 Gij = self.Gij(i, j)
                 jsum += np.outer(Gij, -rij)
-                
+
             gradient[B] = (1 + int(A == B)) * jsum
 
         return gradient
 
-
     def calculate_all_gradients(self):
         t0 = time.time()
-        self.gradients = np.array([self.calculate_gradient(atom.index) for atom in self.atoms])
+        self.gradients = np.array(
+            [self.calculate_gradient(atom.index) for atom in self.atoms])
         # print("Radial gradient time:", time.time()-t0)
         return self.gradients
-
-
-
 
     # ANGLES:
 
     def nabla_fcij(self, m, n):
         d = self.dm[m, n]
         r = self.rm[m, n]
-        dfc_dd = (self.gamma * (self.gamma + 1) / self.Rtheta * 
-                   ((d / self.Rtheta) ** self.gamma -
-                    (d / self.Rtheta) ** (self.gamma - 1)))
+        dfc_dd = (self.gamma * (self.gamma + 1) / self.Rtheta *
+                  ((d / self.Rtheta) ** self.gamma -
+                   (d / self.Rtheta) ** (self.gamma - 1)))
         dd_drm = r / d
         return dfc_dd * dd_drm
-
 
     def nabla_fcjk(self, m, n):
         d = self.edm[m, n]
         r = self.erm[m, n]
-        dfc_dd = (self.gamma * (self.gamma + 1) / self.Rtheta * 
-                   ((d / self.Rtheta) ** self.gamma -
-                    (d / self.Rtheta) ** (self.gamma - 1)))
+        dfc_dd = (self.gamma * (self.gamma + 1) / self.Rtheta *
+                  ((d / self.Rtheta) ** self.gamma -
+                   (d / self.Rtheta) ** (self.gamma - 1)))
         dd_drm = r / d
         return dfc_dd * dd_drm
-
 
     def dthetaijk_dri(self, i, j, k, theta):
         r1 = self.dm[i, j]
@@ -410,7 +397,7 @@ class OganovFP():
 
         r2 = self.edm[k, j]
         v2 = self.erm[k, j]
- 
+
         dotp = dot(v1, v2)
 
         # if p >= 1.0:
@@ -424,9 +411,8 @@ class OganovFP():
             print("r1=0")
         if r2 == 0.0:
             print("r2=0")
-        
-        return 1 / abs(np.sin(theta)) / r1 / r2 * ( dotp / r1**2 * v1 - v2)
 
+        return 1 / abs(np.sin(theta)) / r1 / r2 * (dotp / r1**2 * v1 - v2)
 
     def dthetaijk_drj(self, i, j, k, theta):
         r1 = self.dm[i, j]
@@ -434,7 +420,7 @@ class OganovFP():
 
         r2 = self.edm[k, j]
         v2 = self.erm[k, j]
- 
+
         dotp = dot(v1, v2)
 
         # if p >= 1.0:
@@ -448,24 +434,21 @@ class OganovFP():
 
         return prefactor * (first + second)
 
-
     def dthetaijk_drk(self, i, j, k, theta):
         r1 = self.dm[i, j]
         v1 = self.rm[i, j]
 
         r2 = self.edm[k, j]
         v2 = self.erm[k, j]
- 
+
         dotp = dot(v1, v2)
 
         # if p >= 1.0:
         #     p = 1 - 1e-9 # avoid numerical problems with perfect lattices
         # elif p <= -1.0:
         #     p = -1 + 1e-9 # avoid numerical problems with perfect lattices
-        
+
         return -1 / abs(np.sin(theta)) / r1 / r2 * (v1 - dotp / r2**2 * v2)
-
-
 
     def calculate_angle_gradient(self, index):
         '''
@@ -478,17 +461,18 @@ class OganovFP():
 
         elementlist = list(self.elements)
         isymbols = [elementlist.index(atom.symbol) for atom in self.atoms]
-        jsymbols = [elementlist.index(atom.symbol) for atom in self.extendedatoms]
-        ksymbols = [elementlist.index(atom.symbol) for atom in self.extendedatoms]
+        jsymbols = [elementlist.index(atom.symbol)
+                    for atom in self.extendedatoms]
+        ksymbols = [elementlist.index(atom.symbol)
+                    for atom in self.extendedatoms]
 
-        
         for data in self.av:
             i, j, k, fcij, fcjk, theta = data
 
             indexi = (index == i)
             indexj = (index == j % len(self.atoms))
             indexk = (index == k % len(self.atoms))
-            
+
             if not (indexi or indexj or indexk):
                 continue
 
@@ -499,8 +483,6 @@ class OganovFP():
             diffvec = xvec - theta
             gaussian = np.exp(- diffvec**2 / 2 / self.ascale**2)
 
-
-
             # First term:
             first = np.zeros([self.nanglebins, 3])
             if indexi:
@@ -508,16 +490,12 @@ class OganovFP():
             if indexj:
                 first += (fcjk * np.outer(gaussian, -self.nabla_fcij(i, j)))
 
-
-
             # Second term:
             second = np.zeros([self.nanglebins, 3])
             if indexj:
                 second += (fcij * np.outer(gaussian, self.nabla_fcjk(j, k)))
             if indexk:
                 second += (fcij * np.outer(gaussian, -self.nabla_fcjk(j, k)))
-
-
 
             # Third term:
             third = np.zeros([self.nanglebins, 3])
@@ -532,28 +510,22 @@ class OganovFP():
 
             gradient[A, B, C] += (first + second + third)
 
-
-                            
         return gradient * self.angleconstant
-
 
     def calculate_all_angle_gradients(self):
         t0 = time.time()
-        self.anglegradients = np.array([self.calculate_angle_gradient(atom.index) 
+        self.anglegradients = np.array([self.calculate_angle_gradient(atom.index)
                                         for atom in self.atoms])
         # print("Angle gradient time:", time.time()-t0)
         # print()
         return self.anglegradients
 
-
     ### ::: KERNEL STUFF ::: ###
     ### -------------------- ###
-
 
     def distance(self, x1, x2):
         return pdist([x1.get_fingerprint_vector(),
                       x2.get_fingerprint_vector()])
-
 
     def kernel(self, x1, x2):
 
@@ -573,20 +545,17 @@ class OganovFP():
 
         return result
 
-
     def dk_dD(self, fp2):
         result = - (self.distance(self, fp2) / self.l**2
                     * self.kernel(self, fp2))
 
         return result
 
-
     def dD_drm(self, fp2, index):
 
         D = self.distance(self, fp2)
         if D == 0.0:
             return np.zeros(3)
-
 
         # Radial contribution:
 
@@ -601,10 +570,9 @@ class OganovFP():
         for B in range(self.n):
             Bsum += (1 + int(A != B)) * np.tensordot(tildexvec[B, A],
                                                      gs[B],
-                                                     axes=[0,0])
+                                                     axes=[0, 0])
 
         result = Bsum
-
 
         # Angle contribution:
 
@@ -614,18 +582,16 @@ class OganovFP():
         for A in range(self.n):
             for B in range(self.n):
                 for C in range(self.n):
-                    summ += np.tensordot(tildexvec[A,B,C],
-                                         gs[A,B,C],
-                                         axes=[0,0])
+                    summ += np.tensordot(tildexvec[A, B, C],
+                                         gs[A, B, C],
+                                         axes=[0, 0])
         result += summ
 
         result /= D
 
         return result
-    
 
     def kernel_hessian(self, fp2, index1, index2):
-        
 
         D = self.distance(self, fp2)
 
@@ -634,29 +600,28 @@ class OganovFP():
         # Radial contribution:
 
         g1 = self.gradients[index1]
-        g2 =  fp2.gradients[index2]
+        g2 = fp2.gradients[index2]
         A1 = list(self.elements).index(self.atoms[index1].symbol)
-        A2 = list(fp2.elements ).index(fp2.atoms[index2 ].symbol)
+        A2 = list(fp2.elements).index(fp2.atoms[index2].symbol)
 
-        C1 = np.zeros([3,3])
-        for B in range(self.n): # sum over elements
+        C1 = np.zeros([3, 3])
+        for B in range(self.n):  # sum over elements
             if A1 == A2:
-                C1 += (1 + int(B != A2)) * np.tensordot(g1[B], g2[B], axes=[0, 0])
+                C1 += (1 + int(B != A2)) * \
+                    np.tensordot(g1[B], g2[B], axes=[0, 0])
             else:
                 if B in [A1, A2]:
                     C1 += np.tensordot(g1[A2], g2[A1], axes=[0, 0])
 
-        
         # Angle contribution:
 
         g1 = self.anglegradients[index1]
-        g2 =  fp2.anglegradients[index2]
-        C2 = np.zeros([3,3])
+        g2 = fp2.anglegradients[index2]
+        C2 = np.zeros([3, 3])
         for A in range(self.n):
             for B in range(self.n):
                 for C in range(self.n):
-                    C2 += np.tensordot(g1[A,B,C], g2[A,B,C], axes=[0,0])
-                    
+                    C2 += np.tensordot(g1[A, B, C], g2[A, B, C], axes=[0, 0])
 
         result = prefactor * (D**2 / self.l**2 *
                               np.outer(self.dD_drm(fp2, index1), fp2.dD_drm(self, index2)) +
@@ -664,81 +629,72 @@ class OganovFP():
 
         return result
 
-
-
-
-
     # ---------------------------------------------------------
     # ------------- Derivatives w.r.t. Delta ------------------
     # ---------------------------------------------------------
 
-
-
     def dk_dDelta(self, fp2):
         return self.dk_dD(fp2) * self.dD_dDelta(fp2)
-
 
     def dD_dDelta(self, fp2):
         D = self.distance(self, fp2)
         if D == 0:
             return 0
 
-        result = 0    
+        result = 0
         dFP_dDelta1 = self.dFP_dDelta()
         dFP_dDelta2 = fp2.dFP_dDelta()
         for A in range(self.n):
             for B in range(self.n):
-                first = self.G[A,B] - fp2.G[A,B]
-                second = dFP_dDelta1[A,B] - dFP_dDelta2[A,B]
+                first = self.G[A, B] - fp2.G[A, B]
+                second = dFP_dDelta1[A, B] - dFP_dDelta2[A, B]
                 result += first.dot(second)
 
         result *= 1 / D
-                
-        return result
 
+        return result
 
     def dFP_dDelta(self):
 
         if self.dFP_dDelta_calculated:
             return self.dfp_ddelta
-        
+
         xvec = np.linspace(0., self.limit, self.N)
         result = np.zeros([self.n, self.n, self.N])
 
         elementlist = list(self.elements)
         isymbols = [elementlist.index(atom.symbol) for atom in self.atoms]
-        jsymbols = [elementlist.index(atom.symbol) for atom in self.extendedatoms]
-        
+        jsymbols = [elementlist.index(atom.symbol)
+                    for atom in self.extendedatoms]
+
         for A in range(self.n):
             for B in range(A, self.n):
 
                 for i in range(len(self.atoms)):
                     if A != isymbols[i]:
                         continue
-                    
+
                     for j in range(len(self.extendedatoms)):
                         if B != jsymbols[j]:
                             continue
 
-                        xij = self.dm[i,j]
+                        xij = self.dm[i, j]
 
                         if xij == 0 or xij > self.limit:
                             continue
 
                         normsq = (xvec - xij)**2
                         subresult = np.exp(- normsq / 2 / self.delta**2)
-                        subresult *= (normsq / self.delta**2 - 1) * self.h[i,j]
+                        subresult *= (normsq / self.delta**2 - 1) * self.h[i, j]
 
-                        result[A,B] += subresult
-                result[B,A] = result[A,B] # symmetric matrix
-                        
+                        result[A, B] += subresult
+                result[B, A] = result[A, B]  # symmetric matrix
+
         result *= 1 / self.delta
 
         self.dfp_ddelta = result
         self.dFP_dDelta_calculated = True
         return result
-
-
 
     # ----------------------------------------------
     # d_dDelta: Gradient:
@@ -754,22 +710,23 @@ class OganovFP():
 
         dFP_dDelta1 = self.dFP_dDelta()
         dFP_dDelta2 = fp2.dFP_dDelta()
-        
+
         Bsum = np.zeros(3)
         for B in range(self.n):
-            tildexvec = dFP_dDelta1[A,B] - dFP_dDelta2[A,B]
+            tildexvec = dFP_dDelta1[A, B] - dFP_dDelta2[A, B]
             jsum = self.gradients[index][B]
-            Bsum += (1 + int(A != B)) * np.tensordot(tildexvec, jsum, axes=[0,0])
+            Bsum += (1 + int(A != B)) * \
+                np.tensordot(tildexvec, jsum, axes=[0, 0])
 
         second = prefactor * Bsum
 
-
         elementlist = list(self.elements)
-        jsymbols = [elementlist.index(atom.symbol) for atom in self.extendedatoms]
+        jsymbols = [elementlist.index(atom.symbol)
+                    for atom in self.extendedatoms]
         Bsum = np.zeros(3)
         # Sum over elements:
         for B in range(self.n):
-            tildexvec = self.G[A,B] - fp2.G[A,B]
+            tildexvec = self.G[A, B] - fp2.G[A, B]
             jsum = np.zeros([self.N, 3])
 
             for j in range(len(self.extendedatoms)):
@@ -777,50 +734,51 @@ class OganovFP():
                 if B != jsymbols[j]:
                     continue
 
-                rij = self.rm[i,j] #self.atoms[i].position - self.extendedatoms[j].position
-                jsum += (1 + int(A == B)) * np.outer(self.dGij_dDelta(i,j), -rij)
+                # self.atoms[i].position - self.extendedatoms[j].position
+                rij = self.rm[i, j]
+                jsum += (1 + int(A == B)) * \
+                    np.outer(self.dGij_dDelta(i, j), -rij)
 
-            Bsum += (1 + int(A != B)) * np.tensordot(tildexvec, jsum, axes=[0,0])        
+            Bsum += (1 + int(A != B)) * \
+                np.tensordot(tildexvec, jsum, axes=[0, 0])
 
         third = prefactor * Bsum
 
-
         return first + second + third
 
-
     def Gij(self, i, j):
-        xij = self.dm[i,j]
+        xij = self.dm[i, j]
 
         if xij == 0 or xij > self.limit:
             return 0.0
 
         xvec = np.linspace(0., self.limit, self.N)
         diffvec = xvec - xij
-        Gij = ((2 / xij - diffvec / self.delta**2) * 
-               self.h[i,j] / xij * 
+        Gij = ((2 / xij - diffvec / self.delta**2) *
+               self.h[i, j] / xij *
                np.exp(- diffvec**2 / 2 / self.delta**2))
 
         return Gij
 
-        
     def dGij_dDelta(self, i, j):
 
         xvec = np.linspace(0., self.limit, self.N)
-        xij = self.dm[i,j]
+        xij = self.dm[i, j]
 
         if xij == 0 or xij > self.limit:
             return 0
 
         normsq = (xvec - xij)**2
 
-        first = 1 / self.delta * self.h[i,j] / xij * np.exp(-normsq / 2 / self.delta**2)
-        second = 2 / xij * (normsq / self.delta**2 - 1) + (xvec - xij) / self.delta**2 * (3 - normsq / self.delta**2)
+        first = 1 / self.delta * self.h[i, j] / \
+            xij * np.exp(-normsq / 2 / self.delta**2)
+        second = 2 / xij * (normsq / self.delta**2 - 1) + \
+            (xvec - xij) / self.delta**2 * (3 - normsq / self.delta**2)
 
         return first * second
 
     # ----------------------------------------------
     # d_dDelta: Hessian
-
 
     def dk_drm_drn_dDelta(self, fp2, index1, index2):
 
@@ -835,36 +793,36 @@ class OganovFP():
         prefactor = 1 / self.l**2 * self.kernel(self, fp2)
 
         second = D * np.outer(self.d_dDelta_D_dD_drm(fp2, index1),
-                               fp2.dD_drm(self, index2))
+                              fp2.dD_drm(self, index2))
         second += D * np.outer(self.dD_drm(fp2, index1),
                                fp2.d_dDelta_D_dD_drm(self, index2))
         second *= prefactor / self.l**2
 
         # t2 = time.time()
 
-        third = np.zeros([3,3])
+        third = np.zeros([3, 3])
         A1 = list(self.elements).index(self.atoms[index1].symbol)
         A2 = list(fp2.elements).index(fp2.atoms[index2].symbol)
         d1 = self.d_dDelta_dFP_drm(index1)
         d2 = fp2.d_dDelta_dFP_drm(index2)
-        
+
         for B in range(self.n):
             if A1 == A2:
                 prefactor2 = (1 + int(A1 != B))
                 third += prefactor2 * np.tensordot(d1[B],
                                                    fp2.gradients[index2][B],
-                                                   axes=[0,0])
+                                                   axes=[0, 0])
                 third += prefactor2 * np.tensordot(self.gradients[index1][B],
                                                    d2[B],
-                                                   axes=[0,0])
+                                                   axes=[0, 0])
             else:
                 if B in [A1, A2]:
                     third += np.tensordot(d1[A2],
                                           fp2.gradients[index2][A1],
-                                          axes=[0,0])
+                                          axes=[0, 0])
                     third += np.tensordot(self.gradients[index1][A2],
                                           d2[A1],
-                                          axes=[0,0])
+                                          axes=[0, 0])
         third *= prefactor
         t3 = time.time()
         #print(1, t1-t0)
@@ -873,7 +831,6 @@ class OganovFP():
 
         return first + second + third
 
-    
     def d_dDelta_D_dD_drm(self, fp2, index):
         i = index
         A = list(self.elements).index(self.atoms[i].symbol)
@@ -888,14 +845,14 @@ class OganovFP():
         g = self.gradients[i]
 
         for B in range(self.n):
-            tildexvec = self.G[A,B] - fp2.G[A,B]
-            tildexvec_dDelta = dFP_dDelta1[A,B] - dFP_dDelta2[A,B]
+            tildexvec = self.G[A, B] - fp2.G[A, B]
+            tildexvec_dDelta = dFP_dDelta1[A, B] - dFP_dDelta2[A, B]
             prefactor = 1 + int(A != B)
-            Bsum += prefactor * np.tensordot(tildexvec_dDelta, g[B], axes=[0,0])
-            Bsum += prefactor * np.tensordot(tildexvec, d2[B], axes=[0,0])
-            
-        return Bsum
+            Bsum += prefactor * \
+                np.tensordot(tildexvec_dDelta, g[B], axes=[0, 0])
+            Bsum += prefactor * np.tensordot(tildexvec, d2[B], axes=[0, 0])
 
+        return Bsum
 
     def d_dDelta_dFP_drm(self, index):
 
@@ -919,20 +876,20 @@ class OganovFP():
         #         jsum += np.outer(self.dGij_dDelta(i,j), -self.rm[i,j])
 
         #     result[B] += factors[A,B] * jsum
-        
+
         # return result
 
-
-
         # Precalculate:
-        
+
         if self.d_dDelta_dFP_drm_calculated:
             return self.d_ddelta_dfp_drm[index]
 
         self.d_ddelta_dfp_drm = np.zeros([len(self.atoms), self.n, self.N, 3])
         elementlist = list(self.elements)
-        isymbols = np.array([elementlist.index(atom.symbol) for atom in self.atoms])
-        jsymbols = np.array([elementlist.index(atom.symbol) for atom in self.extendedatoms])
+        isymbols = np.array([elementlist.index(atom.symbol)
+                             for atom in self.atoms])
+        jsymbols = np.array([elementlist.index(atom.symbol)
+                             for atom in self.extendedatoms])
         factors = np.ones([self.n, self.n]) + np.eye(self.n)
 
         for i in range(len(self.atoms)):
@@ -946,25 +903,22 @@ class OganovFP():
                 for j in range(len(self.extendedatoms)):
 
                     if B != jsymbols[j]:
-                       continue
+                        continue
 
-                    jsum += np.outer(self.dGij_dDelta(i,j), -self.rm[i,j])
+                    jsum += np.outer(self.dGij_dDelta(i, j), -self.rm[i, j])
 
-                self.d_ddelta_dfp_drm[i][B] += factors[A,B] * jsum
-        
+                self.d_ddelta_dfp_drm[i][B] += factors[A, B] * jsum
+
         self.d_dDelta_dFP_drm_calculated = True
         return self.d_ddelta_dfp_drm[index]
 
-
     # Derivatives w.r.t. scale (l):
-    
 
     def dk_dl(self, fp2):
         result = (self.distance(self, fp2)**2
                   * 1 / self.l**3
                   * self.kernel(self, fp2))
         return result
-
 
     def d_dl_dk_drm(self, fp2, index):
         result = (1 / self.l
@@ -973,7 +927,6 @@ class OganovFP():
                   * self.dD_drm(fp2, index))
         return result
 
-    
     def d_dl_dk_drm_drn(self, fp2, index1, index2):
         Dscaled_squared = (self.distance(self, fp2) / self.l)**2
         first = (1 / self.l
@@ -987,14 +940,13 @@ class OganovFP():
                               fp2.dD_drm(self, index2)))
 
         return first + second
-        
 
     def dk_dweight(self, fp2):
-        return self.kernel(self, fp2) * 2 # / self.weight
-        
-                 
+        return self.kernel(self, fp2) * 2  # / self.weight
+
+
 class CartesianCoordFP():
-    
+
     def __init__(self):
         return
 

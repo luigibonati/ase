@@ -53,10 +53,9 @@ class GaussianProcess():
         kernel and the regularization (noise)
         of the method as the last entry. '''
 
-        
         for pstring in params.keys():
             self.hyperparams[pstring] = params.get(pstring)
-            
+
         self.kernel.set_params(params)
         self.noise = noise
 
@@ -66,7 +65,6 @@ class GaussianProcess():
 
         # Keep noise-weight ratio as constant:
         self.noise = self.ratio * self.hyperparams['weight']
-
 
     def train(self, X, Y, noise=None):
         '''Produces a PES model from data.
@@ -84,7 +82,7 @@ class GaussianProcess():
 
         X = np.array(X)
         Y = np.array(Y)
-        
+
         if noise is not None:
             self.noise = noise  # Set noise attribute to a different value
 
@@ -92,26 +90,25 @@ class GaussianProcess():
 
         self.X = X  # Store the data in an attribute
 
-        n = len(self.X) # number of training points
-
+        n = len(self.X)  # number of training points
 
         if self.use_forces:
-            D = len(self.X[0].atoms) * 3 # number of derivatives
+            D = len(self.X[0].atoms) * 3  # number of derivatives
             regularization = np.array(n * ([self.noise *
                                             self.noisefactor] +
                                            D * [self.noise]))
-        
+
         else:
             regularization = np.array(n * ([self.noise *
                                             self.noisefactor]))
-        
+
         # print("Min eigval of raw K: \t\t", np.min(np.linalg.eigvals(K)))
 
         K += np.diag(regularization**2)
-        
+
         # print("Min eigval of regularized K: \t", np.min(np.linalg.eigvals(K)))
         # exit()
-        
+
         self.L, self.lower = cho_factor(K, lower=True, check_finite=True)
 
         # Update the prior if it is allowed to update
@@ -128,8 +125,7 @@ class GaussianProcess():
         cho_solve((self.L, self.lower), self.a,
                   overwrite_b=True, check_finite=True)
 
-
-    def predict(self, x, get_variance = False):
+    def predict(self, x, get_variance=False):
         '''Given a trained Gaussian Process, it predicts the value and the
         uncertainty at point x.
         It returns f and V:
@@ -146,7 +142,7 @@ class GaussianProcess():
         n = len(self.X)
         k = self.kernel.kernel_vector(x, self.X)
 
-        priorarray = self.prior.prior(x) # np.ones(len(x.atoms) * 3))
+        priorarray = self.prior.prior(x)  # np.ones(len(x.atoms) * 3))
         f = priorarray + np.dot(k, self.a)
 
         if get_variance:
@@ -155,12 +151,11 @@ class GaussianProcess():
 
             variance = self.kernel.kernel(x, x)
             covariance = np.tensordot(v, v, axes=(0, 0))
-            
+
             V = variance - covariance
 
             return f, V
         return f
-
 
     def neg_log_likelihood(self, params, *args):
         '''Negative logarithm of the marginal likelihood and its derivative.
@@ -173,24 +168,22 @@ class GaussianProcess():
         *args: Should be a tuple containing the inputs and targets
                in the training set- '''
 
-
-
         X, Y, params_to_update = args
 
         assert len(params) == len(params_to_update)
-        
+
         txt1 = ""
         paramdict = {}
         for p, pstring in zip(params, params_to_update):
             paramdict[pstring] = p
             txt1 += "%12.06f" % (p)
-            
+
         self.set_hyperparams(paramdict, self.noise)
         self.train(X, Y)
 
         # Compute log likelihood
         logP = (-0.5 * np.dot(Y.flatten() - self.m, self.a)
-                - np.sum(np.log(np.diag(self.L))) 
+                - np.sum(np.log(np.diag(self.L)))
                 - X.shape[0] / 2 * np.log(2 * np.pi))
 
         # # Gradient of the loglikelihood
@@ -211,7 +204,6 @@ class GaussianProcess():
 
         print("Parameters:", txt1, "       -logP: %12.02f" % -logP)
         return -logP
-
 
     def fit_hyperparameters(self, X, Y,
                             params_to_update,
@@ -258,16 +250,16 @@ class GaussianProcess():
         for string in params_to_update:
             params.append(self.hyperparams[string])
 
-        result = minimize(self.neg_log_likelihood, 
-                          params, 
+        result = minimize(self.neg_log_likelihood,
+                          params,
                           args=arguments,
                           method='L-BFGS-B',
-                          #jac=True,
-                          bounds = bounds,
-                          options = {'gtol':tol, 'ftol':0.01*tol})
+                          # jac=True,
+                          bounds=bounds,
+                          options={'gtol': tol, 'ftol': 0.01 * tol})
 
         print("Time spent minimizing neg log likelihood: %.02f sec" %
-              (time.time()-t0))
+              (time.time() - t0))
 
         if not result.success:
             converged = False
@@ -279,13 +271,12 @@ class GaussianProcess():
         optimalparams = {}
         for p, pstring in zip(result.x, params_to_update):
             optimalparams[pstring] = p
-        
+
         self.set_hyperparams(optimalparams, self.noise)
         print(self.hyperparams, converged)
         return {'hyperparameters': self.hyperparams, 'converged': converged}
 
-
-    def fit_weight_only(self, X, Y, option = 'update'):
+    def fit_weight_only(self, X, Y, option='update'):
         """Fit weight of the kernel keeping all other hyperparameters fixed.
         Here we assume the kernel k(x,x',theta) can be factorized as:
                     k = weight**2 * f(x,x',other hyperparameters)
@@ -323,8 +314,8 @@ class GaussianProcess():
             assert w == 1.0
 
         y = np.array(Y).flatten()
-        n = len(X) # number of training points
-        D = len(X[0].atoms) * 3 # number of derivatives
+        n = len(X)  # number of training points
+        D = len(X[0].atoms) * 3  # number of derivatives
         # m = list(self.prior.prior(np.ones(D))) * n
         m = list(np.hstack([self.prior.prior(x) for x in X]))
         factor = np.sqrt(np.dot(y - m, self.a) / len(y))
@@ -334,4 +325,3 @@ class GaussianProcess():
         elif option == 'update':
             self.set_hyperparams({'weight': factor * w}, self.noise)
             return factor
-        
