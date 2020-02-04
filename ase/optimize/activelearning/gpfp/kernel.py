@@ -1,7 +1,5 @@
 import numpy as np
 import numpy.linalg as la
-from scipy.spatial.distance import pdist
-import time
 
 
 class Kernel():
