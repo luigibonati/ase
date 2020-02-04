@@ -1,4 +1,3 @@
-from __future__ import print_function
 from kernel import SE_kernel
 
 import numpy as np
