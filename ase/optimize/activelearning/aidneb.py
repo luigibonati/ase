@@ -9,8 +9,7 @@ from scipy.spatial.distance import sqeuclidean
 from ase.optimize import MDMin, FIRE
 from ase.optimize.activelearning.acquisition import acquisition
 from ase.parallel import parprint, parallel_function
-from ase.optimize.activelearning.io import dump_observation, get_fmax
-
+from ase.optimize.activelearning.io import get_fmax, TrainingSet
 
 class AIDNEB:
 
@@ -21,6 +20,8 @@ class AIDNEB:
                  max_train_data=25, force_consistent=None,
                  max_train_data_strategy='nearest_observations',
                  trajectory='AIDNEB.traj',
+                 trainingset='AID_observations.traj',
+                 trajectory_surrogate='AID_surrogate.traj',
                  use_previous_observations=False):
 
         """
@@ -113,14 +114,22 @@ class AIDNEB:
 
         use_previous_observations: boolean
             If False. The optimization starts from scratch.
-            A *trajectory_observations.traj* file is automatically generated
-            in each step of the optimization, which contains the
-            observations collected by the surrogate. If
-            (a) *use_previous_observations* is True and (b) a previous
-            *trajectory_observations.traj* file is found in the working
-            directory: the algorithm will be use the previous observations
-            to train the model with all the information collected in
-            *trajectory_observations.traj*.
+                If the observations were saved to a trajectory file,
+                it is overwritten. If they were kept in a list, they are
+                deleted.
+            If True. The optimization uses the information that was already
+                in the training set that is provided in the optimization.
+
+        trainingset: None, trajectory file or list
+            Where the training set is kept, either saved to disk in a trajectory
+            file or kept in memory in a list.
+            options:
+                None (default):
+                    A trajectory file named *trajectory*_observations.traj is
+                    automatically generated and the training set is saved to
+                    it while generated.
+                str: trajectory filename where to append the training set
+                list: list were to append the atoms objects.
 
         max_train_data: int
             Number of observations that will effectively be included in the
@@ -196,6 +205,7 @@ class AIDNEB:
         self.force_consistent = force_consistent
         self.use_previous_observations = use_previous_observations
         self.trajectory = trajectory
+        self.trajectory_surrogate = trajectory_surrogate
 
         # Make sure that the initial and endpoints are near the interpolation.
         if self.mic:
@@ -212,12 +222,24 @@ class AIDNEB:
             self.e_endpoint.positions = mic_images[-2].positions[:]
 
         # Calculate the initial and final end-points (if necessary).
-        self.i_endpoint.set_calculator(copy.deepcopy(self.ase_calc))
-        self.e_endpoint.set_calculator(copy.deepcopy(self.ase_calc))
+        self.i_endpoint.set_calculator(copy.copy(self.ase_calc))
+        self.e_endpoint.set_calculator(copy.copy(self.ase_calc))
         self.i_endpoint.get_potential_energy(force_consistent=force_consistent)
         self.i_endpoint.get_forces()
         self.e_endpoint.get_potential_energy(force_consistent=force_consistent)
         self.e_endpoint.get_forces()
+
+        # Initialize training set
+        if trainingset is None:
+            trajectory_main = self.trajectory.split('.')[0]
+            self.train = TrainingSet(trajectory_main + '_observations.traj',
+                    use_previous_observations=False)
+        else:
+            self.train = TrainingSet(trainingset,
+                        use_previous_observations=use_previous_observations)
+
+        self.train.dump(atoms=self.i_endpoint, method='neb')
+        self.train.dump(atoms=self.e_endpoint, method='neb')
 
         # Calculate the distance between the initial and final endpoints.
         d_start_end = sqeuclidean(self.i_endpoint.positions.flatten(),
@@ -303,20 +325,7 @@ class AIDNEB:
         Minimum Energy Path from the initial to the final states.
 
         """
-        trajectory_main = self.trajectory.split('.')[0]
-        trajectory_observations = trajectory_main + '_observations.traj'
-        trajectory_candidates = trajectory_main + '_candidates.traj'
-
-        # Start by saving the initial and final states.
-        dump_observation(atoms=self.i_endpoint,
-                         filename=trajectory_observations,
-                         restart=self.use_previous_observations)
-        self.use_previous_observations = True  # Switch on active learning.
-        dump_observation(atoms=self.e_endpoint,
-                         filename=trajectory_observations,
-                         restart=self.use_previous_observations)
-
-        train_images = io.read(trajectory_observations, ':')
+        train_images = self.train.load_set()
         if len(train_images) == 2:
             middle = int(self.n_images * (2./3.))
             e_is = self.i_endpoint.get_potential_energy()
@@ -327,9 +336,7 @@ class AIDNEB:
             self.atoms.set_calculator(self.ase_calc)
             self.atoms.get_potential_energy(force_consistent=self.force_consistent)
             self.atoms.get_forces()
-            dump_observation(atoms=self.atoms, method='neb',
-                             filename=trajectory_observations,
-                             restart=self.use_previous_observations)
+            self.train.dump(atoms=self.atoms, method='neb')
             self.function_calls += 1
             self.force_calls += 1
             self.step += 1
@@ -344,7 +351,7 @@ class AIDNEB:
             # 1. Collect observations.
             # This serves to use_previous_observations from a previous
             # (and/or parallel) runs.
-            train_images = io.read(trajectory_observations, ':')
+            train_images = self.train.load_set()
 
             # 2. Prepare a calculator.
             calc = copy.deepcopy(self.model_calculator)
@@ -442,7 +449,7 @@ class AIDNEB:
             best_candidate = sorted_candidates.pop(0)
 
             # Save the other candidates for multi-task optimization.
-            io.write(trajectory_candidates, sorted_candidates)
+            io.write(self.trajectory_surrogate, sorted_candidates)
 
             # 8. Evaluate the target function and save it in *observations*.
             self.atoms.positions = best_candidate.get_positions()
@@ -451,9 +458,7 @@ class AIDNEB:
                                     force_consistent=self.force_consistent
                                     )
             self.atoms.get_forces()
-            dump_observation(atoms=self.atoms,
-                             filename=trajectory_observations,
-                             restart=self.use_previous_observations)
+            self.train.dump(atoms=self.atoms, method='neb')
             self.function_calls += 1
             self.force_calls += 1
             self.step += 1

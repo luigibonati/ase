@@ -13,7 +13,7 @@ class AIDTS:
                  model_calculator=None, force_consistent=None,
                  trajectory='AID.traj', max_train_data=50,
                  max_train_data_strategy='nearest_observations',
-                 trainingset=None,
+                 trainingset='AID_observations.traj',
                  use_previous_observations=False):
         """
         Artificial Intelligence-Driven dimer (AID-TS) algorithm.
