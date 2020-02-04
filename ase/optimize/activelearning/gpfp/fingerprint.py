@@ -1,12 +1,8 @@
 from scipy.spatial.distance import pdist
-from scipy.signal import gaussian
-from scipy.ndimage.interpolation import shift
-from math import pi, sqrt
+from math import pi
 from scipy.spatial import distance_matrix
 import numpy as np
 from numpy import dot
-import copy
-import time
 from warnings import catch_warnings, simplefilter
 
 
@@ -146,7 +142,6 @@ class OganovFP():
         """
 
         # Extended distance and displacement vector matrices:
-        time0 = time.time()
         self.edm = distance_matrix(
             x=self.extendedatoms.positions, y=self.extendedatoms.positions)
 
@@ -192,7 +187,6 @@ class OganovFP():
                         [i, j, k, fcij[i, j], fcjk[k, j], np.arccos(argument)])
 
         # print("Length of self.av: ", len(self.av))
-        # print("Set angle vector time:", time.time()-time0)
 
         return self.av
 
@@ -365,10 +359,8 @@ class OganovFP():
         return gradient
 
     def calculate_all_gradients(self):
-        t0 = time.time()
         self.gradients = np.array(
             [self.calculate_gradient(atom.index) for atom in self.atoms])
-        # print("Radial gradient time:", time.time()-t0)
         return self.gradients
 
     # ANGLES:
@@ -513,11 +505,8 @@ class OganovFP():
         return gradient * self.angleconstant
 
     def calculate_all_angle_gradients(self):
-        t0 = time.time()
         self.anglegradients = np.array([self.calculate_angle_gradient(atom.index)
                                         for atom in self.atoms])
-        # print("Angle gradient time:", time.time()-t0)
-        # print()
         return self.anglegradients
 
     ### ::: KERNEL STUFF ::: ###
@@ -782,14 +771,12 @@ class OganovFP():
 
     def dk_drm_drn_dDelta(self, fp2, index1, index2):
 
-        t0 = time.time()
         dD_dDelta = self.dD_dDelta(fp2)
         D = self.distance(self, fp2)
         first = - D / self.l**2 * dD_dDelta * self.kernel_hessian(fp2,
                                                                   index1,
                                                                   index2)
 
-        # t1 = time.time()
         prefactor = 1 / self.l**2 * self.kernel(self, fp2)
 
         second = D * np.outer(self.d_dDelta_D_dD_drm(fp2, index1),
@@ -797,8 +784,6 @@ class OganovFP():
         second += D * np.outer(self.dD_drm(fp2, index1),
                                fp2.d_dDelta_D_dD_drm(self, index2))
         second *= prefactor / self.l**2
-
-        # t2 = time.time()
 
         third = np.zeros([3, 3])
         A1 = list(self.elements).index(self.atoms[index1].symbol)
@@ -824,10 +809,6 @@ class OganovFP():
                                           d2[A1],
                                           axes=[0, 0])
         third *= prefactor
-        t3 = time.time()
-        #print(1, t1-t0)
-        #print(2, t2-t1)
-        # print("Time in dk_drm_drn_dDelta: %.04f sec" % (t3-t0))
 
         return first + second + third
 
