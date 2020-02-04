@@ -1,11 +1,11 @@
-from kernel import SE_kernel
+from ase.optimize.activelearning.gpfp.kernel import SE_kernel, FPKernel
 
 import numpy as np
 
 from scipy.optimize import minimize
 from scipy.linalg import solve_triangular, cho_factor, cho_solve
 
-#from ase.optimize.activelearning.gp.prior import ZeroPrior
+from ase.optimize.activelearning.gpfp.prior import ZeroPrior
 
 
 class GaussianProcess():
@@ -32,7 +32,7 @@ class GaussianProcess():
 
         if kernel is None:
             if self.use_forces:
-                self.kernel = SquaredExponential()
+                self.kernel = FPKernel()
             else:
                 self.kernel = SE_kernel()
         else:
