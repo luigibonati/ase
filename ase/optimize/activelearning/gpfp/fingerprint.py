@@ -993,7 +993,7 @@ class OganovFP():
         return self.kernel(self, fp2) * 2 # / self.weight
         
                  
-class CartesianCoordinatesFP():
+class CartesianCoordFP():
     
     def __init__(self):
         return
