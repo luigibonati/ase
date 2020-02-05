@@ -19,7 +19,7 @@ qn = QuasiNewton(slab, trajectory='mepf.traj')
 qn.run(fmax=0.02)
 
 from ase.test import cli
-cli('ase diff mepi.traj@:2 mepf.traj@:2 -c')
+cli('ase diff mepi.traj@:2 mepf.traj@:2 -c -s dE')
 
 #import os
 #os.system('rm mepi.traj mepf.traj')

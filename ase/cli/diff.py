@@ -69,8 +69,10 @@ class CLICommand:
             help="show only so many lines (atoms) in each table, useful if rank ordering")
         add('-t', '--template', metavar='TEMPLATE', nargs='?', const='rc',
             help="""See --help-template for the help on this option.""")
-        add ('--template-help', help="""Prints the help for the template file.
+        add('--template-help', help="""Prints the help for the template file.
                 Usage `ase diff - --template-help`""", action="store_true")
+        add('-s', '--summary-functions', metavar='SUMFUNCS', nargs='?',
+                help="""Specify the summary functions. Possible values are `rmsd` and `dE`. Comma separate more than one summary function.""")
         add('--log-file', metavar='LOGFILE', help="print table to file")
 
     @staticmethod
@@ -87,25 +89,35 @@ class CLICommand:
 
         from ase.io.formats import parse_filename
         from ase.io import string2index
-        from template import slice_split
+        import ase.cli.template as actemplate
+
+        Table = actemplate.Table
+        slice_split = actemplate.slice_split
 
         if args.template is None:
-            from ase.cli.template import field_specs_on_conditions, summary_functions_on_conditions, Table
-            field_specs = field_specs_on_conditions(
-                args.calculator_outputs, args.rank_order)
-            summary_functions = summary_functions_on_conditions(args.calculator_outputs)
+            field_specs = actemplate.field_specs_on_conditions(args.calculator_outputs,args.rank_order)
         else:
-            from ase.cli.template import summary_functions_on_conditions, Table
             field_specs = args.template.split(',')
-            summary_functions = summary_functions_on_conditions(args.calculator_outputs)
             if not args.calculator_outputs:
                 for field_spec in field_specs:
                     if 'f' in field_spec:
                         raise Exception(
                             'field requiring calculation outputs without --calculator-outputs')
 
-        have_two_files = len(args.file) == 2
+        if args.summary_functions is None:
+            summary_functions = actemplate.summary_functions_on_conditions(args.calculator_outputs)
+        else:
+            summary_functions_dct = {'rmsd': actemplate.rmsd, 'dE': actemplate.energy_delta}
+            summary_functions = args.summary_functions.split(',')
+            if not args.calculator_outputs:
+                for sf in summary_functions:
+                    if 'dE' == sf:
+                        raise Exception(
+                            'summary function requiring calculation outputs without --calculator-outputs')
+            summary_functions = [summary_functions_dct[i] for i in summary_functions]
 
+
+        have_two_files = len(args.file) == 2
         file1 = args.file[0]
         actual_filename, index = slice_split(file1)
         atoms1 = read(actual_filename, index)

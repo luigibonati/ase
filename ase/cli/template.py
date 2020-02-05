@@ -102,7 +102,6 @@ def get_data(atoms1, atoms2, field):
         data = np.arange(len(atoms1))
     if rank_order:
         return sort2rank(np.argsort(-data))
-        return np.argsort(-data)
 
     return data
 
@@ -145,7 +144,6 @@ def get_atoms_data(atoms1, atoms2, field):
 
     if rank_order:
         return sort2rank(np.argsort(-data))
-        return np.argsort(-data)
 
     return data
 
@@ -189,7 +187,6 @@ def parse_field_specs(field_specs):
             hier[c] = mxm
     # reversed by convention of numpy lexsort
     hier = sort2rank(np.array(hier))[::-1]
-#    hier = np.argsort(np.array(hier))[::-1]
     return fields, hier, scent
 
 # Class definitions
@@ -209,7 +206,7 @@ class DiffTemplate(string.Formatter):
 class Table(object):
     def __init__(self, 
             field_specs,
-            summary_functions = rmsd, 
+            summary_functions = [], 
             max_lines = None, 
             title = '',
             toprule = '=',
