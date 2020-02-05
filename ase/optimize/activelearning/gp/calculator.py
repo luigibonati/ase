@@ -257,16 +257,11 @@ class GPCalculator(Calculator, GaussianProcess):
             # 5. (optional) Optimize model hyperparameters.
             if self.update_hp and len(self.train_x) % self.nbatch == 0 and len(self.train_x) != 0:
                 ratio = self.noise / self.kernel.weight
-                try:
-                    self.fit_hyperparameters(np.asarray(self.train_x),
-                                             np.asarray(self.train_y),
-                                             eps=self.hyperbounds)
-                except Exception:
-                    pass
-
-                else:
-                    # Keeps the ratio between noise and weight fixed.
-                    self.noise = ratio * self.kernel.weight
+                self.fit_hyperparameters(np.asarray(self.train_x),
+                                         np.asarray(self.train_y),
+                                         eps=self.hyperbounds)
+                # Keeps the ratio between noise and weight fixed.
+                self.noise = ratio * self.kernel.weight
 
         self.prev_train_y = self.train_y[:]
 
