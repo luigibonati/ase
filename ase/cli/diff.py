@@ -40,8 +40,8 @@ class CLICommand:
     the two values can be calculated as x + y/2 and x - y/2.
 
     It is possible to fully customize the order of the columns and the
-    sorting of the rows by their column fields. A copy of the template
-    file can be placed in ~/.ase where ~ is the user root directory."""
+    sorting of the rows by editing the parameters in the template file column fields. 
+    """
 
     @staticmethod
     def add_arguments(parser):
@@ -91,16 +91,6 @@ class CLICommand:
 
         if args.template is None:
             from ase.cli.template import field_specs_on_conditions, summary_functions_on_conditions, Table
-            field_specs = field_specs_on_conditions(
-                args.calculator_outputs, args.rank_order)
-            summary_functions = summary_functions_on_conditions(args.calculator_outputs)
-        elif args.template == 'rc':
-            import os
-            homedir = os.environ['HOME']
-            sys.path.insert(0, homedir + '/.ase')
-            from templaterc import field_specs_on_conditions, summary_functions_on_conditions, Table
-            # this has to be named differently because python does not
-            # redundantly load packages
             field_specs = field_specs_on_conditions(
                 args.calculator_outputs, args.rank_order)
             summary_functions = summary_functions_on_conditions(args.calculator_outputs)
