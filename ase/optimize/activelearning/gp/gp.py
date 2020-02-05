@@ -72,7 +72,8 @@ class GaussianProcess():
 
         K[range(K.shape[0]), range(K.shape[0])] += regularization**2
 
-        self.L, self.lower = cho_factor(K, lower=True, check_finite=True)
+        self.L, self.lower = cho_factor(K, lower=True, check_finite=True,
+                                        overwrite_a=True)
 
         # Update the prior if it is allowed to update
         if self.prior.use_update:
@@ -104,7 +105,8 @@ class GaussianProcess():
 
         if get_variance:
             v = k.T.copy()
-            v = solve_triangular(self.L, v, lower = True, check_finite = False)
+            v = solve_triangular(self.L, v, lower=True, check_finite=False,
+                                 overwrite_b=True)
 
             variance = self.kernel.kernel(x,x)
             #covariance = np.matmul(v.T, v)
@@ -141,8 +143,8 @@ class GaussianProcess():
 
         # vectorizing the derivative of the log likelyhood
         D_P_input = np.array([np.dot(np.outer(self.a,self.a), g) for g in grad])
-        D_complexity = np.array([cho_solve((self.L, self.lower),
-                                             g) for g in grad])
+        D_complexity = np.array([cho_solve((self.L, self.lower), g,
+                                overwrite_b=True) for g in grad])
 
         DlogP = 0.5 * np.trace(D_P_input - D_complexity, axis1=1, axis2=2)
         return -logP, -DlogP
