@@ -33,11 +33,12 @@ class GPCalculator(Calculator, GaussianProcess):
     noise: float
         Regularization parameter for the Gaussian Process Regression.
 
-    update_prior_strategy: string
+    update_prior_strategy: None, string
         Strategy to update the constant from the ConstantPrior when more
-        data is collected. It does only work when Prior = None
+        data is collected. 
 
         options:
+            None: Do not update the constant
             'maximum': update the prior to the maximum sampled energy.
             'minimum' : update the prior to the minimum sampled energy.
             'average': use the average of sampled energies as prior.
@@ -101,7 +102,7 @@ class GPCalculator(Calculator, GaussianProcess):
     nolabel = True
 
     def __init__(self, train_images=None, prior=None,
-                 update_prior_strategy='maximum',
+                 update_prior_strategy=None,
                  kernel_params={'weight': 1., 'scale': 0.4},
                  fit_weight=None, noise=0.005,
                  params_to_update=None, fingerprint=None,
@@ -120,10 +121,8 @@ class GPCalculator(Calculator, GaussianProcess):
         if kernel is None:
             kernel = FPKernel()
         if prior is None:
-            self.update_prior = True
-            prior = ConstantPrior(constant=None)
-        else:
-            self.update_prior = False
+            prior = ConstantPrior(constant=0.0)
+
         GaussianProcess.__init__(self, prior, kernel)
 
         # Set initial hyperparameters.
@@ -211,7 +210,7 @@ class GPCalculator(Calculator, GaussianProcess):
         """ Train a model with the previously fed observations."""
 
         # 1. Set/update the the prior.
-        if self.update_prior:
+        if self.strategy is not None:
             if self.strategy == 'average':
                 av_e = np.mean(np.array(self.train_y)[:, 0])
                 self.prior.set_constant(av_e)
