@@ -1,8 +1,8 @@
 from ase.data import chemical_symbols
 import string
 import numpy as np
-# default fields
 
+# default fields
 def field_specs_on_conditions(calculator_outputs, rank_order):
     if calculator_outputs:
         field_specs = ['i:0', 'el', 'd', 'rd', 'df', 'rdf']
@@ -24,9 +24,8 @@ def summary_functions_on_conditions(has_calc):
         return [rmsd, energy_delta]
     return [rmsd]
 
-# template formatting dictionary
-
 def header_alias(h):
+    """Replace keyboard characters with Unicode symbols for pretty printing"""
     if h == 'i':
         h = 'index'
     elif h == 'an':
@@ -59,7 +58,6 @@ def prec_round(a, prec=2):
 prec_round = np.vectorize(prec_round)
 
 # end most settings
-
 
 def sort2rank(sort):
     """
@@ -104,6 +102,7 @@ def get_data(atoms1, atoms2, field):
         data = np.arange(len(atoms1))
     if rank_order:
         return sort2rank(np.argsort(-data))
+        return np.argsort(-data)
 
     return data
 
@@ -146,6 +145,7 @@ def get_atoms_data(atoms1, atoms2, field):
 
     if rank_order:
         return sort2rank(np.argsort(-data))
+        return np.argsort(-data)
 
     return data
 
@@ -189,6 +189,7 @@ def parse_field_specs(field_specs):
             hier[c] = mxm
     # reversed by convention of numpy lexsort
     hier = sort2rank(np.array(hier))[::-1]
+#    hier = np.argsort(np.array(hier))[::-1]
     return fields, hier, scent
 
 # Class definitions

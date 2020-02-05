@@ -2,6 +2,32 @@ import sys
 from argparse import RawTextHelpFormatter
 from ase.io import read
 
+template_help="""
+            Without argument, looks for ~/.ase/template.py.  Otherwise,
+                    expects the comma separated list of the fields to include
+                    in their left-to-right order.  Optionally, specify the
+                    lexicographical sort hierarchy (0 is outermost sort) and if the
+                    sort should be ascending or descending (1 or -1).  By default,
+                    sorting is descending, which makes sense for most things except
+                    index (and rank, but one can just sort by the thing which is
+                    ranked to get ascending ranks).
+
+                    * example: ase diff start.cif stop.cif --template
+                    * i:0:1,el,dx,dy,dz,d,rd
+
+                    possible fields:
+
+                    *    i: index
+                    *    dx,dy,dz,d: displacement/displacement components
+                    *    dfx,dfy,dfz,df: difference force/force components
+                    *    afx,afy,afz,af: average force/force components
+                    *    an: atomic number
+                    *    el: atomic element
+                    *    t: atom tag
+                    *    r<col>: the rank of that atom with respect to the column
+
+                    It is possible to change formatters in the template file."""
+
 class CLICommand:
     """Print differences between atoms/calculations.
 
@@ -31,7 +57,7 @@ class CLICommand:
                     """,
             nargs='+')
         add('-r', '--rank-order', metavar='FIELD', nargs='?', const='d', type=str,
-            help="""Order atoms by rank, see --template help for possible
+            help="""Order atoms by rank, see --template-help for possible
                     fields.
 
                     The default value, when specified, is d.  When not
@@ -42,34 +68,16 @@ class CLICommand:
         add('--max-lines', metavar='N', type=int,
             help="show only so many lines (atoms) in each table, useful if rank ordering")
         add('-t', '--template', metavar='TEMPLATE', nargs='?', const='rc',
-            help="""Without argument, looks for ~/.ase/template.py.  Otherwise,
-                    expects the comma separated list of the fields to include
-                    in their left-to-right order.  Optionally, specify the
-                    lexicographical sort hierarchy (0 is outermost sort) and if the
-                    sort should be ascending or descending (1 or -1).  By default,
-                    sorting is descending, which makes sense for most things except
-                    index (and rank, but one can just sort by the thing which is
-                    ranked to get ascending ranks).
-
-                    * example: ase diff start.cif stop.cif --template
-                    * i:0:1,el,dx,dy,dz,d,rd
-
-                    possible fields:
-
-                    *    i: index
-                    *    dx,dy,dz,d: displacement/displacement components
-                    *    dfx,dfy,dfz,df: difference force/force components
-                    *    afx,afy,afz,af: average force/force components 
-                    *    an: atomic number
-                    *    el: atomic element
-                    *    t: atom tag
-                    *    r<col>: the rank of that atom with respect to the column
-
-                    It is possible to change formatters in a template file.""")
+            help="""See --help-template for the help on this option.""")
+        add ('--template-help', help="""Prints the help for the template file.
+                Usage `ase diff - --template-help`""", action="store_true")
         add('--log-file', metavar='LOGFILE', help="print table to file")
 
     @staticmethod
     def run(args, parser):
+        if args.template_help == True:
+            print(template_help)
+            return
         # output
         if args.log_file is None:
             out = sys.stdout
