@@ -1,8 +1,12 @@
-from ase.data import chemical_symbols
 import string
+from ase.io import string2index
+from ase.io.formats import parse_filename
+from ase.data import chemical_symbols
 import numpy as np
 
 # default fields
+
+
 def field_specs_on_conditions(calculator_outputs, rank_order):
     if calculator_outputs:
         field_specs = ['i:0', 'el', 'd', 'rd', 'df', 'rdf']
@@ -19,10 +23,12 @@ def field_specs_on_conditions(calculator_outputs, rank_order):
         field_specs[0] = field_specs[0] + ':1'
     return field_specs
 
+
 def summary_functions_on_conditions(has_calc):
     if has_calc:
         return [rmsd, energy_delta]
     return [rmsd]
+
 
 def header_alias(h):
     """Replace keyboard characters with Unicode symbols for pretty printing"""
@@ -44,7 +50,6 @@ def header_alias(h):
     return h
 
 
-
 def prec_round(a, prec=2):
     "To make hierarchical sorting different from non-hierarchical sorting with floats"
     if a == 0:
@@ -55,9 +60,11 @@ def prec_round(a, prec=2):
         c = np.log(s * a) % 1
     return s * np.round(np.exp(c), prec) * np.exp(m)
 
+
 prec_round = np.vectorize(prec_round)
 
 # end most settings
+
 
 def sort2rank(sort):
     """
@@ -74,6 +81,7 @@ def sort2rank(sort):
 num2sym = dict(zip(np.argsort(chemical_symbols), chemical_symbols))
 sym2num = {v: k for k, v in num2sym.items()}
 
+
 def get_data(atoms1, atoms2, field):
     if field[0] == 'r':
         field = field[1:]
@@ -85,11 +93,11 @@ def get_data(atoms1, atoms2, field):
         dpositions = atoms2.positions - atoms1.positions
 
     if field == 'dx':
-        data = dpositions[:,0]
+        data = dpositions[:, 0]
     elif field == 'dy':
-        data = dpositions[:,1]
+        data = dpositions[:, 1]
     elif field == 'dz':
-        data = dpositions[:,2]
+        data = dpositions[:, 2]
     elif field == 'd':
         data = np.linalg.norm(dpositions, axis=1)
     elif field == 't':
@@ -123,22 +131,22 @@ def get_atoms_data(atoms1, atoms2, field):
     if 'd' == field[0]:
         dforces = atoms2.get_forces(atoms2) - atoms1.get_forces(atoms1)
     else:
-        aforces = (atoms2.get_forces(atoms2) + atoms1.get_forces(atoms1))/2
+        aforces = (atoms2.get_forces(atoms2) + atoms1.get_forces(atoms1)) / 2
 
     if field == 'dfx':
-        data = dforces[:,0]
+        data = dforces[:, 0]
     elif field == 'dfy':
-        data = dforces[:,1]
+        data = dforces[:, 1]
     elif field == 'dfz':
-        data = dforces[:,2]
+        data = dforces[:, 2]
     elif field == 'df':
-        data = np.linalg.norm(dforces,axis=1)
+        data = np.linalg.norm(dforces, axis=1)
     elif field == 'afx':
-        data = aforces[:,0]
+        data = aforces[:, 0]
     elif field == 'afy':
-        data = aforces[:,1]
+        data = aforces[:, 1]
     elif field == 'afz':
-        data = aforces[:,2]
+        data = aforces[:, 2]
     elif field == 'af':
         data = np.linalg.norm(aforces, axis=1)
 
@@ -155,10 +163,12 @@ def rmsd(atoms1, atoms2):
     rmsd = ((np.linalg.norm(dpositions, axis=1)**2).mean())**(0.5)
     return 'RMSD={:+.1E}'.format(rmsd)
 
+
 def energy_delta(atoms1, atoms2):
     E1 = atoms1.get_potential_energy()
     E2 = atoms2.get_potential_energy()
     return 'E1 = {:+.1E}, E2 = {:+.1E}, dE = {:+1.1E}'.format(E1, E2, E2 - E1)
+
 
 def parse_field_specs(field_specs):
     fields = []
@@ -191,6 +201,7 @@ def parse_field_specs(field_specs):
 
 # Class definitions
 
+
 class DiffTemplate(string.Formatter):
     """Changing string formatting method to convert numeric data field"""
 
@@ -204,18 +215,18 @@ class DiffTemplate(string.Formatter):
 
 
 class Table(object):
-    def __init__(self, 
-            field_specs,
-            summary_functions = [], 
-            max_lines = None, 
-            title = '',
-            toprule = '=',
-            bottomrule = '=',
-            midrule = '-',
-            tablewidth = None,
-            columnwidth = 9,
-            precision = 2,
-            representation = 'E'):
+    def __init__(self,
+                 field_specs,
+                 summary_functions=[],
+                 max_lines=None,
+                 title='',
+                 toprule='=',
+                 bottomrule='=',
+                 midrule='-',
+                 tablewidth=None,
+                 columnwidth=9,
+                 precision=2,
+                 representation='E'):
 
         self.max_lines = max_lines
         self.summary_functions = summary_functions
@@ -228,66 +239,88 @@ class Table(object):
         self.precision = precision
         self.representation = representation
         self.columnwidth = columnwidth
-        if tablewidth == None:
-            self.tablewidth = columnwidth*self.nfields
+        if tablewidth is None:
+            self.tablewidth = columnwidth * self.nfields
         else:
             self.tablewidth = tablewidth
         self.formatter = DiffTemplate().format
-        self.fmt_class = {'signed float': "{{: ^{}.{}{}}}".format(self.columnwidth,self.precision - 1, self.representation),
-                     'unsigned float': "{{:^{}.{}{}}}".format(self.columnwidth,self.precision - 1, self.representation),
-                     'int': "{{:^{}n}}".format(self.columnwidth),
-                     'str': "{{:^{}s}}".format(self.columnwidth),
-                     'conv': "{{:^{}h}}".format(self.columnwidth)}
+        self.fmt_class = {
+            'signed float': "{{: ^{}.{}{}}}".format(
+                self.columnwidth,
+                self.precision - 1,
+                self.representation),
+            'unsigned float': "{{:^{}.{}{}}}".format(
+                self.columnwidth,
+                self.precision - 1,
+                self.representation),
+            'int': "{{:^{}n}}".format(
+                self.columnwidth),
+            'str': "{{:^{}s}}".format(
+                self.columnwidth),
+            'conv': "{{:^{}h}}".format(
+                self.columnwidth)}
 
         self.fmt = self.make_fmt()
-        self.title = ''
+        self.title = title
         self.header = self.make_header()
         self.toprule = toprule * self.tablewidth
         self.bottomrule = bottomrule * self.tablewidth
         self.midrule = midrule * self.tablewidth
 
-
     def make_fmt(self):
         fmt = {}
-        signed_floats = ['dx', 'dy', 'dz', 'dfx', 'dfy', 'dfz', 'afx', 'afy', 'afz']
+        signed_floats = [
+            'dx',
+            'dy',
+            'dz',
+            'dfx',
+            'dfy',
+            'dfz',
+            'afx',
+            'afy',
+            'afz']
         for sf in signed_floats:
             fmt[sf] = self.fmt_class['signed float']
         unsigned_floats = ['d', 'df', 'af']
         for usf in unsigned_floats:
             fmt[usf] = self.fmt_class['unsigned float']
-        integers = ['i', 'an', 't'] + ['r' + sf for sf in signed_floats] + ['r' + usf for usf in unsigned_floats]
+        integers = ['i', 'an', 't'] + ['r' + sf for sf in signed_floats] + \
+            ['r' + usf for usf in unsigned_floats]
         for i in integers:
             fmt[i] = self.fmt_class['int']
         fmt['el'] = self.fmt_class['conv']
         return fmt
 
     def make(self, atoms1, atoms2):
-        body = self.make_body(atoms1,atoms2)
-        if self.max_lines != None:
+        body = self.make_body(atoms1, atoms2)
+        if self.max_lines is not None:
             body = body[:self.max_lines]
-        summary = self.make_summary(atoms1,atoms2)
+        summary = self.make_summary(atoms1, atoms2)
 
-        return '\n'.join([self.title,self.toprule,self.header,self.midrule,body,self.bottomrule,summary])
-        
+        return '\n'.join([self.title, self.toprule, self.header,
+                          self.midrule, body, self.bottomrule, summary])
+
     def make_header(self):
-        return self.formatter(self.fmt_class['str'] * self.nfields, *[header_alias(field) for field in self.fields])
+        return self.formatter(
+            self.fmt_class['str'] * self.nfields, *[header_alias(field) for field in self.fields])
 
-    def make_summary(self,atoms1,atoms2):
-        return '\n'.join([summary_function(atoms1,atoms2) for summary_function in self.summary_functions])
-        
-    def make_body(self,atoms1,atoms2):
-        fdata = np.array([get_atoms_data(atoms1, atoms2, field) for field in self.fields])
-        sorting_array = prec_round((np.array(self.scent)[:, np.newaxis] * fdata)[self.hier])
+    def make_summary(self, atoms1, atoms2):
+        return '\n'.join([summary_function(atoms1, atoms2)
+                          for summary_function in self.summary_functions])
+
+    def make_body(self, atoms1, atoms2):
+        fdata = np.array([get_atoms_data(atoms1, atoms2, field)
+                          for field in self.fields])
+        sorting_array = prec_round(
+            (np.array(self.scent)[:, np.newaxis] * fdata)[self.hier])
         data = fdata[:, np.lexsort(sorting_array)].transpose()
         rowformat = ''.join([self.fmt[field] for field in self.fields])
         body = [self.formatter(rowformat, *row) for row in data]
         return '\n'.join(body)
 
 
-from ase.io.formats import parse_filename
-from ase.io import string2index
-
 default_index = string2index(':')
+
 
 def slice_split(filename):
     if '@' in filename:

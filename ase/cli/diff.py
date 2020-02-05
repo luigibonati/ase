@@ -1,32 +1,32 @@
 import sys
-from argparse import RawTextHelpFormatter
 from ase.io import read
 
-template_help="""
-            Without argument, looks for ~/.ase/template.py.  Otherwise,
-                    expects the comma separated list of the fields to include
-                    in their left-to-right order.  Optionally, specify the
-                    lexicographical sort hierarchy (0 is outermost sort) and if the
-                    sort should be ascending or descending (1 or -1).  By default,
-                    sorting is descending, which makes sense for most things except
-                    index (and rank, but one can just sort by the thing which is
-                    ranked to get ascending ranks).
+template_help = """
+Without argument, looks for ~/.ase/template.py.  Otherwise,
+expects the comma separated list of the fields to include
+in their left-to-right order.  Optionally, specify the
+lexicographical sort hierarchy (0 is outermost sort) and if the
+sort should be ascending or descending (1 or -1).  By default,
+sorting is descending, which makes sense for most things except
+index (and rank, but one can just sort by the thing which is
+ranked to get ascending ranks).
 
-                    * example: ase diff start.cif stop.cif --template
-                    * i:0:1,el,dx,dy,dz,d,rd
+* example: ase diff start.cif stop.cif --template
+* i:0:1,el,dx,dy,dz,d,rd
 
-                    possible fields:
+possible fields:
 
-                    *    i: index
-                    *    dx,dy,dz,d: displacement/displacement components
-                    *    dfx,dfy,dfz,df: difference force/force components
-                    *    afx,afy,afz,af: average force/force components
-                    *    an: atomic number
-                    *    el: atomic element
-                    *    t: atom tag
-                    *    r<col>: the rank of that atom with respect to the column
+*    i: index
+*    dx,dy,dz,d: displacement/displacement components
+*    dfx,dfy,dfz,df: difference force/force components
+*    afx,afy,afz,af: average force/force components
+*    an: atomic number
+*    el: atomic element
+*    t: atom tag
+*    r<col>: the rank of that atom with respect to the column
 
-                    It is possible to change formatters in the template file."""
+It is possible to change formatters in the template file."""
+
 
 class CLICommand:
     """Print differences between atoms/calculations.
@@ -39,8 +39,9 @@ class CLICommand:
     images is given. Given the difference and the average as x and y,
     the two values can be calculated as x + y/2 and x - y/2.
 
-    It is possible to fully customize the order of the columns and the
-    sorting of the rows by editing the parameters in the template file column fields. 
+    See the --template-help for the formatting exposed in the CLI.  More
+    customization requires changing the input arguments to the Table
+    initialization and/or editing the templates file.
     """
 
     @staticmethod
@@ -56,13 +57,18 @@ class CLICommand:
                     Use [FILE]@[SLICE] to select images.
                     """,
             nargs='+')
-        add('-r', '--rank-order', metavar='FIELD', nargs='?', const='d', type=str,
+        add('-r',
+            '--rank-order',
+            metavar='FIELD',
+            nargs='?',
+            const='d',
+            type=str,
             help="""Order atoms by rank, see --template-help for possible
                     fields.
 
                     The default value, when specified, is d.  When not
                     specified, ordering is the same as that provided by the
-                    generator.  For hierarchical sorting, see template.""") 
+                    generator.  For hierarchical sorting, see template.""")
         add('-c', '--calculator-outputs', action="store_true",
             help="display calculator outputs of forces and energy")
         add('--max-lines', metavar='N', type=int,
@@ -72,12 +78,12 @@ class CLICommand:
         add('--template-help', help="""Prints the help for the template file.
                 Usage `ase diff - --template-help`""", action="store_true")
         add('-s', '--summary-functions', metavar='SUMFUNCS', nargs='?',
-                help="""Specify the summary functions. Possible values are `rmsd` and `dE`. Comma separate more than one summary function.""")
+            help="""Specify the summary functions. Possible values are `rmsd` and `dE`. Comma separate more than one summary function.""")
         add('--log-file', metavar='LOGFILE', help="print table to file")
 
     @staticmethod
     def run(args, parser):
-        if args.template_help == True:
+        if args.template_help:
             print(template_help)
             return
         # output
@@ -86,16 +92,14 @@ class CLICommand:
         else:
             out = open(args.log_file, 'w')
 
-
-        from ase.io.formats import parse_filename
-        from ase.io import string2index
         import ase.cli.template as actemplate
 
         Table = actemplate.Table
         slice_split = actemplate.slice_split
 
         if args.template is None:
-            field_specs = actemplate.field_specs_on_conditions(args.calculator_outputs,args.rank_order)
+            field_specs = actemplate.field_specs_on_conditions(
+                args.calculator_outputs, args.rank_order)
         else:
             field_specs = args.template.split(',')
             if not args.calculator_outputs:
@@ -105,17 +109,20 @@ class CLICommand:
                             'field requiring calculation outputs without --calculator-outputs')
 
         if args.summary_functions is None:
-            summary_functions = actemplate.summary_functions_on_conditions(args.calculator_outputs)
+            summary_functions = actemplate.summary_functions_on_conditions(
+                args.calculator_outputs)
         else:
-            summary_functions_dct = {'rmsd': actemplate.rmsd, 'dE': actemplate.energy_delta}
+            summary_functions_dct = {
+                'rmsd': actemplate.rmsd,
+                'dE': actemplate.energy_delta}
             summary_functions = args.summary_functions.split(',')
             if not args.calculator_outputs:
                 for sf in summary_functions:
-                    if 'dE' == sf:
+                    if sf == 'dE':
                         raise Exception(
                             'summary function requiring calculation outputs without --calculator-outputs')
-            summary_functions = [summary_functions_dct[i] for i in summary_functions]
-
+            summary_functions = [summary_functions_dct[i]
+                                 for i in summary_functions]
 
         have_two_files = len(args.file) == 2
         file1 = args.file[0]
@@ -134,7 +141,8 @@ class CLICommand:
 
             if not same_length and not one_l_one:
                 raise Exception(
-                    "Trajectory files are not the same length and both > 1\n{}!={}".format(natoms1,natoms2))
+                    "Trajectory files are not the same length and both > 1\n{}!={}".format(
+                        natoms1, natoms2))
             elif not same_length and one_l_one:
                 print(
                     """One file contains one image and the other multiple images,
@@ -158,14 +166,15 @@ class CLICommand:
             def header_fmt(c):
                 return 'images {}-{}'.format(c + 1, c)
 
-        has_calc = atoms1[0].calc is not None
-
-        natoms = natoms1 # = natoms2
+        natoms = natoms1  # = natoms2
 
         output = ''
-        table = Table(field_specs, max_lines = args.max_lines, summary_functions = summary_functions)
+        table = Table(
+            field_specs,
+            max_lines=args.max_lines,
+            summary_functions=summary_functions)
 
         for counter in range(natoms):
             table.title = header_fmt(counter)
-            output += table.make(atoms1[counter],atoms2[counter]) + '\n'
-        print(output, file = out)
+            output += table.make(atoms1[counter], atoms2[counter]) + '\n'
+        print(output, file=out)
