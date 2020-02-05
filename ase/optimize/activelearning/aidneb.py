@@ -36,17 +36,17 @@ class AIDNEB:
         optimized images. By default Gaussian Process Regression is used to
         build the model as implemented in [4].
 
-        [1] J. A. Garrido Torres, M. H. Hansen, P. C. Jennings, J. R. Boes
+        [1] J. A. Garrido Torres, E. Garijo del Rio, V. Streibel,
+        T. S. Choski, J. J. Mortensen, A. Urban, M. Bajdich,
+        F. Abild-Pedersen, K. W. Jacobsen, and T. Bligaard (submitted).
+        [2] J. A. Garrido Torres, M. H. Hansen, P. C. Jennings, J. R. Boes
         and T. Bligaard. Phys. Rev. Lett. 122, 156001.
         https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.122.156001
-        [2] O. Koistinen, F. B. Dagbjartsdottir, V. Asgeirsson, A. Vehtari
+        [3] O. Koistinen, F. B. Dagbjartsdottir, V. Asgeirsson, A. Vehtari
         and H. Jonsson. J. Chem. Phys. 147, 152720.
         https://doi.org/10.1063/1.4986787
-        [3] J. A. Garrido Torres, E. Garijo del Rio, A. H. Larsen,
-        V. Streibel, J. J. Mortensen, M. Bajdich, F. Abild-Pedersen,
-        K. W. Jacobsen, T. Bligaard. (submitted).
-        [4] E. Garijo del Rio, J. J. Mortensen and K. W. Jacobsen.
-        arXiv:1808.08588.
+
+
 
         NEB Parameters
         --------------
@@ -462,7 +462,7 @@ class AIDNEB:
             self.function_calls += 1
             self.force_calls += 1
             self.step += 1
-        print_cite_neb()
+        print_cite_aidneb()
 
 
 @parallel_function
@@ -496,7 +496,7 @@ def get_neb_predictions(images):
 
 
 @parallel_function
-def print_cite_neb():
+def print_cite_aidneb():
     msg = "\n" + "-" * 79 + "\n"
     msg += "You are using AIDNEB. Please cite: \n"
     msg += "[1] J. A. Garrido Torres, M. H. Hansen, P. C. Jennings, "

@@ -3,7 +3,7 @@ import time
 import copy
 from ase import io
 from ase.optimize.activelearning.gp.calculator import GPCalculator
-from ase.parallel import parprint
+from ase.parallel import parprint, parallel_function
 from ase.dimer import DimerControl, MinModeAtoms, MinModeTranslate
 from ase.optimize.activelearning.io import get_fmax, TrainingSet
 
@@ -25,13 +25,14 @@ class AIDTS:
         'vector_length'. The code automatically recognizes the atoms that
         are not involved in the displacement and their constraints. By
         default Gaussian Process Regression is used to build the model as
-        implemented in [2].
+        implemented in [1, 2].
 
         [1] J. A. Garrido Torres, E. Garijo del Rio, A. H. Larsen,
         V. Streibel, J. J. Mortensen, M. Bajdich, F. Abild-Pedersen,
         K. W. Jacobsen, T. Bligaard. (submitted).
         [2] E. Garijo del Rio, J. J. Mortensen and K. W. Jacobsen.
-        arXiv:1808.08588.
+        Phys. Rev. B 100, 104103 (2019).
+        https://journals.aps.org/prb/abstract/10.1103/PhysRevB.100.104103
 
         Parameters
         --------------
@@ -240,5 +241,20 @@ class AIDTS:
                 parprint("-" * 26 + "\n")
 
             if get_fmax(self.atoms) <= self.fmax:
-                parprint('Converged.')
+                parprint('AID-TS has converged.')
+                print_cite_aidts()
                 break
+
+@parallel_function
+def print_cite_aidts():
+    msg = "\n" + "-" * 79 + "\n"
+    msg += "You are using AIDTS. Please cite: \n"
+    msg += "[1] J. A. Garrido Torres, E. Garijo del Rio, V. Streibel "
+    msg += "T. S. Choski, J. J. Mortensen, A. Urban, M. Bajdich "
+    msg += "F. Abild-Pedersen, K. W. Jacobsen, and T. Bligaard. Submitted. \n"
+    msg += "[2] E. Garijo del Rio, J. J. Mortensen and K. W. Jacobsen. "
+    msg += "Phys. Rev. B 100, 104103."
+    msg += "https://doi.org/10.1103/PhysRevB.100.104103. \n"
+    msg += "-" * 79 + '\n'
+    parprint(msg)
+

@@ -2,7 +2,7 @@ import time
 import copy
 from scipy.spatial.distance import euclidean
 from ase.optimize.activelearning.gp.calculator import GPCalculator
-from ase.parallel import parprint
+from ase.parallel import parprint, parallel_function
 from ase.optimize import QuasiNewton
 from ase.optimize.activelearning.io import get_fmax, TrainingSet
 
@@ -24,7 +24,8 @@ class AIDMin:
         towards finding a local minima in the targeted PES.
 
         [1] E. Garijo del Rio, J. J. Mortensen and K. W. Jacobsen.
-        arXiv:1808.08588.
+        Phys. Rev. B 100, 104103 (2019).
+        https://journals.aps.org/prb/abstract/10.1103/PhysRevB.100.104103
         [2] J. A. Garrido Torres, E. Garijo del Rio, A. H. Larsen,
         V. Streibel, J. J. Mortensen, M. Bajdich, F. Abild-Pedersen,
         K. W. Jacobsen, T. Bligaard. (submitted).
@@ -210,3 +211,17 @@ class AIDMin:
             parprint('Energy:', self.atoms.get_potential_energy(self.fc))
             parprint("fmax:", get_fmax(self.atoms))
             parprint("-" * 26 + "\n")
+        print_cite_aidmin()
+
+@parallel_function
+def print_cite_aidmin():
+    msg = "\n" + "-" * 79 + "\n"
+    msg += "You are using AIDMin. Please cite: \n"
+    msg += "[1] E. Garijo del Rio, J. J. Mortensen and K. W. Jacobsen. "
+    msg += "Phys. Rev. B 100, 104103."
+    msg += "https://doi.org/10.1103/PhysRevB.100.104103. \n"
+    msg += "[2] J. A. Garrido Torres, E. Garijo del Rio, V. Streibel "
+    msg += "T. S. Choski, J. J. Mortensen, A. Urban, M. Bajdich "
+    msg += "F. Abild-Pedersen, K. W. Jacobsen, and T. Bligaard. Submitted. \n"
+    msg += "-" * 79 + '\n'
+    parprint(msg)

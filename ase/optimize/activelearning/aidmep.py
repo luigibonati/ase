@@ -21,22 +21,21 @@ class AIDMEP:
         calculation) using the previously collected observations [1-3].
         Potential energies and forces at a given position are
         supplied to the model calculator to build a modelled PES in an
-        active-learning fashion. This surrogate relies on the AIDMin and
-        AIDNEB algorithms and takes a set of images to perform minimizations
-        and dimer optimization in the predicted PES to obtain minima and
-        transition-states.
+        active-learning fashion. This surrogate relies on the AIDMin [2] and
+        AIDNEB [3] algorithms and takes a set of images to perform
+        minimizations and dimer optimization in the predicted PES to obtain
+        minima and transition-states.
 
-        [1] J. A. Garrido Torres, M. H. Hansen, P. C. Jennings, J. R. Boes
+        [1] J. A. Garrido Torres, E. Garijo del Rio, V. Streibel,
+        T. S. Choski, J. J. Mortensen, A. Urban, M. Bajdich,
+        F. Abild-Pedersen, K. W. Jacobsen, and T. Bligaard (submitted).
+        [2] E. Garijo del Rio, J. J. Mortensen and K. W. Jacobsen. Phys.
+        Rev. B 100, 104103.
+        https://journals.aps.org/prb/abstract/10.1103/PhysRevB.100.104103
+        [3] J. A. Garrido Torres, M. H. Hansen, P. C. Jennings, J. R. Boes
         and T. Bligaard. Phys. Rev. Lett. 122, 156001.
         https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.122.156001
-        [2] O. Koistinen, F. B. Dagbjartsdottir, V. Asgeirsson, A. Vehtari
-        and H. Jonsson. J. Chem. Phys. 147, 152720.
-        https://doi.org/10.1063/1.4986787
-        [3] J. A. Garrido Torres, E. Garijo del Rio, A. H. Larsen,
-        V. Streibel, J. J. Mortensen, M. Bajdich, F. Abild-Pedersen,
-        K. W. Jacobsen, T. Bligaard. (submitted).
-        [4] E. Garijo del Rio, J. J. Mortensen and K. W. Jacobsen.
-        arXiv:1808.08588.
+
 
         Parameters
         --------------
@@ -250,15 +249,15 @@ class AIDMEP:
 def print_cite_aidmep():
     msg = "\n" + "-" * 79 + "\n"
     msg += "You are using AIDMEP. Please cite: \n"
-    msg += "[1] J. A. Garrido Torres, M. H. Hansen, P. C. Jennings, "
-    msg += "J. R. Boes and T. Bligaard. Phys. Rev. Lett. 122, 156001. "
-    msg += "https://doi.org/10.1103/PhysRevLett.122.156001 \n"
-    msg += "[2] O. Koistinen, F. B. Dagbjartsdottir, V. Asgeirsson, A. Vehtari"
-    msg += " and H. Jonsson. J. Chem. Phys. 147, 152720. "
-    msg += "https://doi.org/10.1063/1.4986787 \n"
-    msg += "[3] E. Garijo del Rio, J. J. Mortensen and K. W. Jacobsen. "
+    msg += "[1] J. A. Garrido Torres, E. Garijo del Rio, V. Streibel "
+    msg += "T. S. Choski, J. J. Mortensen, A. Urban, M. Bajdich "
+    msg += "F. Abild-Pedersen, K. W. Jacobsen, and T. Bligaard. Submitted. \n"
+    msg += "[2] E. Garijo del Rio, J. J. Mortensen and K. W. Jacobsen. "
     msg += "Phys. Rev. B 100, 104103."
     msg += "https://doi.org/10.1103/PhysRevB.100.104103. \n"
+    msg += "[3] J. A. Garrido Torres, M. H. Hansen, P. C. Jennings, "
+    msg += "J. R. Boes and T. Bligaard. Phys. Rev. Lett. 122, 156001. "
+    msg += "https://doi.org/10.1103/PhysRevLett.122.156001 \n"
     msg += "-" * 79 + '\n'
     parprint(msg)
 
