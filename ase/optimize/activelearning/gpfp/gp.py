@@ -171,11 +171,13 @@ class GaussianProcess():
 
         assert len(params) == len(params_to_update)
 
+        params = np.power(10, params)
+
         txt1 = ""
         paramdict = {}
         for p, pstring in zip(params, params_to_update):
             paramdict[pstring] = p
-            txt1 += "%12.06f" % (p)
+            txt1 += "{:18.06f}".format(p)
 
         self.set_hyperparams(paramdict, self.noise)
         self.train(X, Y)
@@ -247,7 +249,9 @@ class GaussianProcess():
 
         params = []
         for string in params_to_update:
-            params.append(self.hyperparams[string])
+            params.append(np.log10(self.hyperparams[string]))
+
+        bounds = np.log10(bounds)
 
         result = minimize(self.neg_log_likelihood,
                           params,
@@ -268,7 +272,8 @@ class GaussianProcess():
 
         # collect results:
         optimalparams = {}
-        for p, pstring in zip(result.x, params_to_update):
+        powered_results = np.power(10, result.x)
+        for p, pstring in zip(powered_results, params_to_update):
             optimalparams[pstring] = p
 
         self.set_hyperparams(optimalparams, self.noise)
@@ -286,16 +291,16 @@ class GaussianProcess():
         X: observations(i.e. positions). numpy array with shape: nsamples x D
         Y: targets (i.e. energy and forces).
            numpy array with shape (nsamples, D+1)
-        option: Whether we just want the value or we want to update the 
+        option: Whether we just want the value or we want to update the
            hyperparameter. Possible values:
-               update: change the weight of the kernel accordingly. 
+               update: change the weight of the kernel accordingly.
                        Requires a trained Gaussian Process. It
-                       works with any kernel. 
+                       works with any kernel.
                        NOTE: the model is RETRAINED
 
                estimate: return the value of the weight that maximizes
                          the marginal likelihood with all other variables
-                         fixed. 
+                         fixed.
                          Requires a trained Gaussian Process with a kernel of
                          value 1.0
 
