@@ -11,7 +11,7 @@ class OganovFP():
     def __init__(self, limit=10.0, Rlimit=4.0,
                  delta=0.5, ascale=0.2,
                  N=200, Na=100, aweight=1.0,
-                 pbc=None):
+                 pbc=None, weight=1.0, scale=1.0):
 
         self.limit = limit
         self.delta = delta
@@ -28,8 +28,8 @@ class OganovFP():
         self.gamma = 2
 
         # modifiable parameters:
-        self.params = {'weight': 1.0,
-                       'scale': 1.0,
+        self.params = {'weight': weight,
+                       'scale': scale,
                        'delta': self.delta,
                        'ascale': self.ascale}
 
