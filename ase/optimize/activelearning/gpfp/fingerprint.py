@@ -979,7 +979,7 @@ class OganovFP():
                                        fp2.dD_drm(self, index2)) +
                               C1)
 
-        return result
+        return result 
 
     # ---------------------------------------------------------
     # ------------- Derivatives w.r.t. Delta ------------------
@@ -1274,11 +1274,89 @@ class OganovFP():
 
 class CartesianCoordFP():
 
-    def __init__(self):
+    def __init__(self, scale=1.0):
+        self.params = {'scale': scale}
+        self.set_params()
         return
 
     def set_atoms(self, atoms):
         self.atoms = atoms
+        self.set_params()
+
+    def set_params(self):
+        ''' Set parameters according to dictionary
+            self.params '''
+
+        self.l = self.params.get('scale')
+
+        return
+
 
     def get_fingerprint_vector(self):
         return self.atoms.get_positions(wrap=False).reshape(-1)
+
+    def update(self, params):
+        if params is not None:
+            for param in params:
+                self.params[param] = params[param]
+        self.set_params()
+        return
+
+    def calculate_gradient(self, index):
+        gradient = np.zeros([len(self.atoms), 3])
+        gradient[index, :] = 1.0
+        return gradient.flatten()
+
+    # ::: KERNEL STUFF ::: #
+    # -------------------- #
+
+    def distance(self, x1, x2):
+        return pdist([x1.get_fingerprint_vector(),
+                      x2.get_fingerprint_vector()])
+
+    def kernel(self, x1, x2):
+        return np.exp(-self.distance(x1, x2)**2 / 2 / self.l**2)
+
+    def kernel_gradient(self, fp2, index):
+        """
+        Calculates the derivative of the kernel between
+        self and fp2 with respect to atom with index 'index' in atom set
+        of self.
+        """
+        
+        result = self.dk_dD(fp2) * self.dD_drm(fp2, index)
+
+        return result
+
+    def dk_dD(self, fp2):
+        result = - (self.distance(self, fp2) / self.l**2
+                    * self.kernel(self, fp2))
+
+        return result
+
+    def dD_drm(self, fp2, index):
+
+        D = self.distance(self, fp2)
+        if D == 0.0:
+            return np.zeros(3)
+
+        diffvec = self.get_fingerprint_vector() - fp2.get_fingerprint_vector()
+        result = (diffvec / D)[index * 3 : (index + 1) * 3]
+        return result
+
+    def kernel_hessian(self, fp2, index1, index2):
+
+        prefactor = 1 / self.l**2 * self.kernel(self, fp2)
+
+        if index1 == index2:
+            C = np.eye(3)
+        else:
+            C = np.zeros([3,3])
+
+        diffvec = self.get_fingerprint_vector() - fp2.get_fingerprint_vector()
+        diffvec1 = diffvec[index1 * 3 : (index1 + 1) * 3]
+        diffvec2 = -diffvec[index2 * 3 : (index2 + 1) * 3]
+
+        result = prefactor * (np.outer(diffvec1, diffvec2) / self.l**2 + C)
+
+        return result
