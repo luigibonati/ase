@@ -1,6 +1,6 @@
 import numpy as np
 import numpy.linalg as la
-
+from ase.parallel import world
 
 class Kernel():
     def __init__(self):
@@ -61,8 +61,8 @@ class SE_kernel(Kernel):
 
 
 class SquaredExponential(SE_kernel):
-    '''Squared exponential kernel with derivatives. 
-    For the formulas, see Koistinen, Dagbjartssdittir, Asgeirsson, Vehtari, Jonsson, 
+    '''Squared exponential kernel with derivatives.
+    For the formulas, see Koistinen, Dagbjartssdittir, Asgeirsson, Vehtari, Jonsson,
     Nudged elastic band calculations accelerated with Gaussian process regression.
     section 3.
 
@@ -82,16 +82,16 @@ class SquaredExponential(SE_kernel):
     Atributes:
     ----------------
     D:          int. Dimensionality of the problem to optimize
-    weight: 	float. Multiplicative constant to the exponenetial kernel
+    weight:     float. Multiplicative constant to the exponenetial kernel
     l :         float. Lenght scale of the squared exponential kernel
 
     Relevant Methods:
     ----------------
-    set_params: 		Set the parameters of the Kernel, i.e. change the atributes
-    kernel_function: 	squared exponential covariance function
-    kernel: 		covariance matrix between two points in the manifold. 
+    set_params:                 Set the parameters of the Kernel, i.e. change the atributes
+    kernel_function:    squared exponential covariance function
+    kernel:             covariance matrix between two points in the manifold.
                             Note the inputs are arrays of shape (D,)
-    kernel_matrix: 	kernel matrix of a data set to itself, K(X,X)
+    kernel_matrix:      kernel matrix of a data set to itself, K(X,X)
                             Note the input is an array of shape (nsamples, D)
     kernel_vector       kernel matrix of a point x to a dataset X, K(x,X).
 
@@ -125,13 +125,13 @@ class SquaredExponential(SE_kernel):
         return prefactor
 
     def kernel(self, x1, x2):
-        '''Squared exponential kernel including derivatives. 
+        '''Squared exponential kernel including derivatives.
         This function returns a D+1 x D+1 matrix, where D is the dimension of the manifold'''
 
         K = np.identity(self.D + 1)
         K[0, 1:] = self.kernel_function_gradient(x1, x2)
         K[1:, 0] = -K[0, 1:]
-        #K[1:,1:] = self.kernel_function_hessian(x1, x2)
+        # K[1:,1:] = self.kernel_function_hessian(x1, x2)
 
         P = np.outer(x1 - x2, x1 - x2) / self.l**2
         K[1:, 1:] = (K[1:, 1:] - P) / self.l**2
@@ -177,18 +177,18 @@ class SquaredExponential(SE_kernel):
 
     # ----Derivatives of the kernel function respect to the scale ---
     def dK_dl_k(self, x1, x2):
-        '''Returns the derivative of the kernel function respect to  l 
+        '''Returns the derivative of the kernel function respect to  l
         '''
         return self.squared_distance(x1, x2) / self.l
 
     def dK_dl_j(self, x1, x2):
-        '''Returns the derivative of the gradient of the kernel 
+        '''Returns the derivative of the gradient of the kernel
         function respect to l'''
         prefactor = -2 * (1 - 0.5 * self.squared_distance(x1, x2)) / self.l
         return self.kernel_function_gradient(x1, x2) * prefactor
 
     def dK_dl_h(self, x1, x2):
-        '''Returns the derivative of the hessian of the kernel 
+        '''Returns the derivative of the hessian of the kernel
         function respect to l'''
         I = np.identity(self.D)
         P = np.outer(x1 - x2, x1 - x2) / self.l**2
@@ -231,18 +231,43 @@ class FPKernel(SE_kernel):
         x1: first data point
         x2: second data point'''
 
-        gradients = np.array([x1.kernel_gradient(x2, i)
-                              for i in range(len(x1.atoms))])
+        n = len(x1.atoms)
+        gradients = np.empty([n, 3])
+
+        # Distribute calculations for processors:
+        myatoms = []
+        for k in range(n):
+            if (k % world.size) == world.rank:
+                myatoms.append(k)
+
+        # Calculate:
+        for i in myatoms:
+            gradients[i] = x1.kernel_gradient(x2, i)
+
+        # Share data among processors:
+        for i in range(n):
+            world.broadcast(gradients[i], i % world.size)
+
         return gradients.reshape(-1)
 
     def kernel_function_hessian(self, x1, x2):
         d = 3
-        hessian = np.zeros([d * len(x1.atoms), d * len(x2.atoms)])
+        hessian = np.zeros([len(x1.atoms), len(x2.atoms), d, d])
+        n = len(x1.atoms)
 
         for i in range(len(x1.atoms)):
             for j in range(len(x2.atoms)):
-                hessian[i * d:(i + 1) * d, j * d:(j + 1) *
-                        d] = x1.kernel_hessian(x2, i, j)
+                if ((i * n + j) % world.size) == world.rank:
+                    hessian[i, j] = x1.kernel_hessian(x2, i, j)
+
+        # Share data among processors:
+        for i in range(n):
+            for j in range(len(x2.atoms)):
+                world.broadcast(hessian[i, j], (i * n + j) % world.size)
+
+        # Reshape to 2D matrix:
+        hessian = hessian.swapaxes(1, 2).reshape(d * len(x1.atoms),
+                                                 d * len(x2.atoms))
 
         return hessian
 
@@ -252,8 +277,9 @@ class FPKernel(SE_kernel):
             x.update(self.params)
 
     def kernel(self, x1, x2):
-        '''Squared exponential kernel including derivatives. 
-        This function returns a D+1 x D+1 matrix, where D is the dimension of the manifold'''
+        '''Squared exponential kernel including derivatives.
+        This function returns a D+1 x D+1 matrix, where D is
+        the dimension of the manifold'''
 
         K = np.identity(self.D + 1)
 
@@ -288,7 +314,8 @@ class FPKernel(SE_kernel):
             K[i * (D + 1):(i + 1) * (D + 1),
               i * (D + 1):(i + 1) * (D + 1)] = self.kernel(X[i], X[i])
 
-        assert (K == K.T).all()
+        world.broadcast(K, 0)
+
         return K
 
     def kernel_vector(self, x, X):
@@ -309,27 +336,21 @@ class FPKernel(SE_kernel):
         for p in params:
             self.params[p] = params[p]
 
-        # self.weight = params['weight']
-
     def dK_dweight(self, X):
         '''Return the derivative of K(X,X) respect to the weight '''
 
         return self.kernel_matrix(X) * 2 / self.weight
 
     # ----Derivatives of the kernel function respect to the scale ---
-
     def dK_dl_k(self, x1, x2):
-        '''Returns the derivative of the kernel function respect to  l 
+        '''Returns the derivative of the kernel function respect to  l
         '''
 
         return x1.dk_dl(x2)
 
     def dK_dl_j(self, x1, x2):
-        '''Returns the derivative of the gradient of the kernel 
+        '''Returns the derivative of the gradient of the kernel
         function respect to l'''
-
-        # prefactor = (self.distance(x1, x2)**2 / self.l**2 - 2) / self.l
-        # return self.kernel_function_gradient(x1, x2) * prefactor
 
         vector = np.ndarray([len(x1.atoms), 3])
         for atom in x1.atoms:
@@ -337,7 +358,7 @@ class FPKernel(SE_kernel):
         return vector.reshape(-1)
 
     def dK_dl_h(self, x1, x2):
-        '''Returns the derivative of the hessian of the kernel 
+        '''Returns the derivative of the hessian of the kernel
         function respect to l'''
 
         d = 3
@@ -345,14 +366,14 @@ class FPKernel(SE_kernel):
 
         for i in range(len(x1.atoms)):
             for j in range(len(x2.atoms)):
-                matrix[i * d:(i + 1) * d,
-                       j * d:(j + 1) * d] = x1.d_dl_dk_drm_drn(x2, i, j)
+                matrix[i*d:(i+1)*d,
+                       j*d:(j+1)*d] = x1.d_dl_dk_drm_drn(x2, i, j)
 
         return matrix
 
     def dK_dl_matrix(self, x1, x2):
 
-        matrix = np.ndarray([self.D + 1, self.D + 1])
+        matrix = np.ndarray([self.D+1, self.D+1])
 
         matrix[0, 0] = self.dK_dl_k(x1, x2)
         matrix[1:, 0] = self.dK_dl_j(x1, x2)
@@ -376,7 +397,7 @@ class FPKernel(SE_kernel):
         return x1.dk_dDelta(x2)
 
     def dK_dDelta_j(self, x1, x2):
-        '''Returns the derivative of the gradient of the kernel 
+        '''Returns the derivative of the gradient of the kernel
         function respect to Delta'''
 
         vector = np.zeros([len(x1.atoms), 3])
@@ -385,7 +406,7 @@ class FPKernel(SE_kernel):
         return vector.reshape(-1)
 
     def dK_dDelta_h(self, x1, x2):
-        '''Returns the derivative of the hessian of the kernel 
+        '''Returns the derivative of the hessian of the kernel
         function respect to Delta'''
 
         d = 3
@@ -393,14 +414,14 @@ class FPKernel(SE_kernel):
 
         for i in range(len(x1.atoms)):
             for j in range(len(x2.atoms)):
-                matrix[i * d:(i + 1) * d,
-                       j * d:(j + 1) * d] = x1.dk_drm_drn_dDelta(x2, i, j)
+                matrix[i*d:(i+1)*d,
+                       j*d:(j+1)*d] = x1.dk_drm_drn_dDelta(x2, i, j)
 
         return matrix
 
     def dK_dDelta_matrix(self, x1, x2):
 
-        matrix = np.ndarray([self.D + 1, self.D + 1])
+        matrix = np.ndarray([self.D+1, self.D+1])
 
         matrix[0, 0] = self.dK_dDelta_k(x1, x2)
         matrix[1:, 0] = self.dK_dDelta_j(x1, x2)
@@ -417,7 +438,8 @@ class FPKernel(SE_kernel):
                          for x1 in X])
 
     def gradient(self, X):
-        '''Computes the gradient of matrix K given the data respect to the hyperparameters
+        '''Computes the gradient of matrix K given the data
+        w.r.t the hyperparameters
         Note matrix K here is self.K(X,X)
 
         returns a 3-entry list of n(D+1) x n(D+1) matrices '''
