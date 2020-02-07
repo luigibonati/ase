@@ -103,10 +103,9 @@ class GPCalculator(Calculator, GaussianProcess):
 
     def __init__(self, train_images=None, prior=None,
                  update_prior_strategy=None,
-                 kernel_params={'weight': 1., 'scale': 0.4},
+                 params={'weight': 1., 'scale': 0.4},
                  fit_weight=None, noise=0.005,
                  params_to_update=None, fingerprint=None,
-                 fingerprint_params=None,
                  batch_size=5, bounds=None, kernel=None,
                  max_train_data=None, force_consistent=None,
                  max_train_data_strategy='nearest_observations',
@@ -126,7 +125,7 @@ class GPCalculator(Calculator, GaussianProcess):
         GaussianProcess.__init__(self, prior, kernel)
 
         # Set initial hyperparameters.
-        self.set_hyperparams(kernel_params, noise)
+        self.set_hyperparams(params, noise)
 
         # Initialize training set
         self.train_x = []
@@ -148,7 +147,7 @@ class GPCalculator(Calculator, GaussianProcess):
             self.fp = CartesianCoordFP
         else:
             self.fp = fingerprint
-        self.fp_hp = fingerprint_params
+        self.fp_hp = params
 
         # Initialize prior and trainset attributes
         self.strategy = update_prior_strategy

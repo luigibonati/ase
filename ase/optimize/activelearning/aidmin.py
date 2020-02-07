@@ -131,7 +131,7 @@ class AIDMin(Optimizer):
         if model_calculator is None:
             self.model_calculator = GPCalculator(
                 train_images=[],
-                kernel_params={'scale': 0.3, 'weight': 2.},
+                params={'scale': 0.3, 'weight': 2.},
                 noise=0.003, update_prior_strategy='fit',
                 max_train_data_strategy='nearest_observations',
                 max_train_data=5, calculate_uncertainty=False)
@@ -491,8 +491,8 @@ class GPMin(AIDMin):
 
         # 3. Set GP calculator
         gp_calc = GPCalculator(train_images=None, noise=noise,
-                               kernel_params={'weight': weight,
-                                              'scale': scale},
+                               params={'weight': weight,
+                                       'scale': scale},
                                update_prior_strategy=update_prior_strategy,
                                calculate_uncertainty=False,
                                prior=prior, kernel=kernel,

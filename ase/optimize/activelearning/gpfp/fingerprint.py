@@ -8,11 +8,8 @@ from warnings import catch_warnings, simplefilter
 
 class RadialAngularFP():
 
-    def __init__(self, limit=10.0, Rlimit=4.0,
-                 delta=0.2, ascale=0.2,
-                 N=200, Na=100, aweight=1.0,
-                 pbc=None, calc_gradients=True,
-                 weight=1.0, scale=1.0):
+    def __init__(self, pbc=None, calc_gradients=True,
+                 **kwargs):
         ''' Parameters:
 
         limit: float
@@ -64,30 +61,31 @@ class RadialAngularFP():
 
         '''
 
-        self.limit = limit
-        self.delta = delta
-        self.N = N
+        default_parameters = {'weight': 1.0,
+                              'scale': 1.0,
+                              'limit': 20.0,
+                              'Rlimit': 4.0,
+                              'delta': 0.2,
+                              'ascale': 0.2,
+                              'N': 200,
+                              'Na': 100,
+                              'aweight': 1.0}
+
+        self.params = default_parameters.copy()
+        self.params.update(kwargs)
+
         self.pbc = pbc
-        self.nanglebins = Na
-        self.Rtheta = Rlimit  # angstroms
+        self.calc_gradients = calc_gradients
+        self.weight_by_elements = True
+
+        self.set_params()
 
         assert self.limit >= self.Rtheta
 
-        self.aweight = aweight
-        self.ascale = ascale  # rads
-
+        self.pbc = pbc
         self.gamma = 2
-
-        # modifiable parameters:
-        self.params = {'weight': weight,
-                       'scale': scale,
-                       'delta': self.delta,
-                       'ascale': self.ascale,
-                       'aweight': self.aweight}
-
         self.calc_gradients = calc_gradients
         self.weight_by_elements = True
-        self.set_params()
 
     def set_params(self):
         ''' Set parameters according to dictionary
@@ -95,8 +93,13 @@ class RadialAngularFP():
 
         self.weight = self.params.get('weight')
         self.l = self.params.get('scale')
+        self.limit = self.params.get('limit')
+        self.Rtheta = self.params.get('Rlimit')
         self.delta = self.params.get('delta')
         self.ascale = self.params.get('ascale')
+        self.aweight = self.params.get('aweight')
+        self.N = self.params.get('N')
+        self.nanglebins = self.params.get('Na')
 
         return
 
@@ -128,9 +131,7 @@ class RadialAngularFP():
         ''' Update method when parameters are changed '''
 
         if params is not None:
-            for param in params:
-
-                self.params[param] = params[param]
+            self.params.update(params)
 
         self.set_params()
 
@@ -680,31 +681,29 @@ class RadialAngularFP():
 
 class OganovFP():
 
-    def __init__(self, limit=10.0, Rlimit=4.0,
-                 delta=0.5, N=200,
-                 pbc=None, calc_gradients=True,
-                 weight=1.0, scale=1.0):
+    def __init__(self, pbc=None, calc_gradients=True,
+                 **kwargs):
 
-        self.limit = limit
-        self.delta = delta
-        self.N = N
+        default_parameters = {'weight': 1.0,
+                              'scale': 1.0,
+                              'limit': 20.0,
+                              'delta': 0.2,
+                              'N': 200}
+
+        self.params = default_parameters.copy()
+        self.params.update(kwargs)
+
         self.pbc = pbc
-
-        self.gamma = 2
-
-        # modifiable parameters:
-        self.params = {'weight': weight,
-                       'scale': scale,
-                       'delta': self.delta}
-
         self.calc_gradients = calc_gradients
         self.weight_by_elements = True
+
         self.set_params()
 
     def set_params(self):
-        self.weight = self.params['weight']
-        self.l = self.params['scale']
-        self.delta = self.params['delta']
+        self.l = self.params.get('scale')
+        self.delta = self.params.get('delta')
+        self.limit = self.params.get('limit')
+        self.N = self.params.get('N')
 
         return
 
@@ -733,9 +732,7 @@ class OganovFP():
         ''' Update method when parameters are changed '''
 
         if params is not None:
-            for param in params:
-
-                self.params[param] = params[param]
+            self.params.update(params)
 
         self.set_params()
 
@@ -1274,8 +1271,14 @@ class OganovFP():
 
 class CartesianCoordFP():
 
-    def __init__(self, scale=1.0):
-        self.params = {'scale': scale}
+    def __init__(self, **kwargs):
+
+        default_parameters = {'weight': 1.0,
+                              'scale': 1.0}
+
+        self.params = default_parameters.copy()
+        self.params.update(kwargs)
+
         self.set_params()
         return
 
