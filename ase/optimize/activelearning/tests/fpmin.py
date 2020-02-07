@@ -10,7 +10,7 @@ import random
 atoms = bulk('Ag', 'fcc')
 atoms *= (3,2,1)
 
-atoms.rattle(0.2, seed=random.randint(1,100))
+atoms.rattle(0.2, seed=4)#random.randint(1,100))
 N = len(atoms)
 indexes = [0]
 
@@ -18,9 +18,8 @@ for i in indexes:
     atoms[i].symbol='Au'
 
 
-kernel_params = {'scale':1000, 'weight':1.}
+params = {'scale':1000, 'weight':1., 'delta': 0.2, 'N': 200, 'limit': 20}
 fingerprint = OganovFP
-fingerprint_params = {'delta': 0.2, 'N': 200, 'limit': 20}
 calculate_uncertainty = False
 mask_constraints = False
 
@@ -31,8 +30,7 @@ calculator = GPCalculator(kernel=kernel,
                           noise=0.001,
                           update_prior_strategy=update_prior_strategy,
                           fingerprint=fingerprint,
-                          kernel_params=kernel_params,
-                          fingerprint_params=fingerprint_params,
+                          params=params,
                           calculate_uncertainty=calculate_uncertainty,
                           mask_constraints=mask_constraints)
 
