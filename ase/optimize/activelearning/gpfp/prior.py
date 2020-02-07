@@ -3,6 +3,10 @@ from scipy.linalg import cho_solve
 import warnings
 from ase.calculators.calculator import PropertyNotImplementedError
 
+from ase.calculators.calculator import Calculator, all_changes
+from ase.neighborlist import NeighborList
+from ase.data import covalent_radii
+
 
 class Prior():
     '''Base class for all priors for the bayesian optimizer.
@@ -109,8 +113,7 @@ class ConstantPrior(Prior):
         m = np.dot(w, np.array(Y).flatten()) / np.dot(w, u)
         self.set_constant(m)
 
-
-class CalculatorPrior(Prior):
+class CalculatorPrior(ConstantPrior):
 
     '''CalculatorPrior object, allows the user to
     use another calculator as prior function instead of the
@@ -120,8 +123,6 @@ class CalculatorPrior(Prior):
 
     atoms: the Atoms object
     calculator: one of ASE's calculators
-
-    TODO: Add update method
     '''
 
     def __init__(self, calculator, **kwargs):
@@ -138,12 +139,15 @@ class CalculatorPrior(Prior):
         else:
             output = np.zeros(1)
 
-        x.atoms.set_calculator(self.calculator)
-        output[0] = x.atoms.get_potential_energy() + self.constant
+        self.atoms = x.atoms.copy()
+
+
+        self.atoms.set_calculator(self.calculator)
+        output[0] = self.atoms.get_potential_energy() + self.constant
 
         if self.use_forces:
             try:
-                output[1:] = -x.atoms.get_forces().reshape(-1)
+                output[1:] = -self.atoms.get_forces().reshape(-1)
             except PropertyNotImplementedError:
                 # warning = 'Prior Calculator does not support forces. '
                 # warning += 'Setting all prior forces to zero.'
@@ -151,3 +155,67 @@ class CalculatorPrior(Prior):
                 pass
 
         return output
+
+
+class RepulsivePotential(Calculator):
+    ''' Repulsive potential of the form
+    sum_ij (0.7 * (Ri + Rj) / rij)**12
+    
+    where Ri and Rj are the covalent radii of atoms
+    '''
+
+    implemented_properties = ['energy', 'forces']
+    default_parameters = {'prefactor': 0.7,
+                          'rc': 1.0}
+    nolabel = True
+
+    def __init__(self, **kwargs):
+        Calculator.__init__(self, **kwargs)
+
+    def calculate(self, atoms=None,
+                  properties=['energy', 'forces'],
+                  system_changes=all_changes):
+        Calculator.calculate(self, atoms, properties, system_changes)
+
+        self.atoms = atoms.copy()
+        natoms = len(self.atoms)
+
+        prefactor = self.parameters.prefactor
+        rc = self.parameters.rc
+
+        if 'numbers' in system_changes:
+            self.nl = NeighborList([rc / 2] * natoms, self_interaction=False)
+        self.nl.update(self.atoms)
+
+        positions = self.atoms.positions
+        cell = self.atoms.cell
+
+        energy = 0.0
+        forces = np.zeros((natoms, 3))
+
+        for a1 in range(natoms):
+            neighbors, offsets = self.nl.get_neighbors(a1)
+            cells = np.dot(offsets, cell)
+            d = positions[neighbors] + cells - positions[a1]
+            r2 = (d**2).sum(1)
+
+            # covalent radius of a1:
+            cr1 = covalent_radii[self.atoms[a1].number]
+
+            # covalent radii of neighbors:
+            crs = np.array([covalent_radii[self.atoms[i].number]
+                            for i in neighbors])
+
+            c2 = (crs + cr1)**2 / r2
+            c2[r2 > rc**2] = 0.0
+            c12 = prefactor**12 * c2**6
+            energy += c12.sum()
+
+            # Forces:
+            f = (12 * c12 / r2)[:, np.newaxis] * d
+            forces[a1] -= f.sum(axis=0)
+            for a2, f2 in zip(neighbors, f):
+                forces[a2] += f2
+
+        self.results['energy'] = energy
+        self.results['forces'] = forces
