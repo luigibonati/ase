@@ -1,4 +1,4 @@
-from ase.optimize.activelearning.gpfp.fingerprint import OganovFP
+from ase.optimize.activelearning.gpfp.fingerprint import RadialAngularFP
 from ase.optimize.activelearning.gpfp.calculator import GPCalculator
 from ase.optimize.activelearning.gpfp.kernel import FPKernel
 import numpy as np
@@ -36,17 +36,16 @@ for i in range(5):
 print('EMT energy: {}eV'.format(slab.get_potential_energy()))
 
 # Initialize fingerprint
-fp = OganovFP
-fp_hp = dict(limit=20.0, delta=0.2, N=200)
+fp = RadialAngularFP
+fp_hp = dict(limit=20.0, Rlimit=4.0, delta=0.2, N=200)
 kernel = FPKernel()
-kernel_params = {'weight': 1.0, 'scale': 10000, 'delta': 0.2}
+kernel_params = {'weight': 1.0, 'scale': 50, 'delta': 0.2}
 
 calc = GPCalculator(train_images=train_images, noise=1e-3,
                     kernel=kernel, kernel_params=kernel_params,
                     update_prior_strategy='maximum',
                     params_to_update={'weight': (0.1, np.inf),
-                                      'scale': (0.01, np.inf),
-                                      'delta': (0.1, 0.4)},
+                                      'scale': (0.01, np.inf)},
                     batch_size=1,
                     print_format = 'ASE',
                     fingerprint=fp,
