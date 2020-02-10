@@ -9,7 +9,7 @@ from scipy.spatial.distance import sqeuclidean
 from ase.optimize import MDMin, FIRE
 from ase.optimize.activelearning.acquisition import acquisition
 from ase.parallel import parprint, parallel_function
-from ase.optimize.activelearning.io import get_fmax, TrainingSet
+from ase.optimize.activelearning.trainingset import get_fmax, TrainingSet
 
 class AIDNEB:
 
