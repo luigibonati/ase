@@ -3,7 +3,7 @@ import copy
 import time
 from ase import io
 from ase.atoms import Atoms
-from ase.optimize.activelearning.gp.calculator import GPCalculator
+from ase.optimize.activelearning.gpfp.calculator import GPCalculator
 from ase.neb import NEB
 from scipy.spatial.distance import sqeuclidean
 from ase.optimize import MDMin, FIRE
