@@ -738,6 +738,7 @@ class RadialAngularFP(OganovFP):
                               'aweight': 1.0}
 
         self.params = default_parameters.copy()
+        self.params.update(kwargs)
         OganovFP.__init__(self, pbc=pbc, calc_gradients=calc_gradients,
                           weight_by_elements=weight_by_elements,
                           **self.params)
