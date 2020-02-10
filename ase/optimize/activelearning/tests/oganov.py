@@ -38,13 +38,12 @@ print('EMT energy: {}eV'.format(slab.get_potential_energy()))
 # Initialize fingerprint
 fp = OganovFP
 kernel = FPKernel()
-params = {'weight': 1.0, 'scale': 20, 'delta': 0.2, 'limit': 20.0, 'N': 200}
+params = {'weight': 1.0, 'scale': 1.0, 'delta': 0.2}
 
 calc = GPCalculator(train_images=train_images, noise=1e-3,
                     kernel=kernel, params=params,
                     update_prior_strategy='maximum',
-                    params_to_update={'weight': (0.1, 20),
-                                      'scale': (0.01, np.inf),
+                    params_to_update={'scale': (0.01, np.inf),
                                       'delta': (0.1, 0.5)},
                     batch_size=1,
                     print_format = 'ASE',
