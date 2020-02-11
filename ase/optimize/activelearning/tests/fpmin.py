@@ -5,12 +5,11 @@ from ase.optimize.activelearning.gpfp.kernel import FPKernel
 from ase.optimize.activelearning.gpfp.calculator import GPCalculator
 
 from ase.build import bulk
-import random
 
 atoms = bulk('Ag', 'fcc')
 atoms *= (3, 2, 1)
 
-atoms.rattle(0.2, seed=4)  # random.randint(1,100))
+atoms.rattle(0.2, seed=4)
 N = len(atoms)
 indexes = [0]
 
