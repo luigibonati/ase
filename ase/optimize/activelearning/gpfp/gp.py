@@ -179,13 +179,26 @@ class GaussianProcess():
             paramdict[pstring] = p
             txt1 += "{:18.06f}".format(p)
 
+        # Train the model with weight=1 and rescale
+        # it later to its optimal value:
+        paramdict.update({'weight': 1.0})
         self.set_hyperparams(paramdict, self.noise)
         self.train(X, Y)
 
+        y = Y.flatten()
+
+        # Optimal kernel prefactor:
+        opt_weight = np.sqrt(np.dot(y - self.m, self.a) / len(y))
+        self.set_hyperparams({'weight': opt_weight}, self.noise)
+        
+        # Rescale accordingly:
+        self.a /= opt_weight**2
+        self.L *= opt_weight
+
         # Compute log likelihood
-        logP = (-0.5 * np.dot(Y.flatten() - self.m, self.a)
+        logP = (-0.5 * len(y)
                 - np.sum(np.log(np.diag(self.L)))
-                - X.shape[0] / 2 * np.log(2 * np.pi))
+                - len(X) / 2 * np.log(2 * np.pi))
 
         # # Gradient of the loglikelihood
         # grad = self.kernel.gradient(X)
@@ -203,7 +216,7 @@ class GaussianProcess():
         # # print("Parameters:", txt1, "       -logP: %12.02f" % -logP)
         # return -logP , -DlogP
 
-        print("Parameters:", txt1, "       -logP: %12.02f" % -logP)
+        print("Parameters: {:s}       -logP: {:12.02f}".format(txt1, -logP))
         return -logP
 
     def fit_hyperparameters(self, X, Y,
