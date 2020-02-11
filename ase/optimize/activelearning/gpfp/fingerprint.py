@@ -7,7 +7,7 @@ from warnings import catch_warnings, simplefilter
 
 
 class Fingerprint():
-    ''' Master class for structural fingerprints. 
+    ''' Master class for structural fingerprints.
     A fingerprint class should deprecate each of the methods
     defined here.'''
 
@@ -21,7 +21,7 @@ class Fingerprint():
         return
 
     def set_atoms(self, atoms):
-        ''' 
+        '''
         atoms: ase.Atoms object
         '''
         return
@@ -385,8 +385,8 @@ class OganovFP(Fingerprint):
 
     def kernel_hessian(self, fp2, index1, index2):
         ''' Squared exponential kernel hessian w.r.t. atomic
-        coordinates, ie.   
-                            d^2 k(x, x') 
+        coordinates, ie.
+                            d^2 k(x, x')
                            -------------
                              dx_i dx_j
         '''
@@ -1077,8 +1077,8 @@ class RadialAngularFP(OganovFP):
 
     def kernel_hessian(self, fp2, index1, index2):
         ''' Squared exponential kernel hessian w.r.t. atomic
-        coordinates, ie.   
-                            d^2 k(x, x') 
+        coordinates, ie.
+                            d^2 k(x, x')
                            -------------
                              dx_i dx_j
         '''

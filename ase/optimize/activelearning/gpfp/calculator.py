@@ -35,7 +35,7 @@ class GPCalculator(Calculator, GaussianProcess):
 
     update_prior_strategy: None, string
         Strategy to update the constant from the ConstantPrior when more
-        data is collected. 
+        data is collected.
 
         options:
             None: Do not update the constant
