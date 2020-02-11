@@ -12,11 +12,13 @@ from ase.optimize.test.test import Wrapper
 from ase.optimize import GPMin as OldGPMin
 from ase.optimize.activelearning.aidmin import GPMin
 
+
 class Tracker:
     """
     Observer to keep track of details of the
     optimization on the fly.
     """
+
     def __init__(self, wrapper):
         self.wrapper = wrapper
         self.f = []
@@ -28,7 +30,7 @@ class Tracker:
         e = self.wrapper.get_potential_energy()
         self.f.append(np.sqrt(fmax))
         self.e.append(e)
-        
+
 
 r = rOH
 a = angleHOH * pi / 180
@@ -44,7 +46,7 @@ calc = TIP3P()
 optimizers = [OldGPMin, GPMin]
 
 results = {}
-for i,optimizer in enumerate(optimizers):
+for i, optimizer in enumerate(optimizers):
     dimer = Atoms('H2OH2O',
                   [(r * cos(a), 0, r * sin(a)),
                    (r, 0, 0),
@@ -79,8 +81,8 @@ for i,optimizer in enumerate(optimizers):
     opt.attach(tracker)
     opt.run(0.01)
 
-    #Check the result is the same
-    results[i] = {'e':np.array(tracker.e), 'f':np.array(tracker.f)}
+    # Check the result is the same
+    results[i] = {'e': np.array(tracker.e), 'f': np.array(tracker.f)}
 
 
 assert np.allclose(results[0]['e'], results[1]['e'])

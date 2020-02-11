@@ -47,7 +47,7 @@ calc = GPCalculator(train_images=train_images, noise=1e-3,
                                       'scale': (0.01, np.inf),
                                       'delta': (0.1, 0.5)},
                     batch_size=1,
-                    print_format = 'ASE',
+                    print_format='ASE',
                     fingerprint=fp,
                     mask_constraints=False)
 

@@ -53,10 +53,9 @@ class Fingerprint():
         '''
         return
 
-    
 
 class OganovFP(Fingerprint):
-    
+
     def __init__(self, pbc=None, calc_gradients=True,
                  weight_by_elements=True, **kwargs):
         ''' Parameters:
@@ -141,11 +140,11 @@ class OganovFP(Fingerprint):
         self.elements = np.sort(list(set([atom.symbol
                                           for atom in self.atoms])))
         self.elcounts = [len([atom for atom in self.atoms if
-                             atom.symbol == self.elements[i]])
+                              atom.symbol == self.elements[i]])
                          for i in range(len(self.elements))]
 
         self.n = len(self.elements)
-        
+
     def update(self, params=None):
         ''' Update method when parameters are changed '''
 
@@ -308,7 +307,7 @@ class OganovFP(Fingerprint):
             gradient[B] = (1 + int(A == B)) * jsum
 
         if self.weight_by_elements:
-            factortable = (self.elcounts[A] * 
+            factortable = (self.elcounts[A] *
                            np.array(self.elcounts)).astype(float)**-1
             gradient = [gradient[i] * factortable[i]
                         for i in range(len(gradient))]
@@ -415,7 +414,7 @@ class OganovFP(Fingerprint):
                                        fp2.dD_drm(self, index2)) +
                               C1)
 
-        return result 
+        return result
 
     # ---------------------------------------------------------
     # ------------- Derivatives w.r.t. Delta ------------------
@@ -707,7 +706,7 @@ class OganovFP(Fingerprint):
     def dk_dweight(self, fp2):
         return self.kernel(self, fp2) * 2
 
-    
+
 class RadialAngularFP(OganovFP):
 
     def __init__(self, pbc=None, calc_gradients=True,
@@ -855,7 +854,7 @@ class RadialAngularFP(OganovFP):
         """
 
         return np.where(r <= self.Rtheta,
-                        (1 + self.gamma * (r / self.Rtheta)**(self.gamma+1) -
+                        (1 + self.gamma * (r / self.Rtheta)**(self.gamma + 1) -
                          (self.gamma + 1) * (r / self.Rtheta)**self.gamma),
                         0.0)
 
@@ -897,7 +896,7 @@ class RadialAngularFP(OganovFP):
     def get_fingerprint_vector(self):
         ''' Return the full fingerprint vector with Oganov part and
         angular distribution. '''
-        
+
         return np.concatenate((self.G.flatten(), self.H.flatten()), axis=None)
 
     # ::: GRADIENTS ::: #
@@ -1061,7 +1060,7 @@ class RadialAngularFP(OganovFP):
 
         # Radial contribution:
         result = OganovFP.dD_drm(self, fp2, index)
-        
+
         # Angle contribution:
 
         gs = self.anglegradients[index]
@@ -1120,7 +1119,7 @@ class RadialAngularFP(OganovFP):
                               C1 + C2)
 
         return result
-    
+
 
 class CartesianCoordFP(Fingerprint):
 
@@ -1148,7 +1147,6 @@ class CartesianCoordFP(Fingerprint):
         self.l = self.params.get('scale')
 
         return
-
 
     def get_fingerprint_vector(self):
         return self.atoms.get_positions(wrap=False).reshape(-1)
@@ -1181,7 +1179,7 @@ class CartesianCoordFP(Fingerprint):
         self and fp2 with respect to atom with index 'index' in atom set
         of self.
         """
-        
+
         result = self.dk_dD(fp2) * self.dD_drm(fp2, index)
 
         return result
@@ -1199,7 +1197,7 @@ class CartesianCoordFP(Fingerprint):
             return np.zeros(3)
 
         diffvec = self.get_fingerprint_vector() - fp2.get_fingerprint_vector()
-        result = (diffvec / D)[index * 3 : (index + 1) * 3]
+        result = (diffvec / D)[index * 3: (index + 1) * 3]
         return result
 
     def kernel_hessian(self, fp2, index1, index2):
@@ -1209,11 +1207,11 @@ class CartesianCoordFP(Fingerprint):
         if index1 == index2:
             C = np.eye(3)
         else:
-            C = np.zeros([3,3])
+            C = np.zeros([3, 3])
 
         diffvec = self.get_fingerprint_vector() - fp2.get_fingerprint_vector()
-        diffvec1 = diffvec[index1 * 3 : (index1 + 1) * 3]
-        diffvec2 = -diffvec[index2 * 3 : (index2 + 1) * 3]
+        diffvec1 = diffvec[index1 * 3: (index1 + 1) * 3]
+        diffvec2 = -diffvec[index2 * 3: (index2 + 1) * 3]
 
         result = prefactor * (np.outer(diffvec1, diffvec2) / self.l**2 + C)
 

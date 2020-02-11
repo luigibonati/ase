@@ -113,6 +113,7 @@ class ConstantPrior(Prior):
         m = np.dot(w, np.array(Y).flatten()) / np.dot(w, u)
         self.set_constant(m)
 
+
 class CalculatorPrior(ConstantPrior):
 
     '''CalculatorPrior object, allows the user to
@@ -141,7 +142,6 @@ class CalculatorPrior(ConstantPrior):
 
         self.atoms = x.atoms.copy()
 
-
         self.atoms.set_calculator(self.calculator)
         output[0] = self.atoms.get_potential_energy() + self.constant
 
@@ -160,7 +160,7 @@ class CalculatorPrior(ConstantPrior):
 class RepulsivePotential(Calculator):
     ''' Repulsive potential of the form
     sum_ij (0.7 * (Ri + Rj) / rij)**12
-    
+
     where Ri and Rj are the covalent radii of atoms
     '''
 

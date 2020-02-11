@@ -8,17 +8,17 @@ from ase.build import bulk
 import random
 
 atoms = bulk('Ag', 'fcc')
-atoms *= (3,2,1)
+atoms *= (3, 2, 1)
 
-atoms.rattle(0.2, seed=4)#random.randint(1,100))
+atoms.rattle(0.2, seed=4)  # random.randint(1,100))
 N = len(atoms)
 indexes = [0]
 
 for i in indexes:
-    atoms[i].symbol='Au'
+    atoms[i].symbol = 'Au'
 
 
-params = {'scale':1000, 'weight':1., 'delta': 0.2, 'N': 200, 'limit': 20}
+params = {'scale': 1000, 'weight': 1., 'delta': 0.2, 'N': 200, 'limit': 20}
 fingerprint = OganovFP
 calculate_uncertainty = False
 mask_constraints = False
@@ -36,7 +36,7 @@ calculator = GPCalculator(kernel=kernel,
 
 atoms.set_calculator(EMT())
 
-opt = AIDMin(atoms, model_calculator=calculator, optimizer=SP, 
+opt = AIDMin(atoms, model_calculator=calculator, optimizer=SP,
              use_previous_observations=False, surrogate_starting_point='min',
              trainingset=[], print_format='ASE', fit_to='constraints',
              optimizer_kwargs={'fmax': 'scipy default',

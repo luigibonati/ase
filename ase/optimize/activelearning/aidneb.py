@@ -187,7 +187,7 @@ class AIDNEB:
                 prior=None,
                 fit_weight='update',
                 update_prior_strategy='fit',
-                params={'weight':1.0, 'scale': 0.4}, 
+                params={'weight': 1.0, 'scale': 0.4},
                 noise=0.005,
                 batch_size=5,
                 bounds=None, kernel=None,

@@ -2,6 +2,7 @@ import numpy as np
 import numpy.linalg as la
 from ase.parallel import world
 
+
 class Kernel():
     def __init__(self):
         pass
@@ -366,14 +367,14 @@ class FPKernel(SE_kernel):
 
         for i in range(len(x1.atoms)):
             for j in range(len(x2.atoms)):
-                matrix[i*d:(i+1)*d,
-                       j*d:(j+1)*d] = x1.d_dl_dk_drm_drn(x2, i, j)
+                matrix[i * d:(i + 1) * d,
+                       j * d:(j + 1) * d] = x1.d_dl_dk_drm_drn(x2, i, j)
 
         return matrix
 
     def dK_dl_matrix(self, x1, x2):
 
-        matrix = np.ndarray([self.D+1, self.D+1])
+        matrix = np.ndarray([self.D + 1, self.D + 1])
 
         matrix[0, 0] = self.dK_dl_k(x1, x2)
         matrix[1:, 0] = self.dK_dl_j(x1, x2)
@@ -414,14 +415,14 @@ class FPKernel(SE_kernel):
 
         for i in range(len(x1.atoms)):
             for j in range(len(x2.atoms)):
-                matrix[i*d:(i+1)*d,
-                       j*d:(j+1)*d] = x1.dk_drm_drn_dDelta(x2, i, j)
+                matrix[i * d:(i + 1) * d,
+                       j * d:(j + 1) * d] = x1.dk_drm_drn_dDelta(x2, i, j)
 
         return matrix
 
     def dK_dDelta_matrix(self, x1, x2):
 
-        matrix = np.ndarray([self.D+1, self.D+1])
+        matrix = np.ndarray([self.D + 1, self.D + 1])
 
         matrix[0, 0] = self.dK_dDelta_k(x1, x2)
         matrix[1:, 0] = self.dK_dDelta_j(x1, x2)

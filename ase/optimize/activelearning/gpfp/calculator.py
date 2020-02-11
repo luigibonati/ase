@@ -325,7 +325,8 @@ class GPCalculator(Calculator, GaussianProcess):
 
                 if self.fp_hp:
                     p2update = set(self.params_to_update.keys())
-                    keys_to_update = p2update.intersection(set(self.fp_hp.keys()))
+                    keys_to_update = p2update.intersection(
+                        set(self.fp_hp.keys()))
                     for key in keys_to_update:
                         self.fp_hp[key] = self.hyperparams[key]
 

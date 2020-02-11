@@ -47,9 +47,9 @@ calc = GPCalculator(train_images=train_images, noise=1e-3,
                     params_to_update={'weight': (0.1, np.inf),
                                       'scale': (0.01, np.inf)},
                     batch_size=1,
-                    print_format = 'ASE',
+                    print_format='ASE',
                     fingerprint=fp,
-                    fingerprint_params = fp_hp,
+                    fingerprint_params=fp_hp,
                     mask_constraints=False)
 
 slab.set_calculator(calc)
