@@ -101,7 +101,7 @@ class GPCalculator(Calculator, GaussianProcess):
 
     def __init__(self, train_images=None, prior=None,
                  update_prior_strategy='maximum',
-                 kernel_params={'weight': 1., 'scale': 0.4},
+                 params={'weight': 1., 'scale': 0.4},
                  fit_weight=None, noise=0.005,
                  params_to_update=None,
                  batch_size=5, kernel=None,
@@ -125,7 +125,7 @@ class GPCalculator(Calculator, GaussianProcess):
         GaussianProcess.__init__(self, prior, kernel)
 
         # Set initial hyperparameters.
-        self.set_hyperparams(kernel_params, noise)
+        self.set_hyperparams(params, noise)
 
         # Initialize training set
         self.train_x = []

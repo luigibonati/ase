@@ -1,13 +1,14 @@
 import numpy as np
 import warnings
 from ase.optimize.activelearning.gpfp.kernel import FPKernel
-from ase.optimize.activelearning.gpfp.gp import FPGaussianProcess
-from ase.optimize.activelearning.gp.prior import ConstantPrior
+from ase.optimize.activelearning.gpfp.fingerprint import CartesianCoordFP
+from ase.optimize.activelearning.gpfp.gp import GaussianProcess
+from ase.optimize.activelearning.gpfp.prior import ConstantPrior
 from ase.calculators.calculator import Calculator, all_changes
 from scipy.spatial.distance import euclidean
 
 
-class FPCalculator(Calculator, FPGaussianProcess):
+class GPCalculator(Calculator, GaussianProcess):
     """
     GP model parameters
     -------------------
@@ -32,11 +33,12 @@ class FPCalculator(Calculator, FPGaussianProcess):
     noise: float
         Regularization parameter for the Gaussian Process Regression.
 
-    update_prior_strategy: string
+    update_prior_strategy: None, string
         Strategy to update the constant from the ConstantPrior when more
-        data is collected. It does only work when Prior = None
+        data is collected. 
 
         options:
+            None: Do not update the constant
             'maximum': update the prior to the maximum sampled energy.
             'minimum' : update the prior to the minimum sampled energy.
             'average': use the average of sampled energies as prior.
@@ -100,11 +102,10 @@ class FPCalculator(Calculator, FPGaussianProcess):
     nolabel = True
 
     def __init__(self, train_images=None, prior=None,
-                 update_prior_strategy='maximum',
-                 kernel_params={'weight': 1., 'scale': 0.4},
+                 update_prior_strategy=None,
+                 params={'weight': 1., 'scale': 0.4},
                  fit_weight=None, noise=0.005,
                  params_to_update=None, fingerprint=None,
-                 fingerprint_params=None,
                  batch_size=5, bounds=None, kernel=None,
                  max_train_data=None, force_consistent=None,
                  max_train_data_strategy='nearest_observations',
@@ -119,14 +120,12 @@ class FPCalculator(Calculator, FPGaussianProcess):
         if kernel is None:
             kernel = FPKernel()
         if prior is None:
-            self.update_prior = True
-            prior = ConstantPrior(constant=None)
-        else:
-            self.update_prior = False
-        FPGaussianProcess.__init__(self, prior, kernel)
+            prior = ConstantPrior(constant=0.0)
+
+        GaussianProcess.__init__(self, prior, kernel)
 
         # Set initial hyperparameters.
-        self.set_hyperparams(kernel_params, noise)
+        self.set_hyperparams(params, noise)
 
         # Initialize training set
         self.train_x = []
@@ -144,8 +143,11 @@ class FPCalculator(Calculator, FPGaussianProcess):
         self.nbatch = batch_size
 
         # Fingerprint
-        self.fp = fingerprint
-        self.fp_hp = fingerprint_params
+        if fingerprint is None:
+            self.fp = CartesianCoordFP
+        else:
+            self.fp = fingerprint
+        self.fp_hp = params
 
         # Initialize prior and trainset attributes
         self.strategy = update_prior_strategy
@@ -207,7 +209,7 @@ class FPCalculator(Calculator, FPGaussianProcess):
         """ Train a model with the previously fed observations."""
 
         # 1. Set/update the the prior.
-        if self.update_prior:
+        if self.strategy is not None:
             if self.strategy == 'average':
                 av_e = np.mean(np.array(self.train_y)[:, 0])
                 self.prior.set_constant(av_e)
@@ -321,10 +323,11 @@ class FPCalculator(Calculator, FPGaussianProcess):
                                          params_to_update=params,
                                          bounds=bounds)
 
-                p2update = set(self.params_to_update.keys())
-                keys_to_update = p2update.intersection(set(self.fp_hp.keys()))
-                for key in keys_to_update:
-                    self.fp_hp[key] = self.hyperparams[key]
+                if self.fp_hp:
+                    p2update = set(self.params_to_update.keys())
+                    keys_to_update = p2update.intersection(set(self.fp_hp.keys()))
+                    for key in keys_to_update:
+                        self.fp_hp[key] = self.hyperparams[key]
 
         self.prev_train_y = self.train_y[:]
 
