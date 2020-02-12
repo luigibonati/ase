@@ -227,13 +227,14 @@ class FPKernel(SE_kernel):
     def __init__(self):
         SE_kernel.__init__(self)
 
-    def kernel_function_gradient(self, x1, x2):
+    def kernel_function_gradient(self, x1, x2, kernel=None, D=None, dD_dr=None):
         '''Gradient of kernel_function respect to the second entry.
         x1: first data point
         x2: second data point'''
 
         n = len(x1.atoms)
         gradients = np.empty([n, 3])
+
 
         # Distribute calculations for processors:
         myatoms = []
@@ -243,7 +244,7 @@ class FPKernel(SE_kernel):
 
         # Calculate:
         for i in myatoms:
-            gradients[i] = x1.kernel_gradient(x2, i)
+            gradients[i] = x1.kernel_gradient(x2, i, kernel=kernel, D=D, dD_dr=dD_dr[i])
 
         # Share data among processors:
         for i in range(n):
@@ -251,7 +252,7 @@ class FPKernel(SE_kernel):
 
         return gradients.reshape(-1)
 
-    def kernel_function_hessian(self, x1, x2):
+    def kernel_function_hessian(self, x1, x2, kernel=None, D=None, dD_dr1=None, dD_dr2=None):
         d = 3
         hessian = np.zeros([len(x1.atoms), len(x2.atoms), d, d])
         n = len(x1.atoms)
@@ -259,7 +260,11 @@ class FPKernel(SE_kernel):
         for i in range(len(x1.atoms)):
             for j in range(len(x2.atoms)):
                 if ((i * n + j) % world.size) == world.rank:
-                    hessian[i, j] = x1.kernel_hessian(x2, i, j)
+                    hessian[i, j] = x1.kernel_hessian(x2, i, j, 
+                                                      kernel=kernel, 
+                                                      D=D, 
+                                                      dD_dr1=dD_dr1[i],
+                                                      dD_dr2=dD_dr2[j])
 
         # Share data among processors:
         for i in range(n):
@@ -298,12 +303,23 @@ class FPKernel(SE_kernel):
         This function returns a D+1 x D+1 matrix, where D is
         the dimension of the manifold'''
 
+        n = len(x1.atoms)
         K = np.identity(self.D + 1)
 
-        K[0, 0] = x1.kernel(x1, x2)
-        K[1:, 0] = self.kernel_function_gradient(x1, x2)
-        K[0, 1:] = self.kernel_function_gradient(x2, x1)
-        K[1:, 1:] = self.kernel_function_hessian(x1, x2)
+        # Pre-compute common values:
+        kernel_value = x1.kernel(x1, x2)
+        D = x1.distance(x1, x2)
+        dD_dr1 = [x1.dD_drm(x2, index, D) for index in range(n)]
+        dD_dr2 = [x2.dD_drm(x1, index, D) for index in range(n)]
+
+        K[0, 0] = kernel_value
+        K[1:, 0] = self.kernel_function_gradient(x1, x2, kernel=kernel_value, D=D, dD_dr=dD_dr1)
+        K[0, 1:] = self.kernel_function_gradient(x2, x1, kernel=kernel_value, D=D, dD_dr=dD_dr2)
+        K[1:, 1:] = self.kernel_function_hessian(x1, x2,
+                                                 kernel=kernel_value,
+                                                 D=D,
+                                                 dD_dr1=dD_dr1,
+                                                 dD_dr2=dD_dr2)
 
         return K * self.params.get('weight')**2
 
