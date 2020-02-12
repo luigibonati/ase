@@ -273,9 +273,25 @@ class FPKernel(SE_kernel):
         return hessian
 
     def set_fp_params(self, x):
+        ''' Update fingerprint parameters to match with the
+        kernel params '''
 
-        if self.params != x.params:
-            x.update(self.params)
+        for key in self.params.keys():
+
+            # No need to update weight for fingerprint:
+            if key == 'weight':
+                continue
+
+            # If some key is missing, update fingerprint:
+            if key not in x.params.keys():
+                x.update(self.params)
+                break
+
+            # If some of the kernel parameters do not match
+            # with the FP parameters, update FP parameters:
+            if self.params.get(key) != x.params.get(key):
+                x.update(self.params)
+                break
 
     def kernel(self, x1, x2):
         '''Squared exponential kernel including derivatives.
