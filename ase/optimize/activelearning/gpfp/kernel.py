@@ -451,3 +451,51 @@ class FPKernel(SE_kernel):
         g = [self.dK_dweight(X), self.dK_dl(X), self.dK_dDelta(X)]
 
         return g
+
+
+class FPKernelNoforces(FPKernel):
+
+    def __init__(self):
+        """
+        Squared exponential kernel with fingerprints but without
+        forces
+        """
+        FPKernel.__init__(self)
+
+
+    def kernel(self, x1, x2):
+        K = x1.kernel(x1, x2)
+        return np.atleast_1d(K) * self.params.get('weight')**2
+
+
+    def kernel_matrix(self, X):
+        ''' Calculates K(X,X) ie. kernel matrix for training data. '''
+        n = len(X)
+
+        # allocate memory
+        K = np.identity(n, dtype=float)
+
+        for x in X:
+            self.set_fp_params(x)
+
+        for i in range(0, n):
+            for j in range(i+1, n):
+                k = self.kernel(X[i], X[j])
+                K[i:(i+1), j:(j+1)] = k
+                K[j:(j+1), i:(i+1)] = k.T
+
+            K[i:(i+1), 
+              i:(i+1)] = self.kernel(X[i], X[i])
+
+        assert (K == K.T).all()
+        return K
+
+
+    def kernel_vector(self, x, X):
+
+        self.set_fp_params(x)
+        for x2 in X:
+            self.set_fp_params(x2)
+
+        return np.hstack([self.kernel(x, x2) for x2 in X])
+
