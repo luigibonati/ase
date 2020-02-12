@@ -137,7 +137,7 @@ class GaussianProcess():
 
         k = self.kernel.kernel_vector(x, self.X)
 
-        priorarray = self.prior.prior(x)  # np.ones(len(x.atoms) * 3))
+        priorarray = self.prior.prior(x)
         f = priorarray + np.dot(k, self.a)
 
         if get_variance:
@@ -194,7 +194,7 @@ class GaussianProcess():
         # Compute log likelihood
         logP = (-0.5 * len(y)
                 - np.sum(np.log(np.diag(self.L)))
-                - len(X) / 2 * np.log(2 * np.pi))
+                - len(y) / 2 * np.log(2 * np.pi))
 
         # # Gradient of the loglikelihood
         # grad = self.kernel.gradient(X)
