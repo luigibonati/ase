@@ -436,7 +436,10 @@ class GPCalculator(Calculator, GaussianProcess):
         Predict energy for a single image that is removed
         from the training set.
         """
-        # Execute training process when *calculate* is called.
+
+        if self.atoms is None:
+            self.atoms = self.train_images[0]
+
         if self.train_images is not None:
             self.extract_features()
             self.train_model()
@@ -468,7 +471,7 @@ class GPCalculator(Calculator, GaussianProcess):
             uncertainty = np.sqrt(uncertainty)
 
         # Results:
-        self.results['energy'] = energy
+        self.results['looenergy'] = energy
         if self.use_forces:
-            self.results['forces'] = forces
-        self.results['uncertainty'] = uncertainty
+            self.results['looforces'] = forces
+        self.results['loouncertainty'] = uncertainty
