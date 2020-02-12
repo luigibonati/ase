@@ -11,7 +11,7 @@ class Fingerprint():
     A fingerprint class should deprecate each of the methods
     defined here.'''
 
-    def __init__(self):
+    def __init__(self, calc_gradients=True):
         return
 
     def set_params(self, params):
