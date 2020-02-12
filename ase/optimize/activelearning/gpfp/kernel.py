@@ -462,11 +462,9 @@ class FPKernelNoforces(FPKernel):
         """
         FPKernel.__init__(self)
 
-
     def kernel(self, x1, x2):
         K = x1.kernel(x1, x2)
         return np.atleast_1d(K) * self.params.get('weight')**2
-
 
     def kernel_matrix(self, X):
         ''' Calculates K(X,X) ie. kernel matrix for training data. '''
@@ -479,23 +477,19 @@ class FPKernelNoforces(FPKernel):
             self.set_fp_params(x)
 
         for i in range(0, n):
-            for j in range(i+1, n):
+            for j in range(i + 1, n):
                 k = self.kernel(X[i], X[j])
-                K[i:(i+1), j:(j+1)] = k
-                K[j:(j+1), i:(i+1)] = k.T
+                K[i:(i + 1), j:(j + 1)] = k
+                K[j:(j + 1), i:(i + 1)] = k.T
 
-            K[i:(i+1), 
-              i:(i+1)] = self.kernel(X[i], X[i])
+            K[i:(i + 1), i:(i + 1)] = self.kernel(X[i], X[i])
 
         assert (K == K.T).all()
         return K
 
-
     def kernel_vector(self, x, X):
-
         self.set_fp_params(x)
         for x2 in X:
             self.set_fp_params(x2)
 
         return np.hstack([self.kernel(x, x2) for x2 in X])
-
