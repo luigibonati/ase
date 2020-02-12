@@ -412,3 +412,40 @@ class GPCalculator(Calculator, GaussianProcess):
             except Exception:
                 pass
         return np.argwhere(mask_constraints.reshape(-1)).reshape(-1)
+
+    def calculate_LOO(self, index):
+        """
+        Predict energy for a single image that is removed
+        from the training set.
+        """
+        # Execute training process when *calculate* is called.
+        if self.train_images is not None:
+            self.extract_features()
+            self.train_model()
+            self.old_train_images = self.train_images[:]
+            self.train_images = None  # Remove the training list of images.
+
+        f, V = self.leaveoneout(np.asarray(self.train_x),
+                                np.asarray(self.train_y),
+                                index)
+
+        # Obtain energy and forces for the given geometry.
+        energy = f[0]
+        forces = -f[1:].reshape(-1)
+
+        # No mask implemented...
+
+        # Get uncertainty for the given geometry.
+        uncertainty = None
+        if self.calculate_uncertainty:
+            uncertainty = V[0][0]
+            if uncertainty < 0.0:
+                uncertainty = 0.0
+                warning = ('Imaginary uncertainty has been set to zero')
+                warnings.warn(warning)
+            uncertainty = np.sqrt(uncertainty)
+
+        # Results:
+        self.results['energy'] = energy
+        self.results['forces'] = forces
+        self.results['uncertainty'] = uncertainty

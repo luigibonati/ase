@@ -102,12 +102,8 @@ class GaussianProcess():
             regularization = np.array(n * ([self.noise *
                                             self.noisefactor]))
 
-        # print("Min eigval of raw K: \t\t", np.min(np.linalg.eigvals(K)))
-
         K += np.diag(regularization**2)
-
-        # print("Min eigval of regularized K: \t", np.min(np.linalg.eigvals(K)))
-        # exit()
+        self.K = K  # this is only used in self.leaveoneout()
 
         self.L, self.lower = cho_factor(K, lower=True, check_finite=True)
 
@@ -339,3 +335,68 @@ class GaussianProcess():
         elif option == 'update':
             self.set_hyperparams({'weight': factor * w}, self.noise)
             return factor
+
+    def leaveoneout(self, X, Y, index):
+        """ Split K-matrix so that the rows and columns that correspond
+        to index 'index' are removed, then regularize, then invert the
+        matrix, and calculate and return correct energy, predicted
+        energy, and uncertainty.
+
+        Parameters:
+
+        X: Full training point vector
+
+        Y: Full training data vector
+
+        index: index to be removed from full K-matrix
+
+        """
+
+        if self.use_forces:
+            d = 1 + len(X[0].atoms) * 3
+        else:
+            d = 1
+
+        start = index * d
+        end = (index + 1) * d
+
+        K = self.K.copy()
+        K = np.delete(K, range(start, end), axis=0)
+        K = np.delete(K, range(start, end), axis=1)
+
+        Xi = X[index]
+        Xreduced = np.concatenate((X[:index], X[index + 1:]))
+        Yreduced = np.concatenate((Y[:index], Y[index + 1:]))
+
+        # Cholesky factorization:
+        L, lower = cho_factor(K, lower=True, check_finite=True)
+
+        Yreduced = np.array(Yreduced)
+        Yreduced = Yreduced.flatten()
+
+        # Calculate prior:
+        m = list(np.hstack([self.prior.prior(x) for x in Xreduced]))
+
+        # Test dimensions:
+        assert len(Yreduced) == len(m)
+
+        # Calculate alpha:
+        a = Yreduced - m
+
+        #  Update self.a with Cholesky solution:
+        cho_solve((L, lower), a, overwrite_b=True, check_finite=True)
+
+        # Predict energy and variance for the left-out data point:
+        x = Xi
+        k = self.kernel.kernel_vector(x, Xreduced)
+        priorarray = self.prior.prior(x)
+        f = priorarray + np.dot(k, a)
+
+        # Get variance:
+        v = k.T.copy()
+        v = solve_triangular(L, v, lower=True, check_finite=False)
+        variance = self.kernel.kernel(x, x)
+        covariance = np.tensordot(v, v, axes=(0, 0))
+        V = variance - covariance
+
+        return f, V
