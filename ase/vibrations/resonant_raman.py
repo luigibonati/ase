@@ -407,7 +407,6 @@ class ResonantRaman(Vibrations):
         self.vib01_Q *= np.sqrt(u.Ha * u._me / u._amu) * u.Bohr
         self.timer.stop('vibrations')
 
-
         self.timer.start('excitations')
         self.init_parallel_read()
         if not hasattr(self, 'ex0E_p'):

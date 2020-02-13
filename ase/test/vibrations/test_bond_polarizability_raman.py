@@ -1,5 +1,6 @@
 from ase import Atoms
 from ase.vibrations.raman import RamanStaticCalculator
+from ase.vibrations.placzek import PlaczekStatic
 from ase.calculators.bond_polarizability import BondPolarizability
 from ase.calculators.emt import EMT
 
@@ -11,7 +12,8 @@ def test_calculation():
     rm = RamanStaticCalculator(atoms, BondPolarizability,
                                gsname=name, exname=name, txt='-')
     rm.run()
-    # pz = PlaczekStaticData(gsname=name)
+    pz = PlaczekStatic(atoms, gsname=name)
+    pz.summary()
     
 
 def main():

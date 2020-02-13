@@ -1,6 +1,7 @@
 import numpy as np
 
 import ase.units as u
+from ase.vibrations.raman import RamanData
 from ase.vibrations.resonant_raman import ResonantRaman
 from ase.calculators.excitations import polarizability
 
@@ -47,6 +48,45 @@ class Placzek(ResonantRaman):
                                form=self.dipole_form, tensor=True) -
                 polarizability(self.exm_r[i], om,
                                form=self.dipole_form, tensor=True))
+        self.timer.stop('alpha derivatives')
+ 
+        # map to modes
+        self.comm.sum(V_rcc)
+        V_qcc = (V_rcc.T * self.im).T  # units Angstrom^2 / sqrt(amu)
+        V_Qcc = np.dot(V_qcc.T, self.modes.T).T
+        return V_Qcc
+
+
+class PlaczekStatic(RamanData):
+    def read_excitations(self):
+        """Read excitations from files written"""
+        self.al0_rr = None  # mark as read
+        self.alm_rr = []
+        self.alp_rr = []
+        for a, i in zip(self.myindices, self.myxyz):
+            exname = '%s.%d%s-' % (self.exname, a, i) + self.exext
+            self.log('reading ' + exname)
+            self.alm_rr.append(np.loadtxt(exname))
+            exname = '%s.%d%s+' % (self.exname, a, i) + self.exext
+            self.log('reading ' + exname)
+            self.alp_rr.append(np.loadtxt(exname))
+            
+    def electronic_me_Qcc(self, omega, gamma=0):
+        self.read()
+        
+        self.timer.start('init')
+        V_rcc = np.zeros((self.ndof, 3, 3), dtype=complex)
+        pre = 1. / (2 * self.delta)
+        pre *= u.Hartree * u.Bohr  # e^2Angstrom^2 / eV -> Angstrom^3
+
+        om = omega
+        if gamma:
+            om += 1j * gamma
+        self.timer.stop('init')
+        
+        self.timer.start('alpha derivatives')
+        for i, r in enumerate(self.myr):
+            V_rcc[r] = pre * (self.alp_rr[i] - self.alm_rr[i])
         self.timer.stop('alpha derivatives')
  
         # map to modes
