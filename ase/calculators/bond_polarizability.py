@@ -28,11 +28,15 @@ class BondPolarizability:
         nl.update(atoms)
         alpha_a = [self.atomic_polarizability[atom.symbol]
                    for atom in atoms]
+        pos_ac = atoms.get_positions()
 
         alpha = 0
         for ia, atom in enumerate(atoms):
             indices, offsets = nl.get_neighbors(ia)
-            for ib in indices:
-                r = atoms.get_distance(ia, ib)
-                alpha += r**4 / (4**4 * alpha_a[ia] * alpha_a[ib])**(1. / 6)
+            pos_ac = atoms.get_positions() - atoms.get_positions()[ia]
+            for ib, offset in zip(indices, offsets):
+                r_c = pos_ac[ib] + np.dot(offset, atoms.get_cell())
+                r2 = np.dot(r_c, r_c)
+                alpha += np.outer(r_c, r_c) * (r2 /
+                    (4**4 * alpha_a[ia] * alpha_a[ib])**(1. / 6))
         return alpha
