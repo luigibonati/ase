@@ -1,9 +1,10 @@
 import numpy as np
 
+import ase.units as u
+from ase.parallel import world
 from ase.vibrations import Vibrations
 from ase.utils.timing import Timer
 from ase.utils import convert_string_to_fd
-import ase.units as u
 
 
 class RamanBase(Vibrations):
@@ -12,6 +13,8 @@ class RamanBase(Vibrations):
                  exname=None,      # name for excited state calculations
                  exext='.alpha',   # extension for Excitation names
                  txt='-',
+                 verbose=False,
+                 comm=world,
                  *args, **kwargs):
         """
         Parameters
@@ -27,6 +30,8 @@ class RamanBase(Vibrations):
             Extension for excitation filenames
         txt:
             Output stream
+        verbose:
+            Verbosity level of output
         """
         Vibrations.__init__(self, atoms, *args, **kwargs)
 
@@ -38,6 +43,14 @@ class RamanBase(Vibrations):
         
         self.timer = Timer()
         self.txt = convert_string_to_fd(txt)
+        self.verbose = verbose
+
+        self.comm = comm
+
+    def log(self, message, pre='# ', end='\n'):
+        if self.verbose:
+            self.txt.write(pre + message + end)
+            self.txt.flush()
 
 
 class RamanCalculator(RamanBase):
@@ -94,10 +107,7 @@ class Raman(RamanBase):
         self.timer.start('excitations')
         self.init_parallel_read()
         if not hasattr(self, 'ex0E_p'):
-            if self.overlap:
-                self.read_excitations_overlap()
-            else:
-                self.read_excitations()
+            self.read_excitations()
         self.timer.stop('excitations')
         self.timer.stop('read')
 
@@ -117,14 +127,6 @@ class Raman(RamanBase):
         # Angstrom^3 -> e^2 Angstrom^2 / eV
         elme_Qcc /= u.Hartree * u.Bohr  # e^2 Angstrom / eV / sqrt(amu)
         return elme_Qcc * self.vib01_Q[:, None, None]
-
-    def get_cross_sections(self, *args, **kwargs):
-        """Returns Raman cross sections for each vibration."""
-        I_v = self.intensity(*args, **kwargs)
-        pre = 1. / 16 / np.pi**2 / u._eps0**2 / u._c**4
-        # frequency of scattered light
-        omS_v = omega - self.om_v
-        return pre * omega * omS_v**3 * I_v
 
     def absolute_intensity(self, *args, delta=0, **kwargs):
         """Absolute Raman intensity or Raman scattering factor
@@ -159,7 +161,7 @@ class Raman(RamanBase):
         -------
         unit e^4 Angstrom^4 / eV^2
         """
-        m2 = ResonantRaman.m2
+        m2 = Raman.m2
         alpha_Qcc = self.me_Qcc(*args, **kwargs)
         if not self.observation:  # XXXX remove
             """Simple sum, maybe too simple"""

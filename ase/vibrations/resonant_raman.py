@@ -190,6 +190,9 @@ class ResonantRaman(Raman):
 
     def read_excitations(self):
         """Read all finite difference excitations and select matching."""
+        if self.overlap:
+            return self.read_excitations_overlap()
+
         self.timer.start('read excitations')
         self.timer.start('really read')
         self.log('reading ' + self.exname + '.eq' + self.exext)
@@ -400,6 +403,14 @@ class ResonantRaman(Raman):
                 self.read_excitations()
         self.timer.stop('excitations')
         self.timer.stop('read')
+
+    def get_cross_sections(self, omega, gamma):
+        """Returns Raman cross sections for each vibration."""
+        I_v = self.intensity(omega, gamma)
+        pre = 1. / 16 / np.pi**2 / u._eps0**2 / u._c**4
+        # frequency of scattered light
+        omS_v = omega - self.om_v
+        return pre * omega * omS_v**3 * I_v
 
     def get_spectrum(self, omega, gamma=0.1,
                      start=None, end=None, npts=None, width=20,
