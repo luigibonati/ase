@@ -1,7 +1,7 @@
 import numpy as np
 
 import ase.units as u
-from ase.vibrations.raman import RamanData
+from ase.vibrations.raman import Raman
 from ase.vibrations.resonant_raman import ResonantRaman
 from ase.calculators.excitations import polarizability
 
@@ -57,7 +57,7 @@ class Placzek(ResonantRaman):
         return V_Qcc
 
 
-class PlaczekStatic(RamanData):
+class PlaczekStatic(Raman):
     def read_excitations(self):
         """Read excitations from files written"""
         self.al0_rr = None  # mark as read

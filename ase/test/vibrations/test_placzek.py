@@ -36,13 +36,14 @@ def test_overlap():
     po.run()
 
     om = 1
-    poi = po.absolute_intensity(omega=om)[-1]
+    gam = 0.1
+    poi = po.absolute_intensity(omega=om, gamma=gam)[-1]
 
     pr = Profeta(atoms, H2MorseExcitedStates,
                  exkwargs={'nstates': nstates}, approximation='Placzek',
                  gsname=name, exname=name,
                  txt=None)
-    pri = pr.absolute_intensity(omega=om)[-1]
+    pri = pr.absolute_intensity(omega=om, gamma=gam)[-1]
 
     print('overlap', pri, poi, poi / pri)
     assert pri == pytest.approx(poi, 1e-4)
@@ -57,12 +58,13 @@ def test_compare_placzek_implementation_intensities():
                  gsname=name, exname=name, txt=None)
     pz.run()
     om = 1
-    pzi = pz.absolute_intensity(omega=om)[-1]
+    gam = 0.1
+    pzi = pz.absolute_intensity(omega=om, gamma=gam)[-1]
 
     # Profeta using frozenset
     pr = Profeta(atoms, H2MorseExcitedStates, approximation='Placzek',
                  gsname=name, exname=name, txt=None)
-    pri = pr.absolute_intensity(omega=om)[-1]
+    pri = pr.absolute_intensity(omega=om, gamma=gam)[-1]
     assert pzi == pytest.approx(pri, 1e-3)
     
     # Profeta using overlap
@@ -72,7 +74,7 @@ def test_compare_placzek_implementation_intensities():
                  overlap=lambda x, y: x.overlap(y),
                  txt=None)
     pr.run()
-    pro = pr.absolute_intensity(omega=om)[-1]
+    pro = pr.absolute_intensity(omega=om, gamma=gam)[-1]
     assert pro == pytest.approx(pri, 1e-3)
 
 
