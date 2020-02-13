@@ -71,17 +71,13 @@ class PlaczekStatic(Raman):
             self.log('reading ' + exname)
             self.alp_rr.append(np.loadtxt(exname))
             
-    def electronic_me_Qcc(self, omega, gamma=0):
+    def electronic_me_Qcc(self):
         self.read()
         
         self.timer.start('init')
         V_rcc = np.zeros((self.ndof, 3, 3), dtype=complex)
         pre = 1. / (2 * self.delta)
         pre *= u.Hartree * u.Bohr  # e^2Angstrom^2 / eV -> Angstrom^3
-
-        om = omega
-        if gamma:
-            om += 1j * gamma
         self.timer.stop('init')
         
         self.timer.start('alpha derivatives')

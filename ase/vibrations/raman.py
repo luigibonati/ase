@@ -1,7 +1,8 @@
+import sys
 import numpy as np
 
 import ase.units as u
-from ase.parallel import world
+from ase.parallel import world, parprint, paropen
 from ase.vibrations import Vibrations
 from ase.utils.timing import Timer
 from ase.utils import convert_string_to_fd
@@ -149,7 +150,6 @@ class Raman(RamanBase):
         -------
         raman intensity, unit Ang**4/amu
         """
-
         alpha2_r, gamma2_r, delta2_r = self._invariants(
             self.electronic_me_Qcc(*args, **kwargs))
         return 45 * alpha2_r + delta * delta2_r + 7 * gamma2_r
@@ -223,3 +223,49 @@ class Raman(RamanBase):
                      m2(alpha_Qcc[:, 0, 0] - alpha_Qcc[:, 2, 2]) +
                      m2(alpha_Qcc[:, 1, 1] - alpha_Qcc[:, 2, 2])) / 2)
         return alpha2_r, gamma2_r, delta2_r
+
+    def summary(self, *args,
+                method='standard', direction='central',
+                log=sys.stdout, **kwargs):
+        """Print summary for given omega [eV]"""
+        hnu = self.get_energies(method, direction)
+        if 'omega' in kwargs:
+            omega = kwargs['omega']
+            gamma = kwargs.get('gamma', 0.1)
+            intensities = self.absolute_intensity(omega, gamma)
+        else:
+            intensities = self.absolute_intensity()
+        te = int(np.log10(intensities.max())) - 2
+        scale = 10**(-te)
+        if not te:
+            ts = ''
+        elif te > -2 and te < 3:
+            ts = str(10**te)
+        else:
+            ts = '10^{0}'.format(te)
+
+        if isinstance(log, str):
+            log = paropen(log, 'a')
+
+        parprint('-------------------------------------', file=log)
+        if 'omega' in kwargs:
+            parprint(' excitation at ' + str(omega) + ' eV', file=log)
+            parprint(' gamma ' + str(gamma) + ' eV', file=log)
+            parprint(' method:', self.method, file=log)
+            parprint(' approximation:', self.approximation, file=log)
+        parprint(' Mode    Frequency        Intensity', file=log)
+        parprint('  #    meV     cm^-1      [{0}A^4/amu]'.format(ts), file=log)
+        parprint('-------------------------------------', file=log)
+        for n, e in enumerate(hnu):
+            if e.imag != 0:
+                c = 'i'
+                e = e.imag
+            else:
+                c = ' '
+                e = e.real
+            parprint('%3d %6.1f%s  %7.1f%s  %9.2f' %
+                     (n, 1000 * e, c, e / u.invcm, c, intensities[n] * scale),
+                     file=log)
+        parprint('-------------------------------------', file=log)
+        parprint('Zero-point energy: %.3f eV' % self.get_zero_point_energy(),
+                 file=log)

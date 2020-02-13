@@ -499,46 +499,6 @@ class ResonantRaman(Raman):
                      (row[0], row[1]))
         fd.close()
 
-    def summary(self, omega=0, gamma=0,
-                method='standard', direction='central',
-                log=sys.stdout):
-        """Print summary for given omega [eV]"""
-        hnu = self.get_energies(method, direction)
-        intensities = self.absolute_intensity(omega, gamma)
-        te = int(np.log10(intensities.max())) - 2
-        scale = 10**(-te)
-        if not te:
-            ts = ''
-        elif te > -2 and te < 3:
-            ts = str(10**te)
-        else:
-            ts = '10^{0}'.format(te)
-
-        if isinstance(log, str):
-            log = paropen(log, 'a')
-
-        parprint('-------------------------------------', file=log)
-        parprint(' excitation at ' + str(omega) + ' eV', file=log)
-        parprint(' gamma ' + str(gamma) + ' eV', file=log)
-        parprint(' method:', self.method, file=log)
-        parprint(' approximation:', self.approximation, file=log)
-        parprint(' Mode    Frequency        Intensity', file=log)
-        parprint('  #    meV     cm^-1      [{0}A^4/amu]'.format(ts), file=log)
-        parprint('-------------------------------------', file=log)
-        for n, e in enumerate(hnu):
-            if e.imag != 0:
-                c = 'i'
-                e = e.imag
-            else:
-                c = ' '
-                e = e.real
-            parprint('%3d %6.1f%s  %7.1f%s  %9.2f' %
-                     (n, 1000 * e, c, e / u.invcm, c, intensities[n] * scale),
-                     file=log)
-        parprint('-------------------------------------', file=log)
-        parprint('Zero-point energy: %.3f eV' % self.get_zero_point_energy(),
-                 file=log)
-
     def __del__(self):
         self.timer.write(self.txt)
 
