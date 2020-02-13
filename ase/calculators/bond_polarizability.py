@@ -37,6 +37,6 @@ class BondPolarizability:
             for ib, offset in zip(indices, offsets):
                 r_c = pos_ac[ib] + np.dot(offset, atoms.get_cell())
                 r2 = np.dot(r_c, r_c)
-                alpha += np.outer(r_c, r_c) * (r2 /
-                    (4**4 * alpha_a[ia] * alpha_a[ib])**(1. / 6))
+                alpha += (r2 / (4**4 * alpha_a[ia] * alpha_a[ib])**(1. / 6) *
+                          np.outer(r_c, r_c))
         return alpha
