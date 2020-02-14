@@ -232,7 +232,7 @@ def print_cite_aidmin():
     msg += "Phys. Rev. B 100, 104103."
     msg += "https://doi.org/10.1103/PhysRevB.100.104103. \n"
     msg += "[2] J. A. Garrido Torres, E. Garijo del Rio, V. Streibel "
-    msg += "T. S. Choski, J. J. Mortensen, A. Urban, M. Bajdich "
-    msg += "F. Abild-Pedersen, K. W. Jacobsen, and T. Bligaard. Submitted. \n"
+    msg += "T. S. Choski, Ask H. Larsen, J. J. Mortensen, A. Urban, M. Bajdich"
+    msg += " F. Abild-Pedersen, K. W. Jacobsen, and T. Bligaard. Submitted. \n"
     msg += "-" * 79 + '\n'
     parprint(msg)

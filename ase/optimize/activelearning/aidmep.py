@@ -6,11 +6,11 @@ from ase.optimize.activelearning.aidts import AIDTS
 from ase.optimize.activelearning.io import TrainingSet
 import os
 
-
 class AIDMEP:
 
     def __init__(self, images, calculator, model_calculator=None,
-                 max_train_data=5, force_consistent=None,
+                 max_train_data_min=5, max_train_data_dimer=50,
+                 force_consistent=None,
                  max_train_data_strategy='nearest_observations',
                  trajectory='AID.traj',
                  use_previous_observations=True,
@@ -80,9 +80,12 @@ class AIDMEP:
             to train the model with all the information collected in
             *trajectory_observations.traj*.
 
-        max_train_data: int
+        max_train_data_min: int
             Number of observations that will effectively be included in the
-            model. See also *max_data_strategy*.
+            model used by AIDMin. See also *max_data_strategy*.
+        max_train_data_dimer: int
+            Number of observations that will effectively be included in the
+            model used by AIDTS. See also *max_data_strategy*.
 
         max_train_data_strategy: string
             Strategy to decide the observations that will be included in the
@@ -117,7 +120,8 @@ class AIDMEP:
         # GP calculator:
         self.trainingset = trainingset
         self.model_calculator = model_calculator
-        self.max_train_data = max_train_data
+        self.max_train_data_min = max_train_data_min
+        self.max_train_data_dimer = max_train_data_dimer
         self.max_train_data_strategy = max_train_data_strategy
         if model_calculator is None:
             self.model_calculator = GPCalculator(
@@ -129,7 +133,7 @@ class AIDMEP:
                             update_hyperparams=False, batch_size=5,
                             bounds=None, kernel=None,
                             max_train_data_strategy=max_train_data_strategy,
-                            max_train_data=max_train_data
+                            max_train_data=max_train_data_min
                             )
 
         # Active Learning setup (Single-point calculations).
@@ -158,14 +162,14 @@ class AIDMEP:
             energy_L = images_path[i-1].get_potential_energy()
             energy_M = images_path[i].get_potential_energy()
             energy_R = images_path[i+1].get_potential_energy()
-            if energy_L < energy_M and energy_R < energy_M:  # Maximum found.
+            if energy_L < energy_M and energy_R < energy_M:  # Maximum found in i.
                 atoms = io.read(interp_path, '-1')
                 atoms.set_calculator(self.ase_calc)
                 atoms.positions = images_path[i].positions
                 atoms.info['method_maxmin'] = 'max'
                 self.list_atoms += [atoms]
 
-            if energy_L > energy_M and energy_R > energy_M:  # Minimum found.
+            if energy_L > energy_M and energy_R > energy_M:  # Maximum found in i.
                 atoms = io.read(interp_path, '-1')
                 atoms.set_calculator(self.ase_calc)
                 atoms.positions = images_path[i].positions
@@ -180,8 +184,7 @@ class AIDMEP:
         self.list_atoms += [atoms]
 
         # Initialize training set
-        trajectory_main = self.trajectory.split('.')[0]
-        self.train = TrainingSet(trajectory_main + '_MEP.traj',
+        self.traj = TrainingSet(self.trajectory,
                                  use_previous_observations=False)
 
     def run(self, fmax=0.05, vector_length=0.7):
@@ -193,8 +196,6 @@ class AIDMEP:
         ----------
         fmax : float
             Convergence criteria (in eV/Angstrom).
-        vector_length: float
-            Magnitude of the length vector for the Dimer.
 
         Returns
         -------
@@ -202,60 +203,53 @@ class AIDMEP:
 
         """
 
-        trajectory_main = self.trajectory.split('.')[0]
-        trajectory_mep = trajectory_main + '_MEP.traj'
-
-        if os.path.exists(trajectory_mep):
-            os.remove(trajectory_mep)
-
         for i in self.list_atoms:
             if i.info['method_maxmin'] == 'min':
                 self.atoms.set_calculator(self.ase_calc)
                 self.atoms.positions = i.positions
+                self.model_calculator.max_data = self.max_train_data_min
                 opt = AIDMin(
                     atoms=self.atoms, model_calculator=self.model_calculator,
-                    trajectory=self.trajectory,
+                    trajectory='tmp.traj',
                     use_previous_observations=self.use_previous_observations,
-                    max_train_data=self.max_train_data,
+                    max_train_data=self.max_train_data_min,
                     max_train_data_strategy=self.max_train_data_strategy,
                     trainingset=self.trainingset,
                     force_consistent=self.force_consistent
                     )
                 opt.run(fmax=fmax)
-                self.train.dump(atoms=self.atoms, method='mep')
+                self.traj.dump(atoms=self.atoms, method='mep')
 
             if i.info['method_maxmin'] == 'max':
 
-                trajectory_main = self.trajectory.split('.')[0]
-                last_min = io.read(trajectory_main + '_MEP.traj', -1)
+                last_min = io.read(self.trajectory, -1)
                 last_min.set_calculator(self.ase_calc)
                 self.atoms.positions = i.positions
-
+                self.model_calculator.max_data = self.max_train_data_dimer
                 opt = AIDTS(
                     atoms=last_min,
                     atoms_vector=self.atoms,
                     vector_length=vector_length,
                     model_calculator=self.model_calculator,
                     force_consistent=self.force_consistent,
-                    trajectory=self.trajectory,
+                    trajectory='tmp.traj',
                     trainingset=self.trainingset,
-                    max_train_data=self.max_train_data * 10,
+                    max_train_data=self.max_train_data_dimer,
                     max_train_data_strategy=self.max_train_data_strategy,
                     use_previous_observations=self.use_previous_observations
                     )
                 opt.run(fmax=fmax)
-                self.train.dump(atoms=last_min, method='mep')
+                self.traj.dump(atoms=last_min, method='mep')
 
         print_cite_aidmep()
-
 
 @parallel_function
 def print_cite_aidmep():
     msg = "\n" + "-" * 79 + "\n"
     msg += "You are using AIDMEP. Please cite: \n"
     msg += "[1] J. A. Garrido Torres, E. Garijo del Rio, V. Streibel "
-    msg += "T. S. Choski, J. J. Mortensen, A. Urban, M. Bajdich "
-    msg += "F. Abild-Pedersen, K. W. Jacobsen, and T. Bligaard. Submitted. \n"
+    msg += "T. S. Choski, Ask H. Larsen, J. J. Mortensen, A. Urban, M. Bajdich"
+    msg += " F. Abild-Pedersen, K. W. Jacobsen, and T. Bligaard. Submitted. \n"
     msg += "[2] E. Garijo del Rio, J. J. Mortensen and K. W. Jacobsen. "
     msg += "Phys. Rev. B 100, 104103."
     msg += "https://doi.org/10.1103/PhysRevB.100.104103. \n"
@@ -264,3 +258,5 @@ def print_cite_aidmep():
     msg += "https://doi.org/10.1103/PhysRevLett.122.156001 \n"
     msg += "-" * 79 + '\n'
     parprint(msg)
+
+
