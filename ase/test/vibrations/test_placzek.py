@@ -81,5 +81,6 @@ def test_compare_placzek_implementation_intensities():
 def main():
     test_overlap()
 
+
 if __name__ == '__main__':
     main()

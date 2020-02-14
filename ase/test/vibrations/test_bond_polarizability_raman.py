@@ -19,5 +19,6 @@ def test_calculation():
 def main():
     test_calculation()
 
+
 if __name__ == '__main__':
     main()

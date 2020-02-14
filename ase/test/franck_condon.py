@@ -17,8 +17,8 @@ def equal(x, y, tolerance=0, fail=True, msg=''):
         else:
             sys.stderr.write('WARNING: %s\n' % msg)
 
-# FCOverlap
 
+# FCOverlap
 fco = FranckCondonOverlap()
 fcr = FranckCondonRecursive()
 
