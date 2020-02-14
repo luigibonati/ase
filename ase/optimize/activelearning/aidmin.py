@@ -112,11 +112,17 @@ class AIDMin:
                         trainingset,
                         use_previous_observations=use_previous_observations
                         )
+        # Initialize a trajectory file for the current optimization.
+        self.traj = TrainingSet(self.trajectory,
+                                use_previous_observations=False
+                                )
+
 
         self.atoms.get_potential_energy()
         self.atoms.get_forces()
 
-        self.train.dump(atoms = self.atoms, method='min')
+        self.train.dump(atoms=self.atoms, method='min')
+        self.traj.dump(atoms=self.atoms, method='min')
 
     def run(self, fmax=0.05, ml_steps=500, steps=200):
 
@@ -201,6 +207,7 @@ class AIDMin:
             self.atoms.get_forces()
 
             self.train.dump(atoms=self.atoms, method='min')
+            self.traj.dump(atoms=self.atoms, method='min')
 
             self.function_calls = len(train_images) + 1
             self.force_calls = self.function_calls
