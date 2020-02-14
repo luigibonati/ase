@@ -439,6 +439,7 @@ scaled positions fixed.
 
 .. autoclass:: StrainFilter
 
+
 The ExpCellFilter class
 =======================
 
@@ -466,4 +467,7 @@ Here is an example of using these tools to demonstrate the difference between
 minimising a perturbed fcc Al cell with and without symmetry-preservation.
 
 -.. literalinclude:: fix_symmetry_example.py
+<<<<<<< HEAD
 
+=======
+>>>>>>> a564017b16eaf1b9d87935dabeb12a352bfcfa74
