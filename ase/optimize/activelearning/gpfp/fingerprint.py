@@ -289,6 +289,7 @@ class OganovFP(Fingerprint):
         elementlist = list(self.elements)
         jsymbols = [elementlist.index(atom.symbol)
                     for atom in self.extendedatoms]
+
         # Sum over elements:
         for B in range(self.n):
 
@@ -300,6 +301,9 @@ class OganovFP(Fingerprint):
                 # atom j is of element B:
                 if B != jsymbols[j]:
                     continue
+
+                if self.dm[i, j] > self.limit:
+                   continue
 
                 # position vector between atoms:
                 rij = self.rm[i, j]
@@ -798,7 +802,6 @@ class RadialAngularFP(OganovFP):
             self.params.update(params)
 
         self.set_params()
-
         self.set_peak_heights()
         self.get_fingerprint()
 
@@ -831,7 +834,6 @@ class RadialAngularFP(OganovFP):
         self.erm = np.einsum('ilkl->ikl', np.subtract.outer(ep, ep))
 
         fcij = self.cutoff_function(self.dm)
-        fcjk = self.cutoff_function(self.edm)
         self.angleconstant = self.aweight / (pi / self.nanglebins)
 
         # angle vector
@@ -865,9 +867,12 @@ class RadialAngularFP(OganovFP):
                     elif argument <= -1.0:
                         argument = -1.0 + 1e-9
 
-                    self.av.append([i, j, k, fcij[i, j],
-                                    fcjk[k, j], np.arccos(argument)])
+                    # This is faster inside the loop than precalculating
+                    # everything:
+                    fcjk = self.cutoff_function(self.edm[k, j])
 
+                    self.av.append([i, j, k, fcij[i, j],
+                                    fcjk, np.arccos(argument)])
         return self.av
 
     def cutoff_function(self, r):
@@ -1049,7 +1054,7 @@ class RadialAngularFP(OganovFP):
                 third += np.outer(thirdinit,
                                   self.dthetaijk_drk(i, j, k, theta))
 
-            gradient[A, B, C] += ((first + second + third))
+            gradient[A, B, C] += (first + second + third)
 
         if self.weight_by_elements:
             factortable = np.einsum('i,j,k->ijk',
