@@ -63,8 +63,8 @@ class AIDMin:
                 in the training set that is provided in the optimization.
 
         trainingset: None, trajectory file or list
-            Where the training set is kept, either saved to disk in a trajectory
-            file or kept in memory in a list.
+            Where the training set is kept, either saved to disk in a
+            trajectory file or kept in memory in a list.
             options:
                 None (default):
                     A trajectory file named *trajectory*_observations.traj is
@@ -103,16 +103,20 @@ class AIDMin:
 
         if trainingset is None:
             trajectory_main = self.trajectory.split('.')[0]
-            self.train = TrainingSet(trajectory_main + '_observations.traj',
-                    use_previous_observations = False)
+            self.train = TrainingSet(
+                trajectory_main + '_observations.traj',
+                use_previous_observations=False
+                )
         else:
-            self.train = TrainingSet(trainingset,
-                        use_previous_observations=use_previous_observations)
+            self.train = TrainingSet(
+                        trainingset,
+                        use_previous_observations=use_previous_observations
+                        )
 
         self.atoms.get_potential_energy()
         self.atoms.get_forces()
 
-        self.train.dump(atoms = self.atoms, method = 'min')
+        self.train.dump(atoms = self.atoms, method='min')
 
     def run(self, fmax=0.05, ml_steps=500, steps=200):
 

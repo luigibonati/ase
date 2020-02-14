@@ -6,6 +6,7 @@ from ase.optimize.activelearning.aidts import AIDTS
 from ase.optimize.activelearning.io import TrainingSet
 import os
 
+
 class AIDMEP:
 
     def __init__(self, images, calculator, model_calculator=None,
@@ -157,14 +158,14 @@ class AIDMEP:
             energy_L = images_path[i-1].get_potential_energy()
             energy_M = images_path[i].get_potential_energy()
             energy_R = images_path[i+1].get_potential_energy()
-            if energy_L < energy_M and energy_R < energy_M:  # Maximum found in i.
+            if energy_L < energy_M and energy_R < energy_M:  # Maximum found.
                 atoms = io.read(interp_path, '-1')
                 atoms.set_calculator(self.ase_calc)
                 atoms.positions = images_path[i].positions
                 atoms.info['method_maxmin'] = 'max'
                 self.list_atoms += [atoms]
 
-            if energy_L > energy_M and energy_R > energy_M:  # Maximum found in i.
+            if energy_L > energy_M and energy_R > energy_M:  # Minimum found.
                 atoms = io.read(interp_path, '-1')
                 atoms.set_calculator(self.ase_calc)
                 atoms.positions = images_path[i].positions
@@ -192,6 +193,8 @@ class AIDMEP:
         ----------
         fmax : float
             Convergence criteria (in eV/Angstrom).
+        vector_length: float
+            Magnitude of the length vector for the Dimer.
 
         Returns
         -------
@@ -245,6 +248,7 @@ class AIDMEP:
 
         print_cite_aidmep()
 
+
 @parallel_function
 def print_cite_aidmep():
     msg = "\n" + "-" * 79 + "\n"
@@ -260,4 +264,3 @@ def print_cite_aidmep():
     msg += "https://doi.org/10.1103/PhysRevLett.122.156001 \n"
     msg += "-" * 79 + '\n'
     parprint(msg)
-

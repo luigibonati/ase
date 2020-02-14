@@ -67,11 +67,12 @@ class TrainingSet:
     def __init__(self, destination, use_previous_observations):
         if type(destination) is list:
             if not use_previous_observations:
-                if len(destination)>0:
-                    warning = ("use_previous_observations == False together "
-                               "with a non empty list as destintion deletes "
-                               "the content of the list. If this is an unwanted"
-                               "behaviour, consider passing an empty list.")
+                if len(destination) > 0:
+                    warning = (
+                           "use_previous_observations == False together "
+                           "with a non empty list as destintion deletes "
+                           "the content of the list. If this is an unwanted"
+                           "behaviour, consider passing an empty list.")
                     warnings.warn(warning)
 
                 self.destination = []
@@ -107,12 +108,12 @@ class TrainingSet:
 
         elif self.mode == 'traj':
             if not self.use_prev_obs:
-                dump_observation(atoms, filename = self.destination,
-                         method = method, restart = False)
+                dump_observation(atoms, filename=self.destination,
+                         method=method, restart=False)
                 self.use_prev_obs = True
             else:
-                dump_observation(atoms, filename = self.destination,
-                        method = method, restart = True)
+                dump_observation(atoms, filename=self.destination,
+                        method=method, restart=True)
         else:
             raise NotImplementedError()
 
@@ -146,6 +147,7 @@ class TrainingSet:
             return io.read(self.destination, -1)
         else:
             raise NotImplementedError()
+
 
 @parallel_function
 def get_fmax(atoms):

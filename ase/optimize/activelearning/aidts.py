@@ -7,6 +7,7 @@ from ase.parallel import parprint, parallel_function
 from ase.dimer import DimerControl, MinModeAtoms, MinModeTranslate
 from ase.optimize.activelearning.io import get_fmax, TrainingSet
 
+
 class AIDTS:
 
     def __init__(self, atoms, atoms_vector, vector_length=0.7,
@@ -134,17 +135,19 @@ class AIDTS:
 
         if trainingset is None:
             trajectory_main = self.trajectory.split('.')[0]
-            self.train = TrainingSet(trajectory_main + '_observations.traj',
+            self.train = TrainingSet(
+                    trajectory_main + '_observations.traj',
                     use_previous_observations=False)
         else:
-            self.train = TrainingSet(trainingset,
-                        use_previous_observations=use_previous_observations)
+            self.train = TrainingSet(
+                        trainingset,
+                        use_previous_observations=use_previous_observations
+                        )
 
         # First observation calculation.
         self.atoms.get_potential_energy()
         self.atoms.get_forces()
         self.train.dump(atoms=self.atoms, method='dimer')
-
 
     def run(self, fmax=0.05, steps=200, logfile=True):
 
@@ -158,6 +161,9 @@ class AIDTS:
 
         steps: int
             Maximum number of steps for the surrogate.
+
+        logfile: bool
+            Whether to print or not a full output of the optimization.
 
         Returns
         -------
@@ -235,7 +241,8 @@ class AIDTS:
                 parprint("-" * 26)
                 parprint('Step:', self.step)
                 parprint('Function calls:', self.function_calls)
-                parprint('Time:', time.strftime("%m/%d/%Y, %H:%M:%S", time.localtime()))
+                parprint('Time:', time.strftime(
+                            "%m/%d/%Y, %H:%M:%S", time.localtime()))
                 parprint('Energy:', self.atoms.get_potential_energy(self.fc))
                 parprint("fmax:", get_fmax(self.atoms))
                 parprint("-" * 26 + "\n")
@@ -244,6 +251,7 @@ class AIDTS:
                 parprint('AID-TS has converged.')
                 print_cite_aidts()
                 break
+
 
 @parallel_function
 def print_cite_aidts():
