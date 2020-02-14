@@ -128,26 +128,27 @@ class AIDTS:
         self.trajectory = trajectory
         self.use_prev_obs = use_previous_observations
 
-        trajectory_main = self.trajectory.split('.')[0]
-        self.trajectory_observations = trajectory_main + '_observations.traj'
-
-        # Initialize training set
-
         if trainingset is None:
             trajectory_main = self.trajectory.split('.')[0]
             self.train = TrainingSet(
-                    trajectory_main + '_observations.traj',
-                    use_previous_observations=False)
+                trajectory_main + '_observations.traj',
+                use_previous_observations=False
+                )
         else:
             self.train = TrainingSet(
                         trainingset,
                         use_previous_observations=use_previous_observations
                         )
+        # Initialize a trajectory file for the current optimization.
+        self.traj = TrainingSet(self.trajectory,
+                                use_previous_observations=False
+                                )
 
         # First observation calculation.
         self.atoms.get_potential_energy()
         self.atoms.get_forces()
         self.train.dump(atoms=self.atoms, method='dimer')
+        self.traj.dump(atoms=self.atoms, method='dimer')
 
     def run(self, fmax=0.05, steps=200, logfile=True):
 
@@ -177,13 +178,13 @@ class AIDTS:
         initial_atoms_positions = copy.deepcopy(self.atoms.positions)
 
         # Probed atoms are used to know the path followed for low memory.
-        probed_atoms = [io.read(self.trajectory_observations, '-1')]
+        probed_atoms = [io.read(self.trajectory, '-1')]
 
         while True:
 
             # 1. Collect observations.
             # This serves to restart from a previous (and/or parallel) runs.
-            train_images = io.read(self.trajectory_observations, ':')
+            train_images = self.train.load_set()
 
             # Update constraints in case they have changed from previous runs.
             for img in train_images:
@@ -231,6 +232,7 @@ class AIDTS:
             self.atoms.get_forces()
 
             self.train.dump(atoms=self.atoms, method='dimer')
+            self.traj.dump(atoms=self.atoms, method='dimer')
 
             self.function_calls = len(train_images) + 1
             self.force_calls = self.function_calls
