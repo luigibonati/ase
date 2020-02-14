@@ -20,22 +20,22 @@ at_unsym = at_prim * [2,2,2]
 at_unsym.positions[0,0] += 1.0e-7 # break symmetry by 1e-7
 at_init = at_unsym.copy()
 
-calc = LennardJones()
-at_unsym.set_calculator(calc)
-
-at_cell = UnitCellFilter(at_unsym)
-
-dyn = BFGS(at_cell)
-print("Energy", at_unsym.get_potential_energy())
-dyn.run(fmax=0.001)
-print("Energy", at_unsym.get_potential_energy())
+# calc = LennardJones()
+# at_unsym.set_calculator(calc)
+#
+# at_cell = UnitCellFilter(at_unsym)
+#
+# dyn = BFGS(at_cell)
+# print("Energy", at_unsym.get_potential_energy())
+# dyn.run(fmax=0.001)
+# print("Energy", at_unsym.get_potential_energy())
 
 # with symmetrization
 at_sym = at_prim * [2,2,2]
 at_sym.positions[0,0] += 1.0e-7 # break symmetry by 1e-7
 
 at_sym.set_calculator(LennardJones())
-at_sym.set_constraint(FixSymmetry(at_sym))
+#at_sym.set_constraint(FixSymmetry(at_sym))
 
 at_cell = UnitCellFilter(at_sym)
 

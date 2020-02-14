@@ -9,23 +9,18 @@ from ase.constraints import (FixConstraint,
                              voigt_6_to_full_3x3_stress,
                              full_3x3_to_voigt_6_stress)
 
-# check if we have access to get_spacegroup from spglib
-# https://atztogo.github.io/spglib/
-has_spglib = False
-try:
-    import spglib                   # For version 1.9 or later
-    has_spglib = True
-except ImportError:
-    try:
-        from pyspglib import spglib  # For versions 1.8.x or before
-        has_spglib = True
-    except ImportError:
-        pass
-
 __all__ = ['refine', 'check_symmetry', 'FixSymmetry']
 
 def refine(atoms, symprec=0.01, verbose=False):
     # test orig config with desired tol
+
+    # check if we have access to get_spacegroup from spglib
+    # https://atztogo.github.io/spglib/
+    try:
+        import spglib  # For version 1.9 or later
+    except ImportError:
+        from pyspglib import spglib  # For versions 1.8.x or before
+
     dataset = spglib.get_symmetry_dataset(atoms, symprec=symprec)
     if dataset is None:
         raise ValueError("refine failed to get initial symmetry dataset "+
@@ -47,7 +42,7 @@ def refine(atoms, symprec=0.01, verbose=False):
     dataset = spglib.get_symmetry_dataset(atoms, symprec=symprec)
     if dataset is None:
         raise ValueError("refine failed to get symmetrized cell symmetry dataset "+
-                         spglib.get_error_message())
+                         self.spglib.get_error_message())
     (prim_cell, prim_scaled_pos, prim_types) = spglib.find_primitive(atoms,
                                                                      symprec=symprec)
 
@@ -88,15 +83,20 @@ def refine(atoms, symprec=0.01, verbose=False):
                                                                       dataset["international"],
                                                                       dataset["hall"]))
 
-
 def check_symmetry(atoms, symprec=1.0e-6):
     """
     Check symmetry of `at` with precision `symprec` using `spglib`
 
     Prints a summary and returns result of `spglib.get_symmetry_dataset()`
     """
+    # check if we have access to get_spacegroup from spglib
+    # https://atztogo.github.io/spglib/
+    try:
+        import spglib  # For version 1.9 or later
+    except ImportError:
+        from pyspglib import spglib  # For versions 1.8.x or before
     dataset = spglib.get_symmetry_dataset(atoms, symprec=symprec)
-    print("ase.spacegroup.symmetrize.check: prec", symprec,
+    print("ase.spacegroup.symmetrize.check_symmetry: prec", symprec,
           "got symmetry group number", dataset["number"],
           ", international (Hermann-Mauguin)", dataset["international"],
           ", Hall ",dataset["hall"])
@@ -108,6 +108,13 @@ def prep(atoms, symprec=1.0e-6):
 
     Returns a tuple `(rotations, translations, symm_map)`
     """
+    # check if we have access to get_spacegroup from spglib
+    # https://atztogo.github.io/spglib/
+    try:
+        import spglib  # For version 1.9 or later
+    except ImportError:
+        from pyspglib import spglib  # For versions 1.8.x or before
+
     dataset = spglib.get_symmetry_dataset(atoms, symprec=symprec)
     print("symmetry.prep: symmetry group number",dataset["number"],
           ", international (Hermann-Mauguin)", dataset["international"],
@@ -155,13 +162,16 @@ def symmetrize_rank2(lattice, lattice_inv, stress_3_3, rot):
     """
     scaled_stress = np.dot(np.dot(lattice, stress_3_3), lattice.T)
 
+    print('orig', stress_3_3)
     symmetrized_scaled_stress = np.zeros((3,3))
     for r in rot:
-        symmetrized_scaled_stress += np.dot(np.dot(r.T, scaled_stress),r)
+        symmetrized_scaled_stress += np.dot(np.dot(r.T, scaled_stress), r)
     symmetrized_scaled_stress /= len(rot)
 
-    return np.dot(np.dot(lattice_inv, symmetrized_scaled_stress),
+    sym = np.dot(np.dot(lattice_inv, symmetrized_scaled_stress),
                   lattice_inv.T)
+    print('sym', sym)
+    return sym
 
 class FixSymmetry(FixConstraint):
     """
@@ -170,21 +180,18 @@ class FixSymmetry(FixConstraint):
     Requires spglib package to be available.
     """
     def __init__(self, atoms, symprec=0.01):
-        if not has_spglib:
-            import spglib # generate ImportError to skip tests
         refine(atoms, symprec) # refine initial symmetry
         self.rotations, self.translations, self.symm_map = prep(atoms)
 
     def adjust_cell(self, atoms, cell):
-        # symmetrize change in cell as a rank 2 tensor
-        step = cell - atoms.cell
-        symmetrized_step = symmetrize_rank2(atoms.get_cell(),
+        # symmetrize cell as a rank 2 tensor
+        symmetrized_cell = symmetrize_rank2(atoms.get_cell(),
                                             atoms.get_reciprocal_cell().T,
-                                            step, self.rotations)
+                                            cell, self.rotations)
         # print('cell step', np.abs(step).max())
         # print('cell sym step', np.abs(symmetrized_step).max())
         # print('change in step', np.abs(symmetrized_step - step).max())
-        cell[:] = atoms.cell + symmetrized_step
+        cell[:] = cell #symmetrized_cell
 
     def adjust_positions(self, atoms, new):
         # symmetrize changes in position as rank 1 tensors
@@ -212,7 +219,7 @@ class FixSymmetry(FixConstraint):
 
     def adjust_stress(self, atoms, stress):
         # symmetrize stress as rank 2 tensor
-        #print('adjusting stress')
+        print('adjusting stress')
         raw_stress = voigt_6_to_full_3x3_stress(stress)
         symmetrized_stress = symmetrize_rank2(atoms.get_cell(),
                                                atoms.get_reciprocal_cell().T,
