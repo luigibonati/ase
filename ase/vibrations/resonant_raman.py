@@ -2,12 +2,11 @@
 
 import pickle
 import os
-import sys
 
 import numpy as np
 
 import ase.units as u
-from ase.parallel import world, parprint, paropen
+from ase.parallel import world, paropen
 from ase.vibrations import Vibrations
 from ase.utils.timing import Timer
 from ase.utils import convert_string_to_fd
