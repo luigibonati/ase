@@ -993,7 +993,8 @@ class RadialAngularFP(OganovFP):
 
         return -1 / abs(np.sin(theta)) / r1 / r2 * (v1 - dotp / r2**2 * v2)
 
-    def calculate_angle_gradient(self, index):
+    def calculate_angle_gradient(self, index, elementlist,
+                                 isymbols, jsymbols, ksymbols):
         '''
         Calculates the derivative of the fingerprint
         with respect to one of the coordinates.
@@ -1002,14 +1003,6 @@ class RadialAngularFP(OganovFP):
         '''
         gradient = np.zeros([self.n, self.n, self.n, self.nanglebins, 3])
         xvec = np.linspace(0., pi, self.nanglebins)
-
-        elementlist = list(self.elements)
-        isymbols = [elementlist.index(atom.symbol)
-                    for atom in self.atoms]
-        jsymbols = [elementlist.index(atom.symbol)
-                    for atom in self.extendedatoms]
-        ksymbols = [elementlist.index(atom.symbol)
-                    for atom in self.extendedatoms]
 
         for data in self.av:
             i, j, k, fcij, fcjk, theta = data
@@ -1030,17 +1023,21 @@ class RadialAngularFP(OganovFP):
 
             # First term:
             first = np.zeros([self.nanglebins, 3])
-            if indexi:
-                first += (fcjk * np.outer(gaussian, self.nabla_fcij(i, j)))
-            if indexj:
-                first += (fcjk * np.outer(gaussian, -self.nabla_fcij(i, j)))
+            if not indexk:
+                value = (fcjk * np.outer(gaussian, self.nabla_fcij(i, j)))
+                if indexi:
+                    first += value
+                if indexj:
+                    first += -value
 
             # Second term:
             second = np.zeros([self.nanglebins, 3])
-            if indexj:
-                second += (fcij * np.outer(gaussian, self.nabla_fcjk(j, k)))
-            if indexk:
-                second += (fcij * np.outer(gaussian, -self.nabla_fcjk(j, k)))
+            if not indexi:
+                value = (fcij * np.outer(gaussian, self.nabla_fcjk(j, k)))
+                if indexj:
+                    second += value
+                if indexk:
+                    second += -value
 
             # Third term:
             third = np.zeros([self.nanglebins, 3])
@@ -1068,7 +1065,18 @@ class RadialAngularFP(OganovFP):
         return gradient * self.angleconstant
 
     def calculate_all_angle_gradients(self):
-        self.anglegradients = [self.calculate_angle_gradient(atom.index)
+        elementlist = list(self.elements)
+        isymbols = [elementlist.index(atom.symbol)
+                    for atom in self.atoms]
+        jsymbols = [elementlist.index(atom.symbol)
+                    for atom in self.extendedatoms]
+        ksymbols = jsymbols
+
+        self.anglegradients = [self.calculate_angle_gradient(atom.index,
+                                                             elementlist,
+                                                             isymbols,
+                                                             jsymbols,
+                                                             ksymbols)
                                for atom in self.atoms]
         return np.array(self.anglegradients)
 
@@ -1415,7 +1423,8 @@ class ParallelRadAngFP(RadialAngularFP, ParallelOganovFP):
 
         return self.av
 
-    def calculate_angle_gradient(self, index):
+    def calculate_angle_gradient(self, index, elementlist,
+                                 isymbols, jsymbols, ksymbols):
         '''
         Calculates the derivative of the fingerprint
         with respect to one of the coordinates.
