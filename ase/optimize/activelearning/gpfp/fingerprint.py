@@ -827,11 +827,9 @@ class RadialAngularFP(OganovFP):
         """
 
         # Extended distance and displacement vector matrices:
-        self.edm = distance_matrix(x=self.extendedatoms.positions,
-                                   y=self.extendedatoms.positions)
-
         ep = self.extendedatoms.positions
         self.erm = np.einsum('ilkl->ikl', np.subtract.outer(ep, ep))
+        self.edm = np.linalg.norm(self.erm, axis=2)
 
         fcij = self.cutoff_function(self.dm)
         self.angleconstant = self.aweight / (pi / self.nanglebins)
@@ -940,7 +938,7 @@ class RadialAngularFP(OganovFP):
 
     def nabla_fcjk(self, m, n):
         d = self.edm[m, n]
-        r = self.erm[m, n]
+        r = -self.erm[n, m]  # in parallel version, erm[m,n] are not calcd
         dfc_dd = (self.gamma * (self.gamma + 1) / self.Rtheta *
                   ((d / self.Rtheta) ** self.gamma -
                    (d / self.Rtheta) ** (self.gamma - 1)))
