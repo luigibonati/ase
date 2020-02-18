@@ -35,8 +35,12 @@ class BondPolarizability:
             indices, offsets = nl.get_neighbors(ia)
             pos_ac = atoms.get_positions() - atoms.get_positions()[ia]
             for ib, offset in zip(indices, offsets):
+                weight = 1
+                if offset.any():  # this comes from a periodic image
+                    weight = 0.5  # count half the bond only
                 r_c = pos_ac[ib] + np.dot(offset, atoms.get_cell())
                 r2 = np.dot(r_c, r_c)
-                alpha += (r2 / (4**4 * alpha_a[ia] * alpha_a[ib])**(1. / 6) *
+                alpha += (weight * r2 /
+                          (4**4 * alpha_a[ia] * alpha_a[ib])**(1. / 6) *
                           np.outer(r_c, r_c))
         return alpha
