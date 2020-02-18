@@ -4,7 +4,7 @@ from ase.units import invcm, Ha
 from ase.data import atomic_masses
 from ase.calculators.calculator import all_changes
 from ase.calculators.morse import MorsePotential
-from ase.calculators.excitations import ExcitationList, Excitation
+from ase.calculators.excitation_list import Excitation, ExcitationList
 
 """The H2 molecule represented by Morse-Potentials for
 gound and first 3 excited singlet states B + C(doubly degenerate)"""
@@ -37,7 +37,7 @@ def H2Morse(state=0):
     """Return H2 as a Morse-Potential with calculator attached."""
     atoms = Atoms('H2', positions=np.zeros((2, 3)))
     atoms[1].position[2] = Re[state]
-    atoms.set_calculator(H2MorseState(state))
+    atoms.calc = H2MorseState(state)
     atoms.get_potential_energy()
     return atoms
 
@@ -102,24 +102,47 @@ class H2MorseState(MorsePotential):
         return ov
 
 
-class H2MorseExcitedStates(ExcitationList):
+class H2MorseExcitedStatesCalculator():
     """First singlet excited state of H2 as Lennard-Jones potentials"""
-    def __init__(self, calculator, nstates=3):
+    def __init__(self, gscalculator=None, nstates=3, txt='-'):
+        """
+        Parameters
+        ----------
+        gscalculator: object
+          Calculator for ground state energies
+        nstates: int
+          Numer of states to calculate 0 < nstates < 4, default 3
+        txt:
+          output channel, default '-'
+        """
         assert nstates > 0 and nstates < 4
         self.nstates = nstates
-        ExcitationList.__init__(self, calculator)
+        self.gscalc = gscalculator
 
-    def calculate(self):
-        """Calculate excitation spectrum"""
+    def calculate(self, atoms=None):
+        """Calculate excitation spectrum
+
+        Parameters
+        ----------
+        atoms: Ase atoms object
+           Default None
+        """
         # central me value and rise, unit Bohr
         # from DOI: 10.1021/acs.jctc.9b00584
         mc = [0, 0.8, 0.7, 0.7]
         mr = [0, 1.0, 0.5, 0.5]
 
-        cgs = self.calculator
-        atoms = cgs.get_atoms()
+        if atoms is None:
+            atoms = self.gscalc.atoms
+        
+        if self.gscalc is not None:
+            cgs = self.gscalc
+        else:
+            cgs = atoms.calc
         r = atoms.get_distance(0, 1)
-        E0 = cgs.get_potential_energy()
+        E0 = cgs.get_potential_energy(atoms)
+        
+        exl = H2MorseExcitedStates()
         for i in range(1, self.nstates + 1):
             hvec = cgs.wfs[0] * cgs.wfs[i]
             energy = Ha * (0.5 - 1. / 8) - E0
@@ -130,10 +153,18 @@ class H2MorseExcitedStates(ExcitationList):
             mur = hvec * (mc[i] + (r - Re[0]) * mr[i])
             muv = mur
 
-            self.append(BasicExcitation(energy, i, mur, muv))
+            exl.append(H2Excitation(energy, i, mur, muv))
+        return exl
+
+
+class H2MorseExcitedStates(ExcitationList):
+    """First singlet excited state of H2 as Lennard-Jones potentials"""
+    def __init__(self, filename=None, nstates=3):
+        self.nstates = nstates
+        ExcitationList.__init__(self, filename)
 
     def overlap(self, ov_nn, other):
-        return (ov_nn[1:self.nstates + 1, 1:self.nstates + 1] *
+        return (ov_nn[1:len(self) + 1, 1:len(self) + 1] *
                 ov_nn[0, 0])
 
     def read(self, filename):
@@ -142,7 +173,7 @@ class H2MorseExcitedStates(ExcitationList):
             self.filename = filename
             n = int(f.readline().split()[0])
             for i in range(min(n, self.nstates)):
-                self.append(BasicExcitation(string=f.readline()))
+                self.append(H2Excitation(string=f.readline()))
 
     def write(self, fname):
         with open(fname, 'w') as f:
@@ -151,20 +182,7 @@ class H2MorseExcitedStates(ExcitationList):
                 f.write(ex.outstring())
 
 
-class BasicExcitation(Excitation):
-    def __init__(self, energy=None, index=None,
-                 mur=None, muv=None, magn=None, string=None):
-        if string is not None:
-            self.fromstring(string)
-        else:
-            self.energy = energy
-            self.index = index
-            self.mur = mur
-            self.muv = muv
-            self.magn = magn
-        self.fij = 1.
-        self.me = - self.mur * np.sqrt(self.energy / Ha)
-
+class H2Excitation(Excitation):
     def __eq__(self, other):
         """Considered to be equal when their indices are equal."""
         return self.index == other.index
@@ -175,32 +193,16 @@ class BasicExcitation(Excitation):
             self.hash = hash(self.index)
         return self.hash
 
-    def outstring(self):
-        string = '{0:g}  {1}  '.format(self.energy, self.index)
 
-        def format_me(me):
-            string = ''
-            if me.dtype == float:
-                for m in me:
-                    string += ' {0:.5e}'.format(m)
-            else:
-                for m in me:
-                    string += ' {0.real:.5e}{0.imag:+.5e}j'.format(m)
-            return string
-
-        string += '  ' + format_me(self.mur)
-        if self.muv is not None:
-            string += '  ' + format_me(self.muv)
-        if self.magn is not None:
-            string += '  ' + format_me(self.magn)
-        string += '\n'
-
-        return string
-
-    def fromstring(self, string):
-        l = string.split()
-        energy = float(l.pop(0))
-        index = int(l.pop(0))
-        mur = np.array([float(l.pop(0)) for i in range(3)])
-        muv = np.array([float(l.pop(0)) for i in range(3)])
-        self.__init__(energy, index, mur, muv)
+class H2MorseExcitedStatesAndCalculator(
+        H2MorseExcitedStatesCalculator, H2MorseExcitedStates):
+    """Traditional joined object"""
+    def __init__(self, calculator=None, nstates=3):
+        if isinstance(calculator, str):
+            H2MorseExcitedStates.__init__(self, calculator, nstates)
+        else:
+            excalc = H2MorseExcitedStatesCalculator(calculator, nstates)
+            exlist = excalc.calculate()
+            H2MorseExcitedStates.__init__(self, nstates=nstates)
+            for ex in exlist:
+                self.append(ex)
