@@ -75,6 +75,8 @@ for i,optimizer in enumerate(optimizers):
     wrapper = Wrapper(dimer)
     tracker = Tracker(wrapper)
 
+
+    print(optimizer)
     opt = optimizer(wrapper, update_hyperparams=True)
     opt.attach(tracker)
     opt.run(0.01)
