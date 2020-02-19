@@ -6,6 +6,33 @@ from ase.optimize.activelearning.gp.prior import ConstantPrior
 from ase.calculators.calculator import Calculator, all_changes
 from scipy.spatial.distance import euclidean
 
+from copy import copy
+
+def copy_image(atoms):
+    """
+    Copy an image, so that it is suitable as a training set point.
+    It returns a copy of the atoms object with the single point 
+    calculator attached
+    """
+    # Check if the input already has the desired format
+    if atoms.calc.__class__.__name__ == 'SinglePointCalculator':
+        # Return a copy of the atoms object
+        calc = copy(atoms.calc)
+        atoms0 = atoms.copy()
+
+    else:
+        # Check if the atoms object has energy and forces calculated for
+        # this position
+        # If not, compute them
+        atoms.get_forces()
+
+        # Initialize a SinglePointCalculator to store this results
+        calc = SinglePointCalculator(atoms, **atoms.calc.results)
+
+    atoms0 = atoms.copy()
+    atoms0.set_calculator(calc)
+    return atoms0
+
 
 class GPCalculator(Calculator, GaussianProcess):
     """
@@ -131,6 +158,8 @@ class GPCalculator(Calculator, GaussianProcess):
         self.train_x = []
         self.train_y = []
         self.train_images = train_images
+        if self.train_images is not None:
+            self.train_images=[copy_image(i) for i in train_images]
         self.old_train_images = []
         self.prev_train_y = []  # Do not retrain model if same data.
 
@@ -186,7 +215,7 @@ class GPCalculator(Calculator, GaussianProcess):
 
         self.test_images = test_images
         self.train_images = self.old_train_images
-        for i in train_images:
+        for i in [copy_image(j) for j in train_images]:
             if i not in self.train_images:
                 self.train_images.append(i)
         self.calculate(atoms=self.train_images[0])  # Test one to attach.
