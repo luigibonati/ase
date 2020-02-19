@@ -1,11 +1,7 @@
 import argparse
 import sys
 import textwrap
-<<<<<<< HEAD
-import re
-=======
 from importlib import import_module
->>>>>>> master
 
 from ase import __version__
 
