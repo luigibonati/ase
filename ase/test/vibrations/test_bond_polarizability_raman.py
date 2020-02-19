@@ -4,7 +4,7 @@ from ase.vibrations.raman import RamanStaticCalculator
 from ase.vibrations.placzek import PlaczekStatic
 from ase.calculators.bond_polarizability import BondPolarizability
 from ase.calculators.emt import EMT
-## from ase.optimize import FIRE
+from ase.optimize import FIRE
 
 
 def test_silicon():
@@ -31,9 +31,18 @@ def test_silicon():
         pz = PlaczekStatic(si32, gsname=name)
         pz.summary()        
 
-def test_calculation():
-    atoms = Atoms('Si2', positions=[[0, 0, 0], [0, 0, 2.5]])
+def test_si3():
+    y, z = 0.30646191, 1.14411339  # emt relaxed
+    # XXX change this to C
+    atoms = Atoms('Si3', positions=[[0, 0, 0], [0, y, z], [0, z, y]])
     atoms.set_calculator(EMT())
+    if 0:
+        import numpy as np
+        opt = FIRE(atoms)
+        opt.run(fmax=0.001)
+        print(atoms.positions - atoms[0].position)
+        print(np.sqrt(((atoms.positions - atoms[0].position)**2).sum(axis=1)))
+    
     name = 'bp'
     rm = RamanStaticCalculator(atoms, BondPolarizability,
                                gsname=name, exname=name, txt='-')
@@ -43,7 +52,7 @@ def test_calculation():
     
 
 def main():
-    test_silicon()
+    test_si3()
 
 
 if __name__ == '__main__':
