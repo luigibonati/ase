@@ -1,11 +1,38 @@
 import numpy as np
 import warnings
-from ase.optimize.activelearning.gpfp.kernel import FPKernel
+from ase.optimize.activelearning.gpfp.kernel import FPKernel, FPKernelNoforces
 from ase.optimize.activelearning.gpfp.fingerprint import CartesianCoordFP
 from ase.optimize.activelearning.gpfp.gp import GaussianProcess
 from ase.optimize.activelearning.gpfp.prior import ConstantPrior
 from ase.calculators.calculator import Calculator, all_changes
+from ase.calculators.singlepoint import SinglePointCalculator
 from scipy.spatial.distance import euclidean
+from copy import copy
+
+def copy_image(atoms):
+    """
+    Copy an image, so that it is suitable as a training set point.
+    It returns a copy of the atoms object with the single point 
+    calculator attached
+    """
+    # Check if the input already has the desired format
+    if atoms.calc.__class__.__name__ == 'SinglePointCalculator':
+        # Return a copy of the atoms object
+        calc = copy(atoms.calc)
+        atoms0 = atoms.copy()
+
+    else:
+        # Check if the atoms object has energy and forces calculated for
+        # this position
+        # If not, compute them
+        atoms.get_forces()
+
+        # Initialize a SinglePointCalculator to store this results
+        calc = SinglePointCalculator(atoms, **atoms.calc.results)
+
+    atoms0 = atoms.copy()
+    atoms0.set_calculator(calc)
+    return atoms0
 
 
 class GPCalculator(Calculator, GaussianProcess):
@@ -35,7 +62,7 @@ class GPCalculator(Calculator, GaussianProcess):
 
     update_prior_strategy: None, string
         Strategy to update the constant from the ConstantPrior when more
-        data is collected. 
+        data is collected.
 
         options:
             None: Do not update the constant
@@ -111,7 +138,7 @@ class GPCalculator(Calculator, GaussianProcess):
                  max_train_data_strategy='nearest_observations',
                  wrap_positions=False, calculate_uncertainty=True,
                  print_format='ASE', mask_constraints=False,
-                 **kwargs):
+                 use_forces=True, **kwargs):
 
         # Initialize the Calculator
         Calculator.__init__(self, **kwargs)
@@ -121,8 +148,17 @@ class GPCalculator(Calculator, GaussianProcess):
             kernel = FPKernel()
         if prior is None:
             prior = ConstantPrior(constant=0.0)
+        prior.use_forces = use_forces
 
-        GaussianProcess.__init__(self, prior, kernel)
+        if (not use_forces) and isinstance(kernel, FPKernel):
+            warning = ('Kernel class has been changed to ' +
+                       'the one without gradients due to ' +
+                       'option use_forces=False')
+            warnings.warn(warning)
+            kernel = FPKernelNoforces()
+
+        GaussianProcess.__init__(self, prior, kernel,
+                                 use_forces=use_forces)
 
         # Set initial hyperparameters.
         self.set_hyperparams(params, noise)
@@ -131,6 +167,8 @@ class GPCalculator(Calculator, GaussianProcess):
         self.train_x = []
         self.train_y = []
         self.train_images = train_images
+        if self.train_images is not None:
+            self.train_images=[copy_image(i) for i in train_images]
         self.old_train_images = []
         self.prev_train_y = []  # Do not retrain model if same data.
 
@@ -163,9 +201,10 @@ class GPCalculator(Calculator, GaussianProcess):
 
     def new_fingerprint(self):
         if self.fp_hp:
-            return self.fp(**self.fp_hp)
+            return self.fp(calc_gradients=self.use_forces,
+                           **self.fp_hp)
         else:
-            return self.fp()
+            return self.fp(calc_gradients=self.use_forces)
 
     def extract_features(self):
         """ From the training images (which include the observations),
@@ -188,10 +227,13 @@ class GPCalculator(Calculator, GaussianProcess):
             r = self.new_fingerprint()
             r.set_atoms(i)
             e = i.get_potential_energy(force_consistent=self.fc)
-            f = i.get_forces()
             self.train_x.append(r)
-            y = np.append(np.array(e).reshape(-1),
-                          -f.reshape(-1)[self.atoms_mask])
+            if self.use_forces:
+                f = i.get_forces()
+                y = np.append(np.array(e).reshape(-1),
+                              -f.reshape(-1)[self.atoms_mask])
+            else:
+                y = np.array(e).reshape(-1)
             self.train_y.append(y)
 
     def update_train_data(self, train_images, test_images=None):
@@ -200,7 +242,7 @@ class GPCalculator(Calculator, GaussianProcess):
 
         self.test_images = test_images
         self.train_images = self.old_train_images
-        for i in train_images:
+        for i in [copy_image(i) for i in train_images]:
             if i not in self.train_images:
                 self.train_images.append(i)
         self.calculate(atoms=self.train_images[0])  # Test one to attach.
@@ -325,7 +367,8 @@ class GPCalculator(Calculator, GaussianProcess):
 
                 if self.fp_hp:
                     p2update = set(self.params_to_update.keys())
-                    keys_to_update = p2update.intersection(set(self.fp_hp.keys()))
+                    keys_to_update = p2update.intersection(
+                        set(self.fp_hp.keys()))
                     for key in keys_to_update:
                         self.fp_hp[key] = self.hyperparams[key]
 
@@ -359,17 +402,21 @@ class GPCalculator(Calculator, GaussianProcess):
 
         # Obtain energy and forces for the given geometry.
         energy = f[0]
-        forces = -f[1:].reshape(-1)
-        D = len(self.atoms.get_positions(wrap=self.wrap).flatten())
-        forces_empty = np.zeros(D)
-        for i in range(len(self.atoms_mask)):
-            forces_empty[self.atoms_mask[i]] = forces[i]
-        forces = forces_empty.reshape(-1, 3)
+        if self.use_forces:
+            forces = -f[1:].reshape(-1)
+            D = len(self.atoms.get_positions(wrap=self.wrap).flatten())
+            forces_empty = np.zeros(D)
+            for i in range(len(self.atoms_mask)):
+                forces_empty[self.atoms_mask[i]] = forces[i]
+            forces = forces_empty.reshape(-1, 3)
 
         # Get uncertainty for the given geometry.
         uncertainty = None
         if self.calculate_uncertainty:
-            uncertainty = V[0][0]
+            if self.use_forces:
+                uncertainty = V[0][0]
+            else:
+                uncertainty = V[0]
             if uncertainty < 0.0:
                 uncertainty = 0.0
                 warning = ('Imaginary uncertainty has been set to zero')
@@ -378,7 +425,8 @@ class GPCalculator(Calculator, GaussianProcess):
 
         # Results:
         self.results['energy'] = energy
-        self.results['forces'] = forces
+        if self.use_forces:
+            self.results['forces'] = forces
         self.results['uncertainty'] = uncertainty
 
     def create_mask(self):
@@ -411,3 +459,48 @@ class GPCalculator(Calculator, GaussianProcess):
             except Exception:
                 pass
         return np.argwhere(mask_constraints.reshape(-1)).reshape(-1)
+
+    def calculate_LOO(self, index):
+        """
+        Predict energy for a single image that is removed
+        from the training set.
+        """
+
+        if self.atoms is None:
+            self.atoms = self.train_images[0]
+
+        if self.train_images is not None:
+            self.extract_features()
+            self.train_model()
+            self.old_train_images = self.train_images[:]
+            self.train_images = None  # Remove the training list of images.
+
+        f, V = self.leaveoneout(np.asarray(self.train_x),
+                                np.asarray(self.train_y),
+                                index)
+
+        # Obtain energy and forces for the given geometry.
+        energy = f[0]
+        if self.use_forces:
+            forces = -f[1:].reshape(-1)
+
+        # No mask implemented...
+
+        # Get uncertainty for the given geometry.
+        uncertainty = None
+        if self.calculate_uncertainty:
+            if self.use_forces:
+                uncertainty = V[0][0]
+            else:
+                uncertainty = V[0]
+            if uncertainty < 0.0:
+                uncertainty = 0.0
+                warning = ('Imaginary uncertainty has been set to zero')
+                warnings.warn(warning)
+            uncertainty = np.sqrt(uncertainty)
+
+        # Results:
+        self.results['looenergy'] = energy
+        if self.use_forces:
+            self.results['looforces'] = forces
+        self.results['loouncertainty'] = uncertainty
