@@ -1,10 +1,13 @@
 import argparse
 import sys
 import textwrap
+<<<<<<< HEAD
 import re
+=======
+from importlib import import_module
+>>>>>>> master
 
 from ase import __version__
-from ase.utils import import_module
 
 
 class CLIError(Exception):
@@ -28,6 +31,7 @@ commands = [
     ('eos', 'ase.eos'),
     ('ulm', 'ase.io.ulm'),
     ('find', 'ase.cli.find'),
+    ('nebplot', 'ase.cli.nebplot'),
     ('nomad-upload', 'ase.cli.nomad'),
     ('nomad-get', 'ase.cli.nomadget'),
     ('convert', 'ase.cli.convert'),

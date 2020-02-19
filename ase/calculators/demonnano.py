@@ -200,7 +200,7 @@ class DemonNano(FileIOCalculator):
     def _write_argument(self, key, value, fd):
        """Write an argument to file.
        key :  a string coresponding to the input keyword
-       value : the arguemnts, can be a string, a number or a list
+       value : the arguments, can be a string, a number or a list
        fd  :  and open file
        """
        if key == 'BASISPATH':    
@@ -273,7 +273,7 @@ class DemonNano(FileIOCalculator):
           
        for i in range(len(lines)):
             if lines[i].startswith(' DFTB total energy [Hartree]'):
-                self.results['energy'] = float(lines[i+1])
+                self.results['energy'] = float(lines[i+1])*Hartree
                 break
 
     def read_forces(self, atoms):

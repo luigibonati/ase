@@ -51,7 +51,7 @@ The calculators can be divided in four groups:
 1) Asap_, GPAW_, and Hotbit_ have their own native ASE interfaces.
 
 2) ABINIT, AMBER, CP2K, CASTEP, deMon2k, DFTB+, ELK, EXCITING, FHI-aims, FLEUR, GAUSSIAN,
-   Gromacs, Jacapo, LAMMPS, MOPAC, NWChem, Octopus, ONETEP, psi4, Q-Chem, Quantum ESPRESSO, SIESTA,
+   Gromacs, LAMMPS, MOPAC, NWChem, Octopus, ONETEP, psi4, Q-Chem, Quantum ESPRESSO, SIESTA,
    TURBOMOLE and VASP, have Python wrappers in the ASE package, but the actual
    FORTRAN/C/C++ codes are not part of ASE.
 
@@ -85,10 +85,10 @@ elk                                       Full Potential LAPW code
 :mod:`~ase.calculators.exciting`          Full Potential LAPW code
 :mod:`~ase.calculators.aims`              Numeric atomic orbital, full potential code
 :mod:`~ase.calculators.fleur`             Full Potential LAPW code
+:mod:`~ase.calculators.gamess_us`         Gaussian based electronic structure code
 gaussian                                  Gaussian based electronic structure code
 :mod:`~ase.calculators.gromacs`           Classical molecular dynamics code
 :mod:`~ase.calculators.gulp`              Interatomic potential code
-:mod:`~ase.calculators.jacapo`            Plane-wave ultra-soft pseudopotential code
 :mod:`~ase.calculators.kim`               Classical MD with standardized models
 :mod:`~ase.calculators.lammps`            Classical molecular dynamics code
 :mod:`~ase.calculators.mixing`            Combination of multiple calculators
@@ -97,6 +97,7 @@ gaussian                                  Gaussian based electronic structure co
 :mod:`~ase.calculators.octopus`           Real-space pseudopotential code
 :mod:`~ase.calculators.onetep`            Linear-scaling pseudopotential code
 :mod:`~ase.calculators.openmx`            LCAO pseudopotential code
+:mod:`~ase.calculators.orca`              Gaussian based electronic structure code
 :mod:`~ase.calculators.psi4`              Gaussian based electronic structure code
 :mod:`~ase.calculators.qchem`             Gaussian based electronic structure code
 :mod:`~ase.calculators.siesta`            LCAO pseudopotential code
@@ -221,6 +222,7 @@ the :meth:`set` method:
    exciting
    FHI-aims
    fleur
+   gamess_us
    gromacs
    gulp
    socketio/socketio
@@ -233,6 +235,7 @@ the :meth:`set` method:
    octopus
    onetep
    openmx
+   orca
    psi4
    qchem
    siesta

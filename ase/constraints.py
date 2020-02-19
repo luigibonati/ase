@@ -379,7 +379,7 @@ class FixLinearTriatomic(FixConstraint):
            References:
 
            Ciccotti et al. Molecular Physics 47 (1982)
-           http://dx.doi.org/10.1080/00268978200100942
+           https://doi.org/10.1080/00268978200100942
         """
         self.triples = np.asarray(triples)
         if self.triples.shape[1] != 3:
@@ -1765,7 +1765,7 @@ class MirrorForce(FixConstraint):
     bond breaking reaction. First the given bond length will be fixed until
     all other degrees of freedom are optimized, then the forces of the two
     atoms will be mirrored to find the transition state. The mirror plane is
-    perpenticular to the connecting line of the atoms. Transition states in
+    perpendicular to the connecting line of the atoms. Transition states in
     dependence of the force can be obtained by stretching the molecule and
     fixing its total length with *FixBondLength* or by using *ExternalForce*
     during the optimization with *MirrorForce*.

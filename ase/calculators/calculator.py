@@ -6,7 +6,8 @@ from math import pi, sqrt
 import numpy as np
 
 from ase.utils import jsonable
-from ase.dft.kpoints import bandpath, monkhorst_pack
+from ase.dft.kpoints import monkhorst_pack
+from ase.cell import Cell
 
 
 class CalculatorError(RuntimeError):
@@ -81,7 +82,7 @@ def compare_atoms(atoms1, atoms2, tol=1e-15, excluded_properties=None):
 
         properties_to_check = set(all_changes)
         if excluded_properties:
-             properties_to_check -= set(excluded_properties)
+            properties_to_check -= set(excluded_properties)
 
         # Check properties that aren't in Atoms.arrays but are attributes of
         # Atoms objects
@@ -121,10 +122,10 @@ all_changes = ['positions', 'numbers', 'cell', 'pbc',
 # Recognized names of calculators sorted alphabetically:
 names = ['abinit', 'ace', 'aims', 'amber', 'asap', 'castep', 'cp2k',
          'crystal', 'demon', 'demonnano', 'dftb', 'dftd3', 'dmol', 'eam', 'elk',
-         'emt', 'espresso', 'exciting', 'ff', 'fleur', 'gaussian',
-         'gpaw', 'gromacs', 'gulp', 'hotbit', 'jacapo', 'kim',
+         'emt', 'espresso', 'exciting', 'ff', 'fleur', 'gamess_us', 'gaussian',
+         'gpaw', 'gromacs', 'gulp', 'hotbit', 'kim',
          'lammpslib', 'lammpsrun', 'lj', 'mopac', 'morse', 'nwchem',
-         'octopus', 'onetep', 'openmx', 'psi4', 'qchem', 'siesta',
+         'octopus', 'onetep', 'openmx', 'orca', 'psi4', 'qchem', 'siesta',
          'tip3p', 'tip4p', 'turbomole', 'vasp']
 
 
@@ -138,6 +139,7 @@ special = {'cp2k': 'CP2K',
            'crystal': 'CRYSTAL',
            'ff': 'ForceField',
            'fleur': 'FLEUR',
+           'gamess_us': 'GAMESSUS',
            'gulp': 'GULP',
            'kim': 'KIM',
            'lammpsrun': 'LAMMPS',
@@ -147,6 +149,7 @@ special = {'cp2k': 'CP2K',
            'morse': 'MorsePotential',
            'nwchem': 'NWChem',
            'openmx': 'OpenMX',
+           'orca': 'ORCA',
            'qchem': 'QChem',
            'tip3p': 'TIP3P',
            'tip4p': 'TIP4P'}
@@ -322,8 +325,8 @@ def kpts2kpts(kpts, atoms=None):
         if 'kpts' in kpts:
             return KPoints(kpts['kpts'])
         if 'path' in kpts:
-            path = bandpath(cell=atoms.cell, **kpts)
-            return path
+            cell = Cell.ascell(atoms.cell)
+            return cell.bandpath(pbc=atoms.pbc, **kpts)
         size, offsets = kpts2sizeandoffsets(atoms=atoms, **kpts)
         return KPoints(monkhorst_pack(size) + offsets)
 
@@ -436,6 +439,14 @@ class Calculator(object):
 
     default_parameters = {}
     'Default parameters'
+
+    ignored_changes = set()
+    'Properties of Atoms which we ignore for the purposes of cache '
+    'invalidation with check_state().'
+
+    discard_results_on_any_change = False
+    'Whether we purge the results following any change in the set() method.  '
+    'Most (file I/O) calculators will probably want this.'
 
     def __init__(self, restart=None, ignore_bad_restart_file=False, label=None,
                  atoms=None, directory='.', **kwargs):
@@ -631,11 +642,14 @@ class Calculator(object):
                 changed_parameters[key] = value
                 self.parameters[key] = value
 
+        if self.discard_results_on_any_change and changed_parameters:
+            self.reset()
         return changed_parameters
 
     def check_state(self, atoms, tol=1e-15):
         """Check for any system changes since last calculation."""
-        return compare_atoms(self.atoms, atoms, tol)
+        return compare_atoms(self.atoms, atoms, tol=tol,
+                             excluded_properties=set(self.ignored_changes))
 
     def get_potential_energy(self, atoms=None, force_consistent=False):
         energy = self.get_property('energy', atoms)

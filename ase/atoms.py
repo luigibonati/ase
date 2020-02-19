@@ -19,7 +19,6 @@ from ase.atom import Atom
 from ase.cell import Cell
 from ase.constraints import FixConstraint, FixBondLengths, FixLinearTriatomic
 from ase.data import atomic_masses, atomic_masses_common
-from ase.utils import basestring
 from ase.geometry import wrap_positions, find_mic, get_angles, get_distances
 from ase.symbols import Symbols, symbols2numbers
 
@@ -137,9 +136,11 @@ class Atoms(object):
                  cell=None, pbc=None, celldisp=None,
                  constraint=None,
                  calculator=None,
-                 info=None):
+                 info=None,
+                 velocities=None):
 
         self._cellobj = Cell.new()
+        self._pbc = np.zeros(3, bool)
 
         atoms = None
 
@@ -201,7 +202,7 @@ class Atoms(object):
             self.new_array('numbers', numbers, int)
         else:
             if numbers is not None:
-                raise ValueError(
+                raise TypeError(
                     'Use only one of "symbols" and "numbers".')
             else:
                 self.new_array('numbers', symbols2numbers(symbols), int)
@@ -222,7 +223,8 @@ class Atoms(object):
                 positions = np.dot(scaled_positions, self.cell)
         else:
             if scaled_positions is not None:
-                raise RuntimeError('Both scaled and cartesian positions set!')
+                raise TypeError(
+                    'Use only one of "symbols" and "numbers".')
         self.new_array('positions', positions, float, (3,))
 
         self.set_constraint(constraint)
@@ -235,6 +237,14 @@ class Atoms(object):
         self.set_pbc(pbc)
         self.set_momenta(default(momenta, (0.0, 0.0, 0.0)),
                          apply_constraint=False)
+
+        #                          V-- if instantiaed from list of Atom objs
+        if velocities is not None and None not in velocities:
+            if momenta is None:
+                self.set_velocities(velocities)
+            else:
+                raise TypeError(
+                    'Use only one of "momenta" and "velocities".')
 
         if info is None:
             self.info = {}
@@ -399,7 +409,7 @@ class Atoms(object):
 
     def set_pbc(self, pbc):
         """Set periodic boundary condition flags."""
-        self.cell._pbc[:] = pbc
+        self._pbc[:] = pbc
 
     def get_pbc(self):
         """Get periodic boundary condition flags."""
@@ -562,7 +572,7 @@ class Atoms(object):
         the masses argument is not given or for those elements of the
         masses list that are None, standard values are set."""
 
-        if isinstance(masses, basestring):
+        if isinstance(masses, str):
             if masses == 'defaults':
                 masses = atomic_masses[self.arrays['numbers']]
             elif masses == 'most_common':
@@ -757,7 +767,8 @@ class Atoms(object):
     # Informs calculators (e.g. Asap) that ideal gas contribution is added here.
     _ase_handles_dynamic_stress = True
 
-    def get_stress(self, voigt=True, apply_constraint=True, include_ideal_gas=False):
+    def get_stress(self, voigt=True, apply_constraint=True,
+                   include_ideal_gas=False):
         """Calculate stress tensor.
 
         Returns an array of the six independent components of the
@@ -765,7 +776,7 @@ class Atoms(object):
         (xx, yy, zz, yz, xz, xy) or as a 3x3 matrix.  Default is Voigt
         order.
 
-        The ideal gas contribution to the stresses is added if the 
+        The ideal gas contribution to the stresses is added if the
         atoms have momenta and ``include_ideal_gas`` is set to True.
         """
 
@@ -798,7 +809,8 @@ class Atoms(object):
             invvol = 1.0 / self.get_volume()
             for alpha in range(3):
                 for beta in range(alpha, 3):
-                    stress[stresscomp[alpha,beta]] -= (p[:,alpha] * p[:,beta] * invmass).sum() * invvol
+                    stress[stresscomp[alpha, beta]] -= (
+                        p[:, alpha] * p[:, beta] * invmass).sum() * invvol
 
         if voigt:
             return stress
@@ -815,7 +827,7 @@ class Atoms(object):
         stresses (e.g. classical potentials).  Even for such calculators
         there is a certain arbitrariness in defining per-atom stresses.
 
-        The ideal gas contribution to the stresses is added if the 
+        The ideal gas contribution to the stresses is added if the
         atoms have momenta and ``include_ideal_gas`` is set to True.
         """
         if self._calc is None:
@@ -831,7 +843,8 @@ class Atoms(object):
             invmass = 1.0 / self.get_masses()
             for alpha in range(3):
                 for beta in range(alpha, 3):
-                    stresses[:,stresscomp[alpha,beta]] -= p[:,alpha] * p[:,beta] * invmass * invvol
+                    stresses[:, stresscomp[alpha, beta]] -= (
+                        p[:, alpha] * p[:, beta] * invmass * invvol)
         return stresses
 
     def get_dipole_moment(self):
@@ -1000,9 +1013,9 @@ class Atoms(object):
 
             self.set_array(name, a)
 
+    def __iadd__(self, other):
+        self.extend(other)
         return self
-
-    __iadd__ = extend
 
     def append(self, atom):
         """Append atom to end."""
@@ -1369,7 +1382,7 @@ class Atoms(object):
             elif s > 0:
                 v /= s
 
-        if isinstance(center, basestring):
+        if isinstance(center, str):
             if center.lower() == 'com':
                 center = self.get_center_of_mass()
             elif center.lower() == 'cop':
@@ -1420,7 +1433,7 @@ class Atoms(object):
             2nd rotation around the z axis.
 
         """
-        if isinstance(center, basestring):
+        if isinstance(center, str):
             if center.lower() == 'com':
                 center = self.get_center_of_mass()
             elif center.lower() == 'cop':
@@ -1651,16 +1664,18 @@ class Atoms(object):
 
         return get_angles(v12, v32, cell=cell, pbc=pbc)
 
-    def set_angle(self, a1, a2=None, a3=None, angle=None, mask=None, indices=None, add=False):
+    def set_angle(self, a1, a2=None, a3=None, angle=None, mask=None,
+                  indices=None, add=False):
         """Set angle (in degrees) formed by three atoms.
 
         Sets the angle between vectors *a2*->*a1* and *a2*->*a3*.
 
         If *add* is `True`, the angle will be changed by the value given.
 
-        Same usage as in :meth:`ase.Atoms.set_dihedral`. If *mask* and *indices*
-        are given, *indices* overwrites *mask*. If *mask* and *indices* are not set,
-        only *a3* is moved."""
+        Same usage as in :meth:`ase.Atoms.set_dihedral`.
+        If *mask* and *indices*
+        are given, *indices* overwrites *mask*. If *mask* and *indices*
+        are not set, only *a3* is moved."""
 
         if not isinstance(a1, int):
             # old API (uses radians)
@@ -1782,7 +1797,8 @@ class Atoms(object):
         else:
             return D_len
 
-    def set_distance(self, a0, a1, distance, fix=0.5, mic=False, mask=None, indices=None, add=False, factor=False):
+    def set_distance(self, a0, a1, distance, fix=0.5, mic=False,
+                     mask=None, indices=None, add=False, factor=False):
         """Set the distance between two atoms.
 
         Set the distance between atoms *a0* and *a1* to *distance*.
@@ -1791,9 +1807,11 @@ class Atoms(object):
         atom and *fix=0.5* (default) to fix the center of the bond.
 
         If *mask* or *indices* are set (*mask* overwrites *indices*),
-        only the atoms defined there are moved (see :meth:`ase.Atoms.set_dihedral`).
+        only the atoms defined there are moved
+        (see :meth:`ase.Atoms.set_dihedral`).
 
-        When *add* is true, the distance is changed by the value given. In combination
+        When *add* is true, the distance is changed by the value given.
+        In combination
         with *factor* True, the value given is a factor scaling the distance.
 
         It is assumed that the atoms in *mask*/*indices* move together
@@ -1808,7 +1826,9 @@ class Atoms(object):
                 newDist = oldDist * distance
             else:
                 newDist = oldDist + distance
-            self.set_distance(a0, a1, newDist, fix=fix, mic=mic, mask=mask, indices=indices, add=False, factor=False)
+            self.set_distance(a0, a1, newDist, fix=fix, mic=mic,
+                              mask=mask, indices=indices, add=False,
+                              factor=False)
             return
 
         R = self.arrays['positions']
@@ -1963,8 +1983,7 @@ class Atoms(object):
 
     def _get_pbc(self):
         """Return reference to pbc-flags for in-place manipulations."""
-        # XXX deprecating cell.pbc
-        return self.cell._pbc
+        return self._pbc
 
     pbc = property(_get_pbc, set_pbc,
                    doc='Attribute for direct manipulation ' +
@@ -2000,7 +2019,7 @@ class Atoms(object):
 
 
 def string2vector(v):
-    if isinstance(v, basestring):
+    if isinstance(v, str):
         if v[0] == '-':
             return -string2vector(v[1:])
         w = np.zeros(3)
