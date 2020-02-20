@@ -129,9 +129,9 @@ def get_atoms_data(atoms1, atoms2, field):
         rank_order = False
 
     if 'd' == field[0]:
-        dforces = atoms2.get_forces(atoms2) - atoms1.get_forces(atoms1)
+        dforces = atoms2.get_forces() - atoms1.get_forces()
     else:
-        aforces = (atoms2.get_forces(atoms2) + atoms1.get_forces(atoms1)) / 2
+        aforces = (atoms2.get_forces() + atoms1.get_forces()) / 2
 
     if field == 'dfx':
         data = dforces[:, 0]
