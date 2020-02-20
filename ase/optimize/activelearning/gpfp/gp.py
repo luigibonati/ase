@@ -152,7 +152,7 @@ class GaussianProcess():
             return f, V
         return f, None
 
-    def neg_log_likelihood(self, params, *args):
+    def neg_log_likelihood(self, params, *args, fit_weight=True):
         '''Negative logarithm of the marginal likelihood and its derivative.
         It has been built in the form that suits the best its optimization,
         with the scipy minimize module, to find the optimal hyperparameters.
@@ -183,16 +183,17 @@ class GaussianProcess():
 
         y = Y.flatten()
 
-        # Optimal kernel prefactor:
-        opt_weight = np.sqrt(np.dot(y - self.m, self.a) / len(y))
-        self.set_hyperparams({'weight': opt_weight}, self.noise)
-        
-        # Rescale accordingly:
-        self.a /= opt_weight**2
-        self.L *= opt_weight
+        if fit_weight:
+            # Optimal kernel prefactor:
+            opt_weight = np.sqrt(np.dot(y - self.m, self.a) / len(y))
+            self.set_hyperparams({'weight': opt_weight}, self.noise)
+
+            # Rescale accordingly:
+            self.a /= opt_weight**2
+            self.L *= opt_weight
 
         # Compute log likelihood
-        logP = (-0.5 * len(y)
+        logP = (-0.5 * np.dot(y - self.m, self.a)
                 - np.sum(np.log(np.diag(self.L)))
                 - len(y) / 2 * np.log(2 * np.pi))
 
