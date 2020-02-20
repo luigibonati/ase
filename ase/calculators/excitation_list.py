@@ -5,16 +5,26 @@ from ase.units import Hartree, Bohr
 
 class Excitation:
     """Base class for a single excitation"""
-    def __init__(self, energy=None, index=None,
-                 mur=None, muv=None, magn=None, string=None):
-        if string is not None:
-            self.fromstring(string)
-        else:
-            self.energy = energy
-            self.index = index
-            self.mur = mur
-            self.muv = muv
-            self.magn = magn
+    def __init__(self, energy, index, mur, muv=None, magn=None):
+        """
+        Parameters
+        ----------
+        energy: float
+          Energy realtive to the ground state
+        index: int
+          Excited state index
+        mur: list of three floats or complex numbers
+          Length form dipole matrix element
+        muv: list of three floats or complex numbers or None
+          Velocity form dipole matrix element, default None
+        magn: list of three floats or complex numbers or None
+          Magnetic matrix element, default None
+        """
+        self.energy = energy
+        self.index = index
+        self.mur = mur
+        self.muv = muv
+        self.magn = magn
         self.fij = 1.
 
     def outstring(self):
@@ -40,7 +50,8 @@ class Excitation:
 
         return string
 
-    def fromstring(self, string):
+    @classmethod
+    def fromstring(cls, string):
         """Initialize yourself from a string"""
         l = string.split()
         energy = float(l.pop(0))
@@ -55,7 +66,7 @@ class Excitation:
         except IndexError:
             magn = None
        
-        self.__init__(energy, index, mur, muv, magn)
+        return cls(energy, index, mur, muv, magn)
 
     def get_dipole_me(self, form='r'):
         """Return the excitations dipole matrix element
@@ -125,17 +136,13 @@ def polarizability(exlist, omega, form='v',
         shape = (omega.shape, 3, 3) else
     """
     omega = np.asarray(omega)
-    if omega.dtype == complex:
-        om2 = np.array(omega, dtype=complex)**2
-    else:
-        om2 = np.array(omega, dtype=float)**2
-
+    om2 = 1. * omega**2
     esc = exlist.energy_to_eV_scale
 
     if tensor:
         if not np.isscalar(om2):
             om2 = om2[:, None, None]
-        alpha = np.zeros(np.array(omega).shape + (3, 3),
+        alpha = np.zeros(omega.shape + (3, 3),
                          dtype=om2.dtype)
         for ex in exlist:
             alpha += ex.get_dipole_tensor(form=form) / (
