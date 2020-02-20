@@ -10,11 +10,11 @@ from ase.parallel import world, paropen
 from ase.vibrations import Vibrations
 from ase.utils.timing import Timer
 from ase.utils import convert_string_to_fd
-from ase.vibrations.raman import Raman
+from ase.vibrations.raman import Raman, RamanCalculator
 
 
-class ResonantRaman(Raman):
-    """Base Class for resonant Raman intensities using finite differences.
+class ResonantRamanCalculator(RamanCalculator):
+    """Base Class for resonant Raman calcultor using finite differences.
 
     Parameters
     ----------
@@ -23,7 +23,75 @@ class ResonantRaman(Raman):
         equilibrium and at a displaced position. Calculators are
         given as first and second argument, respectively.
     """
+    def __init__(self, atoms, ExcitationsCalculator, *args,
+                 exkwargs={}, exext='.ex.gz', overlap=False,
+                 
+                 **kwargs):
+        """
+        Parameters
+        ----------
+        exkwargs: dict
+            Arguments given to the ExcitationsCalculator object
+        exext: string
+            Extension for filenames of Excitation lists.
+        overlap : function or False
+          Function to calculate overlaps between excitation at
+          equilibrium and at a displaced position. Calculators are
+          given as first and second argument, respectively.
+        """
+        self.exkwargs = exkwargs
+        self.overlap = overlap
+        RamanCalculator.__init__(self, atoms, ExcitationsCalculator,
+                                 *args, exext=exext, **kwargs)
 
+    def calculate(self, atoms, filename, fd):
+        """Call ground and excited state calculation"""
+        assert(atoms == self.atoms)  # XXX action required
+        self.timer.start('Ground state')
+        forces = self.atoms.get_forces()
+        if world.rank == 0:
+            pickle.dump(forces, fd, protocol=2)
+            fd.close()
+        if self.overlap:
+            self.timer.start('Overlap')
+            """Overlap is determined as
+
+            ov_ij = int dr displaced*_i(r) eqilibrium_j(r)
+            """
+            ov_nn = self.overlap(self.atoms.get_calculator(),
+                                 self.eq_calculator)
+            if world.rank == 0:
+                np.save(filename + '.ov', ov_nn)
+            self.timer.stop('Overlap')
+        self.timer.stop('Ground state')
+
+        self.timer.start('Excitations')
+        basename, _ = os.path.splitext(filename)
+        excalc = self.exobj(
+            self.atoms.get_calculator(), **self.exkwargs)
+        exlist = excalc.calculate(self.atoms)
+        exlist.write(basename + self.exext)
+        self.timer.stop('Excitations')
+
+    def run(self):
+        if self.overlap:
+            # XXXX stupid way to make a copy
+            self.atoms.get_potential_energy()
+            self.eq_calculator = self.atoms.get_calculator()
+            fname = self.exname + '.eq.gpw'
+            self.eq_calculator.write(fname, 'all')
+            self.eq_calculator = self.eq_calculator.__class__(fname)
+            try:
+                # XXX GPAW specific
+                self.eq_calculator.converge_wave_functions()
+            except AttributeError:
+                pass
+        Vibrations.run(self)
+
+
+class ResonantRaman(Raman):
+    """Base Class for resonant Raman intensities using finite differences.
+    """
     def __init__(self, atoms, Excitations,
                  indices=None,
                  gsname='rraman',  # name for ground state calculations
@@ -82,10 +150,6 @@ class ResonantRaman(Raman):
         form: string
             Form of the dipole operator, 'v' for velocity form (default)
             and 'r' for length form.
-        exkwargs: dict
-            Arguments given to the Excitations objects in reading.
-        exext: string
-            Extension for filenames of Excitation lists.
         txt:
             Output stream
         verbose:
@@ -144,48 +208,6 @@ class ResonantRaman(Raman):
             self.txt.write(pre + message + end)
             self.txt.flush()
 
-    def run(self):
-        if self.overlap:
-            # XXXX stupid way to make a copy
-            self.atoms.get_potential_energy()
-            self.eq_calculator = self.atoms.get_calculator()
-            fname = self.exname + '.eq.gpw'
-            self.eq_calculator.write(fname, 'all')
-            self.eq_calculator = self.eq_calculator.__class__(fname)
-            try:
-                # XXX GPAW specific
-                self.eq_calculator.converge_wave_functions()
-            except AttributeError:
-                pass
-        Vibrations.run(self)
-
-    def calculate(self, atoms, filename, fd):
-        """Call ground and excited state calculation"""
-        assert(atoms == self.atoms)  # XXX action required
-        self.timer.start('Ground state')
-        forces = self.atoms.get_forces()
-        if world.rank == 0:
-            pickle.dump(forces, fd, protocol=2)
-            fd.close()
-        if self.overlap:
-            self.timer.start('Overlap')
-            """Overlap is determined as
-
-            ov_ij = int dr displaced*_i(r) eqilibrium_j(r)
-            """
-            ov_nn = self.overlap(self.atoms.get_calculator(),
-                                 self.eq_calculator)
-            if world.rank == 0:
-                np.save(filename + '.ov', ov_nn)
-            self.timer.stop('Overlap')
-        self.timer.stop('Ground state')
-
-        self.timer.start('Excitations')
-        basename, _ = os.path.splitext(filename)
-        excitations = self.exobj(
-            self.atoms.get_calculator(), **self.exkwargs)
-        excitations.write(basename + self.exext)
-        self.timer.stop('Excitations')
 
     def read_excitations(self):
         """Read all finite difference excitations and select matching."""

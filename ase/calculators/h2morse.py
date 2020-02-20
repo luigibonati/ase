@@ -158,7 +158,7 @@ class H2MorseExcitedStatesCalculator():
 
 
 class H2MorseExcitedStates(ExcitationList):
-    """First singlet excited state of H2 as Lennard-Jones potentials"""
+    """First singlet excited states of H2 as Lennard-Jones potentials"""
     def __init__(self, filename=None, nstates=3):
         self.nstates = nstates
         ExcitationList.__init__(self, filename)

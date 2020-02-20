@@ -58,6 +58,9 @@ class RamanCalculator(RamanBase):
     """Base class for Raman calculators"""
     def __init__(self, atoms, Calculator, *args, **kwargs):
         self.exobj = Calculator
+        # XXX remove from Raman
+        if 'name' in kwargs:
+            kwargs['gsname'] = kwargs['exname'] = kwargs['name']
         Raman.__init__(self, atoms, *args, **kwargs)
 
 
