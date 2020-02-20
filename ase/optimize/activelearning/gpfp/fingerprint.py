@@ -4,7 +4,7 @@ from scipy.spatial import distance_matrix
 import numpy as np
 from numpy import dot
 from warnings import catch_warnings, simplefilter
-
+from ase.parallel import world
 
 class Fingerprint():
     ''' Master class for structural fingerprints.
@@ -1306,12 +1306,12 @@ class ParallelOganovFP(OganovFP):
                     continue
 
                 # position vector between atoms:
-                rij = self.rm[i, j] 
+                rij = self.rm[i, j]
                 Gij = self.Gij(i, j)
                 jsum += np.outer(Gij, -rij)
 
             world.barrier()
-            
+
             jj = np.empty([world.size, self.N, 3])
             world.all_gather(jsum, jj)
 
@@ -1339,20 +1339,19 @@ class ParallelRadAngFP(RadialAngularFP, ParallelOganovFP):
         """
 
         # Extended distance and displacement vector matrices:
-        t0 = time.time()
         ep = self.extendedatoms.positions.copy()
         n0 = len(ep)
 
         # make sure ep can be scattered to world.size procs:
         lack = world.size - len(ep) % world.size
-        
+
         # Pad with nans:
         ep_ext = np.concatenate((ep, np.full([lack, 3], np.nan)))
         assert len(ep_ext) % world.size == 0
 
         # Parallel calculation of self.edm:
         n = len(ep_ext)
-        
+
         # Distribute positions to processors:
         mypart = np.zeros([int(n / world.size), 3])
         world.scatter(ep_ext, mypart, 0)
@@ -1373,7 +1372,7 @@ class ParallelRadAngFP(RadialAngularFP, ParallelOganovFP):
         self.angleconstant = self.aweight / (pi / self.nanglebins)
 
         self.angleindices = []
-      
+
         mask1 = np.logical_or(self.dm == 0, self.dm > self.Rtheta)
         mask2 = self.dm == 0
         mask3 = np.logical_or(self.edm == 0, self.edm > self.Rtheta)
@@ -1403,7 +1402,6 @@ class ParallelRadAngFP(RadialAngularFP, ParallelOganovFP):
             # Argument for arccos:
             argument = (dot(self.rm[i, j], self.erm[k, j])
                         / self.dm[i, j] / self.edm[k, j])
-            
 
             # Handle numerical errors in perfect lattices:
             if argument >= 1.0:
@@ -1417,7 +1415,7 @@ class ParallelRadAngFP(RadialAngularFP, ParallelOganovFP):
 
             self.av.append([i, j, k, fcij[i, j], fcjk,
                             np.arccos(argument)])
-            
+
         self.av = np.array(self.av)
         world.broadcast(self.av, 0)
 
@@ -1443,8 +1441,6 @@ class ParallelRadAngFP(RadialAngularFP, ParallelOganovFP):
                     for atom in self.extendedatoms]
 
         # Distribute calculation:
-        n = len(self.av)
-
         for i_data in range(len(self.av)):
 
             if i_data % world.size != world.rank:
@@ -1491,17 +1487,21 @@ class ParallelRadAngFP(RadialAngularFP, ParallelOganovFP):
             thirdinit = (fcij * fcjk * diffvec / self.ascale**2 * gaussian)
 
             if indexi:
-                third += np.outer(thirdinit, self.dthetaijk_dri(i, j, k, theta))
+                third += np.outer(thirdinit,
+                                  self.dthetaijk_dri(i, j, k, theta))
             if indexj:
-                third += np.outer(thirdinit, self.dthetaijk_drj(i, j, k, theta))
+                third += np.outer(thirdinit,
+                                  self.dthetaijk_drj(i, j, k, theta))
             if indexk:
-                third += np.outer(thirdinit, self.dthetaijk_drk(i, j, k, theta))
+                third += np.outer(thirdinit,
+                                  self.dthetaijk_drk(i, j, k, theta))
 
             gradient[A, B, C] += (first + second + third)
 
         # world.barrier()
 
-        results = np.empty([world.size, self.n, self.n, self.n, self.nanglebins, 3])
+        results = np.empty([world.size, self.n, self.n, self.n,
+                            self.nanglebins, 3])
         world.all_gather(gradient, results)
 
         gradient = self.angleconstant * results.sum(axis=0)
