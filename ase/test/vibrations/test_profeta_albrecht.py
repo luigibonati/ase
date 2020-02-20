@@ -32,7 +32,7 @@ def test_compare_placzek_albrecht_intensities():
     ali = al.absolute_intensity(omega=om, gamma=gam)[-1]
     print('pri, ali', pri, ali)
     assert pri == pytest.approx(ali, 1e-2)
-   
+
     """Albrecht B+C and Profeta are approximately equal"""
 
     pr.approximation = 'Profeta'
@@ -41,19 +41,20 @@ def test_compare_placzek_albrecht_intensities():
     ali = al.absolute_intensity(omega=om, gamma=gam)[-1]
     print('pri, ali', pri, ali)
     assert pri == pytest.approx(ali, 1e-2)
-   
+
     """Albrecht and Placzek are approximately equal"""
-    
+
     pr.approximation = 'Placzek'
     pri = pr.absolute_intensity(omega=om, gamma=gam)[-1]
     al.approximation = 'Albrecht'
     ali = al.absolute_intensity(omega=om, gamma=gam)[-1]
     print('pri, ali', pri, ali)
     assert pri == pytest.approx(ali, 1e-2)
-   
+
 
 def main():
     test_compare_placzek_albrecht_intensities()
+
 
 if __name__ == '__main__':
     main()

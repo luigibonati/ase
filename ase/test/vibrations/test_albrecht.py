@@ -17,13 +17,13 @@ def test_overlap():
     ao.run()
 
     """One state only"""
-    
+
     ao = Albrecht(atoms, H2MorseExcitedStatesAndCalculator,
                   exkwargs={'nstates': 1},
                   gsname=name, exname=name, overlap=True,
                   approximation='Albrecht A', txt=None)
     aoi = ao.absolute_intensity(omega=om, gamma=gam)[-1]
-    
+
     al = Albrecht(atoms, H2MorseExcitedStatesAndCalculator,
                   exkwargs={'nstates': 1},
                   gsname=name, exname=name,
@@ -32,7 +32,7 @@ def test_overlap():
     assert ali == pytest.approx(aoi, 1e-9)
 
     """Include degenerate states"""
-    
+
     ao = Albrecht(atoms, H2MorseExcitedStatesAndCalculator,
                   gsname=name, exname=name, overlap=True,
                   approximation='Albrecht A', txt=None)
