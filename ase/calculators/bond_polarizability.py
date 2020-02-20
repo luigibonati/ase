@@ -13,10 +13,12 @@ class BondPolarizability:
     # DOI:10.1021/j100792a033
     # unit: Angstrom^3
     atomic_polarizability = {
+        'C': 0.978,
+        'N': 0.743,
         'O': 0.592,
         'Si': 2.988
     }
-     
+
     def __call__(self, atoms):
         return self.calculate(atoms)
 

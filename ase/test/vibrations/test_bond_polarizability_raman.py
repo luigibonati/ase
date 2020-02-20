@@ -31,10 +31,9 @@ def test_silicon():
         pz = PlaczekStatic(si32, gsname=name)
         pz.summary()        
 
-def test_si3():
+def test_c3():
     y, z = 0.30646191, 1.14411339  # emt relaxed
-    # XXX change this to C
-    atoms = Atoms('Si3', positions=[[0, 0, 0], [0, y, z], [0, z, y]])
+    atoms = Atoms('C3', positions=[[0, 0, 0], [0, y, z], [0, z, y]])
     atoms.set_calculator(EMT())
     if 0:
         import numpy as np
@@ -52,7 +51,7 @@ def test_si3():
     
 
 def main():
-    test_si3()
+    test_c3()
 
 
 if __name__ == '__main__':
