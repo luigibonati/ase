@@ -175,23 +175,13 @@ class GaussianProcess():
             paramdict[pstring] = p
             txt1 += "{:18.06f}".format(p)
 
-        # Train the model with weight=1 and rescale
-        # it later to its optimal value:
-        paramdict.update({'weight': 1.0})
         self.set_hyperparams(paramdict, self.noise)
         self.train(X, Y)
 
-        y = Y.flatten()
-
         if fit_weight:
-            # Optimal kernel prefactor:
-            opt_weight = np.sqrt(np.dot(y - self.m, self.a) / len(y))
-            self.set_hyperparams({'weight': opt_weight}, self.noise)
+            self.fit_weight_only(X, Y, option='update')
 
-            # Rescale accordingly:
-            self.a /= opt_weight**2
-            self.L *= opt_weight
-
+        y = Y.flatten()
         # Compute log likelihood
         logP = (-0.5 * np.dot(y - self.m, self.a)
                 - np.sum(np.log(np.diag(self.L)))
@@ -334,7 +324,13 @@ class GaussianProcess():
         if option == 'estimate':
             return factor
         elif option == 'update':
-            self.set_hyperparams({'weight': factor * w}, self.noise)
+            new_weight = factor * w
+            self.set_hyperparams({'weight': new_weight}, self.noise)
+
+            # Rescale accordingly ("re-train"):
+            self.a /= factor**2
+            self.L *= factor
+
             return factor
 
     def leaveoneout(self, X, Y, index):
