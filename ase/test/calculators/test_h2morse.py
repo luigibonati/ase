@@ -1,7 +1,8 @@
 import numpy as np
 import pytest
 from ase.vibrations import Vibrations
-from ase.calculators.h2morse import H2Morse, H2MorseState, Re, De, ome, Etrans
+from ase.calculators.h2morse import (H2Morse, H2MorseCalculator,
+                                     Re, De, ome, Etrans)
 from ase.calculators.h2morse import (H2MorseExcitedStatesCalculator,
                                      H2MorseExcitedStates,
                                      H2MorseExcitedStatesAndCalculator)
@@ -11,7 +12,7 @@ def test_gs_minimum():
     """Test ground state minimum distance, energy and
     vibrational frequency"""
     atoms = H2Morse()
-    assert atoms.get_distance(0, 1) == Re[0]
+    assert atoms.get_distance(0, 1) == pytest.approx(Re[0], 1.e-12)
     assert atoms.get_potential_energy() == -De[0]
     # check ground state vibrations
     vib = Vibrations(atoms)
@@ -26,7 +27,7 @@ def test_gs_io_overlap():
     calc0 = atoms0.calc
     fname = 'calc0'
     calc0.write(fname)
-    calc1 = H2MorseState(fname)
+    calc1 = H2MorseCalculator.read(fname)
     for wf0, wf1 in zip(calc0.wfs, calc1.wfs):
         assert wf0 == pytest.approx(wf1, 1e-5)
     
@@ -45,11 +46,10 @@ def test_excited_state():
     Egs0 = gsatoms.get_potential_energy()
     for i in range(1, 4):
         exatoms = H2Morse()
-        gscalc = exatoms.get_calculator()
         exatoms[1].position[2] = Re[i]  # set to potential minimum
         Egs = exatoms.get_potential_energy()
         
-        exc = H2MorseExcitedStatesCalculator(gscalc)
+        exc = H2MorseExcitedStatesCalculator()
         exl = exc.calculate(exatoms)
         assert (exl[i - 1].energy ==
                 pytest.approx(Etrans[i] - Egs + Egs0, 1e-8))
@@ -83,11 +83,11 @@ def test_traditional():
     assert ex1.energy == pytest.approx(ex2.energy, 1e-3)
     assert ex1.mur == pytest.approx(ex2.mur, 1e-5)
     assert ex1.muv == pytest.approx(ex2.muv, 1e-5)
- 
+
 
 def main():
     test_traditional()
-
+    
 
 if __name__ == '__main__':
     main()

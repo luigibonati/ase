@@ -208,6 +208,16 @@ class ResonantRaman(Raman):
             self.txt.write(pre + message + end)
             self.txt.flush()
 
+    def init_parallel_read(self):
+        """Initialize variables for parallel read"""
+        rank = self.comm.rank
+        self.ndof = 3 * len(self.indices)
+        myn = -(-self.ndof // self.comm.size)  # ceil divide
+        self.slize = s = slice(myn * rank, myn * (rank + 1))
+        self.myindices = np.repeat(self.indices, 3)[s]
+        self.myxyz = ('xyz' * len(self.indices))[s]
+        self.myr = range(self.ndof)[s]
+        self.mynd = len(self.myr)
 
     def read_excitations(self):
         """Read all finite difference excitations and select matching."""
