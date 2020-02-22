@@ -51,7 +51,7 @@ def read_gromos(fileobj, index=-1):
                     symbols.append(symbol[0].lower().capitalize())
             if symbols[-1] not in chemical_symbols:
                 print('Symbol not in chemical symbols, please check',\
-                    symbols[-1])
+                      symbols[-1])
                 sys.exit()
         if read_box:
             try:
@@ -118,8 +118,9 @@ def write_gromos(fileobj, images):
     count = 1
     rescount = 0
     oldresname = ''
-    for resname, atomtype, xyz in zip\
-            (gromos_residuenames, gromos_atomtypes, pos):
+    for resname, atomtype, xyz in zip(gromos_residuenames,
+                                      gromos_atomtypes,
+                                      pos):
         if resname != oldresname:
             oldresname = resname
             rescount = rescount + 1

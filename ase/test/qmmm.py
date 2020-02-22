@@ -14,7 +14,7 @@ from ase.optimize import GPMin
 r = rOH
 a = angleHOH * pi / 180
 
-# From http://dx.doi.org/10.1063/1.445869
+# From https://doi.org/10.1063/1.445869
 eexp = 6.50 * units.kcal / units.mol
 dexp = 2.74
 aexp = 27
@@ -68,7 +68,7 @@ for calc in [TIP3P(),
                (r, (3, 5)), (r, (4, 5))],
         angles=[(a, (0, 2, 1)), (a, (3, 5, 4))])
     opt = GPMin(dimer,
-               trajectory=calc.name + '.traj', logfile=calc.name + 'd.log')
+                trajectory=calc.name + '.traj', logfile=calc.name + 'd.log')
     opt.run(0.01)
 
     e0 = dimer.get_potential_energy()

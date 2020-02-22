@@ -24,14 +24,12 @@ cited if the method is used.
 
 Other ASE-calculators that currently support EIQMMM:
 
-1. DFTBplus_  
-2. CRYSTAL_  
-3. TURBOMOLE_  
+1. :mod:`DFTB+ <ase.calculators.dftb>`
+2. :mod:`CRYSTAL <ase.calculators.crystal>`
+3. :mod:`TURBOMOLE <ase.calculators.turbomole>`
+4. :mod:`ORCA <ase.calculators.orca>` 
 
 .. _GPAW: https://wiki.fysik.dtu.dk/gpaw
-.. _DFTBplus: https://wiki.fysik.dtu.dk/ase/ase/calculators/dftb.html
-.. _CRYSTAL: https://wiki.fysik.dtu.dk/ase/ase/calculators/crystal.html
-.. _TURBOMOLE: https://wiki.fysik.dtu.dk/ase/ase/calculators/turbomole.html
 
 .. seealso::
 
@@ -90,7 +88,7 @@ Force-based QM/MM
 This QM/MM calculator mixes forces from any pair of ASE calculators.
 A finite buffer is added around the core QM region to ensure accurate forces; careful testing
 of the required buffer size is required. See
-`N. Bernstein, J. R. Kermode, and G. Csányi, Rep. Prog. Phys. 72, 026501 (2009) <http://dx.doi.org/10.1088/0034-4885/72/2/026501>`__
+`N. Bernstein, J. R. Kermode, and G. Csányi, Rep. Prog. Phys. 72, 026501 (2009) <https://doi.org/10.1088/0034-4885/72/2/026501>`__
 for a review of force-based QM/MM approaches, which should be cited if this method is used,
 and `T. D. Swinburne and J. R. Kermode, Phys. Rev. B 96, 144102 (2017). <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.96.144102>`__
 for an application which used this implementation.

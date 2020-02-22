@@ -31,7 +31,7 @@ class PreconLBFGS(Optimizer):
     See this article for full details: D. Packwood, J. R. Kermode, L. Mones,
     N. Bernstein, J. Woolley, N. Gould, C. Ortner, and G. Csanyi, A universal
     preconditioner for simulating condensed phase materials
-    J. Chem. Phys. 144, 164109 (2016), DOI: http://dx.doi.org/10.1063/1.4947024
+    J. Chem. Phys. 144, 164109 (2016), DOI: https://doi.org/10.1063/1.4947024
     """
 
     # CO : added parameters rigid_units and rotation_factors
@@ -130,10 +130,10 @@ class PreconLBFGS(Optimizer):
             if len(atoms) < 100:
                 precon = None
                 warnings.warn('The system is likely too small to benefit from ' +
-                             'the standard preconditioner, hence it is ' +
-                             'disabled. To re-enable preconditioning, call' +
-                             '`PreconLBFGS` by explicitly providing the ' +
-                             'kwarg `precon`')
+                              'the standard preconditioner, hence it is ' +
+                              'disabled. To re-enable preconditioning, call' +
+                              '`PreconLBFGS` by explicitly providing the ' +
+                              'kwarg `precon`')
             else:
                 precon = 'Exp'
 

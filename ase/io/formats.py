@@ -170,6 +170,7 @@ extension2format = {}
 all_formats = ioformats  # Aliased for compatibility only.  Please do not use.
 format2modulename = {}  # Left for compatibility only.
 
+
 def define_io_format(name, desc, code, *, module=None, ext=None,
                      glob=None, magic=None, encoding=None):
     if module is None:
@@ -224,7 +225,7 @@ F('abinit-in', 'ABINIT input file', '1F',
   module='abinit', magic=b'*znucl *'),
 F('abinit-out', 'ABINIT output file', '1F',
   module='abinit', magic=b'*.Version * of ABINIT'),
-F('aims', 'FHI-aims geometry file', '1S',ext='in'),
+F('aims', 'FHI-aims geometry file', '1S', ext='in'),
 F('aims-output', 'FHI-aims output', '+S',
   module='aims', magic=b'*Invoking FHI-aims ...'),
 F('bundletrajectory', 'ASE bundle trajectory', '+S'),
@@ -270,9 +271,15 @@ F('espresso-in', 'Quantum espresso in file', '1F',
 F('espresso-out', 'Quantum espresso out file', '+F',
   module='espresso', ext=['out', 'pwo'], magic=b'*Program PWSCF'),
 F('etsf', 'ETSF format', '1S'),
-F('exciting', 'exciting input', '1S',glob='input.xml'),
+F('exciting', 'exciting input', '1S', glob='input.xml'),
 F('extxyz', 'Extended XYZ file', '+F'),
 F('findsym', 'FINDSYM-format', '+F'),
+F('gamess-us-out', 'GAMESS-US output file', '1F',
+  module='gamess_us', magic=b'*GAMESS')
+F('gamess-us-in', 'GAMESS-US input file', '1F',
+  module='gamess_us')
+F('gamess-us-punch', 'GAMESS-US punchcard file', '1F',
+  module='gamess_us', magic=b' $DATA', ext='dat')
 F('gaussian', 'Gaussian com (input) file', '1S',
   ext=['com', 'gjf']),
 F('gaussian-out', 'Gaussian output file', '1F',
@@ -286,6 +293,7 @@ F('gif', 'Graphics interchange format', '+S',
   module='animation'),
 F('gpaw-out', 'GPAW text output', '+F',
   magic=b'*  ___ ___ ___ _ _ _'),
+F('gpumd', 'GPUMD input file', '1F', glob='xyz.in')
 F('gpw', 'GPAW restart-file', '1S',
   magic=[b'- of UlmGPAW', b'AFFormatGPAW']),
 F('gromacs', 'Gromacs coordinates', '1S',
@@ -300,8 +308,7 @@ F('lammps-dump-text', 'LAMMPS text dump file', '+F',
 F('lammps-dump-binary', 'LAMMPS binary dump file', '+B',
   module='lammpsrun')
 F('lammps-data', 'LAMMPS data file', '1F', module='lammpsdata',
-  encoding='ascii'
-),
+  encoding='ascii'),
 F('magres', 'MAGRES ab initio NMR data file', '1F'),
 F('mol', 'MDL Molfile', '1F'),
 F('mp4', 'MP4 animation', '+S',
@@ -545,7 +552,7 @@ def _write(filename, fd, format, io, images, parallel=None, append=False,
                 mode = mode.replace('w', 'a')
             fd = open_with_compression(filename, mode)
             # XXX remember to re-enable compressed open
-            #fd = io.open(filename, mode)
+            # fd = io.open(filename, mode)
         io.write(fd, images, **kwargs)
         if open_new:
             fd.close()
@@ -563,7 +570,8 @@ def _write(filename, fd, format, io, images, parallel=None, append=False,
             io.write(filename, images, **kwargs)
 
 
-def read(filename, index=None, format=None, parallel=True, **kwargs):
+def read(filename, index=None, format=None, parallel=True,
+         do_not_split_by_at_sign=False, **kwargs):
     """Read Atoms object(s) from file.
 
     filename: str or file
@@ -583,6 +591,8 @@ def read(filename, index=None, format=None, parallel=True, **kwargs):
     parallel: bool
         Default is to read on master and broadcast to slaves.  Use
         parallel=False to read on all slaves.
+    do_not_split_by_at_sign: bool
+        If False (default) ``filename`` is splited by at sign ``@``
 
     Many formats allow on open file-like object to be passed instead
     of ``filename``. In this case the format cannot be auto-decected,
@@ -598,7 +608,7 @@ def read(filename, index=None, format=None, parallel=True, **kwargs):
         except ValueError:
             pass
 
-    filename, index = parse_filename(filename, index)
+    filename, index = parse_filename(filename, index, do_not_split_by_at_sign)
     if index is None:
         index = -1
     format = format or filetype(filename)
@@ -612,7 +622,8 @@ def read(filename, index=None, format=None, parallel=True, **kwargs):
                            parallel=parallel, **kwargs))
 
 
-def iread(filename, index=None, format=None, parallel=True, **kwargs):
+def iread(filename, index=None, format=None, parallel=True,
+          do_not_split_by_at_sign=False, **kwargs):
     """Iterator for reading Atoms objects from file.
 
     Works as the `read` function, but yields one Atoms object at a time
@@ -621,7 +632,7 @@ def iread(filename, index=None, format=None, parallel=True, **kwargs):
     if isinstance(index, str):
         index = string2index(index)
 
-    filename, index = parse_filename(filename, index)
+    filename, index = parse_filename(filename, index, do_not_split_by_at_sign)
 
     if index is None or index == ':':
         index = slice(None, None, None)
@@ -679,12 +690,12 @@ def _iread(filename, index, format, io, parallel=None, full_output=False,
             fd.close()
 
 
-def parse_filename(filename, index=None):
+def parse_filename(filename, index=None, do_not_split_by_at_sign=False):
     if not isinstance(filename, str):
         return filename, index
 
-    extension = os.path.basename(filename)
-    if '@' not in extension:
+    basename = os.path.basename(filename)
+    if do_not_split_by_at_sign or '@' not in basename:
         return filename, index
 
     newindex = None
@@ -703,7 +714,11 @@ def parse_filename(filename, index=None):
 def string2index(string):
     """Convert index string to either int or slice"""
     if ':' not in string:
-        return int(string)
+        # may contain database accessor
+        try:
+            return int(string)
+        except ValueError:
+            return string
     i = []
     for s in string.split(':'):
         if s == '':
@@ -752,7 +767,6 @@ def filetype(filename, read=True, guess=True):
         for fmt in ioformats.values():
             if fmt.match_name(basename):
                 return fmt.name
-
 
         if not read:
             if ext is None:
