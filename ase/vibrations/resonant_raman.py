@@ -15,13 +15,6 @@ from ase.vibrations.raman import Raman, RamanCalculator
 
 class ResonantRamanCalculator(RamanCalculator):
     """Base Class for resonant Raman calcultor using finite differences.
-
-    Parameters
-    ----------
-    overlap : function or False
-        Function to calculate overlaps between excitation at
-        equilibrium and at a displaced position. Calculators are
-        given as first and second argument, respectively.
     """
     def __init__(self, atoms, ExcitationsCalculator, *args,
                  exkwargs={}, exext='.ex.gz', overlap=False,
