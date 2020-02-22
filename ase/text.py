@@ -47,10 +47,10 @@ class ANSIColors:
     __getattr__ = get
 
 
-atom_colors = [None] * 119
-
 ansi_nocolor = '\x1b[0m'
 ansi = ANSIColors()
+atom_colors = [None] * 119
+
 
 def set_colors(symbols, color):
     from ase.symbols import Symbols
@@ -78,8 +78,8 @@ col = set_colors
 
 col('X', 'red')
 col('H', 'light gray')
-col('LiNaKRbCsFr', 'purple') ,  # Group 1
-col('BeMgCaSr', 'light green')  #  Group 2
+col('LiNaKRbCsFr', 'purple')  # Group 1
+col('BeMgCaSr', 'light green')  # Group 2
 col('BaRa', 'green')  # More group 2
 col('HeNeAr', 'light cyan')  # Nobles part 1
 col('KrXeRn', 'cyan')  # Nobles part 2
@@ -231,28 +231,28 @@ class Grid:
 def main():
     # main(stdscr)
     import sys
-    import time
     from ase.io import iread
 
     if len(sys.argv) == 1:
         from ase.data import atomic_numbers
         import re
+
         def substitute(match):
             sym = match.group()
             Z = atomic_numbers[sym]
             return ansi[atom_colors[Z]](sym)
+
         print(re.sub(r'[A-Z][a-z]?', substitute, table))
         return
 
     for fname in sys.argv[1:]:
         for i, atoms in enumerate(iread(fname)):
-            formula = str(atoms.symbols)
             print('{}@{}: {}'.format(fname, i, atoms))
             txt = plot(atoms)
             print(txt)
             print()
 
-    if 0:
+    """
         for i in range(200):
             stdscr.clear()
             atoms = atoms0.copy()
@@ -264,8 +264,10 @@ def main():
             time.sleep(0.02)
             stdscr.noutrefresh()
             #stdscr.refresh()
+    """
+
 
 if __name__ == '__main__':
     main()
-    #import curses
-    #curses.wrapper(main)
+    # import curses
+    # curses.wrapper(main)
