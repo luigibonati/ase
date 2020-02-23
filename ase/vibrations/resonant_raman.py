@@ -60,8 +60,7 @@ class ResonantRamanCalculator(RamanCalculator):
 
         self.timer.start('Excitations')
         basename, _ = os.path.splitext(filename)
-        excalc = self.exobj(
-            self.atoms.get_calculator(), **self.exkwargs)
+        excalc = self.exobj(**self.exkwargs)
         exlist = excalc.calculate(self.atoms)
         exlist.write(basename + self.exext)
         self.timer.stop('Excitations')
@@ -73,7 +72,7 @@ class ResonantRamanCalculator(RamanCalculator):
             self.eq_calculator = self.atoms.get_calculator()
             fname = self.exname + '.eq.gpw'
             self.eq_calculator.write(fname, 'all')
-            self.eq_calculator = self.eq_calculator.__class__(fname)
+            self.eq_calculator = self.eq_calculator.__class__.read(fname)
             try:
                 # XXX GPAW specific
                 self.eq_calculator.converge_wave_functions()
@@ -220,8 +219,8 @@ class ResonantRaman(Raman):
         self.timer.start('read excitations')
         self.timer.start('really read')
         self.log('reading ' + self.exname + '.eq' + self.exext)
-        ex0_object = self.exobj(self.exname + '.eq' + self.exext,
-                                **self.exkwargs)
+        ex0_object = self.exobj.read(self.exname + '.eq' + self.exext,
+                                     **self.exkwargs)
         eu = ex0_object.energy_to_eV_scale
         self.timer.stop('really read')
         self.timer.start('index')
@@ -231,7 +230,7 @@ class ResonantRaman(Raman):
         def append(lst, exname, matching):
             self.timer.start('really read')
             self.log('reading ' + exname, end=' ')
-            exo = self.exobj(exname, **self.exkwargs)
+            exo = self.exobj.read(exname, **self.exkwargs)
             lst.append(exo)
             self.timer.stop('really read')
             self.timer.start('index')
@@ -316,14 +315,14 @@ class ResonantRaman(Raman):
         self.timer.start('read excitations')
         self.timer.start('read+rotate')
         self.log('reading ' + self.exname + '.eq' + self.exext)
-        ex0 = self.exobj(self.exname + '.eq' + self.exext,
-                         **self.exkwargs)
+        ex0 = self.exobj.read(self.exname + '.eq' + self.exext,
+                              **self.exkwargs)
         eu = ex0.energy_to_eV_scale
         rep0_p = np.ones((len(ex0)), dtype=float)
 
         def load(name, pm, rep0_p):
             self.log('reading ' + name + pm + self.exext)
-            ex_p = self.exobj(name + pm + self.exext, **self.exkwargs)
+            ex_p = self.exobj.read(name + pm + self.exext, **self.exkwargs)
             self.log('reading ' + name + pm + '.pckl.ov.npy')
             ov_nn = np.load(name + pm + '.pckl.ov.npy')
             # remove numerical garbage

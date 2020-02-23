@@ -23,10 +23,10 @@ class Placzek(ResonantRaman):
         for a, i in zip(self.myindices, self.myxyz):
             exname = '%s.%d%s-' % (self.exname, a, i) + self.exext
             self.log('reading ' + exname)
-            self.exm_r.append(self.exobj(exname, **self.exkwargs))
+            self.exm_r.append(self.exobj.read(exname, **self.exkwargs))
             exname = '%s.%d%s+' % (self.exname, a, i) + self.exext
             self.log('reading ' + exname)
-            self.exp_r.append(self.exobj(exname, **self.exkwargs))
+            self.exp_r.append(self.exobj.read(exname, **self.exkwargs))
 
     def electronic_me_Qcc(self, omega, gamma=0):
         self.read()
