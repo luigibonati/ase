@@ -1,6 +1,9 @@
 import pytest
 
-from ase.calculators.h2morse import H2Morse, H2MorseExcitedStatesAndCalculator
+from ase.vibrations.resonant_raman import ResonantRamanCalculator
+from ase.calculators.h2morse import (H2Morse,
+                                     H2MorseExcitedStates,
+                                     H2MorseExcitedStatesCalculator)
 from ase.vibrations.albrecht import Albrecht
 
 
@@ -10,21 +13,20 @@ def test_overlap():
     om = 1
     gam = 0.1
 
-    ao = Albrecht(atoms, H2MorseExcitedStatesAndCalculator,
-                  gsname=name, exname=name,
-                  overlap=lambda x, y: x.overlap(y),
-                  approximation='Albrecht A', txt=None)
-    ao.run()
+    rmc = ResonantRamanCalculator(atoms, H2MorseExcitedStatesCalculator,
+                                  overlap=lambda x, y: x.overlap(y),
+                                  name=name, txt='-')
+    rmc.run()
 
     """One state only"""
 
-    ao = Albrecht(atoms, H2MorseExcitedStatesAndCalculator,
+    ao = Albrecht(atoms, H2MorseExcitedStates,
                   exkwargs={'nstates': 1},
                   gsname=name, exname=name, overlap=True,
                   approximation='Albrecht A', txt=None)
     aoi = ao.absolute_intensity(omega=om, gamma=gam)[-1]
 
-    al = Albrecht(atoms, H2MorseExcitedStatesAndCalculator,
+    al = Albrecht(atoms, H2MorseExcitedStates,
                   exkwargs={'nstates': 1},
                   gsname=name, exname=name,
                   approximation='Albrecht A', txt=None)
@@ -33,18 +35,18 @@ def test_overlap():
 
     """Include degenerate states"""
 
-    ao = Albrecht(atoms, H2MorseExcitedStatesAndCalculator,
+    ao = Albrecht(atoms, H2MorseExcitedStates,
                   gsname=name, exname=name, overlap=True,
                   approximation='Albrecht A', txt=None)
     aoi = ao.absolute_intensity(omega=om, gamma=gam)[-1]
 
-    al = Albrecht(atoms, H2MorseExcitedStatesAndCalculator,
+    al = Albrecht(atoms, H2MorseExcitedStates,
                   gsname=name, exname=name,
                   approximation='Albrecht A', txt=None)
     ali = al.absolute_intensity(omega=om, gamma=gam)[-1]
     # XXX this test sometimes fails for 1e-5 XXX
     # print(ali, aoi)
-    assert ali == pytest.approx(aoi, 1e-2)
+    assert ali == pytest.approx(aoi, 1e-5)
 
 
 def main():

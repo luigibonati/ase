@@ -3,20 +3,21 @@ Test Placzek and Albrecht resonant Raman implementations
 """
 import pytest
 
+from ase.vibrations.resonant_raman import ResonantRamanCalculator
 from ase.vibrations.placzek import Profeta
 from ase.vibrations.albrecht import Albrecht
-from ase.calculators.h2morse import H2Morse, H2MorseExcitedStatesAndCalculator
+from ase.calculators.h2morse import (H2Morse,
+                                     H2MorseExcitedStates,
+                                     H2MorseExcitedStatesCalculator)
 
 
 def test_compare_placzek_albrecht_intensities():
     atoms = H2Morse()
     name = 'rrmorse'
-    pr = Profeta(atoms, H2MorseExcitedStatesAndCalculator,
-                 approximation='Placzek',
-                 gsname=name, exname=name,
-                 overlap=lambda x, y: x.overlap(y),
-                 txt=None)
-    pr.run()
+    rmc = ResonantRamanCalculator(atoms, H2MorseExcitedStatesCalculator,
+                                  overlap=lambda x, y: x.overlap(y),
+                                  name=name, txt='-')
+    rmc.run()
 
     om = 1
     gam = 0.1
@@ -24,9 +25,11 @@ def test_compare_placzek_albrecht_intensities():
 
     """Albrecht A and P-P are approximately equal"""
 
-    pr.approximation = 'p-p'
+    pr = Profeta(atoms, H2MorseExcitedStates,
+                 gsname=name, exname=name, overlap=True,
+                 approximation='p-p', txt=None)
     pri = pr.absolute_intensity(omega=om, gamma=gam)[-1]
-    al = Albrecht(atoms, H2MorseExcitedStatesAndCalculator,
+    al = Albrecht(atoms, H2MorseExcitedStates,
                   gsname=name, exname=name, overlap=True,
                   approximation='Albrecht A', txt=None)
     ali = al.absolute_intensity(omega=om, gamma=gam)[-1]
