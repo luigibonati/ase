@@ -10,36 +10,28 @@ from ase.utils import convert_string_to_fd
 
 class RamanBase(Vibrations):
     def __init__(self, atoms,  # XXX do we need atoms at this stage ?
-                 gsname='rraman',  # name for ground state calculations
-                 exname=None,      # name for excited state calculations
-                 exext='.alpha',   # extension for Excitation names
+                 *args,
+                 name='raman', exext='.alpha',
                  txt='-',
                  verbose=False,
                  comm=world,
-                 *args, **kwargs):
+                 **kwargs):
         """
         Parameters
         ----------
         atoms: ase Atoms object
-        gsname: string
-            name for ground state calculations, used in run() and
-            for reading of forces (default 'rraman')
-        exname: string
-            name for excited state calculations (defaults to gsname),
-            used for reading excitations
         exext: string
-            Extension for excitation filenames
+          Extension for excitation filenames
         txt:
-            Output stream
+          Output stream
         verbose:
-            Verbosity level of output
+          Verbosity level of output
+        comm:
+          Communicator, default world 
         """
+        kwargs['name'] = name
         Vibrations.__init__(self, atoms, *args, **kwargs)
 
-        self.name = gsname
-        if exname is None:
-            exname = gsname
-        self.exname = exname
         self.exext = exext
         
         self.timer = Timer()
@@ -58,9 +50,6 @@ class RamanCalculator(RamanBase):
     """Base class for Raman calculators"""
     def __init__(self, atoms, Calculator, *args, **kwargs):
         self.exobj = Calculator
-        # XXX remove from Raman
-        if 'name' in kwargs:
-            kwargs['gsname'] = kwargs['exname'] = kwargs['name']
         Raman.__init__(self, atoms, *args, **kwargs)
 
 
@@ -77,6 +66,23 @@ class RamanStaticCalculator(RamanCalculator):
 
 class Raman(RamanBase):
     """Base class to evaluate Raman spectra from pre-computed data"""
+    def __init__(self, atoms,  # XXX do we need atoms at this stage ?
+                 exname=None,      # name for excited state calculations
+                 *args, **kwargs):
+        """
+        Parameters
+        ----------
+        atoms: ase Atoms object
+        exname: string
+            name for excited state calculations (defaults to name),
+            used for reading excitations
+        """
+        RamanBase.__init__(self, atoms, *args, **kwargs)
+
+        if exname is None:
+            exname = kwargs.get('name', self.name)
+        self.exname = exname
+
     def init_parallel_read(self):
         """Initialize variables for parallel read"""
         rank = self.comm.rank

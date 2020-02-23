@@ -8,17 +8,14 @@ import numpy as np
 import ase.units as u
 from ase.parallel import world, paropen
 from ase.vibrations import Vibrations
-from ase.utils.timing import Timer
-from ase.utils import convert_string_to_fd
 from ase.vibrations.raman import Raman, RamanCalculator
 
 
 class ResonantRamanCalculator(RamanCalculator):
-    """Base Class for resonant Raman calcultor using finite differences.
+    """Base Class for resonant Raman calcultors using finite differences.
     """
     def __init__(self, atoms, ExcitationsCalculator, *args,
                  exkwargs={}, exext='.ex.gz', overlap=False,
-                 
                  **kwargs):
         """
         Parameters
@@ -84,23 +81,15 @@ class ResonantRamanCalculator(RamanCalculator):
 class ResonantRaman(Raman):
     """Base Class for resonant Raman intensities using finite differences.
     """
-    def __init__(self, atoms, Excitations,
-                 indices=None,
-                 gsname='rraman',  # name for ground state calculations
-                 exname=None,      # name for excited state calculations
-                 delta=0.01,
-                 nfree=2,
-                 directions=None,
+    def __init__(self, atoms, Excitations, *args,
                  observation={'geometry': '-Z(XX)Z'},
                  form='v',         # form of the dipole operator
                  exkwargs={},      # kwargs to be passed to Excitations
                  exext='.ex.gz',   # extension for Excitation names
-                 txt='-',
-                 verbose=False,
                  overlap=False,
                  minoverlap=0.02,
                  minrep=0.8,
-                 comm=world,):
+                 **kwargs):
         """
         Parameters
         ----------
@@ -124,17 +113,6 @@ class ResonantRaman(Raman):
                     units |e| * Angstrom
                 ex.energy:
                     is the transition energy in Hartrees
-        indices: list
-        gsname: string
-            name for ground state calculations, used in run() and
-            for reading of forces (default 'rraman')
-        exname: string
-            name for excited state calculations (defaults to gsname),
-            used for reading excitations
-        delta: float
-            Finite difference displacement in Angstrom.
-        nfree: float
-        directions:
         approximation: string
             Level of approximation used.
         observation: dict
@@ -142,10 +120,6 @@ class ResonantRaman(Raman):
         form: string
             Form of the dipole operator, 'v' for velocity form (default)
             and 'r' for length form.
-        txt:
-            Output stream
-        verbose:
-            Verbosity level of output
         overlap: bool or function
             Use wavefunction overlaps.
         minoverlap: float ord dict
@@ -154,28 +128,15 @@ class ResonantRaman(Raman):
         minrep: float
             Minimal representation to consider derivative, defaults to 0.8
         """
-        assert(nfree == 2)
-        Vibrations.__init__(self, atoms, indices, gsname, delta, nfree)
-        self.name = gsname
-        if exname is None:
-            exname = gsname
-        self.exname = exname
-        self.exext = exext
+        kwargs['exext'] = exext
+        Raman.__init__(self, atoms, *args, **kwargs)
+        assert(self.nfree == 2)
 
-        if directions is None:
-            self.directions = np.array([0, 1, 2])
-        else:
-            self.directions = np.array(directions)
-
-        self.observation = observation
         self.exobj = Excitations
         self.exkwargs = exkwargs
+        self.observation = observation
         self.dipole_form = form
 
-        self.timer = Timer()
-        self.txt = convert_string_to_fd(txt)
-
-        self.verbose = verbose
         self.overlap = overlap
         if not isinstance(minoverlap, dict):
             # assume it's a number
@@ -184,8 +145,6 @@ class ResonantRaman(Raman):
         else:
             self.minoverlap = minoverlap
         self.minrep = minrep
-
-        self.comm = comm
 
     @property
     def approximation(self):

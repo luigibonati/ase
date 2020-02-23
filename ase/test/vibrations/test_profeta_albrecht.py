@@ -26,11 +26,11 @@ def test_compare_placzek_albrecht_intensities():
     """Albrecht A and P-P are approximately equal"""
 
     pr = Profeta(atoms, H2MorseExcitedStates,
-                 gsname=name, exname=name, overlap=True,
+                 name=name, overlap=True,
                  approximation='p-p', txt=None)
     pri = pr.absolute_intensity(omega=om, gamma=gam)[-1]
     al = Albrecht(atoms, H2MorseExcitedStates,
-                  gsname=name, exname=name, overlap=True,
+                  name=name, overlap=True,
                   approximation='Albrecht A', txt=None)
     ali = al.absolute_intensity(omega=om, gamma=gam)[-1]
     print('pri, ali', pri, ali)

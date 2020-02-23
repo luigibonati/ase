@@ -22,30 +22,26 @@ def test_overlap():
 
     ao = Albrecht(atoms, H2MorseExcitedStates,
                   exkwargs={'nstates': 1},
-                  gsname=name, exname=name, overlap=True,
+                  name=name, overlap=True,
                   approximation='Albrecht A', txt=None)
     aoi = ao.absolute_intensity(omega=om, gamma=gam)[-1]
 
     al = Albrecht(atoms, H2MorseExcitedStates,
                   exkwargs={'nstates': 1},
-                  gsname=name, exname=name,
-                  approximation='Albrecht A', txt=None)
+                  name=name, approximation='Albrecht A', txt=None)
     ali = al.absolute_intensity(omega=om, gamma=gam)[-1]
     assert ali == pytest.approx(aoi, 1e-9)
 
     """Include degenerate states"""
 
     ao = Albrecht(atoms, H2MorseExcitedStates,
-                  gsname=name, exname=name, overlap=True,
+                  name=name, overlap=True,
                   approximation='Albrecht A', txt=None)
     aoi = ao.absolute_intensity(omega=om, gamma=gam)[-1]
 
     al = Albrecht(atoms, H2MorseExcitedStates,
-                  gsname=name, exname=name,
-                  approximation='Albrecht A', txt=None)
+                  name=name, approximation='Albrecht A', txt=None)
     ali = al.absolute_intensity(omega=om, gamma=gam)[-1]
-    # XXX this test sometimes fails for 1e-5 XXX
-    # print(ali, aoi)
     assert ali == pytest.approx(aoi, 1e-5)
 
 

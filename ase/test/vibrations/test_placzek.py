@@ -1,13 +1,34 @@
 """
 Test Placzek type resonant Raman implementations
 """
+import os
 import pytest
 
+from ase.vibrations.vibrations import Vibrations
 from ase.vibrations.resonant_raman import ResonantRamanCalculator
 from ase.vibrations.placzek import Placzek, Profeta
 from ase.calculators.h2morse import (H2Morse,
                                      H2MorseExcitedStates,
                                      H2MorseExcitedStatesCalculator)
+
+
+def test_names():
+    """Test different gs vs excited name"""
+    atoms = H2Morse()
+    Vibrations(atoms).run()
+    assert os.path.isfile('vib.0x-.pckl')
+    rmc = ResonantRamanCalculator(atoms, H2MorseExcitedStatesCalculator,
+                                  verbose=True)
+    rmc.run()
+    assert os.path.isfile('raman.eq.pckl')
+    os.remove('raman.0x-.pckl')  # make sure this is not used
+
+    om = 1
+    gam = 0.1
+    pz = Placzek(atoms, H2MorseExcitedStates,
+                 name='vib', exname='raman')
+    pzi = pz.absolute_intensity(omega=om, gamma=gam)[-1]
+    print(pzi, 'Placzek')
 
 
 def test_overlap():
@@ -25,14 +46,12 @@ def test_overlap():
     gam = 0.1
     po = Profeta(atoms, H2MorseExcitedStates,
                  exkwargs={'nstates': nstates}, approximation='Placzek',
-                 overlap=True,
-                 gsname=name, exname=name, txt='-')
+                 overlap=True, name=name, txt='-')
     poi = po.absolute_intensity(omega=om, gamma=gam)[-1]
 
     pr = Profeta(atoms, H2MorseExcitedStates,
                  exkwargs={'nstates': nstates}, approximation='Placzek',
-                 gsname=name, exname=name,
-                 txt=None)
+                 name=name, txt=None)
     pri = pr.absolute_intensity(omega=om, gamma=gam)[-1]
 
     print('overlap', pri, poi, poi / pri)
@@ -53,14 +72,14 @@ def test_compare_placzek_implementation_intensities():
     gam = 0.1
 
     pz = Placzek(atoms, H2MorseExcitedStates,
-                 gsname=name, exname=name, txt=None)
+                 name=name, txt=None)
     pzi = pz.absolute_intensity(omega=om, gamma=gam)[-1]
     print(pzi, 'Placzek')
 
     # Profeta using frozenset
     pr = Profeta(atoms, H2MorseExcitedStates,
                  approximation='Placzek',
-                 gsname=name, exname=name, txt=None)
+                 name=name, txt=None)
     pri = pr.absolute_intensity(omega=om, gamma=gam)[-1]
     print(pri, 'Profeta using frozenset')
     assert pzi == pytest.approx(pri, 1e-3)
@@ -68,16 +87,16 @@ def test_compare_placzek_implementation_intensities():
     # Profeta using overlap
     pr = Profeta(atoms, H2MorseExcitedStates,
                  approximation='Placzek', overlap=True,
-                 gsname=name, exname=name,
-                 txt=None)
+                 name=name, txt=None)
     pro = pr.absolute_intensity(omega=om, gamma=gam)[-1]
     print(pro, 'Profeta using overlap')
     assert pro == pytest.approx(pri, 1e-3)
 
 
 def main():
-    #test_overlap()
-    test_compare_placzek_implementation_intensities()
+    test_names()
+    # test_overlap()
+    # test_compare_placzek_implementation_intensities()
 
 
 if __name__ == '__main__':
