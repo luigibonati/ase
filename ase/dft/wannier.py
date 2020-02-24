@@ -38,13 +38,10 @@ def gram_schmidt_single(U, n):
 
 def lowdin(U, S=None):
     """Orthonormalize columns of U according to the Lowdin procedure.
-
-    If the overlap matrix is know, it can be specified in S.
     """
 
     L, s, R = np.linalg.svd(U, full_matrices=False)
-    U = np.dot(L, R)
-    normalize(U)
+    U[:] = np.dot(L, R)
 
 
 def neighbor_k_search(k_c, G_c, kpt_kc, tol=1e-4):
@@ -205,7 +202,7 @@ def rotation_from_projection(proj_nw, fixed, ortho=True):
     # it could become an argument for the function
     method = 'unk'
 
-    if L>0:
+    if L > 0:
         if method == 'unk':
             # Unknown method, very similar to SVD
             #  but the results slightly differ
