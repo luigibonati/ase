@@ -41,18 +41,17 @@ def lowdin(U, S=None):
 
     If the overlap matrix is know, it can be specified in S.
     """
-    if S is None:
-        S = np.dot(dag(U), U)
-    eig, rot = np.linalg.eigh(S)
-    rot = np.dot(rot / np.sqrt(eig), dag(rot))
-    U[:] = np.dot(U, rot)
+
+    L, s, R = np.linalg.svd(U, full_matrices=False)
+    U = np.dot(L, R)
+    normalize(U)
 
 
 def neighbor_k_search(k_c, G_c, kpt_kc, tol=1e-4):
     # search for k1 (in kpt_kc) and k0 (in alldir), such that
     # k1 - k - G + k0 = 0
-    alldir_dc = np.array([[0,0,0],[1,0,0],[0,1,0],[0,0,1],
-                           [1,1,0],[1,0,1],[0,1,1]], int)
+    alldir_dc = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1],
+                          [1, 1, 0], [1, 0, 1], [0, 1, 1]], int)
     for k0_c in alldir_dc:
         for k1, k1_c in enumerate(kpt_kc):
             if np.linalg.norm(k1_c - k_c - G_c + k0_c) < tol:
@@ -105,17 +104,19 @@ def random_orthogonal_matrix(dim, seed=None, real=False):
         return np.dot(vec * np.exp(1.j * val), dag(vec))
 
 
-def steepest_descent(func, step=.005, tolerance=1e-6, **kwargs):
+# def steepest_descent(func, step=.005, tolerance=1e-6, **kwargs):
+def steepest_descent(func, step=.005, tolerance=1e-6, verbose=False, **kwargs):
     fvalueold = 0.
     fvalue = fvalueold + 10
-    count=0
+    count = 0
     while abs((fvalue - fvalueold) / fvalue) > tolerance:
         fvalueold = fvalue
         dF = func.get_gradients()
         func.step(dF * step, **kwargs)
         fvalue = func.get_functional_value()
         count += 1
-        print('SteepestDescent: iter=%s, value=%s' % (count, fvalue))
+        if verbose:
+            print('SteepestDescent: iter=%s, value=%s' % (count, fvalue))
 
 
 def md_min(func, step=.25, tolerance=1e-6, verbose=False, **kwargs):
@@ -140,16 +141,15 @@ def md_min(func, step=.25, tolerance=1e-6, verbose=False, **kwargs):
             print('MDmin: iter=%s, step=%s, value=%s' % (count, step, fvalue))
     if verbose:
         t += time()
-        print('%d iterations in %0.2f seconds (%0.2f ms/iter), endstep = %s' %(
-            count, t, t * 1000. / count, step))
+        print('%d iterations in %0.2f seconds (%0.2f ms/iter), endstep = %s' %
+              (count, t, t * 1000. / count, step))
 
 
-def rotation_from_projection2(proj_nw, fixed):
+def rotation_from_projection2(proj_nw, fixed, ortho=True):
     V_ni = proj_nw
     Nb, Nw = proj_nw.shape
     M = fixed
     L = Nw - M
-    print('M=%i, L=%i, Nb=%i, Nw=%i' % (M, L, Nb, Nw))
     U_ww = np.zeros((Nw, Nw), dtype=proj_nw.dtype)
     c_ul = np.zeros((Nb-M, L), dtype=proj_nw.dtype)
     for V_n in V_ni.T:
@@ -169,7 +169,12 @@ def rotation_from_projection2(proj_nw, fixed):
 
     U_ww[:M] = V_ni[:M, :]
     U_ww[M:] = np.dot(c_ul.T.conj(), V_ni[M:])
-    gram_schmidt(U_ww)
+
+    if ortho:
+        gram_schmidt(U_ww)
+    else:
+        normalize(U_ww)
+
     return U_ww, c_ul
 
 
@@ -190,23 +195,58 @@ def rotation_from_projection(proj_nw, fixed, ortho=True):
     Nb, Nw = proj_nw.shape
     M = fixed
     L = Nw - M
+    U = Nb - M
 
     U_ww = np.empty((Nw, Nw), dtype=proj_nw.dtype)
+    C_ul = np.empty((U, L), dtype=proj_nw.dtype)
     U_ww[:M] = proj_nw[:M]
 
-    if L > 0:
-        proj_uw = proj_nw[M:]
-        eig_w, C_ww = np.linalg.eigh(np.dot(dag(proj_uw), proj_uw))
-        C_ul = np.dot(proj_uw, C_ww[:, np.argsort(-eig_w.real)[:L]])
-        #eig_u, C_uu = np.linalg.eigh(np.dot(proj_uw, dag(proj_uw)))
-        #C_ul = C_uu[:, np.argsort(-eig_u.real)[:L]]
+    # choose method between ['unk', 'svd', 'qrcp']
+    # it could become an argument for the function
+    method = 'unk'
 
-        U_ww[M:] = np.dot(dag(C_ul), proj_uw)
-    else:
-        C_ul = np.empty((Nb - M, 0))
+    if L>0:
+        if method == 'unk':
+            # Unknown method, very similar to SVD
+            #  but the results slightly differ
+            proj_uw = proj_nw[M:]
+            eig_w, C_ww = np.linalg.eigh(np.dot(dag(proj_uw), proj_uw))
+            C_ul = np.dot(proj_uw, C_ww[:, np.argsort(-eig_w.real)[:L]])
+            # eig_u, C_uu = np.linalg.eigh(np.dot(proj_uw, dag(proj_uw)))
+            # C_ul = C_uu[:, np.argsort(-eig_u.real)[:L]]
+
+            U_ww[M:] = np.dot(dag(C_ul), proj_uw)
+
+        elif method == 'svd':
+            # SVD implementation of nearest orthogonal matrix, aka symm. Lowdin
+            proj_uw = proj_nw[M:]
+            C_ww = np.dot(dag(proj_uw), proj_uw)
+            Ls, s, Rs = np.linalg.svd(C_ww, full_matrices=False)
+            C_ww = np.dot(Ls, Rs)
+
+            # Keep only the L columns with the biggest singular values
+            C_ul = np.empty((U, L), dtype=proj_uw.dtype)
+            C_ul = np.dot(proj_uw, C_ww[:, :L])
+
+            U_ww[M:] = np.dot(dag(C_ul), proj_uw)
+
+        elif method == 'qrcp':
+            from scipy.linalg import qr
+
+            proj_uw = proj_nw[M:]
+            C_ww = np.dot(dag(proj_uw), proj_uw)
+            Q, R, P = qr(C_ww, mode='full', pivoting=True, check_finite=True)
+            C_ww = C_ww[:, P]
+
+            # Keep only the L columns with the biggest diagonal elements on R
+            C_ul = np.dot(proj_uw, C_ww[:, :L])
+            lowdin(C_ul)
+
+            U_ww[M:] = np.dot(dag(C_ul), proj_uw)
 
     normalize(C_ul)
     if ortho:
+        # gram_schmidt(U_ww)
         lowdin(U_ww)
     else:
         normalize(U_ww)
@@ -289,7 +329,7 @@ class Wannier:
         self.unitcell_cc = calc.get_atoms().get_cell()
         self.largeunitcell_cc = (self.unitcell_cc.T * self.kptgrid).T
         self.weight_d, self.Gdir_dc = calculate_weights(self.largeunitcell_cc)
-        self.Ndir = len(self.weight_d) # Number of directions
+        self.Ndir = len(self.weight_d)  # Number of directions
 
         if nbands is not None:
             self.nbands = nbands
@@ -306,7 +346,7 @@ class Wannier:
             # Setting number of fixed states and EDF from specified energy.
             # All states below this energy (relative to Fermi level) are fixed.
             fixedenergy += calc.get_fermi_level()
-            print(fixedenergy)
+            # print(fixedenergy)
             self.fixedstates_k = np.array(
                 [calc.get_eigenvalues(k, spin).searchsorted(fixedenergy)
                  for k in range(self.Nk)], int)
@@ -348,7 +388,7 @@ class Wannier:
                         k0_dkc[d, k] = Gdir_c
                     else:
                         self.kklst_dk[d, k], k0_dkc[d, k] = \
-                                       neighbor_k_search(k_c, G_c, self.kpt_kc)
+                            neighbor_k_search(k_c, G_c, self.kpt_kc)
 
         # Set the inverse list of neighboring k-points
         self.invkklst_dk = np.empty((self.Ndir, self.Nk), int)
@@ -484,7 +524,7 @@ class Wannier:
         together with the value of the spread functional"""
         d = np.zeros(self.nwannier)
         for dir in directions:
-            d[dir] = np.abs(self.Z_dww[dir].diagonal())**2 *self.weight_d[dir]
+            d[dir] = np.abs(self.Z_dww[dir].diagonal())**2 * self.weight_d[dir]
         index = np.argsort(d)[0]
         print('Index:', index)
         print('Spread:', d[index])
@@ -522,8 +562,8 @@ class Wannier:
         the orbitals to the cell [2,2,2].  In this way the pbc
         boundary conditions will not be noticed.
         """
-        scaled_wc = np.angle(self.Z_dww[:3].diagonal(0, 1, 2)).T  * \
-                    self.kptgrid / (2 * pi)
+        scaled_wc = np.angle(self.Z_dww[:3].diagonal(0, 1, 2)).T * \
+            self.kptgrid / (2 * pi)
         trans_wc = np.array(cell)[None] - np.floor(scaled_wc)
         for kpt_c, U_ww in zip(self.kpt_kc, self.U_kww):
             U_ww *= np.exp(2.j * pi * np.dot(trans_wc, kpt_c))
@@ -663,7 +703,8 @@ class Wannier:
         if real:
             if self.Nk == 1:
                 func *= np.exp(-1.j * np.angle(func.max()))
-                if 0: assert max(abs(func.imag).flat) < 1e-4
+                if 0:
+                    assert max(abs(func.imag).flat) < 1e-4
                 func = func.real
             else:
                 func = abs(func)
@@ -676,9 +717,11 @@ class Wannier:
 
         write(fname, atoms, data=func, format='cube')
 
+    # def localize(self, step=0.005, tolerance=1e-08,
     def localize(self, step=0.25, tolerance=1e-08,
                  updaterot=True, updatecoeff=True):
         """Optimize rotation to give maximal localization"""
+        # steepest_descent(self, step, tolerance, verbose=self.verbose,
         md_min(self, step, tolerance, verbose=self.verbose,
                updaterot=updaterot, updatecoeff=updatecoeff)
 
