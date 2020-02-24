@@ -37,7 +37,9 @@ def gram_schmidt_single(U, n):
 
 
 def lowdin(U, S=None):
-    """Orthonormalize columns of U according to the Lowdin procedure.
+    """Orthonormalize columns of U according to the symmetric Lowdin procedure.
+       The implementation uses SVD, like symm. Lowdin it returns the nearest
+       orthonormal matrix, but is more robust.
     """
 
     L, s, R = np.linalg.svd(U, full_matrices=False)
@@ -195,14 +197,15 @@ def rotation_from_projection(proj_nw, fixed, ortho=True):
     U = Nb - M
 
     U_ww = np.empty((Nw, Nw), dtype=proj_nw.dtype)
-    C_ul = np.empty((U, L), dtype=proj_nw.dtype)
     U_ww[:M] = proj_nw[:M]
 
     # choose method between ['unk', 'svd', 'qrcp']
     # it could become an argument for the function
     method = 'unk'
 
+    # If there are extra degrees of freedom we have to select L of them
     if L > 0:
+        C_ul = np.empty((U, L), dtype=proj_nw.dtype)
         if method == 'unk':
             # Unknown method, very similar to SVD
             #  but the results slightly differ
@@ -228,6 +231,7 @@ def rotation_from_projection(proj_nw, fixed, ortho=True):
             U_ww[M:] = np.dot(dag(C_ul), proj_uw)
 
         elif method == 'qrcp':
+            # QRCP implemetation, also called SCDM in the literature
             from scipy.linalg import qr
 
             proj_uw = proj_nw[M:]
@@ -241,7 +245,10 @@ def rotation_from_projection(proj_nw, fixed, ortho=True):
 
             U_ww[M:] = np.dot(dag(C_ul), proj_uw)
 
-    normalize(C_ul)
+        normalize(C_ul)
+    else:
+        C_ul = np.empty((U, 0), dtype=proj_nw.dtype)
+
     if ortho:
         # gram_schmidt(U_ww)
         lowdin(U_ww)
