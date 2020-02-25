@@ -29,10 +29,10 @@ def test_bulk():
         
     
     name = 'bp'
-    rm = RamanStaticCalculator(Cbulk, BondPolarizability, gsname=name,
+    rm = RamanStaticCalculator(Cbulk, BondPolarizability, name=name,
                                delta=0.05)
     rm.run()
-    pz = PlaczekStatic(Cbulk, gsname=name)
+    pz = PlaczekStatic(Cbulk, name=name)
     print(pz.get_energies())
     pz.summary()        
 
@@ -40,9 +40,9 @@ def test_bulk():
         si32 = si4.repeat([2, 2, 2])
         si32.set_calculator(EMT())
         name = 'si32'
-        rm = RamanStaticCalculator(si32, BondPolarizability, gsname=name)
+        rm = RamanStaticCalculator(si32, BondPolarizability, name=name)
         rm.run()
-        pz = PlaczekStatic(si32, gsname=name)
+        pz = PlaczekStatic(si32, name=name)
         pz.summary()        
 
 def test_c3():
@@ -53,9 +53,9 @@ def test_c3():
     
     name = 'bp'
     rm = RamanStaticCalculator(atoms, BondPolarizability,
-                               gsname=name, exname=name, txt='-')
+                               name=name, exname=name, txt='-')
     rm.run()
-    pz = PlaczekStatic(atoms, gsname=name)
+    pz = PlaczekStatic(atoms, name=name)
     pz.summary()
     
 
