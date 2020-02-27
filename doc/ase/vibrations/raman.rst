@@ -128,8 +128,9 @@ for more analysis::
 Both should lead to the same spectrum.
 
 `Profeta` splits the spectra in two contributions that can be accessed as
-`approximation='Profeta'` and `approximation='P-P'`, respectively.
+`approximation='P-P'` and `approximation='Profeta'`, respectively.
 Their sum should give `approximation='Placzek'`.
+See more details in [1]_.
 
 Albrecht
 ````````
@@ -142,10 +143,15 @@ to be present. We therefore have to invoke the `Albrecht` object as::
   from ase.vibrations.albrecht import Albrecht
   
   photonenergy = 7.5  # eV
-  al = Albrecht(H2Morse(), approximation='Albrecht')
+  al = Albrecht(H2Morse(), approximation='Albrecht', overlap=True)
   x, y = al.get_spectrum(photonenergy, start=0, end=2000, method='frederiksen', type='Lorentzian')
 
+`Albrecht` splits the spectra in two contributions that can be accessed as
+`approximation='Albrecht A'` and `approximation='Albrecht BC'`, respectively.
+Their sum should give `approximation='Albrecht'`.
+See more details in [1]_.
 
+  
 .. _GPAW: https://wiki.fysik.dtu.dk/gpaw/
   
 .. [1] "Ab-initio wave-length dependent Raman spectra: Placzek approximation and beyond" Michael Walter, Michael Moseler `arXiv:1806.03840 <https://arxiv.org/abs/1806.03840>`_ [physics.chem-ph]
