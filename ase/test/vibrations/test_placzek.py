@@ -4,6 +4,7 @@ Test Placzek type resonant Raman implementations
 import os
 import pytest
 
+from ase.parallel import parprint, world
 from ase.vibrations.vibrations import Vibrations
 from ase.vibrations.resonant_raman import ResonantRamanCalculator
 from ase.vibrations.placzek import Placzek, Profeta
@@ -21,15 +22,21 @@ def test_names():
                                   verbose=True)
     rmc.run()
     assert os.path.isfile('raman.eq.pckl')
-    os.remove('raman.0x-.pckl')  # make sure this is not used
-
+    try:
+        os.remove('raman.0x-.pckl')  # make sure this is not used
+    except FileNotFoundError:
+        pass  # removed by another process
+        
     om = 1
     gam = 0.1
     pz = Placzek(atoms, H2MorseExcitedStates,
                  name='vib', exname='raman')
     pzi = pz.absolute_intensity(omega=om, gamma=gam)[-1]
-    print(pzi, 'Placzek')
+    parprint(pzi, 'Placzek')
 
+    # check that work was distributed correctly
+    assert len(pz.myindices) <= -(-6 // world.size)
+    
 
 def test_overlap():
     """Test equality with and without overlap"""

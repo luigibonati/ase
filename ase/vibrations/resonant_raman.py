@@ -154,11 +154,6 @@ class ResonantRaman(Raman):
     def approximation(self, value):
         self.set_approximation(value)
 
-    def log(self, message, pre='# ', end='\n'):
-        if self.verbose:
-            self.txt.write(pre + message + end)
-            self.txt.flush()
-
     def init_parallel_read(self):
         """Initialize variables for parallel read"""
         rank = self.comm.rank
