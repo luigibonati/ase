@@ -13,12 +13,29 @@ obtain the spectra from these later.
 1. Finite difference calculations
 ---------------------------------
 
-1a. Forces
-----------
+1a. Forces and excitations
+--------------------------
 
-It is recommended to do a vibrational analysis first by using
+The basis for all spectra are finite difference calculations
+for forces and excited states of our system.
+These can be performed using the
+:class:`ResonantRamanCalculator` which needs as input the `Atoms` object
+and a calculator for excited state properties. We use the test
+calculator :class:`H2MorseExcitedStatesCalculator` here
+
+.. literalinclude:: H2Morse_calc.py
+
+This produces all necessary data for further analysis.
+
+1b. More accurate forces
+------------------------
+
+It is possible to do a vibrational also with a more accurate calculator
+(or more accurate settings for the forces) using
 the :class:`~ase.vibrations.Vibrations` or  :class:`~ase.vibrations.Infrared`
-modules. In the example of molecular hydrogen this is
+modules.
+
+In the example of molecular hydrogen with GPAW_ this is
 
 .. literalinclude:: H2_ir.py
 
@@ -26,16 +43,17 @@ This produces a calculation with rather accurate forces in order
 to get the Hessian and thus the vibrational frequencies as well
 as Eigenstates correctly.
 
-1b. Excitations
----------------
-
 In the next step we perform a finite difference optical calculation
 with less accuracy,
 where the optical spectra are evaluated using TDDFT
 
 .. literalinclude:: H2_optical.py
 		    
-Albrecht B+C terms need wave function overlaps at equilibrium and
+
+1c. Overlaps
+------------
+
+Albrecht B+C terms need wave function overlaps between equilibrium and
 displaced structures. These are assumed to be
 calculated in the form
 
@@ -46,15 +64,22 @@ calculated in the form
    
 where `\phi_j^{{\rm eq}}` is an orbital at equilibrium position
 and `\phi_i^{\rm disp}` is an orbital at displaced position.
-This is implemented in ``Overlap`` in GPAW
+
+The `H2MorseExcitedStatesCalculator` has a function `overlap()` for this.
+We therfore write data including the overlap as
+
+.. literalinclude:: H2Morse_calc_overlap.py
+
+In GPAW this is implemented in ``Overlap``
 (approximated by pseudo-wavefunction overlaps) and can be triggered
 in ``ResonantRaman`` by::
 
+  from ase.vibrations.resonant_raman import ResonantRamanCalculator
   from gpaw.analyse.overlap import Overlap
 
-  rr = ResonantRaman(atoms, LrTDDFT, exkwargs={'jend':3}
-                     overlap=lambda x, y: Overlap(x).pseudo(y),
-                     )
+  rr = ResonantRamanCalculator(atoms, LrTDDFT,
+                               overlap=lambda x, y: Overlap(x).pseudo(y),
+                              )
 
 
 2. Analysis of the results
@@ -67,10 +92,11 @@ In order to do the full Albrecht analysis later we
 We save the standard names::
 
   # standard name for Vibrations
-  gsname='vib'
+  name = 'vib'
   # standard name for Infrared
-  gsname='ir'
-
+  name = 'ir'
+  # standard name for the ResonantRamanCalculator
+  name = 'rraman'
 
 Placzek
 ```````
@@ -79,42 +105,46 @@ The most popular form is the Placzeck approximation that is present in
 two implementations. The simplest is the direct evaluation from
 derivatives of the frequency dependent polarizability::
 
+  from ase.calculators.h2morse import (H2Morse,
+                                       H2MorseExcitedStates)
   from ase.vibrations.placzek import Placzek
 
   photonenergy = 7.5  # eV
-  pz = Placzek()
+  pz = Placzek(H2Morse(), H2MorseExcitedStates)
   x, y = pz.get_spectrum(photonenergy, start=0, end=2000, method='frederiksen', type='Lorentzian')
 
 
 The second implementation evaluates the derivatives differently allowing
 for more analysis::
 
+  from ase.calculators.h2morse import (H2Morse,
+                                       H2MorseExcitedStates)
   from ase.vibrations.placzek import Profeta
   
   photonenergy = 7.5  # eV
-  pr = Profeta(approximation='Placzek')
+  pr = Profeta(H2Morse(), approximation='Placzek')
   x, y = pr.get_spectrum(photonenergy, start=0, end=2000, method='frederiksen', type='Lorentzian')
 
 Both should lead to the same spectrum.
 
+`Profeta` splits the spectra in two contributions that can be accessed as
+`approximation='Profeta'` and `approximation='P-P'`, respectively.
+Their sum should give `approximation='Placzek'`.
+
 Albrecht
 ````````
 
-``ResonantRaman`` calls the displaced excited state objects' function
-``overlap`` with the matrix `o_{ij}` and expects the function to
-return the corresponding overlap matrix for the transition dipoles.
-In case of Kohn-Sham transitions with `i,j` for occupied
-and `\alpha,\beta` for empty orbitals, this is
+The more accurate Albrecht approximations partly need overlaps
+to be present. We therefore have to invoke the `Albrecht` object as::
 
-.. math::
-
-   O_{i\alpha,j\beta} = o_{ij}^* o_{\alpha\beta}
-
-Example::
-
+  from ase.calculators.h2morse import (H2Morse,
+                                       H2MorseExcitedStates)
   from ase.vibrations.albrecht import Albrecht
+  
+  photonenergy = 7.5  # eV
+  al = Albrecht(H2Morse(), approximation='Albrecht')
+  x, y = al.get_spectrum(photonenergy, start=0, end=2000, method='frederiksen', type='Lorentzian')
 
-  al = Albrecht()
 
 .. _GPAW: https://wiki.fysik.dtu.dk/gpaw/
   
