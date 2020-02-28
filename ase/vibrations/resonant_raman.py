@@ -2,17 +2,18 @@
 
 import pickle
 import os
+import sys
 
 import numpy as np
 
 import ase.units as u
-from ase.parallel import world, paropen
+from ase.parallel import world, paropen, parprint
 from ase.vibrations import Vibrations
 from ase.vibrations.raman import Raman, RamanCalculator
 
 
 class ResonantRamanCalculator(RamanCalculator):
-    """Base Class for resonant Raman calcultors using finite differences.
+    """Base class for resonant Raman calculators using finite differences.
     """
     def __init__(self, atoms, ExcitationsCalculator, *args,
                  exkwargs={}, exext='.ex.gz', overlap=False,
@@ -20,14 +21,32 @@ class ResonantRamanCalculator(RamanCalculator):
         """
         Parameters
         ----------
+        atoms: Atoms
+            The Atoms object
+        ExcitationsCalculator: object
+            Calculator for excited states
         exkwargs: dict
             Arguments given to the ExcitationsCalculator object
         exext: string
-            Extension for filenames of Excitation lists.
+            Extension for filenames of Excitation lists (results of 
+            the ExcitationsCalculator).
         overlap : function or False
-          Function to calculate overlaps between excitation at
-          equilibrium and at a displaced position. Calculators are
-          given as first and second argument, respectively.
+            Function to calculate overlaps between excitation at
+            equilibrium and at a displaced position. Calculators are
+            given as first and second argument, respectively.
+
+        Example
+        -------
+
+        >>> from ase.calculators.h2morse import (H2Morse,
+        ...                                      H2MorseExcitedStatesCalculator)
+        >>> from ase.vibrations.resonant_raman import ResonantRamanCalculator
+        >>>
+        >>> atoms = H2Morse()
+        >>> rmc = ResonantRamanCalculator(atoms, H2MorseExcitedStatesCalculator)
+        >>> rmc.run()
+
+        This produces all necessary data for further analysis.
         """
         self.exkwargs = exkwargs
         self.overlap = overlap
@@ -478,6 +497,46 @@ class ResonantRaman(Raman):
 
     def __del__(self):
         self.timer.write(self.txt)
+
+    def summary(self, omega, gamma=0.1,
+                method='standard', direction='central',
+                log=sys.stdout):
+        """Print summary for given omega [eV]"""
+        hnu = self.get_energies(method, direction)
+        intensities = self.absolute_intensity(omega, gamma)
+        te = int(np.log10(intensities.max())) - 2
+        scale = 10**(-te)
+        if not te:
+            ts = ''
+        elif te > -2 and te < 3:
+            ts = str(10**te)
+        else:
+            ts = '10^{0}'.format(te)
+
+        if isinstance(log, str):
+            log = paropen(log, 'a')
+
+        parprint('-------------------------------------', file=log)
+        parprint(' excitation at ' + str(omega) + ' eV', file=log)
+        parprint(' gamma ' + str(gamma) + ' eV', file=log)
+        parprint(' method:', self.method, file=log)
+        parprint(' approximation:', self.approximation, file=log)
+        parprint(' Mode    Frequency        Intensity', file=log)
+        parprint('  #    meV     cm^-1      [{0}A^4/amu]'.format(ts), file=log)
+        parprint('-------------------------------------', file=log)
+        for n, e in enumerate(hnu):
+            if e.imag != 0:
+                c = 'i'
+                e = e.imag
+            else:
+                c = ' '
+                e = e.real
+            parprint('%3d %6.1f%s  %7.1f%s  %9.2f' %
+                     (n, 1000 * e, c, e / u.invcm, c, intensities[n] * scale),
+                     file=log)
+        parprint('-------------------------------------', file=log)
+        parprint('Zero-point energy: %.3f eV' % self.get_zero_point_energy(),
+                 file=log)
 
 
 class LrResonantRaman(ResonantRaman):

@@ -13,6 +13,14 @@ from ase.calculators.h2morse import (H2Morse,
                                      H2MorseExcitedStatesCalculator)
 
 
+def test_summary():
+    atoms = H2Morse()
+    rmc = ResonantRamanCalculator(atoms, H2MorseExcitedStatesCalculator)
+    rmc.run()
+    pz = Placzek(atoms, H2MorseExcitedStates)
+    pz.summary(1.)
+
+
 def test_names():
     """Test different gs vs excited name"""
     atoms = H2Morse()
@@ -101,9 +109,7 @@ def test_compare_placzek_implementation_intensities():
 
 
 def main():
-    test_names()
-    # test_overlap()
-    # test_compare_placzek_implementation_intensities()
+    test_summary()
 
 
 if __name__ == '__main__':

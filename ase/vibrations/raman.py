@@ -233,17 +233,12 @@ class Raman(RamanBase):
                      m2(alpha_Qcc[:, 1, 1] - alpha_Qcc[:, 2, 2])) / 2)
         return alpha2_r, gamma2_r, delta2_r
 
-    def summary(self, *args,
+    def summary(self,
                 method='standard', direction='central',
                 log=sys.stdout, **kwargs):
         """Print summary for given omega [eV]"""
         hnu = self.get_energies(method, direction)
-        if 'omega' in kwargs:
-            omega = kwargs['omega']
-            gamma = kwargs.get('gamma', 0.1)
-            intensities = self.absolute_intensity(omega, gamma)
-        else:
-            intensities = self.absolute_intensity()
+        intensities = self.absolute_intensity()
         te = int(np.log10(intensities.max())) - 2
         scale = 10**(-te)
         if not te:
@@ -257,11 +252,6 @@ class Raman(RamanBase):
             log = paropen(log, 'a')
 
         parprint('-------------------------------------', file=log)
-        if 'omega' in kwargs:
-            parprint(' excitation at ' + str(omega) + ' eV', file=log)
-            parprint(' gamma ' + str(gamma) + ' eV', file=log)
-            parprint(' method:', self.method, file=log)
-            parprint(' approximation:', self.approximation, file=log)
         parprint(' Mode    Frequency        Intensity', file=log)
         parprint('  #    meV     cm^-1      [{0}A^4/amu]'.format(ts), file=log)
         parprint('-------------------------------------', file=log)

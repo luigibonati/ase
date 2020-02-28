@@ -19,13 +19,10 @@ obtain the spectra from these later.
 The basis for all spectra are finite difference calculations
 for forces and excited states of our system.
 These can be performed using the
-:class:`ResonantRamanCalculator` which needs as input the `Atoms` object
-and a calculator for excited state properties. We use the test
-calculator :class:`H2MorseExcitedStatesCalculator` here
+:class:`~ase.vibrations.resonant_raman.ResonantRamanCalculator`.
 
-.. literalinclude:: H2Morse_calc.py
+.. autoclass:: ase.vibrations.resonant_raman.ResonantRamanCalculator
 
-This produces all necessary data for further analysis.
 
 1b. More accurate forces
 ------------------------
@@ -65,7 +62,7 @@ calculated in the form
 where `\phi_j^{{\rm eq}}` is an orbital at equilibrium position
 and `\phi_i^{\rm disp}` is an orbital at displaced position.
 
-The `H2MorseExcitedStatesCalculator` has a function `overlap()` for this.
+The ``H2MorseExcitedStatesCalculator`` has a function ``overlap()`` for this.
 We therfore write data including the overlap as
 
 .. literalinclude:: H2Morse_calc_overlap.py
@@ -80,6 +77,7 @@ in ``ResonantRaman`` by::
   rr = ResonantRamanCalculator(atoms, LrTDDFT,
                                overlap=lambda x, y: Overlap(x).pseudo(y),
                               )
+  rr.run()
 
 
 2. Analysis of the results
@@ -111,32 +109,35 @@ derivatives of the frequency dependent polarizability::
 
   photonenergy = 7.5  # eV
   pz = Placzek(H2Morse(), H2MorseExcitedStates)
-  x, y = pz.get_spectrum(photonenergy, start=0, end=2000, method='frederiksen', type='Lorentzian')
+  pz.summary(photonenergy)
 
 
-The second implementation evaluates the derivatives differently allowing
+The second implementation evaluates the derivatives differently, allowing
 for more analysis::
 
+  import pylab as plt
   from ase.calculators.h2morse import (H2Morse,
                                        H2MorseExcitedStates)
   from ase.vibrations.placzek import Profeta
   
   photonenergy = 7.5  # eV
   pr = Profeta(H2Morse(), approximation='Placzek')
-  x, y = pr.get_spectrum(photonenergy, start=0, end=2000, method='frederiksen', type='Lorentzian')
+  x, y = pr.get_spectrum(photonenergy, start=2000, end=4000, method='frederiksen', type='Lorentzian')
+  plt.plot(x, y)
+  plt.show()
 
-Both should lead to the same spectrum.
+Both implementations should lead to the same spectrum.
 
-`Profeta` splits the spectra in two contributions that can be accessed as
-`approximation='P-P'` and `approximation='Profeta'`, respectively.
-Their sum should give `approximation='Placzek'`.
+``Profeta`` splits the spectra in two contributions that can be accessed as
+``approximation='P-P'`` and ``approximation='Profeta'``, respectively.
+Their sum should give ``approximation='Placzek'``.
 See more details in [1]_.
 
 Albrecht
 ````````
 
 The more accurate Albrecht approximations partly need overlaps
-to be present. We therefore have to invoke the `Albrecht` object as::
+to be present. We therefore have to invoke the ``Albrecht`` object as::
 
   from ase.calculators.h2morse import (H2Morse,
                                        H2MorseExcitedStates)
@@ -146,13 +147,14 @@ to be present. We therefore have to invoke the `Albrecht` object as::
   al = Albrecht(H2Morse(), approximation='Albrecht', overlap=True)
   x, y = al.get_spectrum(photonenergy, start=0, end=2000, method='frederiksen', type='Lorentzian')
 
-`Albrecht` splits the spectra in two contributions that can be accessed as
-`approximation='Albrecht A'` and `approximation='Albrecht BC'`, respectively.
-Their sum should give `approximation='Albrecht'`.
+``Albrecht`` splits the spectra in two contributions that can be accessed as
+``approximation='Albrecht A'`` and ``approximation='Albrecht BC'``,
+respectively.
+Their sum should give ``approximation='Albrecht'``.
 See more details in [1]_.
 
   
 .. _GPAW: https://wiki.fysik.dtu.dk/gpaw/
   
-.. [1] "Ab-initio wave-length dependent Raman spectra: Placzek approximation and beyond" Michael Walter, Michael Moseler `arXiv:1806.03840 <https://arxiv.org/abs/1806.03840>`_ [physics.chem-ph]
+.. [1] "Ab-initio wave-length dependent Raman spectra: Placzek approximation and beyond" Michael Walter, Michael Moseler J. Chem. Theory Comput. 1 (2020) 576-586 `DOI: 10.1021/acs.jctc.9b00584 <https://pubs.acs.org/doi/10.1021/acs.jctc.9b00584>`_
 
