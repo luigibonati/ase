@@ -222,7 +222,8 @@ class OganovFP(Fingerprint):
         ''' Calculate the delta peak heights self.h '''
 
         self.constant = 1 / (self.limit / self.N)
-        self.h = self.constant / self.dm**2
+        self.h = self.constant * (1 / self.dm**2 -
+                                  1 / self.limit**2)
         return
 
     def get_fingerprint(self):
@@ -522,8 +523,10 @@ class OganovFP(Fingerprint):
         xij = self.dm[p]
         xvec = np.linspace(0., self.limit, self.N)
         diffvec = xvec - xij
-        Gij = ((2 / xij - diffvec / self.delta**2) *
-               self.h[p] / xij *
+
+        h = self.h[p]
+        h_bare = self.h[p] + self.constant / self.limit**2
+        Gij = ((2 * h_bare / xij - diffvec * h / self.delta**2) / xij *
                np.exp(- diffvec**2 / 2 / self.delta**2))
 
         return Gij
