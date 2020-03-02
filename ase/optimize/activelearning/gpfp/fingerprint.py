@@ -1231,7 +1231,7 @@ class ParallelOganovFP(OganovFP):
 
         index: Atom index with which to differentiate
         '''
-        gradient = np.zeros([self.n, self.N, 3])
+        gradient = np.zeros([self.n, self.n, self.N, 3])
         natoms = len(self.atoms)
 
         mask = np.arange(natoms) == index
@@ -1265,7 +1265,7 @@ class ParallelOganovFP(OganovFP):
             gradient[A, B] += np.outer(Gij, -rij)
 
         # Gather all sub-gradients to a big container:
-        gg = np.empty([world.size, self.N, 3])
+        gg = np.empty([world.size, self.n, self.n, self.N, 3])
         world.all_gather(gradient, gg)
 
         # Sum up:
@@ -1293,7 +1293,8 @@ class ParallelRadAngFP(RadialAngularFP, ParallelOganovFP):
         """
 
         # Extended distance and displacement vector matrices:
-        ep = self.extendedatoms.positions.copy()
+        ap = self.atoms.positions
+        ep = self.extendedatoms.positions
         n0 = len(ep)
 
         # make sure ep can be scattered to world.size procs:
@@ -1321,13 +1322,13 @@ class ParallelRadAngFP(RadialAngularFP, ParallelOganovFP):
 
         n = len(ep)
 
-        dm = distance_matrix(self.atoms.positions, ep)
+        dm = distance_matrix(ap, ep)
         self.angleconstant = self.aweight / (pi / self.nanglebins)
 
         indices = []
 
         mask1 = np.logical_or(dm == 0, dm > self.Rtheta)
-        mask2 = self.dm == 0
+        mask2 = dm == 0
         mask3 = np.logical_or(edm == 0, edm > self.Rtheta)
 
         for i in range(len(self.atoms)):
@@ -1366,7 +1367,7 @@ class ParallelRadAngFP(RadialAngularFP, ParallelOganovFP):
         self.ABC = [(self.prim_symbols[i], self.ext_symbols[j], self.ext_symbols[k])
                     for i, j, k in self.indices]
 
-        return self.av
+        return
 
     def calculate_angle_gradient(self, index, 
                                  firstvalues, secondvalues,
