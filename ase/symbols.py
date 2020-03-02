@@ -146,3 +146,7 @@ class Symbols:
         indices = [i for i, number in enumerate(self.numbers)
                    if number in numbers]
         return np.array(indices, int)
+
+    def species(self):
+        """Return unique species as list."""
+        return list(set(self))
