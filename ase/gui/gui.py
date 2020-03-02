@@ -404,6 +404,48 @@ class GUI(View, Status):
         os.system('(%s %s &); (sleep 60; rm %s) &' %
                   (command, filename, filename))
 
+    def selected_atoms(self):
+        selection_mask = self.images.selected[:len(self.atoms)]
+        if not any(selection_mask):
+            return None
+        return self.atoms[selection_mask]
+
+    def cut_atoms(self, event):
+        self.copy_atoms(event)
+
+    def get_atoms_from_clipboard(self):
+        from ase.io import read
+        root = self.window.win
+        txt = root.clipboard_get()
+        return read(txt)
+
+    def export_atoms_to_clipboard(self, atoms):
+        from ase.io.jsonio import encode
+        json_txt = encode(atoms)
+        print(json_txt)
+        root = self.window.win
+        root.clipboard_clear()
+        root.clipboard_append(json_txt)
+
+    def copy_atoms(self, event):
+        print('hello', event)
+        atoms = selected_atoms()
+        if atoms is None:
+            return
+
+        print(atoms)
+
+    def paste_atoms(self, event):
+        print('paste', event)
+        atoms = get_atoms_from_clipboard()
+        if atoms is None:
+            return
+        self.add_
+        #self.set_atoms(
+        print(txt)
+        #read
+        #self.window.win.
+
     def get_menu_data(self):
         M = ui.MenuItem
         return [
@@ -420,8 +462,9 @@ class GUI(View, Status):
               M(_('Select _constrained atoms'), self.select_constrained_atoms),
               M(_('Select _immobile atoms'), self.select_immobile_atoms),
               # M('---'),
-              # M(_('_Copy'), self.copy_atoms, 'Ctrl+C'),
-              # M(_('_Paste'), self.paste_atoms, 'Ctrl+V'),
+              M(_('_Cut'), self.cut_atoms, 'Ctrl+X'),
+              M(_('_Copy'), self.copy_atoms, 'Ctrl+C'),
+              M(_('_Paste'), self.paste_atoms, 'Ctrl+V'),
               M('---'),
               M(_('Hide selected atoms'), self.hide_selected),
               M(_('Show selected atoms'), self.show_selected),

@@ -126,7 +126,6 @@ class Images:
         self.selected = np.zeros(self.maxnatoms, bool)
         self.selected_ordered = []
         self.visible = np.ones(self.maxnatoms, bool)
-        self.nselected = 0
         self.repeat = np.ones(3, int)
 
     def get_radii(self, atoms):
