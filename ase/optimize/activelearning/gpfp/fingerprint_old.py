@@ -107,7 +107,7 @@ class OganovFP(Fingerprint):
 
         self.pbc = pbc
         self.calc_gradients = calc_gradients
-        self.weight_by_elements = weight_by_elements
+        self.weight_by_elements = True
 
         self.set_params()
 
@@ -188,59 +188,78 @@ class OganovFP(Fingerprint):
         newend = newstart + natoms
         self.atoms = self.extendedatoms[newstart:newend]
 
-
         # Distance matrix
-        ap = self.atoms.positions
-        ep = self.extendedatoms.positions
-        dm = distance_matrix(x=ap, y=ep)
-
-        mask = np.logical_or(dm == 0, dm > self.limit)
-        r_indices = []
-        for i in range(len(self.atoms)):
-            for j in range(len(self.extendedatoms)):
-
-                if mask[i, j]:
-                    continue
-
-                r_indices.append((i, j))
-        self.r_indices = np.array(r_indices, dtype=int)
+        self.dm = distance_matrix(x=self.atoms.positions,
+                                  y=self.extendedatoms.positions)
 
         # position vector matrix
-        self.rm = ap[self.r_indices[:, 0]] - ep[self.r_indices[:, 1]]
-        self.dm = np.linalg.norm(self.rm, axis=1)
+        self.rm = np.einsum('ilkl->ikl',
+                            np.subtract.outer(self.atoms.positions,
+                                              self.extendedatoms.positions))
 
-        elementlist = list(self.elements)
-        self.prim_symbols = [elementlist.index(atom.symbol)
-                             for atom in self.atoms]
-        self.ext_symbols = [elementlist.index(atom.symbol)
-                            for atom in self.extendedatoms]
-        self.AB = np.array([(self.prim_symbols[i], self.ext_symbols[j])
-                            for i, j in self.r_indices], dtype=int)
         return
 
     def set_peak_heights(self):
         ''' Calculate the delta peak heights self.h '''
 
         self.constant = 1 / (self.limit / self.N)
-        self.h = self.constant / self.dm**2
-        return
+
+        # Ignore zero-division warning
+        with catch_warnings():
+            simplefilter("ignore", category=RuntimeWarning)
+            self.h = np.where(self.dm > 0.0001,
+                              (self.constant / self.dm**2),
+                              0.0)
+
+        return self.h
 
     def get_fingerprint(self):
         ''' Calculate the Gaussian-broadened fingerprint. '''
 
-        self.G = np.zeros([self.n, self.n, self.N])
+        self.G = np.ndarray([self.n, self.n, self.N])
         x = np.linspace(0, self.limit, self.N)  # variable array
 
         # Broadening of each peak:
-        for p in range(len(self.r_indices)):
-            i, j = self.r_indices[p]
+        for i in range(self.n):
+            for j in range(self.n):
 
-            h = self.h[p]
-            R = self.dm[p]
-            g = h * np.exp(- (x - R)**2 / 2 / self.delta**2)
-            A, B = self.AB[p]
-            self.G[A, B] += g
-                
+                # Get peak positions
+                R = np.where(self.dm < self.limit,
+                             self.dm,
+                             0.0)
+
+                # Get peak heights
+                h = np.where(self.dm < self.limit,
+                             self.h,
+                             0.0)
+
+                # Consider only the correct elements i and j
+                ms = (np.array(self.atoms.get_chemical_symbols()) ==
+                      self.elements[i])
+                ns = (np.array(self.extendedatoms.get_chemical_symbols()) ==
+                      self.elements[j])
+
+                R = (R.T * ms).T
+                R = R * ns
+                R = R.flatten()
+
+                h = (h.T * ms).T
+                h = h * ns
+                h = h.flatten()
+
+                # Remove zero-height peaks
+                nz = np.nonzero(h)
+                R = R[nz]
+                h = h[nz]
+
+                npeaks = len(R)  # number of peaks
+
+                g = np.zeros(self.N)
+                for p in range(npeaks):
+                    g += h[p] * np.exp(- (x - R[p])**2 / 2 / self.delta**2)
+
+                self.G[i, j] = g
+
         if self.weight_by_elements:
             factortable = np.einsum('i,j->ij',
                                     self.elcounts,
@@ -262,43 +281,46 @@ class OganovFP(Fingerprint):
 
         index: Atom index with which to differentiate
         '''
-        gradient = np.zeros([self.n, self.n, self.N, 3])
-        n = len(self.atoms)
+        gradient = np.zeros([self.n, self.N, 3])
 
-        mask = np.arange(n) == index
-        ext_mask = np.arange(len(self.extendedatoms)) % n == index
+        i = index
+        A = list(self.elements).index(self.atoms[i].symbol)
 
-        for p in range(len(self.r_indices)):
-            i, j = self.r_indices[p]
-            indexi = mask[i]
-            indexj = ext_mask[j]
+        elementlist = list(self.elements)
+        jsymbols = [elementlist.index(atom.symbol)
+                    for atom in self.extendedatoms]
 
-            if not (indexi or indexj):
-                continue
+        # Sum over elements:
+        for B in range(self.n):
 
-            if indexi and indexj:
-                continue
-            
-            # position vector between atoms:
-            rij = self.rm[p]
-            Gij = self.Gij(p)
+            jsum = np.zeros([self.N, 3])
 
-            if indexj:
-                rij = -rij
+            # sum over atoms in extended cell
+            for j in range(len(self.extendedatoms)):
 
-            A, B = self.AB[p]
-            gradient[A, B] += np.outer(Gij, -rij)
+                # atom j is of element B:
+                if B != jsymbols[j]:
+                    continue
+
+                if self.dm[i, j] > self.limit:
+                   continue
+
+                # position vector between atoms:
+                rij = self.rm[i, j]
+                Gij = self.Gij(i, j)
+                jsum += np.outer(Gij, -rij)
+
+            gradient[B] = (1 + int(A == B)) * jsum
 
         if self.weight_by_elements:
-            factortable = np.einsum('i,j->ij',
-                                    self.elcounts,
-                                    self.elcounts).astype(float)**-1
-            gradient = np.einsum('ijkl,ij->ijkl', gradient, factortable)
+            factortable = (self.elcounts[A] *
+                           np.array(self.elcounts)).astype(float)**-1
+            gradient = [gradient[i] * factortable[i]
+                        for i in range(len(gradient))]
 
         return gradient
 
     def calculate_all_gradients(self):
-
         self.gradients = np.array([self.calculate_gradient(atom.index)
                                    for atom in self.atoms])
         return self.gradients
@@ -362,12 +384,21 @@ class OganovFP(Fingerprint):
         if D == 0.0:
             return np.zeros(3)
 
-        g = self.gradients[index]
+        gs = self.gradients[index]
+        A = list(self.elements).index(self.atoms[index].symbol)
 
         # difference vector between fingerprints:
         tildexvec = self.G - fp2.G
 
-        return 1 / D * np.einsum('ijk,ijkl->l', tildexvec, g)
+        Bsum = np.zeros(3)
+
+        for B in range(self.n):
+            Bsum += (1 + int(A != B)) * np.tensordot(tildexvec[B, A],
+                                                     gs[B],
+                                                     axes=[0, 0])
+
+        result = Bsum / D
+        return result
 
     def kernel_hessian(self, fp2, index1, index2, kernel=None, D=None, dD_dr1=None, dD_dr2=None):
         ''' Squared exponential kernel hessian w.r.t. atomic
@@ -392,7 +423,17 @@ class OganovFP(Fingerprint):
 
         g1 = self.gradients[index1]
         g2 = fp2.gradients[index2]
-        C1 = np.einsum('ijkl,ijkm->lm', g1, g2)
+        A1 = list(self.elements).index(self.atoms[index1].symbol)
+        A2 = list(fp2.elements).index(fp2.atoms[index2].symbol)
+
+        C1 = np.zeros([3, 3])
+        for B in range(self.n):  # sum over elements
+            if A1 == A2:
+                C1 += ((1 + int(B != A2)) *
+                       np.tensordot(g1[B], g2[B], axes=[0, 0]))
+            else:
+                if B in [A1, A2]:
+                    C1 += np.tensordot(g1[A2], g2[A1], axes=[0, 0])
 
         result = prefactor * (D**2 / self.l**2 *
                               np.outer(dD_dr1, dD_dr2) + C1)
@@ -518,12 +559,16 @@ class OganovFP(Fingerprint):
 
         return first + second + third
 
-    def Gij(self, p):
-        xij = self.dm[p]
+    def Gij(self, i, j):
+        xij = self.dm[i, j]
+
+        if xij == 0 or xij > self.limit:
+            return 0.0
+
         xvec = np.linspace(0., self.limit, self.N)
         diffvec = xvec - xij
         Gij = ((2 / xij - diffvec / self.delta**2) *
-               self.h[p] / xij *
+               self.h[i, j] / xij *
                np.exp(- diffvec**2 / 2 / self.delta**2))
 
         return Gij
@@ -720,7 +765,7 @@ class RadialAngularFP(OganovFP):
         OganovFP.__init__(self, pbc=pbc, calc_gradients=calc_gradients,
                           weight_by_elements=weight_by_elements,
                           **self.params)
-        
+
         assert self.limit >= self.Rtheta
 
         self.gamma = 2
@@ -767,7 +812,11 @@ class RadialAngularFP(OganovFP):
 
         if self.calc_gradients:
             self.calculate_all_angle_gradients()
-        
+
+        self.dFP_dDelta_calculated = False
+        self.dGij_dDelta_calculated = False
+        self.d_dDelta_dFP_drm_calculated = False
+
         self.vector = np.concatenate((self.G.flatten(), self.H.flatten()), axis=None)
 
     def set_angles(self):
@@ -778,19 +827,19 @@ class RadialAngularFP(OganovFP):
         """
 
         # Extended distance and displacement vector matrices:
-        ap = self.atoms.positions
         ep = self.extendedatoms.positions
-        edm = distance_matrix(ep, ep)
+        self.erm = np.einsum('ilkl->ikl', np.subtract.outer(ep, ep))
+        self.edm = np.linalg.norm(self.erm, axis=2)
 
+        fcij = self.cutoff_function(self.dm)
         self.angleconstant = self.aweight / (pi / self.nanglebins)
 
-        indices = []
+        # angle vector
+        self.av = []
 
-        dm = distance_matrix(ap, ep)
-        
-        mask1 = np.logical_or(dm == 0, dm > self.Rtheta)
-        mask2 = dm == 0
-        mask3 = np.logical_or(edm == 0, edm > self.Rtheta)
+        mask1 = np.logical_or(self.dm == 0, self.dm > self.Rtheta)
+        mask2 = self.dm == 0
+        mask3 = np.logical_or(self.edm == 0, self.edm > self.Rtheta)
 
         for i in range(len(self.atoms)):
             for j in range(len(self.extendedatoms)):
@@ -806,41 +855,23 @@ class RadialAngularFP(OganovFP):
                     if mask3[j, k]:
                         continue
 
-                    indices.append((i, j, k))
+                    # Argument for arccos:
+                    argument = (dot(self.rm[i, j], self.erm[k, j])
+                                / self.dm[i, j] / self.edm[k, j])
 
-        self.indices = np.array(indices, dtype=int)
+                    # Handle numerical errors in perfect lattices:
+                    if argument >= 1.0:
+                        argument = 1.0 - 1e-9
+                    elif argument <= -1.0:
+                        argument = -1.0 + 1e-9
 
-        if len(self.indices) == 0:
-            self.arm = np.array([[]])
-            self.erm = np.array([[]])
-            self.adm = np.array([])
-            self.edm = np.array([])
-            args = np.array([])
-            self.fcij = np.array([])
-            self.fcjk = np.array([])
-            self.thetas = np.array([])
-            self.ABC = np.array([[]])
+                    # This is faster inside the loop than precalculating
+                    # everything:
+                    fcjk = self.cutoff_function(self.edm[k, j])
 
-        else:
-            self.arm = ap[self.indices[:, 0]] - ep[self.indices[:, 1]]
-            self.erm = ep[self.indices[:, 2]] - ep[self.indices[:, 1]]
-            self.adm = np.linalg.norm(self.arm, axis=1)
-            self.edm = np.linalg.norm(self.erm, axis=1)
-
-            args = np.einsum('ij,ij->i', self.arm, self.erm) / self.adm / self.edm
-
-            # Take care of numerical errors:
-            args = np.where(args >= 1.0, 1.0 - 1e-9, args)
-            args = np.where(args <= -1.0, -1.0 + 1e-9, args)
-
-            self.fcij = self.cutoff_function(self.adm)
-            self.fcjk = self.cutoff_function(self.edm)
-            self.thetas = np.arccos(args)
-
-            self.ABC = np.array([(self.prim_symbols[i], self.ext_symbols[j], self.ext_symbols[k])
-                                 for i, j, k in self.indices], dtype=int)
-        
-        return
+                    self.av.append([i, j, k, fcij[i, j],
+                                    fcjk, np.arccos(argument)])
+        return self.av
 
     def cutoff_function(self, r):
         """
@@ -858,14 +889,25 @@ class RadialAngularFP(OganovFP):
         self.H = np.zeros([self.n, self.n, self.n, self.nanglebins])
         x = np.linspace(0, pi, self.nanglebins)  # variable array
 
-        # Broadening of each peak:
-        for p in range(len(self.indices)):
-            i, j, k = self.indices[p]
-            fcij = self.fcij[p]
-            fcjk = self.fcjk[p]
-            theta = self.thetas[p]
+        elementlist = list(self.elements)
+        isymbols = [elementlist.index(atom.symbol)
+                    for atom in self.atoms]
+        jsymbols = [elementlist.index(atom.symbol)
+                    for atom in self.extendedatoms]
+        ksymbols = jsymbols
 
-            A, B, C = self.ABC[p]
+        # Broadening of each peak:
+        for data in self.av:
+            i, j, k, fcij, fcjk, theta = data
+
+            i = int(i)
+            j = int(j)
+            k = int(k)
+
+            A = isymbols[i]
+            B = jsymbols[j]
+            C = ksymbols[k]
+
             self.H[A, B, C] += (fcij * fcjk *
                                 np.exp(- (x - theta)**2 / 2 / self.ascale**2))
 
@@ -889,67 +931,70 @@ class RadialAngularFP(OganovFP):
     # ::: GRADIENTS ::: #
     # ----------------- #
 
-    def nabla_fcij(self):
-        d = self.adm
-        r = self.arm
+    def nabla_fcij(self, m, n):
+        d = self.dm[m, n]
+        r = self.rm[m, n]
         dfc_dd = (self.gamma * (self.gamma + 1) / self.Rtheta *
                   ((d / self.Rtheta) ** self.gamma -
                    (d / self.Rtheta) ** (self.gamma - 1)))
-        dd_drm = np.einsum('ij,i->ij', r, d**-1)
-        return np.einsum('i,ij->ij', dfc_dd, dd_drm) 
+        dd_drm = r / d
+        return dfc_dd * dd_drm
 
-    def nabla_fcjk(self):
-        d = self.edm
-        r = -self.erm # in parallel version, erm[m,n] are not calcd
+    def nabla_fcjk(self, m, n):
+        d = self.edm[m, n]
+        r = -self.erm[n, m]  # in parallel version, erm[m,n] are not calcd
         dfc_dd = (self.gamma * (self.gamma + 1) / self.Rtheta *
                   ((d / self.Rtheta) ** self.gamma -
                    (d / self.Rtheta) ** (self.gamma - 1)))
-        dd_drm = np.einsum('ij,i->ij', r, d**-1)
-        return np.einsum('i,ij->ij', dfc_dd, dd_drm) 
+        dd_drm = r / d
+        return dfc_dd * dd_drm
 
-    def dthetaijk_dri(self):
-        r1 = self.adm
-        v1 = self.arm
-        r2 = self.edm
-        v2 = self.erm
-        dotp = np.einsum('ij,ij->i', v1, v2)
-        prefs = 1 / abs(np.sin(self.thetas))
-        return (prefs[:, np.newaxis] /
-                r1[:, np.newaxis] /
-                r2[:, np.newaxis] *
-                (dotp[:, np.newaxis] / np.square(r1)[:, np.newaxis] * v1 - v2))
+    def dthetaijk_dri(self, i, j, k, theta):
+        r1 = self.dm[i, j]
+        v1 = self.rm[i, j]
 
+        r2 = self.edm[k, j]
+        v2 = self.erm[k, j]
 
-    def dthetaijk_drj(self):
-        r1 = self.adm
-        v1 = self.arm
-        r2 = self.edm
-        v2 = self.erm
-        dotp = np.einsum('ij,ij->i', v1, v2)
-        prefs = -1 / abs(np.sin(self.thetas))
-        first = (-1 + dotp[:, np.newaxis] / np.square(r1)[:, np.newaxis]) * v1
-        second = (-1 + dotp[:, np.newaxis] / np.square(r2)[:, np.newaxis]) * v2
+        dotp = dot(v1, v2)
 
-        return (prefs[:, np.newaxis] /
-                r1[:, np.newaxis] /
-                r2[:, np.newaxis] *
-                (first + second))
+        if theta == 0.0:
+            print("theta=0")
+        if r1 == 0.0:
+            print("r1=0")
+        if r2 == 0.0:
+            print("r2=0")
 
-    def dthetaijk_drk(self):
-        r1 = self.adm
-        v1 = self.arm
-        r2 = self.edm
-        v2 = self.erm
-        dotp = np.einsum('ij,ij->i', v1, v2)
-        prefs = -1 / abs(np.sin(self.thetas))
-        return (prefs[:, np.newaxis] /
-                r1[:, np.newaxis] /
-                r2[:, np.newaxis] *
-                (v1 - dotp[:, np.newaxis] / np.square(r2)[:, np.newaxis] * v2))
+        return 1 / abs(np.sin(theta)) / r1 / r2 * (dotp / r1**2 * v1 - v2)
 
-    def calculate_angle_gradient(self, index,
-                                 firstvalues, secondvalues,
-                                 third_i, third_j, third_k):
+    def dthetaijk_drj(self, i, j, k, theta):
+        r1 = self.dm[i, j]
+        v1 = self.rm[i, j]
+
+        r2 = self.edm[k, j]
+        v2 = self.erm[k, j]
+
+        dotp = dot(v1, v2)
+
+        prefactor = -1 / r1 / r2 / abs(np.sin(theta))
+        first = (-1 + dotp / r1**2) * v1
+        second = (-1 + dotp / r2**2) * v2
+
+        return prefactor * (first + second)
+
+    def dthetaijk_drk(self, i, j, k, theta):
+        r1 = self.dm[i, j]
+        v1 = self.rm[i, j]
+
+        r2 = self.edm[k, j]
+        v2 = self.erm[k, j]
+
+        dotp = dot(v1, v2)
+
+        return -1 / abs(np.sin(theta)) / r1 / r2 * (v1 - dotp / r2**2 * v2)
+
+    def calculate_angle_gradient(self, index, elementlist,
+                                 isymbols, jsymbols, ksymbols):
         '''
         Calculates the derivative of the fingerprint
         with respect to one of the coordinates.
@@ -957,48 +1002,57 @@ class RadialAngularFP(OganovFP):
         index: Atom index with which to differentiate
         '''
         gradient = np.zeros([self.n, self.n, self.n, self.nanglebins, 3])
+        xvec = np.linspace(0., pi, self.nanglebins)
 
-        n = len(self.atoms)
-        mask = np.arange(n) == index
-        ext_mask = np.arange(len(self.extendedatoms)) % n == index
+        for data in self.av:
+            i, j, k, fcij, fcjk, theta = data
 
-        for p in range(len(self.indices)):
-            i, j, k = self.indices[p]
-            indexi = mask[i]
-            indexj = ext_mask[j]
-            indexk = ext_mask[k]
+            indexi = (index == i)
+            indexj = (index == j % len(self.atoms))
+            indexk = (index == k % len(self.atoms))
 
             if not (indexi or indexj or indexk):
                 continue
 
+            A = isymbols[i]
+            B = jsymbols[j]
+            C = ksymbols[k]
+
+            diffvec = xvec - theta
+            gaussian = np.exp(- diffvec**2 / 2 / self.ascale**2)
+
             # First term:
             first = np.zeros([self.nanglebins, 3])
             if not indexk:
-                value = firstvalues[p]
+                value = (fcjk * np.outer(gaussian, self.nabla_fcij(i, j)))
                 if indexi:
-                    first = first + value
+                    first += value
                 if indexj:
-                    first = first - value
+                    first += -value
 
             # Second term:
             second = np.zeros([self.nanglebins, 3])
             if not indexi:
-                value = secondvalues[p]
+                value = (fcij * np.outer(gaussian, self.nabla_fcjk(j, k)))
                 if indexj:
-                    second = second + value
+                    second += value
                 if indexk:
-                    second = second - value
+                    second += -value
 
             # Third term:
             third = np.zeros([self.nanglebins, 3])
-            if indexi:
-                third = third + third_i[p] 
-            if indexj:
-                third = third + third_j[p]
-            if indexk:
-                third = third + third_k[p]
+            thirdinit = (fcij * fcjk * diffvec / self.ascale**2 * gaussian)
 
-            A, B, C = self.ABC[p]
+            if indexi:
+                third += np.outer(thirdinit,
+                                  self.dthetaijk_dri(i, j, k, theta))
+            if indexj:
+                third += np.outer(thirdinit,
+                                  self.dthetaijk_drj(i, j, k, theta))
+            if indexk:
+                third += np.outer(thirdinit,
+                                  self.dthetaijk_drk(i, j, k, theta))
+
             gradient[A, B, C] += (first + second + third)
 
         if self.weight_by_elements:
@@ -1011,36 +1065,18 @@ class RadialAngularFP(OganovFP):
         return gradient * self.angleconstant
 
     def calculate_all_angle_gradients(self):
-        xvec = np.linspace(0., pi, self.nanglebins)
-        diffvecs = np.subtract.outer(xvec, self.thetas).T
-        gaussians = np.exp(- diffvecs**2 / 2 / self.ascale**2)
-        nabla_fcijs = self.nabla_fcij()
-        nabla_fcjks = self.nabla_fcjk()
-
-        firstvalues = (self.fcjk[:, np.newaxis, np.newaxis] *
-                       np.einsum('ij,ik->ijk', gaussians, nabla_fcijs))
-
-        secondvalues = (self.fcij[:, np.newaxis, np.newaxis] *
-                        np.einsum('ij,ik->ijk', gaussians, nabla_fcjks))
-
-        thirdinits = (self.fcij[:, np.newaxis] *
-                      self.fcjk[:, np.newaxis] *
-                      diffvecs / self.ascale**2 * gaussians)
-        dt_dris = self.dthetaijk_dri()
-        dt_drjs = self.dthetaijk_drj()
-        dt_drks = self.dthetaijk_drk()
-        third_i = np.einsum('ij,ik->ijk', thirdinits, dt_dris)
-        third_j = np.einsum('ij,ik->ijk', thirdinits, dt_drjs)
-        third_k = np.einsum('ij,ik->ijk', thirdinits, dt_drks)
-
-        del xvec, diffvecs, gaussians, nabla_fcijs, nabla_fcjks, dt_dris, dt_drjs, dt_drks
+        elementlist = list(self.elements)
+        isymbols = [elementlist.index(atom.symbol)
+                    for atom in self.atoms]
+        jsymbols = [elementlist.index(atom.symbol)
+                    for atom in self.extendedatoms]
+        ksymbols = jsymbols
 
         self.anglegradients = [self.calculate_angle_gradient(atom.index,
-                                                             firstvalues,
-                                                             secondvalues,
-                                                             third_i,
-                                                             third_j,
-                                                             third_k)
+                                                             elementlist,
+                                                             isymbols,
+                                                             jsymbols,
+                                                             ksymbols)
                                for atom in self.atoms]
         return np.array(self.anglegradients)
 
@@ -1103,13 +1139,27 @@ class RadialAngularFP(OganovFP):
 
         g1 = self.gradients[index1]
         g2 = fp2.gradients[index2]
-        C1 = np.einsum('ijkl,ijkm->lm', g1, g2)
+        A1 = list(self.elements).index(self.atoms[index1].symbol)
+        A2 = list(fp2.elements).index(fp2.atoms[index2].symbol)
+
+        C1 = np.zeros([3, 3])
+        for B in range(self.n):  # sum over elements
+            if A1 == A2:
+                C1 += ((1 + int(B != A2)) *
+                       np.tensordot(g1[B], g2[B], axes=[0, 0]))
+            else:
+                if B in [A1, A2]:
+                    C1 += np.tensordot(g1[A2], g2[A1], axes=[0, 0])
 
         # Angle contribution:
 
         g1 = self.anglegradients[index1]
         g2 = fp2.anglegradients[index2]
-        C2 = np.einsum('ijklm,ijkln->mn', g1, g2)
+        C2 = np.zeros([3, 3])
+        for A in range(self.n):
+            for B in range(self.n):
+                for C in range(self.n):
+                    C2 += np.tensordot(g1[A, B, C], g2[A, B, C], axes=[0, 0])
 
         result = prefactor * (D**2 / self.l**2 *
                               np.outer(dD_dr1, dD_dr2) + C1 + C2)
@@ -1229,50 +1279,49 @@ class ParallelOganovFP(OganovFP):
         index: Atom index with which to differentiate
         '''
         gradient = np.zeros([self.n, self.N, 3])
-        natoms = len(self.atoms)
 
-        mask = np.arange(natoms) == index
-        ext_mask = np.arange(len(self.extendedatoms)) % natoms == index
+        i = index
+        A = list(self.elements).index(self.atoms[i].symbol)
 
+        elementlist = list(self.elements)
+        jsymbols = [elementlist.index(atom.symbol)
+                    for atom in self.extendedatoms]
         # Sum over elements:
-        for p in range(len(self.r_indices)):
+        for B in range(self.n):
 
-            # Distribute:
-            if p % world.size != world.rank:
-                continue
+            jsum = np.zeros([self.N, 3])
 
-            i, j = self.r_indices[p]
-            indexi = mask[i]
-            indexj = ext_mask[j]
+            # Distribute calculation:
+            n = len(self.extendedatoms)
+            myatoms = []
+            for k in range(n):
+                if (k % world.size) == world.rank:
+                    myatoms.append(k)
 
-            if not (indexi or indexj):
-                continue
+            # sum over atoms in extended cell
+            for j in myatoms:
 
-            if indexi and indexj:
-                continue
-            
-            # position vector between atoms:
-            rij = self.rm[p]
-            Gij = self.Gij(p)
+                # atom j is of element B:
+                if B != jsymbols[j]:
+                    continue
 
-            if indexj:
-                rij = -rij
+                # position vector between atoms:
+                rij = self.rm[i, j]
+                Gij = self.Gij(i, j)
+                jsum += np.outer(Gij, -rij)
 
-            A, B = self.AB[p]
-            gradient[A, B] += np.outer(Gij, -rij)
+            world.barrier()
 
-        # Gather all sub-gradients to a big container:
-        gg = np.empty([world.size, self.N, 3])
-        world.all_gather(gradient, gg)
+            jj = np.empty([world.size, self.N, 3])
+            world.all_gather(jsum, jj)
 
-        # Sum up:
-        gradient = gg.sum(axis=0)
+            gradient[B] = (1 + int(A == B)) * jj.sum(axis=0)
 
         if self.weight_by_elements:
-            factortable = np.einsum('i,j->ij',
-                                    self.elcounts,
-                                    self.elcounts).astype(float)**-1
-            gradient = np.einsum('ijkl,ij->ijkl', gradient, factortable)
+            factortable = (self.elcounts[A] *
+                           np.array(self.elcounts)).astype(float)**-1
+            gradient = [gradient[i] * factortable[i]
+                        for i in range(len(gradient))]
 
         return gradient
 
@@ -1311,21 +1360,22 @@ class ParallelRadAngFP(RadialAngularFP, ParallelOganovFP):
         myedm = distance_matrix(mypart, ep_ext)
 
         # Collect data from processors:
-        edm = np.empty([n, n])
-        world.all_gather(myedm, edm)
+        self.edm = np.empty([n, n])
+        world.all_gather(myedm, self.edm)
 
-        edm = edm[~np.isnan(edm)].reshape(n0, n0)
+        self.edm = self.edm[~np.isnan(self.edm)].reshape(n0, n0)
 
         n = len(ep)
+        self.erm = np.full((n, n, 3), np.nan)
 
-        dm = distance_matrix(self.atoms.positions, ep)
+        fcij = self.cutoff_function(self.dm)
         self.angleconstant = self.aweight / (pi / self.nanglebins)
 
-        indices = []
+        self.angleindices = []
 
-        mask1 = np.logical_or(dm == 0, dm > self.Rtheta)
+        mask1 = np.logical_or(self.dm == 0, self.dm > self.Rtheta)
         mask2 = self.dm == 0
-        mask3 = np.logical_or(edm == 0, edm > self.Rtheta)
+        mask3 = np.logical_or(self.edm == 0, self.edm > self.Rtheta)
 
         for i in range(len(self.atoms)):
             for j in range(len(self.extendedatoms)):
@@ -1341,34 +1391,38 @@ class ParallelRadAngFP(RadialAngularFP, ParallelOganovFP):
                     if mask3[j, k]:
                         continue
 
-                    indices.append((i, j, k))
+                    self.angleindices.append([i, j, k])
+                    self.erm[k, j] = ep[k] - ep[j]
 
-        self.indices = np.array(indices, dtype=int)
+        self.av = []
+        for p in range(len(self.angleindices)):
 
-        self.arm = ap[self.indices[:, 0]] - ep[self.indices[:, 1]]
-        self.adm = np.linalg.norm(self.arm, axis=1)
-        self.erm = ep[self.indices[:, 2]] - ep[self.indices[:, 1]]
-        self.edm = np.linalg.norm(self.erm, axis=1)
+            i, j, k = self.angleindices[p]
 
-        args = np.einsum('ij,ij->i', self.arm, self.erm) / self.adm / self.edm
+            # Argument for arccos:
+            argument = (dot(self.rm[i, j], self.erm[k, j])
+                        / self.dm[i, j] / self.edm[k, j])
 
-        # Take care of numerical errors:
-        args = np.where(args >= 1.0, 1.0 - 1e-9, args)
-        args = np.where(args <= -1.0, -1.0 + 1e-9, args)
+            # Handle numerical errors in perfect lattices:
+            if argument >= 1.0:
+                argument = 1.0 - 1e-9
+            elif argument <= -1.0:
+                argument = -1.0 + 1e-9
 
-        self.fcij = self.cutoff_function(self.adm)
-        self.fcjk = self.cutoff_function(self.edm)
-        self.thetas = np.arccos(args)
+            # This is faster inside the loop than precalculating
+            # everything:
+            fcjk = self.cutoff_function(self.edm[k, j])
 
-        self.ABC = [(self.prim_symbols[i], self.ext_symbols[j], self.ext_symbols[k])
-                    for i, j, k in self.indices]
+            self.av.append([i, j, k, fcij[i, j], fcjk,
+                            np.arccos(argument)])
+
+        self.av = np.array(self.av)
+        world.broadcast(self.av, 0)
 
         return self.av
 
-    def calculate_angle_gradient(self, index, 
-                                 firstvalues, secondvalues,
-                                 third_i, third_j, third_k):
-
+    def calculate_angle_gradient(self, index, elementlist,
+                                 isymbols, jsymbols, ksymbols):
         '''
         Calculates the derivative of the fingerprint
         with respect to one of the coordinates.
@@ -1376,54 +1430,75 @@ class ParallelRadAngFP(RadialAngularFP, ParallelOganovFP):
         index: Atom index with which to differentiate
         '''
         gradient = np.zeros([self.n, self.n, self.n, self.nanglebins, 3])
+        xvec = np.linspace(0., pi, self.nanglebins)
 
-        n = len(self.atoms)
-        mask = np.arange(n) == index
-        ext_mask = np.arange(len(self.extendedatoms)) % n == index
+        elementlist = list(self.elements)
+        isymbols = [elementlist.index(atom.symbol)
+                    for atom in self.atoms]
+        jsymbols = [elementlist.index(atom.symbol)
+                    for atom in self.extendedatoms]
+        ksymbols = [elementlist.index(atom.symbol)
+                    for atom in self.extendedatoms]
 
         # Distribute calculation:
-        for p in range(len(self.indices)):
+        for i_data in range(len(self.av)):
 
-            if p % world.size != world.rank:
+            if i_data % world.size != world.rank:
                 continue
 
-            i, j, k = self.indices[p]
-            indexi = mask[i]
-            indexj = ext_mask[j]
-            indexk = ext_mask[k]
+            data = self.av[i_data]
 
+            i, j, k, fcij, fcjk, theta = data
+
+            i = int(i)
+            j = int(j)
+            k = int(k)
+
+            indexi = (index == i)
+            indexj = (index == j % len(self.atoms))
+            indexk = (index == k % len(self.atoms))
+            
             if not (indexi or indexj or indexk):
                 continue
 
+            A = isymbols[i]
+            B = jsymbols[j]
+            C = ksymbols[k]
+
+            diffvec = xvec - theta
+            gaussian = np.exp(- diffvec**2 / 2 / self.ascale**2)
+
             # First term:
             first = np.zeros([self.nanglebins, 3])
-            if not indexk:
-                value = firstvalues[p]
-                if indexi:
-                    first = first + value
-                if indexj:
-                    first = first - value
+            if indexi:
+                first += (fcjk * np.outer(gaussian, self.nabla_fcij(i, j)))
+            if indexj:
+                first += (fcjk * np.outer(gaussian, -self.nabla_fcij(i, j)))
 
             # Second term:
             second = np.zeros([self.nanglebins, 3])
-            if not indexi:
-                value = secondvalues[p]
-                if indexj:
-                    second = second + value
-                if indexk:
-                    second = second - value
+            if indexj:
+                second += (fcij * np.outer(gaussian, self.nabla_fcjk(j, k)))
+            if indexk:
+                second += (fcij * np.outer(gaussian, -self.nabla_fcjk(j, k)))
 
             # Third term:
             third = np.zeros([self.nanglebins, 3])
-            if indexi:
-                third = third + third_i[p] 
-            if indexj:
-                third = third + third_j[p]
-            if indexk:
-                third = third + third_k[p]
+            thirdinit = (fcij * fcjk * diffvec / self.ascale**2 * gaussian)
 
-            A, B, C = self.ABC[p]
+            if indexi:
+                third += np.outer(thirdinit,
+                                  self.dthetaijk_dri(i, j, k, theta))
+            if indexj:
+                third += np.outer(thirdinit,
+                                  self.dthetaijk_drj(i, j, k, theta))
+            if indexk:
+                third += np.outer(thirdinit,
+                                  self.dthetaijk_drk(i, j, k, theta))
+
             gradient[A, B, C] += (first + second + third)
+
+        # world.barrier()
 
         results = np.empty([world.size, self.n, self.n, self.n,
                             self.nanglebins, 3])
