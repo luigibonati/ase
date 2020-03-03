@@ -235,6 +235,7 @@ def key_val_dict_to_str(d, sep=' ', tolerant=False):
     if len(d) == 0:
         return ''
     s = ''
+
     def known_types_to_str(v):
         if isinstance(v, bool) or isinstance(v, np.bool_):
             return 'T' if v else 'F'
@@ -832,9 +833,17 @@ def write_xyz(fileobj, images, comment='', columns=None, write_info=True,
     Write output in extended XYZ format
 
     Optionally, specify which columns (arrays) to include in output,
-    and whether to write the contents of the Atoms.info dict to the
-    XYZ comment line (default is True) and the results of any
-    calculator attached to this Atoms.
+    whether to write the contents of the `atoms.info` dict to the
+    XYZ comment line (default is True), the results of any
+    calculator attached to this Atoms. The `plain` argument
+    can be used to write a simple XYZ file with no additional information.
+    `vec_cell` can be used to write the cell vectors as additional
+    pseudo-atoms. If `append` is set to True, the file is for append (mode `a`),
+    otherwise it is overwritten (mode `w`). The `tolerant` option can be
+    set to True to skip over `atoms.info` entries which cannot be serialised.
+
+    See documentation for :func:`read_xyz()` for further details of the extended
+    XYZ file format.
     """
     if isinstance(fileobj, str):
         mode = 'w'
