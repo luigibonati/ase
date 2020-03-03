@@ -525,3 +525,39 @@ class FPKernelNoforces(FPKernel):
             self.set_fp_params(x2)
 
         return np.hstack([self.kernel(x, x2) for x2 in X])
+
+
+class FPKernelSerial(FPKernel):
+
+    def kernel_function_gradient(self, x1, x2, kernel=None, D=None, dD_dr=None):
+        '''Gradient of kernel_function respect to the second entry.
+        x1: first data point
+        x2: second data point'''
+
+        n = len(x1.atoms)
+        gradients = np.empty([n, 3])
+
+        # Calculate:
+        for i in range(n):
+            gradients[i] = x1.kernel_gradient(x2, i, kernel=kernel, D=D, dD_dr=dD_dr[i])
+
+        return gradients.reshape(-1)
+
+    def kernel_function_hessian(self, x1, x2, kernel=None, D=None, dD_dr1=None, dD_dr2=None):
+        d = 3
+        hessian = np.zeros([len(x1.atoms), len(x2.atoms), d, d])
+        n = len(x1.atoms)
+
+        for i in range(len(x1.atoms)):
+            for j in range(len(x2.atoms)):
+                hessian[i, j] = x1.kernel_hessian(x2, i, j, 
+                                                  kernel=kernel, 
+                                                  D=D, 
+                                                  dD_dr1=dD_dr1[i],
+                                                  dD_dr2=dD_dr2[j])
+
+        # Reshape to 2D matrix:
+        hessian = hessian.swapaxes(1, 2).reshape(d * len(x1.atoms),
+                                                 d * len(x2.atoms))
+
+        return hessian
