@@ -740,7 +740,7 @@ class Wannier:
         a_d = np.sum(np.abs(self.Z_dww.diagonal(0, 1, 2))**2, axis=1)
         return np.dot(a_d, self.weight_d).real
 
-    def get_gradients_3(self):
+    def get_gradients_sqrt(self):
         # Determine gradient of the modified squared spread functional,
         # the squared norm is here squared again.
         #
@@ -786,22 +786,23 @@ class Wannier:
 
                 Z_knn = self.Z_dknn[d]
                 diagZ_w = self.Z_dww[d].diagonal()
-                diagZ_w_5 = diagZ_w**3 * diagZ_w.conj()**2
+                diagZ_w_sqrt = (np.sqrt(diagZ_w) *
+                                np.inv(np.sqrt(diagZ_w.conj())))
                 Zii_ww = np.repeat(diagZ_w, Nw).reshape(Nw, Nw)
-                Zii_ww_5 = Zii_ww**3 * Zii_ww.conj()**2
+                Zii_ww_sqrt = np.sqrt(Zii_ww) * np.inv(np.sqrt(Zii_ww.conj()))
                 k1 = self.kklst_dk[d, k]
                 k2 = self.invkklst_dk[d, k]
                 V_knw = self.V_knw
                 Z_kww = self.Z_dkww[d]
 
                 if L > 0:
-                    Ctemp_nw += 3 * weight * np.dot(
-                        np.dot(Z_knn[k], V_knw[k1]) * diagZ_w_5.conj() +
-                        np.dot(dag(Z_knn[k2]), V_knw[k2]) * diagZ_w_5,
+                    Ctemp_nw += 0.5 * weight * np.dot(
+                        np.dot(Z_knn[k], V_knw[k1]) * diagZ_w_sqrt.conj() +
+                        np.dot(dag(Z_knn[k2]), V_knw[k2]) * diagZ_w_sqrt,
                         dag(U_ww))
 
-                temp = 3 * (Zii_ww_5.T * Z_kww[k].conj() -
-                            Zii_ww_5 * Z_kww[k2].conj())
+                temp = 0.5 * (Zii_ww_sqrt.T * Z_kww[k].conj() -
+                              Zii_ww_sqrt * Z_kww[k2].conj())
                 Utemp_ww += weight * (temp - dag(temp))
             dU.append(Utemp_ww.ravel())
 
