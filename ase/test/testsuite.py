@@ -12,7 +12,6 @@ from multiprocessing import cpu_count
 from ase.calculators.calculator import names as calc_names, get_calculator_class
 from ase.cli.info import print_info
 from ase.cli.main import CLIError
-from ase.utils import workdir
 
 
 test_calculator_names = ['emt']
@@ -208,7 +207,7 @@ class CLICommand:
         if args.nogui:
             os.environ.pop('DISPLAY')
 
-        pytest_args = ['--pyargs', '-v']
+        pytest_args = ['--pyargs']
 
         def add_args(*args):
             pytest_args.extend(args)
@@ -225,21 +224,8 @@ class CLICommand:
             add_args('-m', 'not slow')
 
         if args.coverage:
-            # It won't find the .coveragerc unless we are in the right
-            # directory.
-            cwd = Path.cwd()
-            if testdir.parent.parent != cwd:
-                raise CLIError('Please run ase test --coverage in the ase '
-                               'top directory')
-
-            coveragerc = testdir / '.coveragerc'
-            if not coveragerc.exists():
-                raise CLIError('No .coveragerc file.  Maybe you are not '
-                               'running the development version.  Please '
-                               'do so, or run coverage manually')
-
             add_args('--cov=ase',
-                     '--cov-config={}'.format(coveragerc),
+                     '--cov-config=.coveragerc',
                      '--cov-report=term',
                      '--cov-report=html')
 
@@ -288,9 +274,16 @@ class CLICommand:
             print('    ' + line)
 
         if not have_module('pytest'):
-            raise CLIError('Cannot import pytest; please install pytest to run tests')
+            raise CLIError('Cannot import pytest; please install pytest '
+                           'to run tests')
 
-        import pytest
-        with workdir(testdir):
-            exitcode = pytest.main(pytest_args)
+        # Switching directory makes it easy/possible for pytest to find
+        # pytest.ini and .coveragerc.
+        #
+        # We already imported 'ase'.  We want to give 'coverage' a fresh
+        # start, so we launch pytest as a subprocess although we could
+        # also call pytest.main(pytest_args).
+        py_args = [sys.executable, '-m', 'pytest']
+        args = py_args + pytest_args
+        exitcode = subprocess.call(args, cwd=testdir)
         sys.exit(exitcode)
