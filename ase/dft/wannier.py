@@ -4,6 +4,7 @@
     using the spread functional of Marzari and Vanderbilt
     (PRB 56, 1997 page 12847).
 """
+import warnings
 from time import time
 from math import sqrt, pi
 from pickle import dump, load
@@ -126,10 +127,10 @@ def md_min(func, step=.25, tolerance=1e-6, max_iter=10000,
     fvalueold = 0.
     fvalue = fvalueold + 10
     count = 0
-    V = np.zeros(func.get_gradients_sig().shape, dtype=complex)
+    V = np.zeros(func.get_gradients().shape, dtype=complex)
     while abs((fvalue - fvalueold) / fvalue) > tolerance:
         fvalueold = fvalue
-        dF = func.get_gradients_sig()
+        dF = func.get_gradients()
         V *= (dF * V.conj()).real > 0
         V += step * dF
         func.step(V, **kwargs)
@@ -140,6 +141,8 @@ def md_min(func, step=.25, tolerance=1e-6, max_iter=10000,
         if verbose:
             print('MDmin: iter=%s, step=%s, value=%s' % (count, step, fvalue))
         if count > max_iter:
+            warnings.warn('Max iterations reached: iter=%s, step=%s, value=%s'
+                          % (count, step, fvalue))
             break
     if verbose:
         t += time()
