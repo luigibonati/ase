@@ -6,8 +6,8 @@ from configparser import ConfigParser
 class ASEConfigParser(ConfigParser):
     def _unify_values(self,
                       section: str,
-                      vars: Union[Dict[str, Any], ChainMap[str, Any]],
-                      ) -> ChainMap[str, Any]:
+                      vars: Union[Dict[str, Any], ChainMap],
+                      ) -> ChainMap:
         vars_mod = ConfigParser._unify_values(self, section, vars)
         if '_' not in section:
             return vars_mod
