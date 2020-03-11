@@ -45,6 +45,7 @@ class Launcher:
 def get_calculator(
         calculator: str,
         nproc: int = 1,
+        profile: str = None,
         **kwargs: Dict[str, Any],
 ) -> FileIOCalculator:
 
@@ -52,6 +53,19 @@ def get_calculator(
         Calc = GAMESSUS
     elif calculator == 'espresso':
         Calc = Espresso
+    else:
+        raise ValueError('Unknown calculator {}'.format(calculator))
+
+    if not config.has_section(calculator):
+        raise RuntimeError('No configuration options found for calculator {}'
+                           .format(calculator))
+
+    if profile is not None:
+        name = '_'.join([calculator, profile])
+        if not config.has_section(name):
+            raise RuntimeError('No profile named {} was found for calculator '
+                               '{}'.format(profile, calculator))
+        calculator = name
 
     return Calc(launcher=Launcher(calculator, nproc),
                 **kwargs)
