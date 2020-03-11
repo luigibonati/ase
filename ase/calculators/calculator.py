@@ -1,6 +1,7 @@
 import os
 import copy
 import subprocess
+import warnings
 from math import pi, sqrt
 
 import numpy as np
@@ -837,8 +838,11 @@ class FileIOCalculator(Calculator):
     command = None  # str
     'Command used to start calculation'
 
+    launcher = None  # 'Launcher'
+
     def __init__(self, restart=None, ignore_bad_restart_file=False,
-                 label=None, atoms=None, command=None, **kwargs):
+                 label=None, atoms=None, command=None, launcher=None,
+                 **kwargs):
         """File-IO calculator.
 
         command: str
@@ -848,7 +852,12 @@ class FileIOCalculator(Calculator):
         Calculator.__init__(self, restart, ignore_bad_restart_file, label,
                             atoms, **kwargs)
 
-        if command is not None:
+        if launcher is not None:
+            if command is not None:
+                warnings.warn("'launcher' and 'command' both provided, "
+                              "'command' will be ignored.")
+            self.launcher = launcher
+        elif command is not None:
             self.command = command
         else:
             name = 'ASE_' + self.name.upper() + '_COMMAND'
@@ -858,26 +867,29 @@ class FileIOCalculator(Calculator):
                   system_changes=all_changes):
         Calculator.calculate(self, atoms, properties, system_changes)
         self.write_input(self.atoms, properties, system_changes)
-        if self.command is None:
-            raise CalculatorSetupError(
-                'Please set ${} environment variable '
-                .format('ASE_' + self.name.upper() + '_COMMAND') +
-                'or supply the command keyword')
-        command = self.command
-        if 'PREFIX' in command:
-            command = command.replace('PREFIX', self.prefix)
+        if self.launcher is not None:
+            errorcode, command = self.launcher.run(self.directory, self.prefix)
+        else:
+            if self.command is None:
+                raise CalculatorSetupError(
+                    'Please set ${} environment variable '
+                    .format('ASE_' + self.name.upper() + '_COMMAND') +
+                    'or supply the command keyword')
+            command = self.command
+            if 'PREFIX' in command:
+                command = command.replace('PREFIX', self.prefix)
 
-        try:
-            proc = subprocess.Popen(command, shell=True, cwd=self.directory)
-        except OSError as err:
-            # Actually this may never happen with shell=True, since
-            # probably the shell launches successfully.  But we soon want
-            # to allow calling the subprocess directly, and then this
-            # distinction (failed to launch vs failed to run) is useful.
-            msg = 'Failed to execute "{}"'.format(command)
-            raise EnvironmentError(msg) from err
+            try:
+                proc = subprocess.Popen(command, shell=True, cwd=self.directory)
+            except OSError as err:
+                # Actually this may never happen with shell=True, since
+                # probably the shell launches successfully.  But we soon want
+                # to allow calling the subprocess directly, and then this
+                # distinction (failed to launch vs failed to run) is useful.
+                msg = 'Failed to execute "{}"'.format(command)
+                raise EnvironmentError(msg) from err
 
-        errorcode = proc.wait()
+            errorcode = proc.wait()
 
         if errorcode:
             path = os.path.abspath(self.directory)
