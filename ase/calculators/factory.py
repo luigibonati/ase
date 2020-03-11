@@ -4,6 +4,7 @@ import subprocess
 import shlex
 from configparser import NoOptionError
 
+from ase.calculators.calculator import FileIOCalculator
 from ase.calculators.gamess_us import GAMESSUS
 from ase.calculators.espresso import Espresso
 from ase.config import config
@@ -45,7 +46,7 @@ def get_calculator(
         calculator: str,
         nproc: int = 1,
         **kwargs: Dict[str, Any],
-):
+) -> FileIOCalculator:
 
     if calculator == 'gamess-us':
         Calc = GAMESSUS

@@ -1,9 +1,10 @@
+from typing import List
 import os
 import sys
 from pathlib import Path
 
 
-def get_config_paths():
+def get_config_paths() -> List[Path]:
     paths = [Path(__file__).parent / 'defaults.conf']
     if sys.platform == 'win32':
         paths += _get_windows_config_paths()
@@ -15,7 +16,7 @@ def get_config_paths():
     return [path for path in paths if path.is_file()]
 
 
-def _get_windows_config_paths():
+def _get_windows_config_paths() -> List[Path]:
     import winreg
     key = winreg.OpenKey(
         winreg.HKEY_CURRENT_USER,
@@ -27,12 +28,12 @@ def _get_windows_config_paths():
     return paths
 
 
-def _get_macos_config_paths():
+def _get_macos_config_paths() -> List[Path]:
     return [Path('/Library/Preferences/ase.conf'),
             Path().home() / '/Library/Preferences/ase.conf']
 
 
-def _get_nix_config_paths():
+def _get_nix_config_paths() -> List[Path]:
     xdgconfig = os.getenv('XDG_CONFIG_DIRS', '/etc')
     paths = [Path(path) / 'ase.conf' for path in xdgconfig.split(':')]
     xdghome = os.getenv('XDG_CONFIG_HOME', str(Path.home() / '.config'))
