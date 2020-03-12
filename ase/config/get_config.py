@@ -13,7 +13,7 @@ def get_config_paths() -> List[Path]:
     else:
         paths += _get_nix_config_paths()
 
-    return [path for path in paths if path.is_file()]
+    return [str(pth.expanduser().resolve()) for pth in paths if pth.is_file()]
 
 
 def _get_windows_config_paths() -> List[Path]:
