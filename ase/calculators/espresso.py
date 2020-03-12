@@ -24,6 +24,7 @@ class Espresso(FileIOCalculator):
     """
     implemented_properties = ['energy', 'forces', 'stress', 'magmoms']
     command = 'pw.x -in PREFIX.pwi > PREFIX.pwo'
+    config_parameters = {'pseudo dir': 'pseudo_dir'}
 
     def __init__(self, restart=None, ignore_bad_restart_file=False,
                  label='espresso', atoms=None, **kwargs):

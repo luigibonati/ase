@@ -838,7 +838,9 @@ class FileIOCalculator(Calculator):
     command = None  # str
     'Command used to start calculation'
 
-    launcher = None  # 'Launcher'
+    launcher = None  # Callable[[str, str]]
+
+    config_parameters = {}
 
     def __init__(self, restart=None, ignore_bad_restart_file=False,
                  label=None, atoms=None, command=None, launcher=None,

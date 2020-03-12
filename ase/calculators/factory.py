@@ -57,4 +57,8 @@ def get_calculator(
                                '{}'.format(profile, calculator))
         calculator = name
 
+    for option, keyword in Calc.config_parameters.items():
+        if config.has_option(calculator, option):
+            kwargs[keyword] = config.get(calculator, option)
+
     return Calc(launcher=partial(launcher, calculator, nproc), **kwargs)
