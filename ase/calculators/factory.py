@@ -1,5 +1,5 @@
 import os
-from typing import Dict, Any, Tuple
+from typing import Any, Tuple
 import subprocess
 import shlex
 from configparser import NoOptionError
@@ -46,7 +46,7 @@ def get_calculator(
         calculator: str,
         nproc: int = 1,
         profile: str = None,
-        **kwargs: Dict[str, Any],
+        **kwargs: Any
 ) -> FileIOCalculator:
 
     if calculator == 'gamess-us':
