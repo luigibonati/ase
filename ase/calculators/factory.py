@@ -1,5 +1,6 @@
 import os
 from typing import Any, Tuple
+from functools import partial
 import subprocess
 import shlex
 from configparser import NoOptionError
@@ -10,36 +11,25 @@ from ase.calculators.espresso import Espresso
 from ase.config import config
 
 
-class Launcher:
-    def __init__(self, name: str, nproc: int) -> None:
-        self.name = name
-        self.nproc = nproc
+def launcher(name: str, nproc: int, cwd: str = '.',
+             prefix: str = None) -> Tuple[int, str]:
+    if prefix is None:
+        prefix = name
 
-    def run(self,
-            cwd: str = '.',
-            prefix: str = None) -> Tuple[int, str]:
-        if prefix is None:
-            prefix = self.name
+    command = config.get(name, 'command').format(prefix=prefix, nproc=nproc)
+    try:
+        stdin = config.get(name, 'stdin').format(prefix=prefix)
+    except NoOptionError:
+        stdin = os.devnull
 
-        command = config.get(self.name, 'command').format(
-            prefix=prefix, nproc=self.nproc,
-        )
+    stdout = config.get(name, 'stdout').format(prefix=prefix)
 
-        try:
-            stdin = config.get(self.name, 'stdin').format(prefix=prefix)
-        except NoOptionError:
-            stdin = os.devnull
+    with open(stdin, 'r') as fin:
+        with open(stdout, 'w') as fout:
+            proc = subprocess.run(shlex.split(command), stdin=fin, stdout=fout,
+                                  shell=False, cwd=cwd)
 
-        stdout = config.get(self.name, 'stdout').format(prefix=prefix)
-
-        with open(stdin, 'r') as fin:
-            with open(stdout, 'w') as fout:
-                proc = subprocess.run(
-                    shlex.split(command), stdin=fin, stdout=fout, shell=False,
-                    cwd=cwd,
-                )
-
-        return proc.returncode, command
+    return proc.returncode, command
 
 
 def get_calculator(
@@ -67,5 +57,4 @@ def get_calculator(
                                '{}'.format(profile, calculator))
         calculator = name
 
-    return Calc(launcher=Launcher(calculator, nproc),
-                **kwargs)
+    return Calc(launcher=partial(launcher, calculator, nproc), **kwargs)

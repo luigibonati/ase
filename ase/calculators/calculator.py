@@ -868,7 +868,7 @@ class FileIOCalculator(Calculator):
         Calculator.calculate(self, atoms, properties, system_changes)
         self.write_input(self.atoms, properties, system_changes)
         if self.launcher is not None:
-            errorcode, command = self.launcher.run(self.directory, self.prefix)
+            errorcode, command = self.launcher(self.directory, self.prefix)
         else:
             if self.command is None:
                 raise CalculatorSetupError(
