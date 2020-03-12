@@ -29,7 +29,8 @@ package_data = {'ase': ['spacegroup/spacegroup.dat',
                         'collections/*.json',
                         'db/templates/*',
                         'db/static/*'],
-                'ase.test': ['datafiles/*']}
+                'ase.test': ['datafiles/*'],
+                'ase.config': ['defaults.conf']}
 
 
 class build_py(_build_py):
