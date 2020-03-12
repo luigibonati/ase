@@ -8,7 +8,15 @@ from configparser import NoOptionError
 from ase.calculators.calculator import FileIOCalculator
 from ase.calculators.gamess_us import GAMESSUS
 from ase.calculators.espresso import Espresso
+from ase.calculators.abinit import Abinit
 from ase.config import config
+
+
+_name_to_calc = {
+    'gamess-us': GAMESSUS,
+    'espresso': Espresso,
+    'abinit': Abinit,
+}
 
 
 def launcher(name: str, nproc: int, cwd: str = '.',
@@ -38,12 +46,9 @@ def get_calculator(
         profile: str = None,
         **kwargs: Any
 ) -> FileIOCalculator:
-
-    if calculator == 'gamess-us':
-        Calc = GAMESSUS
-    elif calculator == 'espresso':
-        Calc = Espresso
-    else:
+    calculator = calculator.lower()
+    Calc = _name_to_calc.get(calculator)
+    if Calc is None:
         raise ValueError('Unknown calculator {}'.format(calculator))
 
     if not config.has_section(calculator):

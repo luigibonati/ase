@@ -510,9 +510,10 @@ def get_abinit_pp_paths():
 
 def write_all_inputs(atoms, properties, parameters,
                      raise_exception=True,
-                     label='abinit'):
+                     label='abinit', search_paths=None):
     species = list(set(atoms.numbers))
-    search_paths = get_abinit_pp_paths()
+    if search_paths is None:
+        search_paths = get_abinit_pp_paths()
     ppp = get_ppp_list(atoms, species,
                        raise_exception=raise_exception,
                        xc=parameters.xc,

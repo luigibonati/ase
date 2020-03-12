@@ -9,6 +9,7 @@ calcs = {
     'espresso': dict(pseudopotentials={'C': 'C.pz-kjpaw.UPF',
                                        'H': 'H.pz-kjpaw.UPF'},
                      ecutwfc=300 / Rydberg),
+    'abinit': dict(ecut=300, chksymbreak=0, toldfe=1e-4),
 }
 
 
