@@ -10,6 +10,7 @@ calcs = {
                                        'H': 'H.pz-kjpaw.UPF'},
                      ecutwfc=300 / Rydberg),
     'abinit': dict(ecut=300, chksymbreak=0, toldfe=1e-4),
+    'nwchem': dict(),
 }
 
 

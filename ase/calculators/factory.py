@@ -9,6 +9,7 @@ from ase.calculators.calculator import FileIOCalculator
 from ase.calculators.gamess_us import GAMESSUS
 from ase.calculators.espresso import Espresso
 from ase.calculators.abinit import Abinit
+from ase.calculators.nwchem import NWChem
 from ase.config import config
 
 
@@ -16,6 +17,7 @@ _name_to_calc = {
     'gamess-us': GAMESSUS,
     'espresso': Espresso,
     'abinit': Abinit,
+    'nwchem': NWChem,
 }
 
 
