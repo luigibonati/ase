@@ -840,7 +840,9 @@ class RadialAngularFP(OganovFP):
             self.fcjk = self.cutoff_function(self.edm)
             self.thetas = np.arccos(args)
 
-            self.ABC = np.array([(self.prim_symbols[i], self.ext_symbols[j], self.ext_symbols[k])
+            self.ABC = np.array([(self.prim_symbols[i],
+                                  self.ext_symbols[j],
+                                  self.ext_symbols[k])
                                  for i, j, k in self.indices], dtype=int)
         
         return
@@ -974,35 +976,16 @@ class RadialAngularFP(OganovFP):
             if not (indexi or indexj or indexk):
                 continue
 
-            # First term:
-            first = np.zeros([self.nanglebins, 3])
-            if not indexk:
-                value = firstvalues[p]
-                if indexi:
-                    first = first + value
-                if indexj:
-                    first = first - value
-
-            # Second term:
-            second = np.zeros([self.nanglebins, 3])
-            if not indexi:
-                value = secondvalues[p]
-                if indexj:
-                    second = second + value
-                if indexk:
-                    second = second - value
-
-            # Third term:
-            third = np.zeros([self.nanglebins, 3])
+            result = np.zeros([self.nanglebins, 3])
             if indexi:
-                third = third + third_i[p] 
+                result += firstvalues[p] + third_i[p]
             if indexj:
-                third = third + third_j[p]
+                result += -firstvalues[p] + secondvalues[p] + third_j[p]
             if indexk:
-                third = third + third_k[p]
+                result += -secondvalues[p] + third_k[p]
 
             A, B, C = self.ABC[p]
-            gradient[A, B, C] += (first + second + third)
+            gradient[A, B, C] += result
 
         if self.weight_by_elements:
             factortable = np.einsum('i,j,k->ijk',
@@ -1399,36 +1382,17 @@ class ParallelRadAngFP(RadialAngularFP, ParallelOganovFP):
             if not (indexi or indexj or indexk):
                 continue
 
-            # First term:
-            first = np.zeros([self.nanglebins, 3])
-            if not indexk:
-                value = firstvalues[p]
-                if indexi:
-                    first = first + value
-                if indexj:
-                    first = first - value
-
-            # Second term:
-            second = np.zeros([self.nanglebins, 3])
-            if not indexi:
-                value = secondvalues[p]
-                if indexj:
-                    second = second + value
-                if indexk:
-                    second = second - value
-
-            # Third term:
-            third = np.zeros([self.nanglebins, 3])
+            result = np.zeros([self.nanglebins, 3])
             if indexi:
-                third = third + third_i[p] 
+                result += firstvalues[p] + third_i[p]
             if indexj:
-                third = third + third_j[p]
+                result += -firstvalues[p] + secondvalues[p] + third_j[p]
             if indexk:
-                third = third + third_k[p]
+                result += -secondvalues[p] + third_k[p]
 
             A, B, C = self.ABC[p]
-            gradient[A, B, C] += (first + second + third)
-
+            gradient[A, B, C] += result
+            
         results = np.empty([world.size, self.n, self.n, self.n,
                             self.nanglebins, 3])
         world.all_gather(gradient, results)
