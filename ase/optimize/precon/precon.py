@@ -36,7 +36,7 @@ class Precon(object):
                  estimate_mu_eigmode=False):
         """Initialise a preconditioner object based on passed parameters.
 
-        Args:
+        Parameters:
             r_cut: float. This is a cut-off radius. The preconditioner matrix
                 will be created by considering pairs of atoms that are within a
                 distance r_cut of each other. For a regular lattice, this is
@@ -338,6 +338,12 @@ class Precon(object):
 
         return self.P
 
+    def Pdot(self, x):
+        """
+        Return the result of applying P to a vector x
+        """
+        return self.P.dot(x)
+
     def dot(self, x, y):
         """
         Return the preconditioned dot product <P x, y>
@@ -345,6 +351,12 @@ class Precon(object):
         Uses 128-bit floating point math for vector dot products
         """
         return longsum(self.P.dot(x) * y)
+
+    def norm(self, x):
+        """
+        Return the P-norm of x, where |x|_P = sqrt(<Px, x>)
+        """
+        return np.sqrt(self.dot(x, x))
 
     def solve(self, x):
         """
@@ -510,20 +522,42 @@ class Precon(object):
         # use partial sums to compute separate mu for positions and cell DoFs
         self.mu = longsum(LHS[:3 * natoms]) / longsum(RHS[:3 * natoms])
         if self.mu < 1.0:
-            warnings.warn('mu (%.3f) < 1.0, capping at mu=1.0' % self.mu)
+            warnings.warn('estimate_mu(): mu (%.3f) < 1.0, capping at mu=1.0' % self.mu)
             self.mu = 1.0
 
         if isinstance(atoms, Filter):
             self.mu_c = longsum(LHS[3 * natoms:]) / longsum(RHS[3 * natoms:])
             if self.mu_c < 1.0:
                 print(
-                    'mu_c (%.3f) < 1.0, capping at mu_c=1.0' % self.mu_c)
+                    'estimate_mu(): mu_c (%.3f) < 1.0, capping at mu_c=1.0' % self.mu_c)
                 self.mu_c = 1.0
 
         print('estimate_mu(): mu=%r, mu_c=%r' % (self.mu, self.mu_c))
 
         self.P = None  # force a rebuild with new mu (there may be fixed atoms)
         return (self.mu, self.mu_c)
+
+    def apply(self, forces, atoms):
+        """
+        Convenience wrapper that combines make_precon() and solve()
+
+        Parameters
+        ----------
+        forces: array
+            (len(atoms)*3) array of input forces
+        atoms: ase.atoms.Atoms
+
+        Returns
+        -------
+        precon_forces: array
+            (len(atoms), 3) array of preconditioned forces
+        residual: float
+            inf-norm of original forces, i.e. maximum absolute force
+        """
+        self.make_precon(atoms)
+        residual = np.linalg.norm(forces, np.inf)
+        precon_forces = self.solve(forces)
+        return precon_forces, residual
 
 
 class Pfrommer(object):
@@ -585,6 +619,45 @@ class Pfrommer(object):
         """
         y = self.H0.dot(x)
         return y
+
+
+class ID:
+    """
+    Dummy preconditioner which does not modify forces
+    """
+
+    def make_precon(self, atoms):
+        pass
+
+    def Pdot(self, x):
+        """
+        Return the result of applying P to a vector x
+        """
+        return x
+
+    def dot(self, x, y):
+        """
+        Return the preconditioned dot product <P x, y>
+
+        Uses 128-bit floating point math for vector dot products
+        """
+        return longsum(x * y)
+
+    def norm(self, x):
+        """
+        Return the P-norm of x, where |x|_P = sqrt(<Px, x>)
+        """
+        return np.linalg.norm(x)
+
+    def solve(self, x):
+        """
+        Solve the (sparse) linear system P x = y and return y
+        """
+        return x
+
+    def apply(self, forces, atoms):
+        residual = np.linalg.norm(forces, np.inf)
+        return forces, residual
 
 
 class C1(Precon):
@@ -1119,3 +1192,33 @@ class Exp_FF(Exp, FF):
             #            (time.time() - start_time))
 
         return self.P
+
+
+def make_precon(precon):
+    """
+    Construct preconditioner from a string
+
+    Parameters
+    ----------
+    precon - one of 'C1', 'Exp', 'Pfrommer', 'FF', 'Exp_FF', 'ID'
+
+    Returns
+    -------
+    precon - instance of relevant subclass of `ase.optimize.precon.Precon`
+    """
+    if isinstance(precon, str):
+        if precon == 'C1':
+            precon = C1()
+        if precon == 'Exp':
+            precon = Exp()
+        elif precon == 'Pfrommer':
+            precon = Pfrommer()
+        elif precon == 'FF':
+            precon = FF()
+        elif precon == 'Exp_FF':
+            precon = Exp_FF()
+        elif precon == 'ID':
+            precon = ID()
+        else:
+            raise ValueError('Unknown preconditioner "{0}"'.format(precon))
+    return precon

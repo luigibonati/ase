@@ -3,21 +3,58 @@ import pytest
 
 from ase.build import bulk
 from ase.calculators.emt import EMT
-from ase.optimize.precon import Exp, PreconLBFGS, PreconFIRE
+from ase.optimize.precon import Exp, PreconLBFGS, PreconFIRE, make_precon
 from ase.constraints import FixBondLength, FixAtoms
 
-
-@pytest.mark.slow
-def test_preconlbfgs():
+@pytest.fixture
+def setup_atoms():
     N = 1
-    a0 = bulk('Cu', cubic=True)
-    a0 *= (N, N, N)
+    atoms = bulk('Cu', cubic=True)
+    atoms *= (N, N, N)
 
     # perturb the atoms
-    s = a0.get_scaled_positions()
+    s = atoms.get_scaled_positions()
     s[:, 0] *= 0.995
-    a0.set_scaled_positions(s)
+    atoms.set_scaled_positions(s)
+    atoms.set_calculator(EMT())
 
+    # compute initial Hessian
+    H0 = fd_hessian(atoms)
+    return atoms, H0
+
+def fd_hessian(atoms, dx=1e-5, precon=None):
+    """
+    Finite difference hessian from Jacobian of forces
+    """
+    hess = np.zeros((3*len(atoms), 3*len(atoms)))
+    for i in range(len(atoms)):
+        for j in range(3):
+            atoms.positions[i, j] += dx
+            fp = atoms.get_forces().reshape(-1)
+            if precon is not None:
+                fp = precon.solve(fp)
+            atoms.positions[i, j] -= 2*dx
+            fm = atoms.get_forces().reshape(-1)
+            if precon is not None:
+                fm = precon.solve(fm)
+            atoms.positions[i, j] -= dx
+            hess[3*i + j, :] = -(fp - fm)/(2*dx)
+    # print(hess.round(4))
+    return hess
+
+@pytest.mark.parametrize('precon', ['Exp'])
+@pytest.mark.filterwarnings('ignore:estimate_mu')
+def test_make_precon(precon, setup_atoms):
+    atoms, H0 = setup_atoms
+    P = make_precon(precon)
+    P.make_precon(atoms)
+    HP = fd_hessian(atoms, precon=P)
+    # check the preconditioner reduces condition number of Hessian
+    assert np.linalg.cond(HP) < np.linalg.cond(H0)
+
+@pytest.mark.slow
+def test_preconlbfgs(setup_atoms):
+    a0, H0 = setup_atoms
     nsteps = []
     energies = []
     for OPT in [PreconLBFGS, PreconFIRE]:
@@ -36,7 +73,7 @@ def test_preconlbfgs():
     cu0 = bulk("Cu") * (2, 2, 2)
     cu0.rattle(0.01)
     a0 = cu0.get_distance(0, 1)
-    cons = [FixBondLength(0,1), FixAtoms([2,3])]
+    cons = [FixBondLength(0, 1), FixAtoms([2, 3])]
     for precon in [None, Exp(mu=1.0)]:
         cu = cu0.copy()
         cu.calc = EMT()
