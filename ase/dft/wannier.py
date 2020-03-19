@@ -4,6 +4,7 @@
     using the spread functional of Marzari and Vanderbilt
     (PRB 56, 1997 page 12847).
 """
+import warnings
 from time import time
 from math import sqrt, pi
 from pickle import dump, load
@@ -119,7 +120,7 @@ def steepest_descent(func, step=.005, tolerance=1e-6, verbose=False, **kwargs):
 
 
 def md_min(func, functional='std',
-           step=.25, tolerance=1e-6,
+           step=.25, tolerance=1e-6, max_iter=10000,
            verbose=False, **kwargs):
     if verbose:
         print('Using', functional, 'functional.')
@@ -158,6 +159,10 @@ def md_min(func, functional='std',
         count += 1
         if verbose:
             print('MDmin: iter=%s, step=%s, value=%s' % (count, step, fvalue))
+        if count > max_iter:
+            warnings.warn('Max iterations reached: iter=%s, step=%s, value=%s'
+                          % (count, step, fvalue))
+            break
     if verbose:
         t += time()
         print('%d iterations in %0.2f seconds (%0.2f ms/iter), endstep = %s' %
@@ -771,38 +776,14 @@ class Wannier:
         a_d = np.sum(np.abs(self.Z_dww.diagonal(0, 1, 2))**2, axis=1)
         return np.dot(a_d, self.weight_d).real
 
-    def get_gradients_3(self):
-        # Determine gradient of the modified squared spread functional,
-        # the squared norm is here squared again.
-        #
-        # The gradient for a rotation A_kij is::
-        #
-        #    dU = dRho/dA_{k,i,j} = sum(I) sum(k')
-        #            + Z_jj^2 Z_jj^* Z_kk',ij^* - Z_ii^2 Z_ii^* Z_k'k,ij^*
-        #            - Z_ii^*^2 Z_ii Z_kk',ji + Z_jj^*^2 Z_jj Z_k'k,ji
-        #
-        # The gradient for a change of coefficients is::
-        #
-        #   dRho/da^*_{k,i,j} = sum(I) [[(Z_0)_{k} V_{k'} diag(Z^*^2 Z) +
-        #                                (Z_0_{k''})^d V_{k''} diag(Z^2 Z^*)] *
-        #                                U_k^d]_{N+i,N+j}
-        #
-        # where diag(Z) is a square,diagonal matrix with Z_nn in the diagonal,
-        # k' = k + dk and k = k'' + dk.
-        #
-        # The extra degrees of freedom chould be kept orthonormal to the fixed
-        # space, thus we introduce lagrange multipliers, and minimize instead::
-        #
-        #     Rho_L = Rho - sum_{k,n,m} lambda_{k,nm} <c_{kn}|c_{km}>
-        #
-        # for this reason the coefficient gradients should be multiplied
-        # by (1 - c c^dag).
-
+    def get_gradients_sig(self):
         Nb = self.nbands
         Nw = self.nwannier
 
         dU = []
         dC = []
+        save_minZZ = []
+        save_maxZZ = []
         for k in range(self.Nk):
             M = self.fixedstates_k[k]
             L = self.edf_k[k]
@@ -817,22 +798,35 @@ class Wannier:
 
                 Z_knn = self.Z_dknn[d]
                 diagZ_w = self.Z_dww[d].diagonal()
-                diagZ_w_5 = diagZ_w**3 * diagZ_w.conj()**2
+                diagZ_w_sig = (
+                    (1 / (1 + np.exp(-10
+                                     * (diagZ_w * diagZ_w.conj() - 0.5))))
+                    * (1 - (1 / (1 + np.exp(-10
+                                     * (diagZ_w * diagZ_w.conj() - 0.5)))))
+                    * diagZ_w)
                 Zii_ww = np.repeat(diagZ_w, Nw).reshape(Nw, Nw)
-                Zii_ww_5 = Zii_ww**3 * Zii_ww.conj()**2
+                Zii_ww_sig = (
+                    (1 / (1 + np.exp(-10
+                                     * (Zii_ww * Zii_ww.conj() - 0.5))))
+                    * (1 - (1 / (1 + np.exp(-10
+                                     * (Zii_ww * Zii_ww.conj() - 0.5)))))
+                    * Zii_ww)
                 k1 = self.kklst_dk[d, k]
                 k2 = self.invkklst_dk[d, k]
                 V_knw = self.V_knw
                 Z_kww = self.Z_dkww[d]
+                if self.verbose:
+                    save_maxZZ.append(np.max(diagZ_w * diagZ_w.conj()))
+                    save_minZZ.append(np.min(diagZ_w * diagZ_w.conj()))
 
                 if L > 0:
-                    Ctemp_nw += 3 * weight * np.dot(
-                        np.dot(Z_knn[k], V_knw[k1]) * diagZ_w_5.conj() +
-                        np.dot(dag(Z_knn[k2]), V_knw[k2]) * diagZ_w_5,
+                    Ctemp_nw += weight * np.dot(
+                        np.dot(Z_knn[k], V_knw[k1]) * diagZ_w_sig.conj() +
+                        np.dot(dag(Z_knn[k2]), V_knw[k2]) * diagZ_w_sig,
                         dag(U_ww))
 
-                temp = 3 * (Zii_ww_5.T * Z_kww[k].conj() -
-                            Zii_ww_5 * Z_kww[k2].conj())
+                temp = (Zii_ww_sig.T * Z_kww[k].conj() -
+                        Zii_ww_sig * Z_kww[k2].conj())
                 Utemp_ww += weight * (temp - dag(temp))
             dU.append(Utemp_ww.ravel())
 
@@ -843,35 +837,194 @@ class Wannier:
                 G_ul = Ctemp_ul - np.dot(np.dot(C_ul, dag(C_ul)), Ctemp_ul)
                 dC.append(G_ul.ravel())
 
+        if self.verbose:
+            print('ZZnn min:', np.min(save_minZZ),
+                  '\tZZnn max:', np.max(save_maxZZ))
+
+        return np.concatenate(dU + dC)
+
+    def get_gradients_erf(self):
+        Nb = self.nbands
+        Nw = self.nwannier
+
+        dU = []
+        dC = []
+        save_minZZ = []
+        save_maxZZ = []
+        for k in range(self.Nk):
+            M = self.fixedstates_k[k]
+            L = self.edf_k[k]
+            U_ww = self.U_kww[k]
+            C_ul = self.C_kul[k]
+            Utemp_ww = np.zeros((Nw, Nw), complex)
+            Ctemp_nw = np.zeros((Nb, Nw), complex)
+
+            for d, weight in enumerate(self.weight_d):
+                if abs(weight) < 1.0e-6:
+                    continue
+
+                Z_knn = self.Z_dknn[d]
+                diagZ_w = self.Z_dww[d].diagonal()
+                diagZ_w_erf = ((4 / np.sqrt(np.pi))
+                               * np.exp(-(2 * diagZ_w * diagZ_w.conj())**2)
+                               * diagZ_w)
+                Zii_ww = np.repeat(diagZ_w, Nw).reshape(Nw, Nw)
+                Zii_ww_erf = ((4 / np.sqrt(np.pi))
+                              * np.exp(-(2 * Zii_ww * Zii_ww.conj())**2)
+                              * Zii_ww)
+                k1 = self.kklst_dk[d, k]
+                k2 = self.invkklst_dk[d, k]
+                V_knw = self.V_knw
+                Z_kww = self.Z_dkww[d]
+                if self.verbose:
+                    save_maxZZ.append(np.max(diagZ_w * diagZ_w.conj()))
+                    save_minZZ.append(np.min(diagZ_w * diagZ_w.conj()))
+
+                if L > 0:
+                    Ctemp_nw += weight * np.dot(
+                        np.dot(Z_knn[k], V_knw[k1]) * diagZ_w_erf.conj() +
+                        np.dot(dag(Z_knn[k2]), V_knw[k2]) * diagZ_w_erf,
+                        dag(U_ww))
+
+                temp = (Zii_ww_erf.T * Z_kww[k].conj() -
+                        Zii_ww_erf * Z_kww[k2].conj())
+                Utemp_ww += weight * (temp - dag(temp))
+            dU.append(Utemp_ww.ravel())
+
+            if L > 0:
+                # Ctemp now has same dimension as V, the gradient is in the
+                # lower-right (Nb-M) x L block
+                Ctemp_ul = Ctemp_nw[M:, M:]
+                G_ul = Ctemp_ul - np.dot(np.dot(C_ul, dag(C_ul)), Ctemp_ul)
+                dC.append(G_ul.ravel())
+
+        if self.verbose:
+            print('ZZnn min:', np.min(save_minZZ),
+                  '\tZZnn max:', np.max(save_maxZZ))
+
+        return np.concatenate(dU + dC)
+
+    def get_gradients_cbrt(self):
+        Nb = self.nbands
+        Nw = self.nwannier
+
+        dU = []
+        dC = []
+        save_minZZ = []
+        save_maxZZ = []
+        for k in range(self.Nk):
+            M = self.fixedstates_k[k]
+            L = self.edf_k[k]
+            U_ww = self.U_kww[k]
+            C_ul = self.C_kul[k]
+            Utemp_ww = np.zeros((Nw, Nw), complex)
+            Ctemp_nw = np.zeros((Nb, Nw), complex)
+
+            for d, weight in enumerate(self.weight_d):
+                if abs(weight) < 1.0e-6:
+                    continue
+
+                Z_knn = self.Z_dknn[d]
+                diagZ_w = self.Z_dww[d].diagonal()
+                diagZ_w_sqrt = ((1/3)
+                                * 1 / np.power(diagZ_w * diagZ_w.conj(), 2/3)
+                                * diagZ_w)
+                Zii_ww = np.repeat(diagZ_w, Nw).reshape(Nw, Nw)
+                Zii_ww_sqrt = ((1/3)
+                               * 1 / np.power(Zii_ww * Zii_ww.conj(), 2/3)
+                               * Zii_ww)
+                k1 = self.kklst_dk[d, k]
+                k2 = self.invkklst_dk[d, k]
+                V_knw = self.V_knw
+                Z_kww = self.Z_dkww[d]
+                if self.verbose:
+                    save_maxZZ.append(np.max(diagZ_w * diagZ_w.conj()))
+                    save_minZZ.append(np.min(diagZ_w * diagZ_w.conj()))
+
+                if L > 0:
+                    Ctemp_nw += weight * np.dot(
+                        np.dot(Z_knn[k], V_knw[k1]) * diagZ_w_sqrt.conj() +
+                        np.dot(dag(Z_knn[k2]), V_knw[k2]) * diagZ_w_sqrt,
+                        dag(U_ww))
+
+                temp = (Zii_ww_sqrt.T * Z_kww[k].conj() -
+                        Zii_ww_sqrt * Z_kww[k2].conj())
+                Utemp_ww += weight * (temp - dag(temp))
+            dU.append(Utemp_ww.ravel())
+
+            if L > 0:
+                # Ctemp now has same dimension as V, the gradient is in the
+                # lower-right (Nb-M) x L block
+                Ctemp_ul = Ctemp_nw[M:, M:]
+                G_ul = Ctemp_ul - np.dot(np.dot(C_ul, dag(C_ul)), Ctemp_ul)
+                dC.append(G_ul.ravel())
+
+        if self.verbose:
+            print('ZZnn min:', np.min(save_minZZ),
+                  '\tZZnn max:', np.max(save_maxZZ))
+
+        return np.concatenate(dU + dC)
+
+    def get_gradients_sqrt(self):
+        Nb = self.nbands
+        Nw = self.nwannier
+
+        dU = []
+        dC = []
+        save_minZZ = []
+        save_maxZZ = []
+        for k in range(self.Nk):
+            M = self.fixedstates_k[k]
+            L = self.edf_k[k]
+            U_ww = self.U_kww[k]
+            C_ul = self.C_kul[k]
+            Utemp_ww = np.zeros((Nw, Nw), complex)
+            Ctemp_nw = np.zeros((Nb, Nw), complex)
+
+            for d, weight in enumerate(self.weight_d):
+                if abs(weight) < 1.0e-6:
+                    continue
+
+                Z_knn = self.Z_dknn[d]
+                diagZ_w = self.Z_dww[d].diagonal()
+                diagZ_w_sqrt = 0.5 * (1 / np.sqrt(diagZ_w * diagZ_w.conj())
+                                      * diagZ_w)
+                Zii_ww = np.repeat(diagZ_w, Nw).reshape(Nw, Nw)
+                Zii_ww_sqrt = 0.5 * (1 / np.sqrt(Zii_ww * Zii_ww.conj())
+                                     * Zii_ww)
+                k1 = self.kklst_dk[d, k]
+                k2 = self.invkklst_dk[d, k]
+                V_knw = self.V_knw
+                Z_kww = self.Z_dkww[d]
+                if self.verbose:
+                    save_maxZZ.append(np.max(diagZ_w * diagZ_w.conj()))
+                    save_minZZ.append(np.min(diagZ_w * diagZ_w.conj()))
+
+                if L > 0:
+                    Ctemp_nw += weight * np.dot(
+                        np.dot(Z_knn[k], V_knw[k1]) * diagZ_w_sqrt.conj() +
+                        np.dot(dag(Z_knn[k2]), V_knw[k2]) * diagZ_w_sqrt,
+                        dag(U_ww))
+
+                temp = (Zii_ww_sqrt.T * Z_kww[k].conj() -
+                        Zii_ww_sqrt * Z_kww[k2].conj())
+                Utemp_ww += weight * (temp - dag(temp))
+            dU.append(Utemp_ww.ravel())
+
+            if L > 0:
+                # Ctemp now has same dimension as V, the gradient is in the
+                # lower-right (Nb-M) x L block
+                Ctemp_ul = Ctemp_nw[M:, M:]
+                G_ul = Ctemp_ul - np.dot(np.dot(C_ul, dag(C_ul)), Ctemp_ul)
+                dC.append(G_ul.ravel())
+
+        if self.verbose:
+            print('ZZnn min:', np.min(save_minZZ),
+                  '\tZZnn max:', np.max(save_maxZZ))
+
         return np.concatenate(dU + dC)
 
     def get_gradients_2(self):
-        # Determine gradient of the modified squared spread functional,
-        # the squared norm is here squared again.
-        #
-        # The gradient for a rotation A_kij is::
-        #
-        #    dU = dRho/dA_{k,i,j} = sum(I) sum(k')
-        #            + Z_jj^2 Z_jj^* Z_kk',ij^* - Z_ii^2 Z_ii^* Z_k'k,ij^*
-        #            - Z_ii^*^2 Z_ii Z_kk',ji + Z_jj^*^2 Z_jj Z_k'k,ji
-        #
-        # The gradient for a change of coefficients is::
-        #
-        #   dRho/da^*_{k,i,j} = sum(I) [[(Z_0)_{k} V_{k'} diag(Z^*^2 Z) +
-        #                                (Z_0_{k''})^d V_{k''} diag(Z^2 Z^*)] *
-        #                                U_k^d]_{N+i,N+j}
-        #
-        # where diag(Z) is a square,diagonal matrix with Z_nn in the diagonal,
-        # k' = k + dk and k = k'' + dk.
-        #
-        # The extra degrees of freedom chould be kept orthonormal to the fixed
-        # space, thus we introduce lagrange multipliers, and minimize instead::
-        #
-        #     Rho_L = Rho - sum_{k,n,m} lambda_{k,nm} <c_{kn}|c_{km}>
-        #
-        # for this reason the coefficient gradients should be multiplied
-        # by (1 - c c^dag).
-
         Nb = self.nbands
         Nw = self.nwannier
 
