@@ -8,6 +8,7 @@ import warnings
 from time import time
 from math import sqrt, pi
 from pickle import dump, load
+from scipy.special import erf
 
 import numpy as np
 
@@ -119,41 +120,25 @@ def steepest_descent(func, step=.005, tolerance=1e-6, verbose=False, **kwargs):
             print('SteepestDescent: iter=%s, value=%s' % (count, fvalue))
 
 
-def md_min(func, functional='std',
-           step=.25, tolerance=1e-6, max_iter=10000,
+def md_min(func, step=.25, tolerance=1e-6, max_iter=10000,
            verbose=False, **kwargs):
     if verbose:
-        print('Using', functional, 'functional.')
         print('Localize with step =', step, 'and tolerance =', tolerance)
         t = -time()
     fvalueold = 0.
     fvalue = fvalueold + 10
     count = 0
-    if functional == 'std':
-        V = np.zeros(func.get_gradients().shape, dtype=complex)
-    elif functional == 'sigmoid':
-        V = np.zeros(func.get_gradients_sig().shape, dtype=complex)
-    elif functional == 'erf':
-        V = np.zeros(func.get_gradients_erf().shape, dtype=complex)
-    elif functional == 'sqrt':
-        V = np.zeros(func.get_gradients_sqrt().shape, dtype=complex)
-    else:
-        raise ValueError(functional, 'functional is unknown.')
+    V = np.zeros(func.get_gradients().shape, dtype=complex)
 
     while abs((fvalue - fvalueold) / fvalue) > tolerance:
         fvalueold = fvalue
-        if functional == 'std':
-            dF = func.get_gradients()
-        elif functional == 'sigmoid':
-            dF = func.get_gradients_sig()
-        elif functional == 'erf':
-            dF = func.get_gradients_erf()
-        elif functional == 'sqrt':
-            dF = func.get_gradients_sqrt()
+        dF = func.get_gradients()
+
         V *= (dF * V.conj()).real > 0
         V += step * dF
         func.step(V, **kwargs)
         fvalue = func.get_functional_value()
+
         if fvalue < fvalueold:
             step *= 0.5
         count += 1
@@ -167,7 +152,6 @@ def md_min(func, functional='std',
         t += time()
         print('%d iterations in %0.2f seconds (%0.2f ms/iter), endstep = %s' %
               (count, t, t * 1000. / count, step))
-        print('Using', functional, 'functional.')
 
 
 def rotation_from_projection2(proj_nw, fixed, ortho=True):
@@ -343,8 +327,9 @@ class Wannier:
             Can be 'std' for the standard quadratic functional from the PRB
             paper, 'sigmoid' for a translated and rescaled sigmoid function,
             'erf' for a scaled error function, 'sqrt' for a square root
-            function. Every additional function is applied to the standard
-            functional value.
+            function, 'cbrt' for cube root function.
+            Every additional function is applied to the standard functional
+            value.
 
           ``seed``: Seed for random ``initialwannier``.
 
@@ -358,6 +343,8 @@ class Wannier:
         self.calc = calc
         self.spin = spin
         self.functional = functional
+        if verbose:
+            print('Using functional:', functional)
         self.verbose = verbose
         self.kpt_kc = calc.get_bz_k_points()
         assert len(calc.get_ibz_k_points()) == len(self.kpt_kc)
@@ -761,8 +748,7 @@ class Wannier:
                  updaterot=True, updatecoeff=True):
         """Optimize rotation to give maximal localization"""
         # steepest_descent(self, step, tolerance, verbose=self.verbose,
-        md_min(self, functional=self.functional,
-               step, tolerance, verbose=self.verbose,
+        md_min(self, step=step, tolerance=tolerance, verbose=self.verbose,
                updaterot=updaterot, updatecoeff=updatecoeff)
 
     def get_functional_value(self):
@@ -773,304 +759,21 @@ class Wannier:
           Tr[|ZI|^2]=sum(I)sum(n) w_i|Z_(i)_nn|^2,
 
         where w_i are weights."""
-        a_d = np.sum(np.abs(self.Z_dww.diagonal(0, 1, 2))**2, axis=1)
+        if self.functional == 'std':
+            a_d = np.sum(np.abs(self.Z_dww.diagonal(0, 1, 2))**2, axis=1)
+        elif self.functional == 'sigmoid':
+            a_d = np.sum(1 / (1 + np.exp(-10 * (np.abs(
+                               self.Z_dww.diagonal(0, 1, 2))**2 - 0.5))),
+                         axis=1)
+        elif self.functional == 'erf':
+            a_d = np.sum(erf(2 * np.abs(self.Z_dww.diagonal(0, 1, 2))**2),
+                         axis=1)
+        elif self.functional == 'sqrt':
+            a_d = np.sum(np.abs(self.Z_dww.diagonal(0, 1, 2)), axis=1)
+        elif self.functional == 'cbrt':
+            a_d = np.sum(np.cbrt(np.abs(self.Z_dww.diagonal(0, 1, 2))**2),
+                         axis=1)
         return np.dot(a_d, self.weight_d).real
-
-    def get_gradients_sig(self):
-        Nb = self.nbands
-        Nw = self.nwannier
-
-        dU = []
-        dC = []
-        save_minZZ = []
-        save_maxZZ = []
-        for k in range(self.Nk):
-            M = self.fixedstates_k[k]
-            L = self.edf_k[k]
-            U_ww = self.U_kww[k]
-            C_ul = self.C_kul[k]
-            Utemp_ww = np.zeros((Nw, Nw), complex)
-            Ctemp_nw = np.zeros((Nb, Nw), complex)
-
-            for d, weight in enumerate(self.weight_d):
-                if abs(weight) < 1.0e-6:
-                    continue
-
-                Z_knn = self.Z_dknn[d]
-                diagZ_w = self.Z_dww[d].diagonal()
-                diagZ_w_sig = (
-                    (1 / (1 + np.exp(-10
-                                     * (diagZ_w * diagZ_w.conj() - 0.5))))
-                    * (1 - (1 / (1 + np.exp(-10
-                                     * (diagZ_w * diagZ_w.conj() - 0.5)))))
-                    * diagZ_w)
-                Zii_ww = np.repeat(diagZ_w, Nw).reshape(Nw, Nw)
-                Zii_ww_sig = (
-                    (1 / (1 + np.exp(-10
-                                     * (Zii_ww * Zii_ww.conj() - 0.5))))
-                    * (1 - (1 / (1 + np.exp(-10
-                                     * (Zii_ww * Zii_ww.conj() - 0.5)))))
-                    * Zii_ww)
-                k1 = self.kklst_dk[d, k]
-                k2 = self.invkklst_dk[d, k]
-                V_knw = self.V_knw
-                Z_kww = self.Z_dkww[d]
-                if self.verbose:
-                    save_maxZZ.append(np.max(diagZ_w * diagZ_w.conj()))
-                    save_minZZ.append(np.min(diagZ_w * diagZ_w.conj()))
-
-                if L > 0:
-                    Ctemp_nw += weight * np.dot(
-                        np.dot(Z_knn[k], V_knw[k1]) * diagZ_w_sig.conj() +
-                        np.dot(dag(Z_knn[k2]), V_knw[k2]) * diagZ_w_sig,
-                        dag(U_ww))
-
-                temp = (Zii_ww_sig.T * Z_kww[k].conj() -
-                        Zii_ww_sig * Z_kww[k2].conj())
-                Utemp_ww += weight * (temp - dag(temp))
-            dU.append(Utemp_ww.ravel())
-
-            if L > 0:
-                # Ctemp now has same dimension as V, the gradient is in the
-                # lower-right (Nb-M) x L block
-                Ctemp_ul = Ctemp_nw[M:, M:]
-                G_ul = Ctemp_ul - np.dot(np.dot(C_ul, dag(C_ul)), Ctemp_ul)
-                dC.append(G_ul.ravel())
-
-        if self.verbose:
-            print('ZZnn min:', np.min(save_minZZ),
-                  '\tZZnn max:', np.max(save_maxZZ))
-
-        return np.concatenate(dU + dC)
-
-    def get_gradients_erf(self):
-        Nb = self.nbands
-        Nw = self.nwannier
-
-        dU = []
-        dC = []
-        save_minZZ = []
-        save_maxZZ = []
-        for k in range(self.Nk):
-            M = self.fixedstates_k[k]
-            L = self.edf_k[k]
-            U_ww = self.U_kww[k]
-            C_ul = self.C_kul[k]
-            Utemp_ww = np.zeros((Nw, Nw), complex)
-            Ctemp_nw = np.zeros((Nb, Nw), complex)
-
-            for d, weight in enumerate(self.weight_d):
-                if abs(weight) < 1.0e-6:
-                    continue
-
-                Z_knn = self.Z_dknn[d]
-                diagZ_w = self.Z_dww[d].diagonal()
-                diagZ_w_erf = ((4 / np.sqrt(np.pi))
-                               * np.exp(-(2 * diagZ_w * diagZ_w.conj())**2)
-                               * diagZ_w)
-                Zii_ww = np.repeat(diagZ_w, Nw).reshape(Nw, Nw)
-                Zii_ww_erf = ((4 / np.sqrt(np.pi))
-                              * np.exp(-(2 * Zii_ww * Zii_ww.conj())**2)
-                              * Zii_ww)
-                k1 = self.kklst_dk[d, k]
-                k2 = self.invkklst_dk[d, k]
-                V_knw = self.V_knw
-                Z_kww = self.Z_dkww[d]
-                if self.verbose:
-                    save_maxZZ.append(np.max(diagZ_w * diagZ_w.conj()))
-                    save_minZZ.append(np.min(diagZ_w * diagZ_w.conj()))
-
-                if L > 0:
-                    Ctemp_nw += weight * np.dot(
-                        np.dot(Z_knn[k], V_knw[k1]) * diagZ_w_erf.conj() +
-                        np.dot(dag(Z_knn[k2]), V_knw[k2]) * diagZ_w_erf,
-                        dag(U_ww))
-
-                temp = (Zii_ww_erf.T * Z_kww[k].conj() -
-                        Zii_ww_erf * Z_kww[k2].conj())
-                Utemp_ww += weight * (temp - dag(temp))
-            dU.append(Utemp_ww.ravel())
-
-            if L > 0:
-                # Ctemp now has same dimension as V, the gradient is in the
-                # lower-right (Nb-M) x L block
-                Ctemp_ul = Ctemp_nw[M:, M:]
-                G_ul = Ctemp_ul - np.dot(np.dot(C_ul, dag(C_ul)), Ctemp_ul)
-                dC.append(G_ul.ravel())
-
-        if self.verbose:
-            print('ZZnn min:', np.min(save_minZZ),
-                  '\tZZnn max:', np.max(save_maxZZ))
-
-        return np.concatenate(dU + dC)
-
-    def get_gradients_cbrt(self):
-        Nb = self.nbands
-        Nw = self.nwannier
-
-        dU = []
-        dC = []
-        save_minZZ = []
-        save_maxZZ = []
-        for k in range(self.Nk):
-            M = self.fixedstates_k[k]
-            L = self.edf_k[k]
-            U_ww = self.U_kww[k]
-            C_ul = self.C_kul[k]
-            Utemp_ww = np.zeros((Nw, Nw), complex)
-            Ctemp_nw = np.zeros((Nb, Nw), complex)
-
-            for d, weight in enumerate(self.weight_d):
-                if abs(weight) < 1.0e-6:
-                    continue
-
-                Z_knn = self.Z_dknn[d]
-                diagZ_w = self.Z_dww[d].diagonal()
-                diagZ_w_sqrt = ((1/3)
-                                * 1 / np.power(diagZ_w * diagZ_w.conj(), 2/3)
-                                * diagZ_w)
-                Zii_ww = np.repeat(diagZ_w, Nw).reshape(Nw, Nw)
-                Zii_ww_sqrt = ((1/3)
-                               * 1 / np.power(Zii_ww * Zii_ww.conj(), 2/3)
-                               * Zii_ww)
-                k1 = self.kklst_dk[d, k]
-                k2 = self.invkklst_dk[d, k]
-                V_knw = self.V_knw
-                Z_kww = self.Z_dkww[d]
-                if self.verbose:
-                    save_maxZZ.append(np.max(diagZ_w * diagZ_w.conj()))
-                    save_minZZ.append(np.min(diagZ_w * diagZ_w.conj()))
-
-                if L > 0:
-                    Ctemp_nw += weight * np.dot(
-                        np.dot(Z_knn[k], V_knw[k1]) * diagZ_w_sqrt.conj() +
-                        np.dot(dag(Z_knn[k2]), V_knw[k2]) * diagZ_w_sqrt,
-                        dag(U_ww))
-
-                temp = (Zii_ww_sqrt.T * Z_kww[k].conj() -
-                        Zii_ww_sqrt * Z_kww[k2].conj())
-                Utemp_ww += weight * (temp - dag(temp))
-            dU.append(Utemp_ww.ravel())
-
-            if L > 0:
-                # Ctemp now has same dimension as V, the gradient is in the
-                # lower-right (Nb-M) x L block
-                Ctemp_ul = Ctemp_nw[M:, M:]
-                G_ul = Ctemp_ul - np.dot(np.dot(C_ul, dag(C_ul)), Ctemp_ul)
-                dC.append(G_ul.ravel())
-
-        if self.verbose:
-            print('ZZnn min:', np.min(save_minZZ),
-                  '\tZZnn max:', np.max(save_maxZZ))
-
-        return np.concatenate(dU + dC)
-
-    def get_gradients_sqrt(self):
-        Nb = self.nbands
-        Nw = self.nwannier
-
-        dU = []
-        dC = []
-        save_minZZ = []
-        save_maxZZ = []
-        for k in range(self.Nk):
-            M = self.fixedstates_k[k]
-            L = self.edf_k[k]
-            U_ww = self.U_kww[k]
-            C_ul = self.C_kul[k]
-            Utemp_ww = np.zeros((Nw, Nw), complex)
-            Ctemp_nw = np.zeros((Nb, Nw), complex)
-
-            for d, weight in enumerate(self.weight_d):
-                if abs(weight) < 1.0e-6:
-                    continue
-
-                Z_knn = self.Z_dknn[d]
-                diagZ_w = self.Z_dww[d].diagonal()
-                diagZ_w_sqrt = 0.5 * (1 / np.sqrt(diagZ_w * diagZ_w.conj())
-                                      * diagZ_w)
-                Zii_ww = np.repeat(diagZ_w, Nw).reshape(Nw, Nw)
-                Zii_ww_sqrt = 0.5 * (1 / np.sqrt(Zii_ww * Zii_ww.conj())
-                                     * Zii_ww)
-                k1 = self.kklst_dk[d, k]
-                k2 = self.invkklst_dk[d, k]
-                V_knw = self.V_knw
-                Z_kww = self.Z_dkww[d]
-                if self.verbose:
-                    save_maxZZ.append(np.max(diagZ_w * diagZ_w.conj()))
-                    save_minZZ.append(np.min(diagZ_w * diagZ_w.conj()))
-
-                if L > 0:
-                    Ctemp_nw += weight * np.dot(
-                        np.dot(Z_knn[k], V_knw[k1]) * diagZ_w_sqrt.conj() +
-                        np.dot(dag(Z_knn[k2]), V_knw[k2]) * diagZ_w_sqrt,
-                        dag(U_ww))
-
-                temp = (Zii_ww_sqrt.T * Z_kww[k].conj() -
-                        Zii_ww_sqrt * Z_kww[k2].conj())
-                Utemp_ww += weight * (temp - dag(temp))
-            dU.append(Utemp_ww.ravel())
-
-            if L > 0:
-                # Ctemp now has same dimension as V, the gradient is in the
-                # lower-right (Nb-M) x L block
-                Ctemp_ul = Ctemp_nw[M:, M:]
-                G_ul = Ctemp_ul - np.dot(np.dot(C_ul, dag(C_ul)), Ctemp_ul)
-                dC.append(G_ul.ravel())
-
-        if self.verbose:
-            print('ZZnn min:', np.min(save_minZZ),
-                  '\tZZnn max:', np.max(save_maxZZ))
-
-        return np.concatenate(dU + dC)
-
-    def get_gradients_2(self):
-        Nb = self.nbands
-        Nw = self.nwannier
-
-        dU = []
-        dC = []
-        for k in range(self.Nk):
-            M = self.fixedstates_k[k]
-            L = self.edf_k[k]
-            U_ww = self.U_kww[k]
-            C_ul = self.C_kul[k]
-            Utemp_ww = np.zeros((Nw, Nw), complex)
-            Ctemp_nw = np.zeros((Nb, Nw), complex)
-
-            for d, weight in enumerate(self.weight_d):
-                if abs(weight) < 1.0e-6:
-                    continue
-
-                Z_knn = self.Z_dknn[d]
-                diagZ_w = self.Z_dww[d].diagonal()
-                diagZ_w_3 = diagZ_w * diagZ_w * diagZ_w.conj()
-                Zii_ww = np.repeat(diagZ_w, Nw).reshape(Nw, Nw)
-                Zii_ww_3 = Zii_ww * Zii_ww * Zii_ww.conj()
-                k1 = self.kklst_dk[d, k]
-                k2 = self.invkklst_dk[d, k]
-                V_knw = self.V_knw
-                Z_kww = self.Z_dkww[d]
-
-                if L > 0:
-                    Ctemp_nw += 2 * weight * np.dot(
-                        np.dot(Z_knn[k], V_knw[k1]) * diagZ_w_3.conj() +
-                        np.dot(dag(Z_knn[k2]), V_knw[k2]) * diagZ_w_3,
-                        dag(U_ww))
-
-                temp = 2 * (Zii_ww_3.T * Z_kww[k].conj() -
-                            Zii_ww_3 * Z_kww[k2].conj())
-                Utemp_ww += weight * (temp - dag(temp))
-            dU.append(Utemp_ww.ravel())
-
-            if L > 0:
-                # Ctemp now has same dimension as V, the gradient is in the
-                # lower-right (Nb-M) x L block
-                Ctemp_ul = Ctemp_nw[M:, M:]
-                G_ul = Ctemp_ul - np.dot(np.dot(C_ul, dag(C_ul)), Ctemp_ul)
-                dC.append(G_ul.ravel())
-
-        return np.concatenate(dU + dC)
 
     def get_gradients(self):
         # Determine gradient of the spread functional.
@@ -1118,6 +821,40 @@ class Wannier:
                 Z_knn = self.Z_dknn[d]
                 diagZ_w = self.Z_dww[d].diagonal()
                 Zii_ww = np.repeat(diagZ_w, Nw).reshape(Nw, Nw)
+                if self.functional == 'sigmoid':
+                    diagZ_w = (
+                        (1 / (1 + np.exp(-10
+                                         * (diagZ_w * diagZ_w.conj() - 0.5))))
+                        * (1 - (1 / (1 + np.exp(-10
+                                         * (diagZ_w * diagZ_w.conj() - 0.5)))))
+                        * diagZ_w)
+                    Zii_ww = (
+                        (1 / (1 + np.exp(-10
+                                         * (Zii_ww * Zii_ww.conj() - 0.5))))
+                        * (1 - (1 / (1 + np.exp(-10
+                                         * (Zii_ww * Zii_ww.conj() - 0.5)))))
+                        * Zii_ww)
+                elif self.functional == 'erf':
+                    diagZ_w = ((4 / np.sqrt(np.pi))
+                                   * np.exp(-(2 * diagZ_w * diagZ_w.conj())**2)
+                                   * diagZ_w)
+                    Zii_ww = ((4 / np.sqrt(np.pi))
+                                  * np.exp(-(2 * Zii_ww * Zii_ww.conj())**2)
+                                  * Zii_ww)
+                elif self.functional == 'sqrt':
+                    diagZ_w = 0.5 * (1 / np.sqrt(diagZ_w * diagZ_w.conj())
+                                          * diagZ_w)
+                    Zii_ww = 0.5 * (1 / np.sqrt(Zii_ww * Zii_ww.conj())
+                                         * Zii_ww)
+                elif self.functional == 'cbrt':
+                    diagZ_w = ((1/3)
+                                    * 1 / np.power(diagZ_w * diagZ_w.conj(),
+                                                   2/3)
+                                    * diagZ_w)
+                    Zii_ww = ((1/3)
+                                   * 1 / np.power(Zii_ww * Zii_ww.conj(), 2/3)
+                                   * Zii_ww)
+
                 k1 = self.kklst_dk[d, k]
                 k2 = self.invkklst_dk[d, k]
                 V_knw = self.V_knw
