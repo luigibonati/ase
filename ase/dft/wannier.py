@@ -118,17 +118,37 @@ def steepest_descent(func, step=.005, tolerance=1e-6, verbose=False, **kwargs):
             print('SteepestDescent: iter=%s, value=%s' % (count, fvalue))
 
 
-def md_min(func, step=.25, tolerance=1e-6, verbose=False, **kwargs):
+def md_min(func, functional='std',
+           step=.25, tolerance=1e-6,
+           verbose=False, **kwargs):
     if verbose:
+        print('Using', functional, 'functional.')
         print('Localize with step =', step, 'and tolerance =', tolerance)
         t = -time()
     fvalueold = 0.
     fvalue = fvalueold + 10
     count = 0
-    V = np.zeros(func.get_gradients().shape, dtype=complex)
+    if functional == 'std':
+        V = np.zeros(func.get_gradients().shape, dtype=complex)
+    elif functional == 'sigmoid':
+        V = np.zeros(func.get_gradients_sig().shape, dtype=complex)
+    elif functional == 'erf':
+        V = np.zeros(func.get_gradients_erf().shape, dtype=complex)
+    elif functional == 'sqrt':
+        V = np.zeros(func.get_gradients_sqrt().shape, dtype=complex)
+    else:
+        raise ValueError(functional, 'functional is unknown.')
+
     while abs((fvalue - fvalueold) / fvalue) > tolerance:
         fvalueold = fvalue
-        dF = func.get_gradients()
+        if functional == 'std':
+            dF = func.get_gradients()
+        elif functional == 'sigmoid':
+            dF = func.get_gradients_sig()
+        elif functional == 'erf':
+            dF = func.get_gradients_erf()
+        elif functional == 'sqrt':
+            dF = func.get_gradients_sqrt()
         V *= (dF * V.conj()).real > 0
         V += step * dF
         func.step(V, **kwargs)
@@ -142,6 +162,7 @@ def md_min(func, step=.25, tolerance=1e-6, verbose=False, **kwargs):
         t += time()
         print('%d iterations in %0.2f seconds (%0.2f ms/iter), endstep = %s' %
               (count, t, t * 1000. / count, step))
+        print('Using', functional, 'functional.')
 
 
 def rotation_from_projection2(proj_nw, fixed, ortho=True):
@@ -273,6 +294,7 @@ class Wannier:
                  fixedstates=None,
                  spin=0,
                  initialwannier='random',
+                 functional='std',
                  seed=None,
                  verbose=False):
         """
@@ -312,6 +334,13 @@ class Wannier:
             Can be 'bloch' to start from the Bloch states, 'random' to be
             randomized, or a list passed to calc.get_initial_wannier.
 
+          ``functional``: The functional used to measure the localization.
+            Can be 'std' for the standard quadratic functional from the PRB
+            paper, 'sigmoid' for a translated and rescaled sigmoid function,
+            'erf' for a scaled error function, 'sqrt' for a square root
+            function. Every additional function is applied to the standard
+            functional value.
+
           ``seed``: Seed for random ``initialwannier``.
 
           ``verbose``: True / False level of verbosity.
@@ -323,6 +352,7 @@ class Wannier:
         self.nwannier = nwannier
         self.calc = calc
         self.spin = spin
+        self.functional = functional
         self.verbose = verbose
         self.kpt_kc = calc.get_bz_k_points()
         assert len(calc.get_ibz_k_points()) == len(self.kpt_kc)
@@ -726,7 +756,8 @@ class Wannier:
                  updaterot=True, updatecoeff=True):
         """Optimize rotation to give maximal localization"""
         # steepest_descent(self, step, tolerance, verbose=self.verbose,
-        md_min(self, step, tolerance, verbose=self.verbose,
+        md_min(self, functional=self.functional,
+               step, tolerance, verbose=self.verbose,
                updaterot=updaterot, updatecoeff=updatecoeff)
 
     def get_functional_value(self):
