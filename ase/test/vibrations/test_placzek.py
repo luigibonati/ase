@@ -108,9 +108,5 @@ def test_compare_placzek_implementation_intensities():
     assert pro == pytest.approx(pri, 1e-3)
 
 
-def main():
-    test_summary()
-
-
 if __name__ == '__main__':
-    main()
+    test_overlap()
