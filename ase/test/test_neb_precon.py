@@ -1,74 +1,55 @@
+#import matplotlib.pyplot as plt
+
 import pytest
-import numpy
+
 from ase.calculators.emt import EMT
-from ase.optimize import Quasinewton
-from ase.build import fcc211, add_adsorbate 
-from ase.neb import NEB
+from ase.optimize import BFGSLineSearch, BFGS
+from ase.build import bulk
+from ase.neb import NEB, NEBTools
 
+Ef_ref = 0.7621119906629144
 
+@pytest.mark.parametrize('method', ['aseneb', 'improvedtangent', 'spline'])
+def test_vacancy(method):
+    N = 2
+    initial = bulk('Cu', cubic=True)
+    initial *= (N, N, N)
+    pos = initial.get_positions()
 
-def test_precon_neb():
-    N = 3
-    Initial = bulk('Cu', cubic=True)
-    Initial *= (N, N, N)
+    del initial[0]
+    final = initial.copy()
+    final.positions[0] = pos[0]
 
-    Final = Initial.copy() 
-    
-    Initial[0].del()
-    Final[1].del()
+    initial.calc = EMT()
+    final.calc = EMT()
 
+    # Relax initial and final states
+    qn = BFGSLineSearch(initial)
+    qn.run(fmax=0.01)
+    qn = BFGSLineSearch(final)
+    qn.run(fmax=0.01)
 
-    #Attach a writer
-    def initial(atoms=Initial):
-        ase.io.write("initial.xyz", atoms, append=True)
-    def final(atoms=Final):
-        ase.io.write("final.xyz", atoms, append=True)
-
-    # Initial state:
-    qn = QuasiNewton(Initial)
-    qn.attach(initial)
-    qn.run(fmax=0.05)
-
-    # Final state:
-    qn = QuasiNewton(Final)
-    qn.attach(final)
-    qn.run(fmax=0.05)
-
-
-    images = [Initial]
+    images = [initial]
     for image in range(3):
-        image = Initial.copy()
-        image.set_calculator(calc)
+        image = initial.copy()
+        image.calc = EMT()
         images.append(image)
+    images.append(final)
 
-    Initial_precon = Initial.copy()
-    Final_precon = Final.copy()
-    
-    neb = NEB(images, method = 'improvedtangent')
-    neb_precon = NEB(images_precon, method = 'precon')
-    
-    #Run neb
+    neb = NEB(images, method=method)
     neb.interpolate()
-    neb_precon.interpolate()
     qn = BFGS(neb)
-    qn_precon = BFGS(neb_precon)
-
-    qn.run(fmax = 0.05)
-    qn_precon.run(fmax = 0.05)
-
-
-    images = neb.images
-    images_precon = neb.images_precon
+    qn.run(fmax=0.05)
 
     nebtools = NEBTools(images)
     Ef_neb, dE_neb = nebtools.get_barrier(fit=False)
+    print(Ef_neb, dE_neb)
 
-    nebtools_preon = NEBTools(images_precon)
-    Ef_neb_precon, dE_neb_precon = nebtools_precon.get_barrier(fit=False)
+    #fig = nebtools.plot_band()
+    #plt.show()
 
+    assert(abs(Ef_neb - Ef_ref) < 1e-3)
+    assert(abs(dE_neb) < 1e-6)
 
-    assert(abs(Ef_neb_precon - Ef_neb) < 0.05)
-    assert(abs(dE_neb_precon - dE_neb) < 0.05)
+    print(images[2].positions)
 
-    for i in len(images[2]):
-        assert(abs(images[2].get_positions()[i] - images_precon[2].get_positions()[i]) < 0.05)

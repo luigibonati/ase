@@ -21,7 +21,8 @@ from ase.optimize.precon import Exp, C1, Pfrommer
 class NEB:
     def __init__(self, images, k=0.1, fmax=0.05, climb=False, parallel=False,
                  remove_rotation_and_translation=False, world=None,
-                 method='aseneb', dynamic_relaxation=False, scale_fmax=0., precon = 'Exp', precon_update_tol=1e-3):
+                 method='aseneb', dynamic_relaxation=False, scale_fmax=0.,
+                 precon=None, precon_update_tol=1e-3):
         """Nudged elastic band.
 
         Paper I:
@@ -40,6 +41,12 @@ class NEB:
             E. L. Kolsbjerg, M. N. Groves, and B. Hammer, J. Chem. Phys,
             145, 094107 (2016)
             https://doi.org/10.1063/1.4961868
+
+        Paper IV
+
+            S. Makri, C. Ortner and J. R. Kermode, J. Chem. Phys.
+            150, 094109 (2019)
+            https://dx.doi.org/10.1063/1.5064465
 
         images: list of Atoms objects
             Images defining path from initial to final state.
@@ -67,11 +74,12 @@ class NEB:
             Scale convergence criteria along band based on the distance
             between a state and the state with the highest potential energy.
         method: string of method
-            Choice betweeen three method:
+            Choice betweeen four methods:
 
             * aseneb: standard ase NEB implementation
             * improvedtangent: Paper I NEB implementation
             * eb: Paper III full spring force implementation
+            * spline: cubic spline interpolation as described in Paper IV
         """
         self.images = images
         self.climb = climb
@@ -87,7 +95,7 @@ class NEB:
                 raise ValueError('Images have atoms in different orders')
         self.nimages = len(images)
         self.emax = np.nan
-        
+
         if isinstance(precon, str):
             if precon == 'C1':
                 precon = C1()
@@ -112,8 +120,7 @@ class NEB:
                    'with dynamic_relaxation.')
             raise ValueError(msg)
 
-
-        if method in ['aseneb', 'eb', 'improvedtangent', 'precon', 'spline', 'precon_spline']:
+        if method in ['aseneb', 'eb', 'improvedtangent', 'spline']:
             self.method = method
         else:
             raise NotImplementedError(method)
@@ -230,7 +237,8 @@ class NEB:
 
         forces = np.empty((self.nimages - 2 , self.natoms, 3),  dtype=np.float)
         if self.method == 'precon':
-            precon_forces = np.empty(((self.nimages - 2), self.natoms, 3), dtype=np.float)
+            precon_forces = np.empty(((self.nimages - 2), self.natoms, 3),
+                                     dtype=np.float)
         energies = np.empty(self.nimages)
         #x = np.empty(((self.nimages - 2), self.natoms, 3), dtype=np.float)
         x = np.empty((self.nimages - 2, self.natoms, 3), dtype=np.float)
@@ -258,7 +266,7 @@ class NEB:
                 energies[:] = image.get_potential_energy()
                 forces[:] = image.get_forces()
                 if self.method == 'precon' or self.method == 'precon_spline':
-                    precon_forces[:], _residual = self.apply_precon(forces[:], x[:], image[:]) 
+                    precon_forces[:], _residual = self.apply_precon(forces[:], x[:], image[:])
             threads = [threading.Thread(target=run,
                                         args=(images[i],
                                               energies[i:i + 1],
@@ -309,27 +317,37 @@ class NEB:
             eqlength = beelinelength / (self.nimages - 1)
 
         nt1 = np.linalg.norm(t1)
-        
-        s = np.zeros(self.nimages)
-        if self.method == "spline":
-            U = np.zeros((self.nimages,3*self.natoms))
-            U[0] = self.images[0].get_positions().reshape(3* self.natoms)
-            for i,img in enumerate(self.images[1:]):
-                d = find_mic(img.get_positions() -
-                      self.images[0].get_positions(),
-                      self.images[0].get_cell(), self.images[0].pbc)[0]
-                d_b = find_mic(img.get_positions() -
-                     self.images[-1].get_positions(),
-                     self.images[-1].get_cell(), self.images[-1].pbc)[0]
-                tot_d = np.linalg.norm(find_mic(self.images[-1].get_positions() -
-                                            self.images[0].get_positions(),
-                                            self.images[0].get_cell(), self.images[0].pbc)[0])
-                s[i+1] =  0.5*(np.linalg.norm(d)/tot_d + 1 - np.linalg.norm(d_b)/tot_d)
-                d += self.images[0].get_positions()
-                U[i+1] = d.reshape(3* self.natoms)
 
-            d_spline = interp1d(s, U.T, 'cubic')
-            dd_ds = d_spline._spline.derivative() # nab_d or d_tan
+        if self.method == "spline":
+            lam = np.zeros(self.nimages)  # NEB reaction coordinate lambda
+            u = np.zeros((self.nimages, 3 * self.natoms))  # flattened positions
+            u[0] = self.images[0].positions.reshape(3 * self.natoms)
+
+            u_total, _ = find_mic(self.images[-1].positions -
+                               self.images[0].positions,
+                               self.images[0].cell,
+                               self.images[0].pbc)
+            d_total = np.linalg.norm(u_total)
+
+            for i, image in enumerate(self.images[1:]):
+                u_forward, _ = find_mic(image.positions -
+                                        self.images[0].positions,
+                                        self.images[0].cell,
+                                        self.images[0].pbc)
+                d_forward = np.linalg.norm(u_forward)
+
+                u_back, _ = find_mic(image.positions -
+                                     self.images[-1].positions,
+                                     self.images[-1].cell,
+                                     self.images[-1].pbc)
+                d_back = np.linalg.norm(u_back)
+
+                # use average of forward and back distance
+                lam[i + 1] = 0.5*(d_forward/d_total + (1 - d_back/d_total))
+                u[i + 1] = u[0] + u_forward.reshape(3 * self.natoms)
+
+            u_spline = interp1d(lam, u.T, 'cubic')
+            du_dlam = u_spline._spline.derivative()
 
         for i in range(1, self.nimages - 1):
             t2 = find_mic(images[i + 1].get_positions() -
@@ -362,9 +380,8 @@ class NEB:
                 # Normalize the tangent vector
                 tangent /= np.linalg.norm(tangent)
             elif self.method == 'spline':
-                tangent = dd_ds(s[i])
-                tangent = tangent.reshape((self.natoms, 3))
-                tangent = tangent/np.linalg.norm(tangent)                
+                tangent = du_dlam(lam[i]).reshape((self.natoms, 3))
+                tangent /= np.linalg.norm(tangent)
             else:
                 if i < self.imax:
                     tangent = t2
@@ -402,21 +419,17 @@ class NEB:
                 else:
                     f += f1 + f2
             elif self.method == 'improvedtangent':
-                images[i].set_array('forces_true', f)
                 f -= ft * tangent
                 # Improved parallel spring force (formula 12 of paper I)
                 f_spring = (nt2 * self.k[i] - nt1 * self.k[i - 1]) * tangent
                 f += f_spring
-                images[i].set_array('tangent', tangent)
-                images[i].set_array('forces_spring', f_spring)
-                images[i].set_array('forces_neb', f)                
 
-            
             elif self.method == 'precon':
                 image_copy = images[i].copy()
                 image_copy.set_positions(tangent)
                 P_1 = self.precon.make_precon(image_copy)
-                P_dot_t = self.precon.dot(tangent.reshape(-1), tangent.reshape(-1))
+                P_dot_t = self.precon.dot(tangent.reshape(-1),
+                                          tangent.reshape(-1))
                 print(P_dot_t)
                 p_norm_t = np.sqrt(P_dot_t)
                 T_p = tangent/p_norm_t
@@ -424,18 +437,16 @@ class NEB:
                 pf += np.matmul(t_Cros_t,pf)
                 x_pp = (nt2 * self.k[i] - nt1 * self.k[i - 1]) * tangent
                 x_xp = (tangent/p_norm_t)
-                eta_Pn =  self.k[i]*np.dot(x_pp.reshape(-1), x_xp.reshape(-1)) * x_xp  
+                eta_Pn =  self.k[i]*np.dot(x_pp.reshape(-1),
+                                           x_xp.reshape(-1)) * x_xp
                 pf -= eta_Pn
 
             elif self.method == 'spline':
-                images[i].set_array('forces_true', f)
-                #tt = np.vdot(tangent, tangent)
-                f -= ft*tangent                
-                f_spring = (nt2 * self.k[i] - nt1 * self.k[i - 1]) * tangent
+                f -= ft * tangent
+                f_spring = (nt2 * self.k[i] -
+                            nt1 * self.k[i - 1]) * tangent
                 f += f_spring
-                images[i].set_array('tangent', tangent)
-                images[i].set_array('forces_spring', f_spring)
-                images[i].set_array('forces_neb', f)
+
             else:
                 f -= ft / tt * tangent
                 f -= np.vdot(t1 * self.k[i - 1] -
@@ -465,7 +476,7 @@ class NEB:
         if self.method == 'precon':
             return precon_forces.reshape((-1, 3))
         return forces.reshape((-1, 3))
-        
+
 
     def get_potential_energy(self, force_consistent=False):
         """Return the maximum potential energy along the band.
