@@ -43,7 +43,7 @@ def atoms(ref_atoms):
 optclasses = [
     MDMin, FIRE, LBFGS, LBFGSLineSearch, BFGSLineSearch,
     BFGS, GoodOldQuasiNewton, GPMin, SciPyFminCG, SciPyFminBFGS,
-    PreconLBFGS, PreconFIRE, Berny,ODE12r, PreconODE12r
+    PreconLBFGS, PreconFIRE, Berny, ODE12r, PreconODE12r
 ]
 
 
