@@ -524,6 +524,24 @@ class Wannier:
                      np.log(abs(self.Z_dww[:3].diagonal(0, 1, 2))**2))
         return np.sqrt(r2)
 
+    def get_spreads(self):
+        r"""Calculate the spread of the Wannier functions.
+        The spread defined here depends on the number of Wannier function,
+        it is only intended as a method to visualize the relative localization
+        of the different functions in the same set.
+
+        ::
+
+                          /        2                     2        \
+          spread_w = - ln | |Z_dww|  * W_d / norm(|Z_dww|  * W_d) |
+                          \                                       /
+
+        """
+        spread_dw = np.abs(self.Z_dww.diagonal(0, 1, 2))**2
+        spread_w = np.dot(spread_dw.T, self.weight_d).real
+        norm_spreads = - np.log(spread_w / np.linalg.norm(spread_w))
+        return norm_spreads
+
     def get_spectral_weight(self, w):
         return abs(self.V_knw[:, :, w])**2 / self.Nk
 
@@ -763,7 +781,7 @@ class Wannier:
             a_d = np.sum(np.abs(self.Z_dww.diagonal(0, 1, 2))**2, axis=1)
         elif self.functional == 'sigmoid':
             a_d = np.sum(1 / (1 + np.exp(-10 * (np.abs(
-                               self.Z_dww.diagonal(0, 1, 2))**2 - 0.5))),
+                              self.Z_dww.diagonal(0, 1, 2))**2 - 0.5))),
                          axis=1)
         elif self.functional == 'erf':
             a_d = np.sum(erf(2 * np.abs(self.Z_dww.diagonal(0, 1, 2))**2),
@@ -847,12 +865,13 @@ class Wannier:
                     Zii_ww = 0.5 * (1 / np.sqrt(Zii_ww * Zii_ww.conj())
                                          * Zii_ww)
                 elif self.functional == 'cbrt':
-                    diagZ_w = ((1/3)
+                    diagZ_w = ((1 / 3)
                                     * 1 / np.power(diagZ_w * diagZ_w.conj(),
-                                                   2/3)
+                                                   2 / 3)
                                     * diagZ_w)
-                    Zii_ww = ((1/3)
-                                   * 1 / np.power(Zii_ww * Zii_ww.conj(), 2/3)
+                    Zii_ww = ((1 / 3)
+                                   * 1 / np.power(Zii_ww * Zii_ww.conj(),
+                                                  2 / 3)
                                    * Zii_ww)
 
                 k1 = self.kklst_dk[d, k]
