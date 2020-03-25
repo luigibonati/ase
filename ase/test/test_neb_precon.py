@@ -81,8 +81,9 @@ def test_vacancy(method, N_intermediate, precon):
     assert abs(Ef_neb - Ef_ref) < 1e-3
     assert abs(dE_neb - dE_ref) < 1e-3
 
-    # true saddle point known by symmetry
-    vdiff, _ = find_mic(images[2].positions - saddle_ref.positions,
-                        images[2].cell)
+    centre = 1 + N_intermediate // 2
+    print('centre', centre)
+    vdiff, _ = find_mic(images[centre].positions - saddle_ref.positions,
+                        images[centre].cell)
     assert abs(vdiff).max() < 1e-2
 
