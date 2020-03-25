@@ -143,10 +143,12 @@ def md_min(func, step=.25, tolerance=1e-6, max_iter=10000,
             step *= 0.5
         count += 1
         if verbose:
-            print('MDmin: iter=%s, step=%s, value=%s' % (count, step, fvalue))
+            print('MDmin: iter=%s, step=%s, value=%0.4f' % (count, step, fvalue))
         if count > max_iter:
-            warnings.warn('Max iterations reached: iter=%s, step=%s, value=%s'
-                          % (count, step, fvalue))
+            t += time()
+            warnings.warn('Max iterations reached: '
+                          'iters=%s, step=%s, seconds=%0.2f, value=%0.4f'
+                          % (count, step, t, fvalue))
             break
     if verbose:
         t += time()
@@ -781,8 +783,8 @@ class Wannier:
             a_d = np.sum(np.abs(self.Z_dww.diagonal(0, 1, 2))**2, axis=1)
         elif self.functional == 'sigmoid':
             a_d = np.sum(1 / (1 + np.exp(-10 * (np.abs(
-                              self.Z_dww.diagonal(0, 1, 2))**2 - 0.5))),
-                         axis=1)
+                self.Z_dww.diagonal(0, 1, 2))**2 - 0.5))),
+                axis=1)
         elif self.functional == 'erf':
             a_d = np.sum(erf(2 * np.abs(self.Z_dww.diagonal(0, 1, 2))**2),
                          axis=1)
@@ -842,37 +844,39 @@ class Wannier:
                 if self.functional == 'sigmoid':
                     diagZ_w = (
                         (1 / (1 + np.exp(-10
-                                         * (diagZ_w * diagZ_w.conj() - 0.5))))
+                                         * (diagZ_w * diagZ_w.conj()
+                                            - 0.5))))
                         * (1 - (1 / (1 + np.exp(-10
-                                         * (diagZ_w * diagZ_w.conj() - 0.5)))))
+                                                * (diagZ_w * diagZ_w.conj()
+                                                   - 0.5)))))
                         * diagZ_w)
                     Zii_ww = (
                         (1 / (1 + np.exp(-10
                                          * (Zii_ww * Zii_ww.conj() - 0.5))))
                         * (1 - (1 / (1 + np.exp(-10
-                                         * (Zii_ww * Zii_ww.conj() - 0.5)))))
+                                                * (Zii_ww * Zii_ww.conj()
+                                                   - 0.5)))))
                         * Zii_ww)
                 elif self.functional == 'erf':
                     diagZ_w = ((4 / np.sqrt(np.pi))
-                                   * np.exp(-(2 * diagZ_w * diagZ_w.conj())**2)
-                                   * diagZ_w)
+                               * np.exp(-(2 * diagZ_w * diagZ_w.conj())**2)
+                               * diagZ_w)
                     Zii_ww = ((4 / np.sqrt(np.pi))
-                                  * np.exp(-(2 * Zii_ww * Zii_ww.conj())**2)
-                                  * Zii_ww)
+                              * np.exp(-(2 * Zii_ww * Zii_ww.conj())**2)
+                              * Zii_ww)
                 elif self.functional == 'sqrt':
                     diagZ_w = 0.5 * (1 / np.sqrt(diagZ_w * diagZ_w.conj())
-                                          * diagZ_w)
+                                     * diagZ_w)
                     Zii_ww = 0.5 * (1 / np.sqrt(Zii_ww * Zii_ww.conj())
-                                         * Zii_ww)
+                                    * Zii_ww)
                 elif self.functional == 'cbrt':
                     diagZ_w = ((1 / 3)
-                                    * 1 / np.power(diagZ_w * diagZ_w.conj(),
-                                                   2 / 3)
-                                    * diagZ_w)
+                               * 1 / np.power(diagZ_w * diagZ_w.conj(),
+                                              2 / 3)
+                               * diagZ_w)
                     Zii_ww = ((1 / 3)
-                                   * 1 / np.power(Zii_ww * Zii_ww.conj(),
-                                                  2 / 3)
-                                   * Zii_ww)
+                              * 1 / np.power(Zii_ww * Zii_ww.conj(), 2 / 3)
+                              * Zii_ww)
 
                 k1 = self.kklst_dk[d, k]
                 k2 = self.invkklst_dk[d, k]
