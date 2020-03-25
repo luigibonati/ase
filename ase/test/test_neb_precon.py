@@ -56,6 +56,7 @@ def ref_vacancy():
     return Ef_ref, dE_ref, saddle
 
 @pytest.mark.slow()
+@pytest.mark.filterwarnings('ignore:capping at mu=1.0')
 @pytest.mark.parametrize('method, N_intermediate, precon',
                          [('aseneb', 3, None),
                           ('aseneb', 5, None),
@@ -68,8 +69,8 @@ def test_vacancy(method, N_intermediate, precon):
     Ef_ref, dE_ref, saddle_ref = ref_vacancy()
 
     # now relax the NEB band for comparison
-    images = setup_images()
-    neb = NEB(images)
+    images = setup_images(N_intermediate)
+    neb = NEB(images, method=method, precon=precon)
     qn = BFGS(neb)
     qn.run(fmax=1e-3)
 
@@ -82,6 +83,6 @@ def test_vacancy(method, N_intermediate, precon):
 
     # true saddle point known by symmetry
     vdiff, _ = find_mic(images[2].positions - saddle_ref.positions,
-                        images[2].cell)ey6
+                        images[2].cell)
     assert abs(vdiff).max() < 1e-2
 
