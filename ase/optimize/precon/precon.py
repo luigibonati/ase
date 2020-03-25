@@ -36,7 +36,7 @@ class Precon(object):
                  estimate_mu_eigmode=False):
         """Initialise a preconditioner object based on passed parameters.
 
-        Args:
+        Parameters:
             r_cut: float. This is a cut-off radius. The preconditioner matrix
                 will be created by considering pairs of atoms that are within a
                 distance r_cut of each other. For a regular lattice, this is
@@ -524,6 +524,28 @@ class Precon(object):
 
         self.P = None  # force a rebuild with new mu (there may be fixed atoms)
         return (self.mu, self.mu_c)
+
+    def apply(self, forces, atoms):
+        """
+        Convenience wrapper that combines make_precon() and solve()
+
+        Parameters
+        ----------
+        forces: array
+            (len(atoms), 3) array of input forces
+        atoms: ase.atoms.Atoms
+
+        Returns
+        -------
+        precon_forces: array
+            (len(atoms), 3) array of preconditioned forces
+        residual: float
+            inf-norm of original forces, i.e. maximum absolute force
+        """
+        self.make_precon(atoms)
+        residual = np.linalg.norm(forces, np.inf)
+        precon_forces = self.solve(forces.reshape(-1))
+        return precon_forces.reshape(len(atoms), 3), residual
 
 
 class Pfrommer(object):

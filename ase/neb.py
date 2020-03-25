@@ -74,7 +74,7 @@ class NEB:
             Scale convergence criteria along band based on the distance
             between a state and the state with the highest potential energy.
         method: string of method
-            Choice betweeen four methods:
+            Choice between four methods:
 
             * aseneb: standard ase NEB implementation
             * improvedtangent: Paper I NEB implementation
@@ -108,7 +108,6 @@ class NEB:
             else:
                 raise ValueError('Unknown preconditioner "{0}"'.format(precon))
         self.precon = precon
-        self.precon_update_tol = precon_update_tol
         self._last_x = None
 
         self.remove_rotation_and_translation = remove_rotation_and_translation
@@ -125,6 +124,10 @@ class NEB:
         else:
             raise NotImplementedError(method)
 
+        if self.method != 'spline' and precon is not None:
+            raise NotImplementedError('Preconditioned NEB is only implemented'
+                                      'with `method="spline"`.')
+
         if isinstance(k, (float, int)):
             k = [k] * (self.nimages - 1)
         self.k = list(k)
@@ -138,21 +141,6 @@ class NEB:
 
         self.real_forces = None  # ndarray of shape (nimages, natom, 3)
         self.energies = None  # ndarray of shape (nimages,)
-
-    def apply_precon(self, F, x, atoms):
-        if self._last_x is None:
-            # ensure we build precon the first time
-            max_move = 2*self.precon_update_tol
-        else:
-            max_move = np.linalg.norm(x - self._last_x, np.inf)
-        if max_move > self.precon_update_tol:
-            #atoms.set_positions(x)
-            self.precon.make_precon(atoms)
-            #print('self.precon.make_precon(atoms)', self.precon.make_precon(atoms))
-            self._last_x = x.copy()
-        Rp = np.linalg.norm(F, np.inf)
-        Fp = self.precon.solve(F.reshape(-1))
-        return Fp.reshape(len(atoms), 3), Rp
 
     def interpolate(self, method='linear', mic=False):
         """Interpolate the positions of the interior images between the
@@ -258,15 +246,15 @@ class NEB:
                 forces[i-1] = images[i].get_forces()
                 #x[i - 1] = np.reshape(np.array(images[i].get_positions()), len(x[i-1]))
                 x[i-1] = images[i].get_positions()
-                if self.method == 'precon':
-                    precon_forces[i - 1], _residual = self.apply_precon(forces[i - 1], x[i-1], images[i])
+                if self.precon is not None:
+                    precon_forces[i - 1], _residual = self.precon.apply(forces[i - 1], images[i])
 
         elif self.world.size == 1:
             def run(image, energies, forces):
                 energies[:] = image.get_potential_energy()
                 forces[:] = image.get_forces()
-                if self.method == 'precon' or self.method == 'precon_spline':
-                    precon_forces[:], _residual = self.apply_precon(forces[:], x[:], image[:])
+                if self.precon is not None:
+                    precon_forces[:], _residual = self.precon.apply(forces, image)
             threads = [threading.Thread(target=run,
                                         args=(images[i],
                                               energies[i:i + 1],
@@ -392,8 +380,8 @@ class NEB:
                 tt = np.vdot(tangent, tangent)
 
             f = forces[i - 1]
-            if self.method == 'precon':
-                 pf = precon_forces[i-1]
+            if self.precon is not None:
+                pf = precon_forces[i - 1]
             ft = np.vdot(f, tangent)
 
             if i == self.imax and self.climb:
@@ -424,28 +412,30 @@ class NEB:
                 f_spring = (nt2 * self.k[i] - nt1 * self.k[i - 1]) * tangent
                 f += f_spring
 
-            elif self.method == 'precon':
-                image_copy = images[i].copy()
-                image_copy.set_positions(tangent)
-                P_1 = self.precon.make_precon(image_copy)
-                P_dot_t = self.precon.dot(tangent.reshape(-1),
-                                          tangent.reshape(-1))
-                print(P_dot_t)
-                p_norm_t = np.sqrt(P_dot_t)
-                T_p = tangent/p_norm_t
-                t_Cros_t = np.outer(T_p,T_p)
-                pf += np.matmul(t_Cros_t,pf)
-                x_pp = (nt2 * self.k[i] - nt1 * self.k[i - 1]) * tangent
-                x_xp = (tangent/p_norm_t)
-                eta_Pn =  self.k[i]*np.dot(x_pp.reshape(-1),
-                                           x_xp.reshape(-1)) * x_xp
-                pf -= eta_Pn
-
             elif self.method == 'spline':
-                f -= ft * tangent
-                f_spring = (nt2 * self.k[i] -
-                            nt1 * self.k[i - 1]) * tangent
-                f += f_spring
+
+                if self.precon is not None:
+
+                    # image_copy = images[i].copy()
+                    # image_copy.set_positions(tangent)
+                    # P_1 = self.precon.make_precon(image_copy) # FIXME not used ?!
+
+                    tvec = tangent.reshape(-1)
+                    P_dot_t = self.precon.dot(tvec, tvec)
+                    p_norm_t = np.sqrt(P_dot_t)
+                    T_p = tangent / p_norm_t
+                    t_tensor_t = np.outer(T_p, T_p)
+                    pf += np.matmul(t_tensor_t, pf)
+                    x_pp = (nt2 * self.k[i] - nt1 * self.k[i - 1]) * tangent
+                    x_pp_vec = x_pp.reshape(-1)
+                    x_xp = tangent / p_norm_t
+                    eta_Pn = self.k[i] * np.dot(x_pp_vec, x_pp_vec) * x_xp
+                    pf -= eta_Pn
+                else:
+                    f -= ft * tangent
+                    f_spring = (nt2 * self.k[i] -
+                                nt1 * self.k[i - 1]) * tangent
+                    f += f_spring
 
             else:
                 f -= ft / tt * tangent
@@ -473,7 +463,8 @@ class NEB:
                         pass
                     else:
                         forces[k, :, :] = np.zeros((1, self.natoms, 3))
-        if self.method == 'precon':
+
+        if self.precon is not None:
             return precon_forces.reshape((-1, 3))
         return forces.reshape((-1, 3))
 
