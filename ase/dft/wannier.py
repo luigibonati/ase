@@ -528,21 +528,21 @@ class Wannier:
 
     def get_spreads(self):
         r"""Calculate the spread of the Wannier functions.
-        The spread defined here depends on the number of Wannier function,
-        it is only intended as a method to visualize the relative localization
-        of the different functions in the same set.
+        Compute the spread as the inverse of the contribution to the spread
+        functional, so that is proportional to the physical spread.
 
         ::
 
-                          /        2                     2        \
-          spread_w = - ln | |Z_dww|  * W_d / norm(|Z_dww|  * W_d) |
-                          \                                       /
+                            1
+          spread_w = ---------------
+                     |Z_dww|^2 * W_d
+
 
         """
         spread_dw = np.abs(self.Z_dww.diagonal(0, 1, 2))**2
         spread_w = np.dot(spread_dw.T, self.weight_d).real
-        norm_spreads = - np.log(spread_w / np.linalg.norm(spread_w))
-        return norm_spreads
+        inv_spread_w = 1 / spread_w
+        return inv_spread_w
 
     def get_spectral_weight(self, w):
         return abs(self.V_knw[:, :, w])**2 / self.Nk
