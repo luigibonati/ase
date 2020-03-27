@@ -56,7 +56,7 @@ def ref_vacancy():
     return Ef_ref, dE_ref, saddle
 
 @pytest.mark.slow()
-@pytest.mark.filterwarnings('ignore:capping at mu=1.0')
+@pytest.mark.filterwarnings('ignore:mu(')
 @pytest.mark.parametrize('method, N_intermediate, precon',
                          [('aseneb', 3, None),
                           ('aseneb', 5, None),
