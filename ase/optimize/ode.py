@@ -159,7 +159,6 @@ class ODE12r(SciPyOptimizer):
         self.master = master
         self.callback_always = callback_always
         self.nsteps = nsteps
-        self.optimise = optimise
 
     def call_fmin(self, fmax, steps):
             X_out, log, h = odesolve_r12(lambda x: -self.fprime(x), self.x0(),
