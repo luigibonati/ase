@@ -9,6 +9,7 @@ from time import time
 from math import sqrt, pi
 from pickle import dump, load
 from scipy.special import erf
+import functools
 
 import numpy as np
 
@@ -644,6 +645,11 @@ class Wannier:
             H_ww += self.get_hamiltonian(k) * phase
         return H_ww / self.Nk
 
+    @functools.lru_cache(maxsize=10000)
+    def get_hopping_wcache(self, n1, n2, n3):
+        R = np.array([n1, n2, n3], float)
+        return self.get_hopping(R)
+
     def get_hamiltonian(self, k=0):
         """Get Hamiltonian at existing k-vector of index k
 
@@ -677,7 +683,7 @@ class Wannier:
             for n2 in range(-N2, N2 + 1):
                 for n3 in range(-N3, N3 + 1):
                     R = np.array([n1, n2, n3], float)
-                    hop_ww = self.get_hopping(R)
+                    hop_ww = self.get_hopping_wcache(n1, n2, n3)
                     phase = np.exp(+2.j * pi * np.dot(R, kpt_c))
                     Hk += hop_ww * phase
         return Hk
