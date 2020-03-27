@@ -146,8 +146,21 @@ def odesolve_r12(f, X0, h=None, verbose=1, fmax=1e-6, maxtol=1e3, steps=100,
     return X_out, log, h
 
 
-class ODE12rOptimizer(SciPyOptimizer):
+class ODE12r(SciPyOptimizer):
+    def __init__(self, atoms, logfile= None, trajectory=None,
+                 callback_always=False, alpha=70.0, master=None,
+                 force_consistent=None, precon = None, nsteps = 1000000):
+        self.precon = precon
+        self.force_consistent = force_consistent 
+        self.atoms = atoms
+        self.logfile = logfile
+        self.trajectory = trajectory
+        self.alpha = alpha
+        self.master = master
+        self.callback_always = callback_always
+        self.nsteps = nsteps
+
     def call_fmin(self, fmax, steps):
-        X_out, log, h = odesolve_r12(lambda x: -self.fprime(x), self.x0(),
-                                     fmax=fmax, steps=steps,
-                                     callback=self.callback)
+            X_out, log, h = odesolve_r12(lambda x: -self.fprime(x), self.x0(),
+                                         fmax=fmax, steps=steps,
+                                         callback=self.callback, force_consisitent = None)
