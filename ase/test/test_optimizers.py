@@ -6,7 +6,7 @@ from ase.calculators.emt import EMT
 from ase.optimize import (MDMin, FIRE, LBFGS, LBFGSLineSearch, BFGSLineSearch,
                           BFGS, GoodOldQuasiNewton, GPMin, Berny, ODE12r)
 from ase.optimize.sciopt import SciPyFminCG, SciPyFminBFGS
-from ase.optimize.precon import PreconFIRE, PreconLBFGS
+from ase.optimize.precon import PreconFIRE, PreconLBFGS, PreconODE12r
 from ase.cluster import Icosahedron
 from ase.build import bulk
 
@@ -43,7 +43,7 @@ def atoms(ref_atoms):
 optclasses = [
     MDMin, FIRE, LBFGS, LBFGSLineSearch, BFGSLineSearch,
     BFGS, GoodOldQuasiNewton, GPMin, SciPyFminCG, SciPyFminBFGS,
-    PreconLBFGS, PreconFIRE, Berny, ODE12r, PreconODE12r
+    PreconLBFGS, PreconFIRE, Berny, ODE12r
 ]
 
 
