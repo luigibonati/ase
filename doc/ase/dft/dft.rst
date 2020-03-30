@@ -14,3 +14,4 @@ Density Functional Theory
    bandgap
    stm
    bader
+   bee
