@@ -5,11 +5,11 @@
     (PRB 56, 1997 page 12847).
 """
 import warnings
+import functools
 from time import time
 from math import sqrt, pi
 from pickle import dump, load
 from scipy.special import erf
-import functools
 
 import numpy as np
 
@@ -144,7 +144,8 @@ def md_min(func, step=.25, tolerance=1e-6, max_iter=10000,
             step *= 0.5
         count += 1
         if verbose:
-            print('MDmin: iter=%s, step=%s, value=%0.4f' % (count, step, fvalue))
+            print('MDmin: iter=%s, step=%s, value=%0.4f'
+                  % (count, step, fvalue))
         if count > max_iter:
             t += time()
             warnings.warn('Max iterations reached: '
@@ -285,7 +286,7 @@ class Wannier:
                  fixedenergy=None,
                  fixedstates=None,
                  spin=0,
-                 initialwannier='random',
+                 initialwannier='gaussians',
                  functional='std',
                  seed=None,
                  verbose=False):
@@ -324,7 +325,8 @@ class Wannier:
 
           ``initialwannier``: Initial guess for Wannier rotation matrix.
             Can be 'bloch' to start from the Bloch states, 'random' to be
-            randomized, or a list passed to calc.get_initial_wannier.
+            randomized, 'gaussians' to start from randomly placed gaussian
+            centers, or a list passed to calc.get_initial_wannier.
 
           ``functional``: The functional used to measure the localization.
             Can be 'std' for the standard quadratic functional from the PRB
@@ -334,7 +336,7 @@ class Wannier:
             Every additional function is applied to the standard functional
             value.
 
-          ``seed``: Seed for random ``initialwannier``.
+          ``seed``: Seed for 'random' or 'gaussians' ``initialwannier``.
 
           ``verbose``: True / False level of verbosity.
           """
@@ -440,7 +442,7 @@ class Wannier:
                         G_I=k0_c, spin=self.spin)
         self.initialize(file=file, initialwannier=initialwannier, seed=seed)
 
-    def initialize(self, file=None, initialwannier='random', seed=None):
+    def initialize(self, file=None, initialwannier='gaussians', seed=None):
         """Re-initialize current rotation matrix.
 
         Keywords are identical to those of the constructor.
@@ -472,6 +474,18 @@ class Wannier:
                         Nb - M, seed=seed, real=False)[:, :L])
                 else:
                     self.C_kul.append(np.array([]))
+        elif initialwannier == 'gaussians':
+            # Create gaussians in random positions
+            if seed is not None:
+                np.random.seed(seed)
+            centers = []
+            for i in range(self.nwannier):
+                centers.append(([np.random.random(),
+                                 np.random.random(),
+                                 np.random.random()], 0, 1.5))
+            self.C_kul, self.U_kww = self.calc.initial_wannier(
+                centers, self.kptgrid, self.fixedstates_k,
+                self.edf_k, self.spin, self.nbands)
         else:
             # Use initial guess to determine U and C
             self.C_kul, self.U_kww = self.calc.initial_wannier(
