@@ -14,9 +14,9 @@ uncertainty of your own calculations.
 Bayesian ensembles provide an alternative and systematic approach to 
 uncertainty quantification\ [#BEEF_ens]_. Using Baysian statistics an ensemble of
 XC functionals are constructed. The ensemble functionals all belong to the same
-functional model space (e.g. meta-GGA functionals). The BEEF family of functionals
-are all constructed using an expansions of terms with fitted expansion
-coefficients. This construction makes it very suitable for ensemble
+functional model space (e.g. meta-GGA functionals). The BEEF family of
+functionals are all constructed using an expansions of terms with fitted
+expansion coefficients. This construction makes it very suitable for ensemble
 generation by varying the expansion coefficients and allows highly efficient
 non-selfconsistent calculation of ensemble energies. The uncertainty is
 quantified by calculating the ensemble standard deviation.
