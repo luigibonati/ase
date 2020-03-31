@@ -147,9 +147,9 @@ def odesolve_r12(f, X0, h=None, verbose=1, fmax=1e-6, maxtol=1e3, steps=100,
 
 
 class ODE12r(SciPyOptimizer):
-    def __init__(self, atoms, precon=None):
+    def __init__(self, atoms, precon=None, logfile = '_'):
         self.precon = precon
-        
+        self.logfile = logfile
         SciPyOptimizer.__init__(self, atoms)
 
     def call_fmin(self, fmax, steps):
