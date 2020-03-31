@@ -132,7 +132,7 @@ def odesolve_r12(f, X0, h=None, verbose=1, fmax=1e-6, maxtol=1e3,
 from ase.optimize.sciopt import SciPyOptimizer, Converged
 from ase.optimize.precon import Exp, C1, Pfrommer
 
-class ODE12rOptimizer_precon(SciPyOptimizer):
+class PreconODE12r(SciPyOptimizer):
     def __init__(self, atoms, logfile='-', trajectory=None,
                  callback_always=False, alpha=1.0, master=None,
                  force_consistent=None, precon='Exp',

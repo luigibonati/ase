@@ -27,6 +27,7 @@ Optional dependencies
 from ase.optimize.precon.precon import Precon, Exp, C1, Pfrommer, FF, Exp_FF
 from ase.optimize.precon.lbfgs import PreconLBFGS
 from ase.optimize.precon.fire import PreconFIRE
+from ase.optimize.precon.precon_ode import PreconODE12r
 
 __all__ = ['Precon', 'Exp', 'C1', 'Pfrommer',
-           'FF', 'Exp_FF', 'PreconLBFGS', 'PreconFIRE']
+           'FF', 'Exp_FF', 'PreconLBFGS', 'PreconFIRE', 'PreconODE12r']
