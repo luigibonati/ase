@@ -9,7 +9,6 @@ from ase.optimize.oldqn import GoodOldQuasiNewton
 from ase.optimize.gpmin.gpmin import GPMin
 from ase.optimize.berny import Berny
 from ase.optimize.ode import ODE12r
-
 QuasiNewton = BFGSLineSearch
 
 __all__ = ['MDMin', 'FIRE', 'LBFGS',
