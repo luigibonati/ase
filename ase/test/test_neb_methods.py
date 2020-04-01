@@ -41,7 +41,7 @@ def setup_images(N_intermediate=3):
     neb.interpolate()
     return neb.images
 
-@functools.lru_cache(maxsize=None)
+@pytest.fixture
 def ref_vacancy():
     # use distance from moving atom to one of its neighbours as reaction coord
     # relax intermediate image to the saddle point using a bondlength constraint
@@ -56,7 +56,7 @@ def ref_vacancy():
     return Ef_ref, dE_ref, saddle
 
 @pytest.mark.slow()
-@pytest.mark.filterwarnings('ignore:mu(')
+@pytest.mark.filterwarnings('ignore:mu')
 @pytest.mark.parametrize('method, N_intermediate, precon',
                          [('aseneb', 3, None),
                           ('aseneb', 5, None),
@@ -65,8 +65,8 @@ def ref_vacancy():
                           ('spline', 3, None),
                           ('spline', 5, None),
                           ('spline', 3, 'Exp')])
-def test_vacancy(method, N_intermediate, precon):
-    Ef_ref, dE_ref, saddle_ref = ref_vacancy()
+def test_vacancy(method, N_intermediate, precon, ref_vacancy):
+    Ef_ref, dE_ref, saddle_ref = ref_vacancy
 
     # now relax the NEB band for comparison
     images = setup_images(N_intermediate)
@@ -82,7 +82,6 @@ def test_vacancy(method, N_intermediate, precon):
     assert abs(dE_neb - dE_ref) < 1e-3
 
     centre = 1 + N_intermediate // 2
-    print('centre', centre)
     vdiff, _ = find_mic(images[centre].positions - saddle_ref.positions,
                         images[centre].cell)
     assert abs(vdiff).max() < 1e-2
