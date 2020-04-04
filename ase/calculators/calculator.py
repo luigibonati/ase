@@ -2,12 +2,15 @@ import os
 import copy
 import subprocess
 from math import pi, sqrt
+import pathlib
+from typing import Union
 
 import numpy as np
 
-from ase.utils import jsonable
-from ase.dft.kpoints import monkhorst_pack
 from ase.cell import Cell
+from ase.dft.kpoints import monkhorst_pack
+from ase.outputs import Properties, all_outputs
+from ase.utils import jsonable
 
 
 class CalculatorError(RuntimeError):
@@ -458,7 +461,7 @@ class Calculator(object):
         ignore_bad_restart_file: bool
             Ignore broken or missing restart file.  By default, it is an
             error if the restart file is missing or broken.
-        directory: str
+        directory: str or PurePath
             Working directory in which to read and write files and
             perform calculations.
         label: str
@@ -473,6 +476,7 @@ class Calculator(object):
         self.atoms = None  # copy of atoms object from last calculation
         self.results = {}  # calculated properties (energy, forces, ...)
         self.parameters = None  # calculational parameters
+        self._directory = None  # Initialize
 
         if restart is not None:
             try:
@@ -486,12 +490,12 @@ class Calculator(object):
         self.directory = directory
         self.prefix = None
         if label is not None:
-            if directory != '.' and '/' in label:
+            if self.directory != '.' and '/' in label:
                 raise ValueError('Directory redundantly specified though '
                                  'directory="{}" and label="{}".  '
                                  'Please omit "/" in label.'
-                                 .format(directory, label))
-            self.set_label(label)
+                                 .format(self.directory, label))
+            self.label = '/'.join((self.directory, label))
 
         if self.parameters is None:
             # Use default parameters if they were not read from file:
@@ -511,6 +515,15 @@ class Calculator(object):
 
         if not hasattr(self, 'name'):
             self.name = self.__class__.__name__.lower()
+
+    @property
+    def directory(self) -> str:
+        return self._directory
+
+    @directory.setter
+    def directory(self, directory: Union[str, pathlib.PurePath]):
+        # Normalize path
+        self._directory = str(pathlib.Path(directory))
 
     @property
     def label(self):
@@ -829,6 +842,25 @@ class Calculator(object):
         # the user would have to override this by providing the Fermi level
         # from the selfconsistent calculation.
         return get_band_structure(calc=self)
+
+    def calculate_properties(self, atoms, properties):
+        """This method is experimental; currently for internal use."""
+        for name in properties:
+            if name not in all_outputs:
+                raise ValueError(f'No such property: {name}')
+
+        # We ignore system changes for now.
+        self.calculate(atoms, properties, system_changes=all_changes)
+
+        props = self.export_properties()
+
+        for name in properties:
+            if name not in props:
+                raise PropertyNotPresent(name)
+        return props
+
+    def export_properties(self):
+        return Properties(self.results)
 
 
 class FileIOCalculator(Calculator):

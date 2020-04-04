@@ -207,6 +207,9 @@ class Atoms(object):
             else:
                 self.new_array('numbers', symbols2numbers(symbols), int)
 
+        if self.numbers.ndim != 1:
+            raise ValueError('"numbers" must be 1-dimensional.')
+
         if cell is None:
             cell = np.zeros((3, 3))
         self.set_cell(cell)
@@ -704,6 +707,13 @@ class Atoms(object):
                     energy += constraint.adjust_potential_energy(self)
         return energy
 
+    def get_properties(self, properties):
+        """This method is experimental; currently for internal use."""
+        # XXX Something about constraints.
+        if self._calc is None:
+            raise RuntimeError('Atoms object has no calculator.')
+        return self._calc.calculate_properties(self, properties)
+
     def get_potential_energies(self):
         """Calculate the potential energies of all the atoms.
 
@@ -1045,12 +1055,11 @@ class Atoms(object):
             i = np.array(i)
             # if i is a mask
             if i.dtype == bool:
-                try:
-                    i = np.arange(len(self))[i]
-                except IndexError:
-                    raise IndexError('length of item mask '
-                                     'mismatches that of {0} '
-                                     'object'.format(self.__class__.__name__))
+                if len(i) != len(self):
+                    raise IndexError('Length of mask {} must equal '
+                                     'number of atoms {}'
+                                     .format(len(i), len(self)))
+                i = np.arange(len(self))[i]
 
         import copy
 
