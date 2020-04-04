@@ -775,9 +775,9 @@ class Wannier:
             else:
                 func = abs(func)
         else:
-            phase_fname = fname.split('.')
+            phase_fname = fname.split('.cube')
             phase_fname.insert(1, 'phase')
-            phase_fname = '.'.join(phase_fname)
+            phase_fname = '.'.join(phase_fname) + 'cube'
             write(phase_fname, atoms, data=np.angle(func), format='cube')
             func = abs(func)
 
