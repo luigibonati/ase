@@ -621,6 +621,10 @@ def bytes_to_object(b: bytes) -> Any:
 
 
 def o2b(obj: Any, parts: List[bytes]):
+    if isinstance(obj, bytes):
+        offset = sum(len(part) for part in parts)
+        parts.append(obj)
+        return {'__bytes__': (len(obj), offset)}
     if isinstance(obj, (int, float, bool, str, type(None))):
         return obj
     if isinstance(obj, dict):
@@ -656,6 +660,11 @@ def b2o(obj: Any, b: bytes) -> Any:
         return [b2o(value, b) for value in obj]
 
     assert isinstance(obj, dict)
+
+    x = obj.get('__bytes__')
+    if x is not None:
+        size, offset = x
+        return b[offset:offset + size]
 
     x = obj.get('__complex__')
     if x is not None:

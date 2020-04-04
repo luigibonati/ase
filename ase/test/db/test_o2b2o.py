@@ -6,6 +6,7 @@ import numpy as np
 
 def test_o2b2o():
     for o1 in [1.0,
+               b'1234',
                {'a': np.zeros((2, 2), np.float32),
                 'b': np.zeros((0, 2), int)},
                ['a', 42, True, None, np.nan, np.inf, 1j],
