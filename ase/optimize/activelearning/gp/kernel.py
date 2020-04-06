@@ -230,44 +230,73 @@ class BondExponential(SquaredExponential):
 
     # --- Define metric tensor ---
 
-    def init_metric(self, radii, interaction=None, normalize=True):
-        # Number of atoms
-        N = len(radii)
+    def init_interaction(self, interaction=None):
 
         if interaction is None:
-
-            def _interaction(x, y):
+            def interaction(x,y):
                 return 1.
 
-            interaction = _interaction
+        for x, y in combinations(self.symbols,2):
+            symbols = [x,y]
+            symbols.sort()
+            param_name = 'f_{}{}'.format(*symbols)
+            if param_name in self.params:
+                continue
+            self.params[param_name] = interaction(x,y)
 
-        if normalize:
+    def interaction(self, x, y):
+        '''Note: x and y must be atomic symbols '''
+        symbols = [x,y]
+        symbols.sort()
+        param_name = 'f_{}{}'.format(*symbols)
 
-            def _normalized(x, y):
-                return interaction(x, y) / N
+        output = self.params.get(param_name, None)
+        if output is None:
+            raise NameError(f'Parameter {param_name} is not defined')
 
-            self.interaction = _normalized
+        if hasattr(self, '_normalization'): 
+            return output/self._normalization
         else:
-            self.interaction = interaction
+            return output
+
+    def set_metric(self):
 
         # 1. one-D metric g
+        N = len(self.symbols)
         g = np.empty((N, N))
         d = np.zeros(N)
+
         for i, j in product(range(N), range(N)):
-            if i == j:
+            if i==j:
                 continue
-            g[i, j] = -self.interaction(radii[i], radii[j])
-            d[i] += self.interaction(radii[i], radii[j])
+            g[i, j] = - self.interaction(self.symbols[i], self.symbols[j])
+            d[i] += self.interaction(self.symbols[i], self.symbols[j])
         np.fill_diagonal(g, d)
 
-        self.g = g
-
         # 2. three-D metric G
-        #  2.1 Define permutation matrix
         self.G = np.zeros((3 * N, 3 * N))
         self.G[0::3, 0::3] = g[:, :]
         self.G[1::3, 1::3] = g[:, :]
         self.G[2::3, 2::3] = g[:, :]
+
+
+
+    def init_metric(self, symbols, interaction=None, normalize=True):
+
+        # Number of atoms
+        if normalize:
+            self._normalization = len(symbols)
+
+        # Save symbol list:
+        self.symbols = symbols
+
+        self.init_interaction(self, interaction)
+        self.set_metric()
+
+        
+    def set_params(self, params):
+        super().set_params(params)
+        self.set_metric()
 
     # --- Kernel methods ---
 
