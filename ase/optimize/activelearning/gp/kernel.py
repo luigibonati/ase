@@ -411,7 +411,7 @@ class BondExponential(SquaredExponential):
         derivative
         """
         g = []
-        for param in params to update:
+        for param in params_to_update:
             if param == 'weight':
                 g.append(self.dK_dweight(X))
 
