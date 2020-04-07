@@ -347,3 +347,83 @@ class BondExponential(SquaredExponential):
         P = np.outer(u, u) / self.l**2
         prefactor = 1 - 0.5 * self.squared_distance(x1, x2)
         return -2 * (prefactor * (self.G - P) - P) / self.l**3
+
+    def dG_dfAB(self, A, B):
+        N = len(self.symbols)
+        g = np.empty((N,N))
+        d = np.zeros(N)
+
+        def connected(C,D):
+            if (C,D) == (A,B):
+                return 1.
+            elif (D,C) == (A,B):
+                return 1.
+            else:
+                return 0.
+        
+        for i, j in product(range(N), range(N)):
+            if i==j:
+                continue
+            g[i, j] = - connected(self.symbols[i], self.symbols[j])
+            d[i] += connected(self.symbols[i], self.symbols[j])
+        np.fill_diagonal(g, d)
+
+        # 3-D dG
+        dG = np.zeros((3 * N, 3 * N))
+        dG[0::3, 0::3] = g[:, :]
+        dG[1::3, 1::3] = g[:, :]
+        dG[2::3, 2::3] = g[:, :]
+
+        if hasattr(self, '_normalization'):
+            return dG/self._normalization
+        else:
+            return dG
+
+
+    def dK_dfAB_matrix(self, x1, x2, dG):
+        # basic
+        tau = x1-x2
+        norm = np.dot(tau, np.dot(dG,tau))/(2*self.l**2)
+        # j
+        M = dG - norm*self.G
+        j = np.dot(M,tau)/self.l**2
+        # h
+        M2 = np.outer(np.dot(dG + M, tau), np.dot(self.G, tau))/self.l**2
+        h = (M-M2)/self.l**2
+
+        dK = np.empty((self.D+1,self.D+1))
+        
+        dK[0, 0] = -norm
+        dK[0, 1:] = j
+        dK[1:, 0] = -j
+        dK[1:, 1:] = h
+        return dK
+
+    def dK_dfAB(self, X, dG):
+        return np.block([[self.dK_dfAB_matrix(x1, x2, dG) for x2 in X] 
+                         for x1 in X])
+
+    def gradient(self,X, params_to_update=['weight', 'scale']):
+        """
+        Computes the gradient of matrix K given the data respect to the
+        hyperparameters. Note matrix K here is self.K(X,X).
+        Returns a list of n(D+1) x n(D+1) matrices, one for each partial
+        derivative
+        """
+        g = []
+        for param in params to update:
+            if param == 'weight':
+                g.append(self.dK_dweight(X))
+
+            elif param == 'scale':
+               g.append(self.dK_dl(X))
+
+            elif param.startswith('f_'):
+                symbols = re.findall('[A-Z][a-z]?', param[2:])
+                dG = self.dG_dfAB(*symbols)
+                g.append(self.dK_dfAB(X, dG)
+            else:
+                raise NameError(f'Parameter name {param} not known')
+
+        return g
+
