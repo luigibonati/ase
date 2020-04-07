@@ -280,7 +280,6 @@ class BondExponential(SquaredExponential):
         self.G[2::3, 2::3] = g[:, :]
 
 
-
     def init_metric(self, symbols, interaction=None, normalize=True):
 
         # Number of atoms
@@ -290,7 +289,7 @@ class BondExponential(SquaredExponential):
         # Save symbol list:
         self.symbols = symbols
 
-        self.init_interaction(self, interaction)
+        self.init_interaction(interaction)
         self.set_metric()
 
         
