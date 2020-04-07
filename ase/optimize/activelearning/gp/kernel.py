@@ -1,6 +1,6 @@
 import numpy as np
 import numpy.linalg as la
-from itertools import product
+from itertools import product, combinations
 
 
 class Kernel():
