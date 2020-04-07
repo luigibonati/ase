@@ -236,7 +236,7 @@ class BondExponential(SquaredExponential):
             def interaction(x,y):
                 return 1.
 
-        if not hasattr(self, params):
+        if not hasattr(self, 'params'):
             self.params = {}
 
         for x, y in combinations(self.symbols,2):
