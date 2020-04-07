@@ -30,7 +30,11 @@ class GaussianProcess():
         else:
             self.prior = prior
 
-        self.hyperparams = {}
+        if hasattr(kernel, 'params'):
+            self.hyperparams = kernel.params.copy()
+        else:
+            self.hyperparams = {}
+
 
     def set_hyperparams(self, params, noise):
         """Set hyperparameters of the regression.
