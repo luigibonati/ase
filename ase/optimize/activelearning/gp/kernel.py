@@ -421,7 +421,7 @@ class BondExponential(SquaredExponential):
             elif param.startswith('f_'):
                 symbols = re.findall('[A-Z][a-z]?', param[2:])
                 dG = self.dG_dfAB(*symbols)
-                g.append(self.dK_dfAB(X, dG)
+                g.append(self.dK_dfAB(X, dG))
             else:
                 raise NameError(f'Parameter name {param} not known')
 
