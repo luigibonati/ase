@@ -258,19 +258,18 @@ class BondExponential(SquaredExponential):
         if output is None:
             raise NameError(f'Parameter {param_name} is not defined')
 
-        if hasattr(self, '_normalization'): 
-            return output/self._normalization
+        if self.normalize:
+            return output/self.N
         else:
             return output
 
     def set_metric(self):
 
         # 1. one-D metric g
-        N = len(self.symbols)
-        g = np.empty((N, N))
-        d = np.zeros(N)
+        g = np.empty((self.N, self.N))
+        d = np.zeros(self.N)
 
-        for i, j in product(range(N), range(N)):
+        for i, j in product(range(self.N), range(self.N)):
             if i==j:
                 continue
             a_ij =self.interaction(self.symbols[i], self.symbols[j])
@@ -279,7 +278,7 @@ class BondExponential(SquaredExponential):
         np.fill_diagonal(g, d)
 
         # 2. three-D metric G
-        self.G = np.zeros((3 * N, 3 * N))
+        self.G = np.zeros((3 * self.N, 3 * self.N))
         self.G[0::3, 0::3] = g[:, :]
         self.G[1::3, 1::3] = g[:, :]
         self.G[2::3, 2::3] = g[:, :]
@@ -288,8 +287,8 @@ class BondExponential(SquaredExponential):
     def init_metric(self, symbols, interaction=None, normalize=True):
 
         # Number of atoms
-        if normalize:
-            self._normalization = len(symbols)
+        self.normalize = normalize
+        self.N = len(symbols)
 
         # Save symbol list:
         self.symbols = symbols
@@ -350,9 +349,8 @@ class BondExponential(SquaredExponential):
         return -2 * (prefactor * (self.G - P) - P) / self.l**3
 
     def dG_dfAB(self, A, B):
-        N = len(self.symbols)
-        g = np.zeros((N,N))
-        d = np.zeros(N)
+        g = np.zeros((self.N, self.N))
+        d = np.zeros(self.N)
 
         def connected(C,D):
             if (C,D) == (A,B):
@@ -362,7 +360,7 @@ class BondExponential(SquaredExponential):
             else:
                 return 0.
         
-        for i, j in product(range(N), range(N)):
+        for i, j in product(range(self.N), range(self.N)):
             if i==j:
                 continue
             c = connected(self.symbols[i], self.symbols[j])
@@ -371,13 +369,13 @@ class BondExponential(SquaredExponential):
         np.fill_diagonal(g, d)
 
         # 3-D dG
-        dG = np.zeros((3 * N, 3 * N))
+        dG = np.zeros((3 * self.N, 3 * self.N))
         dG[0::3, 0::3] = g[:, :]
         dG[1::3, 1::3] = g[:, :]
         dG[2::3, 2::3] = g[:, :]
 
-        if hasattr(self, '_normalization'):
-            return dG/self._normalization
+        if self.normalize:
+            return dG/self.N
         else:
             return dG
 
@@ -385,12 +383,14 @@ class BondExponential(SquaredExponential):
     def dK_dfAB_matrix(self, x1, x2, dG):
         # basic
         tau = x1-x2
-        norm = np.sum(tau * np.dot(dG,tau))/(2*self.l**2)
+        Gtau = np.dot(self.G, tau)
+        dGtau = np.dot(dG,tau)
+        norm = np.sum(tau * dGtau)/(2*self.l**2)
         # j
         M = dG - norm*self.G
         j = np.dot(M,tau)/self.l**2
         # h
-        M2 = np.outer(np.dot(dG + M, tau), np.dot(self.G, tau))/self.l**2
+        M2 = np.outer(2*dGtau -norm*Gtau, Gtau)/self.l**2
         h = (M-M2)/self.l**2
 
         dK = np.empty((self.D+1,self.D+1))
