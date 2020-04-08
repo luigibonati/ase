@@ -250,11 +250,11 @@ class BondExponential(SquaredExponential):
 
     def interaction(self, x, y):
         '''Note: x and y must be atomic symbols '''
-        symbols = [x,y]
-        symbols.sort()
-        param_name = 'f_%s%s' % (symbols[0], symbols[1])
 
-        output = self.params[param_name]
+        try:
+            output = self.params['f_%s%s' % (x, y)]
+        except KeyError:
+            output = self.params['f_%s%s' % (y, x)]
 
         if self.normalize:
             return output/self.N
