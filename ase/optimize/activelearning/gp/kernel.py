@@ -252,7 +252,7 @@ class BondExponential(SquaredExponential):
         '''Note: x and y must be atomic symbols '''
         symbols = [x,y]
         symbols.sort()
-        param_name = 'f_{}{}'.format(*symbols)
+        param_name = 'f_%s%s' % (symbols[0], symbols[1])
 
         output = self.params.get(param_name, None)
         if output is None:
@@ -273,8 +273,9 @@ class BondExponential(SquaredExponential):
         for i, j in product(range(N), range(N)):
             if i==j:
                 continue
-            g[i, j] = - self.interaction(self.symbols[i], self.symbols[j])
-            d[i] += self.interaction(self.symbols[i], self.symbols[j])
+            a_ij =self.interaction(self.symbols[i], self.symbols[j])
+            g[i, j] = - a_ij
+            d[i] += a_ij
         np.fill_diagonal(g, d)
 
         # 2. three-D metric G
@@ -350,7 +351,7 @@ class BondExponential(SquaredExponential):
 
     def dG_dfAB(self, A, B):
         N = len(self.symbols)
-        g = np.empty((N,N))
+        g = np.zeros((N,N))
         d = np.zeros(N)
 
         def connected(C,D):
@@ -364,8 +365,9 @@ class BondExponential(SquaredExponential):
         for i, j in product(range(N), range(N)):
             if i==j:
                 continue
-            g[i, j] = - connected(self.symbols[i], self.symbols[j])
-            d[i] += connected(self.symbols[i], self.symbols[j])
+            c = connected(self.symbols[i], self.symbols[j])
+            g[i, j] = - c
+            d[i] += c
         np.fill_diagonal(g, d)
 
         # 3-D dG
