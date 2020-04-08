@@ -419,9 +419,17 @@ class BondExponential(SquaredExponential):
                g.append(self.dK_dl(X))
 
             elif param.startswith('f_'):
-                symbols = re.findall('[A-Z][a-z]?', param[2:])
-                dG = self.dG_dfAB(*symbols)
-                g.append(self.dK_dfAB(X, dG))
+                try:
+                    g.append(self.dK_dfAB(X, self.dG[param]))
+                except KeyError:
+                    symbols = re.findall('[A-Z][a-z]?', param[2:])
+                    self.dG[param] = self.dG_dfAB(*symbols)
+                    g.append(self.dK_dfAB(X, self.dG[param]))
+                except AttributeError:
+                    self.dG = {}
+                    symbols = re.findall('[A-Z][a-z]?', param[2:])
+                    self.dG[param] = self.dG_dfAB(*symbols)
+                    g.append(self.dK_dfAB(X, self.dG[param]))
             else:
                 raise NameError(f'Parameter name {param} not known')
 
