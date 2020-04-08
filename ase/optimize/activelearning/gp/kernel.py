@@ -383,7 +383,7 @@ class BondExponential(SquaredExponential):
     def dK_dfAB_matrix(self, x1, x2, dG):
         # basic
         tau = x1-x2
-        norm = np.dot(tau, np.dot(dG,tau))/(2*self.l**2)
+        norm = np.sum(tau * np.dot(dG,tau))/(2*self.l**2)
         # j
         M = dG - norm*self.G
         j = np.dot(M,tau)/self.l**2
@@ -397,7 +397,7 @@ class BondExponential(SquaredExponential):
         dK[0, 1:] = j
         dK[1:, 0] = -j
         dK[1:, 1:] = h
-        return dK
+        return dK*self.kernel_function(x1,x2)
 
     def dK_dfAB(self, X, dG):
         return np.block([[self.dK_dfAB_matrix(x1, x2, dG) for x2 in X] 
