@@ -254,9 +254,7 @@ class BondExponential(SquaredExponential):
         symbols.sort()
         param_name = 'f_%s%s' % (symbols[0], symbols[1])
 
-        output = self.params.get(param_name, None)
-        if output is None:
-            raise NameError(f'Parameter {param_name} is not defined')
+        output = self.params[param_name]
 
         if self.normalize:
             return output/self.N
