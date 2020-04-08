@@ -305,8 +305,7 @@ class BondExponential(SquaredExponential):
 
     def squared_distance(self, x1, x2):
         """ Returns the norm of x1-x2 using G/l**2 as metric tensor """
-
-        return np.dot(x1 - x2, np.dot(self.G, x1 - x2)) / self.l**2
+        return np.sum((x1 - x2) *np.dot(self.G, x1 - x2)) / self.l**2
 
     def kernel_function_gradient(self, x1, x2):
         """
