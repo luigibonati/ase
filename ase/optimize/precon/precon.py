@@ -510,14 +510,14 @@ class Precon(object):
         # use partial sums to compute separate mu for positions and cell DoFs
         self.mu = longsum(LHS[:3 * natoms]) / longsum(RHS[:3 * natoms])
         if self.mu < 1.0:
-            warnings.warn('mu (%.3f) < 1.0, capping at mu=1.0' % self.mu)
+            warnings.warn('estimate_mu(): mu (%.3f) < 1.0, capping at mu=1.0' % self.mu)
             self.mu = 1.0
 
         if isinstance(atoms, Filter):
             self.mu_c = longsum(LHS[3 * natoms:]) / longsum(RHS[3 * natoms:])
             if self.mu_c < 1.0:
                 print(
-                    'mu_c (%.3f) < 1.0, capping at mu_c=1.0' % self.mu_c)
+                    'estimate_mu(): mu_c (%.3f) < 1.0, capping at mu_c=1.0' % self.mu_c)
                 self.mu_c = 1.0
 
         print('estimate_mu(): mu=%r, mu_c=%r' % (self.mu, self.mu_c))
@@ -1141,3 +1141,33 @@ class Exp_FF(Exp, FF):
             #            (time.time() - start_time))
 
         return self.P
+
+
+def make_precon(precon):
+    """
+    Construct preconditioner from a string
+
+    Parameters
+    ----------
+    precon - one of 'C1', 'Exp', 'Pfrommer', 'FF', 'Exp_FF', 'ID'
+
+    Returns
+    -------
+    precon - instance of relevant subclass of `ase.optimize.precon.Precon`
+    """
+    if isinstance(precon, str):
+        if precon == 'C1':
+            precon = C1()
+        if precon == 'Exp':
+            precon = Exp()
+        elif precon == 'Pfrommer':
+            precon = Pfrommer()
+        elif precon == 'FF':
+            precon = FF()
+        elif precon == 'Exp_FF':
+            precon = Exp_FF()
+        elif precon == 'ID':
+            precon = None
+        else:
+            raise ValueError('Unknown preconditioner "{0}"'.format(precon))
+    return precon

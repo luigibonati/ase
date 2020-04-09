@@ -9,20 +9,18 @@ from ase.calculators.calculator import Calculator
 from ase.calculators.singlepoint import SinglePointCalculator
 from ase.io import read
 from ase.optimize import MDMin
+from ase.optimize.precon import make_precon
 from ase.geometry import find_mic
 from ase.io.trajectory import Trajectory
 from ase.utils import deprecated
 from ase.utils.forcecurve import fit_images
 from scipy.interpolate import interp1d
-from ase.utils import basestring
-
-from ase.optimize.precon import Exp, C1, Pfrommer
 
 class NEB:
     def __init__(self, images, k=0.1, fmax=0.05, climb=False, parallel=False,
                  remove_rotation_and_translation=False, world=None,
                  method='aseneb', dynamic_relaxation=False, scale_fmax=0.,
-                 precon=None, precon_update_tol=1e-3):
+                 precon=None):
         """Nudged elastic band.
 
         Paper I:
@@ -96,18 +94,7 @@ class NEB:
         self.nimages = len(images)
         self.emax = np.nan
 
-        if isinstance(precon, str):
-            if precon == 'C1':
-                precon = C1()
-            if precon == 'Exp':
-                precon = Exp()
-            elif precon == 'Pfrommer':
-                precon = Pfrommer()
-            elif precon == 'ID':
-                precon = None
-            else:
-                raise ValueError('Unknown preconditioner "{0}"'.format(precon))
-        self.precon = precon
+        self.precon = make_precon(precon)
         self._last_x = None
 
         self.remove_rotation_and_translation = remove_rotation_and_translation
@@ -224,11 +211,11 @@ class NEB:
             raise ValueError(msg)
 
         forces = np.empty((self.nimages - 2 , self.natoms, 3),  dtype=np.float)
-        if self.method == 'precon':
+        if self.precon is not None:
             precon_forces = np.empty(((self.nimages - 2), self.natoms, 3),
                                      dtype=np.float)
         energies = np.empty(self.nimages)
-        #x = np.empty(((self.nimages - 2), self.natoms, 3), dtype=np.float)
+        # x = np.empty(((self.nimages - 2), self.natoms, 3), dtype=np.float)
         x = np.empty((self.nimages - 2, self.natoms, 3), dtype=np.float)
 
         if self.remove_rotation_and_translation:
@@ -242,19 +229,18 @@ class NEB:
             # Do all images - one at a time:
             for i in range(1, self.nimages - 1):
                 energies[i] = images[i].get_potential_energy()
-                #forces[i - 1] = np.reshape(np.array(images[i].get_forces()), (len(forces[i-1]), 3))))   #This is the bit to be precon
                 forces[i-1] = images[i].get_forces()
-                #x[i - 1] = np.reshape(np.array(images[i].get_positions()), len(x[i-1]))
                 x[i-1] = images[i].get_positions()
                 if self.precon is not None:
-                    precon_forces[i - 1], _residual = self.precon.apply(forces[i - 1], images[i])
+                    pf_i, _residual = self.precon.apply(forces[i - 1], images[i])
+                    precon_forces[i - 1] = pf_i
 
         elif self.world.size == 1:
             def run(image, energies, forces):
                 energies[:] = image.get_potential_energy()
                 forces[:] = image.get_forces()
                 if self.precon is not None:
-                    precon_forces[:], _residual = self.precon.apply(forces, image)
+                    precon_forces[:], _resid = self.precon.apply(forces, image)
             threads = [threading.Thread(target=run,
                                         args=(images[i],
                                               energies[i:i + 1],
@@ -271,7 +257,8 @@ class NEB:
                 energies[i] = images[i].get_potential_energy()
                 forces[i - 1] = images[i].get_forces()
                 if self.method == 'precon':
-                    precon_forces[i - 1], _residual = precon(forces[i - 1], images[i])
+                    pf_i, _residual = self.precon.apply(forces[i - 1], images[i])
+                    precon_forces[i - 1] = pf_i
             except Exception:
                 # Make sure other images also fail:
                 error = self.world.sum(1.0)

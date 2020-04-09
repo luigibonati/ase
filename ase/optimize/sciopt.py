@@ -104,9 +104,9 @@ class SciPyOptimizer(Optimizer):
         if self.force_consistent is None:
             self.set_force_consistent()
         self.fmax = fmax
-        # As SciPy does not log the zeroth iteration, we do that manually
-        self.callback(None)
         try:
+            # As SciPy does not log the zeroth iteration, we do that manually
+            self.callback(None)
             # Scale the problem as SciPy uses I as initial Hessian.
             self.call_fmin(fmax / self.H0, steps)
         except Converged:

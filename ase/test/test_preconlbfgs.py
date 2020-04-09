@@ -3,21 +3,61 @@ import pytest
 
 from ase.build import bulk
 from ase.calculators.emt import EMT
-from ase.optimize.precon import Exp, PreconLBFGS, PreconFIRE
+from ase.optimize.precon import Exp, PreconLBFGS, make_precon
 from ase.constraints import FixBondLength, FixAtoms
 
-
-@pytest.mark.slow
-def test_preconlbfgs():
+@pytest.fixture
+def setup_atoms():
     N = 1
     a0 = bulk('Cu', cubic=True)
+    print(a0.cell)
     a0 *= (N, N, N)
 
     # perturb the atoms
     s = a0.get_scaled_positions()
     s[:, 0] *= 0.995
-    a0.set_scaled_positions(s)
+    #a0.set_scaled_positions(s)
+    a0.set_calculator(EMT())
+    return a0
 
+def fd_hessian(atoms, dx=1e-5, precon=None):
+    """
+    Finite difference hessian from Jacobian of forces
+    """
+    hess = np.zeros((3*len(atoms), 3*len(atoms)))
+    for i in range(len(atoms)):
+        for j in range(3):
+            atoms.positions[i, j] += dx
+            fp = atoms.get_forces().reshape(-1)
+            if precon is not None:
+                fp = precon.solve(fp)
+            atoms.positions[i, j] -= 2*dx
+            fm = atoms.get_forces().reshape(-1)
+            if precon is not None:
+                fm = precon.solve(fm)
+            atoms.positions[i, j] -= dx
+            hess[3*i + j, :] = -(fp - fm)/(2*dx)
+    print(hess.round(4))
+    return hess
+
+@pytest.mark.parametrize('precon', ['Exp'])
+@pytest.mark.filterwarnings('ignore:estimate_mu')
+def test_make_precon(precon, setup_atoms):
+    atoms = setup_atoms
+    P = make_precon(precon)
+    H0 = fd_hessian(atoms)
+    P.make_precon(atoms)
+    HP = fd_hessian(atoms, precon=P)
+
+    eig0 = np.linalg.eigvalsh(H0)
+    eigP = np.linalg.eigvalsh(HP)
+
+    print(np.linalg.cond(H0))
+    print(np.linalg.cond(HP))
+
+@pytest.mark.slow
+def test_preconlbfgs(setup_atoms):
+    a0 = setup_atoms
     nsteps = []
     energies = []
     for OPT in [PreconLBFGS, PreconFIRE]:
