@@ -80,6 +80,8 @@ class CLICommand:
         add('-s', '--summary-functions', metavar='SUMFUNCS', nargs='?',
             help="""Specify the summary functions. Possible values are `rmsd` and `dE`. Comma separate more than one summary function.""")
         add('--log-file', metavar='LOGFILE', help="print table to file")
+        add('--as-csv', action="store_true",
+                help="output table in csv format")
 
     @staticmethod
     def run(args, parser):
@@ -176,5 +178,5 @@ class CLICommand:
 
         for counter in range(natoms):
             table.title = header_fmt(counter)
-            output += table.make(atoms1[counter], atoms2[counter]) + '\n'
+            output += table.make(atoms1[counter], atoms2[counter],csv=args.csv) + '\n'
         print(output, file=out)

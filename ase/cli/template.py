@@ -3,6 +3,7 @@ from ase.io import string2index
 from ase.io.formats import parse_filename
 from ase.data import chemical_symbols
 import numpy as np
+from collections import defaultdict
 
 # default fields
 
@@ -262,7 +263,6 @@ class Table(object):
 
         self.fmt = self.make_fmt()
         self.title = title
-        self.header = self.make_header()
         self.toprule = toprule * self.tablewidth
         self.bottomrule = bottomrule * self.tablewidth
         self.midrule = midrule * self.tablewidth
@@ -291,8 +291,9 @@ class Table(object):
         fmt['el'] = self.fmt_class['conv']
         return fmt
 
-    def make(self, atoms1, atoms2):
-        body = self.make_body(atoms1, atoms2)
+    def make(self, atoms1, atoms2,csv=False):
+        self.header = self.make_header(csv=csv)
+        body = self.make_body(atoms1, atoms2,csv=csv)
         if self.max_lines is not None:
             body = body[:self.max_lines]
         summary = self.make_summary(atoms1, atoms2)
@@ -300,7 +301,9 @@ class Table(object):
         return '\n'.join([self.title, self.toprule, self.header,
                           self.midrule, body, self.bottomrule, summary])
 
-    def make_header(self):
+    def make_header(self, csv=False):
+        if csv:
+            return ','.join([header_alias(field) for field in self.fields])
         return self.formatter(
             self.fmt_class['str'] * self.nfields, *[header_alias(field) for field in self.fields])
 
@@ -308,13 +311,17 @@ class Table(object):
         return '\n'.join([summary_function(atoms1, atoms2)
                           for summary_function in self.summary_functions])
 
-    def make_body(self, atoms1, atoms2):
+    def make_body(self, atoms1, atoms2, csv = False):
         fdata = np.array([get_atoms_data(atoms1, atoms2, field)
                           for field in self.fields])
         sorting_array = prec_round(
             (np.array(self.scent)[:, np.newaxis] * fdata)[self.hier])
         data = fdata[:, np.lexsort(sorting_array)].transpose()
-        rowformat = ''.join([self.fmt[field] for field in self.fields])
+
+        if csv:
+            rowformat = ','.join(['{:h}' if field == 'el' else '{}' for field in self.fields])
+        else:
+            rowformat = ''.join([self.fmt[field] for field in self.fields])
         body = [self.formatter(rowformat, *row) for row in data]
         return '\n'.join(body)
 
