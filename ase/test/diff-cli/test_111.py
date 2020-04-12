@@ -1,4 +1,4 @@
-#1 traj file
+# 1 traj file
 def test_111(cli):
     from ase.build import fcc100, add_adsorbate
     from ase.constraints import FixAtoms, FixedPlane
@@ -13,7 +13,7 @@ def test_111(cli):
     plane = FixedPlane(-1, (1, 0, 0))
     slab.set_constraint([fixlayers, plane])
     slab.set_calculator(EMT())
-    qn = QuasiNewton(slab, trajectory='mep0.traj')
+    qn = QuasiNewton(slab, trajectory='mep111.traj')
     qn.run(fmax=0.02)
 
-    stdout = cli.ase('diff mep0.traj -c')
+    stdout = cli.ase('diff mep111.traj -c')

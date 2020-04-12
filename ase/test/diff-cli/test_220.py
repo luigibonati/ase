@@ -1,4 +1,5 @@
-#1 traj file
+# 1 traj file
+
 
 def test_220(cli):
     from ase.build import fcc100, add_adsorbate
@@ -20,4 +21,4 @@ def test_220(cli):
     qn = QuasiNewton(slab, trajectory='mepf.traj')
     qn.run(fmax=10.0)
 
-    stdout = cli.ase('diff mepi.traj mepf.traj -c')
+    stdout = cli.ase('diff mepi.traj@:1 mepf.traj@:1 -c')
