@@ -21,6 +21,10 @@ possible fields:
 *    dx,dy,dz,d: displacement/displacement components
 *    dfx,dfy,dfz,df: difference force/force components
 *    afx,afy,afz,af: average force/force components
+*    p1x,p1y,p1z,p: first image positions/position components
+*    p2x,p2y,p2z,p: second image positions/position components
+*    f1x,f1y,f1z,f: first image forces/force components
+*    f2x,f2y,f2z,f: second image forces/force components
 *    an: atomic number
 *    el: atomic element
 *    t: atom tag
@@ -34,11 +38,9 @@ class CLICommand:
 
     Supports taking differences between different calculation runs of
     the same system as well as neighboring geometric images for one
-    calculation run of a system. For those things which more than the
-    difference is valuable, such as the magnitude of force or energy,
-    the average magnitude between two images or the value for both
-    images is given. Given the difference and the average as x and y,
-    the two values can be calculated as x + y/2 and x - y/2.
+    calculation run of a system. As part of a difference table or as a
+    standalone display table, fields for non-difference quantities of image 1
+    and image 2 are also provided.
 
     See the --template-help for the formatting exposed in the CLI.  More
     customization requires changing the input arguments to the Table
@@ -54,6 +56,9 @@ class CLICommand:
                     * 2 non-trajectory files: difference between them
                     * 1 trajectory file: difference between consecutive images
                     * 2 trajectory files: difference between corresponding image numbers
+                    * 1 trajectory file followed by hyphen-minus (ASCII 45): for display
+
+                    Note deltas are defined as 2 - 1.
                     
                     Use [FILE]@[SLICE] to select images.
                     """,
@@ -134,32 +139,37 @@ class CLICommand:
         natoms1 = len(atoms1)
 
         if have_two_files:
-            file2 = args.file[1]
-            actual_filename, index = slice_split(file2)
-            atoms2 = read(actual_filename, index)
-            natoms2 = len(atoms2)
-
-            same_length = natoms1 == natoms2
-            one_l_one = natoms1 == 1 or natoms2 == 1
-
-            if not same_length and not one_l_one:
-                raise CLIError(
-                    "Trajectory files are not the same length and both > 1\n{}!={}".format(
-                        natoms1, natoms2))
-            elif not same_length and one_l_one:
-                print(
-                    """One file contains one image and the other multiple images,
-                    assuming you want to compare all images with one reference image""")
-                if natoms1 > natoms2:
-                    atoms2 = natoms1 * atoms2
-                else:
-                    atoms1 = natoms2 * atoms1
-
+            if args.file[1] == '-':
+                atoms2 = atoms1
                 def header_fmt(c):
-                    return 'sys-ref image # {}'.format(c)
+                    return 'image # {}'.format(c)
             else:
-                def header_fmt(c):
-                    return 'sys2-sys1 image # {}'.format(c)
+                file2 = args.file[1]
+                actual_filename, index = slice_split(file2)
+                atoms2 = read(actual_filename, index)
+                natoms2 = len(atoms2)
+
+                same_length = natoms1 == natoms2
+                one_l_one = natoms1 == 1 or natoms2 == 1
+
+                if not same_length and not one_l_one:
+                    raise CLIError(
+                        "Trajectory files are not the same length and both > 1\n{}!={}".format(
+                            natoms1, natoms2))
+                elif not same_length and one_l_one:
+                    print(
+                        """One file contains one image and the other multiple images,
+                        assuming you want to compare all images with one reference image""")
+                    if natoms1 > natoms2:
+                        atoms2 = natoms1 * atoms2
+                    else:
+                        atoms1 = natoms2 * atoms1
+
+                    def header_fmt(c):
+                        return 'sys-ref image # {}'.format(c)
+                else:
+                    def header_fmt(c):
+                        return 'sys2-sys1 image # {}'.format(c)
         else:
             atoms2 = atoms1.copy()
             atoms1 = atoms1[:-1]

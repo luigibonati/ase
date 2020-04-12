@@ -3,7 +3,6 @@ from ase.io import string2index
 from ase.io.formats import parse_filename
 from ase.data import chemical_symbols
 import numpy as np
-from collections import defaultdict
 
 # default fields
 
@@ -90,32 +89,39 @@ def get_data(atoms1, atoms2, field):
     else:
         rank_order = False
 
-    if 'd' == field[0]:
-        dpositions = atoms2.positions - atoms1.positions
-
-    if field == 'dx':
-        data = dpositions[:, 0]
-    elif field == 'dy':
-        data = dpositions[:, 1]
-    elif field == 'dz':
-        data = dpositions[:, 2]
-    elif field == 'd':
-        data = np.linalg.norm(dpositions, axis=1)
-    elif field == 't':
+    if field == 't':
         data = atoms1.get_tags()
     elif field == 'an':
         data = atoms1.numbers
-    if field == 'el':
+    elif field == 'el':
         data = np.array([sym2num[sym] for sym in atoms1.symbols])
     elif field == 'i':
         data = np.arange(len(atoms1))
+    else:
+        if field.startswith('d'):
+            y = atoms2.positions - atoms1.positions
+        elif field.startswith('p'):
+            if '1' == field[1]:
+                y = atoms1.positions
+            else:
+                y = atoms2.positions
+
+        if field.endswith('x'):
+            data = y[:,0]
+        elif field.endswith('y'):
+            data = y[:,1]
+        elif field.endswith('z'):
+            data = y[:,2]
+        else:
+            data = np.linalg.norm(y, axis=1)
+
     if rank_order:
         return sort2rank(np.argsort(-data))
 
     return data
 
 
-atoms_props = ['dx', 'dy', 'dz', 'd', 't', 'an', 'i', 'el']
+atoms_props = ['dx', 'dy', 'dz', 'd', 't', 'an', 'i', 'el', 'p1', 'p2', 'p1x', 'p1y', 'p1z', 'p2x', 'p2y', 'p2z']
 
 
 def get_atoms_data(atoms1, atoms2, field):
@@ -129,27 +135,25 @@ def get_atoms_data(atoms1, atoms2, field):
     else:
         rank_order = False
 
+    print(field)
     if 'd' == field[0]:
-        dforces = atoms2.get_forces() - atoms1.get_forces()
+        y = atoms2.get_forces() - atoms1.get_forces()
+    elif 'a' == field[0]:
+        y = (atoms2.get_forces() + atoms1.get_forces()) / 2
     else:
-        aforces = (atoms2.get_forces() + atoms1.get_forces()) / 2
+        if '1' == field[1]:
+            y = atoms1.get_forces()
+        else:
+            y = atoms2.get_forces()
 
-    if field == 'dfx':
-        data = dforces[:, 0]
-    elif field == 'dfy':
-        data = dforces[:, 1]
-    elif field == 'dfz':
-        data = dforces[:, 2]
-    elif field == 'df':
-        data = np.linalg.norm(dforces, axis=1)
-    elif field == 'afx':
-        data = aforces[:, 0]
-    elif field == 'afy':
-        data = aforces[:, 1]
-    elif field == 'afz':
-        data = aforces[:, 2]
-    elif field == 'af':
-        data = np.linalg.norm(aforces, axis=1)
+    if field.endswith('x'):
+        data = y[:,0]
+    elif field.endswith('y'):
+        data = y[:,1]
+    elif field.endswith('z'):
+        data = y[:,2]
+    else:
+        data = np.linalg.norm(y, axis=1)
 
     if rank_order:
         return sort2rank(np.argsort(-data))
@@ -278,10 +282,22 @@ class Table(object):
             'dfz',
             'afx',
             'afy',
-            'afz']
+            'afz',
+            'p1x',
+            'p2x',
+            'p1y',
+            'p2y',
+            'p1z',
+            'p2z',
+            'f1x',
+            'f2x',
+            'f1y',
+            'f2y',
+            'f1z',
+            'f2z']
         for sf in signed_floats:
             fmt[sf] = self.fmt_class['signed float']
-        unsigned_floats = ['d', 'df', 'af']
+        unsigned_floats = ['d', 'df', 'af','p1','p2','f1','f2']
         for usf in unsigned_floats:
             fmt[usf] = self.fmt_class['unsigned float']
         integers = ['i', 'an', 't'] + ['r' + sf for sf in signed_floats] + \
