@@ -1,5 +1,6 @@
 import sys
 from ase.io import read
+from ase.cli.main import CLIError
 
 template_help = """
 Without argument, looks for ~/.ase/template.py.  Otherwise,
@@ -107,7 +108,7 @@ class CLICommand:
             if not args.calculator_outputs:
                 for field_spec in field_specs:
                     if 'f' in field_spec:
-                        raise Exception(
+                        raise CLIError(
                             'field requiring calculation outputs without --calculator-outputs')
 
         if args.summary_functions is None:
@@ -121,7 +122,7 @@ class CLICommand:
             if not args.calculator_outputs:
                 for sf in summary_functions:
                     if sf == 'dE':
-                        raise Exception(
+                        raise CLIError(
                             'summary function requiring calculation outputs without --calculator-outputs')
             summary_functions = [summary_functions_dct[i]
                                  for i in summary_functions]
@@ -142,7 +143,7 @@ class CLICommand:
             one_l_one = natoms1 == 1 or natoms2 == 1
 
             if not same_length and not one_l_one:
-                raise Exception(
+                raise CLIError(
                     "Trajectory files are not the same length and both > 1\n{}!={}".format(
                         natoms1, natoms2))
             elif not same_length and one_l_one:
@@ -178,5 +179,5 @@ class CLICommand:
 
         for counter in range(natoms):
             table.title = header_fmt(counter)
-            output += table.make(atoms1[counter], atoms2[counter],csv=args.csv) + '\n'
+            output += table.make(atoms1[counter], atoms2[counter],csv=args.as_csv) + '\n'
         print(output, file=out)
