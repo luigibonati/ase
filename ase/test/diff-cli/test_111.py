@@ -16,5 +16,4 @@ def test_111(cli):
     qn = QuasiNewton(slab, trajectory='mep0.traj')
     qn.run(fmax=0.02)
 
-    stdout = cli.ase('ase diff mep0.traj -c')
-    assert('energy' in stdout.lower())
+    stdout = cli.ase('diff mep0.traj -c')

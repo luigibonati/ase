@@ -10,4 +10,4 @@ def test_202(cli):
     slab.positions+=random((len(slab),3))
     write('slab2.cif',[slab,slab,slab])
 
-    stdout = cli.ase('ase diff slab1.cif slab2.cif')
+    stdout = cli.ase('diff slab1.cif slab2.cif')

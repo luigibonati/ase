@@ -20,4 +20,4 @@ def test_220(cli):
     qn = QuasiNewton(slab, trajectory='mepf.traj')
     qn.run(fmax=10.0)
 
-    stdout = cli('ase diff mepi.traj mepf.traj -c')
+    stdout = cli.ase('diff mepi.traj mepf.traj -c')
