@@ -1,5 +1,5 @@
 import ase
-from typing import Optional, Mapping, Sequence, Union, Dict, Tuple, Any
+from typing import Mapping, Sequence, Union, Dict, Tuple, Any
 import numpy as np
 from ase.utils.arraywrapper import arraylike
 from ase.utils import pbc2pbc

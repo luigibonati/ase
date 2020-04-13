@@ -15,7 +15,6 @@ from typing import List, Sequence, Union
 
 import numpy as np
 
-import ase
 import ase.units as units
 from ase.atom import Atom
 from ase.cell import Cell
