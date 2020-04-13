@@ -95,12 +95,13 @@ class BravaisLattice(ABC):
         cell = self._cell(**self._parameters)
         return Cell(cell)
 
-    def get_transformation(self, cell) -> np.ndarray:
+    def get_transformation(self, cell, eps=1e-8) -> np.ndarray:
         # Get transformation matrix relating input cell to canonical cell
         T = cell.dot(np.linalg.pinv(self.tocell()))
         msg = 'This transformation changes the length/area/volume of the cell'
         assert np.isclose(np.abs(np.linalg.det(T[:self.ndim,
-                                                 :self.ndim])), 1), msg
+                                                 :self.ndim])), 1,
+                          atol=eps), msg
         return T
 
     def cellpar(self) -> np.ndarray:
@@ -1151,7 +1152,7 @@ def identify_lattice(cell, eps=2e-4, *, pbc=True):
         raise ValueError('System must be periodic either '
                          'along all three axes, '
                          'along two first axes or, '
-                         'along the thrid axis.  '
+                         'along the third axis.  '
                          'Got pbc={}'.format(pbc))
 
     from ase.geometry.bravais_type_engine import niggli_op_table
@@ -1428,7 +1429,7 @@ def get_2d_bravais_lattice(origcell, eps=2e-4, *, pbc=True):
                 lat = OBL(a, b, gamma)
                 rank = 1
 
-        op = lat.get_transformation(origcell)
+        op = lat.get_transformation(origcell, eps=eps)
         if not allclose(np.dot(op, lat.tocell())[pbc][:, pbc],
                         origcell.array[pbc][:, pbc]):
             msg = ('Cannot recognize cell at all somehow! {}, {}, {}'.
@@ -1442,7 +1443,7 @@ def get_2d_bravais_lattice(origcell, eps=2e-4, *, pbc=True):
     return finallat, finalop.T
 
 
-def all_variants():
+def all_variants(include_blunt_angles=True):
     """For testing and examples; yield all variants of all lattices."""
     a, b, c = 3., 4., 5.
     alpha = 55.0
@@ -1530,5 +1531,9 @@ def all_variants():
     yield CRECT(a, alpha=alpha)
     yield HEX2D(a)
     yield SQR(a)
-
     yield LINE(a)
+
+    if include_blunt_angles:
+        beta = 110
+        yield OBL(a, b, alpha=beta)
+        yield CRECT(a, alpha=beta)

@@ -55,7 +55,7 @@ class Symbols:
 
     """
     def __init__(self, numbers: np.ndarray) -> None:
-        self.numbers = numbers
+        self.numbers = np.asarray(numbers)
 
     @classmethod
     def fromsymbols(cls, symbols: Sequence[str]) -> 'Symbols':
@@ -134,7 +134,7 @@ class Symbols:
             formula = ''.join([chemical_symbols[n] for n in numbers])
         else:
             symbols = [chemical_symbols[Z] for Z in numbers]
-            f = Formula('', [(symbols, 1)])
+            f = Formula('', _tree=[(symbols, 1)])
             if empirical:
                 f, _ = f.reduce()
             if mode in {'hill', 'metal'}:
@@ -144,3 +144,10 @@ class Symbols:
                     "Use mode = 'all', 'reduce', 'hill' or 'metal'.")
 
         return formula
+
+    def search(self, symbols):
+        """Return the indices of elements with given symbol or symbols."""
+        numbers = set(symbols2numbers(symbols))
+        indices = [i for i, number in enumerate(self.numbers)
+                   if number in numbers]
+        return np.array(indices, int)

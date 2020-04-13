@@ -1,27 +1,14 @@
 import ase
-from typing import Optional, Mapping, Sequence, Union, Dict, Tuple
+from typing import Optional, Mapping, Sequence, Union, Dict, Tuple, Any
 import numpy as np
-from ase.utils import deprecated
 from ase.utils.arraywrapper import arraylike
 from ase.utils import pbc2pbc
 
 
 __all__ = ['Cell']
 
-PBC = Union[bool, Sequence[bool]]
 
-# We want to deprecate the pbc keyword for Cell.
-# If it defaults to None, then the user could pass None but we wouldn't
-# know.  So we have it default to a non-None placeholder object instead:
-deprecated_placeholder = object()
-deprecation_msg = 'Cell object will no longer have pbc'
-def warn_with_pbc(array, pbc):
-    if pbc is not deprecated_placeholder:
-        import warnings
-        warnings.warn(deprecation_msg, FutureWarning)
-    if pbc is None:
-        pbc = array.any(1)
-    return pbc
+PBC = Union[bool, Sequence[bool]]
 
 
 @arraylike
@@ -36,7 +23,7 @@ class Cell:
 
     ase_objtype = 'cell'  # For JSON'ing
 
-    def __init__(self, array, pbc=deprecated_placeholder):
+    def __init__(self, array):
         """Create cell.
 
         Parameters:
@@ -44,27 +31,9 @@ class Cell:
         array: 3x3 arraylike object
           The three cell vectors: cell[0], cell[1], and cell[2].
         """
-        array = np.asarray(array)
-        pbc = warn_with_pbc(array, pbc)
-        if pbc is deprecated_placeholder:
-            pbc = array.any(1)
-
+        array = np.asarray(array, dtype=float)
         assert array.shape == (3, 3)
-        assert array.dtype == float
-        assert pbc.shape == (3,)
-        assert pbc.dtype == bool
         self.array = array
-        self._pbc = pbc
-
-    @property
-    @deprecated(deprecation_msg)
-    def pbc(self):
-        return self._pbc
-
-    @pbc.setter
-    @deprecated(deprecation_msg)
-    def pbc(self, pbc):
-        self._pbc = pbc
 
     def cellpar(self, radians: bool = False) -> np.ndarray:
         """Get cell lengths and angles of this cell.
@@ -73,8 +42,8 @@ class Cell:
         from ase.geometry.cell import cell_to_cellpar
         return cell_to_cellpar(self.array, radians)
 
-    def todict(self) -> Dict[str, object]:
-        return dict(array=self.array, pbc=self._pbc)
+    def todict(self) -> Dict[str, Any]:
+        return dict(array=self.array)
 
     @classmethod
     def ascell(cls, cell):
@@ -86,7 +55,7 @@ class Cell:
         return cls.new(cell)
 
     @classmethod
-    def new(cls, cell=None, pbc=deprecated_placeholder):
+    def new(cls, cell=None):
         """Create new cell from any parameters.
 
         If cell is three numbers, assume three lengths with right angles.
@@ -109,26 +78,28 @@ class Cell:
             raise ValueError('Cell must be length 3 sequence, length 6 '
                              'sequence or 3x3 matrix!')
 
-        cellobj = cls(cell, pbc=pbc)
+        cellobj = cls(cell)
         return cellobj
 
     @classmethod
-    def fromcellpar(cls,
-                    cellpar: Sequence[float],
-                    ab_normal: Sequence[float] = (0.0, 0.0, 1.0),
-                    a_direction: Sequence[float] = None,
-                    pbc=deprecated_placeholder) -> 'Cell':
+    def fromcellpar(
+            cls,
+            cellpar: Sequence[float],
+            ab_normal: Sequence[float] = (0.0, 0.0, 1.0),
+            a_direction: Sequence[float] = None,
+    ) -> 'Cell':
         """Return new Cell from cell lengths and angles.
 
         See also :func:`~ase.geometry.cell.cellpar_to_cell()`."""
         from ase.geometry.cell import cellpar_to_cell
         cell = cellpar_to_cell(cellpar, ab_normal, a_direction)
-        return cls(cell, pbc=pbc)
+        return cls(cell)
 
-    def get_bravais_lattice(self,
-                            eps: float = 2e-4,
-                            *,
-                            pbc: PBC = True
+    def get_bravais_lattice(
+            self,
+            eps: float = 2e-4,
+            *,
+            pbc: PBC = True,
     ) -> 'ase.lattice.BravaisLattice':
         """Return :class:`~ase.lattice.BravaisLattice` for this cell:
 
@@ -233,13 +204,11 @@ class Cell:
         """Convert missing cell vectors into orthogonal unit vectors."""
         from ase.geometry.cell import complete_cell
         cell = Cell(complete_cell(self.array))
-        cell._pbc = self._pbc.copy()
         return cell
 
     def copy(self) -> 'Cell':
         """Return a copy of this cell."""
         cell = Cell(self.array.copy())
-        cell._pbc = self._pbc.copy()
         return cell
 
     @property
@@ -264,13 +233,13 @@ class Cell:
         """Return an array with the three angles alpha, beta, and gamma."""
         return self.cellpar()[3:].copy()
 
-    def __array__(self, dtype=float):
+    def __array__(self, dtype=float) -> np.ndarray:
         if dtype != float:
             raise ValueError('Cannot convert cell to array of type {}'
                              .format(dtype))
         return self.array
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return bool(self.any())  # need to convert from np.bool_
 
     __nonzero__ = __bool__
@@ -298,13 +267,13 @@ class Cell:
         """Calculate Cartesian positions from scaled positions."""
         return scaled_positions @ self.complete()
 
-    def reciprocal(self):
+    def reciprocal(self) -> 'Cell':
         """Get reciprocal lattice as a 3x3 array.
 
         Does not include factor of 2 pi."""
-        return np.linalg.pinv(self).transpose()
+        return Cell(np.linalg.pinv(self).transpose())
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         if self.orthorhombic:
             numbers = self.lengths().tolist()
         else:
@@ -319,7 +288,6 @@ class Cell:
         from ase.build.tools import niggli_reduce_cell
         cell, op = niggli_reduce_cell(self, epsfactor=eps)
         result = Cell(cell)
-        result._pbc = self._pbc.copy()
         return result, op
 
     def minkowski_reduce(self) -> Tuple['Cell', np.ndarray]:
@@ -327,16 +295,14 @@ class Cell:
 
         See also :func:`ase.geometry.minkowski_reduction.minkowski_reduce`."""
         from ase.geometry.minkowski_reduction import minkowski_reduce
-        cell, op = minkowski_reduce(self, self.any(1) & pbc2pbc(self._pbc))
+        cell, op = minkowski_reduce(self, self.any(1))
         result = Cell(cell)
-        result._pbc = self._pbc.copy()
         return result, op
 
     def permute_axes(self, permutation: Sequence[int]) -> 'Cell':
         """Permute axes of cell."""
         assert (np.sort(permutation) == np.arange(3)).all()
         permuted = Cell(self[permutation][:, permutation])
-        permuted._pbc = self._pbc[permutation]
         return permuted
 
     def standard_form(self) -> Tuple['Cell', np.ndarray]:

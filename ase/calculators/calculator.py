@@ -2,11 +2,15 @@ import os
 import copy
 import subprocess
 from math import pi, sqrt
+import pathlib
+from typing import Union
 
 import numpy as np
 
+from ase.cell import Cell
+from ase.dft.kpoints import monkhorst_pack
+from ase.outputs import Properties, all_outputs
 from ase.utils import jsonable
-from ase.dft.kpoints import bandpath, monkhorst_pack
 
 
 class CalculatorError(RuntimeError):
@@ -81,7 +85,7 @@ def compare_atoms(atoms1, atoms2, tol=1e-15, excluded_properties=None):
 
         properties_to_check = set(all_changes)
         if excluded_properties:
-             properties_to_check -= set(excluded_properties)
+            properties_to_check -= set(excluded_properties)
 
         # Check properties that aren't in Atoms.arrays but are attributes of
         # Atoms objects
@@ -121,10 +125,10 @@ all_changes = ['positions', 'numbers', 'cell', 'pbc',
 # Recognized names of calculators sorted alphabetically:
 names = ['abinit', 'ace', 'aims', 'amber', 'asap', 'castep', 'cp2k',
          'crystal', 'demon', 'demonnano', 'dftb', 'dftd3', 'dmol', 'eam', 'elk',
-         'emt', 'espresso', 'exciting', 'ff', 'fleur', 'gaussian',
-         'gpaw', 'gromacs', 'gulp', 'hotbit', 'jacapo', 'kim',
+         'emt', 'espresso', 'exciting', 'ff', 'fleur', 'gamess_us', 'gaussian',
+         'gpaw', 'gromacs', 'gulp', 'hotbit', 'kim',
          'lammpslib', 'lammpsrun', 'lj', 'mopac', 'morse', 'nwchem',
-         'octopus', 'onetep', 'openmx', 'psi4', 'qchem', 'siesta',
+         'octopus', 'onetep', 'openmx', 'orca', 'psi4', 'qchem', 'siesta',
          'tip3p', 'tip4p', 'turbomole', 'vasp']
 
 
@@ -138,6 +142,7 @@ special = {'cp2k': 'CP2K',
            'crystal': 'CRYSTAL',
            'ff': 'ForceField',
            'fleur': 'FLEUR',
+           'gamess_us': 'GAMESSUS',
            'gulp': 'GULP',
            'kim': 'KIM',
            'lammpsrun': 'LAMMPS',
@@ -147,6 +152,7 @@ special = {'cp2k': 'CP2K',
            'morse': 'MorsePotential',
            'nwchem': 'NWChem',
            'openmx': 'OpenMX',
+           'orca': 'ORCA',
            'qchem': 'QChem',
            'tip3p': 'TIP3P',
            'tip4p': 'TIP4P'}
@@ -322,8 +328,8 @@ def kpts2kpts(kpts, atoms=None):
         if 'kpts' in kpts:
             return KPoints(kpts['kpts'])
         if 'path' in kpts:
-            path = bandpath(cell=atoms.cell, **kpts)
-            return path
+            cell = Cell.ascell(atoms.cell)
+            return cell.bandpath(pbc=atoms.pbc, **kpts)
         size, offsets = kpts2sizeandoffsets(atoms=atoms, **kpts)
         return KPoints(monkhorst_pack(size) + offsets)
 
@@ -437,6 +443,14 @@ class Calculator(object):
     default_parameters = {}
     'Default parameters'
 
+    ignored_changes = set()
+    'Properties of Atoms which we ignore for the purposes of cache '
+    'invalidation with check_state().'
+
+    discard_results_on_any_change = False
+    'Whether we purge the results following any change in the set() method.  '
+    'Most (file I/O) calculators will probably want this.'
+
     def __init__(self, restart=None, ignore_bad_restart_file=False, label=None,
                  atoms=None, directory='.', **kwargs):
         """Basic calculator implementation.
@@ -447,7 +461,7 @@ class Calculator(object):
         ignore_bad_restart_file: bool
             Ignore broken or missing restart file.  By default, it is an
             error if the restart file is missing or broken.
-        directory: str
+        directory: str or PurePath
             Working directory in which to read and write files and
             perform calculations.
         label: str
@@ -462,6 +476,7 @@ class Calculator(object):
         self.atoms = None  # copy of atoms object from last calculation
         self.results = {}  # calculated properties (energy, forces, ...)
         self.parameters = None  # calculational parameters
+        self._directory = None  # Initialize
 
         if restart is not None:
             try:
@@ -475,12 +490,12 @@ class Calculator(object):
         self.directory = directory
         self.prefix = None
         if label is not None:
-            if directory != '.' and '/' in label:
+            if self.directory != '.' and '/' in label:
                 raise ValueError('Directory redundantly specified though '
                                  'directory="{}" and label="{}".  '
                                  'Please omit "/" in label.'
-                                 .format(directory, label))
-            self.set_label(label)
+                                 .format(self.directory, label))
+            self.label = '/'.join((self.directory, label))
 
         if self.parameters is None:
             # Use default parameters if they were not read from file:
@@ -500,6 +515,15 @@ class Calculator(object):
 
         if not hasattr(self, 'name'):
             self.name = self.__class__.__name__.lower()
+
+    @property
+    def directory(self) -> str:
+        return self._directory
+
+    @directory.setter
+    def directory(self, directory: Union[str, pathlib.PurePath]):
+        # Normalize path
+        self._directory = str(pathlib.Path(directory))
 
     @property
     def label(self):
@@ -631,11 +655,14 @@ class Calculator(object):
                 changed_parameters[key] = value
                 self.parameters[key] = value
 
+        if self.discard_results_on_any_change and changed_parameters:
+            self.reset()
         return changed_parameters
 
     def check_state(self, atoms, tol=1e-15):
         """Check for any system changes since last calculation."""
-        return compare_atoms(self.atoms, atoms, tol)
+        return compare_atoms(self.atoms, atoms, tol=tol,
+                             excluded_properties=set(self.ignored_changes))
 
     def get_potential_energy(self, atoms=None, force_consistent=False):
         energy = self.get_property('energy', atoms)
@@ -815,6 +842,25 @@ class Calculator(object):
         # the user would have to override this by providing the Fermi level
         # from the selfconsistent calculation.
         return get_band_structure(calc=self)
+
+    def calculate_properties(self, atoms, properties):
+        """This method is experimental; currently for internal use."""
+        for name in properties:
+            if name not in all_outputs:
+                raise ValueError(f'No such property: {name}')
+
+        # We ignore system changes for now.
+        self.calculate(atoms, properties, system_changes=all_changes)
+
+        props = self.export_properties()
+
+        for name in properties:
+            if name not in props:
+                raise PropertyNotPresent(name)
+        return props
+
+    def export_properties(self):
+        return Properties(self.results)
 
 
 class FileIOCalculator(Calculator):
