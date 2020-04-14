@@ -430,7 +430,7 @@ class BondExponential(SquaredExponential):
                     symbols = re.findall('[A-Z][a-z]?', param[2:])
                     self.dG[param] = self.dG_dfAB(*symbols)
                     dK_df = self.dK_dfAB(X, self.dG[param])
-            g.append(-2 / self.params[param]** 3 * dK_df)
+                g.append(-2 / self.params[param]** 3 * dK_df)
             
             else:
                 raise NameError(f'Parameter name {param} not known')
