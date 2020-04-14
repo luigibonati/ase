@@ -243,18 +243,18 @@ class BondExponential(SquaredExponential):
         for x, y in combinations(self.symbols,2):
             symbols = [x,y]
             symbols.sort()
-            param_name = 'f_{}{}'.format(*symbols)
+            param_name = 'l_{}{}'.format(*symbols)
             if param_name in self.params:
                 continue
-            self.params[param_name] = interaction(x,y)
+            self.params[param_name] = 1/np.sqrt(interaction(x,y))
 
     def interaction(self, x, y):
         '''Note: x and y must be atomic symbols '''
 
         try:
-            output = self.params['f_%s%s' % (x, y)]
+            output = 1./self.params['l_%s%s' % (x, y)]**2
         except KeyError:
-            output = self.params['f_%s%s' % (y, x)]
+            output = 1./self.params['l_%s%s' % (y, x)]**2
 
         if self.normalize:
             return output/self.N
@@ -420,16 +420,18 @@ class BondExponential(SquaredExponential):
 
             elif param.startswith('f_'):
                 try:
-                    g.append(self.dK_dfAB(X, self.dG[param]))
+                    dK_df = self.dK_dfAB(X, self.dG[param])
                 except KeyError:
                     symbols = re.findall('[A-Z][a-z]?', param[2:])
                     self.dG[param] = self.dG_dfAB(*symbols)
-                    g.append(self.dK_dfAB(X, self.dG[param]))
+                    dK_df = self.dK_dfAB(X, self.dG[param])
                 except AttributeError:
                     self.dG = {}
                     symbols = re.findall('[A-Z][a-z]?', param[2:])
                     self.dG[param] = self.dG_dfAB(*symbols)
-                    g.append(self.dK_dfAB(X, self.dG[param]))
+                    dK_df = self.dK_dfAB(X, self.dG[param])
+            g.append(-2 / self.params[param]** 3 * dK_df)
+            
             else:
                 raise NameError(f'Parameter name {param} not known')
 
