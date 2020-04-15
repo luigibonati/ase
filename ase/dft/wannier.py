@@ -4,6 +4,7 @@
     using the spread functional of Marzari and Vanderbilt
     (PRB 56, 1997 page 12847).
 """
+import os
 import warnings
 import functools
 from time import time
@@ -213,14 +214,22 @@ def rotation_from_projection(proj_nw, fixed, ortho=True):
     U_ww = np.empty((Nw, Nw), dtype=proj_nw.dtype)
     U_ww[:M] = proj_nw[:M]
 
-    # choose method between ['unk', 'svd', 'qrcp']
+    # choose method between ['std', 'svd', 'qrcp']
     # it could become an argument for the function
-    method = 'unk'
+    # NOTE: for now this is a dirty workaround not to touch the GPAW code and
+    #  still be able to change the projection method from a job script.
+    method = 'std'
+    if 'ASE_WAN_PROJ' in os.environ:
+        env = os.environ['ASE_WAN_PROJ']
+        if env == 'qrcp':
+            method = env
+        elif env == 'svd':
+            method = env
 
     # If there are extra degrees of freedom we have to select L of them
     if L > 0:
         C_ul = np.empty((U, L), dtype=proj_nw.dtype)
-        if method == 'unk':
+        if method == 'std':
             # Unknown method, very similar to SVD
             #  but the results slightly differ
             proj_uw = proj_nw[M:]
