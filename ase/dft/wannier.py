@@ -11,6 +11,7 @@ from time import time
 from math import sqrt, pi
 from pickle import dump, load
 from scipy.special import erf
+from scipy.linalg import qr
 
 import numpy as np
 
@@ -254,9 +255,7 @@ def rotation_from_projection(proj_nw, fixed, ortho=True):
             U_ww[M:] = np.dot(dag(C_ul), proj_uw)
 
         elif method == 'qrcp':
-            # QRCP implemetation, also called SCDM in the literature
-            from scipy.linalg import qr
-
+            # QRCP implemetation, keep the columns based on the permutation
             proj_uw = proj_nw[M:]
             C_ww = np.dot(dag(proj_uw), proj_uw)
             Q, R, P = qr(C_ww, mode='full', pivoting=True, check_finite=True)
@@ -279,6 +278,54 @@ def rotation_from_projection(proj_nw, fixed, ortho=True):
         normalize(U_ww)
 
     return U_ww, C_ul
+
+
+def scdm(calc, Nw, fixed_k, h=0.05, verbose=True):
+    """Compute localized orbitals with SCDM method
+
+    This method was published by Anil Damle and Lin Lin in Multiscale
+    Modeling & Simulation 16, 1392–1410 (2018).
+    For now only the isolated bands algorithm is implemented, because it is
+    intended as a drop-in replacement for other initial guess methods for
+    the ASE Wannier class.
+
+    calc   = GPAW calculator object
+    h      = Grid density used by PS2AE
+    Nk (k) = Number of k-points
+    Nb (n) = Number of bands
+    Nw (w) = Number of wannier functions
+    M  (f) = Number of fixed states (fixed_k)
+    L  (l) = Number of extra degrees of freedom
+    U  (u) = Number of non-fixed states
+    """
+    from gpaw.utilities.ps2ae import PS2AE
+
+    Nb = calc.get_number_of_bands()
+    Nk = len(calc.get_bz_k_points())
+    U_kww = []
+    C_kul = []
+
+    # get the all electron wave functions with PAW corrections
+    ae = PS2AE(calc=calc, h=h)
+    # get grid size and check that we have Nw bands at once
+    Ng = np.size(ae.get_wave_function(Nw))
+    ae_wfs = np.zeros((Nb, Ng), dtype=np.complex128)
+    for k in range(Nk):
+        for n in range(Nb):
+            ae_wfs[n] = ae.get_wave_function(n, k=k, ae=True).ravel()
+
+        Q, R, P = qr(ae_wfs, mode='full',
+                     pivoting=True, check_finite=True)
+        A_nw = ae_wfs[:, P[:Nw]]
+        U_ww, C_ul = rotation_from_projection(proj_nw=A_nw,
+                                              fixed=fixed_k[k],
+                                              ortho=True)
+        U_kww.append(U_ww)
+        C_kul.append(C_ul)
+
+    U_kww = np.asarray(U_kww)
+
+    return C_kul, U_kww
 
 
 class Wannier:
@@ -335,7 +382,8 @@ class Wannier:
           ``initialwannier``: Initial guess for Wannier rotation matrix.
             Can be 'bloch' to start from the Bloch states, 'random' to be
             randomized, 'gaussians' to start from randomly placed gaussian
-            centers, or a list passed to calc.get_initial_wannier.
+            centers, 'scdm' to start from localized state selected with SCDM
+            or a list passed to calc.get_initial_wannier.
 
           ``functional``: The functional used to measure the localization.
             Can be 'std' for the standard quadratic functional from the PRB
@@ -495,6 +543,11 @@ class Wannier:
             self.C_kul, self.U_kww = self.calc.initial_wannier(
                 centers, self.kptgrid, self.fixedstates_k,
                 self.edf_k, self.spin, self.nbands)
+        elif initialwannier == 'scdm':
+            self.C_kul, self.U_kww = scdm(calc=self.calc,
+                                          Nw=self.nwannier,
+                                          fixed_k=self.fixedstates_k,
+                                          verbose=self.verbose)
         else:
             # Use initial guess to determine U and C
             self.C_kul, self.U_kww = self.calc.initial_wannier(
