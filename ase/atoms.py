@@ -1044,6 +1044,10 @@ class Atoms(object):
         """Append atom to end."""
         self.extend(self.__class__([atom]))
 
+    def __iter__(self):
+        for i in range(len(self)):
+            yield self[i]
+
     def __getitem__(self, i):
         """Return a subset of the atoms.
 
@@ -1178,8 +1182,8 @@ class Atoms(object):
         atoms *= rep
         return atoms
 
-    def __mul__(self, m: Union[int, Sequence[int]]) -> 'Atoms':
-        return self.repeat(m)
+    def __mul__(self, rep: Union[int, Sequence[int]]) -> 'Atoms':
+        return self.repeat(rep)
 
     def translate(self, displacement: Sequence[float]) -> None:
         """Translate atomic positions.
@@ -1946,8 +1950,6 @@ class Atoms(object):
             return eq
         else:
             return not eq
-
-    __hash__ = None
 
     def get_volume(self):
         """Get volume of unit cell."""
