@@ -67,7 +67,7 @@ class ResonantRamanCalculator(RamanCalculator):
             ov_ij = int dr displaced*_i(r) eqilibrium_j(r)
             """
             self.timer.start('Overlap')
-            ov_nn = self.overlap(self.atoms.get_calculator(),
+            ov_nn = self.overlap(self.atoms.calc,
                                  self.eq_calculator)
             if world.rank == 0:
                 np.save(filename + '.ov', ov_nn)
@@ -85,7 +85,7 @@ class ResonantRamanCalculator(RamanCalculator):
         if self.overlap:
             # XXXX stupid way to make a copy
             self.atoms.get_potential_energy()
-            self.eq_calculator = self.atoms.get_calculator()
+            self.eq_calculator = self.atoms.calc
             fname = self.exname + '.eq.gpw'
             self.eq_calculator.write(fname, 'all')
             self.eq_calculator = self.eq_calculator.__class__.read(fname)
