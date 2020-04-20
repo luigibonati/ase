@@ -37,11 +37,11 @@ class BEEFEnsemble:
             self.xc = xc
             self.verbose = verbose
             self.done = False
-            if self.xc in ['BEEF-vdW', 'BEEF', 'PBE']:
+            if self.xc.upper() in ['BEEF-VDW', 'BEEF', 'PBE']:
                 self.beef_type = 'beefvdw'
-            elif self.xc == 'mBEEF':
+            elif self.xc.upper() == 'MBEEF':
                 self.beef_type = 'mbeef'
-            elif self.xc == 'mBEEF-vdW':
+            elif self.xc.upper() == 'MBEEF-VDW':
                 self.beef_type = 'mbeefvdw'
             else:
                 raise NotImplementedError('No ensemble for xc = %s' % self.xc)

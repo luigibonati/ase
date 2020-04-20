@@ -23,18 +23,19 @@ quantified by calculating the ensemble standard deviation.
 
 Below is an example which calculates the BEEF-vdW binding energy of molecular
 H\ :sub:`2` (E_bind), as well as an ensemble estimate of the binding energy error
-(dE_bind). The example requires the GPAW_ calculator.
+(dE_bind). The example requires the GPAW_ calculator (or the VASP calcualtor).
 
 .. _GPAW: https://wiki.fysik.dtu.dk/gpaw
 
->>> from ase import *
+>>> from ase import Atoms
 >>> from gpaw import GPAW
+>>> # from ase.calculators.vasp import Vasp
 >>> from ase.dft.bee import BEEFEnsemble
->>> xc = 'BEEF-vdW'
->>> h2 = Atoms('H2',[[0.,0.,0.],[0.,0.,0.75]])
+>>> h2 = Atoms('H2', [[0., 0., 0.], [0., 0., 0.75]])
 >>> h2.center(vacuum=3)
 >>> cell = h2.get_cell()
->>> calc = GPAW(xc=xc)
+>>> calc = GPAW(xc='BEEF-vdW')
+>>> # calc = Vasp(xc='beef-vdw', lbeefens=True)
 >>> h2.set_calculator(calc)
 >>> e_h2 = h2.get_potential_energy()
 >>> ens = BEEFEnsemble(calc)
@@ -43,14 +44,17 @@ H\ :sub:`2` (E_bind), as well as an ensemble estimate of the binding energy erro
 >>> h = Atoms('H')
 >>> h.set_cell(cell)
 >>> h.center()
->>> calc = GPAW(xc=xc)
+>>> calc = GPAW(xc='BEEF-vdW')
+>>> # calc = Vasp(xc='beef-vdw', lbeefens=True)
 >>> h.set_calculator(calc)
 >>> e_h = h.get_potential_energy()
 >>> ens = BEEFEnsemble(calc)
 >>> de_h = ens.get_ensemble_energies()
->>> E_bind = 2*e_h - e_h2
->>> dE_bind = 2*de_h[:] - de_h2[:]
+>>> E_bind = 2 * e_h - e_h2
+>>> dE_bind = 2 * de_h[:] - de_h2[:]
 >>> dE_bind = dE_bind.std()
+>>> print('Binding energy: %s +- %s' % (E_bind, dE_bind))
+
 
 The default number of ensemble XC functionals is 2000, for which
 well-converged error estimates should be ensured. Therefore, "de_h2" and
