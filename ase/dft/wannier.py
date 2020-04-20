@@ -127,7 +127,7 @@ def md_min(func, step=.25, tolerance=1e-6, max_iter=10000,
            verbose=False, **kwargs):
     if verbose:
         print('Localize with step =', step, 'and tolerance =', tolerance)
-        t = -time()
+    t = -time()
     fvalueold = 0.
     fvalue = fvalueold + 10
     count = 0
@@ -301,7 +301,9 @@ def scdm(calc, Nw, fixed_k, h=0.05, verbose=True):
     from gpaw.utilities.ps2ae import PS2AE
 
     Nb = calc.get_number_of_bands()
-    Nk = len(calc.get_bz_k_points())
+    kpts = calc.get_bz_k_points()
+    gamma_idx = [i.all() for i in kpts == 0].index(True)
+    Nk = len(kpts)
     U_kww = []
     C_kul = []
 
@@ -310,12 +312,17 @@ def scdm(calc, Nw, fixed_k, h=0.05, verbose=True):
     # get grid size and check that we have Nw bands at once
     Ng = np.size(ae.get_wave_function(Nw))
     ae_wfs = np.zeros((Nb, Ng), dtype=np.complex128)
+
+    # compute factorization just at Gamma point
+    for n in range(Nb):
+        ae_wfs[n] = ae.get_wave_function(n, k=gamma_idx, ae=True).ravel()
+
+    Q, R, P = qr(ae_wfs, mode='full', pivoting=True, check_finite=True)
+
     for k in range(Nk):
         for n in range(Nb):
             ae_wfs[n] = ae.get_wave_function(n, k=k, ae=True).ravel()
 
-        Q, R, P = qr(ae_wfs, mode='full',
-                     pivoting=True, check_finite=True)
         A_nw = ae_wfs[:, P[:Nw]]
         U_ww, C_ul = rotation_from_projection(proj_nw=A_nw,
                                               fixed=fixed_k[k],
