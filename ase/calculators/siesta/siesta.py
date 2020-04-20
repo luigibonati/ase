@@ -187,14 +187,14 @@ class Siesta(FileIOCalculator):
 
     name = 'siesta'
     command = 'siesta < PREFIX.fdf > PREFIX.out'
-    implemented_properties = (
+    implemented_properties = [
         'energy',
         'forces',
         'stress',
         'dipole',
         'eigenvalues',
         'density',
-        'fermi_energy')
+        'fermi_energy']
 
     # Dictionary of valid input vaiables.
     default_parameters = SiestaParameters()
@@ -359,6 +359,12 @@ class Siesta(FileIOCalculator):
                 -kwargs  : Dictionary containing the keywords defined in
                            SiestaParameters.
         """
+
+        # XXX Inserted these next few lines because set() would otherwise
+        # discard all previously set keywords to their defaults!  --askhl
+        current = self.parameters.copy()
+        current.update(kwargs)
+        kwargs = current
 
         # Find not allowed keys.
         default_keys = list(self.__class__.default_parameters)
@@ -810,7 +816,7 @@ class Siesta(FileIOCalculator):
         """
         species, species_numbers = self.species(atoms)
 
-        if not self['pseudo_path'] is None:
+        if self['pseudo_path'] is not None:
             pseudo_path = self['pseudo_path']
         elif 'SIESTA_PP_PATH' in os.environ:
             pseudo_path = os.environ['SIESTA_PP_PATH']
@@ -1298,7 +1304,7 @@ class Siesta(FileIOCalculator):
                         'DM.NumberPulay': 4,
                         'XML.Write': True})
 
-        Na8.set_calculator(siesta)
+        Na8.calc = siesta
         e = Na8.get_potential_energy()
         freq, pol = siesta.get_polarizability_pyscf_inter(
             label="siesta",
@@ -1478,7 +1484,7 @@ class Siesta(FileIOCalculator):
                 'XML.Write': True})
 
 
-        Na8.set_calculator(siesta)
+        Na8.calc = siesta
         e = Na8.get_potential_energy()
         tddft = siesta.pyscf_tddft_eels(
             label="siesta", jcutoff=7, iter_broadening=0.15/Ha,
@@ -1654,7 +1660,7 @@ class Siesta(FileIOCalculator):
                     'gwa_initialization':'SIESTA_PB'}
 
 
-        Na8.set_calculator(siesta)
+        Na8.calc = siesta
         e = Na8.get_potential_energy() #run siesta
         freq, pol = siesta.get_polarizability_siesta(mbpt_inp,
                                                      format_output='txt',

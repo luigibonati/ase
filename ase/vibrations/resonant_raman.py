@@ -28,7 +28,7 @@ class ResonantRamanCalculator(RamanCalculator):
         exkwargs: dict
             Arguments given to the ExcitationsCalculator object
         exext: string
-            Extension for filenames of Excitation lists (results of 
+            Extension for filenames of Excitation lists (results of
             the ExcitationsCalculator).
         overlap : function or False
             Function to calculate overlaps between excitation at
@@ -62,11 +62,11 @@ class ResonantRamanCalculator(RamanCalculator):
             pickle.dump(forces, fd, protocol=2)
             fd.close()
         if self.overlap:
-            self.timer.start('Overlap')
             """Overlap is determined as
 
             ov_ij = int dr displaced*_i(r) eqilibrium_j(r)
             """
+            self.timer.start('Overlap')
             ov_nn = self.overlap(self.atoms.get_calculator(),
                                  self.eq_calculator)
             if world.rank == 0:
@@ -117,7 +117,7 @@ class ResonantRaman(Raman):
             Type of the excitation list object. The class object is
             initialized as::
 
-                Excitations(atoms.get_calculator())
+                Excitations(atoms.calc)
 
             or by reading form a file as::
 

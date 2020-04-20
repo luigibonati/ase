@@ -27,19 +27,18 @@ import numpy as np
 import subprocess
 from contextlib import contextmanager
 from warnings import warn
+from typing import Dict, Any
 
 import ase
 from ase.io import read, jsonio
 from ase.utils import PurePath
-
 from ase.calculators.calculator import (Calculator, ReadError,
                                         all_changes, CalculatorSetupError,
                                         CalculationFailed)
-
 from ase.calculators.vasp.create_input import GenerateVaspInput
 
 
-class Vasp2(GenerateVaspInput, Calculator):
+class Vasp2(GenerateVaspInput, Calculator):  # type: ignore
     """ASE interface for the Vienna Ab initio Simulation Package (VASP),
     with the Calculator interface.
 
@@ -75,8 +74,8 @@ class Vasp2(GenerateVaspInput, Calculator):
 
                 - Examples:
 
-                    >>> Vasp2(label='mylabel', txt='vasp.out') # Redirect stdout to :file:`vasp.out`
-                    >>> Vasp2(txt='myfile.txt') # Redirect stdout to :file:`myfile.txt`
+                    >>> Vasp2(label='mylabel', txt='vasp.out') # Redirect stdout
+                    >>> Vasp2(txt='myfile.txt') # Redirect stdout
                     >>> Vasp2(txt='-') # Print vasp output to stdout
                     >>> Vasp2(txt=None)  # Suppress txt output
 
@@ -93,12 +92,13 @@ class Vasp2(GenerateVaspInput, Calculator):
     implemented_properties = ['energy', 'free_energy', 'forces', 'dipole',
                               'fermi', 'stress', 'magmom', 'magmoms']
 
-    default_parameters = {}     # Can be used later to set some ASE defaults
+    # Can be used later to set some ASE defaults
+    default_parameters: Dict[str, Any] = {}
 
     def __init__(self,
                  atoms=None,
                  restart=None,
-                 directory='',
+                 directory='.',
                  label='vasp',
                  ignore_bad_restart_file=False,
                  command=None,
@@ -115,9 +115,6 @@ class Vasp2(GenerateVaspInput, Calculator):
         # Store atoms objects from vasprun.xml here - None => uninitialized
         self._xml_data = None
 
-        # Utilize the label.setter
-        label = './'.join((str(directory), label))
-
         if restart is True:
             # We restart in the label directory
             restart = label
@@ -126,6 +123,7 @@ class Vasp2(GenerateVaspInput, Calculator):
                             restart=restart,
                             ignore_bad_restart_file=ignore_bad_restart_file,
                             label=label,
+                            directory=directory,
                             atoms=atoms,
                             **kwargs)
 
@@ -160,12 +158,12 @@ class Vasp2(GenerateVaspInput, Calculator):
             # Search for the environment commands
             for env in self.env_commands:
                 if env in os.environ:
-                        cmd = os.environ[env].replace('PREFIX', self.prefix)
-                        if env == 'VASP_SCRIPT':
-                            # Make the system python exe run $VASP_SCRIPT
-                            exe = sys.executable
-                            cmd = ' '.join([exe, cmd])
-                        break
+                    cmd = os.environ[env].replace('PREFIX', self.prefix)
+                    if env == 'VASP_SCRIPT':
+                        # Make the system python exe run $VASP_SCRIPT
+                        exe = sys.executable
+                        cmd = ' '.join([exe, cmd])
+                    break
             else:
                 msg = ('Please set either command in calculator'
                        ' or one of the following environment '
@@ -185,15 +183,14 @@ class Vasp2(GenerateVaspInput, Calculator):
         changed_parameters = {}
 
         if 'label' in kwargs:
-            label = kwargs.pop('label')
-            self.set_label(label)
+            self.label = kwargs.pop('label')
 
         if 'directory' in kwargs:
-            # If we explicitly set directory, overwrite the one in label.
-            # XXX: Should we just raise an error here if clash?
-            directory = kwargs.pop('directory')
-            label = os.path.join(directory, self.prefix)
-            self.set_label(label)
+            # str() call to deal with pathlib objects
+            self.directory = str(kwargs.pop('directory'))
+
+        if 'txt' in kwargs:
+            self.txt = kwargs.pop('txt')
 
         if 'atoms' in kwargs:
             atoms = kwargs.pop('atoms')
