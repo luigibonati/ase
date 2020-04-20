@@ -13,10 +13,9 @@ def test_bulk():
         si4 = bulk('C', orthorhombic=True)
     else:
         # EMT relaxed value
-        Cbulk = bulk('C', crystalstructure='fcc', a=2*1.221791471)
-    #help(bulk)
+        Cbulk = bulk('C', crystalstructure='fcc', a=2 * 1.221791471)
     Cbulk = Cbulk.repeat([2, 1, 1])
-    Cbulk.set_calculator(EMT())
+    Cbulk.calc = EMT()
     if 0:
         from ase.constraints import FixAtoms, UnitCellFilter
         
@@ -26,7 +25,6 @@ def test_bulk():
         opt.run(fmax=0.001)
         print(Cbulk)
         print(Cbulk.cell)
-        
     
     name = 'bp'
     rm = RamanStaticCalculator(Cbulk, BondPolarizability, name=name,
@@ -34,22 +32,23 @@ def test_bulk():
     rm.run()
     pz = PlaczekStatic(Cbulk, name=name)
     print(pz.get_energies())
-    pz.summary()        
+    pz.summary()
 
     if 0:
         si32 = si4.repeat([2, 2, 2])
-        si32.set_calculator(EMT())
+        si32.calc = EMT()
         name = 'si32'
         rm = RamanStaticCalculator(si32, BondPolarizability, name=name)
         rm.run()
         pz = PlaczekStatic(si32, name=name)
-        pz.summary()        
+        pz.summary()
+
 
 def test_c3():
     """Can we calculate triangular (EMT groundstate) C3?"""
     y, z = 0.30646191, 1.14411339  # emt relaxed
     atoms = Atoms('C3', positions=[[0, 0, 0], [0, y, z], [0, z, y]])
-    atoms.set_calculator(EMT())
+    atoms.calc = EMT()
     
     name = 'bp'
     rm = RamanStaticCalculator(atoms, BondPolarizability,
