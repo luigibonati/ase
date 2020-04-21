@@ -546,7 +546,7 @@ class Wannier:
             for i in range(self.nwannier):
                 centers.append(([np.random.random(),
                                  np.random.random(),
-                                 np.random.random()], 0, 1.5))
+                                 np.random.random()], 0, 1))
             self.C_kul, self.U_kww = self.calc.initial_wannier(
                 centers, self.kptgrid, self.fixedstates_k,
                 self.edf_k, self.spin, self.nbands)
