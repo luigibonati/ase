@@ -3,6 +3,8 @@ def test_root_surf():
     from ase.build import bcc111
     from ase.build import hcp0001
     from ase.build import fcc111_root
+    from ase.build import bcc111_root
+    from ase.build import hcp0001_root
     from ase.build import root_surface
     from ase.build import root_surface_analysis
 
