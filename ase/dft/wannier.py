@@ -91,21 +91,10 @@ def calculate_weights(cell_cc):
     return weight_d, Gdir_dc
 
 
-def random_orthogonal_matrix(dim, seed=None, real=False):
+def random_orthogonal_matrix(dim, seed=None):
     """Generate a random orthogonal matrix"""
-    if seed is not None:
-        np.random.seed(seed)
-
-    H = np.random.rand(dim, dim)
-    np.add(dag(H), H, H)
-    np.multiply(.5, H, H)
-
-    if real:
-        gram_schmidt(H)
-        return H
-    else:
-        val, vec = np.linalg.eig(H)
-        return np.dot(vec * np.exp(1.j * val), dag(vec))
+    from scipy.stats import special_ortho_group
+    return special_ortho_group.rvs(dim=dim, random_state=seed)
 
 
 # def steepest_descent(func, step=.005, tolerance=1e-6, **kwargs):
@@ -317,7 +306,7 @@ def scdm(calc, Nw, fixed_k, h=0.05, verbose=True):
     for n in range(Nb):
         ae_wfs[n] = ae.get_wave_function(n, k=gamma_idx, ae=True).ravel()
 
-    Q, R, P = qr(ae_wfs, mode='full', pivoting=True, check_finite=True)
+    _, _, P = qr(ae_wfs, mode='full', pivoting=True, check_finite=True)
 
     for k in range(Nk):
         for n in range(Nb):
@@ -532,10 +521,10 @@ class Wannier:
             self.U_kww = np.zeros((self.Nk, Nw, Nw), complex)
             self.C_kul = []
             for U, M, L in zip(self.U_kww, self.fixedstates_k, self.edf_k):
-                U[:] = random_orthogonal_matrix(Nw, seed, real=False)
+                U[:] = random_orthogonal_matrix(Nw, seed)
                 if L > 0:
                     self.C_kul.append(random_orthogonal_matrix(
-                        Nb - M, seed=seed, real=False)[:, :L])
+                        Nb - M, seed=seed)[:, :L])
                 else:
                     self.C_kul.append(np.array([]))
         elif initialwannier == 'gaussians':
