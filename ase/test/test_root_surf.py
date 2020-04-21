@@ -22,14 +22,30 @@ def test_root_surf():
 
     # Make an easy sample to check code errors
     atoms1 = root_surface(prim_fcc111, 7)
+    
+    # Test swap_alpha
+    atoms1_swap = root_surface(prim_fcc111, 7, swap_alpha=True)
+    
+    try:
+        root_surface(prim_fcc111, 5)
+    except RuntimeError:
+        pass
 
     # Ensure the valid roots are the roots are valid against
     # a set of manually checked roots for this system
     assert valid_fcc111 == [1.0, 3.0, 4.0, 7.0, 9.0,
                             12.0, 13.0, 16.0, 19.0, 21.0]
+                            
+    assert valid_bcc111 == [1.0, 3.0, 4.0, 7.0, 9.0,
+                            12.0, 13.0, 16.0, 19.0, 21.0]
+                            
+    assert valid_hcp0001 == [1.0, 3.0, 4.0, 7.0, 9.0,
+                             12.0, 13.0, 16.0, 19.0, 21.0]
 
     # Remake easy sample using surface function
     atoms2 = fcc111_root("H", 7, (1, 1, 2), a=1)
+    atoms3 = bcc111_root("H", 7, (1, 1, 2), a=1)
+    atoms4 = hcp0001_root("H", 7, (1, 1, 2), a=1)
 
     # Right number of atoms
     assert len(atoms1) == len(atoms2) == 14
