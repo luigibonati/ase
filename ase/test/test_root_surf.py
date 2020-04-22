@@ -26,7 +26,7 @@ def test_root_surf():
     atoms1 = root_surface(prim_fcc111, 7)
     
     # Test swap_alpha
-    atoms1_swap = root_surface(prim_fcc111, 7, swap_alpha=True)
+    root_surface(prim_fcc111, 7, swap_alpha=True)
     
     try:
         root_surface(prim_fcc111, 5)
@@ -46,8 +46,8 @@ def test_root_surf():
 
     # Remake easy sample using surface function
     atoms2 = fcc111_root("H", 7, (1, 1, 2), a=1)
-    atoms3 = bcc111_root("H", 7, (1, 1, 2), a=1)
-    atoms4 = hcp0001_root("H", 7, (1, 1, 2), a=1)
+    bcc111_root("H", 7, (1, 1, 2), a=1)
+    hcp0001_root("H", 7, (1, 1, 2), a=1)
 
     # Right number of atoms
     assert len(atoms1) == len(atoms2) == 14
