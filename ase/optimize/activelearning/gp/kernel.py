@@ -418,7 +418,7 @@ class BondExponential(SquaredExponential):
             elif param == 'scale':
                g.append(self.dK_dl(X))
 
-            elif param.startswith('f_'):
+            elif param.startswith('l_'):
                 try:
                     dK_df = self.dK_dfAB(X, self.dG[param])
                 except KeyError:
