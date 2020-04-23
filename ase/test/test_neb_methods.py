@@ -105,7 +105,7 @@ class MyBFGS(BFGS):
                           # ('ID', MEP, 'String', 'static', 3),
                           # ('ID', MEP, 'NEB', 'ODE', 3),
                           # ('ID', MEP, 'String', 'ODE', 3),
-                          ('Exp', MEP, 'String', 'static', 3),
+                          ('Exp', MEP, 'String', 'ODE', 3),
                           # ('Exp', MEP, 'NEB', 'static', 3)
                          ])
 def test_mep(precon, cls, method, optimizer, N_intermediate, ref_vacancy):

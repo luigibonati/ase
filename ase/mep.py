@@ -148,6 +148,7 @@ class MEP:
         # Evaluate forces for all images - one at a time
         for i in range(1, self.nimages - 1):
             f = images[i].get_forces()
+            f_vec = f.reshape(-1)
 
             # update preconditioners for each image and apply to forces
             # this implements part of Eq. 6: pf = - P^{-1} * \nabla V(x)
@@ -159,7 +160,9 @@ class MEP:
             t_P = dx_ds(s[i])
             t_P /= self.precon[i].norm(t_P)
             t_P_tensor_t_P = np.outer(t_P, t_P)
-            pf_vec -= t_P_tensor_t_P @ pf_vec
+            pf_vec -= t_P_tensor_t_P @ f_vec
+
+            # pf_vec -= pf[1] - np.dot(that[1], pf[1])*pf[1]
 
             # print('norm(pf_vec, inf)', np.linalg.norm(pf_vec, np.inf))
 
