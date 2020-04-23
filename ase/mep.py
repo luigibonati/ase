@@ -7,6 +7,7 @@ from ase.optimize.precon import make_precon
 from ase.geometry import find_mic
 from ase.optimize.ode import ode12r
 from scipy.interpolate import CubicSpline
+from ase.neb import interpolate
 
 class MEP:
     def __init__(self, images, k=1.0, precon='Exp', method='NEB',
@@ -122,18 +123,6 @@ class MEP:
         x_spline = CubicSpline(s, x, bc_type='not-a-knot')
         return s, x_spline
 
-    def get_tangents_and_curvatures(self):
-        """Get tangents and curvatures: arrays of shape (nimages-2,natoms*3)"""
-        s, x_spline = self.spline_fit(nderivs=2)
-        dx_ds = x_spline.derivative()
-        d2x_ds2 = x_spline.derivative(2)
-        tangents = np.zeros((self.nimages - 2, self.natoms * 3))
-        curvatures = np.zeros((self.nimages - 2, self.natoms * 3))
-        for i in range(1, self.nimages - 1):
-            tangents[i - 1, :] = dx_ds(s[i])
-            curvatures[i - 1, :] = d2x_ds2(s[i])
-        return tangents, curvatures
-
     def get_forces(self):
         """Evaluate and return the forces."""
         images = self.images
@@ -232,7 +221,8 @@ class MEP:
             X[:] = x_spline(new_s[1:-1]).reshape(-1)
 
 
-    def run(self, fmax=1e-3, steps=50, optimizer='ODE', alpha=0.01, rtol=0.1):
+    def run(self, fmax=1e-3, steps=50, optimizer='ODE', alpha=0.01,
+            rtol=0.1, C1=1e-2, C2=2.0):
         optimizer = optimizer.lower()
         optimizers = ['ode', 'static']
         if optimizer not in optimizers:
@@ -244,6 +234,8 @@ class MEP:
                    self.get_dofs(),
                    fmax=fmax,
                    rtol=rtol,
+                   C1=C1,
+                   C2=C2,
                    steps=steps,
                    callback=self.callback,
                    residual=self.get_residual)

@@ -15,7 +15,7 @@ from ase.geometry.geometry import get_distances
 
 calc = lambda: MorsePotential(A=4.0, epsilon=1.0, r0=2.55)
 
-N_cell = 3
+N_cell = 2
 
 def setup_images(N_intermediate=3):
     initial = bulk('Cu', cubic=True)
@@ -29,17 +29,22 @@ def setup_images(N_intermediate=3):
     vac_pos = initial.positions[vac_index]
     del initial[vac_index]
 
-    # identify a nearest neighbour of the vacancy
+    # identify two opposing nearest neighbours of the vacancy
     D, D_len = get_distances(vac_pos,
                              [initial.positions[i] for i in range(len(initial))],
                              initial.cell, initial.pbc)
-    nn_index = D_len.argmin()
-    print(D_len)
-    print(f'vac_index={vac_index}, nn_index={nn_index}, '
-          f'distance={np.linalg.norm(vac_pos - initial.positions[nn_index])}')
+    D = D[0, :]
+    D_len = D_len[0, :]
+
+    nn_mask = np.abs(D_len - D_len.min()) < 1e-8
+    i1 = nn_mask.nonzero()[0][0]
+    i2 = ((D + D[i1])**2).sum(axis=1).argmin()
+
+    print(f'vac_index={vac_index}, i1={i2}, i2={i2}'
+          f'distance={initial.get_distance(i1, i2, mic=True)}')
 
     final = initial.copy()
-    final.positions[nn_index] = vac_pos
+    final.positions[i1] = vac_pos
 
     initial.calc = calc()
     final.calc = calc()
@@ -61,20 +66,16 @@ def setup_images(N_intermediate=3):
     neb = NEB(images)
     neb.interpolate()
 
-    from ase.io import write
-    write('/Users/jameskermode/gits/ase/ase/test/dump.xyz', images)
-
-    return neb.images, nn_index
+    return neb.images, i1, i2
 
 @pytest.fixture
 def ref_vacancy():
     # use distance from moving atom to one of its neighbours as reaction coord
     # relax intermediate image to the saddle point using a bondlength constraint
-    (initial, saddle, final), nn_index = setup_images(N_intermediate=1)
+    (initial, saddle, final), i1, i2 = setup_images(N_intermediate=1)
     saddle.calc = calc()
-    print(nn_index, saddle.get_distance(0, nn_index))
-    saddle.set_constraint(FixBondLength(0, nn_index))
-    opt = FIRE(saddle)
+    saddle.set_constraint(FixBondLength(i1, i2))
+    opt = ODE12r(saddle)
     opt.run(fmax=1e-2)
     nebtools = NEBTools([initial, saddle, final])
     Ef_ref, dE_ref = nebtools.get_barrier(fit=False)
@@ -97,32 +98,32 @@ class MyBFGS(BFGS):
 @pytest.mark.filterwarnings('ignore:estimate_mu')
 @pytest.mark.parametrize('precon, cls, method, optimizer, N_intermediate',
                          [
-                          # [(None, NEB, 'aseneb', MyBFGS, 3),
-                          #  (None, NEB, 'improvedtangent', MyBFGS, 3),
-                          #  (None, NEB, 'spline', MyBFGS, 3),
-                          ('ID', MEP, 'NEB', 'static', 3),
-                          ('ID', MEP, 'String', 'static', 3),
-                          ('ID', MEP, 'NEB', 'ODE', 3),
-                          ('ID', MEP, 'String', 'ODE', 3),
+                            # (None, NEB, 'aseneb', MyBFGS, 3),
+                          # (None, NEB, 'improvedtangent', MyBFGS, 3),
+                          # (None, NEB, 'spline', MyBFGS, 3),
+                          # ('ID', MEP, 'NEB', 'static', 3),
+                          # ('ID', MEP, 'String', 'static', 3),
+                          # ('ID', MEP, 'NEB', 'ODE', 3),
+                          # ('ID', MEP, 'String', 'ODE', 3),
                           ('Exp', MEP, 'String', 'static', 3),
-                          ('Exp', MEP, 'NEB', 'static', 3)
+                          # ('Exp', MEP, 'NEB', 'static', 3)
                          ])
 def test_mep(precon, cls, method, optimizer, N_intermediate, ref_vacancy):
     # unpack the reference result
     Ef_ref, dE_ref, saddle_ref = ref_vacancy
 
     # now relax the MEP for comparison
-    images, nn_index = setup_images(N_intermediate)
+    images, i1, i2 = setup_images(N_intermediate)
 
     if cls is MEP:
         k = 0.01
         if precon == 'Exp' and method == 'NEB':
             k = 1.0
         mep = cls(images, k=k, precon=precon, method=method)
-        alpha = 0.1
+        alpha = 0.005
         if precon == 'Exp':
-            alpha = 2.0
-        mep.run(fmax=1e-3, steps=200, optimizer=optimizer, alpha=alpha)
+            alpha = 0.1
+        mep.run(fmax=1e-3, steps=500, optimizer=optimizer, alpha=alpha)
     else:
         mep = cls(images, method=method)
         mep.fmax_history = []
