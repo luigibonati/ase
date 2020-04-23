@@ -291,7 +291,7 @@ def scdm(calc, Nw, fixed_k, h=0.05, verbose=True):
 
     Nb = calc.get_number_of_bands()
     kpts = calc.get_bz_k_points()
-    gamma_idx = [i.all() for i in kpts == 0].index(True)
+    gamma_idx = [i.all() for i in np.close(kpts, 0, atol=1e-10)].index(True)
     Nk = len(kpts)
     U_kww = []
     C_kul = []
