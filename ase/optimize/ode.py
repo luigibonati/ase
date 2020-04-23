@@ -186,8 +186,8 @@ class ODE12r(SciPyOptimizer):
         if self.precon is None:
             return Fn, np.linalg.norm(Fn, np.inf)
         self.atoms.set_positions(X.reshape(len(self.atoms), 3))
-        Fn, Rn = self.precon.apply(Fn, self.atoms)
-        return Fn.reshape(-1), Rn
+        Fn, Rn = self.precon.apply(Fn.reshape(-1), self.atoms)
+        return Fn, Rn
 
     def call_fmin(self, fmax, steps):
         ode12r(lambda x: -self.fprime(x),

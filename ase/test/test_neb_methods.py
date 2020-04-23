@@ -15,7 +15,7 @@ from ase.geometry.geometry import get_distances
 
 calc = lambda: MorsePotential(A=4.0, epsilon=1.0, r0=2.55)
 
-N_cell = 2
+N_cell = 3
 
 def setup_images(N_intermediate=3):
     initial = bulk('Cu', cubic=True)
@@ -40,7 +40,7 @@ def setup_images(N_intermediate=3):
     i1 = nn_mask.nonzero()[0][0]
     i2 = ((D + D[i1])**2).sum(axis=1).argmin()
 
-    print(f'vac_index={vac_index}, i1={i2}, i2={i2}'
+    print(f'vac_index={vac_index} i1={i2} i2={i2} '
           f'distance={initial.get_distance(i1, i2, mic=True)}')
 
     final = initial.copy()
@@ -105,8 +105,8 @@ class MyBFGS(BFGS):
                           # ('ID', MEP, 'String', 'static', 3),
                           # ('ID', MEP, 'NEB', 'ODE', 3),
                           # ('ID', MEP, 'String', 'ODE', 3),
-                          ('Exp', MEP, 'String', 'ODE', 3),
-                          # ('Exp', MEP, 'NEB', 'static', 3)
+                          # ('ID', MEP, 'String', 'ODE', 3),
+                          ('ID', MEP, 'String', 'static', 3)
                          ])
 def test_mep(precon, cls, method, optimizer, N_intermediate, ref_vacancy):
     # unpack the reference result
@@ -120,9 +120,9 @@ def test_mep(precon, cls, method, optimizer, N_intermediate, ref_vacancy):
         if precon == 'Exp' and method == 'NEB':
             k = 1.0
         mep = cls(images, k=k, precon=precon, method=method)
-        alpha = 0.005
+        alpha = 0.001
         if precon == 'Exp':
-            alpha = 0.1
+            alpha = 5.0
         mep.run(fmax=1e-3, steps=500, optimizer=optimizer, alpha=alpha)
     else:
         mep = cls(images, method=method)

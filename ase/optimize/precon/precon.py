@@ -544,7 +544,7 @@ class Precon(object):
         Parameters
         ----------
         forces: array
-            (len(atoms), 3) array of input forces
+            (len(atoms)*3) array of input forces
         atoms: ase.atoms.Atoms
 
         Returns
@@ -556,8 +556,8 @@ class Precon(object):
         """
         self.make_precon(atoms)
         residual = np.linalg.norm(forces, np.inf)
-        precon_forces = self.solve(forces.reshape(-1))
-        return precon_forces.reshape(len(atoms), 3), residual
+        precon_forces = self.solve(forces)
+        return precon_forces, residual
 
 
 class Pfrommer(object):

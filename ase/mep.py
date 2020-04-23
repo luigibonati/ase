@@ -151,20 +151,13 @@ class MEP:
             f_vec = f.reshape(-1)
 
             # update preconditioners for each image and apply to forces
-            # this implements part of Eq. 6: pf = - P^{-1} * \nabla V(x)
-            pf, _ = self.precon[i].apply(f, images[i])
-            pf_vec = pf.reshape(-1)
+            # this implements part of Eq. 6: pf_vec = - P^{-1} * \nabla V(x)
+            pf_vec, _ = self.precon[i].apply(f_vec, images[i])
 
             # Project out the component parallel to band following Eqs. 6 and 7
-
             t_P = dx_ds(s[i])
             t_P /= self.precon[i].norm(t_P)
-            t_P_tensor_t_P = np.outer(t_P, t_P)
-            pf_vec -= t_P_tensor_t_P @ f_vec
-
-            # pf_vec -= pf[1] - np.dot(that[1], pf[1])*pf[1]
-
-            # print('norm(pf_vec, inf)', np.linalg.norm(pf_vec, np.inf))
+            pf_vec -= np.dot(t_P, f_vec) * t_P
 
             # Definition of residuals on each image from Eq. 11
             self.residuals[i - 1] = np.linalg.norm(self.precon[i].Pdot(pf_vec),
