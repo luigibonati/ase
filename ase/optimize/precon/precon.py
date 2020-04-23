@@ -338,6 +338,12 @@ class Precon(object):
 
         return self.P
 
+    def Pdot(self, x):
+        """
+        Return the result of applying P to a vector x
+        """
+        return self.P.dot(x)
+
     def dot(self, x, y):
         """
         Return the preconditioned dot product <P x, y>
@@ -345,6 +351,12 @@ class Precon(object):
         Uses 128-bit floating point math for vector dot products
         """
         return longsum(self.P.dot(x) * y)
+
+    def norm(self, x):
+        """
+        Return the P-norm of x, where |x|_P = sqrt(<Px, x>)
+        """
+        return np.sqrt(self.dot(x, x))
 
     def solve(self, x):
         """
@@ -607,6 +619,45 @@ class Pfrommer(object):
         """
         y = self.H0.dot(x)
         return y
+
+
+class ID:
+    """
+    Dummy preconditioner which does not modify forces
+    """
+
+    def make_precon(self, atoms):
+        pass
+
+    def Pdot(self, x):
+        """
+        Return the result of applying P to a vector x
+        """
+        return x
+
+    def dot(self, x, y):
+        """
+        Return the preconditioned dot product <P x, y>
+
+        Uses 128-bit floating point math for vector dot products
+        """
+        return longsum(x * y)
+
+    def norm(self, x):
+        """
+        Return the P-norm of x, where |x|_P = sqrt(<Px, x>)
+        """
+        return np.linalg.norm(x)
+
+    def solve(self, x):
+        """
+        Solve the (sparse) linear system P x = y and return y
+        """
+        return x
+
+    def apply(self, forces, atoms):
+        residual = np.linalg.norm(forces, np.inf)
+        return forces, residual
 
 
 class C1(Precon):
@@ -1167,7 +1218,7 @@ def make_precon(precon):
         elif precon == 'Exp_FF':
             precon = Exp_FF()
         elif precon == 'ID':
-            precon = None
+            precon = ID()
         else:
             raise ValueError('Unknown preconditioner "{0}"'.format(precon))
     return precon

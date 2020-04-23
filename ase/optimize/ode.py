@@ -51,13 +51,17 @@ Xout: array
 
 def ode12r(f, X0, h=None, verbose=1, fmax=1e-6, maxtol=1e3, steps=100,
            rtol=1e-1, C1=1e-2, C2=2.0, hmin=1e-10, extrapolate=3,
-           callback=None, precon=None, converged=None):
+           callback=None, precon=None, converged=None, residual=None):
     X = X0
     X_out = []  # Create an array to store the values of X
 
     Fn = f(X)
+    if callback is not None:
+        callback(X)
     if precon is not None:
         Fn, Rn = precon(Fn, X)
+    elif residual is not None:
+        Rn = residual(Fn, X)
     else:
         Rn = np.linalg.norm(Fn, np.inf)
 
@@ -85,8 +89,10 @@ def ode12r(f, X0, h=None, verbose=1, fmax=1e-6, maxtol=1e3, steps=100,
         Fnew = f(Xnew)  # Calculate the new forces at this position
         if precon is not None:
             Fnew, Rnew = precon(Fnew, Xnew)
+        elif residual is not None:
+            Rnew = residual(Fnew, Xnew)
         else:
-            Rnew = np.linalg.norm(Fnew, np.inf) # Find the new residual forces
+            Rnew = np.linalg.norm(Fnew, np.inf)
 
         e = 0.5 * h * (Fnew - Fn)  # Estimate the area under the forces curve
         err = np.linalg.norm(e, np.inf)  # Error esimate
@@ -132,7 +138,7 @@ def ode12r(f, X0, h=None, verbose=1, fmax=1e-6, maxtol=1e3, steps=100,
             if conv:
                 if verbose:
                     print(f"ODE12r: terminates successfully "
-                          "after {nit} iterations.")
+                          f"after {nit} iterations.")
                 X_out = np.append(X_out, X)
                 log = np.append(log, Rn)
                 return X_out, log, h
@@ -159,7 +165,7 @@ def ode12r(f, X0, h=None, verbose=1, fmax=1e-6, maxtol=1e3, steps=100,
             return X_out, log, h
 
     raise OptimizerConvergenceError(f'ODE12r terminates unsuccessfully after '
-                                    '{steps} iterations.')
+                                    f'{steps} iterations.')
 
 
 class ODE12r(SciPyOptimizer):
@@ -177,6 +183,8 @@ class ODE12r(SciPyOptimizer):
         self.verbose = verbose
 
     def apply_precon(self, Fn, X):
+        if self.precon is None:
+            return Fn, np.linalg.norm(Fn, np.inf)
         self.atoms.set_positions(X.reshape(len(self.atoms), 3))
         Fn, Rn = self.precon.apply(Fn, self.atoms)
         return Fn.reshape(-1), Rn

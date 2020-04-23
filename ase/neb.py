@@ -196,7 +196,7 @@ class NEB:
             fmax_images.append(np.sqrt((f_i[n1:n2]**2).sum(axis=1)).max())
         return fmax_images
 
-    def get_forces(self):
+    def get_forces(self, apply_spring=True, apply_precon=True, reshape=True):
         """Evaluate and return the forces."""
         images = self.images
 
@@ -215,7 +215,6 @@ class NEB:
             precon_forces = np.empty(((self.nimages - 2), self.natoms, 3),
                                      dtype=np.float)
         energies = np.empty(self.nimages)
-        # x = np.empty(((self.nimages - 2), self.natoms, 3), dtype=np.float)
         x = np.empty((self.nimages - 2, self.natoms, 3), dtype=np.float)
 
         if self.remove_rotation_and_translation:
@@ -232,14 +231,14 @@ class NEB:
                 forces[i-1] = images[i].get_forces()
                 x[i-1] = images[i].get_positions()
                 if self.precon is not None:
-                    pf_i, _residual = self.precon.apply(forces[i - 1], images[i])
+                    pf_i, residual_i = self.precon.apply(forces[i - 1], images[i])
                     precon_forces[i - 1] = pf_i
 
         elif self.world.size == 1:
             def run(image, energies, forces):
                 energies[:] = image.get_potential_energy()
                 forces[:] = image.get_forces()
-                if self.precon is not None:
+                if self.precon is not None and apply_precon:
                     precon_forces[:], _resid = self.precon.apply(forces, image)
             threads = [threading.Thread(target=run,
                                         args=(images[i],
@@ -256,8 +255,8 @@ class NEB:
             try:
                 energies[i] = images[i].get_potential_energy()
                 forces[i - 1] = images[i].get_forces()
-                if self.method == 'precon':
-                    pf_i, _residual = self.precon.apply(forces[i - 1], images[i])
+                if self.precon is not None and apply_precon:
+                    pf_i, residual_i = self.precon.apply(forces[i - 1], images[i])
                     precon_forces[i - 1] = pf_i
             except Exception:
                 # Make sure other images also fail:
@@ -336,7 +335,7 @@ class NEB:
                 tangent = t1 / nt1 + t2 / nt2
                 # Normalize the tangent vector
                 tangent /= np.linalg.norm(tangent)
-            elif self.method == 'improvedtangent' or self.method == 'precon':
+            elif self.method == 'improvedtangent':
                 # Tangents are improved according to formulas 8, 9, 10,
                 # and 11 of paper I.
                 if energies[i + 1] > energies[i] > energies[i - 1]:
@@ -367,7 +366,7 @@ class NEB:
                 tt = np.vdot(tangent, tangent)
 
             f = forces[i - 1]
-            if self.precon is not None:
+            if self.precon is not None and apply_precon:
                 pf = precon_forces[i - 1]
             ft = np.vdot(f, tangent)
 
@@ -383,51 +382,50 @@ class NEB:
                 f -= ft * tangent
                 # Spring forces
                 # (formula C1, C5, C6 and C7 of Paper III)
-                f1 = -(nt1 - eqlength) * t1 / nt1 * self.k[i - 1]
-                f2 = (nt2 - eqlength) * t2 / nt2 * self.k[i]
-                if self.climb and abs(i - self.imax) == 1:
-                    deltavmax = max(abs(energies[i + 1] - energies[i]),
-                                    abs(energies[i - 1] - energies[i]))
-                    deltavmin = min(abs(energies[i + 1] - energies[i]),
-                                    abs(energies[i - 1] - energies[i]))
-                    f += (f1 + f2) * deltavmin / deltavmax
-                else:
-                    f += f1 + f2
+                if apply_spring:
+                    f1 = -(nt1 - eqlength) * t1 / nt1 * self.k[i - 1]
+                    f2 = (nt2 - eqlength) * t2 / nt2 * self.k[i]
+                    if self.climb and abs(i - self.imax) == 1:
+                        deltavmax = max(abs(energies[i + 1] - energies[i]),
+                                        abs(energies[i - 1] - energies[i]))
+                        deltavmin = min(abs(energies[i + 1] - energies[i]),
+                                        abs(energies[i - 1] - energies[i]))
+                        f += (f1 + f2) * deltavmin / deltavmax
+                    else:
+                        f += f1 + f2
             elif self.method == 'improvedtangent':
                 f -= ft * tangent
                 # Improved parallel spring force (formula 12 of paper I)
                 f_spring = (nt2 * self.k[i] - nt1 * self.k[i - 1]) * tangent
-                f += f_spring
+                if apply_spring:
+                    f += f_spring
 
             elif self.method == 'spline':
-
-                if self.precon is not None:
-
-                    # image_copy = images[i].copy()
-                    # image_copy.set_positions(tangent)
-                    # P_1 = self.precon.make_precon(image_copy) # FIXME not used ?!
-
+                if self.precon is not None and apply_precon:
                     tvec = tangent.reshape(-1)
                     P_dot_t = self.precon.dot(tvec, tvec)
                     p_norm_t = np.sqrt(P_dot_t)
                     T_p = tangent / p_norm_t
                     t_tensor_t = np.outer(T_p, T_p)
-                    pf += np.matmul(t_tensor_t, pf)
-                    x_pp = (nt2 * self.k[i] - nt1 * self.k[i - 1]) * tangent
-                    x_pp_vec = x_pp.reshape(-1)
-                    x_xp = tangent / p_norm_t
-                    eta_Pn = self.k[i] * np.dot(x_pp_vec, x_pp_vec) * x_xp
-                    pf -= eta_Pn
+                    pf += np.matmul(t_tensor_t, pf.reshape(-1)).reshape((len(images[i]), 3))
+                    if apply_spring:
+                        x_pp = (nt2 * self.k[i] - nt1 * self.k[i - 1]) * tangent
+                        x_pp_vec = x_pp.reshape(-1)
+                        x_xp = tangent / p_norm_t
+                        eta_Pn = self.k[i] * np.dot(x_pp_vec, x_pp_vec) * x_xp
+                        pf -= eta_Pn
                 else:
                     f -= ft * tangent
                     f_spring = (nt2 * self.k[i] -
                                 nt1 * self.k[i - 1]) * tangent
-                    f += f_spring
+                    if apply_spring:
+                        f += f_spring
 
             else:
                 f -= ft / tt * tangent
-                f -= np.vdot(t1 * self.k[i - 1] -
-                             t2 * self.k[i], tangent) / tt * tangent
+                if apply_spring:
+                    f -= np.vdot(t1 * self.k[i - 1] -
+                                 t2 * self.k[i], tangent) / tt * tangent
 
             t1 = t2
             nt1 = nt2
@@ -451,9 +449,16 @@ class NEB:
                     else:
                         forces[k, :, :] = np.zeros((1, self.natoms, 3))
 
-        if self.precon is not None:
-            return precon_forces.reshape((-1, 3))
-        return forces.reshape((-1, 3))
+        if self.precon is not None and apply_precon:
+            if reshape:
+                return precon_forces.reshape((-1, 3))
+            else:
+                return precon_forces
+        else:
+            if reshape:
+                return forces.reshape((-1, 3))
+            else:
+                return forces
 
 
     def get_potential_energy(self, force_consistent=False):
