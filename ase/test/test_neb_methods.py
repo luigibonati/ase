@@ -96,14 +96,14 @@ def ref_vacancy():
 @pytest.mark.filterwarnings('ignore:estimate_mu')
 @pytest.mark.parametrize('cls, method, optimizer, precon, N_intermediate',
                          [
-                          # (NEB, 'aseneb', BFGS, None, 3),
-                          # (NEB, 'improvedtangent', BFGS, None, 3),
+                          (NEB, 'aseneb', BFGS, None, 3),
+                          (NEB, 'improvedtangent', BFGS, None, 3),
                           (NEB, 'aseneb', FIRE, None, 3),
                           (NEB, 'improvedtangent', FIRE, None, 3),
-                          # (PreconMEP, 'NEB', 'ODE', 'ID', 3),
-                          # (PreconMEP, 'String', 'ODE', 'ID', 3),
-                          # (PreconMEP, 'NEB', 'ODE', 'Exp', 3),
-                          # (PreconMEP, 'String', 'ODE', 'Exp', 3)
+                          (PreconMEP, 'NEB', 'ODE', 'ID', 3),
+                          (PreconMEP, 'String', 'ODE', 'ID', 3),
+                          (PreconMEP, 'NEB', 'ODE', 'Exp', 3),
+                          (PreconMEP, 'String', 'ODE', 'Exp', 3)
                          ])
 def test_mep(cls, method, optimizer, precon, N_intermediate, ref_vacancy):
     # unpack the reference result
