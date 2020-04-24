@@ -6,8 +6,7 @@ import json
 from ase.calculators.morse import MorsePotential
 from ase.optimize import BFGS, FIRE, ODE12r
 from ase.build import bulk
-from ase.neb import NEB, NEBTools
-from ase.mep import MEP
+from ase.neb import NEB, NEBTools, PreconMEP
 from ase.geometry.geometry import find_mic
 from ase.constraints import FixBondLength
 from ase.utils.forcecurve import fit_images
@@ -39,7 +38,7 @@ def setup_images(N_intermediate=3):
     i1 = nn_mask.nonzero()[0][0]
     i2 = ((D + D[i1])**2).sum(axis=1).argmin()
 
-    print(f'vac_index={vac_index} i1={i2} i2={i2} '
+    print(f'vac_index={vac_index} i1={i1} i2={i2} '
           f'distance={initial.get_distance(i1, i2, mic=True)}')
 
     final = initial.copy()
@@ -102,11 +101,11 @@ class MyBFGS(BFGS):
                           # (None, NEB, 'spline', MyBFGS, 3),
                           # ('ID', MEP, 'NEB', 'static', 3),
                           # ('ID', MEP, 'String', 'static', 3),
-                          ('Exp', MEP, 'NEB', 'static', 3),
-                          ('Exp', MEP, 'String', 'static', 3),
+                          # ('Exp', MEP, 'NEB', 'static', 3),
+                          # ('Exp', MEP, 'String', 'static', 3),
                           # ('ID', MEP, 'NEB', 'ODE', 3),
                           # ('ID', MEP, 'String', 'ODE', 3),
-                          # ('Exp', MEP, 'NEB', 'ODE', 3),
+                          ('Exp', PreconMEP, 'NEB', 'ODE', 3),
                           # ('Exp', MEP, 'String', 'ODE', 3)
                          ])
 def test_mep(precon, cls, method, optimizer, N_intermediate, ref_vacancy):
@@ -116,14 +115,14 @@ def test_mep(precon, cls, method, optimizer, N_intermediate, ref_vacancy):
     # now relax the MEP for comparison
     images, i1, i2 = setup_images(N_intermediate)
 
-    if cls is MEP:
-        # if precon == 'Exp' and method == 'NEB':
-        #     k = 1.0
-        mep = cls(images, precon=precon, method=method)
+    if cls is PreconMEP:
         alpha = 0.01
+        k = 0.1
         if precon == 'Exp':
-            alpha = 0.5
-        mep.run(fmax=1e-3, steps=500, optimizer=optimizer, alpha=alpha)
+            alpha = 0.7
+            k = 0.01
+        mep = cls(images, k=k, precon=precon, method=method)
+        mep.run(fmax=1e-3, steps=500, step_selection=optimizer, alpha=alpha)
     else:
         mep = cls(images, method=method)
         mep.fmax_history = []
