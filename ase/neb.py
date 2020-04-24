@@ -51,18 +51,19 @@ class NEB:
             rotation during NEB. By default applied non-periodic
             systems
         dynamic_relaxation: bool
-            TRUE calculates the norm of the forces acting on each image
-            in the band. An image is optimized only if its norm is above
-            the convergence criterion. The list fmax_images is updated
-            every force call; if a previously converged image goes out
-            of tolerance (due to spring adjustments between the image
-            and its neighbors), it will be optimized again. This routine
-            can speed up calculations if convergence is non-uniform.
-            Convergence criterion should be the same as that given to
-            the optimizer. Not efficient when parallelizing over images.
+            TRUE skips images with forces below the convergence criterion.
+            This is updated after each force call; if a previously converged
+            image goes out of tolerance (due to spring adjustments between
+            the image and its neighbors), it will be optimized again.
+            Not efficient when parallelizing over images.
+        fmax: float
+            Must be identical to the fmax of the optimizer if
+            dynamic_relaxation = True.
         scale_fmax: float
             Scale convergence criteria along band based on the distance
-            between a state and the state with the highest potential energy.
+            between an image and the image with the highest potential energy.
+            This keyword determines how rapidly the convergence criteria are
+            scaled.
         method: string of method
             Choice betweeen three method:
 
@@ -158,7 +159,7 @@ class NEB:
                            'routine for freezing images in parallel.')
                     raise ValueError(msg)
                 else:
-                    forces_dyn = self.get_fmax_all(self.images)
+                    forces_dyn = self._fmax_all(self.images)
                     if forces_dyn[i] < self.fmax:
                         n1 += self.natoms
                     else:
@@ -170,14 +171,13 @@ class NEB:
                 image.set_positions(positions[n1:n2])
                 n1 = n2
 
-    def get_fmax_all(self, images):
+    def _fmax_all(self, images):
+        '''Store maximum force acting on each image. This is used in the
+           dynamic optimization routine in the set_positions() function.'''
         n = self.natoms
-        f_i = self.get_forces()
-        fmax_images = []
-        for i in range(self.nimages - 2):
-            n1 = n * i
-            n2 = n + n * i
-            fmax_images.append(np.sqrt((f_i[n1:n2]**2).sum(axis=1)).max())
+        f = self.get_forces()
+        fmax_images = [np.sqrt((f[n*i:n+n*i]**2).sum(axis=1)).max()
+                       for i in range(self.nimages-2)]
         return fmax_images
 
     def get_forces(self):
@@ -340,19 +340,22 @@ class NEB:
             nt1 = nt2
 
             if self.dynamic_relaxation:
+                '''Convergence criteria are scaled to focus optimization on
+                   saddle point region. The keyword scale_fmax determines
+                   the rate of convergence scaling.'''
                 n = self.natoms
                 k = i - 1
                 n1 = n * k
                 n2 = n1 + n
-                force_i = np.sqrt((forces.reshape((-1, 3))[n1:n2]**2.)
-                                  .sum(axis=1)).max()
+                force = np.sqrt((forces.reshape((-1, 3))[n1:n2]**2.)
+                                .sum(axis=1)).max()
 
-                n1_imax = (self.imax - 1) * n
+                n_imax = (self.imax - 1) * n
                 positions = self.get_positions()
-                pos_imax = positions[n1_imax:n1_imax + n]
+                pos_imax = positions[n_imax:n_imax + n]
                 rel_pos = np.sqrt(((positions[n1:n2] - pos_imax)**2).sum())
 
-                if force_i < self.fmax * (1 + rel_pos * self.scale_fmax):
+                if force < self.fmax * (1 + rel_pos * self.scale_fmax):
                     if k == self.imax - 1:
                         pass
                     else:

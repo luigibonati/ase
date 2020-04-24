@@ -31,6 +31,10 @@ Relevant literature References:
    S. Smidstrup, A. Pedersen, K. Stokbro and H. Jonsson,
    J. Chem. Phys. 140, 214106 (2014)
 
+5. 'Scaled and Dynamic Optimizations of Nudged Elastic Bands',
+   P. Lindgren, G. Kastlunger and A. A. Peterson,
+   J. Chem. Theory Comput. 15, 11, 5787-5793 (2019)
+
 
 The NEB class
 =============
