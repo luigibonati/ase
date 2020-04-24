@@ -15,9 +15,8 @@ from ase.geometry.geometry import get_distances
 
 calc = lambda: MorsePotential(A=4.0, epsilon=1.0, r0=2.55)
 
-N_cell = 3
-
 def setup_images(N_intermediate=3):
+    N_cell = 2
     initial = bulk('Cu', cubic=True)
     initial *= N_cell
 
@@ -98,15 +97,17 @@ class MyBFGS(BFGS):
 @pytest.mark.filterwarnings('ignore:estimate_mu')
 @pytest.mark.parametrize('precon, cls, method, optimizer, N_intermediate',
                          [
-                            # (None, NEB, 'aseneb', MyBFGS, 3),
+                          # (None, NEB, 'aseneb', MyBFGS, 3),
                           # (None, NEB, 'improvedtangent', MyBFGS, 3),
                           # (None, NEB, 'spline', MyBFGS, 3),
                           # ('ID', MEP, 'NEB', 'static', 3),
                           # ('ID', MEP, 'String', 'static', 3),
+                          ('Exp', MEP, 'NEB', 'static', 3),
+                          ('Exp', MEP, 'String', 'static', 3),
                           # ('ID', MEP, 'NEB', 'ODE', 3),
                           # ('ID', MEP, 'String', 'ODE', 3),
-                          # ('ID', MEP, 'String', 'ODE', 3),
-                          ('ID', MEP, 'String', 'static', 3)
+                          # ('Exp', MEP, 'NEB', 'ODE', 3),
+                          # ('Exp', MEP, 'String', 'ODE', 3)
                          ])
 def test_mep(precon, cls, method, optimizer, N_intermediate, ref_vacancy):
     # unpack the reference result
@@ -116,13 +117,12 @@ def test_mep(precon, cls, method, optimizer, N_intermediate, ref_vacancy):
     images, i1, i2 = setup_images(N_intermediate)
 
     if cls is MEP:
-        k = 0.01
-        if precon == 'Exp' and method == 'NEB':
-            k = 1.0
-        mep = cls(images, k=k, precon=precon, method=method)
-        alpha = 0.001
+        # if precon == 'Exp' and method == 'NEB':
+        #     k = 1.0
+        mep = cls(images, precon=precon, method=method)
+        alpha = 0.01
         if precon == 'Exp':
-            alpha = 5.0
+            alpha = 0.5
         mep.run(fmax=1e-3, steps=500, optimizer=optimizer, alpha=alpha)
     else:
         mep = cls(images, method=method)

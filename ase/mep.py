@@ -10,7 +10,7 @@ from scipy.interpolate import CubicSpline
 from ase.neb import interpolate
 
 class MEP:
-    def __init__(self, images, k=1.0, precon='Exp', method='NEB',
+    def __init__(self, images, k=0.1, precon='Exp', method='NEB',
                  logfile='-'):
         self.images = images
         self.nsteps = 0
@@ -218,7 +218,7 @@ class MEP:
 
 
     def run(self, fmax=1e-3, steps=50, optimizer='ODE', alpha=0.01,
-            rtol=0.1, C1=1e-2, C2=2.0):
+            verbose=0, rtol=0.1, C1=1e-2, C2=2.0):
         optimizer = optimizer.lower()
         optimizers = ['ode', 'static']
         if optimizer not in optimizers:
@@ -233,6 +233,7 @@ class MEP:
                    C1=C1,
                    C2=C2,
                    steps=steps,
+                   verbose=verbose,
                    callback=self.callback,
                    residual=self.get_residual)
         else:

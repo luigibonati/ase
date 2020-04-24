@@ -44,7 +44,7 @@ converged: function
 Returns
 -------
 
-Xout: array
+X: array
     final value of degrees of freedom
 """
 
@@ -53,7 +53,6 @@ def ode12r(f, X0, h=None, verbose=1, fmax=1e-6, maxtol=1e3, steps=100,
            rtol=1e-1, C1=1e-2, C2=2.0, hmin=1e-10, extrapolate=3,
            callback=None, precon=None, converged=None, residual=None):
     X = X0
-    X_out = []  # Create an array to store the values of X
 
     Fn = f(X)
     if callback is not None:
@@ -65,14 +64,10 @@ def ode12r(f, X0, h=None, verbose=1, fmax=1e-6, maxtol=1e3, steps=100,
     else:
         Rn = np.linalg.norm(Fn, np.inf)
 
-    X_out.append(X)
-    log = []
-    log.append([0, X, Rn])
-
     if Rn <= fmax:
         if verbose:
             print(f"ODE12r terminates successfully after 0 iterations")
-        return X_out, log, h
+        return X
 
     if Rn >= maxtol:
         raise OptimizerConvergenceError(f"ODE12r: Residual {Rn} is too large "
@@ -95,10 +90,10 @@ def ode12r(f, X0, h=None, verbose=1, fmax=1e-6, maxtol=1e3, steps=100,
             Rnew = np.linalg.norm(Fnew, np.inf)
 
         e = 0.5 * h * (Fnew - Fn)  # Estimate the area under the forces curve
-        err = np.linalg.norm(e, np.inf)  # Error esimate
+        err = np.linalg.norm(e, np.inf)  # Error estimate
 
         # Accept step if residual decreases sufficiently and/or error acceptable
-        if Rnew <= Rn * (1 - C1 * h) or Rnew <= (Rn * C2 and err <= rtol):
+        if (Rnew <= Rn * (1 - C1 * h)) or ((Rnew <= Rn * C2) and err <= rtol):
             accept = True
         else:
             accept = False
@@ -119,6 +114,8 @@ def ode12r(f, X0, h=None, verbose=1, fmax=1e-6, maxtol=1e3, steps=100,
 
         h_err = h * 0.5 * np.sqrt(rtol / err)
 
+        # print(f'{nit}: err={err:.3f} Rn={Rn:.3f} h_ls={h_ls:.3f} h_err={h_err:.3f} accept={accept}')
+
         # Accept the step and do the update
         if accept:
             X = Xnew
@@ -126,9 +123,6 @@ def ode12r(f, X0, h=None, verbose=1, fmax=1e-6, maxtol=1e3, steps=100,
             Rn = Rnew
             if callback is not None:
                 callback(X)
-
-            X_out = np.append(X_out, X)  # Store X
-            log = np.append(log, Rn)
 
             # We check the residuals again
             if converged is not None:
@@ -139,30 +133,35 @@ def ode12r(f, X0, h=None, verbose=1, fmax=1e-6, maxtol=1e3, steps=100,
                 if verbose:
                     print(f"ODE12r: terminates successfully "
                           f"after {nit} iterations.")
-                X_out = np.append(X_out, X)
-                log = np.append(log, Rn)
-                return X_out, log, h
+                return X
             if Rn >= maxtol:
                 print(f"ODE12r: Residual {Rn} is too "
                       f"large at iteration number {nit}")
-
-                X_out = np.append(X_out, X)  # Store X
-                log = np.append(log, Rn)
-                return X_out, log, h
+                return X
 
             # Compute a new step size.
             # Based on the extrapolation and some other heuristics
             h = max(0.25 * h,
-                    min(4 * h, h_err, h_ls))  # Log step-size analytic results
+                    min(4 * h, h_err, h_ls))  # Log steep-size analytic results
 
+            if verbose >= 2:
+                print(f"ODE12r:      accept: new h = {h}, |F| = {Rn}")
+                print(f"ODE12r:                hls = {h_ls}")
+                print(f"ODE12r:               herr = {h_err}")
         else:
             # Compute a new step size.
             h = max(0.1 * h, min(0.25 * h, h_err,
                                  h_ls))
+            if verbose >= 2:
+                print(f"ODE12r:      reject: new h = {h}")
+                print(f"ODE12r:               |Fnew| = {Rnew}")
+                print(f"ODE12r:               |Fold| = {Rn}")
+                print(f"ODE12r:        |Fnew|/|Fold| = {Rnew/Rn}")
+
         # error message if step size is too small
         if abs(h) <= hmin:
             print(f'ODE12r Step size {h} too small at nit = {nit}')
-            return X_out, log, h
+            return X
 
     raise OptimizerConvergenceError(f'ODE12r terminates unsuccessfully after '
                                     f'{steps} iterations.')
@@ -171,7 +170,7 @@ def ode12r(f, X0, h=None, verbose=1, fmax=1e-6, maxtol=1e3, steps=100,
 class ODE12r(SciPyOptimizer):
     def __init__(self, atoms, logfile='-', trajectory=None,
                  callback_always=False, alpha=1.0, master=None,
-                 force_consistent=None, precon=None, verbose=False):
+                 force_consistent=None, precon=None, verbose=0):
         SciPyOptimizer.__init__(self, atoms, logfile, trajectory,
                                 callback_always, alpha, master,
                                 force_consistent)
@@ -186,7 +185,7 @@ class ODE12r(SciPyOptimizer):
         if self.precon is None:
             return Fn, np.linalg.norm(Fn, np.inf)
         self.atoms.set_positions(X.reshape(len(self.atoms), 3))
-        Fn, Rn = self.precon.apply(Fn.reshape(-1), self.atoms)
+        Fn, Rn = self.precon.apply(Fn, self.atoms)
         return Fn, Rn
 
     def call_fmin(self, fmax, steps):

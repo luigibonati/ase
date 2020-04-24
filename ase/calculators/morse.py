@@ -32,16 +32,17 @@ class MorsePotential(Calculator):
         if rc is None:
             rc = 3 * r0
 
-        energy = 0.0
         forces = np.zeros((len(self.atoms), 3))
-        preF = 2 * epsilon * rho0 / r0
+        preF = - 2 * epsilon * rho0 / r0
 
-        I, J, d, D = neighbor_list('ijdD', atoms, rc)
-        for (i1, i2, r, diff) in zip(I, J, d, D):
-            expf = exp(rho0 * (1.0 - r / r0))
-            energy += epsilon * expf * (expf - 2)
-            F = preF * expf * (expf - 1) * diff / r
-            forces[i1] -= F
-            forces[i2] += F
+        i, j, d, D = neighbor_list('ijdD', atoms, rc)
+        expf = np.exp(rho0 * (1.0 - d/r0))
+        energy = 0.5*(epsilon * expf * (expf - 2)).sum()
+
+        F = preF * (expf * (expf - 1) * (D / d[:, None]).T).T
+        for dim in range(3):
+            forces[:, dim] = np.bincount(i, weights=F[:, dim],
+                                         minlength=len(atoms))
+
         self.results['energy'] = energy
         self.results['forces'] = forces
