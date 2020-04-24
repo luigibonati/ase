@@ -1,7 +1,5 @@
 import numpy as np
 import pytest
-import json
-
 
 from ase.calculators.morse import MorsePotential
 from ase.optimize import BFGS, FIRE, ODE12r
@@ -9,8 +7,10 @@ from ase.build import bulk
 from ase.neb import NEB, NEBTools, PreconMEP
 from ase.geometry.geometry import find_mic
 from ase.constraints import FixBondLength
-from ase.utils.forcecurve import fit_images
 from ase.geometry.geometry import get_distances
+
+# import json
+# from ase.utils.forcecurve import fit_images
 
 calc = lambda: MorsePotential(A=4.0, epsilon=1.0, r0=2.55)
 
@@ -80,35 +80,32 @@ def ref_vacancy():
     print('REF:', Ef_ref, dE_ref)
     return Ef_ref, dE_ref, saddle
 
-class MyBFGS(BFGS):
-    def log(self, forces=None):
-        if forces is None:
-            forces = self.atoms.get_forces()
-        BFGS.log(self, forces)
-        self.atoms.fmax_history.append(np.linalg.norm(forces.reshape(-1), np.inf))
-
-    def converged(self, forces=None):
-        if forces is None:
-            forces = self.atoms.get_forces()
-        return np.linalg.norm(forces.reshape(-1), np.inf) < self.fmax
+# class MyBFGS(BFGS):
+#     def log(self, forces=None):
+#         if forces is None:
+#             forces = self.atoms.get_forces()
+#         BFGS.log(self, forces)
+#         self.atoms.fmax_history.append(np.linalg.norm(forces.reshape(-1), np.inf))
+#
+#     def converged(self, forces=None):
+#         if forces is None:
+#             forces = self.atoms.get_forces()
+#         return np.linalg.norm(forces.reshape(-1), np.inf) < self.fmax
 
 @pytest.mark.slow()
 @pytest.mark.filterwarnings('ignore:estimate_mu')
-@pytest.mark.parametrize('precon, cls, method, optimizer, N_intermediate',
+@pytest.mark.parametrize('cls, method, optimizer, precon, N_intermediate',
                          [
-                          # (None, NEB, 'aseneb', MyBFGS, 3),
-                          # (None, NEB, 'improvedtangent', MyBFGS, 3),
-                          # (None, NEB, 'spline', MyBFGS, 3),
-                          # ('ID', MEP, 'NEB', 'static', 3),
-                          # ('ID', MEP, 'String', 'static', 3),
-                          # ('Exp', MEP, 'NEB', 'static', 3),
-                          # ('Exp', MEP, 'String', 'static', 3),
-                          # ('ID', MEP, 'NEB', 'ODE', 3),
-                          # ('ID', MEP, 'String', 'ODE', 3),
-                          ('Exp', PreconMEP, 'NEB', 'ODE', 3),
-                          # ('Exp', MEP, 'String', 'ODE', 3)
+                          (NEB, 'aseneb', BFGS, None, 3),
+                          (NEB, 'improvedtangent', BFGS, None, 3),
+                          (NEB, 'aseneb', FIRE, None, 3),
+                          (NEB, 'improvedtangent', FIRE, None, 3),
+                          (PreconMEP, 'NEB', 'ODE', 'ID', 3),
+                          (PreconMEP, 'String', 'ODE', 'ID', 3),
+                          (PreconMEP, 'NEB', 'ODE', 'Exp', 3),
+                          (PreconMEP, 'String', 'ODE', 'Exp', 3)
                          ])
-def test_mep(precon, cls, method, optimizer, N_intermediate, ref_vacancy):
+def test_mep(cls, method, optimizer, precon, N_intermediate, ref_vacancy):
     # unpack the reference result
     Ef_ref, dE_ref, saddle_ref = ref_vacancy
 
@@ -132,25 +129,25 @@ def test_mep(precon, cls, method, optimizer, N_intermediate, ref_vacancy):
 
     nebtools = NEBTools(images)
     Ef, dE = nebtools.get_barrier(fit=False)
-    print(f'{cls.__name__},{method},{optimizer},{precon} => Ef = {Ef:.3f}, dE = {dE:.3f}')
+    print(f'{cls.__name__},{method},{optimizer},{precon} '
+          f'=> Ef = {Ef:.3f}, dE = {dE:.3f}')
 
-    forcefit = fit_images(images)
-
-    output_dir = '/Users/jameskermode/gits/ase/ase/test'  # FIXME avoid this hack
-    with open(f'{output_dir}/MEP_{method}_{optimizer}_{precon}_{N_intermediate}.json', 'w') as f:
-        json.dump({'fmax_history': mep.fmax_history,
-                    'class': cls.__name__,
-                    'method': method,
-                    'precon': precon,
-                    'optimizer': optimizer,
-                    'N_intermediate': N_intermediate,
-                    'path': forcefit.path,
-                    'energies': forcefit.energies.tolist(),
-                    'fit_path': forcefit.fit_path.tolist(),
-                    'fit_energies': forcefit.fit_energies.tolist(),
-                    'lines': np.array(forcefit.lines).tolist(),
-                    'Ef': Ef,
-                    'dE': dE}, f)
+    # forcefit = fit_images(images)
+    # output_dir = '/Users/jameskermode/gits/ase/ase/test'  # FIXME avoid this hack
+    # with open(f'{output_dir}/MEP_{method}_{optimizer}_{precon}_{N_intermediate}.json', 'w') as f:
+    #     json.dump({'fmax_history': mep.fmax_history,
+    #                 'class': cls.__name__,
+    #                 'method': method,
+    #                 'precon': precon,
+    #                 'optimizer': optimizer,
+    #                 'N_intermediate': N_intermediate,
+    #                 'path': forcefit.path,
+    #                 'energies': forcefit.energies.tolist(),
+    #                 'fit_path': forcefit.fit_path.tolist(),
+    #                 'fit_energies': forcefit.fit_energies.tolist(),
+    #                 'lines': np.array(forcefit.lines).tolist(),
+    #                 'Ef': Ef,
+    #                 'dE': dE}, f)
 
     assert abs(Ef - Ef_ref) < 1e-2
     assert abs(dE - dE_ref) < 1e-2

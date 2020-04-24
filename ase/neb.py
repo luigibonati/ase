@@ -422,7 +422,7 @@ class NEB(ChainOfStates):
                     else:
                         forces[k, :, :] = np.zeros((1, self.natoms, 3))
 
-        forces.reshape((-1, 3))
+        return forces.reshape((-1, 3))
 
     def get_potential_energy(self, force_consistent=False):
         """Return the maximum potential energy along the band.
