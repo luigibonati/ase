@@ -91,10 +91,15 @@ def calculate_weights(cell_cc):
     return weight_d, Gdir_dc
 
 
-def random_orthogonal_matrix(dim, seed=None):
+def random_orthogonal_matrix(dim, seed=None, real=False):
     """Generate a random orthogonal matrix"""
     from scipy.stats import special_ortho_group
-    return special_ortho_group.rvs(dim=dim, random_state=seed)
+    if real:
+        ortho_m = special_ortho_group.rvs(dim=dim, random_state=seed)
+    else:
+        ortho_m = special_ortho_group.rvs(
+            dim=dim, random_state=seed).astype(np.complex128)
+    return ortho_m
 
 
 # def steepest_descent(func, step=.005, tolerance=1e-6, **kwargs):
@@ -521,10 +526,10 @@ class Wannier:
             self.U_kww = np.zeros((self.Nk, Nw, Nw), complex)
             self.C_kul = []
             for U, M, L in zip(self.U_kww, self.fixedstates_k, self.edf_k):
-                U[:] = random_orthogonal_matrix(Nw, seed)
+                U[:] = random_orthogonal_matrix(Nw, seed, real=False)
                 if L > 0:
                     self.C_kul.append(random_orthogonal_matrix(
-                        Nb - M, seed=seed)[:, :L])
+                        Nb - M, seed=seed, real=False)[:, :L])
                 else:
                     self.C_kul.append(np.array([]))
         elif initialwannier == 'gaussians':
