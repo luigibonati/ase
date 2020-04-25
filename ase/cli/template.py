@@ -1,8 +1,8 @@
 import string
+import numpy as np
 from ase.io import string2index
 from ase.io.formats import parse_filename
 from ase.data import chemical_symbols
-import numpy as np
 
 # default fields
 
@@ -31,7 +31,8 @@ def summary_functions_on_conditions(has_calc):
 
 
 def header_alias(h):
-    """Replace keyboard characters with Unicode symbols for pretty printing"""
+    """Replace keyboard characters with Unicode symbols
+    for pretty printing"""
     if h == 'i':
         h = 'index'
     elif h == 'an':
@@ -51,7 +52,10 @@ def header_alias(h):
 
 
 def prec_round(a, prec=2):
-    "To make hierarchical sorting different from non-hierarchical sorting with floats"
+    """
+    To make hierarchical sorting different from non-hierarchical sorting
+    with floats.
+    """
     if a == 0:
         return a
     else:
@@ -68,8 +72,10 @@ prec_round = np.vectorize(prec_round)
 
 def sort2rank(sort):
     """
-    Given an argsort, return a list which gives the rank of the element at each position.
-    Also does the inverse problem (an involutive transform) of given a list of ranks of the elements, return an argsort.
+    Given an argsort, return a list which gives the rank of the element
+    at each position.  Also does the inverse problem (an involutive
+    transform) of given a list of ranks of the elements, return an
+    argsort.
     """
     n = len(sort)
     rank = np.zeros(n, dtype=int)
@@ -101,17 +107,17 @@ def get_data(atoms1, atoms2, field):
         if field.startswith('d'):
             y = atoms2.positions - atoms1.positions
         elif field.startswith('p'):
-            if '1' == field[1]:
+            if field[1] == '1':
                 y = atoms1.positions
             else:
                 y = atoms2.positions
 
         if field.endswith('x'):
-            data = y[:,0]
+            data = y[:, 0]
         elif field.endswith('y'):
-            data = y[:,1]
+            data = y[:, 1]
         elif field.endswith('z'):
-            data = y[:,2]
+            data = y[:, 2]
         else:
             data = np.linalg.norm(y, axis=1)
 
@@ -121,7 +127,23 @@ def get_data(atoms1, atoms2, field):
     return data
 
 
-atoms_props = ['dx', 'dy', 'dz', 'd', 't', 'an', 'i', 'el', 'p1', 'p2', 'p1x', 'p1y', 'p1z', 'p2x', 'p2y', 'p2z']
+atoms_props = [
+    'dx',
+    'dy',
+    'dz',
+    'd',
+    't',
+    'an',
+    'i',
+    'el',
+    'p1',
+    'p2',
+    'p1x',
+    'p1y',
+    'p1z',
+    'p2x',
+    'p2y',
+    'p2z']
 
 
 def get_atoms_data(atoms1, atoms2, field):
@@ -135,23 +157,22 @@ def get_atoms_data(atoms1, atoms2, field):
     else:
         rank_order = False
 
-    print(field)
-    if 'd' == field[0]:
+    if field[0] == 'd':
         y = atoms2.get_forces() - atoms1.get_forces()
-    elif 'a' == field[0]:
+    elif field[0] == 'a':
         y = (atoms2.get_forces() + atoms1.get_forces()) / 2
     else:
-        if '1' == field[1]:
+        if field[1] == '1':
             y = atoms1.get_forces()
         else:
             y = atoms2.get_forces()
 
     if field.endswith('x'):
-        data = y[:,0]
+        data = y[:, 0]
     elif field.endswith('y'):
-        data = y[:,1]
+        data = y[:, 1]
     elif field.endswith('z'):
-        data = y[:,2]
+        data = y[:, 2]
     else:
         data = np.linalg.norm(y, axis=1)
 
@@ -165,8 +186,8 @@ def get_atoms_data(atoms1, atoms2, field):
 
 def rmsd(atoms1, atoms2):
     dpositions = atoms2.positions - atoms1.positions
-    rmsd = ((np.linalg.norm(dpositions, axis=1)**2).mean())**(0.5)
-    return 'RMSD={:+.1E}'.format(rmsd)
+    return 'RMSD={:+.1E}'.format(
+        np.sqrt((np.linalg.norm(dpositions, axis=1)**2).mean()))
 
 
 def energy_delta(atoms1, atoms2):
@@ -297,7 +318,7 @@ class Table(object):
             'f2z']
         for sf in signed_floats:
             fmt[sf] = self.fmt_class['signed float']
-        unsigned_floats = ['d', 'df', 'af','p1','p2','f1','f2']
+        unsigned_floats = ['d', 'df', 'af', 'p1', 'p2', 'f1', 'f2']
         for usf in unsigned_floats:
             fmt[usf] = self.fmt_class['unsigned float']
         integers = ['i', 'an', 't'] + ['r' + sf for sf in signed_floats] + \
@@ -307,27 +328,28 @@ class Table(object):
         fmt['el'] = self.fmt_class['conv']
         return fmt
 
-    def make(self, atoms1, atoms2,csv=False):
-        self.header = self.make_header(csv=csv)
-        body = self.make_body(atoms1, atoms2,csv=csv)
+    def make(self, atoms1, atoms2, csv=False):
+        header = self.make_header(csv=csv)
+        body = self.make_body(atoms1, atoms2, csv=csv)
         if self.max_lines is not None:
             body = body[:self.max_lines]
         summary = self.make_summary(atoms1, atoms2)
 
-        return '\n'.join([self.title, self.toprule, self.header,
+        return '\n'.join([self.title, self.toprule, header,
                           self.midrule, body, self.bottomrule, summary])
 
     def make_header(self, csv=False):
         if csv:
             return ','.join([header_alias(field) for field in self.fields])
         return self.formatter(
-            self.fmt_class['str'] * self.nfields, *[header_alias(field) for field in self.fields])
+            self.fmt_class['str'] * self.nfields,
+            *[header_alias(field) for field in self.fields])
 
     def make_summary(self, atoms1, atoms2):
         return '\n'.join([summary_function(atoms1, atoms2)
                           for summary_function in self.summary_functions])
 
-    def make_body(self, atoms1, atoms2, csv = False):
+    def make_body(self, atoms1, atoms2, csv=False):
         fdata = np.array([get_atoms_data(atoms1, atoms2, field)
                           for field in self.fields])
         sorting_array = prec_round(
@@ -335,7 +357,8 @@ class Table(object):
         data = fdata[:, np.lexsort(sorting_array)].transpose()
 
         if csv:
-            rowformat = ','.join(['{:h}' if field == 'el' else '{}' for field in self.fields])
+            rowformat = ','.join(
+                ['{:h}' if field == 'el' else '{}' for field in self.fields])
         else:
             rowformat = ''.join([self.fmt[field] for field in self.fields])
         body = [self.formatter(rowformat, *row) for row in data]

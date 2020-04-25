@@ -51,16 +51,17 @@ class CLICommand:
     def add_arguments(parser):
         add = parser.add_argument
         add('file',
-            help="""Possible file entries are
-            
-                    * 2 non-trajectory files: difference between them
-                    * 1 trajectory file: difference between consecutive images
-                    * 2 trajectory files: difference between corresponding image numbers
-                    * 1 trajectory file followed by hyphen-minus (ASCII 45): for display
+            help=
+"""Possible file entries are
 
-                    Note deltas are defined as 2 - 1.
-                    
-                    Use [FILE]@[SLICE] to select images.
+    * 2 non-trajectory files: difference between them
+    * 1 trajectory file: difference between consecutive images
+    * 2 trajectory files: difference between corresponding image numbers
+    * 1 trajectory file followed by hyphen-minus (ASCII 45): for display
+
+    Note deltas are defined as 2 - 1.
+    
+    Use [FILE]@[SLICE] to select images.
                     """,
             nargs='+')
         add('-r',
@@ -69,25 +70,29 @@ class CLICommand:
             nargs='?',
             const='d',
             type=str,
-            help="""Order atoms by rank, see --template-help for possible
-                    fields.
+            help=
+"""Order atoms by rank, see --template-help for possible
+fields.
 
-                    The default value, when specified, is d.  When not
-                    specified, ordering is the same as that provided by the
-                    generator.  For hierarchical sorting, see template.""")
+The default value, when specified, is d.  When not
+specified, ordering is the same as that provided by the
+generator.  For hierarchical sorting, see template.""")
         add('-c', '--calculator-outputs', action="store_true",
             help="display calculator outputs of forces and energy")
         add('--max-lines', metavar='N', type=int,
-            help="show only so many lines (atoms) in each table, useful if rank ordering")
+            help="show only so many lines (atoms) in each table "
+            ", useful if rank ordering")
         add('-t', '--template', metavar='TEMPLATE', nargs='?', const='rc',
             help="""See --help-template for the help on this option.""")
         add('--template-help', help="""Prints the help for the template file.
                 Usage `ase diff - --template-help`""", action="store_true")
         add('-s', '--summary-functions', metavar='SUMFUNCS', nargs='?',
-            help="""Specify the summary functions. Possible values are `rmsd` and `dE`. Comma separate more than one summary function.""")
+            help="""Specify the summary functions. 
+            Possible values are `rmsd` and `dE`. 
+            Comma separate more than one summary function.""")
         add('--log-file', metavar='LOGFILE', help="print table to file")
         add('--as-csv', action="store_true",
-                help="output table in csv format")
+            help="output table in csv format")
 
     @staticmethod
     def run(args, parser):
@@ -100,13 +105,16 @@ class CLICommand:
         else:
             out = open(args.log_file, 'w')
 
-        import ase.cli.template as actemplate
-
-        Table = actemplate.Table
-        slice_split = actemplate.slice_split
+        from ase.cli.template import (
+            Table,
+            slice_split,
+            field_specs_on_conditions,
+            summary_functions_on_conditions,
+            rmsd,
+            energy_delta)
 
         if args.template is None:
-            field_specs = actemplate.field_specs_on_conditions(
+            field_specs = field_specs_on_conditions(
                 args.calculator_outputs, args.rank_order)
         else:
             field_specs = args.template.split(',')
@@ -114,21 +122,23 @@ class CLICommand:
                 for field_spec in field_specs:
                     if 'f' in field_spec:
                         raise CLIError(
-                            'field requiring calculation outputs without --calculator-outputs')
+                            "field requiring calculation outputs "
+                            "without --calculator-outputs")
 
         if args.summary_functions is None:
-            summary_functions = actemplate.summary_functions_on_conditions(
+            summary_functions = summary_functions_on_conditions(
                 args.calculator_outputs)
         else:
             summary_functions_dct = {
-                'rmsd': actemplate.rmsd,
-                'dE': actemplate.energy_delta}
+                'rmsd': rmsd,
+                'dE': energy_delta}
             summary_functions = args.summary_functions.split(',')
             if not args.calculator_outputs:
                 for sf in summary_functions:
                     if sf == 'dE':
                         raise CLIError(
-                            'summary function requiring calculation outputs without --calculator-outputs')
+                            "summary function requiring calculation outputs "
+                            "without --calculator-outputs")
             summary_functions = [summary_functions_dct[i]
                                  for i in summary_functions]
 
@@ -141,6 +151,7 @@ class CLICommand:
         if have_two_files:
             if args.file[1] == '-':
                 atoms2 = atoms1
+
                 def header_fmt(c):
                     return 'image # {}'.format(c)
             else:
@@ -154,12 +165,15 @@ class CLICommand:
 
                 if not same_length and not one_l_one:
                     raise CLIError(
-                        "Trajectory files are not the same length and both > 1\n{}!={}".format(
+                        "Trajectory files are not the same length "
+                        "and both > 1\n{}!={}".format(
                             natoms1, natoms2))
                 elif not same_length and one_l_one:
                     print(
-                        """One file contains one image and the other multiple images,
-                        assuming you want to compare all images with one reference image""")
+                        "One file contains one image "
+                        "and the other multiple images,\n"
+                        "assuming you want to compare all images "
+                        "with one reference image")
                     if natoms1 > natoms2:
                         atoms2 = natoms1 * atoms2
                     else:
@@ -189,5 +203,6 @@ class CLICommand:
 
         for counter in range(natoms):
             table.title = header_fmt(counter)
-            output += table.make(atoms1[counter], atoms2[counter],csv=args.as_csv) + '\n'
+            output += table.make(atoms1[counter],
+                                 atoms2[counter], csv=args.as_csv) + '\n'
         print(output, file=out)
