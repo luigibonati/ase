@@ -301,23 +301,49 @@ def scdm(calc, Nw, fixed_k, h=0.05, verbose=True):
     U_kww = []
     C_kul = []
 
-    # get the all electron wave functions with PAW corrections
-    ae = PS2AE(calc=calc, h=h)
-    # get grid size and check that we have Nw bands at once
-    Ng = np.size(ae.get_wave_function(Nw))
-    ae_wfs = np.zeros((Nb, Ng), dtype=np.complex128)
+    method = 'ae'
+    if 'ASE_WAN_SCDM' in os.environ:
+        env = os.environ['ASE_WAN_SCDM']
+        if env == 'ps':
+            method = env
+
+    if method == 'ae':
+        # get the all electron wave functions with PAW corrections
+        ae = PS2AE(calc=calc, h=h)
+        # get grid size and check that we have Nw bands at once
+        Ng = np.size(ae.get_wave_function(n=Nw, k=0, s=0))
+        ae_wfs = np.zeros((Nb, Ng), dtype=np.complex128)
+    else:
+        # get grid size and check that we have Nw bands at once
+        Ng = np.prod(calc.wfs.gd.N_c)
+        ps_wfs = np.zeros((Nb, Ng), dtype=np.complex128)
 
     # compute factorization just at Gamma point
     for n in range(Nb):
-        ae_wfs[n] = ae.get_wave_function(n, k=gamma_idx, ae=True).ravel()
+        if method == 'ae':
+            ae_wfs[n] = ae.get_wave_function(n=n, k=gamma_idx,
+                                             s=0, ae=True).ravel()
+        else:
+            ps_wfs[n] = calc.get_pseudo_wave_function(band=n, kpt=gamma_idx,
+                                                      spin=0).ravel()
 
-    _, _, P = qr(ae_wfs, mode='full', pivoting=True, check_finite=True)
+    if method == 'ae':
+        _, _, P = qr(ae_wfs, mode='full', pivoting=True, check_finite=True)
+    else:
+        _, _, P = qr(ps_wfs, mode='full', pivoting=True, check_finite=True)
 
     for k in range(Nk):
         for n in range(Nb):
-            ae_wfs[n] = ae.get_wave_function(n, k=k, ae=True).ravel()
+            if method == 'ae':
+                ae_wfs[n] = ae.get_wave_function(n, k=k, s=0, ae=True).ravel()
+            else:
+                ps_wfs[n] = calc.get_pseudo_wave_function(band=n, kpt=k,
+                                                          spin=0).ravel()
 
-        A_nw = ae_wfs[:, P[:Nw]]
+        if method == 'ae':
+            A_nw = ae_wfs[:, P[:Nw]]
+        else:
+            A_nw = ps_wfs[:, P[:Nw]]
         U_ww, C_ul = rotation_from_projection(proj_nw=A_nw,
                                               fixed=fixed_k[k],
                                               ortho=True)
