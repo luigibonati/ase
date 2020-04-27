@@ -17,6 +17,7 @@ from ase.utils.forcecurve import fit_images
 from ase.optimize.precon import make_precon
 from ase.optimize.ode import ode12r
 from scipy.interpolate import CubicSpline
+from scipy.integrate import cumtrapz
 
 class ChainOfStates:
     """
@@ -827,13 +828,13 @@ class PreconMEP(ChainOfStates):
         self.residuals = np.empty(self.nimages - 2)
         self.fmax_history = []
 
-    def spline_fit(self):
+    def spline_fit(self, forces=None):
         """
-        Fit cubic splines to image positions
+        Fit cubic splines to image positions (and optionally forces)
 
         Returns
         -------
-            s, x_spline
+            s, x_spline[, f_spline]
         """
 
         d_P = np.zeros(self.nimages)
@@ -841,7 +842,7 @@ class PreconMEP(ChainOfStates):
         x[0, :] = self.images[0].positions.reshape(-1)
 
         for i in range(1, self.nimages):
-            x[i] = self.images[i].positions.reshape(-1)
+            x[i, :] = self.images[i].positions.reshape(-1)
             dx, _ = find_mic(self.images[i].positions -
                              self.images[i - 1].positions,
                              self.images[i - 1].cell,
@@ -854,7 +855,11 @@ class PreconMEP(ChainOfStates):
 
         s = d_P.cumsum() / d_P.sum()  # Eq. A1 in the paper
         x_spline = CubicSpline(s, x, bc_type='not-a-knot')
-        return s, x_spline
+        if forces is not None:
+            f_spline = CubicSpline(s, forces, bc_type='clamped')
+            return s, x_spline, f_spline
+        else:
+            return s, x_spline
 
     def get_forces(self):
         """Evaluate and return the forces."""
@@ -900,17 +905,43 @@ class PreconMEP(ChainOfStates):
                 # complete Eq. 9 by including the spring force
                 pf_vec += eta_Pn
 
-            # print('norm(pf_vec, inf)', np.linalg.norm(pf_vec, np.inf))
-
             forces[i - 1] = pf_vec.reshape((self.natoms, 3))
 
-        return forces
+        return forces # FIXME shape not consistent with NEB.get_forces()
 
     def get_fmax_all(self):
         return self.residuals[:]
 
     def get_residual(self, F=None, X=None):
         return np.max(self.residuals) # Eq. 11
+
+    def integrate_forces(self, spline_points=1000, return_energies=False):
+        """
+        Use spline fit to integrate forces along MEP to approximate
+        energy differences using the virtual work approach.
+
+        Parameters
+        ----------
+        spline_points - number of spline points to use
+        return_forces - if True, include forces in results as well as energies
+
+        Returns
+        -------
+
+        s - reaction coordinate in range [0, 1], with `spline_points` entries
+        E - result of integrating forces, on the same grid as `s`.
+        dE - if return_energies is True, also return local energy contributions
+        """
+        forces = np.array([image.get_forces().reshape(-1) for image in self.images])
+        s_images, x, f = self.spline_fit(forces)
+        dx = x.derivative()
+        s = np.linspace(0.0, 1.0, spline_points, endpoint=True)
+        dE = f(s) * dx(s)
+        E = -cumtrapz(dE.sum(axis=1), s, initial=0.0)
+        if return_energies:
+            return s, E, dE
+        else:
+            return s, E
 
     def log(self):
         fmax = self.get_residual()
