@@ -287,3 +287,41 @@ def test_escape():
     assert escape('plain_string') == 'plain_string'
     assert escape('string_containing_"') == r'"string_containing_\""'
     assert escape('string with spaces') == '"string with spaces"'
+
+
+@pytest.mark.filterwarnings('ignore:write_xyz')
+def test_stress():
+    from ase.calculators.emt import EMT
+    from ase.constraints import full_3x3_to_voigt_6_stress
+    from ase.build import molecule
+
+    # build a water dimer, which has 6 atoms
+    w1 = molecule('H2O')
+    w2 = molecule('H2O')
+    w2.positions[:, 0] += 5.0
+    a = w1 + w2
+    a.cell = [10, 10, 10]
+    a.pbc = True
+
+    a.new_array('stress', np.arange(6, dtype=float))  # array with clashing name
+    a.calc = EMT()
+    sigma = a.get_stress()
+    a.write('tmp.xyz')
+    b = ase.io.read('tmp.xyz')
+    assert abs(b.get_stress() - sigma).max() < 1e-6
+    assert abs(b.arrays['stress'] - np.arange(6, dtype=float)).max() < 1e-6
+    assert abs(full_3x3_to_voigt_6_stress(b.info['stress']) - sigma).max() < 1e-6
+
+def test_json_scalars():
+    a = bulk('Si')
+    a.info['val_1'] = 42.0
+    a.info['val_2'] = np.float(42.0)
+    a.write('tmp.xyz')
+    assert open('tmp.xyz', 'r').read() == """2
+Lattice="0.0 2.715 2.715 2.715 0.0 2.715 2.715 2.715 0.0" Properties=species:S:1:pos:R:3 val_1=42.0 val_2=42.0 pbc="T T T"
+Si       0.00000000       0.00000000       0.00000000
+Si       1.35750000       1.35750000       1.35750000
+"""
+    b = ase.io.read('tmp.xyz')
+    assert abs(b.info['val_1'] - 42.0) < 1e-6
+    assert abs(b.info['val_2'] - 42.0) < 1e-6
