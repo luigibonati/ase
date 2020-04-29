@@ -1,3 +1,4 @@
+from typing import Tuple
 import re
 import numpy as np
 
@@ -19,13 +20,47 @@ class LippincottStuttman:
         'O': 0.592,
         'Si': 2.988
     }
+    # reduced electronegativity
+    reduced_eletronegativity = {
+        'C': 0.846,
+        'N': 0.927,
+        'O': 1.0,
+        'Si': 0.583,
+    }
+    
+    def __call__(self, bond: str, length: float) -> Tuple[float, float]:
+        """Bond polarizability
 
-    def __call__(self, bond, length):
+        Parameters
+        ----------
+        bond: elements
+        length: float
+
+        Returns
+        -------
+        alphal: float
+          Parallel component
+        alphap: float
+          Perpendicular component
+        """
         el1, el2 = re.findall('[A-Z][^A-Z]*', bond)
+
         alpha1 = self.atomic_polarizability[el1]
         alpha2 = self.atomic_polarizability[el2]
+        ren1 = self.reduced_eletronegativity[el1]
+        ren2 = self.reduced_eletronegativity[el2]
 
-        return length**4 / (4**4 * alpha1 * alpha2)**(1. / 6), 0
+        sigma = 1.
+        if el1 != el2:
+            sigma = np.exp(- (ren1 - ren2)**2 / 4)
+
+        # parallel component
+        alphal = sigma * length**4 / (4**4 * alpha1 * alpha2)**(1. / 6)
+
+        # prependicular component
+        alphap = 0.0
+        
+        return alphal, alphap
 
 
 class Linearized():
@@ -36,7 +71,21 @@ class Linearized():
             'CC': (1.69, 1.53, 7.43, 0.71, 0.37),
         }
 
-    def __call__(self, bond, length):
+    def __call__(self, bond: str, length: float) -> Tuple[float, float]:
+        """Bond polarizability
+
+        Parameters
+        ----------
+        bond: elements
+        length: float
+
+        Returns
+        -------
+        alphal: float
+          Parallel component
+        alphap: float
+          Perpendicular component
+        """
         assert bond in self._data
         length0, al, ald, ap, apd = self._data[bond]
 
