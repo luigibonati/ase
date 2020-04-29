@@ -1,6 +1,6 @@
 import glob
 import os
-import unittest
+import pytest
 import numpy as np
 from numpy.testing import assert_array_almost_equal
 
@@ -12,7 +12,7 @@ from ase.vibrations import Vibrations, VibrationsData
 from ase.thermochemistry import IdealGasThermo
 
 
-class TestVibrationsClassic(unittest.TestCase):
+class TestVibrationsClassic():
     """Tests for the ase.vibrations.Vibrations object
 
     This object is to be phased out in favour of separate calculating/loading
@@ -20,7 +20,7 @@ class TestVibrationsClassic(unittest.TestCase):
     testing to ensure there are no unexpected losses/changes in the process.
 
     """
-    def setUp(self):
+    def setup(self):
         self.logfile = 'vibrations-log.txt'
         self.opt_logs = 'opt-logs.txt'
 
@@ -34,7 +34,7 @@ class TestVibrationsClassic(unittest.TestCase):
         atoms.calc = EMT()
         return atoms
 
-    def tearDown(self):
+    def teardown(self):
         for pattern in 'vib.*.pckl', 'interrupt.*.pckl', 'vib.*.traj':
             for outfile in glob.glob(pattern):
                 os.remove(outfile)
@@ -62,21 +62,21 @@ class TestVibrationsClassic(unittest.TestCase):
 
         disp_file = 'interrupt.1x-.pckl'
         comb_file = 'interrupt.all.pckl'
-        self.assertTrue(os.path.isfile(disp_file))
-        self.assertFalse(os.path.isfile(comb_file))
+        assert os.path.isfile(disp_file)
+        assert not os.path.isfile(comb_file)
 
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             vib.split()
 
         # Build a combined file
-        self.assertEqual(vib.combine(), 13)
+        assert vib.combine() == 13
 
         # Individual displacements should be gone, combination should exist
-        self.assertFalse(os.path.isfile(disp_file))
-        self.assertTrue(os.path.isfile(comb_file))
+        assert not os.path.isfile(disp_file)
+        assert os.path.isfile(comb_file)
 
         # Not allowed to run after data has been combined
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             vib.run()
         # But reading is allowed
             vib.read()
@@ -84,25 +84,25 @@ class TestVibrationsClassic(unittest.TestCase):
         # Splitting should fail if any split file already exists
         with open(disp_file, 'w') as f:
             f.write("hello")
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             vib.split()
         os.remove(disp_file)
 
         # Now split() for real: replace .all.pckl file with displacements
         vib.split()
-        self.assertTrue(os.path.isfile(disp_file))
-        self.assertFalse(os.path.isfile(comb_file))
+        assert os.path.isfile(disp_file)
+        assert not os.path.isfile(comb_file)
 
         # Not allowed to clobber existing combined file
         with open(comb_file, 'w') as f:
             f.write("Hello")
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             vib.combine()
         os.remove(comb_file)
 
         # Combining data also fails if some data is missing
         os.remove('interrupt.1x-.pckl')
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             vib.combine()
 
         vib.clean()
@@ -117,7 +117,7 @@ class TestVibrationsClassic(unittest.TestCase):
         vib_energies = vib.get_energies()
 
         for image in vib.iterimages():
-            self.assertEqual(len(image), 2)
+            assert len(image) == 2
 
         thermo = IdealGasThermo(vib_energies=vib_energies, geometry='linear',
                                 atoms=atoms, symmetrynumber=2, spin=0)
@@ -127,7 +127,7 @@ class TestVibrationsClassic(unittest.TestCase):
         vib.summary(log=self.logfile)
         with open(self.logfile, 'rt') as f:
             log_txt = f.read()
-            self.assertEqual(log_txt, vibrations_n2_log)
+            assert log_txt == vibrations_n2_log
 
         mode1 = vib.get_mode(1)
         assert_array_almost_equal(mode1, [[0.188935, -0.000213, 0.],
@@ -139,27 +139,27 @@ class TestVibrationsClassic(unittest.TestCase):
                                    [0., 0., 2.26722e-1]])
 
         for i in range(3):
-            self.assertFalse(os.path.isfile('vib.{}.traj'.format(i)))
+            assert not os.path.isfile('vib.{}.traj'.format(i))
         mode_traj = ase.io.read('vib.3.traj', index=':')
-        self.assertEqual(len(mode_traj), 5)
+        assert len(mode_traj) == 5
         assert_array_almost_equal(mode_traj[0].get_all_distances(),
                                   atoms.get_all_distances())
-        with self.assertRaises(AssertionError):
+        with pytest.raises(AssertionError):
             assert_array_almost_equal(mode_traj[4].get_all_distances(),
                                       atoms.get_all_distances())
 
         with open('vib.xyz', 'rt') as f:
             jmol_txt = f.read()
-            self.assertEqual(jmol_txt, jmol_txt_ref)
+            assert jmol_txt == jmol_txt_ref
 
-        self.assertEqual(vib.clean(empty_files=True), 0)
-        self.assertEqual(vib.clean(), 13)
-        self.assertEqual(len(list(vib.iterimages())), 13)
+        assert vib.clean(empty_files=True) == 0
+        assert vib.clean() == 13
+        assert len(list(vib.iterimages())) == 13
 
         d = dict(vib.iterdisplace(inplace=False))
 
         for name, image in vib.iterdisplace(inplace=True):
-            self.assertEqual(d[name], atoms)
+            assert d[name] == atoms
 
         atoms2 = self.get_emt_n2()
         vib2 = Vibrations(atoms2)
@@ -177,15 +177,15 @@ class TestVibrationsClassic(unittest.TestCase):
             os.chdir('run_from_here')
             vib = Vibrations(atoms3, name=os.path.join(os.pardir, 'vib'))
             assert_array_almost_equal(freqs, vib.get_frequencies())
-            self.assertEqual(vib.clean(), 13)
+            assert vib.clean() == 13
         finally:
             os.chdir(workdir)
             if os.path.isdir('run_from_here'):
                 os.rmdir('run_from_here')
 
 
-class TestVibrationsData(unittest.TestCase):
-    def setUp(self):
+class TestVibrationsData():
+    def setup(self):
         self.n2 = Atoms('N2', positions=[[0., 0., 0.05095057],
                                          [0., 0., 1.04904943]])
         self.h_n2 = np.array([[[[4.67554672e-03, 0.0, 0.0],
@@ -232,7 +232,7 @@ class TestVibrationsData(unittest.TestCase):
              -56.65107699250456, -0.6867385017096544, 0.0, 56.65107699250456
              ]).reshape((2, 3, 2, 3))
 
-    def tearDown(self):
+    def teardown(self):
         for logfile in (self.report_file,
                         self.unstable_report_file,
                         self.jmol_file):
@@ -252,12 +252,12 @@ class TestVibrationsData(unittest.TestCase):
                                   vib_data.get_frequencies(),
                                   decimal=5)
 
-        self.assertAlmostEqual(vib_data.get_zero_point_energy(), self.ref_zpe)
+        assert vib_data.get_zero_point_energy() == pytest.approx(self.ref_zpe)
 
         vib_data.summary(logfile=self.report_file)
         with open(self.report_file, 'rt') as f:
             report_txt = f.read()
-        self.assertEqual(report_txt, vibrations_n2_log)
+        assert report_txt == vibrations_n2_log
 
         atoms_with_forces = vib_data.show_as_force(-1, show=False)
         ref_forces = np.array([[0., 0., -2.26722e-1],
@@ -277,13 +277,13 @@ class TestVibrationsData(unittest.TestCase):
 
         with open(self.unstable_report_file, 'rt') as f:
             report_txt = f.read()
-        self.assertEqual(report_txt, unstable_n2_log)
+        assert report_txt == unstable_n2_log
 
     def test_zero_mass(self):
         atoms = self.n2.copy()
         atoms.set_masses([0., 1.])
         vib_data = VibrationsData(atoms, self.h_n2)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             vib_data.get_energies_and_modes()
 
     def test_clean_atom_copy(self):
@@ -291,25 +291,25 @@ class TestVibrationsData(unittest.TestCase):
         # Custom arrays should be removed from the Atoms attached to VibData
         atoms.arrays['bad idea'] = [10., 20.]
         vib_data = VibrationsData(atoms, self.h_n2)
-        self.assertFalse('bad idea' in vib_data.atoms.arrays)
+        assert 'bad idea' not in vib_data.atoms.arrays
 
     def test_fixed_atoms(self):
         vib_data = VibrationsData(self.n2.copy(), self.h_n2[1:, :, 1:, :],
                                   indices=[1, ])
-        self.assertEqual(vib_data.indices, [1, ])
-        self.assertEqual(vib_data.mask.tolist(), [False, True])
+        assert vib_data.indices == [1, ]
+        assert vib_data.mask.tolist() == [False, True]
 
     def test_edit_data(self):
         # --- Modify Hessian and indices to fix an atom ---
         vib_data = VibrationsData(self.n2.copy(), self.h_n2)
 
-        with self.assertRaises(NotImplementedError):
+        with pytest.raises(NotImplementedError):
             vib_data.hessian = vib_data.hessian[:1, :, :1, :]
 
-        with self.assertRaises(NotImplementedError):
+        with pytest.raises(NotImplementedError):
             vib_data.indices = [0, 1]
 
-        with self.assertRaises(NotImplementedError):
+        with pytest.raises(NotImplementedError):
             vib_data.atoms = ase.Atoms('H2', positions=[[0., 0., 0.],
                                                         [0., 0., 0.8]])
 
@@ -317,7 +317,7 @@ class TestVibrationsData(unittest.TestCase):
         vib_data = VibrationsData(self.n2.copy(), self.h_n2)
         vib_data_dict = vib_data.todict()
 
-        self.assertEqual(vib_data_dict['indices'], None)
+        assert vib_data_dict['indices'] == None
         assert_array_almost_equal(vib_data_dict['atoms'].positions,
                                   self.n2.positions)
         assert_array_almost_equal(vib_data_dict['hessian'],
@@ -329,8 +329,7 @@ class TestVibrationsData(unittest.TestCase):
         vib_data_roundtrip = VibrationsData.fromdict(vib_data_dict)
 
         for attr in 'atoms', 'indices':
-            self.assertEqual(getattr(vib_data, attr),
-                             getattr(vib_data_roundtrip, attr))
+            assert getattr(vib_data, attr) == getattr(vib_data_roundtrip, attr)
         for array_getter in ('get_hessian_2d',):
             assert_array_almost_equal(
                 getattr(vib_data, array_getter)(),
@@ -350,8 +349,8 @@ class TestVibrationsData(unittest.TestCase):
         for i, image in enumerate(images):
             assert_array_almost_equal(image.positions,
                                       vib_data.atoms.positions)
-            self.assertAlmostEqual(image.info['IR_intensity'],
-                                   ir_intensities[i])
+            assert (image.info['IR_intensity']
+                    == pytest.approx(ir_intensities[i]))
             assert_array_almost_equal(image.arrays['mode'],
                                       vib_data.get_modes()[i])
 
@@ -363,7 +362,7 @@ class TestVibrationsData(unittest.TestCase):
                                   [[0, 0, 1]]]))
 
         for bad_hessian in bad_hessians:
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 VibrationsData(self.n2.copy(), bad_hessian)
 
     def test_bad_hessian2d(self):
@@ -374,13 +373,13 @@ class TestVibrationsData(unittest.TestCase):
                                   [[0, 0, 1]]]))
 
         for bad_hessian in bad_hessians:
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 VibrationsData.from_2d(self.n2.copy(), bad_hessian)
 
 
-class TestSlab(unittest.TestCase):
+class TestSlab():
     "Adsorption of N2 on Ag slab - vibration with frozen molecules"
-    def setUp(self):
+    def setup(self):
         # To reproduce n2_on_ag_data:
         # from ase.build import fcc111, add_adsorbate
         # ag_slab = fcc111('Ag', (4, 4, 2), a=2.031776)
@@ -501,26 +500,3 @@ Mode #5, f = 1231.2  cm^-1.
  N      0.00000      0.00000      0.05095      0.00000      0.00000     -0.18894
  N      0.00000      0.00000      1.04905      0.00000     -0.00000      0.18894
 """
-
-
-# More unittest boilerplate before pytest arrives
-def suite():
-    import ase.test.vib  # Circular dependency is a bit scary but seems to work
-    suite = unittest.defaultTestLoader.loadTestsFromModule(ase.test.vib)
-    return suite
-
-
-# Instead of keeping/displaying unittest results, escalate errors so ASE unit
-# test system can handle them. "noqa" tells flake8 that it's ok for these
-# functions to have camelCase names (as required by unittest).
-class VibrationsTestResults(unittest.TestResult):
-    def addFailure(self, test, err):      # noqa: N802
-        raise err[1]
-
-    def addError(self, test, err):        # noqa: N802
-        raise err[1]
-
-
-if __name__ in ['__main__', 'test']:
-    runner = unittest.TextTestRunner(resultclass=VibrationsTestResults)
-    runner.run(suite())
