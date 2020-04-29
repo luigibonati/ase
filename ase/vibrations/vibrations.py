@@ -435,7 +435,7 @@ class VibrationsData(object):
 
         atoms = self.atoms  # Spawns a copy to avoid mutating underlying data
         mode = self.get_modes()[mode] * len(atoms) * 3 * scale
-        atoms.set_calculator(SinglePointCalculator(atoms, forces=mode))
+        atoms.calc = SinglePointCalculator(atoms, forces=mode)
         if show:
             self.atoms.edit()
 
@@ -465,6 +465,12 @@ class VibrationsData(object):
 
         all_images = []
         for i, (energy, mode) in enumerate(zip(*energies_and_modes)):
+            # write imaginary frequencies as negative numbers
+            if energy.imag > energy.real:
+                energy = float(-energy.imag)
+            else:
+                energy = energy.real
+
             image = self.atoms.copy()
             image.info.update({'mode#': str(i),
                                'frequency_cm-1': energy / units.invcm,
