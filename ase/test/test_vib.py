@@ -1,53 +1,526 @@
-def test_vib():
-    import os
-    from ase import Atoms
-    from ase.calculators.emt import EMT
-    from ase.optimize import QuasiNewton
-    from ase.vibrations import Vibrations
-    from ase.thermochemistry import IdealGasThermo
+import glob
+import os
+import unittest
+import numpy as np
+from numpy.testing import assert_array_almost_equal
 
-    n2 = Atoms('N2',
-               positions=[(0, 0, 0), (0, 0, 1.1)],
-               calculator=EMT())
-    QuasiNewton(n2).run(fmax=0.01)
-    vib = Vibrations(n2)
-    vib.run()
-    freqs = vib.get_frequencies()
-    print(freqs)
-    vib.summary()
-    print(vib.get_mode(-1))
-    vib.write_mode(n=None, nimages=20)
-    vib_energies = vib.get_energies()
+from ase import units, Atoms
+import ase.io
+from ase.calculators.emt import EMT
+from ase.optimize import QuasiNewton
+from ase.vibrations import Vibrations, VibrationsData
+from ase.thermochemistry import IdealGasThermo
 
-    for image in vib.iterimages():
-        assert len(image) == 2
 
-    thermo = IdealGasThermo(vib_energies=vib_energies, geometry='linear',
-                            atoms=n2, symmetrynumber=2, spin=0)
-    thermo.get_gibbs_energy(temperature=298.15, pressure=2 * 101325.)
+class TestVibrationsClassic(unittest.TestCase):
+    """Tests for the ase.vibrations.Vibrations object
 
-    assert vib.clean(empty_files=True) == 0
-    assert vib.clean() == 13
-    assert len(list(vib.iterimages())) == 13
+    This object is to be phased out in favour of separate calculating/loading
+    and results/data objects. It therefore requires especially thorough
+    testing to ensure there are no unexpected losses/changes in the process.
 
-    d = dict(vib.iterdisplace(inplace=False))
+    """
+    def setUp(self):
+        self.logfile = 'vibrations-log.txt'
+        self.opt_logs = 'opt-logs.txt'
 
-    for name, atoms in vib.iterdisplace(inplace=True):
-        assert d[name] == atoms
+        self.n2 = Atoms('N2',
+                        positions=[(0, 0, 0), (0, 0, 1.1)],
+                        calculator=EMT())
+        QuasiNewton(self.n2, logfile=self.opt_logs).run(fmax=0.01)
 
-    vib = Vibrations(n2)
-    vib.run()
-    assert vib.combine() == 13
-    assert (freqs == vib.get_frequencies()).all()
+    def get_emt_n2(self):
+        atoms = self.n2.copy()
+        atoms.calc = EMT()
+        return atoms
 
-    vib = Vibrations(n2)
-    assert vib.split() == 1
-    assert (freqs == vib.get_frequencies()).all()
+    def tearDown(self):
+        for pattern in 'vib.*.pckl', 'interrupt.*.pckl', 'vib.*.traj':
+            for outfile in glob.glob(pattern):
+                os.remove(outfile)
+        for filename in (self.logfile, self.opt_logs, 'vib.xyz'):
+            if os.path.isfile(filename):
+                os.remove(filename)
 
-    assert vib.combine() == 13
-    # Read the data from other working directory
-    dirname = os.path.basename(os.getcwd())
-    os.chdir('..')  # Change working directory
-    vib = Vibrations(n2, name=os.path.join(dirname, 'vib'))
-    assert (freqs == vib.get_frequencies()).all()
-    assert vib.clean() == 1
+    def test_consistency_with_vibrationsdata(self):
+        atoms = self.get_emt_n2()
+        vib = Vibrations(atoms)
+        vib.run()
+        vib_data = vib.get_vibrations()
+
+        assert_array_almost_equal(vib.get_energies(),
+                                  vib_data.get_energies())
+
+        # Compare the last mode as the others may be re-ordered by negligible
+        # energy changes
+        assert_array_almost_equal(vib.get_mode(5), vib_data.get_modes()[5])
+
+    def test_pickle_manipulation(self):
+        atoms = self.get_emt_n2()
+        vib = Vibrations(atoms, name='interrupt')
+        vib.run()
+
+        disp_file = 'interrupt.1x-.pckl'
+        comb_file = 'interrupt.all.pckl'
+        self.assertTrue(os.path.isfile(disp_file))
+        self.assertFalse(os.path.isfile(comb_file))
+
+        with self.assertRaises(RuntimeError):
+            vib.split()
+
+        # Build a combined file
+        self.assertEqual(vib.combine(), 13)
+
+        # Individual displacements should be gone, combination should exist
+        self.assertFalse(os.path.isfile(disp_file))
+        self.assertTrue(os.path.isfile(comb_file))
+
+        # Not allowed to run after data has been combined
+        with self.assertRaises(RuntimeError):
+            vib.run()
+        # But reading is allowed
+            vib.read()
+
+        # Splitting should fail if any split file already exists
+        with open(disp_file, 'w') as f:
+            f.write("hello")
+        with self.assertRaises(RuntimeError):
+            vib.split()
+        os.remove(disp_file)
+
+        # Now split() for real: replace .all.pckl file with displacements
+        vib.split()
+        self.assertTrue(os.path.isfile(disp_file))
+        self.assertFalse(os.path.isfile(comb_file))
+
+        # Not allowed to clobber existing combined file
+        with open(comb_file, 'w') as f:
+            f.write("Hello")
+        with self.assertRaises(RuntimeError):
+            vib.combine()
+        os.remove(comb_file)
+
+        # Combining data also fails if some data is missing
+        os.remove('interrupt.1x-.pckl')
+        with self.assertRaises(RuntimeError):
+            vib.combine()
+
+        vib.clean()
+
+    def test_vibrations(self):
+        atoms = self.get_emt_n2()
+        vib = Vibrations(atoms)
+        vib.run()
+        freqs = vib.get_frequencies()
+        vib.write_mode(n=None, nimages=5)
+        vib.write_jmol()
+        vib_energies = vib.get_energies()
+
+        for image in vib.iterimages():
+            self.assertEqual(len(image), 2)
+
+        thermo = IdealGasThermo(vib_energies=vib_energies, geometry='linear',
+                                atoms=atoms, symmetrynumber=2, spin=0)
+        thermo.get_gibbs_energy(temperature=298.15, pressure=2 * 101325.,
+                                verbose=False)
+
+        vib.summary(log=self.logfile)
+        with open(self.logfile, 'rt') as f:
+            log_txt = f.read()
+            self.assertEqual(log_txt, vibrations_n2_log)
+
+        mode1 = vib.get_mode(1)
+        assert_array_almost_equal(mode1, [[0.188935, -0.000213, 0.],
+                                          [0.188935, -0.000213, -0.]])
+
+        vib.show_as_force(-1, show=False)
+        assert_array_almost_equal(vib.atoms.get_forces(),
+                                  [[0., 0., -2.26722e-1],
+                                   [0., 0., 2.26722e-1]])
+
+        for i in range(3):
+            self.assertFalse(os.path.isfile('vib.{}.traj'.format(i)))
+        mode_traj = ase.io.read('vib.3.traj', index=':')
+        self.assertEqual(len(mode_traj), 5)
+        assert_array_almost_equal(mode_traj[0].get_all_distances(),
+                                  atoms.get_all_distances())
+        with self.assertRaises(AssertionError):
+            assert_array_almost_equal(mode_traj[4].get_all_distances(),
+                                      atoms.get_all_distances())
+
+        with open('vib.xyz', 'rt') as f:
+            jmol_txt = f.read()
+            self.assertEqual(jmol_txt, jmol_txt_ref)
+
+        self.assertEqual(vib.clean(empty_files=True), 0)
+        self.assertEqual(vib.clean(), 13)
+        self.assertEqual(len(list(vib.iterimages())), 13)
+
+        d = dict(vib.iterdisplace(inplace=False))
+
+        for name, image in vib.iterdisplace(inplace=True):
+            self.assertEqual(d[name], atoms)
+
+        atoms2 = self.get_emt_n2()
+        vib2 = Vibrations(atoms2)
+        vib2.run()
+
+        assert_array_almost_equal(freqs,
+                                  vib.get_frequencies())
+
+        # write/read the data from another working directory
+        atoms3 = self.n2.copy()  # No calculator needed!
+
+        workdir = os.path.abspath(os.path.curdir)
+        try:
+            os.mkdir('run_from_here')
+            os.chdir('run_from_here')
+            vib = Vibrations(atoms3, name=os.path.join(os.pardir, 'vib'))
+            assert_array_almost_equal(freqs, vib.get_frequencies())
+            self.assertEqual(vib.clean(), 13)
+        finally:
+            os.chdir(workdir)
+            if os.path.isdir('run_from_here'):
+                os.rmdir('run_from_here')
+
+
+class TestVibrationsData(unittest.TestCase):
+    def setUp(self):
+        self.n2 = Atoms('N2', positions=[[0., 0., 0.05095057],
+                                         [0., 0., 1.04904943]])
+        self.h_n2 = np.array([[[[4.67554672e-03, 0.0, 0.0],
+                                [-4.67554672e-03, 0.0, 0.0]],
+
+                              [[0.0, 4.67554672e-03, 0.0],
+                               [0.0, -4.67554672e-03, 0.0]],
+
+                              [[0.0, 0.0, 3.90392599e+01],
+                               [0.0, 0.0, -3.90392599e+01]]],
+
+                             [[[-4.67554672e-03, 0.0, 0.0],
+                               [4.67554672e-03, 0.0, 0.0]],
+
+                              [[0.0, -4.67554672e-03, 0.0],
+                               [0.0, 4.67554672e-03, 0.0]],
+
+                              [[0.0, 0.0, -3.90392599e+01],
+                               [0.0, 0.0, 3.90392599e+01]]]])
+
+        # Frequencies in cm-1 from the Vibrations() test case
+        self.ref_frequencies = [0.00000000e+00 + 0.j,
+                                6.06775530e-08 + 0.j,
+                                3.62010442e-06 + 0.j,
+                                1.34737571e+01 + 0.j,
+                                1.34737571e+01 + 0.j,
+                                1.23118496e+03 + 0.j]
+
+        self.ref_zpe = 0.07799427233401508
+        self.report_file = 'vib-data-report.txt'
+        self.unstable_report_file = 'unstable-vib-data-report.txt'
+        self.jmol_file = 'vib-data.xyz'
+
+        self.n2_unstable = Atoms('N2', positions=[[0., 0., 0.45],
+                                                  [0., 0., -0.45]])
+        self.h_n2_unstable = np.array(
+            [-5.150829928323684, 0.0, -0.6867385017096544, 5.150829928323684,
+             0.0, 0.6867385017096544, 0.0, -5.158454318599951, 0.0, 0.0,
+             5.158454318599951, 0.0, -0.6867385017096544, 0.0,
+             56.65107699250456, 0.6867385017096544, 0.0, -56.65107699250456,
+             5.150829928323684, 0.0, 0.6867385017096544, -5.150829928323684,
+             0.0, -0.6867385017096544, 0.0, 5.158454318599951, 0.0, 0.0,
+             -5.158454318599951, 0.0, 0.6867385017096544, 0.0,
+             -56.65107699250456, -0.6867385017096544, 0.0, 56.65107699250456
+             ]).reshape((2, 3, 2, 3))
+
+    def tearDown(self):
+        for logfile in (self.report_file,
+                        self.unstable_report_file,
+                        self.jmol_file):
+            if os.path.isfile(logfile):
+                os.remove(logfile)
+
+    def test_energies_and_modes(self):
+        vib_data = VibrationsData(self.n2.copy(), self.h_n2)
+        energies, modes = vib_data.get_energies_and_modes()
+        assert_array_almost_equal(self.ref_frequencies,
+                                  energies / units.invcm,
+                                  decimal=5)
+        assert_array_almost_equal(self.ref_frequencies,
+                                  vib_data.get_energies() / units.invcm,
+                                  decimal=5)
+        assert_array_almost_equal(self.ref_frequencies,
+                                  vib_data.get_frequencies(),
+                                  decimal=5)
+
+        self.assertAlmostEqual(vib_data.get_zero_point_energy(), self.ref_zpe)
+
+        vib_data.summary(logfile=self.report_file)
+        with open(self.report_file, 'rt') as f:
+            report_txt = f.read()
+        self.assertEqual(report_txt, vibrations_n2_log)
+
+        atoms_with_forces = vib_data.show_as_force(-1, show=False)
+        ref_forces = np.array([[0., 0., -2.26722e-1],
+                               [0., 0., 2.26722e-1]])
+
+        try:
+            assert_array_almost_equal(atoms_with_forces.get_forces(),
+                                      ref_forces)
+        except AssertionError:
+            # Eigenvectors may be off by a sign change, which is allowed
+            assert_array_almost_equal(atoms_with_forces.get_forces(),
+                                      -ref_forces)
+
+    def test_imaginary_energies(self):
+        vib_data = VibrationsData(self.n2_unstable.copy(), self.h_n2_unstable)
+        vib_data.summary(logfile=self.unstable_report_file)
+
+        with open(self.unstable_report_file, 'rt') as f:
+            report_txt = f.read()
+        self.assertEqual(report_txt, unstable_n2_log)
+
+    def test_zero_mass(self):
+        atoms = self.n2.copy()
+        atoms.set_masses([0., 1.])
+        vib_data = VibrationsData(atoms, self.h_n2)
+        with self.assertRaises(ValueError):
+            vib_data.get_energies_and_modes()
+
+    def test_clean_atom_copy(self):
+        atoms = self.n2.copy()
+        # Custom arrays should be removed from the Atoms attached to VibData
+        atoms.arrays['bad idea'] = [10., 20.]
+        vib_data = VibrationsData(atoms, self.h_n2)
+        self.assertFalse('bad idea' in vib_data.atoms.arrays)
+
+    def test_fixed_atoms(self):
+        vib_data = VibrationsData(self.n2.copy(), self.h_n2[1:, :, 1:, :],
+                                  indices=[1, ])
+        self.assertEqual(vib_data.indices, [1, ])
+        self.assertEqual(vib_data.mask.tolist(), [False, True])
+
+    def test_edit_data(self):
+        # --- Modify Hessian and indices to fix an atom ---
+        vib_data = VibrationsData(self.n2.copy(), self.h_n2)
+
+        with self.assertRaises(NotImplementedError):
+            vib_data.hessian = vib_data.hessian[:1, :, :1, :]
+
+        with self.assertRaises(NotImplementedError):
+            vib_data.indices = [0, 1]
+
+        with self.assertRaises(NotImplementedError):
+            vib_data.atoms = ase.Atoms('H2', positions=[[0., 0., 0.],
+                                                        [0., 0., 0.8]])
+
+    def test_todict(self):
+        vib_data = VibrationsData(self.n2.copy(), self.h_n2)
+        vib_data_dict = vib_data.todict()
+
+        self.assertEqual(vib_data_dict['indices'], None)
+        assert_array_almost_equal(vib_data_dict['atoms'].positions,
+                                  self.n2.positions)
+        assert_array_almost_equal(vib_data_dict['hessian'],
+                                  self.h_n2)
+
+    def test_dict_roundtrip(self):
+        vib_data = VibrationsData(self.n2.copy(), self.h_n2)
+        vib_data_dict = vib_data.todict()
+        vib_data_roundtrip = VibrationsData.fromdict(vib_data_dict)
+
+        for attr in 'atoms', 'indices':
+            self.assertEqual(getattr(vib_data, attr),
+                             getattr(vib_data_roundtrip, attr))
+        for array_getter in ('get_hessian_2d',):
+            assert_array_almost_equal(
+                getattr(vib_data, array_getter)(),
+                getattr(vib_data_roundtrip, array_getter)())
+        for array_attr in ('hessian',):
+            assert_array_almost_equal(
+                getattr(vib_data, array_attr),
+                getattr(vib_data_roundtrip, array_attr))
+
+    def test_jmol_roundtrip(self):
+        ir_intensities = np.random.random(6)
+
+        vib_data = VibrationsData(self.n2.copy(), self.h_n2)
+        vib_data.write_jmol(self.jmol_file, ir_intensities=ir_intensities)
+
+        images = ase.io.read(self.jmol_file, index=':')
+        for i, image in enumerate(images):
+            assert_array_almost_equal(image.positions,
+                                      vib_data.atoms.positions)
+            self.assertAlmostEqual(image.info['IR_intensity'],
+                                   ir_intensities[i])
+            assert_array_almost_equal(image.arrays['mode'],
+                                      vib_data.get_modes()[i])
+
+    def test_bad_hessian(self):
+        bad_hessians = (None, 'fish', 1,
+                        np.array([1, 2, 3]),
+                        np.eye(6),
+                        np.array([[[1, 0, 0]],
+                                  [[0, 0, 1]]]))
+
+        for bad_hessian in bad_hessians:
+            with self.assertRaises(ValueError):
+                VibrationsData(self.n2.copy(), bad_hessian)
+
+    def test_bad_hessian2d(self):
+        bad_hessians = (None, 'fish', 1,
+                        np.array([1, 2, 3]),
+                        self.h_n2,
+                        np.array([[[1, 0, 0]],
+                                  [[0, 0, 1]]]))
+
+        for bad_hessian in bad_hessians:
+            with self.assertRaises(ValueError):
+                VibrationsData.from_2d(self.n2.copy(), bad_hessian)
+
+
+class TestSlab(unittest.TestCase):
+    "Adsorption of N2 on Ag slab - vibration with frozen molecules"
+    def setUp(self):
+        # To reproduce n2_on_ag_data:
+        # from ase.build import fcc111, add_adsorbate
+        # ag_slab = fcc111('Ag', (4, 4, 2), a=2.031776)
+        # ag_slab.calc = EMT()
+        # n2 = Atoms('N2',
+        #            positions=[(0, 0, 0), (0, 0, 1.1)],
+        #            calculator=EMT())
+        # QuasiNewton(n2).run(fmax=0.01)
+        # add_adsorbate(ag_slab, n2, height=0.1, position='fcc')
+        # QuasiNewton(ag_slab).run(fmax=1e-3)
+
+        self.n2_on_ag = Atoms(**n2_on_ag_data)
+
+    def test_vibrations_on_surface(self):
+        atoms = self.n2_on_ag.copy()
+        atoms.calc = EMT()
+        vibs = Vibrations(atoms, indices=[-2, -1])
+        vibs.run()
+
+        freqs = vibs.get_frequencies()
+
+        vib_data = vibs.get_vibrations()
+        assert_array_almost_equal(freqs, vib_data.get_frequencies())
+
+
+n2_on_ag_data = {"positions": np.array([
+    0.11522782450469321, 1.1144065461066939, -7.372462459539312,
+    2.988453472155979, 1.1101021162088538, -7.348097091369633,
+    2.9889081250223644, 1.1097319309858253, -2.6771726550093766,
+    4.42748679033195, 0.27953500864036246, -5.023424263568356,
+    2.988647487319677, 2.7672422535369448, -9.643893082987166,
+    1.5522857100833238, 3.5986073870805897, -2.6783496788096266,
+    2.9888605955178464, 2.771359213321457, -5.023112326741649,
+    4.426002266203988, 3.5977377263928743, -2.676511065984475,
+    1.5434899579941024, 1.9689693193513231, 4.359003102544383,
+    2.9884153514662484, 4.426580053510861, -0.33110100322886604,
+    2.9889669670192083, 6.086834077920163, -2.677099904430725,
+    3.024247641227268, 4.433177847668567, 4.2898771182878415,
+    1.5502364630326282, 5.258366760370252, -9.643885588772582,
+    4.428995536176684, 3.5964348929876357, -7.372516399428504,
+    4.426684159759102, 5.258550258416217, -9.643980112734312,
+    7.295816104506667, 5.258864438883064, 2.019516665372352,
+    -1.3252650813821554, -1.3804744498930257, -7.3724702111318585,
+    1.5500159875082098, 0.27916914728271, -5.022740848670942,
+    2.9715785808019946, -0.5543782652837727, 4.358845144185516,
+    5.7954830502790236, -2.0529908028768005, 6.678266958798145,
+    0.1153238670863118, 2.7689332793398296, -5.025638884052345,
+    1.5600467349762661, 0.289360698297394, 1.99591074689944,
+    4.426218846810004, 1.937761330337365, -0.32974010002269494,
+    5.852146736614804, 2.7651313433743065, 2.0295010676684493,
+    1.5284008009881223, 0.3517577750219494, 6.6584232454693435,
+    1.5507901579723018, 1.9426262048750098, -0.3324184072062275,
+    5.863789878343788, 4.425475594763032, -0.33120515517967963,
+    4.420403704816752, 1.916168307407643, 4.444908498098164,
+    4.122554698411387, 0.7417811921529287, 7.875168164626224,
+    2.9952638361634243, 2.7603477361272026, 2.015529715672994,
+    5.816292331229005, 2.8333022021373018, 6.783605490492659,
+    7.438679230360008, 1.8826240456931018, 8.876555284894582,
+    -1.2449602230175023, -0.135081713547721, 5.9937992070297925,
+    0.7183412937260268, 0.4147345393028897, 44.45984325166285]).reshape(34, 3),
+    "numbers": [47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47,
+                47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47,
+                47, 47, 47, 47, 47, 47, 47, 47, 7, 7],
+    "cell": [[5.746730349808315, 0.0, 0.0],
+             [2.8733651749041575, 4.976814471633033, 0.0],
+             [0.0, 0.0, 0.0]],
+    "pbc": [True, True, False]}
+
+
+vibrations_n2_log = """---------------------
+  #    meV     cm^-1
+---------------------
+  0    0.0       0.0
+  1    0.0       0.0
+  2    0.0       0.0
+  3    1.7      13.5
+  4    1.7      13.5
+  5  152.6    1231.2
+---------------------
+Zero-point energy: 0.078 eV
+"""
+
+unstable_n2_log = """---------------------
+  #    meV     cm^-1
+---------------------
+  0   55.5i    447.5i
+  1   55.5i    447.5i
+  2    0.0       0.0
+  3    0.0       0.0
+  4    0.0       0.0
+  5  183.9    1483.2
+---------------------
+Zero-point energy: 0.092 eV
+"""
+
+jmol_txt_ref = """     2
+Mode #0, f = 0.0  cm^-1.
+ N      0.00000      0.00000      0.05095     -0.00000     -0.00000     -0.18894
+ N      0.00000      0.00000      1.04905      0.00000     -0.00000     -0.18894
+     2
+Mode #1, f = 0.0  cm^-1.
+ N      0.00000      0.00000      0.05095      0.18893     -0.00021      0.00000
+ N      0.00000      0.00000      1.04905      0.18893     -0.00021     -0.00000
+     2
+Mode #2, f = 0.0  cm^-1.
+ N      0.00000      0.00000      0.05095     -0.00021     -0.18893      0.00000
+ N      0.00000      0.00000      1.04905     -0.00021     -0.18893      0.00000
+     2
+Mode #3, f = 13.5  cm^-1.
+ N      0.00000      0.00000      0.05095     -0.18893     -0.00021      0.00000
+ N      0.00000      0.00000      1.04905      0.18893      0.00021      0.00000
+     2
+Mode #4, f = 13.5  cm^-1.
+ N      0.00000      0.00000      0.05095     -0.00021      0.18893      0.00000
+ N      0.00000      0.00000      1.04905      0.00021     -0.18893      0.00000
+     2
+Mode #5, f = 1231.2  cm^-1.
+ N      0.00000      0.00000      0.05095      0.00000      0.00000     -0.18894
+ N      0.00000      0.00000      1.04905      0.00000     -0.00000      0.18894
+"""
+
+
+# More unittest boilerplate before pytest arrives
+def suite():
+    import ase.test.vib  # Circular dependency is a bit scary but seems to work
+    suite = unittest.defaultTestLoader.loadTestsFromModule(ase.test.vib)
+    return suite
+
+
+# Instead of keeping/displaying unittest results, escalate errors so ASE unit
+# test system can handle them. "noqa" tells flake8 that it's ok for these
+# functions to have camelCase names (as required by unittest).
+class VibrationsTestResults(unittest.TestResult):
+    def addFailure(self, test, err):      # noqa: N802
+        raise err[1]
+
+    def addError(self, test, err):        # noqa: N802
+        raise err[1]
+
+
+if __name__ in ['__main__', 'test']:
+    runner = unittest.TextTestRunner(resultclass=VibrationsTestResults)
+    runner.run(suite())
