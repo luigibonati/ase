@@ -305,12 +305,13 @@ def test_stress():
 
     a.new_array('stress', np.arange(6, dtype=float))  # array with clashing name
     a.calc = EMT()
-    sigma = a.get_stress()
+    a_stress = a.get_stress()
     a.write('tmp.xyz')
     b = ase.io.read('tmp.xyz')
     assert abs(b.get_stress() - sigma).max() < 1e-6
     assert abs(b.arrays['stress'] - np.arange(6, dtype=float)).max() < 1e-6
-    assert abs(full_3x3_to_voigt_6_stress(b.info['stress']) - sigma).max() < 1e-6
+    b_stress = b.info['stress']
+    assert abs(full_3x3_to_voigt_6_stress(b_stress) - a_stress).max() < 1e-6
 
 def test_json_scalars():
     a = bulk('Si')
