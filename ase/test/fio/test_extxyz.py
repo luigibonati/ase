@@ -317,11 +317,8 @@ def test_json_scalars():
     a.info['val_1'] = 42.0
     a.info['val_2'] = np.float(42.0)
     a.write('tmp.xyz')
-    assert open('tmp.xyz', 'r').read() == """2
-Lattice="0.0 2.715 2.715 2.715 0.0 2.715 2.715 2.715 0.0" Properties=species:S:1:pos:R:3 val_1=42.0 val_2=42.0 pbc="T T T"
-Si       0.00000000       0.00000000       0.00000000
-Si       1.35750000       1.35750000       1.35750000
-"""
+    comment_line = open('tmp.xyz', 'r').readlines()[1]
+    assert "val_1=42.0" in comment_line and "val_2=42.0" in comment_line
     b = ase.io.read('tmp.xyz')
     assert abs(b.info['val_1'] - 42.0) < 1e-6
     assert abs(b.info['val_2'] - 42.0) < 1e-6
