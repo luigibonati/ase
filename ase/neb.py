@@ -828,7 +828,7 @@ class PreconMEP(ChainOfStates):
         self.residuals = np.empty(self.nimages - 2)
         self.fmax_history = []
 
-    def spline_fit(self, forces=None):
+    def spline_fit(self, norm='precon'):
         """
         Fit cubic splines to image positions (and optionally forces)
 
@@ -850,16 +850,15 @@ class PreconMEP(ChainOfStates):
             dx = dx.reshape(-1)
 
             # distance defined in Eq. 8 in the paper
-            d_P[i] = np.sqrt(0.5*(self.precon[i].dot(dx, dx) +
-                                  self.precon[i - 1].dot(dx, dx)))
+            if norm == 'precon':
+                d_P[i] = np.sqrt(0.5*(self.precon[i].dot(dx, dx) +
+                                      self.precon[i - 1].dot(dx, dx)))
+            else:
+                d_P[i] = norm(dx)
 
         s = d_P.cumsum() / d_P.sum()  # Eq. A1 in the paper
         x_spline = CubicSpline(s, x, bc_type='not-a-knot')
-        if forces is not None:
-            f_spline = CubicSpline(s, forces, bc_type='clamped')
-            return s, x_spline, f_spline
-        else:
-            return s, x_spline
+        return s, x_spline
 
     def get_forces(self):
         """Evaluate and return the forces."""
@@ -915,7 +914,8 @@ class PreconMEP(ChainOfStates):
     def get_residual(self, F=None, X=None):
         return np.max(self.residuals) # Eq. 11
 
-    def integrate_forces(self, spline_points=1000, return_energies=False):
+    def integrate_forces(self, spline_points=1000, bc_type='not-a-knot',
+                         return_forces=False):
         """
         Use spline fit to integrate forces along MEP to approximate
         energy differences using the virtual work approach.
@@ -930,16 +930,22 @@ class PreconMEP(ChainOfStates):
 
         s - reaction coordinate in range [0, 1], with `spline_points` entries
         E - result of integrating forces, on the same grid as `s`.
-        dE - if return_energies is True, also return local energy contributions
+        F - if return_forces is True, also return projected forces along MEPA
         """
-        forces = np.array([image.get_forces().reshape(-1) for image in self.images])
-        s_images, x, f = self.spline_fit(forces)
+        # note we use standard Euclidean rather than preconditioned norm
+        # to compute the virtual work
+        s, x = self.spline_fit(norm=np.linalg.norm)
+        forces = np.array([image.get_forces().reshape(-1)
+                           for image in self.images])
+        f = CubicSpline(s, forces, bc_type=bc_type)
+
         dx = x.derivative()
         s = np.linspace(0.0, 1.0, spline_points, endpoint=True)
         dE = f(s) * dx(s)
-        E = -cumtrapz(dE.sum(axis=1), s, initial=0.0)
-        if return_energies:
-            return s, E, dE
+        F = dE.sum(axis=1)
+        E = -cumtrapz(F, s, initial=0.0)
+        if return_forces:
+            return s, E, F
         else:
             return s, E
 
