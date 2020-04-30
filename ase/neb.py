@@ -930,7 +930,7 @@ class PreconMEP(ChainOfStates):
 
         s - reaction coordinate in range [0, 1], with `spline_points` entries
         E - result of integrating forces, on the same grid as `s`.
-        F - if return_forces is True, also return projected forces along MEPA
+        F - if return_forces is True, also return projected forces along MEP
         """
         # note we use standard Euclidean rather than preconditioned norm
         # to compute the virtual work
@@ -994,7 +994,7 @@ class PreconMEP(ChainOfStates):
         steps - maximum number of steps
         step_selection - either 'ODE' or 'static
         alpha - step length if step_selection = 'static'.
-        verbose, rtol, C1, C2 - passed along to ODE12r if step_selction = 'static'
+        verbose, rtol, C1, C2 - passed along to ODE12r if step_selection = 'static'
 
         """
         step_selection = step_selection.lower()
