@@ -10,6 +10,7 @@ import ase.gui.ui as ui
 from ase.gui.i18n import _
 from ase.gui.gui import GUI
 from ase.gui.save import save_dialog
+from ase.io.jsonio import encode, decode
 
 
 class Error:
@@ -129,6 +130,7 @@ def test_fracocc(gui):
 def test_add_atoms(gui):
     dia = gui.add_atoms()
     dia.combobox.value = 'CH3CH2OH'
+    assert len(gui.atoms) == 0
     dia.add()
     assert str(gui.atoms.symbols) == str(molecule('CH3CH2OH').symbols)
 
@@ -184,6 +186,31 @@ def test_quickinfo(gui, atoms):
     # This is a bit weird and invasive ...
     txt = dia.things[0].text
     assert refstring in txt
+
+
+def test_clipboard_copy(gui):
+    atoms = molecule('CH3CH2OH')
+    gui.new_atoms(atoms)
+    gui.select_all()
+    assert all(gui.selected_atoms().symbols == atoms.symbols)
+    gui.copy_selection_to_clipboard()
+    assert all(gui.get_atoms_from_clipboard().symbols == atoms.symbols)
+
+def test_clipboard_paste(gui):
+    atoms = molecule('CH3CH2OH')
+    gui._export_atoms_to_clipboard(atoms)
+    gui.paste_atoms()
+
+    #gui.
+
+    #gui.new_atoms(Atoms())
+    #assert len(gui.atoms) == 0
+    #dia = gui.paste_atoms()
+    #return
+    #dia.add()
+    #print(gui.atoms.symbols.numbers)
+    #print(atoms.symbols.numbers)
+    #assert all(gui.atoms.symbols == atoms.symbols)
 
 def window():
 

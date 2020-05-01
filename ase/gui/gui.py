@@ -209,13 +209,16 @@ class GUI(View, Status):
         nselected = sum(self.images.selected)
         if nselected and ui.ask_question('Delete atoms',
                                          'Delete selected atoms?'):
-            mask = self.images.selected[:len(self.atoms)]
-            del self.atoms[mask]
+            self.really_delete_selected_atoms()
 
-            # Will remove selection in other images, too
-            self.images.selected[:] = False
-            self.set_frame()
-            self.draw()
+    def really_delete_selected_atoms(self):
+        mask = self.images.selected[:len(self.atoms)]
+        del self.atoms[mask]
+
+        # Will remove selection in other images, too
+        self.images.selected[:] = False
+        self.set_frame()
+        self.draw()
 
     def constraints_window(self):
         from ase.gui.constraints import Constraints
@@ -406,20 +409,20 @@ class GUI(View, Status):
 
     def selected_atoms(self):
         selection_mask = self.images.selected[:len(self.atoms)]
-        if not any(selection_mask):
-            return None
         return self.atoms[selection_mask]
 
-    def cut_atoms(self, event):
-        self.copy_atoms(event)
+    def cut_atoms_to_clipboard(self, event):
+        self.copy_atoms_to_clipboard(event)
+        self.really_delete_selected_atoms()
 
     def get_atoms_from_clipboard(self):
-        from ase.io import read
+        from ase.io.jsonio import decode
         root = self.window.win
         txt = root.clipboard_get()
-        return read(txt)
+        atoms = decode(txt)
+        return atoms
 
-    def export_atoms_to_clipboard(self, atoms):
+    def _export_atoms_to_clipboard(self, atoms):
         from ase.io.jsonio import encode
         json_txt = encode(atoms)
         print(json_txt)
@@ -427,24 +430,36 @@ class GUI(View, Status):
         root.clipboard_clear()
         root.clipboard_append(json_txt)
 
-    def copy_atoms(self, event):
+    def copy_atoms_to_clipboard(self, event=None):
         print('hello', event)
-        atoms = selected_atoms()
-        if atoms is None:
-            return
-
+        atoms = self.selected_atoms()
+        self._export_atoms_to_clipboard(atoms)
         print(atoms)
 
-    def paste_atoms(self, event):
-        print('paste', event)
-        atoms = get_atoms_from_clipboard()
-        if atoms is None:
-            return
-        self.add_
-        #self.set_atoms(
-        print(txt)
-        #read
-        #self.window.win.
+    def paste_atoms_from_clipboard(self, event=None):
+        clipboard_atoms = self.get_atoms_from_clipboard()
+
+        selection = self.selected_atoms()
+        if len(selection):
+            paste_center = selection.positions.sum(axis=0) / len(selection)
+            clipboard_atoms.center()
+            clipboard_atoms.translate(paste_center)
+
+        self.add_atoms_and_select(clipboard_atoms)
+
+    def add_atoms_and_select(self, new_atoms):
+        atoms = self.atoms
+        atoms += new_atoms
+
+        if len(atoms) > self.images.maxnatoms:
+            self.images.initialize(list(self.images),
+                                   self.images.filenames)
+
+        self.images.selected[:] = False
+        # 'selected' array may be longer than current atoms
+        self.images.selected[len(atoms) - len(new_atoms):len(atoms)] = True
+        self.set_frame()
+        self.draw()
 
     def get_menu_data(self):
         M = ui.MenuItem
@@ -462,9 +477,9 @@ class GUI(View, Status):
               M(_('Select _constrained atoms'), self.select_constrained_atoms),
               M(_('Select _immobile atoms'), self.select_immobile_atoms),
               # M('---'),
-              M(_('_Cut'), self.cut_atoms, 'Ctrl+X'),
-              M(_('_Copy'), self.copy_atoms, 'Ctrl+C'),
-              M(_('_Paste'), self.paste_atoms, 'Ctrl+V'),
+              M(_('_Cut'), self.cut_atoms_to_clipboard, 'Ctrl+X'),
+              M(_('_Copy'), self.copy_atoms_to_clipboard, 'Ctrl+C'),
+              M(_('_Paste'), self.paste_atoms_from_clipboard, 'Ctrl+V'),
               M('---'),
               M(_('Hide selected atoms'), self.hide_selected),
               M(_('Show selected atoms'), self.show_selected),
