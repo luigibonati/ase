@@ -239,6 +239,11 @@ class GPCalculator(Calculator, GaussianProcess):
 
         return x, y
 
+    def set_train_set(self, train_x, train_y):
+        self.train_x = train_x
+        self.train_y = train_y
+        self.external_training_set = True
+
 
     def train_model(self):
         """ Train a model with the previously fed observations."""
@@ -266,7 +271,12 @@ class GPCalculator(Calculator, GaussianProcess):
                 self.prior.let_update()
 
         # 2. Max number of observations consider for training (low memory).
-        if self.max_data is not None:
+        if self.external_train_set:
+            # If the training set has been externally set by the algorithm
+            # (i.e. because only a subset is needed) do not further select
+            self.external_train_set = False
+
+        elif self.max_data is not None:
             # Check if the max_train_data_strategy is implemented.
             implemented_strategies = ['last_observations', 'lowest_energy',
                                       'nearest_observations']
