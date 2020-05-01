@@ -274,7 +274,7 @@ def rotation_from_projection(proj_nw, fixed, ortho=True):
     return U_ww, C_ul
 
 
-def scdm(calc, Nw, fixed_k, h=0.05, verbose=True):
+def scdm(calc, Nw, fixed_k, verbose=True):
     """Compute localized orbitals with SCDM method
 
     This method was published by Anil Damle and Lin Lin in Multiscale
@@ -284,7 +284,6 @@ def scdm(calc, Nw, fixed_k, h=0.05, verbose=True):
     the ASE Wannier class.
 
     calc   = GPAW calculator object
-    h      = Grid density used by PS2AE
     Nk (k) = Number of k-points
     Nb (n) = Number of bands
     Nw (w) = Number of wannier functions
@@ -292,7 +291,6 @@ def scdm(calc, Nw, fixed_k, h=0.05, verbose=True):
     L  (l) = Number of extra degrees of freedom
     U  (u) = Number of non-fixed states
     """
-    from gpaw.utilities.ps2ae import PS2AE
 
     Nb = calc.get_number_of_bands()
     kpts = calc.get_bz_k_points()
@@ -301,49 +299,23 @@ def scdm(calc, Nw, fixed_k, h=0.05, verbose=True):
     U_kww = []
     C_kul = []
 
-    method = 'ae'
-    if 'ASE_WAN_SCDM' in os.environ:
-        env = os.environ['ASE_WAN_SCDM']
-        if env == 'ps':
-            method = env
-
-    if method == 'ae':
-        # get the all electron wave functions with PAW corrections
-        ae = PS2AE(calc=calc, h=h)
-        # get grid size and check that we have Nw bands at once
-        Ng = np.size(ae.get_wave_function(n=Nw, k=0, s=0))
-        ae_wfs = np.zeros((Nb, Ng), dtype=np.complex128)
-    else:
-        # get grid size and check that we have Nw bands at once
-        Ng = np.prod(calc.wfs.gd.N_c)
-        ps_wfs = np.zeros((Nb, Ng), dtype=np.complex128)
+    # get grid size and check that we have Nw bands at once
+    Ng = np.prod(calc.wfs.gd.N_c)
+    ps_wfs = np.zeros((Nb, Ng), dtype=np.complex128)
 
     # compute factorization just at Gamma point
     for n in range(Nb):
-        if method == 'ae':
-            ae_wfs[n] = ae.get_wave_function(n=n, k=gamma_idx,
-                                             s=0, ae=True).ravel()
-        else:
-            ps_wfs[n] = calc.get_pseudo_wave_function(band=n, kpt=gamma_idx,
-                                                      spin=0).ravel()
+        ps_wfs[n] = calc.get_pseudo_wave_function(band=n, kpt=gamma_idx,
+                                                  spin=0).ravel()
 
-    if method == 'ae':
-        _, _, P = qr(ae_wfs, mode='full', pivoting=True, check_finite=True)
-    else:
-        _, _, P = qr(ps_wfs, mode='full', pivoting=True, check_finite=True)
+    _, _, P = qr(ps_wfs, mode='full', pivoting=True, check_finite=True)
 
     for k in range(Nk):
         for n in range(Nb):
-            if method == 'ae':
-                ae_wfs[n] = ae.get_wave_function(n, k=k, s=0, ae=True).ravel()
-            else:
-                ps_wfs[n] = calc.get_pseudo_wave_function(band=n, kpt=k,
-                                                          spin=0).ravel()
+            ps_wfs[n] = calc.get_pseudo_wave_function(band=n, kpt=k,
+                                                      spin=0).ravel()
 
-        if method == 'ae':
-            A_nw = ae_wfs[:, P[:Nw]]
-        else:
-            A_nw = ps_wfs[:, P[:Nw]]
+        A_nw = ps_wfs[:, P[:Nw]]
         U_ww, C_ul = rotation_from_projection(proj_nw=A_nw,
                                               fixed=fixed_k[k],
                                               ortho=True)
