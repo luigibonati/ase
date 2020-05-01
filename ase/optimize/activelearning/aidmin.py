@@ -19,7 +19,8 @@ class AIDMin(Optimizer):
                  master=None, force_consistent=None, model_calculator=None,
                  optimizer=BFGSLineSearch, use_previous_observations=False,
                  surrogate_starting_point='min', trainingset=None,
-                 print_format='ASE', fit_to='calc', optimizer_kwargs=None):
+                 print_format='ASE', fit_to='calc', optimizer_kwargs=None, 
+                 low_memory = False):
         """
         Artificial Intelligence-Driven energy Minimizer (AID-Min) algorithm.
         Optimize atomic structure using a surrogate machine learning
@@ -115,6 +116,9 @@ class AIDMin(Optimizer):
         optimizer_kwargs: dict
             Dictionary with key-word arguments for the surrogate potential.
         """
+
+        self.low_memory = low_memory
+
         if print_format == 'AID':
             if logfile == '-':
                 logfile = None
@@ -309,18 +313,26 @@ class AIDMin(Optimizer):
             del kwargs['fmax']
 
         # Optimize
-        opt = self.optimizer(ml_atoms, **kwargs)
-        ml_converged = opt.run(fmax=self.ml_fmax, steps=self.ml_steps)
+        def optimize_ml()
+            opt = self.optimizer(ml_atoms, **kwargs)
+            ml_converged = opt.run(fmax=self.ml_fmax, steps=self.ml_steps)
 
-        if not ml_converged:
-            raise RuntimeError(
-                "The minimization of the surrogate PES has not converged")
-        else:
-            # Check that this was a meaningfull step
-            system_changes = compare_atoms(atoms, ml_atoms)
+            if not ml_converged:
+                raise RuntimeError(
+                    "The minimization of the surrogate PES has not converged")
+            else:
+                # Check that this was a meaningfull step
+                system_changes = compare_atoms(atoms, ml_atoms)
 
-            if not system_changes:
-                raise RuntimeError("Too small step: the atoms did not move")
+                if not system_changes:
+                    raise RuntimeError("Too small step: the atoms did not move")
+
+        optimize_ml()
+
+        if self.low_memory:
+            x, y = self.model_calculator.get_closest_points(ml_atoms)
+            while x != self.model_calculator.train_x:
+                optimize()
 
         atoms.set_positions(ml_atoms.get_positions())
 
