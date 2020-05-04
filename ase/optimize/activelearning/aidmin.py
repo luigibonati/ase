@@ -313,7 +313,7 @@ class AIDMin(Optimizer):
             del kwargs['fmax']
 
         # Optimize
-        def optimize_ml()
+        def optimize_ml():
             opt = self.optimizer(ml_atoms, **kwargs)
             ml_converged = opt.run(fmax=self.ml_fmax, steps=self.ml_steps)
 
