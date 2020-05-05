@@ -220,6 +220,31 @@ class GPCalculator(Calculator, GaussianProcess):
                 self.train_images.append(i)
         self.calculate(atoms=self.train_images[0])  # Test one to attach.
 
+
+    def get_closest_points(self, atoms=None):
+        if self.test_images is None:
+            self.test_images = [atoms]
+        for i in self.test_images:
+            pos_test = i.get_positions(wrap=self.wrap).reshape(-1)
+            d_i_j = []
+            for j in self.train_images:
+                pos_train = j.get_positions(wrap=self.wrap).reshape(-1)
+                d_i_j.append(euclidean(pos_test, pos_train))
+            arg_nearest += list(np.argsort(d_i_j)[:self.max_data])
+
+        # Remove duplicates.
+        arg_nearest = np.unique(arg_nearest)
+        x = [self.train_x[i] for i in arg_nearest]
+        y = [self.train_y[i] for i in arg_nearest]
+
+        return x, y
+
+    def set_train_set(self, train_x, train_y):
+        self.train_x = train_x
+        self.train_y = train_y
+        self.external_training_set = True
+
+
     def train_model(self):
         """ Train a model with the previously fed observations."""
 
@@ -246,7 +271,12 @@ class GPCalculator(Calculator, GaussianProcess):
                 self.prior.let_update()
 
         # 2. Max number of observations consider for training (low memory).
-        if self.max_data is not None:
+        if self.external_train_set:
+            # If the training set has been externally set by the algorithm
+            # (i.e. because only a subset is needed) do not further select
+            self.external_train_set = False
+
+        elif self.max_data is not None:
             # Check if the max_train_data_strategy is implemented.
             implemented_strategies = ['last_observations', 'lowest_energy',
                                       'nearest_observations']
@@ -275,20 +305,7 @@ class GPCalculator(Calculator, GaussianProcess):
             # 2.c. Get the nearest observations to the test structure.
             if self.max_data_strategy == 'nearest_observations':
                 arg_nearest = []
-                if self.test_images is None:
-                    self.test_images = [self.atoms]
-                for i in self.test_images:
-                    pos_test = i.get_positions(wrap=self.wrap).reshape(-1)
-                    d_i_j = []
-                    for j in self.train_images:
-                        pos_train = j.get_positions(wrap=self.wrap).reshape(-1)
-                        d_i_j.append(euclidean(pos_test, pos_train))
-                    arg_nearest += list(np.argsort(d_i_j)[:self.max_data])
-
-                # Remove duplicates.
-                arg_nearest = np.unique(arg_nearest)
-                x = [self.train_x[i] for i in arg_nearest]
-                y = [self.train_y[i] for i in arg_nearest]
+                x, y = self.get_closest_points(self.atoms)
                 self.train_x = x
                 self.train_y = y
 
