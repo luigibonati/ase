@@ -242,7 +242,7 @@ class GPCalculator(Calculator, GaussianProcess):
     def set_train_set(self, train_x, train_y):
         self.train_x = train_x
         self.train_y = train_y
-        self.external_training_set = True
+        self.external_train_set = True
 
 
     def train_model(self):
