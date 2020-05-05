@@ -218,6 +218,10 @@ class GPCalculator(Calculator, GaussianProcess):
         for i in [copy_image(j) for j in train_images]:
             if i not in self.train_images:
                 self.train_images.append(i)
+        # We have updated the tset, so it is not set externally
+        self.external_train_set = False
+
+
         self.calculate(atoms=self.train_images[0])  # Test one to attach.
 
 
