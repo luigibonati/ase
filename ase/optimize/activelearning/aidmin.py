@@ -332,7 +332,7 @@ class AIDMin(Optimizer):
         if self.low_memory:
             x, y = self.model_calculator.get_closest_points(ml_atoms)
             while x != self.model_calculator.train_x:
-                optimize()
+                optimize_ml()
 
         atoms.set_positions(ml_atoms.get_positions())
 
