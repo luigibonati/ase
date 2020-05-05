@@ -239,37 +239,23 @@ class DiffTemplate(string.Formatter):
             spec = spec[:-1] + 's'
         return super(DiffTemplate, self).format_field(value, spec)
 
-
-class Table(object):
+class TableFormat(object):
     def __init__(self,
-                 field_specs,
-                 summary_functions=[],
-                 max_lines=None,
-                 title='',
-                 toprule='=',
-                 bottomrule='=',
-                 midrule='-',
-                 tablewidth=None,
-                 columnwidth=9,
-                 precision=2,
-                 representation='E'):
+                columnwidth=9,
+                precision=2,
+                representation='E',
+                toprule='=',
+                midrule='-',
+                bottomrule='='):
 
-        self.max_lines = max_lines
-        self.summary_functions = summary_functions
-        self.field_specs = field_specs
-
-        self.fields, self.hier, self.scent = parse_field_specs(self.field_specs)
-        self.nfields = len(self.fields)
-
-        # formatting
         self.precision = precision
         self.representation = representation
         self.columnwidth = columnwidth
-        if tablewidth is None:
-            self.tablewidth = columnwidth * self.nfields
-        else:
-            self.tablewidth = tablewidth
         self.formatter = DiffTemplate().format
+        self.toprule = toprule
+        self.midrule = midrule
+        self.bottomrule = bottomrule
+
         self.fmt_class = {
             'signed float': "{{: ^{}.{}{}}}".format(
                 self.columnwidth,
@@ -285,14 +271,6 @@ class Table(object):
                 self.columnwidth),
             'conv': "{{:^{}h}}".format(
                 self.columnwidth)}
-
-        self.fmt = self.make_fmt()
-        self.title = title
-        self.toprule = toprule * self.tablewidth
-        self.bottomrule = bottomrule * self.tablewidth
-        self.midrule = midrule * self.tablewidth
-
-    def make_fmt(self):
         fmt = {}
         signed_floats = [
             'dx',
@@ -326,7 +304,38 @@ class Table(object):
         for i in integers:
             fmt[i] = self.fmt_class['int']
         fmt['el'] = self.fmt_class['conv']
-        return fmt
+
+        self.fmt = fmt
+
+
+class Table(object):
+    def __init__(self,
+                 field_specs,
+                 summary_functions=[],
+                 tableformat=None,
+                 max_lines=None,
+                 title='',
+                 tablewidth=None): 
+
+        self.max_lines = max_lines
+        self.summary_functions = summary_functions
+        self.field_specs = field_specs
+
+        self.fields, self.hier, self.scent = parse_field_specs(self.field_specs)
+        self.nfields = len(self.fields)
+
+        # formatting
+        if tableformat is None:
+            self.tableformat = TableFormat()
+        else:
+            self.tableformat = tableformat
+
+        if tablewidth is None:
+            self.tablewidth = self.tableformat.columnwidth * self.nfields
+        else:
+            self.tablewidth = tablewidth
+
+        self.title = title
 
     def make(self, atoms1, atoms2, csv=False):
         header = self.make_header(csv=csv)
@@ -335,14 +344,14 @@ class Table(object):
             body = body[:self.max_lines]
         summary = self.make_summary(atoms1, atoms2)
 
-        return '\n'.join([self.title, self.toprule, header,
-                          self.midrule, body, self.bottomrule, summary])
+        return '\n'.join([self.title, self.tableformat.toprule * self.tablewidth, header,
+                          self.tableformat.midrule * self.tablewidth, body, self.tableformat.bottomrule * self.tablewidth, summary])
 
     def make_header(self, csv=False):
         if csv:
             return ','.join([header_alias(field) for field in self.fields])
-        return self.formatter(
-            self.fmt_class['str'] * self.nfields,
+        return self.tableformat.formatter(
+            self.tableformat.fmt_class['str'] * self.nfields,
             *[header_alias(field) for field in self.fields])
 
     def make_summary(self, atoms1, atoms2):
@@ -353,15 +362,15 @@ class Table(object):
         fdata = np.array([get_atoms_data(atoms1, atoms2, field)
                           for field in self.fields])
         sorting_array = prec_round(
-            (np.array(self.scent)[:, np.newaxis] * fdata)[self.hier])
+            (np.array(self.scent)[:, np.newaxis] * fdata)[self.hier], prec = self.tableformat.precision)
         data = fdata[:, np.lexsort(sorting_array)].transpose()
 
         if csv:
             rowformat = ','.join(
                 ['{:h}' if field == 'el' else '{}' for field in self.fields])
         else:
-            rowformat = ''.join([self.fmt[field] for field in self.fields])
-        body = [self.formatter(rowformat, *row) for row in data]
+            rowformat = ''.join([self.tableformat.fmt[field] for field in self.fields])
+        body = [self.tableformat.formatter(rowformat, *row) for row in data]
         return '\n'.join(body)
 
 
