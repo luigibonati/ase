@@ -226,6 +226,7 @@ class GPCalculator(Calculator, GaussianProcess):
 
 
     def get_closest_points(self, atoms=None):
+        arg_nearest = []
         if self.test_images is None:
             self.test_images = [atoms]
         for i in self.test_images:
@@ -308,7 +309,6 @@ class GPCalculator(Calculator, GaussianProcess):
 
             # 2.c. Get the nearest observations to the test structure.
             if self.max_data_strategy == 'nearest_observations':
-                arg_nearest = []
                 x, y = self.get_closest_points(self.atoms)
                 self.train_x = x
                 self.train_y = y
