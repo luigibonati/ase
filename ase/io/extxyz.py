@@ -897,10 +897,7 @@ def write_xyz(fileobj, images, comment='', columns=None, write_info=True,
                     if value is None:
                         # skip missing calculator results
                         continue
-                    if (key in per_atom_results and
-                            isinstance(value, np.ndarray) and
-                            len(value.shape) >= 1 and
-                            value.shape[0] == len(atoms)):
+                    if key in per_atom_properties:
                         # per-atom quantities (forces, energies, stresses)
                         per_atom_results[key] = value
                     elif key in per_config_properties:
