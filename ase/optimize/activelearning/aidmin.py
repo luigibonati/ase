@@ -311,19 +311,37 @@ class AIDMin(Optimizer):
         if 'fmax' in kwargs:
             del kwargs['fmax']
 
+        def optimize():
+            # Optimize
+            opt = self.optimizer(ml_atoms, **kwargs)
+            ml_converged = opt.run(fmax=self.ml_fmax, steps=self.ml_steps)
+
+            if not ml_converged:
+                raise RuntimeError(
+                    "The minimization of the surrogate PES has not converged")
+            else:
+                # Check that this was a meaningfull step
+                system_changes = compare_atoms(atoms, ml_atoms)
+
+                if not system_changes:
+                    raise RuntimeError("Too small step: the atoms did not move")
+
         # Optimize
-        opt = self.optimizer(ml_atoms, **kwargs)
-        ml_converged = opt.run(fmax=self.ml_fmax, steps=self.ml_steps)
-
-        if not ml_converged:
-            raise RuntimeError(
-                "The minimization of the surrogate PES has not converged")
-        else:
-            # Check that this was a meaningfull step
-            system_changes = compare_atoms(atoms, ml_atoms)
-
-            if not system_changes:
-                raise RuntimeError("Too small step: the atoms did not move")
+        optimize()
+        
+        # Initialize convergence flag for including points in data set
+        data_converged = False if self.low_memory else True
+        probed_atoms = [atoms.copy()]
+        while not data_converged:
+            probed_atoms.append(ml_atoms.copy())
+            ml_atoms._calc.update_train_data(train_images=[],
+                test_images=probed_atoms)
+            optimize()
+            p1 = probed_atoms[-1].get_positions()
+            p0 = ml_atoms.get_positions()
+            dist = ((p1-p0)*(p1-p0)).sum(axis=1).max()
+            if dist<=1e-4**2:
+                break
 
         atoms.set_positions(ml_atoms.get_positions())
 
