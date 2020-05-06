@@ -218,15 +218,10 @@ class GPCalculator(Calculator, GaussianProcess):
         for i in [copy_image(j) for j in train_images]:
             if i not in self.train_images:
                 self.train_images.append(i)
-        # We have updated the tset, so it is not set externally
-        self.external_train_set = False
-
-
         self.calculate(atoms=self.train_images[0])  # Test one to attach.
 
 
     def get_closest_points(self, atoms=None):
-        arg_nearest = []
         if self.test_images is None:
             self.test_images = [atoms]
         for i in self.test_images:
@@ -243,11 +238,6 @@ class GPCalculator(Calculator, GaussianProcess):
         y = [self.train_y[i] for i in arg_nearest]
 
         return x, y
-
-    def set_train_set(self, train_x, train_y):
-        self.train_x = train_x
-        self.train_y = train_y
-        self.external_train_set = True
 
 
     def train_model(self):
@@ -276,12 +266,7 @@ class GPCalculator(Calculator, GaussianProcess):
                 self.prior.let_update()
 
         # 2. Max number of observations consider for training (low memory).
-        if self.external_train_set:
-            # If the training set has been externally set by the algorithm
-            # (i.e. because only a subset is needed) do not further select
-            self.external_train_set = False
-
-        elif self.max_data is not None:
+        if self.max_data is not None:
             # Check if the max_train_data_strategy is implemented.
             implemented_strategies = ['last_observations', 'lowest_energy',
                                       'nearest_observations']
@@ -309,6 +294,7 @@ class GPCalculator(Calculator, GaussianProcess):
 
             # 2.c. Get the nearest observations to the test structure.
             if self.max_data_strategy == 'nearest_observations':
+                arg_nearest = []
                 x, y = self.get_closest_points(self.atoms)
                 self.train_x = x
                 self.train_y = y
