@@ -19,7 +19,8 @@ class AIDMin(Optimizer):
                  master=None, force_consistent=None, model_calculator=None,
                  optimizer=BFGSLineSearch, use_previous_observations=False,
                  surrogate_starting_point='min', trainingset=None,
-                 print_format='ASE', fit_to='calc', optimizer_kwargs=None):
+                 print_format='ASE', fit_to='calc', optimizer_kwargs=None,
+                 low_memory=False):
         """
         Artificial Intelligence-Driven energy Minimizer (AID-Min) algorithm.
         Optimize atomic structure using a surrogate machine learning
@@ -121,6 +122,8 @@ class AIDMin(Optimizer):
             self.print_format = 'AID'
         else:
             self.print_format = 'ASE'
+
+        self.low_memory = low_memory
 
         # Initialize the optimizer class
         Optimizer.__init__(self, atoms, restart, logfile, trajectory,
