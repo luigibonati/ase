@@ -4,6 +4,7 @@ import pickle
 import sys
 import time
 import warnings
+from contextlib import contextmanager
 
 import numpy as np
 
@@ -71,6 +72,9 @@ class DummyMPI:
         pass
 
 
+dummy = DummyMPI()
+
+
 class MPI:
     """Wrapper for MPI world object.
 
@@ -82,13 +86,14 @@ class MPI:
 
     """
     def __init__(self):
-        self.comm = DummyMPI()
+        self.comm = dummy
 
     def __getattr__(self, name):
         return getattr(self.comm, name)
 
 
-def set_world(new_world):
+@contextmanager
+def set_world(new_world=dummy):
     old_world = world.comm
     world.comm = new_world
     yield

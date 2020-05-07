@@ -1,22 +1,15 @@
+import numpy as np
+
+from ase.parallel import world, set_world, DummyMPI, dummy
+
+
 def test_mpi():
-    """Try to import all ASE modules and check that ase.parallel.world has not
-    been used.  We want to delay use of world until after MPI4PY has been
-    imported.
-
-    We run the test in a subprocess so that we have a clean Python interpreter."""
-
-    import sys
-    from subprocess import run
-
-    # Should cover most of ASE:
-    modules = ['ase.optimize',
-               'ase.db',
-               'ase.gui']
-
-    imports = 'import ' + ', '.join(modules)
-
-    run([sys.executable,
-         '-c',
-         '{imports}; from ase.parallel import world; assert world.comm is None'
-         .format(imports=imports)],
-        check=True)
+    """Exercise ase.parallel module."""
+    myworld = DummyMPI()
+    with set_world(myworld):
+        assert world.comm is myworld
+    assert world.comm is dummy
+    assert world.sum(1) == 1
+    a = np.ones(5)
+    world.sum(a)
+    assert a.sum() == 5
