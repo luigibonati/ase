@@ -82,23 +82,17 @@ class MPI:
 
     """
     def __init__(self):
-        self.comm = None
+        self.comm = DummyMPI()
 
     def __getattr__(self, name):
-        if self.comm is None:
-            self.comm = _get_comm()
         return getattr(self.comm, name)
 
 
-def _get_comm():
-    """Get the correct MPI world object."""
-    if 'mpi4py' in sys.modules:
-        return MPI4PY()
-    if '_gpaw' in sys.modules:
-        import _gpaw
-        if hasattr(_gpaw, 'Communicator'):
-            return _gpaw.Communicator()
-    return DummyMPI()
+def set_world(new_world):
+    old_world = world.comm
+    world.comm = new_world
+    yield
+    world.comm = old_world
 
 
 class MPI4PY:
@@ -163,33 +157,7 @@ class MPI4PY:
         return self._returnval(a, b)
 
 
-world = None
-
-# Check for special MPI-enabled Python interpreters:
-if '_gpaw' in sys.builtin_module_names:
-    # http://wiki.fysik.dtu.dk/gpaw
-    import _gpaw
-    world = _gpaw.Communicator()
-elif '_asap' in sys.builtin_module_names:
-    # Modern version of Asap
-    # http://wiki.fysik.dtu.dk/asap
-    # We cannot import asap3.mpi here, as that creates an import deadlock
-    import _asap
-    world = _asap.Communicator()
-
-# Check if MPI implementation has been imported already:
-elif '_gpaw' in sys.modules:
-    # Same thing as above but for the module version
-    import _gpaw
-    try:
-        world = _gpaw.Communicator()
-    except AttributeError:
-        pass
-elif 'mpi4py' in sys.modules:
-    world = MPI4PY()
-
-if world is None:
-    world = MPI()
+world = MPI()
 
 
 def barrier():
