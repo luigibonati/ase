@@ -83,8 +83,10 @@ def sort2rank(sort):
         rank[sort[i]] = i
     return rank
 
-
+# this will sort alphabetically by chemical symbol
 num2sym = dict(zip(np.argsort(chemical_symbols), chemical_symbols))
+# to sort by atomic number, uncomment below
+# num2sym = dict(zip(range(len(chemical_symbols)), chemical_symbols))
 sym2num = {v: k for k, v in num2sym.items()}
 
 atoms_props = [
@@ -204,12 +206,12 @@ def parse_field_specs(field_specs):
             hier[c] = mxm
     # reversed by convention of numpy lexsort
     hier = sort2rank(hier)[::-1]
-    return np.array(fields), hier, np.array(scent)
+    return fields, hier, np.array(scent)
 
 # Class definitions
 
 
-class DiffTemplate(string.Formatter):
+class MapFormatter(string.Formatter):
     """String formatting method to map string
     mapped to float data field
     used for sorting back to string."""
@@ -218,7 +220,7 @@ class DiffTemplate(string.Formatter):
         if spec.endswith('h'):
             value = num2sym[int(value)]
             spec = spec[:-1] + 's'
-        return super(DiffTemplate, self).format_field(value, spec)
+        return super(MapFormatter, self).format_field(value, spec)
 
 
 class TableFormat(object):
@@ -233,7 +235,7 @@ class TableFormat(object):
         self.precision = precision
         self.representation = representation
         self.columnwidth = columnwidth
-        self.formatter = DiffTemplate().format
+        self.formatter = MapFormatter().format
         self.toprule = toprule
         self.midrule = midrule
         self.bottomrule = bottomrule
