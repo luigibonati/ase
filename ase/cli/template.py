@@ -88,7 +88,7 @@ num2sym = dict(zip(np.argsort(chemical_symbols), chemical_symbols))
 sym2num = {v: k for k, v in num2sym.items()}
 
 
-def get_data(atoms1, atoms2, field):
+def get_field_data_atoms(atoms1, atoms2, field):
     if field[0] == 'r':
         field = field[1:]
         rank_order = True
@@ -146,10 +146,10 @@ atoms_props = [
     'p2z']
 
 
-def get_atoms_data(atoms1, atoms2, field):
+def get_field_data(atoms1, atoms2, field):
 
     if field.lstrip('r') in atoms_props:
-        return get_data(atoms1, atoms2, field)
+        return get_field_data_atoms(atoms1, atoms2, field)
 
     if field[0] == 'r':
         field = field[1:]
@@ -201,52 +201,51 @@ def parse_field_specs(field_specs):
     hier = []
     scent = []
     for fs in field_specs:
-        hsf = fs.split(':')
-        if len(hsf) == 3:
-            scent.append(int(hsf[2]))
-            hier.append(int(hsf[1]))
-            fields.append(hsf[0])
-        elif len(hsf) == 2:
+        fhs = fs.split(':')
+        if len(fhs) == 3:
+            scent.append(int(fhs[2]))
+            hier.append(int(fhs[1]))
+            fields.append(fhs[0])
+        elif len(fhs) == 2:
             scent.append(-1)
-            hier.append(int(hsf[1]))
-            fields.append(hsf[0])
-        elif len(hsf) == 1:
+            hier.append(int(fhs[1]))
+            fields.append(fhs[0])
+        elif len(fhs) == 1:
             scent.append(-1)
             hier.append(-1)
-            fields.append(hsf[0])
-
-    hier = np.array(hier)
+            fields.append(fhs[0])
     mxm = max(hier)
     for c in range(len(hier)):
         if hier[c] < 0:
             mxm += 1
             hier[c] = mxm
     # reversed by convention of numpy lexsort
-    hier = sort2rank(np.array(hier))[::-1]
-    return fields, hier, scent
+    hier = sort2rank(hier)[::-1]
+    return np.array(fields), hier, np.array(scent)
 
 # Class definitions
 
 
 class DiffTemplate(string.Formatter):
-    """Changing string formatting method to convert numeric data field"""
-
-    # map set of strings to integers for numeric sorting and reverse map
+    """String formatting method to map string
+    mapped to float data field
+    used for sorting back to string."""
 
     def format_field(self, value, spec):
         if spec.endswith('h'):
-            value = num2sym[int(value)]  # cast to int since it will be float
+            value = num2sym[int(value)]
             spec = spec[:-1] + 's'
         return super(DiffTemplate, self).format_field(value, spec)
 
+
 class TableFormat(object):
     def __init__(self,
-                columnwidth=9,
-                precision=2,
-                representation='E',
-                toprule='=',
-                midrule='-',
-                bottomrule='='):
+                 columnwidth=9,
+                 precision=2,
+                 representation='E',
+                 toprule='=',
+                 midrule='-',
+                 bottomrule='='):
 
         self.precision = precision
         self.representation = representation
@@ -315,7 +314,7 @@ class Table(object):
                  tableformat=None,
                  max_lines=None,
                  title='',
-                 tablewidth=None): 
+                 tablewidth=None):
 
         self.max_lines = max_lines
         self.summary_functions = summary_functions
@@ -344,33 +343,47 @@ class Table(object):
             body = body[:self.max_lines]
         summary = self.make_summary(atoms1, atoms2)
 
-        return '\n'.join([self.title, self.tableformat.toprule * self.tablewidth, header,
-                          self.tableformat.midrule * self.tablewidth, body, self.tableformat.bottomrule * self.tablewidth, summary])
+        return '\n'.join([self.title,
+                          self.tableformat.toprule * self.tablewidth,
+                          header,
+                          self.tableformat.midrule * self.tablewidth,
+                          body,
+                          self.tableformat.bottomrule * self.tablewidth,
+                          summary])
 
     def make_header(self, csv=False):
         if csv:
             return ','.join([header_alias(field) for field in self.fields])
-        return self.tableformat.formatter(
-            self.tableformat.fmt_class['str'] * self.nfields,
-            *[header_alias(field) for field in self.fields])
+
+        fields = self.tableformat.fmt_class['str'] * self.nfields
+        headers = [header_alias(field) for field in self.fields]
+
+        return self.tableformat.formatter(fields, *headers)
 
     def make_summary(self, atoms1, atoms2):
         return '\n'.join([summary_function(atoms1, atoms2)
                           for summary_function in self.summary_functions])
 
     def make_body(self, atoms1, atoms2, csv=False):
-        fdata = np.array([get_atoms_data(atoms1, atoms2, field)
-                          for field in self.fields])
-        sorting_array = prec_round(
-            (np.array(self.scent)[:, np.newaxis] * fdata)[self.hier], prec = self.tableformat.precision)
-        data = fdata[:, np.lexsort(sorting_array)].transpose()
+        field_data = np.array([get_field_data(atoms1, atoms2, field)
+                               for field in self.fields])
+
+        sorting_array = field_data * self.scent[:, np.newaxis]
+        sorting_array = sorting_array[self.hier]
+        sorting_array = prec_round(sorting_array, self.tableformat.precision)
+
+        field_data = field_data[:, np.lexsort(sorting_array)].transpose()
 
         if csv:
             rowformat = ','.join(
                 ['{:h}' if field == 'el' else '{}' for field in self.fields])
         else:
-            rowformat = ''.join([self.tableformat.fmt[field] for field in self.fields])
-        body = [self.tableformat.formatter(rowformat, *row) for row in data]
+            rowformat = ''.join([self.tableformat.fmt[field]
+                                 for field in self.fields])
+        body = [
+            self.tableformat.formatter(
+                rowformat,
+                *row) for row in field_data]
         return '\n'.join(body)
 
 
