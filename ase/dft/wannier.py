@@ -121,6 +121,7 @@ def md_min(func, step=.25, tolerance=1e-6, max_iter=10000,
            verbose=False, **kwargs):
     if verbose:
         print('Localize with step =', step, 'and tolerance =', tolerance)
+        finit = func.get_functional_value()
     t = -time()
     fvalueold = 0.
     fvalue = fvalueold + 10
@@ -152,6 +153,8 @@ def md_min(func, step=.25, tolerance=1e-6, max_iter=10000,
         t += time()
         print('%d iterations in %0.2f seconds (%0.2f ms/iter), endstep = %s' %
               (count, t, t * 1000. / count, step))
+        print('Initial value=%0.4f, Final value=%0.4f' %
+              (finit, fvalue))
 
 
 def rotation_from_projection2(proj_nw, fixed, ortho=True):
@@ -862,19 +865,29 @@ class Wannier:
         where w_i are weights."""
         if self.functional == 'std':
             a_d = np.sum(np.abs(self.Z_dww.diagonal(0, 1, 2))**2, axis=1)
+            fun = np.dot(a_d, self.weight_d).real
         elif self.functional == 'sigmoid':
             a_d = np.sum(1 / (1 + np.exp(-10 * (np.abs(
                 self.Z_dww.diagonal(0, 1, 2))**2 - 0.5))),
                 axis=1)
+            fun = np.dot(a_d, self.weight_d).real
         elif self.functional == 'erf':
             a_d = np.sum(erf(2 * np.abs(self.Z_dww.diagonal(0, 1, 2))**2),
                          axis=1)
+            fun = np.dot(a_d, self.weight_d).real
         elif self.functional == 'sqrt':
             a_d = np.sum(np.abs(self.Z_dww.diagonal(0, 1, 2)), axis=1)
+            fun = np.dot(a_d, self.weight_d).real
         elif self.functional == 'cbrt':
             a_d = np.sum(np.cbrt(np.abs(self.Z_dww.diagonal(0, 1, 2))**2),
                          axis=1)
-        return np.dot(a_d, self.weight_d).real
+            fun = np.dot(a_d, self.weight_d).real
+        elif self.functional == 'stdev':
+            a_dw = np.abs(self.Z_dww.diagonal(0, 1, 2))**2
+            a_w = np.dot(a_dw.T, self.weight_d).real
+            fun = np.sum(a_w) - np.var(a_w)
+            print(f'std: {np.sum(a_w):.4f} \tvar: {np.var(a_w):.4f}')
+        return fun
 
     def get_gradients(self):
         # Determine gradient of the spread functional.
@@ -904,6 +917,11 @@ class Wannier:
 
         Nb = self.nbands
         Nw = self.nwannier
+
+        if self.functional == 'stdev':
+            O_dw = np.abs(self.Z_dww.diagonal())**2
+            O_w = np.dot(O_dw, self.weight_d).real
+            O = np.sum(O_w)
 
         dU = []
         dC = []
@@ -958,6 +976,9 @@ class Wannier:
                     Zii_ww = ((1 / 3)
                               * 1 / np.power(Zii_ww * Zii_ww.conj(), 2 / 3)
                               * Zii_ww)
+                elif self.functional == 'stdev':
+                    diagOZ_w = O_w * diagZ_w
+                    OZii_ww = np.repeat(diagOZ_w, Nw).reshape(Nw, Nw)
 
                 k1 = self.kklst_dk[d, k]
                 k2 = self.invkklst_dk[d, k]
@@ -970,8 +991,27 @@ class Wannier:
                         np.dot(dag(Z_knn[k2]), V_knw[k2]) * diagZ_w,
                         dag(U_ww))
 
+                    if self.functional == 'stdev':
+                        Ctemp_nw += 2 * O * weight * np.dot(
+                            np.dot(Z_knn[k], V_knw[k1]) * diagZ_w.conj() +
+                            np.dot(dag(Z_knn[k2]), V_knw[k2]) * diagZ_w,
+                            dag(U_ww)) / Nw**2
+
+                        Ctemp_nw -= 2 * weight * np.dot(
+                            np.dot(Z_knn[k], V_knw[k1]) * diagOZ_w.conj() +
+                            np.dot(dag(Z_knn[k2]), V_knw[k2]) * diagOZ_w,
+                            dag(U_ww)) / Nw
+
                 temp = Zii_ww.T * Z_kww[k].conj() - Zii_ww * Z_kww[k2].conj()
                 Utemp_ww += weight * (temp - dag(temp))
+
+                if self.functional == 'stdev':
+                    Utemp_ww += 2 * O * weight * (temp - dag(temp)) / Nw**2
+
+                    temp = (OZii_ww.T * Z_kww[k].conj()
+                            - OZii_ww * Z_kww[k2].conj())
+                    Utemp_ww -= 2 * weight * (temp - dag(temp)) / Nw
+
             dU.append(Utemp_ww.ravel())
 
             if L > 0:
