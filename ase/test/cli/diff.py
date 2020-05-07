@@ -7,6 +7,7 @@ import pytest
 from ase.cli.template import prec_round, sort2rank, slice_split, \
     MapFormatter, num2sym, sym2num, \
     Table, TableFormat
+from ase.io import read
 
 """
 An enumeration of test cases:
@@ -126,4 +127,22 @@ def test_template_functions():
     num = sym2num[sym]
     mf = MapFormatter().format
     sym2 = mf('{:h}', num)
-    assert sym == mf('{:h}', num)
+    assert sym == sym2
+
+def test_template_classes(traj):
+    prec = 4
+    tableformat = TableFormat(precision=prec, representation='f', midrule = '|')
+    table = Table(field_specs = ('dx', 'dy', 'dz'), tableformat=tableformat)
+    traj = read(str(traj), ':')
+    table_out = table.make(traj[0], traj[1]).split('\n')
+    for counter, row in enumerate(table_out):
+        if '|' in row:
+            break
+
+    row = table_out[counter + 2]
+
+    assert 'E' not in table_out[counter + 2]
+
+    row = re.sub(r'\s+', ',', table_out[counter + 2]).split(',')[1:-1]
+    assert len(row[0]) >= prec
+
