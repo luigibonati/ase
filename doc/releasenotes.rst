@@ -9,7 +9,7 @@ Git master branch
 =================
 
 :git:`master <>`.
-* Added a diff CLI for displaying and comparing the positions, forces, and energies of atoms objects. 
+* Added a diff CLI for displaying and comparing the positions, forces, and energies of atoms objects.
   The classes and functions used in the CLI are also available in :mod:`ase.cli.template`.
 
 * Standardize optimizers maximum step variable name to maxstep and default value to 0.2 for all optimizers.
