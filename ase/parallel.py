@@ -92,12 +92,22 @@ class MPI:
         return getattr(self.comm, name)
 
 
+world = MPI()
+
+
+def set_global_world(new_comm):
+    if hasattr(new_comm, 'bcast'):
+        new_comm = MPI4PY(new_comm)
+    old_comm = world.comm
+    world.comm = new_comm
+    return old_comm
+
+
 @contextmanager
-def set_world(new_world=dummy):
-    old_world = world.comm
-    world.comm = new_world
-    yield
-    world.comm = old_world
+def new_world(new_comm):
+    old_comm = set_global_world(new_comm)
+    yield world.comm
+    world.comm = old_comm
 
 
 class MPI4PY:
@@ -160,9 +170,6 @@ class MPI4PY:
                 return a
             return
         return self._returnval(a, b)
-
-
-world = MPI()
 
 
 def barrier():
