@@ -885,8 +885,9 @@ class Wannier:
         elif self.functional == 'stdev':
             a_dw = np.abs(self.Z_dww.diagonal(0, 1, 2))**2
             a_w = np.dot(a_dw.T, self.weight_d).real
-            fun = np.sum(a_w) - np.var(a_w)
-            print(f'std: {np.sum(a_w):.4f} \tvar: {np.var(a_w):.4f}')
+            fun = np.sum(a_w) - 10 * np.var(a_w)
+            if self.verbose:
+                print(f'std: {np.sum(a_w):.4f} \tvar: {10 * np.var(a_w):.4f}')
         return fun
 
     def get_gradients(self):
@@ -992,12 +993,12 @@ class Wannier:
                         dag(U_ww))
 
                     if self.functional == 'stdev':
-                        Ctemp_nw += 2 * O * weight * np.dot(
+                        Ctemp_nw += 20 * O * weight * np.dot(
                             np.dot(Z_knn[k], V_knw[k1]) * diagZ_w.conj() +
                             np.dot(dag(Z_knn[k2]), V_knw[k2]) * diagZ_w,
                             dag(U_ww)) / Nw**2
 
-                        Ctemp_nw -= 2 * weight * np.dot(
+                        Ctemp_nw -= 20 * weight * np.dot(
                             np.dot(Z_knn[k], V_knw[k1]) * diagOZ_w.conj() +
                             np.dot(dag(Z_knn[k2]), V_knw[k2]) * diagOZ_w,
                             dag(U_ww)) / Nw
@@ -1006,11 +1007,11 @@ class Wannier:
                 Utemp_ww += weight * (temp - dag(temp))
 
                 if self.functional == 'stdev':
-                    Utemp_ww += 2 * O * weight * (temp - dag(temp)) / Nw**2
+                    Utemp_ww += 20 * O * weight * (temp - dag(temp)) / Nw**2
 
                     temp = (OZii_ww.T * Z_kww[k].conj()
                             - OZii_ww * Z_kww[k2].conj())
-                    Utemp_ww -= 2 * weight * (temp - dag(temp)) / Nw
+                    Utemp_ww -= 20 * weight * (temp - dag(temp)) / Nw
 
             dU.append(Utemp_ww.ravel())
 
