@@ -199,10 +199,16 @@ def read_gpaw_out(fileobj, index):
             f, i = read_forces(lines, ii)
 
         try:
+            parameters = {}
             ii = index_startswith(lines, 'vdw correction:')
         except ValueError:
             pass
         else:
+            # save uncorrected values
+            parameters.update({
+                'calculator': 'gpaw',
+                'uncorrected_energy': e,
+            })
             line = lines[ii + 1]
             assert line.startswith('energy:')
             e = float(line.split()[-1])
@@ -223,6 +229,7 @@ def read_gpaw_out(fileobj, index):
                                             bzkpts=bz_kpts, ibzkpts=ibz_kpts)
             calc.eref = Eref
             calc.name = 'gpaw'
+            calc.parameters = parameters
             if energy_contributions is not None:
                 calc.energy_contributions = energy_contributions
             if kpts is not None:
