@@ -16,9 +16,9 @@ from ase.utils.forcecurve import fit_images
 
 
 class NEB:
-    def __init__(self, images, k=0.1, fmax=0.05, climb=False, parallel=False,
+    def __init__(self, images, k=0.1, climb=False, parallel=False,
                  remove_rotation_and_translation=False, world=None,
-                 method='aseneb', dynamic_relaxation=False, scale_fmax=0.):
+                 method='aseneb'):
         """Nudged elastic band.
 
         Paper I:
@@ -50,20 +50,6 @@ class NEB:
             TRUE actives NEB-TR for removing translation and
             rotation during NEB. By default applied non-periodic
             systems
-        dynamic_relaxation: bool
-            TRUE skips images with forces below the convergence criterion.
-            This is updated after each force call; if a previously converged
-            image goes out of tolerance (due to spring adjustments between
-            the image and its neighbors), it will be optimized again.
-            Not efficient when parallelizing over images.
-        fmax: float
-            Must be identical to the fmax of the optimizer if
-            dynamic_relaxation = True.
-        scale_fmax: float
-            Scale convergence criteria along band based on the distance
-            between an image and the image with the highest potential energy.
-            This keyword determines how rapidly the convergence criteria are
-            scaled.
         method: string of method
             Choice betweeen three method:
 
@@ -87,13 +73,6 @@ class NEB:
         self.emax = np.nan
 
         self.remove_rotation_and_translation = remove_rotation_and_translation
-        self.dynamic_relaxation = dynamic_relaxation
-        self.fmax = fmax
-        self.scale_fmax = scale_fmax
-        if not self.dynamic_relaxation and self.scale_fmax:
-            msg = ('Scaled convergence criteria only implemented in series '
-                   'with dynamic_relaxation.')
-            raise ValueError(msg)
 
         if method in ['aseneb', 'eb', 'improvedtangent']:
             self.method = method
@@ -151,34 +130,10 @@ class NEB:
 
     def set_positions(self, positions):
         n1 = 0
-        for i, image in enumerate(self.images[1:-1]):
-            if self.dynamic_relaxation:
-                if self.parallel:
-                    msg = ('Dynamic relaxation does not work efficiently '
-                           'when parallelizing over images. Try AutoNEB '
-                           'routine for freezing images in parallel.')
-                    raise ValueError(msg)
-                else:
-                    forces_dyn = self._fmax_all(self.images)
-                    if forces_dyn[i] < self.fmax:
-                        n1 += self.natoms
-                    else:
-                        n2 = n1 + self.natoms
-                        image.set_positions(positions[n1:n2])
-                        n1 = n2
-            else:
-                n2 = n1 + self.natoms
-                image.set_positions(positions[n1:n2])
-                n1 = n2
-
-    def _fmax_all(self, images):
-        '''Store maximum force acting on each image. This is used in the
-           dynamic optimization routine in the set_positions() function.'''
-        n = self.natoms
-        f = self.get_forces()
-        fmax_images = [np.sqrt((f[n*i:n+n*i]**2).sum(axis=1)).max()
-                       for i in range(self.nimages-2)]
-        return fmax_images
+        for image in self.images[1:-1]:
+            n2 = n1 + self.natoms
+            image.set_positions(positions[n1:n2])
+            n1 = n2
 
     def get_forces(self):
         """Evaluate and return the forces."""
@@ -339,27 +294,6 @@ class NEB:
             t1 = t2
             nt1 = nt2
 
-            if self.dynamic_relaxation:
-                '''Convergence criteria are scaled to focus optimization on
-                   saddle point region. The keyword scale_fmax determines
-                   the rate of convergence scaling.'''
-                n = self.natoms
-                k = i - 1
-                n1 = n * k
-                n2 = n1 + n
-                force = np.sqrt((forces.reshape((-1, 3))[n1:n2]**2.)
-                                .sum(axis=1)).max()
-
-                n_imax = (self.imax - 1) * n
-                positions = self.get_positions()
-                pos_imax = positions[n_imax:n_imax + n]
-                rel_pos = np.sqrt(((positions[n1:n2] - pos_imax)**2).sum())
-
-                if force < self.fmax * (1 + rel_pos * self.scale_fmax):
-                    if k == self.imax - 1:
-                        pass
-                    else:
-                        forces[k, :, :] = np.zeros((1, self.natoms, 3))
         return forces.reshape((-1, 3))
 
     def get_potential_energy(self, force_consistent=False):
