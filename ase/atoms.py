@@ -429,9 +429,18 @@ class Atoms(object):
 
         return self.cell.reciprocal()
 
+    @property
+    def pbc(self):
+        """Reference to pbc-flags for in-place manipulations."""
+        return self._pbc
+
+    @pbc.setter
+    def pbc(self, pbc):
+        self._pbc[:] = pbc
+
     def set_pbc(self, pbc):
         """Set periodic boundary condition flags."""
-        self._pbc[:] = pbc
+        self.pbc = pbc
 
     def get_pbc(self):
         """Get periodic boundary condition flags."""
@@ -2014,14 +2023,6 @@ class Atoms(object):
     def cell(self, cell):
         cell = Cell.ascell(cell)
         self._cellobj[:] = cell
-
-    def _get_pbc(self):
-        """Return reference to pbc-flags for in-place manipulations."""
-        return self._pbc
-
-    pbc = property(_get_pbc, set_pbc,
-                   doc='Attribute for direct manipulation ' +
-                   'of the periodic boundary condition flags.')
 
     def write(self, filename, format=None, **kwargs):
         """Write atoms object to a file.
