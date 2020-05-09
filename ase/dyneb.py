@@ -75,28 +75,29 @@ class dyNEB(NEB):
         return fmax_images
 
     def get_forces(self):
-        '''Get NEB forces and scale the convergence criteria to focus
-           optimization on saddle point region. The keyword scale_fmax
-           determines the rate of convergence scaling.'''
         forces = NEB.get_forces(self)
-        n = self.natoms
-        for i in range(self.nimages-2):
-            n1 = n * i
-            n2 = n1 + n
-            force = np.sqrt((forces[n1:n2]**2.).sum(axis=1)).max()
-            n_imax = (self.imax - 1) * n  # Image with highest potential energy
+        if self.dynamic_relaxation:
+            '''Get NEB forces and scale the convergence criteria to focus
+               optimization on saddle point region. The keyword scale_fmax
+               determines the rate of convergence scaling.'''
+            n = self.natoms
+            for i in range(self.nimages-2):
+                n1 = n * i
+                n2 = n1 + n
+                force = np.sqrt((forces[n1:n2]**2.).sum(axis=1)).max()
+                n_imax = (self.imax - 1) * n  # Image with highest energy.
 
-            positions = self.get_positions()
-            pos_imax = positions[n_imax:n_imax+n]
+                positions = self.get_positions()
+                pos_imax = positions[n_imax:n_imax+n]
 
-            '''Scale convergence criteria based on distance between an image
-               and the image with the highest potential energy.'''
-            rel_pos = np.sqrt(((positions[n1:n2] - pos_imax)**2).sum())
-            if force < self.fmax * (1 + rel_pos * self.scale_fmax):
-                if i == self.imax - 1:
-                    # Keep forces at saddle point for the log file.
-                    pass
-                else:
-                    # Set forces to zero before they are sent to optimizer.
-                    forces[n1:n2, :] = 0
+                '''Scale convergence criteria based on distance between an
+                   image and the image with the highest potential energy.'''
+                rel_pos = np.sqrt(((positions[n1:n2] - pos_imax)**2).sum())
+                if force < self.fmax * (1 + rel_pos * self.scale_fmax):
+                    if i == self.imax - 1:
+                        # Keep forces at saddle point for the log file.
+                        pass
+                    else:
+                        # Set forces to zero before they are sent to optimizer.
+                        forces[n1:n2, :] = 0
         return forces
