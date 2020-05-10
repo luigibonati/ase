@@ -503,13 +503,22 @@ class Atoms(object):
         # XXX extend has to calculator properties
         return name in self.arrays
 
-    def set_atomic_numbers(self, numbers):
-        """Set atomic numbers."""
+    @property
+    def numbers(self):
+        """Atomic numbers for in-place manipulations."""
+        return self.arrays['numbers']
+
+    @numbers.setter
+    def numbers(self, numbers):
         self.set_array('numbers', numbers, int, ())
 
     def get_atomic_numbers(self):
         """Get integer array of atomic numbers."""
         return self.arrays['numbers'].copy()
+
+    def set_atomic_numbers(self, numbers):
+        """Set atomic numbers."""
+        self.numbers = numbers
 
     def get_chemical_symbols(self):
         """Get list of chemical symbol strings.
@@ -1993,15 +2002,6 @@ class Atoms(object):
                       " inside the info dictionary, i.e. atoms." +
                       "info['adsorbate_info']", FutureWarning)
         self.info['adsorbate_info'] = dct
-
-    def _get_atomic_numbers(self):
-        """Return reference to atomic numbers for in-place
-        manipulations."""
-        return self.arrays['numbers']
-
-    numbers = property(_get_atomic_numbers, set_atomic_numbers,
-                       doc='Attribute for direct ' +
-                       'manipulation of the atomic numbers.')
 
     def _get_cell(self):
         """Return reference to unit cell for in-place manipulations."""
