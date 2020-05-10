@@ -28,6 +28,14 @@ class NEBState:
                         images[i].get_positions(),
                         images[i].get_cell(), images[i].pbc)[0]
 
+    @lazyproperty
+    def eqlength(self):
+        images = self.images
+        beeline = (images[self.neb.nimages - 1].get_positions() -
+                   images[0].get_positions())
+        beelinelength = np.linalg.norm(beeline)
+        return beelinelength / (self.neb.nimages - 1)
+
 
 class NEBMethod(ABC):
     def __init__(self, neb):
@@ -336,13 +344,6 @@ class NEB:
         self.emax = energies[self.imax]
 
         t1 = state.find_mic(0)
-
-        if self.method == 'eb':
-            beeline = (images[self.nimages - 1].get_positions() -
-                       images[0].get_positions())
-            beelinelength = np.linalg.norm(beeline)
-            eqlength = beelinelength / (self.nimages - 1)
-
         nt1 = np.linalg.norm(t1)
 
         for i in range(1, self.nimages - 1):
@@ -369,8 +370,8 @@ class NEB:
                 imgforce -= ft * tangent
                 # Spring forces
                 # (formula C1, C5, C6 and C7 of Paper III)
-                f1 = -(nt1 - eqlength) * t1 / nt1 * self.k[i - 1]
-                f2 = (nt2 - eqlength) * t2 / nt2 * self.k[i]
+                f1 = -(nt1 - state.eqlength) * t1 / nt1 * self.k[i - 1]
+                f2 = (nt2 - state.eqlength) * t2 / nt2 * self.k[i]
                 if self.climb and abs(i - self.imax) == 1:
                     deltavmax = max(abs(energies[i + 1] - energies[i]),
                                     abs(energies[i - 1] - energies[i]))
