@@ -22,17 +22,31 @@ class NEBMethod(ABC):
 
 
 class ImprovedTangent(NEBMethod):
-    pass
+    def get_tangent(self):
+        ...
 
 class ASENEB(NEBMethod):
     pass
 
 class EB(NEBMethod):  # What is EB?
-    pass
+    def get_tangent(self, t1, nt1, t2, nt2):
+        # Tangents are bisections of spring-directions
+        # (formula C8 of paper III)
+        tangent = t1 / nt1 + t2 / nt2
+        # Normalize the tangent vector
+        tangent /= np.linalg.norm(tangent)
+        return tangent
 
 
 def get_neb_method(method):
-    return NEBMethod()
+    if method == 'eb':
+        return EB()
+    elif method == 'aseneb':
+        return ASENEB()
+    elif method == 'improvedtangent':
+        return ImprovedTangent()
+    else:
+        raise ValueError(f'Bad method: {method}')
 
 
 class NEB:
@@ -118,6 +132,8 @@ class NEB:
             self.method = method
         else:
             raise NotImplementedError(method)
+
+        self.neb_method = get_neb_method(method)
 
         if isinstance(k, (float, int)):
             k = [k] * (self.nimages - 1)
@@ -290,11 +306,7 @@ class NEB:
             nt2 = np.linalg.norm(t2)
 
             if self.method == 'eb':
-                # Tangents are bisections of spring-directions
-                # (formula C8 of paper III)
-                tangent = t1 / nt1 + t2 / nt2
-                # Normalize the tangent vector
-                tangent /= np.linalg.norm(tangent)
+                tangent = self.neb_method.get_tangent(t1, nt1, t2, nt2)
             elif self.method == 'improvedtangent':
                 # Tangents are improved according to formulas 8, 9, 10,
                 # and 11 of paper I.
