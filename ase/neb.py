@@ -17,19 +17,43 @@ from ase.utils.forcecurve import fit_images
 
 
 class NEBMethod(ABC):
-    def __init__(self):
-        pass
-
+    def __init__(self, neb):
+        self.neb = neb
 
 class ImprovedTangent(NEBMethod):
-    def get_tangent(self):
-        ...
+    def get_tangent(self, t1, nt1, t2, nt2, energies, i):
+        # Tangents are improved according to formulas 8, 9, 10,
+        # and 11 of paper I.
+        if energies[i + 1] > energies[i] > energies[i - 1]:
+            tangent = t2.copy()
+        elif energies[i + 1] < energies[i] < energies[i - 1]:
+            tangent = t1.copy()
+        else:
+            deltavmax = max(abs(energies[i + 1] - energies[i]),
+                            abs(energies[i - 1] - energies[i]))
+            deltavmin = min(abs(energies[i + 1] - energies[i]),
+                            abs(energies[i - 1] - energies[i]))
+            if energies[i + 1] > energies[i - 1]:
+                tangent = t2 * deltavmax + t1 * deltavmin
+            else:
+                tangent = t2 * deltavmin + t1 * deltavmax
+        # Normalize the tangent vector
+        tangent /= np.linalg.norm(tangent)
+        return tangent
 
 class ASENEB(NEBMethod):
-    pass
+    def get_tangent(self, t1, nt1, t2, nt2, energies, i):
+        imax = self.neb.imax
+        if i < imax:
+            tangent = t2
+        elif i > imax:
+            tangent = t1
+        else:
+            tangent = t1 + t2
+        return tangent
 
 class EB(NEBMethod):  # What is EB?
-    def get_tangent(self, t1, nt1, t2, nt2):
+    def get_tangent(self, t1, nt1, t2, nt2, energies, i):
         # Tangents are bisections of spring-directions
         # (formula C8 of paper III)
         tangent = t1 / nt1 + t2 / nt2
@@ -38,13 +62,13 @@ class EB(NEBMethod):  # What is EB?
         return tangent
 
 
-def get_neb_method(method):
+def get_neb_method(neb, method):
     if method == 'eb':
-        return EB()
+        return EB(neb)
     elif method == 'aseneb':
-        return ASENEB()
+        return ASENEB(neb)
     elif method == 'improvedtangent':
-        return ImprovedTangent()
+        return ImprovedTangent(neb)
     else:
         raise ValueError(f'Bad method: {method}')
 
@@ -133,7 +157,7 @@ class NEB:
         else:
             raise NotImplementedError(method)
 
-        self.neb_method = get_neb_method(method)
+        self.neb_method = get_neb_method(self, method)
 
         if isinstance(k, (float, int)):
             k = [k] * (self.nimages - 1)
@@ -306,33 +330,14 @@ class NEB:
             nt2 = np.linalg.norm(t2)
 
             if self.method == 'eb':
-                tangent = self.neb_method.get_tangent(t1, nt1, t2, nt2)
+                tangent = self.neb_method.get_tangent(t1, nt1, t2, nt2, energies, i)
             elif self.method == 'improvedtangent':
-                # Tangents are improved according to formulas 8, 9, 10,
-                # and 11 of paper I.
-                if energies[i + 1] > energies[i] > energies[i - 1]:
-                    tangent = t2.copy()
-                elif energies[i + 1] < energies[i] < energies[i - 1]:
-                    tangent = t1.copy()
-                else:
-                    deltavmax = max(abs(energies[i + 1] - energies[i]),
-                                    abs(energies[i - 1] - energies[i]))
-                    deltavmin = min(abs(energies[i + 1] - energies[i]),
-                                    abs(energies[i - 1] - energies[i]))
-                    if energies[i + 1] > energies[i - 1]:
-                        tangent = t2 * deltavmax + t1 * deltavmin
-                    else:
-                        tangent = t2 * deltavmin + t1 * deltavmax
-                # Normalize the tangent vector
-                tangent /= np.linalg.norm(tangent)
+                tangent = self.neb_method.get_tangent(t1, nt1, t2, nt2, energies, i)
             else:
-                if i < self.imax:
-                    tangent = t2
-                elif i > self.imax:
-                    tangent = t1
-                else:
-                    tangent = t1 + t2
-                tt = np.vdot(tangent, tangent)
+                tangent = self.neb_method.get_tangent(t1, nt1, t2, nt2, energies, i)
+
+            # (XXX Only necessary for ASENEB)
+            tt = np.vdot(tangent, tangent)
 
             imgforce = forces[i - 1]
             ft = np.vdot(imgforce, tangent)
