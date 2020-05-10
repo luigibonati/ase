@@ -67,7 +67,7 @@ def test_dynamic_neb():
             neb.interpolate()
         else:
             # Default NEB
-            neb = dyNEB(images)
+            neb = dyNEB(images, dynamic_relaxation=False)
             neb.interpolate()
 
         # Optimize and check number of calculations.
