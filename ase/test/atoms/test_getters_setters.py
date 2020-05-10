@@ -26,3 +26,17 @@ def test_positions(atoms):
     new_positions = atoms.positions + 1
     atoms.set_positions(new_positions)
     assert atoms.get_positions() == pytest.approx(new_positions)
+
+
+def test_inplace_mutation(atoms):
+    num1 = atoms.numbers
+    num2 = atoms.get_atomic_numbers()
+    atoms.numbers[1] = 17
+    assert num1[1] == 17
+    assert num2[1] != 17
+
+    pos1 = atoms.positions
+    pos2 = atoms.get_positions()
+    atoms.positions[1, 2] = 37
+    assert pos1[1, 2] == 37
+    assert pos2[1, 2] != 37
