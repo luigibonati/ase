@@ -2,7 +2,7 @@ from ase.neb import NEB
 import numpy as np
 
 
-class dyNEB(NEB):
+class DyNEB(NEB):
     def __init__(self, images, k=0.1, fmax=0.05, climb=False, parallel=False,
                  remove_rotation_and_translation=False, world=None,
                  dynamic_relaxation=True, scale_fmax=0., method='aseneb'):
@@ -69,8 +69,8 @@ class dyNEB(NEB):
         '''Store maximum force acting on each image in list. This is used in
            the dynamic optimization routine in the set_positions() function.'''
         n = self.natoms
-        f = self.get_forces()
-        fmax_images = [np.sqrt((f[n*i:n+n*i]**2).sum(axis=1)).max()
+        forces = self.get_forces()
+        fmax_images = [np.sqrt((forces[n*i:n+n*i]**2).sum(axis=1)).max()
                        for i in range(self.nimages-2)]
         return fmax_images
 
