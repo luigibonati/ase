@@ -123,8 +123,6 @@ class EB(NEBMethod):  # What is EB?
         # Tangents are bisections of spring-directions
         # (formula C8 of paper III)
         tangent = spring1.t / spring1.nt + spring2.t / spring2.nt
-        #tangent = t1 / nt1 + t2 / nt2
-        # Normalize the tangent vector
         tangent /= np.linalg.norm(tangent)
         return tangent
 
@@ -404,18 +402,10 @@ class NEB:
         self.emax = state.emax  #energies[self.imax]
 
         spring1 = state.spring(0)
-        t1 = spring1.t
-        nt1 = spring1.nt
 
         for i in range(1, self.nimages - 1):
             spring2 = state.spring(i)
-            t2 = spring2.t
-            nt2 = spring2.nt
-
             tangent = self.neb_method.get_tangent(spring1, spring2, energies, i)
-
-            # (XXX Only necessary for ASENEB)
-            tt = np.vdot(tangent, tangent)
 
             imgforce = forces[i - 1]
             ft = np.vdot(imgforce, tangent)
@@ -425,6 +415,7 @@ class NEB:
                 # with component along the elestic band converted
                 # (formula 5 of Paper II)
                 if self.method == 'aseneb':
+                    tt = np.vdot(tangent, tangent)
                     imgforce -= 2 * ft / tt * tangent
                 else:
                     imgforce -= 2 * ft * tangent
@@ -432,8 +423,6 @@ class NEB:
                 self.neb_method.add_image_force(state, ft, tangent, imgforce, spring1, spring2, i)
 
             spring1 = spring2
-            t1 = t2
-            nt1 = nt2
 
             if self.dynamic_relaxation:
                 n = self.natoms
