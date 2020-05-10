@@ -334,19 +334,19 @@ class NEB:
                     tangent = t1 + t2
                 tt = np.vdot(tangent, tangent)
 
-            f = forces[i - 1]
-            ft = np.vdot(f, tangent)
+            imgforce = forces[i - 1]
+            ft = np.vdot(imgforce, tangent)
 
             if i == self.imax and self.climb:
                 # imax not affected by the spring forces. The full force
                 # with component along the elestic band converted
                 # (formula 5 of Paper II)
                 if self.method == 'aseneb':
-                    f -= 2 * ft / tt * tangent
+                    imgforce -= 2 * ft / tt * tangent
                 else:
-                    f -= 2 * ft * tangent
+                    imgforce -= 2 * ft * tangent
             elif self.method == 'eb':
-                f -= ft * tangent
+                imgforce -= ft * tangent
                 # Spring forces
                 # (formula C1, C5, C6 and C7 of Paper III)
                 f1 = -(nt1 - eqlength) * t1 / nt1 * self.k[i - 1]
@@ -356,17 +356,17 @@ class NEB:
                                     abs(energies[i - 1] - energies[i]))
                     deltavmin = min(abs(energies[i + 1] - energies[i]),
                                     abs(energies[i - 1] - energies[i]))
-                    f += (f1 + f2) * deltavmin / deltavmax
+                    imgforce += (f1 + f2) * deltavmin / deltavmax
                 else:
-                    f += f1 + f2
+                    imgforce += f1 + f2
             elif self.method == 'improvedtangent':
-                f -= ft * tangent
+                imgforce -= ft * tangent
                 # Improved parallel spring force (formula 12 of paper I)
-                f += (nt2 * self.k[i] - nt1 * self.k[i - 1]) * tangent
+                imgforce += (nt2 * self.k[i] - nt1 * self.k[i - 1]) * tangent
             else:
-                f -= ft / tt * tangent
-                f -= np.vdot(t1 * self.k[i - 1] -
-                             t2 * self.k[i], tangent) / tt * tangent
+                imgforce -= ft / tt * tangent
+                imgforce -= np.vdot(t1 * self.k[i - 1] -
+                                    t2 * self.k[i], tangent) / tt * tangent
 
             t1 = t2
             nt1 = nt2
