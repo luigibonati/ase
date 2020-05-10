@@ -74,7 +74,7 @@ class NEBMethod(ABC):
         self.neb = neb
 
 class ImprovedTangent(NEBMethod):
-    def get_tangent(self, spring1, spring2, t1, nt1, t2, nt2, energies, i):
+    def get_tangent(self, spring1, spring2, energies, i):
         # Tangents are improved according to formulas 8, 9, 10,
         # and 11 of paper I.
         if energies[i + 1] > energies[i] > energies[i - 1]:
@@ -102,7 +102,7 @@ class ImprovedTangent(NEBMethod):
 
 
 class ASENEB(NEBMethod):
-    def get_tangent(self, spring1, spring2, t1, nt1, t2, nt2, energies, i):
+    def get_tangent(self, spring1, spring2, energies, i):
         imax = self.neb.imax
         if i < imax:
             tangent = spring2.t
@@ -121,7 +121,7 @@ class ASENEB(NEBMethod):
 
 
 class EB(NEBMethod):  # What is EB?
-    def get_tangent(self, spring1, spring2, t1, nt1, t2, nt2, energies, i):
+    def get_tangent(self, spring1, spring2, energies, i):
         # Tangents are bisections of spring-directions
         # (formula C8 of paper III)
         tangent = spring1.t / spring1.nt + spring2.t / spring2.nt
@@ -415,7 +415,7 @@ class NEB:
             t2 = spring2.t
             nt2 = spring2.nt
 
-            tangent = self.neb_method.get_tangent(spring1, spring2, t1, nt1, t2, nt2, energies, i)
+            tangent = self.neb_method.get_tangent(spring1, spring2, energies, i)
 
             # (XXX Only necessary for ASENEB)
             tt = np.vdot(tangent, tangent)
