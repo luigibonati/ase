@@ -184,7 +184,6 @@ class NEB:
         self.images = images
         self.climb = climb
         self.parallel = parallel
-        self.natoms = len(images[0])
         for img in images:
             if len(img) != self.natoms:
                 raise ValueError('Images have different numbers of atoms')
@@ -193,7 +192,6 @@ class NEB:
             if (img.get_atomic_numbers() !=
                 images[0].get_atomic_numbers()).any():
                 raise ValueError('Images have atoms in different orders')
-        self.nimages = len(images)
         self.emax = np.nan
 
         self.remove_rotation_and_translation = remove_rotation_and_translation
@@ -225,6 +223,15 @@ class NEB:
 
         self.real_forces = None  # ndarray of shape (nimages, natom, 3)
         self.energies = None  # ndarray of shape (nimages,)
+
+    @property
+    def natoms(self):
+        return len(self.images[0])
+
+    @property
+    def nimages(self):
+        return len(self.images)
+
 
     def interpolate(self, method='linear', mic=False):
         """Interpolate the positions of the interior images between the
@@ -525,7 +532,6 @@ class SingleCalculatorNEB(NEB):
                 self.images.insert(j + 1, self.images[j].copy())
                 self.calculators.insert(j + 1, None)
             self.k[j:j + 1] = [self.k[j] * (steps + 1)] * (steps + 1)
-            self.nimages = len(self.images)
             self.interpolate(j, j + steps + 1, mic=mic)
             j += steps + 1
 
