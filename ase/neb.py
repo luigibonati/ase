@@ -62,7 +62,7 @@ class ImprovedTangent(NEBMethod):
         tangent /= np.linalg.norm(tangent)
         return tangent
 
-    def add_image_force(self, ft, tangent, imgforce):
+    def add_image_force(self, state, ft, tangent, imgforce, t1, nt1, t2, nt2, i):
         k = self.neb.k
         imgforce -= ft * tangent
         # Improved parallel spring force (formula 12 of paper I)
@@ -89,8 +89,23 @@ class EB(NEBMethod):  # What is EB?
         tangent /= np.linalg.norm(tangent)
         return tangent
 
-    def add_image_force(self, ft, tangent):
-        ...
+    def add_image_force(self, state, ft, tangent, imgforce, t1, nt1, t2, nt2, i):
+        imgforce -= ft * tangent
+        energies = state.energies
+        # Spring forces
+        # (formula C1, C5, C6 and C7 of Paper III)
+        kk = self.neb.k
+        f1 = -(nt1 - state.eqlength) * t1 / nt1 * kk[i - 1]
+        f2 = (nt2 - state.eqlength) * t2 / nt2 * kk[i]
+        if self.neb.climb and abs(i - self.neb.imax) == 1:
+            deltavmax = max(abs(energies[i + 1] - energies[i]),
+                            abs(energies[i - 1] - energies[i]))
+            deltavmin = min(abs(energies[i + 1] - energies[i]),
+                            abs(energies[i - 1] - energies[i]))
+            imgforce += (f1 + f2) * deltavmin / deltavmax
+        else:
+            imgforce += f1 + f2
+
 
 def get_neb_method(neb, method):
     if method == 'eb':
@@ -367,21 +382,9 @@ class NEB:
                 else:
                     imgforce -= 2 * ft * tangent
             elif self.method == 'eb':
-                imgforce -= ft * tangent
-                # Spring forces
-                # (formula C1, C5, C6 and C7 of Paper III)
-                f1 = -(nt1 - state.eqlength) * t1 / nt1 * self.k[i - 1]
-                f2 = (nt2 - state.eqlength) * t2 / nt2 * self.k[i]
-                if self.climb and abs(i - self.imax) == 1:
-                    deltavmax = max(abs(energies[i + 1] - energies[i]),
-                                    abs(energies[i - 1] - energies[i]))
-                    deltavmin = min(abs(energies[i + 1] - energies[i]),
-                                    abs(energies[i - 1] - energies[i]))
-                    imgforce += (f1 + f2) * deltavmin / deltavmax
-                else:
-                    imgforce += f1 + f2
+                self.neb_method.add_image_force(state, ft, tangent, imgforce, t1, nt1, t2, nt2, i)
             elif self.method == 'improvedtangent':
-                self.neb_method.add_image_force(ft, tangent, imgforce)
+                self.neb_method.add_image_force(state, ft, tangent, imgforce, t1, nt1, t2, nt2, i)
             else:
                 imgforce -= ft / tt * tangent
                 imgforce -= np.vdot(t1 * self.k[i - 1] -
