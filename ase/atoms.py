@@ -1972,17 +1972,15 @@ class Atoms(object):
                 .format(self.cell.rank))
         return self.cell.volume
 
-    def _get_positions(self):
-        """Return reference to positions-array for in-place manipulations."""
+    @property
+    def positions(self):
+        """Positions-array for in-place manipulations."""
         return self.arrays['positions']
 
-    def _set_positions(self, pos):
+    @positions.setter
+    def positions(self, positions):
         """Set positions directly, bypassing constraints."""
-        self.arrays['positions'][:] = pos
-
-    positions = property(_get_positions, _set_positions,
-                         doc='Attribute for direct ' +
-                         'manipulation of the positions.')
+        self.arrays['positions'][:] = positions
 
     @property
     def adsorbate_info(self):
