@@ -329,12 +329,7 @@ class NEB:
                           images[i].get_cell(), images[i].pbc)[0]
             nt2 = np.linalg.norm(t2)
 
-            if self.method == 'eb':
-                tangent = self.neb_method.get_tangent(t1, nt1, t2, nt2, energies, i)
-            elif self.method == 'improvedtangent':
-                tangent = self.neb_method.get_tangent(t1, nt1, t2, nt2, energies, i)
-            else:
-                tangent = self.neb_method.get_tangent(t1, nt1, t2, nt2, energies, i)
+            tangent = self.neb_method.get_tangent(t1, nt1, t2, nt2, energies, i)
 
             # (XXX Only necessary for ASENEB)
             tt = np.vdot(tangent, tangent)
