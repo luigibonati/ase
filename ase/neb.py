@@ -1,5 +1,6 @@
 import sys
 import threading
+from abc import ABC, abstractmethod
 
 import numpy as np
 
@@ -13,6 +14,25 @@ from ase.geometry import find_mic
 from ase.io.trajectory import Trajectory
 from ase.utils import deprecated
 from ase.utils.forcecurve import fit_images
+
+
+class NEBMethod(ABC):
+    def __init__(self):
+        pass
+
+
+class ImprovedTangent(NEBMethod):
+    pass
+
+class ASENEB(NEBMethod):
+    pass
+
+class EB(NEBMethod):  # What is EB?
+    pass
+
+
+def get_neb_method(method):
+    return NEBMethod()
 
 
 class NEB:
