@@ -17,7 +17,7 @@ from ase.utils.forcecurve import fit_images
 from ase.utils import lazyproperty
 
 
-class ImagePair:
+class Spring:
     def __init__(self, atoms1, atoms2, energy1, energy2, k):
         self.atoms1 = atoms1
         self.atoms2 = atoms2
@@ -33,12 +33,12 @@ class ImagePair:
         return mic
 
     @lazyproperty
-    def vector(self):
+    def t(self):
         return self._find_mic()
 
     @lazyproperty
-    def distance(self):
-        return np.linalg.norm(self.vector)
+    def nt(self):
+        return np.linalg.norm(self.t)
 
 
 class NEBState:
@@ -47,10 +47,10 @@ class NEBState:
         self.images = images
         self.energies = energies
 
-    def image_pair(self, i):
-        return ImagePair(self.images[i], self.images[i + 1],
-                         self.energies[i], self.energies[i + 1],
-                         self.neb.k[i])
+    def spring(self, i):
+        return Spring(self.images[i], self.images[i + 1],
+                      self.energies[i], self.energies[i + 1],
+                      self.neb.k[i])
 
     @lazyproperty
     def imax(self):
@@ -74,7 +74,7 @@ class NEBMethod(ABC):
         self.neb = neb
 
 class ImprovedTangent(NEBMethod):
-    def get_tangent(self, t1, nt1, t2, nt2, energies, i):
+    def get_tangent(self, spring1, spring2, t1, nt1, t2, nt2, energies, i):
         # Tangents are improved according to formulas 8, 9, 10,
         # and 11 of paper I.
         if energies[i + 1] > energies[i] > energies[i - 1]:
@@ -87,9 +87,9 @@ class ImprovedTangent(NEBMethod):
             deltavmin = min(abs(energies[i + 1] - energies[i]),
                             abs(energies[i - 1] - energies[i]))
             if energies[i + 1] > energies[i - 1]:
-                tangent = t2 * deltavmax + t1 * deltavmin
+                tangent = spring2.t * deltavmax + spring1.t * deltavmin
             else:
-                tangent = t2 * deltavmin + t1 * deltavmax
+                tangent = spring2.t * deltavmin + spring1.t * deltavmax
         # Normalize the tangent vector
         tangent /= np.linalg.norm(tangent)
         return tangent
@@ -102,14 +102,14 @@ class ImprovedTangent(NEBMethod):
 
 
 class ASENEB(NEBMethod):
-    def get_tangent(self, t1, nt1, t2, nt2, energies, i):
+    def get_tangent(self, spring1, spring2, t1, nt1, t2, nt2, energies, i):
         imax = self.neb.imax
         if i < imax:
-            tangent = t2
+            tangent = spring2.t
         elif i > imax:
-            tangent = t1
+            tangent = spring1.t
         else:
-            tangent = t1 + t2
+            tangent = spring1.t + spring2.t
         return tangent
 
     def add_image_force(self, state, ft, tangent, imgforce, t1, nt1, t2, nt2, i):
@@ -121,10 +121,11 @@ class ASENEB(NEBMethod):
 
 
 class EB(NEBMethod):  # What is EB?
-    def get_tangent(self, t1, nt1, t2, nt2, energies, i):
+    def get_tangent(self, spring1, spring2, t1, nt1, t2, nt2, energies, i):
         # Tangents are bisections of spring-directions
         # (formula C8 of paper III)
-        tangent = t1 / nt1 + t2 / nt2
+        tangent = spring1.t / spring1.nt + spring2.t / spring2.nt
+        #tangent = t1 / nt1 + t2 / nt2
         # Normalize the tangent vector
         tangent /= np.linalg.norm(tangent)
         return tangent
@@ -405,16 +406,16 @@ class NEB:
         self.imax = state.imax  #1 + np.argsort(energies[1:-1])[-1]
         self.emax = state.emax  #energies[self.imax]
 
-        pair1 = state.image_pair(0)
-        t1 = pair1.vector
-        nt1 = pair1.distance
+        spring1 = state.spring(0)
+        t1 = spring1.t
+        nt1 = spring1.nt
 
         for i in range(1, self.nimages - 1):
-            pair2 = state.image_pair(i)
-            t2 = pair2.vector
-            nt2 = pair2.distance
+            spring2 = state.spring(i)
+            t2 = spring2.t
+            nt2 = spring2.nt
 
-            tangent = self.neb_method.get_tangent(t1, nt1, t2, nt2, energies, i)
+            tangent = self.neb_method.get_tangent(spring1, spring2, t1, nt1, t2, nt2, energies, i)
 
             # (XXX Only necessary for ASENEB)
             tt = np.vdot(tangent, tangent)
@@ -433,7 +434,7 @@ class NEB:
             else:
                 self.neb_method.add_image_force(state, ft, tangent, imgforce, t1, nt1, t2, nt2, i)
 
-            pair1 = pair2
+            spring1 = spring2
             t1 = t2
             nt1 = nt2
 
