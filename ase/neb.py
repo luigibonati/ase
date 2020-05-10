@@ -14,6 +14,19 @@ from ase.geometry import find_mic
 from ase.io.trajectory import Trajectory
 from ase.utils import deprecated
 from ase.utils.forcecurve import fit_images
+from ase.utils import lazyproperty
+
+class NEBState:
+    def __init__(self, neb, images, energies):
+        self.neb = neb
+        self.images = images
+        self.energies = energies
+
+    def find_mic(self, i):
+        images = self.images
+        return find_mic(images[i + 1].get_positions() -
+                        images[i].get_positions(),
+                        images[i].get_cell(), images[i].pbc)[0]
 
 
 class NEBMethod(ABC):
@@ -41,6 +54,13 @@ class ImprovedTangent(NEBMethod):
         tangent /= np.linalg.norm(tangent)
         return tangent
 
+    def add_image_force(self, ft, tangent, imgforce):
+        k = self.neb.k
+        imgforce -= ft * tangent
+        # Improved parallel spring force (formula 12 of paper I)
+        imgforce += (nt2 * self.k[i] - nt1 * self.k[i - 1]) * tangent
+
+
 class ASENEB(NEBMethod):
     def get_tangent(self, t1, nt1, t2, nt2, energies, i):
         imax = self.neb.imax
@@ -61,6 +81,8 @@ class EB(NEBMethod):  # What is EB?
         tangent /= np.linalg.norm(tangent)
         return tangent
 
+    def add_image_force(self, ft, tangent):
+        ...
 
 def get_neb_method(neb, method):
     if method == 'eb':
@@ -308,12 +330,12 @@ class NEB:
         self.real_forces = np.zeros((self.nimages, self.natoms, 3))
         self.real_forces[1:-1] = forces
 
+        state = NEBState(self, images, energies)
+
         self.imax = 1 + np.argsort(energies[1:-1])[-1]
         self.emax = energies[self.imax]
 
-        t1 = find_mic(images[1].get_positions() -
-                      images[0].get_positions(),
-                      images[0].get_cell(), images[0].pbc)[0]
+        t1 = state.find_mic(0)
 
         if self.method == 'eb':
             beeline = (images[self.nimages - 1].get_positions() -
@@ -324,9 +346,7 @@ class NEB:
         nt1 = np.linalg.norm(t1)
 
         for i in range(1, self.nimages - 1):
-            t2 = find_mic(images[i + 1].get_positions() -
-                          images[i].get_positions(),
-                          images[i].get_cell(), images[i].pbc)[0]
+            t2 = state.find_mic(i)
             nt2 = np.linalg.norm(t2)
 
             tangent = self.neb_method.get_tangent(t1, nt1, t2, nt2, energies, i)
@@ -360,9 +380,7 @@ class NEB:
                 else:
                     imgforce += f1 + f2
             elif self.method == 'improvedtangent':
-                imgforce -= ft * tangent
-                # Improved parallel spring force (formula 12 of paper I)
-                imgforce += (nt2 * self.k[i] - nt1 * self.k[i - 1]) * tangent
+                self.neb_method.add_image_force(ft, tangent, imgforce)
             else:
                 imgforce -= ft / tt * tangent
                 imgforce -= np.vdot(t1 * self.k[i - 1] -
