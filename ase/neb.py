@@ -80,6 +80,14 @@ class ASENEB(NEBMethod):
             tangent = t1 + t2
         return tangent
 
+    def add_image_force(self, state, ft, tangent, imgforce, t1, nt1, t2, nt2, i):
+        tt = np.vdot(tangent, tangent)
+        kk = self.neb.k
+        imgforce -= ft / tt * tangent
+        imgforce -= np.vdot(t1 * kk[i - 1] -
+                            t2 * kk[i], tangent) / tt * tangent
+
+
 class EB(NEBMethod):  # What is EB?
     def get_tangent(self, t1, nt1, t2, nt2, energies, i):
         # Tangents are bisections of spring-directions
@@ -386,9 +394,7 @@ class NEB:
             elif self.method == 'improvedtangent':
                 self.neb_method.add_image_force(state, ft, tangent, imgforce, t1, nt1, t2, nt2, i)
             else:
-                imgforce -= ft / tt * tangent
-                imgforce -= np.vdot(t1 * self.k[i - 1] -
-                                    t2 * self.k[i], tangent) / tt * tangent
+                self.neb_method.add_image_force(state, ft, tangent, imgforce, t1, nt1, t2, nt2, i)
 
             t1 = t2
             nt1 = nt2
