@@ -16,17 +16,35 @@ from ase.utils import deprecated
 from ase.utils.forcecurve import fit_images
 from ase.utils import lazyproperty
 
+class ImagePair:
+    def __init__(self, atoms1, atoms2):
+        self.atoms1 = atoms1
+        self.atoms2 = atoms2
+
+    def find_mic(self):
+        pos1 = self.atoms1.get_positions()
+        pos2 = self.atoms2.get_positions()
+        # XXX If we want variable cells we will need to edit this.
+        mic, _ = find_mic(pos2 - pos1, self.atoms1.cell, self.atoms1.pbc)
+        return mic
+
+
 class NEBState:
     def __init__(self, neb, images, energies):
         self.neb = neb
         self.images = images
         self.energies = energies
 
-    def find_mic(self, i):
-        images = self.images
-        return find_mic(images[i + 1].get_positions() -
-                        images[i].get_positions(),
-                        images[i].get_cell(), images[i].pbc)[0]
+    def image_pair(self, i):
+        return ImagePair(self.images[i], self.images[i + 1])
+
+    @lazyproperty
+    def imax(self):
+        return 1 + np.argsort(self.energies[1:-1])[-1]
+
+    @property
+    def emax(self):
+        return self.energies[self.imax]
 
     @lazyproperty
     def eqlength(self):
@@ -370,14 +388,16 @@ class NEB:
 
         state = NEBState(self, images, energies)
 
-        self.imax = 1 + np.argsort(energies[1:-1])[-1]
-        self.emax = energies[self.imax]
+        self.imax = state.imax  #1 + np.argsort(energies[1:-1])[-1]
+        self.emax = state.emax  #energies[self.imax]
 
-        t1 = state.find_mic(0)
+        pair1 = state.image_pair(0)
+        t1 = pair1.find_mic()
         nt1 = np.linalg.norm(t1)
 
         for i in range(1, self.nimages - 1):
-            t2 = state.find_mic(i)
+            pair2 = state.image_pair(i)
+            t2 = pair2.find_mic()
             nt2 = np.linalg.norm(t2)
 
             tangent = self.neb_method.get_tangent(t1, nt1, t2, nt2, energies, i)
