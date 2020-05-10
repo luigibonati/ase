@@ -16,17 +16,29 @@ from ase.utils import deprecated
 from ase.utils.forcecurve import fit_images
 from ase.utils import lazyproperty
 
+
 class ImagePair:
-    def __init__(self, atoms1, atoms2):
+    def __init__(self, atoms1, atoms2, energy1, energy2, k):
         self.atoms1 = atoms1
         self.atoms2 = atoms2
+        self.energy1 = energy1
+        self.energy2 = energy2
+        self.k = k
 
-    def find_mic(self):
+    def _find_mic(self):
         pos1 = self.atoms1.get_positions()
         pos2 = self.atoms2.get_positions()
         # XXX If we want variable cells we will need to edit this.
         mic, _ = find_mic(pos2 - pos1, self.atoms1.cell, self.atoms1.pbc)
         return mic
+
+    @lazyproperty
+    def vector(self):
+        return self._find_mic()
+
+    @lazyproperty
+    def distance(self):
+        return np.linalg.norm(self.vector)
 
 
 class NEBState:
@@ -36,7 +48,9 @@ class NEBState:
         self.energies = energies
 
     def image_pair(self, i):
-        return ImagePair(self.images[i], self.images[i + 1])
+        return ImagePair(self.images[i], self.images[i + 1],
+                         self.energies[i], self.energies[i + 1],
+                         self.neb.k[i])
 
     @lazyproperty
     def imax(self):
@@ -392,13 +406,13 @@ class NEB:
         self.emax = state.emax  #energies[self.imax]
 
         pair1 = state.image_pair(0)
-        t1 = pair1.find_mic()
-        nt1 = np.linalg.norm(t1)
+        t1 = pair1.vector
+        nt1 = pair1.distance
 
         for i in range(1, self.nimages - 1):
             pair2 = state.image_pair(i)
-            t2 = pair2.find_mic()
-            nt2 = np.linalg.norm(t2)
+            t2 = pair2.vector
+            nt2 = pair2.distance
 
             tangent = self.neb_method.get_tangent(t1, nt1, t2, nt2, energies, i)
 
@@ -419,6 +433,7 @@ class NEB:
             else:
                 self.neb_method.add_image_force(state, ft, tangent, imgforce, t1, nt1, t2, nt2, i)
 
+            pair1 = pair2
             t1 = t2
             nt1 = nt2
 
