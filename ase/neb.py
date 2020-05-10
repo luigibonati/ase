@@ -74,9 +74,10 @@ class NEBMethod(ABC):
         self.neb = neb
 
 class ImprovedTangent(NEBMethod):
-    def get_tangent(self, spring1, spring2, energies, i):
+    def get_tangent(self, state, spring1, spring2, i):
         # Tangents are improved according to formulas 8, 9, 10,
         # and 11 of paper I.
+        energies = state.energies
         if energies[i + 1] > energies[i] > energies[i - 1]:
             tangent = t2.copy()
         elif energies[i + 1] < energies[i] < energies[i - 1]:
@@ -101,7 +102,7 @@ class ImprovedTangent(NEBMethod):
 
 
 class ASENEB(NEBMethod):
-    def get_tangent(self, spring1, spring2, energies, i):
+    def get_tangent(self, state, spring1, spring2, i):
         imax = self.neb.imax
         if i < imax:
             tangent = spring2.t
@@ -119,7 +120,7 @@ class ASENEB(NEBMethod):
 
 
 class EB(NEBMethod):  # What is EB?
-    def get_tangent(self, spring1, spring2, energies, i):
+    def get_tangent(self, state, spring1, spring2, i):
         # Tangents are bisections of spring-directions
         # (formula C8 of paper III)
         tangent = spring1.t / spring1.nt + spring2.t / spring2.nt
@@ -398,14 +399,15 @@ class NEB:
 
         state = NEBState(self, images, energies)
 
-        self.imax = state.imax  #1 + np.argsort(energies[1:-1])[-1]
-        self.emax = state.emax  #energies[self.imax]
+        # Can we get rid of self.energies, self.imax, self.emax etc.?
+        self.imax = state.imax
+        self.emax = state.emax
 
         spring1 = state.spring(0)
 
         for i in range(1, self.nimages - 1):
             spring2 = state.spring(i)
-            tangent = self.neb_method.get_tangent(spring1, spring2, energies, i)
+            tangent = self.neb_method.get_tangent(state, spring1, spring2, i)
 
             imgforce = forces[i - 1]
             ft = np.vdot(imgforce, tangent)
