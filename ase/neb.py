@@ -389,10 +389,6 @@ class NEB:
                     imgforce -= 2 * ft / tt * tangent
                 else:
                     imgforce -= 2 * ft * tangent
-            elif self.method == 'eb':
-                self.neb_method.add_image_force(state, ft, tangent, imgforce, t1, nt1, t2, nt2, i)
-            elif self.method == 'improvedtangent':
-                self.neb_method.add_image_force(state, ft, tangent, imgforce, t1, nt1, t2, nt2, i)
             else:
                 self.neb_method.add_image_force(state, ft, tangent, imgforce, t1, nt1, t2, nt2, i)
 
