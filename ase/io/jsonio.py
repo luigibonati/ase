@@ -86,7 +86,7 @@ def create_ase_object(objtype, dct):
         obj = BandStructure(**dct)
     elif objtype == 'bandpath':
         from ase.dft.kpoints import BandPath
-        obj = BandPath(path=dct.pop('labelseq'), **dct)
+        obj = BandPath.fromdict(dct)
     elif objtype == 'atoms':
         from ase import Atoms
         obj = Atoms.fromdict(dct)

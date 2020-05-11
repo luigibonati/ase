@@ -276,6 +276,12 @@ class BandPath:
                 'labelseq': self.path,
                 'cell': self.cell}
 
+    @classmethod
+    def fromdict(cls, dct):
+        dct.pop('pbc', None)  # Comopatibility: Ignored nowadays
+        path = dct.pop('labelseq')
+        return cls(path=path, **dct)
+
     def interpolate(
             self,
             path: str = None,
