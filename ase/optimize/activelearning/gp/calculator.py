@@ -399,13 +399,12 @@ class GPCalculator(Calculator, GaussianProcess):
         constraints = atoms.constraints
         mask_constraints = np.ones_like(atoms.positions, dtype=bool)
         for i in range(0, len(constraints)):
-            try:
-                mask_constraints[constraints[i].a] = ~constraints[i].mask
-            except Exception:
-                pass
+
+            if hasattr(constraints[i], 'index'):
+                mask_constraints[constraints[i].index] = False
 
             try:
-                mask_constraints[constraints[i].index] = False
+                mask_constraints[constraints[i].a] = ~constraints[i].mask
             except Exception:
                 pass
 
