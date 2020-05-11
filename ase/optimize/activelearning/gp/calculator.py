@@ -196,6 +196,9 @@ class GPCalculator(Calculator, GaussianProcess):
             mask = np.ones_like(self.atoms.get_positions(), dtype=bool)
             self.atoms_mask = np.argwhere(mask.reshape(-1)).reshape(-1)
 
+        #Set mask in kernel
+        self.kernel.mask = self.atoms_mask
+
         # Initialize training features:
         self.train_x = []
         self.train_y = []
@@ -204,7 +207,7 @@ class GPCalculator(Calculator, GaussianProcess):
             r = i.get_positions(wrap=self.wrap).reshape(-1)
             e = i.get_potential_energy(force_consistent=self.fc)
             f = i.get_forces()
-            self.train_x.append(r[self.atoms_mask])
+            self.train_x.append(r)
             y = np.append(np.array(e).reshape(-1),
                           -f.reshape(-1)[self.atoms_mask])
             self.train_y.append(y)
@@ -360,7 +363,7 @@ class GPCalculator(Calculator, GaussianProcess):
 
         # Mask geometry to be compatible with the trained GP (reduce memory).
         x = self.atoms.get_positions(wrap=self.wrap).reshape(-1)
-        x = x[self.atoms_mask]
+        x = x
 
         # Get predictions.
         f, V = self.predict(x, get_variance=self.calculate_uncertainty)
@@ -368,10 +371,9 @@ class GPCalculator(Calculator, GaussianProcess):
         # Obtain energy and forces for the given geometry.
         energy = f[0]
         forces = -f[1:].reshape(-1)
-        D = len(self.atoms.get_positions(wrap=self.wrap).flatten())
-        forces_empty = np.zeros(D)
-        for i in range(len(self.atoms_mask)):
-            forces_empty[self.atoms_mask[i]] = forces[i]
+        # Add forces that had been masked
+        forces_empty = np.zeros(self.atoms.get_positions().size())
+        forces_empty[self.atoms_mask] = forces
         forces = forces_empty.reshape(-1, 3)
 
         # Get uncertainty for the given geometry.
@@ -406,4 +408,4 @@ class GPCalculator(Calculator, GaussianProcess):
             if hasattr(c, 'a') and hasattr(c, 'mask'):
                 mask_constraints[c.a] = ~c.mask
 
-        return np.argwhere(mask_constraints.reshape(-1)).reshape(-1)
+        return mask_constraints.reshape(-1)
