@@ -152,7 +152,8 @@ class SquaredExponential(SE_kernel):
         K[1:, 0] = - K[0, 1:]
 
         P = np.outer(x1 - x2, x1 - x2) / self.l**2
-        K[1:, 1:] = (K[1:, 1:] - P[self._mmask]) / self.l**2
+        K[1:, 1:] = K[1:, 1:] - P[self._mmask].reshape(-1,self.D) 
+        K[1:, 1:] = K[1:, 1:]/ self.l**2
 
         return K * self.kernel_function(x1, x2)
 
@@ -215,7 +216,7 @@ class SquaredExponential(SE_kernel):
         k = np.asarray(self.dK_dl_k(x1, x2)).reshape((1, 1))
         j2 = self.dK_dl_j(x1, x2).reshape(1, -1)[self._vmask]
         j1 = self.dK_dl_j(x2, x1).reshape(-1, 1)[self._vmask]
-        h = self.dK_dl_h(x1, x2)[self._mmask]
+        h = self.dK_dl_h(x1, x2)[self._mmask].reshape(-1, self.D)
         return np.block([[k, j2], [j1, h]]) * self.kernel_function(x1, x2)
 
     def dK_dl(self, X):
@@ -353,7 +354,8 @@ class BondExponential(SquaredExponential):
         K[0, 1:] = self.kernel_function_gradient(x1, x2)[self._vmask]
         K[1:, 0] = -K[0, 1:]
 
-        K[1:, 1:] = self.kernel_function_hessian(x1, x2)[self._mmask]
+        h = self.kernel_function_hessian(x1, x2)
+        K[1:, 1:] = h[self._mmask].reshape(-1, self.D)
         return K * self.kernel_function(x1, x2)
 
     # --- Kernel derivatives ---
@@ -418,7 +420,7 @@ class BondExponential(SquaredExponential):
         dK[0, 0] = -norm
         dK[0, 1:] = j[self._vmask]
         dK[1:, 0] = -j[self._vmask]
-        dK[1:, 1:] = h[self._mmask]
+        dK[1:, 1:] = h[self._mmask].reshape(-1,self.D)
         return dK*self.kernel_function(x1,x2)
 
     def dK_dfAB(self, X, dG):
