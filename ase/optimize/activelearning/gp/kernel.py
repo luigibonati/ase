@@ -114,10 +114,7 @@ class SquaredExponential(SE_kernel):
 
     @mask.setter
     def mask(self, mask):
-        if self.D is not None:
-            if len(mask)!=self.D:
-                raise IndexError('mask must have the same shape as x1')
-
+        
         # Set vector mask
         self._vmask = np.asarray(mask, bool)
 
@@ -164,9 +161,12 @@ class SquaredExponential(SE_kernel):
         is then symmetric.
         """
         n, D = np.atleast_2d(X).shape
+        
+        if self.mask is None:
+            self.mask = np.ones(D)
 
         if self.D is None:
-            self.D = self._vmask.sum() if self._vmask else D
+            self.D = self.mask.sum()
 
         K = np.identity(n * (self.D + 1)) 
         D1 = self.D + 1
