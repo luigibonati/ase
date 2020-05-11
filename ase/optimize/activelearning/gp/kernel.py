@@ -148,11 +148,11 @@ class SquaredExponential(SE_kernel):
         the manifold.
         """
         K = np.identity(self.D + 1)
-        K[0, 1:] = self.kernel_function_gradient(x1, x2)
+        K[0, 1:] = self.kernel_function_gradient(x1, x2)[self._vmask]
         K[1:, 0] = - K[0, 1:]
 
         P = np.outer(x1 - x2, x1 - x2) / self.l**2
-        K[1:, 1:] = (K[1:, 1:] - P) / self.l**2
+        K[1:, 1:] = (K[1:, 1:] - P[self._mmask]) / self.l**2
 
         return K * self.kernel_function(x1, x2)
 
@@ -213,9 +213,9 @@ class SquaredExponential(SE_kernel):
 
     def dK_dl_matrix(self, x1, x2):
         k = np.asarray(self.dK_dl_k(x1, x2)).reshape((1, 1))
-        j2 = self.dK_dl_j(x1, x2).reshape(1, -1)
-        j1 = self.dK_dl_j(x2, x1).reshape(-1, 1)
-        h = self.dK_dl_h(x1, x2)
+        j2 = self.dK_dl_j(x1, x2).reshape(1, -1)[self._vmask]
+        j1 = self.dK_dl_j(x2, x1).reshape(-1, 1)[self._vmask]
+        h = self.dK_dl_h(x1, x2)[self._mmask]
         return np.block([[k, j2], [j1, h]]) * self.kernel_function(x1, x2)
 
     def dK_dl(self, X):
