@@ -105,6 +105,7 @@ class SquaredExponential(SE_kernel):
 
     def __init__(self, dimensionality=None):
         self.D = dimensionality
+        self._vmask = None
         SE_kernel.__init__(self)
 
     @property
@@ -141,7 +142,7 @@ class SquaredExponential(SE_kernel):
     def kernel_function_hessian(self, x1, x2):
         """Second derivatives matrix of the kernel function"""
         P = np.outer(x1 - x2, x1 - x2) / self.l**2
-        prefactor = (np.identity(self.D) - P) / self.l**2
+        prefactor = (np.identity(x1.shape[0]) - P) / self.l**2
         return prefactor
 
     def kernel(self, x1, x2):
@@ -163,9 +164,12 @@ class SquaredExponential(SE_kernel):
         is then symmetric.
         """
         n, D = np.atleast_2d(X).shape
-        K = np.identity(n * (D + 1))
-        self.D = D
-        D1 = D + 1
+
+        if self.D is None:
+            self.D = self._vmask.sum() if self._vmask else D
+
+        K = np.identity(n * (self.D + 1)) 
+        D1 = self.D + 1
 
         # fill upper triangular:
         for i in range(n):
@@ -202,7 +206,7 @@ class SquaredExponential(SE_kernel):
         to l
         """
 
-        Id = np.identity(self.D)
+        Id = np.identity(x1.shape[0])
         P = np.outer(x1 - x2, x1 - x2) / self.l**2
         prefactor = 1 - 0.5 * self.squared_distance(x1, x2)
         return -2 * (prefactor * (Id - P) - P) / self.l**3
