@@ -920,8 +920,8 @@ class Wannier:
         Nw = self.nwannier
 
         if self.functional == 'stdev':
-            O_dw = np.abs(self.Z_dww.diagonal())**2
-            O_w = np.dot(O_dw, self.weight_d).real
+            O_dw = np.abs(self.Z_dww.diagonal(0, 1, 2))**2
+            O_w = np.dot(O_dw.T, self.weight_d).real
             O = np.sum(O_w)
 
         dU = []
