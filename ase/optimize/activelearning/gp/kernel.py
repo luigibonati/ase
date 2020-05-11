@@ -214,8 +214,8 @@ class SquaredExponential(SE_kernel):
 
     def dK_dl_matrix(self, x1, x2):
         k = np.asarray(self.dK_dl_k(x1, x2)).reshape((1, 1))
-        j2 = self.dK_dl_j(x1, x2).reshape(1, -1)[self._vmask]
-        j1 = self.dK_dl_j(x2, x1).reshape(-1, 1)[self._vmask]
+        j2 = self.dK_dl_j(x1, x2)[self._vmask].reshape(1, -1)
+        j1 = self.dK_dl_j(x2, x1)[self._vmask].reshape(-1, 1)
         h = self.dK_dl_h(x1, x2)[self._mmask].reshape(-1, self.D)
         return np.block([[k, j2], [j1, h]]) * self.kernel_function(x1, x2)
 
