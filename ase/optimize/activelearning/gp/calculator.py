@@ -398,23 +398,12 @@ class GPCalculator(Calculator, GaussianProcess):
         atoms = self.train_images[0]
         constraints = atoms.constraints
         mask_constraints = np.ones_like(atoms.positions, dtype=bool)
-        for i in range(0, len(constraints)):
+        for c in constraints:
 
-            if hasattr(constraints[i], 'index'):
-                mask_constraints[constraints[i].index] = False
+            if hasattr(c, 'index'):
+                mask_constraints[c.index] = False
 
-            try:
-                mask_constraints[constraints[i].a] = ~constraints[i].mask
-            except Exception:
-                pass
+            if hasattr(c, 'a') and hasattr(c, 'mask'):
+                mask_constraints[c.a] = ~c.mask
 
-            try:
-                mask_constraints[constraints[0].a] = ~constraints[0].mask
-            except Exception:
-                pass
-
-            try:
-                mask_constraints[constraints[-1].a] = ~constraints[-1].mask
-            except Exception:
-                pass
         return np.argwhere(mask_constraints.reshape(-1)).reshape(-1)
