@@ -83,6 +83,10 @@ the source code from PyPI_::
 
     $ pip install --upgrade --user ase
 
+If you intend to run the tests, use::
+
+    $ pip install --upgrade --user ase[test]
+
 This will install ASE in a local folder where Python can
 automatically find it (``~/.local`` on Unix, see here_ for details).  Some
 :ref:`cli` will be installed in the following location:
@@ -95,8 +99,8 @@ Windows            ``%APPDATA%/Python/Scripts``
 
 Make sure you have that path in your :envvar:`PATH` environment variable.
 
-Now you should be ready to use ASE, but before you start, please `run the
-tests`_ as described below.
+Now you should be ready to use ASE, but before you start, you may
+wish to `run the tests`_ as described below.
 
 
 .. note::
@@ -121,13 +125,13 @@ from Git.
 :Tar-file:
 
     You can get the source as a `tar-file <http://xkcd.com/1168/>`__ for the
-    latest stable release (ase-3.19.0.tar.gz_) or the latest
+    latest stable release (ase-3.19.1.tar.gz_) or the latest
     development snapshot (`<snapshot.tar.gz>`_).
 
     Unpack and make a soft link::
 
-        $ tar -xf ase-3.19.0.tar.gz
-        $ ln -s ase-3.19.0 ase
+        $ tar -xf ase-3.19.1.tar.gz
+        $ ln -s ase-3.19.1 ase
 
     Here is a `list of tarballs <https://pypi.org/simple/ase/>`__.
 
@@ -136,7 +140,7 @@ from Git.
     Alternatively, you can get the source for the latest stable release from
     https://gitlab.com/ase/ase like this::
 
-        $ git clone -b 3.19.0 https://gitlab.com/ase/ase.git
+        $ git clone -b 3.19.1 https://gitlab.com/ase/ase.git
 
     or if you want the development version::
 
@@ -167,7 +171,7 @@ Finally, please `run the tests`_.
     dates of older releases can be found there.
 
 
-.. _ase-3.19.0.tar.gz: https://pypi.org/packages/source/a/ase/ase-3.19.0.tar.gz
+.. _ase-3.19.1.tar.gz: https://pypi.org/packages/source/a/ase/ase-3.19.1.tar.gz
 
 
 Environment variables

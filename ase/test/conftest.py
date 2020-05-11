@@ -116,6 +116,15 @@ def pytest_generate_tests(metafunc):
     from ase.test.factories import parametrize_calculator_tests
     parametrize_calculator_tests(metafunc)
 
+    if 'seed' in metafunc.fixturenames:
+        seeds = metafunc.config.getoption('seed')
+        if len(seeds) == 0:
+            seeds = [0, 1]
+        else:
+            seeds = list(map(int, seeds))
+        metafunc.parametrize('seed', seeds)
+
+
 class CLI:
     def ase(self, args):
         if isinstance(args, str):
@@ -134,7 +143,48 @@ class CLI:
         runshellcommand(command, calculator_name=calculator_name)
 
 
-@pytest.fixture
+@pytest.fixture(scope='session')
+def datadir():
+    from ase.test.testsuite import datadir
+    return datadir
+
+
+@pytest.fixture(scope='session')
+def asap3():
+    asap3 = pytest.importorskip('asap3')
+    return asap3
+
+
+@pytest.fixture(scope='session')
 def cli():
     return CLI()
 
+
+@pytest.fixture(autouse=True)
+def arbitrarily_seed_rng(request):
+    # We want tests to not use global stuff such as np.random.seed().
+    # But they do.
+    #
+    # So in lieu of (yet) fixing it, we reseed and unseed the random
+    # state for every test.  That makes each test deterministic if it
+    # uses random numbers without seeding, but also repairs the damage
+    # done to global state if it did seed.
+    #
+    # In order not to generate all the same random numbers in every test,
+    # we seed according to a kind of hash:
+    import numpy as np
+    module_name = request.module
+    function_name = request.function.__name__
+    seed = hash((module_name, function_name)) % 123456789
+    # (We should really use the full qualified name of the test method.)
+    state = np.random.get_state()
+    np.random.seed(seed)
+    yield
+    np.random.set_state(state)
+
+
+def pytest_addoption(parser):
+    parser.addoption('--seed', action='append', default=[],
+                     help='Add a seed for tests where random number generators'
+                          ' are involved. This option can be applied more'
+                          ' than once.')

@@ -13,9 +13,10 @@ from ase.cli.info import print_info
 from ase.cli.main import CLIError
 
 
-test_calculator_names = ['emt']
+test_calculator_names = ['emt', 'asap']
 testdir = Path(__file__).parent
-datafiles_directory = os.path.join(os.path.dirname(__file__), 'datafiles', '')
+datadir = (testdir / 'data').resolve()
+# datafiles_directory = os.path.join(os.path.dirname(__file__), 'datafiles', '')
 
 
 def require(calcname):
@@ -41,7 +42,7 @@ def all_test_modules_and_groups():
 def disable_calculators(names):
     import pytest
     for name in names:
-        if name in ['emt', 'lj', 'eam', 'morse', 'tip3p']:
+        if name in ['emt', 'lj', 'eam', 'morse', 'tip3p', 'asap']:
             continue
         try:
             cls = get_calculator_class(name)
