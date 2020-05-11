@@ -350,10 +350,10 @@ class BondExponential(SquaredExponential):
         """
 
         K = np.identity(self.D + 1)
-        K[0, 1:] = self.kernel_function_gradient(x1, x2)
+        K[0, 1:] = self.kernel_function_gradient(x1, x2)[self._vmask]
         K[1:, 0] = -K[0, 1:]
 
-        K[1:, 1:] = self.kernel_function_hessian(x1, x2)
+        K[1:, 1:] = self.kernel_function_hessian(x1, x2)[self._mmask]
         return K * self.kernel_function(x1, x2)
 
     # --- Kernel derivatives ---
@@ -416,9 +416,9 @@ class BondExponential(SquaredExponential):
         dK = np.empty((self.D+1,self.D+1))
         
         dK[0, 0] = -norm
-        dK[0, 1:] = j
-        dK[1:, 0] = -j
-        dK[1:, 1:] = h
+        dK[0, 1:] = j[self._vmask]
+        dK[1:, 0] = -j[self._vmask]
+        dK[1:, 1:] = h[self._mmask]
         return dK*self.kernel_function(x1,x2)
 
     def dK_dfAB(self, X, dG):
