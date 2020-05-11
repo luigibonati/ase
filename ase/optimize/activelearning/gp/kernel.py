@@ -107,6 +107,24 @@ class SquaredExponential(SE_kernel):
         self.D = dimensionality
         SE_kernel.__init__(self)
 
+    @property
+    def mask(self):
+        return self._vmask
+
+    @mask.setter
+    def mask(self, mask):
+        if self.D is not None:
+            if len(mask)!=self.D:
+                raise IndexError('mask must have the same shape as x1')
+
+        # Set vector mask
+        self._vmask = np.asarray(mask, bool)
+
+        # Set matrix mask
+        mask = np.asarray(mask, int)
+        mmask = np.asarray([mask for i in range(len(mask))])
+        self._mmask = np.asarray(mmask * mmask.T, bool)
+
     def kernel_function(self, x1, x2):
         """ This is the squared exponential function"""
         return self.weight**2 * np.exp(-0.5 * self.squared_distance(x1, x2))
