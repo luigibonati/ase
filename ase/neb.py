@@ -254,7 +254,7 @@ class NEB(ChainOfStates):
                    'is recommended.')
             raise ValueError(msg)
 
-        forces = np.empty((self.nimages - 2 , self.natoms, 3),  dtype=np.float)
+        forces = np.empty((self.nimages - 2, self.natoms, 3),  dtype=np.float)
         energies = np.empty(self.nimages)
         x = np.empty((self.nimages - 2, self.natoms, 3), dtype=np.float)
 
