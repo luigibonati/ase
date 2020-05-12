@@ -206,8 +206,9 @@ def read_gpaw_out(fileobj, index):
             parameters = {}
             ii = index_startswith(lines, 'vdw correction:')
         except ValueError:
-            pass
+            name = 'gpaw'
         else:
+            name = lines[ii - 1].strip()
             # save uncorrected values
             parameters.update({
                 'calculator': 'gpaw',
@@ -235,7 +236,7 @@ def read_gpaw_out(fileobj, index):
                                             efermi=eFermi,
                                             bzkpts=bz_kpts, ibzkpts=ibz_kpts)
             calc.eref = Eref
-            calc.name = 'gpaw'
+            calc.name = name
             calc.parameters = parameters
             if energy_contributions is not None:
                 calc.energy_contributions = energy_contributions
