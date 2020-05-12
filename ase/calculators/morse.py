@@ -1,7 +1,5 @@
 import numpy as np
 
-from math import exp, sqrt
-
 from ase.calculators.calculator import Calculator
 from ase.neighborlist import neighbor_list
 
