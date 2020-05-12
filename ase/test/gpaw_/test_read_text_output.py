@@ -24,7 +24,7 @@ def test_read_gpaw_out(datadir):
 
 
 # for the record, include somehow XXX
-# output written by
+# output in datadir / 'gpaw_expected_text_output' written by
 """
 if 1:
     from ase.build import molecule
