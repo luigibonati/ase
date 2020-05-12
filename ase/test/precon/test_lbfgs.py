@@ -16,7 +16,7 @@ def setup_atoms():
     s = atoms.get_scaled_positions()
     s[:, 0] *= 0.995
     atoms.set_scaled_positions(s)
-    atoms.set_calculator(EMT())
+    atoms.calc = EMT()
 
     # compute initial Hessian
     H0 = fd_hessian(atoms)
