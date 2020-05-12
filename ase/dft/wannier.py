@@ -330,6 +330,51 @@ def scdm(calc, Nw, fixed_k, verbose=True):
     return C_kul, U_kww
 
 
+def init_orbitals(calc, ntot, seed=None):
+    """Place d-orbitals for every atom that has some in the valence states
+        and then random s-orbitals close to the other atoms (< 1.5Å).
+       'calc': ASE calculator object
+       'ntot': total number of needed orbitals
+       'seed': seed for random numbers"""
+
+    atoms = calc.get_atoms()
+    orbs = []
+    No = 0
+    for i, z in enumerate(atoms.get_atomic_numbers()):
+        # check occupied d-orbitals in valence states in the GPAW setup
+        s = calc.setups[i]
+        if 2 in s.l_j and s.f_j[s.l_j.index(2)] > 0:
+            No_new = No + 5
+            if No_new <= ntot:
+                orbs.append([i, 2, 1])
+                No = No_new
+
+    if No < ntot:
+        # add random s-like orbitals if there are not enough yet
+        if seed is not None:
+            np.random.seed(seed)
+
+        Ns = ntot - No
+        tmp_atoms = atoms.copy()
+        tmp_atoms.append('H')
+        s_pos = tmp_atoms.get_scaled_positions()
+        for i in range(0, Ns):
+            fine = False
+            while not fine:
+                x, y, z = np.random.random(3)
+                s_pos[-1] = [x, y, z]
+                tmp_atoms.set_scaled_positions(s_pos)
+                dists = tmp_atoms.get_distances(
+                    a=-1,
+                    indices=range(atoms.get_global_number_of_atoms()))
+                if (dists < 1.5).any():
+                    fine = True
+            orbs.append([[x, y, z], 0, 1])
+
+    assert sum([orb[1] * 2 + 1 for orb in orbs]) == ntot
+    return orbs
+
+
 class Wannier:
     """Maximally localized Wannier Functions
 
@@ -344,7 +389,7 @@ class Wannier:
                  fixedenergy=None,
                  fixedstates=None,
                  spin=0,
-                 initialwannier='gaussians',
+                 initialwannier='orbitals',
                  functional='std',
                  seed=None,
                  verbose=False):
@@ -384,7 +429,9 @@ class Wannier:
           ``initialwannier``: Initial guess for Wannier rotation matrix.
             Can be 'bloch' to start from the Bloch states, 'random' to be
             randomized, 'gaussians' to start from randomly placed gaussian
-            centers, 'scdm' to start from localized state selected with SCDM
+            centers, 'orbitals' to start from atom-centered d-orbitals and
+            randomly placed gaussian centers (see init_orbitals()),
+            'scdm' to start from localized state selected with SCDM
             or a list passed to calc.get_initial_wannier.
 
           ``functional``: The functional used to measure the localization.
@@ -501,7 +548,7 @@ class Wannier:
                         G_I=k0_c, spin=self.spin)
         self.initialize(file=file, initialwannier=initialwannier, seed=seed)
 
-    def initialize(self, file=None, initialwannier='gaussians', seed=None):
+    def initialize(self, file=None, initialwannier='orbitals', seed=None):
         """Re-initialize current rotation matrix.
 
         Keywords are identical to those of the constructor.
@@ -544,6 +591,11 @@ class Wannier:
                                  np.random.random()], 0, 1))
             self.C_kul, self.U_kww = self.calc.initial_wannier(
                 centers, self.kptgrid, self.fixedstates_k,
+                self.edf_k, self.spin, self.nbands)
+        elif initialwannier == 'orbitals':
+            self.C_kul, self.U_kww = self.calc.initial_wannier(
+                init_orbitals(self.calc, self.nwannier, seed),
+                self.kptgrid, self.fixedstates_k,
                 self.edf_k, self.spin, self.nbands)
         elif initialwannier == 'scdm':
             self.C_kul, self.U_kww = scdm(calc=self.calc,
