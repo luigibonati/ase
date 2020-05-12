@@ -95,8 +95,8 @@ class ImprovedTangent(NEBMethod):
         tangent /= np.linalg.norm(tangent)
         return tangent
 
-    def add_image_force(self, state, ft, tangent, imgforce, spring1, spring2, i):
-        imgforce -= ft * tangent
+    def add_image_force(self, state, tangential_force, tangent, imgforce, spring1, spring2, i):
+        imgforce -= tangential_force * tangent
         # Improved parallel spring force (formula 12 of paper I)
         imgforce += (spring2.nt * spring2.k - spring1.nt * spring1.k) * tangent
 
@@ -112,11 +112,11 @@ class ASENEB(NEBMethod):
             tangent = spring1.t + spring2.t
         return tangent
 
-    def add_image_force(self, state, ft, tangent, imgforce, spring1, spring2, i):
-        tt = np.vdot(tangent, tangent)
-        imgforce -= ft / tt * tangent
+    def add_image_force(self, state, tangential_force, tangent, imgforce, spring1, spring2, i):
+        tangent_mag = np.vdot(tangent, tangent)  # Magnitude for normalizing
+        imgforce -= tangential_force / tangent_mag * tangent
         imgforce -= np.vdot(spring1.t * spring1.k -
-                            spring2.t * spring2.k, tangent) / tt * tangent
+                            spring2.t * spring2.k, tangent) / tangent_mag * tangent
 
 
 class EB(NEBMethod):  # What is EB?
@@ -127,8 +127,8 @@ class EB(NEBMethod):  # What is EB?
         tangent /= np.linalg.norm(tangent)
         return tangent
 
-    def add_image_force(self, state, ft, tangent, imgforce, spring1, spring2, i):
-        imgforce -= ft * tangent
+    def add_image_force(self, state, tangential_force, tangent, imgforce, spring1, spring2, i):
+        imgforce -= tangential_force * tangent
         energies = state.energies
         # Spring forces
         # (formula C1, C5, C6 and C7 of Paper III)
@@ -410,19 +410,21 @@ class NEB:
             tangent = self.neb_method.get_tangent(state, spring1, spring2, i)
 
             imgforce = forces[i - 1]
-            ft = np.vdot(imgforce, tangent)
+            # Get overlap between PES-derived force and tangent
+            tangential_force = np.vdot(imgforce, tangent)
 
             if i == self.imax and self.climb:
-                # imax not affected by the spring forces. The full force
-                # with component along the elestic band converted
-                # (formula 5 of Paper II)
+                '''The climbing image, imax, is not affected by the spring
+                   forces. This image feels the full PES-derived force,
+                   but the tangential component is inverted:
+                   see Eq. 5 in paper II.'''
                 if self.method == 'aseneb':
-                    tt = np.vdot(tangent, tangent)
-                    imgforce -= 2 * ft / tt * tangent
+                    tangent_mag = np.vdot(tangent, tangent)  # For normalizing
+                    imgforce -= 2 * tangential_force / tangent_mag * tangent
                 else:
-                    imgforce -= 2 * ft * tangent
+                    imgforce -= 2 * tangential_force * tangent
             else:
-                self.neb_method.add_image_force(state, ft, tangent, imgforce, spring1, spring2, i)
+                self.neb_method.add_image_force(state, tangential_force, tangent, imgforce, spring1, spring2, i)
 
             spring1 = spring2
 
