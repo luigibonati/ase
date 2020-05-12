@@ -24,6 +24,7 @@ commands = [
     ('run', 'ase.cli.run'),
     ('band-structure', 'ase.cli.band_structure'),
     ('build', 'ase.cli.build'),
+    ('dimensionality', 'ase.cli.dimensionality'),
     ('eos', 'ase.eos'),
     ('ulm', 'ase.io.ulm'),
     ('find', 'ase.cli.find'),
