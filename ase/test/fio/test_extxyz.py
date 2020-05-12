@@ -10,6 +10,10 @@ from ase.io import extxyz
 from ase.atoms import Atoms
 from ase.build import bulk
 from ase.test.testsuite import no_warn
+from ase.io.extxyz import escape
+from ase.calculators.emt import EMT
+from ase.constraints import full_3x3_to_voigt_6_stress
+from ase.build import molecule
 
 # array data of shape (N, 1) squeezed down to shape (N, ) -- bug fixed
 # in commit r4541
@@ -283,7 +287,6 @@ def test_blank_comment():
 
 
 def test_escape():
-    from ase.io.extxyz import escape
     assert escape('plain_string') == 'plain_string'
     assert escape('string_containing_"') == r'"string_containing_\""'
     assert escape('string with spaces') == '"string with spaces"'
@@ -291,22 +294,18 @@ def test_escape():
 
 @pytest.mark.filterwarnings('ignore:write_xyz')
 def test_stress():
-    from ase.calculators.emt import EMT
-    from ase.constraints import full_3x3_to_voigt_6_stress
-    from ase.build import molecule
-
     # build a water dimer, which has 6 atoms
-    w1 = molecule('H2O')
-    w2 = molecule('H2O')
-    w2.positions[:, 0] += 5.0
-    a = w1 + w2
-    a.cell = [10, 10, 10]
-    a.pbc = True
+    water1 = molecule('H2O')
+    water2 = molecule('H2O')
+    water2.positions[:, 0] += 5.0
+    atoms = water1 + water2
+    atoms.cell = [10, 10, 10]
+    atoms.pbc = True
 
-    a.new_array('stress', np.arange(6, dtype=float))  # array with clashing name
-    a.calc = EMT()
-    a_stress = a.get_stress()
-    a.write('tmp.xyz')
+    atoms.new_array('stress', np.arange(6, dtype=float))  # array with clashing name
+    atoms.calc = EMT()
+    a_stress = atoms.get_stress()
+    atoms.write('tmp.xyz')
     b = ase.io.read('tmp.xyz')
     assert abs(b.get_stress() - a_stress).max() < 1e-6
     assert abs(b.arrays['stress'] - np.arange(6, dtype=float)).max() < 1e-6
