@@ -50,7 +50,7 @@ X: array
 
 
 def ode12r(f, X0, h=None, verbose=1, fmax=1e-6, maxtol=1e3, steps=100,
-           rtol=1e-1, C1=1e-2, C2=2.0, hmin=1e-10, extrapolate=3,
+           rtol=5e-2, C1=1e-2, C2=2.0, hmin=1e-10, extrapolate=3,
            callback=None, precon=None, converged=None, residual=None):
     X = X0
 
@@ -94,8 +94,10 @@ def ode12r(f, X0, h=None, verbose=1, fmax=1e-6, maxtol=1e3, steps=100,
 
         # Accept step if residual decreases sufficiently and/or error acceptable
         if (Rnew <= Rn * (1 - C1 * h)) or ((Rnew <= Rn * C2) and err <= rtol):
+            print('accepted')
             accept = True
         else:
+            print('not_accpeted')
             accept = False
 
         # Pick an extrapolation scheme for the system & find new increment
@@ -160,8 +162,8 @@ def ode12r(f, X0, h=None, verbose=1, fmax=1e-6, maxtol=1e3, steps=100,
 
         # error message if step size is too small
         if abs(h) <= hmin:
-            print(f'ODE12r Step size {h} too small at nit = {nit}')
-            return X
+            raise OptimizerConvergenceError(f'ODE12r terminates unsuccessfully since'
+                                           f' Step size {h} too small at nit = {nit}')
 
     raise OptimizerConvergenceError(f'ODE12r terminates unsuccessfully after '
                                     f'{steps} iterations.')
@@ -170,7 +172,7 @@ def ode12r(f, X0, h=None, verbose=1, fmax=1e-6, maxtol=1e3, steps=100,
 class ODE12r(SciPyOptimizer):
     def __init__(self, atoms, logfile='-', trajectory=None,
                  callback_always=False, alpha=1.0, master=None,
-                 force_consistent=None, precon=None, verbose=0):
+                 force_consistent=None, precon=None, verbose=0, rtol=1e-2):
         SciPyOptimizer.__init__(self, atoms, logfile, trajectory,
                                 callback_always, alpha, master,
                                 force_consistent)
@@ -180,7 +182,7 @@ class ODE12r(SciPyOptimizer):
         else:
             self.precon = None
         self.verbose = verbose
-
+        self.rtol = rtol
     def apply_precon(self, Fn, X):
         if self.precon is None:
             return Fn, np.linalg.norm(Fn, np.inf)
@@ -188,11 +190,11 @@ class ODE12r(SciPyOptimizer):
         Fn, Rn = self.precon.apply(Fn, self.atoms)
         return Fn, Rn
 
-    def call_fmin(self, fmax, steps):
+    def call_fmin(self, fmax, steps, rtol=1e-2):
         ode12r(lambda x: -self.fprime(x),
                self.x0(),
                fmax=fmax, steps=steps,
                verbose=self.verbose,
                precon=self.apply_precon,
                callback=self.callback,
-               converged=self.converged)
+               converged=self.converged, rtol=self.rtol)
