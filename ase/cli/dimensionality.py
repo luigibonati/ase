@@ -22,8 +22,8 @@ class CLICommand:
 
     Example usage:
 
-    ase dimensionality --display-all structure.cif
-    ase dimensionality structure1.cif structure2.cif
+    * ase dimensionality --display-all structure.cif
+    * ase dimensionality structure1.cif structure2.cif
 
     For each structure the following data is printed:
 
@@ -40,7 +40,7 @@ class CLICommand:
     @staticmethod
     def add_arguments(parser):
         add = parser.add_argument
-        add('filenames', nargs='+', help='input file to analyze')
+        add('filenames', nargs='+', help='input file(s) to analyze')
         add('--display-all', dest='full', action='store_true',
             help='display all dimensionality classifications')
 
