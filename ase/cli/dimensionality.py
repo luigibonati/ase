@@ -22,7 +22,7 @@ class CLICommand:
 
     Example usage:
 
-    ase dimensionality --all structure.cif
+    ase dimensionality --display-all structure.cif
     ase dimensionality structure1.cif structure2.cif
 
     For each structure the following data is printed:
