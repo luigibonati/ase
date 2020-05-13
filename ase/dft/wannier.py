@@ -878,7 +878,11 @@ class Wannier:
         # Default size of plotting cell is the one corresponding to k-points.
         if repeat is None:
             repeat = self.kptgrid
-        atoms = self.calc.get_atoms() * repeat
+
+        # Remove constraints, some are not compatible with repeat()
+        atoms = self.calc.get_atoms()
+        atoms.set_constraint()
+        atoms = atoms * repeat
         func = self.get_function(index, repeat)
 
         # Handle separation of complex wave into real parts
