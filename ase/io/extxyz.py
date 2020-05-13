@@ -24,7 +24,7 @@ from ase.spacegroup.spacegroup import Spacegroup
 from ase.parallel import paropen
 from ase.constraints import FixAtoms, FixCartesian
 from ase.io.formats import index2range
-
+from io import StringIO, UnsupportedOperation
 
 __all__ = ['read_xyz', 'write_xyz', 'iread_xyz']
 
@@ -726,7 +726,11 @@ def read_xyz(fileobj, index=-1, properties_parser=key_val_str_to_dict):
             last_frame = index.stop
 
     # scan through file to find where the frames start
-    fileobj.seek(0)
+    try:
+        fileobj.seek(0)
+    except UnsupportedOperation:
+        fileobj = StringIO(fileobj.read())
+        fileobj.seek(0)
     frames = []
     while True:
         frame_pos = fileobj.tell()
