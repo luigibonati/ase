@@ -1,6 +1,7 @@
+import os
+import warnings
 from ase.io import read
 from ase.geometry.dimensionality import analyze_dimensionality
-import warnings
 
 
 class CLICommand:
@@ -21,38 +22,60 @@ class CLICommand:
 
     Example usage:
 
-    ase dimensionality structure.cif
+    ase dimensionality --all structure.cif
+    ase dimensionality structure1.cif structure2.cif
 
-    For each possible dimensionality classification, the following data is
-    printed:
+    For each structure the following data is printed:
 
     * type             - the dimensionalities present
     * score            - the score of the classification
     * a                - the start of the k-interval (see paper)
     * b                - the end of the k-interval (see paper)
     * component counts - the number of clusters with each dimensionality type
+
+    If the `--display-all` option is used, all dimensionality classifications
+    are displayed.
     """
 
     @staticmethod
     def add_arguments(parser):
         add = parser.add_argument
-        add('filename', help='input file to analyze')
+        add('filenames', nargs='+', help='input file to analyze')
+        add('--display-all', dest='full', action='store_true',
+            help='display all dimensionality classifications')
 
     @staticmethod
     def run(args, parser):
-        atoms = read(args.filename)
-        result = analyze_dimensionality(atoms)
 
-        print('type   score     a      b      component counts')
-        print('===============================================')
-        for entry in result:
-            dimtype = entry.dimtype.rjust(4)
-            score = '{:.3f}'.format(entry.score).ljust(5)
-            a = '{:.3f}'.format(entry.a).ljust(5)
-            b = '{:.3f}'.format(entry.b).ljust(5)
-            line = '{}   {}   {}   {}   {}'.format(dimtype, score, a, b,
-                                                   entry.h)
-            print(line)
+        files = [os.path.split(path)[1] for path in args.filenames]
+        lmax = max([len(f) for f in files]) + 2
+
+        print('file'.ljust(lmax) +
+              'type   score     a      b      component counts')
+        print('=' * lmax + '===============================================')
+
+        for path, f in zip(args.filenames, files):
+            atoms = read(path)
+            result = analyze_dimensionality(atoms)
+            if not args.full:
+                result = result[:1]
+
+            for i, entry in enumerate(result):
+                dimtype = entry.dimtype.rjust(4)
+                score = '{:.3f}'.format(entry.score).ljust(5)
+                a = '{:.3f}'.format(entry.a).ljust(5)
+                b = '{:.3f}'.format(entry.b).ljust(5)
+                if i == 0:
+                    name = f.ljust(lmax)
+                else:
+                    name = ' ' * lmax
+
+                line = '{}{}   {}   {}   {}   {}'.format(name, dimtype, score,
+                                                         a, b, entry.h)
+                print(line)
+
+            if args.full:
+                print()
 
 
 # reading CIF files can produce a ton of distracting warnings
