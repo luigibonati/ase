@@ -75,9 +75,10 @@ class NEBMethod(ABC):
 
 
 class ImprovedTangent(NEBMethod):
+    '''Tangent estimates are improved according to Eqs. 8-11 in paper I.
+       Tangents are weighted at extrema to ensure smooth transitions between
+       the positive and negative tangents.'''
     def get_tangent(self, state, spring1, spring2, i):
-        # Tangents are improved according to formulas 8, 9, 10,
-        # and 11 of paper I.
         energies = state.energies
         if energies[i + 1] > energies[i] > energies[i - 1]:
             tangent = t2.copy()
@@ -104,6 +105,9 @@ class ImprovedTangent(NEBMethod):
 
 
 class ASENEB(NEBMethod):
+    '''Standard NEB implementation in ASE. The tangent of each image is
+       estimated from the spring closest to the saddle point in each
+       spring pair.'''
     def get_tangent(self, state, spring1, spring2, i):
         imax = self.neb.imax
         if i < imax:
@@ -122,7 +126,8 @@ class ASENEB(NEBMethod):
                             spring2.t * spring2.k, tangent) / tangent_mag * tangent
 
 
-class EB(NEBMethod):  # What is EB?
+class EB(NEBMethod):
+    '''Elastic band method. The full spring force is included.'''
     def get_tangent(self, state, spring1, spring2, i):
         # Tangents are bisections of spring-directions
         # (formula C8 of paper III)
@@ -135,7 +140,7 @@ class EB(NEBMethod):  # What is EB?
         imgforce -= tangential_force * tangent
         energies = state.energies
         # Spring forces
-        # (formula C1, C5, C6 and C7 of Paper III)
+        # Eqs. C1, C5, C6 and C7 in paper III)
         f1 = -(spring1.nt - state.eqlength) * spring1.t / spring1.nt * spring1.k
         f2 = (spring2.nt - state.eqlength) * spring2.t / spring2.nt * spring2.k
         if self.neb.climb and abs(i - self.neb.imax) == 1:
