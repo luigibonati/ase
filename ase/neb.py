@@ -921,7 +921,7 @@ class PreconMEP(ChainOfStates):
         if self.get_all_potential_energies is not None:
             energies = self.get_all_potential_energies(self.images)
         else:
-            energies = [image.get_potential_energ() for image in self.images]
+            energies = [image.get_potential_energy() for image in self.images]
         return np.array(energies)
 
     def get_fmax_all(self):
