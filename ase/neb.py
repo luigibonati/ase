@@ -789,7 +789,7 @@ class PreconMEP(ChainOfStates):
         """
         Preconditioned minimum energy path finding.
 
-        This class implemented preconditoned variants of the NEB and String
+        This class implements preconditoned variants of the NEB and String
         methods, as described in the following article:
 
                 S. Makri, C. Ortner and J. R. Kermode, J. Chem. Phys.
@@ -868,8 +868,9 @@ class PreconMEP(ChainOfStates):
         """Evaluate and return the forces."""
         images = self.images
 
+        forces = np.empty(((self.nimages - 2), self.natoms, 3), dtype=np.float)
         if self.get_all_forces is not None:
-            forces = self.get_all_forces(images[1:-1])
+            forces[...] = self.get_all_forces(images[1:-1])
         else:
             calculators = [image.calc for image in images
                            if image.calc is not None]
@@ -877,8 +878,6 @@ class PreconMEP(ChainOfStates):
                 msg = ('One or more NEB images share the same calculator.  '
                        'Each image must have its own calculator.  ')
                 raise ValueError(msg)
-            forces = np.empty(((self.nimages - 2), self.natoms, 3),
-                              dtype=np.float)
             for i in range(1, self.nimages - 1):
                 forces[i - 1] = self.images[i].get_forces()
 
