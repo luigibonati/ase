@@ -1,6 +1,6 @@
 import os
 import warnings
-from ase.io import read
+from ase.io import iread
 from ase.geometry.dimensionality import analyze_dimensionality
 
 
@@ -54,29 +54,29 @@ class CLICommand:
               'type   score     a      b      component counts')
         print('=' * lmax + '===============================================')
 
-        for path, f in zip(args.filenames, files):
-            atoms = read(path)
-            result = analyze_dimensionality(atoms)
-            if not args.full:
-                result = result[:1]
+        # reading CIF files can produce a ton of distracting warnings
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore')
+            for path, f in zip(args.filenames, files):
+                for atoms in iread(path):
+                    result = analyze_dimensionality(atoms)
+                    if not args.full:
+                        result = result[:1]
 
-            for i, entry in enumerate(result):
-                dimtype = entry.dimtype.rjust(4)
-                score = '{:.3f}'.format(entry.score).ljust(5)
-                a = '{:.3f}'.format(entry.a).ljust(5)
-                b = '{:.3f}'.format(entry.b).ljust(5)
-                if i == 0:
-                    name = f.ljust(lmax)
-                else:
-                    name = ' ' * lmax
+                    for i, entry in enumerate(result):
+                        dimtype = entry.dimtype.rjust(4)
+                        score = '{:.3f}'.format(entry.score).ljust(5)
+                        a = '{:.3f}'.format(entry.a).ljust(5)
+                        b = '{:.3f}'.format(entry.b).ljust(5)
+                        if i == 0:
+                            name = f.ljust(lmax)
+                        else:
+                            name = ' ' * lmax
 
-                line = '{}{}   {}   {}   {}   {}'.format(name, dimtype, score,
-                                                         a, b, entry.h)
-                print(line)
+                        line = ('{}{}' + '   {}' * 4).format(name, dimtype,
+                                                             score, a, b,
+                                                             entry.h)
+                        print(line)
 
-            if args.full:
-                print()
-
-
-# reading CIF files can produce a ton of distracting warnings
-warnings.filterwarnings("ignore")
+                    if args.full:
+                        print()
