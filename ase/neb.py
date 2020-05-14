@@ -784,7 +784,7 @@ def fit0(*args, **kwargs):
 
 class PreconMEP(ChainOfStates):
     def __init__(self, images, precon='Exp', method='string', k=0.1,
-                 logfile='-'):
+                 adapt_spring_constants=None, logfile='-'):
         """
         Preconditioned minimum energy path finding.
 
@@ -821,8 +821,9 @@ class PreconMEP(ChainOfStates):
 
         # unlike standard ASE NEB, we scale k with number of images
         if isinstance(k, (float, int)):
-            k = [k / (self.nimages**2) ] * (self.nimages - 2)
+            k = [k / (self.nimages**2)] * (self.nimages - 2)
         self.k = list(k)
+        self.adapt_spring_constants = adapt_spring_constants
 
         self.residuals = np.empty(self.nimages - 2)
         self.fmax_history = []
@@ -976,6 +977,10 @@ class PreconMEP(ChainOfStates):
             s, x_spline = self.spline_fit()
             new_s = np.linspace(0, 1, self.nimages)
             X[:] = x_spline(new_s[1:-1]).reshape(-1)
+        elif self.method == 'neb' and self.adapt_spring_constants:
+            s, x_spline = self.spline_fit()
+            self.k[:] = self.adapt_spring_constants(self.k, self.images)
+
 
     def force_function(self, X):
         self.set_dofs(X)
