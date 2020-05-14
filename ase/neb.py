@@ -784,7 +784,8 @@ def fit0(*args, **kwargs):
 
 class PreconMEP(ChainOfStates):
     def __init__(self, images, precon='Exp', method='string', k=0.1,
-                 adapt_spring_constants=None, logfile='-'):
+                 adapt_spring_constants=None, logfile='-', get_all_forces=None,
+                 get_all_potential_energies=None):
         """
         Preconditioned minimum energy path finding.
 
@@ -828,6 +829,9 @@ class PreconMEP(ChainOfStates):
         self.residuals = np.empty(self.nimages - 2)
         self.fmax_history = []
 
+        self.get_all_forces = get_all_forces
+        self.get_all_potential_energies = get_all_potential_energies
+
     def spline_fit(self, norm='precon'):
         """
         Fit cubic splines to image positions (and optionally forces)
@@ -864,15 +868,20 @@ class PreconMEP(ChainOfStates):
         """Evaluate and return the forces."""
         images = self.images
 
-        calculators = [image.calc for image in images
-                       if image.calc is not None]
-        if len(set(calculators)) != len(calculators):
-            msg = ('One or more NEB images share the same calculator.  '
-                   'Each image must have its own calculator.  ')
-            raise ValueError(msg)
+        if self.get_all_forces is not None:
+            forces = self.get_all_forces(images[1:-1])
+        else:
+            calculators = [image.calc for image in images
+                           if image.calc is not None]
+            if len(set(calculators)) != len(calculators):
+                msg = ('One or more NEB images share the same calculator.  '
+                       'Each image must have its own calculator.  ')
+                raise ValueError(msg)
+            forces = np.empty(((self.nimages - 2), self.natoms, 3),
+                              dtype=np.float)
+            for i in range(1, self.nimages - 1):
+                forces[i - 1] = self.images[i].get_forces()
 
-        forces = np.empty(((self.nimages - 2), self.natoms, 3),
-                           dtype=np.float)
         s, x_spline = self.spline_fit()
         dx_ds = x_spline.derivative()
         d2x_ds2 = x_spline.derivative(2)
@@ -881,7 +890,7 @@ class PreconMEP(ChainOfStates):
 
         # Evaluate forces for all images - one at a time
         for i in range(1, self.nimages - 1):
-            f = images[i].get_forces()
+            f = forces[i - 1]
             f_vec = f.reshape(-1)
 
             # update preconditioners for each image and apply to forces
@@ -907,6 +916,13 @@ class PreconMEP(ChainOfStates):
             forces[i - 1] = pf_vec.reshape((self.natoms, 3))
 
         return forces # FIXME shape not consistent with NEB.get_forces()
+
+    def get_potential_energies(self):
+        if self.get_all_potential_energies is not None:
+            energies = self.get_all_potential_energies(self.images)
+        else:
+            energies = [image.get_potential_energ() for image in self.images]
+        return np.array(energies)
 
     def get_fmax_all(self):
         return self.residuals[:]
