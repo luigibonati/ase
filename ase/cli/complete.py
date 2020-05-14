@@ -52,6 +52,8 @@ commands = {
          '--set-metadata', '-M', '--metadata-from-python-script',
          '--unique', '--strip-data', '--show-keys',
          '--show-values'],
+    'dimensionality':
+        ['--display-all'],
     'eos':
         ['-p', '--plot', '-t', '--type'],
     'find':
