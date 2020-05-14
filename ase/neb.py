@@ -254,7 +254,7 @@ class NEB(ChainOfStates):
                    'is recommended.')
             raise ValueError(msg)
 
-        forces = np.empty((self.nimages - 2, self.natoms, 3),  dtype=np.float)
+        forces = np.empty((self.nimages - 2 , self.natoms, 3),  dtype=np.float)
         energies = np.empty(self.nimages)
         x = np.empty((self.nimages - 2, self.natoms, 3), dtype=np.float)
 
@@ -980,7 +980,6 @@ class PreconMEP(ChainOfStates):
         elif self.method == 'neb' and self.adapt_spring_constants:
             s, x_spline = self.spline_fit()
             self.k[:] = self.adapt_spring_constants(self.k, self.images)
-
 
     def force_function(self, X):
         self.set_dofs(X)
