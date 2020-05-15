@@ -2,12 +2,12 @@
 
 Run this when ever options are changed::
 
-python3 -m ase.cli.completion
+    python3 -m ase.cli.completion
 """
 
 import sys
 from pathlib import Path
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
 # Path of the complete.py script:
 path = Path(__file__).with_name('complete.py')
@@ -30,15 +30,18 @@ class CLICommand:
         print(cmd)
 
 
-def update_complete_dot_py(test: bool = False) -> None:
+def update(path: Path,
+           subcommands: List[Tuple[str, str]],
+           test: bool = False) -> None:
     """Update commands dict in complete.py.
 
     Use test=True to test that no changes are needed.
+
+    Refactor with care!  This function is also used by GPAW.
     """
 
     import textwrap
     from importlib import import_module
-    from ase.cli.main import commands
 
     dct: Dict[str, List[str]] = {}
 
@@ -54,7 +57,7 @@ def update_complete_dot_py(test: bool = False) -> None:
         def add_mutually_exclusive_group(self, required=False):
             return self
 
-    for command, module_name in commands:
+    for command, module_name in subcommands:
         module = import_module(module_name)
         module.CLICommand.add_arguments(Subparser(command))  # type: ignore
 
@@ -91,4 +94,5 @@ def update_complete_dot_py(test: bool = False) -> None:
 
 
 if __name__ == '__main__':
-    update_complete_dot_py()
+    from ase.cli.main import commands
+    update(path, commands)
