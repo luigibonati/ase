@@ -77,7 +77,10 @@ def update_complete_dot_py(test: bool = False) -> None:
     b = lines.index('# End of computer generated data\n')
 
     if test:
-        assert ''.join(lines[a + 1:b]) == txt
+        if ''.join(lines[a + 1:b]) != txt:
+            raise ValueError(
+                'Please update ase/cli/complete.py using '
+                '"python3 -m ase.cli.completion".')
     else:
         lines[a + 1:b] = [txt]
         new = path.with_name('complete.py.new')
