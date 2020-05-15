@@ -1,9 +1,16 @@
-import os
+"""TAB-completion sub-command and update helper funtion.
+
+Run this when ever options are changed::
+
+python3 -m ase.cli.completion
+"""
+
 import sys
+from pathlib import Path
+from typing import List, Dict
 
 # Path of the complete.py script:
-my_dir, _ = os.path.split(os.path.realpath(__file__))
-filename = os.path.join(my_dir, 'complete.py')
+path = Path(__file__).with_name('complete.py')
 
 
 class CLICommand:
@@ -11,8 +18,7 @@ class CLICommand:
 
     Will show the command that needs to be added to your '~/.bashrc file.
     """
-    cmd = ('complete -o default -C "{py} {filename}" ase'
-           .format(py=sys.executable, filename=filename))
+    cmd = f'complete -o default -C "{sys.executable} {path}" ase'
 
     @staticmethod
     def add_arguments(parser):
@@ -24,19 +30,17 @@ class CLICommand:
         print(cmd)
 
 
-def update(filename, commands):
-    """Update commands dict.
+def update_complete_dot_py(test: bool = False) -> None:
+    """Update commands dict in complete.py.
 
-    Run this when ever options are changed::
-
-        python3 -m ase.cli.completion
-
+    Use test=True to test that no changes are needed.
     """
 
     import textwrap
     from importlib import import_module
+    from ase.cli.main import commands
 
-    dct = {}  # Dict[str, List[str]]
+    dct: Dict[str, List[str]] = {}
 
     class Subparser:
         def __init__(self, command):
@@ -65,17 +69,23 @@ def update(filename, commands):
         else:
             txt += '],'
     txt = txt[:-1] + '}\n'
-    with open(filename) as fd:
+
+    with path.open() as fd:
         lines = fd.readlines()
-        a = lines.index('# Beginning of computer generated data:\n')
-        b = lines.index('# End of computer generated data\n')
-    lines[a + 1:b] = [txt]
-    with open(filename + '.new', 'w') as fd:
-        print(''.join(lines), end='', file=fd)
-    os.rename(filename + '.new', filename)
-    os.chmod(filename, 0o775)
+
+    a = lines.index('# Beginning of computer generated data:\n')
+    b = lines.index('# End of computer generated data\n')
+
+    if test:
+        assert ''.join(lines[a + 1:b]) == txt
+    else:
+        lines[a + 1:b] = [txt]
+        new = path.with_name('complete.py.new')
+        with new.open('w') as fd:
+            print(''.join(lines), end='', file=fd)
+        new.rename(path)
+        path.chmod(0o775)
 
 
 if __name__ == '__main__':
-    from ase.cli.main import commands
-    update(filename, commands)
+    update_complete_dot_py()
