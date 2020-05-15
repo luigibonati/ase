@@ -1,6 +1,7 @@
 """Check that our tab-completion script has been updated."""
-from ase.cli.completion import update_complete_dot_py
+from ase.cli.completion import update, path
+from ase.cli.main import commands
 
 
 def test_complete():
-    update_complete_dot_py(test=True)
+    update(path, commands, test=True)
