@@ -56,7 +56,7 @@ def update_complete_dot_py(test: bool = False) -> None:
 
     for command, module_name in commands:
         module = import_module(module_name)
-        module.CLICommand.add_arguments(Subparser(command))
+        module.CLICommand.add_arguments(Subparser(command))  # type: ignore
 
     txt = 'commands = {'
     for command, opts in sorted(dct.items()):
