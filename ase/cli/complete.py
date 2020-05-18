@@ -52,6 +52,10 @@ commands = {
          '--set-metadata', '-M', '--metadata-from-python-script',
          '--unique', '--strip-data', '--show-keys',
          '--show-values'],
+    'diff':
+        ['-r', '--rank-order', '-c', '--calculator-outputs',
+         '--max-lines', '-t', '--template', '--template-help',
+         '-s', '--summary-functions', '--log-file', '--as-csv'],
     'eos':
         ['-p', '--plot', '-t', '--type'],
     'find':
