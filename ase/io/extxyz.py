@@ -525,7 +525,8 @@ def _read_xyz_frame(lines, natoms, properties_parser=key_val_str_to_dict,
                                    stress[0, 1]])
                 results[key] = stress
     for key in list(atoms.arrays.keys()):
-        if key in per_atom_properties:
+        if (key in per_atom_properties and len(value.shape) >= 1
+            and value.shape[0] == len(atoms))):
             results[key] = atoms.arrays[key]
     if results != {}:
         calculator = SinglePointCalculator(atoms, **results)
@@ -901,7 +902,8 @@ def write_xyz(fileobj, images, comment='', columns=None, write_info=True,
                     if value is None:
                         # skip missing calculator results
                         continue
-                    if key in per_atom_properties:
+                    if (key in per_atom_properties and and len(value.shape) >= 1
+                        and value.shape[0] == len(atoms)):
                         # per-atom quantities (forces, energies, stresses)
                         per_atom_results[key] = value
                     elif key in per_config_properties:
