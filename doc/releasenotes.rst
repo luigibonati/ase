@@ -122,6 +122,9 @@ I/O:
   to write mustem xtl file have been updated to be consistent with prismatic
   and computem xyz file export.
 
+* New ``dimensionality`` sub-command for the :ref:`ase <cli>` command line
+  interface.
+
 .. _mypy: http://mypy-lang.org/
 
 
