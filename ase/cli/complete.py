@@ -52,12 +52,12 @@ commands = {
          '--set-metadata', '-M', '--metadata-from-python-script',
          '--unique', '--strip-data', '--show-keys',
          '--show-values'],
-    'dimensionality':
-        ['--display-all'],
     'diff':
         ['-r', '--rank-order', '-c', '--calculator-outputs',
          '--max-lines', '-t', '--template', '--template-help',
          '-s', '--summary-functions', '--log-file', '--as-csv'],
+    'dimensionality':
+        ['--display-all'],
     'eos':
         ['-p', '--plot', '-t', '--type'],
     'find':
