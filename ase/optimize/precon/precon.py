@@ -3,6 +3,7 @@ Implementation of the Precon abstract base class and subclasses
 """
 
 #import time
+import copy
 import warnings
 
 import numpy as np
@@ -1221,4 +1222,4 @@ def make_precon(precon):
             precon = ID()
         else:
             raise ValueError('Unknown preconditioner "{0}"'.format(precon))
-    return precon
+    return copy.copy(precon)
