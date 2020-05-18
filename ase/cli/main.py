@@ -33,7 +33,9 @@ commands = [
     ('nomad-get', 'ase.cli.nomadget'),
     ('convert', 'ase.cli.convert'),
     ('reciprocal', 'ase.cli.reciprocal'),
-    ('completion', 'ase.cli.completion')]
+    ('completion', 'ase.cli.completion'),
+    ('diff', 'ase.cli.diff')
+]
 
 
 def main(prog='ase', description='ASE command line tool.',
@@ -116,6 +118,7 @@ def main(prog='ase', description='ASE command line tool.',
 
 class Formatter(argparse.HelpFormatter):
     """Improved help formatter."""
+
     def _fill_text(self, text, width, indent):
         assert indent == ''
         out = ''
@@ -136,7 +139,6 @@ class Formatter(argparse.HelpFormatter):
                 out += textwrap.fill(block, width=width) + '\n'
             out += '\n'
         return out[:-1]
-
 
 def old():
     cmd = sys.argv[0].split('-')[-1]
