@@ -95,7 +95,7 @@ class MPI:
 world = MPI()
 
 
-def set_global_world(new_comm):
+def _set_global_world(new_comm):
     if hasattr(new_comm, 'bcast'):
         new_comm = MPI4PY(new_comm)
     old_comm = world.comm
@@ -105,7 +105,7 @@ def set_global_world(new_comm):
 
 @contextmanager
 def new_world(new_comm):
-    old_comm = set_global_world(new_comm)
+    old_comm = _set_global_world(new_comm)
     yield world.comm
     world.comm = old_comm
 
