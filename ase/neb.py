@@ -905,9 +905,13 @@ class PreconMEP(ChainOfStates):
             self.residuals[i - 1] = np.linalg.norm(self.precon[i].Pdot(pf_vec),
                                                    np.inf)
 
+            print(f'norm(pf_{i}) = {np.linalg.norm(pf_vec, np.inf)}')
+
             if self.method == 'neb':
                 # Definition following Eq. 9
                 eta_Pn = self.k[i - 1] * self.precon[i].dot(d2x_ds2(s[i]), t_P) * t_P
+
+                print(f'norm(eta_{i}) = {np.linalg.norm(eta_Pn, np.inf)}')
 
                 # complete Eq. 9 by including the spring force
                 pf_vec += eta_Pn
@@ -993,7 +997,6 @@ class PreconMEP(ChainOfStates):
             new_s = np.linspace(0, 1, self.nimages)
             X[:] = x_spline(new_s[1:-1]).reshape(-1)
         elif self.method == 'neb' and self.adapt_spring_constants:
-            s, x_spline = self.spline_fit()
             self.k[:] = self.adapt_spring_constants(self.k, self.images)
 
     def force_function(self, X):
