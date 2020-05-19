@@ -113,14 +113,14 @@ class SquaredExponential(SE_kernel):
         return self._vmask
 
     @mask.setter
-    def mask(self, mask):
-        
+    def mask(self, value):
+
         # Set vector mask
-        self._vmask = np.asarray(mask, bool)
+        self._vmask = np.asarray(value, bool)
 
         # Set matrix mask
-        mask = np.asarray(mask, int)
-        mmask = np.asarray([mask for i in range(len(mask))])
+        M = np.asarray(value, int)
+        mmask = np.asarray([M for i in range(len(M))])
         self._mmask = np.asarray(mmask * mmask.T, bool)
 
     def kernel_function(self, x1, x2):
@@ -162,7 +162,7 @@ class SquaredExponential(SE_kernel):
         is then symmetric.
         """
         n, D = np.atleast_2d(X).shape
-        
+
         if self.mask is None:
             self.mask = np.ones(D)
 
