@@ -618,20 +618,30 @@ def object_to_bytes(obj: Any) -> bytes:
     return b''.join(parts)
 
 
-def bytes_to_object(b: bytes) -> Any:
+def bytes_to_object(serialized_bytes: bytes) -> Any:
     """Deserialize bytes to Python object.
 
     Deserialize object that was serialized with
     :func:`ase.db.core.object_to_bytes` (look there for details on the
     specific serialization scheme).
 
+    Parameters
+    ----------
+    serialized_bytes : bytes
+        Bytes to deserialized.
+
+    Returns
+    -------
+    object
+        Deserialized object.
+
     """
-    x = np.frombuffer(b[:8], np.int64)
+    offset_as_array = np.frombuffer(serialized_bytes[:8], np.int64)
     if not np.little_endian:
-        x = x.byteswap()
-    offset = x.item()
-    obj = json.loads(b[offset:].decode())
-    return b2o(obj, b)
+        offset_as_array = offset_as_array.byteswap()
+    offset = offset_as_array.item()
+    obj = json.loads(serialized_bytes[offset:].decode())
+    return b2o(obj, serialized_bytes)
 
 
 def o2b(obj: Any, parts: List[bytes]):
