@@ -666,9 +666,11 @@ def o2b(obj: Any, parts: List[bytes]):
     if isinstance(obj, bytes):
         offset = sum(len(part) for part in parts)
         parts.append(obj)
-        return {'__bytes__': (len(obj), offset)}
+        return {'__objtype__': 'bytes',
+                '__bytes__': (len(obj), offset)}
     if isinstance(obj, (int, float, bool, str, type(None))):
-        return obj
+        return {'__objtype__': 'primitive',
+                '__objdata__': obj}
     if isinstance(obj, dict):
         return {key: o2b(value, parts) for key, value in obj.items()}
     if isinstance(obj, (list, tuple)):
@@ -701,7 +703,7 @@ def b2o(obj: Any, serialized_bytes: bytes) -> Any:
     if isinstance(obj, dict) and obj.get('__objtype__') is not None:
         objtype = obj.get('__objtype__')
         if objtype == 'primitive':
-            return obj
+            return obj['__objdata__']
         elif objtype == 'bytes':
             x = obj.get('__bytes__')
             size, offset = x
