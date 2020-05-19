@@ -193,8 +193,7 @@ class GPCalculator(Calculator, GaussianProcess):
             self.atoms_mask = self.create_mask()
         else:
             # Make null mask
-            mask = np.ones_like(self.atoms.get_positions(), dtype=bool)
-            self.atoms_mask = np.argwhere(mask.reshape(-1)).reshape(-1)
+            self.atoms_mask = np.ones(len(self.atoms)*3, dtype=bool)
 
         #Set mask in kernel
         self.kernel.mask = self.atoms_mask
@@ -372,7 +371,7 @@ class GPCalculator(Calculator, GaussianProcess):
         energy = f[0]
         forces = -f[1:].reshape(-1)
         # Add forces that had been masked
-        forces_empty = np.zeros(self.atoms.get_positions().size())
+        forces_empty = np.zeros(self.atoms.get_positions().size)
         forces_empty[self.atoms_mask] = forces
         forces = forces_empty.reshape(-1, 3)
 
