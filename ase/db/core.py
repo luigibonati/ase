@@ -694,19 +694,31 @@ def o2b(obj: Any, parts: List[bytes]):
                      .format(type=type(obj)))
 
 
-def b2o(obj: Any, b: bytes) -> Any:
+def b2o(obj: Any, serialized_bytes: bytes) -> Any:
+    """Implement obj and byte deserialization."""
+    objtype = getattr('__objtype__')
+
+    if isinstance(obj, dict) and obj.get('__objtype__') is not None:
+        objtype = obj.get('__objtype__')
+        if objtype == 'primitive':
+            return obj
+        elif objtype == 'bytes':
+            x = obj.get('__bytes__')
+            size, offset = x
+            return serialized_bytes[offset:offset + size]
+
     if isinstance(obj, (int, float, bool, str, type(None))):
         return obj
 
     if isinstance(obj, list):
-        return [b2o(value, b) for value in obj]
+        return [b2o(value, serialized_bytes) for value in obj]
 
     assert isinstance(obj, dict)
 
     x = obj.get('__bytes__')
     if x is not None:
         size, offset = x
-        return b[offset:offset + size]
+        return serialized_bytes[offset:offset + size]
 
     x = obj.get('__complex__')
     if x is not None:
@@ -717,13 +729,13 @@ def b2o(obj: Any, b: bytes) -> Any:
         shape, name, offset = x
         dtype = np.dtype(name)
         size = dtype.itemsize * np.prod(shape).astype(int)
-        a = np.frombuffer(b[offset:offset + size], dtype)
+        a = np.frombuffer(serialized_bytes[offset:offset + size], dtype)
         a.shape = shape
         if not np.little_endian:
             a = a.byteswap()
         return a
 
-    dct = {key: b2o(value, b) for key, value in obj.items()}
+    dct = {key: b2o(value, serialized_bytes) for key, value in obj.items()}
     objtype = dct.pop('__ase_objtype__', None)
     if objtype is None:
         return dct
