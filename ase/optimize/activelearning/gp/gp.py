@@ -76,10 +76,12 @@ class GaussianProcess():
             self.noise = noise  # Set noise attribute to a different value
 
         self.X = X.copy()  # Store the data in an attribute
+        K = self.kernel.kernel_matrix(X)  # Compute the kernel matrix
+
+        # Regularization
         n = self.X.shape[0]
-        D = self.X.shape[1]
         regularization = np.array(n * ([self.noise * self.kernel.l] +
-                                  D * [self.noise]))
+                                  self.kernel.D * [self.noise]))
 
         K = self.kernel.kernel_matrix(X)  # Compute the kernel matrix
         K[range(K.shape[0]), range(K.shape[0])] += regularization**2
