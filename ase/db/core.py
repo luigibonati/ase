@@ -598,7 +598,15 @@ def float_to_time_string(t, long=False):
 
 
 def object_to_bytes(obj: Any) -> bytes:
-    """Serialize Python object to bytes."""
+    """Serialize Python object to bytes.
+
+    The serialized object is structured as::
+
+        ``[ offset (8 bytes) ][ bytes ][ jsonable data ]``
+
+    The offset marks the position where the jsonable data starts. The
+    offset itself takes up 8 bytes.
+    """
     parts = [b'12345678']
     obj = o2b(obj, parts)
     offset = sum(len(part) for part in parts)
@@ -611,7 +619,13 @@ def object_to_bytes(obj: Any) -> bytes:
 
 
 def bytes_to_object(b: bytes) -> Any:
-    """Deserialize bytes to Python object."""
+    """Deserialize bytes to Python object.
+
+    Deserialize object that was serialized with
+    :func:`ase.db.core.object_to_bytes` (look there for details on the
+    specific serialization scheme).
+
+    """
     x = np.frombuffer(b[:8], np.int64)
     if not np.little_endian:
         x = x.byteswap()
@@ -621,6 +635,24 @@ def bytes_to_object(b: bytes) -> Any:
 
 
 def o2b(obj: Any, parts: List[bytes]):
+    """Append bytes to parts and return dict with metadata.
+
+    In-place modifies "parts" with additional bytes and returns a
+    dictionary with jsonable data.
+
+    Parameters
+    ----------
+    obj : Any
+        Object to be converted to bytes.
+    parts : list
+        List of bytes
+
+    Returns
+    -------
+    dict
+        Dictionary containing jsonable data
+
+    """
     if isinstance(obj, bytes):
         offset = sum(len(part) for part in parts)
         parts.append(obj)
