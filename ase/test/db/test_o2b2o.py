@@ -4,7 +4,14 @@ from ase.cell import Cell
 import numpy as np
 
 
-def test_o2b2o():
+def test_ase_db_correctly_serialized_objects():
+    """Test that are correctly serialized and deserialized.
+
+    This test tests that different kinds of objects are correctly
+    serialized with ase.db.core.object_to_bytes and deserialized with
+    ase.db.core.bytes_to_object.
+
+    """
     for o1 in [1.0,
                b'1234',
                {'a': np.zeros((2, 2), np.float32),
