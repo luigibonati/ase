@@ -655,12 +655,12 @@ def o2b(obj: Any, parts: List[bytes]):
     obj : Any
         Object to be converted to bytes.
     parts : list
-        List of bytes
+        List of bytes.
 
     Returns
     -------
     dict
-        Dictionary containing jsonable data
+        Dictionary containing jsonable data.
 
     """
     if isinstance(obj, bytes):
