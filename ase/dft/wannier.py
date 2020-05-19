@@ -93,16 +93,15 @@ def calculate_weights(cell_cc):
 
 def random_orthogonal_matrix(dim, seed=None, real=False):
     """Generate a random orthogonal matrix"""
-    from scipy.stats import special_ortho_group
     if real:
+        from scipy.stats import special_ortho_group
         ortho_m = special_ortho_group.rvs(dim=dim, random_state=seed)
     else:
-        ortho_m = special_ortho_group.rvs(
-            dim=dim, random_state=seed).astype(np.complex128)
+        from scipy.stats import unitary_group
+        ortho_m = unitary_group.rvs(dim=dim, random_state=seed)
     return ortho_m
 
 
-# def steepest_descent(func, step=.005, tolerance=1e-6, **kwargs):
 def steepest_descent(func, step=.005, tolerance=1e-6, verbose=False, **kwargs):
     fvalueold = 0.
     fvalue = fvalueold + 10
@@ -450,13 +449,13 @@ class Wannier:
         # May require special cases depending on which code is used.
         sign = -1
 
-        self.nwannier = nwannier
+        self.verbose = verbose
         self.calc = calc
         self.spin = spin
         self.functional = functional
-        if verbose:
+        self.initialwannier = initialwannier
+        if self.verbose:
             print('Using functional:', functional)
-        self.verbose = verbose
         self.kpt_kc = calc.get_bz_k_points()
         assert len(calc.get_ibz_k_points()) == len(self.kpt_kc)
         self.kptgrid = get_monkhorst_pack_size_and_offset(self.kpt_kc)[0]
@@ -472,22 +471,36 @@ class Wannier:
             self.nbands = nbands
         else:
             self.nbands = calc.get_number_of_bands()
-        if fixedenergy is None:
-            if fixedstates is None:
-                self.fixedstates_k = np.array([nwannier] * self.Nk, int)
-            else:
-                if isinstance(fixedstates, int):
-                    fixedstates = [fixedstates] * self.Nk
-                self.fixedstates_k = np.array(fixedstates, int)
+
+        if fixedenergy is None and fixedstates is not None:
+            if isinstance(fixedstates, int):
+                fixedstates = [fixedstates] * self.Nk
+            self.fixedstates_k = np.array(fixedstates, int)
         else:
             # Setting number of fixed states and EDF from specified energy.
             # All states below this energy (relative to Fermi level) are fixed.
-            fixedenergy += calc.get_fermi_level()
+            if fixedenergy is None:
+                cutoff = calc.get_fermi_level()
+            else:
+                cutoff = fixedenergy + calc.get_fermi_level()
             # print(fixedenergy)
             self.fixedstates_k = np.array(
-                [calc.get_eigenvalues(k, spin).searchsorted(fixedenergy)
+                [calc.get_eigenvalues(k, spin).searchsorted(cutoff)
                  for k in range(self.Nk)], int)
+
+        if isinstance(nwannier, int):
+            self.nwannier = nwannier
+            if fixedstates is None and fixedenergy is None:
+                self.fixedstates_k = np.array([self.nwannier] * self.Nk, int)
+        elif nwannier == 'auto':
+            self.nwannier = np.max(self.fixedstates_k)
+            if fixedstates is None and fixedenergy is None:
+                self.fixedstates_k = np.array([self.nwannier] * self.Nk, int)
+        else:
+            raise ValueError('Unexpected value for nwannier.')
+
         self.edf_k = self.nwannier - self.fixedstates_k
+
         if verbose:
             print('Wannier: Fixed states            : %s' % self.fixedstates_k)
             print('Wannier: Extra degrees of freedom: %s' % self.edf_k)
@@ -631,6 +644,68 @@ class Wannier:
 
         # Update the new Z matrix
         self.Z_dww = self.Z_dkww.sum(axis=1) / self.Nk
+
+    def best_nwannier(self, nwrange=5, random_reps=5, tolerance=1e-5):
+        """The best value for 'nwannier', maybe
+
+        The best value is the one that gives the lowest average value for the
+        spread of the most delocalized Wannier function in the set.
+
+        ``nwrange``: number of different values to try for 'nwannier'.
+
+        ``random_reps``: number of repetitions with random seed, the value is
+        then an average over this repetitions.
+
+        ``tolerance``: tolerance for the gradient descent algorithm, can be
+        useful to increase the speed, with a cost in accuracy.
+        """
+
+        if (self.nwannier - np.floor(nwrange / 2)) < np.max(self.fixedstates_k):
+            Nws = np.arange(np.max(self.fixedstates_k),
+                            np.max(self.fixedstates_k) + nwrange).astype(int)
+        else:
+            Nws = np.arange(np.max(self.fixedstates_k) - np.floor(nwrange / 2),
+                            np.max(self.fixedstates_k) - np.floor(nwrange / 2)
+                            + nwrange).astype(int)
+
+        # If there is no randomness, there is no need to repeat
+        random_initials = ['random', 'gaussians', 'orbitals']
+        if self.initialwannier not in random_initials:
+            random_reps = 1
+
+        avg_max_spreads = np.zeros(nwrange)
+        for j, Nw in enumerate(Nws):
+            if self.verbose:
+                print('Trying with Nw =', Nw)
+                t = - time()
+
+            # Define once with the fastest 'initialwannier',
+            # then initialize with random seeds in the for loop
+            wan = Wannier(nwannier=int(Nw),
+                          calc=self.calc,
+                          nbands=self.nbands,
+                          spin=self.spin,
+                          functional=self.functional,
+                          initialwannier='bloch',
+                          verbose=self.verbose,
+                          seed=None)
+            wan.fixedstates_k = self.fixedstates_k
+            wan.edf_k = wan.nwannier - wan.fixedstates_k
+
+            max_spreads = np.zeros(random_reps)
+            for i in range(random_reps):
+                wan.initialize(initialwannier=self.initialwannier)
+                wan.localize(tolerance=tolerance)
+                max_spreads[i] = np.max(wan.get_spreads())
+
+            avg_max_spreads[j] = max_spreads.mean()
+
+        if self.verbose:
+            print('Average spreads: ', avg_max_spreads)
+            t += time()
+            print(f'Execution time: {t:.1f}s')
+
+        return Nws[np.argmin(avg_max_spreads)]
 
     def get_centers(self, scaled=False):
         """Calculate the Wannier centers
@@ -903,11 +978,9 @@ class Wannier:
 
         write(fname, atoms, data=func, format='cube')
 
-    # def localize(self, step=0.005, tolerance=1e-08,
     def localize(self, step=0.25, tolerance=1e-08,
                  updaterot=True, updatecoeff=True):
         """Optimize rotation to give maximal localization"""
-        # steepest_descent(self, step, tolerance, verbose=self.verbose,
         md_min(self, step=step, tolerance=tolerance, verbose=self.verbose,
                updaterot=updaterot, updatecoeff=updatecoeff)
 
