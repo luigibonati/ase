@@ -24,8 +24,8 @@ def match(word, *suffixes):
 # Beginning of computer generated data:
 commands = {
     'band-structure':
-        ['-q', '--quiet', '-k', '--path', '-n', '--points', '-r',
-         '--range'],
+        ['-q', '--quiet', '-k', '--path', '-n', '--points', '-o',
+         '--output', '-r', '--range'],
     'build':
         ['-M', '--magnetic-moment', '--modify', '-V', '--vacuum', '-v',
          '--vacuum0', '--unit-cell', '--bond-length', '-x',
@@ -52,6 +52,12 @@ commands = {
          '--set-metadata', '-M', '--metadata-from-python-script',
          '--unique', '--strip-data', '--show-keys',
          '--show-values'],
+    'diff':
+        ['-r', '--rank-order', '-c', '--calculator-outputs',
+         '--max-lines', '-t', '--template', '--template-help',
+         '-s', '--summary-functions', '--log-file', '--as-csv'],
+    'dimensionality':
+        ['--display-all'],
     'eos':
         ['-p', '--plot', '-t', '--type'],
     'find':
@@ -80,8 +86,8 @@ commands = {
          '--eos-type', '-o', '--output', '--modify', '--after'],
     'test':
         ['-c', '--calculators', '--list', '--list-calculators', '-j',
-         '--jobs', '-v', '--verbose', '--strict', '--nogui',
-         '--pytest'],
+         '--jobs', '-v', '--verbose', '--strict', '--fast',
+         '--coverage', '--nogui', '--pytest'],
     'ulm':
         ['-n', '--index', '-d', '--delete', '-v', '--verbose']}
 # End of computer generated data

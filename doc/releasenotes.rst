@@ -10,6 +10,9 @@ Git master branch
 
 :git:`master <>`.
 
+* Added a diff CLI for displaying and comparing the positions, forces, and energies of atoms objects.
+  The classes and functions used in the CLI are also available in :mod:`ase.cli.template`.
+
 * Functions for attaching structures in :mod:`attach <ase.build>` introduced.
 
 * Standardize optimizers maximum step variable name to maxstep and default value to 0.2 for all optimizers.
@@ -118,6 +121,9 @@ I/O:
 * Added support for writing prismatic and computem xyz file. Required arguments
   to write mustem xtl file have been updated to be consistent with prismatic
   and computem xyz file export.
+
+* New ``dimensionality`` sub-command for the :ref:`ase <cli>` command line
+  interface.
 
 .. _mypy: http://mypy-lang.org/
 
