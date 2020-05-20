@@ -125,7 +125,6 @@ def test_fix_symmetry_shuffle_indices():
                           [0, 3, 3], [3, 0, 0], [3, 0, 3], [3, 3, 0]], pbc=True)
     at.set_constraint(FixSymmetry(at))
     at_permut = at[[0, 2, 3, 4, 5, 6, 7, 1]]
-    print("perturb")
     p0 = at.get_positions()
 
     def do_pert(at, p0, at_i, dp):
@@ -133,16 +132,10 @@ def test_fix_symmetry_shuffle_indices():
         pp[at_i] += (0.0, 0.1, -0.1)
         at.set_positions(pp)
         new_p = at.get_positions()
-        print("a_i {} Z {} p {:.3f} {:.3f} {:.3f} actually'"
-              " moved to {:.3f} {:.3f} {:.3f} dp {:.3f}\n".format(
-                at_i, at.numbers[at_i], p0[at_i, 0], p0[at_i, 1], p0[at_i, 2],
-                new_p[at_i, 0], new_p[at_i, 0], new_p[at_i, 0],
-                np.linalg.norm(p0 - new_p)))
         return p0[at_i] - new_p[at_i]
 
     dp1 = do_pert(at, p0, 1, (0.0, 0.1, -0.1))
     dp2 = do_pert(at, p0, 2, (0.0, 0.1, -0.1))
-    print("perturb permuted")
     p0 = at_permut.get_positions()
     permut_dp1 = do_pert(at_permut, p0, 7, (0.0, 0.1, -0.1))
     permut_dp2 = do_pert(at_permut, p0, 1, (0.0, 0.1, -0.1))
