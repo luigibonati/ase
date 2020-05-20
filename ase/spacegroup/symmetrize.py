@@ -249,8 +249,10 @@ class FixSymmetry(FixConstraint):
 
     def index_shuffle(self, atoms, ind):
         if len(atoms) != len(ind) or len(set(ind)) != len(ind):
-            raise RuntimeError("FixSymmetry can only accomodate atom permutions, "+
-                "and len(Atoms) == {} != len(ind) == {} or ind has duplicates".format(len(atoms), len(ind)))
+            raise RuntimeError("FixSymmetry can only accomodate atom"
+                               " permutions, and len(Atoms) == {} "
+                               "!= len(ind) == {} or ind has duplicates"
+                               .format(len(atoms), len(ind)))
 
         ind_rev = np.zeros((len(ind)), dtype=int)
         ind_rev[ind] = range(len(ind))
