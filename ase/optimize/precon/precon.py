@@ -2,12 +2,11 @@
 Implementation of the Precon abstract base class and subclasses
 """
 
-#import time
 import copy
 import warnings
 
 import numpy as np
-from scipy import sparse, rand
+from scipy import sparse
 from scipy.sparse.linalg import spsolve
 
 from ase.constraints import Filter, FixAtoms
@@ -88,7 +87,6 @@ class Precon(object):
             ValueError for problem with arguments
 
         """
-
         self.r_NN = r_NN
         self.r_cut = r_cut
         self.mu = mu
@@ -121,6 +119,9 @@ class Precon(object):
         if dim < 1:
             raise ValueError('Dimension must be at least 1')
         self.dim = dim
+
+    def copy(self):
+       return copy.deepcopy(self)
 
     def make_precon(self, atoms, recalc_mu=None):
         """Create a preconditioner matrix based on the passed set of atoms.
@@ -365,7 +366,7 @@ class Precon(object):
         """
         #start_time = time.time()
         if self.use_pyamg and have_pyamg:
-            y = self.ml.solve(x, x0=rand(self.P.shape[0]),
+            y = self.ml.solve(x, x0=np.random.rand(self.P.shape[0]),
                               tol=self.solve_tol,
                               accel='cg',
                               maxiter=300,
@@ -659,6 +660,9 @@ class ID:
     def apply(self, forces, atoms):
         residual = np.linalg.norm(forces, np.inf)
         return forces, residual
+
+    def copy(self):
+        return ID()
 
 
 class C1(Precon):
@@ -1222,4 +1226,4 @@ def make_precon(precon):
             precon = ID()
         else:
             raise ValueError('Unknown preconditioner "{0}"'.format(precon))
-    return copy.copy(precon)
+    return precon.copy()

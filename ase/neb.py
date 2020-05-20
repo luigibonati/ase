@@ -799,11 +799,13 @@ class PreconMEP(ChainOfStates):
         """
         ChainOfStates.__init__(self, images)
 
-        # build an initial preconditioner for each image
+        # build initial preconditioner and make a copy for each image
         self.precon_method = precon
-        self.precon = []
-        for i in range(self.nimages):
-            P = make_precon(precon)
+        P0 = make_precon(precon)
+        P0.make_precon(self.images[0])
+        self.precon = [P0]
+        for i in range(1, self.nimages):
+            P = P0.copy()
             P.make_precon(self.images[i])
             self.precon.append(P)
 
@@ -820,9 +822,8 @@ class PreconMEP(ChainOfStates):
                 logfile = open(logfile, "a")
         self.logfile = logfile
 
-        # unlike standard ASE NEB, we scale k with number of images
         if isinstance(k, (float, int)):
-            k = [k / (self.nimages**2)] * (self.nimages - 2)
+            k = [k] * (self.nimages - 1)
         self.k = list(k)
         self.adapt_spring_constants = adapt_spring_constants
 
@@ -905,13 +906,14 @@ class PreconMEP(ChainOfStates):
             self.residuals[i - 1] = np.linalg.norm(self.precon[i].Pdot(pf_vec),
                                                    np.inf)
 
-            print(f'norm(pf_{i}) = {np.linalg.norm(pf_vec, np.inf)}')
+            # print(f'norm(pf_{i}) = {np.linalg.norm(pf_vec, np.inf)}')
 
             if self.method == 'neb':
                 # Definition following Eq. 9
-                eta_Pn = self.k[i - 1] * self.precon[i].dot(d2x_ds2(s[i]), t_P) * t_P
+                k = 0.5 * (self.k[i - 1]  + self.k[i]) / (self.nimages ** 2)
+                eta_Pn = k * self.precon[i].dot(d2x_ds2(s[i]), t_P) * t_P
 
-                print(f'norm(eta_{i}) = {np.linalg.norm(eta_Pn, np.inf)}')
+                # print(f'norm(eta_{i}) = {np.linalg.norm(eta_Pn, np.inf)}')
 
                 # complete Eq. 9 by including the spring force
                 pf_vec += eta_Pn
