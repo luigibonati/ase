@@ -43,6 +43,8 @@ class CLICommand:
         add('filenames', nargs='+', help='input file(s) to analyze')
         add('--display-all', dest='full', action='store_true',
             help='display all dimensionality classifications')
+        add('--no-merge', dest='no_merge', action='store_true',
+            help='do not merge k-intervals with same dimensionality')
 
     @staticmethod
     def run(args, parser):
@@ -54,12 +56,14 @@ class CLICommand:
               'type   score     a      b      component counts')
         print('=' * lmax + '===============================================')
 
+        merge = not args.no_merge
+
         # reading CIF files can produce a ton of distracting warnings
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore')
             for path, f in zip(args.filenames, files):
                 for atoms in iread(path):
-                    result = analyze_dimensionality(atoms)
+                    result = analyze_dimensionality(atoms, merge=merge)
                     if not args.full:
                         result = result[:1]
 
