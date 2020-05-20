@@ -21,6 +21,10 @@ def test_ase_db_correctly_serialized_objects(implementation, object1):
     serialized with ase.db.core.object_to_bytes and deserialized with
     ase.db.core.bytes_to_object.
 
+    The "implementaion" parameter denotes different serialization
+    schemes and explicitly tests that files written with the old
+    format can still be tested.
+
     """
     pickle1 = pickle.dumps(object1)
     bytes1 = object_to_bytes(object1, implementation=implementation)
