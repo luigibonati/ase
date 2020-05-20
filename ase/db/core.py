@@ -683,15 +683,22 @@ def _object_to_bytes_new_format(obj: Any, parts: List[bytes]):
         offset = sum(len(part) for part in parts)
         parts.append(obj)
         return {'__objtype__': 'bytes',
-                '__bytes__': (len(obj), offset)}
+                '__objdata__': (len(obj), offset)}
     if isinstance(obj, (int, float, bool, str, type(None))):
         return {'__objtype__': 'primitive',
                 '__objdata__': obj}
     if isinstance(obj, dict):
-        return {key: _object_to_bytes_new_format(value, parts)
-                for key, value in obj.items()}
+        dct = {key: _object_to_bytes_new_format(value, parts)
+               for key, value in obj.items()}
+        return {'__objtype__': 'dict',
+                '__objdata__': dct}
     if isinstance(obj, (list, tuple)):
-        return [_object_to_bytes_new_format(value, parts) for value in obj]
+        dct = {
+            '__objtype__': 'list_or_tuple',
+            '__objdata__':
+            [_object_to_bytes_new_format(value, parts) for value in obj]
+        }
+        return dct
     if isinstance(obj, np.ndarray):
         assert obj.dtype != object, \
             'Cannot convert ndarray of type "object" to bytes.'
@@ -700,18 +707,18 @@ def _object_to_bytes_new_format(obj: Any, parts: List[bytes]):
             obj = obj.byteswap()
         parts.append(obj.tobytes())
         return {'__objtype__': 'ndarray',
-                '__ndarray__': [obj.shape,
+                '__objdata__': [obj.shape,
                                 obj.dtype.name,
                                 offset]}
     if isinstance(obj, complex):
         return {'__objtype__': 'complex',
-                '__complex__': [obj.real, obj.imag]}
+                '__objdata__': [obj.real, obj.imag]}
     objtype = getattr(obj, 'ase_objtype')
     if objtype:
         dct = _object_to_bytes_new_format(obj.todict(), parts)
-        dct['__objtype__'] = 'ase_object'
         dct['__ase_objtype__'] = objtype
-        return dct
+        return {'__objtype__': 'ase_object',
+                '__objdata__': dct}
     raise ValueError('Objects of type {type} not allowed'
                      .format(type=type(obj)))
 
@@ -742,13 +749,21 @@ def _bytes_to_object_new_format(obj: Any,
     # repetitions in the following.
     if isinstance(obj, dict) and obj.get('__objtype__') is not None:
         objtype = obj.get('__objtype__')
+        objdata = obj.get('__objdata__')
         if objtype == 'primitive':
-            return obj['__objdata__']
+            return objdata
+        elif objtype == 'list_or_tuple':
+            return [_bytes_to_object_new_format(value, serialized_bytes)
+                    for value in objdata]
         elif objtype == 'bytes':
-            size, offset = obj.get('__bytes__')
+            size, offset = objdata
             return serialized_bytes[offset:offset + size]
+        elif objtype == 'dict':
+            dct = {key: _bytes_to_object_new_format(value, serialized_bytes)
+                   for key, value in objdata.items()}
+            return dct
         elif objtype == 'ndarray':
-            shape, name, offset = obj.get('__ndarray__')
+            shape, name, offset = objdata
             dtype = np.dtype(name)
             size = dtype.itemsize * np.prod(shape).astype(int)
             a = np.frombuffer(serialized_bytes[offset:offset + size], dtype)
@@ -757,12 +772,10 @@ def _bytes_to_object_new_format(obj: Any,
                 a = a.byteswap()
             return a
         elif objtype == 'complex':
-            return complex(*obj.get('__complex__'))
+            return complex(*objdata)
         elif objtype == 'ase_object':
-            dct = {key: _bytes_to_object_new_format(value, serialized_bytes)
-                   for key, value in obj.items()
-                   if key != '__objtype__'}
-            ase_objtype = dct.pop('__ase_objtype__', None)
+            dct = _bytes_to_object_new_format(objdata, serialized_bytes)
+            ase_objtype = objdata.pop('__ase_objtype__')
             return create_ase_object(ase_objtype, dct)
 
     # NOTE: The following is kept only for backwards compatibility
