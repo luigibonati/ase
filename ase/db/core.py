@@ -698,8 +698,6 @@ def o2b(obj: Any, parts: List[bytes]):
 
 def b2o(obj: Any, serialized_bytes: bytes) -> Any:
     """Implement obj and byte deserialization."""
-    objtype = getattr('__objtype__')
-
     if isinstance(obj, dict) and obj.get('__objtype__') is not None:
         objtype = obj.get('__objtype__')
         if objtype == 'primitive':
