@@ -1,6 +1,8 @@
 import numpy as np
 import pytest
+import sys
 
+from ase.atoms import Atoms
 from ase.build import bulk
 from ase.calculators.calculator import all_changes
 from ase.calculators.lj import LennardJones
@@ -16,18 +18,15 @@ class NoisyLennardJones(LennardJones):
         self.rng = rng
         LennardJones.__init__(self, *args, **kwargs)
 
-    def calculate(self, atoms=None,
-                  properties=['energy'],
+    def calculate(self, atoms=None, properties=['energy'],
                   system_changes=all_changes):
         LennardJones.calculate(self, atoms, properties, system_changes)
         if 'forces' in self.results:
             self.results['forces'] += 1e-4 * self.rng.normal(
-                size=self.results['forces'].shape,
-            )
+                size=self.results['forces'].shape, )
         if 'stress' in self.results:
             self.results['stress'] += 1e-4 * self.rng.normal(
-                size=self.results['stress'].shape,
-            )
+                size=self.results['stress'].shape, )
 
 
 def setup_cell():
@@ -120,3 +119,33 @@ def test_sym_rot_adj_cell(filter):
     di, df = symmetrized_optimisation(at_sym_3_rot, filter)
     assert di["number"] == 229 and is_subgroup(sub_data=di, sup_data=df)
 
+@pytest.mark.filterwarnings('ignore:ASE Atoms-like input is deprecated')
+def test_fix_symmetry_shuffle_indices():
+    at = Atoms('AlFeAl6', cell=[6] * 3,
+               positions=[[0, 0, 0], [2.9, 2.9, 2.9], [0, 0, 3], [0, 3, 0],
+                          [0, 3, 3], [3, 0, 0], [3, 0, 3], [3, 3, 0]], pbc=True)
+    at.set_constraint(FixSymmetry(at))
+    at_permut = at[[0, 2, 3, 4, 5, 6, 7, 1]]
+    print("perturb")
+    p0 = at.get_positions()
+
+    def do_pert(at, p0, at_i, dp):
+        pp = p0.copy()
+        pp[at_i] += (0.0, 0.1, -0.1)
+        at.set_positions(pp)
+        new_p = at.get_positions()
+        print("a_i {} Z {} p {:.3f} {:.3f} {:.3f} actually'"
+              " moved to {:.3f} {:.3f} {:.3f} dp {:.3f}\n".format(
+              at_i, at.numbers[at_i], p0[at_i, 0], p0[at_i, 1], p0[at_i, 2],
+              new_p[at_i, 0], new_p[at_i, 0], new_p[at_i, 0],
+              np.linalg.norm(p0 - new_p)))
+        return p0[at_i] - new_p[at_i]
+
+    dp1 = do_pert(at, p0, 1, (0.0, 0.1, -0.1))
+    dp2 = do_pert(at, p0, 2, (0.0, 0.1, -0.1))
+    print("perturb permuted")
+    p0 = at_permut.get_positions()
+    permut_dp1 = do_pert(at_permut, p0, 7, (0.0, 0.1, -0.1))
+    permut_dp2 = do_pert(at_permut, p0, 1, (0.0, 0.1, -0.1))
+    assert np.max(np.abs(dp1 - permut_dp1)) < 1.0e-10
+    assert np.max(np.abs(dp2 - permut_dp2)) < 1.0e-10
