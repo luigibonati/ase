@@ -18,14 +18,31 @@ class Prior():
 
         # By default, do not let the prior use the update method
         self.use_update = False
+        self._mask = None
+
+    @property
+    def mask(self):
+        return self._mask
+
+    @mask.setter
+    def mask(self, value):
+
+        # Set vector mask
+        self._mask = np.asarray(value, bool)
+        self._vmask = np.insert(self._mask, 0, True)
+
+    def masked(self, array):
+        return array[self._vmask]
 
     def prior(self, x):
         """Actual prior function, common to all Priors"""
+
         if len(x.shape) > 1:
-            n = x.shape[0]
-            return np.hstack([self.potential(x[i, :]) for i in range(n)])
+            if self.mask is None:
+                self.mask = np.ones_like(x[0], bool)
+            return np.hstack([self.masked(self.potential(xi)) for xi in x])
         else:
-            return self.potential(x)
+            return self.masked(self.potential(x))
 
     def let_update(self):
         if hasattr(self, 'update'):

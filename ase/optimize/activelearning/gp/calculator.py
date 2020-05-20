@@ -197,6 +197,7 @@ class GPCalculator(Calculator, GaussianProcess):
 
         #Set mask in kernel
         self.kernel.mask = self.atoms_mask
+        self.prior.mask = self.atoms_mask
 
         # Initialize training features:
         self.train_x = []
