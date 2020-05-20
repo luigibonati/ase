@@ -597,7 +597,8 @@ def float_to_time_string(t, long=False):
         return '{:.0f}{}'.format(round(x), s)
 
 
-def object_to_bytes(obj: Any) -> bytes:
+def object_to_bytes(obj: Any,
+                    implementation='new_format') -> bytes:
     """Serialize Python object to bytes.
 
     The serialized object is structured as::
@@ -606,9 +607,24 @@ def object_to_bytes(obj: Any) -> bytes:
 
     The offset marks the position where the jsonable data starts. The
     offset itself takes up 8 bytes.
+
+    Parameters
+    ----------
+    obj
+        Object to be serialized.
+    implementation : str (accepted values "old_format" or "new_format")
+        Which serialization format to use (primarily for testing purposes).
+
+    Returns
+    -------
+    bytes
+        Serialized object.
     """
     parts = [b'12345678']
-    obj = o2b(obj, parts)
+    if implementation == 'new_format':
+        obj = _object_to_bytes_new_format(obj, parts)
+    elif implementation == 'old_format':
+        obj = _object_to_bytes_old_format(obj, parts)
     offset = sum(len(part) for part in parts)
     x = np.array(offset, np.int64)
     if not np.little_endian:
@@ -641,10 +657,10 @@ def bytes_to_object(serialized_bytes: bytes) -> Any:
         offset_as_array = offset_as_array.byteswap()
     offset = offset_as_array.item()
     obj = json.loads(serialized_bytes[offset:].decode())
-    return b2o(obj, serialized_bytes)
+    return _bytes_to_object_new_format(obj, serialized_bytes)
 
 
-def o2b(obj: Any, parts: List[bytes]):
+def _object_to_bytes_new_format(obj: Any, parts: List[bytes]):
     """Append bytes to parts and return dict with metadata.
 
     In-place modifies "parts" with additional bytes and returns a
@@ -672,9 +688,10 @@ def o2b(obj: Any, parts: List[bytes]):
         return {'__objtype__': 'primitive',
                 '__objdata__': obj}
     if isinstance(obj, dict):
-        return {key: o2b(value, parts) for key, value in obj.items()}
+        return {key: _object_to_bytes_new_format(value, parts)
+                for key, value in obj.items()}
     if isinstance(obj, (list, tuple)):
-        return [o2b(value, parts) for value in obj]
+        return [_object_to_bytes_new_format(value, parts) for value in obj]
     if isinstance(obj, np.ndarray):
         assert obj.dtype != object, \
             'Cannot convert ndarray of type "object" to bytes.'
@@ -682,36 +699,105 @@ def o2b(obj: Any, parts: List[bytes]):
         if not np.little_endian:
             obj = obj.byteswap()
         parts.append(obj.tobytes())
-        return {'__ndarray__': [obj.shape,
+        return {'__objtype__': 'ndarray',
+                '__ndarray__': [obj.shape,
                                 obj.dtype.name,
                                 offset]}
     if isinstance(obj, complex):
-        return {'__complex__': [obj.real, obj.imag]}
+        return {'__objtype__': 'complex',
+                '__complex__': [obj.real, obj.imag]}
     objtype = getattr(obj, 'ase_objtype')
     if objtype:
-        dct = o2b(obj.todict(), parts)
+        dct = _object_to_bytes_new_format(obj.todict(), parts)
+        dct['__objtype__'] = 'ase_object'
         dct['__ase_objtype__'] = objtype
         return dct
     raise ValueError('Objects of type {type} not allowed'
                      .format(type=type(obj)))
 
 
-def b2o(obj: Any, serialized_bytes: bytes) -> Any:
-    """Implement obj and byte deserialization."""
+def _bytes_to_object_new_format(obj: Any,
+                                serialized_bytes: bytes) -> Any:
+    """Implement obj and byte deserialization.
+
+    This function deserializes objects serialized with
+    :func:`ase.db.core._object_to_bytes_new_format`. Note that this
+    falls back to the :func:`ase.db.core._object_to_bytes_old_format`
+    old style serialized objects.
+
+    Parameters
+    ----------
+    obj
+        Metadata part of object
+    serialized_bytes : bytes
+        Bytes of same object
+
+    Returns
+    -------
+    object
+        Deserialized object.
+
+    """
+    # TODO: This should be refactored in the future. There are some
+    # repetitions in the following.
     if isinstance(obj, dict) and obj.get('__objtype__') is not None:
         objtype = obj.get('__objtype__')
         if objtype == 'primitive':
             return obj['__objdata__']
         elif objtype == 'bytes':
-            x = obj.get('__bytes__')
-            size, offset = x
+            size, offset = obj.get('__bytes__')
             return serialized_bytes[offset:offset + size]
+        elif objtype == 'ndarray':
+            shape, name, offset = obj.get('__ndarray__')
+            dtype = np.dtype(name)
+            size = dtype.itemsize * np.prod(shape).astype(int)
+            a = np.frombuffer(serialized_bytes[offset:offset + size], dtype)
+            a.shape = shape
+            if not np.little_endian:
+                a = a.byteswap()
+            return a
+        elif objtype == 'complex':
+            return complex(*obj.get('__complex__'))
+        elif objtype == 'ase_object':
+            dct = {key: _bytes_to_object_new_format(value, serialized_bytes)
+                   for key, value in obj.items()
+                   if key != '__objtype__'}
+            ase_objtype = dct.pop('__ase_objtype__', None)
+            return create_ase_object(ase_objtype, dct)
 
+    # NOTE: The following is kept only for backwards compatibility
+    # since the dispatch originally was based on the existence of some
+    # magic keys in the object. It is possible that this could be
+    # removed in the future.
+    return _bytes_to_object_old_format(obj, serialized_bytes)
+
+
+def _bytes_to_object_old_format(obj: Any, serialized_bytes: bytes) -> Any:
+    """Implement obj and byte deserialization (old format).
+
+    This function deserializes objects serialized with
+    :func:`ase.db.core._object_to_bytes_old_format`. This
+    functionality is primarily kept for backwards compatibility.
+
+    Parameters
+    ----------
+    obj
+        Metadata part of object
+    serialized_bytes : bytes
+        Bytes of same object
+
+    Returns
+    -------
+    object
+        Deserialized object.
+
+    """
     if isinstance(obj, (int, float, bool, str, type(None))):
         return obj
 
     if isinstance(obj, list):
-        return [b2o(value, serialized_bytes) for value in obj]
+        return [_bytes_to_object_old_format(value, serialized_bytes)
+                for value in obj]
 
     assert isinstance(obj, dict)
 
@@ -735,8 +821,59 @@ def b2o(obj: Any, serialized_bytes: bytes) -> Any:
             a = a.byteswap()
         return a
 
-    dct = {key: b2o(value, serialized_bytes) for key, value in obj.items()}
+    dct = {key: _bytes_to_object_old_format(value, serialized_bytes)
+           for key, value in obj.items()}
     objtype = dct.pop('__ase_objtype__', None)
     if objtype is None:
         return dct
     return create_ase_object(objtype, dct)
+
+
+def _object_to_bytes_old_format(obj: Any, parts: List[bytes]):
+    """Append bytes to parts and return dict with metadata (old implementaion).
+
+    This function is kept for backwards compatibility and ease of testing.
+
+    Parameters
+    ----------
+    obj : Any
+        Object to be converted to bytes.
+    parts : list
+        List of bytes.
+
+    Returns
+    -------
+    dict
+        Dictionary containing jsonable data.
+
+    """
+    if isinstance(obj, bytes):
+        offset = sum(len(part) for part in parts)
+        parts.append(obj)
+        return {'__bytes__': (len(obj), offset)}
+    if isinstance(obj, (int, float, bool, str, type(None))):
+        return obj
+    if isinstance(obj, dict):
+        return {key: _object_to_bytes_old_format(value, parts)
+                for key, value in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_object_to_bytes_old_format(value, parts) for value in obj]
+    if isinstance(obj, np.ndarray):
+        assert obj.dtype != object, \
+            'Cannot convert ndarray of type "object" to bytes.'
+        offset = sum(len(part) for part in parts)
+        if not np.little_endian:
+            obj = obj.byteswap()
+        parts.append(obj.tobytes())
+        return {'__ndarray__': [obj.shape,
+                                obj.dtype.name,
+                                offset]}
+    if isinstance(obj, complex):
+        return {'__complex__': [obj.real, obj.imag]}
+    objtype = getattr(obj, 'ase_objtype')
+    if objtype:
+        dct = _object_to_bytes_old_format(obj.todict(), parts)
+        dct['__ase_objtype__'] = objtype
+        return dct
+    raise ValueError('Objects of type {type} not allowed'
+                     .format(type=type(obj)))
