@@ -750,6 +750,7 @@ def _bytes_to_object_new_format(obj: Any,
     if isinstance(obj, dict) and obj.get('__objtype__') is not None:
         objtype = obj.get('__objtype__')
         objdata = obj.get('__objdata__')
+        assert objdata is not None
         if objtype == 'primitive':
             return objdata
         elif objtype == 'list_or_tuple':
