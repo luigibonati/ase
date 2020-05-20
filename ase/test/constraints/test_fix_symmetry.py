@@ -135,9 +135,9 @@ def test_fix_symmetry_shuffle_indices():
         new_p = at.get_positions()
         print("a_i {} Z {} p {:.3f} {:.3f} {:.3f} actually'"
               " moved to {:.3f} {:.3f} {:.3f} dp {:.3f}\n".format(
-              at_i, at.numbers[at_i], p0[at_i, 0], p0[at_i, 1], p0[at_i, 2],
-              new_p[at_i, 0], new_p[at_i, 0], new_p[at_i, 0],
-              np.linalg.norm(p0 - new_p)))
+                at_i, at.numbers[at_i], p0[at_i, 0], p0[at_i, 1], p0[at_i, 2],
+                new_p[at_i, 0], new_p[at_i, 0], new_p[at_i, 0],
+                np.linalg.norm(p0 - new_p)))
         return p0[at_i] - new_p[at_i]
 
     dp1 = do_pert(at, p0, 1, (0.0, 0.1, -0.1))
