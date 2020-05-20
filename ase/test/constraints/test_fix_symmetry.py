@@ -1,6 +1,5 @@
 import numpy as np
 import pytest
-import sys
 
 from ase.atoms import Atoms
 from ase.build import bulk
