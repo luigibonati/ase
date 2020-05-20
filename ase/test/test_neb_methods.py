@@ -156,3 +156,11 @@ def test_mep(cls, method, optimizer, precon, N_intermediate, ref_vacancy):
     vdiff, _ = find_mic(images[centre].positions - saddle_ref.positions,
                         images[centre].cell)
     assert abs(vdiff).max() < 1e-2
+
+
+def test_precon_initialisation():
+    images, i1, i2 = setup_images(5)
+    mep = PreconMEP(images)
+    assert len(mep.precon) == len(mep.images)
+    assert len(set(mep.precon)) == len(mep.precon)
+    assert mep.precon[0].mu == mep.precon[1].mu
