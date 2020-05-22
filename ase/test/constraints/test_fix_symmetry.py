@@ -127,9 +127,9 @@ def test_fix_symmetry_shuffle_indices():
     at_permut = atoms[[0, 2, 3, 4, 5, 6, 7, 1]]
     pos0 = atoms.get_positions()
 
-    def perturb(atoms, pos0, at_i):
+    def perturb(atoms, pos0, at_i, dpos):
         positions = pos0.copy()
-        positions[at_i] += (0.0, 0.1, -0.1)
+        positions[at_i] += dpos
         atoms.set_positions(positions)
         new_p = atoms.get_positions()
         return pos0[at_i] - new_p[at_i]
