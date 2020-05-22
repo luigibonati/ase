@@ -254,13 +254,13 @@ class FixSymmetry(FixConstraint):
                                "!= len(ind) == {} or ind has duplicates"
                                .format(len(atoms), len(ind)))
 
-        ind_rev = np.zeros((len(ind)), dtype=int)
-        ind_rev[ind] = range(len(ind))
+        ind_reversed = np.zeros((len(ind)), dtype=int)
+        ind_reversed[ind] = range(len(ind))
         new_symm_map = []
         for sm in self.symm_map:
-            new_sm = np.array([-1]*len(atoms))
+            new_sm = np.array([-1] * len(atoms))
             for at_i in range(len(ind)):
-                new_sm[ind_rev[at_i]] = ind_rev[sm[at_i]]
+                new_sm[ind_reversed[at_i]] = ind_reversed[sm[at_i]]
             new_symm_map.append(new_sm)
 
         self.symm_map = new_symm_map

@@ -120,24 +120,24 @@ def test_sym_rot_adj_cell(filter):
 
 @pytest.mark.filterwarnings('ignore:ASE Atoms-like input is deprecated')
 def test_fix_symmetry_shuffle_indices():
-    at = Atoms('AlFeAl6', cell=[6] * 3,
+    atoms = Atoms('AlFeAl6', cell=[6] * 3,
                positions=[[0, 0, 0], [2.9, 2.9, 2.9], [0, 0, 3], [0, 3, 0],
                           [0, 3, 3], [3, 0, 0], [3, 0, 3], [3, 3, 0]], pbc=True)
-    at.set_constraint(FixSymmetry(at))
-    at_permut = at[[0, 2, 3, 4, 5, 6, 7, 1]]
-    p0 = at.get_positions()
+    atoms.set_constraint(FixSymmetry(atoms))
+    at_permut = atoms[[0, 2, 3, 4, 5, 6, 7, 1]]
+    pos0 = atoms.get_positions()
 
-    def do_pert(at, p0, at_i, dp):
-        pp = p0.copy()
-        pp[at_i] += (0.0, 0.1, -0.1)
-        at.set_positions(pp)
-        new_p = at.get_positions()
-        return p0[at_i] - new_p[at_i]
+    def perturb(atoms, pos0, at_i):
+        positions = pos0.copy()
+        positions[at_i] += (0.0, 0.1, -0.1)
+        atoms.set_positions(positions)
+        new_p = atoms.get_positions()
+        return pos0[at_i] - new_p[at_i]
 
-    dp1 = do_pert(at, p0, 1, (0.0, 0.1, -0.1))
-    dp2 = do_pert(at, p0, 2, (0.0, 0.1, -0.1))
-    p0 = at_permut.get_positions()
-    permut_dp1 = do_pert(at_permut, p0, 7, (0.0, 0.1, -0.1))
-    permut_dp2 = do_pert(at_permut, p0, 1, (0.0, 0.1, -0.1))
+    dp1 = perturb(atoms, pos0, 1, (0.0, 0.1, -0.1))
+    dp2 = perturb(atoms, pos0, 2, (0.0, 0.1, -0.1))
+    pos0 = at_permut.get_positions()
+    permut_dp1 = perturb(at_permut, pos0, 7, (0.0, 0.1, -0.1))
+    permut_dp2 = perturb(at_permut, pos0, 1, (0.0, 0.1, -0.1))
     assert np.max(np.abs(dp1 - permut_dp1)) < 1.0e-10
     assert np.max(np.abs(dp2 - permut_dp2)) < 1.0e-10
