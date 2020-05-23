@@ -110,6 +110,10 @@ Git master branch
 * Added a new tutorial on molecular crystal structure prediction using
   a genetic algorithm, see :ref:`ga_molecular_crystal_tutorial`.
 
+* Added the properties ``stresses`` and ``energies`` to the Lennard-Jones potential 
+  :class:`ase.calculators.lj.LennardJones`. Functionality for other properties should
+  be unchanged. Testing and documentation have also been expanded.
+
 I/O:
 
 * Read and write support for qball sys file format.
