@@ -63,9 +63,16 @@ Algorithms:
   slightly improved to use center, rather than forward differences. This does
   not affect how NEBs are run; only how they are displayed.
 
-* :class:`ase.neb.NEBTools` now allows the simultaneous plotting of all bands from a trajectory of a nudged elastic band calculation (or similar); this funciton is also available at the command line as ``ase nebplot neb.traj``.
+* :class:`ase.neb.NEBTools` now allows the simultaneous plotting of
+  all bands from a trajectory of a nudged elastic band calculation (or
+  similar); this funciton is also available at the command line as
+  ``ase nebplot neb.traj``.
 
-* The image-dependent pair-potential (IDPP) interpolation scheme for connecting states---i.e., in a saddle-point search---has been moved into the method :func:`ase.neb.idpp_interpolate`. This method is a more feature-rich version than that accessible via :meth:`ase.neb.NEB.interpolate`.
+* The image-dependent pair-potential (IDPP) interpolation scheme for
+  connecting states---i.e., in a saddle-point search---has been moved
+  into the method :func:`ase.neb.idpp_interpolate`. This method is a
+  more feature-rich version than that accessible via
+  :meth:`ase.neb.NEB.interpolate`.
 
 * Reduced code duplication in the :mod:`ase.ga` module by incorporating the
   'bulk' GA functionality into the corresponding 'standard' modules.
@@ -80,6 +87,13 @@ Algorithms:
 
 * Added a new tutorial on molecular crystal structure prediction using
   a genetic algorithm, see :ref:`ga_molecular_crystal_tutorial`.
+
+* New ``dimensionality`` sub-command for the :ref:`ase <cli>` command line
+  interface.
+
+* Added a diff CLI for displaying and comparing the positions, forces,
+  and energies of atoms objects.  The classes and functions used in
+  the CLI are also available in :mod:`ase.cli.template`.
 
 I/O:
 
@@ -132,6 +146,10 @@ Calculators:
   does not enable the optimized codepath (which halves memory and
   cpu). Use ``kpts=None`` to enable the optimized codepath.
 
+* Added the properties ``stresses`` and ``energies`` to the
+  Lennard-Jones potential :class:`ase.calculators.lj.LennardJones`.
+  Functionality for other properties should be unchanged. Testing and
+  documentation have also been expanded.
 
 .. _mypy: http://mypy-lang.org/
 

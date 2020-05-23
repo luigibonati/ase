@@ -347,6 +347,8 @@ class Atoms(object):
         scale_atoms: bool
             Fix atomic positions or move atoms with the unit cell?
             Default behavior is to *not* move the atoms (scale_atoms=False).
+        apply_constraint: bool
+            Whether to apply constraints to the given cell.
 
         Examples:
 
@@ -427,9 +429,18 @@ class Atoms(object):
 
         return self.cell.reciprocal()
 
+    @property
+    def pbc(self):
+        """Reference to pbc-flags for in-place manipulations."""
+        return self._pbc
+
+    @pbc.setter
+    def pbc(self, pbc):
+        self._pbc[:] = pbc
+
     def set_pbc(self, pbc):
         """Set periodic boundary condition flags."""
-        self._pbc[:] = pbc
+        self.pbc = pbc
 
     def get_pbc(self):
         """Get periodic boundary condition flags."""
@@ -2003,20 +2014,15 @@ class Atoms(object):
                        doc='Attribute for direct ' +
                        'manipulation of the atomic numbers.')
 
-    def _get_cell(self):
-        """Return reference to unit cell for in-place manipulations."""
+    @property
+    def cell(self):
+        """The :class:`ase.cell.Cell` for direct manipulation."""
         return self._cellobj
 
-    cell = property(_get_cell, set_cell, doc='Attribute for direct ' +
-                    'manipulation of the unit :class:`ase.cell.Cell`.')
-
-    def _get_pbc(self):
-        """Return reference to pbc-flags for in-place manipulations."""
-        return self._pbc
-
-    pbc = property(_get_pbc, set_pbc,
-                   doc='Attribute for direct manipulation ' +
-                   'of the periodic boundary condition flags.')
+    @cell.setter
+    def cell(self, cell):
+        cell = Cell.ascell(cell)
+        self._cellobj[:] = cell
 
     def write(self, filename, format=None, **kwargs):
         """Write atoms object to a file.
