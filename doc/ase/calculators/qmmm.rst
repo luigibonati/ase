@@ -105,4 +105,4 @@ Basic usage is as follows::
                            MMCalculator(...),
                            buffer_width=...)
 
-See :git:`ase/test/forceqmmm.py` test-case for a complete example.
+See :git:`ase/test/forcefields/test_forceqmmm.py` test-case for a complete example.
