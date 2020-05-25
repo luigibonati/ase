@@ -2,7 +2,6 @@ import numpy as np
 
 from ase.neighborlist import NeighborList
 from ase.calculators.calculator import Calculator, all_changes
-from ase.calculators.calculator import PropertyNotImplementedError
 from ase.constraints import full_3x3_to_voigt_6_stress
 
 
@@ -81,14 +80,8 @@ class LennardJones(Calculator):
 
     """
 
-    implemented_properties = [
-        'energy',
-        'forces',
-        'stress',
-        'energies',
-        'stresses',
-        'free_energy',
-    ]
+    implemented_properties = ['energy', 'energies', 'forces', 'free_energy']
+    implemented_properties += ['stress', 'stresses']  # bulk properties
     default_parameters = {'epsilon': 1.0, 'sigma': 1.0, 'rc': None}
     nolabel = True
 
@@ -114,8 +107,11 @@ class LennardJones(Calculator):
         self.nl = None
 
     def calculate(
-        self, atoms=None, properties=['energy'], system_changes=all_changes
+        self, atoms=None, properties=None, system_changes=all_changes,
     ):
+        if properties is None:
+            properties = self.implemented_properties
+
         Calculator.calculate(self, atoms, properties, system_changes)
 
         natoms = len(self.atoms)
@@ -171,29 +167,18 @@ class LennardJones(Calculator):
                     pairwise_forces[jj], distance_vectors[jj]
                 )
 
-        # we can't divide by volume here, because if there are no
-        # lattice vectors, there is no defined volume
-        stresses = full_3x3_to_voigt_6_stress(stresses)
-
-        if 'stress' in properties:
-            if self.atoms.number_of_lattice_vectors == 3:
-                self.results['stress'] = (
-                    stresses.sum(axis=0) / self.atoms.get_volume()
-                )
-            else:
-                raise PropertyNotImplementedError
-
-        if 'stresses' in properties:
-            if self.atoms.number_of_lattice_vectors == 3:
-                self.results['stresses'] = stresses / self.atoms.get_volume()
-            else:
-                raise PropertyNotImplementedError
-
-        if 'energies' in properties:
-            self.results['energies'] = energies
+        # no lattice, no stress
+        if self.atoms.number_of_lattice_vectors == 3:
+            stresses = full_3x3_to_voigt_6_stress(stresses)
+            self.results['stress'] = (
+                stresses.sum(axis=0) / self.atoms.get_volume()
+            )
+            self.results['stresses'] = stresses / self.atoms.get_volume()
 
         energy = energies.sum()
         self.results['energy'] = energy
+        self.results['energies'] = energies
+
         self.results['free_energy'] = energy
 
         self.results['forces'] = forces
