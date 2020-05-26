@@ -113,6 +113,8 @@ I/O:
 * Removed ETSF format reader since it depends on ScientificPython
   which requires Python 2.7.
 
+* Removed Dacapo-NetCDF reader which has not worked since ancient times.
+
 GUI:
 
 * Removed old GUI modules which were never fully ported to Tkinter.
