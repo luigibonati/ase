@@ -18,7 +18,7 @@ def test_pourbaix():
 
     U = np.linspace(-2, 2, 3)
     pH = np.linspace(6, 16, 11)
-    d, names, text = pb.diagram(U, pH)
+    d, names, text = pb.diagram(U, pH, plot=False)
     print(d, names, text)
     assert d.shape == (3, 11)
     assert d.ptp() == 6
