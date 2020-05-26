@@ -969,13 +969,13 @@ class Wannier:
                     assert max(abs(func.imag).flat) < 1e-4
                 func = func.real
             else:
-                func = abs(func)
+                func = np.real(func)
         else:
             phase_fname = fname.split('.cube')
             phase_fname.insert(1, 'phase')
             phase_fname = '.'.join(phase_fname) + 'cube'
             write(phase_fname, atoms, data=np.angle(func), format='cube')
-            func = abs(func)
+            func = np.real(func)
 
         write(fname, atoms, data=func, format='cube')
 
