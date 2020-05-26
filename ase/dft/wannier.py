@@ -673,11 +673,12 @@ class Wannier:
         if self.initialwannier not in random_initials:
             random_reps = 1
 
+        if self.verbose:
+            t = - time()
         avg_max_spreads = np.zeros(nwrange)
         for j, Nw in enumerate(Nws):
             if self.verbose:
                 print('Trying with Nw =', Nw)
-                t = - time()
 
             # Define once with the fastest 'initialwannier',
             # then initialize with random seeds in the for loop
