@@ -3,6 +3,7 @@ from ase import Atoms
 from ase.units import fs, kB, GPa
 from ase.build import bulk
 from ase.md.nvtberendsen import NVTBerendsen
+from ase.md.nptberendsen import NPTBerendsen
 from ase.io import Trajectory, read
 from ase.optimize import QuasiNewton
 from ase.utils import seterr
@@ -43,3 +44,9 @@ def test_nvtberendsen(asap3):
     t, _, _ = propagate(asap3, NVTBerendsen, temperature = 300, taut=1000*fs)
     assert abs(t - 300) < 1.0
 
+def test_nptberendsen(asap3):
+    Bgold = 220.0 * 10000  # Bulk modulus of gold, in bar (1 GPa = 10000 bar)
+    t, p, _ = propagate(asap3, NPTBerendsen, temperature = 300, pressure=5000, taut=1000*fs, taup=1000*fs,
+                        compressibility=1/Bgold)
+    assert abs(t - 300) < 2.0
+    assert abs(p - 500) < 10.0
