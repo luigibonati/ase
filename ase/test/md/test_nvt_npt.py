@@ -55,6 +55,7 @@ def propagate(a, asap3, algorithm, algoargs):
         p = np.array(p) / GPa * 10000
         pmean = np.mean(p)
         print('Temperature: {:.2f} K +/- {:.2f} K  (N={})'.format(Tmean, np.std(T), len(T)))
+        print('Center-of-mass corrected temperature: {:.2f} K'.format(Tmean * len(a) / (len(a)-1)))
         print('Pressure: {:.2f} bar +/- {:.2f} bar  (N={})'.format(pmean, np.std(p), len(p)))
         return Tmean, pmean
 
@@ -76,8 +77,10 @@ def test_npt(asap3, equilibrated, berendsenparams):
                           externalstress = params['pressure'] / 10000 * GPa,
                           ttime = params['taut'],
                           pfactor = params['taup']**2 * 1.3))
-    # Temperature is less accurate than for NPTBerendsen
-    assert abs(t - berendsenparams['npt']['temperature']) < 5.0
-    assert abs(p - berendsenparams['npt']['pressure']) < 250.0
+    # Unlike NPTBerendsen, NPT assumes that the center of mass is not
+    # thermalized, so the kinetic energy should be 3/2 ' kB * (N-1) * T
+    n = len(equilibrated)
+    assert abs(t - (n-1)/n * berendsenparams['npt']['temperature']) < 1.0
+    assert abs(p - berendsenparams['npt']['pressure']) < 100.0
 
     
