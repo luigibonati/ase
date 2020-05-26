@@ -12,10 +12,10 @@ Git master branch
 
 General changes:
 
-* :meth:`ase.Atoms.get_calculator` is deprecated.  Use
+* :meth:`~ase.Atoms.get_calculator` is deprecated.  Use
   ``atoms.calc`` instead.
 
-* :meth:`ase.Atoms.set_calculator` is deprecated.  Use
+* :meth:`~ase.Atoms.set_calculator` is deprecated.  Use
   ``atoms.calc = calc`` instead.
 
 * ``del atoms.calc`` is deprecated.  Use ``atoms.calc = None`` instead.
@@ -109,6 +109,11 @@ I/O:
 * Added support for writing prismatic and computem xyz file. Required arguments
   to write mustem xtl file have been updated to be consistent with prismatic
   and computem xyz file export.
+
+* Removed ETSF format reader since it depends on ScientificPython
+  which requires Python 2.7.
+
+* Removed Dacapo-NetCDF reader which has not worked since ancient times.
 
 GUI:
 
