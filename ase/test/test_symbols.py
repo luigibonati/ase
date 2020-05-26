@@ -43,5 +43,5 @@ def test_search_two(atoms):
     assert all(sym in {'C', 'O'} for sym in atoms.symbols[indices])
 
 def test_species(atoms):
-    dct = atoms.symbols.enumerate_species()
+    dct = atoms.symbols.species()
     print(dct)
