@@ -5,8 +5,6 @@ from ase.build import bulk
 from ase.md.nvtberendsen import NVTBerendsen
 from ase.md.nptberendsen import NPTBerendsen
 from ase.md.npt import NPT
-from ase.io import Trajectory, read
-from ase.optimize import QuasiNewton
 from ase.utils import seterr
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution, Stationary
 import numpy as np

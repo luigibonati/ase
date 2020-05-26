@@ -1,10 +1,7 @@
-import pytest
-from ase import Atoms
 from ase.units import fs, kB
 from ase.build import bulk
 from ase.md import VelocityVerlet
 from ase.io import Trajectory, read
-from ase.optimize import QuasiNewton
 from ase.utils import seterr
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution, Stationary
 
