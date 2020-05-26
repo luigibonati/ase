@@ -34,7 +34,6 @@ def test_verlet_asap(asap3):
         md = Langevin(a, timestep=5 * fs, temperature=300*kB, friction=1e-3, logfile='-', loginterval=500)
         fx = FixRotation(a)
         md.attach(fx)
-        e0 = a.get_total_energy()
         md.run(steps=10000)
         check_inertia(a)
         
