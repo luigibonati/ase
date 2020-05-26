@@ -47,6 +47,15 @@ def git_role_tmpl(urlroot,
             text = text[1:]
         if '?' in name:
             name = name[:name.index('?')]
+    # Check if the link is broken
+    is_tag = text.startswith('..')  # Tags are like :git:`3.19.1 <../3.19.1>`
+    path = os.path.join('..', text)
+    do_exists = os.path.exists(path)
+    if not (is_tag or do_exists):
+        msg = 'Broken link: {}: Non-existing path: {}'.format(rawtext, path)
+        msg = inliner.reporter.error(msg, line=lineno)
+        prb = inliner.problematic(rawtext, rawtext, msg)
+        return [prb], [msg]
     ref = urlroot + text
     set_classes(options)
     node = nodes.reference(rawtext, name, refuri=ref,

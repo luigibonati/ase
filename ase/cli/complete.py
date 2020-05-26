@@ -57,7 +57,7 @@ commands = {
          '--max-lines', '-t', '--template', '--template-help',
          '-s', '--summary-functions', '--log-file', '--as-csv'],
     'dimensionality':
-        ['--display-all'],
+        ['--display-all', '--no-merge'],
     'eos':
         ['-p', '--plot', '-t', '--type'],
     'find':

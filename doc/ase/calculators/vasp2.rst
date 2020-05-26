@@ -14,7 +14,7 @@ Introduction
 This module introduces an updated version of the ASE VASP_ calculator,
 which adds the functionality of the :class:`~ase.calculators.calculator.Calculator`.
 This allows a more general usage of the other ASE methods,
-such as :class:`~ase.dft.band_structure.BandStructure`.
+such as :class:`~ase.spectrum.band_structure.BandStructure`.
 
 For a general introduction please refer to the :mod:`~ase.calculators.vasp` calculator
 documentation, as this is just a list of things which have changed.
@@ -152,7 +152,7 @@ Examples
 ========
 
 The Vasp 2 calculator now integrates with existing ASE functions, such as
-:class:`~ase.dft.band_structure.BandStructure` or :class:`~ase.dft.bandgap.bandgap`.
+:class:`~ase.spectrum.band_structure.BandStructure` or :class:`~ase.dft.bandgap.bandgap`.
 
 Band structure with VASP
 ------------------------
