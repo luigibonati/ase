@@ -4,49 +4,82 @@ from ase.units import fs, kB, GPa
 from ase.build import bulk
 from ase.md.nvtberendsen import NVTBerendsen
 from ase.md.nptberendsen import NPTBerendsen
+from ase.md.npt import NPT
 from ase.io import Trajectory, read
 from ase.optimize import QuasiNewton
 from ase.utils import seterr
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution, Stationary
 import numpy as np
 
-def propagate(asap3, algorithm, **kwargs):
+@pytest.fixture(scope='module')
+def berendsenparams():
+    """Parameters for the two Berendsen algorithms."""
+    Bgold = 220.0 * 10000  # Bulk modulus of gold, in bar (1 GPa = 10000 bar)
+    nvtparam = dict(temperature = 300, taut=1000*fs)
+    nptparam = dict(temperature = 300, pressure=5000, taut=1000*fs, taup=1000*fs,
+                    compressibility=1/Bgold)
+    return dict(nvt=nvtparam, npt=nptparam)
+
+@pytest.fixture(scope='module')
+def equilibrated(asap3, berendsenparams):
+    """Make an atomic system with equilibrated temperature and pressure."""
     with seterr(all='raise'):
-        a = bulk('Au').repeat((5,5,5))   # Must be big enough to avoid ridiculous fluctuations
+        print()
+        a = bulk('Au', cubic=True).repeat((3,3,3))   # Must be big enough to avoid ridiculous fluctuations
         #a[5].symbol = 'Ag'
-        a.pbc = (True, True, False)
         print(a)
         a.calc = asap3.EMT()
         MaxwellBoltzmannDistribution(a, 100*kB, force_temp=True)
         Stationary(a)
         assert abs(a.get_temperature() - 100) < 0.0001
-        md = algorithm(a, timestep=2 * fs, logfile='-', loginterval=1000, **kwargs)
-        e0 = a.get_total_energy()
+        md = NPTBerendsen(a, timestep=2 * fs, logfile='-', loginterval=1000,
+                          **berendsenparams['npt'])
         # Equilibrate for 20 ps
         md.run(steps=10000)
-        # Gather data for 100 ps
+        T = a.get_temperature()
+        pres = - a.get_stress(include_ideal_gas=True)[:3].sum() / 3 / GPa * 10000
+        print("Temperature: {:.2f} K    Pressure: {:.2f} bar".format(T, pres))
+        return a
+
+def propagate(a, asap3, algorithm, algoargs):
+    with seterr(all='raise'):
+        print()
+        md = algorithm(a, timestep=2 * fs, logfile='-', loginterval=1000, **algoargs)
+        # Gather data for 50 ps
         T = []
         p = []
-        for i in range(10000):
+        for i in range(5000):
             md.run(5)
             T.append(a.get_temperature())
             pres = - a.get_stress(include_ideal_gas=True)[:3].sum() / 3
             p.append(pres)
         Tmean = np.mean(T)
-        p = np.array(p) / GPa * 1000
+        p = np.array(p) / GPa * 10000
         pmean = np.mean(p)
-        print('Temperature: {:.2f}K +/- {:.2f}K  (N={})'.format(Tmean, np.std(T), len(T)))
-        print('Pressure: {:.2f}MPa +/- {:.2f}MPa  (N={})'.format(pmean, np.std(p), len(p)))
-        return Tmean, pmean, a
+        print('Temperature: {:.2f} K +/- {:.2f} K  (N={})'.format(Tmean, np.std(T), len(T)))
+        print('Pressure: {:.2f} bar +/- {:.2f} bar  (N={})'.format(pmean, np.std(p), len(p)))
+        return Tmean, pmean
 
 
-def test_nvtberendsen(asap3):
-    t, _, _ = propagate(asap3, NVTBerendsen, temperature = 300, taut=1000*fs)
-    assert abs(t - 300) < 1.0
+def test_nvtberendsen(asap3, equilibrated, berendsenparams):
+    t, _ = propagate(Atoms(equilibrated), asap3, NVTBerendsen, berendsenparams['nvt'])
+    assert abs(t - berendsenparams['nvt']['temperature']) < 0.5
 
-def test_nptberendsen(asap3):
-    Bgold = 220.0 * 10000  # Bulk modulus of gold, in bar (1 GPa = 10000 bar)
-    t, p, _ = propagate(asap3, NPTBerendsen, temperature = 300, pressure=5000, taut=1000*fs, taup=1000*fs,
-                        compressibility=1/Bgold)
-    assert abs(t - 300) < 2.0
-    assert abs(p - 500) < 10.0
+def test_nptberendsen(asap3, equilibrated, berendsenparams):
+    t, p = propagate(Atoms(equilibrated), asap3, NPTBerendsen, berendsenparams['npt'])
+    assert abs(t - berendsenparams['npt']['temperature']) < 1.0
+    assert abs(p - berendsenparams['npt']['pressure']) < 25.0
+
+def test_npt(asap3, equilibrated, berendsenparams):
+    params = berendsenparams['npt']
+    # NPT uses different units.  The factor 1.3 is the bulk modulus of gold in ev/Å^3
+    t, p = propagate(Atoms(equilibrated), asap3, NPT,
+                     dict(temperature = params['temperature'] * kB,
+                          externalstress = params['pressure'] / 10000 * GPa,
+                          ttime = params['taut'],
+                          pfactor = params['taup']**2 * 1.3))
+    # Temperature is less accurate than for NPTBerendsen
+    assert abs(t - berendsenparams['npt']['temperature']) < 5.0
+    assert abs(p - berendsenparams['npt']['pressure']) < 250.0
+
+    
