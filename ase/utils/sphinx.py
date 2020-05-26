@@ -4,12 +4,13 @@ import warnings
 from os.path import join
 from stat import ST_MTIME
 import re
+import runpy
 
 from docutils import nodes
 from docutils.parsers.rst.roles import set_classes
 
 import matplotlib
-matplotlib.use('Agg', warn=False)
+matplotlib.use('Agg')
 
 
 def mol_role(role, rawtext, text, lineno, inliner, options={}, content=[]):
@@ -46,6 +47,15 @@ def git_role_tmpl(urlroot,
             text = text[1:]
         if '?' in name:
             name = name[:name.index('?')]
+    # Check if the link is broken
+    is_tag = text.startswith('..')  # Tags are like :git:`3.19.1 <../3.19.1>`
+    path = os.path.join('..', text)
+    do_exists = os.path.exists(path)
+    if not (is_tag or do_exists):
+        msg = 'Broken link: {}: Non-existing path: {}'.format(rawtext, path)
+        msg = inliner.reporter.error(msg, line=lineno)
+        prb = inliner.problematic(rawtext, rawtext, msg)
+        return [prb], [msg]
     ref = urlroot + text
     set_classes(options)
     node = nodes.reference(rawtext, name, refuri=ref,
@@ -119,7 +129,7 @@ def create_png_files(raise_exceptions=False):
             import matplotlib.pyplot as plt
             plt.figure()
             try:
-                exec(compile(open(pyname).read(), pyname, 'exec'), {})
+                runpy.run_path(pyname)
             except KeyboardInterrupt:
                 return
             except Exception:

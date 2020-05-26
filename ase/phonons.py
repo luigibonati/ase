@@ -139,7 +139,7 @@ class Displacement:
 
         # Set calculator if provided
         assert self.calc is not None, "Provide calculator in __init__ method"
-        atoms_N.set_calculator(self.calc)
+        atoms_N.calc = self.calc
 
         # Do calculation on equilibrium structure
         self.state = 'eq.pckl'
@@ -535,7 +535,7 @@ class Phonons(Displacement):
             assert 0
             omega_kl, modes = omega_kl
 
-        from ase.dft.band_structure import BandStructure
+        from ase.spectrum.band_structure import BandStructure
         bs = BandStructure(path, energies=omega_kl[None])
         return bs
 

@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 from ase import Atoms, io
 from ase.calculators.lj import LennardJones
 from ase.optimize.basin import BasinHopping
@@ -6,6 +7,7 @@ from ase.io import read
 from ase.units import kB
 
 
+@pytest.mark.slow
 def test_basin():
     # Global minima from
     # Wales and Doye, J. Phys. Chem. A, vol 101 (1997) 5111-5116
@@ -20,7 +22,7 @@ def test_basin():
     pos = np.random.uniform(-R, R, (N, 3))
     s = Atoms('He' + str(N),
               positions=pos)
-    s.set_calculator(LennardJones())
+    s.calc = LennardJones()
     original_positions = 1. * s.get_positions()
 
     ftraj = 'lowest.traj'
@@ -42,7 +44,7 @@ def test_basin():
               ' global minimum:', E_global[N])
 
         # recalc energy
-        smin.set_calculator(LennardJones())
+        smin.calc = LennardJones()
         E = smin.get_potential_energy()
         assert abs(E - Emin) < 1e-15
         other = read(ftraj)

@@ -69,8 +69,8 @@ class NPT(MolecularDynamics):
     pfactor
         A constant in the barostat differential equation.  If
         a characteristic barostat timescale of ptime is
-        desired, set pfactor to ptime^2 * B (where ptime is in units matching 
-        eV, A, u; and B is the Bulk Modulus, given in eV/A^3).  
+        desired, set pfactor to ptime^2 * B (where ptime is in units matching
+        eV, A, u; and B is the Bulk Modulus, given in eV/A^3).
         Set to None to disable the barostat.
         Typical metallic bulk moduli are of the order of
         100 GPa or 0.6 eV/A^3.
@@ -500,7 +500,8 @@ class NPT(MolecularDynamics):
                 from ase.io.bundletrajectory import BundleTrajectory
                 trajectory = BundleTrajectory(trajectory)
             else:
-                raise ValueError("Cannot open '%': unsupported file format" % trajectory)
+                raise ValueError(
+                    f"Cannot open '{trajectory}': unsupported file format")
         # trajectory is now a BundleTrajectory object (or compatible)
         if atoms is None:
             atoms = trajectory[frame]
@@ -527,22 +528,6 @@ class NPT(MolecularDynamics):
     def _getmasses(self):
         "Get the masses as an Nx1 array."
         return np.reshape(self.atoms.get_masses(), (-1,1))
-
-#    def _getcartesianpositions(self):
-#        "Get the cartesian positions of the atoms"
-#        return self.atoms.get_positions()
-
-#    def _getmomenta(self):
-#        "Get the (cartesian) momenta of the atoms"
-#        return self.atoms.GetCartesianMomenta()
-
-#    def _getforces(self):
-#        "Get the (cartesian) forces of the atoms"
-#        return self.atoms.GetCartesianForces()
-
-#    def _setmomenta(self, momenta):
-#        "Set the (cartesian) momenta of the atoms"
-#        self.atoms.SetCartesianMomenta(momenta)
 
     def _separatetrace(self, mat):
         """return two matrices, one proportional to the identity
@@ -681,112 +666,3 @@ class WeakMethodWrapper:
         m = getattr(self.obj, self.method)
         return m(*args, **kwargs)
 
-# class _HooverNPTTrajectory:
-#     """A Trajectory-like object storing data in a HooverNPT object."""
-#     def InitForWrite(self):
-#         """Does initialization related to write mode."""
-#         self.CreateDimension('unlim', None)
-#         self.nc.history = 'ASE NPT trajectory'
-#         self.nc.version = '0.1'
-#         self.nc.classname = self.atoms.classname
-#         self.unlim = 0
-#         self.nc.lengthunit = units.GetLengthUnit()
-#         self.nc.energyunit = units.GetEnergyUnit()
-#         self.conversion = (1, 1)
-
-#     def InitForWriteOrAppend(self):
-#         """Does initialization related to write and append mode.
-
-#         Either InitForWrite or InitForReadOrAppend will have been
-#         called before calling this method.
-#         """
-#         names = copy.copy(self.known_names)
-#         if self.atoms.ttime is None:
-#             del names['ttime']
-#         if self.atoms.pfactor_given is None:
-#             del names['pfactor_given']
-#         for d in names.keys():
-#             def getdata(atoms=self.atoms, name=d):
-#                 return getattr(atoms, name)
-#             self.Add(d, data = getdata)
-
-#     known_names = {
-#         #    name                 shape        typecode  once    units
-#         # ----------------------------------------------------------------
-#         'dt':              ((),                Float,    True,   (1, -0.5)),
-#         'temperature':     ((),                Float,    True,   (0, 1)),
-#         'desiredEkin':     ((),                Float,    True,   (0, 1)),
-#         'externalstress':  ((6,),              Float,    True,   (-3, 1)),
-#         'mask':            ((3, 3),            Float,    True,   (0, 0)),
-#         'ttime':           ((),                Float,    True,   (1, -0.5)),
-#         'tfact':           ((),                Float,    True,   (-2, 0)),
-#         'pfactor_given':   ((),                Float,    True,   (-1, 0)),
-#         'pfact':           ((),                Float,    True,   (-2, 0)),
-#         'frac_traceless':  ((),                Float,    True,   (0, 0)),
-#         'eta':             ((3, 3),            Float,    False,  (-1, 0.5)),
-#         'eta_past':        ((3, 3),            Float,    False,  (-1, 0.5)),
-#         'zeta':            ((),                Float,    False,  (-1, 0.5)),
-#         'zeta_past':       ((),                Float,    False,  (-1, 0.5)),
-#         'zeta_integrated': ((),                Float,    False,  (0, 0)),
-#         'h':               ((3, 3),            Float,    False,  (1, 0)),
-#         'h_past':          ((3, 3),            Float,    False,  (1, 0)),
-#         'timeelapsed':     ((),                Float,    False,  (1, -0.5))
-#         }
-
-#     # This trajectory does not store a list of atoms
-#     def GetListOfAtoms(self, frame=None):
-#         raise AttributeError, "GetListOfAtoms makes no sense in a HooverNPTTrajectory"
-
-#     # Instead, we store a dynamics
-#     def GetDynamics(self, frame=None):
-#         """Get a HooverNPT Dynamics object.
-
-#         If a frame number is not given, the current frame is used.
-
-#         The variant of the object (ASE HooverNPT, ASAP Serial/Parallel NPT)
-#         will be the same as the stored object.
-
-#         After getting the dynamics, the atoms should be attached with the
-#         dynamics.attach_atoms(atoms) method.
-#         """
-#         # Bypass calling the normal constructor
-#         class Dummy:
-#             pass
-#         dyn = Dummy()
-#         dyn.__class__ = self.getClass(self.nc.classname)
-#         vars = self.nc.variables
-#         for q in self.known_names.keys():
-#             if vars.has_key(q):
-#                 once = self.known_names[q][2]
-#                 if once:
-#                     setattr(dyn, q, vars[q].getValue())
-#                 else:
-#                     setattr(dyn, q, vars[q][frame])
-#         return dyn
-
-#     def getClass(self, classname):
-#         "Internal function: turns a class name into a class object."
-#         if self.nc.classname == "HooverNPT":
-#             return HooverNPT
-#         else:
-#             raise RuntimeError, ("Cannot create a dynamics of type "
-#                                  + self.nc.classname)
-
-# class HooverNPTTrajectory(_HooverNPTTrajectory,NetCDFTrajectory):
-#     """A Trajectory-like object storing data in a HooverNPT object."""
-#     def __init__(self, filename, dynamics=None, mode=None, interval=1):
-#         """Open the NetCDF file.
-
-#         If there is no ``dynamics`` argument, then the file is opened
-#         in read mode - otherwise, write or append mode is used.  The
-#         ``interval`` argument determines how often the configurations
-#         are written to file."""
-#         # Call the original constructor, but passing the dynamics instead of
-#         # the atoms.
-#         if dynamics is not None:
-#             # Prevents a circular reference when the trajectory is attached
-#             # to the dynamics it observes.
-#             dynamics = weakref.proxy(dynamics)
-#         NetCDFTrajectory.__init__(self, filename,
-#                                   atoms=dynamics,
-#                                   mode=mode, interval=interval)
