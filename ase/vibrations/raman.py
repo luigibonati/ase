@@ -48,8 +48,8 @@ class RamanBase(Vibrations):
 
 class RamanCalculator(RamanBase):
     """Base class for Raman calculators"""
-    def __init__(self, atoms, Calculator, *args, **kwargs):
-        self.exobj = Calculator
+    def __init__(self, atoms, calculator, *args, **kwargs):
+        self.exobj = calculator
         Raman.__init__(self, atoms, *args, **kwargs)
 
 
