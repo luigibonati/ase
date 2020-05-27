@@ -26,39 +26,41 @@ def equilibrated(asap3, berendsenparams):
     with seterr(all='raise'):
         print()
         # Must be big enough to avoid ridiculous fluctuations
-        a = bulk('Au', cubic=True).repeat((3, 3, 3))
+        atoms = bulk('Au', cubic=True).repeat((3, 3, 3))
         #a[5].symbol = 'Ag'
-        print(a)
-        a.calc = asap3.EMT()
-        MaxwellBoltzmannDistribution(a, 100 * kB, force_temp=True)
-        Stationary(a)
-        assert abs(a.get_temperature() - 100) < 0.0001
-        md = NPTBerendsen(a, timestep=2 * fs, logfile='-', loginterval=1000,
+        print(atoms)
+        atoms.calc = asap3.EMT()
+        MaxwellBoltzmannDistribution(atoms, 100 * kB, force_temp=True)
+        Stationary(atoms)
+        assert abs(atoms.get_temperature() - 100) < 0.0001
+        md = NPTBerendsen(atoms, timestep=20 * fs, logfile='-',
+                          loginterval=200,
                           **berendsenparams['npt'])
         # Equilibrate for 20 ps
-        md.run(steps=10000)
-        T = a.get_temperature()
-        pres = -a.get_stress(include_ideal_gas=True)[:3].sum() / 3 / GPa * 10000
+        md.run(steps=1000)
+        T = atoms.get_temperature()
+        pres = -atoms.get_stress(
+            include_ideal_gas=True)[:3].sum() / 3 / GPa * 10000
         print("Temperature: {:.2f} K    Pressure: {:.2f} bar".format(T, pres))
-        return a
+        return atoms
 
 
-def propagate(a, asap3, algorithm, algoargs):
+def propagate(atoms, asap3, algorithm, algoargs):
     with seterr(all='raise'):
         print()
         md = algorithm(
-            a,
-            timestep=2 * fs,
+            atoms,
+            timestep=20 * fs,
             logfile='-',
             loginterval=1000,
             **algoargs)
         # Gather data for 50 ps
         T = []
         p = []
-        for i in range(5000):
+        for i in range(500):
             md.run(5)
-            T.append(a.get_temperature())
-            pres = - a.get_stress(include_ideal_gas=True)[:3].sum() / 3
+            T.append(atoms.get_temperature())
+            pres = - atoms.get_stress(include_ideal_gas=True)[:3].sum() / 3
             p.append(pres)
         Tmean = np.mean(T)
         p = np.array(p) / GPa * 10000
@@ -66,7 +68,7 @@ def propagate(a, asap3, algorithm, algoargs):
         print('Temperature: {:.2f} K +/- {:.2f} K  (N={})'.format(
             Tmean, np.std(T), len(T)))
         print('Center-of-mass corrected temperature: {:.2f} K'.format(
-            Tmean * len(a) / (len(a) - 1)))
+            Tmean * len(atoms) / (len(atoms) - 1)))
         print('Pressure: {:.2f} bar +/- {:.2f} bar  (N={})'.format(
             pmean, np.std(p), len(p)))
         return Tmean, pmean
