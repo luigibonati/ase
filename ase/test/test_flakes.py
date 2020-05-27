@@ -127,18 +127,20 @@ max_errors = {
 
 @pytest.mark.slow
 def test_flake8():
-    proc = Popen([sys.executable,
-                  '-m',
-                  'flake8',
-                  str(asepath),
-                  str((asepath / '../doc').resolve()),
-                  '--exclude',
-                  str((asepath / '../doc/build/*').resolve()),
-                  '--ignore',
-                  'E129,W293,W503,W504,E741'
-                  '-j',
-                  '1'],
-                 stdout=PIPE)
+    args = [
+        sys.executable,
+        '-m',
+        'flake8',
+        str(asepath),
+        str((asepath / '../doc').resolve()),
+        '--exclude',
+        str((asepath / '../doc/build/*').resolve()),
+        '--ignore',
+        'E129,W293,W503,W504,E741',
+        '-j',
+        '1'
+    ]
+    proc = Popen(args, stdout=PIPE)
     stdout, stderr = proc.communicate()
     stdout = stdout.decode('utf8')
 
