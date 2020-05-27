@@ -150,15 +150,7 @@ class Pourbaix:
             if name == 'O':
                 continue
             count, charge, aq = parse_formula(name)
-
-            for symbol in count:
-                if aq:
-                    if not (symbol in 'HO' or symbol in kwargs):
-                        break
-                else:
-                    if symbol not in kwargs:
-                        break
-            else:
+            if all(symbol in kwargs for symbol in count):
                 self.references.append((count, charge, aq, energy, name))
 
         self.references.append(({}, -1, False, 0.0, 'e-'))  # an electron

@@ -40,7 +40,24 @@ from ase.db.table import all_columns
 root = Path(__file__).parent.parent.parent
 app = Flask(__name__, template_folder=str(root))
 
-projects = {}  # type: Dict[str, Dict[str, Any]]
+projects: Dict[str, Dict[str, Any]] = {}
+
+
+static = root / 'ase/db/static'
+if not (static / 'jsmol/JSmol.min.js').is_file():
+    print(f"""
+WARNING:
+    You don't have jsmol on your system.
+
+    Download Jmol-*-binary.tar.gz from
+    https://sourceforge.net/projects/jmol/files/Jmol/,
+    extract jsmol.zip, unzip it and create a soft-link:
+
+        $ tar -xf Jmol-*-binary.tar.gz
+        $ unzip jmol-*/jsmol.zip
+        $ ln -s $PWD/jsmol {static}/jsmol
+""",
+          file=sys.stderr)
 
 
 @app.route('/', defaults={'project_name': 'default'})
