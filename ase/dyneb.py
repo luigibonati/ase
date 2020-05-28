@@ -22,6 +22,7 @@ class DyNEB(NEB):
             This is updated after each force call; if a previously converged
             image goes out of tolerance (due to spring adjustments between
             the image and its neighbors), it will be optimized again.
+            False reverts to the default NEB implementation.
 
         fmax: float
             Must be identical to the fmax of the optimizer.

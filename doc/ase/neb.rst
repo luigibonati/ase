@@ -196,6 +196,8 @@ To use the climbing image NEB method, instantiate the NEB object like this::
 Scaled and dynamic optimizations
 ================================
 
+.. autoclass:: DyNEB
+
 The convergence of images is often non-uniform, and a large fraction of
 computational resources can be spent calculating images that are below
 the convergence criterion. This can be avoided with a dynamic optimization
