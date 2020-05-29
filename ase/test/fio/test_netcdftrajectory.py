@@ -112,7 +112,7 @@ def test_netcdftrajectory():
 
     # Check cell origin
     co.set_pbc(True)
-    co.set_celldisp([1,2,3])
+    co.set_celldisp([1, 2, 3])
     traj = NetCDFTrajectory('4.nc', 'w', co)
     traj.write(co)
     traj.close()
@@ -186,7 +186,7 @@ def test_netcdftrajectory():
     nc.createVariable('coordinates', 'f4', ('frame', 'atom', 'spatial',))
     nc.createVariable('cell_lengths', 'f4', ('frame', 'cell_spatial',))
     nc.createVariable('cell_angles', 'f4', ('frame', 'cell_angular',))
-    nc.createVariable('id','i', ('frame', 'atom',))
+    nc.createVariable('id', 'i', ('frame', 'atom',))
 
     r0 = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype=np.float)
     r1 = 2*r0
@@ -207,3 +207,22 @@ def test_netcdftrajectory():
     traj.close()
 
     os.remove('7.nc')
+
+    # test types_to_numbers argument
+    traj = NetCDFTrajectory('8.nc', 'w', co)
+    traj.write()
+    traj.close()
+    traj = NetCDFTrajectory('8.nc', 'r')
+    d = {6: 15, 8: 15}
+    atoms = NetCDFTrajectory('8.nc', mode="r", types_to_numbers=d)
+    assert np.allclose(atoms[-1].get_masses(), 30.974)
+    assert (atoms[-1].numbers == [15, 15]).all()
+    d = {3: 14}
+    atoms = NetCDFTrajectory('8.nc', mode="r", types_to_numbers=d)
+    assert (atoms[-1].numbers == [6, 8]).all()
+    atoms = NetCDFTrajectory('8.nc', 'r',
+                             types_to_numbers=[0, 0, 0, 0, 0, 0, 15])
+    assert (atoms[-1].numbers == [15, 8]).all()
+
+    atoms.close()
+    os.remove('8.nc')
