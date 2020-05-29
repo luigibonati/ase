@@ -90,8 +90,8 @@ class NetCDFTrajectory:
             The Atoms object to be written in write or append mode.
 
         types_to_numbers=None:
-            Dictionary for conversion of atom types to atomic numbers when
-            reading a trajectory file.
+            Dictionary or list for conversion of atom types to atomic numbers
+            when reading a trajectory file.
 
         double=True:
             Create new variable in double precision.
@@ -136,8 +136,10 @@ class NetCDFTrajectory:
         self._set_atoms(atoms)
 
         self.types_to_numbers = None
-        if types_to_numbers:
-            self.types_to_numbers = np.array(types_to_numbers)
+        if isinstance(types_to_numbers, list):
+            types_to_numbers = {x: y for x, y in enumerate(types_to_numbers)}
+        if types_to_numbers is not None:
+            self.types_to_numbers = types_to_numbers
 
         self.index_var = index_var
 
@@ -531,7 +533,11 @@ class NetCDFTrajectory:
             if self.numbers is None:
                 self.numbers = np.ones(self.n_atoms, dtype=int)
             if self.types_to_numbers is not None:
-                self.numbers = self.types_to_numbers[self.numbers]
+                d = set(self.numbers).difference(self.types_to_numbers.keys())
+                if len(d) > 0:
+                    self.types_to_numbers.update({num: num for num in d})
+                func = np.vectorize(self.types_to_numbers.get)
+                self.numbers = func(self.numbers)
             self.masses = atomic_masses[self.numbers]
 
             # Read positions
