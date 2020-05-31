@@ -732,23 +732,39 @@ class Wannier:
                      np.log(abs(self.Z_dww[:3].diagonal(0, 1, 2))**2))
         return np.sqrt(r2)
 
+    # def get_spreads(self):
+    #     r"""Calculate the spread of the Wannier functions.
+    #     Compute the spread as the inverse of the contribution to the spread
+    #     functional, so that is proportional to the physical spread.
+
+    #     ::
+
+    #                         1
+    #       spread_w = ---------------
+    #                  |Z_dww|^2 * W_d
+
+
+    #     """
+    #     spread_dw = np.abs(self.Z_dww.diagonal(0, 1, 2))**2
+    #     spread_w = np.dot(spread_dw.T, self.weight_d).real
+    #     inv_spread_w = 1 / spread_w
+    #     return inv_spread_w
+
     def get_spreads(self):
         r"""Calculate the spread of the Wannier functions.
-        Compute the spread as the inverse of the contribution to the spread
-        functional, so that is proportional to the physical spread.
+        The definition is based on PRB61-15 by Berghold and Mundy.
 
         ::
 
-                            1
-          spread_w = ---------------
-                     |Z_dww|^2 * W_d
+                        --                2
+          radius**2 = - >   W_d  ln |Z_dw|
+                        --d
 
 
         """
-        spread_dw = np.abs(self.Z_dww.diagonal(0, 1, 2))**2
-        spread_w = np.dot(spread_dw.T, self.weight_d).real
-        inv_spread_w = 1 / spread_w
-        return inv_spread_w
+        Z2_dw = np.abs(self.Z_dww.diagonal(0, 1, 2))**2
+        spread_w = - np.dot(np.log(Z2_dw).T, self.weight_d).real
+        return spread_w
 
     def get_spectral_weight(self, w):
         return abs(self.V_knw[:, :, w])**2 / self.Nk
