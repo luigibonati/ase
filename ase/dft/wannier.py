@@ -16,6 +16,7 @@ from scipy.linalg import qr
 import numpy as np
 
 from ase.parallel import paropen
+from ase.dft.bandgap import bandgap
 from ase.dft.kpoints import get_monkhorst_pack_size_and_offset
 from ase.transport.tools import dagger, normalize
 
@@ -482,8 +483,12 @@ class Wannier:
             if fixedenergy is None:
                 cutoff = calc.get_fermi_level()
             else:
-                cutoff = fixedenergy + calc.get_fermi_level()
-            # print(fixedenergy)
+                if (bandgap(calc=calc, output=None)[0] < 0.01
+                        or fixedenergy < 0.01):
+                    cutoff = fixedenergy + calc.get_fermi_level()
+                else:
+                    cutoff = fixedenergy + calc.get_homo_lumo()[1]
+
             self.fixedstates_k = np.array(
                 [calc.get_eigenvalues(k, spin).searchsorted(cutoff)
                  for k in range(self.Nk)], int)
