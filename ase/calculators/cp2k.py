@@ -47,7 +47,6 @@ class CP2K(Calculator):
 
     >>> CP2K.command="env OMP_NUM_THREADS=2 mpiexec -np 4 cp2k_shell.psmp"
 
-
     Arguments:
 
     auto_write: bool
@@ -89,6 +88,29 @@ class CP2K(Calculator):
         gives access to all features of CP2K.
         Note, that most keywords accept ``None`` to disable the generation
         of the corresponding input section.
+
+        .. note::
+
+        This input template is important for advanced CP2K
+        inputs, but is also needed for e.g. controlling the Brillouin
+        zone integration. The example below illustrates some common options:
+
+           >>> inp = '''&FORCE_EVAL
+           >>>    &DFT
+           >>>      &KPOINTS
+           >>>        SCHEME MONKHORST-PACK 12 12 8
+           >>>      &END KPOINTS
+           >>>      &SCF
+           >>>        ADDED_MOS 10
+           >>>        &SMEAR
+           >>>          METHOD FERMI_DIRAC
+           >>>          ELECTRONIC_TEMPERATURE [K] 500.0
+           >>>        &END SMEAR
+           >>>      &END SCF
+           >>>    &END DFT
+           >>>  &END FORCE_EVAL
+           >>>  '''
+
     max_scf: int
         Maximum number of SCF iteration to be performed for
         one optimization. Default is ``50``.
@@ -119,13 +141,12 @@ class CP2K(Calculator):
     print_level: str
         PRINT_LEVEL of global output.
         Possible options are:
-        DEBUG Everything is written out, useful for debugging purposes only 
-        HIGH Lots of output 
-        LOW Little output 
-        MEDIUM Quite some output 
-        SILENT Almost no output 
+        DEBUG Everything is written out, useful for debugging purposes only
+        HIGH Lots of output
+        LOW Little output
+        MEDIUM Quite some output
+        SILENT Almost no output
         Default is 'LOW'
-        
     """
 
     implemented_properties = ['energy', 'free_energy', 'forces', 'stress']
