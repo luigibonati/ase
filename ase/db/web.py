@@ -117,7 +117,10 @@ class Session:
         pages.append((nxt, 'next'))
         return pages
 
-    def create_table(self, db: Database, uid_key: str) -> Table:
+    def create_table(self,
+                     db: Database,
+                     uid_key: str,
+                     keys: List[str]) -> Table:
         query = self.query
         if self.nrows is None:
             try:
@@ -133,8 +136,8 @@ class Session:
                      self.limit, offset=self.page * self.limit)
         table.format()
         table.addcolumns = sorted(column for column in
-                                  all_columns + table.keys
-                                  if column not in table.columns)
+                                  all_columns + keys
+                                  if column not in self.columns)
         return table
 
 

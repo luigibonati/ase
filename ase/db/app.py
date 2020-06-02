@@ -42,7 +42,6 @@ app = Flask(__name__, template_folder=str(root))
 
 projects: Dict[str, Dict[str, Any]] = {}
 
-
 static = root / 'ase/db/static'
 if not (static / 'jsmol/JSmol.min.js').is_file():
     print(f"""
@@ -91,7 +90,9 @@ def update(sid: int, what: str, x: str):
     session = Session.get(sid)
     project = projects[session.project_name]
     session.update(what, x, request.args, project)
-    table = session.create_table(project['database'], project['uid_key'])
+    table = session.create_table(project['database'],
+                                 project['uid_key'],
+                                 keys=list(project['key_descriptions']))
     return render_template('ase/db/templates/table.html',
                            t=table,
                            p=project,
