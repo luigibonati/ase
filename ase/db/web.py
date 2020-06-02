@@ -135,6 +135,7 @@ class Session:
         table.select(query, self.columns, self.sort,
                      self.limit, offset=self.page * self.limit)
         table.format()
+        assert self.columns is not None
         table.addcolumns = sorted(column for column in
                                   all_columns + keys
                                   if column not in self.columns)

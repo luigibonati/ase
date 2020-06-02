@@ -24,7 +24,7 @@ or this::
 
 import io
 import sys
-from typing import Dict, Any
+from typing import Dict, Any, Set
 from pathlib import Path
 
 from flask import Flask, render_template, request
@@ -182,7 +182,7 @@ def row_to_dict(row: AtomsRow, project: Dict[str, Any]) -> Dict[str, Any]:
 
 def add_project(db: Database) -> None:
     """Add database to projects with name 'default'."""
-    all_keys = set()
+    all_keys: Set[str] = set()
     for row in db.select(columns=['key_value_pairs'], include_data=False):
         all_keys.update(row._keys)
     kd = {key: (key, '', '') for key in all_keys}
