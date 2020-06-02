@@ -193,24 +193,38 @@ def get_calculator_class(name):
     return Calculator
 
 
-def equal(a, b, tol=None):
+def equal(a, b, tol=None, rtol=None, atol=None):
     """ndarray-enabled comparison function."""
     # XXX Known bugs:
     #  * Comparing cell objects (pbc not part of array representation)
     #  * Infinite recursion for cyclic dicts
     #  * Can of worms is open
+    if tol is not None:
+        raise DeprecationWarning('Use `equal(a, b, rtol=..., atol=...)` '
+                                 'instead of `tol=...`')
+        assert rtol is None and atol is None, \
+            'Do not use deprecated `tol` with `atol` and/or `rtol`'
+        rtol = tol
+        atol = tol
+
     if isinstance(a, dict) and isinstance(b, dict):
         if a.keys() != b.keys():
             return False
-        return all(equal(a[key], b[key], tol) for key in a.keys())
+        return all(equal(a[key], b[key], rtol=rtol, atol=atol)
+                   for key in a.keys())
 
     if np.shape(a) != np.shape(b):
         return False
 
-    if tol is None:
+    if rtol is None and atol is None:
         return np.array_equal(a, b)
 
-    return np.allclose(a, b, rtol=tol, atol=tol)
+    if rtol is None:
+        rtol = 0
+    if atol is None:
+        atol = 0
+
+    return np.allclose(a, b, rtol=rtol, atol=atol)
 
 
 def kptdensity2monkhorstpack(atoms, kptdensity=3.5, even=True):
