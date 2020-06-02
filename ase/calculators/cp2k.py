@@ -89,11 +89,10 @@ class CP2K(Calculator):
         Note, that most keywords accept ``None`` to disable the generation
         of the corresponding input section.
 
-        .. note::
-
         This input template is important for advanced CP2K
         inputs, but is also needed for e.g. controlling the Brillouin
-        zone integration. The example below illustrates some common options:
+        zone integration. The example below illustrates some common
+        options::
 
            >>> inp = '''&FORCE_EVAL
            >>>    &DFT
