@@ -93,7 +93,7 @@ def compare_atoms(atoms1, atoms2, tol=1e-15, excluded_properties=None):
             if prop in properties_to_check:
                 properties_to_check.remove(prop)
                 if not equal(getattr(atoms1, prop), getattr(atoms2, prop),
-                             tol):
+                             atol=tol):
                     system_changes.append(prop)
 
         arrays1 = set(atoms1.arrays)
@@ -109,7 +109,7 @@ def compare_atoms(atoms1, atoms2, tol=1e-15, excluded_properties=None):
         # Finally, check all of the non-excluded properties shared by the atoms
         # arrays.
         for prop in properties_to_check & arrays1 & arrays2:
-            if not equal(atoms1.arrays[prop], atoms2.arrays[prop], tol):
+            if not equal(atoms1.arrays[prop], atoms2.arrays[prop], atol=tol):
                 system_changes.append(prop)
 
     return system_changes
