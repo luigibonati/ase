@@ -199,19 +199,16 @@ def equal(a, b, tol=None):
     #  * Comparing cell objects (pbc not part of array representation)
     #  * Infinite recursion for cyclic dicts
     #  * Can of worms is open
-    if tol is None:
-        return np.array_equal(a, b)
+    if isinstance(a, dict) and isinstance(b, dict):
+        if a.keys() != b.keys():
+            return False
+        return all(equal(a[key], b[key], tol) for key in a.keys())
 
-    shape = np.shape(a)
-    if shape != np.shape(b):
+    if np.shape(a) != np.shape(b):
         return False
 
-    if not shape:
-        if isinstance(a, dict) and isinstance(b, dict):
-            if a.keys() != b.keys():
-                return False
-            return all(equal(a[key], b[key], tol) for key in a.keys())
-        return abs(a - b) < tol * abs(b) + tol
+    if tol is None:
+        return np.array_equal(a, b)
 
     return np.allclose(a, b, rtol=tol, atol=tol)
 
