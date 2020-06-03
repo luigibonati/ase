@@ -214,6 +214,12 @@ class CP2K(Calculator):
 
     def set(self, **kwargs):
         """Set parameters like set(key1=value1, key2=value2, ...)."""
+        msg = '"%s" is not a known keyword for the CP2K calculator. ' \
+              'To access all features of CP2K by means of an input ' \
+              'template, consider using the "inp" keyword instead.'
+        for key in kwargs:
+            assert key in self.default_parameters, msg % key
+
         changed_parameters = Calculator.set(self, **kwargs)
         if changed_parameters:
             self.reset()
