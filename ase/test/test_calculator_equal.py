@@ -7,6 +7,14 @@ def arrays(a, dtype):
     return [list(map(dtype, a)), np.array(a, dtype=dtype)]
 
 
+@pytest.mark.parametrize('a', [1, 1.])
+@pytest.mark.parametrize('b', [1, 1.])
+@pytest.mark.parametrize('rtol', [None, 0, 1e-8])
+@pytest.mark.parametrize('atol', [None, 0, 1e-8])
+def test_single_value(a, b, rtol, atol):
+    assert equal(a, b, rtol=rtol, atol=atol)
+
+
 @pytest.mark.parametrize('a', arrays([1, 1], int) + arrays([1, 1], float))
 @pytest.mark.parametrize('b', arrays([1, 1], int) + arrays([1, 1], float))
 @pytest.mark.parametrize('rtol', [None, 0, 1e-8])
