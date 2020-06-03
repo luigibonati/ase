@@ -18,6 +18,8 @@ def test_array_equal(a, b, rtol, atol):
                  {'size': b, 'gamma': True}, rtol=rtol, atol=atol)
     assert not equal({'size': a, 'gamma': True},
                      {'size': b, 'gamma': False}, rtol=rtol, atol=atol)
+    assert not equal({'size': a}, b, rtol=rtol, atol=atol)
+    assert not equal(a, {'size': b}, rtol=rtol, atol=atol)
 
 
 @pytest.mark.parametrize('a', arrays([2, 2], float))
