@@ -207,7 +207,12 @@ def equal(a, b, tol=None, rtol=None, atol=None):
         rtol = tol
         atol = tol
 
-    if isinstance(a, dict) and isinstance(b, dict):
+    a_is_dict = isinstance(a, dict)
+    b_is_dict = isinstance(b, dict)
+    if a_is_dict or b_is_dict:
+        # Check that both a and b are dicts
+        if not (a_is_dict and b_is_dict):
+            return False
         if a.keys() != b.keys():
             return False
         return all(equal(a[key], b[key], rtol=rtol, atol=atol)
