@@ -1,3 +1,4 @@
+"""Test app a bit."""
 import pytest
 
 
@@ -37,6 +38,8 @@ def client(database):
 
 
 def test_add_columns(database):
+    """Test that all keys can be added also for row withous keys."""
+    pytest.importorskip('flask')
     from ase.db.web import Session
     from ase.db.app import handle_query
     session = Session('name')
@@ -44,8 +47,8 @@ def test_add_columns(database):
                'handle_query_function': handle_query}
     session.update('query', '', {'query': 'id=2'}, project)
     table = session.create_table(database, 'id', ['foo'])
-    assert table.columns == []
-    assert 'foo' in table.addcolumns
+    assert table.columns == []  # selected row doesn't have a foo key
+    assert 'foo' in table.addcolumns  # ... but we can add it
 
 
 def test_db_web(client):
