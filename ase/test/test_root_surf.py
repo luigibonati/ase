@@ -40,5 +40,3 @@ def test_root_surf():
     # Try bad root
     with pytest.raises(ValueError):
         fcc111_root("H", 5, (1, 1, 2), a=1)
-
-test_root_surf()

@@ -61,8 +61,8 @@ def point_in_cell_2d(point, cell, eps=1e-8):
         return abs(t1x*(t2y-t3y) + t2x*(t3y-t1y) + t3x*(t1y-t2y))/2
 
     c0 = (0, 0)
-    c1 = (cell[0][0:2])
-    c2 = (cell[1][0:2])
+    c1 = cell[0, 0:2]
+    c2 = cell[1, 0:2]
     c3 = c1 + c2
 
     cA = tri_area(c0, c1, c2) + tri_area(c1, c2, c3)
@@ -72,29 +72,32 @@ def point_in_cell_2d(point, cell, eps=1e-8):
     return pA <= cA + eps
 
 
-def root_surface_analysis(primitive_slab, root, root_point=False, eps=1e-8):
+def __root_cell_normalization(primitive_slab):
+    """Returns the scaling factor for x axis and cell normalized by that factor"""
+
+    xscale = np.linalg.norm(primitive_slab.cell[0, 0:2])
+    cell_vectors = primitive_slab.cell[0:2, 0:2] / xscale
+    return xscale, cell_vectors
+
+
+def __root_surface_analysis(primitive_slab, root, eps=1e-8):
     """A tool to analyze a slab and look for valid roots that exist, up to
-       the given root. This is useful for generating all possible cells
-       without prior knowledge.
+    the given root. This is useful for generating all possible cells
+    without prior knowledge.
 
-       *primitive slab* is the primitive cell to analyze.
+    *primitive slab* is the primitive cell to analyze.
 
-       *root* is the desired root to find, and all below.
+    *root* is the desired root to find, and all below.
 
-       *root_point* returns the cell_points and the index of the root
-
-       """
+    This is the internal function which gives extra data to root_surface.
+    """
 
     # Setup parameters for cell searching
     logeps = int(-log10(eps))
-
-    xscale = np.linalg.norm(primitive_slab.cell[0][0:2])
-    xx, xy = primitive_slab.cell[0][0:2] / xscale
-    yx, yy = primitive_slab.cell[1][0:2] / xscale
-    cell_vectors = np.array([[xx, xy], [yx, yy]])
+    xscale, cell_vectors = __root_cell_normalization(primitive_slab)
 
     # Allocate grid for cell search search
-    points = np.indices((root+1, root+1)).T.reshape(-1, 2)
+    points = np.indices((root + 1, root + 1)).T.reshape(-1, 2)
 
     # Find points corresponding to full cells
     cell_points = [cell_vectors[0] * x + cell_vectors[1] * y for x, y in points]
@@ -102,15 +105,23 @@ def root_surface_analysis(primitive_slab, root, root_point=False, eps=1e-8):
     # Find point close to the desired cell (floating point error possible)
     roots = np.around(np.linalg.norm(cell_points, axis=1)**2, logeps)
 
-    if root_point:
-        valid_roots = np.nonzero(roots == root)[0]
-        if len(valid_roots) == 0:
-            raise ValueError("Invalid root {} for cell {}".format(root, cell_vectors))
-        return cell_points, cell_points[np.nonzero(roots == root)[0][0]]
-    else:
-        roots = np.array([int(this_root) for this_root in roots
-                          if this_root.is_integer() and this_root <= root])
-        return set(roots[1:])
+    valid_roots = np.nonzero(roots == root)[0]
+    if len(valid_roots) == 0:
+        raise ValueError("Invalid root {} for cell {}".format(root, cell_vectors))
+    int_roots = np.array([int(this_root) for this_root in roots
+                      if this_root.is_integer() and this_root <= root])
+    return cell_points, cell_points[np.nonzero(roots == root)[0][0]], set(int_roots[1:])
+
+
+def root_surface_analysis(primitive_slab, root, eps=1e-8):
+    """A tool to analyze a slab and look for valid roots that exist, up to
+    the given root. This is useful for generating all possible cells
+    without prior knowledge.
+
+    *primitive slab* is the primitive cell to analyze.
+
+    *root* is the desired root to find, and all below."""
+    return __root_surface_analysis(primitive_slab=primitive_slab, root=root, eps=eps)[2]
 
 
 def root_surface(primitive_slab, root, eps=1e-8):
@@ -127,13 +138,10 @@ def root_surface(primitive_slab, root, eps=1e-8):
 
     atoms = primitive_slab.copy()
 
-    xscale = np.linalg.norm(primitive_slab.cell[0][0:2])
-    xx, xy = primitive_slab.cell[0][0:2] / xscale
-    yx, yy = primitive_slab.cell[1][0:2] / xscale
-    cell_vectors = np.array([[xx, xy], [yx, yy]])
+    xscale, cell_vectors = __root_cell_normalization(primitive_slab)
 
     # Do root surface analysis
-    cell_points, root_point = root_surface_analysis(primitive_slab, root, root_point=True, eps=eps)
+    cell_points, root_point, roots = __root_surface_analysis(primitive_slab, root, eps=eps)
 
     # Find new cell
     root_angle = -atan2(root_point[1], root_point[0])
@@ -144,7 +152,7 @@ def root_surface(primitive_slab, root, eps=1e-8):
     cell = np.array([np.dot(x, root_rotation) * root_scale for x in cell_vectors])
 
     # Find all cell centers within the cell
-    shift = cell_vectors.sum(axis=0)/2
+    shift = cell_vectors.sum(axis=0) / 2
     cell_points = [point for point in cell_points if point_in_cell_2d(point+shift, cell, eps=eps)]
 
     # Setup new cell
