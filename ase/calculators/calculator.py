@@ -216,8 +216,7 @@ def equal(a, b, tol=None, rtol=None, atol=None):
             return False
         if a.keys() != b.keys():
             return False
-        return all(equal(a[key], b[key], rtol=rtol, atol=atol)
-                   for key in a.keys())
+        return all(equal(a[key], b[key], rtol=rtol, atol=atol) for key in a)
 
     if np.shape(a) != np.shape(b):
         return False
