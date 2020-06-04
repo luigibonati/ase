@@ -24,7 +24,7 @@ or this::
 
 import io
 import sys
-from typing import Dict, Any
+from typing import Dict, Any, Set
 from pathlib import Path
 
 from flask import Flask, render_template, request
@@ -41,23 +41,6 @@ root = Path(__file__).parent.parent.parent
 app = Flask(__name__, template_folder=str(root))
 
 projects: Dict[str, Dict[str, Any]] = {}
-
-
-static = root / 'ase/db/static'
-if not (static / 'jsmol/JSmol.min.js').is_file():
-    print(f"""
-WARNING:
-    You don't have jsmol on your system.
-
-    Download Jmol-*-binary.tar.gz from
-    https://sourceforge.net/projects/jmol/files/Jmol/,
-    extract jsmol.zip, unzip it and create a soft-link:
-
-        $ tar -xf Jmol-*-binary.tar.gz
-        $ unzip jmol-*/jsmol.zip
-        $ ln -s $PWD/jsmol {static}/jsmol
-""",
-          file=sys.stderr)
 
 
 @app.route('/', defaults={'project_name': 'default'})
@@ -91,7 +74,9 @@ def update(sid: int, what: str, x: str):
     session = Session.get(sid)
     project = projects[session.project_name]
     session.update(what, x, request.args, project)
-    table = session.create_table(project['database'], project['uid_key'])
+    table = session.create_table(project['database'],
+                                 project['uid_key'],
+                                 keys=list(project['key_descriptions']))
     return render_template('ase/db/templates/table.html',
                            t=table,
                            p=project,
@@ -181,7 +166,7 @@ def row_to_dict(row: AtomsRow, project: Dict[str, Any]) -> Dict[str, Any]:
 
 def add_project(db: Database) -> None:
     """Add database to projects with name 'default'."""
-    all_keys = set()
+    all_keys: Set[str] = set()
     for row in db.select(columns=['key_value_pairs'], include_data=False):
         all_keys.update(row._keys)
     kd = {key: (key, '', '') for key in all_keys}
