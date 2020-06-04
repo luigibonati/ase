@@ -4,6 +4,7 @@ import subprocess
 from math import pi, sqrt
 import pathlib
 from typing import Union, Optional, List, Set, Dict, Any
+import warnings
 
 import numpy as np
 
@@ -93,7 +94,7 @@ def compare_atoms(atoms1, atoms2, tol=1e-15, excluded_properties=None):
             if prop in properties_to_check:
                 properties_to_check.remove(prop)
                 if not equal(getattr(atoms1, prop), getattr(atoms2, prop),
-                             tol):
+                             atol=tol):
                     system_changes.append(prop)
 
         arrays1 = set(atoms1.arrays)
@@ -109,7 +110,7 @@ def compare_atoms(atoms1, atoms2, tol=1e-15, excluded_properties=None):
         # Finally, check all of the non-excluded properties shared by the atoms
         # arrays.
         for prop in properties_to_check & arrays1 & arrays2:
-            if not equal(atoms1.arrays[prop], atoms2.arrays[prop], tol):
+            if not equal(atoms1.arrays[prop], atoms2.arrays[prop], atol=tol):
                 system_changes.append(prop)
 
     return system_changes
@@ -193,27 +194,42 @@ def get_calculator_class(name):
     return Calculator
 
 
-def equal(a, b, tol=None):
+def equal(a, b, tol=None, rtol=None, atol=None):
     """ndarray-enabled comparison function."""
     # XXX Known bugs:
     #  * Comparing cell objects (pbc not part of array representation)
     #  * Infinite recursion for cyclic dicts
     #  * Can of worms is open
-    if tol is None:
-        return np.array_equal(a, b)
+    if tol is not None:
+        msg = 'Use `equal(a, b, rtol=..., atol=...)` instead of `tol=...`'
+        warnings.warn(msg, DeprecationWarning)
+        assert rtol is None and atol is None, \
+            'Do not use deprecated `tol` with `atol` and/or `rtol`'
+        rtol = tol
+        atol = tol
 
-    shape = np.shape(a)
-    if shape != np.shape(b):
+    a_is_dict = isinstance(a, dict)
+    b_is_dict = isinstance(b, dict)
+    if a_is_dict or b_is_dict:
+        # Check that both a and b are dicts
+        if not (a_is_dict and b_is_dict):
+            return False
+        if a.keys() != b.keys():
+            return False
+        return all(equal(a[key], b[key], rtol=rtol, atol=atol) for key in a)
+
+    if np.shape(a) != np.shape(b):
         return False
 
-    if not shape:
-        if isinstance(a, dict) and isinstance(b, dict):
-            if a.keys() != b.keys():
-                return False
-            return all(equal(a[key], b[key], tol) for key in a.keys())
-        return abs(a - b) < tol * abs(b) + tol
+    if rtol is None and atol is None:
+        return np.array_equal(a, b)
 
-    return np.allclose(a, b, rtol=tol, atol=tol)
+    if rtol is None:
+        rtol = 0
+    if atol is None:
+        atol = 0
+
+    return np.allclose(a, b, rtol=rtol, atol=atol)
 
 
 def kptdensity2monkhorstpack(atoms, kptdensity=3.5, even=True):
