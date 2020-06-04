@@ -4,6 +4,7 @@ import subprocess
 from math import pi, sqrt
 import pathlib
 from typing import Union, Optional, List, Set, Dict, Any
+import warnings
 
 import numpy as np
 
@@ -200,8 +201,8 @@ def equal(a, b, tol=None, rtol=None, atol=None):
     #  * Infinite recursion for cyclic dicts
     #  * Can of worms is open
     if tol is not None:
-        raise DeprecationWarning('Use `equal(a, b, rtol=..., atol=...)` '
-                                 'instead of `tol=...`')
+        msg = 'Use `equal(a, b, rtol=..., atol=...)` instead of `tol=...`'
+        warnings.warn(msg, DeprecationWarning)
         assert rtol is None and atol is None, \
             'Do not use deprecated `tol` with `atol` and/or `rtol`'
         rtol = tol
