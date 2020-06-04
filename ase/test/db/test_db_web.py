@@ -12,7 +12,10 @@ def database():
     t1 = [1, 2, 0]
     t2 = [[2, 3], [1, 1], [1, 0]]
 
-    atoms = Atoms('H2O')
+    atoms = Atoms('H2O',
+                  [(0, 0, 0),
+                   (2, 0, 0),
+                   (1, 1, 0)])
     atoms.center(vacuum=5)
     atoms.set_pbc(True)
 
@@ -70,6 +73,4 @@ def test_db_web(client):
         assert resp.status_code == 200
         atoms = read(io.StringIO(resp.data.decode()), format=type)
         print(atoms.numbers)
-        if type != 'cif':
-            assert (atoms.numbers == [1, 1, 8]).all()
-        
+        assert (atoms.numbers == [1, 1, 8]).all()
