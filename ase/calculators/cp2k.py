@@ -12,7 +12,8 @@ from subprocess import Popen, PIPE
 import numpy as np
 import ase.io
 from ase.units import Rydberg
-from ase.calculators.calculator import Calculator, all_changes, Parameters
+from ase.calculators.calculator import (Calculator, all_changes, Parameters,
+                                        CalculatorSetupError)
 
 
 class CP2K(Calculator):
@@ -218,7 +219,8 @@ class CP2K(Calculator):
               'To access all features of CP2K by means of an input ' \
               'template, consider using the "inp" keyword instead.'
         for key in kwargs:
-            assert key in self.default_parameters, msg % key
+            if key not in self.default_parameters:
+                raise CalculatorSetupError(msg % key)
 
         changed_parameters = Calculator.set(self, **kwargs)
         if changed_parameters:

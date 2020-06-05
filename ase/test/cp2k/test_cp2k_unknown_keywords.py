@@ -4,6 +4,7 @@ raises an error.
 """
 
 from ase.test import must_raise
+from ase.calculators.calculator import CalculatorSetupError
 
 
 def test_unknown_keywords(cp2k_factory):
@@ -11,7 +12,7 @@ def test_unknown_keywords(cp2k_factory):
                         'spinpol', 'occupations', 'mixer']
 
     for keyword in unknown_keywords:
-        with must_raise(AssertionError):
+        with must_raise(CalculatorSetupError):
             cp2k_factory.calc(key=None)
 
     print('passed test "unknown_keywords"')
