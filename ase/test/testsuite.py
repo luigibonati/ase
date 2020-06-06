@@ -12,11 +12,16 @@ from ase.calculators.calculator import names as calc_names, get_calculator_class
 from ase.cli.info import print_info
 from ase.cli.main import CLIError
 
+# asap is special, being the only calculator that may not be installed.
+# But we want that for performance in some tests.
+always_enabled_calculators = set(
+    ['asap', 'eam', 'emt', 'ff', 'lj', 'morse', 'tip3p', 'tip4p']
+)
 
-test_calculator_names = ['emt', 'asap']
+# XXX test_calculator_names is edited from conftest
+test_calculator_names = list(always_enabled_calculators)
 testdir = Path(__file__).parent
 datadir = (testdir / 'data').resolve()
-# datafiles_directory = os.path.join(os.path.dirname(__file__), 'datafiles', '')
 
 
 def require(calcname):
@@ -42,7 +47,7 @@ def all_test_modules_and_groups():
 def disable_calculators(names):
     import pytest
     for name in names:
-        if name in ['emt', 'lj', 'eam', 'morse', 'tip3p', 'asap']:
+        if name in always_enabled_calculators:
             continue
         try:
             cls = get_calculator_class(name)
