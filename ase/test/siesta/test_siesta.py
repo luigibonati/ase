@@ -1,7 +1,6 @@
 import numpy as np
 
 from ase.calculators.siesta.parameters import Species, PAOBasisBlock
-from ase.calculators.calculator import FileIOCalculator
 from ase import Atoms
 
 
