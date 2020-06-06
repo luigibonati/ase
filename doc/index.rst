@@ -38,7 +38,7 @@ Supported :mod:`Calculators <ase.calculators>`
 ==============================================
 
 |abinit| |Asap| |Atomistica| |CASTEP| |CP2K| |CRYSTAL| |deMon| |dftb|
-|dftd4| |elk| |exciting| |EMT|
+|dftd4| |DFTK| |elk| |exciting| |EMT|
 |fhi-aims| |fleur| |gamess_us| |gpaw| |gromacs|
 |hotbit| |jdftx| |kim| |lammps| |nwchem|
 |octopus| |onetep| |openmx| |psi4| |qchem| |q_espresso| |siesta| |turbomole| |vasp|
@@ -213,6 +213,9 @@ Contents
    :align: middle
 .. |dftb| image:: static/dftb.png
    :target: ase/calculators/dftb.html
+   :align: middle
+.. |DFTK| image:: static/dftk.png
+   :target: https://dftk.org/q/ase
    :align: middle
 .. |fhi-aims| image:: static/fhi-aims.png
    :target: ase/calculators/FHI-aims.html
