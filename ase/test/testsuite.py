@@ -163,7 +163,7 @@ class CLICommand:
     @staticmethod
     def add_arguments(parser):
         parser.add_argument(
-            '-c', '--calculators',
+            '-c', '--calculators', default='',
             help='comma-separated list of calculators to test')
         parser.add_argument('--list', action='store_true',
                             help='print all tests and exit')
@@ -198,16 +198,6 @@ class CLICommand:
 
     @staticmethod
     def run(args):
-        if args.calculators:
-            calculators = args.calculators.split(',')
-            # Hack: We use ASE_TEST_CALCULATORS to communicate to pytest
-            # (in conftest.py) which calculators we have enabled.
-            # This also provides an (undocumented) way to enable
-            # calculators when running pytest independently.
-            os.environ['ASE_TEST_CALCULATORS'] = ' '.join(calculators)
-        else:
-            calculators = []
-
         print_info()
         print()
 
@@ -215,14 +205,6 @@ class CLICommand:
             for name in calc_names:
                 print(name)
             sys.exit(0)
-
-        for calculator in calculators:
-            if calculator not in calc_names:
-                sys.stderr.write('No calculator named "{}".\n'
-                                 'Possible CALCULATORS are: '
-                                 '{}.\n'.format(calculator,
-                                                ', '.join(calc_names)))
-                sys.exit(1)
 
         if args.nogui:
             os.environ.pop('DISPLAY')
@@ -263,6 +245,9 @@ class CLICommand:
         else:
             add_args('ase.test')
 
+        if args.calculators:
+            add_args(f'--calculators={args.calculators}')
+
         if args.verbose:
             add_args('--capture=no')
 
@@ -270,7 +255,7 @@ class CLICommand:
             add_args(*args.pytest)
 
         print()
-        calcstring = ','.join(calculators) if calculators else 'none'
+        calcstring = args.calculators if args.calculators else 'none'
         print('Enabled calculators: {}'.format(calcstring))
         print()
         print('About to run pytest with these parameters:')

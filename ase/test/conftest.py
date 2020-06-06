@@ -10,13 +10,19 @@ from ase.test.factories import (Factories, CalculatorInputs,
 
 
 @pytest.fixture(scope='session')
-def enabled_calculators():
+def enabled_calculators(pytestconfig):
+    from ase.test.testsuite import always_enabled_calculators
     from ase.calculators.calculator import names as calculator_names
     all_names = set(calculator_names)
-    names = set(os.environ.get('ASE_TEST_CALCULATORS', '').split())
-    for name in names:
-        assert name in all_names
-    return names
+    opt = pytestconfig.getoption('calculators')
+
+    names = set(always_enabled_calculators)
+    if opt is not None:
+        for name in opt.split(','):
+            if name not in all_names:
+                raise ValueError(f'No such calculator: {name}')
+            names.add(name)
+    return sorted(names)
 
 
 @pytest.fixture(scope='session', autouse=True)
@@ -184,7 +190,9 @@ def arbitrarily_seed_rng(request):
 
 
 def pytest_addoption(parser):
+    parser.addoption('--calculators', metavar='NAMES', default='',
+                     help='comma-separated list of calculators to test')
     parser.addoption('--seed', action='append', default=[],
-                     help='Add a seed for tests where random number generators'
+                     help='add a seed for tests where random number generators'
                           ' are involved. This option can be applied more'
                           ' than once.')
