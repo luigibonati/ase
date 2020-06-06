@@ -15,13 +15,7 @@ def test_siesta(siesta_factory):
         [-0.682793, 0.682793, -0.682793],
         [0.682793, -0.682793, -0.682793]]))
 
-    # Test the initialization.
     siesta = siesta_factory.calc()
-    assert isinstance(siesta, FileIOCalculator)
-    assert isinstance(siesta.implemented_properties, tuple)
-    assert isinstance(siesta.default_parameters, dict)
-    assert isinstance(siesta.name, str)
-    assert isinstance(siesta.default_parameters, dict)
 
     # Test simple fdf-argument case.
     atoms = h.copy()
