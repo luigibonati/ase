@@ -8,11 +8,7 @@ from ase.calculators.calculator import CalculatorSetupError
 
 
 def test_unknown_keywords(cp2k_factory):
-    unknown_keywords = ['kpts', 'smearing', 'maxiter', 'convergence',
-                        'spinpol', 'occupations', 'mixer']
-
-    for keyword in unknown_keywords:
-        with must_raise(CalculatorSetupError):
-            cp2k_factory.calc(key=None)
+    with must_raise(CalculatorSetupError):
+        cp2k_factory.calc(dummy_nonexistent_keyword='hello')
 
     print('passed test "unknown_keywords"')
