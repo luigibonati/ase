@@ -67,8 +67,9 @@ def neighbor_k_search(k_c, G_c, kpt_kc, tol=1e-4):
     raise NotImplementedError
 
 
-def calculate_weights(cell_cc):
-    """ Weights are used for non-cubic cells, see PRB **61**, 10040"""
+def calculate_weights(cell_cc, normalize=True):
+    """ Weights are used for non-cubic cells, see PRB **61**, 10040
+        If normalized they lose the physical dimension."""
     alldirs_dc = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1],
                            [1, 1, 0], [1, 0, 1], [0, 1, 1]], dtype=int)
     g = np.dot(cell_cc, cell_cc.T)
@@ -88,7 +89,10 @@ def calculate_weights(cell_cc):
         if abs(w[d]) > 1e-5:
             Gdir_dc = np.concatenate((Gdir_dc, alldirs_dc[d:d + 1]))
             weight_d = np.concatenate((weight_d, w[d:d + 1]))
-    weight_d /= max(abs(weight_d))
+
+    if normalize:
+        weight_d /= max(abs(weight_d))
+
     return weight_d, Gdir_dc
 
 
@@ -417,7 +421,7 @@ class Wannier:
           ``spin``: The spin channel to be considered.
             The Wannier code treats each spin channel independently.
 
-          ``fixedenergy`` / ``fixedstates``: Fixed part of Heilbert space.
+          ``fixedenergy`` / ``fixedstates``: Fixed part of Hilbert space.
             Determine the fixed part of Hilbert space by either a maximal
             energy *or* a number of bands (possibly a list for multiple
             k-points).
@@ -738,38 +742,22 @@ class Wannier:
                      np.log(abs(self.Z_dww[:3].diagonal(0, 1, 2))**2))
         return np.sqrt(r2)
 
-    # def get_spreads(self):
-    #     r"""Calculate the spread of the Wannier functions.
-    #     Compute the spread as the inverse of the contribution to the spread
-    #     functional, so that is proportional to the physical spread.
-
-    #     ::
-
-    #                         1
-    #       spread_w = ---------------
-    #                  |Z_dww|^2 * W_d
-
-
-    #     """
-    #     spread_dw = np.abs(self.Z_dww.diagonal(0, 1, 2))**2
-    #     spread_w = np.dot(spread_dw.T, self.weight_d).real
-    #     inv_spread_w = 1 / spread_w
-    #     return inv_spread_w
-
     def get_spreads(self):
-        r"""Calculate the spread of the Wannier functions.
-        The definition is based on PRB61-15 by Berghold and Mundy.
+        r"""Calculate the spread of the Wannier functions in Å².
+        The definition is based on eq. 13 in PRB61-15 by Berghold and Mundy.
 
         ::
 
-                        --                2
-          radius**2 = - >   W_d  ln |Z_dw|
-                        --d
+                     / 1  \ 2  --                2
+          spread = - |----|    >   W_d  ln |Z_dw|
+                     \2 pi/    --d
 
 
         """
+        # compute weights without normalization, to keep physical dimension
+        weight_d, _ = calculate_weights(self.largeunitcell_cc, normalize=False)
         Z2_dw = np.abs(self.Z_dww.diagonal(0, 1, 2))**2
-        spread_w = - np.dot(np.log(Z2_dw).T, self.weight_d).real
+        spread_w = - np.dot(np.log(Z2_dw).T, weight_d).real / (2 * np.pi)**2
         return spread_w
 
     def get_spectral_weight(self, w):
