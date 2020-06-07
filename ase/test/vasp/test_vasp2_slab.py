@@ -1,7 +1,5 @@
 import numpy as np
-import pytest
 
-from ase.test.vasp import installed2 as installed
 from ase.io import read
 from ase.optimize import BFGS
 from ase.build import fcc111

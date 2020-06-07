@@ -1,6 +1,4 @@
 """Test to ensure that md logger and trajectory contain same data"""
-from pathlib import Path
-
 import numpy as np
 import pytest
 
