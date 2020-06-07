@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 from subprocess import Popen, PIPE
 
@@ -152,6 +151,9 @@ def pytest_generate_tests(metafunc):
 
 
 class CLI:
+    def __init__(self, calculators):
+        self.calculators = calculators
+
     def ase(self, args):
         if isinstance(args, str):
             import shlex
@@ -166,7 +168,9 @@ class CLI:
 
     def shell(self, command, calculator_name=None):
         from ase.test.testsuite import runshellcommand
-        runshellcommand(command, calculator_name=calculator_name)
+        if calculator_name is not None:
+            self.calculators.require(calculator_name)
+        runshellcommand(command)
 
 
 @pytest.fixture(scope='session')
@@ -182,8 +186,8 @@ def asap3():
 
 
 @pytest.fixture(scope='session')
-def cli():
-    return CLI()
+def cli(calculators):
+    return CLI(calculators)
 
 
 @pytest.fixture(autouse=True)
