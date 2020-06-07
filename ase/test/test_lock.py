@@ -1,10 +1,10 @@
-def test_lock():
-    """Test timeout on Lock.acquire()."""
-    from ase.utils import Lock
-    from ase.test import must_raise
+import pytest
+from ase.utils import Lock
 
+
+def test_lock_acquire_timeout():
     lock = Lock('lockfile', timeout=0.3)
     with lock:
-        with must_raise(TimeoutError):
+        with pytest.raises(TimeoutError):
             with lock:
                 ...

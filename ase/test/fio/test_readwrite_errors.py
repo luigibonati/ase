@@ -1,4 +1,5 @@
 def test_readwrite_errors():
+    import pytest
     from io import StringIO
     from ase.io import read, write
     from ase.build import bulk
@@ -8,8 +9,8 @@ def test_readwrite_errors():
     atoms = bulk('Au')
     fd = StringIO()
 
-    with must_raise(UnknownFileTypeError):
+    with pytest.raises(UnknownFileTypeError):
         write(fd, atoms, format='hello')
 
-    with must_raise(UnknownFileTypeError):
+    with pytest.raises(UnknownFileTypeError):
         read(fd, format='hello')

@@ -1,5 +1,4 @@
 from typing import Optional
-from ase.test import must_raise
 import unittest
 try:
     import pymysql
@@ -105,7 +104,7 @@ def test_delete():
     db.get(id=uid)
     db.delete([uid])
 
-    with must_raise(KeyError):
+    with pytest.raises(KeyError):
         db.get(id=uid)
 
 

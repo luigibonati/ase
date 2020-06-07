@@ -59,18 +59,9 @@ def disable_calculators(names):
             cls.__del__ = mock_del
 
 
-class must_raise:
-    """Context manager for checking raising of exceptions."""
-    def __init__(self, exception):
-        self.exception = exception
-
-    def __enter__(self):
-        pass
-
-    def __exit__(self, exc_type, exc_value, tb):
-        if exc_type is None:
-            raise RuntimeError('Failed to fail: ' + str(self.exception))
-        return issubclass(exc_type, self.exception)
+def must_raise(*args, **kwargs):
+    import pytest
+    return pytest.raises(*args, **kwargs)
 
 
 def test(calculators=tuple(), jobs=0, verbose=False,

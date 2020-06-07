@@ -1,10 +1,12 @@
-def test_bravais_check():
-    import numpy as np
-    from ase.cell import Cell
-    from ase.lattice import bravais_lattices, UnsupportedLattice
-    from ase.build import bulk, fcc111
-    from ase.test.testsuite import must_raise
+import numpy as np
+import pytest
+from ase.cell import Cell
+from ase.lattice import bravais_lattices, UnsupportedLattice
+from ase.build import bulk, fcc111
+from ase.test.testsuite import must_raise
 
+
+def test_bravais_check():
     bravais = {}
     for name in bravais_lattices:
         bravais[name.lower()] = bravais_lattices[name]
@@ -18,7 +20,7 @@ def test_bravais_check():
             if pbc[:2].all() or sum(pbc) == 1:
                 lattice = c.get_bravais_lattice(pbc=pbc)
             else:
-                with must_raise(UnsupportedLattice):
+                with pytest.raises(UnsupportedLattice):
                     lattice = c.get_bravais_lattice(pbc=pbc)
                 return
         except RuntimeError:

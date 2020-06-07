@@ -82,7 +82,7 @@ def test_db2(name):
     f4 = a.get_forces()
     assert abs(f1 - f4).max() < 1e-14
 
-    with must_raise(ValueError):
+    with pytest.raises(ValueError):
         c.update(id, abc={'a': 42})
 
     c.update(id, grr='hmm')
@@ -93,16 +93,16 @@ def test_db2(name):
     for row in c.select(include_data=False):
         assert len(row.data) == 0
 
-    with must_raise(ValueError):
+    with pytest.raises(ValueError):
         c.write(ch4, foo=['bar', 2])  # not int, bool, float or str
 
-    with must_raise(ValueError):
+    with pytest.raises(ValueError):
         c.write(Atoms(), pi='3.14')  # number as a string
 
-    with must_raise(ValueError):
+    with pytest.raises(ValueError):
         c.write(Atoms(), fmax=0.0)  # reserved word
 
-    with must_raise(ValueError):
+    with pytest.raises(ValueError):
         c.write(Atoms(), S=42)  # chemical symbol as key
 
     id = c.write(Atoms(),
