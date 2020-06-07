@@ -5,10 +5,10 @@ def test_vasp2_cell(require_vasp):
 
     """
 
+    import pytest
     from ase.test.vasp import installed2 as installed
     from ase.calculators.vasp import Vasp2 as Vasp
     from ase.build import molecule
-    from ase.test import must_raise
     assert installed()
 
 
@@ -17,6 +17,6 @@ def test_vasp2_cell(require_vasp):
     atoms = molecule('CH4')
     calc = Vasp()
 
-    with must_raise(ValueError):
+    with pytest.raises(ValueError):
         atoms.calc = calc
         atoms.get_total_energy()

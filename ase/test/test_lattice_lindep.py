@@ -2,7 +2,6 @@ def test_lattice_lindep():
     import pytest
     from ase.lattice.cubic import FaceCenteredCubic
     from ase.lattice.hexagonal import HexagonalClosedPacked
-    from ase.test import must_raise
 
     with pytest.raises(ValueError):
         # The Miller indices of the surfaces are linearly dependent

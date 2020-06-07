@@ -59,11 +59,6 @@ def disable_calculators(names):
             cls.__del__ = mock_del
 
 
-def must_raise(*args, **kwargs):
-    import pytest
-    return pytest.raises(*args, **kwargs)
-
-
 def test(calculators=tuple(), jobs=0, verbose=False,
          stream='ignored', strict='ignored'):
     """Run the tests programmatically.

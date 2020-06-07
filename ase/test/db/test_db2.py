@@ -9,7 +9,6 @@ from ase.constraints import FixAtoms, FixBondLength
 from ase.db import connect
 from ase.io import read
 from ase.build import molecule
-from ase.test import must_raise
 
 names = ['testase.json', 'testase.db', 'postgresql', 'mysql', 'mariadb']
 

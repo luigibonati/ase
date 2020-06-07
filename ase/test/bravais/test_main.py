@@ -3,7 +3,6 @@ import pytest
 from ase.cell import Cell
 from ase.lattice import bravais_lattices, UnsupportedLattice
 from ase.build import bulk, fcc111
-from ase.test.testsuite import must_raise
 
 
 def test_bravais_check():
