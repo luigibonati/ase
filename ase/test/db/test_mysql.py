@@ -1,4 +1,5 @@
 from typing import Optional
+import pytest
 import unittest
 try:
     import pymysql

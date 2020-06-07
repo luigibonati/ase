@@ -1,7 +1,6 @@
 import os
 import sys
-from subprocess import Popen, PIPE
-from contextlib import contextmanager
+from subprocess import Popen
 import importlib
 from pathlib import Path
 import warnings
