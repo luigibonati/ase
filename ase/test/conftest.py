@@ -17,7 +17,7 @@ def enabled_calculators(pytestconfig):
     opt = pytestconfig.getoption('calculators')
 
     names = set(always_enabled_calculators)
-    if opt is not None:
+    if opt:
         for name in opt.split(','):
             if name not in all_names:
                 raise ValueError(f'No such calculator: {name}')
@@ -34,9 +34,15 @@ class Calculators:
         if name not in self.enabled_names:
             pytest.skip(f'use --calculators={name} to enable')
 
+
 @pytest.fixture(scope='session')
 def calculators(enabled_calculators):
     return Calculators(enabled_calculators)
+
+
+@pytest.fixture(scope='session')
+def require_vasp(calculators):
+    calculators.require('vasp')
 
 
 @pytest.fixture(scope='session', autouse=True)
