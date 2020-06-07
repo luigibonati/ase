@@ -7,12 +7,12 @@ import pytest
 from ase.utils import workdir
 from ase.test.factories import (Factories, CalculatorInputs,
                                 make_factory_fixture, get_testing_executables)
+from ase.calculators.calculator import names as calculator_names
 
 
 @pytest.fixture(scope='session')
 def enabled_calculators(pytestconfig):
     from ase.test.testsuite import always_enabled_calculators
-    from ase.calculators.calculator import names as calculator_names
     all_names = set(calculator_names)
     opt = pytestconfig.getoption('calculators')
 
@@ -23,6 +23,20 @@ def enabled_calculators(pytestconfig):
                 raise ValueError(f'No such calculator: {name}')
             names.add(name)
     return sorted(names)
+
+
+class Calculators:
+    def __init__(self, names):
+        self.enabled_names = set(names)
+
+    def require(self, name):
+        assert name in calculator_names
+        if name not in self.enabled_names:
+            pytest.skip(f'use --calculators={name} to enable')
+
+@pytest.fixture(scope='session')
+def calculators(enabled_calculators):
+    return Calculators(enabled_calculators)
 
 
 @pytest.fixture(scope='session', autouse=True)
