@@ -24,12 +24,6 @@ testdir = Path(__file__).parent
 datadir = (testdir / 'data').resolve()
 
 
-def require(calcname):
-    import unittest
-    if calcname not in test_calculator_names:
-        raise unittest.SkipTest(f'use --calculators={calcname} to enable')
-
-
 def all_test_modules_and_groups():
     names = []
     groups = {}
