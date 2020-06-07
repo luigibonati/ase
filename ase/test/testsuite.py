@@ -73,13 +73,6 @@ class must_raise:
         return issubclass(exc_type, self.exception)
 
 
-@contextmanager
-def no_warn():
-    with warnings.catch_warnings():
-        warnings.filterwarnings('ignore')
-        yield
-
-
 def test(calculators=tuple(), jobs=0, verbose=False,
          stream='ignored', strict='ignored'):
     """Run the tests programmatically.
