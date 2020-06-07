@@ -1,5 +1,5 @@
+import pytest
 import os
-import unittest
 
 
 def installed():
@@ -7,7 +7,7 @@ def installed():
         if os.getenv(env):
             break
     else:
-        raise unittest.SkipTest('Neither VASP_COMMAND nor VASP_SCRIPT defined')
+        pytest.skip('Neither VASP_COMMAND nor VASP_SCRIPT defined')
     return True
 
 
@@ -18,6 +18,7 @@ def installed2():
         if os.getenv(env):
             break
     else:
-        raise unittest.SkipTest('Neither ASE_VASP_COMMAND, VASP_COMMAND nor VASP_SCRIPT defined')
+        pytest.skip('Neither ASE_VASP_COMMAND, VASP_COMMAND nor '
+                    'VASP_SCRIPT defined')
 
     return True
