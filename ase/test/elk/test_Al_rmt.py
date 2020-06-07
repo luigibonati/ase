@@ -1,13 +1,11 @@
-def test_Al_rmt():
+def test_Al_rmt(calculators):
     import os
 
-    from ase.test import require
     from ase.build import bulk
     from ase.calculators.calculator import kpts2mp
     from ase.calculators.elk import ELK
 
-    require('elk')
-
+    calculators.require('elk')
     atoms = bulk('Al', 'bcc', a=4.0)
 
     # save ELK_SPECIES_PATH
