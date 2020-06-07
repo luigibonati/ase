@@ -6,12 +6,12 @@ import pytest
 from ase.utils import workdir
 from ase.test.factories import (Factories, CalculatorInputs,
                                 make_factory_fixture, get_testing_executables)
-from ase.calculators.calculator import names as calculator_names
+from ase.calculators.calculator import (names as calculator_names,
+                                        get_calculator_class)
 
 
 @pytest.fixture(scope='session')
 def enabled_calculators(pytestconfig):
-    from ase.test.testsuite import always_enabled_calculators
     all_names = set(calculator_names)
     opt = pytestconfig.getoption('calculators')
 

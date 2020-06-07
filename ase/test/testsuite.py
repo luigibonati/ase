@@ -8,7 +8,7 @@ import warnings
 import argparse
 from multiprocessing import cpu_count
 
-from ase.calculators.calculator import names as calc_names, get_calculator_class
+from ase.calculators.calculator import names as calc_names
 from ase.cli.info import print_info
 from ase.cli.main import CLIError
 
