@@ -497,7 +497,7 @@ class Wannier:
                 [calc.get_eigenvalues(k, spin).searchsorted(cutoff)
                  for k in range(self.Nk)], int)
 
-        if isinstance(nwannier, int):
+        if np.issubdtype(type(nwannier), np.integer):
             self.nwannier = nwannier
             if fixedstates is None and fixedenergy is None:
                 self.fixedstates_k = np.array([self.nwannier] * self.Nk, int)
@@ -654,7 +654,7 @@ class Wannier:
         # Update the new Z matrix
         self.Z_dww = self.Z_dkww.sum(axis=1) / self.Nk
 
-    def best_nwannier(self, nwrange=5, random_reps=5, tolerance=1e-5):
+    def best_nwannier(self, nwrange=5, random_reps=5, tolerance=1e-6):
         """The best value for 'nwannier', maybe
 
         The best value is the one that gives the lowest average value for the
