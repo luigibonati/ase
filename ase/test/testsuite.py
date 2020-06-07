@@ -74,15 +74,6 @@ class must_raise:
 
 
 @contextmanager
-def must_warn(category):
-    with warnings.catch_warnings(record=True) as ws:
-        yield
-        did_warn = any(w.category == category for w in ws)
-    if not did_warn:
-        raise RuntimeError('Failed to warn: ' + str(category))
-
-
-@contextmanager
 def no_warn():
     with warnings.catch_warnings():
         warnings.filterwarnings('ignore')
