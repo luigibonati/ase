@@ -59,19 +59,6 @@ def disable_calculators(names):
             cls.__del__ = mock_del
 
 
-def runshellcommand(command):
-    actual_command = ' '.join(command.split('\n')).strip()
-    proc = Popen(actual_command,
-                 shell=True,
-                 stdout=PIPE)
-    print(proc.stdout.read().decode())
-    proc.wait()
-
-    if proc.returncode != 0:
-        raise RuntimeError('Command "{}" exited with error code {}'
-                           .format(actual_command, proc.returncode))
-
-
 class must_raise:
     """Context manager for checking raising of exceptions."""
     def __init__(self, exception):

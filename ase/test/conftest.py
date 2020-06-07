@@ -1,5 +1,5 @@
 from pathlib import Path
-from subprocess import Popen, PIPE
+from subprocess import Popen, PIPE, check_output
 
 import pytest
 
@@ -167,11 +167,12 @@ class CLI:
         return stdout.decode('utf-8')
 
     def shell(self, command, calculator_name=None):
-        from ase.test.testsuite import runshellcommand
         if calculator_name is not None:
             self.calculators.require(calculator_name)
-        runshellcommand(command)
 
+        actual_command = ' '.join(command.split('\n')).strip()
+        output = check_output(actual_command, shell=True)
+        return output.decode()
 
 @pytest.fixture(scope='session')
 def datadir():
