@@ -1,4 +1,4 @@
-def test_vasp_cell():
+def test_vasp_cell(require_vasp):
     """
 
     Check the unit cell is handled correctly

@@ -1,4 +1,4 @@
-def test_vasp_charge():
+def test_vasp_charge(require_vasp):
     """
     Run VASP tests to ensure that determining number of electrons from
     user-supplied charge works correctly. This is conditional on the existence

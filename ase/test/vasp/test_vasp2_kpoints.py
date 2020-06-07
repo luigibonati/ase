@@ -1,4 +1,4 @@
-def test_vasp2_kpoints():
+def test_vasp2_kpoints(require_vasp):
     """
 
     Check the many ways of specifying KPOINTS

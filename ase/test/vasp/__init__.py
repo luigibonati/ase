@@ -1,10 +1,8 @@
-from ase.test import require
 import os
 import unittest
 
 
 def installed():
-    require('vasp')
     for env in ['VASP_COMMAND', 'VASP_SCRIPT']:
         if os.getenv(env):
             break
@@ -15,7 +13,6 @@ def installed():
 
 def installed2():
     # Check if env variables exist for Vasp2
-    require('vasp')
 
     for env in ['VASP_COMMAND', 'VASP_SCRIPT', 'ASE_VASP_COMMAND']:
         if os.getenv(env):

@@ -1,4 +1,4 @@
-def test_vasp2_check_state():
+def test_vasp2_check_state(require_vasp):
     """
     Run tests to ensure that the VASP check_state() function call works correctly,
     i.e. correctly sets the working directories and works in that directory.

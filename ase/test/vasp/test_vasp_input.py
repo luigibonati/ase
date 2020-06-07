@@ -1,4 +1,4 @@
-def test_vasp_input():
+def test_vasp_input(require_vasp):
     """
 
     Check VASP input handling

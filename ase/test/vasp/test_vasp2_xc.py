@@ -1,4 +1,4 @@
-def test_vasp2_xc():
+def test_vasp2_xc(require_vasp):
     """
     Run some tests to ensure that the xc setting in the VASP calculator
     works.
