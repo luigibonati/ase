@@ -9,9 +9,6 @@ from ase.constraints import FixAtoms
 from ase.calculators.vasp import Vasp2 as Vasp
 
 
-pytestmark = pytest.mark.skipif(not installed())
-
-
 def create_slab_with_constraints(require_vasp):
     slab = fcc111('Al', size=(1, 1, 3), periodic=True)
     slab.center(vacuum=4, axis=2)
