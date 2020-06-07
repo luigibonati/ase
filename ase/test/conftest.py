@@ -44,10 +44,39 @@ def require_vasp(calculators):
     calculators.require('vasp')
 
 
+def disable_calculators(names):
+    import pytest
+    for name in names:
+        if name in always_enabled_calculators:
+            continue
+        try:
+            cls = get_calculator_class(name)
+        except ImportError:
+            pass
+        else:
+            def get_mock_init(name):
+                def mock_init(obj, *args, **kwargs):
+                    pytest.skip(f'use --calculators={name} to enable')
+                return mock_init
+
+            def mock_del(obj):
+                pass
+            cls.__init__ = get_mock_init(name)
+            cls.__del__ = mock_del
+
+
+
+# asap is special, being the only calculator that may not be installed.
+# But we want that for performance in some tests.
+always_enabled_calculators = set(
+    ['asap', 'eam', 'emt', 'ff', 'lj', 'morse', 'tip3p', 'tip4p']
+)
+
+
 @pytest.fixture(scope='session', autouse=True)
 def monkeypatch_disabled_calculators(request, enabled_calculators):
-    from ase.test.testsuite import disable_calculators, test_calculator_names
     from ase.calculators.calculator import names as calculator_names
+    test_calculator_names = list(always_enabled_calculators)
     test_calculator_names += enabled_calculators
     disable_calculators([name for name in calculator_names
                          if name not in enabled_calculators])

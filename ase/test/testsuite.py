@@ -12,14 +12,6 @@ from ase.calculators.calculator import names as calc_names, get_calculator_class
 from ase.cli.info import print_info
 from ase.cli.main import CLIError
 
-# asap is special, being the only calculator that may not be installed.
-# But we want that for performance in some tests.
-always_enabled_calculators = set(
-    ['asap', 'eam', 'emt', 'ff', 'lj', 'morse', 'tip3p', 'tip4p']
-)
-
-# XXX test_calculator_names is edited from conftest
-test_calculator_names = list(always_enabled_calculators)
 testdir = Path(__file__).parent
 datadir = (testdir / 'data').resolve()
 
@@ -36,27 +28,6 @@ def all_test_modules_and_groups():
         else:
             names.append(name)
     return names, groups
-
-
-def disable_calculators(names):
-    import pytest
-    for name in names:
-        if name in always_enabled_calculators:
-            continue
-        try:
-            cls = get_calculator_class(name)
-        except ImportError:
-            pass
-        else:
-            def get_mock_init(name):
-                def mock_init(obj, *args, **kwargs):
-                    pytest.skip(f'use --calculators={name} to enable')
-                return mock_init
-
-            def mock_del(obj):
-                pass
-            cls.__init__ = get_mock_init(name)
-            cls.__del__ = mock_del
 
 
 def test(calculators=tuple(), jobs=0, verbose=False,
