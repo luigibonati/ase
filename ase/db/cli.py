@@ -331,6 +331,7 @@ def main(args):
         except ImportError:
             print('Please install Flask: python3 -m pip install flask')
             return
+        check_jsmol()
         import ase.db.app as app
         app.add_project(db)
         app.app.run(host='0.0.0.0', debug=True)
@@ -403,3 +404,22 @@ def row2str(row) -> str:
         S.append('{:{}} | {:{}} | {}'
                  .format(key, width0, desc, width1, value))
     return '\n'.join(S)
+
+
+def check_jsmol():
+    from ase.db.app import root
+    static = root / 'ase/db/static'
+    if not (static / 'jsmol/JSmol.min.js').is_file():
+        print(f"""
+    WARNING:
+        You don't have jsmol on your system.
+
+        Download Jmol-*-binary.tar.gz from
+        https://sourceforge.net/projects/jmol/files/Jmol/,
+        extract jsmol.zip, unzip it and create a soft-link:
+
+            $ tar -xf Jmol-*-binary.tar.gz
+            $ unzip jmol-*/jsmol.zip
+            $ ln -s $PWD/jsmol {static}/jsmol
+    """,
+              file=sys.stderr)

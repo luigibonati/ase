@@ -112,14 +112,14 @@ def test_netcdftrajectory():
 
     # Check cell origin
     co.set_pbc(True)
-    co.set_celldisp([1,2,3])
+    co.set_celldisp([1, 2, 3])
     traj = NetCDFTrajectory('4.nc', 'w', co)
     traj.write(co)
     traj.close()
 
     traj = NetCDFTrajectory('4.nc', 'r')
     a = traj[0]
-    assert np.all(abs(a.get_celldisp() - np.array([1,2,3])) < 1e-12)
+    assert np.all(abs(a.get_celldisp() - np.array([1, 2, 3])) < 1e-12)
     traj.close()
 
     os.remove('4.nc')
@@ -130,9 +130,10 @@ def test_netcdftrajectory():
     traj.write(co, arrays=['id'])
     traj.close()
 
-    traj = NetCDFTrajectory('5.nc', 'r')#
+    traj = NetCDFTrajectory('5.nc', 'r')
     assert np.all(traj[0].numbers == [8, 6])
-    assert np.all(np.abs(traj[0].positions - np.array([[2, 2, 3.7], [2., 2., 2.5]])) < 1e-6)
+    assert np.all(np.abs(traj[0].positions - np.array([[2, 2, 3.7],
+                                                       [2., 2., 2.5]])) < 1e-6)
     traj.close()
 
     a = read('5.nc')
@@ -156,7 +157,7 @@ def test_netcdftrajectory():
     nc.createVariable('cell_angles', 'f4', ('frame', 'cell_angular',))
 
     r0 = np.array([[1, 2, 3], [4, 5, 6]], dtype=np.float)
-    r1 = 2*r0
+    r1 = 2 * r0
 
     nc.variables['atom_types'][:] = [1, 2]
     nc.variables['coordinates'][0] = r0
@@ -186,10 +187,10 @@ def test_netcdftrajectory():
     nc.createVariable('coordinates', 'f4', ('frame', 'atom', 'spatial',))
     nc.createVariable('cell_lengths', 'f4', ('frame', 'cell_spatial',))
     nc.createVariable('cell_angles', 'f4', ('frame', 'cell_angular',))
-    nc.createVariable('id','i', ('frame', 'atom',))
+    nc.createVariable('id', 'i', ('frame', 'atom',))
 
     r0 = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype=np.float)
-    r1 = 2*r0
+    r1 = 2 * r0
 
     nc.variables['atom_types'][:] = [1, 2, 3]
     nc.variables['coordinates'][0] = r0
@@ -207,3 +208,21 @@ def test_netcdftrajectory():
     traj.close()
 
     os.remove('7.nc')
+
+    # test types_to_numbers argument
+    traj = NetCDFTrajectory('8.nc', 'w', co)
+    traj.write()
+    traj.close()
+    d = {6: 15, 8: 15}
+    traj = NetCDFTrajectory('8.nc', mode="r", types_to_numbers=d)
+    assert np.allclose(traj[-1].get_masses(), 30.974)
+    assert (traj[-1].numbers == [15, 15]).all()
+    d = {3: 14}
+    traj = NetCDFTrajectory('8.nc', mode="r", types_to_numbers=d)
+    assert (traj[-1].numbers == [6, 8]).all()
+    traj = NetCDFTrajectory('8.nc', 'r',
+                            types_to_numbers=[0, 0, 0, 0, 0, 0, 15])
+    assert (traj[-1].numbers == [15, 8]).all()
+
+    traj.close()
+    os.remove('8.nc')
