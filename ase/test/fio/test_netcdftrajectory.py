@@ -5,17 +5,25 @@ import numpy as np
 import pytest
 
 from ase import Atom, Atoms
+from ase.build import molecule
 from ase.io import read
 from ase.io import NetCDFTrajectory
 
 
-def test_netcdftrajectory():
-    pytest.importorskip('netCDF4')
+@pytest.fixture(scope='module')
+def netCDF4():
+    return pytest.importorskip('netCDF4')
 
-    co = Atoms([Atom('C', (0, 0, 0)),
-                Atom('O', (0, 0, 1.2))],
-                cell=[3, 3, 3],
-                pbc=True)
+
+@pytest.fixture
+def co(netCDF4):
+    return Atoms([Atom('C', (0, 0, 0)),
+                  Atom('O', (0, 0, 1.2))],
+                 cell=[3, 3, 3],
+                 pbc=True)
+
+
+def test_netcdftrajectory(co):
     traj = NetCDFTrajectory('1.nc', 'w', co)
     for i in range(5):
         co.positions[:, 2] += 0.1
@@ -59,8 +67,6 @@ def test_netcdftrajectory():
     assert (co2.numbers == co.numbers).all()
     del t2
 
-    os.remove('1.nc')
-
     co[0].number = 6
     co.pbc = True
     t.write(co)
@@ -81,8 +87,6 @@ def test_netcdftrajectory():
 
     # append to a nonexisting file
     fname = '2.nc'
-    if os.path.isfile(fname):
-        os.remove(fname)
     t = NetCDFTrajectory(fname, 'a', co)
     del t
 
@@ -109,7 +113,6 @@ def test_netcdftrajectory():
         a.set_array('test', test)
         t.write_arrays(a, frame, ['test'])
     del t
-    os.remove(fname)
 
     # Check cell origin
     co.set_pbc(True)
@@ -122,8 +125,6 @@ def test_netcdftrajectory():
     a = traj[0]
     assert np.all(abs(a.get_celldisp() - np.array([1, 2, 3])) < 1e-12)
     traj.close()
-
-    os.remove('4.nc')
 
     # Add 'id' field and check if it is read correctly
     co.set_array('id', np.array([2, 1]))
@@ -140,11 +141,9 @@ def test_netcdftrajectory():
     a = read('5.nc')
     assert(len(a) == 2)
 
-    os.remove('5.nc')
-
+def test_netcdf_with_variable_atomic_numbers(netCDF4):
     # Create a NetCDF file with a per-file definition of atomic numbers. ASE
     # NetCDFTrajectory can read but not write these types of files.
-    import netCDF4
     nc = netCDF4.Dataset('6.nc', 'w')
     nc.createDimension('frame', None)
     nc.createDimension('atom', 2)
@@ -173,10 +172,8 @@ def test_netcdftrajectory():
     assert np.allclose(traj[1].positions, r1)
     traj.close()
 
-    os.remove('6.nc')
 
-    # Create a NetCDF file with a non-consecutive index.
-    import netCDF4
+def test_netcdf_with_nonconsecutive_index(netCDF4):
     nc = netCDF4.Dataset('7.nc', 'w')
     nc.createDimension('frame', None)
     nc.createDimension('atom', 3)
@@ -208,9 +205,8 @@ def test_netcdftrajectory():
     assert (traj[1].numbers == [3, 1, 2]).all()
     traj.close()
 
-    os.remove('7.nc')
 
-    # test types_to_numbers argument
+def test_types_to_numbers_argument(co):
     traj = NetCDFTrajectory('8.nc', 'w', co)
     traj.write()
     traj.close()
@@ -226,4 +222,3 @@ def test_netcdftrajectory():
     assert (traj[-1].numbers == [15, 8]).all()
 
     traj.close()
-    os.remove('8.nc')
