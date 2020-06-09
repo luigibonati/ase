@@ -77,8 +77,7 @@ def point_in_cell_2d(point, cell, eps=1e-8):
 
     # Get area of triangles formed from adjacent vertices of parallelogram and
     # point in question.
-    pA = tri_area(point, c0, c1) + tri_area(point, c1, c2) +
-         tri_area(point, c2, c3) + tri_area(point, c3, c0)
+    pA = tri_area(point, c0, c1) + tri_area(point, c1, c2) + tri_area(point, c2, c3) + tri_area(point, c3, c0)
 
     # If combined area of triangles from point is larger than area of
     # parallelogram, point is not inside parallelogram.
