@@ -1,15 +1,16 @@
+import os
+import warnings
+
+import numpy as np
+import pytest
+
+from ase import Atom, Atoms
+from ase.io import read
+from ase.io import NetCDFTrajectory
+
+
 def test_netcdftrajectory():
-    import os
-    import warnings
-
-    import numpy as np
-
-    from pytest import importorskip
-    importorskip('netCDF4')
-
-    from ase import Atom, Atoms
-    from ase.io import read
-    from ase.io import NetCDFTrajectory
+    pytest.importorskip('netCDF4')
 
     co = Atoms([Atom('C', (0, 0, 0)),
                 Atom('O', (0, 0, 1.2))],
