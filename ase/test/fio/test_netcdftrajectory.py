@@ -21,6 +21,7 @@ def co(netCDF4):
 
 
 def test_netcdftrajectory(co):
+    rng = np.random.RandomState(17)
     traj = NetCDFTrajectory('1.nc', 'w', co)
     for i in range(5):
         co.positions[:, 2] += 0.1
@@ -40,11 +41,10 @@ def test_netcdftrajectory(co):
         if i < 4:
             print(1, a.positions[-1, 2], 1.3 + i * 0.1)
             assert abs(a.positions[-1, 2] - 1.3 - i * 0.1) < 1e-6
-            assert a.pbc.all()
         else:
             print(1, a.positions[-1, 2], 1.7 + i - 4)
             assert abs(a.positions[-1, 2] - 1.7 - i + 4) < 1e-6
-            assert a.pbc.all()
+        assert a.pbc.all()
     co.positions[:] += 1
     t.write(co)
     for i, a in enumerate(t):
@@ -65,7 +65,6 @@ def test_netcdftrajectory(co):
     del t2
 
     co[0].number = 6
-    co.pbc = True
     t.write(co)
 
     co.pbc = False
@@ -105,7 +104,7 @@ def test_netcdftrajectory(co):
     # Append something in Voigt notation
     t = NetCDFTrajectory(fname, 'a')
     for frame, a in enumerate(t):
-        test = np.random.random([len(a), 6])
+        test = rng.random([len(a), 6])
         a.set_array('test', test)
         t.write_arrays(a, frame, ['test'])
     del t
