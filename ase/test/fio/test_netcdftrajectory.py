@@ -1,6 +1,3 @@
-import os
-import warnings
-
 import numpy as np
 import pytest
 
@@ -95,8 +92,7 @@ def test_netcdftrajectory(co):
     # File is not created before first write
     co.set_pbc([True, False, False])
     d = co.get_distance(0, 1)
-    with warnings.catch_warnings():
-        warnings.simplefilter('ignore', UserWarning)
+    with pytest.warns(None):
         t.write(co)
     del t
     # Check pbc
