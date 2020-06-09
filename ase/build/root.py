@@ -54,25 +54,38 @@ def bcc111_root(symbol, root, size, a=None,
 
 
 def point_in_cell_2d(point, cell, eps=1e-8):
+    """This function takes a 2D slice of the cell in the XY plane and calculates
+    if a point should lie in it.  This is used as a more accurate method of
+    ensuring we find all of the correct cell repetitions in the root surface
+    code.  The Z axis is totally ignored but for most uses this should be fine.
+    """
+    # Define area of a triangle
     def tri_area(t1, t2, t3):
         t1x, t1y = t1[0:2]
         t2x, t2y = t2[0:2]
         t3x, t3y = t3[0:2]
-        return abs(t1x*(t2y-t3y) + t2x*(t3y-t1y) + t3x*(t1y-t2y))/2
+        return abs(t1x * (t2y - t3y) + t2x * (t3y - t1y) + t3x * (t1y - t2y)) / 2
 
+    # c0, c1, c2, c3 define a parallelogram
     c0 = (0, 0)
     c1 = cell[0, 0:2]
     c2 = cell[1, 0:2]
     c3 = c1 + c2
 
+    # Get area of parallelogram
     cA = tri_area(c0, c1, c2) + tri_area(c1, c2, c3)
 
-    pA = tri_area(point, c0, c1) + tri_area(point, c1, c2) + tri_area(point, c2, c3) + tri_area(point, c3, c0)
+    # Get area of triangles formed from adjacent vertices of parallelogram and
+    # point in question.
+    pA = tri_area(point, c0, c1) + tri_area(point, c1, c2) +
+         tri_area(point, c2, c3) + tri_area(point, c3, c0)
 
+    # If combined area of triangles from point is larger than area of
+    # parallelogram, point is not inside parallelogram.
     return pA <= cA + eps
 
 
-def __root_cell_normalization(primitive_slab):
+def _root_cell_normalization(primitive_slab):
     """Returns the scaling factor for x axis and cell normalized by that factor"""
 
     xscale = np.linalg.norm(primitive_slab.cell[0, 0:2])
@@ -80,7 +93,7 @@ def __root_cell_normalization(primitive_slab):
     return xscale, cell_vectors
 
 
-def __root_surface_analysis(primitive_slab, root, eps=1e-8):
+def _root_surface_analysis(primitive_slab, root, eps=1e-8):
     """A tool to analyze a slab and look for valid roots that exist, up to
     the given root. This is useful for generating all possible cells
     without prior knowledge.
@@ -94,7 +107,7 @@ def __root_surface_analysis(primitive_slab, root, eps=1e-8):
 
     # Setup parameters for cell searching
     logeps = int(-log10(eps))
-    xscale, cell_vectors = __root_cell_normalization(primitive_slab)
+    xscale, cell_vectors = _root_cell_normalization(primitive_slab)
 
     # Allocate grid for cell search search
     points = np.indices((root + 1, root + 1)).T.reshape(-1, 2)
@@ -121,7 +134,7 @@ def root_surface_analysis(primitive_slab, root, eps=1e-8):
     *primitive slab* is the primitive cell to analyze.
 
     *root* is the desired root to find, and all below."""
-    return __root_surface_analysis(primitive_slab=primitive_slab, root=root, eps=eps)[2]
+    return _root_surface_analysis(primitive_slab=primitive_slab, root=root, eps=eps)[2]
 
 
 def root_surface(primitive_slab, root, eps=1e-8):
@@ -138,10 +151,10 @@ def root_surface(primitive_slab, root, eps=1e-8):
 
     atoms = primitive_slab.copy()
 
-    xscale, cell_vectors = __root_cell_normalization(primitive_slab)
+    xscale, cell_vectors = _root_cell_normalization(primitive_slab)
 
     # Do root surface analysis
-    cell_points, root_point, roots = __root_surface_analysis(primitive_slab, root, eps=eps)
+    cell_points, root_point, roots = _root_surface_analysis(primitive_slab, root, eps=eps)
 
     # Find new cell
     root_angle = -atan2(root_point[1], root_point[0])
