@@ -150,6 +150,7 @@ class Lock:
         while True:
             fd = opencew(self.name, self.world)
             if fd is not None:
+                self.fd = fd
                 break
             time_left = self.timeout - (time.time() - t1)
             if time_left <= 0:
@@ -161,6 +162,8 @@ class Lock:
         self.world.barrier()
         if self.world.rank == 0:
             os.remove(self.name)
+            self.fd.close()
+
 
     def __enter__(self):
         self.acquire()
