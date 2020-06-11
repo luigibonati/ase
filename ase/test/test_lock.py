@@ -1,4 +1,5 @@
 import pytest
+import os
 
 
 def test_lock():
@@ -18,8 +19,10 @@ def test_lock_close_file_descriptor():
     from ase.utils import Lock
 
     lock = Lock('lockfile', timeout=0.3)
-    with pytest.warns(None) as record:
-        with lock:
-            pass
+    with lock:
+        pass
 
-    assert not len(record), record[0].message
+    # If fstat raises OSError this means that fd.close() was
+    # not called.
+    with pytest.raises(OSError):
+        os.fstat(lock.fd.name)
