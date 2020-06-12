@@ -2663,9 +2663,9 @@ class ExpCellFilter(UnitCellFilter):
 
         # check for reasonable alignment between naive and
         # exact search directions
-        all_are_zero = (np.all(np.isclose(deform_grad_log_force, 0.0)) and
-                        np.all(np.isclose(deform_grad_log_force_naive, 0.0)))
-        if all_are_zero or \
+        all_are_equal = np.all(np.isclose(deform_grad_log_force,
+                                          deform_grad_log_force_naive))
+        if all_are_equal or \
             (np.sum(deform_grad_log_force * deform_grad_log_force_naive) /
              np.sqrt(np.sum(deform_grad_log_force**2) *
                      np.sum(deform_grad_log_force_naive**2)) > 0.8):
