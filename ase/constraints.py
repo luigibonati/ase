@@ -2663,9 +2663,12 @@ class ExpCellFilter(UnitCellFilter):
 
         # check for reasonable alignment between naive and
         # exact search directions
-        if (np.sum(deform_grad_log_force * deform_grad_log_force_naive) /
-            np.sqrt(np.sum(deform_grad_log_force**2) *
-                    np.sum(deform_grad_log_force_naive**2)) > 0.8):
+        all_are_zero = (np.all(np.isclose(deform_grad_log_force, 0.0)) and
+                        np.all(np.isclose(deform_grad_log_force_naive, 0.0)))
+        if all_are_zero or \
+            (np.sum(deform_grad_log_force * deform_grad_log_force_naive) /
+             np.sqrt(np.sum(deform_grad_log_force**2) *
+                     np.sum(deform_grad_log_force_naive**2)) > 0.8):
             deform_grad_log_force = deform_grad_log_force_naive
 
         # Cauchy stress used for convergence testing
