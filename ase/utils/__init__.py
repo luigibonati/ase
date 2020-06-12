@@ -162,8 +162,9 @@ class Lock:
         self.world.barrier()
         if self.world.rank == 0:
             os.remove(self.name)
-            self.fd.close()
-
+        self.world.barrier()
+        self.fd.close()
+        delattr(self, 'fd')
 
     def __enter__(self):
         self.acquire()
