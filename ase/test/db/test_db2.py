@@ -130,3 +130,11 @@ def test_db2(name):
     ids = [row.get('id') for row in c.select()]
     offset = 2
     assert next(c.select(offset=offset)).id == ids[offset]
+
+    # Test transfer between backends
+    if 'postgres' in name or 'mysql' in name or 'mariadb' in name:
+        c0 = connect('testase.db')
+        c0.write(c.get(id))
+        atoms = c.get(id).toatoms()
+        id = c0.write(atoms, num=4.323, data={'b': 3})
+        c.write(c0.get(id))
