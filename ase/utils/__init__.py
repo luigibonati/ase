@@ -56,6 +56,7 @@ def plural(n, word):
 
 class DevNull:
     encoding = 'UTF-8'
+    closed = False
 
     def write(self, string):
         pass
@@ -197,7 +198,7 @@ def search_current_git_hash(arg, world=None):
         return None
 
     # Check argument
-    if isinstance(arg, basestring):
+    if isinstance(arg, str):
         # Directory path
         dpath = arg
     else:
@@ -420,7 +421,7 @@ def write_json(self, fd):
     _write_json(fd, self)
 
 
-@classmethod
+@classmethod  # type: ignore
 def read_json(cls, fd):
     """Read new instance from JSON file."""
     from ase.io.jsonio import read_json as _read_json
@@ -484,6 +485,7 @@ def lazymethod(meth):
     its return value is stored.  Subsequent calls return the cached
     value."""
     name = meth.__name__
+
     @functools.wraps(meth)
     def getter(self):
         try:
@@ -495,6 +497,14 @@ def lazymethod(meth):
             cache[name] = meth(self)
         return cache[name]
     return getter
+
+
+def warn_legacy(feature_name):
+    warnings.warn(
+        f'The {feature_name} feature is untested and ASE developers do not '
+        'know whether it works or how to use it.  Please rehabilitate it '
+        '(by writing unittests) or it may be removed.',
+        FutureWarning)
 
 
 def lazyproperty(meth):
@@ -509,7 +519,10 @@ def deprecated(msg):
     def deprecated_decorator(func):
         @functools.wraps(func)
         def deprecated_function(*args, **kwargs):
-            warnings.warn(msg, FutureWarning)
+            warning = msg
+            if not isinstance(warning, Warning):
+                warning = FutureWarning(warning)
+            warnings.warn(warning)
             return func(*args, **kwargs)
         return deprecated_function
     return deprecated_decorator

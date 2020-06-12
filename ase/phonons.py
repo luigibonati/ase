@@ -14,7 +14,7 @@ import ase.units as units
 from ase.parallel import world
 from ase.dft import monkhorst_pack
 from ase.io.trajectory import Trajectory
-from ase.utils import opencew, pickleload, basestring
+from ase.utils import opencew, pickleload
 
 
 class Displacement:
@@ -95,8 +95,8 @@ class Displacement:
         assert isinstance(atoms, list)
         assert len(atoms) <= len(self.atoms)
 
-        if isinstance(atoms[0], basestring):
-            assert np.all([isinstance(atom, basestring) for atom in atoms])
+        if isinstance(atoms[0], str):
+            assert np.all([isinstance(atom, str) for atom in atoms])
             sym_a = self.atoms.get_chemical_symbols()
             # List for atomic indices
             indices = []
@@ -139,7 +139,7 @@ class Displacement:
 
         # Set calculator if provided
         assert self.calc is not None, "Provide calculator in __init__ method"
-        atoms_N.set_calculator(self.calc)
+        atoms_N.calc = self.calc
 
         # Do calculation on equilibrium structure
         self.state = 'eq.pckl'
@@ -535,7 +535,7 @@ class Phonons(Displacement):
             assert 0
             omega_kl, modes = omega_kl
 
-        from ase.dft.band_structure import BandStructure
+        from ase.spectrum.band_structure import BandStructure
         bs = BandStructure(path, energies=omega_kl[None])
         return bs
 

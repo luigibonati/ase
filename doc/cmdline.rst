@@ -28,6 +28,8 @@ eos             Calculate equation of state
 ulm             Show content of ulm-file
 nomad-upload    Upload files to NOMAD
 band-structure  Plot band-structure
+nebplot         Analyze NEB trajectories
+dimensionality  Analyze dimensionality of a structure
 completion      Add tab-completion for Bash
 ==============  =================================================
 

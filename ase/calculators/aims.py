@@ -6,17 +6,17 @@ Simon P. Rittmeyer simon.rittmeyer@tum.de
 """
 
 import os
-
-import numpy as np
 import warnings
 import time
+from typing import Optional
+
+import numpy as np
 
 from ase.units import Hartree
 from ase.io.aims import write_aims, read_aims
 from ase.data import atomic_numbers
 from ase.calculators.calculator import FileIOCalculator, Parameters, kpts2mp, \
     ReadError, PropertyNotImplementedError
-from ase.utils import basestring
 
 
 float_keys = [
@@ -244,9 +244,10 @@ class Aims(FileIOCalculator):
         self.tier = tier
 
     # handling the filtering for dynamical commands with properties,
-    @property
-    def command(self):
+    @property  # type: ignore
+    def command(self) -> Optional[str]:  # type: ignore
         return self.__command
+
     @command.setter
     def command(self, x):
         self.__update_command(command=x)
@@ -276,12 +277,12 @@ class Aims(FileIOCalculator):
         # new class variables due to dynamical command handling
         self.__aims_command = None
         self.__outfilename = None
-        self.__command = None
+        self.__command: Optional[str] = None
 
         # filter the command and set the member variables "aims_command" and "outfilename"
         self.__update_command(command=command,
-                             aims_command=aims_command,
-                             outfilename=outfilename)
+                              aims_command=aims_command,
+                              outfilename=outfilename)
 
     # legacy handling of the (run_)command behavior a.k.a. a universal setter routine
     def __update_command(self, command=None, aims_command=None,
@@ -345,19 +346,19 @@ class Aims(FileIOCalculator):
                 if not self.outfilename:
                     self.__outfilename = Aims.__outfilename_default
 
-        self.__command =  '{0:s} > {1:s}'.format(self.aims_command, self.outfilename)
+        self.__command = '{0:s} > {1:s}'.format(self.aims_command,
+                                                self.outfilename)
 
     def set_atoms(self, atoms):
         self.atoms = atoms
 
     def set_label(self, label, update_outfilename=False):
-        self.label = label
-        self.directory = label
-        self.prefix = ''
-        # change outfile name to "<label.out>"
-        if update_outfilename:
-            self.outfilename="{}.out".format(os.path.basename(label))
-        self.out = os.path.join(label, self.outfilename)
+        msg = "Aims.set_label is not supported anymore, please use `directory`"
+        raise RuntimeError(msg)
+
+    @property
+    def out(self):
+        return os.path.join(self.label, self.outfilename)
 
     def check_state(self, atoms):
         system_changes = FileIOCalculator.check_state(self, atoms)
@@ -468,7 +469,7 @@ class Aims(FileIOCalculator):
             elif isinstance(value, (tuple, list)):
                 output.write('%-35s%s\n' %
                              (key, ' '.join(str(x) for x in value)))
-            elif isinstance(value, basestring):
+            elif isinstance(value, str):
                 output.write('%-35s%s\n' % (key, value))
             else:
                 output.write('%-35s%r\n' % (key, value))
@@ -508,12 +509,12 @@ class Aims(FileIOCalculator):
             self.read_forces()
 
         if ('sc_accuracy_stress' in self.parameters or
-            ('compute_numerical_stress' in self.parameters
-            and self.parameters['compute_numerical_stress']) or
-            ('compute_analytical_stress' in self.parameters
-            and self.parameters['compute_analytical_stress']) or
-            ('compute_heat_flux' in self.parameters
-            and self.parameters['compute_heat_flux'])):
+                ('compute_numerical_stress' in self.parameters
+                and self.parameters['compute_numerical_stress']) or
+                ('compute_analytical_stress' in self.parameters
+                and self.parameters['compute_analytical_stress']) or
+                ('compute_heat_flux' in self.parameters
+                and self.parameters['compute_heat_flux'])):
             self.read_stress()
 
         if ('compute_heat_flux' in self.parameters

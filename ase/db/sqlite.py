@@ -680,7 +680,7 @@ class SQLite3Database(Database, object):
             sql += '\nLIMIT {0}'.format(limit)
 
         if offset:
-            sql += '\nOFFSET {0}'.format(offset)
+            sql += self.get_offset_string(offset, limit=limit)
 
         if verbosity == 2:
             print(sql, args)
@@ -710,6 +710,15 @@ class SQLite3Database(Database, object):
                                             columns=columns):
                         yield row
 
+    def get_offset_string(self, offset, limit=None):
+        sql = ''
+        if not limit:
+            # In sqlite you cannot have offset without limit, so we
+            # set it to -1 meaning no limit
+            sql += '\nLIMIT -1'
+        sql += '\nOFFSET {0}'.format(offset)
+        return sql
+
     @parallel_function
     def count(self, selection=None, **kwargs):
         keys, cmps = parse_selection(selection, **kwargs)
@@ -729,10 +738,12 @@ class SQLite3Database(Database, object):
     def delete(self, ids):
         if len(ids) == 0:
             return
-        table_names = self._get_external_table_names() + all_tables[::-1]
+        table_names = self._get_external_table_names()
         with self.managed_connection() as con:
             self._delete(con.cursor(), ids,
                          tables=table_names)
+            if self.type == 'db':
+                con.execute("VACUUM")
 
     def _delete(self, cur, ids, tables=None):
         tables = tables or all_tables[::-1]
