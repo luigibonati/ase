@@ -143,7 +143,6 @@ class Lock:
         if world is None:
             from ase.parallel import world
         self.world = world
-        self.fd = None
 
     def acquire(self):
         dt = 0.2
@@ -165,7 +164,6 @@ class Lock:
             os.remove(self.name)
         self.world.barrier()
         self.fd.close()
-        self.fd = None
 
     def __enter__(self):
         self.acquire()
