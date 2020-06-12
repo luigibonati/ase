@@ -160,10 +160,10 @@ class Lock:
 
     def release(self):
         self.world.barrier()
+        self.fd.close()
         if self.world.rank == 0:
             os.remove(self.name)
         self.world.barrier()
-        self.fd.close()
 
     def __enter__(self):
         self.acquire()
