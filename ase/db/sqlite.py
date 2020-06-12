@@ -298,7 +298,7 @@ class SQLite3Database(Database, object):
         if not data:
             data = row._data
 
-        if self.type == 'postgresql':
+        if self.type in ['postgresql', 'mysql']:
             if isinstance(data, bytes):
                 data = bytes_to_object(data)
             data = encode(data)
