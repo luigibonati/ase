@@ -160,6 +160,8 @@ class Lock:
 
     def release(self):
         self.world.barrier()
+        # Important to close fd before deleting file on windows
+        # as a WinError would otherwise be raised.
         self.fd.close()
         if self.world.rank == 0:
             os.remove(self.name)
