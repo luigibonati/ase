@@ -404,11 +404,7 @@ class SQLite3Database(Database, object):
             'UPDATE systems SET mtime=?, key_value_pairs=? WHERE id=?',
             (mtime, encode(key_value_pairs), id))
         if data:
-            if self.type == 'postgresql':
-                if isinstance(data, bytes):
-                    data = bytes_to_object(data)
-                data = encode(data)
-            elif not isinstance(data, (str, bytes)):
+            if not isinstance(data, (str, bytes)):
                 data = encode(data, binary=self.version >= 9)
             cur.execute('UPDATE systems set data=? where id=?', (data, id))
 
