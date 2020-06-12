@@ -742,14 +742,21 @@ class SQLite3Database(Database, object):
         with self.managed_connection() as con:
             self._delete(con.cursor(), ids,
                          tables=table_names)
-            if self.type == 'db':
-                con.execute("VACUUM")
+        self.vacuum()
 
     def _delete(self, cur, ids, tables=None):
         tables = tables or all_tables[::-1]
         for table in tables:
             cur.execute('DELETE FROM {} WHERE id in ({});'.
                         format(table, ', '.join([str(id) for id in ids])))
+
+    def vacuum(self):
+        if not self.type == 'db':
+            return
+
+        with self.managed_connection() as con:
+            con.commit()
+            con.cursor().execute("VACUUM")
 
     @property
     def metadata(self):

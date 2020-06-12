@@ -55,11 +55,13 @@ def test_db(name, cli):
         if name is None:
             return
 
-    with connect(name) as con:
-        if 'postgres' in name or 'mysql' in name or 'mariadb' in name:
-            con.delete([row.id for row in con.select()])
+    if 'postgres' in name or 'mysql' in name or 'mariadb' in name:
+        con = connect(name)
+        con.delete([row.id for row in con.select()])
 
-        cli(cmd.replace('testase.json', name))
+    cli.shell(cmd.replace('testase.json', name))
+
+    with connect(name) as con:
         assert con.get_atoms(H=1)[0].magmom == 1
         count(5)
         count(3, 'hydro')
@@ -77,11 +79,9 @@ def test_db(name, cli):
         id = con.reserve(abc=7)
         assert con[id].abc == 7
 
-    for key in ['calculator', 'energy', 'abc', 'name', 'fmax']:
-        count(6, sort=key)
-        count(6, sort='-' + key)
+        for key in ['calculator', 'energy', 'abc', 'name', 'fmax']:
+            count(6, sort=key)
+            count(6, sort='-' + key)
 
+        con.delete([id])
     cli.shell('ase -T gui --terminal -n 3 {}'.format(name))
-
-    con = connect(name)
-    con.delete([id])
