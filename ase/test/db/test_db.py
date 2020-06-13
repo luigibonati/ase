@@ -55,33 +55,33 @@ def test_db(name, cli):
         if name is None:
             return
 
-    con = connect(name)
     if 'postgres' in name or 'mysql' in name or 'mariadb' in name:
+        con = connect(name)
         con.delete([row.id for row in con.select()])
 
     cli.shell(cmd.replace('testase.json', name))
-    assert con.get_atoms(H=1)[0].magmom == 1
-    count(5)
-    count(3, 'hydro')
-    count(0, 'foo')
-    count(3, abc=42)
-    count(3, 'abc')
-    count(0, 'abc,foo')
-    count(3, 'abc,hydro')
-    count(0, foo='bar')
-    count(1, formula='H2')
-    count(1, formula='H2O')
-    count(3, 'fmax<0.1')
-    count(1, '0.5<mass<1.5')
-    count(5, 'energy')
 
-    id = con.reserve(abc=7)
-    assert con[id].abc == 7
+    with connect(name) as con:
+        assert con.get_atoms(H=1)[0].magmom == 1
+        count(5)
+        count(3, 'hydro')
+        count(0, 'foo')
+        count(3, abc=42)
+        count(3, 'abc')
+        count(0, 'abc,foo')
+        count(3, 'abc,hydro')
+        count(0, foo='bar')
+        count(1, formula='H2')
+        count(1, formula='H2O')
+        count(3, 'fmax<0.1')
+        count(1, '0.5<mass<1.5')
+        count(5, 'energy')
+        id = con.reserve(abc=7)
+        assert con[id].abc == 7
 
-    for key in ['calculator', 'energy', 'abc', 'name', 'fmax']:
-        count(6, sort=key)
-        count(6, sort='-' + key)
+        for key in ['calculator', 'energy', 'abc', 'name', 'fmax']:
+            count(6, sort=key)
+            count(6, sort='-' + key)
 
+        con.delete([id])
     cli.shell('ase -T gui --terminal -n 3 {}'.format(name))
-
-    con.delete([id])
