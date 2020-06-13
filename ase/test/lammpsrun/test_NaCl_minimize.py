@@ -1,5 +1,4 @@
 import pytest
-from ase.calculators.lammpsrun import LAMMPS
 from ase.spacegroup import crystal
 from ase.data import atomic_numbers,  atomic_masses
 from ase.optimize import QuasiNewton

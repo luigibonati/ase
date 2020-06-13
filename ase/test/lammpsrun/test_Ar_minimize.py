@@ -1,6 +1,5 @@
 import pytest
 from numpy.testing import assert_allclose
-from ase.calculators.lammpsrun import LAMMPS
 from ase.cluster.icosahedron import Icosahedron
 from ase.data import atomic_numbers,  atomic_masses
 from ase.optimize import LBFGS
