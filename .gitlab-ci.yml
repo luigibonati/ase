@@ -68,20 +68,6 @@ main:
     expire_in: 1 week
 
 
-# Currently (2019-07-26) facing a problem where PATH does not include
-# /opt/conda/bin.  So we manually update the PATH.  This could be a temporary
-# issue with the gitlab runners.
-#
-# Same scipy versioning issue as for the ordinary tests.
-#
-# Grrr.  Failing after image updates, or something.  Disabling.
-# --askhl 2019-10-16
-.conda:
-  image: registry.gitlab.com/ase/ase:ase-anaconda
-  script:
-    - pip install . --no-deps
-    - ase test
-
 # Plan: Test as many calculators as possible as well as possible.
 # Obviously this is kind of expensive so the job is manually activated.
 # Also, the docker serves as a knowledgebase for how to set up those
