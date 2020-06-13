@@ -33,7 +33,7 @@ extras_require = {
         'pillow',
     ],
     'test': [
-        'pytest>=3.6.1',
+        'pytest>=3.9.1',
         'pytest-xdist>=1.22.1',
     ]
 }
