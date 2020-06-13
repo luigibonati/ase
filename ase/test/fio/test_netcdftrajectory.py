@@ -2,7 +2,6 @@ import numpy as np
 import pytest
 
 from ase import Atom, Atoms
-from ase.build import molecule
 from ase.io import read
 from ase.io import NetCDFTrajectory
 
