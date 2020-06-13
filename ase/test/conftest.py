@@ -173,9 +173,13 @@ def arbitrarily_seed_rng(request):
     # In order not to generate all the same random numbers in every test,
     # we seed according to a kind of hash:
     import numpy as np
+    import zlib
     module_name = request.module
     function_name = request.function.__name__
-    seed = hash((module_name, function_name)) % 123456789
+    hashable_string = f'{module_name}:{function_name}'
+    # We use zlib.adler32() rather than hash() because Python randomizes
+    # the string hashing at startup for security reasons.
+    seed = zlib.adler32(hashable_string.encode('ascii')) % 12345
     # (We should really use the full qualified name of the test method.)
     state = np.random.get_state()
     np.random.seed(seed)

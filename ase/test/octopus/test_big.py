@@ -39,10 +39,10 @@ def test_h2o(factory):
     #energy_err = abs(-463.5944954 - E)
     #assert energy_err < 0.01, energy_err
 
-@calc('octopus')
+@calc('octopus', Spacing='0.2 * angstrom')
 def test_o2(factory):
     atoms = g2['O2']
-    atoms.center(vacuum=2.0)
+    atoms.center(vacuum=2.5)
     calculate(factory,
               atoms,
               BoxShape='parallelepiped',
