@@ -128,8 +128,8 @@ max_errors = {
 def have_documentation():
     import ase
     ase_path = Path(ase.__path__[0])
-    doc_path = ase_path.parent / 'doc'
-    return doc_path.is_dir()
+    doc_path = ase_path.parent / 'doc/ase/ase.rst'
+    return doc_path.is_file()
 
 
 @pytest.mark.slow
