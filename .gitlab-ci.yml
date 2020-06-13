@@ -92,19 +92,18 @@ doc:
     - python -m ase.utils.sphinx run  # test scripts
     - sphinx-build -W . build
 
-distribution_package:
-  image: python:3.7
+distribution-package:
+  image: registry.gitlab.com/ase/ase:ase-main
   script:
-    - apt-get update
     - apt-get install -y gettext  # For compiling ase gui translations
     - mkdir dist
     - python setup.py sdist | tee dist/setup_sdist.log
     - python setup.py bdist_wheel | tee dist/setup_bdist_wheel.log
     - pip install dist/ase-*.tar.gz
-    - ase test
+    - ase test --pytest --color=yes
     - pip uninstall --yes ase
     - pip install dist/ase-*-py3-none-any.whl
-    - ase test
+    - ase test --pytest --color=yes
   artifacts:
     paths:
       - dist
