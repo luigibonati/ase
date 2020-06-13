@@ -32,10 +32,10 @@ oldlibs:
 # libraries that don't have binary wheels; we don't want to install gcc
 # in this test job.
 pipinstall:
-  image: python:3.7-slim
+  image: python:3.7
   script:
     - python --version
-    - pip install flake8 psycopg2-binary netCDF4 pymysql cryptography
+    - pip install psycopg2-binary pymysql cryptography
     - pip install pytest pytest-xdist mypy
     - pip install scipy==1.2.1  # TODO: Delete me
     - pip install .
