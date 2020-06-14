@@ -14,46 +14,52 @@ ase -T db -v testase.json "H>0" -k hydro=1,abc=42,foo=bar &&
 ase -T db -v testase.json "H>0" --delete-keys foo"""
 
 
-names = ['testase.json',
-         'testase.db',
-         'postgresql',
-         'mysql',
-         'mariadb']
+dbnames = [
+    'json',
+    'db',
+    'postgresql',
+    'mysql',
+    'mariadb'
+]
+
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize('name', names)
-def test_db(name, cli):
+@pytest.mark.parametrize('dbname', dbnames)
+def test_db(dbname, cli):
     def count(n, *args, **kwargs):
         m = len(list(con.select(columns=['id'], *args, **kwargs)))
         assert m == n, (m, n)
 
-    if name == 'postgresql':
+    name = None
+
+    if dbname == 'postgresql':
         pytest.importorskip('psycopg2')
         if os.environ.get('POSTGRES_DB'):  # gitlab-ci
             name = 'postgresql://ase:ase@postgres:5432/testase'
         else:
             name = os.environ.get('ASE_TEST_POSTGRES_URL')
-            if name is None:
-                return
-    elif name == 'mysql':
+    elif dbname == 'mysql':
         pytest.importorskip('pymysql')
         if os.environ.get('CI_PROJECT_DIR'):  # gitlab-ci
             name = 'mysql://root:ase@mysql:3306/testase_mysql'
         else:
             name = os.environ.get('MYSQL_DB_URL')
-
-        if name is None:
-            return
-    elif name == 'mariadb':
+    elif dbname == 'mariadb':
         pytest.importorskip('pymysql')
         if os.environ.get('CI_PROJECT_DIR'):  # gitlab-ci
             name = 'mariadb://root:ase@mariadb:3306/testase_mysql'
         else:
             name = os.environ.get('MYSQL_DB_URL')
+    elif dbname == 'json':
+        name = 'testase.json'
+    elif dbname == 'db':
+        name = 'testase.db'
+    else:
+        raise ValueError(f'Bad dbname: {dbname}')
 
-        if name is None:
-            return
+    if name is None:
+        pytest.skip('Test requires environment variables')
 
     if 'postgres' in name or 'mysql' in name or 'mariadb' in name:
         con = connect(name)

@@ -163,6 +163,20 @@ class EMTFactory(BuiltinCalculatorFactory):
     pass
 
 
+@factory('lammpsrun')
+class LammpsRunFactory:
+    def __init__(self, executable):
+        self.executable = executable
+
+    def calc(self, **kwargs):
+        from ase.calculators.lammpsrun import LAMMPS
+        return LAMMPS(command=self.executable, **kwargs)
+
+    @classmethod
+    def fromconfig(cls, config):
+        return cls(config.executables['lammps'])
+
+
 @factory('octopus')
 class OctopusFactory:
     def __init__(self, executable):

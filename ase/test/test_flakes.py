@@ -125,8 +125,19 @@ max_errors = {
     'E501': 762}
 
 
+def have_documentation():
+    import ase
+    ase_path = Path(ase.__path__[0])
+    doc_path = ase_path.parent / 'doc/ase/ase.rst'
+    return doc_path.is_file()
+
+
 @pytest.mark.slow
 def test_flake8():
+    if not have_documentation():
+        pytest.skip('ase/doc not present; '
+                    'this is probably an installed version ')
+
     args = [
         sys.executable,
         '-m',

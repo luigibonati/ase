@@ -1,12 +1,13 @@
-def test_NaCl_minimize():
-    from ase.calculators.lammpsrun import LAMMPS
-    from ase.spacegroup import crystal
-    from ase.data import atomic_numbers,  atomic_masses
-    from ase.optimize import QuasiNewton
-    from ase.constraints import UnitCellFilter
-    from numpy.testing import assert_allclose
+import pytest
+from ase.spacegroup import crystal
+from ase.data import atomic_numbers,  atomic_masses
+from ase.optimize import QuasiNewton
+from ase.constraints import UnitCellFilter
+from numpy.testing import assert_allclose
 
 
+@pytest.mark.calculator('lammpsrun')
+def test_NaCl_minimize(factory):
     a = 6.15
     n = 4
     nacl = crystal(['Na', 'Cl'], [(0, 0, 0), (0.5, 0.5, 0.5)], spacegroup=225,
@@ -23,7 +24,7 @@ def test_NaCl_minimize():
     masses = ['1 {}'.format(atomic_masses[atomic_numbers['Na']]),
               '2 {}'.format(atomic_masses[atomic_numbers['Cl']])]
 
-    with LAMMPS(
+    with factory.calc(
             specorder=['Na', 'Cl'],
             pair_style=pair_style,
             pair_coeff=pair_coeff,
