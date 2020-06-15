@@ -738,7 +738,7 @@ class SQLite3Database(Database, object):
     def delete(self, ids):
         if len(ids) == 0:
             return
-        table_names = self._get_external_table_names()
+        table_names = self._get_external_table_names() + all_tables[::-1]
         with self.managed_connection() as con:
             self._delete(con.cursor(), ids,
                          tables=table_names)
