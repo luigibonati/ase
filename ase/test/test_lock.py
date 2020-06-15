@@ -2,7 +2,7 @@ import pytest
 import os
 
 
-def test_lock():
+def test_cannot_acquire_lock_twice():
     """Test timeout on Lock.acquire()."""
     from ase.utils import Lock
     from ase.test import must_raise
@@ -18,7 +18,10 @@ def test_lock_close_file_descriptor():
     """Test that lock file descriptor is properly closed."""
     from ase.utils import Lock
 
-    lock = Lock('lockfile', timeout=0.3)
+    # The choice of timeout=1.0 is arbitrary but we don't want to use
+    # something that is too large since it could mean that the test
+    # takes long to fail.
+    lock = Lock('lockfile', timeout=1.0)
     with lock:
         pass
 
