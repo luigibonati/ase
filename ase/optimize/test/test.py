@@ -56,7 +56,7 @@ class Wrapper:
     def set_positions(self, pos):
         if self.pos is not None and abs(pos - self.pos).max() > 1e-15:
             self.ready = False
-            if self.nsteps == 200:
+            if self.nsteps == 500:
                 raise RuntimeError('Did not converge!')
 
         self.pos = pos
@@ -67,6 +67,9 @@ class Wrapper:
 
     def get_calculator(self):
         return self.atoms.calc
+
+    def copy(self):
+        return self.atoms.copy()
 
     def __len__(self):
         return len(self.atoms)
