@@ -148,6 +148,30 @@ def choose_how_many_workers(jobs):
     return jobs
 
 
+help_calculators = """\
+Calculator testing is currently work in progress.  This
+notice applies to the calculators abinit, cp2k, dftb, espresso,
+lammpsrun, octopus, and siesta.  The goal of this work is to provide
+a configuration in which tests are more reproducible.
+
+Most calculators require datafiles such as pseudopotentials
+which are available at
+
+  https://gitlab.com/ase/ase-datafiles
+
+Please install this package using e.g.:
+
+  $ pip install git+https://gitlab.com/ase/ase-datafiles.git
+
+The ASE test suite needs to know the exact binaries for each
+of the aforementioned programs.  Currently these must be specified as
+a JSON dictionary mapping calculator names to executables, e.g.:
+
+  {"cp2k": "cp2k_shell", "lammps": "lmp", "siesta": "/usr/local/bin/siesta"}
+
+The dictionary must reside in ~/.ase/executables.json or another path
+given by the environment variable ASE_EXECUTABLE_CONFIGFILE."""
+
 class CLICommand:
     """Run ASE's test-suite.
 
@@ -159,7 +183,11 @@ class CLICommand:
     def add_arguments(parser):
         parser.add_argument(
             '-c', '--calculators',
-            help='comma-separated list of calculators to test')
+            help='comma-separated list of calculators to test; '
+            'see --help-calculators')
+        parser.add_argument('--help-calculators', action='store_true',
+                            help='show extended help about calculator tests '
+                            'and exit')
         parser.add_argument('--list', action='store_true',
                             help='print all tests and exit')
         parser.add_argument('--list-calculators', action='store_true',
@@ -205,6 +233,10 @@ class CLICommand:
 
         print_info()
         print()
+
+        if args.help_calculators:
+            print(help_calculators)
+            sys.exit(0)
 
         if args.list_calculators:
             for name in calc_names:
