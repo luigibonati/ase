@@ -129,8 +129,11 @@ class SQLite3Database(Database, object):
                    for line in init_statements[0].splitlines()[1:]]
 
     def encode(self, obj, binary=False):
-        if binary:
+        if binary and isinstance(obj, bytes):
+            return obj
+        elif binary and not isinstance(obj, bytes):
             return object_to_bytes(obj)
+
         return ase.io.jsonio.encode(obj)
 
     def decode(self, txt, lazy=False):

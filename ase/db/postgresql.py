@@ -4,6 +4,7 @@ import numpy as np
 from psycopg2 import connect
 from psycopg2.extras import execute_values
 
+from ase.db.core import bytes_to_object
 from ase.db.sqlite import (init_statements, index_statements, VERSION,
                            SQLite3Database)
 from ase.io.jsonio import (encode as ase_encode,

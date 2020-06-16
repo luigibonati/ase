@@ -4,6 +4,7 @@ from pymysql import connect
 from pymysql.err import ProgrammingError
 from copy import deepcopy
 
+from ase.db.core import bytes_to_object
 from ase.db.sqlite import SQLite3Database
 from ase.db.sqlite import init_statements
 from ase.db.sqlite import VERSION
