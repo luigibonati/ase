@@ -1,11 +1,12 @@
-def test_Pt_md_constraints_multistep():
-    from ase.calculators.lammpsrun import LAMMPS
-    from numpy.testing import assert_allclose
-    from ase.test.eam_pot import Pt_u3
-    from ase.build import fcc111
-    import os
+import pytest
+from numpy.testing import assert_allclose
+from ase.test.eam_pot import Pt_u3
+from ase.build import fcc111
+import os
 
 
+@pytest.mark.calculator('lammpsrun')
+def test_Pt_md_constraints_multistep(factory):
     pot_fn = 'Pt_u3.eam'
     f = open(pot_fn, 'w')
     f.write(Pt_u3)
@@ -21,7 +22,7 @@ def test_Pt_md_constraints_multistep():
     params['pair_style'] = 'eam'
     params['pair_coeff'] = ['1 1 {}'.format(pot_fn)]
 
-    with LAMMPS(specorder=['Pt'], files=[pot_fn], **params) as calc:
+    with factory.calc(specorder=['Pt'], files=[pot_fn], **params) as calc:
         slab.calc = calc
 
         assert_allclose(slab.get_potential_energy(), -110.3455014595596,

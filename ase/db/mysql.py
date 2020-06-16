@@ -236,6 +236,8 @@ class MySQLDatabase(SQLite3Database):
         return sql, value
 
     def encode(self, obj, binary=False):
+        if not binary and isinstance(obj, bytes):
+            obj = bytes_to_object(obj)
         return ase.io.jsonio.encode(remove_nan_and_inf(obj))
 
     def decode(self, obj, lazy=False):

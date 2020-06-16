@@ -100,6 +100,8 @@ class PostgreSQLDatabase(SQLite3Database):
     default = 'DEFAULT'
 
     def encode(self, obj, binary=False):
+        if not binary and isinstance(obj, bytes):
+            obj = bytes_to_object(obj)
         return ase_encode(remove_nan_and_inf(obj))
 
     def decode(self, obj, lazy=False):

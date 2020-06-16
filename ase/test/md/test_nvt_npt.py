@@ -23,6 +23,7 @@ def berendsenparams():
 @pytest.fixture(scope='module')
 def equilibrated(asap3, berendsenparams):
     """Make an atomic system with equilibrated temperature and pressure."""
+    rng = np.random.RandomState(42)
     with seterr(all='raise'):
         print()
         # Must be big enough to avoid ridiculous fluctuations
@@ -30,7 +31,8 @@ def equilibrated(asap3, berendsenparams):
         #a[5].symbol = 'Ag'
         print(atoms)
         atoms.calc = asap3.EMT()
-        MaxwellBoltzmannDistribution(atoms, 100 * kB, force_temp=True)
+        MaxwellBoltzmannDistribution(atoms, 100 * kB, force_temp=True,
+                                     rng=rng)
         Stationary(atoms)
         assert abs(atoms.get_temperature() - 100) < 0.0001
         md = NPTBerendsen(atoms, timestep=20 * fs, logfile='-',
