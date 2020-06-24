@@ -232,9 +232,8 @@ def parse_gto_chunk(chunk):
 
     kpts = _get_gto_kpts(chunk)
 
-    atoms_new = _parse_geomblock(chunk)
-    if atoms_new is not None:
-        atoms = atoms_new
+    if atoms is None:
+        atoms = _parse_geomblock(chunk)
 
     if atoms is None:
         return
