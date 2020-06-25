@@ -206,7 +206,7 @@ class PickleTrajectory:
              'cell': atoms.get_cell(),
              'momenta': momenta}
 
-        if atoms.get_calculator() is not None:
+        if atoms.calc is not None:
             if self.write_energy:
                 d['energy'] = atoms.get_potential_energy()
             if self.write_forces:
@@ -321,7 +321,7 @@ class PickleTrajectory:
                     forces=d.get('forces', None),
                     stress=d.get('stress', None),
                     magmoms=magmoms)
-                atoms.set_calculator(calc)
+                atoms.calc = calc
             return atoms
 
         if i >= N:
@@ -366,8 +366,8 @@ class PickleTrajectory:
             self.fd.seek(self.offsets[-1])
             try:
                 pickle.load(self.fd)
-            except:
-                raise EOFError('Damaged trajectory file.')
+            except (EOFError, pickle.UnpicklingError) as e:
+                raise EOFError('Damaged trajectory file.') from e
             else:
                 self.offsets.append(self.fd.tell())
 
@@ -385,7 +385,7 @@ class PickleTrajectory:
                         self.fd.seek(self.offsets[-1] + m * step1)
                         try:
                             pickle.load(self.fd)
-                        except:
+                        except (EOFError, pickle.UnpicklingError):
                             m = m // 2
                         else:
                             for i in range(m):
@@ -441,7 +441,7 @@ def stringnify_info(info):
             # tries to pickle a file object, so by using that, we
             # might end up with file objects in inconsistent states.
             s = pickle.dumps(v, protocol=0)
-        except:
+        except pickle.PicklingError:
             warnings.warn('Skipping not picklable info-dict item: ' +
                           '"%s" (%s)' % (k, sys.exc_info()[1]), UserWarning)
         else:
@@ -457,7 +457,7 @@ def unstringnify_info(stringnified):
     for k, s in stringnified.items():
         try:
             v = pickle.loads(s)
-        except:
+        except pickle.UnpicklingError:
             warnings.warn('Skipping not unpicklable info-dict item: ' +
                           '"%s" (%s)' % (k, sys.exc_info()[1]), UserWarning)
         else:
@@ -514,7 +514,7 @@ def write_trajectory(filename, images):
 
     for atoms in images:
         # Avoid potentially expensive calculations:
-        calc = atoms.get_calculator()
+        calc = atoms.calc
         if hasattr(calc, 'check_state'):
             nochange = len(calc.check_state(atoms)) == 0
             for property in all_properties:

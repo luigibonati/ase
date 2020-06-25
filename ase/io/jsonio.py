@@ -63,7 +63,6 @@ def object_hook(dct):
     return dct
 
 
-
 def create_ndarray(shape, dtype, data):
     """Create ndarray from shape, dtype and flattened data."""
     array = np.empty(shape, dtype=dtype)
@@ -83,7 +82,7 @@ def create_ase_object(objtype, dct):
         dct.pop('pbc', None)  # compatibility; we once had pbc
         obj = Cell(**dct)
     elif objtype == 'bandstructure':
-        from ase.dft.band_structure import BandStructure
+        from ase.spectrum.band_structure import BandStructure
         obj = BandStructure(**dct)
     elif objtype == 'bandpath':
         from ase.dft.kpoints import BandPath

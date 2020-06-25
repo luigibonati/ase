@@ -287,6 +287,15 @@ optimization and the information needed to generate the Hessian Matrix.
 The BFGSLineSearch algorithm is not compatible with nudged elastic band
 calculations.
 
+Pyberny
+-------
+
+ASE includes a wrapper for the Pyberny_ optimizer. This requires installing
+Pyberny::
+
+    pip install pyberny
+
+.. autoclass:: Berny
 
 .. module:: ase.optimize.precon
 
@@ -361,7 +370,7 @@ cube of copper containing a vacancy::
                              ['None', 'Exp(A=3)']):
        log_calc.label = label
        atoms = a0.copy()
-       atoms.set_calculator(log_calc)
+       atoms.calc = log_calc
        opt = PreconLBFGS(atoms, precon=precon, use_armijo=True)
        opt.run(fmax=1e-3)
 
@@ -421,7 +430,7 @@ is computed using a standalone force field calculator::
                              ['None', 'FF']):
         log_calc.label = label
         atoms = a0.copy()
-        atoms.set_calculator(log_calc)
+        atoms.calc = log_calc
         opt = PreconLBFGS(atoms, precon=precon, use_armijo=True)
         opt.run(fmax=1e-4)
 

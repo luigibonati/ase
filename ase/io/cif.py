@@ -9,6 +9,7 @@ The "latin-1" encoding is required by the IUCR specification.
 import re
 import shlex
 import warnings
+from typing import Dict
 
 import numpy as np
 
@@ -582,7 +583,7 @@ def write_cif(fileobj, images, format='default',
         # try to fetch occupancies // spacegroup_kinds - occupancy mapping
         try:
             occ_info = atoms.info['occupancy']
-            kinds = atoms.info['spacegroup_kinds']
+            kinds = atoms.arrays['spacegroup_kinds']
             for i, kind in enumerate(kinds):
                 occupancies[i] = occ_info[kind][symbols[i]]
                 # extend the positions array in case of mixed occupancy
@@ -594,7 +595,7 @@ def write_cif(fileobj, images, format='default',
         except KeyError:
             pass
 
-        no = {}
+        no: Dict[str, int] = {}
 
         for symbol, pos, occ in zip(symbols, coords, occupancies):
             if symbol in no:

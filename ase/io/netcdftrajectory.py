@@ -42,7 +42,7 @@ class NetCDFTrajectory:
     _cell_spatial_dim = 'cell_spatial'
     _cell_angular_dim = 'cell_angular'
     _label_dim = 'label'
-    _Voigt_dim = 'Voigt' # For stress/strain tensors
+    _Voigt_dim = 'Voigt'  # For stress/strain tensors
 
     # Default field names. If it is a list, check for any of these names upon
     # opening. Upon writing, use the first name.
@@ -90,8 +90,8 @@ class NetCDFTrajectory:
             The Atoms object to be written in write or append mode.
 
         types_to_numbers=None:
-            Dictionary for conversion of atom types to atomic numbers when
-            reading a trajectory file.
+            Dictionary or list for conversion of atom types to atomic numbers
+            when reading a trajectory file.
 
         double=True:
             Create new variable in double precision.
@@ -136,8 +136,10 @@ class NetCDFTrajectory:
         self._set_atoms(atoms)
 
         self.types_to_numbers = None
-        if types_to_numbers:
-            self.types_to_numbers = np.array(types_to_numbers)
+        if isinstance(types_to_numbers, list):
+            types_to_numbers = {x: y for x, y in enumerate(types_to_numbers)}
+        if types_to_numbers is not None:
+            self.types_to_numbers = types_to_numbers
 
         self.index_var = index_var
 
@@ -417,9 +419,9 @@ class NetCDFTrajectory:
                 else:
                     raise TypeError("Don't know how to dump array of shape {0}"
                                     " into NetCDF trajectory.".format(shape))
-            try:
-                t = self.dtype_conv[type.char]
-            except:
+            if hasattr(type, 'char'):
+                t = self.dtype_conv.get(type.char, type)
+            else:
                 t = type
             self.nc.createVariable(array_name, t, dims)
 
@@ -473,9 +475,9 @@ class NetCDFTrajectory:
             else:
                 # If this is a large data set, only read chunks from it to
                 # reduce memory footprint of the NetCDFTrajectory reader.
-                for i in range((s-1)//self.chunk_size+1):
-                    sl = slice(i*self.chunk_size,
-                               min((i+1)*self.chunk_size, s))
+                for i in range((s - 1) // self.chunk_size + 1):
+                    sl = slice(i * self.chunk_size,
+                               min((i + 1) * self.chunk_size, s))
                     data[index[sl]] = var[sl]
         return data
 
@@ -531,7 +533,11 @@ class NetCDFTrajectory:
             if self.numbers is None:
                 self.numbers = np.ones(self.n_atoms, dtype=int)
             if self.types_to_numbers is not None:
-                self.numbers = self.types_to_numbers[self.numbers]
+                d = set(self.numbers).difference(self.types_to_numbers.keys())
+                if len(d) > 0:
+                    self.types_to_numbers.update({num: num for num in d})
+                func = np.vectorize(self.types_to_numbers.get)
+                self.numbers = func(self.numbers)
             self.masses = atomic_masses[self.numbers]
 
             # Read positions

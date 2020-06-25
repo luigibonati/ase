@@ -18,6 +18,8 @@ import inspect
 import os
 import sys
 from pathlib import Path, PurePath
+from typing import (
+    IO, List, Any, Iterable, Tuple, Union, Sequence, Dict, Optional)
 
 from ase.atoms import Atoms
 from importlib import import_module
@@ -29,7 +31,8 @@ class UnknownFileTypeError(Exception):
 
 
 class IOFormat:
-    def __init__(self, name, desc, code, module_name, encoding=None):
+    def __init__(self, name: str, desc: str, code: str, module_name: str,
+                 encoding: str = None) -> None:
         self.name = name
         self.description = desc
         assert len(code) == 2
@@ -40,11 +43,11 @@ class IOFormat:
         self.encoding = encoding
 
         # (To be set by define_io_format())
-        self.extensions = []
-        self.globs = []
-        self.magic = []
+        self.extensions: List[str] = []
+        self.globs: List[str] = []
+        self.magic: List[str] = []
 
-    def open(self, fname, mode='r'):
+    def open(self, fname, mode: str = 'r') -> IO:
         # We might want append mode, too
         # We can allow more flags as needed (buffering etc.)
         if mode not in list('rwa'):
@@ -66,18 +69,18 @@ class IOFormat:
         return path.open(mode, encoding=self.encoding)
 
     @property
-    def can_read(self):
+    def can_read(self) -> bool:
         return self.read is not None
 
     @property
-    def can_write(self):
+    def can_write(self) -> bool:
         return self.write is not None
 
     @property
-    def can_append(self):
+    def can_append(self) -> bool:
         return self.can_write and 'append' in self.write.__code__.co_varnames
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         tokens = ['{}={}'.format(name, repr(value))
                   for name, value in vars(self).items()]
         return 'IOFormat({})'.format(', '.join(tokens))
@@ -95,7 +98,7 @@ class IOFormat:
         return self.code[0] == '1'
 
     @property
-    def _formatname(self):
+    def _formatname(self) -> str:
         return self.name.replace('-', '_')
 
     @property
@@ -110,7 +113,7 @@ class IOFormat:
         return getattr(self.module, 'write_' + self._formatname, None)
 
     @property
-    def modes(self):
+    def modes(self) -> str:
         modes = ''
         if self.read:
             modes += 'r'
@@ -118,7 +121,7 @@ class IOFormat:
             modes += 'w'
         return modes
 
-    def full_description(self):
+    def full_description(self) -> str:
         lines = ['Name:        {name}',
                  'Description: {description}',
                  'Modes:       {modes}',
@@ -134,11 +137,11 @@ class IOFormat:
         return desc.format(**myvars)
 
     @property
-    def acceptsfd(self):
+    def acceptsfd(self) -> bool:
         return self.code[1] != 'S'
 
     @property
-    def isbinary(self):
+    def isbinary(self) -> bool:
         return self.code[1] == 'B'
 
     @property
@@ -152,23 +155,25 @@ class IOFormat:
             raise UnknownFileTypeError('File format not recognized: %s.  '
                                        'Error: %s' % (format, err))
 
-    def match_name(self, basename):
+    def match_name(self, basename: str) -> bool:
         from fnmatch import fnmatch
         return any(fnmatch(basename, pattern)
                    for pattern in self.globs)
 
-    def match_magic(self, data):
+    def match_magic(self, data: bytes) -> bool:
+        # XXX We should use a regex for this!
         from fnmatch import fnmatchcase
-        return any(fnmatchcase(data, magic + b'*')
+        return any(fnmatchcase(data, magic + b'*')  # type: ignore
                    for magic in self.magic)
 
 
-ioformats = {}  # These will be filled at run-time.
+ioformats: Dict[str, IOFormat] = {}  # These will be filled at run-time.
 extension2format = {}
 
 
 all_formats = ioformats  # Aliased for compatibility only.  Please do not use.
 format2modulename = {}  # Left for compatibility only.
+
 
 def define_io_format(name, desc, code, *, module=None, ext=None,
                      glob=None, magic=None, encoding=None):
@@ -224,7 +229,7 @@ F('abinit-in', 'ABINIT input file', '1F',
   module='abinit', magic=b'*znucl *'),
 F('abinit-out', 'ABINIT output file', '1F',
   module='abinit', magic=b'*.Version * of ABINIT'),
-F('aims', 'FHI-aims geometry file', '1S',ext='in'),
+F('aims', 'FHI-aims geometry file', '1S', ext='in'),
 F('aims-output', 'FHI-aims output', '+S',
   module='aims', magic=b'*Invoking FHI-aims ...'),
 F('bundletrajectory', 'ASE bundle trajectory', '+S'),
@@ -246,7 +251,6 @@ F('cp2k-dcd', 'CP2K DCD file', '+B',
 F('crystal', 'Crystal fort.34 format', '1S',
   ext=['f34', '34'], glob=['f34', '34']),
 F('cube', 'CUBE file', '1F'),
-F('dacapo', 'Dacapo netCDF output file', '1F'),
 F('dacapo-text', 'Dacapo text output', '1F',
   module='dacapo', magic=b'*&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&\n'),
 F('db', 'ASE SQLite database file', '+S'),
@@ -269,14 +273,19 @@ F('espresso-in', 'Quantum espresso in file', '1F',
   module='espresso', ext='pwi', magic=[b'*\n&system', b'*\n&SYSTEM']),
 F('espresso-out', 'Quantum espresso out file', '+F',
   module='espresso', ext=['out', 'pwo'], magic=b'*Program PWSCF'),
-F('etsf', 'ETSF format', '1S'),
-F('exciting', 'exciting input', '1S',glob='input.xml'),
+F('exciting', 'exciting input', '1S', glob='input.xml'),
 F('extxyz', 'Extended XYZ file', '+F'),
 F('findsym', 'FINDSYM-format', '+F'),
-F('gaussian', 'Gaussian com (input) file', '1S',
-  ext=['com', 'gjf']),
-F('gaussian-out', 'Gaussian output file', '1F',
-  module='gaussian', ext='log'),
+F('gamess-us-out', 'GAMESS-US output file', '1F',
+  module='gamess_us', magic=b'*GAMESS')
+F('gamess-us-in', 'GAMESS-US input file', '1F',
+  module='gamess_us')
+F('gamess-us-punch', 'GAMESS-US punchcard file', '1F',
+  module='gamess_us', magic=b' $DATA', ext='dat')
+F('gaussian-in', 'Gaussian com (input) file', '1F',
+  module='gaussian', ext=['com', 'gjf']),
+F('gaussian-out', 'Gaussian output file', '+F',
+  module='gaussian', ext='log', magic=b'*Entering Gaussian System'),
 F('acemolecule-out', 'ACE output file', '1S',
   module='acemolecule'),
 F('acemolecule-input', 'ACE input file', '1S',
@@ -286,6 +295,7 @@ F('gif', 'Graphics interchange format', '+S',
   module='animation'),
 F('gpaw-out', 'GPAW text output', '+F',
   magic=b'*  ___ ___ ___ _ _ _'),
+F('gpumd', 'GPUMD input file', '1F', glob='xyz.in')
 F('gpw', 'GPAW restart-file', '1S',
   magic=[b'- of UlmGPAW', b'AFFormatGPAW']),
 F('gromacs', 'Gromacs coordinates', '1S',
@@ -300,8 +310,7 @@ F('lammps-dump-text', 'LAMMPS text dump file', '+F',
 F('lammps-dump-binary', 'LAMMPS binary dump file', '+B',
   module='lammpsrun')
 F('lammps-data', 'LAMMPS data file', '1F', module='lammpsdata',
-  encoding='ascii'
-),
+  encoding='ascii'),
 F('magres', 'MAGRES ab initio NMR data file', '1F'),
 F('mol', 'MDL Molfile', '1F'),
 F('mp4', 'MP4 animation', '+S',
@@ -318,13 +327,18 @@ F('nwchem-in', 'NWChem input file', '1F',
 F('nwchem-out', 'NWChem output file', '+F',
   module='nwchem', ext='nwo',
   magic=b'*Northwest Computational Chemistry Package'),
-F('octopus', 'Octopus input file', '1F', glob='inp'),
+F('octopus-in', 'Octopus input file', '1F',
+  module='octopus', glob='inp'),
 F('proteindatabank', 'Protein Data Bank', '+F',
   ext='pdb'),
-F('png', 'Portable Network Graphics', '1S'),
+F('png', 'Portable Network Graphics', '1B'),
 F('postgresql', 'ASE PostgreSQL database file', '+S', module='db'),
 F('pov', 'Persistance of Vision', '1S'),
+# prismatic: Should have ext='xyz' if/when multiple formats can have the same
+# extension
+F('prismatic', 'prismatic and computem XYZ-file', '1F')
 F('py', 'Python file', '+F'),
+F('sys', 'qball sys file', '1F'),
 F('qbox', 'QBOX output file', '+F',
   magic=b'*:simulation xmlns:'),
 F('res', 'SHELX format', '1S', ext='shelx'),
@@ -365,7 +379,7 @@ netcdfconventions2format = {
 }
 
 
-def get_compression(filename):
+def get_compression(filename: str) -> Tuple[str, Optional[str]]:
     """
     Parse any expected file compression from the extension of a filename.
     Return the filename without the extension, and the extension. Recognises
@@ -401,7 +415,7 @@ def get_compression(filename):
         return filename, None
 
 
-def open_with_compression(filename, mode='r'):
+def open_with_compression(filename: str, mode: str = 'r') -> IO:
     """
     Wrapper around builtin `open` that will guess compression of a file
     from the filename and open it for reading or writing as if it were
@@ -463,8 +477,17 @@ def wrap_read_function(read, filename, index=None, **kwargs):
             yield atoms
 
 
-def write(filename, images, format=None, parallel=True, append=False,
-          **kwargs):
+NameOrFile = Union[str, PurePath, IO]
+
+
+def write(
+        filename: NameOrFile,
+        images: Union[Atoms, Sequence[Atoms]],
+        format: str = None,
+        parallel: bool = True,
+        append: bool = False,
+        **kwargs: dict
+) -> None:
     """Write Atoms object(s) to file.
 
     filename: str or file
@@ -498,13 +521,13 @@ def write(filename, images, format=None, parallel=True, append=False,
         fd = None
         if filename == '-':
             fd = sys.stdout
-            filename = None
+            filename = None  # type: ignore
         elif format is None:
             format = filetype(filename, read=False)
             assert isinstance(format, str)
     else:
-        fd = filename
-        filename = None
+        fd = filename  # type: ignore
+        filename = None  # type: ignore
 
     format = format or 'json'  # default is json
 
@@ -545,7 +568,7 @@ def _write(filename, fd, format, io, images, parallel=None, append=False,
                 mode = mode.replace('w', 'a')
             fd = open_with_compression(filename, mode)
             # XXX remember to re-enable compressed open
-            #fd = io.open(filename, mode)
+            # fd = io.open(filename, mode)
         io.write(fd, images, **kwargs)
         if open_new:
             fd.close()
@@ -563,8 +586,14 @@ def _write(filename, fd, format, io, images, parallel=None, append=False,
             io.write(filename, images, **kwargs)
 
 
-def read(filename, index=None, format=None, parallel=True,
-         do_not_split_by_at_sign=False, **kwargs):
+def read(
+        filename: NameOrFile,
+        index: Any = None,
+        format: str = None,
+        parallel: bool = True,
+        do_not_split_by_at_sign: bool = False,
+        **kwargs
+) -> Union[Atoms, List[Atoms]]:
     """Read Atoms object(s) from file.
 
     filename: str or file
@@ -615,12 +644,21 @@ def read(filename, index=None, format=None, parallel=True,
                            parallel=parallel, **kwargs))
 
 
-def iread(filename, index=None, format=None, parallel=True,
-          do_not_split_by_at_sign=False, **kwargs):
+def iread(
+        filename: NameOrFile,
+        index: Any = None,
+        format: str = None,
+        parallel: bool = True,
+        do_not_split_by_at_sign: bool = False,
+        **kwargs
+) -> Iterable[Atoms]:
     """Iterator for reading Atoms objects from file.
 
     Works as the `read` function, but yields one Atoms object at a time
     instead of all at once."""
+
+    if isinstance(filename, PurePath):
+        filename = str(filename)
 
     if isinstance(index, str):
         index = string2index(index)
@@ -704,7 +742,7 @@ def parse_filename(filename, index=None, do_not_split_by_at_sign=False):
     return newfilename, newindex
 
 
-def string2index(string):
+def string2index(string: str) -> Union[int, slice, str]:
     """Convert index string to either int or slice"""
     if ':' not in string:
         # may contain database accessor
@@ -712,7 +750,7 @@ def string2index(string):
             return int(string)
         except ValueError:
             return string
-    i = []
+    i: List[Optional[int]] = []
     for s in string.split(':'):
         if s == '':
             i.append(None)
@@ -722,7 +760,11 @@ def string2index(string):
     return slice(*i)
 
 
-def filetype(filename, read=True, guess=True):
+def filetype(
+        filename: NameOrFile,
+        read: bool = True,
+        guess: bool = True,
+) -> str:
     """Try to guess the type of the file.
 
     First, special signatures in the filename will be checked for.  If that
@@ -761,7 +803,6 @@ def filetype(filename, read=True, guess=True):
             if fmt.match_name(basename):
                 return fmt.name
 
-
         if not read:
             if ext is None:
                 raise UnknownFileTypeError('Could not guess file type')
@@ -774,7 +815,7 @@ def filetype(filename, read=True, guess=True):
 
         fd = open_with_compression(filename, 'rb')
     else:
-        fd = filename
+        fd = filename    # type: ignore
         if fd is sys.stdin:
             return 'json'
 
@@ -785,7 +826,7 @@ def filetype(filename, read=True, guess=True):
         fd.seek(0)
 
     if len(data) == 0:
-        raise UnknownFileTypeError('Empty file: ' + filename)
+        raise UnknownFileTypeError('Empty file: ' + filename)    # type: ignore
 
     if data.startswith(b'CDF'):
         # We can only recognize these if we actually have the netCDF4 module.

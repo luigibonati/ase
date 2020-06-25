@@ -38,19 +38,18 @@ Supported :mod:`Calculators <ase.calculators>`
 ==============================================
 
 |abinit| |Asap| |Atomistica| |CASTEP| |CP2K| |CRYSTAL| |deMon| |dftb|
-|dftd4| |elk| |exciting| |EMT|
-|fhi-aims| |fleur| |gpaw| |gromacs|
+|dftd4| |DFTK| |elk| |exciting| |EMT|
+|fhi-aims| |fleur| |gamess_us| |gpaw| |gromacs|
 |hotbit| |jdftx| |kim| |lammps| |nwchem|
-|octopus| |onetep| |openmx| |psi4| |q_espresso| |siesta| |turbomole| |vasp|
+|octopus| |onetep| |openmx| |psi4| |qchem| |q_espresso| |siesta| |turbomole| |vasp|
 |xtb| |orca|
 :mod:`ACE-Molecule <ase.calculators.acemolecule>`
 :mod:`~ase.calculators.amber`
 :mod:`DMol³ <ase.calculators.dmol>`
-Gaussian_
+:mod:`Gaussian <ase.calculators.gaussian>`
 :mod:`Grimme DFT-D3 <ase.calculators.dftd3>`
 :mod:`~ase.calculators.gulp`
 Mopac_
-:mod:`~ase.calculators.qchem`
 :mod:`~ase.calculators.qmmm`
 :mod:`~ase.calculators.tip3p`
 :mod:`~deMon-Nano <ase.calculators.demonnano>`
@@ -63,6 +62,8 @@ Mopac_
 
 News
 ====
+
+* :ref:`ASE version 3.19.1 <releasenotes>` released (4 April 2020).
 
 * :ref:`ASE version 3.19.0 <releasenotes>` released (16 December 2019).
 
@@ -213,11 +214,17 @@ Contents
 .. |dftb| image:: static/dftb.png
    :target: ase/calculators/dftb.html
    :align: middle
+.. |DFTK| image:: static/dftk.png
+   :target: https://dftk.org/q/ase
+   :align: middle
 .. |fhi-aims| image:: static/fhi-aims.png
    :target: ase/calculators/FHI-aims.html
    :align: middle
 .. |fleur| image:: static/fleur.png
    :target: ase/calculators/fleur.html
+   :align: middle
+.. |gamess_us| image:: static/gamess_us.png
+   :target: ase/calculators/gamess_us.html
    :align: middle
 .. |gpaw| image:: static/gpaw.png
    :target: https://wiki.fysik.dtu.dk/gpaw/
@@ -252,6 +259,10 @@ Contents
 .. |psi4| image:: static/psi4.png
    :target: ase/calculators/psi4.html
    :align: middle
+.. |qchem| image:: static/qchem.png
+   :target: ase/calculators/qchem.html
+   :align: middle
+   :scale: 40
 .. |q_espresso| image:: static/espresso.png
    :target: ase/calculators/espresso.html
    :align: middle
@@ -272,7 +283,6 @@ Contents
    :target: ase/calculators/orca.html
    :align: middle
 
-.. _Gaussian: http://gaussian.com/
 .. _Mopac: ase/calculators/mopac.html
 .. _Sphinx: http://sphinx.pocoo.org
 .. _Asap: https://wiki.fysik.dtu.dk/asap

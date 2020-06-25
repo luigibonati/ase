@@ -1,6 +1,6 @@
 """Helper functions for Flask WSGI-app."""
 import re
-from typing import List, Tuple, Dict, Any
+from typing import List, Tuple, Dict, Any, Optional
 
 from flask import flash
 
@@ -10,7 +10,7 @@ from ase.db.table import Table, all_columns
 
 class Session:
     next_id = 1
-    sessions = {}
+    sessions: Dict[int, 'Session'] = {}
 
     def __init__(self, project_name: str):
         self.id = Session.next_id
@@ -22,8 +22,8 @@ class Session:
             for id in sorted(Session.sessions)[:400]:
                 del Session.sessions[id]
 
-        self.columns = None
-        self.nrows = None
+        self.columns: Optional[List[str]] = None
+        self.nrows: Optional[int] = None
         self.page = 0
         self.limit = 25
         self.sort = ''
@@ -85,10 +85,12 @@ class Session:
 
     @property
     def row2(self) -> int:
+        assert self.nrows is not None
         return min((self.page + 1) * self.limit, self.nrows)
 
     def paginate(self) -> List[Tuple[int, str]]:
         """Helper function for pagination stuff."""
+        assert self.nrows is not None
         npages = (self.nrows + self.limit - 1) // self.limit
         p1 = min(5, npages)
         p2 = max(self.page - 4, p1)
@@ -115,7 +117,10 @@ class Session:
         pages.append((nxt, 'next'))
         return pages
 
-    def create_table(self, db: Database, uid_key: str) -> Table:
+    def create_table(self,
+                     db: Database,
+                     uid_key: str,
+                     keys: List[str]) -> Table:
         query = self.query
         if self.nrows is None:
             try:
@@ -130,9 +135,10 @@ class Session:
         table.select(query, self.columns, self.sort,
                      self.limit, offset=self.page * self.limit)
         table.format()
+        assert self.columns is not None
         table.addcolumns = sorted(column for column in
-                                  all_columns + table.keys
-                                  if column not in table.columns)
+                                  all_columns + keys
+                                  if column not in self.columns)
         return table
 
 
