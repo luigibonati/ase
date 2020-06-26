@@ -9,7 +9,6 @@ import ase.io
 from ase.io import extxyz
 from ase.atoms import Atoms
 from ase.build import bulk
-from ase.test.testsuite import no_warn
 from ase.io.extxyz import escape
 from ase.calculators.emt import EMT
 from ase.constraints import full_3x3_to_voigt_6_stress
@@ -35,7 +34,7 @@ def images(at):
 def test_array_shape(at):
     # Check that unashable data type in info does not break output
     at.info['bad-info'] = [[1, np.array([0, 1])], [2, np.array([0, 1])]]
-    with no_warn():
+    with pytest.warns(UserWarning):
         ase.io.write('to.xyz', at, format='extxyz')
     del at.info['bad-info']
     at.arrays['ns_extra_data'] = np.zeros((len(at), 1))

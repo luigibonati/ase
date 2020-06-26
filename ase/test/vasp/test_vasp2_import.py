@@ -1,4 +1,4 @@
-def test_vasp2_import():
+def test_vasp2_import(require_vasp):
     """
     Test if we can find vasp2 using get_calculator()
     """

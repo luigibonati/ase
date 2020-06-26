@@ -1,4 +1,4 @@
-def test_vasp_setup():
+def test_vasp_setup(require_vasp):
     """
     Run some tests to ensure that VASP calculator constructs correct POTCAR files
 

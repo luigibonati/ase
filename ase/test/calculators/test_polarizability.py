@@ -22,7 +22,3 @@ def test_shapes():
     # check tensor
     for af, at in zip(alphaf, alphat):
         assert at.diagonal().sum() / 3 == pytest.approx(af, 1.e-8)
-
-
-if __name__ == '__main__':
-    test_shapes()

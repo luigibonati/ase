@@ -44,7 +44,3 @@ def test_overlap():
     # XXX this test sometimes fails for 1e-5 XXX
     # print(ali, aoi)
     assert ali == pytest.approx(aoi, 1e-2)
-
-
-if __name__ == '__main__':
-    test_overlap()
