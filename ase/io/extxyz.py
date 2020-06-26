@@ -269,7 +269,7 @@ def key_val_dict_to_str(dct, sep=' '):
     def known_types_to_str(val):
         if isinstance(val, bool) or isinstance(val, np.bool_):
             return 'T' if val else 'F'
-        elif isinstance(val, int) or isinstance(val, float):
+        elif isinstance(val, int) or isinstance(val, np.int64) or isinstance(val, float):
             return '{}'.format(val)
         elif isinstance(val, Spacegroup):
             return val.symbol

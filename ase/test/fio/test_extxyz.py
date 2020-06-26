@@ -315,9 +315,11 @@ def test_json_scalars():
     a = bulk('Si')
     a.info['val_1'] = 42.0
     a.info['val_2'] = np.float(42.0)
+    a.info['val_3'] = np.int64(42)
     a.write('tmp.xyz')
     comment_line = open('tmp.xyz', 'r').readlines()[1]
-    assert "val_1=42.0" in comment_line and "val_2=42.0" in comment_line
+    assert "val_1=42.0" in comment_line and "val_2=42.0" in comment_line and "val_3=42" in comment_line
     b = ase.io.read('tmp.xyz')
     assert abs(b.info['val_1'] - 42.0) < 1e-6
     assert abs(b.info['val_2'] - 42.0) < 1e-6
+    assert abs(b.info['val_3'] - 42)  == 0
