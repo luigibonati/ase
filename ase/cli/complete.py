@@ -85,9 +85,10 @@ commands = {
          '--maximum-stress', '-E', '--equation-of-state',
          '--eos-type', '-o', '--output', '--modify', '--after'],
     'test':
-        ['-c', '--calculators', '--list', '--list-calculators', '-j',
-         '--jobs', '-v', '--verbose', '--strict', '--fast',
-         '--coverage', '--nogui', '--pytest'],
+        ['-c', '--calculators', '--help-calculators', '--list',
+         '--list-calculators', '-j', '--jobs', '-v', '--verbose',
+         '--strict', '--fast', '--coverage', '--nogui',
+         '--pytest'],
     'ulm':
         ['-n', '--index', '-d', '--delete', '-v', '--verbose']}
 # End of computer generated data

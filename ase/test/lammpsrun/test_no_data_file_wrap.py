@@ -1,4 +1,8 @@
-def test_no_data_file_wrap():
+from ase.atoms import Atoms
+import pytest
+
+@pytest.mark.calculator('lammpsrun')
+def test_no_data_file_wrap(factory):
     """
     If 'create_atoms' hasn't been given the appropriate 'remap yes' option,
     atoms falling outside of a periodic cell are not actually created.  The
@@ -11,8 +15,6 @@ def test_no_data_file_wrap():
     no matter what, so you simply can't use the 'no_data_file' option if you
     want to allow for that scenario.
     """
-    from ase.atoms import Atoms
-    from ase.calculators.lammpsrun import LAMMPS
 
     # Make a periodic box and put one atom outside of it
     pos = [[0.0, 0.0, 0.0], [-2.0, 0.0, 0.0]]
@@ -29,7 +31,7 @@ def test_no_data_file_wrap():
     # 'create_atoms' commands into the LAMMPS input file
     params["no_data_file"] = True
 
-    with LAMMPS(specorder=["Ar"], **params) as calc:
+    with factory.calc(specorder=["Ar"], **params) as calc:
         atoms.calc = calc
         atoms.get_potential_energy()
         # assert something?

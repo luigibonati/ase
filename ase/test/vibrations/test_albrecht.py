@@ -37,13 +37,10 @@ def test_overlap():
     ao = Albrecht(atoms, H2MorseExcitedStates,
                   name=name, overlap=True,
                   approximation='Albrecht A', txt=None)
+
     aoi = ao.absolute_intensity(omega=om, gamma=gam)[-1]
 
     al = Albrecht(atoms, H2MorseExcitedStates,
                   name=name, approximation='Albrecht A', txt=None)
     ali = al.absolute_intensity(omega=om, gamma=gam)[-1]
     assert ali == pytest.approx(aoi, 1e-5)
-
-
-if __name__ == '__main__':
-    test_overlap()

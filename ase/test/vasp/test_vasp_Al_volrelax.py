@@ -1,4 +1,4 @@
-def test_vasp_Al_volrelax():
+def test_vasp_Al_volrelax(require_vasp):
     """
     Run VASP tests to ensure that relaxation with the VASP calculator works.
     This is conditional on the existence of the VASP_COMMAND or VASP_SCRIPT

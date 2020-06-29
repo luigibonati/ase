@@ -53,7 +53,3 @@ def test_compare_placzek_albrecht_intensities():
     ali = al.absolute_intensity(omega=om, gamma=gam)[-1]
     print('pri, ali', pri, ali)
     assert pri == pytest.approx(ali, 1e-2)
-
-
-if __name__ == '__main__':
-    test_compare_placzek_albrecht_intensities()

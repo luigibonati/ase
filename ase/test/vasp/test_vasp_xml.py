@@ -13,7 +13,7 @@ from ase.calculators.vasp import Vasp
 from ase.io import read
 
 
-def test_main():
+def test_main(require_vasp):
     assert installed()
 
     # simple test calculation of CO molecule

@@ -1,4 +1,4 @@
-def test_vasp_co():
+def test_vasp_co(require_vasp):
     """
     Run some VASP tests to ensure that the VASP calculator works. This
     is conditional on the existence of the VASP_COMMAND or VASP_SCRIPT

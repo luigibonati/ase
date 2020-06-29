@@ -142,6 +142,11 @@ keyword        type     default value   description
                                         done tasks, but it is required for
                                         certain functionality in plane-wave
                                         mode.
+``restart_kw`` ``str``  ``'start'``     If set to ``'restart'``, then the calculation
+                                        will attempt to restart from whatever
+                                        restart files are available as
+                                        specified in the .db file (may need to
+                                        be combined with other keywords).
 ============== ======== =============== ==================================================
 
 .. autoclass:: NWChem

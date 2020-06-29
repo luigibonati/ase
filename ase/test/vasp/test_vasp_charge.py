@@ -1,4 +1,4 @@
-def test_vasp_charge():
+def test_vasp_charge(require_vasp):
     """
     Run VASP tests to ensure that determining number of electrons from
     user-supplied charge works correctly. This is conditional on the existence
@@ -6,9 +6,9 @@ def test_vasp_charge():
 
     """
 
+    import pytest
     from ase.build import bulk
     from ase.calculators.vasp import Vasp
-    from ase.test import must_raise
     from ase.test.vasp import installed
 
     assert installed()
@@ -37,7 +37,7 @@ def test_vasp_charge():
     assert calc.float_params['nelect'] == default_nelect_from_vasp - charge
 
     # Test that conflicts between explicitly given nelect and charge are detected
-    with must_raise(ValueError):
+    with pytest.raises(ValueError):
         calc = Vasp(xc='LDA', nsw=-1, ibrion=-1, nelm=1, lwave=False, lcharg=False,
                     nelect=default_nelect_from_vasp-charge+1,
                     charge=charge)

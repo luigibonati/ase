@@ -1,4 +1,4 @@
-def test_vasp2_wdir():
+def test_vasp2_wdir(require_vasp):
     """
     Run tests to ensure that the VASP txt and label arguments function correctly,
     i.e. correctly sets the working directories and works in that directory.

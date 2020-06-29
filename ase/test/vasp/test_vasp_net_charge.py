@@ -1,4 +1,10 @@
-def test_vasp_net_charge():
+import pytest
+from ase.build import bulk
+from ase.calculators.vasp import Vasp
+from ase.test.vasp import installed
+
+
+def test_vasp_net_charge(require_vasp):
     """
     Run VASP tests to ensure that determining number of electrons from
     user-supplied net charge (via the deprecated net_charge parameter) works
@@ -10,11 +16,6 @@ def test_vasp_net_charge():
 
     Should be removed along with the net_charge parameter itself at some point.
     """
-
-    from ase.build import bulk
-    from ase.calculators.vasp import Vasp
-    from ase.test import must_raise, must_warn
-    from ase.test.vasp import installed
 
     assert installed()
 
@@ -28,7 +29,7 @@ def test_vasp_net_charge():
 
     # Compare VASP's output nelect from before + net charge to default nelect
     # determined by us + net charge
-    with must_warn(FutureWarning):
+    with pytest.warns(FutureWarning):
         net_charge = -2
         calc = Vasp(xc='LDA', nsw=-1, ibrion=-1, nelm=1, lwave=False, lcharg=False,
                     net_charge=net_charge)
@@ -39,22 +40,22 @@ def test_vasp_net_charge():
 
     # Test that conflicts between explicitly given nelect and net charge are
     # detected
-    with must_raise(ValueError):
-        with must_warn(FutureWarning):
+    with pytest.raises(ValueError):
+        with pytest.warns(FutureWarning):
             calc = Vasp(xc='LDA', nsw=-1, ibrion=-1, nelm=1, lwave=False, lcharg=False,
                         nelect=default_nelect_from_vasp+net_charge+1,
                         net_charge=net_charge)
             calc.calculate(system)
 
     # Test that conflicts between charge and net_charge are detected
-    with must_raise(ValueError):
-        with must_warn(FutureWarning):
+    with pytest.raises(ValueError):
+        with pytest.warns(FutureWarning):
             calc = Vasp(xc='LDA', nsw=-1, ibrion=-1, nelm=1, lwave=False, lcharg=False,
                         charge=-net_charge-1, net_charge=net_charge)
             calc.calculate(system)
 
     # Test that nothing is written if net charge is 0 and nelect not given
-    with must_warn(FutureWarning):
+    with pytest.warns(FutureWarning):
         calc = Vasp(xc='LDA', nsw=-1, ibrion=-1, nelm=1, lwave=False, lcharg=False,
                     net_charge=0)
         calc.initialize(system)
