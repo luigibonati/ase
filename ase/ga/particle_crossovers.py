@@ -1,14 +1,16 @@
-"""Crossover operations originally intended for medium sized particles"""
-import numpy as np
-from itertools import chain
-
-from ase import Atoms
 from ase.ga.offspring_creator import OffspringCreator
+from ase import Atoms
+from itertools import chain
+import numpy as np
 
 
 class Crossover(OffspringCreator):
     """Base class for all particle crossovers.
+
+    Originally intended for medium sized particles
+
     Do not call this class directly."""
+
     def __init__(self, rng=np.random):
         OffspringCreator.__init__(self, rng=rng)
         self.descriptor = 'Crossover'
@@ -38,6 +40,7 @@ class CutSpliceCrossover(Crossover):
     rng: Random number generator
         By default numpy.random.
     """
+
     def __init__(self, blmin, keep_composition=True, rng=np.random):
         Crossover.__init__(self, rng=rng)
         self.blmin = blmin
@@ -114,7 +117,7 @@ class CutSpliceCrossover(Crossover):
             correct_by = dict([(j, opt_sm.count(j)) for j in set(opt_sm)])
             for n in cur_sm:
                 correct_by[n] -= 1
-            correct_in = self.rng.choice([tmpf, tmpm])
+            correct_in = tmpf if self.rng.choice([0, 1]) else tmpm
             to_add, to_rem = [], []
             for num, amount in correct_by.items():
                 if amount > 0:
