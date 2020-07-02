@@ -1,7 +1,5 @@
-import pytest
 import numpy as np
 from ase.cell import Cell
-from ase.lattice import MCLC
 
 
 def test_bravais_eps():
@@ -43,9 +41,10 @@ def test_mclc_eps():
     # but the candidate was discarded due to being unconventional (b > c).
     # This test verifies that the problem was fixed.
     #
-    # There could be similar problems for other kinds of lattice.  It could perhaps
-    # cause the algorithm to find MCL/MCLC/TRI lattices with higher-than-necessary
-    # orthogonality defect if some candidates are discarded for this reason.
+    # There could be similar problems for other kinds of lattice.  It
+    # could perhaps cause the algorithm to find MCL/MCLC/TRI lattices
+    # with higher-than-necessary orthogonality defect if some
+    # candidates are discarded for this reason.
 
     cell = Cell.new([a, a, c, alpha, beta, gamma])
     lat = cell.get_bravais_lattice(eps=1e-2)
