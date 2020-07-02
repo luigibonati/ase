@@ -32,13 +32,20 @@ def test_bravais_eps():
     assert perfect_bct_cell.get_bravais_lattice().name == 'BCT'
 
 
-@pytest.mark.xfail
-def test_mcl_eps():
+def test_mclc_eps():
     a = 6.41
     c = 5.87
     alpha = 76.7
     beta = 103.3
     gamma = 152.2
+
+    # This lattice maps to something within tolerance of an MCLC lattice,
+    # but the candidate was discarded due to being unconventional (b > c).
+    # This test verifies that the problem was fixed.
+    #
+    # There could be similar problems for other kinds of lattice.  It could perhaps
+    # cause the algorithm to find MCL/MCLC/TRI lattices with higher-than-necessary
+    # orthogonality defect if some candidates are discarded for this reason.
 
     cell = Cell.new([a, a, c, alpha, beta, gamma])
     lat = cell.get_bravais_lattice(eps=1e-2)
