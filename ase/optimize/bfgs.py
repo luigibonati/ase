@@ -52,10 +52,9 @@ class BFGS(Optimizer):
             warnings.warn('You are using a much too large value for '
                           'the maximum step size: %.1f Å' % maxstep)
 
-        Optimizer.__init__(self, atoms, restart, logfile, trajectory, master)
+        self.alpha = alpha
 
-        # initial hessian
-        self.H0 = np.eye(3 * len(self.atoms)) * alpha
+        Optimizer.__init__(self, atoms, restart, logfile, trajectory, master)
 
     def todict(self):
         d = Optimizer.todict(self)
@@ -64,6 +63,9 @@ class BFGS(Optimizer):
         return d
 
     def initialize(self):
+        # initial hessian
+        self.H0 = np.eye(3 * len(self.atoms)) * self.alpha
+
         self.H = None
         self.r0 = None
         self.f0 = None
@@ -85,7 +87,7 @@ class BFGS(Optimizer):
         # check for negative eigenvalues of the hessian
         if any(omega < 0):
             n_negative = len(omega[omega < 0])
-            msg = '** BFGS Hessian has {} negative eigenvalues.'.format(
+            msg = '\n** BFGS Hessian has {} negative eigenvalues.'.format(
                 n_negative
             )
             warnings.warn(msg)
@@ -110,13 +112,10 @@ class BFGS(Optimizer):
         maxsteplength = np.max(steplengths)
         if maxsteplength >= self.maxstep:
             scale = self.maxstep / maxsteplength
-            msg = '** scale step by {:.3f} to be shorter than {}'.format(
+            msg = '\n** scale step by {:.3f} to be shorter than {}'.format(
                 scale, self.maxstep
             )
             warnings.warn(msg)
-            if self.logfile is not None:
-                self.logfile.write(msg)
-                self.logfile.flush()
 
             dr *= scale
 
