@@ -93,7 +93,7 @@ class BFGS(Optimizer):
             msg = '\n** BFGS Hessian has {} negative eigenvalues.'.format(
                 n_negative
             )
-            warnings.warn(msg)
+            print(msg, flush=True)
             if self.logfile is not None:
                 self.logfile.write(msg)
                 self.logfile.flush()
@@ -118,7 +118,7 @@ class BFGS(Optimizer):
             msg = '\n** scale step by {:.3f} to be shorter than {}'.format(
                 scale, self.maxstep
             )
-            warnings.warn(msg)
+            print(msg, flush=True)
 
             dr *= scale
 
