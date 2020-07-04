@@ -9,7 +9,7 @@ from ase.optimize.defaults import defaults
 
 class BFGS(Optimizer):
     def __init__(self, atoms, restart=None, logfile='-', trajectory=None,
-                 maxstep=None, master=None, alpha=70.0):
+                 maxstep=None, master=None, alpha=None):
         """BFGS optimizer.
 
         Parameters:
@@ -49,10 +49,13 @@ class BFGS(Optimizer):
             self.maxstep = defaults.maxstep
 
         if self.maxstep > 1.0:
-            warnings.warn('You are using a much too large value for '
+            warnings.warn('You are using a *very* large value for '
                           'the maximum step size: %.1f Å' % maxstep)
 
-        self.alpha = alpha
+        if alpha is not None:
+            self.alpha = alpha
+        else:
+            self.alpha = defaults.bfgs.alpha
 
         Optimizer.__init__(self, atoms, restart, logfile, trajectory, master)
 
