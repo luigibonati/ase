@@ -9,7 +9,7 @@ from ase.optimize.defaults import defaults
 
 class BFGS(Optimizer):
     def __init__(self, atoms, restart=None, logfile='-', trajectory=None,
-                 maxstep=None, master=None):
+                 maxstep=None, master=None, alpha=70.0):
         """BFGS optimizer.
 
         Parameters:
@@ -36,6 +36,12 @@ class BFGS(Optimizer):
         master: boolean
             Defaults to None, which causes only rank 0 to save files.  If
             set to true,  this rank will save files.
+
+        alpha: float
+            Initial guess for the Hessian (curvature of energy surface). A
+            conservative value of 70.0 is the default, but number of needed
+            steps to converge might be less if a lower value is used. However,
+            a lower value also means risk of instability.
         """
         if maxstep is not None:
             self.maxstep = maxstep
@@ -47,6 +53,9 @@ class BFGS(Optimizer):
                           'the maximum step size: %.1f Å' % maxstep)
 
         Optimizer.__init__(self, atoms, restart, logfile, trajectory, master)
+
+        # initial hessian
+        self.H0 = np.eye(3 * len(self.atoms)) * alpha
 
     def todict(self):
         d = Optimizer.todict(self)
@@ -94,7 +103,7 @@ class BFGS(Optimizer):
 
     def update(self, r, f, r0, f0):
         if self.H is None:
-            self.H = np.eye(3 * len(self.atoms)) * 70.0
+            self.H = self.H0
             return
         dr = r - r0
 
