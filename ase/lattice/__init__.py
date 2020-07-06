@@ -1344,6 +1344,17 @@ class LatticeChecker:
         mclc_cosa = 2.0 * prods[3] / (mclc_b * C)
         if -1 < mclc_cosa < 1:
             mclc_alpha = np.arccos(mclc_cosa) * 180 / np.pi
+            if mclc_b > C:
+                # XXX Temporary fix for certain otherwise
+                # unrecognizable lattices.
+                #
+                # This error could happen if the input lattice maps to
+                # something just outside the domain of conventional
+                # lattices (less than the tolerance).  Our solution is to
+                # propose a nearby conventional lattice instead, which
+                # will then be accepted if it's close enough.
+                mclc_b = 0.5 * (mclc_b + C)
+                C = mclc_b
             return self._check(MCLC, mclc_a, mclc_b, C, mclc_alpha)
 
     def TRI(self):
