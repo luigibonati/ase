@@ -13,3 +13,13 @@ def test_readwrite_errors():
 
     with pytest.raises(UnknownFileTypeError):
         read(fd, format='hello')
+
+
+def test_parse_filename():
+    from ase.io.formats import parse_filename
+    filename, index = parse_filename('file_name.traj@1:4:2')
+    assert filename == 'file_name.traj'
+    assert index == slice(1, 4, 2)
+    filename, index = parse_filename('path.to/file@name.traj')
+    assert filename == 'path.to/file@name.traj'
+    assert index is None
