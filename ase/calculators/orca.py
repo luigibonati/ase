@@ -93,36 +93,40 @@ class ORCA(FileIOCalculator):
 
     def read_energy(self):
         """Read Energy from ORCA output file."""
-        text = open(self.label + '.out', 'r', encoding='utf-8').read()
+        with open(self.label + '.out', mode='r', encoding='utf-8') as f:
+            text = f.read()
         lines = iter(text.split('\n'))
         # Energy:
         estring = 'FINAL SINGLE POINT ENERGY'
+        energy = None
         for line in lines:
             if estring in line:
                 energy = float(line.split()[-1])
                 break
-        self.results['energy'] = energy * Hartree
+        if energy is not None:
+            self.results['energy'] = energy * Hartree
 
     def read_forces(self):
         """Read Forces from ORCA output file."""
-        fil = open(self.label + '.engrad', 'r', encoding='utf-8')
-        lines = fil.readlines()
-        fil.close()
-        getgrad = "no"
+        with open(f'{self.label}.engrad', 'r') as file:
+            lines = file.readlines()
+        getgrad = False
+        gradients = []
+        tempgrad = []
         for i, line in enumerate(lines):
             if line.find('# The current gradient') >= 0:
-                getgrad = "yes"
+                getgrad = True
                 gradients = []
                 tempgrad = []
                 continue
-            if getgrad == "yes" and "#" not in line:
+            if getgrad and "#" not in line:
                 grad = line.split()[-1]
                 tempgrad.append(float(grad))
                 if len(tempgrad) == 3:
                     gradients.append(tempgrad)
                     tempgrad = []
             if '# The at' in line:
-                getgrad = "no"
+                getgrad = False
         self.results['forces'] = -np.array(gradients) * Hartree / Bohr
 
     def embed(self, mmcharges=None, **parameters):
