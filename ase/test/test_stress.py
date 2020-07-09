@@ -50,3 +50,13 @@ def test_stress():
     print("Theoretical Niggli tensor:\n", g_theory)
     print("Percent error in Niggli tensor:\n", g_p_err)
     assert np.all(abs(g_p_err) < 1)
+
+    # test voigt shape
+    for ideal_gas in (False, True):
+        kw = {'include_ideal_gas': ideal_gas}
+
+        assert a.get_stress(voigt=True, **kw).shape == (6,)
+        assert a.get_stress(voigt=False, **kw).shape == (3, 3)
+
+        assert a.get_stresses(voigt=True, **kw).shape == (len(a), 6)
+        assert a.get_stresses(voigt=False, **kw).shape == (len(a), 3, 3)
