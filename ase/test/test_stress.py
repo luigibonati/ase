@@ -5,17 +5,39 @@ from ase.calculators.lj import LennardJones
 from ase.constraints import UnitCellFilter
 from ase.optimize import BFGS
 
+# Theoretical infinite-cutoff LJ FCC unit cell parameters
+vol0 = 4 * 0.91615977036  # theoretical minimum
+a0 = vol0**(1 / 3)
 
-@pytest.mark.slow
-def test_stress():
-    # Theoretical infinite-cutoff LJ FCC unit cell parameters
-    vol0 = 4 * 0.91615977036  # theoretical minimum
-    a0 = vol0**(1 / 3)
 
+@pytest.fixture
+def atoms():
+    """two atoms at potential minimum"""
     a = bulk('X', 'fcc', a=a0)
-    cell0 = a.get_cell()
 
     a.calc = LennardJones()
+
+    return a
+
+
+def test_stress_voigt_shape(atoms):
+    a = atoms
+    # test voigt shape
+    for ideal_gas in (False, True):
+        kw = {'include_ideal_gas': ideal_gas}
+
+        assert a.get_stress(voigt=True, **kw).shape == (6,)
+        assert a.get_stress(voigt=False, **kw).shape == (3, 3)
+
+        assert a.get_stresses(voigt=True, **kw).shape == (len(a), 6)
+        assert a.get_stresses(voigt=False, **kw).shape == (len(a), 3, 3)
+
+
+@pytest.mark.slow
+def test_stress(atoms):
+    a = atoms
+    cell0 = a.get_cell()
+
     a.set_cell(np.dot(a.cell,
                       [[1.02, 0, 0.03],
                        [0, 0.99, -0.02],
@@ -50,13 +72,3 @@ def test_stress():
     print("Theoretical Niggli tensor:\n", g_theory)
     print("Percent error in Niggli tensor:\n", g_p_err)
     assert np.all(abs(g_p_err) < 1)
-
-    # test voigt shape
-    for ideal_gas in (False, True):
-        kw = {'include_ideal_gas': ideal_gas}
-
-        assert a.get_stress(voigt=True, **kw).shape == (6,)
-        assert a.get_stress(voigt=False, **kw).shape == (3, 3)
-
-        assert a.get_stresses(voigt=True, **kw).shape == (len(a), 6)
-        assert a.get_stresses(voigt=False, **kw).shape == (len(a), 3, 3)
