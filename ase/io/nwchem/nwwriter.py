@@ -135,7 +135,7 @@ def _format_block(key, val, nindent=0):
             if isinstance(subval, dict):
                 subval = ' '.join([_format_line(a, b)
                                    for a, b in subval.items()])
-            out.append(prefix2 + ' '.join([subkey, str(subval)]))
+            out.append(prefix2 + ' '.join([_format_line(subkey, subval)]))
     out.append(prefix + 'end')
     return out
 
@@ -280,7 +280,7 @@ def write_nwchem_in(fd, atoms, properties=None, **params):
     xc = params.get('xc')
     if 'xc' in params:
         xc = _xc_conv.get(params['xc'].lower(), params['xc'])
-        if theory == 'dft':
+        if theory in ['dft', 'tddft']:
             if 'dft' not in params:
                 params['dft'] = dict()
             params['dft']['xc'] = xc
