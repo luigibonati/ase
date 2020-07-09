@@ -830,7 +830,7 @@ class Atoms(object):
             # Convert to the Voigt form before possibly applying
             # constraints and adding the dynamic part of the stress
             # (the "ideal gas contribution").
-            stress = full_3x3_to_voigt_6_stress
+            stress = full_3x3_to_voigt_6_stress(stress)
         else:
             assert shape == (6,)
 
@@ -874,6 +874,11 @@ class Atoms(object):
         if np.shape(stresses[0]) == (3, 3):
             stresses_voigt = [full_3x3_to_voigt_6_stress(s) for s in stresses]
             stresses = np.array(stresses_voigt)
+
+        # REMARK: The ideal gas contribution is intensive, i.e., the volume
+        # is divided out. We currently don't check if `stresses` are intensive
+        # as well, i.e., if `a.get_stresses.sum(axis=0) == a.get_stress()`.
+        # It might be good to check this here, but adds computational overhead.
 
         if include_ideal_gas and self.has('momenta'):
             stresscomp = np.array([[0, 5, 4], [5, 1, 3], [4, 3, 2]])

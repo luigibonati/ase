@@ -66,7 +66,7 @@ def test_run():
         xx, yy, zz, xy, xz, yz = [float(l) for l in line.split()[2:8]]
         ref_stresses = [[xx, xy, xz], [xy, yy, yz], [xz, yz, zz]]
 
-    assert norm(atoms.get_stresses()[0] - ref_stresses) < 1e-12
+    assert norm(atoms.get_stresses(voigt=False)[0] - ref_stresses) < 1e-12
 
 
 def write_output():
