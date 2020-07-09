@@ -871,7 +871,7 @@ class Atoms(object):
         stresses = self._calc.get_stresses(self)
 
         # make sure `stresses` are in voigt form
-        if np.shape(stresses[0]) == (3, 3):
+        if np.shape(stresses)[1:] == (3, 3):
             stresses_voigt = [full_3x3_to_voigt_6_stress(s) for s in stresses]
             stresses = np.array(stresses_voigt)
 
