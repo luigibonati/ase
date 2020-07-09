@@ -1,10 +1,11 @@
 import numpy as np
 
-from ase.optimize.defaults import defaults
 from ase.optimize.optimize import Optimizer
 
 
 class MDMin(Optimizer):
+    # default parameters
+    dt = 0.2
     def __init__(self, atoms, restart=None, logfile='-', trajectory=None,
                  dt=None, master=None):
         """Parameters:
@@ -35,8 +36,6 @@ class MDMin(Optimizer):
 
         if dt is not None:
             self.dt = dt
-        else:
-            self.dt = defaults.mdmin.dt
 
     def initialize(self):
         self.v = None

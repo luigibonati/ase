@@ -4,10 +4,12 @@ import numpy as np
 from numpy.linalg import eigh
 
 from ase.optimize.optimize import Optimizer
-from ase.optimize.defaults import defaults
 
 
 class BFGS(Optimizer):
+    # default parameters
+    alpha = 70.0
+
     def __init__(self, atoms, restart=None, logfile='-', trajectory=None,
                  maxstep=None, master=None, alpha=None):
         """BFGS optimizer.
@@ -45,8 +47,6 @@ class BFGS(Optimizer):
         """
         if maxstep is not None:
             self.maxstep = maxstep
-        else:
-            self.maxstep = defaults.maxstep
 
         if self.maxstep > 1.0:
             warnings.warn('You are using a *very* large value for '
@@ -54,8 +54,6 @@ class BFGS(Optimizer):
 
         if alpha is not None:
             self.alpha = alpha
-        else:
-            self.alpha = defaults.bfgs.alpha
 
         Optimizer.__init__(self, atoms, restart, logfile, trajectory, master)
 

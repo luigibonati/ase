@@ -1,7 +1,6 @@
 import warnings
 import numpy as np
 
-from ase.optimize.defaults import defaults
 from ase.optimize.optimize import Optimizer
 
 
@@ -65,8 +64,6 @@ class FIRE(Optimizer):
             self.maxstep = maxmove
             warnings.warn('maxmove is deprecated; please use maxstep',
                           np.VisibleDeprecationWarning)
-        else:
-            self.maxstep = defaults.maxstep
 
         self.dtmax = dtmax
         self.Nmin = Nmin
