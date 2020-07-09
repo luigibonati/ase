@@ -298,7 +298,7 @@ def write_nwchem_in(fd, atoms, properties=None, **params):
     restart_kw = params.get('restart_kw','start')
     if restart_kw not in ('start','restart'):
        raise ValueError("Unrecognised restart keyword: {}!".format(restart_kw))
-    short_label = label.rsplit('/', 1)[1]
+    short_label = label.rsplit('/', 1)[-1]
     out = ['title "{}"'.format(short_label),
            'permanent_dir {}'.format(perm),
            'scratch_dir {}'.format(scratch),
