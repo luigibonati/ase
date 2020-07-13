@@ -1,4 +1,5 @@
 import os
+import re
 
 import numpy as np
 
@@ -96,16 +97,11 @@ class ORCA(FileIOCalculator):
         """Read Energy from ORCA output file."""
         with open(self.label + '.out', mode='r', encoding='utf-8') as fd:
             text = fd.read()
-        lines = iter(text.split('\n'))
         # Energy:
-        estring = 'FINAL SINGLE POINT ENERGY'
-        energy = None
-        for line in lines:
-            if estring in line:
-                energy = float(line.split()[-1])
-                break
-        if energy is not None:
-            self.results['energy'] = energy * Hartree
+        re_energy = re.compile(r"FINAL SINGLE POINT ENERGY.*\n")
+        found_line = re_energy.search(text)
+        if found_line:
+            self.results['energy'] = float(found_line.group().split()[-1]) * Hartree
 
     def read_forces(self):
         """Read Forces from ORCA output file."""
