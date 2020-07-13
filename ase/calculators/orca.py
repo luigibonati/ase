@@ -1,4 +1,5 @@
 import os
+
 import numpy as np
 
 from ase.units import Hartree, Bohr
@@ -70,13 +71,13 @@ class ORCA(FileIOCalculator):
         if not os.path.isfile(self.label + '.out'):
             raise ReadError
 
-        with open(self.label + '.inp') as f:
-            for line in f:
+        with open(self.label + '.inp') as fd:
+            for line in fd:
                 if line.startswith('geometry'):
                     break
             symbols = []
             positions = []
-            for line in f:
+            for line in fd:
                 if line.startswith('end'):
                     break
                 words = line.split()
@@ -93,8 +94,8 @@ class ORCA(FileIOCalculator):
 
     def read_energy(self):
         """Read Energy from ORCA output file."""
-        with open(self.label + '.out', mode='r', encoding='utf-8') as f:
-            text = f.read()
+        with open(self.label + '.out', mode='r', encoding='utf-8') as fd:
+            text = fd.read()
         lines = iter(text.split('\n'))
         # Energy:
         estring = 'FINAL SINGLE POINT ENERGY'
@@ -108,8 +109,8 @@ class ORCA(FileIOCalculator):
 
     def read_forces(self):
         """Read Forces from ORCA output file."""
-        with open(f'{self.label}.engrad', 'r') as file:
-            lines = file.readlines()
+        with open(f'{self.label}.engrad', 'r') as fd:
+            lines = fd.readlines()
         getgrad = False
         gradients = []
         tempgrad = []
