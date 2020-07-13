@@ -99,8 +99,9 @@ class ORCA(FileIOCalculator):
             text = fd.read()
         # Energy:
         re_energy = re.compile(r"FINAL SINGLE POINT ENERGY.*\n")
+        re_not_converged = re.compile(r"Wavefunction not fully converged")
         found_line = re_energy.search(text)
-        if found_line:
+        if found_line and not re_not_converged.search(found_line.group()):
             self.results['energy'] = float(found_line.group().split()[-1]) * Hartree
 
     def read_forces(self):
