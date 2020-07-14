@@ -182,7 +182,7 @@ class Optimizer(Dynamics):
     """Base-class for all structure optimization classes."""
 
     # default maxstep for all optimizers
-    maxstep = 0.2
+    defaults = {'maxstep': 0.2}
 
     def __init__(
         self,

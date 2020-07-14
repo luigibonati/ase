@@ -5,7 +5,8 @@ from ase.optimize.optimize import Optimizer
 
 class MDMin(Optimizer):
     # default parameters
-    dt = 0.2
+    defaults = {**Optimizer.defaults, 'dt': 0.2}
+
     def __init__(self, atoms, restart=None, logfile='-', trajectory=None,
                  dt=None, master=None):
         """Parameters:
@@ -21,10 +22,6 @@ class MDMin(Optimizer):
         trajectory: string
             Pickle file used to store trajectory of atomic movement.
 
-        maxstep: float
-            Used to set the maximum distance an atom can move per
-            iteration (default value is 0.2 Angstroms).
-
         logfile: string
             Text file used to write summary information.
 
@@ -34,7 +31,9 @@ class MDMin(Optimizer):
         """
         Optimizer.__init__(self, atoms, restart, logfile, trajectory, master)
 
-        if dt is not None:
+        if dt is None:
+            self.dt = self.defaults['dt']
+        else:
             self.dt = dt
 
     def initialize(self):

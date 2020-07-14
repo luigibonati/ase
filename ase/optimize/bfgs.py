@@ -8,7 +8,7 @@ from ase.optimize.optimize import Optimizer
 
 class BFGS(Optimizer):
     # default parameters
-    alpha = 70.0
+    defaults = {**Optimizer.defaults, 'alpha': 70.0}
 
     def __init__(self, atoms, restart=None, logfile='-', trajectory=None,
                  maxstep=None, master=None, alpha=None):
@@ -45,14 +45,18 @@ class BFGS(Optimizer):
             steps to converge might be less if a lower value is used. However,
             a lower value also means risk of instability.
         """
-        if maxstep is not None:
+        if maxstep is None:
+            self.maxstep = self.defaults['maxstep']
+        else:
             self.maxstep = maxstep
 
         if self.maxstep > 1.0:
             warnings.warn('You are using a *very* large value for '
                           'the maximum step size: %.1f Å' % maxstep)
 
-        if alpha is not None:
+        if alpha is None:
+            self.alpha = self.defaults['alpha']
+        else:
             self.alpha = alpha
 
         Optimizer.__init__(self, atoms, restart, logfile, trajectory, master)

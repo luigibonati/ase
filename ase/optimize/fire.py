@@ -64,6 +64,8 @@ class FIRE(Optimizer):
             self.maxstep = maxmove
             warnings.warn('maxmove is deprecated; please use maxstep',
                           np.VisibleDeprecationWarning)
+        else:
+            self.maxstep = self.defaults['maxstep']
 
         self.dtmax = dtmax
         self.Nmin = Nmin
