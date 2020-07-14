@@ -113,7 +113,7 @@ class NEB:
         self.real_forces = None  # ndarray of shape (nimages, natom, 3)
         self.energies = None  # ndarray of shape (nimages,)
 
-    def interpolate(self, method='linear', mic=False):
+    def interpolate(self, method='linear', mic=False, interpolate_cell=False, use_scaled_coord=False):
         """Interpolate the positions of the interior images between the
         initial state (image 0) and final state (image -1).
 
@@ -123,11 +123,26 @@ class NEB:
             idpp uses an image-dependent pair potential.
         mic: bool
             Use the minimum-image convention when interpolating.
+        interpolate_cell: bool
+            Interpolate the cell vectors too. Only implemented for the 'linear'
+            method!
+        use_scaled_coord: bool
+            Use scaled/fractional/interal coordinates instead of real space ones
+            for the interpolation. Only implemented for the 'linear' method!
         """
+        if interpolate_cell and not method == 'linear':
+            msg = ('Cell Interpolation only implemented for '
+                   'interpolation method linear')
+            raise NotImplementedError(msg)
+        if use_scaled_coord and not method == 'linear':
+            msg = ('Scaled Coordinates Interpolation only '
+                   'implemented for interpolation method linear')
+            raise NotImplementedError(msg)
+
         if self.remove_rotation_and_translation:
             minimize_rotation_and_translation(self.images[0], self.images[-1])
 
-        interpolate(self.images, mic)
+        interpolate(self.images, mic, interpolate_cell, use_scaled_coord)
 
         if method == 'idpp':
             idpp_interpolate(images=self, traj=None, log=None, mic=mic)
@@ -562,17 +577,42 @@ class SingleCalculatorNEB(NEB):
         return self
 
 
-def interpolate(images, mic=False):
+def interpolate(images, mic=False, interpolate_cell=False, use_scaled_coord=False):
     """Given a list of images, linearly interpolate the positions of the
-    interior images."""
-    pos1 = images[0].get_positions()
-    pos2 = images[-1].get_positions()
+    interior images.
+
+    mic: bool
+         Map movement into the unit cell by using the minimum image convention.
+    interpolate_cell: bool
+         Interpolate the three cell vectors linearly just like the atomic positions.
+    use_scaled_coord: bool
+         Use scaled/internal/fractional coordinates instead of real ones for the
+         interpolation.
+    """
+    if use_scaled_coord:
+        pos1 = images[0].get_scaled_positions(wrap=mic)
+        pos2 = images[-1].get_scaled_positions(wrap=mic)
+    else:
+        pos1 = images[0].get_positions()
+        pos2 = images[-1].get_positions()
     d = pos2 - pos1
-    if mic:
+    if mic and not use_scaled_coord:
         d = find_mic(d, images[0].get_cell(), images[0].pbc)[0]
     d /= (len(images) - 1.0)
+    if interpolate_cell:
+        cell1 = images[0].get_cell()
+        cell2 = images[-1].get_cell()
+        cellDiff = cell2 - cell1
+        cellDiff /= (len(images) - 1.0)
     for i in range(1, len(images) - 1):
-        images[i].set_positions(pos1 + i * d)
+        #first the new cell, otherwise scaled positions are wrong
+        if interpolate_cell:
+            images[i].set_cell(cell1 + i * cellDiff)
+        newPos = pos1 + i * d
+        if use_scaled_coord:
+            images[i].set_scaled_positions(newPos)
+        else:
+            images[i].set_positions(newPos)
 
 
 def idpp_interpolate(images, traj='idpp.traj', log='idpp.log', fmax=0.1,
