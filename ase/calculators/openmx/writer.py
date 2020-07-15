@@ -360,7 +360,11 @@ def get_atoms_speciesandcoordinates(atoms, parameters):
     for i, element in enumerate(elements):
         atoms_speciesandcoordinates.append([str(i + 1), element])
     # Appending positions
-    positions = atoms.get_positions()
+    unit = parameters.get('atoms_speciesandcoordinates_unit')
+    if unit == 'frac':
+        positions = atoms.get_scaled_positions()
+    elif unit == 'ang':
+        positions = atoms.get_positions()
     for i, position in enumerate(positions):
         atoms_speciesandcoordinates[i].extend(position)
     # Appending magnetic moment
