@@ -694,16 +694,16 @@ class Vasp2(GenerateVaspInput, Calculator):  # type: ignore
         Raises a ReadError if the reader is not able to construct a calculator.
         """
         file = self._indir('vasprun.xml')
-        incomplese_msg = (
+        incomplete_msg = (
             f'The file "{file}" is incomplete, and no DFT data was available. '
             'This is likely due to an incomplete calculation.')
         try:
             _xml_atoms = read(file, index=-1, format='vasp-xml')
         except ElementTree.ParseError:
-            raise calculator.ReadError(incomplese_msg)
+            raise calculator.ReadError(incomplete_msg)
 
         if _xml_atoms is None or _xml_atoms.calc is None:
-            raise calculator.ReadError(incomplese_msg)
+            raise calculator.ReadError(incomplete_msg)
 
         self._xml_calc = _xml_atoms.calc
         return self._xml_calc
