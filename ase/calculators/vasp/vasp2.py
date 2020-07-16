@@ -698,7 +698,9 @@ class Vasp2(GenerateVaspInput, Calculator):  # type: ignore
             f'The file "{file}" is incomplete, and no DFT data was available. '
             'This is likely due to an incomplete calculation.')
         try:
-            _xml_atoms = read(file, index=-1, format='vasp-xml')  # type: ase.Atoms
+            _xml_atoms = read(file, index=-1, format='vasp-xml')
+            # Silence mypy, we should only ever get a single atoms object
+            assert isinstance(_xml_atoms, ase.Atoms)
         except ElementTree.ParseError:
             raise calculator.ReadError(incomplete_msg)
 
