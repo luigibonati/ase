@@ -1,4 +1,9 @@
+import pytest
 import numpy as np
+from ase.quaternions import Quaternion
+
+TEST_N = 200
+
 
 def axang_rotm(u, theta):
 
@@ -15,10 +20,10 @@ def axang_rotm(u, theta):
     return rotm
 
 
-def rand_rotm(rndstate=np.random.RandomState(0)):
+def rand_rotm(rng=np.random.RandomState(0)):
     """Axis & angle rotations."""
-    u = rndstate.rand(3)
-    theta = rndstate.rand() * np.pi * 2
+    u = rng.rand(3)
+    theta = rng.rand() * np.pi * 2
 
     return axang_rotm(u, theta)
 
@@ -36,37 +41,31 @@ def eulang_rotm(a, b, c, mode='zyz'):
     return np.dot(rotc, np.dot(rotb, rota))
 
 
-def test_quaternions_rotations():
+@pytest.fixture
+def rng():
+    return np.random.RandomState(0)
 
-    from ase.quaternions import Quaternion
 
-    # Random state for testing
-    rndstate = np.random.RandomState(0)
-    test_n = 200
+def test_quaternions_rotations(rng):
 
     # First: test that rotations DO work
-    for i in range(test_n):
+    for i in range(TEST_N):
         # n random tests
 
-        rotm = rand_rotm(rndstate)
+        rotm = rand_rotm(rng)
 
         q = Quaternion.from_matrix(rotm)
 
         # Now test this with a vector
-        v = rndstate.rand(3)
+        v = rng.rand(3)
 
         vrotM = np.dot(rotm, v)
         vrotQ = q.rotate(v)
 
         assert np.allclose(vrotM, vrotQ)
 
-def test_quaternions_gimbal():
 
-    from ase.quaternions import Quaternion
-
-    # Random state for testing
-    rndstate = np.random.RandomState(0)
-    test_n = 200
+def test_quaternions_gimbal(rng):
 
     # Second: test the special case of a PI rotation
 
@@ -78,45 +77,34 @@ def test_quaternions_gimbal():
     assert not np.isnan(q.q).any()
 
 
-def test_quaternions_overload():
-
-    from ase.quaternions import Quaternion
-
-    # Random state for testing
-    rndstate = np.random.RandomState(0)
-    test_n = 200
+def test_quaternions_overload(rng):
 
     # Third: test compound rotations and operator overload
-    for i in range(test_n):
+    for i in range(TEST_N):
 
-        rotm1 = rand_rotm(rndstate)
-        rotm2 = rand_rotm(rndstate)
+        rotm1 = rand_rotm(rng)
+        rotm2 = rand_rotm(rng)
 
         q1 = Quaternion.from_matrix(rotm1)
         q2 = Quaternion.from_matrix(rotm2)
 
         # Now test this with a vector
-        v = rndstate.rand(3)
+        v = rng.rand(3)
 
         vrotM = np.dot(rotm2, np.dot(rotm1, v))
         vrotQ = (q2 * q1).rotate(v)
 
         assert np.allclose(vrotM, vrotQ)
 
-def test_quaternions_euler():
 
-    from ase.quaternions import Quaternion
-
-    # Random state for testing
-    rndstate = np.random.RandomState(0)
-    test_n = 200    
+def test_quaternions_euler(rng):
 
     # Fourth: test Euler angles
     for mode in ['zyz', 'zxz']:
-        for i in range(test_n):
+        for i in range(TEST_N):
 
-            abc = rndstate.rand(3) * 2 * np.pi
-            v2 = rndstate.rand(2, 3)  # Two random vectors to rotate rigidly
+            abc = rng.rand(3) * 2 * np.pi
+            v2 = rng.rand(2, 3)  # Two random vectors to rotate rigidly
 
             q_eul = Quaternion.from_euler_angles(*abc, mode=mode)
             rot_eul = eulang_rotm(*abc, mode=mode)
@@ -126,19 +114,14 @@ def test_quaternions_euler():
 
             assert np.allclose(v2_q, v2_m)
 
-def test_quaternions_rotm():
 
-    from ase.quaternions import Quaternion
-
-    # Random state for testing
-    rndstate = np.random.RandomState(0)
-    test_n = 200    
+def test_quaternions_rotm(rng):
 
     # Fifth: test that conversion back to rotation matrices works properly
-    for i in range(test_n):
+    for i in range(TEST_N):
 
-        rotm1 = rand_rotm(rndstate)
-        rotm2 = rand_rotm(rndstate)
+        rotm1 = rand_rotm(rng)
+        rotm2 = rand_rotm(rng)
 
         q1 = Quaternion.from_matrix(rotm1)
         q2 = Quaternion.from_matrix(rotm2)
@@ -147,13 +130,9 @@ def test_quaternions_rotm():
         assert(np.allclose(q2.rotation_matrix(), rotm2))
         assert(np.allclose((q1 * q2).rotation_matrix(), np.dot(rotm1, rotm2)))
 
-def test_quaternions_axang():
 
-    from ase.quaternions import Quaternion
+def test_quaternions_axang(rng):
 
-    # Random state for testing
-    rndstate = np.random.RandomState(0)
-    test_n = 200    
     # Sixth: test conversion to axis + angle
     q = Quaternion()
     n, theta = q.axis_angle()
