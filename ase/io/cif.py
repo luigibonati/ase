@@ -497,11 +497,19 @@ def write_enc(fileobj, s):
     fileobj.write(s.encode("latin-1"))
 
 
-def write_cif(fileobj, images, format='default',
-              wrap=True) -> None:
+def write_cif(fileobj, images, cif_format='default',
+              wrap=True, add_loop=None) -> None:
     """Write *images* to CIF file.
 
-    wrap: Wrap atoms into unit cell.
+    wrap: bool
+        Wrap atoms into unit cell.
+
+    add_loop: dict
+        Add the information from this dictionary to the `loop_` section.
+        Keys are printed to the `loop_` section preceeded by '  _'. dict[key] should contain
+        the data printed for each atom, so it needs to have the setup
+        `dict[key][nframe][natom] = string`. The strings are printed as
+        they are, so take care of formating.
     """
     if isinstance(fileobj, str):
         fileobj = paropen(fileobj, 'wb')
@@ -514,7 +522,7 @@ def write_cif(fileobj, images, format='default',
 
         a, b, c, alpha, beta, gamma = atoms.get_cell_lengths_and_angles()
 
-        if format == 'mp':
+        if cif_format == 'mp':
 
             comp_name = atoms.get_chemical_formula(mode='reduce')
             sf = split_chem_form(comp_name)
@@ -555,7 +563,7 @@ def write_cif(fileobj, images, format='default',
         # Is it a periodic system?
         coord_type = 'fract' if atoms.pbc.all() else 'Cartn'
 
-        if format == 'mp':
+        if cif_format == 'mp':
             write_enc(fileobj, '  _atom_site_type_symbol\n')
             write_enc(fileobj, '  _atom_site_label\n')
             write_enc(fileobj, '  _atom_site_symmetry_multiplicity\n')
@@ -572,6 +580,12 @@ def write_cif(fileobj, images, format='default',
             write_enc(fileobj, '  _atom_site_thermal_displace_type\n')
             write_enc(fileobj, '  _atom_site_B_iso_or_equiv\n')
             write_enc(fileobj, '  _atom_site_type_symbol\n')
+
+        extra_data = [ "" for j in range(len(atoms)) ]
+        if add_loop:
+            for key in add_loop:
+                extra_data = [ extra_data[j]+"  "+add_loop[key][i][j] for j in range(len(atoms)) ]
+                write_enc(fileobj, '  _'+key+'\n')
 
         if coord_type == 'fract':
             coords = atoms.get_scaled_positions(wrap).tolist()
@@ -597,19 +611,19 @@ def write_cif(fileobj, images, format='default',
 
         no: Dict[str, int] = {}
 
-        for symbol, pos, occ in zip(symbols, coords, occupancies):
+        for symbol, pos, occ, ext in zip(symbols, coords, occupancies, extra_data):
             if symbol in no:
                 no[symbol] += 1
             else:
                 no[symbol] = 1
-            if format == 'mp':
+            if cif_format == 'mp':
                 write_enc(fileobj,
-                          '  %-2s  %4s  %4s  %7.5f  %7.5f  %7.5f  %6.1f\n' %
+                          '  %-2s  %4s  %4s  %7.5f  %7.5f  %7.5f  %6.1f%s\n' %
                           (symbol, symbol + str(no[symbol]), 1,
-                           pos[0], pos[1], pos[2], occ))
+                           pos[0], pos[1], pos[2], occ, ext))
             else:
                 write_enc(fileobj,
-                          '  %-8s %6.4f %7.5f  %7.5f  %7.5f  %4s  %6.3f  %s\n'
+                          '  %-8s %6.4f %7.5f  %7.5f  %7.5f  %4s  %6.3f  %-2s%s\n'
                           % ('%s%d' % (symbol, no[symbol]),
                              occ,
                              pos[0],
@@ -617,4 +631,5 @@ def write_cif(fileobj, images, format='default',
                              pos[2],
                              'Biso',
                              1.0,
-                             symbol))
+                             symbol,
+                             ext))
