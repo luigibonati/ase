@@ -95,6 +95,9 @@ Algorithms:
   and energies of atoms objects.  The classes and functions used in
   the CLI are also available in :mod:`ase.cli.template`.
 
+* Allow setting the initial hessian in `optimize.BFGS` via the keyword `alpha` or
+  explicitly via `opt.H0 = ...` after instantiation.
+  
 I/O:
 
 * The ``ase db db1.db <selection> --insert-into db2.db`` command now respects
@@ -155,6 +158,7 @@ Calculators:
   Lennard-Jones potential :class:`ase.calculators.lj.LennardJones`.
   Functionality for other properties should be unchanged. Testing and
   documentation have also been expanded.
+
 
 .. _mypy: http://mypy-lang.org/
 
