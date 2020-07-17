@@ -364,7 +364,9 @@ def get_atoms_speciesandcoordinates(atoms, parameters):
     if unit == 'frac':
         positions = atoms.get_scaled_positions()
     elif unit == 'ang':
-        positions = atoms.get_positions()
+        positions = atoms.get_positions(wrap=False)
+    else:
+        raise ValueError('atoms_speciesandcoordinates_unit should be either frac or ang')
     for i, position in enumerate(positions):
         atoms_speciesandcoordinates[i].extend(position)
     # Appending magnetic moment
