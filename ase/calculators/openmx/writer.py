@@ -362,9 +362,9 @@ def get_atoms_speciesandcoordinates(atoms, parameters):
     # Appending positions
     unit = parameters.get('atoms_speciesandcoordinates_unit')
     if unit == 'frac':
-        positions = atoms.get_scaled_positions()
+        positions = atoms.get_scaled_positions(wrap=False)
     elif unit == 'ang':
-        positions = atoms.get_positions(wrap=False)
+        positions = atoms.get_positions()
     else:
         raise ValueError('atoms_speciesandcoordinates_unit should be either frac or ang')
     for i, position in enumerate(positions):
