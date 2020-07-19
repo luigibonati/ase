@@ -13,20 +13,15 @@ class PNG(EPS):
         self.renderer = RendererAgg(self.w, self.h, dpi)
 
     def write_trailer(self):
-        renderer = self.renderer
-        if hasattr(renderer._renderer, 'write_png'):
-            # Old version of matplotlib:
-            renderer._renderer.write_png(self.filename)
-        else:
-            from matplotlib import _png
-            import matplotlib
-            x = renderer.buffer_rgba()
-            try:
-                _png.write_png(x, self.w, self.h, self.filename, 72)
-            except (TypeError, ValueError):
-                x = np.frombuffer(x, np.uint8).reshape(
-                    (int(self.h), int(self.w), 4))
-                _png.write_png(x, self.filename, 72)
+        from matplotlib import _png
+        import matplotlib
+        x = self.renderer.buffer_rgba()
+        try:
+            _png.write_png(x, self.w, self.h, self.filename, 72)
+        except (TypeError, ValueError):
+            x = np.frombuffer(x, np.uint8).reshape(
+                (int(self.h), int(self.w), 4))
+            _png.write_png(x, self.filename, 72)
 
 
 def write_png(filename, atoms, **parameters):
