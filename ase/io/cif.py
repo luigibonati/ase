@@ -508,8 +508,9 @@ def write_cif(fileobj, images, cif_format='default',
         Add the information from this dictionary to the `loop_` section.
         Keys are printed to the `loop_` section preceeded by '  _'. dict[key] should contain
         the data printed for each atom, so it needs to have the setup
-        `dict[key][nframe][natom] = string`. The strings are printed as
-        they are, so take care of formating.
+        `dict[key][i_frame][i_atom] = string`. The strings are printed as
+        they are, so take care of formating. Information can be re-read using the `store_tags`
+        option of the cif reader.
     """
     if isinstance(fileobj, str):
         fileobj = paropen(fileobj, 'wb')
@@ -517,8 +518,8 @@ def write_cif(fileobj, images, cif_format='default',
     if hasattr(images, 'get_positions'):
         images = [images]
 
-    for i, atoms in enumerate(images):
-        write_enc(fileobj, 'data_image%d\n' % i)
+    for i_frame, atoms in enumerate(images):
+        write_enc(fileobj, 'data_image%d\n' % i_frame)
 
         a, b, c, alpha, beta, gamma = atoms.get_cell_lengths_and_angles()
 
@@ -581,12 +582,6 @@ def write_cif(fileobj, images, cif_format='default',
             write_enc(fileobj, '  _atom_site_B_iso_or_equiv\n')
             write_enc(fileobj, '  _atom_site_type_symbol\n')
 
-        extra_data = [ "" for j in range(len(atoms)) ]
-        if add_loop:
-            for key in add_loop:
-                extra_data = [ extra_data[j]+"  "+add_loop[key][i][j] for j in range(len(atoms)) ]
-                write_enc(fileobj, '  _'+key+'\n')
-
         if coord_type == 'fract':
             coords = atoms.get_scaled_positions(wrap).tolist()
         else:
@@ -608,6 +603,15 @@ def write_cif(fileobj, images, cif_format='default',
                         occupancies.append(occ)
         except KeyError:
             pass
+
+        #can only do it now since length of atoms is not always equal to the number of entries
+        #do not move this up!
+        extra_data = [ "" for i in range(len(symbols)) ]
+        if add_loop:
+            for key in add_loop:
+                extra_data = [ extra_data[i]+"  "+add_loop[key][i_frame][i] for i in range(len(symbols)) ]
+                write_enc(fileobj, '  _'+key+'\n')
+
 
         no: Dict[str, int] = {}
 
