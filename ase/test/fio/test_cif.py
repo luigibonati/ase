@@ -1,6 +1,7 @@
 import io
 import numpy as np
 import warnings
+import pytest
 
 from ase.io import read
 from ase.io import write
@@ -341,5 +342,25 @@ Se5 Se2- 2 a 0.1147(4) 0.5633(4) 0.3288(6) 0.1078(6) 1. 0
 Se6 Se2- 2 a 0.0050(4) 0.4480(6) 0.9025(6) 0.9102(6) 1. 0
 """
 
-cif_file = io.StringIO(content2)
-atoms = read(cif_file, format='cif')
+def test_cif_icsd():
+    cif_file = io.StringIO(content2)
+    atoms = read(cif_file, format='cif')
+
+
+#test default and mp version of cif writing
+@pytest.mark.parametrize('method', ['default', 'mp'])
+def test_cif_add_loop(method):
+    cif_file = io.StringIO(content)
+    atoms = read(cif_file, format='cif')
+    data = {}
+    data['someKey'] = [[ str(i)+"test" for i in range(20) ]] #test case has 20 entries
+    data['someIntKey'] = [[ str(i)+"123" for i in range(20) ]] #test case has 20 entries
+    atoms.write('testfile.cif', add_loop=data, cif_format=method)
+
+    atoms = read('testfile.cif', store_tags=True)
+    print(atoms.info)
+    #keys are read lowercase only
+    r_data = { 'someKey': atoms.info['_somekey'], 'someIntKey': atoms.info['_someintkey'] }
+    assert r_data['someKey'] == data['someKey'][0]
+    #data reading auto converts strins
+    assert r_data['someIntKey'] == [ int(x) for x in data['someIntKey'][0] ]
