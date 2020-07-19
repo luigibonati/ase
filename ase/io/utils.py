@@ -156,13 +156,8 @@ def cell_to_lines(writer, cell):
 
 
 def make_patch_list(writer):
-    try:
-        from matplotlib.path import Path
-    except ImportError:
-        Path = None
-        from matplotlib.patches import Circle, Polygon, Wedge
-    else:
-        from matplotlib.patches import Circle, PathPatch, Wedge
+    from matplotlib.path import Path
+    from matplotlib.patches import Circle, PathPatch, Wedge
 
     indices = writer.positions[:, 2].argsort()
     patch_list = []
@@ -210,10 +205,7 @@ def make_patch_list(writer):
             c = writer.T[a]
             if c != -1:
                 hxy = writer.D[c]
-                if Path is None:
-                    patch = Polygon((xy + hxy, xy - hxy))
-                else:
-                    patch = PathPatch(Path((xy + hxy, xy - hxy)))
+                patch = PathPatch(Path((xy + hxy, xy - hxy)))
                 patch_list.append(patch)
     return patch_list
 
