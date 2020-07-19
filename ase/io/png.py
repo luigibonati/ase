@@ -9,13 +9,7 @@ class PNG(EPS):
     def write_header(self):
         from matplotlib.backends.backend_agg import RendererAgg
 
-        try:
-            from matplotlib.transforms import Value
-        except ImportError:
-            dpi = 72
-        else:
-            dpi = Value(72)
-
+        dpi = 72
         self.renderer = RendererAgg(self.w, self.h, dpi)
 
     def write_trailer(self):
