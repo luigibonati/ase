@@ -130,11 +130,11 @@ class NEB:
             Use scaled/fractional/interal coordinates instead of real space ones
             for the interpolation. Only implemented for the 'linear' method!
         """
-        if interpolate_cell and not method == 'linear':
+        if interpolate_cell and method != 'linear':
             msg = ('Cell Interpolation only implemented for '
                    'interpolation method linear')
             raise NotImplementedError(msg)
-        if use_scaled_coord and not method == 'linear':
+        if use_scaled_coord and method != 'linear':
             msg = ('Scaled Coordinates Interpolation only '
                    'implemented for interpolation method linear')
             raise NotImplementedError(msg)
