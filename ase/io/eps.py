@@ -27,7 +27,6 @@ class EPS(PlottingVariables):
         self.write_trailer()
 
     def write_header(self):
-        import matplotlib
         from matplotlib.backends.backend_ps import RendererPS, psDefs
 
         self.fd = open(self.filename, 'w')
