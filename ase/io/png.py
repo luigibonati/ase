@@ -1,3 +1,4 @@
+import numpy as np
 from ase.io.eps import EPS
 
 
@@ -9,8 +10,7 @@ class PNG(EPS):
 
     def write_trailer(self):
         import matplotlib.image
-        rgba_buffer = self.renderer.buffer_rgba()
-
+        rgba_buffer = np.asarray(self.renderer.buffer_rgba())
         matplotlib.image.imsave(
             self.filename, rgba_buffer, format="png")
 
