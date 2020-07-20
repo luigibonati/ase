@@ -17,7 +17,9 @@ import numpy as np
 import ase.units as units
 from ase.atom import Atom
 from ase.cell import Cell
-from ase.constraints import FixConstraint, FixBondLengths, FixLinearTriatomic
+from ase.constraints import (FixConstraint, FixBondLengths, FixLinearTriatomic,
+                             voigt_6_to_full_3x3_stress,
+                             full_3x3_to_voigt_6_stress)
 from ase.data import atomic_masses, atomic_masses_common
 from ase.geometry import wrap_positions, find_mic, get_angles, get_distances
 from ase.symbols import Symbols, symbols2numbers
@@ -828,8 +830,7 @@ class Atoms(object):
             # Convert to the Voigt form before possibly applying
             # constraints and adding the dynamic part of the stress
             # (the "ideal gas contribution").
-            stress = np.array([stress[0, 0], stress[1, 1], stress[2, 2],
-                               stress[1, 2], stress[0, 2], stress[0, 1]])
+            stress = full_3x3_to_voigt_6_stress(stress)
         else:
             assert shape == (6,)
 
@@ -853,12 +854,9 @@ class Atoms(object):
         if voigt:
             return stress
         else:
-            xx, yy, zz, yz, xz, xy = stress
-            return np.array([(xx, xy, xz),
-                             (xy, yy, yz),
-                             (xz, yz, zz)])
+            return voigt_6_to_full_3x3_stress(stress)
 
-    def get_stresses(self, include_ideal_gas=False):
+    def get_stresses(self, include_ideal_gas=False, voigt=True):
         """Calculate the stress-tensor of all the atoms.
 
         Only available with calculators supporting per-atom energies and
@@ -871,6 +869,17 @@ class Atoms(object):
         if self._calc is None:
             raise RuntimeError('Atoms object has no calculator.')
         stresses = self._calc.get_stresses(self)
+
+        # make sure `stresses` are in voigt form
+        if np.shape(stresses)[1:] == (3, 3):
+            stresses_voigt = [full_3x3_to_voigt_6_stress(s) for s in stresses]
+            stresses = np.array(stresses_voigt)
+
+        # REMARK: The ideal gas contribution is intensive, i.e., the volume
+        # is divided out. We currently don't check if `stresses` are intensive
+        # as well, i.e., if `a.get_stresses.sum(axis=0) == a.get_stress()`.
+        # It might be good to check this here, but adds computational overhead.
+
         if include_ideal_gas and self.has('momenta'):
             stresscomp = np.array([[0, 5, 4], [5, 1, 3], [4, 3, 2]])
             if hasattr(self._calc, 'get_atomic_volumes'):
@@ -883,7 +892,11 @@ class Atoms(object):
                 for beta in range(alpha, 3):
                     stresses[:, stresscomp[alpha, beta]] -= (
                         p[:, alpha] * p[:, beta] * invmass * invvol)
-        return stresses
+        if voigt:
+            return stresses
+        else:
+            stresses_3x3 = [voigt_6_to_full_3x3_stress(s) for s in stresses]
+            return np.array(stresses_3x3)
 
     def get_dipole_moment(self):
         """Calculate the electric dipole moment for the atoms object.

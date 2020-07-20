@@ -2,7 +2,6 @@ import numpy as np
 
 from ase.optimize.optimize import Optimizer
 from ase.utils.linesearch import LineSearch
-from ase.optimize.defaults import defaults
 
 
 class LBFGS(Optimizer):
@@ -67,13 +66,14 @@ class LBFGS(Optimizer):
                            force_consistent=force_consistent)
 
         if maxstep is not None:
-            if maxstep > 1.0:
-                raise ValueError('You are using a much too large value for ' +
-                                 'the maximum step size: %.1f Angstrom' %
-                                 maxstep)
             self.maxstep = maxstep
         else:
-            self.maxstep = defaults.maxstep
+            self.maxstep = self.defaults['maxstep']
+
+        if self.maxstep > 1.0:
+            raise ValueError('You are using a much too large value for ' +
+                             'the maximum step size: %.1f Angstrom' %
+                             maxstep)
 
         self.memory = memory
         # Initial approximation of inverse Hessian 1./70. is to emulate the

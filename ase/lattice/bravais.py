@@ -355,7 +355,7 @@ class Bravais:
         Find missing directions and miller indices from the specified ones.
         """
         directions = np.asarray(directions).tolist()
-        miller = np.asarray(miller).tolist()
+        miller = list(miller)  # np.asarray(miller).tolist()
         # If no directions etc are specified, use a sensible default.
         if directions == [None, None, None] and miller == [None, None, None]:
             directions = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
