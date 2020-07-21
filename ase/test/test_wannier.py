@@ -1,8 +1,9 @@
 import pytest
 import numpy as np
 from ase.transport.tools import dagger
-from ase.dft.wannier import gram_schmidt, gram_schmidt_single, lowdin, \
-                            random_orthogonal_matrix
+from ase.dft.kpoints import monkhorst_pack
+from ase.dft.wannier import gram_schmidt, lowdin, random_orthogonal_matrix, \
+    neighbor_k_search
 
 
 @pytest.fixture
@@ -54,3 +55,14 @@ def test_random_orthogonal_matrix():
     matrix = random_orthogonal_matrix(dim, seed, real=False)
     assert matrix.shape[0] == matrix.shape[1]
     assert orthonormality_error(matrix) < 1e-12
+
+
+def test_neighbor_k_search():
+    kpt_kc = monkhorst_pack((4, 4, 4))
+    Gdir_dc = [[1, 0, 0], [0, 1, 0], [0, 0, 1],
+               [1, 1, 0], [1, 0, 1], [0, 1, 1]]
+    tol = 1e-4
+    for d, Gdir_c in enumerate(Gdir_dc):
+        for k, k_c in enumerate(kpt_kc):
+            kk, k0 = neighbor_k_search(k_c, Gdir_c, kpt_kc, tol=tol)
+            assert np.linalg.norm(kpt_kc[kk] - k_c - Gdir_c + k0) < tol
