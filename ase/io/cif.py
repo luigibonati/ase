@@ -606,10 +606,10 @@ def write_cif(fileobj, images, cif_format='default',
 
         #can only do it now since length of atoms is not always equal to the number of entries
         #do not move this up!
-        extra_data = [ "" for i in range(len(symbols)) ]
+        extra_data = ["" for i in range(len(symbols))]
         if add_loop:
             for key in add_loop:
-                extra_data = [ extra_data[i]+"  "+add_loop[key][i_frame][i] for i in range(len(symbols)) ]
+                extra_data = [extra_data[i]+"  "+add_loop[key][i_frame][i] for i in range(len(symbols))]
                 write_enc(fileobj, '  _'+key+'\n')
 
 
