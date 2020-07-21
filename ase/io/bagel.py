@@ -66,7 +66,7 @@ def read_json_in(fd: IO) -> Atoms:
         if isinstance(entry, dict) and entry['title'] == 'molecule':
             break
     else:
-        return None
+        raise IOError("No valid molecule block found!")
 
     symbols = [atom['atom'] for atom in entry]
     pos = np.array([atom['xyz'] for atom in entry])
@@ -119,6 +119,8 @@ def read_bagel_out(fd: IO) -> Atoms:
                     float(fd.readline().split()[1]) for _ in range(3)
                 ])
             forces = -np.array(forces) * Hartree / Bohr
+    if atoms is None:
+        raise IOError("Failed to locate molecule geometry!")
     if energy is not None or forces is not None:
         atoms.calc = SinglePointCalculator(atoms, energy=energy, forces=forces)
     return atoms
