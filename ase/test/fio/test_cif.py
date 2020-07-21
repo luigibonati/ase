@@ -358,7 +358,6 @@ def test_cif_add_loop(method):
     atoms.write('testfile.cif', add_loop=data, cif_format=method)
 
     atoms = read('testfile.cif', store_tags=True)
-    print(atoms.info)
     #keys are read lowercase only
     r_data = { 'someKey': atoms.info['_somekey'], 'someIntKey': atoms.info['_someintkey'] }
     assert r_data['someKey'] == data['someKey'][0]
