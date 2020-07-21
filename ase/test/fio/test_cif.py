@@ -345,6 +345,8 @@ Se6 Se2- 2 a 0.0050(4) 0.4480(6) 0.9025(6) 0.9102(6) 1. 0
 def test_cif_icsd():
     cif_file = io.StringIO(content2)
     atoms = read(cif_file, format='cif')
+    #test something random so atoms is not unused
+    assert 'occupancy' in atoms.info
 
 
 #test default and mp version of cif writing
