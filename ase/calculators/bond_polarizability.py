@@ -59,10 +59,13 @@ class LippincottStuttman:
 
         # parallel component
         alphal = sigma * length**4 / (4**4 * alpha1 * alpha2)**(1. / 6)
+        # XXX consider fractional covalency ?
 
         # prependicular component
-        alphap = 0.0
-        
+        alphap = ((ren1**2 * alpha1 + ren2**2 * alpha2)
+                  / (ren1**2 + ren2**2))
+        # XXX consider fractional covalency ?
+
         return alphal, alphap
 
 
@@ -71,7 +74,9 @@ class Linearized():
         self._data = {
             # L. Wirtz, M. Lazzeri, F. Mauri, A. Rubio,
             # Phys. Rev. B 2005, 71, 241402.
-            'CC': (1.69, 1.53, 7.43, 0.71, 0.37),
+            #      R0     al    al'   ap    ap'
+            'CC': (1.53, 1.69, 7.43, 0.71, 0.37),
+            'BN': (1.56, 1.58, 4.22, 0.42, 0.90),
         }
 
     def __call__(self, bond: str, length: float) -> Tuple[float, float]:
