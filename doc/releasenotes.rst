@@ -163,6 +163,14 @@ Calculators:
 .. _mypy: http://mypy-lang.org/
 
 
+Version 3.19.2
+==============
+
+22 July 2020: :git:`3.19.2 <../3.19.2>`
+
+* No changes yet
+
+
 Version 3.19.1
 ==============
 
