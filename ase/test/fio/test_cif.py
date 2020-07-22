@@ -365,3 +365,16 @@ def test_cif_add_loop(method):
     assert r_data['someKey'] == data['someKey'][0]
     #data reading auto converts strins
     assert r_data['someIntKey'] == [int(x) for x in data['someIntKey'][0]]
+
+
+#test default and mp version of cif writing
+@pytest.mark.parametrize('method', ['default', 'mp'])
+def test_cif_labels(method):
+    cif_file = io.StringIO(content)
+    atoms = read(cif_file, format='cif')
+    data = [["label"+str(i) for i in range(20)]] #test case has 20 entries
+    atoms.write('testfile.cif', labels=data, cif_format=method)
+
+    atoms = read('testfile.cif', store_tags=True)
+    print(atoms.info)
+    assert data[0] == atoms.info['_atom_site_label']

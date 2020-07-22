@@ -498,11 +498,15 @@ def write_enc(fileobj, s):
 
 
 def write_cif(fileobj, images, cif_format='default',
-              wrap=True, add_loop=None) -> None:
+              wrap=True, labels=None, add_loop=None) -> None:
     """Write *images* to CIF file.
 
     wrap: bool
         Wrap atoms into unit cell.
+
+    labels: list
+        Use this list (shaped list[i_frame][i_atom] = string) for the '_atom_site_label'
+        section instead of automatically generating it from the element symbol.
 
     add_loop: dict
         Add the information from this dictionary to the `loop_` section.
@@ -615,20 +619,31 @@ def write_cif(fileobj, images, cif_format='default',
 
         no: Dict[str, int] = {}
 
-        for symbol, pos, occ, ext in zip(symbols, coords, occupancies, extra_data):
-            if symbol in no:
-                no[symbol] += 1
-            else:
-                no[symbol] = 1
+        if labels:
+            print_labels = labels[i_frame]
+        else:
+            print_labels = []
+            for symbol in symbols:
+                if symbol in no:
+                    no[symbol] += 1
+                else:
+                    no[symbol] = 1
+
+                if cif_format == 'mp':
+                    print_labels.append(symbol + str(no[symbol]))
+                else:
+                    print_labels.append('%s%d' % (symbol, no[symbol]))
+
+        for symbol, pos, occ, label, ext in zip(symbols, coords, occupancies, print_labels, extra_data):
             if cif_format == 'mp':
                 write_enc(fileobj,
                           '  %-2s  %4s  %4s  %7.5f  %7.5f  %7.5f  %6.1f%s\n' %
-                          (symbol, symbol + str(no[symbol]), 1,
+                          (symbol, label, 1,
                            pos[0], pos[1], pos[2], occ, ext))
             else:
                 write_enc(fileobj,
                           '  %-8s %6.4f %7.5f  %7.5f  %7.5f  %4s  %6.3f  %-2s%s\n'
-                          % ('%s%d' % (symbol, no[symbol]),
+                          % (label,
                              occ,
                              pos[0],
                              pos[1],
