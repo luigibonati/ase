@@ -41,7 +41,7 @@ python_3_tests:
     - pip install flake8 psycopg2-binary netCDF4 pymysql cryptography
     - pip install scipy==1.2.1  # TODO: Delete me
     - pip install .
-    - ase test --strict
+    - ase test
     - cd $CI_PROJECT_DIR
     - python -We:invalid -m compileall -f -q ase/
 
