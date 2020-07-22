@@ -263,6 +263,12 @@ def runtests_parallel(nprocs, tests, verbose, strict):
             else:
                 result = result_queue.get()  # blocking call
                 if result.status == 'please run on master':
+                    try:
+                        import matplotlib
+                    except ImportError:
+                        pass
+                    else:
+                        matplotlib.use('Agg')
                     result = run_single_test(result.name, verbose, strict)
             print_test_result(result)
             yield result
