@@ -168,8 +168,9 @@ Version 3.19.2
 
 22 July 2020: :git:`3.19.2 <../3.19.2>`
 
-* No changes yet
-
+* Compatibility fixes related to matplotlib:
+  Update png writer to be compatible with matplotlib 3.3.0.
+  Update incompatible calls to ``matplotlib.use()``.
 
 Version 3.19.1
 ==============
