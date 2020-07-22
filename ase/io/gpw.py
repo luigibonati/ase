@@ -27,7 +27,7 @@ def read_gpw(filename):
         bz2ibz = kpts.get('bz2ibz')
 
     if reader.version >= 3:
-        efermi = reader.fermi_levels.mean()
+        efermi = reader.wave_functions.fermi_levels.mean()
     else:
         efermi = reader.occupations.fermilevel
 
