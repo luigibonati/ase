@@ -2,6 +2,7 @@ from typing import Tuple
 import re
 import numpy as np
 
+from ase.units import Bohr, Ha
 from ase.data import covalent_radii
 from ase.neighborlist import NeighborList
 
@@ -18,13 +19,15 @@ class LippincottStuttman:
         'C': 0.978,
         'N': 0.743,
         'O': 0.592,
-        'Si': 2.988
+        'Al': 3.918,
+        'Si': 2.988,
     }
-    # reduced electronegativity
+    # reduced electronegativity Table I
     reduced_eletronegativity = {
         'C': 0.846,
         'N': 0.927,
         'O': 1.0,
+        'Al': 0.533,
         'Si': 0.583,
     }
     
@@ -96,11 +99,26 @@ class BondPolarizability:
     def __init__(self, model=LippincottStuttman()):
         self.model = model
     
-    def __call__(self, atoms):
-        return self.calculate(atoms)
+    def __call__(self, *args, **kwargs):
+        """Shorthand for calculate"""
+        return self.calculate(*args, **kwargs)
 
-    def calculate(self, atoms):
-        """Sum up the bond polarizability from all bonds"""
+    def calculate(self, atoms, radiicut=1.5):
+        """Sum up the bond polarizability from all bonds
+
+        Parameters
+        ----------
+        atoms: Atoms object
+        radiicut: float
+          Bonds are counted up to
+          radiicut * (sum of covalent radii of the pairs)
+          Default: 1.5
+
+        Returns
+        -------
+        polarizability tensor with unit (e^2 Angstrom^2 / eV).
+        Multiply with Bohr * Ha to get (Angstrom^3)
+        """
         radii = np.array([covalent_radii[z]
                           for z in atoms.numbers])
         nl = NeighborList(radii * 1.5, skin=0,
@@ -126,4 +144,4 @@ class BondPolarizability:
                 alpha += weight * (al + 2 * ap) * eye3
                 alpha += weight * (al - ap) * (
                     np.outer(dist_c, dist_c) / dist**2 - eye3)
-        return alpha
+        return alpha / Bohr / Ha
