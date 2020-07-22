@@ -3,12 +3,13 @@ import numpy as np
 from ase.transport.tools import dagger
 from ase.dft.kpoints import monkhorst_pack
 from ase.dft.wannier import gram_schmidt, lowdin, random_orthogonal_matrix, \
-    neighbor_k_search, steepest_descent, md_min
+    neighbor_k_search, steepest_descent
 
 
 @pytest.fixture
 def rng():
     return np.random.RandomState(0)
+
 
 class parabola:
 
@@ -23,6 +24,7 @@ class parabola:
 
     def get_functional_value(self):
         return (self.x - 1)**2
+
 
 def orthonormality_error(matrix):
     return np.abs(dagger(matrix) @ matrix - np.eye(len(matrix))).max()
