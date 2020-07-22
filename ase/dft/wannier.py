@@ -103,7 +103,7 @@ def random_orthogonal_matrix(dim, rng=np.random, real=False):
         return np.dot(vec * np.exp(1.j * val), dag(vec))
 
 
-def steepest_descent(func, step=.005, tolerance=1e-6, **kwargs):
+def steepest_descent(func, step=.005, tolerance=1e-6, verbose=False, **kwargs):
     fvalueold = 0.
     fvalue = fvalueold + 10
     count=0
@@ -113,7 +113,8 @@ def steepest_descent(func, step=.005, tolerance=1e-6, **kwargs):
         func.step(dF * step, **kwargs)
         fvalue = func.get_functional_value()
         count += 1
-        print('SteepestDescent: iter=%s, value=%s' % (count, fvalue))
+        if verbose:
+            print('SteepestDescent: iter=%s, value=%s' % (count, fvalue))
 
 
 def md_min(func, step=.25, tolerance=1e-6, verbose=False, **kwargs):
