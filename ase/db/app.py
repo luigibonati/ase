@@ -32,7 +32,7 @@ from flask import Flask, render_template, request, send_from_directory, flash
 
 try:
     import matplotlib
-    matplotlib.use('Agg', warn=False)
+    matplotlib.use('Agg')
 except ImportError:
     pass
 
