@@ -88,12 +88,10 @@ def calculate_weights(cell_cc):
     return weight_d, Gdir_dc
 
 
-def random_orthogonal_matrix(dim, seed=None, real=False):
+def random_orthogonal_matrix(dim, rng=np.random, real=False):
     """Generate a random orthogonal matrix"""
-    if seed is not None:
-        np.random.seed(seed)
 
-    H = np.random.rand(dim, dim)
+    H = rng.rand(dim, dim)
     np.add(dag(H), H, H)
     np.multiply(.5, H, H)
 
@@ -229,7 +227,7 @@ class Wannier:
                  fixedstates=None,
                  spin=0,
                  initialwannier='random',
-                 seed=None,
+                 rng=np.random,
                  verbose=False):
         """
         Required arguments:
@@ -268,7 +266,7 @@ class Wannier:
             Can be 'bloch' to start from the Bloch states, 'random' to be
             randomized, or a list passed to calc.get_initial_wannier.
 
-          ``seed``: Seed for random ``initialwannier``.
+          ``rng``: Random number generator for ``initialwannier``.
 
           ``verbose``: True / False level of verbosity.
           """
@@ -369,9 +367,9 @@ class Wannier:
                     self.Z_dknn[d, k] = calc.get_wannier_localization_matrix(
                         nbands=Nb, dirG=dirG, kpoint=k, nextkpoint=k1,
                         G_I=k0_c, spin=self.spin)
-        self.initialize(file=file, initialwannier=initialwannier, seed=seed)
+        self.initialize(file=file, initialwannier=initialwannier, rng=rng)
 
-    def initialize(self, file=None, initialwannier='random', seed=None):
+    def initialize(self, file=None, initialwannier='random', rng=np.random):
         """Re-initialize current rotation matrix.
 
         Keywords are identical to those of the constructor.
@@ -397,10 +395,10 @@ class Wannier:
             self.U_kww = np.zeros((self.Nk, Nw, Nw), complex)
             self.C_kul = []
             for U, M, L in zip(self.U_kww, self.fixedstates_k, self.edf_k):
-                U[:] = random_orthogonal_matrix(Nw, seed, real=False)
+                U[:] = random_orthogonal_matrix(Nw, rng, real=False)
                 if L > 0:
                     self.C_kul.append(random_orthogonal_matrix(
-                        Nb - M, seed=seed, real=False)[:, :L])
+                        Nb - M, rng=rng, real=False)[:, :L])
                 else:
                     self.C_kul.append(np.array([]))
         else:

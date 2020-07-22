@@ -46,13 +46,12 @@ def test_lowdin(rng):
     assert orthonormality_error(matrix) < 1e-12
 
 
-def test_random_orthogonal_matrix():
+def test_random_orthogonal_matrix(rng):
     dim = 4
-    seed = 0
-    matrix = random_orthogonal_matrix(dim, seed, real=True)
+    matrix = random_orthogonal_matrix(dim, rng=rng, real=True)
     assert matrix.shape[0] == matrix.shape[1]
     assert orthonormality_error(matrix) < 1e-12
-    matrix = random_orthogonal_matrix(dim, seed, real=False)
+    matrix = random_orthogonal_matrix(dim, rng=rng, real=False)
     assert matrix.shape[0] == matrix.shape[1]
     assert orthonormality_error(matrix) < 1e-12
 
