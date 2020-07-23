@@ -1,3 +1,5 @@
+import pytest
+
 from ase import Atoms
 from ase.calculators.bond_polarizability import BondPolarizability
 from ase.calculators.bond_polarizability import Linearized
@@ -21,4 +23,4 @@ def test_2to3():
     # polarizability is a tensor
     assert bp2.shape == (3, 3)
     # check sum of equal bonds
-    assert (bp(Si3) == 2 * bp2).all()
+    assert bp(Si3) == pytest.approx(2 * bp2)
