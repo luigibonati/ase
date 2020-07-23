@@ -52,7 +52,7 @@ def neighbor_k_search(k_c, G_c, kpt_kc, tol=1e-4):
     raise NotImplementedError
 
 
-def calculate_weights(cell_cc):
+def calculate_weights(cell_cc, normalize=True):
     """ Weights are used for non-cubic cells, see PRB **61**, 10040"""
     alldirs_dc = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1],
                            [1, 1, 0], [1, 0, 1], [0, 1, 1]], dtype=int)
@@ -73,7 +73,8 @@ def calculate_weights(cell_cc):
         if abs(w[d]) > 1e-5:
             Gdir_dc = np.concatenate((Gdir_dc, alldirs_dc[d:d + 1]))
             weight_d = np.concatenate((weight_d, w[d:d + 1]))
-    weight_d /= max(abs(weight_d))
+    if normalize:
+        weight_d /= max(abs(weight_d))
     return weight_d, Gdir_dc
 
 
