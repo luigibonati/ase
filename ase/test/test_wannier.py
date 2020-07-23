@@ -2,6 +2,8 @@ import pytest
 import numpy as np
 from ase.transport.tools import dagger, normalize
 from ase.dft.kpoints import monkhorst_pack
+from ase.lattice import CUB, FCC, BCC, TET, BCT, ORC, ORCF, ORCI, ORCC, HEX, \
+    RHL, MCL, MCLC, TRI, OBL, HEX2D, RECT, CRECT, SQR, LINE
 from ase.dft.wannier import gram_schmidt, lowdin, random_orthogonal_matrix, \
     neighbor_k_search, calculate_weights, steepest_descent, md_min, \
     rotation_from_projection
@@ -27,7 +29,7 @@ def face_centered_cubic_cell():
     return np.array([[0, 1, 1], [1, 0, 1], [1, 1, 0]], dtype=float)
 
 
-class paraboloid:
+class Paraboloid:
 
     def __init__(self, pos=np.array([10, 10, 10], dtype=complex)):
         self.pos = pos
@@ -50,7 +52,7 @@ def orthogonality_error(matrix):
     errors = []
     for i in range(len(matrix)):
         for j in range(i + 1, len(matrix)):
-            errors.append(np.abs(np.dot(matrix[i].T, matrix[j])))
+            errors.append(np.abs(matrix[i].T @ matrix[j]))
     return np.max(errors)
 
 
@@ -94,43 +96,29 @@ def test_neighbor_k_search():
             kk, k0 = neighbor_k_search(k_c, Gdir_c, kpt_kc, tol=tol)
             assert np.linalg.norm(kpt_kc[kk] - k_c - Gdir_c + k0) < tol
 
-
-def test_calculate_weights(simple_cubic_cell,
-                           body_centered_cubic_cell,
-                           face_centered_cubic_cell):
+@pytest.mark.parametrize('lat', [CUB(1), FCC(1), BCC(1), TET(1, 2), BCT(1, 2),
+    ORC(1, 2, 3), ORCF(1, 2, 3), ORCI(1, 2, 3), ORCC(1, 2, 3), HEX(1, 2),
+    RHL(1, 110), MCL(1, 2, 3, 70), MCLC(1, 2, 3, 70), TRI(1, 2, 3, 60, 70, 80),
+    OBL(1, 2, 110), HEX2D(1), RECT(1, 2), CRECT(1, 70), SQR(1), LINE(1)])
+def test_calculate_weights(lat):
     # Equation from Berghold et al. PRB v61 n15 (2000)
     tol = 1e-5
-    cubic = simple_cubic_cell
-    g_sc = np.dot(cubic, cubic.T)
-    w_sc, G_sc = calculate_weights(cubic, normalize=False)
-    bcc = body_centered_cubic_cell
-    g_bcc = np.dot(bcc, bcc.T)
-    w_bcc, G_bcc = calculate_weights(bcc, normalize=False)
-    fcc = face_centered_cubic_cell
-    g_fcc = np.dot(fcc, fcc.T)
-    w_fcc, G_fcc = calculate_weights(fcc, normalize=False)
+    cell = lat.tocell()
+    g = cell @ cell.T
+    w, G = calculate_weights(cell, normalize=False)
 
-    errors_sc = []
-    errors_bcc = []
-    errors_fcc = []
+    errors = []
     for i in range(3):
         for j in range(3):
-            errors_sc.append(np.abs(np.dot(w_sc * G_sc[:, i], G_sc[:, j])
-                                    - g_sc[i, j]))
-            errors_bcc.append(np.abs(np.dot(w_bcc * G_bcc[:, i], G_bcc[:, j])
-                                     - g_bcc[i, j]))
-            errors_fcc.append(np.abs(np.dot(w_fcc * G_fcc[:, i], G_fcc[:, j])
-                                     - g_fcc[i, j]))
+            errors.append(np.abs((w * G[:, i] @ G[:, j]) - g[i, j]))
 
-    assert np.max(errors_sc) < tol, 'Wrong weights for simple cubic cell'
-    assert np.max(errors_bcc) < tol, 'Wrong weights for bcc cell'
-    assert np.max(errors_fcc) < tol, 'Wrong weights for fcc cell'
+    assert np.max(errors) < tol
 
 
 def test_steepest_descent():
     tol = 0.1
     step = 0.1
-    func = paraboloid(pos=np.array([10, 10, 10], dtype=float))
+    func = Paraboloid(pos=np.array([10, 10, 10], dtype=float))
     steepest_descent(func=func, step=step, tolerance=tol, verbose=False)
     assert func.get_functional_value() < 0.1
 
@@ -138,7 +126,7 @@ def test_steepest_descent():
 def test_md_min():
     tol = 1e-3
     step = 0.1
-    func = paraboloid(pos=np.array([10, 10, 10], dtype=complex))
+    func = Paraboloid(pos=np.array([10, 10, 10], dtype=complex))
     md_min(func=func, step=step, tolerance=tol, verbose=False)
     assert func.get_functional_value() < 0.1
 
