@@ -439,16 +439,6 @@ class Wannier:
                 dos += weight * np.exp(-x.clip(0., 40.)) / (sqrt(pi) * width)
         return dos
 
-    def max_spread(self, directions=[0, 1, 2]):
-        """Returns the index of the most delocalized Wannier function
-        together with the value of the spread functional"""
-        d = np.zeros(self.nwannier)
-        for dir in directions:
-            d[dir] = np.abs(self.Z_dww[dir].diagonal())**2 * self.weight_d[dir]
-        index = np.argsort(d)[0]
-        print('Index:', index)
-        print('Spread:', d[index])
-
     def translate(self, w, R):
         """Translate the w'th Wannier function
 
