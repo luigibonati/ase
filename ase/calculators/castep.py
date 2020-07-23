@@ -3134,7 +3134,7 @@ if __name__ == '__main__':
             with open('castep_keywords.json') as f:
                 json.load(f)
         except Exception as e:
-            warnings.warn(e)
+            warnings.warn(str(e))
             warnings.warn('Ooops, something went wrong with the CASTEP keywords')
         else:
             warnings.warn('Import works. Looking good!')
