@@ -1,14 +1,30 @@
 import pytest
 import numpy as np
-from ase.transport.tools import dagger
+from ase.transport.tools import dagger, normalize
 from ase.dft.kpoints import monkhorst_pack
 from ase.dft.wannier import gram_schmidt, lowdin, random_orthogonal_matrix, \
-    neighbor_k_search, calculate_weights, steepest_descent, md_min
+    neighbor_k_search, calculate_weights, steepest_descent, md_min, \
+    rotation_from_projection
 
 
 @pytest.fixture
 def rng():
     return np.random.RandomState(0)
+
+
+@pytest.fixture
+def simple_cubic_cell():
+    return np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]], dtype=float)
+
+
+@pytest.fixture
+def body_centered_cubic_cell():
+    return np.array([[-1, 1, 1], [1, -1, 1], [1, 1, -1]], dtype=float)
+
+
+@pytest.fixture
+def face_centered_cubic_cell():
+    return np.array([[0, 1, 1], [1, 0, 1], [1, 1, 0]], dtype=float)
 
 
 class paraboloid:
@@ -28,6 +44,20 @@ class paraboloid:
 
 def orthonormality_error(matrix):
     return np.abs(dagger(matrix) @ matrix - np.eye(len(matrix))).max()
+
+
+def orthogonality_error(matrix):
+    errors = []
+    for i in range(len(matrix)):
+        for j in range(i + 1, len(matrix)):
+            errors.append(np.abs(np.dot(matrix[i].T, matrix[j])))
+    return np.max(errors)
+
+
+def normalization_error(matrix):
+    old_matrix = matrix.copy()
+    normalize(matrix)
+    return np.abs(matrix - old_matrix).max()
 
 
 def test_gram_schmidt(rng):
@@ -65,16 +95,18 @@ def test_neighbor_k_search():
             assert np.linalg.norm(kpt_kc[kk] - k_c - Gdir_c + k0) < tol
 
 
-def test_calculate_weights():
+def test_calculate_weights(simple_cubic_cell,
+                           body_centered_cubic_cell,
+                           face_centered_cubic_cell):
     # Equation from Berghold et al. PRB v61 n15 (2000)
     tol = 1e-5
-    cubic = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]], dtype=float)
+    cubic = simple_cubic_cell
     g_sc = np.dot(cubic, cubic.T)
     w_sc, G_sc = calculate_weights(cubic, normalize=False)
-    bcc = np.array([[-1, 1, 1], [1, -1, 1], [1, 1, -1]], dtype=float)
+    bcc = body_centered_cubic_cell
     g_bcc = np.dot(bcc, bcc.T)
     w_bcc, G_bcc = calculate_weights(bcc, normalize=False)
-    fcc = np.array([[0, 1, 1], [1, 0, 1], [1, 1, 0]], dtype=float)
+    fcc = face_centered_cubic_cell
     g_fcc = np.dot(fcc, fcc.T)
     w_fcc, G_fcc = calculate_weights(fcc, normalize=False)
 
@@ -109,3 +141,14 @@ def test_md_min():
     func = paraboloid(pos=np.array([10, 10, 10], dtype=complex))
     md_min(func=func, step=step, tolerance=tol, verbose=False)
     assert func.get_functional_value() < 0.1
+
+
+def test_rotation_from_projection(rng):
+    proj_nw = rng.rand(6, 4)
+    assert orthonormality_error(proj_nw[:int(min(proj_nw.shape))]) > 1
+    U_ww, C_ul = rotation_from_projection(proj_nw, fixed=2, ortho=True)
+    assert orthonormality_error(U_ww) < 1e-12, 'U_ww not unitary'
+    assert orthogonality_error(C_ul.T) < 1e-12, 'C_ul columns not orthogonal'
+    assert normalization_error(C_ul) < 1e-12, 'C_ul not normalized'
+    U_ww, C_ul = rotation_from_projection(proj_nw, fixed=2, ortho=False)
+    assert normalization_error(U_ww) < 1e-12, 'U_ww not normalized'
