@@ -3,7 +3,7 @@ import numpy as np
 from ase.transport.tools import dagger
 from ase.dft.kpoints import monkhorst_pack
 from ase.dft.wannier import gram_schmidt, lowdin, random_orthogonal_matrix, \
-    neighbor_k_search, steepest_descent
+    neighbor_k_search, steepest_descent, md_min
 
 
 @pytest.fixture
@@ -11,19 +11,19 @@ def rng():
     return np.random.RandomState(0)
 
 
-class parabola:
+class paraboloid:
 
-    def __init__(self, x=10):
-        self.x = x
+    def __init__(self, pos=np.array([10, 10, 10], dtype=complex)):
+        self.pos = pos
 
     def get_gradients(self):
-        return 2 * (self.x - 1)
+        return 2 * self.pos
 
-    def step(self, dX, updaterot=True, updatecoeff=True):
-        self.x -= dX
+    def step(self, dF, updaterot=True, updatecoeff=True):
+        self.pos -= dF
 
     def get_functional_value(self):
-        return (self.x - 1)**2
+        return np.sum(self.pos**2)
 
 
 def orthonormality_error(matrix):
@@ -85,6 +85,14 @@ def test_neighbor_k_search():
 def test_steepest_descent():
     tol = 0.1
     step = 0.1
-    func = parabola(x=11)
+    func = paraboloid(pos=np.array([10, 10, 10], dtype=float))
     steepest_descent(func=func, step=step, tolerance=tol, verbose=False)
-    assert func.get_functional_value() < tol
+    assert func.get_functional_value() < 0.1
+
+
+def test_md_min():
+    tol = 1e-3
+    step = 0.1
+    func = paraboloid(pos=np.array([10, 10, 10], dtype=complex))
+    md_min(func=func, step=step, tolerance=tol, verbose=False)
+    assert func.get_functional_value() < 0.1
