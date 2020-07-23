@@ -147,8 +147,8 @@ def test_rotation_from_projection(rng):
     proj_nw = rng.rand(6, 4)
     assert orthonormality_error(proj_nw[:int(min(proj_nw.shape))]) > 1
     U_ww, C_ul = rotation_from_projection(proj_nw, fixed=2, ortho=True)
-    assert orthonormality_error(U_ww) < 1e-12, 'U_ww not unitary'
-    assert orthogonality_error(C_ul.T) < 1e-12, 'C_ul columns not orthogonal'
-    assert normalization_error(C_ul) < 1e-12, 'C_ul not normalized'
+    assert orthonormality_error(U_ww) < 1e-10, 'U_ww not unitary'
+    assert orthogonality_error(C_ul.T) < 1e-10, 'C_ul columns not orthogonal'
+    assert normalization_error(C_ul) < 1e-10, 'C_ul not normalized'
     U_ww, C_ul = rotation_from_projection(proj_nw, fixed=2, ortho=False)
-    assert normalization_error(U_ww) < 1e-12, 'U_ww not normalized'
+    assert normalization_error(U_ww) < 1e-10, 'U_ww not normalized'
