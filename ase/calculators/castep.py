@@ -585,9 +585,9 @@ End CASTEP Interface Documentation
                 return
             if not local_castep_version == self._castep_version:
                 warnings.warn(('The options module was generated from version %s '
-                       'while your are currently using CASTEP version %s') %
-                      (self._castep_version,
-                       get_castep_version(self._castep_command)))
+                               'while your are currently using CASTEP version %s') %
+                              (self._castep_version,
+                               get_castep_version(self._castep_command)))
                 self._castep_version = local_castep_version
 
         # processes optional arguments in kw style
@@ -803,7 +803,7 @@ End CASTEP Interface Documentation
 
         if record_starts == []:
             warnings.warn(('Could not find CASTEP label in result file: %s.'
-                  ' Are you sure this is a .castep file?') % castep_file)
+                           ' Are you sure this is a .castep file?') % castep_file)
             return
 
         # search for regular end of file
@@ -1392,8 +1392,8 @@ End CASTEP Interface Documentation
                                 in zip(range(len(atoms_assigned)),
                                        atoms_assigned) if not assigned]
                 warnings.warn(('%s atoms not assigned.' % atoms_assigned.count(False)) +
-                    (' DEBUGINFO: The following atoms where not assigned: %s' %
-                     not_assigned))
+                              (' DEBUGINFO: The following atoms where not assigned: %s' %
+                               not_assigned))
             else:
                 self.atoms.set_scaled_positions(positions_frac_atoms)
 
@@ -1657,7 +1657,7 @@ End CASTEP Interface Documentation
         if not os.path.isdir(self._castep_pp_path):
             if self._pedantic:
                 warnings.warn('Cannot search directory:    {} Folder does not exist'
-                      .format(self._castep_pp_path))
+                              .format(self._castep_pp_path))
             return
 
         # translate the bash wildcard syntax to regex
@@ -1903,8 +1903,8 @@ End CASTEP Interface Documentation
             if self._pedantic:
                 warnings.warn('You have not set e.g. calc.param.reuse = True. '
                               'Reusing a previous calculation may save CPU time! '
-                    'The interface will make sure by default, a .check exists. '
-                    'file before adding this statement to the .param file.')
+                              'The interface will make sure by default, a .check exists. '
+                              'file before adding this statement to the .param file.')
         if self.param.num_dump_cycles.value is None:
             if self._pedantic:
                 warnings.warn('You have not set e.g. calc.param.num_dump_cycles = 0. '
@@ -2104,7 +2104,7 @@ End CASTEP Interface Documentation
             # CASTEP keywords that should go into the atoms object
             # itself are blocked
             warnings.warn('Ignoring setings of "%s", since this has to be set '
-                  'through the atoms object' % attr)
+                          'through the atoms object' % attr)
             return
 
         attr = attr.lower()
@@ -2298,7 +2298,7 @@ End CASTEP Interface Documentation
                 if self._build_missing_pspots:
                     if self._pedantic:
                         warnings.warn(('Warning: you have no PP specified for %s. ' %
-                              species) +
+                                      species) +
                                       'CASTEP will now generate an on-the-fly potentials. '
                                       'For sake of numerical consistency and efficiency '
                                       'this is discouraged.')
@@ -2447,7 +2447,7 @@ def create_castep_keywords(castep_command, filename='castep_keywords.json',
                 suffix = 'param'
             if suffix is None:
                 warnings.warn('%s -> not assigned to either'
-                      ' CELL or PARAMETERS keywords' % option)
+                              ' CELL or PARAMETERS keywords' % option)
 
             option = option.lower()
             mtyp = match.get('type', None)
@@ -2496,8 +2496,8 @@ def create_castep_keywords(castep_command, filename='castep_keywords.json',
 
     json.dump(processed_options, open(filepath, 'w'), indent=4)
 
-    warnings.warn('CASTEP v%s, fetched %s keywords'
-          % (castep_version, processed_n))
+    warnings.warn('CASTEP v%s, fetched %s keywords' % 
+                  (castep_version, processed_n))
     return True
 
 
@@ -3081,10 +3081,9 @@ def import_castep_keywords(castep_command='',
     ASE installation under ase/calculators for system-wide installation
 """ % (filename, os.path.abspath(path)))
         warnings.warn("""    Using a *nix OS this can be a simple as mv %s %s""" %
-              (os.path.join(os.path.abspath(path),
-                            filename),
-               os.path.join(os.path.dirname(ase.__file__),
-                            'calculators')))
+                      (os.path.join(os.path.abspath(path), filename),
+                       os.path.join(os.path.dirname(ase.__file__),
+                       'calculators')))
         kwfile = os.path.join(path, filename)
 
     # Now create the castep_keywords object proper

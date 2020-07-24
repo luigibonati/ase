@@ -245,7 +245,7 @@ def write_castep_cell(fd, atoms, positions_frac=False, force_write=False,
         for constr in constraints:
             if not isinstance(constr, _supported_constraints):
                 warnings.warn('Warning: you have constraints in your atoms, that are '
-                             'not supported by the CASTEP ase interface')
+                              'not supported by the CASTEP ase interface')
                 break
             if isinstance(constr, FixAtoms):
                 for i in constr.index:
@@ -415,12 +415,12 @@ def read_castep_cell(fd, index=None, calculator_args={}, find_spg=False,
     if calc.cell.castep_version == 0 and calc._kw_tol < 3:
         # No valid castep_keywords.json was found
         warnings.warn('read_cell: Warning - Was not able to validate CASTEP input. '
-              'This may be due to a non-existing '
-              '"castep_keywords.json" '
-              'file or a non-existing CASTEP installation. '
-              'Parsing will go on but keywords will not be '
-              'validated and may cause problems if incorrect during a CASTEP '
-              'run.')
+                      'This may be due to a non-existing '
+                      '"castep_keywords.json" '
+                      'file or a non-existing CASTEP installation. '
+                      'Parsing will go on but keywords will not be '
+                      'validated and may cause problems if incorrect during a CASTEP '
+                      'run.')
 
     celldict = read_freeform(fd)
 
@@ -657,7 +657,7 @@ def read_castep_cell(fd, index=None, calculator_args={}, find_spg=False,
             # Check if they are linearly independent
             if np.linalg.det(value) == 0:
                 warnings.warn('Error: Found linearly dependent constraints attached '
-                      'to atoms %s' % (absolute_nr))
+                              'to atoms %s' % (absolute_nr))
                 continue
             fixed_atoms.append(absolute_nr)
         elif len(value) == 2:
@@ -665,7 +665,7 @@ def read_castep_cell(fd, index=None, calculator_args={}, find_spg=False,
             # Check if they are linearly independent
             if np.linalg.norm(direction) == 0:
                 warnings.warn('Error: Found linearly dependent constraints attached '
-                      'to atoms %s' % (absolute_nr))
+                              'to atoms %s' % (absolute_nr))
                 continue
             constraint = ase.constraints.FixedLine(
                 a=absolute_nr,
@@ -677,8 +677,8 @@ def read_castep_cell(fd, index=None, calculator_args={}, find_spg=False,
                 direction=np.array(value[0], dtype=np.float32))
             constraints.append(constraint)
         else:
-            warnings.warn('Error: Found %s statements attached to atoms %s'
-                  % (len(value), absolute_nr))
+            warnings.warn('Error: Found %s statements attached to atoms %s' %
+                          (len(value), absolute_nr))
 
     # we need to sort the fixed atoms list in order not to raise an assertion
     # error in FixAtoms
