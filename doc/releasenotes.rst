@@ -95,6 +95,9 @@ Algorithms:
   and energies of atoms objects.  The classes and functions used in
   the CLI are also available in :mod:`ase.cli.template`.
 
+* Allow setting the initial hessian in `optimize.BFGS` via the keyword `alpha` or
+  explicitly via `opt.H0 = ...` after instantiation.
+  
 I/O:
 
 * The ``ase db db1.db <selection> --insert-into db2.db`` command now respects
@@ -156,8 +159,18 @@ Calculators:
   Functionality for other properties should be unchanged. Testing and
   documentation have also been expanded.
 
+
 .. _mypy: http://mypy-lang.org/
 
+
+Version 3.19.2
+==============
+
+22 July 2020: :git:`3.19.2 <../3.19.2>`
+
+* Compatibility fixes related to matplotlib:
+  Update png writer to be compatible with matplotlib 3.3.0.
+  Update incompatible calls to ``matplotlib.use()``.
 
 Version 3.19.1
 ==============
