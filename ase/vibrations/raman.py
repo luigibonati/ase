@@ -53,7 +53,7 @@ class RamanCalculator(RamanBase):
         Raman.__init__(self, atoms, *args, **kwargs)
 
 
-class RamanStaticCalculator(RamanCalculator):
+class StaticRamanCalculator(RamanCalculator):
     """Base class for Raman intensities derived from
     static polarizabilities"""
     def calculate(self, atoms, filename, fd):

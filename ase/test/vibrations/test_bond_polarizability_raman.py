@@ -1,6 +1,6 @@
 from ase import Atoms
 from ase.build import bulk
-from ase.vibrations.raman import RamanStaticCalculator
+from ase.vibrations.raman import StaticRamanCalculator
 from ase.vibrations.placzek import PlaczekStatic
 from ase.calculators.bond_polarizability import BondPolarizability
 from ase.calculators.emt import EMT
@@ -27,7 +27,7 @@ def test_bulk():
         print(Cbulk.cell)
     
     name = 'bp'
-    rm = RamanStaticCalculator(Cbulk, BondPolarizability, name=name,
+    rm = StaticRamanCalculator(Cbulk, BondPolarizability, name=name,
                                delta=0.05)
     rm.run()
     pz = PlaczekStatic(Cbulk, name=name)
@@ -38,7 +38,7 @@ def test_bulk():
         si32 = si4.repeat([2, 2, 2])
         si32.calc = EMT()
         name = 'si32'
-        rm = RamanStaticCalculator(si32, BondPolarizability, name=name)
+        rm = StaticRamanCalculator(si32, BondPolarizability, name=name)
         rm.run()
         pz = PlaczekStatic(si32, name=name)
         pz.summary()
@@ -51,7 +51,7 @@ def test_c3():
     atoms.calc = EMT()
     
     name = 'bp'
-    rm = RamanStaticCalculator(atoms, BondPolarizability,
+    rm = StaticRamanCalculator(atoms, BondPolarizability,
                                name=name, exname=name, txt='-')
     rm.run()
     pz = PlaczekStatic(atoms, name=name)
