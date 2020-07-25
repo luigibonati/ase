@@ -728,7 +728,7 @@ def read_castep_castep(fd, index=None):
         calc = Castep()
     except Exception as e:
         # No CASTEP keywords found?
-        warnings.warn('WARNING:  {0}  Using fallback .castep reader...'.format(e))
+        warnings.warn('WARNING: {0} Using fallback .castep reader...'.format(e))
         # Fall back on the old method
         return read_castep_castep_old(fd, index)
 

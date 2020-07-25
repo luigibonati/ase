@@ -584,8 +584,8 @@ End CASTEP Interface Documentation
                 warnings.warn('No castep version found')
                 return
             if not local_castep_version == self._castep_version:
-                warnings.warn(('The options module was generated from version %s '
-                               'while your are currently using CASTEP version %s') %
+                warnings.warn('The options module was generated from version %s '
+                              'while your are currently using CASTEP version %s' %
                               (self._castep_version,
                                get_castep_version(self._castep_command)))
                 self._castep_version = local_castep_version
@@ -802,8 +802,8 @@ End CASTEP Interface Documentation
                 break
 
         if record_starts == []:
-            warnings.warn(('Could not find CASTEP label in result file: %s.'
-                           ' Are you sure this is a .castep file?') % castep_file)
+            warnings.warn('Could not find CASTEP label in result file: %s.'
+                          ' Are you sure this is a .castep file?' % castep_file)
             return
 
         # search for regular end of file
@@ -1391,7 +1391,7 @@ End CASTEP Interface Documentation
                 not_assigned = [i for (i, assigned)
                                 in zip(range(len(atoms_assigned)),
                                        atoms_assigned) if not assigned]
-                warnings.warn('%s atoms not assigned. ' 
+                warnings.warn('%s atoms not assigned. '
                               ' DEBUGINFO: The following atoms where not assigned: %s' %
                                (atoms_assigned.count(False), not_assigned))
             else:
@@ -1535,7 +1535,7 @@ End CASTEP Interface Documentation
                              'displacement': displacement}
                     self.symmetry_ops = symop
                 self.symmetry = symmetry_operations
-                warnings.warn('Symmetry operations successfully read from %s. %s' % 
+                warnings.warn('Symmetry operations successfully read from %s. %s' %
                               (f.name, self.cell.symmetry_ops))
                 break
 
@@ -1656,7 +1656,7 @@ End CASTEP Interface Documentation
 
         if not os.path.isdir(self._castep_pp_path):
             if self._pedantic:
-                warnings.warn('Cannot search directory:    {} Folder does not exist'
+                warnings.warn('Cannot search directory: {} Folder does not exist'
                               .format(self._castep_pp_path))
             return
 
@@ -2060,7 +2060,7 @@ End CASTEP Interface Documentation
             similars = difflib.get_close_matches(attr, self.internal_keys,
                                                  cutoff=0.9)
             if attr not in self.internal_keys and similars:
-                warnings.warn('Warning: You probably tried one of: %s but typed %s' % 
+                warnings.warn('Warning: You probably tried one of: %s but typed %s' %
                               (similars, attr))
             if attr in self.internal_keys:
                 self._opt[attr] = value
@@ -2317,11 +2317,10 @@ End CASTEP Interface Documentation
                         os.symlink(orig_pspot_file, cp_pspot_file)
                     else:
                         if self._pedantic:
-                            warnings.warn("""\
-Warning: PP files have neither been linked nor copied
-to the working directory. Make sure to set the evironment
-variable PSPOT_DIR accordingly!""")
-
+                            warnings.warn('Warning: PP files have neither been '
+                                'linked nor copied to the working directory. Make '
+                                'sure to set the evironment variable PSPOT_DIR '
+                                'accordingly!')
 
 def get_castep_version(castep_command):
     """This returns the version number as printed in the CASTEP banner.
@@ -2495,7 +2494,7 @@ def create_castep_keywords(castep_command, filename='castep_keywords.json',
 
     json.dump(processed_options, open(filepath, 'w'), indent=4)
 
-    warnings.warn('CASTEP v%s, fetched %s keywords' % 
+    warnings.warn('CASTEP v%s, fetched %s keywords' %
                   (castep_version, processed_n))
     return True
 
@@ -3063,7 +3062,7 @@ def import_castep_keywords(castep_command='',
         kwfile = sum([glob.glob(os.path.join(sp, filename))
                       for sp in searchpaths], [])[0]
     except IndexError:
-        warnings.warn("""    Generating CASTEP keywords JSON file... hang on.
+        warnings.warn("""Generating CASTEP keywords JSON file... hang on.
     The CASTEP keywords JSON file contains abstractions for CASTEP input
     parameters (for both .cell and .param input files), including some
     format checks and descriptions. The latter are extracted from the
@@ -3071,8 +3070,7 @@ def import_castep_keywords(castep_command='',
     easily keep the calculator synchronized with (different versions of)
     the CASTEP code. Consequently, avoiding licensing issues (CASTEP is
     distributed commercially by accelrys), we consider it wise not to
-    provide the file in the first place.
-""")
+    provide the file in the first place.""")
         create_castep_keywords(get_castep_command(castep_command),
                                filename=filename, path=path)
         warnings.warn('Stored %s in %s.  Copy it to your ASE installation under '
@@ -3100,8 +3098,8 @@ def import_castep_keywords(castep_command='',
 
 if __name__ == '__main__':
     warnings.warn('When called directly this calculator will fetch all available '
-                  'keywords from the binarys help function into a ' 
-                  'castep_keywords.json in the current directory %s ' 
+                  'keywords from the binarys help function into a '
+                  'castep_keywords.json in the current directory %s '
                   'For system wide usage, it can be copied into an ase installation '
                   'at ASE/calculators. '
                   'This castep_keywords.json usually only needs to be generated once '
