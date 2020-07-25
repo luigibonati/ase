@@ -166,7 +166,8 @@ class Cell:
             return bandpath.transform(op)
         else:
             from ase.dft.kpoints import BandPath, resolve_custom_points
-            path = resolve_custom_points(path, special_points, eps=eps)
+            path, special_points = resolve_custom_points(
+                path, special_points, eps=eps)
             bandpath = BandPath(cell, path=path, special_points=special_points)
             return bandpath.interpolate(npoints=npoints, density=density)
 

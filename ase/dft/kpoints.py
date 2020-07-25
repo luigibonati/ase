@@ -118,8 +118,15 @@ def resolve_custom_points(pathspec, special_points, eps):
     # This should really run on Cartesian coordinates but we'll probably
     # be lazy and call it on scaled ones.
 
+    # We may add new points below so take a copy of the input:
+    special_points = dict(special_points)
+
     if len(pathspec) == 0:
-        return ''
+        return '', special_points
+
+
+    if isinstance(pathspec, str):
+        pathspec = parse_path_string(pathspec)
 
     nested_format = True
     for element in pathspec:
@@ -165,7 +172,7 @@ def resolve_custom_points(pathspec, special_points, eps):
 
     last = labelseq.pop()
     assert last == ','
-    return ''.join(labelseq)
+    return ''.join(labelseq), special_points
 
 
 @jsonable('bandpath')
@@ -203,8 +210,8 @@ class BandPath:
         if path is None:
             path = ''
 
-        self._cell = cell = Cell.new(cell)
-        assert cell.shape == (3, 3)
+        cell = Cell(cell)
+        self._cell = cell
         kpts = np.asarray(kpts)
         assert kpts.ndim == 2 and kpts.shape[1] == 3
         self._icell = self.cell.reciprocal()
