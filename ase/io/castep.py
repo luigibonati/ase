@@ -430,10 +430,9 @@ def read_castep_cell(fd, index=None, calculator_args={}, find_spg=False,
             usymb = line_tokens[0][0].lower()
             u = cell_units.get(usymb, 1)
             if usymb not in cell_units:
-                warnings.warn(('read_cell: Warning - ignoring invalid '
+                warnings.warn('read_cell: Warning - ignoring invalid '
                                'unit specifier in %BLOCK {0} '
-                               '(assuming Angstrom instead)'
-                               ).format(blockname))
+                               '(assuming Angstrom instead)'.format(blockname))
             line_tokens = line_tokens[1:]
         return u, line_tokens
 
@@ -1253,8 +1252,8 @@ def write_param(filename, param, check_checkfile=False,
         if a restart file exists in the same directory
     """
     if os.path.isfile(filename) and not force_write:
-        warnings.warn('ase.io.castep.write_param: Set optional argument ' +
-                      ('force_write=True to overwrite %s.' % filename))
+        warnings.warn('ase.io.castep.write_param: Set optional argument ' 
+                      'force_write=True to overwrite %s.' % filename)
         return False
 
     out = paropen(filename, 'w')

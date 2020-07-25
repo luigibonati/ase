@@ -894,7 +894,7 @@ End CASTEP Interface Documentation
         record_start, record_end, end_found, _\
             = self._castep_find_last_record(out)
         if not end_found:
-            warnings.warn(('No regular end found in %s file. ' % castep_file) + self._error)
+            warnings.warn('No regular end found in %s file. %s' % (castep_file, self._error))
             if _close:
                 out.close()
             return
@@ -1391,9 +1391,9 @@ End CASTEP Interface Documentation
                 not_assigned = [i for (i, assigned)
                                 in zip(range(len(atoms_assigned)),
                                        atoms_assigned) if not assigned]
-                warnings.warn(('%s atoms not assigned.' % atoms_assigned.count(False)) +
-                              (' DEBUGINFO: The following atoms where not assigned: %s' %
-                               not_assigned))
+                warnings.warn('%s atoms not assigned. ' 
+                              ' DEBUGINFO: The following atoms where not assigned: %s' %
+                               (atoms_assigned.count(False), not_assigned))
             else:
                 self.atoms.set_scaled_positions(positions_frac_atoms)
 
@@ -1535,8 +1535,8 @@ End CASTEP Interface Documentation
                              'displacement': displacement}
                     self.symmetry_ops = symop
                 self.symmetry = symmetry_operations
-                warnings.warn(('Symmetry operations successfully read from %s. ' % f.name) +
-                              self.cell.symmetry_ops)
+                warnings.warn('Symmetry operations successfully read from %s. %s' % 
+                              (f.name, self.cell.symmetry_ops))
                 break
 
         # only close if we opened the file in this routine
@@ -2060,8 +2060,8 @@ End CASTEP Interface Documentation
             similars = difflib.get_close_matches(attr, self.internal_keys,
                                                  cutoff=0.9)
             if attr not in self.internal_keys and similars:
-                warnings.warn(('Warning: You probably tried one of: %s' % similars) +
-                              ('but typed %s' % attr))
+                warnings.warn('Warning: You probably tried one of: %s but typed %s' % 
+                              (similars, attr))
             if attr in self.internal_keys:
                 self._opt[attr] = value
                 if attr == '_track_output':
@@ -2297,11 +2297,10 @@ End CASTEP Interface Documentation
             if not pspots or species not in pspots.keys():
                 if self._build_missing_pspots:
                     if self._pedantic:
-                        warnings.warn(('Warning: you have no PP specified for %s. ' %
-                                      species) +
+                        warnings.warn(('Warning: you have no PP specified for %s. '
                                       'CASTEP will now generate an on-the-fly potentials. '
                                       'For sake of numerical consistency and efficiency '
-                                      'this is discouraged.')
+                                      'this is discouraged.' % species)
                 else:
                     raise RuntimeError(
                         'Warning: you have no PP specified for %s.' %
@@ -3076,14 +3075,13 @@ def import_castep_keywords(castep_command='',
 """)
         create_castep_keywords(get_castep_command(castep_command),
                                filename=filename, path=path)
-        warnings.warn("""    Stored %s in %s.
-                 Copy it to your
-    ASE installation under ase/calculators for system-wide installation
-""" % (filename, os.path.abspath(path)))
-        warnings.warn("""    Using a *nix OS this can be a simple as mv %s %s""" %
-                      (os.path.join(os.path.abspath(path), filename),
+        warnings.warn('Stored %s in %s.  Copy it to your ASE installation under '
+                      'ase/calculators for system-wide installation. Using a *nix '
+                      'OS this can be a simple as mv %s %s' %
+                      (filename, os.path.abspath(path),
+                       os.path.join(os.path.abspath(path), filename),
                        os.path.join(os.path.dirname(ase.__file__),
-                       'calculators')))
+                                    'calculators')))
         kwfile = os.path.join(path, filename)
 
     # Now create the castep_keywords object proper
@@ -3102,12 +3100,12 @@ def import_castep_keywords(castep_command='',
 
 if __name__ == '__main__':
     warnings.warn('When called directly this calculator will fetch all available '
-                  'keywords from the binarys help function into a ' +
-                  ('castep_keywords.json in the current directory %s ' % os.getcwd()) +
+                  'keywords from the binarys help function into a ' 
+                  'castep_keywords.json in the current directory %s ' 
                   'For system wide usage, it can be copied into an ase installation '
                   'at ASE/calculators. '
                   'This castep_keywords.json usually only needs to be generated once '
-                  'for a CASTEP binary/CASTEP version.')
+                  'for a CASTEP binary/CASTEP version.' % os.getcwd())
 
     import optparse
     parser = optparse.OptionParser()
@@ -3129,6 +3127,6 @@ if __name__ == '__main__':
             with open('castep_keywords.json') as f:
                 json.load(f)
         except Exception as e:
-            warnings.warn(str(e) + ' Ooops, something went wrong with the CASTEP keywords')
+            warnings.warn('%s Ooops, something went wrong with the CASTEP keywords' % e)
         else:
             warnings.warn('Import works. Looking good!')
