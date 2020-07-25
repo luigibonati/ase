@@ -2297,7 +2297,7 @@ End CASTEP Interface Documentation
             if not pspots or species not in pspots.keys():
                 if self._build_missing_pspots:
                     if self._pedantic:
-                        warnings.warn(('Warning: you have no PP specified for %s. '
+                        warnings.warn('Warning: you have no PP specified for %s. '
                                       'CASTEP will now generate an on-the-fly potentials. '
                                       'For sake of numerical consistency and efficiency '
                                       'this is discouraged.' % species)
