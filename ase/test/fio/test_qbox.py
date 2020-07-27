@@ -7,25 +7,14 @@ from ase import Atoms
 from ase.io import qbox
 from ase.io import formats
 
-# We don't like shipping raw datafiles, because they must all be listed
-# in the manifest.  So we invoke a function that prepares the files that
-# we need:
-#from ase.test.qbox.test_qboxdata import writefiles
 
-
-#@pytest.fixture
-#def qboxfiles():
-#    writefiles()
-
-#test_qbox = 'test.xml'
-#test_qball = '04_md_ntc.reference.xml'
 @pytest.fixture
 def qboxfile(datadir):
-    return datadir / 'qbox/test.xml'
+    return datadir / 'qbox_test.xml'
 
 @pytest.fixture
 def qballfile(datadir):
-    return datadir / 'qbox/04_md_ntc.reference.xml'
+    return datadir / 'qbox_04_md_ntc.reference.xml'
 
 
 def test_read_output(qboxfile):

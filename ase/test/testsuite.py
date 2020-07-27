@@ -12,7 +12,6 @@ from ase.cli.info import print_info
 from ase.cli.main import CLIError
 
 testdir = Path(__file__).parent
-datadir = (testdir / 'data').resolve()
 
 
 def all_test_modules_and_groups():

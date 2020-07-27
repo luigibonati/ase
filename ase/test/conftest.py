@@ -205,8 +205,8 @@ class CLI:
 
 @pytest.fixture(scope='session')
 def datadir():
-    from ase.test.testsuite import datadir
-    return datadir
+    test_basedir = Path(__file__).parent
+    return test_basedir / 'testdata'
 
 
 @pytest.fixture(scope='session')
