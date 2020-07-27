@@ -66,9 +66,15 @@ def test_custom_points(cell, custom_points):
 def test_autolabel_kpoints(cell):
     kpt0 = np.zeros(3)
     kpt1 = np.ones(3)
-    path = cell.bandpath([kpt0, kpt1], npoints=17,
+    path = cell.bandpath([[kpt0, kpt1]], npoints=17,
                          special_points={})
     assert len(path.kpts == 17)
     assert set(path.special_points) == {'Kpt0', 'Kpt1'}
     assert path.kpts[0] == pytest.approx(kpt0)
     assert path.kpts[-1] == pytest.approx(kpt1)
+
+
+def test_bad_kpointlist(cell):
+    bad_kpts = [np.zeros(3), np.ones(3)]  # Needs one more nesting level
+    with pytest.raises(ValueError):
+        cell.bandpath(bad_kpts)

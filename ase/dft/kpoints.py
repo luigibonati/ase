@@ -124,18 +124,8 @@ def resolve_custom_points(pathspec, special_points, eps):
     if len(pathspec) == 0:
         return '', special_points
 
-
     if isinstance(pathspec, str):
         pathspec = parse_path_string(pathspec)
-
-    nested_format = True
-    for element in pathspec:
-        if len(element) == 3 and np.isscalar(element[0]):
-            nested_format = False
-            break
-
-    if not nested_format:
-        pathspec = [pathspec]  # Now format is nested.
 
     def name_generator():
         counter = 0
@@ -146,8 +136,8 @@ def resolve_custom_points(pathspec, special_points, eps):
     custom_names = name_generator()
 
     labelseq = []
-    for segment in pathspec:
-        for kpt in segment:
+    for subpath in pathspec:
+        for kpt in subpath:
             if isinstance(kpt, str):
                 if kpt not in special_points:
                     raise KeyError('No kpoint "{}" among "{}"'
@@ -157,6 +147,9 @@ def resolve_custom_points(pathspec, special_points, eps):
                 continue
 
             kpt = np.asarray(kpt, float)
+            if not kpt.shape == (3,):
+                raise ValueError(f'Not a valid kpoint: {kpt}')
+
             for key, val in special_points.items():
                 if np.abs(kpt - val).max() < eps:
                     labelseq.append(key)
