@@ -187,6 +187,16 @@ def resolve_custom_points(pathspec, special_points, eps):
     assert last == ','
     return ''.join(labelseq), special_points
 
+def normalize_special_points(special_points):
+    dct = {}
+    for name, value in special_points.items():
+        if not isinstance(name, str):
+            raise TypeError('Expected name to be a string')
+        if not np.shape(value) == (3,):
+            raise ValueError('Expected 3 kpoint coordinates')
+        dct[name] = np.asarray(value, float)
+    return dct
+
 
 @jsonable('bandpath')
 class BandPath:
@@ -218,7 +228,7 @@ class BandPath:
         if special_points is None:
             special_points = {}
         else:
-            special_points = dict(special_points)
+            special_points = normalize_special_points(special_points)
 
         if path is None:
             path = ''
@@ -226,7 +236,7 @@ class BandPath:
         cell = Cell(cell)
         self._cell = cell
         kpts = np.asarray(kpts)
-        assert kpts.ndim == 2 and kpts.shape[1] == 3
+        assert kpts.ndim == 2 and kpts.shape[1] == 3 and kpts.dtype == float
         self._icell = self.cell.reciprocal()
         self._kpts = kpts
         self._special_points = special_points
