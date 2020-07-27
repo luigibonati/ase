@@ -6,7 +6,7 @@ def test_vasp2_Al_volrelax(require_vasp):
 
     """
 
-    from ase.test.vasp import installed2 as installed
+    from ase.test.calculator.vasp import installed2 as installed
 
     assert installed()
 

@@ -8,7 +8,7 @@ def test_vasp_setup(require_vasp):
     from os.path import isfile
     from ase.atoms import Atoms
     from ase.calculators.vasp import Vasp
-    from ase.test.vasp import installed
+    from ase.test.calculator.vasp import installed
 
     assert installed()
 

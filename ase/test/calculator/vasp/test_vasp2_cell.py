@@ -6,7 +6,7 @@ def test_vasp2_cell(require_vasp):
     """
 
     import pytest
-    from ase.test.vasp import installed2 as installed
+    from ase.test.calculator.vasp import installed2 as installed
     from ase.calculators.vasp import Vasp2 as Vasp
     from ase.build import molecule
     assert installed()

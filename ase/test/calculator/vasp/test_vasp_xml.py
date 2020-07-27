@@ -7,7 +7,7 @@ environment variables
 
 import numpy as np
 
-from ase.test.vasp import installed
+from ase.test.calculator.vasp import installed
 from ase import Atoms
 from ase.calculators.vasp import Vasp
 from ase.io import read
