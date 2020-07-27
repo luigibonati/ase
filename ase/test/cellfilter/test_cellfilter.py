@@ -36,3 +36,16 @@ def test_pressure(atoms, cellfilter):
     sigma = atoms.get_stress() / GPa
     pressure = -(sigma[0] + sigma[1] + sigma[2]) / 3.0
     assert abs(pressure - 10.0) < 0.1
+
+
+def test_cellfilter(atoms):
+    ucf = UnitCellFilter(atoms)
+    f, fn = gradient_test(ucf)
+    assert abs(f - fn).max() < 3e-6
+
+
+def test_expcellfilter(atoms):
+    ecf = ExpCellFilter(atoms)
+    # test all derivatives
+    f, fn = gradient_test(ecf)
+    assert abs(f - fn).max() < 3e-6
