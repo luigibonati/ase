@@ -127,6 +127,26 @@ def resolve_custom_points(pathspec, special_points, eps):
     if isinstance(pathspec, str):
         pathspec = parse_path_string(pathspec)
 
+    def looks_like_single_kpoint(obj):
+        if isinstance(obj, str):
+            return True
+        try:
+            arr = np.asarray(obj, float)
+        except ValueError:
+            return False
+        else:
+            return arr.shape == (3,)
+
+    # We accept inputs that are either
+    #  1) string notation
+    #  2) list of kpoints (each either a string or three floats)
+    #  3) list of list of kpoints; each toplevel list is a contiguous subpath
+    # Here we detect form 2 and normalize to form 3:
+    for thing in pathspec:
+        if looks_like_single_kpoint(thing):
+            pathspec = [pathspec]
+            break
+
     def name_generator():
         counter = 0
         while True:

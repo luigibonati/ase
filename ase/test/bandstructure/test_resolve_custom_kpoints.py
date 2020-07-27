@@ -22,19 +22,19 @@ def test_recognize_points_from_coords(special_points):
     assert set(dct) == set('AB')
 
 
-def test_autolabel_points_from_coords(special_points):
-    path, dct = resolve_custom_points(
-        [[special_points['A'], special_points['B']]], {}, 0)
-
+@pytest.mark.parametrize(
+    'kptcoords',
+    [
+        [np.zeros(3), np.ones(3)],
+        [[np.zeros(3), np.ones(3)]],
+    ]
+)
+def test_autolabel_points_from_coords(kptcoords, special_points):
+    path, dct = resolve_custom_points(kptcoords, {}, 0)
     assert path == 'Kpt0Kpt1'
     assert set(dct) == {'Kpt0', 'Kpt1'}  # automatically labelled
 
 
-@pytest.mark.parametrize('bad_pathspec', [
-    [np.zeros(3), np.ones(3)],  # Missing one level of nesting
-    [[np.zeros(2)]],
-])
-def test_bad_args(bad_pathspec):
-    # BZ paths must be list of list of kpoint
+def test_bad_shape():
     with pytest.raises(ValueError):
-        resolve_custom_points(bad_pathspec, {}, 0)
+        resolve_custom_points([[np.zeros(2)]], {}, 0)

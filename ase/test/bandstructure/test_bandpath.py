@@ -75,6 +75,5 @@ def test_autolabel_kpoints(cell):
 
 
 def test_bad_kpointlist(cell):
-    bad_kpts = [np.zeros(3), np.ones(3)]  # Needs one more nesting level
     with pytest.raises(ValueError):
-        cell.bandpath(bad_kpts)
+        cell.bandpath([np.zeros(2)])
