@@ -230,7 +230,8 @@ class BandPath:
         self._icell = self.cell.reciprocal()
         self._kpts = kpts
         self._special_points = special_points
-        assert isinstance(path, str)
+        if not isinstance(path, str):
+            raise TypeError(f'path must be a string; was {path!r}')
         self._path = path
 
     @property
