@@ -99,7 +99,7 @@ them. The main script can look as follows:
 The above script proposes and locally relaxes 20 new candidates. To
 speed up the execution of this sample the local relaxations are
 limited to 100 steps. This restriction should not be set in a real
-application. *Note* it is important to set the the ``raw_score``, as
+application. *Note* it is important to set the ``raw_score``, as
 it is what is being optimized (maximized). It is really an input in the
 ``atoms.info['key_value_pairs']`` dictionary.
 
@@ -113,7 +113,7 @@ is being updated as the GA progresses.
 
 Running the GA in Parallel
 ==========================
- 
+
 One of the great advantages of a GA is that many structures can be
 relaxed in parallel. This GA implementation includes two classes which
 facilitates running the GA in parallel. One class can be used for
@@ -191,12 +191,12 @@ Parameterising the GA search for structure screening
 Relaxing every candidate suggested by the GA is very inefficient. Many
 of these structures are poor suggestions and are immediately discarded
 when they are compared to the current population. For this reason it
-can be very effective to screen the candidate before relaxation to have 
+can be very effective to screen the candidate before relaxation to have
 a guess whether the candidate has a chance to enter the population or
 not. If this is not the case they can be rejected without the need for
 a costly DFT calculation. By doing this you could, for example, use a
 more drastic mutation resulting in both potentially very good but also
-very bad candidates without having to waste a lot of CPU power 
+very bad candidates without having to waste a lot of CPU power
 evaluating the poor suggestions.
 
 Parameterising the whole database of structures and relating the
@@ -209,7 +209,7 @@ Below is a sample script of how this method can be implemented and used.
 The script is a direct extension of the above tutorial. A number of
 predefined parameterising methods are available and its implementation
 is by no means restricted to the use of one of those. In the example a
-linear relationship is expected between every parameter and the DFT 
+linear relationship is expected between every parameter and the DFT
 energy. The main script for the GA run hence could look like:
 
 .. literalinclude:: ga_basic_parameters.py
