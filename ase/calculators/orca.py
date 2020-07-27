@@ -23,7 +23,7 @@ class ORCA(FileIOCalculator):
         orcablocks='%scf maxiter 200 end')
 
     def __init__(self, restart=None, ignore_bad_restart_file=False,
-                 label='orca', atoms=None, orca_command=None, **kwargs):
+                 label='orca', atoms=None, **kwargs):
         """ ASE interface to ORCA 4
         by Ragnar Bjornsson, Based on NWchem interface but simplified.
         Only supports energies and gradients (no dipole moments,
@@ -46,9 +46,6 @@ class ORCA(FileIOCalculator):
         """
         FileIOCalculator.__init__(self, restart, ignore_bad_restart_file,
                                   label, atoms, **kwargs)
-        # customizing the orca command to use
-        if orca_command is not None:
-            self.command = f'{str(orca_command)} PREFIX.inp > PREFIX.out'
 
         self.pcpot = None
 
