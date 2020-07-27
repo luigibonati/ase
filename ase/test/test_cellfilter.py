@@ -5,7 +5,7 @@ from ase.units import GPa
 from ase.build import bulk
 from ase.calculators.test import gradient_test
 from ase.constraints import UnitCellFilter, ExpCellFilter
-from ase.optimize import FIRE, LBFGS, MDMin
+from ase.optimize import LBFGS, MDMin
 from ase.io import Trajectory
 
 @pytest.fixture
