@@ -1,7 +1,7 @@
 import pytest
 from ase.build import bulk
 from ase.calculators.vasp import Vasp
-from ase.test.vasp import installed
+from ase.test.calculator.vasp import installed
 
 
 def test_vasp_net_charge(require_vasp):

@@ -1,4 +1,4 @@
-def test_vasp_Al_volrelax(require_vasp):
+def test_vasp2_Al_volrelax(require_vasp):
     """
     Run VASP tests to ensure that relaxation with the VASP calculator works.
     This is conditional on the existence of the VASP_COMMAND or VASP_SCRIPT
@@ -6,7 +6,7 @@ def test_vasp_Al_volrelax(require_vasp):
 
     """
 
-    from ase.test.vasp import installed
+    from ase.test.calculator.vasp import installed2 as installed
 
     assert installed()
 
@@ -16,7 +16,7 @@ def test_vasp_Al_volrelax(require_vasp):
     # broken. Use BFGS instead.
     from ase.optimize import BFGS as QuasiNewton
     from ase.build import bulk
-    from ase.calculators.vasp import Vasp
+    from ase.calculators.vasp import Vasp2 as Vasp
 
     # -- Perform Volume relaxation within Vasp
     def vasp_vol_relax():

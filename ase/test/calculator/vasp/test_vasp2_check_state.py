@@ -8,7 +8,7 @@ def test_vasp2_check_state(require_vasp):
 
     """
 
-    from ase.test.vasp import installed2 as installed
+    from ase.test.calculator.vasp import installed2 as installed
 
     import os
     from ase import Atoms

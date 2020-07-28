@@ -10,7 +10,7 @@ def test_vasp2_kpoints(require_vasp):
 
     from ase.calculators.vasp import Vasp2 as Vasp
     from ase.build import bulk
-    from ase.test.vasp import installed2 as installed
+    from ase.test.calculator.vasp import installed2 as installed
 
     assert installed()
 
