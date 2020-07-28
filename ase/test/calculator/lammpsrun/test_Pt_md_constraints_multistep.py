@@ -1,16 +1,10 @@
 import pytest
 from numpy.testing import assert_allclose
 from ase.build import fcc111
-import os
 
 
 @pytest.mark.calculator('lammpsrun')
 def test_Pt_md_constraints_multistep(factory, pt_eam_potential_file):
-    #pot_fn = 'Pt_u3.eam'
-    #f = open(pot_fn, 'w')
-    #f.write(Pt_u3)
-    #f.close()
-
     slab = fcc111('Pt', size=(2, 2, 5), vacuum=30.0)
     # We use fully periodic boundary conditions because the Lammpsrun
     # calculator does not know if it can convert the cell correctly with
