@@ -9,12 +9,6 @@ from ase.dft.wannier import gram_schmidt, lowdin, random_orthogonal_matrix, \
     neighbor_k_search, calculate_weights, steepest_descent, md_min, \
     rotation_from_projection, Wannier
 
-try:
-    from gpaw import GPAW
-except ImportError:
-    raise unittest.SkipTest('GPAW not available')
-
-
 
 @pytest.fixture
 def rng():
@@ -139,7 +133,8 @@ def test_rotation_from_projection(rng):
 
 
 def test_save(tmpdir):
-    calc = GPAW(gpts=(8, 8, 8), nbands=4, txt=None)
+    gpaw = pytest.importorskip('gpaw')
+    calc = gpaw.GPAW(gpts=(8, 8, 8), nbands=4, txt=None)
     atoms = molecule('H2', calculator=calc)
     atoms.center(vacuum=3.)
     atoms.get_potential_energy()
@@ -163,7 +158,8 @@ def test_save(tmpdir):
                                  HEX2D(1), RECT(1, 2), CRECT(1, 70), SQR(1),
                                  LINE(1)])
 def test_get_radii(lat):
-    calc = GPAW(gpts=(8, 8, 8), nbands=4, txt=None)
+    gpaw = pytest.importorskip('gpaw')
+    calc = gpaw.GPAW(gpts=(8, 8, 8), nbands=4, txt=None)
     atoms = molecule('H2', calculator=calc, pbc=True)
     atoms.cell = lat.tocell()
     atoms.center(vacuum=3.)
