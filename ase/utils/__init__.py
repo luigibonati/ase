@@ -150,6 +150,7 @@ class Lock:
         while True:
             fd = opencew(self.name, self.world)
             if fd is not None:
+                self.fd = fd
                 break
             time_left = self.timeout - (time.time() - t1)
             if time_left <= 0:
@@ -159,8 +160,12 @@ class Lock:
 
     def release(self):
         self.world.barrier()
+        # Important to close fd before deleting file on windows
+        # as a WinError would otherwise be raised.
+        self.fd.close()
         if self.world.rank == 0:
             os.remove(self.name)
+        self.world.barrier()
 
     def __enter__(self):
         self.acquire()

@@ -17,6 +17,7 @@ import functools
 import inspect
 import os
 import sys
+import warnings
 from pathlib import Path, PurePath
 from typing import (
     IO, List, Any, Iterable, Tuple, Union, Sequence, Dict, Optional)
@@ -737,8 +738,10 @@ def parse_filename(filename, index=None, do_not_split_by_at_sign=False):
     try:
         newindex = string2index(newindex)
     except ValueError:
-        pass
-
+        warnings.warn('Can not parse index for path \n'
+                      ' "%s" \nConsider set '
+                      'do_not_split_by_at_sign=True \nif '
+                      'there is no index.' % filename)
     return newfilename, newindex
 
 

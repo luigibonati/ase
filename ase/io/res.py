@@ -21,7 +21,7 @@ from ase.calculators.singlepoint import SinglePointCalculator
 __all__ = ['Res', 'read_res', 'write_res']
 
 
-class Res(object):
+class Res:
 
     """
     Object for representing the data in a Res file.

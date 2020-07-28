@@ -33,7 +33,7 @@ extras_require = {
         'pillow',
     ],
     'test': [
-        'pytest>=3.6.1',
+        'pytest>=3.9.1',
         'pytest-xdist>=1.22.1',
     ]
 }
@@ -52,7 +52,7 @@ package_data = {'ase': ['spacegroup/spacegroup.dat',
                         'db/templates/*',
                         'db/static/*'],
                 'ase.test': ['pytest.ini',
-                             'data/*']}
+                             'testdata/*']}
 
 
 class build_py(_build_py):

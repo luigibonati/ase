@@ -107,8 +107,9 @@ def get_band_structure(atoms=None, calc=None, path=None, reference=None):
     energies = np.array(energies)
 
     if path is None:
-        from ase.dft.kpoints import resolve_custom_points, find_bandpath_kinks
-        path = atoms.cell.bandpath(npoints=0)
+        from ase.dft.kpoints import (BandPath, resolve_custom_points,
+                                     find_bandpath_kinks)
+        standard_path = atoms.cell.bandpath(npoints=0)
         # Kpoints are already evaluated, we just need to put them into
         # the path (whether they fit our idea of what the path is, or not).
         #
@@ -123,9 +124,12 @@ def get_band_structure(atoms=None, calc=None, path=None, reference=None):
         # This operation (manually hacking the bandpath) is liable to break.
         # TODO: Make it available as a proper (documented) bandpath method.
         kinks = find_bandpath_kinks(atoms.cell, kpts, eps=1e-5)
-        pathspec = resolve_custom_points(kpts[kinks], path.special_points, eps=1e-5)
-        path._kpts = kpts
-        path._path = pathspec
+        pathspec, special_points = resolve_custom_points(
+            kpts[kinks], standard_path.special_points, eps=1e-5)
+        path = BandPath(standard_path.cell,
+                        kpts=kpts,
+                        path=pathspec,
+                        special_points=special_points)
 
     # XXX If we *did* get the path, now would be a good time to check
     # that it matches the cell!  Although the path can only be passed

@@ -3,7 +3,8 @@ from ase.build import bulk
 from ase.md import Langevin
 from ase.md.fix import FixRotation
 from ase.utils import seterr
-from ase.md.velocitydistribution import MaxwellBoltzmannDistribution, Stationary
+from ase.md.velocitydistribution import (MaxwellBoltzmannDistribution,
+                                         Stationary)
 import numpy as np
 
 
@@ -27,23 +28,27 @@ def check_inertia(atoms):
 
 
 def test_verlet_asap(asap3):
+    rng = np.random.RandomState(123)
+
     with seterr(all='raise'):
-        a = bulk('Au', cubic=True).repeat((3, 3, 20))
-        a.pbc = False
-        a.center(vacuum=5.0 + np.max(a.cell) / 2)
-        print(a)
-        a.calc = asap3.EMT()
-        MaxwellBoltzmannDistribution(a, 300 * kB, force_temp=True)
-        Stationary(a)
-        check_inertia(a)
+        atoms = bulk('Au', cubic=True).repeat((3, 3, 10))
+        atoms.pbc = False
+        atoms.center(vacuum=5.0 + np.max(atoms.cell) / 2)
+        print(atoms)
+        atoms.calc = asap3.EMT()
+        MaxwellBoltzmannDistribution(atoms, 300 * kB, force_temp=True,
+                                     rng=rng)
+        Stationary(atoms)
+        check_inertia(atoms)
         md = Langevin(
-            a,
-            timestep=5 * fs,
+            atoms,
+            timestep=20 * fs,
             temperature=300 * kB,
             friction=1e-3,
             logfile='-',
-            loginterval=500)
-        fx = FixRotation(a)
+            loginterval=500,
+            rng=rng)
+        fx = FixRotation(atoms)
         md.attach(fx)
-        md.run(steps=10000)
-        check_inertia(a)
+        md.run(steps=1000)
+        check_inertia(atoms)

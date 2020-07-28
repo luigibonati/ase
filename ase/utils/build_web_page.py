@@ -56,7 +56,7 @@ def build_both():
          f'find {webpage} -name install.html | '
          f'xargs sed -i s/snapshot.tar.gz/{tar.name}/g',
          f'cd {webpage.parent}',
-         f'tar -czf ase-web-page.tar.gz ase-web-page',
+         'tar -czf ase-web-page.tar.gz ase-web-page',
          f'cp ase-web-page.tar.gz {home}'])
     subprocess.run(cmds, shell=True, check=True)
 
