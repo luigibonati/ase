@@ -52,7 +52,7 @@ package_data = {'ase': ['spacegroup/spacegroup.dat',
                         'db/templates/*',
                         'db/static/*'],
                 'ase.test': ['pytest.ini',
-                             'data/*']}
+                             'testdata/*']}
 
 
 class build_py(_build_py):

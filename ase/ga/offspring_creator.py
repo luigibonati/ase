@@ -4,7 +4,7 @@ import numpy as np
 from ase import Atoms
 
 
-class OffspringCreator(object):
+class OffspringCreator:
     """Base class for all procreation operators
 
     Parameters:
@@ -57,7 +57,7 @@ class OffspringCreator(object):
         return indi
 
 
-class OperationSelector(object):
+class OperationSelector:
     """Class used to randomly select a procreation operation
     from a list of operations.
 

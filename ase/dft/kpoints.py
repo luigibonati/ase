@@ -118,17 +118,34 @@ def resolve_custom_points(pathspec, special_points, eps):
     # This should really run on Cartesian coordinates but we'll probably
     # be lazy and call it on scaled ones.
 
+    # We may add new points below so take a copy of the input:
+    special_points = dict(special_points)
+
     if len(pathspec) == 0:
-        return ''
+        return '', special_points
 
-    nested_format = True
-    for element in pathspec:
-        if len(element) == 3 and np.isscalar(element[0]):
-            nested_format = False
+    if isinstance(pathspec, str):
+        pathspec = parse_path_string(pathspec)
+
+    def looks_like_single_kpoint(obj):
+        if isinstance(obj, str):
+            return True
+        try:
+            arr = np.asarray(obj, float)
+        except ValueError:
+            return False
+        else:
+            return arr.shape == (3,)
+
+    # We accept inputs that are either
+    #  1) string notation
+    #  2) list of kpoints (each either a string or three floats)
+    #  3) list of list of kpoints; each toplevel list is a contiguous subpath
+    # Here we detect form 2 and normalize to form 3:
+    for thing in pathspec:
+        if looks_like_single_kpoint(thing):
+            pathspec = [pathspec]
             break
-
-    if not nested_format:
-        pathspec = [pathspec]  # Now format is nested.
 
     def name_generator():
         counter = 0
@@ -139,8 +156,8 @@ def resolve_custom_points(pathspec, special_points, eps):
     custom_names = name_generator()
 
     labelseq = []
-    for segment in pathspec:
-        for kpt in segment:
+    for subpath in pathspec:
+        for kpt in subpath:
             if isinstance(kpt, str):
                 if kpt not in special_points:
                     raise KeyError('No kpoint "{}" among "{}"'
@@ -150,6 +167,9 @@ def resolve_custom_points(pathspec, special_points, eps):
                 continue
 
             kpt = np.asarray(kpt, float)
+            if not kpt.shape == (3,):
+                raise ValueError(f'Not a valid kpoint: {kpt}')
+
             for key, val in special_points.items():
                 if np.abs(kpt - val).max() < eps:
                     labelseq.append(key)
@@ -165,7 +185,17 @@ def resolve_custom_points(pathspec, special_points, eps):
 
     last = labelseq.pop()
     assert last == ','
-    return ''.join(labelseq)
+    return ''.join(labelseq), special_points
+
+def normalize_special_points(special_points):
+    dct = {}
+    for name, value in special_points.items():
+        if not isinstance(name, str):
+            raise TypeError('Expected name to be a string')
+        if not np.shape(value) == (3,):
+            raise ValueError('Expected 3 kpoint coordinates')
+        dct[name] = np.asarray(value, float)
+    return dct
 
 
 @jsonable('bandpath')
@@ -198,19 +228,20 @@ class BandPath:
         if special_points is None:
             special_points = {}
         else:
-            special_points = dict(special_points)
+            special_points = normalize_special_points(special_points)
 
         if path is None:
             path = ''
 
-        self._cell = cell = Cell.new(cell)
-        assert cell.shape == (3, 3)
+        cell = Cell(cell)
+        self._cell = cell
         kpts = np.asarray(kpts)
-        assert kpts.ndim == 2 and kpts.shape[1] == 3
+        assert kpts.ndim == 2 and kpts.shape[1] == 3 and kpts.dtype == float
         self._icell = self.cell.reciprocal()
         self._kpts = kpts
         self._special_points = special_points
-        assert isinstance(path, str)
+        if not isinstance(path, str):
+            raise TypeError(f'path must be a string; was {path!r}')
         self._path = path
 
     @property

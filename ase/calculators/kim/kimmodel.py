@@ -16,7 +16,7 @@ from . import kimpy_wrappers
 from . import neighborlist
 
 
-class KIMModelData(object):
+class KIMModelData:
     """Initializes and subsequently stores the KIM API Portable Model
     object, KIM API ComputeArguments object, and the neighbor list
     object used by instances of KIMModelCalculator.  Also stores the

@@ -25,7 +25,7 @@ except ImportError:
 THz = 1e12 * 1. / units.s
 
 
-class Precon(object):
+class Precon:
 
     def __init__(self, r_cut=None, r_NN=None,
                  mu=None, mu_c=None,
@@ -526,7 +526,7 @@ class Precon(object):
         return (self.mu, self.mu_c)
 
 
-class Pfrommer(object):
+class Pfrommer:
     """Use initial guess for inverse Hessian from Pfrommer et al. as a
     simple preconditioner
 
