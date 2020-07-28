@@ -209,6 +209,13 @@ def datadir():
     return test_basedir / 'testdata'
 
 
+@pytest.fixture
+def pt_eam_potential_file(datadir):
+    # EAM potential for Pt from LAMMPS, also used with eam calculator.
+    # (Where should this fixture really live?)
+    return datadir / 'eam_Pt_u3.dat'
+
+
 @pytest.fixture(scope='session')
 def asap3():
     asap3 = pytest.importorskip('asap3')
