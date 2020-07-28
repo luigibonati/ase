@@ -148,5 +148,19 @@ class Symbols:
         return np.array(indices, int)
 
     def species(self):
-        """Return unique species as list."""
-        return list(set(self))
+        """Return unique symbols as a set."""
+        return set(self)
+
+    def indices(self):
+        """Return dictionary mapping each unique symbol to indices.
+
+        >>> from ase.build import molecule
+        >>> atoms = molecule('CH3CH2OH')
+        >>> atoms.symbols.indices()
+        {'C': array([0, 1]), 'O': array([2]), 'H': array([3, 4, 5, 6, 7, 8])}
+
+        """
+        dct = {}
+        for i, symbol in enumerate(self):
+            dct.setdefault(symbol, []).append(i)
+        return {key: np.array(value, int) for key, value in dct.items()}

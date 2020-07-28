@@ -42,6 +42,15 @@ def test_search_two(atoms):
     indices = atoms.symbols.search('CO')
     assert all(sym in {'C', 'O'} for sym in atoms.symbols[indices])
 
+
 def test_species(atoms):
-    dct = atoms.symbols.species()
-    print(dct)
+    assert atoms.symbols.species() == set(atoms.symbols)
+
+
+def test_indices(atoms):
+    dct = atoms.symbols.indices()
+
+    assert set(dct) == atoms.symbols.species()
+
+    for symbol, indices in dct.items():
+        assert all(atoms.symbols[indices] == symbol)
