@@ -26,6 +26,7 @@ def all_test_modules_and_groups():
         group = testpath.parent
         if group not in groups:
             yield group
+            groups.add(group)
         yield testpath
 
 
