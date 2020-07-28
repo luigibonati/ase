@@ -158,6 +158,9 @@ def test_save(tmpdir):
                                  HEX2D(1), RECT(1, 2), CRECT(1, 70), SQR(1),
                                  LINE(1)])
 def test_get_radii(lat):
+    if ((lat.tocell() == FCC(a=1).tocell()).all() or
+            (lat.tocell() == ORCF(a=1, b=2, c=3).tocell()).all()):
+        pytest.skip("lattices not supported, yet")
     gpaw = pytest.importorskip('gpaw')
     calc = gpaw.GPAW(gpts=(8, 8, 8), nbands=4, txt=None)
     atoms = molecule('H2', calculator=calc, pbc=True)
