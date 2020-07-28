@@ -139,12 +139,9 @@ def test_save(tmpdir):
     atoms.center(vacuum=3.)
     atoms.get_potential_energy()
     wan1 = Wannier(nwannier=4, fixedstates=2, calc=calc, initialwannier='bloch')
-
     picklefile = tmpdir.join('wan.pickle')
     wan1.save(picklefile)
-
     wan2 = Wannier(nwannier=4, fixedstates=2, file=picklefile, calc=calc)
-
     assert np.abs(wan1.get_functional_value() -
                   wan2.get_functional_value()).max() < 1e-12
 
@@ -169,3 +166,30 @@ def test_get_radii(lat):
     atoms.get_potential_energy()
     wan = Wannier(nwannier=4, fixedstates=2, calc=calc, initialwannier='bloch')
     assert not (wan.get_radii() == 0).all()
+
+
+def test_get_functional_value():
+    # Only testing if the functional scales with the number of functions
+    gpaw = pytest.importorskip('gpaw')
+    calc = gpaw.GPAW(gpts=(8, 8, 8), nbands=4, txt=None)
+    atoms = molecule('H2', calculator=calc, pbc=True)
+    atoms.center(vacuum=3.)
+    atoms.get_potential_energy()
+    wan = Wannier(nwannier=3, calc=calc, initialwannier='bloch')
+    f1 = wan.get_functional_value()
+    wan = Wannier(nwannier=4, calc=calc, initialwannier='bloch')
+    f2 = wan.get_functional_value()
+    assert f1 < f2
+
+
+def test_get_centers():
+    # Rough test on the position of the Wannier functions' centers
+    gpaw = pytest.importorskip('gpaw')
+    calc = gpaw.GPAW(gpts=(32, 32, 32), nbands=4, txt=None)
+    atoms = molecule('H2', calculator=calc)
+    atoms.center(vacuum=3.)
+    atoms.get_potential_energy()
+    wan = Wannier(nwannier=2, calc=calc, initialwannier='bloch')
+    centers = wan.get_centers()
+    com = atoms.get_center_of_mass()
+    assert np.abs(centers - [com, com]).max() < 1e-4
