@@ -1,5 +1,5 @@
 def test_add_candidates():
-    from ase.test import must_raise
+    import pytest
     from ase.build import fcc111
     from ase.ga.data import PrepareDB
     from ase.ga.data import DataConnection
@@ -37,7 +37,7 @@ def test_add_candidates():
     # confid should not change when using add_unrelaxed_step
     assert slab3.info['confid'] == new_confid
 
-    with must_raise(AssertionError):
+    with pytest.raises(AssertionError):
         db.add_relaxed_step(slab3)
     set_raw_score(slab3, 3)
     db.add_relaxed_step(slab3)

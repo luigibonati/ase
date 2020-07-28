@@ -725,8 +725,8 @@ def parse_filename(filename, index=None, do_not_split_by_at_sign=False):
     if not isinstance(filename, str):
         return filename, index
 
-    basename = os.path.basename(filename)
-    if do_not_split_by_at_sign or '@' not in basename:
+    extension = os.path.splitext(filename)[-1]
+    if do_not_split_by_at_sign or '@' not in extension:
         return filename, index
 
     newindex = None

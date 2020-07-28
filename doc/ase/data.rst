@@ -124,11 +124,11 @@ Example:
 where the last line converts the experimental atomization energy of H2O
 from units of kcal/mol to eV.
 
-Structures for compounds not found in the G1, G2, and G3-databases can 
-be obtained using the PubChem API integration in the 
-:func:`pubchem.pubchem_atoms_search` and 
-:func:`pubchem.pubchem_atoms_conformer_search` functions. You may 
-search based on common name, chemical identification number(cid), 
+Structures for compounds not found in the G1, G2, and G3-databases can
+be obtained using the PubChem API integration in the
+:func:`pubchem.pubchem_atoms_search` and
+:func:`pubchem.pubchem_atoms_conformer_search` functions. You may
+search based on common name, chemical identification number(cid),
 smiles string, or conformer identification number.
 
 .. autofunction:: ase.data.pubchem.pubchem_atoms_search
@@ -142,12 +142,12 @@ examples:
 >>> ethanol = pubchem_atoms_search(smiles='CCOH')
 >>> octane_conformers = pubchem_atoms_conformer_search(name='octane')
 
-To get all the data available on Pubchem use :func:`pubchem.pubchem_search` and 
+To get all the data available on Pubchem use :func:`pubchem.pubchem_search` and
 :func:`pubchem.pubchem_conformer_search`.
 
 .. autofunction:: ase.data.pubchem.pubchem_search
 .. autofunction:: ase.data.pubchem.pubchem_conformer_search
- 
+
 
 
 
@@ -232,7 +232,7 @@ Example:
 
 where sys1 is an s22 complex in the original geometry,
 while sys2 and sys3 are two different s22x5 geometries
-of the exact same complex. It is seen that the interaction
+of the same complex. It is seen that the interaction
 energies for an s22 system and its s22x5 equivalent
 (indexed '_1.0') does not necessarily match
 when the energy offset-correction is turned off.

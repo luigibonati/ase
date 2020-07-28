@@ -101,7 +101,7 @@ electrons are well on their way to forming a continuous band (recall
 we are using 0.1 eV Gaussian smearing).  Meanwhile the energies of the
 few s electrons split over a wider range, and we clearly see isolated
 peaks: The s states are still clearly quantized and have significant
-gaps.  What characterises the the noble metals Cu, Ag, and Au,
+gaps.  What characterises the noble metals Cu, Ag, and Au,
 is that their d band is fully occupied so that the Fermi level lies
 among these s states.  Clusters with a
 different number of electrons might have higher or lower Fermi level,

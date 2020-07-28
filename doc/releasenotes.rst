@@ -95,6 +95,9 @@ Algorithms:
   and energies of atoms objects.  The classes and functions used in
   the CLI are also available in :mod:`ase.cli.template`.
 
+* Allow setting the initial hessian in `optimize.BFGS` via the keyword `alpha` or
+  explicitly via `opt.H0 = ...` after instantiation.
+
 I/O:
 
 * The ``ase db db1.db <selection> --insert-into db2.db`` command now respects
@@ -156,8 +159,18 @@ Calculators:
   Functionality for other properties should be unchanged. Testing and
   documentation have also been expanded.
 
+
 .. _mypy: http://mypy-lang.org/
 
+
+Version 3.19.2
+==============
+
+22 July 2020: :git:`3.19.2 <../3.19.2>`
+
+* Compatibility fixes related to matplotlib:
+  Update png writer to be compatible with matplotlib 3.3.0.
+  Update incompatible calls to ``matplotlib.use()``.
 
 Version 3.19.1
 ==============
@@ -286,6 +299,7 @@ GUI:
 * It is now possible to copy and paste atoms: The "add atoms" function
   (Ctrl+A) will suggest the atoms in the current selection by default.
 
+
 Version 3.18.2
 ==============
 
@@ -293,6 +307,7 @@ Version 3.18.2
 
 * Fix an issue with the binary package (wheel) of 3.18.1.
   No bugfixes as such.
+
 
 Version 3.18.1
 ==============
@@ -305,6 +320,7 @@ Version 3.18.1
   Use ``atoms.pbc`` instead; this works the same as always.
   Also, the :class:`~ase.cell.Cell` object now exposes almost the entire
   ``ndarray`` interface.  For a list of smaller bugfixes, see the git log.
+
 
 Version 3.18.0
 ==============
@@ -468,6 +484,7 @@ GUI:
    by custom arrays.
 
  * Improved color scales.
+
 
 Version 3.17.0
 ==============
@@ -1031,7 +1048,7 @@ Version 3.9.1
 
 21 July 2015: :git:`3.9.1 <../3.9.1>`.
 
-* Added function for finding maximally-reduced Niggli unit cell:
+* Added function for finding maximally reduced Niggli unit cell:
   :func:`ase.build.niggli_reduce`.
 
 * Octopus interface added (experimental).
@@ -1192,7 +1209,7 @@ Version 3.5.0
 
 * New :class:`~ase.io.bundletrajectory.BundleTrajectory` added.
 
-* Updated GUI interface:
+* Updated GUI:
 
   * Stability and usability improvements.
   * Povray render facility.
