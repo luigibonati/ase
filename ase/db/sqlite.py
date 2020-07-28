@@ -118,7 +118,7 @@ def float_if_not_none(x):
         return float(x)
 
 
-class SQLite3Database(Database, object):
+class SQLite3Database(Database):
     type = 'db'
     initialized = False
     _allow_reading_old_format = False
