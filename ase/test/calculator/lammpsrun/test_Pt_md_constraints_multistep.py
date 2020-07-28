@@ -1,17 +1,10 @@
 import pytest
 from numpy.testing import assert_allclose
-from ase.test.eam_pot import Pt_u3
 from ase.build import fcc111
-import os
 
 
 @pytest.mark.calculator('lammpsrun')
-def test_Pt_md_constraints_multistep(factory):
-    pot_fn = 'Pt_u3.eam'
-    f = open(pot_fn, 'w')
-    f.write(Pt_u3)
-    f.close()
-
+def test_Pt_md_constraints_multistep(factory, pt_eam_potential_file):
     slab = fcc111('Pt', size=(2, 2, 5), vacuum=30.0)
     # We use fully periodic boundary conditions because the Lammpsrun
     # calculator does not know if it can convert the cell correctly with
@@ -20,9 +13,10 @@ def test_Pt_md_constraints_multistep(factory):
 
     params = {}
     params['pair_style'] = 'eam'
-    params['pair_coeff'] = ['1 1 {}'.format(pot_fn)]
+    params['pair_coeff'] = ['1 1 {}'.format(pt_eam_potential_file)]
 
-    with factory.calc(specorder=['Pt'], files=[pot_fn], **params) as calc:
+    with factory.calc(specorder=['Pt'], files=[str(pt_eam_potential_file)],
+                      **params) as calc:
         slab.calc = calc
 
         assert_allclose(slab.get_potential_energy(), -110.3455014595596,
@@ -48,5 +42,3 @@ def test_Pt_md_constraints_multistep(factory):
                         atol=1e-4, rtol=1e-4)
         assert_allclose(slab.get_potential_energy(), -110.4469605087525,
                         atol=1e-4, rtol=1e-4)
-
-        os.remove(pot_fn)
