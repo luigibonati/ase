@@ -4,29 +4,16 @@ from ase.transport.tools import dagger, normalize
 from ase.dft.kpoints import monkhorst_pack
 from ase.lattice import CUB, FCC, BCC, TET, BCT, ORC, ORCF, ORCI, ORCC, HEX, \
     RHL, MCL, MCLC, TRI, OBL, HEX2D, RECT, CRECT, SQR, LINE
+from ase.build import molecule
+from gpaw import GPAW
 from ase.dft.wannier import gram_schmidt, lowdin, random_orthogonal_matrix, \
     neighbor_k_search, calculate_weights, steepest_descent, md_min, \
-    rotation_from_projection
+    rotation_from_projection, Wannier
 
 
 @pytest.fixture
 def rng():
     return np.random.RandomState(0)
-
-
-@pytest.fixture
-def simple_cubic_cell():
-    return np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]], dtype=float)
-
-
-@pytest.fixture
-def body_centered_cubic_cell():
-    return np.array([[-1, 1, 1], [1, -1, 1], [1, 1, -1]], dtype=float)
-
-
-@pytest.fixture
-def face_centered_cubic_cell():
-    return np.array([[0, 1, 1], [1, 0, 1], [1, 1, 0]], dtype=float)
 
 
 class Paraboloid:
@@ -96,10 +83,14 @@ def test_neighbor_k_search():
             kk, k0 = neighbor_k_search(k_c, Gdir_c, kpt_kc, tol=tol)
             assert np.linalg.norm(kpt_kc[kk] - k_c - Gdir_c + k0) < tol
 
+
 @pytest.mark.parametrize('lat', [CUB(1), FCC(1), BCC(1), TET(1, 2), BCT(1, 2),
-    ORC(1, 2, 3), ORCF(1, 2, 3), ORCI(1, 2, 3), ORCC(1, 2, 3), HEX(1, 2),
-    RHL(1, 110), MCL(1, 2, 3, 70), MCLC(1, 2, 3, 70), TRI(1, 2, 3, 60, 70, 80),
-    OBL(1, 2, 110), HEX2D(1), RECT(1, 2), CRECT(1, 70), SQR(1), LINE(1)])
+                                 ORC(1, 2, 3), ORCF(1, 2, 3), ORCI(1, 2, 3),
+                                 ORCC(1, 2, 3), HEX(1, 2), RHL(1, 110),
+                                 MCL(1, 2, 3, 70), MCLC(1, 2, 3, 70),
+                                 TRI(1, 2, 3, 60, 70, 80), OBL(1, 2, 110),
+                                 HEX2D(1), RECT(1, 2), CRECT(1, 70), SQR(1),
+                                 LINE(1)])
 def test_calculate_weights(lat):
     # Equation from Berghold et al. PRB v61 n15 (2000)
     tol = 1e-5
@@ -140,3 +131,19 @@ def test_rotation_from_projection(rng):
     assert normalization_error(C_ul) < 1e-10, 'C_ul not normalized'
     U_ww, C_ul = rotation_from_projection(proj_nw, fixed=2, ortho=False)
     assert normalization_error(U_ww) < 1e-10, 'U_ww not normalized'
+
+
+def test_save(tmpdir):
+    calc = GPAW(gpts=(8, 8, 8), nbands=4, txt=None)
+    atoms = molecule('H2', calculator=calc)
+    atoms.center(vacuum=3.)
+    atoms.get_potential_energy()
+    wan1 = Wannier(nwannier=4, fixedstates=2, calc=calc, initialwannier='bloch')
+
+    picklefile = tmpdir.join('wan.pickle')
+    wan1.save(picklefile)
+
+    wan2 = Wannier(nwannier=4, fixedstates=2, file=picklefile, calc=calc)
+
+    assert np.abs(wan1.get_functional_value() -
+                  wan2.get_functional_value()).max() < 1e-12
