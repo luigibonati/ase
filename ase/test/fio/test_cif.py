@@ -351,13 +351,13 @@ def test_cif_icsd():
 
 #test default and mp version of cif writing
 @pytest.mark.parametrize('method', ['default', 'mp'])
-def test_cif_add_loop(method):
+def test_cif_loop_keys(method):
     cif_file = io.StringIO(content)
     atoms = read(cif_file, format='cif')
     data = {}
     data['someKey'] = [[str(i)+"test" for i in range(20)]] #test case has 20 entries
     data['someIntKey'] = [[str(i)+"123" for i in range(20)]] #test case has 20 entries
-    atoms.write('testfile.cif', add_loop=data, cif_format=method)
+    atoms.write('testfile.cif', loop_keys=data, cif_format=method)
 
     atoms = read('testfile.cif', store_tags=True)
     #keys are read lowercase only

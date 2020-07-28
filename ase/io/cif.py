@@ -498,7 +498,7 @@ def write_enc(fileobj, s):
 
 
 def write_cif(fileobj, images, cif_format='default',
-              wrap=True, labels=None, add_loop=None) -> None:
+              wrap=True, labels=None, loop_keys={}) -> None:
     """Write *images* to CIF file.
 
     wrap: bool
@@ -508,7 +508,7 @@ def write_cif(fileobj, images, cif_format='default',
         Use this list (shaped list[i_frame][i_atom] = string) for the '_atom_site_label'
         section instead of automatically generating it from the element symbol.
 
-    add_loop: dict
+    loop_keys: dict
         Add the information from this dictionary to the `loop_` section.
         Keys are printed to the `loop_` section preceeded by '  _'. dict[key] should contain
         the data printed for each atom, so it needs to have the setup
@@ -611,18 +611,17 @@ def write_cif(fileobj, images, cif_format='default',
         #can only do it now since length of atoms is not always equal to the number of entries
         #do not move this up!
         extra_data = ["" for i in range(len(symbols))]
-        if add_loop:
-            for key in add_loop:
-                extra_data = [extra_data[i]+"  "+add_loop[key][i_frame][i] for i in range(len(symbols))]
-                write_enc(fileobj, '  _'+key+'\n')
+        for key in loop_keys:
+            extra_data = ["{}  {}".format(extra_data[i],loop_keys[key][i_frame][i]) for i in range(len(symbols))]
+            write_enc(fileobj, "  _{}\n".format(key))
 
 
         no: Dict[str, int] = {}
 
         if labels:
-            print_labels = labels[i_frame]
+            included_labels = labels[i_frame]
         else:
-            print_labels = []
+            included_labels = []
             for symbol in symbols:
                 if symbol in no:
                     no[symbol] += 1
@@ -630,11 +629,11 @@ def write_cif(fileobj, images, cif_format='default',
                     no[symbol] = 1
 
                 if cif_format == 'mp':
-                    print_labels.append(symbol + str(no[symbol]))
+                    included_labels.append(symbol + str(no[symbol]))
                 else:
-                    print_labels.append('%s%d' % (symbol, no[symbol]))
+                    included_labels.append('%s%d' % (symbol, no[symbol]))
 
-        for symbol, pos, occ, label, ext in zip(symbols, coords, occupancies, print_labels, extra_data):
+        for symbol, pos, occ, label, ext in zip(symbols, coords, occupancies, included_labels, extra_data):
             if cif_format == 'mp':
                 write_enc(fileobj,
                           '  %-2s  %4s  %4s  %7.5f  %7.5f  %7.5f  %6.1f%s\n' %
