@@ -3,6 +3,7 @@ import numpy as np
 from ase.transport.tools import dagger, normalize
 from ase.dft.kpoints import monkhorst_pack
 from ase.build import molecule
+from ase.io.cube import read_cube
 from ase.lattice import CUB, FCC, BCC, TET, BCT, ORC, ORCF, ORCI, ORCC, HEX, \
     RHL, MCL, MCLC, TRI, OBL, HEX2D, RECT, CRECT, SQR, LINE
 from ase.dft.wannier import gram_schmidt, lowdin, random_orthogonal_matrix, \
@@ -172,7 +173,7 @@ def test_get_functional_value():
     # Only testing if the functional scales with the number of functions
     gpaw = pytest.importorskip('gpaw')
     calc = gpaw.GPAW(gpts=(8, 8, 8), nbands=4, txt=None)
-    atoms = molecule('H2', calculator=calc, pbc=True)
+    atoms = molecule('H2', calculator=calc)
     atoms.center(vacuum=3.)
     atoms.get_potential_energy()
     wan = Wannier(nwannier=3, calc=calc, initialwannier='bloch')
@@ -193,3 +194,20 @@ def test_get_centers():
     centers = wan.get_centers()
     com = atoms.get_center_of_mass()
     assert np.abs(centers - [com, com]).max() < 1e-4
+
+
+def test_write_cube():
+    gpaw = pytest.importorskip('gpaw')
+    calc = gpaw.GPAW(gpts=(8, 8, 8), nbands=4, txt=None)
+    atoms = molecule('H2', calculator=calc)
+    atoms.center(vacuum=3.)
+    atoms.get_potential_energy()
+    wan = Wannier(nwannier=2, calc=calc, initialwannier='bloch')
+    index = 0
+    # It returns some errors when using file objects, so we use simple filename
+    cubefilename = 'wan.cube'
+    wan.write_cube(index, cubefilename)
+    with open(cubefilename, mode='r') as inputfile:
+        content = read_cube(inputfile)
+    assert np.abs(content['atoms'].cell - atoms.cell).max() < 1e-5
+    assert np.abs(content['data'] - wan.get_function(index)).max() < 1e-6
