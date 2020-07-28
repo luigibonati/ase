@@ -14,18 +14,20 @@ from ase.cli.main import CLIError
 testdir = Path(__file__).parent
 
 
-def all_test_modules_and_groups():
-    names = []
-    groups = {}
+def all_test_modules():
     for abspath in testdir.rglob('test_*.py'):
         path = abspath.relative_to(testdir)
-        name = str(path).rsplit('.', 1)[0].replace('/', '.')
-        if str(path.parent) != '.':
-            groupname = str(path.parent).replace('/', '.')
-            groups.setdefault(groupname, []).append(name)
-        else:
-            names.append(name)
-    return names, groups
+        yield path
+
+
+def all_test_modules_and_groups():
+    groups = set()
+    for testpath in all_test_modules():
+        group = testpath.parent
+        if group not in groups:
+            yield group
+            groups.add(group)
+        yield testpath
 
 
 def test(calculators=tuple(), jobs=0, verbose=False,
@@ -157,7 +159,7 @@ class CLICommand:
         if args.nogui:
             os.environ.pop('DISPLAY')
 
-        pytest_args = ['--pyargs', '-v']
+        pytest_args = ['-v']
 
         def add_args(*args):
             pytest_args.extend(args)
@@ -179,19 +181,8 @@ class CLICommand:
                      '--cov-report=html')
 
         if args.tests:
-            names, groups = all_test_modules_and_groups()
-
-            testnames = []
-            for arg in args.tests:
-                if arg in groups:
-                    testnames += groups[arg]
-                else:
-                    testnames.append(arg)
-
-            for testname in testnames:
-                add_args('ase.test.{}'.format(testname))
-        else:
-            add_args('ase.test')
+            for testname in args.tests:
+                add_args(testname)
 
         if args.calculators:
             add_args(f'--calculators={args.calculators}')
