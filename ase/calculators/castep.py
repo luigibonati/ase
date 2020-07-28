@@ -2499,7 +2499,7 @@ def create_castep_keywords(castep_command, filename='castep_keywords.json',
     return True
 
 
-class CastepOption(object):
+class CastepOption:
     """"A CASTEP option. It handles basic conversions from string to its value
     type."""
 
@@ -2664,7 +2664,7 @@ class CastepOption(object):
             return self.__dict__ == other.__dict__
 
 
-class CastepOptionDict(object):
+class CastepOptionDict:
     """A dictionary-like object to hold a set of options for .cell or .param
     files loaded from a dictionary, for the sake of validation.
 
@@ -2682,7 +2682,7 @@ class CastepOptionDict(object):
             self.__dict__[opt.keyword] = opt
 
 
-class CastepInputFile(object):
+class CastepInputFile:
 
     """Master class for CastepParam and CastepCell to inherit from"""
 

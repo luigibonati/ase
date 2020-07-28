@@ -769,7 +769,7 @@ class Vasp(GenerateVaspInput, Calculator):
         return result
 
 
-class VaspChargeDensity(object):
+class VaspChargeDensity:
     """Class for representing VASP charge density"""
 
     def __init__(self, filename='CHG'):
@@ -983,7 +983,7 @@ class VaspChargeDensity(object):
         f.close()
 
 
-class VaspDos(object):
+class VaspDos:
     """Class for representing density-of-states produced by VASP
 
     The energies are in property self.energy

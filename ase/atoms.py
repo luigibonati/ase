@@ -26,7 +26,7 @@ from ase.symbols import Symbols, symbols2numbers
 from ase.utils import deprecated
 
 
-class Atoms(object):
+class Atoms:
     """Atoms object.
 
     The Atoms object can represent an isolated molecule, or a
