@@ -1,4 +1,5 @@
 import sys
+import io
 from ase.io import read
 from ase.cli.main import CLIError
 
@@ -99,11 +100,13 @@ generator.  For hierarchical sorting, see template.""")
         if args.template_help:
             print(template_help)
             return
-        # output
+
+        encoding = 'utf-8'
+
         if args.log_file is None:
-            out = sys.stdout
+            out = io.TextIOWrapper(sys.stdout.buffer, encoding=encoding)
         else:
-            out = open(args.log_file, 'w')
+            out = open(args.log_file, 'w', encoding=encoding)
 
         from ase.cli.template import (
             Table,
