@@ -10,24 +10,16 @@ import ase.gui.ui as ui
 from ase.gui.i18n import _
 from ase.gui.gui import GUI
 from ase.gui.save import save_dialog
+from ase.gui.quickinfo import info
 
 
-class Error:
-    """Fake window for testing puposes."""
-    has_been_called = False
+class GUIError(Exception):
+    def __init__(self, title, text=None):
+        super().__init__(title, text)
 
-    def __call__(self, title, text=None):
-        self.text = text or title
-        self.has_been_called = True
 
-    def called(self, text=None):
-        """Check that an oops-window was opened with correct title."""
-        if not self.has_been_called:
-            return False
-
-        self.has_been_called = False  # ready for next call
-
-        return text is None or text == self.text
+def mock_gui_error(title, text=None):
+    raise GUIError(title, text)
 
 
 @pytest.fixture
@@ -38,15 +30,30 @@ def display():
 
 
 @pytest.fixture
-def gui(display):
+def gui(guifactory):
+    return guifactory(None)
+
+
+@pytest.fixture
+def no_blocking_errors_monkeypatch():
     orig_ui_error = ui.error
-    try:
-        ui.error = Error()
-        gui = GUI()
-        yield gui
+    ui.error = mock_gui_error
+    yield
+    ui.error = orig_ui_error
+
+
+@pytest.fixture
+def guifactory(display, no_blocking_errors_monkeypatch):
+    guis = []
+
+    def factory(images):
+        gui = GUI(images)
+        guis.append(gui)
+        return gui
+    yield factory
+
+    for gui in guis:
         gui.exit()
-    finally:
-        ui.error = orig_ui_error
 
 
 @pytest.fixture
@@ -56,13 +63,19 @@ def atoms(gui):
     return atoms
 
 
+@pytest.fixture
+def animation(guifactory):
+    images = [bulk(sym) for sym in ['Cu', 'Ag', 'Au']]
+    gui = guifactory(images)
+    return gui
+
+
 def test_nanotube(gui):
     nt = gui.nanotube_window()
     nt.apply()
     nt.element[1].value = '?'
-    nt.apply()
-    assert ui.error.called(
-        _('You have not (yet) specified a consistent set of parameters.'))
+    with pytest.raises(GUIError):
+        nt.apply()
 
     nt.element[1].value = 'C'
     nt.ok()
@@ -126,6 +139,102 @@ def test_fracocc(gui):
     gui.open(filename='fracocc.cif')
 
 
+
+@pytest.fixture
+def with_bulk_ti(gui):
+    atoms = bulk('Ti') * (2, 2, 2)
+    gui.new_atoms(atoms)
+
+
+@pytest.fixture
+def modify(gui, with_bulk_ti):
+    gui.images.selected[:4] = True
+    return gui.modify_atoms()
+
+
+def test_select_atoms(gui, with_bulk_ti):
+    gui.select_all()
+    assert all(gui.images.selected)
+    gui.invert_selection()
+    assert not any(gui.images.selected)
+
+
+def test_modify_element(gui, modify):
+    class MockElement:
+        Z = 79
+    modify.set_element(MockElement())
+    assert all(gui.atoms.symbols[:4] == 'Au')
+    assert all(gui.atoms.symbols[4:] == 'Ti')
+
+
+def test_modify_tag(gui, modify):
+    modify.tag.value = 17
+    modify.set_tag()
+    tags = gui.atoms.get_tags()
+    assert all(tags[:4] == 17)
+    assert all(tags[4:] == 0)
+
+
+def test_modify_magmom(gui, modify):
+    modify.magmom.value = 3
+    modify.set_magmom()
+    magmoms = gui.atoms.get_initial_magnetic_moments()
+    assert magmoms[:4] == pytest.approx(3)
+    assert all(magmoms[4:] == 0)
+
+
+def test_repeat(gui):
+    fe = bulk('Fe')
+    gui.new_atoms(fe)
+    repeat = gui.repeat_window()
+
+    multiplier = [2, 3, 4]
+    expected_atoms = fe * multiplier
+    natoms= np.prod(multiplier)
+    for i, value in enumerate(multiplier):
+        repeat.repeat[i].value = value
+
+    repeat.change()
+    assert len(gui.atoms) == natoms
+    assert gui.atoms.positions == pytest.approx(expected_atoms.positions)
+    assert gui.atoms.cell == pytest.approx(fe.cell[:])  # Still old cell
+
+    repeat.set_unit_cell()
+    assert gui.atoms.cell[:] == pytest.approx(expected_atoms.cell[:])
+
+def test_surface(gui):
+    assert len(gui.atoms) == 0
+    surf = gui.surface_window()
+    surf.element.symbol = 'Au'
+    surf.apply()
+    assert len(gui.atoms) > 0
+    assert gui.atoms.cell.rank == 2
+
+
+def test_movie(animation):
+    movie = animation.movie_window
+    assert movie is not None
+
+    movie.play()
+    movie.stop()
+    movie.close()
+
+
+def test_reciprocal(gui):
+    # XXX should test 1D, 2D, and it should work correctly of course
+    gui.new_atoms(bulk('Au'))
+    reciprocal = gui.reciprocal()
+    reciprocal.terminate()
+    exitcode = reciprocal.wait(timeout=5)
+    assert exitcode != 0
+
+
+def test_bad_reciprocal(gui):
+    # No cell at all
+    with pytest.raises(GUIError):
+        gui.reciprocal()
+
+
 def test_add_atoms(gui):
     dia = gui.add_atoms()
     dia.combobox.value = 'CH3CH2OH'
@@ -171,10 +280,15 @@ def test_constrain(gui, atoms):
     assert sorted(atoms.constraints[0].index) == list(range(len(atoms)))
 
 
-def test_quickinfo(gui, atoms):
-    from ase.gui.quickinfo import info
-    from ase.gui.i18n import _
+def different_dimensionalities():
+    yield molecule('H2O')
+    yield Atoms('X', cell=[1, 0, 0], pbc=[1, 0, 0])
+    yield Atoms('X', cell=[1, 1, 0], pbc=[1, 1, 0])
+    yield bulk('Au')
 
+@pytest.mark.parametrize('atoms', different_dimensionalities())
+def test_quickinfo(gui, atoms):
+    gui.new_atoms(atoms)
     # (Note: String can be in any language)
     refstring = _('Single image loaded.')
     infostring = info(gui)
