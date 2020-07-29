@@ -58,10 +58,6 @@ class Element(list):
     def symbol(self, value):
         self.z_entry.value = value
 
-    @Z.setter
-    def Z(self, value):
-        self.symbol = ase.data.chemical_symbols[value]
-
     def get_atoms(self):
         val = self._get()
         if val is not None:
