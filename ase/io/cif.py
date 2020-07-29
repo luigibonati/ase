@@ -616,11 +616,11 @@ def write_cif(fileobj, images, cif_format='default',
             write_enc(fileobj, "  _{}\n".format(key))
 
 
-        no: Dict[str, int] = {}
 
         if labels:
             included_labels = labels[i_frame]
         else:
+            no: Dict[str, int] = {}
             included_labels = []
             for symbol in symbols:
                 if symbol in no:
