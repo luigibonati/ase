@@ -343,7 +343,7 @@ class GUI(View, Status):
         return info_win
 
     def surface_window(self):
-        SetupSurfaceSlab(self)
+        return SetupSurfaceSlab(self)
 
     def nanoparticle_window(self):
         return SetupNanoparticle(self)

@@ -189,6 +189,14 @@ def test_repeat(gui):
     repeat.set_unit_cell()
     assert gui.atoms.cell[:] == pytest.approx(expected_atoms.cell[:])
 
+def test_surface(gui):
+    assert len(gui.atoms) == 0
+    surf = gui.surface_window()
+    surf.element.symbol = 'Au'
+    surf.apply()
+    assert len(gui.atoms) > 0
+    assert gui.atoms.cell.rank == 2
+
 def test_add_atoms(gui):
     dia = gui.add_atoms()
     dia.combobox.value = 'CH3CH2OH'
