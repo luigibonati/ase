@@ -432,7 +432,7 @@ class Wannier:
         spec_kn = self.get_spectral_weight(w)
         dos = np.zeros(len(energies))
         for k, spec_n in enumerate(spec_kn):
-            eig_n = self.calc.get_eigenvalues(k=k, s=self.spin)
+            eig_n = self.calc.get_eigenvalues(kpt=k, spin=self.spin)
             for weight, eig in zip(spec_n, eig_n):
                 # Add gaussian centered at the eigenvalue
                 x = ((energies - eig) / width)**2

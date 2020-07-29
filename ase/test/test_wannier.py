@@ -18,15 +18,17 @@ def rng():
 
 @pytest.fixture
 def wan(rng):
-    gpaw = pytest.importorskip('gpaw')
     def _wan(gpts=(8, 8, 8),
              atoms=None,
+             calc=None,
              nwannier=2,
              fixedstates=None,
              initialwannier='bloch',
              file=None,
              rng=rng):
-        calc = gpaw.GPAW(gpts=gpts, nbands=nwannier, txt=None)
+        if calc is None:
+            gpaw = pytest.importorskip('gpaw')
+            calc = gpaw.GPAW(gpts=gpts, nbands=nwannier, txt=None)
         if atoms is None:
             atoms = molecule('H2')
             atoms.center(vacuum=3.)
@@ -159,12 +161,12 @@ def test_rotation_from_projection(rng):
 
 
 def test_save(tmpdir, wan):
-    wan1 = wan(nwannier=4, fixedstates=2)
+    wan = wan(nwannier=4, fixedstates=2, initialwannier='bloch')
     picklefile = tmpdir.join('wan.pickle')
-    wan1.save(picklefile)
-    wan2 = wan(nwannier=4, fixedstates=2, file=picklefile)
-    assert pytest.approx(wan1.get_functional_value(),
-                         wan2.get_functional_value())
+    f1 = wan.get_functional_value()
+    wan.save(picklefile)
+    wan.initialize(file=picklefile, initialwannier='bloch')
+    assert pytest.approx(f1) == wan.get_functional_value()
 
 
 # The following test always fails because get_radii() is broken.
@@ -175,17 +177,14 @@ def test_save(tmpdir, wan):
                                  TRI(1, 2, 3, 60, 70, 80), OBL(1, 2, 110),
                                  HEX2D(1), RECT(1, 2), CRECT(1, 70), SQR(1),
                                  LINE(1)])
-def test_get_radii(lat):
+def test_get_radii(lat, wan):
     if ((lat.tocell() == FCC(a=1).tocell()).all() or
             (lat.tocell() == ORCF(a=1, b=2, c=3).tocell()).all()):
         pytest.skip("lattices not supported, yet")
-    gpaw = pytest.importorskip('gpaw')
-    calc = gpaw.GPAW(gpts=(8, 8, 8), nbands=4, txt=None)
-    atoms = molecule('H2', calculator=calc, pbc=True)
+    atoms = molecule('H2', pbc=True)
     atoms.cell = lat.tocell()
     atoms.center(vacuum=3.)
-    atoms.get_potential_energy()
-    wan = Wannier(nwannier=4, fixedstates=2, calc=calc, initialwannier='bloch')
+    wan = wan(nwannier=4, fixedstates=2, atoms=atoms, initialwannier='bloch')
     assert not (wan.get_radii() == 0).all()
 
 
@@ -221,8 +220,8 @@ def test_write_cube(wan):
     wan.write_cube(index, cubefilename)
     with open(cubefilename, mode='r') as inputfile:
         content = read_cube(inputfile)
-    assert pytest.approx(content['atoms'].cell.array, atoms.cell.array)
-    assert pytest.approx(content['data'], wan.get_function(index))
+    assert pytest.approx(content['atoms'].cell.array) == atoms.cell.array
+    assert pytest.approx(content['data']) == wan.get_function(index)
 
 
 def test_localize(wan):
@@ -230,3 +229,32 @@ def test_localize(wan):
     fvalue = wan.get_functional_value()
     wan.localize()
     assert wan.get_functional_value() > fvalue
+
+
+def test_get_spectral_weight_bloch(wan):
+    nwannier = 4
+    wan = wan(initialwannier='bloch', nwannier=nwannier)
+    for i in range(nwannier):
+        assert wan.get_spectral_weight(i)[:, i].sum() == pytest.approx(1)
+
+
+def test_get_spectral_weight_random(wan, rng):
+    nwannier = 4
+    wan = wan(initialwannier='random', nwannier=nwannier, rng=rng)
+    for i in range(nwannier):
+        assert wan.get_spectral_weight(i).sum() == pytest.approx(1)
+
+
+def test_get_pdos(wan):
+    nwannier = 4
+    gpaw = pytest.importorskip('gpaw')
+    calc = gpaw.GPAW(gpts=(16, 16, 16), nbands=nwannier, txt=None)
+    atoms = molecule('H2')
+    atoms.center(vacuum=3.)
+    atoms.calc = calc
+    atoms.get_potential_energy()
+    wan = wan(atoms=atoms, calc=calc, nwannier=4, initialwannier='bloch')
+    eig_n = calc.get_eigenvalues()
+    for i in range(nwannier):
+        pdos_n = wan.get_pdos(w=i, energies=eig_n, width=0.001)
+        assert pdos_n[i] != pytest.approx(0)
