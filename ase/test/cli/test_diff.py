@@ -52,7 +52,7 @@ def traj(tmp_path_factory):
 
 def test_101(cli, traj):
 
-    stdout = cli.ase(f'diff --as-csv {traj}')
+    stdout = cli.ase(['diff', '--as-csv', str(traj)])
 
     r = c = -1
     for rowcount, row in enumerate(stdout.split('\n')):
