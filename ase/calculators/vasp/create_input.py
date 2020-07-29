@@ -1475,8 +1475,8 @@ class GenerateVaspInput(object):
         """Method that imports settings from INCAR file."""
 
         self.spinpol = False
-        file = open(filename, 'r')
-        lines = file.readlines()
+        with open(filename, 'r') as fd:
+            lines = fd.readlines()
 
         for line in lines:
             try:
