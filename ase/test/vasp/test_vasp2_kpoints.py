@@ -1,3 +1,5 @@
+from ase.test.vasp.filecmp_ignore_whitespace import filecmp_ignore_whitespace
+
 def test_vasp2_kpoints(require_vasp):
     """
 
@@ -6,7 +8,6 @@ def test_vasp2_kpoints(require_vasp):
     """
 
     import os
-    import filecmp
 
     from ase.calculators.vasp import Vasp2 as Vasp
     from ase.build import bulk
@@ -90,7 +91,7 @@ def test_vasp2_kpoints(require_vasp):
     0.000000 0.500000 0.500000 2.000000 
     """)
 
-    assert filecmp.cmp('KPOINTS', 'KPOINTS.ref')
+    assert filecmp_ignore_whitespace('KPOINTS', 'KPOINTS.ref')
     os.remove('KPOINTS.ref')
 
     # Explicit points as list of tuples, automatic weighting = 1.
@@ -107,5 +108,5 @@ def test_vasp2_kpoints(require_vasp):
     0.000000 0.500000 0.500000 1.0 
     """)
 
-    assert filecmp.cmp('KPOINTS', 'KPOINTS.ref')
+    assert filecmp_ignore_whitespace('KPOINTS', 'KPOINTS.ref')
     os.remove('KPOINTS.ref')
