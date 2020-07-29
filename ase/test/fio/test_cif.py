@@ -370,6 +370,16 @@ def test_cif_loop_keys(method, atoms_fix):
     assert r_data['someIntKey'] == [int(x) for x in data['someIntKey'][0]]
 
 
+#test if automatic numbers written after elements are correct
+@pytest.mark.parametrize('method', ['default', 'mp'])
+def test_cif_writer_label_numbers(method, atoms_fix):
+    atoms_fix.write('testfile.cif')
+    atoms = read('testfile.cif', store_tags=True)
+    labels = atoms.info['_atom_site_label']
+    elements = atoms.info['_atom_site_type_symbol']#cannot use atoms.symbols as K is missing there
+    build_labels = ["{:}{:}".format(x,i) for x in set(elements) for i in range(1,elements.count(x)+1)]
+    assert build_labels.sort() == labels.sort()
+
 #test default and mp version of cif writing
 @pytest.mark.parametrize('method', ['default', 'mp'])
 def test_cif_labels(method, atoms_fix):
