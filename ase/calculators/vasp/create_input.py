@@ -1476,7 +1476,6 @@ class GenerateVaspInput(object):
 
         self.spinpol = False
         file = open(filename, 'r')
-        file.readline()
         lines = file.readlines()
 
         for line in lines:
