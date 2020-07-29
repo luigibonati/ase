@@ -317,7 +317,7 @@ class GUI(View, Status):
 
     def modify_atoms(self, key=None):
         from ase.gui.modify import ModifyAtoms
-        ModifyAtoms(self)
+        return ModifyAtoms(self)
 
     def add_atoms(self, key=None):
         from ase.gui.add import AddAtoms

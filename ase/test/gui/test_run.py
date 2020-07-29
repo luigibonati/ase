@@ -126,6 +126,50 @@ def test_fracocc(gui):
     gui.open(filename='fracocc.cif')
 
 
+
+@pytest.fixture
+def with_bulk_ti(gui):
+    atoms = bulk('Ti') * (2, 2, 2)
+    gui.new_atoms(atoms)
+
+
+def test_select_atoms(gui, with_bulk_ti):
+    gui.select_all()
+    assert all(gui.images.selected)
+    gui.invert_selection()
+    assert not any(gui.images.selected)
+
+
+@pytest.fixture
+def modify(gui, with_bulk_ti):
+    gui.images.selected[:4] = True
+    return gui.modify_atoms()
+
+
+def test_edit_atoms_element(gui, modify):
+    class MockElement:
+        Z = 79
+    modify.set_element(MockElement())
+    assert all(gui.atoms.symbols[:4] == 'Au')
+    assert all(gui.atoms.symbols[4:] == 'Ti')
+
+
+def test_edit_atoms_tag(gui, modify):
+    modify.tag.value = 17
+    modify.set_tag()
+    tags = gui.atoms.get_tags()
+    assert all(tags[:4] == 17)
+    assert all(tags[4:] == 0)
+
+
+def test_edit_atoms_magmom(gui, modify):
+    modify.magmom.value = 3
+    modify.set_magmom()
+    magmoms = gui.atoms.get_initial_magnetic_moments()
+    assert magmoms[:4] == pytest.approx(3)
+    assert all(magmoms[4:] == 0)
+
+
 def test_add_atoms(gui):
     dia = gui.add_atoms()
     dia.combobox.value = 'CH3CH2OH'

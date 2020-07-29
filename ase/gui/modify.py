@@ -29,7 +29,7 @@ class ModifyAtoms:
         win.add([_('Moment'), self.magmom])
 
         atoms = self.gui.atoms
-        Z = atoms.numbers
+        Z = atoms.numbers[selected]
         if Z.ptp() == 0:
             element.Z = Z[0]
 
