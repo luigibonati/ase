@@ -32,8 +32,8 @@ Tests for these cases and all command line options are done.
 """
 
 
-@pytest.fixture(scope="session")
-def traj(tmpdir_factory):
+@pytest.fixture(scope="module")
+def traj(tmp_path_factory):
     slab = fcc100('Al', size=(2, 2, 3))
     add_adsorbate(slab, 'Au', 1.7, 'hollow')
     slab.center(axis=2, vacuum=4.0)
@@ -43,10 +43,11 @@ def traj(tmpdir_factory):
     slab.set_constraint([fixlayers, plane])
     slab.calc = EMT()
 
-    fn = tmpdir_factory.mktemp("data").join("AlAu.traj")  # see /tmp/pytest-xx
-    qn = QuasiNewton(slab, trajectory=str(fn))
+    temp_path = tmp_path_factory.mktemp("data")
+    trajectory = temp_path / 'AlAu.traj'
+    qn = QuasiNewton(slab, trajectory=str(trajectory))
     qn.run(fmax=0.02)
-    return fn
+    return trajectory
 
 
 def test_101(cli, traj):
