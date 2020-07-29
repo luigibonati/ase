@@ -633,6 +633,8 @@ def write_cif(fileobj, images, cif_format='default',
                 else:
                     included_labels.append('%s%d' % (symbol, no[symbol]))
 
+        assert len(symbols) == len(coords) == len(occupancies) == len(included_labels) == len(extra_data)
+
         for symbol, pos, occ, label, ext in zip(symbols, coords, occupancies, included_labels, extra_data):
             if cif_format == 'mp':
                 write_enc(fileobj,
