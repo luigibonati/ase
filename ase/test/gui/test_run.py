@@ -133,6 +133,12 @@ def with_bulk_ti(gui):
     gui.new_atoms(atoms)
 
 
+@pytest.fixture
+def modify(gui, with_bulk_ti):
+    gui.images.selected[:4] = True
+    return gui.modify_atoms()
+
+
 def test_select_atoms(gui, with_bulk_ti):
     gui.select_all()
     assert all(gui.images.selected)
@@ -140,13 +146,7 @@ def test_select_atoms(gui, with_bulk_ti):
     assert not any(gui.images.selected)
 
 
-@pytest.fixture
-def modify(gui, with_bulk_ti):
-    gui.images.selected[:4] = True
-    return gui.modify_atoms()
-
-
-def test_edit_atoms_element(gui, modify):
+def test_modify_element(gui, modify):
     class MockElement:
         Z = 79
     modify.set_element(MockElement())
@@ -154,7 +154,7 @@ def test_edit_atoms_element(gui, modify):
     assert all(gui.atoms.symbols[4:] == 'Ti')
 
 
-def test_edit_atoms_tag(gui, modify):
+def test_modify_tag(gui, modify):
     modify.tag.value = 17
     modify.set_tag()
     tags = gui.atoms.get_tags()
@@ -162,13 +162,32 @@ def test_edit_atoms_tag(gui, modify):
     assert all(tags[4:] == 0)
 
 
-def test_edit_atoms_magmom(gui, modify):
+def test_modify_magmom(gui, modify):
     modify.magmom.value = 3
     modify.set_magmom()
     magmoms = gui.atoms.get_initial_magnetic_moments()
     assert magmoms[:4] == pytest.approx(3)
     assert all(magmoms[4:] == 0)
 
+
+def test_repeat(gui):
+    fe = bulk('Fe')
+    gui.new_atoms(fe)
+    repeat = gui.repeat_window()
+
+    multiplier = [2, 3, 4]
+    expected_atoms = fe * multiplier
+    natoms= np.prod(multiplier)
+    for i, value in enumerate(multiplier):
+        repeat.repeat[i].value = value
+
+    repeat.change()
+    assert len(gui.atoms) == natoms
+    assert gui.atoms.positions == pytest.approx(expected_atoms.positions)
+    assert gui.atoms.cell == pytest.approx(fe.cell[:])  # Still old cell
+
+    repeat.set_unit_cell()
+    assert gui.atoms.cell[:] == pytest.approx(expected_atoms.cell[:])
 
 def test_add_atoms(gui):
     dia = gui.add_atoms()
