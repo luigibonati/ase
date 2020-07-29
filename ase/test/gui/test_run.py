@@ -10,6 +10,7 @@ import ase.gui.ui as ui
 from ase.gui.i18n import _
 from ase.gui.gui import GUI
 from ase.gui.save import save_dialog
+from ase.gui.quickinfo import info
 
 
 class GUIError(Exception):
@@ -287,9 +288,6 @@ def different_dimensionalities():
 
 @pytest.mark.parametrize('atoms', different_dimensionalities())
 def test_quickinfo(gui, atoms):
-    from ase.gui.quickinfo import info
-    from ase.gui.i18n import _
-
     gui.new_atoms(atoms)
     # (Note: String can be in any language)
     refstring = _('Single image loaded.')
