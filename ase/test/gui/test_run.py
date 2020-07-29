@@ -38,15 +38,30 @@ def display():
 
 
 @pytest.fixture
-def gui(display):
+def gui(guifactory):
+    return guifactory(None)
+
+
+@pytest.fixture
+def no_blocking_errors_monkeypatch():
     orig_ui_error = ui.error
-    try:
-        ui.error = Error()
-        gui = GUI()
-        yield gui
+    ui.error = Error()
+    yield
+    ui.error = orig_ui_error
+
+
+@pytest.fixture
+def guifactory(display, no_blocking_errors_monkeypatch):
+    guis = []
+
+    def factory(images):
+        gui = GUI(images)
+        guis.append(gui)
+        return gui
+    yield factory
+
+    for gui in guis:
         gui.exit()
-    finally:
-        ui.error = orig_ui_error
 
 
 @pytest.fixture
@@ -54,6 +69,13 @@ def atoms(gui):
     atoms = bulk('Ti') * (2, 2, 2)
     gui.new_atoms(atoms)
     return atoms
+
+
+@pytest.fixture
+def animation(guifactory):
+    images = [bulk(sym) for sym in ['Cu', 'Ag', 'Au']]
+    gui = guifactory(images)
+    return gui
 
 
 def test_nanotube(gui):
@@ -196,6 +218,15 @@ def test_surface(gui):
     surf.apply()
     assert len(gui.atoms) > 0
     assert gui.atoms.cell.rank == 2
+
+
+def test_movie(animation):
+    movie = animation.movie_window
+    assert movie is not None
+
+    movie.play()
+    movie.stop()
+    movie.close()
 
 def test_add_atoms(gui):
     dia = gui.add_atoms()
