@@ -41,7 +41,7 @@ def traj(tmpdir_factory):
     fixlayers = FixAtoms(mask=mask)
     plane = FixedPlane(-1, (1, 0, 0))
     slab.set_constraint([fixlayers, plane])
-    slab.set_calculator(EMT())
+    slab.calc = EMT()
 
     fn = tmpdir_factory.mktemp("data").join("AlAu.traj")  # see /tmp/pytest-xx
     qn = QuasiNewton(slab, trajectory=str(fn))
