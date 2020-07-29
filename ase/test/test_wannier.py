@@ -24,13 +24,16 @@ def wan(rng):
              nwannier=2,
              fixedstates=None,
              initialwannier='bloch',
+             kpts=(1, 1, 1),
              file=None,
              rng=rng):
         if calc is None:
             gpaw = pytest.importorskip('gpaw')
-            calc = gpaw.GPAW(gpts=gpts, nbands=nwannier, txt=None)
+            calc = gpaw.GPAW(gpts=gpts, nbands=nwannier, kpts=kpts,
+                             symmetry='off', txt=None)
         if atoms is None:
-            atoms = molecule('H2')
+            pbc = (np.array(kpts) > 1).any()
+            atoms = molecule('H2', pbc=pbc)
             atoms.center(vacuum=3.)
         atoms.calc = calc
         atoms.get_potential_energy()
@@ -253,8 +256,63 @@ def test_get_pdos(wan):
     atoms.center(vacuum=3.)
     atoms.calc = calc
     atoms.get_potential_energy()
-    wan = wan(atoms=atoms, calc=calc, nwannier=4, initialwannier='bloch')
+    wan = wan(atoms=atoms, calc=calc, nwannier=nwannier, initialwannier='bloch')
     eig_n = calc.get_eigenvalues()
     for i in range(nwannier):
         pdos_n = wan.get_pdos(w=i, energies=eig_n, width=0.001)
         assert pdos_n[i] != pytest.approx(0)
+
+
+def test_translate(wan):
+    nwannier = 2
+    atoms = molecule('H2', pbc=True)
+    atoms.center(vacuum=3.)
+    wan = wan(atoms=atoms, kpts=(2, 2, 2),
+              nwannier=nwannier, initialwannier='bloch')
+    wan.translate_all_to_cell(cell=[0, 0, 0])
+    c0_n = wan.get_centers()
+    for i in range(nwannier):
+        c2_n = np.delete(wan.get_centers(), i, 0)
+        wan.translate(w=i, R=[1, 1, 1])
+        c1_n = wan.get_centers()
+        assert np.linalg.norm(c1_n[i] - c0_n[i]) == \
+            pytest.approx(np.linalg.norm(atoms.cell.array.diagonal()))
+        c1_n = np.delete(c1_n, i, 0)
+        assert c1_n == pytest.approx(c2_n)
+
+
+def test_translate_to_cell(wan):
+    nwannier = 2
+    atoms = molecule('H2', pbc=True)
+    atoms.center(vacuum=3.)
+    wan = wan(atoms=atoms, kpts=(2, 2, 2),
+              nwannier=nwannier, initialwannier='bloch')
+    for i in range(nwannier):
+        wan.translate_to_cell(w=i, cell=[0, 0, 0])
+        c0_n = wan.get_centers()
+        assert (c0_n[i] < atoms.cell.array.diagonal()).all()
+        wan.translate_to_cell(w=i, cell=[1, 1, 1])
+        c1_n = wan.get_centers()
+        assert (c1_n[i] > atoms.cell.array.diagonal()).all()
+        assert np.linalg.norm(c1_n[i] - c0_n[i]) == \
+            pytest.approx(np.linalg.norm(atoms.cell.array.diagonal()))
+        c0_n = np.delete(c0_n, i, 0)
+        c1_n = np.delete(c1_n, i, 0)
+        assert c0_n == pytest.approx(c1_n)
+
+
+def test_translate_all_to_cell(wan):
+    nwannier = 2
+    atoms = molecule('H2', pbc=True)
+    atoms.center(vacuum=3.)
+    wan = wan(atoms=atoms, kpts=(2, 2, 2),
+              nwannier=nwannier, initialwannier='bloch')
+    wan.translate_all_to_cell(cell=[0, 0, 0])
+    c0_n = wan.get_centers()
+    assert (c0_n < atoms.cell.array.diagonal()).all()
+    wan.translate_all_to_cell(cell=[1, 1, 1])
+    c1_n = wan.get_centers()
+    assert (c1_n > atoms.cell.array.diagonal()).all()
+    for i in range(nwannier):
+        assert np.linalg.norm(c1_n[i] - c0_n[i]) == \
+            pytest.approx(np.linalg.norm(atoms.cell.array.diagonal()))
