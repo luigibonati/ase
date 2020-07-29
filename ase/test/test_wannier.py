@@ -16,6 +16,31 @@ def rng():
     return np.random.RandomState(0)
 
 
+@pytest.fixture
+def wan(rng):
+    gpaw = pytest.importorskip('gpaw')
+    def _wan(gpts=(8, 8, 8),
+             atoms=None,
+             nwannier=2,
+             fixedstates=None,
+             initialwannier='bloch',
+             file=None,
+             rng=rng):
+        calc = gpaw.GPAW(gpts=gpts, nbands=nwannier, txt=None)
+        if atoms is None:
+            atoms = molecule('H2')
+            atoms.center(vacuum=3.)
+        atoms.calc = calc
+        atoms.get_potential_energy()
+        return Wannier(nwannier=nwannier,
+                       fixedstates=fixedstates,
+                       calc=calc,
+                       initialwannier=initialwannier,
+                       file=None,
+                       rng=rng)
+    return _wan
+
+
 class Paraboloid:
 
     def __init__(self, pos=np.array([10, 10, 10], dtype=complex)):
@@ -133,18 +158,13 @@ def test_rotation_from_projection(rng):
     assert normalization_error(U_ww) < 1e-10, 'U_ww not normalized'
 
 
-def test_save(tmpdir):
-    gpaw = pytest.importorskip('gpaw')
-    calc = gpaw.GPAW(gpts=(8, 8, 8), nbands=4, txt=None)
-    atoms = molecule('H2', calculator=calc)
-    atoms.center(vacuum=3.)
-    atoms.get_potential_energy()
-    wan1 = Wannier(nwannier=4, fixedstates=2, calc=calc, initialwannier='bloch')
+def test_save(tmpdir, wan):
+    wan1 = wan(nwannier=4, fixedstates=2)
     picklefile = tmpdir.join('wan.pickle')
     wan1.save(picklefile)
-    wan2 = Wannier(nwannier=4, fixedstates=2, file=picklefile, calc=calc)
-    assert np.abs(wan1.get_functional_value() -
-                  wan2.get_functional_value()).max() < 1e-12
+    wan2 = wan(nwannier=4, fixedstates=2, file=picklefile)
+    assert pytest.approx(wan1.get_functional_value(),
+                         wan2.get_functional_value())
 
 
 # The following test always fails because get_radii() is broken.
@@ -169,17 +189,12 @@ def test_get_radii(lat):
     assert not (wan.get_radii() == 0).all()
 
 
-def test_get_functional_value():
+def test_get_functional_value(wan):
     # Only testing if the functional scales with the number of functions
-    gpaw = pytest.importorskip('gpaw')
-    calc = gpaw.GPAW(gpts=(8, 8, 8), nbands=4, txt=None)
-    atoms = molecule('H2', calculator=calc)
-    atoms.center(vacuum=3.)
-    atoms.get_potential_energy()
-    wan = Wannier(nwannier=3, calc=calc, initialwannier='bloch')
-    f1 = wan.get_functional_value()
-    wan = Wannier(nwannier=4, calc=calc, initialwannier='bloch')
-    f2 = wan.get_functional_value()
+    wan1 = wan(nwannier=3)
+    f1 = wan1.get_functional_value()
+    wan2 = wan(nwannier=4)
+    f2 = wan2.get_functional_value()
     assert f1 < f2
 
 
@@ -196,18 +211,22 @@ def test_get_centers():
     assert np.abs(centers - [com, com]).max() < 1e-4
 
 
-def test_write_cube():
-    gpaw = pytest.importorskip('gpaw')
-    calc = gpaw.GPAW(gpts=(8, 8, 8), nbands=4, txt=None)
-    atoms = molecule('H2', calculator=calc)
+def test_write_cube(wan):
+    atoms = molecule('H2')
     atoms.center(vacuum=3.)
-    atoms.get_potential_energy()
-    wan = Wannier(nwannier=2, calc=calc, initialwannier='bloch')
+    wan = wan(atoms=atoms)
     index = 0
     # It returns some errors when using file objects, so we use simple filename
     cubefilename = 'wan.cube'
     wan.write_cube(index, cubefilename)
     with open(cubefilename, mode='r') as inputfile:
         content = read_cube(inputfile)
-    assert np.abs(content['atoms'].cell - atoms.cell).max() < 1e-5
-    assert np.abs(content['data'] - wan.get_function(index)).max() < 1e-6
+    assert pytest.approx(content['atoms'].cell.array, atoms.cell.array)
+    assert pytest.approx(content['data'], wan.get_function(index))
+
+
+def test_localize(wan):
+    wan = wan(initialwannier='random')
+    fvalue = wan.get_functional_value()
+    wan.localize()
+    assert wan.get_functional_value() > fvalue
