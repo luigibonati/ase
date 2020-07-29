@@ -247,7 +247,6 @@ loop_
    I          0.5000  0.250000      0.250000      0.250000     Biso  1.000000 I
 """
 
-
 def test_cif():
     cif_file = io.StringIO(content)
 
@@ -349,15 +348,19 @@ def test_cif_icsd():
     assert 'occupancy' in atoms.info
 
 
+@pytest.fixture
+def atoms_fix():
+    cif_file = io.StringIO(content)
+    return read(cif_file, format='cif')
+
+
 #test default and mp version of cif writing
 @pytest.mark.parametrize('method', ['default', 'mp'])
-def test_cif_loop_keys(method):
-    cif_file = io.StringIO(content)
-    atoms = read(cif_file, format='cif')
+def test_cif_loop_keys(method, atoms_fix):
     data = {}
     data['someKey'] = [[str(i)+"test" for i in range(20)]] #test case has 20 entries
     data['someIntKey'] = [[str(i)+"123" for i in range(20)]] #test case has 20 entries
-    atoms.write('testfile.cif', loop_keys=data, cif_format=method)
+    atoms_fix.write('testfile.cif', loop_keys=data, cif_format=method)
 
     atoms = read('testfile.cif', store_tags=True)
     #keys are read lowercase only
@@ -369,11 +372,9 @@ def test_cif_loop_keys(method):
 
 #test default and mp version of cif writing
 @pytest.mark.parametrize('method', ['default', 'mp'])
-def test_cif_labels(method):
-    cif_file = io.StringIO(content)
-    atoms = read(cif_file, format='cif')
+def test_cif_labels(method, atoms_fix):
     data = [["label"+str(i) for i in range(20)]] #test case has 20 entries
-    atoms.write('testfile.cif', labels=data, cif_format=method)
+    atoms_fix.write('testfile.cif', labels=data, cif_format=method)
 
     atoms = read('testfile.cif', store_tags=True)
     print(atoms.info)
