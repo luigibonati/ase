@@ -1,11 +1,15 @@
 import re
 import itertools
 
-def filecmp_ignore_whitespace(f1, f2, fillvallue=None):
+def filecmp_ignore_whitespace(f1, f2):
+    """Compare two files ignoring all leading and trailing whitespace, amount of 
+    whitespace within lines, and any trailing whitespace-only lines."""
+
     with open(f1) as ff1, open(f2) as ff2:
         # check for mismatching lines
         for l1, l2 in itertools.zip_longest(ff1, ff2):
             if l1 is None or l2 is None:
+                # reached end of one file or the other
                 break
             if re.sub(r'\s+', ' ', l1.strip()) != re.sub(r'\s+', ' ', l2.strip()):
                 return False
