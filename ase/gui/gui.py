@@ -266,6 +266,7 @@ class GUI(View, Status):
             self.bad_plot(line)
         else:
             self.subprocesses.append(process)
+        return process
 
     def bad_plot(self, err, msg=''):
         ui.error(_('Plotting failed'), '\n'.join([str(err), msg]).strip())
@@ -300,7 +301,7 @@ class GUI(View, Status):
 
         kwargs = dict(cell=self.atoms.cell.uncomplete(self.atoms.pbc),
                       vectors=True)
-        self.pipe('reciprocal', kwargs)
+        return self.pipe('reciprocal', kwargs)
 
     def open(self, button=None, filename=None):
         chooser = ui.ASEFileChooser(self.window.win)
