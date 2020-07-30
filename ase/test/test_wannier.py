@@ -271,15 +271,15 @@ def test_translate(wan):
     wan = wan(atoms=atoms, kpts=(2, 2, 2),
               nwannier=nwannier, initialwannier='bloch')
     wan.translate_all_to_cell(cell=[0, 0, 0])
-    c0_n = wan.get_centers()
+    c0_w = wan.get_centers()
     for i in range(nwannier):
-        c2_n = np.delete(wan.get_centers(), i, 0)
+        c2_w = np.delete(wan.get_centers(), i, 0)
         wan.translate(w=i, R=[1, 1, 1])
-        c1_n = wan.get_centers()
-        assert np.linalg.norm(c1_n[i] - c0_n[i]) == \
+        c1_w = wan.get_centers()
+        assert np.linalg.norm(c1_w[i] - c0_w[i]) == \
             pytest.approx(np.linalg.norm(atoms.cell.array.diagonal()))
-        c1_n = np.delete(c1_n, i, 0)
-        assert c1_n == pytest.approx(c2_n)
+        c1_w = np.delete(c1_w, i, 0)
+        assert c1_w == pytest.approx(c2_w)
 
 
 def test_translate_to_cell(wan):
@@ -290,16 +290,16 @@ def test_translate_to_cell(wan):
               nwannier=nwannier, initialwannier='bloch')
     for i in range(nwannier):
         wan.translate_to_cell(w=i, cell=[0, 0, 0])
-        c0_n = wan.get_centers()
-        assert (c0_n[i] < atoms.cell.array.diagonal()).all()
+        c0_w = wan.get_centers()
+        assert (c0_w[i] < atoms.cell.array.diagonal()).all()
         wan.translate_to_cell(w=i, cell=[1, 1, 1])
-        c1_n = wan.get_centers()
-        assert (c1_n[i] > atoms.cell.array.diagonal()).all()
-        assert np.linalg.norm(c1_n[i] - c0_n[i]) == \
+        c1_w = wan.get_centers()
+        assert (c1_w[i] > atoms.cell.array.diagonal()).all()
+        assert np.linalg.norm(c1_w[i] - c0_w[i]) == \
             pytest.approx(np.linalg.norm(atoms.cell.array.diagonal()))
-        c0_n = np.delete(c0_n, i, 0)
-        c1_n = np.delete(c1_n, i, 0)
-        assert c0_n == pytest.approx(c1_n)
+        c0_w = np.delete(c0_w, i, 0)
+        c1_w = np.delete(c1_w, i, 0)
+        assert c0_w == pytest.approx(c1_w)
 
 
 def test_translate_all_to_cell(wan):
@@ -309,11 +309,28 @@ def test_translate_all_to_cell(wan):
     wan = wan(atoms=atoms, kpts=(2, 2, 2),
               nwannier=nwannier, initialwannier='bloch')
     wan.translate_all_to_cell(cell=[0, 0, 0])
-    c0_n = wan.get_centers()
-    assert (c0_n < atoms.cell.array.diagonal()).all()
+    c0_w = wan.get_centers()
+    assert (c0_w < atoms.cell.array.diagonal()).all()
     wan.translate_all_to_cell(cell=[1, 1, 1])
-    c1_n = wan.get_centers()
-    assert (c1_n > atoms.cell.array.diagonal()).all()
+    c1_w = wan.get_centers()
+    assert (c1_w > atoms.cell.array.diagonal()).all()
     for i in range(nwannier):
-        assert np.linalg.norm(c1_n[i] - c0_n[i]) == \
+        assert np.linalg.norm(c1_w[i] - c0_w[i]) == \
             pytest.approx(np.linalg.norm(atoms.cell.array.diagonal()))
+
+
+def test_distances(wan):
+    nwannier = 2
+    atoms = molecule('H2', pbc=True)
+    atoms.center(vacuum=3.)
+    wan = wan(atoms=atoms, kpts=(2, 2, 2),
+              nwannier=nwannier, initialwannier='bloch')
+    cent_w = wan.get_centers()
+    dist_ww = wan.distances([0, 0, 0])
+    dist1_ww = wan.distances([1, 1, 1])
+    for i in range(nwannier):
+        assert dist_ww[i, i] == pytest.approx(0)
+        assert dist1_ww[i, i] == pytest.approx(np.linalg.norm(atoms.cell.array))
+        for j in range(i + 1, nwannier):
+            assert dist_ww[i, j] == \
+                pytest.approx(np.linalg.norm(cent_w[i] - cent_w[j]))

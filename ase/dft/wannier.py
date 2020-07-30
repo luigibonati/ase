@@ -480,6 +480,14 @@ class Wannier:
         self.update()
 
     def distances(self, R):
+        """Relative distances between centers.
+
+        Returns a matrix with the distances between different Wannier centers.
+        R = [n1, n2, n3] is in units of the basis vectors of the small cell
+        and allows one to measure the distance with centers moved to a
+        different small cell.
+        The dimension of the matrix is [Nw, Nw].
+        """
         Nw = self.nwannier
         cen = self.get_centers()
         r1 = cen.repeat(Nw, axis=0).reshape(Nw, Nw, 3)
