@@ -332,5 +332,25 @@ def test_distances(wan):
         assert dist_ww[i, i] == pytest.approx(0)
         assert dist1_ww[i, i] == pytest.approx(np.linalg.norm(atoms.cell.array))
         for j in range(i + 1, nwannier):
+            assert dist_ww[i, j] == dist_ww[j, i]
             assert dist_ww[i, j] == \
                 pytest.approx(np.linalg.norm(cent_w[i] - cent_w[j]))
+
+
+def test_get_hopping_bloch(wan):
+    nwannier = 4
+    atoms = molecule('H2', pbc=True)
+    atoms.center(vacuum=3.)
+    wan = wan(atoms=atoms, kpts=(2, 2, 2),
+              nwannier=nwannier, initialwannier='bloch')
+    hop0_ww = wan.get_hopping([0, 0, 0])
+    hop1_ww = wan.get_hopping([1, 1, 1])
+    for i in range(nwannier):
+        assert hop0_ww[i, i] != 0
+        assert hop1_ww[i, i] != 0
+        assert np.abs(hop1_ww[i, i]) < np.abs(hop0_ww[i, i])
+        for j in range(i + 1, nwannier):
+            assert hop0_ww[i, j] == 0
+            assert hop1_ww[i, j] == 0
+            assert hop0_ww[i, j] == hop0_ww[j, i]
+            assert hop1_ww[i, j] == hop1_ww[j, i]
