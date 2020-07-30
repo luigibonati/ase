@@ -27,7 +27,7 @@ class RamanBase(Vibrations):
         verbose:
           Verbosity level of output
         comm:
-          Communicator, default world 
+          Communicator, default world
         """
         kwargs['name'] = name
         Vibrations.__init__(self, atoms, *args, **kwargs)
@@ -138,15 +138,11 @@ class Raman(RamanBase):
         elme_Qcc /= u.Hartree * u.Bohr  # e^2 Angstrom / eV / sqrt(amu)
         return elme_Qcc * self.vib01_Q[:, None, None]
 
-    def absolute_intensity(self, *args, delta=0, **kwargs):
+    def absolute_intensity(self, delta=0, **kwargs):
         """Absolute Raman intensity or Raman scattering factor
 
         Parameter
         ---------
-        omega: float
-           incoming laser energy, unit eV
-        gamma: float
-           width (imaginary energy), unit eV
         delta: float
            pre-factor for asymmetric anisotropy, default 0
 
@@ -160,7 +156,7 @@ class Raman(RamanBase):
         raman intensity, unit Ang**4/amu
         """
         alpha2_r, gamma2_r, delta2_r = self._invariants(
-            self.electronic_me_Qcc(*args, **kwargs))
+            self.electronic_me_Qcc(**kwargs))
         return 45 * alpha2_r + delta * delta2_r + 7 * gamma2_r
 
     def intensity(self, *args, **kwargs):
