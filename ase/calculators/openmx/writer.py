@@ -358,14 +358,12 @@ def get_atoms_speciesandcoordinates(atoms, parameters):
         atoms_speciesandcoordinates.append([str(i + 1), element])
     # Appending positions
     unit = parameters.get('atoms_speciesandcoordinates_unit').lower()
-    if unit == 'frac':
-        positions = atoms.get_scaled_positions(wrap=False)
-    elif unit == 'ang':
+    if unit == 'ang':
         positions = atoms.get_positions()
+    elif unit == 'frac':
+        positions = atoms.get_scaled_positions(wrap=False)
     elif unit == 'au':
         positions = atoms.get_positions() / Bohr
-    else:
-        raise ValueError('atoms_speciesandcoordinates_unit should be either frac, ang or au')
     for i, position in enumerate(positions):
         atoms_speciesandcoordinates[i].extend(position)
 
