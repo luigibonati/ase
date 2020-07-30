@@ -365,7 +365,7 @@ def get_atoms_speciesandcoordinates(atoms, parameters):
     elif unit == 'au':
         positions = atoms.get_positions() / Bohr
     else:
-        raise ValueError('atoms_speciesandcoordinates_unit should be either frac or ang')
+        raise ValueError('atoms_speciesandcoordinates_unit should be either frac, ang or au')
     for i, position in enumerate(positions):
         atoms_speciesandcoordinates[i].extend(position)
 
