@@ -357,11 +357,13 @@ def get_atoms_speciesandcoordinates(atoms, parameters):
     for i, element in enumerate(elements):
         atoms_speciesandcoordinates.append([str(i + 1), element])
     # Appending positions
-    unit = parameters.get('atoms_speciesandcoordinates_unit')
+    unit = parameters.get('atoms_speciesandcoordinates_unit').lower()
     if unit == 'frac':
         positions = atoms.get_scaled_positions(wrap=False)
     elif unit == 'ang':
         positions = atoms.get_positions()
+    elif unit == 'au':
+        positions = atoms.get_positions() / Bohr
     else:
         raise ValueError('atoms_speciesandcoordinates_unit should be either frac or ang')
     for i, position in enumerate(positions):
@@ -465,7 +467,11 @@ def get_atoms_unitvectors(atoms, parameters):
     if np.all(atoms.get_cell() == zero_vec) is True:
         default_cell = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
         return parameters.get('atoms_unitvectors', default_cell)
-    atoms_unitvectors = atoms.get_cell()
+    unit = parameters.get('atoms_unitvectors_unit', 'ang').lower()
+    if unit == 'ang':
+        atoms_unitvectors = atoms.get_cell()
+    elif unit == 'au':
+        atoms_unitvectors = atoms.get_cell() / Bohr
     return atoms_unitvectors
 
 
