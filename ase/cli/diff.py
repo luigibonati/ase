@@ -108,6 +108,11 @@ generator.  For hierarchical sorting, see template.""")
         else:
             out = open(args.log_file, 'w', encoding=encoding)
 
+        with out:
+            CLICommand.diff(args, out)
+
+    @staticmethod
+    def diff(args, out):
         from ase.cli.template import (
             Table,
             slice_split,
