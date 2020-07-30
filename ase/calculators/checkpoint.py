@@ -59,7 +59,7 @@ class DevNull:
         pass
 
 
-class Checkpoint(object):
+class Checkpoint:
     _value_prefix = '_values_'
 
     def __init__(self, db='checkpoints.db', logfile=None):

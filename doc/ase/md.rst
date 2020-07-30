@@ -23,7 +23,7 @@ step, and then you perform dynamics by calling its
                        trajectory='md.traj', logfile='md.log')
   dyn.run(1000)  # take 1000 steps
 
-A number of different algorithms can be used to perform molecular
+A number of algorithms can be used to perform molecular
 dynamics, with slightly different results.
 
 

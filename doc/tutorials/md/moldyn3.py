@@ -1,6 +1,4 @@
 """Demonstrates molecular dynamics with constant temperature."""
-from __future__ import print_function
-
 from ase.lattice.cubic import FaceCenteredCubic
 from ase.md.langevin import Langevin
 from ase.io.trajectory import Trajectory

@@ -6,7 +6,7 @@ from ase.neighborlist import NeighborList
 from ase.utils import pbc2pbc
 
 
-class OFPComparator(object):
+class OFPComparator:
     """Implementation of comparison using Oganov's fingerprint (OFP)
     functions, based on:
 

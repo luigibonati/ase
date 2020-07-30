@@ -2,6 +2,7 @@
 
 from ase import Atom, Atoms
 from ase.calculators.singlepoint import SinglePointCalculator
+from ase.utils import reader
 
 import re
 import xml.etree.ElementTree as ET
@@ -11,6 +12,7 @@ import xml.etree.ElementTree as ET
 re_find_bad_xml = re.compile(r'<(/?)([A-z]+) expectation ([a-z]+)')
 
 
+@reader
 def read_qbox(f, index=-1):
     """Read data from QBox output file
 
@@ -21,9 +23,6 @@ def read_qbox(f, index=-1):
     Returns:
         list of Atoms or atoms, requested frame(s)
     """
-
-    if isinstance(f, str):
-        f = open(f, 'r')
 
     # Check whether this is a QB@all output
     version = None

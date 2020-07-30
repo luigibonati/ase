@@ -1,3 +1,4 @@
+
 # additional tests of the extended XYZ file I/O
 # (which is also included in oi.py test case)
 # maintained by James Kermode <james.kermode@gmail.com>
@@ -231,7 +232,7 @@ def test_complex_key_val():
         'f_int_array': np.array([[1, 2], [3, 4]]),
         'f_bool_bare': True,
         'f_bool_value': False,
-        'f_irregular_shape': np.array([[1, 2, 3], [4, 5]]),
+        'f_irregular_shape': np.array([[1, 2, 3], [4, 5]], object),
         'f_dict': {"a": 1}
     }
 

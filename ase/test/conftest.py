@@ -205,8 +205,15 @@ class CLI:
 
 @pytest.fixture(scope='session')
 def datadir():
-    from ase.test.testsuite import datadir
-    return datadir
+    test_basedir = Path(__file__).parent
+    return test_basedir / 'testdata'
+
+
+@pytest.fixture
+def pt_eam_potential_file(datadir):
+    # EAM potential for Pt from LAMMPS, also used with eam calculator.
+    # (Where should this fixture really live?)
+    return datadir / 'eam_Pt_u3.dat'
 
 
 @pytest.fixture(scope='session')

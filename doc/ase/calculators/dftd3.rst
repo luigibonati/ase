@@ -57,9 +57,13 @@ Keyword      Default value  Description
 Examples
 ========
 
+Before using DFT-D3 be sure you have installed its current version (link_).
+
+.. _link: https://www.chemie.uni-bonn.de/pctc/mulliken-center/software/dft-d3/
+
 DFTD3 can be used by itself to calculate only the vdW correction to a
 system's energy, forces, and stress. Note that you should not use these
-properties alone to perform dyanmics, as DFTD3 is not a full classical
+properties alone to perform dynamics, as DFTD3 is not a full classical
 potential.
 
 .. literalinclude:: dftd3_alone.py

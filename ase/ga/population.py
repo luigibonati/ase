@@ -19,7 +19,7 @@ def count_looks_like(a, all_cand, comp):
     return n
 
 
-class Population(object):
+class Population:
     """Population class which maintains the current population
     and proposes which candidates to pair together.
 
