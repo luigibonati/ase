@@ -627,11 +627,7 @@ def write_cif(fileobj, images, cif_format='default',
                     no[symbol] += 1
                 else:
                     no[symbol] = 1
-
-                if cif_format == 'mp':
-                    included_labels.append(symbol + str(no[symbol]))
-                else:
-                    included_labels.append('%s%d' % (symbol, no[symbol]))
+                included_labels.append('%s%d' % (symbol, no[symbol]))
 
         assert len(symbols) == len(coords) == len(occupancies) == len(included_labels) == len(extra_data)
 
