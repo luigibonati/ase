@@ -48,8 +48,9 @@ def wan(rng):
 
 class Paraboloid:
 
-    def __init__(self, pos=np.array([10, 10, 10], dtype=complex)):
+    def __init__(self, pos=np.array([10., 10., 10.], dtype=complex), shift=1.):
         self.pos = pos
+        self.shift = shift
 
     def get_gradients(self):
         return 2 * self.pos
@@ -58,7 +59,7 @@ class Paraboloid:
         self.pos -= dF
 
     def get_functional_value(self):
-        return np.sum(self.pos**2)
+        return np.sum(self.pos**2) + self.shift
 
 
 def orthonormality_error(matrix):
@@ -137,19 +138,19 @@ def test_calculate_weights(lat):
 
 
 def test_steepest_descent():
-    tol = 0.1
+    tol = 1e-6
     step = 0.1
-    func = Paraboloid(pos=np.array([10, 10, 10], dtype=float))
+    func = Paraboloid(pos=np.array([10, 10, 10], dtype=float), shift=1.)
     steepest_descent(func=func, step=step, tolerance=tol, verbose=False)
-    assert func.get_functional_value() < 0.1
+    assert func.get_functional_value() == pytest.approx(1, abs=1e-5)
 
 
 def test_md_min():
-    tol = 1e-3
+    tol = 1e-8
     step = 0.1
-    func = Paraboloid(pos=np.array([10, 10, 10], dtype=complex))
+    func = Paraboloid(pos=np.array([10, 10, 10], dtype=complex), shift=1.)
     md_min(func=func, step=step, tolerance=tol, verbose=False)
-    assert func.get_functional_value() < 0.1
+    assert func.get_functional_value() == pytest.approx(1, abs=1e-5)
 
 
 def test_rotation_from_projection(rng):
