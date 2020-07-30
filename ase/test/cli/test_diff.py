@@ -109,8 +109,9 @@ def test_cli_opt(cli, traj):
     header = re.sub(r'\s+', ',', header).split(',')[1:-1]
     assert header == ['p1x', 'p2x', 'Δx', 'f1x', 'f2x', 'Δfx']
 
-    cli.ase(f'diff {traj} -c --template p1x,f1x,p1y,f1y:0:-1,p1z,f1z,p1,f1 '
-            '--max-lines 6 --summary-functions rmsd')
+    cli.ase(['diff', traj, '-c', '--template',
+             'p1x,f1x,p1y,f1y:0:-1,p1z,f1z,p1,f1',
+             '--max-lines', '6', '--summary-functions', 'rmsd'])
 
 
 def test_template_functions():
