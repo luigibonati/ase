@@ -53,7 +53,7 @@ def test_vasp2_wdir(require_vasp):
     # Check the calculator path is the expected path
     compare_paths(calc.directory, testdir)
 
-    calc.set_txt(file1)
+    calc.set(txt=file1)
     atoms.calc = calc
     en1 = atoms.get_potential_energy()
 
@@ -65,7 +65,7 @@ def test_vasp2_wdir(require_vasp):
     # We open file2 in our current directory, so we don't want it to write
     # in the label directory
     with open(file2, 'w') as f:
-        calc2.set_txt(f)
+        calc2.set(txt=f)
         atoms.calc = calc2
         atoms.get_potential_energy()
 
