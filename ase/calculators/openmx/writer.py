@@ -357,7 +357,7 @@ def get_atoms_speciesandcoordinates(atoms, parameters):
     for i, element in enumerate(elements):
         atoms_speciesandcoordinates.append([str(i + 1), element])
     # Appending positions
-    unit = parameters.get('atoms_speciesandcoordinates_unit').lower()
+    unit = parameters.get('atoms_speciesandcoordinates_unit', 'ang').lower()
     if unit == 'ang':
         positions = atoms.get_positions()
     elif unit == 'frac':
