@@ -66,24 +66,24 @@ def test_101(cli, traj):
 
 
 def test_111(cli, traj):
-    cli.ase(f'diff {traj} -c')
+    cli.ase(['diff', traj,  '-c'])
 
 
 def test_200(cli, traj):
-    cli.ase(f'diff {traj}@:1 {traj}@1:2')
+    cli.ase(['diff', f'{traj}@:1', f'{traj}@1:2'])
 
 
 def test_202(cli, traj):
-    cli.ase(f'diff {traj}@:1 {traj}@1:2 -c')
+    cli.ase(['diff', f'{traj}@:1', f'{traj}@1:2', '-c'])
 
 
 def test_220(cli, traj):
-    cli.ase(f'diff {traj}@:2 {traj}@2:4')
+    cli.ase(['diff', f'{traj}@:2', f'{traj}@2:4'])
 
 
 def test_222(cli, traj):
-    stdout = cli.ase(
-        f'diff {traj}@:2 {traj}@2:4 -c --rank-order dfx --as-csv')
+    stdout = cli.ase(['diff', f'{traj}@:2', f'{traj}@2:4', '-c',
+                      '--rank-order', 'dfx', '--as-csv'])
     stdout = [row.split(',') for row in stdout.split('\n')]
     stdout = [row for row in stdout if len(row) > 4]
 
@@ -98,8 +98,8 @@ def test_222(cli, traj):
 
 def test_cli_opt(cli, traj):
     # template command line options
-    stdout = cli.ase(f'diff {traj}@:1 {traj}@:2 -c '
-                     '--template p1x,p2x,dx,f1x,f2x,dfx')
+    stdout = cli.ase(['diff', f'{traj}@:1', f'{traj}@:2', '-c',
+                      '--template', 'p1x,p2x,dx,f1x,f2x,dfx'])
     stdout = stdout.split('\n')
 
     for counter, row in enumerate(stdout):
@@ -134,8 +134,8 @@ def test_template_classes(traj):
     prec = 4
     tableformat = TableFormat(precision=prec, representation='f', midrule='|')
     table = Table(field_specs=('dx', 'dy', 'dz'), tableformat=tableformat)
-    traj = read(str(traj), ':')
-    table_out = table.make(traj[0], traj[1]).split('\n')
+    images = read(str(traj), ':')
+    table_out = table.make(images[0], images[1]).split('\n')
     for counter, row in enumerate(table_out):
         if '|' in row:
             break
