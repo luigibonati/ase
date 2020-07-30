@@ -47,11 +47,11 @@ def traj(tmp_path_factory):
     trajectory = temp_path / 'AlAu.traj'
     qn = QuasiNewton(slab, trajectory=str(trajectory))
     qn.run(fmax=0.02)
-    return trajectory
+    return str(trajectory)
 
 
 def test_101(cli, traj):
-    stdout = cli.ase(['diff', '--as-csv', str(traj)])
+    stdout = cli.ase(['diff', '--as-csv', traj])
 
     r = c = -1
     for rowcount, row in enumerate(stdout.split('\n')):
@@ -135,7 +135,7 @@ def test_template_classes(traj):
     prec = 4
     tableformat = TableFormat(precision=prec, representation='f', midrule='|')
     table = Table(field_specs=('dx', 'dy', 'dz'), tableformat=tableformat)
-    images = read(str(traj), ':')
+    images = read(traj, ':')
     table_out = table.make(images[0], images[1]).split('\n')
     for counter, row in enumerate(table_out):
         if '|' in row:
