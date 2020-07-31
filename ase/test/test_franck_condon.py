@@ -1,10 +1,18 @@
+import sys
+import numpy as np
+from math import factorial
+from pytest import approx
+
+from ase.build import molecule
+from ase.calculators.emt import EMT
+from ase.optimize import BFGS
+from ase.vibrations import Vibrations
+from ase.vibrations.franck_condon import (FranckCondonOverlap,
+                                          FranckCondonRecursive,
+                                          FranckCondon)
+
+
 def test_franck_condon():
-    import sys
-    import numpy as np
-
-    from ase.vibrations.franck_condon import FranckCondonOverlap, FranckCondonRecursive
-    from math import factorial
-
 
     def equal(x, y, tolerance=0, fail=True, msg=''):
         """Compare x and y."""
@@ -66,3 +74,29 @@ def test_franck_condon():
               fcr.ov1m(m, delta) * fcr.ov2m(m, delta), 1.e-15)
         equal(fcr.direct1mm2(m, delta), fcr.ov1mm2(m, delta), 1.e-15)
 
+
+def test_ch4(tmp_path):
+    """Evaluate Franck-Condon overlaps in
+    a molecule suddenly exposed to a different potential"""
+    atoms = molecule('CH4')
+    atoms.calc = EMT()
+
+    # evaluate forces in this configuration
+    forces_a = atoms.get_forces()
+
+    # relax and get vibrational properties
+    opt = BFGS(atoms, logfile=None)
+    opt.run(fmax=0.01)
+
+    vibname = str(tmp_path / 'vib')
+    vib = Vibrations(atoms, name=vibname)
+    vib.run()
+
+    fc = FranckCondon(atoms, vibname)
+
+    # by symmetry only one frequency has a non-vanishing contribution
+    HR_a, f_a = fc.get_Huang_Rhys_factors(forces_a)
+    assert HR_a[:-1] == approx(0, abs=1e-10)
+    assert HR_a[-1] == approx(0.859989171)
+
+    fc.get_Franck_Condon_factors(1, 300, forces_a)
