@@ -7,7 +7,7 @@ from ase.ga.utilities import (atoms_too_close, atoms_too_close_two_sets,
 from ase.ga.offspring_creator import OffspringCreator
 
 
-class Positions(object):
+class Positions:
     """Helper object to simplify the pairing process.
 
     Parameters:

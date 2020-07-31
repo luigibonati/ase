@@ -125,7 +125,7 @@ Defaults
 --------
 
 Using a file ``~/.ase/gui.py``, certain defaults can be set. If it exists,
-this file is executed after initializing the variables and colours
+this file is executed after initializing the variables and colors
 normally used in ASE. One can change the default graphs that are
 plotted, and the default radii for displaying specific atoms. This
 example will display the energy evolution and the maximal force in a

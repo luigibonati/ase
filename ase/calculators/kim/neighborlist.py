@@ -9,7 +9,7 @@ from ase import Atom
 from .kimpy_wrappers import check_call_wrapper
 
 
-class NeighborList(object):
+class NeighborList:
 
     kimpy_arrays = {
         "num_particles": np.intc,

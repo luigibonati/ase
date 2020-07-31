@@ -3,7 +3,7 @@ import numpy as np
 from ase.ga.utilities import get_nnmat
 
 
-class NNMatComparator(object):
+class NNMatComparator:
     """Use the nearest neighbor matrix to determine differences
     in the distribution (and to a slighter degree structure)
     of atoms. As specified in

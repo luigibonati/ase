@@ -59,7 +59,7 @@ def xyzproperty(index):
     return property(getter, setter, doc='XYZ'[index] + '-coordinate')
 
 
-class Atom(object):
+class Atom:
     """Class for representing a single atom.
 
     Parameters:

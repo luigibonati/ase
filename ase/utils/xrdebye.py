@@ -41,7 +41,7 @@ wavelengths = {
 }
 
 
-class XrDebye(object):
+class XrDebye:
     """
     Class for calculation of XRD or SAXS patterns.
     """
