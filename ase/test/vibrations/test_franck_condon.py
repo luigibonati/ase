@@ -1,7 +1,7 @@
 import sys
 import numpy as np
 from math import factorial
-from pytest import approx
+from pytest import approx, fixture
 
 from ase.build import molecule
 from ase.calculators.emt import EMT
@@ -75,26 +75,42 @@ def test_franck_condon():
         equal(fcr.direct1mm2(m, delta), fcr.ov1mm2(m, delta), 1.e-15)
 
 
-def test_ch4(tmp_path):
-    """Evaluate Franck-Condon overlaps in
-    a molecule suddenly exposed to a different potential"""
+@fixture(scope='module')
+def unrelaxed():
     atoms = molecule('CH4')
     atoms.calc = EMT()
+    return atoms
 
+
+@fixture(scope='module')
+def forces_a(unrelaxed):
     # evaluate forces in this configuration
-    forces_a = atoms.get_forces()
+    return unrelaxed.get_forces()
 
-    # relax and get vibrational properties
+
+@fixture(scope='module')
+def relaxed(unrelaxed):
+    atoms = unrelaxed
     opt = BFGS(atoms, logfile=None)
     opt.run(fmax=0.01)
+    return atoms
 
-    vibname = str(tmp_path / 'vib')
-    vib = Vibrations(atoms, name=vibname)
+
+@fixture()
+def vibname(tmp_path, relaxed):
+    name = str(tmp_path / 'vib')
+    vib = Vibrations(relaxed, name=name)
     vib.run()
-    ndof = 3 * len(atoms)
+    return name
+
+
+def test_ch4_all(forces_a, relaxed, vibname):
+    """Evaluate Franck-Condon overlaps in
+    a molecule suddenly exposed to a different potential"""
 
     # FC factor for all frequencies
-    fc = FranckCondon(atoms, vibname)
+    fc = FranckCondon(relaxed, vibname)
+    ndof = 3 * len(relaxed)
 
     # by symmetry only one frequency has a non-vanishing contribution
     HR_a, f_a = fc.get_Huang_Rhys_factors(forces_a)
@@ -105,9 +121,11 @@ def test_ch4(tmp_path):
     FC, freq = fc.get_Franck_Condon_factors(293, forces_a)
     assert len(FC[0]) == 2 * ndof + 1
     assert len(freq[0]) == 2 * ndof + 1
+
     
+def test_ch4_minfreq(forces_a, relaxed, vibname):
     # FC factor for relevant frequencies only
-    fc = FranckCondon(atoms, vibname, minfreq=2000)
+    fc = FranckCondon(relaxed, vibname, minfreq=2000)
     nrel = 4
 
     # single excitations
