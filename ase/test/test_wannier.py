@@ -354,3 +354,80 @@ def test_get_hopping_bloch(wan):
             assert hop1_ww[i, j] == 0
             assert hop0_ww[i, j] == hop0_ww[j, i]
             assert hop1_ww[i, j] == hop1_ww[j, i]
+
+
+def test_get_hopping_random(wan, rng):
+    nwannier = 4
+    atoms = molecule('H2', pbc=True)
+    atoms.center(vacuum=3.)
+    wan = wan(atoms=atoms, kpts=(2, 2, 2), rng=rng,
+              nwannier=nwannier, initialwannier='random')
+    hop0_ww = wan.get_hopping([0, 0, 0])
+    hop1_ww = wan.get_hopping([1, 1, 1])
+    for i in range(nwannier):
+        for j in range(i + 1, nwannier):
+            assert np.abs(hop0_ww[i, j]) == pytest.approx(np.abs(hop0_ww[j, i]))
+            assert np.abs(hop1_ww[i, j]) == pytest.approx(np.abs(hop1_ww[j, i]))
+
+
+def test_get_hamiltonian_bloch(wan):
+    nwannier = 4
+    atoms = molecule('H2', pbc=True)
+    atoms.center(vacuum=3.)
+    kpts = (2, 2, 2)
+    Nk = kpts[0] * kpts[1] * kpts[2]
+    wan = wan(atoms=atoms, kpts=kpts,
+              nwannier=nwannier, initialwannier='bloch')
+    for k in range(Nk):
+        H_ww = wan.get_hamiltonian(k=k)
+        for i in range(nwannier):
+            assert H_ww[i, i] != 0
+            for j in range(i + 1, nwannier):
+                assert H_ww[i, j] == 0
+                assert H_ww[i, j] == pytest.approx(H_ww[j, i])
+
+
+def test_get_hamiltonian_random(wan, rng):
+    nwannier = 4
+    atoms = molecule('H2', pbc=True)
+    atoms.center(vacuum=3.)
+    kpts = (2, 2, 2)
+    Nk = kpts[0] * kpts[1] * kpts[2]
+    wan = wan(atoms=atoms, kpts=kpts, rng=rng,
+              nwannier=nwannier, initialwannier='random')
+    for k in range(Nk):
+        H_ww = wan.get_hamiltonian(k=k)
+        for i in range(nwannier):
+            for j in range(i + 1, nwannier):
+                assert np.abs(H_ww[i, j]) == pytest.approx(np.abs(H_ww[j, i]))
+
+
+def test_get_hamiltonian_kpoint(wan, rng):
+    nwannier = 4
+    atoms = molecule('H2', pbc=True)
+    atoms.center(vacuum=3.)
+    wan = wan(atoms=atoms, kpts=(2, 2, 2), rng=rng,
+              nwannier=nwannier, initialwannier='random')
+    kpts = atoms.cell.bandpath(density=50).cartesian_kpts()
+    for kpt_c in kpts:
+        H_ww = wan.get_hamiltonian_kpoint(kpt_c=kpt_c)
+        for i in range(nwannier):
+            for j in range(i + 1, nwannier):
+                assert np.abs(H_ww[i, j]) == pytest.approx(np.abs(H_ww[j, i]))
+
+
+def test_get_function(wan):
+    nwannier = 2
+    atoms = molecule('H2', pbc=True)
+    atoms.center(vacuum=3.)
+    nk = 2
+    gpts = np.array([8, 8, 8])
+    wan = wan(atoms=atoms, gpts=gpts, kpts=(nk, nk, nk), rng=rng,
+              nwannier=nwannier, initialwannier='bloch')
+    assert (wan.get_function(index=[0, 0]) == 0).all()
+    assert wan.get_function(index=[0, 1]) + wan.get_function(index=[1, 0]) == \
+        pytest.approx(wan.get_function(index=[1, 1]))
+    for i in range(nwannier):
+        assert (gpts * nk == wan.get_function(index=i).shape).all()
+        assert (gpts * [1, 2, 3] ==
+                wan.get_function(index=i, repeat=[1, 2, 3]).shape).all()
