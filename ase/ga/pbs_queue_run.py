@@ -6,7 +6,7 @@ from subprocess import Popen, PIPE
 import time
 
 
-class PBSQueueRun(object):
+class PBSQueueRun:
 
     """ Class for communicating with the commonly used PBS queing system
          at a computer cluster.

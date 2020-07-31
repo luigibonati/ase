@@ -746,7 +746,7 @@ keys: List[str] = [
 ]
 
 
-class GenerateVaspInput(object):
+class GenerateVaspInput:
     # Parameters corresponding to 'xc' settings.  This may be modified
     # by the user in-between loading calculators.vasp submodule and
     # instantiating the calculator object with calculators.vasp.Vasp()
@@ -1475,9 +1475,8 @@ class GenerateVaspInput(object):
         """Method that imports settings from INCAR file."""
 
         self.spinpol = False
-        file = open(filename, 'r')
-        file.readline()
-        lines = file.readlines()
+        with open(filename, 'r') as fd:
+            lines = fd.readlines()
 
         for line in lines:
             try:

@@ -244,7 +244,7 @@ class View:
         self.draw()
 
     def repeat_window(self, key=None):
-        Repeat(self)
+        return Repeat(self)
 
     def rotate_window(self):
         return Rotate(self)

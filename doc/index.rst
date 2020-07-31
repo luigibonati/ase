@@ -63,6 +63,8 @@ Mopac_
 News
 ====
 
+* :ref:`ASE version 3.19.2 <releasenotes>` released (22 July 2020).
+
 * :ref:`ASE version 3.19.1 <releasenotes>` released (4 April 2020).
 
 * :ref:`ASE version 3.19.0 <releasenotes>` released (16 December 2019).

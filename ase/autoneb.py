@@ -13,7 +13,7 @@ from math import log
 from math import exp
 
 
-class AutoNEB(object):
+class AutoNEB:
     """AutoNEB object.
 
     The AutoNEB algorithm streamlines the execution of NEB and CI-NEB
