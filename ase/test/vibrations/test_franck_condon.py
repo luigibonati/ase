@@ -91,12 +91,33 @@ def test_ch4(tmp_path):
     vibname = str(tmp_path / 'vib')
     vib = Vibrations(atoms, name=vibname)
     vib.run()
+    ndof = 3 * len(atoms)
 
+    # FC factor for all frequencies
     fc = FranckCondon(atoms, vibname)
 
     # by symmetry only one frequency has a non-vanishing contribution
     HR_a, f_a = fc.get_Huang_Rhys_factors(forces_a)
+    assert len(HR_a) == ndof
     assert HR_a[:-1] == approx(0, abs=1e-10)
     assert HR_a[-1] == approx(0.859989171)
 
-    fc.get_Franck_Condon_factors(1, 300, forces_a)
+    FC, freq = fc.get_Franck_Condon_factors(293, forces_a)
+    assert len(FC[0]) == 2 * ndof + 1
+    assert len(freq[0]) == 2 * ndof + 1
+    
+    # FC factor for relevant frequencies only
+    fc = FranckCondon(atoms, vibname, minfreq=2000)
+    nrel = 4
+
+    # single excitations
+    FC, freq = fc.get_Franck_Condon_factors(293, forces_a)
+    assert len(FC[0]) == 2 * nrel + 1
+    assert len(freq[0]) == 2 * nrel + 1
+
+    # include double excitations
+    FC, freq = fc.get_Franck_Condon_factors(293, forces_a, 2)
+    assert len(FC[1]) == 2 * nrel
+    assert len(FC[2]) == 22  # XXX why?
+    for i in range(3):
+        assert len(freq[i]) == len(FC[i])
