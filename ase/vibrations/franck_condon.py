@@ -190,17 +190,18 @@ class FranckCondonRecursive:
             sum += m * (m - 1)
         with np.errstate(divide='ignore', invalid='ignore'):
             return np.where(S == 0, 0,
-                (np.exp(-S) * S**(m - 1) / delta * (S - m) * sum *
-                 self.factorial.inv(m)))
+                            (np.exp(-S) * S**(m - 1) / delta
+                             * (S - m) * sum * self.factorial.inv(m)))
 
     def direct0mm3(self, m, delta):
         S = delta**2 / 2.
         with np.errstate(divide='ignore', invalid='ignore'):
-            return np.where(S == 0, 0,
+            return np.where(
+                S == 0, 0,
                 (np.exp(-S) * S**(m - 1) / delta * np.sqrt(12.) *
-                 (S**3 / 6. - m * S**2 / 2 +
-                  m * (m - 1) * S / 2. - m * (m - 1) * (m - 2) / 6) *
-                 self.factorial.inv(m)))
+                 (S**3 / 6. - m * S**2 / 2
+                  + m * (m - 1) * S / 2. - m * (m - 1) * (m - 2) / 6)
+                 * self.factorial.inv(m)))
 
 
 class FranckCondon:
@@ -256,20 +257,36 @@ class FranckCondon:
 
         return S_V, frequencies
 
-    def get_Franck_Condon_factors(self, order, temp, forces):
+    def get_Franck_Condon_factors(self, order, temperature, forces):
         """Return FC factors and corresponding frequencies up to given order.
 
-        order= number of quanta taken into account
-        T= temperature in K. Vibronic levels are occupied by a
-        Boltzman distribution.
-        forces= forces on atoms in the exited electronic state"""
+        Parameters
+        ----------
+        order: int
+          number of quanta taken into account
+        temperature: float
+          Temperature in K. Vibronic levels are occupied by a
+          Boltzman distribution.
+        forces: array
+          Forces on atoms in the exited electronic state
 
+        Returns
+        --------
+        FC: two 3-dimensional lists.
+          First inner list
+          contains frequencies and FC-factors of vibrations exited
+          with |1| quanta and the 0-0 transition.
+          Second list contains frequencies and FC-factors from higher
+          quanta exitations. Third list are combinations of two normal modes
+          (including combinations of higher quanta exitations).
+        frequencies:
+        """
         S, f = self.get_Huang_Rhys_factors(forces)
         n = order + 1
-        T = temp
+        T = temperature
         freq = np.array(f)
 
-        # frequencies
+        # frequencies and their multiples
         freq_n = [[] * i for i in range(n - 1)]
         freq_neg = [[] * i for i in range(n - 1)]
 
@@ -284,7 +301,7 @@ class FranckCondon:
 
         indices2 = []
         for i, y in enumerate(freq):
-            ind = [j for j, x in enumerate(freq_nn) if x % y == 0]
+            ind = [j for j, x in enumerate(freq_nn) if y == 0 or x % y == 0]
             indices2.append(ind)
         indices2 = [x for x in chain(*indices2)]
         freq_nn = np.delete(freq_nn, indices2)
@@ -380,10 +397,4 @@ class FranckCondon:
 
         FC[2] = FC_nn
 
-        """Returned are two 3-dimensional lists. First inner list contains
-frequencies and FC-factors of vibrations exited with |1| quanta and
-the 0-0 transition.
-        Second list contains frequencies and FC-factors from higher
-quanta exitations. Third list are combinations of two normal modes
-(including combinations of higher quanta exitations). """
         return FC, frequencies
