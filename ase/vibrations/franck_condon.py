@@ -257,31 +257,32 @@ class FranckCondon:
 
         return S_V, frequencies
 
-    def get_Franck_Condon_factors(self, order, temperature, forces):
+    def get_Franck_Condon_factors(self, temperature, forces, order=1):
         """Return FC factors and corresponding frequencies up to given order.
 
         Parameters
         ----------
-        order: int
-          number of quanta taken into account
         temperature: float
           Temperature in K. Vibronic levels are occupied by a
           Boltzman distribution.
         forces: array
           Forces on atoms in the exited electronic state
+        order: int
+          number of quanta taken into account, default
 
         Returns
         --------
-        FC: two 3-dimensional lists.
-          First inner list
-          contains frequencies and FC-factors of vibrations exited
-          with |1| quanta and the 0-0 transition.
-          Second list contains frequencies and FC-factors from higher
-          quanta exitations. Third list are combinations of two normal modes
-          (including combinations of higher quanta exitations).
-        frequencies:
+        FC: 3 entry list
+          FC[0] = FC factors for 0-0 and +-1 vibrational quantum
+          FC[1] = FC factors for +-2 vibrational quanta
+          FC[2] = FC factors for combinations
+        frequencies: 3 entry list
+          frequencies[0] correspond to FC[0]
+          frequencies[1] correspond to FC[1]
+          frequencies[2] correspond to FC[2]
         """
         S, f = self.get_Huang_Rhys_factors(forces)
+        assert order > 0
         n = order + 1
         T = temperature
         freq = np.array(f)
