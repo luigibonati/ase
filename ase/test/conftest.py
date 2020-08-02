@@ -8,6 +8,8 @@ from ase.test.factories import (Factories, CalculatorInputs,
                                 make_factory_fixture, get_testing_executables)
 from ase.calculators.calculator import (names as calculator_names,
                                         get_calculator_class)
+from ase.dependencies import all_dependencies
+
 
 
 @pytest.fixture(scope='session')
@@ -22,6 +24,22 @@ def enabled_calculators(pytestconfig):
                 raise ValueError(f'No such calculator: {name}')
             names.add(name)
     return sorted(names)
+
+
+def pytest_report_header(config, startdir):
+    messages = []
+
+    def add(msg=''):
+        messages.append(msg)
+
+    add()
+    add('Libraries')
+    add('=========')
+    for name, path in all_dependencies():
+        add('{:24} {}'.format(name, path))
+    add()
+
+    return messages
 
 
 class Calculators:
