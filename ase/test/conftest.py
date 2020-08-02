@@ -98,6 +98,7 @@ def use_tmp_workdir(tmp_path):
     path = Path(str(tmp_path))
     with workdir(path, mkdir=True):
         yield tmp_path
+    print(f'Testpath: {path}')
 
 
 @pytest.fixture(scope='session')
