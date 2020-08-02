@@ -32,8 +32,8 @@ Tests for these cases and all command line options are done.
 """
 
 
-@pytest.fixture(scope="session")
-def traj(tmpdir_factory):
+@pytest.fixture(scope="module")
+def traj(tmp_path_factory):
     slab = fcc100('Al', size=(2, 2, 3))
     add_adsorbate(slab, 'Au', 1.7, 'hollow')
     slab.center(axis=2, vacuum=4.0)
@@ -41,17 +41,17 @@ def traj(tmpdir_factory):
     fixlayers = FixAtoms(mask=mask)
     plane = FixedPlane(-1, (1, 0, 0))
     slab.set_constraint([fixlayers, plane])
-    slab.set_calculator(EMT())
+    slab.calc = EMT()
 
-    fn = tmpdir_factory.mktemp("data").join("AlAu.traj")  # see /tmp/pytest-xx
-    qn = QuasiNewton(slab, trajectory=str(fn))
+    temp_path = tmp_path_factory.mktemp("data")
+    trajectory = temp_path / 'AlAu.traj'
+    qn = QuasiNewton(slab, trajectory=str(trajectory))
     qn.run(fmax=0.02)
-    return fn
+    return str(trajectory)
 
 
 def test_101(cli, traj):
-
-    stdout = cli.ase(f'diff --as-csv {traj}')
+    stdout = cli.ase(['diff', '--as-csv', traj])
 
     r = c = -1
     for rowcount, row in enumerate(stdout.split('\n')):
@@ -66,24 +66,24 @@ def test_101(cli, traj):
 
 
 def test_111(cli, traj):
-    cli.ase(f'diff {traj} -c')
+    cli.ase(['diff', traj,  '-c'])
 
 
 def test_200(cli, traj):
-    cli.ase(f'diff {traj}@:1 {traj}@1:2')
+    cli.ase(['diff', f'{traj}@:1', f'{traj}@1:2'])
 
 
 def test_202(cli, traj):
-    cli.ase(f'diff {traj}@:1 {traj}@1:2 -c')
+    cli.ase(['diff', f'{traj}@:1', f'{traj}@1:2', '-c'])
 
 
 def test_220(cli, traj):
-    cli.ase(f'diff {traj}@:2 {traj}@2:4')
+    cli.ase(['diff', f'{traj}@:2', f'{traj}@2:4'])
 
 
 def test_222(cli, traj):
-    stdout = cli.ase(
-        f'diff {traj}@:2 {traj}@2:4 -c --rank-order dfx --as-csv')
+    stdout = cli.ase(['diff', f'{traj}@:2', f'{traj}@2:4', '-c',
+                      '--rank-order', 'dfx', '--as-csv'])
     stdout = [row.split(',') for row in stdout.split('\n')]
     stdout = [row for row in stdout if len(row) > 4]
 
@@ -98,8 +98,8 @@ def test_222(cli, traj):
 
 def test_cli_opt(cli, traj):
     # template command line options
-    stdout = cli.ase(f'diff {traj}@:1 {traj}@:2 -c '
-                     '--template p1x,p2x,dx,f1x,f2x,dfx')
+    stdout = cli.ase(['diff', f'{traj}@:1', f'{traj}@:2', '-c',
+                      '--template', 'p1x,p2x,dx,f1x,f2x,dfx'])
     stdout = stdout.split('\n')
 
     for counter, row in enumerate(stdout):
@@ -109,8 +109,9 @@ def test_cli_opt(cli, traj):
     header = re.sub(r'\s+', ',', header).split(',')[1:-1]
     assert header == ['p1x', 'p2x', 'Δx', 'f1x', 'f2x', 'Δfx']
 
-    cli.ase(f'diff {traj} -c --template p1x,f1x,p1y,f1y:0:-1,p1z,f1z,p1,f1 '
-            '--max-lines 6 --summary-functions rmsd')
+    cli.ase(['diff', traj, '-c', '--template',
+             'p1x,f1x,p1y,f1y:0:-1,p1z,f1z,p1,f1',
+             '--max-lines', '6', '--summary-functions', 'rmsd'])
 
 
 def test_template_functions():
@@ -134,8 +135,8 @@ def test_template_classes(traj):
     prec = 4
     tableformat = TableFormat(precision=prec, representation='f', midrule='|')
     table = Table(field_specs=('dx', 'dy', 'dz'), tableformat=tableformat)
-    traj = read(str(traj), ':')
-    table_out = table.make(traj[0], traj[1]).split('\n')
+    images = read(traj, ':')
+    table_out = table.make(images[0], images[1]).split('\n')
     for counter, row in enumerate(table_out):
         if '|' in row:
             break

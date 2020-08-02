@@ -2,23 +2,18 @@ import numpy as np
 from numpy.testing import assert_allclose
 import pytest
 from ase.build import bulk
-from ase.test.eam_pot import Pt_u3
 from ase.constraints import ExpCellFilter
 from ase.optimize import BFGS
 
 
 @pytest.mark.calculator('lammpsrun')
-def test_Pt_stress_cellopt(factory):
-
-    # (For now) reuse eam file stuff from other lammps test:
-    pot_fn = 'Pt_u3.eam'
-    f = open(pot_fn, 'w')
-    f.write(Pt_u3)
-    f.close()
+def test_Pt_stress_cellopt(factory, pt_eam_potential_file):
     params = {}
     params['pair_style'] = 'eam'
-    params['pair_coeff'] = ['1 1 {}'.format(pot_fn)]
-    with factory.calc(specorder=['Pt'], files=[pot_fn], **params) as calc:
+    params['pair_coeff'] = ['1 1 {}'.format(pt_eam_potential_file)]
+    # XXX Should it accept Path objects?  Yes definitely for files.
+    with factory.calc(specorder=['Pt'], files=[str(pt_eam_potential_file)],
+                      **params) as calc:
         rng = np.random.RandomState(17)
 
         atoms = bulk('Pt') * (2, 2, 2)
