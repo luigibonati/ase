@@ -249,7 +249,10 @@ siesta_factory = make_factory_fixture('siesta')
 @pytest.fixture
 def factory(request, factories):
     name, kwargs = request.param
-    factory = factories[name]
+    try:
+        factory = factories[name]
+    except NotInstalled:
+        pytest.skip(f'Not installed: {name}')
     return CalculatorInputs(factory, kwargs)
 
 
