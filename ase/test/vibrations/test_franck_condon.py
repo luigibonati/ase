@@ -90,7 +90,8 @@ def forces_a(unrelaxed):
 
 @fixture(scope='module')
 def relaxed(unrelaxed):
-    atoms = unrelaxed
+    atoms = unrelaxed.copy()
+    atoms.calc = unrelaxed.calc
     opt = BFGS(atoms, logfile=None)
     opt.run(fmax=0.01)
     return atoms
@@ -98,8 +99,10 @@ def relaxed(unrelaxed):
 
 @fixture()
 def vibname(tmp_path, relaxed):
+    atoms = relaxed.copy()
+    atoms.calc = relaxed.calc
     name = str(tmp_path / 'vib')
-    vib = Vibrations(relaxed, name=name)
+    vib = Vibrations(atoms, name=name)
     vib.run()
     return name
 
