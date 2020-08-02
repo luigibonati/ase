@@ -5,6 +5,10 @@ import json
 import pytest
 
 
+class NotInstalled(Exception):
+    pass
+
+
 def get_testing_executables():
     path = os.environ.get('ASE_EXECUTABLE_CONFIGFILE')
     if path is None:
@@ -62,6 +66,7 @@ class AbinitFactory:
         return AbinitFactory(config.executables['abinit'],
                              config.datafiles['abinit'])
 
+
 @factory('asap')
 class AsapFactory:
     importname = 'asap3'
@@ -77,9 +82,8 @@ class AsapFactory:
         import importlib
         spec = importlib.util.find_spec('asap3')
         if spec is None:
-            pytest.skip('No gpaw module')
+            raise NotInstalled('asap3')
         return cls()
-
 
 
 @factory('cp2k')
@@ -165,7 +169,7 @@ class GPAWFactory:
         spec = importlib.util.find_spec('gpaw')
         # XXX should be made non-pytest dependent
         if spec is None:
-            pytest.skip('No gpaw module')
+            raise NotInstalled('gpaw')
         return cls()
 
 

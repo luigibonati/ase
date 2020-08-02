@@ -4,7 +4,7 @@ from subprocess import Popen, PIPE, check_output
 import pytest
 
 from ase.utils import workdir
-from ase.test.factories import (Factories, CalculatorInputs,
+from ase.test.factories import (Factories, CalculatorInputs, NotInstalled,
                                 factory_classes, BuiltinCalculatorFactory,
                                 make_factory_fixture, get_testing_executables)
 from ase.calculators.calculator import (names as calculator_names,
@@ -79,7 +79,7 @@ def pytest_report_header(config, startdir):
 
         try:
             factory = cls.fromconfig(factories)
-        except KeyError:
+        except (KeyError, NotInstalled):
             factory = None
         else:
             available_calculators.add(name)
