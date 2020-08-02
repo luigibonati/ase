@@ -1,7 +1,6 @@
 import platform
 import sys
 
-from ase.utils import search_current_git_hash
 from ase.dependencies import all_dependencies
 from ase.io.formats import filetype, ioformats, UnknownFileTypeError
 from ase.io.ulm import print_ulm_info
