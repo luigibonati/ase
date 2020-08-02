@@ -1,4 +1,5 @@
-from ase.test.vasp.filecmp_ignore_whitespace import filecmp_ignore_whitespace
+from ase.test.calculator.vasp.filecmp_ignore_whitespace import (
+    filecmp_ignore_whitespace)
 
 def test_vasp2_kpoints(require_vasp):
     """
