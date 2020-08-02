@@ -5,6 +5,7 @@ import pytest
 
 from ase.utils import workdir
 from ase.test.factories import (Factories, CalculatorInputs,
+                                factory_classes, BuiltinCalculatorFactory,
                                 make_factory_fixture, get_testing_executables)
 from ase.calculators.calculator import (names as calculator_names,
                                         get_calculator_class)
@@ -26,6 +27,20 @@ def enabled_calculators(pytestconfig):
     return sorted(names)
 
 
+def get_factories():
+    try:
+        import asetest
+    except ImportError:
+        datafiles = {}
+    else:
+        datafiles = asetest.datafiles.paths
+
+    testing_executables = get_testing_executables()
+
+    return Factories(testing_executables,
+                     datafiles)
+
+
 def pytest_report_header(config, startdir):
     messages = []
 
@@ -35,9 +50,62 @@ def pytest_report_header(config, startdir):
     add()
     add('Libraries')
     add('=========')
+    add()
     for name, path in all_dependencies():
         add('{:24} {}'.format(name, path))
     add()
+
+    add('Calculators')
+    add('===========')
+    add()
+    calculators_option = config.getoption('--calculators')
+    if calculators_option:
+        requested_calculators = set(calculators_option.split(','))
+    else:
+        requested_calculators = set()
+
+    for name in requested_calculators:
+        if name not in calculator_names:
+            pytest.exit(f'No such calculator: {name}')
+
+    factories = get_factories()
+    available_calculators = set()
+
+    for name in sorted(factory_classes):
+        cls = factory_classes[name]
+        if issubclass(cls, BuiltinCalculatorFactory):
+            # Not interesting to test presence of always-present calculators.
+            continue
+
+        try:
+            factory = cls.fromconfig(factories)
+        except KeyError:
+            factory = None
+        else:
+            available_calculators.add(name)
+
+        if factory is None:
+            configinfo = 'not installed'
+        else:
+            # Some really ugly hacks here:
+            if hasattr(factory, 'importname'):
+                import importlib
+                module = importlib.import_module(factory.importname)
+                configinfo = str(module.__path__[0])  # type: ignore
+            else:
+                configtokens = []
+                for varname, variable in vars(factory).items():
+                    configtokens.append(f'{varname}={variable}')
+                configinfo = ', '.join(configtokens)
+
+        run = '[x]' if name in requested_calculators else '[ ]'
+        line = f'  {run} {name:10} {configinfo}'
+        add(line)
+
+    for name in requested_calculators:
+        if name in factory_classes and name not in available_calculators:
+            pytest.exit(f'Calculator {name} is not installed.  '
+                        'Please run "ase test --help-calculators".')
 
     return messages
 

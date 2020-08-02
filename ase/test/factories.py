@@ -62,6 +62,25 @@ class AbinitFactory:
         return AbinitFactory(config.executables['abinit'],
                              config.datafiles['abinit'])
 
+@factory('asap')
+class AsapFactory:
+    importname = 'asap3'
+
+    def calc(self, **kwargs):
+        from asap3 import EMT
+        return EMT(**kwargs)
+
+    @classmethod
+    def fromconfig(cls, config):
+        # XXXX TODO Clean this up.  Copy of GPAW.
+        # How do we design these things?
+        import importlib
+        spec = importlib.util.find_spec('asap3')
+        if spec is None:
+            pytest.skip('No gpaw module')
+        return cls()
+
+
 
 @factory('cp2k')
 class CP2KFactory:
@@ -134,6 +153,8 @@ class EspressoFactory:
 
 @factory('gpaw')
 class GPAWFactory:
+    importname = 'gpaw'
+
     def calc(self, **kwargs):
         from gpaw import GPAW
         return GPAW(**kwargs)
