@@ -19,7 +19,7 @@ def test_relax():
     calc = KIM("ex_model_Ar_P_Morse_07C")
     atoms.calc = calc
 
-    opt = BFGS(atoms, logfile=None)
+    opt = BFGS(atoms, maxstep=0.04, alpha=70.0, logfile=None)
     opt.run(fmax=0.05)
 
     assert np.isclose(atoms.get_potential_energy(), energy_ref)
