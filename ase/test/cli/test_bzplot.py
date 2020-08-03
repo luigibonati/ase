@@ -22,4 +22,4 @@ def file(request):
 
 
 def test_bzplot(cli, file, plt):
-    cli.ase(['reciprocal', file, 'bandpath.svg'])
+    cli.ase('reciprocal', file, 'bandpath.svg')

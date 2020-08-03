@@ -202,12 +202,8 @@ class CLI:
     def __init__(self, calculators):
         self.calculators = calculators
 
-    def ase(self, args):
-        if isinstance(args, str):
-            import shlex
-            args = shlex.split(args)
-
-        proc = Popen(['ase', '-T'] + args,
+    def ase(self, *args):
+        proc = Popen(['ase', '-T'] + list(args),
                      stdout=PIPE, stdin=PIPE)
         stdout, _ = proc.communicate(b'')
         status = proc.wait()
