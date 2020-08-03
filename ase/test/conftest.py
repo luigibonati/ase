@@ -1,13 +1,18 @@
 from pathlib import Path
 from subprocess import Popen, PIPE, check_output
+import zlib
 
 import pytest
+import numpy as np
 
+import ase
 from ase.utils import workdir
 from ase.test.factories import (Factories, CalculatorInputs,
                                 make_factory_fixture, get_testing_executables)
 from ase.calculators.calculator import (names as calculator_names,
                                         get_calculator_class)
+from ase.dependencies import all_dependencies
+
 
 
 @pytest.fixture(scope='session')
@@ -22,6 +27,22 @@ def enabled_calculators(pytestconfig):
                 raise ValueError(f'No such calculator: {name}')
             names.add(name)
     return sorted(names)
+
+
+def pytest_report_header(config, startdir):
+    messages = []
+
+    def add(msg=''):
+        messages.append(msg)
+
+    add()
+    add('Libraries')
+    add('=========')
+    for name, path in all_dependencies():
+        add('{:24} {}'.format(name, path))
+    add()
+
+    return messages
 
 
 class Calculators:
@@ -45,7 +66,6 @@ def require_vasp(calculators):
 
 
 def disable_calculators(names):
-    import pytest
     for name in names:
         if name in always_enabled_calculators:
             continue
@@ -98,6 +118,7 @@ def use_tmp_workdir(tmp_path):
     path = Path(str(tmp_path))
     with workdir(path, mkdir=True):
         yield tmp_path
+    print(f'Testpath: {path}')
 
 
 @pytest.fixture(scope='session')
@@ -183,12 +204,8 @@ class CLI:
     def __init__(self, calculators):
         self.calculators = calculators
 
-    def ase(self, args):
-        if isinstance(args, str):
-            import shlex
-            args = shlex.split(args)
-
-        proc = Popen(['ase', '-T'] + args,
+    def ase(self, *args):
+        proc = Popen(['ase', '-T'] + list(args),
                      stdout=PIPE, stdin=PIPE)
         stdout, _ = proc.communicate(b'')
         status = proc.wait()
@@ -205,8 +222,15 @@ class CLI:
 
 @pytest.fixture(scope='session')
 def datadir():
-    from ase.test.testsuite import datadir
-    return datadir
+    test_basedir = Path(__file__).parent
+    return test_basedir / 'testdata'
+
+
+@pytest.fixture
+def pt_eam_potential_file(datadir):
+    # EAM potential for Pt from LAMMPS, also used with eam calculator.
+    # (Where should this fixture really live?)
+    return datadir / 'eam_Pt_u3.dat'
 
 
 @pytest.fixture(scope='session')
@@ -232,11 +256,12 @@ def arbitrarily_seed_rng(request):
     #
     # In order not to generate all the same random numbers in every test,
     # we seed according to a kind of hash:
-    import numpy as np
-    import zlib
-    module_name = request.module
+    ase_path = ase.__path__[0]
+    abspath = Path(request.module.__file__)
+    relpath = abspath.relative_to(ase_path)
+    module_identifier = str(relpath)
     function_name = request.function.__name__
-    hashable_string = f'{module_name}:{function_name}'
+    hashable_string = f'{module_identifier}:{function_name}'
     # We use zlib.adler32() rather than hash() because Python randomizes
     # the string hashing at startup for security reasons.
     seed = zlib.adler32(hashable_string.encode('ascii')) % 12345

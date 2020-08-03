@@ -115,6 +115,12 @@ class Vasp2(GenerateVaspInput, Calculator):  # type: ignore
         # Store atoms objects from vasprun.xml here - None => uninitialized
         self._xml_data = None
 
+        if isinstance(restart, bool):
+            if restart:
+                restart = label
+            else:
+                restart = None
+
         Calculator.__init__(self,
                             restart=restart,
                             ignore_bad_restart_file=ignore_bad_restart_file,

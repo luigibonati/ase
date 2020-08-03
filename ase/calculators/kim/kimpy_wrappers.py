@@ -61,7 +61,7 @@ get_species_name = functools.partial(check_call, kimpy.species_name.get_species_
 collection_item_type_portableModel = kimpy.collection_item_type.portableModel
 
 
-class ModelCollections(object):
+class ModelCollections:
     """
     KIM Portable Models and Simulator Models are installed/managed into
     different "collections".  In order to search through the different
@@ -107,7 +107,7 @@ class ModelCollections(object):
         return hasattr(self, "collection")
 
 
-class PortableModel(object):
+class PortableModel:
     """ Creates a KIM API Portable Model object and provides a minimal interface to it
     """
 
@@ -207,7 +207,7 @@ class PortableModel(object):
         return hasattr(self, "kim_model")
 
 
-class ComputeArguments(object):
+class ComputeArguments:
     """
     Creates a KIM API ComputeArguments object from a KIM Portable Model object and
     configures it for ASE.  A ComputeArguments object is associated with a KIM Portable
@@ -330,7 +330,7 @@ class ComputeArguments(object):
         )
 
 
-class SimulatorModel(object):
+class SimulatorModel:
     """ Creates a KIM API Simulator Model object and provides a minimal
     interface to it.  This is only necessary in this package in order to
     extract any information about a given simulator model because it is

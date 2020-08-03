@@ -223,7 +223,7 @@ class MapFormatter(string.Formatter):
         return super(MapFormatter, self).format_field(value, spec)
 
 
-class TableFormat(object):
+class TableFormat:
     def __init__(self,
                  columnwidth=9,
                  precision=2,
@@ -292,7 +292,7 @@ class TableFormat(object):
         self.fmt = fmt
 
 
-class Table(object):
+class Table:
     def __init__(self,
                  field_specs,
                  summary_functions=[],

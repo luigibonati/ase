@@ -27,9 +27,9 @@ def file(request):
 @pytest.mark.parametrize("display_all", [False, True])
 def test_single(cli, file, display_all):
     if display_all:
-        output = cli.ase(['dimensionality', '--display-all', file])
+        output = cli.ase('dimensionality', '--display-all', file)
     else:
-        output = cli.ase(['dimensionality', file])
+        output = cli.ase('dimensionality', file)
 
     rows = output.split('\n')
     rows = [line for line in rows if len(line) > 1]
