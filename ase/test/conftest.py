@@ -259,7 +259,7 @@ def arbitrarily_seed_rng(request):
     ase_path = ase.__path__[0]
     abspath = Path(request.module.__file__)
     relpath = abspath.relative_to(ase_path)
-    module_identifier = str(relpath)
+    module_identifier = relpath.as_posix()  # Same on all platforms
     function_name = request.function.__name__
     hashable_string = f'{module_identifier}:{function_name}'
     # We use zlib.adler32() rather than hash() because Python randomizes
