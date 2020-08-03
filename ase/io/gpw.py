@@ -1,3 +1,4 @@
+"""Read gpw-file from GPAW."""
 from ase import Atoms
 from ase.calculators.singlepoint import (SinglePointDFTCalculator,
                                          SinglePointKPoint)
@@ -25,9 +26,14 @@ def read_gpw(filename):
         bzkpts = kpts.get('bzkpts')
         bz2ibz = kpts.get('bz2ibz')
 
+    if reader.version >= 3:
+        efermi = reader.wave_functions.fermi_levels.mean()
+    else:
+        efermi = reader.occupations.fermilevel
+
     atoms.calc = SinglePointDFTCalculator(
         atoms,
-        efermi=reader.occupations.fermilevel,
+        efermi=efermi,
         ibzkpts=ibzkpts,
         bzkpts=bzkpts,
         bz2ibz=bz2ibz,

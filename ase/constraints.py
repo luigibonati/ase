@@ -2125,7 +2125,11 @@ class Filter:
         WARNING: The calculator is unaware of this filter, and sees a
         different number of atoms.
         """
-        return self.atoms.get_calculator()
+        return self.atoms.calc
+
+    @property
+    def calc(self):
+        return self.atoms.calc
 
     def get_celldisp(self):
         return self.atoms.get_celldisp()
@@ -2659,9 +2663,12 @@ class ExpCellFilter(UnitCellFilter):
 
         # check for reasonable alignment between naive and
         # exact search directions
-        if (np.sum(deform_grad_log_force * deform_grad_log_force_naive) /
-            np.sqrt(np.sum(deform_grad_log_force**2) *
-                    np.sum(deform_grad_log_force_naive**2)) > 0.8):
+        all_are_equal = np.all(np.isclose(deform_grad_log_force,
+                                          deform_grad_log_force_naive))
+        if all_are_equal or \
+            (np.sum(deform_grad_log_force * deform_grad_log_force_naive) /
+             np.sqrt(np.sum(deform_grad_log_force**2) *
+                     np.sum(deform_grad_log_force_naive**2)) > 0.8):
             deform_grad_log_force = deform_grad_log_force_naive
 
         # Cauchy stress used for convergence testing

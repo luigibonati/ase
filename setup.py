@@ -3,7 +3,6 @@
 # Copyright (C) 2007-2017  CAMd
 # Please see the accompanying LICENSE file for further information.
 
-from __future__ import print_function
 import os
 import re
 import sys
@@ -23,9 +22,20 @@ install_requires = [
     'numpy>=1.11.3',
     'scipy>=0.18.1',
     'matplotlib>=2.0.0',
-    'pytest>=3.6.1',
-    'pytest-xdist>=1.22.1',
 ]
+
+
+extras_require = {
+    'docs': [
+        'sphinx',
+        'sphinx_rtd_theme',
+        'pillow',
+    ],
+    'test': [
+        'pytest>=3.9.1',
+        'pytest-xdist>=1.22.1',
+    ]
+}
 
 
 with open('README.rst') as fd:
@@ -41,7 +51,7 @@ package_data = {'ase': ['spacegroup/spacegroup.dat',
                         'db/templates/*',
                         'db/static/*'],
                 'ase.test': ['pytest.ini',
-                             'datafiles/*']}
+                             'testdata/*']}
 
 
 class build_py(_build_py):
@@ -84,7 +94,7 @@ setup(name='ase',
       platforms=['unix'],
       packages=find_packages(),
       install_requires=install_requires,
-      extras_require={'docs': ['sphinx', 'sphinx_rtd_theme', 'pillow']},
+      extras_require=extras_require,
       package_data=package_data,
       entry_points={'console_scripts': ['ase=ase.cli.main:main',
                                         'ase-db=ase.cli.main:old',

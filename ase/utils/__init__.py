@@ -150,6 +150,7 @@ class Lock:
         while True:
             fd = opencew(self.name, self.world)
             if fd is not None:
+                self.fd = fd
                 break
             time_left = self.timeout - (time.time() - t1)
             if time_left <= 0:
@@ -159,8 +160,12 @@ class Lock:
 
     def release(self):
         self.world.barrier()
+        # Important to close fd before deleting file on windows
+        # as a WinError would otherwise be raised.
+        self.fd.close()
         if self.world.rank == 0:
             os.remove(self.name)
+        self.world.barrier()
 
     def __enter__(self):
         self.acquire()
@@ -421,7 +426,7 @@ def write_json(self, fd):
     _write_json(fd, self)
 
 
-@classmethod
+@classmethod  # type: ignore
 def read_json(cls, fd):
     """Read new instance from JSON file."""
     from ase.io.jsonio import read_json as _read_json
@@ -499,6 +504,14 @@ def lazymethod(meth):
     return getter
 
 
+def warn_legacy(feature_name):
+    warnings.warn(
+        f'The {feature_name} feature is untested and ASE developers do not '
+        'know whether it works or how to use it.  Please rehabilitate it '
+        '(by writing unittests) or it may be removed.',
+        FutureWarning)
+
+
 def lazyproperty(meth):
     """Decorator like lazymethod, but making item available as a property."""
     return property(lazymethod(meth))
@@ -511,7 +524,10 @@ def deprecated(msg):
     def deprecated_decorator(func):
         @functools.wraps(func)
         def deprecated_function(*args, **kwargs):
-            warnings.warn(msg, FutureWarning)
+            warning = msg
+            if not isinstance(warning, Warning):
+                warning = FutureWarning(warning)
+            warnings.warn(warning)
             return func(*args, **kwargs)
         return deprecated_function
     return deprecated_decorator

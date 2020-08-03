@@ -246,3 +246,21 @@ class FixSymmetry(FixConstraint):
                                               atoms.get_reciprocal_cell().T,
                                               raw_stress, self.rotations)
         stress[:] = full_3x3_to_voigt_6_stress(symmetrized_stress)
+
+    def index_shuffle(self, atoms, ind):
+        if len(atoms) != len(ind) or len(set(ind)) != len(ind):
+            raise RuntimeError("FixSymmetry can only accomodate atom"
+                               " permutions, and len(Atoms) == {} "
+                               "!= len(ind) == {} or ind has duplicates"
+                               .format(len(atoms), len(ind)))
+
+        ind_reversed = np.zeros((len(ind)), dtype=int)
+        ind_reversed[ind] = range(len(ind))
+        new_symm_map = []
+        for sm in self.symm_map:
+            new_sm = np.array([-1] * len(atoms))
+            for at_i in range(len(ind)):
+                new_sm[ind_reversed[at_i]] = ind_reversed[sm[at_i]]
+            new_symm_map.append(new_sm)
+
+        self.symm_map = new_symm_map

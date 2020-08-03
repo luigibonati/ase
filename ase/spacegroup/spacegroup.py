@@ -31,7 +31,7 @@ class SpacegroupValueError(SpacegroupError):
 
 
 @total_ordering
-class Spacegroup(object):
+class Spacegroup:
     """A space group class.
 
     The instances of Spacegroup describes the symmetry operations for

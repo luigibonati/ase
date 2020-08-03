@@ -23,11 +23,11 @@ import sys
 import warnings
 import shutil
 from os.path import join, isfile, islink
+from typing import List
 
 import numpy as np
 
 from ase.calculators.calculator import kpts2ndarray
-
 from ase.calculators.vasp.setups import setups_defaults
 
 # Parameters that can be set in INCAR. The values which are None
@@ -739,14 +739,14 @@ dict_keys = [
                   # 'U':4.0, 'J':0.9}, ...}
 ]
 
-keys = [
+keys: List[str] = [
     # 'NBLOCK' and KBLOCK       inner block; outer block
     # 'NPACO' and APACO         distance and nr. of slots for P.C.
     # 'WEIMIN, EBREAK, DEPER    special control tags
 ]
 
 
-class GenerateVaspInput(object):
+class GenerateVaspInput:
     # Parameters corresponding to 'xc' settings.  This may be modified
     # by the user in-between loading calculators.vasp submodule and
     # instantiating the calculator object with calculators.vasp.Vasp()
@@ -1475,9 +1475,8 @@ class GenerateVaspInput(object):
         """Method that imports settings from INCAR file."""
 
         self.spinpol = False
-        file = open(filename, 'r')
-        file.readline()
-        lines = file.readlines()
+        with open(filename, 'r') as fd:
+            lines = fd.readlines()
 
         for line in lines:
             try:
@@ -1604,9 +1603,14 @@ class GenerateVaspInput(object):
                 raise IOError('Value missing for keyword "%s".' % key)
 
     def read_kpoints(self, filename='KPOINTS'):
-        file = open(filename, 'r')
-        lines = file.readlines()
-        file.close()
+        # If we used VASP builtin kspacing,
+        if self.float_params['kspacing'] is not None:
+            # Don't update kpts array
+            return
+
+        with open(filename, 'r') as fd:
+            lines = fd.readlines()
+
         ktype = lines[2].split()[0].lower()[0]
         if ktype in ['g', 'm', 'a']:
             if ktype == 'g':

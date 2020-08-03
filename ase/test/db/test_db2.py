@@ -9,7 +9,6 @@ from ase.constraints import FixAtoms, FixBondLength
 from ase.db import connect
 from ase.io import read
 from ase.build import molecule
-from ase.test import must_raise
 
 names = ['testase.json', 'testase.db', 'postgresql', 'mysql', 'mariadb']
 
@@ -64,7 +63,16 @@ def test_db2(name):
 
     c.delete([d.id for d in c.select(C=1)])
     chi = np.array([1 + 0.5j, 0.5])
-    id = c.write(ch4, data={'1-butyne': 'bla-bla', 'chi': chi})
+    if 'db' in name:
+        kvp = {'external_tables':
+               {'blabla': {'a': 1, 'b': 2, 'c': 3},
+                'lala': {'a': 0.01, 'b': 0.02, 'c': 0.0}}}
+
+    else:
+        kvp = {'a': 1}
+
+    id = c.write(ch4, key_value_pairs=kvp,
+                 data={'1-butyne': 'bla-bla', 'chi': chi})
 
     row = c.get(id)
     print(row.data['1-butyne'], row.data.chi)
@@ -82,7 +90,7 @@ def test_db2(name):
     f4 = a.get_forces()
     assert abs(f1 - f4).max() < 1e-14
 
-    with must_raise(ValueError):
+    with pytest.raises(ValueError):
         c.update(id, abc={'a': 42})
 
     c.update(id, grr='hmm')
@@ -93,16 +101,16 @@ def test_db2(name):
     for row in c.select(include_data=False):
         assert len(row.data) == 0
 
-    with must_raise(ValueError):
+    with pytest.raises(ValueError):
         c.write(ch4, foo=['bar', 2])  # not int, bool, float or str
 
-    with must_raise(ValueError):
+    with pytest.raises(ValueError):
         c.write(Atoms(), pi='3.14')  # number as a string
 
-    with must_raise(ValueError):
+    with pytest.raises(ValueError):
         c.write(Atoms(), fmax=0.0)  # reserved word
 
-    with must_raise(ValueError):
+    with pytest.raises(ValueError):
         c.write(Atoms(), S=42)  # chemical symbol as key
 
     id = c.write(Atoms(),
@@ -130,3 +138,4 @@ def test_db2(name):
     ids = [row.get('id') for row in c.select()]
     offset = 2
     assert next(c.select(offset=offset)).id == ids[offset]
+

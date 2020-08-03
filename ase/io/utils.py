@@ -156,13 +156,8 @@ def cell_to_lines(writer, cell):
 
 
 def make_patch_list(writer):
-    try:
-        from matplotlib.path import Path
-    except ImportError:
-        Path = None
-        from matplotlib.patches import Circle, Polygon, Wedge
-    else:
-        from matplotlib.patches import Circle, PathPatch, Wedge
+    from matplotlib.path import Path
+    from matplotlib.patches import Circle, PathPatch, Wedge
 
     indices = writer.positions[:, 2].argsort()
     patch_list = []
@@ -210,10 +205,7 @@ def make_patch_list(writer):
             c = writer.T[a]
             if c != -1:
                 hxy = writer.D[c]
-                if Path is None:
-                    patch = Polygon((xy + hxy, xy - hxy))
-                else:
-                    patch = PathPatch(Path((xy + hxy, xy - hxy)))
+                patch = PathPatch(Path((xy + hxy, xy - hxy)))
                 patch_list.append(patch)
     return patch_list
 
@@ -271,3 +263,57 @@ class ImageIterator:
             indices_tuple = indices.indices(nchunks)
             iterator = islice(self.ichunks(fd), *indices_tuple)
         return iterator
+
+
+def verify_cell_for_export(cell, check_orthorhombric=True):
+    """Function to verify if the cell size is defined and if the cell is
+
+    Parameters:
+
+    cell: cell object
+        cell to be checked.
+
+    check_orthorhombric: bool
+        If True, check if the cell is orthorhombric, raise an ``ValueError`` if
+        the cell is orthorhombric. If False, doesn't check if the cell is
+        orthorhombric.
+
+    Raise a ``ValueError`` if the cell if not suitable for export to mustem xtl
+    file or prismatic/computem xyz format:
+        - if cell is not orthorhombic (only when check_orthorhombric=True)
+        - if cell size is not defined
+    """
+
+    if check_orthorhombric and not cell.orthorhombic:
+        raise ValueError('To export to this format, the cell needs to be '
+                         'orthorhombic.')
+    if cell.rank < 3:
+        raise ValueError('To export to this format, the cell size needs '
+                         'to be set: current cell is {}.'.format(cell))
+
+
+def verify_dictionary(atoms, dictionary, dictionary_name):
+    """
+    Verify a dictionary have a key for each symbol present in the atoms object.
+
+    Parameters:
+
+    dictionary: dict
+        Dictionary to be checked.
+
+
+    dictionary_name: dict
+        Name of the dictionary to be displayed in the error message.
+
+    cell: cell object
+        cell to be checked.
+
+
+    Raise a ``ValueError`` if the key doesn't match the atoms present in the
+    cell.
+    """
+    # Check if we have enough key
+    for key in set(atoms.symbols):
+        if key not in dictionary:
+            raise ValueError('Missing the {} key in the `{}` dictionary.'
+                             ''.format(key, dictionary_name))

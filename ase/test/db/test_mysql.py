@@ -1,4 +1,5 @@
-from ase.test import must_raise
+from typing import Optional
+import pytest
 import unittest
 try:
     import pymysql
@@ -14,6 +15,8 @@ from ase.build import molecule
 import os
 
 ON_CI_SERVER = 'CI_PROJECT_DIR' in os.environ.keys()
+
+URL: Optional[str]
 
 if ON_CI_SERVER:
     URL = 'mysql://root:ase@mysql:3306/testase_mysql'
@@ -66,13 +69,13 @@ def test_write_read_with_calculator():
 
     h2o = molecule('H2O')
     calc = EMT(dummy_param=2.4)
-    h2o.set_calculator(calc)
+    h2o.calc = calc
 
     uid = db.write(h2o)
 
     h2o_db = db.get(id=uid).toatoms(attach_calculator=True)
 
-    calc_db = h2o_db.get_calculator()
+    calc_db = h2o_db.calc
     assert calc_db.parameters['dummy_param'] == 2.4
 
     # Check that get_atoms function works
@@ -102,7 +105,7 @@ def test_delete():
     db.get(id=uid)
     db.delete([uid])
 
-    with must_raise(KeyError):
+    with pytest.raises(KeyError):
         db.get(id=uid)
 
 

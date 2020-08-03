@@ -17,13 +17,16 @@ import numpy as np
 import ase.units as units
 from ase.atom import Atom
 from ase.cell import Cell
-from ase.constraints import FixConstraint, FixBondLengths, FixLinearTriatomic
+from ase.constraints import (FixConstraint, FixBondLengths, FixLinearTriatomic,
+                             voigt_6_to_full_3x3_stress,
+                             full_3x3_to_voigt_6_stress)
 from ase.data import atomic_masses, atomic_masses_common
 from ase.geometry import wrap_positions, find_mic, get_angles, get_distances
 from ase.symbols import Symbols, symbols2numbers
+from ase.utils import deprecated
 
 
-class Atoms(object):
+class Atoms:
     """Atoms object.
 
     The Atoms object can represent an isolated molecule, or a
@@ -184,7 +187,7 @@ class Atoms(object):
             if constraint is None:
                 constraint = [c.copy() for c in atoms.constraints]
             if calculator is None:
-                calculator = atoms.get_calculator()
+                calculator = atoms.calc
             if info is None:
                 info = copy.deepcopy(atoms.info)
 
@@ -254,7 +257,7 @@ class Atoms(object):
         else:
             self.info = dict(info)
 
-        self.set_calculator(calculator)
+        self.calc = calculator
 
     @property
     def symbols(self):
@@ -269,21 +272,37 @@ class Atoms(object):
         new_symbols = Symbols.fromsymbols(obj)
         self.numbers[:] = new_symbols.numbers
 
+    @deprecated(DeprecationWarning('Please use atoms.calc = calc'))
     def set_calculator(self, calc=None):
-        """Attach calculator object."""
+        """Attach calculator object.
+
+        Please use the equivalent atoms.calc = calc instead of this
+        method."""
+        self.calc = calc
+
+    @deprecated(DeprecationWarning('Please use atoms.calc'))
+    def get_calculator(self):
+        """Get currently attached calculator object.
+
+        Please use the equivalent atoms.calc instead of
+        atoms.get_calculator()."""
+        return self.calc
+
+    @property
+    def calc(self):
+        """Calculator object."""
+        return self._calc
+
+    @calc.setter
+    def calc(self, calc):
         self._calc = calc
         if hasattr(calc, 'set_atoms'):
             calc.set_atoms(self)
 
-    def get_calculator(self):
-        """Get currently attached calculator object."""
-        return self._calc
-
-    def _del_calculator(self):
+    @calc.deleter  # type: ignore
+    @deprecated(DeprecationWarning('Please use atoms.calc = None'))
+    def calc(self):
         self._calc = None
-
-    calc = property(get_calculator, set_calculator, _del_calculator,
-                    doc='Calculator object.')
 
     @property
     def number_of_lattice_vectors(self):
@@ -330,6 +349,8 @@ class Atoms(object):
         scale_atoms: bool
             Fix atomic positions or move atoms with the unit cell?
             Default behavior is to *not* move the atoms (scale_atoms=False).
+        apply_constraint: bool
+            Whether to apply constraints to the given cell.
 
         Examples:
 
@@ -410,9 +431,18 @@ class Atoms(object):
 
         return self.cell.reciprocal()
 
+    @property
+    def pbc(self):
+        """Reference to pbc-flags for in-place manipulations."""
+        return self._pbc
+
+    @pbc.setter
+    def pbc(self, pbc):
+        self._pbc[:] = pbc
+
     def set_pbc(self, pbc):
         """Set periodic boundary condition flags."""
-        self._pbc[:] = pbc
+        self.pbc = pbc
 
     def get_pbc(self):
         """Get periodic boundary condition flags."""
@@ -800,8 +830,7 @@ class Atoms(object):
             # Convert to the Voigt form before possibly applying
             # constraints and adding the dynamic part of the stress
             # (the "ideal gas contribution").
-            stress = np.array([stress[0, 0], stress[1, 1], stress[2, 2],
-                               stress[1, 2], stress[0, 2], stress[0, 1]])
+            stress = full_3x3_to_voigt_6_stress(stress)
         else:
             assert shape == (6,)
 
@@ -825,12 +854,9 @@ class Atoms(object):
         if voigt:
             return stress
         else:
-            xx, yy, zz, yz, xz, xy = stress
-            return np.array([(xx, xy, xz),
-                             (xy, yy, yz),
-                             (xz, yz, zz)])
+            return voigt_6_to_full_3x3_stress(stress)
 
-    def get_stresses(self, include_ideal_gas=False):
+    def get_stresses(self, include_ideal_gas=False, voigt=True):
         """Calculate the stress-tensor of all the atoms.
 
         Only available with calculators supporting per-atom energies and
@@ -843,6 +869,17 @@ class Atoms(object):
         if self._calc is None:
             raise RuntimeError('Atoms object has no calculator.')
         stresses = self._calc.get_stresses(self)
+
+        # make sure `stresses` are in voigt form
+        if np.shape(stresses)[1:] == (3, 3):
+            stresses_voigt = [full_3x3_to_voigt_6_stress(s) for s in stresses]
+            stresses = np.array(stresses_voigt)
+
+        # REMARK: The ideal gas contribution is intensive, i.e., the volume
+        # is divided out. We currently don't check if `stresses` are intensive
+        # as well, i.e., if `a.get_stresses.sum(axis=0) == a.get_stress()`.
+        # It might be good to check this here, but adds computational overhead.
+
         if include_ideal_gas and self.has('momenta'):
             stresscomp = np.array([[0, 5, 4], [5, 1, 3], [4, 3, 2]])
             if hasattr(self._calc, 'get_atomic_volumes'):
@@ -855,7 +892,11 @@ class Atoms(object):
                 for beta in range(alpha, 3):
                     stresses[:, stresscomp[alpha, beta]] -= (
                         p[:, alpha] * p[:, beta] * invmass * invvol)
-        return stresses
+        if voigt:
+            return stresses
+        else:
+            stresses_3x3 = [voigt_6_to_full_3x3_stress(s) for s in stresses]
+            return np.array(stresses_3x3)
 
     def get_dipole_moment(self):
         """Calculate the electric dipole moment for the atoms object.
@@ -1031,6 +1072,10 @@ class Atoms(object):
         """Append atom to end."""
         self.extend(self.__class__([atom]))
 
+    def __iter__(self):
+        for i in range(len(self)):
+            yield self[i]
+
     def __getitem__(self, i):
         """Return a subset of the atoms.
 
@@ -1165,7 +1210,8 @@ class Atoms(object):
         atoms *= rep
         return atoms
 
-    __mul__ = repeat
+    def __mul__(self, rep):
+        return self.repeat(rep)
 
     def translate(self, displacement):
         """Translate atomic positions.
@@ -1933,8 +1979,6 @@ class Atoms(object):
         else:
             return not eq
 
-    __hash__ = None
-
     def get_volume(self):
         """Get volume of unit cell."""
         if self.cell.rank != 3:
@@ -1983,20 +2027,15 @@ class Atoms(object):
                        doc='Attribute for direct ' +
                        'manipulation of the atomic numbers.')
 
-    def _get_cell(self):
-        """Return reference to unit cell for in-place manipulations."""
+    @property
+    def cell(self):
+        """The :class:`ase.cell.Cell` for direct manipulation."""
         return self._cellobj
 
-    cell = property(_get_cell, set_cell, doc='Attribute for direct ' +
-                    'manipulation of the unit :class:`ase.cell.Cell`.')
-
-    def _get_pbc(self):
-        """Return reference to pbc-flags for in-place manipulations."""
-        return self._pbc
-
-    pbc = property(_get_pbc, set_pbc,
-                   doc='Attribute for direct manipulation ' +
-                   'of the periodic boundary condition flags.')
+    @cell.setter
+    def cell(self, cell):
+        cell = Cell.ascell(cell)
+        self._cellobj[:] = cell
 
     def write(self, filename, format=None, **kwargs):
         """Write atoms object to a file.

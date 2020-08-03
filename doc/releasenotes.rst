@@ -10,34 +10,19 @@ Git master branch
 
 :git:`master <>`.
 
-* Standardize optimizers maximum step variable name to maxstep and default value to 0.2 for all optimizers.
-* The tangent estimates used to make the nudged elastic band (NEB) plots are
-  slightly improved to use center, rather than forward differences. This does
-  not affect how NEBs are run; only how they are displayed.
+General changes:
 
-* The ``ase db db1.db <selection> --insert-into db2.db`` command now respects
-  ``--limit`` and ``--offset``.
+* :meth:`~ase.Atoms.get_calculator` is deprecated.  Use
+  ``atoms.calc`` instead.
 
-* Fixed ``kpts`` option of :class:`ase.calculators.espresso.Espresso`
-  so that specifying a Γ-point calculation with ``kpts=(1, 1, 1)``
-  does not enable the optimized codepath (which halves memory and
-  cpu). Use ``kpts=None`` to enable the optimized codepath.
+* :meth:`~ase.Atoms.set_calculator` is deprecated.  Use
+  ``atoms.calc = calc`` instead.
 
-* Removed interface to :ref:`Dacapo <jacapo>` due to lack of users and
-  maintainers.
+* ``del atoms.calc`` is deprecated.  Use ``atoms.calc = None`` instead.
 
-* Removed interface to `FindSym
-  <https://stokes.byu.edu/iso/findsym.php>`_ due to lack of users and
-  maintainers.  If you need this, please find it in git history,
-  make it work, and write tests.
+* The deprecated ``atoms.cell.pbc`` has been removed.
 
-* Removed old GUI modules which were never fully ported to Tkinter.
-  If you miss them, please find them in git history and rehabilitate
-  them.
-
-* :class:`ase.neb.NEBTools` now allows the simultaneous plotting of all bands from a trajectory of a nudged elastic band calculation (or similar); this funciton is also available at the command line as ``ase nebplot neb.traj``.
-
-* The image-dependent pair-potential (IDPP) interpolation scheme for connecting states---i.e., in a saddle-point search---has been moved into the method :func:`ase.neb.idpp_interpolate`. This method is a more feature-rich version than that accessible via :meth:`ase.neb.NEB.interpolate`.
+Development:
 
 * Test suite now uses `pytest <https://docs.pytest.org/>`_.
   This means it requires pytest and optionally
@@ -56,18 +41,102 @@ Git master branch
 * Code coverage statistics are now available on https://ase.gitlab.io/ase.
   They currently exclude calculators and IO formats.
 
-* The deprecated ``atoms.cell.pbc`` has been removed.
+* Our CI now uses mypy_ for static analysis of the code.
+
+Algorithms:
+
+* Functions for attaching structures in :mod:`attach <ase.build>` introduced.
+
+* Standardize optimizers maximum step variable name to maxstep and default value to 0.2 for all optimizers.
+
+* Added :class:`Pyberny <ase.optimize.Berny>` geometry optimizer.
+  This optimizer can be very
+  efficient for molecules, but is currently unreliable and therefore
+  should be considered experimental.
+
+* Removed interface to `FindSym
+  <https://stokes.byu.edu/iso/findsym.php>`_ due to lack of users and
+  maintainers.  If you need this, please find it in git history,
+  make it work, and write tests.
+
+* The tangent estimates used to make the nudged elastic band (NEB) plots are
+  slightly improved to use center, rather than forward differences. This does
+  not affect how NEBs are run; only how they are displayed.
+
+* :class:`ase.neb.NEBTools` now allows the simultaneous plotting of
+  all bands from a trajectory of a nudged elastic band calculation (or
+  similar); this funciton is also available at the command line as
+  ``ase nebplot neb.traj``.
+
+* The image-dependent pair-potential (IDPP) interpolation scheme for
+  connecting states---i.e., in a saddle-point search---has been moved
+  into the method :func:`ase.neb.idpp_interpolate`. This method is a
+  more feature-rich version than that accessible via
+  :meth:`ase.neb.NEB.interpolate`.
+
+* Reduced code duplication in the :mod:`ase.ga` module by incorporating the
+  'bulk' GA functionality into the corresponding 'standard' modules.
+  Using the now deprecated 'bulk' GA modules (i.e.
+  :mod:`ase.ga.bulk_startgenerator`, :mod:`ase.ga.bulk_crossovers`,
+  :mod:`ase.ga.bulk_mutations` and :mod:`ase.ga.bulk_utilities`) raises
+  a warning with pointers to the corresponding 'standard' modules.
+
+* Extended the genetic algorithm to cases where 1 or 2 cell vectors are
+  part of the global optimization problem, which can be useful in searching
+  for nanowire and thin film structures.
+
+* Added a new tutorial on molecular crystal structure prediction using
+  a genetic algorithm, see :ref:`ga_molecular_crystal_tutorial`.
+
+* New ``dimensionality`` sub-command for the :ref:`ase <cli>` command line
+  interface.
+
+* Added a diff CLI for displaying and comparing the positions, forces,
+  and energies of atoms objects.  The classes and functions used in
+  the CLI are also available in :mod:`ase.cli.template`.
+
+* Allow setting the initial hessian in `optimize.BFGS` via the keyword `alpha` or
+  explicitly via `opt.H0 = ...` after instantiation.
+
+I/O:
+
+* The ``ase db db1.db <selection> --insert-into db2.db`` command now respects
+  ``--limit`` and ``--offset``.
+
+* Read and write support for qball sys file format.
+
+* Added write support for the Vasp 5 XDATCAR file format.
+
+* Added Z-matrix parser for use in input/output file readers.
+
+* Added support for writing prismatic and computem xyz file. Required arguments
+  to write mustem xtl file have been updated to be consistent with prismatic
+  and computem xyz file export.
+
+* Removed ETSF format reader since it depends on ScientificPython
+  which requires Python 2.7.
+
+* Removed Dacapo-NetCDF reader which has not worked since ancient times.
+
+GUI:
+
+* Removed old GUI modules which were never fully ported to Tkinter.
+  If you miss them, please find them in git history and rehabilitate
+  them.
+
+ * Added Russian translation.
+
+Calculators:
 
 * Multiple improvements and bugfixes to OpenMX calculator;
   OpenMX calculator now supports OpenMX 3.9.
 
-* Added Russian translation.
-
-* Write support has been added for the Vasp 5 XDATCAR file format.
-
 * Added :mod:`ORCA <ase.calculators.orca>` calculator.
 
 * Added :mod:`GAMESS-US <ase.calculators.gamess_us>` calculator.
+
+* Removed interface to :ref:`Dacapo <jacapo>` due to lack of users and
+  maintainers.
 
 * Completely refactored :mod:`Gaussian <ase.calculators.gaussian>` calculator.
   The new calculator should be completely backwards compatible with the
@@ -80,9 +149,28 @@ Git master branch
   classes are the canonical way to use Gaussian's built-in geometry
   optimization routines.
 
-* Added :class:`Pyberny <ase.optimize.Berny>` geometry optimizer.
+* Fixed ``kpts`` option of :class:`ase.calculators.espresso.Espresso`
+  so that specifying a Γ-point calculation with ``kpts=(1, 1, 1)``
+  does not enable the optimized codepath (which halves memory and
+  cpu). Use ``kpts=None`` to enable the optimized codepath.
 
-* Added Z-matrix parser for use in input/output file readers.
+* Added the properties ``stresses`` and ``energies`` to the
+  Lennard-Jones potential :class:`ase.calculators.lj.LennardJones`.
+  Functionality for other properties should be unchanged. Testing and
+  documentation have also been expanded.
+
+
+.. _mypy: http://mypy-lang.org/
+
+
+Version 3.19.2
+==============
+
+22 July 2020: :git:`3.19.2 <../3.19.2>`
+
+* Compatibility fixes related to matplotlib:
+  Update png writer to be compatible with matplotlib 3.3.0.
+  Update incompatible calls to ``matplotlib.use()``.
 
 Version 3.19.1
 ==============
@@ -211,6 +299,7 @@ GUI:
 * It is now possible to copy and paste atoms: The "add atoms" function
   (Ctrl+A) will suggest the atoms in the current selection by default.
 
+
 Version 3.18.2
 ==============
 
@@ -218,6 +307,7 @@ Version 3.18.2
 
 * Fix an issue with the binary package (wheel) of 3.18.1.
   No bugfixes as such.
+
 
 Version 3.18.1
 ==============
@@ -230,6 +320,7 @@ Version 3.18.1
   Use ``atoms.pbc`` instead; this works the same as always.
   Also, the :class:`~ase.cell.Cell` object now exposes almost the entire
   ``ndarray`` interface.  For a list of smaller bugfixes, see the git log.
+
 
 Version 3.18.0
 ==============
@@ -342,9 +433,6 @@ Algorithms:
 * The genetic algorithm module :mod:`ase.ga` now has operators for crystal
   structure prediction. See :ref:`ga_bulk_tutorial`.
 
-* The genetic algorithm module :mod:`ase.ga` now has operators for crystal
-  structure prediction. See :ref:`ga_bulk_tutorial`.
-
 * New :func:`ase.geometry.dimensionality.analyze_dimensionality` function.
   See: :ref:`dimtutorial`.
 
@@ -396,6 +484,7 @@ GUI:
    by custom arrays.
 
  * Improved color scales.
+
 
 Version 3.17.0
 ==============
@@ -959,7 +1048,7 @@ Version 3.9.1
 
 21 July 2015: :git:`3.9.1 <../3.9.1>`.
 
-* Added function for finding maximally-reduced Niggli unit cell:
+* Added function for finding maximally reduced Niggli unit cell:
   :func:`ase.build.niggli_reduce`.
 
 * Octopus interface added (experimental).
@@ -1120,7 +1209,7 @@ Version 3.5.0
 
 * New :class:`~ase.io.bundletrajectory.BundleTrajectory` added.
 
-* Updated GUI interface:
+* Updated GUI:
 
   * Stability and usability improvements.
   * Povray render facility.

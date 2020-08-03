@@ -86,7 +86,7 @@ setups_defaults = {'minimal':
                     'Ta': '_pv',
                     'Cr': '_pv',
                     'Mo': '_pv',
-                    'W': '_pv',
+                    'W': '_sv',  # updated from W_pv
                     'Mn': '_pv',
                     'Tc': '_pv',
                     'Re': '_pv',

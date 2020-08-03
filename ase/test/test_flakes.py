@@ -11,7 +11,7 @@ import ase
 pytest.importorskip('flake8')
 
 
-asepath = Path(ase.__path__[0])
+asepath = Path(ase.__path__[0])  # type: ignore
 
 
 max_errors = {
@@ -125,20 +125,33 @@ max_errors = {
     'E501': 762}
 
 
+def have_documentation():
+    import ase
+    ase_path = Path(ase.__path__[0])
+    doc_path = ase_path.parent / 'doc/ase/ase.rst'
+    return doc_path.is_file()
+
+
 @pytest.mark.slow
 def test_flake8():
-    proc = Popen([sys.executable,
-                  '-m',
-                  'flake8',
-                  str(asepath),
-                  str((asepath / '../doc').resolve()),
-                  '--exclude',
-                  str((asepath / '../doc/build/*').resolve()),
-                  '--ignore',
-                  'E129,W293,W503,W504,E741'
-                  '-j',
-                  '1'],
-                 stdout=PIPE)
+    if not have_documentation():
+        pytest.skip('ase/doc not present; '
+                    'this is probably an installed version ')
+
+    args = [
+        sys.executable,
+        '-m',
+        'flake8',
+        str(asepath),
+        str((asepath / '../doc').resolve()),
+        '--exclude',
+        str((asepath / '../doc/build/*').resolve()),
+        '--ignore',
+        'E129,W293,W503,W504,E741',
+        '-j',
+        '1'
+    ]
+    proc = Popen(args, stdout=PIPE)
     stdout, stderr = proc.communicate()
     stdout = stdout.decode('utf8')
 

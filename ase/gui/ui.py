@@ -1,3 +1,4 @@
+# type: ignore
 import re
 import sys
 from collections import namedtuple
@@ -51,7 +52,7 @@ def helpwindow(text):
     win.add(Text(text))
 
 
-class BaseWindow(object):
+class BaseWindow:
     def __init__(self, title, close=None):
         self.title = title
         if close:
@@ -86,7 +87,7 @@ class Window(BaseWindow):
         BaseWindow.__init__(self, title, close)
 
 
-class Widget(object):
+class Widget:
     def pack(self, parent, side='top', anchor='center'):
         widget = self.create(parent)
         widget.pack(side=side, anchor=anchor)

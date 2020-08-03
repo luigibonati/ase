@@ -77,7 +77,3 @@ def test_compare_placzek_implementation_intensities():
     pr.run()
     pro = pr.absolute_intensity(omega=om)[-1]
     assert pro == pytest.approx(pri, 1e-3)
-
-
-if __name__ == '__main__':
-    test_overlap()

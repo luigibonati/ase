@@ -17,8 +17,10 @@ import functools
 import inspect
 import os
 import sys
+import warnings
 from pathlib import Path, PurePath
-from typing import IO, List, Any, Iterable, Tuple, Union, Sequence
+from typing import (
+    IO, List, Any, Iterable, Tuple, Union, Sequence, Dict, Optional)
 
 from ase.atoms import Atoms
 from importlib import import_module
@@ -42,9 +44,9 @@ class IOFormat:
         self.encoding = encoding
 
         # (To be set by define_io_format())
-        self.extensions = []
-        self.globs = []
-        self.magic = []
+        self.extensions: List[str] = []
+        self.globs: List[str] = []
+        self.magic: List[str] = []
 
     def open(self, fname, mode: str = 'r') -> IO:
         # We might want append mode, too
@@ -162,11 +164,11 @@ class IOFormat:
     def match_magic(self, data: bytes) -> bool:
         # XXX We should use a regex for this!
         from fnmatch import fnmatchcase
-        return any(fnmatchcase(data, magic + b'*')
+        return any(fnmatchcase(data, magic + b'*')  # type: ignore
                    for magic in self.magic)
 
 
-ioformats = {}  # These will be filled at run-time.
+ioformats: Dict[str, IOFormat] = {}  # These will be filled at run-time.
 extension2format = {}
 
 
@@ -250,7 +252,6 @@ F('cp2k-dcd', 'CP2K DCD file', '+B',
 F('crystal', 'Crystal fort.34 format', '1S',
   ext=['f34', '34'], glob=['f34', '34']),
 F('cube', 'CUBE file', '1F'),
-F('dacapo', 'Dacapo netCDF output file', '1F'),
 F('dacapo-text', 'Dacapo text output', '1F',
   module='dacapo', magic=b'*&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&\n'),
 F('db', 'ASE SQLite database file', '+S'),
@@ -273,7 +274,6 @@ F('espresso-in', 'Quantum espresso in file', '1F',
   module='espresso', ext='pwi', magic=[b'*\n&system', b'*\n&SYSTEM']),
 F('espresso-out', 'Quantum espresso out file', '+F',
   module='espresso', ext=['out', 'pwo'], magic=b'*Program PWSCF'),
-F('etsf', 'ETSF format', '1S'),
 F('exciting', 'exciting input', '1S', glob='input.xml'),
 F('extxyz', 'Extended XYZ file', '+F'),
 F('findsym', 'FINDSYM-format', '+F'),
@@ -328,13 +328,18 @@ F('nwchem-in', 'NWChem input file', '1F',
 F('nwchem-out', 'NWChem output file', '+F',
   module='nwchem', ext='nwo',
   magic=b'*Northwest Computational Chemistry Package'),
-F('octopus', 'Octopus input file', '1F', glob='inp'),
+F('octopus-in', 'Octopus input file', '1F',
+  module='octopus', glob='inp'),
 F('proteindatabank', 'Protein Data Bank', '+F',
   ext='pdb'),
 F('png', 'Portable Network Graphics', '1B'),
 F('postgresql', 'ASE PostgreSQL database file', '+S', module='db'),
 F('pov', 'Persistance of Vision', '1S'),
+# prismatic: Should have ext='xyz' if/when multiple formats can have the same
+# extension
+F('prismatic', 'prismatic and computem XYZ-file', '1F')
 F('py', 'Python file', '+F'),
+F('sys', 'qball sys file', '1F'),
 F('qbox', 'QBOX output file', '+F',
   magic=b'*:simulation xmlns:'),
 F('res', 'SHELX format', '1S', ext='shelx'),
@@ -375,7 +380,7 @@ netcdfconventions2format = {
 }
 
 
-def get_compression(filename: str) -> Tuple[str, str]:
+def get_compression(filename: str) -> Tuple[str, Optional[str]]:
     """
     Parse any expected file compression from the extension of a filename.
     Return the filename without the extension, and the extension. Recognises
@@ -517,13 +522,13 @@ def write(
         fd = None
         if filename == '-':
             fd = sys.stdout
-            filename = None
+            filename = None  # type: ignore
         elif format is None:
             format = filetype(filename, read=False)
             assert isinstance(format, str)
     else:
-        fd = filename
-        filename = None
+        fd = filename  # type: ignore
+        filename = None  # type: ignore
 
     format = format or 'json'  # default is json
 
@@ -653,6 +658,9 @@ def iread(
     Works as the `read` function, but yields one Atoms object at a time
     instead of all at once."""
 
+    if isinstance(filename, PurePath):
+        filename = str(filename)
+
     if isinstance(index, str):
         index = string2index(index)
 
@@ -730,8 +738,10 @@ def parse_filename(filename, index=None, do_not_split_by_at_sign=False):
     try:
         newindex = string2index(newindex)
     except ValueError:
-        pass
-
+        warnings.warn('Can not parse index for path \n'
+                      ' "%s" \nConsider set '
+                      'do_not_split_by_at_sign=True \nif '
+                      'there is no index.' % filename)
     return newfilename, newindex
 
 
@@ -743,7 +753,7 @@ def string2index(string: str) -> Union[int, slice, str]:
             return int(string)
         except ValueError:
             return string
-    i = []
+    i: List[Optional[int]] = []
     for s in string.split(':'):
         if s == '':
             i.append(None)
@@ -808,7 +818,7 @@ def filetype(
 
         fd = open_with_compression(filename, 'rb')
     else:
-        fd = filename
+        fd = filename    # type: ignore
         if fd is sys.stdin:
             return 'json'
 
@@ -819,7 +829,7 @@ def filetype(
         fd.seek(0)
 
     if len(data) == 0:
-        raise UnknownFileTypeError('Empty file: ' + filename)
+        raise UnknownFileTypeError('Empty file: ' + filename)    # type: ignore
 
     if data.startswith(b'CDF'):
         # We can only recognize these if we actually have the netCDF4 module.
