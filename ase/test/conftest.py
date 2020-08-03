@@ -168,16 +168,6 @@ def monkeypatch_disabled_calculators(request, enabled_calculators):
                          if name not in enabled_calculators])
 
 
-# Backport of tmp_path fixture from pytest 3.9.
-# We want to be compatible with pytest 3.3.2 and pytest-xdist 1.22.1.
-# These are provided with Ubuntu 18.04.
-# Current Debian stable uses a newer libraries, so that should be OK.
-@pytest.fixture
-def tmp_path(tmpdir):
-    # Avoid trouble since tmpdir can be a py._path.local.LocalPath
-    return Path(str(tmpdir))
-
-
 @pytest.fixture(autouse=True)
 def use_tmp_workdir(tmp_path):
     # Pytest can on some systems provide a Path from pathlib2.  Normalize:
