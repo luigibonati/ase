@@ -84,7 +84,6 @@ def get_bonds(atoms, covalent_radii):
 class View:
     def __init__(self, rotations):
         self.colormode = 'jmol'  # The default colors
-        self.nselected = 0
         self.labels = None
         self.axes = rotate(rotations)
         self.configured = False
