@@ -416,6 +416,11 @@ class GUI(View, Status):
         self.copy_atoms_to_clipboard(event)
         self.really_delete_selected_atoms()
 
+    @property
+    def clipboard(self):
+        from ase.gui.clipboard import AtomsClipboard
+        return AtomsClipboard(self.window.win)
+
     def get_atoms_from_clipboard(self):
         from ase.io.jsonio import decode
         root = self.window.win

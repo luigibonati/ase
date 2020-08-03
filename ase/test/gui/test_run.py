@@ -309,25 +309,14 @@ def test_clipboard_copy(gui):
     assert all(gui.selected_atoms().symbols == atoms.symbols)
     gui.copy_atoms_to_clipboard()
     newatoms = gui.get_atoms_from_clipboard()
-    assert all(newatoms.symbols == atoms.symbols)
-    assert newatoms.positions == pytest.approx(newatoms.positions)
-    assert newatoms.cell == pytest.approx(newatoms.cell[:])
+    assert newatoms is not atoms
+    assert newatoms == atoms
 
 def test_clipboard_paste(gui):
     atoms = molecule('CH3CH2OH')
     gui._export_atoms_to_clipboard(atoms)
-    gui.paste_atoms()
-
-    #gui.
-
-    #gui.new_atoms(Atoms())
-    #assert len(gui.atoms) == 0
-    #dia = gui.paste_atoms()
-    #return
-    #dia.add()
-    #print(gui.atoms.symbols.numbers)
-    #print(atoms.symbols.numbers)
-    #assert all(gui.atoms.symbols == atoms.symbols)
+    gui.paste_atoms_from_clipboard()
+    assert gui.atoms == atoms
 
 def window():
 
