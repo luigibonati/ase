@@ -412,14 +412,14 @@ class GUI(View, Status):
         selection_mask = self.images.selected[:len(self.atoms)]
         return self.atoms[selection_mask]
 
-    def cut_atoms_to_clipboard(self, event):
-        self.copy_atoms_to_clipboard(event)
-        self.really_delete_selected_atoms()
-
     @property
     def clipboard(self):
         from ase.gui.clipboard import AtomsClipboard
         return AtomsClipboard(self.window.win)
+
+    def cut_atoms_to_clipboard(self, event=None):
+        self.copy_atoms_to_clipboard(event)
+        self.really_delete_selected_atoms()
 
     def copy_atoms_to_clipboard(self, event=None):
         atoms = self.selected_atoms()
@@ -435,10 +435,10 @@ class GUI(View, Status):
                 f'Original error:\n\n{err}')
             return
 
-        if self.atoms != Atoms():
-            self.paste_atoms_onto_existing(atoms)
-        else:
-            self.new_atoms(atoms)
+        if self.atoms == Atoms():
+            self.atoms.cell = atoms.cell
+            self.atoms.pbc = atoms.pbc
+        self.paste_atoms_onto_existing(atoms)
 
     def paste_atoms_onto_existing(self, atoms):
         selection = self.selected_atoms()

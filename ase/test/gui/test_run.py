@@ -313,6 +313,16 @@ def test_clipboard_copy(gui):
     assert newatoms == atoms
 
 
+def test_clipboard_cut_paste(gui):
+    atoms = molecule('H2O')
+    gui.new_atoms(atoms.copy())
+    assert len(gui.atoms) == 3
+    gui.select_all()
+    gui.cut_atoms_to_clipboard()
+    assert len(gui.atoms) == 0
+    assert atoms == gui.clipboard.get_atoms()
+
+
 def test_clipboard_paste_onto_empty(gui):
     atoms = bulk('Ti')
     gui.clipboard.set_atoms(atoms)
