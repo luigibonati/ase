@@ -1,5 +1,6 @@
 from ase.io.jsonio import encode, decode
 
+
 class AtomsClipboard:
     def __init__(self, tk):
         self.tk = tk
@@ -13,8 +14,7 @@ class AtomsClipboard:
 
     def get_atoms(self):
         text = self.get_text()
-        atoms = decode(text)
-        return atoms
+        return decode(text)
 
     def set_atoms(self, atoms):
         json_text = encode(atoms)

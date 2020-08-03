@@ -10,7 +10,7 @@ from time import time
 
 import numpy as np
 
-from ase import __version__
+from ase import Atoms, __version__
 import ase.gui.ui as ui
 from ase.gui.defaults import read_defaults
 from ase.gui.images import Images
@@ -426,18 +426,30 @@ class GUI(View, Status):
         self.clipboard.set_atoms(atoms)
 
     def paste_atoms_from_clipboard(self, event=None):
-        clipboard_atoms = self.clipboard.get_atoms()
+        try:
+            atoms = self.clipboard.get_atoms()
+        except Exception as err:
+            ui.error('Cannot paste',
+                     f'Could not read atoms from clipboard: {err}')
+            return
 
+        if self.atoms != Atoms():
+            self.paste_atoms_onto_existing(atoms)
+        else:
+            self.new_atoms(atoms)
+
+    def paste_atoms_onto_existing(self, atoms):
         selection = self.selected_atoms()
         if len(selection):
             paste_center = selection.positions.sum(axis=0) / len(selection)
             # atoms.center() is a no-op in directions without a cell vector.
             # But we actually want the thing centered nevertheless!
             # Therefore we have to set the cell.
-            clipboard_atoms.cell = (1, 1, 1)  # arrrgh.
-            clipboard_atoms.center(about=paste_center)
+            atoms = atoms.copy()
+            atoms.cell = (1, 1, 1)  # arrrgh.
+            atoms.center(about=paste_center)
 
-        self.add_atoms_and_select(clipboard_atoms)
+        self.add_atoms_and_select(atoms)
         self.move_atoms_mask = self.images.selected.copy()
         self.arrowkey_mode = self.ARROWKEY_MOVE
         self.draw()

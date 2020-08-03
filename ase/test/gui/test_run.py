@@ -313,11 +313,30 @@ def test_clipboard_copy(gui):
     assert newatoms == atoms
 
 
-def test_clipboard_paste(gui):
-    atoms = molecule('CH3CH2OH')
+def test_clipboard_paste_onto_empty(gui):
+    atoms = bulk('Ti')
     gui.clipboard.set_atoms(atoms)
     gui.paste_atoms_from_clipboard()
+    # (The paste includes cell and pbc when existing atoms are empty)
     assert gui.atoms == atoms
+
+
+def test_clipboard_paste_onto_existing(gui):
+    ti = bulk('Ti')
+    gui.new_atoms(ti.copy())
+    assert gui.atoms == ti
+    h2o = molecule('H2O')
+    gui.clipboard.set_atoms(h2o)
+    gui.paste_atoms_from_clipboard()
+    assert gui.atoms == ti + h2o
+
+
+@pytest.mark.parametrize('text', ['', 'invalid_atoms'])
+def test_clipboard_paste_invalid(gui, text):
+    gui.clipboard.set_text(text)
+    with pytest.raises(GUIError):
+        gui.paste_atoms_from_clipboard()
+
 
 def window():
 
