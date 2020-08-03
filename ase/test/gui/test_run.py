@@ -314,7 +314,7 @@ def test_clipboard_copy(gui):
 
 def test_clipboard_paste(gui):
     atoms = molecule('CH3CH2OH')
-    gui._export_atoms_to_clipboard(atoms)
+    gui.clipboard.set_atoms(atoms)
     gui.paste_atoms_from_clipboard()
     assert gui.atoms == atoms
 
