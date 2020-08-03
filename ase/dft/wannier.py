@@ -4,7 +4,6 @@
     using the spread functional of Marzari and Vanderbilt
     (PRB 56, 1997 page 12847).
 """
-import os
 import warnings
 import functools
 from time import time
@@ -31,17 +30,6 @@ def gram_schmidt(U):
         col /= np.linalg.norm(col)
 
 
-def gram_schmidt_single(U, n):
-    """Orthogonalize columns of U to column n"""
-    N = len(U.T)
-    v_n = U.T[n]
-    indices = list(range(N))
-    del indices[indices.index(n)]
-    for i in indices:
-        v_i = U.T[i]
-        v_i -= v_n * np.dot(v_n.conj(), v_i)
-
-
 def lowdin(U, S=None):
     """Orthonormalize columns of U according to the symmetric Lowdin procedure.
        The implementation uses SVD, like symm. Lowdin it returns the nearest
@@ -56,7 +44,7 @@ def neighbor_k_search(k_c, G_c, kpt_kc, tol=1e-4):
     # search for k1 (in kpt_kc) and k0 (in alldir), such that
     # k1 - k - G + k0 = 0
     alldir_dc = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1],
-                          [1, 1, 0], [1, 0, 1], [0, 1, 1]], int)
+                          [1, 1, 0], [1, 0, 1], [0, 1, 1]], dtype=int)
     for k0_c in alldir_dc:
         for k1, k1_c in enumerate(kpt_kc):
             if np.linalg.norm(k1_c - k_c - G_c + k0_c) < tol:
@@ -89,21 +77,19 @@ def calculate_weights(cell_cc, normalize=True):
         if abs(w[d]) > 1e-5:
             Gdir_dc = np.concatenate((Gdir_dc, alldirs_dc[d:d + 1]))
             weight_d = np.concatenate((weight_d, w[d:d + 1]))
-
     if normalize:
         weight_d /= max(abs(weight_d))
-
     return weight_d, Gdir_dc
 
 
-def random_orthogonal_matrix(dim, seed=None, real=False):
+def random_orthogonal_matrix(dim, rng=np.random, real=False):
     """Generate a random orthogonal matrix"""
     if real:
         from scipy.stats import special_ortho_group
-        ortho_m = special_ortho_group.rvs(dim=dim, random_state=seed)
+        ortho_m = special_ortho_group.rvs(dim=dim, random_state=rng)
     else:
         from scipy.stats import unitary_group
-        ortho_m = unitary_group.rvs(dim=dim, random_state=seed)
+        ortho_m = unitary_group.rvs(dim=dim, random_state=rng)
     return ortho_m
 
 
@@ -151,7 +137,7 @@ def md_min(func, step=.25, tolerance=1e-6, max_iter=10000,
             t += time()
             warnings.warn('Max iterations reached: '
                           'iters=%s, step=%s, seconds=%0.2f, value=%0.4f'
-                          % (count, step, t, fvalue))
+                          % (count, step, t, fvalue.real))
             break
     if verbose:
         t += time()
@@ -159,39 +145,6 @@ def md_min(func, step=.25, tolerance=1e-6, max_iter=10000,
               (count, t, t * 1000. / count, step))
         print('Initial value=%0.4f, Final value=%0.4f' %
               (finit, fvalue))
-
-
-def rotation_from_projection2(proj_nw, fixed, ortho=True):
-    V_ni = proj_nw
-    Nb, Nw = proj_nw.shape
-    M = fixed
-    L = Nw - M
-    U_ww = np.zeros((Nw, Nw), dtype=proj_nw.dtype)
-    c_ul = np.zeros((Nb - M, L), dtype=proj_nw.dtype)
-    for V_n in V_ni.T:
-        V_n /= np.linalg.norm(V_n)
-
-    # Find EDF
-    P_ui = V_ni[M:].copy()
-    la = np.linalg
-    for l in range(L):
-        norm_list = np.array([la.norm(v) for v in P_ui.T])
-        perm_list = np.argsort(-norm_list)
-        P_ui = P_ui[:, perm_list].copy()    # largest norm to the left
-        P_ui[:, 0] /= la.norm(P_ui[:, 0])   # normalize
-        c_ul[:, l] = P_ui[:, 0]             # save normalized EDF
-        gram_schmidt_single(P_ui, 0)        # ortho remain. to this EDF
-        P_ui = P_ui[:, 1:].copy()           # remove this EDF
-
-    U_ww[:M] = V_ni[:M, :]
-    U_ww[M:] = np.dot(c_ul.T.conj(), V_ni[M:])
-
-    if ortho:
-        gram_schmidt(U_ww)
-    else:
-        normalize(U_ww)
-
-    return U_ww, c_ul
 
 
 def rotation_from_projection(proj_nw, fixed, ortho=True):
@@ -216,57 +169,16 @@ def rotation_from_projection(proj_nw, fixed, ortho=True):
     U_ww = np.empty((Nw, Nw), dtype=proj_nw.dtype)
     U_ww[:M] = proj_nw[:M]
 
-    # choose method between ['std', 'svd', 'qrcp']
-    # it could become an argument for the function
-    # NOTE: for now this is a dirty workaround not to touch the GPAW code and
-    #  still be able to change the projection method from a job script.
-    method = 'std'
-    if 'ASE_WAN_PROJ' in os.environ:
-        env = os.environ['ASE_WAN_PROJ']
-        if env == 'qrcp':
-            method = env
-        elif env == 'svd':
-            method = env
-
     # If there are extra degrees of freedom we have to select L of them
     if L > 0:
         C_ul = np.empty((U, L), dtype=proj_nw.dtype)
-        if method == 'std':
-            # Unknown method, very similar to SVD
-            #  but the results slightly differ
-            proj_uw = proj_nw[M:]
-            eig_w, C_ww = np.linalg.eigh(np.dot(dag(proj_uw), proj_uw))
-            C_ul = np.dot(proj_uw, C_ww[:, np.argsort(-eig_w.real)[:L]])
-            # eig_u, C_uu = np.linalg.eigh(np.dot(proj_uw, dag(proj_uw)))
-            # C_ul = C_uu[:, np.argsort(-eig_u.real)[:L]]
+        proj_uw = proj_nw[M:]
+        eig_w, C_ww = np.linalg.eigh(np.dot(dag(proj_uw), proj_uw))
+        C_ul = np.dot(proj_uw, C_ww[:, np.argsort(-eig_w.real)[:L]])
+        # eig_u, C_uu = np.linalg.eigh(np.dot(proj_uw, dag(proj_uw)))
+        # C_ul = C_uu[:, np.argsort(-eig_u.real)[:L]]
 
-            U_ww[M:] = np.dot(dag(C_ul), proj_uw)
-
-        elif method == 'svd':
-            # SVD implementation of nearest orthogonal matrix, aka symm. Lowdin
-            proj_uw = proj_nw[M:]
-            C_ww = np.dot(dag(proj_uw), proj_uw)
-            Ls, s, Rs = np.linalg.svd(C_ww, full_matrices=False)
-            C_ww = np.dot(Ls, Rs)
-
-            # Keep only the L columns with the biggest singular values
-            C_ul = np.empty((U, L), dtype=proj_uw.dtype)
-            C_ul = np.dot(proj_uw, C_ww[:, :L])
-
-            U_ww[M:] = np.dot(dag(C_ul), proj_uw)
-
-        elif method == 'qrcp':
-            # QRCP implemetation, keep the columns based on the permutation
-            proj_uw = proj_nw[M:]
-            C_ww = np.dot(dag(proj_uw), proj_uw)
-            Q, R, P = qr(C_ww, mode='full', pivoting=True, check_finite=True)
-            C_ww = C_ww[:, P]
-
-            # Keep only the L columns with the biggest diagonal elements on R
-            C_ul = np.dot(proj_uw, C_ww[:, :L])
-            lowdin(C_ul)
-
-            U_ww[M:] = np.dot(dag(C_ul), proj_uw)
+        U_ww[M:] = np.dot(dag(C_ul), proj_uw)
 
         normalize(C_ul)
     else:
@@ -334,12 +246,12 @@ def scdm(calc, Nw, fixed_k, verbose=True):
     return C_kul, U_kww
 
 
-def init_orbitals(calc, ntot, seed=None):
+def init_orbitals(calc, ntot, rng=np.random):
     """Place d-orbitals for every atom that has some in the valence states
         and then random s-orbitals close to the other atoms (< 1.5Å).
        'calc': ASE calculator object
        'ntot': total number of needed orbitals
-       'seed': seed for random numbers"""
+       'rng': generator random numbers"""
 
     atoms = calc.get_atoms()
     orbs = []
@@ -355,9 +267,6 @@ def init_orbitals(calc, ntot, seed=None):
 
     if No < ntot:
         # add random s-like orbitals if there are not enough yet
-        if seed is not None:
-            np.random.seed(seed)
-
         Ns = ntot - No
         tmp_atoms = atoms.copy()
         tmp_atoms.append('H')
@@ -365,7 +274,7 @@ def init_orbitals(calc, ntot, seed=None):
         for i in range(0, Ns):
             fine = False
             while not fine:
-                x, y, z = np.random.random(3)
+                x, y, z = rng.rand(3)
                 s_pos[-1] = [x, y, z]
                 tmp_atoms.set_scaled_positions(s_pos)
                 dists = tmp_atoms.get_distances(
@@ -395,7 +304,7 @@ class Wannier:
                  spin=0,
                  initialwannier='orbitals',
                  functional='std',
-                 seed=None,
+                 rng=np.random,
                  verbose=False):
         """
         Required arguments:
@@ -446,7 +355,7 @@ class Wannier:
             Every additional function is applied to the standard functional
             value.
 
-          ``seed``: Seed for 'random' or 'gaussians' ``initialwannier``.
+          ``rng``: Random number generator for ``initialwannier``.
 
           ``verbose``: True / False level of verbosity.
           """
@@ -568,9 +477,9 @@ class Wannier:
                     self.Z_dknn[d, k] = calc.get_wannier_localization_matrix(
                         nbands=Nb, dirG=dirG, kpoint=k, nextkpoint=k1,
                         G_I=k0_c, spin=self.spin)
-        self.initialize(file=file, initialwannier=initialwannier, seed=seed)
+        self.initialize(file=file, initialwannier=initialwannier, rng=rng)
 
-    def initialize(self, file=None, initialwannier='orbitals', seed=None):
+    def initialize(self, file=None, initialwannier='random', rng=np.random):
         """Re-initialize current rotation matrix.
 
         Keywords are identical to those of the constructor.
@@ -596,27 +505,23 @@ class Wannier:
             self.U_kww = np.zeros((self.Nk, Nw, Nw), complex)
             self.C_kul = []
             for U, M, L in zip(self.U_kww, self.fixedstates_k, self.edf_k):
-                U[:] = random_orthogonal_matrix(Nw, seed, real=False)
+                U[:] = random_orthogonal_matrix(Nw, rng, real=False)
                 if L > 0:
                     self.C_kul.append(random_orthogonal_matrix(
-                        Nb - M, seed=seed, real=False)[:, :L])
+                        Nb - M, rng=rng, real=False)[:, :L])
                 else:
                     self.C_kul.append(np.array([]))
         elif initialwannier == 'gaussians':
             # Create gaussians in random positions
-            if seed is not None:
-                np.random.seed(seed)
             centers = []
             for i in range(self.nwannier):
-                centers.append(([np.random.random(),
-                                 np.random.random(),
-                                 np.random.random()], 0, 1))
+                centers.append((list(rng.rand(3)), 0, 1))
             self.C_kul, self.U_kww = self.calc.initial_wannier(
                 centers, self.kptgrid, self.fixedstates_k,
                 self.edf_k, self.spin, self.nbands)
         elif initialwannier == 'orbitals':
             self.C_kul, self.U_kww = self.calc.initial_wannier(
-                init_orbitals(self.calc, self.nwannier, seed),
+                init_orbitals(self.calc, self.nwannier, rng),
                 self.kptgrid, self.fixedstates_k,
                 self.edf_k, self.spin, self.nbands)
         elif initialwannier == 'scdm':
@@ -698,7 +603,7 @@ class Wannier:
                           functional=self.functional,
                           initialwannier='bloch',
                           verbose=self.verbose,
-                          seed=None)
+                          rng=np.random)
             wan.fixedstates_k = self.fixedstates_k
             wan.edf_k = wan.nwannier - wan.fixedstates_k
 
@@ -774,22 +679,12 @@ class Wannier:
         spec_kn = self.get_spectral_weight(w)
         dos = np.zeros(len(energies))
         for k, spec_n in enumerate(spec_kn):
-            eig_n = self.calc.get_eigenvalues(k=k, s=self.spin)
+            eig_n = self.calc.get_eigenvalues(kpt=k, spin=self.spin)
             for weight, eig in zip(spec_n, eig_n):
                 # Add gaussian centered at the eigenvalue
                 x = ((energies - eig) / width)**2
                 dos += weight * np.exp(-x.clip(0., 40.)) / (sqrt(pi) * width)
         return dos
-
-    def max_spread(self, directions=[0, 1, 2]):
-        """Returns the index of the most delocalized Wannier function
-        together with the value of the spread functional"""
-        d = np.zeros(self.nwannier)
-        for dir in directions:
-            d[dir] = np.abs(self.Z_dww[dir].diagonal())**2 * self.weight_d[dir]
-        index = np.argsort(d)[0]
-        print('Index:', index)
-        print('Spread:', d[index])
 
     def translate(self, w, R):
         """Translate the w'th Wannier function
@@ -824,14 +719,22 @@ class Wannier:
         the orbitals to the cell [2,2,2].  In this way the pbc
         boundary conditions will not be noticed.
         """
-        scaled_wc = np.angle(self.Z_dww[:3].diagonal(0, 1, 2)).T * \
-            self.kptgrid / (2 * pi)
+        scaled_wc = (np.angle(self.Z_dww[:3].diagonal(0, 1, 2)).T *
+                     self.kptgrid / (2 * pi))
         trans_wc = np.array(cell)[None] - np.floor(scaled_wc)
         for kpt_c, U_ww in zip(self.kpt_kc, self.U_kww):
             U_ww *= np.exp(2.j * pi * np.dot(trans_wc, kpt_c))
         self.update()
 
     def distances(self, R):
+        """Relative distances between centers.
+
+        Returns a matrix with the distances between different Wannier centers.
+        R = [n1, n2, n3] is in units of the basis vectors of the small cell
+        and allows one to measure the distance with centers moved to a
+        different small cell.
+        The dimension of the matrix is [Nw, Nw].
+        """
         Nw = self.nwannier
         cen = self.get_centers()
         r1 = cen.repeat(Nw, axis=0).reshape(Nw, Nw, 3)
@@ -1026,7 +929,8 @@ class Wannier:
             a_w = np.dot(a_dw.T, self.weight_d).real
             fun = np.sum(a_w) - self.nwannier * np.var(a_w)
             if self.verbose:
-                print(f'std: {np.sum(a_w):.4f} \tvar: {self.nwannier * np.var(a_w):.4f}')
+                print(f'std: {np.sum(a_w):.4f}',
+                      f'\tvar: {self.nwannier * np.var(a_w):.4f}')
         return fun
 
     def get_gradients(self):
@@ -1146,11 +1050,13 @@ class Wannier:
                 Utemp_ww += weight * (temp - dag(temp))
 
                 if self.functional == 'stdev':
-                    Utemp_ww += self.nwannier * 2 * O * weight * (temp - dag(temp)) / Nw**2
+                    Utemp_ww += (self.nwannier * 2 * O * weight *
+                                 (temp - dag(temp)) / Nw**2)
 
                     temp = (OZii_ww.T * Z_kww[k].conj()
                             - OZii_ww * Z_kww[k2].conj())
-                    Utemp_ww -= self.nwannier * 2 * weight * (temp - dag(temp)) / Nw
+                    Utemp_ww -= (self.nwannier * 2 * weight *
+                                 (temp - dag(temp)) / Nw)
 
             dU.append(Utemp_ww.ravel())
 
