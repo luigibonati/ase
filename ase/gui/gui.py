@@ -426,16 +426,13 @@ class GUI(View, Status):
     def _export_atoms_to_clipboard(self, atoms):
         from ase.io.jsonio import encode
         json_txt = encode(atoms)
-        print(json_txt)
         root = self.window.win
         root.clipboard_clear()
         root.clipboard_append(json_txt)
 
     def copy_atoms_to_clipboard(self, event=None):
-        print('hello', event)
         atoms = self.selected_atoms()
         self._export_atoms_to_clipboard(atoms)
-        print(atoms)
 
     def paste_atoms_from_clipboard(self, event=None):
         clipboard_atoms = self.get_atoms_from_clipboard()
