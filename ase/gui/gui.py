@@ -429,8 +429,10 @@ class GUI(View, Status):
         try:
             atoms = self.clipboard.get_atoms()
         except Exception as err:
-            ui.error('Cannot paste',
-                     f'Could not read atoms from clipboard: {err}')
+            ui.error(
+                'Cannot paste atoms',
+                'Pasting currently works only with the ASE JSON format.\n\n'
+                f'Original error:\n\n{err}')
             return
 
         if self.atoms != Atoms():
