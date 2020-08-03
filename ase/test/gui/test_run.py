@@ -242,6 +242,7 @@ def test_add_atoms(gui):
     dia.add()
     assert str(gui.atoms.symbols) == str(molecule('CH3CH2OH').symbols)
 
+
 def test_cell_editor(gui):
     au = bulk('Au')
     gui.new_atoms(au.copy())
@@ -306,8 +307,11 @@ def test_clipboard_copy(gui):
     gui.new_atoms(atoms)
     gui.select_all()
     assert all(gui.selected_atoms().symbols == atoms.symbols)
-    gui.copy_selection_to_clipboard()
-    assert all(gui.get_atoms_from_clipboard().symbols == atoms.symbols)
+    gui.copy_atoms_to_clipboard()
+    newatoms = gui.get_atoms_from_clipboard()
+    assert all(newatoms.symbols == atoms.symbols)
+    assert newatoms.positions == pytest.approx(newatoms.positions)
+    assert newatoms.cell == pytest.approx(newatoms.cell[:])
 
 def test_clipboard_paste(gui):
     atoms = molecule('CH3CH2OH')
