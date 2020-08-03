@@ -8,7 +8,6 @@ import argparse
 from multiprocessing import cpu_count
 
 from ase.calculators.calculator import names as calc_names
-from ase.cli.info import print_info
 from ase.cli.main import CLIError
 
 testdir = Path(__file__).parent
@@ -144,9 +143,8 @@ class CLICommand:
 
     @staticmethod
     def run(args):
-        print_info()
+        print('ASE test suite ...')
         print()
-
         if args.help_calculators:
             print(help_calculators)
             sys.exit(0)
