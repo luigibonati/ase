@@ -431,3 +431,17 @@ def test_get_function(wan):
         assert (gpts * nk == wan.get_function(index=i).shape).all()
         assert (gpts * [1, 2, 3] ==
                 wan.get_function(index=i, repeat=[1, 2, 3]).shape).all()
+
+
+def test_get_gradients(wan, rng):
+    wan = wan(nwannier=4, fixedstates=2, initialwannier='bloch')
+    # create an anti-hermitian array/matrix
+    step = rng.rand(wan.get_gradients().size) + \
+            1.j * rng.rand(wan.get_gradients().size)
+    step *= 1e-8
+    step -= dagger(step)
+    f1 = wan.get_functional_value()
+    wan.step(step)
+    f2 = wan.get_functional_value()
+    assert (np.abs((f2 - f1) / step).ravel() -
+            np.abs(wan.get_gradients())).max() < 1e-4
