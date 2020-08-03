@@ -421,15 +421,12 @@ class GUI(View, Status):
         from ase.gui.clipboard import AtomsClipboard
         return AtomsClipboard(self.window.win)
 
-    def get_atoms_from_clipboard(self):
-        return self.clipboard.get_atoms()
-
     def copy_atoms_to_clipboard(self, event=None):
         atoms = self.selected_atoms()
         self.clipboard.set_atoms(atoms)
 
     def paste_atoms_from_clipboard(self, event=None):
-        clipboard_atoms = self.get_atoms_from_clipboard()
+        clipboard_atoms = self.clipboard.get_atoms()
 
         selection = self.selected_atoms()
         if len(selection):
@@ -444,7 +441,6 @@ class GUI(View, Status):
         self.move_atoms_mask = self.images.selected.copy()
         self.arrowkey_mode = self.ARROWKEY_MOVE
         self.draw()
-
 
     def add_atoms_and_select(self, new_atoms):
         atoms = self.atoms

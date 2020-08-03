@@ -308,9 +308,10 @@ def test_clipboard_copy(gui):
     gui.select_all()
     assert all(gui.selected_atoms().symbols == atoms.symbols)
     gui.copy_atoms_to_clipboard()
-    newatoms = gui.get_atoms_from_clipboard()
+    newatoms = gui.clipboard.get_atoms()
     assert newatoms is not atoms
     assert newatoms == atoms
+
 
 def test_clipboard_paste(gui):
     atoms = molecule('CH3CH2OH')
