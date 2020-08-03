@@ -12,7 +12,7 @@ def test_ase_bandstructure(cli, plt):
 
     fig_path = Path('bs.png')
 
-    cli.ase(f'band-structure {bs_path} --output {fig_path}')
+    cli.ase('band-structure', str(bs_path), '--output', str(fig_path))
     # If the CLI tool gave a text output, we could verify it.
     assert fig_path.is_file()
 
