@@ -103,6 +103,7 @@ def pytest_report_header(config, startdir):
         run = '[x]' if name in requested_calculators else '[ ]'
         line = f'  {run} {name:10} {configinfo}'
         add(line)
+    add()
 
     for name in requested_calculators:
         if name in factory_classes and name not in available_calculators:
