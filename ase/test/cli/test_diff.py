@@ -51,7 +51,7 @@ def traj(tmp_path_factory):
 
 
 def test_101(cli, traj):
-    stdout = cli.ase(['diff', '--as-csv', traj])
+    stdout = cli.ase('diff', '--as-csv', traj)
 
     r = c = -1
     for rowcount, row in enumerate(stdout.split('\n')):
@@ -66,24 +66,24 @@ def test_101(cli, traj):
 
 
 def test_111(cli, traj):
-    cli.ase(['diff', traj,  '-c'])
+    cli.ase('diff', traj,  '-c')
 
 
 def test_200(cli, traj):
-    cli.ase(['diff', f'{traj}@:1', f'{traj}@1:2'])
+    cli.ase('diff', f'{traj}@:1', f'{traj}@1:2')
 
 
 def test_202(cli, traj):
-    cli.ase(['diff', f'{traj}@:1', f'{traj}@1:2', '-c'])
+    cli.ase('diff', f'{traj}@:1', f'{traj}@1:2', '-c')
 
 
 def test_220(cli, traj):
-    cli.ase(['diff', f'{traj}@:2', f'{traj}@2:4'])
+    cli.ase('diff', f'{traj}@:2', f'{traj}@2:4')
 
 
 def test_222(cli, traj):
-    stdout = cli.ase(['diff', f'{traj}@:2', f'{traj}@2:4', '-c',
-                      '--rank-order', 'dfx', '--as-csv'])
+    stdout = cli.ase('diff', f'{traj}@:2', f'{traj}@2:4', '-c',
+                     '--rank-order', 'dfx', '--as-csv')
     stdout = [row.split(',') for row in stdout.split('\n')]
     stdout = [row for row in stdout if len(row) > 4]
 
@@ -98,8 +98,8 @@ def test_222(cli, traj):
 
 def test_cli_opt(cli, traj):
     # template command line options
-    stdout = cli.ase(['diff', f'{traj}@:1', f'{traj}@:2', '-c',
-                      '--template', 'p1x,p2x,dx,f1x,f2x,dfx'])
+    stdout = cli.ase('diff', f'{traj}@:1', f'{traj}@:2', '-c',
+                     '--template', 'p1x,p2x,dx,f1x,f2x,dfx')
     stdout = stdout.split('\n')
 
     for counter, row in enumerate(stdout):
@@ -109,9 +109,9 @@ def test_cli_opt(cli, traj):
     header = re.sub(r'\s+', ',', header).split(',')[1:-1]
     assert header == ['p1x', 'p2x', 'Δx', 'f1x', 'f2x', 'Δfx']
 
-    cli.ase(['diff', traj, '-c', '--template',
-             'p1x,f1x,p1y,f1y:0:-1,p1z,f1z,p1,f1',
-             '--max-lines', '6', '--summary-functions', 'rmsd'])
+    cli.ase('diff', traj, '-c', '--template',
+            'p1x,f1x,p1y,f1y:0:-1,p1z,f1z,p1,f1',
+            '--max-lines', '6', '--summary-functions', 'rmsd')
 
 
 def test_template_functions():
