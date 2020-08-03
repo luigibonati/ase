@@ -437,7 +437,7 @@ def test_get_gradients(wan, rng):
     wan = wan(nwannier=4, fixedstates=2, initialwannier='bloch')
     # create an anti-hermitian array/matrix
     step = rng.rand(wan.get_gradients().size) + \
-            1.j * rng.rand(wan.get_gradients().size)
+        1.j * rng.rand(wan.get_gradients().size)
     step *= 1e-8
     step -= dagger(step)
     f1 = wan.get_functional_value()
