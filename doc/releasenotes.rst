@@ -120,6 +120,9 @@ I/O:
 
 GUI:
 
+* Use Ctrl+C, Ctrl+X, and Ctrl+V to copy/cut/paste atoms using the
+  operating system's clipboard.  The copies use the JSON format.
+
 * Removed old GUI modules which were never fully ported to Tkinter.
   If you miss them, please find them in git history and rehabilitate
   them.
