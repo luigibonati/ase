@@ -19,6 +19,9 @@ forces::
   from ase.build import molecule
   from ase.calculators.emt import EMT
 
+  atoms = molecule('CH4')
+  atoms.calc = EMT()
+
   # evaluate forces in this configuration
   forces_a = atoms.get_forces()
 
@@ -49,6 +52,8 @@ The Huang-Rhys factors describe the displacement energy in
 each vibrational coordinate relative to the vibrational energy.
 We may get them by::
   
+  from ase.vibrations.franck_condon import FranckCondon
+
   # FC factor for all frequencies
   fc = FranckCondon(atoms, vibname)
 
