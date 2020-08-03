@@ -19,7 +19,7 @@ from ase.dependencies import all_dependencies
 @pytest.fixture(scope='session')
 def enabled_calculators(pytestconfig):
     all_names = set(calculator_names)
-    opt = pytestconfig.getoption('calculators')
+    opt = pytestconfig.getoption('--calculators')
 
     names = set(always_enabled_calculators)
     if opt:
@@ -195,23 +195,8 @@ def psycopg2():
 
 
 @pytest.fixture(scope='session')
-def datafiles():
-    try:
-        import asetest
-    except ImportError:
-        return {}
-    else:
-        return asetest.datafiles.paths
-
-
-@pytest.fixture(scope='session')
-def configured_executables():
-    return get_testing_executables()
-
-
-@pytest.fixture(scope='session')
-def factories(configured_executables, datafiles, enabled_calculators):
-    return Factories(configured_executables, datafiles, enabled_calculators)
+def factories(enabled_calculators):
+    return get_factories(enabled_calculators)
 
 
 abinit_factory = make_factory_fixture('abinit')
