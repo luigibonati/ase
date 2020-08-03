@@ -84,11 +84,12 @@ class DFTBFactory:
 
     def calc(self, **kwargs):
         from ase.calculators.dftb import Dftb
-        from ase.test.testsuite import datadir
         # XXX datafiles should be imported from datafiles project
         # We should include more datafiles for DFTB there, and remove them
         # from ASE's own datadir.
         command = f'{self.executable} > PREFIX.out'
+        datadir = Path(__file__).parent / 'testdata'
+        assert datadir.exists()
         return Dftb(command=command,
                     slako_dir=str(datadir) + '/',  # XXX not obvious
                     **kwargs)
@@ -161,6 +162,20 @@ class BuiltinCalculatorFactory:
 @factory('emt')
 class EMTFactory(BuiltinCalculatorFactory):
     pass
+
+
+@factory('lammpsrun')
+class LammpsRunFactory:
+    def __init__(self, executable):
+        self.executable = executable
+
+    def calc(self, **kwargs):
+        from ase.calculators.lammpsrun import LAMMPS
+        return LAMMPS(command=self.executable, **kwargs)
+
+    @classmethod
+    def fromconfig(cls, config):
+        return cls(config.executables['lammps'])
 
 
 @factory('octopus')

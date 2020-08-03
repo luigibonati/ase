@@ -1,4 +1,5 @@
 """Helper functions for read_fdf."""
+from pathlib import Path
 from os import fstat
 from re import compile
 from ase.utils import reader
@@ -46,6 +47,9 @@ def _read_fdf_lines(file, inodes=[]):
         if w0 == '%include':
             # Include the contents of fname
             fname = L.split(None, 1)[1].strip()
+            parent_fname = getattr(file, 'name', None)
+            if isinstance(parent_fname, str):
+                fname = Path(parent_fname).parent / fname
             lines += _read_fdf_lines(fname, inodes)
 
         elif '<' in L:

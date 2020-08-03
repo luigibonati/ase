@@ -1,3 +1,4 @@
+
 # additional tests of the extended XYZ file I/O
 # (which is also included in oi.py test case)
 # maintained by James Kermode <james.kermode@gmail.com>
@@ -9,7 +10,10 @@ import ase.io
 from ase.io import extxyz
 from ase.atoms import Atoms
 from ase.build import bulk
-from ase.test.testsuite import no_warn
+from ase.io.extxyz import escape
+from ase.calculators.emt import EMT
+from ase.constraints import full_3x3_to_voigt_6_stress
+from ase.build import molecule
 
 # array data of shape (N, 1) squeezed down to shape (N, ) -- bug fixed
 # in commit r4541
@@ -31,7 +35,7 @@ def images(at):
 def test_array_shape(at):
     # Check that unashable data type in info does not break output
     at.info['bad-info'] = [[1, np.array([0, 1])], [2, np.array([0, 1])]]
-    with no_warn():
+    with pytest.warns(UserWarning):
         ase.io.write('to.xyz', at, format='extxyz')
     del at.info['bad-info']
     at.arrays['ns_extra_data'] = np.zeros((len(at), 1))
@@ -228,7 +232,7 @@ def test_complex_key_val():
         'f_int_array': np.array([[1, 2], [3, 4]]),
         'f_bool_bare': True,
         'f_bool_value': False,
-        'f_irregular_shape': np.array([[1, 2, 3], [4, 5]]),
+        'f_irregular_shape': np.array([[1, 2, 3], [4, 5]], object),
         'f_dict': {"a": 1}
     }
 
@@ -283,7 +287,40 @@ def test_blank_comment():
 
 
 def test_escape():
-    from ase.io.extxyz import escape
     assert escape('plain_string') == 'plain_string'
     assert escape('string_containing_"') == r'"string_containing_\""'
     assert escape('string with spaces') == '"string with spaces"'
+
+
+@pytest.mark.filterwarnings('ignore:write_xyz')
+def test_stress():
+    # build a water dimer, which has 6 atoms
+    water1 = molecule('H2O')
+    water2 = molecule('H2O')
+    water2.positions[:, 0] += 5.0
+    atoms = water1 + water2
+    atoms.cell = [10, 10, 10]
+    atoms.pbc = True
+
+    atoms.new_array('stress', np.arange(6, dtype=float))  # array with clashing name
+    atoms.calc = EMT()
+    a_stress = atoms.get_stress()
+    atoms.write('tmp.xyz')
+    b = ase.io.read('tmp.xyz')
+    assert abs(b.get_stress() - a_stress).max() < 1e-6
+    assert abs(b.arrays['stress'] - np.arange(6, dtype=float)).max() < 1e-6
+    b_stress = b.info['stress']
+    assert abs(full_3x3_to_voigt_6_stress(b_stress) - a_stress).max() < 1e-6
+
+def test_json_scalars():
+    a = bulk('Si')
+    a.info['val_1'] = 42.0
+    a.info['val_2'] = np.float(42.0)
+    a.info['val_3'] = np.int64(42)
+    a.write('tmp.xyz')
+    comment_line = open('tmp.xyz', 'r').readlines()[1]
+    assert "val_1=42.0" in comment_line and "val_2=42.0" in comment_line and "val_3=42" in comment_line
+    b = ase.io.read('tmp.xyz')
+    assert abs(b.info['val_1'] - 42.0) < 1e-6
+    assert abs(b.info['val_2'] - 42.0) < 1e-6
+    assert abs(b.info['val_3'] - 42)  == 0

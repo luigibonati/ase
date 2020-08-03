@@ -1,5 +1,5 @@
 def test_trajectory():
-    from ase.test import must_raise
+    import pytest
 
     import os
     from ase import Atom, Atoms
@@ -86,7 +86,7 @@ def test_trajectory():
     b = read('only-energy.traj')
     e = b.get_potential_energy()
     assert e + 42 == 0
-    with must_raise(PropertyNotImplementedError):
+    with pytest.raises(PropertyNotImplementedError):
         b.get_forces()
 
     # Make sure constraints play well with momenta:

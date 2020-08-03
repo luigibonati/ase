@@ -93,9 +93,14 @@ class Quaternion:
         by this Quaternion"""
 
         sinth_2 = np.linalg.norm(self.q[1:])
-        theta = np.arctan2(sinth_2, self.q[0])*2
 
-        n = self.q[1:]/sinth_2
+        if sinth_2 == 0:
+            # The angle is zero
+            theta = 0.0
+            n = np.array([0,0,1])
+        else:
+            theta = np.arctan2(sinth_2, self.q[0])*2
+            n = self.q[1:]/sinth_2
 
         return n, theta
 

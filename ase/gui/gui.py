@@ -269,6 +269,7 @@ class GUI(View, Status):
             self.bad_plot(line)
         else:
             self.subprocesses.append(process)
+        return process
 
     def bad_plot(self, err, msg=''):
         ui.error(_('Plotting failed'), '\n'.join([str(err), msg]).strip())
@@ -303,7 +304,7 @@ class GUI(View, Status):
 
         kwargs = dict(cell=self.atoms.cell.uncomplete(self.atoms.pbc),
                       vectors=True)
-        self.pipe('reciprocal', kwargs)
+        return self.pipe('reciprocal', kwargs)
 
     def open(self, button=None, filename=None):
         chooser = ui.ASEFileChooser(self.window.win)
@@ -320,7 +321,7 @@ class GUI(View, Status):
 
     def modify_atoms(self, key=None):
         from ase.gui.modify import ModifyAtoms
-        ModifyAtoms(self)
+        return ModifyAtoms(self)
 
     def add_atoms(self, key=None):
         from ase.gui.add import AddAtoms
@@ -346,7 +347,7 @@ class GUI(View, Status):
         return info_win
 
     def surface_window(self):
-        SetupSurfaceSlab(self)
+        return SetupSurfaceSlab(self)
 
     def nanoparticle_window(self):
         return SetupNanoparticle(self)

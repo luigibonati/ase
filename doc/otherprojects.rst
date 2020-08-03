@@ -14,7 +14,7 @@ link and descriptive paragraph.
 
  * `icet <https://icet.materialsmodeling.org/>`_:
    The integration cluster expansion toolkit. icet is a flexible and
-   extensible software package for constructing and sampling alloy
+   extendable software package for constructing and sampling alloy
    cluster expansions. It supports a wide range of regression and
    validation techniques, and includes a Monte Carlo module with
    support for many different thermodynamic ensembles.

@@ -1,6 +1,4 @@
 """Test to ensure that md logger and trajectory contain same data"""
-from pathlib import Path
-
 import numpy as np
 import pytest
 
@@ -35,10 +33,6 @@ def fmax(forces):
 def test_optimizer(cls, atoms=dimer, calc=calc,
                    logfile="opt.log", trajectory="opt.traj"):
     """run optimization and verify that log and trajectory coincide"""
-
-    # clean files to make sure the correct ones are tested
-    for file in (*Path().glob("*.log"), *Path().glob("*.traj")):
-        file.unlink()
 
     opt_atoms = atoms.copy()
     opt_atoms.constraints = atoms.constraints

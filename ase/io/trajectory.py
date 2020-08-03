@@ -107,7 +107,8 @@ class TrajectoryWriter:
         if self.master:
             self.backend = ulm.open(filename, mode, tag='ASE-Trajectory')
             if len(self.backend) > 0 and mode == 'a':
-                atoms = Trajectory(filename)[0]
+                with Trajectory(filename) as traj:
+                    atoms = traj[0]
                 self.header_data = get_header_data(atoms)
         else:
             self.backend = ulm.DummyWriter()
