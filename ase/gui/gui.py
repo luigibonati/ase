@@ -443,10 +443,17 @@ class GUI(View, Status):
         selection = self.selected_atoms()
         if len(selection):
             paste_center = selection.positions.sum(axis=0) / len(selection)
-            clipboard_atoms.center()
-            clipboard_atoms.translate(paste_center)
+            # atoms.center() is a no-op in directions without a cell vector.
+            # But we actually want the thing centered nevertheless!
+            # Therefore we have to set the cell.
+            clipboard_atoms.cell = (1, 1, 1)  # arrrgh.
+            clipboard_atoms.center(about=paste_center)
 
         self.add_atoms_and_select(clipboard_atoms)
+        self.move_atoms_mask = self.images.selected.copy()
+        self.arrowkey_mode = self.ARROWKEY_MOVE
+        self.draw()
+
 
     def add_atoms_and_select(self, new_atoms):
         atoms = self.atoms
@@ -456,9 +463,11 @@ class GUI(View, Status):
             self.images.initialize(list(self.images),
                                    self.images.filenames)
 
-        self.images.selected[:] = False
+        selected = self.images.selected
+        selected[:] = False
         # 'selected' array may be longer than current atoms
-        self.images.selected[len(atoms) - len(new_atoms):len(atoms)] = True
+        selected[len(atoms) - len(new_atoms):len(atoms)] = True
+
         self.set_frame()
         self.draw()
 
