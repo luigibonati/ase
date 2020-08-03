@@ -27,7 +27,7 @@ def enabled_calculators(pytestconfig):
     return sorted(names)
 
 
-def get_factories():
+def get_factories(enabled_calculators):
     try:
         import asetest
     except ImportError:
@@ -37,8 +37,7 @@ def get_factories():
 
     testing_executables = get_testing_executables()
 
-    return Factories(testing_executables,
-                     datafiles)
+    return Factories(testing_executables, datafiles, enabled_calculators)
 
 
 def pytest_report_header(config, startdir):
@@ -68,7 +67,7 @@ def pytest_report_header(config, startdir):
         if name not in calculator_names:
             pytest.exit(f'No such calculator: {name}')
 
-    factories = get_factories()
+    factories = get_factories(requested_calculators)
     available_calculators = set()
 
     for name in sorted(factory_classes):
@@ -110,24 +109,9 @@ def pytest_report_header(config, startdir):
     return messages
 
 
-class Calculators:
-    def __init__(self, names):
-        self.enabled_names = set(names)
-
-    def require(self, name):
-        assert name in calculator_names
-        if name not in self.enabled_names:
-            pytest.skip(f'use --calculators={name} to enable')
-
-
 @pytest.fixture(scope='session')
-def calculators(enabled_calculators):
-    return Calculators(enabled_calculators)
-
-
-@pytest.fixture(scope='session')
-def require_vasp(calculators):
-    calculators.require('vasp')
+def require_vasp(factories):
+    factories.require('vasp')
 
 
 def disable_calculators(names):
@@ -188,6 +172,7 @@ def tkinter():
 
 @pytest.fixture(scope='session')
 def plt(tkinter):
+    # XXX Probably we can get rid of tkinter requirement.
     matplotlib = pytest.importorskip('matplotlib')
     matplotlib.use('Agg')
 
@@ -224,7 +209,7 @@ def configured_executables():
 
 @pytest.fixture(scope='session')
 def factories(configured_executables, datafiles, enabled_calculators):
-    return Factories(configured_executables, datafiles)
+    return Factories(configured_executables, datafiles, enabled_calculators)
 
 
 abinit_factory = make_factory_fixture('abinit')
@@ -303,8 +288,8 @@ def asap3():
 
 
 @pytest.fixture(scope='session')
-def cli(calculators):
-    return CLI(calculators)
+def cli(factories):
+    return CLI(factories)
 
 
 @pytest.fixture(autouse=True)

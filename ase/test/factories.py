@@ -4,6 +4,8 @@ import json
 
 import pytest
 
+from ase.calculators.calculator import names as calculator_names
+
 
 class NotInstalled(Exception):
     pass
@@ -239,12 +241,23 @@ class SiestaFactory:
 
 
 class Factories:
-    def __init__(self, executables, datafiles):
+    def __init__(self, executables, datafiles, enabled_names):
         assert isinstance(executables, dict), executables
         assert isinstance(datafiles, dict)
         self.executables = executables
         self.datafiles = datafiles
+        self.enabled_names = enabled_names
+
         self._factories = {}
+
+    def require(self, name):
+        # XXX This is for old-style calculator tests.
+        # Newer calculator tests would depend on a fixture which would
+        # make them skip.
+        # Older tests call require(name) explicitly.
+        assert name in calculator_names
+        if name not in self.enabled_names:
+            pytest.skip(f'use --calculators={name} to enable')
 
     def __getitem__(self, name):
         # Hmm.  We could also just return a new factory instead of
