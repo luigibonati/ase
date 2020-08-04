@@ -18,9 +18,9 @@ def rng():
 
 @pytest.fixture(scope='module')
 def _std_calculator(tmp_path_factory):
+    gpaw = pytest.importorskip('gpaw')
     atoms = molecule('H2', pbc=True)
     atoms.center(vacuum=3.)
-    gpaw = pytest.importorskip('gpaw')
     gpw = tmp_path_factory.mktemp('sub') / 'dumpfile.gpw'
     calc = gpaw.GPAW(gpts=(8, 8, 8), nbands=4, kpts=(2, 2, 2),
                      symmetry='off', txt=None)
@@ -50,8 +50,12 @@ def wan(rng, std_calculator):
              rng=rng,
              full_calc=False,
              std_calc=True):
-        if std_calc and calc is None and atoms is None:
+        if std_calc and calc is None:
             calc = std_calculator
+            if atoms is not None:
+                atoms.calc = calc
+                calc.atoms = atoms
+                atoms.get_potential_energy()
         else:
             if calc is None:
                 gpaw = pytest.importorskip('gpaw')
@@ -217,8 +221,19 @@ def test_get_radii(lat, std_calculator, wan):
     atoms.center(vacuum=3.)
     calc = std_calculator
     wanf = wan(nwannier=4, fixedstates=2, atoms=atoms, calc=calc,
-               initialwannier='bloch', full_calc=True)
+               initialwannier='bloch', full_calc=True, std_calc=False)
     assert not (wanf.get_radii() == 0).all()
+
+
+@pytest.mark.parametrize('lat', bravais_lattices())
+def test_get_spreads(lat, std_calculator, wan):
+    atoms = molecule('H2', pbc=True)
+    atoms.cell = lat.tocell()
+    atoms.center(vacuum=3.)
+    calc = std_calculator
+    wanf = wan(nwannier=4, fixedstates=2, atoms=atoms, calc=calc,
+               initialwannier='bloch', full_calc=True, std_calc=False)
+    assert not (wanf.get_spreads() == 0).all()
 
 
 @pytest.mark.parametrize('fun', ['std', 'var'])
@@ -247,7 +262,7 @@ def test_get_centers():
 def test_write_cube(wan):
     atoms = molecule('H2')
     atoms.center(vacuum=3.)
-    wanf = wan(atoms=atoms)
+    wanf = wan(atoms=atoms, kpts=(1, 1, 1), std_calc=False)
     index = 0
     # It returns some errors when using file objects, so we use simple filename
     cubefilename = 'wanf.cube'
@@ -299,7 +314,8 @@ def test_translate(wan, std_calculator):
     nwannier = 2
     calc = std_calculator
     atoms = calc.get_atoms()
-    wanf = wan(nwannier=nwannier, initialwannier='bloch')
+    wanf = wan(nwannier=nwannier, initialwannier='bloch',
+               calc=calc, full_calc=True)
     wanf.translate_all_to_cell(cell=[0, 0, 0])
     c0_w = wanf.get_centers()
     for i in range(nwannier):
@@ -316,7 +332,8 @@ def test_translate_to_cell(wan, std_calculator):
     nwannier = 2
     calc = std_calculator
     atoms = calc.get_atoms()
-    wanf = wan(nwannier=nwannier, initialwannier='bloch')
+    wanf = wan(nwannier=nwannier, initialwannier='bloch',
+               calc=calc, full_calc=True)
     for i in range(nwannier):
         wanf.translate_to_cell(w=i, cell=[0, 0, 0])
         c0_w = wanf.get_centers()
@@ -335,7 +352,8 @@ def test_translate_all_to_cell(wan, std_calculator):
     nwannier = 2
     calc = std_calculator
     atoms = calc.get_atoms()
-    wanf = wan(nwannier=nwannier, initialwannier='bloch')
+    wanf = wan(nwannier=nwannier, initialwannier='bloch',
+               calc=calc, full_calc=True)
     wanf.translate_all_to_cell(cell=[0, 0, 0])
     c0_w = wanf.get_centers()
     assert (c0_w < atoms.cell.array.diagonal()).all()
