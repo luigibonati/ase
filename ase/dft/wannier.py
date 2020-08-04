@@ -9,7 +9,6 @@ import functools
 from time import time
 from math import sqrt, pi
 from pickle import dump, load
-from scipy.special import erf
 from scipy.linalg import qr
 
 import numpy as np
@@ -219,7 +218,8 @@ def scdm(calc, Nw, fixed_k, verbose=True):
     C_kul = []
 
     # get grid size and check that we have Nw bands at once
-    Ng = np.prod(calc.wfs.gd.N_c)
+    ps = calc.get_pseudo_wave_function(band=Nw, kpt=0, spin=0).ravel()
+    Ng = ps.size
     ps_wfs = np.zeros((Nb, Ng), dtype=np.complex128)
 
     # compute factorization just at Gamma point
@@ -349,10 +349,7 @@ class Wannier:
 
           ``functional``: The functional used to measure the localization.
             Can be 'std' for the standard quadratic functional from the PRB
-            paper, 'sigmoid' for a translated and rescaled sigmoid function,
-            'erf' for a scaled error function, 'sqrt' for a square root
-            function, 'cbrt' for cube root function.
-            Every additional function is applied to the standard functional
+            paper, 'var' to add a variance minimizing term.
             value.
 
           ``rng``: Random number generator for ``initialwannier``.
@@ -908,23 +905,7 @@ class Wannier:
         if self.functional == 'std':
             a_d = np.sum(np.abs(self.Z_dww.diagonal(0, 1, 2))**2, axis=1)
             fun = np.dot(a_d, self.weight_d).real
-        elif self.functional == 'sigmoid':
-            a_d = np.sum(1 / (1 + np.exp(-10 * (np.abs(
-                self.Z_dww.diagonal(0, 1, 2))**2 - 0.5))),
-                axis=1)
-            fun = np.dot(a_d, self.weight_d).real
-        elif self.functional == 'erf':
-            a_d = np.sum(erf(2 * np.abs(self.Z_dww.diagonal(0, 1, 2))**2),
-                         axis=1)
-            fun = np.dot(a_d, self.weight_d).real
-        elif self.functional == 'sqrt':
-            a_d = np.sum(np.abs(self.Z_dww.diagonal(0, 1, 2)), axis=1)
-            fun = np.dot(a_d, self.weight_d).real
-        elif self.functional == 'cbrt':
-            a_d = np.sum(np.cbrt(np.abs(self.Z_dww.diagonal(0, 1, 2))**2),
-                         axis=1)
-            fun = np.dot(a_d, self.weight_d).real
-        elif self.functional == 'stdev':
+        elif self.functional == 'var':
             a_dw = np.abs(self.Z_dww.diagonal(0, 1, 2))**2
             a_w = np.dot(a_dw.T, self.weight_d).real
             fun = np.sum(a_w) - self.nwannier * np.var(a_w)
@@ -962,7 +943,7 @@ class Wannier:
         Nb = self.nbands
         Nw = self.nwannier
 
-        if self.functional == 'stdev':
+        if self.functional == 'var':
             O_dw = np.abs(self.Z_dww.diagonal(0, 1, 2))**2
             O_w = np.dot(O_dw.T, self.weight_d).real
             O = np.sum(O_w)
@@ -984,43 +965,7 @@ class Wannier:
                 Z_knn = self.Z_dknn[d]
                 diagZ_w = self.Z_dww[d].diagonal()
                 Zii_ww = np.repeat(diagZ_w, Nw).reshape(Nw, Nw)
-                if self.functional == 'sigmoid':
-                    diagZ_w = (
-                        (1 / (1 + np.exp(-10
-                                         * (diagZ_w * diagZ_w.conj()
-                                            - 0.5))))
-                        * (1 - (1 / (1 + np.exp(-10
-                                                * (diagZ_w * diagZ_w.conj()
-                                                   - 0.5)))))
-                        * diagZ_w)
-                    Zii_ww = (
-                        (1 / (1 + np.exp(-10
-                                         * (Zii_ww * Zii_ww.conj() - 0.5))))
-                        * (1 - (1 / (1 + np.exp(-10
-                                                * (Zii_ww * Zii_ww.conj()
-                                                   - 0.5)))))
-                        * Zii_ww)
-                elif self.functional == 'erf':
-                    diagZ_w = ((4 / np.sqrt(np.pi))
-                               * np.exp(-(2 * diagZ_w * diagZ_w.conj())**2)
-                               * diagZ_w)
-                    Zii_ww = ((4 / np.sqrt(np.pi))
-                              * np.exp(-(2 * Zii_ww * Zii_ww.conj())**2)
-                              * Zii_ww)
-                elif self.functional == 'sqrt':
-                    diagZ_w = 0.5 * (1 / np.sqrt(diagZ_w * diagZ_w.conj())
-                                     * diagZ_w)
-                    Zii_ww = 0.5 * (1 / np.sqrt(Zii_ww * Zii_ww.conj())
-                                    * Zii_ww)
-                elif self.functional == 'cbrt':
-                    diagZ_w = ((1 / 3)
-                               * 1 / np.power(diagZ_w * diagZ_w.conj(),
-                                              2 / 3)
-                               * diagZ_w)
-                    Zii_ww = ((1 / 3)
-                              * 1 / np.power(Zii_ww * Zii_ww.conj(), 2 / 3)
-                              * Zii_ww)
-                elif self.functional == 'stdev':
+                if self.functional == 'var':
                     diagOZ_w = O_w * diagZ_w
                     OZii_ww = np.repeat(diagOZ_w, Nw).reshape(Nw, Nw)
 
@@ -1035,7 +980,7 @@ class Wannier:
                         np.dot(dag(Z_knn[k2]), V_knw[k2]) * diagZ_w,
                         dag(U_ww))
 
-                    if self.functional == 'stdev':
+                    if self.functional == 'var':
                         Ctemp_nw += self.nwannier * 2 * O * weight * np.dot(
                             np.dot(Z_knn[k], V_knw[k1]) * diagZ_w.conj() +
                             np.dot(dag(Z_knn[k2]), V_knw[k2]) * diagZ_w,
@@ -1049,7 +994,7 @@ class Wannier:
                 temp = Zii_ww.T * Z_kww[k].conj() - Zii_ww * Z_kww[k2].conj()
                 Utemp_ww += weight * (temp - dag(temp))
 
-                if self.functional == 'stdev':
+                if self.functional == 'var':
                     Utemp_ww += (self.nwannier * 2 * O * weight *
                                  (temp - dag(temp)) / Nw**2)
 

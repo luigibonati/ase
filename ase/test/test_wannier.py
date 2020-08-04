@@ -44,6 +44,7 @@ def wan(rng, std_calculator):
              nwannier=2,
              fixedstates=None,
              initialwannier='bloch',
+             functional='std',
              kpts=(1, 1, 1),
              file=None,
              rng=rng,
@@ -68,6 +69,7 @@ def wan(rng, std_calculator):
                        calc=calc,
                        initialwannier=initialwannier,
                        file=None,
+                       functional=functional,
                        rng=rng)
     return _wan
 
@@ -219,9 +221,10 @@ def test_get_radii(lat, std_calculator, wan):
     assert not (wanf.get_radii() == 0).all()
 
 
-def test_get_functional_value(wan):
+@pytest.mark.parametrize('fun', ['std', 'var'])
+def test_get_functional_value(fun, wan):
     # Only testing if the functional scales with the number of functions
-    wan1 = wan(nwannier=3)
+    wan1 = wan(nwannier=3, functional=fun)
     f1 = wan1.get_functional_value()
     wan2 = wan(nwannier=4)
     f2 = wan2.get_functional_value()
@@ -450,9 +453,10 @@ def test_get_function(wan):
                 wanf.get_function(index=i, repeat=[1, 2, 3]).shape).all()
 
 
-def test_get_gradients(wan, rng):
+@pytest.mark.parametrize('fun', ['std', 'var'])
+def test_get_gradients(fun, wan, rng):
     wanf = wan(nwannier=4, fixedstates=2, kpts=(1, 1, 1),
-               initialwannier='bloch', std_calc=False)
+               initialwannier='bloch', std_calc=False, functional=fun)
     # create an anti-hermitian array/matrix
     step = rng.rand(wanf.get_gradients().size) + \
         1.j * rng.rand(wanf.get_gradients().size)
