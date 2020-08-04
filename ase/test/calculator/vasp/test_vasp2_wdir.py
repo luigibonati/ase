@@ -1,6 +1,3 @@
-import pytest
-
-@pytest.mark.filterwarnings('ignore:Specifying directory')
 def test_vasp2_wdir(require_vasp):
     """
     Run tests to ensure that the VASP txt and label arguments function correctly,
