@@ -341,8 +341,7 @@ class Wannier:
 
           ``initialwannier``: Initial guess for Wannier rotation matrix.
             Can be 'bloch' to start from the Bloch states, 'random' to be
-            randomized, 'gaussians' to start from randomly placed gaussian
-            centers, 'orbitals' to start from atom-centered d-orbitals and
+            randomized, 'orbitals' to start from atom-centered d-orbitals and
             randomly placed gaussian centers (see init_orbitals()),
             'scdm' to start from localized state selected with SCDM
             or a list passed to calc.get_initial_wannier.
@@ -508,14 +507,6 @@ class Wannier:
                         Nb - M, rng=rng, real=False)[:, :L])
                 else:
                     self.C_kul.append(np.array([]))
-        elif initialwannier == 'gaussians':
-            # Create gaussians in random positions
-            centers = []
-            for i in range(self.nwannier):
-                centers.append((list(rng.rand(3)), 0, 1))
-            self.C_kul, self.U_kww = self.calc.initial_wannier(
-                centers, self.kptgrid, self.fixedstates_k,
-                self.edf_k, self.spin, self.nbands)
         elif initialwannier == 'orbitals':
             self.C_kul, self.U_kww = self.calc.initial_wannier(
                 init_orbitals(self.calc, self.nwannier, rng),
@@ -580,7 +571,7 @@ class Wannier:
                             + nwrange).astype(int)
 
         # If there is no randomness, there is no need to repeat
-        random_initials = ['random', 'gaussians', 'orbitals']
+        random_initials = ['random', 'orbitals']
         if self.initialwannier not in random_initials:
             random_reps = 1
 

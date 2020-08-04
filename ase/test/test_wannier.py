@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 from ase.transport.tools import dagger, normalize
 from ase.dft.kpoints import monkhorst_pack
-from ase.build import molecule
+from ase.build import molecule, bulk
 from ase.io.cube import read_cube
 from ase.lattice import CUB, FCC, BCC, TET, BCT, ORC, ORCF, ORCI, ORCC, HEX, \
     RHL, MCL, MCLC, TRI, OBL, HEX2D, RECT, CRECT, SQR, LINE
@@ -485,3 +485,12 @@ def test_get_gradients(fun, wan, rng):
     f2 = wanf.get_functional_value()
     assert (np.abs((f2 - f1) / step).ravel() -
             np.abs(wanf.get_gradients())).max() < 1e-4
+
+
+@pytest.mark.parametrize('init', ['bloch', 'random', 'orbitals',
+                                  'scdm', 'projectors'])
+def test_initialwannier(init, wan):
+    if init == 'orbitals' or init == 'scdm':
+        pytest.skip("tests are work in progress")
+    wanf = wan(initialwannier=init, std_calc=False)
+    assert wanf.get_functional_value() > 0
