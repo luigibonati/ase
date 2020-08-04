@@ -11,13 +11,33 @@ from ase.dft.wannier import gram_schmidt, lowdin, random_orthogonal_matrix, \
     rotation_from_projection, Wannier
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def rng():
     return np.random.RandomState(0)
 
 
+@pytest.fixture(scope='module')
+def _std_calculator(tmp_path_factory):
+    atoms = molecule('H2', pbc=True)
+    atoms.center(vacuum=3.)
+    gpaw = pytest.importorskip('gpaw')
+    gpw = tmp_path_factory.mktemp('sub') / 'dumpfile.gpw'
+    calc = gpaw.GPAW(gpts=(8, 8, 8), nbands=4, kpts=(2, 2, 2),
+                     symmetry='off', txt=None)
+    atoms.calc = calc
+    atoms.get_potential_energy()
+    calc.write(gpw, mode='all')
+    return gpw
+
+
+@pytest.fixture(scope='module')
+def std_calculator(_std_calculator):
+    gpaw = pytest.importorskip('gpaw')
+    return gpaw.GPAW(_std_calculator, txt=None)
+
+
 @pytest.fixture
-def wan(rng):
+def wan(rng, std_calculator):
     def _wan(gpts=(8, 8, 8),
              atoms=None,
              calc=None,
@@ -26,17 +46,23 @@ def wan(rng):
              initialwannier='bloch',
              kpts=(1, 1, 1),
              file=None,
-             rng=rng):
-        if calc is None:
-            gpaw = pytest.importorskip('gpaw')
-            calc = gpaw.GPAW(gpts=gpts, nbands=nwannier, kpts=kpts,
-                             symmetry='off', txt=None)
-        if atoms is None:
-            pbc = (np.array(kpts) > 1).any()
-            atoms = molecule('H2', pbc=pbc)
-            atoms.center(vacuum=3.)
-        atoms.calc = calc
-        atoms.get_potential_energy()
+             rng=rng,
+             full_calc=False,
+             std_calc=True):
+        if std_calc and calc is None and atoms is None:
+            calc = std_calculator
+        else:
+            if calc is None:
+                gpaw = pytest.importorskip('gpaw')
+                calc = gpaw.GPAW(gpts=gpts, nbands=nwannier, kpts=kpts,
+                                 symmetry='off', txt=None)
+            if atoms is None and not full_calc:
+                pbc = (np.array(kpts) > 1).any()
+                atoms = molecule('H2', pbc=pbc)
+                atoms.center(vacuum=3.)
+            if not full_calc:
+                atoms.calc = calc
+                atoms.get_potential_energy()
         return Wannier(nwannier=nwannier,
                        fixedstates=fixedstates,
                        calc=calc,
@@ -179,14 +205,16 @@ def test_save(tmpdir, wan):
 
 # The following test always fails because get_radii() is broken.
 @pytest.mark.parametrize('lat', bravais_lattices())
-def test_get_radii(lat, wan):
+def test_get_radii(lat, std_calculator, wan):
     if ((lat.tocell() == FCC(a=1).tocell()).all() or
             (lat.tocell() == ORCF(a=1, b=2, c=3).tocell()).all()):
         pytest.skip("lattices not supported, yet")
     atoms = molecule('H2', pbc=True)
     atoms.cell = lat.tocell()
     atoms.center(vacuum=3.)
-    wanf = wan(nwannier=4, fixedstates=2, atoms=atoms, initialwannier='bloch')
+    calc = std_calculator
+    wanf = wan(nwannier=4, fixedstates=2, atoms=atoms, calc=calc,
+               initialwannier='bloch', full_calc=True)
     assert not (wanf.get_radii() == 0).all()
 
 
@@ -255,19 +283,19 @@ def test_get_pdos(wan):
     atoms.center(vacuum=3.)
     atoms.calc = calc
     atoms.get_potential_energy()
-    wanf = wan(atoms=atoms, calc=calc, nwannier=nwannier, initialwannier='bloch')
+    wanf = wan(atoms=atoms, calc=calc,
+               nwannier=nwannier, initialwannier='bloch')
     eig_n = calc.get_eigenvalues()
     for i in range(nwannier):
         pdos_n = wanf.get_pdos(w=i, energies=eig_n, width=0.001)
         assert pdos_n[i] != pytest.approx(0)
 
 
-def test_translate(wan):
+def test_translate(wan, std_calculator):
     nwannier = 2
-    atoms = molecule('H2', pbc=True)
-    atoms.center(vacuum=3.)
-    wanf = wan(atoms=atoms, kpts=(2, 2, 2),
-              nwannier=nwannier, initialwannier='bloch')
+    calc = std_calculator
+    atoms = calc.get_atoms()
+    wanf = wan(nwannier=nwannier, initialwannier='bloch')
     wanf.translate_all_to_cell(cell=[0, 0, 0])
     c0_w = wanf.get_centers()
     for i in range(nwannier):
@@ -280,12 +308,11 @@ def test_translate(wan):
         assert c1_w == pytest.approx(c2_w)
 
 
-def test_translate_to_cell(wan):
+def test_translate_to_cell(wan, std_calculator):
     nwannier = 2
-    atoms = molecule('H2', pbc=True)
-    atoms.center(vacuum=3.)
-    wanf = wan(atoms=atoms, kpts=(2, 2, 2),
-              nwannier=nwannier, initialwannier='bloch')
+    calc = std_calculator
+    atoms = calc.get_atoms()
+    wanf = wan(nwannier=nwannier, initialwannier='bloch')
     for i in range(nwannier):
         wanf.translate_to_cell(w=i, cell=[0, 0, 0])
         c0_w = wanf.get_centers()
@@ -300,12 +327,11 @@ def test_translate_to_cell(wan):
         assert c0_w == pytest.approx(c1_w)
 
 
-def test_translate_all_to_cell(wan):
+def test_translate_all_to_cell(wan, std_calculator):
     nwannier = 2
-    atoms = molecule('H2', pbc=True)
-    atoms.center(vacuum=3.)
-    wanf = wan(atoms=atoms, kpts=(2, 2, 2),
-              nwannier=nwannier, initialwannier='bloch')
+    calc = std_calculator
+    atoms = calc.get_atoms()
+    wanf = wan(nwannier=nwannier, initialwannier='bloch')
     wanf.translate_all_to_cell(cell=[0, 0, 0])
     c0_w = wanf.get_centers()
     assert (c0_w < atoms.cell.array.diagonal()).all()
@@ -317,12 +343,11 @@ def test_translate_all_to_cell(wan):
             pytest.approx(np.linalg.norm(atoms.cell.array.diagonal()))
 
 
-def test_distances(wan):
+def test_distances(wan, std_calculator):
     nwannier = 2
-    atoms = molecule('H2', pbc=True)
-    atoms.center(vacuum=3.)
-    wanf = wan(atoms=atoms, kpts=(2, 2, 2),
-              nwannier=nwannier, initialwannier='bloch')
+    calc = std_calculator
+    atoms = calc.get_atoms()
+    wanf = wan(nwannier=nwannier, initialwannier='bloch')
     cent_w = wanf.get_centers()
     dist_ww = wanf.distances([0, 0, 0])
     dist1_ww = wanf.distances([1, 1, 1])
@@ -337,10 +362,7 @@ def test_distances(wan):
 
 def test_get_hopping_bloch(wan):
     nwannier = 4
-    atoms = molecule('H2', pbc=True)
-    atoms.center(vacuum=3.)
-    wanf = wan(atoms=atoms, kpts=(2, 2, 2),
-              nwannier=nwannier, initialwannier='bloch')
+    wanf = wan(nwannier=nwannier, initialwannier='bloch')
     hop0_ww = wanf.get_hopping([0, 0, 0])
     hop1_ww = wanf.get_hopping([1, 1, 1])
     for i in range(nwannier):
@@ -356,10 +378,7 @@ def test_get_hopping_bloch(wan):
 
 def test_get_hopping_random(wan, rng):
     nwannier = 4
-    atoms = molecule('H2', pbc=True)
-    atoms.center(vacuum=3.)
-    wanf = wan(atoms=atoms, kpts=(2, 2, 2), rng=rng,
-              nwannier=nwannier, initialwannier='random')
+    wanf = wan(nwannier=nwannier, initialwannier='random')
     hop0_ww = wanf.get_hopping([0, 0, 0])
     hop1_ww = wanf.get_hopping([1, 1, 1])
     for i in range(nwannier):
@@ -375,7 +394,7 @@ def test_get_hamiltonian_bloch(wan):
     kpts = (2, 2, 2)
     Nk = kpts[0] * kpts[1] * kpts[2]
     wanf = wan(atoms=atoms, kpts=kpts,
-              nwannier=nwannier, initialwannier='bloch')
+               nwannier=nwannier, initialwannier='bloch')
     for k in range(Nk):
         H_ww = wanf.get_hamiltonian(k=k)
         for i in range(nwannier):
@@ -392,7 +411,7 @@ def test_get_hamiltonian_random(wan, rng):
     kpts = (2, 2, 2)
     Nk = kpts[0] * kpts[1] * kpts[2]
     wanf = wan(atoms=atoms, kpts=kpts, rng=rng,
-              nwannier=nwannier, initialwannier='random')
+               nwannier=nwannier, initialwannier='random')
     for k in range(Nk):
         H_ww = wanf.get_hamiltonian(k=k)
         for i in range(nwannier):
@@ -400,12 +419,11 @@ def test_get_hamiltonian_random(wan, rng):
                 assert np.abs(H_ww[i, j]) == pytest.approx(np.abs(H_ww[j, i]))
 
 
-def test_get_hamiltonian_kpoint(wan, rng):
+def test_get_hamiltonian_kpoint(wan, rng, std_calculator):
     nwannier = 4
-    atoms = molecule('H2', pbc=True)
-    atoms.center(vacuum=3.)
-    wanf = wan(atoms=atoms, kpts=(2, 2, 2), rng=rng,
-              nwannier=nwannier, initialwannier='random')
+    calc = std_calculator
+    atoms = calc.get_atoms()
+    wanf = wan(nwannier=nwannier, initialwannier='random')
     kpts = atoms.cell.bandpath(density=50).cartesian_kpts()
     for kpt_c in kpts:
         H_ww = wanf.get_hamiltonian_kpoint(kpt_c=kpt_c)
@@ -421,10 +439,10 @@ def test_get_function(wan):
     nk = 2
     gpts = np.array([8, 8, 8])
     wanf = wan(atoms=atoms, gpts=gpts, kpts=(nk, nk, nk), rng=rng,
-              nwannier=nwannier, initialwannier='bloch')
+               nwannier=nwannier, initialwannier='bloch')
     assert (wanf.get_function(index=[0, 0]) == 0).all()
-    assert wanf.get_function(index=[0, 1]) + wanf.get_function(index=[1, 0]) == \
-        pytest.approx(wanf.get_function(index=[1, 1]))
+    assert wanf.get_function(index=[0, 1]) + wanf.get_function(index=[1, 0]) \
+        == pytest.approx(wanf.get_function(index=[1, 1]))
     for i in range(nwannier):
         assert (gpts * nk == wanf.get_function(index=i).shape).all()
         assert (gpts * [1, 2, 3] ==
@@ -432,7 +450,8 @@ def test_get_function(wan):
 
 
 def test_get_gradients(wan, rng):
-    wanf = wan(nwannier=4, fixedstates=2, initialwannier='bloch')
+    wanf = wan(nwannier=4, fixedstates=2, kpts=(1, 1, 1),
+               initialwannier='bloch', std_calc=False)
     # create an anti-hermitian array/matrix
     step = rng.rand(wanf.get_gradients().size) + \
         1.j * rng.rand(wanf.get_gradients().size)
