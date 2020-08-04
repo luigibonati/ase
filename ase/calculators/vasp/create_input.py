@@ -24,11 +24,12 @@ import warnings
 import shutil
 from os.path import join, isfile, islink
 from typing import List
+import copy
 
 import numpy as np
 
 from ase.calculators.calculator import kpts2ndarray
-from ase.calculators.vasp.setups import setups_defaults
+from ase.calculators.vasp.setups import setups_defaults as _setups_defaults
 
 # Parameters that can be set in INCAR. The values which are None
 # are not written and default parameters of VASP are used for them.
@@ -1000,6 +1001,10 @@ class GenerateVaspInput:
         # Where other keys are either atom identities or indices, and the
         # corresponding values are suffixes or the full name of the setup
         # folder, respectively.
+
+        # Avoid mutating the module dictionary, so we use a copy instead
+        # Note, it is a nested dict, so a regular copy is not enough
+        setups_defaults = copy.deepcopy(_setups_defaults)
 
         # Default to minimal basis
         if p['setups'] is None:
