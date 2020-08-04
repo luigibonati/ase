@@ -1,4 +1,6 @@
-setups_defaults = {'minimal':
+import copy
+
+_setups_defaults = {'minimal':
                    {'K': '_pv',
                     'Ca': '_pv',
                     'Rb': '_pv',
@@ -211,3 +213,13 @@ setups_defaults = {'minimal':
                     'At': '_d_GW',
                     'Rn': '_d_GW'}
                    }
+
+
+def get_default_setups():
+    # Avoid mutating the module dictionary, so we use a copy instead
+    # Note, it is a nested dict, so a regular copy is not enough
+    return copy.deepcopy(_setups_defaults)
+
+
+# Compatibility
+setups_defaults = get_default_setups()
