@@ -24,6 +24,6 @@ def parse_images(data, format=None, **kwargs):
 
 
 def parse_atoms(data, format=None, **kwargs):
-    images = parse_images(data, format=None, index=-1, **kwargs)
+    images = parse_images(data, format=format, index=-1, **kwargs)
     assert len(images) == 1
     return images[0]
