@@ -130,10 +130,15 @@ class Vasp2(GenerateVaspInput, Calculator):  # type: ignore
                                  'directory="{}" and label="{}".  '
                                  'Please omit "/" in label.'.format(
                                      self.directory, label))
-        self.label = label
+            self.label = label
+        else:
+            self.prefix = label     # The label should only contain the prefix
 
-        if restart is True:
-            restart = self.label
+        if isinstance(restart, bool):
+            if restart is True:
+                restart = self.label
+            else:
+                restart = None
 
         Calculator.__init__(
             self,
