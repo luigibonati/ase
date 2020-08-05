@@ -1,34 +1,42 @@
-def test_lattice_lindep():
-    import pytest
-    from ase.lattice.cubic import FaceCenteredCubic
-    from ase.lattice.hexagonal import HexagonalClosedPacked
+import pytest
 
+from ase.lattice.cubic import FaceCenteredCubic
+from ase.lattice.hexagonal import HexagonalClosedPacked
+
+
+def test_lattice_lindep():
     with pytest.raises(ValueError):
         # The Miller indices of the surfaces are linearly dependent
         atoms = FaceCenteredCubic(symbol='Cu',
                                   miller=[[1, 1, 0], [1, 1, 0], [0, 0, 1]])
 
-    # This one should be OK:
+
+def test_fcc_ok():
     atoms = FaceCenteredCubic(symbol='Cu',
                               miller=[[1, 1, 0], [0, 1, 0], [0, 0, 1]])
     print(atoms.get_cell())
 
 
+def test_fcc_cell_linearly_dependent():
     with pytest.raises(ValueError):
         # The directions spanning the unit cell are linearly dependent
         atoms = FaceCenteredCubic(symbol='Cu',
                                   directions=[[1, 1, 0], [1, 1, 0], [0, 0, 1]])
 
+
+def test_fcc_cell_linearly_dependent():
     with pytest.raises(ValueError):
         # The directions spanning the unit cell are linearly dependent
         atoms = FaceCenteredCubic(symbol='Cu',
                                   directions=[[1, 1, 0], [1, 0, 0], [0, 1, 0]])
 
-    # This one should be OK:
+def test_fcc_ok():
     atoms = FaceCenteredCubic(symbol='Cu',
                               directions=[[1, 1, 0], [0, 1, 0], [0, 0, 1]])
     print(atoms.get_cell())
 
+
+def test_hcp_miller_lienarly_dependent():
     with pytest.raises((ValueError, NotImplementedError)):
         # The Miller indices of the surfaces are linearly dependent
         atoms = HexagonalClosedPacked(symbol='Mg',
@@ -46,6 +54,8 @@ def test_lattice_lindep():
     #                                       [0, 0, 0, 1]])
     # print(atoms.get_cell())
 
+
+def test_hcp_cell_linearly_dependent():
     with pytest.raises(ValueError):
         # The directions spanning the unit cell are linearly dependent
         atoms = HexagonalClosedPacked(symbol='Mg',
@@ -53,7 +63,7 @@ def test_lattice_lindep():
                                                   [1, 0, -1, 0],
                                                   [0, 1, -1, 0]])
 
-    # This one should be OK
+def test_hcp():
     atoms = HexagonalClosedPacked(symbol='Mg',
                                   directions=[[1, -1, 0, 0],
                                               [1, 0, -1, 0],
