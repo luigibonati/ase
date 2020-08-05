@@ -18,8 +18,12 @@ from ase.dependencies import all_dependencies
 
 @pytest.fixture(scope='session')
 def enabled_calculators(pytestconfig):
-    all_names = set(calculator_names)
+    return get_enabled_calculators(pytestconfig)
+
+
+def get_enabled_calculators(pytestconfig):
     opt = pytestconfig.getoption('--calculators')
+    all_names = set(calculator_names)
 
     names = set(always_enabled_calculators)
     if opt:
@@ -30,7 +34,7 @@ def enabled_calculators(pytestconfig):
     return sorted(names)
 
 
-def get_factories(enabled_calculators):
+def get_factories(pytestconfig):
     try:
         import asetest
     except ImportError:
@@ -39,7 +43,7 @@ def get_factories(enabled_calculators):
         datafiles = asetest.datafiles.paths
 
     testing_executables = get_testing_executables()
-
+    enabled_calculators = get_enabled_calculators(pytestconfig)
     return Factories(testing_executables, datafiles, enabled_calculators)
 
 
@@ -70,7 +74,7 @@ def pytest_report_header(config, startdir):
         if name not in calculator_names:
             pytest.exit(f'No such calculator: {name}')
 
-    factories = get_factories(requested_calculators)
+    factories = get_factories(config)
     available_calculators = set()
 
     for name in sorted(factory_classes):
@@ -196,8 +200,8 @@ def psycopg2():
 
 
 @pytest.fixture(scope='session')
-def factories(enabled_calculators):
-    return get_factories(enabled_calculators)
+def factories(pytestconfig):
+    return get_factories(pytestconfig)
 
 
 abinit_factory = make_factory_fixture('abinit')
