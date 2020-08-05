@@ -15,11 +15,6 @@ from ase.calculators.calculator import (names as calculator_names,
 from ase.dependencies import all_dependencies
 
 
-@pytest.fixture(scope='session')
-def enabled_calculators(pytestconfig):
-    return get_enabled_calculators(pytestconfig)
-
-
 def get_enabled_calculators(pytestconfig):
     opt = pytestconfig.getoption('--calculators')
     all_names = set(calculator_names)
@@ -149,11 +144,11 @@ always_enabled_calculators = set(
 
 
 @pytest.fixture(scope='session', autouse=True)
-def monkeypatch_disabled_calculators(request, enabled_calculators):
+def monkeypatch_disabled_calculators(request, factories):
     test_calculator_names = list(always_enabled_calculators)
-    test_calculator_names += enabled_calculators
+    test_calculator_names += factories.enabled_calculators
     disable_calculators([name for name in calculator_names
-                         if name not in enabled_calculators])
+                         if name not in factories.enabled_calculators])
 
 
 @pytest.fixture(autouse=True)

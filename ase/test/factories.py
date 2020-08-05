@@ -241,12 +241,12 @@ class SiestaFactory:
 
 
 class Factories:
-    def __init__(self, executables, datafiles, enabled_names):
+    def __init__(self, executables, datafiles, enabled_calculators):
         assert isinstance(executables, dict), executables
         assert isinstance(datafiles, dict)
         self.executables = executables
         self.datafiles = datafiles
-        self.enabled_names = enabled_names
+        self.enabled_calculators = enabled_calculators
 
         self._factories = {}
 
@@ -256,7 +256,7 @@ class Factories:
         # make them skip.
         # Older tests call require(name) explicitly.
         assert name in calculator_names
-        if name not in self.enabled_names:
+        if name not in self.enabled_calculators:
             pytest.skip(f'use --calculators={name} to enable')
 
     def __getitem__(self, name):
