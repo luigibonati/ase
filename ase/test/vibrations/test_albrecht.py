@@ -71,3 +71,18 @@ def test_multiples(rrname, atoms):
 
     aoi = ao.intensity(omega=om, gamma=gam)
     assert len(aoi) == 27
+
+
+def test_summary(rrname, atoms):
+    om = 1
+    gam = 0.1
+    
+    ao = Albrecht(atoms, H2MorseExcitedStates,
+                  name=rrname, overlap=True,
+                  approximation='Albrecht B', txt=None)
+    ao.summary(om, gam)
+    
+    ao = Albrecht(atoms, H2MorseExcitedStates,
+                  name=rrname, overlap=True, combinations=2,
+                  approximation='Albrecht A', txt=None)
+    ao.extended_summary(om, gam)
