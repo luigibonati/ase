@@ -15,7 +15,6 @@ from ase.calculators.calculator import (names as calculator_names,
 from ase.dependencies import all_dependencies
 
 
-
 @pytest.fixture(scope='session')
 def enabled_calculators(pytestconfig):
     return get_enabled_calculators(pytestconfig)
@@ -142,7 +141,6 @@ def disable_calculators(names):
             cls.__del__ = mock_del
 
 
-
 # asap is special, being the only calculator that may not be installed.
 # But we want that for performance in some tests.
 always_enabled_calculators = set(
@@ -152,7 +150,6 @@ always_enabled_calculators = set(
 
 @pytest.fixture(scope='session', autouse=True)
 def monkeypatch_disabled_calculators(request, enabled_calculators):
-    from ase.calculators.calculator import names as calculator_names
     test_calculator_names = list(always_enabled_calculators)
     test_calculator_names += enabled_calculators
     disable_calculators([name for name in calculator_names
@@ -256,6 +253,12 @@ class CLI:
         output = check_output(actual_command, shell=True)
         return output.decode()
 
+
+@pytest.fixture(scope='session')
+def cli(factories):
+    return CLI(factories)
+
+
 @pytest.fixture(scope='session')
 def datadir():
     test_basedir = Path(__file__).parent
@@ -271,13 +274,7 @@ def pt_eam_potential_file(datadir):
 
 @pytest.fixture(scope='session')
 def asap3():
-    asap3 = pytest.importorskip('asap3')
-    return asap3
-
-
-@pytest.fixture(scope='session')
-def cli(factories):
-    return CLI(factories)
+    return pytest.importorskip('asap3')
 
 
 @pytest.fixture(autouse=True)
