@@ -375,27 +375,32 @@ class Wannier:
             if isinstance(fixedstates, int):
                 fixedstates = [fixedstates] * self.Nk
             self.fixedstates_k = np.array(fixedstates, int)
-        else:
+        elif fixedenergy is not None and fixedstates is None:
             # Setting number of fixed states and EDF from specified energy.
-            # All states below this energy (relative to Fermi level) are fixed.
-            if fixedenergy is None:
-                cutoff = calc.get_fermi_level()
+            # All states below this energy are fixed.
+            # The reference energy is Ef for metals and CBM for insulators.
+            if (bandgap(calc=calc, output=None)[0] < 0.01
+                    or fixedenergy < 0.01):
+                cutoff = fixedenergy + calc.get_fermi_level()
             else:
-                if (bandgap(calc=calc, output=None)[0] < 0.01
-                        or fixedenergy < 0.01):
-                    cutoff = fixedenergy + calc.get_fermi_level()
-                else:
-                    cutoff = fixedenergy + calc.get_homo_lumo()[1]
+                cutoff = fixedenergy + calc.get_homo_lumo()[1]
 
             self.fixedstates_k = np.array(
                 [calc.get_eigenvalues(k, spin).searchsorted(cutoff)
                  for k in range(self.Nk)], int)
+        elif fixedenergy is not None and fixedstates is not None:
+            raise RuntimeError(
+                'You can not set both fixedenergy and fixedstates')
 
         if np.issubdtype(type(nwannier), np.integer):
             self.nwannier = nwannier
             if fixedstates is None and fixedenergy is None:
                 self.fixedstates_k = np.array([self.nwannier] * self.Nk, int)
         elif nwannier == 'auto':
+            self.fixedstates_k = np.array(
+                [calc.get_eigenvalues(k, spin).searchsorted(
+                    calc.get_fermi_level())
+                 for k in range(self.Nk)], int)
             self.nwannier = np.max(self.fixedstates_k)
             if fixedstates is None and fixedenergy is None:
                 self.fixedstates_k = np.array([self.nwannier] * self.Nk, int)
@@ -511,8 +516,8 @@ class Wannier:
             for k in range(self.Nk):
                 for n in range(self.nbands):
                     pseudo_nkG[n, k] = \
-                            self.calc.get_pseudo_wave_function(band=n, kpt=k,
-                                spin=self.spin).ravel()
+                        self.calc.get_pseudo_wave_function(
+                            band=n, kpt=k, spin=self.spin).ravel()
             self.C_kul, self.U_kww = scdm(pseudo_nkG,
                                           kpts=self.kpt_kc,
                                           fixed_k=self.fixedstates_k,
