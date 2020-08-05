@@ -36,6 +36,29 @@ def std_calculator(_std_calculator):
     return gpaw.GPAW(_std_calculator, txt=None)
 
 
+@pytest.fixture(scope='module')
+def _gaas_calculator(tmp_path_factory):
+    gpaw = pytest.importorskip('gpaw')
+    atoms = bulk('GaAs', crystalstructure='zincblende',
+                 a=5.6531)
+    atoms.pbc = (True, True, True)
+    atoms.center()
+    gpw = tmp_path_factory.mktemp('sub') / 'dumpfile.gpw'
+    calc = gpaw.GPAW(gpts=(8, 8, 8), nbands=6,
+                     kpts={'size': (2, 2, 2), 'gamma': True},
+                     symmetry='off', txt=None)
+    atoms.calc = calc
+    atoms.get_potential_energy()
+    calc.write(gpw, mode='all')
+    return gpw
+
+
+@pytest.fixture(scope='module')
+def gaas_calculator(_gaas_calculator):
+    gpaw = pytest.importorskip('gpaw')
+    return gpaw.GPAW(_gaas_calculator, txt=None)
+
+
 @pytest.fixture
 def wan(rng, std_calculator):
     def _wan(gpts=(8, 8, 8),
@@ -487,10 +510,11 @@ def test_get_gradients(fun, wan, rng):
             np.abs(wanf.get_gradients())).max() < 1e-4
 
 
-@pytest.mark.parametrize('init', ['bloch', 'random', 'orbitals',
-                                  'scdm', 'projectors'])
-def test_initialwannier(init, wan):
-    if init == 'orbitals' or init == 'scdm':
-        pytest.skip("tests are work in progress")
-    wanf = wan(initialwannier=init, std_calc=False)
+@pytest.mark.parametrize('init', ['bloch', 'random', 'orbitals', 'scdm'])
+def test_initialwannier(init, wan, gaas_calculator):
+    if init == 'scdm':
+        pytest.skip("not working, yet")
+    wanf = wan(calc=gaas_calculator, full_calc=True,
+               initialwannier=init, std_calc=False,
+               nwannier=6, fixedstates=4)
     assert wanf.get_functional_value() > 0
