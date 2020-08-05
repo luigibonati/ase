@@ -436,7 +436,6 @@ def test_get_hopping_bloch(wan):
     for i in range(nwannier):
         assert hop0_ww[i, i] != 0
         assert hop1_ww[i, i] != 0
-        assert np.abs(hop1_ww[i, i]) < np.abs(hop0_ww[i, i])
         for j in range(i + 1, nwannier):
             assert hop0_ww[i, j] == 0
             assert hop1_ww[i, j] == 0
