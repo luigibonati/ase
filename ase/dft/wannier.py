@@ -401,7 +401,7 @@ class Wannier:
                 self.fixedstates_k = np.array(
                     [calc.get_eigenvalues(k, spin).searchsorted(
                         calc.get_fermi_level())
-                    for k in range(self.Nk)], int)
+                        for k in range(self.Nk)], int)
             self.nwannier = np.max(self.fixedstates_k)
             if fixedstates is None and fixedenergy is None:
                 self.fixedstates_k = np.array([self.nwannier] * self.Nk, int)
@@ -759,6 +759,18 @@ class Wannier:
 
     @functools.lru_cache(maxsize=10000)
     def get_hopping(self, n1, n2, n3):
+        """Returns the matrix H(R)_nm=<0,n|H|R,m>.
+
+        ::
+
+                                1   _   -ik.R
+          H(R) = <0,n|H|R,m> = --- >_  e      H(k)
+                                Nk  k
+
+        where R = (n1, n2, n3) is the cell-distance (in units of the basis
+        vectors of the small cell) and n,m are indices of the Wannier functions.
+        This function caches results from _get_hopping().
+        """
         R = np.array([n1, n2, n3], float)
         return self._get_hopping(R)
 

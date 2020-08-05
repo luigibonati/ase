@@ -8,7 +8,7 @@ from ase.lattice import CUB, FCC, BCC, TET, BCT, ORC, ORCF, ORCI, ORCC, HEX, \
     RHL, MCL, MCLC, TRI, OBL, HEX2D, RECT, CRECT, SQR, LINE
 from ase.dft.wannier import gram_schmidt, lowdin, random_orthogonal_matrix, \
     neighbor_k_search, calculate_weights, steepest_descent, md_min, \
-    rotation_from_projection, Wannier
+    rotation_from_projection, init_orbitals, scdm, Wannier
 
 
 @pytest.fixture(scope='module')
@@ -158,7 +158,7 @@ def orthogonality_error(matrix):
     errors = []
     for i in range(len(matrix)):
         for j in range(i + 1, len(matrix)):
-            errors.append(np.abs(matrix[i].T @ matrix[j]))
+            errors.append(np.abs(dagger(matrix[i]) @ matrix[j]))
     return np.max(errors)
 
 
@@ -431,8 +431,8 @@ def test_distances(wan, std_calculator):
 def test_get_hopping_bloch(wan):
     nwannier = 4
     wanf = wan(nwannier=nwannier, initialwannier='bloch')
-    hop0_ww = wanf.get_hopping([0, 0, 0])
-    hop1_ww = wanf.get_hopping([1, 1, 1])
+    hop0_ww = wanf.get_hopping(0, 0, 0)
+    hop1_ww = wanf.get_hopping(1, 1, 1)
     for i in range(nwannier):
         assert hop0_ww[i, i] != 0
         assert hop1_ww[i, i] != 0
@@ -447,8 +447,8 @@ def test_get_hopping_bloch(wan):
 def test_get_hopping_random(wan, rng):
     nwannier = 4
     wanf = wan(nwannier=nwannier, initialwannier='random')
-    hop0_ww = wanf.get_hopping([0, 0, 0])
-    hop1_ww = wanf.get_hopping([1, 1, 1])
+    hop0_ww = wanf.get_hopping(0, 0, 0)
+    hop1_ww = wanf.get_hopping(1, 1, 1)
     for i in range(nwannier):
         for j in range(i + 1, nwannier):
             assert np.abs(hop0_ww[i, j]) == pytest.approx(np.abs(hop0_ww[j, i]))
@@ -555,3 +555,48 @@ def test_nwannier_auto(wan, ti_calculator):
                nwannier='auto', fixedenergy=5)
     Nw2 = wanf.get_spreads().size
     assert Nw1 < Nw2
+
+
+def test_init_orbitals(rng):
+    atoms = molecule('H2')
+    atoms.center(vacuum=3.)
+    ntot = 2
+    orbs = init_orbitals(atoms=atoms, ntot=ntot, rng=rng)
+    assert sum([orb[1] * 2 + 1 for orb in orbs]) == ntot
+    for orb in orbs:
+        assert orb[1] == 0
+    atoms = bulk('Ti')
+    ntot = 14
+    orbs = init_orbitals(atoms=atoms, ntot=ntot, rng=rng)
+    assert sum([orb[1] * 2 + 1 for orb in orbs]) == ntot
+    # check if there are both s- and d-orbitals in transition metal
+    bool_s = False
+    bool_d = False
+    for orb in orbs:
+        if not bool_s:
+            bool_s = (orb[1] == 0)
+        if not bool_d:
+            bool_d = (orb[1] == 2)
+
+
+def test_scdm(ti_calculator):
+    calc = ti_calculator
+    Nw = 14
+    ps = calc.get_pseudo_wave_function(band=Nw, kpt=0, spin=0)
+    Ng = ps.size
+    kpt_kc = calc.get_bz_k_points()
+    Nk = len(kpt_kc)
+    nbands = calc.get_number_of_bands()
+    pseudo_nkG = np.zeros((nbands, Nk, Ng), dtype=np.complex128)
+    for k in range(Nk):
+        for n in range(nbands):
+            pseudo_nkG[n, k] = calc.get_pseudo_wave_function(
+                band=n, kpt=k, spin=0).ravel()
+    fixed_k = [Nw - 2] * Nk
+    C_kul, U_kww = scdm(pseudo_nkG, kpts=kpt_kc,
+                        fixed_k=fixed_k, Nw=Nw)
+    for k in range(Nk):
+        assert orthonormality_error(U_kww[k]) < 1e-10, 'U_ww not unitary'
+        assert orthogonality_error(C_kul[k].T) < 1e-10, \
+            'C_ul columns not orthogonal'
+        assert normalization_error(C_kul[k]) < 1e-10, 'C_ul not normalized'
