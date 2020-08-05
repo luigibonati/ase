@@ -246,20 +246,21 @@ def scdm(calc, Nw, fixed_k, verbose=True):
     return C_kul, U_kww
 
 
-def init_orbitals(calc, ntot, rng=np.random):
+def init_orbitals(atoms, ntot, rng=np.random):
     """Place d-orbitals for every atom that has some in the valence states
         and then random s-orbitals close to the other atoms (< 1.5Å).
-       'calc': ASE calculator object
+       'atoms': ASE Atoms object
        'ntot': total number of needed orbitals
        'rng': generator random numbers"""
 
-    atoms = calc.get_atoms()
+    # list all the elements that should have occupied d-orbitals
+    # in the valence states (according to GPAW setups)
+    d_metals = list(range(21, 31)) + list(range(39, 52)) + \
+        list(range(57, 84)) + list(range(89, 113))
     orbs = []
     No = 0
     for i, z in enumerate(atoms.get_atomic_numbers()):
-        # check occupied d-orbitals in valence states in the GPAW setup
-        s = calc.setups[i]
-        if 2 in s.l_j and s.f_j[s.l_j.index(2)] > 0:
+        if z in d_metals:
             No_new = No + 5
             if No_new <= ntot:
                 orbs.append([i, 2, 1])
@@ -509,7 +510,7 @@ class Wannier:
                     self.C_kul.append(np.array([]))
         elif initialwannier == 'orbitals':
             self.C_kul, self.U_kww = self.calc.initial_wannier(
-                init_orbitals(self.calc, self.nwannier, rng),
+                init_orbitals(self.calc.get_atoms(), self.nwannier, rng),
                 self.kptgrid, self.fixedstates_k,
                 self.edf_k, self.spin, self.nbands)
         elif initialwannier == 'scdm':

@@ -21,8 +21,9 @@ def _std_calculator(tmp_path_factory):
     gpaw = pytest.importorskip('gpaw')
     atoms = molecule('H2', pbc=True)
     atoms.center(vacuum=3.)
-    gpw = tmp_path_factory.mktemp('sub') / 'dumpfile.gpw'
-    calc = gpaw.GPAW(gpts=(8, 8, 8), nbands=4, kpts=(2, 2, 2),
+    gpw = tmp_path_factory.mktemp('wan_calc') / 'wan_gaas.gpw'
+    calc = gpaw.GPAW(gpts=(8, 8, 8), nbands=4,
+                     kpts={'size': (2, 2, 2), 'gamma': True},
                      symmetry='off', txt=None)
     atoms.calc = calc
     atoms.get_potential_energy()
@@ -39,11 +40,10 @@ def std_calculator(_std_calculator):
 @pytest.fixture(scope='module')
 def _gaas_calculator(tmp_path_factory):
     gpaw = pytest.importorskip('gpaw')
-    atoms = bulk('GaAs', crystalstructure='zincblende',
-                 a=5.6531)
+    atoms = bulk('GaAs', crystalstructure='zincblende', a=5.6531)
     atoms.pbc = (True, True, True)
     atoms.center()
-    gpw = tmp_path_factory.mktemp('sub') / 'dumpfile.gpw'
+    gpw = tmp_path_factory.mktemp('wan_calc') / 'wan_gaas.gpw'
     calc = gpaw.GPAW(gpts=(8, 8, 8), nbands=6,
                      kpts={'size': (2, 2, 2), 'gamma': True},
                      symmetry='off', txt=None)
@@ -57,6 +57,28 @@ def _gaas_calculator(tmp_path_factory):
 def gaas_calculator(_gaas_calculator):
     gpaw = pytest.importorskip('gpaw')
     return gpaw.GPAW(_gaas_calculator, txt=None)
+
+
+@pytest.fixture(scope='module')
+def _ti_calculator(tmp_path_factory):
+    gpaw = pytest.importorskip('gpaw')
+    atoms = bulk('Ti', crystalstructure='hcp')
+    atoms.pbc = (True, True, True)
+    atoms.center()
+    gpw = tmp_path_factory.mktemp('wan_calc') / 'wan_ti.gpw'
+    calc = gpaw.GPAW(gpts=(8, 8, 8), nbands=14,
+                     kpts={'size': (2, 2, 2), 'gamma': True},
+                     symmetry='off', txt=None)
+    atoms.calc = calc
+    atoms.get_potential_energy()
+    calc.write(gpw, mode='all')
+    return gpw
+
+
+@pytest.fixture(scope='module')
+def ti_calculator(_ti_calculator):
+    gpaw = pytest.importorskip('gpaw')
+    return gpaw.GPAW(_ti_calculator, txt=None)
 
 
 @pytest.fixture
@@ -511,10 +533,10 @@ def test_get_gradients(fun, wan, rng):
 
 
 @pytest.mark.parametrize('init', ['bloch', 'random', 'orbitals', 'scdm'])
-def test_initialwannier(init, wan, gaas_calculator):
+def test_initialwannier(init, wan, ti_calculator):
     if init == 'scdm':
         pytest.skip("not working, yet")
-    wanf = wan(calc=gaas_calculator, full_calc=True,
+    wanf = wan(calc=ti_calculator, full_calc=True,
                initialwannier=init, std_calc=False,
-               nwannier=6, fixedstates=4)
+               nwannier=14, fixedstates=12)
     assert wanf.get_functional_value() > 0
