@@ -192,7 +192,7 @@ def rotation_from_projection(proj_nw, fixed, ortho=True):
     return U_ww, C_ul
 
 
-def scdm(calc, Nw, fixed_k, verbose=True):
+def scdm(pseudo_nkG, kpts, fixed_k, Nw):
     """Compute localized orbitals with SCDM method
 
     This method was published by Anil Damle and Lin Lin in Multiscale
@@ -201,40 +201,28 @@ def scdm(calc, Nw, fixed_k, verbose=True):
     intended as a drop-in replacement for other initial guess methods for
     the ASE Wannier class.
 
-    calc   = GPAW calculator object
+    pseudo_nkG = pseudo wave-functions on a real grid
+    Ng (G) = number of real grid points
+    kpts   = List of k-points in the BZ
     Nk (k) = Number of k-points
     Nb (n) = Number of bands
     Nw (w) = Number of wannier functions
-    M  (f) = Number of fixed states (fixed_k)
+    fixed_k = Number of fixed states for each k-point
     L  (l) = Number of extra degrees of freedom
     U  (u) = Number of non-fixed states
     """
 
-    Nb = calc.get_number_of_bands()
-    kpts = calc.get_bz_k_points()
     gamma_idx = [i.all() for i in np.isclose(kpts, 0, atol=1e-10)].index(True)
     Nk = len(kpts)
     U_kww = []
     C_kul = []
 
-    # get grid size and check that we have Nw bands at once
-    ps = calc.get_pseudo_wave_function(band=Nw, kpt=0, spin=0).ravel()
-    Ng = ps.size
-    ps_wfs = np.zeros((Nb, Ng), dtype=np.complex128)
-
-    # compute factorization just at Gamma point
-    for n in range(Nb):
-        ps_wfs[n] = calc.get_pseudo_wave_function(band=n, kpt=gamma_idx,
-                                                  spin=0).ravel()
-
-    _, _, P = qr(ps_wfs, mode='full', pivoting=True, check_finite=True)
+    # compute factorization only at Gamma point
+    _, _, P = qr(pseudo_nkG[:, gamma_idx, :], mode='full',
+                 pivoting=True, check_finite=True)
 
     for k in range(Nk):
-        for n in range(Nb):
-            ps_wfs[n] = calc.get_pseudo_wave_function(band=n, kpt=k,
-                                                      spin=0).ravel()
-
-        A_nw = ps_wfs[:, P[:Nw]]
+        A_nw = pseudo_nkG[:, k, P[:Nw]]
         U_ww, C_ul = rotation_from_projection(proj_nw=A_nw,
                                               fixed=fixed_k[k],
                                               ortho=True)
@@ -514,10 +502,21 @@ class Wannier:
                 self.kptgrid, self.fixedstates_k,
                 self.edf_k, self.spin, self.nbands)
         elif initialwannier == 'scdm':
-            self.C_kul, self.U_kww = scdm(calc=self.calc,
-                                          Nw=self.nwannier,
+            # get the size of the grid and check if there are Nw bands
+            ps = self.calc.get_pseudo_wave_function(band=self.nwannier,
+                                                    kpt=0, spin=0)
+            Ng = ps.size
+            pseudo_nkG = np.zeros((self.nbands, self.Nk, Ng),
+                                  dtype=np.complex128)
+            for k in range(self.Nk):
+                for n in range(self.nbands):
+                    pseudo_nkG[n, k] = \
+                            self.calc.get_pseudo_wave_function(band=n, kpt=k,
+                                spin=self.spin).ravel()
+            self.C_kul, self.U_kww = scdm(pseudo_nkG,
+                                          kpts=self.kpt_kc,
                                           fixed_k=self.fixedstates_k,
-                                          verbose=self.verbose)
+                                          Nw=self.nwannier)
         else:
             # Use initial guess to determine U and C
             self.C_kul, self.U_kww = self.calc.initial_wannier(
