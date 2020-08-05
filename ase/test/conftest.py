@@ -7,13 +7,24 @@ import numpy as np
 
 import ase
 from ase.utils import workdir
-from ase.test.factories import (Factories, CalculatorInputs, NotInstalled,
-                                factory_classes, BuiltinCalculatorFactory,
+from ase.test.factories import (CalculatorInputs,
+                                NotInstalled,
+                                factory_classes,
+                                NoSuchCalculator,
                                 get_factories,
-                                make_factory_fixture, get_testing_executables)
-from ase.calculators.calculator import (names as calculator_names,
-                                        get_calculator_class)
+                                make_factory_fixture)
 from ase.dependencies import all_dependencies
+
+helpful_message = """\
+ * Use --calculators option to select calculators.
+
+ * See "ase test --help-calculators" on how to configure calculators.
+
+ * This listing only includes external calculators known by the test
+   system.  Others are "configured" by setting an environment variable
+   like "ASE_xxx_COMMAND" in order to allow tests to run.  Please see
+   the documentation of that individual calculator.
+"""
 
 
 def pytest_report_header(config, startdir):
@@ -33,31 +44,18 @@ def pytest_report_header(config, startdir):
     add('Calculators')
     add('===========')
     add()
-    calculators_option = config.getoption('--calculators')
-    if calculators_option:
-        requested_calculators = set(calculators_option.split(','))
-    else:
-        requested_calculators = set()
 
-    for name in requested_calculators:
-        if name not in calculator_names:
-            pytest.exit(f'No such calculator: {name}')
-
-    factories = get_factories(config)
-    available_calculators = set()
+    try:
+        factories = get_factories(config)
+    except NoSuchCalculator as err:
+        pytest.exit(f'No such calculator: {err}')
 
     for name in sorted(factory_classes):
-        cls = factory_classes[name]
-        if issubclass(cls, BuiltinCalculatorFactory):
-            # Not interesting to test presence of always-present calculators.
+        if name in factories.builtin_calculators:
+            # Not interesting to test presence of builtin calculators.
             continue
 
-        try:
-            factory = cls.fromconfig(factories)
-        except (KeyError, NotInstalled):
-            factory = None
-        else:
-            available_calculators.add(name)
+        factory = factories.factories.get(name)
 
         if factory is None:
             configinfo = 'not installed'
@@ -73,15 +71,18 @@ def pytest_report_header(config, startdir):
                     configtokens.append(f'{varname}={variable}')
                 configinfo = ', '.join(configtokens)
 
-        run = '[x]' if name in requested_calculators else '[ ]'
+        run = '[x]' if factories.enabled(name) else '[ ]'
         line = f'  {run} {name:10} {configinfo}'
         add(line)
     add()
+    add(helpful_message)
+    add()
 
-    for name in requested_calculators:
-        if name in factory_classes and name not in available_calculators:
-            pytest.exit(f'Calculator {name} is not installed.  '
-                        'Please run "ase test --help-calculators".')
+    for name in factories.requested_calculators:
+        if not factories.is_adhoc(name) and not factories.installed(name):
+            pytest.exit(f'Calculator "{name}" is not installed.  '
+                        'Please run "ase test --help-calculators" on how '
+                        'to install calculators')
 
     return messages
 
@@ -91,32 +92,10 @@ def require_vasp(factories):
     factories.require('vasp')
 
 
-def disable_calculators(names):
-    for name in names:
-        if name in Factories.autoenabled_calculators:
-            continue
-        try:
-            cls = get_calculator_class(name)
-        except ImportError:
-            pass
-        else:
-            def get_mock_init(name):
-                def mock_init(obj, *args, **kwargs):
-                    pytest.skip(f'use --calculators={name} to enable')
-                return mock_init
-
-            def mock_del(obj):
-                pass
-            cls.__init__ = get_mock_init(name)
-            cls.__del__ = mock_del
-
-
 @pytest.fixture(scope='session', autouse=True)
 def monkeypatch_disabled_calculators(request, factories):
-    test_calculator_names = list(factories.autoenabled_calculators)
-    test_calculator_names += factories.enabled_calculators
-    disable_calculators([name for name in calculator_names
-                         if name not in factories.enabled_calculators])
+    # XXX Replace with another mechanism.
+    factories.monkeypatch_disabled_calculators()
 
 
 @pytest.fixture(autouse=True)
@@ -125,6 +104,7 @@ def use_tmp_workdir(tmp_path):
     path = Path(str(tmp_path))
     with workdir(path, mkdir=True):
         yield tmp_path
+    # We print the path so user can see where test failed, if it failed.
     print(f'Testpath: {path}')
 
 

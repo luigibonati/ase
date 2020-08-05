@@ -4,7 +4,8 @@ import json
 
 import pytest
 
-from ase.calculators.calculator import names as calculator_names
+from ase.calculators.calculator import (names as calculator_names,
+                                        get_calculator_class)
 
 
 class NotInstalled(Exception):
@@ -240,20 +241,53 @@ class SiestaFactory:
         return cls(config.executables['siesta'], str(path))
 
 
-class Factories:
-    # (Note: asap is the only non-builtin, for performance)
-    autoenabled_calculators = {
-        'asap', 'eam', 'emt', 'ff', 'lj', 'morse', 'tip3p', 'tip4p',
-    }
+class NoSuchCalculator(Exception):
+    pass
 
-    def __init__(self, executables, datafiles, enabled_calculators):
+
+class Factories:
+    all_calculators = set(calculator_names)
+    builtin_calculators = {'eam', 'emt', 'ff', 'lj', 'morse', 'tip3p', 'tip4p'}
+    autoenabled_calculators = {'asap'} | builtin_calculators
+
+    def __init__(self, executables, datafiles, requested_calculators):
         assert isinstance(executables, dict), executables
         assert isinstance(datafiles, dict)
         self.executables = executables
         self.datafiles = datafiles
-        self.enabled_calculators = enabled_calculators
 
-        self._factories = {}
+        self.requested_calculators = set(requested_calculators)
+        for name in self.requested_calculators:
+            if name not in self.all_calculators:
+                raise NoSuchCalculator(name)
+
+        factories = {}
+
+        for name, cls in factory_classes.items():
+            try:
+                factory = cls.fromconfig(self)
+            except KeyError:
+                pass
+            else:
+                factories[name] = factory
+
+        self.factories = factories
+
+    def installed(self, name):
+        return name in self.builtin_calculators | set(self.factories)
+
+    def is_adhoc(self, name):
+        return name not in factory_classes
+
+    def optional(self, name):
+        return name not in self.builtin_calculators
+
+    def enabled(self, name):
+        return name in (self.requested_calculators
+                        | self.autoenabled_calculators)
+
+    def available(self, name):
+        return self.installed(name) and self.enabled(name)
 
     def require(self, name):
         # XXX This is for old-style calculator tests.
@@ -264,17 +298,42 @@ class Factories:
         if name not in self.enabled_calculators:
             pytest.skip(f'use --calculators={name} to enable')
 
+    def __iter__(self):
+        return iter(self.factories.values())
+
     def __getitem__(self, name):
         # Hmm.  We could also just return a new factory instead of
         # caching them.
-        if name not in self._factories:
-            cls = factory_classes[name]
+        if name not in self.factories:
+            #cls = factory_classes[name]
+            #try:
+            #    factory = cls.fromconfig(self)
+            #except KeyError:
+            pytest.skip('Missing configuration for {}'.format(name))
+            #self._factories[name] = factory
+        return self.factories[name]
+
+    def monkeypatch_disabled_calculators(self):
+        test_calculator_names = (self.autoenabled_calculators |
+                                 self.builtin_calculators |
+                                 self.requested_calculators)
+        disable_names = self.all_calculators - test_calculator_names
+
+        for name in disable_names:
             try:
-                factory = cls.fromconfig(self)
-            except KeyError:
-                pytest.skip('Missing configuration for {}'.format(name))
-            self._factories[name] = factory
-        return self._factories[name]
+                cls = get_calculator_class(name)
+            except ImportError:
+                pass
+            else:
+                def get_mock_init(name):
+                    def mock_init(obj, *args, **kwargs):
+                        pytest.skip(f'use --calculators={name} to enable')
+                    return mock_init
+
+                def mock_del(obj):
+                    pass
+                cls.__init__ = get_mock_init(name)
+                cls.__del__ = mock_del
 
 
 def get_enabled_calculators(pytestconfig):
@@ -284,8 +343,6 @@ def get_enabled_calculators(pytestconfig):
     names = set(Factories.autoenabled_calculators)
     if opt:
         for name in opt.split(','):
-            if name not in all_names:
-                raise ValueError(f'No such calculator: {name}')
             names.add(name)
     return sorted(names)
 
