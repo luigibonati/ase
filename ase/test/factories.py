@@ -241,6 +241,11 @@ class SiestaFactory:
 
 
 class Factories:
+    # (Note: asap is the only non-builtin, for performance)
+    autoenabled_calculators = {
+        'asap', 'eam', 'emt', 'ff', 'lj', 'morse', 'tip3p', 'tip4p',
+    }
+
     def __init__(self, executables, datafiles, enabled_calculators):
         assert isinstance(executables, dict), executables
         assert isinstance(datafiles, dict)
@@ -270,6 +275,32 @@ class Factories:
                 pytest.skip('Missing configuration for {}'.format(name))
             self._factories[name] = factory
         return self._factories[name]
+
+
+def get_enabled_calculators(pytestconfig):
+    opt = pytestconfig.getoption('--calculators')
+    all_names = set(calculator_names)
+
+    names = set(Factories.autoenabled_calculators)
+    if opt:
+        for name in opt.split(','):
+            if name not in all_names:
+                raise ValueError(f'No such calculator: {name}')
+            names.add(name)
+    return sorted(names)
+
+
+def get_factories(pytestconfig):
+    try:
+        import asetest
+    except ImportError:
+        datafiles = {}
+    else:
+        datafiles = asetest.datafiles.paths
+
+    testing_executables = get_testing_executables()
+    enabled_calculators = get_enabled_calculators(pytestconfig)
+    return Factories(testing_executables, datafiles, enabled_calculators)
 
 
 def parametrize_calculator_tests(metafunc):

@@ -9,36 +9,11 @@ import ase
 from ase.utils import workdir
 from ase.test.factories import (Factories, CalculatorInputs, NotInstalled,
                                 factory_classes, BuiltinCalculatorFactory,
+                                get_factories,
                                 make_factory_fixture, get_testing_executables)
 from ase.calculators.calculator import (names as calculator_names,
                                         get_calculator_class)
 from ase.dependencies import all_dependencies
-
-
-def get_enabled_calculators(pytestconfig):
-    opt = pytestconfig.getoption('--calculators')
-    all_names = set(calculator_names)
-
-    names = set(always_enabled_calculators)
-    if opt:
-        for name in opt.split(','):
-            if name not in all_names:
-                raise ValueError(f'No such calculator: {name}')
-            names.add(name)
-    return sorted(names)
-
-
-def get_factories(pytestconfig):
-    try:
-        import asetest
-    except ImportError:
-        datafiles = {}
-    else:
-        datafiles = asetest.datafiles.paths
-
-    testing_executables = get_testing_executables()
-    enabled_calculators = get_enabled_calculators(pytestconfig)
-    return Factories(testing_executables, datafiles, enabled_calculators)
 
 
 def pytest_report_header(config, startdir):
@@ -118,7 +93,7 @@ def require_vasp(factories):
 
 def disable_calculators(names):
     for name in names:
-        if name in always_enabled_calculators:
+        if name in Factories.autoenabled_calculators:
             continue
         try:
             cls = get_calculator_class(name)
@@ -136,16 +111,9 @@ def disable_calculators(names):
             cls.__del__ = mock_del
 
 
-# asap is special, being the only calculator that may not be installed.
-# But we want that for performance in some tests.
-always_enabled_calculators = set(
-    ['asap', 'eam', 'emt', 'ff', 'lj', 'morse', 'tip3p', 'tip4p']
-)
-
-
 @pytest.fixture(scope='session', autouse=True)
 def monkeypatch_disabled_calculators(request, factories):
-    test_calculator_names = list(always_enabled_calculators)
+    test_calculator_names = list(factories.autoenabled_calculators)
     test_calculator_names += factories.enabled_calculators
     disable_calculators([name for name in calculator_names
                          if name not in factories.enabled_calculators])
