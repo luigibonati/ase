@@ -1,7 +1,8 @@
-def test_properties():
-    import numpy as np
-    from ase import Atoms
+import numpy as np
+from ase import Atoms
 
+
+def test_properties():
     charges = np.array([-1, 1])
     a = Atoms('H2', positions=[(0, 0, 0), (0, 0, 1.1)], charges=charges)
 
