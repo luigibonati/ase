@@ -397,10 +397,11 @@ class Wannier:
             if fixedstates is None and fixedenergy is None:
                 self.fixedstates_k = np.array([self.nwannier] * self.Nk, int)
         elif nwannier == 'auto':
-            self.fixedstates_k = np.array(
-                [calc.get_eigenvalues(k, spin).searchsorted(
-                    calc.get_fermi_level())
-                 for k in range(self.Nk)], int)
+            if fixedenergy is None and fixedstates is None:
+                self.fixedstates_k = np.array(
+                    [calc.get_eigenvalues(k, spin).searchsorted(
+                        calc.get_fermi_level())
+                    for k in range(self.Nk)], int)
             self.nwannier = np.max(self.fixedstates_k)
             if fixedstates is None and fixedenergy is None:
                 self.fixedstates_k = np.array([self.nwannier] * self.Nk, int)
@@ -738,7 +739,7 @@ class Wannier:
         r2 = np.swapaxes(r2.repeat(Nw, axis=0).reshape(Nw, Nw, 3), 0, 1)
         return np.sqrt(np.sum((r1 - r2)**2, axis=-1))
 
-    def get_hopping(self, R):
+    def _get_hopping(self, R):
         """Returns the matrix H(R)_nm=<0,n|H|R,m>.
 
         ::
@@ -757,9 +758,9 @@ class Wannier:
         return H_ww / self.Nk
 
     @functools.lru_cache(maxsize=10000)
-    def get_hopping_wcache(self, n1, n2, n3):
+    def get_hopping(self, n1, n2, n3):
         R = np.array([n1, n2, n3], float)
-        return self.get_hopping(R)
+        return self._get_hopping(R)
 
     def get_hamiltonian(self, k=0):
         """Get Hamiltonian at existing k-vector of index k
@@ -794,7 +795,7 @@ class Wannier:
             for n2 in range(-N2, N2 + 1):
                 for n3 in range(-N3, N3 + 1):
                     R = np.array([n1, n2, n3], float)
-                    hop_ww = self.get_hopping_wcache(n1, n2, n3)
+                    hop_ww = self.get_hopping(n1, n2, n3)
                     phase = np.exp(+2.j * pi * np.dot(R, kpt_c))
                     Hk += hop_ww * phase
         return Hk

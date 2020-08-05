@@ -66,8 +66,7 @@ def _ti_calculator(tmp_path_factory):
     atoms.pbc = (True, True, True)
     atoms.center()
     gpw = tmp_path_factory.mktemp('wan_calc') / 'wan_ti.gpw'
-    calc = gpaw.GPAW(gpts=(8, 8, 8), nbands=14,
-                     kpts={'size': (2, 2, 2), 'gamma': True},
+    calc = gpaw.GPAW(gpts=(8, 8, 8), kpts={'size': (2, 2, 2), 'gamma': True},
                      symmetry='off', txt=None)
     atoms.calc = calc
     atoms.get_potential_energy()
@@ -88,6 +87,7 @@ def wan(rng, std_calculator):
              calc=None,
              nwannier=2,
              fixedstates=None,
+             fixedenergy=None,
              initialwannier='bloch',
              functional='std',
              kpts=(1, 1, 1),
@@ -115,6 +115,7 @@ def wan(rng, std_calculator):
                 atoms.get_potential_energy()
         return Wannier(nwannier=nwannier,
                        fixedstates=fixedstates,
+                       fixedenergy=fixedenergy,
                        calc=calc,
                        initialwannier=initialwannier,
                        file=None,
@@ -534,9 +535,23 @@ def test_get_gradients(fun, wan, rng):
 
 @pytest.mark.parametrize('init', ['bloch', 'random', 'orbitals', 'scdm'])
 def test_initialwannier(init, wan, ti_calculator):
+    # dummy check to run the module with different initialwannier methods
     if init == 'scdm':
         pytest.skip("not working, yet")
     wanf = wan(calc=ti_calculator, full_calc=True,
                initialwannier=init, std_calc=False,
                nwannier=14, fixedstates=12)
     assert wanf.get_functional_value() > 0
+
+
+def test_nwannier_auto(wan, ti_calculator):
+    # check if the number is changing, but not if it is correct
+    wanf = wan(calc=ti_calculator, full_calc=True,
+               initialwannier='bloch', std_calc=False,
+               nwannier='auto', fixedenergy=0)
+    Nw1 = wanf.get_spreads().size
+    wanf = wan(calc=ti_calculator, full_calc=True,
+               initialwannier='bloch', std_calc=False,
+               nwannier='auto', fixedenergy=5)
+    Nw2 = wanf.get_spreads().size
+    assert Nw1 < Nw2
