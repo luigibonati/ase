@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from typing import Mapping
 import configparser
 
 import pytest
@@ -231,7 +232,7 @@ class NWChemFactory:
 
 class Factories:
     def __init__(self, executables, datafiles):
-        assert isinstance(executables, dict), executables
+        assert isinstance(executables, Mapping), executables
         assert isinstance(datafiles, dict)
         self.executables = executables
         self.datafiles = datafiles
