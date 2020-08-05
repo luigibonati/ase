@@ -1,20 +1,22 @@
 import os
 from pathlib import Path
-import json
+import configparser
 
 import pytest
 
 
 def get_testing_executables():
-    path = os.environ.get('ASE_EXECUTABLE_CONFIGFILE')
-    if path is None:
-        path = Path.home() / '.ase' / 'executables.json'
-    path = Path(path)
-    if path.exists():
-        dct = json.loads(path.read_text())
-    else:
-        dct = {}
-    return dct
+    # TODO: better cross-platform support (namely Windows),
+    # and a cross-platform global config file like /etc/ase/ase.conf
+    paths = [Path.home() / '.config' / 'ase' / 'ase.conf']
+    try:
+        paths += [Path(x) for x in os.environ['ASE_CONFIG'].split(':')]
+    except KeyError:
+        pass
+    conf = configparser.ConfigParser()
+    conf['executables'] = {}
+    conf.read(paths)
+    return conf['executables']
 
 
 factory_classes = {}
@@ -34,7 +36,6 @@ def make_factory_fixture(name):
         return factories[name]
     _factory.__name__ = '{}_factory'.format(name)
     return _factory
-
 
 
 @factory('abinit')
@@ -211,6 +212,21 @@ class SiestaFactory:
         assert len(paths) == 1
         path = paths[0]
         return cls(config.executables['siesta'], str(path))
+
+
+@factory('nwchem')
+class NWChemFactory:
+    def __init__(self, executable):
+        self.executable = executable
+
+    def calc(self, **kwargs):
+        from ase.calculators.nwchem import NWChem
+        command = f'{self.executable} PREFIX.nwi > PREFIX.nwo'
+        return NWChem(command=command, **kwargs)
+
+    @classmethod
+    def fromconfig(cls, config):
+        return cls(config.datafiles['nwchem'])
 
 
 class Factories:
