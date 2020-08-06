@@ -497,11 +497,24 @@ def write_enc(fileobj, s):
     fileobj.write(s.encode("latin-1"))
 
 
-def write_cif(fileobj, images, format='default',
-              wrap=True) -> None:
+def write_cif(fileobj, images, cif_format='default',
+              wrap=True, labels=None, loop_keys={}) -> None:
     """Write *images* to CIF file.
 
-    wrap: Wrap atoms into unit cell.
+    wrap: bool
+        Wrap atoms into unit cell.
+
+    labels: list
+        Use this list (shaped list[i_frame][i_atom] = string) for the '_atom_site_label'
+        section instead of automatically generating it from the element symbol.
+
+    loop_keys: dict
+        Add the information from this dictionary to the `loop_` section.
+        Keys are printed to the `loop_` section preceeded by '  _'. dict[key] should contain
+        the data printed for each atom, so it needs to have the setup
+        `dict[key][i_frame][i_atom] = string`. The strings are printed as
+        they are, so take care of formating. Information can be re-read using the `store_tags`
+        option of the cif reader.
     """
     if isinstance(fileobj, str):
         fileobj = paropen(fileobj, 'wb')
@@ -509,12 +522,12 @@ def write_cif(fileobj, images, format='default',
     if hasattr(images, 'get_positions'):
         images = [images]
 
-    for i, atoms in enumerate(images):
-        write_enc(fileobj, 'data_image%d\n' % i)
+    for i_frame, atoms in enumerate(images):
+        write_enc(fileobj, 'data_image%d\n' % i_frame)
 
         a, b, c, alpha, beta, gamma = atoms.get_cell_lengths_and_angles()
 
-        if format == 'mp':
+        if cif_format == 'mp':
 
             comp_name = atoms.get_chemical_formula(mode='reduce')
             sf = split_chem_form(comp_name)
@@ -555,7 +568,7 @@ def write_cif(fileobj, images, format='default',
         # Is it a periodic system?
         coord_type = 'fract' if atoms.pbc.all() else 'Cartn'
 
-        if format == 'mp':
+        if cif_format == 'mp':
             write_enc(fileobj, '  _atom_site_type_symbol\n')
             write_enc(fileobj, '  _atom_site_label\n')
             write_enc(fileobj, '  _atom_site_symmetry_multiplicity\n')
@@ -595,26 +608,44 @@ def write_cif(fileobj, images, format='default',
         except KeyError:
             pass
 
-        no: Dict[str, int] = {}
+        #can only do it now since length of atoms is not always equal to the number of entries
+        #do not move this up!
+        extra_data = ["" for i in range(len(symbols))]
+        for key in loop_keys:
+            extra_data = ["{}  {}".format(extra_data[i],loop_keys[key][i_frame][i]) for i in range(len(symbols))]
+            write_enc(fileobj, "  _{}\n".format(key))
 
-        for symbol, pos, occ in zip(symbols, coords, occupancies):
-            if symbol in no:
-                no[symbol] += 1
-            else:
-                no[symbol] = 1
-            if format == 'mp':
+
+
+        if labels:
+            included_labels = labels[i_frame]
+        else:
+            no: Dict[str, int] = {}
+            included_labels = []
+            for symbol in symbols:
+                if symbol in no:
+                    no[symbol] += 1
+                else:
+                    no[symbol] = 1
+                included_labels.append('%s%d' % (symbol, no[symbol]))
+
+        assert len(symbols) == len(coords) == len(occupancies) == len(included_labels) == len(extra_data)
+
+        for symbol, pos, occ, label, ext in zip(symbols, coords, occupancies, included_labels, extra_data):
+            if cif_format == 'mp':
                 write_enc(fileobj,
-                          '  %-2s  %4s  %4s  %7.5f  %7.5f  %7.5f  %6.1f\n' %
-                          (symbol, symbol + str(no[symbol]), 1,
-                           pos[0], pos[1], pos[2], occ))
+                          '  %-2s  %4s  %4s  %7.5f  %7.5f  %7.5f  %6.1f%s\n' %
+                          (symbol, label, 1,
+                           pos[0], pos[1], pos[2], occ, ext))
             else:
                 write_enc(fileobj,
-                          '  %-8s %6.4f %7.5f  %7.5f  %7.5f  %4s  %6.3f  %s\n'
-                          % ('%s%d' % (symbol, no[symbol]),
+                          '  %-8s %6.4f %7.5f  %7.5f  %7.5f  %4s  %6.3f  %-2s%s\n'
+                          % (label,
                              occ,
                              pos[0],
                              pos[1],
                              pos[2],
                              'Biso',
                              1.0,
-                             symbol))
+                             symbol,
+                             ext))

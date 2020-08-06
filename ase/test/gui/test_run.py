@@ -341,7 +341,11 @@ def test_clipboard_paste_onto_existing(gui):
     assert gui.atoms == ti + h2o
 
 
-@pytest.mark.parametrize('text', ['', 'invalid_atoms'])
+@pytest.mark.parametrize('text', [
+    '',
+    'invalid_atoms',
+    '[1, 2, 3]',  # valid JSON but not Atoms
+])
 def test_clipboard_paste_invalid(gui, text):
     gui.clipboard.set_text(text)
     with pytest.raises(GUIError):
