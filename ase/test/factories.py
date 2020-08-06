@@ -350,15 +350,6 @@ class Factories:
                 cls.__del__ = mock_del
 
 
-def get_enabled_calculators(pytestconfig):
-    opt = pytestconfig.getoption('--calculators')
-
-    if opt:
-        return opt.split(',')
-    else:
-        return []
-
-
 def get_factories(pytestconfig):
     try:
         import asetest
@@ -368,8 +359,9 @@ def get_factories(pytestconfig):
         datafiles = asetest.datafiles.paths
 
     testing_executables = get_testing_executables()
-    enabled_calculators = get_enabled_calculators(pytestconfig)
-    return Factories(testing_executables, datafiles, enabled_calculators)
+    opt = pytestconfig.getoption('--calculators')
+    requested_calculators = opt.split(',') if opt else []
+    return Factories(testing_executables, datafiles, requested_calculators)
 
 
 def parametrize_calculator_tests(metafunc):
