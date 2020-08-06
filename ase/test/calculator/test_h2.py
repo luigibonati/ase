@@ -6,7 +6,7 @@ from ase.test.factories import ObsoleteFactoryWrapper
 required = {'aims': dict(sc_accuracy_rho=5.e-3)}
 
 
-@pytest.mark.parametrize('name', names, ['aims', 'gamess_us', 'gaussian'])
+@pytest.mark.parametrize('name', ['aims', 'gamess_us', 'gaussian'])
 def test_h2dft_old(name):
     factory = ObsoleteFactoryWrapper(name)
     run(factory)
