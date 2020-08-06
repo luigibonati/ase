@@ -283,6 +283,10 @@ class Factories:
         for name, cls in factory_classes.items():
             try:
                 factory = cls.fromconfig(self)
+            except NotInstalled:
+                if name in self.autoenabled_calculators:
+                    pass
+                raise
             except KeyError:
                 pass
             else:
