@@ -314,9 +314,6 @@ class Factories:
         if name not in self.requested_calculators:
             pytest.skip(f'use --calculators={name} to enable')
 
-    def __iter__(self):
-        return iter(self.factories.values())
-
     def __getitem__(self, name):
         return self.factories[name]
 

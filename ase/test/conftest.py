@@ -143,6 +143,8 @@ def factories(pytestconfig):
     return get_factories(pytestconfig)
 
 
+# XXX Maybe we should not have individual factory fixtures, we could use
+# the decorator @pytest.mark.calculator(name) instead.
 abinit_factory = make_factory_fixture('abinit')
 cp2k_factory = make_factory_fixture('cp2k')
 dftb_factory = make_factory_fixture('dftb')
