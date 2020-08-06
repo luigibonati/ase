@@ -307,18 +307,34 @@ def test_get_centers():
     assert np.abs(centers - [com, com]).max() < 1e-4
 
 
-def test_write_cube(wan):
+def test_write_cube_real(wan):
     atoms = molecule('H2')
     atoms.center(vacuum=3.)
     wanf = wan(atoms=atoms, kpts=(1, 1, 1), std_calc=False)
     index = 0
     # It returns some errors when using file objects, so we use simple filename
     cubefilename = 'wanf.cube'
-    wanf.write_cube(index, cubefilename)
+    wanf.write_cube(index, cubefilename, real=True)
     with open(cubefilename, mode='r') as inputfile:
         content = read_cube(inputfile)
     assert pytest.approx(content['atoms'].cell.array) == atoms.cell.array
-    assert pytest.approx(content['data']) == wanf.get_function(index)
+
+
+def test_write_cube_complex(wan):
+    atoms = bulk('GaAs', crystalstructure='zincblende', a=5.6531)
+    atoms.center()
+    wanf = wan(atoms=atoms, nwannier=6, kpts=(1, 1, 1), std_calc=False)
+    index = 0
+    # It returns some errors when using file objects, so we use simple filename
+    cubefilename = 'wanf.cube'
+    wanf.write_cube(index, cubefilename, real=False)
+    with open('wanf.phase.cube', mode='r') as inputfile:
+        content = read_cube(inputfile)
+    assert pytest.approx(content['atoms'].cell.array) == atoms.cell.array
+    assert pytest.approx(content['data']) == np.angle(wanf.get_function(index))
+    with open('wanf.cube', mode='r') as inputfile:
+        content = read_cube(inputfile)
+    assert pytest.approx(content['data']) == np.real(wanf.get_function(index))
 
 
 def test_localize(wan):
