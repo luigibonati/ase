@@ -1,8 +1,11 @@
+import pytest
 from ase.db import connect
 from ase.io.jsonio import read_json
 from ase.io import read
 from numpy.testing import assert_allclose
 
+
+@pytest.mark.skip('CLI fixture lacks information about configured executables')
 def test_cmdline(cli):
     cli.shell("""\
 ase build O O.traj &&
