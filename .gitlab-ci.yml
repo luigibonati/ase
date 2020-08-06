@@ -1,17 +1,22 @@
 ---  # ASE Gitlab CI configuration
 
-services:
-  - postgres:latest
-  - mysql:latest
-  - mariadb:latest
 
 variables:
-  POSTGRES_DB: testase
-  POSTGRES_USER: ase
-  POSTGRES_PASSWORD: "ase"
-  MYSQL_DATABASE: testase_mysql
-  MYSQL_ROOT_PASSWORD: ase
   OMP_NUM_THREADS: "1"
+
+
+.database-configuration:
+  variables:
+    POSTGRES_DB: testase
+    POSTGRES_USER: ase
+    POSTGRES_PASSWORD: "ase"
+    MYSQL_DATABASE: testase_mysql
+    MYSQL_ROOT_PASSWORD: ase
+
+  services:
+    - postgres:latest
+    - mysql:latest
+    - mariadb:latest
 
 # Check oldest supported Python with oldest supported libraries.
 # Does not install any optional libraries except matplotlib.
@@ -20,6 +25,7 @@ variables:
 # on different codes, then complains.  So we use -j 0.
 oldlibs:
   image: registry.gitlab.com/ase/ase:ase-oldlibs
+  extends: .database-configuration
   script:
     - pip install --no-deps .
     - ase test --pytest --color=yes -W "ignore:can't resolve package"
@@ -33,6 +39,7 @@ oldlibs:
 # in this test job.
 pipinstall:
   image: python:3.7
+  extends: .database-configuration
   script:
     - python --version
     - pip install psycopg2-binary pymysql cryptography
@@ -52,6 +59,11 @@ pipinstall:
 # It would be better to install it for real, and for things to just work.
 main:
   image: registry.gitlab.com/ase/ase:ase-main
+  extends: .database-configuration
+  services:
+    - postgres:latest
+    - mysql:latest
+    - mariadb:latest
   script:
     - python --version
     - pip install --no-deps --editable .
@@ -66,6 +78,13 @@ main:
     paths:
       - coverage-html/
     expire_in: 1 week
+
+
+calculators-lite:
+  image: registry.gitlab.com/ase/ase:ase-full-monty
+  script:
+    - pip install --no-deps --editable .
+    - ase test --calculators nwchem calculator/test_ch4_energy.py --pytest --color=yes --durations=20
 
 
 # Plan: Test as many calculators as possible as well as possible.
@@ -94,6 +113,7 @@ doc:
 
 distribution-package:
   image: registry.gitlab.com/ase/ase:ase-main
+  extends: .database-configuration
   script:
     - apt-get install -y gettext  # For compiling ase gui translations
     - mkdir dist

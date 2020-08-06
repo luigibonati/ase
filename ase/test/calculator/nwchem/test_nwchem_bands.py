@@ -1,7 +1,6 @@
 import pytest
 
 from ase.build import bulk
-from ase.calculators.nwchem import NWChem
 from ase.spectrum.band_structure import calculate_band_structure
 
 

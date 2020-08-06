@@ -1,6 +1,5 @@
 import pytest
 from ase.build import molecule
-from ase.calculators.nwchem import NWChem
 from numpy.testing import assert_allclose
 
 
@@ -9,6 +8,7 @@ def atoms():
     return molecule('H2O')
 
 
+@pytest.mark.calculator('nwchem')
 @pytest.mark.parametrize(
     'theory,eref,forces,pbc,kwargs',
     [
@@ -36,8 +36,8 @@ def atoms():
         ['paw', -2065.6600649367365, False, True, dict()]
     ]
 )
-def test_nwchem(atoms, theory, eref, forces, pbc, kwargs):
-    calc = NWChem(label=theory, theory=theory, **kwargs)
+def test_nwchem(factory, atoms, theory, eref, forces, pbc, kwargs):
+    calc = factory.calc(label=theory, theory=theory, **kwargs)
     if pbc:
         atoms.center(vacuum=2)
         atoms.pbc = True
