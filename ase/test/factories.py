@@ -352,13 +352,11 @@ class Factories:
 
 def get_enabled_calculators(pytestconfig):
     opt = pytestconfig.getoption('--calculators')
-    all_names = set(calculator_names)
 
-    names = set(Factories.autoenabled_calculators)
     if opt:
-        for name in opt.split(','):
-            names.add(name)
-    return sorted(names)
+        return opt.split(',')
+    else:
+        return []
 
 
 def get_factories(pytestconfig):
