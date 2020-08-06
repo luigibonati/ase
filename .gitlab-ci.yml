@@ -98,7 +98,7 @@ calculators:
   script:
     - pip install . --no-deps
     - ase info --calculators
-    - ase test calculator --calculators abinit,asap,cp2k,dftb,espresso,gpaw,lammpsrun,octopus,siesta --pytest --color=yes --durations 20
+    - ase test calculator --calculators abinit,asap,cp2k,dftb,espresso,gpaw,lammpsrun,nwchem,octopus,siesta --pytest --color=yes --durations 20
   when: manual
 
 doc:
