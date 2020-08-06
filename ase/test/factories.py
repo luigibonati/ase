@@ -255,7 +255,7 @@ class NWChemFactory:
 
     @classmethod
     def fromconfig(cls, config):
-        return cls(config.datafiles['nwchem'])
+        return cls(config.executables['nwchem'])
 
 
 class NoSuchCalculator(Exception):
