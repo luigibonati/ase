@@ -553,16 +553,16 @@ class Wannier:
         # Update the new Z matrix
         self.Z_dww = self.Z_dkww.sum(axis=1) / self.Nk
 
-    def best_nwannier(self, nwrange=5, random_reps=5, tolerance=1e-6):
-        """The best value for 'nwannier', maybe
+    def get_optimal_nwannier(self, nwrange=5, random_reps=5, tolerance=1e-6):
+        """The optimal value for 'nwannier', maybe
 
-        The best value is the one that gives the lowest average value for the
+        The optimal value is the one that gives the lowest average value for the
         spread of the most delocalized Wannier function in the set.
 
         ``nwrange``: number of different values to try for 'nwannier'.
 
         ``random_reps``: number of repetitions with random seed, the value is
-        then an average over this repetitions.
+        then an average over these repetitions.
 
         ``tolerance``: tolerance for the gradient descent algorithm, can be
         useful to increase the speed, with a cost in accuracy.
@@ -570,11 +570,13 @@ class Wannier:
 
         if (self.nwannier - np.floor(nwrange / 2)) < np.max(self.fixedstates_k):
             Nws = np.arange(np.max(self.fixedstates_k),
-                            np.max(self.fixedstates_k) + nwrange).astype(int)
+                            np.min([np.max(self.fixedstates_k) + nwrange,
+                                    self.nbands + 1])).astype(int)
         else:
             Nws = np.arange(np.max(self.fixedstates_k) - np.floor(nwrange / 2),
-                            np.max(self.fixedstates_k) - np.floor(nwrange / 2)
-                            + nwrange).astype(int)
+                            np.min([np.max(self.fixedstates_k) -
+                                    np.floor(nwrange / 2) + nwrange,
+                                    self.nbands + 1])).astype(int)
 
         # If there is no randomness, there is no need to repeat
         random_initials = ['random', 'orbitals']
@@ -583,7 +585,7 @@ class Wannier:
 
         if self.verbose:
             t = - time()
-        avg_max_spreads = np.zeros(nwrange)
+        avg_max_spreads = np.zeros(len(Nws))
         for j, Nw in enumerate(Nws):
             if self.verbose:
                 print('Trying with Nw =', Nw)

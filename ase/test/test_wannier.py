@@ -44,7 +44,7 @@ def _gaas_calculator(tmp_path_factory):
     atoms.pbc = (True, True, True)
     atoms.center()
     gpw = tmp_path_factory.mktemp('wan_calc') / 'wan_gaas.gpw'
-    calc = gpaw.GPAW(gpts=(8, 8, 8), nbands=6,
+    calc = gpaw.GPAW(gpts=(16, 16, 16), nbands=6,
                      kpts={'size': (2, 2, 2), 'gamma': True},
                      symmetry='off', txt=None)
     atoms.calc = calc
@@ -94,7 +94,8 @@ def wan(rng, std_calculator):
              file=None,
              rng=rng,
              full_calc=False,
-             std_calc=True):
+             std_calc=True,
+             verbose=False):
         if std_calc and calc is None:
             calc = std_calculator
             if atoms is not None:
@@ -120,7 +121,8 @@ def wan(rng, std_calculator):
                        initialwannier=initialwannier,
                        file=None,
                        functional=functional,
-                       rng=rng)
+                       rng=rng,
+                       verbose=verbose)
     return _wan
 
 
@@ -535,8 +537,6 @@ def test_get_gradients(fun, wan, rng):
 @pytest.mark.parametrize('init', ['bloch', 'random', 'orbitals', 'scdm'])
 def test_initialwannier(init, wan, ti_calculator):
     # dummy check to run the module with different initialwannier methods
-    if init == 'scdm':
-        pytest.skip("not working, yet")
     wanf = wan(calc=ti_calculator, full_calc=True,
                initialwannier=init, std_calc=False,
                nwannier=14, fixedstates=12)
@@ -599,3 +599,11 @@ def test_scdm(ti_calculator):
         assert orthogonality_error(C_kul[k].T) < 1e-10, \
             'C_ul columns not orthogonal'
         assert normalization_error(C_kul[k]) < 1e-10, 'C_ul not normalized'
+
+
+def test_get_optimal_nwannier(wan, gaas_calculator):
+    wanf = wan(calc=gaas_calculator, full_calc=True,
+               initialwannier='bloch', std_calc=False,
+               nwannier='auto', fixedenergy=0)
+    opt_nw = wanf.get_optimal_nwannier()
+    assert opt_nw == 4
