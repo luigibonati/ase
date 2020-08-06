@@ -177,6 +177,7 @@ pages:
   only:
     - master
 
+
 coverage-combine:
   image: registry.gitlab.com/ase/ase:ase-main
   stage: paperwork
@@ -195,3 +196,7 @@ coverage-combine:
     paths:
       - coverage-html
     expire_in: 1 week
+
+
+include:
+  - template: Code-Quality.gitlab-ci.yml
