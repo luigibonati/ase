@@ -1,14 +1,16 @@
 from math import radians, sin, cos
 
+import pytest
+
 from ase import Atoms
 from ase.neb import NEB
 from ase.constraints import FixAtoms
-from ase.calculators.nwchem import NWChem
 from ase.optimize import QuasiNewton, BFGS
 from ase.visualize import view
 
 
-def test_h3o2m():
+@pytest.mark.calculator('nwchem')
+def test_h3o2m(factory):
     # http://jcp.aip.org/resource/1/jcpsa6/v97/i10/p7507_s1
     doo = 2.74
     doht = 0.957
@@ -40,9 +42,11 @@ def test_h3o2m():
     neb = NEB(images, climb=True)
 
     def calculator():
-        return NWChem(task='gradient',
-                      theory='scf',
-                      charge=-1)
+        return factory.calc(
+            task='gradient',
+            theory='scf',
+            charge=-1
+        )
 
     # Set constraints and calculator:
     constraint = FixAtoms(indices=[1, 3])  # fix OO
