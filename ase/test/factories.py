@@ -300,11 +300,8 @@ class Factories:
         return name not in self.builtin_calculators
 
     def enabled(self, name):
-        return name in (self.requested_calculators
-                        | self.autoenabled_calculators)
-
-    def available(self, name):
-        return self.installed(name) and self.enabled(name)
+        auto = name in self.autoenabled_calculators and self.installed(name)
+        return auto or (name in self.requested_calculators)
 
     def require(self, name):
         # XXX This is for old-style calculator tests.
