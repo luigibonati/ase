@@ -41,6 +41,8 @@ def factory(name):
 def make_factory_fixture(name):
     @pytest.fixture(scope='session')
     def _factory(factories):
+        if not factories.installed(name):
+            pytest.skip(f'Not installed: {name}')
         return factories[name]
     _factory.__name__ = '{}_factory'.format(name)
     return _factory
@@ -283,11 +285,7 @@ class Factories:
         for name, cls in factory_classes.items():
             try:
                 factory = cls.fromconfig(self)
-            except NotInstalled:
-                if name in self.autoenabled_calculators:
-                    pass
-                raise
-            except KeyError:
+            except (NotInstalled, KeyError):
                 pass
             else:
                 factories[name] = factory
@@ -313,7 +311,7 @@ class Factories:
         # make them skip.
         # Older tests call require(name) explicitly.
         assert name in calculator_names
-        if name not in self.enabled_calculators:
+        if name not in self.requested_calculators:
             pytest.skip(f'use --calculators={name} to enable')
 
     def __iter__(self):
