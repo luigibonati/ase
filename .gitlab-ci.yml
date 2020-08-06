@@ -68,6 +68,13 @@ main:
     expire_in: 1 week
 
 
+calculators-lite:
+  image: registry.gitlab.com/ase/ase:ase-full-monty
+  script:
+    - pip install --no-deps --editable .
+    - ase test --calculators nwchem calculator/test_ch4_energy.py --pytest --color=yes --durations=20
+
+
 # Plan: Test as many calculators as possible as well as possible.
 # Obviously this is kind of expensive so the job is manually activated.
 # Also, the docker serves as a knowledgebase for how to set up those
