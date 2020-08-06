@@ -17,7 +17,6 @@ calc = pytest.mark.calculator
 
 @calc('abinit', ecut=200, toldfe=0.0001)
 @calc('cp2k', auto_write=True, uks=True)
-@calc('nwchem')
 # @calc('gpaw', mode='lcao', basis='sz(dzp)')
 def test_h2dft(factory):
     run(factory)
