@@ -316,15 +316,6 @@ class Factories:
         return iter(self.factories.values())
 
     def __getitem__(self, name):
-        # Hmm.  We could also just return a new factory instead of
-        # caching them.
-        if name not in self.factories:
-            #cls = factory_classes[name]
-            #try:
-            #    factory = cls.fromconfig(self)
-            #except KeyError:
-            pytest.skip('Missing configuration for {}'.format(name))
-            #self._factories[name] = factory
         return self.factories[name]
 
     def monkeypatch_disabled_calculators(self):

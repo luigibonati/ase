@@ -8,7 +8,6 @@ import numpy as np
 import ase
 from ase.utils import workdir
 from ase.test.factories import (CalculatorInputs,
-                                NotInstalled,
                                 factory_classes,
                                 NoSuchCalculator,
                                 get_factories,
@@ -156,10 +155,9 @@ siesta_factory = make_factory_fixture('siesta')
 @pytest.fixture
 def factory(request, factories):
     name, kwargs = request.param
-    try:
-        factory = factories[name]
-    except NotInstalled:
+    if not factories.installed(name):
         pytest.skip(f'Not installed: {name}')
+    factory = factores[name]
     return CalculatorInputs(factory, kwargs)
 
 
