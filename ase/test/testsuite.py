@@ -73,8 +73,8 @@ def choose_how_many_workers(jobs):
 help_calculators = """\
 Calculator testing is currently work in progress.  This
 notice applies to the calculators abinit, cp2k, dftb, espresso,
-lammpsrun, octopus, and siesta.  The goal of this work is to provide
-a configuration in which tests are more reproducible.
+lammpsrun, nwchem, octopus, and siesta.  The goal of this work is to
+provide a configuration in which tests are more reproducible.
 
 Most calculators require datafiles such as pseudopotentials
 which are available at
@@ -83,16 +83,23 @@ which are available at
 
 Please install this package using e.g.:
 
-  $ pip install git+https://gitlab.com/ase/ase-datafiles.git
+  $ pip install --user --upgrade git+https://gitlab.com/ase/ase-datafiles.git
 
 The ASE test suite needs to know the exact binaries for each
-of the aforementioned programs.  Currently these must be specified as
-a JSON dictionary mapping calculator names to executables, e.g.:
+of the aforementioned programs.  Currently these must be specified
+in ~/.config/ase/ase.conf or another file if specified by
+the ASE_CONFIG environment variable.  Example configuration file:
 
-  {"cp2k": "cp2k_shell", "lammps": "lmp", "siesta": "/usr/local/bin/siesta"}
-
-The dictionary must reside in ~/.ase/executables.json or another path
-given by the environment variable ASE_EXECUTABLE_CONFIGFILE."""
+[executables]
+abinit = abinit
+cp2k = cp2k_shell
+dftb+ = dftb+
+espresso = pw.x
+lammpsrun = lmp
+nwchem = /usr/bin/nwchem
+octopus = octopus
+siesta = /usr/local/bin/siesta
+"""
 
 class CLICommand:
     """Run ASE's test-suite.
