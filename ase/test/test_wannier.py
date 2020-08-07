@@ -449,8 +449,8 @@ def test_distances(wan, std_calculator):
 def test_get_hopping_bloch(wan):
     nwannier = 4
     wanf = wan(nwannier=nwannier, initialwannier='bloch')
-    hop0_ww = wanf.get_hopping(0, 0, 0)
-    hop1_ww = wanf.get_hopping(1, 1, 1)
+    hop0_ww = wanf.get_hopping([0, 0, 0])
+    hop1_ww = wanf.get_hopping([1, 1, 1])
     for i in range(nwannier):
         assert hop0_ww[i, i] != 0
         assert hop1_ww[i, i] != 0
@@ -464,8 +464,8 @@ def test_get_hopping_bloch(wan):
 def test_get_hopping_random(wan, rng):
     nwannier = 4
     wanf = wan(nwannier=nwannier, initialwannier='random')
-    hop0_ww = wanf.get_hopping(0, 0, 0)
-    hop1_ww = wanf.get_hopping(1, 1, 1)
+    hop0_ww = wanf.get_hopping([0, 0, 0])
+    hop1_ww = wanf.get_hopping([1, 1, 1])
     for i in range(nwannier):
         for j in range(i + 1, nwannier):
             assert np.abs(hop0_ww[i, j]) == pytest.approx(np.abs(hop0_ww[j, i]))

@@ -82,13 +82,20 @@ def calculate_weights(cell_cc, normalize=True):
 
 
 def random_orthogonal_matrix(dim, rng=np.random, real=False):
-    """Generate a random orthogonal matrix"""
+    """Generate uniformly distributed random orthogonal matrices"""
     if real:
         from scipy.stats import special_ortho_group
         ortho_m = special_ortho_group.rvs(dim=dim, random_state=rng)
     else:
-        from scipy.stats import unitary_group
-        ortho_m = unitary_group.rvs(dim=dim, random_state=rng)
+        # The best method but not supported on old systems
+        # from scipy.stats import unitary_group
+        # ortho_m = unitary_group.rvs(dim=dim, random_state=rng)
+
+        # Alternative method from https://stackoverflow.com/questions/38426349
+        H = rng.rand(dim, dim)
+        Q, R = qr(H)
+        ortho_m = Q @ np.diag(np.sign(np.diag(R)))
+
     return ortho_m
 
 
@@ -741,7 +748,28 @@ class Wannier:
         r2 = np.swapaxes(r2.repeat(Nw, axis=0).reshape(Nw, Nw, 3), 0, 1)
         return np.sqrt(np.sum((r1 - r2)**2, axis=-1))
 
-    def _get_hopping(self, R):
+    @functools.lru_cache(maxsize=10000)
+    def _get_hopping(self, n1, n2, n3):
+        """Returns the matrix H(R)_nm=<0,n|H|R,m>.
+
+        ::
+
+                                1   _   -ik.R
+          H(R) = <0,n|H|R,m> = --- >_  e      H(k)
+                                Nk  k
+
+        where R = (n1, n2, n3) is the cell-distance (in units of the basis
+        vectors of the small cell) and n,m are indices of the Wannier functions.
+        This function caches up to 'maxsize' results.
+        """
+        R = np.array([n1, n2, n3], float)
+        H_ww = np.zeros([self.nwannier, self.nwannier], complex)
+        for k, kpt_c in enumerate(self.kpt_kc):
+            phase = np.exp(-2.j * pi * np.dot(np.array(R), kpt_c))
+            H_ww += self.get_hamiltonian(k) * phase
+        return H_ww / self.Nk
+
+    def get_hopping(self, R):
         """Returns the matrix H(R)_nm=<0,n|H|R,m>.
 
         ::
@@ -753,28 +781,7 @@ class Wannier:
         where R is the cell-distance (in units of the basis vectors of
         the small cell) and n,m are indices of the Wannier functions.
         """
-        H_ww = np.zeros([self.nwannier, self.nwannier], complex)
-        for k, kpt_c in enumerate(self.kpt_kc):
-            phase = np.exp(-2.j * pi * np.dot(np.array(R), kpt_c))
-            H_ww += self.get_hamiltonian(k) * phase
-        return H_ww / self.Nk
-
-    @functools.lru_cache(maxsize=10000)
-    def get_hopping(self, n1, n2, n3):
-        """Returns the matrix H(R)_nm=<0,n|H|R,m>.
-
-        ::
-
-                                1   _   -ik.R
-          H(R) = <0,n|H|R,m> = --- >_  e      H(k)
-                                Nk  k
-
-        where R = (n1, n2, n3) is the cell-distance (in units of the basis
-        vectors of the small cell) and n,m are indices of the Wannier functions.
-        This function caches results from _get_hopping().
-        """
-        R = np.array([n1, n2, n3], float)
-        return self._get_hopping(R)
+        return self._get_hopping(R[0], R[1], R[2])
 
     def get_hamiltonian(self, k=0):
         """Get Hamiltonian at existing k-vector of index k
@@ -809,7 +816,7 @@ class Wannier:
             for n2 in range(-N2, N2 + 1):
                 for n3 in range(-N3, N3 + 1):
                     R = np.array([n1, n2, n3], float)
-                    hop_ww = self.get_hopping(n1, n2, n3)
+                    hop_ww = self.get_hopping(R)
                     phase = np.exp(+2.j * pi * np.dot(R, kpt_c))
                     Hk += hop_ww * phase
         return Hk
