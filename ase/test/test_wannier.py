@@ -592,6 +592,7 @@ def test_init_orbitals(rng):
             bool_s = (orb[1] == 0)
         if not bool_d:
             bool_d = (orb[1] == 2)
+    assert bool_d and bool_s
 
 
 def test_scdm(ti_calculator):
