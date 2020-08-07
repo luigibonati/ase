@@ -275,11 +275,6 @@ class Factories:
         self.executables = executables
         self.datafiles = datafiles
 
-        self.requested_calculators = set(requested_calculators)
-        for name in self.requested_calculators:
-            if name not in self.all_calculators:
-                raise NoSuchCalculator(name)
-
         factories = {}
 
         for name, cls in factory_classes.items():
@@ -291,6 +286,16 @@ class Factories:
                 factories[name] = factory
 
         self.factories = factories
+
+        requested_calculators = set(requested_calculators)
+        if 'auto' in requested_calculators:
+            requested_calculators.remove('auto')
+            requested_calculators |= set(self.factories)
+        self.requested_calculators = requested_calculators
+
+        for name in self.requested_calculators:
+            if name not in self.all_calculators:
+                raise NoSuchCalculator(name)
 
     def installed(self, name):
         return name in self.builtin_calculators | set(self.factories)

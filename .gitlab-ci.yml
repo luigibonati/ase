@@ -84,7 +84,7 @@ calculators-lite:
   image: registry.gitlab.com/ase/ase:ase-full-monty
   script:
     - pip install --no-deps --editable .
-    - ase test --calculators nwchem calculator/test_ch4_energy.py --pytest --color=yes --durations=20
+    - ase test --calculators=auto calculator/test_ch4_energy.py --pytest --color=yes --durations=20
 
 
 # Plan: Test as many calculators as possible as well as possible.
