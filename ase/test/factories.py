@@ -5,6 +5,13 @@ import configparser
 
 import pytest
 
+from ase.calculators.calculator import (names as calculator_names,
+                                        get_calculator_class)
+
+
+class NotInstalled(Exception):
+    pass
+
 
 def get_testing_executables():
     # TODO: better cross-platform support (namely Windows),
@@ -34,6 +41,8 @@ def factory(name):
 def make_factory_fixture(name):
     @pytest.fixture(scope='session')
     def _factory(factories):
+        if not factories.installed(name):
+            pytest.skip(f'Not installed: {name}')
         return factories[name]
     _factory.__name__ = '{}_factory'.format(name)
     return _factory
@@ -63,6 +72,25 @@ class AbinitFactory:
     def fromconfig(cls, config):
         return AbinitFactory(config.executables['abinit'],
                              config.datafiles['abinit'])
+
+
+@factory('asap')
+class AsapFactory:
+    importname = 'asap3'
+
+    def calc(self, **kwargs):
+        from asap3 import EMT
+        return EMT(**kwargs)
+
+    @classmethod
+    def fromconfig(cls, config):
+        # XXXX TODO Clean this up.  Copy of GPAW.
+        # How do we design these things?
+        import importlib
+        spec = importlib.util.find_spec('asap3')
+        if spec is None:
+            raise NotInstalled('asap3')
+        return cls()
 
 
 @factory('cp2k')
@@ -136,6 +164,8 @@ class EspressoFactory:
 
 @factory('gpaw')
 class GPAWFactory:
+    importname = 'gpaw'
+
     def calc(self, **kwargs):
         from gpaw import GPAW
         return GPAW(**kwargs)
@@ -146,7 +176,7 @@ class GPAWFactory:
         spec = importlib.util.find_spec('gpaw')
         # XXX should be made non-pytest dependent
         if spec is None:
-            pytest.skip('No gpaw module')
+            raise NotInstalled('gpaw')
         return cls()
 
 
@@ -230,25 +260,98 @@ class NWChemFactory:
         return cls(config.executables['nwchem'])
 
 
+class NoSuchCalculator(Exception):
+    pass
+
+
 class Factories:
-    def __init__(self, executables, datafiles):
+    all_calculators = set(calculator_names)
+    builtin_calculators = {'eam', 'emt', 'ff', 'lj', 'morse', 'tip3p', 'tip4p'}
+    autoenabled_calculators = {'asap'} | builtin_calculators
+
+    def __init__(self, executables, datafiles, requested_calculators):
         assert isinstance(executables, Mapping), executables
         assert isinstance(datafiles, dict)
         self.executables = executables
         self.datafiles = datafiles
-        self._factories = {}
 
-    def __getitem__(self, name):
-        # Hmm.  We could also just return a new factory instead of
-        # caching them.
-        if name not in self._factories:
-            cls = factory_classes[name]
+        self.requested_calculators = set(requested_calculators)
+        for name in self.requested_calculators:
+            if name not in self.all_calculators:
+                raise NoSuchCalculator(name)
+
+        factories = {}
+
+        for name, cls in factory_classes.items():
             try:
                 factory = cls.fromconfig(self)
-            except KeyError:
-                pytest.skip('Missing configuration for {}'.format(name))
-            self._factories[name] = factory
-        return self._factories[name]
+            except (NotInstalled, KeyError):
+                pass
+            else:
+                factories[name] = factory
+
+        self.factories = factories
+
+    def installed(self, name):
+        return name in self.builtin_calculators | set(self.factories)
+
+    def is_adhoc(self, name):
+        return name not in factory_classes
+
+    def optional(self, name):
+        return name not in self.builtin_calculators
+
+    def enabled(self, name):
+        auto = name in self.autoenabled_calculators and self.installed(name)
+        return auto or (name in self.requested_calculators)
+
+    def require(self, name):
+        # XXX This is for old-style calculator tests.
+        # Newer calculator tests would depend on a fixture which would
+        # make them skip.
+        # Older tests call require(name) explicitly.
+        assert name in calculator_names
+        if name not in self.requested_calculators:
+            pytest.skip(f'use --calculators={name} to enable')
+
+    def __getitem__(self, name):
+        return self.factories[name]
+
+    def monkeypatch_disabled_calculators(self):
+        test_calculator_names = (self.autoenabled_calculators |
+                                 self.builtin_calculators |
+                                 self.requested_calculators)
+        disable_names = self.all_calculators - test_calculator_names
+
+        for name in disable_names:
+            try:
+                cls = get_calculator_class(name)
+            except ImportError:
+                pass
+            else:
+                def get_mock_init(name):
+                    def mock_init(obj, *args, **kwargs):
+                        pytest.skip(f'use --calculators={name} to enable')
+                    return mock_init
+
+                def mock_del(obj):
+                    pass
+                cls.__init__ = get_mock_init(name)
+                cls.__del__ = mock_del
+
+
+def get_factories(pytestconfig):
+    try:
+        import asetest
+    except ImportError:
+        datafiles = {}
+    else:
+        datafiles = asetest.datafiles.paths
+
+    testing_executables = get_testing_executables()
+    opt = pytestconfig.getoption('--calculators')
+    requested_calculators = opt.split(',') if opt else []
+    return Factories(testing_executables, datafiles, requested_calculators)
 
 
 def parametrize_calculator_tests(metafunc):

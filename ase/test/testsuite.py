@@ -143,8 +143,6 @@ class CLICommand:
 
     @staticmethod
     def run(args):
-        print('ASE test suite ...')
-        print()
         if args.help_calculators:
             print(help_calculators)
             sys.exit(0)
@@ -191,10 +189,6 @@ class CLICommand:
         if args.pytest:
             add_args(*args.pytest)
 
-        print()
-        calcstring = args.calculators if args.calculators else 'none'
-        print('Enabled calculators: {}'.format(calcstring))
-        print()
         print('About to run pytest with these parameters:')
         for line in pytest_args:
             print('    ' + line)

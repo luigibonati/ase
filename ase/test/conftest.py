@@ -7,26 +7,23 @@ import numpy as np
 
 import ase
 from ase.utils import workdir
-from ase.test.factories import (Factories, CalculatorInputs,
-                                make_factory_fixture, get_testing_executables)
-from ase.calculators.calculator import (names as calculator_names,
-                                        get_calculator_class)
+from ase.test.factories import (CalculatorInputs,
+                                factory_classes,
+                                NoSuchCalculator,
+                                get_factories,
+                                make_factory_fixture)
 from ase.dependencies import all_dependencies
 
+helpful_message = """\
+ * Use --calculators option to select calculators.
 
+ * See "ase test --help-calculators" on how to configure calculators.
 
-@pytest.fixture(scope='session')
-def enabled_calculators(pytestconfig):
-    all_names = set(calculator_names)
-    opt = pytestconfig.getoption('calculators')
-
-    names = set(always_enabled_calculators)
-    if opt:
-        for name in opt.split(','):
-            if name not in all_names:
-                raise ValueError(f'No such calculator: {name}')
-            names.add(name)
-    return sorted(names)
+ * This listing only includes external calculators known by the test
+   system.  Others are "configured" by setting an environment variable
+   like "ASE_xxx_COMMAND" in order to allow tests to run.  Please see
+   the documentation of that individual calculator.
+"""
 
 
 def pytest_report_header(config, startdir):
@@ -38,78 +35,66 @@ def pytest_report_header(config, startdir):
     add()
     add('Libraries')
     add('=========')
+    add()
     for name, path in all_dependencies():
         add('{:24} {}'.format(name, path))
     add()
 
+    add('Calculators')
+    add('===========')
+    add()
+
+    try:
+        factories = get_factories(config)
+    except NoSuchCalculator as err:
+        pytest.exit(f'No such calculator: {err}')
+
+    for name in sorted(factory_classes):
+        if name in factories.builtin_calculators:
+            # Not interesting to test presence of builtin calculators.
+            continue
+
+        factory = factories.factories.get(name)
+
+        if factory is None:
+            configinfo = 'not installed'
+        else:
+            # Some really ugly hacks here:
+            if hasattr(factory, 'importname'):
+                import importlib
+                module = importlib.import_module(factory.importname)
+                configinfo = str(module.__path__[0])  # type: ignore
+            else:
+                configtokens = []
+                for varname, variable in vars(factory).items():
+                    configtokens.append(f'{varname}={variable}')
+                configinfo = ', '.join(configtokens)
+
+        run = '[x]' if factories.enabled(name) else '[ ]'
+        line = f'  {run} {name:10} {configinfo}'
+        add(line)
+    add()
+    add(helpful_message)
+    add()
+
+    for name in factories.requested_calculators:
+        if not factories.is_adhoc(name) and not factories.installed(name):
+            pytest.exit(f'Calculator "{name}" is not installed.  '
+                        'Please run "ase test --help-calculators" on how '
+                        'to install calculators')
+
     return messages
 
 
-class Calculators:
-    def __init__(self, names):
-        self.enabled_names = set(names)
-
-    def require(self, name):
-        assert name in calculator_names
-        if name not in self.enabled_names:
-            pytest.skip(f'use --calculators={name} to enable')
-
-
 @pytest.fixture(scope='session')
-def calculators(enabled_calculators):
-    return Calculators(enabled_calculators)
-
-
-@pytest.fixture(scope='session')
-def require_vasp(calculators):
-    calculators.require('vasp')
-
-
-def disable_calculators(names):
-    for name in names:
-        if name in always_enabled_calculators:
-            continue
-        try:
-            cls = get_calculator_class(name)
-        except ImportError:
-            pass
-        else:
-            def get_mock_init(name):
-                def mock_init(obj, *args, **kwargs):
-                    pytest.skip(f'use --calculators={name} to enable')
-                return mock_init
-
-            def mock_del(obj):
-                pass
-            cls.__init__ = get_mock_init(name)
-            cls.__del__ = mock_del
-
-
-
-# asap is special, being the only calculator that may not be installed.
-# But we want that for performance in some tests.
-always_enabled_calculators = set(
-    ['asap', 'eam', 'emt', 'ff', 'lj', 'morse', 'tip3p', 'tip4p']
-)
+def require_vasp(factories):
+    factories.require('vasp')
 
 
 @pytest.fixture(scope='session', autouse=True)
-def monkeypatch_disabled_calculators(request, enabled_calculators):
-    from ase.calculators.calculator import names as calculator_names
-    test_calculator_names = list(always_enabled_calculators)
-    test_calculator_names += enabled_calculators
-    disable_calculators([name for name in calculator_names
-                         if name not in enabled_calculators])
-
-
-# Backport of tmp_path fixture from pytest 3.9.
-# We want to be compatible with pytest 3.3.2 and pytest-xdist 1.22.1.
-# These are provided with Ubuntu 18.04.
-# Current Debian stable uses a newer libraries, so that should be OK.
-@pytest.fixture
-def tmp_path(tmpdir):
-    # Avoid trouble since tmpdir can be a py._path.local.LocalPath
-    return Path(str(tmpdir))
+def monkeypatch_disabled_calculators(request, factories):
+    # XXX Replace with another mechanism.
+    factories.monkeypatch_disabled_calculators()
 
 
 @pytest.fixture(autouse=True)
@@ -118,6 +103,7 @@ def use_tmp_workdir(tmp_path):
     path = Path(str(tmp_path))
     with workdir(path, mkdir=True):
         yield tmp_path
+    # We print the path so user can see where test failed, if it failed.
     print(f'Testpath: {path}')
 
 
@@ -132,6 +118,7 @@ def tkinter():
 
 @pytest.fixture(scope='session')
 def plt(tkinter):
+    # XXX Probably we can get rid of tkinter requirement.
     matplotlib = pytest.importorskip('matplotlib')
     matplotlib.use('Agg')
 
@@ -152,25 +139,12 @@ def psycopg2():
 
 
 @pytest.fixture(scope='session')
-def datafiles():
-    try:
-        import asetest
-    except ImportError:
-        return {}
-    else:
-        return asetest.datafiles.paths
+def factories(pytestconfig):
+    return get_factories(pytestconfig)
 
 
-@pytest.fixture(scope='session')
-def configured_executables():
-    return get_testing_executables()
-
-
-@pytest.fixture(scope='session')
-def factories(configured_executables, datafiles, enabled_calculators):
-    return Factories(configured_executables, datafiles)
-
-
+# XXX Maybe we should not have individual factory fixtures, we could use
+# the decorator @pytest.mark.calculator(name) instead.
 abinit_factory = make_factory_fixture('abinit')
 cp2k_factory = make_factory_fixture('cp2k')
 dftb_factory = make_factory_fixture('dftb')
@@ -183,6 +157,8 @@ siesta_factory = make_factory_fixture('siesta')
 @pytest.fixture
 def factory(request, factories):
     name, kwargs = request.param
+    if not factories.installed(name):
+        pytest.skip(f'Not installed: {name}')
     factory = factories[name]
     return CalculatorInputs(factory, kwargs)
 
@@ -220,6 +196,12 @@ class CLI:
         output = check_output(actual_command, shell=True)
         return output.decode()
 
+
+@pytest.fixture(scope='session')
+def cli(factories):
+    return CLI(factories)
+
+
 @pytest.fixture(scope='session')
 def datadir():
     test_basedir = Path(__file__).parent
@@ -235,13 +217,7 @@ def pt_eam_potential_file(datadir):
 
 @pytest.fixture(scope='session')
 def asap3():
-    asap3 = pytest.importorskip('asap3')
-    return asap3
-
-
-@pytest.fixture(scope='session')
-def cli(calculators):
-    return CLI(calculators)
+    return pytest.importorskip('asap3')
 
 
 @pytest.fixture(autouse=True)
