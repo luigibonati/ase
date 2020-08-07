@@ -250,7 +250,8 @@ def arbitrarily_seed_rng(request):
 
 def pytest_addoption(parser):
     parser.addoption('--calculators', metavar='NAMES', default='',
-                     help='comma-separated list of calculators to test')
+                     help='comma-separated list of calculators to test or '
+                     '"auto" for all configured calculators')
     parser.addoption('--seed', action='append', default=[],
                      help='add a seed for tests where random number generators'
                           ' are involved. This option can be applied more'
