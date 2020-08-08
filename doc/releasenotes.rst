@@ -10,6 +10,14 @@ Git master branch
 
 :git:`master <>`.
 
+* No changes yet
+
+
+Version 3.20.0
+==============
+
+8 August 2020: :git:`3.20.0 <../3.20.0>`
+
 General changes:
 
 * :meth:`~ase.Atoms.get_calculator` and :meth:`~ase.Atoms.set_calculator`
