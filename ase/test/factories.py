@@ -23,8 +23,8 @@ def get_testing_executables():
         pass
     conf = configparser.ConfigParser()
     conf['executables'] = {}
-    conf.read(paths)
-    return conf['executables']
+    effective_paths = conf.read(paths)
+    return effective_paths, conf['executables']
 
 
 factory_classes = {}
@@ -269,10 +269,24 @@ class Factories:
     builtin_calculators = {'eam', 'emt', 'ff', 'lj', 'morse', 'tip3p', 'tip4p'}
     autoenabled_calculators = {'asap'} | builtin_calculators
 
-    def __init__(self, executables, datafiles, requested_calculators):
+    def __init__(self, requested_calculators):
+        executable_config_paths, executables = get_testing_executables()
         assert isinstance(executables, Mapping), executables
-        assert isinstance(datafiles, dict)
         self.executables = executables
+        self.executable_config_paths = executable_config_paths
+
+        datafiles_module = None
+        datafiles = {}
+
+        try:
+            import asetest as datafiles_module
+        except ImportError:
+            pass
+        else:
+            datafiles.update(datafiles_module.datafiles.paths)
+            datafiles_module = datafiles_module
+
+        self.datafiles_module = datafiles_module
         self.datafiles = datafiles
 
         factories = {}
@@ -346,17 +360,9 @@ class Factories:
 
 
 def get_factories(pytestconfig):
-    try:
-        import asetest
-    except ImportError:
-        datafiles = {}
-    else:
-        datafiles = asetest.datafiles.paths
-
-    testing_executables = get_testing_executables()
     opt = pytestconfig.getoption('--calculators')
     requested_calculators = opt.split(',') if opt else []
-    return Factories(testing_executables, datafiles, requested_calculators)
+    return Factories(requested_calculators)
 
 
 def parametrize_calculator_tests(metafunc):
