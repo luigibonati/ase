@@ -40,14 +40,33 @@ def pytest_report_header(config, startdir):
         add('{:24} {}'.format(name, path))
     add()
 
-    add('Calculators')
-    add('===========')
-    add()
-
     try:
         factories = get_factories(config)
     except NoSuchCalculator as err:
         pytest.exit(f'No such calculator: {err}')
+
+    configpaths = factories.executable_config_paths
+    module = factories.datafiles_module
+
+    config_missing = len(configpaths) == 0 or module is None
+
+
+    add('Calculators')
+    add('===========')
+
+    if not configpaths:
+        configtext = 'No configuration file specified'
+    else:
+        configtext = ', '.join(str(path) for path in configpaths)
+    add(f'Config: {configtext}')
+
+    if module is None:
+        datafiles_text = 'ase-datafiles package not installed'
+    else:
+        datafiles_text = str(Path(module.__file__).parent)
+
+    add(f'Datafiles: {datafiles_text}')
+    add()
 
     for name in sorted(factory_classes):
         if name in factories.builtin_calculators:
