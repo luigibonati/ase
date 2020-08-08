@@ -2,6 +2,7 @@ import os
 import sys
 import threading
 
+import pytest
 import numpy as np
 
 from ase.calculators.socketio import SocketClient, SocketIOCalculator
@@ -92,7 +93,6 @@ def test_ipi_protocol():
         # computers where this is forbidden.  For now we will simply skip
         # this test when that happens:
         if 'forbidden by its access permissions' in err.strerror:
-            from unittest import SkipTest
-            raise SkipTest(err.strerror)
+            pytest.skip(err.strerror)
         else:
             raise
