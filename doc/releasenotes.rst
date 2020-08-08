@@ -12,15 +12,17 @@ Git master branch
 
 General changes:
 
-* :meth:`~ase.Atoms.get_calculator` is deprecated.  Use
-  ``atoms.calc`` instead.
-
-* :meth:`~ase.Atoms.set_calculator` is deprecated.  Use
-  ``atoms.calc = calc`` instead.
+* :meth:`~ase.Atoms.get_calculator` and :meth:`~ase.Atoms.set_calculator`
+  are deprecated.  Use ``atoms.calc`` instead.
 
 * ``del atoms.calc`` is deprecated.  Use ``atoms.calc = None`` instead.
 
 * The deprecated ``atoms.cell.pbc`` has been removed.
+
+* More utility methods for ``atoms.symbols``:
+  :meth:`~ase.symbols.Symbols.species`,
+  :meth:`~ase.symbols.Symbols.search`,
+  :meth:`~ase.symbols.Symbols.indices`.
 
 Development:
 
@@ -47,7 +49,8 @@ Algorithms:
 
 * Functions for attaching structures in :mod:`attach <ase.build>` introduced.
 
-* Standardize optimizers maximum step variable name to maxstep and default value to 0.2 for all optimizers.
+* Standardize optimizers maximum step variable name to maxstep and default
+  value to 0.2 for all optimizers.
 
 * Added :class:`Pyberny <ase.optimize.Berny>` geometry optimizer.
   This optimizer can be very
@@ -88,15 +91,17 @@ Algorithms:
 * Added a new tutorial on molecular crystal structure prediction using
   a genetic algorithm, see :ref:`ga_molecular_crystal_tutorial`.
 
+* Allow setting the initial hessian in `optimize.BFGS` via the keyword `alpha` or
+  explicitly via `opt.H0 = ...` after instantiation.
+
+Command-line interface:
+
 * New ``dimensionality`` sub-command for the :ref:`ase <cli>` command line
   interface.
 
 * Added a diff CLI for displaying and comparing the positions, forces,
   and energies of atoms objects.  The classes and functions used in
   the CLI are also available in :mod:`ase.cli.template`.
-
-* Allow setting the initial hessian in `optimize.BFGS` via the keyword `alpha` or
-  explicitly via `opt.H0 = ...` after instantiation.
 
 I/O:
 

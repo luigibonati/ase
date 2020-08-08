@@ -1,10 +1,18 @@
 import pytest
+from ase import Atoms
 from ase.build import molecule
 from ase.symbols import Symbols
+
 
 @pytest.fixture
 def atoms():
     return molecule('CH3CH2OH')
+
+
+@pytest.fixture
+def symbols(atoms):
+    return atoms.symbols
+
 
 def test_symbols_indexing(atoms):
     print(atoms.symbols)
@@ -21,11 +29,18 @@ def test_symbols_indexing(atoms):
     print(atoms)
     print(atoms.numbers)
 
-    assert atoms.get_chemical_symbols()
-    string = str(atoms.symbols)
-    symbols = Symbols.fromsymbols(string)
-    assert (symbols == atoms.symbols).all()
 
+def test_symbols_vs_get_chemical_symbols(atoms):
+    assert atoms.get_chemical_symbols() == list(atoms.symbols)
+
+
+def test_str_roundtrip(symbols):
+    string = str(symbols)
+    newsymbols = Symbols.fromsymbols(string)
+    assert (symbols == newsymbols).all()
+
+
+def test_manipulation_with_string():
     atoms = molecule('H2O')
     atoms.symbols = 'Au2Ag'
     print(atoms.symbols)
@@ -34,6 +49,7 @@ def test_symbols_indexing(atoms):
 
 def test_search(atoms):
     indices = atoms.symbols.search('H')
+    assert len(indices) > 0
     assert (atoms.symbols[indices] == 'H').all()
     assert (atoms[indices].symbols == 'H').all()
 
@@ -54,3 +70,17 @@ def test_indices(atoms):
 
     for symbol, indices in dct.items():
         assert all(atoms.symbols[indices] == symbol)
+
+
+def test_symbols_to_symbols(symbols):
+    assert all(Symbols(symbols.numbers) == symbols)
+
+
+def test_symbols_to_atoms(symbols):
+    assert all(Atoms(symbols).symbols == symbols)
+
+
+def test_symbols_to_formula():
+    symstr = 'CH3CH2OH'
+    symbols = Symbols.fromsymbols(symstr)
+    assert str(symbols.formula) == symstr
