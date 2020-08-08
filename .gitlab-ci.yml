@@ -38,13 +38,12 @@ oldlibs:
 # libraries that don't have binary wheels; we don't want to install gcc
 # in this test job.
 pipinstall:
-  image: python:3.7
+  image: python:3.8
   extends: .database-configuration
   script:
     - python --version
     - pip install psycopg2-binary pymysql cryptography
     - pip install pytest pytest-xdist mypy
-    - pip install scipy==1.2.1  # TODO: Delete me
     - pip install .
     - ase test --pytest --color=yes
     - cd $CI_PROJECT_DIR
