@@ -17,7 +17,6 @@ def test_fcc_ok():
     print(atoms.get_cell())
 
 
-
 @pytest.mark.parametrize('directions', [
     [[1, 1, 0], [1, 1, 0], [0, 0, 1]],
     [[1, 1, 0], [1, 0, 0], [0, 1, 0]]
@@ -25,7 +24,7 @@ def test_fcc_ok():
 def test_fcc_directions_linearly_dependent(directions):
     # The directions spanning the unit cell are linearly dependent
     with pytest.raises(ValueError):
-        atoms = FaceCenteredCubic(symbol='Cu', directions)
+        FaceCenteredCubic(symbol='Cu', directions=directions)
 
 
 def test_fcc_directions_ok():
@@ -60,6 +59,7 @@ def test_hcp_cell_linearly_dependent():
                               directions=[[1, -1, 0, 0],
                                           [1, 0, -1, 0],
                                           [0, 1, -1, 0]])
+
 
 def test_hcp():
     atoms = HexagonalClosedPacked(symbol='Mg',
