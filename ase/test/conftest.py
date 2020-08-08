@@ -27,19 +27,20 @@ helpful_message = """\
 
 
 def pytest_report_header(config, startdir):
-    messages = []
+    yield from library_header()
+    yield ''
+    yield from calculators_header(config)
 
-    def add(msg=''):
-        messages.append(msg)
 
-    add()
-    add('Libraries')
-    add('=========')
-    add()
+def library_header():
+    yield 'Libraries'
+    yield '========='
+    yield ''
     for name, path in all_dependencies():
-        add('{:24} {}'.format(name, path))
-    add()
+        yield '{:24} {}'.format(name, path)
 
+
+def calculators_header(config):
     try:
         factories = get_factories(config)
     except NoSuchCalculator as err:
@@ -48,22 +49,22 @@ def pytest_report_header(config, startdir):
     configpaths = factories.executable_config_paths
     module = factories.datafiles_module
 
-    add('Calculators')
-    add('===========')
+    yield 'Calculators'
+    yield '==========='
 
     if not configpaths:
         configtext = 'No configuration file specified'
     else:
         configtext = ', '.join(str(path) for path in configpaths)
-    add(f'Config: {configtext}')
+    yield f'Config: {configtext}'
 
     if module is None:
         datafiles_text = 'ase-datafiles package not installed'
     else:
         datafiles_text = str(Path(module.__file__).parent)
 
-    add(f'Datafiles: {datafiles_text}')
-    add()
+    yield f'Datafiles: {datafiles_text}'
+    yield ''
 
     for name in sorted(factory_classes):
         if name in factories.builtin_calculators:
@@ -88,18 +89,18 @@ def pytest_report_header(config, startdir):
 
         run = '[x]' if factories.enabled(name) else '[ ]'
         line = f'  {run} {name:10} {configinfo}'
-        add(line)
-    add()
-    add(helpful_message)
-    add()
+        yield line
 
+    yield ''
+    yield helpful_message
+    yield ''
+
+    # (Where should we do this check?)
     for name in factories.requested_calculators:
         if not factories.is_adhoc(name) and not factories.installed(name):
             pytest.exit(f'Calculator "{name}" is not installed.  '
                         'Please run "ase test --help-calculators" on how '
                         'to install calculators')
-
-    return messages
 
 
 @pytest.fixture(scope='session')
