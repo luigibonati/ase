@@ -33,6 +33,7 @@ def pytest_report_header(config, startdir):
 
 
 def library_header():
+    yield ''
     yield 'Libraries'
     yield '========='
     yield ''
@@ -49,6 +50,7 @@ def calculators_header(config):
     configpaths = factories.executable_config_paths
     module = factories.datafiles_module
 
+    yield ''
     yield 'Calculators'
     yield '==========='
 
