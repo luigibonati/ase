@@ -1,5 +1,4 @@
 from math import sqrt
-from ase import Atoms
 from ase.constraints import StrainFilter
 from ase.optimize.mdmin import MDMin
 from ase.io import Trajectory

@@ -1,4 +1,3 @@
-import numpy as np
 from ase.constraints import StrainFilter
 from ase.optimize.mdmin import MDMin
 from ase.calculators.emt import EMT
