@@ -19,6 +19,11 @@ General changes:
 
 * The deprecated ``atoms.cell.pbc`` has been removed.
 
+* More utility methods for ``atoms.symbols``:
+  :meth:`~ase.symbols.Symbols.species`,
+  :meth:`~ase.symbols.Symbols.search`,
+  :meth:`~ase.symbols.Symbols.indices`.
+
 Development:
 
 * Test suite now uses `pytest <https://docs.pytest.org/>`_.
