@@ -281,7 +281,7 @@ class Factories:
         try:
             import asetest as datafiles_module
         except ImportError:
-            asetest_module = None
+            pass
         else:
             datafiles.update(datafiles_module.datafiles.paths)
             datafiles_module = datafiles_module

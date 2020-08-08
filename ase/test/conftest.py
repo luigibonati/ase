@@ -48,9 +48,6 @@ def pytest_report_header(config, startdir):
     configpaths = factories.executable_config_paths
     module = factories.datafiles_module
 
-    config_missing = len(configpaths) == 0 or module is None
-
-
     add('Calculators')
     add('===========')
 
