@@ -9,12 +9,110 @@ source = ase
 precision = 2
 omit =
     ./*
-    ../calculators/*
     ../utils/sphinx.py
     ../utils/newrelease.py
     ../utils/build_web_page.py
     ../visualize/fieldplotter.py
     ../visualize/primiplotter.py
+
+    ../calculators/gaussian.py
+    ../calculators/qmmm.py
+    ../calculators/crystal.py
+    ../calculators/demonnano.py
+    ../calculators/dftb.py
+    ../calculators/calculator.py
+    ../calculators/morse.py
+    ../calculators/excitation_list.py
+    ../calculators/exciting.py
+    ../calculators/abinit.py
+    ../calculators/lj.py
+    ../calculators/lammpsrun.py
+    ../calculators/acn.py
+    ../calculators/qchem.py
+    ../calculators/octopus.py
+    ../calculators/aims.py
+    ../calculators/psi4.py
+    ../calculators/gamess_us.py
+    ../calculators/singlepoint.py
+    ../calculators/emt.py
+    ../calculators/lammpslib.py
+    ../calculators/espresso.py
+    ../calculators/autodetect.py
+    ../calculators/orca.py
+    ../calculators/counterions.py
+    ../calculators/interface.py
+    ../calculators/neighborlist.py
+    ../calculators/tip4p.py
+    ../calculators/socketio.py
+    ../calculators/gromacs.py
+    ../calculators/vdwcorrection.py
+    ../calculators/cp2k.py
+    ../calculators/eam.py
+    ../calculators/dftd3.py
+    ../calculators/nwchem.py
+    ../calculators/harmonic.py
+    ../calculators/tip3p.py
+    ../calculators/h2morse.py
+    ../calculators/general.py
+    ../calculators/fleur.py
+    ../calculators/mixing.py
+    ../calculators/amber.py
+    ../calculators/loggingcalc.py
+    ../calculators/turbomole.py
+    ../calculators/onetep.py
+    ../calculators/ase_qmmm_manyqm.py
+    ../calculators/dmol.py
+    ../calculators/mopac.py
+    ../calculators/acemolecule.py
+    ../calculators/interfacechecker.py
+    ../calculators/ff.py
+    ../calculators/checkpoint.py
+    ../calculators/idealgas.py
+    ../calculators/combine_mm.py
+    ../calculators/elk.py
+    ../calculators/castep.py
+    ../calculators/gulp.py
+    ../calculators/__init__.py
+    ../calculators/test.py
+    ../calculators/openmx/writer.py
+    ../calculators/openmx/default_settings.py
+    ../calculators/openmx/parameters.py
+    ../calculators/openmx/dos.py
+    ../calculators/openmx/reader.py
+    ../calculators/openmx/openmx.py
+    ../calculators/openmx/__init__.py
+    ../calculators/kim/kim.py
+    ../calculators/kim/exceptions.py
+    ../calculators/kim/kimmodel.py
+    ../calculators/kim/neighborlist.py
+    ../calculators/kim/calculators.py
+    ../calculators/kim/kimpy_wrappers.py
+    ../calculators/kim/__init__.py
+    ../calculators/demon/demon.py
+    ../calculators/demon/demon_io.py
+    ../calculators/demon/__init__.py
+    ../calculators/lammps/inputwriter.py
+    ../calculators/lammps/unitconvert_constants.py
+    ../calculators/lammps/unitconvert.py
+    ../calculators/lammps/coordinatetransform.py
+    ../calculators/lammps/__init__.py
+    ../calculators/vasp/create_input.py
+    ../calculators/vasp/vasp_data.py
+    ../calculators/vasp/setups.py
+    ../calculators/vasp/interactive.py
+    ../calculators/vasp/vasp2.py
+    ../calculators/vasp/vasp.py
+    ../calculators/vasp/__init__.py
+    ../calculators/siesta/mbpt_lcao.py
+    ../calculators/siesta/mbpt_lcao_utils.py
+    ../calculators/siesta/base_siesta.py
+    ../calculators/siesta/import_ion_xml.py
+    ../calculators/siesta/parameters.py
+    ../calculators/siesta/siesta.py
+    ../calculators/siesta/siesta_raman.py
+    ../calculators/siesta/mbpt_lcao_io.py
+    ../calculators/siesta/import_functions.py
+    ../calculators/siesta/__init__.py
 
     ../io/gaussian.py
     ../io/crystal.py
