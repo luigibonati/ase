@@ -1,14 +1,15 @@
 # creates: diffusion-I.png, diffusion-T.png, diffusion-F.png
 # creates: diffusion-barrier.png
+import runpy
 
 from ase.io import read, write
 from ase.neb import NEBTools
 
-if 1:
-    exec(compile(open('diffusion1.py').read(), 'diffusion1.py', 'exec'))
-    exec(compile(open('diffusion2.py').read(), 'diffusion2.py', 'exec'))
-    exec(compile(open('diffusion4.py').read(), 'diffusion4.py', 'exec'))
-    exec(compile(open('diffusion5.py').read(), 'diffusion5.py', 'exec'))
+
+runpy.run_path('diffusion1.py')
+runpy.run_path('diffusion2.py')
+runpy.run_path('diffusion4.py')
+runpy.run_path('diffusion5.py')
 
 images = read('neb.traj@-5:')
 for name, a in zip('ITF', images[::2]):
