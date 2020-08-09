@@ -5,7 +5,8 @@ import ase.io
 
 for name in ['al', 'mg', 'fe', 'diamond', 'nacl', 'rutile', 'skutterudite']:
     py = 'spacegroup-{0}.py'.format(name)
-    runpy.run_path(py)
+    dct = runpy.run_path(py)
+    globals().update(dct)
     atoms = globals()[name]
     ase.io.write('spacegroup-%s.pov' % name,
                  atoms,
@@ -17,5 +18,3 @@ for name in ['al', 'mg', 'fe', 'diamond', 'nacl', 'rutile', 'skutterudite']:
                  celllinewidth=0.05)
 
 runpy.run_path('spacegroup-cosb3.py')
-#.read(),
-#             'spacegroup-cosb3.py', 'exec'))

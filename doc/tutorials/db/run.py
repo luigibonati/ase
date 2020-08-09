@@ -1,5 +1,7 @@
 # creates: cu1o.png, cu2o.png, cu3o.png
 import os
+import runpy
+
 from ase.io import read, write
 from ase.cli.main import main
 from ase.db import connect
@@ -10,11 +12,11 @@ for name in ['bulk.db', 'ads.db', 'refs.db']:
 
 # Run the tutorial:
 with open('bulk.py') as fd:
-    exec(fd.read())
+    runpy.run_path(fd)
 with open('ads.py') as fd:
-    exec(fd.read())
+    runpy.run_path(fd)
 with open('refs.py') as fd:
-    exec(fd.read())
+    runpy.run_path(fd)
 
 for cmd in ['ase db ads.db ads=clean --insert-into refs.db',
             'ase db ads.db ads=clean --delete --yes',
@@ -23,7 +25,7 @@ for cmd in ['ase db ads.db ads=clean --insert-into refs.db',
     main(args=cmd.split()[1:])
 
 with open('ea.py') as fd:
-    exec(fd.read())
+    runpy.run_path(fd)
 
 # Create the figures:
 for n in [1, 2, 3]:
