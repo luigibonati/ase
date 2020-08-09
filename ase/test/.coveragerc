@@ -15,6 +15,7 @@ omit =
     ../visualize/fieldplotter.py
     ../visualize/primiplotter.py
 
+    # TODO: Test external calculators and add to listing.
     ../calculators/gaussian.py
     ../calculators/crystal.py
     ../calculators/demonnano.py
@@ -35,7 +36,6 @@ omit =
     ../calculators/cp2k.py
     ../calculators/dftd3.py
     ../calculators/nwchem.py
-    ../calculators/harmonic.py
     ../calculators/fleur.py
     ../calculators/amber.py
     ../calculators/turbomole.py
@@ -81,6 +81,7 @@ omit =
     ../calculators/siesta/mbpt_lcao_io.py
     ../calculators/siesta/import_functions.py
 
+    # TODO: Improve IO format coverage and add include in coverage stats
     ../io/gaussian.py
     ../io/crystal.py
     ../io/wien2k.py
