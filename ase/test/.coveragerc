@@ -16,94 +16,47 @@ omit =
     ../visualize/fieldplotter.py
     ../visualize/primiplotter.py
 
-    ../io/lammpsdata.py
     ../io/gaussian.py
-    ../io/plt.py
     ../io/crystal.py
-    ../io/xsd.py
-    ../io/jsv.py
     ../io/wien2k.py
-    ../io/zmatrix.py
-    ../io/aff.py
-    ../io/mustem.py
-    ../io/xsf.py
-    ../io/iwm.py
-    ../io/jsonio.py
     ../io/gromos.py
     ../io/dftb.py
-    ../io/extxyz.py
-    ../io/prismatic.py
-    ../io/mol.py
     ../io/exciting.py
     ../io/abinit.py
     ../io/bundletrajectory.py
     ../io/opls.py
     ../io/lammpsrun.py
-    ../io/trajectory.py
-    ../io/cif.py
     ../io/aims.py
     ../io/gamess_us.py
     ../io/gen.py
     ../io/pov.py
     ../io/sys.py
     ../io/pickletrajectory.py
-    ../io/utils.py
-    ../io/ulm.py
     ../io/espresso.py
-    ../io/nomad_json.py
     ../io/orca.py
-    ../io/gpumd.py
-    ../io/bytes.py
-    ../io/eps.py
-    ../io/xyz.py
-    ../io/gpaw_out.py
     ../io/gromacs.py
     ../io/dacapo.py
     ../io/cp2k.py
     ../io/siesta.py
-    ../io/png.py
-    ../io/dlp4.py
     ../io/fortranfile.py
-    ../io/eon.py
-    ../io/rmc6f.py
-    ../io/findsym.py
-    ../io/proteindatabank.py
-    ../io/cif_unicode.py
-    ../io/res.py
     ../io/bundlemanipulate.py
-    ../io/formats.py
-    ../io/py.py
-    ../io/animation.py
     ../io/turbomole.py
-    ../io/netcdftrajectory.py
     ../io/gaussian_reader.py
-    ../io/magres.py
-    ../io/cube.py
     ../io/dmol.py
     ../io/acemolecule.py
     ../io/x3d.py
     ../io/vtkxml.py
     ../io/xtd.py
-    ../io/db.py
-    ../io/v_sim.py
     ../io/vasp.py
-    ../io/qbox.py
-    ../io/sdf.py
     ../io/elk.py
     ../io/castep.py
     ../io/gpw.py
-    ../io/cfg.py
     ../io/cmdft.py
-    ../io/__init__.py
-    ../io/bader.py
-    ../io/nwchem/parser.py
     ../io/nwchem/nwreader_in.py
     ../io/nwchem/nwreader.py
     ../io/nwchem/nwwriter.py
-    ../io/nwchem/__init__.py
     ../io/octopus/output.py
     ../io/octopus/input.py
-    ../io/octopus/__init__.py
 
 
 [html]
