@@ -8,7 +8,7 @@ All additions and modifications to ASE should be tested.
 
 .. index:: testase
 
-Test scripts should be put in the :git:`ase/test` directory.
+Tests should be put in the :git:`ase/test` directory.
 Run all tests with::
 
   ase test
@@ -16,7 +16,7 @@ Run all tests with::
 This requires installing pytest and pytest-xdist.
 See ``ase test --help`` for more information.
 
-You can also run ``pytest`` directly from within the ``ase.test`` directory.
+You can also run ``pytest`` directly from within the ``ase/test`` directory.
 
 .. important::
 
@@ -28,7 +28,7 @@ You can also run ``pytest`` directly from within the ``ase.test`` directory.
 How to add a test
 =================
 
-Create a module somewhere under ``ase.test``.  Make sure its name
+Create a module somewhere under ``ase/test``.  Make sure its name
 starts with ``test_``.  Inside the module, each test should be a
 function whose name starts with ``test_``.  This ensures that pytest
 finds the test.  Use ``ase test --list`` to see which tests it will
@@ -36,6 +36,84 @@ find.
 
 You may note that many tests do not follow these rules.
 These are older tests.  We expect to port them one day.
+
+
+How to write good tests
+=======================
+
+Clearly written tests function both as a specification of the code's
+behavior and documentation of the code's interface.  If the tests are
+complete enough, we can safely change the code and know that it still
+works because the tests pass.
+
+In order to *know* that the tests, and hence that they are complete enough
+that we can rely on them as an indicator of whether the code actually works,
+they should be grouped logically, be readable, and so on.
+
+ * Think of tests as having three steps: Setup, execution, and assertion.
+
+ * Write many small tests, not few large tests.  Good tests are often
+   only 3-5 lines long.
+
+ * Use pytest fixtures to handle the setup -- and if necessary teardown --
+   of objects required by tests.
+
+ * Try to make each test contain at least one assertion.
+   Tests without assertion are "toothless" as the code can
+   malfunction in many ways and we'll never know.
+
+Admonitions:
+
+ * Avoid duplication in tests.  Use pytest fixtures instead.
+   The fixture can return a single object, or if you need many
+   differently configured object, write a *factory* fixture which
+   returns a function which produces objects.
+
+ * Don't call a "big long" function to test only one tiny aspect of
+   its behaviour.  This becomes a temptation whenever a function does
+   too many things.  Instead, split up the function into smaller
+   functions, where each function does only one thing.  Then test
+   those functions.
+
+ * Don't overdo it.  We shouldn't have too *many* tests cover the same
+   production code -- that makes it difficult to change the code.
+
+ * If a class is difficult to test because it can change its state in
+   different ways, and we need to test many different code paths to
+   exercise each way the state can change, then that class is probably
+   too complicated and needs to be rewritten.
+
+
+The old test suite
+==================
+
+In the old test suite, each test was a separate file, and running the test
+meant running that file.  That's
+conceptually simple, but encourages bad design: Tests tend to be long
+and "rambling".
+Many older tests read like a long-winded adventure,
+going through an intricate plot with twists and surprises, each step
+depending on the former.  Such a tale makes exciting literature,
+but as tests they are terrible.
+
+Good tests are the exact opposite: A good test tests one thing and
+only that thing.  It is named after what it tests.
+To test multiple things, there are multiple independent tests, or one
+test parametrized over multiple inputs.
+
+
+How to test I/O formats
+=======================
+
+Something about splitting up into small functions and testing
+those functions individually.
+
+How to test calculators
+=======================
+
+Something about dockers
+
+Something about calculator factories
 
 How to fail successfully
 ========================
