@@ -28,9 +28,7 @@ omit =
     ../io/lammpsrun.py
     ../io/aims.py
     ../io/gamess_us.py
-    ../io/gen.py
     ../io/pov.py
-    ../io/sys.py
     ../io/pickletrajectory.py
     ../io/espresso.py
     ../io/orca.py
@@ -42,11 +40,8 @@ omit =
     ../io/bundlemanipulate.py
     ../io/turbomole.py
     ../io/gaussian_reader.py
-    ../io/dmol.py
     ../io/acemolecule.py
-    ../io/x3d.py
     ../io/vtkxml.py
-    ../io/xtd.py
     ../io/vasp.py
     ../io/elk.py
     ../io/castep.py
