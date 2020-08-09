@@ -11,12 +11,8 @@ for name in ['bulk.db', 'ads.db', 'refs.db']:
         os.remove(name)
 
 # Run the tutorial:
-with open('bulk.py') as fd:
-    runpy.run_path(fd)
-with open('ads.py') as fd:
-    runpy.run_path(fd)
-with open('refs.py') as fd:
-    runpy.run_path(fd)
+for filename in ['bulk.py', 'ads.py', 'refs.py']:
+    runpy.run_path(filename)
 
 for cmd in ['ase db ads.db ads=clean --insert-into refs.db',
             'ase db ads.db ads=clean --delete --yes',
@@ -24,8 +20,7 @@ for cmd in ['ase db ads.db ads=clean --insert-into refs.db',
             'ase db ads.db pbc=FFF --delete --yes']:
     main(args=cmd.split()[1:])
 
-with open('ea.py') as fd:
-    runpy.run_path(fd)
+runpy.run_path('ea.py')
 
 # Create the figures:
 for n in [1, 2, 3]:
