@@ -1,5 +1,4 @@
 import time
-from distutils.version import LooseVersion
 from ase.io.utils import PlottingVariables, make_patch_list
 
 
@@ -27,11 +26,6 @@ class EPS(PlottingVariables):
         self.write_trailer()
 
     def write_header(self):
-        import matplotlib
-        if LooseVersion(matplotlib.__version__) <= '0.8':
-            raise RuntimeError('Your version of matplotlib (%s) is too old' %
-                               matplotlib.__version__)
-
         from matplotlib.backends.backend_ps import RendererPS, psDefs
 
         self.fd = open(self.filename, 'w')

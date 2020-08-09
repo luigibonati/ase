@@ -14,11 +14,6 @@ except ImportError:
     matplotlib = 0
 
 try:
-    import Scientific
-except ImportError:
-    Scientific = 0
-
-try:
     import netCDF4
 except ImportError:
     netCDF4 = 0
@@ -89,9 +84,6 @@ def all_tested_formats():
 
     if not matplotlib:
         skip += ['eps', 'png']
-
-    if not Scientific:
-        skip += ['etsf']
 
     if not netCDF4:
         skip += ['netcdftrajectory']

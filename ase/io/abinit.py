@@ -204,17 +204,36 @@ def write_abinit_in(fd, atoms, param=None, species=None):
     else:
         inp['nsppol'] = 1
 
+    if param['kpts'] is not None:
+        mp = kpts2mp(atoms, param['kpts'])
+        fd.write('kptopt 1\n')
+        fd.write('ngkpt %d %d %d\n' % tuple(mp))
+        fd.write('nshiftk 1\n')
+        fd.write('shiftk\n')
+        fd.write('%.1f %.1f %.1f\n' % tuple((np.array(mp) + 1) % 2 * 0.5))
+
+    valid_lists = (list, np.ndarray)
     for key in sorted(inp):
         value = inp[key]
         unit = keys_with_units.get(key)
-        if unit is None:
-            fd.write('%s %s\n' % (key, value))
-        else:
+        if unit is not None:
             if 'fs**2' in unit:
                 value /= fs**2
             elif 'fs' in unit:
                 value /= fs
-            fd.write('%s %e %s\n' % (key, value, unit))
+        if isinstance(value, valid_lists):
+            if isinstance(value[0], valid_lists):
+                fd.write("{}\n".format(key))
+                for dim in value:
+                    write_list(fd, dim, unit)
+            else:
+                fd.write("{}\n".format(key))
+                write_list(fd, value, unit)
+        else:
+            if unit is None:
+                fd.write("{} {}\n".format(key, value))
+            else:
+                fd.write("{} {} {}\n".format(key, value, unit))
 
     if param['raw'] is not None:
         if isinstance(param['raw'], str):
@@ -261,18 +280,15 @@ def write_abinit_in(fd, atoms, param=None, species=None):
     for pos in atoms.positions:
         fd.write('%.14f %.14f %.14f\n' % tuple(pos))
 
-    if 'kptopt' not in param:
-        # XXX This processing should probably happen higher up
-        mp = kpts2mp(atoms, param['kpts'])
-        fd.write('kptopt 1\n')
-        fd.write('ngkpt %d %d %d\n' % tuple(mp))
-        fd.write('nshiftk 1\n')
-        fd.write('shiftk\n')
-        fd.write('%.1f %.1f %.1f\n' % tuple((np.array(mp) + 1) % 2 * 0.5))
-
     fd.write('chkexit 1 # abinit.exit file in the running '
              'directory terminates after the current SCF\n')
 
+def write_list(fd, value, unit):
+    for element in value:
+        fd.write("{} ".format(element))
+    if unit is not None:
+        fd.write("{}".format(unit))
+    fd.write("\n")
 
 def read_stress(fd):
     # sigma(1 1)=  4.02063464E-04  sigma(3 2)=  0.00000000E+00

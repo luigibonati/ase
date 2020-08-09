@@ -1,4 +1,6 @@
 import os
+import re
+
 import numpy as np
 
 from ase.units import Hartree, Bohr
@@ -67,13 +69,13 @@ class ORCA(FileIOCalculator):
         if not os.path.isfile(self.label + '.out'):
             raise ReadError
 
-        with open(self.label + '.inp') as f:
-            for line in f:
+        with open(self.label + '.inp') as fd:
+            for line in fd:
                 if line.startswith('geometry'):
                     break
             symbols = []
             positions = []
-            for line in f:
+            for line in fd:
                 if line.startswith('end'):
                     break
                 words = line.split()
@@ -90,36 +92,36 @@ class ORCA(FileIOCalculator):
 
     def read_energy(self):
         """Read Energy from ORCA output file."""
-        text = open(self.label + '.out', 'r', encoding='utf-8').read()
-        lines = iter(text.split('\n'))
+        with open(self.label + '.out', mode='r', encoding='utf-8') as fd:
+            text = fd.read()
         # Energy:
-        estring = 'FINAL SINGLE POINT ENERGY'
-        for line in lines:
-            if estring in line:
-                energy = float(line.split()[-1])
-                break
-        self.results['energy'] = energy * Hartree
+        re_energy = re.compile(r"FINAL SINGLE POINT ENERGY.*\n")
+        re_not_converged = re.compile(r"Wavefunction not fully converged")
+        found_line = re_energy.search(text)
+        if found_line and not re_not_converged.search(found_line.group()):
+            self.results['energy'] = float(found_line.group().split()[-1]) * Hartree
 
     def read_forces(self):
         """Read Forces from ORCA output file."""
-        fil = open(self.label + '.engrad', 'r', encoding='utf-8')
-        lines = fil.readlines()
-        fil.close()
-        getgrad = "no"
+        with open(f'{self.label}.engrad', 'r') as fd:
+            lines = fd.readlines()
+        getgrad = False
+        gradients = []
+        tempgrad = []
         for i, line in enumerate(lines):
             if line.find('# The current gradient') >= 0:
-                getgrad = "yes"
+                getgrad = True
                 gradients = []
                 tempgrad = []
                 continue
-            if getgrad == "yes" and "#" not in line:
+            if getgrad and "#" not in line:
                 grad = line.split()[-1]
                 tempgrad.append(float(grad))
                 if len(tempgrad) == 3:
                     gradients.append(tempgrad)
                     tempgrad = []
             if '# The at' in line:
-                getgrad = "no"
+                getgrad = False
         self.results['forces'] = -np.array(gradients) * Hartree / Bohr
 
     def embed(self, mmcharges=None, **parameters):

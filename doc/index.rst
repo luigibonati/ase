@@ -38,7 +38,7 @@ Supported :mod:`Calculators <ase.calculators>`
 ==============================================
 
 |abinit| |Asap| |Atomistica| |CASTEP| |CP2K| |CRYSTAL| |deMon| |dftb|
-|dftd4| |elk| |exciting| |EMT|
+|dftd4| |DFTK| |elk| |exciting| |EMT|
 |fhi-aims| |fleur| |gamess_us| |gpaw| |gromacs|
 |hotbit| |jdftx| |kim| |lammps| |nwchem|
 |octopus| |onetep| |openmx| |psi4| |qchem| |q_espresso| |siesta| |turbomole| |vasp|
@@ -62,6 +62,10 @@ Mopac_
 
 News
 ====
+
+* :ref:`ASE version 3.20.0 <releasenotes>` released (8 August 2020).
+
+* :ref:`ASE version 3.19.2 <releasenotes>` released (22 July 2020).
 
 * :ref:`ASE version 3.19.1 <releasenotes>` released (4 April 2020).
 
@@ -213,6 +217,9 @@ Contents
    :align: middle
 .. |dftb| image:: static/dftb.png
    :target: ase/calculators/dftb.html
+   :align: middle
+.. |DFTK| image:: static/dftk.png
+   :target: https://dftk.org/q/ase
    :align: middle
 .. |fhi-aims| image:: static/fhi-aims.png
    :target: ase/calculators/FHI-aims.html

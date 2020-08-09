@@ -709,19 +709,19 @@ class Vasp(GenerateVaspInput, Calculator):
             system_changes = all_changes[:]
         else:
             system_changes = []
-            if not equal(self.atoms.positions, atoms.positions, tol):
+            if not equal(self.atoms.positions, atoms.positions, atol=tol):
                 system_changes.append('positions')
             if not equal(self.atoms.numbers, atoms.numbers):
                 system_changes.append('numbers')
-            if not equal(self.atoms.cell, atoms.cell, tol):
+            if not equal(self.atoms.cell, atoms.cell, atol=tol):
                 system_changes.append('cell')
             if not equal(self.atoms.pbc, atoms.pbc):
                 system_changes.append('pbc')
             if not equal(self.atoms.get_initial_magnetic_moments(),
-                         atoms.get_initial_magnetic_moments(), tol):
+                         atoms.get_initial_magnetic_moments(), atol=tol):
                 system_changes.append('initial_magmoms')
             if not equal(self.atoms.get_initial_charges(),
-                         atoms.get_initial_charges(), tol):
+                         atoms.get_initial_charges(), atol=tol):
                 system_changes.append('initial_charges')
 
         return system_changes
@@ -769,7 +769,7 @@ class Vasp(GenerateVaspInput, Calculator):
         return result
 
 
-class VaspChargeDensity(object):
+class VaspChargeDensity:
     """Class for representing VASP charge density"""
 
     def __init__(self, filename='CHG'):
@@ -983,7 +983,7 @@ class VaspChargeDensity(object):
         f.close()
 
 
-class VaspDos(object):
+class VaspDos:
     """Class for representing density-of-states produced by VASP
 
     The energies are in property self.energy

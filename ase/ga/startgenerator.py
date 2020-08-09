@@ -7,7 +7,7 @@ from ase.ga.utilities import (closest_distances_generator, atoms_too_close,
                               atoms_too_close_two_sets)
 
 
-class StartGenerator(object):
+class StartGenerator:
     """Class for generating random starting candidates.
 
     Its basic task consists of randomly placing atoms or

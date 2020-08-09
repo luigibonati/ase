@@ -1,14 +1,13 @@
+from datetime import datetime
+import io
+
+import numpy as np
+
+from ase.io.jsonio import encode, decode, read_json, write_json
+
+
 def test_jsonio():
     """Test serialization of ndarrays and other stuff."""
-
-    from datetime import datetime
-
-    import numpy as np
-    import io
-
-    from ase.io.jsonio import encode, decode, read_json, write_json
-
-
     assert decode(encode(np.int64(42))) == 42
 
     c = np.array([0.1j])
@@ -32,3 +31,7 @@ def test_jsonio():
         print(s)
         print(obj)
         assert obj == o, (obj, o, s)
+
+
+def test_dict_with_int_key():
+    assert decode(encode({1: 2}), False)[1] == 2

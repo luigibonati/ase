@@ -24,10 +24,6 @@ def test_metadata(name):
     db.metadata = {'test': 'ok'}
     db.metadata = {
         'default_columns': ['formula', 'answer', 'kind'],
-        'special_keys': [
-            ('SELECT', 'kind'),
-            ('BOOL', 'foo'),
-            ('RANGE', 'ans', 'Answer', [('ANS', 'answer')])],
         'key_descriptions': {
             'kind': ('Type', 'Type of system', ''),
             'answer': ('Answer', 'Answer to question', 'eV')}}

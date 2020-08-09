@@ -17,6 +17,7 @@ import functools
 import inspect
 import os
 import sys
+import warnings
 from pathlib import Path, PurePath
 from typing import (
     IO, List, Any, Iterable, Tuple, Union, Sequence, Dict, Optional)
@@ -251,7 +252,6 @@ F('cp2k-dcd', 'CP2K DCD file', '+B',
 F('crystal', 'Crystal fort.34 format', '1S',
   ext=['f34', '34'], glob=['f34', '34']),
 F('cube', 'CUBE file', '1F'),
-F('dacapo', 'Dacapo netCDF output file', '1F'),
 F('dacapo-text', 'Dacapo text output', '1F',
   module='dacapo', magic=b'*&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&\n'),
 F('db', 'ASE SQLite database file', '+S'),
@@ -274,7 +274,6 @@ F('espresso-in', 'Quantum espresso in file', '1F',
   module='espresso', ext='pwi', magic=[b'*\n&system', b'*\n&SYSTEM']),
 F('espresso-out', 'Quantum espresso out file', '+F',
   module='espresso', ext=['out', 'pwo'], magic=b'*Program PWSCF'),
-F('etsf', 'ETSF format', '1S'),
 F('exciting', 'exciting input', '1S', glob='input.xml'),
 F('extxyz', 'Extended XYZ file', '+F'),
 F('findsym', 'FINDSYM-format', '+F'),
@@ -739,8 +738,10 @@ def parse_filename(filename, index=None, do_not_split_by_at_sign=False):
     try:
         newindex = string2index(newindex)
     except ValueError:
-        pass
-
+        warnings.warn('Can not parse index for path \n'
+                      ' "%s" \nConsider set '
+                      'do_not_split_by_at_sign=True \nif '
+                      'there is no index.' % filename)
     return newfilename, newindex
 
 

@@ -1,12 +1,13 @@
-def test_mpi():
+import sys
+from subprocess import run
+
+
+def test_mpi_unused_on_import():
     """Try to import all ASE modules and check that ase.parallel.world has not
     been used.  We want to delay use of world until after MPI4PY has been
     imported.
 
     We run the test in a subprocess so that we have a clean Python interpreter."""
-
-    import sys
-    from subprocess import run
 
     # Should cover most of ASE:
     modules = ['ase.optimize',

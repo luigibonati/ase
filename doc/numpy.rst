@@ -83,5 +83,5 @@ The following identities hold::
   v6 * M == v16 * M == M * v6 == M * v16 == M * v16.repeat(5, 0)
   v51 * M == M * v51 == M * v51.repeat(6, 1)
 
-The exact same rules apply for adding and subtracting 1D arrays to /
+The same rules apply for adding and subtracting 1D arrays to /
 from 2D arrays.

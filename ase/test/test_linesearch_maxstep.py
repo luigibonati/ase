@@ -1,11 +1,15 @@
-def test_linesearch_maxstep():
-    import numpy as np
-    from ase import Atoms
-    from ase.calculators.emt import EMT
-    from ase.optimize import BFGS, BFGSLineSearch
-    from ase.optimize.precon import Exp, PreconLBFGS
+import pytest
+import numpy as np
 
-    positions = [
+from ase import Atoms
+from ase.calculators.emt import EMT
+from ase.optimize import BFGS, BFGSLineSearch
+from ase.optimize.precon import Exp, PreconLBFGS
+
+
+@pytest.fixture
+def positions():
+    pos = np.array([
     [5.8324672234339969, 8.5510800490537271, 5.686535793302002 ],
     [7.3587688835494625, 5.646353802990923,  6.8378173997818958],
     [7.9908510609316235, 5.4456005797117335, 4.5249260246251213],
@@ -19,33 +23,37 @@ def test_linesearch_maxstep():
     [9.0390271264592403, 9.5752757925665453, 6.4771649275571779],
     [7.0554382804264533, 7.0016335250680779, 8.418151938177477 ],
     [9.4855926945401272, 5.5650406772147694, 6.8445655410690591],
-    ]
-    atoms = Atoms('Pt13', positions=positions, cell=[15]*3)
+    ])
+    return pos
 
+
+@pytest.fixture
+def atoms(positions):
+    atoms = Atoms('Pt13', positions=positions, cell=[15] * 3)
+    atoms.calc = EMT()
+    return atoms
+
+
+labels = ['BFGS', 'BFGSLineSearch', 'PreconLBFGS_Armijo',
+          'PreconLBFGS_Wolff']
+optimizers = [BFGS, BFGSLineSearch, PreconLBFGS, PreconLBFGS]
+
+
+@pytest.mark.parametrize(
+    'optcls, name',
+    zip(optimizers, labels),
+)
+def test_linesearch(optcls, name, atoms, positions):
     maxstep = 0.2
-    longest_steps = []
+    kwargs = {'maxstep': maxstep, 'logfile': None}
+    if 'Precon' in name:
+        kwargs['precon'] = Exp(A=3)
+        kwargs['use_armijo'] = 'Armijo' in name
 
-    labels = ['BFGS', 'BFGSLineSearch', 'PreconLBFGS_Armijo', 'PreconLBFGS_Wolff']
-    optimizers = [BFGS, BFGSLineSearch, PreconLBFGS, PreconLBFGS]
+    opt = optcls(atoms, **kwargs)
+    opt.run(steps=1)
 
-    for i,Optimizer in enumerate(optimizers):
-        a = atoms.copy()
-        a.calc = EMT()
-
-        kwargs = {'maxstep':maxstep, 'logfile':None}
-        if 'Precon' in labels[i]:
-            kwargs['precon'] = Exp(A=3)
-            kwargs['use_armijo'] = 'Armijo' in labels[i]
-
-        opt = Optimizer(a, **kwargs)
-        opt.run(steps=1)
-
-        dr = a.get_positions() - positions
-        steplengths = (dr**2).sum(1)**0.5
-        longest_step = np.max(steplengths)
-
-        print('%s: longest step = %.4f' % (labels[i], longest_step))
-        longest_steps.append(longest_step)
-
-    longest_steps = np.array(longest_steps)
-    assert (longest_steps < maxstep + 1e-8).all()
+    dr = atoms.get_positions() - positions
+    steplengths = (dr**2).sum(1)**0.5
+    longest_step = np.max(steplengths)
+    assert longest_step < maxstep + 1e-8

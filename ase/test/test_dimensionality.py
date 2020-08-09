@@ -36,10 +36,11 @@ def test_fcc(method):
     assert m.dimtype == '3D'
 
 
-def test_isolation_0D():
+@pytest.mark.parametrize("kcutoff", [None, 1.1])
+def test_isolation_0D(kcutoff):
     atoms = ase.build.molecule('H2O', vacuum=3.0)
 
-    result = isolate_components(atoms, kcutoff=1.1)
+    result = isolate_components(atoms, kcutoff=kcutoff)
     assert len(result) == 1
     key, components = list(result.items())[0]
     assert key == '0D'

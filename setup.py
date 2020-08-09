@@ -3,7 +3,6 @@
 # Copyright (C) 2007-2017  CAMd
 # Please see the accompanying LICENSE file for further information.
 
-from __future__ import print_function
 import os
 import re
 import sys
@@ -33,7 +32,7 @@ extras_require = {
         'pillow',
     ],
     'test': [
-        'pytest>=3.6.1',
+        'pytest>=3.9.1',
         'pytest-xdist>=1.22.1',
     ]
 }
@@ -52,7 +51,7 @@ package_data = {'ase': ['spacegroup/spacegroup.dat',
                         'db/templates/*',
                         'db/static/*'],
                 'ase.test': ['pytest.ini',
-                             'data/*']}
+                             'testdata/*']}
 
 
 class build_py(_build_py):

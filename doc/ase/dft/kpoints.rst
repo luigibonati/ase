@@ -97,7 +97,7 @@ It is typically created by helper functions such as
 Band structure
 --------------
 
-.. autoclass:: ase.dft.band_structure.BandStructure
+.. autoclass:: ase.spectrum.band_structure.BandStructure
    :members:
 
 Free electron example:

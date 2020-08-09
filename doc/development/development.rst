@@ -21,5 +21,4 @@ Development topics:
     bugs
     licenseinfo
     translate
-    py3k
     proposals/proposals
