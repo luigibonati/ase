@@ -187,6 +187,13 @@ class GaussianProcess():
                 - np.sum(np.log(np.diag(self.L)))
                 - len(y) / 2 * np.log(2 * np.pi))
 
+        # Don't let ratio fall too small, resulting in numerical
+        # difficulties:
+        if 'ratio' in params_to_update:
+            ratio = params[params_to_update.index('ratio')]
+            if ratio < 1e-6:
+                logP -= (1e-6 - ratio) * 1e6
+
         # # Gradient of the loglikelihood
         # grad = self.kernel.gradient(X)
 
@@ -276,6 +283,9 @@ class GaussianProcess():
         for p, pstring in zip(powered_results, params_to_update):
             optimalparams[pstring] = p
 
+        if 'ratio' in params_to_update:
+            self.ratio = optimalparams.get('ratio')
+
         self.set_hyperparams(optimalparams, self.noise)
         print(self.hyperparams, converged)
         return {'hyperparameters': self.hyperparams, 'converged': converged}
@@ -330,14 +340,14 @@ class GaussianProcess():
             # Rescale accordingly ("re-train"):
             self.a /= factor**2
             self.L *= factor
+            self.K *= factor**2
 
             return factor
 
     def leaveoneout(self, X, Y, index):
         """ Split K-matrix so that the rows and columns that correspond
         to index 'index' are removed, then regularize, then invert the
-        matrix, and calculate and return correct energy, predicted
-        energy, and uncertainty.
+        matrix, and calculate and return predicted energy and uncertainty.
 
         Parameters:
 
