@@ -131,7 +131,7 @@ class GPCalculator(Calculator, GaussianProcess):
     def __init__(self, train_images=None, prior=None,
                  update_prior_strategy=None,
                  params={'weight': 1., 'scale': 0.4},
-                 fit_weight=None, noise=0.005,
+                 fit_weight=None, noise=0.005, noisefactor=0.5,
                  params_to_update=None, fingerprint=None,
                  batch_size=5, bounds=None, kernel=None,
                  max_train_data=None, force_consistent=None,
@@ -158,7 +158,8 @@ class GPCalculator(Calculator, GaussianProcess):
             kernel = FPKernelNoforces()
 
         GaussianProcess.__init__(self, prior, kernel,
-                                 use_forces=use_forces)
+                                 use_forces=use_forces,
+                                 noisefactor=noisefactor)
 
         # Set initial hyperparameters.
         self.set_hyperparams(params, noise)
