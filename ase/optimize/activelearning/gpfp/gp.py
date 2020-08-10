@@ -263,10 +263,8 @@ class GaussianProcess():
         result = minimize(self.neg_log_likelihood,
                           params,
                           args=arguments,
-                          method='L-BFGS-B',
-                          # jac=True,
-                          bounds=bounds,
-                          options={'gtol': tol, 'ftol': 0.01 * tol})
+                          method='Nelder-Mead',
+                          options={'xtol': tol, 'ftol': tol})
 
         print("Time spent minimizing neg log likelihood: %.02f sec" %
               (time.time() - t0))
@@ -287,7 +285,7 @@ class GaussianProcess():
             self.ratio = optimalparams.get('ratio')
 
         self.set_hyperparams(optimalparams, self.noise)
-        print(self.hyperparams, converged)
+        print(self.hyperparams, "success: ", converged)
         return {'hyperparameters': self.hyperparams, 'converged': converged}
 
     def fit_weight_only(self, X, Y, option='update'):
