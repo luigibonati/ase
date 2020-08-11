@@ -13,6 +13,14 @@ Git master branch
 * No changes yet
 
 
+Version 3.20.1
+==============
+
+11 August 2020: :git:`3.20.1 <../3.20.1>`
+
+* No changes yet
+
+
 Version 3.20.0
 ==============
 
