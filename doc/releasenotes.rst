@@ -13,6 +13,14 @@ Git master branch
 * No changes yet
 
 
+Version 3.19.3
+==============
+
+11 August 2020: :git:`3.19.3 <../3.19.3>`
+
+* No changes yet
+
+
 Version 3.19.2
 ==============
 
