@@ -132,6 +132,7 @@ def have_documentation():
     return doc_path.is_file()
 
 
+@pytest.mark.skip('not suitable for distributed package')
 @pytest.mark.slow
 def test_flake8():
     if not have_documentation():
