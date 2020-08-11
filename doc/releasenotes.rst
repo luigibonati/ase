@@ -13,6 +13,20 @@ Git master branch
 * No changes yet
 
 
+Version 3.20.1
+==============
+
+11 August 2020: :git:`3.20.1 <../3.20.1>`
+
+ * Minor fix related to package version requirements on pypi.
+
+Version 3.19.3
+==============
+
+11 August 2020: :git:`3.19.3 <../3.19.3>`
+
+ * Minor fix related to package version requirements on pypi.
+
 Version 3.20.0
 ==============
 
