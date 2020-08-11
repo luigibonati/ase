@@ -180,7 +180,7 @@ class CLICommand:
         if args.coverage:
             add_args('--cov=ase',
                      '--cov-config=.coveragerc',
-                     '--cov-report=term',
+                     # '--cov-report=term',
                      '--cov-report=html')
 
         if args.tests:

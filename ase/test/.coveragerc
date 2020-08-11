@@ -30,7 +30,6 @@ omit =
     ../calculators/psi4.py
     ../calculators/gamess_us.py
     ../calculators/lammpslib.py
-    ../calculators/espresso.py
     ../calculators/orca.py
     ../calculators/gromacs.py
     ../calculators/cp2k.py
