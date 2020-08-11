@@ -63,6 +63,7 @@ class build_py(_build_py):
 
 setup(name='ase',
       version=version,
+      python_requires='>=3.5',
       description='Atomic Simulation Environment',
       url='https://wiki.fysik.dtu.dk/ase',
       maintainer='ASE-community',
