@@ -5,6 +5,12 @@ variables:
   OMP_NUM_THREADS: "1"
 
 
+stages:
+  - test
+  - paperwork
+  - deploy
+
+
 .database-configuration:
   variables:
     POSTGRES_DB: testase
@@ -149,24 +155,32 @@ distribution-package:
 #  * The public/ directory is specially recognized by gitlab
 # https://about.gitlab.com/blog/2016/11/03/publish-code-coverage-report-with-gitlab-pages/
 pages:
-  image: registry.gitlab.com/ase/ase:ase-main
   stage: deploy
   dependencies:
-    - main
-    - calculators-lite
+    - coverage-combine
   script:
-    - pwd
-    - ls
-    - echo $CI_PROJECT_DIR
-    - cd ase/test  # Next to .coveragerc and friends
-    - coverage combine ../../coverage-main/coverage.dat ../../coverage-calculators-lite/coverage.dat
-    - coverage report
-    - coverage html
-    - cd ../..
-    - mv ase/test/coverage-html public
+    - mv coverage-html public
   artifacts:
     paths:
       - public
     expire_in: 2 weeks
   only:
     - master
+
+coverage-combine:
+  image: registry.gitlab.com/ase/ase:ase-main
+  stage: paperwork
+  dependencies:
+    - main
+    - calculators-lite
+  script:
+    - cd ase/test  # Next to .coveragerc and friends
+    - coverage combine ../../coverage-main/coverage.dat ../../coverage-calculators-lite/coverage.dat
+    - coverage report
+    - coverage html
+    - cd ../..
+    - mv ase/test/coverage-html .
+  artifacts:
+    paths:
+      - coverage-html
+    expire_in: 1 week
