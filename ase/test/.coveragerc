@@ -22,19 +22,15 @@ omit =
     ../calculators/dftb.py
     ../calculators/excitation_list.py
     ../calculators/exciting.py
-    ../calculators/abinit.py
     ../calculators/lammpsrun.py
     ../calculators/qchem.py
-    ../calculators/octopus.py
     ../calculators/aims.py
     ../calculators/psi4.py
     ../calculators/gamess_us.py
     ../calculators/lammpslib.py
     ../calculators/orca.py
     ../calculators/gromacs.py
-    ../calculators/cp2k.py
     ../calculators/dftd3.py
-    ../calculators/nwchem.py
     ../calculators/fleur.py
     ../calculators/amber.py
     ../calculators/turbomole.py
@@ -72,10 +68,7 @@ omit =
     ../calculators/vasp/vasp.py
     ../calculators/siesta/mbpt_lcao.py
     ../calculators/siesta/mbpt_lcao_utils.py
-    ../calculators/siesta/base_siesta.py
     ../calculators/siesta/import_ion_xml.py
-    ../calculators/siesta/parameters.py
-    ../calculators/siesta/siesta.py
     ../calculators/siesta/siesta_raman.py
     ../calculators/siesta/mbpt_lcao_io.py
     ../calculators/siesta/import_functions.py
@@ -87,7 +80,6 @@ omit =
     ../io/gromos.py
     ../io/dftb.py
     ../io/exciting.py
-    ../io/abinit.py
     ../io/bundletrajectory.py
     ../io/opls.py
     ../io/lammpsrun.py
@@ -95,12 +87,10 @@ omit =
     ../io/gamess_us.py
     ../io/pov.py
     ../io/pickletrajectory.py
-    ../io/espresso.py
     ../io/orca.py
     ../io/gromacs.py
     ../io/dacapo.py
     ../io/cp2k.py
-    ../io/siesta.py
     ../io/fortranfile.py
     ../io/bundlemanipulate.py
     ../io/turbomole.py
@@ -112,11 +102,6 @@ omit =
     ../io/castep.py
     ../io/gpw.py
     ../io/cmdft.py
-    ../io/nwchem/nwreader_in.py
-    ../io/nwchem/nwreader.py
-    ../io/nwchem/nwwriter.py
-    ../io/octopus/output.py
-    ../io/octopus/input.py
 
 
 [html]
