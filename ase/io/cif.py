@@ -287,8 +287,8 @@ def tags2atoms(tags, store_tags=False, primitive_cell=False,
         labels = tags['_atom_site_label']
     for s in labels:
         # Strip off additional labeling on chemical symbols
-        m = re.search(r'([A-Z][a-z]?)', s)
-        symbol = m.group(0)
+        m = re.search(r'([a-zA-Z][a-zA-Z]?)', s)
+        symbol = m.group(0).title()
         symbols.append(symbol)
 
     # Symmetry specification, see
