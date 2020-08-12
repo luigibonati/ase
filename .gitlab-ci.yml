@@ -79,7 +79,6 @@ main:
     - python -We:invalid -m compileall -f -q ase/
     - mv ase/test/coverage-html coverage-main
     - mv ase/test/.coverage coverage-main/coverage.dat
-  coverage: '/TOTAL.+ ([0-9]+\.[0-9]+%)/'
   artifacts:
     paths:
       - coverage-main/
@@ -180,6 +179,7 @@ coverage-combine:
     - coverage html
     - cd ../..
     - mv ase/test/coverage-html .
+  coverage: '/TOTAL.+ ([0-9]+\.[0-9]+%)/'
   artifacts:
     paths:
       - coverage-html
