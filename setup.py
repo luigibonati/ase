@@ -38,6 +38,8 @@ extras_require = {
     ]
 }
 
+# Optional: spglib >= 1.9
+
 
 with open('README.rst') as fd:
     long_description = fd.read()

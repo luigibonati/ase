@@ -809,10 +809,7 @@ def get_spacegroup(atoms, symprec=1e-5):
     # >>> sg.no
     # 225
 
-    try:
-        import spglib  # For version 1.9 or later
-    except ImportError:
-        from pyspglib import spglib  # For versions 1.8.x or before
+    import spglib
 
     sg = spglib.get_spacegroup((atoms.get_cell(),
                                 atoms.get_scaled_positions(),
