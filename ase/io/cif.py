@@ -258,6 +258,61 @@ class CIF:
     def cellpar(self):
         return [self.tags[tag] for tag in self.cell_tags]
 
+    def scaled_positions(self):
+        return np.array([self.tags['_atom_site_fract_x'],
+                         self.tags['_atom_site_fract_y'],
+                         self.tags['_atom_site_fract_z']]).T
+
+    def positions(self):
+        return np.array([self.tags['_atom_site_cartn_x'],
+                         self.tags['_atom_site_cartn_y'],
+                         self.tags['_atom_site_cartn_z']]).T
+
+    def get_symbols(self):
+        tags = self.tags
+
+        labels = tags.get('_atom_site_type_symbol')
+        if labels is None:
+            labels = tags['_atom_site_label']
+
+        symbols = []
+        for label in labels:
+            # Strip off additional labeling on chemical symbols
+            match = re.search(r'([A-Z][a-z]?)', label)
+            symbol = match.group(0)
+            symbols.append(symbol)
+        return symbols
+
+    def _get_any(self, names):
+        for name in names:
+            if name in self.tags:
+                return self.tags[name]
+        return None
+
+    def get_spacegroup_number(self):
+        # Symmetry specification, see
+        # http://www.iucr.org/resources/cif/dictionaries/cif_sym for a
+        # complete list of official keys.  In addition we also try to
+        # support some commonly used depricated notations
+        return self._get_any(['_space_group.it_number',
+                              '_space_group_it_number',
+                              '_symmetry_int_tables_number'])
+
+    def get_hm_symbol(self):
+        hm_symbol = self._get_any(['_space_group.Patterson_name_h-m',
+                                   '_space_group.patterson_name_h-m',
+                                   '_symmetry_space_group_name_h-m',
+                                   '_space_group_name_h-m_alt'])
+
+        hm_symbol = old_spacegroup_names.get(hm_symbol, hm_symbol)
+        return hm_symbol
+
+    def get_sitesym(self):
+        return self._get_any(['_space_group_symop_operation_xyz',
+                              '_space_group_symop.operation_xyz',
+                              '_symmetry_equiv_pos_as_xyz'])
+
+
 def tags2atoms(tags, store_tags=False, primitive_cell=False,
                subtrans_included=True, fractional_occupancies=True):
     """Returns an Atoms object from a cif tags dictionary.  See read_cif()
@@ -268,25 +323,19 @@ def tags2atoms(tags, store_tags=False, primitive_cell=False,
             'are included in the symmetry operations listed in the CIF file, '
             'i.e. when `subtrans_included` is True.')
 
-    # If any value is missing, ditch periodic boundary conditions
     cif = CIF(tags)
 
     has_pbc = cif.has_pbc()
     if has_pbc:
         cellpar = cif.cellpar()
 
-    # Now get positions
     try:
-        scaled_positions = np.array([tags['_atom_site_fract_x'],
-                                     tags['_atom_site_fract_y'],
-                                     tags['_atom_site_fract_z']]).T
+        scaled_positions = cif.scaled_positions()
     except KeyError:
         scaled_positions = None
 
     try:
-        positions = np.array([tags['_atom_site_cartn_x'],
-                              tags['_atom_site_cartn_y'],
-                              tags['_atom_site_cartn_z']]).T
+        positions = cif.positions()
     except KeyError:
         positions = None
 
@@ -296,48 +345,10 @@ def tags2atoms(tags, store_tags=False, primitive_cell=False,
         raise RuntimeError('Structure has fractional coordinates but not '
                            'lattice parameters')
 
-    symbols = []
-    if '_atom_site_type_symbol' in tags:
-        labels = tags['_atom_site_type_symbol']
-    else:
-        labels = tags['_atom_site_label']
-    for s in labels:
-        # Strip off additional labeling on chemical symbols
-        m = re.search(r'([A-Z][a-z]?)', s)
-        symbol = m.group(0)
-        symbols.append(symbol)
-
-    # Symmetry specification, see
-    # http://www.iucr.org/resources/cif/dictionaries/cif_sym for a
-    # complete list of official keys.  In addition we also try to
-    # support some commonly used depricated notations
-    no = None
-    if '_space_group.it_number' in tags:
-        no = tags['_space_group.it_number']
-    elif '_space_group_it_number' in tags:
-        no = tags['_space_group_it_number']
-    elif '_symmetry_int_tables_number' in tags:
-        no = tags['_symmetry_int_tables_number']
-
-    symbolHM = None
-    if '_space_group.Patterson_name_h-m' in tags:
-        symbolHM = tags['_space_group.patterson_name_h-m']
-    elif '_symmetry_space_group_name_h-m' in tags:
-        symbolHM = tags['_symmetry_space_group_name_h-m']
-    elif '_space_group_name_h-m_alt' in tags:
-        symbolHM = tags['_space_group_name_h-m_alt']
-
-    if symbolHM is not None:
-        symbolHM = old_spacegroup_names.get(symbolHM.strip(), symbolHM)
-
-    for name in ['_space_group_symop_operation_xyz',
-                 '_space_group_symop.operation_xyz',
-                 '_symmetry_equiv_pos_as_xyz']:
-        if name in tags:
-            sitesym = tags[name]
-            break
-    else:
-        sitesym = None
+    symbols = cif.get_symbols()
+    no = cif.get_spacegroup_number()
+    hm_symbol = cif.get_hm_symbol()
+    sitesym = cif.get_sitesym()
 
     # The setting needs to be passed as either 1 or two, not None (default)
     setting = 1
@@ -347,12 +358,12 @@ def tags2atoms(tags, store_tags=False, primitive_cell=False,
             sitesym = [sitesym]
         subtrans = [(0.0, 0.0, 0.0)] if subtrans_included else None
         spacegroup = spacegroup_from_data(
-            no=no, symbol=symbolHM, sitesym=sitesym, subtrans=subtrans,
+            no=no, symbol=hm_symbol, sitesym=sitesym, subtrans=subtrans,
             setting=setting)
     elif no is not None:
         spacegroup = no
-    elif symbolHM is not None:
-        spacegroup = symbolHM
+    elif hm_symbol is not None:
+        spacegroup = hm_symbol
     else:
         spacegroup = 1
 
