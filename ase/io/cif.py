@@ -258,15 +258,21 @@ class CIF:
     def cellpar(self):
         return [self.tags[tag] for tag in self.cell_tags]
 
-    def scaled_positions(self):
-        return np.array([self.tags['_atom_site_fract_x'],
-                         self.tags['_atom_site_fract_y'],
-                         self.tags['_atom_site_fract_z']]).T
+    def get_scaled_positions(self):
+        coords = [self.tags.get(name) for name in ['_atom_site_fract_x',
+                                                   '_atom_site_fract_y',
+                                                   '_atom_site_fract_z']]
+        if None in coords:
+            return None
+        return np.array(coords).T
 
-    def positions(self):
-        return np.array([self.tags['_atom_site_cartn_x'],
-                         self.tags['_atom_site_cartn_y'],
-                         self.tags['_atom_site_cartn_z']]).T
+    def get_positions(self):
+        coords = [self.tags.get('_atom_site_cartn_x'),
+                  self.tags.get('_atom_site_cartn_y'),
+                  self.tags.get('_atom_site_cartn_z')]
+        if None in coords:
+            return None
+        return np.array(coords).T
 
     def get_symbols(self):
         tags = self.tags
@@ -329,15 +335,8 @@ def tags2atoms(tags, store_tags=False, primitive_cell=False,
     if has_pbc:
         cellpar = cif.cellpar()
 
-    try:
-        scaled_positions = cif.scaled_positions()
-    except KeyError:
-        scaled_positions = None
-
-    try:
-        positions = cif.positions()
-    except KeyError:
-        positions = None
+    scaled_positions = cif.get_scaled_positions()
+    positions = cif.get_positions()
 
     if (positions is None) and (scaled_positions is None):
         raise RuntimeError('No positions found in structure')
