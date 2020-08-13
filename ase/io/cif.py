@@ -22,6 +22,8 @@ from ase.data import atomic_numbers, atomic_masses
 from ase.io.cif_unicode import format_unicode, handle_subscripts
 
 
+rhombohedral_spacegroups = {146, 148, 155, 160, 161, 166, 167}
+
 class CIF:
     cell_tags = ['_cell_length_a', '_cell_length_b', '_cell_length_c',
                  '_cell_angle_alpha', '_cell_angle_beta', '_cell_angle_gamma']
@@ -191,18 +193,20 @@ def parse_cif_ase(fileobj):
     """Parse a CIF file using ase CIF parser"""
     blocks = []
     if isinstance(fileobj, str):
-        fileobj = open(fileobj, 'rb')
+        with open(fileobj, 'rb') as fileobj:
+            data = fileobj.read()
+    else:
+        data = fileobj.read()
 
-    data = fileobj.read()
     if isinstance(data, bytes):
         data = data.decode('latin1')
     data = format_unicode(data)
-    data = [e for e in data.split('\n') if len(e) > 0]
-    if len(data) > 0 and data[0].rstrip() == '#\\#CIF_2.0':
+    lines = [e for e in data.split('\n') if len(e) > 0]
+    if len(lines) > 0 and lines[0].rstrip() == '#\\#CIF_2.0':
         warnings.warn('CIF v2.0 file format detected; `ase` CIF reader might '
                       'incorrectly interpret some syntax constructions, use '
                       '`pycodcif` reader instead')
-    lines = [''] + data[::-1]    # all lines (reversed)
+    lines = [''] + lines[::-1]    # all lines (reversed)
 
     while True:
         if not lines:
@@ -364,8 +368,7 @@ def tags2atoms(tags, store_tags=False, primitive_cell=False,
         setting_name = tags['_symmetry_cell_setting']
     if setting_name:
         no = Spacegroup(spacegroup).no
-        # rhombohedral systems
-        if no in (146, 148, 155, 160, 161, 166, 167):
+        if no in rhombohedral_spacegroups:
             if setting_name == 'hexagonal':
                 setting = 1
             elif setting_name in ('trigonal', 'rhombohedral'):
@@ -475,14 +478,31 @@ def read_cif(fileobj, index, store_tags=False, primitive_cell=False,
     images = []
     for name, tags in blocks:
         try:
-            atoms = tags2atoms(tags, store_tags, primitive_cell,
-                               subtrans_included,
-                               fractional_occupancies=fractional_occupancies)
+            block = CIFBlock(name, tags)
+            atoms = block.to_atoms(
+                store_tags, primitive_cell,
+                subtrans_included,
+                fractional_occupancies=fractional_occupancies)
             images.append(atoms)
         except KeyError:
+            # XXX This KeyError is too generic and we'll need to handle
+            # trouble differently.
             pass
     for atoms in images[index]:
         yield atoms
+
+
+class CIFBlock:
+    def __init__(self, name, tags):
+        self.name = name
+        self.tags = tags
+
+    def to_atoms(self, store_tags=False, primitive_cell=False,
+                 subtrans_included=True, fractional_occupancies=True):
+        # XXX Clean up argument list!
+        return tags2atoms(self.tags, store_tags, primitive_cell,
+                          subtrans_included,
+                          fractional_occupancies=fractional_occupancies)
 
 
 def split_chem_form(comp_name):
