@@ -497,6 +497,30 @@ def write_enc(fileobj, s):
     fileobj.write(s.encode("latin-1"))
 
 
+def format_cell(cell):
+    assert cell.rank == 3
+    names = ['_cell_length_a', '_cell_length_b', '_cell_length_c',
+             '_cell_angle_alpha', '_cell_angle_beta', '_cell_angle_gamma']
+    lines = []
+    for name, value in zip(names, cell.cellpar()):
+        line = '{:20} {:g}\n'.format(name, value)
+        lines.append(line)
+    return ''.join(lines)
+
+
+def format_generic_spacegroup_info():
+    # We assume no symmetry whatsoever
+    return '\n'.join([
+        '_symmetry_space_group_name_H-M    "P 1"',
+        '_symmetry_int_tables_number       1',
+        '',
+        'loop_',
+        '  _symmetry_equiv_pos_as_xyz',
+        "  'x, y, z'",
+        '',
+    ])
+
+
 def write_cif(fileobj, images, cif_format='default',
               wrap=True, labels=None, loop_keys={}) -> None:
     """Write *images* to CIF file.
@@ -544,23 +568,10 @@ def write_cif(fileobj, images, cif_format='default',
                       formula_sum)
 
         # Do this only if there's three non-zero lattice vectors
-        if atoms.number_of_lattice_vectors == 3:
-            write_enc(fileobj, '_cell_length_a       %g\n' % a)
-            write_enc(fileobj, '_cell_length_b       %g\n' % b)
-            write_enc(fileobj, '_cell_length_c       %g\n' % c)
-            write_enc(fileobj, '_cell_angle_alpha    %g\n' % alpha)
-            write_enc(fileobj, '_cell_angle_beta     %g\n' % beta)
-            write_enc(fileobj, '_cell_angle_gamma    %g\n' % gamma)
+        if atoms.cell.rank == 3:
+            write_enc(fileobj, format_cell(atoms.cell))
             write_enc(fileobj, '\n')
-
-            write_enc(fileobj, '_symmetry_space_group_name_H-M    %s\n' %
-                      '"P 1"')
-            write_enc(fileobj, '_symmetry_int_tables_number       %d\n' % 1)
-            write_enc(fileobj, '\n')
-
-            write_enc(fileobj, 'loop_\n')
-            write_enc(fileobj, '  _symmetry_equiv_pos_as_xyz\n')
-            write_enc(fileobj, "  'x, y, z'\n")
+            write_enc(fileobj, format_generic_spacegroup_info())
             write_enc(fileobj, '\n')
 
         write_enc(fileobj, 'loop_\n')
