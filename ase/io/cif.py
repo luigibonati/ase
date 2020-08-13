@@ -24,9 +24,6 @@ from ase.io.cif_unicode import format_unicode, handle_subscripts
 
 rhombohedral_spacegroups = {146, 148, 155, 160, 161, 166, 167}
 
-class CIF:
-    cell_tags = ['_cell_length_a', '_cell_length_b', '_cell_length_c',
-                 '_cell_angle_alpha', '_cell_angle_beta', '_cell_angle_gamma']
 
 
 # Old conventions:
@@ -248,6 +245,19 @@ def parse_cif_pycodcif(fileobj):
     return blocks
 
 
+class CIF:
+    cell_tags = ['_cell_length_a', '_cell_length_b', '_cell_length_c',
+                 '_cell_angle_alpha', '_cell_angle_beta', '_cell_angle_gamma']
+
+    def __init__(self, tags):
+        self.tags = tags
+
+    def has_pbc(self):
+        return all(tag in self.tags for tag in self.cell_tags)
+
+    def cellpar(self):
+        return [self.tags[tag] for tag in self.cell_tags]
+
 def tags2atoms(tags, store_tags=False, primitive_cell=False,
                subtrans_included=True, fractional_occupancies=True):
     """Returns an Atoms object from a cif tags dictionary.  See read_cif()
@@ -259,11 +269,11 @@ def tags2atoms(tags, store_tags=False, primitive_cell=False,
             'i.e. when `subtrans_included` is True.')
 
     # If any value is missing, ditch periodic boundary conditions
-    has_pbc = True
-    try:
-        cellpar = [tags[ct] for ct in CIF.cell_tags]
-    except KeyError:
-        has_pbc = False
+    cif = CIF(tags)
+
+    has_pbc = cif.has_pbc()
+    if has_pbc:
+        cellpar = cif.cellpar()
 
     # Now get positions
     try:
@@ -282,7 +292,7 @@ def tags2atoms(tags, store_tags=False, primitive_cell=False,
 
     if (positions is None) and (scaled_positions is None):
         raise RuntimeError('No positions found in structure')
-    elif scaled_positions is not None and not has_pbc:
+    elif scaled_positions is not None and not cif.has_pbc():
         raise RuntimeError('Structure has fractional coordinates but not '
                            'lattice parameters')
 
