@@ -14,11 +14,17 @@ from typing import Dict
 import numpy as np
 
 from ase import Atoms
+from ase.cell import Cell
 from ase.parallel import paropen
 from ase.spacegroup import crystal
 from ase.spacegroup.spacegroup import spacegroup_from_data, Spacegroup
 from ase.data import atomic_numbers, atomic_masses
 from ase.io.cif_unicode import format_unicode, handle_subscripts
+
+
+class CIF:
+    cell_tags = ['_cell_length_a', '_cell_length_b', '_cell_length_c',
+                 '_cell_angle_alpha', '_cell_angle_beta', '_cell_angle_gamma']
 
 
 # Old conventions:
@@ -248,14 +254,10 @@ def tags2atoms(tags, store_tags=False, primitive_cell=False,
             'are included in the symmetry operations listed in the CIF file, '
             'i.e. when `subtrans_included` is True.')
 
-    cell_tags = ['_cell_length_a', '_cell_length_b', '_cell_length_c',
-                 '_cell_angle_alpha', '_cell_angle_beta', '_cell_angle_gamma']
-
     # If any value is missing, ditch periodic boundary conditions
     has_pbc = True
     try:
-        cell_values = [tags[ct] for ct in cell_tags]
-        a, b, c, alpha, beta, gamma = cell_values
+        cellpar = [tags[ct] for ct in CIF.cell_tags]
     except KeyError:
         has_pbc = False
 
@@ -399,9 +401,8 @@ def tags2atoms(tags, store_tags=False, primitive_cell=False,
 
     if has_pbc:
         if scaled_positions is None:
-            _ = Atoms(symbols, positions=positions,
-                      cell=[a, b, c, alpha, beta, gamma])
-            scaled_positions = _.get_scaled_positions()
+            cell = Cell.new(cellpar)
+            scaled_positions = cell.scaled_positions(positions)
 
         if deuterium:
             numbers = np.array([atomic_numbers[s] for s in symbols])
@@ -410,7 +411,7 @@ def tags2atoms(tags, store_tags=False, primitive_cell=False,
             kwargs['masses'] = masses
 
         atoms = crystal(symbols, basis=scaled_positions,
-                        cellpar=[a, b, c, alpha, beta, gamma],
+                        cellpar=cellpar,
                         spacegroup=spacegroup,
                         occupancies=occupancies,
                         setting=setting,
@@ -499,12 +500,11 @@ def write_enc(fileobj, s):
 
 def format_cell(cell):
     assert cell.rank == 3
-    names = ['_cell_length_a', '_cell_length_b', '_cell_length_c',
-             '_cell_angle_alpha', '_cell_angle_beta', '_cell_angle_gamma']
     lines = []
-    for name, value in zip(names, cell.cellpar()):
+    for name, value in zip(CIF.cell_tags, cell.cellpar()):
         line = '{:20} {:g}\n'.format(name, value)
         lines.append(line)
+    assert len(lines) == 6
     return ''.join(lines)
 
 
