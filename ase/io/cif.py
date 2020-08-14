@@ -9,7 +9,7 @@ The "latin-1" encoding is required by the IUCR specification.
 import re
 import shlex
 import warnings
-from typing import Dict, Any, List, Tuple, Optional
+from typing import Dict, Any, List, Tuple, Optional, Union, Iterator
 
 import numpy as np
 
@@ -32,8 +32,9 @@ old_spacegroup_names = {'Abm2': 'Aem2',
                         'Cmma': 'Cmme',
                         'Ccca': 'Ccc1'}
 
+CIFDataValue = Union[str, int, float]
 
-def convert_value(value: str) -> Any:
+def convert_value(value: str) -> CIFDataValue:
     """Convert CIF value string to corresponding python type."""
     value = value.strip()
     if re.match('(".*")|(\'.*\')$', value):
@@ -65,7 +66,7 @@ def parse_multiline_string(lines: List[str], line: str) -> str:
     return '\n'.join(strings).strip()
 
 
-def parse_singletag(lines: List[str], line: str) -> Tuple[str, Any]:
+def parse_singletag(lines: List[str], line: str) -> Tuple[str, CIFDataValue]:
     """Parse a CIF tag (entries starting with underscore). Returns
     a key-value pair."""
     kv = line.split(None, 1)
@@ -166,7 +167,7 @@ def parse_items(lines, line):
     return tags
 
 
-def parse_block(lines, line):
+def parse_block(lines: List[str], line: str) -> 'CIFBlock':
     """Parse a CIF data block and return a tuple with the block name
     and a dict with all tags."""
     assert line.lower().startswith('data_')
@@ -462,7 +463,7 @@ class CIFBlock:
 
 def read_cif(fileobj, index, store_tags=False, primitive_cell=False,
              subtrans_included=True, fractional_occupancies=True,
-             reader='ase'):
+             reader='ase') -> Iterator[Atoms]:
     """Read Atoms object from CIF file. *index* specifies the data
     block number or name (if string) to return.
 
@@ -519,7 +520,7 @@ def write_enc(fileobj, s):
     fileobj.write(s.encode("latin-1"))
 
 
-def format_cell(cell):
+def format_cell(cell: Cell) -> str:
     assert cell.rank == 3
     lines = []
     for name, value in zip(CIFBlock.cell_tags, cell.cellpar()):
@@ -529,7 +530,7 @@ def format_cell(cell):
     return ''.join(lines)
 
 
-def format_generic_spacegroup_info():
+def format_generic_spacegroup_info() -> str:
     # We assume no symmetry whatsoever
     return '\n'.join([
         '_symmetry_space_group_name_H-M    "P 1"',
