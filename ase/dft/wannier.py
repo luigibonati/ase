@@ -1,8 +1,7 @@
-""" Maximally localized Wannier Functions
+""" Partly occupied Wannier functions
 
-    Find the set of maximally localized Wannier functions
-    using the spread functional of Marzari and Vanderbilt
-    (PRB 56, 1997 page 12847).
+    Find the set of partly occupied Wannier functions using the method from
+    Thygesen, Hansen and Jacobsen PRB v72 i12 p125119 2005.
 """
 import warnings
 import functools
@@ -285,11 +284,10 @@ def init_orbitals(atoms, ntot, rng=np.random):
 
 
 class Wannier:
-    """Maximally localized Wannier Functions
+    """Partly occupied Wannier functions
 
-    Find the set of maximally localized Wannier functions using the
-    spread functional of Marzari and Vanderbilt (PRB 56, 1997 page
-    12847).
+    Find the set of partly occupied Wannier functions according to
+    Thygesen, Hansen and Jacobsen PRB v72 i12 p125119 2005.
     """
 
     def __init__(self, nwannier, calc,
@@ -345,7 +343,6 @@ class Wannier:
           ``functional``: The functional used to measure the localization.
             Can be 'std' for the standard quadratic functional from the PRB
             paper, 'var' to add a variance minimizing term.
-            value.
 
           ``rng``: Random number generator for ``initialwannier``.
 
