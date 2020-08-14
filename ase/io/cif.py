@@ -244,11 +244,12 @@ def parse_cif_pycodcif(fileobj):
     return blocks
 
 
-class CIF:
+class CIFBlock:
     cell_tags = ['_cell_length_a', '_cell_length_b', '_cell_length_c',
                  '_cell_angle_alpha', '_cell_angle_beta', '_cell_angle_gamma']
 
-    def __init__(self, tags):
+    def __init__(self, name, tags):
+        self.name = name
         self.tags = tags
 
     def get_cellpar(self):
@@ -399,76 +400,71 @@ class CIF:
         assert spg.setting == setting, (spg.setting, setting)
         return spg
 
+    def to_atoms(self, store_tags=False, primitive_cell=False,
+                 subtrans_included=True, fractional_occupancies=True):
+        """Returns an Atoms object from a cif tags dictionary.  See read_cif()
+        for a description of the arguments."""
+        if primitive_cell and subtrans_included:
+            raise RuntimeError(
+                'Primitive cell cannot be determined when sublattice translations '
+                'are included in the symmetry operations listed in the CIF file, '
+                'i.e. when `subtrans_included` is True.')
 
-def tags2atoms(tags, store_tags=False, primitive_cell=False,
-               subtrans_included=True, fractional_occupancies=True):
-    """Returns an Atoms object from a cif tags dictionary.  See read_cif()
-    for a description of the arguments."""
-    if primitive_cell and subtrans_included:
-        raise RuntimeError(
-            'Primitive cell cannot be determined when sublattice translations '
-            'are included in the symmetry operations listed in the CIF file, '
-            'i.e. when `subtrans_included` is True.')
+        cellpar = self.get_cellpar()
+        scaled_positions = self.get_scaled_positions()
+        positions = self.get_positions()
 
-    cif = CIF(tags)
+        if (positions is None) and (scaled_positions is None):
+            raise RuntimeError('No positions found in structure')
+        elif scaled_positions is not None and cellpar is None:
+            raise RuntimeError('Structure has fractional coordinates but not '
+                               'lattice parameters')
 
-    cellpar = cif.get_cellpar()
-    scaled_positions = cif.get_scaled_positions()
-    positions = cif.get_positions()
+        kwargs = {}
+        if store_tags:
+            kwargs['info'] = self.tags.copy()
 
-    if (positions is None) and (scaled_positions is None):
-        raise RuntimeError('No positions found in structure')
-    elif scaled_positions is not None and cellpar is None:
-        raise RuntimeError('Structure has fractional coordinates but not '
-                           'lattice parameters')
+        if fractional_occupancies:
+            occupancies = self.get_fractional_occupancies()
+        else:
+            occupancies = None
 
-    kwargs = {}
-    if store_tags:
-        kwargs['info'] = tags.copy()
-
-    spacegroup = cif.get_spacegroup(subtrans_included)
-    setting = spacegroup.setting
-
-    if fractional_occupancies:
-        occupancies = cif.get_fractional_occupancies()
-    else:
-        occupancies = None
-
-    if occupancies is not None:
-        # no warnings in this case
-        kwargs['onduplicates'] = 'keep'
-
-    symbols = cif.get_symbols()
-    masses = cif.get_masses()
-
-    if cellpar is not None:
-        if scaled_positions is None:
-            cell = Cell.new(cellpar)
-            scaled_positions = cell.scaled_positions(positions)
-
-        if masses is not None:
-            kwargs['masses'] = masses
-
-        atoms = crystal(symbols, basis=scaled_positions,
-                        cellpar=cellpar,
-                        spacegroup=spacegroup,
-                        occupancies=occupancies,
-                        setting=setting,
-                        primitive_cell=primitive_cell,
-                        **kwargs)
-    else:
-        atoms = Atoms(symbols, positions=positions,
-                      info=kwargs.get('info', None))
         if occupancies is not None:
-            # Compile an occupancies dictionary
-            occ_dict = {}
-            for i, sym in enumerate(symbols):
-                occ_dict[i] = {sym: occupancies[i]}
-            atoms.info['occupancy'] = occ_dict
+            # no warnings in this case
+            kwargs['onduplicates'] = 'keep'
 
-        atoms.set_masses(masses)
+        symbols = self.get_symbols()
+        masses = self.get_masses()
 
-    return atoms
+        if cellpar is not None:
+            if scaled_positions is None:
+                cell = Cell.new(cellpar)
+                scaled_positions = cell.scaled_positions(positions)
+
+            if masses is not None:
+                kwargs['masses'] = masses
+
+            spacegroup = self.get_spacegroup(subtrans_included)
+            atoms = crystal(symbols, basis=scaled_positions,
+                            cellpar=cellpar,
+                            spacegroup=int(spacegroup),
+                            setting=spacegroup.setting,
+                            occupancies=occupancies,
+                            primitive_cell=primitive_cell,
+                            **kwargs)
+        else:
+            atoms = Atoms(symbols, positions=positions,
+                          info=kwargs.get('info', None))
+            if occupancies is not None:
+                # Compile an occupancies dictionary
+                occ_dict = {}
+                for i, sym in enumerate(symbols):
+                    occ_dict[i] = {sym: occupancies[i]}
+                atoms.info['occupancy'] = occ_dict
+
+            atoms.set_masses(masses)
+
+        return atoms
 
 
 def read_cif(fileobj, index, store_tags=False, primitive_cell=False,
@@ -524,19 +520,6 @@ def read_cif(fileobj, index, store_tags=False, primitive_cell=False,
         yield atoms
 
 
-class CIFBlock:
-    def __init__(self, name, tags):
-        self.name = name
-        self.tags = tags
-
-    def to_atoms(self, store_tags=False, primitive_cell=False,
-                 subtrans_included=True, fractional_occupancies=True):
-        # XXX Clean up argument list!
-        return tags2atoms(self.tags, store_tags, primitive_cell,
-                          subtrans_included,
-                          fractional_occupancies=fractional_occupancies)
-
-
 def split_chem_form(comp_name):
     """Returns e.g. AB2  as ['A', '1', 'B', '2']"""
     split_form = re.findall(r'[A-Z][a-z]*|\d+',
@@ -553,7 +536,7 @@ def write_enc(fileobj, s):
 def format_cell(cell):
     assert cell.rank == 3
     lines = []
-    for name, value in zip(CIF.cell_tags, cell.cellpar()):
+    for name, value in zip(CIFBlock.cell_tags, cell.cellpar()):
         line = '{:20} {:g}\n'.format(name, value)
         lines.append(line)
     assert len(lines) == 6
