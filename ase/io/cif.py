@@ -9,7 +9,7 @@ The "latin-1" encoding is required by the IUCR specification.
 import re
 import shlex
 import warnings
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, Optional
 
 import numpy as np
 
@@ -204,11 +204,8 @@ def parse_cif_ase(fileobj):
                       '`pycodcif` reader instead')
     lines = [''] + lines[::-1]    # all lines (reversed)
 
-    while True:
-        if not lines:
-            break
-        line = lines.pop()
-        line = line.strip()
+    while lines:
+        line = lines.pop().strip()
         if not line or line.startswith('#'):
             continue
 
@@ -248,13 +245,13 @@ class CIFBlock:
         self.name = name
         self.tags = tags
 
-    def get_cellpar(self):
+    def get_cellpar(self) -> Optional[List]:
         try:
             return [self.tags[tag] for tag in self.cell_tags]
         except KeyError:
             return None
 
-    def get_scaled_positions(self):
+    def get_scaled_positions(self) -> Optional[np.ndarray]:
         coords = [self.tags.get(name) for name in ['_atom_site_fract_x',
                                                    '_atom_site_fract_y',
                                                    '_atom_site_fract_z']]
@@ -262,7 +259,7 @@ class CIFBlock:
             return None
         return np.array(coords).T
 
-    def get_positions(self):
+    def get_positions(self) -> Optional[np.ndarray]:
         coords = [self.tags.get('_atom_site_cartn_x'),
                   self.tags.get('_atom_site_cartn_y'),
                   self.tags.get('_atom_site_cartn_z')]
@@ -282,7 +279,7 @@ class CIFBlock:
             symbols.append(symbol)
         return symbols
 
-    def get_symbols(self):
+    def get_symbols(self) -> List[str]:
         symbols = self._get_symbols_with_deuterium()
         return [symbol if symbol != 'D' else 'H' for symbol in symbols]
 
