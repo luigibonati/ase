@@ -172,7 +172,7 @@ def parse_block(lines, line):
     assert line.lower().startswith('data_')
     blockname = line.split('_', 1)[1].rstrip()
     tags = parse_items(lines, line)
-    return blockname, tags
+    return CIFBlock(blockname, tags)
 
 
 def parse_cif(fileobj, reader='ase'):
@@ -187,7 +187,7 @@ def parse_cif(fileobj, reader='ase'):
 
 def parse_cif_ase(fileobj):
     """Parse a CIF file using ase CIF parser"""
-    blocks = []
+
     if isinstance(fileobj, str):
         with open(fileobj, 'rb') as fileobj:
             data = fileobj.read()
@@ -211,14 +211,12 @@ def parse_cif_ase(fileobj):
         line = line.strip()
         if not line or line.startswith('#'):
             continue
-        blocks.append(parse_block(lines, line))
 
-    return blocks
+        yield parse_block(lines, line)
 
 
 def parse_cif_pycodcif(fileobj):
     """Parse a CIF file using pycodcif CIF parser"""
-    blocks = []
     if not isinstance(fileobj, str):
         fileobj = fileobj.name
 
@@ -239,9 +237,7 @@ def parse_cif_pycodcif(fileobj):
                 tags[tag] = values[0]
             else:
                 tags[tag] = values
-        blocks.append((datablock['name'], tags))
-
-    return blocks
+        yield CIFBlock(datablock['name'], tags)
 
 
 class CIFBlock:
@@ -501,12 +497,10 @@ def read_cif(fileobj, index, store_tags=False, primitive_cell=False,
     built-in CIF reader (default), while `pycodcif` selects CIF reader based
     on `pycodcif` package.
     """
-    blocks = parse_cif(fileobj, reader)
     # Find all CIF blocks with valid crystal data
     images = []
-    for name, tags in blocks:
+    for block in parse_cif(fileobj, reader):
         try:
-            block = CIFBlock(name, tags)
             atoms = block.to_atoms(
                 store_tags, primitive_cell,
                 subtrans_included,
