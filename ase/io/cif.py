@@ -251,11 +251,11 @@ class CIF:
     def __init__(self, tags):
         self.tags = tags
 
-    def has_pbc(self):
-        return all(tag in self.tags for tag in self.cell_tags)
-
-    def cellpar(self):
-        return [self.tags[tag] for tag in self.cell_tags]
+    def get_cellpar(self):
+        try:
+            return [self.tags[tag] for tag in self.cell_tags]
+        except KeyError:
+            return None
 
     def get_scaled_positions(self):
         coords = [self.tags.get(name) for name in ['_atom_site_fract_x',
@@ -343,18 +343,16 @@ def tags2atoms(tags, store_tags=False, primitive_cell=False,
 
     cif = CIF(tags)
 
-    has_pbc = cif.has_pbc()
-
+    cellpar = cif.get_cellpar()
     scaled_positions = cif.get_scaled_positions()
     positions = cif.get_positions()
 
     if (positions is None) and (scaled_positions is None):
         raise RuntimeError('No positions found in structure')
-    elif scaled_positions is not None and not cif.has_pbc():
+    elif scaled_positions is not None and cellpar is None:
         raise RuntimeError('Structure has fractional coordinates but not '
                            'lattice parameters')
 
-    symbols = cif.get_symbols()
     no = cif.get_spacegroup_number()
     hm_symbol = cif.get_hm_symbol()
     sitesym = cif.get_sitesym()
@@ -418,11 +416,10 @@ def tags2atoms(tags, store_tags=False, primitive_cell=False,
         # no warnings in this case
         kwargs['onduplicates'] = 'keep'
 
+    symbols = cif.get_symbols()
     masses = cif.get_masses()
 
-    if has_pbc:
-        cellpar = cif.cellpar()
-
+    if cellpar is not None:
         if scaled_positions is None:
             cell = Cell.new(cellpar)
             scaled_positions = cell.scaled_positions(positions)
