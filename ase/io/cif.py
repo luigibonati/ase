@@ -343,6 +343,62 @@ class CIF:
             raise ValueError(f'Spacegroup setting must be 1 or 2, not {setting}')
         return setting
 
+    def get_spacegroup(self, subtrans_included):
+        # XXX The logic in this method needs serious cleaning up!
+        # The setting needs to be passed as either 1 or two, not None (default)
+        tags = self.tags
+        no = self.get_spacegroup_number()
+        hm_symbol = self.get_hm_symbol()
+        sitesym = self.get_sitesym()
+
+        setting = 1
+        spacegroup = 1
+        if sitesym is not None:
+            subtrans = [(0.0, 0.0, 0.0)] if subtrans_included else None
+            spacegroup = spacegroup_from_data(
+                no=no, symbol=hm_symbol, sitesym=sitesym, subtrans=subtrans,
+                setting=setting)
+        elif no is not None:
+            spacegroup = no
+        elif hm_symbol is not None:
+            spacegroup = hm_symbol
+        else:
+            spacegroup = 1
+
+        setting_std = self.get_setting()
+
+        setting_name = None
+        if '_symmetry_space_group_setting' in tags:
+            setting = setting_std
+        elif '_space_group_crystal_system' in tags:
+            setting_name = tags['_space_group_crystal_system']
+        elif '_symmetry_cell_setting' in tags:
+            setting_name = tags['_symmetry_cell_setting']
+
+        if setting_name:
+            no = Spacegroup(spacegroup).no
+            if no in rhombohedral_spacegroups:
+                if setting_name == 'hexagonal':
+                    setting = 1
+                elif setting_name in ('trigonal', 'rhombohedral'):
+                    setting = 2
+                else:
+                    warnings.warn(
+                        'unexpected crystal system %r for space group %r' % (
+                            setting_name, spacegroup))
+            # FIXME - check for more crystal systems...
+            else:
+                warnings.warn(
+                    'crystal system %r is not interpreted for space group %r. '
+                    'This may result in wrong setting!' % (
+                        setting_name, spacegroup))
+
+        spg = Spacegroup(spacegroup)
+        if no is not None:
+            assert int(spg) == no, (int(spg), no)
+        assert spg.setting == setting, (spg.setting, setting)
+        return spg
+
 
 def tags2atoms(tags, store_tags=False, primitive_cell=False,
                subtrans_included=True, fractional_occupancies=True):
@@ -366,57 +422,12 @@ def tags2atoms(tags, store_tags=False, primitive_cell=False,
         raise RuntimeError('Structure has fractional coordinates but not '
                            'lattice parameters')
 
-    no = cif.get_spacegroup_number()
-    hm_symbol = cif.get_hm_symbol()
-    sitesym = cif.get_sitesym()
-
     kwargs = {}
     if store_tags:
         kwargs['info'] = tags.copy()
 
-    # The setting needs to be passed as either 1 or two, not None (default)
-    setting = 1
-    spacegroup = 1
-    if sitesym is not None:
-        subtrans = [(0.0, 0.0, 0.0)] if subtrans_included else None
-        spacegroup = spacegroup_from_data(
-            no=no, symbol=hm_symbol, sitesym=sitesym, subtrans=subtrans,
-            setting=setting)
-    elif no is not None:
-        spacegroup = no
-    elif hm_symbol is not None:
-        spacegroup = hm_symbol
-    else:
-        spacegroup = 1
-
-
-    setting_std = cif.get_setting()
-
-    setting_name = None
-    if '_symmetry_space_group_setting' in tags:
-        setting = setting_std
-    elif '_space_group_crystal_system' in tags:
-        setting_name = tags['_space_group_crystal_system']
-    elif '_symmetry_cell_setting' in tags:
-        setting_name = tags['_symmetry_cell_setting']
-
-    if setting_name:
-        no = Spacegroup(spacegroup).no
-        if no in rhombohedral_spacegroups:
-            if setting_name == 'hexagonal':
-                setting = 1
-            elif setting_name in ('trigonal', 'rhombohedral'):
-                setting = 2
-            else:
-                warnings.warn(
-                    'unexpected crystal system %r for space group %r' % (
-                        setting_name, spacegroup))
-        # FIXME - check for more crystal systems...
-        else:
-            warnings.warn(
-                'crystal system %r is not interpreted for space group %r. '
-                'This may result in wrong setting!' % (
-                    setting_name, spacegroup))
+    spacegroup = cif.get_spacegroup(subtrans_included)
+    setting = spacegroup.setting
 
     if fractional_occupancies:
         occupancies = cif.get_fractional_occupancies()
