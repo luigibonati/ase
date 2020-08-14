@@ -176,7 +176,7 @@ def parse_block(lines: List[str], line: str) -> 'CIFBlock':
     return CIFBlock(blockname, tags)
 
 
-def parse_cif(fileobj, reader='ase'):
+def parse_cif(fileobj, reader='ase') -> Iterator[CIFBlock]:
     """Parse a CIF file. Returns a list of blockname and tag
     pairs. All tag names are converted to lower case."""
 
@@ -184,9 +184,11 @@ def parse_cif(fileobj, reader='ase'):
         return parse_cif_ase(fileobj)
     elif reader == 'pycodcif':
         return parse_cif_pycodcif(fileobj)
+    else:
+        raise ValueError(f'No such reader: {reader}')
 
 
-def parse_cif_ase(fileobj):
+def parse_cif_ase(fileobj) -> Iterator[CIFBlock]:
     """Parse a CIF file using ase CIF parser"""
 
     if isinstance(fileobj, str):
@@ -213,7 +215,7 @@ def parse_cif_ase(fileobj):
         yield parse_block(lines, line)
 
 
-def parse_cif_pycodcif(fileobj):
+def parse_cif_pycodcif(fileobj) -> Iterator[CIFBlock]:
     """Parse a CIF file using pycodcif CIF parser"""
     if not isinstance(fileobj, str):
         fileobj = fileobj.name
@@ -284,7 +286,7 @@ class CIFBlock:
         symbols = self._get_symbols_with_deuterium()
         return [symbol if symbol != 'D' else 'H' for symbol in symbols]
 
-    def get_masses(self):
+    def get_masses(self) -> Optional[np.ndarray]:
         symbols = self._get_symbols_with_deuterium()
         if 'D' not in symbols:
             return None
@@ -328,7 +330,7 @@ class CIFBlock:
     def get_fractional_occupancies(self):
         return self.tags.get('_atom_site_occupancy')
 
-    def get_setting(self):
+    def get_setting(self) -> Optional[int]:
         setting_str = self.tags.get('_symmetry_space_group_setting')
         if setting_str is None:
             return None
@@ -338,7 +340,7 @@ class CIFBlock:
             raise ValueError(f'Spacegroup setting must be 1 or 2, not {setting}')
         return setting
 
-    def get_spacegroup(self, subtrans_included):
+    def get_spacegroup(self, subtrans_included) -> Spacegroup:
         # XXX The logic in this method needs serious cleaning up!
         # The setting needs to be passed as either 1 or two, not None (default)
         tags = self.tags
@@ -364,6 +366,7 @@ class CIFBlock:
 
         setting_name = None
         if '_symmetry_space_group_setting' in tags:
+            assert setting_std is not None
             setting = setting_std
         elif '_space_group_crystal_system' in tags:
             setting_name = tags['_space_group_crystal_system']
@@ -395,7 +398,7 @@ class CIFBlock:
         return spg
 
     def to_atoms(self, store_tags=False, primitive_cell=False,
-                 subtrans_included=True, fractional_occupancies=True):
+                 subtrans_included=True, fractional_occupancies=True) -> Atoms:
         """Returns an Atoms object from a cif tags dictionary.  See read_cif()
         for a description of the arguments."""
         if primitive_cell and subtrans_included:
