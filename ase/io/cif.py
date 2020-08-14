@@ -9,7 +9,7 @@ The "latin-1" encoding is required by the IUCR specification.
 import re
 import shlex
 import warnings
-from typing import Dict, Any, List, Tuple, Optional, Union, Iterator
+from typing import Dict, List, Tuple, Optional, Union, Iterator
 
 import numpy as np
 
@@ -18,7 +18,6 @@ from ase.cell import Cell
 from ase.parallel import paropen
 from ase.spacegroup import crystal
 from ase.spacegroup.spacegroup import spacegroup_from_data, Spacegroup
-from ase.data import atomic_numbers, atomic_masses
 from ase.io.cif_unicode import format_unicode, handle_subscripts
 
 
@@ -165,79 +164,6 @@ def parse_items(lines, line):
         else:
             raise ValueError('Unexpected CIF file entry: "{0}"'.format(line))
     return tags
-
-
-def parse_block(lines: List[str], line: str) -> 'CIFBlock':
-    """Parse a CIF data block and return a tuple with the block name
-    and a dict with all tags."""
-    assert line.lower().startswith('data_')
-    blockname = line.split('_', 1)[1].rstrip()
-    tags = parse_items(lines, line)
-    return CIFBlock(blockname, tags)
-
-
-def parse_cif(fileobj, reader='ase') -> Iterator[CIFBlock]:
-    """Parse a CIF file. Returns a list of blockname and tag
-    pairs. All tag names are converted to lower case."""
-
-    if reader == 'ase':
-        return parse_cif_ase(fileobj)
-    elif reader == 'pycodcif':
-        return parse_cif_pycodcif(fileobj)
-    else:
-        raise ValueError(f'No such reader: {reader}')
-
-
-def parse_cif_ase(fileobj) -> Iterator[CIFBlock]:
-    """Parse a CIF file using ase CIF parser"""
-
-    if isinstance(fileobj, str):
-        with open(fileobj, 'rb') as fileobj:
-            data = fileobj.read()
-    else:
-        data = fileobj.read()
-
-    if isinstance(data, bytes):
-        data = data.decode('latin1')
-    data = format_unicode(data)
-    lines = [e for e in data.split('\n') if len(e) > 0]
-    if len(lines) > 0 and lines[0].rstrip() == '#\\#CIF_2.0':
-        warnings.warn('CIF v2.0 file format detected; `ase` CIF reader might '
-                      'incorrectly interpret some syntax constructions, use '
-                      '`pycodcif` reader instead')
-    lines = [''] + lines[::-1]    # all lines (reversed)
-
-    while lines:
-        line = lines.pop().strip()
-        if not line or line.startswith('#'):
-            continue
-
-        yield parse_block(lines, line)
-
-
-def parse_cif_pycodcif(fileobj) -> Iterator[CIFBlock]:
-    """Parse a CIF file using pycodcif CIF parser"""
-    if not isinstance(fileobj, str):
-        fileobj = fileobj.name
-
-    try:
-        from pycodcif import parse
-    except ImportError:
-        raise ImportError(
-            'parse_cif_pycodcif requires pycodcif ' +
-            '(http://wiki.crystallography.net/cod-tools/pycodcif/)')
-
-    data, _, _ = parse(fileobj)
-
-    for datablock in data:
-        tags = datablock['values']
-        for tag in tags.keys():
-            values = [convert_value(x) for x in tags[tag]]
-            if len(values) == 1:
-                tags[tag] = values[0]
-            else:
-                tags[tag] = values
-        yield CIFBlock(datablock['name'], tags)
 
 
 class CIFBlock:
@@ -462,6 +388,79 @@ class CIFBlock:
             atoms.set_masses(masses)
 
         return atoms
+
+
+def parse_block(lines: List[str], line: str) -> 'CIFBlock':
+    """Parse a CIF data block and return a tuple with the block name
+    and a dict with all tags."""
+    assert line.lower().startswith('data_')
+    blockname = line.split('_', 1)[1].rstrip()
+    tags = parse_items(lines, line)
+    return CIFBlock(blockname, tags)
+
+
+def parse_cif(fileobj, reader='ase') -> Iterator[CIFBlock]:
+    """Parse a CIF file. Returns a list of blockname and tag
+    pairs. All tag names are converted to lower case."""
+
+    if reader == 'ase':
+        return parse_cif_ase(fileobj)
+    elif reader == 'pycodcif':
+        return parse_cif_pycodcif(fileobj)
+    else:
+        raise ValueError(f'No such reader: {reader}')
+
+
+def parse_cif_ase(fileobj) -> Iterator[CIFBlock]:
+    """Parse a CIF file using ase CIF parser"""
+
+    if isinstance(fileobj, str):
+        with open(fileobj, 'rb') as fileobj:
+            data = fileobj.read()
+    else:
+        data = fileobj.read()
+
+    if isinstance(data, bytes):
+        data = data.decode('latin1')
+    data = format_unicode(data)
+    lines = [e for e in data.split('\n') if len(e) > 0]
+    if len(lines) > 0 and lines[0].rstrip() == '#\\#CIF_2.0':
+        warnings.warn('CIF v2.0 file format detected; `ase` CIF reader might '
+                      'incorrectly interpret some syntax constructions, use '
+                      '`pycodcif` reader instead')
+    lines = [''] + lines[::-1]    # all lines (reversed)
+
+    while lines:
+        line = lines.pop().strip()
+        if not line or line.startswith('#'):
+            continue
+
+        yield parse_block(lines, line)
+
+
+def parse_cif_pycodcif(fileobj) -> Iterator[CIFBlock]:
+    """Parse a CIF file using pycodcif CIF parser"""
+    if not isinstance(fileobj, str):
+        fileobj = fileobj.name
+
+    try:
+        from pycodcif import parse
+    except ImportError:
+        raise ImportError(
+            'parse_cif_pycodcif requires pycodcif ' +
+            '(http://wiki.crystallography.net/cod-tools/pycodcif/)')
+
+    data, _, _ = parse(fileobj)
+
+    for datablock in data:
+        tags = datablock['values']
+        for tag in tags.keys():
+            values = [convert_value(x) for x in tags[tag]]
+            if len(values) == 1:
+                tags[tag] = values[0]
+            else:
+                tags[tag] = values
+        yield CIFBlock(datablock['name'], tags)
 
 
 def read_cif(fileobj, index, store_tags=False, primitive_cell=False,
