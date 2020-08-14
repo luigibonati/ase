@@ -500,16 +500,11 @@ def read_cif(fileobj, index, store_tags=False, primitive_cell=False,
     # Find all CIF blocks with valid crystal data
     images = []
     for block in parse_cif(fileobj, reader):
-        try:
-            atoms = block.to_atoms(
-                store_tags, primitive_cell,
-                subtrans_included,
-                fractional_occupancies=fractional_occupancies)
-            images.append(atoms)
-        except KeyError:
-            # XXX This KeyError is too generic and we'll need to handle
-            # trouble differently.
-            pass
+        atoms = block.to_atoms(
+            store_tags, primitive_cell,
+            subtrans_included,
+            fractional_occupancies=fractional_occupancies)
+        images.append(atoms)
     for atoms in images[index]:
         yield atoms
 
