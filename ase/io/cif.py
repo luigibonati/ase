@@ -25,7 +25,6 @@ from ase.io.cif_unicode import format_unicode, handle_subscripts
 rhombohedral_spacegroups = {146, 148, 155, 160, 161, 166, 167}
 
 
-
 # Old conventions:
 old_spacegroup_names = {'Abm2': 'Aem2',
                         'Aba2': 'Aea2',
@@ -274,13 +273,10 @@ class CIF:
             return None
         return np.array(coords).T
 
-    def get_symbols(self):
-        tags = self.tags
-
-        labels = tags.get('_atom_site_type_symbol')
-        if labels is None:
-            labels = tags['_atom_site_label']
-
+    def _get_symbols_with_deuterium(self):
+        labels = self._get_any(['_atom_site_type_symbol',
+                                '_atom_site_label'])
+        assert labels is not None
         symbols = []
         for label in labels:
             # Strip off additional labeling on chemical symbols
@@ -288,6 +284,19 @@ class CIF:
             symbol = match.group(0)
             symbols.append(symbol)
         return symbols
+
+    def get_symbols(self):
+        symbols = self._get_symbols_with_deuterium()
+        return [symbol if symbol != 'D' else 'H' for symbol in symbols]
+
+    def get_masses(self):
+        symbols = self._get_symbols_with_deuterium()
+        if 'D' not in symbols:
+            return None
+        masses = Atoms(symbols).get_masses()
+        deuterium_mask = [symbol == 'D' for symbol in symbols]
+        masses[deuterium_mask] = 2.01355
+        return masses
 
     def _get_any(self, names):
         for name in names:
@@ -368,12 +377,6 @@ def tags2atoms(tags, store_tags=False, primitive_cell=False,
     if store_tags:
         kwargs['info'] = tags.copy()
 
-    if 'D' in symbols:
-        deuterium = [symbol == 'D' for symbol in symbols]
-        symbols = [symbol if symbol != 'D' else 'H' for symbol in symbols]
-    else:
-        deuterium = False
-
     setting_name = None
     if '_symmetry_space_group_setting' in tags:
         setting = int(tags['_symmetry_space_group_setting'])
@@ -421,6 +424,8 @@ def tags2atoms(tags, store_tags=False, primitive_cell=False,
         except KeyError:
             pass
 
+    masses = cif.get_masses()
+
     if has_pbc:
         cellpar = cif.cellpar()
 
@@ -428,10 +433,7 @@ def tags2atoms(tags, store_tags=False, primitive_cell=False,
             cell = Cell.new(cellpar)
             scaled_positions = cell.scaled_positions(positions)
 
-        if deuterium:
-            numbers = np.array([atomic_numbers[s] for s in symbols])
-            masses = atomic_masses[numbers]
-            masses[deuterium] = 2.01355
+        if masses is not None:
             kwargs['masses'] = masses
 
         atoms = crystal(symbols, basis=scaled_positions,
@@ -451,11 +453,7 @@ def tags2atoms(tags, store_tags=False, primitive_cell=False,
                 occ_dict[i] = {sym: occupancies[i]}
             atoms.info['occupancy'] = occ_dict
 
-        if deuterium:
-            masses = atoms.get_masses()
-            masses[atoms.numbers == 1] = 1.00783
-            masses[deuterium] = 2.01355
-            atoms.set_masses(masses)
+        atoms.set_masses(masses)
 
     return atoms
 
