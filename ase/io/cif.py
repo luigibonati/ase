@@ -9,7 +9,7 @@ The "latin-1" encoding is required by the IUCR specification.
 import re
 import shlex
 import warnings
-from typing import Dict
+from typing import Dict, Any, List, Tuple
 
 import numpy as np
 
@@ -34,7 +34,7 @@ old_spacegroup_names = {'Abm2': 'Aem2',
                         'Ccca': 'Ccc1'}
 
 
-def convert_value(value):
+def convert_value(value: str) -> Any:
     """Convert CIF value string to corresponding python type."""
     value = value.strip()
     if re.match('(".*")|(\'.*\')$', value):
@@ -54,7 +54,7 @@ def convert_value(value):
         return handle_subscripts(value)
 
 
-def parse_multiline_string(lines, line):
+def parse_multiline_string(lines: List[str], line: str) -> str:
     """Parse semicolon-enclosed multiline string and return it."""
     assert line[0] == ';'
     strings = [line[1:].lstrip()]
@@ -66,7 +66,7 @@ def parse_multiline_string(lines, line):
     return '\n'.join(strings).strip()
 
 
-def parse_singletag(lines, line):
+def parse_singletag(lines: List[str], line: str) -> Tuple[str, Any]:
     """Parse a CIF tag (entries starting with underscore). Returns
     a key-value pair."""
     kv = line.split(None, 1)
@@ -332,8 +332,6 @@ def tags2atoms(tags, store_tags=False, primitive_cell=False,
     cif = CIF(tags)
 
     has_pbc = cif.has_pbc()
-    if has_pbc:
-        cellpar = cif.cellpar()
 
     scaled_positions = cif.get_scaled_positions()
     positions = cif.get_positions()
@@ -386,6 +384,7 @@ def tags2atoms(tags, store_tags=False, primitive_cell=False,
         setting_name = tags['_space_group_crystal_system']
     elif '_symmetry_cell_setting' in tags:
         setting_name = tags['_symmetry_cell_setting']
+
     if setting_name:
         no = Spacegroup(spacegroup).no
         if no in rhombohedral_spacegroups:
@@ -423,6 +422,8 @@ def tags2atoms(tags, store_tags=False, primitive_cell=False,
             pass
 
     if has_pbc:
+        cellpar = cif.cellpar()
+
         if scaled_positions is None:
             cell = Cell.new(cellpar)
             scaled_positions = cell.scaled_positions(positions)
