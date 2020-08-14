@@ -323,12 +323,25 @@ class CIF:
         return hm_symbol
 
     def get_sitesym(self):
-        return self._get_any(['_space_group_symop_operation_xyz',
-                              '_space_group_symop.operation_xyz',
-                              '_symmetry_equiv_pos_as_xyz'])
+        sitesym = self._get_any(['_space_group_symop_operation_xyz',
+                                 '_space_group_symop.operation_xyz',
+                                 '_symmetry_equiv_pos_as_xyz'])
+        if isinstance(sitesym, str):
+            sitesym = [sitesym]
+        return sitesym
 
     def get_fractional_occupancies(self):
         return self.tags.get('_atom_site_occupancy')
+
+    def get_setting(self):
+        setting_str = self.tags.get('_symmetry_space_group_setting')
+        if setting_str is None:
+            return None
+
+        setting = int(setting_str)
+        if setting not in [1, 2]:
+            raise ValueError(f'Spacegroup setting must be 1 or 2, not {setting}')
+        return setting
 
 
 def tags2atoms(tags, store_tags=False, primitive_cell=False,
@@ -357,12 +370,14 @@ def tags2atoms(tags, store_tags=False, primitive_cell=False,
     hm_symbol = cif.get_hm_symbol()
     sitesym = cif.get_sitesym()
 
+    kwargs = {}
+    if store_tags:
+        kwargs['info'] = tags.copy()
+
     # The setting needs to be passed as either 1 or two, not None (default)
     setting = 1
     spacegroup = 1
     if sitesym is not None:
-        if isinstance(sitesym, str):
-            sitesym = [sitesym]
         subtrans = [(0.0, 0.0, 0.0)] if subtrans_included else None
         spacegroup = spacegroup_from_data(
             no=no, symbol=hm_symbol, sitesym=sitesym, subtrans=subtrans,
@@ -374,16 +389,12 @@ def tags2atoms(tags, store_tags=False, primitive_cell=False,
     else:
         spacegroup = 1
 
-    kwargs = {}
-    if store_tags:
-        kwargs['info'] = tags.copy()
+
+    setting_std = cif.get_setting()
 
     setting_name = None
     if '_symmetry_space_group_setting' in tags:
-        setting = int(tags['_symmetry_space_group_setting'])
-        if setting < 1 or setting > 2:
-            raise ValueError('Spacegroup setting must be 1 or 2, not %d' %
-                             setting)
+        setting = setting_std
     elif '_space_group_crystal_system' in tags:
         setting_name = tags['_space_group_crystal_system']
     elif '_symmetry_cell_setting' in tags:
