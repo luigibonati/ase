@@ -327,6 +327,9 @@ class CIF:
                               '_space_group_symop.operation_xyz',
                               '_symmetry_equiv_pos_as_xyz'])
 
+    def get_fractional_occupancies(self):
+        return self.tags.get('_atom_site_occupancy')
+
 
 def tags2atoms(tags, store_tags=False, primitive_cell=False,
                subtrans_included=True, fractional_occupancies=True):
@@ -406,23 +409,14 @@ def tags2atoms(tags, store_tags=False, primitive_cell=False,
                 'This may result in wrong setting!' % (
                     setting_name, spacegroup))
 
-    occupancies = None
     if fractional_occupancies:
-        try:
-            occupancies = tags['_atom_site_occupancy']
-            # no warnings in this case
-            kwargs['onduplicates'] = 'keep'
-        except KeyError:
-            pass
+        occupancies = cif.get_fractional_occupancies()
     else:
-        try:
-            if not np.allclose(tags['_atom_site_occupancy'], 1.):
-                warnings.warn(
-                    'Cif file containes mixed/fractional occupancies. '
-                    'Consider using `fractional_occupancies=True`')
-                kwargs['onduplicates'] = 'keep'
-        except KeyError:
-            pass
+        occupancies = None
+
+    if occupancies is not None:
+        # no warnings in this case
+        kwargs['onduplicates'] = 'keep'
 
     masses = cif.get_masses()
 
