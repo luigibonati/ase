@@ -145,9 +145,9 @@ def parse_loop(lines: List[str]) -> Dict[str, List[CIFDataValue]]:
     return columns
 
 
-def parse_items(lines, line):
+def parse_items(lines: List[str], line: str) -> Dict[str, CIFData]:
     """Parse a CIF data items and return a dict with all tags."""
-    tags = {}
+    tags: Dict[str, CIFData] = {}
     while True:
         if not lines:
             break
