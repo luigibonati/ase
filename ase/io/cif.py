@@ -372,9 +372,9 @@ class CIFBlock(collections.abc.Mapping):
         for a description of the arguments."""
         if primitive_cell and subtrans_included:
             raise RuntimeError(
-                'Primitive cell cannot be determined when sublattice translations '
-                'are included in the symmetry operations listed in the CIF file, '
-                'i.e. when `subtrans_included` is True.')
+                'Primitive cell cannot be determined when sublattice '
+                'translations are included in the symmetry operations listed '
+                'in the CIF file, i.e. when `subtrans_included` is True.')
 
         cell = self.get_cell()
         assert cell.rank in [0, 3]
@@ -577,16 +577,19 @@ def write_cif(fileobj, images, cif_format='default',
         Wrap atoms into unit cell.
 
     labels: list
-        Use this list (shaped list[i_frame][i_atom] = string) for the '_atom_site_label'
-        section instead of automatically generating it from the element symbol.
+        Use this list (shaped list[i_frame][i_atom] = string) for the
+        '_atom_site_label' section instead of automatically generating
+        it from the element symbol.
 
     loop_keys: dict
-        Add the information from this dictionary to the `loop_` section.
-        Keys are printed to the `loop_` section preceeded by '  _'. dict[key] should contain
-        the data printed for each atom, so it needs to have the setup
-        `dict[key][i_frame][i_atom] = string`. The strings are printed as
-        they are, so take care of formating. Information can be re-read using the `store_tags`
+        Add the information from this dictionary to the `loop_`
+        section.  Keys are printed to the `loop_` section preceeded by
+        ' _'. dict[key] should contain the data printed for each atom,
+        so it needs to have the setup `dict[key][i_frame][i_atom] =
+        string`. The strings are printed as they are, so take care of
+        formating. Information can be re-read using the `store_tags`
         option of the cif reader.
+
     """
 
     if loop_keys is None:
@@ -669,12 +672,14 @@ def write_cif(fileobj, images, cif_format='default',
                         coords.append(coords[i])
                         occupancies.append(occ)
 
-        # can only do it now since length of atoms is not always equal to the number of entries
-        # do not move this up!
+        # Can only do it now since length of atoms is not always equal to the
+        # number of entries.
+        # Do not move this up!
         extra_data = ["" for i in range(len(symbols))]
         for key in loop_keys:
             extra_data = ["{}  {}".format(
-                extra_data[i], loop_keys[key][i_frame][i]) for i in range(len(symbols))]
+                extra_data[i], loop_keys[key][i_frame][i])
+                for i in range(len(symbols))]
             write_enc(fileobj, "  _{}\n".format(key))
 
         if labels:
@@ -692,7 +697,8 @@ def write_cif(fileobj, images, cif_format='default',
         assert len(symbols) == len(coords) == len(
             occupancies) == len(included_labels) == len(extra_data)
 
-        for symbol, pos, occ, label, ext in zip(symbols, coords, occupancies, included_labels, extra_data):
+        for symbol, pos, occ, label, ext in zip(
+                symbols, coords, occupancies, included_labels, extra_data):
             if cif_format == 'mp':
                 write_enc(fileobj,
                           '  %-2s  %4s  %4s  %7.5f  %7.5f  %7.5f  %6.1f%s\n' %
