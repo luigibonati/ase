@@ -32,6 +32,8 @@ old_spacegroup_names = {'Abm2': 'Aem2',
                         'Ccca': 'Ccc1'}
 
 CIFDataValue = Union[str, int, float]
+CIFData = Union[CIFDataValue, List[CIFDataValue]]
+
 
 def convert_value(value: str) -> CIFDataValue:
     """Convert CIF value string to corresponding python type."""
@@ -83,24 +85,30 @@ def parse_singletag(lines: List[str], line: str) -> Tuple[str, CIFDataValue]:
     return key, convert_value(value)
 
 
-def parse_loop(lines):
+def parse_loop(lines: List[str]) -> Dict[str, List[CIFDataValue]]:
     """Parse a CIF loop. Returns a dict with column tag names as keys
     and a lists of the column content as values."""
-    header = []
+    headers: List[str] = []
     line = lines.pop().strip()
     while line.startswith('_'):
         tokens = line.split()
-        header.append(tokens[0].lower())
+        headers.append(tokens[0].lower())
         if len(tokens) == 1:
             line = lines.pop().strip()
         else:
             line = ' '.join(tokens[1:])
             break
-    columns = dict([(h, []) for h in header])
-    if len(columns) != len(header):
+    columns: Dict[str, List[CIFDataValue]] = dict([(header, [])
+                                                   for header in headers])
+    if len(columns) != len(headers):
         seen = set()
-        dublicates = [h for h in header if h in seen or seen.add(h)]
-        warnings.warn('Duplicated loop tags: {0}'.format(dublicates))
+        duplicates = []
+        for header in headers:
+            if headers in seen:
+                duplicates.append(header)
+            else:
+                seen.add(header)
+        warnings.warn('Duplicated loop tags: {0}'.format(duplicates))
 
     tokens = []
     while True:
@@ -116,7 +124,7 @@ def parse_loop(lines):
         if line.startswith(';'):
             t = [parse_multiline_string(lines, line)]
         else:
-            if len(header) == 1:
+            if len(headers) == 1:
                 t = [line]
             else:
                 t = shlex.split(line, posix=False)
@@ -126,9 +134,9 @@ def parse_loop(lines):
         tokens.extend(t)
         if len(tokens) < len(columns):
             continue
-        if len(tokens) == len(header):
-            for h, t in zip(header, tokens):
-                columns[h].append(convert_value(t))
+        if len(tokens) == len(headers):
+            for header, token in zip(headers, tokens):
+                columns[header].append(convert_value(token))
         else:
             warnings.warn('Wrong number of tokens: {0}'.format(tokens))
         tokens = []
