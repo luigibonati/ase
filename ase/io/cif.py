@@ -411,8 +411,6 @@ class CIFBlock:
 
 
 def parse_block(lines: List[str], line: str) -> CIFBlock:
-    """Parse a CIF data block and return a tuple with the block name
-    and a dict with all tags."""
     assert line.lower().startswith('data_')
     blockname = line.split('_', 1)[1].rstrip()
     tags = parse_items(lines, line)
@@ -420,9 +418,6 @@ def parse_block(lines: List[str], line: str) -> CIFBlock:
 
 
 def parse_cif(fileobj, reader='ase') -> Iterator[CIFBlock]:
-    """Parse a CIF file. Returns a list of blockname and tag
-    pairs. All tag names are converted to lower case."""
-
     if reader == 'ase':
         return parse_cif_ase(fileobj)
     elif reader == 'pycodcif':
@@ -432,7 +427,7 @@ def parse_cif(fileobj, reader='ase') -> Iterator[CIFBlock]:
 
 
 def parse_cif_ase(fileobj) -> Iterator[CIFBlock]:
-    """Parse a CIF file using ase CIF parser"""
+    """Parse a CIF file using ase CIF parser."""
 
     if isinstance(fileobj, str):
         with open(fileobj, 'rb') as fileobj:
@@ -459,7 +454,7 @@ def parse_cif_ase(fileobj) -> Iterator[CIFBlock]:
 
 
 def parse_cif_pycodcif(fileobj) -> Iterator[CIFBlock]:
-    """Parse a CIF file using pycodcif CIF parser"""
+    """Parse a CIF file using pycodcif CIF parser."""
     if not isinstance(fileobj, str):
         fileobj = fileobj.name
 
