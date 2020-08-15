@@ -195,19 +195,19 @@ class CIFBlock(collections.abc.Mapping):
     def get(self, key):
         return self._tags.get(key)
 
-    def get_cellpar(self) -> Optional[List]:
+    def cellpar(self) -> Optional[List]:
         try:
             return [self[tag] for tag in self.cell_tags]
         except KeyError:
             return None
 
     def get_cell(self) -> Cell:
-        cellpar = self.get_cellpar()
+        cellpar = self.cellpar()
         if cellpar is None:
             cellpar = [0] * 6
         return Cell.new(cellpar)
 
-    def get_scaled_positions(self) -> Optional[np.ndarray]:
+    def _raw_scaled_positions(self) -> Optional[np.ndarray]:
         coords = [self.get(name) for name in ['_atom_site_fract_x',
                                               '_atom_site_fract_y',
                                               '_atom_site_fract_z']]
@@ -215,13 +215,23 @@ class CIFBlock(collections.abc.Mapping):
             return None
         return np.array(coords).T
 
-    def get_positions(self) -> Optional[np.ndarray]:
+    def _raw_positions(self) -> Optional[np.ndarray]:
         coords = [self.get('_atom_site_cartn_x'),
                   self.get('_atom_site_cartn_y'),
                   self.get('_atom_site_cartn_z')]
         if None in coords:
             return None
         return np.array(coords).T
+
+    def get_scaled_positions(self):
+        scaled_positions = self._raw_scaled_positions()
+        if scaled_positions is None:
+            positions = self._raw_positions()
+            if positions is None:
+                raise RuntimeError('No positions found in structure')
+            cell = self.get_cell()
+            scaled_positions = cell.scaled_positions(positions)
+        return scaled_positions
 
     def _get_symbols_with_deuterium(self):
         labels = self._get_any(['_atom_site_type_symbol',
@@ -239,7 +249,7 @@ class CIFBlock(collections.abc.Mapping):
         symbols = self._get_symbols_with_deuterium()
         return [symbol if symbol != 'D' else 'H' for symbol in symbols]
 
-    def get_masses(self) -> Optional[np.ndarray]:
+    def _get_masses(self) -> Optional[np.ndarray]:
         symbols = self._get_symbols_with_deuterium()
         if 'D' not in symbols:
             return None
@@ -254,7 +264,7 @@ class CIFBlock(collections.abc.Mapping):
                 return self[name]
         return None
 
-    def get_spacegroup_number(self):
+    def _get_spacegroup_number(self):
         # Symmetry specification, see
         # http://www.iucr.org/resources/cif/dictionaries/cif_sym for a
         # complete list of official keys.  In addition we also try to
@@ -263,7 +273,7 @@ class CIFBlock(collections.abc.Mapping):
                               '_space_group_it_number',
                               '_symmetry_int_tables_number'])
 
-    def get_hm_symbol(self):
+    def _get_spacegroup_name(self):
         hm_symbol = self._get_any(['_space_group.Patterson_name_h-m',
                                    '_space_group.patterson_name_h-m',
                                    '_symmetry_space_group_name_h-m',
@@ -272,7 +282,7 @@ class CIFBlock(collections.abc.Mapping):
         hm_symbol = old_spacegroup_names.get(hm_symbol, hm_symbol)
         return hm_symbol
 
-    def get_sitesym(self):
+    def _get_sitesym(self):
         sitesym = self._get_any(['_space_group_symop_operation_xyz',
                                  '_space_group_symop.operation_xyz',
                                  '_symmetry_equiv_pos_as_xyz'])
@@ -280,25 +290,26 @@ class CIFBlock(collections.abc.Mapping):
             sitesym = [sitesym]
         return sitesym
 
-    def get_fractional_occupancies(self):
+    def _get_fractional_occupancies(self):
         return self.get('_atom_site_occupancy')
 
-    def get_setting(self) -> Optional[int]:
+    def _get_setting(self) -> Optional[int]:
         setting_str = self.get('_symmetry_space_group_setting')
         if setting_str is None:
             return None
 
         setting = int(setting_str)
         if setting not in [1, 2]:
-            raise ValueError(f'Spacegroup setting must be 1 or 2, not {setting}')
+            raise ValueError(
+                f'Spacegroup setting must be 1 or 2, not {setting}')
         return setting
 
     def get_spacegroup(self, subtrans_included) -> Spacegroup:
         # XXX The logic in this method needs serious cleaning up!
         # The setting needs to be passed as either 1 or two, not None (default)
-        no = self.get_spacegroup_number()
-        hm_symbol = self.get_hm_symbol()
-        sitesym = self.get_sitesym()
+        no = self._get_spacegroup_number()
+        hm_symbol = self._get_spacegroup_name()
+        sitesym = self._get_sitesym()
 
         setting = 1
         spacegroup = 1
@@ -314,7 +325,7 @@ class CIFBlock(collections.abc.Mapping):
         else:
             spacegroup = 1
 
-        setting_std = self.get_setting()
+        setting_std = self._get_setting()
 
         setting_name = None
         if '_symmetry_space_group_setting' in self:
@@ -350,22 +361,10 @@ class CIFBlock(collections.abc.Mapping):
         return spg
 
     def unsymmetrized_structure(self):
-        cell = self.get_cell()
-        assert cell.rank in [0, 3]
-        scaled_positions = self.get_scaled_positions()
-
-        if scaled_positions is None:
-            positions = self.get_positions()
-            if positions is None:
-                raise RuntimeError('No positions found in structure')
-
-            scaled_positions = cell.scaled_positions(positions)
-
         return Atoms(symbols=self.get_symbols(),
-                     cell=cell,
+                     cell=self.get_cell(),
                      masses=self.get_masses(),
-                     scaled_positions=scaled_positions)
-
+                     scaled_positions=self.get_scaled_positions())
 
     def to_atoms(self, store_tags=False, primitive_cell=False,
                  subtrans_included=True, fractional_occupancies=True) -> Atoms:
@@ -385,7 +384,7 @@ class CIFBlock(collections.abc.Mapping):
             kwargs['info'] = self._tags.copy()
 
         if fractional_occupancies:
-            occupancies = self.get_fractional_occupancies()
+            occupancies = self._get_fractional_occupancies()
         else:
             occupancies = None
 
@@ -413,7 +412,7 @@ class CIFBlock(collections.abc.Mapping):
             if occupancies is not None:
                 # Compile an occupancies dictionary
                 occ_dict = {}
-                for i, sym in enumerate(symbols):
+                for i, sym in enumerate(atoms.symbols):
                     occ_dict[i] = {sym: occupancies[i]}
                 atoms.info['occupancy'] = occ_dict
 
@@ -670,11 +669,12 @@ def write_cif(fileobj, images, cif_format='default',
                         coords.append(coords[i])
                         occupancies.append(occ)
 
-        #can only do it now since length of atoms is not always equal to the number of entries
-        #do not move this up!
+        # can only do it now since length of atoms is not always equal to the number of entries
+        # do not move this up!
         extra_data = ["" for i in range(len(symbols))]
         for key in loop_keys:
-            extra_data = ["{}  {}".format(extra_data[i],loop_keys[key][i_frame][i]) for i in range(len(symbols))]
+            extra_data = ["{}  {}".format(
+                extra_data[i], loop_keys[key][i_frame][i]) for i in range(len(symbols))]
             write_enc(fileobj, "  _{}\n".format(key))
 
         if labels:
@@ -689,7 +689,8 @@ def write_cif(fileobj, images, cif_format='default',
                     no[symbol] = 1
                 included_labels.append('%s%d' % (symbol, no[symbol]))
 
-        assert len(symbols) == len(coords) == len(occupancies) == len(included_labels) == len(extra_data)
+        assert len(symbols) == len(coords) == len(
+            occupancies) == len(included_labels) == len(extra_data)
 
         for symbol, pos, occ, label, ext in zip(symbols, coords, occupancies, included_labels, extra_data):
             if cif_format == 'mp':
