@@ -205,14 +205,14 @@ class CIFBlock(collections.abc.Mapping):
     def get(self, key: str) -> CIFData:
         return self._tags.get(key)
 
-    def cellpar(self) -> Optional[List]:
+    def get_cellpar(self) -> Optional[List]:
         try:
             return [self[tag] for tag in self.cell_tags]
         except KeyError:
             return None
 
     def get_cell(self) -> Cell:
-        cellpar = self.cellpar()
+        cellpar = self.get_cellpar()
         if cellpar is None:
             cellpar = [0] * 6
         return Cell.new(cellpar)
@@ -370,14 +370,14 @@ class CIFBlock(collections.abc.Mapping):
         assert spg.setting == setting, (spg.setting, setting)
         return spg
 
-    def unsymmetrized_structure(self) -> Atoms:
+    def get_unsymmetrized_structure(self) -> Atoms:
         return Atoms(symbols=self.get_symbols(),
                      cell=self.get_cell(),
                      masses=self._get_masses(),
                      scaled_positions=self.get_scaled_positions())
 
-    def to_atoms(self, store_tags=False, primitive_cell=False,
-                 subtrans_included=True, fractional_occupancies=True) -> Atoms:
+    def get_atoms(self, store_tags=False, primitive_cell=False,
+                  subtrans_included=True, fractional_occupancies=True) -> Atoms:
         """Returns an Atoms object from a cif tags dictionary.  See read_cif()
         for a description of the arguments."""
         if primitive_cell and subtrans_included:
@@ -405,7 +405,7 @@ class CIFBlock(collections.abc.Mapping):
         # The unsymmetrized_structure is not the asymmetric unit
         # because the asymmetric unit should have (in general) a smaller cell,
         # whereas we have the full cell.
-        unsymmetrized_structure = self.unsymmetrized_structure()
+        unsymmetrized_structure = self.get_unsymmetrized_structure()
 
         if cell.rank == 3:
             spacegroup = self.get_spacegroup(subtrans_included)
@@ -534,7 +534,7 @@ def read_cif(fileobj, index, store_tags=False, primitive_cell=False,
     # Find all CIF blocks with valid crystal data
     images = []
     for block in parse_cif(fileobj, reader):
-        atoms = block.to_atoms(
+        atoms = block.get_atoms(
             store_tags, primitive_cell,
             subtrans_included,
             fractional_occupancies=fractional_occupancies)
