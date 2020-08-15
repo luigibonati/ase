@@ -189,6 +189,10 @@ class CIFBlock(collections.abc.Mapping):
         self.name = name
         self._tags = tags
 
+    def __repr__(self):
+        tags = set(self._tags)
+        return f'CIFBlock({self.name}, tags={tags})'
+
     def __getitem__(self, key):
         return self._tags[key]
 
@@ -618,9 +622,9 @@ def write_cif(fd, images, cif_format='default',
 
             formula_sum = str(formula_sum)
             fd.write('_chemical_formula_structural       %s\n' %
-                      atoms.get_chemical_formula(mode='reduce'))
+                     atoms.get_chemical_formula(mode='reduce'))
             fd.write('_chemical_formula_sum      "%s"\n' %
-                      formula_sum)
+                     formula_sum)
 
         # Do this only if there's three non-zero lattice vectors
         if atoms.cell.rank == 3:
@@ -707,6 +711,7 @@ def write_cif(fd, images, cif_format='default',
                          (symbol, label, 1,
                           pos[0], pos[1], pos[2], occ, ext))
             else:
-                fd.write('  %-8s %6.4f %7.5f  %7.5f  %7.5f  %4s  %6.3f  %-2s%s\n'
-                         % (label, occ, pos[0], pos[1], pos[2],
-                            'Biso', 1.0, symbol, ext))
+                fd.write(
+                    '  %-8s %6.4f %7.5f  %7.5f  %7.5f  %4s  %6.3f  %-2s%s\n'
+                    % (label, occ, pos[0], pos[1], pos[2],
+                       'Biso', 1.0, symbol, ext))
