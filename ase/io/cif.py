@@ -337,6 +337,25 @@ class CIFBlock:
         assert spg.setting == setting, (spg.setting, setting)
         return spg
 
+    def unsymmetrized_structure(self):
+        symbols = self.get_symbols()
+        cell = self.get_cell()
+        assert cell.rank in [0, 3]
+        scaled_positions = self.get_scaled_positions()
+
+        if scaled_positions is None:
+            positions = self.get_positions()
+            if positions is None:
+                raise RuntimeError('No positions found in structure')
+
+            scaled_positions = cell.scaled_positions(positions)
+
+        return Atoms(symbols=self.get_symbols(),
+                     cell=cell,
+                     masses=self.get_masses(),
+                     scaled_positions=scaled_positions)
+
+
     def to_atoms(self, store_tags=False, primitive_cell=False,
                  subtrans_included=True, fractional_occupancies=True) -> Atoms:
         """Returns an Atoms object from a cif tags dictionary.  See read_cif()
@@ -349,12 +368,6 @@ class CIFBlock:
 
         cell = self.get_cell()
         assert cell.rank in [0, 3]
-
-        scaled_positions = self.get_scaled_positions()
-        positions = self.get_positions()
-
-        if (positions is None) and (scaled_positions is None):
-            raise RuntimeError('No positions found in structure')
 
         kwargs = {}
         if store_tags:
@@ -369,43 +382,29 @@ class CIFBlock:
             # no warnings in this case
             kwargs['onduplicates'] = 'keep'
 
-        symbols = self.get_symbols()
-        masses = self.get_masses()
+        # The unsymmetrized_structure is not the asymmetric unit
+        # because the asymmetric unit should have (in general) a smaller cell,
+        # whereas we have the full cell.
+        unsymmetrized_structure = self.unsymmetrized_structure()
 
         if cell.rank == 3:
-            if scaled_positions is None:
-                scaled_positions = cell.scaled_positions(positions)
-
-            if masses is not None:
-                kwargs['masses'] = masses
-
             spacegroup = self.get_spacegroup(subtrans_included)
-
-            asymmetric_unit = Atoms(symbols,
-                                    cell=cell,
-                                    scaled_positions=scaled_positions)
-
-            atoms = crystal(asymmetric_unit,
+            atoms = crystal(unsymmetrized_structure,
                             spacegroup=spacegroup,
                             setting=spacegroup.setting,
                             occupancies=occupancies,
                             primitive_cell=primitive_cell,
                             **kwargs)
         else:
-            if scaled_positions is not None:
-                raise RuntimeError('Structure has fractional coordinates but not '
-                                   'lattice parameters')
-
-            atoms = Atoms(symbols, positions=positions,
-                          info=kwargs.get('info', None))
+            atoms = unsymmetrized_structure
+            if kwargs.get('info') is not None:
+                atoms.info.update(kwargs['info'])
             if occupancies is not None:
                 # Compile an occupancies dictionary
                 occ_dict = {}
                 for i, sym in enumerate(symbols):
                     occ_dict[i] = {sym: occupancies[i]}
                 atoms.info['occupancy'] = occ_dict
-
-            atoms.set_masses(masses)
 
         return atoms
 
