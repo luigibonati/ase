@@ -402,7 +402,7 @@ class CIFBlock:
         return atoms
 
 
-def parse_block(lines: List[str], line: str) -> 'CIFBlock':
+def parse_block(lines: List[str], line: str) -> CIFBlock:
     """Parse a CIF data block and return a tuple with the block name
     and a dict with all tags."""
     assert line.lower().startswith('data_')
@@ -558,7 +558,7 @@ def format_generic_spacegroup_info() -> str:
 
 
 def write_cif(fileobj, images, cif_format='default',
-              wrap=True, labels=None, loop_keys={}) -> None:
+              wrap=True, labels=None, loop_keys=None) -> None:
     """Write *images* to CIF file.
 
     wrap: bool
@@ -576,6 +576,10 @@ def write_cif(fileobj, images, cif_format='default',
         they are, so take care of formating. Information can be re-read using the `store_tags`
         option of the cif reader.
     """
+
+    if loop_keys is None:
+        loop_keys = {}
+
     if isinstance(fileobj, str):
         fileobj = paropen(fileobj, 'wb')
 
@@ -585,10 +589,7 @@ def write_cif(fileobj, images, cif_format='default',
     for i_frame, atoms in enumerate(images):
         write_enc(fileobj, 'data_image%d\n' % i_frame)
 
-        a, b, c, alpha, beta, gamma = atoms.get_cell_lengths_and_angles()
-
         if cif_format == 'mp':
-
             comp_name = atoms.get_chemical_formula(mode='reduce')
             sf = split_chem_form(comp_name)
             formula_sum = ''
@@ -644,6 +645,9 @@ def write_cif(fileobj, images, cif_format='default',
         try:
             occ_info = atoms.info['occupancy']
             kinds = atoms.arrays['spacegroup_kinds']
+        except KeyError:
+            pass
+        else:
             for i, kind in enumerate(kinds):
                 occupancies[i] = occ_info[kind][symbols[i]]
                 # extend the positions array in case of mixed occupancy
@@ -652,8 +656,6 @@ def write_cif(fileobj, images, cif_format='default',
                         symbols.append(sym)
                         coords.append(coords[i])
                         occupancies.append(occ)
-        except KeyError:
-            pass
 
         #can only do it now since length of atoms is not always equal to the number of entries
         #do not move this up!
@@ -661,8 +663,6 @@ def write_cif(fileobj, images, cif_format='default',
         for key in loop_keys:
             extra_data = ["{}  {}".format(extra_data[i],loop_keys[key][i_frame][i]) for i in range(len(symbols))]
             write_enc(fileobj, "  _{}\n".format(key))
-
-
 
         if labels:
             included_labels = labels[i_frame]
