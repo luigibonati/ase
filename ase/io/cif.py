@@ -6,6 +6,7 @@ global blocks, nested loops and multi-data values are not supported.
 The "latin-1" encoding is required by the IUCR specification.
 """
 
+import io
 import re
 import shlex
 import warnings
@@ -363,7 +364,7 @@ class CIFBlock(collections.abc.Mapping):
     def unsymmetrized_structure(self):
         return Atoms(symbols=self.get_symbols(),
                      cell=self.get_cell(),
-                     masses=self.get_masses(),
+                     masses=self._get_masses(),
                      scaled_positions=self.get_scaled_positions())
 
     def to_atoms(self, store_tags=False, primitive_cell=False,
@@ -543,7 +544,7 @@ def split_chem_form(comp_name):
 
 def write_enc(fileobj, s):
     """Write string in latin-1 encoding."""
-    fileobj.write(s.encode("latin-1"))
+    fileobj.write(s)
 
 
 def format_cell(cell: Cell) -> str:
@@ -597,6 +598,8 @@ def write_cif(fileobj, images, cif_format='default',
 
     if isinstance(fileobj, str):
         fileobj = paropen(fileobj, 'wb')
+
+    fileobj = io.TextIOWrapper(fileobj, encoding='latin-1')
 
     if hasattr(images, 'get_positions'):
         images = [images]
