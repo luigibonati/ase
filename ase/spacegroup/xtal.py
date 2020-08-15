@@ -7,6 +7,8 @@ knowledge of the space group.
 
 """
 
+from typing import Dict, Any
+
 import numpy as np
 from scipy import spatial
 
@@ -159,12 +161,13 @@ def crystal(symbols=None, basis=None, occupancies=None, spacegroup=1, setting=1,
     if cell is None:
         cell = cellpar_to_cell(cellpar, ab_normal, a_direction)
 
-    info = dict(spacegroup=sg)
+    info: Dict[str, Any] = {}
+    info['spacegroup'] = sg
     if primitive_cell:
         info['unit_cell'] = 'primitive'
     else:
         info['unit_cell'] = 'conventional'
-        
+
     if 'info' in kwargs:
         info.update(kwargs['info'])
 
