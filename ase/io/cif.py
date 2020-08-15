@@ -33,6 +33,7 @@ old_spacegroup_names = {'Abm2': 'Aem2',
                         'Cmma': 'Cmme',
                         'Ccca': 'Ccc1'}
 
+# CIF maps names to either single values or to multiple values via loops.
 CIFDataValue = Union[str, int, float]
 CIFData = Union[CIFDataValue, List[CIFDataValue]]
 
@@ -177,6 +178,10 @@ def parse_items(lines: List[str], line: str) -> Dict[str, CIFData]:
 
 
 class CIFBlock(collections.abc.Mapping):
+    """A block (i.e., a single system) in a crystallographic information file.
+
+    Use this object to query CIF tags or import information as ASE objects."""
+
     cell_tags = ['_cell_length_a', '_cell_length_b', '_cell_length_c',
                  '_cell_angle_alpha', '_cell_angle_beta', '_cell_angle_gamma']
 
@@ -193,7 +198,7 @@ class CIFBlock(collections.abc.Mapping):
     def __len__(self):
         return len(self._tags)
 
-    def get(self, key):
+    def get(self, key: str) -> CIFData:
         return self._tags.get(key)
 
     def cellpar(self) -> Optional[List]:
@@ -361,7 +366,7 @@ class CIFBlock(collections.abc.Mapping):
         assert spg.setting == setting, (spg.setting, setting)
         return spg
 
-    def unsymmetrized_structure(self):
+    def unsymmetrized_structure(self) -> Atoms:
         return Atoms(symbols=self.get_symbols(),
                      cell=self.get_cell(),
                      masses=self._get_masses(),
