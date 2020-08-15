@@ -22,7 +22,7 @@ def crystal(symbols=None, basis=None, occupancies=None, spacegroup=1, setting=1,
             cell=None, cellpar=None,
             ab_normal=(0, 0, 1), a_direction=None, size=(1, 1, 1),
             onduplicates='warn', symprec=0.001,
-            pbc=True, primitive_cell=False, **kwargs):
+            pbc=True, primitive_cell=False, **kwargs) -> ase.Atoms:
     """Create an Atoms instance for a conventional unit cell of a
     space group.
 

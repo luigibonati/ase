@@ -180,6 +180,12 @@ class CIFBlock:
         except KeyError:
             return None
 
+    def get_cell(self) -> Cell:
+        cellpar = self.get_cellpar()
+        if cellpar is None:
+            cellpar = [0] * 6
+        return Cell.new(cellpar)
+
     def get_scaled_positions(self) -> Optional[np.ndarray]:
         coords = [self.tags.get(name) for name in ['_atom_site_fract_x',
                                                    '_atom_site_fract_y',
@@ -333,15 +339,14 @@ class CIFBlock:
                 'are included in the symmetry operations listed in the CIF file, '
                 'i.e. when `subtrans_included` is True.')
 
-        cellpar = self.get_cellpar()
+        cell = self.get_cell()
+        assert cell.rank in [0, 3]
+
         scaled_positions = self.get_scaled_positions()
         positions = self.get_positions()
 
         if (positions is None) and (scaled_positions is None):
             raise RuntimeError('No positions found in structure')
-        elif scaled_positions is not None and cellpar is None:
-            raise RuntimeError('Structure has fractional coordinates but not '
-                               'lattice parameters')
 
         kwargs = {}
         if store_tags:
@@ -359,23 +364,30 @@ class CIFBlock:
         symbols = self.get_symbols()
         masses = self.get_masses()
 
-        if cellpar is not None:
+        if cell.rank == 3:
             if scaled_positions is None:
-                cell = Cell.new(cellpar)
                 scaled_positions = cell.scaled_positions(positions)
 
             if masses is not None:
                 kwargs['masses'] = masses
 
             spacegroup = self.get_spacegroup(subtrans_included)
-            atoms = crystal(symbols, basis=scaled_positions,
-                            cellpar=cellpar,
-                            spacegroup=int(spacegroup),
+
+            asymmetric_unit = Atoms(symbols,
+                                    cell=cell,
+                                    scaled_positions=scaled_positions)
+
+            atoms = crystal(asymmetric_unit,
+                            spacegroup=spacegroup,
                             setting=spacegroup.setting,
                             occupancies=occupancies,
                             primitive_cell=primitive_cell,
                             **kwargs)
         else:
+            if scaled_positions is not None:
+                raise RuntimeError('Structure has fractional coordinates but not '
+                                   'lattice parameters')
+
             atoms = Atoms(symbols, positions=positions,
                           info=kwargs.get('info', None))
             if occupancies is not None:
