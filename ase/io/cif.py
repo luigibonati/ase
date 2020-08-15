@@ -10,6 +10,7 @@ import re
 import shlex
 import warnings
 from typing import Dict, List, Tuple, Optional, Union, Iterator
+import collections.abc
 
 import numpy as np
 
@@ -174,17 +175,29 @@ def parse_items(lines: List[str], line: str) -> Dict[str, CIFData]:
     return tags
 
 
-class CIFBlock:
+class CIFBlock(collections.abc.Mapping):
     cell_tags = ['_cell_length_a', '_cell_length_b', '_cell_length_c',
                  '_cell_angle_alpha', '_cell_angle_beta', '_cell_angle_gamma']
 
     def __init__(self, name, tags):
         self.name = name
-        self.tags = tags
+        self._tags = tags
+
+    def __getitem__(self, key):
+        return self._tags[key]
+
+    def __iter__(self):
+        return iter(self._tags)
+
+    def __len__(self):
+        return len(self._tags)
+
+    def get(self, key):
+        return self._tags.get(key)
 
     def get_cellpar(self) -> Optional[List]:
         try:
-            return [self.tags[tag] for tag in self.cell_tags]
+            return [self[tag] for tag in self.cell_tags]
         except KeyError:
             return None
 
@@ -195,17 +208,17 @@ class CIFBlock:
         return Cell.new(cellpar)
 
     def get_scaled_positions(self) -> Optional[np.ndarray]:
-        coords = [self.tags.get(name) for name in ['_atom_site_fract_x',
-                                                   '_atom_site_fract_y',
-                                                   '_atom_site_fract_z']]
+        coords = [self.get(name) for name in ['_atom_site_fract_x',
+                                              '_atom_site_fract_y',
+                                              '_atom_site_fract_z']]
         if None in coords:
             return None
         return np.array(coords).T
 
     def get_positions(self) -> Optional[np.ndarray]:
-        coords = [self.tags.get('_atom_site_cartn_x'),
-                  self.tags.get('_atom_site_cartn_y'),
-                  self.tags.get('_atom_site_cartn_z')]
+        coords = [self.get('_atom_site_cartn_x'),
+                  self.get('_atom_site_cartn_y'),
+                  self.get('_atom_site_cartn_z')]
         if None in coords:
             return None
         return np.array(coords).T
@@ -237,8 +250,8 @@ class CIFBlock:
 
     def _get_any(self, names):
         for name in names:
-            if name in self.tags:
-                return self.tags[name]
+            if name in self:
+                return self[name]
         return None
 
     def get_spacegroup_number(self):
@@ -268,10 +281,10 @@ class CIFBlock:
         return sitesym
 
     def get_fractional_occupancies(self):
-        return self.tags.get('_atom_site_occupancy')
+        return self.get('_atom_site_occupancy')
 
     def get_setting(self) -> Optional[int]:
-        setting_str = self.tags.get('_symmetry_space_group_setting')
+        setting_str = self.get('_symmetry_space_group_setting')
         if setting_str is None:
             return None
 
@@ -283,7 +296,6 @@ class CIFBlock:
     def get_spacegroup(self, subtrans_included) -> Spacegroup:
         # XXX The logic in this method needs serious cleaning up!
         # The setting needs to be passed as either 1 or two, not None (default)
-        tags = self.tags
         no = self.get_spacegroup_number()
         hm_symbol = self.get_hm_symbol()
         sitesym = self.get_sitesym()
@@ -305,13 +317,13 @@ class CIFBlock:
         setting_std = self.get_setting()
 
         setting_name = None
-        if '_symmetry_space_group_setting' in tags:
+        if '_symmetry_space_group_setting' in self:
             assert setting_std is not None
             setting = setting_std
-        elif '_space_group_crystal_system' in tags:
-            setting_name = tags['_space_group_crystal_system']
-        elif '_symmetry_cell_setting' in tags:
-            setting_name = tags['_symmetry_cell_setting']
+        elif '_space_group_crystal_system' in self:
+            setting_name = self['_space_group_crystal_system']
+        elif '_symmetry_cell_setting' in self:
+            setting_name = self['_symmetry_cell_setting']
 
         if setting_name:
             no = Spacegroup(spacegroup).no
@@ -338,7 +350,6 @@ class CIFBlock:
         return spg
 
     def unsymmetrized_structure(self):
-        symbols = self.get_symbols()
         cell = self.get_cell()
         assert cell.rank in [0, 3]
         scaled_positions = self.get_scaled_positions()
@@ -371,7 +382,7 @@ class CIFBlock:
 
         kwargs = {}
         if store_tags:
-            kwargs['info'] = self.tags.copy()
+            kwargs['info'] = self._tags.copy()
 
         if fractional_occupancies:
             occupancies = self.get_fractional_occupancies()
