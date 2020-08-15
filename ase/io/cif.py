@@ -542,11 +542,6 @@ def split_chem_form(comp_name):
     return split_form
 
 
-def write_enc(fileobj, s):
-    """Write string in latin-1 encoding."""
-    fileobj.write(s)
-
-
 def format_cell(cell: Cell) -> str:
     assert cell.rank == 3
     lines = []
@@ -570,7 +565,7 @@ def format_generic_spacegroup_info() -> str:
     ])
 
 
-def write_cif(fileobj, images, cif_format='default',
+def write_cif(fd, images, cif_format='default',
               wrap=True, labels=None, loop_keys=None) -> None:
     """Write *images* to CIF file.
 
@@ -596,16 +591,16 @@ def write_cif(fileobj, images, cif_format='default',
     if loop_keys is None:
         loop_keys = {}
 
-    if isinstance(fileobj, str):
-        fileobj = paropen(fileobj, 'wb')
+    if isinstance(fd, str):
+        fd = paropen(fd, 'wb')
 
-    fileobj = io.TextIOWrapper(fileobj, encoding='latin-1')
+    fd = io.TextIOWrapper(fd, encoding='latin-1')
 
     if hasattr(images, 'get_positions'):
         images = [images]
 
     for i_frame, atoms in enumerate(images):
-        write_enc(fileobj, 'data_image%d\n' % i_frame)
+        fd.write('data_image%d\n' % i_frame)
 
         if cif_format == 'mp':
             comp_name = atoms.get_chemical_formula(mode='reduce')
@@ -617,40 +612,40 @@ def write_cif(fileobj, images, cif_format='default',
                 ii = ii + 2
 
             formula_sum = str(formula_sum)
-            write_enc(fileobj, '_chemical_formula_structural       %s\n' %
+            fd.write('_chemical_formula_structural       %s\n' %
                       atoms.get_chemical_formula(mode='reduce'))
-            write_enc(fileobj, '_chemical_formula_sum      "%s"\n' %
+            fd.write('_chemical_formula_sum      "%s"\n' %
                       formula_sum)
 
         # Do this only if there's three non-zero lattice vectors
         if atoms.cell.rank == 3:
-            write_enc(fileobj, format_cell(atoms.cell))
-            write_enc(fileobj, '\n')
-            write_enc(fileobj, format_generic_spacegroup_info())
-            write_enc(fileobj, '\n')
+            fd.write(format_cell(atoms.cell))
+            fd.write('\n')
+            fd.write(format_generic_spacegroup_info())
+            fd.write('\n')
 
-        write_enc(fileobj, 'loop_\n')
+        fd.write('loop_\n')
 
         # Is it a periodic system?
         coord_type = 'fract' if atoms.pbc.all() else 'Cartn'
 
         if cif_format == 'mp':
-            write_enc(fileobj, '  _atom_site_type_symbol\n')
-            write_enc(fileobj, '  _atom_site_label\n')
-            write_enc(fileobj, '  _atom_site_symmetry_multiplicity\n')
-            write_enc(fileobj, '  _atom_site_{0}_x\n'.format(coord_type))
-            write_enc(fileobj, '  _atom_site_{0}_y\n'.format(coord_type))
-            write_enc(fileobj, '  _atom_site_{0}_z\n'.format(coord_type))
-            write_enc(fileobj, '  _atom_site_occupancy\n')
+            fd.write('  _atom_site_type_symbol\n')
+            fd.write('  _atom_site_label\n')
+            fd.write('  _atom_site_symmetry_multiplicity\n')
+            fd.write('  _atom_site_{0}_x\n'.format(coord_type))
+            fd.write('  _atom_site_{0}_y\n'.format(coord_type))
+            fd.write('  _atom_site_{0}_z\n'.format(coord_type))
+            fd.write('  _atom_site_occupancy\n')
         else:
-            write_enc(fileobj, '  _atom_site_label\n')
-            write_enc(fileobj, '  _atom_site_occupancy\n')
-            write_enc(fileobj, '  _atom_site_{0}_x\n'.format(coord_type))
-            write_enc(fileobj, '  _atom_site_{0}_y\n'.format(coord_type))
-            write_enc(fileobj, '  _atom_site_{0}_z\n'.format(coord_type))
-            write_enc(fileobj, '  _atom_site_thermal_displace_type\n')
-            write_enc(fileobj, '  _atom_site_B_iso_or_equiv\n')
-            write_enc(fileobj, '  _atom_site_type_symbol\n')
+            fd.write('  _atom_site_label\n')
+            fd.write('  _atom_site_occupancy\n')
+            fd.write('  _atom_site_{0}_x\n'.format(coord_type))
+            fd.write('  _atom_site_{0}_y\n'.format(coord_type))
+            fd.write('  _atom_site_{0}_z\n'.format(coord_type))
+            fd.write('  _atom_site_thermal_displace_type\n')
+            fd.write('  _atom_site_B_iso_or_equiv\n')
+            fd.write('  _atom_site_type_symbol\n')
 
         if coord_type == 'fract':
             coords = atoms.get_scaled_positions(wrap).tolist()
@@ -683,7 +678,7 @@ def write_cif(fileobj, images, cif_format='default',
             extra_data = ["{}  {}".format(
                 extra_data[i], loop_keys[key][i_frame][i])
                 for i in range(len(symbols))]
-            write_enc(fileobj, "  _{}\n".format(key))
+            fd.write("  _{}\n".format(key))
 
         if labels:
             included_labels = labels[i_frame]
@@ -703,19 +698,10 @@ def write_cif(fileobj, images, cif_format='default',
         for symbol, pos, occ, label, ext in zip(
                 symbols, coords, occupancies, included_labels, extra_data):
             if cif_format == 'mp':
-                write_enc(fileobj,
-                          '  %-2s  %4s  %4s  %7.5f  %7.5f  %7.5f  %6.1f%s\n' %
-                          (symbol, label, 1,
-                           pos[0], pos[1], pos[2], occ, ext))
+                fd.write('  %-2s  %4s  %4s  %7.5f  %7.5f  %7.5f  %6.1f%s\n' %
+                         (symbol, label, 1,
+                          pos[0], pos[1], pos[2], occ, ext))
             else:
-                write_enc(fileobj,
-                          '  %-8s %6.4f %7.5f  %7.5f  %7.5f  %4s  %6.3f  %-2s%s\n'
-                          % (label,
-                             occ,
-                             pos[0],
-                             pos[1],
-                             pos[2],
-                             'Biso',
-                             1.0,
-                             symbol,
-                             ext))
+                fd.write('  %-8s %6.4f %7.5f  %7.5f  %7.5f  %4s  %6.3f  %-2s%s\n'
+                         % (label, occ, pos[0], pos[1], pos[2],
+                            'Biso', 1.0, symbol, ext))
