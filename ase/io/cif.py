@@ -10,7 +10,7 @@ import io
 import re
 import shlex
 import warnings
-from typing import Dict, List, Tuple, Optional, Union, Iterator
+from typing import Dict, List, Tuple, Optional, Union, Iterator, Any
 import collections.abc
 
 import numpy as np
@@ -185,25 +185,25 @@ class CIFBlock(collections.abc.Mapping):
     cell_tags = ['_cell_length_a', '_cell_length_b', '_cell_length_c',
                  '_cell_angle_alpha', '_cell_angle_beta', '_cell_angle_gamma']
 
-    def __init__(self, name, tags):
+    def __init__(self, name: str, tags: Dict[str, CIFData]):
         self.name = name
         self._tags = tags
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         tags = set(self._tags)
         return f'CIFBlock({self.name}, tags={tags})'
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> CIFData:
         return self._tags[key]
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[str]:
         return iter(self._tags)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._tags)
 
-    def get(self, key: str) -> CIFData:
-        return self._tags.get(key)
+    def get(self, key, default=None):
+        return self._tags.get(key, default)
 
     def get_cellpar(self) -> Optional[List]:
         try:
@@ -394,7 +394,7 @@ class CIFBlock(collections.abc.Mapping):
         cell = self.get_cell()
         assert cell.rank in [0, 3]
 
-        kwargs = {}
+        kwargs: Dict[str, Any] = {}
         if store_tags:
             kwargs['info'] = self._tags.copy()
 
