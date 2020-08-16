@@ -260,8 +260,8 @@ class CIFBlock(collections.abc.Mapping):
         return [symbol if symbol != 'D' else 'H' for symbol in symbols]
 
     def _where_deuterium(self):
-        return [symbol == 'D' for symbol
-                in self._get_symbols_with_deuterium()]
+        return np.array([symbol == 'D' for symbol
+                         in self._get_symbols_with_deuterium()], bool)
 
     def _get_masses(self) -> Optional[np.ndarray]:
         mask = self._where_deuterium()
