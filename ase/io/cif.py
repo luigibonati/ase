@@ -720,3 +720,8 @@ def write_cif(fd, images, cif_format='default',
                     '  %-8s %6.4f %7.5f  %7.5f  %7.5f  %4s  %6.3f  %-2s%s\n'
                     % (label, occ, pos[0], pos[1], pos[2],
                        'Biso', 1.0, symbol, ext))
+
+    # Using the TextIOWrapper somehow causes the file to close
+    # when this function returns.
+    # Detach in order to circumvent this highly illogical problem:
+    fd.detach()
