@@ -1,6 +1,7 @@
 import pytest
 from ase.io.cif import CIFBlock
 
+
 @pytest.fixture
 def cifblock():
     return CIFBlock('hello', {'_cifkey': 42})
@@ -22,8 +23,10 @@ def test_various(cifblock):
     assert cifblock.get_cell().rank == 0
 
 
-def test_deuterium(deuterium):
+def test_deuterium():
+    # Verify that the symbol 'D' becomes hydrogen ('H') with mass 2(-ish).
     symbols = ['H', 'D', 'He']
-    block = CIFBLock('deuterium', dict(symbols=symbols))
-    masses = deuterium.get_masses()
-    assert masses.round().astype(int) == [1, 2, 4]
+    block = CIFBlock('deuterium', dict(_atom_site_type_symbol=symbols))
+    assert block.get_symbols() == ['H', 'H', 'He']
+    masses = block._get_masses()
+    assert all(masses.round().astype(int) == [1, 2, 4])

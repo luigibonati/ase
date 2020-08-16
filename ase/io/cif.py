@@ -214,7 +214,7 @@ class CIFBlock(collections.abc.Mapping):
     def get_cell(self) -> Cell:
         cellpar = self.get_cellpar()
         if cellpar is None:
-            cellpar = [0] * 6
+            return Cell.new([0, 0, 0])
         return Cell.new(cellpar)
 
     def _raw_scaled_positions(self) -> Optional[np.ndarray]:
@@ -259,13 +259,18 @@ class CIFBlock(collections.abc.Mapping):
         symbols = self._get_symbols_with_deuterium()
         return [symbol if symbol != 'D' else 'H' for symbol in symbols]
 
+    def _where_deuterium(self):
+        return [symbol == 'D' for symbol
+                in self._get_symbols_with_deuterium()]
+
     def _get_masses(self) -> Optional[np.ndarray]:
-        symbols = self._get_symbols_with_deuterium()
-        if 'D' not in symbols:
+        mask = self._where_deuterium()
+        if not any(mask):
             return None
+
+        symbols = self.get_symbols()
         masses = Atoms(symbols).get_masses()
-        deuterium_mask = [symbol == 'D' for symbol in symbols]
-        masses[deuterium_mask] = 2.01355
+        masses[mask] = 2.01355
         return masses
 
     def _get_any(self, names):
