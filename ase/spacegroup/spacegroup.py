@@ -667,7 +667,7 @@ def _read_datafile(spg, spacegroup, setting, f):
              _setting == setting) or
             (isinstance(spacegroup, str) and
              compact_symbol == compact_spacegroup) and
-            _setting == setting):
+            (setting is None or _setting == setting)):
             _read_datafile_entry(spg, _no, _symbol, _setting, f)
             break
         else:
