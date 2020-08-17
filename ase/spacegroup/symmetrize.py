@@ -5,6 +5,8 @@ import numpy as np
 
 from ase.constraints import (FixConstraint, voigt_6_to_full_3x3_stress,
                              full_3x3_to_voigt_6_stress)
+from ase.utils import atoms_to_spglib_cell
+
 
 __all__ = ['refine_symmetry', 'check_symmetry', 'FixSymmetry']
 
@@ -46,7 +48,7 @@ def refine_symmetry(atoms, symprec=0.01, verbose=False):
 
     # get new dataset and primitive cell
     dataset = check_symmetry(atoms, symprec=symprec, verbose=verbose)
-    res = spglib.find_primitive(atoms, symprec=symprec)
+    res = spglib.find_primitive(atoms_to_spglib_cell(atoms), symprec=symprec)
     prim_cell, prim_scaled_pos, prim_types = res
 
     # calculate offset between standard cell and actual cell
@@ -87,7 +89,8 @@ def check_symmetry(atoms, symprec=1.0e-6, verbose=False):
     Prints a summary and returns result of `spglib.get_symmetry_dataset()`
     """
     import spglib
-    dataset = spglib.get_symmetry_dataset(atoms, symprec=symprec)
+    dataset = spglib.get_symmetry_dataset(atoms_to_spglib_cell(atoms),
+                                          symprec=symprec)
     if verbose:
         print_symmetry(symprec, dataset)
     return dataset
@@ -114,7 +117,8 @@ def prep_symmetry(atoms, symprec=1.0e-6, verbose=False):
     """
     import spglib
 
-    dataset = spglib.get_symmetry_dataset(atoms, symprec=symprec)
+    dataset = spglib.get_symmetry_dataset(atoms_to_spglib_cell(atoms),
+                                          symprec=symprec)
     if verbose:
         print_symmetry(symprec, dataset)
     rotations = dataset['rotations'].copy()
