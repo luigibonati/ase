@@ -631,13 +631,9 @@ def read_castep_cell(fd, index=None, calculator_args={}, find_spg=False,
         try:
             import spglib
         except ImportError:
-            try:
-                from pyspglib import spglib
-            except ImportError:
-                # spglib is not present
-                warnings.warn('spglib not found installed on this system - '
-                              'automatic spacegroup detection is not possible')
-                spglib = None
+            warnings.warn('spglib not found installed on this system - '
+                          'automatic spacegroup detection is not possible')
+            spglib = None
 
         if spglib is not None:
             symmd = spglib.get_symmetry_dataset(atoms)

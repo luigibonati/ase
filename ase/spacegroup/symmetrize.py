@@ -32,12 +32,7 @@ def refine_symmetry(atoms, symprec=0.01, verbose=False):
     spglib dataset
 
     """
-    # check if we have access to get_spacegroup() from spglib
-    # https://atztogo.github.io/spglib/
-    try:
-        import spglib  # For version 1.9 or later
-    except ImportError:
-        from pyspglib import spglib  # For versions 1.8.x or before
+    import spglib
 
     # test orig config with desired tol
     dataset = check_symmetry(atoms, symprec, verbose=verbose)
@@ -91,12 +86,7 @@ def check_symmetry(atoms, symprec=1.0e-6, verbose=False):
 
     Prints a summary and returns result of `spglib.get_symmetry_dataset()`
     """
-    # check if we have access to get_spacegroup from spglib
-    # https://atztogo.github.io/spglib/
-    try:
-        import spglib  # For version 1.9 or later
-    except ImportError:
-        from pyspglib import spglib  # For versions 1.8.x or before
+    import spglib
     dataset = spglib.get_symmetry_dataset(atoms, symprec=symprec)
     if verbose:
         print_symmetry(symprec, dataset)
@@ -122,12 +112,7 @@ def prep_symmetry(atoms, symprec=1.0e-6, verbose=False):
 
     Returns a tuple `(rotations, translations, symm_map)`
     """
-    # check if we have access to get_spacegroup from spglib
-    # https://atztogo.github.io/spglib/
-    try:
-        import spglib  # For version 1.9 or later
-    except ImportError:
-        from pyspglib import spglib  # For versions 1.8.x or before
+    import spglib
 
     dataset = spglib.get_symmetry_dataset(atoms, symprec=symprec)
     if verbose:
