@@ -1461,14 +1461,6 @@ class Atoms:
                           np.outer(np.dot(rotcell, v), (1.0 - c) * v))
             self.set_cell(rotcell)
 
-    def rotate_euler(self, center=(0, 0, 0), phi=0.0, theta=0.0, psi=0.0):
-        warnings.warn(
-            'Please use this method instead: '
-            'euler_rotate(phi=0, theta=0, psi=0, center=(0, 0, 0)) '
-            'where the angles are given in degrees', FutureWarning)
-        self.euler_rotate(phi * 180 / pi, theta * 180 / pi, psi * 180 / pi,
-                          center)
-
     def euler_rotate(self, phi=0.0, theta=0.0, psi=0.0, center=(0, 0, 0)):
         """Rotate atoms via Euler angles (in degrees).
 
@@ -1732,21 +1724,6 @@ class Atoms:
         are given, *indices* overwrites *mask*. If *mask* and *indices*
         are not set, only *a3* is moved."""
 
-        if not isinstance(a1, int):
-            # old API (uses radians)
-            warnings.warn(
-                'Please use new API: '
-                'atoms_obj.set_angle(a1,a2,a3,angle) '
-                'where angle is given in degrees', FutureWarning)
-            if angle is None:
-                angle = a2
-                if mask is None:
-                    mask = a3
-                a1, a2, a3 = a1
-            else:
-                assert a2 is None and a3 is None
-            angle *= 180 / pi
-
         if any(a is None for a in [a2, a3, angle]):
             raise ValueError('a2, a3, and angle must not be None')
 
@@ -1998,25 +1975,6 @@ class Atoms:
     positions = property(_get_positions, _set_positions,
                          doc='Attribute for direct ' +
                          'manipulation of the positions.')
-
-    @property
-    def adsorbate_info(self):
-        """Return the adsorbate information set by one of the surface
-        builder functions. This function is only supplied in order to give
-        a warning if this attribute (atoms.adsorbate_info) is asked for.
-        The dictionary with adsorbate information has been moved to the
-        info dictionary, i.e. atoms.info['adsorbate_info']."""
-        warnings.warn("The adsorbate_info dictionary has been moved" +
-                      " inside the info dictionary, i.e. atoms." +
-                      "info['adsorbate_info']", FutureWarning)
-        return self.info['adsorbate_info']
-
-    @adsorbate_info.setter
-    def adsorbate_info(self, dct):
-        warnings.warn("The adsorbate_info dictionary has been moved" +
-                      " inside the info dictionary, i.e. atoms." +
-                      "info['adsorbate_info']", FutureWarning)
-        self.info['adsorbate_info'] = dct
 
     def _get_atomic_numbers(self):
         """Return reference to atomic numbers for in-place
