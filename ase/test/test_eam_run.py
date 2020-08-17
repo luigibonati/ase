@@ -1,13 +1,14 @@
-def test_eam_run():
-    import numpy as np
+import numpy as np
 
-    from ase.calculators.eam import EAM
+from ase.calculators.eam import EAM
 
-    from ase.test.eam_pot import Pt_u3
-    from ase.build import fcc111
-    from io import StringIO
+from ase.build import fcc111
+from io import StringIO
 
-    eam = EAM(potential=StringIO(Pt_u3), form='eam', elements=['Pt'])
+
+def test_eam_run(pt_eam_potential_file):
+    eam = EAM(potential=StringIO(pt_eam_potential_file.read_text()),
+              form='eam', elements=['Pt'])
     slab = fcc111('Pt', size=(4, 4, 2), vacuum=10.0)
     slab.calc = eam
 

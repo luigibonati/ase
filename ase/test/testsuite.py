@@ -8,25 +8,25 @@ import argparse
 from multiprocessing import cpu_count
 
 from ase.calculators.calculator import names as calc_names
-from ase.cli.info import print_info
 from ase.cli.main import CLIError
 
 testdir = Path(__file__).parent
-datadir = (testdir / 'data').resolve()
+
+
+def all_test_modules():
+    for abspath in testdir.rglob('test_*.py'):
+        path = abspath.relative_to(testdir)
+        yield path
 
 
 def all_test_modules_and_groups():
-    names = []
-    groups = {}
-    for abspath in testdir.rglob('test_*.py'):
-        path = abspath.relative_to(testdir)
-        name = str(path).rsplit('.', 1)[0].replace('/', '.')
-        if str(path.parent) != '.':
-            groupname = str(path.parent).replace('/', '.')
-            groups.setdefault(groupname, []).append(name)
-        else:
-            names.append(name)
-    return names, groups
+    groups = set()
+    for testpath in all_test_modules():
+        group = testpath.parent
+        if group not in groups:
+            yield group
+            groups.add(group)
+        yield testpath
 
 
 def test(calculators=tuple(), jobs=0, verbose=False,
@@ -73,8 +73,8 @@ def choose_how_many_workers(jobs):
 help_calculators = """\
 Calculator testing is currently work in progress.  This
 notice applies to the calculators abinit, cp2k, dftb, espresso,
-lammpsrun, octopus, and siesta.  The goal of this work is to provide
-a configuration in which tests are more reproducible.
+lammpsrun, nwchem, octopus, and siesta.  The goal of this work is to
+provide a configuration in which tests are more reproducible.
 
 Most calculators require datafiles such as pseudopotentials
 which are available at
@@ -83,16 +83,23 @@ which are available at
 
 Please install this package using e.g.:
 
-  $ pip install git+https://gitlab.com/ase/ase-datafiles.git
+  $ pip install --user --upgrade git+https://gitlab.com/ase/ase-datafiles.git
 
 The ASE test suite needs to know the exact binaries for each
-of the aforementioned programs.  Currently these must be specified as
-a JSON dictionary mapping calculator names to executables, e.g.:
+of the aforementioned programs.  Currently these must be specified
+in ~/.config/ase/ase.conf or another file if specified by
+the ASE_CONFIG environment variable.  Example configuration file:
 
-  {"cp2k": "cp2k_shell", "lammps": "lmp", "siesta": "/usr/local/bin/siesta"}
-
-The dictionary must reside in ~/.ase/executables.json or another path
-given by the environment variable ASE_EXECUTABLE_CONFIGFILE."""
+[executables]
+abinit = abinit
+cp2k = cp2k_shell
+dftb+ = dftb+
+espresso = pw.x
+lammpsrun = lmp
+nwchem = /usr/bin/nwchem
+octopus = octopus
+siesta = /usr/local/bin/siesta
+"""
 
 class CLICommand:
     """Run ASE's test-suite.
@@ -143,9 +150,6 @@ class CLICommand:
 
     @staticmethod
     def run(args):
-        print_info()
-        print()
-
         if args.help_calculators:
             print(help_calculators)
             sys.exit(0)
@@ -158,7 +162,7 @@ class CLICommand:
         if args.nogui:
             os.environ.pop('DISPLAY')
 
-        pytest_args = ['--pyargs', '-v']
+        pytest_args = ['-v']
 
         def add_args(*args):
             pytest_args.extend(args)
@@ -176,23 +180,12 @@ class CLICommand:
         if args.coverage:
             add_args('--cov=ase',
                      '--cov-config=.coveragerc',
-                     '--cov-report=term',
+                     # '--cov-report=term',
                      '--cov-report=html')
 
         if args.tests:
-            names, groups = all_test_modules_and_groups()
-
-            testnames = []
-            for arg in args.tests:
-                if arg in groups:
-                    testnames += groups[arg]
-                else:
-                    testnames.append(arg)
-
-            for testname in testnames:
-                add_args('ase.test.{}'.format(testname))
-        else:
-            add_args('ase.test')
+            for testname in args.tests:
+                add_args(testname)
 
         if args.calculators:
             add_args(f'--calculators={args.calculators}')
@@ -203,10 +196,6 @@ class CLICommand:
         if args.pytest:
             add_args(*args.pytest)
 
-        print()
-        calcstring = args.calculators if args.calculators else 'none'
-        print('Enabled calculators: {}'.format(calcstring))
-        print()
         print('About to run pytest with these parameters:')
         for line in pytest_args:
             print('    ' + line)

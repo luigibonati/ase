@@ -166,18 +166,10 @@ class Cell:
             return bandpath.transform(op)
         else:
             from ase.dft.kpoints import BandPath, resolve_custom_points
-            path = resolve_custom_points(path, special_points, eps=eps)
+            path, special_points = resolve_custom_points(
+                path, special_points, eps=eps)
             bandpath = BandPath(cell, path=path, special_points=special_points)
             return bandpath.interpolate(npoints=npoints, density=density)
-
-
-    # XXX adapt the transformation stuff and include in the bandpath method.
-    def oldbandpath(self, path=None, npoints=None, density=None, eps=2e-4):
-        """Legacy implementation, please ignore."""
-        bravais = self.get_bravais_lattice(eps=eps)
-        transformation = bravais.get_transformation(self.array)
-        return bravais.bandpath(path=path, npoints=npoints, density=density,
-                                transformation=transformation)
 
     def uncomplete(self, pbc):
         """Return new cell, zeroing cell vectors where not periodic."""

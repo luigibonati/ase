@@ -5,7 +5,7 @@ ASE for QM/MM Simulations
 =========================
 
 QM/MM Simulations couple two (or, in principle, more) descriptions to get total energy
-and forces for the entire system in an efficient manner. 
+and forces for the entire system in an efficient manner.
 ASE has a native Explicit Interaction calculator, :class:`~ase.calculators.qmmm.EIQMMM`, that uses an electrostatic embedding
 model to couple the subsystems explicitly. See
 `the method paper for more info. <https://doi.org/10.1021/acs.jctc.7b00621>`__,
@@ -19,23 +19,23 @@ We will be using GPAW_ for the QM part. Other QM calculators should
 be straightforwardly compatible with the subtractive-scheme SimpleQMMM
 calculator, but for the Excplicit Interaction EIQMMM calculator, you
 would need to be able to put an electrostatic external potential into
-the calculator for the QM subsystem. This is often simply a matter of:  
+the calculator for the QM subsystem. This is often simply a matter of:
 
-1. Making the ASE-calculator write out the positions and charge-values 
-   to a format that your QM calculator can parse.  
-2. Read in the forces on the point charges from the QM density.  
+1. Making the ASE-calculator write out the positions and charge-values
+   to a format that your QM calculator can parse.
+2. Read in the forces on the point charges from the QM density.
 
 
-ASE-calculators that currently support EIQMM:  
+ASE-calculators that currently support EIQMM:
 
-1. GPAW_  
-2. DFTBplus_  
-3. CRYSTAL_  
-4. TURBOMOLE_  
+1. GPAW_
+2. DFTBplus_
+3. CRYSTAL_
+4. TURBOMOLE_
 
-To see examples of how to make point charge potentials for EIQMMM, 
-have a look at the :class:`~ase.calculators.dftb.PointChargePotential` 
-classes in any of the calculators above. 
+To see examples of how to make point charge potentials for EIQMMM,
+have a look at the :class:`~ase.calculators.dftb.PointChargePotential`
+classes in any of the calculators above.
 
 .. _GPAW: https://wiki.fysik.dtu.dk/gpaw/
 .. _DFTBplus: https://wiki.fysik.dtu.dk/ase/ase/calculators/dftb.html
@@ -181,17 +181,17 @@ periodic) and and MM cell (periodic)::
         output='qmmm.log')
 
 
-This will center the QM subsystem in the MM cell. For QM codes with no single 
+This will center the QM subsystem in the MM cell. For QM codes with no single
 real-space grid like GPAW, you can still use this to center your QM subsystem,
 and simply disregard the QM cell, or manually center your QM subsystem, and leave
 vacuum as ``None``.
 
 LJInteractionsGeneral - For More Intricate Systems
 --------------------------------------------------
-It often happens that you will have different 'atom types' (an element in a 
+It often happens that you will have different 'atom types' (an element in a
 specific environment) per element in your system, i.e. you want to assign
 different LJ-parameters to the oxygens of your solute molecule and the oxygens
-of water. This can be done using 
+of water. This can be done using
 :class:`~ase.calculators.qmmm.LJInteractionsGeneral`, which takes in NumPy
 arrays with sigma and epsilon values for each individual QM and MM atom,
 respectively, and combines them itself, with Lorentz-Berthelot.
@@ -207,43 +207,43 @@ respectively, and combines them itself, with Lorentz-Berthelot.
     sigma_qm = np.array([sigma0, 0, 0])
     epsilon_qm = np.array([epsilon0, 0, 0])
     interaction = LJInteractionsGeneral(sigma_qm, epsilon_qm,
-                                        sigma_mm, epsilon_mm, 
+                                        sigma_mm, epsilon_mm,
                                         qm_molecule_size=3,
                                         mm_molecule_size=3)
 
 The ``qm_molecule_size`` and ``mm_molecule_size`` should be the number of atoms
 per molecule. Often the ``qm_molecule_size`` will simply be the total number of
-atoms in your QM subsystem. Here, our MM subsystem is comprised of a single 
+atoms in your QM subsystem. Here, our MM subsystem is comprised of a single
 water molecule, but say we had N water molecules in the MM subsystem, we wouldn't
 need to repeat e.g. the ``sigma_mm`` array N times, we can simply keep it as it is
-written in the above. 
+written in the above.
 
 
 EIQMMM And Charged Systems - Counterions
 ----------------------------------------
-If your QM subsystem is charged, it is good to charge-neutrialize the the entire
-system. This can be done in ASE by adding MM 'counterions', which are simple, 
+If your QM subsystem is charged, it is good to charge-neutrialize the entire
+system. This can be done in ASE by adding MM 'counterions', which are simple,
 single-atomic particles that carry a charge, and interact with the solvent and solute
-through a Coulomb and an LJ term. The implementation is rather simplified and should only 
+through a Coulomb and an LJ term. The implementation is rather simplified and should only
 serve to neutralize the total system. It might be a good idea to restrain them
 so they do not diffuse too close to the QM subsystem, as the effective concentration
 in your simulation cell might be a lot higher than in real life.
 
 To use the implementation, you need to 'Combine' two MM calculators, one for the
-counterions, and one for your solvent. This is an example of combining two Cl- 
+counterions, and one for your solvent. This is an example of combining two Cl-
 ions with TIP3P water, using the TIP3P LJ-arrays from the previous section::
 
     from ase import units
     from ase.calculators.combine_mm import CombineMM
     from ase.calculators.counterions import AtomicCounterIon as ACI
-    
+
     # Cl-:  10.1021/ct600252r
     sigCl = 4.02
     epsCl = 0.71 * units.kcal / units.mol
-    
+
     # in this sub-atoms object, CombineMM only sees Cl and Water,
     # and Cl is here atom 0 and 1
-    mmcalc = CombineMM([0, 1],  # indices of the counterion atoms 
+    mmcalc = CombineMM([0, 1],  # indices of the counterion atoms
                        apm1=1, apm2=3,  # atoms per 'molecule' of each subgroup
                        calc1=ACI(-1, epsCl, sigCl),  # Counterion calculator
                        calc2=TIP3P(),  # Water calculator
@@ -254,11 +254,11 @@ ions with TIP3P water, using the TIP3P LJ-arrays from the previous section::
 The charge of the counterions is defined as -1 in the first input in ``ACI``, which
 then also takes LJ-parameters for interactions with other ions beloning to this calculator.
 
-This ``mmcalc`` object is then used in the initialization of the ``EIQMMM`` calculator. 
-But before we can do that, the QM/MM Lennard-Jones potential needs to understand that 
+This ``mmcalc`` object is then used in the initialization of the ``EIQMMM`` calculator.
+But before we can do that, the QM/MM Lennard-Jones potential needs to understand that
 the total MM subsystem is now comprised of two subgroups, the counterions and the water.
-That is done by initializing the ``interaction`` object with a tuple of NumPy arrays for the MM 
-part. So if your QM subsystem has 10 atoms, you'd do:: 
+That is done by initializing the ``interaction`` object with a tuple of NumPy arrays for the MM
+part. So if your QM subsystem has 10 atoms, you'd do::
 
     sigma_mm = (np.array([sigCl]),  np.array([sigmaO, 0, 0]))
     epsilon_mm = (np.array([epsCl]),  np.array([epsilonO, 0, 0]))
@@ -276,5 +276,5 @@ Current limitations:
 Other tips:
 ___________
 
-If you are using GPAW and water, consider having a look at the 
-`much faster RATTLE constraints for water here <https://gitlab.com/gpaw/gpaw/blob/master/gpaw/test/rattle.py>`__ 
+If you are using GPAW and water, consider having a look at the
+`much faster RATTLE constraints for water here <https://gitlab.com/gpaw/gpaw/blob/master/gpaw/test/rattle.py>`__

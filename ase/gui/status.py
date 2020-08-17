@@ -35,7 +35,6 @@ class Status:  # Status is used as a mixin in GUI
         ordered_indices = [i for i in self.images.selected_ordered
                            if i < len(atoms)]
         n = len(indices)
-        self.nselected = n
 
         if n == 0:
             self.window.update_status_line('')

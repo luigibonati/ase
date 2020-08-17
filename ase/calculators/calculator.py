@@ -442,7 +442,7 @@ class Parameters(dict):
         file.close()
 
 
-class Calculator(object):
+class Calculator:
     """Base-class for all ASE calculators.
 
     A calculator must raise PropertyNotImplementedError if asked for a
@@ -702,6 +702,9 @@ class Calculator(object):
         return self.get_property('stress', atoms)
 
     def get_stresses(self, atoms=None):
+        """the calculator should return intensive stresses, i.e., such that
+                stresses.sum(axis=0) == stress
+        """
         return self.get_property('stresses', atoms)
 
     def get_dipole_moment(self, atoms=None):

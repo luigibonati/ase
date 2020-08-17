@@ -10,17 +10,41 @@ Git master branch
 
 :git:`master <>`.
 
+* No changes yet
+
+
+Version 3.20.1
+==============
+
+11 August 2020: :git:`3.20.1 <../3.20.1>`
+
+ * Minor fix related to package version requirements on pypi.
+
+Version 3.19.3
+==============
+
+11 August 2020: :git:`3.19.3 <../3.19.3>`
+
+ * Minor fix related to package version requirements on pypi.
+
+Version 3.20.0
+==============
+
+8 August 2020: :git:`3.20.0 <../3.20.0>`
+
 General changes:
 
-* :meth:`~ase.Atoms.get_calculator` is deprecated.  Use
-  ``atoms.calc`` instead.
-
-* :meth:`~ase.Atoms.set_calculator` is deprecated.  Use
-  ``atoms.calc = calc`` instead.
+* :meth:`~ase.Atoms.get_calculator` and :meth:`~ase.Atoms.set_calculator`
+  are deprecated.  Use ``atoms.calc`` instead.
 
 * ``del atoms.calc`` is deprecated.  Use ``atoms.calc = None`` instead.
 
 * The deprecated ``atoms.cell.pbc`` has been removed.
+
+* More utility methods for ``atoms.symbols``:
+  :meth:`~ase.symbols.Symbols.species`,
+  :meth:`~ase.symbols.Symbols.search`,
+  :meth:`~ase.symbols.Symbols.indices`.
 
 Development:
 
@@ -47,7 +71,8 @@ Algorithms:
 
 * Functions for attaching structures in :mod:`attach <ase.build>` introduced.
 
-* Standardize optimizers maximum step variable name to maxstep and default value to 0.2 for all optimizers.
+* Standardize optimizers maximum step variable name to maxstep and default
+  value to 0.2 for all optimizers.
 
 * Added :class:`Pyberny <ase.optimize.Berny>` geometry optimizer.
   This optimizer can be very
@@ -88,6 +113,11 @@ Algorithms:
 * Added a new tutorial on molecular crystal structure prediction using
   a genetic algorithm, see :ref:`ga_molecular_crystal_tutorial`.
 
+* Allow setting the initial hessian in `optimize.BFGS` via the keyword `alpha` or
+  explicitly via `opt.H0 = ...` after instantiation.
+
+Command-line interface:
+
 * New ``dimensionality`` sub-command for the :ref:`ase <cli>` command line
   interface.
 
@@ -116,6 +146,9 @@ I/O:
 * Removed Dacapo-NetCDF reader which has not worked since ancient times.
 
 GUI:
+
+* Use Ctrl+C, Ctrl+X, and Ctrl+V to copy/cut/paste atoms using the
+  operating system's clipboard.  The copies use the JSON format.
 
 * Removed old GUI modules which were never fully ported to Tkinter.
   If you miss them, please find them in git history and rehabilitate
@@ -156,8 +189,18 @@ Calculators:
   Functionality for other properties should be unchanged. Testing and
   documentation have also been expanded.
 
+
 .. _mypy: http://mypy-lang.org/
 
+
+Version 3.19.2
+==============
+
+22 July 2020: :git:`3.19.2 <../3.19.2>`
+
+* Compatibility fixes related to matplotlib:
+  Update png writer to be compatible with matplotlib 3.3.0.
+  Update incompatible calls to ``matplotlib.use()``.
 
 Version 3.19.1
 ==============
@@ -286,6 +329,7 @@ GUI:
 * It is now possible to copy and paste atoms: The "add atoms" function
   (Ctrl+A) will suggest the atoms in the current selection by default.
 
+
 Version 3.18.2
 ==============
 
@@ -293,6 +337,7 @@ Version 3.18.2
 
 * Fix an issue with the binary package (wheel) of 3.18.1.
   No bugfixes as such.
+
 
 Version 3.18.1
 ==============
@@ -305,6 +350,7 @@ Version 3.18.1
   Use ``atoms.pbc`` instead; this works the same as always.
   Also, the :class:`~ase.cell.Cell` object now exposes almost the entire
   ``ndarray`` interface.  For a list of smaller bugfixes, see the git log.
+
 
 Version 3.18.0
 ==============
@@ -468,6 +514,7 @@ GUI:
    by custom arrays.
 
  * Improved color scales.
+
 
 Version 3.17.0
 ==============
@@ -1031,7 +1078,7 @@ Version 3.9.1
 
 21 July 2015: :git:`3.9.1 <../3.9.1>`.
 
-* Added function for finding maximally-reduced Niggli unit cell:
+* Added function for finding maximally reduced Niggli unit cell:
   :func:`ase.build.niggli_reduce`.
 
 * Octopus interface added (experimental).
@@ -1192,7 +1239,7 @@ Version 3.5.0
 
 * New :class:`~ase.io.bundletrajectory.BundleTrajectory` added.
 
-* Updated GUI interface:
+* Updated GUI:
 
   * Stability and usability improvements.
   * Povray render facility.

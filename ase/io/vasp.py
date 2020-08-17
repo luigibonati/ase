@@ -15,9 +15,10 @@ from ase import Atoms
 from ase.utils import reader, writer
 from ase.io.utils import ImageIterator, ImageChunk
 
-__all__ = ['read_vasp', 'read_vasp_out', 'iread_vasp_out',
-           'read_vasp_xdatcar', 'read_vasp_xml',
-           'write_vasp', 'write_vasp_xdatcar']
+__all__ = [
+    'read_vasp', 'read_vasp_out', 'iread_vasp_out', 'read_vasp_xdatcar',
+    'read_vasp_xml', 'write_vasp', 'write_vasp_xdatcar'
+]
 
 # Denotes end of Ionic step for OUTCAR reading
 _OUTCAR_SCF_DELIM = 'FREE ENERGIE OF THE ION-ELECTRON SYSTEM'
@@ -62,10 +63,11 @@ def atomtypes_outpot(posfname, numsyms):
 
     # First check files with exactly same name except POTCAR/OUTCAR instead
     # of POSCAR/CONTCAR.
-    fnames = [posfname.replace('POSCAR', 'POTCAR').replace('CONTCAR',
-                                                           'POTCAR')]
-    fnames.append(posfname.replace('POSCAR', 'OUTCAR').replace('CONTCAR',
-                                                               'OUTCAR'))
+    fnames = [
+        posfname.replace('POSCAR', 'POTCAR').replace('CONTCAR', 'POTCAR')
+    ]
+    fnames.append(
+        posfname.replace('POSCAR', 'OUTCAR').replace('CONTCAR', 'OUTCAR'))
     # Try the same but with compressed files
     fsc = []
     for fn in fnames:
@@ -278,14 +280,14 @@ def _read_outcar_frame(lines, header_data):
 
     atoms = Atoms(symbols=symbols, pbc=True, constraint=constraints)
 
-    cl = _outcar_check_line     # Aliasing
+    cl = _outcar_check_line  # Aliasing
 
-    spinc = 0                   # Spin component
+    spinc = 0  # Spin component
     kpts = []
     forces = np.zeros((natoms, 3))
     positions = np.zeros((natoms, 3))
-    f_n = np.zeros(nbands)      # kpt occupations
-    eps_n = np.zeros(nbands)    # kpt eigenvalues
+    f_n = np.zeros(nbands)  # kpt occupations
+    eps_n = np.zeros(nbands)  # kpt eigenvalues
 
     # Parse each atoms object
     for n, line in enumerate(lines):
@@ -298,9 +300,11 @@ def _read_outcar_frame(lines, header_data):
             atoms.set_cell(cell)
         elif 'magnetization (x)' in line:
             # Magnetization in both collinear and non-collinear
-            nskip = 4           # Skip some lines
-            mag_x = [float(cl(lines[n + i + nskip]).split()[-1])
-                     for i in range(natoms)]
+            nskip = 4  # Skip some lines
+            mag_x = [
+                float(cl(lines[n + i + nskip]).split()[-1])
+                for i in range(natoms)
+            ]
 
         # XXX: !!!Uncomment these lines when non-collinear spin is supported!!!
         # Remember to check that format fits!
@@ -367,8 +371,8 @@ def _read_outcar_frame(lines, header_data):
                 parts = lines[n + i + nskip].split()
                 eps_n[i] = float(parts[1])
                 f_n[i] = float(parts[2])
-            kpts.append(SinglePointKPoint(w, spinc, ikpt,
-                                          eps_n=eps_n, f_n=f_n))
+            kpts.append(SinglePointKPoint(w, spinc, ikpt, eps_n=eps_n,
+                                          f_n=f_n))
         elif _OUTCAR_SCF_DELIM in line:
             # Last section before next ionic step
             nskip = 2
@@ -394,16 +398,15 @@ def _read_outcar_frame(lines, header_data):
                     # Collinear
                     magmoms = np.array(mag_x)
 
-            atoms.calc = SinglePointDFTCalculator(
-                atoms,
-                energy=energy_zero,
-                free_energy=energy_free,
-                ibzkpts=ibzkpts,
-                forces=forces,
-                efermi=efermi,
-                magmom=magmom,
-                magmoms=magmoms,
-                stress=stress)
+            atoms.calc = SinglePointDFTCalculator(atoms,
+                                                  energy=energy_zero,
+                                                  free_energy=energy_free,
+                                                  ibzkpts=ibzkpts,
+                                                  forces=forces,
+                                                  efermi=efermi,
+                                                  magmom=magmom,
+                                                  magmoms=magmoms,
+                                                  stress=stress)
             atoms.calc.name = 'vasp'
             atoms.calc.kpts = kpts
     return atoms
@@ -431,7 +434,7 @@ def _read_outcar_header(fd):
     else:
         constraints = None
 
-    cl = _outcar_check_line     # Aliasing
+    cl = _outcar_check_line  # Aliasing
 
     species = []
     natoms = 0
@@ -473,14 +476,13 @@ def _read_outcar_header(fd):
 
         elif 'Iteration' in line:
             # Start of SCF cycle
-            header_data = dict(
-                natoms=natoms,
-                symbols=symbols,
-                constraints=constraints,
-                nkpts=nkpts,
-                nbands=nbands,
-                kpt_weights=np.array(kpt_weights),
-                ibzkpts=np.array(ibzkpts))
+            header_data = dict(natoms=natoms,
+                               symbols=symbols,
+                               constraints=constraints,
+                               nkpts=nkpts,
+                               nbands=nbands,
+                               kpt_weights=np.array(kpt_weights),
+                               ibzkpts=np.array(ibzkpts))
             return header_data
 
     # Incomplete OUTCAR, we can't determine atoms
@@ -573,8 +575,9 @@ def read_vasp_xdatcar(filename='XDATCAR', index=-1):
 
             fd.readline()
 
-        coords = [np.array(fd.readline().split(), np.float)
-                  for ii in range(total)]
+        coords = [
+            np.array(fd.readline().split(), np.float) for ii in range(total)
+        ]
 
         image = Atoms(atomic_formula, cell=cell, pbc=True)
         image.set_scaled_positions(np.array(coords))
@@ -592,17 +595,13 @@ def __get_xml_parameter(par):
     handling.
 
     """
-
     def to_bool(b):
         if b == 'T':
             return True
         else:
             return False
 
-    to_type = {'int': int,
-               'logical': to_bool,
-               'string': str,
-               'float': float}
+    to_type = {'int': int, 'logical': to_bool, 'string': str, 'float': float}
 
     text = par.text
     if text is None:
@@ -679,29 +678,29 @@ def read_vasp_xml(filename='vasprun.xml', index=-1):
 
                     natoms = len(species)
 
-                elif (elem.tag == 'structure' and
-                      elem.attrib.get('name') == 'initialpos'):
+                elif (elem.tag == 'structure'
+                      and elem.attrib.get('name') == 'initialpos'):
                     cell_init = np.zeros((3, 3), dtype=float)
 
-                    for i, v in enumerate(elem.find(
-                            "crystal/varray[@name='basis']")):
-                        cell_init[i] = np.array([
-                            float(val) for val in v.text.split()])
+                    for i, v in enumerate(
+                            elem.find("crystal/varray[@name='basis']")):
+                        cell_init[i] = np.array(
+                            [float(val) for val in v.text.split()])
 
                     scpos_init = np.zeros((natoms, 3), dtype=float)
 
-                    for i, v in enumerate(elem.find(
-                            "varray[@name='positions']")):
-                        scpos_init[i] = np.array([
-                            float(val) for val in v.text.split()])
+                    for i, v in enumerate(
+                            elem.find("varray[@name='positions']")):
+                        scpos_init[i] = np.array(
+                            [float(val) for val in v.text.split()])
 
                     constraints = []
                     fixed_indices = []
 
-                    for i, entry in enumerate(elem.findall(
-                            "varray[@name='selective']/v")):
-                        flags = (np.array(entry.text.split() ==
-                                          np.array(['F', 'F', 'F'])))
+                    for i, entry in enumerate(
+                            elem.findall("varray[@name='selective']/v")):
+                        flags = (np.array(
+                            entry.text.split() == np.array(['F', 'F', 'F'])))
                         if flags.all():
                             fixed_indices.append(i)
                         elif flags.any():
@@ -719,8 +718,8 @@ def read_vasp_xml(filename='vasprun.xml', index=-1):
                 elif elem.tag == 'dipole':
                     dblock = elem.find('v[@name="dipole"]')
                     if dblock is not None:
-                        dipole = np.array([float(val)
-                                           for val in dblock.text.split()])
+                        dipole = np.array(
+                            [float(val) for val in dblock.text.split()])
 
             elif event == 'start' and elem.tag == 'calculation':
                 calculation.append(elem)
@@ -728,7 +727,7 @@ def read_vasp_xml(filename='vasprun.xml', index=-1):
     except ET.ParseError as parse_error:
         if atoms_init is None:
             raise parse_error
-        if calculation[-1].find('energy') is None:
+        if calculation and calculation[-1].find('energy') is None:
             calculation = calculation[:-1]
         if not calculation:
             yield atoms_init
@@ -761,13 +760,13 @@ def read_vasp_xml(filename='vasprun.xml', index=-1):
         energy = free_energy + de
 
         cell = np.zeros((3, 3), dtype=float)
-        for i, vector in enumerate(step.find(
-                'structure/crystal/varray[@name="basis"]')):
+        for i, vector in enumerate(
+                step.find('structure/crystal/varray[@name="basis"]')):
             cell[i] = np.array([float(val) for val in vector.text.split()])
 
         scpos = np.zeros((natoms, 3), dtype=float)
-        for i, vector in enumerate(step.find(
-                'structure/varray[@name="positions"]')):
+        for i, vector in enumerate(
+                step.find('structure/varray[@name="positions"]')):
             scpos[i] = np.array([float(val) for val in vector.text.split()])
 
         forces = None
@@ -775,16 +774,16 @@ def read_vasp_xml(filename='vasprun.xml', index=-1):
         if fblocks is not None:
             forces = np.zeros((natoms, 3), dtype=float)
             for i, vector in enumerate(fblocks):
-                forces[i] = np.array([float(val)
-                                      for val in vector.text.split()])
+                forces[i] = np.array(
+                    [float(val) for val in vector.text.split()])
 
         stress = None
         sblocks = step.find('varray[@name="stress"]')
         if sblocks is not None:
             stress = np.zeros((3, 3), dtype=float)
             for i, vector in enumerate(sblocks):
-                stress[i] = np.array([float(val)
-                                      for val in vector.text.split()])
+                stress[i] = np.array(
+                    [float(val) for val in vector.text.split()])
             stress *= -0.1 * GPa
             stress = stress.reshape(9)[[0, 4, 8, 5, 2, 1]]
 
@@ -819,19 +818,23 @@ def read_vasp_xml(filename='vasprun.xml', index=-1):
                         f_n[j] = float(val[1])
                     if len(kblocks) == 1:
                         f_n *= 2
-                    kpoints.append(SinglePointKPoint(kpt_weights[ikpt - 1],
-                                                     spin, ikpt, eps_n, f_n))
+                    kpoints.append(
+                        SinglePointKPoint(kpt_weights[ikpt - 1], spin, ikpt,
+                                          eps_n, f_n))
         if len(kpoints) == 0:
             kpoints = None
 
         atoms = atoms_init.copy()
         atoms.set_cell(cell)
         atoms.set_scaled_positions(scpos)
-        atoms.calc = SinglePointDFTCalculator(
-            atoms, energy=energy, forces=forces,
-            stress=stress, free_energy=free_energy,
-            ibzkpts=ibz_kpts,
-            efermi=efermi, dipole=dipole)
+        atoms.calc = SinglePointDFTCalculator(atoms,
+                                              energy=energy,
+                                              forces=forces,
+                                              stress=stress,
+                                              free_energy=free_energy,
+                                              ibzkpts=ibz_kpts,
+                                              efermi=efermi,
+                                              dipole=dipole)
         atoms.calc.name = 'vasp'
         atoms.calc.kpts = kpoints
         atoms.calc.parameters = parameters
@@ -950,8 +953,14 @@ def _write_symbol_count(fd, sc, vasp5=True):
 
 
 @writer
-def write_vasp(filename, atoms, label=None, direct=False, sort=None,
-               symbol_count=None, long_format=True, vasp5=False,
+def write_vasp(filename,
+               atoms,
+               label=None,
+               direct=False,
+               sort=None,
+               symbol_count=None,
+               long_format=True,
+               vasp5=False,
                ignore_constraints=False):
     """Method to write VASP position (POSCAR/CONTCAR) files.
 

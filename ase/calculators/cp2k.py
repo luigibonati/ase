@@ -465,7 +465,7 @@ class CP2K(Calculator):
         return '\n'.join(output_lines)
 
 
-class Cp2kShell(object):
+class Cp2kShell:
     """Wrapper for CP2K-shell child-process"""
 
     def __init__(self, command, debug):
@@ -540,7 +540,7 @@ class Cp2kShell(object):
         received = self.recv()
         assert received == line
 
-class InputSection(object):
+class InputSection:
     """Represents a section of a CP2K input file"""
     def __init__(self, name, params=None):
         self.name = name.upper()

@@ -1,13 +1,16 @@
-def test_animate():
-    import unittest
-    from matplotlib.animation import writers
-    import warnings
+import warnings
 
-    from ase.build import bulk, molecule, fcc111
-    from ase.io.animation import write_animation
+import pytest
+
+from ase.build import bulk, molecule, fcc111
+from ase.io.animation import write_animation
+
+
+def test_animate(plt):
+    from matplotlib.animation import writers
 
     if 'html' not in writers.list():
-        raise unittest.SkipTest('matplotlib html writer not present')
+        pytest.skip('matplotlib html writer not present')
 
 
     images = [molecule('H2O'), bulk('Cu'), fcc111('Au', size=(1, 1, 1))]

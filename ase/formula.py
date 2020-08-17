@@ -1,6 +1,6 @@
 from math import gcd
 import re
-from typing import Dict, Tuple, List, Union
+from typing import Dict, Tuple, List, Sequence, Union
 
 from ase.data import chemical_symbols, atomic_numbers
 
@@ -214,7 +214,7 @@ class Formula:
                        _count=dct2)
 
     @staticmethod
-    def from_list(symbols: List[str]) -> 'Formula':
+    def from_list(symbols: Sequence[str]) -> 'Formula':
         """Convert list of chemical symbols to Formula."""
         return Formula(''.join(symbols),
                        _tree=[(symbols[:], 1)])

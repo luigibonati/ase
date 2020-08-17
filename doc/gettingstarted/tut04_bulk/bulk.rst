@@ -250,7 +250,7 @@ exercises before returning here.)
 For the simple FCC structure we only have a single parameter, *a*, and
 the EOS fit tells us everything there is to know.
 
-For more complex structures we first of all need a more advanced framework
+For more complex structures we first need a more advanced framework
 to build the atoms, such as the
 :func:`ase.spacegroup.crystal` function.
 

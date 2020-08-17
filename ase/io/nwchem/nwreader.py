@@ -1,4 +1,5 @@
 import re
+from collections import OrderedDict
 import numpy as np
 
 from ase import Atoms
@@ -174,28 +175,32 @@ _gto_grad = _define_pattern(
 """, re.M)
 
 # Energy parsers for a variety of different GTO calculations
-_e_gto = dict(
-    mf=_define_pattern(
-        r'^[\s]+Total (?:DFT|SCF) energy =[\s]+([\S]+)[\s]*\n',
-        "         Total SCF energy =    -75.585555997789\n",
-        re.M,
-    ),
-    mp2=_define_pattern(
-        r'^[\s]+Total MP2 energy[\s]+([\S]+)[\s]*\n',
-        "          Total MP2 energy           -75.708800087578\n",
-        re.M,
-    ),
-    ccsd=_define_pattern(
-        r'^[\s]+Total CCSD energy:[\s]+([\S]+)[\s]*\n',
-        " Total CCSD energy:            -75.716168566598569\n",
-        re.M,
-    ),
-    tce=_define_pattern(
-        r'^[\s]+[\S]+[\s]+total energy \/ hartree[\s]+'
-        r'=[\s]+([\S]+)[\s]*\n',
-        " CCD total energy / hartree       "
-        "=       -75.715332545665888\n", re.M,
-    ),
+_e_gto = OrderedDict()
+_e_gto['tce'] = _define_pattern(
+    r'^[\s]+[\S]+[\s]+total energy \/ hartree[\s]+'
+    r'=[\s]+([\S]+)[\s]*\n',
+    " CCD total energy / hartree       "
+    "=       -75.715332545665888\n", re.M,
+)
+_e_gto['ccsd'] = _define_pattern(
+    r'^[\s]+Total CCSD energy:[\s]+([\S]+)[\s]*\n',
+    " Total CCSD energy:            -75.716168566598569\n",
+    re.M,
+)
+_e_gto['tddft'] = _define_pattern(
+    r'^[\s]+Excited state energy =[\s]+([\S]+)[\s]*\n',
+    "     Excited state energy =    -75.130134499965\n",
+    re.M,
+)
+_e_gto['mp2'] = _define_pattern(
+    r'^[\s]+Total MP2 energy[\s]+([\S]+)[\s]*\n',
+    "          Total MP2 energy           -75.708800087578\n",
+    re.M,
+)
+_e_gto['mf'] = _define_pattern(
+    r'^[\s]+Total (?:DFT|SCF) energy =[\s]+([\S]+)[\s]*\n',
+    "         Total SCF energy =    -75.585555997789\n",
+    re.M,
 )
 
 
@@ -206,8 +211,8 @@ def parse_gto_chunk(chunk):
     energy = None
     dipole = None
     quadrupole = None
-    for theory in ['tce', 'ccsd', 'mp2', 'mf']:
-        matches = _e_gto[theory].findall(chunk)
+    for theory, pattern in _e_gto.items():
+        matches = pattern.findall(chunk)
         if matches:
             energy = float(matches[-1].replace('D', 'E')) * Hartree
             break

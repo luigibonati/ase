@@ -1,6 +1,7 @@
 # creates:  nitrogen.txt, ethane.txt, gold.txt
 import io
 import os
+import runpy
 import sys
 
 
@@ -9,7 +10,7 @@ def output_to_string(pythonfile):
     as a string."""
     buffer = io.StringIO()
     sys.stdout = buffer
-    exec(open(pythonfile).read())
+    runpy.run_path(pythonfile)
     sys.stdout = sys.__stdout__
     return buffer.getvalue()
 

@@ -28,7 +28,7 @@ from typing import List
 import numpy as np
 
 from ase.calculators.calculator import kpts2ndarray
-from ase.calculators.vasp.setups import setups_defaults
+from ase.calculators.vasp.setups import get_default_setups
 
 # Parameters that can be set in INCAR. The values which are None
 # are not written and default parameters of VASP are used for them.
@@ -746,7 +746,7 @@ keys: List[str] = [
 ]
 
 
-class GenerateVaspInput(object):
+class GenerateVaspInput:
     # Parameters corresponding to 'xc' settings.  This may be modified
     # by the user in-between loading calculators.vasp submodule and
     # instantiating the calculator object with calculators.vasp.Vasp()
@@ -1000,6 +1000,10 @@ class GenerateVaspInput(object):
         # Where other keys are either atom identities or indices, and the
         # corresponding values are suffixes or the full name of the setup
         # folder, respectively.
+
+        # Avoid mutating the module dictionary, so we use a copy instead
+        # Note, it is a nested dict, so a regular copy is not enough
+        setups_defaults = get_default_setups()
 
         # Default to minimal basis
         if p['setups'] is None:
@@ -1475,9 +1479,8 @@ class GenerateVaspInput(object):
         """Method that imports settings from INCAR file."""
 
         self.spinpol = False
-        file = open(filename, 'r')
-        file.readline()
-        lines = file.readlines()
+        with open(filename, 'r') as fd:
+            lines = fd.readlines()
 
         for line in lines:
             try:

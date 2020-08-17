@@ -135,7 +135,7 @@ def _format_block(key, val, nindent=0):
             if isinstance(subval, dict):
                 subval = ' '.join([_format_line(a, b)
                                    for a, b in subval.items()])
-            out.append(prefix2 + ' '.join([subkey, str(subval)]))
+            out.append(prefix2 + ' '.join([_format_line(subkey, subval)]))
     out.append(prefix + 'end')
     return out
 
@@ -280,7 +280,7 @@ def write_nwchem_in(fd, atoms, properties=None, **params):
     xc = params.get('xc')
     if 'xc' in params:
         xc = _xc_conv.get(params['xc'].lower(), params['xc'])
-        if theory == 'dft':
+        if theory in ['dft', 'tddft']:
             if 'dft' not in params:
                 params['dft'] = dict()
             params['dft']['xc'] = xc
@@ -298,10 +298,11 @@ def write_nwchem_in(fd, atoms, properties=None, **params):
     restart_kw = params.get('restart_kw','start')
     if restart_kw not in ('start','restart'):
        raise ValueError("Unrecognised restart keyword: {}!".format(restart_kw))
-    out = ['title "{}"'.format(label),
+    short_label = label.rsplit('/', 1)[-1]
+    out = ['title "{}"'.format(short_label),
            'permanent_dir {}'.format(perm),
            'scratch_dir {}'.format(scratch),
-           '{} {}'.format(restart_kw, label),
+           '{} {}'.format(restart_kw, short_label),
            '\n'.join(_get_geom(atoms, **params)),
            '\n'.join(_get_basis(**params)),
            '\n'.join(_get_other(**params)),

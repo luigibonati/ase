@@ -1,4 +1,6 @@
+from typing import List, Sequence, Set, Dict, Union, Iterator
 import warnings
+import collections.abc
 
 import numpy as np
 
@@ -6,12 +8,12 @@ from ase.data import atomic_numbers, chemical_symbols
 from ase.formula import Formula
 
 
-def string2symbols(s):
+def string2symbols(s: str) -> List[str]:
     """Convert string to list of chemical symbols."""
     return list(Formula(s))
 
 
-def symbols2numbers(symbols):
+def symbols2numbers(symbols) -> List[int]:
     if isinstance(symbols, str):
         symbols = string2symbols(symbols)
     numbers = []
@@ -23,7 +25,7 @@ def symbols2numbers(symbols):
     return numbers
 
 
-class Symbols:
+class Symbols(collections.abc.Sequence):
     """A sequence of chemical symbols.
 
     ``atoms.symbols`` is a :class:`ase.symbols.Symbols` object.  This
@@ -47,47 +49,53 @@ class Symbols:
     >>> atoms.symbols
     Symbols('C2OMo2UPu3')
     >>> atoms.symbols.formula
-    Formula('CCOMoMoUPuPuPu')
+    Formula('C2OMo2UPu3')
 
     The :class:`ase.formula.Formula` object is useful for extended
     formatting options and analysis.
 
     """
-    def __init__(self, numbers):
-        self.numbers = np.asarray(numbers)
+    def __init__(self, numbers) -> None:
+        self.numbers = np.asarray(numbers, int)
 
     @classmethod
-    def fromsymbols(cls, symbols):
+    def fromsymbols(cls, symbols) -> 'Symbols':
         numbers = symbols2numbers(symbols)
         return cls(np.array(numbers))
 
     @property
-    def formula(self):
+    def formula(self) -> Formula:
         """Formula object."""
-        return Formula.from_list([chemical_symbols[Z] for Z in self.numbers])
+        string = Formula.from_list(self).format('reduce')
+        return Formula(string)
 
-    def __getitem__(self, key):
+    def __getitem__(self, key) -> Union['Symbols', str]:
         num = self.numbers[key]
         if np.isscalar(num):
             return chemical_symbols[num]
         return Symbols(num)
 
-    def __setitem__(self, key, value):
+    def __iter__(self) -> Iterator[str]:
+        for num in self.numbers:
+            yield chemical_symbols[num]
+
+    def __setitem__(self, key, value) -> None:
         numbers = symbols2numbers(value)
         if len(numbers) == 1:
-            numbers = numbers[0]
-        self.numbers[key] = numbers
+            self.numbers[key] = numbers[0]
+        else:
+            self.numbers[key] = numbers
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.numbers)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.get_chemical_formula('reduce')
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return 'Symbols(\'{}\')'.format(self)
 
-    def __eq__(self, obj):
+    def __eq__(self, obj) -> bool:
         if not hasattr(obj, '__len__'):
             return False
 
@@ -99,10 +107,15 @@ class Symbols:
             return False
         return self.numbers == symbols.numbers
 
-    def get_chemical_formula(self, mode='hill', empirical=False):
+    def get_chemical_formula(
+            self,
+            mode: str = 'hill',
+            empirical: bool = False,
+    ) -> str:
         """Get chemical formula.
 
         See documentation of ase.atoms.Atoms.get_chemical_formula()."""
+        # XXX Delegate the work to the Formula object!
         if mode in ('reduce', 'all') and empirical:
             warnings.warn("Empirical chemical formula not available "
                           "for mode '{}'".format(mode))
@@ -140,9 +153,27 @@ class Symbols:
 
         return formula
 
-    def search(self, symbols):
+    def search(self, symbols) -> Sequence[int]:
         """Return the indices of elements with given symbol or symbols."""
         numbers = set(symbols2numbers(symbols))
         indices = [i for i, number in enumerate(self.numbers)
                    if number in numbers]
         return np.array(indices, int)
+
+    def species(self) -> Set[str]:
+        """Return unique symbols as a set."""
+        return set(self)
+
+    def indices(self) -> Dict[str, Sequence[int]]:
+        """Return dictionary mapping each unique symbol to indices.
+
+        >>> from ase.build import molecule
+        >>> atoms = molecule('CH3CH2OH')
+        >>> atoms.symbols.indices()
+        {'C': array([0, 1]), 'O': array([2]), 'H': array([3, 4, 5, 6, 7, 8])}
+
+        """
+        dct: Dict[str, List[int]] = {}
+        for i, symbol in enumerate(self):
+            dct.setdefault(symbol, []).append(i)
+        return {key: np.array(value, int) for key, value in dct.items()}
