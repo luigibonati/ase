@@ -657,13 +657,17 @@ class Siesta(FileIOCalculator):
         # block is not written, but  we must conform to the
         # atoms object.
         if self['spin'] != 'non-polarized':
-            if sum(abs(magmoms)) == 0:
+            if len(magmoms) == 0:
                 f.write('#Empty block forces ASE initialization.\n')
 
             f.write('%block DM.InitSpin\n')
-            for n, M in enumerate(magmoms):
-                if M != 0:
-                    f.write('    %d %.14f\n' % (n + 1, M))
+            if len(magmoms) != 0:
+                for n, M in enumerate(magmoms):
+                    if isinstance(M, np.ndarray):
+                        f.write('    %d %.14f %.14f %.14f \n' % (n + 1, M[0], M[1], M[2]))
+                    else:
+                        if M != 0:
+                            f.write('    %d %.14f \n' % (n + 1, M))
             f.write('%endblock DM.InitSpin\n')
             f.write('\n')
 
