@@ -9,7 +9,6 @@ object.
 
 import copy
 import numbers
-import warnings
 from math import cos, sin, pi
 
 import numpy as np
