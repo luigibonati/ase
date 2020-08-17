@@ -1346,13 +1346,13 @@ class Atoms:
         positions -= com  # translate center of mass to origin
         return np.cross(positions, self.get_momenta()).sum(0)
 
-    def rotate(self, a, v=None, center=(0, 0, 0), rotate_cell=False):
+    def rotate(self, a, v, center=(0, 0, 0), rotate_cell=False):
         """Rotate atoms based on a vector and an angle, or two vectors.
 
         Parameters:
 
         a = None:
-            Angle that the atoms is rotated around the vecor 'v'. 'a'
+            Angle that the atoms is rotated around the vector 'v'. 'a'
             can also be a vector and then 'a' is rotated
             into 'v'.
 
@@ -1381,36 +1381,18 @@ class Atoms:
         >>> atoms.rotate((1, 0, 0), (0, 1, 0))
         """
 
-        if not isinstance(a, (float, int)):
-            # old API maybe?
-            warning = ('Please use new API: '
-                       'atoms_obj.rotate(a, v) '
-                       'where v is a vector to rotate around and '
-                       'a is the angle in degrees.')
-            if isinstance(v, (float, int)):
-                warnings.warn(warning, FutureWarning)
-                a, v = v * 180 / pi, a
-            elif v is None:
-                warnings.warn(warning, FutureWarning)
-                v = a
-                a = None
-            else:
-                assert a is not None
-                a, v = v, a
-        else:
-            assert a is not None
+        if not isinstance(a, numbers.Real):
+            a, v = v, a
 
         norm = np.linalg.norm
         v = string2vector(v)
-        if a is None:
-            a = norm(v) * 180 / pi  # old API
 
         normv = norm(v)
 
         if normv == 0.0:
             raise ZeroDivisionError('Cannot rotate: norm(v) == 0')
 
-        if isinstance(a, (float, int)):
+        if isinstance(a, numbers.Real):
             a *= pi / 180
             v /= normv
             c = cos(a)
