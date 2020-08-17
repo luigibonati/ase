@@ -1574,7 +1574,7 @@ class Atoms:
                 self.positions[i] = group[j].position
                 j += 1
 
-    def set_dihedral(self, a1, a2=None, a3=None, a4=None, angle=None,
+    def set_dihedral(self, a1, a2, a3, a4, angle,
                      mask=None, indices=None):
         """Set the dihedral angle (degrees) between vectors a1->a2 and
         a3->a4 by changing the atom indexed by a4.
@@ -1596,24 +1596,7 @@ class Atoms:
         >>> atoms.set_dihedral(1, 2, 3, 4, 210, mask=[0, 0, 0, 1, 1, 1])
         """
 
-        if isinstance(a1, int):
-            if any(a is None for a in [a2, a3, a4, angle]):
-                raise ValueError('a2, a3, a4, and angle must not be None')
-            angle *= pi / 180
-        else:
-            warnings.warn(
-                'Please use new API: '
-                'atoms_obj.set_dihedral(a1,a2,a3,a4,angle) '
-                'where angle is given in degrees', FutureWarning)
-            if angle is None:
-                angle = a2
-                if mask is None:
-                    mask = a3
-                    if indices is None:
-                        indices = a4
-            else:
-                assert a2 is None and a3 is None and a4 is None
-            a1, a2, a3, a4 = a1
+        angle *= pi / 180
 
         # if not provided, set mask to the last atom in the
         # dihedral description
