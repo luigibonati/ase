@@ -1519,7 +1519,7 @@ class Atoms:
         # Move back to the rotation point
         self.positions = np.transpose(rcoords) + center
 
-    def get_dihedral(self, a1, a2=None, a3=None, a4=None, mic=False):
+    def get_dihedral(self, a1, a2, a3, a4, mic=False):
         """Calculate dihedral angle.
 
         Calculate dihedral angle (in degrees) between the vectors a1->a2
@@ -1528,21 +1528,6 @@ class Atoms:
         Use mic=True to use the Minimum Image Convention and calculate the
         angle across periodic boundaries.
         """
-
-        if a2 is None:
-            # Old way - use radians
-            warnings.warn(
-                'Please use new API (which will return the angle in degrees): '
-                'atoms_obj.get_dihedral(a1,a2,a3,a4)*pi/180 instead of '
-                'atoms_obj.get_dihedral([a1,a2,a3,a4])', FutureWarning)
-            assert a3 is None and a4 is None
-            a1, a2, a3, a4 = a1
-            f = pi / 180
-        else:
-            f = 1
-
-        if any(a is None for a in [a2, a3, a4]):
-            raise ValueError('a2, a3 and a4 must not be None')
 
         # vector 1->2, 2->3, 3->4 and their normalized cross products:
         a = self.positions[a2] - self.positions[a1]
@@ -1567,7 +1552,7 @@ class Atoms:
         angle = np.arccos(angle) * 180 / pi
         if np.vdot(bxa, c) > 0:
             angle = 360 - angle
-        return angle * f
+        return angle
 
     def _masked_rotate(self, center, axis, diff, mask):
         # do rotation of subgroup by copying it to temporary atoms object
