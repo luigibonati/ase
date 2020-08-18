@@ -138,9 +138,11 @@ class TestDOSCollection:
 
         # Check auto minimum
         dc = MinimalDOSCollection([rawdos, another_rawdos])
-        energies, dos = dc.sample_grid(10, xmax=options['xmax'],
-                                       padding=options['padding'],
-                                       width=options['width'])
+        dos = dc.new_sample_grid(10, xmax=options['xmax'],
+                                 padding=options['padding'],
+                                 width=options['width'])
+        energies, weights = dos.get_energies(), dos.get_all_weights()
+
         assert (pytest.approx(energies[0])
                 == ref_min - options['padding'] * options['width'])
         assert pytest.approx(energies[-1]) == options['xmax']

@@ -133,6 +133,11 @@ class DOSCollection(collections.abc.Sequence):
         energies = np.linspace(xmin, xmax, npts)
         return energies, self.sample(energies, width=width, smearing=smearing)
 
+    def new_sample_grid(self, *args, **kwargs):
+        energies, weights = self.sample_grid(*args, **kwargs)
+        #return self.from_data(energies, weights)  # XXX info
+        return GridDOSCollection.from_data(energies, weights)
+
     @classmethod
     def from_data(cls,
                   energies: Sequence[float],
@@ -408,6 +413,12 @@ class GridDOSCollection(DOSCollection):
                                  " must have the same energy axis.")
             self._weights[i, :] = dos_data.get_weights()
             self._info.append(dos_data.info)
+
+    def get_energies(self) -> Sequence[float]:
+        return self._energies.copy()
+
+    def get_all_weights(self) -> Sequence[Sequence[float]]:
+        return self._weights.copy()
 
     def __len__(self) -> int:
         return self._weights.shape[0]
