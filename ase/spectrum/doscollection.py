@@ -76,17 +76,17 @@ class DOSCollection(collections.abc.Sequence):
             Plotting axes. If "ax" was set, this is the same object.
         """
 
+
+        if mplargs is None:
+            mplargs = {}
+
+        energies, all_y = self.sample_grid(npts,
+                                           xmin=xmin, xmax=xmax,
+                                           width=width, smearing=smearing)
+
+        all_labels = [DOSData.label_from_info(data.info) for data in self]
+
         with SimplePlottingAxes(ax=ax, show=show, filename=filename) as ax:
-
-            if mplargs is None:
-                mplargs = {}
-
-            energies, all_y = self.sample_grid(npts,
-                                               xmin=xmin, xmax=xmax,
-                                               width=width, smearing=smearing)
-
-            all_labels = [DOSData.label_from_info(data.info) for data in self]
-
             all_lines = ax.plot(energies, all_y.T, **mplargs)
             for line, label in zip(all_lines, all_labels):
                 line.set_label(label)
