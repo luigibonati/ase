@@ -161,7 +161,7 @@ class TestDOSCollection:
         energies = dos.get_energies()
         weights = dos.get_all_weights()
         for i, data in enumerate((rawdos, another_rawdos)):
-            tmp_dos = data.new_sample_grid(**options)
+            tmp_dos = data.sample_grid(**options)
             tmp_weights = tmp_dos.get_weights()
             assert np.allclose(weights[i, :], tmp_weights)
 

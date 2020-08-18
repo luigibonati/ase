@@ -130,10 +130,8 @@ class DOSData(metaclass=ABCMeta):
         if xmax is None:
             xmax = max(self.get_energies()) + (padding * width)
         energies = np.linspace(xmin, xmax, npts)
-        return energies, self.sample(energies, width=width, smearing=smearing)
-
-    def new_sample_grid(self, *args, **kwargs) -> 'GridDOSData':
-        return GridDOSData(*self.sample_grid(*args, **kwargs))
+        weights = self.sample(energies, width=width, smearing=smearing)
+        return GridDOSData(energies, weights)
 
     def plot_dos(self,
                  npts: int = 1000,
@@ -174,7 +172,7 @@ class DOSData(metaclass=ABCMeta):
         if 'label' not in mplargs:
             mplargs.update({'label': self.label_from_info(self.info)})
 
-        dos = self.new_sample_grid(npts, xmin=xmin, xmax=xmax,
+        dos = self.sample_grid(npts, xmin=xmin, xmax=xmax,
                                width=width,
                                smearing=smearing)
         return dos.plot_dos(ax=ax, show=show, filename=filename,
@@ -445,9 +443,9 @@ class GridDOSData(GeneralDOSData):
                 mplargs.update({'label': self.label_from_info(self.info)})
 
             if npts:
-                dos = self.new_sample_grid(npts, xmin=xmin,
-                                           xmax=xmax, width=width,
-                                           smearing=smearing)
+                dos = self.sample_grid(npts, xmin=xmin,
+                                       xmax=xmax, width=width,
+                                       smearing=smearing)
             else:
                 dos = self
 
