@@ -23,7 +23,7 @@ def check_fractional_occupancies(atoms):
         if a.symbol == 'Cl':
             assert occupancies[kinds[a.index]]['Cl'] == 0.3
 
-content = u"""
+content = """
 data_1
 
 
@@ -294,7 +294,7 @@ def test_cif():
 
 
 # ICSD-like file from issue #293
-content2 = u"""
+content2 = """
 data_global
 _cell_length_a 9.378(5)
 _cell_length_b 7.488(5)
