@@ -80,9 +80,12 @@ class DOSCollection(collections.abc.Sequence):
         if mplargs is None:
             mplargs = {}
 
-        energies, all_y = self.sample_grid(npts,
-                                           xmin=xmin, xmax=xmax,
-                                           width=width, smearing=smearing)
+        dos = self.new_sample_grid(npts,
+                                   xmin=xmin, xmax=xmax,
+                                   width=width, smearing=smearing)
+
+        energies = dos.get_energies()
+        all_y = dos.get_all_weights()
 
         all_labels = [DOSData.label_from_info(data.info) for data in self]
 
