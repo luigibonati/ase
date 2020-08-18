@@ -109,7 +109,7 @@ class DOSData(metaclass=ABCMeta):
                     padding: float = 3,
                     width: float = 0.1,
                     smearing: str = 'Gauss',
-                    ) -> Tuple[Sequence[float], Sequence[float]]:
+                    ) -> 'GridDOSData':
         """Sample the DOS data on an evenly-spaced energy grid
 
         Args:
@@ -131,6 +131,9 @@ class DOSData(metaclass=ABCMeta):
             xmax = max(self.get_energies()) + (padding * width)
         energies = np.linspace(xmin, xmax, npts)
         return energies, self.sample(energies, width=width, smearing=smearing)
+
+    def new_sample_grid(self, *args, **kwargs) -> 'GridDOSData':
+        return GridDOSData(*self.sample_grid(*args, **kwargs))
 
     def plot_dos(self,
                  npts: int = 1000,
@@ -171,12 +174,11 @@ class DOSData(metaclass=ABCMeta):
         if 'label' not in mplargs:
             mplargs.update({'label': self.label_from_info(self.info)})
 
-        energies, intensity = self.sample_grid(npts, xmin=xmin, xmax=xmax,
-                                               width=width,
-                                               smearing=smearing)
-        griddos = GridDOSData(energies, intensity)
-        return griddos.plot_dos(ax=ax, show=show, filename=filename,
-                                mplargs=mplargs)
+        dos = self.new_sample_grid(npts, xmin=xmin, xmax=xmax,
+                               width=width,
+                               smearing=smearing)
+        return dos.plot_dos(ax=ax, show=show, filename=filename,
+                            mplargs=mplargs)
 
     @staticmethod
     def label_from_info(info: Dict[str, str]):
@@ -443,11 +445,13 @@ class GridDOSData(GeneralDOSData):
                 mplargs.update({'label': self.label_from_info(self.info)})
 
             if npts:
-                energies, intensity = self.sample_grid(npts, xmin=xmin,
-                                                       xmax=xmax, width=width,
-                                                       smearing=smearing)
+                dos = self.new_sample_grid(npts, xmin=xmin,
+                                           xmax=xmax, width=width,
+                                           smearing=smearing)
             else:
-                energies, intensity = self.get_energies(), self.get_weights()
+                dos = self
+
+            energies, intensity = dos.get_energies(), dos.get_weights()
 
             ax.plot(energies, intensity, **mplargs)
             ax.set_xlim(left=xmin, right=xmax)
