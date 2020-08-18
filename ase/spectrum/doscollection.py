@@ -80,9 +80,9 @@ class DOSCollection(collections.abc.Sequence):
         if mplargs is None:
             mplargs = {}
 
-        dos = self.new_sample_grid(npts,
-                                   xmin=xmin, xmax=xmax,
-                                   width=width, smearing=smearing)
+        dos = self.sample_grid(npts,
+                               xmin=xmin, xmax=xmax,
+                               width=width, smearing=smearing)
 
         energies = dos.get_energies()
         all_y = dos.get_all_weights()
@@ -134,11 +134,7 @@ class DOSCollection(collections.abc.Sequence):
             xmax = (max(max(data.get_energies()) for data in self)
                     + (padding * width))
         energies = np.linspace(xmin, xmax, npts)
-        return energies, self.sample(energies, width=width, smearing=smearing)
-
-    def new_sample_grid(self, *args, **kwargs):
-        energies, weights = self.sample_grid(*args, **kwargs)
-        #return self.from_data(energies, weights)  # XXX info
+        weights = self.sample(energies, width=width, smearing=smearing)
         return GridDOSCollection.from_data(energies, weights)
 
     @classmethod

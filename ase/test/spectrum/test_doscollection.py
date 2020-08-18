@@ -138,9 +138,9 @@ class TestDOSCollection:
 
         # Check auto minimum
         dc = MinimalDOSCollection([rawdos, another_rawdos])
-        dos = dc.new_sample_grid(10, xmax=options['xmax'],
-                                 padding=options['padding'],
-                                 width=options['width'])
+        dos = dc.sample_grid(10, xmax=options['xmax'],
+                             padding=options['padding'],
+                             width=options['width'])
         energies = dos.get_energies()
 
         assert (pytest.approx(energies[0])
@@ -148,16 +148,16 @@ class TestDOSCollection:
         assert pytest.approx(energies[-1]) == options['xmax']
 
         # Check auto maximum
-        dos = dc.new_sample_grid(10, xmin=options['xmin'],
-                                 padding=options['padding'],
-                                 width=options['width'])
+        dos = dc.sample_grid(10, xmin=options['xmin'],
+                             padding=options['padding'],
+                             width=options['width'])
         energies = dos.get_energies()
         assert pytest.approx(energies[0]) == options['xmin']
         assert (pytest.approx(energies[-1])
                 == ref_max + options['padding'] * options['width'])
 
         # Check values
-        dos = dc.new_sample_grid(**options)
+        dos = dc.sample_grid(**options)
         energies = dos.get_energies()
         weights = dos.get_all_weights()
         for i, data in enumerate((rawdos, another_rawdos)):
