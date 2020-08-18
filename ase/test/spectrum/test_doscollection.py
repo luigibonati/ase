@@ -141,24 +141,29 @@ class TestDOSCollection:
         dos = dc.new_sample_grid(10, xmax=options['xmax'],
                                  padding=options['padding'],
                                  width=options['width'])
-        energies, weights = dos.get_energies(), dos.get_all_weights()
+        energies = dos.get_energies()
 
         assert (pytest.approx(energies[0])
                 == ref_min - options['padding'] * options['width'])
         assert pytest.approx(energies[-1]) == options['xmax']
 
         # Check auto maximum
-        energies, dos = dc.sample_grid(10, xmin=options['xmin'],
-                                       padding=options['padding'],
-                                       width=options['width'])
+        dos = dc.new_sample_grid(10, xmin=options['xmin'],
+                                 padding=options['padding'],
+                                 width=options['width'])
+        energies = dos.get_energies()
         assert pytest.approx(energies[0]) == options['xmin']
         assert (pytest.approx(energies[-1])
                 == ref_max + options['padding'] * options['width'])
 
         # Check values
-        energies, dos = dc.sample_grid(**options)
+        dos = dc.new_sample_grid(**options)
+        energies = dos.get_energies()
+        weights = dos.get_all_weights()
         for i, data in enumerate((rawdos, another_rawdos)):
-            assert np.allclose(dos[i, :], data.sample_grid(**options)[1])
+            tmp_dos = data.new_sample_grid(**options)
+            tmp_weights = tmp_dos.get_weights()
+            assert np.allclose(weights[i, :], tmp_weights)
 
     def test_sample_empty(self):
         empty_dc = MinimalDOSCollection([])
