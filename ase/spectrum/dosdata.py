@@ -165,19 +165,18 @@ class DOSData(metaclass=ABCMeta):
             Plotting axes. If "ax" was set, this is the same object.
         """
 
-        with SimplePlottingAxes(ax=ax, show=show, filename=filename) as ax:
 
-            if mplargs is None:
-                mplargs = {}
-            if 'label' not in mplargs:
-                mplargs.update({'label': self.label_from_info(self.info)})
+        if mplargs is None:
+            mplargs = {}
+        if 'label' not in mplargs:
+            mplargs.update({'label': self.label_from_info(self.info)})
 
-            energies, intensity = self.sample_grid(npts, xmin=xmin, xmax=xmax,
-                                                   width=width,
-                                                   smearing=smearing)
-            ax.plot(energies, intensity, **mplargs)
-
-        return ax
+        energies, intensity = self.sample_grid(npts, xmin=xmin, xmax=xmax,
+                                               width=width,
+                                               smearing=smearing)
+        griddos = GridDOSData(energies, intensity)
+        return griddos.plot_dos(ax=ax, show=show, filename=filename,
+                                mplargs=mplargs)
 
     @staticmethod
     def label_from_info(info: Dict[str, str]):
