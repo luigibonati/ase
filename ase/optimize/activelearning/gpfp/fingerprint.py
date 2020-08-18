@@ -121,7 +121,8 @@ class OganovFP(Fingerprint):
     def set_atoms(self, atoms):
         ''' Set new atoms and initialize '''
 
-        self.atoms = atoms
+        self.atoms = atoms.copy()
+        self.atoms.wrap()
         self.initialize()
         self.extend_positions()
         self.update()
@@ -485,7 +486,8 @@ class RadialAngularFP(OganovFP):
     def set_atoms(self, atoms):
         ''' Set new atoms and initialize '''
 
-        self.atoms = atoms
+        self.atoms = atoms.copy()
+        self.atoms.wrap()
         self.initialize()
         self.extend_positions()
         self.set_angles()
@@ -573,8 +575,8 @@ class RadialAngularFP(OganovFP):
                     self.adm / self.edm)
 
             # Take care of numerical errors:
-            args = np.where(args >= 1.0, 1.0 - 1e-9, args)
-            args = np.where(args <= -1.0, -1.0 + 1e-9, args)
+            args = np.where(args >= 1.0, 1.0 - 1e-12, args)
+            args = np.where(args <= -1.0, -1.0 + 1e-12, args)
 
             self.fcij = self.cutoff_function(self.adm)
             self.fcjk = self.cutoff_function(self.edm)
@@ -880,7 +882,7 @@ class RadialAngularFP_RQ(RadialAngularFP):
         '''
 
         default_parameters = {'Rlimit': 4.0,
-                              'ascale': 0.2,
+                              'ascale': 0.4,
                               'Na': 100,
                               'aweight': 1.0,
                               'alpha': 0.5}
