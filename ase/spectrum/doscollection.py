@@ -90,7 +90,7 @@ class DOSCollection(collections.abc.Sequence):
         all_labels = [DOSData.label_from_info(data.info) for data in self]
 
         with SimplePlottingAxes(ax=ax, show=show, filename=filename) as ax:
-            all_lines = ax.plot(energies, all_y.T, **mplargs)
+            all_lines = ax.plot(energies, np.asarray(all_y).T, **mplargs)
             for line, label in zip(all_lines, all_labels):
                 line.set_label(label)
             ax.legend()
@@ -107,7 +107,7 @@ class DOSCollection(collections.abc.Sequence):
                     padding: float = 3,
                     width: float = 0.1,
                     smearing: str = 'Gauss',
-                    ) -> Tuple[Sequence[float], np.ndarray]:
+                    ) -> 'GridDOSCollection':
         """Sample the DOS data on an evenly-spaced energy grid
 
         Args:
@@ -444,7 +444,7 @@ class GridDOSCollection(DOSCollection):
     def from_data(cls,
                   energies: Sequence[float],
                   weights: Sequence[Sequence[float]],
-                  info: Sequence[Info] = None) -> 'DOSCollection':
+                  info: Sequence[Info] = None) -> 'GridDOSCollection':
         """Create a GridDOSCollection from data with a common set of energies
 
         This convenience method may also be more efficient as it limits
