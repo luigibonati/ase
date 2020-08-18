@@ -656,18 +656,19 @@ class Siesta(FileIOCalculator):
         # no spin. SIESTA default is FM initialization, if the
         # block is not written, but  we must conform to the
         # atoms object.
-        if self['spin'] != 'non-polarized':
+        if magmoms is not None:
             if len(magmoms) == 0:
                 f.write('#Empty block forces ASE initialization.\n')
 
             f.write('%block DM.InitSpin\n')
-            if len(magmoms) != 0:
+            if len(magmoms) != 0 and isinstance(magmoms[0], np.ndarray):
                 for n, M in enumerate(magmoms):
-                    if isinstance(M, np.ndarray):
+                    if M[0] != 0:
                         f.write('    %d %.14f %.14f %.14f \n' % (n + 1, M[0], M[1], M[2]))
-                    else:
-                        if M != 0:
-                            f.write('    %d %.14f \n' % (n + 1, M))
+            elif len(magmoms) != 0 and isinstance(magmoms[0], float):
+                for n, M in enumerate(magmoms):
+                    if M != 0:
+                        f.write('    %d %.14f \n' % (n + 1, M))
             f.write('%endblock DM.InitSpin\n')
             f.write('\n')
 
