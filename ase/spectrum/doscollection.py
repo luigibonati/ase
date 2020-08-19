@@ -17,7 +17,7 @@ class DOSCollection(collections.abc.Sequence):
     def __init__(self, dos_series: Iterable[DOSData]) -> None:
         self._data = list(dos_series)
 
-    def sample(self,
+    def _sample(self,
                energies: Sequence[float],
                width: float = 0.1,
                smearing: str = 'Gauss') -> np.ndarray:
@@ -40,12 +40,12 @@ class DOSCollection(collections.abc.Sequence):
 
         if len(self) == 0:
             raise IndexError("No data to sample")
-        return np.asarray([data.sample(energies,
+        return np.asarray([data._sample(energies,
                                        width=width, smearing=smearing)
                            for data in self])
 
-    def new_sample(self, energies, *args, **kwargs):
-        weights = self.sample(energies, *args, **kwargs)
+    def sample(self, energies, *args, **kwargs):
+        weights = self._sample(energies, *args, **kwargs)
         return GridDOSCollection.from_data(energies, weights)
 
     def plot(self,
@@ -138,7 +138,7 @@ class DOSCollection(collections.abc.Sequence):
             xmax = (max(max(data.get_energies()) for data in self)
                     + (padding * width))
         energies = np.linspace(xmin, xmax, npts)
-        return self.new_sample(energies, width=width, smearing=smearing)
+        return self.sample(energies, width=width, smearing=smearing)
 
     @classmethod
     def from_data(cls,

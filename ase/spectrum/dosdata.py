@@ -41,7 +41,7 @@ class DOSData(metaclass=ABCMeta):
     def copy(self) -> 'DOSData':
         """Returns a copy in which info dict can be safely mutated"""
 
-    def sample(self,
+    def _sample(self,
                energies: Sequence[float],
                width: float = 0.1,
                smearing: str = 'Gauss') -> np.ndarray:
@@ -66,8 +66,8 @@ class DOSData(metaclass=ABCMeta):
                         smearing=smearing))
         return weights_grid
 
-    def new_sample(self, energies, *args, **kwargs):
-        weights = self.sample(energies, *args, **kwargs)
+    def sample(self, energies, *args, **kwargs):
+        weights = self._sample(energies, *args, **kwargs)
         return GridDOSData(energies, weights)
 
     def _almost_equals(self, other: Any) -> bool:
@@ -134,7 +134,7 @@ class DOSData(metaclass=ABCMeta):
         if xmax is None:
             xmax = max(self.get_energies()) + (padding * width)
         energies = np.linspace(xmin, xmax, npts)
-        return self.new_sample(energies, width=width, smearing=smearing)
+        return self.sample(energies, width=width, smearing=smearing)
 
     def plot_dos(self,
                  npts: int = 1000,

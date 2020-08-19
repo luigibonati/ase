@@ -142,7 +142,7 @@ class TestRawDosData:
                              sampling_data_args_results)
     def test_sampling(self, data, args, result):
         dos = RawDOSData(data[0], data[1])
-        griddos = dos.new_sample(*args[:-1], **args[-1])
+        griddos = dos.sample(*args[:-1], **args[-1])
         weights = griddos.get_weights()
         assert np.allclose(weights, result)
 
@@ -165,7 +165,7 @@ class TestRawDosData:
         default_dos = sparse_dos.sample_grid(10)
         assert np.allclose(default_dos.get_energies(),
                            np.linspace(0.9, 5.3, 10))
-        dos0 = sparse_dos.new_sample(np.linspace(0.9, 5.3, 10))
+        dos0 = sparse_dos.sample(np.linspace(0.9, 5.3, 10))
         assert np.allclose(default_dos.get_weights(),
                            dos0.get_weights())
 
