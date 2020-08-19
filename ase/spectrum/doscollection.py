@@ -44,6 +44,10 @@ class DOSCollection(collections.abc.Sequence):
                                        width=width, smearing=smearing)
                            for data in self])
 
+    def new_sample(self, energies, *args, **kwargs):
+        weights = self.sample(energies, *args, **kwargs)
+        return GridDOSCollection.from_data(energies, weights)
+
     def plot(self,
              npts: int = 1000,
              xmin: float = None,
@@ -134,8 +138,7 @@ class DOSCollection(collections.abc.Sequence):
             xmax = (max(max(data.get_energies()) for data in self)
                     + (padding * width))
         energies = np.linspace(xmin, xmax, npts)
-        weights = self.sample(energies, width=width, smearing=smearing)
-        return GridDOSCollection.from_data(energies, weights)
+        return self.new_sample(energies, width=width, smearing=smearing)
 
     @classmethod
     def from_data(cls,

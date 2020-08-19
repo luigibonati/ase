@@ -66,6 +66,10 @@ class DOSData(metaclass=ABCMeta):
                         smearing=smearing))
         return weights_grid
 
+    def new_sample(self, energies, *args, **kwargs):
+        weights = self.sample(energies, *args, **kwargs)
+        return GridDOSData(energies, weights)
+
     def _almost_equals(self, other: Any) -> bool:
         """Compare with another DOSData for testing purposes"""
         if not isinstance(other, type(self)):
@@ -130,8 +134,7 @@ class DOSData(metaclass=ABCMeta):
         if xmax is None:
             xmax = max(self.get_energies()) + (padding * width)
         energies = np.linspace(xmin, xmax, npts)
-        weights = self.sample(energies, width=width, smearing=smearing)
-        return GridDOSData(energies, weights)
+        return self.new_sample(energies, width=width, smearing=smearing)
 
     def plot_dos(self,
                  npts: int = 1000,
