@@ -2,7 +2,7 @@
 # towards replacing ase.dft.dos and ase.dft.pdos
 from abc import ABCMeta, abstractmethod
 import warnings
-from typing import Any, Dict, Sequence, Tuple, TypeVar
+from typing import Any, Dict, Sequence, TypeVar
 
 import numpy as np
 from ase.utils.plotting import SimplePlottingAxes

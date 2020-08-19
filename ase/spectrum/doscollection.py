@@ -1,7 +1,7 @@
 import collections
 from functools import reduce, singledispatch
 from typing import (Any, Dict, Iterable, List, Optional,
-                    overload, Sequence, Tuple, TypeVar, Union)
+                    overload, Sequence, TypeVar, Union)
 
 import numpy as np
 from ase.spectrum.dosdata import DOSData, RawDOSData, GridDOSData, Info
