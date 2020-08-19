@@ -119,10 +119,12 @@ class TestDOSCollection:
                                           'smearing': 'Gauss'}])
     def test_sample(self, rawdos, another_rawdos, options):
         dc = MinimalDOSCollection([rawdos, another_rawdos])
-        sampled_data = dc.sample(**options)
+        newdc = dc.new_sample(**options)
+        sampled_data = newdc.get_all_weights()
         for i, data in enumerate((rawdos, another_rawdos)):
             # Check consistency with individual DOSData objects
-            assert np.allclose(sampled_data[i, :], data.sample(**options))
+            newdos = data.new_sample(**options)
+            assert np.allclose(sampled_data[i, :], newdos.get_weights())
             # Check we aren't trivially comparing zeros
             assert np.all(sampled_data)
 
