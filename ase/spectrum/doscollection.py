@@ -17,10 +17,10 @@ class DOSCollection(collections.abc.Sequence):
     def __init__(self, dos_series: Iterable[DOSData]) -> None:
         self._data = list(dos_series)
 
-    def _sample(self,
+    def sample(self,
                energies: Sequence[float],
                width: float = 0.1,
-               smearing: str = 'Gauss') -> np.ndarray:
+               smearing: str = 'Gauss') -> 'GridDOSCollection':
         """Sample the DOS data at chosen points, with broadening
 
         This samples the underlying DOS data in the same way as the .sample()
@@ -40,13 +40,10 @@ class DOSCollection(collections.abc.Sequence):
 
         if len(self) == 0:
             raise IndexError("No data to sample")
-        return np.asarray([data._sample(energies,
-                                       width=width, smearing=smearing)
-                           for data in self])
 
-    def sample(self, energies, *args, **kwargs):
-        weights = self._sample(energies, *args, **kwargs)
-        return GridDOSCollection.from_data(energies, weights)
+        return GridDOSCollection(
+            [data.sample(energies, width=width, smearing=smearing)
+             for data in self])
 
     def plot(self,
              npts: int = 1000,

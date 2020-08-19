@@ -41,10 +41,10 @@ class DOSData(metaclass=ABCMeta):
     def copy(self) -> 'DOSData':
         """Returns a copy in which info dict can be safely mutated"""
 
-    def _sample(self,
+    def sample(self,
                energies: Sequence[float],
                width: float = 0.1,
-               smearing: str = 'Gauss') -> np.ndarray:
+               smearing: str = 'Gauss') -> 'GridDOSData':
         """Sample the DOS data at chosen points, with broadening
 
         Args:
@@ -64,11 +64,7 @@ class DOSData(metaclass=ABCMeta):
                         np.asarray(self.get_energies())[:, np.newaxis],
                         width,
                         smearing=smearing))
-        return weights_grid
-
-    def sample(self, energies, *args, **kwargs):
-        weights = self._sample(energies, *args, **kwargs)
-        return GridDOSData(energies, weights)
+        return GridDOSData(energies, weights_grid)
 
     def _almost_equals(self, other: Any) -> bool:
         """Compare with another DOSData for testing purposes"""
@@ -362,7 +358,7 @@ class GridDOSData(GeneralDOSData):
     def sample(self,
                energies: Sequence[float],
                width: float = 0.1,
-               smearing: str = 'Gauss') -> np.ndarray:
+               smearing: str = 'Gauss') -> 'GridDOSData':
         self._check_spacing(width)
         return super().sample(energies=energies,
                               width=width, smearing=smearing)
