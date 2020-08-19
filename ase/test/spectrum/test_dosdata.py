@@ -142,7 +142,9 @@ class TestRawDosData:
                              sampling_data_args_results)
     def test_sampling(self, data, args, result):
         dos = RawDOSData(data[0], data[1])
-        assert np.allclose(dos.sample(*args[:-1], **args[-1]), result)
+        griddos = dos.new_sample(*args[:-1], **args[-1])
+        weights = griddos.get_weights()
+        assert np.allclose(weights, result)
 
         with pytest.raises(ValueError):
             dos.sample([1], smearing="Gauss's spherical cousin")
@@ -163,8 +165,9 @@ class TestRawDosData:
         default_dos = sparse_dos.sample_grid(10)
         assert np.allclose(default_dos.get_energies(),
                            np.linspace(0.9, 5.3, 10))
+        dos0 = sparse_dos.new_sample(np.linspace(0.9, 5.3, 10))
         assert np.allclose(default_dos.get_weights(),
-                           sparse_dos.sample(np.linspace(0.9, 5.3, 10)))
+                           dos0.get_weights())
 
     # Comparing plot outputs is hard, so we
     # - inspect the line values
@@ -220,10 +223,6 @@ class TestGridDosData:
         # energies and weights must be equal lengths
         with pytest.raises(ValueError):
             GridDOSData(np.linspace(0, 10, 11), np.zeros(10))
-
-        # energies must be evenly spaced
-        with pytest.raises(ValueError):
-            GridDOSData(np.linspace(0, 10, 11)**2, np.zeros(11))
 
     @pytest.fixture
     def dense_dos(self):
