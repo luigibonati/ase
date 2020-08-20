@@ -579,6 +579,38 @@ def format_generic_spacegroup_info() -> str:
     ])
 
 
+class CIFLoop:
+    def __init__(self):
+        self.names = []
+        self.formats = []
+        self.arrays = []
+
+    def add(self, name, fmt, array):
+        assert name.startswith('_')
+        self.names.append(name)
+        self.formats.append(fmt)
+        self.arrays.append(array)
+        if len(self.arrays[0]) != len(self.arrays[-1]):
+            raise ValueError('Loop data not equally long')
+
+    def tostring(self):
+        lines = []
+        append = lines.append
+        append('loop_')
+        for name in self.names:
+            append(f'  {name}')
+
+        template = '  ' + '  '.join(self.formats)
+
+        ncolumns = len(self.arrays)
+        nrows = len(self.arrays[0]) if ncolumns > 0 else 0
+        for row in range(nrows):
+            arraydata = [array[row] for array in self.arrays]
+            line = template.format(*arraydata)
+            append(line)
+        return '\n'.join(lines)
+
+
 def write_cif(fd, images, cif_format='default',
               wrap=True, labels=None, loop_keys=None) -> None:
     """Write *images* to CIF file.
