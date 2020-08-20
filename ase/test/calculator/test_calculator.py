@@ -3,7 +3,12 @@ import pytest
 from ase.calculators.calculator import Calculator
 
 
+
 def test_directory_and_label():
+    def normalize(path):
+        """Helper function to normalize path"""
+        return str(Path(path))
+
     calc = Calculator()
 
     assert calc.directory == '.'
@@ -30,15 +35,15 @@ def test_directory_and_label():
     calc = Calculator(directory=wdir,
                       label='label')
 
-    assert calc.directory == wdir
-    assert calc.label == wdir + '/' + 'label'
+    assert calc.directory == normalize(wdir)
+    assert calc.label == normalize(wdir) + '/label'
 
     # Test we can handle pathlib directories
     wdir = Path('/home/somedir')
     calc = Calculator(directory=wdir,
                       label='label')
-    assert calc.directory == str(wdir)
-    assert calc.label == str(wdir) + '/' + 'label'
+    assert calc.directory == normalize(wdir)
+    assert calc.label == normalize(wdir) + '/label'
 
     with pytest.raises(ValueError):
         calc = Calculator(directory=wdir,
@@ -47,9 +52,11 @@ def test_directory_and_label():
     # Passing in empty directories with directories in label should be OK
     for wdir in ['somedir', '/home/directory']:
         label = wdir + '/label'
+        expected_label = normalize(wdir) + '/label'
         calc = Calculator(directory='', label=label)
-        assert calc.label == label
-        assert calc.directory == wdir
+        assert calc.label == expected_label
+        assert calc.directory == normalize(wdir)
+
         calc = Calculator(directory='.', label=label)
-        assert calc.label == label
-        assert calc.directory == wdir
+        assert calc.label == expected_label
+        assert calc.directory == normalize(wdir)
