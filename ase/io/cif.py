@@ -585,7 +585,7 @@ class CIFLoop:
         self.formats = []
         self.arrays = []
 
-    def add(self, name, fmt, array):
+    def add(self, name, array, fmt):
         assert name.startswith('_')
         self.names.append(name)
         self.formats.append(fmt)
@@ -740,6 +740,7 @@ def write_cif(fd, images, cif_format='default',
 
         assert len(symbols) == len(coords) == len(
             occupancies) == len(included_labels) == len(extra_data)
+
 
         for symbol, pos, occ, label, ext in zip(
                 symbols, coords, occupancies, included_labels, extra_data):
