@@ -101,17 +101,9 @@ def parse_loop(lines: List[str]) -> Dict[str, List[CIFDataValue]]:
         else:
             line = ' '.join(tokens[1:])
             break
-    columns: Dict[str, List[CIFDataValue]] = dict([(header, [])
-                                                   for header in headers])
-    if len(columns) != len(headers):
-        seen = set()
-        duplicates = []
-        for header in headers:
-            if headers in seen:
-                duplicates.append(header)
-            else:
-                seen.add(header)
-        warnings.warn('Duplicated loop tags: {0}'.format(duplicates))
+
+    # Dict would be better.  But there can be repeated headers.
+    columns: List[List[CIFDataValue]] = [[] for header in headers]
 
     tokens = []
     while True:
@@ -138,14 +130,21 @@ def parse_loop(lines: List[str]) -> Dict[str, List[CIFDataValue]]:
         if len(tokens) < len(columns):
             continue
         if len(tokens) == len(headers):
-            for header, token in zip(headers, tokens):
-                columns[header].append(convert_value(token))
+            for i, token in enumerate(tokens):
+                columns[i].append(convert_value(token))
         else:
             warnings.warn('Wrong number of tokens: {0}'.format(tokens))
         tokens = []
     if line:
         lines.append(line)
-    return columns
+
+    columns_dict = {}
+    for i, header in enumerate(headers):
+        if header in columns_dict:
+            warnings.warn('Duplicated loop tags: {0}'.format(header))
+        columns_dict[header] = columns[i]
+    print(list(columns_dict))
+    return columns_dict
 
 
 def parse_items(lines: List[str], line: str) -> Dict[str, CIFData]:
