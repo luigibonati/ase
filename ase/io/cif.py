@@ -107,16 +107,11 @@ def parse_cif_loop_headers(lines: List[str]) -> Iterator[str]:
             return
 
 
-def parse_loop(lines: List[str]) -> Dict[str, List[CIFDataValue]]:
-    """Parse a CIF loop. Returns a dict with column tag names as keys
-    and a lists of the column content as values."""
-
-    headers = list(parse_cif_loop_headers(lines))
-    # Dict would be better.  But there can be repeated headers.
-    columns: List[List[CIFDataValue]] = [[] for header in headers]
+def parse_cif_loop_data(lines: List[str],
+                        ncolumns: int) -> List[List[CIFDataValue]]:
+    columns: List[List[CIFDataValue]] = [[] for _ in range(ncolumns)]
 
     tokens = []
-
     while lines:
         line = lines.pop().strip()
         lowerline = line.lower()
@@ -133,21 +128,35 @@ def parse_loop(lines: List[str]) -> Dict[str, List[CIFDataValue]]:
         if line.startswith(';'):
             moretokens = [parse_multiline_string(lines, line)]
         else:
-            if len(headers) == 1:
+            if ncolumns == 1:
                 moretokens = [line]
             else:
                 moretokens = shlex.split(line, posix=False)
 
         tokens += moretokens
-        if len(tokens) < len(headers):
+        if len(tokens) < ncolumns:
             continue
-        if len(tokens) == len(headers):
+        if len(tokens) == ncolumns:
             for i, token in enumerate(tokens):
                 columns[i].append(convert_value(token))
         else:
             warnings.warn('Wrong number {} of tokens, expected {}: {}'
                           .format(len(tokens), len(headers), tokens))
+
+        # (Due to continue statements we cannot move this to start of loop)
         tokens = []
+
+    return columns
+
+
+def parse_loop(lines: List[str]) -> Dict[str, List[CIFDataValue]]:
+    """Parse a CIF loop. Returns a dict with column tag names as keys
+    and a lists of the column content as values."""
+
+    headers = list(parse_cif_loop_headers(lines))
+    # Dict would be better.  But there can be repeated headers.
+
+    columns = parse_cif_loop_data(lines, len(headers))
 
     columns_dict = {}
     for i, header in enumerate(headers):
