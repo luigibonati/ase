@@ -88,62 +88,73 @@ def parse_singletag(lines: List[str], line: str) -> Tuple[str, CIFDataValue]:
     return key, convert_value(value)
 
 
+
+def parse_cif_loop_headers(lines: List[str]) -> Iterator[str]:
+    header_pattern = r'\s*(_\S*)'
+
+    while lines:
+        line = lines.pop()
+        match = re.match(header_pattern, line)
+
+        if match:
+            header = match.group(1).lower()
+            yield header
+        elif re.match(r'\s*#', line):
+            # XXX we should filter comments out already.
+            continue
+        else:
+            lines.append(line)  # 'undo' pop
+            return
+
+
 def parse_loop(lines: List[str]) -> Dict[str, List[CIFDataValue]]:
     """Parse a CIF loop. Returns a dict with column tag names as keys
     and a lists of the column content as values."""
-    headers: List[str] = []
-    line = lines.pop().strip()
-    while line.startswith('_'):
-        tokens = line.split()
-        headers.append(tokens[0].lower())
-        if len(tokens) == 1:
-            line = lines.pop().strip()
-        else:
-            line = ' '.join(tokens[1:])
-            break
 
+    headers = list(parse_cif_loop_headers(lines))
     # Dict would be better.  But there can be repeated headers.
     columns: List[List[CIFDataValue]] = [[] for header in headers]
 
     tokens = []
-    while True:
+
+    while lines:
+        line = lines.pop().strip()
         lowerline = line.lower()
         if (not line or
-            line.startswith('_') or
-            lowerline.startswith('data_') or
-            lowerline.startswith('loop_')):
+              line.startswith('_') or
+              lowerline.startswith('data_') or
+              lowerline.startswith('loop_')):
+            lines.append(line)
             break
+
         if line.startswith('#'):
-            line = lines.pop().strip()
             continue
+
         if line.startswith(';'):
-            t = [parse_multiline_string(lines, line)]
+            moretokens = [parse_multiline_string(lines, line)]
         else:
             if len(headers) == 1:
-                t = [line]
+                moretokens = [line]
             else:
-                t = shlex.split(line, posix=False)
+                moretokens = shlex.split(line, posix=False)
 
-        line = lines.pop().strip()
-
-        tokens.extend(t)
-        if len(tokens) < len(columns):
+        tokens += moretokens
+        if len(tokens) < len(headers):
             continue
         if len(tokens) == len(headers):
             for i, token in enumerate(tokens):
                 columns[i].append(convert_value(token))
         else:
-            warnings.warn('Wrong number of tokens: {0}'.format(tokens))
+            warnings.warn('Wrong number {} of tokens, expected {}: {}'
+                          .format(len(tokens), len(headers), tokens))
         tokens = []
-    if line:
-        lines.append(line)
 
     columns_dict = {}
     for i, header in enumerate(headers):
         if header in columns_dict:
             warnings.warn('Duplicated loop tags: {0}'.format(header))
-        columns_dict[header] = columns[i]
-    print(list(columns_dict))
+        else:
+            columns_dict[header] = columns[i]
     return columns_dict
 
 
