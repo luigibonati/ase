@@ -17,6 +17,11 @@ def test_parse_cifloop_warn_duplicate_header():
         parse_loop(['_hello', '_hello'])
 
 
+def test_parse_cifloop_incomplete():
+    with pytest.raises(RuntimeError):
+        parse_loop(['_spam', '_eggs', '1 2', '1'][::-1])
+
+
 def test_cifloop_roundtrip():
     loop = CIFLoop()
     loop.add('_potatoes', [2.5, 3.0, -1.0], '{:8.5f}')
