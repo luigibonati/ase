@@ -209,10 +209,10 @@ class OganovFP(Fingerprint):
         self.dm = np.linalg.norm(self.rm, axis=1)
 
         elementlist = list(self.elements)
-        self.prim_symbols = [elementlist.index(atom.symbol)
-                             for atom in self.atoms]
-        self.ext_symbols = [elementlist.index(atom.symbol)
-                            for atom in self.extendedatoms]
+        self.prim_symbols = [elementlist.index(s)
+                             for s in self.atoms.get_chemical_symbols()]
+        self.ext_symbols = [elementlist.index(s)
+                            for s in self.extendedatoms.get_chemical_symbols()]
         self.AB = np.array([(self.prim_symbols[i], self.ext_symbols[j])
                             for i, j in self.r_indices], dtype=int)
         return
