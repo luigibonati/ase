@@ -5,6 +5,12 @@ variables:
   OMP_NUM_THREADS: "1"
 
 
+stages:
+  - test
+  - paperwork
+  - deploy
+
+
 .database-configuration:
   variables:
     POSTGRES_DB: testase
@@ -71,11 +77,11 @@ main:
     - ase test --calculators asap,eam,ff,lj,morse,tip3p,tip4p --coverage --pytest --color=yes --durations 20
     - mypy --color-output -p ase
     - python -We:invalid -m compileall -f -q ase/
-    - mv ase/test/coverage-html .
-  coverage: '/TOTAL.+ ([0-9]+\.[0-9]+%)/'
+    - mv ase/test/coverage-html coverage-main
+    - mv ase/test/.coverage coverage-main/coverage.dat
   artifacts:
     paths:
-      - coverage-html/
+      - coverage-main/
     expire_in: 1 week
 
 
@@ -83,7 +89,13 @@ calculators-lite:
   image: registry.gitlab.com/ase/ase:ase-full-monty
   script:
     - pip install --no-deps --editable .
-    - ase test --calculators=auto calculator/test_ch4_energy.py --pytest --color=yes --durations=20
+    - ase test calculator/test_ch4_energy.py --calculators=auto --coverage --pytest --color=yes --durations=20
+    - mv ase/test/coverage-html coverage-calculators-lite
+    - mv ase/test/.coverage coverage-calculators-lite/coverage.dat
+  artifacts:
+    paths:
+      - coverage-calculators-lite/
+    expire_in: 1 week
 
 
 # Plan: Test as many calculators as possible as well as possible.
@@ -97,8 +109,14 @@ calculators:
   script:
     - pip install . --no-deps
     - ase info --calculators
-    - ase test calculator --calculators abinit,asap,cp2k,dftb,espresso,gpaw,lammpsrun,nwchem,octopus,siesta --pytest --color=yes --durations 20
+    - ase test calculator --calculators abinit,asap,cp2k,dftb,espresso,gpaw,lammpsrun,nwchem,octopus,siesta --coverage --pytest --color=yes --durations 20
+    - mv ase/test/coverage-html coverage-calculators
+    - mv ase/test/.coverage coverage-calculators/coverage.dat
   when: manual
+  artifacts:
+    paths:
+      - coverage-calculators/
+    expire_in: 1 week
 
 doc:
   image: registry.gitlab.com/ase/ase:ase-main
@@ -129,6 +147,7 @@ distribution-package:
     expire_in: 1 week
   when: manual
 
+
 # Publish code coverage data on web.
 #  * The deploy stage is specially recognized by gitlab
 #  * The jobname pages is specially recognized by gitlab
@@ -137,7 +156,7 @@ distribution-package:
 pages:
   stage: deploy
   dependencies:
-    - main
+    - coverage-combine
   script:
     - mv coverage-html public
   artifacts:
@@ -146,3 +165,22 @@ pages:
     expire_in: 2 weeks
   only:
     - master
+
+coverage-combine:
+  image: registry.gitlab.com/ase/ase:ase-main
+  stage: paperwork
+  dependencies:
+    - main
+    - calculators-lite
+  script:
+    - cd ase/test  # Next to .coveragerc and friends
+    - coverage combine ../../coverage-main/coverage.dat ../../coverage-calculators-lite/coverage.dat
+    - coverage report
+    - coverage html
+    - cd ../..
+    - mv ase/test/coverage-html .
+  coverage: '/TOTAL.+ ([0-9]+\.[0-9]+%)/'
+  artifacts:
+    paths:
+      - coverage-html
+    expire_in: 1 week

@@ -515,7 +515,7 @@ def write_lammps_data(fileobj, atoms, specorder=None, force_skew=False,
             # default, as done within ase <= v 3.19.1. I.e.,
             # molecules = np.arange(start=1, stop=len(atoms)+1, step=1, dtype=int)
             # However, according to LAMMPS default behavior,
-            molecules = np.zeros(len(atoms))
+            molecules = np.zeros(len(atoms), dtype=int)
             # which is what happens if one creates new atoms within LAMMPS
             # without explicitly taking care of the molecule id.
             # Quote from docs at https://lammps.sandia.gov/doc/read_data.html:
