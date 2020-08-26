@@ -56,6 +56,12 @@ class GaussianProcess():
         for pstring in params.keys():
             self.hyperparams[pstring] = params.get(pstring)
 
+        if 'ratio' in params.keys():
+            self.ratio = params.get('ratio')
+
+        if 'noisefactor' in params.keys():
+            self.noisefactor = params.get('noisefactor')
+
         self.kernel.set_params(params)
         self.noise = noise
 
@@ -280,9 +286,6 @@ class GaussianProcess():
         powered_results = np.power(10, result.x)
         for p, pstring in zip(powered_results, params_to_update):
             optimalparams[pstring] = p
-
-        if 'ratio' in params_to_update:
-            self.ratio = optimalparams.get('ratio')
 
         self.set_hyperparams(optimalparams, self.noise)
         print(self.hyperparams, "success: ", converged)
