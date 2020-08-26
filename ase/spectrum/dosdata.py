@@ -70,12 +70,11 @@ class DOSData(metaclass=ABCMeta):
         """Compare with another DOSData for testing purposes"""
         if not isinstance(other, type(self)):
             return False
-        elif not self.info == other.info:
+        if self.info != other.info:
             return False
-        elif not np.allclose(self.get_weights(), other.get_weights()):
+        if not np.allclose(self.get_weights(), other.get_weights()):
             return False
-        else:
-            return np.allclose(self.get_energies(), other.get_energies())
+        return np.allclose(self.get_energies(), other.get_energies())
 
     @staticmethod
     def _delta(x: np.ndarray,
