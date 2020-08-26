@@ -73,6 +73,15 @@ class NEBMethod(ABC):
     def __init__(self, neb):
         self.neb = neb
 
+    @abstractmethod
+    def get_tangent(self, state, spring1, spring2, i):
+        ...
+
+    @abstractmethod
+    def add_image_force(self, state, tangential_force, tangent, imgforce,
+                        spring1, spring2, i):
+        ...
+
 
 class ImprovedTangent(NEBMethod):
     '''Tangent estimates are improved according to Eqs. 8-11 in paper I.
@@ -81,9 +90,9 @@ class ImprovedTangent(NEBMethod):
     def get_tangent(self, state, spring1, spring2, i):
         energies = state.energies
         if energies[i + 1] > energies[i] > energies[i - 1]:
-            tangent = t2.copy()
+            tangent = spring2.t.copy()
         elif energies[i + 1] < energies[i] < energies[i - 1]:
-            tangent = t1.copy()
+            tangent = spring1.t.copy()
         else:
             deltavmax = max(abs(energies[i + 1] - energies[i]),
                             abs(energies[i - 1] - energies[i]))
@@ -121,9 +130,11 @@ class ASENEB(NEBMethod):
     def add_image_force(self, state, tangential_force, tangent, imgforce,
                         spring1, spring2, i):
         tangent_mag = np.vdot(tangent, tangent)  # Magnitude for normalizing
-        imgforce -= tangential_force / tangent_mag * tangent
-        imgforce -= np.vdot(spring1.t * spring1.k -
-                            spring2.t * spring2.k, tangent) / tangent_mag * tangent
+        factor = tangent / tangent_mag
+        imgforce -= tangential_force * factor
+        imgforce -= np.vdot(
+            spring1.t * spring1.k -
+            spring2.t * spring2.k, tangent) * factor
 
 
 class EB(NEBMethod):
@@ -387,7 +398,9 @@ class NEB:
                 else:
                     imgforce -= 2 * tangential_force * tangent
             else:
-                self.neb_method.add_image_force(state, tangential_force, tangent, imgforce, spring1, spring2, i)
+                self.neb_method.add_image_force(state, tangential_force,
+                                                tangent, imgforce, spring1,
+                                                spring2, i)
 
             spring1 = spring2
         return forces.reshape((-1, 3))
