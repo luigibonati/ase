@@ -12,9 +12,8 @@ from ase.io import read
 from ase.optimize import MDMin
 from ase.geometry import find_mic
 from ase.io.trajectory import Trajectory
-from ase.utils import deprecated
+from ase.utils import lazyproperty, deprecated
 from ase.utils.forcecurve import fit_images
-from ase.utils import lazyproperty
 
 
 class Spring:
