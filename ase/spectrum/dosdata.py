@@ -293,11 +293,11 @@ class RawDOSData(GeneralDOSData):
         Returns:
             Plotting axes. If "ax" was set, this is the same object.
         """
+
+        if mplargs is None:
+            mplargs = {}
+
         with SimplePlottingAxes(ax=ax, show=show, filename=filename) as ax:
-
-            if mplargs is None:
-                mplargs = {}
-
             ax.vlines(self.get_energies(), 0, self.get_weights(), **mplargs)
 
         return ax
