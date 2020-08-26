@@ -64,7 +64,7 @@ class DOSData(metaclass=ABCMeta):
                         np.asarray(self.get_energies())[:, np.newaxis],
                         width,
                         smearing=smearing))
-        return GridDOSData(energies, weights_grid)
+        return GridDOSData(energies, weights_grid, info=self.info.copy())
 
     def _almost_equals(self, other: Any) -> bool:
         """Compare with another DOSData for testing purposes"""
