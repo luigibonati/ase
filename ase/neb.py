@@ -174,7 +174,7 @@ def get_neb_method(neb, method):
         raise ValueError(f'Bad method: {method}')
 
 
-class NEB:
+class BaseNEB:
     def __init__(self, images, k=0.1, climb=False, parallel=False,
                  remove_rotation_and_translation=False, world=None,
                  method='aseneb'):
@@ -433,7 +433,7 @@ class NEB:
                 yield atoms
 
 
-class DyNEB(NEB):
+class DyNEB(BaseNEB):
     def __init__(self, images, k=0.1, fmax=0.05, climb=False, parallel=False,
                  remove_rotation_and_translation=False, world=None,
                  dynamic_relaxation=True, scale_fmax=0., method='aseneb'):
@@ -463,9 +463,10 @@ class DyNEB(NEB):
             an image and the image with the highest potential energy. This
             keyword determines how rapidly the convergence criteria are scaled.
         """
-        NEB.__init__(self, images, k=0.1, climb=False, parallel=False,
-                     remove_rotation_and_translation=False, world=None,
-                     method='aseneb')
+        super().__init__(
+            images, k=0.1, climb=False, parallel=False,
+            remove_rotation_and_translation=False, world=None,
+            method='aseneb')
         self.fmax = fmax
         self.dynamic_relaxation = dynamic_relaxation
         self.scale_fmax = scale_fmax
@@ -507,7 +508,7 @@ class DyNEB(NEB):
         return fmax_images
 
     def get_forces(self):
-        forces = NEB.get_forces(self)
+        forces = super().get_forces()
         if self.dynamic_relaxation:
             '''Get NEB forces and scale the convergence criteria to focus
                optimization on saddle point region. The keyword scale_fmax
@@ -533,6 +534,10 @@ class DyNEB(NEB):
                         # Set forces to zero before they are sent to optimizer.
                         forces[n1:n2, :] = 0
         return forces
+
+
+class NEB(BaseNEB):
+    pass
 
 
 class IDPP(Calculator):
@@ -582,7 +587,7 @@ class SingleCalculatorNEB(NEB):
             # this is a filename
             images = read(images, index=index)
 
-        NEB.__init__(self, images, k, climb, False)
+        super().__init__(images, k, climb, False)
         self.calculators = [None] * self.nimages
         self.energies_ok = False
         self.first = True
@@ -624,7 +629,7 @@ class SingleCalculatorNEB(NEB):
         if self.energies_ok:
             # restore calculators
             self.set_calculators(self.calculators[1:-1])
-        NEB.set_positions(self, positions)
+        super().set_positions(positions)
 
     def get_calculators(self):
         """Return the original calculators."""
@@ -692,7 +697,7 @@ class SingleCalculatorNEB(NEB):
 
     def get_forces(self):
         self.get_energies_and_forces()
-        return NEB.get_forces(self)
+        return super().get_forces()
 
     def n(self):
         return self.nimages
