@@ -179,44 +179,6 @@ class BaseNEB:
     def __init__(self, images, k=0.1, climb=False, parallel=False,
                  remove_rotation_and_translation=False, world=None,
                  method='aseneb'):
-        """Nudged elastic band.
-
-        Paper I:
-
-            G. Henkelman and H. Jonsson, Chem. Phys, 113, 9978 (2000).
-            https://doi.org/10.1063/1.1323224
-
-        Paper II:
-
-            G. Henkelman, B. P. Uberuaga, and H. Jonsson, Chem. Phys,
-            113, 9901 (2000).
-            https://doi.org/10.1063/1.1329672
-
-        Paper III:
-
-            E. L. Kolsbjerg, M. N. Groves, and B. Hammer, J. Chem. Phys,
-            145, 094107 (2016)
-            https://doi.org/10.1063/1.4961868
-
-        images: list of Atoms objects
-            Images defining path from initial to final state.
-        k: float or list of floats
-            Spring constant(s) in eV/Ang.  One number or one for each spring.
-        climb: bool
-            Use a climbing image (default is no climbing image).
-        parallel: bool
-            Distribute images over processors.
-        remove_rotation_and_translation: bool
-            TRUE actives NEB-TR for removing translation and
-            rotation during NEB. By default applied non-periodic
-            systems
-        method: string of method
-            Choice betweeen three method:
-
-            * aseneb: standard ase NEB implementation
-            * improvedtangent: Paper I NEB implementation
-            * eb: Paper III full spring force implementation
-        """
         self.images = images
         self.climb = climb
         self.parallel = parallel
@@ -543,10 +505,57 @@ def _check_deprecation(keyword, kwargs):
                       'Please use the DyNEB class instead for dynamic '
                       'relaxation', FutureWarning)
 
-class NEB(BaseNEB):
+
+class NEB(DyNEB):
     def __init__(self, *args, **kwargs):
+        """Nudged elastic band.
+
+        Paper I:
+
+            G. Henkelman and H. Jonsson, Chem. Phys, 113, 9978 (2000).
+            https://doi.org/10.1063/1.1323224
+
+        Paper II:
+
+            G. Henkelman, B. P. Uberuaga, and H. Jonsson, Chem. Phys,
+            113, 9901 (2000).
+            https://doi.org/10.1063/1.1329672
+
+        Paper III:
+
+            E. L. Kolsbjerg, M. N. Groves, and B. Hammer, J. Chem. Phys,
+            145, 094107 (2016)
+            https://doi.org/10.1063/1.4961868
+
+        images: list of Atoms objects
+            Images defining path from initial to final state.
+        k: float or list of floats
+            Spring constant(s) in eV/Ang.  One number or one for each spring.
+        climb: bool
+            Use a climbing image (default is no climbing image).
+        parallel: bool
+            Distribute images over processors.
+        remove_rotation_and_translation: bool
+            TRUE actives NEB-TR for removing translation and
+            rotation during NEB. By default applied non-periodic
+            systems
+        method: string of method
+            Choice betweeen three method:
+
+            * aseneb: standard ase NEB implementation
+            * improvedtangent: Paper I NEB implementation
+            * eb: Paper III full spring force implementation
+        """
         for keyword in 'dynamix_relaxation', 'fmax':
             _check_deprecation(keyword, kwargs)
+        # Only reason for separating BaseNEB/NEB is that we are
+        # deprecating dynamic_relaxation.
+        #
+        # We can turn BaseNEB into NEB once we get rid of the
+        # deprecated variables.
+        #
+        # Then we can also move DyNEB into ase.dyneb without cyclic imports.
+        # We can do that in ase-3.22 or 3.23.
         super().__init__(*args, **kwargs)
 
 
