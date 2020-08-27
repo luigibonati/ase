@@ -213,7 +213,8 @@ where ``fmax`` must be identical to the ``fmax`` of the optimizer.
 
     Dynamic optimization only works efficiently in series, and will not result
     in reduced computational time when resources are parallelized over images.
-    ``dynamic_relaxation=False``reverts to the default NEB implementation.
+    ``dynamic_relaxation=False`` reverts to the default NEB implementation.
+
 
 The saddle point is the important result of an NEB calculation, and the other
 interior images are typically not used in subsequent analyses. The
