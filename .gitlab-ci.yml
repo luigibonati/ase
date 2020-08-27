@@ -107,7 +107,7 @@ calculators-lite:
 calculators:
   image: registry.gitlab.com/ase/ase:ase-full-monty
   script:
-    - pip install . --no-deps
+    - pip install --no-deps --editable .
     - ase info --calculators
     - ase test calculator --calculators abinit,asap,cp2k,dftb,espresso,gpaw,lammpsrun,nwchem,octopus,siesta --coverage --pytest --color=yes --durations 20
     - mv ase/test/coverage-html coverage-calculators
