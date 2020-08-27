@@ -201,19 +201,20 @@ Scaled and dynamic optimizations
 The convergence of images is often non-uniform, and a large fraction of
 computational resources can be spent calculating images that are below
 the convergence criterion. This can be avoided with a dynamic optimization
-method that carefully monitors the convergence of each image.
-Dynamic optimization is implemented as a subclass of the NEB method::
+method that monitors the convergence of each image. Dynamic optimization
+is implemented as a subclass of the NEB method::
 
-  from ase.dyneb import DyNEB
-  neb = DyNEB(images, fmax=0.05, dynamic_relaxation=True)
+    from ase.dyneb import DyNEB
+    neb = DyNEB(images, fmax=0.05, dynamic_relaxation=True)
 
+>>>>>>> refs/remotes/origin/split-neb-methods
 where ``fmax`` must be identical to the ``fmax`` of the optimizer.
 
 .. note::
 
-  Dynamic optimization only works efficiently in series, and will not result
-  in reduced computational time when resources are parallelized over images.
-  ``dynamic_relaxation=False`` reverts to the default NEB implementation.
+    Dynamic optimization only works efficiently in series, and will not result
+    in reduced computational time when resources are parallelized over images.
+    ``dynamic_relaxation=False`` reverts to the default NEB implementation.
 
 The saddle point is the important result of an NEB calculation, and the other
 interior images are typically not used in subsequent analyses. The
@@ -230,7 +231,7 @@ convergence scaling is controlled by the keyword ``scale_fmax``.
 .. note::
 
   A low scaling factor (``scale_fmax=1-3``) is often enough to significantly
-  reduce the number of force calls needed for convergence.
+  reduce the number of force calls required for convergence.
 
 Parallelization over images
 ===========================
