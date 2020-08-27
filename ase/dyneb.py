@@ -1,3 +1,3 @@
 from ase.neb import DyNEB
 
-__all__ = ['DyNEB']
+all = ['__DyNEB__']
