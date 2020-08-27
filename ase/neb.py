@@ -536,8 +536,17 @@ class DyNEB(BaseNEB):
         return forces
 
 
+def _check_deprecation(keyword, kwargs):
+    if keyword in kwargs:
+        warnings.warn(f'Keyword {keyword} of NEB is deprecated.  '
+                      'Please use the DyNEB class instead for dynamic '
+                      'relaxation', FutureWarning)
+
 class NEB(BaseNEB):
-    pass
+    def __init__(self, *args, **kwargs):
+        for keyword in 'dynamix_relaxation', 'fmax':
+            _check_deprecation(keyword, kwargs)
+        super().__init__(*args, **kwargs)
 
 
 class IDPP(Calculator):
