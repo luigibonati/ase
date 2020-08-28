@@ -15,6 +15,7 @@ from ase.parallel import paropen
 from ase.spacegroup import Spacegroup
 from ase.geometry.cell import cellpar_to_cell
 from ase.constraints import FixAtoms, FixedPlane, FixedLine, FixCartesian
+from ase.utils import atoms_to_spglib_cell
 
 # independent unit management included here:
 # When high accuracy is required, this allows to easily pin down
@@ -636,7 +637,7 @@ def read_castep_cell(fd, index=None, calculator_args={}, find_spg=False,
             spglib = None
 
         if spglib is not None:
-            symmd = spglib.get_symmetry_dataset(atoms)
+            symmd = spglib.get_symmetry_dataset(atoms_to_spglib_cell(atoms))
             atoms_spg = Spacegroup(int(symmd['number']))
             atoms.info['spacegroup'] = atoms_spg
 
