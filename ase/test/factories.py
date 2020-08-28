@@ -134,6 +134,11 @@ class DFTBFactory:
     def __init__(self, executable):
         self.executable = executable
 
+    def version(self):
+        stdout = read_stdout([self.executable])
+        match = re.search(r'DFTB+ release\s*(\S+)', stdout)
+        return match.group(1)
+
     def calc(self, **kwargs):
         from ase.calculators.dftb import Dftb
         # XXX datafiles should be imported from datafiles project
@@ -151,6 +156,17 @@ class DFTBFactory:
         return cls(config.executables['dftb'])
 
 
+def read_stdout():
+    import tempfile
+    from subprocess import Popen, PIPE
+    with tempfile.TemporaryDirectory() as directory:
+        proc = Popen([self.executable], stdout=PIPE, stderr=PIPE,
+                     cwd=directory, encoding='ascii')
+        stdout, _ = proc.communicate()
+        # Exit code will be != 0 because there isn't an input file
+    return stdout
+
+
 @factory('espresso')
 class EspressoFactory:
     def __init__(self, executable, pseudo_dir):
@@ -162,13 +178,7 @@ class EspressoFactory:
         return dict(ecutwfc=300 / Ry)
 
     def version(self):
-        import tempfile
-        from subprocess import Popen, PIPE
-        with tempfile.TemporaryDirectory() as directory:
-            proc = Popen([self.executable], stdout=PIPE, stderr=PIPE,
-                         cwd=directory, encoding='ascii')
-            stdout, _ = proc.communicate()
-            # Exit code will be != 0 because there isn't an input file
+        stdout = read_stdout([self.executable])
         match = re.match(r'\s*Program PWSCF\s*(\S+)', stdout, re.M)
         assert match is not None
         return match.group(1)
