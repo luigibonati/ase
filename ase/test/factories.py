@@ -1,4 +1,5 @@
 import os
+import re
 from pathlib import Path
 from typing import Mapping
 import configparser
@@ -160,6 +161,18 @@ class EspressoFactory:
         from ase.units import Ry
         return dict(ecutwfc=300 / Ry)
 
+    def version(self):
+        import tempfile
+        from subprocess import Popen, PIPE
+        with tempfile.TemporaryDirectory() as directory:
+            proc = Popen([self.executable], stdout=PIPE, stderr=PIPE,
+                         cwd=directory, encoding='ascii')
+            stdout, _ = proc.communicate()
+            # Exit code will be != 0 because there isn't an input file
+        match = re.match(r'\s*Program PWSCF\s*(\S+)', stdout, re.M)
+        assert match is not None
+        return match.group(1)
+
     def calc(self, **kwargs):
         from ase.calculators.espresso import Espresso
         command = '{} -in PREFIX.pwi > PREFIX.pwo'.format(self.executable)
@@ -258,7 +271,11 @@ class SiestaFactory:
 
     def version(self):
         from ase.calculators.siesta.siesta import get_siesta_version
-        return get_siesta_version(self.executable)
+        full_ver = get_siesta_version(self.executable)
+        m = re.match(r'siesta-(\S+)', full_ver, flags=re.I)
+        if m:
+            return m.group(1)
+        return full_ver
 
     def calc(self, **kwargs):
         from ase.calculators.siesta import Siesta
