@@ -54,6 +54,10 @@ class AbinitFactory:
         self.executable = executable
         self.pp_paths = pp_paths
 
+    def version(self):
+        from ase.calculators.abinit import get_abinit_version
+        return get_abinit_version(self.executable)
+
     def _base_kw(self):
         command = '{} < PREFIX.files > PREFIX.log'.format(self.executable)
         return dict(command=command,
@@ -82,6 +86,10 @@ class AsapFactory:
         from asap3 import EMT
         return EMT(**kwargs)
 
+    def version(self):
+        import asap3
+        return asap3.__version__
+
     @classmethod
     def fromconfig(cls, config):
         # XXXX TODO Clean this up.  Copy of GPAW.
@@ -97,6 +105,19 @@ class AsapFactory:
 class CP2KFactory:
     def __init__(self, executable):
         self.executable = executable
+
+    def version(self):
+        import re
+        from ase.calculators.cp2k import Cp2kShell
+        shell = Cp2kShell(self.executable, debug=False)
+        shell.send('VERSION')
+        msg = shell.recv()
+        m = re.match(r'.+?:\s*(\S+)', msg)
+        if m is None:
+            raise RuntimeError('Cannot recognize cp2k shell version from "{}"'
+                               .format(msg))
+        version = m.group(1)
+        return version
 
     def calc(self, **kwargs):
         from ase.calculators.cp2k import CP2K
@@ -170,6 +191,10 @@ class GPAWFactory:
         from gpaw import GPAW
         return GPAW(**kwargs)
 
+    def version(self):
+        import gpaw
+        return gpaw.__version__
+
     @classmethod
     def fromconfig(cls, config):
         import importlib
@@ -230,6 +255,10 @@ class SiestaFactory:
     def __init__(self, executable, pseudo_path):
         self.executable = executable
         self.pseudo_path = pseudo_path
+
+    def version(self):
+        from ase.calculators.siesta.siesta import get_siesta_version
+        return get_siesta_version(self.executable)
 
     def calc(self, **kwargs):
         from ase.calculators.siesta import Siesta

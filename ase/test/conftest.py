@@ -89,8 +89,16 @@ def calculators_header(config):
                     configtokens.append(f'{varname}={variable}')
                 configinfo = ', '.join(configtokens)
 
-        run = '[x]' if factories.enabled(name) else '[ ]'
-        line = f'  {run} {name:10} {configinfo}'
+        enabled = factories.enabled(name)
+        if enabled:
+            if hasattr(factory, 'version'):
+                version = factory.version()
+            else:
+                version = 'ver=?'
+            name = f'{name}-{version}'
+
+        run = '[x]' if enabled else '[ ]'
+        line = f'  {run} {name:16} {configinfo}'
         yield line
 
     yield ''
