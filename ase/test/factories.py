@@ -148,10 +148,13 @@ class DFTBFactory:
         return cls(config.executables['dftb'])
 
 
-def read_stdout(args):
+def read_stdout(args, createfile=None):
     import tempfile
     from subprocess import Popen, PIPE
     with tempfile.TemporaryDirectory() as directory:
+        if createfile is not None:
+            path = Path(directory) / createfile
+            path.touch()
         proc = Popen(args, stdout=PIPE, stderr=PIPE,
                      cwd=directory, encoding='ascii')
         stdout, _ = proc.communicate()
@@ -260,6 +263,11 @@ class OctopusFactory:
     def __init__(self, executable):
         self.executable = executable
 
+    def version(self):
+        stdout = read_stdout([self.executable, '--version'])
+        match = re.match(r'octopus\s*(.+)', stdout)
+        return match.group(1)
+
     def calc(self, **kwargs):
         from ase.calculators.octopus import Octopus
         command = f'{self.executable} > stdout.log'
@@ -302,6 +310,13 @@ class SiestaFactory:
 class NWChemFactory:
     def __init__(self, executable):
         self.executable = executable
+
+    def version(self):
+        stdout = read_stdout([self.executable], createfile='nwchem.nw')
+        match = re.search(
+            r'Northwest Computational Chemistry Package \(NWChem\) (\S+)',
+            stdout, re.M)
+        return match.group(1)
 
     def calc(self, **kwargs):
         from ase.calculators.nwchem import NWChem
