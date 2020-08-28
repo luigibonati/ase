@@ -108,19 +108,9 @@ class CP2KFactory:
         self.executable = executable
 
     def version(self):
-        # XXX Not working on fullmonty
-        import re
         from ase.calculators.cp2k import Cp2kShell
         shell = Cp2kShell(self.executable, debug=False)
         return shell.version
-        #shell.send('VERSION')
-        #msg = shell.recv()
-        m = re.match(r'.+?:\s*(\S+)', msg)
-        if m is None:
-            raise RuntimeError('Cannot recognize cp2k shell version from "{}"'
-                               .format(msg))
-        version = m.group(1)
-        return version
 
     def calc(self, **kwargs):
         from ase.calculators.cp2k import CP2K
@@ -250,6 +240,11 @@ class EMTFactory(BuiltinCalculatorFactory):
 class LammpsRunFactory:
     def __init__(self, executable):
         self.executable = executable
+
+    def version(self):
+        stdout = read_stdout([self.executable])
+        match = re.match(r'LAMMPS\s*\((.+?)\)', stdout, re.M)
+        return match.group(1)
 
     def calc(self, **kwargs):
         from ase.calculators.lammpsrun import LAMMPS
