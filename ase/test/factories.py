@@ -108,11 +108,13 @@ class CP2KFactory:
         self.executable = executable
 
     def version(self):
+        # XXX Not working on fullmonty
         import re
         from ase.calculators.cp2k import Cp2kShell
         shell = Cp2kShell(self.executable, debug=False)
-        shell.send('VERSION')
-        msg = shell.recv()
+        return shell.version
+        #shell.send('VERSION')
+        #msg = shell.recv()
         m = re.match(r'.+?:\s*(\S+)', msg)
         if m is None:
             raise RuntimeError('Cannot recognize cp2k shell version from "{}"'
@@ -136,7 +138,7 @@ class DFTBFactory:
 
     def version(self):
         stdout = read_stdout([self.executable])
-        match = re.search(r'DFTB+ release\s*(\S+)', stdout)
+        match = re.search(r'DFTB\+ release\s*(\S+)', stdout, re.M)
         return match.group(1)
 
     def calc(self, **kwargs):
@@ -156,11 +158,11 @@ class DFTBFactory:
         return cls(config.executables['dftb'])
 
 
-def read_stdout():
+def read_stdout(args):
     import tempfile
     from subprocess import Popen, PIPE
     with tempfile.TemporaryDirectory() as directory:
-        proc = Popen([self.executable], stdout=PIPE, stderr=PIPE,
+        proc = Popen(args, stdout=PIPE, stderr=PIPE,
                      cwd=directory, encoding='ascii')
         stdout, _ = proc.communicate()
         # Exit code will be != 0 because there isn't an input file
