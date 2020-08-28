@@ -91,10 +91,12 @@ def calculators_header(config):
 
         enabled = factories.enabled(name)
         if enabled:
+            version = '<unknown version>'
             if hasattr(factory, 'version'):
-                version = factory.version()
-            else:
-                version = 'ver=?'
+                try:
+                    version = factory.version()
+                except Exception as ex:
+                    pass
             name = f'{name}-{version}'
 
         run = '[x]' if enabled else '[ ]'
