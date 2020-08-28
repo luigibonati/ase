@@ -113,7 +113,8 @@ class NEB:
         self.real_forces = None  # ndarray of shape (nimages, natom, 3)
         self.energies = None  # ndarray of shape (nimages,)
 
-    def interpolate(self, method='linear', mic=False, interpolate_cell=False, use_scaled_coord=False):
+    def interpolate(self, method='linear', mic=False, interpolate_cell=False,
+                    use_scaled_coord=False):
         """Interpolate the positions of the interior images between the
         initial state (image 0) and final state (image -1).
 
@@ -577,14 +578,16 @@ class SingleCalculatorNEB(NEB):
         return self
 
 
-def interpolate(images, mic=False, interpolate_cell=False, use_scaled_coord=False):
+def interpolate(images, mic=False, interpolate_cell=False,
+                use_scaled_coord=False):
     """Given a list of images, linearly interpolate the positions of the
     interior images.
 
     mic: bool
          Map movement into the unit cell by using the minimum image convention.
     interpolate_cell: bool
-         Interpolate the three cell vectors linearly just like the atomic positions.
+         Interpolate the three cell vectors linearly just like the atomic
+         positions.
     use_scaled_coord: bool
          Use scaled/internal/fractional coordinates instead of real ones for the
          interpolation.
@@ -605,7 +608,7 @@ def interpolate(images, mic=False, interpolate_cell=False, use_scaled_coord=Fals
         cellDiff = cell2 - cell1
         cellDiff /= (len(images) - 1.0)
     for i in range(1, len(images) - 1):
-        #first the new cell, otherwise scaled positions are wrong
+        # first the new cell, otherwise scaled positions are wrong
         if interpolate_cell:
             images[i].set_cell(cell1 + i * cellDiff)
         newPos = pos1 + i * d
