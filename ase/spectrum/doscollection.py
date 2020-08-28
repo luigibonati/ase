@@ -76,10 +76,6 @@ class DOSCollection(collections.abc.Sequence):
         Returns:
             Plotting axes. If "ax" was set, this is the same object.
         """
-
-        if mplargs is None:
-            mplargs = {}
-
         dos = self.sample_grid(npts,
                                xmin=xmin, xmax=xmax,
                                width=width, smearing=smearing)
@@ -90,15 +86,30 @@ class DOSCollection(collections.abc.Sequence):
         all_labels = [DOSData.label_from_info(data.info) for data in self]
 
         with SimplePlottingAxes(ax=ax, show=show, filename=filename) as ax:
-            all_lines = ax.plot(energies, np.asarray(all_y).T, **mplargs)
-            for line, label in zip(all_lines, all_labels):
-                line.set_label(label)
-            ax.legend()
-
-            ax.set_xlim(left=min(energies), right=max(energies))
-            ax.set_ylim(bottom=0)
+            self._plot_broadened(ax, energies, all_y, all_labels, mplargs)
 
         return ax
+
+    @staticmethod
+    def _plot_broadened(ax: 'matplotlib.axes.Axes',
+                        energies: Sequence[float],
+                        all_y: np.ndarray,
+                        all_labels: Sequence[str],
+                        mplargs: Union[Dict, None]):
+        """Plot DOS data with labels to axes
+
+        This is separated into another function so that subclasses can
+        manipulate broadening, labels etc in their plot() method."""
+        if mplargs is None:
+            mplargs = {}
+
+        all_lines = ax.plot(energies, all_y.T, **mplargs)
+        for line, label in zip(all_lines, all_labels):
+            line.set_label(label)
+        ax.legend()
+
+        ax.set_xlim(left=min(energies), right=max(energies))
+        ax.set_ylim(bottom=0)
 
     def sample_grid(self,
                     npts: int,
@@ -544,3 +555,55 @@ class GridDOSCollection(DOSCollection):
             return type(self)([], energies=self._energies)
         else:
             return type(self)(matches)
+
+    def plot(self,
+             npts: int = 0,
+             xmin: float = None,
+             xmax: float = None,
+             width: float = 0.1,
+             smearing: str = 'Gauss',
+             ax: 'matplotlib.axes.Axes' = None,
+             show: bool = False,
+             filename: str = None,
+             mplargs: dict = None) -> 'matplotlib.axes.Axes':
+        """Simple plot of collected DOS data, resampled onto a grid
+
+        If the special key 'label' is present in self.info, this will be set
+        as the label for the plotted line (unless overruled in mplargs). The
+        label is only seen if a legend is added to the plot (i.e. by calling
+        `ax.legend()`).
+
+        Args:
+            npts:
+                Number of points in resampled x-axis. If set to zero (default),
+                no resampling is performed and the stored data is plotted
+                directly.
+            xmin, xmax:
+                output data range; this limits the resampling range as well as
+                the plotting output
+            width: Width of broadening kernel, passed to self.sample()
+            smearing: selection of broadening kernel, passed to self.sample()
+            ax: existing Matplotlib axes object. If not provided, a new figure
+                with one set of axes will be created using Pyplot
+            show: show the figure on-screen
+            filename: if a path is given, save the figure to this file
+            mplargs: additional arguments to pass to matplotlib plot command
+                (e.g. {'linewidth': 2} for a thicker line).
+
+        Returns:
+            Plotting axes. If "ax" was set, this is the same object.
+        """
+
+        if npts:
+            energies, all_y = self.sample_grid(npts,
+                                               xmin=xmin, xmax=xmax,
+                                               width=width, smearing=smearing)
+        else:
+            energies, all_y = self._energies, self._weights
+
+        all_labels = [DOSData.label_from_info(data.info) for data in self]
+
+        with SimplePlottingAxes(ax=ax, show=show, filename=filename) as ax:
+            self._plot_broadened(ax, energies, all_y, all_labels, mplargs)
+
+        return ax
