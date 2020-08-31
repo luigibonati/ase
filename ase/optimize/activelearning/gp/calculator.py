@@ -4,6 +4,7 @@ from ase.optimize.activelearning.gp.kernel import SquaredExponential
 from ase.optimize.activelearning.gp.gp import GaussianProcess
 from ase.optimize.activelearning.gp.prior import ConstantPrior
 from ase.calculators.calculator import Calculator, all_changes
+from ase.calculators.singlepoint import SinglePointCalculator
 from scipy.spatial.distance import euclidean
 
 from copy import copy
@@ -18,7 +19,6 @@ def copy_image(atoms):
     if atoms.calc.__class__.__name__ == 'SinglePointCalculator':
         # Return a copy of the atoms object
         calc = copy(atoms.calc)
-        atoms0 = atoms.copy()
 
     else:
         # Check if the atoms object has energy and forces calculated for
@@ -279,7 +279,7 @@ class GPCalculator(Calculator, GaussianProcess):
             if self.max_data_strategy == 'nearest_observations':
                 arg_nearest = []
                 if self.test_images is None:
-                    self.test_images = [self.atoms]
+                    self.test_images = [self.atoms.copy()]
                 for i in self.test_images:
                     pos_test = i.get_positions(wrap=self.wrap).reshape(-1)
                     d_i_j = []

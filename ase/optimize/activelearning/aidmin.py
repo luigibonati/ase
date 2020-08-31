@@ -279,7 +279,7 @@ class AIDMin(Optimizer):
                 img.set_constraint(self.constraints)
 
         # 2. Update model calculator.
-        self.model_calculator.update_train_data(train_images=train_images, test_images=[self.atoms])
+        self.model_calculator.update_train_data(train_images=train_images, test_images=[self.atoms.copy()])
 
         # 3. Optimize the structure in the predicted PES
         self.min_surrogate(self.atoms)
