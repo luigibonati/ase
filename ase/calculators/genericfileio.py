@@ -1,10 +1,7 @@
-import inspect
 import sys
-import warnings
 from ase.io import read, write
 from ase.io.formats import ioformats
-from ase.calculators.calculator import FileIOCalculator, PropertyNotPresent
-from ase.calculators.singlepoint import SinglePointCalculator
+from ase.calculators.calculator import FileIOCalculator
 
 
 class SingleFileReader:
