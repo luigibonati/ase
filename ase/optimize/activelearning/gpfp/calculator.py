@@ -303,14 +303,27 @@ class GPCalculator(Calculator, GaussianProcess):
             # 2.c. Get the nearest observations to the test structure.
             if self.max_data_strategy == 'nearest_observations':
                 arg_nearest = []
-                if self.test_images is None:
+
+                if not hasattr(self, 'test_images'):
                     self.test_images = [self.atoms]
+                elif self.test_images is None:
+                    self.test_images = [self.atoms]
+
                 for i in self.test_images:
                     pos_test = i.get_positions(wrap=self.wrap).reshape(-1)
                     d_i_j = []
                     for j in self.train_images:
                         pos_train = j.get_positions(wrap=self.wrap).reshape(-1)
                         d_i_j.append(euclidean(pos_test, pos_train))
+
+                    # with fingerprint: NOT TESTED properly
+                    # for j in range(len(self.train_x)):
+                    #     fp0 = self.new_fingerprint()
+                    #     fp0.set_atoms(i)
+                    #     fp1 = self.train_x[j]
+                    #     D = fp0.distance(fp0, fp1)
+                    #     d_i_j.append(D)
+                        
                     arg_nearest += list(np.argsort(d_i_j)[:self.max_data])
 
                 # Remove duplicates.
