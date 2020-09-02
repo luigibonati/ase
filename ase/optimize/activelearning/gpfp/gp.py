@@ -95,6 +95,7 @@ class GaussianProcess():
         K = self.kernel.kernel_matrix(X)  # Compute the kernel matrix
 
         self.X = X  # Store the data in an attribute
+        self.Y = Y
 
         n = len(self.X)  # number of training points
 
@@ -187,11 +188,12 @@ class GaussianProcess():
         if fit_weight:
             self.fit_weight_only(X, Y, option='update')
 
-        y = Y.flatten()
+        # y = Y.flatten()
         # Compute log likelihood
-        logP = (-0.5 * np.dot(y - self.m, self.a)
-                - np.sum(np.log(np.diag(self.L)))
-                - len(y) / 2 * np.log(2 * np.pi))
+        logP = self.get_logP(Y=Y)  
+        # logP = (-0.5 * np.dot(y - self.m, self.a)
+        #         - np.sum(np.log(np.diag(self.L)))
+        #         - len(y) / 2 * np.log(2 * np.pi))
 
         # Don't let ratio fall too small, resulting in numerical
         # difficulties:
@@ -218,6 +220,15 @@ class GaussianProcess():
 
         print("Parameters: {:s}       -logP: {:12.02f}".format(txt1, -logP))
         return -logP
+
+    def get_logP(self, Y):
+        y = Y.flatten()
+        logP = (-0.5 * np.dot(y - self.m, self.a)
+                - np.sum(np.log(np.diag(self.L)))
+                - len(y) / 2 * np.log(2 * np.pi))
+        return logP
+
+        
 
     def fit_hyperparameters(self, X, Y,
                             params_to_update,
