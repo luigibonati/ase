@@ -17,6 +17,7 @@ class SingleFileReader:
         cache = output.calc
         return cache
 
+
 class CalculatorTemplate:
     def __init__(self, name, implemented_properties, command,
                  input_file, input_format, reader):
@@ -34,8 +35,7 @@ class CalculatorTemplate:
         return 'CalculatorTemplate({})'.format(vars(self))
 
     def new(self, **kwargs):
-        calc = DataDrivenCalculator(template=self, **kwargs)
-        return calc
+        return GenericFileIOCalculator(template=self, **kwargs)
 
 
 def get_espresso_template():
@@ -69,11 +69,12 @@ def get_emt_template():
 def new_espresso(**kwargs):
     return get_espresso_template().new(**kwargs)
 
+
 def new_emt(**kwargs):
     return get_emt_template().new(**kwargs)
 
 
-class DataDrivenCalculator(FileIOCalculator):
+class GenericFileIOCalculator(FileIOCalculator):
     implemented_properties = None
     command = None
 
@@ -81,9 +82,9 @@ class DataDrivenCalculator(FileIOCalculator):
         self.template = template
         self.cache = None
 
-        FileIOCalculator.__init__(self, label='hello',
-                                  command=template.command,
-                                  **kwargs)
+        super().__init__(label=None,
+                         command=template.command,
+                         **kwargs)
 
     def __repr__(self):
         return '{}({})'.format(type(self).__name__, self.template.name)
@@ -97,7 +98,7 @@ class DataDrivenCalculator(FileIOCalculator):
         return self.template.name
 
     def set(self, **kwargs):
-        changed_parameters = FileIOCalculator.set(self, **kwargs)
+        changed_parameters = super().set(**kwargs)
         if changed_parameters:
             self.reset()
 
@@ -105,7 +106,7 @@ class DataDrivenCalculator(FileIOCalculator):
         assert properties is not None
         assert system_changes is not None
 
-        FileIOCalculator.write_input(self, atoms, properties, system_changes)
+        super().write_input(atoms, properties, system_changes)
         fmt = ioformats[self.template.input_format]
         kwargs = self.parameters
         if 'properties' in fmt.write.__code__.co_varnames:
