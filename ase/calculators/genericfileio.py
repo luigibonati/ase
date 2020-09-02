@@ -116,46 +116,23 @@ class GenericFileIOCalculator(FileIOCalculator):
               **kwargs)
 
     def read_results(self):
-        reader = self.template.reader
-        self.cache = reader.read()
+        self.cache = self.template.reader.read()
 
     @property
     def results(self):
         return self.cache.results
 
     def get_fermi_level(self):
-        if self.cache is None:
-            raise PropertyNotPresent(error_template % 'Fermi level')
         return self.cache.get_fermi_level()
 
     def get_ibz_k_points(self):
-        if self.cache is None:
-            raise PropertyNotPresent(error_template % 'IBZ k-points')
-        ibzkpts = self.cache.get_ibz_k_points()
-        if ibzkpts is None:
-            warnings.warn(warn_template % 'IBZ k-points')
-        return ibzkpts
+        return self.cache.get_ibz_k_points()
 
     def get_k_point_weights(self):
-        if self.cache is None:
-            raise PropertyNotPresent(error_template % 'K-point weights')
-        k_point_weights = self.cache.get_k_point_weights()
-        if k_point_weights is None:
-            warnings.warn(warn_template % 'K-point weights')
-        return k_point_weights
+        return self.cache.get_k_point_weights()
 
     def get_eigenvalues(self, **kwargs):
-        if self.cache is None:
-            raise PropertyNotPresent(error_template % 'Eigenvalues')
-        eigenvalues = self.cache.get_eigenvalues(**kwargs)
-        if eigenvalues is None:
-            warnings.warn(warn_template % 'Eigenvalues')
-        return eigenvalues
+        return self.cache.get_eigenvalues(**kwargs)
 
     def get_number_of_spins(self):
-        if self.cache is None:
-            raise PropertyNotPresent(error_template % 'Number of spins')
-        nspins = self.cache.get_number_of_spins()
-        if nspins is None:
-            warnings.warn(warn_template % 'Number of spins')
-        return nspins
+        return self.cache.get_number_of_spins()
