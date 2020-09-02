@@ -72,8 +72,8 @@ def new_emt(**kwargs):
 
 
 class GenericFileIOCalculator(FileIOCalculator):
-    implemented_properties = None
     command = None
+    discard_results_on_any_change = True
 
     def __init__(self, template, **kwargs):
         self.template = template
@@ -94,15 +94,7 @@ class GenericFileIOCalculator(FileIOCalculator):
     def name(self):
         return self.template.name
 
-    def set(self, **kwargs):
-        changed_parameters = super().set(**kwargs)
-        if changed_parameters:
-            self.reset()
-
-    def write_input(self, atoms, properties=None, system_changes=None):
-        assert properties is not None
-        assert system_changes is not None
-
+    def write_input(self, atoms, properties, system_changes):
         super().write_input(atoms, properties, system_changes)
         fmt = ioformats[self.template.input_format]
         kwargs = self.parameters
