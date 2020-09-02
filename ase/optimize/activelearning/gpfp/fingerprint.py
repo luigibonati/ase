@@ -224,10 +224,6 @@ class OganovFP(Fingerprint):
         self.h = self.constant * (1 / self.dm**2 +
                                   2 / self.limit**3 * self.dm -
                                   3 / self.limit**2)
-        # self.ycut = 1
-        # self.h = (self.constant *
-        #           self.ycut / self.limit**2 *
-        #           (self.dm - self.limit)**2)
         return
 
     def get_fingerprint(self):
@@ -237,14 +233,11 @@ class OganovFP(Fingerprint):
         x = np.linspace(-1.0, self.limit+2.0, self.N)  # variable array
 
         # Broadening of each peak:
-        for p in range(len(self.r_indices)):
-            i, j = self.r_indices[p]
-
-            h = self.h[p]
-            R = self.dm[p]
-            g = h * np.exp(- (x - R)**2 / 2 / self.delta**2)
-            A, B = self.AB[p]
-            self.G[A, B] += g
+        gs = (self.h[:, np.newaxis] *
+              np.exp(- (x - self.dm[:, np.newaxis])**2
+                     / 2 / self.delta**2))
+        for i, (A, B) in enumerate(self.AB):
+            self.G[A, B] += gs[i]
 
         if self.weight_by_elements:
             factortable = np.einsum('i,j->ij',
@@ -606,15 +599,12 @@ class RadialAngularFP(OganovFP):
         x = np.linspace(-pi/2, 3*pi/2, self.nanglebins)  # variable array
 
         # Broadening of each peak:
-        for p in range(len(self.indices)):
-            i, j, k = self.indices[p]
-            fcij = self.fcij[p]
-            fcjk = self.fcjk[p]
-            theta = self.thetas[p]
-
-            A, B, C = self.ABC[p]
-            self.H[A, B, C] += (fcij * fcjk *
-                                np.exp(- (x - theta)**2 / 2 / self.ascale**2))
+        gs = (self.fcij[:, np.newaxis] *
+              self.fcjk[:, np.newaxis] *
+              np.exp(- (x - self.thetas[:, np.newaxis])**2 /
+                     2 / self.ascale**2))
+        for i, (A, B, C) in enumerate(self.ABC):
+            self.H[A, B, C] += gs[i]
 
         self.H *= self.angleconstant
 
@@ -697,7 +687,7 @@ class RadialAngularFP(OganovFP):
                                  firstvalues, secondvalues,
                                  third_i, third_j, third_k):
         '''
-        Calculates the derivative of the fingerprint
+        Calculates the derivative of the angular part of the fingerprint
         with respect to one of the coordinates.
 
         index: Atom index with which to differentiate
@@ -705,17 +695,21 @@ class RadialAngularFP(OganovFP):
         gradient = np.zeros([self.n, self.n, self.n, self.nanglebins, 3])
 
         n = len(self.atoms)
+
         mask = np.arange(n) == index
         ext_mask = np.arange(len(self.extendedatoms)) % n == index
+        full_mask = [(mask[p[0]] or ext_mask[p[1]] or ext_mask[p[2]])
+                     for p in self.indices]
 
         for p in range(len(self.indices)):
+            if not full_mask[p]:
+                continue
+
             i, j, k = self.indices[p]
+
             indexi = mask[i]
             indexj = ext_mask[j]
             indexk = ext_mask[k]
-
-            if not (indexi or indexj or indexk):
-                continue
 
             result = np.zeros([self.nanglebins, 3])
             if indexi:
