@@ -230,6 +230,7 @@ minimize        1.0e-14 1.0e-5 100000 100000
         # velocities
         velocities = atoms.get_velocities()
         if velocities is not None:
+            velocities = p.vector_to_lammps(atoms.get_velocities())
             fileobj.write('\nVelocities\n\n')
             for i, v in enumerate(velocities):
                 fileobj.write('%6d %g %g %g\n' %
