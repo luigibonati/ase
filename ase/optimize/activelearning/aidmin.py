@@ -534,3 +534,141 @@ class GPMin(AIDMin):
                         fit_to='constraints',
                         optimizer_kwargs={'fmax': 'scipy default',
                                           'method': 'L-BFGS-B'})
+
+
+
+
+#------------------------------
+#    BondMin
+#------------------------------
+
+class BondMin(AIDMin):
+    """
+    BondMin optimizer. 
+    """
+    def __init__(self, atoms, restart=None, logfile='-', trajectory=None,
+                 prior=None,
+                 master=None, noise=None, weight=None,
+                 scale=None, force_consistent=None, batch_size=None,
+                 bounds=None, update_prior_strategy=None,
+                 update_hyperparams=True, fit_weight=None,
+                 convergence="full"):
+
+        if convergence not in ["full", "egg_box"]:
+            raise ValueError(("%s is not a valid value for convergence. ",
+                             "valid values are full and egg_box") % convergence)
+        #self.convergence = convergence
+
+        # 1. Warn the user if the number of atoms is very large
+        if len(atoms) > 100:
+            warning = ('Possible Memeroy Issue. There are more than '
+                       '100 atoms in the unit cell. The memory '
+                       'of the process will increase with the number '
+                       'of steps, potentially causing a memory issue. '
+                       'Consider using a different optimizer.')
+
+            warnings.warn(warning)
+
+        # 2. Define interaction and kernel
+        def inv_sqsum(A, B):
+            rA = covalent_radii[atomic_numbers[A]]
+            rB = covalent_radii[atomic_numbers[B]]
+            return 4 * (rA + rB)**(-2)
+
+        kernel = BondExponential()
+        symbols = atoms.get_chemical_symbols()
+        kernel.init_metric(symbols, inv_sqsum)
+
+
+        # 3. Define default hyperparameters
+        #  3.A Updated BondedMin
+        if update_hyperparams:
+            if scale is None:
+                scale = 0.2
+            if noise is None:
+                noise = 0.01
+            if weight is None:
+                weight = 2.
+
+            if bounds is None:
+                bounds = 0.1
+            elif bounds is False:
+                bounds = None
+
+            if batch_size is None:
+                batch_size = 1
+
+            if update_prior_strategy is None:
+                update_prior_strategy = 'fit'
+
+            if fit_weight is None:
+                fit_weight = True
+
+            # Add the weight and the bond hyperparameters to update
+            params_to_update = {'weight': bounds}
+            for param in kernel.params.keys():
+                if param.startswith('l_'):
+                    params_to_update[param] = bounds
+
+        #  3.B Un-updated BondedMin
+        else:
+            if scale is None:
+                scale = 0.4
+            if noise is None:
+                noise = 0.0025
+            if weight is None:
+                weight = 1.
+
+            if bounds is not None:
+                warning = ('The paramter bounds is of no use '
+                           'if update_hyperparams is False. '
+                           'The value provided by the user '
+                           'is being ignored.')
+                warnings.warn(warning, UserWarning)
+            if batch_size is not None:
+                warning = ('The paramter batch_size is of no use '
+                           'if update_hyperparams is False. '
+                           'The value provived by the user '
+                           'is being ignored.')
+                warnings.warn(warning, UserWarning)
+
+            # Set batch_size to 1 anyways
+            batch_size = 1
+            params_to_update = []
+
+            if update_prior_strategy is None:
+                update_prior_strategy = 'maximum'
+
+        # 4. Set GP calculator
+        gp_calc = GPCalculator(train_images=None, noise=noise,
+                               params={'weight': weight,
+                                       'scale': scale},
+                               update_prior_strategy=update_prior_strategy,
+                               calculate_uncertainty=False,
+                               prior=prior, kernel=kernel,
+                               params_to_update=params_to_update,
+                               batch_size=batch_size,fit_weight=fit_weight,
+                               mask_constraints=False)
+
+        # 5. Initialize AIDMin under this set of parameters
+        AIDMin.__init__(self, atoms, restart=restart, logfile=logfile,
+                        trajectory=trajectory, master=master,
+                        force_consistent=force_consistent,
+                        model_calculator=gp_calc, optimizer=SP,
+                        use_previous_observations=False,
+                        surrogate_starting_point='min',
+                        trainingset=[], print_format='ASE',
+                        fit_to='calc',
+                        optimizer_kwargs={'fmax': 'scipy default',
+                                          'method': 'L-BFGS-B'})
+
+    #def converged(self, forces=None):
+    #    "Did the optimization converge?"
+    #    if forces is None:
+    #        forces = self.atoms.get_forces()
+
+    #    if self.convergence == "egg_box":
+    #        err =  np.sum(forces, axis=0)/len(self.atoms)
+    #        forces -= err
+    #    super().converged(forces)
+
