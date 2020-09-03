@@ -89,8 +89,20 @@ def calculators_header(config):
                     configtokens.append(f'{varname}={variable}')
                 configinfo = ', '.join(configtokens)
 
-        run = '[x]' if factories.enabled(name) else '[ ]'
-        line = f'  {run} {name:10} {configinfo}'
+        enabled = factories.enabled(name)
+        if enabled:
+            version = '<unknown version>'
+            if hasattr(factory, 'version'):
+                try:
+                    version = factory.version()
+                except Exception:
+                    # XXX Add a test for the version numbers so that
+                    # will fail without crashing the whole test suite.
+                    pass
+            name = f'{name}-{version}'
+
+        run = '[x]' if enabled else '[ ]'
+        line = f'  {run} {name:16} {configinfo}'
         yield line
 
     yield ''
