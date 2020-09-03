@@ -182,7 +182,7 @@ class SquaredExponential(SE_kernel):
               i * D1:(i + 1) * D1] = self.kernel(X[i], X[i])
         return K
 
-    def kernel_vector(self, x, X, nsample):
+    def kernel_vector(self, x, X):
         return np.hstack([self.kernel(x, x2) for x2 in X])
 
     # ---------Derivatives--------
@@ -256,7 +256,7 @@ class BondExponential(SquaredExponential):
 
     def ___init__(self, dimensionality=None):
         # We use the SquaredExponential kernel as a basis
-        SquaredExponential.__init__(self)
+        SquaredExponential.__init__(self, dimensionality)
 
     # --- Define metric tensor ---
 

@@ -113,7 +113,7 @@ class GaussianProcess():
                               returned: Note V is O(D*nsample2)
         """
         n = self.X.shape[0]
-        k = self.kernel.kernel_vector(x, self.X, n)
+        k = self.kernel.kernel_vector(x, self.X)
         f = self.prior.prior(x) + np.dot(k, self.a)
         if get_variance:
             v = solve_triangular(self.L, k.T.copy(), lower=True,
