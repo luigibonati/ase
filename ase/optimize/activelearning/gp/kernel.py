@@ -240,14 +240,20 @@ class SquaredExponential(SE_kernel):
 
 
 # --------------------------
-#      BondedKernel
+#      BondExponential
 # --------------------------
 
 
 class BondExponential(SquaredExponential):
+
     """
-    TODO: Nice documentation here
+    BondExponential kernel used in BondMin. 
+    This kernel allows for user defined bond scales which precondition
+    the PES for better behaviour in systems with differences in the 
+    stiffness of bonds. It is recommended, for example, for 
+    molecules on surfaces.
     """
+
     def ___init__(self, dimensionality=None):
         # We use the SquaredExponential kernel as a basis
         SquaredExponential.__init__(self)
