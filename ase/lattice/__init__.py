@@ -86,6 +86,9 @@ class BravaisLattice(ABC):
         """Get parameter names and values of this lattice as a dictionary."""
         return dict(self._parameters)
 
+    def conventional(self):
+        return self.conventional_cls(**self._parameters)
+
     def tocell(self):
         """Return this lattice as a :class:`~ase.cell.Cell` object."""
         cell = self._cell(**self._parameters)
@@ -454,12 +457,18 @@ class ORC(Orthorhombic):
         return np.diag([a, b, c]).astype(float)
 
 
+_fcc_map = np.array([[0, 1, 1], [1, 0, 1], [1, 1, 0]])
+_bcc_map = np.array([[-1, 1, 1], [1, -1, 1], [1, 1, -1]])
+
 @bravaisclass('face-centred orthorhombic', 'orthorhombic', 'orthorhombic',
               'oF', 'abc',
               [['ORCF1', 'GAA1LTXX1YZ', 'GYTZGXA1Y,TX1,XAZ,LG', None],
                ['ORCF2', 'GCC1DD1LHH1XYZ', 'GYCDXGZD1HC,C1Z,XH1,HY,LG', None],
                ['ORCF3', 'GAA1LTXX1YZ', 'GYTZGXA1Y,XAZ,LG', None]])
 class ORCF(Orthorhombic):
+    conventional_cls = ORC
+    conventional_cellmap = _bcc_map
+
     def _cell(self, a, b, c):
         return 0.5 * np.array([[0, b, c], [a, 0, c], [a, b, 0]])
 
