@@ -11,7 +11,8 @@ def emt_energy_per_atom(atoms):
     return atoms.get_potential_energy() / len(atoms)
 
 
-@pytest.mark.parametrize('lat', all_variants())
+@pytest.mark.parametrize('lat', [var for var in all_variants()
+                                 if var.ndim == 3])
 def test_conventional_map(lat):
     if not hasattr(lat, 'conventional_cellmap'):
         pytest.skip()

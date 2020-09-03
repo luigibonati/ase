@@ -346,12 +346,18 @@ def bravaisclass(longname, crystal_family, lattice_system, pearson_symbol,
     return decorate
 
 
+_identity = np.identity(3)
+_fcc_map = np.array([[0, 1, 1], [1, 0, 1], [1, 1, 0]])
+_bcc_map = np.array([[-1, 1, 1], [1, -1, 1], [1, 1, -1]])
+
+
 class UnconventionalLattice(ValueError):
     pass
 
 
 class Cubic(BravaisLattice):
     """Abstract class for cubic lattices."""
+    conventional_cls = 'CUB'
 
     def __init__(self, a):
         BravaisLattice.__init__(self, a=a)
@@ -360,6 +366,7 @@ class Cubic(BravaisLattice):
 @bravaisclass('primitive cubic', 'cubic', 'cubic', 'cP', 'a',
               [['CUB', 'GXRM', 'GXMGRX,MR', sc_special_points['cubic']]])
 class CUB(Cubic):
+    conventional_cellmap = _identity
     def _cell(self, a):
         return a * np.eye(3)
 
@@ -367,6 +374,7 @@ class CUB(Cubic):
 @bravaisclass('face-centred cubic', 'cubic', 'cubic', 'cF', 'a',
               [['FCC', 'GKLUWX', 'GXWKGLUWLK,UX', sc_special_points['fcc']]])
 class FCC(Cubic):
+    conventional_cellmap = _bcc_map
     def _cell(self, a):
         return 0.5 * np.array([[0., a, a], [a, 0, a], [a, a, 0]])
 
@@ -374,6 +382,7 @@ class FCC(Cubic):
 @bravaisclass('body-centred cubic', 'cubic', 'cubic', 'cI', 'a',
               [['BCC', 'GHPN', 'GHNGPH,PN', sc_special_points['bcc']]])
 class BCC(Cubic):
+    conventional_cellmap = _fcc_map
     def _cell(self, a):
         return 0.5 * np.array([[-a, a, a], [a, -a, a], [a, a, -a]])
 
@@ -382,6 +391,9 @@ class BCC(Cubic):
               [['TET', 'GAMRXZ', 'GXMGZRAZ,XR,MA',
                 sc_special_points['tetragonal']]])
 class TET(BravaisLattice):
+    conventional_cls = 'TET'
+    conventional_cellmap = _identity
+
     def __init__(self, a, c):
         BravaisLattice.__init__(self, a=a, c=c)
 
@@ -396,6 +408,9 @@ class TET(BravaisLattice):
               [['BCT1', 'GMNPXZZ1', 'GXMGZPNZ1M,XP', None],
                ['BCT2', 'GNPSS1XYY1Z', 'GXYSGZS1NPY1Z,XP', None]])
 class BCT(BravaisLattice):
+    conventional_cls = 'TET'
+    conventional_cellmap = _fcc_map
+
     def __init__(self, a, c):
         BravaisLattice.__init__(self, a=a, c=c)
 
@@ -449,17 +464,17 @@ class Orthorhombic(BravaisLattice):
         BravaisLattice.__init__(self, a=a, b=b, c=c)
 
 
+
 @bravaisclass('primitive orthorhombic', 'orthorhombic', 'orthorhombic', 'oP',
               'abc',
               [['ORC', 'GRSTUXYZ', 'GXSYGZURTZ,YT,UX,SR',
                 sc_special_points['orthorhombic']]])
 class ORC(Orthorhombic):
+    conventional_cls = 'ORC'
+    conventional_cellmap = _identity
     def _cell(self, a, b, c):
         return np.diag([a, b, c]).astype(float)
 
-
-_fcc_map = np.array([[0, 1, 1], [1, 0, 1], [1, 1, 0]])
-_bcc_map = np.array([[-1, 1, 1], [1, -1, 1], [1, 1, -1]])
 
 @bravaisclass('face-centred orthorhombic', 'orthorhombic', 'orthorhombic',
               'oF', 'abc',
@@ -524,6 +539,9 @@ class ORCF(Orthorhombic):
               'oI', 'abc',
               [['ORCI', 'GLL1L2RSTWXX1YY1Z', 'GXLTWRX1ZGYSW,L1Y,Y1Z', None]])
 class ORCI(Orthorhombic):
+    conventional_cls = 'ORC'
+    conventional_cellmap = _fcc_map
+
     def _cell(self, a, b, c):
         return 0.5 * np.array([[-a, b, c], [a, -b, c], [a, b, -c]])
 
@@ -557,6 +575,9 @@ class ORCI(Orthorhombic):
               'oC', 'abc',
               [['ORCC', 'GAA1RSTXX1YZ', 'GXSRAZGYX1A1TY,ZT', None]])
 class ORCC(BravaisLattice):
+    conventional_cls = 'ORC'
+    conventional_cellmap = np.array([[1, 1, 0], [-1, 1, 0], [0, 0, 1]])
+
     def __init__(self, a, b, c):
         # ORCC is the only ORCx lattice with a<b and not a<b<c
         if a >= b:
@@ -587,6 +608,9 @@ class ORCC(BravaisLattice):
               [['HEX', 'GMKALH', 'GMKGALHA,LM,KH',
                 sc_special_points['hexagonal']]])
 class HEX(BravaisLattice):
+    conventional_cls = 'HEX'
+    conventional_cellmap = _identity
+
     def __init__(self, a, c):
         BravaisLattice.__init__(self, a=a, c=c)
 
@@ -601,6 +625,9 @@ class HEX(BravaisLattice):
               [['RHL1', 'GBB1FLL1PP1P2QXZ', 'GLB1,BZGX,QFP1Z,LP', None],
                ['RHL2', 'GFLPP1QQ1Z', 'GPZQGFP1Q1LZ', None]])
 class RHL(BravaisLattice):
+    conventional_cls = 'RHL'
+    conventional_cellmap = _identity
+
     def __init__(self, a, alpha):
         if alpha >= 120:
             raise UnconventionalLattice('Need alpha < 120 degrees, got {}'
@@ -663,6 +690,9 @@ def check_mcl(a, b, c, alpha):
               ('a', 'b', 'c', 'alpha'),
               [['MCL', 'GACDD1EHH1H2MM1M2XYY1Z', 'GYHCEM1AXH1,MDZ,YD', None]])
 class MCL(BravaisLattice):
+    conventional_cls = 'MCL'
+    conventional_cellmap = _identity
+
     def __init__(self, a, b, c, alpha):
         check_mcl(a, b, c, alpha)
         BravaisLattice.__init__(self, a=a, b=b, c=c, alpha=alpha)
@@ -713,6 +743,9 @@ class MCL(BravaisLattice):
                ['MCLC5', 'GFF1F2HH1H2II1LMNN1XYY1Y2Y3Z',
                 'GYFLI,I1ZHF1,H1Y1XGN,MG', None]])
 class MCLC(BravaisLattice):
+    conventional_cls = 'MCL'
+    conventional_cellmap = np.array([[1, -1, 0], [1, 1, 0], [0, 0, 1]])
+
     def __init__(self, a, b, c, alpha):
         check_mcl(a, b, c, alpha)
         BravaisLattice.__init__(self, a=a, b=b, c=c, alpha=alpha)
@@ -867,6 +900,9 @@ If you don't care, please use Cell.fromcellpar() instead."""
                ['TRI1b', 'GLMNRXYZ', 'XGY,LGZ,NGM,RG', None],
                ['TRI2b', 'GLMNRXYZ', 'XGY,LGZ,NGM,RG', None]])
 class TRI(BravaisLattice):
+    conventional_cls = 'TRI'
+    conventional_cellmap = _identity
+
     def __init__(self, a, b, c, alpha, beta, gamma):
         BravaisLattice.__init__(self, a=a, b=b, c=c, alpha=alpha, beta=beta,
                                 gamma=gamma)
