@@ -669,7 +669,7 @@ class BondMin(AIDMin):
 
     update_hyperparams = False
         scale : 0.4
-        noise : 0.005
+        noise : 0.0025
         weight: 1.
         bounds: irrelevant
         batch_size: irrelevant
@@ -762,7 +762,6 @@ class BondMin(AIDMin):
     """
 
     def __init__(self, atoms, restart=None, logfile='-', trajectory=None,
-                 prior=None,
                  master=None, noise=None, weight=None,
                  scale=None, force_consistent=None, batch_size=None,
                  bounds=None, update_prior_strategy=None,
