@@ -95,7 +95,9 @@ def calculators_header(config):
             if hasattr(factory, 'version'):
                 try:
                     version = factory.version()
-                except Exception as ex:
+                except Exception:
+                    # XXX Add a test for the version numbers so that
+                    # will fail without crashing the whole test suite.
                     pass
             name = f'{name}-{version}'
 
