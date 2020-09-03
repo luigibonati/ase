@@ -80,7 +80,7 @@ omit =
     ../io/dftb.py
     #../io/exciting.py
     ../io/bundletrajectory.py
-    ../io/opls.py
+    #../io/opls.py
     ../io/lammpsrun.py
     #../io/aims.py
     #../io/gamess_us.py
