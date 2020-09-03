@@ -545,16 +545,23 @@ class GPMin(AIDMin):
 class BondMin(AIDMin):
     """
     BondMin optimizer. 
+
+    max_data (default: None)
+        maximum number of points in the training set for light memory.
+        If None, it is infinetly many points.
     """
+
     def __init__(self, atoms, restart=None, logfile='-', trajectory=None,
                  prior=None,
                  master=None, noise=None, weight=None,
                  scale=None, force_consistent=None, batch_size=None,
                  bounds=None, update_prior_strategy=None,
-                 update_hyperparams=True, fit_weight=None):
+                 update_hyperparams=True, fit_weight=None,
+                 max_train_data=None):
 
+     
         # 1. Warn the user if the number of atoms is very large
-        if len(atoms) > 100:
+        if max_train_data is None and len(atoms) > 100:
             warning = ('Possible Memeroy Issue. There are more than '
                        '100 atoms in the unit cell. The memory '
                        'of the process will increase with the number '
@@ -633,7 +640,15 @@ class BondMin(AIDMin):
             if update_prior_strategy is None:
                 update_prior_strategy = 'maximum'
 
-        # 4. Set GP calculator
+
+        # 4. Light memory version
+        if max_train_data is not None:
+            mask_constraints = True
+        else:
+            mask_constraints = False
+
+
+        # 5. Set GP calculator
         gp_calc = GPCalculator(train_images=None, noise=noise,
                                params={'weight': weight,
                                        'scale': scale},
@@ -642,9 +657,11 @@ class BondMin(AIDMin):
                                prior=prior, kernel=kernel,
                                params_to_update=params_to_update,
                                batch_size=batch_size,fit_weight=fit_weight,
-                               mask_constraints=False)
+                               max_train_data=max_train_data,
+                               max_data_strategy='nearest_observations',
+                               mask_constraints=mask_constraints)
 
-        # 5. Initialize AIDMin under this set of parameters
+        # 6. Initialize AIDMin under this set of parameters
         AIDMin.__init__(self, atoms, restart=restart, logfile=logfile,
                         trajectory=trajectory, master=master,
                         force_consistent=force_consistent,
