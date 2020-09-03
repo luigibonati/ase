@@ -204,7 +204,7 @@ minimize        1.0e-14 1.0e-5 100000 100000
 
         # cell
         p = Prism(atoms.get_cell())
-        xhi, yhi, zhi, xy, xz, yz = p.get_lammps_prism_str()
+        xhi, yhi, zhi, xy, xz, yz = p.get_lammps_prism()
         fileobj.write('\n0.0 %s  xlo xhi\n' % xhi)
         fileobj.write('0.0 %s  ylo yhi\n' % yhi)
         fileobj.write('0.0 %s  zlo zhi\n' % zhi)
@@ -217,7 +217,7 @@ minimize        1.0e-14 1.0e-5 100000 100000
         else:
             molid = [1] * len(atoms)
         for i, r in enumerate(
-                p.positions_to_lammps_strs(atoms.get_positions())):
+                p.vector_to_lammps(atoms.get_positions())):
             atype = atoms.types[tag[i]]
             if len(atype) < 2:
                 atype = atype + ' '
