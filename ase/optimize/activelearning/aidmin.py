@@ -551,13 +551,7 @@ class BondMin(AIDMin):
                  master=None, noise=None, weight=None,
                  scale=None, force_consistent=None, batch_size=None,
                  bounds=None, update_prior_strategy=None,
-                 update_hyperparams=True, fit_weight=None,
-                 convergence="full"):
-
-        if convergence not in ["full", "egg_box"]:
-            raise ValueError(("%s is not a valid value for convergence. ",
-                             "valid values are full and egg_box") % convergence)
-        #self.convergence = convergence
+                 update_hyperparams=True, fit_weight=None):
 
         # 1. Warn the user if the number of atoms is very large
         if len(atoms) > 100:
@@ -661,14 +655,3 @@ class BondMin(AIDMin):
                         fit_to='calc',
                         optimizer_kwargs={'fmax': 'scipy default',
                                           'method': 'L-BFGS-B'})
-
-    #def converged(self, forces=None):
-    #    "Did the optimization converge?"
-    #    if forces is None:
-    #        forces = self.atoms.get_forces()
-
-    #    if self.convergence == "egg_box":
-    #        err =  np.sum(forces, axis=0)/len(self.atoms)
-    #        forces -= err
-    #    super().converged(forces)
-
