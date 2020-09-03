@@ -271,7 +271,7 @@ class AIDMin(Optimizer):
         # calculations and/or parallel runs).
         train_images = self.train.load_set()
 
-        # Remove constraints. TODO: do this in a more elegant way
+        # Remove constraints.
         for img in train_images:
             if self.fit_to == 'calc':
                 img.constraints = []
@@ -279,7 +279,8 @@ class AIDMin(Optimizer):
                 img.set_constraint(self.constraints)
 
         # 2. Update model calculator.
-        self.model_calculator.update_train_data(train_images=train_images, test_images=[self.atoms.copy()])
+        self.model_calculator.update_train_data(train_images=train_images,
+            test_images=[self.atoms.copy()])
 
         # 3. Optimize the structure in the predicted PES
         self.min_surrogate(self.atoms)
@@ -521,11 +522,6 @@ class GPMin(AIDMin):
                                params_to_update=params_to_update,
                                batch_size=batch_size,
                                mask_constraints=False)
-        """
-        Thoughts:
-            1. I have not specified max_train_data_strategy and max_train_data
-             to the calculator
-        """
 
         # 4. Initialize AIDMin under this set of parameters
         AIDMin.__init__(self, atoms, restart=restart, logfile=logfile,
@@ -538,9 +534,3 @@ class GPMin(AIDMin):
                         fit_to='constraints',
                         optimizer_kwargs={'fmax': 'scipy default',
                                           'method': 'L-BFGS-B'})
-
-        """
-        Thoughts:
-              1. Check use_previous_observations still works
-              2. max_train_data and max_train_data_strategy
-        """
