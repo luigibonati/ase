@@ -456,6 +456,110 @@ class GPMin(AIDMin):
                  bounds=None, update_prior_strategy='maximum',
                  update_hyperparams=False):
 
+               """Optimize atomic positions using GPMin algorithm, which uses both
+        potential energies and forces information to build a PES via Gaussian
+        Process (GP) regression and then minimizes it.
+
+        Default behaviour:
+        --------------------
+        The default values of the scale, noise, weight, batch_size and bounds
+        parameters depend on the value of update_hyperparams. In order to get
+        the default value of any of them, they should be set up to None.
+        Default values are:
+
+        update_hyperparams = True
+            scale : 0.3
+            noise : 0.004
+            weight: 2.
+            bounds: 0.1
+            batch_size: 1
+
+        update_hyperparams = False
+            scale : 0.4
+            noise : 0.005
+            weight: 1.
+            bounds: irrelevant
+            batch_size: irrelevant
+
+        Parameters:
+        ------------------
+
+        atoms: Atoms object
+            The Atoms object to relax.
+
+        restart: string
+            Pickle file used to store the training set. If set, file with
+            such a name will be searched and the data in the file incorporated
+            to the new training set, if the file exists.
+
+        logfile: file object or str
+            If *logfile* is a string, a file with that name will be opened.
+            Use '-' for stdout
+
+        trajectory: string
+            Pickle file used to store trajectory of atomic movement.
+
+        master: boolean
+            Defaults to None, which causes only rank 0 to save files. If
+            set to True, this rank will save files.
+
+        force_consistent: boolean or None
+            Use force-consistent energy calls (as opposed to the energy
+            extrapolated to 0 K). By default (force_consistent=None) uses
+            force-consistent energies if available in the calculator, but
+            falls back to force_consistent=False if not.
+
+        noise: float
+            Regularization parameter for the Gaussian Process Regression.
+
+        weight: float
+            Prefactor of the Squared Exponential kernel.
+            If *update_hyperparams* is False, changing this parameter
+            has no effect on the dynamics of the algorithm.
+
+        update_prior_strategy: string
+            Strategy to update the constant from the ConstantPrior
+            when more data is collected. It does only work when
+            Prior = None
+
+            options:
+                'maximum': update the prior to the maximum sampled energy
+                'init' : fix the prior to the initial energy
+                'average': use the average of sampled energies as prior
+
+        scale: float
+            scale of the Squared Exponential Kernel
+
+        update_hyperparams: boolean
+            Update the scale of the Squared exponential kernel
+            every batch_size-th iteration by maximizing the
+            marginal likelihood.
+
+        batch_size: int
+            Number of new points in the sample before updating
+            the hyperparameters.
+            Only relevant if the optimizer is executed in update_hyperparams
+            mode: (update_hyperparams = True)
+
+        bounds: float, 0<bounds<1
+            Set bounds to the optimization of the hyperparameters.
+            Let t be a hyperparameter. Then it is optimized under the
+            constraint (1-bound)*t_0 <= t <= (1+bound)*t_0
+            where t_0 is the value of the hyperparameter in the previous
+            step.
+            If bounds is False, no constraints are set in the optimization of
+            the hyperparameters.
+
+        .. warning:: The memory of the optimizer scales as O(n²N²) where
+                     N is the number of atoms and n the number of steps.
+                     If the number of atoms is sufficiently high, this
+                     may cause a memory issue.
+                     This class prints a warning if the user tries to
+                     run GPMin with more than 100 atoms in the unit cell.
+        """
+
+
+
         # 1. Warn the user if the number of atoms is very large
         if len(atoms) > 100:
             warning = ('Possible Memeroy Issue. There are more than '
@@ -545,10 +649,116 @@ class GPMin(AIDMin):
 class BondMin(AIDMin):
     """
     BondMin optimizer. 
+    Optimize atomic positions using GPMin algorithm, which uses both
+    potential energies and forces information to build a PES via Gaussian
+    Process (GP) regression and then minimizes it.
 
-    max_data (default: None)
+    Default behaviour:
+    --------------------
+    The default values of the scale, noise, weight, batch_size and bounds
+    parameters depend on the value of update_hyperparams. In order to get
+    the default value of any of them, they should be set up to None.
+    Default values are:
+
+    update_hyperparams = True
+        scale : 0.2
+        noise : 0.01
+        weight: 2.
+        bounds: 0.1
+        batch_size: 1
+
+    update_hyperparams = False
+        scale : 0.4
+        noise : 0.005
+        weight: 1.
+        bounds: irrelevant
+        batch_size: irrelevant
+
+
+    By default, the full memory version is used. The light memory version can 
+    be enabled by setting max_data to an integer. This functionality reduces 
+    the number of point in the training set to those who are closest to 
+    the test point and does not fit to the forces of constrained atoms.   
+
+
+    Parameters:
+    ------------------
+
+    atoms: Atoms object
+        The Atoms object to relax.
+
+    restart: string
+        Pickle file used to store the training set. If set, file with
+        such a name will be searched and the data in the file incorporated
+        to the new training set, if the file exists.
+
+    logfile: file object or str
+        If *logfile* is a string, a file with that name will be opened.
+        Use '-' for stdout
+
+    trajectory: string
+        Pickle file used to store trajectory of atomic movement.
+
+    master: boolean
+        Defaults to None, which causes only rank 0 to save files. If
+        set to True, this rank will save files.
+
+    force_consistent: boolean or None
+        Use force-consistent energy calls (as opposed to the energy
+        extrapolated to 0 K). By default (force_consistent=None) uses
+        force-consistent energies if available in the calculator, but
+        falls back to force_consistent=False if not.
+
+    noise: float
+        Regularization parameter for the Gaussian Process Regression.
+
+    weight: float
+        Prefactor of the Squared Exponential kernel.
+        If *update_hyperparams* is False, changing this parameter
+        has no effect on the dynamics of the algorithm.
+
+    update_prior_strategy: string
+        Strategy to update the constant from the ConstantPrior
+        when more data is collected. It does only work when
+        Prior = None
+
+        options:
+            'maximum': update the prior to the maximum sampled energy
+            'init' : fix the prior to the initial energy
+            'average': use the average of sampled energies as prior
+
+    scale: float
+        global scale of the method
+
+    update_hyperparams: boolean
+        Update hyperparameters of the kernel.
+
+    batch_size: int
+        Number of new points in the sample before updating
+        the hyperparameters.
+        Only relevant if the optimizer is executed in update_hyperparams
+        mode: (update_hyperparams = True)
+
+    bounds: float, 0<bounds<1
+        Set bounds to the optimization of the hyperparameters.
+        Let t be a hyperparameter. Then it is optimized under the
+        constraint (1-bound)*t_0 <= t <= (1+bound)*t_0
+        where t_0 is the value of the hyperparameter in the previous
+        step.
+        If bounds is False, no constraints are set in the optimization of
+        the hyperparameters.
+
+    max_train_data (default: None)
         maximum number of points in the training set for light memory.
         If None, it is infinetly many points.
+
+    .. warning:: The memory of the optimizer scales as O(n²N²) where
+                 N is the number of atoms and n is max_data.
+                 If the number of atoms is sufficiently high, this
+                 may cause a memory issue for a given max_data.
+                 If the number of points in the training set is not
+                 restricted, this class prints a warning if the user tries to
+                 run BonfMin with more than 100 atoms in the unit cell.
     """
 
     def __init__(self, atoms, restart=None, logfile='-', trajectory=None,
@@ -556,7 +766,7 @@ class BondMin(AIDMin):
                  master=None, noise=None, weight=None,
                  scale=None, force_consistent=None, batch_size=None,
                  bounds=None, update_prior_strategy=None,
-                 update_hyperparams=True, fit_weight=None,
+                 update_hyperparams=True,
                  max_train_data=None):
 
      
@@ -601,9 +811,7 @@ class BondMin(AIDMin):
 
             if update_prior_strategy is None:
                 update_prior_strategy = 'fit'
-
-            if fit_weight is None:
-                fit_weight = True
+            fit_weight = True
 
             # Add the weight and the bond hyperparameters to update
             params_to_update = {'weight': bounds}
@@ -636,6 +844,8 @@ class BondMin(AIDMin):
             # Set batch_size to 1 anyways
             batch_size = 1
             params_to_update = []
+
+            fit_weight = False
 
             if update_prior_strategy is None:
                 update_prior_strategy = 'maximum'
