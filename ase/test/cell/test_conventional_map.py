@@ -26,3 +26,6 @@ def test_conventional_map(lat):
 
     assert e1 == pytest.approx(e2)
     assert conv_lat.cellpar() == pytest.approx(conv_atoms.cell.cellpar())
+
+    # Rule out also that cells could differ by a rotation:
+    assert conv_lat.tocell()[:] == pytest.approx(conv_atoms.cell[:])

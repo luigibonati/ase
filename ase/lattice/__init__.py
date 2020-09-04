@@ -346,7 +346,8 @@ def bravaisclass(longname, crystal_family, lattice_system, pearson_symbol,
     return decorate
 
 
-_identity = np.identity(3)
+# Common mappings of primitive to conventional cells:
+_identity = np.identity(3, int)
 _fcc_map = np.array([[0, 1, 1], [1, 0, 1], [1, 1, 0]])
 _bcc_map = np.array([[-1, 1, 1], [1, -1, 1], [1, 1, -1]])
 
