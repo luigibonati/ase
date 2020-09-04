@@ -21,12 +21,10 @@ omit =
     ../calculators/demonnano.py
     ../calculators/dftb.py
     ../calculators/exciting.py
-    ../calculators/lammpsrun.py
     ../calculators/qchem.py
     ../calculators/aims.py
     ../calculators/psi4.py
     ../calculators/gamess_us.py
-    ../calculators/lammpslib.py
     ../calculators/orca.py
     ../calculators/gromacs.py
     ../calculators/dftd3.py
@@ -47,18 +45,8 @@ omit =
     ../calculators/openmx/dos.py
     ../calculators/openmx/reader.py
     ../calculators/openmx/openmx.py
-    ../calculators/kim/kim.py
-    ../calculators/kim/exceptions.py
-    ../calculators/kim/kimmodel.py
-    ../calculators/kim/neighborlist.py
-    ../calculators/kim/calculators.py
-    ../calculators/kim/kimpy_wrappers.py
     ../calculators/demon/demon.py
     ../calculators/demon/demon_io.py
-    ../calculators/lammps/inputwriter.py
-    ../calculators/lammps/unitconvert_constants.py
-    ../calculators/lammps/unitconvert.py
-    ../calculators/lammps/coordinatetransform.py
     ../calculators/vasp/create_input.py
     ../calculators/vasp/vasp_data.py
     ../calculators/vasp/setups.py
@@ -81,7 +69,6 @@ omit =
     #../io/exciting.py
     ../io/bundletrajectory.py
     #../io/opls.py
-    ../io/lammpsrun.py
     #../io/aims.py
     #../io/gamess_us.py
     ../io/pov.py
