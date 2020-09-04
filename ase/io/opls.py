@@ -209,6 +209,9 @@ minimize        1.0e-14 1.0e-5 100000 100000
         fileobj.write('0.0 %s  ylo yhi\n' % yhi)
         fileobj.write('0.0 %s  zlo zhi\n' % zhi)
 
+        if p.is_skewed():
+            fileobj.write(f"{xy} {xz} {yz}  xy xz yz\n")
+
         # atoms
         fileobj.write('\nAtoms\n\n')
         tag = atoms.get_tags()
