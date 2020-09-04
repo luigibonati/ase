@@ -178,7 +178,7 @@ class TestRawDosData:
         else:
             mplargs = {'linewidth': linewidth}
 
-        ax = figure.add_subplot()
+        ax = figure.add_subplot(111)
         ax_out = sparse_dos.plot_dos(npts=5, ax=ax, mplargs=mplargs,
                                      smearing='Gauss')
         assert ax_out == ax
@@ -199,7 +199,7 @@ class TestRawDosData:
         else:
             mplargs = {'linewidth': linewidth}
 
-        ax = figure.add_subplot()
+        ax = figure.add_subplot(111)
         ax_out = sparse_dos.plot_deltas(ax=ax, mplargs=mplargs)
         assert ax_out == ax
 
@@ -281,7 +281,7 @@ class TestGridDosData:
         else:
             mplargs = {'linewidth': linewidth}
 
-        ax = figure.add_subplot()
+        ax = figure.add_subplot(111)
         ax_out = dense_dos.plot_dos(ax=ax, mplargs=mplargs,
                                     smearing='Gauss')
         assert ax_out == ax
@@ -300,7 +300,7 @@ class TestGridDosData:
         # Check that setting a grid/broadening does not blow up and reproduces
         # previous results; this result has not been rigorously checked but at
         # least it should not _change_ unexpectedly
-        ax = figure.add_subplot()
+        ax = figure.add_subplot(111)
         _ = dense_dos.plot_dos(ax=ax, npts=10, xmin=0, xmax=9,
                                width=4, smearing='Gauss')
         line_data = ax.lines[0].get_data()

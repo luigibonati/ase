@@ -58,7 +58,7 @@ class TestPlotManager:
 
     def test_plot_manager_axis_file(self, figure, xy_data):
         x, y = xy_data
-        ax = figure.add_subplot()
+        ax = figure.add_subplot(111)
         with SimplePlottingAxes(ax=ax, show=False,
                                 filename=self.filename) as return_ax:
             assert return_ax is ax
