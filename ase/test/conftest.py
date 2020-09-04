@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 from subprocess import Popen, PIPE, check_output
 import zlib
@@ -147,11 +148,30 @@ def tkinter():
         pytest.skip('no tkinter: {}'.format(err))
 
 
+@pytest.fixture(autouse=True)
+def _plt_close_figures():
+    yield
+    plt = sys.modules.get('matplotlib.pyplot')
+    if plt is None:
+        return
+    fignums = plt.get_fignums()
+    for fignum in fignums:
+        plt.close(fignum)
+
+
+@pytest.fixture(scope='session', autouse=True)
+def _plt_use_agg():
+    try:
+        import matplotlib
+    except ImportError:
+        pass
+    else:
+        matplotlib.use('Agg')
+
+
 @pytest.fixture(scope='session')
-def plt(tkinter):
-    # XXX Probably we can get rid of tkinter requirement.
-    matplotlib = pytest.importorskip('matplotlib')
-    matplotlib.use('Agg')
+def plt(_plt_use_agg):
+    pytest.importorskip('matplotlib')
 
     import matplotlib.pyplot as plt
     return plt
