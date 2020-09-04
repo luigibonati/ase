@@ -64,10 +64,16 @@ class TestXdatcarRoundtrip(unittest.TestCase):
             ase.io.write(self.outfile, not_traj, format='vasp-xdatcar')
 
 
-class TestPoscar:
-    def test_wrap(self):
-        atoms_old = ase.build.bulk('Ge')
-        atoms_old.wrap(center=(-1, -1, -1))
-        atoms_old.write('POSCAR', direct=True, wrap=False)
-        atoms_new = ase.io.read('POSCAR')
-        assert atoms_old == atoms_new
+def test_wrap():
+    atoms = ase.build.bulk('Ge')
+    # Shift atomic positions to get negative coordinates
+    atoms.wrap(center=(-1, -1, -1))
+
+    atoms.write('POSCAR', direct=True, wrap=False)
+    new_atoms = ase.io.read('POSCAR')
+    assert np.allclose(atoms.positions, new_atoms.positions)
+
+    atoms.write('POSCAR', direct=True, wrap=True)
+    new_atoms = ase.io.read('POSCAR')
+    atoms.wrap()
+    assert np.allclose(atoms.positions, new_atoms.positions)
