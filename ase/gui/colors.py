@@ -91,7 +91,7 @@ class ColorWindow:
 
             cmaps = ['default', 'old']
             try:
-                import pylab as plt
+                import matplotlib.pyplot as plt
                 cmaps += [m for m in plt.cm.datad if not m.endswith("_r")]
             except ImportError:
                 pass

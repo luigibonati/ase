@@ -139,7 +139,10 @@ def use_tmp_workdir(tmp_path):
 
 
 @pytest.fixture(scope='session')
-def tkinter():
+def tkinter(plt):
+    # The GUI likes to import matplotlib and we really want to set
+    # an appropriate backend before it starts doing stuff.
+    # Therefore we depend on the plt fixture.
     import tkinter
     try:
         tkinter.Tk()
@@ -148,8 +151,7 @@ def tkinter():
 
 
 @pytest.fixture(scope='session')
-def plt(tkinter):
-    # XXX Probably we can get rid of tkinter requirement.
+def plt():
     matplotlib = pytest.importorskip('matplotlib')
     matplotlib.use('Agg')
 

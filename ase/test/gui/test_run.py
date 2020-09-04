@@ -24,7 +24,6 @@ def mock_gui_error(title, text=None):
 
 @pytest.fixture
 def display():
-    pytest.importorskip('tkinter')
     if not os.environ.get('DISPLAY'):
         raise pytest.skip('no display')
 
@@ -43,7 +42,7 @@ def no_blocking_errors_monkeypatch():
 
 
 @pytest.fixture
-def guifactory(display, no_blocking_errors_monkeypatch):
+def guifactory(display, tkinter, no_blocking_errors_monkeypatch):
     guis = []
 
     def factory(images):
