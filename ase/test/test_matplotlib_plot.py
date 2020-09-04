@@ -30,22 +30,16 @@ class TestPlotManager:
             with SimplePlottingAxes(ax=None, show=False, filename=None):
                 raise AssertionError()
 
-    def test_plot_manager_no_file(self, plt, xy_data):
+    def test_plot_manager_no_file(self, xy_data, figure):
         x, y = xy_data
 
-        # Boot up a figure to help the oldlibs tests manage without graphics
-        fig = plt.figure()
+        with SimplePlottingAxes(ax=None, show=False, filename=None) as ax:
+            ax.plot(x, y)
 
-        try:
-            with SimplePlottingAxes(ax=None, show=False, filename=None) as ax:
-                ax.plot(x, y)
+        assert np.allclose(ax.lines[0].get_xydata().transpose(), xy_data)
+        assert not os.path.isfile(self.filename)
 
-            assert np.allclose(ax.lines[0].get_xydata().transpose(), xy_data)
-            assert not os.path.isfile(self.filename)
-        finally:
-            plt.close(fig.number)
-
-    def test_plot_manager_axis_file(self, figure, xy_data):
+    def test_plot_manager_axis_file(self, xy_data, figure):
         x, y = xy_data
         ax = figure.add_subplot(111)
         with SimplePlottingAxes(ax=ax, show=False,
