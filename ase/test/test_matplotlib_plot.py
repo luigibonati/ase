@@ -19,8 +19,6 @@ def test_matplotlib_plot(plt):
 
 
 class TestPlotManager:
-    filename = 'plot.png'
-
     @pytest.fixture
     def xy_data(self):
         return ([1, 2], [3, 4])
@@ -37,14 +35,14 @@ class TestPlotManager:
             ax.plot(x, y)
 
         assert np.allclose(ax.lines[0].get_xydata().transpose(), xy_data)
-        assert not os.path.isfile(self.filename)
 
     def test_plot_manager_axis_file(self, xy_data, figure):
+        filename = 'plot.png'
         x, y = xy_data
         ax = figure.add_subplot(111)
         with SimplePlottingAxes(ax=ax, show=False,
-                                filename=self.filename) as return_ax:
+                                filename=filename) as return_ax:
             assert return_ax is ax
             ax.plot(x, y)
 
-        assert os.path.isfile(self.filename)
+        assert os.path.isfile(filename)

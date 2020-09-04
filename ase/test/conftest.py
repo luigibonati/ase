@@ -1,4 +1,5 @@
 import sys
+import os
 from pathlib import Path
 from subprocess import Popen, PIPE, check_output
 import zlib
@@ -232,14 +233,22 @@ class CLI:
         self.calculators = calculators
 
     def ase(self, *args):
+        environment = {}
+        environment.update(os.environ)
+        # Prevent failures due to Tkinter-related default backend
+        # on systems without Tkinter.
+        environment['MPLBACKEND'] = 'Agg'
+
         proc = Popen(['ase', '-T'] + list(args),
-                     stdout=PIPE, stdin=PIPE)
+                     stdout=PIPE, stdin=PIPE,
+                     env=environment)
         stdout, _ = proc.communicate(b'')
         status = proc.wait()
         assert status == 0
         return stdout.decode('utf-8')
 
     def shell(self, command, calculator_name=None):
+        # Please avoid using shell comamnds including this method!
         if calculator_name is not None:
             self.calculators.require(calculator_name)
 
