@@ -109,6 +109,7 @@ class OganovFP(Fingerprint):
         self.weight_by_elements = weight_by_elements
 
         self.set_params()
+        self.pair = None  # for kernel stuff
 
     def set_params(self):
         self.scale = self.params.get('scale')
@@ -307,16 +308,16 @@ class OganovFP(Fingerprint):
     def distance(self, x1, x2):
         ''' Distance function between two fingerprints '''
 
-        v1 = x1.get_fingerprint_vector()
-        v2 = x2.get_fingerprint_vector()
-        return pdist([v1, v2])[0]
+        v1 = x1.vector
+        v2 = x2.vector
+        return np.linalg.norm(x1.vector - x2.vector)
 
     def kernel(self, x1, x2):
         ''' Squared Exponential kernel function using some
         distance function '''
         return np.exp(-self.distance(x1, x2)**2 / 2 / self.scale**2)
 
-    def kernel_gradient(self, fp2, index, kernel=None, D=None, dD_dr=None):
+    def kernel_gradient(self, fp2):
         """
         Calculates the derivative of the kernel between
         self and fp2 with respect to atom with index 'index' in atom set
@@ -326,29 +327,22 @@ class OganovFP(Fingerprint):
                            d xi       dD         d xi
         """
 
-        if dD_dr is None:
-            dD_dr = self.dD_drm(fp2, index, D)
+        return (self.dk_dD(fp2) * self.dD_drm(fp2))
 
-        result = self.dk_dD(fp2, kernel, D) * dD_dr
 
-        return result
-
-    def dk_dD(self, fp2, kernel=None, D=None):
+    def dk_dD(self, fp2):
         ''' Derivative of kernel function w.r.t. distance function
             dk / dD
         '''
 
-        if kernel is None:
-            kernel = self.kernel(self, fp2)
-
-        if D is None:
-            D = self.distance(self, fp2)
+        kernel = self.kernel(self, fp2)
+        D = self.distance(self, fp2)
 
         result = - D / self.scale**2 * kernel
 
         return result
 
-    def dD_drm(self, fp2, index, D=None):
+    def dD_drm(self, fp2):
         ''' Gradient of distance function:
 
                       d D(x, x')
@@ -356,46 +350,50 @@ class OganovFP(Fingerprint):
                          d xi
         '''
 
-        if D is None:
-            D = self.distance(self, fp2)
+        D = self.distance(self, fp2)
 
+        g = self.gradients
+        
         if D == 0.0:
-            return np.zeros(3)
-
-        g = self.gradients[index]
+            return np.zeros((len(g), 3))
 
         # difference vector between fingerprints:
         tildexvec = self.G - fp2.G
 
-        return 1 / D * np.einsum('ijk,ijkl->l', tildexvec, g)
+        result = 1 / D * np.einsum('ijk,hijkl->hl', tildexvec, g)
 
-    def kernel_hessian(self, fp2, index1, index2, kernel=None,
-                       D=None, dD_dr1=None, dD_dr2=None):
+        self.pair = fp2
+        self.dD_drm_ready = result
+
+        return result
+
+    def kernel_hessian(self, fp2):
         ''' Squared exponential kernel hessian w.r.t. atomic
         coordinates, ie.
                             d^2 k(x, x')
                            -------------
                              dx_i dx_j
         '''
-        if D is None:
-            D = self.distance(self, fp2)
+        D = self.distance(self, fp2)
+        kernel = self.kernel(self, fp2)
 
-        if kernel is None:
-            kernel = self.kernel(self, fp2)
+        if self.pair == fp2:
+            dD_dr1 = self.dD_drm_ready
+        else:
+            dD_dr1 = self.dD_drm(fp2)
 
-        if dD_dr1 is None:
-            dD_dr1 = self.dD_drm(fp2, index1, D=D)
-
-        if dD_dr2 is None:
-            dD_dr2 = fp2.dD_drm(self, index2, D=D)
+        if fp2.pair == self:
+            dD_dr2 = fp2.dD_drm_ready
+        else:
+            dD_dr2 = fp2.dD_drm(self)
 
         prefactor = 1 / self.scale**2 * kernel
 
-        g1 = self.gradients[index1]
-        g2 = fp2.gradients[index2]
-        C1 = np.einsum('ijkl,ijkm->lm', g1, g2)
+        g1 = self.gradients
+        g2 = fp2.gradients
+        C1 = np.einsum('hijkl,gijkm->hglm', g1, g2)
 
-        C0 = D**2 / self.scale**2 * np.outer(dD_dr1, dD_dr2)
+        C0 = D**2 / self.scale**2 * np.einsum('ki,lj->klij', dD_dr1, dD_dr2)
 
         result = prefactor * (C0 + C1)
 
@@ -454,6 +452,8 @@ class RadialAngularFP(OganovFP):
                           **self.params)
 
         assert self.limit >= self.Rtheta
+
+        self.pair = None
 
         self.gamma = 2
 
@@ -769,38 +769,34 @@ class RadialAngularFP(OganovFP):
     # ::: KERNEL STUFF ::: #
     # -------------------- #
 
-    def dD_drm(self, fp2, index, D=None):
+    def dD_drm(self, fp2):
         ''' Gradient of distance function:
 
                       d D(x, x')
                       ----------
                          d xi
         '''
-        if D is None:
-            D = self.distance(self, fp2)
+        D = self.distance(self, fp2)
 
         if D == 0.0:
-            return np.zeros(3)
+            return np.zeros((len(self.gradients), 3))
 
         # Radial contribution:
-        result = OganovFP.dD_drm(self, fp2, index, D=D)
+        result = OganovFP.dD_drm(self, fp2)
 
         # Angle contribution:
 
-        gs = self.anglegradients[index]
+        gs = self.anglegradients
         tildexvec = self.H - fp2.H
-        summ = np.zeros(3)
-        for A in range(self.n):
-            for B in range(self.n):
-                for C in range(self.n):
-                    summ += np.tensordot(tildexvec[A, B, C],
-                                         gs[A, B, C],
-                                         axes=[0, 0])
-        result += summ / D
+
+        result += 1 / D * np.einsum('ijkl,hijklm->hm', tildexvec, gs)
+        
+        self.pair = fp2
+        self.dD_drm_ready = result
+
         return result
 
-    def kernel_hessian(self, fp2, index1, index2, kernel=None,
-                       D=None, dD_dr1=None, dD_dr2=None):
+    def kernel_hessian(self, fp2):
         ''' Squared exponential kernel hessian w.r.t. atomic
         coordinates, ie.
                             d^2 k(x, x')
@@ -808,42 +804,36 @@ class RadialAngularFP(OganovFP):
                              dx_i dx_j
         '''
 
-        if kernel is None:
-            kernel = self.kernel(self, fp2)
+        kernel = self.kernel(self, fp2)
+        D = self.distance(self, fp2)
 
-        if D is None:
-            D = self.distance(self, fp2)
+        if self.pair == fp2:
+            dD_dr1 = self.dD_drm_ready
+        else:
+            dD_dr1 = self.dD_drm(fp2)
 
-        if dD_dr1 is None:
-            dD_dr1 = self.dD_drm(fp2, index1, D=D)
-
-        if dD_dr2 is None:
-            dD_dr2 = fp2.dD_drm(self, index2, D=D)
+        if fp2.pair == self:
+            dD_dr2 = fp2.dD_drm_ready
+        else:
+            dD_dr2 = fp2.dD_drm(self)
 
         prefactor = 1 / self.scale**2 * kernel
 
         # Radial contribution:
 
-        g1 = self.gradients[index1]
-        g2 = fp2.gradients[index2]
-        C1 = np.einsum('ijkl,ijkm->lm', g1, g2)
+        g1 = self.gradients
+        g2 = fp2.gradients
+        C1 = np.einsum('hijkl,gijkm->hglm', g1, g2)
 
         # Angle contribution:
 
-        g1 = self.anglegradients[index1]
-        g2 = fp2.anglegradients[index2]
-        C2 = np.einsum('ijklm,ijkln->mn', g1, g2)
+        g1 = self.anglegradients
+        g2 = fp2.anglegradients
+        C2 = np.einsum('hijklm,gijkln->hgmn', g1, g2)
 
-        C0 = D**2 / self.scale**2 * np.outer(dD_dr1, dD_dr2)
+        C0 = D**2 / self.scale**2 * np.einsum('ki,lj->klij', dD_dr1, dD_dr2)
 
         result = prefactor * (C0 + C1 + C2)
-
-        # print("C0", C0)
-        # print("C1", C1)
-        # print("C2", C2)
-        # print("result", result)
-        # print()
-
         return result
 
     def get_fit_aweight(self, fps):
@@ -918,24 +908,19 @@ class RadialAngularFP_RQ(RadialAngularFP):
         k = (1 + d**2 / 2 / self.alpha / self.scale**2)**(-self.alpha)
         return k
 
-    def dk_dD(self, fp2, kernel=None, D=None):
+    def dk_dD(self, fp2):
         ''' Derivative of kernel function w.r.t. distance function
             dk / dD
         '''
 
-        if kernel is None:
-            kernel = self.kernel(self, fp2)
-
-        if D is None:
-            D = self.distance(self, fp2)
+        D = self.distance(self, fp2)
 
         p = - 2 * self.alpha / (2 * self.alpha * self.scale**2 + D**2)
-        result = p * D * kernel
+        result = p * D * self.kernel(self, fp2)
 
         return result
 
-    def kernel_hessian(self, fp2, index1, index2, kernel=None,
-                       D=None, dD_dr1=None, dD_dr2=None):
+    def kernel_hessian(self, fp2):
         ''' Squared exponential kernel hessian w.r.t. atomic
         coordinates, ie.
                             d^2 k(x, x')
@@ -943,34 +928,34 @@ class RadialAngularFP_RQ(RadialAngularFP):
                              dx_i dx_j
         '''
 
-        if kernel is None:
-            kernel = self.kernel(self, fp2)
+        if self.pair == fp2:
+            dD_dr1 = self.dD_drm_ready
+        else:
+            dD_dr1 = self.dD_drm(fp2)
 
-        if D is None:
-            D = self.distance(self, fp2)
+        if fp2.pair == self:
+            dD_dr2 = fp2.dD_drm_ready
+        else:
+            dD_dr2 = fp2.dD_drm(self)
 
-        if dD_dr1 is None:
-            dD_dr1 = self.dD_drm(fp2, index1, D=D)
-
-        if dD_dr2 is None:
-            dD_dr2 = fp2.dD_drm(self, index2, D=D)
-
+        D = self.distance(self, fp2)
+        kernel = self.kernel(self, fp2)
         p = - 2 * self.alpha / (2 * self.alpha * self.scale**2 + D**2)
 
         # Radial contribution:
 
-        g1 = self.gradients[index1]
-        g2 = fp2.gradients[index2]
-        C1 = np.einsum('ijkl,ijkm->lm', g1, g2)
+        g1 = self.gradients
+        g2 = fp2.gradients
+        C1 = np.einsum('hijkl,gijkm->hglm', g1, g2)
 
         # Angle contribution:
 
-        g1 = self.anglegradients[index1]
-        g2 = fp2.anglegradients[index2]
-        C2 = np.einsum('ijklm,ijkln->mn', g1, g2)
+        g1 = self.anglegradients
+        g2 = fp2.anglegradients
+        C2 = np.einsum('hijklm,gijkln->hgmn', g1, g2)
 
         C0 = ((1 + self.alpha**-1) * p**2 * D**2 *
-              kernel * np.outer(dD_dr1, dD_dr2))
+              kernel * np.einsum('ki,lj->klij', dD_dr1, dD_dr2))
 
         result = C0 - p * kernel * (C1 + C2)
 
@@ -995,6 +980,7 @@ class CartesianCoordFP(Fingerprint):
     def set_atoms(self, atoms):
         self.atoms = atoms
         self.set_params()
+        self.vector = self.atoms.get_positions(wrap=False).reshape(-1)
 
     def set_params(self):
         ''' Set parameters according to dictionary
@@ -1005,7 +991,7 @@ class CartesianCoordFP(Fingerprint):
         return
 
     def get_fingerprint_vector(self):
-        return self.atoms.get_positions(wrap=False).reshape(-1)
+        return self.vector
 
     def update(self, params):
         if params is not None:
@@ -1023,21 +1009,24 @@ class CartesianCoordFP(Fingerprint):
     # -------------------- #
 
     def distance(self, x1, x2):
-        v1 = x1.get_fingerprint_vector()
-        v2 = x2.get_fingerprint_vector()
-        return pdist([v1, v2])[0]
+        diff = x1.vector - x2.vector
+        return np.linalg.norm(diff)
+
+    def squared_distance(self, x1, x2):
+        diff = x1.vector - x2.vector
+        return diff.dot(diff)
 
     def kernel(self, x1, x2):
-        return np.exp(-self.distance(x1, x2)**2 / 2 / self.scale**2)
+        return np.exp(-self.squared_distance(x1, x2) / 2 / self.scale**2)
 
-    def kernel_gradient(self, fp2, index, **kwargs):
+    def kernel_gradient(self, fp2):
         """
         Calculates the derivative of the kernel between
         self and fp2 with respect to atom with index 'index' in atom set
         of self.
         """
 
-        result = self.dk_dD(fp2) * self.dD_drm(fp2, index)
+        result = self.dk_dD(fp2) * self.dD_drm(fp2)
 
         return result
 
@@ -1047,32 +1036,35 @@ class CartesianCoordFP(Fingerprint):
 
         return result
 
-    def dD_drm(self, fp2, index, D=None):
+    def dD_drm(self, fp2):
 
-        if D is None:
-            D = self.distance(self, fp2)
-
+        D = self.distance(self, fp2)
         if D == 0.0:
-            return np.zeros(3)
+            return np.zeros((len(self.atoms), 3))
 
-        diffvec = self.get_fingerprint_vector() - fp2.get_fingerprint_vector()
-        result = (diffvec / D)[index * 3: (index + 1) * 3]
+        diffvec = self.vector - fp2.vector
+        result = (diffvec / D)
         return result
 
-    def kernel_hessian(self, fp2, index1, index2, **kwargs):
+    def kernel_hessian(self, fp2):
 
         prefactor = 1 / self.scale**2 * self.kernel(self, fp2)
 
-        if index1 == index2:
-            C = np.eye(3)
-        else:
-            C = np.zeros([3, 3])
+        C = np.zeros((8, 8, 3, 3))
+        for i in range(len(C)):
+            for j in range(len(C[0])):
+                if i == j:
+                    C[i, j] = np.eye(3)
+                else:
+                    C[i, j] = np.zeros((3,3))
 
-        diffvec = self.get_fingerprint_vector() - fp2.get_fingerprint_vector()
-        diffvec1 = diffvec[index1 * 3: (index1 + 1) * 3]
-        diffvec2 = -diffvec[index2 * 3: (index2 + 1) * 3]
+        n = len(self.atoms)
+        C = np.eye(3 * n).reshape(n, 3, n, 3)
+        C = C.swapaxes(1, 2)
 
-        result = prefactor * (np.outer(diffvec1, diffvec2) / self.scale**2 + C)
+        diffvec = (self.vector - fp2.vector).reshape(-1, 3)
+
+        result = prefactor * (np.einsum('ki,lj->klij', diffvec, -diffvec) / self.scale**2 + C)
 
         return result
 

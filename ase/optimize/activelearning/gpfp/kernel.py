@@ -227,7 +227,7 @@ class FPKernel(SE_kernel):
     def __init__(self):
         SE_kernel.__init__(self)
 
-    def kernel_function_gradient(self, x1, x2, kernel=None, D=None, dD_dr=None):
+    def kernel_function_gradient(self, x1, x2):
         '''Gradient of kernel_function respect to the second entry.
         x1: first data point
         x2: second data point'''
@@ -235,41 +235,15 @@ class FPKernel(SE_kernel):
         n = len(x1.atoms)
         gradients = np.empty([n, 3])
 
-
-        # Distribute calculations for processors:
-        myatoms = []
-        for k in range(n):
-            if (k % world.size) == world.rank:
-                myatoms.append(k)
-
         # Calculate:
-        for i in myatoms:
-            gradients[i] = x1.kernel_gradient(x2, i, kernel=kernel, D=D, dD_dr=dD_dr[i])
-
-        # Share data among processors:
-        for i in range(n):
-            world.broadcast(gradients[i], i % world.size)
+        gradients = x1.kernel_gradient(x2)
 
         return gradients.reshape(-1)
 
-    def kernel_function_hessian(self, x1, x2, kernel=None, D=None, dD_dr1=None, dD_dr2=None):
+    def kernel_function_hessian(self, x1, x2):
         d = 3
-        hessian = np.zeros([len(x1.atoms), len(x2.atoms), d, d])
-        n = len(x1.atoms)
 
-        for i in range(len(x1.atoms)):
-            for j in range(len(x2.atoms)):
-                if ((i * n + j) % world.size) == world.rank:
-                    hessian[i, j] = x1.kernel_hessian(x2, i, j, 
-                                                      kernel=kernel, 
-                                                      D=D, 
-                                                      dD_dr1=dD_dr1[i],
-                                                      dD_dr2=dD_dr2[j])
-
-        # Share data among processors:
-        for i in range(n):
-            for j in range(len(x2.atoms)):
-                world.broadcast(hessian[i, j], (i * n + j) % world.size)
+        hessian = x1.kernel_hessian(x2)
 
         # Reshape to 2D matrix:
         hessian = hessian.swapaxes(1, 2).reshape(d * len(x1.atoms),
@@ -306,20 +280,10 @@ class FPKernel(SE_kernel):
         n = len(x1.atoms)
         K = np.identity(self.D + 1)
 
-        # Pre-compute common values:
-        kernel_value = x1.kernel(x1, x2)
-        D = x1.distance(x1, x2)
-        dD_dr1 = [x1.dD_drm(x2, index, D) for index in range(n)]
-        dD_dr2 = [x2.dD_drm(x1, index, D) for index in range(n)]
-
-        K[0, 0] = kernel_value
-        K[1:, 0] = self.kernel_function_gradient(x1, x2, kernel=kernel_value, D=D, dD_dr=dD_dr1)
-        K[0, 1:] = self.kernel_function_gradient(x2, x1, kernel=kernel_value, D=D, dD_dr=dD_dr2)
-        K[1:, 1:] = self.kernel_function_hessian(x1, x2,
-                                                 kernel=kernel_value,
-                                                 D=D,
-                                                 dD_dr1=dD_dr1,
-                                                 dD_dr2=dD_dr2)
+        K[0, 0] = x1.kernel(x1, x2)
+        K[1:, 0] = self.kernel_function_gradient(x1, x2)
+        K[0, 1:] = self.kernel_function_gradient(x2, x1)
+        K[1:, 1:] = self.kernel_function_hessian(x1, x2)
 
         return K * self.params.get('weight')**2
 
@@ -529,35 +493,5 @@ class FPKernelNoforces(FPKernel):
 
 class FPKernelSerial(FPKernel):
 
-    def kernel_function_gradient(self, x1, x2, kernel=None, D=None, dD_dr=None):
-        '''Gradient of kernel_function respect to the second entry.
-        x1: first data point
-        x2: second data point'''
-
-        n = len(x1.atoms)
-        gradients = np.empty([n, 3])
-
-        # Calculate:
-        for i in range(n):
-            gradients[i] = x1.kernel_gradient(x2, i, kernel=kernel, D=D, dD_dr=dD_dr[i])
-
-        return gradients.reshape(-1)
-
-    def kernel_function_hessian(self, x1, x2, kernel=None, D=None, dD_dr1=None, dD_dr2=None):
-        d = 3
-        hessian = np.zeros([len(x1.atoms), len(x2.atoms), d, d])
-        n = len(x1.atoms)
-
-        for i in range(len(x1.atoms)):
-            for j in range(len(x2.atoms)):
-                hessian[i, j] = x1.kernel_hessian(x2, i, j, 
-                                                  kernel=kernel, 
-                                                  D=D, 
-                                                  dD_dr1=dD_dr1[i],
-                                                  dD_dr2=dD_dr2[j])
-
-        # Reshape to 2D matrix:
-        hessian = hessian.swapaxes(1, 2).reshape(d * len(x1.atoms),
-                                                 d * len(x2.atoms))
-
-        return hessian
+    def __init__(self, **params):
+        FPKernel.__init__(self, **params)
