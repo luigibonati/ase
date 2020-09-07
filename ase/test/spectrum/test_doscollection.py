@@ -58,7 +58,7 @@ class TestDOSCollection:
         else:
             mplargs = {'linewidth': linewidth}
 
-        ax = figure.add_subplot()
+        ax = figure.add_subplot(111)
 
         ax_out = mindoscollection.plot(npts=npts, ax=ax, mplargs=mplargs)
         assert ax_out == ax
