@@ -120,10 +120,18 @@ class CalculatorPrior(ConstantPrior):
     use another calculator as prior function instead of the
     default constant.
 
+    The form of prior is 
+
+    E_p(x) = m*u + E_c(x)
+
+    where m is constant (energy), u is array with 1's for energy
+    and 0 for force components, E_c(x) is the calculator
+    potential.
+
     Parameters:
 
-    atoms: the Atoms object
     calculator: one of ASE's calculators
+    **kwargs: arguments passed to ASE parent calculator
     '''
 
     def __init__(self, calculator, **kwargs):
@@ -155,6 +163,36 @@ class CalculatorPrior(ConstantPrior):
                 pass
 
         return output
+
+    def update(self, X, Y, L):
+        """Update the constant to maximize the marginal likelihood.
+
+        The optimization problem:
+        m = argmax [-1/2 (y-m-Ec).T K^-1(y-m-Ec)]
+
+        can be turned into an algebraic problem
+        m = [ u.T K^-1 (y - Ec)]/[u.T K^-1 u]
+
+        where u is the constant prior with energy 1 (eV), and Ec is the calculator prior.
+
+        parameters:
+        ------------
+        X: training parameters
+        Y: training targets
+        L: Cholesky factor of the kernel """
+
+        # Get derivative of prior respect to constant: we call it u
+        self.set_constant(1.)
+        u = np.hstack([ConstantPrior.potential(self, x) for x in X])
+
+        E_calcprior = (np.hstack([self.potential(x) for x in X]) - u).flatten()
+
+        # w = K\u
+        w = cho_solve((L, True), u, check_finite=False)
+
+        # Set constant
+        m = np.dot(w, (np.array(Y).flatten() - E_calcprior)) / np.dot(w, u)
+        self.set_constant(m)
 
 
 class RepulsivePotential(Calculator):

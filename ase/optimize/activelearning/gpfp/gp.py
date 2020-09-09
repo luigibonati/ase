@@ -62,6 +62,9 @@ class GaussianProcess():
         if 'noisefactor' in params.keys():
             self.noisefactor = params.get('noisefactor')
 
+        if 'prior' in params.keys():
+            self.prior.constant = params.get('prior')
+
         self.kernel.set_params(params)
         self.noise = noise
 
@@ -99,6 +102,7 @@ class GaussianProcess():
 
         n = len(self.X)  # number of training points
 
+        # Regularization:
         if self.use_forces:
             D = len(self.X[0].atoms) * 3  # number of derivatives
             regularization = np.array(n * ([self.noise *
@@ -112,19 +116,24 @@ class GaussianProcess():
         K += np.diag(regularization**2)
         self.K = K  # this is only used in self.leaveoneout()
 
+        # Compute Cholesky factorization:
         self.L, self.lower = cho_factor(K, lower=True, check_finite=True)
 
-        # Update the prior if it is allowed to update
+        # Update the prior if it is allowed to update:
         if self.prior.use_update:
             self.prior.update(X, Y, self.L)
 
-        Y = Y.flatten()
-        # self.m = list(self.prior.prior(np.ones(D))) * n
+        # Prior array:
         self.m = list(np.hstack([self.prior.prior(x) for x in X]))
 
+        # Check array sizes:
+        Y = Y.flatten()
         assert len(Y) == len(self.m)
+
+        # Initialize self.a:
         self.a = Y - self.m
 
+        # Overwrite self.a so that it becomes K^-1 * (Y - prior):
         cho_solve((self.L, self.lower), self.a,
                   overwrite_b=True, check_finite=True)
 
@@ -168,7 +177,10 @@ class GaussianProcess():
 
         l: The scale for which we compute the marginal likelihood
         *args: Should be a tuple containing the inputs and targets
-               in the training set- '''
+               in the training set-
+        fit_weight: Whether kernel prefactor is fit before calculating
+                    log likelihood
+        '''
 
         X, Y, params_to_update = args
 
@@ -188,12 +200,8 @@ class GaussianProcess():
         if fit_weight:
             self.fit_weight_only(X, Y, option='update')
 
-        # y = Y.flatten()
         # Compute log likelihood
         logP = self.get_logP(Y=Y)  
-        # logP = (-0.5 * np.dot(y - self.m, self.a)
-        #         - np.sum(np.log(np.diag(self.L)))
-        #         - len(y) / 2 * np.log(2 * np.pi))
 
         # Don't let ratio fall too small, resulting in numerical
         # difficulties:
