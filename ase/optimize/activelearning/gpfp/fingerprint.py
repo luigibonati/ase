@@ -556,7 +556,7 @@ class RadialAngularFP(OganovFP):
             self.fcij = np.array([])
             self.fcjk = np.array([])
             self.thetas = np.array([])
-            self.ABC = np.array([[]])
+            self.ABC = np.array([])
 
         else:
             self.arm = ap[self.indices[:, 0]] - ep[self.indices[:, 1]]
