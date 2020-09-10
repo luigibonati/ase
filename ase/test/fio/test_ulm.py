@@ -2,7 +2,6 @@ def test_ulm():
     import numpy as np
     import ase.io.ulm as ulm
 
-
     class A:
         def write(self, writer):
             writer.write(x=np.ones((2, 3)))
@@ -12,7 +11,6 @@ def test_ulm():
             a = A()
             a.x = reader.x
             return a
-
 
     w = ulm.open('a.ulm', 'w')
     w.write(a=A(), y=9)
