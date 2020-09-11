@@ -241,14 +241,8 @@ class BaseNEB:
             Use scaled/fractional/interal coordinates instead of real space ones
             for the interpolation. Only implemented for the 'linear' method!
         """
-        if interpolate_cell and method != 'linear':
-            msg = ('Cell Interpolation only implemented for '
-                   'interpolation method linear')
-            raise NotImplementedError(msg)
-        if use_scaled_coord and method != 'linear':
-            msg = ('Scaled Coordinates Interpolation only '
-                   'implemented for interpolation method linear')
-            raise NotImplementedError(msg)
+        if (interpolate_cell or use_scaled_coord) and method != 'linear':
+            raise NotImplementedError('Only implemented for linear interpolation method')
 
         if self.remove_rotation_and_translation:
             minimize_rotation_and_translation(self.images[0], self.images[-1])
@@ -779,7 +773,7 @@ def interpolate(images, mic=False, interpolate_cell=False,
         pos1 = images[0].get_positions()
         pos2 = images[-1].get_positions()
     d = pos2 - pos1
-    if mic and not use_scaled_coord:
+    if not use_scaled_coord and mic:
         d = find_mic(d, images[0].get_cell(), images[0].pbc)[0]
     d /= (len(images) - 1.0)
     if interpolate_cell:

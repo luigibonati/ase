@@ -33,23 +33,30 @@ def images(initial, final):
 def neb(images):
     return NEB(images)
 
+def assert_interpolated(values):
+    step = (values[-1] - values[0]) / (len(values) - 1)
+    for v1, v2 in zip(*[values[i:i+1] for i in range(len(values)-1)]):
+        assert v2 - v1 == pytest.approx(step)
+
 
 def test_interpolate_images_default(neb, images, initial, average_pos):
     neb.interpolate()
     assert images[1].positions == pytest.approx(average_pos)
+    assert_interpolated([image.positions for image in images])
     assert np.allclose(images[1].cell, initial.cell)
 
 
 def test_interpolate_images_scaled_coord(neb, images, initial):
     neb.interpolate(use_scaled_coord=True)
-    assert np.allclose(images[1].positions, [1.0, 0.1, 0.075])
+    assert_interpolated([image.get_scaled_positions() for image in images])
     assert np.allclose(images[1].cell, initial.cell)
 
 
 def test_interpolate_images_cell(neb, images, initial, average_pos):
     neb.interpolate(interpolate_cell=True)
     assert images[1].positions == pytest.approx(average_pos)
-    assert np.allclose(images[1].cell, initial.cell * 1.5)
+    assert_interpolated([image.positions for image in images])
+    assert_interpolated([image.cell for image in images])
 
 
 def test_interpolate_images_cell_default_interpolate_cell_scaled_coord(
@@ -57,5 +64,5 @@ def test_interpolate_images_cell_default_interpolate_cell_scaled_coord(
         images,
         initial):
     neb.interpolate(interpolate_cell=True, use_scaled_coord=True)
-    assert np.allclose(images[1].positions, [1.5, 0.15, 0.1125])
-    assert np.allclose(images[1].cell, initial.cell * 1.5)
+    assert_interpolated([image.get_scaled_positions() for image in images])
+    assert_interpolated([image.cell for image in images])
