@@ -1,4 +1,3 @@
-from scipy.spatial.distance import pdist
 from math import pi
 from scipy.spatial import distance_matrix
 import numpy as np
@@ -231,7 +230,7 @@ class OganovFP(Fingerprint):
         ''' Calculate the Gaussian-broadened fingerprint. '''
 
         self.G = np.zeros([self.n, self.n, self.N])
-        x = np.linspace(-1.0, self.limit+2.0, self.N)  # variable array
+        x = np.linspace(-1.0, self.limit + 2.0, self.N)  # variable array
 
         # Broadening of each peak:
         gs = (self.h[:, np.newaxis] *
@@ -308,8 +307,6 @@ class OganovFP(Fingerprint):
     def distance(self, x1, x2):
         ''' Distance function between two fingerprints '''
 
-        v1 = x1.vector
-        v2 = x2.vector
         return np.linalg.norm(x1.vector - x2.vector)
 
     def kernel(self, x1, x2):
@@ -328,7 +325,6 @@ class OganovFP(Fingerprint):
         """
 
         return (self.dk_dD(fp2) * self.dD_drm(fp2))
-
 
     def dk_dD(self, fp2):
         ''' Derivative of kernel function w.r.t. distance function
@@ -401,7 +397,7 @@ class OganovFP(Fingerprint):
 
     def Gij(self, p):
         xij = self.dm[p]
-        xvec = np.linspace(-1.0, self.limit+2.0, self.N)
+        xvec = np.linspace(-1.0, self.limit + 2.0, self.N)
         diffvec = xvec - xij
 
         h = self.h[p]
@@ -596,7 +592,7 @@ class RadialAngularFP(OganovFP):
         ''' Calculate the angular fingerprint with Gaussian broadening  '''
 
         self.H = np.zeros([self.n, self.n, self.n, self.nanglebins])
-        x = np.linspace(-pi/2, 3*pi/2, self.nanglebins)  # variable array
+        x = np.linspace(- pi / 2, 3 * pi / 2, self.nanglebins)  # variable array
 
         # Broadening of each peak:
         gs = (self.fcij[:, np.newaxis] *
@@ -732,7 +728,7 @@ class RadialAngularFP(OganovFP):
         return gradient * self.angleconstant
 
     def calculate_all_angle_gradients(self):
-        xvec = np.linspace(-pi/2, 3*pi/2, self.nanglebins)
+        xvec = np.linspace(-pi / 2, 3 * pi / 2, self.nanglebins)
         diffvecs = np.subtract.outer(xvec, self.thetas).T
         gaussians = np.exp(- diffvecs**2 / 2 / self.ascale**2)
         nabla_fcijs = self.nabla_fcij()
@@ -1056,7 +1052,7 @@ class CartesianCoordFP(Fingerprint):
                 if i == j:
                     C[i, j] = np.eye(3)
                 else:
-                    C[i, j] = np.zeros((3,3))
+                    C[i, j] = np.zeros((3, 3))
 
         n = len(self.atoms)
         C = np.eye(3 * n).reshape(n, 3, n, 3)
@@ -1064,7 +1060,8 @@ class CartesianCoordFP(Fingerprint):
 
         diffvec = (self.vector - fp2.vector).reshape(-1, 3)
 
-        result = prefactor * (np.einsum('ki,lj->klij', diffvec, -diffvec) / self.scale**2 + C)
+        result = prefactor * (np.einsum('ki,lj->klij', diffvec, -diffvec) /
+                              self.scale**2 + C)
 
         return result
 
