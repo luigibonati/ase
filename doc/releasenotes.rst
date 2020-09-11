@@ -10,7 +10,11 @@ Git master branch
 
 :git:`master <>`.
 
-* No changes yet
+Algorithms:
+
+* The nudged elastic band (NEB) module now supports the linear
+  interpolation (:meth:`ase.neb.BaseNEB.interpolate`) between images
+  with differing cells and the use of scaled positions.
 
 
 Version 3.20.1
