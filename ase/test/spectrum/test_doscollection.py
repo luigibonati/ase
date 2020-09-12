@@ -119,12 +119,11 @@ class TestDOSCollection:
                                           'smearing': 'Gauss'}])
     def test_sample(self, rawdos, another_rawdos, options):
         dc = MinimalDOSCollection([rawdos, another_rawdos])
-        newdc = dc.sample(**options)
-        sampled_data = newdc.get_all_weights()
+        sampled_data = dc._sample(**options)
         for i, data in enumerate((rawdos, another_rawdos)):
             # Check consistency with individual DOSData objects
-            newdos = data.sample(**options)
-            assert np.allclose(sampled_data[i, :], newdos.get_weights())
+            newdos_weights = data._sample(**options)
+            assert np.allclose(sampled_data[i, :], newdos_weights)
             # Check we aren't trivially comparing zeros
             assert np.all(sampled_data)
 
@@ -170,7 +169,7 @@ class TestDOSCollection:
     def test_sample_empty(self):
         empty_dc = MinimalDOSCollection([])
         with pytest.raises(IndexError):
-            empty_dc.sample(10)
+            empty_dc._sample(10)
         with pytest.raises(IndexError):
             empty_dc.sample_grid(10)
 

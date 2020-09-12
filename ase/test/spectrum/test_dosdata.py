@@ -142,18 +142,17 @@ class TestRawDosData:
                              sampling_data_args_results)
     def test_sampling(self, data, args, result):
         dos = RawDOSData(data[0], data[1])
-        griddos = dos.sample(*args[:-1], **args[-1])
-        weights = griddos.get_weights()
+        weights = dos._sample(*args[:-1], **args[-1])
         assert np.allclose(weights, result)
 
         with pytest.raises(ValueError):
-            dos.sample([1], smearing="Gauss's spherical cousin")
+            dos._sample([1], smearing="Gauss's spherical cousin")
 
     def test_sampling_error(self, sparse_dos):
         with pytest.raises(ValueError):
-            sparse_dos.sample([1, 2, 3], width=0.)
+            sparse_dos._sample([1, 2, 3], width=0.)
         with pytest.raises(ValueError):
-            sparse_dos.sample([1, 2, 3], width=-1)
+            sparse_dos._sample([1, 2, 3], width=-1)
 
     def test_sample_grid(self, sparse_dos):
         min_dos = sparse_dos.sample_grid(10, xmax=5, padding=3, width=0.1)
@@ -165,9 +164,9 @@ class TestRawDosData:
         default_dos = sparse_dos.sample_grid(10)
         assert np.allclose(default_dos.get_energies(),
                            np.linspace(0.9, 5.3, 10))
-        dos0 = sparse_dos.sample(np.linspace(0.9, 5.3, 10))
+        dos0 = sparse_dos._sample(np.linspace(0.9, 5.3, 10))
         assert np.allclose(default_dos.get_weights(),
-                           dos0.get_weights())
+                           dos0)
 
     # Comparing plot outputs is hard, so we
     # - inspect the line values
@@ -271,10 +270,10 @@ class TestGridDosData:
     def test_check_spacing(self, dense_dos):
         """Check a warning is logged when width < 2 * grid spacing"""
         # In the sample data, grid spacing is 1.0
-        dense_dos.sample([1], width=2.1)
+        dense_dos._sample([1], width=2.1)
 
         with pytest.warns(UserWarning, match="The broadening width is small"):
-            dense_dos.sample([1], width=1.9)
+            dense_dos._sample([1], width=1.9)
 
     linewidths = [1, 5, None]
     @pytest.mark.usefixtures("figure")

@@ -17,10 +17,10 @@ class DOSCollection(collections.abc.Sequence):
     def __init__(self, dos_series: Iterable[DOSData]) -> None:
         self._data = list(dos_series)
 
-    def sample(self,
-               energies: Sequence[float],
-               width: float = 0.1,
-               smearing: str = 'Gauss') -> 'GridDOSCollection':
+    def _sample(self,
+                energies: Sequence[float],
+                width: float = 0.1,
+                smearing: str = 'Gauss') -> np.ndarray:
         """Sample the DOS data at chosen points, with broadening
 
         This samples the underlying DOS data in the same way as the .sample()
@@ -41,8 +41,8 @@ class DOSCollection(collections.abc.Sequence):
         if len(self) == 0:
             raise IndexError("No data to sample")
 
-        return GridDOSCollection(
-            [data.sample(energies, width=width, smearing=smearing)
+        return np.asarray(
+            [data._sample(energies, width=width, smearing=smearing)
              for data in self])
 
     def plot(self,
@@ -64,8 +64,8 @@ class DOSCollection(collections.abc.Sequence):
 
         Args:
             npts, xmin, xmax: output data range, as passed to self.sample_grid
-            width: Width of broadening kernel, passed to self.sample()
-            smearing: selection of broadening kernel, passed to self.sample()
+            width: Width of broadening kernel, passed to self.sample_grid()
+            smearing: selection of broadening kernel for self.sample_grid()
             ax: existing Matplotlib axes object. If not provided, a new figure
                 with one set of axes will be created using Pyplot
             show: show the figure on-screen
@@ -76,7 +76,6 @@ class DOSCollection(collections.abc.Sequence):
         Returns:
             Plotting axes. If "ax" was set, this is the same object.
         """
-
 
         if mplargs is None:
             mplargs = {}
@@ -119,8 +118,8 @@ class DOSCollection(collections.abc.Sequence):
                 chosen
             padding: If xmin/xmax is unspecified, default value will be padded
                 by padding * width to avoid cutting off peaks.
-            width: Width of broadening kernel, passed to self.sample()
-            smearing: selection of broadening kernel, passed to self.sample()
+            width: Width of broadening kernel, passed to self.sample_grid()
+            smearing: selection of broadening kernel, for self.sample_grid()
 
         Returns:
             (energy values, sampled DOS)
@@ -134,8 +133,14 @@ class DOSCollection(collections.abc.Sequence):
         if xmax is None:
             xmax = (max(max(data.get_energies()) for data in self)
                     + (padding * width))
-        energies = np.linspace(xmin, xmax, npts)
-        return self.sample(energies, width=width, smearing=smearing)
+
+        if len(self) == 0:
+            raise IndexError("No data to sample")
+
+        return GridDOSCollection(
+            [data.sample_grid(npts, xmin=xmin, xmax=xmax, width=width,
+                              smearing=smearing)
+             for data in self])
 
     @classmethod
     def from_data(cls,
@@ -222,6 +227,7 @@ class DOSCollection(collections.abc.Sequence):
         return data
 
     D = TypeVar('D', bound=DOSData)
+
     @staticmethod
     def _select_to_list(dos_collection: Sequence[D],         # Bug in flakes
                         info_selection: Dict[str, str],      # misses 'D' def
