@@ -341,6 +341,10 @@ class GridDOSData(GeneralDOSData):
                  weights: Sequence[float],
                  info: Info = None) -> None:
         n_entries = len(energies)
+        if not np.allclose(energies,
+                           np.linspace(energies[0], energies[-1], n_entries)):
+            raise ValueError("Energies must be an evenly-spaced 1-D grid")
+
         if len(weights) != n_entries:
             raise ValueError("Energies and weights must be the same length")
 

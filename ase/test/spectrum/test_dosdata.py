@@ -224,6 +224,10 @@ class TestGridDosData:
         with pytest.raises(ValueError):
             GridDOSData(np.linspace(0, 10, 11), np.zeros(10))
 
+        # energies must be evenly spaced
+        with pytest.raises(ValueError):
+            GridDOSData(np.linspace(0, 10, 11)**2, np.zeros(11))
+
     @pytest.fixture
     def dense_dos(self):
         x = np.linspace(0., 10., 11)
