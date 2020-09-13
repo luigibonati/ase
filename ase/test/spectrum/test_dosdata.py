@@ -235,6 +235,12 @@ class TestGridDosData:
                                        'day': 'Tue'})
 
     @pytest.fixture
+    def denser_dos(self):
+        x = np.linspace(0., 10., 21)
+        y = np.sin(x / 10)
+        return GridDOSData(x, y)
+
+    @pytest.fixture
     def another_dense_dos(self):
         x = np.linspace(0., 10., 11)
         y = np.sin(x / 10) * 2
@@ -274,6 +280,25 @@ class TestGridDosData:
 
         with pytest.warns(UserWarning, match="The broadening width is small"):
             dense_dos._sample([1], width=1.9)
+
+    def test_resampling_consistency(self, dense_dos, denser_dos):
+        """Check that resampled spectra are independent of the original density
+
+        Compare resampling of sample function on two different grids to the
+        same new grid with broadening. We accept a 5% difference because the
+        initial shape is slightly different; what we are checking for is a
+        factor 2 difference from "double-counting" the extra data points.
+        """
+        sampling_params = dict(npts=500, xmin=0, xmax=10, width=4)
+
+        from_dense = dense_dos.sample_grid(**sampling_params)
+        from_denser = denser_dos.sample_grid(**sampling_params)
+
+        assert np.allclose(from_dense.get_energies(),
+                           from_denser.get_energies())
+        assert np.allclose(from_dense.get_weights(),
+                           from_denser.get_weights(),
+                           rtol=0.05, atol=0.01)
 
     linewidths = [1, 5, None]
     @pytest.mark.usefixtures("figure")
