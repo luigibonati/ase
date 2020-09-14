@@ -69,20 +69,6 @@ prec_round = np.vectorize(prec_round)
 
 # end most settings
 
-
-def sort2rank(sort):
-    """
-    Given an argsort, return a list which gives the rank of the element
-    at each position.  Also does the inverse problem (an involutive
-    transform) of given a list of ranks of the elements, return an
-    argsort.
-    """
-    n = len(sort)
-    rank = np.zeros(n, dtype=int)
-    for i in range(n):
-        rank[sort[i]] = i
-    return rank
-
 # this will sort alphabetically by chemical symbol
 num2sym = dict(zip(np.argsort(chemical_symbols), chemical_symbols))
 # to sort by atomic number, uncomment below
@@ -162,7 +148,7 @@ def get_field_data(atoms1, atoms2, field):
             data = np.linalg.norm(y, axis=1)
 
     if rank_order:
-        return sort2rank(np.argsort(-data))
+        return np.argsort(np.argsort(-data))
 
     return data
 
@@ -205,7 +191,7 @@ def parse_field_specs(field_specs):
             mxm += 1
             hier[c] = mxm
     # reversed by convention of numpy lexsort
-    hier = sort2rank(hier)[::-1]
+    hier = np.argsort(hier)[::-1]
     return fields, hier, np.array(scent)
 
 # Class definitions
