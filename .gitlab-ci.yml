@@ -65,6 +65,17 @@ pipinstall:
 main:
   image: registry.gitlab.com/ase/ase:ase-main
   extends: .database-configuration
+  # Inheriting variables from the database-configuration job
+  # seems to be broken all of a sudden (gitlab-runner 13.0.1 and 13.3.1)
+  # We need to redefine them here then, otherwise gitlab-runner will fail
+  # those tests when run locally.  Meanwhile everything works on gitlab.com.
+  # Strange!
+  variables:
+    POSTGRES_DB: testase
+    POSTGRES_USER: ase
+    POSTGRES_PASSWORD: "ase"
+    MYSQL_DATABASE: testase_mysql
+    MYSQL_ROOT_PASSWORD: ase
   services:
     - postgres:latest
     - mysql:latest
