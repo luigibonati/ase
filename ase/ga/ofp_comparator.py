@@ -6,7 +6,7 @@ from ase.neighborlist import NeighborList
 from ase.utils import pbc2pbc
 
 
-class OFPComparator(object):
+class OFPComparator:
     """Implementation of comparison using Oganov's fingerprint (OFP)
     functions, based on:
 
@@ -114,7 +114,7 @@ class OFPComparator(object):
             raise Exception('The two configurations are not the same size.')
 
         # first we check the energy criteria
-        if a1.get_calculator() is not None and a2.get_calculator() is not None:
+        if a1.calc is not None and a2.calc is not None:
             dE = abs(a1.get_potential_energy() - a2.get_potential_energy())
             if dE >= self.dE:
                 return False

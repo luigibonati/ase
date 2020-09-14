@@ -14,7 +14,7 @@ class Langevin(MolecularDynamics):
     atoms
         The list of atoms.
 
-    dt
+    timestep
         The time step.
 
     temperature

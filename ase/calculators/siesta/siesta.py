@@ -129,7 +129,7 @@ def resolve_band_structure(path, kpts, energies, efermi):
     #
     # Also we should perhaps verify the cell.  If we had the cell, we
     # could construct the bandpath from scratch (i.e., pure outputs).
-    from ase.dft.band_structure import BandStructure
+    from ase.spectrum.band_structure import BandStructure
     ksn2e = energies
     skn2e = np.swapaxes(ksn2e, 0, 1)
     bs = BandStructure(path, skn2e, reference=efermi)
@@ -187,20 +187,20 @@ class Siesta(FileIOCalculator):
 
     name = 'siesta'
     command = 'siesta < PREFIX.fdf > PREFIX.out'
-    implemented_properties = (
+    implemented_properties = [
         'energy',
         'forces',
         'stress',
         'dipole',
         'eigenvalues',
         'density',
-        'fermi_energy')
+        'fermi_energy']
 
     # Dictionary of valid input vaiables.
     default_parameters = SiestaParameters()
 
     # XXX Not a ASE standard mechanism (yet).  We need to communicate to
-    # ase.dft.band_structure.calculate_band_structure() that we expect
+    # ase.spectrum.band_structure.calculate_band_structure() that we expect
     # it to use the bandpath keyword.
     accepts_bandpath_keyword = True
 
@@ -359,6 +359,12 @@ class Siesta(FileIOCalculator):
                 -kwargs  : Dictionary containing the keywords defined in
                            SiestaParameters.
         """
+
+        # XXX Inserted these next few lines because set() would otherwise
+        # discard all previously set keywords to their defaults!  --askhl
+        current = self.parameters.copy()
+        current.update(kwargs)
+        kwargs = current
 
         # Find not allowed keys.
         default_keys = list(self.__class__.default_parameters)
@@ -650,14 +656,19 @@ class Siesta(FileIOCalculator):
         # no spin. SIESTA default is FM initialization, if the
         # block is not written, but  we must conform to the
         # atoms object.
-        if self['spin'] != 'non-polarized':
-            if sum(abs(magmoms)) == 0:
+        if magmoms is not None:
+            if len(magmoms) == 0:
                 f.write('#Empty block forces ASE initialization.\n')
 
             f.write('%block DM.InitSpin\n')
-            for n, M in enumerate(magmoms):
-                if M != 0:
-                    f.write('    %d %.14f\n' % (n + 1, M))
+            if len(magmoms) != 0 and isinstance(magmoms[0], np.ndarray):
+                for n, M in enumerate(magmoms):
+                    if M[0] != 0:
+                        f.write('    %d %.14f %.14f %.14f \n' % (n + 1, M[0], M[1], M[2]))
+            elif len(magmoms) != 0 and isinstance(magmoms[0], float):
+                for n, M in enumerate(magmoms):
+                    if M != 0:
+                        f.write('    %d %.14f \n' % (n + 1, M))
             f.write('%endblock DM.InitSpin\n')
             f.write('\n')
 
@@ -810,7 +821,7 @@ class Siesta(FileIOCalculator):
         """
         species, species_numbers = self.species(atoms)
 
-        if not self['pseudo_path'] is None:
+        if self['pseudo_path'] is not None:
             pseudo_path = self['pseudo_path']
         elif 'SIESTA_PP_PATH' in os.environ:
             pseudo_path = os.environ['SIESTA_PP_PATH']
@@ -1298,7 +1309,7 @@ class Siesta(FileIOCalculator):
                         'DM.NumberPulay': 4,
                         'XML.Write': True})
 
-        Na8.set_calculator(siesta)
+        Na8.calc = siesta
         e = Na8.get_potential_energy()
         freq, pol = siesta.get_polarizability_pyscf_inter(
             label="siesta",
@@ -1478,7 +1489,7 @@ class Siesta(FileIOCalculator):
                 'XML.Write': True})
 
 
-        Na8.set_calculator(siesta)
+        Na8.calc = siesta
         e = Na8.get_potential_energy()
         tddft = siesta.pyscf_tddft_eels(
             label="siesta", jcutoff=7, iter_broadening=0.15/Ha,
@@ -1654,7 +1665,7 @@ class Siesta(FileIOCalculator):
                     'gwa_initialization':'SIESTA_PB'}
 
 
-        Na8.set_calculator(siesta)
+        Na8.calc = siesta
         e = Na8.get_potential_energy() #run siesta
         freq, pol = siesta.get_polarizability_siesta(mbpt_inp,
                                                      format_output='txt',

@@ -7,6 +7,8 @@ knowledge of the space group.
 
 """
 
+from typing import Dict, Any
+
 import numpy as np
 from scipy import spatial
 
@@ -22,7 +24,7 @@ def crystal(symbols=None, basis=None, occupancies=None, spacegroup=1, setting=1,
             cell=None, cellpar=None,
             ab_normal=(0, 0, 1), a_direction=None, size=(1, 1, 1),
             onduplicates='warn', symprec=0.001,
-            pbc=True, primitive_cell=False, **kwargs):
+            pbc=True, primitive_cell=False, **kwargs) -> ase.Atoms:
     """Create an Atoms instance for a conventional unit cell of a
     space group.
 
@@ -159,15 +161,13 @@ def crystal(symbols=None, basis=None, occupancies=None, spacegroup=1, setting=1,
     if cell is None:
         cell = cellpar_to_cell(cellpar, ab_normal, a_direction)
 
-    info = dict(spacegroup=sg)
+    info: Dict[str, Any] = {}
+    info['spacegroup'] = sg
     if primitive_cell:
         info['unit_cell'] = 'primitive'
     else:
         info['unit_cell'] = 'conventional'
 
-    if kinds:
-        info['spacegroup_kinds'] = kinds
-        
     if 'info' in kwargs:
         info.update(kwargs['info'])
 
@@ -189,6 +189,9 @@ def crystal(symbols=None, basis=None, occupancies=None, spacegroup=1, setting=1,
                 array = basis.get_array(name)
                 atoms.new_array(name, [array[i] for i in kinds],
                                 dtype=array.dtype, shape=array.shape[1:])
+                
+    if kinds:
+        atoms.new_array('spacegroup_kinds', np.asarray(kinds, dtype=int))
 
     if primitive_cell:
         from ase.build import cut

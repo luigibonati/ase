@@ -13,7 +13,7 @@ from math import log
 from math import exp
 
 
-class AutoNEB(object):
+class AutoNEB:
     """AutoNEB object.
 
     The AutoNEB algorithm streamlines the execution of NEB and CI-NEB
@@ -583,7 +583,7 @@ def store_E_and_F_in_spc(self):
             self.world.broadcast(forces, root)
             # On all nodes, remove the calculator, keep only energy
             # and force in single point calculator
-            self.images[i].set_calculator(
-                SinglePointCalculator(self.images[i],
-                                      energy=energy[0],
-                                      forces=forces))
+            self.images[i].calc = SinglePointCalculator(
+                self.images[i],
+                energy=energy[0],
+                forces=forces)

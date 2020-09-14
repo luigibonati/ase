@@ -28,9 +28,8 @@ class Cell:
         array: 3x3 arraylike object
           The three cell vectors: cell[0], cell[1], and cell[2].
         """
-        array = np.asarray(array)
+        array = np.asarray(array, dtype=float)
         assert array.shape == (3, 3)
-        assert array.dtype == float
         self.array = array
 
     def cellpar(self, radians=False):
@@ -167,18 +166,10 @@ class Cell:
             return bandpath.transform(op)
         else:
             from ase.dft.kpoints import BandPath, resolve_custom_points
-            path = resolve_custom_points(path, special_points, eps=eps)
+            path, special_points = resolve_custom_points(
+                path, special_points, eps=eps)
             bandpath = BandPath(cell, path=path, special_points=special_points)
             return bandpath.interpolate(npoints=npoints, density=density)
-
-
-    # XXX adapt the transformation stuff and include in the bandpath method.
-    def oldbandpath(self, path=None, npoints=None, density=None, eps=2e-4):
-        """Legacy implementation, please ignore."""
-        bravais = self.get_bravais_lattice(eps=eps)
-        transformation = bravais.get_transformation(self.array)
-        return bravais.bandpath(path=path, npoints=npoints, density=density,
-                                transformation=transformation)
 
     def uncomplete(self, pbc):
         """Return new cell, zeroing cell vectors where not periodic."""
@@ -215,7 +206,7 @@ class Cell:
 
     def lengths(self):
         """Return the length of each lattice vector as an array."""
-        return np.array([np.linalg.norm(v) for v in self])
+        return np.linalg.norm(self, axis=1)
 
     def angles(self):
         """Return an array with the three angles alpha, beta, and gamma."""
@@ -259,7 +250,7 @@ class Cell:
         """Get reciprocal lattice as a 3x3 array.
 
         Does not include factor of 2 pi."""
-        return np.linalg.pinv(self).transpose()
+        return Cell(np.linalg.pinv(self).transpose())
 
     def __repr__(self):
         if self.orthorhombic:

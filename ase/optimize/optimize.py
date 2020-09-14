@@ -9,7 +9,7 @@ from os.path import isfile
 from ase.calculators.calculator import PropertyNotImplementedError
 from ase.parallel import world, barrier
 from ase.io.trajectory import Trajectory
-import collections
+import collections.abc
 
 
 class Dynamics:
@@ -77,7 +77,7 @@ class Dynamics:
         self, function, position=0, interval=1, *args, **kwargs
     ):
         """Insert an observer."""
-        if not isinstance(function, collections.Callable):
+        if not isinstance(function, collections.abc.Callable):
             function = function.write
         self.observers.insert(position, (function, interval, args, kwargs))
 
@@ -180,6 +180,9 @@ class Dynamics:
 
 class Optimizer(Dynamics):
     """Base-class for all structure optimization classes."""
+
+    # default maxstep for all optimizers
+    defaults = {'maxstep': 0.2}
 
     def __init__(
         self,

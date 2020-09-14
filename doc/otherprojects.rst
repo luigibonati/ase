@@ -14,7 +14,7 @@ link and descriptive paragraph.
 
  * `icet <https://icet.materialsmodeling.org/>`_:
    The integration cluster expansion toolkit. icet is a flexible and
-   extensible software package for constructing and sampling alloy
+   extendable software package for constructing and sampling alloy
    cluster expansions. It supports a wide range of regression and
    validation techniques, and includes a Monte Carlo module with
    support for many different thermodynamic ensembles.
@@ -38,3 +38,10 @@ link and descriptive paragraph.
    refinement of arbitrary-order saddle points with constraints.
    Additionally, Sella can perform intrinsic reaction coordinate (IRC)
    calculations.
+
+ * `CLEASE <https://gitlab.com/computationalmaterials/clease#clease>`_:
+    CLuster Expansion in Atomic Simulation Environment (CLEASE) is a package 
+    that automates the cumbersome setup and construction procedure of cluster 
+    expansion (CE). It provides a comprehensive list of tools for specifying 
+    parameters for CE, generating training structures, fitting effective cluster 
+    interaction (ECI) values and running Monte Carlo simulations.

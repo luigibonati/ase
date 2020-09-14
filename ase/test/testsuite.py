@@ -1,93 +1,32 @@
 import os
 import sys
-import subprocess
-from contextlib import contextmanager
+from subprocess import Popen
 import importlib
-import unittest
+from pathlib import Path
 import warnings
 import argparse
 from multiprocessing import cpu_count
 
-from ase.calculators.calculator import names as calc_names, get_calculator_class
-from ase.cli.info import print_info
+from ase.calculators.calculator import names as calc_names
 from ase.cli.main import CLIError
 
-
-test_calculator_names = ['emt']
-datafiles_directory = os.path.join(os.path.dirname(__file__), 'datafiles', '')
+testdir = Path(__file__).parent
 
 
-def require(calcname):
-    if calcname not in test_calculator_names:
-        raise unittest.SkipTest('use --calculators={0} to enable'
-                                .format(calcname))
+def all_test_modules():
+    for abspath in testdir.rglob('test_*.py'):
+        path = abspath.relative_to(testdir)
+        yield path
 
 
-def disable_calculators(names):
-    for name in names:
-        if name in ['emt', 'lj', 'eam', 'morse', 'tip3p']:
-            continue
-        try:
-            cls = get_calculator_class(name)
-        except ImportError:
-            pass
-        else:
-            def get_mock_init(name):
-                def mock_init(obj, *args, **kwargs):
-                    raise unittest.SkipTest('use --calculators={0} to enable'
-                                            .format(name))
-                return mock_init
-
-            def mock_del(obj):
-                pass
-            cls.__init__ = get_mock_init(name)
-            cls.__del__ = mock_del
-
-
-def cli(command, calculator_name=None):
-    if (calculator_name is not None and
-        calculator_name not in test_calculator_names):
-        return
-    actual_command = ' '.join(command.split('\n')).strip()
-    proc = subprocess.Popen(actual_command,
-                            shell=True,
-                            stdout=subprocess.PIPE)
-    print(proc.stdout.read().decode())
-    proc.wait()
-
-    if proc.returncode != 0:
-        raise RuntimeError('Command "{}" exited with error code {}'
-                           .format(actual_command, proc.returncode))
-
-
-class must_raise:
-    """Context manager for checking raising of exceptions."""
-    def __init__(self, exception):
-        self.exception = exception
-
-    def __enter__(self):
-        pass
-
-    def __exit__(self, exc_type, exc_value, tb):
-        if exc_type is None:
-            raise RuntimeError('Failed to fail: ' + str(self.exception))
-        return issubclass(exc_type, self.exception)
-
-
-@contextmanager
-def must_warn(category):
-    with warnings.catch_warnings(record=True) as ws:
-        yield
-        did_warn = any(w.category == category for w in ws)
-    if not did_warn:
-        raise RuntimeError('Failed to warn: ' + str(category))
-
-
-@contextmanager
-def no_warn():
-    with warnings.catch_warnings():
-        warnings.filterwarnings('ignore')
-        yield
+def all_test_modules_and_groups():
+    groups = set()
+    for testpath in all_test_modules():
+        group = testpath.parent
+        if group not in groups:
+            yield group
+            groups.add(group)
+        yield testpath
 
 
 def test(calculators=tuple(), jobs=0, verbose=False,
@@ -131,6 +70,37 @@ def choose_how_many_workers(jobs):
     return jobs
 
 
+help_calculators = """\
+Calculator testing is currently work in progress.  This
+notice applies to the calculators abinit, cp2k, dftb, espresso,
+lammpsrun, nwchem, octopus, and siesta.  The goal of this work is to
+provide a configuration in which tests are more reproducible.
+
+Most calculators require datafiles such as pseudopotentials
+which are available at
+
+  https://gitlab.com/ase/ase-datafiles
+
+Please install this package using e.g.:
+
+  $ pip install --user --upgrade git+https://gitlab.com/ase/ase-datafiles.git
+
+The ASE test suite needs to know the exact binaries for each
+of the aforementioned programs.  Currently these must be specified
+in ~/.config/ase/ase.conf or another file if specified by
+the ASE_CONFIG environment variable.  Example configuration file:
+
+[executables]
+abinit = abinit
+cp2k = cp2k_shell
+dftb+ = dftb+
+espresso = pw.x
+lammpsrun = lmp
+nwchem = /usr/bin/nwchem
+octopus = octopus
+siesta = /usr/local/bin/siesta
+"""
+
 class CLICommand:
     """Run ASE's test-suite.
 
@@ -141,8 +111,12 @@ class CLICommand:
     @staticmethod
     def add_arguments(parser):
         parser.add_argument(
-            '-c', '--calculators',
-            help='comma-separated list of calculators to test')
+            '-c', '--calculators', default='',
+            help='comma-separated list of calculators to test; '
+            'see --help-calculators')
+        parser.add_argument('--help-calculators', action='store_true',
+                            help='show extended help about calculator tests '
+                            'and exit')
         parser.add_argument('--list', action='store_true',
                             help='print all tests and exit')
         parser.add_argument('--list-calculators', action='store_true',
@@ -160,6 +134,11 @@ class CLICommand:
         parser.add_argument('--strict', action='store_true',
                             help='convert warnings to errors.  '
                             'This option currently has no effect')
+        parser.add_argument('--fast', action='store_true',
+                            help='skip slow tests')
+        parser.add_argument('--coverage', action='store_true',
+                            help='measure code coverage.  '
+                            'Requires pytest-cov')
         parser.add_argument('--nogui', action='store_true',
                             help='do not run graphical tests')
         parser.add_argument('tests', nargs='*',
@@ -171,36 +150,19 @@ class CLICommand:
 
     @staticmethod
     def run(args):
-        if args.calculators:
-            calculators = args.calculators.split(',')
-            # Hack: We use ASE_TEST_CALCULATORS to communicate to pytest
-            # (in conftest.py) which calculators we have enabled.
-            # This also provides an (undocumented) way to enable
-            # calculators when running pytest independently.
-            os.environ['ASE_TEST_CALCULATORS'] = ' '.join(calculators)
-        else:
-            calculators = []
-
-        print_info()
-        print()
+        if args.help_calculators:
+            print(help_calculators)
+            sys.exit(0)
 
         if args.list_calculators:
             for name in calc_names:
                 print(name)
             sys.exit(0)
 
-        for calculator in calculators:
-            if calculator not in calc_names:
-                sys.stderr.write('No calculator named "{}".\n'
-                                 'Possible CALCULATORS are: '
-                                 '{}.\n'.format(calculator,
-                                                ', '.join(calc_names)))
-                sys.exit(1)
-
         if args.nogui:
             os.environ.pop('DISPLAY')
 
-        pytest_args = ['--pyargs', '-v']
+        pytest_args = ['-v']
 
         def add_args(*args):
             pytest_args.extend(args)
@@ -212,35 +174,21 @@ class CLICommand:
         if jobs:
             add_args('--numprocesses={}'.format(jobs))
 
+        if args.fast:
+            add_args('-m', 'not slow')
+
+        if args.coverage:
+            add_args('--cov=ase',
+                     '--cov-config=.coveragerc',
+                     # '--cov-report=term',
+                     '--cov-report=html')
+
         if args.tests:
-            from ase.test.newtestsuite import TestModule
+            for testname in args.tests:
+                add_args(testname)
 
-            dct = TestModule.all_test_modules_as_dict()
-
-            # Hack: Make it recognize groups of tests like fio/*.py
-            groups = {}
-            for name in dct:
-                groupname = name.split('.')[0]
-                if groupname not in dct:
-                    groups.setdefault(groupname, []).append(name)
-
-            testnames = []
-            for arg in args.tests:
-                if arg in groups:
-                    testnames += groups[arg]
-                else:
-                    testnames.append(arg)
-
-            for testname in testnames:
-                mod = dct[testname]
-                if mod.is_pytest_style:
-                    pytest_args.append(mod.module)
-                else:
-                    # XXX Not totally logical
-                    add_args('ase.test.test_modules::{}'
-                             .format(mod.pytest_function_name))
-        else:
-            add_args('ase.test')
+        if args.calculators:
+            add_args(f'--calculators={args.calculators}')
 
         if args.verbose:
             add_args('--capture=no')
@@ -248,19 +196,21 @@ class CLICommand:
         if args.pytest:
             add_args(*args.pytest)
 
-        print()
-        calcstring = ','.join(calculators) if calculators else 'none'
-        print('Enabled calculators: {}'.format(calcstring))
-        print()
         print('About to run pytest with these parameters:')
         for line in pytest_args:
             print('    ' + line)
 
-
-
         if not have_module('pytest'):
-            raise CLIError('Cannot import pytest; please install pytest to run tests')
+            raise CLIError('Cannot import pytest; please install pytest '
+                           'to run tests')
 
-        import pytest
-        exitcode = pytest.main(pytest_args)
+        # We run pytest through Popen rather than pytest.main().
+        #
+        # This is because some ASE modules were already imported and
+        # would interfere with code coverage measurement.
+        # (Flush so we don't get our stream mixed with the pytest output)
+        sys.stdout.flush()
+        proc = Popen([sys.executable, '-m', 'pytest'] + pytest_args,
+                     cwd=str(testdir))
+        exitcode = proc.wait()
         sys.exit(exitcode)

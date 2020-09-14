@@ -6,7 +6,7 @@ from ase.calculators.calculator import KPoints, kpts2kpts
 
 _special_kws = ['center', 'autosym', 'autoz', 'theory', 'basis', 'xc', 'task',
                 'set', 'symmetry', 'label', 'geompar', 'basispar', 'kpts',
-                'bandpath']
+                'bandpath', 'restart_kw']
 
 _system_type = {1: 'polymer', 2: 'surface', 3: 'crystal'}
 
@@ -135,7 +135,7 @@ def _format_block(key, val, nindent=0):
             if isinstance(subval, dict):
                 subval = ' '.join([_format_line(a, b)
                                    for a, b in subval.items()])
-            out.append(prefix2 + ' '.join([subkey, str(subval)]))
+            out.append(prefix2 + ' '.join([_format_line(subkey, subval)]))
     out.append(prefix + 'end')
     return out
 
@@ -280,7 +280,7 @@ def write_nwchem_in(fd, atoms, properties=None, **params):
     xc = params.get('xc')
     if 'xc' in params:
         xc = _xc_conv.get(params['xc'].lower(), params['xc'])
-        if theory == 'dft':
+        if theory in ['dft', 'tddft']:
             if 'dft' not in params:
                 params['dft'] = dict()
             params['dft']['xc'] = xc
@@ -295,10 +295,14 @@ def write_nwchem_in(fd, atoms, properties=None, **params):
     label = params.get('label', 'nwchem')
     perm = os.path.abspath(params.pop('perm', label))
     scratch = os.path.abspath(params.pop('scratch', label))
-    out = ['title "{}"'.format(label),
+    restart_kw = params.get('restart_kw','start')
+    if restart_kw not in ('start','restart'):
+       raise ValueError("Unrecognised restart keyword: {}!".format(restart_kw))
+    short_label = label.rsplit('/', 1)[-1]
+    out = ['title "{}"'.format(short_label),
            'permanent_dir {}'.format(perm),
            'scratch_dir {}'.format(scratch),
-           'start {}'.format(label),
+           '{} {}'.format(restart_kw, short_label),
            '\n'.join(_get_geom(atoms, **params)),
            '\n'.join(_get_basis(**params)),
            '\n'.join(_get_other(**params)),

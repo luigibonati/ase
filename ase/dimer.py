@@ -8,11 +8,12 @@ There is, currently, only one implemented method: The Dimer method.
 import sys
 import time
 import warnings
+from math import cos, sin, atan, tan, degrees, pi, sqrt
+from typing import Dict, Any
 
 import numpy as np
 
 from ase.optimize.optimize import Optimizer
-from math import cos, sin, atan, tan, degrees, pi, sqrt
 from ase.parallel import world
 from ase.calculators.singlepoint import SinglePointCalculator
 
@@ -306,7 +307,7 @@ class MinModeControl:
     be overwritten.
 
     """
-    parameters = {}
+    parameters: Dict[str, Any] = {}
     def __init__(self, logfile = '-', eigenmode_logfile=None, **kwargs):
         # Overwrite the defaults with the input parameters given
         for key in kwargs:
@@ -593,7 +594,7 @@ class MinModeAtoms:
                     self.atoms0,
                     energy=self.atoms.get_potential_energy(),
                     forces=self.atoms.get_forces())
-                self.atoms0.set_calculator(calc)
+                self.atoms0.calc = calc
 
     def initialize_eigenmodes(self, method=None, eigenmodes=None, \
                               gauss_std=None):
@@ -876,14 +877,14 @@ class MinModeAtoms:
             if radius is not None:
                 r_mask = [dist[1] < radius for dist in d]
             else:
-                r_mask = [True for _ in self]
+                r_mask = [True for _ in range(len(self))]
 
             if number_of_atoms is not None:
                 d_sorted = [n[0] for n in sorted(d, key = lambda k: k[1])]
                 n_nearest = d_sorted[:number_of_atoms]
                 n_mask = [k in n_nearest for k in range(len(self))]
             else:
-                n_mask = [True for _ in self]
+                n_mask = [True for _ in range(len(self))]
 
             # Resolve n_mask / r_mask conflicts
             c_mask = [n_mask[k] and r_mask[k] for k in range(len(self))]
@@ -892,7 +893,7 @@ class MinModeAtoms:
 
         # Set up a True mask if there is no mask supplied
         if mask is None:
-            mask = [True for _ in self]
+            mask = [True for _ in range(len(self))]
             if c_mask is None:
                 w = 'It was not possible to figure out which atoms to ' + \
                     'displace, Will try to displace all atoms.\n'

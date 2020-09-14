@@ -1,3 +1,4 @@
+# type: ignore
 import re
 import sys
 from collections import namedtuple
@@ -51,7 +52,7 @@ def helpwindow(text):
     win.add(Text(text))
 
 
-class BaseWindow(object):
+class BaseWindow:
     def __init__(self, title, close=None):
         self.title = title
         if close:
@@ -86,7 +87,7 @@ class Window(BaseWindow):
         BaseWindow.__init__(self, title, close)
 
 
-class Widget(object):
+class Widget:
     def pack(self, parent, side='top', anchor='center'):
         widget = self.create(parent)
         widget.pack(side=side, anchor=anchor)
@@ -130,10 +131,13 @@ class Label(Widget):
     def __init__(self, text='', color=None):
         self.creator = partial(tk.Label, text=text, fg=color)
 
+    @property
+    def text(self):
+        return self.widget['text']
+
+    @text.setter
     def text(self, new):
         self.widget.config(text=new)
-
-    text = property(None, text)
 
 
 class Text(Widget):
@@ -227,6 +231,13 @@ class SpinBox(Widget):
         self.widget.insert(0, x)
 
 
+# Entry and ComboBox use same mechanism (since ttk ComboBox
+# is a subclass of tk Entry).
+def _set_entry_value(widget, value):
+    widget.delete(0, 'end')
+    widget.insert(0, value)
+
+
 class Entry(Widget):
     def __init__(self, value='', width=20, callback=None):
         self.creator = partial(tk.Entry,
@@ -250,8 +261,7 @@ class Entry(Widget):
 
     @value.setter
     def value(self, x):
-        self.entry.delete(0, 'end')
-        self.entry.insert(0, x)
+        _set_entry_value(self.entry, x)
 
 
 class Scale(Widget):
@@ -338,6 +348,7 @@ if ttk is not None:
                 def callback(event):
                     self.callback(self.value)
                 widget.bind('<<ComboboxSelected>>', callback)
+
             return widget
 
         @property
@@ -346,7 +357,7 @@ if ttk is not None:
 
         @value.setter
         def value(self, val):
-            self.widget.current(self.values.index(val))
+            _set_entry_value(self.widget, val)
 else:
     # Use Entry object when there is no ttk:
     def ComboBox(labels, values, callback):
