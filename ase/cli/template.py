@@ -13,6 +13,7 @@ def field_specs_on_conditions(calculator_outputs, rank_order):
     else:
         field_specs = ['i:0', 'el', 'dx', 'dy', 'dz', 'd', 'rd']
     if rank_order is not None:
+        field_specs[0] = 'i:1'
         if rank_order in field_specs:
             for c, i in enumerate(field_specs):
                 if i == rank_order:
@@ -21,6 +22,7 @@ def field_specs_on_conditions(calculator_outputs, rank_order):
             field_specs.append(rank_order + ':0:1')
     else:
         field_specs[0] = field_specs[0] + ':1'
+    print(field_specs)
     return field_specs
 
 
