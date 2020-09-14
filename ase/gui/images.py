@@ -126,7 +126,6 @@ class Images:
         self.selected = np.zeros(self.maxnatoms, bool)
         self.selected_ordered = []
         self.visible = np.ones(self.maxnatoms, bool)
-        self.nselected = 0
         self.repeat = np.ones(3, int)
 
     def get_radii(self, atoms):
@@ -421,9 +420,7 @@ class Images:
             atoms = atoms[self.visible]
             if F is not None:
                 F = F[self.visible]
-        atoms.set_calculator(SinglePointCalculator(atoms,
-                                                   energy=E,
-                                                   forces=F))
+        atoms.calc = SinglePointCalculator(atoms, energy=E, forces=F)
         return atoms
 
     def delete(self, i):

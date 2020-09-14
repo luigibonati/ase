@@ -23,12 +23,12 @@ import sys
 import warnings
 import shutil
 from os.path import join, isfile, islink
+from typing import List
 
 import numpy as np
 
 from ase.calculators.calculator import kpts2ndarray
-
-from ase.calculators.vasp.setups import setups_defaults
+from ase.calculators.vasp.setups import get_default_setups
 
 # Parameters that can be set in INCAR. The values which are None
 # are not written and default parameters of VASP are used for them.
@@ -739,14 +739,14 @@ dict_keys = [
                   # 'U':4.0, 'J':0.9}, ...}
 ]
 
-keys = [
+keys: List[str] = [
     # 'NBLOCK' and KBLOCK       inner block; outer block
     # 'NPACO' and APACO         distance and nr. of slots for P.C.
     # 'WEIMIN, EBREAK, DEPER    special control tags
 ]
 
 
-class GenerateVaspInput(object):
+class GenerateVaspInput:
     # Parameters corresponding to 'xc' settings.  This may be modified
     # by the user in-between loading calculators.vasp submodule and
     # instantiating the calculator object with calculators.vasp.Vasp()
@@ -849,6 +849,8 @@ class GenerateVaspInput(object):
             # Deprecated older parameter which works just like "charge" but
             # with the sign flipped
             'net_charge': None,
+            # Custom key-value pairs, written to INCAR with *no* type checking
+            'custom': {},
         }
 
     def set_xc_params(self, xc):
@@ -998,6 +1000,10 @@ class GenerateVaspInput(object):
         # Where other keys are either atom identities or indices, and the
         # corresponding values are suffixes or the full name of the setup
         # folder, respectively.
+
+        # Avoid mutating the module dictionary, so we use a copy instead
+        # Note, it is a nested dict, so a regular copy is not enough
+        setups_defaults = get_default_setups()
 
         # Default to minimal basis
         if p['setups'] is None:
@@ -1384,6 +1390,13 @@ class GenerateVaspInput(object):
             incar.write(' magmom = '.upper())
             [incar.write('%i*%.4f ' % (mom[0], mom[1])) for mom in list]
             incar.write('\n')
+
+        # Custom key-value pairs, which receive no formatting
+        # Use the comment "# <Custom ASE key>" to denote such a custom key-value pair
+        # We cannot otherwise reliably and easily identify such non-standard entries
+        custom_kv_pairs = p.get('custom')
+        for key, value in custom_kv_pairs.items():
+            incar.write(' {} = {}  # <Custom ASE key>\n'.format(key.upper(), value))
         incar.close()
 
     def write_kpoints(self, directory='./', **kwargs):
@@ -1466,9 +1479,9 @@ class GenerateVaspInput(object):
         """Method that imports settings from INCAR file."""
 
         self.spinpol = False
-        file = open(filename, 'r')
-        file.readline()
-        lines = file.readlines()
+        with open(filename, 'r') as fd:
+            lines = fd.readlines()
+
         for line in lines:
             try:
                 # Make multiplication, comments, and parameters easier to spot
@@ -1482,7 +1495,18 @@ class GenerateVaspInput(object):
                 elif data[0][0] in ['#', '!']:
                     continue
                 key = data[0].lower()
-                if key in float_keys:
+                if '<Custom ASE key>' in line:
+                    # This key was added with custom key-value pair formatting.
+                    # Unconditionally add it, no type checking
+                    # Get value between "=" and the comment, e.g.
+                    # key = 1 2 3  # <Custom ASE key>
+                    # value should be '1 2 3'
+                    value = line.split('=', 1)[1]  # Split at first occurence of "="
+                    # First "#" denotes beginning of comment
+                    # Add everything before comment as a string to custom dict
+                    value = value.split('#', 1)[0].strip()
+                    self.input_params['custom'][key] = value
+                elif key in float_keys:
                     self.float_params[key] = float(data[2])
                 elif key in exp_keys:
                     self.exp_params[key] = float(data[2])
@@ -1583,9 +1607,14 @@ class GenerateVaspInput(object):
                 raise IOError('Value missing for keyword "%s".' % key)
 
     def read_kpoints(self, filename='KPOINTS'):
-        file = open(filename, 'r')
-        lines = file.readlines()
-        file.close()
+        # If we used VASP builtin kspacing,
+        if self.float_params['kspacing'] is not None:
+            # Don't update kpts array
+            return
+
+        with open(filename, 'r') as fd:
+            lines = fd.readlines()
+
         ktype = lines[2].split()[0].lower()[0]
         if ktype in ['g', 'm', 'a']:
             if ktype == 'g':
@@ -1648,9 +1677,7 @@ class GenerateVaspInput(object):
         dct = {}
         for item in dict_list:
             dct.update(getattr(self, item))
-        for key, val in list(dct.items()):
-            if val is None:
-                del(dct[key])
+        dct = {key: value for key, value in dct.items() if value is not None}
         return dct
 
 

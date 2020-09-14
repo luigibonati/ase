@@ -2,6 +2,7 @@ import numpy as np
 import itertools
 from scipy import sparse as sp
 from scipy.spatial import cKDTree
+import scipy.sparse.csgraph as csgraph
 
 from ase.data import atomic_numbers, covalent_radii
 from ase.geometry import complete_cell, find_mic, wrap_positions
@@ -74,7 +75,7 @@ def get_distance_matrix(graph, limit=3):
     Why not dok_matrix like the connectivity-matrix? Because row-picking
     is most likely and this is super fast with csr.
     """
-    mat = sp.csgraph.dijkstra(graph, directed=False, limit=limit)
+    mat = csgraph.dijkstra(graph, directed=False, limit=limit)
     mat[mat == np.inf] = 0
     return sp.csr_matrix(mat, dtype=np.int8)
 
@@ -252,8 +253,8 @@ def primitive_neighbor_list(quantities, pbc, cell, positions, cutoff,
 
     # We use a minimum bin size of 3 A
     bin_size = max(max_cutoff, 3)
-    # Compute number of bins such that a sphere of radius cutoff fit into eight
-    # neighboring bins.
+    # Compute number of bins such that a sphere of radius cutoff fits into
+    # eight neighboring bins.
     nbins_c = np.maximum((face_dist_c / bin_size).astype(int), [1, 1, 1])
     nbins = np.prod(nbins_c)
     # Make sure we limit the amount of memory used by the explicit bins.
@@ -264,6 +265,12 @@ def primitive_neighbor_list(quantities, pbc, cell, positions, cutoff,
     # Compute over how many bins we need to loop in the neighbor list search.
     neigh_search_x, neigh_search_y, neigh_search_z = \
         np.ceil(bin_size * nbins_c / face_dist_c).astype(int)
+
+    # If we only have a single bin and the system is not periodic, then we
+    # do not need to search neighboring bins
+    neigh_search_x = 0 if nbins_c[0] == 1 and not pbc[0] else neigh_search_x
+    neigh_search_y = 0 if nbins_c[1] == 1 and not pbc[1] else neigh_search_y
+    neigh_search_z = 0 if nbins_c[2] == 1 and not pbc[2] else neigh_search_z
 
     # Sort atoms into bins.
     if use_scaled_positions:
@@ -1050,6 +1057,10 @@ class NeighborList:
         See :meth:`ase.neighborlist.PrimitiveNeighborList.get_neighbors` or
         :meth:`ase.neighborlist.PrimitiveNeighborList.get_neighbors`.
         """
+        if self.nl.nupdates <= 0:
+            raise RuntimeError('Must call update(atoms) on your neighborlist '
+                               'first!')
+
         return self.nl.get_neighbors(a)
 
     def get_connectivity_matrix(self, sparse=True):

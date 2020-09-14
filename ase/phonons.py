@@ -139,7 +139,7 @@ class Displacement:
 
         # Set calculator if provided
         assert self.calc is not None, "Provide calculator in __init__ method"
-        atoms_N.set_calculator(self.calc)
+        atoms_N.calc = self.calc
 
         # Do calculation on equilibrium structure
         self.state = 'eq.pckl'
@@ -296,7 +296,8 @@ class Phonons(Displacement):
         """Check maximum size of forces in the equilibrium structure."""
 
         fname = '%s.eq.pckl' % self.name
-        feq_av = pickleload(open(fname, 'rb'))
+        with open(fname, 'rb') as fd:
+            feq_av = pickleload(fd)
 
         fmin = feq_av.max()
         fmax = feq_av.min()
@@ -391,8 +392,10 @@ class Phonons(Displacement):
             for j, v in enumerate('xyz'):
                 # Atomic forces for a displacement of atom a in direction v
                 basename = '%s.%d%s' % (self.name, a, v)
-                fminus_av = pickleload(open(basename + '-.pckl', 'rb'))
-                fplus_av = pickleload(open(basename + '+.pckl', 'rb'))
+                with open(basename + '-.pckl', 'rb') as fd:
+                    fminus_av = pickleload(fd)
+                with open(basename + '+.pckl', 'rb') as fd:
+                    fplus_av = pickleload(fd)
 
                 if method == 'frederiksen':
                     fminus_av[a] -= fminus_av.sum(0)
@@ -535,7 +538,7 @@ class Phonons(Displacement):
             assert 0
             omega_kl, modes = omega_kl
 
-        from ase.dft.band_structure import BandStructure
+        from ase.spectrum.band_structure import BandStructure
         bs = BandStructure(path, energies=omega_kl[None])
         return bs
 

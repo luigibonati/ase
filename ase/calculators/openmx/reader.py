@@ -64,7 +64,7 @@ def read_openmx(filename=None, debug=False):
                           dat_data=dat_data, band_data=band_data)
 
     atoms = Atoms(**atomic_formula)
-    atoms.set_calculator(OpenMX(**parameters))
+    atoms.calc = OpenMX(**parameters)
     atoms.calc.results = results
     return atoms
 
@@ -80,6 +80,9 @@ def read_file(filename, debug=False):
     from ase.calculators.openmx import parameters as param
     if not os.path.isfile(filename):
         return {}
+    param_keys = ['integer_keys', 'float_keys', 'string_keys', 'bool_keys',
+                  'list_int_keys', 'list_float_keys', 'list_bool_keys',
+                  'tuple_integer_keys', 'tuple_float_keys', 'tuple_float_keys']
     patterns = {
       'Stress tensor': ('stress', read_stress_tensor),
       'Dipole moment': ('dipole', read_dipole),
@@ -97,46 +100,63 @@ def read_file(filename, debug=False):
     if(debug):
         print('Read results from %s' % filename)
     with open(filename, 'r') as f:
+        '''
+         Read output file line by line. When the `line` matches the pattern
+        of certain keywords in `param.[dtype]_keys`, for example,
+
+        if line in param.string_keys:
+            out_data[key] = read_string(line)
+
+        parse that line and store it to `out_data` in specified data type.
+         To cover all `dtype` parameters, for loop was used,
+
+        for [dtype] in parameters_keys:
+            if line in param.[dtype]_keys:
+                out_data[key] = read_[dtype](line)
+
+        After found matched pattern, escape the for loop using `continue`.
+        '''
         while line != '':
+            pattern_matched = False
             line = f.readline()
-            for key in param.integer_keys:
-                if key in line:
-                    out_data[get_standard_key(key)] = read_integer(line)
-            for key in param.float_keys:
-                if key in line:
-                    out_data[get_standard_key(key)] = read_float(line)
-            for key in param.string_keys:
-                if key in line:
-                    out_data[get_standard_key(key)] = read_string(line)
-            for key in param.bool_keys:
-                if key in line:
-                    out_data[get_standard_key(key)] = read_bool(line)
-            for key in param.list_int_keys:
-                if key in line:
-                    out_data[get_standard_key(key)] = read_list_int(line)
-            for key in param.list_float_keys:
-                if key in line:
-                    out_data[get_standard_key(key)] = read_list_float(line)
-            for key in param.list_bool_keys:
-                if key in line:
-                    out_data[get_standard_key(key)] = read_list_bool(line)
-            for key in param.tuple_integer_keys:
-                if key in line:
-                    out_data[get_standard_key(key)] = read_tuple_integer(line)
-            for key in param.tuple_float_keys:
-                if key in line:
-                    out_data[get_standard_key(key)] = read_tuple_float(line)
+            try:
+                _line = line.split()[0]
+            except IndexError:
+                continue
+            for dtype_key in param_keys:
+                dtype = dtype_key.rsplit('_', 1)[0]
+                read_dtype = globals()['read_' + dtype]
+                for key in param.__dict__[dtype_key]:
+                    if key in _line:
+                        out_data[get_standard_key(key)] = read_dtype(line)
+                        pattern_matched = True
+                        continue
+                if pattern_matched:
+                    continue
+
             for key in param.matrix_keys:
                 if '<'+key in line:
                     out_data[get_standard_key(key)] = read_matrix(line, key, f)
+                    pattern_matched = True
+                    continue
+            if pattern_matched:
+                continue
             for key in patterns.keys():
                 if key in line:
                     out_data[patterns[key][0]] = patterns[key][1](line, f, debug=debug)
+                    pattern_matched = True
+                    continue
+            if pattern_matched:
+                continue
             for key in special_patterns.keys():
                 if key in line:
                     a, b = special_patterns[key][1](line, f)
                     out_data[special_patterns[key][0][0]] = a
                     out_data[special_patterns[key][0][1]] = b
+                    pattern_matched = True
+                    continue
+            if pattern_matched:
+                continue
     return out_data
 
 
@@ -419,8 +439,7 @@ def read_bool(line):
     elif bool == 'off':
         return False
     else:
-        print('Warning! boolean is %s. Return string' % bool)
-        return bool
+        return None
 
 
 def read_list_int(line):
@@ -673,8 +692,7 @@ def get_standard_parameters(parameters):
 
 
 def get_atomic_formula(out_data=None, log_data=None, restart_data=None,
-                       scfout_data=None, dat_data=None,
-                       scaled_positions=False):
+                       scfout_data=None, dat_data=None):
     """_formula'.
     OpenMX results gives following information. Since, we should pick one
     between position/scaled_position, scaled_positions are suppressed by
@@ -684,7 +702,8 @@ def get_atomic_formula(out_data=None, log_data=None, restart_data=None,
        Atoms.SpeciesAndCoordinate -> symbols
        Atoms.SpeciesAndCoordinate -> positions
        Atoms.UnitVectors -> cell
-       scaled_positions -> scaled_positions, It is off By Default
+       scaled_positions -> scaled_positions
+        If `positions` and `scaled_positions` are both given, this key deleted
        magmoms -> magmoms, Single value for each atom or three numbers for each
                            atom for non-collinear calculations.
     """
@@ -692,22 +711,61 @@ def get_atomic_formula(out_data=None, log_data=None, restart_data=None,
     parameters = {'symbols': list, 'positions': list, 'scaled_positions': list,
                   'magmoms': list, 'cell': list}
     datas = [out_data, log_data, restart_data, scfout_data, dat_data]
+    atoms_unitvectors = None
+    atoms_spncrd_unit = 'ang'
+    atoms_unitvectors_unit = 'ang'
     for data in datas:
+        # positions unit save
+        if 'atoms_speciesandcoordinates_unit' in data:
+            atoms_spncrd_unit = data['atoms_speciesandcoordinates_unit']
+        # cell unit save
+        if 'atoms_unitvectors_unit' in data:
+            atoms_unitvectors_unit = data['atoms_unitvectors_unit']
+        # symbols, positions or scaled_positions
         if 'atoms_speciesandcoordinates' in data:
             atoms_spncrd = data['atoms_speciesandcoordinates']
+        # cell
         if 'atoms_unitvectors' in data:
             atoms_unitvectors = data['atoms_unitvectors']
-        else:
-            atoms_unitvectors = np.zeros((3, 3))
+        # pbc
+        if 'scf_eigenvaluesolver' in data:
+            scf_eigenvaluesolver = data['scf_eigenvaluesolver']
+        # ???
         for openmx_keyword in data.keys():
             for standard_keyword in parameters.keys():
                 if openmx_keyword == standard_keyword:
                     atomic_formula[standard_keyword] = data[openmx_keyword]
+
     atomic_formula['symbols'] = [i[1] for i in atoms_spncrd]
-    atomic_formula['positions'] = [[i[2], i[3], i[4]] for i in atoms_spncrd]
-    atomic_formula['cell'] = atoms_unitvectors
-    atomic_formula['pbc'] = True
-    if atomic_formula.get('scaled_positions') is not None:
+
+    openmx_spncrd_keyword = [[i[2], i[3], i[4]] for i in atoms_spncrd]
+    # Positions
+    positions_unit = atoms_spncrd_unit.lower()
+    positions = np.array(openmx_spncrd_keyword, dtype=float)
+    if positions_unit == 'ang':
+        atomic_formula['positions'] = positions
+    elif positions_unit == 'frac':
+        scaled_positions = np.array(openmx_spncrd_keyword, dtype=float)
+        atomic_formula['scaled_positions'] = scaled_positions
+    elif positions_unit == 'au':
+        positions = np.array(openmx_spncrd_keyword, dtype=float) * Bohr
+        atomic_formula['positions'] = positions
+
+    # If Cluster, pbc is False, else it is True
+    atomic_formula['pbc'] = scf_eigenvaluesolver.lower() != 'cluster'
+
+    # Cell Handling
+    if atoms_unitvectors is not None:
+        openmx_cell_keyword = atoms_unitvectors
+        cell = np.array(openmx_cell_keyword, dtype=float)
+        if atoms_unitvectors_unit.lower() == 'ang':
+            atomic_formula['cell'] =  openmx_cell_keyword
+        elif atoms_unitvectors_unit.lower() == 'au':
+            atomic_formula['cell'] = cell * Bohr
+
+    # If `positions` and `scaled_positions` are both given, delete `scaled_..`
+    if atomic_formula.get('scaled_positions') is not None and \
+       atomic_formula.get('positions') is not None:
         del atomic_formula['scaled_positions']
     return atomic_formula
 

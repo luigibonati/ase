@@ -347,6 +347,11 @@ class Dftb(FileIOCalculator):
         """Read Forces from dftb output file (results.tag)."""
         from ase.units import Hartree, Bohr
 
+        # Initialise the indices so their scope
+        # reaches outside of the for loop
+        index_force_begin = -1
+        index_force_end = -1
+
         # Force line indexes
         for iline, line in enumerate(self.lines):
             fstring = 'forces   '

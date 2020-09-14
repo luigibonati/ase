@@ -357,9 +357,25 @@ def get_atoms_speciesandcoordinates(atoms, parameters):
     for i, element in enumerate(elements):
         atoms_speciesandcoordinates.append([str(i + 1), element])
     # Appending positions
-    positions = atoms.get_positions()
+    unit = parameters.get('atoms_speciesandcoordinates_unit', 'ang').lower()
+    if unit == 'ang':
+        positions = atoms.get_positions()
+    elif unit == 'frac':
+        positions = atoms.get_scaled_positions(wrap=False)
+    elif unit == 'au':
+        positions = atoms.get_positions() / Bohr
     for i, position in enumerate(positions):
         atoms_speciesandcoordinates[i].extend(position)
+
+    # Even if 'atoms_speciesandcoordinates_unit' exists, `positions` goes first
+    if parameters.get('atoms_speciesandcoordinates') is not None:
+        atoms_spncrd = parameters['atoms_speciesandcoordinates'].copy()
+        for i in range(len(atoms)):
+            atoms_spncrd[i][2] = atoms_speciesandcoordinates[i][2]
+            atoms_spncrd[i][3] = atoms_speciesandcoordinates[i][3]
+            atoms_spncrd[i][4] = atoms_speciesandcoordinates[i][4]
+        return atoms_spncrd
+
     # Appending magnetic moment
     magmoms = atoms.get_initial_magnetic_moments()
     for i, magmom in enumerate(magmoms):
@@ -449,7 +465,11 @@ def get_atoms_unitvectors(atoms, parameters):
     if np.all(atoms.get_cell() == zero_vec) is True:
         default_cell = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
         return parameters.get('atoms_unitvectors', default_cell)
-    atoms_unitvectors = atoms.get_cell()
+    unit = parameters.get('atoms_unitvectors_unit', 'ang').lower()
+    if unit == 'ang':
+        atoms_unitvectors = atoms.get_cell()
+    elif unit == 'au':
+        atoms_unitvectors = atoms.get_cell() / Bohr
     return atoms_unitvectors
 
 
@@ -486,7 +506,7 @@ def get_band_kpath(atoms, parameters):
 
 
 def get_mo_kpoint(atoms, parameters):
-    return parameters.get('get_mo_kpoint', [])
+    return parameters.get('mo_kpoint', [])
 
 
 def get_wannier_initial_projectors(atoms, parameters):
@@ -616,23 +636,23 @@ def write_bool(f, key, value):
 
 
 def write_list_int(f, key, value):
-    f.write("".join(key) + "     ".join(map(str, value)))
+    f.write("".join(key) + ' ' + "     ".join(map(str, value)))
 
 
 def write_list_bool(f, key, value):
     omx_bl = {True: 'On', False: 'Off'}
-    f.write("".join(key) + "     ".join([omx_bl[bl] for bl in value]))
+    f.write("".join(key) + ' ' + "     ".join([omx_bl[bl] for bl in value]))
 
 
 def write_list_float(f, key, value):
-    f.write("".join(key) + "     ".join(map(str, value)))
+    f.write("".join(key) + ' ' + "     ".join(map(str, value)))
 
 
 def write_matrix(f, key, value):
     f.write('<' + key)
     f.write("\n")
     for line in value:
-        f.write("    "+"  ".join(map(str, line)))
+        f.write("    " + "  ".join(map(str, line)))
         f.write("\n")
     f.write(key + '>')
     f.write("\n\n")

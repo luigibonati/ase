@@ -1,53 +1,57 @@
-from ase.test import must_raise
-import unittest
-try:
-    import pymysql
-    _ = pymysql  # Suppress unused import warning
-except ImportError:
-    raise unittest.SkipTest('No MySQL module')
+import os
 
+import pytest
 
 from ase.db import connect
 from ase import Atoms
 from ase.calculators.emt import EMT
 from ase.build import molecule
-import os
-
-ON_CI_SERVER = 'CI_PROJECT_DIR' in os.environ.keys()
-
-if ON_CI_SERVER:
-    URL = 'mysql://root:ase@mysql:3306/testase_mysql'
-    # HOST = 'mysql'
-    # USER = 'root'
-    # PASSWD = 'ase'
-    # DB_NAME = 'testase_mysql'
-else:
-    URL = os.environ.get('MYSQL_DB_URL')
-    # HOST = os.environ.get('MYSQL_HOST', None)
-    # USER = os.environ.get('MYSQL_USER', None)
-    # PASSWD = os.environ.get('MYSQL_PASSWD', None)
-    # DB_NAME = os.environ.get('MYSQL_DB_NAME', None)
-
-if URL is None:
-    raise unittest.SkipTest('Not on GitLab CI server. To run this test '
-                            'host, username, password and database name '
-                            'must be in the environment variables '
-                            'MYSQL_HOST, MYSQL_USER, MYSQL_PASSWD and '
-                            'MYSQL_DB_NAME, respectively.')
 
 
-def full_db_name():
-    return URL
+@pytest.fixture(scope='module')
+def url():
+    pytest.importorskip('pymysql')
+
+    on_ci_server = 'CI_PROJECT_DIR' in os.environ
+
+    if on_ci_server:
+        db_url = 'mysql://root:ase@mysql:3306/testase_mysql'
+        # HOST = 'mysql'
+        # USER = 'root'
+        # PASSWD = 'ase'
+        # DB_NAME = 'testase_mysql'
+    else:
+        db_url = os.environ.get('MYSQL_DB_URL')
+        # HOST = os.environ.get('MYSQL_HOST', None)
+        # USER = os.environ.get('MYSQL_USER', None)
+        # PASSWD = os.environ.get('MYSQL_PASSWD', None)
+        # DB_NAME = os.environ.get('MYSQL_DB_NAME', None)
+
+    if db_url is None:
+        msg = ('Not on GitLab CI server. To run this test '
+               'host, username, password and database name '
+               'must be in the environment variables '
+               'MYSQL_HOST, MYSQL_USER, MYSQL_PASSWD and '
+               'MYSQL_DB_NAME, respectively.')
+        pytest.skip(msg)
+    return db_url
 
 
-def test_connect():
-    db = connect(full_db_name())
+@pytest.fixture
+def db(url):
+    return connect(url)
+
+
+@pytest.fixture
+def h2o():
+    return molecule('H2O')
+
+
+def test_connect(db):
     db.delete([row.id for row in db.select()])
 
 
-def test_write_read():
-    db = connect(full_db_name())
-
+def test_write_read(db):
     co = Atoms('CO', positions=[(0, 0, 0), (0, 0, 1.1)])
     uid = db.write(co, tag=1, type='molecule')
 
@@ -61,27 +65,22 @@ def test_write_read():
     assert co_db.type == 'molecule'
 
 
-def test_write_read_with_calculator():
-    db = connect(full_db_name())
-
-    h2o = molecule('H2O')
+def test_write_read_with_calculator(db, h2o):
     calc = EMT(dummy_param=2.4)
-    h2o.set_calculator(calc)
+    h2o.calc = calc
 
     uid = db.write(h2o)
 
     h2o_db = db.get(id=uid).toatoms(attach_calculator=True)
 
-    calc_db = h2o_db.get_calculator()
+    calc_db = h2o_db.calc
     assert calc_db.parameters['dummy_param'] == 2.4
 
     # Check that get_atoms function works
     db.get_atoms(H=2)
 
 
-def test_update():
-    db = connect(full_db_name())
-
+def test_update(db, h2o):
     h2o = molecule('H2O')
 
     uid = db.write(h2o, type='molecule')
@@ -92,9 +91,7 @@ def test_update():
     assert atoms_type == 'oxide'
 
 
-def test_delete():
-    db = connect(full_db_name())
-
+def test_delete(db, h2o):
     h2o = molecule('H2O')
     uid = db.write(h2o, type='molecule')
 
@@ -102,14 +99,11 @@ def test_delete():
     db.get(id=uid)
     db.delete([uid])
 
-    with must_raise(KeyError):
+    with pytest.raises(KeyError):
         db.get(id=uid)
 
 
-def test_read_write_bool_key_value_pair():
-    db = connect(full_db_name())
-    h2o = molecule('H2O')
-
+def test_read_write_bool_key_value_pair(db, h2o):
     # Make sure we can read and write boolean key value pairs
     uid = db.write(h2o, is_water=True, is_solid=False)
     row = db.get(id=uid)

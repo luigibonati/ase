@@ -17,7 +17,10 @@ import functools
 import inspect
 import os
 import sys
+import warnings
 from pathlib import Path, PurePath
+from typing import (
+    IO, List, Any, Iterable, Tuple, Union, Sequence, Dict, Optional)
 
 from ase.atoms import Atoms
 from importlib import import_module
@@ -29,7 +32,8 @@ class UnknownFileTypeError(Exception):
 
 
 class IOFormat:
-    def __init__(self, name, desc, code, module_name, encoding=None):
+    def __init__(self, name: str, desc: str, code: str, module_name: str,
+                 encoding: str = None) -> None:
         self.name = name
         self.description = desc
         assert len(code) == 2
@@ -40,11 +44,11 @@ class IOFormat:
         self.encoding = encoding
 
         # (To be set by define_io_format())
-        self.extensions = []
-        self.globs = []
-        self.magic = []
+        self.extensions: List[str] = []
+        self.globs: List[str] = []
+        self.magic: List[str] = []
 
-    def open(self, fname, mode='r'):
+    def open(self, fname, mode: str = 'r') -> IO:
         # We might want append mode, too
         # We can allow more flags as needed (buffering etc.)
         if mode not in list('rwa'):
@@ -66,18 +70,18 @@ class IOFormat:
         return path.open(mode, encoding=self.encoding)
 
     @property
-    def can_read(self):
+    def can_read(self) -> bool:
         return self.read is not None
 
     @property
-    def can_write(self):
+    def can_write(self) -> bool:
         return self.write is not None
 
     @property
-    def can_append(self):
+    def can_append(self) -> bool:
         return self.can_write and 'append' in self.write.__code__.co_varnames
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         tokens = ['{}={}'.format(name, repr(value))
                   for name, value in vars(self).items()]
         return 'IOFormat({})'.format(', '.join(tokens))
@@ -95,7 +99,7 @@ class IOFormat:
         return self.code[0] == '1'
 
     @property
-    def _formatname(self):
+    def _formatname(self) -> str:
         return self.name.replace('-', '_')
 
     @property
@@ -110,7 +114,7 @@ class IOFormat:
         return getattr(self.module, 'write_' + self._formatname, None)
 
     @property
-    def modes(self):
+    def modes(self) -> str:
         modes = ''
         if self.read:
             modes += 'r'
@@ -118,7 +122,7 @@ class IOFormat:
             modes += 'w'
         return modes
 
-    def full_description(self):
+    def full_description(self) -> str:
         lines = ['Name:        {name}',
                  'Description: {description}',
                  'Modes:       {modes}',
@@ -134,11 +138,11 @@ class IOFormat:
         return desc.format(**myvars)
 
     @property
-    def acceptsfd(self):
+    def acceptsfd(self) -> bool:
         return self.code[1] != 'S'
 
     @property
-    def isbinary(self):
+    def isbinary(self) -> bool:
         return self.code[1] == 'B'
 
     @property
@@ -152,18 +156,19 @@ class IOFormat:
             raise UnknownFileTypeError('File format not recognized: %s.  '
                                        'Error: %s' % (format, err))
 
-    def match_name(self, basename):
+    def match_name(self, basename: str) -> bool:
         from fnmatch import fnmatch
         return any(fnmatch(basename, pattern)
                    for pattern in self.globs)
 
-    def match_magic(self, data):
+    def match_magic(self, data: bytes) -> bool:
+        # XXX We should use a regex for this!
         from fnmatch import fnmatchcase
-        return any(fnmatchcase(data, magic + b'*')
+        return any(fnmatchcase(data, magic + b'*')  # type: ignore
                    for magic in self.magic)
 
 
-ioformats = {}  # These will be filled at run-time.
+ioformats: Dict[str, IOFormat] = {}  # These will be filled at run-time.
 extension2format = {}
 
 
@@ -222,58 +227,56 @@ def get_ioformat(name: str) -> IOFormat:
 
 F = define_io_format
 F('abinit-in', 'ABINIT input file', '1F',
-  module='abinit', magic=b'*znucl *'),
+  module='abinit', magic=b'*znucl *')
 F('abinit-out', 'ABINIT output file', '1F',
-  module='abinit', magic=b'*.Version * of ABINIT'),
-F('aims', 'FHI-aims geometry file', '1S', ext='in'),
+  module='abinit', magic=b'*.Version * of ABINIT')
+F('aims', 'FHI-aims geometry file', '1S', ext='in')
 F('aims-output', 'FHI-aims output', '+S',
-  module='aims', magic=b'*Invoking FHI-aims ...'),
-F('bundletrajectory', 'ASE bundle trajectory', '+S'),
+  module='aims', magic=b'*Invoking FHI-aims ...')
+F('bundletrajectory', 'ASE bundle trajectory', '+S')
 F('castep-castep', 'CASTEP output file', '+F',
-  module='castep', ext='castep'),
+  module='castep', ext='castep')
 F('castep-cell', 'CASTEP geom file', '1F',
-  module='castep', ext='cell'),
+  module='castep', ext='cell')
 F('castep-geom', 'CASTEP trajectory file', '+F',
-  module='castep', ext='geom'),
+  module='castep', ext='geom')
 F('castep-md', 'CASTEP molecular dynamics file', '+F',
-  module='castep', ext='md'),
+  module='castep', ext='md')
 F('castep-phonon', 'CASTEP phonon file', '1F',
-  module='castep', ext='phonon'),
-F('cfg', 'AtomEye configuration', '1F'),
-F('cif', 'CIF-file', '+B'),
-F('cmdft', 'CMDFT-file', '1F', glob='*I_info'),
+  module='castep', ext='phonon')
+F('cfg', 'AtomEye configuration', '1F')
+F('cif', 'CIF-file', '+B')
+F('cmdft', 'CMDFT-file', '1F', glob='*I_info')
 F('cp2k-dcd', 'CP2K DCD file', '+B',
-  module='cp2k', ext='dcd'),
+  module='cp2k', ext='dcd')
 F('crystal', 'Crystal fort.34 format', '1S',
-  ext=['f34', '34'], glob=['f34', '34']),
-F('cube', 'CUBE file', '1F'),
-F('dacapo', 'Dacapo netCDF output file', '1F'),
+  ext=['f34', '34'], glob=['f34', '34'])
+F('cube', 'CUBE file', '1F')
 F('dacapo-text', 'Dacapo text output', '1F',
-  module='dacapo', magic=b'*&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&\n'),
-F('db', 'ASE SQLite database file', '+S'),
-F('dftb', 'DftbPlus input file', '1S', magic=b'Geometry'),
+  module='dacapo', magic=b'*&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&\n')
+F('db', 'ASE SQLite database file', '+S')
+F('dftb', 'DftbPlus input file', '1S', magic=b'Geometry')
 F('dlp4', 'DL_POLY_4 CONFIG file', '1F',
-  module='dlp4', ext='config', glob=['*CONFIG*']),
+  module='dlp4', ext='config', glob=['*CONFIG*'])
 F('dlp-history', 'DL_POLY HISTORY file', '+F',
-  module='dlp4', glob='HISTORY'),
+  module='dlp4', glob='HISTORY')
 F('dmol-arc', 'DMol3 arc file', '+S',
-  module='dmol'),
+  module='dmol')
 F('dmol-car', 'DMol3 structure file', '1S',
-  module='dmol', ext='car'),
+  module='dmol', ext='car')
 F('dmol-incoor', 'DMol3 structure file', '1S',
-  module='dmol'),
-F('elk', 'ELK atoms definition', '1S'),
+  module='dmol')
+F('elk', 'ELK atoms definition', '1S')
 F('eon', 'EON CON file', '+F',
-  ext='con'),
-F('eps', 'Encapsulated Postscript', '1S'),
+  ext='con')
+F('eps', 'Encapsulated Postscript', '1S')
 F('espresso-in', 'Quantum espresso in file', '1F',
-  module='espresso', ext='pwi', magic=[b'*\n&system', b'*\n&SYSTEM']),
+  module='espresso', ext='pwi', magic=[b'*\n&system', b'*\n&SYSTEM'])
 F('espresso-out', 'Quantum espresso out file', '+F',
-  module='espresso', ext=['out', 'pwo'], magic=b'*Program PWSCF'),
-F('etsf', 'ETSF format', '1S'),
-F('exciting', 'exciting input', '1S', glob='input.xml'),
-F('extxyz', 'Extended XYZ file', '+F'),
-F('findsym', 'FINDSYM-format', '+F'),
+  module='espresso', ext=['out', 'pwo'], magic=b'*Program PWSCF')
+F('exciting', 'exciting input', '1S', glob='input.xml')
+F('extxyz', 'Extended XYZ file', '+F')
+F('findsym', 'FINDSYM-format', '+F')
 F('gamess-us-out', 'GAMESS-US output file', '1F',
   module='gamess_us', magic=b'*GAMESS')
 F('gamess-us-in', 'GAMESS-US input file', '1F',
@@ -281,89 +284,94 @@ F('gamess-us-in', 'GAMESS-US input file', '1F',
 F('gamess-us-punch', 'GAMESS-US punchcard file', '1F',
   module='gamess_us', magic=b' $DATA', ext='dat')
 F('gaussian-in', 'Gaussian com (input) file', '1F',
-  module='gaussian', ext=['com', 'gjf']),
+  module='gaussian', ext=['com', 'gjf'])
 F('gaussian-out', 'Gaussian output file', '+F',
-  module='gaussian', ext='log', magic=b'*Entering Gaussian System'),
+  module='gaussian', ext='log', magic=b'*Entering Gaussian System')
 F('acemolecule-out', 'ACE output file', '1S',
-  module='acemolecule'),
+  module='acemolecule')
 F('acemolecule-input', 'ACE input file', '1S',
-  module='acemolecule'),
-F('gen', 'DFTBPlus GEN format', '1F'),
+  module='acemolecule')
+F('gen', 'DFTBPlus GEN format', '1F')
 F('gif', 'Graphics interchange format', '+S',
-  module='animation'),
+  module='animation')
 F('gpaw-out', 'GPAW text output', '+F',
-  magic=b'*  ___ ___ ___ _ _ _'),
+  magic=b'*  ___ ___ ___ _ _ _')
 F('gpumd', 'GPUMD input file', '1F', glob='xyz.in')
 F('gpw', 'GPAW restart-file', '1S',
-  magic=[b'- of UlmGPAW', b'AFFormatGPAW']),
+  magic=[b'- of UlmGPAW', b'AFFormatGPAW'])
 F('gromacs', 'Gromacs coordinates', '1S',
-  ext='gro'),
-F('gromos', 'Gromos96 geometry file', '1F', ext='g96'),
-F('html', 'X3DOM HTML', '1F', module='x3d'),
-F('iwm', '?', '1F', glob='atoms.dat'),
-F('json', 'ASE JSON database file', '+F', module='db'),
-F('jsv', 'JSV file format', '1F'),
+  ext='gro')
+F('gromos', 'Gromos96 geometry file', '1F', ext='g96')
+F('html', 'X3DOM HTML', '1F', module='x3d')
+F('iwm', '?', '1F', glob='atoms.dat')
+F('json', 'ASE JSON database file', '+F', module='db')
+F('jsv', 'JSV file format', '1F')
 F('lammps-dump-text', 'LAMMPS text dump file', '+F',
-  module='lammpsrun', magic=b'*\nITEM: TIMESTEP\n'),
+  module='lammpsrun', magic=b'*\nITEM: TIMESTEP\n')
 F('lammps-dump-binary', 'LAMMPS binary dump file', '+B',
   module='lammpsrun')
 F('lammps-data', 'LAMMPS data file', '1F', module='lammpsdata',
-  encoding='ascii'),
-F('magres', 'MAGRES ab initio NMR data file', '1F'),
-F('mol', 'MDL Molfile', '1F'),
+  encoding='ascii')
+F('magres', 'MAGRES ab initio NMR data file', '1F')
+F('mol', 'MDL Molfile', '1F')
 F('mp4', 'MP4 animation', '+S',
-  module='animation'),
+  module='animation')
 F('mustem', 'muSTEM xtl file', '1F',
-  ext='xtl'),
+  ext='xtl')
 F('mysql', 'ASE MySQL database file', '+S',
-  module='db'),
-F('netcdftrajectory', 'AMBER NetCDF trajectory file', '+S'),
+  module='db')
+F('netcdftrajectory', 'AMBER NetCDF trajectory file', '+S')
 F('nomad-json', 'JSON from Nomad archive', '+F',
-  ext='nomad-json'),
+  ext='nomad-json')
 F('nwchem-in', 'NWChem input file', '1F',
-  module='nwchem', ext='nwi'),
+  module='nwchem', ext='nwi')
 F('nwchem-out', 'NWChem output file', '+F',
   module='nwchem', ext='nwo',
-  magic=b'*Northwest Computational Chemistry Package'),
-F('octopus', 'Octopus input file', '1F', glob='inp'),
+  magic=b'*Northwest Computational Chemistry Package')
+F('octopus-in', 'Octopus input file', '1F',
+  module='octopus', glob='inp')
 F('proteindatabank', 'Protein Data Bank', '+F',
-  ext='pdb'),
-F('png', 'Portable Network Graphics', '1B'),
-F('postgresql', 'ASE PostgreSQL database file', '+S', module='db'),
-F('pov', 'Persistance of Vision', '1S'),
-F('py', 'Python file', '+F'),
+  ext='pdb')
+F('png', 'Portable Network Graphics', '1B')
+F('postgresql', 'ASE PostgreSQL database file', '+S', module='db')
+F('pov', 'Persistance of Vision', '1S')
+# prismatic: Should have ext='xyz' if/when multiple formats can have the same
+# extension
+F('prismatic', 'prismatic and computem XYZ-file', '1F')
+F('py', 'Python file', '+F')
+F('sys', 'qball sys file', '1F')
 F('qbox', 'QBOX output file', '+F',
-  magic=b'*:simulation xmlns:'),
-F('res', 'SHELX format', '1S', ext='shelx'),
-F('rmc6f', 'RMCProfile', '1S', ext='rmc6f'),
-F('sdf', 'SDF format', '1F'),
-F('struct', 'WIEN2k structure file', '1S', module='wien2k'),
-F('struct_out', 'SIESTA STRUCT file', '1F', module='siesta'),
+  magic=b'*:simulation xmlns:')
+F('res', 'SHELX format', '1S', ext='shelx')
+F('rmc6f', 'RMCProfile', '1S', ext='rmc6f')
+F('sdf', 'SDF format', '1F')
+F('struct', 'WIEN2k structure file', '1S', module='wien2k')
+F('struct_out', 'SIESTA STRUCT file', '1F', module='siesta')
 F('traj', 'ASE trajectory', '+B', module='trajectory',
-  magic=[b'- of UlmASE-Trajectory', b'AFFormatASE-Trajectory']),
+  magic=[b'- of UlmASE-Trajectory', b'AFFormatASE-Trajectory'])
 F('trj', 'Old ASE pickle trajectory', '+S',
-  module='pickletrajectory', magic=b'PickleTrajectory'),
+  module='pickletrajectory', magic=b'PickleTrajectory')
 F('turbomole', 'TURBOMOLE coord file', '1F', glob='coord',
-  magic=b'$coord'),
+  magic=b'$coord')
 F('turbomole-gradient', 'TURBOMOLE gradient file', '+F',
-  module='turbomole', glob='gradient', magic=b'$grad'),
-F('v-sim', 'V_Sim ascii file', '1F', ext='ascii'),
+  module='turbomole', glob='gradient', magic=b'$grad')
+F('v-sim', 'V_Sim ascii file', '1F', ext='ascii')
 F('vasp', 'VASP POSCAR/CONTCAR', '1F',
-  ext='poscar', glob=['*POSCAR*', '*CONTCAR*']),
+  ext='poscar', glob=['*POSCAR*', '*CONTCAR*'])
 F('vasp-out', 'VASP OUTCAR file', '+F',
-  module='vasp', glob='*OUTCAR*'),
+  module='vasp', glob='*OUTCAR*')
 F('vasp-xdatcar', 'VASP XDATCAR file', '+F',
-  module='vasp', glob='*XDATCAR*'),
+  module='vasp', glob='*XDATCAR*')
 F('vasp-xml', 'VASP vasprun.xml file', '+F',
-  module='vasp', glob='*vasp*.xml'),
-F('vti', 'VTK XML Image Data', '1F', module='vtkxml'),
-F('vtu', 'VTK XML Unstructured Grid', '1F', module='vtkxml'),
-F('x3d', 'X3D', '1S'),
-F('xsd', 'Materials Studio file', '1F'),
+  module='vasp', glob='*vasp*.xml')
+F('vti', 'VTK XML Image Data', '1F', module='vtkxml')
+F('vtu', 'VTK XML Unstructured Grid', '1F', module='vtkxml')
+F('x3d', 'X3D', '1S')
+F('xsd', 'Materials Studio file', '1F')
 F('xsf', 'XCrySDen Structure File', '+F',
   magic=[b'*\nANIMSTEPS', b'*\nCRYSTAL', b'*\nSLAB', b'*\nPOLYMER',
-         b'*\nMOLECULE', b'*\nATOMS']),
-F('xtd', 'Materials Studio file', '+F'),
+         b'*\nMOLECULE', b'*\nATOMS'])
+F('xtd', 'Materials Studio file', '+F')
 F('xyz', 'XYZ-file', '+F')
 
 netcdfconventions2format = {
@@ -372,7 +380,7 @@ netcdfconventions2format = {
 }
 
 
-def get_compression(filename):
+def get_compression(filename: str) -> Tuple[str, Optional[str]]:
     """
     Parse any expected file compression from the extension of a filename.
     Return the filename without the extension, and the extension. Recognises
@@ -408,7 +416,7 @@ def get_compression(filename):
         return filename, None
 
 
-def open_with_compression(filename, mode='r'):
+def open_with_compression(filename: str, mode: str = 'r') -> IO:
     """
     Wrapper around builtin `open` that will guess compression of a file
     from the filename and open it for reading or writing as if it were
@@ -470,8 +478,17 @@ def wrap_read_function(read, filename, index=None, **kwargs):
             yield atoms
 
 
-def write(filename, images, format=None, parallel=True, append=False,
-          **kwargs):
+NameOrFile = Union[str, PurePath, IO]
+
+
+def write(
+        filename: NameOrFile,
+        images: Union[Atoms, Sequence[Atoms]],
+        format: str = None,
+        parallel: bool = True,
+        append: bool = False,
+        **kwargs: dict
+) -> None:
     """Write Atoms object(s) to file.
 
     filename: str or file
@@ -505,13 +522,13 @@ def write(filename, images, format=None, parallel=True, append=False,
         fd = None
         if filename == '-':
             fd = sys.stdout
-            filename = None
+            filename = None  # type: ignore
         elif format is None:
             format = filetype(filename, read=False)
             assert isinstance(format, str)
     else:
-        fd = filename
-        filename = None
+        fd = filename  # type: ignore
+        filename = None  # type: ignore
 
     format = format or 'json'  # default is json
 
@@ -570,8 +587,14 @@ def _write(filename, fd, format, io, images, parallel=None, append=False,
             io.write(filename, images, **kwargs)
 
 
-def read(filename, index=None, format=None, parallel=True,
-         do_not_split_by_at_sign=False, **kwargs):
+def read(
+        filename: NameOrFile,
+        index: Any = None,
+        format: str = None,
+        parallel: bool = True,
+        do_not_split_by_at_sign: bool = False,
+        **kwargs
+) -> Union[Atoms, List[Atoms]]:
     """Read Atoms object(s) from file.
 
     filename: str or file
@@ -622,12 +645,21 @@ def read(filename, index=None, format=None, parallel=True,
                            parallel=parallel, **kwargs))
 
 
-def iread(filename, index=None, format=None, parallel=True,
-          do_not_split_by_at_sign=False, **kwargs):
+def iread(
+        filename: NameOrFile,
+        index: Any = None,
+        format: str = None,
+        parallel: bool = True,
+        do_not_split_by_at_sign: bool = False,
+        **kwargs
+) -> Iterable[Atoms]:
     """Iterator for reading Atoms objects from file.
 
     Works as the `read` function, but yields one Atoms object at a time
     instead of all at once."""
+
+    if isinstance(filename, PurePath):
+        filename = str(filename)
 
     if isinstance(index, str):
         index = string2index(index)
@@ -706,12 +738,14 @@ def parse_filename(filename, index=None, do_not_split_by_at_sign=False):
     try:
         newindex = string2index(newindex)
     except ValueError:
-        pass
-
+        warnings.warn('Can not parse index for path \n'
+                      ' "%s" \nConsider set '
+                      'do_not_split_by_at_sign=True \nif '
+                      'there is no index.' % filename)
     return newfilename, newindex
 
 
-def string2index(string):
+def string2index(string: str) -> Union[int, slice, str]:
     """Convert index string to either int or slice"""
     if ':' not in string:
         # may contain database accessor
@@ -719,7 +753,7 @@ def string2index(string):
             return int(string)
         except ValueError:
             return string
-    i = []
+    i: List[Optional[int]] = []
     for s in string.split(':'):
         if s == '':
             i.append(None)
@@ -729,7 +763,11 @@ def string2index(string):
     return slice(*i)
 
 
-def filetype(filename, read=True, guess=True):
+def filetype(
+        filename: NameOrFile,
+        read: bool = True,
+        guess: bool = True,
+) -> str:
     """Try to guess the type of the file.
 
     First, special signatures in the filename will be checked for.  If that
@@ -780,7 +818,7 @@ def filetype(filename, read=True, guess=True):
 
         fd = open_with_compression(filename, 'rb')
     else:
-        fd = filename
+        fd = filename    # type: ignore
         if fd is sys.stdin:
             return 'json'
 
@@ -791,7 +829,7 @@ def filetype(filename, read=True, guess=True):
         fd.seek(0)
 
     if len(data) == 0:
-        raise UnknownFileTypeError('Empty file: ' + filename)
+        raise UnknownFileTypeError('Empty file: ' + filename)    # type: ignore
 
     if data.startswith(b'CDF'):
         # We can only recognize these if we actually have the netCDF4 module.

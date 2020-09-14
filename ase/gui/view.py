@@ -84,7 +84,6 @@ def get_bonds(atoms, covalent_radii):
 class View:
     def __init__(self, rotations):
         self.colormode = 'jmol'  # The default colors
-        self.nselected = 0
         self.labels = None
         self.axes = rotate(rotations)
         self.configured = False
@@ -244,7 +243,7 @@ class View:
         self.draw()
 
     def repeat_window(self, key=None):
-        Repeat(self)
+        return Repeat(self)
 
     def rotate_window(self):
         return Rotate(self)

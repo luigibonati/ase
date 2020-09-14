@@ -197,8 +197,6 @@ class Vasp(GenerateVaspInput, Calculator):
         self.read_incar()
         self.read_outcar()
         self.set_results(atoms)
-        if not self.float_params['kspacing']:
-            self.read_kpoints()
         self.read_potcar()
 
         self.old_input_params = self.input_params.copy()
@@ -211,7 +209,7 @@ class Vasp(GenerateVaspInput, Calculator):
 
     def get_atoms(self):
         atoms = self.atoms.copy()
-        atoms.set_calculator(self)
+        atoms.calc = self
         return atoms
 
     def get_version(self):
@@ -711,19 +709,19 @@ class Vasp(GenerateVaspInput, Calculator):
             system_changes = all_changes[:]
         else:
             system_changes = []
-            if not equal(self.atoms.positions, atoms.positions, tol):
+            if not equal(self.atoms.positions, atoms.positions, atol=tol):
                 system_changes.append('positions')
             if not equal(self.atoms.numbers, atoms.numbers):
                 system_changes.append('numbers')
-            if not equal(self.atoms.cell, atoms.cell, tol):
+            if not equal(self.atoms.cell, atoms.cell, atol=tol):
                 system_changes.append('cell')
             if not equal(self.atoms.pbc, atoms.pbc):
                 system_changes.append('pbc')
             if not equal(self.atoms.get_initial_magnetic_moments(),
-                         atoms.get_initial_magnetic_moments(), tol):
+                         atoms.get_initial_magnetic_moments(), atol=tol):
                 system_changes.append('initial_magmoms')
             if not equal(self.atoms.get_initial_charges(),
-                         atoms.get_initial_charges(), tol):
+                         atoms.get_initial_charges(), atol=tol):
                 system_changes.append('initial_charges')
 
         return system_changes
@@ -771,7 +769,7 @@ class Vasp(GenerateVaspInput, Calculator):
         return result
 
 
-class VaspChargeDensity(object):
+class VaspChargeDensity:
     """Class for representing VASP charge density"""
 
     def __init__(self, filename='CHG'):
@@ -975,16 +973,17 @@ class VaspChargeDensity(object):
                     f.write('\n')
                 for dim in chg.shape:
                     f.write(' %4i' % dim)
+                f.write('\n') # a new line after dim is required
                 self._write_chg(f, self.chgdiff[ii], vol, format)
                 if format == 'chgcar':
-                    f.write('\n')
+                    # a new line is always provided self._write_chg
                     f.write(self.augdiff)
             if format == 'chg' and len(self.chg) > 1:
                 f.write('\n')
         f.close()
 
 
-class VaspDos(object):
+class VaspDos:
     """Class for representing density-of-states produced by VASP
 
     The energies are in property self.energy
@@ -1068,173 +1067,9 @@ class VaspDos(object):
         if isinstance(orbital, int):
             return self._site_dos[atom, orbital + 1, :]
         n = self._site_dos.shape[1]
-        if n == 4:
-            norb = {'s': 1, 'p': 2, 'd': 3}
-        elif n == 5:
-            norb = {'s': 1, 'p': 2, 'd': 3, 'f': 4}
-        elif n == 7:
-            norb = {'s+': 1, 's-up': 1, 's-': 2, 's-down': 2,
-                    'p+': 3, 'p-up': 3, 'p-': 4, 'p-down': 4,
-                    'd+': 5, 'd-up': 5, 'd-': 6, 'd-down': 6}
-        elif n == 9:
-            norb = {
-                's+': 1,
-                's-up': 1,
-                's-': 2,
-                's-down': 2,
-                'p+': 3,
-                'p-up': 3,
-                'p-': 4,
-                'p-down': 4,
-                'd+': 5,
-                'd-up': 5,
-                'd-': 6,
-                'd-down': 6,
-                'f+': 7,
-                'f-up': 7,
-                'f-': 8,
-                'f-down': 8,
-            }
 
-        elif n == 10:
-            norb = {'s': 1, 'py': 2, 'pz': 3, 'px': 4,
-                    'dxy': 5, 'dyz': 6, 'dz2': 7, 'dxz': 8,
-                    'dx2': 9}
-        elif n == 19:
-            norb = {'s+': 1, 's-up': 1, 's-': 2, 's-down': 2,
-                    'py+': 3, 'py-up': 3, 'py-': 4, 'py-down': 4,
-                    'pz+': 5, 'pz-up': 5, 'pz-': 6, 'pz-down': 6,
-                    'px+': 7, 'px-up': 7, 'px-': 8, 'px-down': 8,
-                    'dxy+': 9, 'dxy-up': 9, 'dxy-': 10, 'dxy-down': 10,
-                    'dyz+': 11, 'dyz-up': 11, 'dyz-': 12, 'dyz-down': 12,
-                    'dz2+': 13, 'dz2-up': 13, 'dz2-': 14, 'dz2-down': 14,
-                    'dxz+': 15, 'dxz-up': 15, 'dxz-': 16, 'dxz-down': 16,
-                    'dx2+': 17, 'dx2-up': 17, 'dx2-': 18, 'dx2-down': 18}
-        elif n == 17:
-            norb = {
-                's': 1,
-                'py': 2,
-                'pz': 3,
-                'px': 4,
-                'dxy': 5,
-                'dyz': 6,
-                'dz2': 7,
-                'dxz': 8,
-                'dx2': 9,
-                'fy(3x2-y2)': 10,
-                'fxyz': 11,
-                'fyz2': 12,
-                'fz3': 13,
-                'fxz2': 14,
-                'fz(x2-y2)': 15,
-                'fx(x2-3y2)': 16,
-            }
-        elif n == 19:
-            norb = {
-                's+': 1,
-                's-up': 1,
-                's-': 2,
-                's-down': 2,
-                'py+': 3,
-                'py-up': 3,
-                'py-': 4,
-                'py-down': 4,
-                'pz+': 5,
-                'pz-up': 5,
-                'pz-': 6,
-                'pz-down': 6,
-                'px+': 7,
-                'px-up': 7,
-                'px-': 8,
-                'px-down': 8,
-                'dxy+': 9,
-                'dxy-up': 9,
-                'dxy-': 10,
-                'dxy-down': 10,
-                'dyz+': 11,
-                'dyz-up': 11,
-                'dyz-': 12,
-                'dyz-down': 12,
-                'dz2+': 13,
-                'dz2-up': 13,
-                'dz2-': 14,
-                'dz2-down': 14,
-                'dxz+': 15,
-                'dxz-up': 15,
-                'dxz-': 16,
-                'dxz-down': 16,
-                'dx2+': 17,
-                'dx2-up': 17,
-                'dx2-': 18,
-                'dx2-down': 18
-            }
-        else:
-            norb = {
-                's+': 1,
-                's-up': 1,
-                's-': 2,
-                's-down': 2,
-                'py+': 3,
-                'py-up': 3,
-                'py-': 4,
-                'py-down': 4,
-                'pz+': 5,
-                'pz-up': 5,
-                'pz-': 6,
-                'pz-down': 6,
-                'px+': 7,
-                'px-up': 7,
-                'px-': 8,
-                'px-down': 8,
-                'dxy+': 9,
-                'dxy-up': 9,
-                'dxy-': 10,
-                'dxy-down': 10,
-                'dyz+': 11,
-                'dyz-up': 11,
-                'dyz-': 12,
-                'dyz-down': 12,
-                'dz2+': 13,
-                'dz2-up': 13,
-                'dz2-': 14,
-                'dz2-down': 14,
-                'dxz+': 15,
-                'dxz-up': 15,
-                'dxz-': 16,
-                'dxz-down': 16,
-                'dx2+': 17,
-                'dx2-up': 17,
-                'dx2-': 18,
-                'dx2-down': 18,
-                'fy(3x2-y2)+': 19,
-                'fy(3x2-y2)-up': 19,
-                'fy(3x2-y2)-': 20,
-                'fy(3x2-y2)-down': 20,
-                'fxyz+': 21,
-                'fxyz-up': 21,
-                'fxyz-': 22,
-                'fxyz-down': 22,
-                'fyz2+': 23,
-                'fyz2-up': 23,
-                'fyz2-': 24,
-                'fyz2-down': 24,
-                'fz3+': 25,
-                'fz3-up': 25,
-                'fz3-': 26,
-                'fz3-down': 26,
-                'fxz2+': 27,
-                'fxz2-up': 27,
-                'fxz2-': 28,
-                'fxz2-down': 28,
-                'fz(x2-y2)+': 29,
-                'fz(x2-y2)-up': 29,
-                'fz(x2-y2)-': 30,
-                'fz(x2-y2)-down': 30,
-                'fx(x2-3y2)+': 31,
-                'fx(x2-3y2)-up': 31,
-                'fx(x2-3y2)-': 32,
-                'fx(x2-3y2)-down': 32,
-            }
+        from .vasp_data import PDOS_orbital_names_and_DOSCAR_column
+        norb = PDOS_orbital_names_and_DOSCAR_column[n]
 
 
         return self._site_dos[atom, norb[orbital.lower()], :]
@@ -1361,7 +1196,7 @@ class xdat2traj:
                 calc = SinglePointCalculator(self.atoms,
                                              energy=self.energies[step],
                                              forces=self.forces[step])
-                self.atoms.set_calculator(calc)
+                self.atoms.calc = calc
                 self.out.write(self.atoms)
                 scaled_pos = []
                 iatom = 0
@@ -1381,7 +1216,7 @@ class xdat2traj:
         calc = SinglePointCalculator(self.atoms,
                                      energy=self.energies[step],
                                      forces=self.forces[step])
-        self.atoms.set_calculator(calc)
+        self.atoms.calc = calc
         self.out.write(self.atoms)
 
         self.out.close()

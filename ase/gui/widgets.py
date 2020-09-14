@@ -18,8 +18,12 @@ class Element(list):
         self.callback = callback
         self.allow_molecule = allow_molecule
 
+    @property
+    def z_entry(self):
+        return self[1]
+
     def grab_focus(self):
-        self[1].entry.focus_set()
+        self.z_entry.entry.focus_set()
 
     def show_help(self):
         names = []
@@ -52,7 +56,7 @@ class Element(list):
     # Used by tests...
     @symbol.setter
     def symbol(self, value):
-        self[1].value = value
+        self.z_entry.value = value
 
     def get_atoms(self):
         val = self._get()
@@ -61,7 +65,7 @@ class Element(list):
         return val
 
     def _get(self):
-        txt = self[1].value
+        txt = self.z_entry.value
 
         if not txt:
             self.error(_('No element specified!'))

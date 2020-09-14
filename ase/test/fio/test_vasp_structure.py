@@ -1,3 +1,4 @@
+# type: ignore
 import os
 import numpy as np
 import numpy.testing
@@ -8,6 +9,7 @@ import ase.build
 import ase.io
 from ase.io.vasp import write_vasp_xdatcar
 from ase.calculators.calculator import compare_atoms
+
 
 class TestXdatcarRoundtrip(unittest.TestCase):
     def setUp(self):
@@ -60,25 +62,3 @@ class TestXdatcarRoundtrip(unittest.TestCase):
         with self.assertRaises(TypeError):
             not_traj = [True, False, False]
             ase.io.write(self.outfile, not_traj, format='vasp-xdatcar')
-
-
-def suite():
-    suite = unittest.defaultTestLoader.loadTestsFromTestCase(
-        TestXdatcarRoundtrip)
-    return suite
-
-
-# Instead of keeping/displaying unittest results, escalate errors so ASE unit
-# test system can handle them. "noqa" tells flake8 that it's ok for these
-# functions to have camelCase names (as required by unittest).
-class XdatcarTestResults(unittest.TestResult):
-    def addFailure(self, test, err):      # noqa: N802
-        raise err[1]
-
-    def addError(self, test, err):        # noqa: N802
-        raise err[1]
-
-
-if __name__ in ['__main__', 'test']:
-    runner = unittest.TextTestRunner(resultclass=XdatcarTestResults)
-    runner.run(suite())

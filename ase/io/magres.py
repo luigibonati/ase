@@ -366,7 +366,10 @@ def read_magres(fd, include_unrecognised=False):
                 ai1, ai2 = sorted((ai1, ai2), reverse=True)
                 u_arr[ai1][ai2] = s[mn]
 
-        return np.array(u_arr)
+        if order == 1:
+            return np.array(u_arr)
+        else:
+            return np.array(u_arr, dtype=object)
 
     if 'magres' in data_dict:
         if 'units' in data_dict['magres']:
@@ -393,7 +396,7 @@ def read_magres(fd, include_unrecognised=False):
                     #     data_dict['magres'][u][0][mn]
                     if atoms.calc is None:
                         calc = SinglePointDFTCalculator(atoms)
-                        atoms.set_calculator(calc)
+                        atoms.calc = calc
                         atoms.calc.results[u] = data_dict['magres'][u][0][mn]
 
     if 'calculation' in data_dict:

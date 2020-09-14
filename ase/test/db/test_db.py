@@ -1,6 +1,5 @@
 import pytest
 import os
-from ase.test import cli
 from ase.db import connect
 
 cmd = """
@@ -15,74 +14,80 @@ ase -T db -v testase.json "H>0" -k hydro=1,abc=42,foo=bar &&
 ase -T db -v testase.json "H>0" --delete-keys foo"""
 
 
-names = ['testase.json',
-         'testase.db',
-         'postgresql',
-         'mysql',
-         'mariadb']
+dbnames = [
+    'json',
+    'db',
+    'postgresql',
+    'mysql',
+    'mariadb'
+]
+
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize('name', names)
-def test_db(name):
+@pytest.mark.parametrize('dbname', dbnames)
+def test_db(dbname, cli):
     def count(n, *args, **kwargs):
         m = len(list(con.select(columns=['id'], *args, **kwargs)))
         assert m == n, (m, n)
 
-    if name == 'postgresql':
+    name = None
+
+    if dbname == 'postgresql':
         pytest.importorskip('psycopg2')
         if os.environ.get('POSTGRES_DB'):  # gitlab-ci
             name = 'postgresql://ase:ase@postgres:5432/testase'
         else:
             name = os.environ.get('ASE_TEST_POSTGRES_URL')
-            if name is None:
-                return
-    elif name == 'mysql':
+    elif dbname == 'mysql':
         pytest.importorskip('pymysql')
         if os.environ.get('CI_PROJECT_DIR'):  # gitlab-ci
             name = 'mysql://root:ase@mysql:3306/testase_mysql'
         else:
             name = os.environ.get('MYSQL_DB_URL')
-
-        if name is None:
-            return
-    elif name == 'mariadb':
+    elif dbname == 'mariadb':
         pytest.importorskip('pymysql')
         if os.environ.get('CI_PROJECT_DIR'):  # gitlab-ci
             name = 'mariadb://root:ase@mariadb:3306/testase_mysql'
         else:
             name = os.environ.get('MYSQL_DB_URL')
+    elif dbname == 'json':
+        name = 'testase.json'
+    elif dbname == 'db':
+        name = 'testase.db'
+    else:
+        raise ValueError(f'Bad dbname: {dbname}')
 
-        if name is None:
-            return
+    if name is None:
+        pytest.skip('Test requires environment variables')
 
-    con = connect(name)
     if 'postgres' in name or 'mysql' in name or 'mariadb' in name:
+        con = connect(name)
         con.delete([row.id for row in con.select()])
 
-    cli(cmd.replace('testase.json', name))
-    assert con.get_atoms(H=1)[0].magmom == 1
-    count(5)
-    count(3, 'hydro')
-    count(0, 'foo')
-    count(3, abc=42)
-    count(3, 'abc')
-    count(0, 'abc,foo')
-    count(3, 'abc,hydro')
-    count(0, foo='bar')
-    count(1, formula='H2')
-    count(1, formula='H2O')
-    count(3, 'fmax<0.1')
-    count(1, '0.5<mass<1.5')
-    count(5, 'energy')
+    cli.shell(cmd.replace('testase.json', name))
 
-    id = con.reserve(abc=7)
-    assert con[id].abc == 7
+    with connect(name) as con:
+        assert con.get_atoms(H=1)[0].magmom == 1
+        count(5)
+        count(3, 'hydro')
+        count(0, 'foo')
+        count(3, abc=42)
+        count(3, 'abc')
+        count(0, 'abc,foo')
+        count(3, 'abc,hydro')
+        count(0, foo='bar')
+        count(1, formula='H2')
+        count(1, formula='H2O')
+        count(3, 'fmax<0.1')
+        count(1, '0.5<mass<1.5')
+        count(5, 'energy')
+        id = con.reserve(abc=7)
+        assert con[id].abc == 7
 
-    for key in ['calculator', 'energy', 'abc', 'name', 'fmax']:
-        count(6, sort=key)
-        count(6, sort='-' + key)
+        for key in ['calculator', 'energy', 'abc', 'name', 'fmax']:
+            count(6, sort=key)
+            count(6, sort='-' + key)
 
-    cli('ase -T gui --terminal -n 3 {}'.format(name))
-
-    con.delete([id])
+        con.delete([id])
+    cli.shell('ase -T gui --terminal -n 3 {}'.format(name))

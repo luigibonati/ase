@@ -3,7 +3,6 @@
 # Copyright (C) 2007-2017  CAMd
 # Please see the accompanying LICENSE file for further information.
 
-from __future__ import print_function
 import os
 import re
 import sys
@@ -12,9 +11,34 @@ from distutils.command.build_py import build_py as _build_py
 from glob import glob
 from os.path import join
 
+python_min_version = (3, 6)
+python_requires = '>=' + '.'.join(str(num) for num in python_min_version)
 
-if sys.version_info < (3, 5, 0, 'final', 0):
-    raise SystemExit('Python 3.5 or later is required!')
+
+if sys.version_info < python_min_version:
+    raise SystemExit('Python 3.6 or later is required!')
+
+
+install_requires = [
+    'numpy>=1.11.3',
+    'scipy>=0.18.1',
+    'matplotlib>=2.0.0',
+]
+
+
+extras_require = {
+    'docs': [
+        'sphinx',
+        'sphinx_rtd_theme',
+        'pillow',
+    ],
+    'test': [
+        'pytest>=3.9.1',
+        'pytest-xdist>=1.22.1',
+    ]
+}
+
+# Optional: spglib >= 1.9
 
 
 with open('README.rst') as fd:
@@ -25,12 +49,21 @@ with open('ase/__init__.py') as fd:
     version = re.search("__version__ = '(.*)'", fd.read()).group(1)
 
 
-package_data = {'ase': ['spacegroup/spacegroup.dat',
-                        'collections/*.json',
-                        'db/templates/*',
-                        'db/static/*'],
-                'ase.test': ['datafiles/*'],
-                'ase.config': ['defaults.conf']}
+package_data = {
+    'ase': [
+        'spacegroup/spacegroup.dat',
+        'collections/*.json',
+        'db/templates/*',
+        'db/static/*'
+    ],
+    'ase.test': [
+        'pytest.ini',
+        'testdata/*',
+    ],
+    'ase.config': [
+        'defaults.conf'
+    ],
+}
 
 
 class build_py(_build_py):
@@ -72,9 +105,9 @@ setup(name='ase',
       license='LGPLv2.1+',
       platforms=['unix'],
       packages=find_packages(),
-      install_requires=['numpy', 'scipy', 'matplotlib',
-                        'pytest', 'pytest-xdist'],
-      extras_require={'docs': ['sphinx', 'sphinx_rtd_theme', 'pillow']},
+      python_requires=python_requires,
+      install_requires=install_requires,
+      extras_require=extras_require,
       package_data=package_data,
       entry_points={'console_scripts': ['ase=ase.cli.main:main',
                                         'ase-db=ase.cli.main:old',

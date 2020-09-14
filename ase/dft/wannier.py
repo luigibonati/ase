@@ -25,17 +25,6 @@ def gram_schmidt(U):
         col /= np.linalg.norm(col)
 
 
-def gram_schmidt_single(U, n):
-    """Orthogonalize columns of U to column n"""
-    N = len(U.T)
-    v_n = U.T[n]
-    indices = list(range(N))
-    del indices[indices.index(n)]
-    for i in indices:
-        v_i = U.T[i]
-        v_i -= v_n * np.dot(v_n.conj(), v_i)
-
-
 def lowdin(U, S=None):
     """Orthonormalize columns of U according to the Lowdin procedure.
 
@@ -51,8 +40,8 @@ def lowdin(U, S=None):
 def neighbor_k_search(k_c, G_c, kpt_kc, tol=1e-4):
     # search for k1 (in kpt_kc) and k0 (in alldir), such that
     # k1 - k - G + k0 = 0
-    alldir_dc = np.array([[0,0,0],[1,0,0],[0,1,0],[0,0,1],
-                           [1,1,0],[1,0,1],[0,1,1]], int)
+    alldir_dc = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1],
+                          [1, 1, 0], [1, 0, 1], [0, 1, 1]], dtype=int)
     for k0_c in alldir_dc:
         for k1, k1_c in enumerate(kpt_kc):
             if np.linalg.norm(k1_c - k_c - G_c + k0_c) < tol:
@@ -63,7 +52,7 @@ def neighbor_k_search(k_c, G_c, kpt_kc, tol=1e-4):
     raise NotImplementedError
 
 
-def calculate_weights(cell_cc):
+def calculate_weights(cell_cc, normalize=True):
     """ Weights are used for non-cubic cells, see PRB **61**, 10040"""
     alldirs_dc = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1],
                            [1, 1, 0], [1, 0, 1], [0, 1, 1]], dtype=int)
@@ -84,16 +73,15 @@ def calculate_weights(cell_cc):
         if abs(w[d]) > 1e-5:
             Gdir_dc = np.concatenate((Gdir_dc, alldirs_dc[d:d + 1]))
             weight_d = np.concatenate((weight_d, w[d:d + 1]))
-    weight_d /= max(abs(weight_d))
+    if normalize:
+        weight_d /= max(abs(weight_d))
     return weight_d, Gdir_dc
 
 
-def random_orthogonal_matrix(dim, seed=None, real=False):
+def random_orthogonal_matrix(dim, rng=np.random, real=False):
     """Generate a random orthogonal matrix"""
-    if seed is not None:
-        np.random.seed(seed)
 
-    H = np.random.rand(dim, dim)
+    H = rng.rand(dim, dim)
     np.add(dag(H), H, H)
     np.multiply(.5, H, H)
 
@@ -105,17 +93,18 @@ def random_orthogonal_matrix(dim, seed=None, real=False):
         return np.dot(vec * np.exp(1.j * val), dag(vec))
 
 
-def steepest_descent(func, step=.005, tolerance=1e-6, **kwargs):
+def steepest_descent(func, step=.005, tolerance=1e-6, verbose=False, **kwargs):
     fvalueold = 0.
     fvalue = fvalueold + 10
-    count=0
+    count = 0
     while abs((fvalue - fvalueold) / fvalue) > tolerance:
         fvalueold = fvalue
         dF = func.get_gradients()
         func.step(dF * step, **kwargs)
         fvalue = func.get_functional_value()
         count += 1
-        print('SteepestDescent: iter=%s, value=%s' % (count, fvalue))
+        if verbose:
+            print('SteepestDescent: iter=%s, value=%s' % (count, fvalue))
 
 
 def md_min(func, step=.25, tolerance=1e-6, verbose=False, **kwargs):
@@ -140,37 +129,8 @@ def md_min(func, step=.25, tolerance=1e-6, verbose=False, **kwargs):
             print('MDmin: iter=%s, step=%s, value=%s' % (count, step, fvalue))
     if verbose:
         t += time()
-        print('%d iterations in %0.2f seconds (%0.2f ms/iter), endstep = %s' %(
+        print('%d iterations in %0.2f seconds (%0.2f ms/iter), endstep = %s' % (
             count, t, t * 1000. / count, step))
-
-
-def rotation_from_projection2(proj_nw, fixed):
-    V_ni = proj_nw
-    Nb, Nw = proj_nw.shape
-    M = fixed
-    L = Nw - M
-    print('M=%i, L=%i, Nb=%i, Nw=%i' % (M, L, Nb, Nw))
-    U_ww = np.zeros((Nw, Nw), dtype=proj_nw.dtype)
-    c_ul = np.zeros((Nb-M, L), dtype=proj_nw.dtype)
-    for V_n in V_ni.T:
-        V_n /= np.linalg.norm(V_n)
-
-    # Find EDF
-    P_ui = V_ni[M:].copy()
-    la = np.linalg
-    for l in range(L):
-        norm_list = np.array([la.norm(v) for v in P_ui.T])
-        perm_list = np.argsort(-norm_list)
-        P_ui = P_ui[:, perm_list].copy()    # largest norm to the left
-        P_ui[:, 0] /= la.norm(P_ui[:, 0])   # normalize
-        c_ul[:, l] = P_ui[:, 0]             # save normalized EDF
-        gram_schmidt_single(P_ui, 0)        # ortho remain. to this EDF
-        P_ui = P_ui[:, 1:].copy()           # remove this EDF
-
-    U_ww[:M] = V_ni[:M, :]
-    U_ww[M:] = np.dot(c_ul.T.conj(), V_ni[M:])
-    gram_schmidt(U_ww)
-    return U_ww, c_ul
 
 
 def rotation_from_projection(proj_nw, fixed, ortho=True):
@@ -198,8 +158,8 @@ def rotation_from_projection(proj_nw, fixed, ortho=True):
         proj_uw = proj_nw[M:]
         eig_w, C_ww = np.linalg.eigh(np.dot(dag(proj_uw), proj_uw))
         C_ul = np.dot(proj_uw, C_ww[:, np.argsort(-eig_w.real)[:L]])
-        #eig_u, C_uu = np.linalg.eigh(np.dot(proj_uw, dag(proj_uw)))
-        #C_ul = C_uu[:, np.argsort(-eig_u.real)[:L]]
+        # eig_u, C_uu = np.linalg.eigh(np.dot(proj_uw, dag(proj_uw)))
+        # C_ul = C_uu[:, np.argsort(-eig_u.real)[:L]]
 
         U_ww[M:] = np.dot(dag(C_ul), proj_uw)
     else:
@@ -229,7 +189,7 @@ class Wannier:
                  fixedstates=None,
                  spin=0,
                  initialwannier='random',
-                 seed=None,
+                 rng=np.random,
                  verbose=False):
         """
         Required arguments:
@@ -268,7 +228,7 @@ class Wannier:
             Can be 'bloch' to start from the Bloch states, 'random' to be
             randomized, or a list passed to calc.get_initial_wannier.
 
-          ``seed``: Seed for random ``initialwannier``.
+          ``rng``: Random number generator for ``initialwannier``.
 
           ``verbose``: True / False level of verbosity.
           """
@@ -289,7 +249,7 @@ class Wannier:
         self.unitcell_cc = calc.get_atoms().get_cell()
         self.largeunitcell_cc = (self.unitcell_cc.T * self.kptgrid).T
         self.weight_d, self.Gdir_dc = calculate_weights(self.largeunitcell_cc)
-        self.Ndir = len(self.weight_d) # Number of directions
+        self.Ndir = len(self.weight_d)  # Number of directions
 
         if nbands is not None:
             self.nbands = nbands
@@ -348,7 +308,7 @@ class Wannier:
                         k0_dkc[d, k] = Gdir_c
                     else:
                         self.kklst_dk[d, k], k0_dkc[d, k] = \
-                                       neighbor_k_search(k_c, G_c, self.kpt_kc)
+                            neighbor_k_search(k_c, G_c, self.kpt_kc)
 
         # Set the inverse list of neighboring k-points
         self.invkklst_dk = np.empty((self.Ndir, self.Nk), int)
@@ -369,9 +329,9 @@ class Wannier:
                     self.Z_dknn[d, k] = calc.get_wannier_localization_matrix(
                         nbands=Nb, dirG=dirG, kpoint=k, nextkpoint=k1,
                         G_I=k0_c, spin=self.spin)
-        self.initialize(file=file, initialwannier=initialwannier, seed=seed)
+        self.initialize(file=file, initialwannier=initialwannier, rng=rng)
 
-    def initialize(self, file=None, initialwannier='random', seed=None):
+    def initialize(self, file=None, initialwannier='random', rng=np.random):
         """Re-initialize current rotation matrix.
 
         Keywords are identical to those of the constructor.
@@ -397,10 +357,10 @@ class Wannier:
             self.U_kww = np.zeros((self.Nk, Nw, Nw), complex)
             self.C_kul = []
             for U, M, L in zip(self.U_kww, self.fixedstates_k, self.edf_k):
-                U[:] = random_orthogonal_matrix(Nw, seed, real=False)
+                U[:] = random_orthogonal_matrix(Nw, rng, real=False)
                 if L > 0:
                     self.C_kul.append(random_orthogonal_matrix(
-                        Nb - M, seed=seed, real=False)[:, :L])
+                        Nb - M, rng=rng, real=False)[:, :L])
                 else:
                     self.C_kul.append(np.array([]))
         else:
@@ -472,22 +432,12 @@ class Wannier:
         spec_kn = self.get_spectral_weight(w)
         dos = np.zeros(len(energies))
         for k, spec_n in enumerate(spec_kn):
-            eig_n = self.calc.get_eigenvalues(k=k, s=self.spin)
+            eig_n = self.calc.get_eigenvalues(kpt=k, spin=self.spin)
             for weight, eig in zip(spec_n, eig_n):
                 # Add gaussian centered at the eigenvalue
                 x = ((energies - eig) / width)**2
                 dos += weight * np.exp(-x.clip(0., 40.)) / (sqrt(pi) * width)
         return dos
-
-    def max_spread(self, directions=[0, 1, 2]):
-        """Returns the index of the most delocalized Wannier function
-        together with the value of the spread functional"""
-        d = np.zeros(self.nwannier)
-        for dir in directions:
-            d[dir] = np.abs(self.Z_dww[dir].diagonal())**2 *self.weight_d[dir]
-        index = np.argsort(d)[0]
-        print('Index:', index)
-        print('Spread:', d[index])
 
     def translate(self, w, R):
         """Translate the w'th Wannier function
@@ -522,14 +472,22 @@ class Wannier:
         the orbitals to the cell [2,2,2].  In this way the pbc
         boundary conditions will not be noticed.
         """
-        scaled_wc = np.angle(self.Z_dww[:3].diagonal(0, 1, 2)).T  * \
-                    self.kptgrid / (2 * pi)
+        scaled_wc = (np.angle(self.Z_dww[:3].diagonal(0, 1, 2)).T *
+                     self.kptgrid / (2 * pi))
         trans_wc = np.array(cell)[None] - np.floor(scaled_wc)
         for kpt_c, U_ww in zip(self.kpt_kc, self.U_kww):
             U_ww *= np.exp(2.j * pi * np.dot(trans_wc, kpt_c))
         self.update()
 
     def distances(self, R):
+        """Relative distances between centers.
+
+        Returns a matrix with the distances between different Wannier centers.
+        R = [n1, n2, n3] is in units of the basis vectors of the small cell
+        and allows one to measure the distance with centers moved to a
+        different small cell.
+        The dimension of the matrix is [Nw, Nw].
+        """
         Nw = self.nwannier
         cen = self.get_centers()
         r1 = cen.repeat(Nw, axis=0).reshape(Nw, Nw, 3)
@@ -663,7 +621,8 @@ class Wannier:
         if real:
             if self.Nk == 1:
                 func *= np.exp(-1.j * np.angle(func.max()))
-                if 0: assert max(abs(func.imag).flat) < 1e-4
+                if 0:
+                    assert max(abs(func.imag).flat) < 1e-4
                 func = func.real
             else:
                 func = abs(func)

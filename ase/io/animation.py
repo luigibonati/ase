@@ -6,10 +6,6 @@ def write_animation(filename, images, writer=None,
                     save_parameters=None, ax=None, **kwargs):
     import matplotlib.pyplot as plt
 
-    if writer is None and filename.endswith('.gif'):
-        # Alternative is pillow (PIL).
-        writer = 'imagemagick'
-
     if save_parameters is None:
         save_parameters = {}
 

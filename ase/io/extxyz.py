@@ -16,6 +16,7 @@ import warnings
 import json
 
 import numpy as np
+import numbers
 
 from ase.atoms import Atoms
 from ase.calculators.calculator import all_properties, Calculator
@@ -24,7 +25,7 @@ from ase.spacegroup.spacegroup import Spacegroup
 from ase.parallel import paropen
 from ase.constraints import FixAtoms, FixCartesian
 from ase.io.formats import index2range
-
+from io import StringIO, UnsupportedOperation
 
 __all__ = ['read_xyz', 'write_xyz', 'iread_xyz']
 
@@ -46,6 +47,10 @@ UNPROCESSED_KEYS = ['uid']
 
 SPECIAL_3_3_KEYS = ['Lattice', 'virial', 'stress']
 
+# partition ase.calculators.calculator.all_properties into two lists:
+#  'per-atom' and 'per-config'
+per_atom_properties = ['forces',  'stresses', 'charges',  'magmoms', 'energies']
+per_config_properties = ['energy', 'stress', 'dipole', 'magmom', 'free_energy']
 
 def key_val_str_to_dict(string, sep=None):
     """
@@ -245,14 +250,13 @@ def key_val_dict_to_str(dct, sep=' '):
     Convert atoms.info dictionary to extended XYZ string representation
     """
 
-    def array_to_string(val):
+    def array_to_string(key, val):
         # some ndarrays are special (special 3x3 keys, and scalars/vectors of
         # numbers or bools), handle them here
         if key in SPECIAL_3_3_KEYS:
-            # special 3x3 matrix
-            val = ' '.join(str(known_types_to_str(v))
-                           for v in val.reshape(val.size, order='F'))
-        elif val.dtype.kind in ['i', 'f', 'b']:
+            # special 3x3 matrix, flatten in Fortran order
+            val = val.reshape(val.size, order='F')
+        if val.dtype.kind in ['i', 'f', 'b']:
             # numerical or bool scalars/vectors are special, for backwards
             # compat.
             if len(val.shape) == 0:
@@ -263,15 +267,15 @@ def key_val_dict_to_str(dct, sep=' '):
                 val = ' '.join(str(known_types_to_str(v)) for v in val)
         return val
 
-    def known_types_to_str(value):
-        if isinstance(value, bool) or isinstance(value, np.bool_):
-            return 'T' if value else 'F'
-        elif isinstance(value, np.int_) or isinstance(value, np.float_):
-            return '{}'.format(value)
-        elif isinstance(value, Spacegroup):
-            return value.symbol
+    def known_types_to_str(val):
+        if isinstance(val, bool) or isinstance(val, np.bool_):
+            return 'T' if val else 'F'
+        elif isinstance(val, numbers.Real):
+            return '{}'.format(val)
+        elif isinstance(val, Spacegroup):
+            return val.symbol
         else:
-            return value
+            return val
 
     if len(dct) == 0:
         return ''
@@ -281,7 +285,7 @@ def key_val_dict_to_str(dct, sep=' '):
         val = dct[key]
 
         if isinstance(val, np.ndarray):
-            val = array_to_string(val)
+            val = array_to_string(key, val)
         else:
             # convert any known types to string
             val = known_types_to_str(val)
@@ -509,10 +513,10 @@ def _read_xyz_frame(lines, natoms, properties_parser=key_val_str_to_dict,
     # Load results of previous calculations into SinglePointCalculator
     results = {}
     for key in list(atoms.info.keys()):
-        if key in all_properties:
+        if key in per_config_properties:
             results[key] = atoms.info[key]
             # special case for stress- convert to Voigt 6-element form
-            if key.startswith('stress') and results[key].shape == (3, 3):
+            if key == 'stress' and results[key].shape == (3, 3):
                 stress = results[key]
                 stress = np.array([stress[0, 0],
                                    stress[1, 1],
@@ -522,11 +526,12 @@ def _read_xyz_frame(lines, natoms, properties_parser=key_val_str_to_dict,
                                    stress[0, 1]])
                 results[key] = stress
     for key in list(atoms.arrays.keys()):
-        if key in all_properties:
+        if (key in per_atom_properties and len(value.shape) >= 1
+            and value.shape[0] == len(atoms)):
             results[key] = atoms.arrays[key]
     if results != {}:
         calculator = SinglePointCalculator(atoms, **results)
-        atoms.set_calculator(calculator)
+        atoms.calc = calculator
     return atoms
 
 
@@ -723,7 +728,11 @@ def read_xyz(fileobj, index=-1, properties_parser=key_val_str_to_dict):
             last_frame = index.stop
 
     # scan through file to find where the frames start
-    fileobj.seek(0)
+    try:
+        fileobj.seek(0)
+    except UnsupportedOperation:
+        fileobj = StringIO(fileobj.read())
+        fileobj.seek(0)
     frames = []
     while True:
         frame_pos = fileobj.tell()
@@ -886,7 +895,7 @@ def write_xyz(fileobj, images, comment='', columns=None, write_info=True,
         per_frame_results = {}
         per_atom_results = {}
         if write_results:
-            calculator = atoms.get_calculator()
+            calculator = atoms.calc
             if (calculator is not None
                     and isinstance(calculator, Calculator)):
                 for key in all_properties:
@@ -894,19 +903,18 @@ def write_xyz(fileobj, images, comment='', columns=None, write_info=True,
                     if value is None:
                         # skip missing calculator results
                         continue
-                    if (isinstance(value, np.ndarray) and len(value.shape) >= 1
-                            and value.shape[0] == len(atoms)):
+                    if (key in per_atom_properties and len(value.shape) >= 1
+                        and value.shape[0] == len(atoms)):
                         # per-atom quantities (forces, energies, stresses)
                         per_atom_results[key] = value
-                    else:
+                    elif key in per_config_properties:
                         # per-frame quantities (energy, stress)
                         # special case for stress, which should be converted
                         # to 3x3 matrices before writing
-                        if key.startswith('stress'):
+                        if key == 'stress':
                             xx, yy, zz, yz, xz, xy = value
-                            value = np.array([(xx, xy, xz),
-                                              (xy, yy, yz),
-                                              (xz, yz, zz)])
+                            value = np.array(
+                                [(xx, xy, xz), (xy, yy, yz), (xz, yz, zz)])
                         per_frame_results[key] = value
 
         # Move symbols and positions to first two properties

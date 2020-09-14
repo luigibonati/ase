@@ -24,8 +24,8 @@ def match(word, *suffixes):
 # Beginning of computer generated data:
 commands = {
     'band-structure':
-        ['-q', '--quiet', '-k', '--path', '-n', '--points', '-r',
-         '--range'],
+        ['-q', '--quiet', '-k', '--path', '-n', '--points', '-o',
+         '--output', '-r', '--range'],
     'build':
         ['-M', '--magnetic-moment', '--modify', '-V', '--vacuum', '-v',
          '--vacuum0', '--unit-cell', '--bond-length', '-x',
@@ -52,6 +52,12 @@ commands = {
          '--set-metadata', '-M', '--metadata-from-python-script',
          '--unique', '--strip-data', '--show-keys',
          '--show-values'],
+    'diff':
+        ['-r', '--rank-order', '-c', '--calculator-outputs',
+         '--max-lines', '-t', '--template', '--template-help',
+         '-s', '--summary-functions', '--log-file', '--as-csv'],
+    'dimensionality':
+        ['--display-all', '--no-merge'],
     'eos':
         ['-p', '--plot', '-t', '--type'],
     'find':
@@ -79,8 +85,9 @@ commands = {
          '--maximum-stress', '-E', '--equation-of-state',
          '--eos-type', '-o', '--output', '--modify', '--after'],
     'test':
-        ['-c', '--calculators', '--list', '--list-calculators', '-j',
-         '--jobs', '-v', '--verbose', '--strict', '--nogui',
+        ['-c', '--calculators', '--help-calculators', '--list',
+         '--list-calculators', '-j', '--jobs', '-v', '--verbose',
+         '--strict', '--fast', '--coverage', '--nogui',
          '--pytest'],
     'ulm':
         ['-n', '--index', '-d', '--delete', '-v', '--verbose']}
@@ -121,12 +128,12 @@ def complete(word, previous, line, point):
             from ase.calculators.calculator import names as words
         elif not word.startswith('-'):
             from ase.test.testsuite import all_test_modules_and_groups
-            names, groups = all_test_modules_and_groups()
-            group_completions = [group + '.' for group in groups]
-            for group in group_completions:
-                if word.startswith(group):
-                    return groups[group[:-1]]
-            words = names + list(groups) + group_completions
+            words = []
+            for path in all_test_modules_and_groups():
+                path = str(path)
+                if not path.endswith('.py'):
+                    path += '/'
+                words.append(path)
 
     return words
 
