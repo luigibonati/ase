@@ -504,6 +504,13 @@ def lazymethod(meth):
     return getter
 
 
+def atoms_to_spglib_cell(atoms):
+    """Convert atoms into data suitable for calling spglib."""
+    return (atoms.get_cell(),
+            atoms.get_scaled_positions(),
+            atoms.get_atomic_numbers())
+
+
 def warn_legacy(feature_name):
     warnings.warn(
         f'The {feature_name} feature is untested and ASE developers do not '

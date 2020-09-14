@@ -1,5 +1,7 @@
 import sys
 import threading
+from abc import ABC, abstractmethod
+import warnings
 
 import numpy as np
 
@@ -11,69 +13,175 @@ from ase.io import read
 from ase.optimize import MDMin
 from ase.geometry import find_mic
 from ase.io.trajectory import Trajectory
-from ase.utils import deprecated
+from ase.utils import lazyproperty, deprecated
 from ase.utils.forcecurve import fit_images
 
 
-class NEB:
-    def __init__(self, images, k=0.1, fmax=0.05, climb=False, parallel=False,
+class Spring:
+    def __init__(self, atoms1, atoms2, energy1, energy2, k):
+        self.atoms1 = atoms1
+        self.atoms2 = atoms2
+        self.energy1 = energy1
+        self.energy2 = energy2
+        self.k = k
+
+    def _find_mic(self):
+        pos1 = self.atoms1.get_positions()
+        pos2 = self.atoms2.get_positions()
+        # XXX If we want variable cells we will need to edit this.
+        mic, _ = find_mic(pos2 - pos1, self.atoms1.cell, self.atoms1.pbc)
+        return mic
+
+    @lazyproperty
+    def t(self):
+        return self._find_mic()
+
+    @lazyproperty
+    def nt(self):
+        return np.linalg.norm(self.t)
+
+
+class NEBState:
+    def __init__(self, neb, images, energies):
+        self.neb = neb
+        self.images = images
+        self.energies = energies
+
+    def spring(self, i):
+        return Spring(self.images[i], self.images[i + 1],
+                      self.energies[i], self.energies[i + 1],
+                      self.neb.k[i])
+
+    @lazyproperty
+    def imax(self):
+        return 1 + np.argsort(self.energies[1:-1])[-1]
+
+    @property
+    def emax(self):
+        return self.energies[self.imax]
+
+    @lazyproperty
+    def eqlength(self):
+        images = self.images
+        beeline = (images[self.neb.nimages - 1].get_positions() -
+                   images[0].get_positions())
+        beelinelength = np.linalg.norm(beeline)
+        return beelinelength / (self.neb.nimages - 1)
+
+
+class NEBMethod(ABC):
+    def __init__(self, neb):
+        self.neb = neb
+
+    @abstractmethod
+    def get_tangent(self, state, spring1, spring2, i):
+        ...
+
+    @abstractmethod
+    def add_image_force(self, state, tangential_force, tangent, imgforce,
+                        spring1, spring2, i):
+        ...
+
+
+class ImprovedTangent(NEBMethod):
+    '''Tangent estimates are improved according to Eqs. 8-11 in paper I.
+       Tangents are weighted at extrema to ensure smooth transitions between
+       the positive and negative tangents.'''
+    def get_tangent(self, state, spring1, spring2, i):
+        energies = state.energies
+        if energies[i + 1] > energies[i] > energies[i - 1]:
+            tangent = spring2.t.copy()
+        elif energies[i + 1] < energies[i] < energies[i - 1]:
+            tangent = spring1.t.copy()
+        else:
+            deltavmax = max(abs(energies[i + 1] - energies[i]),
+                            abs(energies[i - 1] - energies[i]))
+            deltavmin = min(abs(energies[i + 1] - energies[i]),
+                            abs(energies[i - 1] - energies[i]))
+            if energies[i + 1] > energies[i - 1]:
+                tangent = spring2.t * deltavmax + spring1.t * deltavmin
+            else:
+                tangent = spring2.t * deltavmin + spring1.t * deltavmax
+        # Normalize the tangent vector
+        tangent /= np.linalg.norm(tangent)
+        return tangent
+
+    def add_image_force(self, state, tangential_force, tangent, imgforce,
+                        spring1, spring2, i):
+        imgforce -= tangential_force * tangent
+        # Improved parallel spring force (formula 12 of paper I)
+        imgforce += (spring2.nt * spring2.k - spring1.nt * spring1.k) * tangent
+
+
+class ASENEB(NEBMethod):
+    '''Standard NEB implementation in ASE. The tangent of each image is
+       estimated from the spring closest to the saddle point in each
+       spring pair.'''
+    def get_tangent(self, state, spring1, spring2, i):
+        imax = self.neb.imax
+        if i < imax:
+            tangent = spring2.t
+        elif i > imax:
+            tangent = spring1.t
+        else:
+            tangent = spring1.t + spring2.t
+        return tangent
+
+    def add_image_force(self, state, tangential_force, tangent, imgforce,
+                        spring1, spring2, i):
+        tangent_mag = np.vdot(tangent, tangent)  # Magnitude for normalizing
+        factor = tangent / tangent_mag
+        imgforce -= tangential_force * factor
+        imgforce -= np.vdot(
+            spring1.t * spring1.k -
+            spring2.t * spring2.k, tangent) * factor
+
+
+class EB(NEBMethod):
+    '''Elastic band method. The full spring force is included.'''
+    def get_tangent(self, state, spring1, spring2, i):
+        # Tangents are bisections of spring-directions
+        # (formula C8 of paper III)
+        tangent = spring1.t / spring1.nt + spring2.t / spring2.nt
+        tangent /= np.linalg.norm(tangent)
+        return tangent
+
+    def add_image_force(self, state, tangential_force, tangent, imgforce,
+                        spring1, spring2, i):
+        imgforce -= tangential_force * tangent
+        energies = state.energies
+        # Spring forces
+        # Eqs. C1, C5, C6 and C7 in paper III)
+        f1 = -(spring1.nt - state.eqlength) * spring1.t / spring1.nt * spring1.k
+        f2 = (spring2.nt - state.eqlength) * spring2.t / spring2.nt * spring2.k
+        if self.neb.climb and abs(i - self.neb.imax) == 1:
+            deltavmax = max(abs(energies[i + 1] - energies[i]),
+                            abs(energies[i - 1] - energies[i]))
+            deltavmin = min(abs(energies[i + 1] - energies[i]),
+                            abs(energies[i - 1] - energies[i]))
+            imgforce += (f1 + f2) * deltavmin / deltavmax
+        else:
+            imgforce += f1 + f2
+
+
+def get_neb_method(neb, method):
+    if method == 'eb':
+        return EB(neb)
+    elif method == 'aseneb':
+        return ASENEB(neb)
+    elif method == 'improvedtangent':
+        return ImprovedTangent(neb)
+    else:
+        raise ValueError(f'Bad method: {method}')
+
+
+class BaseNEB:
+    def __init__(self, images, k=0.1, climb=False, parallel=False,
                  remove_rotation_and_translation=False, world=None,
-                 method='aseneb', dynamic_relaxation=False, scale_fmax=0.):
-        """Nudged elastic band.
-
-        Paper I:
-
-            G. Henkelman and H. Jonsson, Chem. Phys, 113, 9978 (2000).
-            https://doi.org/10.1063/1.1323224
-
-        Paper II:
-
-            G. Henkelman, B. P. Uberuaga, and H. Jonsson, Chem. Phys,
-            113, 9901 (2000).
-            https://doi.org/10.1063/1.1329672
-
-        Paper III:
-
-            E. L. Kolsbjerg, M. N. Groves, and B. Hammer, J. Chem. Phys,
-            145, 094107 (2016)
-            https://doi.org/10.1063/1.4961868
-
-        images: list of Atoms objects
-            Images defining path from initial to final state.
-        k: float or list of floats
-            Spring constant(s) in eV/Ang.  One number or one for each spring.
-        climb: bool
-            Use a climbing image (default is no climbing image).
-        parallel: bool
-            Distribute images over processors.
-        remove_rotation_and_translation: bool
-            TRUE actives NEB-TR for removing translation and
-            rotation during NEB. By default applied non-periodic
-            systems
-        dynamic_relaxation: bool
-            TRUE calculates the norm of the forces acting on each image
-            in the band. An image is optimized only if its norm is above
-            the convergence criterion. The list fmax_images is updated
-            every force call; if a previously converged image goes out
-            of tolerance (due to spring adjustments between the image
-            and its neighbors), it will be optimized again. This routine
-            can speed up calculations if convergence is non-uniform.
-            Convergence criterion should be the same as that given to
-            the optimizer. Not efficient when parallelizing over images.
-        scale_fmax: float
-            Scale convergence criteria along band based on the distance
-            between a state and the state with the highest potential energy.
-        method: string of method
-            Choice betweeen three method:
-
-            * aseneb: standard ase NEB implementation
-            * improvedtangent: Paper I NEB implementation
-            * eb: Paper III full spring force implementation
-        """
+                 method='aseneb'):
         self.images = images
         self.climb = climb
         self.parallel = parallel
-        self.natoms = len(images[0])
         for img in images:
             if len(img) != self.natoms:
                 raise ValueError('Images have different numbers of atoms')
@@ -82,22 +190,16 @@ class NEB:
             if (img.get_atomic_numbers() !=
                 images[0].get_atomic_numbers()).any():
                 raise ValueError('Images have atoms in different orders')
-        self.nimages = len(images)
         self.emax = np.nan
 
         self.remove_rotation_and_translation = remove_rotation_and_translation
-        self.dynamic_relaxation = dynamic_relaxation
-        self.fmax = fmax
-        self.scale_fmax = scale_fmax
-        if not self.dynamic_relaxation and self.scale_fmax:
-            msg = ('Scaled convergence criteria only implemented in series '
-                   'with dynamic_relaxation.')
-            raise ValueError(msg)
 
         if method in ['aseneb', 'eb', 'improvedtangent']:
             self.method = method
         else:
             raise NotImplementedError(method)
+
+        self.neb_method = get_neb_method(self, method)
 
         if isinstance(k, (float, int)):
             k = [k] * (self.nimages - 1)
@@ -112,6 +214,14 @@ class NEB:
 
         self.real_forces = None  # ndarray of shape (nimages, natom, 3)
         self.energies = None  # ndarray of shape (nimages,)
+
+    @property
+    def natoms(self):
+        return len(self.images[0])
+
+    @property
+    def nimages(self):
+        return len(self.images)
 
     def interpolate(self, method='linear', mic=False):
         """Interpolate the positions of the interior images between the
@@ -150,35 +260,10 @@ class NEB:
 
     def set_positions(self, positions):
         n1 = 0
-        for i, image in enumerate(self.images[1:-1]):
-            if self.dynamic_relaxation:
-                if self.parallel:
-                    msg = ('Dynamic relaxation does not work efficiently '
-                           'when parallelizing over images. Try AutoNEB '
-                           'routine for freezing images in parallel.')
-                    raise ValueError(msg)
-                else:
-                    forces_dyn = self.get_fmax_all(self.images)
-                    if forces_dyn[i] < self.fmax:
-                        n1 += self.natoms
-                    else:
-                        n2 = n1 + self.natoms
-                        image.set_positions(positions[n1:n2])
-                        n1 = n2
-            else:
-                n2 = n1 + self.natoms
-                image.set_positions(positions[n1:n2])
-                n1 = n2
-
-    def get_fmax_all(self, images):
-        n = self.natoms
-        f_i = self.get_forces()
-        fmax_images = []
-        for i in range(self.nimages - 2):
-            n1 = n * i
-            n2 = n + n * i
-            fmax_images.append(np.sqrt((f_i[n1:n2]**2).sum(axis=1)).max())
-        return fmax_images
+        for image in self.images[1:-1]:
+            n2 = n1 + self.natoms
+            image.set_positions(positions[n1:n2])
+            n1 = n2
 
     def get_forces(self):
         """Evaluate and return the forces."""
@@ -248,115 +333,38 @@ class NEB:
         self.real_forces = np.zeros((self.nimages, self.natoms, 3))
         self.real_forces[1:-1] = forces
 
-        self.imax = 1 + np.argsort(energies[1:-1])[-1]
-        self.emax = energies[self.imax]
+        state = NEBState(self, images, energies)
 
-        t1 = find_mic(images[1].get_positions() -
-                      images[0].get_positions(),
-                      images[0].get_cell(), images[0].pbc)[0]
+        # Can we get rid of self.energies, self.imax, self.emax etc.?
+        self.imax = state.imax
+        self.emax = state.emax
 
-        if self.method == 'eb':
-            beeline = (images[self.nimages - 1].get_positions() -
-                       images[0].get_positions())
-            beelinelength = np.linalg.norm(beeline)
-            eqlength = beelinelength / (self.nimages - 1)
-
-        nt1 = np.linalg.norm(t1)
+        spring1 = state.spring(0)
 
         for i in range(1, self.nimages - 1):
-            t2 = find_mic(images[i + 1].get_positions() -
-                          images[i].get_positions(),
-                          images[i].get_cell(), images[i].pbc)[0]
-            nt2 = np.linalg.norm(t2)
+            spring2 = state.spring(i)
+            tangent = self.neb_method.get_tangent(state, spring1, spring2, i)
 
-            if self.method == 'eb':
-                # Tangents are bisections of spring-directions
-                # (formula C8 of paper III)
-                tangent = t1 / nt1 + t2 / nt2
-                # Normalize the tangent vector
-                tangent /= np.linalg.norm(tangent)
-            elif self.method == 'improvedtangent':
-                # Tangents are improved according to formulas 8, 9, 10,
-                # and 11 of paper I.
-                if energies[i + 1] > energies[i] > energies[i - 1]:
-                    tangent = t2.copy()
-                elif energies[i + 1] < energies[i] < energies[i - 1]:
-                    tangent = t1.copy()
-                else:
-                    deltavmax = max(abs(energies[i + 1] - energies[i]),
-                                    abs(energies[i - 1] - energies[i]))
-                    deltavmin = min(abs(energies[i + 1] - energies[i]),
-                                    abs(energies[i - 1] - energies[i]))
-                    if energies[i + 1] > energies[i - 1]:
-                        tangent = t2 * deltavmax + t1 * deltavmin
-                    else:
-                        tangent = t2 * deltavmin + t1 * deltavmax
-                # Normalize the tangent vector
-                tangent /= np.linalg.norm(tangent)
-            else:
-                if i < self.imax:
-                    tangent = t2
-                elif i > self.imax:
-                    tangent = t1
-                else:
-                    tangent = t1 + t2
-                tt = np.vdot(tangent, tangent)
-
-            f = forces[i - 1]
-            ft = np.vdot(f, tangent)
+            imgforce = forces[i - 1]
+            # Get overlap between PES-derived force and tangent
+            tangential_force = np.vdot(imgforce, tangent)
 
             if i == self.imax and self.climb:
-                # imax not affected by the spring forces. The full force
-                # with component along the elestic band converted
-                # (formula 5 of Paper II)
+                '''The climbing image, imax, is not affected by the spring
+                   forces. This image feels the full PES-derived force,
+                   but the tangential component is inverted:
+                   see Eq. 5 in paper II.'''
                 if self.method == 'aseneb':
-                    f -= 2 * ft / tt * tangent
+                    tangent_mag = np.vdot(tangent, tangent)  # For normalizing
+                    imgforce -= 2 * tangential_force / tangent_mag * tangent
                 else:
-                    f -= 2 * ft * tangent
-            elif self.method == 'eb':
-                f -= ft * tangent
-                # Spring forces
-                # (formula C1, C5, C6 and C7 of Paper III)
-                f1 = -(nt1 - eqlength) * t1 / nt1 * self.k[i - 1]
-                f2 = (nt2 - eqlength) * t2 / nt2 * self.k[i]
-                if self.climb and abs(i - self.imax) == 1:
-                    deltavmax = max(abs(energies[i + 1] - energies[i]),
-                                    abs(energies[i - 1] - energies[i]))
-                    deltavmin = min(abs(energies[i + 1] - energies[i]),
-                                    abs(energies[i - 1] - energies[i]))
-                    f += (f1 + f2) * deltavmin / deltavmax
-                else:
-                    f += f1 + f2
-            elif self.method == 'improvedtangent':
-                f -= ft * tangent
-                # Improved parallel spring force (formula 12 of paper I)
-                f += (nt2 * self.k[i] - nt1 * self.k[i - 1]) * tangent
+                    imgforce -= 2 * tangential_force * tangent
             else:
-                f -= ft / tt * tangent
-                f -= np.vdot(t1 * self.k[i - 1] -
-                             t2 * self.k[i], tangent) / tt * tangent
+                self.neb_method.add_image_force(state, tangential_force,
+                                                tangent, imgforce, spring1,
+                                                spring2, i)
 
-            t1 = t2
-            nt1 = nt2
-
-            if self.dynamic_relaxation:
-                n = self.natoms
-                k = i - 1
-                n1 = n * k
-                n2 = n1 + n
-                force_i = np.sqrt((forces.reshape((-1, 3))[n1:n2]**2.)
-                                  .sum(axis=1)).max()
-
-                n1_imax = (self.imax - 1) * n
-                positions = self.get_positions()
-                pos_imax = positions[n1_imax:n1_imax + n]
-                rel_pos = np.sqrt(((positions[n1:n2] - pos_imax)**2).sum())
-
-                if force_i < self.fmax * (1 + rel_pos * self.scale_fmax):
-                    if k == self.imax - 1:
-                        pass
-                    else:
-                        forces[k, :, :] = np.zeros((1, self.natoms, 3))
+            spring1 = spring2
         return forces.reshape((-1, 3))
 
     def get_potential_energy(self, force_consistent=False):
@@ -386,6 +394,179 @@ class NEB:
                                                    forces=self.real_forces[i],
                                                    atoms=atoms)
                 yield atoms
+
+
+class DyNEB(BaseNEB):
+    def __init__(self, images, k=0.1, fmax=0.05, climb=False, parallel=False,
+                 remove_rotation_and_translation=False, world=None,
+                 dynamic_relaxation=True, scale_fmax=0., method='aseneb'):
+        """
+        Subclass of NEB that allows for scaled and dynamic optimizations of
+        images. This method, which only works in series, does not perform
+        force calls on images that are below the convergence criterion.
+        The convergence criteria can be scaled with a displacement metric
+        to focus the optimization on the saddle point region.
+
+        'Scaled and Dynamic Optimizations of Nudged Elastic Bands',
+        P. Lindgren, G. Kastlunger and A. A. Peterson,
+        J. Chem. Theory Comput. 15, 11, 5787-5793 (2019).
+
+        dynamic_relaxation: bool
+            True skips images with forces below the convergence criterion.
+            This is updated after each force call; if a previously converged
+            image goes out of tolerance (due to spring adjustments between
+            the image and its neighbors), it will be optimized again.
+            False reverts to the default NEB implementation.
+
+        fmax: float
+            Must be identical to the fmax of the optimizer.
+
+        scale_fmax: float
+            Scale convergence criteria along band based on the distance between
+            an image and the image with the highest potential energy. This
+            keyword determines how rapidly the convergence criteria are scaled.
+        """
+        super().__init__(
+            images, k=k, climb=climb, parallel=parallel,
+            remove_rotation_and_translation=remove_rotation_and_translation,
+            world=world, method=method)
+        self.fmax = fmax
+        self.dynamic_relaxation = dynamic_relaxation
+        self.scale_fmax = scale_fmax
+
+        if not self.dynamic_relaxation and self.scale_fmax:
+            msg = ('Scaled convergence criteria only implemented in series '
+                   'with dynamic relaxation.')
+            raise ValueError(msg)
+
+    def set_positions(self, positions):
+        if not self.dynamic_relaxation:
+            return super().set_positions(positions)
+
+        n1 = 0
+        for i, image in enumerate(self.images[1:-1]):
+            if self.parallel:
+                msg = ('Dynamic relaxation does not work efficiently '
+                       'when parallelizing over images. Try AutoNEB '
+                       'routine for freezing images in parallel.')
+                raise ValueError(msg)
+            else:
+                forces_dyn = self._fmax_all(self.images)
+                if forces_dyn[i] < self.fmax:
+                    n1 += self.natoms
+                else:
+                    n2 = n1 + self.natoms
+                    image.set_positions(positions[n1:n2])
+                    n1 = n2
+
+    def _fmax_all(self, images):
+        '''Store maximum force acting on each image in list. This is used in
+           the dynamic optimization routine in the set_positions() function.'''
+        n = self.natoms
+        forces = self.get_forces()
+        fmax_images = [np.sqrt((forces[n*i:n+n*i]**2).sum(axis=1)).max()
+                       for i in range(self.nimages-2)]
+        return fmax_images
+
+    def get_forces(self):
+        forces = super().get_forces()
+        if not self.dynamic_relaxation:
+            return forces
+
+        '''Get NEB forces and scale the convergence criteria to focus
+           optimization on saddle point region. The keyword scale_fmax
+           determines the rate of convergence scaling.'''
+        n = self.natoms
+        for i in range(self.nimages-2):
+            n1 = n * i
+            n2 = n1 + n
+            force = np.sqrt((forces[n1:n2]**2.).sum(axis=1)).max()
+            n_imax = (self.imax - 1) * n  # Image with highest energy.
+
+            positions = self.get_positions()
+            pos_imax = positions[n_imax:n_imax+n]
+
+            '''Scale convergence criteria based on distance between an
+               image and the image with the highest potential energy.'''
+            rel_pos = np.sqrt(((positions[n1:n2] - pos_imax)**2).sum())
+            if force < self.fmax * (1 + rel_pos * self.scale_fmax):
+                if i == self.imax - 1:
+                    # Keep forces at saddle point for the log file.
+                    pass
+                else:
+                    # Set forces to zero before they are sent to optimizer.
+                    forces[n1:n2, :] = 0
+        return forces
+
+
+def _check_deprecation(keyword, kwargs):
+    if keyword in kwargs:
+        warnings.warn(f'Keyword {keyword} of NEB is deprecated.  '
+                      'Please use the DyNEB class instead for dynamic '
+                      'relaxation', FutureWarning)
+
+
+class NEB(DyNEB):
+    def __init__(self, images, k=0.1, climb=False, parallel=False,
+                 remove_rotation_and_translation=False, world=None,
+                 method='aseneb', **kwargs):
+        """Nudged elastic band.
+
+        Paper I:
+
+            G. Henkelman and H. Jonsson, Chem. Phys, 113, 9978 (2000).
+            https://doi.org/10.1063/1.1323224
+
+        Paper II:
+
+            G. Henkelman, B. P. Uberuaga, and H. Jonsson, Chem. Phys,
+            113, 9901 (2000).
+            https://doi.org/10.1063/1.1329672
+
+        Paper III:
+
+            E. L. Kolsbjerg, M. N. Groves, and B. Hammer, J. Chem. Phys,
+            145, 094107 (2016)
+            https://doi.org/10.1063/1.4961868
+
+        images: list of Atoms objects
+            Images defining path from initial to final state.
+        k: float or list of floats
+            Spring constant(s) in eV/Ang.  One number or one for each spring.
+        climb: bool
+            Use a climbing image (default is no climbing image).
+        parallel: bool
+            Distribute images over processors.
+        remove_rotation_and_translation: bool
+            TRUE actives NEB-TR for removing translation and
+            rotation during NEB. By default applied non-periodic
+            systems
+        method: string of method
+            Choice betweeen three method:
+
+            * aseneb: standard ase NEB implementation
+            * improvedtangent: Paper I NEB implementation
+            * eb: Paper III full spring force implementation
+        """
+        for keyword in 'dynamic_relaxation', 'fmax', 'scale_fmax':
+            _check_deprecation(keyword, kwargs)
+        defaults = dict(dynamic_relaxation=False,
+                        fmax=0.05,
+                        scale_fmax=0.0)
+        defaults.update(kwargs)
+        # Only reason for separating BaseNEB/NEB is that we are
+        # deprecating dynamic_relaxation.
+        #
+        # We can turn BaseNEB into NEB once we get rid of the
+        # deprecated variables.
+        #
+        # Then we can also move DyNEB into ase.dyneb without cyclic imports.
+        # We can do that in ase-3.22 or 3.23.
+        super().__init__(
+            images, k=k, climb=climb, parallel=parallel,
+            remove_rotation_and_translation=remove_rotation_and_translation,
+            world=world, method=method, **defaults,
+        )
 
 
 class IDPP(Calculator):
@@ -435,7 +616,7 @@ class SingleCalculatorNEB(NEB):
             # this is a filename
             images = read(images, index=index)
 
-        NEB.__init__(self, images, k, climb, False)
+        super().__init__(images, k, climb, False)
         self.calculators = [None] * self.nimages
         self.energies_ok = False
         self.first = True
@@ -469,7 +650,6 @@ class SingleCalculatorNEB(NEB):
                 self.images.insert(j + 1, self.images[j].copy())
                 self.calculators.insert(j + 1, None)
             self.k[j:j + 1] = [self.k[j] * (steps + 1)] * (steps + 1)
-            self.nimages = len(self.images)
             self.interpolate(j, j + steps + 1, mic=mic)
             j += steps + 1
 
@@ -478,7 +658,7 @@ class SingleCalculatorNEB(NEB):
         if self.energies_ok:
             # restore calculators
             self.set_calculators(self.calculators[1:-1])
-        NEB.set_positions(self, positions)
+        super().set_positions(positions)
 
     def get_calculators(self):
         """Return the original calculators."""
@@ -546,7 +726,7 @@ class SingleCalculatorNEB(NEB):
 
     def get_forces(self):
         self.get_energies_and_forces()
-        return NEB.get_forces(self)
+        return super().get_forces()
 
     def n(self):
         return self.nimages

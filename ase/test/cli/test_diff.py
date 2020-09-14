@@ -9,29 +9,6 @@ from ase.cli.template import prec_round, sort2rank, slice_split, \
     Table, TableFormat
 from ase.io import read
 
-"""
-An enumeration of test cases:
-
-# of files = 1, 2
-calculation outputs = 0, 1, 2
-multiple images = 0, 1, 2
-
-Under the constraint that # of files is greater than or equal to number
-of calculation outputs and multiple images. Also, if there are two
-files, one only cares about the case that both have the same number of
-images and both have calculator outputs or not.
-
-(1,0,1)
-(1,1,1)
-(2,0,0)
-(2,0,2)
-(2,2,0)
-(2,2,2)
-
-Tests for these cases and all command line options are done.
-"""
-
-
 @pytest.fixture(scope="module")
 def traj(tmp_path_factory):
     slab = fcc100('Al', size=(2, 2, 3))
@@ -50,7 +27,7 @@ def traj(tmp_path_factory):
     return str(trajectory)
 
 
-def test_101(cli, traj):
+def test_singleFile_falseCalc_multipleImages(cli, traj):
     stdout = cli.ase('diff', '--as-csv', traj)
 
     r = c = -1
@@ -65,23 +42,23 @@ def test_101(cli, traj):
     assert float(val) == 0.
 
 
-def test_111(cli, traj):
+def test_singleFile_trueCalc_multipleImages(cli, traj):
     cli.ase('diff', traj,  '-c')
 
 
-def test_200(cli, traj):
+def test_twoFiles_falseCalc_singleImage(cli, traj):
     cli.ase('diff', f'{traj}@:1', f'{traj}@1:2')
 
 
-def test_202(cli, traj):
+def test_twoFiles_trueCalc_singleImage(cli, traj):
     cli.ase('diff', f'{traj}@:1', f'{traj}@1:2', '-c')
 
 
-def test_220(cli, traj):
+def test_twoFiles_falseCalc_multipleImages(cli, traj):
     cli.ase('diff', f'{traj}@:2', f'{traj}@2:4')
 
 
-def test_222(cli, traj):
+def test_twoFiles_trueCalc_multipleImages(cli, traj):
     stdout = cli.ase('diff', f'{traj}@:2', f'{traj}@2:4', '-c',
                      '--rank-order', 'dfx', '--as-csv')
     stdout = [row.split(',') for row in stdout.split('\n')]
@@ -92,8 +69,9 @@ def test_222(cli, traj):
     for c in range(len(header)):
         if header[c] == 'Δfx':
             break
-    col = [float(row[c]) for row in body]
-    assert col[:-1] <= col[1:]
+    dfx_ordered = [float(row[c]) for row in body]
+    for i in range(len(dfx_ordered) - 2):
+        assert dfx_ordered[i] <= dfx_ordered[i+1]
 
 
 def test_cli_opt(cli, traj):
