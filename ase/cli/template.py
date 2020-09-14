@@ -347,7 +347,7 @@ class Table:
 
         if csv:
             rowformat = ','.join(
-                ['{:h}' if field == 'el' else '{}' for field in self.fields])
+                    ['{:h}' if field == 'el' else '{{:.{}E}}'.format(self.tableformat.precision) for field in self.fields])
         else:
             rowformat = ''.join([self.tableformat.fmt[field]
                                  for field in self.fields])
