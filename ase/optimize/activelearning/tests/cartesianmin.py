@@ -66,7 +66,7 @@ for i, optimizer in enumerate(optimizers):
     F = np.array(F)
 
     F1 = np.polyval(np.polyder(np.polyfit(D, E, 7)), D)
-    F2 = F[:, :3, 0].sum(1)
+    F2 = F[:, :3, 0].sum(1)  # mypy: ignore
     error = abs(F1 - F2).max()
 
     dimer.constraints = FixInternals(
