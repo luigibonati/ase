@@ -236,8 +236,9 @@ class AIDNEB:
             self.train = TrainingSet(trajectory_main + '_observations.traj',
                                      use_previous_observations=False)
         else:
+            upo = use_previous_observations
             self.train = TrainingSet(trainingset,
-                                     use_previous_observations=use_previous_observations)
+                                     use_previous_observations=upo)
 
         self.train.dump(atoms=self.i_endpoint, method='neb')
         self.train.dump(atoms=self.e_endpoint, method='neb')

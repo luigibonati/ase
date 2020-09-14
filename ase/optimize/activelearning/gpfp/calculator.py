@@ -9,10 +9,11 @@ from ase.calculators.singlepoint import SinglePointCalculator
 from scipy.spatial.distance import euclidean
 from copy import copy
 
+
 def copy_image(atoms):
     """
     Copy an image, so that it is suitable as a training set point.
-    It returns a copy of the atoms object with the single point 
+    It returns a copy of the atoms object with the single point
     calculator attached
     """
     # Check if the input already has the desired format
@@ -169,7 +170,7 @@ class GPCalculator(Calculator, GaussianProcess):
         self.train_y = []
         self.train_images = train_images
         if self.train_images is not None:
-            self.train_images=[copy_image(i) for i in train_images]
+            self.train_images = [copy_image(i) for i in train_images]
         self.old_train_images = []
         self.prev_train_y = []  # Do not retrain model if same data.
 
@@ -341,12 +342,10 @@ class GPCalculator(Calculator, GaussianProcess):
             # 3. Train a Gaussian Process.
             if self.print_format == 'AID':
                 print('Training data size: ', len(self.train_x))
-            self.train(np.array(self.train_x), np.array(self.train_y),
-                       noise=self.noise)
+            self.train(self.train_x, self.train_y, noise=self.noise)
 
             if self.fit_weight is not None:
-                self.fit_weight_only(np.asarray(self.train_x),
-                                     np.asarray(self.train_y),
+                self.fit_weight_only(self.train_x, self.train_y,
                                      option=self.fit_weight)
 
             # 4. (optional) Optimize model hyperparameters.
@@ -385,6 +384,12 @@ class GPCalculator(Calculator, GaussianProcess):
                         set(self.fp_hp.keys()))
                     for key in keys_to_update:
                         self.fp_hp[key] = self.hyperparams[key]
+
+                self.train(self.train_x, self.train_y, noise=self.noise)
+
+                if self.fit_weight is not None:
+                    self.fit_weight_only(self.train_x, self.train_y,
+                                         option=self.fit_weight)
 
         self.prev_train_y = self.train_y[:]
 

@@ -120,7 +120,7 @@ class CalculatorPrior(ConstantPrior):
     use another calculator as prior function instead of the
     default constant.
 
-    The form of prior is 
+    The form of prior is
 
     E_p(x) = m*u + E_c(x)
 
@@ -173,7 +173,8 @@ class CalculatorPrior(ConstantPrior):
         can be turned into an algebraic problem
         m = [ u.T K^-1 (y - Ec)]/[u.T K^-1 u]
 
-        where u is the constant prior with energy 1 (eV), and Ec is the calculator prior.
+        where u is the constant prior with energy 1 (eV),
+        and Ec is the calculator prior.
 
         parameters:
         ------------

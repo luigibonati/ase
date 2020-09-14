@@ -63,20 +63,21 @@ class SE_kernel(Kernel):
 
 class SquaredExponential(SE_kernel):
     '''Squared exponential kernel with derivatives.
-    For the formulas, see Koistinen, Dagbjartssdittir, Asgeirsson, Vehtari, Jonsson,
-    Nudged elastic band calculations accelerated with Gaussian process regression.
-    section 3.
+    For the formulas, see Koistinen, Dagbjartssdittir, Asgeirsson, Vehtari,
+    Jonsson, Nudged elastic band calculations accelerated with Gaussian
+    process regression. section 3.
 
-    Before making any predictions, the parameters need to be set using the method
-    SquaredExponential.set_params(params) with the parameters being a list whose
-    first entry is the weight (prefactor of the exponential) and the second being
-    the scale (l)
+    Before making any predictions, the parameters need to be set using the
+    method SquaredExponential.set_params(params) with the parameters being
+    a list whose first entry is the weight (prefactor of the exponential)
+    and the second being the scale (l)
 
     Parameters:
 
-    dimensionality: The dimensionality of the problem to optimize, tipically, 3*N with
-        N being the number of atoms. If dimensionality =None, it is computed when the kernel
-        method is called.
+    dimensionality: The dimensionality of the problem to optimize,
+                    typically, 3*N with
+                    N being the number of atoms. If dimensionality==None, it is
+                    computed when the kernel method is called.
 
 
 
@@ -88,7 +89,8 @@ class SquaredExponential(SE_kernel):
 
     Relevant Methods:
     ----------------
-    set_params:                 Set the parameters of the Kernel, i.e. change the atributes
+    set_params:         Set the parameters of the Kernel, i.e. change
+                        the attributes
     kernel_function:    squared exponential covariance function
     kernel:             covariance matrix between two points in the manifold.
                             Note the inputs are arrays of shape (D,)
@@ -96,8 +98,9 @@ class SquaredExponential(SE_kernel):
                             Note the input is an array of shape (nsamples, D)
     kernel_vector       kernel matrix of a point x to a dataset X, K(x,X).
 
-    gradient:           Gradient of K(X,X) with respect to the parameters of the kernel
-                            i.e. the hyperparameters of the Gaussian process.
+    gradient:           Gradient of K(X,X) with respect to the parameters
+                        of the kernel i.e. the hyperparameters of the
+                        Gaussian process.
     '''
 
     def __init__(self, dimensionality=None):
@@ -127,7 +130,8 @@ class SquaredExponential(SE_kernel):
 
     def kernel(self, x1, x2):
         '''Squared exponential kernel including derivatives.
-        This function returns a D+1 x D+1 matrix, where D is the dimension of the manifold'''
+        This function returns a D+1 x D+1 matrix, where D
+        is the dimension of the manifold'''
 
         K = np.identity(self.D + 1)
         K[0, 1:] = self.kernel_function_gradient(x1, x2)
@@ -141,7 +145,8 @@ class SquaredExponential(SE_kernel):
         return K * self.kernel_function(x1, x2)
 
     def kernel_matrix(self, X):
-        '''This is the same method than self.K for X1=X2, but using the matrix is then symmetric'''
+        '''This is the same method than self.K for X1=X2,
+        but using the matrix is then symmetric'''
         # rename parameters
         shape = X.shape
         if len(shape) > 1:
@@ -212,7 +217,9 @@ class SquaredExponential(SE_kernel):
         return np.block([[self.dK_dl_matrix(x1, x2) for x2 in X] for x1 in X])
 
     def gradient(self, X):
-        '''Computes the gradient of matrix K given the data respect to the hyperparameters
+        '''
+        Computes the gradient of matrix K given the data
+        respect to the hyperparameters
         Note matrix K here is self.K(X,X)
 
         returns a 2-entry list of n(D+1) x n(D+1) matrices '''
@@ -277,7 +284,6 @@ class FPKernel(SE_kernel):
         This function returns a D+1 x D+1 matrix, where D is
         the dimension of the manifold'''
 
-        n = len(x1.atoms)
         K = np.identity(self.D + 1)
 
         K[0, 0] = x1.kernel(x1, x2)

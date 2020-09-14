@@ -2,7 +2,6 @@ from ase.optimize.activelearning.gpfp.fingerprint import OganovFP
 from ase.optimize.activelearning.gpfp.calculator import GPCalculator
 from ase.optimize.activelearning.gpfp.kernel import FPKernel
 import numpy as np
-import copy
 import time
 
 from ase.build import fcc100
@@ -45,7 +44,7 @@ noise = 1e-3
 calc = GPCalculator(train_images=train_images, noise=noise,
                     kernel=kernel, params=params,
                     update_prior_strategy='maximum',
-                    params_to_update={'scale': (0.01, np.inf),},
+                    params_to_update={'scale': (0.01, np.inf)},
                     batch_size=1,
                     print_format='ASE',
                     fingerprint=fp,
@@ -61,9 +60,12 @@ for index in range(5):
     calc.calculate_LOO(index)
     predes.append(calc.results['looenergy'])
     reales.append(calc.train_y[index][0])
-    print("Leave-one-out prediction: {:.04f} Correct energy: {:.04f} Time: {:.04f} sec".format(predes[-1], reales[-1], (time.time()-t0)))
+    txt = "Leave-one-out prediction: {:.04f} Correct energy: {:.04f}"
+    txt += "Time: {:.04f} sec"
+    txt = txt.format(predes[-1], reales[-1], (time.time() - t0))
+    print(txt)
 rmse = np.sqrt(((np.array(predes) - np.array(reales)) ** 2).mean())
-print ('RMSE: {:.04f} eV'.format(rmse))
+print('RMSE: {:.04f} eV'.format(rmse))
 
 slab.set_calculator(calc)
 print(slab.get_potential_energy())
@@ -76,9 +78,12 @@ for index in range(5):
     calc.calculate_LOO(index)
     predes.append(calc.results['looenergy'])
     reales.append(calc.train_y[index][0])
-    print("Leave-one-out prediction: {:.04f} Correct energy: {:.04f} Time: {:.04f} sec".format(predes[-1], reales[-1], (time.time()-t0)))
+    txt = "Leave-one-out prediction: {:.04f} Correct energy: {:.04f}"
+    txt += "Time: {:.04f} sec"
+    txt = txt.format(predes[-1], reales[-1], (time.time() - t0))
+    print(txt)
 rmse = np.sqrt(((np.array(predes) - np.array(reales)) ** 2).mean())
-print ('RMSE: {:.04f} eV'.format(rmse))
+print('RMSE: {:.04f} eV'.format(rmse))
 
 slab.set_calculator(calc)
 print(slab.get_potential_energy())

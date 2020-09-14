@@ -41,7 +41,7 @@ kernel = FPKernel()
 params = {'weight': 1.0, 'scale': 1.5}
 
 calc = GPCalculator(train_images=train_images, noise=1e-3,
-                    kernel=kernel, 
+                    kernel=kernel,
                     params=params,
                     update_prior_strategy='maximum',
                     params_to_update={'scale': (0.01, np.inf)},

@@ -61,8 +61,9 @@ for cc1 in range(3):
         fp4 = new_fp()
         fp4.set_atoms(atoms4)
 
-        hessian[cc1, cc2] = ((fp1.kernel(fp2, fp4) - fp1.kernel(fp2, fp3)) -
-                             (fp1.kernel(fp1, fp4) - fp1.kernel(fp1, fp3))) / dx**2
+        hessian[cc1, cc2] = (((fp1.kernel(fp2, fp4) - fp1.kernel(fp2, fp3)) -
+                             (fp1.kernel(fp1, fp4) - fp1.kernel(fp1, fp3)))
+                             / dx**2)
 print('\nNumerical:\n', hessian, '\nTime consumed:',
       (time.time() - t0), 'seconds\n')
 

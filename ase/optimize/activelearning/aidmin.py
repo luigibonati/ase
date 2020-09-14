@@ -160,8 +160,9 @@ class AIDMin(Optimizer):
         elif isinstance(trainingset, TrainingSet):
             self.train = trainingset
         else:
+            upo = use_previous_observations
             self.train = TrainingSet(trainingset,
-                         use_previous_observations=use_previous_observations)
+                                     use_previous_observations=upo)
 
         # Make the training set an observer for the run
         self.attach(self.train, atoms=atoms, method='min')

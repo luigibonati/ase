@@ -1,7 +1,6 @@
 from ase.optimize.activelearning.gpfp.fingerprint import OganovFP
 from ase.optimize.activelearning.gpfp.calculator import GPCalculator
 from ase.optimize.activelearning.gpfp.kernel import FPKernel
-import numpy as np
 import copy
 
 from ase.build import fcc100
@@ -43,8 +42,7 @@ params = {'weight': 1.0, 'scale': 1.0, 'delta': 0.2}
 calc = GPCalculator(train_images=train_images, noise=1e-3,
                     kernel=kernel, params=params,
                     update_prior_strategy='maximum',
-                    params_to_update={'scale': (0.01, np.inf),
-                                      'delta': (0.1, 0.5)},
+                    params_to_update={'scale': (1, 1)},
                     batch_size=1,
                     print_format='ASE',
                     fingerprint=fp,
