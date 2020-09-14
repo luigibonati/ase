@@ -62,7 +62,7 @@ for cc1 in range(3):
         fp4.set_atoms(atoms4)
 
         hessian[cc1, cc2] = (((fp1.kernel(fp2, fp4) - fp1.kernel(fp2, fp3)) -
-                             (fp1.kernel(fp1, fp4) - fp1.kernel(fp1, fp3)))
+                              (fp1.kernel(fp1, fp4) - fp1.kernel(fp1, fp3)))
                              / dx**2)
 print('\nNumerical:\n', hessian, '\nTime consumed:',
       (time.time() - t0), 'seconds\n')
@@ -77,6 +77,6 @@ atoms3 = atoms1.copy()
 atoms3.rattle(0.02, seed=2)
 fp3 = new_fp()
 fp3.set_atoms(atoms3)
-analytical = fp1.kernel_hessian(fp3, index1, index2)
+analytical = fp1.kernel_hessian(fp3)[index1, index2]
 print('\nAnalytical:\n', analytical, '\nTime consumed:',
       (time.time() - t0), 'seconds\n')
