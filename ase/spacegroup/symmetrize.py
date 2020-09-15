@@ -206,16 +206,16 @@ class FixSymmetry(FixConstraint):
         delta_deform_grad = np.dot(cur_cell_inv, cell).T - np.eye(3)
 
         # symmetrization doesn't work properly with large steps, since
-        # it depends on current cell, and cell is being changed by deformation 
+        # it depends on current cell, and cell is being changed by deformation
         # gradient
         if np.max(np.abs(delta_deform_grad)) > 0.25:
-            raise RuntimeError('FixSymmetry adjust_cell does not work properly with'
-                               ' large deformation gradient step {} > 0.25'.format(
-                               np.max(np.abs(delta_deform_grad))))
+            raise RuntimeError('FixSymmetry adjust_cell does not work properly'
+                               ' with large deformation gradient step {} > 0.25'
+                               .format(np.max(np.abs(delta_deform_grad))))
         elif np.max(np.abs(delta_deform_grad)) > 0.15:
-            warnings.warn('FixSymmetry adjust_cell may be ill behaved with large'
-                          ' deformation gradient step {}'.format(
-                          np.max(np.abs(delta_deform_grad))))
+            warnings.warn('FixSymmetry adjust_cell may be ill behaved with'
+                          ' large deformation gradient step {}'
+                          .format(np.max(np.abs(delta_deform_grad))))
 
         symmetrized_delta_deform_grad = symmetrize_rank2(cur_cell, cur_cell_inv,
                                                          delta_deform_grad,
