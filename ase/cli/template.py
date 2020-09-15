@@ -22,7 +22,6 @@ def field_specs_on_conditions(calculator_outputs, rank_order):
             field_specs.append(rank_order + ':0:1')
     else:
         field_specs[0] = field_specs[0] + ':1'
-    print(field_specs)
     return field_specs
 
 
