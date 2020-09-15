@@ -22,6 +22,7 @@ def _calculate(calcname, species, parameters):
 
 
 @pytest.mark.parametrize('calc', calcs)
+@pytest.mark.skip('Work in progress')
 def test_ch4(calc):
     e_ch4 = _calculate(calc, 'CH4', calcs.get(calc))
     e_c2h2 = _calculate(calc, 'C2H2', calcs.get(calc))
