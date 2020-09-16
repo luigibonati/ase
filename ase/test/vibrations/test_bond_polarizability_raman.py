@@ -1,46 +1,61 @@
 from ase import Atoms
 from ase.build import bulk
 from ase.vibrations.raman import StaticRamanCalculator
+from ase.vibrations.raman import StaticRamanPhononCalculator
 from ase.vibrations.placzek import PlaczekStatic
 from ase.calculators.bond_polarizability import BondPolarizability
 from ase.calculators.emt import EMT
 from ase.optimize import FIRE
 
 
-def test_bulk():
+def relaxC4():
+    """Code used to relax C4 with EMT"""
+    from ase.constraints import FixAtoms, UnitCellFilter
+    Cbulk = bulk('C', orthorhombic=True)
+    Cbulk.set_constraint(FixAtoms(mask=[True for atom in Cbulk]))
+
+    ucf = UnitCellFilter(Cbulk)
+    opt = FIRE(ucf)
+    opt.run(fmax=0.001)
+
+    print(Cbulk)
+    print(Cbulk.cell)
+
+
+def test_bulk(tmp_path):
     """Bulk FCC carbon (for EMT) self consistency"""
-    if 0:
-        si4 = bulk('C', orthorhombic=True)
-    else:
-        # EMT relaxed value
-        Cbulk = bulk('C', crystalstructure='fcc', a=2 * 1.221791471)
+    # EMT relaxed value, see relaxC4
+    Cbulk = bulk('C', crystalstructure='fcc', a=2 * 1.221791471)
     Cbulk = Cbulk.repeat([2, 1, 1])
     Cbulk.calc = EMT()
-    if 0:
-        from ase.constraints import FixAtoms, UnitCellFilter
-        
-        Cbulk.set_constraint(FixAtoms(mask=[True for atom in Cbulk]))
-        ucf = UnitCellFilter(Cbulk)
-        opt = FIRE(ucf)
-        opt.run(fmax=0.001)
-        print(Cbulk)
-        print(Cbulk.cell)
     
-    name = 'bp'
+    name = str(tmp_path / 'bp')
     rm = StaticRamanCalculator(Cbulk, BondPolarizability, name=name,
                                delta=0.05)
     rm.run()
+
     pz = PlaczekStatic(Cbulk, name=name)
     print(pz.get_energies())
     pz.summary()
 
+
+def test_bulk_phonons(tmp_path):
+    """Bulk FCC carbon (for EMT) self consistency for phonons"""
+    # EMT relaxed value, see relaxC4
+    Cbulk = bulk('C', crystalstructure='fcc', a=2 * 1.221791471)
+    Cbulk = Cbulk.repeat([2, 1, 1])
+    Cbulk.calc = EMT()
+
+    name = str(tmp_path / 'phbp')
+    rm = StaticRamanPhononCalculator(Cbulk, BondPolarizability,
+                                     calc=EMT(),
+                                     name=name,
+                                     delta=0.05, supercell=(2, 1, 1))
+    rm.run()
+
     if 0:
-        si32 = si4.repeat([2, 2, 2])
-        si32.calc = EMT()
-        name = 'si32'
-        rm = StaticRamanCalculator(si32, BondPolarizability, name=name)
-        rm.run()
-        pz = PlaczekStatic(si32, name=name)
+        pz = PlaczekStatic(Cbulk, name=name)
+        print(pz.get_energies())
         pz.summary()
 
 
