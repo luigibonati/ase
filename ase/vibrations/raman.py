@@ -30,7 +30,7 @@ class RamanBase(Vibrations):
           Communicator, default world
         """
         kwargs['name'] = name
-        Vibrations.__init__(self, atoms, *args, **kwargs)
+        super().__init__(atoms, *args, **kwargs)
 
         self.exext = exext
         
