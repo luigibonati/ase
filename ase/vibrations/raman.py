@@ -50,7 +50,7 @@ class RamanCalculator(RamanBase):
     """Base class for Raman calculators"""
     def __init__(self, atoms, calculator, *args, **kwargs):
         self.exobj = calculator
-        Raman.__init__(self, atoms, *args, **kwargs)
+        RamanBase.__init__(self, atoms, *args, **kwargs)
 
 
 class StaticRamanCalculator(RamanCalculator):
