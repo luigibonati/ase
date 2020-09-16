@@ -58,7 +58,7 @@ class StaticRamanCalculator(RamanCalculator):
     static polarizabilities"""
     def calculate(self, atoms, filename, fd):
         # write forces
-        Vibrations.calculate(self, atoms, filename, fd)
+        super().calculate(atoms, filename, fd)
         # write static polarizability
         fname = filename.replace('.pckl', self.exext)
         np.savetxt(fname, self.exobj().calculate(atoms))
