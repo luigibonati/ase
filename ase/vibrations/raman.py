@@ -3,6 +3,7 @@ import numpy as np
 
 import ase.units as u
 from ase.parallel import world, parprint, paropen
+from ase.phonons import Phonons
 from ase.vibrations import Vibrations
 from ase.utils.timing import Timer
 from ase.utils import convert_string_to_fd
@@ -62,7 +63,68 @@ class StaticRamanCalculator(RamanCalculator):
         # write static polarizability
         fname = filename.replace('.pckl', self.exext)
         np.savetxt(fname, self.exobj().calculate(atoms))
-    
+
+
+###############################################
+# phonon part - can we avoid doubled code ?
+
+class RamanPhononBase(Phonons):
+    def __init__(self, atoms,  # XXX do we need atoms at this stage ?
+                 *args,
+                 name='raman', exext='.alpha',
+                 txt='-',
+                 verbose=False,
+                 comm=world,
+                 **kwargs):
+        """
+        Parameters
+        ----------
+        atoms: ase Atoms object
+        exext: string
+          Extension for excitation filenames
+        txt:
+          Output stream
+        verbose:
+          Verbosity level of output
+        comm:
+          Communicator, default world
+        """
+        kwargs['name'] = name
+        super().__init__(atoms, *args, **kwargs)
+
+        self.exext = exext
+
+        self.timer = Timer()
+        self.txt = convert_string_to_fd(txt)
+        self.verbose = verbose
+
+        self.comm = comm
+
+    def log(self, message, pre='# ', end='\n'):
+        if self.verbose:
+            self.txt.write(pre + message + end)
+            self.txt.flush()
+
+
+class RamanPhononCalculator(RamanPhononBase):
+    """Base class for Raman calculators"""
+    def __init__(self, atoms, calculator, *args, **kwargs):
+        self.exobj = calculator
+        RamanPhononBase.__init__(self, atoms, *args, **kwargs)
+
+
+class StaticRamanPhononCalculator(RamanPhononCalculator):
+    """Base class for Raman intensities derived from
+    static polarizabilities"""
+    def calculate(self, atoms, filename, fd):
+        # write forces
+        super().calculate(atoms, filename, fd)
+        # write static polarizability
+        fname = filename.replace('.pckl', self.exext)
+        np.savetxt(fname, self.exobj().calculate(atoms))
+
+###############################################
+
 
 class Raman(RamanBase):
     """Base class to evaluate Raman spectra from pre-computed data"""
