@@ -1,7 +1,7 @@
 from ase.gui.i18n import _
 import ase.gui.ui as ui
 from ase.io.pov import write_pov, get_bondpairs
-from os import system
+from os import unlink
 import numpy as np
 
 pack = error = Help = 42
@@ -122,10 +122,10 @@ class Render:
                 **povray_settings)
             if not self.keep_files_widget.value:
                 print(" | Deleting temporary file ", filename)
-                system("rm " + filename)
+                unlink(filename)
                 filename = filename[:-4] + '.ini'
                 print(" | Deleting temporary file ", filename)
-                system("rm " + filename)
+                unlink(filename)
         self.gui.set_frame(initial_frame)
         self.update_outputname()
 
