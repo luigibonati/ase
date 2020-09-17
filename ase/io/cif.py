@@ -697,21 +697,13 @@ def write_cif(fd, images, cif_format='default',
         if cif_format == 'mp':
             fd.write('loop_\n')
 
-        coord_type = 'fract' if atoms.pbc.all() else 'Cartn'
-
-        if cif_format == 'mp':
-            fd.write('  _atom_site_type_symbol\n')
-            fd.write('  _atom_site_label\n')
-            fd.write('  _atom_site_symmetry_multiplicity\n')
-            fd.write('  _atom_site_{0}_x\n'.format(coord_type))
-            fd.write('  _atom_site_{0}_y\n'.format(coord_type))
-            fd.write('  _atom_site_{0}_z\n'.format(coord_type))
-            fd.write('  _atom_site_occupancy\n')
-
-        if coord_type == 'fract':
+        if all(atoms.pbc):
+            coord_type = 'fract'
             coords = atoms.get_scaled_positions(wrap).tolist()
         else:
+            coord_type = 'Cartn'
             coords = atoms.get_positions(wrap).tolist()
+
         symbols = list(atoms.symbols)
 
         # try to fetch occupancies // spacegroup_kinds - occupancy mapping
@@ -744,9 +736,6 @@ def write_cif(fd, images, cif_format='default',
                 extra_data[i], loop_keys[key][i_frame][i])
                 for i in range(len(symbols))]
 
-            if cif_format == 'mp':
-                fd.write("  _{}\n".format(key))
-
         if labels:
             included_labels = labels[i_frame]
         else:
@@ -764,36 +753,61 @@ def write_cif(fd, images, cif_format='default',
 
         loop = CIFLoop()
 
-        for symbol, pos, occ, label, ext in zip(
-                symbols, coords, occupancies, included_labels, extra_data):
-            if cif_format == 'mp':
-                fd.write('  %-2s  %4s  %4s  %7.5f  %7.5f  %7.5f  %6.1f%s\n' %
-                         (symbol, label, 1,
-                          pos[0], pos[1], pos[2], occ, ext))
 
+        coord_headers = [f'_atom_site_{coord_type}_{axisname}'
+                         for axisname in 'xyz']
+
+        loopdata = dict(
+            _atom_site_label=(included_labels, '{:<8s}'),
+            _atom_site_occupancy=(occupancies, '{:6.4f}'),
+        )
+
+        _coords = np.array(coords)
+        for i, key in enumerate(coord_headers):
+            loopdata[key] = (_coords[:, i], '{:7.5f}')
+
+        loopdata['_atom_site_thermal_displace_type'] = (
+            ['Biso'] * len(symbols), '{:s}')
+        loopdata['_atom_site_B_iso_or_equiv'] = (
+            [1.0] * len(symbols), '{:6.3f}')
+        loopdata['_atom_site_type_symbol'] = (symbols, '{:<2s}')
+
+        loopdata['_atom_site_symmetry_multiplicity'] = (
+            [1.0] * len(symbols), '{}')
+
+        for key in loop_keys:
+            loopdata['_' + key] = (extra_data_to_array(key), '{}')
+
+        mp_headers = [
+            '_atom_site_type_symbol',
+            '_atom_site_label',
+            '_atom_site_symmetry_multiplicity',
+            *coord_headers,
+            '_atom_site_occupancy',
+        ]
+
+
+        default_headers = [
+            '_atom_site_label',
+            '_atom_site_occupancy',
+            *coord_headers,
+            '_atom_site_thermal_displace_type',
+            '_atom_site_B_iso_or_equiv',
+            '_atom_site_type_symbol',
+        ]
 
         if cif_format == 'mp':
-            pass
+            headers = mp_headers
         else:
-            loop.add('_atom_site_label', included_labels, '{:<8s}')
-            loop.add('_atom_site_occupancy', occupancies, '{:6.4f}')
+            headers = default_headers
 
-            _coords = np.array(coords)
-            for i, axisname in enumerate('xyz'):
-                loop.add(f'_atom_site_{coord_type}_{axisname}',
-                         _coords[:, i], '{:7.5f}')
+        headers += ['_' + key for key in loop_keys]
 
-            loop.add('_atom_site_thermal_displace_type',
-                     ['Biso'] * len(symbols), '{:s}')
-            loop.add('_atom_site_B_iso_or_equiv', [1.0] * len(symbols), '{:6.3f}')
-            loop.add('_atom_site_type_symbol', symbols, '{:<2s}')
+        for header in headers:
+            array, fmt = loopdata[header]
+            loop.add(header, array, fmt)
 
-            for key in loop_keys:
-                array = extra_data_to_array(key)
-                loop.add('_' + key, array, '{}')
-
-        if cif_format != 'mp':
-            fd.write(loop.tostring())
+        fd.write(loop.tostring())
 
     # Using the TextIOWrapper somehow causes the file to close
     # when this function returns.
