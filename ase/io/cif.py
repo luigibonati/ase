@@ -718,19 +718,7 @@ def expand_kinds(atoms, coords):
     return symbols, coords, occupancies
 
 
-def write_cif_image(blockname, atoms, fd, *, cif_format, wrap,
-                    labels, loop_keys):
-    fd.write(blockname)
-
-    if cif_format == 'mp':
-        fd.write(mp_header(atoms))
-
-    if atoms.cell.rank == 3:
-        fd.write(format_cell(atoms.cell))
-        fd.write('\n')
-        fd.write(format_generic_spacegroup_info())
-        fd.write('\n')
-
+def atoms_to_loop_data(atoms, wrap, labels, loop_keys):
     if all(atoms.pbc):
         coord_type = 'fract'
         coords = atoms.get_scaled_positions(wrap).tolist()
@@ -762,33 +750,47 @@ def write_cif_image(blockname, atoms, fd, *, cif_format, wrap,
     loopdata['_atom_site_symmetry_multiplicity'] = (
         [1.0] * len(symbols), '{}')
 
-    def extra_data_to_array(key):
-        return [loop_keys[key][i] for i in range(len(symbols))]
-
     for key in loop_keys:
-        loopdata['_' + key] = (extra_data_to_array(key), '{}')
+        # Should expand the loop_keys like we expand the occupancy stuff.
+        # Otherwise user will never figure out how to do this.
+        values = [loop_keys[key][i] for i in range(len(symbols))]
+        loopdata['_' + key] = (values, '{}')
 
-    mp_headers = [
-        '_atom_site_type_symbol',
-        '_atom_site_label',
-        '_atom_site_symmetry_multiplicity',
-        *coord_headers,
-        '_atom_site_occupancy',
-    ]
+    return loopdata, coord_headers
 
-    default_headers = [
-        '_atom_site_label',
-        '_atom_site_occupancy',
-        *coord_headers,
-        '_atom_site_thermal_displace_type',
-        '_atom_site_B_iso_or_equiv',
-        '_atom_site_type_symbol',
-    ]
+
+def write_cif_image(blockname, atoms, fd, *, cif_format, wrap,
+                    labels, loop_keys):
+    fd.write(blockname)
 
     if cif_format == 'mp':
-        headers = mp_headers
+        fd.write(mp_header(atoms))
+
+    if atoms.cell.rank == 3:
+        fd.write(format_cell(atoms.cell))
+        fd.write('\n')
+        fd.write(format_generic_spacegroup_info())
+        fd.write('\n')
+
+    loopdata, coord_headers = atoms_to_loop_data(atoms, wrap, labels, loop_keys)
+
+    if cif_format == 'mp':
+        headers = [
+            '_atom_site_type_symbol',
+            '_atom_site_label',
+            '_atom_site_symmetry_multiplicity',
+            *coord_headers,
+            '_atom_site_occupancy',
+        ]
     else:
-        headers = default_headers
+        headers = [
+            '_atom_site_label',
+            '_atom_site_occupancy',
+            *coord_headers,
+            '_atom_site_thermal_displace_type',
+            '_atom_site_B_iso_or_equiv',
+            '_atom_site_type_symbol',
+        ]
 
     headers += ['_' + key for key in loop_keys]
 
