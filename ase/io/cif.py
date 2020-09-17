@@ -10,7 +10,7 @@ import io
 import re
 import shlex
 import warnings
-from typing import Dict, List, Tuple, Optional, Union, Iterator, Any
+from typing import Dict, List, Tuple, Optional, Union, Iterator, Any, Sequence
 import collections.abc
 
 import numpy as np
@@ -26,7 +26,6 @@ from ase.io.cif_unicode import format_unicode, handle_subscripts
 rhombohedral_spacegroups = {146, 148, 155, 160, 161, 166, 167}
 
 
-# Old conventions:
 old_spacegroup_names = {'Abm2': 'Aem2',
                         'Aba2': 'Aea2',
                         'Cmca': 'Cmce',
@@ -663,12 +662,10 @@ def write_cif(fd, images, cif_format='default',
         images = [images]
 
     for i_frame, atoms in enumerate(images):
-        name = 'data_image%d\n' % i_frame
-
-        #return [loop_keys[key][i_frame][i] for i in range(len(symbols))]
+        blockname = 'data_image%d\n' % i_frame
         image_loop_keys = {key: loop_keys[key][i_frame] for key in loop_keys}
 
-        write_cif_image(atoms, name, fd,
+        write_cif_image(blockname, atoms, fd,
                         cif_format=cif_format,
                         wrap=wrap,
                         labels=None if labels is None else labels[i_frame],
@@ -679,9 +676,22 @@ def write_cif(fd, images, cif_format='default',
     # Detach in order to circumvent this highly illogical problem:
     fd.detach()
 
-def write_cif_image(atoms, name, fd, *, cif_format, wrap,
+
+def autolabel(symbols: Sequence[str]) -> List[str]:
+    no: Dict[str, int] = {}
+    labels = []
+    for symbol in symbols:
+        if symbol in no:
+            no[symbol] += 1
+        else:
+            no[symbol] = 1
+        labels.append('%s%d' % (symbol, no[symbol]))
+    return labels
+
+
+def write_cif_image(blockname, atoms, fd, *, cif_format, wrap,
                     labels, loop_keys):
-        fd.write(name)
+        fd.write(blockname)
 
         if cif_format == 'mp':
             comp_name = str(atoms.symbols)
@@ -725,23 +735,14 @@ def write_cif_image(atoms, name, fd, *, cif_format, wrap,
                         coords.append(coords[i])
                         occupancies.append(occ)
 
-        if labels:
-            included_labels = labels
-        else:
-            no: Dict[str, int] = {}
-            included_labels = []
-            for symbol in symbols:
-                if symbol in no:
-                    no[symbol] += 1
-                else:
-                    no[symbol] = 1
-                included_labels.append('%s%d' % (symbol, no[symbol]))
+        if labels is None:
+            labels = autolabel(symbols)
 
         coord_headers = [f'_atom_site_{coord_type}_{axisname}'
                          for axisname in 'xyz']
 
         loopdata = {}
-        loopdata['_atom_site_label'] = (included_labels, '{:<8s}')
+        loopdata['_atom_site_label'] = (labels, '{:<8s}')
         loopdata['_atom_site_occupancy'] = (occupancies, '{:6.4f}')
 
         _coords = np.array(coords)
