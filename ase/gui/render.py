@@ -35,6 +35,8 @@ class Render:
         self.basename_widget = ui.Entry(width=30, value=formula,
                                         callback=self.update_outputname)
         win.add([ui.Label(_('Output basename: ')), self.basename_widget])
+        self.povray_executable = ui.Entry(width=30,value='povray')
+        win.add([ui.Label(_('POVRAY executable')), self.povray_executable])
         self.outputname_widget = ui.Label()
         win.add([ui.Label(_('Output filename: ')), self.outputname_widget])
         self.update_outputname()
@@ -118,7 +120,7 @@ class Render:
             filename = self.update_outputname()
             print(" | Writing files for image", filename, "...")
             write_pov(
-                filename, atoms, radii=radii_scale*self.gui.get_covalent_radii(),
+                filename, atoms, radii=radii_scale*self.gui.get_covalent_radii(),povray_path=self.povray_executable.value,
                 **povray_settings)
             if not self.keep_files_widget.value:
                 print(" | Deleting temporary file ", filename)
