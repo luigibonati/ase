@@ -42,6 +42,7 @@ def bloody_loop():
     atoms = bulk('Ti')
     occupancies = [1] * len(atoms)
     coords = atoms.get_scaled_positions()
+
     loop = CIFLoop()
     loop.add('_atom_site_label', atoms.symbols, '{:<8s}')
     loop.add('_atom_site_occupancy', occupancies, '{:6.4f}')

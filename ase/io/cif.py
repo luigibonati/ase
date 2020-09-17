@@ -614,7 +614,7 @@ class CIFLoop:
         self.formats.append(fmt)
         self.arrays.append(array)
         if len(self.arrays[0]) != len(self.arrays[-1]):
-            raise ValueError('Loop data not equally long')
+            raise ValueError(f'Loop data "{name}" has {len(array)} elements, expected {len(self.arrays[0])}')
 
     def tostring(self):
         lines = []
@@ -631,6 +631,7 @@ class CIFLoop:
             arraydata = [array[row] for array in self.arrays]
             line = template.format(*arraydata)
             append(line)
+        append('')
         return '\n'.join(lines)
 
 
@@ -672,7 +673,7 @@ def write_cif(fd, images, cif_format='default',
         fd.write('data_image%d\n' % i_frame)
 
         if cif_format == 'mp':
-            comp_name = atoms.get_chemical_formula(mode='reduce')
+            comp_name = str(atoms.symbols)
             sf = split_chem_form(comp_name)
             formula_sum = ''
             ii = 0
@@ -693,9 +694,9 @@ def write_cif(fd, images, cif_format='default',
             fd.write(format_generic_spacegroup_info())
             fd.write('\n')
 
-        fd.write('loop_\n')
+        if cif_format == 'mp':
+            fd.write('loop_\n')
 
-        # Is it a periodic system?
         coord_type = 'fract' if atoms.pbc.all() else 'Cartn'
 
         if cif_format == 'mp':
@@ -706,24 +707,15 @@ def write_cif(fd, images, cif_format='default',
             fd.write('  _atom_site_{0}_y\n'.format(coord_type))
             fd.write('  _atom_site_{0}_z\n'.format(coord_type))
             fd.write('  _atom_site_occupancy\n')
-        else:
-            fd.write('  _atom_site_label\n')
-            fd.write('  _atom_site_occupancy\n')
-            fd.write('  _atom_site_{0}_x\n'.format(coord_type))
-            fd.write('  _atom_site_{0}_y\n'.format(coord_type))
-            fd.write('  _atom_site_{0}_z\n'.format(coord_type))
-            fd.write('  _atom_site_thermal_displace_type\n')
-            fd.write('  _atom_site_B_iso_or_equiv\n')
-            fd.write('  _atom_site_type_symbol\n')
 
         if coord_type == 'fract':
             coords = atoms.get_scaled_positions(wrap).tolist()
         else:
             coords = atoms.get_positions(wrap).tolist()
-        symbols = atoms.get_chemical_symbols()
-        occupancies = [1 for i in range(len(symbols))]
+        symbols = list(atoms.symbols)
 
         # try to fetch occupancies // spacegroup_kinds - occupancy mapping
+        occupancies = [1] * len(symbols)
         try:
             occ_info = atoms.info['occupancy']
             kinds = atoms.arrays['spacegroup_kinds']
@@ -742,12 +734,18 @@ def write_cif(fd, images, cif_format='default',
         # Can only do it now since length of atoms is not always equal to the
         # number of entries.
         # Do not move this up!
-        extra_data = ["" for i in range(len(symbols))]
+        extra_data = [""] * len(symbols)
+
+        def extra_data_to_array(key):
+            return [loop_keys[key][i_frame][i] for i in range(len(symbols))]
+
         for key in loop_keys:
             extra_data = ["{}  {}".format(
                 extra_data[i], loop_keys[key][i_frame][i])
                 for i in range(len(symbols))]
-            fd.write("  _{}\n".format(key))
+
+            if cif_format == 'mp':
+                fd.write("  _{}\n".format(key))
 
         if labels:
             included_labels = labels[i_frame]
@@ -764,6 +762,7 @@ def write_cif(fd, images, cif_format='default',
         assert len(symbols) == len(coords) == len(
             occupancies) == len(included_labels) == len(extra_data)
 
+        loop = CIFLoop()
 
         for symbol, pos, occ, label, ext in zip(
                 symbols, coords, occupancies, included_labels, extra_data):
@@ -771,11 +770,30 @@ def write_cif(fd, images, cif_format='default',
                 fd.write('  %-2s  %4s  %4s  %7.5f  %7.5f  %7.5f  %6.1f%s\n' %
                          (symbol, label, 1,
                           pos[0], pos[1], pos[2], occ, ext))
-            else:
-                fd.write(
-                    '  %-8s %6.4f %7.5f  %7.5f  %7.5f  %4s  %6.3f  %-2s%s\n'
-                    % (label, occ, pos[0], pos[1], pos[2],
-                       'Biso', 1.0, symbol, ext))
+
+
+        if cif_format == 'mp':
+            pass
+        else:
+            loop.add('_atom_site_label', included_labels, '{:<8s}')
+            loop.add('_atom_site_occupancy', occupancies, '{:6.4f}')
+
+            _coords = np.array(coords)
+            for i, axisname in enumerate('xyz'):
+                loop.add(f'_atom_site_{coord_type}_{axisname}',
+                         _coords[:, i], '{:7.5f}')
+
+            loop.add('_atom_site_thermal_displace_type',
+                     ['Biso'] * len(symbols), '{:s}')
+            loop.add('_atom_site_B_iso_or_equiv', [1.0] * len(symbols), '{:6.3f}')
+            loop.add('_atom_site_type_symbol', symbols, '{:<2s}')
+
+            for key in loop_keys:
+                array = extra_data_to_array(key)
+                loop.add('_' + key, array, '{}')
+
+        if cif_format != 'mp':
+            fd.write(loop.tostring())
 
     # Using the TextIOWrapper somehow causes the file to close
     # when this function returns.
