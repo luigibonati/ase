@@ -693,8 +693,8 @@ def mp_header(atoms):
     counts = atoms.symbols.formula.count()
     formula_sum = ' '.join(f'{sym}{count}' for sym, count
                            in counts.items())
-    return ('_chemical_formula_structural       {atoms.symbols}\n'
-            '_chemical_formula_sum              "{formula_sum}"\n')
+    return (f'_chemical_formula_structural       {atoms.symbols}\n'
+            f'_chemical_formula_sum              "{formula_sum}"\n')
 
 
 def expand_kinds(atoms, coords):
