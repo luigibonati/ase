@@ -2406,30 +2406,26 @@ class UnitCellFilter(Filter):
         the first natoms rows are the positions of the atoms, the last
         three rows are the deformation tensor used to change the cell shape.
 
-        the positions are first set with respect to the original
-        undeformed cell, and then the cell is transformed by the
-        current deformation gradient.
+        the new cell is first set from original cell transformed by the new
+        deformation gradient, then the positions are set with respect to the
+        current cell by transforming them with the same deformation gradient
         """
 
         natoms = len(self.atoms)
         new_atom_positions = new[:natoms]
         new_deform_grad = new[natoms:] / self.cell_factor
-        # take self.atoms back to the original cell (without the deformation
-        # gradient) be sure to scale atoms so that if set_positions() needs to
-        # symmetrize the atom step, it does so based on consistent (same cell)
-        # initial and final positions
-        self.atoms.set_cell(self.orig_cell, scale_atoms=True)
-        # set the positions from the ones passed in (which are without the
-        # deformation gradient applied) if set_positions() calls
-        # adjust_positions(), UnitCellFilter.get_positions() will automatically
-        # inherit that since it uses self.atoms.positions
-        self.atoms.set_positions(new_atom_positions, **kwargs)
-        # set the new cell from the original cell and the new unscaled
-        # deformation gradient if set_cell() calls adjust_cell(),
-        # UnitCellFilter.get_positions() will automatically inherit that since
-        # it uses self.atoms.get_cell() to calculate the deformation gradient
+        # Set the new cell from the original cell and the new
+        # deformation gradient.  Both current and final structures should
+        # preserve symmetry, so if set_cell() calls FixSymmetry.adjust_cell(),
+        # it should be OK
         self.atoms.set_cell(self.orig_cell @ new_deform_grad.T,
                             scale_atoms=True)
+        # Set the positions from the ones passed in (which are without the
+        # deformation gradient applied) and the new deformation gradient.
+        # This should also preserve symmetry, so if set_positions() calls
+        # FixSymmetyr.adjust_positions(), it should be OK
+        self.atoms.set_positions(new_atom_positions @ new_deform_grad.T,
+                                 **kwargs)
 
     def get_potential_energy(self, force_consistent=True):
         """
