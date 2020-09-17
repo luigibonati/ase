@@ -674,16 +674,10 @@ def write_cif(fd, images, cif_format='default',
 
         if cif_format == 'mp':
             comp_name = str(atoms.symbols)
-            sf = split_chem_form(comp_name)
-            formula_sum = ''
-            ii = 0
-            while ii < len(sf):
-                formula_sum = formula_sum + ' ' + sf[ii] + sf[ii + 1]
-                ii = ii + 2
-
-            formula_sum = str(formula_sum)
-            fd.write('_chemical_formula_structural       %s\n' %
-                     atoms.get_chemical_formula(mode='reduce'))
+            counts = atoms.symbols.formula.count()
+            formula_sum = ' '.join(f'{sym}{count}' for sym, count
+                                   in counts.items())
+            fd.write('_chemical_formula_structural       %s\n' % comp_name)
             fd.write('_chemical_formula_sum      "%s"\n' %
                      formula_sum)
 
@@ -693,9 +687,6 @@ def write_cif(fd, images, cif_format='default',
             fd.write('\n')
             fd.write(format_generic_spacegroup_info())
             fd.write('\n')
-
-        if cif_format == 'mp':
-            fd.write('loop_\n')
 
         if all(atoms.pbc):
             coord_type = 'fract'
@@ -723,19 +714,6 @@ def write_cif(fd, images, cif_format='default',
                         coords.append(coords[i])
                         occupancies.append(occ)
 
-        # Can only do it now since length of atoms is not always equal to the
-        # number of entries.
-        # Do not move this up!
-        extra_data = [""] * len(symbols)
-
-        def extra_data_to_array(key):
-            return [loop_keys[key][i_frame][i] for i in range(len(symbols))]
-
-        for key in loop_keys:
-            extra_data = ["{}  {}".format(
-                extra_data[i], loop_keys[key][i_frame][i])
-                for i in range(len(symbols))]
-
         if labels:
             included_labels = labels[i_frame]
         else:
@@ -748,19 +726,12 @@ def write_cif(fd, images, cif_format='default',
                     no[symbol] = 1
                 included_labels.append('%s%d' % (symbol, no[symbol]))
 
-        assert len(symbols) == len(coords) == len(
-            occupancies) == len(included_labels) == len(extra_data)
-
-        loop = CIFLoop()
-
-
         coord_headers = [f'_atom_site_{coord_type}_{axisname}'
                          for axisname in 'xyz']
 
-        loopdata = dict(
-            _atom_site_label=(included_labels, '{:<8s}'),
-            _atom_site_occupancy=(occupancies, '{:6.4f}'),
-        )
+        loopdata = {}
+        loopdata['_atom_site_label'] = (included_labels, '{:<8s}')
+        loopdata['_atom_site_occupancy'] = (occupancies, '{:6.4f}')
 
         _coords = np.array(coords)
         for i, key in enumerate(coord_headers):
@@ -771,9 +742,11 @@ def write_cif(fd, images, cif_format='default',
         loopdata['_atom_site_B_iso_or_equiv'] = (
             [1.0] * len(symbols), '{:6.3f}')
         loopdata['_atom_site_type_symbol'] = (symbols, '{:<2s}')
-
         loopdata['_atom_site_symmetry_multiplicity'] = (
             [1.0] * len(symbols), '{}')
+
+        def extra_data_to_array(key):
+            return [loop_keys[key][i_frame][i] for i in range(len(symbols))]
 
         for key in loop_keys:
             loopdata['_' + key] = (extra_data_to_array(key), '{}')
@@ -785,7 +758,6 @@ def write_cif(fd, images, cif_format='default',
             *coord_headers,
             '_atom_site_occupancy',
         ]
-
 
         default_headers = [
             '_atom_site_label',
@@ -803,6 +775,7 @@ def write_cif(fd, images, cif_format='default',
 
         headers += ['_' + key for key in loop_keys]
 
+        loop = CIFLoop()
         for header in headers:
             array, fmt = loopdata[header]
             loop.add(header, array, fmt)
