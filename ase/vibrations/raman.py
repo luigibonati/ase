@@ -57,7 +57,7 @@ class RamanCalculator(RamanBase):
         RamanBase.__init__(self, atoms, *args, **kwargs)
 
 
-class RamanBase0:
+class RamanBase1:
     def __init__(self, atoms,  # XXX do we need atoms at this stage ?
                  *args,
                  name='raman',
@@ -81,8 +81,8 @@ class RamanBase0:
         """
         kwargs['name'] = name
         self.exname = kwargs.pop('exname', name)
-        
-        super(type(self), self).__init__(atoms, *args, **kwargs)
+
+        super().__init__(atoms, *args, **kwargs)
 
         self.exext = exext
 
@@ -98,12 +98,12 @@ class RamanBase0:
             self.txt.flush()
 
 
-class StaticRamanCalculator(Vibrations, RamanBase0):
+class StaticRamanCalculatorBase(RamanBase1):
     """Base class for Raman intensities derived from
     static polarizabilities"""
     def __init__(self, atoms, exobj, *args, **kwargs):
         self.exobj = exobj
-        RamanBase0.__init__(self, atoms, *args, **kwargs)
+        super().__init__(atoms, *args, **kwargs)
         
     def calculate(self, atoms, filename, fd):
         # write forces
@@ -111,26 +111,14 @@ class StaticRamanCalculator(Vibrations, RamanBase0):
         # write static polarizability
         fname = filename.replace('.pckl', self.exext)
         np.savetxt(fname, self.exobj().calculate(atoms))
+      
+
+class StaticRamanCalculator(StaticRamanCalculatorBase, Vibrations):
+    pass
 
 
-###############################################
-# phonon part - can we avoid doubled code ?
-
-class StaticRamanPhononCalculator(Phonons, RamanBase0):
-    """Base class for Raman intensities derived from
-    static polarizabilities for phonons"""
-    def __init__(self, atoms, exobj, *args, **kwargs):
-        self.exobj = exobj
-        RamanBase0.__init__(self, atoms, *args, **kwargs)
-        
-    def calculate(self, atoms, filename, fd):
-        # write forces
-        super().calculate(atoms, filename, fd)
-        # write static polarizability
-        fname = filename.replace('.pckl', self.exext)
-        np.savetxt(fname, self.exobj().calculate(atoms))
-
-###############################################
+class StaticRamanPhononCalculator(StaticRamanCalculatorBase, Phonons):
+    pass
 
 
 class Raman(RamanBase):
