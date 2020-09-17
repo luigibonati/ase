@@ -691,105 +691,105 @@ def autolabel(symbols: Sequence[str]) -> List[str]:
 
 def write_cif_image(blockname, atoms, fd, *, cif_format, wrap,
                     labels, loop_keys):
-        fd.write(blockname)
+    fd.write(blockname)
 
-        if cif_format == 'mp':
-            comp_name = str(atoms.symbols)
-            counts = atoms.symbols.formula.count()
-            formula_sum = ' '.join(f'{sym}{count}' for sym, count
-                                   in counts.items())
-            fd.write('_chemical_formula_structural       %s\n' % comp_name)
-            fd.write('_chemical_formula_sum      "%s"\n' %
-                     formula_sum)
+    if cif_format == 'mp':
+        comp_name = str(atoms.symbols)
+        counts = atoms.symbols.formula.count()
+        formula_sum = ' '.join(f'{sym}{count}' for sym, count
+                               in counts.items())
+        fd.write('_chemical_formula_structural       %s\n' % comp_name)
+        fd.write('_chemical_formula_sum      "%s"\n' %
+                 formula_sum)
 
-        # Do this only if there's three non-zero lattice vectors
-        if atoms.cell.rank == 3:
-            fd.write(format_cell(atoms.cell))
-            fd.write('\n')
-            fd.write(format_generic_spacegroup_info())
-            fd.write('\n')
+    # Do this only if there's three non-zero lattice vectors
+    if atoms.cell.rank == 3:
+        fd.write(format_cell(atoms.cell))
+        fd.write('\n')
+        fd.write(format_generic_spacegroup_info())
+        fd.write('\n')
 
-        if all(atoms.pbc):
-            coord_type = 'fract'
-            coords = atoms.get_scaled_positions(wrap).tolist()
-        else:
-            coord_type = 'Cartn'
-            coords = atoms.get_positions(wrap).tolist()
+    if all(atoms.pbc):
+        coord_type = 'fract'
+        coords = atoms.get_scaled_positions(wrap).tolist()
+    else:
+        coord_type = 'Cartn'
+        coords = atoms.get_positions(wrap).tolist()
 
-        symbols = list(atoms.symbols)
+    symbols = list(atoms.symbols)
 
-        # try to fetch occupancies // spacegroup_kinds - occupancy mapping
-        occupancies = [1] * len(symbols)
-        try:
-            occ_info = atoms.info['occupancy']
-            kinds = atoms.arrays['spacegroup_kinds']
-        except KeyError:
-            pass
-        else:
-            for i, kind in enumerate(kinds):
-                occupancies[i] = occ_info[kind][symbols[i]]
-                # extend the positions array in case of mixed occupancy
-                for sym, occ in occ_info[kind].items():
-                    if sym != symbols[i]:
-                        symbols.append(sym)
-                        coords.append(coords[i])
-                        occupancies.append(occ)
+    # try to fetch occupancies // spacegroup_kinds - occupancy mapping
+    occupancies = [1] * len(symbols)
+    try:
+        occ_info = atoms.info['occupancy']
+        kinds = atoms.arrays['spacegroup_kinds']
+    except KeyError:
+        pass
+    else:
+        for i, kind in enumerate(kinds):
+            occupancies[i] = occ_info[kind][symbols[i]]
+            # extend the positions array in case of mixed occupancy
+            for sym, occ in occ_info[kind].items():
+                if sym != symbols[i]:
+                    symbols.append(sym)
+                    coords.append(coords[i])
+                    occupancies.append(occ)
 
-        if labels is None:
-            labels = autolabel(symbols)
+    if labels is None:
+        labels = autolabel(symbols)
 
-        coord_headers = [f'_atom_site_{coord_type}_{axisname}'
-                         for axisname in 'xyz']
+    coord_headers = [f'_atom_site_{coord_type}_{axisname}'
+                     for axisname in 'xyz']
 
-        loopdata = {}
-        loopdata['_atom_site_label'] = (labels, '{:<8s}')
-        loopdata['_atom_site_occupancy'] = (occupancies, '{:6.4f}')
+    loopdata = {}
+    loopdata['_atom_site_label'] = (labels, '{:<8s}')
+    loopdata['_atom_site_occupancy'] = (occupancies, '{:6.4f}')
 
-        _coords = np.array(coords)
-        for i, key in enumerate(coord_headers):
-            loopdata[key] = (_coords[:, i], '{:7.5f}')
+    _coords = np.array(coords)
+    for i, key in enumerate(coord_headers):
+        loopdata[key] = (_coords[:, i], '{:7.5f}')
 
-        loopdata['_atom_site_thermal_displace_type'] = (
-            ['Biso'] * len(symbols), '{:s}')
-        loopdata['_atom_site_B_iso_or_equiv'] = (
-            [1.0] * len(symbols), '{:6.3f}')
-        loopdata['_atom_site_type_symbol'] = (symbols, '{:<2s}')
-        loopdata['_atom_site_symmetry_multiplicity'] = (
-            [1.0] * len(symbols), '{}')
+    loopdata['_atom_site_thermal_displace_type'] = (
+        ['Biso'] * len(symbols), '{:s}')
+    loopdata['_atom_site_B_iso_or_equiv'] = (
+        [1.0] * len(symbols), '{:6.3f}')
+    loopdata['_atom_site_type_symbol'] = (symbols, '{:<2s}')
+    loopdata['_atom_site_symmetry_multiplicity'] = (
+        [1.0] * len(symbols), '{}')
 
-        def extra_data_to_array(key):
-            return [loop_keys[key][i] for i in range(len(symbols))]
+    def extra_data_to_array(key):
+        return [loop_keys[key][i] for i in range(len(symbols))]
 
-        for key in loop_keys:
-            loopdata['_' + key] = (extra_data_to_array(key), '{}')
+    for key in loop_keys:
+        loopdata['_' + key] = (extra_data_to_array(key), '{}')
 
-        mp_headers = [
-            '_atom_site_type_symbol',
-            '_atom_site_label',
-            '_atom_site_symmetry_multiplicity',
-            *coord_headers,
-            '_atom_site_occupancy',
-        ]
+    mp_headers = [
+        '_atom_site_type_symbol',
+        '_atom_site_label',
+        '_atom_site_symmetry_multiplicity',
+        *coord_headers,
+        '_atom_site_occupancy',
+    ]
 
-        default_headers = [
-            '_atom_site_label',
-            '_atom_site_occupancy',
-            *coord_headers,
-            '_atom_site_thermal_displace_type',
-            '_atom_site_B_iso_or_equiv',
-            '_atom_site_type_symbol',
-        ]
+    default_headers = [
+        '_atom_site_label',
+        '_atom_site_occupancy',
+        *coord_headers,
+        '_atom_site_thermal_displace_type',
+        '_atom_site_B_iso_or_equiv',
+        '_atom_site_type_symbol',
+    ]
 
-        if cif_format == 'mp':
-            headers = mp_headers
-        else:
-            headers = default_headers
+    if cif_format == 'mp':
+        headers = mp_headers
+    else:
+        headers = default_headers
 
-        headers += ['_' + key for key in loop_keys]
+    headers += ['_' + key for key in loop_keys]
 
-        loop = CIFLoop()
-        for header in headers:
-            array, fmt = loopdata[header]
-            loop.add(header, array, fmt)
+    loop = CIFLoop()
+    for header in headers:
+        array, fmt = loopdata[header]
+        loop.add(header, array, fmt)
 
-        fd.write(loop.tostring())
+    fd.write(loop.tostring())
