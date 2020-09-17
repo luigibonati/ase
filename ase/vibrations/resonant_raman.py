@@ -9,10 +9,10 @@ import numpy as np
 import ase.units as u
 from ase.parallel import world, paropen, parprint
 from ase.vibrations import Vibrations
-from ase.vibrations.raman import Raman, RamanBase1
+from ase.vibrations.raman import Raman, RamanBase
 
 
-class ResonantRamanCalculator(RamanBase1, Vibrations):
+class ResonantRamanCalculator(RamanBase, Vibrations):
     """Base class for resonant Raman calculators using finite differences.
     """
     def __init__(self, atoms, ExcitationsCalculator, *args,
