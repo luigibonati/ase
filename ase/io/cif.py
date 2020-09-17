@@ -689,36 +689,17 @@ def autolabel(symbols: Sequence[str]) -> List[str]:
     return labels
 
 
-def write_cif_image(blockname, atoms, fd, *, cif_format, wrap,
-                    labels, loop_keys):
-    fd.write(blockname)
+def mp_header(atoms):
+    counts = atoms.symbols.formula.count()
+    formula_sum = ' '.join(f'{sym}{count}' for sym, count
+                           in counts.items())
+    return ('_chemical_formula_structural       {atoms.symbols}\n'
+            '_chemical_formula_sum              "{formula_sum}"\n')
 
-    if cif_format == 'mp':
-        comp_name = str(atoms.symbols)
-        counts = atoms.symbols.formula.count()
-        formula_sum = ' '.join(f'{sym}{count}' for sym, count
-                               in counts.items())
-        fd.write('_chemical_formula_structural       %s\n' % comp_name)
-        fd.write('_chemical_formula_sum      "%s"\n' %
-                 formula_sum)
 
-    # Do this only if there's three non-zero lattice vectors
-    if atoms.cell.rank == 3:
-        fd.write(format_cell(atoms.cell))
-        fd.write('\n')
-        fd.write(format_generic_spacegroup_info())
-        fd.write('\n')
-
-    if all(atoms.pbc):
-        coord_type = 'fract'
-        coords = atoms.get_scaled_positions(wrap).tolist()
-    else:
-        coord_type = 'Cartn'
-        coords = atoms.get_positions(wrap).tolist()
-
-    symbols = list(atoms.symbols)
-
+def expand_kinds(atoms, coords):
     # try to fetch occupancies // spacegroup_kinds - occupancy mapping
+    symbols = list(atoms.symbols)
     occupancies = [1] * len(symbols)
     try:
         occ_info = atoms.info['occupancy']
@@ -734,6 +715,30 @@ def write_cif_image(blockname, atoms, fd, *, cif_format, wrap,
                     symbols.append(sym)
                     coords.append(coords[i])
                     occupancies.append(occ)
+    return symbols, coords, occupancies
+
+
+def write_cif_image(blockname, atoms, fd, *, cif_format, wrap,
+                    labels, loop_keys):
+    fd.write(blockname)
+
+    if cif_format == 'mp':
+        fd.write(mp_header(atoms))
+
+    if atoms.cell.rank == 3:
+        fd.write(format_cell(atoms.cell))
+        fd.write('\n')
+        fd.write(format_generic_spacegroup_info())
+        fd.write('\n')
+
+    if all(atoms.pbc):
+        coord_type = 'fract'
+        coords = atoms.get_scaled_positions(wrap).tolist()
+    else:
+        coord_type = 'Cartn'
+        coords = atoms.get_positions(wrap).tolist()
+
+    symbols, coords, occupancies = expand_kinds(atoms, coords)
 
     if labels is None:
         labels = autolabel(symbols)
