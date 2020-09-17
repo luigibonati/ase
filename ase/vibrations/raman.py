@@ -12,7 +12,8 @@ from ase.utils import convert_string_to_fd
 class RamanBase(Vibrations):
     def __init__(self, atoms,  # XXX do we need atoms at this stage ?
                  *args,
-                 name='raman', exext='.alpha',
+                 name='raman',
+                 exext='.alpha',
                  txt='-',
                  verbose=False,
                  comm=world,
@@ -31,6 +32,8 @@ class RamanBase(Vibrations):
           Communicator, default world
         """
         kwargs['name'] = name
+        self.exname = kwargs.pop('exname', name)
+
         super().__init__(atoms, *args, **kwargs)
 
         self.exext = exext
@@ -71,7 +74,8 @@ class StaticRamanCalculator(RamanCalculator):
 class RamanPhononBase(Phonons):
     def __init__(self, atoms,  # XXX do we need atoms at this stage ?
                  *args,
-                 name='raman', exext='.alpha',
+                 name='raman',
+                 exext='.alpha',
                  txt='-',
                  verbose=False,
                  comm=world,
@@ -90,6 +94,8 @@ class RamanPhononBase(Phonons):
           Communicator, default world
         """
         kwargs['name'] = name
+        self.exname = kwargs.pop('exname', name)
+        
         super().__init__(atoms, *args, **kwargs)
 
         self.exext = exext
@@ -129,8 +135,9 @@ class StaticRamanPhononCalculator(RamanPhononCalculator):
 class Raman(RamanBase):
     """Base class to evaluate Raman spectra from pre-computed data"""
     def __init__(self, atoms,  # XXX do we need atoms at this stage ?
+                 *args,
                  exname=None,      # name for excited state calculations
-                 *args, **kwargs):
+                 **kwargs):
         """
         Parameters
         ----------
