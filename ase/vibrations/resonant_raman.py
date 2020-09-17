@@ -9,10 +9,10 @@ import numpy as np
 import ase.units as u
 from ase.parallel import world, paropen, parprint
 from ase.vibrations import Vibrations
-from ase.vibrations.raman import Raman, RamanCalculator
+from ase.vibrations.raman import Raman, RamanBase1
 
 
-class ResonantRamanCalculator(RamanCalculator):
+class ResonantRamanCalculator(RamanBase1, Vibrations):
     """Base class for resonant Raman calculators using finite differences.
     """
     def __init__(self, atoms, ExcitationsCalculator, *args,
@@ -48,10 +48,10 @@ class ResonantRamanCalculator(RamanCalculator):
 
         This produces all necessary data for further analysis.
         """
+        self.exobj = ExcitationsCalculator
         self.exkwargs = exkwargs
         self.overlap = overlap
-        RamanCalculator.__init__(self, atoms, ExcitationsCalculator,
-                                 *args, exext=exext, **kwargs)
+        super().__init__(atoms, *args, exext=exext, **kwargs)
 
     def calculate(self, atoms, filename, fd):
         """Call ground and excited state calculation"""
