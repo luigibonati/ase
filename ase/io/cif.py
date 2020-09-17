@@ -571,14 +571,6 @@ def read_cif(fileobj, index, store_tags=False, primitive_cell=False,
         yield atoms
 
 
-def split_chem_form(comp_name):
-    """Returns e.g. AB2  as ['A', '1', 'B', '2']"""
-    split_form = re.findall(r'[A-Z][a-z]*|\d+',
-                            re.sub(r'[A-Z][a-z]*(?![\da-z])',
-                                   r'\g<0>1', comp_name))
-    return split_form
-
-
 def format_cell(cell: Cell) -> str:
     assert cell.rank == 3
     lines = []
@@ -614,7 +606,8 @@ class CIFLoop:
         self.formats.append(fmt)
         self.arrays.append(array)
         if len(self.arrays[0]) != len(self.arrays[-1]):
-            raise ValueError(f'Loop data "{name}" has {len(array)} elements, expected {len(self.arrays[0])}')
+            raise ValueError(f'Loop data "{name}" has {len(array)} '
+                             'elements, expected {len(self.arrays[0])}')
 
     def tostring(self):
         lines = []
@@ -670,7 +663,25 @@ def write_cif(fd, images, cif_format='default',
         images = [images]
 
     for i_frame, atoms in enumerate(images):
-        fd.write('data_image%d\n' % i_frame)
+        name = 'data_image%d\n' % i_frame
+
+        #return [loop_keys[key][i_frame][i] for i in range(len(symbols))]
+        image_loop_keys = {key: loop_keys[key][i_frame] for key in loop_keys}
+
+        write_cif_image(atoms, name, fd,
+                        cif_format=cif_format,
+                        wrap=wrap,
+                        labels=None if labels is None else labels[i_frame],
+                        loop_keys=image_loop_keys)
+
+    # Using the TextIOWrapper somehow causes the file to close
+    # when this function returns.
+    # Detach in order to circumvent this highly illogical problem:
+    fd.detach()
+
+def write_cif_image(atoms, name, fd, *, cif_format, wrap,
+                    labels, loop_keys):
+        fd.write(name)
 
         if cif_format == 'mp':
             comp_name = str(atoms.symbols)
@@ -715,7 +726,7 @@ def write_cif(fd, images, cif_format='default',
                         occupancies.append(occ)
 
         if labels:
-            included_labels = labels[i_frame]
+            included_labels = labels
         else:
             no: Dict[str, int] = {}
             included_labels = []
@@ -746,7 +757,7 @@ def write_cif(fd, images, cif_format='default',
             [1.0] * len(symbols), '{}')
 
         def extra_data_to_array(key):
-            return [loop_keys[key][i_frame][i] for i in range(len(symbols))]
+            return [loop_keys[key][i] for i in range(len(symbols))]
 
         for key in loop_keys:
             loopdata['_' + key] = (extra_data_to_array(key), '{}')
@@ -781,8 +792,3 @@ def write_cif(fd, images, cif_format='default',
             loop.add(header, array, fmt)
 
         fd.write(loop.tostring())
-
-    # Using the TextIOWrapper somehow causes the file to close
-    # when this function returns.
-    # Detach in order to circumvent this highly illogical problem:
-    fd.detach()
