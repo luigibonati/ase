@@ -109,7 +109,7 @@ class Raman(RamanBase, Vibrations):
 
         self.timer.start('read')
         self.timer.start('vibrations')
-        Vibrations.read(self, method, direction)
+        super().read(method, direction)
         # we now have:
         # self.H     : Hessian matrix
         # self.im    : 1./sqrt(masses)
