@@ -3,9 +3,8 @@ import numpy as np
 import warnings
 import pytest
 
-from ase.io import read
-from ase.io import write
-from ase.io.cif import CIFLoop, parse_loop
+from ase.io import read, write
+from ase.io.cif import CIFLoop, parse_loop, NoStructureData
 
 
 def check_fractional_occupancies(atoms):
@@ -410,3 +409,11 @@ def test_cifloop():
     assert set(dct) == set(newdct)
     for name in dct:
         assert dct[name] == pytest.approx(newdct[name])
+
+
+@pytest.mark.parametrize('data', [b'', b'data_dummy'])
+def test_empty_or_atomless(data):
+    ciffile = io.BytesIO(data)
+
+    images = read(ciffile, index=':', format='cif')
+    assert len(images) == 0

@@ -577,11 +577,15 @@ def read_cif(fileobj, index, store_tags=False, primitive_cell=False,
     # Find all CIF blocks with valid crystal data
     images = []
     for block in parse_cif(fileobj, reader):
+        if not block.has_structure():
+            continue
+
         atoms = block.get_atoms(
             store_tags, primitive_cell,
             subtrans_included,
             fractional_occupancies=fractional_occupancies)
         images.append(atoms)
+
     for atoms in images[index]:
         yield atoms
 
