@@ -395,7 +395,7 @@ class ResonantRaman(Raman):
         self.timer.stop('me and energy')
         self.timer.stop('read excitations')
 
-    def read(self, method='standard', direction='central'):
+    def read0(self, method='standard', direction='central'):
         """Read data from a pre-performed calculation."""
 
         self.timer.start('read')
@@ -413,6 +413,25 @@ class ResonantRaman(Raman):
                                     1. / np.sqrt(2 * self.om_Q), 0)
         # -> sqrt(amu) * Angstrom
         self.vib01_Q *= np.sqrt(u.Ha * u._me / u._amu) * u.Bohr
+        self.timer.stop('vibrations')
+
+        self.timer.start('excitations')
+        self.init_parallel_read()
+        if not hasattr(self, 'ex0E_p'):
+            if self.overlap:
+                self.read_excitations_overlap()
+            else:
+                self.read_excitations()
+        self.timer.stop('excitations')
+        self.timer.stop('read')
+
+    def read(self, *args, **kwargs):
+        """Read data from a pre-performed calculation."""
+        print('########## RR::read')
+
+        self.timer.start('read')
+        self.timer.start('vibrations')
+        self.read_energies_and_modes(*args, **kwargs)
         self.timer.stop('vibrations')
 
         self.timer.start('excitations')
@@ -527,7 +546,8 @@ class ResonantRaman(Raman):
                 method='standard', direction='central',
                 log=sys.stdout):
         """Print summary for given omega [eV]"""
-        hnu = self.get_energies(method, direction)
+        self.read(method, direction)
+        hnu = self.get_energies()
         intensities = self.get_absolute_intensities(omega, gamma)
         te = int(np.log10(intensities.max())) - 2
         scale = 10**(-te)
@@ -544,7 +564,7 @@ class ResonantRaman(Raman):
         parprint('-------------------------------------', file=log)
         parprint(' excitation at ' + str(omega) + ' eV', file=log)
         parprint(' gamma ' + str(gamma) + ' eV', file=log)
-        parprint(' method:', self.method, file=log)
+        parprint(' method:', self.vibrations.method, file=log)
         parprint(' approximation:', self.approximation, file=log)
         parprint(' Mode    Frequency        Intensity', file=log)
         parprint('  #    meV     cm^-1      [{0}A^4/amu]'.format(ts), file=log)
@@ -560,7 +580,8 @@ class ResonantRaman(Raman):
                      (n, 1000 * e, c, e / u.invcm, c, intensities[n] * scale),
                      file=log)
         parprint('-------------------------------------', file=log)
-        parprint('Zero-point energy: %.3f eV' % self.get_zero_point_energy(),
+        parprint('Zero-point energy: %.3f eV' %
+                 self.vibrations.get_zero_point_energy(),
                  file=log)
 
 

@@ -7,6 +7,7 @@ from ase.phonons import Phonons
 from ase.vibrations import Vibrations
 from ase.utils.timing import Timer
 from ase.utils import convert_string_to_fd
+from ase.dft import monkhorst_pack
 
 
 class RamanBase:
@@ -92,6 +93,18 @@ class RamanEvaluate(RamanBase):
         if exname is None:
             exname = kwargs.get('name', self.name)
         self.exname = exname
+        self._read = False
+
+        # xxx
+        kwargs.pop('txt', None)
+        kwargs.pop('exext', None)
+        kwargs['name'] = kwargs.get('name', self.name)
+        self.vibrations = Vibrations(atoms, *args, **kwargs)
+
+    def get_energies(self):
+        if not self._read:
+            self.read()
+        return self.om_Q
 
     def init_parallel_read(self):
         """Initialize variables for parallel read"""
@@ -104,17 +117,20 @@ class RamanEvaluate(RamanBase):
         self.myr = range(self.ndof)[s]
         self.mynd = len(self.myr)
 
-    def read(self, method='standard', direction='central'):
+    def read(self, *args, **kwargs):
         """Read data from a pre-performed calculation."""
-
         self.timer.start('read')
-        self.read_energies_and_modes()
+
+        self.timer.start('vibrations')
+        self.read_energies_and_modes(*args, **kwargs)
+        self.timer.stop('vibrations')
         
         self.timer.start('excitations')
         self.init_parallel_read()
-        if not hasattr(self, 'ex0E_p'):
-            self.read_excitations()
+        self.read_excitations()
         self.timer.stop('excitations')
+
+        self._read = True
         self.timer.stop('read')
 
     @staticmethod
@@ -227,9 +243,10 @@ class RamanEvaluate(RamanBase):
 
     def summary(self,
                 method='standard', direction='central',
-                log=sys.stdout, **kwargs):
+                log=sys.stdout):
         """Print summary for given omega [eV]"""
-        hnu = self.get_energies(method, direction)
+        self.read(method, direction)
+        hnu = self.get_energies()
         intensities = self.get_absolute_intensities()
         te = int(np.log10(intensities.max())) - 2
         scale = 10**(-te)
@@ -258,28 +275,29 @@ class RamanEvaluate(RamanBase):
                      (n, 1000 * e, c, e / u.invcm, c, intensities[n] * scale),
                      file=log)
         parprint('-------------------------------------', file=log)
-        parprint('Zero-point energy: %.3f eV' % self.get_zero_point_energy(),
+        parprint('Zero-point energy: %.3f eV' %
+                 self.vibrations.get_zero_point_energy(),
                  file=log)
 
 
 class Raman(RamanEvaluate, Vibrations):
-    def read_energies_and_modes(self, method='standard', direction='central'):
+    def read_energies_and_modes(self, *args, **kwargs):
         self.timer.start('vibrations')
-        Vibrations.read(self, method, direction)
-        # we now have:
-        # self.H     : Hessian matrix
-        # self.im    : 1./sqrt(masses)
-        # self.modes : Eigenmodes of the mass weighted Hessian
-        self.om_Q = self.hnu.real    # energies in eV
-        self.om_v = self.om_Q
+        self.vibrations.read(*args, **kwargs)
+        self.timer.stop('vibrations')
+
+        # XXX move this to another place
+        self.im_r = self.vibrations.im
+        self.modes = self.vibrations.modes
+        self.om_Q = self.vibrations.hnu.real    # energies in eV
+        self.H = self.vibrations.H   # XXX used in albrecht.py
         # pre-factors for one vibrational excitation
         with np.errstate(divide='ignore'):
             self.vib01_Q = np.where(self.om_Q > 0,
                                     1. / np.sqrt(2 * self.om_Q), 0)
         # -> sqrt(amu) * Angstrom
         self.vib01_Q *= np.sqrt(u.Ha * u._me / u._amu) * u.Bohr
-        self.timer.stop('vibrations')
-        
+
 
 class RamanPhonons(RamanEvaluate, Phonons):
     def read_energies_and_modes(self, method='standard', direction='central'):
@@ -305,4 +323,3 @@ class RamanPhonons(RamanEvaluate, Phonons):
         # -> sqrt(amu) * Angstrom
         self.vib01_Q *= np.sqrt(u.Ha * u._me / u._amu) * u.Bohr
         self.timer.stop('band_structure')
-        

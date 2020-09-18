@@ -17,6 +17,7 @@ def test_summary():
     atoms = H2Morse()
     rmc = ResonantRamanCalculator(atoms, H2MorseExcitedStatesCalculator)
     rmc.run()
+
     pz = Placzek(atoms, H2MorseExcitedStates)
     pz.summary(1.)
 

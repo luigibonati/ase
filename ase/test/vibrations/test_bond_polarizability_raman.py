@@ -1,4 +1,4 @@
-from pytest import fixture
+from pytest import approx, fixture
 
 from ase import Atoms
 from ase.build import bulk
@@ -10,8 +10,8 @@ from ase.calculators.emt import EMT
 from ase.optimize import FIRE
 
 
-def relaxC4():
-    """Code used to relax C4 with EMT"""
+def relaxC():
+    """Code used to relax C with EMT"""
     from ase.constraints import FixAtoms, UnitCellFilter
     Cbulk = bulk('C', orthorhombic=True)
     Cbulk.set_constraint(FixAtoms(mask=[True for atom in Cbulk]))
@@ -26,7 +26,7 @@ def relaxC4():
 
 @fixture(scope='module')
 def Cbulk():
-    # EMT relaxed, see relaxC4
+    # EMT relaxed, see relaxC
     Cbulk = bulk('C', crystalstructure='fcc', a=2 * 1.221791471)
     Cbulk = Cbulk.repeat([2, 1, 1])
     Cbulk.calc = EMT()
@@ -42,18 +42,21 @@ def test_bulk(Cbulk, tmp_path):
     rm.run()
 
     pz = PlaczekStatic(Cbulk, name=name)
-    print(pz.get_energies(), pz.get_absolute_intensities())
+    e_vib = pz.get_energies()
+    i_vib = pz.get_absolute_intensities()
+    assert len(e_vib) == 6
     pz.summary()
 
-    
+    name = str(tmp_path / 'phbp')
+    rm = StaticRamanPhononCalculator(Cbulk, BondPolarizability,
+                                     calc=EMT(),
+                                     name=name,
+                                     delta=0.05, supercell=(1, 1, 1))
+    rm.run()
 
 
-def test_bulk_phonons(tmp_path):
-    """Bulk FCC carbon (for EMT) self consistency for phonons"""
-    # EMT relaxed value, see relaxC4
-    Cbulk = bulk('C', crystalstructure='fcc', a=2 * 1.221791471)
-    Cbulk = Cbulk.repeat([2, 1, 1])
-    Cbulk.calc = EMT()
+def test_bulk_phonons(Cbulk, tmp_path):
+    """Bulk FCC carbon (for EMT) for phonons"""
 
     name = str(tmp_path / 'phbp')
     rm = StaticRamanPhononCalculator(Cbulk, BondPolarizability,
@@ -62,9 +65,8 @@ def test_bulk_phonons(tmp_path):
                                      delta=0.05, supercell=(2, 1, 1))
     rm.run()
 
-    pz = PlaczekStatic(Cbulk, name=name)
-    print(pz.get_energies())
-    pz.summary(kpts=(2, 1, 1))
+    #pz = PlaczekStatic(Cbulk, name=name)
+    #pz.summary(kpts=(2, 1, 1))
 
 
 def test_c3():
@@ -77,13 +79,8 @@ def test_c3():
     rm = StaticRamanCalculator(atoms, BondPolarizability,
                                name=name, exname=name, txt='-')
     rm.run()
-    pz = PlaczekStatic(atoms, name=name)
-    pz.summary()
     
-
-def main():
-    test_bulk()
-
-
-if __name__ == '__main__':
-    main()
+    pz = PlaczekStatic(atoms, name=name)
+    i_vib = pz.get_absolute_intensities()
+    assert i_vib[-3:] == approx([5.36301901, 5.36680555, 35.7323934], 1e-6)
+    pz.summary()

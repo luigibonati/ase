@@ -52,7 +52,7 @@ class Placzek(ResonantRaman):
  
         # map to modes
         self.comm.sum(V_rcc)
-        V_qcc = (V_rcc.T * self.im).T  # units Angstrom^2 / sqrt(amu)
+        V_qcc = (V_rcc.T * self.im_r).T  # units Angstrom^2 / sqrt(amu)
         V_Qcc = np.dot(V_qcc.T, self.modes.T).T
         return V_Qcc
 
@@ -87,7 +87,7 @@ class PlaczekStatic(Raman):
  
         # map to modes
         self.comm.sum(V_rcc)
-        V_qcc = (V_rcc.T * self.im).T  # units Angstrom^2 / sqrt(amu)
+        V_qcc = (V_rcc.T * self.im_r).T  # units Angstrom^2 / sqrt(amu)
         V_Qcc = np.dot(V_qcc.T, self.modes.T).T
         return V_Qcc
 
@@ -180,7 +180,7 @@ class Profeta(ResonantRaman):
 
         # map to modes
         self.timer.start('map R2Q')
-        V_qcc = (Vel_rcc.T * self.im).T  # units Angstrom^2 / sqrt(amu)
+        V_qcc = (Vel_rcc.T * self.im_r).T  # units Angstrom^2 / sqrt(amu)
         Vel_Qcc = np.dot(V_qcc.T, self.modes.T).T
         self.timer.stop('map R2Q')
 
