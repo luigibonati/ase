@@ -9,10 +9,10 @@ import numpy as np
 import ase.units as u
 from ase.parallel import world, paropen, parprint
 from ase.vibrations import Vibrations
-from ase.vibrations.raman import Raman, RamanBase
+from ase.vibrations.raman import Raman, RamanCalculatorBase
 
 
-class ResonantRamanCalculator(RamanBase, Vibrations):
+class ResonantRamanCalculator(RamanCalculatorBase, Vibrations):
     """Base class for resonant Raman calculators using finite differences.
     """
     def __init__(self, atoms, ExcitationsCalculator, *args,
@@ -416,11 +416,9 @@ class ResonantRaman(Raman):
 
     def read(self, *args, **kwargs):
         """Read data from a pre-performed calculation."""
-        print('########## RR::read')
-
         self.timer.start('read')
         self.timer.start('vibrations')
-        self.read_energies_and_modes(*args, **kwargs)
+        self.read_vibrations(*args, **kwargs)
         self.timer.stop('vibrations')
 
         self.timer.start('excitations')
@@ -431,6 +429,8 @@ class ResonantRaman(Raman):
             else:
                 self.read_excitations()
         self.timer.stop('excitations')
+
+        self._read = True
         self.timer.stop('read')
 
     def get_cross_sections(self, omega, gamma):

@@ -29,7 +29,7 @@ class Placzek(ResonantRaman):
             self.exp_r.append(self.exobj.read(exname, **self.exkwargs))
 
     def electronic_me_Qcc(self, omega, gamma=0):
-        self.read()
+        self.calculate_energies_and_modes()
         
         self.timer.start('init')
         V_rcc = np.zeros((self.ndof, 3, 3), dtype=complex)
@@ -72,7 +72,7 @@ class PlaczekStatic(Raman):
             self.alp_rr.append(np.loadtxt(exname))
             
     def electronic_me_Qcc(self):
-        self.read()
+        self.calculate_energies_and_modes()
         
         self.timer.start('init')
         V_rcc = np.zeros((self.ndof, 3, 3), dtype=complex)
@@ -120,7 +120,7 @@ class Profeta(ResonantRaman):
         -------
         Electronic matrix element, unit Angstrom^2
          """
-        self.read()
+        self.calculate_energies_and_modes()
 
         self.timer.start('amplitudes')
 

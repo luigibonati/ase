@@ -10,7 +10,7 @@ from ase.utils import convert_string_to_fd
 from ase.dft import monkhorst_pack
 
 
-class RamanBase:
+class RamanCalculatorBase:
     def __init__(self, atoms,  # XXX do we need atoms at this stage ?
                  *args,
                  name='raman',
@@ -51,7 +51,7 @@ class RamanBase:
             self.txt.flush()
 
 
-class StaticRamanCalculatorBase(RamanBase):
+class StaticRamanCalculatorBase(RamanCalculatorBase):
     """Base class for Raman intensities derived from
     static polarizabilities"""
     def __init__(self, atoms, exobj, *args, **kwargs):
@@ -74,10 +74,11 @@ class StaticRamanPhononCalculator(StaticRamanCalculatorBase, Phonons):
     pass
 
 
-class RamanBase1:
+class RamanBase:
     def __init__(self, atoms,  # XXX do we need atoms at this stage ?
                  *args,
                  name='raman',
+                 exname=None,
                  exext='.alpha',
                  txt='-',
                  verbose=False,
@@ -96,11 +97,13 @@ class RamanBase1:
         comm:
           Communicator, default world
         """
-        kwargs['name'] = name
         self.atoms = atoms
+        
         self.name = name
-        self.exname = kwargs.pop('exname', name)
-
+        if exname is None:
+            self.exname = name
+        else:
+            self.exname = exname
         self.exext = exext
 
         self.timer = Timer()
@@ -115,7 +118,7 @@ class RamanBase1:
             self.txt.flush()
 
 
-class RamanEvaluate(RamanBase1):
+class RamanEvaluate(RamanBase):
     """Base class to evaluate Raman spectra from pre-computed data"""
     def __init__(self, atoms,  # XXX do we need atoms at this stage ?
                  *args,
@@ -136,18 +139,8 @@ class RamanEvaluate(RamanBase1):
         self.exname = exname
         self._read = False
 
-        # xxx
-        kwargs.pop('txt', None)
-        kwargs.pop('exext', None)
-        kwargs['name'] = kwargs.get('name', self.name)
-        self.vibrations = Vibrations(atoms, *args, **kwargs)
-        
-        self.delta = self.vibrations.delta
-        self.indices = self.vibrations.indices
-
     def get_energies(self):
-        if not self._read:
-            self.read()
+        self.calculate_energies_and_modes()
         return self.om_Q
 
     def init_parallel_read(self):
@@ -167,7 +160,7 @@ class RamanEvaluate(RamanBase1):
         self.timer.start('read')
 
         self.timer.start('vibrations')
-        self.read_energies_and_modes(*args, **kwargs)
+        self.read_vibrations(*args, **kwargs)
         self.timer.stop('vibrations')
         
         self.timer.start('excitations')
@@ -325,27 +318,47 @@ class RamanEvaluate(RamanBase1):
                  file=log)
 
 
-class Raman(RamanEvaluate, Vibrations):
-    def read_energies_and_modes(self, *args, **kwargs):
+class Raman(RamanEvaluate):
+    def __init__(self, atoms, *args, **kwargs):
+        super().__init__(atoms, *args, **kwargs)
+
+        kwargs.pop('txt', None)
+        kwargs.pop('exext', None)
+        kwargs.pop('exname', None)
+        kwargs['name'] = kwargs.get('name', self.name)
+        self.vibrations = Vibrations(atoms, *args, **kwargs)
+        
+        self.delta = self.vibrations.delta
+        self.indices = self.vibrations.indices
+
+    def read_vibrations(self, *args, **kwargs):
         self.timer.start('vibrations')
         self.vibrations.read(*args, **kwargs)
         self.timer.stop('vibrations')
 
-        # XXX move this to another place
-        self.im_r = self.vibrations.im
-        self.modes = self.vibrations.modes
-        self.om_Q = self.vibrations.hnu.real    # energies in eV
-        self.H = self.vibrations.H   # XXX used in albrecht.py
-        # pre-factors for one vibrational excitation
-        with np.errstate(divide='ignore'):
-            self.vib01_Q = np.where(self.om_Q > 0,
-                                    1. / np.sqrt(2 * self.om_Q), 0)
-        # -> sqrt(amu) * Angstrom
-        self.vib01_Q *= np.sqrt(u.Ha * u._me / u._amu) * u.Bohr
+    def calculate_energies_and_modes(self):
+        if not self._read:
+            if hasattr(self, 'im_r'):
+                del self.im_r
+            self.read()
+
+        if not hasattr(self, 'im_r'):
+            self.timer.start('energies_and_modes')
+            self.im_r = self.vibrations.im
+            self.modes = self.vibrations.modes
+            self.om_Q = self.vibrations.hnu.real    # energies in eV
+            self.H = self.vibrations.H   # XXX used in albrecht.py
+            # pre-factors for one vibrational excitation
+            with np.errstate(divide='ignore'):
+                self.vib01_Q = np.where(self.om_Q > 0,
+                                        1. / np.sqrt(2 * self.om_Q), 0)
+            # -> sqrt(amu) * Angstrom
+            self.vib01_Q *= np.sqrt(u.Ha * u._me / u._amu) * u.Bohr
+            self.timer.stop('energies_and_modes')
 
 
-class RamanPhonons(RamanEvaluate, Phonons):
-    def read_energies_and_modes(self, method='standard', direction='central'):
+class RamanPhonons(RamanEvaluate):
+    def read_vibrations(self, method='standard', direction='central'):
         self.timer.start('band_structure')
         Phonons.read(self, method, direction)
         
@@ -353,7 +366,7 @@ class RamanPhonons(RamanEvaluate, Phonons):
         omega_kl, u_kl = self.band_structure(kpts_kc, modes=True,
                                              verbose=self.verbose)
 
-        self.im = self.m_inv_x  # use the same name as in Vibrations
+        self.im_r = self.m_inv_x  # use the same name as in Vibrations
         
         # we now have:
         # self.H     : Hessian matrix

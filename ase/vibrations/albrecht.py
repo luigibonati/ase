@@ -45,6 +45,9 @@ class Albrecht(ResonantRaman):
     def read(self, *args, **kwargs):
         ResonantRaman.read(self, *args, **kwargs)
 
+        # XXX not phonon ready
+        self.calculate_energies_and_modes()
+
         # single transitions and their occupation
         om_Q = self.om_Q[self.skip:]
         om_v = om_Q
@@ -75,8 +78,7 @@ class Albrecht(ResonantRaman):
         self.d_vQ = np.where(n_vQ > 0, 1, 0)  # do we have them ?
 
     def get_energies(self):
-        if not self._read:
-            self.read()
+        self.calculate_energies_and_modes()
         return self.om_v
 
     def _collect_r(self, arr_ro, oshape, dtype):
