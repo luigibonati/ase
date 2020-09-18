@@ -149,7 +149,7 @@ class ResonantRaman(Raman):
         """
         kwargs['exext'] = exext
         Raman.__init__(self, atoms, *args, **kwargs)
-        assert(self.nfree == 2)
+        assert(self.vibrations.nfree == 2)
 
         self.exobj = Excitations
         self.exkwargs = exkwargs
@@ -197,17 +197,6 @@ class ResonantRaman(Raman):
     @approximation.setter
     def approximation(self, value):
         self.set_approximation(value)
-
-    def init_parallel_read(self):
-        """Initialize variables for parallel read"""
-        rank = self.comm.rank
-        self.ndof = 3 * len(self.indices)
-        myn = -(-self.ndof // self.comm.size)  # ceil divide
-        self.slize = s = slice(myn * rank, myn * (rank + 1))
-        self.myindices = np.repeat(self.indices, 3)[s]
-        self.myxyz = ('xyz' * len(self.indices))[s]
-        self.myr = range(self.ndof)[s]
-        self.mynd = len(self.myr)
 
     def read_excitations(self):
         """Read all finite difference excitations and select matching."""

@@ -74,7 +74,48 @@ class StaticRamanPhononCalculator(StaticRamanCalculatorBase, Phonons):
     pass
 
 
-class RamanEvaluate(RamanBase):
+class RamanBase1:
+    def __init__(self, atoms,  # XXX do we need atoms at this stage ?
+                 *args,
+                 name='raman',
+                 exext='.alpha',
+                 txt='-',
+                 verbose=False,
+                 comm=world,
+                 **kwargs):
+        """
+        Parameters
+        ----------
+        atoms: ase Atoms object
+        exext: string
+          Extension for excitation filenames
+        txt:
+          Output stream
+        verbose:
+          Verbosity level of output
+        comm:
+          Communicator, default world
+        """
+        kwargs['name'] = name
+        self.atoms = atoms
+        self.name = name
+        self.exname = kwargs.pop('exname', name)
+
+        self.exext = exext
+
+        self.timer = Timer()
+        self.txt = convert_string_to_fd(txt)
+        self.verbose = verbose
+
+        self.comm = comm
+
+    def log(self, message, pre='# ', end='\n'):
+        if self.verbose:
+            self.txt.write(pre + message + end)
+            self.txt.flush()
+
+
+class RamanEvaluate(RamanBase1):
     """Base class to evaluate Raman spectra from pre-computed data"""
     def __init__(self, atoms,  # XXX do we need atoms at this stage ?
                  *args,
@@ -100,6 +141,9 @@ class RamanEvaluate(RamanBase):
         kwargs.pop('exext', None)
         kwargs['name'] = kwargs.get('name', self.name)
         self.vibrations = Vibrations(atoms, *args, **kwargs)
+        
+        self.delta = self.vibrations.delta
+        self.indices = self.vibrations.indices
 
     def get_energies(self):
         if not self._read:
@@ -109,11 +153,12 @@ class RamanEvaluate(RamanBase):
     def init_parallel_read(self):
         """Initialize variables for parallel read"""
         rank = self.comm.rank
-        self.ndof = 3 * len(self.indices)
+        indices = self.indices
+        self.ndof = 3 * len(indices)
         myn = -(-self.ndof // self.comm.size)  # ceil divide
         self.slize = s = slice(myn * rank, myn * (rank + 1))
-        self.myindices = np.repeat(self.indices, 3)[s]
-        self.myxyz = ('xyz' * len(self.indices))[s]
+        self.myindices = np.repeat(indices, 3)[s]
+        self.myxyz = ('xyz' * len(indices))[s]
         self.myr = range(self.ndof)[s]
         self.mynd = len(self.myr)
 
