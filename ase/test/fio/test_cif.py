@@ -4,7 +4,7 @@ import warnings
 import pytest
 
 from ase.io import read, write
-from ase.io.cif import CIFLoop, parse_loop, NoStructureData
+from ase.io.cif import CIFLoop, parse_loop, NoStructureData, parse_cif
 
 
 def check_fractional_occupancies(atoms):
@@ -417,3 +417,13 @@ def test_empty_or_atomless(data):
 
     images = read(ciffile, index=':', format='cif')
     assert len(images) == 0
+
+
+def test_empty_or_atomless_cifblock():
+    ciffile = io.BytesIO(b'data_dummy')
+    blocks = list(parse_cif(ciffile))
+
+    assert len(blocks) == 1
+    assert not blocks[0].has_structure()
+    with pytest.raises(NoStructureData):
+        blocks[0].get_atoms()
