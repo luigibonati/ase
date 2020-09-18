@@ -165,7 +165,7 @@ class ResonantRaman(Raman):
             self.minoverlap = minoverlap
         self.minrep = minrep
 
-    def absolute_intensity(self, omega, gamma=0.1, delta=0, **kwargs):
+    def get_absolute_intensities(self, omega, gamma=0.1, delta=0, **kwargs):
         """Absolute Raman intensity or Raman scattering factor
 
         Parameter
@@ -528,7 +528,7 @@ class ResonantRaman(Raman):
                 log=sys.stdout):
         """Print summary for given omega [eV]"""
         hnu = self.get_energies(method, direction)
-        intensities = self.absolute_intensity(omega, gamma)
+        intensities = self.get_absolute_intensities(omega, gamma)
         te = int(np.log10(intensities.max())) - 2
         scale = 10**(-te)
         if not te:

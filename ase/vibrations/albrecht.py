@@ -429,7 +429,7 @@ class Albrecht(ResonantRaman):
             return self.extended_summary()
         
         om_v = self.get_energies(method, direction)
-        intensities = self.absolute_intensity(omega, gamma)[self.skip:]
+        intensities = self.get_absolute_intensities(omega, gamma)[self.skip:]
 
         if isinstance(log, str):
             log = paropen(log, 'a')

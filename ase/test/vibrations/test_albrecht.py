@@ -34,12 +34,12 @@ def test_one_state(rrname, atoms):
                   exkwargs={'nstates': 1},
                   name=rrname, overlap=True,
                   approximation='Albrecht A', txt=None)
-    aoi = ao.absolute_intensity(omega=om, gamma=gam)[-1]
+    aoi = ao.get_absolute_intensities(omega=om, gamma=gam)[-1]
 
     al = Albrecht(atoms, H2MorseExcitedStates,
                   exkwargs={'nstates': 1},
                   name=rrname, approximation='Albrecht A', txt=None)
-    ali = al.absolute_intensity(omega=om, gamma=gam)[-1]
+    ali = al.get_absolute_intensities(omega=om, gamma=gam)[-1]
     assert ali == pytest.approx(aoi, 1e-9)
 
 
@@ -52,11 +52,11 @@ def test_all_states(rrname, atoms):
                   name=rrname, overlap=True,
                   approximation='Albrecht A', txt=None)
 
-    aoi = ao.absolute_intensity(omega=om, gamma=gam)[-1]
+    aoi = ao.get_absolute_intensities(omega=om, gamma=gam)[-1]
 
     al = Albrecht(atoms, H2MorseExcitedStates,
                   name=rrname, approximation='Albrecht A', txt=None)
-    ali = al.absolute_intensity(omega=om, gamma=gam)[-1]
+    ali = al.get_absolute_intensities(omega=om, gamma=gam)[-1]
     assert ali == pytest.approx(aoi, 1e-5)
 
 

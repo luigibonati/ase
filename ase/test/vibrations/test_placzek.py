@@ -39,7 +39,7 @@ def test_names():
     gam = 0.1
     pz = Placzek(atoms, H2MorseExcitedStates,
                  name='vib', exname='raman')
-    pzi = pz.absolute_intensity(omega=om, gamma=gam)[-1]
+    pzi = pz.get_absolute_intensities(omega=om, gamma=gam)[-1]
     parprint(pzi, 'Placzek')
 
     # check that work was distributed correctly
@@ -62,12 +62,12 @@ def test_overlap():
     po = Profeta(atoms, H2MorseExcitedStates,
                  exkwargs={'nstates': nstates}, approximation='Placzek',
                  overlap=True, name=name, txt='-')
-    poi = po.absolute_intensity(omega=om, gamma=gam)[-1]
+    poi = po.get_absolute_intensities(omega=om, gamma=gam)[-1]
 
     pr = Profeta(atoms, H2MorseExcitedStates,
                  exkwargs={'nstates': nstates}, approximation='Placzek',
                  name=name, txt=None)
-    pri = pr.absolute_intensity(omega=om, gamma=gam)[-1]
+    pri = pr.get_absolute_intensities(omega=om, gamma=gam)[-1]
 
     print('overlap', pri, poi, poi / pri)
     assert pri == pytest.approx(poi, 1e-4)
@@ -88,14 +88,14 @@ def test_compare_placzek_implementation_intensities():
 
     pz = Placzek(atoms, H2MorseExcitedStates,
                  name=name, txt=None)
-    pzi = pz.absolute_intensity(omega=om, gamma=gam)[-1]
+    pzi = pz.get_absolute_intensities(omega=om, gamma=gam)[-1]
     print(pzi, 'Placzek')
 
     # Profeta using frozenset
     pr = Profeta(atoms, H2MorseExcitedStates,
                  approximation='Placzek',
                  name=name, txt=None)
-    pri = pr.absolute_intensity(omega=om, gamma=gam)[-1]
+    pri = pr.get_absolute_intensities(omega=om, gamma=gam)[-1]
     print(pri, 'Profeta using frozenset')
     assert pzi == pytest.approx(pri, 1e-3)
     
@@ -103,6 +103,6 @@ def test_compare_placzek_implementation_intensities():
     pr = Profeta(atoms, H2MorseExcitedStates,
                  approximation='Placzek', overlap=True,
                  name=name, txt=None)
-    pro = pr.absolute_intensity(omega=om, gamma=gam)[-1]
+    pro = pr.get_absolute_intensities(omega=om, gamma=gam)[-1]
     print(pro, 'Profeta using overlap')
     assert pro == pytest.approx(pri, 1e-3)

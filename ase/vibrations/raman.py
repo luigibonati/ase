@@ -73,7 +73,7 @@ class StaticRamanPhononCalculator(StaticRamanCalculatorBase, Phonons):
     pass
 
 
-class Raman(RamanBase, Vibrations):
+class RamanEvaluate(RamanBase):
     """Base class to evaluate Raman spectra from pre-computed data"""
     def __init__(self, atoms,  # XXX do we need atoms at this stage ?
                  *args,
@@ -108,22 +108,8 @@ class Raman(RamanBase, Vibrations):
         """Read data from a pre-performed calculation."""
 
         self.timer.start('read')
-        self.timer.start('vibrations')
-        super().read(method, direction)
-        # we now have:
-        # self.H     : Hessian matrix
-        # self.im    : 1./sqrt(masses)
-        # self.modes : Eigenmodes of the mass weighted Hessian
-        self.om_Q = self.hnu.real    # energies in eV
-        self.om_v = self.om_Q
-        # pre-factors for one vibrational excitation
-        with np.errstate(divide='ignore'):
-            self.vib01_Q = np.where(self.om_Q > 0,
-                                    1. / np.sqrt(2 * self.om_Q), 0)
-        # -> sqrt(amu) * Angstrom
-        self.vib01_Q *= np.sqrt(u.Ha * u._me / u._amu) * u.Bohr
-        self.timer.stop('vibrations')
-
+        self.read_energies_and_modes()
+        
         self.timer.start('excitations')
         self.init_parallel_read()
         if not hasattr(self, 'ex0E_p'):
@@ -148,7 +134,7 @@ class Raman(RamanBase, Vibrations):
         elme_Qcc /= u.Hartree * u.Bohr  # e^2 Angstrom / eV / sqrt(amu)
         return elme_Qcc * self.vib01_Q[:, None, None]
 
-    def absolute_intensity(self, delta=0, **kwargs):
+    def get_absolute_intensities(self, delta=0, **kwargs):
         """Absolute Raman intensity or Raman scattering factor
 
         Parameter
@@ -244,7 +230,7 @@ class Raman(RamanBase, Vibrations):
                 log=sys.stdout, **kwargs):
         """Print summary for given omega [eV]"""
         hnu = self.get_energies(method, direction)
-        intensities = self.absolute_intensity()
+        intensities = self.get_absolute_intensities()
         te = int(np.log10(intensities.max())) - 2
         scale = 10**(-te)
         if not te:
@@ -274,3 +260,49 @@ class Raman(RamanBase, Vibrations):
         parprint('-------------------------------------', file=log)
         parprint('Zero-point energy: %.3f eV' % self.get_zero_point_energy(),
                  file=log)
+
+
+class Raman(RamanEvaluate, Vibrations):
+    def read_energies_and_modes(self, method='standard', direction='central'):
+        self.timer.start('vibrations')
+        Vibrations.read(self, method, direction)
+        # we now have:
+        # self.H     : Hessian matrix
+        # self.im    : 1./sqrt(masses)
+        # self.modes : Eigenmodes of the mass weighted Hessian
+        self.om_Q = self.hnu.real    # energies in eV
+        self.om_v = self.om_Q
+        # pre-factors for one vibrational excitation
+        with np.errstate(divide='ignore'):
+            self.vib01_Q = np.where(self.om_Q > 0,
+                                    1. / np.sqrt(2 * self.om_Q), 0)
+        # -> sqrt(amu) * Angstrom
+        self.vib01_Q *= np.sqrt(u.Ha * u._me / u._amu) * u.Bohr
+        self.timer.stop('vibrations')
+        
+
+class RamanPhonons(RamanEvaluate, Phonons):
+    def read_energies_and_modes(self, method='standard', direction='central'):
+        self.timer.start('band_structure')
+        Phonons.read(self, method, direction)
+        
+        kpts_kc = monkhorst_pack(self.kpts)
+        omega_kl, u_kl = self.band_structure(kpts_kc, modes=True,
+                                             verbose=self.verbose)
+
+        self.im = self.m_inv_x  # use the same name as in Vibrations
+        
+        # we now have:
+        # self.H     : Hessian matrix
+        # self.im    : 1./sqrt(masses)
+        # self.modes : Eigenmodes of the mass weighted Hessian
+        self.om_Q = self.hnu.real    # energies in eV
+        self.om_v = self.om_Q
+        # pre-factors for one vibrational excitation
+        with np.errstate(divide='ignore'):
+            self.vib01_Q = np.where(self.om_Q > 0,
+                                    1. / np.sqrt(2 * self.om_Q), 0)
+        # -> sqrt(amu) * Angstrom
+        self.vib01_Q *= np.sqrt(u.Ha * u._me / u._amu) * u.Bohr
+        self.timer.stop('band_structure')
+        

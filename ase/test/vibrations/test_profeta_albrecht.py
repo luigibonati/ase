@@ -28,28 +28,28 @@ def test_compare_placzek_albrecht_intensities():
     pr = Profeta(atoms, H2MorseExcitedStates,
                  name=name, overlap=True,
                  approximation='p-p', txt=None)
-    pri = pr.absolute_intensity(omega=om, gamma=gam)[-1]
+    pri = pr.get_absolute_intensities(omega=om, gamma=gam)[-1]
     al = Albrecht(atoms, H2MorseExcitedStates,
                   name=name, overlap=True,
                   approximation='Albrecht A', txt=None)
-    ali = al.absolute_intensity(omega=om, gamma=gam)[-1]
+    ali = al.get_absolute_intensities(omega=om, gamma=gam)[-1]
     print('pri, ali', pri, ali)
     assert pri == pytest.approx(ali, 1e-2)
 
     """Albrecht B+C and Profeta are approximately equal"""
 
     pr.approximation = 'Profeta'
-    pri = pr.absolute_intensity(omega=om, gamma=gam)[-1]
+    pri = pr.get_absolute_intensities(omega=om, gamma=gam)[-1]
     al.approximation = 'Albrecht BC'
-    ali = al.absolute_intensity(omega=om, gamma=gam)[-1]
+    ali = al.get_absolute_intensities(omega=om, gamma=gam)[-1]
     print('pri, ali', pri, ali)
     assert pri == pytest.approx(ali, 1e-2)
 
     """Albrecht and Placzek are approximately equal"""
 
     pr.approximation = 'Placzek'
-    pri = pr.absolute_intensity(omega=om, gamma=gam)[-1]
+    pri = pr.get_absolute_intensities(omega=om, gamma=gam)[-1]
     al.approximation = 'Albrecht'
-    ali = al.absolute_intensity(omega=om, gamma=gam)[-1]
+    ali = al.get_absolute_intensities(omega=om, gamma=gam)[-1]
     print('pri, ali', pri, ali)
     assert pri == pytest.approx(ali, 1e-2)

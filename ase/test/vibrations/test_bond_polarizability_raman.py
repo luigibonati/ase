@@ -1,3 +1,5 @@
+from pytest import fixture
+
 from ase import Atoms
 from ase.build import bulk
 from ase.vibrations.raman import StaticRamanCalculator
@@ -22,12 +24,17 @@ def relaxC4():
     print(Cbulk.cell)
 
 
-def test_bulk(tmp_path):
-    """Bulk FCC carbon (for EMT) self consistency"""
-    # EMT relaxed value, see relaxC4
+@fixture(scope='module')
+def Cbulk():
+    # EMT relaxed, see relaxC4
     Cbulk = bulk('C', crystalstructure='fcc', a=2 * 1.221791471)
     Cbulk = Cbulk.repeat([2, 1, 1])
     Cbulk.calc = EMT()
+    return Cbulk
+
+
+def test_bulk(Cbulk, tmp_path):
+    """Bulk FCC carbon (for EMT) self consistency"""
     
     name = str(tmp_path / 'bp')
     rm = StaticRamanCalculator(Cbulk, BondPolarizability, name=name,
@@ -35,8 +42,10 @@ def test_bulk(tmp_path):
     rm.run()
 
     pz = PlaczekStatic(Cbulk, name=name)
-    print(pz.get_energies())
+    print(pz.get_energies(), pz.get_absolute_intensities())
     pz.summary()
+
+    
 
 
 def test_bulk_phonons(tmp_path):
@@ -53,10 +62,9 @@ def test_bulk_phonons(tmp_path):
                                      delta=0.05, supercell=(2, 1, 1))
     rm.run()
 
-    if 0:
-        pz = PlaczekStatic(Cbulk, name=name)
-        print(pz.get_energies())
-        pz.summary()
+    pz = PlaczekStatic(Cbulk, name=name)
+    print(pz.get_energies())
+    pz.summary(kpts=(2, 1, 1))
 
 
 def test_c3():
