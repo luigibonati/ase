@@ -384,41 +384,11 @@ class ResonantRaman(Raman):
         self.timer.stop('me and energy')
         self.timer.stop('read excitations')
 
-    def read0(self, method='standard', direction='central'):
-        """Read data from a pre-performed calculation."""
-
-        self.timer.start('read')
-        self.timer.start('vibrations')
-        Vibrations.read(self, method, direction)
-        # we now have:
-        # self.H     : Hessian matrix
-        # self.im    : 1./sqrt(masses)
-        # self.modes : Eigenmodes of the mass weighted Hessian
-        self.om_Q = self.hnu.real    # energies in eV
-        self.om_v = self.om_Q
-        # pre-factors for one vibrational excitation
-        with np.errstate(divide='ignore'):
-            self.vib01_Q = np.where(self.om_Q > 0,
-                                    1. / np.sqrt(2 * self.om_Q), 0)
-        # -> sqrt(amu) * Angstrom
-        self.vib01_Q *= np.sqrt(u.Ha * u._me / u._amu) * u.Bohr
-        self.timer.stop('vibrations')
-
-        self.timer.start('excitations')
-        self.init_parallel_read()
-        if not hasattr(self, 'ex0E_p'):
-            if self.overlap:
-                self.read_excitations_overlap()
-            else:
-                self.read_excitations()
-        self.timer.stop('excitations')
-        self.timer.stop('read')
-
     def read(self, *args, **kwargs):
         """Read data from a pre-performed calculation."""
         self.timer.start('read')
         self.timer.start('vibrations')
-        self.read_vibrations(*args, **kwargs)
+        self.vibrations.read(*args, **kwargs)
         self.timer.stop('vibrations')
 
         self.timer.start('excitations')

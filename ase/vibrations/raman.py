@@ -160,7 +160,7 @@ class RamanEvaluate(RamanBase):
         self.timer.start('read')
 
         self.timer.start('vibrations')
-        self.read_vibrations(*args, **kwargs)
+        self.vibrations.read(*args, **kwargs)
         self.timer.stop('vibrations')
         
         self.timer.start('excitations')
@@ -331,11 +331,6 @@ class Raman(RamanEvaluate):
         self.delta = self.vibrations.delta
         self.indices = self.vibrations.indices
 
-    def read_vibrations(self, *args, **kwargs):
-        self.timer.start('vibrations')
-        self.vibrations.read(*args, **kwargs)
-        self.timer.stop('vibrations')
-
     def calculate_energies_and_modes(self):
         if not self._read:
             if hasattr(self, 'im_r'):
@@ -358,10 +353,14 @@ class Raman(RamanEvaluate):
 
 
 class RamanPhonons(RamanEvaluate):
-    def read_vibrations(self, method='standard', direction='central'):
+    def calculate_energies_and_modes(self):
+        if not self._read:
+            if hasattr(self, 'im_r'):
+                del self.im_r
+            self.read()
+
         self.timer.start('band_structure')
-        Phonons.read(self, method, direction)
-        
+         
         kpts_kc = monkhorst_pack(self.kpts)
         omega_kl, u_kl = self.band_structure(kpts_kc, modes=True,
                                              verbose=self.verbose)
