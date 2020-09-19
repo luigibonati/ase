@@ -779,17 +779,17 @@ def interpolate(images, mic=False, interpolate_cell=False,
     if interpolate_cell:
         cell1 = images[0].get_cell()
         cell2 = images[-1].get_cell()
-        cellDiff = cell2 - cell1
-        cellDiff /= (len(images) - 1.0)
+        cell_diff = cell2 - cell1
+        cell_diff /= (len(images) - 1.0)
     for i in range(1, len(images) - 1):
         # first the new cell, otherwise scaled positions are wrong
         if interpolate_cell:
-            images[i].set_cell(cell1 + i * cellDiff)
-        newPos = pos1 + i * d
+            images[i].set_cell(cell1 + i * cell_diff)
+        new_pos = pos1 + i * d
         if use_scaled_coord:
-            images[i].set_scaled_positions(newPos)
+            images[i].set_scaled_positions(new_pos)
         else:
-            images[i].set_positions(newPos)
+            images[i].set_positions(new_pos)
 
 
 def idpp_interpolate(images, traj='idpp.traj', log='idpp.log', fmax=0.1,
