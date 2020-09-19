@@ -1,6 +1,6 @@
 from ase.gui.i18n import _
 import ase.gui.ui as ui
-from ase.io.pov import write_pov, get_bondpairs
+from ase.io.pov import write_pov, run_pov, get_bondpairs
 from os import unlink
 import numpy as np
 
@@ -85,7 +85,6 @@ class Render:
         bbox[0:2] = np.dot(self.gui.center, self.gui.axes[:, :2]) - size / 2
         bbox[2:] = bbox[:2] + size
         povray_settings = {
-            'run_povray': self.run_povray_widget.value,
             'bbox': bbox,
             'rotation': self.gui.axes,
             'show_unit_cell': self.cell_widget.value,
@@ -120,8 +119,11 @@ class Render:
             filename = self.update_outputname()
             print(" | Writing files for image", filename, "...")
             write_pov(
-                filename, atoms, radii=radii_scale*self.gui.get_covalent_radii(),povray_path=self.povray_executable.value,
-                **povray_settings)
+                filename, atoms, 
+                radii=radii_scale*self.gui.get_covalent_radii(),
+                **povray_settings) 
+            if self.run_povray_widget.value:
+                run_pov(filename, povray_path=self.povray_executable.value)
             if not self.keep_files_widget.value:
                 print(" | Deleting temporary file ", filename)
                 unlink(filename)

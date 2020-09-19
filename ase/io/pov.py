@@ -614,8 +614,7 @@ def add_isosurface_to_pov(pov_fid, pov_obj,
     # pov_fid.close()
 
 
-def write_pov(filename, atoms, run_povray=False, povray_path='povray',
-              stderr=None, extras=[], **parameters):
+def write_pov(filename, atoms, extras=[], **parameters):
     if isinstance(atoms, list):
         assert len(atoms) == 1
         atoms = atoms[0]
@@ -629,13 +628,13 @@ def write_pov(filename, atoms, run_povray=False, povray_path='povray',
     # of the extras option.
     pov_fid.close()
 
-    if run_povray:
-        cmd = povray_path + ' {}.ini'.format(filename[:-4])
-        if stderr != '-':
-            if stderr is None:
-                stderr = '/dev/null'
-            cmd += ' 2> {}'.format(stderr)
-        errcode = os.system(cmd)
-        if errcode != 0:
-            raise OSError('Povray command ' + cmd +
-                          ' failed with error code %d' % errcode)
+def run_pov(filename, povray_path='povray',stderr=None):
+    cmd = povray_path + ' {}.ini'.format(filename[:-4])
+    if stderr != '-':
+        if stderr is None:
+            stderr = '/dev/null'
+        cmd += ' 2> {}'.format(stderr)
+    errcode = os.system(cmd)
+    if errcode != 0:
+        raise OSError('Povray command ' + cmd +
+                      ' failed with error code %d' % errcode)
