@@ -742,10 +742,6 @@ def atoms_to_loop_data(atoms, wrap, labels, loop_keys):
     for i, key in enumerate(coord_headers):
         loopdata[key] = (_coords[:, i], '{:7.5f}')
 
-    loopdata['_atom_site_thermal_displace_type'] = (
-        ['Biso'] * len(symbols), '{:s}')
-    loopdata['_atom_site_B_iso_or_equiv'] = (
-        [1.0] * len(symbols), '{:6.3f}')
     loopdata['_atom_site_type_symbol'] = (symbols, '{:<2s}')
     loopdata['_atom_site_symmetry_multiplicity'] = (
         [1.0] * len(symbols), '{}')
@@ -787,8 +783,6 @@ def write_cif_image(blockname, atoms, fd, *, cif_format, wrap,
             '_atom_site_label',
             '_atom_site_occupancy',
             *coord_headers,
-            '_atom_site_thermal_displace_type',
-            '_atom_site_B_iso_or_equiv',
             '_atom_site_type_symbol',
         ]
 
