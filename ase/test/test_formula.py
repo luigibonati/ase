@@ -45,6 +45,10 @@ def test_formula():
                 assert (n1 == n2).all()
 
 
+def test_convert():
+    assert str(Formula('AgAg').convert('hill')) == 'Ag2'
+
+
 @pytest.mark.parametrize(
     'x',
     ['H2O', '10H2O', '2(CuO2(H2O)2)10', 'Cu20+H2', 'H' * 15, 'AuBC2', ''])

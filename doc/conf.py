@@ -10,10 +10,13 @@ extensions = ['ext',
               'images',
               'sphinx.ext.autodoc',
               'sphinx.ext.doctest',
+              'sphinx.ext.extlinks',
               'sphinx.ext.mathjax',
               'sphinx.ext.viewcode',
               'sphinx.ext.napoleon',
               'sphinx.ext.intersphinx']
+extlinks = {'doi': ('https://doi.org/%s', 'doi:'),
+            'arxiv': ('https://arxiv.org/abs/%s', 'arXiv:')}
 source_suffix = '.rst'
 master_doc = 'index'
 project = 'ASE'
