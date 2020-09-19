@@ -55,6 +55,7 @@ def test_quaternions_rotations(rng):
         rotm = rand_rotm(rng)
 
         q = Quaternion.from_matrix(rotm)
+        assert np.allclose(rotm, q.rotation_matrix())
 
         # Now test this with a vector
         v = rng.rand(3)
@@ -88,6 +89,8 @@ def test_quaternions_overload(rng):
         q1 = Quaternion.from_matrix(rotm1)
         q2 = Quaternion.from_matrix(rotm2)
 
+        assert np.allclose(np.dot(rotm2, rotm1),
+                           (q2 * q1).rotation_matrix())
         # Now test this with a vector
         v = rng.rand(3)
 
@@ -104,15 +107,17 @@ def test_quaternions_euler(rng):
         for i in range(TEST_N):
 
             abc = rng.rand(3) * 2 * np.pi
-            v2 = rng.rand(2, 3)  # Two random vectors to rotate rigidly
 
             q_eul = Quaternion.from_euler_angles(*abc, mode=mode)
             rot_eul = eulang_rotm(*abc, mode=mode)
 
-            v2_q = np.array([q_eul.rotate(v) for v in v2])
-            v2_m = np.array([np.dot(rot_eul, v) for v in v2])
+            assert(np.allclose(rot_eul, q_eul.rotation_matrix()))
 
-            assert np.allclose(v2_q, v2_m)
+            # Test conversion back and forth
+            abc_2 = q_eul.euler_angles(mode=mode)
+            q_eul_2 = Quaternion.from_euler_angles(*abc_2, mode=mode)
+
+            assert(np.allclose(q_eul_2.q, q_eul.q))
 
 
 def test_quaternions_rotm(rng):
@@ -128,6 +133,7 @@ def test_quaternions_rotm(rng):
 
         assert(np.allclose(q1.rotation_matrix(), rotm1))
         assert(np.allclose(q2.rotation_matrix(), rotm2))
+        assert(np.allclose((q1 * q2).rotation_matrix(), np.dot(rotm1, rotm2)))
         assert(np.allclose((q1 * q2).rotation_matrix(), np.dot(rotm1, rotm2)))
 
 
