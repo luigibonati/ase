@@ -23,6 +23,7 @@ from ase.spacegroup.spacegroup import spacegroup_from_data, Spacegroup
 from ase.io.cif_unicode import format_unicode, handle_subscripts
 from ase.utils import iofunction
 
+
 rhombohedral_spacegroups = {146, 148, 155, 160, 161, 166, 167}
 
 
@@ -627,6 +628,7 @@ class CIFLoop:
         return '\n'.join(lines)
 
 
+@iofunction('wb')
 def write_cif(fd, images, cif_format=None,
               wrap=True, labels=None, loop_keys=None) -> None:
     """Write *images* to CIF file.
@@ -658,27 +660,25 @@ def write_cif(fd, images, cif_format=None,
     if loop_keys is None:
         loop_keys = {}
 
-    if isinstance(fd, str):
-        fd = paropen(fd, 'wb')
-
-    fd = io.TextIOWrapper(fd, encoding='latin-1')
-
     if hasattr(images, 'get_positions'):
         images = [images]
 
-    for i_frame, atoms in enumerate(images):
-        blockname = 'data_image%d\n' % i_frame
-        image_loop_keys = {key: loop_keys[key][i_frame] for key in loop_keys}
+    fd = io.TextIOWrapper(fd, encoding='latin-1')
+    try:
+        for i, atoms in enumerate(images):
+            blockname = f'data_image{i}\n'
+            image_loop_keys = {key: loop_keys[key][i] for key in loop_keys}
 
-        write_cif_image(blockname, atoms, fd,
-                        wrap=wrap,
-                        labels=None if labels is None else labels[i_frame],
-                        loop_keys=image_loop_keys)
+            write_cif_image(blockname, atoms, fd,
+                            wrap=wrap,
+                            labels=None if labels is None else labels[i],
+                            loop_keys=image_loop_keys)
 
-    # Using the TextIOWrapper somehow causes the file to close
-    # when this function returns.
-    # Detach in order to circumvent this highly illogical problem:
-    fd.detach()
+    finally:
+        # Using the TextIOWrapper somehow causes the file to close
+        # when this function returns.
+        # Detach in order to circumvent this highly illogical problem:
+        fd.detach()
 
 
 def autolabel(symbols: Sequence[str]) -> List[str]:
