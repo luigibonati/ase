@@ -178,7 +178,7 @@ class TestRawDosData:
         else:
             mplargs = {'linewidth': linewidth}
 
-        ax = figure.add_subplot()
+        ax = figure.add_subplot(111)
         ax_out = sparse_dos.plot_dos(npts=5, ax=ax, mplargs=mplargs,
                                      smearing='Gauss')
         assert ax_out == ax
@@ -188,8 +188,6 @@ class TestRawDosData:
         assert np.allclose(line_data[1],
                            [1.32955452e-01, 1.51568133e-13,
                             9.30688167e-02, 1.06097693e-13, 3.41173568e-78])
-        if linewidth is not None:
-            assert ax.lines[0].get_linewidth() == linewidth
 
     @pytest.mark.usefixtures("figure")
     @pytest.mark.parametrize('linewidth', linewidths)
@@ -199,13 +197,9 @@ class TestRawDosData:
         else:
             mplargs = {'linewidth': linewidth}
 
-        ax = figure.add_subplot()
+        ax = figure.add_subplot(111)
         ax_out = sparse_dos.plot_deltas(ax=ax, mplargs=mplargs)
         assert ax_out == ax
-
-        if linewidth is not None:
-            assert ax.get_children()[0].get_linewidth() == linewidth
-
         assert np.allclose(list(map(lambda x: x.vertices,
                                     ax.get_children()[0].get_paths())),
                            [[[1.2, 0.], [1.2, 3.]],
@@ -281,7 +275,7 @@ class TestGridDosData:
         else:
             mplargs = {'linewidth': linewidth}
 
-        ax = figure.add_subplot()
+        ax = figure.add_subplot(111)
         ax_out = dense_dos.plot_dos(ax=ax, mplargs=mplargs,
                                     smearing='Gauss')
         assert ax_out == ax
@@ -292,15 +286,13 @@ class TestGridDosData:
         # this is a special feature of "grid" data to avoid repeated broadening
         assert np.allclose(line_data[0], np.linspace(0., 10., 11))
         assert np.allclose(line_data[1], np.sin(np.linspace(0., 1., 11)))
-        if linewidth is not None:
-            assert ax.lines[0].get_linewidth() == linewidth
 
     @pytest.mark.usefixtures("figure")
     def test_plot_broad_dos(self, dense_dos, figure):
         # Check that setting a grid/broadening does not blow up and reproduces
         # previous results; this result has not been rigorously checked but at
         # least it should not _change_ unexpectedly
-        ax = figure.add_subplot()
+        ax = figure.add_subplot(111)
         _ = dense_dos.plot_dos(ax=ax, npts=10, xmin=0, xmax=9,
                                width=4, smearing='Gauss')
         line_data = ax.lines[0].get_data()

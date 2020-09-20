@@ -206,7 +206,7 @@ class Cell:
 
     def lengths(self):
         """Return the length of each lattice vector as an array."""
-        return np.array([np.linalg.norm(v) for v in self])
+        return np.linalg.norm(self, axis=1)
 
     def angles(self):
         """Return an array with the three angles alpha, beta, and gamma."""

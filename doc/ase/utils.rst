@@ -24,9 +24,7 @@ This module contains utility functions and classes.
 Symmetry equivalence checker
 ============================
 
-This module compares two atomic structures to see if they are symmetrically equivalent. It is based on the recipe used in `XtalComp`__
-
-__ https://doi.org/10.1016/j.cpc.2011.11.007
+This module compares two atomic structures to see if they are symmetrically equivalent. It is based on the recipe used in :doi:`XtalComp <10.1016/j.cpc.2011.11.007>`
 
 .. autoclass:: ase.utils.structure_comparator.SymmetryEquivalenceCheck
    :members:

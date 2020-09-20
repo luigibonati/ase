@@ -4,7 +4,7 @@ from ase.calculators.emt import EMT
 from ase.optimize import QuasiNewton
 import re
 import pytest
-from ase.cli.template import prec_round, sort2rank, slice_split, \
+from ase.cli.template import prec_round, slice_split, \
     MapFormatter, sym2num, \
     Table, TableFormat
 from ase.io import read
@@ -97,9 +97,6 @@ def test_template_functions():
     num = 1.55749
     rnum = [prec_round(num, i) for i in range(1, 6)]
     assert rnum == [1.6, 1.56, 1.557, 1.5575, 1.55749]
-    blarray = [4, 3, 1, 0, 2] == sort2rank(
-        [3, 2, 4, 1, 0])  # sort2rank outputs numpy array
-    assert blarray.all()
     assert slice_split('a@1:3:1') == ('a', slice(1, 3, 1))
 
     sym = 'H'
