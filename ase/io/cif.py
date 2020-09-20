@@ -21,7 +21,7 @@ from ase.parallel import paropen
 from ase.spacegroup import crystal
 from ase.spacegroup.spacegroup import spacegroup_from_data, Spacegroup
 from ase.io.cif_unicode import format_unicode, handle_subscripts
-
+from ase.utils import iofunction
 
 rhombohedral_spacegroups = {146, 148, 155, 160, 161, 166, 167}
 
@@ -627,7 +627,7 @@ class CIFLoop:
         return '\n'.join(lines)
 
 
-def write_cif(fd, images, cif_format='default',
+def write_cif(fd, images, cif_format=None,
               wrap=True, labels=None, loop_keys=None) -> None:
     """Write *images* to CIF file.
 
@@ -650,6 +650,11 @@ def write_cif(fd, images, cif_format='default',
 
     """
 
+    if cif_format is not None:
+        warnings.warn('The cif_format argument is deprecated and may be '
+                      'removed in the future.  Use loop_keys to customize '
+                      'data written in loop.', FutureWarning)
+
     if loop_keys is None:
         loop_keys = {}
 
@@ -666,7 +671,6 @@ def write_cif(fd, images, cif_format='default',
         image_loop_keys = {key: loop_keys[key][i_frame] for key in loop_keys}
 
         write_cif_image(blockname, atoms, fd,
-                        cif_format=cif_format,
                         wrap=wrap,
                         labels=None if labels is None else labels[i_frame],
                         loop_keys=image_loop_keys)
@@ -689,7 +693,7 @@ def autolabel(symbols: Sequence[str]) -> List[str]:
     return labels
 
 
-def mp_header(atoms):
+def chemical_formula_header(atoms):
     counts = atoms.symbols.formula.count()
     formula_sum = ' '.join(f'{sym}{count}' for sym, count
                            in counts.items())
@@ -755,12 +759,10 @@ def atoms_to_loop_data(atoms, wrap, labels, loop_keys):
     return loopdata, coord_headers
 
 
-def write_cif_image(blockname, atoms, fd, *, cif_format, wrap,
+def write_cif_image(blockname, atoms, fd, *, wrap,
                     labels, loop_keys):
     fd.write(blockname)
-
-    if cif_format == 'mp':
-        fd.write(mp_header(atoms))
+    fd.write(chemical_formula_header(atoms))
 
     if atoms.cell.rank == 3:
         fd.write(format_cell(atoms.cell))
@@ -768,23 +770,16 @@ def write_cif_image(blockname, atoms, fd, *, cif_format, wrap,
         fd.write(format_generic_spacegroup_info())
         fd.write('\n')
 
-    loopdata, coord_headers = atoms_to_loop_data(atoms, wrap, labels, loop_keys)
+    loopdata, coord_headers = atoms_to_loop_data(atoms, wrap, labels,
+                                                 loop_keys)
 
-    if cif_format == 'mp':
-        headers = [
-            '_atom_site_type_symbol',
-            '_atom_site_label',
-            '_atom_site_symmetry_multiplicity',
-            *coord_headers,
-            '_atom_site_occupancy',
-        ]
-    else:
-        headers = [
-            '_atom_site_label',
-            '_atom_site_occupancy',
-            *coord_headers,
-            '_atom_site_type_symbol',
-        ]
+    headers = [
+        '_atom_site_type_symbol',
+        '_atom_site_label',
+        '_atom_site_symmetry_multiplicity',
+        *coord_headers,
+        '_atom_site_occupancy',
+    ]
 
     headers += ['_' + key for key in loop_keys]
 
