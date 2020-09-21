@@ -138,16 +138,16 @@ class DOSData(metaclass=ABCMeta):
 
         return GridDOSData(energies_grid, weights_grid, info=self.info.copy())
 
-    def plot_dos(self,
-                 npts: int = 1000,
-                 xmin: float = None,
-                 xmax: float = None,
-                 width: float = 0.1,
-                 smearing: str = 'Gauss',
-                 ax: 'matplotlib.axes.Axes' = None,
-                 show: bool = False,
-                 filename: str = None,
-                 mplargs: dict = None) -> 'matplotlib.axes.Axes':
+    def plot(self,
+             npts: int = 1000,
+             xmin: float = None,
+             xmax: float = None,
+             width: float = 0.1,
+             smearing: str = 'Gauss',
+             ax: 'matplotlib.axes.Axes' = None,
+             show: bool = False,
+             filename: str = None,
+             mplargs: dict = None) -> 'matplotlib.axes.Axes':
         """Simple 1-D plot of DOS data, resampled onto a grid
 
         If the special key 'label' is present in self.info, this will be set
@@ -179,8 +179,8 @@ class DOSData(metaclass=ABCMeta):
         dos = self.sample_grid(npts, xmin=xmin, xmax=xmax,
                                width=width,
                                smearing=smearing)
-        return dos.plot_dos(ax=ax, show=show, filename=filename,
-                            mplargs=mplargs)
+        return dos.plot(ax=ax, show=show, filename=filename,
+                        mplargs=mplargs)
 
     @staticmethod
     def label_from_info(info: Dict[str, str]):
@@ -401,16 +401,16 @@ class GridDOSData(GeneralDOSData):
                                  info=new_info)
         return new_object
 
-    def plot_dos(self,
-                 npts: int = 0,
-                 xmin: float = None,
-                 xmax: float = None,
-                 width: float = 0.1,
-                 smearing: str = 'Gauss',
-                 ax: 'matplotlib.axes.Axes' = None,
-                 show: bool = False,
-                 filename: str = None,
-                 mplargs: dict = None) -> 'matplotlib.axes.Axes':
+    def plot(self,
+             npts: int = 0,
+             xmin: float = None,
+             xmax: float = None,
+             width: float = 0.1,
+             smearing: str = 'Gauss',
+             ax: 'matplotlib.axes.Axes' = None,
+             show: bool = False,
+             filename: str = None,
+             mplargs: dict = None) -> 'matplotlib.axes.Axes':
         """Simple 1-D plot of DOS data
 
         Data will be resampled onto a grid with `npts` points unless `npts` is
