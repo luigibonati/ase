@@ -534,7 +534,7 @@ class GridDOSCollection(DOSCollection):
              npts: int = 0,
              xmin: float = None,
              xmax: float = None,
-             width: float = 0.1,
+             width: float = None,
              smearing: str = 'Gauss',
              ax: 'matplotlib.axes.Axes' = None,
              show: bool = False,
@@ -567,6 +567,9 @@ class GridDOSCollection(DOSCollection):
         Returns:
             Plotting axes. If "ax" was set, this is the same object.
         """
+
+        # Apply defaults if necessary
+        npts, width = GridDOSData._interpret_smearing_args(npts, width)
 
         if npts:
             dos = self.sample_grid(npts,

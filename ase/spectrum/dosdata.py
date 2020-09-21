@@ -2,7 +2,7 @@
 # towards replacing ase.dft.dos and ase.dft.pdos
 from abc import ABCMeta, abstractmethod
 import warnings
-from typing import Any, Dict, Sequence, TypeVar
+from typing import Any, Dict, Sequence, Tuple, TypeVar
 
 import numpy as np
 from ase.utils.plotting import SimplePlottingAxes
@@ -176,11 +176,12 @@ class DOSData(metaclass=ABCMeta):
         if 'label' not in mplargs:
             mplargs.update({'label': self.label_from_info(self.info)})
 
-        dos = self.sample_grid(npts, xmin=xmin, xmax=xmax,
-                               width=width,
-                               smearing=smearing)
-        return dos.plot_dos(ax=ax, show=show, filename=filename,
-                            mplargs=mplargs)
+        return self.sample_grid(npts, xmin=xmin, xmax=xmax,
+                                width=width,
+                                smearing=smearing
+                                ).plot_dos(ax=ax, xmin=xmin, xmax=xmax,
+                                           show=show, filename=filename,
+                                           mplargs=mplargs)
 
     @staticmethod
     def label_from_info(info: Dict[str, str]):
@@ -401,11 +402,29 @@ class GridDOSData(GeneralDOSData):
                                  info=new_info)
         return new_object
 
+    @staticmethod
+    def _interpret_smearing_args(npts: int,
+                                 width: float = None,
+                                 default_npts: int = 1000,
+                                 default_width: float = 0.1
+                                 ) -> Tuple[int, float]:
+        """Figure out what the user intended: resample if width provided"""
+        if width is not None:
+            if npts:
+                return (npts, width)
+            else:
+                return (default_npts, width)
+        else:
+            if npts:
+                return (npts, default_width)
+            else:
+                return (0, None)
+
     def plot_dos(self,
                  npts: int = 0,
                  xmin: float = None,
                  xmax: float = None,
-                 width: float = 0.1,
+                 width: float = None,
                  smearing: str = 'Gauss',
                  ax: 'matplotlib.axes.Axes' = None,
                  show: bool = False,
@@ -428,7 +447,8 @@ class GridDOSData(GeneralDOSData):
 
         Args:
             npts, xmin, xmax: output data range, as passed to self.sample_grid
-            width: Width of broadening kernel, passed to self.sample_grid()
+            width: Width of broadening kernel, passed to self.sample_grid().
+                If no npts was set but width is set, npts will be set to 1000.
             smearing: selection of broadening kernel for self.sample_grid()
             ax: existing Matplotlib axes object. If not provided, a new figure
                 with one set of axes will be created using Pyplot
@@ -440,6 +460,8 @@ class GridDOSData(GeneralDOSData):
         Returns:
             Plotting axes. If "ax" was set, this is the same object.
         """
+
+        npts, width = self._interpret_smearing_args(npts, width)
 
         if mplargs is None:
             mplargs = {}
