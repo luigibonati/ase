@@ -82,9 +82,9 @@ class DOSData(metaclass=ABCMeta):
 
     @staticmethod
     def _delta(x: np.ndarray,
-               x0: np.ndarray,
+               x0: float,
                width: float,
-               smearing: str = 'Gauss') -> Sequence[Sequence[float]]:
+               smearing: str = 'Gauss') -> np.ndarray:
         """Return a delta-function centered at 'x0'.
 
         This function is used with numpy broadcasting; if x is a row and x0 is
