@@ -356,13 +356,11 @@ def atoms_fix():
     return read(cif_file, format='cif')
 
 
-#test default and mp version of cif writing
-@pytest.mark.parametrize('method', ['default', 'mp'])
-def test_cif_loop_keys(method, atoms_fix):
+def test_cif_loop_keys(atoms_fix):
     data = {}
     data['someKey'] = [[str(i)+"test" for i in range(20)]] #test case has 20 entries
     data['someIntKey'] = [[str(i)+"123" for i in range(20)]] #test case has 20 entries
-    atoms_fix.write('testfile.cif', loop_keys=data, cif_format=method)
+    atoms_fix.write('testfile.cif', loop_keys=data)
 
     atoms = read('testfile.cif', store_tags=True)
     #keys are read lowercase only
@@ -373,8 +371,7 @@ def test_cif_loop_keys(method, atoms_fix):
 
 
 #test if automatic numbers written after elements are correct
-@pytest.mark.parametrize('method', ['default', 'mp'])
-def test_cif_writer_label_numbers(method, atoms_fix):
+def test_cif_writer_label_numbers(atoms_fix):
     atoms_fix.write('testfile.cif')
     atoms = read('testfile.cif', store_tags=True)
     labels = atoms.info['_atom_site_label']
@@ -382,11 +379,9 @@ def test_cif_writer_label_numbers(method, atoms_fix):
     build_labels = ["{:}{:}".format(x,i) for x in set(elements) for i in range(1,elements.count(x)+1)]
     assert build_labels.sort() == labels.sort()
 
-#test default and mp version of cif writing
-@pytest.mark.parametrize('method', ['default', 'mp'])
-def test_cif_labels(method, atoms_fix):
+def test_cif_labels(atoms_fix):
     data = [["label"+str(i) for i in range(20)]] #test case has 20 entries
-    atoms_fix.write('testfile.cif', labels=data, cif_format=method)
+    atoms_fix.write('testfile.cif', labels=data)
 
     atoms = read('testfile.cif', store_tags=True)
     print(atoms.info)

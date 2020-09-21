@@ -17,10 +17,10 @@ import numpy as np
 
 from ase import Atoms
 from ase.cell import Cell
-from ase.parallel import paropen
 from ase.spacegroup import crystal
 from ase.spacegroup.spacegroup import spacegroup_from_data, Spacegroup
 from ase.io.cif_unicode import format_unicode, handle_subscripts
+from ase.utils import iofunction
 
 
 rhombohedral_spacegroups = {146, 148, 155, 160, 161, 166, 167}
@@ -627,7 +627,8 @@ class CIFLoop:
         return '\n'.join(lines)
 
 
-def write_cif(fd, images, cif_format='default',
+@iofunction('wb')
+def write_cif(fd, images, cif_format=None,
               wrap=True, labels=None, loop_keys=None) -> None:
     """Write *images* to CIF file.
 
@@ -650,31 +651,33 @@ def write_cif(fd, images, cif_format='default',
 
     """
 
+    if cif_format is not None:
+        warnings.warn('The cif_format argument is deprecated and may be '
+                      'removed in the future.  Use loop_keys to customize '
+                      'data written in loop.', FutureWarning)
+
     if loop_keys is None:
         loop_keys = {}
-
-    if isinstance(fd, str):
-        fd = paropen(fd, 'wb')
-
-    fd = io.TextIOWrapper(fd, encoding='latin-1')
 
     if hasattr(images, 'get_positions'):
         images = [images]
 
-    for i_frame, atoms in enumerate(images):
-        blockname = 'data_image%d\n' % i_frame
-        image_loop_keys = {key: loop_keys[key][i_frame] for key in loop_keys}
+    fd = io.TextIOWrapper(fd, encoding='latin-1')
+    try:
+        for i, atoms in enumerate(images):
+            blockname = f'data_image{i}\n'
+            image_loop_keys = {key: loop_keys[key][i] for key in loop_keys}
 
-        write_cif_image(blockname, atoms, fd,
-                        cif_format=cif_format,
-                        wrap=wrap,
-                        labels=None if labels is None else labels[i_frame],
-                        loop_keys=image_loop_keys)
+            write_cif_image(blockname, atoms, fd,
+                            wrap=wrap,
+                            labels=None if labels is None else labels[i],
+                            loop_keys=image_loop_keys)
 
-    # Using the TextIOWrapper somehow causes the file to close
-    # when this function returns.
-    # Detach in order to circumvent this highly illogical problem:
-    fd.detach()
+    finally:
+        # Using the TextIOWrapper somehow causes the file to close
+        # when this function returns.
+        # Detach in order to circumvent this highly illogical problem:
+        fd.detach()
 
 
 def autolabel(symbols: Sequence[str]) -> List[str]:
@@ -689,7 +692,7 @@ def autolabel(symbols: Sequence[str]) -> List[str]:
     return labels
 
 
-def mp_header(atoms):
+def chemical_formula_header(atoms):
     counts = atoms.symbols.formula.count()
     formula_sum = ' '.join(f'{sym}{count}' for sym, count
                            in counts.items())
@@ -742,10 +745,6 @@ def atoms_to_loop_data(atoms, wrap, labels, loop_keys):
     for i, key in enumerate(coord_headers):
         loopdata[key] = (_coords[:, i], '{:7.5f}')
 
-    loopdata['_atom_site_thermal_displace_type'] = (
-        ['Biso'] * len(symbols), '{:s}')
-    loopdata['_atom_site_B_iso_or_equiv'] = (
-        [1.0] * len(symbols), '{:6.3f}')
     loopdata['_atom_site_type_symbol'] = (symbols, '{:<2s}')
     loopdata['_atom_site_symmetry_multiplicity'] = (
         [1.0] * len(symbols), '{}')
@@ -759,12 +758,10 @@ def atoms_to_loop_data(atoms, wrap, labels, loop_keys):
     return loopdata, coord_headers
 
 
-def write_cif_image(blockname, atoms, fd, *, cif_format, wrap,
+def write_cif_image(blockname, atoms, fd, *, wrap,
                     labels, loop_keys):
     fd.write(blockname)
-
-    if cif_format == 'mp':
-        fd.write(mp_header(atoms))
+    fd.write(chemical_formula_header(atoms))
 
     if atoms.cell.rank == 3:
         fd.write(format_cell(atoms.cell))
@@ -772,25 +769,16 @@ def write_cif_image(blockname, atoms, fd, *, cif_format, wrap,
         fd.write(format_generic_spacegroup_info())
         fd.write('\n')
 
-    loopdata, coord_headers = atoms_to_loop_data(atoms, wrap, labels, loop_keys)
+    loopdata, coord_headers = atoms_to_loop_data(atoms, wrap, labels,
+                                                 loop_keys)
 
-    if cif_format == 'mp':
-        headers = [
-            '_atom_site_type_symbol',
-            '_atom_site_label',
-            '_atom_site_symmetry_multiplicity',
-            *coord_headers,
-            '_atom_site_occupancy',
-        ]
-    else:
-        headers = [
-            '_atom_site_label',
-            '_atom_site_occupancy',
-            *coord_headers,
-            '_atom_site_thermal_displace_type',
-            '_atom_site_B_iso_or_equiv',
-            '_atom_site_type_symbol',
-        ]
+    headers = [
+        '_atom_site_type_symbol',
+        '_atom_site_label',
+        '_atom_site_symmetry_multiplicity',
+        *coord_headers,
+        '_atom_site_occupancy',
+    ]
 
     headers += ['_' + key for key in loop_keys]
 
