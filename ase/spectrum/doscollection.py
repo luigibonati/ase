@@ -76,40 +76,14 @@ class DOSCollection(collections.abc.Sequence):
         Returns:
             Plotting axes. If "ax" was set, this is the same object.
         """
-        dos = self.sample_grid(npts,
-                               xmin=xmin, xmax=xmax,
-                               width=width, smearing=smearing)
-
-        energies = dos.get_energies()
-        all_y = dos.get_all_weights()
-
-        all_labels = [DOSData.label_from_info(data.info) for data in self]
-
-        with SimplePlottingAxes(ax=ax, show=show, filename=filename) as ax:
-            self._plot_broadened(ax, energies, all_y, all_labels, mplargs)
-
-        return ax
-
-    @staticmethod
-    def _plot_broadened(ax: 'matplotlib.axes.Axes',
-                        energies: Sequence[float],
-                        all_y: np.ndarray,
-                        all_labels: Sequence[str],
-                        mplargs: Union[Dict, None]):
-        """Plot DOS data with labels to axes
-
-        This is separated into another function so that subclasses can
-        manipulate broadening, labels etc in their plot() method."""
-        if mplargs is None:
-            mplargs = {}
-
-        all_lines = ax.plot(energies, all_y.T, **mplargs)
-        for line, label in zip(all_lines, all_labels):
-            line.set_label(label)
-        ax.legend()
-
-        ax.set_xlim(left=min(energies), right=max(energies))
-        ax.set_ylim(bottom=0)
+        return self.sample_grid(npts,
+                                xmin=xmin, xmax=xmax,
+                                width=width, smearing=smearing
+                                ).plot(npts=npts,
+                                       xmin=xmin, xmax=xmax,
+                                       width=width, smearing=smearing,
+                                       ax=ax, show=show, filename=filename,
+                                       mplargs=mplargs)
 
     def sample_grid(self,
                     npts: int,
@@ -595,11 +569,13 @@ class GridDOSCollection(DOSCollection):
         """
 
         if npts:
-            energies, all_y = self.sample_grid(npts,
-                                               xmin=xmin, xmax=xmax,
-                                               width=width, smearing=smearing)
+            dos = self.sample_grid(npts,
+                                   xmin=xmin, xmax=xmax,
+                                   width=width, smearing=smearing)
         else:
-            energies, all_y = self._energies, self._weights
+            dos = self
+
+        energies, all_y = dos._energies, dos._weights
 
         all_labels = [DOSData.label_from_info(data.info) for data in self]
 
@@ -607,3 +583,24 @@ class GridDOSCollection(DOSCollection):
             self._plot_broadened(ax, energies, all_y, all_labels, mplargs)
 
         return ax
+
+    @staticmethod
+    def _plot_broadened(ax: 'matplotlib.axes.Axes',
+                        energies: Sequence[float],
+                        all_y: np.ndarray,
+                        all_labels: Sequence[str],
+                        mplargs: Union[Dict, None]):
+        """Plot DOS data with labels to axes
+
+        This is separated into another function so that subclasses can
+        manipulate broadening, labels etc in their plot() method."""
+        if mplargs is None:
+            mplargs = {}
+
+        all_lines = ax.plot(energies, all_y.T, **mplargs)
+        for line, label in zip(all_lines, all_labels):
+            line.set_label(label)
+        ax.legend()
+
+        ax.set_xlim(left=min(energies), right=max(energies))
+        ax.set_ylim(bottom=0)

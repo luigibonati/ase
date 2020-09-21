@@ -60,7 +60,8 @@ class TestDOSCollection:
 
         ax = figure.add_subplot(111)
 
-        ax_out = mindoscollection.plot(npts=npts, ax=ax, mplargs=mplargs)
+        with pytest.warns(UserWarning):  # Default width is small for npts=20
+            ax_out = mindoscollection.plot(npts=npts, ax=ax, mplargs=mplargs)
         assert ax_out == ax
 
         assert ([line.get_label() for line in ax.get_legend().get_lines()]
