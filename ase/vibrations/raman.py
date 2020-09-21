@@ -70,7 +70,7 @@ class StaticRamanCalculator(StaticRamanCalculatorBase, Vibrations):
     pass
 
 
-class StaticRamanPhononCalculator(StaticRamanCalculatorBase, Phonons):
+class StaticRamanPhononsCalculator(StaticRamanCalculatorBase, Phonons):
     pass
 
 
@@ -279,11 +279,8 @@ class RamanEvaluate(RamanBase):
                      m2(alpha_Qcc[:, 1, 1] - alpha_Qcc[:, 2, 2])) / 2)
         return alpha2_r, gamma2_r, delta2_r
 
-    def summary(self,
-                method='standard', direction='central',
-                log=sys.stdout):
+    def summary(self, log=sys.stdout):
         """Print summary for given omega [eV]"""
-        self.read(method, direction)
         hnu = self.get_energies()
         intensities = self.get_absolute_intensities()
         te = int(np.log10(intensities.max())) - 2
@@ -313,18 +310,18 @@ class RamanEvaluate(RamanBase):
                      (n, 1000 * e, c, e / u.invcm, c, intensities[n] * scale),
                      file=log)
         parprint('-------------------------------------', file=log)
-        parprint('Zero-point energy: %.3f eV' %
-                 self.vibrations.get_zero_point_energy(),
-                 file=log)
+        # XXX enable this in phonons
+        # parprint('Zero-point energy: %.3f eV' %
+        #         self.vibrations.get_zero_point_energy(),
+        #         file=log)
 
 
 class Raman(RamanEvaluate):
     def __init__(self, atoms, *args, **kwargs):
         super().__init__(atoms, *args, **kwargs)
 
-        kwargs.pop('txt', None)
-        kwargs.pop('exext', None)
-        kwargs.pop('exname', None)
+        for key in ['txt', 'exext', 'exname']:
+            kwargs.pop(key, None)
         kwargs['name'] = kwargs.get('name', self.name)
         self.vibrations = Vibrations(atoms, *args, **kwargs)
         
@@ -353,30 +350,53 @@ class Raman(RamanEvaluate):
 
 
 class RamanPhonons(RamanEvaluate):
+    def __init__(self, atoms, *args, **kwargs):
+        RamanEvaluate.__init__(self, atoms, *args, **kwargs)
+
+        for key in ['txt', 'exext', 'exname']:
+            kwargs.pop(key, None)
+        kwargs['name'] = kwargs.get('name', self.name)
+        self.vibrations = Phonons(atoms, *args, **kwargs)
+
+        self.delta = self.vibrations.delta
+        self.indices = self.vibrations.indices
+
+        self.kpts = (1, 1, 1)
+
+    @property
+    def kpts(self):
+        return self._kpts
+
+    @kpts.setter
+    def kpts(self, kpts):
+        if not hasattr(self, '_kpts') or kpts != self._kpts:
+            self._kpts = kpts
+            self.kpts_kc = monkhorst_pack(self.kpts)
+            if hasattr(self, 'im_r'):
+                del self.im_r  # we'll have to recalculate
+
     def calculate_energies_and_modes(self):
         if not self._read:
             if hasattr(self, 'im_r'):
                 del self.im_r
             self.read()
 
-        self.timer.start('band_structure')
-         
-        kpts_kc = monkhorst_pack(self.kpts)
-        omega_kl, u_kl = self.band_structure(kpts_kc, modes=True,
-                                             verbose=self.verbose)
+        if not hasattr(self, 'im_r'):
+            self.timer.start('band_structure')
+            omega_kl, u_kl = self.vibrations.band_structure(
+                self.kpts_kc, modes=True, verbose=self.verbose)
 
-        self.im_r = self.m_inv_x  # use the same name as in Vibrations
-        
-        # we now have:
-        # self.H     : Hessian matrix
-        # self.im    : 1./sqrt(masses)
-        # self.modes : Eigenmodes of the mass weighted Hessian
-        self.om_Q = self.hnu.real    # energies in eV
-        self.om_v = self.om_Q
-        # pre-factors for one vibrational excitation
-        with np.errstate(divide='ignore'):
-            self.vib01_Q = np.where(self.om_Q > 0,
-                                    1. / np.sqrt(2 * self.om_Q), 0)
-        # -> sqrt(amu) * Angstrom
-        self.vib01_Q *= np.sqrt(u.Ha * u._me / u._amu) * u.Bohr
-        self.timer.stop('band_structure')
+            self.im_r = self.vibrations.m_inv_x
+            self.om_Q = omega_kl.ravel().real   # energies in eV
+            self.modes = u_kl.reshape(len(self.om_Q),
+                                      3 * len(self.atoms))
+            self.modes /= self.im_r
+            self.om_v = self.om_Q
+
+            # pre-factors for one vibrational excitation
+            with np.errstate(divide='ignore', invalid='ignore'):
+                self.vib01_Q = np.where(
+                    self.om_Q > 0, 1. / np.sqrt(2 * self.om_Q), 0)
+            # -> sqrt(amu) * Angstrom
+            self.vib01_Q *= np.sqrt(u.Ha * u._me / u._amu) * u.Bohr
+            self.timer.stop('band_structure')

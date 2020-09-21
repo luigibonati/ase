@@ -1,7 +1,7 @@
 import numpy as np
 
 import ase.units as u
-from ase.vibrations.raman import Raman
+from ase.vibrations.raman import Raman, RamanPhonons
 from ase.vibrations.resonant_raman import ResonantRaman
 from ase.calculators.excitation_list import polarizability
 
@@ -90,6 +90,10 @@ class PlaczekStatic(Raman):
         V_qcc = (V_rcc.T * self.im_r).T  # units Angstrom^2 / sqrt(amu)
         V_Qcc = np.dot(V_qcc.T, self.modes.T).T
         return V_Qcc
+
+
+class PlaczekStaticPhonons(RamanPhonons, PlaczekStatic):
+    pass
 
 
 class Profeta(ResonantRaman):
