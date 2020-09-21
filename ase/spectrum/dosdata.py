@@ -2,7 +2,7 @@
 # towards replacing ase.dft.dos and ase.dft.pdos
 from abc import ABCMeta, abstractmethod
 import warnings
-from typing import Any, Dict, Sequence, Tuple, TypeVar
+from typing import Any, Dict, Sequence, TypeVar
 
 import numpy as np
 from ase.utils.plotting import SimplePlottingAxes
@@ -41,11 +41,14 @@ class DOSData(metaclass=ABCMeta):
     def copy(self) -> 'DOSData':
         """Returns a copy in which info dict can be safely mutated"""
 
-    def sample(self,
-               energies: Sequence[float],
-               width: float = 0.1,
-               smearing: str = 'Gauss') -> np.ndarray:
+    def _sample(self,
+                energies: Sequence[float],
+                width: float = 0.1,
+                smearing: str = 'Gauss') -> np.ndarray:
         """Sample the DOS data at chosen points, with broadening
+
+        Note that no correction is made here for the sampling bin width; total
+        intensity will vary with sampling density.
 
         Args:
             energies: energy values for sampling
@@ -70,12 +73,11 @@ class DOSData(metaclass=ABCMeta):
         """Compare with another DOSData for testing purposes"""
         if not isinstance(other, type(self)):
             return False
-        elif not self.info == other.info:
+        if self.info != other.info:
             return False
-        elif not np.allclose(self.get_weights(), other.get_weights()):
+        if not np.allclose(self.get_weights(), other.get_weights()):
             return False
-        else:
-            return np.allclose(self.get_energies(), other.get_energies())
+        return np.allclose(self.get_energies(), other.get_energies())
 
     @staticmethod
     def _delta(x: np.ndarray,
@@ -109,7 +111,7 @@ class DOSData(metaclass=ABCMeta):
                     padding: float = 3,
                     width: float = 0.1,
                     smearing: str = 'Gauss',
-                    ) -> Tuple[Sequence[float], Sequence[float]]:
+                    ) -> 'GridDOSData':
         """Sample the DOS data on an evenly-spaced energy grid
 
         Args:
@@ -118,8 +120,9 @@ class DOSData(metaclass=ABCMeta):
             xmax: Maximum sampled x value; if unspecified, a default is chosen
             padding: If xmin/xmax is unspecified, default value will be padded
                 by padding * width to avoid cutting off peaks.
-            width: Width of broadening kernel, passed to self.sample()
-            smearing: selection of broadening kernel, passed to self.sample()
+            width: Width of broadening kernel
+            smearing: selection of broadening kernel (only 'Gauss' is
+                implemented)
 
         Returns:
             (energy values, sampled DOS)
@@ -129,8 +132,11 @@ class DOSData(metaclass=ABCMeta):
             xmin = min(self.get_energies()) - (padding * width)
         if xmax is None:
             xmax = max(self.get_energies()) + (padding * width)
-        energies = np.linspace(xmin, xmax, npts)
-        return energies, self.sample(energies, width=width, smearing=smearing)
+        energies_grid = np.linspace(xmin, xmax, npts)
+        weights_grid = self._sample(energies_grid, width=width,
+                                    smearing=smearing)
+
+        return GridDOSData(energies_grid, weights_grid, info=self.info.copy())
 
     def plot_dos(self,
                  npts: int = 1000,
@@ -151,8 +157,8 @@ class DOSData(metaclass=ABCMeta):
 
         Args:
             npts, xmin, xmax: output data range, as passed to self.sample_grid
-            width: Width of broadening kernel, passed to self.sample()
-            smearing: selection of broadening kernel, passed to self.sample()
+            width: Width of broadening kernel for self.sample_grid()
+            smearing: selection of broadening kernel for self.sample_grid()
             ax: existing Matplotlib axes object. If not provided, a new figure
                 with one set of axes will be created using Pyplot
             show: show the figure on-screen
@@ -165,19 +171,16 @@ class DOSData(metaclass=ABCMeta):
             Plotting axes. If "ax" was set, this is the same object.
         """
 
-        with SimplePlottingAxes(ax=ax, show=show, filename=filename) as ax:
+        if mplargs is None:
+            mplargs = {}
+        if 'label' not in mplargs:
+            mplargs.update({'label': self.label_from_info(self.info)})
 
-            if mplargs is None:
-                mplargs = {}
-            if 'label' not in mplargs:
-                mplargs.update({'label': self.label_from_info(self.info)})
-
-            energies, intensity = self.sample_grid(npts, xmin=xmin, xmax=xmax,
-                                                   width=width,
-                                                   smearing=smearing)
-            ax.plot(energies, intensity, **mplargs)
-
-        return ax
+        dos = self.sample_grid(npts, xmin=xmin, xmax=xmax,
+                               width=width,
+                               smearing=smearing)
+        return dos.plot_dos(ax=ax, show=show, filename=filename,
+                            mplargs=mplargs)
 
     @staticmethod
     def label_from_info(info: Dict[str, str]):
@@ -232,7 +235,7 @@ class RawDOSData(GeneralDOSData):
     This is an appropriate data container for density-of-states (DOS) or
     spectral data where the energy data values not form a known regular
     grid. The data may be plotted or resampled for further analysis using the
-    sample(), sample_grid() and plot() methods. Multiple weights at the same
+    sample_grid() and plot() methods. Multiple weights at the same
     energy value will *only* be combined in output data, and data stored in
     RawDOSData is never resampled. A plot_deltas() function is also provided
     which plots the raw data.
@@ -296,11 +299,11 @@ class RawDOSData(GeneralDOSData):
         Returns:
             Plotting axes. If "ax" was set, this is the same object.
         """
+
+        if mplargs is None:
+            mplargs = {}
+
         with SimplePlottingAxes(ax=ax, show=show, filename=filename) as ax:
-
-            if mplargs is None:
-                mplargs = {}
-
             ax.vlines(self.get_energies(), 0, self.get_weights(), **mplargs)
 
         return ax
@@ -310,11 +313,11 @@ class GridDOSData(GeneralDOSData):
     """A collection of regularly-sampled data which represents a DOS
 
     This is an appropriate data container for density-of-states (DOS) or
-    spectral data where the intensity values form a regular grid. This is
-    generally the result of sampling or integrating into discrete bins,
-    rather than a collection of unique states. The data may be plotted or
-    resampled for further analysis using the sample(), sample_grid() and plot()
-    methods.
+    spectral data where the intensity values form a regular grid. This
+    is generally the result of sampling or integrating into discrete
+    bins, rather than a collection of unique states. The data may be
+    plotted or resampled for further analysis using the sample_grid()
+    and plot() methods.
 
     Metadata may be stored in the info dict, in which keys and values must be
     strings. This data is used for selecting and combining multiple DOSData
@@ -354,20 +357,22 @@ class GridDOSData(GeneralDOSData):
         super().__init__(energies, weights, info=info)
         self.sigma_cutoff = 3
 
-    def _check_spacing(self, width):
+    def _check_spacing(self, width) -> float:
         current_spacing = self._data[0, 1] - self._data[0, 0]
         if width < (2 * current_spacing):
             warnings.warn(
                 "The broadening width is small compared to the original "
                 "sampling density. The results are unlikely to be smooth.")
+        return current_spacing
 
-    def sample(self,
-               energies: Sequence[float],
-               width: float = 0.1,
-               smearing: str = 'Gauss') -> np.ndarray:
-        self._check_spacing(width)
-        return super().sample(energies=energies,
-                              width=width, smearing=smearing)
+    def _sample(self,
+                energies: Sequence[float],
+                width: float = 0.1,
+                smearing: str = 'Gauss') -> np.ndarray:
+        current_spacing = self._check_spacing(width)
+        return super()._sample(energies=energies,
+                               width=width, smearing=smearing
+                               ) * current_spacing
 
     def __add__(self, other: 'GridDOSData') -> 'GridDOSData':
         # This method uses direct access to the mutable energy and weights data
@@ -423,8 +428,8 @@ class GridDOSData(GeneralDOSData):
 
         Args:
             npts, xmin, xmax: output data range, as passed to self.sample_grid
-            width: Width of broadening kernel, passed to self.sample()
-            smearing: selection of broadening kernel, passed to self.sample()
+            width: Width of broadening kernel, passed to self.sample_grid()
+            smearing: selection of broadening kernel for self.sample_grid()
             ax: existing Matplotlib axes object. If not provided, a new figure
                 with one set of axes will be created using Pyplot
             show: show the figure on-screen
@@ -436,20 +441,21 @@ class GridDOSData(GeneralDOSData):
             Plotting axes. If "ax" was set, this is the same object.
         """
 
+        if mplargs is None:
+            mplargs = {}
+        if 'label' not in mplargs:
+            mplargs.update({'label': self.label_from_info(self.info)})
+
+        if npts:
+            dos = self.sample_grid(npts, xmin=xmin,
+                                   xmax=xmax, width=width,
+                                   smearing=smearing)
+        else:
+            dos = self
+
+        energies, intensity = dos.get_energies(), dos.get_weights()
+
         with SimplePlottingAxes(ax=ax, show=show, filename=filename) as ax:
-
-            if mplargs is None:
-                mplargs = {}
-            if 'label' not in mplargs:
-                mplargs.update({'label': self.label_from_info(self.info)})
-
-            if npts:
-                energies, intensity = self.sample_grid(npts, xmin=xmin,
-                                                       xmax=xmax, width=width,
-                                                       smearing=smearing)
-            else:
-                energies, intensity = self.get_energies(), self.get_weights()
-
             ax.plot(energies, intensity, **mplargs)
             ax.set_xlim(left=xmin, right=xmax)
 

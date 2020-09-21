@@ -1,7 +1,7 @@
 import collections
 from functools import reduce, singledispatch
 from typing import (Any, Dict, Iterable, List, Optional,
-                    overload, Sequence, Tuple, TypeVar, Union)
+                    overload, Sequence, TypeVar, Union)
 
 import numpy as np
 from ase.spectrum.dosdata import DOSData, RawDOSData, GridDOSData, Info
@@ -17,10 +17,10 @@ class DOSCollection(collections.abc.Sequence):
     def __init__(self, dos_series: Iterable[DOSData]) -> None:
         self._data = list(dos_series)
 
-    def sample(self,
-               energies: Sequence[float],
-               width: float = 0.1,
-               smearing: str = 'Gauss') -> np.ndarray:
+    def _sample(self,
+                energies: Sequence[float],
+                width: float = 0.1,
+                smearing: str = 'Gauss') -> np.ndarray:
         """Sample the DOS data at chosen points, with broadening
 
         This samples the underlying DOS data in the same way as the .sample()
@@ -40,9 +40,10 @@ class DOSCollection(collections.abc.Sequence):
 
         if len(self) == 0:
             raise IndexError("No data to sample")
-        return np.asarray([data.sample(energies,
-                                       width=width, smearing=smearing)
-                           for data in self])
+
+        return np.asarray(
+            [data._sample(energies, width=width, smearing=smearing)
+             for data in self])
 
     def plot(self,
              npts: int = 1000,
@@ -63,8 +64,8 @@ class DOSCollection(collections.abc.Sequence):
 
         Args:
             npts, xmin, xmax: output data range, as passed to self.sample_grid
-            width: Width of broadening kernel, passed to self.sample()
-            smearing: selection of broadening kernel, passed to self.sample()
+            width: Width of broadening kernel, passed to self.sample_grid()
+            smearing: selection of broadening kernel for self.sample_grid()
             ax: existing Matplotlib axes object. If not provided, a new figure
                 with one set of axes will be created using Pyplot
             show: show the figure on-screen
@@ -76,18 +77,20 @@ class DOSCollection(collections.abc.Sequence):
             Plotting axes. If "ax" was set, this is the same object.
         """
 
+        if mplargs is None:
+            mplargs = {}
+
+        dos = self.sample_grid(npts,
+                               xmin=xmin, xmax=xmax,
+                               width=width, smearing=smearing)
+
+        energies = dos.get_energies()
+        all_y = dos.get_all_weights()
+
+        all_labels = [DOSData.label_from_info(data.info) for data in self]
+
         with SimplePlottingAxes(ax=ax, show=show, filename=filename) as ax:
-
-            if mplargs is None:
-                mplargs = {}
-
-            energies, all_y = self.sample_grid(npts,
-                                               xmin=xmin, xmax=xmax,
-                                               width=width, smearing=smearing)
-
-            all_labels = [DOSData.label_from_info(data.info) for data in self]
-
-            all_lines = ax.plot(energies, all_y.T, **mplargs)
+            all_lines = ax.plot(energies, np.asarray(all_y).T, **mplargs)
             for line, label in zip(all_lines, all_labels):
                 line.set_label(label)
             ax.legend()
@@ -104,7 +107,7 @@ class DOSCollection(collections.abc.Sequence):
                     padding: float = 3,
                     width: float = 0.1,
                     smearing: str = 'Gauss',
-                    ) -> Tuple[Sequence[float], np.ndarray]:
+                    ) -> 'GridDOSCollection':
         """Sample the DOS data on an evenly-spaced energy grid
 
         Args:
@@ -115,8 +118,8 @@ class DOSCollection(collections.abc.Sequence):
                 chosen
             padding: If xmin/xmax is unspecified, default value will be padded
                 by padding * width to avoid cutting off peaks.
-            width: Width of broadening kernel, passed to self.sample()
-            smearing: selection of broadening kernel, passed to self.sample()
+            width: Width of broadening kernel, passed to self.sample_grid()
+            smearing: selection of broadening kernel, for self.sample_grid()
 
         Returns:
             (energy values, sampled DOS)
@@ -130,8 +133,14 @@ class DOSCollection(collections.abc.Sequence):
         if xmax is None:
             xmax = (max(max(data.get_energies()) for data in self)
                     + (padding * width))
-        energies = np.linspace(xmin, xmax, npts)
-        return energies, self.sample(energies, width=width, smearing=smearing)
+
+        if len(self) == 0:
+            raise IndexError("No data to sample")
+
+        return GridDOSCollection(
+            [data.sample_grid(npts, xmin=xmin, xmax=xmax, width=width,
+                              smearing=smearing)
+             for data in self])
 
     @classmethod
     def from_data(cls,
@@ -218,6 +227,7 @@ class DOSCollection(collections.abc.Sequence):
         return data
 
     D = TypeVar('D', bound=DOSData)
+
     @staticmethod
     def _select_to_list(dos_collection: Sequence[D],         # Bug in flakes
                         info_selection: Dict[str, str],      # misses 'D' def
@@ -409,6 +419,12 @@ class GridDOSCollection(DOSCollection):
             self._weights[i, :] = dos_data.get_weights()
             self._info.append(dos_data.info)
 
+    def get_energies(self) -> Sequence[float]:
+        return self._energies.copy()
+
+    def get_all_weights(self) -> Sequence[Sequence[float]]:
+        return self._weights.copy()
+
     def __len__(self) -> int:
         return self._weights.shape[0]
 
@@ -434,7 +450,7 @@ class GridDOSCollection(DOSCollection):
     def from_data(cls,
                   energies: Sequence[float],
                   weights: Sequence[Sequence[float]],
-                  info: Sequence[Info] = None) -> 'DOSCollection':
+                  info: Sequence[Info] = None) -> 'GridDOSCollection':
         """Create a GridDOSCollection from data with a common set of energies
 
         This convenience method may also be more efficient as it limits
