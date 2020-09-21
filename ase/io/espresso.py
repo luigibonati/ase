@@ -217,12 +217,8 @@ def read_espresso_out(fileobj, index=-1, results_required=True):
             symbols = [label_to_symbol(position[0]) for position in
                        positions_card]
             positions = [position[1] for position in positions_card]
-
-            constraint_idx = [position[2] for position in positions_card]
-            constraint = get_constraint(constraint_idx)
-
             structure = Atoms(symbols=symbols, positions=positions, cell=cell,
-                              constraint=constraint, pbc=True)
+                              pbc=True)
 
         # Extract calculation results
         # Energy
@@ -497,13 +493,10 @@ def read_espresso_in(fileobj):
 
     symbols = [label_to_symbol(position[0]) for position in positions_card]
     positions = [position[1] for position in positions_card]
-    constraint_idx = [position[2] for position in positions_card]
-    constraint = get_constraint(constraint_idx)
 
     # TODO: put more info into the atoms object
     # e.g magmom, forces.
-    atoms = Atoms(symbols=symbols, positions=positions, cell=cell,
-                  constraint=constraint, pbc=True)
+    atoms = Atoms(symbols=symbols, positions=positions, cell=cell, pbc=True)
 
     return atoms
 
@@ -1699,21 +1692,3 @@ def write_espresso_in(fd, atoms, input_data=None, pseudopotentials=None,
 
     # DONE!
     fd.write(''.join(pwi))
-
-
-def get_constraint(constraint_idx):
-    """
-    Map constraints from QE input/output to FixAtoms or FixCartesian constraint
-    """
-    if not np.any(constraint_idx):
-        return None
-
-    a = [a for a, c in enumerate(constraint_idx) if np.all(c is not None)]
-    mask = [[(ic + 1) % 2 for ic in c] for c in constraint_idx
-            if np.all(c is not None)]
-
-    if np.all(np.array(mask)) == 1:
-        constraint = FixAtoms(a)
-    else:
-        constraint = FixCartesian(a, mask)
-    return constraint
