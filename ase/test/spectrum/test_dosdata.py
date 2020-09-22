@@ -175,15 +175,15 @@ class TestRawDosData:
     linewidths = [1, 5, None]
     @pytest.mark.usefixtures("figure")
     @pytest.mark.parametrize('linewidth', linewidths)
-    def test_plot_dos(self, sparse_dos, figure, linewidth):
+    def test_plot(self, sparse_dos, figure, linewidth):
         if linewidth is None:
             mplargs = None
         else:
             mplargs = {'linewidth': linewidth}
 
         ax = figure.add_subplot(111)
-        ax_out = sparse_dos.plot_dos(npts=5, ax=ax, mplargs=mplargs,
-                                     smearing='Gauss')
+        ax_out = sparse_dos.plot(npts=5, ax=ax, mplargs=mplargs,
+                                 smearing='Gauss')
         assert ax_out == ax
 
         line_data = ax.lines[0].get_data()
@@ -297,15 +297,15 @@ class TestGridDosData:
     linewidths = [1, 5, None]
     @pytest.mark.usefixtures("figure")
     @pytest.mark.parametrize('linewidth', linewidths)
-    def test_plot_dos(self, dense_dos, figure, linewidth):
+    def test_plot(self, dense_dos, figure, linewidth):
         if linewidth is None:
             mplargs = None
         else:
             mplargs = {'linewidth': linewidth}
 
         ax = figure.add_subplot(111)
-        ax_out = dense_dos.plot_dos(ax=ax, mplargs=mplargs,
-                                    smearing='Gauss')
+        ax_out = dense_dos.plot(ax=ax, mplargs=mplargs,
+                                smearing='Gauss')
         assert ax_out == ax
 
         line_data = ax.lines[0].get_data()
@@ -321,8 +321,8 @@ class TestGridDosData:
         # previous results; this result has not been rigorously checked but at
         # least it should not _change_ unexpectedly
         ax = figure.add_subplot(111)
-        _ = dense_dos.plot_dos(ax=ax, npts=10, xmin=0, xmax=9,
-                               width=4, smearing='Gauss')
+        _ = dense_dos.plot(ax=ax, npts=10, xmin=0, xmax=9,
+                           width=4, smearing='Gauss')
         line_data = ax.lines[0].get_data()
         assert np.allclose(line_data[0], range(10))
         assert np.allclose(line_data[1],
