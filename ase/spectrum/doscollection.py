@@ -119,9 +119,6 @@ class DOSCollection(collections.abc.Sequence):
             xmax = (max(max(data.get_energies()) for data in self)
                     + (padding * width))
 
-        if len(self) == 0:
-            raise IndexError("No data to sample")
-
         return GridDOSCollection(
             [data.sample_grid(npts, xmin=xmin, xmax=xmax, width=width,
                               smearing=smearing)
