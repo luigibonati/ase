@@ -238,8 +238,10 @@ def test_bad_reciprocal(gui):
 def test_add_atoms(gui):
     dia = gui.add_atoms()
     dia.combobox.value = 'CH3CH2OH'
+    assert len(gui.atoms) == 0
     dia.add()
     assert str(gui.atoms.symbols) == str(molecule('CH3CH2OH').symbols)
+
 
 def test_cell_editor(gui):
     au = bulk('Au')
@@ -298,6 +300,57 @@ def test_quickinfo(gui, atoms):
     # This is a bit weird and invasive ...
     txt = dia.things[0].text
     assert refstring in txt
+
+
+def test_clipboard_copy(gui):
+    atoms = molecule('CH3CH2OH')
+    gui.new_atoms(atoms)
+    gui.select_all()
+    assert all(gui.selected_atoms().symbols == atoms.symbols)
+    gui.copy_atoms_to_clipboard()
+    newatoms = gui.clipboard.get_atoms()
+    assert newatoms is not atoms
+    assert newatoms == atoms
+
+
+def test_clipboard_cut_paste(gui):
+    atoms = molecule('H2O')
+    gui.new_atoms(atoms.copy())
+    assert len(gui.atoms) == 3
+    gui.select_all()
+    gui.cut_atoms_to_clipboard()
+    assert len(gui.atoms) == 0
+    assert atoms == gui.clipboard.get_atoms()
+
+
+def test_clipboard_paste_onto_empty(gui):
+    atoms = bulk('Ti')
+    gui.clipboard.set_atoms(atoms)
+    gui.paste_atoms_from_clipboard()
+    # (The paste includes cell and pbc when existing atoms are empty)
+    assert gui.atoms == atoms
+
+
+def test_clipboard_paste_onto_existing(gui):
+    ti = bulk('Ti')
+    gui.new_atoms(ti.copy())
+    assert gui.atoms == ti
+    h2o = molecule('H2O')
+    gui.clipboard.set_atoms(h2o)
+    gui.paste_atoms_from_clipboard()
+    assert gui.atoms == ti + h2o
+
+
+@pytest.mark.parametrize('text', [
+    '',
+    'invalid_atoms',
+    '[1, 2, 3]',  # valid JSON but not Atoms
+])
+def test_clipboard_paste_invalid(gui, text):
+    gui.clipboard.set_text(text)
+    with pytest.raises(GUIError):
+        gui.paste_atoms_from_clipboard()
+
 
 def window():
 

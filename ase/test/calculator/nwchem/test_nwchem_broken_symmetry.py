@@ -1,10 +1,11 @@
 """Check if we can deal with spin-broken symmetries."""
 from numpy import array
+import pytest
 from ase import Atoms
-from ase.calculators.nwchem import NWChem
 
 
-def test_main():
+@pytest.mark.calculator('nwchem')
+def test_main(factory):
     """Perform C_{\\inf v} calculation on Cr_2."""
     # PBE from
     # J. Chem. Phys. 112 , 5576 (2000)
@@ -18,27 +19,31 @@ def test_main():
     for orientation in range(2):    # create two fragments
         imm = 6 * (-1)**orientation
         cr_atom.set_initial_magnetic_moments([imm])
-        calc = NWChem(task='energy', xc='pbe', theory='dft',
-                      dft=dict(convergence=dict(energy=1e-3,
-                                                density=1e-2,
-                                                gradient=5e-2),
-                               vectors='input atomic output {}'
-                                       .format(names[orientation])),
-                      charge=0,
-                      basis='"DZVP2 (DFT Orbital)"')
+        calc = factory.calc(
+            task='energy', xc='pbe', theory='dft',
+            dft=dict(convergence=dict(energy=1e-3,
+                                      density=1e-2,
+                                      gradient=5e-2),
+                     vectors='input atomic output {}'
+                     .format(names[orientation])),
+            charge=0,
+            basis='"DZVP2 (DFT Orbital)"'
+        )
         cr_atom.calc = calc
         fragment_energies[orientation] = cr_atom.get_potential_energy()
     cr_dimer = Atoms('Cr2', positions=[(0, 0, 0), (0, 0, 1.93)], pbc=False)
     cr_dimer.set_initial_magnetic_moments([0, 0])
-    calc = NWChem(task='energy', xc='pbe', theory='dft',
-                  dft=dict(convergence=dict(energy=1e-3,
-                                            density=1e-2,
-                                            gradient=5e-2),
-                           odft=None,
-                           vectors='input fragment {} output Cr2_AF.mos'
-                                   .format(' '.join(names))),
-                  basis='"DZVP2 (DFT Orbital)"',
-                  charge=0)
+    calc = factory.calc(
+        task='energy', xc='pbe', theory='dft',
+        dft=dict(convergence=dict(energy=1e-3,
+                                  density=1e-2,
+                                  gradient=5e-2),
+                 odft=None,
+                 vectors='input fragment {} output Cr2_AF.mos'
+                 .format(' '.join(names))),
+        basis='"DZVP2 (DFT Orbital)"',
+        charge=0
+    )
     cr_dimer.calc = calc
     e_dimer = cr_dimer.get_potential_energy()
     e_tot = e_dimer - fragment_energies.sum()

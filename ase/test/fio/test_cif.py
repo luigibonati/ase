@@ -1,9 +1,12 @@
 import io
 import numpy as np
 import warnings
+import pytest
 
 from ase.io import read
 from ase.io import write
+from ase.io.cif import CIFLoop, parse_loop
+
 
 def check_fractional_occupancies(atoms):
     """ Checks fractional occupancy entries in atoms.info dict """
@@ -22,7 +25,7 @@ def check_fractional_occupancies(atoms):
         if a.symbol == 'Cl':
             assert occupancies[kinds[a.index]]['Cl'] == 0.3
 
-content = u"""
+content = """
 data_1
 
 
@@ -246,7 +249,6 @@ loop_
    I          0.5000  0.250000      0.250000      0.250000     Biso  1.000000 I
 """
 
-
 def test_cif():
     cif_file = io.StringIO(content)
 
@@ -294,7 +296,7 @@ def test_cif():
 
 
 # ICSD-like file from issue #293
-content2 = u"""
+content2 = """
 data_global
 _cell_length_a 9.378(5)
 _cell_length_b 7.488(5)
@@ -341,5 +343,65 @@ Se5 Se2- 2 a 0.1147(4) 0.5633(4) 0.3288(6) 0.1078(6) 1. 0
 Se6 Se2- 2 a 0.0050(4) 0.4480(6) 0.9025(6) 0.9102(6) 1. 0
 """
 
-cif_file = io.StringIO(content2)
-atoms = read(cif_file, format='cif')
+def test_cif_icsd():
+    cif_file = io.StringIO(content2)
+    atoms = read(cif_file, format='cif')
+    #test something random so atoms is not unused
+    assert 'occupancy' in atoms.info
+
+
+@pytest.fixture
+def atoms_fix():
+    cif_file = io.StringIO(content)
+    return read(cif_file, format='cif')
+
+
+def test_cif_loop_keys(atoms_fix):
+    data = {}
+    data['someKey'] = [[str(i)+"test" for i in range(20)]] #test case has 20 entries
+    data['someIntKey'] = [[str(i)+"123" for i in range(20)]] #test case has 20 entries
+    atoms_fix.write('testfile.cif', loop_keys=data)
+
+    atoms = read('testfile.cif', store_tags=True)
+    #keys are read lowercase only
+    r_data = {'someKey': atoms.info['_somekey'], 'someIntKey': atoms.info['_someintkey']}
+    assert r_data['someKey'] == data['someKey'][0]
+    #data reading auto converts strins
+    assert r_data['someIntKey'] == [int(x) for x in data['someIntKey'][0]]
+
+
+#test if automatic numbers written after elements are correct
+def test_cif_writer_label_numbers(atoms_fix):
+    atoms_fix.write('testfile.cif')
+    atoms = read('testfile.cif', store_tags=True)
+    labels = atoms.info['_atom_site_label']
+    elements = atoms.info['_atom_site_type_symbol']#cannot use atoms.symbols as K is missing there
+    build_labels = ["{:}{:}".format(x,i) for x in set(elements) for i in range(1,elements.count(x)+1)]
+    assert build_labels.sort() == labels.sort()
+
+def test_cif_labels(atoms_fix):
+    data = [["label"+str(i) for i in range(20)]] #test case has 20 entries
+    atoms_fix.write('testfile.cif', labels=data)
+
+    atoms = read('testfile.cif', store_tags=True)
+    print(atoms.info)
+    assert data[0] == atoms.info['_atom_site_label']
+
+
+def test_cifloop():
+    dct = {'_eggs': range(4),
+           '_potatoes': [1.3, 7.1, -1, 0]}
+
+    loop = CIFLoop()
+    loop.add('_eggs', dct['_eggs'], '{:<2d}')
+    loop.add('_potatoes', dct['_potatoes'], '{:.4f}')
+
+    string = loop.tostring() + '\n\n'
+    lines = string.splitlines()[::-1]
+    assert lines.pop() == 'loop_'
+
+    newdct = parse_loop(lines)
+    print(newdct)
+    assert set(dct) == set(newdct)
+    for name in dct:
+        assert dct[name] == pytest.approx(newdct[name])

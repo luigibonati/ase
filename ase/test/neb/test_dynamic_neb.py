@@ -4,7 +4,7 @@ from ase import Atoms
 from ase.build import fcc111
 from ase.optimize import BFGS
 from ase.calculators.emt import EMT as OrigEMT
-from ase.neb import NEB
+from ase.dyneb import DyNEB
 
 
 @pytest.mark.slow
@@ -59,14 +59,15 @@ def test_dynamic_neb():
 
     def run_NEB():
         if method == 'dyn':
-            neb = NEB(images, fmax=fmax, dynamic_relaxation=True)
+            neb = DyNEB(images, fmax=fmax, dynamic_relaxation=True)
             neb.interpolate()
         elif method == 'dyn_scale':
-            neb = NEB(images, fmax=fmax, dynamic_relaxation=True, scale_fmax=6.)
+            neb = DyNEB(images, fmax=fmax, dynamic_relaxation=True,
+                        scale_fmax=6.)
             neb.interpolate()
         else:
             # Default NEB
-            neb = NEB(images)
+            neb = DyNEB(images, dynamic_relaxation=False)
             neb.interpolate()
 
         # Optimize and check number of calculations.

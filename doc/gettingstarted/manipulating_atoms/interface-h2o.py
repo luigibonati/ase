@@ -1,9 +1,12 @@
 # creates: WL.png, Ni111slab2x2.png, WL_rot_c.png, WL_rot_a.png, WL_wrap.png, interface-h2o-wrap.png
+import runpy
+
 import numpy as np
+
 from ase.io import read, write
 from ase.build import fcc111
 
-exec(compile(open('WL.py').read(), 'WL.py', 'exec'))
+runpy.run_path('WL.py')
 
 # Use ase.io.read to load atoms object
 W = read('WL.traj')
