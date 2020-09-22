@@ -46,7 +46,7 @@ class Langevin(MolecularDynamics):
     This dynamics accesses the atoms using Cartesian coordinates."""
 
     # Helps Asap doing the right thing.  Increment when changing stuff:
-    _lgv_version = 3
+    _lgv_version = 4
 
     def __init__(self, atoms, timestep, temperature=None, friction=None,
                  fixcm=True, trajectory=None, logfile=None, loginterval=1,
