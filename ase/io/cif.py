@@ -199,6 +199,10 @@ def parse_items(lines: List[str], line: str) -> Dict[str, CIFData]:
     return tags
 
 
+class NoStructureData(RuntimeError):
+    pass
+
+
 class CIFBlock(collections.abc.Mapping):
     """A block (i.e., a single system) in a crystallographic information file.
 
@@ -260,7 +264,7 @@ class CIFBlock(collections.abc.Mapping):
         if scaled_positions is None:
             positions = self._raw_positions()
             if positions is None:
-                raise RuntimeError('No positions found in structure')
+                raise NoStructureData('No positions found in structure')
             cell = self.get_cell()
             scaled_positions = cell.scaled_positions(positions)
         return scaled_positions
@@ -268,9 +272,13 @@ class CIFBlock(collections.abc.Mapping):
     def _get_symbols_with_deuterium(self):
         labels = self._get_any(['_atom_site_type_symbol',
                                 '_atom_site_label'])
-        assert labels is not None
+        if labels is None:
+            raise NoStructureData('No symbols')
+
         symbols = []
         for label in labels:
+            if label == '.' or label == '?':
+                raise NoStructureData('Symbols are undetermined')
             # Strip off additional labeling on chemical symbols
             match = re.search(r'([A-Z][a-z]?)', label)
             symbol = match.group(0)
@@ -402,6 +410,16 @@ class CIFBlock(collections.abc.Mapping):
                      cell=self.get_cell(),
                      masses=self._get_masses(),
                      scaled_positions=self.get_scaled_positions())
+
+    def has_structure(self):
+        """Whether this CIF block has an atomic configuration."""
+        try:
+            symbols = self.get_symbols()
+            coords = self.get_scaled_positions()
+        except NoStructureData:
+            return False
+        else:
+            return symbols is not None and coords is not None
 
     def get_atoms(self, store_tags=False, primitive_cell=False,
                   subtrans_included=True, fractional_occupancies=True) -> Atoms:
@@ -561,11 +579,15 @@ def read_cif(fileobj, index, store_tags=False, primitive_cell=False,
     # Find all CIF blocks with valid crystal data
     images = []
     for block in parse_cif(fileobj, reader):
+        if not block.has_structure():
+            continue
+
         atoms = block.get_atoms(
             store_tags, primitive_cell,
             subtrans_included,
             fractional_occupancies=fractional_occupancies)
         images.append(atoms)
+
     for atoms in images[index]:
         yield atoms
 
