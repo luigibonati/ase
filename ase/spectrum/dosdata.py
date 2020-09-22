@@ -61,12 +61,13 @@ class DOSData(metaclass=ABCMeta):
         """
 
         self._check_positive_width(width)
-        weights_grid = np.dot(
-            self.get_weights(),
-            self._delta(np.asarray(energies),
-                        np.asarray(self.get_energies())[:, np.newaxis],
-                        width,
-                        smearing=smearing))
+        weights_grid = np.zeros(len(energies), float)
+        weights = self.get_weights()
+        energies = np.asarray(energies, float)
+
+        for i, raw_energy in enumerate(self.get_energies()):
+            delta = self._delta(energies, raw_energy, width, smearing=smearing)
+            weights_grid += weights[i] * delta
         return weights_grid
 
     def _almost_equals(self, other: Any) -> bool:
@@ -81,9 +82,9 @@ class DOSData(metaclass=ABCMeta):
 
     @staticmethod
     def _delta(x: np.ndarray,
-               x0: np.ndarray,
+               x0: float,
                width: float,
-               smearing: str = 'Gauss') -> Sequence[Sequence[float]]:
+               smearing: str = 'Gauss') -> np.ndarray:
         """Return a delta-function centered at 'x0'.
 
         This function is used with numpy broadcasting; if x is a row and x0 is
