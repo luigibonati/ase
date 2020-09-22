@@ -10,7 +10,8 @@ Git master branch
 
 :git:`master <>`.
 
-* No changes yet
+* Extended constraint `ase.constraints.FixInternals` by
+  possibility to fix linear combinations of bond lengths.
 
 
 Version 3.20.1
