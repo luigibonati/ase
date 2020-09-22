@@ -275,7 +275,7 @@ F('espresso-in', 'Quantum espresso in file', '1F',
 F('espresso-out', 'Quantum espresso out file', '+F',
   module='espresso', ext=['out', 'pwo'], magic=b'*Program PWSCF')
 F('exciting', 'exciting input', '1S', glob='input.xml')
-F('extxyz', 'Extended XYZ file', '+F')
+F('extxyz', 'Extended XYZ file', '+F', ext='xyz')
 F('findsym', 'FINDSYM-format', '+F')
 F('gamess-us-out', 'GAMESS-US output file', '1F',
   module='gamess_us', magic=b'*GAMESS')
@@ -798,7 +798,7 @@ def filetype(
 
         if '.' in basename:
             ext = os.path.splitext(basename)[1].strip('.').lower()
-            if ext in ['xyz', 'cube', 'json', 'cif']:
+            if ext in ['cube', 'json', 'cif']:
                 return ext
 
         for fmt in ioformats.values():
@@ -863,7 +863,7 @@ def filetype(
         # Do quick xyz check:
         lines = data.splitlines()
         if lines and lines[0].strip().isdigit():
-            return 'xyz'
+            return extension2format['xyz'].name
 
         raise UnknownFileTypeError('Could not guess file type')
     assert isinstance(format, str)
