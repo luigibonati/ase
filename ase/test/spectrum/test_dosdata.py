@@ -330,7 +330,16 @@ class TestGridDosData:
                             0.34335948, 0.38356488, 0.41104823, 0.42216901,
                             0.41503382, 0.39000808])
 
-            
+    smearing_args = [(dict(npts=0, width=None), (0, None)),
+                     (dict(npts=10, width=None, default_width=5.), (10, 5.)),
+                     (dict(npts=0, width=0.5, default_npts=100), (100, 0.5)),
+                     (dict(npts=10, width=0.5), (10, 0.5))]
+
+    @pytest.mark.parametrize('inputs, expected', smearing_args)
+    def test_smearing_args_interpreter(self, inputs, expected):
+        assert GridDOSData._interpret_smearing_args(**inputs) == expected
+
+
 class TestMultiDosData:
     """Test interaction between DOS data objects"""
     @pytest.fixture

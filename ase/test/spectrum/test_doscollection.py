@@ -402,4 +402,4 @@ class TestGridDOSCollection:
         assert np.allclose(ax.get_lines()[0].get_xdata(),
                            griddoscollection[0].get_energies())
         assert np.allclose(ax.get_lines()[1].get_ydata(),
-                           griddoscollection[1].get_weights())        
+                           griddoscollection[1].get_weights())
