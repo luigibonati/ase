@@ -90,20 +90,23 @@ def creates():
 
 
 def create_png_files(raise_exceptions=False):
-    errcode = os.system('povray -h 2> /dev/null')
+    import subprocess
+    import pathlib
+    errcode = subprocess.check_call(['povray','-h']
+            ,stderr=subprocess.DEVNULL)
     if errcode:
         warnings.warn('No POVRAY!')
         # Replace write_pov with write_png:
         from ase.io import pov
         from ase.io.png import write_png
 
-        def write_pov(filename, atoms, run_povray=False, **parameters):
+        def write_pov(filename, atoms, extras=[], **parameters):
             p = {}
             for key in ['rotation', 'show_unit_cell', 'radii',
                         'bbox', 'colors', 'scale']:
                 if key in parameters:
                     p[key] = parameters[key]
-            write_png(filename[:-3] + 'png', atoms, **p)
+            write_png(pathlib.Path(filename).with_suffix('png'), atoms, **p)
 
         pov.write_pov = write_pov
 
