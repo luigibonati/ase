@@ -245,13 +245,13 @@ F('castep-md', 'CASTEP molecular dynamics file', '+F',
 F('castep-phonon', 'CASTEP phonon file', '1F',
   module='castep', ext='phonon')
 F('cfg', 'AtomEye configuration', '1F')
-F('cif', 'CIF-file', '+B')
+F('cif', 'CIF-file', '+B', ext='cif')
 F('cmdft', 'CMDFT-file', '1F', glob='*I_info')
 F('cp2k-dcd', 'CP2K DCD file', '+B',
   module='cp2k', ext='dcd')
 F('crystal', 'Crystal fort.34 format', '1S',
   ext=['f34', '34'], glob=['f34', '34'])
-F('cube', 'CUBE file', '1F')
+F('cube', 'CUBE file', '1F', ext='cube')
 F('dacapo-text', 'Dacapo text output', '1F',
   module='dacapo', magic=b'*&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&\n')
 F('db', 'ASE SQLite database file', '+S')
@@ -303,7 +303,7 @@ F('gromacs', 'Gromacs coordinates', '1S',
   ext='gro')
 F('gromos', 'Gromos96 geometry file', '1F', ext='g96')
 F('html', 'X3DOM HTML', '1F', module='x3d')
-F('json', 'ASE JSON database file', '+F', module='db')
+F('json', 'ASE JSON database file', '+F', ext='json', module='db')
 F('jsv', 'JSV file format', '1F')
 F('lammps-dump-text', 'LAMMPS text dump file', '+F',
   module='lammpsrun', magic=b'*\nITEM: TIMESTEP\n')
@@ -798,8 +798,6 @@ def filetype(
 
         if '.' in basename:
             ext = os.path.splitext(basename)[1].strip('.').lower()
-            if ext in ['cube', 'json', 'cif']:
-                return ext
 
         for fmt in ioformats.values():
             if fmt.match_name(basename):
