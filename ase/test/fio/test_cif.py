@@ -433,3 +433,15 @@ def test_empty_or_atomless_cifblock():
     assert not blocks[0].has_structure()
     with pytest.raises(NoStructureData):
         blocks[0].get_atoms()
+
+
+def test_symbols_questionmark():
+    ciffile = io.BytesIO(
+        b'data_dummy\n'
+        b'loop_\n'
+        b'_atom_site_label\n'
+        b'?\n')
+    blocks = list(parse_cif(ciffile))
+    assert not blocks[0].has_structure()
+    with pytest.raises(NoStructureData, match='undetermined'):
+        blocks[0].get_atoms()
