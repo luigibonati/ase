@@ -123,7 +123,7 @@ class Render:
                 radii=radii_scale*self.gui.get_covalent_radii(),
                 **povray_settings) 
             if self.run_povray_widget.value:
-                run_pov(filename, povray_path=self.povray_executable.value)
+                run_pov(filename, povray_executable=self.povray_executable.value)
             if not self.keep_files_widget.value:
                 print(" | Deleting temporary file ", filename)
                 unlink(filename)

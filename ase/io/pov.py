@@ -11,6 +11,8 @@ import numpy as np
 from ase.io.utils import PlottingVariables
 from ase.constraints import FixAtoms
 from ase import Atoms
+from subprocess import check_call, DEVNULL
+from pathlib import Path
 
 
 def pa(array):
@@ -621,20 +623,21 @@ def write_pov(filename, atoms, extras=[], **parameters):
     assert 'scale' not in parameters
     pov_obj = POVRAY(atoms, **parameters)
     pov_fid = pov_obj.write(filename)
-    # evalutate and write extras
+    # evaluate and write extras
     for function, params in extras:
         function(pov_fid, pov_obj, **params)
     # the povray file wasn't explicitly being closed before the addition
     # of the extras option.
     pov_fid.close()
 
-def run_pov(filename, povray_path='povray',stderr=None):
-    cmd = povray_path + ' {}.ini'.format(filename[:-4])
+def run_pov(filename, povray_executable='povray',stderr=None):
+    ini_path = Path(filename).with_suffix('.ini')
+    cmd = [povray_executable, ini_path.as_posix()]
     if stderr != '-':
         if stderr is None:
-            stderr = '/dev/null'
-        cmd += ' 2> {}'.format(stderr)
-    errcode = os.system(cmd)
-    if errcode != 0:
-        raise OSError('Povray command ' + cmd +
-                      ' failed with error code %d' % errcode)
+            check_call(cmd, stderr=DEVNULL)
+        else:
+            with open(stderr, 'w') as stderr:
+                check_call(cmd, stderr=stderr)
+    else:
+        check_call(cmd)
