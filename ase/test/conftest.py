@@ -266,6 +266,13 @@ def arbitrarily_seed_rng(request):
     yield
     np.random.set_state(state)
 
+@pytest.fixture(scope='session')
+def povray_executable():
+    import shutil
+    exe = shutil.which('povray')
+    if exe is None:
+        pytest.skip('povray not installed')
+    return exe
 
 def pytest_addoption(parser):
     parser.addoption('--calculators', metavar='NAMES', default='',
