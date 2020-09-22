@@ -350,41 +350,41 @@ def test_cif_icsd():
 
 
 @pytest.fixture
-def atoms_fix():
+def atoms():
     cif_file = io.StringIO(content)
     return read(cif_file, format='cif')
 
 
-def test_cif_loop_keys(atoms_fix):
+def test_cif_loop_keys(atoms):
     data = {}
     data['someKey'] = [[str(i)+"test" for i in range(20)]] #test case has 20 entries
     data['someIntKey'] = [[str(i)+"123" for i in range(20)]] #test case has 20 entries
-    atoms_fix.write('testfile.cif', loop_keys=data)
+    atoms.write('testfile.cif', loop_keys=data)
 
-    atoms = read('testfile.cif', store_tags=True)
+    atoms1 = read('testfile.cif', store_tags=True)
     #keys are read lowercase only
-    r_data = {'someKey': atoms.info['_somekey'], 'someIntKey': atoms.info['_someintkey']}
+    r_data = {'someKey': atoms1.info['_somekey'], 'someIntKey': atoms1.info['_someintkey']}
     assert r_data['someKey'] == data['someKey'][0]
     #data reading auto converts strins
     assert r_data['someIntKey'] == [int(x) for x in data['someIntKey'][0]]
 
 
 #test if automatic numbers written after elements are correct
-def test_cif_writer_label_numbers(atoms_fix):
-    atoms_fix.write('testfile.cif')
-    atoms = read('testfile.cif', store_tags=True)
-    labels = atoms.info['_atom_site_label']
-    elements = atoms.info['_atom_site_type_symbol']#cannot use atoms.symbols as K is missing there
+def test_cif_writer_label_numbers(atoms):
+    atoms.write('testfile.cif')
+    atoms1 = read('testfile.cif', store_tags=True)
+    labels = atoms1.info['_atom_site_label']
+    elements = atoms1.info['_atom_site_type_symbol']#cannot use atoms.symbols as K is missing there
     build_labels = ["{:}{:}".format(x,i) for x in set(elements) for i in range(1,elements.count(x)+1)]
     assert build_labels.sort() == labels.sort()
 
-def test_cif_labels(atoms_fix):
+def test_cif_labels(atoms):
     data = [["label"+str(i) for i in range(20)]] #test case has 20 entries
-    atoms_fix.write('testfile.cif', labels=data)
+    atoms.write('testfile.cif', labels=data)
 
-    atoms = read('testfile.cif', store_tags=True)
-    print(atoms.info)
-    assert data[0] == atoms.info['_atom_site_label']
+    atoms1 = read('testfile.cif', store_tags=True)
+    print(atoms1.info)
+    assert data[0] == atoms1.info['_atom_site_label']
 
 
 def test_cifloop():
