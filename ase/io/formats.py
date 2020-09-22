@@ -303,7 +303,6 @@ F('gromacs', 'Gromacs coordinates', '1S',
   ext='gro')
 F('gromos', 'Gromos96 geometry file', '1F', ext='g96')
 F('html', 'X3DOM HTML', '1F', module='x3d')
-F('iwm', '?', '1F', glob='atoms.dat')
 F('json', 'ASE JSON database file', '+F', module='db')
 F('jsv', 'JSV file format', '1F')
 F('lammps-dump-text', 'LAMMPS text dump file', '+F',
