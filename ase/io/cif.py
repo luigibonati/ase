@@ -277,6 +277,8 @@ class CIFBlock(collections.abc.Mapping):
 
         symbols = []
         for label in labels:
+            if label == '.' or label == '?':
+                raise NoStructureData('Symbols are undetermined')
             # Strip off additional labeling on chemical symbols
             match = re.search(r'([A-Z][a-z]?)', label)
             symbol = match.group(0)
