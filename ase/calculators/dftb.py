@@ -449,13 +449,14 @@ class Dftb(FileIOCalculator):
 
         fermi_levels = []
         words = self.lines[index_fermi].split()
-        assert len(words) == 2
+        assert len(words) in [1, 2], 'Expected either 1 or 2 Fermi levels'
 
         for word in words:
             e = float(word)
+            # In non-spin-polarized calculations with DFTB+ v17.1,
+            # two Fermi levels are given, with the second one being 0,
+            # but we don't want to add that one to the list
             if abs(e) > 1e-8:
-                # Without spin polarization, one of the Fermi
-                # levels is equal to 0.000000000000000E+000
                 fermi_levels.append(e)
 
         return np.array(fermi_levels) * Hartree
