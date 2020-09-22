@@ -494,7 +494,12 @@ def read_energy(line, f, debug=None):
     return read_float(line)
 
 def read_energies(line, f, debug=None):
-    for i in range(8):
+    line = f.readline()
+    if '***' in line:
+        point = 7 # Version 3.8
+    else:
+        point = 16  # Version 3.9
+    for i in range(point):
         f.readline()
     line = f.readline()
     energies = []
