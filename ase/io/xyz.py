@@ -17,10 +17,10 @@ def read_xyz(fileobj, index):
         yield Atoms(symbols=symbols, positions=positions)
 
 
-def write_xyz(fileobj, images, comment=''):
+def write_xyz(fileobj, images, comment='', fmt='%22.15f'):
     symbols = images[0].get_chemical_symbols()
     natoms = len(symbols)
     for atoms in images:
         fileobj.write('%d\n%s\n' % (natoms, comment))
         for s, (x, y, z) in zip(symbols, atoms.positions):
-            fileobj.write('%-2s %22.15f %22.15f %22.15f\n' % (s, x, y, z))
+            fileobj.write('%-2s %s %s %s\n' % (s, fmt % x, fmt % y, fmt % z))
