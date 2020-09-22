@@ -24,6 +24,7 @@ def check_fractional_occupancies(atoms):
         if a.symbol == 'Cl':
             assert occupancies[kinds[a.index]]['Cl'] == 0.3
 
+
 content = """
 data_1
 
@@ -248,6 +249,7 @@ loop_
    I          0.5000  0.250000      0.250000      0.250000     Biso  1.000000 I
 """
 
+
 def test_cif():
     cif_file = io.StringIO(content)
 
@@ -290,7 +292,7 @@ def test_cif():
     check_fractional_occupancies(atoms)
 
     # check repeating atoms
-    atoms = atoms.repeat([2,1,1])
+    atoms = atoms.repeat([2, 1, 1])
     assert len(atoms.arrays['spacegroup_kinds']) == len(atoms.arrays['numbers'])
 
 
@@ -342,10 +344,11 @@ Se5 Se2- 2 a 0.1147(4) 0.5633(4) 0.3288(6) 0.1078(6) 1. 0
 Se6 Se2- 2 a 0.0050(4) 0.4480(6) 0.9025(6) 0.9102(6) 1. 0
 """
 
+
 def test_cif_icsd():
     cif_file = io.StringIO(content2)
     atoms = read(cif_file, format='cif')
-    #test something random so atoms is not unused
+    # test something random so atoms is not unused
     assert 'occupancy' in atoms.info
 
 
@@ -357,29 +360,37 @@ def atoms():
 
 def test_cif_loop_keys(atoms):
     data = {}
-    data['someKey'] = [[str(i)+"test" for i in range(20)]] #test case has 20 entries
-    data['someIntKey'] = [[str(i)+"123" for i in range(20)]] #test case has 20 entries
+    # test case has 20 entries
+    data['someKey'] = [[str(i) + "test" for i in range(20)]]
+    # test case has 20 entries
+    data['someIntKey'] = [[str(i) + "123" for i in range(20)]]
     atoms.write('testfile.cif', loop_keys=data)
 
     atoms1 = read('testfile.cif', store_tags=True)
-    #keys are read lowercase only
-    r_data = {'someKey': atoms1.info['_somekey'], 'someIntKey': atoms1.info['_someintkey']}
+    # keys are read lowercase only
+    r_data = {'someKey': atoms1.info['_somekey'],
+              'someIntKey': atoms1.info['_someintkey']}
     assert r_data['someKey'] == data['someKey'][0]
-    #data reading auto converts strins
+    # data reading auto converts strins
     assert r_data['someIntKey'] == [int(x) for x in data['someIntKey'][0]]
 
 
-#test if automatic numbers written after elements are correct
+# test if automatic numbers written after elements are correct
 def test_cif_writer_label_numbers(atoms):
     atoms.write('testfile.cif')
     atoms1 = read('testfile.cif', store_tags=True)
     labels = atoms1.info['_atom_site_label']
-    elements = atoms1.info['_atom_site_type_symbol']#cannot use atoms.symbols as K is missing there
-    build_labels = ["{:}{:}".format(x,i) for x in set(elements) for i in range(1,elements.count(x)+1)]
+    # cannot use atoms.symbols as K is missing there
+    elements = atoms1.info['_atom_site_type_symbol']
+    build_labels = [
+        "{:}{:}".format(
+            x, i) for x in set(elements) for i in range(
+            1, elements.count(x) + 1)]
     assert build_labels.sort() == labels.sort()
 
+
 def test_cif_labels(atoms):
-    data = [["label"+str(i) for i in range(20)]] #test case has 20 entries
+    data = [["label" + str(i) for i in range(20)]]  # test case has 20 entries
     atoms.write('testfile.cif', labels=data)
 
     atoms1 = read('testfile.cif', store_tags=True)
