@@ -627,7 +627,8 @@ class ForceQMMM(Calculator):
                  mm_calc,
                  buffer_width,
                  vacuum=5.,
-                 zero_mean=True):
+                 zero_mean=True,
+                 qm_cell_rounding=3):
         """
         ForceQMMM calculator
 
@@ -645,6 +646,8 @@ class ForceQMMM(Calculator):
             Amount of vacuum to add around QM atoms.
         zero_mean: bool
             If True, add a correction to zero the mean force in each direction
+        qm_cell_rounding: int
+            Tolerance value in Angstrom to round the qm cluster cell
         """
 
         if len(atoms[qm_selection_mask]) == 0:
@@ -656,6 +659,7 @@ class ForceQMMM(Calculator):
         self.vacuum = vacuum
         self.buffer_width = buffer_width
         self.zero_mean = zero_mean
+        self.qm_cell_rounding = qm_cell_rounding
 
         self.qm_buffer_mask = None
         self.cell = None
@@ -686,11 +690,18 @@ class ForceQMMM(Calculator):
         qm_radius = np.linalg.norm(qm_positions.T, axis=1).max()
         self.cell = self.atoms.cell.copy()
 
+        #TODO check that cell is orthorhombic using something like
+        # np.count_nonzero(W.cell - np.diag(np.diag(self.cell))) or
+        # np.abs(self.cell - np.diag(np.diag(self.cell))).max() < 1.0e-6 or
+        # self.cell.orthorhombic
+
         for i, non_pbc in enumerate(non_pbc_directions):
             if non_pbc:
                 self.cell[i][i] = 2.0 * (qm_radius +
                                          self.buffer_width +
                                          self.vacuum)
+                # round the qm cell to the required tolerance
+                self.cell[i][i] = np.round((self.cell[i, i]) / self.qm_cell_rounding) * self.qm_cell_rounding
 
         # identify atoms in region < qm_radius + buffer
         distances_from_center = np.linalg.norm(
