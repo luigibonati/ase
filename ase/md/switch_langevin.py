@@ -40,7 +40,8 @@ class SwitchLangevin(Langevin):
 
     def __init__(self, atoms, calc1, calc2, dt, T, friction, n_eq, n_switch,
                  **langevin_kwargs):
-        super().__init__(atoms, dt, T, friction, **langevin_kwargs)
+        super().__init__(atoms, dt, temperature_eV=T, friction=friction,
+                             **langevin_kwargs)
         self.n_eq = n_eq
         self.n_switch = n_switch
         self.lam = 0.0

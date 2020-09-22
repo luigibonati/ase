@@ -27,7 +27,7 @@ def check_inertia(atoms):
     assert n == 1
 
 
-def test_verlet_asap(asap3):
+def test_fixrotation_asap(asap3):
     rng = np.random.RandomState(123)
 
     with seterr(all='raise'):
@@ -43,7 +43,7 @@ def test_verlet_asap(asap3):
         md = Langevin(
             atoms,
             timestep=20 * fs,
-            temperature=300 * kB,
+            temperature_eV=300 * kB,
             friction=1e-3,
             logfile='-',
             loginterval=500,

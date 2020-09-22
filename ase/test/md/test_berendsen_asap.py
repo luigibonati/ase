@@ -4,7 +4,8 @@ from ase.md.nvtberendsen import NVTBerendsen
 from ase.md.nptberendsen import NPTBerendsen
 from ase.md import MDLogger
 from ase.utils import seterr
-from ase.md.velocitydistribution import MaxwellBoltzmannDistribution, Stationary
+from ase.md.velocitydistribution import (MaxwellBoltzmannDistribution,
+                                             Stationary)
 import numpy as np
 
 def test_nvt_berendsen_asap(asap3):
@@ -15,7 +16,10 @@ def test_npt_berendsen_asap(asap3):
 
 
 def _berendsen_asap(asap3, pressure):
-    "Test NVT or NPT Berendsen dynamics.  The pressure should be in atomic units."
+    """Test NVT or NPT Berendsen dynamics.
+
+    The pressure should be in atomic units.
+    """
     with seterr(all='raise'):
         rng = np.random.RandomState(None)
         a = bulk('Cu', orthorhombic=True).repeat((6, 6, 6))
@@ -37,7 +41,8 @@ def _berendsen_asap(asap3, pressure):
             # We want logging with stress included
             md.attach(MDLogger(md, a, '-', stress=True), interval=500)
         md.run(steps=5000)
-        # Now gather the temperature over 10000 timesteps, collecting it every 5 steps
+        # Now gather the temperature over 10000 timesteps, collecting it
+        # every 5 steps
         temp = []
         press = []
         for i in range(2000):

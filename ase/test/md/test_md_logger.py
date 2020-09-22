@@ -13,7 +13,7 @@ import ase.units as u
 
 md_cls_and_kwargs = [
     (VelocityVerlet, {}),
-    (Langevin, {"temperature": 300 * u.kB, "friction": 0.02}),
+    (Langevin, {"temperature_eV": 300 * u.kB, "friction": 0.02}),
 ]
 
 # prepare atoms object for testing

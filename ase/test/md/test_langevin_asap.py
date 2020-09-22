@@ -2,7 +2,8 @@ from ase.units import fs, kB
 from ase.build import bulk
 from ase.md import Langevin
 from ase.utils import seterr
-from ase.md.velocitydistribution import MaxwellBoltzmannDistribution, Stationary
+from ase.md.velocitydistribution import (MaxwellBoltzmannDistribution,
+                                             Stationary)
 import numpy as np
 
 def test_langevin_asap(asap3):
@@ -19,10 +20,11 @@ def test_langevin_asap(asap3):
         assert abs(a.get_temperature() - 10) < 0.0001
         # Langevin dynamics should raise this to 300 K
         T = 300
-        md = Langevin(a, timestep=4 * fs, temperature=T*kB, friction=0.01,
+        md = Langevin(a, timestep=4 * fs, temperature_K=T, friction=0.01,
                           logfile='-', loginterval=500, rng=rng)
         md.run(steps=5000)
-        # Now gather the temperature over 10000 timesteps, collecting it every 5 steps
+        # Now gather the temperature over 10000 timesteps, collecting it
+        # every 5 steps
         temp = []
         energy = []
         for i in range(2000):
@@ -37,7 +39,7 @@ def test_langevin_asap(asap3):
         assert abs(avgtemp - T) < 10.0
         # Calculate the heat capacity, should be close to 3*kB per atom
         dT = 25
-        md.set_temperature((T + dT) * kB)
+        md.set_temperature(temperature_eV=(T + dT) * kB)
         md.run(steps=2000)
         temp = []
         energy = []
@@ -53,4 +55,6 @@ def test_langevin_asap(asap3):
         assert abs(avgtemp - (T + dT)) < 10.0
         cv = (avgenergy2 - avgenergy) / (len(a) * kB * dT)
         print("Heat capacity per atom: {:.3f} kB".format(cv))
-        assert abs(cv - 3.0) < 1.2    # We need much longer simulations for good statistics          
+        # We need much longer simulations for good statistics, hence the large
+        # allowed error.
+        assert abs(cv - 3.0) < 1.2 

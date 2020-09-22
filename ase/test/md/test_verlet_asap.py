@@ -3,7 +3,8 @@ from ase.build import bulk
 from ase.md import VelocityVerlet
 from ase.io import Trajectory, read
 from ase.utils import seterr
-from ase.md.velocitydistribution import MaxwellBoltzmannDistribution, Stationary
+from ase.md.velocitydistribution import (MaxwellBoltzmannDistribution,
+                                             Stationary)
 
 
 def test_verlet_asap(asap3):

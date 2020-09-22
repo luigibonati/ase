@@ -17,8 +17,8 @@ class Langevin(MolecularDynamics):
     timestep
         The time step.
 
-    temperature
-        The desired temperature, in energy units.
+    temperature_eV or temperature_K
+        The desired temperature, in electron volt or in Kelvin.
 
     friction
         A friction coefficient, typically 1e-4 to 1e-2.
@@ -48,11 +48,15 @@ class Langevin(MolecularDynamics):
     # Helps Asap doing the right thing.  Increment when changing stuff:
     _lgv_version = 3
 
-    def __init__(self, atoms, timestep, temperature, friction, fixcm=True,
-                 trajectory=None, logfile=None, loginterval=1,
+    def __init__(self, atoms, timestep, temperature=None, friction=None,
+                 fixcm=True, trajectory=None, logfile=None, loginterval=1,
+                 *, temperature_K=None, temperature_eV=None,
                  communicator=world, rng=np.random, append_trajectory=False):
-        self.temp = temperature
+        if friction is None:
+            raise TypeError("Missing 'friction' argument.")
         self.fr = friction
+        self.temp = self._process_temperature(temperature, temperature_K,
+                                                  temperature_eV, 'eV')
         self.fixcm = fixcm  # will the center of mass be held fixed?
         self.communicator = communicator
         self.rng = rng
@@ -63,13 +67,15 @@ class Langevin(MolecularDynamics):
 
     def todict(self):
         d = MolecularDynamics.todict(self)
-        d.update({'temperature': self.temp,
+        d.update({'temperature_eV': self.temp,
                   'friction': self.fr,
                   'fix-cm': self.fixcm})
         return d
 
-    def set_temperature(self, temperature):
-        self.temp = temperature
+    def set_temperature(self, temperature=None, temperature_K=None,
+                            temperature_eV=None):
+        self.temp = self._process_temperature(temperature, temperature_K,
+                                                  temperature_eV, 'eV')
         self.updatevars()
 
     def set_friction(self, friction):
