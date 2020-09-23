@@ -2,7 +2,13 @@ import filecmp
 import pytest
 from ase.build import molecule
 from ase.io import read, write
+from ase.calculators.calculator import compare_atoms
 from ase.calculators.emt import EMT
+
+
+def atoms_equal(atoms1, atoms2):
+    # Check that the tolerance is compatible with the writer's precision
+    return compare_atoms(atoms1, atoms2, tol=1e-8) == []
 
 
 def test_single_write_and_read():
@@ -15,7 +21,7 @@ def test_single_write_and_read():
 
     # Test reading
     atoms1 = read('1.xyz', format='xyz')
-    assert atoms == atoms1, 'Read failed'
+    assert atoms_equal(atoms, atoms1), 'Read failed'
 
 
 def test_single_write_with_forces():
@@ -41,7 +47,7 @@ def test_single_write_and_read_with_comment():
 
     # Test reading
     atoms1 = read('1.xyz', format='xyz')
-    assert atoms == atoms1, 'Read failed'
+    assert atoms_equal(atoms, atoms1), 'Read failed'
 
 
 @pytest.mark.parametrize('format', ['xyz', 'extxyz'])
@@ -68,4 +74,4 @@ def test_multiple_write_and_read():
     # Test reading
     images1 = read('1.xyz', format='xyz', index=':')
     for atoms, atoms1 in zip(images, images1):
-        assert atoms == atoms1, 'Read failed'
+        assert atoms_equal(atoms, atoms1), 'Read failed'
