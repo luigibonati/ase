@@ -1007,7 +1007,9 @@ def write_xyz(fileobj, images, comment='', columns=None, write_info=True,
 
         if plain or comment != '':
             # override key/value pairs with user-speficied comment string
-            comm = comment
+            comm = comment.rstrip()
+            if '\n' in comm:
+                raise ValueError('Comment line should not have line breaks.')
 
         # Pack fr_cols into record array
         data = np.zeros(natoms, dtype)
