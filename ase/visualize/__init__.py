@@ -24,6 +24,21 @@ def _pipe_to_gui(atoms, repeat, block):
     return proc
 
 
+class ExternalCommandViewer:
+    def __init__(self, fmt, argv):
+        self.fmt = fmt
+        self.argv = argv
+
+
+viewers = dict(
+    vmd=ExternalCommandViewer('cube', ['vmd']),
+    rasmol=ExternalCommandViewer('proteindatabank', ['rasmol', '-pdb']),
+    xmakemol=ExternalCommandViewer('xyz', ['xmakemol', '-f']),
+    gopenmol=ExternalCommandViewer('xyz', ['runGOpenMol']),
+    avogadro=ExternalCommandViewer('cube', ['avogadro']),
+)
+
+
 def view(atoms, data=None, viewer='ase', repeat=None, block=False):
     # Ignore for parallel calculations:
     if parallel.world.size != 1:
@@ -34,31 +49,26 @@ def view(atoms, data=None, viewer='ase', repeat=None, block=False):
     if vwr == 'ase':
         return _pipe_to_gui(atoms, repeat, block)
 
-    if vwr == 'vmd':
-        format = 'cube'
-        command = 'vmd'
-    elif vwr == 'rasmol':
-        format = 'proteindatabank'
-        command = 'rasmol -pdb'
-    elif vwr == 'xmakemol':
-        format = 'xyz'
-        command = 'xmakemol -f'
-    elif vwr == 'gopenmol':
-        format = 'xyz'
-        command = 'rungOpenMol'
-    elif vwr == 'avogadro':
-        format = 'cube'
-        command = 'avogadro'
-    elif vwr == 'sage':
+    if repeat is not None:
+        atoms = atoms.repeat()
+
+    if vwr == 'sage':
         from ase.visualize.sage import view_sage_jmol
         view_sage_jmol(atoms)
         return
-    elif vwr in ('ngl', 'nglview'):
+
+    if vwr in ('ngl', 'nglview'):
         from ase.visualize.ngl import view_ngl
         return view_ngl(atoms)
-    elif vwr == 'x3d':
+
+    if vwr == 'x3d':
         from ase.visualize.x3d import view_x3d
         return view_x3d(atoms)
+
+    if vwr in viewers:
+        viewer = viewers[vwr]
+        format = viewer.fmt
+        command = viewer.command
     elif vwr == 'paraview':
         # macro for showing atoms in paraview
         macro = """\
@@ -92,9 +102,6 @@ Render()
         command = 'paraview --script=' + script_name
     else:
         raise RuntimeError('Unknown viewer: ' + viewer)
-
-    if repeat is not None:
-        atoms = atoms.repeat()
 
     fd, filename = tempfile.mkstemp('.' + format, 'ase-')
 
