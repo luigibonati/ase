@@ -1,7 +1,7 @@
 from ase.units import fs, kB, GPa
 from ase.build import bulk
 from ase.md.nvtberendsen import NVTBerendsen
-from ase.md.nptberendsen import NPTBerendsen
+from ase.md.nptberendsen import NPTBerendsen, Inhomogeneous_NPTBerendsen
 from ase.md import MDLogger
 from ase.utils import seterr
 from ase.md.velocitydistribution import (MaxwellBoltzmannDistribution,
@@ -14,8 +14,11 @@ def test_nvt_berendsen_asap(asap3):
 def test_npt_berendsen_asap(asap3):
     _berendsen_asap(asap3, 1.0 * GPa)
 
+def test_npt_berendsen_inhom_asap(asap3):
+    _berendsen_asap(asap3, 1.0 * GPa, False)
 
-def _berendsen_asap(asap3, pressure):
+
+def _berendsen_asap(asap3, pressure, homog=True):
     """Test NVT or NPT Berendsen dynamics.
 
     The pressure should be in atomic units.
@@ -23,6 +26,11 @@ def _berendsen_asap(asap3, pressure):
     with seterr(all='raise'):
         rng = np.random.RandomState(None)
         a = bulk('Cu', orthorhombic=True).repeat((6, 6, 6))
+        # Introduce an inhomogeneity
+        a[7].symbol = 'Au'
+        a[8].symbol = 'Au'
+        del a[101]
+        del a[100]
         print(a)
         a.calc = asap3.EMT()
         # Set temperature to 10 K
@@ -35,11 +43,19 @@ def _berendsen_asap(asap3, pressure):
             md = NVTBerendsen(a, timestep=4 * fs, temperature_K=T,
                                   taut=2000*fs,
                                   logfile='-', loginterval=500)
-        else:
+        elif homog:
             md = NPTBerendsen(a, timestep=4 * fs, temperature_K=T,
                                   taut=2000*fs,
-                                  pressure=pressure/GPa*1e4, taup=2000*fs,
+                                  pressure_bar=pressure/GPa*1e4, taup=2000*fs,
                                   compressibility=1 / (140 * 1e4))
+            # We want logging with stress included
+            md.attach(MDLogger(md, a, '-', stress=True), interval=500)
+        else:
+            md = Inhomogeneous_NPTBerendsen(
+                a, timestep=4 * fs, temperature_K=T, taut=2000*fs,
+                pressure_bar=pressure/GPa*1e4, taup=2000*fs,
+                compressibility=1 / (140 * 1e4)
+                )
             # We want logging with stress included
             md.attach(MDLogger(md, a, '-', stress=True), interval=500)
         md.run(steps=5000)

@@ -23,7 +23,7 @@ def test_npt_asap(asap3):
         Stationary(a)
         berend = NPTBerendsen(a, timestep=4 * fs, temperature_K=T,
                               taut=2000*fs,
-                              pressure=pressure/GPa*1e4, taup=2000*fs,
+                              pressure_bar=pressure/GPa*1e4, taup=2000*fs,
                               compressibility=1 / (140 * 1e4),
                               logfile='-', loginterval=500)
         berend.run(steps=5000)

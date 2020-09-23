@@ -1,6 +1,7 @@
 """Berendsen NPT dynamics class."""
 
 import numpy as np
+import warnings
 
 from ase.md.nvtberendsen import NVTBerendsen
 import ase.units as units
@@ -44,8 +45,9 @@ class NPTBerendsen(NVTBerendsen):
 
     def __init__(self, atoms, timestep, temperature=None,
                  *, temperature_K=None, temperature_eV=None,
-                 taut=0.5e3 * units.fs, pressure=1.01325, taup=1e3 * units.fs,
-                 compressibility=4.57e-5, fixcm=True, trajectory=None,
+                 pressure=None, pressure_au=None, pressure_bar=None,
+                 taut=0.5e3 * units.fs, taup=1e3 * units.fs,
+                 compressibility=None, fixcm=True, trajectory=None,
                  logfile=None, loginterval=1, append_trajectory=False):
 
         NVTBerendsen.__init__(self, atoms, timestep, temperature=temperature,
@@ -55,8 +57,11 @@ class NPTBerendsen(NVTBerendsen):
                               logfile=logfile, loginterval=loginterval,
                               append_trajectory=append_trajectory)
         self.taup = taup
-        self.pressure = pressure
-        self.compressibility = compressibility
+        self.pressure = self._process_pressure(pressure, pressure_bar,
+                                                   pressure_au)
+        if compressibility is None:
+            raise TypeError("Missing 'compressibility' argument")
+        self.set_compressibility(compressibility)
 
     def set_taup(self, taup):
         self.taup = taup
@@ -64,14 +69,20 @@ class NPTBerendsen(NVTBerendsen):
     def get_taup(self):
         return self.taup
 
-    def set_pressure(self, pressure):
-        self.pressure = pressure
+    def set_pressure(self, pressure=None, *, pressure_au=None,
+                         pressure_bar=None):
+        self.pressure = self._process_pressure(pressure, pressure_bar,
+                                                   pressure_au)
 
     def get_pressure(self):
         return self.pressure
 
     def set_compressibility(self, compressibility):
-        self.compressibility = compressibility
+        if self.pressure_unit == 'bar':
+            self.compressibility = compressibility / (1e5 * units.Pascal)
+        else:
+            assert self.pressure_unit == 'au'
+            self.compressibility = compressibility
 
     def get_compressibility(self):
         return self.compressibility
@@ -88,12 +99,12 @@ class NPTBerendsen(NVTBerendsen):
 
         taupscl = self.dt / self.taup
         stress = self.atoms.get_stress(voigt=False, include_ideal_gas=True)
-        old_pressure = -stress.trace() / 3 * 1e-5 / units.Pascal
+        old_pressure = -stress.trace() / 3
         scl_pressure = (1.0 - taupscl * self.compressibility / 3.0 *
                         (self.pressure - old_pressure))
 
-        #print "old_pressure", old_pressure
-        #print "volume scaling by:", scl_pressure
+        #print("old_pressure", old_pressure, self.pressure)
+        #print("volume scaling by:", scl_pressure)
 
         cell = self.atoms.get_cell()
         cell = scl_pressure * cell
@@ -135,6 +146,57 @@ class NPTBerendsen(NVTBerendsen):
         atoms.set_momenta(self.atoms.get_momenta() + 0.5 * self.dt * f)
 
         return f
+
+    def _process_pressure(self, pressure, pressure_bar, pressure_au):
+        """Handle that pressure can be specified in multiple units.
+
+        For at least a transition period, Berendsen NPT dynamics in ASE can
+        have the pressure specified in either bar or atomic units (eV/Å^3).
+
+        Four parameters:
+
+        pressure: None or float
+            The original pressure specification in whatever unit was 
+            historically used.  A warning is issued if this is not None.
+
+        pressure_bar: None or float
+            Pressure in bar.
+
+        pressure_au: None or float
+            Pressure in ev/Å^3.
+
+        Exactly one of the three pressure parameters must be different from 
+        None, otherwise an error is issued.
+
+        Return value: Pressure in eV/Å^3.
+        """
+        if ((pressure is not None) + (pressure_bar is not None)
+                + (pressure_au is not None)) != 1:
+            raise TypeError("Exactly one of the parameters 'pressure',"
+                                + " 'pressure_bar', and 'pressure_au' must"
+                                + " be given")
+        if pressure is not None:
+            w = ("Explicitly give the pressure unit by using the"
+                     + " 'pressure_bar' or 'pressure_au' argument instead"
+                     + " of 'pressure'.")
+            warnings.warn(FutureWarning(w))
+            pressure_bar = pressure 
+
+        err = "You need to stick to the pressure unit used when creating this object ({})"
+        if pressure_bar is not None:
+            pressure_au = pressure_bar * (1e5 * units.Pascal)
+            if getattr(self, 'pressure_unit', 'bar') != 'bar':
+                raise ValueError(err.format(self.pressure_unit))
+            self.pressure_unit = 'bar'
+        else:
+            if getattr(self, 'pressure_unit', 'au') != 'au':
+                raise ValueError(err.format(self.pressure_unit))
+            self.pressure_unit = 'au'
+
+        return pressure_au
+
+
+    
 
 
 class Inhomogeneous_NPTBerendsen(NPTBerendsen):
@@ -178,15 +240,18 @@ class Inhomogeneous_NPTBerendsen(NPTBerendsen):
     """
     def __init__(self, atoms, timestep, temperature=None,
                  *, temperature_K=None, temperature_eV=None,
-                 taut=0.5e3 * units.fs, pressure=1.01325, taup=1e3 * units.fs,
-                 compressibility=4.57e-5, mask=(1, 1, 1),
+                 taut=0.5e3 * units.fs, pressure=None,
+                 pressure_bar=None, pressure_au=None, taup=1e3 * units.fs,
+                 compressibility=None, mask=(1, 1, 1),
                  fixcm=True, trajectory=None,
                  logfile=None, loginterval=1):
 
         NPTBerendsen.__init__(self, atoms, timestep, temperature=temperature,
                               temperature_K=temperature_K,
                               temperature_eV=temperature_eV,
-                              taut=taut, pressure=pressure, taup=taup,
+                              taut=taut, taup=taup, pressure=pressure,
+                              pressure_bar=pressure_bar,
+                              pressure_au=pressure_au,
                               compressibility=compressibility,
                               fixcm=fixcm, trajectory=trajectory,
                               logfile=logfile, loginterval=loginterval)
@@ -197,7 +262,7 @@ class Inhomogeneous_NPTBerendsen(NPTBerendsen):
         scale the atom position and the simulation cell."""
 
         taupscl = self.dt * self.compressibility / self.taup / 3.0
-        stress = - self.atoms.get_stress(include_ideal_gas=True) * 1e-5 / units.Pascal
+        stress = - self.atoms.get_stress(include_ideal_gas=True)
         if stress.shape == (6,):
             stress = stress[:3]
         elif stress.shape == (3, 3):
