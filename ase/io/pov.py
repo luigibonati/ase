@@ -3,7 +3,6 @@ Module for povray file format support.
 
 See http://www.povray.org/ for details on the format.
 """
-import os
 from typing import Dict, Any
 
 import numpy as np
