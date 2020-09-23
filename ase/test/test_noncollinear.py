@@ -1,5 +1,7 @@
+from ase import Atoms
+
+
 def test_noncollinear():
-    from ase import Atoms
     a = Atoms('H2')
 
     a[0].magmom = 1

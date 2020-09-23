@@ -1,4 +1,5 @@
 import sys
+import io
 from ase.io import read
 from ase.cli.main import CLIError
 
@@ -51,8 +52,7 @@ class CLICommand:
     def add_arguments(parser):
         add = parser.add_argument
         add('file',
-            help=
-"""Possible file entries are
+            help="""Possible file entries are
 
     * 2 non-trajectory files: difference between them
     * 1 trajectory file: difference between consecutive images
@@ -70,8 +70,7 @@ class CLICommand:
             nargs='?',
             const='d',
             type=str,
-            help=
-"""Order atoms by rank, see --template-help for possible
+            help="""Order atoms by rank, see --template-help for possible
 fields.
 
 The default value, when specified, is d.  When not
@@ -83,30 +82,41 @@ generator.  For hierarchical sorting, see template.""")
             help="show only so many lines (atoms) in each table "
             ", useful if rank ordering")
         add('-t', '--template', metavar='TEMPLATE', nargs='?', const='rc',
-            help="""See --help-template for the help on this option.""")
+            help="""See --template-help for the help on this option.""")
         add('--template-help', help="""Prints the help for the template file.
                 Usage `ase diff - --template-help`""", action="store_true")
         add('-s', '--summary-functions', metavar='SUMFUNCS', nargs='?',
-            help="""Specify the summary functions. 
-            Possible values are `rmsd` and `dE`. 
+            help="""Specify the summary functions.
+            Possible values are `rmsd` and `dE`.
             Comma separate more than one summary function.""")
         add('--log-file', metavar='LOGFILE', help="print table to file")
         add('--as-csv', action="store_true",
             help="output table in csv format")
+        add('--precision', metavar='PREC',
+            default=2, type=int,
+            help="precision used in both display and sorting")
 
     @staticmethod
     def run(args, parser):
         if args.template_help:
             print(template_help)
             return
-        # output
-        if args.log_file is None:
-            out = sys.stdout
-        else:
-            out = open(args.log_file, 'w')
 
+        encoding = 'utf-8'
+
+        if args.log_file is None:
+            out = io.TextIOWrapper(sys.stdout.buffer, encoding=encoding)
+        else:
+            out = open(args.log_file, 'w', encoding=encoding)
+
+        with out:
+            CLICommand.diff(args, out)
+
+    @staticmethod
+    def diff(args, out):
         from ase.cli.template import (
             Table,
+            TableFormat,
             slice_split,
             field_specs_on_conditions,
             summary_functions_on_conditions,
@@ -196,9 +206,13 @@ generator.  For hierarchical sorting, see template.""")
         natoms = natoms1  # = natoms2
 
         output = ''
+        tableformat = TableFormat(precision=args.precision,
+                                  columnwidth=7 + args.precision)
+
         table = Table(
             field_specs,
             max_lines=args.max_lines,
+            tableformat=tableformat,
             summary_functions=summary_functions)
 
         for counter in range(natoms):

@@ -1,10 +1,10 @@
-def test_spacegroup_crystal():
-    import numpy as np
+import numpy as np
 
-    from ase.spacegroup import crystal
-    from ase.io import write
+from ase.spacegroup import crystal
+from ase.io import write
 
-    # A diamond unit cell
+
+def test_diamond():
     diamond = crystal('C', [(0, 0, 0)], spacegroup=227,
                       cellpar=[3.57, 3.57, 3.57, 90, 90, 90])
 
@@ -23,10 +23,12 @@ def test_spacegroup_crystal():
     assert np.allclose(diamond.get_scaled_positions(), correct_pos)
 
 
+def test_skutterudite():
     # A CoSb3 skutterudite unit cell containing 32 atoms
     skutterudite = crystal(('Co', 'Sb'),
                            basis=[(0.25, 0.25, 0.25), (0.0, 0.335, 0.158)],
-                           spacegroup=204, cellpar=[9.04, 9.04, 9.04, 90, 90, 90])
+                           spacegroup=204,
+                           cellpar=[9.04, 9.04, 9.04, 90, 90, 90])
 
     assert len(skutterudite) == 32
 

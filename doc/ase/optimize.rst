@@ -189,10 +189,8 @@ to speed up BFGS local minimzations.
 Read more about this algorithm here:
 
   | Estefanía Garijo del Río, Jens Jørgen Mortensen, Karsten W. Jacobsen
-  | `Local Bayesian optimizer for atomic structures`__
+  | :doi:`Local Bayesian optimizer for atomic structures <10.1103/PhysRevB.100.104103>`
   | Physical Review B, Vol. **100**, 104103 (2019)
-
-__ https://link.aps.org/doi/10.1103/PhysRevB.100.104103
 
 .. warning:: The memory of the optimizer scales as O(n²N²) where
              N is the number of atoms and n the number of steps.
@@ -210,10 +208,8 @@ FIRE
 Read about this algorithm here:
 
   | Erik Bitzek, Pekka Koskinen, Franz Gähler, Michael Moseler, and Peter Gumbsch
-  | `Structural Relaxation Made Simple`__
+  | :doi:`Structural Relaxation Made Simple <10.1103/PhysRevLett.97.170201>`
   | Physical Review Letters, Vol. **97**, 170201 (2006)
-
-__ https://doi.org/10.1103/PhysRevLett.97.170201
 
 
 MDMin
@@ -317,10 +313,8 @@ the :class:`ase.optimize.precon.lbfgs.PreconLBFGS` and
 You can read more about the theory and implementation here:
 
   | D. Packwood, J.R. Kermode; L. Mones, N. Bernstein, J. Woolley, N. Gould, C. Ortner and G. Csányi
-  | `A universal preconditioner for simulating condensed phase materials`__
+  | :doi:`A universal preconditioner for simulating condensed phase materials <10.1063/1.4947024>`
   | J. Chem. Phys. *144*, 164109 (2016).
-
-__ https://doi.org/10.1063/1.4947024
 
 Tests with a variety of solid-state systems using both DFT and classical
 interatomic potentials driven though ASE calculators show speedup factors of up
@@ -473,18 +467,15 @@ local optimization algorithm::
 Read more about this algorithm here:
 
   | David J. Wales and Jonathan P. K. Doye
-  | `Global Optimization by Basin-Hopping and the Lowest Energy Structures of Lennard-Jones Clusters Containing up to 110 Atoms`__
+  | :doi:`Global Optimization by Basin-Hopping and the Lowest Energy Structures of Lennard-Jones Clusters Containing up to 110 Atoms <10.1021/jp970984n>`
   | J. Phys. Chem. A, Vol. **101**, 5111-5116 (1997)
-
-__ https://doi.org/10.1021/jp970984n
 
 and here:
 
   | David J. Wales and Harold A. Scheraga
-  | `Global Optimization of Clusters, Crystals, and Biomolecules`__
+  | :doi:`Global Optimization of Clusters, Crystals, and Biomolecules <10.1126/science.285.5432.1368>`
   | Science, Vol. **285**, 1368 (1999)
 
-__ https://science.sciencemag.org/content/285/5432/1368.abstract
 
 Minima hopping
 --------------
@@ -492,10 +483,8 @@ Minima hopping
 The minima hopping algorithm was developed and described by Goedecker:
 
   | Stefan Goedecker
-  | `Minima hopping: An efficient search method for the global minimum of the potential energy surface of complex molecular systems`__
+  | :doi:`Minima hopping: An efficient search method for the global minimum of the potential energy surface of complex molecular systems <10.1063/1.1724816>`
   | J. Chem. Phys., Vol. **120**, 9911 (2004)
-
-__ https://doi.org/10.1063/1.1724816
 
 This algorithm utilizes a series of alternating steps of NVE molecular dynamics and local optimizations, and has two parameters that the code dynamically adjusts in response to the progress of the search. The first parameter is the initial temperature of the NVE simulation. Whenever a step finds a new minimum this temperature is decreased; if the step finds a previously found minimum the temperature is increased. The second dynamically adjusted parameter is `E_\mathrm{diff}`, which is an energy threshold for accepting a newly found minimum. If the new minimum is no more than `E_\mathrm{diff}` eV higher than the previous minimum, it is acccepted and `E_\mathrm{diff}` is decreased; if it is more than `E_\mathrm{diff}` eV higher it is rejected and `E_\mathrm{diff}` is increased. The method is used as::
 

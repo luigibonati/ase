@@ -18,7 +18,7 @@ def _get_frame_positions(f):
     # header line contains name of system
     init_pos = f.tell()
     f.seek(0)
-    f.readline()  # system name
+    rl = len(f.readline())  # system name, and record size
     items = f.readline().strip().split()
     if len(items) == 5:
         classic = False
@@ -39,8 +39,8 @@ def _get_frame_positions(f):
                 pos.append(f.tell())
         f.seek(startpos)
     else:
-        nFrames = int(line[4])
-        pos = [(natoms * 2 + 1) * i + 2 for i in range(nFrames)]
+        nframes = int(items[3])
+        pos = [((natoms * (levcfg + 2) + 4) * i + 3) * rl for i in range(nframes)]
 
     f.seek(init_pos)
     return levcfg, imcon, natoms, pos

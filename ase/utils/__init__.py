@@ -384,35 +384,39 @@ def workdir(path, mkdir=False):
         os.chdir(olddir)
 
 
-def iofunction(func, mode):
+class iofunction:
     """Decorate func so it accepts either str or file.
 
     (Won't work on functions that return a generator.)"""
+    def __init__(self, mode):
+        self.mode = mode
 
-    @functools.wraps(func)
-    def iofunc(file, *args, **kwargs):
-        openandclose = isinstance(file, (basestring, PurePath))
-        fd = None
-        try:
-            if openandclose:
-                fd = open(str(file), mode)
-            else:
-                fd = file
-            obj = func(fd, *args, **kwargs)
-            return obj
-        finally:
-            if openandclose and fd is not None:
-                # fd may be None if open() failed
-                fd.close()
-    return iofunc
+    def __call__(self, func):
+        @functools.wraps(func)
+        def iofunc(file, *args, **kwargs):
+            openandclose = isinstance(file, (basestring, PurePath))
+            fd = None
+            try:
+                if openandclose:
+                    fd = open(str(file), self.mode)
+                else:
+                    fd = file
+                obj = func(fd, *args, **kwargs)
+                return obj
+            finally:
+                if openandclose and fd is not None:
+                    # fd may be None if open() failed
+                    fd.close()
+        return iofunc
+
 
 
 def writer(func):
-    return iofunction(func, 'w')
+    return iofunction('w')(func)
 
 
 def reader(func):
-    return iofunction(func, 'r')
+    return iofunction('r')(func)
 
 
 # The next two functions are for hotplugging into a JSONable class
@@ -502,6 +506,13 @@ def lazymethod(meth):
             cache[name] = meth(self)
         return cache[name]
     return getter
+
+
+def atoms_to_spglib_cell(atoms):
+    """Convert atoms into data suitable for calling spglib."""
+    return (atoms.get_cell(),
+            atoms.get_scaled_positions(),
+            atoms.get_atomic_numbers())
 
 
 def warn_legacy(feature_name):

@@ -9,7 +9,6 @@ object.
 
 import copy
 import numbers
-import warnings
 from math import cos, sin, pi
 
 import numpy as np
@@ -26,7 +25,7 @@ from ase.symbols import Symbols, symbols2numbers
 from ase.utils import deprecated
 
 
-class Atoms(object):
+class Atoms:
     """Atoms object.
 
     The Atoms object can represent an isolated molecule, or a
@@ -1346,13 +1345,13 @@ class Atoms(object):
         positions -= com  # translate center of mass to origin
         return np.cross(positions, self.get_momenta()).sum(0)
 
-    def rotate(self, a, v=None, center=(0, 0, 0), rotate_cell=False):
+    def rotate(self, a, v, center=(0, 0, 0), rotate_cell=False):
         """Rotate atoms based on a vector and an angle, or two vectors.
 
         Parameters:
 
         a = None:
-            Angle that the atoms is rotated around the vecor 'v'. 'a'
+            Angle that the atoms is rotated around the vector 'v'. 'a'
             can also be a vector and then 'a' is rotated
             into 'v'.
 
@@ -1381,36 +1380,18 @@ class Atoms(object):
         >>> atoms.rotate((1, 0, 0), (0, 1, 0))
         """
 
-        if not isinstance(a, (float, int)):
-            # old API maybe?
-            warning = ('Please use new API: '
-                       'atoms_obj.rotate(a, v) '
-                       'where v is a vector to rotate around and '
-                       'a is the angle in degrees.')
-            if isinstance(v, (float, int)):
-                warnings.warn(warning, FutureWarning)
-                a, v = v * 180 / pi, a
-            elif v is None:
-                warnings.warn(warning, FutureWarning)
-                v = a
-                a = None
-            else:
-                assert a is not None
-                a, v = v, a
-        else:
-            assert a is not None
+        if not isinstance(a, numbers.Real):
+            a, v = v, a
 
         norm = np.linalg.norm
         v = string2vector(v)
-        if a is None:
-            a = norm(v) * 180 / pi  # old API
 
         normv = norm(v)
 
         if normv == 0.0:
             raise ZeroDivisionError('Cannot rotate: norm(v) == 0')
 
-        if isinstance(a, (float, int)):
+        if isinstance(a, numbers.Real):
             a *= pi / 180
             v /= normv
             c = cos(a)
@@ -1460,14 +1441,6 @@ class Atoms(object):
                           np.cross(rotcell, s * v) +
                           np.outer(np.dot(rotcell, v), (1.0 - c) * v))
             self.set_cell(rotcell)
-
-    def rotate_euler(self, center=(0, 0, 0), phi=0.0, theta=0.0, psi=0.0):
-        warnings.warn(
-            'Please use this method instead: '
-            'euler_rotate(phi=0, theta=0, psi=0, center=(0, 0, 0)) '
-            'where the angles are given in degrees', FutureWarning)
-        self.euler_rotate(phi * 180 / pi, theta * 180 / pi, psi * 180 / pi,
-                          center)
 
     def euler_rotate(self, phi=0.0, theta=0.0, psi=0.0, center=(0, 0, 0)):
         """Rotate atoms via Euler angles (in degrees).
@@ -1527,7 +1500,7 @@ class Atoms(object):
         # Move back to the rotation point
         self.positions = np.transpose(rcoords) + center
 
-    def get_dihedral(self, a1, a2=None, a3=None, a4=None, mic=False):
+    def get_dihedral(self, a1, a2, a3, a4, mic=False):
         """Calculate dihedral angle.
 
         Calculate dihedral angle (in degrees) between the vectors a1->a2
@@ -1536,21 +1509,6 @@ class Atoms(object):
         Use mic=True to use the Minimum Image Convention and calculate the
         angle across periodic boundaries.
         """
-
-        if a2 is None:
-            # Old way - use radians
-            warnings.warn(
-                'Please use new API (which will return the angle in degrees): '
-                'atoms_obj.get_dihedral(a1,a2,a3,a4)*pi/180 instead of '
-                'atoms_obj.get_dihedral([a1,a2,a3,a4])', FutureWarning)
-            assert a3 is None and a4 is None
-            a1, a2, a3, a4 = a1
-            f = pi / 180
-        else:
-            f = 1
-
-        if any(a is None for a in [a2, a3, a4]):
-            raise ValueError('a2, a3 and a4 must not be None')
 
         # vector 1->2, 2->3, 3->4 and their normalized cross products:
         a = self.positions[a2] - self.positions[a1]
@@ -1575,7 +1533,7 @@ class Atoms(object):
         angle = np.arccos(angle) * 180 / pi
         if np.vdot(bxa, c) > 0:
             angle = 360 - angle
-        return angle * f
+        return angle
 
     def _masked_rotate(self, center, axis, diff, mask):
         # do rotation of subgroup by copying it to temporary atoms object
@@ -1597,7 +1555,7 @@ class Atoms(object):
                 self.positions[i] = group[j].position
                 j += 1
 
-    def set_dihedral(self, a1, a2=None, a3=None, a4=None, angle=None,
+    def set_dihedral(self, a1, a2, a3, a4, angle,
                      mask=None, indices=None):
         """Set the dihedral angle (degrees) between vectors a1->a2 and
         a3->a4 by changing the atom indexed by a4.
@@ -1619,24 +1577,7 @@ class Atoms(object):
         >>> atoms.set_dihedral(1, 2, 3, 4, 210, mask=[0, 0, 0, 1, 1, 1])
         """
 
-        if isinstance(a1, int):
-            if any(a is None for a in [a2, a3, a4, angle]):
-                raise ValueError('a2, a3, a4, and angle must not be None')
-            angle *= pi / 180
-        else:
-            warnings.warn(
-                'Please use new API: '
-                'atoms_obj.set_dihedral(a1,a2,a3,a4,angle) '
-                'where angle is given in degrees', FutureWarning)
-            if angle is None:
-                angle = a2
-                if mask is None:
-                    mask = a3
-                    if indices is None:
-                        indices = a4
-            else:
-                assert a2 is None and a3 is None and a4 is None
-            a1, a2, a3, a4 = a1
+        angle *= pi / 180
 
         # if not provided, set mask to the last atom in the
         # dihedral description
@@ -1653,29 +1594,13 @@ class Atoms(object):
         center = self.positions[a3]
         self._masked_rotate(center, axis, diff, mask)
 
-    def rotate_dihedral(self, a1, a2=None, a3=None, a4=None,
+    def rotate_dihedral(self, a1, a2, a3, a4,
                         angle=None, mask=None, indices=None):
         """Rotate dihedral angle.
 
         Same usage as in :meth:`ase.Atoms.set_dihedral`: Rotate a group by a
         predefined dihedral angle, starting from its current configuration.
         """
-        if not isinstance(a1, int):
-            warnings.warn(
-                'Please use new API: '
-                'atoms_obj.rotate_dihedral(a1,a2,a3,a4,angle) '
-                'where angle is given in degrees', FutureWarning)
-            if angle is None:
-                angle = a2
-                if mask is None and indices is None:
-                    mask = a3
-            else:
-                assert a2 is None and a3 is None and a4 is None
-            a1, a2, a3, a4 = a1
-
-        if any(a is None for a in [a2, a3, a4, angle]):
-            raise ValueError('a2, a3, a4, and angle must not be None')
-
         start = self.get_dihedral(a1, a2, a3, a4)
         self.set_dihedral(a1, a2, a3, a4, angle + start, mask, indices)
 
@@ -1731,21 +1656,6 @@ class Atoms(object):
         If *mask* and *indices*
         are given, *indices* overwrites *mask*. If *mask* and *indices*
         are not set, only *a3* is moved."""
-
-        if not isinstance(a1, int):
-            # old API (uses radians)
-            warnings.warn(
-                'Please use new API: '
-                'atoms_obj.set_angle(a1,a2,a3,angle) '
-                'where angle is given in degrees', FutureWarning)
-            if angle is None:
-                angle = a2
-                if mask is None:
-                    mask = a3
-                a1, a2, a3 = a1
-            else:
-                assert a2 is None and a3 is None
-            angle *= 180 / pi
 
         if any(a is None for a in [a2, a3, angle]):
             raise ValueError('a2, a3, and angle must not be None')
@@ -1998,25 +1908,6 @@ class Atoms(object):
     positions = property(_get_positions, _set_positions,
                          doc='Attribute for direct ' +
                          'manipulation of the positions.')
-
-    @property
-    def adsorbate_info(self):
-        """Return the adsorbate information set by one of the surface
-        builder functions. This function is only supplied in order to give
-        a warning if this attribute (atoms.adsorbate_info) is asked for.
-        The dictionary with adsorbate information has been moved to the
-        info dictionary, i.e. atoms.info['adsorbate_info']."""
-        warnings.warn("The adsorbate_info dictionary has been moved" +
-                      " inside the info dictionary, i.e. atoms." +
-                      "info['adsorbate_info']", FutureWarning)
-        return self.info['adsorbate_info']
-
-    @adsorbate_info.setter
-    def adsorbate_info(self, dct):
-        warnings.warn("The adsorbate_info dictionary has been moved" +
-                      " inside the info dictionary, i.e. atoms." +
-                      "info['adsorbate_info']", FutureWarning)
-        self.info['adsorbate_info'] = dct
 
     def _get_atomic_numbers(self):
         """Return reference to atomic numbers for in-place

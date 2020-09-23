@@ -1,6 +1,4 @@
 """Demonstrates molecular dynamics for isolated particles."""
-from __future__ import print_function
-
 from ase.cluster.cubic import FaceCenteredCubic
 from ase.optimize import QuasiNewton
 from ase.md.velocitydistribution import (MaxwellBoltzmannDistribution,

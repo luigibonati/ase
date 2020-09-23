@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 import os
 import copy
 import subprocess
@@ -437,12 +438,48 @@ class Parameters(dict):
             '{}={!r}'.format(key, self[key]) for key in keys) + ')\n'
 
     def write(self, filename):
-        file = open(filename, 'w')
-        file.write(self.tostring())
-        file.close()
+        pathlib.Path(filename).write_text(self.tostring())
 
 
-class Calculator(object):
+class GetPropertiesMixin(ABC):
+    """Mixin class which provides get_forces(), get_stress() and so on.
+
+    Inheriting class must implement get_property()."""
+
+    @abstractmethod
+    def get_property(self, name, atoms=None, allow_calculation=True):
+        """Get the named property."""
+
+    def get_potential_energies(self, atoms=None):
+        return self.get_property('energies', atoms)
+
+    def get_forces(self, atoms=None):
+        return self.get_property('forces', atoms)
+
+    def get_stress(self, atoms=None):
+        return self.get_property('stress', atoms)
+
+    def get_stresses(self, atoms=None):
+        """the calculator should return intensive stresses, i.e., such that
+                stresses.sum(axis=0) == stress
+        """
+        return self.get_property('stresses', atoms)
+
+    def get_dipole_moment(self, atoms=None):
+        return self.get_property('dipole', atoms)
+
+    def get_charges(self, atoms=None):
+        return self.get_property('charges', atoms)
+
+    def get_magnetic_moment(self, atoms=None):
+        return self.get_property('magmom', atoms)
+
+    def get_magnetic_moments(self, atoms=None):
+        """Calculate magnetic moments projected onto atoms."""
+        return self.get_property('magmoms', atoms)
+
+
+class Calculator(GetPropertiesMixin):
     """Base-class for all ASE calculators.
 
     A calculator must raise PropertyNotImplementedError if asked for a
@@ -508,12 +545,18 @@ class Calculator(object):
         self.directory = directory
         self.prefix = None
         if label is not None:
-            if self.directory != '.' and '/' in label:
+            if self.directory == '.' and '/' in label:
+                # We specified directory in label, and nothing in the diretory key
+                self.label = label
+            elif '/' not in label:
+                # We specified our directory in the directory keyword
+                # or not at all
+                self.label = '/'.join((self.directory, label))
+            else:
                 raise ValueError('Directory redundantly specified though '
                                  'directory="{}" and label="{}".  '
                                  'Please omit "/" in label.'
                                  .format(self.directory, label))
-            self.label = '/'.join((self.directory, label))
 
         if self.parameters is None:
             # Use default parameters if they were not read from file:
@@ -692,34 +735,6 @@ class Calculator(object):
         else:
             return energy
 
-    def get_potential_energies(self, atoms=None):
-        return self.get_property('energies', atoms)
-
-    def get_forces(self, atoms=None):
-        return self.get_property('forces', atoms)
-
-    def get_stress(self, atoms=None):
-        return self.get_property('stress', atoms)
-
-    def get_stresses(self, atoms=None):
-        """the calculator should return intensive stresses, i.e., such that
-                stresses.sum(axis=0) == stress
-        """
-        return self.get_property('stresses', atoms)
-
-    def get_dipole_moment(self, atoms=None):
-        return self.get_property('dipole', atoms)
-
-    def get_charges(self, atoms=None):
-        return self.get_property('charges', atoms)
-
-    def get_magnetic_moment(self, atoms=None):
-        return self.get_property('magmom', atoms)
-
-    def get_magnetic_moments(self, atoms=None):
-        """Calculate magnetic moments projected onto atoms."""
-        return self.get_property('magmoms', atoms)
-
     def get_property(self, name, atoms=None, allow_calculation=True):
         if name not in self.implemented_properties:
             raise PropertyNotImplementedError('{} property not implemented'
@@ -736,12 +751,6 @@ class Calculator(object):
             if not allow_calculation:
                 return None
             self.calculate(atoms, [name], system_changes)
-
-        if name == 'magmom' and 'magmom' not in self.results:
-            return 0.0
-
-        if name == 'magmoms' and 'magmoms' not in self.results:
-            return np.zeros(len(atoms))
 
         if name not in self.results:
             # For some reason the calculator was not able to do what we want,

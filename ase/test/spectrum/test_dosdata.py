@@ -142,28 +142,31 @@ class TestRawDosData:
                              sampling_data_args_results)
     def test_sampling(self, data, args, result):
         dos = RawDOSData(data[0], data[1])
-        assert np.allclose(dos.sample(*args[:-1], **args[-1]), result)
+        weights = dos._sample(*args[:-1], **args[-1])
+        assert np.allclose(weights, result)
 
         with pytest.raises(ValueError):
-            dos.sample([1], smearing="Gauss's spherical cousin")
+            dos._sample([1], smearing="Gauss's spherical cousin")
 
     def test_sampling_error(self, sparse_dos):
         with pytest.raises(ValueError):
-            sparse_dos.sample([1, 2, 3], width=0.)
+            sparse_dos._sample([1, 2, 3], width=0.)
         with pytest.raises(ValueError):
-            sparse_dos.sample([1, 2, 3], width=-1)
+            sparse_dos._sample([1, 2, 3], width=-1)
 
     def test_sample_grid(self, sparse_dos):
         min_dos = sparse_dos.sample_grid(10, xmax=5, padding=3, width=0.1)
-        assert min_dos[0][0] == pytest.approx(1.2 - 3 * 0.1)
+        assert min_dos.get_energies()[0] == pytest.approx(1.2 - 3 * 0.1)
 
         max_dos = sparse_dos.sample_grid(10, xmin=0, padding=2, width=0.2)
-        assert max_dos[0][-1] == pytest.approx(5 + 2 * 0.2)
+        assert max_dos.get_energies()[-1] == pytest.approx(5 + 2 * 0.2)
 
         default_dos = sparse_dos.sample_grid(10)
-        assert np.allclose(default_dos[0], np.linspace(0.9, 5.3, 10))
-        assert np.allclose(default_dos[1],
-                           sparse_dos.sample(np.linspace(0.9, 5.3, 10)))
+        assert np.allclose(default_dos.get_energies(),
+                           np.linspace(0.9, 5.3, 10))
+        dos0 = sparse_dos._sample(np.linspace(0.9, 5.3, 10))
+        assert np.allclose(default_dos.get_weights(),
+                           dos0)
 
     # Comparing plot outputs is hard, so we
     # - inspect the line values
@@ -178,7 +181,7 @@ class TestRawDosData:
         else:
             mplargs = {'linewidth': linewidth}
 
-        ax = figure.add_subplot()
+        ax = figure.add_subplot(111)
         ax_out = sparse_dos.plot_dos(npts=5, ax=ax, mplargs=mplargs,
                                      smearing='Gauss')
         assert ax_out == ax
@@ -188,8 +191,6 @@ class TestRawDosData:
         assert np.allclose(line_data[1],
                            [1.32955452e-01, 1.51568133e-13,
                             9.30688167e-02, 1.06097693e-13, 3.41173568e-78])
-        if linewidth is not None:
-            assert ax.lines[0].get_linewidth() == linewidth
 
     @pytest.mark.usefixtures("figure")
     @pytest.mark.parametrize('linewidth', linewidths)
@@ -199,13 +200,9 @@ class TestRawDosData:
         else:
             mplargs = {'linewidth': linewidth}
 
-        ax = figure.add_subplot()
+        ax = figure.add_subplot(111)
         ax_out = sparse_dos.plot_deltas(ax=ax, mplargs=mplargs)
         assert ax_out == ax
-
-        if linewidth is not None:
-            assert ax.get_children()[0].get_linewidth() == linewidth
-
         assert np.allclose(list(map(lambda x: x.vertices,
                                     ax.get_children()[0].get_paths())),
                            [[[1.2, 0.], [1.2, 3.]],
@@ -230,6 +227,12 @@ class TestGridDosData:
         y = np.sin(x / 10)
         return GridDOSData(x, y, info={'symbol': 'C', 'orbital': '2s',
                                        'day': 'Tue'})
+
+    @pytest.fixture
+    def denser_dos(self):
+        x = np.linspace(0., 10., 21)
+        y = np.sin(x / 10)
+        return GridDOSData(x, y)
 
     @pytest.fixture
     def another_dense_dos(self):
@@ -267,10 +270,29 @@ class TestGridDosData:
     def test_check_spacing(self, dense_dos):
         """Check a warning is logged when width < 2 * grid spacing"""
         # In the sample data, grid spacing is 1.0
-        dense_dos.sample([1], width=2.1)
+        dense_dos._sample([1], width=2.1)
 
         with pytest.warns(UserWarning, match="The broadening width is small"):
-            dense_dos.sample([1], width=1.9)
+            dense_dos._sample([1], width=1.9)
+
+    def test_resampling_consistency(self, dense_dos, denser_dos):
+        """Check that resampled spectra are independent of the original density
+
+        Compare resampling of sample function on two different grids to the
+        same new grid with broadening. We accept a 5% difference because the
+        initial shape is slightly different; what we are checking for is a
+        factor 2 difference from "double-counting" the extra data points.
+        """
+        sampling_params = dict(npts=500, xmin=0, xmax=10, width=4)
+
+        from_dense = dense_dos.sample_grid(**sampling_params)
+        from_denser = denser_dos.sample_grid(**sampling_params)
+
+        assert np.allclose(from_dense.get_energies(),
+                           from_denser.get_energies())
+        assert np.allclose(from_dense.get_weights(),
+                           from_denser.get_weights(),
+                           rtol=0.05, atol=0.01)
 
     linewidths = [1, 5, None]
     @pytest.mark.usefixtures("figure")
@@ -281,7 +303,7 @@ class TestGridDosData:
         else:
             mplargs = {'linewidth': linewidth}
 
-        ax = figure.add_subplot()
+        ax = figure.add_subplot(111)
         ax_out = dense_dos.plot_dos(ax=ax, mplargs=mplargs,
                                     smearing='Gauss')
         assert ax_out == ax
@@ -292,15 +314,13 @@ class TestGridDosData:
         # this is a special feature of "grid" data to avoid repeated broadening
         assert np.allclose(line_data[0], np.linspace(0., 10., 11))
         assert np.allclose(line_data[1], np.sin(np.linspace(0., 1., 11)))
-        if linewidth is not None:
-            assert ax.lines[0].get_linewidth() == linewidth
 
     @pytest.mark.usefixtures("figure")
     def test_plot_broad_dos(self, dense_dos, figure):
         # Check that setting a grid/broadening does not blow up and reproduces
         # previous results; this result has not been rigorously checked but at
         # least it should not _change_ unexpectedly
-        ax = figure.add_subplot()
+        ax = figure.add_subplot(111)
         _ = dense_dos.plot_dos(ax=ax, npts=10, xmin=0, xmax=9,
                                width=4, smearing='Gauss')
         line_data = ax.lines[0].get_data()
