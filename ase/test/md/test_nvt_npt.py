@@ -95,7 +95,7 @@ def test_npt(asap3, equilibrated, berendsenparams):
     # NPT uses different units.  The factor 1.3 is the bulk modulus of gold in
     # ev/Å^3
     t, p = propagate(Atoms(equilibrated), asap3, NPT,
-                     dict(temperature=params['temperature_K'] * kB,
+                     dict(temperature_K=params['temperature_K'],
                           externalstress=params['pressure_bar'] / 10000 * GPa,
                           ttime=params['taut'],
                           pfactor=params['taup']**2 * 1.3))

@@ -66,7 +66,7 @@ class MolecularDynamics(Dynamics):
         """ MD is 'converged' when number of maximum steps is reached. """
         return self.nsteps >= self.max_steps
 
-    def _process_temperature(self, temperature, temperature_K, temperature_eV, orig_unit):
+    def _process_temperature(self, temperature, temperature_K, orig_unit):
         """Handle that temperature can be specified in multiple units.
 
         For at least a transition period, molecular dynamics in ASE can
@@ -79,43 +79,33 @@ class MolecularDynamics(Dynamics):
         Four parameters:
 
         temperature: None or float
-            The original temperature specification in whatever unit was historically used.
-            A warning is issued if this is not None.
+            The original temperature specification in whatever unit was
+            historically used.  A warning is issued if this is not None and
+            the historical unit was eV.
 
         temperature_K: None or float
             Temperature in Kelvin.
 
-        temperature_eV: None or float
-            Temperature in eV.
-
         orig_unit: str
             Unit used for the `temperature`` parameter.  Must be 'K' or 'eV'.
 
-        Exactly one of the three temperature parameters must be different from None,
-        otherwise an error is issued.
+        Exactly one of the two temperature parameters must be different from 
+        None, otherwise an error is issued.
 
-        Return value: Temperature in eV.
+        Return value: Temperature in Kelvin.
         """
-        if ((temperature is not None) + (temperature_K is not None)
-                + (temperature_eV is not None)) != 1:
+        if (temperature is not None) + (temperature_K is not None) != 1:
             raise TypeError("Exactly one of the parameters 'temperature',"
-                                + " 'temperature_K', and 'temperature_eV' must"
-                                + " be given")
+                                + " and 'temperature_K', must be given")
         if temperature is not None:
-            w = ("Explicitly give the temperature unit by using the"
-                     + " 'temperature_K' or 'temperature_eV' argument instead"
-                     + " of 'temperature'.")
-            warnings.warn(FutureWarning(w))
+            w = "Specify the temperature in K using the 'temperature_K' argument"
             if orig_unit == 'K':
-                return temperature * units.kB
-            elif orig_unit == 'eV':
                 return temperature
+            elif orig_unit == 'eV':
+                warnings.warn(FutureWarning(w))
+                return temperature / units.kB
             else:
                 raise ValueError("Unknown temperature unit "+orig_unit)
 
-        if temperature_K is not None:
-            return temperature_K * units.kB
-
-        assert temperature_eV is not None
-        return temperature_eV
-
+        assert temperature_K is not None
+        return temperature_K

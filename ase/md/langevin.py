@@ -4,7 +4,7 @@ import numpy as np
 
 from ase.md.md import MolecularDynamics
 from ase.parallel import world
-
+from ase import units
 
 class Langevin(MolecularDynamics):
     """Langevin (constant N, V, T) molecular dynamics.
@@ -17,8 +17,11 @@ class Langevin(MolecularDynamics):
     timestep
         The time step.
 
-    temperature_eV or temperature_K
-        The desired temperature, in electron volt or in Kelvin.
+    temperature
+        The desired temperature, in electron volt (deprecated).
+ 
+    temperature_K
+        The desired temperature, in Kelvin.
 
     friction
         A friction coefficient, typically 1e-4 to 1e-2.
@@ -42,21 +45,20 @@ class Langevin(MolecularDynamics):
     of the above reference.  That reference also contains another
     propagator in Eq. 21/34; but that propagator is not quasi-symplectic
     and gives a systematic offset in the temperature at large time steps.
-
-    This dynamics accesses the atoms using Cartesian coordinates."""
+    """
 
     # Helps Asap doing the right thing.  Increment when changing stuff:
     _lgv_version = 4
 
     def __init__(self, atoms, timestep, temperature=None, friction=None,
-                 fixcm=True, trajectory=None, logfile=None, loginterval=1,
-                 *, temperature_K=None, temperature_eV=None,
-                 communicator=world, rng=np.random, append_trajectory=False):
+                 fixcm=True, *, temperature_K=None, trajectory=None,
+                 logfile=None, loginterval=1, communicator=world,
+                 rng=np.random, append_trajectory=False):
         if friction is None:
             raise TypeError("Missing 'friction' argument.")
         self.fr = friction
-        self.temp = self._process_temperature(temperature, temperature_K,
-                                                  temperature_eV, 'eV')
+        self.temp = units.kB * self._process_temperature(temperature,
+                                                         temperature_K, 'eV')
         self.fixcm = fixcm  # will the center of mass be held fixed?
         self.communicator = communicator
         self.rng = rng
@@ -72,10 +74,9 @@ class Langevin(MolecularDynamics):
                   'fix-cm': self.fixcm})
         return d
 
-    def set_temperature(self, temperature=None, temperature_K=None,
-                            temperature_eV=None):
-        self.temp = self._process_temperature(temperature, temperature_K,
-                                                  temperature_eV, 'eV')
+    def set_temperature(self, temperature=None, temperature_K=None):
+        self.temp = units.kB * self._process_temperature(temperature,
+                                                         temperature_K, 'eV')
         self.updatevars()
 
     def set_friction(self, friction):

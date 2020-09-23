@@ -27,7 +27,7 @@ def run():
               calculator=TstPotential())
     print(a.get_forces())
     # Langevin should reproduce Verlet if friction is 0.
-    md = Langevin(a, 0.5 * fs, temperature_eV=300 * kB, friction=0.0,
+    md = Langevin(a, 0.5 * fs, temperature_K=300, friction=0.0,
                       logfile='-', loginterval=500)
     traj = Trajectory('4N.traj', 'w', a)
     md.attach(traj, 100)
@@ -37,7 +37,7 @@ def run():
     assert abs(read('4N.traj').get_total_energy() - e0) < 0.0001
 
     # Try again with nonzero friction.
-    md = Langevin(a, 0.5 * fs, temperature_eV=300 * kB, friction=0.001,
+    md = Langevin(a, 0.5 * fs, temperature_K=300, friction=0.001,
                       logfile='-', loginterval=500, rng=rng)
     traj = Trajectory('4NA.traj', 'w', a)
     md.attach(traj, 100)

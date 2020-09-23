@@ -43,7 +43,7 @@ def test_fixrotation_asap(asap3):
         md = Langevin(
             atoms,
             timestep=20 * fs,
-            temperature_eV=300 * kB,
+            temperature_K=300,
             friction=1e-3,
             logfile='-',
             loginterval=500,

@@ -44,7 +44,7 @@ class NPTBerendsen(NVTBerendsen):
     """
 
     def __init__(self, atoms, timestep, temperature=None,
-                 *, temperature_K=None, temperature_eV=None,
+                 *, temperature_K=None,
                  pressure=None, pressure_au=None, pressure_bar=None,
                  taut=0.5e3 * units.fs, taup=1e3 * units.fs,
                  compressibility=None, fixcm=True, trajectory=None,
@@ -52,7 +52,6 @@ class NPTBerendsen(NVTBerendsen):
 
         NVTBerendsen.__init__(self, atoms, timestep, temperature=temperature,
                               temperature_K=temperature_K,
-                              temperature_eV=temperature_eV,
                               taut=taut, fixcm=fixcm, trajectory=trajectory,
                               logfile=logfile, loginterval=loginterval,
                               append_trajectory=append_trajectory)
@@ -239,7 +238,7 @@ class Inhomogeneous_NPTBerendsen(NPTBerendsen):
         the barostat in that direction.
     """
     def __init__(self, atoms, timestep, temperature=None,
-                 *, temperature_K=None, temperature_eV=None,
+                 *, temperature_K=None, 
                  taut=0.5e3 * units.fs, pressure=None,
                  pressure_bar=None, pressure_au=None, taup=1e3 * units.fs,
                  compressibility=None, mask=(1, 1, 1),
@@ -248,7 +247,6 @@ class Inhomogeneous_NPTBerendsen(NPTBerendsen):
 
         NPTBerendsen.__init__(self, atoms, timestep, temperature=temperature,
                               temperature_K=temperature_K,
-                              temperature_eV=temperature_eV,
                               taut=taut, taup=taup, pressure=pressure,
                               pressure_bar=pressure_bar,
                               pressure_au=pressure_au,

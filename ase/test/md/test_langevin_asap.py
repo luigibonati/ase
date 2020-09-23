@@ -39,7 +39,7 @@ def test_langevin_asap(asap3):
         assert abs(avgtemp - T) < 10.0
         # Calculate the heat capacity, should be close to 3*kB per atom
         dT = 25
-        md.set_temperature(temperature_eV=(T + dT) * kB)
+        md.set_temperature(temperature_K=T + dT)
         md.run(steps=2000)
         temp = []
         energy = []

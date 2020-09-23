@@ -26,6 +26,7 @@ import weakref
 import numpy as np
 
 from ase.md.md import MolecularDynamics
+from ase import units
 
 linalg = np.linalg
 
@@ -140,7 +141,7 @@ class NPT(MolecularDynamics):
     def __init__(self, atoms,
                  timestep, temperature=None, externalstress=None,
                  ttime=None, pfactor=None,
-                 *, temperature_K=None, temperature_eV=None,
+                 *, temperature_K=None,
                  mask=None, trajectory=None, logfile=None, loginterval=1,
                  append_trajectory=False):
 
@@ -156,9 +157,8 @@ class NPT(MolecularDynamics):
         if pfactor is None:
             raise TypeError("Missing 'pfactor' argument.")
         self.zero_center_of_mass_momentum(verbose=1)
-        self.temperature = self._process_temperature(temperature,
-                                                     temperature_K,
-                                                     temperature_eV, 'eV')
+        self.temperature = units.kB * self._process_temperature(
+            temperature, temperature_K, 'eV')
         self.set_stress(externalstress)
         self.set_mask(mask)
         self.eta = np.zeros((3, 3), float)
@@ -171,11 +171,9 @@ class NPT(MolecularDynamics):
         self.timeelapsed = 0.0
         self.frac_traceless = 1
 
-    def set_temperature(self, temperature=None, *, temperature_K=None,
-                            temperature_eV=None,):
-        self.temperature = self._process_temperature(temperature,
-                                                     temperature_K,
-                                                     temperature_eV, 'eV')
+    def set_temperature(self, temperature=None, *, temperature_K=None):
+        self.temperature = units.kB * self._process_temperature(
+            temperature, temperature_K, 'eV')
         self._calculateconstants()
 
     def set_stress(self, stress):

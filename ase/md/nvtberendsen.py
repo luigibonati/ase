@@ -3,7 +3,6 @@
 import numpy as np
 from ase.md.md import MolecularDynamics
 from ase.parallel import world
-from ase.units import kB
 
 
 class NVTBerendsen(MolecularDynamics):
@@ -30,7 +29,7 @@ class NVTBerendsen(MolecularDynamics):
     """
 
     def __init__(self, atoms, timestep, temperature=None, taut=None,
-                 fixcm=True, *, temperature_K=None, temperature_eV=None,
+                 fixcm=True, *, temperature_K=None, 
                  trajectory=None, logfile=None, loginterval=1,
                  communicator=world, append_trajectory=False):
 
@@ -40,8 +39,8 @@ class NVTBerendsen(MolecularDynamics):
         if taut is None:
             raise TypeError("Missing 'taut' argument.")
         self.taut = taut
-        self.temperature = 1 / kB * self._process_temperature(
-            temperature, temperature_K, temperature_eV, 'K')
+        self.temperature = self._process_temperature(temperature,
+                                                     temperature_K, 'K')
 
         self.fixcm = fixcm  # will the center of mass be held fixed?
         self.communicator = communicator
@@ -52,10 +51,9 @@ class NVTBerendsen(MolecularDynamics):
     def get_taut(self):
         return self.taut
 
-    def set_temperature(self, temperature=None, *, temperature_K=None,
-                        temperature_eV=None):
-        self.temperature = 1 / kB * self._process_temperature(
-            temperature, temperature_K, temperature_eV, 'K')
+    def set_temperature(self, temperature=None, *, temperature_K=None):
+        self.temperature = self._process_temperature(temperature,
+                                                     temperature_K, 'K')
 
     def get_temperature(self):
         return self.temperature
