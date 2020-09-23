@@ -2,7 +2,7 @@
 # towards replacing ase.dft.dos and ase.dft.pdos
 from abc import ABCMeta, abstractmethod
 import warnings
-from typing import Any, Dict, Sequence, Tuple, TypeVar
+from typing import Any, Dict, Sequence, Tuple, TypeVar, Union
 
 import numpy as np
 from ase.utils.plotting import SimplePlottingAxes
@@ -407,13 +407,13 @@ class GridDOSData(GeneralDOSData):
                                  width: float = None,
                                  default_npts: int = 1000,
                                  default_width: float = 0.1
-                                 ) -> Tuple[int, float]:
+                                 ) -> Tuple[int, Union[float, None]]:
         """Figure out what the user intended: resample if width provided"""
         if width is not None:
             if npts:
-                return (npts, width)
+                return (npts, float(width))
             else:
-                return (default_npts, width)
+                return (default_npts, float(width))
         else:
             if npts:
                 return (npts, default_width)
@@ -469,6 +469,7 @@ class GridDOSData(GeneralDOSData):
             mplargs.update({'label': self.label_from_info(self.info)})
 
         if npts:
+            assert isinstance(width, float)
             dos = self.sample_grid(npts, xmin=xmin,
                                    xmax=xmax, width=width,
                                    smearing=smearing)

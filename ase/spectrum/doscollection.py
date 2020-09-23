@@ -569,6 +569,7 @@ class GridDOSCollection(DOSCollection):
         npts, width = GridDOSData._interpret_smearing_args(npts, width)
 
         if npts:
+            assert isinstance(width, float)
             dos = self.sample_grid(npts,
                                    xmin=xmin, xmax=xmax,
                                    width=width, smearing=smearing)
