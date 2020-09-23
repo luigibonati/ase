@@ -46,15 +46,15 @@ def _berendsen_asap(asap3, pressure, homog=True):
         elif homog:
             md = NPTBerendsen(a, timestep=4 * fs, temperature_K=T,
                                   taut=2000*fs,
-                                  pressure_bar=pressure/GPa*1e4, taup=2000*fs,
-                                  compressibility=1 / (140 * 1e4))
+                                  pressure_au=pressure, taup=2000*fs,
+                                  compressibility_au=1 / (140 * GPa))
             # We want logging with stress included
             md.attach(MDLogger(md, a, '-', stress=True), interval=500)
         else:
             md = Inhomogeneous_NPTBerendsen(
                 a, timestep=4 * fs, temperature_K=T, taut=2000*fs,
-                pressure_bar=pressure/GPa*1e4, taup=2000*fs,
-                compressibility=1 / (140 * 1e4)
+                pressure_au=pressure, taup=2000*fs,
+                compressibility_au=1 / (140 * GPa)
                 )
             # We want logging with stress included
             md.attach(MDLogger(md, a, '-', stress=True), interval=500)

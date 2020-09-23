@@ -186,6 +186,7 @@ def create_units(codata_version):
 
     u['Pascal'] = (1 / u['_e']) / 1e30  # J/m^3
     u['GPa'] = 1e9 * u['Pascal']
+    u['bar'] = 1e5 * u['Pascal']
 
     u['Debye'] = 1.0 / 1e11 / u['_e'] / u['_c']
     u['alpha'] = (u['_e']**2 / (4 * pi * u['_eps0']) /

@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 from ase import Atoms
-from ase.units import fs, kB
+from ase.units import fs
 # Rename import so pytest won't pick up the class as a test:
 from ase.calculators.test import TestPotential as TstPotential
 from ase.md import Langevin

@@ -44,10 +44,10 @@ class NPTBerendsen(NVTBerendsen):
     """
 
     def __init__(self, atoms, timestep, temperature=None,
-                 *, temperature_K=None,
-                 pressure=None, pressure_au=None, pressure_bar=None,
+                 *, temperature_K=None, pressure=None, pressure_au=None,
                  taut=0.5e3 * units.fs, taup=1e3 * units.fs,
-                 compressibility=None, fixcm=True, trajectory=None,
+                 compressibility=None, compressibility_au=None, fixcm=True,
+                 trajectory=None,
                  logfile=None, loginterval=1, append_trajectory=False):
 
         NVTBerendsen.__init__(self, atoms, timestep, temperature=temperature,
@@ -56,12 +56,19 @@ class NPTBerendsen(NVTBerendsen):
                               logfile=logfile, loginterval=loginterval,
                               append_trajectory=append_trajectory)
         self.taup = taup
-        self.pressure = self._process_pressure(pressure, pressure_bar,
-                                                   pressure_au)
-        if compressibility is None:
-            raise TypeError("Missing 'compressibility' argument")
-        self.set_compressibility(compressibility)
-
+        self.pressure = self._process_pressure(pressure, pressure_au)
+        if compressibility is not None and compressibility_au is not None:
+            raise TypeError(
+                "Do not give both 'compressibility' and 'compressibility_au'")
+        if compressibility is not None:
+            # Specified in bar, convert to atomic units
+            warnings.warn(FutureWarning(
+                "Specify the compressibility in atomic units."))
+            self.set_compressibility(
+                compressibility_au=compressibility / (1e5 * units.Pascal))
+        else:
+            self.set_compressibility(compressibility_au=compressibility_au)
+            
     def set_taup(self, taup):
         self.taup = taup
 
@@ -76,12 +83,8 @@ class NPTBerendsen(NVTBerendsen):
     def get_pressure(self):
         return self.pressure
 
-    def set_compressibility(self, compressibility):
-        if self.pressure_unit == 'bar':
-            self.compressibility = compressibility / (1e5 * units.Pascal)
-        else:
-            assert self.pressure_unit == 'au'
-            self.compressibility = compressibility
+    def set_compressibility(self, *, compressibility_au):
+        self.compressibility = compressibility_au
 
     def get_compressibility(self):
         return self.compressibility
@@ -146,56 +149,39 @@ class NPTBerendsen(NVTBerendsen):
 
         return f
 
-    def _process_pressure(self, pressure, pressure_bar, pressure_au):
+    def _process_pressure(self, pressure, pressure_au):
         """Handle that pressure can be specified in multiple units.
 
         For at least a transition period, Berendsen NPT dynamics in ASE can
         have the pressure specified in either bar or atomic units (eV/Å^3).
 
-        Four parameters:
+        Two parameters:
 
         pressure: None or float
-            The original pressure specification in whatever unit was 
-            historically used.  A warning is issued if this is not None.
-
-        pressure_bar: None or float
-            Pressure in bar.
+            The original pressure specification in bar.
+            A warning is issued if this is not None.
 
         pressure_au: None or float
             Pressure in ev/Å^3.
 
-        Exactly one of the three pressure parameters must be different from 
+        Exactly one of the two pressure parameters must be different from 
         None, otherwise an error is issued.
 
         Return value: Pressure in eV/Å^3.
         """
-        if ((pressure is not None) + (pressure_bar is not None)
-                + (pressure_au is not None)) != 1:
+        if (pressure is not None) + (pressure_au is not None) != 1:
             raise TypeError("Exactly one of the parameters 'pressure',"
-                                + " 'pressure_bar', and 'pressure_au' must"
+                                + " and 'pressure_au' must"
                                 + " be given")
+
         if pressure is not None:
-            w = ("Explicitly give the pressure unit by using the"
-                     + " 'pressure_bar' or 'pressure_au' argument instead"
-                     + " of 'pressure'.")
+            w = ("The 'pressure' parameter is deprecated, please"
+                     +" specify the pressure in atomic units (eV/Å^3)"
+                     +" using the 'pressure_au' parameter.")
             warnings.warn(FutureWarning(w))
-            pressure_bar = pressure 
-
-        err = "You need to stick to the pressure unit used when creating this object ({})"
-        if pressure_bar is not None:
-            pressure_au = pressure_bar * (1e5 * units.Pascal)
-            if getattr(self, 'pressure_unit', 'bar') != 'bar':
-                raise ValueError(err.format(self.pressure_unit))
-            self.pressure_unit = 'bar'
+            return pressure * (1e5 * units.Pascal)
         else:
-            if getattr(self, 'pressure_unit', 'au') != 'au':
-                raise ValueError(err.format(self.pressure_unit))
-            self.pressure_unit = 'au'
-
-        return pressure_au
-
-
-    
+            return pressure_au
 
 
 class Inhomogeneous_NPTBerendsen(NPTBerendsen):
@@ -240,17 +226,17 @@ class Inhomogeneous_NPTBerendsen(NPTBerendsen):
     def __init__(self, atoms, timestep, temperature=None,
                  *, temperature_K=None, 
                  taut=0.5e3 * units.fs, pressure=None,
-                 pressure_bar=None, pressure_au=None, taup=1e3 * units.fs,
-                 compressibility=None, mask=(1, 1, 1),
-                 fixcm=True, trajectory=None,
+                 pressure_au=None, taup=1e3 * units.fs,
+                 compressibility=None, compressibility_au=None,
+                 mask=(1, 1, 1), fixcm=True, trajectory=None,
                  logfile=None, loginterval=1):
 
         NPTBerendsen.__init__(self, atoms, timestep, temperature=temperature,
                               temperature_K=temperature_K,
                               taut=taut, taup=taup, pressure=pressure,
-                              pressure_bar=pressure_bar,
                               pressure_au=pressure_au,
                               compressibility=compressibility,
+                              compressibility_au=compressibility_au,
                               fixcm=fixcm, trajectory=trajectory,
                               logfile=logfile, loginterval=loginterval)
         self.mask = mask
