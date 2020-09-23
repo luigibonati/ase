@@ -23,7 +23,7 @@
             Add Column <span class="caret"></span>
             </button>
             <ul class="dropdown-menu">
-            {% for key, value in p.key_descriptions|dictsort(false, "key") if key in t.addcolumns %}
+            {% for key, value in p.key_descriptions|dictsort(false, "value") if key in t.addcolumns %}
               <li><a href="javascript:update_table({{ s.id }},
                                                    'toggle',
                                                    '{{ key }}')">
