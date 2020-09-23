@@ -73,5 +73,6 @@ def test_multiple_write_and_read():
 
     # Test reading
     images1 = read('1.xyz', format='xyz', index=':')
+    assert len(images) == len(images1)
     for atoms, atoms1 in zip(images, images1):
         assert atoms_equal(atoms, atoms1), 'Read failed'
