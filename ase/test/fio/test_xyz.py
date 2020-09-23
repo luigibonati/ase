@@ -1,4 +1,5 @@
 import filecmp
+import pytest
 from ase.build import molecule
 from ase.io import read, write
 from ase.calculators.emt import EMT
@@ -41,6 +42,19 @@ def test_single_write_and_read_with_comment():
     # Test reading
     atoms1 = read('1.xyz', format='xyz')
     assert atoms == atoms1, 'Read failed'
+
+
+@pytest.mark.parametrize('format', ['xyz', 'extxyz'])
+def test_single_write_with_newline_comment(format):
+    # Test writing
+    atoms = molecule('C6H6')
+    comment = 'my comment\nnext line'
+    try:
+        write('atoms.xyz', atoms, format=format, comment=comment)
+    except ValueError as e:
+        assert 'comment line' in str(e).lower()
+    else:
+        raise RuntimeError('Write should fail for newlines in comment.')
 
 
 def test_multiple_write_and_read():

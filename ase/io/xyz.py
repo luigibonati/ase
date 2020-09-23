@@ -32,6 +32,9 @@ def read_xyz(fileobj, index):
 
 
 def write_xyz(fileobj, images, comment='', fmt='%22.15f'):
+    comment = comment.rstrip()
+    if '\n' in comment:
+        raise ValueError('Comment line should not have line breaks.')
     for atoms in images:
         natoms = len(atoms)
         fileobj.write('%d\n%s\n' % (natoms, comment))
