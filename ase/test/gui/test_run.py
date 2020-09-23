@@ -138,7 +138,13 @@ def test_fracocc(gui):
         f.write(content)
     gui.open(filename='fracocc.cif')
 
-
+def test_povray(gui):
+    mol = molecule('H2O')
+    n = gui.render_window() # not gui.set_atoms(mol)
+    assert n.basename_widget.value == 'H2O'
+    n.run_povray_widget.check.deselect()
+    # can't set attribute n.run.povray_widge.value = False
+    n.ok()
 
 @pytest.fixture
 def with_bulk_ti(gui):
