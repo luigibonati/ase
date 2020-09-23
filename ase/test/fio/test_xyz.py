@@ -1,14 +1,20 @@
 import filecmp
 from ase.build import molecule
-from ase.io import write
+from ase.io import read, write
 from ase.calculators.emt import EMT
 
 
-def test_single_write():
+def test_single_write_and_read():
+    # Test that `format='extxyz', plain=True` writes a standard xyz file
+    # like the `format='xyz'`
     atoms = molecule('H2O')
     write('1.xyz', atoms, format='extxyz', plain=True)
     write('2.xyz', atoms, format='xyz', fmt='%16.8f')
     assert filecmp.cmp('1.xyz', '2.xyz', shallow=False), 'Files differ'
+
+    # Test reading
+    atoms1 = read('1.xyz', format='xyz')
+    assert atoms == atoms1, 'Read failed'
 
 
 def test_single_write_with_forces():
@@ -24,18 +30,28 @@ def test_single_write_with_forces():
     assert filecmp.cmp('1.xyz', '3.xyz', shallow=False), 'Files differ'
 
 
-def test_single_write_with_comment():
-    atoms = molecule('H2O')
+def test_single_write_and_read_with_comment():
+    # Test writing
+    atoms = molecule('C6H6')
     comment = 'my comment'
     write('1.xyz', atoms, format='extxyz', plain=True, comment=comment)
     write('2.xyz', atoms, format='xyz', fmt='%16.8f', comment=comment)
     assert filecmp.cmp('1.xyz', '2.xyz', shallow=False), 'Files differ'
 
+    # Test reading
+    atoms1 = read('1.xyz', format='xyz')
+    assert atoms == atoms1, 'Read failed'
 
-def test_multiple_write():
+
+def test_multiple_write_and_read():
     images = []
     for name in ['C6H6', 'H2O', 'CO']:
         images.append(molecule(name))
     write('1.xyz', images, format='extxyz', plain=True)
     write('2.xyz', images, format='xyz', fmt='%16.8f')
     assert filecmp.cmp('1.xyz', '2.xyz', shallow=False), 'Files differ'
+
+    # Test reading
+    images1 = read('1.xyz', format='xyz', index=':')
+    for atoms, atoms1 in zip(images, images1):
+        assert atoms == atoms1, 'Read failed'
