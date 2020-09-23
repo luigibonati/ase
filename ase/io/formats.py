@@ -371,6 +371,8 @@ F('xsf', 'XCrySDen Structure File', '+F',
   magic=[b'*\nANIMSTEPS', b'*\nCRYSTAL', b'*\nSLAB', b'*\nPOLYMER',
          b'*\nMOLECULE', b'*\nATOMS'])
 F('xtd', 'Materials Studio file', '+F')
+# xyz: No `ext='xyz'` in the definition below.
+#      The .xyz files are handled by the extxyz module by default.
 F('xyz', 'XYZ-file', '+F')
 
 netcdfconventions2format = {
