@@ -14,8 +14,9 @@ import numpy as np
 def berendsenparams():
     """Parameters for the two Berendsen algorithms."""
     Bgold = 220.0 * 10000  # Bulk modulus of gold, in bar (1 GPa = 10000 bar)
-    nvtparam = dict(temperature=300, taut=1000 * fs)
-    nptparam = dict(temperature=300, pressure=5000, taut=1000 * fs, taup=1000 * fs,
+    nvtparam = dict(temperature_K=300, taut=1000 * fs)
+    nptparam = dict(temperature_K=300, pressure=5000, taut=1000 * fs,
+                    taup=1000 * fs,
                     compressibility=1 / Bgold)
     return dict(nvt=nvtparam, npt=nptparam)
 
@@ -79,13 +80,13 @@ def propagate(atoms, asap3, algorithm, algoargs):
 def test_nvtberendsen(asap3, equilibrated, berendsenparams):
     t, _ = propagate(Atoms(equilibrated), asap3,
                      NVTBerendsen, berendsenparams['nvt'])
-    assert abs(t - berendsenparams['nvt']['temperature']) < 0.5
+    assert abs(t - berendsenparams['nvt']['temperature_K']) < 0.5
 
 
 def test_nptberendsen(asap3, equilibrated, berendsenparams):
     t, p = propagate(Atoms(equilibrated), asap3,
                      NPTBerendsen, berendsenparams['npt'])
-    assert abs(t - berendsenparams['npt']['temperature']) < 1.0
+    assert abs(t - berendsenparams['npt']['temperature_K']) < 1.0
     assert abs(p - berendsenparams['npt']['pressure']) < 25.0
 
 
@@ -94,12 +95,12 @@ def test_npt(asap3, equilibrated, berendsenparams):
     # NPT uses different units.  The factor 1.3 is the bulk modulus of gold in
     # ev/Å^3
     t, p = propagate(Atoms(equilibrated), asap3, NPT,
-                     dict(temperature=params['temperature'] * kB,
+                     dict(temperature=params['temperature_K'] * kB,
                           externalstress=params['pressure'] / 10000 * GPa,
                           ttime=params['taut'],
                           pfactor=params['taup']**2 * 1.3))
     # Unlike NPTBerendsen, NPT assumes that the center of mass is not
     # thermalized, so the kinetic energy should be 3/2 ' kB * (N-1) * T
     n = len(equilibrated)
-    assert abs(t - (n - 1) / n * berendsenparams['npt']['temperature']) < 1.0
+    assert abs(t - (n - 1) / n * berendsenparams['npt']['temperature_K']) < 1.0
     assert abs(p - berendsenparams['npt']['pressure']) < 100.0

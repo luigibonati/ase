@@ -32,10 +32,12 @@ def _berendsen_asap(asap3, pressure):
         # Berendsen dynamics should raise this to 300 K
         T = 300
         if pressure is None:
-            md = NVTBerendsen(a, timestep=4 * fs, temperature=T, taut=2000*fs,
+            md = NVTBerendsen(a, timestep=4 * fs, temperature_K=T,
+                                  taut=2000*fs,
                                   logfile='-', loginterval=500)
         else:
-            md = NPTBerendsen(a, timestep=4 * fs, temperature=T, taut=2000*fs,
+            md = NPTBerendsen(a, timestep=4 * fs, temperature_K=T,
+                                  taut=2000*fs,
                                   pressure=pressure/GPa*1e4, taup=2000*fs,
                                   compressibility=1 / (140 * 1e4))
             # We want logging with stress included

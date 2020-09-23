@@ -21,7 +21,8 @@ def test_npt_asap(asap3):
         T = 300
         MaxwellBoltzmannDistribution(a, T * kB, force_temp=True, rng=rng)
         Stationary(a)
-        berend = NPTBerendsen(a, timestep=4 * fs, temperature=T, taut=2000*fs,
+        berend = NPTBerendsen(a, timestep=4 * fs, temperature_K=T,
+                              taut=2000*fs,
                               pressure=pressure/GPa*1e4, taup=2000*fs,
                               compressibility=1 / (140 * 1e4),
                               logfile='-', loginterval=500)

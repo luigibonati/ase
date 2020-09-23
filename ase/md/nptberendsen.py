@@ -42,14 +42,18 @@ class NPTBerendsen(NVTBerendsen):
 
     """
 
-    def __init__(self, atoms, timestep, temperature, taut=0.5e3 *
-                 units.fs, pressure=1.01325, taup=1e3 * units.fs,
+    def __init__(self, atoms, timestep, temperature=None,
+                 *, temperature_K=None, temperature_eV=None,
+                 taut=0.5e3 * units.fs, pressure=1.01325, taup=1e3 * units.fs,
                  compressibility=4.57e-5, fixcm=True, trajectory=None,
                  logfile=None, loginterval=1, append_trajectory=False):
 
-        NVTBerendsen.__init__(self, atoms, timestep, temperature,
-                              taut, fixcm, trajectory, logfile,
-                              loginterval, append_trajectory=append_trajectory)
+        NVTBerendsen.__init__(self, atoms, timestep, temperature=temperature,
+                              temperature_K=temperature_K,
+                              temperature_eV=temperature_eV,
+                              taut=taut, fixcm=fixcm, trajectory=trajectory,
+                              logfile=logfile, loginterval=loginterval,
+                              append_trajectory=append_trajectory)
         self.taup = taup
         self.pressure = pressure
         self.compressibility = compressibility
@@ -172,16 +176,20 @@ class Inhomogeneous_NPTBerendsen(NPTBerendsen):
         means that all axes participate, set any of them to zero to disable
         the barostat in that direction.
     """
-    def __init__(self, atoms, timestep, temperature,
+    def __init__(self, atoms, timestep, temperature=None,
+                 *, temperature_K=None, temperature_eV=None,
                  taut=0.5e3 * units.fs, pressure=1.01325, taup=1e3 * units.fs,
                  compressibility=4.57e-5, mask=(1, 1, 1),
                  fixcm=True, trajectory=None,
                  logfile=None, loginterval=1):
 
-        NPTBerendsen.__init__(self, atoms, timestep, temperature,
-                              taut, pressure, taup, compressibility,
-                              fixcm, trajectory, logfile,
-                              loginterval)
+        NPTBerendsen.__init__(self, atoms, timestep, temperature=temperature,
+                              temperature_K=temperature_K,
+                              temperature_eV=temperature_eV,
+                              taut=taut, pressure=pressure, taup=taup,
+                              compressibility=compressibility,
+                              fixcm=fixcm, trajectory=trajectory,
+                              logfile=logfile, loginterval=loginterval)
         self.mask = mask
 
     def scale_positions_and_cell(self):
