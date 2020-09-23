@@ -1,7 +1,8 @@
 """Vibrational modes."""
 
+import collections
 from math import sin, pi, sqrt, log
-import numbers
+from numbers import Real, Integral
 import os
 import os.path as op
 import pickle
@@ -19,6 +20,9 @@ from ase.utils import jsonable
 from ase.utils import opencew, pickleload
 from ase.calculators.singlepoint import SinglePointCalculator
 from ase.dft.pdos import DOS
+
+
+RealSequence4D = Sequence[Sequence[Sequence[Sequence[Real]]]]
 
 
 @jsonable('vibrationsdata')
@@ -76,7 +80,7 @@ class VibrationsData(object):
 
     @classmethod
     def from_2d(cls, atoms: Atoms,
-                hessian_2d: np.ndarray,
+                hessian_2d: Union[Sequence[Sequence[Real]], np.ndarray],
                 indices: Sequence[int] = None) -> 'VibrationsData':
         """Instantiate VibrationsData when the Hessian is in a 3Nx3N format
 
@@ -123,7 +127,9 @@ class VibrationsData(object):
     @staticmethod
     def _check_dimensions(atoms: Atoms,
                           indices: Union[Sequence[int], None],
-                          hessian: np.ndarray,
+                          hessian: Union[Sequence[Sequence[Real]],
+                                         RealSequence4D,
+                                         np.ndarray],
                           two_d: bool = False) -> int:
         """Sanity check on array shapes from input data
 
@@ -256,14 +262,16 @@ class VibrationsData(object):
 
     @classmethod
     def fromdict(cls, data: Dict[str, Any]) -> 'VibrationsData':
-
         # mypy is understandably suspicious of data coming from a dict that
         # holds mixed types, but it can see if we sanity-check with 'assert'
         assert isinstance(data['atoms'], Atoms)
-        assert isinstance(data['hessian'], np.ndarray)
+        assert isinstance(data['hessian'], (collections.abc.Sequence,
+                                            np.ndarray))
         if data['indices'] is not None:
-            assert (isinstance(data['indices'], np.ndarray)
-                    and isinstance(data['indices'][0], numbers.Integral))
+            assert isinstance(data['indices'], (collections.abc.Sequence,
+                                                np.ndarray))
+            for index in data['indices']:
+                assert isinstance(index, Integral)
 
         return cls(data['atoms'], data['hessian'], indices=data['indices'])
 
