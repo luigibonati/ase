@@ -29,7 +29,7 @@ def test_npt_asap(asap3):
         berend.run(steps=5000)
         # Now gather the temperature over 10000 timesteps, collecting it every 5 steps
         ptime = 2000 * fs
-        md = NPT(a, timestep=4 * fs, temperature=T*kB, externalstress=pressure,
+        md = NPT(a, timestep=4 * fs, temperature_K=T, externalstress=pressure,
                      ttime=2000 * fs, pfactor=ptime**2/(140 / GPa))
         # We want logging with stress included
         md.attach(MDLogger(md, a, '-', stress=True), interval=500)

@@ -138,7 +138,9 @@ class NPT(MolecularDynamics):
     _npt_version = 2   # Version number, used for Asap compatibility.
 
     def __init__(self, atoms,
-                 timestep, temperature, externalstress, ttime, pfactor,
+                 timestep, temperature=None, externalstress=None,
+                 ttime=None, pfactor=None,
+                 *, temperature_K=None, temperature_eV=None,
                  mask=None, trajectory=None, logfile=None, loginterval=1,
                  append_trajectory=False):
 
@@ -147,8 +149,16 @@ class NPT(MolecularDynamics):
                                    append_trajectory=append_trajectory)
         # self.atoms = atoms
         # self.timestep = timestep
+        if externalstress is None:
+            raise TypeError("Missing 'externalstress' argument.")
+        if ttime is None:
+            raise TypeError("Missing 'ttime' argument.")
+        if pfactor is None:
+            raise TypeError("Missing 'pfactor' argument.")
         self.zero_center_of_mass_momentum(verbose=1)
-        self.temperature = temperature
+        self.temperature = self._process_temperature(temperature,
+                                                     temperature_K,
+                                                     temperature_eV, 'eV')
         self.set_stress(externalstress)
         self.set_mask(mask)
         self.eta = np.zeros((3, 3), float)
@@ -161,8 +171,11 @@ class NPT(MolecularDynamics):
         self.timeelapsed = 0.0
         self.frac_traceless = 1
 
-    def set_temperature(self, temperature):
-        self.temperature = temperature
+    def set_temperature(self, temperature=None, *, temperature_K=None,
+                            temperature_eV=None,):
+        self.temperature = self._process_temperature(temperature,
+                                                     temperature_K,
+                                                     temperature_eV, 'eV')
         self._calculateconstants()
 
     def set_stress(self, stress):
