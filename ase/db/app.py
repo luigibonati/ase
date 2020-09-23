@@ -77,7 +77,7 @@ def update(sid: int, what: str, x: str):
     table = session.create_table(project['database'],
                                  project['uid_key'],
                                  keys=list(project['key_descriptions']))
-    return render_template(project['row_template'],
+    return render_template(project['table_template'],
                            t=table,
                            p=project,
                            s=session)
