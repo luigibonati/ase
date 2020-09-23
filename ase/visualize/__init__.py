@@ -1,3 +1,4 @@
+from io import BytesIO
 import os
 import subprocess
 import sys
@@ -8,7 +9,6 @@ import ase.parallel as parallel
 
 
 def _pipe_to_gui(atoms, repeat, block):
-    from io import BytesIO
     buf = BytesIO()
     write(buf, atoms, format='traj')
 
@@ -16,12 +16,12 @@ def _pipe_to_gui(atoms, repeat, block):
     if repeat:
         args.append(' --repeat={},{},{}'.format(*repeat))
 
-    proc = subprocess.Popen(args,
-                            stdin=subprocess.PIPE)
+    proc = subprocess.Popen(args, stdin=subprocess.PIPE)
     proc.stdin.write(buf.getvalue())
     proc.stdin.close()
     if block:
         proc.wait()
+    return proc
 
 
 def view(atoms, data=None, viewer='ase', repeat=None, block=False):
@@ -32,8 +32,7 @@ def view(atoms, data=None, viewer='ase', repeat=None, block=False):
     vwr = viewer.lower()
 
     if vwr == 'ase':
-        _pipe_to_gui(atoms, repeat, block)
-        return
+        return _pipe_to_gui(atoms, repeat, block)
 
     if vwr == 'vmd':
         format = 'cube'
@@ -87,23 +86,33 @@ else:
 Render()
         """
         script_name = os.path.join(tempfile.gettempdir(), 'draw_atoms.py')
-        with open(script_name, 'w') as f:
-            f.write(macro)
+        with open(script_name, 'w') as fd:
+            fd.write(macro)
         format = 'vtu'
         command = 'paraview --script=' + script_name
     else:
         raise RuntimeError('Unknown viewer: ' + viewer)
 
-    fd, filename = tempfile.mkstemp('.' + format, 'ase-')
     if repeat is not None:
         atoms = atoms.repeat()
+
+    fd, filename = tempfile.mkstemp('.' + format, 'ase-')
+
     if data is None:
         write(filename, atoms, format=format)
     else:
         write(filename, atoms, format=format, data=data)
+
+    viewer_args = command.split() + [filename]
+
+    from ase.visualize.external import open_external_viewer
+    viewer = open_external_viewer(viewer_args, filename)
+
     if block:
-        subprocess.call(command.split() + [filename])
-        os.remove(filename)
-    else:
-        subprocess.Popen(command.split() + [filename])
-        subprocess.Popen(['sleep 60; rm {0}'.format(filename)], shell=True)
+        status = viewer.wait()
+        if status != 0:
+            raise RuntimeError(
+                'Viewer failed on file "{}" with status {} and args: {}'
+                .format(filename, status, viewer_args))
+
+    return viewer
