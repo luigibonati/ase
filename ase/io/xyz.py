@@ -40,3 +40,8 @@ def write_xyz(fileobj, images, comment='', fmt='%22.15f'):
         fileobj.write('%d\n%s\n' % (natoms, comment))
         for s, (x, y, z) in zip(atoms.symbols, atoms.positions):
             fileobj.write('%-2s %s %s %s\n' % (s, fmt % x, fmt % y, fmt % z))
+
+
+# Compatibility with older releases
+simple_read_xyz = read_xyz
+simple_write_xyz = write_xyz
