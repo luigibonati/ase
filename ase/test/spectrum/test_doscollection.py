@@ -60,7 +60,8 @@ class TestDOSCollection:
 
         ax = figure.add_subplot(111)
 
-        ax_out = mindoscollection.plot(npts=npts, ax=ax, mplargs=mplargs)
+        with pytest.warns(UserWarning):  # Default width is small for npts=20
+            ax_out = mindoscollection.plot(npts=npts, ax=ax, mplargs=mplargs)
         assert ax_out == ax
 
         assert ([line.get_label() for line in ax.get_legend().get_lines()]
@@ -321,6 +322,10 @@ class TestGridDOSCollection:
         weights = np.cos(energies)
         return GridDOSData(energies, weights, info={'my_key': 'other_value'})
 
+    @pytest.fixture
+    def griddoscollection(self, griddos, another_griddos):
+        return GridDOSCollection([griddos, another_griddos])
+
     def test_init_errors(self, griddos):
         with pytest.raises(TypeError):
             GridDOSCollection([RawDOSData([1.], [1.])])
@@ -388,3 +393,13 @@ class TestGridDOSCollection:
                 assert dos_data.info == info[i]
                 assert np.allclose(dos_data.get_energies(), x)
                 assert np.allclose(dos_data.get_weights(), weights[i])
+
+    @pytest.mark.usefixtures("figure")
+    def test_plot_no_resample(self, griddoscollection, figure):
+        ax = figure.add_subplot(111)
+        griddoscollection.plot(ax=ax)
+
+        assert np.allclose(ax.get_lines()[0].get_xdata(),
+                           griddoscollection[0].get_energies())
+        assert np.allclose(ax.get_lines()[1].get_ydata(),
+                           griddoscollection[1].get_weights())
