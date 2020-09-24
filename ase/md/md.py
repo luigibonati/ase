@@ -13,7 +13,35 @@ class MolecularDynamics(Dynamics):
     """Base-class for all MD classes."""
     def __init__(self, atoms, timestep, trajectory, logfile=None,
                  loginterval=1, append_trajectory=False):
+        """Molecular Dynamics object.
 
+        Parameters:
+
+        atoms: Atoms object
+            The Atoms object to operate on.
+
+        timestep: float
+            The time step in ASE time units.
+
+        trajectory: Trajectory object or str
+            Attach trajectory object.  If *trajectory* is a string a
+            Trajectory will be constructed.  Use *None* for no
+            trajectory.
+
+        logfile: file object or str (optional)
+            If *logfile* is a string, a file with that name will be opened.
+            Use '-' for stdout.
+
+        loginterval: int (optional)
+            Only write a log line for every *loginterval* time steps.  
+            Default: 1
+
+        append_trajectory: boolean (optional)
+            Defaults to False, which causes the trajectory file to be
+            overwriten each time the dynamics is restarted from scratch.
+            If True, the new structures are appended to the trajectory
+            file instead.
+        """
         # dt as to be attached _before_ parent class is initialized
         self.dt = timestep
 

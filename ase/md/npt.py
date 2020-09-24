@@ -35,105 +35,6 @@ linalg = np.linalg
 
 
 class NPT(MolecularDynamics):
-    '''Constant pressure/stress and temperature dynamics.
-
-    Combined Nose-Hoover and Parrinello-Rahman dynamics, creating an
-    NPT (or N,stress,T) ensemble.
-
-    The method is the one proposed by Melchionna et al. [1] and later
-    modified by Melchionna [2].  The differential equations are integrated
-    using a centered difference method [3].  See also NPTdynamics.tex
-
-    The dynamics object is called with the following parameters:
-
-    atoms
-        The list of atoms.
-
-    timestep
-        The timestep in units matching eV, A, u.
-
-    temperature
-        The desired temperature in eV.
-
-    externalstress
-        The external stress in eV/A^3.  Either a symmetric
-        3x3 tensor, a 6-vector representing the same, or a
-        scalar representing the pressure.  Note that the
-        stress is positive in tension whereas the pressure is
-        positive in compression: giving a scalar p is
-        equivalent to giving the tensor (-p, -p, -p, 0, 0, 0).
-
-    ttime
-        Characteristic timescale of the thermostat, in ASE internal units
-        Set to None to disable the thermostat.
-
-    pfactor
-        A constant in the barostat differential equation.  If
-        a characteristic barostat timescale of ptime is
-        desired, set pfactor to ptime^2 * B (where ptime is in units matching
-        eV, A, u; and B is the Bulk Modulus, given in eV/A^3).
-        Set to None to disable the barostat.
-        Typical metallic bulk moduli are of the order of
-        100 GPa or 0.6 eV/A^3.
-
-    mask=None
-        Optional argument.  A tuple of three integers (0 or 1),
-        indicating if the system can change size along the
-        three Cartesian axes.  Set to (1,1,1) or None to allow
-        a fully flexible computational box.  Set to (1,1,0)
-        to disallow elongations along the z-axis etc.
-        mask may also be specified as a symmetric 3x3 array
-        indicating which strain values may change.
-
-    Useful parameter values:
-
-    * The same timestep can be used as in Verlet dynamics, i.e. 5 fs is fine
-      for bulk copper.
-
-    * The ttime and pfactor are quite critical[4], too small values may
-      cause instabilites and/or wrong fluctuations in T / p.  Too
-      large values cause an oscillation which is slow to die.  Good
-      values for the characteristic times seem to be 25 fs for ttime,
-      and 75 fs for ptime (used to calculate pfactor), at least for
-      bulk copper with 15000-200000 atoms.  But this is not well
-      tested, it is IMPORTANT to monitor the temperature and
-      stress/pressure fluctuations.
-
-    It has the following methods:
-
-    run(n)
-        Perform n timesteps.
-    initialize()
-        Estimates the dynamic variables for time=-1 to start
-        the algorithm.   This is automatically called before
-        the first timestep.
-    set_stress()
-        Set the external stress.  Use with care.  It is
-        preferable to set the right value when creating the
-        object.
-    set_mask()
-        Change the mask.  Use with care, as you may "freeze"
-        a fluctuation in the strain rate.
-    get_gibbs_free_energy()
-        Gibbs free energy is supposed to be preserved by this
-        dynamics.  This is mainly intended as a diagnostic
-        tool.
-
-    References:
-
-    1) S. Melchionna, G. Ciccotti and B. L. Holian, Molecular
-       Physics 78, p. 533 (1993).
-
-    2) S. Melchionna, Physical
-       Review E 61, p. 6165 (2000).
-
-    3) B. L. Holian, A. J. De Groot, W. G. Hoover, and C. G. Hoover,
-       Physical Review A 41, p. 4552 (1990).
-
-    4) F. D. Di Tolla and M. Ronchetti, Physical
-       Review E 48, p. 1726 (1993).
-
-    '''
 
     classname = "NPT"  # Used by the trajectory.
     _npt_version = 2   # Version number, used for Asap compatibility.
@@ -144,6 +45,89 @@ class NPT(MolecularDynamics):
                  *, temperature_K=None,
                  mask=None, trajectory=None, logfile=None, loginterval=1,
                  append_trajectory=False):
+        '''Constant pressure/stress and temperature dynamics.
+
+        Combined Nose-Hoover and Parrinello-Rahman dynamics, creating an
+        NPT (or N,stress,T) ensemble.
+
+        The method is the one proposed by Melchionna et al. [1] and later
+        modified by Melchionna [2].  The differential equations are integrated
+        using a centered difference method [3].  See also NPTdynamics.tex
+
+        The dynamics object is called with the following parameters:
+
+        atoms: Atoms object
+            The list of atoms.
+
+        timestep: float
+            The timestep in units matching eV, A, u.
+
+        temperature: float (deprecated)
+            The desired temperature in eV.
+
+        temperature_K: float
+            The desired temperature in K.
+
+        externalstress: float or nparray
+            The external stress in eV/A^3.  Either a symmetric
+            3x3 tensor, a 6-vector representing the same, or a
+            scalar representing the pressure.  Note that the
+            stress is positive in tension whereas the pressure is
+            positive in compression: giving a scalar p is
+            equivalent to giving the tensor (-p, -p, -p, 0, 0, 0).
+
+        ttime: float
+            Characteristic timescale of the thermostat, in ASE internal units
+            Set to None to disable the thermostat.
+
+        pfactor: float
+            A constant in the barostat differential equation.  If
+            a characteristic barostat timescale of ptime is
+            desired, set pfactor to ptime^2 * B (where ptime is in units matching
+            eV, A, u; and B is the Bulk Modulus, given in eV/A^3).
+            Set to None to disable the barostat.
+            Typical metallic bulk moduli are of the order of
+            100 GPa or 0.6 eV/A^3.
+
+        mask: None or 3-tuple or 3x3 nparray (optional)
+            Optional argument.  A tuple of three integers (0 or 1),
+            indicating if the system can change size along the
+            three Cartesian axes.  Set to (1,1,1) or None to allow
+            a fully flexible computational box.  Set to (1,1,0)
+            to disallow elongations along the z-axis etc.
+            mask may also be specified as a symmetric 3x3 array
+            indicating which strain values may change.
+
+        Useful parameter values:
+
+        * The same timestep can be used as in Verlet dynamics, i.e. 5 fs is fine
+          for bulk copper.
+
+        * The ttime and pfactor are quite critical[4], too small values may
+          cause instabilites and/or wrong fluctuations in T / p.  Too
+          large values cause an oscillation which is slow to die.  Good
+          values for the characteristic times seem to be 25 fs for ttime,
+          and 75 fs for ptime (used to calculate pfactor), at least for
+          bulk copper with 15000-200000 atoms.  But this is not well
+          tested, it is IMPORTANT to monitor the temperature and
+          stress/pressure fluctuations.
+
+
+        References:
+
+        1) S. Melchionna, G. Ciccotti and B. L. Holian, Molecular
+           Physics 78, p. 533 (1993).
+
+        2) S. Melchionna, Physical
+           Review E 61, p. 6165 (2000).
+
+        3) B. L. Holian, A. J. De Groot, W. G. Hoover, and C. G. Hoover,
+           Physical Review A 41, p. 4552 (1990).
+
+        4) F. D. Di Tolla and M. Ronchetti, Physical
+           Review E 48, p. 1726 (1993).
+
+        '''
 
         MolecularDynamics.__init__(self, atoms, timestep, trajectory,
                                    logfile, loginterval,
@@ -172,6 +156,16 @@ class NPT(MolecularDynamics):
         self.frac_traceless = 1
 
     def set_temperature(self, temperature=None, *, temperature_K=None):
+        """Set the temperature.
+
+        Parameters:
+
+        temperature: float (deprecated)
+            The new temperature in eV.  Deprecated, use ``temperature_K``.
+
+        temperature_K: float (keyword-only argument)
+            The new temperature, in K.
+        """
         self.temperature = units.kB * self._process_temperature(
             temperature, temperature_K, 'eV')
         self._calculateconstants()
@@ -181,6 +175,9 @@ class NPT(MolecularDynamics):
 
         Must be a symmetric 3x3 tensor, a 6-vector representing a symmetric
         3x3 tensor, or a number representing the pressure.
+
+        Use with care, it is better to set the correct stress when creating
+        the object.
         """
 
         if np.isscalar(stress):
@@ -206,8 +203,10 @@ class NPT(MolecularDynamics):
         along which the size of the computational box cannot change.
         For example, if mask = (1,1,0) the length of the system along
         the z-axis cannot change, although xz and yz shear is still
-        possible.  To disable shear globally, set the mode to diagonal
-        (not yet implemented).
+        possible.  May also be specified as a symmetric 3x3 array indicating
+        which strain values may change.
+
+        Use with care, as you may "freeze in" a fluctuation in the strain rate.
         """
         if mask is None:
             mask = np.ones((3,))
@@ -233,11 +232,20 @@ class NPT(MolecularDynamics):
         self.frac_traceless = fracTraceless
 
     def get_strain_rate(self):
-        "Get the strain rate as an upper-triangular 3x3 matrix"
+        """Get the strain rate as an upper-triangular 3x3 matrix.
+
+        This includes the fluctuations in the shape of the computational box.
+
+        """
         return np.array(self.eta, copy=1)
 
     def set_strain_rate(self, rate):
-        "Set the strain rate.  Must be an upper triangular 3x3 matrix."
+        """Set the strain rate.  Must be an upper triangular 3x3 matrix.
+
+        If you set a strain rate along a direction that is "masked out"
+        (see ``set_mask``), the strain rate along that direction will be
+        maintained constantly.
+        """
         if not (rate.shape == (3, 3) and self._isuppertriangular(rate)):
             raise ValueError("Strain rate must be an upper triangular matrix.")
         self.eta = rate
@@ -347,6 +355,8 @@ class NPT(MolecularDynamics):
         do a timestep, so the algorithm is not self-starting.  This
         method performs a 'backwards' timestep to generate a
         configuration before the current.
+
+        This is called automatically the first time ``run()`` is called.
         """
         # print "Initializing the NPT dynamics."
         dt = self.dt
