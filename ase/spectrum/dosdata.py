@@ -204,8 +204,8 @@ class GeneralDOSData(DOSData):
 
     """
     def __init__(self,
-                 energies: Sequence[float],
-                 weights: Sequence[float],
+                 energies: Union[Sequence[float], np.array],
+                 weights: Union[Sequence[float], np.array],
                  info: Info = None) -> None:
         super().__init__(info=info)
 

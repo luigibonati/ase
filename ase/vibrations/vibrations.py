@@ -7,7 +7,7 @@ import os
 import os.path as op
 import pickle
 import sys
-from typing import Dict, NoReturn, Sequence, Tuple, Union, Any
+from typing import Dict, List, NoReturn, Sequence, Tuple, Union, Any
 
 import numpy as np
 
@@ -52,27 +52,29 @@ class VibrationsData:
     """
     def __init__(self,
                  atoms: Atoms,
-                 hessian: np.ndarray,
-                 indices: Sequence[int] = None,
+                 hessian: Union[RealSequence4D, np.ndarray],
+                 indices: Union[Sequence[int], np.ndarray] = None,
                  ) -> None:
-
-        n_atoms = self._check_dimensions(atoms, indices, hessian)
-
-        masses = atoms.get_masses() if atoms.has('masses') else None
-        self._atoms = Atoms(cell=atoms.cell, pbc=atoms.pbc,
-                            numbers=atoms.numbers,
-                            masses=masses,
-                            positions=atoms.positions)
 
         if indices is None:
             self._indices = None
         else:
             self._indices = list(indices)
 
-        self._hessian2d = hessian.reshape(3 * n_atoms, 3 * n_atoms).copy()
+        n_atoms = self._check_dimensions(atoms, self._indices,
+                                         np.asarray(hessian))
+        masses = atoms.get_masses() if atoms.has('masses') else None
 
-        self._energies = None
-        self._modes = None
+        self._atoms = Atoms(cell=atoms.cell, pbc=atoms.pbc,
+                            numbers=atoms.numbers,
+                            masses=masses,
+                            positions=atoms.positions)
+
+        self._hessian2d = (np.asarray(hessian)
+                           .reshape(3 * n_atoms, 3 * n_atoms).copy())
+
+        self._energies = None  # type: Union[np.ndarray, None]
+        self._modes = None  # type: Union[np.ndarray, None]
 
     _setter_error = ("VibrationsData properties cannot be modified: construct "
                      "a new VibrationsData with consistent atoms, Hessian and "
@@ -93,13 +95,16 @@ class VibrationsData:
             indices: Indices of (non-frozen) atoms included in Hessian
 
         """
-        n_atoms = cls._check_dimensions(atoms, indices, hessian_2d, two_d=True)
+        hessian_2d_array = np.asarray(hessian_2d)
+        n_atoms = cls._check_dimensions(atoms, indices, hessian_2d_array,
+                                        two_d=True)
 
-        return cls(atoms, hessian_2d.reshape(n_atoms, 3, n_atoms, 3),
+        return cls(atoms, hessian_2d_array.reshape(n_atoms, 3, n_atoms, 3),
                    indices=indices)
 
     @staticmethod
-    def indices_from_mask(mask: Sequence[bool]) -> np.array:
+    def indices_from_mask(mask: Union[Sequence[bool], np.ndarray]
+                          ) -> List[int]:
         """Indices corresponding to boolean mask
 
         This is provided as a convenience for instantiating VibrationsData with
@@ -122,14 +127,13 @@ class VibrationsData:
 
         """
 
-        return np.arange(len(mask), dtype=int)[np.asarray(mask, dtype=bool)]
+        return (np.arange(len(mask), dtype=int)[np.asarray(mask, dtype=bool)]
+                ).tolist()
 
     @staticmethod
     def _check_dimensions(atoms: Atoms,
                           indices: Union[Sequence[int], None],
-                          hessian: Union[Sequence[Sequence[Real]],
-                                         RealSequence4D,
-                                         np.ndarray],
+                          hessian: np.ndarray,
                           two_d: bool = False) -> int:
         """Sanity check on array shapes from input data
 
@@ -195,7 +199,8 @@ class VibrationsData:
 
     @staticmethod
     def _mask_from_indices(atoms: Atoms,
-                           indices: Union[None, Sequence[int]]) -> np.ndarray:
+                           indices: Union[None, Sequence[int], np.ndarray]
+                           ) -> np.ndarray:
         """Boolean mask of atoms selected by indices"""
         natoms = len(atoms)
         if indices is None:
@@ -451,7 +456,7 @@ class VibrationsData:
 
     def write_jmol(self,
                    filename: str = 'vib.xyz',
-                   ir_intensities: np.ndarray = None
+                   ir_intensities: Union[Sequence[float], np.ndarray] = None
                    ) -> None:
         """Writes file for viewing of the modes with jmol.
 
