@@ -678,7 +678,7 @@ class ForceQMMM(Calculator):
         # of the cluster (overestimation)
         qm_center = qm_positions.mean(axis=0)
 
-        non_pbc_directions = np.logical_not(self.atoms.pbc)
+        non_pbc_directions = np.logical_not(atoms.pbc)
 
         centered_positions = atoms.get_positions()
 
@@ -688,7 +688,7 @@ class ForceQMMM(Calculator):
                 centered_positions.T[i] -= qm_center[i]
 
         qm_radius = np.linalg.norm(qm_positions.T, axis=1).max()
-        self.cell = self.atoms.cell.copy()
+        self.cell = atoms.cell.copy()
 
         #TODO check that cell is orthorhombic using something like
         # np.count_nonzero(W.cell - np.diag(np.diag(self.cell))) or
