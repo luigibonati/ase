@@ -3,7 +3,8 @@ from pathlib import Path
 
 import pytest
 
-from ase.visualize import view, viewers, PyViewer
+from ase.visualize import view
+from ase.visualize.external import viewers, PyViewer, CLIViewer
 #from ase.visualize.external import open_external_viewer
 from ase.build import bulk
 
@@ -48,7 +49,7 @@ def atoms():
     return bulk('Au')
 
 
-def test_pyviewer_mock(atoms, monkeypatch):
+def test_py_viewer_mock(atoms, monkeypatch):
     def mock_view(self, atoms, repeat=None):
         print(f'viewing {atoms} with mock "{self.name}"')
         return (atoms, self.name)
@@ -59,6 +60,22 @@ def test_pyviewer_mock(atoms, monkeypatch):
     assert name1 == 'sage'
     assert atoms1 == atoms
 
-    atoms2, name2 = view(atoms, viewer='sage', repeat=(2, 2, 2))
+    atoms2, name2 = view(atoms, viewer='sage', repeat=(2, 2, 2), block=True)
     assert name2 == 'sage'
     assert len(atoms2) == 8 * len(atoms)
+
+
+def mock_execute(self, filename):
+    print(f'mock "{self.name} argv={self.argv} on "{filename}"')
+    assert self.name == name
+    path = Path(filename)
+    assert path.exists()
+    assert path.suffix == viewer.ioformat.extensions[0]
+
+
+@pytest.mark.parametrize('name', [v.name for v in CLIViewer.viewers()])
+def test_cli_viewer_mock(atoms, monkeypatch, name):
+    viewer = viewers[name]
+    # Can we substitute a more intelligent test than just ase info'ing each?
+    monkeypatch.setattr(viewer, 'argv', [sys.executable, '-m', 'ase', 'info'])
+    view(atoms, viewer=name, block=True)

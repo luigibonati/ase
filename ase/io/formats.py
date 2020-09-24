@@ -346,7 +346,7 @@ F('rmc6f', 'RMCProfile', '1S', ext='rmc6f')
 F('sdf', 'SDF format', '1F')
 F('struct', 'WIEN2k structure file', '1S', module='wien2k')
 F('struct_out', 'SIESTA STRUCT file', '1F', module='siesta')
-F('traj', 'ASE trajectory', '+B', module='trajectory',
+F('traj', 'ASE trajectory', '+B', module='trajectory', ext='traj',
   magic=[b'- of UlmASE-Trajectory', b'AFFormatASE-Trajectory'])
 F('trj', 'Old ASE pickle trajectory', '+S',
   module='pickletrajectory', magic=b'PickleTrajectory')
