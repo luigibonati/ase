@@ -1,5 +1,4 @@
 from io import BytesIO
-import os
 import pickle
 import subprocess
 import sys
@@ -7,7 +6,6 @@ import tempfile
 
 from ase.io.formats import ioformats
 from ase.io import write
-import ase.parallel as parallel
 
 
 def _pipe_to_ase_gui(atoms, repeat):

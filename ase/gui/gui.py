@@ -1,8 +1,6 @@
-import os
 import pickle
 import subprocess
 import sys
-import tempfile
 import weakref
 from functools import partial
 from ase.gui.i18n import _

@@ -1,19 +1,9 @@
-from io import BytesIO
-import os
-import pickle
-import subprocess
-import sys
-import tempfile
-
-from ase.io.formats import ioformats
-from ase.io import write
 import ase.parallel as parallel
+from ase.visualize.external import viewers
+
 
 def view(atoms, data=None, viewer='ase', repeat=None, block=False):
-    from ase.visualize.external import viewers
-
-    # Ignore for parallel calculations:
-    if parallel.world.size != 1:
+    if parallel.world.size > 1:
         return
 
     vwr = viewers[viewer.lower()]
@@ -26,6 +16,7 @@ def view(atoms, data=None, viewer='ase', repeat=None, block=False):
                                '{status}')
 
     return handle
+
 
 def paraview_stuff():
         # macro for showing atoms in paraview

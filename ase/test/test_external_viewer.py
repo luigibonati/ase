@@ -1,5 +1,4 @@
 import sys
-from pathlib import Path
 
 import pytest
 
@@ -53,14 +52,6 @@ def test_py_viewer_mock(atoms, monkeypatch):
     atoms2, name2 = view(atoms, viewer='sage', repeat=(2, 2, 2), block=True)
     assert name2 == 'sage'
     assert len(atoms2) == 8 * len(atoms)
-
-
-def mock_execute(self, filename):
-    print(f'mock "{self.name} argv={self.argv} on "{filename}"')
-    assert self.name == name
-    path = Path(filename)
-    assert path.exists()
-    assert path.suffix == viewer.ioformat.extensions[0]
 
 
 @pytest.mark.parametrize('name', [v.name for v in CLIViewer.viewers()])
