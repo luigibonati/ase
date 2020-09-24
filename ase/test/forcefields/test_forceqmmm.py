@@ -58,11 +58,28 @@ def test_forceqmmm():
     # plt.plot(v_mm_r, E_mm_r - np.min(E_mm_r), 'o-', label='MM rescaled')
     # plt.legend()
 
+    # test the geometry of qm_buffer_mask for spherical region in a fully periodic cell
+    at0 = bulk_at * 10
+    r = at0.get_distances(0, np.arange(len(at0)), mic=True)
+    print("N_cell", N_cell, 'N_MM', len(at0), "Size", N_cell * bulk_at.cell[0, 0])
+    for R_QM in R_QMs:
+        at = at0.copy()
+        qm_mask = r < R_QM
+        qm_buffer_mask_ref = r < 2 * qm.rc + R_QM
+        print(f'R_QM             {R_QM}   N_QM        {qm_mask.sum()}')
+        print(f'R_QM + buffer: {2 * qm.rc + R_QM:.2f} N_QM_buffer {qm_buffer_mask_ref.sum()}')
+        print(f'                     N_total:    {len(at)}')
+        qmmm = ForceQMMM(at, qm_mask, qm, mm, buffer_width=2 * qm.rc)
+        # build qm_buffer_mask and test it
+        qmmm.initialize_qm_buffer_mask(at)
+        print(f'      Calculator N_QM_buffer:    {qmmm.qm_buffer_mask.sum().sum()}')
+        assert qmmm.qm_buffer_mask.sum() == qm_buffer_mask_ref.sum()
+
     at0 = bulk_at * N_cell
     r = at0.get_distances(0, np.arange(1, len(at0)), mic=True)
     print(len(r))
     del at0[0] # introduce a vacancy
-    print("N_cell", N_cell, 'N_MM', len(at0))
+    print("N_cell", N_cell, 'N_MM', len(at0), "Size", N_cell * bulk_at.cell[0, 0])
 
     ref_at = at0.copy()
     ref_at.calc = qm
@@ -73,9 +90,13 @@ def test_forceqmmm():
     us = []
     for R_QM in R_QMs:
         at = at0.copy()
-        mask = r < R_QM
-        print('R_QM', R_QM, 'N_QM', mask.sum(), 'N_total', len(at))
-        qmmm = ForceQMMM(at, mask, qm, mm, buffer_width=2*qm.rc)
+        qm_mask = r < R_QM
+        qm_buffer_mask_ref = r < 2 * qm.rc + R_QM
+        print(f'R_QM             {R_QM}   N_QM        {qm_mask.sum()}')
+        print(f'R_QM + buffer: {2 * qm.rc + R_QM:.2f} N_QM_buffer {qm_buffer_mask_ref.sum()}')
+        print(f'                     N_total:    {len(at)}')
+        qmmm = ForceQMMM(at, qm_mask, qm, mm, buffer_width=2 * qm.rc)
+        qmmm.initialize_qm_buffer_mask(at)
         at.calc = qmmm
         opt = FIRE(at)
         opt.run(fmax=1e-3)
