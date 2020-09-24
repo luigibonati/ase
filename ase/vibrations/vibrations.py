@@ -19,8 +19,8 @@ from ase.utils import jsonable
 
 from ase.utils import opencew, pickleload
 from ase.calculators.singlepoint import SinglePointCalculator
-from ase.dft.pdos import DOS
-
+from ase.spectrum.dosdata import RawDOSData
+from ase.spectrum.doscollection import DOSCollection
 
 RealSequence4D = Sequence[Sequence[Sequence[Sequence[Real]]]]
 
@@ -497,23 +497,25 @@ class VibrationsData(object):
             all_images.append(image)
         ase.io.write(filename, all_images, format='extxyz')
 
-    def get_dos(self) -> DOS:
-        """Phonon DOS, including atomic contributions
+    def get_dos(self) -> RawDOSData:
+        """Total phonon DOS"""
+        energies = self.get_energies()
+        return RawDOSData(energies, np.ones_like(energies))
 
-        """
+    def get_pdos(self) -> DOSCollection:
+        """Phonon DOS, including atomic contributions"""
         energies = self.get_energies()
         masses = self.atoms[self.mask].get_masses()
 
         # Get weights as N_moving_atoms x N_modes array
         vectors = self.get_modes() / masses[np.newaxis, :, np.newaxis]**-0.5
-        weights = np.linalg.norm(vectors, axis=-1)**2
+        all_weights = (np.linalg.norm(vectors, axis=-1)**2).T
 
-        info = [{'index': i, 'symbol': a.symbol}
-                for i, a in enumerate(self.atoms) if self.mask[i]
-                ]
+        all_info = [{'index': i, 'symbol': a.symbol}
+                    for i, a in enumerate(self.atoms) if self.mask[i]]
 
-        return DOS(energies, weights, info=info)
-
+        return DOSCollection([RawDOSData(energies, weights, info=info)
+                              for weights, info in zip(all_weights, all_info)])
 
 class Vibrations:
     """Class for calculating vibrational modes using finite difference.
