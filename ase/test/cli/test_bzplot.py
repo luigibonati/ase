@@ -9,11 +9,8 @@ from ase.io import write
     params=[
         bulk('Ti'),
         fcc111('Au', size=(1, 1, 1)),
-        pytest.param(Atoms('H', cell=[0, 0, 1], pbc=[0, 0, 1]),
-                     marks=pytest.mark.xfail),  # Please investigate failure
-    ],
-    ids=lambda atoms: f'{atoms.cell.rank}-dim',
-)
+        Atoms('H', cell=[1, 0, 0], pbc=[1, 0, 0])],
+    ids=lambda atoms: f'{atoms.cell.rank}-dim')
 def file(request):
     atoms = request.param
     file = f'atoms.{atoms.cell.rank}dim.traj'
