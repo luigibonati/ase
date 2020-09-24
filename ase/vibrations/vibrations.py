@@ -26,7 +26,7 @@ RealSequence4D = Sequence[Sequence[Sequence[Sequence[Real]]]]
 
 
 @jsonable('vibrationsdata')
-class VibrationsData(object):
+class VibrationsData:
     """Class for storing and analyzing vibrational data (i.e. Atoms + Hessian)
 
     This class is not responsible for calculating Hessians; the Hessian should
