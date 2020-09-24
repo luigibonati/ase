@@ -52,7 +52,6 @@ class CLIViewer:
             self.execute_viewer(fd.name)
 
     def execute_viewer(self, filename):
-        print('GRRR', repr(self.argv + [filename]))
         subprocess.check_call(self.argv + [filename])
 
     def view(self, atoms, data=None, repeat=None):
