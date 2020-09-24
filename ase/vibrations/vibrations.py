@@ -61,8 +61,8 @@ class VibrationsData:
         else:
             self._indices = list(indices)
 
-        n_atoms = self._check_dimensions(atoms, self._indices,
-                                         np.asarray(hessian))
+        n_atoms = self._check_dimensions(atoms, np.asarray(hessian),
+                                         indices=self._indices)
         masses = atoms.get_masses() if atoms.has('masses') else None
 
         self._atoms = Atoms(cell=atoms.cell, pbc=atoms.pbc,
@@ -96,8 +96,8 @@ class VibrationsData:
 
         """
         hessian_2d_array = np.asarray(hessian_2d)
-        n_atoms = cls._check_dimensions(atoms, indices, hessian_2d_array,
-                                        two_d=True)
+        n_atoms = cls._check_dimensions(atoms, hessian_2d_array,
+                                        indices=indices, two_d=True)
 
         return cls(atoms, hessian_2d_array.reshape(n_atoms, 3, n_atoms, 3),
                    indices=indices)
@@ -132,8 +132,8 @@ class VibrationsData:
 
     @staticmethod
     def _check_dimensions(atoms: Atoms,
-                          indices: Union[Sequence[int], None],
                           hessian: np.ndarray,
+                          indices: Union[Sequence[int], None] = None,
                           two_d: bool = False) -> int:
         """Sanity check on array shapes from input data
 
