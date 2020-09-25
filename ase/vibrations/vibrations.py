@@ -65,10 +65,7 @@ class VibrationsData:
                                          indices=self._indices)
         masses = atoms.get_masses() if atoms.has('masses') else None
 
-        self._atoms = Atoms(cell=atoms.cell, pbc=atoms.pbc,
-                            numbers=atoms.numbers,
-                            masses=masses,
-                            positions=atoms.positions)
+        self._atoms = atoms.copy()
 
         self._hessian2d = (np.asarray(hessian)
                            .reshape(3 * n_atoms, 3 * n_atoms).copy())

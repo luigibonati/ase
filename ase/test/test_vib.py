@@ -286,13 +286,6 @@ class TestVibrationsData():
         with pytest.raises(ValueError):
             vib_data.get_energies_and_modes()
 
-    def test_clean_atom_copy(self):
-        atoms = self.n2.copy()
-        # Custom arrays should be removed from the Atoms attached to VibData
-        atoms.arrays['bad idea'] = [10., 20.]
-        vib_data = VibrationsData(atoms, self.h_n2)
-        assert 'bad idea' not in vib_data.atoms.arrays
-
     def test_fixed_atoms(self):
         vib_data = VibrationsData(self.n2.copy(), self.h_n2[1:, :, 1:, :],
                                   indices=[1, ])
