@@ -1211,6 +1211,8 @@ def make_precon(precon):
     -------
     precon - instance of relevant subclass of `ase.optimize.precon.Precon`
     """
+    if precon is None:
+        return None
     if isinstance(precon, str):
         if precon == 'C1':
             precon = C1()
