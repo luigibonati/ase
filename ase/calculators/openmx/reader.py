@@ -88,6 +88,7 @@ def read_file(filename, debug=False):
       'Dipole moment': ('dipole', read_dipole),
       'Fractional coordinates of': ('scaled_positions', read_scaled_positions),
       'Utot.': ('energy', read_energy),
+      'energies in': ('energies', read_energies),
       'Chemical Potential': ('chemical_potential', read_chemical_potential),
       '<coordinates.forces': ('forces', read_forces),
       'Eigenvalues': ('eigenvalues', read_eigenvalues)}
@@ -492,6 +493,20 @@ def read_energy(line, f, debug=None):
     # It has Hartree unit yet
     return read_float(line)
 
+def read_energies(line, f, debug=None):
+    line = f.readline()
+    if '***' in line:
+        point = 7 # Version 3.8
+    else:
+        point = 16  # Version 3.9
+    for i in range(point):
+        f.readline()
+    line = f.readline()
+    energies = []
+    while not(line == '' or line.isspace()):
+        energies.append(float(line.split()[2]))
+        line = f.readline()
+    return energies
 
 def read_eigenvalues(line, f, debug=False):
     """
@@ -777,6 +792,7 @@ def get_results(out_data=None, log_data=None, restart_data=None,
     OpenMX version 3.8 can yield following properties
        free_energy,              Ha       # Same value with energy
        energy,                   Ha
+       energies,                 Ha
        forces,                   Ha/Bohr
        stress(after 3.8 only)    Ha/Bohr**3
        dipole                    Debye
@@ -786,7 +802,7 @@ def get_results(out_data=None, log_data=None, restart_data=None,
     """
     from numpy import array as arr
     results = {}
-    implemented_properties = {'free_energy': Ha, 'energy': Ha,
+    implemented_properties = {'free_energy': Ha, 'energy': Ha, 'energies': Ha,
                               'forces': Ha/Bohr, 'stress': Ha/Bohr**3,
                               'dipole': Debye, 'chemical_potential': Ha,
                               'magmom': 1, 'magmoms': 1, 'eigenvalues': Ha}
