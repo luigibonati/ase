@@ -55,7 +55,8 @@ commands = {
     'diff':
         ['-r', '--rank-order', '-c', '--calculator-outputs',
          '--max-lines', '-t', '--template', '--template-help',
-         '-s', '--summary-functions', '--log-file', '--as-csv'],
+         '-s', '--summary-functions', '--log-file', '--as-csv',
+         '--precision'],
     'dimensionality':
         ['--display-all', '--no-merge'],
     'eos':
@@ -128,12 +129,12 @@ def complete(word, previous, line, point):
             from ase.calculators.calculator import names as words
         elif not word.startswith('-'):
             from ase.test.testsuite import all_test_modules_and_groups
-            names, groups = all_test_modules_and_groups()
-            group_completions = [group + '.' for group in groups]
-            for group in group_completions:
-                if word.startswith(group):
-                    return groups[group[:-1]]
-            words = names + list(groups) + group_completions
+            words = []
+            for path in all_test_modules_and_groups():
+                path = str(path)
+                if not path.endswith('.py'):
+                    path += '/'
+                words.append(path)
 
     return words
 

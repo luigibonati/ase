@@ -22,7 +22,7 @@ class SpgLibNotFoundError(Exception):
         super(SpgLibNotFoundError, self).__init__(msg)
 
 
-class SymmetryEquivalenceCheck(object):
+class SymmetryEquivalenceCheck:
     """Compare two structures to determine if they are symmetry equivalent.
 
     Based on the recipe from Comput. Phys. Commun. 183, 690-697 (2012).

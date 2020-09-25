@@ -1,7 +1,8 @@
-def test_bravais_eps():
-    import numpy as np
-    from ase.cell import Cell
+import numpy as np
+from ase.cell import Cell
 
+
+def test_bravais_eps():
     # This tests a BCT cell which would be mischaracterized as MCLC
     # depending on comparson's precision (fix: c432fd52ecfdca).
     # The cell should actually be MCLC for small tolerances,
@@ -27,3 +28,25 @@ def test_bravais_eps():
     perfect_bct_cell = bct.tocell()
     # perfect_bct_cellpar = bct.cellpar()
     assert perfect_bct_cell.get_bravais_lattice().name == 'BCT'
+
+
+def test_mclc_eps():
+    a = 6.41
+    c = 5.87
+    alpha = 76.7
+    beta = 103.3
+    gamma = 152.2
+
+    # This lattice maps to something within tolerance of an MCLC lattice,
+    # but the candidate was discarded due to being unconventional (b > c).
+    # This test verifies that the problem was fixed.
+    #
+    # There could be similar problems for other kinds of lattice.  It
+    # could perhaps cause the algorithm to find MCL/MCLC/TRI lattices
+    # with higher-than-necessary orthogonality defect if some
+    # candidates are discarded for this reason.
+
+    cell = Cell.new([a, a, c, alpha, beta, gamma])
+    lat = cell.get_bravais_lattice(eps=1e-2)
+    print(lat)
+    assert lat.name == 'MCLC'

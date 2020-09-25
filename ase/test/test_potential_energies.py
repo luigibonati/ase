@@ -1,9 +1,9 @@
+from numpy.testing import assert_allclose
+import ase.build
+from ase.calculators.emt import EMT
+
+
 def test_potential_energies():
-    from numpy.testing import assert_allclose
-    import ase.build
-    from ase.calculators.emt import EMT
-
-
     TOL = 1E-8
 
     atoms = ase.build.bulk("Ni", crystalstructure="fcc", cubic=1)

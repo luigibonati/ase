@@ -6,6 +6,8 @@ each entry:
 
 gui_default_settings['key'] = value
 """
+import runpy
+
 
 gui_default_settings = {
     'gui_graphs_string': 'i, e - E[-1]',  # default for the graph command
@@ -31,5 +33,6 @@ def read_defaults():
     name = os.path.expanduser('~/.ase/gui.py')
     config = gui_default_settings
     if os.path.exists(name):
-        exec(compile(open(name).read(), name, 'exec'))
+        runpy.run_path(name, init_globals={'gui_default_settings':
+                                           gui_default_settings})
     return config

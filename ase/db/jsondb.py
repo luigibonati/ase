@@ -9,7 +9,7 @@ from ase.io.jsonio import encode, decode
 from ase.parallel import world, parallel_function
 
 
-class JSONDatabase(Database, object):
+class JSONDatabase(Database):
     def __enter__(self):
         return self
 

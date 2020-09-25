@@ -16,6 +16,7 @@ import warnings
 import json
 
 import numpy as np
+import numbers
 
 from ase.atoms import Atoms
 from ase.calculators.calculator import all_properties, Calculator
@@ -269,7 +270,7 @@ def key_val_dict_to_str(dct, sep=' '):
     def known_types_to_str(val):
         if isinstance(val, bool) or isinstance(val, np.bool_):
             return 'T' if val else 'F'
-        elif isinstance(val, int) or isinstance(val, float):
+        elif isinstance(val, numbers.Real):
             return '{}'.format(val)
         elif isinstance(val, Spacegroup):
             return val.symbol
@@ -1006,7 +1007,9 @@ def write_xyz(fileobj, images, comment='', columns=None, write_info=True,
 
         if plain or comment != '':
             # override key/value pairs with user-speficied comment string
-            comm = comment
+            comm = comment.rstrip()
+            if '\n' in comm:
+                raise ValueError('Comment line should not have line breaks.')
 
         # Pack fr_cols into record array
         data = np.zeros(natoms, dtype)

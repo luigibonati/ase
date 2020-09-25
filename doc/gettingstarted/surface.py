@@ -1,5 +1,9 @@
 # creates: surface.png
+import runpy
+
 from ase.io import read, write
-exec(compile(open('N2Cu.py').read(), 'N2Cu.py', 'exec'))
+
+
+runpy.run_path('N2Cu.py')
 image = read('N2Cu.traj@-1')
 write('surface.pov', image, transparent=False, run_povray=True)

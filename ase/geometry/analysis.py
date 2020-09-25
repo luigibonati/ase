@@ -10,7 +10,7 @@ from ase import Atoms
 __all__ = ['Analysis']
 
 
-class Analysis(object):
+class Analysis:
     """Analysis class
 
     Parameters for initialization:

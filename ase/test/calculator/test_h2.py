@@ -5,21 +5,22 @@ from ase.test.factories import ObsoleteFactoryWrapper
 
 required = {'aims': dict(sc_accuracy_rho=5.e-3)}
 
-names = ['aims', 'gamess_us', 'gaussian', 'nwchem']
 
-
-@pytest.mark.parametrize('name', names)
+@pytest.mark.parametrize('name', ['aims', 'gamess_us', 'gaussian'])
 def test_h2dft_old(name):
     factory = ObsoleteFactoryWrapper(name)
     run(factory)
 
+
 calc = pytest.mark.calculator
+
 
 @calc('abinit', ecut=200, toldfe=0.0001)
 @calc('cp2k', auto_write=True, uks=True)
 # @calc('gpaw', mode='lcao', basis='sz(dzp)')
 def test_h2dft(factory):
     run(factory)
+
 
 def run(factory):
     name = factory.name

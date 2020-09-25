@@ -93,9 +93,14 @@ class Quaternion:
         by this Quaternion"""
 
         sinth_2 = np.linalg.norm(self.q[1:])
-        theta = np.arctan2(sinth_2, self.q[0])*2
 
-        n = self.q[1:]/sinth_2
+        if sinth_2 == 0:
+            # The angle is zero
+            theta = 0.0
+            n = np.array([0,0,1])
+        else:
+            theta = np.arctan2(sinth_2, self.q[0])*2
+            n = self.q[1:]/sinth_2
 
         return n, theta
 
@@ -106,14 +111,14 @@ class Quaternion:
         if mode == 'zyz':
             # These are (a+c)/2 and (a-c)/2 respectively
             apc = np.arctan2(self.q[3], self.q[0])
-            amc = np.arctan2(-self.q[1], self.q[2])
+            amc = np.arctan2(self.q[1], self.q[2])
 
             a, c = (apc+amc), (apc-amc)
             cos_amc = np.cos(amc)
             if cos_amc != 0:
                 sinb2 = self.q[2]/cos_amc
             else:
-                sinb2 = -self.q[1]/np.sin(amc)
+                sinb2 = self.q[1]/np.sin(amc)
             cos_apc = np.cos(apc)
             if cos_apc != 0:
                 cosb2 = self.q[0]/cos_apc
@@ -123,7 +128,7 @@ class Quaternion:
         elif mode == 'zxz':
             # These are (a+c)/2 and (a-c)/2 respectively
             apc = np.arctan2(self.q[3], self.q[0])
-            amc = np.arctan2(self.q[2], self.q[1])
+            amc = np.arctan2(-self.q[2], self.q[1])
 
             a, c = (apc+amc), (apc-amc)
             cos_amc = np.cos(amc)
