@@ -64,6 +64,16 @@ def test_cli_viewer_tempfile(atoms, viewer):
     assert not Path(fd.name).exists()
 
 
-def test_cli_viewer_blocking(atoms):
-    viewer = CLIViewer('dummy', 'traj', [sys.executable, '-m', 'ase', 'info'])
-    viewer.view_blocking(atoms)
+@pytest.fixture
+def mock_viewer():
+    return CLIViewer('dummy', 'traj', [sys.executable, '-m', 'ase', 'info'])
+
+
+def test_cli_viewer_blocking(atoms, mock_viewer):
+    mock_viewer.view_blocking(atoms)
+
+
+def test_cli_viewer(atoms, mock_viewer):
+    handle = mock_viewer.view(atoms)
+    status = handle.wait()
+    assert status == 0
