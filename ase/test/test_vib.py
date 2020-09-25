@@ -289,8 +289,8 @@ class TestVibrationsData():
     def test_fixed_atoms(self):
         vib_data = VibrationsData(self.n2.copy(), self.h_n2[1:, :, 1:, :],
                                   indices=[1, ])
-        assert vib_data.indices == [1, ]
-        assert vib_data.mask.tolist() == [False, True]
+        assert vib_data.get_indices() == [1, ]
+        assert vib_data.get_mask().tolist() == [False, True]
 
     def test_edit_data(self):
         # --- Modify Hessian and indices to fix an atom ---
@@ -299,14 +299,11 @@ class TestVibrationsData():
         with pytest.raises(NotImplementedError):
             vib_data.hessian = vib_data.hessian[:1, :, :1, :]
 
-        with pytest.raises(NotImplementedError):
-            vib_data.indices = [0, 1]
-
     def test_todict(self):
         vib_data = VibrationsData(self.n2.copy(), self.h_n2)
         vib_data_dict = vib_data.todict()
 
-        assert vib_data_dict['indices'] == None
+        assert vib_data_dict['indices'] is None
         assert_array_almost_equal(vib_data_dict['atoms'].positions,
                                   self.n2.positions)
         assert_array_almost_equal(vib_data_dict['hessian'],
@@ -317,12 +314,10 @@ class TestVibrationsData():
         vib_data_dict = vib_data.todict()
         vib_data_roundtrip = VibrationsData.fromdict(vib_data_dict)
 
-        for attr in ('indices',):
-            assert getattr(vib_data, attr) == getattr(vib_data_roundtrip, attr)
-        for getter in ('get_atoms',):
+        for getter in ('get_atoms', 'get_indices'):
             assert (getattr(vib_data, getter)()
                     == getattr(vib_data_roundtrip, getter)())
-        for array_getter in ('get_hessian_2d',):
+        for array_getter in ('get_hessian_2d', 'get_mask'):
             assert_array_almost_equal(
                 getattr(vib_data, array_getter)(),
                 getattr(vib_data_roundtrip, array_getter)())

@@ -167,25 +167,15 @@ class VibrationsData:
     def get_atoms(self) -> Atoms:
         return self._atoms.copy()
 
-    @property
-    def indices(self) -> Union[None, np.ndarray]:
+    def get_indices(self) -> Union[None, np.ndarray]:
         if self._indices is None:
             return None
         else:
             return np.array(self._indices, dtype=int)
 
-    @indices.setter
-    def indices(self, new_indices) -> NoReturn:
-        raise NotImplementedError(self._setter_error)
-
-    @property
-    def mask(self) -> np.ndarray:
+    def get_mask(self) -> np.ndarray:
         """Boolean mask of atoms selected by indices"""
-        return self._mask_from_indices(self._atoms, self.indices)
-
-    @mask.setter
-    def mask(self, values) -> NoReturn:
-        raise NotImplementedError(self._setter_error)
+        return self._mask_from_indices(self._atoms, self.get_indices())
 
     @staticmethod
     def _mask_from_indices(atoms: Atoms,
@@ -253,7 +243,7 @@ class VibrationsData:
     def todict(self) -> Dict[str, Any]:
         return {'atoms': self.get_atoms(),
                 'hessian': self.hessian,
-                'indices': self.indices}
+                'indices': self.get_indices()}
 
     @classmethod
     def fromdict(cls, data: Dict[str, Any]) -> 'VibrationsData':
@@ -277,7 +267,7 @@ class VibrationsData:
         see the docstring of that method for more information.
 
         """
-        active_atoms = self._atoms[self.mask]
+        active_atoms = self._atoms[self.get_mask()]
         n_atoms = len(active_atoms)
         masses = active_atoms.get_masses()
 
@@ -478,7 +468,7 @@ class VibrationsData:
                                'frequency_cm-1': energy / units.invcm,
                                })
             image.arrays['mode'] = np.zeros_like(image.positions)
-            image.arrays['mode'][self.mask] = mode
+            image.arrays['mode'][self.get_mask()] = mode
 
             # Custom masses are quite useful in vibration analysis, but will
             # show up in the xyz file unless we remove them
@@ -499,17 +489,19 @@ class VibrationsData:
     def get_pdos(self) -> DOSCollection:
         """Phonon DOS, including atomic contributions"""
         energies = self.get_energies()
-        masses = self._atoms[self.mask].get_masses()
+        masses = self._atoms[self.get_mask()].get_masses()
 
         # Get weights as N_moving_atoms x N_modes array
         vectors = self.get_modes() / masses[np.newaxis, :, np.newaxis]**-0.5
         all_weights = (np.linalg.norm(vectors, axis=-1)**2).T
 
+        mask = self.get_mask()
         all_info = [{'index': i, 'symbol': a.symbol}
-                    for i, a in enumerate(self._atoms) if self.mask[i]]
+                    for i, a in enumerate(self._atoms) if mask[i]]
 
         return DOSCollection([RawDOSData(energies, weights, info=info)
                               for weights, info in zip(all_weights, all_info)])
+
 
 class Vibrations:
     """Class for calculating vibrational modes using finite difference.
