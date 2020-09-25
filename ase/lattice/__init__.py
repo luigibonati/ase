@@ -370,6 +370,7 @@ class Cubic(BravaisLattice):
               [['CUB', 'GXRM', 'GXMGRX,MR', sc_special_points['cubic']]])
 class CUB(Cubic):
     conventional_cellmap = _identity
+
     def _cell(self, a):
         return a * np.eye(3)
 
@@ -378,6 +379,7 @@ class CUB(Cubic):
               [['FCC', 'GKLUWX', 'GXWKGLUWLK,UX', sc_special_points['fcc']]])
 class FCC(Cubic):
     conventional_cellmap = _bcc_map
+
     def _cell(self, a):
         return 0.5 * np.array([[0., a, a], [a, 0, a], [a, a, 0]])
 
@@ -386,6 +388,7 @@ class FCC(Cubic):
               [['BCC', 'GHPN', 'GHNGPH,PN', sc_special_points['bcc']]])
 class BCC(Cubic):
     conventional_cellmap = _fcc_map
+
     def _cell(self, a):
         return 0.5 * np.array([[-a, a, a], [a, -a, a], [a, a, -a]])
 
@@ -475,6 +478,7 @@ class Orthorhombic(BravaisLattice):
 class ORC(Orthorhombic):
     conventional_cls = 'ORC'
     conventional_cellmap = _identity
+
     def _cell(self, a, b, c):
         return np.diag([a, b, c]).astype(float)
 
