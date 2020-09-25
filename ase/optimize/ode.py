@@ -66,7 +66,7 @@ def ode12r(f, X0, h=None, verbose=1, fmax=1e-6, maxtol=1e3, steps=100,
 
     if Rn <= fmax:
         if verbose:
-            print(f"ODE12r terminates successfully after 0 iterations")
+            print("ODE12r terminates successfully after 0 iterations")
         return X
 
     if Rn >= maxtol:
