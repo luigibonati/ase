@@ -3,7 +3,7 @@
 import numpy as np
 
 from ase import Atoms
-from ase.io import write
+from ase.io.pov import write_pov, run_pov
 
 atoms = Atoms('Ag', cell=(2.7, 2.7, 2.7), pbc=True) * (18, 8, 8)
 
@@ -46,6 +46,7 @@ extra_kwargs = { # For povray files only
 }
 
 # Make flat png file
+#from ase.io import write
 #write('flat.png', atoms, **kwargs)
 
 # Make the color of the glass beads semi-transparent
@@ -56,4 +57,6 @@ kwargs['colors'] = colors2
 kwargs.update(extra_kwargs)
 
 # Make the raytraced image
-write('nice.pov', atoms, run_povray=True, **kwargs)
+# first write the configuration files, then call the external povray executable
+write_pov('nice.pov', atoms, **kwargs)
+run_pov('nice.pov')

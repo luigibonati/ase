@@ -3,7 +3,7 @@
 import numpy as np
 
 from ase import Atoms
-from ase.io import write
+from ase.io.pov import write_pov, run_pov
 from ase.build import molecule
 
 a = 5.64  # Lattice constant for NaCl
@@ -35,7 +35,6 @@ kwargs = {
 
 # Extra kwargs only available for povray (All units in angstrom)
 kwargs.update({
-    'run_povray'   : True, # Run povray or just write .pov + .ini files
     'display'      : False,# Display while rendering
     'pause'        : True, # Pause when done rendering (only if display)
     'transparent'  : False,# Transparent background
@@ -53,7 +52,7 @@ kwargs.update({
     'celllinewidth': 0.1,  # Radius of the cylinders representing the cell
     })
    
-# Write the .pov (and .ini) file. If run_povray=False, you must run command
-# `povray filename.ini` to convert .pov file to .png
-write('NaCl_C6H6.pov', atoms, **kwargs)
-
+# Write the .pov (and .ini) file. 
+# comment out run_povray to not call the povray executable
+write_pov('NaCl_C6H6.pov', atoms, **kwargs)
+run_pov('NaCl_C6H6.pov')
