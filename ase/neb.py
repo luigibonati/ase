@@ -2,17 +2,27 @@ import sys
 import threading
 import warnings
 from abc import ABC, abstractmethod
+import time
 
 import numpy as np
+
+from scipy.interpolate import CubicSpline
+from scipy.integrate import cumtrapz
+from scipy.optimize import root
 
 import ase.parallel
 from ase.build import minimize_rotation_and_translation
 from ase.calculators.calculator import Calculator
 from ase.calculators.singlepoint import SinglePointCalculator
+from ase.io import read
+from ase.optimize import MDMin
+from ase.optimize.optimize import Optimizer
 from ase.geometry import find_mic
 from ase.optimize import MDMin
 from ase.utils import lazyproperty, deprecated
 from ase.utils.forcecurve import fit_images
+from ase.optimize.precon import make_precon
+from ase.optimize.ode import ode12r
 
 
 class Spring:
@@ -40,11 +50,12 @@ class Spring:
 
 
 class NEBState:
-    def __init__(self, neb, images, energies):
+    def __init__(self, neb, images, energies, precon):
         self.neb = neb
         self.images = images
         self.energies = energies
-
+        self.precon = precon
+            
     def spring(self, i):
         return Spring(self.images[i], self.images[i + 1],
                       self.energies[i], self.energies[i + 1],
@@ -66,6 +77,76 @@ class NEBState:
         beelinelength = np.linalg.norm(beeline)
         return beelinelength / (self.neb.nimages - 1)
 
+    @lazyproperty
+    def nimages(self):
+        return len(self.images)
+
+    @lazyproperty
+    def natoms(self):
+        return len(self.images[0])        
+
+    @lazyproperty
+    def s(self):
+        """
+        Value of reaction coordinate at images, in interval [0, 1].
+        """
+        s, _ = self.neb.spline_points()
+        return s
+
+    @lazyproperty
+    def x_spline(self):
+        """
+        Cubic spline fitted to positions
+        """
+        s, x = self.neb.spline_points()
+        x_spline = CubicSpline(s, x, bc_type='not-a-knot')
+        return x_spline
+
+    def x(self, s):
+        """
+        Value of spline fitted to positions
+        """
+        return self.x_spline(s).reshape(-1, 3)
+
+    def dx_ds(self, s):
+        """
+        First derivative of cubic spline fitted to positions
+        """
+        dx_ds_spline = self.x_spline.derivative()
+        return dx_ds_spline(s).reshape(-1, 3)
+
+    def d2x_ds2(self, s):
+        """
+        Second derivative of cubic spline fitted to positions
+        """
+        d2x_ds2_spline = self.x_spline.derivative(2)
+        return d2x_ds2_spline(s).reshape(-1, 3)
+
+    def norm(self, v, i):
+        """
+        Define the norm at image i
+        """
+        if self.precon is None:
+            return np.linalg.norm(v)
+        else:
+            return self.precon[i].norm(v.reshape(-1))
+
+    def vdot(self, v1, v2, i):
+        """
+        Define the dot product at image i
+        """
+        if self.precon is None:
+            return np.vdot(v1, v2)
+        else:
+            return self.precon[i].dot(v1.reshape(-1),
+                                      v2.reshape(-1))
+
+    def Pdot(self, forces, i):
+        if self.precon is None:
+            return forces
+        else:
+            return self.precon[i].Pdot(forces.reshape(-1))
+
 
 class NEBMethod(ABC):
     def __init__(self, neb):
@@ -79,6 +160,9 @@ class NEBMethod(ABC):
     def add_image_force(self, state, tangential_force, tangent, imgforce,
                         spring1, spring2, i):
         ...
+
+    def adjust_positions(self):
+        pass
 
 
 class ImprovedTangent(NEBMethod):
@@ -166,6 +250,77 @@ class EB(NEBMethod):
             imgforce += f1 + f2
 
 
+class SplineMethod(NEBMethod):
+    """
+    Base class for SplineNEB and String methods
+
+    Can optionally be preconditioned, as described in the following article:
+
+        S. Makri, C. Ortner and J. R. Kermode, J. Chem. Phys.
+        150, 094109 (2019)
+        https://dx.doi.org/10.1063/1.5064465
+    """
+    def __init__(self, neb):
+        NEBMethod.__init__(self, neb)
+        self.residuals = np.zeros(neb.nimages)
+
+    def get_tangent(self, state, spring1, spring2, i):
+        tangent = state.dx_ds(state.s[i])
+        tangent /= state.norm(tangent, i)
+        return tangent
+
+    def add_image_force(self, state, tangential_force, tangent, imgforce,
+                        spring1, spring2, i):
+
+        # update preconditioner and apply to image force
+        if state.precon is not None:
+            precon_imgforce, _ = state.precon[i].apply(imgforce.reshape(-1),
+                                                       state.images[i])
+            imgforce[:] = precon_imgforce.reshape(-1, 3)
+        
+        # project out tangential component (Eqs 6 and 7 in the paper)
+        imgforce -= tangential_force * tangent
+
+        # Store residuals for each image (Eq. 11)
+        P_dot_imgforce = state.Pdot(imgforce, i)
+        self.residuals[i - 1] = np.linalg.norm(P_dot_imgforce, np.inf)
+
+    def get_residual(self):
+        return np.max(self.residuals)  # Eq. 11
+
+
+class SplineNEB(SplineMethod):
+    """
+    NEB using spline interpolation, plus optional preconditioning
+    """
+    def add_image_force(self, state, tangential_force, tangent, imgforce,
+                        spring1, spring2, i):
+        SplineMethod.add_image_force(self, state, tangential_force,
+                                     tangent, imgforce, spring1, spring2, i)
+
+        # Definition following Eq. 9
+        k = 0.5 * (spring1.k + spring2.k) / (state.nimages ** 2)
+        curvature = state.d2x_ds2(state.s[i])
+        eta = k * state.vdot(curvature, tangent, i) * tangent
+
+        # complete Eq. 9 by including the spring force
+        imgforce += eta
+
+
+class String(SplineMethod):
+    """
+    String method using spline interpolation, plus optional preconditioning
+    """
+    def adjust_positions(self):
+        # fit cubic spline to positions, reinterpolate to equispace images
+        # note this use the precondionted distance metric if state.
+        state = NEBState(self.neb, self.neb.images,
+                         self.neb.energies, self.neb.precon)
+        new_s = np.linspace(0.0, 1.0, state.nimages)
+        new_positions = state.x(new_s[1:-1])
+        self.neb.set_positions(new_positions)
+
+
 def get_neb_method(neb, method):
     if method == 'eb':
         return EB(neb)
@@ -173,6 +328,10 @@ def get_neb_method(neb, method):
         return ASENEB(neb)
     elif method == 'improvedtangent':
         return ImprovedTangent(neb)
+    elif method == 'spline':
+        return SplineNEB(neb)
+    elif method == 'string':
+        return String(neb)
     else:
         raise ValueError(f'Bad method: {method}')
 
@@ -180,13 +339,8 @@ def get_neb_method(neb, method):
 class BaseNEB:
     def __init__(self, images, k=0.1, climb=False, parallel=False,
                  remove_rotation_and_translation=False, world=None,
-                 method='aseneb', allow_shared_calculator=False):
-        self.images = images
+                 method='aseneb', allow_shared_calculator=False, precon=None):
         self.climb = climb
-        self.parallel = parallel
-        self.allow_shared_calculator = allow_shared_calculator
-
-        for img in images:
             if len(img) != self.natoms:
                 raise ValueError('Images have different numbers of atoms')
             if np.any(img.pbc != images[0].pbc):
@@ -202,11 +356,19 @@ class BaseNEB:
 
         self.remove_rotation_and_translation = remove_rotation_and_translation
 
-        self.method = method
-        self.neb_method = get_neb_method(self, method)
+        if method in ['aseneb', 'eb', 'improvedtangent', 'spline', 'string']:
+            self.method = method
+        else:
+            raise NotImplementedError(method)
 
+        self.precon = None
+        if precon is not None:
+            if method not in ['spline', 'string']:
+                raise NotImplementedError(f'no precon implemented: {method}')
+                self.precon.append(P)
+
+        self.neb_method = get_neb_method(self, method)
         if isinstance(k, (float, int)):
-            k = [k] * (self.nimages - 1)
         self.k = list(k)
 
         if world is None:
@@ -214,15 +376,12 @@ class BaseNEB:
         self.world = world
 
         if parallel:
-            assert world.size == 1 or world.size % (self.nimages - 2) == 0
             if self.allow_shared_calculator:
                 raise RuntimeError(
                     "Cannot use shared calculators in parallel in NEB.")
-
         self.real_forces = None  # ndarray of shape (nimages, natom, 3)
         self.energies = None  # ndarray of shape (nimages,)
 
-    @property
     def natoms(self):
         return len(self.images[0])
 
@@ -230,7 +389,6 @@ class BaseNEB:
     def nimages(self):
         return len(self.images)
 
-    @staticmethod
     def freeze_results_on_image(atoms: ase.Atoms,
                                 **results_to_include):
         atoms.calc = SinglePointCalculator(atoms=atoms, **results_to_include)
@@ -277,6 +435,10 @@ class BaseNEB:
             image.set_positions(positions[n1:n2])
             n1 = n2
 
+    def adjust_positions(self):
+        # allow the NEB method to reparameterise images if necessary
+        self.neb_method.adjust_positions()
+
     def get_forces(self):
         """Evaluate and return the forces."""
         images = self.images
@@ -308,6 +470,7 @@ class BaseNEB:
             for i in range(1, self.nimages - 1):
                 energies[i] = images[i].get_potential_energy()
                 forces[i - 1] = images[i].get_forces()
+
         elif self.world.size == 1:
             def run(image, energies, forces):
                 energies[:] = image.get_potential_energy()
@@ -347,7 +510,7 @@ class BaseNEB:
         self.real_forces = np.zeros((self.nimages, self.natoms, 3))
         self.real_forces[1:-1] = forces
 
-        state = NEBState(self, images, energies)
+        state = NEBState(self, images, energies, self.precon)
 
         # Can we get rid of self.energies, self.imax, self.emax etc.?
         self.imax = state.imax
@@ -380,6 +543,17 @@ class BaseNEB:
 
             spring1 = spring2
         return forces.reshape((-1, 3))
+
+    def get_residual(self):
+        """Return residual force along the band.
+
+        Typically this the maximum force component, differing
+        only for preconditioned cases.
+        """
+        if self.method == 'spline' or self.method == 'string':
+            return self.neb_method.get_residual()
+        else:
+            return np.max(self.get_forces())
 
     def get_potential_energy(self, force_consistent=False):
         """Return the maximum potential energy along the band.
@@ -437,12 +611,83 @@ class BaseNEB:
 
                 yield atoms
 
+    def spline_points(self, norm='precon'):
+        """
+        Return points for fitting splines to images, as described in paper IV
+
+        Returns
+        -------
+            s, x - reaction coordinate, displacement values
+        """
+
+        images = self.images
+        d_P = np.zeros(self.nimages)
+        x = np.zeros((self.nimages, 3 * self.natoms))  # flattened positions
+        x[0, :] = images[0].positions.reshape(-1)
+
+        for i in range(1, self.nimages):
+            x[i, :] = images[i].positions.reshape(-1)
+            dx, _ = find_mic(images[i].positions -
+                             images[i - 1].positions,
+                             images[i - 1].cell,
+                             images[i - 1].pbc)
+            dx = dx.reshape(-1)
+
+            # distance as defined in Eq. 8 in paper IV
+            if (norm == 'euclidean' or
+                (norm == 'precon' and self.precon is None)):
+                d_P[i] = np.linalg.norm(dx)
+            elif norm == 'precon':
+                d_P[i] = np.sqrt(0.5 * (self.precon[i].dot(dx, dx) +
+                                        self.precon[i - 1].dot(dx, dx)))
+            else:
+                raise ValueError(f'unknown norm {norm} in spline_fit()')
+
+        s = d_P.cumsum() / d_P.sum()  # Eq. A1 in paper IV
+        return s, x
+
+    def integrate_forces(self, spline_points=1000, bc_type='not-a-knot',
+                         return_forces=False):
+        """
+        Use spline fit to integrate forces along MEP to approximate
+        energy differences using the virtual work approach.
+
+        Parameters
+        ----------
+        spline_points - number of spline points to use
+        return_forces - if True, include forces in results as well as energies
+
+        Returns
+        -------
+
+        s - reaction coordinate in range [0, 1], with `spline_points` entries
+        E - result of integrating forces, on the same grid as `s`.
+        F - if return_forces is True, also return projected forces along MEP
+        """
+        # note we use standard Euclidean rather than preconditioned norm
+        # to compute the virtual work
+        s, x = self.spline_points(norm='euclidean')
+        x = CubicSpline(s, x, bc_type='not-a-knot')
+        forces = np.array([image.get_forces().reshape(-1)
+                           for image in self.images])
+        f = CubicSpline(s, forces, bc_type=bc_type)
+
+        dx = x.derivative()
+        s = np.linspace(0.0, 1.0, spline_points, endpoint=True)
+        dE = f(s) * dx(s)
+        F = dE.sum(axis=1)
+        E = -cumtrapz(F, s, initial=0.0)
+        if return_forces:
+            return s, E, F
+        else:
+            return s, E                
+
 
 class DyNEB(BaseNEB):
     def __init__(self, images, k=0.1, fmax=0.05, climb=False, parallel=False,
                  remove_rotation_and_translation=False, world=None,
                  dynamic_relaxation=True, scale_fmax=0., method='aseneb',
-                 allow_shared_calculator=False):
+                 allow_shared_calculator=False, precon=None):
         """
         Subclass of NEB that allows for scaled and dynamic optimizations of
         images. This method, which only works in series, does not perform
@@ -473,7 +718,7 @@ class DyNEB(BaseNEB):
             images, k=k, climb=climb, parallel=parallel,
             remove_rotation_and_translation=remove_rotation_and_translation,
             world=world, method=method,
-            allow_shared_calculator=allow_shared_calculator)
+            allow_shared_calculator=allow_shared_calculator, precon=precon)
         self.fmax = fmax
         self.dynamic_relaxation = dynamic_relaxation
         self.scale_fmax = scale_fmax
@@ -554,7 +799,7 @@ def _check_deprecation(keyword, kwargs):
 class NEB(DyNEB):
     def __init__(self, images, k=0.1, climb=False, parallel=False,
                  remove_rotation_and_translation=False, world=None,
-                 method='aseneb', allow_shared_calculator=False, **kwargs):
+                 method='aseneb', allow_shared_calculator=False, precon=precon, **kwargs):
         """Nudged elastic band.
 
         Paper I:
@@ -574,6 +819,12 @@ class NEB(DyNEB):
             145, 094107 (2016)
             https://doi.org/10.1063/1.4961868
 
+        Paper IV:
+
+            S. Makri, C. Ortner and J. R. Kermode, J. Chem. Phys.
+            150, 094109 (2019)
+            https://dx.doi.org/10.1063/1.5064465
+
         images: list of Atoms objects
             Images defining path from initial to final state.
         k: float or list of floats
@@ -587,15 +838,20 @@ class NEB(DyNEB):
             rotation during NEB. By default applied non-periodic
             systems
         method: string of method
-            Choice betweeen three method:
+            Choice betweeen five methods:
 
             * aseneb: standard ase NEB implementation
             * improvedtangent: Paper I NEB implementation
             * eb: Paper III full spring force implementation
+            * spline: Paper IV spline interpolation (supports precon)
+            * string: Paper IV string method (supports precon)
         allow_shared_calculator: bool
             Allow images to share the same calculator between them.
             Incompatible with parallelisation over images.
-
+        precon: string or a ase.optimize.precon.Precon instance
+            If present, enable preconditioing as in Paper IV. This is
+            possible using the 'spline' or 'string' methods.
+            Default is no preconditioning (precon=None)
         """
         for keyword in 'dynamic_relaxation', 'fmax', 'scale_fmax':
             _check_deprecation(keyword, kwargs)
@@ -616,8 +872,124 @@ class NEB(DyNEB):
             remove_rotation_and_translation=remove_rotation_and_translation,
             world=world, method=method,
             allow_shared_calculator=allow_shared_calculator,
-            **defaults,
-        )
+            precon=precon,
+            **defaults)
+
+
+class NEBOptimizer(Optimizer):
+    """
+    This optimizer applies an adaptive ODE or Krylov solver to a NEB
+
+    Details of the adaptive ODE solver are descried in paper IV
+    """
+    def __init__(self,
+                 neb,
+                 restart=None, logfile='-', trajectory=None,
+                 master=None,
+                 append_trajectory=False,
+                 method='ODE',
+                 alpha=0.01,
+                 verbose=0,
+                 rtol=0.1,
+                 C1=1e-2,
+                 C2=2.0):
+
+        Optimizer.__init__(self, None, restart, logfile, trajectory,
+                           master=master,
+                           append_trajectory=append_trajectory,
+                           force_consistent=False)
+        self.neb = neb
+
+        method = method.lower()
+        methods = ['ode', 'static', 'krylov']
+        if method not in methods:
+            raise ValueError(f'method must be one of {methods}')
+        self.method = method
+
+        self.alpha = alpha
+        self.verbose = verbose
+        self.rtol = rtol
+        self.C1 = C1
+        self.C2 = C2
+
+        self.fmax_history = []
+
+    def get_dofs(self):
+        return self.neb.get_positions().reshape(-1)
+
+    def set_dofs(self, X):
+        self.neb.set_positions(X.reshape((self.neb.nimages - 2) * 
+                                         self.neb.natoms, 3))
+
+    def force_function(self, X):
+        self.set_dofs(X)
+        return self.neb.get_forces().reshape(-1)
+
+    def get_residual(self, F=None, X=None):
+        return self.neb.get_residual()
+
+    def log(self):
+        fmax = self.get_residual()
+        self.fmax_history.append(fmax)
+        T = time.localtime()
+        if self.logfile is not None:
+            name = f'{self.__class__.__name__}[{self.method}]'
+            if self.nsteps == 0:
+                args = (
+                " " * len(name), "Step", "Time", "fmax")
+                msg = "%s  %4s %8s %12s\n" % args
+                self.logfile.write(msg)
+
+            args = (name, self.nsteps, T[3], T[4], T[5], fmax)
+            msg = "%s:  %3d %02d:%02d:%02d %12.4f\n" % args
+            self.logfile.write(msg)
+            self.logfile.flush()
+
+    def callback(self, X):
+        self.log()
+        self.call_observers()
+        self.nsteps += 1
+        self.neb.adjust_positions()
+
+    def run(self, fmax=1e-3, steps=50):
+        """
+        Optimize images to obtain the minimum energy path
+
+        Parameters
+        ----------
+        fmax - desired force tolerance
+        steps - maximum number of steps
+        """
+
+        if self.method == 'ode':
+            ode12r(self.force_function,
+                   self.get_dofs(),
+                   fmax=fmax,
+                   rtol=self.rtol,
+                   C1=self.C1,
+                   C2=self.C2,
+                   steps=steps,
+                   verbose=self.verbose,
+                   callback=self.callback,
+                   residual=self.get_residual)
+        elif self.method == 'krylov':
+            res = root(self.force_function,
+                       self.get_dofs(),
+                       method='krylov',
+                       options={'disp': True, 'fatol': fmax, 'maxiter': steps},
+                       callback=self.callback)
+            if res.success:
+                self.set_dofs(res.x)
+            else:
+                raise RuntimeError(f'Krylov did not converge in {steps} steps')
+        else:
+            X = self.get_dofs()
+            for step in range(steps):
+                F = self.neb.force_function(X)
+                if self.neb.get_residual() <= fmax:
+                    break
+                X += self.alpha * F
+                self.callback(X)
 
 
 class IDPP(Calculator):
