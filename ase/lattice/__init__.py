@@ -2,6 +2,7 @@ from abc import abstractmethod, ABC
 import functools
 import warnings
 import numpy as np
+from typing import Dict, List
 
 from ase.cell import Cell
 from ase.build.bulk import bulk as newbulk
@@ -69,7 +70,7 @@ class BravaisLattice(ABC):
             self._variant = self.variants[name]
 
     @property
-    def variant(self):
+    def variant(self) -> str:
         """Return name of lattice variant.
 
         >>> BCT(3, 5).variant
@@ -77,20 +78,21 @@ class BravaisLattice(ABC):
         """
         return self._variant.name
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str):
         if name in self._parameters:
             return self._parameters[name]
         return self.__getattribute__(name)  # Raises error
 
-    def vars(self):
+    def vars(self) -> Dict[str, float]:
         """Get parameter names and values of this lattice as a dictionary."""
         return dict(self._parameters)
 
-    def conventional(self):
+    def conventional(self) -> 'BravaisLattice':
+        """Get the conventional cell corresponding to this lattice."""
         cls = bravais_lattices[self.conventional_cls]
         return cls(**self._parameters)
 
-    def tocell(self):
+    def tocell(self) -> Cell:
         """Return this lattice as a :class:`~ase.cell.Cell` object."""
         cell = self._cell(**self._parameters)
         return Cell(cell)
@@ -104,7 +106,7 @@ class BravaisLattice(ABC):
                           atol=eps), msg
         return T
 
-    def cellpar(self):
+    def cellpar(self) -> np.ndarray:
         """Get cell lengths and angles as array of length 6.
 
         See :func:`ase.geometry.Cell.cellpar`."""
@@ -113,7 +115,7 @@ class BravaisLattice(ABC):
         return cell.cellpar()
 
     @property
-    def special_path(self):
+    def special_path(self) -> str:
         """Get default special k-point path for this lattice as a string.
 
         >>> BCT(3, 5).special_path
@@ -122,7 +124,7 @@ class BravaisLattice(ABC):
         return self._variant.special_path
 
     @property
-    def special_point_names(self):
+    def special_point_names(self) -> List[str]:
         """Return all special point names as a list of strings.
 
         >>> BCT(3, 5).special_point_names
@@ -132,7 +134,7 @@ class BravaisLattice(ABC):
         assert len(labels) == 1  # list of lists
         return labels[0]
 
-    def get_special_points_array(self):
+    def get_special_points_array(self) -> np.ndarray:
         """Return all special points for this lattice as an array.
 
         Ordering is consistent with special_point_names."""
@@ -152,7 +154,7 @@ class BravaisLattice(ABC):
         assert len(points) == len(self.special_point_names)
         return np.array(points)
 
-    def get_special_points(self):
+    def get_special_points(self) -> Dict[str, np.ndarray]:
         """Return a dictionary of named special k-points for this lattice."""
         if self._variant.special_points is not None:
             return self._variant.special_points
@@ -170,7 +172,7 @@ class BravaisLattice(ABC):
         return bandpath.plot(dimension=self.ndim, **plotkwargs)
 
     def bandpath(self, path=None, npoints=None, special_points=None,
-                 density=None, transformation=None):
+                 density=None, transformation=None) -> BandPath:
         """Return a :class:`~ase.dft.kpoints.BandPath` for this lattice.
 
         See :meth:`ase.cell.Cell.bandpath` for description of parameters.
@@ -238,13 +240,13 @@ special_points={GNPSS1XYY1Z}, kpts=[51x3])
             tokens.append(template.format(name, value))
         return '{}({})'.format(self.name, ', '.join(tokens))
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.__format__('')
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.__format__('.20g')
 
-    def description(self):
+    def description(self) -> str:
         """Return complete description of lattice and Brillouin zone."""
         points = self.get_special_points()
         labels = self.special_point_names
@@ -303,7 +305,7 @@ Variant name: {name}
         # XXX Should make special_points available as a single array as well
         # (easier to transform that way)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.variant_desc.format(**vars(self))
 
 
