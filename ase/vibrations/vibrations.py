@@ -63,8 +63,6 @@ class VibrationsData:
 
         n_atoms = self._check_dimensions(atoms, np.asarray(hessian),
                                          indices=self._indices)
-        masses = atoms.get_masses() if atoms.has('masses') else None
-
         self._atoms = atoms.copy()
 
         self._hessian2d = (np.asarray(hessian)
@@ -166,13 +164,8 @@ class VibrationsData:
             raise ValueError("Hessian for these atoms should be a "
                              "{} numpy array.".format(ref_shape_txt))
 
-    @property
-    def atoms(self) -> Atoms:
+    def get_atoms(self) -> Atoms:
         return self._atoms.copy()
-
-    @atoms.setter
-    def atoms(self, new_atoms) -> NoReturn:
-        raise NotImplementedError(self._setter_error)
 
     @property
     def indices(self) -> Union[None, np.ndarray]:
@@ -188,7 +181,7 @@ class VibrationsData:
     @property
     def mask(self) -> np.ndarray:
         """Boolean mask of atoms selected by indices"""
-        return self._mask_from_indices(self.atoms, self.indices)
+        return self._mask_from_indices(self._atoms, self.indices)
 
     @mask.setter
     def mask(self, values) -> NoReturn:
@@ -218,7 +211,7 @@ class VibrationsData:
 
         Returns:
             array with shape (n_atoms, 3, n_atoms, 3) where
-            - the first and third indices identify atoms in self.atoms
+            - the first and third indices identify atoms in self.get_atoms()
             - the second and fourth indices cover the corresponding Cartesian
               movements in x, y, z
 
@@ -258,7 +251,7 @@ class VibrationsData:
         return self._hessian2d.copy()
 
     def todict(self) -> Dict[str, Any]:
-        return {'atoms': self.atoms,
+        return {'atoms': self.get_atoms(),
                 'hessian': self.hessian,
                 'indices': self.indices}
 
@@ -284,7 +277,7 @@ class VibrationsData:
         see the docstring of that method for more information.
 
         """
-        active_atoms = self.atoms[self.mask]
+        active_atoms = self._atoms[self.mask]
         n_atoms = len(active_atoms)
         masses = active_atoms.get_masses()
 
@@ -443,11 +436,11 @@ class VibrationsData:
 
         """
 
-        atoms = self.atoms  # Spawns a copy to avoid mutating underlying data
+        atoms = self.get_atoms()  # Spawns a copy to avoid mutating data
         mode = self.get_modes()[mode] * len(atoms) * 3 * scale
         atoms.calc = SinglePointCalculator(atoms, forces=mode)
         if show:
-            self.atoms.edit()
+            self.get_atoms().edit()
 
         return atoms
 
@@ -481,7 +474,7 @@ class VibrationsData:
             else:
                 energy = energy.real
 
-            image = self.atoms.copy()
+            image = self.get_atoms()
             image.info.update({'mode#': str(i),
                                'frequency_cm-1': energy / units.invcm,
                                })
@@ -507,14 +500,14 @@ class VibrationsData:
     def get_pdos(self) -> DOSCollection:
         """Phonon DOS, including atomic contributions"""
         energies = self.get_energies()
-        masses = self.atoms[self.mask].get_masses()
+        masses = self._atoms[self.mask].get_masses()
 
         # Get weights as N_moving_atoms x N_modes array
         vectors = self.get_modes() / masses[np.newaxis, :, np.newaxis]**-0.5
         all_weights = (np.linalg.norm(vectors, axis=-1)**2).T
 
         all_info = [{'index': i, 'symbol': a.symbol}
-                    for i, a in enumerate(self.atoms) if self.mask[i]]
+                    for i, a in enumerate(self._atoms) if self.mask[i]]
 
         return DOSCollection([RawDOSData(energies, weights, info=info)
                               for weights, info in zip(all_weights, all_info)])

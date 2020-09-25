@@ -302,10 +302,6 @@ class TestVibrationsData():
         with pytest.raises(NotImplementedError):
             vib_data.indices = [0, 1]
 
-        with pytest.raises(NotImplementedError):
-            vib_data.atoms = ase.Atoms('H2', positions=[[0., 0., 0.],
-                                                        [0., 0., 0.8]])
-
     def test_todict(self):
         vib_data = VibrationsData(self.n2.copy(), self.h_n2)
         vib_data_dict = vib_data.todict()
@@ -321,8 +317,11 @@ class TestVibrationsData():
         vib_data_dict = vib_data.todict()
         vib_data_roundtrip = VibrationsData.fromdict(vib_data_dict)
 
-        for attr in 'atoms', 'indices':
+        for attr in ('indices',):
             assert getattr(vib_data, attr) == getattr(vib_data_roundtrip, attr)
+        for getter in ('get_atoms',):
+            assert (getattr(vib_data, getter)()
+                    == getattr(vib_data_roundtrip, getter)())
         for array_getter in ('get_hessian_2d',):
             assert_array_almost_equal(
                 getattr(vib_data, array_getter)(),
@@ -341,7 +340,7 @@ class TestVibrationsData():
         images = ase.io.read(self.jmol_file, index=':')
         for i, image in enumerate(images):
             assert_array_almost_equal(image.positions,
-                                      vib_data.atoms.positions)
+                                      vib_data.get_atoms().positions)
             assert (image.info['IR_intensity']
                     == pytest.approx(ir_intensities[i]))
             assert_array_almost_equal(image.arrays['mode'],
