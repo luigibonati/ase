@@ -1,4 +1,4 @@
-from ase.units import fs, kB, GPa
+from ase.units import fs, GPa
 from ase.build import bulk
 from ase.md.npt import NPT
 from ase.md.nptberendsen import NPTBerendsen
@@ -19,7 +19,7 @@ def test_npt_asap(asap3):
         # temperature, but should be good at maintaining it.  Use
         # NPTBerendsen to hit the right value.
         T = 300
-        MaxwellBoltzmannDistribution(a, T * kB, force_temp=True, rng=rng)
+        MaxwellBoltzmannDistribution(a, temperature_K=T, force_temp=True, rng=rng)
         Stationary(a)
         berend = NPTBerendsen(a, timestep=4 * fs, temperature_K=T,
                               taut=2000*fs,

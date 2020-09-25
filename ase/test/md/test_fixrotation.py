@@ -1,4 +1,4 @@
-from ase.units import fs, kB
+from ase.units import fs
 from ase.build import bulk
 from ase.md import Langevin
 from ase.md.fix import FixRotation
@@ -36,7 +36,7 @@ def test_fixrotation_asap(asap3):
         atoms.center(vacuum=5.0 + np.max(atoms.cell) / 2)
         print(atoms)
         atoms.calc = asap3.EMT()
-        MaxwellBoltzmannDistribution(atoms, 300 * kB, force_temp=True,
+        MaxwellBoltzmannDistribution(atoms, temperature_K=300, force_temp=True,
                                      rng=rng)
         Stationary(atoms)
         check_inertia(atoms)

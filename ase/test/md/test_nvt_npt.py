@@ -1,6 +1,6 @@
 import pytest
 from ase import Atoms
-from ase.units import fs, kB, GPa, bar
+from ase.units import fs, GPa, bar
 from ase.build import bulk
 from ase.md.nvtberendsen import NVTBerendsen
 from ase.md.nptberendsen import NPTBerendsen
@@ -32,7 +32,7 @@ def equilibrated(asap3, berendsenparams):
         #a[5].symbol = 'Ag'
         print(atoms)
         atoms.calc = asap3.EMT()
-        MaxwellBoltzmannDistribution(atoms, 100 * kB, force_temp=True,
+        MaxwellBoltzmannDistribution(atoms, temperature_K=100, force_temp=True,
                                      rng=rng)
         Stationary(atoms)
         assert abs(atoms.get_temperature() - 100) < 0.0001

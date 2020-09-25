@@ -1,4 +1,4 @@
-from ase.units import fs, kB, GPa
+from ase.units import fs, GPa
 from ase.build import bulk
 from ase.md.nvtberendsen import NVTBerendsen
 from ase.md.nptberendsen import NPTBerendsen, Inhomogeneous_NPTBerendsen
@@ -34,7 +34,7 @@ def _berendsen_asap(asap3, pressure, homog=True):
         print(a)
         a.calc = asap3.EMT()
         # Set temperature to 10 K
-        MaxwellBoltzmannDistribution(a, 10 * kB, force_temp=True, rng=rng)
+        MaxwellBoltzmannDistribution(a, temperature_K=10, force_temp=True, rng=rng)
         Stationary(a)
         assert abs(a.get_temperature() - 10) < 0.0001
         # Berendsen dynamics should raise this to 300 K
