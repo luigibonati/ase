@@ -364,7 +364,7 @@ F('vasp-xdatcar', 'VASP XDATCAR file', '+F',
 F('vasp-xml', 'VASP vasprun.xml file', '+F',
   module='vasp', glob='*vasp*.xml')
 F('vti', 'VTK XML Image Data', '1F', module='vtkxml')
-F('vtu', 'VTK XML Unstructured Grid', '1F', module='vtkxml')
+F('vtu', 'VTK XML Unstructured Grid', '1F', module='vtkxml', ext='vtu')
 F('x3d', 'X3D', '1S')
 F('xsd', 'Materials Studio file', '1F')
 F('xsf', 'XCrySDen Structure File', '+F',

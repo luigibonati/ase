@@ -47,10 +47,7 @@ class CLIViewer:
                 write(fd, atoms, format=self.fmt)
             else:
                 write(fd, atoms, format=self.fmt, data=data)
-            self.execute_viewer(fd.name)
-
-    def execute_viewer(self, filename):
-        subprocess.check_call(self.argv + [filename])
+            subprocess.check_call(self.argv + [fd.name])
 
     def view(self, atoms, data=None, repeat=None):
         """Spawn a new process in which to open the viewer."""
@@ -67,6 +64,9 @@ class CLIViewer:
 
     @classmethod
     def viewers(cls):
+        from pathlib import Path
+        # paraview_script = Path(__file__).parent / 'paraview_script.py'
+        # Can we make paraview/vtkxml work on some test system?
         return [
             cls('ase_gui_cli', 'traj', [sys.executable, '-m', 'ase.gui']),
             cls('avogadro', 'cube', ['avogadro']),
@@ -74,6 +74,8 @@ class CLIViewer:
             cls('rasmol', 'proteindatabank', ['rasmol', '-pdb']),
             cls('vmd', 'cube', ['vmd']),
             cls('xmakemol', 'extxyz', ['xmakemol', '-f']),
+            # cls('paraview', 'vtu',
+            #     ['paraview', f'--script={paraview_script}'])
         ]
 
 
@@ -115,7 +117,6 @@ class PyViewer:
             cls('sage'),
             cls('x3d'),
         ]
-
 
 
 viewers = {viewer.name: viewer
