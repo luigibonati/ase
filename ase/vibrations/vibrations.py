@@ -7,7 +7,7 @@ import os
 import os.path as op
 import pickle
 import sys
-from typing import Dict, List, NoReturn, Sequence, Tuple, Union, Any
+from typing import Dict, List, Sequence, Tuple, Union, Any
 
 import numpy as np
 
@@ -192,8 +192,7 @@ class VibrationsData:
             mask[indices] = True
             return mask
 
-    @property
-    def hessian(self) -> np.ndarray:
+    def get_hessian(self) -> np.ndarray:
         """The Hessian; second derivative of energy wrt positions
 
         This format is preferred for iteration over atoms and when
@@ -212,10 +211,6 @@ class VibrationsData:
         """
         n_atoms = int(self._hessian2d.shape[0] / 3)
         return self._hessian2d.reshape(n_atoms, 3, n_atoms, 3).copy()
-
-    @hessian.setter
-    def hessian(self, new_values) -> NoReturn:
-        raise NotImplementedError(self._setter_error)
 
     def get_hessian_2d(self) -> np.ndarray:
         """Get the Hessian as a 2-D array
@@ -242,7 +237,7 @@ class VibrationsData:
 
     def todict(self) -> Dict[str, Any]:
         return {'atoms': self.get_atoms(),
-                'hessian': self.hessian,
+                'hessian': self.get_hessian(),
                 'indices': self.get_indices()}
 
     @classmethod

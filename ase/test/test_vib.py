@@ -292,13 +292,6 @@ class TestVibrationsData():
         assert vib_data.get_indices() == [1, ]
         assert vib_data.get_mask().tolist() == [False, True]
 
-    def test_edit_data(self):
-        # --- Modify Hessian and indices to fix an atom ---
-        vib_data = VibrationsData(self.n2.copy(), self.h_n2)
-
-        with pytest.raises(NotImplementedError):
-            vib_data.hessian = vib_data.hessian[:1, :, :1, :]
-
     def test_todict(self):
         vib_data = VibrationsData(self.n2.copy(), self.h_n2)
         vib_data_dict = vib_data.todict()
@@ -317,14 +310,10 @@ class TestVibrationsData():
         for getter in ('get_atoms', 'get_indices'):
             assert (getattr(vib_data, getter)()
                     == getattr(vib_data_roundtrip, getter)())
-        for array_getter in ('get_hessian_2d', 'get_mask'):
+        for array_getter in ('get_hessian', 'get_hessian_2d', 'get_mask'):
             assert_array_almost_equal(
                 getattr(vib_data, array_getter)(),
                 getattr(vib_data_roundtrip, array_getter)())
-        for array_attr in ('hessian',):
-            assert_array_almost_equal(
-                getattr(vib_data, array_attr),
-                getattr(vib_data_roundtrip, array_attr))
 
     def test_jmol_roundtrip(self):
         ir_intensities = np.random.random(6)
