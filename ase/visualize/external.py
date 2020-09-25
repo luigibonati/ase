@@ -32,21 +32,23 @@ class CLIViewer:
     def ioformat(self):
         return ioformats[self.fmt]
 
-    def mktemp(self):
+    def mktemp(self, atoms, data=None):
         ioformat = self.ioformat
         suffix = '.' + ioformat.extensions[0]
         if ioformat.isbinary:
             mode = 'wb'
         else:
             mode = 'w'
-        return tempfile.NamedTemporaryFile(mode=mode, suffix=suffix)
+        fd = tempfile.NamedTemporaryFile(mode=mode, suffix=suffix)
+        if data is None:
+            write(fd, atoms, format=self.fmt)
+        else:
+            write(fd, atoms, format=self.fmt, data=data)
+        fd.flush()  # (Closing the tempfile leaves it empty for some reason!)
+        return fd
 
     def view_blocking(self, atoms, data=None):
-        with self.mktemp() as fd:
-            if data is None:
-                write(fd, atoms, format=self.fmt)
-            else:
-                write(fd, atoms, format=self.fmt, data=data)
+        with self.mktemp(atoms, data) as fd:
             subprocess.check_call(self.argv + [fd.name])
 
     def view(self, atoms, data=None, repeat=None):

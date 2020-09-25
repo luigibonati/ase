@@ -1,13 +1,12 @@
+from pathlib import Path
 import sys
 
 import pytest
 
+from ase.io import read
 from ase.visualize import view
 from ase.visualize.external import viewers, PyViewer, CLIViewer
 from ase.build import bulk
-
-
-dummy_args = [sys.executable, '-c', 'print("hello")']
 
 
 @pytest.fixture
@@ -54,9 +53,17 @@ def test_py_viewer_mock(atoms, monkeypatch):
     assert len(atoms2) == 8 * len(atoms)
 
 
-@pytest.mark.parametrize('name', [v.name for v in CLIViewer.viewers()])
-def test_cli_viewer_mock(atoms, monkeypatch, name):
-    viewer = viewers[name]
-    # Can we substitute a more intelligent test than just ase info'ing each?
-    monkeypatch.setattr(viewer, 'argv', [sys.executable, '-m', 'ase', 'info'])
-    view(atoms, viewer=name, block=True)
+@pytest.mark.parametrize('viewer', CLIViewer.viewers())
+def test_cli_viewer_tempfile(atoms, viewer):
+    with viewer.mktemp(atoms) as fd:
+        atoms1 = read(fd.name)
+        # Some formats do not include cell etc., so we only check that
+        # the atoms are "consistent-ish".
+        # Note: This would fail if we forgot to flush() in mktemp().
+        assert all(atoms1.symbols == atoms.symbols)
+    assert not Path(fd.name).exists()
+
+
+def test_cli_viewer_blocking(atoms):
+    viewer = CLIViewer('dummy', 'traj', [sys.executable, '-m', 'ase', 'info'])
+    viewer.view_blocking(atoms)
