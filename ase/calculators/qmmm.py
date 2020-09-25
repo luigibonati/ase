@@ -3,7 +3,7 @@ import numpy as np
 from ase.calculators.calculator import Calculator
 from ase.data import atomic_numbers
 from ase.utils import convert_string_to_fd
-
+from ase.geometry import get_distances
 
 class SimpleQMMM(Calculator):
     """Simple QMMM calculator."""
@@ -671,29 +671,24 @@ class ForceQMMM(Calculator):
         """
         Initialises system to perform qm calculation
         """
+        # calculate distances between all atoms and qm atoms
+        _, r = get_distances(atoms.positions[self.qm_selection_mask],
+                             atoms.positions,
+                             atoms.cell, atoms.pbc)
 
-        # get the radius of the qm_selection in non periodic directions
-        qm_positions = atoms[self.qm_selection_mask].get_positions()
-        # identify qm radius as an larges distance from the center
-        # of the cluster (overestimation)
-        qm_center = qm_positions.mean(axis=0)
+        self.qm_buffer_mask = np.zeros(len(atoms), dtype=bool)
+        for r_qm in r:
+            self.qm_buffer_mask[r_qm < self.buffer_width] = True
+
+        R_qm = r[:, self.qm_selection_mask] * 0.5  # estimate the qm radius as 0.5 max distance between qm atoms
+        qm_radius = np.amax(R_qm)
+        print('qm_radius', qm_radius)
 
         non_pbc_directions = np.logical_not(atoms.pbc)
-
-        centered_positions = atoms.get_positions()
-
-        for i, non_pbc in enumerate(non_pbc_directions):
-            if non_pbc:
-                qm_positions.T[i] -= qm_center[i]
-                centered_positions.T[i] -= qm_center[i]
-
-        qm_radius = np.linalg.norm(qm_positions.T, axis=1).max()
         self.cell = atoms.cell.copy()
 
         #TODO check that cell is orthorhombic using something like
-        # np.count_nonzero(W.cell - np.diag(np.diag(self.cell))) or
-        # np.abs(self.cell - np.diag(np.diag(self.cell))).max() < 1.0e-6 or
-        # self.cell.orthorhombic
+        # self.cell.orthorhombic == True
 
         for i, non_pbc in enumerate(non_pbc_directions):
             if non_pbc:
@@ -702,23 +697,6 @@ class ForceQMMM(Calculator):
                                          self.vacuum)
                 # round the qm cell to the required tolerance
                 self.cell[i][i] = np.round((self.cell[i, i]) / self.qm_cell_rounding) * self.qm_cell_rounding
-
-        # identify atoms in region < qm_radius + buffer
-        distances_from_center = np.linalg.norm(
-            centered_positions.T[non_pbc_directions].T, axis=1)
-
-        self.qm_buffer_mask = (distances_from_center <
-                               qm_radius + self.buffer_width)
-
-        # exclude atoms that are too far (in case of non spherical region)
-        for i, buffer_atom in enumerate(self.qm_buffer_mask &
-                                        np.logical_not(self.qm_selection_mask)):
-            if buffer_atom:
-                distance = np.linalg.norm(
-                    (qm_positions -
-                     centered_positions[i]).T[non_pbc_directions].T, axis=1)
-                if distance.min() > self.buffer_width:
-                    self.qm_buffer_mask[i] = False
 
     def calculate(self, atoms, properties, system_changes):
         Calculator.calculate(self, atoms, properties, system_changes)
