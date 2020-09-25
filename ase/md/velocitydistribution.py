@@ -49,7 +49,7 @@ def force_temperature(atoms, temperature, unit="K"):
     atoms.set_momenta(atoms.get_momenta() * np.sqrt(gamma))
 
 
-def _maxwellboltzmanndistribution(masses, temp, communicator, rng):
+def _maxwellboltzmanndistribution(masses, temp, communicator=None, rng=None):
     """Return a Maxwell-Boltzmann distribution with a given temperature.
 
     Paremeters:
@@ -60,27 +60,33 @@ def _maxwellboltzmanndistribution(masses, temp, communicator, rng):
     temp: float
         The temperature in electron volt.
 
-    communicator: MPI communicator
-        Communicator used to distribute an identical distribution to
-        all tasks.
+    communicator: MPI communicator (optional)
+        Communicator used to distribute an identical distribution to 
+        all tasks.  Set to False to disable communication (setting to None
+        gives the default).  Default: ase.parallel.world
 
-    rng: numpy RNG
-        The random number generator.
+    rng: numpy RNG (optional)
+        The random number generator.  Default: np.random
 
     Returns:
 
     A numpy array with Maxwell-Boltzmann distributed momenta.
     """
+    if rng is None:
+        rng = np.random
+    if communicator is None:
+        communicator = world
     xi = rng.standard_normal((len(masses), 3))
-    communicator.broadcast(xi, 0)
+    if communicator is not False:
+        communicator.broadcast(xi, 0)
     momenta = xi * np.sqrt(masses * temp)[:, np.newaxis]
     return momenta
 
 
 def MaxwellBoltzmannDistribution(
     atoms, temp=None, *, temperature_K=None,
-    communicator=world, force_temp=False,
-    rng=np.random
+    communicator=None, force_temp=False,
+    rng=None
 ):
     """Sets the momenta to a Maxwell-Boltzmann distribution.
 
@@ -97,7 +103,8 @@ def MaxwellBoltzmannDistribution(
 
     communicator: MPI communicator (optional)
         Communicator used to distribute an identical distribution to
-        all tasks.  Default: ase.parallel.world
+        all tasks.  Set to False to disable communication.  Leave as None to
+        get the default: ase.parallel.world
 
     force_temp: bool (optinal, default: False)
         If True, random the momenta are rescaled so the kinetic energy is 
