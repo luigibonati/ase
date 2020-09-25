@@ -3,6 +3,7 @@ import numpy as np
 from ase.calculators.calculator import Calculator
 from ase.neighborlist import neighbor_list
 
+
 def fcut(r, r0, r1):
     """
     Piecewise quintic C^{2,1} regular polynomial for use as a smooth cutoff.
@@ -13,17 +14,19 @@ def fcut(r, r0, r1):
     r0 - inner cutoff radius
     r1 - outder cutoff radius
     """""
-    s = 1.0 - (r-r0) / (r1-r0)
+    s = 1.0 - (r - r0) / (r1 - r0)
     return (s >= 1.0) + (((0.0 < s) & (s < 1.0)) *
                          (6.0 * s**5 - 15.0 * s**4 + 10.0 * s**3))
+
 
 def fcut_d(r, r0, r1):
     """
     Derivative of fcut() function defined above
     """
-    s = 1-(r-r0) / (r1-r0)
+    s = 1 - (r - r0) / (r1 - r0)
     return -(((0.0 < s) & (s < 1.0)) *
-             ((30*s**4 - 60 * s**3 + 30 * s**2) / (r1-r0)))
+             ((30 * s**4 - 60 * s**3 + 30 * s**2) / (r1 - r0)))
+
 
 class MorsePotential(Calculator):
     """Morse potential.
@@ -69,7 +72,7 @@ class MorsePotential(Calculator):
         i, j, d, D = neighbor_list('ijdD', atoms, rcut2)
         dhat = (D / d[:, None]).T
 
-        expf = np.exp(rho0 * (1.0 - d/r0))
+        expf = np.exp(rho0 * (1.0 - d / r0))
         fc = fcut(d, rcut1, rcut2)
 
         E = epsilon * expf * (expf - 2)

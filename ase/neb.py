@@ -918,8 +918,13 @@ class NEBOptimizer(Optimizer):
         return self.neb.get_positions().reshape(-1)
 
     def set_dofs(self, X):
+<<<<<<< HEAD
         self.neb.set_positions(X.reshape((self.neb.nimages - 2) * 
                                          self.neb.natoms, 3))
+=======
+        new_positions = X.reshape((self.neb.nimages - 2) * self.neb.natoms, 3)
+        self.neb.set_positions(new_positions)
+>>>>>>> pep8 improvements
 
     def force_function(self, X):
         self.set_dofs(X)
@@ -945,7 +950,7 @@ class NEBOptimizer(Optimizer):
             self.logfile.write(msg)
             self.logfile.flush()
 
-    def callback(self, X):
+    def callback(self, X, F=None):
         self.log()
         self.call_observers()
         self.nsteps += 1
