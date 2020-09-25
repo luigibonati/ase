@@ -5,7 +5,7 @@ import pytest
 
 from ase.io import read
 from ase.visualize import view
-from ase.visualize.external import viewers, PyViewer, CLIViewer
+from ase.visualize.external import PyViewer, CLIViewer
 from ase.build import bulk
 
 

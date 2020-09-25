@@ -3,6 +3,8 @@ import pickle
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
+from contextlib import contextmanager
 
 from ase.io.formats import ioformats
 from ase.io import write
@@ -32,20 +34,27 @@ class CLIViewer:
     def ioformat(self):
         return ioformats[self.fmt]
 
+    @contextmanager
     def mktemp(self, atoms, data=None):
         ioformat = self.ioformat
         suffix = '.' + ioformat.extensions[0]
+
         if ioformat.isbinary:
             mode = 'wb'
         else:
             mode = 'w'
-        fd = tempfile.NamedTemporaryFile(mode=mode, suffix=suffix)
-        if data is None:
-            write(fd, atoms, format=self.fmt)
-        else:
-            write(fd, atoms, format=self.fmt, data=data)
-        fd.flush()  # (Closing the tempfile leaves it empty for some reason!)
-        return fd
+
+        with tempfile.NamedTemporaryFile(mode=mode, suffix=suffix,
+                                         delete=False) as fd:
+            if data is None:
+                write(fd, atoms, format=self.fmt)
+            else:
+                write(fd, atoms, format=self.fmt, data=data)
+            # (Make sure file is closed without deleting it.)
+            fd.close()
+            yield fd
+
+        Path(fd.name).unlink()
 
     def view_blocking(self, atoms, data=None):
         with self.mktemp(atoms, data) as fd:
@@ -66,7 +75,6 @@ class CLIViewer:
 
     @classmethod
     def viewers(cls):
-        from pathlib import Path
         # paraview_script = Path(__file__).parent / 'paraview_script.py'
         # Can we make paraview/vtkxml work on some test system?
         return [
