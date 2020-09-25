@@ -421,26 +421,25 @@ class VibrationsData:
     def show_as_force(self,
                       mode: int,
                       scale: float = 0.2,
-                      show: bool = True) -> ase.Atoms:
+                      show: bool = True) -> Atoms:
         """Illustrate mode as "forces" on atoms
 
         Args:
             mode: mode index
             scale: scale factor
-            show: if True, open the ASE GUI
+            show: if True, open the ASE GUI and show atoms
 
         Returns:
-            copy of input atoms with a SinglePointCalculator holding scaled
-            forces corresponding to mode eigenvectors. This is the structure
-            shown in the GUI when show=True.
+            Atoms with scaled forces corresponding to mode eigenvectors (using
+            attached SinglePointCalculator).
 
         """
 
-        atoms = self.get_atoms()  # Spawns a copy to avoid mutating data
+        atoms = self.get_atoms()
         mode = self.get_modes()[mode] * len(atoms) * 3 * scale
         atoms.calc = SinglePointCalculator(atoms, forces=mode)
         if show:
-            self.get_atoms().edit()
+            atoms.edit()
 
         return atoms
 
