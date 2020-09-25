@@ -139,13 +139,26 @@ def test_fracocc(gui):
     gui.open(filename='fracocc.cif')
 
 def test_povray(gui):
+    import pathlib
     mol = molecule('H2O')
     gui.new_atoms(mol) # not gui.set_atoms(mol)
     n = gui.render_window() 
     assert n.basename_widget.value == 'H2O'
     n.run_povray_widget.check.deselect()
+    n.keep_files_widget.check.select()
     # can't set attribute n.run.povray_widge.value = False
     n.ok()
+    ini = pathlib.Path('./H2O.ini')
+    pov = pathlib.Path('./H2O.pov')
+    assert ini.is_file()
+    assert pov.is_file()
+
+    with open(ini, 'r') as _:
+        _ = _.read()
+        assert 'H2O' in _
+    with open(pov, 'r') as _:
+        _ = _.read()
+        assert 'atom' in _
 
 @pytest.fixture
 def with_bulk_ti(gui):
