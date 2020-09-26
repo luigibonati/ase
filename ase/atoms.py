@@ -473,7 +473,7 @@ class Atoms:
 
         if shape is not None and a.shape[1:] != shape:
             raise ValueError('Array "%s" has wrong shape %s != %s.' %
-                             (a.name, a.shape, (a.shape[0:1] + shape)))
+                             (name, a.shape, (a.shape[0:1] + shape)))
 
         self.arrays[name] = a
 
@@ -609,14 +609,13 @@ class Atoms:
                 masses = atomic_masses[self.arrays['numbers']]
             elif masses == 'most_common':
                 masses = atomic_masses_common[self.arrays['numbers']]
-        elif isinstance(masses, (list, tuple)):
-            newmasses = []
-            for m, Z in zip(masses, self.arrays['numbers']):
-                if m is None:
-                    newmasses.append(atomic_masses[Z])
-                else:
-                    newmasses.append(m)
-            masses = newmasses
+        elif masses is None:
+            pass
+        elif not isinstance(masses, np.ndarray):
+            masses = list(masses)
+            for i, mass in enumerate(masses):
+                if mass is None:
+                    masses[i] = atomic_masses[self.numbers[i]]
         self.set_array('masses', masses, float, ())
 
     def get_masses(self):
