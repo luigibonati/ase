@@ -347,18 +347,6 @@ class PickleTrajectory:
             self.offsets.append(self.fd.tell())
             N += 1
 
-    def __iter__(self):
-        del self.offsets[1:]
-        return self
-
-    def next(self):
-        try:
-            return self[len(self.offsets) - 1]
-        except IndexError:
-            raise StopIteration
-
-    __next__ = next
-
     def guess_offsets(self):
         size = os.path.getsize(self.fd.name)
 
