@@ -179,8 +179,9 @@ class ClusterFactory(ClusterBase):
 
     def set_surfaces_layers(self, surfaces, layers):
         if len(surfaces) != len(layers):
-            raise ValueError("Improper size of surface and layer arrays: %i != %i"
-                             % (len(surfaces), len(layers)))
+            raise ValueError(
+                "Improper size of surface and layer arrays: %i != %i"
+                % (len(surfaces), len(layers)))
 
         sg = Spacegroup(self.spacegroup)
         surfaces = np.array(surfaces)

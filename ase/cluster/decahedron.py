@@ -1,7 +1,7 @@
 import numpy as np
 
 from ase import Atoms
-from ase.data import atomic_numbers, reference_states
+from ase.cluster.util import get_element_info
 
 
 def Decahedron(symbol, p, q, r, latticeconstant=None):
@@ -25,22 +25,8 @@ def Decahedron(symbol, p, q, r, latticeconstant=None):
     then it is extracted form ase.data.
     """
 
-    if isinstance(symbol, str):
-        atomic_number = atomic_numbers[symbol]
-    else:
-        atomic_number = symbol
-
-    if latticeconstant is None:
-        if reference_states[atomic_number]['symmetry'] in ['fcc', 'bcc', 'sc']:
-            lattice_constant = reference_states[atomic_number]['a']
-        else:
-            raise NotImplementedError(("Cannot guess lattice constant of a %s element." %
-                                       (reference_states[atomic_number]['symmetry'],)))
-    else:
-        if isinstance(latticeconstant, (int, float)):
-            lattice_constant = latticeconstant
-        else:
-            raise ValueError("Lattice constant must be of type int or float.")
+    symbol, atomic_number, latticeconstant = get_element_info(
+        symbol, latticeconstant)
 
     # Check values of p, q, r
     if p < 1 or q < 1:
@@ -51,7 +37,7 @@ def Decahedron(symbol, p, q, r, latticeconstant=None):
 
     # Defining constants
     t = 2.0 * np.pi / 5.0
-    b = lattice_constant / np.sqrt(2.0)
+    b = latticeconstant / np.sqrt(2.0)
     a = b * np.sqrt(3.0) / 2.0
 
     verticies = a * np.array([[np.cos(np.pi / 2.), np.sin(np.pi / 2.), 0.],

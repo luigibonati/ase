@@ -1,7 +1,7 @@
 import numpy as np
 
 from ase import Atoms
-from ase.data import atomic_numbers, reference_states
+from ase.cluster.util import get_element_info
 
 
 def Icosahedron(symbol, noshells, latticeconstant=None):
@@ -18,29 +18,13 @@ def Icosahedron(symbol, noshells, latticeconstant=None):
     then it is extracted form ase.data.
     """
 
-    # Interpret symbol
-    if isinstance(symbol, str):
-        atomic_number = atomic_numbers[symbol]
-    else:
-        atomic_number = symbol
+    symbol, atomic_number, latticeconstant = get_element_info(
+        symbol, latticeconstant)
 
     # Interpret noshells
     if noshells < 1:
         raise ValueError(
             "The number of shells must be equal to or greater than one.")
-
-    # Interpret lattice constant
-    if latticeconstant is None:
-        if reference_states[atomic_number]['symmetry'] in ['fcc', 'bcc', 'sc']:
-            lattice_constant = reference_states[atomic_number]['a']
-        else:
-            raise NotImplementedError(("Cannot guess lattice constant of a %s element." %
-                                       (reference_states[atomic_number]['symmetry'],)))
-    else:
-        if isinstance(latticeconstant, (int, float)):
-            lattice_constant = latticeconstant
-        else:
-            raise ValueError("Lattice constant must be of type int or float.")
 
     t = 0.5 + np.sqrt(5) / 2.0
 
@@ -116,7 +100,7 @@ def Icosahedron(symbol, noshells, latticeconstant=None):
                         tags.append(n + 1)
 
     # Scale the positions
-    scaling_factor = lattice_constant / np.sqrt(2 * (1 + t**2))
+    scaling_factor = latticeconstant / np.sqrt(2 * (1 + t**2))
     positions = np.array(positions) * scaling_factor
 
     # Fit the cell, so it only just consist the atoms
