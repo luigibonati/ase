@@ -662,7 +662,7 @@ class ForceQMMM(Calculator):
         self.qm_cell_rounding = qm_cell_rounding
 
         self.qm_buffer_mask = None
-        self.cell = None
+        self.qm_cluster_cell = None
         self.qm_shift = None
 
         Calculator.__init__(self)
@@ -685,18 +685,19 @@ class ForceQMMM(Calculator):
         print('qm_radius', qm_radius)
 
         non_pbc_directions = np.logical_not(atoms.pbc)
-        self.cell = atoms.cell.copy()
+        self.qm_cluster_cell = atoms.cell.copy()
 
         #TODO check that cell is orthorhombic using something like
         # self.cell.orthorhombic == True
 
         for i, non_pbc in enumerate(non_pbc_directions):
             if non_pbc:
-                self.cell[i][i] = 2.0 * (qm_radius +
-                                         self.buffer_width +
-                                         self.vacuum)
+                self.qm_cluster_cell[i][i] = 2.0 * (qm_radius +
+                                                    self.buffer_width +
+                                                    self.vacuum)
                 # round the qm cell to the required tolerance
-                self.cell[i][i] = np.round((self.cell[i, i]) / self.qm_cell_rounding) * self.qm_cell_rounding
+                self.qm_cluster_cell[i][i] = np.round((self.qm_cluster_cell[i, i]) / self.qm_cell_rounding) \
+                                             * self.qm_cell_rounding
 
     def calculate(self, atoms, properties, system_changes):
         Calculator.calculate(self, atoms, properties, system_changes)
@@ -709,11 +710,14 @@ class ForceQMMM(Calculator):
         qm_buffer_atoms = atoms[self.qm_buffer_mask]
         del qm_buffer_atoms.constraints
 
-        qm_buffer_atoms.set_cell(self.cell)
+        qm_buffer_atoms.set_cell(self.qm_cluster_cell)
         qm_shift = (0.5 * qm_buffer_atoms.cell.diagonal() -
                     qm_buffer_atoms.positions.mean(axis=0))
 
-        qm_buffer_atoms.set_cell(self.cell)
+        #FIXME set_cell is called twice
+        qm_buffer_atoms.set_cell(self.qm_cluster_cell)
+        #TODO: set pbc
+        #TODO: apply shif only on non periodic directions
         qm_buffer_atoms.positions += qm_shift
 
         forces = self.mm_calc.get_forces(atoms)
