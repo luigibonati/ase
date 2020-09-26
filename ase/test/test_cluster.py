@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
 
+from ase.cluster.decahedron import Decahedron
 from ase.cluster.icosahedron import Icosahedron
 from ase.cluster.octahedron import Octahedron
 from ase.neighborlist import neighbor_list
@@ -60,3 +61,23 @@ def test_cuboctahedron(shells):
     coordination = coordination_numbers(cubocta)
     expected_internal_atoms = ico_cubocta_sizes[shells - 1]
     assert sum(coordination == fcc_maxcoordination) == expected_internal_atoms
+
+
+def test_decahedron():
+    p = 3  # Number of atoms along edges of icosahedron-like fivefold structure
+    q = 4  # number of "repetitive" layers between icosahedron-like endings
+    r = 2  # Number of atoms cut off corners of icosahedron-like structure
+    deca = Decahedron(sym, p, q, r)
+
+    # Does anyone know the formula for how many atoms there are supposed to be?
+    # It "looks good" so just assert things are as they apparently should be:
+    assert len(deca) == 520
+
+    coordination = coordination_numbers(deca)
+    internal_atoms = sum(coordination == fcc_maxcoordination)
+    next_smaller_deca = Decahedron(sym, p - 1, q - 1, r)
+    assert internal_atoms == len(next_smaller_deca)
+
+
+def test_smallest_decahedron():
+    assert len(Decahedron(sym, 1, 1, 0)) == 1
