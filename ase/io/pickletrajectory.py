@@ -21,7 +21,7 @@ except NameError:
 import numpy as np
 
 from ase.atoms import Atoms
-from ase.calculators.singlepoint import SinglePointCalculator, all_properties
+from ase.calculators.singlepoint import SinglePointCalculator
 from ase.calculators.calculator import PropertyNotImplementedError
 from ase.constraints import FixAtoms
 from ase.parallel import world, barrier
