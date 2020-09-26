@@ -223,8 +223,7 @@ class BaseNEB:
     def nimages(self):
         return len(self.images)
 
-    def interpolate(self, method='linear', mic=False, interpolate_cell=False,
-                    use_scaled_coord=False):
+    def interpolate(self, method='linear', mic=False):
         """Interpolate the positions of the interior images between the
         initial state (image 0) and final state (image -1).
 
@@ -234,20 +233,11 @@ class BaseNEB:
             idpp uses an image-dependent pair potential.
         mic: bool
             Use the minimum-image convention when interpolating.
-        interpolate_cell: bool
-            Interpolate the cell vectors too. Only implemented for the 'linear'
-            method!
-        use_scaled_coord: bool
-            Use scaled/fractional/interal coordinates instead of real space ones
-            for the interpolation. Only implemented for the 'linear' method!
         """
-        if (interpolate_cell or use_scaled_coord) and method != 'linear':
-            raise NotImplementedError('Only implemented for linear interpolation method')
-
         if self.remove_rotation_and_translation:
             minimize_rotation_and_translation(self.images[0], self.images[-1])
 
-        interpolate(self.images, mic, interpolate_cell, use_scaled_coord)
+        interpolate(self.images, mic)
 
         if method == 'idpp':
             idpp_interpolate(images=self, traj=None, log=None, mic=mic)
