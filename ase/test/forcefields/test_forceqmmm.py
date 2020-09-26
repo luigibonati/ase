@@ -57,6 +57,36 @@ def test_forceqmmm():
         print(f'      Calculator N_QM_buffer:    {qmmm.qm_buffer_mask.sum().sum()}')
         assert qmmm.qm_buffer_mask.sum() == qm_buffer_mask_ref.sum()
 
+    # test qm cell shape and choice of pbc:
+    # make a non-periodic pdc in a direction if qm_radius + buffer is larger then original cell
+    # keep the periodic cell otherwise i. e. if cell[i, i] > qm + radius
+    # test the case of a cluster in a fully periodic cell:
+    # fist qm_buffer > cell, thus should give a cluster with pbc=[T, T, T] (qm cluster is the same as the original cell)
+    at0 = bulk_at * 4
+    size = at.cell[0, 0]
+    r = at0.get_distances(0, np.arange(len(at0)), mic=True)
+    qm_mask = r < alat / np.sqrt(2.0) + 1.0e-3  # should give 12 nearest neighbours + atom in the center
+    qmmm = ForceQMMM(at0, qm_mask, qm, mm, buffer_width=1.2 * size)
+    # build qm_buffer_mask to build the cell
+    qmmm.initialize_qm_buffer_mask(at0)
+    # should give pbc = [T, T, T]
+    for qm_cluster_pbc in qmmm.qm_cluster_pbc:
+        assert qm_cluster_pbc
+    # should have the same cell as the original atoms
+    for qmmm_cell_dir, orinial_cell_dir in zip(np.diag(qmmm.qm_cluster_cell), np.diag(at0.cell)):
+        assert qmmm_cell_dir == orinial_cell_dir
+
+    # test the case of a fully spherical cell with in a fully periodic cell
+    qmmm = ForceQMMM(at0, qm_mask, qm, mm, buffer_width=0.25 * size)  # equal to 1 alat
+    # build qm_buffer_mask to build the cell
+    qmmm.initialize_qm_buffer_mask(at0)
+    # should give pbc = [F, F, F]
+    for qm_cluster_pbc in qmmm.qm_cluster_pbc:
+        assert not qm_cluster_pbc
+    # should NOT have the same cell as the original atoms
+    for qmmm_cell_dir, original_cell_dir in zip(np.diag(qmmm.qm_cluster_cell), np.diag(at0.cell)):
+        assert not qmmm_cell_dir == original_cell_dir
+
     # compute MM and QM equations of state
     def strain(at, e, calc):
         at = at.copy()
