@@ -379,6 +379,12 @@ class PickleTrajectory:
             if self.write_counter % interval == 0:
                 function(*args, **kwargs)
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
 
 def stringnify_info(info):
     """Return a stringnified version of the dict *info* that is
