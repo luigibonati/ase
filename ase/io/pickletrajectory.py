@@ -347,39 +347,6 @@ class PickleTrajectory:
             self.offsets.append(self.fd.tell())
             N += 1
 
-    def guess_offsets(self):
-        size = os.path.getsize(self.fd.name)
-
-        while True:
-            self.fd.seek(self.offsets[-1])
-            try:
-                pickle.load(self.fd)
-            except (EOFError, pickle.UnpicklingError) as e:
-                raise EOFError('Damaged trajectory file.') from e
-            else:
-                self.offsets.append(self.fd.tell())
-
-            if self.offsets[-1] >= size:
-                break
-
-            if len(self.offsets) > 2:
-                step1 = self.offsets[-1] - self.offsets[-2]
-                step2 = self.offsets[-2] - self.offsets[-3]
-
-                if step1 == step2:
-                    m = int((size - self.offsets[-1]) / step1) - 1
-
-                    while m > 1:
-                        self.fd.seek(self.offsets[-1] + m * step1)
-                        try:
-                            pickle.load(self.fd)
-                        except (EOFError, pickle.UnpicklingError):
-                            m = m // 2
-                        else:
-                            for i in range(m):
-                                self.offsets.append(self.offsets[-1] + step1)
-                            m = 0
-
     def pre_write_attach(self, function, interval=1, *args, **kwargs):
         """Attach a function to be called before writing begins.
 
