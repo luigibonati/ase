@@ -751,10 +751,10 @@ def interpolate(images, mic=False, interpolate_cell=False,
          Map movement into the unit cell by using the minimum image convention.
     interpolate_cell: bool
          Interpolate the three cell vectors linearly just like the atomic
-         positions.
+         positions. Not implemented for NEB calculations!
     use_scaled_coord: bool
          Use scaled/internal/fractional coordinates instead of real ones for the
-         interpolation.
+         interpolation. Not implemented for NEB calculations!
     """
     if use_scaled_coord:
         pos1 = images[0].get_scaled_positions(wrap=mic)
