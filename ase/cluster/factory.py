@@ -17,7 +17,8 @@ class ClusterFactory(ClusterBase):
 
     element_basis: Optional[List[int]] = None
 
-    Cluster = Cluster   # Make it possible to change the class of the object returned.
+    # Make it possible to change the class of the object returned.
+    Cluster = Cluster
 
     def __call__(self, symbols, surfaces, layers, latticeconstant=None,
                  center=None, vacuum=0.0, debug=0):
@@ -31,7 +32,8 @@ class ClusterFactory(ClusterBase):
             if self.element_basis is None:
                 self.lattice_constant = self.get_lattice_constant()
             else:
-                raise ValueError("A lattice constant must be specified for a compound")
+                raise ValueError(
+                    "A lattice constant must be specified for a compound")
         else:
             self.lattice_constant = latticeconstant
 
@@ -73,8 +75,8 @@ class ClusterFactory(ClusterBase):
         numbers = np.zeros(len(positions))
         n = len(atomic_basis)
         for i, trans in enumerate(translations):
-            positions[n*i:n*(i+1)] = atomic_basis + trans
-            numbers[n*i:n*(i+1)] = self.atomic_numbers
+            positions[n * i:n * (i + 1)] = atomic_basis + trans
+            numbers[n * i:n * (i + 1)] = self.atomic_numbers
 
         # Remove all atoms that is outside the defined surfaces
         for s, l in zip(self.surfaces, self.layers):
@@ -165,7 +167,9 @@ class ClusterFactory(ClusterBase):
                     k[i] = np.floor(k[i])
 
             if self.debug > 1:
-                print("Spaning %i layers in %s in lattice basis ~ %s" % (l, s, k))
+                print(
+                    "Spaning %i layers in %s in lattice basis ~ %s" %
+                    (l, s, k))
 
             max[k > max] = k[k > max]
             min[k < min] = k[k < min]
@@ -196,7 +200,8 @@ class ClusterFactory(ClusterBase):
                 # If the equivalent surface (es) is not in the surface list,
                 # then append it.
                 if not np.equal(es, surfaces_full).all(axis=1).any():
-                    surfaces_full = np.append(surfaces_full, es.reshape(1, 3), axis=0)
+                    surfaces_full = np.append(
+                        surfaces_full, es.reshape(1, 3), axis=0)
                     layers_full = np.append(layers_full, l)
 
         self.surfaces = surfaces_full.copy()
@@ -212,20 +217,22 @@ class ClusterFactory(ClusterBase):
                              cross(basis[0], basis[1])])
 
 # Helping functions
+
+
 def cross(a, b):
     """The cross product of two vectors."""
-    return np.array([a[1]*b[2] - b[1]*a[2],
-                     a[2]*b[0] - b[2]*a[0],
-                     a[0]*b[1] - b[0]*a[1]])
+    return np.array([a[1] * b[2] - b[1] * a[2],
+                     a[2] * b[0] - b[2] * a[0],
+                     a[0] * b[1] - b[0] * a[1]])
 
 
-def GCD(a,b):
+def GCD(a, b):
     """Greatest Common Divisor of a and b."""
-    #print "--"
+    # print "--"
     while a != 0:
-        #print a,b,">",
+        # print a,b,">",
         a, b = b % a, a
-        #print a,b
+        # print a,b
     return b
 
 
