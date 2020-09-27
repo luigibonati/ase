@@ -13,25 +13,20 @@ from ase import Atoms
 from subprocess import check_call, DEVNULL
 from pathlib import Path
 
-
 def pa(array):
     """Povray array syntax"""
-    return '<% 6.2f, % 6.2f, % 6.2f>' % tuple(array)
-
+    return '<' + ', '.join(f"{x:>6.2f}" for x in tuple(array)) + '>'
 
 def pc(array):
     """Povray color syntax"""
     if isinstance(array, str):
         return 'color ' + array
     if isinstance(array, float):
-        return 'rgb <%.2f>*3' % array
-    if len(array) == 3:
-        return 'rgb <%.2f, %.2f, %.2f>' % tuple(array)
-    if len(array) == 4:  # filter
-        return 'rgbt <%.2f, %.2f, %.2f, %.2f>' % tuple(array)
-    if len(array) == 5:  # filter and transmit
-        return 'rgbft <%.2f, %.2f, %.2f, %.2f, %.2f>' % tuple(array)
-
+        return f'rgb <{array:.2f}>*3'.format(array)
+    l = len(array)
+    if l > 2 and l < 6:
+        return f"rgb{'' if l == 3 else 't' if l == 4 else 'ft'} <" +\
+                ', '.join(f"{x:.2f}" for x in tuple(array)) + '>'
 
 def get_bondpairs(atoms, radius=1.1):
     """Get all pairs of bonding atoms
