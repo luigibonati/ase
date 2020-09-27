@@ -168,7 +168,7 @@ class POVRAY(PlottingVariables):
     def cell_to_lines(self, cell):
         return np.empty((0, 3)), None, None
 
-    def write(self, filename, **settings):
+    def write_ini(self, filename, **settings):
         # Determine canvas width and height
         ratio = float(self.w) / self.h
         if self.canvas_width is None:
@@ -178,6 +178,28 @@ class POVRAY(PlottingVariables):
                 self.canvas_width = self.canvas_height * ratio
         elif self.canvas_height is not None:
             raise RuntimeError("Can't set *both* width and height!")
+        # write ini file
+
+        ini_path = Path(filename).with_suffix('.ini')
+        ini_str = f"""Input_File_Name={ini_path.with_suffix('.pov').name}
+Output_to_File=True
+Output_File_Type=N
+Output_Alpha={'on' if self.transparent else 'off'}
+; if you adjust Height, and width, you must preserve the ratio
+; Width / Height = {ratio:f}
+Width={self.canvas_width}
+Height={self.canvas_width/ratio}
+Antialias=True
+Antialias_Threshold=0.1
+Display={self.display}
+Pause_When_Done={self.pause}
+Verbose=False
+"""
+        with open(ini_path, 'w') as _:
+            _.write(ini_str)
+        return None
+
+    def write_pov(self, filename, **settings):
 
         # Distance to image plane from camera
         if self.image_plane is None:
@@ -187,57 +209,20 @@ class POVRAY(PlottingVariables):
                 self.image_plane = 0
         self.image_plane += self.camera_dist
 
-        # Produce the .ini file
-        if filename.endswith('.pov'):
-            ini = open(filename[:-4] + '.ini', 'w').write
-        else:
-            ini = open(filename + '.ini', 'w').write
-        ini('Input_File_Name=%s\n' % filename)
-        ini('Output_to_File=True\n')
-        ini('Output_File_Type=N\n')
-
-        if self.transparent:
-            ini('Output_Alpha=on\n')
-        else:
-            ini('Output_Alpha=off\n')
-        ini('; if you adjust Height, and width, you must preserve the ratio\n')
-        ini('; Width / Height = %f\n' % ratio)
-        ini('Width=%s\n' % self.canvas_width)
-        ini('Height=%s\n' % (self.canvas_width / ratio))
-        ini('Antialias=True\n')
-        ini('Antialias_Threshold=0.1\n')
-        ini('Display=%s\n' % self.display)
-        ini('Pause_When_Done=%s\n' % self.pause)
-        ini('Verbose=False\n')
-        del ini
 
         # Produce the .pov file
-        pov_fid = open(filename, 'w')
-        w = pov_fid.write
-        w('#include "colors.inc"\n')
-        w('#include "finish.inc"\n')
-        w('\n')
-        w('global_settings {assumed_gamma 1 max_trace_level 6}\n')
-        # The background must be transparent for a transparent image
-        if self.transparent:
-            w('background {%s transmit 1.0}\n' % pc(self.background))
-        else:
-            w('background {%s}\n' % pc(self.background))
-        w('camera {%s\n' % self.camera_type)
-        w('  right -%.2f*x up %.2f*y\n' % (self.w, self.h))
-        w('  direction %.2f*z\n' % self.image_plane)
-        w('  location <0,0,%.2f> look_at <0,0,0>}\n' % self.camera_dist)
-        for loc, rgb in self.point_lights:
-            w('light_source {%s %s}\n' % (pa(loc), pc(rgb)))
 
+        point_lights = '\n'.join(f"light_source {{{pa(loc)} {pc(rgb)}}}" 
+            for loc,rgb in self.point_lights)
+
+        area_light = ''
         if self.area_light is not None:
             loc, color, width, height, nx, ny = self.area_light
-            w('light_source {%s %s\n' % (pa(loc), pc(color)))
-            w('  area_light <%.2f, 0, 0>, <0, %.2f, 0>, %i, %i\n' % (
-                width, height, nx, ny))
-            w('  adaptive 1 jitter}\n')
+            area_light += f"""\nlight_source {{{pa(loc)} {pc(color)}
+  area_light <{width:.2f}, 0, 0>, <0, {height:.2f}, 0>, {nx:n}, {ny:n}
+  adaptive 1 jitter}}"""
 
-        # the depth cueing
+        fog = ''
         if self.depth_cueing and (self.cue_density >= 1e-4):
             # same way vmd does it
             if self.cue_density > 1e4:
@@ -245,34 +230,17 @@ class POVRAY(PlottingVariables):
                 dist = 1e-4
             else:
                 dist = 1. / self.cue_density
-            w('fog {fog_type 1 distance %.4f color %s}' %
-              (dist, pc(self.background)))
+            fog += 'fog {{fog_type 1 distance {dist:.4f} color {pc(self.background)}}}'
 
-        w('\n')
-        for key in self.material_styles_dict.keys():
-            w('#declare %s = %s\n' % (key, self.material_styles_dict[key]))
+        material_styles_dict_keys = '\n'.join(f'#declare {key} = {value}' #semicolon?
+            for key, value in self.material_styles_dict.items())
 
-        w('#declare Rcell = %.3f;\n' % self.celllinewidth)
-        w('#declare Rbond = %.3f;\n' % self.bondlinewidth)
-        w('\n')
-        w('#macro atom(LOC, R, COL, TRANS, FIN)\n')
-        w('  sphere{LOC, R texture{pigment{color COL transmit TRANS} '
-          'finish{FIN}}}\n')
-        w('#end\n')
-        w('#macro constrain(LOC, R, COL, TRANS FIN)\n')
-        w('union{torus{R, Rcell rotate 45*z '
-          'texture{pigment{color COL transmit TRANS} finish{FIN}}}\n')
-        w('      torus{R, Rcell rotate -45*z '
-          'texture{pigment{color COL transmit TRANS} finish{FIN}}}\n')
-        w('      translate LOC}\n')
-        w('#end\n')
-        w('\n')
-
-        z0 = self.positions[:, 2].max()
+        z0 = self.positions[:, 2].max() 
         self.positions -= (self.w / 2, self.h / 2, z0)
 
         # Draw unit cell
         if self.cell_vertices is not None:
+            cell_vertices = ''
             self.cell_vertices -= (self.w / 2, self.h / 2, z0)
             self.cell_vertices.shape = (2, 2, 2, 3)
             for c in range(3):
@@ -287,13 +255,13 @@ class POVRAY(PlottingVariables):
                     if distance < 1e-12:
                         continue
 
-                    w('cylinder {')
-                    for i in range(2):
-                        w(pa(parts[i]) + ', ')
-                    w('Rcell pigment {Black}}\n')
+                    cell_vertices += f'cylinder {{{pa(parts[0])}, {pa(parts[1])}, '\
+                                     f'Rcell pigment {{Black}}}}\n' # all strings are f-strings for consistencey
+            cell_vertices = cell_vertices.strip('\n')
 
         # Draw atoms
         a = 0
+        atoms = ''
         for loc, dia, color in zip(self.positions, self.d, self.colors):
             tex = 'ase3'
             trans = 0.
@@ -301,11 +269,13 @@ class POVRAY(PlottingVariables):
                 tex = self.textures[a]
             if self.transmittances is not None:
                 trans = self.transmittances[a]
-            w('atom(%s, %.2f, %s, %s, %s) // #%i \n' % (
-                pa(loc), dia / 2., pc(color), trans, tex, a))
+            atoms += f'atom({pa(loc)}, {dia/2.:.2f}, {pc(color)}, '\
+                     f'{trans}, {tex}) // #{a:n}\n'
             a += 1
+        atoms = atoms.strip('\n')
 
         # Draw atom bonds
+        bondatoms = ''
         for pair in self.bondatoms:
             # Make sure that each pair has 4 componets: a, b, offset,
             #                                           bond_order, bond_offset
@@ -377,9 +347,6 @@ class POVRAY(PlottingVariables):
             else:
                 transa = transb = 0.
 
-            fmt = ('cylinder {%s, %s, Rbond texture{pigment '
-                   '{color %s transmit %s} finish{%s}}}\n')
-
             # draw bond, according to its bond_order.
             # bond_order == 0: No bond is plotted
             # bond_order == 1: use original code
@@ -391,52 +358,40 @@ class POVRAY(PlottingVariables):
             # To shift the bond, add the shift to the first two coordinate in
             # write statement.
 
+            posa = self.positions[a]; posb = self.positions[b]
+            cola = self.colors[a]; colb = self.colors[b]
+
             if bond_order == 1:
-                w(fmt %
-                  (pa(self.positions[a]), pa(mida),
-                      pc(self.colors[a]), transa, texa))
-                w(fmt %
-                  (pa(self.positions[b]), pa(midb),
-                      pc(self.colors[b]), transb, texb))
+                draw_tuples = (posa, mida, cola, transa, texa),\
+                              (posb, midb, colb, transb, texb)  
+
             elif bond_order == 2:
-                bondOffSetDB = [x / 2 for x in bond_offset]
-                w(fmt %
-                  (pa(self.positions[a] - bondOffSetDB),
-                      pa(mida - bondOffSetDB),
-                      pc(self.colors[a]), transa, texa))
-                w(fmt %
-                  (pa(self.positions[b] - bondOffSetDB),
-                      pa(midb - bondOffSetDB),
-                      pc(self.colors[b]), transb, texb))
-                w(fmt %
-                  (pa(self.positions[a] + bondOffSetDB),
-                      pa(mida + bondOffSetDB),
-                      pc(self.colors[a]), transa, texa))
-                w(fmt %
-                  (pa(self.positions[b] + bondOffSetDB),
-                      pa(midb + bondOffSetDB),
-                      pc(self.colors[b]), transb, texb))
+                bs = [x / 2 for x in bond_offset]
+                draw_tuples = (posa-bs, mida-bs, cola, transa, texa),\
+                              (posb-bs, midb-bs, colb, transb, texb),\
+                              (posa+bs, mida+bs, cola, transa, texa),\
+                              (posb+bs, midb+bs, colb, transb, texb)
+
             elif bond_order == 3:
-                w(fmt %
-                  (pa(self.positions[a]), pa(mida),
-                      pc(self.colors[a]), transa, texa))
-                w(fmt %
-                  (pa(self.positions[b]), pa(midb),
-                      pc(self.colors[b]), transb, texb))
-                w(fmt %
-                  (pa(self.positions[a] + bond_offset), pa(mida + bond_offset),
-                      pc(self.colors[a]), transa, texa))
-                w(fmt %
-                  (pa(self.positions[b] + bond_offset), pa(midb + bond_offset),
-                      pc(self.colors[b]), transb, texb))
-                w(fmt %
-                  (pa(self.positions[a] - bond_offset), pa(mida - bond_offset),
-                      pc(self.colors[a]), transa, texa))
-                w(fmt %
-                  (pa(self.positions[b] - bond_offset), pa(midb - bond_offset),
-                      pc(self.colors[b]), transb, texb))
+                bs = bond_offset
+                draw_tuples = (posa   , mida   , cola, transa, texa),\
+                              (posb   , midb   , colb, transb, texb),\
+                              (posa+bs, mida+bs, cola, transa, texa),\
+                              (posb+bs, midb+bs, colb, transb, texb),\
+                              (posa-bs, mida-bs, cola, transa, texa),\
+                              (posb-bs, midb-bs, colb, transb, texb)
+
+            bondatoms += ''.join(f'cylinder {{{pa(p)}, '
+                       f'{pa(m)}, Rbond texture{{pigment '
+                       f'{{color {pc(c)} '
+                       f'transmit {tr}}} finish{{{tx}}}}}}}\n'
+                       for p, m, c, tr, tx in
+                       draw_tuples)
+
+        bondatoms = bondatoms.strip('\n') 
 
         # Draw constraints if requested
+        constraints = ''
         if self.exportconstraints:
             for a in self.constrainatoms:
                 dia = self.d[a]
@@ -444,8 +399,48 @@ class POVRAY(PlottingVariables):
                 trans = 0.0
                 if self.transmittances is not None:
                     trans = self.transmittances[a]
-                w('constrain(%s, %.2f, Black, %s, %s) // #%i \n' % (
-                    pa(loc), dia / 2., trans, tex, a))
+                constraints += f'constrain({pa(loc)}, {dia/2.:.2f}, Black, '\
+                f'{trans}, {tex}) // #{a:n} \n' 
+        constraints = constraints.strip('\n')
+
+        pov = f"""#include "colors.inc"
+#include "finish.inc"
+
+global_settings {{assumed_gamma 1 max_trace_level 6}}
+background {{{pc(self.background)}{' transmit 1.0' if self.transparent else ''}}}
+camera {{{self.camera_type}
+  right {self.w:.2f}*x up {self.h:.2f}*y   
+  direction {self.image_plane:.2f}*z
+  location <0,0,{self.camera_dist:.2f}> look_at <0,0,0>}}
+{point_lights}
+{area_light if area_light is not '' else '// no area light'}
+{fog if fog is not '' else '// no fog'}
+{material_styles_dict_keys}
+#declare Rcell = {self.celllinewidth:.3f};
+#declare Rbond = {self.bondlinewidth:.3f};
+
+#macro atom(LOC, R, COL, TRANS, FIN)
+  sphere{{LOC, R texture{{pigment{{color COL transmit TRANS}} finish{{FIN}}}}}}
+#end
+#macro constrain(LOC, R, COL, TRANS FIN)
+union{{torus{{R, Rcell rotate 45*z texture{{pigment{{color COL transmit TRANS}} finish{{FIN}}}}}}
+     torus{{R, Rcell rotate -45*z texture{{pigment{{color COL transmit TRANS}} finish{{FIN}}}}}}
+     translate LOC}}
+#end
+
+{cell_vertices if cell_vertices is not '' else '// no cell vertices'} 
+{atoms}
+{bondatoms}
+{constraints if constraints is not '' else '// no constraints'}
+""" 
+
+#from docs: The POV-Ray language consists of identifiers, reserved keywords, floating point expressions, strings, special symbols and comments. The text of a POV-Ray scene file is free format. You may put statements on separate lines or on the same line as you desire. You may add blank lines, spaces or indentations as long as you do not split any keywords or identifiers.
+
+        pov_path = Path(filename).with_suffix('.pov')
+        pov_fid =  open(pov_path, 'w')
+        pov_fid.write(pov)
+        #if self.isosurface_data is not None:
+        #    pov += self.add_isosurface_to_pov()
         return pov_fid
 
 
@@ -615,19 +610,20 @@ def add_isosurface_to_pov(pov_fid, pov_obj,
     # pov_fid.close()
 
 
-def write_pov(filename, atoms, extras=[], **parameters):
+def write_povray_input(filename, atoms, extras=[], **parameters):
     if isinstance(atoms, list):
         assert len(atoms) == 1
         atoms = atoms[0]
     assert 'scale' not in parameters
     pov_obj = POVRAY(atoms, **parameters)
-    pov_fid = pov_obj.write(filename)
+    pov_obj.write_ini(filename) # returns none
+    pov_obj.write_pov(filename) # returns open file
     # evaluate and write extras
-    for function, params in extras:
-        function(pov_fid, pov_obj, **params)
+    #for function, params in extras:
+    #    function(pov_fid, pov_obj, **params)
     # the povray file wasn't explicitly being closed before the addition
     # of the extras option.
-    pov_fid.close()
+    #pov_fid.close()
 
 def run_pov(filename, povray_executable='povray',stderr=None):
     ini_path = Path(filename).with_suffix('.ini')
@@ -640,3 +636,8 @@ def run_pov(filename, povray_executable='povray',stderr=None):
                 check_call(cmd, stderr=stderr)
     else:
         check_call(cmd)
+
+if __name__ == '__main__':
+    from ase.build import molecule
+    H2 = molecule('H2')
+    write_povray_input('H2.pov', H2)
