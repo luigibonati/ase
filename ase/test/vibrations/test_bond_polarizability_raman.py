@@ -45,7 +45,6 @@ def test_bulk(Cbulk, tmp_path):
 
     pz = PlaczekStatic(Cbulk, name=name)
     e_vib = pz.get_energies()
-    print('#vib# modes=', pz.modes_Qq)
     i_vib = pz.get_absolute_intensities()
     assert len(e_vib) == 6
     pz.summary()
@@ -60,14 +59,10 @@ def test_bulk(Cbulk, tmp_path):
     pz = PlaczekStaticPhonons(Cbulk, name=name)
     e_phonons = pz.get_energies()
     assert len(e_vib) == len(e_phonons)
-    # pz.read(symmetrize=0)
-    # e_ph = pz.get_energies()
-    m = pz.modes_Qq.real
-    # print('#ph# modes=', np.dot(m, m.T))
-    print('#ph# modes=', m)
-    i_ph = pz.get_absolute_intensities()
+    assert e_vib[3:] == approx(e_phonons[3:], 1)
+    i_phonons = pz.get_absolute_intensities()
+    assert i_vib[3:] == approx(i_phonons[3:], 1)
     pz.summary()
-    print(i_vib / i_ph)
 
 
 def test_bulk_kpts(Cbulk, tmp_path):
