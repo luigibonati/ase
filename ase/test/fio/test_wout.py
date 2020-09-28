@@ -1,3 +1,4 @@
+"""Test Wannier90 wout format."""
 import io
 
 from ase.io import read
@@ -16,10 +17,22 @@ wout = """
  | H    2   0.56446   0.50000   0.50000   |    3.24000   2.50000   2.50000    |
  *----------------------------------------------------------------------------*
 
+ Final State
+  WF centre and spread    1  (  2.870000,  2.500000,  2.500000 )     0.85842654
+  Sum of centres and spreads (  2.870000,  2.500000,  2.500000 )     0.85842654
+
 """
 
 
 def test_wout():
     file = io.StringIO(wout)
-    hxh = read(file, format='wout')
-    
+    hhx = read(file, format='wout')
+    assert ''.join(hhx.symbols) == 'HHX'
+
+
+def test_wout_all():
+    """Check reading of extra stuff."""
+    file = io.StringIO(wout)
+    hh, x, w = read_wout_all(file)
+    assert w == 0.85842654
+    assert abs(x - hh.get_center_of_mass()).max() < 1e-5

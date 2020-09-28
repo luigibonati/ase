@@ -1,9 +1,13 @@
+"""Read Wannier90 wout format."""
+from typing import IO, Tuple
+
 import numpy as np
 
 from ase import Atoms
 
 
-def read_wout_all(fileobj):
+def read_wout_all(fileobj: IO[str]) -> Tuple[Atoms, np.ndarray, np.ndarray]:
+    """Read atoms, wannier function centers and spreads."""
     lines = fileobj.readlines()
 
     for n, line in enumerate(lines):
@@ -59,7 +63,9 @@ def read_wout_all(fileobj):
     return atoms, np.array(centers), np.array(widths)
 
 
-def read_wout(fileobj, include_wannier_function_centers=True):
+def read_wout(fileobj: IO[str],
+              include_wannier_function_centers: bool = True) -> Atoms:
+    """Read atoms and wannier function centers (as symbol X)."""
     atoms, centers, widths = read_wout_all(fileobj)
     if include_wannier_function_centers:
         atoms += Atoms(f'X{len(centers)}', centers)
