@@ -70,7 +70,7 @@ def test_bulk(Cbulk, tmp_path):
     print(i_vib / i_ph)
 
 
-def test_bulk_phonons(Cbulk, tmp_path):
+def test_bulk_kpts(Cbulk, tmp_path):
     """Bulk FCC carbon (for EMT) for phonons"""
 
     name = str(tmp_path / 'phbp')
@@ -80,8 +80,13 @@ def test_bulk_phonons(Cbulk, tmp_path):
     rm.run()
 
     pz = PlaczekStaticPhonons(Cbulk, name=name, supercell=(2, 1, 1))
-    pz.calculate_energies_and_modes()
-    # pz.summary(kpts=(2, 1, 1))
+    energies_1kpt = pz.get_energies()
+    pz.kpts = (2, 1, 1)
+    energies_2kpts = pz.get_energies()
+    assert len(energies_2kpts) == 2 * len(energies_1kpt)
+
+    pz.kpts = (2, 1, 2)
+    pz.summary()
 
 
 def test_c3():
