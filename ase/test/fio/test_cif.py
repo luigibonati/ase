@@ -3,7 +3,6 @@ import numpy as np
 import warnings
 import pytest
 
-from ase.build import bulk
 from ase.io import read, write
 from ase.io.cif import CIFLoop, parse_loop, NoStructureData, parse_cif
 
@@ -453,8 +452,3 @@ def test_bad_occupancies(atoms):
     atoms.symbols[0] = 'Au'
     with pytest.warns(UserWarning, match='no occupancy info'):
         write('tmp.cif', atoms)
-    #atoms = bulk('Ti')
-    #occ = dict(spacegroup_kinds=[2, 3],
-    #           occupancy={})
-    #atoms.info['occupancy'] = occ
-    #write('tmp.cif', atoms)
