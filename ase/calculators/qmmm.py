@@ -663,6 +663,7 @@ class ForceQMMM(Calculator):
 
         self.qm_buffer_mask = None
         self.qm_cluster_cell = None
+        self.qm_cluster_pbc = None
         self.qm_shift = None
 
         Calculator.__init__(self)
@@ -677,26 +678,42 @@ class ForceQMMM(Calculator):
                              atoms.cell, atoms.pbc)
 
         self.qm_buffer_mask = np.zeros(len(atoms), dtype=bool)
+
         for r_qm in r:
             self.qm_buffer_mask[r_qm < self.buffer_width] = True
 
-        R_qm = r[:, self.qm_selection_mask] * 0.5  # estimate the qm radius as 0.5 max distance between qm atoms
-        qm_radius = np.amax(R_qm)
-        print('qm_radius', qm_radius)
+        # get all distances between qm atoms. Treat all X, Y and Z directions independently
+        R_qm, _ = get_distances(atoms.positions[self.qm_selection_mask], cell=atoms.cell, pbc=atoms.pbc)
+        qm_radius = np.amax(np.amax(R_qm, axis=1), axis=0) * 0.5  # estimate qm radius in three directions as 1/2
+                                                                  # of max distance between qm atoms
+        # print('qm_radius', qm_radius)
+        # print(f"qm_radius", np.linalg.norm(qm_radius))
 
-        non_pbc_directions = np.logical_not(atoms.pbc)
+        self.qm_cluster_pbc = atoms.pbc
         self.qm_cluster_cell = atoms.cell.copy()
 
-        #TODO check that cell is orthorhombic using something like
-        # self.cell.orthorhombic == True
+        if atoms.cell.orthorhombic:
+            cell_size = np.diagonal(atoms.cell)
+        else: #TODO  Should throw an exception here
+            print("NON Orthorhombic cell!")
 
+        # check if qm_cluster should be left periodic in periodic directions of the cell (cell[i] < qm_radius + buffer
+        # otherwise change to non pbc and make a cluster in a vacuum configuration
+        for i, pbc in enumerate(self.qm_cluster_pbc):
+            if pbc:
+                if cell_size[i] > qm_radius[i] + self.buffer_width:
+                    self.qm_cluster_pbc[i] = False
+
+        non_pbc_directions = np.logical_not(self.qm_cluster_pbc)
+
+        # create a cluster in a vacuum cell in non periodic directions
         for i, non_pbc in enumerate(non_pbc_directions):
             if non_pbc:
-                self.qm_cluster_cell[i][i] = 2.0 * (qm_radius +
+                self.qm_cluster_cell[i, i] = 2.0 * (qm_radius[i] +
                                                     self.buffer_width +
                                                     self.vacuum)
                 # round the qm cell to the required tolerance
-                self.qm_cluster_cell[i][i] = np.round((self.qm_cluster_cell[i, i]) / self.qm_cell_rounding) \
+                self.qm_cluster_cell[i, i] = np.round((self.qm_cluster_cell[i, i]) / self.qm_cell_rounding) \
                                              * self.qm_cell_rounding
 
     def calculate(self, atoms, properties, system_changes):
