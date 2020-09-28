@@ -62,7 +62,7 @@ def _maxwellboltzmanndistribution(masses, temp, communicator=None, rng=None):
 
     communicator: MPI communicator (optional)
         Communicator used to distribute an identical distribution to 
-        all tasks.  Set to False to disable communication (setting to None
+        all tasks.  Set to 'serial' to disable communication (setting to None
         gives the default).  Default: ase.parallel.world
 
     rng: numpy RNG (optional)
@@ -77,7 +77,7 @@ def _maxwellboltzmanndistribution(masses, temp, communicator=None, rng=None):
     if communicator is None:
         communicator = world
     xi = rng.standard_normal((len(masses), 3))
-    if communicator is not False:
+    if communicator != 'serial':
         communicator.broadcast(xi, 0)
     momenta = xi * np.sqrt(masses * temp)[:, np.newaxis]
     return momenta
@@ -103,7 +103,7 @@ def MaxwellBoltzmannDistribution(
 
     communicator: MPI communicator (optional)
         Communicator used to distribute an identical distribution to
-        all tasks.  Set to False to disable communication.  Leave as None to
+        all tasks.  Set to 'serial' to disable communication.  Leave as None to
         get the default: ase.parallel.world
 
     force_temp: bool (optinal, default: False)
