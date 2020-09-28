@@ -225,7 +225,7 @@ Verbose=False
                 dist = 1e-4
             else:
                 dist = 1. / self.cue_density
-            fog += 'fog {{fog_type 1 distance {dist:.4f} color {pc(self.background)}}}'
+            fog += f'fog {{fog_type 1 distance {dist:.4f} color {pc(self.background)}}}'
 
         material_styles_dict_keys = '\n'.join(f'#declare {key} = {value}' #semicolon?
             for key, value in self.material_styles_dict.items())
@@ -408,8 +408,8 @@ camera {{{self.camera_type}
   direction {self.image_plane:.2f}*z
   location <0,0,{self.camera_dist:.2f}> look_at <0,0,0>}}
 {point_lights}
-{area_light if area_light is not '' else '// no area light'}
-{fog if fog is not '' else '// no fog'}
+{area_light if area_light != '' else '// no area light'}
+{fog if fog != '' else '// no fog'}
 {material_styles_dict_keys}
 #declare Rcell = {self.celllinewidth:.3f};
 #declare Rbond = {self.bondlinewidth:.3f};
@@ -423,202 +423,188 @@ union{{torus{{R, Rcell rotate 45*z texture{{pigment{{color COL transmit TRANS}} 
      translate LOC}}
 #end
 
-{cell_vertices if cell_vertices is not '' else '// no cell vertices'} 
+{cell_vertices if cell_vertices != '' else '// no cell vertices'} 
 {atoms}
 {bondatoms}
-{constraints if constraints is not '' else '// no constraints'}
+{constraints if constraints != '' else '// no constraints'}
 """ 
 
-#from docs: The POV-Ray language consists of identifiers, reserved keywords, floating point expressions, strings, special symbols and comments. The text of a POV-Ray scene file is free format. You may put statements on separate lines or on the same line as you desire. You may add blank lines, spaces or indentations as long as you do not split any keywords or identifiers.
-
         pov_path = Path(filename).with_suffix('.pov')
-        pov_fid =  open(pov_path, 'w')
-        pov_fid.write(pov)
-        #if self.isosurface_data is not None:
-        #    pov += self.add_isosurface_to_pov()
-        return pov_fid
+        with open(pov_path, 'w') as _:
+            _.write(pov)
+
+        return None
 
 
-def add_isosurface_to_pov(pov_fid, pov_obj,
-                          density_grid, cut_off,
-                          closed_edges=False, gradient_ascending=False,
-                          color=(0.85, 0.80, 0.25, 0.2), material='ase3',
-                          verbose=False):
-    """Computes an isosurface from a density grid and adds it to a .pov file.
+    def add_isosurface_to_pov(self,filename,
+                              density_grid, cut_off,
+                              closed_edges=False, gradient_ascending=False,
+                              color=(0.85, 0.80, 0.25, 0.2), material='ase3',
+                              verbose=False):
+        """Computes an isosurface from a density grid and adds it to a .pov file.
 
-    Parameters:
+        Parameters:
 
-    pov_fid: file identifer
-        The file identifer of the .pov file to be written to
-    pov_obj: POVRAY instance
-        The POVRAY instance that is used for writing the atoms etc.
-    density_grid: 3D float ndarray
-        A regular grid on that spans the cell. The first dimension corresponds
-        to the first cell vector and so on.
-    cut_off: float
-        The density value of the isosurface.
-    closed_edges: bool
-        Setting this will fill in isosurface edges at the cell boundaries.
-        Filling in the edges can help with visualizing highly porous structures.
-    gradient_ascending: bool
-        Lets you pick the area you want to enclose, i.e., should the denser
-        or less dense area be filled in.
-    color: povray color string, float, or float tuple
-        1 float is interpreted as grey scale, a 3 float tuple is rgb, 4 float
-        tuple is rgbt, and 5 float tuple is rgbft, where t is transmission
-        fraction and f is filter fraction. Named Povray colors are set in
-        colors.inc (http://wiki.povray.org/content/Reference:Colors.inc)
-    material: string
-        Can be a finish macro defined by POVRAY.material_styles or a full Povray
-        material {...} specification. Using a full material specification will
-        override the color patameter.
+        pov_fid: file identifer
+            The file identifer of the .pov file to be written to
+        pov_obj: POVRAY instance
+            The POVRAY instance that is used for writing the atoms etc.
+        density_grid: 3D float ndarray
+            A regular grid on that spans the cell. The first dimension corresponds
+            to the first cell vector and so on.
+        cut_off: float
+            The density value of the isosurface.
+        closed_edges: bool
+            Setting this will fill in isosurface edges at the cell boundaries.
+            Filling in the edges can help with visualizing highly porous structures.
+        gradient_ascending: bool
+            Lets you pick the area you want to enclose, i.e., should the denser
+            or less dense area be filled in.
+        color: povray color string, float, or float tuple
+            1 float is interpreted as grey scale, a 3 float tuple is rgb, 4 float
+            tuple is rgbt, and 5 float tuple is rgbft, where t is transmission
+            fraction and f is filter fraction. Named Povray colors are set in
+            colors.inc (http://wiki.povray.org/content/Reference:Colors.inc)
+        material: string
+            Can be a finish macro defined by POVRAY.material_styles or a full Povray
+            material {...} specification. Using a full material specification will
+            override the color patameter.
 
-    Example:
-    material = '''
-      material { // This material looks like pink jelly
-        texture {
-          pigment { rgbt <0.8, 0.25, 0.25, 0.5> }
-          finish{ diffuse 0.85 ambient 0.99 brilliance 3 specular 0.5 roughness 0.001
-            reflection { 0.05, 0.98 fresnel on exponent 1.5 }
-            conserve_energy
-          }
-        }
-        interior { ior 1.3 }
-      }
-      photons {
-          target
-          refraction on
-          reflection on
-          collect on
-      }'''
-    """  # noqa: E501
-
-    rho = density_grid
-    cell = pov_obj.cell
-    POV_cell_origin = pov_obj.cell_vertices[0, 0, 0]
-
-    # print(POV_cell_disp)
-    from skimage import measure
-    import numpy as np
-    # Use marching cubes to obtain the surface mesh of this density grid
-    if gradient_ascending:
-        gradient_direction = 'ascent'
-        cv = 2 * cut_off
-    else:
-        gradient_direction = 'descent'
-        cv = 0
-
-    if closed_edges:
-        shape_old = rho.shape
-        # since well be padding, we need to keep the data at origin
-        POV_cell_origin += -(1.0 / np.array(shape_old)) @ cell
-
-        rho = np.pad(rho, pad_width=(1,), mode='constant', constant_values=cv)
-        shape_new = rho.shape
-        s = np.array(shape_new) / np.array(shape_old)
-        cell = cell @ np.diag(s)
-
-    spacing = tuple(1.0 / np.array(rho.shape))
-    scaled_verts, faces, normals, values = measure.marching_cubes_lewiner(
-        rho,
-        level=cut_off,
-        spacing=spacing,
-        gradient_direction=gradient_direction,
-        allow_degenerate=False,
-    )
-
-    # The verts are scaled by default, this is the super easy way of
-    # distributing them in real space but it's easier to do affine
-    # transformations/rotations on a unit cube so I leave it like that
-    # verts = scaled_verts.dot(atoms.get_cell())
-    verts = scaled_verts
-
-    # some prime numbers for debugging formatting of lines
-    # verts = verts[:31]
-    # faces = faces[:47]
-
-    if verbose:
-        print('faces', len(faces))
-        print('verts', len(verts))
-
-    def wrapped_triples_section(name, triple_list,
-                                triple_format="<%f, %f, %f>, ",
-                                triples_per_line=4):
-
-        pov_fid.write('\n  %s {  %i,' % (name, len(triple_list)))
-
-        last_line_index = len(triple_list) // triples_per_line - 1
-        if (len(triple_list) % triples_per_line) > 0:
-            last_line_index += 1
-
-        # print('vertex lines', last_line_index)
-        for line_index in range(last_line_index + 1):
-            pov_fid.write('\n      ')
-            line = ''
-            index_start = line_index * triples_per_line
-            index_end = (line_index + 1) * triples_per_line
-            # cut short if its at the last line
-            index_end = min(index_end, len(triple_list))
-
-            for index in range(index_start, index_end):
-                line = line + triple_format % tuple(triple_list[index])
-
-            if last_line_index == line_index:
-                line = line[:-2] + '\n  }'
-
-            pov_fid.write(line)
-
-    # Start writing the mesh2
-    pov_fid.write('\n\nmesh2 {')
-
-    # the vertex_vectors (floats) and the face_indices (ints)
-    wrapped_triples_section(name="vertex_vectors", triple_list=verts,
-                            triple_format="<%f, %f, %f>, ", triples_per_line=4)
-
-    wrapped_triples_section(name="face_indices", triple_list=faces,
-                            triple_format="<%i, %i, %i>, ", triples_per_line=5)
-
-    # pigment and material
-
-    if material in pov_obj.material_styles_dict.keys():
+        Example:
         material = '''
-  material {
-    texture {
-      pigment { %s }
-      finish { %s }
-    }
-  }''' % (pc(color), material)
-    pov_fid.writelines(material)
+          material { // This material looks like pink jelly
+            texture {
+              pigment { rgbt <0.8, 0.25, 0.25, 0.5> }
+              finish{ diffuse 0.85 ambient 0.99 brilliance 3 specular 0.5 roughness 0.001
+                reflection { 0.05, 0.98 fresnel on exponent 1.5 }
+                conserve_energy
+              }
+            }
+            interior { ior 1.3 }
+          }
+          photons {
+              target
+              refraction on
+              reflection on
+              collect on
+          }'''
+        """  # noqa: E501
 
-    # now for the rotations of the cell
-    matrix_transform = [
-        '\n  matrix < %f, %f, %f,' % tuple(cell[0]),
-        '\n        %f, %f, %f,' % tuple(cell[1]),
-        '\n        %f, %f, %f,' % tuple(cell[2]),
-        '\n        %f, %f, %f>' % tuple(POV_cell_origin),
-    ]
-    pov_fid.writelines(matrix_transform)
+        rho = density_grid
+        cell = self.cell
+        POV_cell_origin = self.cell_vertices[0, 0, 0]
 
-    # close the brackets
-    pov_fid.writelines('\n}\n')
+        # print(POV_cell_disp)
+        from skimage import measure
+        import numpy as np
+        # Use marching cubes to obtain the surface mesh of this density grid
+        if gradient_ascending:
+            gradient_direction = 'ascent'
+            cv = 2 * cut_off
+        else:
+            gradient_direction = 'descent'
+            cv = 0
 
-    # pov_fid.close()
+        if closed_edges:
+            shape_old = rho.shape
+            # since well be padding, we need to keep the data at origin
+            POV_cell_origin += -(1.0 / np.array(shape_old)) @ cell
+
+            rho = np.pad(rho, pad_width=(1,), mode='constant', constant_values=cv)
+            shape_new = rho.shape
+            s = np.array(shape_new) / np.array(shape_old)
+            cell = cell @ np.diag(s)
+
+        spacing = tuple(1.0 / np.array(rho.shape))
+        scaled_verts, faces, normals, values = measure.marching_cubes_lewiner(
+            rho,
+            level=cut_off,
+            spacing=spacing,
+            gradient_direction=gradient_direction,
+            allow_degenerate=False,
+        )
+
+        # The verts are scaled by default, this is the super easy way of
+        # distributing them in real space but it's easier to do affine
+        # transformations/rotations on a unit cube so I leave it like that
+        # verts = scaled_verts.dot(atoms.get_cell())
+        verts = scaled_verts
+
+        # some prime numbers for debugging formatting of lines
+        # verts = verts[:31]
+        # faces = faces[:47]
+
+        if verbose:
+            print('faces', len(faces))
+            print('verts', len(verts))
+
+        def wrapped_triples_section(triple_list,
+                                    triple_format="<{:f}, {:f}, {:f}>".format,
+                                    triples_per_line=4):
+
+            triples = [triple_format(*x) for x in triple_list]
+            n = len(triples)
+            s = ''
+            tpl = triples_per_line
+            c = 0
+
+            while c < n - tpl:
+                c += tpl
+                s += '\n     '
+                s += ', '.join(triples[c-tpl:c])
+            s += '\n    '
+            s += ', '.join(triples[c:])
+            return s
 
 
-def write_povray_input(filename, atoms, extras=[], **parameters):
+        if material in self.material_styles_dict.keys():
+            material = f"""material {{
+        texture {{
+          pigment {{ {pc(color)} }}
+          finish {{ {material} }}
+        }}
+      }}"""
+
+        # Start writing the mesh2
+        vertex_vectors = wrapped_triples_section(triple_list=verts,
+                triple_format="<{:f}, {:f}, {:f}>".format, triples_per_line=4)
+
+        face_indices = wrapped_triples_section(triple_list=faces,
+                triple_format="<{:n}, {:n}, {:n}>".format, triples_per_line=5)
+
+        pov_c_o = POV_cell_origin
+        mesh2 = f"""\n\nmesh2 {{
+    vertex_vectors {{  {len(verts):n},
+    {vertex_vectors}
+    }}
+    face_indices {{ {len(faces):n},
+    {face_indices}
+    }}
+{material if material != '' else '// no material'}
+  matrix < {cell[0][0]:f}, {cell[0][1]:f}, {cell[0][2]:f},
+           {cell[1][0]:f}, {cell[1][1]:f}, {cell[1][2]:f},
+           {cell[2][0]:f}, {cell[2][1]:f}, {cell[2][2]:f},
+           {pov_c_o[0]:f}, {pov_c_o[1]:f}, {pov_c_o[2]:f}>
+    }}
+    """
+        filename = Path(filename).with_suffix('.pov')
+        with open(filename, 'a') as _: # must be in append
+            _.write(mesh2)
+        return None
+
+def write_pov(filename, atoms, run_povray=False, isosurface_data = None, **parameters):
     if isinstance(atoms, list):
         assert len(atoms) == 1
         atoms = atoms[0]
     assert 'scale' not in parameters
     pov_obj = POVRAY(atoms, **parameters)
-    pov_obj.write_ini(filename) # returns none
-    pov_obj.write_pov(filename) # returns open file
-    # evaluate and write extras
-    #for function, params in extras:
-    #    function(pov_fid, pov_obj, **params)
-    # the povray file wasn't explicitly being closed before the addition
-    # of the extras option.
-    #pov_fid.close()
+    pov_obj.write_ini(filename) 
+    pov_obj.write_pov(filename) 
+    if isosurface_data is not None:
+        pov_obj.add_isosurface_to_pov(filename, **isosurface_data)
+    if run_povray:
+        run_pov(filename)
+
 
 def run_pov(filename, povray_executable='povray',stderr=None):
     ini_path = Path(filename).with_suffix('.ini')
@@ -633,6 +619,14 @@ def run_pov(filename, povray_executable='povray',stderr=None):
         check_call(cmd)
 
 if __name__ == '__main__':
-    from ase.build import molecule
-    H2 = molecule('H2')
-    write_povray_input('H2.pov', H2)
+    #from ase.build import molecule
+    #H2 = molecule('H2')
+    #write_pov('H2.pov', H2)
+    from ase.io import read
+    zno = read('CONTCAR')
+    pov_obj = POVRAY(zno)
+    pov_obj.write_ini('zno.pov')
+    pov_obj.write_pov('zno.pov')
+    from ase.calculators.vasp import VaspChargeDensity
+    vchg = VaspChargeDensity('CHGCAR')
+    pov_obj.add_isosurface_to_pov('zno.pov', density_grid=vchg.chg[0], cut_off = 0.15)
