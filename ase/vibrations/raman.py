@@ -118,7 +118,7 @@ class RamanBase:
             self.txt.flush()
 
 
-class RamanEvaluate(RamanBase):
+class RamanData(RamanBase):
     """Base class to evaluate Raman spectra from pre-computed data"""
     def __init__(self, atoms,  # XXX do we need atoms at this stage ?
                  *args,
@@ -328,7 +328,7 @@ class RamanEvaluate(RamanBase):
         #         file=log)
 
 
-class Raman(RamanEvaluate):
+class Raman(RamanData):
     def __init__(self, atoms, *args, **kwargs):
         super().__init__(atoms, *args, **kwargs)
 
@@ -360,9 +360,9 @@ class Raman(RamanEvaluate):
         self.timer.stop('energies_and_modes')
 
 
-class RamanPhonons(RamanEvaluate):
+class RamanPhonons(RamanData):
     def __init__(self, atoms, *args, **kwargs):
-        RamanEvaluate.__init__(self, atoms, *args, **kwargs)
+        RamanData.__init__(self, atoms, *args, **kwargs)
 
         for key in ['txt', 'exext', 'exname']:
             kwargs.pop(key, None)
