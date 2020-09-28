@@ -234,8 +234,8 @@ Verbose=False
         self.positions -= (self.w / 2, self.h / 2, z0)
 
         # Draw unit cell
+        cell_vertices = ''
         if self.cell_vertices is not None:
-            cell_vertices = ''
             self.cell_vertices -= (self.w / 2, self.h / 2, z0)
             self.cell_vertices.shape = (2, 2, 2, 3)
             for c in range(3):
