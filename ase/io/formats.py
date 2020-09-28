@@ -245,13 +245,13 @@ F('castep-md', 'CASTEP molecular dynamics file', '+F',
 F('castep-phonon', 'CASTEP phonon file', '1F',
   module='castep', ext='phonon')
 F('cfg', 'AtomEye configuration', '1F')
-F('cif', 'CIF-file', '+B')
+F('cif', 'CIF-file', '+B', ext='cif')
 F('cmdft', 'CMDFT-file', '1F', glob='*I_info')
 F('cp2k-dcd', 'CP2K DCD file', '+B',
   module='cp2k', ext='dcd')
 F('crystal', 'Crystal fort.34 format', '1S',
   ext=['f34', '34'], glob=['f34', '34'])
-F('cube', 'CUBE file', '1F')
+F('cube', 'CUBE file', '1F', ext='cube')
 F('dacapo-text', 'Dacapo text output', '1F',
   module='dacapo', magic=b'*&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&\n')
 F('db', 'ASE SQLite database file', '+S')
@@ -275,7 +275,7 @@ F('espresso-in', 'Quantum espresso in file', '1F',
 F('espresso-out', 'Quantum espresso out file', '+F',
   module='espresso', ext=['out', 'pwo'], magic=b'*Program PWSCF')
 F('exciting', 'exciting input', '1S', glob='input.xml')
-F('extxyz', 'Extended XYZ file', '+F')
+F('extxyz', 'Extended XYZ file', '+F', ext='xyz')
 F('findsym', 'FINDSYM-format', '+F')
 F('gamess-us-out', 'GAMESS-US output file', '1F',
   module='gamess_us', magic=b'*GAMESS')
@@ -303,8 +303,7 @@ F('gromacs', 'Gromacs coordinates', '1S',
   ext='gro')
 F('gromos', 'Gromos96 geometry file', '1F', ext='g96')
 F('html', 'X3DOM HTML', '1F', module='x3d')
-F('iwm', '?', '1F', glob='atoms.dat')
-F('json', 'ASE JSON database file', '+F', module='db')
+F('json', 'ASE JSON database file', '+F', ext='json', module='db')
 F('jsv', 'JSV file format', '1F')
 F('lammps-dump-text', 'LAMMPS text dump file', '+F',
   module='lammpsrun', magic=b'*\nITEM: TIMESTEP\n')
@@ -372,6 +371,8 @@ F('xsf', 'XCrySDen Structure File', '+F',
   magic=[b'*\nANIMSTEPS', b'*\nCRYSTAL', b'*\nSLAB', b'*\nPOLYMER',
          b'*\nMOLECULE', b'*\nATOMS'])
 F('xtd', 'Materials Studio file', '+F')
+# xyz: No `ext='xyz'` in the definition below.
+#      The .xyz files are handled by the extxyz module by default.
 F('xyz', 'XYZ-file', '+F')
 
 netcdfconventions2format = {
@@ -799,8 +800,6 @@ def filetype(
 
         if '.' in basename:
             ext = os.path.splitext(basename)[1].strip('.').lower()
-            if ext in ['xyz', 'cube', 'json', 'cif']:
-                return ext
 
         for fmt in ioformats.values():
             if fmt.match_name(basename):
@@ -864,7 +863,7 @@ def filetype(
         # Do quick xyz check:
         lines = data.splitlines()
         if lines and lines[0].strip().isdigit():
-            return 'xyz'
+            return extension2format['xyz'].name
 
         raise UnknownFileTypeError('Could not guess file type')
     assert isinstance(format, str)

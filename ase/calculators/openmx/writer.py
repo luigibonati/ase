@@ -160,6 +160,8 @@ def parameters_to_keywords(label=None, atoms=None, parameters=None,
 
     # keywords['scf_stress_tensor'] = 'stress' in properties
     # This is not working due to the UnitCellFilter method.
+    if 'energies' in properties:
+        keywords['energy_decomposition'] = True
     if 'stress' in properties:
         keywords['scf_stress_tensor'] = True
 
