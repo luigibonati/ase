@@ -33,6 +33,7 @@ def test_wout():
 def test_wout_all():
     """Check reading of extra stuff."""
     file = io.StringIO(wout)
-    hh, x, w = read_wout_all(file)
-    assert w == 0.85842654
-    assert abs(x - hh.get_center_of_mass()).max() < 1e-5
+    result = read_wout_all(file)
+    assert result['spreads'][0] == 0.85842654
+    assert abs(result['centers'] -
+               result['atoms'].get_center_of_mass()).max() < 1e-5
