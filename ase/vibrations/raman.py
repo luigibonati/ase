@@ -137,7 +137,7 @@ class RamanEvaluate(RamanBase):
         if exname is None:
             exname = kwargs.get('name', self.name)
         self.exname = exname
-        self._read = False
+        self._already_read = False
 
     def get_energies(self):
         self.calculate_energies_and_modes()
@@ -168,12 +168,19 @@ class RamanEvaluate(RamanBase):
         self.read_excitations()
         self.timer.stop('excitations')
 
-        self._read = True
+        self._already_read = True
         self.timer.stop('read')
 
     @staticmethod
     def m2(z):
         return (z * z.conj()).real
+
+    def map_to_modes(self, V_rcc):
+        self.timer.start('map R2Q')
+        V_qcc = (V_rcc.T * self.im_r).T  # units Angstrom^2 / sqrt(amu)
+        V_Qcc = np.dot(V_qcc.T, self.modes_Qq.T).T
+        self.timer.stop('map R2Q')
+        return V_Qcc
 
     def me_Qcc(self, *args, **kwargs):
         """Full matrix element
@@ -329,7 +336,7 @@ class Raman(RamanEvaluate):
         self.indices = self.vibrations.indices
 
     def calculate_energies_and_modes(self):
-        if not self._read:
+        if not self._already_read:
             if hasattr(self, 'im_r'):
                 del self.im_r
             self.read()
@@ -337,7 +344,7 @@ class Raman(RamanEvaluate):
         if not hasattr(self, 'im_r'):
             self.timer.start('energies_and_modes')
             self.im_r = self.vibrations.im
-            self.modes = self.vibrations.modes
+            self.modes_Qq = self.vibrations.modes
             self.om_Q = self.vibrations.hnu.real    # energies in eV
             self.H = self.vibrations.H   # XXX used in albrecht.py
             # pre-factors for one vibrational excitation
@@ -376,7 +383,7 @@ class RamanPhonons(RamanEvaluate):
                 del self.im_r  # we'll have to recalculate
 
     def calculate_energies_and_modes(self):
-        if not self._read:
+        if not self._already_read:
             if hasattr(self, 'im_r'):
                 del self.im_r
             self.read()
@@ -388,9 +395,9 @@ class RamanPhonons(RamanEvaluate):
 
             self.im_r = self.vibrations.m_inv_x
             self.om_Q = omega_kl.ravel().real   # energies in eV
-            self.modes = u_kl.reshape(len(self.om_Q),
-                                      3 * len(self.atoms))
-            self.modes /= self.im_r
+            self.modes_Qq = u_kl.reshape(len(self.om_Q),
+                                         3 * len(self.atoms))
+            self.modes_Qq /= self.im_r
             self.om_v = self.om_Q
 
             # pre-factors for one vibrational excitation

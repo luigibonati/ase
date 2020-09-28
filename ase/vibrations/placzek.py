@@ -48,13 +48,10 @@ class Placzek(ResonantRaman):
                                form=self.dipole_form, tensor=True) -
                 polarizability(self.exm_r[i], om,
                                form=self.dipole_form, tensor=True))
-        self.timer.stop('alpha derivatives')
- 
-        # map to modes
         self.comm.sum(V_rcc)
-        V_qcc = (V_rcc.T * self.im_r).T  # units Angstrom^2 / sqrt(amu)
-        V_Qcc = np.dot(V_qcc.T, self.modes.T).T
-        return V_Qcc
+        self.timer.stop('alpha derivatives')
+
+        return self.map_to_modes(V_rcc)
 
 
 class PlaczekStatic(Raman):
@@ -83,13 +80,10 @@ class PlaczekStatic(Raman):
         self.timer.start('alpha derivatives')
         for i, r in enumerate(self.myr):
             V_rcc[r] = pre * (self.alp_rr[i] - self.alm_rr[i])
+        self.comm.sum(V_rcc)
         self.timer.stop('alpha derivatives')
  
-        # map to modes
-        self.comm.sum(V_rcc)
-        V_qcc = (V_rcc.T * self.im_r).T  # units Angstrom^2 / sqrt(amu)
-        V_Qcc = np.dot(V_qcc.T, self.modes.T).T
-        return V_Qcc
+        return self.map_to_modes(V_rcc)
 
 
 class PlaczekStaticPhonons(RamanPhonons, PlaczekStatic):
@@ -182,10 +176,4 @@ class Profeta(ResonantRaman):
                 'Bug: call with {0} should not happen!'.format(
                     self.approximation))
 
-        # map to modes
-        self.timer.start('map R2Q')
-        V_qcc = (Vel_rcc.T * self.im_r).T  # units Angstrom^2 / sqrt(amu)
-        Vel_Qcc = np.dot(V_qcc.T, self.modes.T).T
-        self.timer.stop('map R2Q')
-
-        return Vel_Qcc
+        return self.map_to_modes(Vel_rcc)
