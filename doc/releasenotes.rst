@@ -10,7 +10,12 @@ Git master branch
 
 :git:`master <>`.
 
-* No changes yet
+* Changed units for molecular dynamics modules.  They now accept the
+  temperature in Kelvin as a keyword-only argument ``temperature_K``
+  and Berendsen NPT accepts the pressure in eV/Å^3 as a keyword-only
+  argument ``pressure_au``.  The previous arguments are still
+  available and still takes temperature and pressure in whatever unit
+  the module used to accept, but now issues a warning.
 
 
 Version 3.20.1
