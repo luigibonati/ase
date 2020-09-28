@@ -12,6 +12,7 @@ from ase.utils.linesearcharmijo import LineSearchArmijo
 
 from ase.optimize.precon.precon import make_precon
 
+
 class PreconLBFGS(Optimizer):
     """Preconditioned version of the Limited memory BFGS optimizer, to
     be used as a drop-in replacement for ase.optimize.lbfgs.LBFGS for systems
@@ -129,10 +130,10 @@ class PreconLBFGS(Optimizer):
         if precon == 'auto':
             if len(atoms) < 100:
                 precon = None
-                warnings.warn('The system is likely too small to benefit from ' +
-                              'the standard preconditioner, hence it is ' +
-                              'disabled. To re-enable preconditioning, call' +
-                              '`PreconLBFGS` by explicitly providing the ' +
+                warnings.warn('The system is likely too small to benefit from '
+                              'the standard preconditioner, hence it is '
+                              'disabled. To re-enable preconditioning, call '
+                              '`PreconLBFGS` by explicitly providing the '
                               'kwarg `precon`')
             else:
                 precon = 'Exp'

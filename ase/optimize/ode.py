@@ -108,13 +108,11 @@ def ode12r(f, X0, h=None, verbose=1, fmax=1e-6, maxtol=1e3, steps=100,
             h_ls = h * np.dot(Fn, y) / (np.dot(y, y) + 1e-10)
         else:
             raise ValueError(f'invalid extrapolate value: {extrapolate}. '
-                              'Must be 1, 2 or 3')
+                             'Must be 1, 2 or 3')
         if np.isnan(h_ls) or h_ls < hmin:  # Rejects if increment is too small
             h_ls = np.inf
 
         h_err = h * 0.5 * np.sqrt(rtol / err)
-
-        # print(f'{nit}: err={err:.3f} Rn={Rn:.3f} h_ls={h_ls:.3f} h_err={h_err:.3f} accept={accept}')
 
         # Accept the step and do the update
         if accept:
@@ -160,8 +158,8 @@ def ode12r(f, X0, h=None, verbose=1, fmax=1e-6, maxtol=1e3, steps=100,
 
         # error message if step size is too small
         if abs(h) <= hmin:
-            raise OptimizerConvergenceError(f'ODE12r terminates unsuccessfully since'
-                                           f' Step size {h} too small at nit = {nit}')
+            raise OptimizerConvergenceError('ODE12r terminates unsuccessfully'
+                                            f' Step size {h} too small')
 
     raise OptimizerConvergenceError(f'ODE12r terminates unsuccessfully after '
                                     f'{steps} iterations.')
