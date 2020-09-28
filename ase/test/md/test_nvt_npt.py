@@ -77,12 +77,14 @@ def propagate(atoms, asap3, algorithm, algoargs):
         return Tmean, pmean
 
 
+@pytest.mark.slow
 def test_nvtberendsen(asap3, equilibrated, berendsenparams):
     t, _ = propagate(Atoms(equilibrated), asap3,
                      NVTBerendsen, berendsenparams['nvt'])
     assert abs(t - berendsenparams['nvt']['temperature_K']) < 0.5
 
 
+@pytest.mark.slow
 def test_nptberendsen(asap3, equilibrated, berendsenparams):
     t, p = propagate(Atoms(equilibrated), asap3,
                      NPTBerendsen, berendsenparams['npt'])
@@ -90,6 +92,7 @@ def test_nptberendsen(asap3, equilibrated, berendsenparams):
     assert abs(p - berendsenparams['npt']['pressure_au']) < 25.0 * bar
 
 
+@pytest.mark.slow
 def test_npt(asap3, equilibrated, berendsenparams):
     params = berendsenparams['npt']
     # NPT uses different units.  The factor 1.3 is the bulk modulus of gold in

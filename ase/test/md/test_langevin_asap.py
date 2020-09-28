@@ -5,8 +5,9 @@ from ase.utils import seterr
 from ase.md.velocitydistribution import (MaxwellBoltzmannDistribution,
                                          Stationary)
 import numpy as np
+import pytest
 
-
+@pytest.mark.slow
 def test_langevin_asap(asap3):
     with seterr(all='raise'):
         rng = np.random.RandomState(0)
