@@ -39,7 +39,7 @@ def process_temperature(temperature, temperature_K, orig_unit):
     """
     if (temperature is not None) + (temperature_K is not None) != 1:
         raise TypeError("Exactly one of the parameters 'temperature',"
-                            + " and 'temperature_K', must be given")
+                        + " and 'temperature_K', must be given")
     if temperature is not None:
         w = "Specify the temperature in K using the 'temperature_K' argument"
         if orig_unit == 'K':
@@ -48,7 +48,7 @@ def process_temperature(temperature, temperature_K, orig_unit):
             warnings.warn(FutureWarning(w))
             return temperature / units.kB
         else:
-            raise ValueError("Unknown temperature unit "+orig_unit)
+            raise ValueError("Unknown temperature unit " + orig_unit)
 
     assert temperature_K is not None
     return temperature_K
@@ -56,6 +56,7 @@ def process_temperature(temperature, temperature_K, orig_unit):
 
 class MolecularDynamics(Dynamics):
     """Base-class for all MD classes."""
+
     def __init__(self, atoms, timestep, trajectory, logfile=None,
                  loginterval=1, append_trajectory=False):
         """Molecular Dynamics object.
@@ -144,4 +145,3 @@ class MolecularDynamics(Dynamics):
     # it, while functions in md.velocitydistribution have access to it
     # as a function.
     _process_temperature = staticmethod(process_temperature)
-    

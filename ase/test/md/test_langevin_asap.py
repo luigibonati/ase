@@ -3,8 +3,9 @@ from ase.build import bulk
 from ase.md import Langevin
 from ase.utils import seterr
 from ase.md.velocitydistribution import (MaxwellBoltzmannDistribution,
-                                             Stationary)
+                                         Stationary)
 import numpy as np
+
 
 def test_langevin_asap(asap3):
     with seterr(all='raise'):
@@ -15,13 +16,14 @@ def test_langevin_asap(asap3):
         print(a)
         a.calc = asap3.EMT()
         # Set temperature to 10 K
-        MaxwellBoltzmannDistribution(a, temperature_K=10, force_temp=True, rng=rng)
+        MaxwellBoltzmannDistribution(
+            a, temperature_K=10, force_temp=True, rng=rng)
         Stationary(a)
         assert abs(a.get_temperature() - 10) < 0.0001
         # Langevin dynamics should raise this to 300 K
         T = 300
         md = Langevin(a, timestep=4 * fs, temperature_K=T, friction=0.01,
-                          logfile='-', loginterval=500, rng=rng)
+                      logfile='-', loginterval=500, rng=rng)
         md.run(steps=3000)
         # Now gather the temperature over 10000 timesteps, collecting it
         # every 5 steps

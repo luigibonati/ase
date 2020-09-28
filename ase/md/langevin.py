@@ -6,9 +6,10 @@ from ase.md.md import MolecularDynamics
 from ase.parallel import world
 from ase import units
 
+
 class Langevin(MolecularDynamics):
     """Langevin (constant N, V, T) molecular dynamics."""
-    
+
     # Helps Asap doing the right thing.  Increment when changing stuff:
     _lgv_version = 4
 

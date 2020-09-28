@@ -60,7 +60,7 @@ class NPT(MolecularDynamics):
             The list of atoms.
 
         timestep: float
-            The timestep in units matching eV, A, u.
+            The timestep in units matching eV, Å, u.
 
         temperature: float (deprecated)
             The desired temperature in eV.
@@ -84,7 +84,7 @@ class NPT(MolecularDynamics):
             A constant in the barostat differential equation.  If
             a characteristic barostat timescale of ptime is
             desired, set pfactor to ptime^2 * B (where ptime is in units matching
-            eV, A, u; and B is the Bulk Modulus, given in eV/A^3).
+            eV, Å, u; and B is the Bulk Modulus, given in eV/Å^3).
             Set to None to disable the barostat.
             Typical metallic bulk moduli are of the order of
             100 GPa or 0.6 eV/A^3.
@@ -312,9 +312,11 @@ class NPT(MolecularDynamics):
                                   (stress - self.externalstress))
 
         if self.frac_traceless == 1:
-            eta_future = self.eta_past + self.mask * self._makeuppertriangular(deltaeta)
+            eta_future = self.eta_past + self.mask * \
+                self._makeuppertriangular(deltaeta)
         else:
-            trace_part, traceless_part = self._separatetrace(self._makeuppertriangular(deltaeta))
+            trace_part, traceless_part = self._separatetrace(
+                self._makeuppertriangular(deltaeta))
             eta_future = self.eta_past + trace_part + self.frac_traceless * traceless_part
 
         deltazeta = 2 * dt * self.tfact * (self.atoms.get_kinetic_energy() -
@@ -329,7 +331,7 @@ class NPT(MolecularDynamics):
         self.inv_h = linalg.inv(self.h)
         self.q_past = self.q
         self.q = self.q_future
-        self._setbox_and_positions(self.h,self.q)
+        self._setbox_and_positions(self.h, self.q)
         self.eta_past = self.eta
         self.eta = eta_future
         self.zeta_past = self.zeta
@@ -338,7 +340,7 @@ class NPT(MolecularDynamics):
         self.zeta_integrated += dt * self.zeta
         force = self.forcecalculator()
         self._calculate_q_future(force)
-        self.atoms.set_momenta(np.dot(self.q_future-self.q_past, self.h/(2*dt)) *
+        self.atoms.set_momenta(np.dot(self.q_future - self.q_past, self.h / (2 * dt)) *
                                self._getmasses())
         # self.stresscalculator()
 
@@ -368,7 +370,8 @@ class NPT(MolecularDynamics):
             print(self.h)
             print("Min:", min((self.h[1, 0], self.h[2, 0], self.h[2, 1])))
             print("Max:", max((self.h[1, 0], self.h[2, 0], self.h[2, 1])))
-            raise NotImplementedError("Can (so far) only operate on lists of atoms where the computational box is an upper triangular matrix.")
+            raise NotImplementedError(
+                "Can (so far) only operate on lists of atoms where the computational box is an upper triangular matrix.")
         self.inv_h = linalg.inv(self.h)
         # The contents of the q arrays should migrate in parallel simulations.
         # self._make_special_q_arrays()
@@ -443,9 +446,9 @@ class NPT(MolecularDynamics):
         limit = 1e-6
         h = self._getbox()
         if max(abs((h - self.h).ravel())) > limit:
-            raise RuntimeError("The unit cell of the atoms does not match the unit cell stored in the file.")
+            raise RuntimeError(
+                "The unit cell of the atoms does not match the unit cell stored in the file.")
         self.inv_h = linalg.inv(self.h)
-        #self._make_special_q_arrays()
         self.q = np.dot(self.atoms.get_positions(), self.inv_h) - 0.5
         self._calculate_q_past_and_future()
         self.initialized = 1
@@ -548,7 +551,7 @@ class NPT(MolecularDynamics):
 
     def _getmasses(self):
         "Get the masses as an Nx1 array."
-        return np.reshape(self.atoms.get_masses(), (-1,1))
+        return np.reshape(self.atoms.get_masses(), (-1, 1))
 
     def _separatetrace(self, mat):
         """return two matrices, one proportional to the identity
@@ -560,7 +563,7 @@ class NPT(MolecularDynamics):
     # A number of convenient helper methods
     def _warning(self, text):
         "Emit a warning."
-        sys.stderr.write("WARNING: "+text+"\n")
+        sys.stderr.write("WARNING: " + text + "\n")
         sys.stderr.flush()
 
     def _calculate_q_future(self, force):
@@ -570,14 +573,14 @@ class NPT(MolecularDynamics):
         alpha = (dt * dt) * np.dot(force / self._getmasses(),
                                    self.inv_h)
         beta = dt * np.dot(self.h, np.dot(self.eta + 0.5 * self.zeta * id3,
-                                    self.inv_h))
+                                          self.inv_h))
         inv_b = linalg.inv(beta + id3)
-        self.q_future = np.dot(2*self.q + np.dot(self.q_past, beta - id3) + alpha,
-                            inv_b)
+        self.q_future = np.dot(2 * self.q + np.dot(self.q_past, beta - id3) + alpha,
+                               inv_b)
 
     def _calculate_q_past_and_future(self):
-        def ekin(p, m = self.atoms.get_masses()):
-            p2 = np.sum(p*p, -1)
+        def ekin(p, m=self.atoms.get_masses()):
+            p2 = np.sum(p * p, -1)
             return 0.5 * np.sum(p2 / m) / len(m)
         p0 = self.atoms.get_momenta()
         m = self._getmasses()
@@ -586,7 +589,7 @@ class NPT(MolecularDynamics):
         for i in range(2):
             self.q_past = self.q - dt * np.dot(p / m, self.inv_h)
             self._calculate_q_future(self.atoms.get_forces())
-            p = np.dot(self.q_future - self.q_past, self.h/(2*dt)) * m
+            p = np.dot(self.q_future - self.q_past, self.h / (2 * dt)) * m
             e = ekin(p)
             if e < 1e-5:
                 # The kinetic energy and momenta are virtually zero
@@ -601,21 +604,22 @@ class NPT(MolecularDynamics):
             deltaeta = (-self.dt * self.pfact * linalg.det(self.h)
                         * (self.stresscalculator() - self.externalstress))
         if self.frac_traceless == 1:
-            self.eta_past = self.eta - self.mask * self._makeuppertriangular(deltaeta)
+            self.eta_past = self.eta - self.mask * \
+                self._makeuppertriangular(deltaeta)
         else:
-            trace_part, traceless_part = self._separatetrace(self._makeuppertriangular(deltaeta))
+            trace_part, traceless_part = self._separatetrace(
+                self._makeuppertriangular(deltaeta))
             self.eta_past = self.eta - trace_part - self.frac_traceless * traceless_part
-
 
     def _makeuppertriangular(self, sixvector):
         "Make an upper triangular matrix from a 6-vector."
         return np.array(((sixvector[0], sixvector[5], sixvector[4]),
-                      (0,            sixvector[1], sixvector[3]),
-                      (0,            0,            sixvector[2])))
+                         (0,            sixvector[1], sixvector[3]),
+                         (0,            0,            sixvector[2])))
 
     def _isuppertriangular(self, m):
         "Check that a matrix is on upper triangular form."
-        return m[1,0] == m[2,0] == m[2,1] == 0.0
+        return m[1, 0] == m[2, 0] == m[2, 1] == 0.0
 
     def _calculateconstants(self):
         "(Re)calculate some constants when pfactor, ttime or temperature have been changed."
@@ -634,9 +638,9 @@ class NPT(MolecularDynamics):
 
     def _setbox_and_positions(self, h, q):
         """Set the computational box and the positions."""
-        self.atoms.set_cell(h, scale_atoms=True)  # Why scale_atoms ...
+        self.atoms.set_cell(h)
         r = np.dot(q + 0.5, h)
-        self.atoms.set_positions(r)               # ... they are overwritten here ???
+        self.atoms.set_positions(r)
 
     # A few helper methods, which have been placed in separate methods
     # so they can be replaced in the parallel version.
@@ -666,9 +670,10 @@ class NPT(MolecularDynamics):
         serial simulation they are ordinary Numeric arrays.
         """
         natoms = len(self.atoms)
-        self.q = np.zeros((natoms,3), float)
-        self.q_past = np.zeros((natoms,3), float)
-        self.q_future = np.zeros((natoms,3), float)
+        self.q = np.zeros((natoms, 3), float)
+        self.q_past = np.zeros((natoms, 3), float)
+        self.q_future = np.zeros((natoms, 3), float)
+
 
 class WeakMethodWrapper:
     """A weak reference to a method.
@@ -679,6 +684,7 @@ class WeakMethodWrapper:
     Just storing a weak reference to a bound method would not work,
     as the bound method object would go away immediately.
     """
+
     def __init__(self, obj, method):
         self.obj = weakref.proxy(obj)
         self.method = method
@@ -686,4 +692,3 @@ class WeakMethodWrapper:
     def __call__(self, *args, **kwargs):
         m = getattr(self.obj, self.method)
         return m(*args, **kwargs)
-

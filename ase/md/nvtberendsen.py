@@ -7,7 +7,7 @@ from ase.parallel import world
 
 class NVTBerendsen(MolecularDynamics):
     def __init__(self, atoms, timestep, temperature=None, taut=None,
-                 fixcm=True, *, temperature_K=None, 
+                 fixcm=True, *, temperature_K=None,
                  trajectory=None, logfile=None, loginterval=1,
                  communicator=world, append_trajectory=False):
         """Berendsen (constant N, V, T) molecular dynamics.
@@ -54,7 +54,6 @@ class NVTBerendsen(MolecularDynamics):
             file instead.
 
         """
-
 
         MolecularDynamics.__init__(self, atoms, timestep, trajectory,
                                    logfile, loginterval,

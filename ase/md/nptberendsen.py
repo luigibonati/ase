@@ -81,7 +81,6 @@ class NPTBerendsen(NVTBerendsen):
 
         """
 
-
         NVTBerendsen.__init__(self, atoms, timestep, temperature=temperature,
                               temperature_K=temperature_K,
                               taut=taut, fixcm=fixcm, trajectory=trajectory,
@@ -100,7 +99,7 @@ class NPTBerendsen(NVTBerendsen):
                 compressibility_au=compressibility / (1e5 * units.Pascal))
         else:
             self.set_compressibility(compressibility_au=compressibility_au)
-            
+
     def set_taup(self, taup):
         self.taup = taup
 
@@ -108,9 +107,9 @@ class NPTBerendsen(NVTBerendsen):
         return self.taup
 
     def set_pressure(self, pressure=None, *, pressure_au=None,
-                         pressure_bar=None):
+                     pressure_bar=None):
         self.pressure = self._process_pressure(pressure, pressure_bar,
-                                                   pressure_au)
+                                               pressure_au)
 
     def get_pressure(self):
         return self.pressure
@@ -150,7 +149,7 @@ class NPTBerendsen(NVTBerendsen):
         NVTBerendsen.scale_velocities(self)
         self.scale_positions_and_cell()
 
-        #one step velocity verlet
+        # one step velocity verlet
         atoms = self.atoms
 
         if f is None:
@@ -203,13 +202,13 @@ class NPTBerendsen(NVTBerendsen):
         """
         if (pressure is not None) + (pressure_au is not None) != 1:
             raise TypeError("Exactly one of the parameters 'pressure',"
-                                + " and 'pressure_au' must"
-                                + " be given")
+                            + " and 'pressure_au' must"
+                            + " be given")
 
         if pressure is not None:
             w = ("The 'pressure' parameter is deprecated, please"
-                     +" specify the pressure in atomic units (eV/Å^3)"
-                     +" using the 'pressure_au' parameter.")
+                 + " specify the pressure in atomic units (eV/Å^3)"
+                 + " using the 'pressure_au' parameter.")
             warnings.warn(FutureWarning(w))
             return pressure * (1e5 * units.Pascal)
         else:
@@ -255,8 +254,9 @@ class Inhomogeneous_NPTBerendsen(NPTBerendsen):
         means that all axes participate, set any of them to zero to disable
         the barostat in that direction.
     """
+
     def __init__(self, atoms, timestep, temperature=None,
-                 *, temperature_K=None, 
+                 *, temperature_K=None,
                  taut=0.5e3 * units.fs, pressure=None,
                  pressure_au=None, taup=1e3 * units.fs,
                  compressibility=None, compressibility_au=None,
@@ -288,11 +288,11 @@ class Inhomogeneous_NPTBerendsen(NPTBerendsen):
                              str(stress.shape))
         pbc = self.atoms.get_pbc()
         scl_pressurex = 1.0 - taupscl * (self.pressure - stress[0]) \
-                        * pbc[0] * self.mask[0]
+            * pbc[0] * self.mask[0]
         scl_pressurey = 1.0 - taupscl * (self.pressure - stress[1]) \
-                        * pbc[1] * self.mask[1]
+            * pbc[1] * self.mask[1]
         scl_pressurez = 1.0 - taupscl * (self.pressure - stress[2]) \
-                        * pbc[2] * self.mask[2]
+            * pbc[2] * self.mask[2]
         cell = self.atoms.get_cell()
         cell = np.array([scl_pressurex * cell[0],
                          scl_pressurey * cell[1],
