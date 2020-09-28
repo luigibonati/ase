@@ -1,12 +1,12 @@
 """Read Wannier90 wout format."""
-from typing import IO, Tuple
+from typing import IO, Dict, Any
 
 import numpy as np
 
 from ase import Atoms
 
 
-def read_wout_all(fileobj: IO[str]) -> Tuple[Atoms, np.ndarray, np.ndarray]:
+def read_wout_all(fileobj: IO[str]) -> Dict[str, Any]:
     """Read atoms, wannier function centers and spreads."""
     lines = fileobj.readlines()
 
@@ -44,29 +44,35 @@ def read_wout_all(fileobj: IO[str]) -> Tuple[Atoms, np.ndarray, np.ndarray]:
             break
         n -= 1
     else:
-        return atoms, np.zeros((0, 3)), np.zeros((0,))
+        return {'atoms': atoms,
+                'centers': np.zeros((0, 3)),
+                'spreads': np.zeros((0,))}
 
     n += 1
     centers = []
-    widths = []
+    spreads = []
     while True:
         line = lines[n].strip()
         if line.startswith('WF'):
             centers.append([float(x)
                             for x in
                             line.split('(')[1].split(')')[0].split(',')])
-            widths.append(float(line.split()[-1]))
+            spreads.append(float(line.split()[-1]))
             n += 1
         else:
             break
 
-    return atoms, np.array(centers), np.array(widths)
+    return {'atoms': atoms,
+            'centers': np.array(centers),
+            'spreads': np.array(spreads)}
 
 
 def read_wout(fileobj: IO[str],
               include_wannier_function_centers: bool = True) -> Atoms:
     """Read atoms and wannier function centers (as symbol X)."""
-    atoms, centers, widths = read_wout_all(fileobj)
+    dct = read_wout_all(fileobj)
+    atoms = dct['atoms']
     if include_wannier_function_centers:
+        centers = dct['centers']
         atoms += Atoms(f'X{len(centers)}', centers)
     return atoms
