@@ -157,6 +157,9 @@ class RamanEvaluate(RamanBase):
 
     def read(self, *args, **kwargs):
         """Read data from a pre-performed calculation."""
+        if self._already_read:
+            return
+        
         self.timer.start('read')
 
         self.timer.start('vibrations')
@@ -223,6 +226,8 @@ class RamanEvaluate(RamanBase):
         -------
         unit e^4 Angstrom^4 / eV^2
         """
+        self.calculate_energies_and_modes()
+        
         m2 = Raman.m2
         alpha_Qcc = self.me_Qcc(*args, **kwargs)
         if not self.observation:  # XXXX remove
@@ -336,24 +341,23 @@ class Raman(RamanEvaluate):
         self.indices = self.vibrations.indices
 
     def calculate_energies_and_modes(self):
-        if not self._already_read:
-            if hasattr(self, 'im_r'):
-                del self.im_r
-            self.read()
+        if hasattr(self, 'im_r'):
+            return
+        
+        self.read()
 
-        if not hasattr(self, 'im_r'):
-            self.timer.start('energies_and_modes')
-            self.im_r = self.vibrations.im
-            self.modes_Qq = self.vibrations.modes
-            self.om_Q = self.vibrations.hnu.real    # energies in eV
-            self.H = self.vibrations.H   # XXX used in albrecht.py
-            # pre-factors for one vibrational excitation
-            with np.errstate(divide='ignore'):
-                self.vib01_Q = np.where(self.om_Q > 0,
-                                        1. / np.sqrt(2 * self.om_Q), 0)
-            # -> sqrt(amu) * Angstrom
-            self.vib01_Q *= np.sqrt(u.Ha * u._me / u._amu) * u.Bohr
-            self.timer.stop('energies_and_modes')
+        self.timer.start('energies_and_modes')
+        self.im_r = self.vibrations.im
+        self.modes_Qq = self.vibrations.modes
+        self.om_Q = self.vibrations.hnu.real    # energies in eV
+        self.H = self.vibrations.H   # XXX used in albrecht.py
+        # pre-factors for one vibrational excitation
+        with np.errstate(divide='ignore'):
+            self.vib01_Q = np.where(self.om_Q > 0,
+                                    1. / np.sqrt(2 * self.om_Q), 0)
+        # -> sqrt(amu) * Angstrom
+        self.vib01_Q *= np.sqrt(u.Ha * u._me / u._amu) * u.Bohr
+        self.timer.stop('energies_and_modes')
 
 
 class RamanPhonons(RamanEvaluate):

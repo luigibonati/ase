@@ -26,7 +26,6 @@ def rrname(tmp_path, atoms):
 
 
 def test_one_state(rrname, atoms):
-    """One state only"""
     om = 1
     gam = 0.1
 
@@ -51,7 +50,6 @@ def test_all_states(rrname, atoms):
     ao = Albrecht(atoms, H2MorseExcitedStates,
                   name=rrname, overlap=True,
                   approximation='Albrecht A', txt=None)
-
     aoi = ao.get_absolute_intensities(omega=om, gamma=gam)[-1]
 
     al = Albrecht(atoms, H2MorseExcitedStates,
@@ -68,7 +66,6 @@ def test_multiples(rrname, atoms):
     ao = Albrecht(atoms, H2MorseExcitedStates,
                   name=rrname, overlap=True, combinations=2,
                   approximation='Albrecht A', txt=None)
-
     aoi = ao.intensity(omega=om, gamma=gam)
     assert len(aoi) == 27
 

@@ -400,7 +400,7 @@ class ResonantRaman(Raman):
                 self.read_excitations()
         self.timer.stop('excitations')
 
-        self._read = True
+        self._already_read = True
         self.timer.stop('read')
 
     def get_cross_sections(self, omega, gamma):

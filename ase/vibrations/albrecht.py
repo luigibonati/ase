@@ -42,11 +42,11 @@ class Albrecht(ResonantRaman):
             raise ValueError('Please use "Albrecht" or "Albrecht A/B/C/BC"')
         self._approx = value
 
-    def read(self, *args, **kwargs):
-        ResonantRaman.read(self, *args, **kwargs)
+    def calculate_energies_and_modes(self):
+        if hasattr(self, 'im_r'):
+            return
 
-        # XXX not phonon ready
-        self.calculate_energies_and_modes()
+        ResonantRaman.calculate_energies_and_modes(self)
 
         # single transitions and their occupation
         om_Q = self.om_Q[self.skip:]
@@ -123,7 +123,7 @@ class Albrecht(ResonantRaman):
         X_r = self.eigw_rq @ np.diag(self.Dm1_q) @ self.eigw_rq.T @ (
             forces_r.flat * self.im_r)
         
-        d_Q = np.dot(self.modes, X_r)
+        d_Q = np.dot(self.modes_Qq, X_r)
         s = 1.e-20 / u.kg / u.C / u._hbar**2
         d_Q *= np.sqrt(s * self.om_Q)
 
@@ -319,7 +319,7 @@ class Albrecht(ResonantRaman):
         exdmdr_rpc = self._collect_r(
             self.exdmdr_rpc, [n_p, 3], self.ex0m_pc.dtype)
         dmdq_qpc = (exdmdr_rpc.T * self.im_r).T  # unit e / sqrt(amu)
-        dmdQ_Qpc = np.dot(dmdq_qpc.T, self.modes.T).T  # unit e / sqrt(amu)
+        dmdQ_Qpc = np.dot(dmdq_qpc.T, self.modes_Qq.T).T  # unit e / sqrt(amu)
         self.timer.stop('initialize')
 
         me_Qcc = np.zeros((self.ndof, 3, 3), dtype=complex)
@@ -370,8 +370,8 @@ class Albrecht(ResonantRaman):
         return me_Qcc  # unit e^2 Angstrom / eV / sqrt(amu)
 
     def electronic_me_Qcc(self, omega, gamma):
-        """Evaluate an electronic matric element."""
-        self.read()
+        self.calculate_energies_and_modes()
+
         approx = self.approximation.lower()
         assert(self.combinations == 1)
         Vel_Qcc = np.zeros((len(self.om_Q), 3, 3), dtype=complex)
@@ -430,7 +430,6 @@ class Albrecht(ResonantRaman):
         if self.combinations > 1:
             return self.extended_summary()
         
-        self.read(method, direction)
         om_v = self.get_energies()
         intensities = self.get_absolute_intensities(omega, gamma)[self.skip:]
 
