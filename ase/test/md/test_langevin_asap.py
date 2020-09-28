@@ -1,4 +1,4 @@
-from ase.units import fs, kB
+from ase.units import fs
 from ase.build import bulk
 from ase.md import Langevin
 from ase.utils import seterr
@@ -26,14 +26,11 @@ def test_langevin_asap(asap3):
         # Now gather the temperature over 10000 timesteps, collecting it
         # every 5 steps
         temp = []
-        energy = []
         for i in range(1500):
             md.run(steps=5)
             temp.append(a.get_temperature())
-            energy.append(a.get_potential_energy() + a.get_kinetic_energy())
         temp = np.array(temp)
         avgtemp = np.mean(temp)
         fluct = np.std(temp)
-        avgenergy = np.mean(energy)
         print("Temperature is {:.2f} K +/- {:.2f} K".format(avgtemp, fluct))
         assert abs(avgtemp - T) < 10.0
