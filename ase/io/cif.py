@@ -722,18 +722,26 @@ def chemical_formula_header(atoms):
             f'_chemical_formula_sum              "{formula_sum}"\n')
 
 
+class BadOccupancies(ValueError):
+    pass
+
+
 def expand_kinds(atoms, coords):
     # try to fetch occupancies // spacegroup_kinds - occupancy mapping
     symbols = list(atoms.symbols)
+    coords = list(coords)
     occupancies = [1] * len(symbols)
-    try:
-        occ_info = atoms.info['occupancy']
-        kinds = atoms.arrays['spacegroup_kinds']
-    except KeyError:
-        pass
-    else:
+    occ_info = atoms.info.get('occupancy')
+    kinds = atoms.arrays.get('spacegroup_kinds')
+    if occ_info is not None and kinds is not None:
         for i, kind in enumerate(kinds):
-            occupancies[i] = occ_info[kind][symbols[i]]
+            occ_info_kind = occ_info[kind]
+            symbol = symbols[i]
+            print('ARGH', symbol)
+            if symbol not in occ_info_kind:
+                raise BadOccupancies('Occupancies present but no occupancy '
+                                     'info for "{symbol}"')
+            occupancies[i] = occ_info_kind[symbol]
             # extend the positions array in case of mixed occupancy
             for sym, occ in occ_info[kind].items():
                 if sym != symbols[i]:
@@ -751,7 +759,12 @@ def atoms_to_loop_data(atoms, wrap, labels, loop_keys):
         coord_type = 'Cartn'
         coords = atoms.get_positions(wrap).tolist()
 
-    symbols, coords, occupancies = expand_kinds(atoms, coords)
+    try:
+        symbols, coords, occupancies = expand_kinds(atoms, coords)
+    except BadOccupancies as err:
+        warnings.warn(str(err))
+        occupancies = [1] * len(atoms)
+        symbols = list(atoms.symbols)
 
     if labels is None:
         labels = autolabel(symbols)
