@@ -13,6 +13,8 @@ Git master branch
 * Extended constraint `ase.constraints.FixInternals` by
   possibility to fix linear combinations of bond lengths.
 
+* Reads Wannier90 ``.wout`` files.
+
 
 Version 3.20.1
 ==============
