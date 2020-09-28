@@ -39,7 +39,7 @@ class PreconODE12r(ODE12r):
     def __init__(self, atoms, logfile='-', trajectory=None,
                  callback_always=False, alpha=1.0, master=None,
                  force_consistent=None, precon='Exp', verbose=False):
-        ODE12r.__init__(self, atoms, logfile, trajectory, 
+        ODE12r.__init__(self, atoms, logfile, trajectory,
                         callback_always, alpha, master,
                         force_consistent, precon, verbose)
 

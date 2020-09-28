@@ -10,8 +10,8 @@ from ase.geometry.geometry import find_mic
 from ase.constraints import FixBondLength
 from ase.geometry.geometry import get_distances
 
-import json
-from ase.utils.forcecurve import fit_images
+# import json
+# from ase.utils.forcecurve import fit_images
 
 
 def calc():
@@ -24,16 +24,18 @@ def setup_images(N_intermediate=3):
     initial *= N_cell
 
     # place vacancy near centre of cell
-    D, D_len = get_distances(np.diag(initial.cell)/2,
-                             [initial.positions[i] for i in range(len(initial))],
+    all_positions = [initial.positions[i] for i in range(len(initial))]
+    D, D_len = get_distances(np.diag(initial.cell) / 2,
+                             all_positions,
                              initial.cell, initial.pbc)
     vac_index = D_len.argmin()
     vac_pos = initial.positions[vac_index]
     del initial[vac_index]
 
     # identify two opposing nearest neighbours of the vacancy
+    all_positions = [initial.positions[i] for i in range(len(initial))]
     D, D_len = get_distances(vac_pos,
-                             [initial.positions[i] for i in range(len(initial))],
+                             all_positions,
                              initial.cell, initial.pbc)
     D = D[0, :]
     D_len = D_len[0, :]
@@ -70,6 +72,7 @@ def setup_images(N_intermediate=3):
 
     return neb.images, i1, i2
 
+
 @pytest.fixture
 def ref_vacancy():
     # use distance from moving atom to one of its neighbours as reaction coord
@@ -84,11 +87,11 @@ def ref_vacancy():
     print('REF:', Ef_ref, dE_ref)
     return Ef_ref, dE_ref, saddle
 
+
 @pytest.mark.slow()
 @pytest.mark.filterwarnings('ignore:estimate_mu')
 @pytest.mark.parametrize('method, optimizer, precon, N_intermediate, optmethod',
-                         [
-                          ('aseneb', BFGS, None, 3, None),
+                         [('aseneb', BFGS, None, 3, None),
                           ('improvedtangent', BFGS, None, 3, None),
                           ('aseneb', FIRE, None, 3, None),
                           ('improvedtangent', FIRE, None, 3, None),
@@ -97,9 +100,9 @@ def ref_vacancy():
                           ('spline', NEBOptimizer, 'Exp', 3, 'ODE'),
                           ('string', NEBOptimizer, 'Exp', 3, 'ODE'),
                           ('spline', NEBOptimizer, None, 3, 'krylov'),
-                          ('spline', NEBOptimizer, 'Exp', 3, 'krylov'),
-                         ])
-def test_neb_methods(method, optimizer, precon, N_intermediate, optmethod, ref_vacancy):
+                          ('spline', NEBOptimizer, 'Exp', 3, 'krylov')])
+def test_neb_methods(method, optimizer, precon, N_intermediate,
+                     optmethod, ref_vacancy):
     # unpack the reference result
     Ef_ref, dE_ref, saddle_ref = ref_vacancy
 
@@ -122,18 +125,19 @@ def test_neb_methods(method, optimizer, precon, N_intermediate, optmethod, ref_v
     print(f'{method},{optimizer.__name__},{precon} '
           f'=> Ef = {Ef:.3f}, dE = {dE:.3f}')
 
-    forcefit = fit_images(images)
+    # forcefit = fit_images(images)
 
-    # retain biggest force across all images
-    fmax_history = list(np.max([mep.images[i].calc.fmax['(none)'] 
-                                for i in range(1, mep.nimages-1)], axis=0))
+    # # retain biggest force across all images
+    # fmax_history = list(np.max([mep.images[i].calc.fmax['(none)']
+    #                             for i in range(1, mep.nimages-1)], axis=0))
 
-    # add up walltime across images
-    walltime = list(np.sum([mep.images[i].calc.fmax['(none)'] 
-                                for i in range(1, mep.nimages-1)], axis=0))
+    # # add up walltime across images
+    # walltime = list(np.sum([mep.images[i].calc.fmax['(none)']
+    #                             for i in range(1, mep.nimages-1)], axis=0))
 
-    # output_dir = '/Users/jameskermode/gits/ase/ase/test'  # FIXME avoid this hack
-    # with open(f'{output_dir}/MEP_{method}_{optimizer.__name__}_{optmethod}_{precon}_{N_intermediate}.json', 'w') as f:
+    # output_dir = '/Users/jameskermode/gits/ase/ase/test'
+    # with open(f'{output_dir}/MEP_{method}_{optimizer.__name__}_{optmethod}'
+    #           f'_{precon}_{N_intermediate}.json', 'w') as f:
     #     json.dump({'fmax_history': fmax_history,
     #                'walltime': walltime,
     #                'method': method,
