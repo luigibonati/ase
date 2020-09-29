@@ -732,6 +732,7 @@ class ForceQMMM(Calculator):
         if 'cell_origin' in qm_cluster.info:
             del qm_cluster.info['cell_origin']
 
+        # maybe center only in non pbc directions?
         qm_cluster.positions += qm_shift
 
         return qm_cluster
@@ -739,25 +740,12 @@ class ForceQMMM(Calculator):
     def calculate(self, atoms, properties, system_changes):
         Calculator.calculate(self, atoms, properties, system_changes)
 
-        if self.qm_buffer_mask is None:
-            self.initialize_qm_buffer_mask(atoms)
-
-        # initialize the object
-        # qm_buffer_atoms = atoms.copy()
-        qm_buffer_atoms = atoms[self.qm_buffer_mask]
-        del qm_buffer_atoms.constraints
-
-        qm_buffer_atoms.set_cell(self.qm_cluster_cell)
-        # TODO: set pbc
-        qm_shift = (0.5 * qm_buffer_atoms.cell.diagonal() -
-                    qm_buffer_atoms.positions.mean(axis=0))
-
-        #TODO: apply shif only on non periodic directions
-        qm_buffer_atoms.positions += qm_shift
+        # shall it be a property self.qm_cluster?
+        qm_cluster = self.get_qm_cluster(atoms)
 
         forces = self.mm_calc.get_forces(atoms)
+        qm_forces = self.qm_calc.get_forces(qm_cluster)
 
-        qm_forces = self.qm_calc.get_forces(qm_buffer_atoms)
         forces[self.qm_selection_mask] = \
             qm_forces[self.qm_selection_mask[self.qm_buffer_mask]]
 
