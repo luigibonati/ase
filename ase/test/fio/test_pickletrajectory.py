@@ -1,12 +1,20 @@
 import pytest
 import numpy as np
+import sys
+from subprocess import check_call
+
+from pathlib import Path
+
 from ase.build import bulk
+from ase.io import read
 from ase.io.pickletrajectory import PickleTrajectory
 from ase.calculators.calculator import compare_atoms
 from ase.calculators.emt import EMT
 from ase.constraints import FixAtoms
 
+
 trajname = 'pickletraj.traj'
+
 
 def test_raises():
     with pytest.raises(DeprecationWarning):
@@ -54,11 +62,20 @@ def trajfile(images):
     return trajname
 
 
+def images_equal(images1, images2):
+    if len(images1) != len(images2):
+        return False
+
+    for atoms1, atoms2 in zip(images1, images2):
+        if len(compare_atoms(atoms1, atoms2)) > 0:
+            return False
+
+    return True
+
+
 def test_write_read(images, trajfile):
     images1 = read_images(trajfile)
-    assert len(images) == len(images1)
-    for atoms, atoms1 in zip(images, images1):
-        assert not compare_atoms(atoms, atoms1)
+    assert images_equal(images, images1)
 
 
 def test_append(images, trajfile):
@@ -67,6 +84,14 @@ def test_append(images, trajfile):
             traj.write(image)
 
     images1 = read_images(trajfile)
-    assert len(images1) == 4
-    for atoms, atoms1 in zip(images * 2, images1):
-        assert not compare_atoms(atoms, atoms1)
+    assert images_equal(images * 2, images1)
+
+
+def test_old_trajectory_conversion_utility(images, trajfile):
+    trajpath = Path(trajfile)
+    assert trajpath.exists()
+    check_call([sys.executable, '-m', 'ase.io.trajectory', trajfile])
+    oldtrajpath = trajpath.with_suffix('.traj.old')
+    assert trajpath.exists()  # New file should be where the old one was
+    new_images = read(trajpath, ':', format='traj')
+    assert images_equal(images, new_images)
