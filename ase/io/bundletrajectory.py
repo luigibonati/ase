@@ -731,9 +731,8 @@ class UlmBundleBackend:
     def write_small(self, framedir, smalldata):
         "Write small data to be written jointly."
         if self.writesmall:
-            f = ulmopen(os.path.join(framedir, 'smalldata.ulm'), 'w')
-            f.write(**smalldata)
-            f.close()
+            with ulmopen(os.path.join(framedir, 'smalldata.ulm'), 'w') as fd:
+                fd.write(**smalldata)
 
     def write(self, framedir, name, data):
         "Write data to separate file."
@@ -770,35 +769,33 @@ class UlmBundleBackend:
                     stored_as = 'float32'
                     data = data.astype(np.float32)
             fn = os.path.join(framedir, name + '.ulm')
-            f = ulmopen(fn, 'w')
-            f.write(shape=shape,
-                    dtype=dtype,
-                    stored_as=stored_as,
-                    all_identical=all_identical,
-                    data=data)
-            f.close()
+            with ulmopen(fn, 'w') as fd:
+                fd.write(shape=shape,
+                         dtype=dtype,
+                         stored_as=stored_as,
+                         all_identical=all_identical,
+                         data=data)
+
 
     def read_small(self, framedir):
         "Read small data."
-        f = ulmopen(os.path.join(framedir, 'smalldata.ulm'), 'r')
-        data = f.asdict()
-        f.close()
-        return data
+        with ulmopen(os.path.join(framedir, 'smalldata.ulm'), 'r') as fd:
+            return fd.asdict()
 
     def read(self, framedir, name):
         "Read data from separate file."
         fn = os.path.join(framedir, name + '.ulm')
-        f = ulmopen(fn, 'r')
-        if f.all_identical:
-            # Only a single data value
-            data = np.zeros(f.shape, dtype=getattr(np, f.dtype)) + f.data
-        elif f.dtype == f.stored_as:
-            # Easy, the array can be returned as-is.
-            data = f.data
-        else:
-            # Cast the data back
-            data = f.data.astype(getattr(np, f.dtype))
-        f.close()
+        with ulmopen(fn, 'r') as fd:
+            if fd.all_identical:
+                # Only a single data value
+                data = np.zeros(fd.shape,
+                                dtype=getattr(np, fd.dtype)) + fd.data
+            elif fd.dtype == fd.stored_as:
+                # Easy, the array can be returned as-is.
+                data = fd.data
+            else:
+                # Cast the data back
+                data = fd.data.astype(getattr(np, fd.dtype))
         return data
 
     def read_info(self, framedir, name, split=None):
