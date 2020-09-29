@@ -99,7 +99,6 @@ class BundleTrajectory:
         "Set default values for internal parameters."
         self.version = 1
         self.subtype = 'normal'
-        # self.backend_name = 'pickle'
         self.datatypes = {'positions': True,
                           'numbers': 'once',
                           'tags': 'once',
@@ -115,9 +114,8 @@ class BundleTrajectory:
         """Set the backed doing the actual I/O."""
         if backend is not None:
             self.backend_name = backend
-        if self.backend_name == 'pickle':
-            self.backend = PickleBundleBackend(self.master)
-        elif self.backend_name == 'ulm':
+
+        if self.backend_name == 'ulm':
             self.backend = UlmBundleBackend(self.master, self.singleprecision)
         else:
             raise NotImplementedError(
@@ -887,132 +885,6 @@ class UlmBundleBackend:
         pass
 
 
-class PickleBundleBackend:
-    """Backend for BundleTrajectories stored as pickle files."""
-    def __init__(self, master):
-        # Store if this backend will actually write anything
-        self.writesmall = master
-        self.writelarge = master
-
-        # To be overwritten after the backend is initialized
-        self.readpy2 = False
-
-    def write_small(self, framedir, smalldata):
-        "Write small data to be written jointly."
-        if self.writesmall:
-            f = open(os.path.join(framedir, 'smalldata.pickle'), 'wb')
-            pickle.dump(smalldata, f, -1)
-            f.close()
-
-    def write(self, framedir, name, data):
-        "Write data to separate file."
-        if self.writelarge:
-            fn = os.path.join(framedir, name + '.pickle')
-            f = open(fn, 'wb')
-            try:
-                info = (data.shape, str(data.dtype))
-            except AttributeError:
-                info = None
-            pickle.dump(info, f, -1)
-            pickle.dump(data, f, -1)
-            f.close()
-
-    def read_small(self, framedir):
-        "Read small data."
-        f = open(os.path.join(framedir, 'smalldata.pickle'), 'rb')
-        if self.readpy2:
-            data = pickle.load(f, encoding='latin1')
-        else:
-            data = pickle.load(f)
-        f.close()
-        return data
-
-    def read(self, framedir, name):
-        "Read data from separate file."
-        fn = os.path.join(framedir, name + '.pickle')
-        f = open(fn, 'rb')
-        if self.readpy2:
-            pickle.load(f, encoding='latin1')  # Discarded.
-            data = pickle.load(f, encoding='latin1')
-        else:
-            pickle.load(f)  # Discarded.
-            data = pickle.load(f)
-        f.close()
-        return data
-
-    def read_info(self, framedir, name, split=None):
-        "Read information about file contents without reading the data."
-        fn = os.path.join(framedir, name + '.pickle')
-        if split is None or os.path.exists(fn):
-            f = open(fn, 'rb')
-            if self.readpy2:
-                info = pickle.load(f, encoding='latin1')
-            else:
-                info = pickle.load(f)
-            f.close()
-            result = dict()
-            result['shape'] = info[0]
-            result['type'] = info[1]
-            return result
-        else:
-            for i in range(split):
-                fn = os.path.join(framedir, name + '_' + str(i) + '.pickle')
-                f = open(fn, 'rb')
-                if self.readpy2:
-                    info = pickle.load(f, encoding='latin1')
-                else:
-                    info = pickle.load(f)
-                f.close()
-                if i == 0:
-                    shape = list(info[0])
-                    dtype = info[1]
-                else:
-                    shape[0] += info[0][0]
-                    assert dtype == info[1]
-            result = dict()
-            result['shape'] = info[0]
-            result['type'] = info[1]
-            return result
-
-    def set_fragments(self, nfrag):
-        self.nfrag = nfrag
-
-    def read_split(self, framedir, name):
-        """Read data from multiple files.
-
-        Falls back to reading from single file if that is how data is stored.
-
-        Returns the data and an object indicating if the data was really
-        read from split files.  The latter object is False if not read from
-        split files, but is an array of the segment length if split files
-        were used.
-        """
-        data = []
-        if os.path.exists(os.path.join(framedir, name + '.pickle')):
-            # Not stored in split form!
-            return (self.read(framedir, name), False)
-        for i in range(self.nfrag):
-            suf = '_%d' % (i,)
-            fn = os.path.join(framedir, name + suf + '.pickle')
-            f = open(fn, 'rb')
-            if self.readpy2:
-                pickle.load(f, encoding='latin1')  # Discarding the shape.
-                data.append(pickle.load(f, encoding='latin1'))
-            else:
-                pickle.load(f)  # Discarding the shape.
-                data.append(pickle.load(f))
-            f.close()
-        seglengths = [len(d) for d in data]
-        return (np.concatenate(data), seglengths)
-
-    def close(self, log=None):
-        """Close anything that needs to be closed by the backend.
-
-        The default backend does nothing here.
-        """
-        pass
-
-
 def read_bundletrajectory(filename, index=-1):
     """Reads one or more atoms objects from a BundleTrajectory.
 
@@ -1088,9 +960,7 @@ def print_bundletrajectory_info(filename):
         elif v:
             print('  %s: All frames.' % (k,))
     # Look at first frame
-    if metadata['backend'] == 'pickle':
-        backend = PickleBundleBackend(True)
-    elif metadata['backend'] == 'ulm':
+    if metadata['backend'] == 'ulm':
         backend = UlmBundleBackend(True, False)
     else:
         raise NotImplementedError('Backend %s not supported.'
