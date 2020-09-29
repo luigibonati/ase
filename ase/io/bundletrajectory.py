@@ -17,7 +17,6 @@ following structure::
         F1 (dir)
 """
 
-import collections
 import os
 import sys
 import shutil
@@ -682,7 +681,7 @@ class BundleTrajectory:
 
         All other arguments are stored, and passed to the function.
         """
-        if not isinstance(function, collections.Callable):
+        if not callable(function):
             raise ValueError('Callback object must be callable.')
         self.pre_observers.append((function, interval, args, kwargs))
 
@@ -695,7 +694,7 @@ class BundleTrajectory:
 
         All other arguments are stored, and passed to the function.
         """
-        if not isinstance(function, collections.Callable):
+        if not callable(function):
             raise ValueError('Callback object must be callable.')
         self.post_observers.append((function, interval, args, kwargs))
 
