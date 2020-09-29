@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.linalg import cho_solve
+from scipy.stats import invgamma
 import warnings
 from ase.calculators.calculator import PropertyNotImplementedError
 
@@ -260,3 +261,37 @@ class RepulsivePotential(Calculator):
 
         self.results['energy'] = energy
         self.results['forces'] = forces
+
+
+class PriorDistribution():
+    
+    def __init__(self, mean, std):
+        ''' Gaussian Prior distribution for hyperparameter 'scale' '''
+        self.mean = mean
+        self.std = std
+
+    def get(self, gp):
+        scale = gp.hyperparams['scale']
+        log_prefactor = np.log(1 / np.sqrt(2 * np.pi) / self.std)
+        log_exp = -(scale - self.mean)**2 / 2 / self.std**2
+        print(log_prefactor + log_exp)
+        return (log_prefactor + log_exp)
+
+
+class PriorDistributionInvGamma():
+    
+    def __init__(self, a, loc, scale):
+        ''' Inverse Gamma function Prior distribution for
+        hyperparameter 'scale'. Parameters correspond to
+        parameters of scipy.stats.invgamma. '''
+
+        self.a = a
+        self.loc = loc
+        self.scale = scale  # inverse gamma parameters
+
+    def get(self, gp):
+        
+        scale = gp.hyperparams['scale']
+        value = np.log(invgamma.pdf(scale, self.a,
+                                    self.loc, self.scale))
+        return value

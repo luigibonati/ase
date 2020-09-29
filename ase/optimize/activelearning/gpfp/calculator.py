@@ -124,6 +124,9 @@ class GPCalculator(Calculator, GaussianProcess):
               'AID': Original format of the AID module. More informative in
               respect of ML process. This option is advised for experienced
               users.
+
+    pd: PriorDistribution object
+        Prior distribution function for fitting the length scale.
     """
 
     implemented_properties = ['energy', 'forces', 'uncertainty']
@@ -139,7 +142,7 @@ class GPCalculator(Calculator, GaussianProcess):
                  max_train_data_strategy='nearest_observations',
                  wrap_positions=False, calculate_uncertainty=True,
                  print_format='ASE', mask_constraints=False,
-                 use_forces=True, **kwargs):
+                 use_forces=True, pd=None, **kwargs):
 
         # Initialize the Calculator
         Calculator.__init__(self, **kwargs)
@@ -160,7 +163,8 @@ class GPCalculator(Calculator, GaussianProcess):
 
         GaussianProcess.__init__(self, prior, kernel,
                                  use_forces=use_forces,
-                                 noisefactor=noisefactor)
+                                 noisefactor=noisefactor,
+                                 pd=pd)
 
         # Set initial hyperparameters.
         self.set_hyperparams(params, noise)

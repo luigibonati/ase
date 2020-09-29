@@ -25,7 +25,7 @@ class GaussianProcess():
 
     def __init__(self, prior=None, kernel=None,
                  use_forces=True, train_delta=False,
-                 noisefactor=0.5):
+                 noisefactor=0.5, pd=None):
 
         self.use_forces = use_forces
         self.train_delta = train_delta
@@ -46,6 +46,7 @@ class GaussianProcess():
         self.hyperparams = {}
 
         self.noisefactor = noisefactor
+        self.pd = pd
 
     def set_hyperparams(self, params, noise):
         '''Set hyperparameters of the regression.
@@ -237,6 +238,9 @@ class GaussianProcess():
         logP = (-0.5 * np.dot(y - self.m, self.a)
                 - np.sum(np.log(np.diag(self.L)))
                 - len(y) / 2 * np.log(2 * np.pi))
+
+        if self.pd is not None:
+            logP += self.pd.get(self)  # PriorDistribution(self)
         return logP
 
     def fit_hyperparameters(self, X, Y,
