@@ -979,6 +979,7 @@ def print_bundletrajectory_info(filename):
 
 
 class PickleBundleBackend:
+    # Leave placeholder class so importing asap3 won't crash.
     pass
 
 
