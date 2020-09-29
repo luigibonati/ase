@@ -1,16 +1,17 @@
 import pytest
 import numpy as np
 import sys
-from subprocess import check_call
+from subprocess import check_call, check_output
 
 from pathlib import Path
 
 from ase.build import bulk
-from ase.io import read
+from ase.io import read, write
 from ase.io.pickletrajectory import PickleTrajectory
 from ase.calculators.calculator import compare_atoms
 from ase.calculators.emt import EMT
 from ase.constraints import FixAtoms
+from ase.io.bundletrajectory import print_bundletrajectory_info
 
 
 trajname = 'pickletraj.traj'
@@ -23,7 +24,7 @@ def test_raises():
 
 @pytest.fixture
 def images():
-    atoms = bulk('Ti')
+    atoms = bulk('Ti') * (1, 2, 1)
     atoms.symbols = 'Au'
     atoms.calc = EMT()
     atoms1 = atoms.copy()
@@ -96,3 +97,25 @@ def test_old_trajectory_conversion_utility(images, trajfile):
     assert trajpath.exists()  # New file should be where the old one was
     new_images = read(trajpath, ':', format='traj')
     assert images_equal(images, new_images)
+
+
+@pytest.fixture
+def bundletraj(images):
+    fname = 'traj.bundle'
+    write(fname, images, format='bundletrajectory')
+    return fname
+
+
+def test_bundletrajectory_info(images, bundletraj, capsys):
+    print_bundletrajectory_info(bundletraj)
+    output, _ = capsys.readouterr()
+
+    natoms = len(images[0])
+    expected_substring = f'Number of atoms: {natoms}'
+    assert expected_substring in output
+
+    # Same thing but via main():
+    output2 = check_output([sys.executable,
+                            '-m', 'ase.io.bundletrajectory', bundletraj],
+                           encoding='ascii')
+    assert expected_substring in output2
