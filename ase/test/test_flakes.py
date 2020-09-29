@@ -122,7 +122,7 @@ max_errors = {
     # missing whitespace around arithmetic operator
     'E226': 563,
     # line too long (93 > 79 characters)
-    'E501': 762}
+    'E501': 755}
 
 
 def have_documentation():
