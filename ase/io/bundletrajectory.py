@@ -21,6 +21,8 @@ import os
 import sys
 import shutil
 import time
+from pathlib import Path
+
 import numpy as np
 
 from ase import Atoms
@@ -526,18 +528,23 @@ class BundleTrajectory:
         self.state = 'write'
         self.atoms = atoms
 
+    @property
+    def path(self):
+        return Path(self.filename)
+
+    @property
+    def metadata_path(self):
+        return self.path / 'metadata.json'
+
     def _write_nframes(self, n):
         "Write the number of frames in the bundle."
         assert self.state == 'write' or self.state == 'prewrite'
-        f = paropen(os.path.join(self.filename, 'frames'), 'w')
-        f.write(str(n) + '\n')
-        f.close()
+        with paropen(self.path / 'frames', 'w') as fd:
+            fd.write(str(n) + '\n')
 
     def _read_nframes(self):
         "Read the number of frames."
-        f = open(os.path.join(self.filename, 'frames'))
-        n = int(f.read())
-        return n
+        return int((self.path / 'frames').read_text())
 
     def _write_metadata(self, metadata):
         """Write the metadata file of the bundle.
@@ -553,19 +560,14 @@ class BundleTrajectory:
         if self.backend_name == 'ulm':
             metadata['ulm.singleprecision'] = self.singleprecision
         metadata['python_ver'] = tuple(sys.version_info)
-        f = paropen(os.path.join(self.filename, 'metadata.json'), 'w')
         fido = jsonio.encode(metadata)
-        f.write(fido)
-        f.close()
+        with paropen(self.metadata_path, 'w') as fd:
+            fd.write(fido)
 
     def _read_metadata(self):
         """Read the metadata."""
         assert self.state == 'read'
-        metafile = os.path.join(self.filename, 'metadata.json')
-        f = open(metafile, 'r')
-        metadata = jsonio.decode(f.read())
-        f.close()
-        return metadata
+        return jsonio.decode(self.metadata_path.read_text())
 
     @staticmethod
     def is_bundle(filename, allowempty=False):
@@ -573,15 +575,14 @@ class BundleTrajectory:
 
         If allowempty=True, an empty folder is regarded as an
         empty BundleTrajectory."""
-        if not os.path.isdir(filename):
+        filename = Path(filename)
+        if not filename.is_dir():
             return False
         if allowempty and not os.listdir(filename):
             return True   # An empty BundleTrajectory
-        metaname = os.path.join(filename, 'metadata.json')
-        if os.path.isfile(metaname):
-            f = open(metaname, 'r')
-            mdata = jsonio.decode(f.read())
-            f.close()
+        metaname = filename / 'metadata.json'
+        if metaname.is_file():
+            mdata = jsonio.decode(metaname.read_text())
         else:
             return False
 
