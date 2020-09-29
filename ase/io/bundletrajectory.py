@@ -17,21 +17,21 @@ following structure::
         F1 (dir)
 """
 
-from ase.parallel import paropen, world, barrier
-from ase.calculators.singlepoint import (SinglePointCalculator,
-                                         PropertyNotImplementedError)
-from ase.io.ulm import open as ulmopen
-import numpy as np
+import collections
 import os
 import sys
 import shutil
 import time
-# The system json module causes memory leaks!  Use ase's own.
-# import json
+import numpy as np
 
 from ase import Atoms
+# The system json module causes memory leaks!  Use ase's own.
+# import json
 from ase.io import jsonio
-import collections
+from ase.io.ulm import open as ulmopen
+from ase.parallel import paropen, world, barrier
+from ase.calculators.singlepoint import (SinglePointCalculator,
+                                         PropertyNotImplementedError)
 
 
 class BundleTrajectory:
