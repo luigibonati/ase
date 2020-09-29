@@ -218,7 +218,6 @@ class OganovFP(Fingerprint):
         boundary conditions '''
         
         # Determine unit cell parameters:
-        cell = self.atoms.cell.array
         lengths = self.atoms.cell.lengths()
 
         return [self.limit // lengths[i] + 1 for i in range(3)]
@@ -514,7 +513,6 @@ class RadialAngularFP(OganovFP):
         boundary conditions '''
         
         # Determine unit cell parameters:
-        cell = self.atoms.cell.array
         lengths = self.atoms.cell.lengths()
 
         ncells_radial = [self.limit // lengths[i] + 1 for i in range(3)]
