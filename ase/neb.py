@@ -212,7 +212,7 @@ class BaseSplineMethod(NEBMethod):
         reaction_coordinate, _, _, dx_ds, _ = state.spline       
         tangent = dx_ds(reaction_coordinate[i])
         tangent /= state.precon[i].norm(tangent)
-        return tangent
+        return tangent.reshape(-1, 3)
 
     def add_image_force(self, state, tangential_force, tangent, imgforce,
                         spring1, spring2, i):
@@ -238,15 +238,15 @@ class SplineMethod(BaseSplineMethod):
     """
     def add_image_force(self, state, tangential_force, tangent, imgforce,
                         spring1, spring2, i):
-        SplineMethod.add_image_force(self, state, tangential_force,
-                                     tangent, imgforce, spring1, spring2, i)
+        super().add_image_force(state, tangential_force,
+                                tangent, imgforce, spring1, spring2, i)
         
         reaction_coordinate, _, x, dx, d2x_ds2 = state.spline
 
         # Definition following Eq. 9 in Paper IV
         k = 0.5 * (spring1.k + spring2.k) / (state.nimages ** 2)
         curvature = d2x_ds2(reaction_coordinate[i]).reshape(-1, 3)
-        eta = k * state.vdot(curvature, tangent, i) * tangent
+        eta = k * state.precon[i].vdot(curvature, tangent) * tangent
 
         # complete Eq. 9 by including the spring force
         imgforce += eta
@@ -261,7 +261,7 @@ class StringMethod(BaseSplineMethod):
         # note this use the precondionted distance metric if state.
         s, _, x, _, _ = self.neb.spline_fit()
         new_s = np.linspace(0.0, 1.0, self.neb.nimages)
-        new_positions = x(new_s[1:-1])
+        new_positions = x(new_s[1:-1]).reshape(-1, 3)
         self.neb.set_positions(new_positions)
 
 
