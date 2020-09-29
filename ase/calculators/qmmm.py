@@ -694,8 +694,8 @@ class ForceQMMM(Calculator):
 
         if atoms.cell.orthorhombic:
             cell_size = np.diagonal(atoms.cell)
-        else: #TODO  Should throw an exception here
-            print("NON Orthorhombic cell!")
+        else:
+            raise RuntimeError("NON-orthorhombic cell is not supported!")
 
         # check if qm_cluster should be left periodic in periodic directions of the cell (cell[i] < qm_radius + buffer
         # otherwise change to non pbc and make a cluster in a vacuum configuration
