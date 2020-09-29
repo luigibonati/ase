@@ -6,7 +6,7 @@ import sys
 import time
 import copy
 import warnings
-from ABC import ABC, abstractmethod
+from abc import ABC, abstractmethod
 
 import numpy as np
 from scipy import sparse
@@ -112,7 +112,7 @@ class SparsePrecon(Precon):
                  recalc_mu=False, array_convention='C',
                  solver="auto", solve_tol=1e-8,
                  apply_positions=True, apply_cell=True,
-                 estimate_mu_eigmode=False, logfile=None):
+                 estimate_mu_eigmode=False, logfile=None, rng=None):
         """Initialise a preconditioner object based on passed parameters.
 
         Parameters:
@@ -166,6 +166,8 @@ class SparsePrecon(Precon):
             logfile: file object or str
                 If *logfile* is a string, a file with that name will be opened.
                 Use '-' for stdout.
+            rng: None or np.random.RandomState instance
+                Random number generator to use for initialising pyamg solver
 
         Raises:
             ValueError for problem with arguments
@@ -211,6 +213,10 @@ class SparsePrecon(Precon):
             else:
                 logfile = open(logfile, "a")
         self.logfile = logfile
+        
+        if rng is None:
+            rng = np.random.RandomState()
+        self.rng = rng
             
     def copy(self):
         return copy.deepcopy(self)
@@ -440,7 +446,7 @@ class SparsePrecon(Precon):
     def solve(self, x):
         start_time = time.time()
         if self.use_pyamg and have_pyamg:
-            y = self.ml.solve(x, x0=np.random.rand(self.P.shape[0]),
+            y = self.ml.solve(x, x0=self.rng.rand(self.P.shape[0]),
                               tol=self.solve_tol,
                               accel='cg',
                               maxiter=300,
@@ -1271,7 +1277,7 @@ def make_precon(precon):
         'Exp_FF': Exp_FF,
         'ID': IdentityPrecon,
         None: IdentityPrecon,
-        'IdentifyPrecon': IdentifyPrecon
+        'IdentityPrecon': IdentityPrecon
     }
-    cls = lookup[precon[]
+    cls = lookup[precon]
     return cls()
