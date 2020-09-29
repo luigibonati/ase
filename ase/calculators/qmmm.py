@@ -715,6 +715,7 @@ class ForceQMMM(Calculator):
                 # round the qm cell to the required tolerance
                 self.qm_cluster_cell[i, i] = np.round((self.qm_cluster_cell[i, i]) / self.qm_cell_rounding) \
                                              * self.qm_cell_rounding
+
     def get_qm_cluster(self, atoms):
 
         if self.qm_buffer_mask is None:
