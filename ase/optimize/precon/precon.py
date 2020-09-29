@@ -1283,7 +1283,7 @@ def make_precon(precon):
         None: IdentityPrecon,
         'IdentityPrecon': IdentityPrecon
     }
-    cls = lookup.get[precon, precon)
+    cls = lookup.get(precon, precon)
     return cls()
 
 
