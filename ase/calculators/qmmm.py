@@ -724,6 +724,7 @@ class ForceQMMM(Calculator):
         del qm_cluster.constraints
 
         qm_cluster.set_cell(self.qm_cluster_cell)
+        qm_cluster.pbc = self.qm_cluster_pbc
 
         qm_shift = (0.5 * qm_cluster.cell.diagonal() -
                     qm_cluster.positions.mean(axis=0))
