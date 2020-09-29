@@ -65,6 +65,10 @@ class Precon(ABC):
         Uses 128-bit floating point math for vector dot products
         """
         ...
+        
+    def vdot(self, x, y):
+        return self.dot(x.reshape(-1),
+                        y.reshape(-1))
 
     @abstractmethod
     def norm(self, x):
@@ -78,10 +82,6 @@ class Precon(ABC):
         """
         Solve the (sparse) linear system P x = y and return y
         """
-        ...
-
-    @abstractmethod
-    def get_coeff(self, r):
         ...
 
     @abstractmethod
@@ -433,6 +433,10 @@ class SparsePrecon(Precon):
                               % (time.time() - start_time))
 
         return self.P
+
+    @abstractmethod
+    def get_coeff(self, r):
+        ...    
 
     def Pdot(self, x):
         return self.P.dot(x)
@@ -1281,3 +1285,17 @@ def make_precon(precon):
     }
     cls = lookup[precon]
     return cls()
+
+
+def make_precon_images(precon, images):
+    """
+    Build an initial preconditioner and make a copy for each image
+    """
+    P0 = make_precon(precon)
+    P0.make_precon(images[0])
+    precon = [P0]
+    for image in images[1:]:
+        P = P0.copy()
+        P.make_precon(image)
+        precon.append(P)
+    return precon

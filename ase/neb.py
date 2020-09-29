@@ -21,7 +21,7 @@ from ase.geometry import find_mic
 from ase.optimize import MDMin
 from ase.utils import lazyproperty, deprecated
 from ase.utils.forcecurve import fit_images
-from ase.optimize.precon import make_precon
+from ase.optimize.precon import make_precon_images
 from ase.optimize.ode import ode12r
 
 
@@ -82,70 +82,8 @@ class NEBState:
         return len(self.images)
 
     @lazyproperty
-    def natoms(self):
-        return len(self.images[0])
-
-    @lazyproperty
-    def reaction_coordinate(self):
-        """
-        Value of reaction coordinate at images, in interval [0, 1].
-        """
-        reaction_coordinate, _ = self.neb.spline_points()
-        return reaction_coordinate
-
-    @lazyproperty
-    def x_spline(self):
-        """
-        Cubic spline fitted to positions
-        """
-        s, x = self.neb.spline_points()
-        x_spline = CubicSpline(s, x, bc_type='not-a-knot')
-        return x_spline
-
-    def x(self, s):
-        """
-        Value of spline fitted to positions
-        """
-        return self.x_spline(s).reshape(-1, 3)
-
-    def dx_ds(self, s):
-        """
-        First derivative of cubic spline fitted to positions
-        """
-        dx_ds_spline = self.x_spline.derivative()
-        return dx_ds_spline(s).reshape(-1, 3)
-
-    def d2x_ds2(self, s):
-        """
-        Second derivative of cubic spline fitted to positions
-        """
-        d2x_ds2_spline = self.x_spline.derivative(2)
-        return d2x_ds2_spline(s).reshape(-1, 3)
-
-    def norm(self, v, i):
-        """
-        Define the norm at image i
-        """
-        if self.precon is None:
-            return np.linalg.norm(v)
-        else:
-            return self.precon[i].norm(v.reshape(-1))
-
-    def vdot(self, v1, v2, i):
-        """
-        Define the dot product at image i
-        """
-        if self.precon is None:
-            return np.vdot(v1, v2)
-        else:
-            return self.precon[i].dot(v1.reshape(-1),
-                                      v2.reshape(-1))
-
-    def Pdot(self, forces, i):
-        if self.precon is None:
-            return forces
-        else:
-            return self.precon[i].Pdot(forces.reshape(-1))
+    def spline(self):
+        return self.neb.spline_fit()
 
 
 class NEBMethod(ABC):
@@ -271,24 +209,23 @@ class BaseSplineMethod(NEBMethod):
         self.residuals = np.zeros(neb.nimages)
 
     def get_tangent(self, state, spring1, spring2, i):
-        tangent = state.dx_ds(state.reaction_coordinate[i])
-        tangent /= state.norm(tangent, i)
+        reaction_coordinate, _, _, dx_ds, _ = state.spline       
+        tangent = dx_ds(reaction_coordinate[i])
+        tangent /= state.precon[i].norm(tangent)
         return tangent
 
     def add_image_force(self, state, tangential_force, tangent, imgforce,
                         spring1, spring2, i):
-
         # update preconditioner and apply to image force
-        if state.precon is not None:
-            precon_imgforce, _ = state.precon[i].apply(imgforce.reshape(-1),
-                                                       state.images[i])
-            imgforce[:] = precon_imgforce.reshape(-1, 3)
+        precon_imgforce, _ = state.precon[i].apply(imgforce.reshape(-1),
+                                                   state.images[i])
+        imgforce[:] = precon_imgforce.reshape(-1, 3)
         
-        # project out tangential component (Eqs 6 and 7 in the paper)
+        # project out tangential component (Eqs 6 and 7 in Paper IV)
         imgforce -= tangential_force * tangent
 
         # Store residuals for each image (Eq. 11)
-        P_dot_imgforce = state.Pdot(imgforce, i)
+        P_dot_imgforce = state.precon[i].Pdot(imgforce.reshape(-1))
         self.residuals[i - 1] = np.linalg.norm(P_dot_imgforce, np.inf)
 
     def get_residual(self):
@@ -303,10 +240,12 @@ class SplineMethod(BaseSplineMethod):
                         spring1, spring2, i):
         SplineMethod.add_image_force(self, state, tangential_force,
                                      tangent, imgforce, spring1, spring2, i)
+        
+        reaction_coordinate, _, x, dx, d2x_ds2 = state.spline
 
-        # Definition following Eq. 9
+        # Definition following Eq. 9 in Paper IV
         k = 0.5 * (spring1.k + spring2.k) / (state.nimages ** 2)
-        curvature = state.d2x_ds2(state.reaction_coordinate[i])
+        curvature = d2x_ds2(reaction_coordinate[i]).reshape(-1, 3)
         eta = k * state.vdot(curvature, tangent, i) * tangent
 
         # complete Eq. 9 by including the spring force
@@ -320,10 +259,9 @@ class StringMethod(BaseSplineMethod):
     def adjust_positions(self):
         # fit cubic spline to positions, reinterpolate to equispace images
         # note this use the precondionted distance metric if state.
-        state = NEBState(self.neb, self.neb.images,
-                         self.neb.energies, self.neb.precon)
-        new_s = np.linspace(0.0, 1.0, state.nimages)
-        new_positions = state.x(new_s[1:-1])
+        s, _, x, _, _ = self.neb.spline_fit()
+        new_s = np.linspace(0.0, 1.0, self.neb.nimages)
+        new_positions = x(new_s[1:-1])
         self.neb.set_positions(new_positions)
 
 
@@ -367,11 +305,10 @@ class BaseNEB:
         else:
             raise NotImplementedError(method)
 
-        self.precon = None
-        if precon is not None:
-            if method not in ['spline', 'string']:
-                raise NotImplementedError(f'no precon implemented: {method}')
-                self.precon.append(P)
+        if precon is not None and method not in ['spline', 'string']:
+            raise NotImplementedError(f'no precon implemented: {method}')
+        precon = make_precon_images(precon, images)
+        self.precon = precon
 
         self.neb_method = get_neb_method(self, method)
         if isinstance(k, (float, int)):
@@ -617,13 +554,17 @@ class BaseNEB:
 
                 yield atoms
 
-    def spline_points(self, norm='precon'):
+    def spline_fit(self, norm='precon'):
         """
-        Return points for fitting splines to images, as described in paper IV
+        Return spline fit to images, as described in paper IV
 
         Returns
         -------
-            s, x - reaction coordinate, displacement values
+            s - reaction coordinate
+            x - displacement values
+            x_spline - spline fit to x
+            dx_ds_spline - derivative of spline fit
+            d2x_ds2_spline - 2nd derivative of spline fit
         """
 
         images = self.images
@@ -640,8 +581,7 @@ class BaseNEB:
             dx = dx.reshape(-1)
 
             # distance as defined in Eq. 8 in paper IV
-            if (norm == 'euclidean' or
-                (norm == 'precon' and self.precon is None)):
+            if norm == 'euclidean':
                 d_P[i] = np.linalg.norm(dx)
             elif norm == 'precon':
                 d_P[i] = np.sqrt(0.5 * (self.precon[i].dot(dx, dx) +
@@ -650,8 +590,13 @@ class BaseNEB:
                 raise ValueError(f'unknown norm {norm} in spline_fit()')
 
         s = d_P.cumsum() / d_P.sum()  # Eq. A1 in paper IV
-        return s, x
-
+        
+        x_spline = CubicSpline(s, x, bc_type='not-a-knot')
+        dx_ds_spline = x_spline.derivative()
+        d2x_ds2_spline = x_spline.derivative(2)
+       
+        return s, x, x_spline, dx_ds_spline, d2x_ds2_spline
+    
     def integrate_forces(self, spline_points=1000, bc_type='not-a-knot',
                          return_forces=False):
         """
@@ -672,13 +617,11 @@ class BaseNEB:
         """
         # note we use standard Euclidean rather than preconditioned norm
         # to compute the virtual work
-        s, x = self.spline_points(norm='euclidean')
-        x = CubicSpline(s, x, bc_type='not-a-knot')
+        s, _, x, dx, _ = self.spline_fit(norm='euclidean')
         forces = np.array([image.get_forces().reshape(-1)
                            for image in self.images])
         f = CubicSpline(s, forces, bc_type=bc_type)
 
-        dx = x.derivative()
         s = np.linspace(0.0, 1.0, spline_points, endpoint=True)
         dE = f(s) * dx(s)
         F = dE.sum(axis=1)

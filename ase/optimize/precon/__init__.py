@@ -24,7 +24,8 @@ Optional dependencies
 """
 
 from ase.optimize.precon.precon import (Precon, Exp, C1, Pfrommer,
-                                        FF, Exp_FF, make_precon)
+                                        FF, Exp_FF, make_precon,
+                                        make_precon_images)
 from ase.optimize.precon.lbfgs import PreconLBFGS
 from ase.optimize.precon.fire import PreconFIRE
 
@@ -44,5 +45,6 @@ class PreconODE12r(ODE12r):
                         force_consistent, precon, verbose)
 
 
-__all__ = ['make_precon', 'Precon', 'Exp', 'C1', 'Pfrommer', 'FF', 'Exp_FF',
+__all__ = ['make_precon', 'make_precon_images',
+           'Precon', 'Exp', 'C1', 'Pfrommer', 'FF', 'Exp_FF',
            'PreconLBFGS', 'PreconFIRE', 'PreconODE12r']
