@@ -170,15 +170,11 @@ class OganovFP(Fingerprint):
         are in the same cell, indexed properly.
         '''
 
-        # Determine unit cell parameters:
-        cell = self.atoms.cell.array
-        lengths = self.atoms.cell.lengths()
         natoms = len(self.atoms)
 
-        self.origcell = cell
-
         # Number of cells needed to consider given the limit and pbc:
-        ncells = [self.limit // lengths[i] + 1 for i in range(3)]
+        ncells = self.get_ncells()
+
         nx, ny, nz = [1 + 2 * int(n) * self.pbc[i]
                       for i, n in enumerate(ncells)]
 
@@ -216,6 +212,18 @@ class OganovFP(Fingerprint):
         self.AB = np.array([(self.prim_symbols[i], self.ext_symbols[j])
                             for i, j in self.r_indices], dtype=int)
         return
+
+    def get_ncells(self):
+        ''' Return number of cells to consider due to periodic
+        boundary conditions '''
+        
+        # Determine unit cell parameters:
+        cell = self.atoms.cell.array
+        lengths = self.atoms.cell.lengths()
+
+        self.origcell = cell
+
+        return [self.limit // lengths[i] + 1 for i in range(3)]
 
     def set_peak_heights(self):
         ''' Calculate the delta peak heights self.h '''
@@ -502,6 +510,21 @@ class RadialAngularFP(OganovFP):
 
         self.vector = np.concatenate((self.G.flatten(),
                                       self.H.flatten()), axis=None)
+
+    def get_ncells(self):
+        ''' Return number of cells to consider due to periodic
+        boundary conditions '''
+        
+        # Determine unit cell parameters:
+        cell = self.atoms.cell.array
+        lengths = self.atoms.cell.lengths()
+
+        self.origcell = cell
+
+        ncells_radial = [self.limit // lengths[i] + 1 for i in range(3)]
+        ncells_angular = [2 * self.Rtheta // lengths[i] + 1 for i in range(3)]
+
+        return [max(ncells_radial[i], ncells_angular[i]) for i in range(3)]
 
     def set_angles(self):
         """
