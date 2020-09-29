@@ -880,14 +880,18 @@ def read_bundletrajectory(filename, index=-1):
         yield traj[i]
 
 
-def write_bundletrajectory(filename, images):
+def write_bundletrajectory(filename, images, append=False):
     """Write image(s) to a BundleTrajectory.
 
     Write also energy, forces, and stress if they are already
     calculated.
     """
 
-    traj = BundleTrajectory(filename, mode='w')
+    if append:
+        mode = 'a'
+    else:
+        mode = 'w'
+    traj = BundleTrajectory(filename, mode=mode)
 
     if hasattr(images, 'get_positions'):
         images = [images]
@@ -944,7 +948,7 @@ def print_bundletrajectory_info(filename):
     for k, v in small.items():
         if k == 'constraints':
             if v:
-                print('  %i constraints are present')
+                print('  {} constraints are present'.format(len(v)))
             else:
                 print('  Constraints are absent.')
         elif k == 'pbc':
