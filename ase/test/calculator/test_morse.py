@@ -41,4 +41,3 @@ def test_forces():
     forces = atoms.get_forces()
     numerical_forces = atoms.calc.calculate_numerical_forces(atoms, d=1e-5)
     assert np.abs(forces - numerical_forces).max() < 1e-5
-    

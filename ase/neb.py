@@ -83,7 +83,7 @@ class NEBState:
 
     @lazyproperty
     def natoms(self):
-        return len(self.images[0])        
+        return len(self.images[0])
 
     @lazyproperty
     def s(self):
@@ -680,7 +680,7 @@ class BaseNEB:
         if return_forces:
             return s, E, F
         else:
-            return s, E                
+            return s, E
 
 
 class DyNEB(BaseNEB):
