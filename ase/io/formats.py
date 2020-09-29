@@ -348,8 +348,6 @@ F('struct', 'WIEN2k structure file', '1S', module='wien2k')
 F('struct_out', 'SIESTA STRUCT file', '1F', module='siesta')
 F('traj', 'ASE trajectory', '+B', module='trajectory',
   magic=[b'- of UlmASE-Trajectory', b'AFFormatASE-Trajectory'])
-F('trj', 'Old ASE pickle trajectory', '+S',
-  module='pickletrajectory', magic=b'PickleTrajectory')
 F('turbomole', 'TURBOMOLE coord file', '1F', glob='coord',
   magic=b'$coord')
 F('turbomole-gradient', 'TURBOMOLE gradient file', '+F',

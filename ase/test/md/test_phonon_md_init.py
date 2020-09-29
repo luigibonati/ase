@@ -7,7 +7,6 @@ from ase.optimize import FIRE
 #from asap3 import EMT
 from ase.build import bulk
 from ase.md.velocitydistribution import PhononHarmonics
-from ase import units
 
 
 @pytest.mark.slow
@@ -40,7 +39,7 @@ def test_phonon_md_init(asap3):
     matrices = phonons.get_force_constant()
 
     K = matrices[0]
-    T = 300 * units.kB
+    T = 300
 
     atoms.calc = EMT()
     Epotref = atoms.get_potential_energy()
@@ -50,9 +49,9 @@ def test_phonon_md_init(asap3):
     Ekins = []
     Etots = []
 
-
     for i in range(24):
-        PhononHarmonics(atoms, K, T, quantum=True, rng=np.random.RandomState(888 + i))
+        PhononHarmonics(atoms, K, temperature_K=T, quantum=True,
+                        rng=np.random.RandomState(888 + i))
 
         Epot = atoms.get_potential_energy() - Epotref
         Ekin = atoms.get_kinetic_energy()
@@ -81,24 +80,20 @@ def test_phonon_md_init(asap3):
 
         print('energies', Epot, Ekin, Epot + Ekin)
 
-
-
     Epotmean = np.mean(Epots)
     Ekinmean = np.mean(Ekins)
     Tmean = np.mean(temps)
-    Terr = abs(Tmean - T / units.kB)
+    Terr = abs(Tmean - T)
     relative_imbalance = abs(Epotmean - Ekinmean) / (Epotmean + Ekinmean)
-
 
     print('epotmean', Epotmean)
     print('ekinmean', Ekinmean)
     print('rel imbalance', relative_imbalance)
-    print('Tmean', Tmean, 'Tref', T / units.kB, 'err', Terr)
+    print('Tmean', Tmean, 'Tref', T, 'err', Terr)
 
-    assert Terr < 0.1*T / units.kB, Terr  # error in Kelvin for instantaneous velocity
+    assert Terr < 0.1 * T, Terr  # error in Kelvin for instantaneous velocity
     # Epot == Ekin give or take 2 %:
     assert relative_imbalance < 0.1, relative_imbalance
-
 
     if 0:
         import matplotlib.pyplot as plt
@@ -107,4 +102,3 @@ def test_phonon_md_init(asap3):
         plt.plot(I, Ekins, 'o', label='kin')
         plt.plot(I, Etots, 'o', label='tot')
         plt.show()
-

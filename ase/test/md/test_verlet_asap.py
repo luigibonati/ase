@@ -1,9 +1,10 @@
-from ase.units import fs, kB
+from ase.units import fs
 from ase.build import bulk
 from ase.md import VelocityVerlet
 from ase.io import Trajectory, read
 from ase.utils import seterr
-from ase.md.velocitydistribution import MaxwellBoltzmannDistribution, Stationary
+from ase.md.velocitydistribution import (MaxwellBoltzmannDistribution,
+                                         Stationary)
 
 
 def test_verlet_asap(asap3):
@@ -13,7 +14,7 @@ def test_verlet_asap(asap3):
         a.pbc = (True, True, False)
         print(a)
         a.calc = asap3.EMT()
-        MaxwellBoltzmannDistribution(a, 300 * kB, force_temp=True)
+        MaxwellBoltzmannDistribution(a, temperature_K=300, force_temp=True)
         Stationary(a)
         assert abs(a.get_temperature() - 300) < 0.0001
         print(a.get_forces())
