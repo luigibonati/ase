@@ -65,7 +65,8 @@ def test_forceqmmm():
     # make a non-periodic pdc in a direction if qm_radius + buffer is larger than the original cell
     # keep the periodic cell otherwise i. e. if cell[i, i] > qm_radius + buffer
     # test the case of a cluster in a fully periodic cell:
-    # fist qm_radius + buffer > cell, thus should give a cluster with pbc=[T, T, T] (qm cluster is the same as the original cell)
+    # fist qm_radius + buffer > cell, thus should give a cluster with pbc=[T, T, T]
+    # (qm cluster is the same as the original cell)
     at0 = bulk_at * 4
     size = at0.cell[0, 0]
     r = at0.get_distances(0, np.arange(len(at0)), mic=True)
