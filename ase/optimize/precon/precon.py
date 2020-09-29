@@ -1283,7 +1283,7 @@ def make_precon(precon):
         None: IdentityPrecon,
         'IdentityPrecon': IdentityPrecon
     }
-    cls = lookup[precon]
+    cls = lookup.get[precon, precon)
     return cls()
 
 
@@ -1291,6 +1291,8 @@ def make_precon_images(precon, images):
     """
     Build an initial preconditioner and make a copy for each image
     """
+    if isinstance(precon, list) and len(precon) == len(images):
+        return precon
     P0 = make_precon(precon)
     P0.make_precon(images[0])
     precon = [P0]
