@@ -92,6 +92,7 @@ def test_old_trajectory_conversion_utility(images, trajfile):
     assert trajpath.exists()
     check_call([sys.executable, '-m', 'ase.io.trajectory', trajfile])
     oldtrajpath = trajpath.with_suffix('.traj.old')
+    assert oldtrajpath.exists()
     assert trajpath.exists()  # New file should be where the old one was
     new_images = read(trajpath, ':', format='traj')
     assert images_equal(images, new_images)
