@@ -1,3 +1,7 @@
+
+import os
+import json
+
 import numpy as np
 import pytest
 
@@ -9,9 +13,9 @@ from ase.neb import NEB, NEBTools, NEBOptimizer
 from ase.geometry.geometry import find_mic
 from ase.constraints import FixBondLength
 from ase.geometry.geometry import get_distances
+from ase.utils.forcecurve import fit_images
 
-# import json
-# from ase.utils.forcecurve import fit_images
+save_output = False
 
 
 def calc():
@@ -24,18 +28,16 @@ def setup_images(N_intermediate=3):
     initial *= N_cell
 
     # place vacancy near centre of cell
-    all_positions = [initial.positions[i] for i in range(len(initial))]
     D, D_len = get_distances(np.diag(initial.cell) / 2,
-                             all_positions,
+                             initial.positions,
                              initial.cell, initial.pbc)
     vac_index = D_len.argmin()
     vac_pos = initial.positions[vac_index]
     del initial[vac_index]
 
     # identify two opposing nearest neighbours of the vacancy
-    all_positions = [initial.positions[i] for i in range(len(initial))]
     D, D_len = get_distances(vac_pos,
-                             all_positions,
+                             initial.positions,
                              initial.cell, initial.pbc)
     D = D[0, :]
     D_len = D_len[0, :]
@@ -125,33 +127,36 @@ def test_neb_methods(method, optimizer, precon, N_intermediate,
     print(f'{method},{optimizer.__name__},{precon} '
           f'=> Ef = {Ef:.3f}, dE = {dE:.3f}')
 
-    # forcefit = fit_images(images)
+    if save_output:
+        forcefit = fit_images(images)
 
-    # # retain biggest force across all images
-    # fmax_history = list(np.max([mep.images[i].calc.fmax['(none)']
-    #                             for i in range(1, mep.nimages-1)], axis=0))
+        # retain biggest force across all images
+        fmax_history = list(np.max([mep.images[i].calc.fmax['(none)']
+                                    for i in range(1, mep.nimages - 1)],
+                                   axis=0))
 
-    # # add up walltime across images
-    # walltime = list(np.sum([mep.images[i].calc.fmax['(none)']
-    #                             for i in range(1, mep.nimages-1)], axis=0))
+        # add up walltime across images
+        walltime = list(np.sum([mep.images[i].calc.fmax['(none)']
+                                for i in range(1, mep.nimages - 1)],
+                               axis=0))
 
-    # output_dir = '/Users/jameskermode/gits/ase/ase/test'
-    # with open(f'{output_dir}/MEP_{method}_{optimizer.__name__}_{optmethod}'
-    #           f'_{precon}_{N_intermediate}.json', 'w') as f:
-    #     json.dump({'fmax_history': fmax_history,
-    #                'walltime': walltime,
-    #                'method': method,
-    #                'optmethod': optmethod,
-    #                'precon': precon,
-    #                'optimizer': optimizer.__name__,
-    #                'N_intermediate': N_intermediate,
-    #                'path': forcefit.path,
-    #                'energies': forcefit.energies.tolist(),
-    #                'fit_path': forcefit.fit_path.tolist(),
-    #                'fit_energies': forcefit.fit_energies.tolist(),
-    #                'lines': np.array(forcefit.lines).tolist(),
-    #                'Ef': Ef,
-    #                'dE': dE}, f)
+        output_dir = os.path.dirname(__file__)
+        with open(f'{output_dir}/MEP_{method}_{optimizer.__name__}_{optmethod}'
+                  f'_{precon}_{N_intermediate}.json', 'w') as f:
+            json.dump({'fmax_history': fmax_history,
+                       'walltime': walltime,
+                       'method': method,
+                       'optmethod': optmethod,
+                       'precon': precon,
+                       'optimizer': optimizer.__name__,
+                       'N_intermediate': N_intermediate,
+                       'path': forcefit.path,
+                       'energies': forcefit.energies.tolist(),
+                       'fit_path': forcefit.fit_path.tolist(),
+                       'fit_energies': forcefit.fit_energies.tolist(),
+                       'lines': np.array(forcefit.lines).tolist(),
+                       'Ef': Ef,
+                       'dE': dE}, f)
 
     assert abs(Ef - Ef_ref) < 1e-2
     assert abs(dE - dE_ref) < 1e-2
