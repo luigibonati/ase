@@ -17,6 +17,13 @@ Git master branch
   available and still takes temperature and pressure in whatever unit
   the module used to accept, but now issues a warning.
 
+* Extended constraint `ase.constraints.FixInternals` by
+  possibility to fix linear combinations of bond lengths.
+
+* Reads Wannier90 ``.wout`` files.
+  See :func:`ase.io.wannier90.read_wout` and
+  :func:`ase.io.wannier90.read_wout_all`.
+
 
 Version 3.20.1
 ==============

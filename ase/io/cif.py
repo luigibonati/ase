@@ -199,6 +199,10 @@ def parse_items(lines: List[str], line: str) -> Dict[str, CIFData]:
     return tags
 
 
+class NoStructureData(RuntimeError):
+    pass
+
+
 class CIFBlock(collections.abc.Mapping):
     """A block (i.e., a single system) in a crystallographic information file.
 
@@ -260,7 +264,7 @@ class CIFBlock(collections.abc.Mapping):
         if scaled_positions is None:
             positions = self._raw_positions()
             if positions is None:
-                raise RuntimeError('No positions found in structure')
+                raise NoStructureData('No positions found in structure')
             cell = self.get_cell()
             scaled_positions = cell.scaled_positions(positions)
         return scaled_positions
@@ -268,9 +272,13 @@ class CIFBlock(collections.abc.Mapping):
     def _get_symbols_with_deuterium(self):
         labels = self._get_any(['_atom_site_type_symbol',
                                 '_atom_site_label'])
-        assert labels is not None
+        if labels is None:
+            raise NoStructureData('No symbols')
+
         symbols = []
         for label in labels:
+            if label == '.' or label == '?':
+                raise NoStructureData('Symbols are undetermined')
             # Strip off additional labeling on chemical symbols
             match = re.search(r'([A-Z][a-z]?)', label)
             symbol = match.group(0)
@@ -402,6 +410,16 @@ class CIFBlock(collections.abc.Mapping):
                      cell=self.get_cell(),
                      masses=self._get_masses(),
                      scaled_positions=self.get_scaled_positions())
+
+    def has_structure(self):
+        """Whether this CIF block has an atomic configuration."""
+        try:
+            symbols = self.get_symbols()
+            coords = self.get_scaled_positions()
+        except NoStructureData:
+            return False
+        else:
+            return symbols is not None and coords is not None
 
     def get_atoms(self, store_tags=False, primitive_cell=False,
                   subtrans_included=True, fractional_occupancies=True) -> Atoms:
@@ -561,11 +579,15 @@ def read_cif(fileobj, index, store_tags=False, primitive_cell=False,
     # Find all CIF blocks with valid crystal data
     images = []
     for block in parse_cif(fileobj, reader):
+        if not block.has_structure():
+            continue
+
         atoms = block.get_atoms(
             store_tags, primitive_cell,
             subtrans_included,
             fractional_occupancies=fractional_occupancies)
         images.append(atoms)
+
     for atoms in images[index]:
         yield atoms
 
@@ -700,18 +722,26 @@ def chemical_formula_header(atoms):
             f'_chemical_formula_sum              "{formula_sum}"\n')
 
 
+class BadOccupancies(ValueError):
+    pass
+
+
 def expand_kinds(atoms, coords):
     # try to fetch occupancies // spacegroup_kinds - occupancy mapping
     symbols = list(atoms.symbols)
+    coords = list(coords)
     occupancies = [1] * len(symbols)
-    try:
-        occ_info = atoms.info['occupancy']
-        kinds = atoms.arrays['spacegroup_kinds']
-    except KeyError:
-        pass
-    else:
+    occ_info = atoms.info.get('occupancy')
+    kinds = atoms.arrays.get('spacegroup_kinds')
+    if occ_info is not None and kinds is not None:
         for i, kind in enumerate(kinds):
-            occupancies[i] = occ_info[kind][symbols[i]]
+            occ_info_kind = occ_info[kind]
+            symbol = symbols[i]
+            print('ARGH', symbol)
+            if symbol not in occ_info_kind:
+                raise BadOccupancies('Occupancies present but no occupancy '
+                                     'info for "{symbol}"')
+            occupancies[i] = occ_info_kind[symbol]
             # extend the positions array in case of mixed occupancy
             for sym, occ in occ_info[kind].items():
                 if sym != symbols[i]:
@@ -729,7 +759,12 @@ def atoms_to_loop_data(atoms, wrap, labels, loop_keys):
         coord_type = 'Cartn'
         coords = atoms.get_positions(wrap).tolist()
 
-    symbols, coords, occupancies = expand_kinds(atoms, coords)
+    try:
+        symbols, coords, occupancies = expand_kinds(atoms, coords)
+    except BadOccupancies as err:
+        warnings.warn(str(err))
+        occupancies = [1] * len(atoms)
+        symbols = list(atoms.symbols)
 
     if labels is None:
         labels = autolabel(symbols)

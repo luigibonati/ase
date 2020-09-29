@@ -2,7 +2,7 @@
 # towards replacing ase.dft.dos and ase.dft.pdos
 from abc import ABCMeta, abstractmethod
 import warnings
-from typing import Any, Dict, Sequence, TypeVar
+from typing import Any, Dict, Sequence, Tuple, TypeVar, Union
 
 import numpy as np
 from ase.utils.plotting import SimplePlottingAxes
@@ -61,12 +61,13 @@ class DOSData(metaclass=ABCMeta):
         """
 
         self._check_positive_width(width)
-        weights_grid = np.dot(
-            self.get_weights(),
-            self._delta(np.asarray(energies),
-                        np.asarray(self.get_energies())[:, np.newaxis],
-                        width,
-                        smearing=smearing))
+        weights_grid = np.zeros(len(energies), float)
+        weights = self.get_weights()
+        energies = np.asarray(energies, float)
+
+        for i, raw_energy in enumerate(self.get_energies()):
+            delta = self._delta(energies, raw_energy, width, smearing=smearing)
+            weights_grid += weights[i] * delta
         return weights_grid
 
     def _almost_equals(self, other: Any) -> bool:
@@ -81,9 +82,9 @@ class DOSData(metaclass=ABCMeta):
 
     @staticmethod
     def _delta(x: np.ndarray,
-               x0: np.ndarray,
+               x0: float,
                width: float,
-               smearing: str = 'Gauss') -> Sequence[Sequence[float]]:
+               smearing: str = 'Gauss') -> np.ndarray:
         """Return a delta-function centered at 'x0'.
 
         This function is used with numpy broadcasting; if x is a row and x0 is
@@ -138,16 +139,16 @@ class DOSData(metaclass=ABCMeta):
 
         return GridDOSData(energies_grid, weights_grid, info=self.info.copy())
 
-    def plot_dos(self,
-                 npts: int = 1000,
-                 xmin: float = None,
-                 xmax: float = None,
-                 width: float = 0.1,
-                 smearing: str = 'Gauss',
-                 ax: 'matplotlib.axes.Axes' = None,
-                 show: bool = False,
-                 filename: str = None,
-                 mplargs: dict = None) -> 'matplotlib.axes.Axes':
+    def plot(self,
+             npts: int = 1000,
+             xmin: float = None,
+             xmax: float = None,
+             width: float = 0.1,
+             smearing: str = 'Gauss',
+             ax: 'matplotlib.axes.Axes' = None,
+             show: bool = False,
+             filename: str = None,
+             mplargs: dict = None) -> 'matplotlib.axes.Axes':
         """Simple 1-D plot of DOS data, resampled onto a grid
 
         If the special key 'label' is present in self.info, this will be set
@@ -176,11 +177,12 @@ class DOSData(metaclass=ABCMeta):
         if 'label' not in mplargs:
             mplargs.update({'label': self.label_from_info(self.info)})
 
-        dos = self.sample_grid(npts, xmin=xmin, xmax=xmax,
-                               width=width,
-                               smearing=smearing)
-        return dos.plot_dos(ax=ax, show=show, filename=filename,
-                            mplargs=mplargs)
+        return self.sample_grid(npts, xmin=xmin, xmax=xmax,
+                                width=width,
+                                smearing=smearing
+                                ).plot(ax=ax, xmin=xmin, xmax=xmax,
+                                       show=show, filename=filename,
+                                       mplargs=mplargs)
 
     @staticmethod
     def label_from_info(info: Dict[str, str]):
@@ -401,16 +403,34 @@ class GridDOSData(GeneralDOSData):
                                  info=new_info)
         return new_object
 
-    def plot_dos(self,
-                 npts: int = 0,
-                 xmin: float = None,
-                 xmax: float = None,
-                 width: float = 0.1,
-                 smearing: str = 'Gauss',
-                 ax: 'matplotlib.axes.Axes' = None,
-                 show: bool = False,
-                 filename: str = None,
-                 mplargs: dict = None) -> 'matplotlib.axes.Axes':
+    @staticmethod
+    def _interpret_smearing_args(npts: int,
+                                 width: float = None,
+                                 default_npts: int = 1000,
+                                 default_width: float = 0.1
+                                 ) -> Tuple[int, Union[float, None]]:
+        """Figure out what the user intended: resample if width provided"""
+        if width is not None:
+            if npts:
+                return (npts, float(width))
+            else:
+                return (default_npts, float(width))
+        else:
+            if npts:
+                return (npts, default_width)
+            else:
+                return (0, None)
+
+    def plot(self,
+             npts: int = 0,
+             xmin: float = None,
+             xmax: float = None,
+             width: float = None,
+             smearing: str = 'Gauss',
+             ax: 'matplotlib.axes.Axes' = None,
+             show: bool = False,
+             filename: str = None,
+             mplargs: dict = None) -> 'matplotlib.axes.Axes':
         """Simple 1-D plot of DOS data
 
         Data will be resampled onto a grid with `npts` points unless `npts` is
@@ -428,7 +448,8 @@ class GridDOSData(GeneralDOSData):
 
         Args:
             npts, xmin, xmax: output data range, as passed to self.sample_grid
-            width: Width of broadening kernel, passed to self.sample_grid()
+            width: Width of broadening kernel, passed to self.sample_grid().
+                If no npts was set but width is set, npts will be set to 1000.
             smearing: selection of broadening kernel for self.sample_grid()
             ax: existing Matplotlib axes object. If not provided, a new figure
                 with one set of axes will be created using Pyplot
@@ -441,12 +462,15 @@ class GridDOSData(GeneralDOSData):
             Plotting axes. If "ax" was set, this is the same object.
         """
 
+        npts, width = self._interpret_smearing_args(npts, width)
+
         if mplargs is None:
             mplargs = {}
         if 'label' not in mplargs:
             mplargs.update({'label': self.label_from_info(self.info)})
 
         if npts:
+            assert isinstance(width, float)
             dos = self.sample_grid(npts, xmin=xmin,
                                    xmax=xmax, width=width,
                                    smearing=smearing)

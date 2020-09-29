@@ -7,6 +7,7 @@ import numpy as np
 from ase.cluster.cubic import FaceCenteredCubic
 from ase.cluster.compounds import L1_2
 
+
 def Octahedron(symbol, length, cutoff=0, latticeconstant=None, alloy=False):
     """
     Returns Face Centered Cubic clusters of the octahedral class depending
@@ -43,23 +44,24 @@ def Octahedron(symbol, length, cutoff=0, latticeconstant=None, alloy=False):
     """
 
     # Check length and cutoff
-    if length < 2:
-        raise ValueError("The length must be greater than one.")
+    if length < 1:
+        raise ValueError("The length must be at least one.")
 
     if cutoff < 0 or length < 2 * cutoff + 1:
-        raise ValueError("The cutoff must fulfill: > 0 and <= (length - 1) / 2.")
+        raise ValueError(
+            "The cutoff must fulfill: > 0 and <= (length - 1) / 2.")
 
     # Create cluster
-    surfaces = [(1,1,1), (1,0,0)]
+    surfaces = [(1, 1, 1), (1, 0, 0)]
     if length % 2 == 0:
         center = np.array([0.5, 0.5, 0.5])
-        layers = [length/2, length - 1 - cutoff]
+        layers = [length / 2, length - 1 - cutoff]
     else:
         center = np.array([0.0, 0.0, 0.0])
-        layers = [(length - 1)/2, length - 1 - cutoff]
+        layers = [(length - 1) / 2, length - 1 - cutoff]
 
     if not alloy:
-        return FaceCenteredCubic(symbol, surfaces, layers, latticeconstant, center)
+        return FaceCenteredCubic(
+            symbol, surfaces, layers, latticeconstant, center)
     else:
         return L1_2(symbol, surfaces, layers, latticeconstant, center)
-

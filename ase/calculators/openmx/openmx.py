@@ -45,6 +45,7 @@ class OpenMX(FileIOCalculator):
     implemented_properties = [
         'free_energy',       # Same value with energy
         'energy',
+        'energies',
         'forces',
         'stress',
         'dipole',

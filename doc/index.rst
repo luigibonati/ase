@@ -180,7 +180,7 @@ Contents
     gallery/gallery
     releasenotes
     contact
-    otherprojects
+    ecosystem
     development/development
     faq
     ASE Workshop 2019 <workshop/workshop>
