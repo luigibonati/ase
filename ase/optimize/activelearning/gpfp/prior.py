@@ -148,14 +148,16 @@ class CalculatorPrior(ConstantPrior):
         else:
             output = np.zeros(1)
 
-        self.atoms = x.atoms.copy()
+        atoms = x.atoms.copy()
+        atoms.cell = x.origcell
+        atoms.wrap()
 
-        self.atoms.set_calculator(self.calculator)
-        output[0] = self.atoms.get_potential_energy() + self.constant
+        atoms.calc = self.calculator
+        output[0] = atoms.get_potential_energy() + self.constant
 
         if self.use_forces:
             try:
-                output[1:] = -self.atoms.get_forces().reshape(-1)
+                output[1:] = -atoms.get_forces().reshape(-1)
             except PropertyNotImplementedError:
                 # warning = 'Prior Calculator does not support forces. '
                 # warning += 'Setting all prior forces to zero.'
