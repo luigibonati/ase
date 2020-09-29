@@ -86,12 +86,12 @@ class NEBState:
         return len(self.images[0])
 
     @lazyproperty
-    def s(self):
+    def reaction_coordinate(self):
         """
         Value of reaction coordinate at images, in interval [0, 1].
         """
-        s, _ = self.neb.spline_points()
-        return s
+        reaction_coordinate, _ = self.neb.spline_points()
+        return reaction_coordinate
 
     @lazyproperty
     def x_spline(self):
@@ -165,10 +165,12 @@ class NEBMethod(ABC):
         pass
 
 
-class ImprovedTangent(NEBMethod):
-    """Tangent estimates are improved according to Eqs. 8-11 in paper I.
-       Tangents are weighted at extrema to ensure smooth transitions between
-       the positive and negative tangents."""
+class ImprovedTangentMethod(NEBMethod):
+    """
+    Tangent estimates are improved according to Eqs. 8-11 in paper I.
+    Tangents are weighted at extrema to ensure smooth transitions between
+    the positive and negative tangents.
+    """
 
     def get_tangent(self, state, spring1, spring2, i):
         energies = state.energies
@@ -196,10 +198,12 @@ class ImprovedTangent(NEBMethod):
         imgforce += (spring2.nt * spring2.k - spring1.nt * spring1.k) * tangent
 
 
-class ASENEB(NEBMethod):
-    """Standard NEB implementation in ASE. The tangent of each image is
-       estimated from the spring closest to the saddle point in each
-       spring pair."""
+class ASENEBMethod(NEBMethod):
+    """
+    Standard NEB implementation in ASE. The tangent of each image is
+    estimated from the spring closest to the saddle point in each
+    spring pair.
+    """
 
     def get_tangent(self, state, spring1, spring2, i):
         imax = self.neb.imax
@@ -221,9 +225,11 @@ class ASENEB(NEBMethod):
             spring2.t * spring2.k, tangent) * factor
 
 
-class EB(NEBMethod):
-    """Elastic band method. The full spring force is included."""
-
+class FullSpringMethod(NEBMethod):
+    """
+    Elastic band method. The full spring force is included.
+    """
+    
     def get_tangent(self, state, spring1, spring2, i):
         # Tangents are bisections of spring-directions
         # (formula C8 of paper III)
@@ -250,7 +256,7 @@ class EB(NEBMethod):
             imgforce += f1 + f2
 
 
-class SplineMethod(NEBMethod):
+class BaseSplineMethod(NEBMethod):
     """
     Base class for SplineNEB and String methods
 
@@ -265,7 +271,7 @@ class SplineMethod(NEBMethod):
         self.residuals = np.zeros(neb.nimages)
 
     def get_tangent(self, state, spring1, spring2, i):
-        tangent = state.dx_ds(state.s[i])
+        tangent = state.dx_ds(state.reaction_coordinate[i])
         tangent /= state.norm(tangent, i)
         return tangent
 
@@ -289,7 +295,7 @@ class SplineMethod(NEBMethod):
         return np.max(self.residuals)  # Eq. 11
 
 
-class SplineNEB(SplineMethod):
+class SplineMethod(BaseSplineMethod):
     """
     NEB using spline interpolation, plus optional preconditioning
     """
@@ -300,14 +306,14 @@ class SplineNEB(SplineMethod):
 
         # Definition following Eq. 9
         k = 0.5 * (spring1.k + spring2.k) / (state.nimages ** 2)
-        curvature = state.d2x_ds2(state.s[i])
+        curvature = state.d2x_ds2(state.reaction_coordinate[i])
         eta = k * state.vdot(curvature, tangent, i) * tangent
 
         # complete Eq. 9 by including the spring force
         imgforce += eta
 
 
-class String(SplineMethod):
+class StringMethod(BaseSplineMethod):
     """
     String method using spline interpolation, plus optional preconditioning
     """
@@ -323,15 +329,15 @@ class String(SplineMethod):
 
 def get_neb_method(neb, method):
     if method == 'eb':
-        return EB(neb)
+        return FullSpringMethod(neb)
     elif method == 'aseneb':
-        return ASENEB(neb)
+        return ASENEBMethod(neb)
     elif method == 'improvedtangent':
-        return ImprovedTangent(neb)
+        return ImprovedTangentMethod(neb)
     elif method == 'spline':
-        return SplineNEB(neb)
+        return SplineMethod(neb)
     elif method == 'string':
-        return String(neb)
+        return StringMethod(neb)
     else:
         raise ValueError(f'Bad method: {method}')
 

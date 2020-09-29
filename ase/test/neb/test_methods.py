@@ -75,8 +75,8 @@ def setup_images(N_intermediate=3):
     return neb.images, i1, i2
 
 
-@pytest.fixture
-def ref_vacancy():
+@pytest.fixture(scope='module')
+def _ref_vacancy_global():
     # use distance from moving atom to one of its neighbours as reaction coord
     # relax intermediate image to the saddle point using a bondlength constraint
     (initial, saddle, final), i1, i2 = setup_images(N_intermediate=1)
@@ -88,6 +88,12 @@ def ref_vacancy():
     Ef_ref, dE_ref = nebtools.get_barrier(fit=False)
     print('REF:', Ef_ref, dE_ref)
     return Ef_ref, dE_ref, saddle
+
+
+@pytest.fixture
+def ref_vacancy(_ref_vacancy_global):
+    Ef_ref, dE_ref, saddle = _ref_vacancy_global
+    return Ef_ref, dE_ref, saddle.copy()
 
 
 @pytest.mark.slow()
