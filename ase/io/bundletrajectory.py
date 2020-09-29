@@ -559,26 +559,13 @@ class BundleTrajectory:
         fido = jsonio.encode(metadata)
         f.write(fido)
         f.close()
-        # Write a compatibility .pickle file - will be picked up by
-        # older versions of ASE and result in a meaningful error.
-        metadata['comment'] = ('For compatibility only - '
-                               'see metadata.json instead.')
-        f = paropen(os.path.join(self.filename, 'metadata'), 'wb')
-        pickle.dump(metadata, f, protocol=0)
-        del metadata['comment']
-        f.close()
 
     def _read_metadata(self):
         """Read the metadata."""
         assert self.state == 'read'
         metafile = os.path.join(self.filename, 'metadata.json')
-        if os.path.exists(metafile):
-            f = open(metafile, 'r')
-            metadata = jsonio.decode(f.read())
-        else:
-            metafile = os.path.join(self.filename, 'metadata')
-            f = open(metafile, 'rb')
-            metadata = pickle.load(f)
+        f = open(metafile, 'r')
+        metadata = jsonio.decode(f.read())
         f.close()
         return metadata
 
@@ -1000,6 +987,10 @@ def print_bundletrajectory_info(filename):
                 infoline += '%s = %s, ' % (k, str(v))
             infoline = infoline[:-2] + '.'  # Fix punctuation.
             print(infoline)
+
+
+class PickleBundleBackend:
+    pass
 
 
 def main():
