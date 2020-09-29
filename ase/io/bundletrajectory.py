@@ -31,7 +31,6 @@ import time
 
 from ase import Atoms
 from ase.io import jsonio
-import pickle              # Python 3 pickle is efficient.
 import collections
 
 
@@ -585,13 +584,8 @@ class BundleTrajectory:
             mdata = jsonio.decode(f.read())
             f.close()
         else:
-            metaname = os.path.join(filename, 'metadata')
-            if os.path.isfile(metaname):
-                f = open(metaname, 'rb')
-                mdata = pickle.load(f)
-                f.close()
-            else:
-                return False
+            return False
+
         try:
             return mdata['format'] == 'BundleTrajectory'
         except KeyError:
@@ -925,13 +919,8 @@ def print_bundletrajectory_info(filename):
         return
     # Read the metadata
     fn = os.path.join(filename, 'metadata.json')
-    if os.path.exists(fn):
-        f = open(fn, 'r')
-        metadata = jsonio.decode(f.read())
-    else:
-        fn = os.path.join(filename, 'metadata')
-        f = open(fn, 'rb')
-        metadata = pickle.load(f)
+    f = open(fn, 'r')
+    metadata = jsonio.decode(f.read())
     f.close()
     print('Metadata information of BundleTrajectory "%s":' % (filename,))
     for k, v in metadata.items():
