@@ -797,7 +797,7 @@ class NEB(DyNEB):
         allow_shared_calculator: bool
             Allow images to share the same calculator between them.
             Incompatible with parallelisation over images.
-        precon: string or a ase.optimize.precon.Precon instance
+        precon: string, ase.optimize.precon.Precon instance or list of instances
             If present, enable preconditioing as in Paper IV. This is
             possible using the 'spline' or 'string' methods.
             Default is no preconditioning (precon=None)
