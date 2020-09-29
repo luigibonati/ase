@@ -365,6 +365,7 @@ F('vasp-xml', 'VASP vasprun.xml file', '+F',
   module='vasp', glob='*vasp*.xml')
 F('vti', 'VTK XML Image Data', '1F', module='vtkxml')
 F('vtu', 'VTK XML Unstructured Grid', '1F', module='vtkxml')
+F('wout', 'Wannier90 output', '1F', module='wannier90')
 F('x3d', 'X3D', '1S')
 F('xsd', 'Materials Studio file', '1F')
 F('xsf', 'XCrySDen Structure File', '+F',
