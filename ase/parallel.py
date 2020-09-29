@@ -185,6 +185,12 @@ elif '_gpaw' in sys.modules:
         world = _gpaw.Communicator()
     except AttributeError:
         pass
+elif '_asap' in sys.modules:
+    import _asap
+    try:
+        world = _asap.Communicator()
+    except AttributeError:
+        pass
 elif 'mpi4py' in sys.modules:
     world = MPI4PY()
 
