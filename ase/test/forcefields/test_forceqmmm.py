@@ -23,7 +23,8 @@ def test_forceqmmm():
     mm = LennardJones(sigma=sigma, epsilon=0.05)
     qm = EMT()
 
-    # test number of atoms in qm_buffer_mask for spherical region in a fully periodic cell
+    # test number of atoms in qm_buffer_mask for
+    # spherical region in a fully periodic cell
     bulk_at = bulk("Cu", cubic=True)
     alat = bulk_at.cell[0, 0]
     N_cell_geom = 10
@@ -33,15 +34,17 @@ def test_forceqmmm():
     qm_rc = 5.37  # cutoff for EMC()
 
     for R_QM in [1.0e-3,  # one atom in the center
-                 alat / np.sqrt(2.0) + 1.0e-3,  # should give 12 nearest neighbours + atom in the center
-                 alat + 1.0e-3]:  # should give 18 neighbours + atom in the center:
+                 alat / np.sqrt(2.0) + 1.0e-3,  # should give 12 nearest
+                                                # neighbours + central atom
+                 alat + 1.0e-3]:  # should give 18 neighbours + central atom
 
         at = at0.copy()
         qm_mask = r < R_QM
         qm_buffer_mask_ref = r < 2 * qm_rc + R_QM
         # exclude atoms that are too far (in case of non spherical region)
         # this is the old way to do it
-        _, r_qm_buffer = get_distances(at.positions[qm_buffer_mask_ref], at.positions[qm_mask], at.cell, at.pbc)
+        _, r_qm_buffer = get_distances(at.positions[qm_buffer_mask_ref],
+                                       at.positions[qm_mask], at.cell, at.pbc)
         updated_qm_buffer_mask = np.ones_like(at[qm_buffer_mask_ref])
         for i, r_qm in enumerate(r_qm_buffer):
             if r_qm.min() > 2 * qm_rc:
@@ -50,27 +53,32 @@ def test_forceqmmm():
         qm_buffer_mask_ref[qm_buffer_mask_ref] = updated_qm_buffer_mask
 
         print(f'R_QM             {R_QM}   N_QM        {qm_mask.sum()}')
-        print(f'R_QM + buffer: {2 * qm_rc + R_QM:.2f} N_QM_buffer {qm_buffer_mask_ref.sum()}')
+        print(f'R_QM + buffer: {2 * qm_rc + R_QM:.2f}'
+              f' N_QM_buffer {qm_buffer_mask_ref.sum()}')
         print(f'                     N_total:    {len(at)}')
         qmmm = ForceQMMM(at, qm_mask, qm, mm, buffer_width=2 * qm_rc)
         # build qm_buffer_mask and test it
         qmmm.initialize_qm_buffer_mask(at)
-        print(f'      Calculator N_QM_buffer:    {qmmm.qm_buffer_mask.sum().sum()}')
+        print(f'      Calculator N_QM_buffer:'
+              f'    {qmmm.qm_buffer_mask.sum().sum()}')
         assert qmmm.qm_buffer_mask.sum() == qm_buffer_mask_ref.sum()
         # same test for qmmm.get_cluster()
         qm_cluster = qmmm.get_qm_cluster(at)
         assert len(qm_cluster) == qm_buffer_mask_ref.sum()
 
     # test qm cell shape and choice of pbc:
-    # make a non-periodic pdc in a direction if qm_radius + buffer is larger than the original cell
+    # make a non-periodic pdc in a direction
+    # if qm_radius + buffer is larger than the original cell
     # keep the periodic cell otherwise i. e. if cell[i, i] > qm_radius + buffer
     # test the case of a cluster in a fully periodic cell:
-    # fist qm_radius + buffer > cell, thus should give a cluster with pbc=[T, T, T]
+    # fist qm_radius + buffer > cell,
+    # thus should give a cluster with pbc=[T, T, T]
     # (qm cluster is the same as the original cell)
     at0 = bulk_at * 4
     size = at0.cell[0, 0]
     r = at0.get_distances(0, np.arange(len(at0)), mic=True)
-    R_QM = alat / np.sqrt(2.0) + 1.0e-3 # should give 12 nearest neighbours + atom in the center
+    R_QM = alat / np.sqrt(2.0) + 1.0e-3 # should give 12 nearest neighbours +
+                                        # atom in the center
     qm_mask = r < R_QM
     """
     print(f"R_QM: {R_QM:.4f}")
@@ -89,14 +97,17 @@ def test_forceqmmm():
         assert qm_cluster_pbc
 
     # should have the same cell as the original atoms
-    for qm_cell_dir, orinial_cell_dir in zip(np.diag(qmmm.qm_cluster_cell), np.diag(at0.cell)):
+    for qm_cell_dir, orinial_cell_dir in zip(np.diag(qmmm.qm_cluster_cell),
+                                             np.diag(at0.cell)):
         assert qm_cell_dir == orinial_cell_dir
     # same test for qmmm.get_cluster()
-    for qm_cluster_cell_dir, orinial_cell_dir in zip(np.diag(qm_cluster.cell), np.diag(at0.cell)):
+    for qm_cluster_cell_dir, orinial_cell_dir in zip(np.diag(qm_cluster.cell),
+                                                     np.diag(at0.cell)):
         assert qm_cluster_cell_dir == orinial_cell_dir
 
     # test the case of a fully spherical cell with in a fully periodic cell
-    qmmm = ForceQMMM(at0, qm_mask, qm, mm, buffer_width=0.25 * size)  # equal to 1 alat
+    qmmm = ForceQMMM(at0, qm_mask, qm, mm, buffer_width=0.25 * size)
+    # equal to 1 alat
     """ 
     print(f"R_QM: {R_QM:.4f}")
     print(f"R_QM + buffer: {0.25 * size + R_QM:.2f}")
@@ -113,17 +124,20 @@ def test_forceqmmm():
         assert not qm_cluster_pbc
 
     # should NOT have the same cell as the original atoms
-    for qm_cell_dir, original_cell_dir in zip(np.diag(qmmm.qm_cluster_cell), np.diag(at0.cell)):
+    for qm_cell_dir, original_cell_dir in zip(np.diag(qmmm.qm_cluster_cell),
+                                              np.diag(at0.cell)):
         assert not qm_cell_dir == original_cell_dir
     # same test for qmmm.get_cluster()
-    for qm_cluster_cell_dir, orinial_cell_dir in zip(np.diag(qm_cluster.cell), np.diag(at0.cell)):
+    for qm_cluster_cell_dir, orinial_cell_dir in zip(np.diag(qm_cluster.cell),
+                                                     np.diag(at0.cell)):
         assert not qm_cluster_cell_dir == orinial_cell_dir
     # test mixed scenario
     at0 = bulk_at * [4, 4, 1]
     r = at0.get_distances(0, np.arange(len(at0)), mic=True)
     qm_mask = r < R_QM
 
-    qmmm = ForceQMMM(at0, qm_mask, qm, mm, buffer_width=0.25 * size)  # equal to 1 alat
+    qmmm = ForceQMMM(at0, qm_mask, qm, mm, buffer_width=0.25 * size)
+    # equal to 1 alat
     # build qm_buffer_mask to build the cell
     qmmm.initialize_qm_buffer_mask(at0)
     qm_cluster = qmmm.get_qm_cluster(at0)
@@ -137,12 +151,14 @@ def test_forceqmmm():
     assert qm_cluster.pbc[2]  # Z should be periodic
 
     # should NOT have the same cell as the original atoms in X and Y directions
-    for qm_cell_dir, original_cell_dir in zip(np.diag(qmmm.qm_cluster_cell)[:2], np.diag(at0.cell)[:2]):
+    for qm_cell_dir, original_cell_dir in \
+            zip(np.diag(qmmm.qm_cluster_cell)[:2], np.diag(at0.cell)[:2]):
         assert not qm_cell_dir == original_cell_dir
     # should be the same in Z direction
     assert np.diag(qmmm.qm_cluster_cell)[2] == np.diag(at0.cell)[2]
     # same test for qmmm.get_cluster()
-    for qm_cluster_cell_dir, original_cell_dir in zip(np.diag(qm_cluster.cell)[:2], np.diag(at0.cell)[:2]):
+    for qm_cluster_cell_dir, original_cell_dir in \
+            zip(np.diag(qm_cluster.cell)[:2], np.diag(at0.cell)[:2]):
         assert not qm_cluster_cell_dir == original_cell_dir
     # should be the same in Z direction
     assert np.diag(qm_cluster.cell)[2] == np.diag(at0.cell)[2]
@@ -175,8 +191,9 @@ def test_forceqmmm():
     v0_mm_r, E0_mm_r, B_mm_r = eos_mm_r.fit()
     a0_mm_r = v0_mm_r ** (1.0 / 3)
 
-    # check match of a0 and B after rescaling is adequete
-    assert abs((a0_mm_r - a0_qm) / a0_qm) < 1e-3  # 0.1% error in lattice constant
+    # check match of a0 and B after rescaling is adequate
+    assert abs((a0_mm_r - a0_qm) / a0_qm) < 1e-3  # 0.1% error in
+                                                  # lattice constant
     assert abs((B_mm_r - B_qm) / B_qm) < 0.05  # 5% error in bulk modulus
 
     # plt.plot(v_mm, E_mm - np.min(E_mm), 'o-', label='MM')
@@ -188,7 +205,8 @@ def test_forceqmmm():
     r = at0.get_distances(0, np.arange(1, len(at0)), mic=True)
     print(len(r))
     del at0[0]  # introduce a vacancy
-    print("N_cell", N_cell, 'N_MM', len(at0), "Size", N_cell * bulk_at.cell[0, 0])
+    print("N_cell", N_cell, 'N_MM', len(at0),
+          "Size", N_cell * bulk_at.cell[0, 0])
 
     ref_at = at0.copy()
     ref_at.calc = qm
@@ -202,7 +220,8 @@ def test_forceqmmm():
         qm_mask = r < R_QM
         qm_buffer_mask_ref = r < 2 * qm.rc + R_QM
         print(f'R_QM             {R_QM}   N_QM        {qm_mask.sum()}')
-        print(f'R_QM + buffer: {2 * qm.rc + R_QM:.2f} N_QM_buffer {qm_buffer_mask_ref.sum()}')
+        print(f'R_QM + buffer: {2 * qm.rc + R_QM:.2f}'
+              f' N_QM_buffer {qm_buffer_mask_ref.sum()}')
         print(f'                     N_total:    {len(at)}')
         # Warning: Small size of the cell and large size of the buffer
         # lead to the qm calculation performed on the whole cell.
@@ -221,7 +240,8 @@ def test_forceqmmm():
         dv = np.linalg.norm(v[I, :] - v[J, :], axis=1)
         return np.linalg.norm(dv)
 
-    du_global = [strain_error(at0, u_ref, u, 1.5 * sigma, np.ones(len(r))) for u in us]
+    du_global = [strain_error(at0, u_ref, u, 1.5 * sigma,
+                              np.ones(len(r))) for u in us]
     du_local = [strain_error(at0, u_ref, u, 1.5 * sigma, r < 3.0) for u in us]
 
     print('du_local', du_local)

@@ -682,10 +682,14 @@ class ForceQMMM(Calculator):
         for r_qm in r:
             self.qm_buffer_mask[r_qm < self.buffer_width] = True
 
-        # get all distances between qm atoms. Treat all X, Y and Z directions independently
-        R_qm, _ = get_distances(atoms.positions[self.qm_selection_mask], cell=atoms.cell, pbc=atoms.pbc)
-        qm_radius = np.amax(np.amax(R_qm, axis=1), axis=0) * 0.5  # estimate qm radius in three directions as 1/2
-                                                                  # of max distance between qm atoms
+        # get all distances between qm atoms.
+        # Treat all X, Y and Z directions independently
+        R_qm, _ = get_distances(atoms.positions[self.qm_selection_mask],
+                                cell=atoms.cell, pbc=atoms.pbc)
+        # estimate qm radius in three directions as 1/2
+        # of max distance between qm atoms
+        qm_radius = np.amax(np.amax(R_qm, axis=1), axis=0) * 0.5
+
         # print('qm_radius', qm_radius)
         # print(f"qm_radius", np.linalg.norm(qm_radius))
 
@@ -697,8 +701,10 @@ class ForceQMMM(Calculator):
         else:
             raise RuntimeError("NON-orthorhombic cell is not supported!")
 
-        # check if qm_cluster should be left periodic in periodic directions of the cell (cell[i] < qm_radius + buffer
-        # otherwise change to non pbc and make a cluster in a vacuum configuration
+        # check if qm_cluster should be left periodic
+        # in periodic directions of the cell (cell[i] < qm_radius + buffer
+        # otherwise change to non pbc
+        # and make a cluster in a vacuum configuration
         for i, pbc in enumerate(self.qm_cluster_pbc):
             if pbc:
                 if cell_size[i] > qm_radius[i] + self.buffer_width:
@@ -713,8 +719,9 @@ class ForceQMMM(Calculator):
                                                     self.buffer_width +
                                                     self.vacuum)
                 # round the qm cell to the required tolerance
-                self.qm_cluster_cell[i, i] = np.round((self.qm_cluster_cell[i, i]) / self.qm_cell_rounding) \
-                                             * self.qm_cell_rounding
+                self.qm_cluster_cell[i, i] = np.round((self.qm_cluster_cell[i, i])
+                                                     / self.qm_cell_rounding) \
+                                                     * self.qm_cell_rounding
 
     def get_qm_cluster(self, atoms):
 
