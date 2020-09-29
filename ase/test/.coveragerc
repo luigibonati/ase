@@ -72,23 +72,12 @@ omit =
 
     # TODO: Improve IO format coverage and add include in coverage stats
     ../io/gaussian.py
-    #../io/crystal.py
-    #../io/wien2k.py
-    #../io/gromos.py
     ../io/dftb.py
-    #../io/exciting.py
-    ../io/bundletrajectory.py
-    #../io/opls.py
     ../io/lammpsrun.py
-    #../io/aims.py
-    #../io/gamess_us.py
     ../io/pov.py
-    #../io/orca.py
-    #../io/gromacs.py
     ../io/dacapo.py
     ../io/cp2k.py
     ../io/fortranfile.py
-    ../io/bundlemanipulate.py
     ../io/turbomole.py
     ../io/gaussian_reader.py
     ../io/acemolecule.py
