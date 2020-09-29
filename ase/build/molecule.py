@@ -14,7 +14,7 @@ def molecule(name, vacuum=None, **kwargs):
         Name of the molecule to build.
     vacuum : float, optional
         Amount of vacuum to pad the molecule with on all sides.
-    Additional keyword arguments (**kwargs) can be supplied, which are passed
+    Additional keyword arguments (kwargs) can be supplied, which are passed
     to ase.Atoms.
 
     Returns
