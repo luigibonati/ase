@@ -182,16 +182,16 @@ class OganovFP(Fingerprint):
 
         newstart = natoms * int(np.prod([nx, ny, nz]) / 2)
         newend = newstart + natoms
-        self.atoms = self.extendedatoms[newstart:newend]
+        self.primaryatoms = self.extendedatoms[newstart:newend]
 
         # Distance matrix
-        ap = self.atoms.positions
+        ap = self.primaryatoms.positions
         ep = self.extendedatoms.positions
         dm = distance_matrix(x=ap, y=ep)
 
         mask = np.logical_or(dm == 0, dm > self.limit)
         r_indices = []
-        for i in range(len(self.atoms)):
+        for i in range(len(self.primaryatoms)):
             for j in range(len(self.extendedatoms)):
 
                 if mask[i, j]:
@@ -206,7 +206,7 @@ class OganovFP(Fingerprint):
 
         elementlist = list(self.elements)
         self.prim_symbols = [elementlist.index(s)
-                             for s in self.atoms.get_chemical_symbols()]
+                             for s in self.primaryatoms.get_chemical_symbols()]
         self.ext_symbols = [elementlist.index(s)
                             for s in self.extendedatoms.get_chemical_symbols()]
         self.AB = np.array([(self.prim_symbols[i], self.ext_symbols[j])
@@ -220,8 +220,6 @@ class OganovFP(Fingerprint):
         # Determine unit cell parameters:
         cell = self.atoms.cell.array
         lengths = self.atoms.cell.lengths()
-
-        self.origcell = cell
 
         return [self.limit // lengths[i] + 1 for i in range(3)]
 
@@ -269,7 +267,7 @@ class OganovFP(Fingerprint):
         index: Atom index with which to differentiate
         '''
         gradient = np.zeros([self.n, self.n, self.N, 3])
-        n = len(self.atoms)
+        n = len(self.primaryatoms)
 
         mask = np.arange(n) == index
         ext_mask = np.arange(len(self.extendedatoms)) % n == index
@@ -306,7 +304,7 @@ class OganovFP(Fingerprint):
     def calculate_all_gradients(self):
 
         self.gradients = np.array([self.calculate_gradient(atom.index)
-                                   for atom in self.atoms])
+                                   for atom in self.primaryatoms])
         return self.gradients
 
     # ::: KERNEL STUFF ::: #
@@ -519,8 +517,6 @@ class RadialAngularFP(OganovFP):
         cell = self.atoms.cell.array
         lengths = self.atoms.cell.lengths()
 
-        self.origcell = cell
-
         ncells_radial = [self.limit // lengths[i] + 1 for i in range(3)]
         ncells_angular = [2 * self.Rtheta // lengths[i] + 1 for i in range(3)]
 
@@ -534,7 +530,7 @@ class RadialAngularFP(OganovFP):
         """
 
         # Extended distance and displacement vector matrices:
-        ap = self.atoms.positions
+        ap = self.primaryatoms.positions
         ep = self.extendedatoms.positions
         edm = distance_matrix(ep, ep)
 
@@ -548,7 +544,7 @@ class RadialAngularFP(OganovFP):
         mask2 = dm == 0
         mask3 = np.logical_or(edm == 0, edm > self.Rtheta)
 
-        for i in range(len(self.atoms)):
+        for i in range(len(self.primaryatoms)):
             for j in range(len(self.extendedatoms)):
 
                 if mask1[i, j]:
@@ -713,7 +709,7 @@ class RadialAngularFP(OganovFP):
         '''
         gradient = np.zeros([self.n, self.n, self.n, self.nanglebins, 3])
 
-        n = len(self.atoms)
+        n = len(self.primaryatoms)
 
         mask = np.arange(n) == index
         ext_mask = np.arange(len(self.extendedatoms)) % n == index
@@ -782,7 +778,7 @@ class RadialAngularFP(OganovFP):
                                                              third_i,
                                                              third_j,
                                                              third_k)
-                               for atom in self.atoms]
+                               for atom in self.primaryatoms]
         return np.array(self.anglegradients)
 
     # ::: KERNEL STUFF ::: #

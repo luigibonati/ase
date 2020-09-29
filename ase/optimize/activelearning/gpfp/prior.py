@@ -150,8 +150,6 @@ class CalculatorPrior(ConstantPrior):
             output = np.zeros(1)
 
         atoms = x.atoms.copy()
-        atoms.cell = x.origcell
-        atoms.wrap()
 
         atoms.calc = self.calculator
         output[0] = atoms.get_potential_energy() + self.constant
@@ -163,7 +161,7 @@ class CalculatorPrior(ConstantPrior):
                 # warning = 'Prior Calculator does not support forces. '
                 # warning += 'Setting all prior forces to zero.'
                 # warnings.warn(warning)
-                pass
+                print('Prior Calculator does not support forces.')
 
         return output
 
