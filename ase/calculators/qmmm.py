@@ -728,12 +728,10 @@ class ForceQMMM(Calculator):
         del qm_buffer_atoms.constraints
 
         qm_buffer_atoms.set_cell(self.qm_cluster_cell)
+        # TODO: set pbc
         qm_shift = (0.5 * qm_buffer_atoms.cell.diagonal() -
                     qm_buffer_atoms.positions.mean(axis=0))
 
-        #FIXME set_cell is called twice
-        qm_buffer_atoms.set_cell(self.qm_cluster_cell)
-        #TODO: set pbc
         #TODO: apply shif only on non periodic directions
         qm_buffer_atoms.positions += qm_shift
 
