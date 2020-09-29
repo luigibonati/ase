@@ -1268,7 +1268,7 @@ def make_precon(precon):
         'Exp': Exp,
         'Pfrommer': Pfrommer,
         'FF': FF,
-        'Exp_FF': Exp_FF
+        'Exp_FF': Exp_FF,
         'ID': IdentityPrecon,
         None: IdentityPrecon,
         'IdentifyPrecon': IdentifyPrecon
