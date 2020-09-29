@@ -83,7 +83,6 @@ omit =
     #../io/aims.py
     #../io/gamess_us.py
     ../io/pov.py
-    ../io/pickletrajectory.py
     #../io/orca.py
     #../io/gromacs.py
     ../io/dacapo.py
