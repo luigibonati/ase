@@ -65,7 +65,13 @@ def test_forceqmmm():
         # same test for qmmm.get_cluster()
         qm_cluster = qmmm.get_qm_cluster(at)
         assert len(qm_cluster) == qm_buffer_mask_ref.sum()
-
+        # test region mappings
+        region = at.get_array("region")
+        qm_mask_region = region == "QM"
+        assert qm_mask_region.sum() == qm_mask.sum()
+        buffer_mask_region = region == "buffer"
+        assert qm_mask_region.sum() + \
+               buffer_mask_region.sum() == qm_buffer_mask_ref.sum()
     # test qm cell shape and choice of pbc:
     # make a non-periodic pdc in a direction
     # if qm_radius + buffer is larger than the original cell
