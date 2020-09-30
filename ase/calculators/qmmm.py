@@ -628,7 +628,8 @@ class ForceQMMM(Calculator):
                  buffer_width,
                  vacuum=5.,
                  zero_mean=True,
-                 qm_cell_rounding=3):
+                 qm_cell_rounding=3,
+                 add_region=True):
         """
         ForceQMMM calculator
 
@@ -648,6 +649,8 @@ class ForceQMMM(Calculator):
             If True, add a correction to zero the mean force in each direction
         qm_cell_rounding: int
             Tolerance value in Angstrom to round the qm cluster cell
+        add_region: bool
+            if True add an array "region" to atoms with QM, buffer and MM labels
         """
 
         if len(atoms[qm_selection_mask]) == 0:
@@ -660,6 +663,7 @@ class ForceQMMM(Calculator):
         self.buffer_width = buffer_width
         self.zero_mean = zero_mean
         self.qm_cell_rounding = qm_cell_rounding
+        self.add_region = add_region
 
         self.qm_buffer_mask = None
         self.qm_cluster_cell = None
@@ -681,6 +685,29 @@ class ForceQMMM(Calculator):
 
         for r_qm in r:
             self.qm_buffer_mask[r_qm < self.buffer_width] = True
+
+        if self.add_region:
+            if "region" in atoms.arrays.keys():
+                region = atoms.get_array("region")
+            else:
+                region = np.full_like(atoms, "MM")
+                atoms.set_array("region", region)
+
+            region[self.qm_selection_mask] = \
+                np.full_like(region[self.qm_selection_mask], "QM")
+
+            buffer_only_mask = \
+                np.logical_and(self.qm_buffer_mask,
+                               np.logical_not(self.qm_selection_mask))
+
+            region[buffer_only_mask] = np.full_like(region[buffer_only_mask],
+                                                    "buffer")
+            atoms.set_array("region", region)
+
+            print(f"Mapping of {len(region):5d} atoms in total:")
+            for region_id in np.unique(region):
+                n_at = np.count_nonzero(region == region_id)
+                print(f"{n_at:16d} {region_id}")
 
         # get all distances between qm atoms.
         # Treat all X, Y and Z directions independently
