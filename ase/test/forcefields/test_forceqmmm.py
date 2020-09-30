@@ -77,8 +77,8 @@ def test_forceqmmm():
     at0 = bulk_at * 4
     size = at0.cell[0, 0]
     r = at0.get_distances(0, np.arange(len(at0)), mic=True)
-    R_QM = alat / np.sqrt(2.0) + 1.0e-3 # should give 12 nearest neighbours +
-                                        # atom in the center
+    # should give 12 nearest neighbours + atom in the center
+    R_QM = alat / np.sqrt(2.0) + 1.0e-3
     qm_mask = r < R_QM
     """
     print(f"R_QM: {R_QM:.4f}")
@@ -192,8 +192,8 @@ def test_forceqmmm():
     a0_mm_r = v0_mm_r ** (1.0 / 3)
 
     # check match of a0 and B after rescaling is adequate
-    assert abs((a0_mm_r - a0_qm) / a0_qm) < 1e-3  # 0.1% error in
-                                                  # lattice constant
+    # 0.1% error in lattice constant
+    assert abs((a0_mm_r - a0_qm) / a0_qm) < 1e-3
     assert abs((B_mm_r - B_qm) / B_qm) < 0.05  # 5% error in bulk modulus
 
     # plt.plot(v_mm, E_mm - np.min(E_mm), 'o-', label='MM')
