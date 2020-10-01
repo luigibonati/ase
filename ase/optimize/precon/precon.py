@@ -1272,7 +1272,7 @@ def make_precon(precon):
     Returns
     -------
     precon - instance of relevant subclass of `ase.optimize.precon.Precon`
-    """    
+    """
     lookup = {
         'C1': C1,
         'Exp': Exp,
