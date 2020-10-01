@@ -1267,12 +1267,12 @@ def make_precon(precon):
     Parameters
     ----------
     precon - one of 'C1', 'Exp', 'Pfrommer', 'FF', 'Exp_FF', 'ID', None
+             or an instance of a subclass of `ase.optimize.precon.Precon`
 
     Returns
     -------
     precon - instance of relevant subclass of `ase.optimize.precon.Precon`
-    """
-    
+    """    
     lookup = {
         'C1': C1,
         'Exp': Exp,
@@ -1283,8 +1283,10 @@ def make_precon(precon):
         None: IdentityPrecon,
         'IdentityPrecon': IdentityPrecon
     }
-    cls = lookup.get(precon, precon)
-    return cls()
+    if isinstance(precon, str):
+        cls = lookup[precon]
+        precon = cls()
+    return precon
 
 
 def make_precon_images(precon, images):
