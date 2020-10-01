@@ -305,9 +305,11 @@ class BaseNEB:
         else:
             raise NotImplementedError(method)
 
-        if precon is not None and method not in ['spline', 'string']:
-            raise NotImplementedError(f'no precon implemented: {method}')
-        precon = make_precon_images(precon, images)
+        if method in ['spline', 'string']:
+            precon = make_precon_images(precon, images)
+        else:
+            if precon is not None:
+                raise NotImplementedError(f'no precon implemented: {method}')
         self.precon = precon
 
         self.neb_method = get_neb_method(self, method)
