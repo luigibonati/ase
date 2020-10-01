@@ -436,7 +436,7 @@ class SparsePrecon(Precon):
 
     @abstractmethod
     def get_coeff(self, r):
-        ...    
+        ...
 
     def Pdot(self, x):
         return self.P.dot(x)

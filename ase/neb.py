@@ -209,7 +209,7 @@ class BaseSplineMethod(NEBMethod):
         self.residuals = np.zeros(neb.nimages)
 
     def get_tangent(self, state, spring1, spring2, i):
-        reaction_coordinate, _, _, dx_ds, _ = state.spline       
+        reaction_coordinate, _, _, dx_ds, _ = state.spline
         tangent = dx_ds(reaction_coordinate[i])
         tangent /= state.precon[i].norm(tangent)
         return tangent.reshape(-1, 3)
