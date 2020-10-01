@@ -36,7 +36,7 @@ def read_wout_all(fileobj: IO[str]) -> Dict[str, Any]:
         symbols.append(words[1])
         n += 1
 
-    atoms = Atoms(symbols, positions, cell=cell)
+    atoms = Atoms(symbols, positions, cell=cell, pbc=True)
 
     n = len(lines) - 1
     while n > 0:
