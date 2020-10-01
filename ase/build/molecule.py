@@ -19,7 +19,7 @@ def molecule(name, vacuum=None, **kwargs):
 
     Returns
     -------
-    mol : Atoms
+    ase.atoms.Atoms
         An ASE Atoms object corresponding to the specified molecule.
 
     Notes
