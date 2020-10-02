@@ -506,8 +506,11 @@ class Calculator(GetPropertiesMixin):
     'Whether we purge the results following any change in the set() method.  '
     'Most (file I/O) calculators will probably want this.'
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False, label=None,
-                 atoms=None, directory='.', **kwargs):
+    _deprecated = object()
+
+    def __init__(self, restart=None, ignore_bad_restart_file=_deprecated,
+                 label=None, atoms=None, directory='.',
+                 **kwargs):
         """Basic calculator implementation.
 
         restart: str
@@ -532,6 +535,18 @@ class Calculator(GetPropertiesMixin):
         self.results = {}  # calculated properties (energy, forces, ...)
         self.parameters = None  # calculational parameters
         self._directory = None  # Initialize
+
+        if ignore_bad_restart_file is None:
+            ignore_bad_restart_file = False
+        else:
+            warnings.warn(FutureWarning(
+                'The keyword "ignore_bad_restart_file" is deprecated and '
+                'will be removed in a future version of ASE.  Passing more '
+                'than one positional argument to Calculator is also '
+                'deprecated and will stop functioning in the future.  '
+                'Please pass arguments by keyword (key=value) except '
+                'optionally the "restart" keyword.'
+            ))
 
         if restart is not None:
             try:
