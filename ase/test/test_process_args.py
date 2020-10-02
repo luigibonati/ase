@@ -1,4 +1,8 @@
+import sys
+from pathlib import Path
+
 import pytest
+
 from ase.utils.process_args import parse_command, ProcessArgs
 
 
@@ -35,3 +39,21 @@ def test_process_args():
     assert args.as_shell() == shellcommand
     assert shellcommand in str(args)
 
+
+def test_popen_with_streams():
+    program = 'program.py'
+    Path(program).write_text("""\
+import sys
+print('hello 1')
+print('hello 2', file=sys.stderr)
+""")
+
+    out = 'out.txt'
+    err = 'err.txt'
+    args = ProcessArgs([sys.executable],
+                       stdin=program, stdout=out, stderr=err)
+    status = args.popen().wait()
+    assert status == 0
+
+    assert Path(out).read_text().strip() == 'hello 1'
+    assert Path(err).read_text().strip() == 'hello 2'
