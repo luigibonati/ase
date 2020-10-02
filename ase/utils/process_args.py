@@ -1,3 +1,15 @@
+"""Tool to parse simple shell commands.
+
+We want to replace the shell commands used with Calculators with non-shell
+commands in order to programmatically control some parameters.
+This module parses typical commands like "ASE_XXX_COMMAND=exe < in > out"
+into something that we can feed to Popen without the help of a shell.
+
+shlex.split() does not know about stream redirections (<, >, 2>), therefore
+using it is insufficient.
+"""
+
+
 import re
 
 
@@ -15,28 +27,8 @@ def split_redirection_chars_and_spaces(command):
             yield token
 
 
-class ProcessArgs:
-    def __init__(self, argv, stdin, stdout, stderr):
-        self.argv = argv
-        self.stdin = stdin
-        self.stdout = stdout
-        self.stderr = stderr
-
-    def __repr__(self):
-        return 'ProcessArgs({})'.format(self.as_shell())
-
-    def as_shell(self):
-        argv = list(self.argv)
-        if self.stdin:
-            argv += ['<', self.stdin]
-        if self.stdout:
-            argv += ['>', self.stdout]
-        if self.stderr:
-            argv += ['2>', self.stderr]
-        return ' '.join(argv)
-
-
 def parse_command(command):
+    """Parse simple shell command and return ProcessArgs."""
     if any(char in command for char in bad_chars):
         raise ValueError('Please avoid characters {bad_chars} in command')
 
@@ -61,3 +53,24 @@ def parse_command(command):
         else:
             argv.append(token)
     return ProcessArgs(argv, **redirections)
+
+
+class ProcessArgs:
+    def __init__(self, argv, stdin, stdout, stderr):
+        self.argv = argv
+        self.stdin = stdin
+        self.stdout = stdout
+        self.stderr = stderr
+
+    def __repr__(self):
+        return 'ProcessArgs({})'.format(self.as_shell())
+
+    def as_shell(self):
+        argv = list(self.argv)
+        if self.stdin:
+            argv += ['<', self.stdin]
+        if self.stdout:
+            argv += ['>', self.stdout]
+        if self.stderr:
+            argv += ['2>', self.stderr]
+        return ' '.join(argv)
