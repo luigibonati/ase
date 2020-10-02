@@ -7,7 +7,7 @@ import os
 import os.path as op
 import pickle
 import sys
-from typing import Dict, List, Sequence, Tuple, Union, Any
+from typing import Dict, List, Sequence, Tuple, TypeVar, Union, Any
 
 import numpy as np
 
@@ -23,6 +23,7 @@ from ase.spectrum.dosdata import RawDOSData
 from ase.spectrum.doscollection import DOSCollection
 
 RealSequence4D = Sequence[Sequence[Sequence[Sequence[Real]]]]
+VD = TypeVar('VD', bound='VibrationsData')
 
 
 @jsonable('vibrationsdata')
@@ -493,6 +494,23 @@ class VibrationsData:
 
         return DOSCollection([RawDOSData(energies, weights, info=info)
                               for weights, info in zip(all_weights, all_info)])
+
+    def with_new_masses(self: VD, masses: Union[Sequence[float], np.ndarray]
+                        ) -> VD:
+        """Get a copy of vibrations with modified masses and the same Hessian
+
+        Args:
+            masses:
+                New sequence of masses corresponding to the atom order in
+                self.get_atoms()
+        Returns:
+            A copy of the data with new masses for the same Hessian
+        """
+
+        new_atoms = self.get_atoms()
+        new_atoms.set_masses(masses)
+        return self.__class__(new_atoms, self.get_hessian(),
+                              indices=self.get_indices())
 
 
 class Vibrations:

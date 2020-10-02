@@ -286,6 +286,16 @@ class TestVibrationsData():
         with pytest.raises(ValueError):
             vib_data.get_energies_and_modes()
 
+    def test_new_mass(self):
+        vib_data = VibrationsData(self.n2.copy(), self.h_n2)
+        original_masses = vib_data.get_atoms().get_masses()
+        new_masses = original_masses * 3
+        new_vib_data = vib_data.with_new_masses(new_masses)
+        assert_array_almost_equal(new_vib_data.get_atoms().get_masses(),
+                                  new_masses)
+        assert_array_almost_equal(vib_data.get_energies() / np.sqrt(3),
+                                  new_vib_data.get_energies())
+
     def test_fixed_atoms(self):
         vib_data = VibrationsData(self.n2.copy(), self.h_n2[1:, :, 1:, :],
                                   indices=[1, ])
