@@ -35,10 +35,6 @@ def parse_command(command):
     argv = []
     redirections = {'stdin': None, 'stdout': None, 'stderr': None}
 
-    stdin = None
-    stdout = None
-    stderr = None
-
     itokens = split_redirection_chars_and_spaces(command)
 
     for token in itokens:

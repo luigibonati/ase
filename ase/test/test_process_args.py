@@ -1,4 +1,5 @@
 import pytest
+from ase.utils.process_args import parse_command, ProcessArgs
 
 
 @pytest.mark.parametrize('cmd, ref_normalized', [
@@ -26,3 +27,11 @@ def test_parse_command(cmd, ref_normalized):
 def test_parse_bad_command(cmd, errmsg):
     with pytest.raises(ValueError, match=errmsg):
         print(parse_command(cmd))
+
+
+def test_process_args():
+    args = ProcessArgs(['a', 'b'], stdin='x', stdout='y', stderr='z')
+    shellcommand = 'a b < x > y 2> z'
+    assert args.as_shell() == shellcommand
+    assert shellcommand in str(args)
+
