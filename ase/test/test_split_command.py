@@ -47,13 +47,14 @@ def parse_command(command):
     stdin = None
     stdout = None
     stderr = None
+
     itokens = split_redirection_chars_and_spaces(command)
-    #itokens = iter(tokenize(command))
+
     for token in itokens:
         if token in redirection_symbols:
-            if token in redirections:
-                raise ValueError('Same stream redirected twice')
             stream_name = redirection_symbols[token]
+            if redirections[stream_name] is not None:
+                raise ValueError('Same stream redirected twice')
             try:
                 redirections[stream_name] = next(itokens)
             except StopIteration:
@@ -63,7 +64,10 @@ def parse_command(command):
     return Command(argv, **redirections)
 
 
-@pytest.mark.parametrize('cmd, ref', [
+
+
+@pytest.mark.parametrize('cmd, ref_normalized', [
+    ('arg', 'arg'),
     ('arg>out', 'arg > out'),
     ('arg1>out', 'arg1 > out'),
     ('arg2>out', 'arg2 > out'),
@@ -72,8 +76,18 @@ def parse_command(command):
     ('arg<in', 'arg < in'),
     ('arg<in 2>out2 1> out1', 'arg < in > out1 2> out2'),
 ])
-def test_parse_command(cmd, ref):
+def test_parse_command(cmd, ref_normalized):
     cmd_obj = parse_command(cmd)
     print(cmd, '-->', cmd_obj)
     normalized_command = cmd_obj.as_shell()
-    assert normalized_command == ref
+    assert normalized_command == ref_normalized
+
+
+@pytest.mark.parametrize('cmd, errmsg', [
+    ('arg "hello world"', 'avoid characters'),
+    ('arg 1> aa > bb', 'redirected twice'),
+    ('arg >', 'Missing argument'),
+])
+def test_parse_bad_command(cmd, errmsg):
+    with pytest.raises(ValueError, match=errmsg):
+        print(parse_command(cmd))
