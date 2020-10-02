@@ -16,7 +16,7 @@ def split_redirection_chars_and_spaces(command):
             yield token
 
 
-class Command:
+class ProcessArgs:
     def __init__(self, argv, stdin, stdout, stderr):
         self.argv = argv
         self.stdin = stdin
@@ -24,7 +24,7 @@ class Command:
         self.stderr = stderr
 
     def __repr__(self):
-        return 'Command({})'.format(self.as_shell())
+        return 'ProcessArgs({})'.format(self.as_shell())
 
     def as_shell(self):
         argv = list(self.argv)
@@ -61,7 +61,7 @@ def parse_command(command):
                 raise ValueError('Missing argument for redirection')
         else:
             argv.append(token)
-    return Command(argv, **redirections)
+    return ProcessArgs(argv, **redirections)
 
 
 
