@@ -367,16 +367,13 @@ class VibrationsData:
         """Print a summary of the vibrational frequencies.
 
         Args:
-            energies:
-                Pre-computed set of energies. Use if available to avoid
-                re-calculation from the Hessian.
             logfile: if specified, write output to a different location
                 than stdout. Can be an object with a write() method or the name
                 of a file to create.
             im_tol:
                 Tolerance for imaginary frequency in eV. If frequency has a
                 larger imaginary component than im_tol, the imaginary component
-                is shown int the summary table.
+                is shown in the summary table.
         """
 
         if logfile is None:
