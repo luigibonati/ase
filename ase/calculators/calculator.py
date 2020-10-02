@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 import os
 import copy
-import subprocess
 from math import pi, sqrt
 import pathlib
 from typing import Union, Optional, List, Set, Dict, Any
