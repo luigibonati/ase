@@ -517,6 +517,9 @@ class Calculator(GetPropertiesMixin):
             Prefix for restart file.  May contain a directory. Default
             is None: don't restart.
         ignore_bad_restart_file: bool
+            Deprecated, please do not use.
+            Passing more than one positional argument to Calculator()
+            is deprecated and will stop working in the future.
             Ignore broken or missing restart file.  By default, it is an
             error if the restart file is missing or broken.
         directory: str or PurePath
@@ -536,7 +539,7 @@ class Calculator(GetPropertiesMixin):
         self.parameters = None  # calculational parameters
         self._directory = None  # Initialize
 
-        if ignore_bad_restart_file is None:
+        if ignore_bad_restart_file is self._deprecated:
             ignore_bad_restart_file = False
         else:
             warnings.warn(FutureWarning(
@@ -913,7 +916,8 @@ class FileIOCalculator(Calculator):
     command: Optional[str] = None
     'Command used to start calculation'
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=Calculator._deprecated,
                  label=None, atoms=None, command=None, **kwargs):
         """File-IO calculator.
 
