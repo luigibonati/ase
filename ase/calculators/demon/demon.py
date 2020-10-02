@@ -38,7 +38,7 @@ class Parameters_deMon(Parameters):
             command=None,
             restart=None,
             basis_path=None,
-            ignore_bad_restart_file=False,
+            ignore_bad_restart_file=FileIOCalculator._deprecated,
             deMon_restart_path='.',
             title='deMon input file',
             scftype='RKS',

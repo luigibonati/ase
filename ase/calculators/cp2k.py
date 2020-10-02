@@ -169,7 +169,8 @@ class CP2K(Calculator):
         xc='LDA',
         print_level='LOW')
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=Calculator._deprecated,
                  label='cp2k', atoms=None, command=None,
                  debug=False, **kwargs):
         """Construct CP2K-calculator object."""

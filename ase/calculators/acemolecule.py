@@ -42,7 +42,8 @@ class ACE(FileIOCalculator):
                           'Scf': scf_list, 'Force': force_list, 'TDDFT': tddft_list, 'order': order_list}
 
     def __init__(
-            self, restart=None, ignore_bad_restart_file=False,
+            self, restart=None,
+            ignore_bad_restart_file=FileIOCalculator._deprecated,
             label='ace', atoms=None, command=None,
             basisfile=None, **kwargs):
         FileIOCalculator.__init__(self, restart, ignore_bad_restart_file,

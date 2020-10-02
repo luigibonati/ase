@@ -21,7 +21,8 @@ class Dftb(FileIOCalculator):
 
     implemented_properties = ['energy', 'forces', 'charges', 'stress']
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=FileIOCalculator._deprecated,
                  label='dftb', atoms=None, kpts=None,
                  slako_dir=None,
                  **kwargs):

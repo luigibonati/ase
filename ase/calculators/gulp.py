@@ -62,7 +62,8 @@ class GULP(FileIOCalculator):
 
 #conditions=[['O', 'default', 'O1'], ['O', 'O2', 'H', '<', '1.6']]
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=FileIOCalculator._deprecated,
                  label='gulp', atoms=None, optimized=None,
                  Gnorm=1000.0, steps=1000, conditions=None, **kwargs):
         """Construct GULP-calculator object."""

@@ -60,7 +60,6 @@ class Octopus(FileIOCalculator, EigenvalOccupationMixin):
         self.kwargs = {}
 
         FileIOCalculator.__init__(self, restart=restart,
-                                  ignore_bad_restart_file=False,
                                   directory=directory,
                                   atoms=atoms,
                                   command=command, **kwargs)

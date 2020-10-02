@@ -80,7 +80,8 @@ class Gromacs(FileIOCalculator):
         rvdw_switch='0.75',
         DispCorr='Ener')
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=FileIOCalculator._deprecated,
                  label='gromacs', atoms=None,
                  do_qmmm=False, freeze_qm=False, clean=True,
                  water_model='tip3p', force_field='oplsaa', command=None,
