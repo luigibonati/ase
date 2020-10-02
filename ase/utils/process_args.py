@@ -10,7 +10,9 @@ using it is insufficient.
 """
 
 
+from contextlib import contextmanager
 import re
+from subprocess import Popen
 
 
 redirection_symbols = {'<': 'stdin',
@@ -70,3 +72,22 @@ class ProcessArgs:
         if self.stderr:
             argv += ['2>', self.stderr]
         return ' '.join(argv)
+
+    @contextmanager
+    def _open_streams(self):
+        streams = {}
+        if self.stdin is not None:
+            streams['stdin'] = open(self.stdin, 'rb')
+        if self.stdout is not None:
+            streams['stdout'] = open(self.stdout, 'wb')
+        if self.stderr is not None:
+            streams['stderr'] = open(self.stderr, 'wb')
+        try:
+            yield streams
+        finally:
+            for stream in streams.values():
+                stream.close()
+
+    def popen(self, *, cwd=None):
+        with self._open_streams() as streams:
+            return Popen(self.argv, cwd=cwd, **streams)

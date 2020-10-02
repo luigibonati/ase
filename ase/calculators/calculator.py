@@ -13,6 +13,7 @@ from ase.cell import Cell
 from ase.dft.kpoints import monkhorst_pack
 from ase.outputs import Properties, all_outputs
 from ase.utils import jsonable
+from ase.utils.process_args import parse_command
 
 
 class CalculatorError(RuntimeError):
@@ -928,8 +929,10 @@ class FileIOCalculator(Calculator):
         if 'PREFIX' in command:
             command = command.replace('PREFIX', self.prefix)
 
+        process_args = parse_command(command)
+
         try:
-            proc = subprocess.Popen(command, shell=True, cwd=self.directory)
+            proc = process_args.popen(cwd=self.directory)
         except OSError as err:
             # Actually this may never happen with shell=True, since
             # probably the shell launches successfully.  But we soon want
