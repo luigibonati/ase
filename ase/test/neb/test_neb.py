@@ -6,11 +6,9 @@ def test_neb(plt):
     from ase.calculators.morse import MorsePotential
     from ase.optimize import BFGS, QuasiNewton
 
-
     def calc():
         # Common calculator for all images.
         return MorsePotential()
-
 
     # Create and relax initial and final states.
     initial = Atoms('H7',
