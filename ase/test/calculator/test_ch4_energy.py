@@ -61,7 +61,7 @@ calc = pytest.mark.calculator
 @calc('cp2k')
 @calc('espresso', ecutwfc=300 / Ry)
 @calc('gpaw', symmetry='off', mode='pw', txt='gpaw.txt', mixer={'beta': 0.6},
-      marks=pytest.mark.filterwarnings('ignore:ignore_bad_restart_file'))
+      marks=pytest.mark.filterwarnings('ignore:.*?ignore_bad_restart_file'))
 @calc('nwchem')
 @calc('octopus', Spacing='0.4 * angstrom')
 @calc('siesta', marks=pytest.mark.xfail)
