@@ -10,9 +10,7 @@ import ase
 
 pytest.importorskip('flake8')
 
-
 asepath = Path(ase.__path__[0])  # type: ignore
-
 
 max_errors = {
     # do not compare types, use 'isinstance()'
@@ -42,85 +40,85 @@ max_errors = {
     # expected 1 blank line before a nested definition, found 0
     'E306': 0,
     # test for membership should be 'not in'
-    'E713': 4,
+    'E713': 2,
     # multiple statements on one line (colon)
-    'E701': 5,
+    'E701': 1,
     # indentation is not a multiple of four (comment)
-    'E114': 5,
+    'E114': 2,
     # unexpected indentation (comment)
-    'E116': 5,
+    'E116': 4,
     # comparison to None should be 'if cond is None:'
-    'E711': 5,
+    'E711': 4,
     # expected 1 blank line, found 0
-    'E301': 8,
+    'E301': 5,
     # multiple spaces after keyword
-    'E271': 8,
+    'E271': 6,
     # test for object identity should be 'is not'
-    'E714': 8,
+    'E714': 6,
     # closing bracket does not match visual indentation
-    'E124': 8,
+    'E124': 3,
     # too many leading '#' for block comment
-    'E266': 10,
+    'E266': 3,
     # over-indented
-    'E117': 11,
+    'E117': 2,
     # indentation contains mixed spaces and tabs
-    'E101': 12,
+    'E101': 7,
     # indentation contains tabs
-    'W191': 13,
+    'W191': 7,
     # closing bracket does not match indentation of opening bracket's line
-    'E123': 14,
+    'E123': 13,
     # multiple spaces before operator
-    'E221': 16,
+    'E221': 8,
     # whitespace before '}'
-    'E202': 19,
+    'E202': 16,
     # whitespace after '{'
-    'E201': 20,
+    'E201': 16,
     # inline comment should start with '# '
-    'E262': 20,
+    'E262': 12,
     # the backslash is redundant between brackets
-    'E502': 30,
+    'E502': 8,
     # continuation line missing indentation or outdented
-    'E122': 31,
+    'E122': 30,
     # indentation is not a multiple of four
-    'E111': 36,
+    'E111': 28,
     # do not use bare 'except'
-    'E722': 38,
+    'E722': 11,
     # whitespace before ':'
     'E203': 38,
     # blank line at end of file
-    'W391': 49,
+    'W391': 39,
     # continuation line over-indented for hanging indent
-    'E126': 48,
+    'E126': 27,
     # multiple spaces after ','
-    'E241': 50,
+    'E241': 45,
     # continuation line under-indented for visual indent
-    'E128': 54,
+    'E128': 39,
     # continuation line over-indented for visual indent
-    'E127': 60,
+    'E127': 32,
     # missing whitespace around operator
-    'E225': 61,
+    'E225': 43,
     # ambiguous variable name 'O'
     'E741': 77,
     # too many blank lines (2)
-    'E303': 237,
+    'E303': 188,
     # expected 2 blank lines after class or function definition, found 1
-    'E305': 83,
+    'E305': 35,
     # module level import not at top of file
-    'E402': 97,
+    'E402': 16,
     # at least two spaces before inline comment
-    'E261': 97,
+    'E261': 71,
     # expected 2 blank lines, found 1
-    'E302': 111,
+    'E302': 102,
     # unexpected spaces around keyword / parameter equals
-    'E251': 117,
+    'E251': 95,
     # trailing whitespace
-    'W291': 222,
+    'W291': 169,
     # block comment should start with '# '
-    'E265': 246,
+    'E265': 172,
     # missing whitespace after ','
-    'E231': 465,
+    'E231': 369,
     # missing whitespace around arithmetic operator
-    'E226': 563,
+    'E226': 408,
     # line too long (93 > 79 characters)
     'E501': 755}
 
@@ -161,8 +159,7 @@ def test_flake8():
     descriptions = {}
     for stdout_line in stdout.splitlines():
         tokens = stdout_line.split(':', 3)
-        filename, lineno, colno, complaint = tokens
-        lineno = int(lineno)
+        filename, _, colno, complaint = tokens
         e = complaint.strip().split()[0]
         errors[e] += 1
         descriptions[e] = complaint

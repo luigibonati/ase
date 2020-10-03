@@ -1,4 +1,3 @@
-
 .. _releasenotes:
 
 =============
@@ -23,6 +22,9 @@ Git master branch
 * Reads Wannier90 ``.wout`` files.
   See :func:`ase.io.wannier90.read_wout` and
   :func:`ase.io.wannier90.read_wout_all`.
+
+* :meth:`~ase.neb.SingleCalculatorNEB` is deprecated.  Use
+  ``ase.neb.NEB(allow_shared_calculator=True)`` instead.
 
 
 Version 3.20.1
