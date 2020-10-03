@@ -32,7 +32,6 @@ omit =
     ../calculators/amber.py
     ../calculators/turbomole.py
     ../calculators/onetep.py
-    ../calculators/ase_qmmm_manyqm.py
     ../calculators/dmol.py
     ../calculators/mopac.py
     ../calculators/acemolecule.py
