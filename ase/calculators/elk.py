@@ -14,6 +14,8 @@ from ase.calculators.calculator import (FileIOCalculator, Parameters, kpts2mp,
 class ELK(FileIOCalculator, EigenvalOccupationMixin):
     command = 'elk > elk.out'
     implemented_properties = ['energy', 'forces']
+    ignored_changes = {'pbc'}
+    discard_results_on_any_change = True
 
     def __init__(self, restart=None, ignore_bad_restart_file=False,
                  label=os.curdir, atoms=None, **kwargs):
@@ -27,27 +29,9 @@ class ELK(FileIOCalculator, EigenvalOccupationMixin):
         FileIOCalculator.__init__(self, restart, ignore_bad_restart_file,
                                   label, atoms, **kwargs)
 
-    def set_label(self, label):
-        self.label = label
-        self.directory = label
-        self.prefix = ''
-        self.out = os.path.join(label, 'INFO.OUT')
-
     @property
     def out(self):
         return Path(self.directory) / 'INFO.OUT'
-
-    def check_state(self, atoms):
-        system_changes = FileIOCalculator.check_state(self, atoms)
-        # Ignore boundary conditions (ELK always uses them):
-        if 'pbc' in system_changes:
-            system_changes.remove('pbc')
-        return system_changes
-
-    def set(self, **kwargs):
-        changed_parameters = FileIOCalculator.set(self, **kwargs)
-        if changed_parameters:
-            self.reset()
 
     def write_input(self, atoms, properties=None, system_changes=None):
         FileIOCalculator.write_input(self, atoms, properties, system_changes)
