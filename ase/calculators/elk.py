@@ -39,21 +39,6 @@ class ELK(FileIOCalculator, EigenvalOccupationMixin):
         write(directory / 'elk.in', atoms, parameters=self.parameters,
               format='elk-in')
 
-    def read(self, label):
-        FileIOCalculator.read(self, label)
-        totenergy = os.path.join(self.directory, 'TOTENERGY.OUT')
-        eigval = os.path.join(self.directory, 'EIGVAL.OUT')
-        kpoints = os.path.join(self.directory, 'KPOINTS.OUT')
-
-        for filename in [totenergy, eigval, kpoints, self.out]:
-            if not os.path.isfile(filename):
-                raise ReadError('ELK output file ' + filename + ' is missing.')
-
-        # read state from elk.in because *.OUT do not provide enough digits!
-        self.atoms = read_elk(os.path.join(self.directory, 'elk.in'))
-        self.initialize(self.atoms)
-        self.read_results()
-
     def read_results(self):
         converged = self.read_convergence()
         if not converged:
