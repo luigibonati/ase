@@ -115,8 +115,6 @@ def write_elk_in(fd, atoms, parameters=None):
             raise RuntimeError(
                 "You can't use both 'autoswidth' and 'swidth'!")
 
-    #fd = open(os.path.join(self.directory, 'elk.in'), 'w')
-
     # handle custom specifications of rmt
     # (absolute or relative to default) in Bohr
     # rmt = {'H': 0.7, 'O': -0.2, ...}
@@ -295,7 +293,7 @@ class ElkReader:
         yield 'energy', e
 
     def read_forces(self):
-        lines = open(self.out, 'r').readlines()
+        lines = self.out.read_text().splitlines()
         forces = []
         for line in lines:
             if line.rfind('total force') > -1:
@@ -305,7 +303,7 @@ class ElkReader:
 
     def read_convergence(self):
         converged = False
-        text = open(self.out).read().lower()
+        text = self.out.read_text().lower()
         if ('convergence targets achieved' in text and
             'reached self-consistent loops maximum' not in text):
             converged = True
@@ -336,6 +334,41 @@ class ElkReader:
             values = None
         return np.array(values)
 
+    def read_number_of_electrons(self):
+        nelec = None
+        text = self.out.read_text().lower()
+        # Total electronic charge
+        for line in iter(text.split('\n')):
+            if line.rfind('total electronic charge :') > -1:
+                nelec = float(line.split(':')[1].strip())
+                break
+        return nelec
+
+    def read_number_of_iterations(self):
+        niter = None
+        lines = self.out.read_text().splitlines()
+        for line in lines:
+            if line.rfind(' Loop number : ') > -1:
+                niter = int(line.split(':')[1].split()[0].strip())  # last iter
+        return niter
+
+    def read_magnetic_moment(self):
+        magmom = None
+        lines = self.out.read_text().splitlines()
+        for line in lines:
+            if line.rfind('total moment                :') > -1:
+                magmom = float(line.split(':')[1].strip())  # last iter
+        return magmom
+
+    def read_electronic_temperature(self):
+        width = None
+        text = self.out.read_text().lower()
+        for line in iter(text.split('\n')):
+            if line.rfind('smearing width :') > -1:
+                width = float(line.split(':')[1].strip())
+                break
+        return width
+
     def read_number_of_bands(self):
         nbands = None
         lines = (self.path / 'EIGVAL.OUT').read_text().splitlines()
@@ -350,48 +383,12 @@ class ElkReader:
         #    nbands = nbands // 2
         return nbands
 
-    def read_number_of_electrons(self):
-        nelec = None
-        text = open(self.out).read().lower()
-        # Total electronic charge
-        for line in iter(text.split('\n')):
-            if line.rfind('total electronic charge :') > -1:
-                nelec = float(line.split(':')[1].strip())
-                break
-        return nelec
-
-    def read_number_of_iterations(self):
-        niter = None
-        lines = open(self.out).readlines()
-        for line in lines:
-            if line.rfind(' Loop number : ') > -1:
-                niter = int(line.split(':')[1].split()[0].strip())  # last iter
-        return niter
-
-    def read_magnetic_moment(self):
-        magmom = None
-        lines = open(self.out).readlines()
-        for line in lines:
-            if line.rfind('total moment                :') > -1:
-                magmom = float(line.split(':')[1].strip())  # last iter
-        return magmom
-
-    def read_electronic_temperature(self):
-        width = None
-        text = open(self.out).read().lower()
-        for line in iter(text.split('\n')):
-            if line.rfind('smearing width :') > -1:
-                width = float(line.split(':')[1].strip())
-                break
-        return width
-
     def read_eigenvalues(self, kpt=0, spin=0, mode='eigenvalues'):
         """ Returns list of last eigenvalues, occupations
         for given kpt and spin.  """
         values = []
         assert mode in ['eigenvalues', 'occupations']
-        eigval = os.path.join(self.directory, 'EIGVAL.OUT')
-        lines = open(eigval).readlines()
+        lines = (self.path / 'EIGVAL.OUT').read_text().splitlines()
         nstsv = None
         for line in lines:
             if line.rfind(': nstsv') > -1:
@@ -432,7 +429,7 @@ class ElkReader:
         """Method that reads Fermi energy in Hartree from the output file
         and returns it in eV"""
         E_f = None
-        text = open(self.out).read().lower()
+        text = self.out.read_text().lower()
         for line in iter(text.split('\n')):
             if line.rfind('fermi                       :') > -1:
                 E_f = float(line.split(':')[1].strip())
