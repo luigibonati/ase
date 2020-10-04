@@ -106,4 +106,5 @@ def Icosahedron(symbol, noshells, latticeconstant=None):
     symbols = [atomic_number] * len(positions)
     atoms = Atoms(symbols=symbols, positions=positions, tags=tags)
     atoms.center(about=(0, 0, 0))
+    atoms.cell[:] = 0
     return atoms

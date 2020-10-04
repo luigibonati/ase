@@ -105,7 +105,12 @@ class ClusterFactory(ClusterBase):
         positions = positions - min + vacuum / 2.0
         self.center = self.center - min + vacuum / 2.0
 
-        return self.Cluster(symbols=numbers, positions=positions, cell=cell)
+        atoms = self.Cluster(symbols=numbers, positions=positions)
+
+        atoms.cell = (1, 1, 1)  # XXX ugly hack to center around zero
+        atoms.center(about=(0, 0, 0))
+        atoms.cell[:] = 0
+        return atoms
 
     def set_atomic_numbers(self, symbols):
         "Extract atomic number from element"
