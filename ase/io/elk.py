@@ -1,17 +1,19 @@
-def read_elk(filename):
+import numpy as np
+
+from ase import Atoms
+from ase.units import Bohr
+from ase.utils import reader
+
+
+@reader
+def read_elk(fd):
     """Import ELK atoms definition.
 
     Reads unitcell, atom positions, magmoms from elk.in/GEOMETRY.OUT file.
     """
 
-    from ase import Atoms
-    from ase.units import Bohr
-    import numpy as np
-
-    atoms = Atoms()
-    fd = open(filename, 'r')
     lines = fd.readlines()
-    fd.close()
+
     scale = np.ones(4)  # unit cell scale
     positions = []
     cell = []

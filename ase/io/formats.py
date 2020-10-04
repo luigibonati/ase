@@ -266,7 +266,8 @@ F('dmol-car', 'DMol3 structure file', '1S',
   module='dmol', ext='car')
 F('dmol-incoor', 'DMol3 structure file', '1S',
   module='dmol')
-F('elk', 'ELK atoms definition', '1S')
+F('elk', 'ELK atoms definition from GEOMETRY.OUT', '1S',
+  glob=['GEOMETRY.OUT'])
 F('eon', 'EON CON file', '+F',
   ext='con')
 F('eps', 'Encapsulated Postscript', '1S')
