@@ -35,7 +35,6 @@ omit =
     ../calculators/dmol.py
     ../calculators/mopac.py
     ../calculators/acemolecule.py
-    ../calculators/elk.py
     ../calculators/castep.py
     ../calculators/gulp.py
     ../calculators/openmx/writer.py
@@ -93,7 +92,6 @@ omit =
     ../io/acemolecule.py
     ../io/vtkxml.py
     ../io/vasp.py
-    ../io/elk.py
     ../io/castep.py
     ../io/gpw.py
     ../io/cmdft.py
