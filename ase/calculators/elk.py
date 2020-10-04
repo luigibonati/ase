@@ -17,8 +17,7 @@ class ELK(FileIOCalculator, EigenvalOccupationMixin):
     ignored_changes = {'pbc'}
     discard_results_on_any_change = True
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
-                 label=os.curdir, atoms=None, **kwargs):
+    def __init__(self, **kwargs):
         """Construct ELK calculator.
 
         The keyword arguments (kwargs) can be one of the ASE standard
@@ -26,8 +25,7 @@ class ELK(FileIOCalculator, EigenvalOccupationMixin):
         native keywords.
         """
 
-        FileIOCalculator.__init__(self, restart, ignore_bad_restart_file,
-                                  label, atoms, **kwargs)
+        super().__init__(**kwargs)
 
     @property
     def out(self):
