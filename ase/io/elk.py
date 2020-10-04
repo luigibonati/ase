@@ -263,3 +263,178 @@ def write_elk_in(fd, atoms, parameters=None):
         # Elk seems to concatenate path and filename in such a way
         # that we must put a / at the end:
         fd.write(f"sppath\n'{species_path}/'\n\n")
+
+
+class ElkReader:
+    def __init__(self, path):
+        self.path = Path(path)
+
+    def read_everything(self):
+        converged = self.read_convergence()
+        if not converged:
+            raise RuntimeError(f'ELK did not converge! Check {self.out}')
+        yield from self.read_energy()
+        #if self.parameters.get('tforce'):
+        yield 'forces', self.read_forces()
+
+        yield 'width', self.read_electronic_temperature()
+        yield 'nbands', self.read_number_of_bands()
+        yield 'nelect', self.read_number_of_electrons()
+        yield 'niter', self.read_number_of_iterations()
+        yield 'magnetic_moment', self.read_magnetic_moment()
+
+    @property
+    def out(self):
+        return self.path / 'INFO.OUT'
+
+    def read_energy(self):
+        txt = (self.path / 'TOTENERGY.OUT').read_text()
+        tokens = txt.split()
+        e = float(tokens[-1]) * Hartree
+        yield 'free_energy', e
+        yield 'energy', e
+
+    def read_forces(self):
+        lines = open(self.out, 'r').readlines()
+        forces = []
+        for line in lines:
+            if line.rfind('total force') > -1:
+                forces.append(np.array([float(f)
+                                        for f in line.split(':')[1].split()]))
+        return np.array(forces) * Hartree / Bohr
+
+    def read_convergence(self):
+        converged = False
+        text = open(self.out).read().lower()
+        if ('convergence targets achieved' in text and
+            'reached self-consistent loops maximum' not in text):
+            converged = True
+        return converged
+
+    def read_kpts(self, mode='ibz_k_points'):
+        """ Returns list of kpts weights or kpts coordinates.  """
+        values = []
+        assert mode in ['ibz_k_points', 'k_point_weights']
+
+        lines = (self.path / 'KPOINTS.OUT').read_text().splitlines()
+
+        kpts = None
+        for line in lines:
+            if line.rfind(': nkpt') > -1:
+                kpts = int(line.split(':')[0].strip())
+                break
+        assert kpts is not None
+        text = lines[1:]  # remove first line
+        values = []
+        for line in text:
+            if mode == 'ibz_k_points':
+                b = [float(c.strip()) for c in line.split()[1:4]]
+            else:
+                b = float(line.split()[-2])
+            values.append(b)
+        if len(values) == 0:
+            values = None
+        return np.array(values)
+
+    def read_number_of_bands(self):
+        nbands = None
+        lines = (self.path / 'EIGVAL.OUT').read_text().splitlines()
+        for line in lines:
+            if line.rfind(': nstsv') > -1:
+                nbands = int(line.split(':')[0].strip())
+                break
+
+        # XXXX Spin polarized
+        #
+        #if self.get_spin_polarized():
+        #    nbands = nbands // 2
+        return nbands
+
+    def read_number_of_electrons(self):
+        nelec = None
+        text = open(self.out).read().lower()
+        # Total electronic charge
+        for line in iter(text.split('\n')):
+            if line.rfind('total electronic charge :') > -1:
+                nelec = float(line.split(':')[1].strip())
+                break
+        return nelec
+
+    def read_number_of_iterations(self):
+        niter = None
+        lines = open(self.out).readlines()
+        for line in lines:
+            if line.rfind(' Loop number : ') > -1:
+                niter = int(line.split(':')[1].split()[0].strip())  # last iter
+        return niter
+
+    def read_magnetic_moment(self):
+        magmom = None
+        lines = open(self.out).readlines()
+        for line in lines:
+            if line.rfind('total moment                :') > -1:
+                magmom = float(line.split(':')[1].strip())  # last iter
+        return magmom
+
+    def read_electronic_temperature(self):
+        width = None
+        text = open(self.out).read().lower()
+        for line in iter(text.split('\n')):
+            if line.rfind('smearing width :') > -1:
+                width = float(line.split(':')[1].strip())
+                break
+        return width
+
+    def read_eigenvalues(self, kpt=0, spin=0, mode='eigenvalues'):
+        """ Returns list of last eigenvalues, occupations
+        for given kpt and spin.  """
+        values = []
+        assert mode in ['eigenvalues', 'occupations']
+        eigval = os.path.join(self.directory, 'EIGVAL.OUT')
+        lines = open(eigval).readlines()
+        nstsv = None
+        for line in lines:
+            if line.rfind(': nstsv') > -1:
+                nstsv = int(line.split(':')[0].strip())
+                break
+        assert nstsv is not None
+        kpts = None
+        for line in lines:
+            if line.rfind(': nkpt') > -1:
+                kpts = int(line.split(':')[0].strip())
+                break
+        assert kpts is not None
+        text = lines[3:]  # remove first 3 lines
+        # find the requested k-point
+        beg = 2 + (nstsv + 4) * kpt
+        end = beg + nstsv
+        if self.get_spin_polarized():
+            # elk prints spin-up and spin-down together
+            if spin == 0:
+                beg = beg
+                end = beg + nstsv // 2
+            else:
+                beg = beg + nstsv // 2
+                end = end
+        values = []
+        for line in text[beg:end]:
+            b = [float(c.strip()) for c in line.split()[1:]]
+            values.append(b)
+        if mode == 'eigenvalues':
+            values = [Hartree * v[0] for v in values]
+        else:
+            values = [v[1] for v in values]
+        if len(values) == 0:
+            values = None
+        return np.array(values)
+
+    def read_fermi(self):
+        """Method that reads Fermi energy in Hartree from the output file
+        and returns it in eV"""
+        E_f = None
+        text = open(self.out).read().lower()
+        for line in iter(text.split('\n')):
+            if line.rfind('fermi                       :') > -1:
+                E_f = float(line.split(':')[1].strip())
+        E_f = E_f * Hartree
+        return E_f
