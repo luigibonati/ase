@@ -174,9 +174,9 @@ class ElkFactory:
         return match.group(1)
 
     def calc(self, **kwargs):
-        from ase.calculators.elk import Elk
+        from ase.calculators.elk import ELK
         command = f'{self.executable} > elk.out'
-        return Elk(command=command, species_dir=self.species_dir,
+        return ELK(command=command, species_dir=self.species_dir,
                    **kwargs)
 
     @classmethod

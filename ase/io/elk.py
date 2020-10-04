@@ -1,9 +1,14 @@
+from pathlib import Path
+
 import os
 import numpy as np
 
 from ase import Atoms
-from ase.units import Bohr
+from ase.units import Bohr, Hartree
 from ase.utils import reader, writer
+
+
+elk_parameters = {'swidth': Hartree}
 
 
 @reader
@@ -85,6 +90,9 @@ def write_elk_in(fd, atoms, parameters=None):
     if parameters is None:
         parameters = {}
 
+    parameters = dict(parameters)
+    species_path = parameters.pop('species_dir')
+
     if 'xctype' in parameters:
         if 'xc' in parameters:
             raise RuntimeError("You can't use both 'xctype' and 'xc'!")
@@ -132,12 +140,12 @@ def write_elk_in(fd, atoms, parameters=None):
                   'PBESOL': 22,
                   'WC06': 26,
                   'AM05': 30,
-                  'mBJLDA': (100, 208, 12)}[parameters.xc]
+                  'mBJLDA': (100, 208, 12)}[parameters['xc']]
         inp['xctype'] = xctype
         del inp['xc']
 
     if 'kpts' in parameters:
-        mp = kpts2mp(atoms, parameters.kpts)
+        mp = kpts2mp(atoms, parameters['kpts'])
         inp['ngridk'] = tuple(mp)
         vkloff = []  # is this below correct?
         for nk in mp:
@@ -201,14 +209,7 @@ def write_elk_in(fd, atoms, parameters=None):
         for a, m in species[symbol]:
             fd.write('%.14f %.14f %.14f 0.0 0.0 %.14f\n' %
                      (tuple(scaled[a]) + (m,)))
-    # species
-    species_path = parameters.get('species_dir')
-    if species_path is None:
-        species_path = os.environ.get('ELK_SPECIES_PATH')
-    if species_path is None:
-        raise RuntimeError(
-            'Missing species directory!  Use species_dir ' +
-            'parameter or set $ELK_SPECIES_PATH environment variable.')
+
     # custom species definitions
 
     if 0:
@@ -257,10 +258,8 @@ def write_elk_in(fd, atoms, parameters=None):
     else:
         # use default species
         # if sppath is present in elk.in it overwrites species blocks!
-        species_path = os.environ['ELK_SPECIES_PATH']
+        #species_path = os.environ['ELK_SPECIES_PATH']
 
         # Elk seems to concatenate path and filename in such a way
         # that we must put a / at the end:
-        if not species_path.endswith('/'):
-            species_path += '/'
-        fd.write("sppath\n'{}'\n\n".format(species_path))
+        fd.write(f"sppath\n'{species_path}/'\n\n")

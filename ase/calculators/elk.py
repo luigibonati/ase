@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 import numpy as np
 
@@ -8,8 +9,6 @@ from ase.io.elk import read_elk
 from ase.calculators.calculator import (FileIOCalculator, Parameters, kpts2mp,
                                         ReadError, PropertyNotImplementedError,
                                         EigenvalOccupationMixin)
-
-elk_parameters = {'swidth': Hartree}
 
 
 class ELK(FileIOCalculator, EigenvalOccupationMixin):
@@ -34,6 +33,10 @@ class ELK(FileIOCalculator, EigenvalOccupationMixin):
         self.prefix = ''
         self.out = os.path.join(label, 'INFO.OUT')
 
+    @property
+    def out(self):
+        return Path(self.directory) / 'INFO.OUT'
+
     def check_state(self, atoms):
         system_changes = FileIOCalculator.check_state(self, atoms)
         # Ignore boundary conditions (ELK always uses them):
@@ -52,7 +55,7 @@ class ELK(FileIOCalculator, EigenvalOccupationMixin):
 
         directory = Path(self.directory)
         self.parameters.write(directory / 'parameters.ase')
-        write(directory / 'elk.in', atoms, self.parameters,
+        write(directory / 'elk.in', atoms, parameters=self.parameters,
               format='elk-in')
 
     def read(self, label):
