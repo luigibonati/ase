@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 import os
 import numpy as np
@@ -91,7 +92,7 @@ def write_elk_in(fd, atoms, parameters=None):
         parameters = {}
 
     parameters = dict(parameters)
-    species_path = parameters.pop('species_dir')
+    species_path = parameters.pop('species_dir', None)
 
     if 'xctype' in parameters:
         if 'xc' in parameters:
@@ -260,7 +261,8 @@ def write_elk_in(fd, atoms, parameters=None):
 
         # Elk seems to concatenate path and filename in such a way
         # that we must put a / at the end:
-        fd.write(f"sppath\n'{species_path}/'\n\n")
+        if species_path is not None:
+            fd.write(f"sppath\n'{species_path}/'\n\n")
 
 
 class ElkReader:
@@ -280,6 +282,7 @@ class ElkReader:
         yield 'nelect', self.read_number_of_electrons()
         yield 'niter', self.read_number_of_iterations()
         yield 'magnetic_moment', self.read_magnetic_moment()
+        yield from self.read_eigval()
 
     @property
     def out(self):
@@ -383,7 +386,11 @@ class ElkReader:
         #    nbands = nbands // 2
         return nbands
 
-    def read_eigenvalues(self, kpt=0, spin=0, mode='eigenvalues'):
+    def read_eigval(self):
+        with (self.path / 'EIGVAL.OUT').open() as fd:
+            yield from parse_elk_eigval(fd)
+
+    def read_eigenvalues_xxxxxxx(self, kpt=0, spin=0, mode='eigenvalues'):
         """ Returns list of last eigenvalues, occupations
         for given kpt and spin.  """
         values = []
@@ -435,3 +442,46 @@ class ElkReader:
                 E_f = float(line.split(':')[1].strip())
         E_f = E_f * Hartree
         return E_f
+
+
+def parse_elk_eigval(fd):
+
+    def match_int(line, word):
+        number, colon, word1 = line.split()
+        assert word1 == word
+        assert colon == ':'
+        return int(number)
+
+    def skip_spaces(line=''):
+        while not line.strip():
+            line = next(fd)
+        return line
+
+    line = skip_spaces()
+    nkpts = match_int(line, 'nkpt')  # 10 : nkpts
+    line = next(fd)
+    nbands = match_int(line, 'nstsv')  # 15 : nstsv
+
+    eigenvalues = np.empty((nkpts, nbands))
+    occupations = np.empty((nkpts, nbands))
+    kpts = np.empty((nkpts, 3))
+
+    for ikpt in range(nkpts):
+        line = skip_spaces()
+        tokens = line.split()
+        assert tokens[-1] == 'vkl', tokens
+        assert ikpt + 1 == int(tokens[0])
+        kpts[ikpt] = np.array(tokens[1:4]).astype(float)
+
+        line = next(fd)  # "(state, eigenvalue and occupancy below)"
+        assert line.strip().startswith('(state,'), line
+        for iband in range(nbands):
+            line = next(fd)
+            tokens = line.split()  # (band number, eigenval, occ)
+            assert iband + 1 == int(tokens[0])
+            eigenvalues[ikpt, iband] = float(tokens[1])
+            occupations[ikpt, iband] = float(tokens[2])
+
+    yield 'ibz_kpoints', kpts
+    yield 'eigenvalues', eigenvalues
+    yield 'occupations', occupations
