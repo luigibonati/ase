@@ -36,7 +36,6 @@ class ELK(FileIOCalculator, EigenvalOccupationMixin):
         self.initialize(atoms)
 
         directory = Path(self.directory)
-        self.parameters.write(directory / 'parameters.ase')
         write(directory / 'elk.in', atoms, parameters=self.parameters,
               format='elk-in')
 
@@ -52,8 +51,6 @@ class ELK(FileIOCalculator, EigenvalOccupationMixin):
 
         # read state from elk.in because *.OUT do not provide enough digits!
         self.atoms = read_elk(os.path.join(self.directory, 'elk.in'))
-        self.parameters = Parameters.read(os.path.join(self.directory,
-                                                       'parameters.ase'))
         self.initialize(self.atoms)
         self.read_results()
 
