@@ -1384,7 +1384,7 @@ def kspacing_to_grid(atoms, spacing, calculated_spacing=None):
     """
     # No factor of 2pi in ase, everything in A^-1
     # reciprocal dimensions
-    r_x, r_y, r_z = np.linalg.norm(atoms.get_reciprocal_cell(), axis=1)
+    r_x, r_y, r_z = np.linalg.norm(atoms.cell.reciprocal(), axis=1)
 
     kpoint_grid = [int(r_x / spacing) + 1,
                    int(r_y / spacing) + 1,
