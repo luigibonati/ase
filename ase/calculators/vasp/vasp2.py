@@ -104,7 +104,7 @@ class Vasp2(GenerateVaspInput, Calculator):  # type: ignore
                  restart=None,
                  directory='.',
                  label='vasp',
-                 ignore_bad_restart_file=False,
+                 ignore_bad_restart_file=Calculator._deprecated,
                  command=None,
                  txt='vasp.out',
                  **kwargs):

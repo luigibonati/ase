@@ -73,7 +73,8 @@ class OpenMX(FileIOCalculator):
         'debug': False
     }
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=FileIOCalculator._deprecated,
                  label='./openmx', atoms=None, command=None, mpi=None,
                  pbs=None, **kwargs):
 

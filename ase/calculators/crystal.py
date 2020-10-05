@@ -46,7 +46,8 @@ class CRYSTAL(FileIOCalculator):
     implemented_properties = ['energy', 'forces', 'stress', 'charges',
                               'dipole']
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=FileIOCalculator._deprecated,
                  label='cry', atoms=None, crys_pcc=False, **kwargs):
         """Construct a crystal calculator.
 
