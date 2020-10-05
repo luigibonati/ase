@@ -128,7 +128,7 @@ class CellEditor:
     def apply_angles(self, *args):
         atoms = self.gui.atoms.copy()
 
-        cell_data = atoms.get_cell_lengths_and_angles()
+        cell_data = atoms.cell.cellpar()
         cell_data[3:7] = [self.angles[0].value, self.angles[1].value,
                           self.angles[2].value]
 
