@@ -249,7 +249,7 @@ def write_abinit_in(fd, atoms, param=None, species=None):
     fd.write('acell\n')
     fd.write('%.14f %.14f %.14f Angstrom\n' % (1.0, 1.0, 1.0))
     fd.write('rprim\n')
-    if atoms.number_of_lattice_vectors != 3:
+    if atoms.cell.rank != 3:
         raise RuntimeError('Abinit requires a 3D cell, but cell is {}'
                            .format(atoms.cell))
     for v in atoms.cell:

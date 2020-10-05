@@ -224,7 +224,7 @@ class Atoms:
             if scaled_positions is None:
                 positions = np.zeros((len(self.arrays['numbers']), 3))
             else:
-                assert self.number_of_lattice_vectors == 3
+                assert self.cell.rank == 3
                 positions = np.dot(scaled_positions, self.cell)
         else:
             if scaled_positions is not None:
