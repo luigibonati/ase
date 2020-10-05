@@ -303,7 +303,8 @@ class Atoms:
     def calc(self):
         self._calc = None
 
-    @property
+    @property  # type: ignore
+    @deprecated('Please use atoms.cell.rank instead')
     def number_of_lattice_vectors(self):
         """Number of (non-zero) lattice vectors."""
         return self.cell.rank
@@ -410,6 +411,7 @@ class Atoms:
 
         return cell
 
+    @deprecated('Please use atoms.cell.cellpar() instead')
     def get_cell_lengths_and_angles(self):
         """Get unit cell parameters. Sequence of 6 numbers.
 
@@ -422,6 +424,7 @@ class Atoms:
         """
         return self.cell.cellpar()
 
+    @deprecated('Please use atoms.cell.reciprocal()')
     def get_reciprocal_cell(self):
         """Get the three reciprocal lattice vectors as a 3x3 ndarray.
 
@@ -1888,6 +1891,7 @@ class Atoms:
         else:
             return not eq
 
+    @deprecated('Please use atoms.cell.volume')
     def get_volume(self):
         """Get volume of unit cell."""
         if self.cell.rank != 3:
