@@ -341,7 +341,7 @@ class BaseNEB:
         return len(self.images)
 
     @staticmethod
-    def freeze_results_on_image(atoms: ase.Atoms,a
+    def freeze_results_on_image(atoms: ase.Atoms,
                                 **results_to_include):
         atoms.calc = SinglePointCalculator(atoms=atoms, **results_to_include)
 
