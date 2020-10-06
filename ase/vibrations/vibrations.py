@@ -358,8 +358,11 @@ class VibrationsData:
         Returns:
             zero-point energy in eV
         """
-        energies, _ = self.get_energies_and_modes()
+        return self._calculate_zero_point_energy(self.get_energies())
 
+    @staticmethod
+    def _calculate_zero_point_energy(energies: Union[Sequence[complex],
+                                                     np.ndarray]) -> float:
         return 0.5 * energies.real.sum()
 
     def summary(self,
@@ -384,9 +387,17 @@ class VibrationsData:
 
         energies = self.get_energies()
 
-        log.write('---------------------\n')
-        log.write('  #    meV     cm^-1\n')
-        log.write('---------------------\n')
+        for line in self._summary_from_energies(energies, im_tol=im_tol):
+            log.write(line + '\n')
+
+    @classmethod
+    def _summary_from_energies(cls,
+                               energies: Union[Sequence[complex], np.ndarray],
+                               im_tol: float = 1e-8) -> List[str]:
+        summary_lines = ['---------------------',
+                         '  #    meV     cm^-1',
+                         '---------------------']
+
         for n, e in enumerate(energies):
             if abs(e.imag) > im_tol:
                 c = 'i'
@@ -394,12 +405,15 @@ class VibrationsData:
             else:
                 c = ''
                 e = e.real
-            log.write('{index:3d} {mev:6.1f}{im:1s}  {cm:7.1f}{im}\n'.format(
-                index=n, mev=(e * 1e3), cm=(e / units.invcm), im=c))
 
-        log.write('---------------------\n')
-        log.write('Zero-point energy: {:.3f} eV\n'.format(
-            self.get_zero_point_energy()))
+            summary_lines.append('{index:3d} {mev:6.1f}{im:1s}  {cm:7.1f}{im}'
+                                 .format(index=n, mev=(e * 1e3),
+                                         cm=(e / units.invcm), im=c))
+        summary_lines.append('---------------------')
+        summary_lines.append('Zero-point energy: {:.3f} eV'.format(
+            cls._calculate_zero_point_energy(energies=energies)))
+
+        return summary_lines
 
     def show_as_force(self,
                       mode: int,
@@ -598,6 +612,7 @@ class Vibrations:
         self.H = None
         self.ir = None
         self.ram = None
+        self._vibrations = None
 
     def run(self):
         """Run the vibration calculations.
@@ -846,6 +861,9 @@ class Vibrations:
                                ' to set all masses to non-zero values.')
 
         self.im = np.repeat(m[self.indices]**-0.5, 3)
+
+        self._vibrations = self.get_vibrations(read_cache=False)
+
         omega2, modes = np.linalg.eigh(self.im[:, None] * H * self.im)
         self.modes = modes.T.copy()
 
@@ -853,84 +871,72 @@ class Vibrations:
         s = units._hbar * 1e10 / sqrt(units._e * units._amu)
         self.hnu = s * omega2.astype(complex)**0.5
 
-    def get_vibrations(self, method='standard', direction='central', **kw):
-        """Get vibrations as VibrationsData object"""
-        if (self.H is None or method.lower() != self.method or
-            direction.lower() != self.direction):
-            self.read(method, direction, **kw)
+    def get_vibrations(self, method='standard', direction='central',
+                       read_cache=True, **kw):
+        """Get vibrations as VibrationsData object
 
-        return VibrationsData.from_2d(self.atoms, self.H, indices=self.indices)
+        If read() has not yet been called, this will be called to assemble data
+        from the outputs of run(). Most of the arguments to this function are
+        options to be passed to read() in this case.
+
+        Args:
+            method (str): Calculation method passed to read()
+            direction (str): Finite-difference scheme passed to read()
+            read_cache (bool): The VibrationsData object will be cached for
+                quick access. Set False to force regeneration of the cache with
+                the current atoms/Hessian/indices data.
+            **kw: Any remaining keyword arguments are passed to read()
+
+        Returns:
+            VibrationsData
+
+        """
+        if read_cache and (self._vibrations is not None):
+            return self._vibrations
+
+        else:
+            if (self.H is None or method.lower() != self.method or
+                direction.lower() != self.direction):
+                self.read(method, direction, **kw)
+
+            return VibrationsData.from_2d(self.atoms, self.H,
+                                          indices=self.indices)
 
     def get_energies(self, method='standard', direction='central', **kw):
         """Get vibration energies in eV."""
-
-        if (self.H is None or method.lower() != self.method or
-            direction.lower() != self.direction):
-            self.read(method, direction, **kw)
-        return self.hnu
+        return self.get_vibrations(method=method,
+                                   direction=direction, **kw).get_energies()
 
     def get_frequencies(self, method='standard', direction='central'):
         """Get vibration frequencies in cm^-1."""
-
-        s = 1. / units.invcm
-        return s * self.get_energies(method, direction)
+        return self.get_vibrations(method=method,
+                                   direction=direction).get_frequencies()
 
     def summary(self, method='standard', direction='central', freq=None,
                 log=sys.stdout):
-        """Print a summary of the vibrational frequencies.
-
-        Parameters:
-
-        method : string
-            Can be 'standard'(default) or 'Frederiksen'.
-        direction: string
-            Direction for finite differences. Can be one of 'central'
-            (default), 'forward', 'backward'.
-        freq : numpy array
-            Optional. Can be used to create a summary on a set of known
-            frequencies.
-        log : if specified, write output to a different location than
-            stdout. Can be an object with a write() method or the name of a
-            file to create.
-        """
-
-        if isinstance(log, str):
-            log = paropen(log, 'a')
-        write = log.write
-
-        s = 0.01 * units._e / units._c / units._hplanck
         if freq is not None:
-            hnu = freq / s
+            energies = freq * units.invcm
         else:
-            hnu = self.get_energies(method, direction)
-        write('---------------------\n')
-        write('  #    meV     cm^-1\n')
-        write('---------------------\n')
-        for n, e in enumerate(hnu):
-            if e.imag != 0:
-                c = 'i'
-                e = e.imag
-            else:
-                c = ''
-                e = e.real
-            write('%3d %6.1f%1s  %7.1f%s\n' % (n, 1000 * e, c, s * e, c))
-        write('---------------------\n')
-        write('Zero-point energy: %.3f eV\n' %
-              self.get_zero_point_energy(freq=freq))
+            energies = self.get_energies(method=method, direction=direction)
+
+        summary_lines = VibrationsData._summary_from_energies(energies)
+
+        if log is None:
+            for line in summary_lines:
+                print(line)
+
+        elif isinstance(log, str):
+            with paropen(log, 'a') as log_file:
+                log_file.write('\n'.join(summary_lines) + '\n')
 
     def get_zero_point_energy(self, freq=None):
-        if freq is None:
-            return 0.5 * self.hnu.real.sum()
-        else:
-            s = 0.01 * units._e / units._c / units._hplanck
-            return 0.5 * freq.real.sum() / s
+        if freq:
+            raise NotImplementedError()
+        self.get_vibrations().get_zero_point_energy()
 
     def get_mode(self, n):
         """Get mode number ."""
-        mode = np.zeros((len(self.atoms), 3))
-        mode[self.indices] = (self.modes[n] * self.im).reshape((-1, 3))
-
-        return mode
+        return self.get_vibrations().get_modes()[n]
 
     def write_mode(self, n=None, kT=units.kB * 300, nimages=30):
         """Write mode number n to trajectory file. If n is not specified,
@@ -956,12 +962,7 @@ class Vibrations:
         traj.close()
 
     def show_as_force(self, n, scale=0.2, show=True):
-        mode = self.get_mode(n) * len(self.hnu) * scale
-        calc = SinglePointCalculator(self.atoms, forces=mode)
-
-        self.atoms.calc = calc
-        if show:
-            self.atoms.edit()
+        return self.get_vibrations().show_as_force(n, scale=scale, show=show)
 
     def write_jmol(self):
         """Writes file for viewing of the modes with jmol."""

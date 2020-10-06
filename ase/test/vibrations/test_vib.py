@@ -133,8 +133,8 @@ class TestVibrationsClassic():
         assert_array_almost_equal(mode1, [[0.188935, -0.000213, 0.],
                                           [0.188935, -0.000213, -0.]])
 
-        vib.show_as_force(-1, show=False)
-        assert_array_almost_equal(vib.atoms.get_forces(),
+        assert_array_almost_equal(vib.show_as_force(-1, show=False)
+                                  .get_forces(),
                                   [[0., 0., -2.26722e-1],
                                    [0., 0., 2.26722e-1]])
 
