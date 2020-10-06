@@ -557,11 +557,12 @@ class Phonons(Displacement):
         bs = BandStructure(path, energies=omega_kl[None])
         return bs
 
-    def compute_dynamical_matrix(self, q_scaled: np.ndarray) -> np.ndarray:
+    def compute_dynamical_matrix(self, q_scaled: np.ndarray, D_N: np.ndarray) \
+        -> np.ndarray:
         # Evaluate fourier sum
         R_cN = self.lattice_vectors
         phase_N = np.exp(-2.j * pi * np.dot(q_scaled, R_cN))
-        D_q = np.sum(phase_N[:, np.newaxis, np.newaxis] * self.D_N, axis=0)
+        D_q = np.sum(phase_N[:, np.newaxis, np.newaxis] * D_N, axis=0)
         return D_q
 
     def band_structure(self, path_kc, modes=False, born=False, verbose=True):
@@ -634,7 +635,7 @@ class Phonons(Displacement):
             #     D_m += q_xx
 
             # Evaluate fourier sum
-            D_q = self.compute_dynamical_matrix(q_c)
+            D_q = self.compute_dynamical_matrix(q_c, D_N)
 
             if modes:
                 omega2_l, u_xl = la.eigh(D_q, UPLO='U')
