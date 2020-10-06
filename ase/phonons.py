@@ -104,7 +104,6 @@ class Displacement:
         R_cN -= N_c // 2
         return R_cN
 
-
     def __call__(self, *args, **kwargs):
         """Member function called in the ``run`` function."""
 
