@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.linalg import cho_solve
 from scipy.stats import invgamma
+from scipy.special import expit
 import warnings
 from ase.calculators.calculator import PropertyNotImplementedError
 
@@ -292,4 +293,22 @@ class PriorDistributionInvGamma():
         scale = gp.hyperparams['scale']
         value = np.log(invgamma.pdf(scale, self.a,
                                     self.loc, self.scale))
+        return value
+
+
+class PriorDistributionSigmoid():
+    
+    def __init__(self, loc, width):
+        ''' Sigmoid Prior "distribution" for
+        hyperparameter 'scale'. Parameters correspond to
+        parameters of scipy.special.expit. '''
+
+        self.loc = loc
+        self.width = width
+
+    def get(self, gp):
+        
+        scale = gp.hyperparams['scale']
+        x = (scale - self.loc) / self.width
+        value = np.log(expit(x))
         return value
