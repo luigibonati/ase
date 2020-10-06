@@ -757,7 +757,7 @@ def _check_deprecation(keyword, kwargs):
 class NEB(DyNEB):
     def __init__(self, images, k=0.1, climb=False, parallel=False,
                  remove_rotation_and_translation=False, world=None,
-                 method='aseneb', allow_shared_calculator=False, precon=precon, **kwargs):
+                 method='aseneb', allow_shared_calculator=False, precon=None, **kwargs):
         """Nudged elastic band.
 
         Paper I:
