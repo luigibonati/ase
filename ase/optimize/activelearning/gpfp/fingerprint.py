@@ -415,7 +415,7 @@ class OganovFP(Fingerprint):
 
 class RadialAngularFP(OganovFP):
 
-    def __init__(self, pbc=None, calc_gradients=True,
+    def __init__(self, atoms=None, pbc=None, calc_gradients=True,
                  weight_by_elements=True, **kwargs):
         ''' Parameters:
 
@@ -456,7 +456,10 @@ class RadialAngularFP(OganovFP):
 
         self.pair = None
 
-        self.gamma = 2
+        self.gamma = 0.5
+
+        if atoms is not None:
+            self.set_atoms(atoms)
 
     def set_params(self):
         ''' Set parameters according to dictionary
@@ -516,7 +519,7 @@ class RadialAngularFP(OganovFP):
         lengths = self.atoms.cell.lengths()
 
         ncells_radial = [self.limit // lengths[i] + 1 for i in range(3)]
-        ncells_angular = [2 * self.Rtheta // lengths[i] + 1 for i in range(3)]
+        ncells_angular = [(2 * self.Rtheta) // lengths[i] + 1 for i in range(3)]
 
         return [max(ncells_radial[i], ncells_angular[i]) for i in range(3)]
 
