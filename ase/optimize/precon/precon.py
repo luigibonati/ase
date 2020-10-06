@@ -632,7 +632,7 @@ class SparseCoeffPrecon(SparsePrecon):
         if self.logfile is not None:
             self.logfile.write('--- Precon created in %s seconds --- \n' %
                                (time.time() - start_time))
-        return self.P    
+        return self.P
 
     @abstractmethod
     def get_coeff(self, r):
@@ -789,7 +789,7 @@ class FF(SparsePrecon):
         """Initialise an FF preconditioner with given parameters.
 
         Args:
-             dim, c_stab, force_stab, array_convention, use_pyamg, solve_tol: 
+             dim, c_stab, force_stab, array_convention, use_pyamg, solve_tol:
                 see SparsePrecon.__init__()
              morses: Morse instance
              bonds: Bond instance
