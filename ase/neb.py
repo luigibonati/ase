@@ -332,6 +332,7 @@ class BaseNEB:
         self.real_forces = None  # ndarray of shape (nimages, natom, 3)
         self.energies = None  # ndarray of shape (nimages,)
 
+    @property
     def natoms(self):
         return len(self.images[0])
 
@@ -339,7 +340,8 @@ class BaseNEB:
     def nimages(self):
         return len(self.images)
 
-    def freeze_results_on_image(atoms: ase.Atoms,
+    @staticmethod
+    def freeze_results_on_image(atoms: ase.Atoms,a
                                 **results_to_include):
         atoms.calc = SinglePointCalculator(atoms=atoms, **results_to_include)
 
