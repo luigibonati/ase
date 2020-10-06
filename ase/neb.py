@@ -14,11 +14,9 @@ import ase.parallel
 from ase.build import minimize_rotation_and_translation
 from ase.calculators.calculator import Calculator
 from ase.calculators.singlepoint import SinglePointCalculator
-from ase.io import read
 from ase.optimize import MDMin
 from ase.optimize.optimize import Optimizer
 from ase.geometry import find_mic
-from ase.optimize import MDMin
 from ase.utils import lazyproperty, deprecated
 from ase.utils.forcecurve import fit_images
 from ase.optimize.precon import make_precon_images
@@ -320,7 +318,7 @@ class BaseNEB:
 
         self.neb_method = get_neb_method(self, method)
         if isinstance(k, (float, int)):
-            k = [k] * (self.nimages - 1)            
+            k = [k] * (self.nimages - 1)
         self.k = list(k)
 
         if world is None:
@@ -757,7 +755,8 @@ def _check_deprecation(keyword, kwargs):
 class NEB(DyNEB):
     def __init__(self, images, k=0.1, climb=False, parallel=False,
                  remove_rotation_and_translation=False, world=None,
-                 method='aseneb', allow_shared_calculator=False, precon=None, **kwargs):
+                 method='aseneb', allow_shared_calculator=False,
+                 precon=None, **kwargs):
         """Nudged elastic band.
 
         Paper I:
@@ -876,7 +875,7 @@ class NEBOptimizer(Optimizer):
         return self.neb.get_positions().reshape(-1)
 
     def set_dofs(self, X):
-        self.neb.set_positions(X.reshape((self.neb.nimages - 2) * 
+        self.neb.set_positions(X.reshape((self.neb.nimages - 2) *
                                          self.neb.natoms, 3))
 
     def force_function(self, X):
