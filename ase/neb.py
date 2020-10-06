@@ -284,7 +284,13 @@ class BaseNEB:
     def __init__(self, images, k=0.1, climb=False, parallel=False,
                  remove_rotation_and_translation=False, world=None,
                  method='aseneb', allow_shared_calculator=False, precon=None):
+        
+        self.images = images
         self.climb = climb
+        self.parallel = parallel
+        self.allow_shared_calculator = allow_shared_calculator
+
+        for img in images:
             if len(img) != self.natoms:
                 raise ValueError('Images have different numbers of atoms')
             if np.any(img.pbc != images[0].pbc):
