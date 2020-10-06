@@ -33,7 +33,7 @@ class Displacement:
     """
 
     def __init__(self, atoms, calc=None, supercell=(1, 1, 1), name=None,
-                 delta=0.01, refcell=None):
+                 delta=0.01, center_refcell=False):
         """Init with an instance of class ``Atoms`` and a calculator.
 
         Parameters:
@@ -49,10 +49,10 @@ class Displacement:
             Base name to use for files.
         delta: float
             Magnitude of displacement in Ang.
-        refcell: str
-            Reference cell in which the atoms will be displaced. If ``None``,
-            corner cell in supercell is used. If ``str``, cell in the center of
-            the supercell is used.
+        center_refcell: bool
+            Reference cell in which the atoms will be displaced. If False, then
+            corner cell in supercell is used. If True, then cell in the center
+            of the supercell is used.
 
         """
 
@@ -64,18 +64,46 @@ class Displacement:
         self.indices = np.arange(len(atoms))
         self.name = name
         self.delta = delta
-        self.N_c = supercell
+        self.center_refcell = center_refcell
+        self.supercell = supercell
 
-        # Reference cell offset
-        if refcell is None:
+    def define_offset(self):        # Reference cell offset
+
+        if not self.center_refcell:
             # Corner cell
             self.offset = 0
         else:
             # Center cell
-            N_c = self.N_c
+            N_c = self.supercell
             self.offset = (N_c[0] // 2 * (N_c[1] * N_c[2]) +
                            N_c[1] // 2 * N_c[2] +
                            N_c[2] // 2)
+        return self.offset
+
+    @property
+    def supercell(self):
+        return self._supercell
+
+    @supercell.setter
+    def supercell(self, supercell):
+        assert len(supercell) == 3
+        self._supercell = supercell
+        self.define_offset()
+        self.lattice_vectors = self.compute_lattice_vectors()
+
+    def compute_lattice_vectors(self):
+        """Return lattice vectors for cells in the supercell."""
+        # Lattice vectors -- ordered as illustrated in class docstring
+
+        # Lattice vectors relevative to the reference cell
+        R_cN = np.indices(self.supercell).reshape(3, -1)
+        N_c = np.array(self.supercell)[:, np.newaxis]
+        if self.offset == 0:
+            R_cN += N_c // 2
+            R_cN %= N_c
+        R_cN -= N_c // 2
+        return R_cN
+
 
     def __call__(self, *args, **kwargs):
         """Member function called in the ``run`` function."""
@@ -109,19 +137,6 @@ class Displacement:
 
         self.indices = indices
 
-    def lattice_vectors(self):
-        """Return lattice vectors for cells in the supercell."""
-
-        # Lattice vectors relevative to the reference cell
-        R_cN = np.indices(self.N_c).reshape(3, -1)
-        N_c = np.array(self.N_c)[:, np.newaxis]
-        if self.offset == 0:
-            R_cN += N_c // 2
-            R_cN %= N_c
-        R_cN -= N_c // 2
-
-        return R_cN
-
     def run(self):
         """Run the calculations for the required displacements.
 
@@ -135,7 +150,7 @@ class Displacement:
 
         # Atoms in the supercell -- repeated in the lattice vector directions
         # beginning with the last
-        atoms_N = self.atoms * self.N_c
+        atoms_N = self.atoms * self.supercell
 
         # Set calculator if provided
         assert self.calc is not None, "Provide calculator in __init__ method"
@@ -382,7 +397,7 @@ class Phonons(Displacement):
         # Number of atoms
         natoms = len(self.indices)
         # Number of unit cells
-        N = np.prod(self.N_c)
+        N = np.prod(self.supercell)
         # Matrix of force constants as a function of unit cell index in units
         # of eV / Ang**2
         C_xNav = np.empty((natoms * 3, N, natoms, 3), dtype=float)
@@ -445,17 +460,17 @@ class Phonons(Displacement):
         # Number of atoms
         natoms = len(self.indices)
         # Number of unit cells
-        N = np.prod(self.N_c)
+        N = np.prod(self.supercell)
 
         # Reshape force constants to (l, m, n) cell indices
-        C_lmn = C_N.reshape(self.N_c + (3 * natoms, 3 * natoms))
+        C_lmn = C_N.reshape(self.supercell + (3 * natoms, 3 * natoms))
 
         # Shift reference cell to center index
         if self.offset == 0:
             C_lmn = fft.fftshift(C_lmn, axes=(0, 1, 2)).copy()
         # Make force constants symmetric in indices -- in case of an even
         # number of unit cells don't include the first cell
-        i, j, k = 1 - np.asarray(self.N_c) % 2
+        i, j, k = 1 - np.asarray(self.supercell) % 2
         C_lmn[i:, j:, k:] *= 0.5
         C_lmn[i:, j:, k:] += \
             C_lmn[i:, j:, k:][::-1, ::-1, ::-1].transpose(0, 1, 2, 4, 3).copy()
@@ -498,9 +513,9 @@ class Phonons(Displacement):
 
         # Number of atoms and primitive cells
         natoms = len(self.indices)
-        N = np.prod(self.N_c)
+        N = np.prod(self.supercell)
         # Lattice vectors
-        R_cN = self.lattice_vectors()
+        R_cN = self.lattice_vectors
         # Reshape matrix to individual atomic and cartesian dimensions
         D_Navav = D_N.reshape((N, natoms, 3, natoms, 3))
 
@@ -542,6 +557,13 @@ class Phonons(Displacement):
         bs = BandStructure(path, energies=omega_kl[None])
         return bs
 
+    def compute_dynamical_matrix(self, q_scaled: np.ndarray) -> np.ndarray:
+        # Evaluate fourier sum
+        R_cN = self.lattice_vectors
+        phase_N = np.exp(-2.j * pi * np.dot(q_scaled, R_cN))
+        D_q = np.sum(phase_N[:, np.newaxis, np.newaxis] * self.D_N, axis=0)
+        return D_q
+
     def band_structure(self, path_kc, modes=False, born=False, verbose=True):
         """Calculate phonon dispersion along a path in the Brillouin zone.
 
@@ -576,9 +598,6 @@ class Phonons(Displacement):
             assert self.Z_avv is not None
             assert self.eps_vv is not None
 
-        # Lattice vectors -- ordered as illustrated in class docstring
-        R_cN = self.lattice_vectors()
-
         # Dynamical matrix in real-space
         D_N = self.D_N
 
@@ -606,7 +625,7 @@ class Phonons(Displacement):
                 M_inv = np.outer(self.m_inv_x, self.m_inv_x)
                 D_na = C_na * M_inv / units.Bohr**2 * units.Hartree
                 self.D_na = D_na
-                D_N = self.D_N + D_na / np.prod(self.N_c)
+                D_N = self.D_N + D_na / np.prod(self.supercell)
 
             # if np.prod(self.N_c) == 1:
             #
@@ -615,8 +634,7 @@ class Phonons(Displacement):
             #     D_m += q_xx
 
             # Evaluate fourier sum
-            phase_N = np.exp(-2.j * pi * np.dot(q_c, R_cN))
-            D_q = np.sum(phase_N[:, np.newaxis, np.newaxis] * D_N, axis=0)
+            D_q = self.compute_dynamical_matrix(q_c)
 
             if modes:
                 omega2_l, u_xl = la.eigh(D_q, UPLO='U')
