@@ -320,6 +320,7 @@ class BaseNEB:
 
         self.neb_method = get_neb_method(self, method)
         if isinstance(k, (float, int)):
+            k = [k] * (self.nimages - 1)            
         self.k = list(k)
 
         if world is None:
