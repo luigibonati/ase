@@ -363,7 +363,7 @@ class VibrationsData:
     @staticmethod
     def _calculate_zero_point_energy(energies: Union[Sequence[complex],
                                                      np.ndarray]) -> float:
-        return 0.5 * energies.real.sum()
+        return 0.5 * np.asarray(energies).real.sum()
 
     def summary(self,
                 logfile: str = None,
