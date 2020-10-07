@@ -7,7 +7,7 @@ import os
 import os.path as op
 import pickle
 import sys
-from typing import Dict, List, Sequence, Tuple, TypeVar, Union, Any
+from typing import Any, Dict, Iterator, List, Sequence, Tuple, TypeVar, Union
 
 import numpy as np
 
@@ -414,6 +414,31 @@ class VibrationsData:
             cls._calculate_zero_point_energy(energies=energies)))
 
         return summary_lines
+
+    def iter_images(self, mode_index: int,
+                   temperature: float = units.kB * 300,
+                   frames: int = 30) -> Iterator[Atoms]:
+        """Obtain animated mode as a series of Atoms
+
+        Args:
+            mode_index: Selection of mode to animate
+            temperature: In energy units - use units.kB * T_IN_KELVIN
+            frames: number of image frames in animation
+
+        Yields:
+            Displaced atoms following vibrational mode
+
+        """
+
+        mode = (self.get_modes()[mode_index]
+                * sqrt(temperature / abs(self.get_energies()[mode_index])))
+
+        for phase in np.linspace(0, 2 * pi, frames, endpoint=False):
+            atoms = self.get_atoms()
+            atoms.positions[self.get_mask()] = (
+                atoms.positions[self.get_mask()] + sin(phase) * mode)
+
+            yield atoms
 
     def show_as_force(self,
                       mode: int,
@@ -946,20 +971,13 @@ class Vibrations:
                 if abs(energy) > 1e-5:
                     self.write_mode(n=index, kT=kT, nimages=nimages)
             return
-        mode = self.get_mode(n) * sqrt(kT / abs(self.hnu[n]))
-        p = self.atoms.positions.copy()
-        n %= 3 * len(self.indices)
+        else:
+            n = n % len(self.get_energies())
 
-        traj = ase.io.Trajectory('%s.%d.traj' % (self.name, n), 'w')
-        calc = self.atoms.calc
-        self.atoms.calc = None
-
-        for x in np.linspace(0, 2 * pi, nimages, endpoint=False):
-            self.atoms.set_positions(p + sin(x) * mode)
-            traj.write(self.atoms)
-        self.atoms.set_positions(p)
-        self.atoms.calc = calc
-        traj.close()
+        with ase.io.Trajectory('%s.%d.traj' % (self.name, n), 'w') as traj:
+            for image in self.get_vibrations().iter_images(n, temperature=kT,
+                                                           frames=nimages):
+                traj.write(image)
 
     def show_as_force(self, n, scale=0.2, show=True):
         return self.get_vibrations().show_as_force(n, scale=scale, show=show)
