@@ -81,7 +81,7 @@ class Displacement:
                            N_c[2] // 2)
         return self.offset
 
-    @property
+    @property  # type: ignore
     @ase.utils.deprecated('Please use phonons.supercell instead of .N_c')
     def N_c(self):
         return self._supercell
