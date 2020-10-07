@@ -10,6 +10,7 @@ import numpy as np
 import numpy.linalg as la
 import numpy.fft as fft
 
+import ase
 import ase.units as units
 from ase.parallel import world
 from ase.dft import monkhorst_pack
@@ -79,6 +80,11 @@ class Displacement:
                            N_c[1] // 2 * N_c[2] +
                            N_c[2] // 2)
         return self.offset
+
+    @property
+    @ase.utils.deprecated('Please use phonons.supercell instead of .N_c')
+    def N_c(self):
+        return self._supercell
 
     @property
     def supercell(self):
