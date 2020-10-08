@@ -93,7 +93,7 @@ class Displacement:
     @supercell.setter
     def supercell(self, supercell):
         assert len(supercell) == 3
-        self._supercell = supercell
+        self._supercell = tuple(supercell)
         self.define_offset()
         self.lattice_vectors = self.compute_lattice_vectors()
 
@@ -563,6 +563,21 @@ class Phonons(Displacement):
         return bs
 
     def compute_dynamical_matrix(self, q_scaled: np.ndarray, D_N: np.ndarray):
+        """ Computation of the dynamical matrix in momentum space D_ab(q).
+            This is a Fourier transform from real-space dynamical matrix D_N
+            for a given momentum vector q.
+
+        q_scaled: q vector in scaled coordinates.
+
+        D_N: the dynamical matrix in real-space. It is necessary, at least
+             currently, to provide this matrix explicitly (rather than use
+             self.D_N) because this matrix is modified by the Born charges
+             contributions and these modifications are momentum (q) dependent.
+
+        Result:
+            D(q): two-dimensional, complex-valued array of
+                  shape=(3 * natoms, 3 * natoms).
+        """
         # Evaluate fourier sum
         R_cN = self.lattice_vectors
         phase_N = np.exp(-2.j * pi * np.dot(q_scaled, R_cN))
