@@ -140,7 +140,7 @@ class ACE(FileIOCalculator):
         Updated version of self.parameters; geometry file and optionally Force section are updated.
         '''
         copied_parameters = deepcopy(self.parameters)
-        if not properties is None and "forces" in properties and not 'Force' in copied_parameters['order']:
+        if properties is not None and "forces" in properties and 'Force' not in copied_parameters['order']:
             copied_parameters['order'].append('Force')
         copied_parameters["BasicInformation"][0]["GeometryFilename"] = "{}.xyz".format(self.label)
         copied_parameters["BasicInformation"][0]["GeometryFormat"] = "xyz"

@@ -50,17 +50,17 @@ max_errors = {
     # comparison to None should be 'if cond is None:'
     'E711': 0,
     # expected 1 blank line, found 0
-    'E301': 5,
+    'E301': 0,
     # multiple spaces after keyword
     'E271': 6,
     # test for object identity should be 'is not'
-    'E714': 6,
+    'E714': 0,
     # closing bracket does not match visual indentation
-    'E124': 3,
+    'E124': 0,
     # too many leading '#' for block comment
-    'E266': 3,
+    'E266': 0,
     # over-indented
-    'E117': 2,
+    'E117': 0,
     # indentation contains mixed spaces and tabs
     'E101': 7,
     # indentation contains tabs

@@ -26,11 +26,7 @@ class Octopus(FileIOCalculator, EigenvalOccupationMixin):
 
     The label is always assumed to be a directory."""
 
-    implemented_properties = ['energy', 'forces',
-                              'dipole', 'stress',
-                              #'magmom', 'magmoms'
-    ]
-
+    implemented_properties = ['energy', 'forces', 'dipole', 'stress']
     command = 'octopus'
 
     def __init__(self,
