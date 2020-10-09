@@ -46,9 +46,9 @@ max_errors = {
     # indentation is not a multiple of four (comment)
     'E114': 0,
     # unexpected indentation (comment)
-    'E116': 4,
+    'E116': 0,
     # comparison to None should be 'if cond is None:'
-    'E711': 4,
+    'E711': 0,
     # expected 1 blank line, found 0
     'E301': 5,
     # multiple spaces after keyword

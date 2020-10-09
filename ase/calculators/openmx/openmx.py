@@ -475,7 +475,7 @@ class OpenMX(FileIOCalculator):
                 threads_string = ''
             command += 'mpirun -np ' + \
                 str(processes) + ' ' + self.command + ' %s ' + threads_string + ' |tee %s'
-                #str(processes) + ' openmx %s' + threads_string + ' > %s'
+            #str(processes) + ' openmx %s' + threads_string + ' > %s'
 
         if runfile is None:
             runfile = abs_dir + '/' + self.prefix + '.dat'
