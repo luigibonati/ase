@@ -84,7 +84,6 @@ class Precon(ABC):
         """
         ...
 
-    @abstractmethod
     def apply(self, forces, atoms):
         """
         Convenience wrapper that combines make_precon() and solve()
@@ -102,8 +101,10 @@ class Precon(ABC):
         residual: float
             inf-norm of original forces, i.e. maximum absolute force
         """
-        ...
-
+        self.make_precon(atoms)
+        residual = np.linalg.norm(forces, np.inf)
+        precon_forces = self.solve(forces)
+        return precon_forces, residual
 
 class SparsePrecon(Precon):
     def __init__(self, r_cut=None, r_NN=None,
@@ -412,12 +413,6 @@ class SparsePrecon(Precon):
 
         self.P = None  # force a rebuild with new mu (there may be fixed atoms)
         return (self.mu, self.mu_c)
-
-    def apply(self, forces, atoms):
-        self.make_precon(atoms)
-        residual = np.linalg.norm(forces, np.inf)
-        precon_forces = self.solve(forces)
-        return precon_forces, residual
 
 
 class SparseCoeffPrecon(SparsePrecon):
