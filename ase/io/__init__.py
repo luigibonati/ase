@@ -4,7 +4,7 @@ from ase.io.netcdftrajectory import NetCDFTrajectory
 from ase.io.formats import read, iread, write, string2index
 
 
-def ParseError(Exception):
+class ParseError(Exception):
     """Parse error during reading of a file"""
 
 
