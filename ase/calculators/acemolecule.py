@@ -16,8 +16,8 @@ class ACE(FileIOCalculator):
 
     name = 'ace'
     implemented_properties = ['energy', 'forces', 'excitation-energy' ]
-#    results = {}
-                             # 'geometry', 'excitation-energy']
+    #    results = {}
+    # 'geometry', 'excitation-energy']
     # defaults is default section_name of ACE-input
     basic_list = [{
         'Type': 'Scaling', 'Scaling': '0.35', 'Basis': 'Sinc',
@@ -99,7 +99,7 @@ class ACE(FileIOCalculator):
             lines = f.readlines()
         if 'WARNING' in lines:
             raise ReadError("Not convergy energy in log file {}.".format(filename))
-        if not '! total energy' in lines:
+        if '! total energy' not in lines:
             raise ReadError("Wrong ACE-Molecule log file {}.".format(filename))
 
         if not os.path.isfile(filename):

@@ -162,7 +162,7 @@ class GULP(FileIOCalculator):
                     forces.append(G)
                 forces = np.array(forces)
                 self.results['forces'] = forces
-            
+
             elif line.find('Final internal derivatives') != -1:
                 s = i + 5
                 forces = []
@@ -171,9 +171,9 @@ class GULP(FileIOCalculator):
                     if lines[s].find("------------") != -1:
                         break
                     g = lines[s].split()[3:6]
-                     
-                     # Uncomment the section below to separate the numbers when there is no space between them, in the case of long numbers. This prevents the code to break if numbers are too big.
-                    
+
+                    # Uncomment the section below to separate the numbers when there is no space between them, in the case of long numbers. This prevents the code to break if numbers are too big.
+
                     '''for t in range(3-len(g)):
                         g.append(' ')
                     for j in range(2):

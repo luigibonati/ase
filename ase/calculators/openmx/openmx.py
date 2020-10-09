@@ -302,7 +302,7 @@ class OpenMX(FileIOCalculator):
         See base FileIOCalculator for documentation.
         """
         if self.parameters.data_path is None:
-            if not 'OPENMX_DFT_DATA_PATH' in os.environ:
+            if 'OPENMX_DFT_DATA_PATH' not in os.environ:
                 warnings.warn('Please either set OPENMX_DFT_DATA_PATH as an'
                               'enviroment variable or specify dft_data_path as'
                               'a keyword argument')

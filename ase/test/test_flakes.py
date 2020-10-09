@@ -40,11 +40,11 @@ max_errors = {
     # expected 1 blank line before a nested definition, found 0
     'E306': 0,
     # test for membership should be 'not in'
-    'E713': 2,
+    'E713': 0,
     # multiple statements on one line (colon)
-    'E701': 1,
+    'E701': 0,
     # indentation is not a multiple of four (comment)
-    'E114': 2,
+    'E114': 0,
     # unexpected indentation (comment)
     'E116': 4,
     # comparison to None should be 'if cond is None:'
