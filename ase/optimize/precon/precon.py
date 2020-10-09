@@ -56,26 +56,24 @@ class Precon(ABC):
         Return the result of applying P to a vector x
         """
         ...
-
-    @abstractmethod
+        
     def dot(self, x, y):
         """
         Return the preconditioned dot product <P x, y>
 
         Uses 128-bit floating point math for vector dot products
         """
-        ...
-        
-    def vdot(self, x, y):
-        return self.dot(x.reshape(-1),
-                        y.reshape(-1))
-
-    @abstractmethod
+        return longsum(self.P.dot(x) * y)
+    
     def norm(self, x):
         """
         Return the P-norm of x, where |x|_P = sqrt(<Px, x>)
         """
-        ...
+        return np.sqrt(self.dot(x, x))
+                
+    def vdot(self, x, y):
+        return self.dot(x.reshape(-1),
+                        y.reshape(-1))
 
     @abstractmethod
     def solve(self, x):
@@ -105,6 +103,7 @@ class Precon(ABC):
         residual = np.linalg.norm(forces, np.inf)
         precon_forces = self.solve(forces)
         return precon_forces, residual
+
 
 class SparsePrecon(Precon):
     def __init__(self, r_cut=None, r_NN=None,
