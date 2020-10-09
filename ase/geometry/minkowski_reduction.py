@@ -31,6 +31,13 @@ class CycleChecker:
         return found
 
 
+def calc_cell_tolerance(cell):
+    """Calculate a tolerance in the same way as numpy.linalg.matrix_rank"""
+    eps = np.finfo(float).eps
+    S = np.linalg.svd(cell)[1]
+    return S.max() * max(cell.shape) * eps
+
+
 def reduction_gauss(B, hu, hv):
     """Calculate a Gauss-reduced lattice basis (2D reduction)."""
     cycle_checker = CycleChecker(d=2)
@@ -114,6 +121,46 @@ def reduction_full(B):
     raise RuntimeError(f"Reduced basis not found after {max_it} iterations")
 
 
+def already_reduced_3D(B, tol):
+    """Tests if a 3D basis is already Minkowski-reduced. These conditions are
+    due to Minkowski, but a nice description in English can be found in the
+    thesis of Carine Jaber: "Algorithmic approaches to Siegel's fundamental
+    domain", https://www.theses.fr/2017UBFCK006.pdf
+    This is also good background reading for Minkowski reduction.
+
+    The conditions which an already-reduced basis fulfil are
+
+    |b1| ≤ |b2| ≤ |b3|
+
+    |b1 + b2|      ≥ |b2|
+    |b1 + b3|      ≥ |b3|
+    |b2 + b3|      ≥ |b3|
+    |b1 - b2|      ≥ |b2|
+    |b1 - b3|      ≥ |b3|
+    |b2 - b3|      ≥ |b3|
+    |b1 + b2 + b3| ≥ |b3|
+    |b1 - b2 + b3| ≥ |b3|
+    |b1 + b2 - b3| ≥ |b3|
+    |b1 - b2 - b3| ≥ |b3|
+    """
+    A = [[0,  1,  0],
+         [0,  0,  1],
+         [1,  1,  0],
+         [1,  0,  1],
+         [0,  1,  1],
+         [1, -1,  0],
+         [1,  0, -1],
+         [0,  1, -1],
+         [1,  1,  1],
+         [1, -1,  1],
+         [1,  1, -1],
+         [1, -1, -1]]
+    lhs = np.linalg.norm(A @ B, axis=1)
+    norms = np.linalg.norm(B, axis=1)
+    rhs = norms[[0, 1, 1, 2, 2, 1, 2, 2, 2, 2, 2, 2]]
+    return (lhs >= rhs - tol).all()
+
+
 def minkowski_reduce(cell, pbc=True):
     """Calculate a Minkowski-reduced lattice basis.  The reduced basis
     has the shortest possible vector lengths and has
@@ -143,6 +190,7 @@ def minkowski_reduce(cell, pbc=True):
     """
     pbc = pbc2pbc(pbc)
     dim = pbc.sum()
+    tol = calc_cell_tolerance(cell)
 
     op = np.eye(3, dtype=int)
     if dim == 2:
@@ -162,6 +210,8 @@ def minkowski_reduce(cell, pbc=True):
         op = op[invperm][:, invperm]
 
     elif dim == 3:
+        if already_reduced_3D(cell, tol):
+            return cell, op
         _, op = reduction_full(cell)
 
     # maintain cell handedness
@@ -181,6 +231,6 @@ def minkowski_reduce(cell, pbc=True):
 
     norms1 = np.sort(np.linalg.norm(cell, axis=1))
     norms2 = np.sort(np.linalg.norm(op @ cell, axis=1))
-    if not (norms2 <= norms1 + 1E-12).all():
+    if not (norms2 <= norms1 + tol).all():
         raise RuntimeError("Minkowski reduction failed")
     return op @ cell, op
