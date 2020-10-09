@@ -5,6 +5,7 @@ import pickle
 from math import pi, sqrt
 from os import remove
 from os.path import isfile
+import warnings
 
 import numpy as np
 import numpy.linalg as la
@@ -95,7 +96,12 @@ class Displacement:
         assert len(supercell) == 3
         self._supercell = tuple(supercell)
         self.define_offset()
-        self.lattice_vectors = self.compute_lattice_vectors()
+        self._lattice_vectors_array = self.compute_lattice_vectors()
+
+    @ase.utils.deprecated('Please use phonons.compute_lattice_vectors()'
+                          ' instead of .lattice_vectors()')
+    def lattice_vectors(self):
+        return self.compute_lattice_vectors()
 
     def compute_lattice_vectors(self):
         """Return lattice vectors for cells in the supercell."""
@@ -294,6 +300,8 @@ class Phonons(Displacement):
         if 'name' not in kwargs.keys():
             kwargs['name'] = "phonon"
 
+        self.deprecate_refcell(kwargs)
+
         Displacement.__init__(self, *args, **kwargs)
 
         # Attributes for force constants and dynamical matrix in real space
@@ -303,6 +311,16 @@ class Phonons(Displacement):
         # Attributes for born charges and static dielectric tensor
         self.Z_avv = None
         self.eps_vv = None
+
+    @staticmethod
+    def deprecate_refcell(kwargs: dict):
+        if 'refcell' in kwargs:
+            warnings.warn('Keyword refcell of Phonons is deprecated.'
+                          'Please use center_refcell (bool)', FutureWarning)
+            kwargs['center_refcell'] = bool(kwargs['refcell'])
+            kwargs.pop('refcell')
+
+        return kwargs
 
     def __call__(self, atoms_N):
         """Calculate forces on atoms in supercell."""
@@ -520,7 +538,7 @@ class Phonons(Displacement):
         natoms = len(self.indices)
         N = np.prod(self.supercell)
         # Lattice vectors
-        R_cN = self.lattice_vectors
+        R_cN = self._lattice_vectors_array
         # Reshape matrix to individual atomic and cartesian dimensions
         D_Navav = D_N.reshape((N, natoms, 3, natoms, 3))
 
@@ -579,7 +597,7 @@ class Phonons(Displacement):
                   shape=(3 * natoms, 3 * natoms).
         """
         # Evaluate fourier sum
-        R_cN = self.lattice_vectors
+        R_cN = self._lattice_vectors_array
         phase_N = np.exp(-2.j * pi * np.dot(q_scaled, R_cN))
         D_q = np.sum(phase_N[:, np.newaxis, np.newaxis] * D_N, axis=0)
         return D_q
