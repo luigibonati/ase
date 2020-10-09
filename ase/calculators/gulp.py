@@ -69,9 +69,9 @@ class GULP(FileIOCalculator):
         """Construct GULP-calculator object."""
         FileIOCalculator.__init__(self, restart, ignore_bad_restart_file,
                                   label, atoms, **kwargs)
-        self.optimized  = optimized
-        self.Gnorm      = Gnorm
-        self.steps      = steps
+        self.optimized = optimized
+        self.Gnorm = Gnorm
+        self.steps = steps
         self.conditions = conditions
         self.library_check()
         self.atom_types = []
