@@ -3,7 +3,8 @@ import numpy as np
 from ase.utils import pbc2pbc
 
 
-max_it = 100000    # in practice this is not exceeded
+TOL = 1E-12
+MAX_IT = 100000    # in practice this is not exceeded
 
 
 class CycleChecker:
@@ -31,20 +32,13 @@ class CycleChecker:
         return found
 
 
-def calc_cell_tolerance(cell):
-    """Calculate a tolerance in the same way as numpy.linalg.matrix_rank"""
-    eps = np.finfo(float).eps
-    S = np.linalg.svd(cell)[1]
-    return S.max() * max(cell.shape) * eps
-
-
 def reduction_gauss(B, hu, hv):
     """Calculate a Gauss-reduced lattice basis (2D reduction)."""
     cycle_checker = CycleChecker(d=2)
     u = hu @ B
     v = hv @ B
 
-    for it in range(max_it):
+    for it in range(MAX_IT):
         x = int(round(np.dot(u, v) / np.dot(u, u)))
         hu, hv = hv - x * hu, hu
         u = hu @ B
@@ -53,7 +47,7 @@ def reduction_gauss(B, hu, hv):
         if np.dot(u, u) >= np.dot(v, v) or cycle_checker.add_site(site):
             return hv, hu
 
-    raise RuntimeError(f"Gaussian basis not found after {max_it} iterations")
+    raise RuntimeError(f"Gaussian basis not found after {MAX_IT} iterations")
 
 
 def relevant_vectors_2D(u, v):
@@ -69,7 +63,7 @@ def closest_vector(t0, u, v):
     rs, cs = relevant_vectors_2D(u, v)
 
     dprev = float("inf")
-    for it in range(max_it):
+    for it in range(MAX_IT):
         ds = np.linalg.norm(rs + t, axis=1)
         index = np.argmin(ds)
         if index == 0 or ds[index] >= dprev:
@@ -81,7 +75,7 @@ def closest_vector(t0, u, v):
         a += kopt * cs[index]
         t = t0 + a[0] * u + a[1] * v
 
-    raise RuntimeError(f"Closest vector not found after {max_it} iterations")
+    raise RuntimeError(f"Closest vector not found after {MAX_IT} iterations")
 
 
 def reduction_full(B):
@@ -90,7 +84,7 @@ def reduction_full(B):
     H = np.eye(3, dtype=int)
     norms = np.linalg.norm(B, axis=1)
 
-    for it in range(max_it):
+    for it in range(MAX_IT):
         # Sort vectors by norm
         H = H[np.argsort(norms, kind='merge')]
 
@@ -118,10 +112,10 @@ def reduction_full(B):
         if norms[2] >= norms[1] or cycle_checker.add_site(H):
             return R, H
 
-    raise RuntimeError(f"Reduced basis not found after {max_it} iterations")
+    raise RuntimeError(f"Reduced basis not found after {MAX_IT} iterations")
 
 
-def already_reduced_3D(B, tol):
+def already_reduced_3D(B):
     """Tests if a 3D basis is already Minkowski-reduced. These conditions are
     due to Minkowski, but a nice description in English can be found in the
     thesis of Carine Jaber: "Algorithmic approaches to Siegel's fundamental
@@ -158,7 +152,7 @@ def already_reduced_3D(B, tol):
     lhs = np.linalg.norm(A @ B, axis=1)
     norms = np.linalg.norm(B, axis=1)
     rhs = norms[[0, 1, 1, 2, 2, 1, 2, 2, 2, 2, 2, 2]]
-    return (lhs >= rhs - tol).all()
+    return (lhs >= rhs - TOL).all()
 
 
 def minkowski_reduce(cell, pbc=True):
@@ -190,7 +184,6 @@ def minkowski_reduce(cell, pbc=True):
     """
     pbc = pbc2pbc(pbc)
     dim = pbc.sum()
-    tol = calc_cell_tolerance(cell)
 
     op = np.eye(3, dtype=int)
     if dim == 2:
@@ -210,7 +203,7 @@ def minkowski_reduce(cell, pbc=True):
         op = op[invperm][:, invperm]
 
     elif dim == 3:
-        if already_reduced_3D(cell, tol):
+        if already_reduced_3D(cell):
             return cell, op
         _, op = reduction_full(cell)
 
@@ -231,6 +224,6 @@ def minkowski_reduce(cell, pbc=True):
 
     norms1 = np.sort(np.linalg.norm(cell, axis=1))
     norms2 = np.sort(np.linalg.norm(op @ cell, axis=1))
-    if not (norms2 <= norms1 + tol).all():
+    if not (norms2 <= norms1 + TOL).all():
         raise RuntimeError("Minkowski reduction failed")
     return op @ cell, op
