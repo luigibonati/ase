@@ -4,6 +4,8 @@ import numpy as np
 
 from ase import Atoms
 from ase.io import write
+from ase.utils import hsv
+
 
 atoms = Atoms('Ag', cell=(2.7, 2.7, 2.7), pbc=True) * (18, 8, 8)
 
@@ -12,7 +14,6 @@ atoms = Atoms('Ag', cell=(2.7, 2.7, 2.7), pbc=True) * (18, 8, 8)
 rotation = '-70x, -20y, -2z' # found using ASE-GUI menu 'view -> rotate'
 
 #Make colors
-from ase.utils import hsv
 colors = hsv(atoms.positions[:, 0])
 
 # Textures

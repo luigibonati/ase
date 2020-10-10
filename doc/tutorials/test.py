@@ -1,5 +1,4 @@
 # creates: test.txt
-import sys
 import runpy
 import numpy as np
 from pathlib import Path
