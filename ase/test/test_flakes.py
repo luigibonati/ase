@@ -62,13 +62,13 @@ max_errors = {
     # over-indented
     'E117': 0,
     # indentation contains mixed spaces and tabs
-    'E101': 7,
+    'E101': 0,
     # indentation contains tabs
-    'W191': 7,
+    'W191': 0,
     # closing bracket does not match indentation of opening bracket's line
     'E123': 13,
     # multiple spaces before operator
-    'E221': 8,
+    'E221': 4,
     # whitespace before '}'
     'E202': 16,
     # whitespace after '{'
@@ -82,7 +82,7 @@ max_errors = {
     # indentation is not a multiple of four
     'E111': 28,
     # do not use bare 'except'
-    'E722': 11,
+    'E722': 0,
     # whitespace before ':'
     'E203': 38,
     # blank line at end of file
@@ -104,7 +104,7 @@ max_errors = {
     # expected 2 blank lines after class or function definition, found 1
     'E305': 35,
     # module level import not at top of file
-    'E402': 16,
+    'E402': 0,
     # at least two spaces before inline comment
     'E261': 71,
     # expected 2 blank lines, found 1

@@ -59,12 +59,7 @@ class read_hdf5_data:
     """
 
     def __init__(self, args, prop_fig, YFname):
-
-        try:
-            import h5py
-        except:
-            raise ValueError('The module need h5py library in order \
-                        to read hdf5 files!')
+        import h5py
 
         self.atoms = aio.read(prop_fig.fatoms)
         self.determine_fname(args, YFname)
