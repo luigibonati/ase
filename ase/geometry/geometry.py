@@ -158,21 +158,28 @@ def find_mic(v, cell, pbc=True):
     if np.sum(pbc) > 0:
         cell = complete_cell(cell)
         rcell, _ = minkowski_reduce(cell, pbc=pbc)
-
-        # in a Minkowski-reduced cell we only need to test nearest neighbors
-        cs = [np.arange(-1 * p, p + 1) for p in pbc]
-        neighbor_cells = list(itertools.product(*cs))
-
         positions = wrap_positions(v, rcell, pbc=pbc, eps=0)
-        vmin = positions.copy()
-        vlen = np.linalg.norm(positions, axis=1)
-        for nbr in neighbor_cells:
-            trial = positions + np.dot(rcell.T, nbr)
-            trial_len = np.linalg.norm(trial, axis=1)
 
-            indices = np.where(trial_len < vlen)
-            vmin[indices] = trial[indices]
-            vlen[indices] = trial_len[indices]
+        # In a Minkowski-reduced cell we only need to test nearest neighbors,
+        # or "Voronoi-relevant" vectors. These consist of all combinations of
+        # [-1, 0, 1] of the reduced cell vectors.
+
+        # Define ranges [-1, 0, 1] for periodic directions and [0] for aperiodic
+        # directions.
+        ranges = [np.arange(-1 * p, p + 1) for p in pbc]
+
+        # Get Voronoi-relevant vectors.
+        hkls = list(itertools.product(*ranges))
+        vrvecs = hkls @ rcell
+
+        # Map positions into neighbouring cells.
+        x = positions + vrvecs[:, None]
+
+        # Find minimum images
+        lengths = np.linalg.norm(x, axis=2)
+        indices = np.argmin(lengths, axis=0)
+        vmin = x[indices, np.arange(len(positions)), :]
+        vlen = lengths[indices, np.arange(len(positions))]
     else:
         vmin = v.copy()
         vlen = np.linalg.norm(vmin, axis=1)
