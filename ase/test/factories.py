@@ -258,6 +258,21 @@ class LammpsRunFactory:
         return cls(config.executables['lammpsrun'])
 
 
+@factory('lammpslib')
+class LammpsLibFactory:
+    def __init__(self, potentials_path):
+        # Set the path where LAMMPS will look for potential parameter files
+        os.environ["LAMMPS_POTENTIALS"] = str(potentials_path)
+
+    def calc(self, **kwargs):
+        from ase.calculators.lammpslib import LAMMPSlib
+        return LAMMPSlib(**kwargs)
+
+    @classmethod
+    def fromconfig(cls, config):
+        return cls(config.datafiles['lammps'][0])
+
+
 @factory('octopus')
 class OctopusFactory:
     def __init__(self, executable):

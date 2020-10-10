@@ -1,22 +1,59 @@
-def test_lammpslib_simple():
-    """
-    Get energy from a LAMMPS calculation of an uncharged system.
-    This was written to run with the 30 Apr 2019 version of LAMMPS,
-    for which uncharged systems require the use of 'kspace_modify gewald'.
-    """
+import pytest
+import numpy as np
+from ase import Atom
+from ase.build import bulk
+import ase.io
+from ase import units
+from ase.md.verlet import VelocityVerlet
 
 
-    import numpy as np
-    from numpy.testing import assert_allclose
-    from ase import Atom
-    from ase.build import bulk
-    from ase.calculators.lammpslib import LAMMPSlib
-    import ase.io
-    from ase import units
-    from ase.md.verlet import VelocityVerlet
+@pytest.fixture
+def fcc_Ni_with_H_at_center():
+    atoms = bulk("Ni", cubic=True)
+    atoms += Atom("H", position=atoms.cell.diagonal() / 2)
+    return atoms
 
 
-    # first, we generate the LAMMPS data file
+@pytest.fixture
+def calc_params_NiH():
+    calc_params = {}
+    calc_params["lmpcmds"] = [
+        "pair_style eam/alloy",
+        "pair_coeff * * NiAlH_jea.eam.alloy Ni H",
+    ]
+    calc_params["atom_types"] = {"Ni": 1, "H": 2}
+    calc_params["log_file"] = "test.log"
+    calc_params["keep_alive"] = True
+    return calc_params
+
+
+@pytest.fixture
+def calc_params_Fe():
+    calc_params = {}
+    calc_params["lammps_header"] = [
+        "units           real",
+        "atom_style      full",
+        "boundary        p p p",
+        "box tilt        large",
+        "pair_style      lj/cut/coul/long 12.500",
+        "bond_style      harmonic",
+        "angle_style     harmonic",
+        "kspace_style    ewald 0.0001",
+        "kspace_modify   gewald 0.01",
+        "read_data       lammps.data",
+    ]
+    calc_params["lmpcmds"] = []
+    calc_params["atom_types"] = {"Fe": 1}
+    calc_params["create_atoms"] = False
+    calc_params["create_box"] = False
+    calc_params["boundary"] = False
+    calc_params["log_file"] = "test.log"
+    calc_params["keep_alive"] = True
+    return calc_params
+
+
+@pytest.fixture
+def lammps_data_file():
     lammps_data_file = """
     8 atoms
     1 atom types
@@ -84,125 +121,102 @@ def test_lammpslib_simple():
     3 1 5 6 7
     4 1 6 7 8
     """
+    return lammps_data_file
 
 
+@pytest.mark.calculator("lammpslib")
+def test_lammpslib_simple(
+    factory, calc_params_NiH, fcc_Ni_with_H_at_center, calc_params_Fe, lammps_data_file
+):
+    """
+    Get energy from a LAMMPS calculation of an uncharged system.
+    This was written to run with the 30 Apr 2019 version of LAMMPS,
+    for which uncharged systems require the use of 'kspace_modify gewald'.
+    """
+    NiH = fcc_Ni_with_H_at_center
 
+    # Add a bit of distortion to the cell
+    NiH.set_cell(
+        NiH.cell + [[0.1, 0.2, 0.4], [0.3, 0.2, 0.0], [0.1, 0.1, 0.1]],
+        scale_atoms=True,
+    )
 
-    def test_lammpslib():
-        # potential_path must be set as an environment variable
+    calc = factory.calc(**calc_params_NiH)
+    NiH.calc = calc
 
-        cmds = ["pair_style eam/alloy",
-                "pair_coeff * * NiAlH_jea.eam.alloy Ni H"]
+    E = NiH.get_potential_energy()
+    F = NiH.get_forces()
+    S = NiH.get_stress()
 
-        nickel = bulk('Ni', cubic=True)
-        nickel += Atom('H', position=nickel.cell.diagonal()/2)
-        # Bit of distortion
-        nickel.set_cell(nickel.cell + [[0.1, 0.2, 0.4],
-                                       [0.3, 0.2, 0.0],
-                                       [0.1, 0.1, 0.1]], scale_atoms=True)
+    print("Energy: ", E)
+    print("Forces:", F)
+    print("Stress: ", S)
+    print()
 
-        lammps = LAMMPSlib(lmpcmds=cmds,
-                           atom_types={'Ni': 1, 'H': 2},
-                           log_file='test.log', keep_alive=True)
+    E = NiH.get_potential_energy()
+    F = NiH.get_forces()
+    S = NiH.get_stress()
 
-        nickel.calc = lammps
+    calc = factory.calc(**calc_params_NiH)
+    NiH.calc = calc
 
-        E = nickel.get_potential_energy()
-        F = nickel.get_forces()
-        S = nickel.get_stress()
+    E2 = NiH.get_potential_energy()
+    F2 = NiH.get_forces()
+    S2 = NiH.get_stress()
 
-        print('Energy: ', E)
-        print('Forces:', F)
-        print('Stress: ', S)
-        print()
+    assert E == pytest.approx(E2, rel=1e-4)
+    assert F == pytest.approx(F2, rel=1e-4)
+    assert S == pytest.approx(S2, rel=1e-4)
 
-        E = nickel.get_potential_energy()
-        F = nickel.get_forces()
-        S = nickel.get_stress()
+    NiH.rattle(stdev=0.2)
+    E3 = NiH.get_potential_energy()
+    F3 = NiH.get_forces()
+    S3 = NiH.get_stress()
 
+    print("rattled atoms")
+    print("Energy: ", E3)
+    print("Forces:", F3)
+    print("Stress: ", S3)
+    print()
 
-        lammps = LAMMPSlib(lmpcmds=cmds,
-                           log_file='test.log', keep_alive=True)
-        nickel.calc = lammps
+    assert not np.allclose(E, E3)
+    assert not np.allclose(F, F3)
+    assert not np.allclose(S, S3)
 
-        E2 = nickel.get_potential_energy()
-        F2 = nickel.get_forces()
-        S2 = nickel.get_stress()
+    # Add another H
+    NiH += Atom("H", position=NiH.cell.diagonal() / 4)
+    E4 = NiH.get_potential_energy()
+    F4 = NiH.get_forces()
+    S4 = NiH.get_stress()
 
-        assert_allclose(E, E2, atol=1e-4, rtol=1e-4)
-        assert_allclose(F, F2, atol=1e-4, rtol=1e-4)
-        assert_allclose(S, S2, atol=1e-4, rtol=1e-4)
+    assert not np.allclose(E4, E3)
+    assert not np.allclose(F4[:-1, :], F3)
+    assert not np.allclose(S4, S3)
 
-        nickel.rattle(stdev=0.2)
-        E3 = nickel.get_potential_energy()
-        F3 = nickel.get_forces()
-        S3 = nickel.get_stress()
+    # the example from the docstring
 
-        print('rattled atoms')
-        print('Energy: ', E3)
-        print('Forces:', F3)
-        print('Stress: ', S3)
-        print()
+    NiH = fcc_Ni_with_H_at_center
+    calc = factory.calc(**calc_params_NiH)
+    NiH.calc = calc
+    print("Energy ", NiH.get_potential_energy())
 
-        assert not np.allclose(E, E3)
-        assert not np.allclose(F, F3)
-        assert not np.allclose(S, S3)
+    # a more complicated example, reading in a LAMMPS data file
 
-        nickel += Atom('H', position=nickel.cell.diagonal()/4)
-        E4 = nickel.get_potential_energy()
-        F4 = nickel.get_forces()
-        S4 = nickel.get_stress()
+    # then we run the actual test
+    with open("lammps.data", "w") as fd:
+        fd.write(lammps_data_file)
 
-        assert not np.allclose(E4, E3)
-        assert not np.allclose(F4[:-1, :], F3)
-        assert not np.allclose(S4, S3)
+    at = ase.io.read(
+        "lammps.data", format="lammps-data", Z_of_type={1: 26}, units="real"
+    )
 
+    calc = factory.calc(**calc_params_Fe)
+    at.calc = calc
+    dyn = VelocityVerlet(at, 1 * units.fs)
 
-        # the example from the docstring
+    energy = at.get_potential_energy()
+    assert energy == pytest.approx(2041.411982950972, rel=1e-4)
 
-        cmds = ["pair_style eam/alloy",
-                "pair_coeff * * NiAlH_jea.eam.alloy Al H"]
-
-        Ni = bulk('Ni', cubic=True)
-        H = Atom('H', position=Ni.cell.diagonal()/2)
-        NiH = Ni + H
-
-        lammps = LAMMPSlib(lmpcmds=cmds, log_file='test.log')
-
-        NiH.calc = lammps
-        print("Energy ", NiH.get_potential_energy())
-
-
-        # a more complicated example, reading in a LAMMPS data file
-
-        # then we run the actual test
-        with open('lammps.data', 'w') as fd:
-            fd.write(lammps_data_file)
-
-        at = ase.io.read('lammps.data', format='lammps-data', Z_of_type={1: 26},
-                         units='real')
-
-        header = ["units           real",
-                  "atom_style      full",
-                  "boundary        p p p",
-                  "box tilt        large",
-                  "pair_style      lj/cut/coul/long 12.500",
-                  "bond_style      harmonic",
-                  "angle_style     harmonic",
-                  "kspace_style    ewald 0.0001",
-                  "kspace_modify   gewald 0.01",
-                  "read_data       lammps.data"]
-        cmds = []
-
-        lammps = LAMMPSlib(lammps_header=header, lmpcmds=cmds, atom_types={'Fe': 1},
-                           create_atoms=False, create_box=False, boundary=False,
-                           keep_alive=True, log_file='test.log')
-        at.calc = lammps
-        dyn = VelocityVerlet(at, 1 * units.fs)
-
-        assert_allclose(at.get_potential_energy(), 2041.411982950972,
-                        atol=1e-4, rtol=1e-4)
-
-        dyn.run(10)
-        assert_allclose(at.get_potential_energy(), 312.4315854721744,
-                        atol=1e-4, rtol=1e-4)
+    dyn.run(10)
+    energy = at.get_potential_energy()
+    assert energy == pytest.approx(312.4315854721744, rel=1e-4)
