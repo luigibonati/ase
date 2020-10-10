@@ -184,8 +184,10 @@ def minkowski_reduce(cell, pbc=True):
     """
     pbc = pbc2pbc(pbc)
     dim = pbc.sum()
-
     op = np.eye(3, dtype=int)
+    if dim <= 1 or (dim == 3 and already_reduced_3D(cell)):
+        return cell, op
+
     if dim == 2:
         perm = np.argsort(pbc, kind='merge')[::-1]    # stable sort
         pcell = cell[perm][:, perm]
@@ -202,16 +204,7 @@ def minkowski_reduce(cell, pbc=True):
         invperm = np.argsort(perm)
         op = op[invperm][:, invperm]
 
-    elif dim == 3:
-        if already_reduced_3D(cell):
-            return cell, op
-        _, op = reduction_full(cell)
-
-    # maintain cell handedness
-    if dim == 3:
-        if np.sign(np.linalg.det(cell)) != np.sign(np.linalg.det(op @ cell)):
-            op = -op
-    elif dim == 2:
+        # maintain cell handedness
         index = np.argmin(pbc)
         _cell = cell.copy()
         _cell[index] = (1, 1, 1)
@@ -222,8 +215,14 @@ def minkowski_reduce(cell, pbc=True):
             index = np.argmax(pbc)
             op[index] *= -1
 
+    elif dim == 3:
+        _, op = reduction_full(cell)
+        # maintain cell handedness
+        if np.sign(np.linalg.det(cell)) != np.sign(np.linalg.det(op @ cell)):
+            op = -op
+
     norms1 = np.sort(np.linalg.norm(cell, axis=1))
     norms2 = np.sort(np.linalg.norm(op @ cell, axis=1))
-    if not (norms2 <= norms1 + TOL).all():
+    if (norms2 > norms1 + TOL).any():
         raise RuntimeError("Minkowski reduction failed")
     return op @ cell, op
