@@ -37,7 +37,7 @@ def test_dcd(cp2k_factory):
     h2.set_cell([10.0, 10.0, 10.0, 90.0, 90.0, 90.0])
     h2.set_pbc(True)
     energy = h2.get_potential_energy()
-    assert not energy == None
+    assert energy is not None
     subprocess.call(['cp2k','-i', 'test_dcd.inp', '-o', 'test_dcd.out'])
     h2_end = io.read('test_dcd-pos-1.dcd')
     assert (h2_end.symbols == 'X').all()

@@ -14,7 +14,7 @@ def read_scf(filename):
                 ene.append(float(line[43:59]) * Ry)
         f.close()
         return ene
-    except:
+    except Exception:  # XXX Which kind of exception exactly?
         return None
 
 

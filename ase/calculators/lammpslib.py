@@ -523,7 +523,7 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
     def rebuild(self, atoms):
         try:
             n_diff = len(atoms.numbers) - len(self.previous_atoms_numbers)
-        except:
+        except Exception:  # XXX Which kind of exception?
             n_diff = len(atoms.numbers)
 
         if n_diff > 0:
@@ -556,7 +556,7 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
             previous_types = set(
                 (i + 1, self.parameters.atom_types[ase_chemical_symbols[Z]])
                 for i, Z in enumerate(self.previous_atoms_numbers))
-        except:
+        except Exception:  # XXX which kind of exception?
             previous_types = set()
 
         for (i, i_type) in current_types - previous_types:

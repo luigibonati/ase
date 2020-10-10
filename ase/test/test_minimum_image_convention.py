@@ -1,11 +1,11 @@
+import numpy as np
+from numpy.testing import assert_allclose
+from ase.lattice.cubic import FaceCenteredCubic
+from ase.neighborlist import mic as NeighborListMic
+from ase.neighborlist import NeighborList, PrimitiveNeighborList
+
+
 def test_minimum_image_convention():
-    import numpy as np
-    from numpy.testing import assert_allclose
-    from ase.lattice.cubic import FaceCenteredCubic
-    from ase.neighborlist import mic as NeighborListMic
-    from ase.neighborlist import NeighborList, PrimitiveNeighborList
-
-
     size = 2
     atoms = FaceCenteredCubic(size=[size, size, size],
                               symbol='Cu',
@@ -37,7 +37,7 @@ def test_minimum_image_convention():
 
     d3 = float("inf") * np.ones(len(atoms))
     for i, offset in zip(indices, offsets):
-    	p = atoms.positions[i] + offset @ atoms.get_cell()
-    	d = np.linalg.norm(p - atoms.positions[0])
-    	d3[i] = min(d3[i], d)
+        p = atoms.positions[i] + offset @ atoms.get_cell()
+        d = np.linalg.norm(p - atoms.positions[0])
+        d3[i] = min(d3[i], d)
     assert_allclose(d0, d3)

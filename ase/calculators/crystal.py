@@ -338,7 +338,7 @@ class CRYSTAL(FileIOCalculator):
         charges = np.array(qm_charges)
         self.results['charges'] = charges
 
-        ### Read dipole moment.
+        # Read dipole moment.
         dipole = np.zeros([1, 3])
         for n, line in enumerate(self.lines):
             if 'DIPOLE MOMENT ALONG' in line:

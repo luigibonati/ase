@@ -25,9 +25,7 @@ __all__ = ['exec_', 'basestring', 'import_module', 'seterr', 'plural',
 
 # Python 2+3 compatibility stuff (let's try to remove these things):
 basestring = str
-from io import StringIO
 pickleload = functools.partial(pickle.load, encoding='bytes')
-StringIO  # appease pyflakes
 
 
 @contextmanager
@@ -95,7 +93,7 @@ def convert_string_to_fd(name, world=None):
         return devnull
     if name == '-':
         return sys.stdout
-    if isinstance(name, (basestring, PurePath)):
+    if isinstance(name, (str, PurePath)):
         return open(str(name), 'w')  # str for py3.5 pathlib
     return name  # we assume name is already a file-descriptor
 
@@ -394,7 +392,7 @@ class iofunction:
     def __call__(self, func):
         @functools.wraps(func)
         def iofunc(file, *args, **kwargs):
-            openandclose = isinstance(file, (basestring, PurePath))
+            openandclose = isinstance(file, (str, PurePath))
             fd = None
             try:
                 if openandclose:

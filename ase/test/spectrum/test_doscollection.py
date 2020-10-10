@@ -48,6 +48,7 @@ class TestDOSCollection:
             dc['hello']
 
     linewidths = [1, 5, None]
+
     @pytest.mark.usefixtures("figure")
     @pytest.mark.parametrize('linewidth', linewidths)
     def test_plot(self, mindoscollection, figure, linewidth):

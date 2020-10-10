@@ -1,4 +1,4 @@
-from ase.utils import StringIO
+from io import StringIO
 from ase.io import read
 
 # Made from NWChem interface

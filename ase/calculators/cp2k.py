@@ -200,13 +200,7 @@ class CP2K(Calculator):
         self._shell = Cp2kShell(self.command, self._debug)
 
         if restart is not None:
-            try:
-                self.read(restart)
-            except:
-                if ignore_bad_restart_file:
-                    self.reset()
-                else:
-                    raise
+            self.read(restart)
 
     def __del__(self):
         """Release force_env and terminate cp2k_shell child process"""

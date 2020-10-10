@@ -40,35 +40,35 @@ max_errors = {
     # expected 1 blank line before a nested definition, found 0
     'E306': 0,
     # test for membership should be 'not in'
-    'E713': 2,
+    'E713': 0,
     # multiple statements on one line (colon)
-    'E701': 1,
+    'E701': 0,
     # indentation is not a multiple of four (comment)
-    'E114': 2,
+    'E114': 0,
     # unexpected indentation (comment)
-    'E116': 4,
+    'E116': 0,
     # comparison to None should be 'if cond is None:'
-    'E711': 4,
+    'E711': 0,
     # expected 1 blank line, found 0
-    'E301': 5,
+    'E301': 0,
     # multiple spaces after keyword
     'E271': 6,
     # test for object identity should be 'is not'
-    'E714': 6,
+    'E714': 0,
     # closing bracket does not match visual indentation
-    'E124': 3,
+    'E124': 0,
     # too many leading '#' for block comment
-    'E266': 3,
+    'E266': 0,
     # over-indented
-    'E117': 2,
+    'E117': 0,
     # indentation contains mixed spaces and tabs
-    'E101': 7,
+    'E101': 0,
     # indentation contains tabs
-    'W191': 7,
+    'W191': 0,
     # closing bracket does not match indentation of opening bracket's line
     'E123': 13,
     # multiple spaces before operator
-    'E221': 8,
+    'E221': 4,
     # whitespace before '}'
     'E202': 16,
     # whitespace after '{'
@@ -82,7 +82,7 @@ max_errors = {
     # indentation is not a multiple of four
     'E111': 28,
     # do not use bare 'except'
-    'E722': 11,
+    'E722': 0,
     # whitespace before ':'
     'E203': 38,
     # blank line at end of file
@@ -104,7 +104,7 @@ max_errors = {
     # expected 2 blank lines after class or function definition, found 1
     'E305': 35,
     # module level import not at top of file
-    'E402': 16,
+    'E402': 0,
     # at least two spaces before inline comment
     'E261': 71,
     # expected 2 blank lines, found 1

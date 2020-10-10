@@ -1,7 +1,8 @@
-def test_lammpsdata_read(datadir):
-    import ase.io
-    from ase.utils import StringIO
+from io import StringIO
+import ase.io
 
+
+def test_lammpsdata_read(datadir):
     lammps_data_path = datadir / 'lammpsdata_input.data'
     lammps_data = ase.io.read(lammps_data_path, format="lammps-data",
                               units="metal")

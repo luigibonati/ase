@@ -173,6 +173,7 @@ class TestRawDosData:
     # - check that a line styling parameter is correctly passed through mplargs
     # - set a kwarg from self.sample() to check broadening args are recognised
     linewidths = [1, 5, None]
+
     @pytest.mark.usefixtures("figure")
     @pytest.mark.parametrize('linewidth', linewidths)
     def test_plot(self, sparse_dos, figure, linewidth):
@@ -295,6 +296,7 @@ class TestGridDosData:
                            rtol=0.05, atol=0.01)
 
     linewidths = [1, 5, None]
+
     @pytest.mark.usefixtures("figure")
     @pytest.mark.parametrize('linewidth', linewidths)
     def test_plot(self, dense_dos, figure, linewidth):
