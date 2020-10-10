@@ -34,14 +34,6 @@ class TestVibrationsClassic():
         atoms.calc = EMT()
         return atoms
 
-    def teardown(self):
-        for pattern in 'vib.*.pckl', 'interrupt.*.pckl', 'vib.*.traj':
-            for outfile in glob.glob(pattern):
-                os.remove(outfile)
-        for filename in (self.logfile, self.opt_logs, 'vib.xyz'):
-            if os.path.isfile(filename):
-                os.remove(filename)
-
     def test_consistency_with_vibrationsdata(self):
         atoms = self.get_emt_n2()
         vib = Vibrations(atoms)
@@ -231,13 +223,6 @@ class TestVibrationsData():
              -5.158454318599951, 0.0, 0.6867385017096544, 0.0,
              -56.65107699250456, -0.6867385017096544, 0.0, 56.65107699250456
              ]).reshape((2, 3, 2, 3))
-
-    def teardown(self):
-        for logfile in (self.report_file,
-                        self.unstable_report_file,
-                        self.jmol_file):
-            if os.path.isfile(logfile):
-                os.remove(logfile)
 
     def test_energies_and_modes(self):
         vib_data = VibrationsData(self.n2.copy(), self.h_n2)
