@@ -3,6 +3,8 @@ import numpy as np
 
 from ase import Atoms
 
+from .common_fixtures import calc_params_NiH
+
 
 @pytest.fixture
 def dimer_params():
@@ -13,19 +15,6 @@ def dimer_params():
     dimer_params["cell"] = (1000 * a, 1000 * a, 1000 * a)
     dimer_params["pbc"] = (False, False, False)
     return dimer_params
-
-
-@pytest.fixture
-def calc_params_NiH():
-    calc_params = {}
-    calc_params["lmpcmds"] = [
-        "pair_style eam/alloy",
-        "pair_coeff * * NiAlH_jea.eam.alloy Ni H",
-    ]
-    calc_params["atom_types"] = {"Ni": 1, "H": 2}
-    calc_params["log_file"] = "test.log"
-    calc_params["keep_alive"] = True
-    return calc_params
 
 
 @pytest.mark.calculator("lammpslib")

@@ -6,25 +6,14 @@ import ase.io
 from ase import units
 from ase.md.verlet import VelocityVerlet
 
+from .common_fixtures import calc_params_NiH
+
 
 @pytest.fixture
 def fcc_Ni_with_H_at_center():
     atoms = bulk("Ni", cubic=True)
     atoms += Atom("H", position=atoms.cell.diagonal() / 2)
     return atoms
-
-
-@pytest.fixture
-def calc_params_NiH():
-    calc_params = {}
-    calc_params["lmpcmds"] = [
-        "pair_style eam/alloy",
-        "pair_coeff * * NiAlH_jea.eam.alloy Ni H",
-    ]
-    calc_params["atom_types"] = {"Ni": 1, "H": 2}
-    calc_params["log_file"] = "test.log"
-    calc_params["keep_alive"] = True
-    return calc_params
 
 
 @pytest.fixture
@@ -137,8 +126,7 @@ def test_lammpslib_simple(
 
     # Add a bit of distortion to the cell
     NiH.set_cell(
-        NiH.cell + [[0.1, 0.2, 0.4], [0.3, 0.2, 0.0], [0.1, 0.1, 0.1]],
-        scale_atoms=True,
+        NiH.cell + [[0.1, 0.2, 0.4], [0.3, 0.2, 0.0], [0.1, 0.1, 0.1]], scale_atoms=True
     )
 
     calc = factory.calc(**calc_params_NiH)

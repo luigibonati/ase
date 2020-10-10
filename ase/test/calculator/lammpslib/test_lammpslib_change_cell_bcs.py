@@ -2,6 +2,8 @@ import pytest
 
 from ase.lattice.cubic import FaceCenteredCubic
 
+from .common_fixtures import calc_params_NiH
+
 
 @pytest.fixture
 def lattice_params():
@@ -11,19 +13,6 @@ def lattice_params():
     lattice_params["symbol"] = "Ni"
     lattice_params["pbc"] = True
     return lattice_params
-
-
-@pytest.fixture
-def calc_params_NiH():
-    calc_params = {}
-    calc_params["lmpcmds"] = [
-        "pair_style eam/alloy",
-        f"pair_coeff * * NiAlH_jea.eam.alloy Ni H",
-    ]
-    calc_params["atom_types"] = {"Ni": 1, "H": 2}
-    calc_params["log_file"] = "test.log"
-    calc_params["keep_alive"] = True
-    return calc_params
 
 
 @pytest.mark.calculator("lammpslib")
