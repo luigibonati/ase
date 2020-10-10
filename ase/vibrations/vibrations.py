@@ -411,9 +411,9 @@ class VibrationsData:
 
         return summary_lines
 
-    def iter_images(self, mode_index: int,
-                   temperature: float = units.kB * 300,
-                   frames: int = 30) -> Iterator[Atoms]:
+    def iter_animated_mode(self, mode_index: int,
+                           temperature: float = units.kB * 300,
+                           frames: int = 30) -> Iterator[Atoms]:
         """Obtain animated mode as a series of Atoms
 
         Args:
@@ -971,8 +971,9 @@ class Vibrations:
             n = n % len(self.get_energies())
 
         with ase.io.Trajectory('%s.%d.traj' % (self.name, n), 'w') as traj:
-            for image in self.get_vibrations().iter_images(n, temperature=kT,
-                                                           frames=nimages):
+            for image in (self.get_vibrations()
+                          .iter_animated_mode(n,
+                                              temperature=kT, frames=nimages)):
                 traj.write(image)
 
     def show_as_force(self, n, scale=0.2, show=True):
