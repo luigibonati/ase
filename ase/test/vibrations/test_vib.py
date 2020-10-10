@@ -248,7 +248,7 @@ class TestVibrationsData():
         assert (vib_data.get_zero_point_energy()
                 == pytest.approx(n2_data['ref_zpe']))
 
-        assert vib_data.summary() == vibrations_n2_log
+        assert vib_data.tabulate() == vibrations_n2_log
 
         atoms_with_forces = vib_data.show_as_force(-1, show=False)
 
@@ -263,7 +263,7 @@ class TestVibrationsData():
     def test_imaginary_energies(self, n2_unstable_data):
         vib_data = VibrationsData(n2_unstable_data['atoms'],
                                   n2_unstable_data['hessian'])
-        assert vib_data.summary() == unstable_n2_log
+        assert vib_data.tabulate() == unstable_n2_log
 
     def test_zero_mass(self, n2_data):
         atoms = n2_data['atoms']

@@ -363,7 +363,7 @@ class VibrationsData:
                                                      np.ndarray]) -> float:
         return 0.5 * np.asarray(energies).real.sum()
 
-    def summary(self, im_tol: float = 1e-8) -> str:
+    def tabulate(self, im_tol: float = 1e-8) -> str:
         """Print a summary of the vibrational frequencies.
 
         Args:
@@ -381,13 +381,14 @@ class VibrationsData:
 
         energies = self.get_energies()
 
-        return ('\n'.join(self._summary_from_energies(energies, im_tol=im_tol))
+        return ('\n'.join(self._tabulate_from_energies(energies,
+                                                       im_tol=im_tol))
                 + '\n')
 
     @classmethod
-    def _summary_from_energies(cls,
-                               energies: Union[Sequence[complex], np.ndarray],
-                               im_tol: float = 1e-8) -> List[str]:
+    def _tabulate_from_energies(cls,
+                                energies: Union[Sequence[complex], np.ndarray],
+                                im_tol: float = 1e-8) -> List[str]:
         summary_lines = ['---------------------',
                          '  #    meV     cm^-1',
                          '---------------------']
@@ -938,7 +939,7 @@ class Vibrations:
         else:
             energies = self.get_energies(method=method, direction=direction)
 
-        summary_lines = VibrationsData._summary_from_energies(energies)
+        summary_lines = VibrationsData._tabulate_from_energies(energies)
 
         if log is None:
             for line in summary_lines:
