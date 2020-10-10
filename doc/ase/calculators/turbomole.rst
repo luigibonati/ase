@@ -297,13 +297,19 @@ computed numerically using the script NumForce. The keys can be *'central'*
 indicating use of central differences (type *bool*) and *'delta'* specifying
 the coordinate displacements in Angstrom (type *float*).
 
+While ``task`` can be set to ``"optimize"`` to perform a geometry optimization
+using Turbomole's own relaxation algorithms, doing so directly is discouraged.
+Instead, the calculator's ``get_optimizer()`` method should be called to obtain
+a ``TurbomoleOptimizer`` which can be used like any other ASE
+:mod:`Optimizer <ase.optimize>`. An :ref:`example <turbomole_optimizer_example>`
+is given below.
+
 Some parameter names contain spaces. This means that the preferred way to pass
 the parameters is to construct a dictionary, for example:
 
 .. code:: python
 
-  params = {'task': 'optimize',
-            'use resolution of identity': True,
+  params = {'use resolution of identity': True,
             'ri memory': 2000,
             'scf iterations': 80,
             'force convergence': 0.05}
@@ -345,6 +351,14 @@ Single-point gradient calculation of Au13-
 This script demonstrates the use of the restart option.
 
 :git:`ase/test/calculator/turbomole/test_turbomole_au13.py`.
+
+
+.. _turbomole_optimizer_example:
+
+Geometry optimization using TurbomoleOptimizer (recommended)
+------------------------------------------------------------
+
+:git:`ase/test/calculator/turbomole/test_turbomole_optimizer.py`.
 
 Geometry optimization and normal mode analysis for H2O
 ------------------------------------------------------
