@@ -122,9 +122,7 @@ class VibrationsData:
             indices of True elements
 
         """
-
-        return (np.arange(len(mask), dtype=int)[np.asarray(mask, dtype=bool)]
-                ).tolist()
+        return np.where(mask)[0].tolist()
 
     @staticmethod
     def _check_dimensions(atoms: Atoms,
