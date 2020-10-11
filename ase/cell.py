@@ -52,7 +52,7 @@ class Cell:
         return cls.new(cell)
 
     @classmethod
-    def new(cls, cell=None) -> 'Cell':
+    def new(cls, cell=None):
         """Create new cell from any parameters.
 
         If cell is three numbers, assume three lengths with right angles.
@@ -171,7 +171,7 @@ class Cell:
             bandpath = BandPath(cell, path=path, special_points=special_points)
             return bandpath.interpolate(npoints=npoints, density=density)
 
-    def uncomplete(self, pbc) -> 'Cell':
+    def uncomplete(self, pbc):
         """Return new cell, zeroing cell vectors where not periodic."""
         _pbc = np.empty(3, bool)
         _pbc[:] = pbc
@@ -179,13 +179,13 @@ class Cell:
         cell[~_pbc] = 0
         return cell
 
-    def complete(self) -> 'Cell':
+    def complete(self):
         """Convert missing cell vectors into orthogonal unit vectors."""
         from ase.geometry.cell import complete_cell
         cell = Cell(complete_cell(self.array))
         return cell
 
-    def copy(self) -> 'Cell':
+    def copy(self):
         """Return a copy of this cell."""
         cell = Cell(self.array.copy())
         return cell
@@ -196,7 +196,7 @@ class Cell:
 
         Equal to the number of nonzero lattice vectors."""
         # The name ndim clashes with ndarray.ndim
-        return self.any(1).sum()
+        return self.any(1).sum()  # type: ignore
 
     @property
     def orthorhombic(self) -> bool:
@@ -254,7 +254,7 @@ class Cell:
         """Calculate Cartesian positions from scaled positions."""
         return scaled_positions @ self.complete()
 
-    def reciprocal(self) -> 'Cell':
+    def reciprocal(self):
         """Get reciprocal lattice as a 3x3 array.
 
         Does not include factor of 2 pi."""
