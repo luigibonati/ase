@@ -152,7 +152,7 @@ class Render:
         return [self.texture_widget.value] * len(self.gui.atoms)
         #natoms = len(self.gui.atoms)
         #textures = natoms * [
-            #self.texture_list[0]  #self.default_texture.get_active()]
+        #self.texture_list[0]  #self.default_texture.get_active()]
         #]
         #for mat in self.materials:
         #    sel = mat[1]

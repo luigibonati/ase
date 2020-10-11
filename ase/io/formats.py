@@ -348,8 +348,6 @@ F('struct', 'WIEN2k structure file', '1S', module='wien2k')
 F('struct_out', 'SIESTA STRUCT file', '1F', module='siesta')
 F('traj', 'ASE trajectory', '+B', module='trajectory',
   magic=[b'- of UlmASE-Trajectory', b'AFFormatASE-Trajectory'])
-F('trj', 'Old ASE pickle trajectory', '+S',
-  module='pickletrajectory', magic=b'PickleTrajectory')
 F('turbomole', 'TURBOMOLE coord file', '1F', glob='coord',
   magic=b'$coord')
 F('turbomole-gradient', 'TURBOMOLE gradient file', '+F',
@@ -365,6 +363,7 @@ F('vasp-xml', 'VASP vasprun.xml file', '+F',
   module='vasp', glob='*vasp*.xml')
 F('vti', 'VTK XML Image Data', '1F', module='vtkxml')
 F('vtu', 'VTK XML Unstructured Grid', '1F', module='vtkxml')
+F('wout', 'Wannier90 output', '1F', module='wannier90')
 F('x3d', 'X3D', '1S')
 F('xsd', 'Materials Studio file', '1F')
 F('xsf', 'XCrySDen Structure File', '+F',

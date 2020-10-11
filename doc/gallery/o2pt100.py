@@ -45,13 +45,13 @@ Nbulk = len(idx)
 multiples = [0, 1, -1]
 for i in multiples:
     for j in multiples:
-            if i == j == 0:
-                continue
-            chunk = atoms[idx]
-            chunk.translate(i * cell[0] + j * cell[1])
-            atoms += chunk
-            transmittances += [0.8] * Nbulk
-            textures += ['pale'] * Nbulk
+        if i == j == 0:
+            continue
+        chunk = atoms[idx]
+        chunk.translate(i * cell[0] + j * cell[1])
+        atoms += chunk
+        transmittances += [0.8] * Nbulk
+        textures += ['pale'] * Nbulk
 
 bbox = [-30, 10, 5, 25]
 

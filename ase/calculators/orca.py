@@ -22,7 +22,8 @@ class ORCA(FileIOCalculator):
         orcasimpleinput='tightscf PBE def2-SVP',
         orcablocks='%scf maxiter 200 end')
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=FileIOCalculator._deprecated,
                  label='orca', atoms=None, **kwargs):
         """ ASE interface to ORCA 4
         by Ragnar Bjornsson, Based on NWchem interface but simplified.

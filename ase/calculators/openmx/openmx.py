@@ -73,7 +73,8 @@ class OpenMX(FileIOCalculator):
         'debug': False
     }
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=FileIOCalculator._deprecated,
                  label='./openmx', atoms=None, command=None, mpi=None,
                  pbs=None, **kwargs):
 
@@ -301,7 +302,7 @@ class OpenMX(FileIOCalculator):
         See base FileIOCalculator for documentation.
         """
         if self.parameters.data_path is None:
-            if not 'OPENMX_DFT_DATA_PATH' in os.environ:
+            if 'OPENMX_DFT_DATA_PATH' not in os.environ:
                 warnings.warn('Please either set OPENMX_DFT_DATA_PATH as an'
                               'enviroment variable or specify dft_data_path as'
                               'a keyword argument')
@@ -474,7 +475,7 @@ class OpenMX(FileIOCalculator):
                 threads_string = ''
             command += 'mpirun -np ' + \
                 str(processes) + ' ' + self.command + ' %s ' + threads_string + ' |tee %s'
-                #str(processes) + ' openmx %s' + threads_string + ' > %s'
+            #str(processes) + ' openmx %s' + threads_string + ' > %s'
 
         if runfile is None:
             runfile = abs_dir + '/' + self.prefix + '.dat'

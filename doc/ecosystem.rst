@@ -1,8 +1,9 @@
-Other projects using ASE
-========================
+ASE ecosystem
+=============
 
-This is a list of software packages that use ASE.  These could well be
-of interest to ASE users in general.  If you know of a project which
+This is a list of software packages related to ASE or using ASE.
+These could well be of interest to ASE users in general.
+If you know of a project which
 should be listed here, but isn't, please open a merge request adding
 link and descriptive paragraph.
 

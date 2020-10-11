@@ -108,6 +108,7 @@ class ResonantRaman(Raman):
                  overlap=False,
                  minoverlap=0.02,
                  minrep=0.8,
+                 comm=world,
                  **kwargs):
         """
         Parameters

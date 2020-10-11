@@ -40,6 +40,7 @@ bash = runcmd
 def py(cmd, output=False):
     return runcmd('python3 {}'.format(cmd))
 
+
 def git(cmd, error_ok=False):
     cmd = 'git {}'.format(cmd)
     return runcmd(cmd, output=True, error_ok=error_ok)

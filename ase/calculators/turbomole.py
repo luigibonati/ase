@@ -874,7 +874,7 @@ class Turbomole(FileIOCalculator):
         else:
             single_atom_str = '\n'
 
-        if params['multiplicity'] == 1:
+        if params['multiplicity'] == 1 and not params['uhf']:
             norb_str = ''
         else:
             norb_str = 'n\n'
