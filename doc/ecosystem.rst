@@ -1,8 +1,9 @@
-Other projects using ASE
-========================
+ASE ecosystem
+=============
 
-This is a list of software packages that use ASE.  These could well be
-of interest to ASE users in general.  If you know of a project which
+This is a list of software packages related to ASE or using ASE.
+These could well be of interest to ASE users in general.
+If you know of a project which
 should be listed here, but isn't, please open a merge request adding
 link and descriptive paragraph.
 
@@ -38,3 +39,10 @@ link and descriptive paragraph.
    refinement of arbitrary-order saddle points with constraints.
    Additionally, Sella can perform intrinsic reaction coordinate (IRC)
    calculations.
+
+ * `CLEASE <https://gitlab.com/computationalmaterials/clease#clease>`_:
+    CLuster Expansion in Atomic Simulation Environment (CLEASE) is a package 
+    that automates the cumbersome setup and construction procedure of cluster 
+    expansion (CE). It provides a comprehensive list of tools for specifying 
+    parameters for CE, generating training structures, fitting effective cluster 
+    interaction (ECI) values and running Monte Carlo simulations.

@@ -29,7 +29,7 @@ class SwitchLangevin(Langevin):
     dt : float
         Timestep for MD simulation
     T : float
-        Temperature
+        Temperature in eV (deprecated)
     friction : float
         Friction for langevin dynamics
     n_eq : int
@@ -38,9 +38,17 @@ class SwitchLangevin(Langevin):
         Number of switching steps
     """
 
-    def __init__(self, atoms, calc1, calc2, dt, T, friction, n_eq, n_switch,
+    def __init__(self, atoms, calc1, calc2, dt, T=None, friction=None,
+                 n_eq=None, n_switch=None, temperature_K=None,
                  **langevin_kwargs):
-        super().__init__(atoms, dt, T, friction, **langevin_kwargs)
+        super().__init__(atoms, dt, temperature=T, temperature_K=temperature_K,
+                         friction=friction, **langevin_kwargs)
+        if friction is None:
+            raise TypeError("Missing 'friction' argument.")
+        if n_eq is None:
+            raise TypeError("Missing 'n_eq' argument.")
+        if n_switch is None:
+            raise TypeError("Missing 'n_switch' argument.")
         self.n_eq = n_eq
         self.n_switch = n_switch
         self.lam = 0.0
@@ -60,7 +68,8 @@ class SwitchLangevin(Langevin):
             self.call_observers()
 
         # run switch from calc1 to calc2
-        self.path_data.append([0, self.lam, *self.atoms.calc.get_energy_contributions(self.atoms)])
+        self.path_data.append(
+            [0, self.lam, *self.atoms.calc.get_energy_contributions(self.atoms)])
         for step in range(1, self.n_switch):
             # update calculator
             self.lam = get_lambda(step, self.n_switch)
@@ -72,7 +81,8 @@ class SwitchLangevin(Langevin):
 
             # collect data
             self.call_observers()
-            self.path_data.append([step, self.lam, *self.atoms.calc.get_energy_contributions(self.atoms)])
+            self.path_data.append(
+                [step, self.lam, *self.atoms.calc.get_energy_contributions(self.atoms)])
 
         self.path_data = np.array(self.path_data)
 

@@ -25,7 +25,7 @@ atoms = FaceCenteredCubic(directions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
 atoms.calc = EMT()
 
 # Set the momenta corresponding to T=300K
-MaxwellBoltzmannDistribution(atoms, 300 * units.kB)
+MaxwellBoltzmannDistribution(atoms, temperature_K=300)
 
 # We want to run MD with constant energy using the VelocityVerlet algorithm.
 dyn = VelocityVerlet(atoms, 5 * units.fs)  # 5 fs time step.

@@ -38,7 +38,7 @@ class Parameters_deMon(Parameters):
             command=None,
             restart=None,
             basis_path=None,
-            ignore_bad_restart_file=False,
+            ignore_bad_restart_file=FileIOCalculator._deprecated,
             deMon_restart_path='.',
             title='deMon input file',
             scftype='RKS',
@@ -274,7 +274,7 @@ class Demon(FileIOCalculator):
 
         try:
             self.read_results()
-        except:
+        except Exception:  # XXX Which kind of exception?
             with open(self.directory + '/deMon.out', 'r') as f:
                 lines = f.readlines()
             debug_lines = 10
@@ -758,7 +758,7 @@ class Demon(FileIOCalculator):
                 if len(line) > 5:
                     masses.append(float(line[5]))
 
-            except:
+            except Exception:  # XXX Which kind of exception?
                 raise RuntimeError
 
         if coord_units == 'Bohr':

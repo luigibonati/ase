@@ -47,7 +47,7 @@ Quick links:
    * :ref:`cli`
    * :git:`Source code <>`
    * Presentation about ASE: :download:`ase-talk.pdf`
-
+   * List of :ref:`removed features <removed_features>`
 
 List of all modules:
 
@@ -90,3 +90,4 @@ List of all modules:
    atom
    transport/transport
    calculators/qmmm
+   legacy

@@ -12,15 +12,12 @@ omit =
     ../utils/sphinx.py
     ../utils/newrelease.py
     ../utils/build_web_page.py
-    ../visualize/fieldplotter.py
-    ../visualize/primiplotter.py
 
     # TODO: Test external calculators and add to listing.
     ../calculators/gaussian.py
     ../calculators/crystal.py
     ../calculators/demonnano.py
     ../calculators/dftb.py
-    ../calculators/excitation_list.py
     ../calculators/exciting.py
     ../calculators/lammpsrun.py
     ../calculators/qchem.py
@@ -35,7 +32,6 @@ omit =
     ../calculators/amber.py
     ../calculators/turbomole.py
     ../calculators/onetep.py
-    ../calculators/ase_qmmm_manyqm.py
     ../calculators/dmol.py
     ../calculators/mopac.py
     ../calculators/acemolecule.py
@@ -75,20 +71,19 @@ omit =
 
     # TODO: Improve IO format coverage and add include in coverage stats
     ../io/gaussian.py
-    ../io/crystal.py
-    ../io/wien2k.py
-    ../io/gromos.py
+    #../io/crystal.py
+    #../io/wien2k.py
+    #../io/gromos.py
     ../io/dftb.py
-    ../io/exciting.py
+    #../io/exciting.py
     ../io/bundletrajectory.py
-    ../io/opls.py
+    #../io/opls.py
     ../io/lammpsrun.py
-    ../io/aims.py
-    ../io/gamess_us.py
+    #../io/aims.py
+    #../io/gamess_us.py
     ../io/pov.py
-    ../io/pickletrajectory.py
-    ../io/orca.py
-    ../io/gromacs.py
+    #../io/orca.py
+    #../io/gromacs.py
     ../io/dacapo.py
     ../io/cp2k.py
     ../io/fortranfile.py

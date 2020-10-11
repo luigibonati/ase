@@ -17,7 +17,7 @@ def test_md(cp2k_factory):
     atoms.center(vacuum=2.0)
 
     # Run MD
-    MaxwellBoltzmannDistribution(atoms, 0.5 * 300 * units.kB, force_temp=True)
+    MaxwellBoltzmannDistribution(atoms, temperature_K=0.5 * 300, force_temp=True)
     energy_start = atoms.get_potential_energy() + atoms.get_kinetic_energy()
     dyn = VelocityVerlet(atoms, 0.5 * units.fs)
     #def print_md():

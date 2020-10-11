@@ -123,6 +123,7 @@ Versions
 import os
 import numbers
 from pathlib import Path
+from typing import Union, Set
 
 import numpy as np
 
@@ -680,15 +681,18 @@ def print_ulm_info(filename, index=None, verbose=False):
         print(b[i].tostr(verbose))
 
 
-def copy(reader, writer, exclude=set(), name=''):
+def copy(reader: Union[str, Path, Reader],
+         writer: Union[str, Path, Writer],
+         exclude: Set[str] = set(),
+         name: str = '') -> None:
     """Copy from reader to writer except for keys in exclude."""
     close_reader = False
     close_writer = False
-    if isinstance(reader, str):
-        reader = open(reader)
+    if not isinstance(reader, Reader):
+        reader = Reader(reader)
         close_reader = True
-    if isinstance(writer, str):
-        writer = open(writer, 'w')
+    if not isinstance(writer, Writer):
+        writer = Writer(writer)
         close_writer = True
     for key, value in reader._data.items():
         if name + '.' + key in exclude:

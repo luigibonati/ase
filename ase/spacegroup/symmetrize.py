@@ -1,6 +1,7 @@
 """
 Provides FixSymmetry class to preserve spacegroup symmetry during optimisation
 """
+import warnings
 import numpy as np
 
 from ase.constraints import (FixConstraint, voigt_6_to_full_3x3_stress,
@@ -203,6 +204,20 @@ class FixSymmetry(FixConstraint):
         # F defined such that cell = cur_cell . F^T
         # assume prev F = I, so dF = F - I
         delta_deform_grad = np.dot(cur_cell_inv, cell).T - np.eye(3)
+
+        # symmetrization doesn't work properly with large steps, since
+        # it depends on current cell, and cell is being changed by deformation
+        # gradient
+        max_delta_deform_grad = np.max(np.abs(delta_deform_grad))
+        if max_delta_deform_grad > 0.25:
+            raise RuntimeError('FixSymmetry adjust_cell does not work properly'
+                               ' with large deformation gradient step {} > 0.25'
+                               .format(max_delta_deform_grad))
+        elif max_delta_deform_grad > 0.15:
+            warnings.warn('FixSymmetry adjust_cell may be ill behaved with'
+                          ' large deformation gradient step {}'
+                          .format(max_delta_deform_grad))
+
         symmetrized_delta_deform_grad = symmetrize_rank2(cur_cell, cur_cell_inv,
                                                          delta_deform_grad,
                                                          self.rotations)

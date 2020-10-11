@@ -13,6 +13,7 @@ def field_specs_on_conditions(calculator_outputs, rank_order):
     else:
         field_specs = ['i:0', 'el', 'dx', 'dy', 'dz', 'd', 'rd']
     if rank_order is not None:
+        field_specs[0] = 'i:1'
         if rank_order in field_specs:
             for c, i in enumerate(field_specs):
                 if i == rank_order:
@@ -68,20 +69,6 @@ def prec_round(a, prec=2):
 prec_round = np.vectorize(prec_round)
 
 # end most settings
-
-
-def sort2rank(sort):
-    """
-    Given an argsort, return a list which gives the rank of the element
-    at each position.  Also does the inverse problem (an involutive
-    transform) of given a list of ranks of the elements, return an
-    argsort.
-    """
-    n = len(sort)
-    rank = np.zeros(n, dtype=int)
-    for i in range(n):
-        rank[sort[i]] = i
-    return rank
 
 # this will sort alphabetically by chemical symbol
 num2sym = dict(zip(np.argsort(chemical_symbols), chemical_symbols))
@@ -162,7 +149,7 @@ def get_field_data(atoms1, atoms2, field):
             data = np.linalg.norm(y, axis=1)
 
     if rank_order:
-        return sort2rank(np.argsort(-data))
+        return np.argsort(np.argsort(-data))
 
     return data
 
@@ -205,7 +192,7 @@ def parse_field_specs(field_specs):
             mxm += 1
             hier[c] = mxm
     # reversed by convention of numpy lexsort
-    hier = sort2rank(hier)[::-1]
+    hier = np.argsort(hier)[::-1]
     return fields, hier, np.array(scent)
 
 # Class definitions
@@ -360,8 +347,8 @@ class Table:
         field_data = field_data[:, np.lexsort(sorting_array)].transpose()
 
         if csv:
-            rowformat = ','.join(
-                ['{:h}' if field == 'el' else '{}' for field in self.fields])
+            rowformat = ','.join(['{:h}' if field == 'el' else '{{:.{}E}}'.format(
+                self.tableformat.precision) for field in self.fields])
         else:
             rowformat = ''.join([self.tableformat.fmt[field]
                                  for field in self.fields])

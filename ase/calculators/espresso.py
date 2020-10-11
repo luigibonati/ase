@@ -25,7 +25,8 @@ class Espresso(FileIOCalculator):
     implemented_properties = ['energy', 'forces', 'stress', 'magmoms']
     command = 'pw.x -in PREFIX.pwi > PREFIX.pwo'
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=FileIOCalculator._deprecated,
                  label='espresso', atoms=None, **kwargs):
         """
         All options for pw.x are copied verbatim to the input file, and put

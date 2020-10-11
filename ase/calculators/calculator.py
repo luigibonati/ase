@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 import os
 import copy
 import subprocess
@@ -437,12 +438,48 @@ class Parameters(dict):
             '{}={!r}'.format(key, self[key]) for key in keys) + ')\n'
 
     def write(self, filename):
-        file = open(filename, 'w')
-        file.write(self.tostring())
-        file.close()
+        pathlib.Path(filename).write_text(self.tostring())
 
 
-class Calculator:
+class GetPropertiesMixin(ABC):
+    """Mixin class which provides get_forces(), get_stress() and so on.
+
+    Inheriting class must implement get_property()."""
+
+    @abstractmethod
+    def get_property(self, name, atoms=None, allow_calculation=True):
+        """Get the named property."""
+
+    def get_potential_energies(self, atoms=None):
+        return self.get_property('energies', atoms)
+
+    def get_forces(self, atoms=None):
+        return self.get_property('forces', atoms)
+
+    def get_stress(self, atoms=None):
+        return self.get_property('stress', atoms)
+
+    def get_stresses(self, atoms=None):
+        """the calculator should return intensive stresses, i.e., such that
+                stresses.sum(axis=0) == stress
+        """
+        return self.get_property('stresses', atoms)
+
+    def get_dipole_moment(self, atoms=None):
+        return self.get_property('dipole', atoms)
+
+    def get_charges(self, atoms=None):
+        return self.get_property('charges', atoms)
+
+    def get_magnetic_moment(self, atoms=None):
+        return self.get_property('magmom', atoms)
+
+    def get_magnetic_moments(self, atoms=None):
+        """Calculate magnetic moments projected onto atoms."""
+        return self.get_property('magmoms', atoms)
+
+
+class Calculator(GetPropertiesMixin):
     """Base-class for all ASE calculators.
 
     A calculator must raise PropertyNotImplementedError if asked for a
@@ -469,14 +506,20 @@ class Calculator:
     'Whether we purge the results following any change in the set() method.  '
     'Most (file I/O) calculators will probably want this.'
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False, label=None,
-                 atoms=None, directory='.', **kwargs):
+    _deprecated = object()
+
+    def __init__(self, restart=None, ignore_bad_restart_file=_deprecated,
+                 label=None, atoms=None, directory='.',
+                 **kwargs):
         """Basic calculator implementation.
 
         restart: str
             Prefix for restart file.  May contain a directory. Default
             is None: don't restart.
         ignore_bad_restart_file: bool
+            Deprecated, please do not use.
+            Passing more than one positional argument to Calculator()
+            is deprecated and will stop working in the future.
             Ignore broken or missing restart file.  By default, it is an
             error if the restart file is missing or broken.
         directory: str or PurePath
@@ -495,6 +538,18 @@ class Calculator:
         self.results = {}  # calculated properties (energy, forces, ...)
         self.parameters = None  # calculational parameters
         self._directory = None  # Initialize
+
+        if ignore_bad_restart_file is self._deprecated:
+            ignore_bad_restart_file = False
+        else:
+            warnings.warn(FutureWarning(
+                'The keyword "ignore_bad_restart_file" is deprecated and '
+                'will be removed in a future version of ASE.  Passing more '
+                'than one positional argument to Calculator is also '
+                'deprecated and will stop functioning in the future.  '
+                'Please pass arguments by keyword (key=value) except '
+                'optionally the "restart" keyword.'
+            ))
 
         if restart is not None:
             try:
@@ -698,34 +753,6 @@ class Calculator:
         else:
             return energy
 
-    def get_potential_energies(self, atoms=None):
-        return self.get_property('energies', atoms)
-
-    def get_forces(self, atoms=None):
-        return self.get_property('forces', atoms)
-
-    def get_stress(self, atoms=None):
-        return self.get_property('stress', atoms)
-
-    def get_stresses(self, atoms=None):
-        """the calculator should return intensive stresses, i.e., such that
-                stresses.sum(axis=0) == stress
-        """
-        return self.get_property('stresses', atoms)
-
-    def get_dipole_moment(self, atoms=None):
-        return self.get_property('dipole', atoms)
-
-    def get_charges(self, atoms=None):
-        return self.get_property('charges', atoms)
-
-    def get_magnetic_moment(self, atoms=None):
-        return self.get_property('magmom', atoms)
-
-    def get_magnetic_moments(self, atoms=None):
-        """Calculate magnetic moments projected onto atoms."""
-        return self.get_property('magmoms', atoms)
-
     def get_property(self, name, atoms=None, allow_calculation=True):
         if name not in self.implemented_properties:
             raise PropertyNotImplementedError('{} property not implemented'
@@ -742,12 +769,6 @@ class Calculator:
             if not allow_calculation:
                 return None
             self.calculate(atoms, [name], system_changes)
-
-        if name == 'magmom' and 'magmom' not in self.results:
-            return 0.0
-
-        if name == 'magmoms' and 'magmoms' not in self.results:
-            return np.zeros(len(atoms))
 
         if name not in self.results:
             # For some reason the calculator was not able to do what we want,
@@ -895,7 +916,8 @@ class FileIOCalculator(Calculator):
     command: Optional[str] = None
     'Command used to start calculation'
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=Calculator._deprecated,
                  label=None, atoms=None, command=None, **kwargs):
         """File-IO calculator.
 

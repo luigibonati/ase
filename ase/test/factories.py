@@ -1,4 +1,5 @@
 import os
+import re
 from pathlib import Path
 from typing import Mapping
 import configparser
@@ -54,6 +55,10 @@ class AbinitFactory:
         self.executable = executable
         self.pp_paths = pp_paths
 
+    def version(self):
+        from ase.calculators.abinit import get_abinit_version
+        return get_abinit_version(self.executable)
+
     def _base_kw(self):
         command = '{} < PREFIX.files > PREFIX.log'.format(self.executable)
         return dict(command=command,
@@ -82,6 +87,10 @@ class AsapFactory:
         from asap3 import EMT
         return EMT(**kwargs)
 
+    def version(self):
+        import asap3
+        return asap3.__version__
+
     @classmethod
     def fromconfig(cls, config):
         # XXXX TODO Clean this up.  Copy of GPAW.
@@ -98,6 +107,11 @@ class CP2KFactory:
     def __init__(self, executable):
         self.executable = executable
 
+    def version(self):
+        from ase.calculators.cp2k import Cp2kShell
+        shell = Cp2kShell(self.executable, debug=False)
+        return shell.version
+
     def calc(self, **kwargs):
         from ase.calculators.cp2k import CP2K
         return CP2K(command=self.executable, **kwargs)
@@ -111,6 +125,11 @@ class CP2KFactory:
 class DFTBFactory:
     def __init__(self, executable):
         self.executable = executable
+
+    def version(self):
+        stdout = read_stdout([self.executable])
+        match = re.search(r'DFTB\+ release\s*(\S+)', stdout, re.M)
+        return match.group(1)
 
     def calc(self, **kwargs):
         from ase.calculators.dftb import Dftb
@@ -129,6 +148,20 @@ class DFTBFactory:
         return cls(config.executables['dftb'])
 
 
+def read_stdout(args, createfile=None):
+    import tempfile
+    from subprocess import Popen, PIPE
+    with tempfile.TemporaryDirectory() as directory:
+        if createfile is not None:
+            path = Path(directory) / createfile
+            path.touch()
+        proc = Popen(args, stdout=PIPE, stderr=PIPE,
+                     cwd=directory, encoding='ascii')
+        stdout, _ = proc.communicate()
+        # Exit code will be != 0 because there isn't an input file
+    return stdout
+
+
 @factory('espresso')
 class EspressoFactory:
     def __init__(self, executable, pseudo_dir):
@@ -138,6 +171,12 @@ class EspressoFactory:
     def _base_kw(self):
         from ase.units import Ry
         return dict(ecutwfc=300 / Ry)
+
+    def version(self):
+        stdout = read_stdout([self.executable])
+        match = re.match(r'\s*Program PWSCF\s*(\S+)', stdout, re.M)
+        assert match is not None
+        return match.group(1)
 
     def calc(self, **kwargs):
         from ase.calculators.espresso import Espresso
@@ -170,6 +209,10 @@ class GPAWFactory:
         from gpaw import GPAW
         return GPAW(**kwargs)
 
+    def version(self):
+        import gpaw
+        return gpaw.__version__
+
     @classmethod
     def fromconfig(cls, config):
         import importlib
@@ -201,6 +244,11 @@ class LammpsRunFactory:
     def __init__(self, executable):
         self.executable = executable
 
+    def version(self):
+        stdout = read_stdout([self.executable])
+        match = re.match(r'LAMMPS\s*\((.+?)\)', stdout, re.M)
+        return match.group(1)
+
     def calc(self, **kwargs):
         from ase.calculators.lammpsrun import LAMMPS
         return LAMMPS(command=self.executable, **kwargs)
@@ -214,6 +262,11 @@ class LammpsRunFactory:
 class OctopusFactory:
     def __init__(self, executable):
         self.executable = executable
+
+    def version(self):
+        stdout = read_stdout([self.executable, '--version'])
+        match = re.match(r'octopus\s*(.+)', stdout)
+        return match.group(1)
 
     def calc(self, **kwargs):
         from ase.calculators.octopus import Octopus
@@ -230,6 +283,14 @@ class SiestaFactory:
     def __init__(self, executable, pseudo_path):
         self.executable = executable
         self.pseudo_path = pseudo_path
+
+    def version(self):
+        from ase.calculators.siesta.siesta import get_siesta_version
+        full_ver = get_siesta_version(self.executable)
+        m = re.match(r'siesta-(\S+)', full_ver, flags=re.I)
+        if m:
+            return m.group(1)
+        return full_ver
 
     def calc(self, **kwargs):
         from ase.calculators.siesta import Siesta
@@ -249,6 +310,13 @@ class SiestaFactory:
 class NWChemFactory:
     def __init__(self, executable):
         self.executable = executable
+
+    def version(self):
+        stdout = read_stdout([self.executable], createfile='nwchem.nw')
+        match = re.search(
+            r'Northwest Computational Chemistry Package \(NWChem\) (\S+)',
+            stdout, re.M)
+        return match.group(1)
 
     def calc(self, **kwargs):
         from ase.calculators.nwchem import NWChem

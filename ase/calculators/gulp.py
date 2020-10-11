@@ -62,15 +62,16 @@ class GULP(FileIOCalculator):
 
 #conditions=[['O', 'default', 'O1'], ['O', 'O2', 'H', '<', '1.6']]
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=FileIOCalculator._deprecated,
                  label='gulp', atoms=None, optimized=None,
                  Gnorm=1000.0, steps=1000, conditions=None, **kwargs):
         """Construct GULP-calculator object."""
         FileIOCalculator.__init__(self, restart, ignore_bad_restart_file,
                                   label, atoms, **kwargs)
-        self.optimized  = optimized
-        self.Gnorm      = Gnorm
-        self.steps      = steps
+        self.optimized = optimized
+        self.Gnorm = Gnorm
+        self.steps = steps
         self.conditions = conditions
         self.library_check()
         self.atom_types = []
@@ -161,7 +162,7 @@ class GULP(FileIOCalculator):
                     forces.append(G)
                 forces = np.array(forces)
                 self.results['forces'] = forces
-            
+
             elif line.find('Final internal derivatives') != -1:
                 s = i + 5
                 forces = []
@@ -170,9 +171,9 @@ class GULP(FileIOCalculator):
                     if lines[s].find("------------") != -1:
                         break
                     g = lines[s].split()[3:6]
-                     
-                     # Uncomment the section below to separate the numbers when there is no space between them, in the case of long numbers. This prevents the code to break if numbers are too big.
-                    
+
+                    # Uncomment the section below to separate the numbers when there is no space between them, in the case of long numbers. This prevents the code to break if numbers are too big.
+
                     '''for t in range(3-len(g)):
                         g.append(' ')
                     for j in range(2):
@@ -190,7 +191,7 @@ class GULP(FileIOCalculator):
                         if j==1 and len(min_index) != 0:
                             g[2]=g[1][min_index[0]:]
                             g[1]=g[1][:min_index[0]]'''
-                    
+
                     G = [-float(x) * eV / Ang for x in g]
                     forces.append(G)
                 forces = np.array(forces)
@@ -210,17 +211,17 @@ class GULP(FileIOCalculator):
                     positions.append(XYZ)
                 positions = np.array(positions)
                 self.atoms.set_positions(positions)
-                
+
             elif line.find('Final stress tensor components') != -1:
                 res=[0.,0.,0.,0.,0.,0.]
                 for j in range(3):
-            	    var=lines[i+j+3].split()[1]
-            	    res[j]=float(var)
-            	    var=lines[i+j+3].split()[3]
-            	    res[j+3]=float(var)
+                    var=lines[i+j+3].split()[1]
+                    res[j]=float(var)
+                    var=lines[i+j+3].split()[3]
+                    res[j+3]=float(var)
                 stress=np.array(res)
                 self.results['stress']=stress
-                
+
             elif line.find('Final Cartesian lattice vectors') != -1:
                 lattice_vectors = np.zeros((3,3))
                 s = i + 2

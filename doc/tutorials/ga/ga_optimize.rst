@@ -11,18 +11,14 @@ optimization within ase. The optimizer consists of its own module
 The method was first described in the supplemental material of
 
    | L. B. Vilhelmsen and B. Hammer
-   | `Systematic Study of Au6 to Au12 Gold Clusters on MgO(100) F Centers Using Density-Functional Theory`__
+   | :doi:`Systematic Study of Au6 to Au12 Gold Clusters on MgO(100) F Centers Using Density-Functional Theory <10.1103/PhysRevLett.108.126101>`
    | Physical Review Letters, Vol. 108 (Mar 2012), 126101
-
-   __ https://doi.org/10.1103/physrevlett.108.126101
 
 and a full account of the method is given in
 
    | L. B. Vilhelmsen and B. Hammer
-   | `A genetic algorithm for first principles global optimization of supported nano structures`__
+   | :doi:`A genetic algorithm for first principles global optimization of supported nano structures <10.1063/1.4886337>`
    | Journal of Chemical Physics, Vol 141, 044711 (2014)
-
-   __ https://doi.org/10.1063/1.4886337
 
 Any questions about how to use the GA can be asked at the mailing
 list.
