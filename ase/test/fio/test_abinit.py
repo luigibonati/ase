@@ -1,5 +1,3 @@
-import numpy as np
-
 from ase.io import read, write
 from ase.build import bulk
 from ase.calculators.calculator import compare_atoms
