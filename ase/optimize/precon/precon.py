@@ -31,7 +31,7 @@ THz = 1e12 * 1. / units.s
 class Precon(ABC):
 
     @abstractmethod
-    def make_precon(self, atoms):
+    def make_precon(self, atoms, reinitialize=None):
         """Create a preconditioner matrix based on the passed set of atoms.
 
         Creates a general-purpose preconditioner for use with optimization
@@ -41,6 +41,13 @@ class Precon(ABC):
 
         Args:
             atoms: the Atoms object used to create the preconditioner.
+            
+            reinitialize: if True, parameters of the preconditioner
+                will be recalculated before the preconditioner matrix is 
+                created. If False, they will be calculated only when they 
+                do not currently have a value (ie, the first time this 
+                function is called).
+            
 
         Returns:
             P: A sparse scipy csr_matrix. BE AWARE that using
@@ -103,13 +110,17 @@ class Precon(ABC):
         residual = np.linalg.norm(forces, np.inf)
         precon_forces = self.solve(forces)
         return precon_forces, residual
+    
+    @abstractmethod
+    def copy(self):
+        ...
 
 
 class SparsePrecon(Precon):
     def __init__(self, r_cut=None, r_NN=None,
                  mu=None, mu_c=None,
                  dim=3, c_stab=0.1, force_stab=False,
-                 recalc_mu=False, array_convention='C',
+                 reinitialize=False, array_convention='C',
                  solver="auto", solve_tol=1e-8,
                  apply_positions=True, apply_cell=True,
                  estimate_mu_eigmode=False, logfile=None, rng=None):
@@ -142,11 +153,11 @@ class SparsePrecon(Precon):
             force_stab:
                 If True, always add the stabilisation to diagnonal, regardless
                 of the presence of fixed atoms.
-            recalc_mu: if True, the value of mu will be recalculated every time
+            reinitialize: if True, the value of mu will be recalculated when
                 self.make_precon is called. This can be overridden in specific
-                cases with recalc_mu argument in self.make_precon. If recalc_mu
+                cases with reinitialize argument in self.make_precon. If it
                 is set to True here, the value passed for mu will be
-                irrelevant unless recalc_mu is set False the first time
+                irrelevant unless reinitialize is set to False the first time
                 make_precon is called.
             array_convention: Either 'C' or 'F' for Fortran; this will change
                 the preconditioner to reflect the ordering of the indices in
@@ -181,7 +192,7 @@ class SparsePrecon(Precon):
         self.c_stab = c_stab
         self.force_stab = force_stab
         self.array_convention = array_convention
-        self.recalc_mu = recalc_mu
+        self.reinitialize = reinitialize
         self.P = None
         self.old_positions = None
 
@@ -223,12 +234,6 @@ class SparsePrecon(Precon):
 
     def Pdot(self, x):
         return self.P.dot(x)
-
-    def dot(self, x, y):
-        return longsum(self.P.dot(x) * y)
-
-    def norm(self, x):
-        return np.sqrt(self.dot(x, x))
 
     def solve(self, x):
         start_time = time.time()
@@ -564,16 +569,7 @@ class SparseCoeffPrecon(SparsePrecon):
 
         return self.P
     
-    def make_precon(self, atoms, recalc_mu=None):
-        """
-            This method has one additional argument than the abstract method:
-
-            recalc_mu: if True, self.mu (and self.mu_c for variable cell)
-                will be recalculated by calling self.estimate_mu(atoms)
-                before the preconditioner matrix is created. If False, self.mu
-                will be calculated only if it does not currently have a value
-                (ie, the first time this function is called).
-        """
+    def make_precon(self, atoms, reinitialize=None):
         if self.r_NN is None:
             self.r_NN = estimate_nearest_neighbour_distance(atoms)
 
@@ -589,17 +585,17 @@ class SparseCoeffPrecon(SparsePrecon):
             warnings.warn(warning)
             self.r_cut = 1.1 * self.r_NN
 
-        if recalc_mu is None:
+        if reinitialize is None:
             # The caller has not specified whether or not to recalculate mu,
             # so the Precon's setting is used.
-            recalc_mu = self.recalc_mu
+            reinitialize = self.reinitialize
 
         if self.mu is None:
             # Regardless of what the caller has specified, if we don't
             # currently have a value of mu, then we need one.
-            recalc_mu = True
+            reinitialize = True
 
-        if recalc_mu:
+        if reinitialize:
             self.estimate_mu(atoms)
 
         if self.P is not None:
@@ -651,7 +647,7 @@ class Pfrommer(Precon):
         self.apply_cell = apply_cell
         self.H0 = None
 
-    def make_precon(self, atoms):
+    def make_precon(self, atoms, reinitialize=None):
         if self.H0 is not None:
             # only build H0 on first call
             return NotImplemented
@@ -690,24 +686,14 @@ class IdentityPrecon(Precon):
     Dummy preconditioner which does not modify forces
     """
 
-    def make_precon(self, atoms):
+    def make_precon(self, atoms, reinitialize=None):
         pass
 
     def Pdot(self, x):
         return x
 
-    def dot(self, x, y):
-        return longsum(x * y)
-
-    def norm(self, x):
-        return np.linalg.norm(x)
-
     def solve(self, x):
         return x
-
-    def apply(self, forces, atoms):
-        residual = np.linalg.norm(forces, np.inf)
-        return forces, residual
 
     def copy(self):
         return IdentityPrecon()
@@ -719,13 +705,13 @@ class C1(SparseCoeffPrecon):
 
     def __init__(self, r_cut=None, mu=None, mu_c=None, dim=3, c_stab=0.1,
                  force_stab=False,
-                 recalc_mu=False, array_convention='C',
+                 reinitialize=False, array_convention='C',
                  solver="auto", solve_tol=1e-9,
                  apply_positions=True, apply_cell=True, logfile=None):
         super().__init__(r_cut=r_cut, mu=mu, mu_c=mu_c,
                          dim=dim, c_stab=c_stab,
                          force_stab=force_stab,
-                         recalc_mu=recalc_mu,
+                         reinitialize=reinitialize,
                          array_convention=array_convention,
                          solver=solver, solve_tol=solve_tol,
                          apply_positions=apply_positions,
@@ -742,21 +728,21 @@ class Exp(SparseCoeffPrecon):
 
     def __init__(self, A=3.0, r_cut=None, r_NN=None, mu=None, mu_c=None,
                  dim=3, c_stab=0.1,
-                 force_stab=False, recalc_mu=False, array_convention='C',
+                 force_stab=False, reinitialize=False, array_convention='C',
                  solver="auto", solve_tol=1e-9,
                  apply_positions=True, apply_cell=True,
                  estimate_mu_eigmode=False, logfile=None):
         """Initialise an Exp preconditioner with given parameters.
 
         Args:
-            r_cut, mu, c_stab, dim, sparse, recalc_mu, array_convention: see
+            r_cut, mu, c_stab, dim, sparse, reinitialize, array_convention: see
                 precon.__init__()
             A: coefficient in exp(-A*r/r_NN). Default is A=3.0.
         """
         super().__init__(r_cut=r_cut, r_NN=r_NN,
                          mu=mu, mu_c=mu_c, dim=dim, c_stab=c_stab,
                          force_stab=force_stab,
-                         recalc_mu=recalc_mu,
+                         reinitialize=reinitialize,
                          array_convention=array_convention,
                          solver=solver,
                          solve_tol=solve_tol,
@@ -811,7 +797,7 @@ class FF(SparsePrecon):
         self.angles = angles
         self.dihedrals = dihedrals
 
-    def make_precon(self, atoms):
+    def make_precon(self, atoms, reinitialize=None):
         start_time = time.time()
         self._make_sparse_precon(atoms, force_stab=self.force_stab)
         if self.logfile is not None:
@@ -960,7 +946,7 @@ class Exp_FF(Exp, FF):
 
     def __init__(self, A=3.0, r_cut=None, r_NN=None, mu=None, mu_c=None,
                  dim=3, c_stab=0.1,
-                 force_stab=False, recalc_mu=False, array_convention='C',
+                 force_stab=False, reinitialize=False, array_convention='C',
                  solver="auto", solve_tol=1e-9,
                  apply_positions=True, apply_cell=True,
                  estimate_mu_eigmode=False,
@@ -969,7 +955,7 @@ class Exp_FF(Exp, FF):
         """Initialise an Exp+FF preconditioner with given parameters.
 
         Args:
-            r_cut, mu, c_stab, dim, recalc_mu, array_convention: see
+            r_cut, mu, c_stab, dim, reinitialize, array_convention: see
                 precon.__init__()
             A: coefficient in exp(-A*r/r_NN). Default is A=3.0.
         """
@@ -982,11 +968,11 @@ class Exp_FF(Exp, FF):
         SparsePrecon.__init__(self, r_cut=r_cut, r_NN=r_NN,
                               mu=mu, mu_c=mu_c, dim=dim, c_stab=c_stab,
                               force_stab=force_stab,
-                              recalc_mu=recalc_mu,
+                              reinitialize=reinitialize,
                               array_convention=array_convention,
                               solver=solver,
                               solve_tol=solve_tol,
-                              apply_positions=apply_positions,
+                              reinitialize=apply_positions,
                               apply_cell=apply_cell,
                               estimate_mu_eigmode=estimate_mu_eigmode,
                               logfile=logfile)
@@ -998,7 +984,7 @@ class Exp_FF(Exp, FF):
         self.angles = angles
         self.dihedrals = dihedrals
 
-    def make_precon(self, atoms, recalc_mu=None):
+    def make_precon(self, atoms, reinitialize=None):
         if self.r_NN is None:
             self.r_NN = estimate_nearest_neighbour_distance(atoms)
 
@@ -1014,17 +1000,17 @@ class Exp_FF(Exp, FF):
             warnings.warn(warning)
             self.r_cut = 1.1 * self.r_NN
 
-        if recalc_mu is None:
+        if reinitialize is None:
             # The caller has not specified whether or not to recalculate mu,
             # so the Precon's setting is used.
-            recalc_mu = self.recalc_mu
+            reinitialize = self.reinitialize
 
         if self.mu is None:
             # Regardless of what the caller has specified, if we don't
             # currently have a value of mu, then we need one.
-            recalc_mu = True
+            reinitialize = True
 
-        if recalc_mu:
+        if reinitialize:
             self.estimate_mu(atoms)
 
         if self.P is not None:

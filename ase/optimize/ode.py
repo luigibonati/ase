@@ -1,7 +1,7 @@
 import numpy as np
 
 from ase.optimize.sciopt import SciPyOptimizer, OptimizerConvergenceError
-from ase.optimize.precon import make_precon
+from ase.optimize.precon.precon import make_precon
     
 
 def ode12r(f, X0, h=None, verbose=1, fmax=1e-6, maxtol=1e3, steps=100,
