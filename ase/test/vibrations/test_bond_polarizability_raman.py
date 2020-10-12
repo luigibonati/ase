@@ -8,37 +8,21 @@ from ase.vibrations.placzek import PlaczekStatic
 from ase.vibrations.placzek import PlaczekStaticPhonons
 from ase.calculators.bond_polarizability import BondPolarizability
 from ase.calculators.emt import EMT
-from ase.optimize import FIRE
-
-
-def relaxC():
-    """Code used to relax C with EMT"""
-    from ase.constraints import FixAtoms, UnitCellFilter
-    Cbulk = bulk('C', orthorhombic=True)
-    Cbulk.set_constraint(FixAtoms(mask=[True for atom in Cbulk]))
-
-    ucf = UnitCellFilter(Cbulk)
-    opt = FIRE(ucf)
-    opt.run(fmax=0.001)
-
-    print(Cbulk)
-    print(Cbulk.cell)
 
 
 @fixture(scope='module')
 def Cbulk():
-    # EMT relaxed, see relaxC
     Cbulk = bulk('C', crystalstructure='fcc', a=2 * 1.221791471)
     Cbulk = Cbulk.repeat([2, 1, 1])
     Cbulk.calc = EMT()
     return Cbulk
 
 
-def test_bulk(Cbulk, tmp_path):
+def test_bulk(Cbulk):
     """Bulk FCC carbon (for EMT) self consistency"""
     delta = 0.02
     
-    name = str(tmp_path / 'bp')
+    name = 'bp'
     rm = StaticRamanCalculator(Cbulk, BondPolarizability, name=name,
                                delta=delta)
     rm.run()
@@ -49,7 +33,7 @@ def test_bulk(Cbulk, tmp_path):
     assert len(e_vib) == 6
     pz.summary()
 
-    name = str(tmp_path / 'phbp')
+    name = 'phbp'
     rm = StaticRamanPhononsCalculator(Cbulk, BondPolarizability,
                                       calc=EMT(),
                                       name=name,
@@ -65,10 +49,10 @@ def test_bulk(Cbulk, tmp_path):
     pz.summary()
 
 
-def test_bulk_kpts(Cbulk, tmp_path):
+def test_bulk_kpts(Cbulk):
     """Bulk FCC carbon (for EMT) for phonons"""
 
-    name = str(tmp_path / 'phbp')
+    name = 'phbp'
     rm = StaticRamanPhononsCalculator(Cbulk, BondPolarizability,
                                       calc=EMT(), name=name,
                                       delta=0.05, supercell=(2, 1, 1))
