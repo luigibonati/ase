@@ -611,7 +611,7 @@ class SparseCoeffPrecon(SparsePrecon):
 
         self.logfile.write('--- Precon created in %s seconds --- \n' %
                            (time.time() - start_time))
-    return self.P
+        return self.P
 
     @abstractmethod
     def get_coeff(self, r):
