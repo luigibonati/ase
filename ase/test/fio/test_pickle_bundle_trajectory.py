@@ -1,16 +1,17 @@
 import pytest
 import numpy as np
 import sys
-from subprocess import check_call
+from subprocess import check_call, check_output
 
 from pathlib import Path
 
 from ase.build import bulk
-from ase.io import read
+from ase.io import read, write
 from ase.io.pickletrajectory import PickleTrajectory
 from ase.calculators.calculator import compare_atoms
 from ase.calculators.emt import EMT
 from ase.constraints import FixAtoms
+from ase.io.bundletrajectory import print_bundletrajectory_info
 
 
 trajname = 'pickletraj.traj'
@@ -23,7 +24,7 @@ def test_raises():
 
 @pytest.fixture
 def images():
-    atoms = bulk('Ti')
+    atoms = bulk('Ti') * (1, 2, 1)
     atoms.symbols = 'Au'
     atoms.calc = EMT()
     atoms1 = atoms.copy()
@@ -62,29 +63,47 @@ def trajfile(images):
     return trajname
 
 
-def images_equal(images1, images2):
-    if len(images1) != len(images2):
-        return False
-
+def assert_images_equal(images1, images2):
+    assert len(images1) == len(images2), 'length mismatch'
     for atoms1, atoms2 in zip(images1, images2):
-        if len(compare_atoms(atoms1, atoms2)) > 0:
-            return False
-
-    return True
+        differences = compare_atoms(atoms1, atoms2)
+        assert not differences
 
 
-def test_write_read(images, trajfile):
+def test_write_read_pickle(images, trajfile):
     images1 = read_images(trajfile)
-    assert images_equal(images, images1)
+    assert_images_equal(images, images1)
 
 
-def test_append(images, trajfile):
+@pytest.mark.xfail(reason='bug: writes initial magmoms but reads magmoms '
+                   'as part of calculator')
+def test_write_read_bundle(images, bundletraj):
+    images1 = read(bundletraj, ':')
+    assert_images_equal(images, images1)
+
+
+def test_append_pickle(images, trajfile):
     with PickleTrajectory(trajfile, 'a', _warn=False) as traj:
         for image in images:
             traj.write(image)
 
     images1 = read_images(trajfile)
-    assert images_equal(images * 2, images1)
+    assert_images_equal(images * 2, images1)
+
+
+from ase.io.bundletrajectory import BundleTrajectory
+@pytest.mark.xfail(reason='same as test_read_write_bundle')
+def test_append_bundle(images, bundletraj):
+    traj = BundleTrajectory(bundletraj, mode='a')
+    assert len(read(bundletraj, ':')) == 2
+    #write(bundletraj, images, append=True)
+    for atoms in images:
+        traj.write(atoms)
+    traj.close()
+    images1 = read(bundletraj, ':')
+    assert len(images1) == 4
+    # XXX Fix the magmoms/charges bug
+    assert_images_equal(images * 2, images1)
 
 
 def test_old_trajectory_conversion_utility(images, trajfile):
@@ -95,4 +114,26 @@ def test_old_trajectory_conversion_utility(images, trajfile):
     assert oldtrajpath.exists()
     assert trajpath.exists()  # New file should be where the old one was
     new_images = read(trajpath, ':', format='traj')
-    assert images_equal(images, new_images)
+    assert_images_equal(images, new_images)
+
+
+@pytest.fixture
+def bundletraj(images):
+    fname = 'traj.bundle'
+    write(fname, images, format='bundletrajectory')
+    return fname
+
+
+def test_bundletrajectory_info(images, bundletraj, capsys):
+    print_bundletrajectory_info(bundletraj)
+    output, _ = capsys.readouterr()
+
+    natoms = len(images[0])
+    expected_substring = f'Number of atoms: {natoms}'
+    assert expected_substring in output
+
+    # Same thing but via main():
+    output2 = check_output([sys.executable,
+                            '-m', 'ase.io.bundletrajectory', bundletraj],
+                           encoding='ascii')
+    assert expected_substring in output2
