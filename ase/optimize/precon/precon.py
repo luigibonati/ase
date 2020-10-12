@@ -22,6 +22,25 @@ from ase.optimize.precon.neighbors import (get_neighbours,
 try:
     from pyamg import smoothed_aggregation_solver
     have_pyamg = True
+    
+    def create_pyamg_solver(P, max_levels=15):
+        return smoothed_aggregation_solver(
+            P, B=None,
+            strength=('symmetric', {'theta': 0.0}),
+            smooth=(
+                'jacobi', {'filter': True, 'weighting': 'local'}),
+            improve_candidates=[('block_gauss_seidel',
+                                    {'sweep': 'symmetric', 'iterations': 4})]+
+                                [None] * (max_levels - 1),
+            aggregate='standard',
+            presmoother=('block_gauss_seidel',
+                            {'sweep': 'symmetric', 'iterations': 1}),
+            postsmoother=('block_gauss_seidel',
+                            {'sweep': 'symmetric', 'iterations': 1}),
+            max_levels=max_levels,
+            max_coarse=300,
+            coarse_solver='pinv')
+    
 except ImportError:
     have_pyamg = False
 
@@ -129,6 +148,7 @@ class Logfile:
         if self.logfile is None:
             return
         self.logfile.write(*args)
+
 
 class SparsePrecon(Precon):
     def __init__(self, r_cut=None, r_NN=None,
@@ -485,7 +505,7 @@ class SparseCoeffPrecon(SparsePrecon):
             coeff *= mask[i] * mask[j]
             diag_coeff[fixed_atoms] = 1.0
             logfile.write('--- applied fixed_atoms in %s s ---\n' %
-                            time.time() - start_time)
+                          time.time() - start_time)
 
         if self.apply_positions:
             # remove zeros
@@ -495,7 +515,7 @@ class SparseCoeffPrecon(SparsePrecon):
             j = np.hstack((j[inz], diag_i))
             coeff = np.hstack((coeff[inz], diag_coeff))
             logfile.write('--- remove zeros in %s s ---\n' %
-                            (time.time() - start_time))
+                          time.time() - start_time)
         else:
             i = diag_i
             j = diag_i
@@ -505,7 +525,7 @@ class SparseCoeffPrecon(SparsePrecon):
         start_time = time.time()
         csc_P = sparse.csc_matrix((coeff, (i, j)), shape=(N, N))
         logfile.write('--- created CSC matrix in %s s ---\n' %
-                        (time.time() - start_time))
+                      time.time() - start_time)
 
         self.csc_P = csc_P
 
@@ -537,23 +557,7 @@ class SparseCoeffPrecon(SparsePrecon):
         # Create solver
         if self.use_pyamg and have_pyamg:
             start_time = time.time()
-            self.ml = smoothed_aggregation_solver(
-                self.P, B=None,
-                strength=('symmetric', {'theta': 0.0}),
-                smooth=(
-                    'jacobi', {'filter': True, 'weighting': 'local'}),
-                improve_candidates=[('block_gauss_seidel',
-                                     {'sweep': 'symmetric', 'iterations': 4}),
-                                    None, None, None, None, None, None, None,
-                                    None, None, None, None, None, None, None],
-                aggregate='standard',
-                presmoother=('block_gauss_seidel',
-                             {'sweep': 'symmetric', 'iterations': 1}),
-                postsmoother=('block_gauss_seidel',
-                              {'sweep': 'symmetric', 'iterations': 1}),
-                max_levels=15,
-                max_coarse=300,
-                coarse_solver='pinv')
+            self.ml = create_pyamg_solver(self.P)
             logfile.write('--- multi grid solver created in %s ---\n'
                           % (time.time() - start_time))
 
@@ -790,7 +794,7 @@ class FF(SparsePrecon):
         start_time = time.time()
         self._make_sparse_precon(atoms, force_stab=self.force_stab)
         self.logfile.write('--- Precon created in %s seconds ---\n'
-                            % (time.time() - start_time))
+                           % (time.time() - start_time))
         return self.P
 
     def _make_sparse_precon(self, atoms, initial_assembly=False,
@@ -902,23 +906,7 @@ class FF(SparsePrecon):
         # Create solver
         if self.use_pyamg:
             start_time = time.time()
-            self.ml = smoothed_aggregation_solver(
-                self.P, B=None,
-                strength=('symmetric', {'theta': 0.0}),
-                smooth=(
-                    'jacobi', {'filter': True, 'weighting': 'local'}),
-                improve_candidates=[('block_gauss_seidel',
-                                     {'sweep': 'symmetric', 'iterations': 4}),
-                                    None, None, None, None, None, None, None,
-                                    None, None, None, None, None, None, None],
-                aggregate='standard',
-                presmoother=('block_gauss_seidel',
-                             {'sweep': 'symmetric', 'iterations': 1}),
-                postsmoother=('block_gauss_seidel',
-                              {'sweep': 'symmetric', 'iterations': 1}),
-                max_levels=15,
-                max_coarse=300,
-                coarse_solver='pinv')
+            self.ml = create_pyamg_solver(self.P)
             self.logfile.write('--- multi grid solver created in %s s ---\n'
                                 % (time.time() - start_time))
 
@@ -1196,25 +1184,9 @@ class Exp_FF(Exp, FF):
         # Create solver
         if self.use_pyamg:
             start_time = time.time()
-            self.ml = smoothed_aggregation_solver(
-                self.P, B=None,
-                strength=('symmetric', {'theta': 0.0}),
-                smooth=(
-                    'jacobi', {'filter': True, 'weighting': 'local'}),
-                improve_candidates=[('block_gauss_seidel',
-                                     {'sweep': 'symmetric', 'iterations': 4}),
-                                    None, None, None, None, None, None, None,
-                                    None, None, None, None, None, None, None],
-                aggregate='standard',
-                presmoother=('block_gauss_seidel',
-                             {'sweep': 'symmetric', 'iterations': 1}),
-                postsmoother=('block_gauss_seidel',
-                              {'sweep': 'symmetric', 'iterations': 1}),
-                max_levels=15,
-                max_coarse=300,
-                coarse_solver='pinv')
+            self.ml = create_pyamg_solver(self.P)
             self.logfile.write('--- multi grid solver created in %s s ---\n'
-                                % (time.time() - start_time))
+                               % (time.time() - start_time))
 
         return self.P
 
