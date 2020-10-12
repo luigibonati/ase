@@ -94,6 +94,9 @@ class Linearized:
         alphap: float
           Perpendicular component
         """
+        if bond not in self._data:
+            el1, el2 = re.findall('[A-Z][^A-Z]*', bond)
+            bond = el2 + el1
         assert bond in self._data
         length0, al, ald, ap, apd = self._data[bond]
 

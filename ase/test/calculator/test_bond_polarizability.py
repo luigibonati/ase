@@ -21,6 +21,11 @@ def test_CC_bond():
     check_symmetry(bp(C2))
 
 
+def test_symmetry():
+    lin = Linearized()
+    assert lin('BN', 1) == lin('NB', 1)
+
+
 def test_2to3():
     """Compare polarizabilties of one and two bonds"""
     Si2 = Atoms('Si2', positions=[[0, 0, 0], [0, 0, 2.5]])
