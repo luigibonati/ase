@@ -13,15 +13,13 @@ def atoms():
 
 
 @pytest.fixture
-def rrname(tmp_path, atoms):
+def rrname(atoms):
     """Prepare the Resonant Raman calculation"""
-    name = str(tmp_path / 'rrmorse')
-
+    name = 'rrmorse'
     rmc = ResonantRamanCalculator(atoms, H2MorseExcitedStatesCalculator,
                                   overlap=lambda x, y: x.overlap(y),
                                   name=name, txt='-')
     rmc.run()
-
     return name
 
 
