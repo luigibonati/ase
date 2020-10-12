@@ -37,12 +37,10 @@ class PreconODE12r(ODE12r):
     Subclass of ase.optimize.ode.ODE12r with 'Exp' preconditioning on by default
     """
 
-    def __init__(self, atoms, logfile='-', trajectory=None,
-                 callback_always=False, alpha=1.0, master=None,
-                 force_consistent=None, precon='Exp', verbose=False):
-        ODE12r.__init__(self, atoms, logfile, trajectory,
-                        callback_always, alpha, master,
-                        force_consistent, precon, verbose)
+    def __init__(self, *args, **kwargs):
+        if 'precon' not in kwargs:
+            kwargs['precon'] = 'Exp'
+        ODE12r.__init__(self, *args, **kwargs)
 
 
 __all__ = ['make_precon', 'make_precon_images',
