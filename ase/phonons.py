@@ -174,7 +174,7 @@ class Displacement:
         fd = opencew(filename)
         if fd is not None:
             # Call derived class implementation of __call__
-            output = self.__call__(atoms_N)
+            output = self(atoms_N)
             # Write output to file
             if world.rank == 0:
                 pickle.dump(output, fd, protocol=2)
@@ -331,7 +331,6 @@ class Phonons(Displacement):
         if world.rank == 0:
             pickle.dump(output, fd, protocol=2)
             sys.stdout.write('Writing %s\n' % filename)
-            fd.close()
             sys.stdout.flush()
 
     def check_eq_forces(self):

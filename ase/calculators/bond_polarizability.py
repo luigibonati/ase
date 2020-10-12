@@ -69,7 +69,7 @@ class LippincottStuttman:
         return alphal, alphap
 
 
-class Linearized():
+class Linearized:
     def __init__(self):
         self._data = {
             # L. Wirtz, M. Lazzeri, F. Mauri, A. Rubio,
