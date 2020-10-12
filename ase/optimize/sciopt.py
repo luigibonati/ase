@@ -92,6 +92,10 @@ class SciPyOptimizer(Optimizer):
         This should also be called once before optimization starts, as SciPy
         optimizers only calls it after each iteration, while ase optimizers
         call something similar before as well.
+        
+        :meth:`callback`() can raise a :exc:`Converged` exception to signal the
+        optimisation is complete. This will be silently ignored by
+        :meth:`run`().
         """
         f = self.atoms.get_forces()
         self.log(f)
