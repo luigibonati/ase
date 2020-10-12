@@ -70,7 +70,7 @@ class Precon(ABC):
 
         Uses 128-bit floating point math for vector dot products
         """
-        return longsum(self.P.dot(x) * y)
+        return longsum(self.Pdot(x) * y)
     
     def norm(self, x):
         """
@@ -115,6 +115,20 @@ class Precon(ABC):
     def copy(self):
         ...
 
+
+class Logfile:
+    def __init__(self, logfile=None):
+        if isinstance(logfile, str):
+            if logfile == "-":
+                logfile = sys.stdout
+            else:
+                logfile = open(logfile, "a")
+        self.logfile = logfile
+
+    def write(self, *args):
+        if self.logfile is None:
+            return
+        self.logfile.write(*args)
 
 class SparsePrecon(Precon):
     def __init__(self, r_cut=None, r_NN=None,
@@ -217,13 +231,7 @@ class SparsePrecon(Precon):
         if dim < 1:
             raise ValueError('Dimension must be at least 1')
         self.dim = dim
-
-        if isinstance(logfile, str):
-            if logfile == "-":
-                logfile = sys.stdout
-            else:
-                logfile = open(logfile, "a")
-        self.logfile = logfile
+        self.logfile = Logfile(logfile)
         
         if rng is None:
             rng = np.random.RandomState()
@@ -245,9 +253,8 @@ class SparsePrecon(Precon):
                               cycle='W')
         else:
             y = spsolve(self.P, x)
-        if self.logfile is not None:
-            self.logfile.write('--- Precon applied in %s seconds ---\n' %
-                               (time.time() - start_time))
+        self.logfile.write('--- Precon applied in %s seconds ---\n' %
+                            (time.time() - start_time))
         return y
 
     def estimate_mu(self, atoms, H=None):
@@ -313,10 +320,9 @@ class SparsePrecon(Precon):
                                                                  :3 * n]
             eigvals, eigvecs = sparse.linalg.eigsh(P0, k=4, which='SM')
 
-            if logfile is not None:
-                logfile.write('estimate_mu(): lowest 4 eigvals = %f %f %f %f\n'
-                              % (eigvals[0], eigvals[1],
-                                  eigvals[2], eigvals[3]))
+            logfile.write('estimate_mu(): lowest 4 eigvals = %f %f %f %f\n'
+                            % (eigvals[0], eigvals[1],
+                                eigvals[2], eigvals[3]))
             # check eigenvalues
             if any(eigvals[0:3] > 1e-6):
                 raise ValueError('First 3 eigenvalues of preconditioner matrix'
@@ -344,9 +350,8 @@ class SparsePrecon(Precon):
             self.c_stab = c_stab
         else:
             Lx, Ly, Lz = [p[:, i].max() - p[:, i].min() for i in range(3)]
-            if logfile is not None:
-                logfile.write('estimate_mu(): Lx=%.1f Ly=%.1f Lz=%.1f\n' %
-                              (Lx, Ly, Lz))
+            logfile.write('estimate_mu(): Lx=%.1f Ly=%.1f Lz=%.1f\n' %
+                            (Lx, Ly, Lz))
 
             x, y, z = p.T
             # sine_vr = [np.sin(x/Lx), np.sin(y/Ly), np.sin(z/Lz)], but we need
@@ -406,14 +411,12 @@ class SparsePrecon(Precon):
         if isinstance(atoms, Filter):
             self.mu_c = longsum(LHS[3 * natoms:]) / longsum(RHS[3 * natoms:])
             if self.mu_c < 1.0:
-                if logfile is not None:
-                    logfile.write('estimate_mu(): mu_c (%.3f) < 1.0, '
-                                  'capping at mu_c=1.0\n' % self.mu_c)
+                logfile.write('estimate_mu(): mu_c (%.3f) < 1.0, '
+                                'capping at mu_c=1.0\n' % self.mu_c)
                 self.mu_c = 1.0
 
-        if logfile is not None:
-            logfile.write('estimate_mu(): mu=%r, mu_c=%r\n' %
-                          (self.mu, self.mu_c))
+        logfile.write('estimate_mu(): mu=%r, mu_c=%r\n' %
+                        (self.mu, self.mu_c))
 
         self.P = None  # force a rebuild with new mu (there may be fixed atoms)
         return (self.mu, self.mu_c)
@@ -441,11 +444,10 @@ class SparseCoeffPrecon(SparsePrecon):
 
         """
         logfile = self.logfile
-        if logfile is not None:
-            logfile.write('creating sparse precon: initial_assembly=%r, '
-                          'force_stab=%r, apply_positions=%r, apply_cell=%r\n' %
-                          (initial_assembly, force_stab, self.apply_positions,
-                           self.apply_cell))
+        logfile.write('creating sparse precon: initial_assembly=%r, '
+                        'force_stab=%r, apply_positions=%r, apply_cell=%r\n' %
+                        (initial_assembly, force_stab, self.apply_positions,
+                        self.apply_cell))
 
         N = len(atoms)
         diag_i = np.arange(N, dtype=int)
@@ -453,17 +455,15 @@ class SparseCoeffPrecon(SparsePrecon):
         if self.apply_positions:
             # compute neighbour list
             i, j, rij, fixed_atoms = get_neighbours(atoms, self.r_cut)
-            if logfile is not None:
-                logfile.write('--- neighbour list created in %s s --- \n' %
-                              time.time() - start_time)
+            logfile.write('--- neighbour list created in %s s --- \n' %
+                            time.time() - start_time)
 
             # compute entries in triplet format: without the constraints
             start_time = time.time()
             coeff = self.get_coeff(rij)
             diag_coeff = np.bincount(i, -coeff, minlength=N).astype(np.float64)
             if force_stab or len(fixed_atoms) == 0:
-                if logfile is not None:
-                    logfile.write('adding stabilisation to precon')
+                logfile.write('adding stabilisation to precon')
                 diag_coeff += self.mu * self.c_stab
         else:
             diag_coeff = np.ones(N)
@@ -471,16 +471,11 @@ class SparseCoeffPrecon(SparsePrecon):
         # precon is mu_c * identity for cell DoF
         if isinstance(atoms, Filter):
             if self.apply_cell:
-                diag_coeff[-3] = self.mu_c
-                diag_coeff[-2] = self.mu_c
-                diag_coeff[-1] = self.mu_c
+                diag_coeff[-3:] = self.mu_c
             else:
-                diag_coeff[-3] = 1.0
-                diag_coeff[-2] = 1.0
-                diag_coeff[-1] = 1.0
-        if logfile is not None:
-            logfile.write('--- computed triplet format in %s s ---\n' %
-                          (time.time() - start_time))
+                diag_coeff[-3:] = 1.0
+        logfile.write('--- computed triplet format in %s s ---\n' %
+                        (time.time() - start_time))
 
         if self.apply_positions and not initial_assembly:
             # apply the constraints
@@ -489,9 +484,8 @@ class SparseCoeffPrecon(SparsePrecon):
             mask[fixed_atoms] = 0.0
             coeff *= mask[i] * mask[j]
             diag_coeff[fixed_atoms] = 1.0
-            if logfile is not None:
-                logfile.write('--- applied fixed_atoms in %s s ---\n' %
-                              time.time() - start_time)
+            logfile.write('--- applied fixed_atoms in %s s ---\n' %
+                            time.time() - start_time)
 
         if self.apply_positions:
             # remove zeros
@@ -500,9 +494,8 @@ class SparseCoeffPrecon(SparsePrecon):
             i = np.hstack((i[inz], diag_i))
             j = np.hstack((j[inz], diag_i))
             coeff = np.hstack((coeff[inz], diag_coeff))
-            if logfile is not None:
-                logfile.write('--- remove zeros in %s s ---\n' %
-                              (time.time() - start_time))
+            logfile.write('--- remove zeros in %s s ---\n' %
+                            (time.time() - start_time))
         else:
             i = diag_i
             j = diag_i
@@ -511,9 +504,8 @@ class SparseCoeffPrecon(SparsePrecon):
         # create the matrix
         start_time = time.time()
         csc_P = sparse.csc_matrix((coeff, (i, j)), shape=(N, N))
-        if logfile is not None:
-            logfile.write('--- created CSC matrix in %s s ---\n' %
-                          (time.time() - start_time))
+        logfile.write('--- created CSC matrix in %s s ---\n' %
+                        (time.time() - start_time))
 
         self.csc_P = csc_P
 
@@ -539,9 +531,8 @@ class SparseCoeffPrecon(SparsePrecon):
             self.P = sparse.csc_matrix((Z, (I, J)),
                                        shape=(self.dim * N, self.dim * N))
             self.P = self.P.tocsr()
-        if logfile is not None:
-            logfile.write('--- N-dim precon created in %s s ---\n' %
-                          (time.time() - start_time))
+        logfile.write('--- N-dim precon created in %s s ---\n' %
+                      (time.time() - start_time))
 
         # Create solver
         if self.use_pyamg and have_pyamg:
@@ -563,9 +554,8 @@ class SparseCoeffPrecon(SparsePrecon):
                 max_levels=15,
                 max_coarse=300,
                 coarse_solver='pinv')
-            if logfile is not None:
-                logfile.write('--- multi grid solver created in %s ---\n'
-                              % (time.time() - start_time))
+            logfile.write('--- multi grid solver created in %s ---\n'
+                          % (time.time() - start_time))
 
         return self.P
     
@@ -619,10 +609,9 @@ class SparseCoeffPrecon(SparsePrecon):
         # Create the preconditioner:
         self._make_sparse_precon(atoms, force_stab=self.force_stab)
 
-        if self.logfile is not None:
-            self.logfile.write('--- Precon created in %s seconds --- \n' %
-                               (time.time() - start_time))
-        return self.P
+        self.logfile.write('--- Precon created in %s seconds --- \n' %
+                           (time.time() - start_time))
+    return self.P
 
     @abstractmethod
     def get_coeff(self, r):
@@ -800,9 +789,8 @@ class FF(SparsePrecon):
     def make_precon(self, atoms, reinitialize=None):
         start_time = time.time()
         self._make_sparse_precon(atoms, force_stab=self.force_stab)
-        if self.logfile is not None:
-            self.logfile.write('--- Precon created in %s seconds ---\n'
-                               % (time.time() - start_time))
+        self.logfile.write('--- Precon created in %s seconds ---\n'
+                            % (time.time() - start_time))
         return self.P
 
     def _make_sparse_precon(self, atoms, initial_assembly=False,
@@ -889,9 +877,8 @@ class FF(SparsePrecon):
         start_time = time.time()
         self.P = sparse.csc_matrix(
             (data, (row, col)), shape=(self.dim * N, self.dim * N))
-        if self.logfile is not None:
-            self.logfile.write('--- created CSC matrix in %s s ---\n' %
-                               (time.time() - start_time))
+        self.logfile.write('--- created CSC matrix in %s s ---\n' %
+                            (time.time() - start_time))
 
         fixed_atoms = []
         for constraint in atoms.constraints:
@@ -909,9 +896,8 @@ class FF(SparsePrecon):
 
         self.P = self.P.tocsr()
 
-        if self.logfile is not None:
-            self.logfile.write('--- N-dim precon created in %s s ---\n' %
-                               (time.time() - start_time))
+        self.logfile.write('--- N-dim precon created in %s s ---\n' %
+                            (time.time() - start_time))
 
         # Create solver
         if self.use_pyamg:
@@ -933,9 +919,8 @@ class FF(SparsePrecon):
                 max_levels=15,
                 max_coarse=300,
                 coarse_solver='pinv')
-            if self.logfile is not None:
-                self.logfile.write('--- multi grid solver created in %s s ---\n'
-                                   % (time.time() - start_time))
+            self.logfile.write('--- multi grid solver created in %s s ---\n'
+                                % (time.time() - start_time))
 
         return self.P
 
@@ -972,7 +957,7 @@ class Exp_FF(Exp, FF):
                               array_convention=array_convention,
                               solver=solver,
                               solve_tol=solve_tol,
-                              reinitialize=apply_positions,
+                              apply_positions=apply_positions,
                               apply_cell=apply_cell,
                               estimate_mu_eigmode=estimate_mu_eigmode,
                               logfile=logfile)
@@ -1034,10 +1019,8 @@ class Exp_FF(Exp, FF):
 
         # Create the preconditioner:
         self._make_sparse_precon(atoms, force_stab=self.force_stab)
-
-        if self.logfile is not None:
-            self.logfile.write('--- Precon created in %s seconds ---\n' %
-                               (time.time() - start_time))
+        self.logfile.write('--- Precon created in %s seconds ---\n' %
+                            (time.time() - start_time))
         return self.P
 
     def _make_sparse_precon(self, atoms, initial_assembly=False,
@@ -1055,12 +1038,11 @@ class Exp_FF(Exp, FF):
             sparse matrix instead.
 
         """
-        if self.logfile is not None:
-            self.logfile.write('creating sparse precon: initial_assembly=%r, '
-                               'force_stab=%r, apply_positions=%r, '
-                               'apply_cell=%r\n'
-                               % (initial_assembly, force_stab,
-                                  self.apply_positions, self.apply_cell))
+        self.logfile.write('creating sparse precon: initial_assembly=%r, '
+                            'force_stab=%r, apply_positions=%r, '
+                            'apply_cell=%r\n'
+                            % (initial_assembly, force_stab,
+                                self.apply_positions, self.apply_cell))
 
         N = len(atoms)
         start_time = time.time()
@@ -1068,9 +1050,8 @@ class Exp_FF(Exp, FF):
             # compute neighbour list
             i_list, j_list, rij_list, fixed_atoms = get_neighbours(
                 atoms, self.r_cut)
-            if self.logfile is not None:
-                self.logfile.write('--- neighbour list created in %s s ---\n' %
-                                   (time.time() - start_time))
+            self.logfile.write('--- neighbour list created in %s s ---\n' %
+                                (time.time() - start_time))
 
         row = []
         col = []
@@ -1089,9 +1070,8 @@ class Exp_FF(Exp, FF):
                 data.extend(np.repeat(self.mu_c, 9))
             else:
                 data.extend(np.repeat(self.mu_c, 9))
-        if self.logfile is not None:
-            self.logfile.write('--- computed triplet format in %s s ---\n' %
-                               (time.time() - start_time))
+        self.logfile.write('--- computed triplet format in %s s ---\n' %
+                            (time.time() - start_time))
 
         conn = sparse.lil_matrix((N, N), dtype=bool)
 
@@ -1200,9 +1180,8 @@ class Exp_FF(Exp, FF):
         start_time = time.time()
         self.P = sparse.csc_matrix(
             (data, (row, col)), shape=(self.dim * N, self.dim * N))
-        if self.logfile is not None:
-            self.logfile.write('--- created CSC matrix in %s s ---\n' %
-                               (time.time() - start_time))
+        self.logfile.write('--- created CSC matrix in %s s ---\n' %
+                            (time.time() - start_time))
 
         if not initial_assembly:
             if len(fixed_atoms) != 0:
@@ -1234,9 +1213,8 @@ class Exp_FF(Exp, FF):
                 max_levels=15,
                 max_coarse=300,
                 coarse_solver='pinv')
-            if self.logfile is not None:
-                self.logfile.write('--- multi grid solver created in %s s ---\n'
-                                   % (time.time() - start_time))
+            self.logfile.write('--- multi grid solver created in %s s ---\n'
+                                % (time.time() - start_time))
 
         return self.P
 
