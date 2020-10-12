@@ -1,8 +1,7 @@
 import numpy as np
 
 from ase.optimize.sciopt import SciPyOptimizer, OptimizerConvergenceError
-from ase.optimize.precon.precon import make_precon
-    
+   
 
 def ode12r(f, X0, h=None, verbose=1, fmax=1e-6, maxtol=1e3, steps=100,
            rtol=1e-1, C1=1e-2, C2=2.0, hmin=1e-10, extrapolate=3,
@@ -57,7 +56,7 @@ def ode12r(f, X0, h=None, verbose=1, fmax=1e-6, maxtol=1e3, steps=100,
 
     X: array
         final value of degrees of freedom
-    """    
+    """
     
     X = X0
     Fn = f(X)
@@ -68,13 +67,13 @@ def ode12r(f, X0, h=None, verbose=1, fmax=1e-6, maxtol=1e3, steps=100,
     callback(X)
     
     if residual is None:
-        def residual(Fn, X):
-            return np.linalg.norm(Fn, np.inf)
+        def residual(F, X):
+            return np.linalg.norm(F, np.inf)
     Rn = residual(Fn, X)
     
     if apply_precon is None:
-        def apply_precon(Fn, X):
-            return Fn, residual(Fn)
+        def apply_precon(F, X):
+            return F, residual(F, X)
     Fn, Rn = apply_precon(Fn, X)
     
     def log(*args):
@@ -86,10 +85,10 @@ def ode12r(f, X0, h=None, verbose=1, fmax=1e-6, maxtol=1e3, steps=100,
             print(*args)
         
     if converged is None:
-        def converged(F):
-            return residual(F) <= fmax
+        def converged(F, X):
+            return residual(F, X) <= fmax
     
-    if converged(Fn):
+    if converged(Fn, X):
         log("ODE12r terminates successfully after 0 iterations")
         return X
     if Rn >= maxtol:
@@ -97,7 +96,7 @@ def ode12r(f, X0, h=None, verbose=1, fmax=1e-6, maxtol=1e3, steps=100,
                                         "at iteration 0")
 
     # computation of the initial step
-    r = residual(Fn)  # pick the biggest force
+    r = residual(Fn, X)  # pick the biggest force
     if h is None:
         h = 0.5 * rtol ** 0.5 / r  # Chose a stepsize based on that force
         h = max(h, hmin)  # Make sure the step size is not too big
@@ -138,7 +137,7 @@ def ode12r(f, X0, h=None, verbose=1, fmax=1e-6, maxtol=1e3, steps=100,
             callback(X)
 
             # We check the residuals again
-            if converged(Fn):
+            if converged(Fn, X):
                 log(f"ODE12r: terminates successfully "
                     f"after {nit} iterations.")
                 return X
@@ -183,6 +182,7 @@ class ODE12r(SciPyOptimizer):
         SciPyOptimizer.__init__(self, atoms, logfile, trajectory,
                                 callback_always, alpha, master,
                                 force_consistent)
+        from ase.optimize.precon.precon import make_precon  # avoid circular dep
         self.precon = make_precon(precon)
         self.verbose = verbose
         self.rtol = rtol
@@ -199,5 +199,5 @@ class ODE12r(SciPyOptimizer):
                verbose=self.verbose,
                apply_precon=self.apply_precon,
                callback=self.callback,
-               converged=self.converged,
+               converged=lambda F, X: self.converged(F.reshape(-1, 3)),
                rtol=self.rtol)

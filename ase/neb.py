@@ -214,6 +214,7 @@ class BaseSplineMethod(NEBMethod):
 
     def add_image_force(self, state, tangential_force, tangent, imgforce,
                         spring1, spring2, i):
+                
         # update preconditioner and apply to image force
         precon_imgforce, _ = state.precon[i].apply(imgforce.reshape(-1),
                                                    state.images[i])
@@ -309,11 +310,8 @@ class BaseNEB:
         else:
             raise NotImplementedError(method)
 
-        if method in ['spline', 'string']:
-            precon = make_precon_images(precon, images)
-        else:
-            if precon is not None:
-                raise NotImplementedError(f'no precon implemented: {method}')
+        if precon is not None and method not in ['spline', 'string']:
+            raise NotImplementedError(f'no precon implemented: {method}')
         self.precon = precon
 
         self.neb_method = get_neb_method(self, method)
@@ -461,6 +459,10 @@ class BaseNEB:
         self.energies = energies
         self.real_forces = np.zeros((self.nimages, self.natoms, 3))
         self.real_forces[1:-1] = forces
+        
+        # if this is the first force call, we need to build the preconditioners
+        if self.precon is None or isinstance(self.precon, str):
+            self.precon = make_precon_images(self.precon, images)
 
         state = NEBState(self, images, energies, self.precon)
 
@@ -606,8 +608,7 @@ class BaseNEB:
        
         return s, x, x_spline, dx_ds_spline, d2x_ds2_spline
     
-    def integrate_forces(self, spline_points=1000, bc_type='not-a-knot',
-                         return_forces=False):
+    def integrate_forces(self, spline_points=1000, bc_type='not-a-knot'):
         """
         Use spline fit to integrate forces along MEP to approximate
         energy differences using the virtual work approach.
@@ -615,14 +616,13 @@ class BaseNEB:
         Parameters
         ----------
         spline_points - number of spline points to use
-        return_forces - if True, include forces in results as well as energies
 
         Returns
         -------
 
         s - reaction coordinate in range [0, 1], with `spline_points` entries
         E - result of integrating forces, on the same grid as `s`.
-        F - if return_forces is True, also return projected forces along MEP
+        F - projected forces along MEP
         """
         # note we use standard Euclidean rather than preconditioned norm
         # to compute the virtual work
@@ -635,10 +635,7 @@ class BaseNEB:
         dE = f(s) * dx(s)
         F = dE.sum(axis=1)
         E = -cumtrapz(F, s, initial=0.0)
-        if return_forces:
-            return s, E, F
-        else:
-            return s, E
+        return s, E, F
 
 
 class DyNEB(BaseNEB):

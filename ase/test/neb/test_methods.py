@@ -15,8 +15,6 @@ from ase.constraints import FixBondLength
 from ase.geometry.geometry import get_distances
 from ase.utils.forcecurve import fit_images
 
-save_output = False
-
 
 def calc():
     return LoggingCalculator(MorsePotential(A=4.0, epsilon=1.0, r0=2.55))
@@ -133,36 +131,35 @@ def test_neb_methods(method, optimizer, precon, N_intermediate,
     print(f'{method},{optimizer.__name__},{precon} '
           f'=> Ef = {Ef:.3f}, dE = {dE:.3f}')
 
-    if save_output:
-        forcefit = fit_images(images)
+    forcefit = fit_images(images)
 
-        # retain biggest force across all images
-        fmax_history = list(np.max([mep.images[i].calc.fmax['(none)']
-                                    for i in range(1, mep.nimages - 1)],
-                                   axis=0))
-
-        # add up walltime across images
-        walltime = list(np.sum([mep.images[i].calc.fmax['(none)']
+    # retain biggest force across all images
+    fmax_history = list(np.max([mep.images[i].calc.fmax['(none)']
                                 for i in range(1, mep.nimages - 1)],
-                               axis=0))
+                                axis=0))
 
-        output_dir = os.path.dirname(__file__)
-        with open(f'{output_dir}/MEP_{method}_{optimizer.__name__}_{optmethod}'
-                  f'_{precon}_{N_intermediate}.json', 'w') as f:
-            json.dump({'fmax_history': fmax_history,
-                       'walltime': walltime,
-                       'method': method,
-                       'optmethod': optmethod,
-                       'precon': precon,
-                       'optimizer': optimizer.__name__,
-                       'N_intermediate': N_intermediate,
-                       'path': forcefit.path,
-                       'energies': forcefit.energies.tolist(),
-                       'fit_path': forcefit.fit_path.tolist(),
-                       'fit_energies': forcefit.fit_energies.tolist(),
-                       'lines': np.array(forcefit.lines).tolist(),
-                       'Ef': Ef,
-                       'dE': dE}, f)
+    # add up walltime across images
+    walltime = list(np.sum([mep.images[i].calc.fmax['(none)']
+                            for i in range(1, mep.nimages - 1)],
+                            axis=0))
+
+    output_dir = os.path.dirname(__file__)
+    with open(f'{output_dir}/MEP_{method}_{optimizer.__name__}_{optmethod}'
+              f'_{precon}_{N_intermediate}.json', 'w') as f:
+        json.dump({'fmax_history': fmax_history,
+                   'walltime': walltime,
+                   'method': method,
+                   'optmethod': optmethod,
+                   'precon': precon,
+                   'optimizer': optimizer.__name__,
+                   'N_intermediate': N_intermediate,
+                   'path': forcefit.path,
+                   'energies': forcefit.energies.tolist(),
+                   'fit_path': forcefit.fit_path.tolist(),
+                   'fit_energies': forcefit.fit_energies.tolist(),
+                   'lines': np.array(forcefit.lines).tolist(),
+                   'Ef': Ef,
+                   'dE': dE}, f)
 
     assert abs(Ef - Ef_ref) < 1e-2
     assert abs(dE - dE_ref) < 1e-2
