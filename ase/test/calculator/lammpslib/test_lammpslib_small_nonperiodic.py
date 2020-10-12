@@ -3,8 +3,6 @@ import numpy as np
 
 from ase import Atoms
 
-from .common_fixtures import calc_params_NiH
-
 
 @pytest.fixture
 def dimer_params():

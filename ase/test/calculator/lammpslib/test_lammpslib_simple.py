@@ -6,8 +6,6 @@ import ase.io
 from ase import units
 from ase.md.verlet import VelocityVerlet
 
-from .common_fixtures import calc_params_NiH
-
 
 @pytest.fixture
 def fcc_Ni_with_H_at_center():

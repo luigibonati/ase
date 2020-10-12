@@ -2,8 +2,6 @@ import pytest
 
 from ase.lattice.cubic import FaceCenteredCubic
 
-from .common_fixtures import calc_params_NiH
-
 
 @pytest.fixture
 def lattice_params():
