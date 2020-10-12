@@ -15,7 +15,8 @@ class ELK(FileIOCalculator, EigenvalOccupationMixin):
     command = 'elk > elk.out'
     implemented_properties = ['energy', 'forces']
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=FileIOCalculator._deprecated,
                  label=os.curdir, atoms=None, **kwargs):
         """Construct ELK calculator.
 

@@ -40,8 +40,7 @@ class ResonantRaman(Vibrations):
                  overlap=False,
                  minoverlap=0.02,
                  minrep=0.8,
-                 comm=world,
-    ):
+                 comm=world):
         """
         Parameters
         ----------

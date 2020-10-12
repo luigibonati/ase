@@ -43,7 +43,8 @@ class Abinit(FileIOCalculator):
         raw=None,
         pps='fhi')
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=FileIOCalculator._deprecated,
                  label='abinit', atoms=None, pp_paths=None, **kwargs):
         """Construct ABINIT-calculator object.
 

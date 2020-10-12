@@ -6,37 +6,64 @@ from ase.parallel import world
 
 
 class NVTBerendsen(MolecularDynamics):
-    """Berendsen (constant N, V, T) molecular dynamics.
-
-    Usage: NVTBerendsen(atoms, timestep, temperature, taut, fixcm)
-
-    atoms
-        The list of atoms.
-
-    timestep
-        The time step.
-
-    temperature
-        The desired temperature, in Kelvin.
-
-    taut
-        Time constant for Berendsen temperature coupling.
-
-    fixcm
-        If True, the position and momentum of the center of mass is
-        kept unperturbed.  Default: True.
-
-    """
-
-    def __init__(self, atoms, timestep, temperature, taut, fixcm=True,
+    def __init__(self, atoms, timestep, temperature=None, taut=None,
+                 fixcm=True, *, temperature_K=None,
                  trajectory=None, logfile=None, loginterval=1,
                  communicator=world, append_trajectory=False):
+        """Berendsen (constant N, V, T) molecular dynamics.
+
+        Parameters:
+
+        atoms: Atoms object
+            The list of atoms.
+
+        timestep: float
+            The time step in ASE time units.
+
+        temperature: float
+            The desired temperature, in Kelvin.
+
+        temperature_K: float
+            Alias for *temperature*
+
+        taut: float
+            Time constant for Berendsen temperature coupling in ASE
+            time units.
+
+        fixcm: bool (optional)
+            If True, the position and momentum of the center of mass is
+            kept unperturbed.  Default: True.
+
+        trajectory: Trajectory object or str (optional)
+            Attach trajectory object.  If *trajectory* is a string a
+            Trajectory will be constructed.  Use *None* for no
+            trajectory.
+
+        logfile: file object or str (optional)
+            If *logfile* is a string, a file with that name will be opened.
+            Use '-' for stdout.
+
+        loginterval: int (optional)
+            Only write a log line for every *loginterval* time steps.  
+            Default: 1
+
+        append_trajectory: boolean (optional)
+            Defaults to False, which causes the trajectory file to be
+            overwriten each time the dynamics is restarted from scratch.
+            If True, the new structures are appended to the trajectory
+            file instead.
+
+        """
 
         MolecularDynamics.__init__(self, atoms, timestep, trajectory,
                                    logfile, loginterval,
                                    append_trajectory=append_trajectory)
+        if taut is None:
+            raise TypeError("Missing 'taut' argument.")
         self.taut = taut
-        self.temperature = temperature
+        self.temperature = self._process_temperature(temperature,
+                                                     temperature_K, 'K')
+
         self.fixcm = fixcm  # will the center of mass be held fixed?
         self.communicator = communicator
 
@@ -46,8 +73,9 @@ class NVTBerendsen(MolecularDynamics):
     def get_taut(self):
         return self.taut
 
-    def set_temperature(self, temperature):
-        self.temperature = temperature
+    def set_temperature(self, temperature=None, *, temperature_K=None):
+        self.temperature = self._process_temperature(temperature,
+                                                     temperature_K, 'K')
 
     def get_temperature(self):
         return self.temperature

@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 from ase import Atoms
-from ase.units import fs, kB
+from ase.units import fs
 # Rename import so pytest won't pick up the class as a test:
 from ase.calculators.test import TestPotential as TstPotential
 from ase.md import Langevin
@@ -27,7 +27,8 @@ def run():
               calculator=TstPotential())
     print(a.get_forces())
     # Langevin should reproduce Verlet if friction is 0.
-    md = Langevin(a, 0.5 * fs, 300 * kB, 0.0, logfile='-', loginterval=500)
+    md = Langevin(a, 0.5 * fs, temperature_K=300, friction=0.0,
+                  logfile='-', loginterval=500)
     traj = Trajectory('4N.traj', 'w', a)
     md.attach(traj, 100)
     e0 = a.get_total_energy()
@@ -36,8 +37,8 @@ def run():
     assert abs(read('4N.traj').get_total_energy() - e0) < 0.0001
 
     # Try again with nonzero friction.
-    md = Langevin(a, 0.5 * fs, 300 * kB, 0.001, logfile='-', loginterval=500,
-                  rng=rng)
+    md = Langevin(a, 0.5 * fs, temperature_K=300, friction=0.001,
+                  logfile='-', loginterval=500, rng=rng)
     traj = Trajectory('4NA.traj', 'w', a)
     md.attach(traj, 100)
     md.run(steps=2000)

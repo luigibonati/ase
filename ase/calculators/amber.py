@@ -31,7 +31,8 @@ class Amber(FileIOCalculator):
 
     implemented_properties = ['energy', 'forces']
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=FileIOCalculator._deprecated,
                  label='amber', atoms=None, command=None,
                  amber_exe='sander -O ',
                  infile='mm.in', outfile='mm.out',

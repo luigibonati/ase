@@ -4,7 +4,6 @@ def test_Ag_Cu100():
     from ase.neb import NEB
     from ase.constraints import FixAtoms
     from ase.vibrations import Vibrations
-    from ase.visualize import view
     from ase.calculators.emt import EMT
     from ase.optimize import QuasiNewton, BFGS
 
@@ -20,9 +19,6 @@ def test_Ag_Cu100():
     h0 = 2.0
     initial += Atom('Ag', (d / 2, d / 2, h0))
 
-    if 0:
-        view(initial)
-
     # Make band:
     images = [initial.copy() for i in range(6)]
     neb = NEB(images, climb=True)
@@ -35,7 +31,6 @@ def test_Ag_Cu100():
 
     # Displace last image:
     images[-1].positions[-1] += (d, 0, 0)
-    #images[-1].positions[-1] += (d, d, 0)
 
     # Relax height of Ag atom for initial and final states:
     dyn1 = QuasiNewton(images[0])
@@ -49,8 +44,6 @@ def test_Ag_Cu100():
     for image in images:
         print(image.positions[-1], image.get_potential_energy())
 
-    #dyn = MDMin(neb, dt=0.4)
-    #dyn = FIRE(neb, dt=0.4)
     dyn = BFGS(neb, trajectory='mep.traj')
     dyn.run(fmax=0.05)
 

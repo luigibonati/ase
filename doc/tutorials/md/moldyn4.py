@@ -30,7 +30,7 @@ qn = QuasiNewton(atoms)
 qn.run(0.001, 10)
 
 # Set the momenta corresponding to T=1200K
-MaxwellBoltzmannDistribution(atoms, 1200 * units.kB)
+MaxwellBoltzmannDistribution(atoms, temperature_K=1200)
 Stationary(atoms)  # zero linear momentum
 ZeroRotation(atoms)  # zero angular momentum
 
