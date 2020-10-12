@@ -60,7 +60,7 @@ class ResonantRamanCalculator(RamanCalculatorBase, Vibrations):
         forces = self.atoms.get_forces()
         if world.rank == 0:
             pickle.dump(forces, fd, protocol=2)
-            fd.close()
+
         if self.overlap:
             """Overlap is determined as
 
