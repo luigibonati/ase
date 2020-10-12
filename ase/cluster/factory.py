@@ -92,19 +92,6 @@ class ClusterFactory(ClusterBase):
             positions = positions[mask]
             numbers = numbers[mask]
 
-        # Fit the cell, so it only just consist the atoms
-        min = np.zeros(3)
-        max = np.zeros(3)
-        for i in range(3):
-            v = self.directions[i]
-            r = np.dot(positions, v)
-            min[i] = r.min()
-            max[i] = r.max()
-
-        cell = max - min + vacuum
-        positions = positions - min + vacuum / 2.0
-        self.center = self.center - min + vacuum / 2.0
-
         atoms = self.Cluster(symbols=numbers, positions=positions)
 
         atoms.cell = (1, 1, 1)  # XXX ugly hack to center around zero
