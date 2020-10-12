@@ -270,18 +270,18 @@ class ElkReader:
         self.path = Path(path)
 
     def read_everything(self):
-        converged = self.read_convergence()
-        if not converged:
-            raise RuntimeError(f'ELK did not converge! Check {self.out}')
+        #converged = self.read_convergence()
+        #if not converged:
+        #    raise RuntimeError(f'ELK did not converge! Check {self.out}')
         yield from self.read_energy()
         #if self.parameters.get('tforce'):
         yield 'forces', self.read_forces()
 
-        yield 'width', self.read_electronic_temperature()
-        yield 'nbands', self.read_number_of_bands()
-        yield 'nelect', self.read_number_of_electrons()
-        yield 'niter', self.read_number_of_iterations()
-        yield 'magnetic_moment', self.read_magnetic_moment()
+        #yield 'width', self.read_electronic_temperature()
+        #yield 'nbands', self.read_number_of_bands()
+        #yield 'nelect', self.read_number_of_electrons()
+        #yield 'niter', self.read_number_of_iterations()
+        #yield 'magnetic_moment', self.read_magnetic_moment()
         yield from self.read_eigval()
 
     @property
@@ -291,9 +291,9 @@ class ElkReader:
     def read_energy(self):
         txt = (self.path / 'TOTENERGY.OUT').read_text()
         tokens = txt.split()
-        e = float(tokens[-1]) * Hartree
-        yield 'free_energy', e
-        yield 'energy', e
+        energy = float(tokens[-1]) * Hartree
+        yield 'free_energy', energy
+        yield 'energy', energy
 
     def read_forces(self):
         lines = self.out.read_text().splitlines()
@@ -304,144 +304,106 @@ class ElkReader:
                                         for f in line.split(':')[1].split()]))
         return np.array(forces) * Hartree / Bohr
 
-    def read_convergence(self):
-        converged = False
-        text = self.out.read_text().lower()
-        if ('convergence targets achieved' in text and
-            'reached self-consistent loops maximum' not in text):
-            converged = True
-        return converged
+    #def read_convergence(self):
+    #    converged = False
+    #    text = self.out.read_text().lower()
+    #    if ('convergence targets achieved' in text and
+    #        'reached self-consistent loops maximum' not in text):
+    #        converged = True
+    #    return converged
 
-    def read_kpts(self, mode='ibz_k_points'):
-        """ Returns list of kpts weights or kpts coordinates.  """
-        values = []
-        assert mode in ['ibz_k_points', 'k_point_weights']
-
-        lines = (self.path / 'KPOINTS.OUT').read_text().splitlines()
-
-        kpts = None
-        for line in lines:
-            if line.rfind(': nkpt') > -1:
-                kpts = int(line.split(':')[0].strip())
-                break
-        assert kpts is not None
-        text = lines[1:]  # remove first line
-        values = []
-        for line in text:
-            if mode == 'ibz_k_points':
-                b = [float(c.strip()) for c in line.split()[1:4]]
-            else:
-                b = float(line.split()[-2])
-            values.append(b)
-        if len(values) == 0:
-            values = None
-        return np.array(values)
-
-    def read_number_of_electrons(self):
-        nelec = None
-        text = self.out.read_text().lower()
+    #def read_number_of_electrons(self):
+    #    nelec = None
+    #    text = self.out.read_text().lower()
         # Total electronic charge
-        for line in iter(text.split('\n')):
-            if line.rfind('total electronic charge :') > -1:
-                nelec = float(line.split(':')[1].strip())
-                break
-        return nelec
+    #    for line in iter(text.split('\n')):
+    #        if line.rfind('total electronic charge :') > -1:
+    #            nelec = float(line.split(':')[1].strip())
+    #            break
+    #    return nelec
 
-    def read_number_of_iterations(self):
-        niter = None
-        lines = self.out.read_text().splitlines()
-        for line in lines:
-            if line.rfind(' Loop number : ') > -1:
-                niter = int(line.split(':')[1].split()[0].strip())  # last iter
-        return niter
+    #def read_number_of_iterations(self):
+    #    niter = None
+    #    lines = self.out.read_text().splitlines()
+    #    for line in lines:
+    #        if line.rfind(' Loop number : ') > -1:
+    #            niter = int(line.split(':')[1].split()[0].strip())  # last iter
+    #    return niter
 
-    def read_magnetic_moment(self):
-        magmom = None
-        lines = self.out.read_text().splitlines()
-        for line in lines:
-            if line.rfind('total moment                :') > -1:
-                magmom = float(line.split(':')[1].strip())  # last iter
-        return magmom
+    #def read_magnetic_moment(self):
+    #    magmom = None
+    #    lines = self.out.read_text().splitlines()
+    #    for line in lines:
+    #        if line.rfind('total moment                :') > -1:
+    #            magmom = float(line.split(':')[1].strip())  # last iter
+    #    return magmom
 
-    def read_electronic_temperature(self):
-        width = None
-        text = self.out.read_text().lower()
-        for line in iter(text.split('\n')):
-            if line.rfind('smearing width :') > -1:
-                width = float(line.split(':')[1].strip())
-                break
-        return width
-
-    def read_number_of_bands(self):
-        nbands = None
-        lines = (self.path / 'EIGVAL.OUT').read_text().splitlines()
-        for line in lines:
-            if line.rfind(': nstsv') > -1:
-                nbands = int(line.split(':')[0].strip())
-                break
-
-        # XXXX Spin polarized
-        #
-        #if self.get_spin_polarized():
-        #    nbands = nbands // 2
-        return nbands
+    #def read_electronic_temperature(self):
+    #    width = None
+    #    text = self.out.read_text().lower()
+    #    for line in iter(text.split('\n')):
+    #        if line.rfind('smearing width :') > -1:
+    #            width = float(line.split(':')[1].strip())
+    #            break
+    #    return width
 
     def read_eigval(self):
         with (self.path / 'EIGVAL.OUT').open() as fd:
             yield from parse_elk_eigval(fd)
 
-    def read_eigenvalues_xxxxxxx(self, kpt=0, spin=0, mode='eigenvalues'):
-        """ Returns list of last eigenvalues, occupations
-        for given kpt and spin.  """
-        values = []
-        assert mode in ['eigenvalues', 'occupations']
-        lines = (self.path / 'EIGVAL.OUT').read_text().splitlines()
-        nstsv = None
-        for line in lines:
-            if line.rfind(': nstsv') > -1:
-                nstsv = int(line.split(':')[0].strip())
-                break
-        assert nstsv is not None
-        kpts = None
-        for line in lines:
-            if line.rfind(': nkpt') > -1:
-                kpts = int(line.split(':')[0].strip())
-                break
-        assert kpts is not None
-        text = lines[3:]  # remove first 3 lines
-        # find the requested k-point
-        beg = 2 + (nstsv + 4) * kpt
-        end = beg + nstsv
-        if self.get_spin_polarized():
-            # elk prints spin-up and spin-down together
-            if spin == 0:
-                beg = beg
-                end = beg + nstsv // 2
-            else:
-                beg = beg + nstsv // 2
-                end = end
-        values = []
-        for line in text[beg:end]:
-            b = [float(c.strip()) for c in line.split()[1:]]
-            values.append(b)
-        if mode == 'eigenvalues':
-            values = [Hartree * v[0] for v in values]
-        else:
-            values = [v[1] for v in values]
-        if len(values) == 0:
-            values = None
-        return np.array(values)
 
-    def read_fermi(self):
-        """Method that reads Fermi energy in Hartree from the output file
-        and returns it in eV"""
-        E_f = None
-        text = self.out.read_text().lower()
-        for line in iter(text.split('\n')):
-            if line.rfind('fermi                       :') > -1:
-                E_f = float(line.split(':')[1].strip())
-        E_f = E_f * Hartree
-        return E_f
+def parse_elk_kpoints(fd):
+    header = next(fd)
+    tokens = header.split()
+    nkpts = int(tokens[0])
+    assert tokens[1] == ':'
+
+    kpts = np.empty(nkpts, 3)
+    weights = np.empty(nkpts)
+
+    for ikpt in range(nkpts):
+        line = next(fd)
+        tokens = line.split()
+        kpts[ikpt] = tokens[1:4]
+        weights[ikpt] = tokens[4]
+    yield 'kpts', kpts
+    yield 'weights', weights
+
+
+def parse_elk_info(fd):
+    #def skipto(regex):
+    #    match = None
+    #    while match is None:
+    #        match = re.match(regex, line)
+    #        line = next(fd)
+    #    return line
+
+    dct = {}
+    fd = iter(fd)
+
+    converged = False
+    actually_did_not_converge = False
+    # Legacy code kept track of both these things, which is strange.
+    # Why could a file both claim to converge *and* not converge?
+
+    current_indent = 0
+    # We loop over all lines and extract also data that occurs
+    # multiple times (e.g. in multiple SCF steps)
+    for line in fd:
+        # "name of quantity  :   1 2 3"
+        match = re.match(r'\s*(\S+)\s+:\s+(.+)?\s*', line)
+        if match is not None:
+            key, values = match.group(1, 2)
+            dct[key.strip()] = values
+
+        elif line.startswith('Convergence targets achieved'):
+            converged = True
+        elif 'reached self-consistent loops maximum' in line.lower():
+            actually_did_not_converge = True
+
+    yield 'converged', converged and not actually_did_not_converge  # XXX
+    yield 'charge', float(dct['Total electronic charge'])
+    yield 'fermilevel', float(dct['Fermi'])
 
 
 def parse_elk_eigval(fd):
@@ -461,6 +423,10 @@ def parse_elk_eigval(fd):
     nkpts = match_int(line, 'nkpt')  # 10 : nkpts
     line = next(fd)
     nbands = match_int(line, 'nstsv')  # 15 : nstsv
+    # XXXX Spin polarized
+    #
+    #if self.get_spin_polarized():
+    #    nbands = nbands // 2
 
     eigenvalues = np.empty((nkpts, nbands))
     occupations = np.empty((nkpts, nbands))

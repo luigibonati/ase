@@ -27,16 +27,16 @@ class ELK(FileIOCalculator, EigenvalOccupationMixin):
 
         super().__init__(**kwargs)
 
-    @property
-    def out(self):
-        return Path(self.directory) / 'INFO.OUT'
-
     def write_input(self, atoms, properties=None, system_changes=None):
         FileIOCalculator.write_input(self, atoms, properties, system_changes)
         self.initialize(atoms)
 
+        parameters = dict(self.parameters)
+        if 'forces' in properties:
+            parameters['tforce'] = True
+
         directory = Path(self.directory)
-        write(directory / 'elk.in', atoms, parameters=self.parameters,
+        write(directory / 'elk.in', atoms, parameters=parameters,
               format='elk-in')
 
     def read_results(self):
@@ -49,12 +49,6 @@ class ELK(FileIOCalculator, EigenvalOccupationMixin):
         else:
             self.spinpol = self.parameters['spinpol']
 
-    def get_forces(self, atoms):
-        if not self.parameters.get('tforce'):
-            raise PropertyNotImplementedError
-        return FileIOCalculator.get_forces(self, atoms)
-
-    # more methods
     def get_electronic_temperature(self):
         return self.width * Hartree
 
