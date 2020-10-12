@@ -525,6 +525,9 @@ def write(
             assert isinstance(format, str)
     else:
         fd = filename  # type: ignore
+        if format is None:
+            format = filetype(filename, read=False)
+            assert isinstance(format, str)
         filename = None  # type: ignore
 
     format = format or 'json'  # default is json
@@ -631,7 +634,7 @@ def read(
     filename, index = parse_filename(filename, index, do_not_split_by_at_sign)
     if index is None:
         index = -1
-    format = format or filetype(filename)
+    format = format or filetype(filename, read=isinstance(filename, str))
 
     io = get_ioformat(format)
     if isinstance(index, (slice, str)):
@@ -669,7 +672,7 @@ def iread(
     if not isinstance(index, (slice, str)):
         index = slice(index, (index + 1) or None)
 
-    format = format or filetype(filename)
+    format = format or filetype(filename, read=isinstance(filename, str))
     io = get_ioformat(format)
 
     for atoms in _iread(filename, index, format, io, parallel=parallel,
@@ -777,6 +780,10 @@ def filetype(
         $ ase info filename ...
     """
 
+    orig_filename = filename
+    if hasattr(filename, 'name') and len(getattr(filename, 'name')) > 0:
+        filename = getattr(filename, 'name')
+
     ext = None
     if isinstance(filename, str):
         if os.path.isdir(filename):
@@ -811,7 +818,10 @@ def filetype(
             # askhl: This is strange, we don't know if ext is a format:
             return ext
 
-        fd = open_with_compression(filename, 'rb')
+        if orig_filename == filename:
+            fd = open_with_compression(filename, 'rb')
+        else:
+            fd = orig_filename
     else:
         fd = filename    # type: ignore
         if fd is sys.stdin:
