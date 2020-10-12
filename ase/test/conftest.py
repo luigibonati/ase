@@ -232,7 +232,7 @@ class CLI:
     def __init__(self, calculators):
         self.calculators = calculators
 
-    def ase(self, *args):
+    def ase(self, *args, expect_fail=False):
         environment = {}
         environment.update(os.environ)
         # Prevent failures due to Tkinter-related default backend
@@ -244,7 +244,7 @@ class CLI:
                      env=environment)
         stdout, _ = proc.communicate(b'')
         status = proc.wait()
-        assert status == 0
+        assert (status != 0) == expect_fail
         return stdout.decode('utf-8')
 
     def shell(self, command, calculator_name=None):
