@@ -11,7 +11,8 @@ from ase.io.pickletrajectory import PickleTrajectory
 from ase.calculators.calculator import compare_atoms
 from ase.calculators.emt import EMT
 from ase.constraints import FixAtoms
-from ase.io.bundletrajectory import print_bundletrajectory_info
+from ase.io.bundletrajectory import (BundleTrajectory,
+                                     print_bundletrajectory_info)
 
 
 trajname = 'pickletraj.traj'
@@ -91,7 +92,6 @@ def test_append_pickle(images, trajfile):
     assert_images_equal(images * 2, images1)
 
 
-from ase.io.bundletrajectory import BundleTrajectory
 @pytest.mark.xfail(reason='same as test_read_write_bundle')
 def test_append_bundle(images, bundletraj):
     traj = BundleTrajectory(bundletraj, mode='a')
