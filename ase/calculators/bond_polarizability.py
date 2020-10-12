@@ -1,5 +1,4 @@
 from typing import Tuple
-import re
 import numpy as np
 
 from ase.units import Bohr, Ha
@@ -16,6 +15,7 @@ class LippincottStuttman:
     #   DOI: 10.1103/PhysRevB.55.2938
     # unit: Angstrom^3
     atomic_polarizability = {
+        'B': 1.358,
         'C': 0.978,
         'N': 0.743,
         'O': 0.592,
@@ -24,6 +24,7 @@ class LippincottStuttman:
     }
     # reduced electronegativity Table I
     reduced_eletronegativity = {
+        'B': 0.538,
         'C': 0.846,
         'N': 0.927,
         'O': 1.0,
@@ -31,12 +32,14 @@ class LippincottStuttman:
         'Si': 0.583,
     }
     
-    def __call__(self, bond: str, length: float) -> Tuple[float, float]:
+    def __call__(self, el1: str, el2: str,
+                 length: float) -> Tuple[float, float]:
         """Bond polarizability
 
         Parameters
         ----------
-        bond: elements
+        el1: element string
+        el2: element string
         length: float
 
         Returns
@@ -46,8 +49,6 @@ class LippincottStuttman:
         alphap: float
           Perpendicular component
         """
-        el1, el2 = re.findall('[A-Z][^A-Z]*', bond)
-
         alpha1 = self.atomic_polarizability[el1]
         alpha2 = self.atomic_polarizability[el2]
         ren1 = self.reduced_eletronegativity[el1]
@@ -79,12 +80,14 @@ class Linearized:
             'BN': (1.56, 1.58, 4.22, 0.42, 0.90),
         }
 
-    def __call__(self, bond: str, length: float) -> Tuple[float, float]:
+    def __call__(self, el1: str, el2: str,
+                 length: float) -> Tuple[float, float]:
         """Bond polarizability
 
         Parameters
         ----------
-        bond: elements
+        el1: element string
+        el2: element string
         length: float
 
         Returns
@@ -94,9 +97,10 @@ class Linearized:
         alphap: float
           Perpendicular component
         """
-        if bond not in self._data:
-            el1, el2 = re.findall('[A-Z][^A-Z]*', bond)
+        if el1 > el2:
             bond = el2 + el1
+        else:
+            bond = el1 + el2
         assert bond in self._data
         length0, al, ald, ap, apd = self._data[bond]
 
@@ -146,7 +150,7 @@ class BondPolarizability:
 
                 dist_c = pos_ac[ib] + np.dot(offset, atoms.get_cell())
                 dist = np.linalg.norm(dist_c)
-                al, ap = self.model(atom.symbol + atoms[ib].symbol, dist)
+                al, ap = self.model(atom.symbol, atoms[ib].symbol, dist)
 
                 eye3 = np.eye(3) / 3
                 alpha += weight * (al + 2 * ap) * eye3

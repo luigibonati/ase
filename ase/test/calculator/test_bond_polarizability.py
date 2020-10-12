@@ -3,7 +3,7 @@ import pytest
 
 from ase import Atoms
 from ase.calculators.bond_polarizability import BondPolarizability
-from ase.calculators.bond_polarizability import Linearized
+from ase.calculators.bond_polarizability import LippincottStuttman, Linearized
 
 
 def test_CC_bond():
@@ -22,8 +22,8 @@ def test_CC_bond():
 
 
 def test_symmetry():
-    lin = Linearized()
-    assert lin('BN', 1) == lin('NB', 1)
+    for lin in [LippincottStuttman(), Linearized()]:
+        assert lin('B', 'N', 1) == lin('N', 'B', 1)
 
 
 def test_2to3():
