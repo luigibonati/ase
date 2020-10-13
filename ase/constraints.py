@@ -3,7 +3,9 @@ from warnings import warn
 
 import numpy as np
 from ase.calculators.calculator import PropertyNotImplementedError
-from ase.geometry import find_mic, wrap_positions
+from ase.geometry import (find_mic, wrap_positions, get_distances_derivatives,
+                          get_angles_derivatives, get_dihedrals_derivatives,
+                          conditional_find_mic, get_angles, get_dihedrals)
 from ase.utils.parsemath import eval_expression
 from scipy.linalg import expm, logm
 
@@ -763,14 +765,36 @@ class FixScaled(FixConstraintSingle):
 class FixInternals(FixConstraint):
     """Constraint object for fixing multiple internal coordinates.
 
-    Allows fixing bonds, angles, and dihedrals."""
-
+    Allows fixing bonds, angles, and dihedrals.
+    Please provide angular units in degrees using angles_deg and
+    dihedrals_deg.
+    """
     def __init__(self, bonds=None, angles=None, dihedrals=None,
-                 bondcombos=None, epsilon=1.e-7):
+                 angles_deg=None, dihedrals_deg=None,
+                 bondcombos=None, mic=False, epsilon=1.e-7):
+
+        # deprecate public API using radians; degrees is preferred
+        warn_msg = 'Please specify {} in degrees using the {} argument.'
+        if angles:
+            warn(FutureWarning(warn_msg.format('angles', 'angle_deg')))
+            angles = np.asarray(angles)
+            angles[:, 0] = angles[:, 0] / np.pi * 180
+            angles = angles.tolist()
+        else:
+            angles = angles_deg
+        if dihedrals:
+            warn(FutureWarning(warn_msg.format('dihedrals', 'dihedrals_deg')))
+            dihedrals = np.asarray(dihedrals)
+            dihedrals[:, 0] = dihedrals[:, 0] / np.pi * 180
+            dihedrals = dihedrals.tolist()
+        else:
+            dihedrals = dihedrals_deg
+
         self.bonds = bonds or []
         self.angles = angles or []
         self.dihedrals = dihedrals or []
         self.bondcombos = bondcombos or []
+        self.mic = mic
 
         # Initialize these at run-time:
         self.n = 0
@@ -789,21 +813,26 @@ class FixInternals(FixConstraint):
         masses = np.repeat(atoms.get_masses(), 3)
         self.n = (len(self.bonds) + len(self.angles) + len(self.dihedrals)
                   + len(self.bondcombos))
+        cell = None
+        pbc = None
+        if self.mic:
+            cell = atoms.cell
+            pbc = atoms.pbc
         self.constraints = []
         for bond in self.bonds:
             self.constraints.append(self.FixBondLengthAlt(bond[0], bond[1],
-                                                          masses))
+                                                          masses, cell, pbc))
         for angle in self.angles:
             self.constraints.append(self.FixAngle(angle[0], angle[1],
-                                                  masses))
+                                                  masses, cell, pbc))
         for dihedral in self.dihedrals:
             self.constraints.append(self.FixDihedral(dihedral[0],
                                                      dihedral[1],
-                                                     masses))
+                                                     masses, cell, pbc))
         for bondcombo in self.bondcombos:
             self.constraints.append(self.FixBondCombo(bondcombo[0],
                                                       bondcombo[1],
-                                                      masses))
+                                                      masses, cell, pbc))
         self.initialized = True
 
     def get_indices(self):
@@ -818,6 +847,7 @@ class FixInternals(FixConstraint):
                            'angles': self.angles,
                            'dihedrals': self.dihedrals,
                            'bondcombos': self.bondcombos,
+                           'mic': self.mic,
                            'epsilon': self.epsilon}}
 
     def adjust_positions(self, atoms, new):
@@ -902,7 +932,7 @@ class FixInternals(FixConstraint):
         """Constraint subobject for fixing linear combination of bond lengths
            within FixInternals."""
 
-        def __init__(self, targetvalue, indices, masses, maxstep=0.01):
+        def __init__(self, targetvalue, indices, masses, cell, pbc):
             """Fix linear combination of distances between atoms:
                sum_i( coef_i * bond_length_i ) = constant"""
             self.targetvalue = targetvalue  # constant target value
@@ -912,23 +942,29 @@ class FixInternals(FixConstraint):
             self.jacobian = []  # geometric Jacobian matrix, Wilson B-matrix
             self.sigma = 1.  # difference between current and target value
             self.projected_force = None  # helps optimizers scan along constr.
+            self.cell = cell
+            self.pbc = pbc
 
         def prepare_jacobian(self, pos):
-            def derive_bond(index):
-                jacobian = np.zeros(pos.shape)
-                bondvector = pos[index[0]] - pos[index[1]]
-                deriv = 1 / np.linalg.norm(bondvector) * bondvector
-                jacobian[index[0]] = deriv  # by atom 0
-                jacobian[index[1]] = -deriv  # by atom 1
-                return jacobian.flatten()
-            jacobian = np.asarray([derive_bond(index) for index
-                                             in self.indices])
+            bondvectors = [pos[k] - pos[h] for h, k in self.indices]
+            derivs = get_distances_derivatives(bondvectors, cell=self.cell,
+                                               pbc=self.pbc)
+            nbonds = len(bondvectors)
+
+            jacobian = np.zeros((nbonds, *pos.shape))
+            for i, idx in enumerate(self.indices):  # populate jacobian with
+                jacobian[i, idx[0]] = derivs[i, 0]  # derivatives for all
+                jacobian[i, idx[1]] = derivs[i, 1]  # defined bonds
+            jacobian = jacobian.reshape((nbonds, 3 * len(pos)))
+
             self.jacobian = self.coefs @ jacobian
 
         def adjust_positions(self, oldpos, newpos):
-            bondvectors = [(newpos[h] - newpos[k]) for h, k in self.indices]
-            value = np.sum([self.coefs[i] * np.linalg.norm(b) for i, b
-                                in enumerate(bondvectors)])
+            bondvectors = [(newpos[k] - newpos[h]) for h, k in self.indices]
+            (_, ), (dists, ) = conditional_find_mic([bondvectors],
+                                                    cell=self.cell,
+                                                    pbc=self.pbc)
+            value = np.dot(self.coefs, dists)
             self.sigma = value - self.targetvalue
             jacobian = self.jacobian / self.masses
             lamda = -self.sigma / np.dot(jacobian, self.jacobian)
@@ -945,10 +981,10 @@ class FixInternals(FixConstraint):
 
     class FixBondLengthAlt(FixBondCombo):
         """Constraint subobject for fixing bond length within FixInternals."""
-        def __init__(self, bond, indices, masses, maxstep=0.01):
+        def __init__(self, targetvalue, indices, masses, cell, pbc):
             """Fix distance between atoms with indices a1, a2."""
-            indices = [list(indices) + [1.]]  # bond definition with coefficient 1.
-            super().__init__(bond, indices, masses, maxstep)
+            indices = [list(indices) + [1.]]  # bond definition with coef 1.
+            super().__init__(targetvalue, indices, masses, cell=cell, pbc=pbc)
 
         def __repr__(self):
             return 'FixBondLengthAlt(%s, %d, %d)' % \
@@ -956,53 +992,40 @@ class FixInternals(FixConstraint):
 
     class FixAngle:
         """Constraint object for fixing an angle within
-        FixInternals."""
+        FixInternals using the SHAKE algorithm.
 
-        def __init__(self, angle, indices, masses):
+        SHAKE convergence is potentially problematic for angles very close to
+        0 or 180 degrees as there is a singularity in the Cartesian derivative.
+        """
+
+        def __init__(self, targetvalue, indices, masses, cell, pbc):
             """Fix atom movement to construct a constant angle."""
-            self.angle = np.cos(angle)
+            self.targetvalue = targetvalue  # in degrees
             self.indices = indices
             self.masses = masses
             self.jacobian = []
             self.sigma = 1.
             self.projected_force = None  # helps optimizers scan along constr.
+            self.cell = cell
+            self.pbc = pbc
 
         def prepare_jacobian(self, pos):
-            r21 = pos[self.indices[0]] - pos[self.indices[1]]
-            r21_len = np.linalg.norm(r21)
-            e21 = r21 / r21_len
-            r23 = pos[self.indices[2]] - pos[self.indices[1]]
-            r23_len = np.linalg.norm(r23)
-            e23 = r23 / r23_len
-            angle = np.dot(e21, e23)
-            h1 = -2 * angle * ((angle * e21 - e23) / (r21_len))
-            h3 = -2 * angle * ((angle * e23 - e21) / (r23_len))
-            h2 = -(h1 + h3)
+            v0 = pos[self.indices[0]] - pos[self.indices[1]]
+            v1 = pos[self.indices[2]] - pos[self.indices[1]]
+            derivs = get_angles_derivatives([v0], [v1], cell=self.cell,
+                                            pbc=self.pbc)
             jacobian = np.zeros(pos.shape)
-            jacobian[self.indices[0]] = h1
-            jacobian[self.indices[1]] = h2
-            jacobian[self.indices[2]] = h3
+            for i in range(3):
+                jacobian[self.indices[i]] = derivs[0, i]
             self.jacobian = jacobian.ravel()
 
         def adjust_positions(self, oldpos, newpos):
-            r21 = newpos[self.indices[0]] - newpos[self.indices[1]]
-            r21_len = np.linalg.norm(r21)
-            e21 = r21 / r21_len
-            r23 = newpos[self.indices[2]] - newpos[self.indices[1]]
-            r23_len = np.linalg.norm(r23)
-            e23 = r23 / r23_len
-            angle = np.dot(e21, e23)
-            self.sigma = (angle - self.angle) * (angle + self.angle)
+            v0 = newpos[self.indices[0]] - newpos[self.indices[1]]
+            v1 = newpos[self.indices[2]] - newpos[self.indices[1]]
+            value = get_angles([v0], [v1], cell=self.cell, pbc=self.pbc)
+            self.sigma = value - self.targetvalue
             jacobian = self.jacobian / self.masses
-            jacobian = jacobian.reshape(newpos.shape)
-            h21 = jacobian[self.indices[0]] - jacobian[self.indices[1]]
-            h23 = jacobian[self.indices[2]] - jacobian[self.indices[1]]
-            deriv = (((np.dot(r21, h23) + np.dot(r23, h21)) /
-                      (r21_len * r23_len)) -
-                     (np.dot(r21, h21) / (r21_len * r21_len) +
-                      np.dot(r23, h23) / (r23_len * r23_len)) * angle)
-            deriv *= 2 * angle
-            lamda = -self.sigma / deriv
+            lamda = -self.sigma / np.dot(jacobian, self.jacobian)
             dnewpos = lamda * jacobian
             newpos += dnewpos.reshape(newpos.shape)
 
@@ -1011,74 +1034,50 @@ class FixInternals(FixConstraint):
             self.jacobian /= np.linalg.norm(self.jacobian)
 
         def __repr__(self):
-            return 'FixAngle(%s, %f)' % (tuple(self.indices),
-                                         np.arccos(self.angle))
+            return 'FixAngle({}, {})'.format(tuple(self.indices),
+                                             self.targetvalue)
 
     class FixDihedral:
-        """Constraint object for fixing an dihedral using
-        the shake algorithm. This one allows also other constraints."""
+        """Constraint object for fixing a dihedral angle using
+        the SHAKE algorithm. This one allows also other constraints.
 
-        def __init__(self, angle, indices, masses):
+        SHAKE convergence is potentially problematic for near-undefined
+        dihedral angles (i.e. when one of the two angles a012 or a123
+        approaches 0 or 180 degrees).
+        """
+
+        def __init__(self, targetvalue, indices, masses, cell, pbc):
             """Fix atom movement to construct a constant dihedral angle."""
-            self.angle = np.cos(angle)
+            self.targetvalue = targetvalue  # in degrees
             self.indices = indices
             self.masses = masses
             self.jacobian = []
             self.sigma = 1.
             self.projected_force = None  # helps optimizers scan along constr.
+            self.cell = cell
+            self.pbc = pbc
 
         def prepare_jacobian(self, pos):
-            r12 = pos[self.indices[1]] - pos[self.indices[0]]
-            r23 = pos[self.indices[2]] - pos[self.indices[1]]
-            r34 = pos[self.indices[3]] - pos[self.indices[2]]
-            r23_len = np.linalg.norm(r23)
-            e23 = r23 / r23_len
-            a = -r12 - np.dot(-r12, e23) * e23
-            a_len = np.linalg.norm(a)
-            ea = a / a_len
-            b = r34 - np.dot(r34, e23) * e23
-            b_len = np.linalg.norm(b)
-            eb = b / b_len
-            angle = np.dot(ea, eb).clip(-1.0, 1.0)
-            h1 = (eb - angle * ea) / a_len
-            h4 = (ea - angle * eb) / b_len
-            h2 = h1 * (np.dot(-r12, e23) / r23_len - 1)
-            h2 += np.dot(r34, e23) / r23_len * h4
-            h3 = -h4 * (np.dot(r34, e23) / r23_len + 1)
-            h3 += np.dot(r12, e23) / r23_len * h1
+            v0 = pos[self.indices[1]] - pos[self.indices[0]]
+            v1 = pos[self.indices[2]] - pos[self.indices[1]]
+            v2 = pos[self.indices[3]] - pos[self.indices[2]]
+            derivs = get_dihedrals_derivatives([v0], [v1], [v2],
+                                               cell=self.cell, pbc=self.pbc)
             jacobian = np.zeros(pos.shape)
-            jacobian[self.indices[0]] = h1
-            jacobian[self.indices[1]] = h2
-            jacobian[self.indices[2]] = h3
-            jacobian[self.indices[3]] = h4
+            for i in range(4):
+                jacobian[self.indices[i]] = derivs[0, i]
             self.jacobian = jacobian.ravel()
 
         def adjust_positions(self, oldpos, newpos):
-            r12 = newpos[self.indices[1]] - newpos[self.indices[0]]
-            r23 = newpos[self.indices[2]] - newpos[self.indices[1]]
-            r34 = newpos[self.indices[3]] - newpos[self.indices[2]]
-            n1 = np.cross(r12, r23)
-            n1_len = np.linalg.norm(n1)
-            n1e = n1 / n1_len
-            n2 = np.cross(r23, r34)
-            n2_len = np.linalg.norm(n2)
-            n2e = n2 / n2_len
-            angle = np.dot(n1e, n2e).clip(-1.0, 1.0)
-            self.sigma = (angle - self.angle) * (angle + self.angle)
+            v0 = newpos[self.indices[1]] - newpos[self.indices[0]]
+            v1 = newpos[self.indices[2]] - newpos[self.indices[1]]
+            v2 = newpos[self.indices[3]] - newpos[self.indices[2]]
+            value = get_dihedrals([v0], [v1], [v2], cell=self.cell,
+                                  pbc=self.pbc)
+            # apply minimum dihedral difference 'convention': (diff <= 180)
+            self.sigma = (value - self.targetvalue + 180) % 360 - 180
             jacobian = self.jacobian / self.masses
-            jacobian = jacobian.reshape(newpos.shape)
-            h12 = jacobian[self.indices[1]] - jacobian[self.indices[0]]
-            h23 = jacobian[self.indices[2]] - jacobian[self.indices[1]]
-            h34 = jacobian[self.indices[3]] - jacobian[self.indices[2]]
-            deriv = ((np.dot(n1, np.cross(r34, h23) + np.cross(h34, r23)) +
-                      np.dot(n2, np.cross(r23, h12) + np.cross(h23, r12))) /
-                     (n1_len * n2_len))
-            deriv -= (((np.dot(n1, np.cross(r23, h12) + np.cross(h23, r12)) /
-                        n1_len**2) +
-                       (np.dot(n2, np.cross(r34, h23) + np.cross(h34, r23)) /
-                        n2_len**2)) * angle)
-            deriv *= -2 * angle
-            lamda = -self.sigma / deriv
+            lamda = -self.sigma / np.dot(jacobian, self.jacobian)
             dnewpos = lamda * jacobian
             newpos += dnewpos.reshape(newpos.shape)
 
@@ -1087,7 +1086,8 @@ class FixInternals(FixConstraint):
             self.jacobian /= np.linalg.norm(self.jacobian)
 
         def __repr__(self):
-            return 'FixDihedral(%s, %f)' % (tuple(self.indices), self.angle)
+            return 'FixDihedral({}, {})'.format(tuple(self.indices),
+                                                self.targetvalue)
 
 
 class FixParametricRelations(FixConstraint):
