@@ -26,7 +26,7 @@ def read_elk(fd):
     cell = []
     symbols = []
     magmoms = []
-    periodic = np.array([True, True, True])
+
     # find cell scale
     for n, line in enumerate(lines):
         if line.split() == []:
@@ -80,9 +80,9 @@ def read_elk(fd):
         atoms.set_initial_magnetic_moments(magmoms)
     # final cell scale
     cell = cell * scale[0] * Bohr
-    if periodic.any():
-        atoms.set_cell(cell, scale_atoms=True)
-        atoms.set_pbc(periodic)
+
+    atoms.set_cell(cell, scale_atoms=True)
+    atoms.pbc = True
     return atoms
 
 
@@ -93,6 +93,10 @@ def write_elk_in(fd, atoms, parameters=None):
 
     parameters = dict(parameters)
     species_path = parameters.pop('species_dir', None)
+
+    if parameters.get('spinpol') is None:
+        if atoms.get_initial_magnetic_moments().any():
+            parameters['spinpol'] = True
 
     if 'xctype' in parameters:
         if 'xc' in parameters:

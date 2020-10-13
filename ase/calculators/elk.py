@@ -29,7 +29,6 @@ class ELK(FileIOCalculator, EigenvalOccupationMixin):
 
     def write_input(self, atoms, properties=None, system_changes=None):
         FileIOCalculator.write_input(self, atoms, properties, system_changes)
-        self.initialize(atoms)
 
         parameters = dict(self.parameters)
         if 'forces' in properties:
@@ -43,12 +42,6 @@ class ELK(FileIOCalculator, EigenvalOccupationMixin):
         results = dict(self._reader().read_everything())
         self.results.update(results)
 
-    def initialize(self, atoms):
-        if 'spinpol' not in self.parameters:  # honor elk.in settings
-            self.spinpol = atoms.get_initial_magnetic_moments().any()
-        else:
-            self.spinpol = self.parameters['spinpol']
-
     def get_electronic_temperature(self):
         return self.width * Hartree
 
@@ -61,21 +54,8 @@ class ELK(FileIOCalculator, EigenvalOccupationMixin):
     def get_number_of_iterations(self):
         return self.niter
 
-    def get_number_of_spins(self):
-        return 1 + int(self.spinpol)
-
     def get_magnetic_moment(self, atoms=None):
         return self.magnetic_moment
-
-    def get_magnetic_moments(self, atoms):
-        # not implemented yet, so
-        # so set the total magnetic moment on the atom no. 0 and fill with 0.0
-        magmoms = [0.0 for a in range(len(atoms))]
-        magmoms[0] = self.get_magnetic_moment(atoms)
-        return np.array(magmoms)
-
-    def get_spin_polarized(self):
-        return self.spinpol
 
     def _reader(self):
         return ElkReader(self.directory)
