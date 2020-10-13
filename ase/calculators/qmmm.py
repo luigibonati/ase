@@ -717,9 +717,6 @@ class ForceQMMM(Calculator):
         # of max distance between qm atoms
         qm_radius = np.amax(np.amax(R_qm, axis=1), axis=0) * 0.5
 
-        # print('qm_radius', qm_radius)
-        # print(f"qm_radius", np.linalg.norm(qm_radius))
-
         self.qm_cluster_pbc = atoms.pbc.copy()
         self.qm_cluster_cell = atoms.cell.copy()
 
