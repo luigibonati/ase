@@ -453,5 +453,5 @@ def parse_elk_eigval(fd):
             occupations[ikpt, iband] = float(tokens[2])
 
     yield 'ibz_kpoints', kpts
-    yield 'eigenvalues', eigenvalues
-    yield 'occupations', occupations
+    yield 'eigenvalues', eigenvalues[None]
+    yield 'occupations', occupations[None]
