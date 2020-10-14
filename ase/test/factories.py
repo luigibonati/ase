@@ -255,7 +255,7 @@ class LammpsRunFactory:
 
     @classmethod
     def fromconfig(cls, config):
-        return cls(config.executables['lammps'])
+        return cls(config.executables['lammpsrun'])
 
 
 @factory('octopus')
