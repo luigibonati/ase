@@ -1,4 +1,3 @@
-from pathlib import Path
 import sys
 
 import pytest
@@ -55,13 +54,13 @@ def test_py_viewer_mock(atoms, monkeypatch):
 
 @pytest.mark.parametrize('viewer', CLIViewer.viewers())
 def test_cli_viewer_tempfile(atoms, viewer):
-    with viewer.mktemp(atoms) as fd:
-        atoms1 = read(fd.name)
+    with viewer.mktemp(atoms) as path:
+        atoms1 = read(path)
         # Some formats do not include cell etc., so we only check that
         # the atoms are "consistent-ish".
         # Note: This would fail if we forgot to flush() in mktemp().
         assert all(atoms1.symbols == atoms.symbols)
-    assert not Path(fd.name).exists()
+    assert not path.exists()
 
 
 @pytest.fixture
