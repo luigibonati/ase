@@ -117,10 +117,25 @@ def reduction_full(B):
 
 
 def is_minkowski_reduced(cell, pbc=True):
-    """Tests if a 3D basis is already Minkowski-reduced. These conditions are
-    due to Minkowski, but a nice description in English can be found in the
-    thesis of Carine Jaber: "Algorithmic approaches to Siegel's fundamental
-    domain", https://www.theses.fr/2017UBFCK006.pdf
+    """Tests if a cell is Minkowski-reduced.
+
+    Parameters:
+
+    cell: array
+        The lattice basis to test (in row-vector format).
+    pbc: array, optional
+        The periodic boundary conditions of the cell (Default `True`).
+        If `pbc` is provided, only periodic cell vectors are tested.
+
+    Returns:
+
+    is_reduced: bool
+        True if cell is Minkowski-reduced, False otherwise.
+    """
+
+    """These conditions are due to Minkowski, but a nice description in English
+    can be found in the thesis of Carine Jaber: "Algorithmic approaches to
+    Siegel's fundamental domain", https://www.theses.fr/2017UBFCK006.pdf
     This is also good background reading for Minkowski reduction.
 
     0D and 1D cells are trivially reduced. For 2D cells, the conditions which
