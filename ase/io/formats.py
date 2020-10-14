@@ -526,8 +526,11 @@ def write(
     else:
         fd = filename  # type: ignore
         if format is None:
-            format = filetype(filename, read=False)
-            assert isinstance(format, str)
+            try:
+                format = filetype(filename, read=False)
+                assert isinstance(format, str)
+            except UnknownFileTypeError:
+                format = None
         filename = None  # type: ignore
 
     format = format or 'json'  # default is json
