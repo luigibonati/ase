@@ -11,7 +11,7 @@ from ase.dft.wannier import gram_schmidt, lowdin, random_orthogonal_matrix, \
     rotation_from_projection, Wannier
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture()
 def rng():
     return np.random.RandomState(0)
 
