@@ -821,7 +821,7 @@ def filetype(
         if orig_filename == filename:
             fd = open_with_compression(filename, 'rb')
         else:
-            fd = orig_filename
+            fd = orig_filename # type: ignore
     else:
         fd = filename    # type: ignore
         if fd is sys.stdin:
