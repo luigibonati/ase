@@ -44,21 +44,21 @@ class CLIViewer:
         else:
             mode = 'w'
 
-        with tempfile.NamedTemporaryFile(mode=mode, suffix=suffix,
-                                         delete=False) as fd:
-            if data is None:
-                write(fd, atoms, format=self.fmt)
-            else:
-                write(fd, atoms, format=self.fmt, data=data)
-            # (Make sure file is closed without deleting it.)
-            fd.close()
-            yield fd
-
-        Path(fd.name).unlink()
+        with tempfile.TemporaryDirectory(prefix='ase-view-') as dirname:
+            # We use a tempdir rather than a tempfile because it's
+            # less hassle to handle the cleanup on Windows (files
+            # cannot be open on multiple processes).
+            path = Path(dirname) / f'atoms{suffix}'
+            with path.open(mode) as fd:
+                if data is None:
+                    write(fd, atoms, format=self.fmt)
+                else:
+                    write(fd, atoms, format=self.fmt, data=data)
+            yield path
 
     def view_blocking(self, atoms, data=None):
-        with self.mktemp(atoms, data) as fd:
-            subprocess.check_call(self.argv + [fd.name])
+        with self.mktemp(atoms, data) as path:
+            subprocess.check_call(self.argv + [str(path)])
 
     def view(self, atoms, data=None, repeat=None):
         """Spawn a new process in which to open the viewer."""
