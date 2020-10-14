@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 from numpy.testing import assert_allclose, assert_almost_equal
-from ase.geometry import minkowski_reduce
+from ase.geometry import minkowski_reduce, is_minkowski_reduced
 from ase.cell import Cell
 
 
@@ -53,6 +53,7 @@ class TestKnownUnimodularMatrix():
     @pytest.mark.parametrize("pbc", [1, True, (1, 1, 1)])
     def test_pbc(self, pbc):
         lcell = self.lcell
+        assert not is_minkowski_reduced(lcell, pbc=pbc)
         rcell, op = minkowski_reduce(lcell, pbc=pbc)
         assert_almost_equal(np.linalg.det(rcell), 1)
 
@@ -62,13 +63,16 @@ class TestKnownUnimodularMatrix():
 
     def test_0d(self):
         lcell = self.lcell
+        assert is_minkowski_reduced(lcell, pbc=[0, 0, 0])
         rcell, op = minkowski_reduce(lcell, pbc=[0, 0, 0])
         assert (rcell == lcell).all()    # 0D reduction does nothing
 
     @pytest.mark.parametrize("axis", range(3))
     def test_1d(self, axis):
         lcell = self.lcell
-        rcell, op = minkowski_reduce(lcell, pbc=np.roll([1, 0, 0], axis))
+        pbc = np.roll([1, 0, 0], axis)
+        assert is_minkowski_reduced(lcell, pbc=pbc)
+        rcell, op = minkowski_reduce(lcell, pbc=pbc)
         assert (rcell == lcell).all()    # 1D reduction does nothing
 
         zcell = np.zeros((3, 3))
@@ -80,8 +84,10 @@ class TestKnownUnimodularMatrix():
     def test_2d(self, axis):
         lcell = self.lcell
         pbc = np.roll([0, 1, 1], axis)
+        assert not is_minkowski_reduced(lcell, pbc=pbc)
         rcell, op = minkowski_reduce(lcell.astype(np.float), pbc=pbc)
         assert (rcell[axis] == lcell[axis]).all()
+        assert is_minkowski_reduced(rcell, pbc=pbc)
 
         zcell = np.copy(lcell)
         zcell[axis] = 0
@@ -91,5 +97,7 @@ class TestKnownUnimodularMatrix():
 
     def test_3d(self):
         lcell = self.lcell
+        assert not is_minkowski_reduced(lcell)
         rcell, op = minkowski_reduce(lcell)
         assert_almost_equal(np.linalg.det(rcell), 1)
+        assert is_minkowski_reduced(rcell)

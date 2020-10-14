@@ -1,6 +1,7 @@
 import itertools
 import numpy as np
 from ase.utils import pbc2pbc
+from ase.cell import Cell
 
 
 TOL = 1E-12
@@ -115,15 +116,20 @@ def reduction_full(B):
     raise RuntimeError(f"Reduced basis not found after {MAX_IT} iterations")
 
 
-def already_reduced_3D(B):
+def is_minkowski_reduced(cell, pbc=True):
     """Tests if a 3D basis is already Minkowski-reduced. These conditions are
     due to Minkowski, but a nice description in English can be found in the
     thesis of Carine Jaber: "Algorithmic approaches to Siegel's fundamental
     domain", https://www.theses.fr/2017UBFCK006.pdf
     This is also good background reading for Minkowski reduction.
 
-    The conditions which an already-reduced basis fulfil are
+    0D and 1D cells are trivially reduced. For 2D cells, the conditions which
+    an already-reduced basis fulfil are:
+    |b1| ≤ |b2|
+    |b2| ≤ |b1 - b2|
+    |b2| ≤ |b1 + b2|
 
+    For 3D cells, the conditions which an already-reduced basis fulfil are:
     |b1| ≤ |b2| ≤ |b3|
 
     |b1 + b2|      ≥ |b2|
@@ -137,21 +143,39 @@ def already_reduced_3D(B):
     |b1 + b2 - b3| ≥ |b3|
     |b1 - b2 - b3| ≥ |b3|
     """
-    A = [[0, 1, 0],
-         [0, 0, 1],
-         [1, 1, 0],
-         [1, 0, 1],
-         [0, 1, 1],
-         [1, -1, 0],
-         [1, 0, -1],
-         [0, 1, -1],
-         [1, 1, 1],
-         [1, -1, 1],
-         [1, 1, -1],
-         [1, -1, -1]]
-    lhs = np.linalg.norm(A @ B, axis=1)
-    norms = np.linalg.norm(B, axis=1)
-    rhs = norms[[0, 1, 1, 2, 2, 1, 2, 2, 2, 2, 2, 2]]
+    pbc = pbc2pbc(pbc)
+    dim = pbc.sum()
+    if dim <= 1:
+        return True
+
+    if dim == 2:
+        # reorder cell vectors to [shortest, longest, aperiodic]
+        cell[np.argmin(pbc)] = 0
+        norms = np.linalg.norm(cell, axis=1)
+        cell = cell[np.argsort(norms)[[1, 2, 0]]]
+
+        A = [[0, 1, 0],
+             [1, -1, 0],
+             [1, 1, 0]]
+        lhs = np.linalg.norm(A @ cell, axis=1)
+        norms = np.linalg.norm(cell, axis=1)
+        rhs = norms[[0, 1, 1]]
+    else:
+        A = [[0, 1, 0],
+             [0, 0, 1],
+             [1, 1, 0],
+             [1, 0, 1],
+             [0, 1, 1],
+             [1, -1, 0],
+             [1, 0, -1],
+             [0, 1, -1],
+             [1, 1, 1],
+             [1, -1, 1],
+             [1, 1, -1],
+             [1, -1, -1]]
+        lhs = np.linalg.norm(A @ cell, axis=1)
+        norms = np.linalg.norm(cell, axis=1)
+        rhs = norms[[0, 1, 1, 2, 2, 1, 2, 2, 2, 2, 2, 2]]
     return (lhs >= rhs - TOL).all()
 
 
@@ -182,43 +206,47 @@ def minkowski_reduce(cell, pbc=True):
     op: array
         The unimodular matrix transformation (rcell = op @ cell).
     """
+    cell = Cell(cell)
     pbc = pbc2pbc(pbc)
     dim = pbc.sum()
     op = np.eye(3, dtype=int)
-    if dim <= 1 or (dim == 3 and already_reduced_3D(cell)):
+    if is_minkowski_reduced(cell, pbc):
         return cell, op
 
     if dim == 2:
+        # permute cell so that first two vectors are the periodic ones
         perm = np.argsort(pbc, kind='merge')[::-1]    # stable sort
         pcell = cell[perm][:, perm]
 
+        # perform gauss reduction
         norms = np.linalg.norm(pcell, axis=1)
         norms[2] = float("inf")
         indices = np.argsort(norms)
         op = op[indices]
-
         hu, hv = reduction_gauss(pcell, op[0], op[1])
-
         op[0] = hu
         op[1] = hv
+
+        # undo above permutation
         invperm = np.argsort(perm)
         op = op[invperm][:, invperm]
 
         # maintain cell handedness
         index = np.argmin(pbc)
-        _cell = cell.copy()
-        _cell[index] = (1, 1, 1)
-        _rcell = op @ cell
-        _rcell[index] = (1, 1, 1)
+        normal = np.cross(cell[index - 2], cell[index - 1])
+        normal /= np.linalg.norm(normal)
 
-        if np.sign(np.linalg.det(_cell)) != np.sign(np.linalg.det(_rcell)):
-            index = np.argmax(pbc)
-            op[index] *= -1
+        _cell = cell.copy()
+        _cell[index] = normal
+        _rcell = op @ cell
+        _rcell[index] = normal
+        if _cell.handedness != Cell(_rcell).handedness:
+            op[index - 1] *= -1
 
     elif dim == 3:
         _, op = reduction_full(cell)
         # maintain cell handedness
-        if np.sign(np.linalg.det(cell)) != np.sign(np.linalg.det(op @ cell)):
+        if cell.handedness != Cell(op @ cell).handedness:
             op = -op
 
     norms1 = np.sort(np.linalg.norm(cell, axis=1))
