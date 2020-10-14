@@ -640,6 +640,11 @@ class Atoms:
             self.set_array('initial_magmoms', magmoms, float,
                            magmoms.shape[1:])
 
+    @property
+    def magmoms(self):
+        from ase.magmoms import MagneticMoments
+        return MagneticMoments(self)
+
     def get_initial_magnetic_moments(self):
         """Get array of initial magnetic moments."""
         if 'initial_magmoms' in self.arrays:

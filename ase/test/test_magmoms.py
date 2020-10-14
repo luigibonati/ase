@@ -36,3 +36,11 @@ def test_noncollinear(atoms, magmoms):
     assert magmoms.spin_type == 'noncollinear'
     assert magmoms.polarized
     assert not magmoms.collinear
+
+
+def test_atoms_magmoms_property(atoms):
+    magmoms = atoms.magmoms
+    assert not magmoms.polarized
+    atoms.set_initial_magnetic_moments(arange(len(atoms)))
+    assert magmoms.polarized
+    assert magmoms.collinear
