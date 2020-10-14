@@ -452,21 +452,18 @@ def open_with_compression(filename: str, mode: str = 'r') -> IO:
 
     root, compression = get_compression(filename)
 
-    if compression is None:
-        return open(filename, mode)
-    elif compression == 'gz':
+    if compression == 'gz':
         import gzip
-        fd = gzip.open(filename, mode=mode)
+        return gzip.open(filename, mode=mode)  # type: ignore
     elif compression == 'bz2':
         import bz2
-        fd = bz2.open(filename, mode=mode)
+        return bz2.open(filename, mode=mode)
     elif compression == 'xz':
         import lzma
-        fd = lzma.open(filename, mode)
+        return lzma.open(filename, mode)
     else:
-        fd = open(filename, mode)
-
-    return fd
+        # Either None or unknown string
+        return open(filename, mode)
 
 
 def wrap_read_function(read, filename, index=None, **kwargs):
