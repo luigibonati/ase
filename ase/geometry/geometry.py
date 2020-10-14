@@ -239,10 +239,11 @@ def get_angles_derivatives(v0, v1, cell=None, pbc=None):
     if (sin_angles == 0.).any():  # identify singularities
         raise ZeroDivisionError('Singularity for angle derivative')
 
-    deriv_d0 = (-(v1 / (nv0 * nv1)[:, np.newaxis]  # derivatives by atom 0
+    product = nv0 * nv1
+    deriv_d0 = (-(v1 / product[:, np.newaxis]  # derivatives by atom 0
                   - np.einsum('ij,i->ij', v0, cos_angles / nv0**2))
                 / sin_angles[:, np.newaxis])
-    deriv_d2 = (-(v0 / (nv0 * nv1)[:, np.newaxis]  # derivatives by atom 2
+    deriv_d2 = (-(v0 / product[:, np.newaxis]  # derivatives by atom 2
                   - np.einsum('ij,i->ij', v1, cos_angles / nv1**2))
                 / sin_angles[:, np.newaxis])
     deriv_d1 = -(deriv_d0 + deriv_d2)  # derivatives by atom 1
@@ -288,11 +289,9 @@ def get_dihedrals_derivatives(v0, v1, v2, cell=None, pbc=None):
 
     Derivative output format: [[dx_a0, dy_a0, dz_a0], ..., [..., dz_a3]].
     """
-    (v0, v1, v2), (nv1, _, _) = conditional_find_mic([v0, v1, v2], cell, pbc)
+    (v0, v1, v2), (nv0, nv1, nv2) = conditional_find_mic([v0, v1, v2], cell,
+                                                         pbc)
 
-    nv0 = np.linalg.norm(v0, axis=1)
-    nv1 = np.linalg.norm(v1, axis=1)
-    nv2 = np.linalg.norm(v2, axis=1)
     v0 /= nv0[:, np.newaxis]
     v1 /= nv1[:, np.newaxis]
     v2 /= nv2[:, np.newaxis]
