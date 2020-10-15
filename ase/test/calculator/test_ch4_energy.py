@@ -38,7 +38,7 @@ def _calculate(code, name):
 @pytest.mark.parametrize(
     "spec",
     [
-        inputs('openmx', energy_cutoff=350),
+#        inputs('openmx', energy_cutoff=350),
         inputs('gamess_us', label='ch4'),
         inputs('gaussian', xc='lda', basis='3-21G'),
     ],
@@ -64,6 +64,7 @@ calc = pytest.mark.calculator
       marks=pytest.mark.filterwarnings('ignore:.*?ignore_bad_restart_file'))
 @calc('nwchem')
 @calc('octopus', Spacing='0.4 * angstrom')
+@calc('openmx')
 @calc('siesta', marks=pytest.mark.xfail)
 def test_ch4_reaction(factory):
     e_ch4 = _calculate(factory, 'CH4')
