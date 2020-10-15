@@ -264,6 +264,13 @@ class OpenMXFactory:
         self.executable = executable
         self.data_path = data_path
 
+    def version(self):
+        from ase.calculators.openmx.openmx import parse_omx_version
+        dummyfile = 'omx_dummy_input'
+        stdout = read_stdout([self.executable, dummyfile],
+                             createfile=dummyfile)
+        return parse_omx_version(stdout)
+
     def calc(self, **kwargs):
         from ase.calculators.openmx import OpenMX
         return OpenMX(command=self.executable,

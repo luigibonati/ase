@@ -37,6 +37,12 @@ from ase.calculators.openmx.writer import write_openmx
 #from ase.calculators.openmx.dos import DOS
 
 
+def parse_omx_version(txt):
+    """Parse version number from stdout header."""
+    match = re.search(r'Welcome to OpenMX\s+Ver\.\s+(\S+)', txt, re.M)
+    return match.group(1)
+
+
 class OpenMX(FileIOCalculator):
     """
     Calculator interface to the OpenMX code.
