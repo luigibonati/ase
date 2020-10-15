@@ -38,7 +38,6 @@ def _calculate(code, name):
 @pytest.mark.parametrize(
     "spec",
     [
-#        inputs('openmx', energy_cutoff=350),
         inputs('gamess_us', label='ch4'),
         inputs('gaussian', xc='lda', basis='3-21G'),
     ],
@@ -57,6 +56,8 @@ def test_ch4(tmp_path, spec):
 
 
 calc = pytest.mark.calculator
+
+
 @calc('abinit', ecut=300, chksymbreak=0, toldfe=1e-4)
 @calc('cp2k')
 @calc('espresso', ecutwfc=300 / Ry)
