@@ -11,8 +11,7 @@ from ase.geometry.geometry import (wrap_positions,
                                    get_dihedrals, get_dihedrals_derivatives,
                                    permute_axes)
 from ase.geometry.distance import distance
-from ase.geometry.minkowski_reduction import (minkowski_reduce,
-                                              is_minkowski_reduced)
+from ase.geometry.minkowski_reduction import minkowski_reduce
 
 __all__ = ['Cell', 'wrap_positions', 'complete_cell',
            'is_orthorhombic', 'orthorhombic',
@@ -22,4 +21,4 @@ __all__ = ['Cell', 'wrap_positions', 'complete_cell',
            'get_angles', 'get_distances', 'get_dihedrals',
            'get_angles_derivatives', 'get_distances_derivatives',
            'get_dihedrals_derivatives', 'conditional_find_mic',
-           'permute_axes', 'minkowski_reduce', 'is_minkowski_reduced']
+           'permute_axes', 'minkowski_reduce']
