@@ -38,12 +38,6 @@ omit =
     ../calculators/elk.py
     ../calculators/castep.py
     ../calculators/gulp.py
-    ../calculators/openmx/writer.py
-    ../calculators/openmx/default_settings.py
-    ../calculators/openmx/parameters.py
-    ../calculators/openmx/dos.py
-    ../calculators/openmx/reader.py
-    ../calculators/openmx/openmx.py
     ../calculators/kim/kim.py
     ../calculators/kim/exceptions.py
     ../calculators/kim/kimmodel.py
