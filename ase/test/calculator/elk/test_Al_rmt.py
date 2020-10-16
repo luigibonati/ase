@@ -1,21 +1,28 @@
-def test_Al_rmt(factories):
-    import os
+import os
 
-    from ase.build import bulk
-    from ase.calculators.calculator import kpts2mp
-    from ase.calculators.elk import ELK
+import pytest
 
-    factories.require('elk')
+from ase.build import bulk
+from ase.calculators.calculator import kpts2mp
+from ase.calculators.elk import ELK
+
+
+@pytest.mark.calculator('elk', tasks=0)
+def test_Al_rmt(factory):
+    #factories.require('elk')
     atoms = bulk('Al', 'bcc', a=4.0)
 
     # save ELK_SPECIES_PATH
-    ELK_SPECIES_PATH = os.environ.get('ELK_SPECIES_PATH', None)
-    assert ELK_SPECIES_PATH is not None
+    #ELK_SPECIES_PATH = os.environ.get('ELK_SPECIES_PATH', None)
+    #assert ELK_SPECIES_PATH is not None
 
+    elk_in = factory.factory.species_dir / 'elk.in'
+    assert os.path.exists(elk_in)
     # find rmt of the default species
-    sfile = os.path.join(os.environ['ELK_SPECIES_PATH'], 'elk.in')
-    assert os.path.exists(sfile)
-    slines = open(sfile, 'r').readlines()
+    #sfile = os.path.join(os.environ['ELK_SPECIES_PATH'], 'elk.in')
+    #assert os.path.exists(sfile)
+    slines = elk_in.read_text().splitlines()
+    #slines = open(sfile, 'r').readlines()
     rmt_orig = {}
     for name in ['Al']:
         found = False
@@ -31,19 +38,22 @@ def test_Al_rmt(factories):
         rmt_orig[name] = float(slines[begline + 3].split()[0].strip())
 
     assert rmt_orig['Al'] == 2.2  # 2.2 Bohr default
-
     # test1
 
     # generate species with custom rmt 2.1
-    rmt = {'Al': 2.1}
+    #rmt = {'Al': 2.1}
+    rmt = {'Al': 1.1}
     label = 'rmt2.1'
 
     atomsrmt = atoms.copy()
-    os.environ['ELK_SPECIES_PATH'] = ELK_SPECIES_PATH
-    atomsrmt.calc = ELK(tasks=0, label=label, rmt=rmt)  # minimal calc
-    atomsrmt.get_potential_energy()
-    del atomsrmt.calc
-    del atomsrmt
+    #os.environ['ELK_SPECIES_PATH'] = ELK_SPECIES_PATH
+    atomsrmt.calc = factory.calc(label=label, rmt=rmt)
+    #atomsrmt.calc = ELK(tasks=0, label=label, rmt=rmt)  # minimal calc
+    e = atomsrmt.get_potential_energy()
+    print(e)
+    #del atomsrmt.calc
+    #del atomsrmt
+    return
 
     # hack ELK_SPECIES_PATH to use custom species
     os.environ['ELK_SPECIES_PATH'] = os.path.abspath(label) + '/'

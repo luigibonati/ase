@@ -87,7 +87,7 @@ def read_elk(fd):
 
 
 @writer
-def write_elk_in(fd, atoms, parameters=None):
+def write_elk_in(fd, atoms, parameters=None, rmt=None):
     if parameters is None:
         parameters = {}
 
@@ -123,15 +123,6 @@ def write_elk_in(fd, atoms, parameters=None):
     # handle custom specifications of rmt
     # (absolute or relative to default) in Bohr
     # rmt = {'H': 0.7, 'O': -0.2, ...}
-
-    if parameters.get('rmt', None) is not None:
-        self.rmt = parameters['rmt'].copy()
-        assert len(self.rmt.keys()) == len(list(set(self.rmt.keys()))), \
-            'redundant rmt definitions'
-        parameters.pop('rmt')  # this is not an elk keyword!
-    else:
-        pass
-        # XXX self.rmt = None
 
     inp = {}
     inp.update(parameters)
@@ -214,26 +205,31 @@ def write_elk_in(fd, atoms, parameters=None):
                      (tuple(scaled[a]) + (m,)))
 
     # custom species definitions
+    if rmt is not None:
+        rmt = rmt.copy()
+        #rmt = parameters['rmt'].copy()
+        assert len(rmt) == len(set(rmt)), 'redundant rmt definitions'
 
-    if 0:
-    #if self.rmt is not None:
         fd.write("\n")
-        sfile = os.path.join(os.environ['ELK_SPECIES_PATH'], 'elk.in')
-        assert os.path.exists(sfile)
-        slines = open(sfile, 'r').readlines()
+        assert species_path is not None
+        sfile = Path(species_path) / 'elk.in'
+        assert sfile.exists()
+        slines = sfile.read_text().splitlines()
+        #if species_dir
+        #sfile = os.path.join(os.environ['ELK_SPECIES_PATH'], 'elk.in')
+        #assert os.path.exists(sfile)
+        #slines = open(sfile, 'r').readlines()
         # remove unused species
-        for s in self.rmt.keys():
-            if s not in species.keys():
-                self.rmt.pop(s)
+        for s in rmt:
+            if s not in species:
+                rmt.pop(s)
         # add undefined species with defaults
-        for s in species.keys():
-            if s not in self.rmt.keys():
+        for s in species:
+            if s not in rmt:
                 # use default rmt for undefined species
-                self.rmt.update({s: 0.0})
+                rmt.update({s: 0.0})
         # write custom species into elk.in
-        skeys = list(set(self.rmt.keys()))  # unique
-        skeys.sort()
-        for s in skeys:
+        for s in sorted(rmt):
             found = False
             for n, line in enumerate(slines):
                 if line.find("'" + s + "'") > -1:
@@ -246,14 +242,14 @@ def write_elk_in(fd, atoms, parameters=None):
             assert found
             fd.write("species\n")
             # set rmt on third line
-            rmt = self.rmt[s]
-            assert isinstance(rmt, (float, int))
-            if rmt <= 0.0:  # relative
+            rmt0 = rmt[s]
+            assert isinstance(rmt0, (float, int))
+            if rmt0 <= 0.0:  # relative
                 # split needed because H is defined with comments
                 newrmt = (float(slines[begline + 3].split()[0].strip()) +
-                          rmt)
+                          rmt0)
             else:
-                newrmt = rmt
+                newrmt = rmt0
             slines[begline + 3] = '%6s\n' % str(newrmt)
             for l in slines[begline: begline + endline]:
                 fd.write('%s' % l)
