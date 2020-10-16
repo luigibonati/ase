@@ -37,6 +37,12 @@ from ase.calculators.openmx.writer import write_openmx
 #from ase.calculators.openmx.dos import DOS
 
 
+def parse_omx_version(txt):
+    """Parse version number from stdout header."""
+    match = re.search(r'Welcome to OpenMX\s+Ver\.\s+(\S+)', txt, re.M)
+    return match.group(1)
+
+
 class OpenMX(FileIOCalculator):
     """
     Calculator interface to the OpenMX code.
@@ -304,7 +310,7 @@ class OpenMX(FileIOCalculator):
         if self.parameters.data_path is None:
             if 'OPENMX_DFT_DATA_PATH' not in os.environ:
                 warnings.warn('Please either set OPENMX_DFT_DATA_PATH as an'
-                              'enviroment variable or specify dft_data_path as'
+                              'enviroment variable or specify "data_path" as'
                               'a keyword argument')
 
         self.prind("Start Calculation")
