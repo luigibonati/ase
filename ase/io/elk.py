@@ -87,7 +87,7 @@ def read_elk(fd):
 
 
 @writer
-def write_elk_in(fd, atoms, parameters=None, rmt=None):
+def write_elk_in(fd, atoms, parameters=None):
     if parameters is None:
         parameters = {}
 
@@ -119,10 +119,6 @@ def write_elk_in(fd, atoms, parameters=None, rmt=None):
         if 'swidth' in parameters:
             raise RuntimeError(
                 "You can't use both 'autoswidth' and 'swidth'!")
-
-    # handle custom specifications of rmt
-    # (absolute or relative to default) in Bohr
-    # rmt = {'H': 0.7, 'O': -0.2, ...}
 
     inp = {}
     inp.update(parameters)
@@ -204,65 +200,13 @@ def write_elk_in(fd, atoms, parameters=None, rmt=None):
             fd.write('%.14f %.14f %.14f 0.0 0.0 %.14f\n' %
                      (tuple(scaled[a]) + (m,)))
 
-    # custom species definitions
-    if rmt is not None:
-        rmt = rmt.copy()
-        #rmt = parameters['rmt'].copy()
-        assert len(rmt) == len(set(rmt)), 'redundant rmt definitions'
+    # if sppath is present in elk.in it overwrites species blocks!
+    #species_path = os.environ['ELK_SPECIES_PATH']
 
-        fd.write("\n")
-        assert species_path is not None
-        sfile = Path(species_path) / 'elk.in'
-        assert sfile.exists()
-        slines = sfile.read_text().splitlines()
-        #if species_dir
-        #sfile = os.path.join(os.environ['ELK_SPECIES_PATH'], 'elk.in')
-        #assert os.path.exists(sfile)
-        #slines = open(sfile, 'r').readlines()
-        # remove unused species
-        for s in rmt:
-            if s not in species:
-                rmt.pop(s)
-        # add undefined species with defaults
-        for s in species:
-            if s not in rmt:
-                # use default rmt for undefined species
-                rmt.update({s: 0.0})
-        # write custom species into elk.in
-        for s in sorted(rmt):
-            found = False
-            for n, line in enumerate(slines):
-                if line.find("'" + s + "'") > -1:
-                    begline = n - 1
-            for n, line in enumerate(slines[begline:]):
-                if not line.strip():  # first empty line
-                    endline = n
-                    found = True
-                    break
-            assert found
-            fd.write("species\n")
-            # set rmt on third line
-            rmt0 = rmt[s]
-            assert isinstance(rmt0, (float, int))
-            if rmt0 <= 0.0:  # relative
-                # split needed because H is defined with comments
-                newrmt = (float(slines[begline + 3].split()[0].strip()) +
-                          rmt0)
-            else:
-                newrmt = rmt0
-            slines[begline + 3] = '%6s\n' % str(newrmt)
-            for l in slines[begline: begline + endline]:
-                fd.write('%s' % l)
-            fd.write('\n')
-    else:
-        # use default species
-        # if sppath is present in elk.in it overwrites species blocks!
-        #species_path = os.environ['ELK_SPECIES_PATH']
-
-        # Elk seems to concatenate path and filename in such a way
-        # that we must put a / at the end:
-        if species_path is not None:
-            fd.write(f"sppath\n'{species_path}/'\n\n")
+    # Elk seems to concatenate path and filename in such a way
+    # that we must put a / at the end:
+    if species_path is not None:
+        fd.write(f"sppath\n'{species_path}/'\n\n")
 
 
 class ElkReader:
