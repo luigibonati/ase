@@ -346,7 +346,7 @@ F('rmc6f', 'RMCProfile', '1S', ext='rmc6f')
 F('sdf', 'SDF format', '1F')
 F('struct', 'WIEN2k structure file', '1S', module='wien2k')
 F('struct_out', 'SIESTA STRUCT file', '1F', module='siesta')
-F('traj', 'ASE trajectory', '+B', module='trajectory',
+F('traj', 'ASE trajectory', '+B', module='trajectory', ext='traj',
   magic=[b'- of UlmASE-Trajectory', b'AFFormatASE-Trajectory'])
 F('turbomole', 'TURBOMOLE coord file', '1F', glob='coord',
   magic=b'$coord')
@@ -362,7 +362,7 @@ F('vasp-xdatcar', 'VASP XDATCAR file', '+F',
 F('vasp-xml', 'VASP vasprun.xml file', '+F',
   module='vasp', glob='*vasp*.xml')
 F('vti', 'VTK XML Image Data', '1F', module='vtkxml')
-F('vtu', 'VTK XML Unstructured Grid', '1F', module='vtkxml')
+F('vtu', 'VTK XML Unstructured Grid', '1F', module='vtkxml', ext='vtu')
 F('wout', 'Wannier90 output', '1F', module='wannier90')
 F('x3d', 'X3D', '1S')
 F('xsd', 'Materials Studio file', '1F')
@@ -452,21 +452,18 @@ def open_with_compression(filename: str, mode: str = 'r') -> IO:
 
     root, compression = get_compression(filename)
 
-    if compression is None:
-        return open(filename, mode)
-    elif compression == 'gz':
+    if compression == 'gz':
         import gzip
-        fd = gzip.open(filename, mode=mode)
+        return gzip.open(filename, mode=mode)  # type: ignore
     elif compression == 'bz2':
         import bz2
-        fd = bz2.open(filename, mode=mode)
+        return bz2.open(filename, mode=mode)
     elif compression == 'xz':
         import lzma
-        fd = lzma.open(filename, mode)
+        return lzma.open(filename, mode)
     else:
-        fd = open(filename, mode)
-
-    return fd
+        # Either None or unknown string
+        return open(filename, mode)
 
 
 def wrap_read_function(read, filename, index=None, **kwargs):

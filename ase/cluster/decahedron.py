@@ -75,16 +75,5 @@ def Decahedron(symbol, p, q, r, latticeconstant=None):
                                              (h - n - 1) * b / 2.0])
                             positions.append(pos)
 
-    # Fit the cell, so it only just consist the atoms
-    min = np.zeros(3)
-    max = np.zeros(3)
-    axes = np.array([[1., 0., 0.], [0., 1., 0.], [0., 0., 1.]])
-    for i in range(3):
-        r = np.dot(positions, axes[i])
-        min[i] = r.min()
-        max[i] = r.max()
-    cell = max - min
-    positions = np.array(positions) - min
-
     symbols = [atomic_number] * len(positions)
-    return Atoms(symbols=symbols, positions=positions, cell=cell)
+    return Atoms(symbols=symbols, positions=positions)

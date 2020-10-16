@@ -81,3 +81,15 @@ def test_decahedron():
 
 def test_smallest_decahedron():
     assert len(Decahedron(sym, 1, 1, 0)) == 1
+
+
+def clusters():
+    yield Icosahedron(sym, 2)
+    yield Octahedron(sym, length=3, cutoff=1)
+    yield Decahedron(sym, 2, 3, 3)
+
+
+@pytest.mark.parametrize('cluster', clusters())
+def test_centering(cluster):
+    assert cluster.cell.rank == 0
+    assert cluster.positions.sum(0) == pytest.approx(np.zeros(3), abs=1e-10)

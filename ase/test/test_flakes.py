@@ -78,7 +78,7 @@ max_errors = {
     # the backslash is redundant between brackets
     'E502': 8,
     # continuation line missing indentation or outdented
-    'E122': 30,
+    'E122': 0,
     # indentation is not a multiple of four
     'E111': 28,
     # do not use bare 'except'

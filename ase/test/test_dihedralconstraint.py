@@ -1,5 +1,4 @@
 def test_dihedralconstraint():
-    from math import pi
     from ase.calculators.emt import EMT
     from ase.constraints import FixInternals
     from ase.optimize.bfgs import BFGS
@@ -38,8 +37,8 @@ def test_dihedralconstraint():
     target_bondcombo = get_bondcombo(system, bondcombo_def)
 
     constraint = FixInternals(bonds=[(target_bondlength, indices_bondlength)],
-                              angles=[(angle1 * pi / 180, indices2)],
-                              dihedrals=[(dihedral1 * pi / 180, indices)],
+                              angles_deg=[(angle1, indices2)],
+                              dihedrals_deg=[(dihedral1, indices)],
                               bondcombos=[(target_bondcombo, bondcombo_def)],
                               epsilon=1e-10)
 
