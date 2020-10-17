@@ -628,7 +628,7 @@ class ForceQMMM(Calculator):
                  buffer_width,
                  vacuum=5.,
                  zero_mean=True,
-                 qm_cell_rounding=3,
+                 qm_cell_round_off=3,
                  add_region=True):
         """
         ForceQMMM calculator
@@ -647,7 +647,7 @@ class ForceQMMM(Calculator):
             Amount of vacuum to add around QM atoms.
         zero_mean: bool
             If True, add a correction to zero the mean force in each direction
-        qm_cell_rounding: int
+        qm_cell_round_off: int
             Tolerance value in Angstrom to round the qm cluster cell
         add_region: bool
             if True (default) add an array "region" to atoms.arrays
@@ -663,7 +663,7 @@ class ForceQMMM(Calculator):
         self.vacuum = vacuum
         self.buffer_width = buffer_width
         self.zero_mean = zero_mean
-        self.qm_cell_rounding = qm_cell_rounding
+        self.qm_cell_round_off = qm_cell_round_off
         self.add_region = add_region
 
         self.qm_buffer_mask = None
@@ -748,9 +748,10 @@ class ForceQMMM(Calculator):
                                                     self.buffer_width +
                                                     self.vacuum)
                 # round the qm cell to the required tolerance
-                self.qm_cluster_cell[i, i] = np.round((self.qm_cluster_cell[i, i])
-                                                     / self.qm_cell_rounding) \
-                                                     * self.qm_cell_rounding
+                self.qm_cluster_cell[i, i] = (np.round(
+                                                    (self.qm_cluster_cell[i, i])
+                                                    / self.qm_cell_round_off)
+                                              * self.qm_cell_round_off)
 
     def get_qm_cluster(self, atoms):
 
