@@ -650,7 +650,8 @@ class ForceQMMM(Calculator):
         qm_cell_rounding: int
             Tolerance value in Angstrom to round the qm cluster cell
         add_region: bool
-            if True add an array "region" to atoms with QM, buffer and MM labels
+            if True (default) add an array "region" to atoms.arrays
+            with QM, buffer and MM labels
         """
 
         if len(atoms[qm_selection_mask]) == 0:
