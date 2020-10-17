@@ -151,11 +151,12 @@ def find_mic(v, cell, pbc=True):
     """Finds the minimum-image representation of vector(s) v"""
 
     pbc = cell.any(1) & pbc2pbc(pbc)
-    v = np.array(v)
-    single = len(v.shape) == 1
+    dim = np.sum(pbc)
+    v = np.asarray(v)
+    single = v.ndim == 1
     v = np.atleast_2d(v)
 
-    if np.sum(pbc) > 0:
+    if dim > 0:
         cell = complete_cell(cell)
         rcell, _ = minkowski_reduce(cell, pbc=pbc)
         positions = wrap_positions(v, rcell, pbc=pbc, eps=0)
@@ -172,6 +173,15 @@ def find_mic(v, cell, pbc=True):
         # Pre-pend (0, 0, 0) to resolve issue #772
         hkls = np.array([(0, 0, 0)] + list(itertools.product(*ranges)))
         vrvecs = hkls @ rcell
+
+        # Map positions into neighbouring cells.
+        x = positions + vrvecs[:, None]
+
+        # Find minimum images
+        lengths = np.linalg.norm(x, axis=2)
+        indices = np.argmin(lengths, axis=0)
+        vmin = x[indices, np.arange(len(positions)), :]
+        vlen = lengths[indices, np.arange(len(positions))]
     else:
         vmin = v.copy()
         vlen = np.linalg.norm(vmin, axis=1)
