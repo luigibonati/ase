@@ -676,14 +676,18 @@ class ForceQMMM(Calculator):
         """
         Initialises system to perform qm calculation
         """
-        # calculate distances between all atoms and qm atoms
-        _, r = get_distances(atoms.positions[self.qm_selection_mask],
-                             atoms.positions,
-                             atoms.cell, atoms.pbc)
+        # calculate the distances between all atoms and qm atoms
+        # qm_distance_matrix is a [N_QM_atoms x N_atoms] matrix
+        _, qm_distance_matrix = get_distances(
+                                atoms.positions[self.qm_selection_mask],
+                                atoms.positions,
+                                atoms.cell, atoms.pbc)
 
         self.qm_buffer_mask = np.zeros(len(atoms), dtype=bool)
 
-        for r_qm in r:
+        # every r_qm is a matrix of distances
+        # from an atom in qm region and all atoms with size [N_atoms]
+        for r_qm in qm_distance_matrix:
             self.qm_buffer_mask[r_qm < self.buffer_width] = True
 
         if self.add_region:
