@@ -1,3 +1,4 @@
+import collections
 from pathlib import Path
 import re
 
@@ -214,23 +215,16 @@ class ElkReader:
         self.path = Path(path)
 
     def read_everything(self):
-        #converged = self.read_convergence()
-        #if not converged:
-        #    raise RuntimeError(f'ELK did not converge! Check {self.out}')
         yield from self.read_energy()
-        #if self.parameters.get('tforce'):
-        yield 'forces', self.read_forces()
 
-        #yield 'width', self.read_electronic_temperature()
-        #yield 'nbands', self.read_number_of_bands()
-        #yield 'nelect', self.read_number_of_electrons()
-        #yield 'niter', self.read_number_of_iterations()
-        #yield 'magnetic_moment', self.read_magnetic_moment()
-        yield from self.read_eigval()
+        with (self.path / 'INFO.OUT').open() as fd:
+            yield from parse_elk_info(fd)
 
-    @property
-    def out(self):
-        return self.path / 'INFO.OUT'
+        with (self.path / 'EIGVAL.OUT').open() as fd:
+            yield from parse_elk_eigval(fd)
+
+        with (self.path / 'KPOINTS.OUT').open() as fd:
+            yield from parse_elk_kpoints(fd)
 
     def read_energy(self):
         txt = (self.path / 'TOTENERGY.OUT').read_text()
@@ -239,90 +233,27 @@ class ElkReader:
         yield 'free_energy', energy
         yield 'energy', energy
 
-    def read_forces(self):
-        lines = self.out.read_text().splitlines()
-        forces = []
-        for line in lines:
-            if line.rfind('total force') > -1:
-                forces.append(np.array([float(f)
-                                        for f in line.split(':')[1].split()]))
-        return np.array(forces) * Hartree / Bohr
-
-    #def read_convergence(self):
-    #    converged = False
-    #    text = self.out.read_text().lower()
-    #    if ('convergence targets achieved' in text and
-    #        'reached self-consistent loops maximum' not in text):
-    #        converged = True
-    #    return converged
-
-    #def read_number_of_electrons(self):
-    #    nelec = None
-    #    text = self.out.read_text().lower()
-        # Total electronic charge
-    #    for line in iter(text.split('\n')):
-    #        if line.rfind('total electronic charge :') > -1:
-    #            nelec = float(line.split(':')[1].strip())
-    #            break
-    #    return nelec
-
-    #def read_number_of_iterations(self):
-    #    niter = None
-    #    lines = self.out.read_text().splitlines()
-    #    for line in lines:
-    #        if line.rfind(' Loop number : ') > -1:
-    #            niter = int(line.split(':')[1].split()[0].strip())  # last iter
-    #    return niter
-
-    #def read_magnetic_moment(self):
-    #    magmom = None
-    #    lines = self.out.read_text().splitlines()
-    #    for line in lines:
-    #        if line.rfind('total moment                :') > -1:
-    #            magmom = float(line.split(':')[1].strip())  # last iter
-    #    return magmom
-
-    #def read_electronic_temperature(self):
-    #    width = None
-    #    text = self.out.read_text().lower()
-    #    for line in iter(text.split('\n')):
-    #        if line.rfind('smearing width :') > -1:
-    #            width = float(line.split(':')[1].strip())
-    #            break
-    #    return width
-
-    def read_eigval(self):
-        with (self.path / 'EIGVAL.OUT').open() as fd:
-            yield from parse_elk_eigval(fd)
-
 
 def parse_elk_kpoints(fd):
     header = next(fd)
-    tokens = header.split()
-    nkpts = int(tokens[0])
-    assert tokens[1] == ':'
+    lhs, rhs = header.split(':', 1)
+    assert 'k-point, vkl, wkpt' in rhs, header
+    nkpts = int(lhs.strip())
 
-    kpts = np.empty(nkpts, 3)
+    kpts = np.empty((nkpts, 3))
     weights = np.empty(nkpts)
 
     for ikpt in range(nkpts):
         line = next(fd)
         tokens = line.split()
-        kpts[ikpt] = tokens[1:4]
-        weights[ikpt] = tokens[4]
-    yield 'kpts', kpts
-    yield 'weights', weights
+        kpts[ikpt] = np.array(tokens[1:4]).astype(float)
+        weights[ikpt] = float(tokens[4])
+    yield 'ibz_kpoints', kpts
+    yield 'kpoint_weights', weights
 
 
 def parse_elk_info(fd):
-    #def skipto(regex):
-    #    match = None
-    #    while match is None:
-    #        match = re.match(regex, line)
-    #        line = next(fd)
-    #    return line
-
-    dct = {}
+    dct = collections.defaultdict(list)
     fd = iter(fd)
 
     converged = False
@@ -330,24 +261,31 @@ def parse_elk_info(fd):
     # Legacy code kept track of both these things, which is strange.
     # Why could a file both claim to converge *and* not converge?
 
-    current_indent = 0
     # We loop over all lines and extract also data that occurs
     # multiple times (e.g. in multiple SCF steps)
     for line in fd:
         # "name of quantity  :   1 2 3"
-        match = re.match(r'\s*(\S+)\s+:\s+(.+)?\s*', line)
-        if match is not None:
-            key, values = match.group(1, 2)
-            dct[key.strip()] = values
+        tokens = line.split(':', 1)
+        if len(tokens) == 2:
+            lhs, rhs = tokens
+            dct[lhs.strip()].append(rhs.strip())
 
         elif line.startswith('Convergence targets achieved'):
             converged = True
         elif 'reached self-consistent loops maximum' in line.lower():
             actually_did_not_converge = True
 
-    yield 'converged', converged and not actually_did_not_converge  # XXX
-    yield 'charge', float(dct['Total electronic charge'])
-    yield 'fermilevel', float(dct['Fermi'])
+    yield 'converged', converged and not actually_did_not_converge
+
+    if 'Fermi' in dct:
+        yield 'fermi_level', float(dct['Fermi'][-1]) * Hartree
+
+    if 'total force' in dct:
+        forces = []
+        for line in dct['total force']:
+            forces.append(line.split())
+        assert len(forces) == 2
+        yield 'forces', np.array(forces, float) * (Hartree / Bohr)
 
 
 def parse_elk_eigval(fd):

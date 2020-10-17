@@ -84,17 +84,21 @@ class GetOutputsMixin(ABC):
         eigs = self._get('eigenvalues')
         return eigs[kpt, spin]
 
+    def _eigshape(self):
+        # We don't need this if we already have a Properties object.
+        return self._get('eigenvalues').shape
+
     def get_occupation_numbers(self, kpt=0, spin=0):
         occs = self._get('occupations')
         return occs[kpt, spin]
+
+    def get_number_of_bands(self):
+        return self._eigshape()[2]
 
     def get_number_of_spins(self):
         nspins = self._eigshape()[0]
         assert nspins in [1, 2]
         return nspins
-
-    def get_number_of_bands(self):
-        return self._eighsape()[2]
 
     def get_spin_polarized(self):
         return self.nspins > 1
