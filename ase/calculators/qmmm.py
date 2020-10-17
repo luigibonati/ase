@@ -701,8 +701,7 @@ class ForceQMMM(Calculator):
             region[self.qm_selection_mask] = (
                 np.full_like(region[self.qm_selection_mask], "QM"))
 
-            buffer_only_mask = np.logical_and(self.qm_buffer_mask,
-                               np.logical_not(self.qm_selection_mask))
+            buffer_only_mask = self.qm_buffer_mask & ~self.qm_selection_mask
 
             region[buffer_only_mask] = np.full_like(region[buffer_only_mask],
                                                     "buffer")
@@ -738,7 +737,7 @@ class ForceQMMM(Calculator):
                 if cell_size[i] > qm_radius[i] + self.buffer_width:
                     self.qm_cluster_pbc[i] = False
 
-        non_pbc_directions = np.logical_not(self.qm_cluster_pbc)
+        non_pbc_directions = ~self.qm_cluster_pbc
 
         # create a cluster in a vacuum cell in non periodic directions
         for i, non_pbc in enumerate(non_pbc_directions):
