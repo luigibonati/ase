@@ -2,7 +2,6 @@ import numpy as np
 import pytest
 from ase.build import bulk
 
-from ase.calculators.emt import EMT
 from ase.calculators.qmmm import ForceQMMM, RescaledCalculator
 from ase.eos import EquationOfState
 from ase.optimize import FIRE
@@ -23,6 +22,7 @@ def qm_calc():
 
     return EMT()
 
+@pytest.mark.slow
 def test_qm_buffer_mask(qm_calc, mm_calc):
     """
     test number of atoms in qm_buffer_mask for
