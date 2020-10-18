@@ -770,8 +770,9 @@ class ForceQMMM(Calculator):
         if 'cell_origin' in qm_cluster.info:
             del qm_cluster.info['cell_origin']
 
-        # maybe center only in non pbc directions?
-        qm_cluster.positions += qm_shift
+        # center the cluster only in non pbc directions
+        non_pbc_directions = ~self.qm_cluster_pbc
+        qm_cluster.positions[:, non_pbc_directions] += qm_shift[non_pbc_directions]
 
         return qm_cluster
 
