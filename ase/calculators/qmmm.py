@@ -712,9 +712,17 @@ class ForceQMMM(Calculator):
                 n_at = np.count_nonzero(region == region_id)
                 print(f"{n_at:16d} {region_id}")
 
+
+    def get_qm_cluster(self, atoms):
+
+        if self.qm_buffer_mask is None:
+            self.initialize_qm_buffer_mask(atoms)
+
+        qm_cluster = atoms[self.qm_buffer_mask]
+        del qm_cluster.constraints
+
         # get all distances between qm atoms.
         # Treat all X, Y and Z directions independently
-        # this is different to previous cget_distance() call
         # only distance between qm atoms is calculated
         # in order to estimate qm radius in thee directions
         R_qm, _ = get_distances(atoms.positions[self.qm_selection_mask],
@@ -749,17 +757,9 @@ class ForceQMMM(Calculator):
                                                     self.vacuum)
                 # round the qm cell to the required tolerance
                 self.qm_cluster_cell[i, i] = (np.round(
-                                                    (self.qm_cluster_cell[i, i])
-                                                    / self.qm_cell_round_off)
+                    (self.qm_cluster_cell[i, i])
+                    / self.qm_cell_round_off)
                                               * self.qm_cell_round_off)
-
-    def get_qm_cluster(self, atoms):
-
-        if self.qm_buffer_mask is None:
-            self.initialize_qm_buffer_mask(atoms)
-
-        qm_cluster = atoms[self.qm_buffer_mask]
-        del qm_cluster.constraints
 
         qm_cluster.set_cell(self.qm_cluster_cell)
         qm_cluster.pbc = self.qm_cluster_pbc
@@ -779,7 +779,6 @@ class ForceQMMM(Calculator):
     def calculate(self, atoms, properties, system_changes):
         Calculator.calculate(self, atoms, properties, system_changes)
 
-        # shall it be a property self.qm_cluster?
         qm_cluster = self.get_qm_cluster(atoms)
 
         forces = self.mm_calc.get_forces(atoms)
