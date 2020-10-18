@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 from ase.build import bulk
-from ase.calculators.lj import LennardJones
+
 from ase.calculators.emt import EMT
 from ase.calculators.qmmm import ForceQMMM, RescaledCalculator
 from ase.eos import EquationOfState
@@ -9,23 +9,31 @@ from ase.optimize import FIRE
 from ase.neighborlist import neighbor_list
 from ase.geometry import get_distances
 
+@pytest.fixture
+def mm_calc():
+    from ase.calculators.lj import LennardJones
+    bulk_at = bulk("Cu", cubic=True)
+    sigma = (bulk_at * 2).get_distance(0, 1) * (2. ** (-1. / 6))
+
+    return LennardJones(sigma=sigma, epsilon=0.05)
+
+@pytest.fixture
+def qm_calc():
+    from ase.calculators.emt import EMT
+
+    return EMT()
 
 @pytest.mark.slow
-def test_forceqmmm():
+def test_forceqmmm(qm_calc, mm_calc):
 
     # parameters
     N_cell = 2
     R_QMs = np.array([3, 7])
 
-    # setup bulk and MM region
-    bulk_at = bulk("Cu", cubic=True)
-    sigma = (bulk_at * 2).get_distance(0, 1) * (2. ** (-1. / 6))
-    mm = LennardJones(sigma=sigma, epsilon=0.05)
-    qm = EMT()
-
     # test number of atoms in qm_buffer_mask for
     # spherical region in a fully periodic cell
     bulk_at = bulk("Cu", cubic=True)
+    sigma = (bulk_at * 2).get_distance(0, 1) * (2. ** (-1. / 6))
     alat = bulk_at.cell[0, 0]
     N_cell_geom = 10
     at0 = bulk_at * N_cell_geom
@@ -56,7 +64,7 @@ def test_forceqmmm():
         print(f'R_QM + buffer: {2 * qm_rc + R_QM:.2f}'
               f' N_QM_buffer {qm_buffer_mask_ref.sum()}')
         print(f'                     N_total:    {len(at)}')
-        qmmm = ForceQMMM(at, qm_mask, qm, mm, buffer_width=2 * qm_rc)
+        qmmm = ForceQMMM(at, qm_mask, qm_calc, mm_calc, buffer_width=2 * qm_rc)
         # build qm_buffer_mask and test it
         qmmm.initialize_qm_buffer_mask(at)
         print(f'      Calculator N_QM_buffer:'
@@ -91,14 +99,14 @@ def test_forceqmmm():
     print(f"R_QM + buffer: {1.2 * size + R_QM:.2f}")
     print(f"Cell size: {np.diagonal(at0.cell)}")
     """
-    qmmm = ForceQMMM(at0, qm_mask, qm, mm, buffer_width=1.2 * size)
+    qmmm = ForceQMMM(at0, qm_mask, qm_calc, mm_calc, buffer_width=1.2 * size)
     # build qm_buffer_mask to build the cell
     qmmm.initialize_qm_buffer_mask(at0)
     qm_cluster = qmmm.get_qm_cluster(at0)
     # should give pbc = [T, T, T]
     for qm_cluster_pbc in qmmm.qm_cluster_pbc:
         assert qm_cluster_pbc
-    # same test for qmmm.get_cluster()
+    # same test for qmmm.get_cluster()f
     for qm_cluster_pbc in qm_cluster.pbc:
         assert qm_cluster_pbc
 
@@ -112,7 +120,7 @@ def test_forceqmmm():
         assert qm_cluster_cell_dir == orinial_cell_dir
 
     # test the case of a fully spherical cell with in a fully periodic cell
-    qmmm = ForceQMMM(at0, qm_mask, qm, mm, buffer_width=0.25 * size)
+    qmmm = ForceQMMM(at0, qm_mask, qm_calc, mm_calc, buffer_width=0.25 * size)
     # equal to 1 alat
     """ 
     print(f"R_QM: {R_QM:.4f}")
@@ -142,7 +150,7 @@ def test_forceqmmm():
     r = at0.get_distances(0, np.arange(len(at0)), mic=True)
     qm_mask = r < R_QM
 
-    qmmm = ForceQMMM(at0, qm_mask, qm, mm, buffer_width=0.25 * size)
+    qmmm = ForceQMMM(at0, qm_mask, qm_calc, mm_calc, buffer_width=0.25 * size)
     # equal to 1 alat
     # build qm_buffer_mask to build the cell
     qmmm.initialize_qm_buffer_mask(at0)
@@ -179,8 +187,8 @@ def test_forceqmmm():
         return v, e
 
     eps = np.linspace(-0.01, 0.01, 13)
-    v_qm, E_qm = zip(*[strain(bulk_at, e, qm) for e in eps])
-    v_mm, E_mm = zip(*[strain(bulk_at, e, mm) for e in eps])
+    v_qm, E_qm = zip(*[strain(bulk_at, e, qm_calc) for e in eps])
+    v_mm, E_mm = zip(*[strain(bulk_at, e, mm_calc) for e in eps])
 
     eos_qm = EquationOfState(v_qm, E_qm)
     v0_qm, E0_qm, B_qm = eos_qm.fit()
@@ -190,7 +198,7 @@ def test_forceqmmm():
     v0_mm, E0_mm, B_mm = eos_mm.fit()
     a0_mm = v0_mm ** (1.0 / 3.0)
 
-    mm_r = RescaledCalculator(mm, a0_qm, B_qm, a0_mm, B_mm)
+    mm_r = RescaledCalculator(mm_calc, a0_qm, B_qm, a0_mm, B_mm)
     v_mm_r, E_mm_r = zip(*[strain(bulk_at, e, mm_r) for e in eps])
 
     eos_mm_r = EquationOfState(v_mm_r, E_mm_r)
@@ -215,7 +223,7 @@ def test_forceqmmm():
           "Size", N_cell * bulk_at.cell[0, 0])
 
     ref_at = at0.copy()
-    ref_at.calc = qm
+    ref_at.calc = qm_calc
     opt = FIRE(ref_at)
     opt.run(fmax=1e-3)
     u_ref = ref_at.positions - at0.positions
@@ -224,14 +232,14 @@ def test_forceqmmm():
     for R_QM in R_QMs:
         at = at0.copy()
         qm_mask = r < R_QM
-        qm_buffer_mask_ref = r < 2 * qm.rc + R_QM
+        qm_buffer_mask_ref = r < 2 * qm_calc.rc + R_QM
         print(f'R_QM             {R_QM}   N_QM        {qm_mask.sum()}')
-        print(f'R_QM + buffer: {2 * qm.rc + R_QM:.2f}'
+        print(f'R_QM + buffer: {2 * qm_calc.rc + R_QM:.2f}'
               f' N_QM_buffer {qm_buffer_mask_ref.sum()}')
         print(f'                     N_total:    {len(at)}')
         # Warning: Small size of the cell and large size of the buffer
         # lead to the qm calculation performed on the whole cell.
-        qmmm = ForceQMMM(at, qm_mask, qm, mm, buffer_width=2 * qm.rc)
+        qmmm = ForceQMMM(at, qm_mask, qm_calc, mm_calc, buffer_width=2 * qm_calc.rc)
         qmmm.initialize_qm_buffer_mask(at)
         at.calc = qmmm
         opt = FIRE(at)
