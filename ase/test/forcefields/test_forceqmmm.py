@@ -23,17 +23,13 @@ def qm_calc():
 
     return EMT()
 
-@pytest.mark.slow
-def test_forceqmmm(qm_calc, mm_calc):
-
-    # parameters
-    N_cell = 2
-    R_QMs = np.array([3, 7])
-
-    # test number of atoms in qm_buffer_mask for
-    # spherical region in a fully periodic cell
+def test_qm_buffer_mask(qm_calc, mm_calc):
+    """
+    test number of atoms in qm_buffer_mask for
+    spherical region in a fully periodic cell
+    also tests that "region" array returns the same mapping
+    """
     bulk_at = bulk("Cu", cubic=True)
-    sigma = (bulk_at * 2).get_distance(0, 1) * (2. ** (-1. / 6))
     alat = bulk_at.cell[0, 0]
     N_cell_geom = 10
     at0 = bulk_at * N_cell_geom
@@ -59,16 +55,17 @@ def test_forceqmmm(qm_calc, mm_calc):
                 updated_qm_buffer_mask[i] = False
 
         qm_buffer_mask_ref[qm_buffer_mask_ref] = updated_qm_buffer_mask
-
+        '''
         print(f'R_QM             {R_QM}   N_QM        {qm_mask.sum()}')
         print(f'R_QM + buffer: {2 * qm_rc + R_QM:.2f}'
               f' N_QM_buffer {qm_buffer_mask_ref.sum()}')
         print(f'                     N_total:    {len(at)}')
+        '''
         qmmm = ForceQMMM(at, qm_mask, qm_calc, mm_calc, buffer_width=2 * qm_rc)
         # build qm_buffer_mask and test it
         qmmm.initialize_qm_buffer_mask(at)
-        print(f'      Calculator N_QM_buffer:'
-              f'    {qmmm.qm_buffer_mask.sum().sum()}')
+        # print(f'      Calculator N_QM_buffer:'
+        #       f'    {qmmm.qm_buffer_mask.sum().sum()}')
         assert qmmm.qm_buffer_mask.sum() == qm_buffer_mask_ref.sum()
         # same test for qmmm.get_cluster()
         qm_cluster = qmmm.get_qm_cluster(at)
@@ -80,14 +77,20 @@ def test_forceqmmm(qm_calc, mm_calc):
         buffer_mask_region = region == "buffer"
         assert qm_mask_region.sum() + \
                buffer_mask_region.sum() == qm_buffer_mask_ref.sum()
-    # test qm cell shape and choice of pbc:
-    # make a non-periodic pdc in a direction
-    # if qm_radius + buffer is larger than the original cell
-    # keep the periodic cell otherwise i. e. if cell[i, i] > qm_radius + buffer
-    # test the case of a cluster in a fully periodic cell:
-    # fist qm_radius + buffer > cell,
-    # thus should give a cluster with pbc=[T, T, T]
-    # (qm cluster is the same as the original cell)
+
+def test_qm_pbc_fully_periodic(qm_calc, mm_calc):
+    """
+    test qm cell shape and choice of pbc:
+    make a non-periodic pdc in a direction
+    if qm_radius + buffer is larger than the original cell
+    keep the periodic cell otherwise i. e. if cell[i, i] > qm_radius + buffer
+    test the case of a cluster in a fully periodic cell:
+    fist qm_radius + buffer > cell,
+    thus should give a cluster with pbc=[T, T, T]
+    (qm cluster is the same as the original cell)
+    """
+    bulk_at = bulk("Cu", cubic=True)
+    alat = bulk_at.cell[0, 0]
     at0 = bulk_at * 4
     size = at0.cell[0, 0]
     r = at0.get_distances(0, np.arange(len(at0)), mic=True)
@@ -106,7 +109,7 @@ def test_forceqmmm(qm_calc, mm_calc):
     # should give pbc = [T, T, T]
     for qm_cluster_pbc in qmmm.qm_cluster_pbc:
         assert qm_cluster_pbc
-    # same test for qmmm.get_cluster()f
+    # same test for qmmm.get_cluster()
     for qm_cluster_pbc in qm_cluster.pbc:
         assert qm_cluster_pbc
 
@@ -119,7 +122,25 @@ def test_forceqmmm(qm_calc, mm_calc):
                                                      np.diag(at0.cell)):
         assert qm_cluster_cell_dir == orinial_cell_dir
 
-    # test the case of a fully spherical cell with in a fully periodic cell
+def test_qm_pbc_non_periodic_sphere(qm_calc, mm_calc):
+    """
+    test qm cell shape and choice of pbc:
+    make a non-periodic pdc in a direction
+    if qm_radius + buffer is larger than the original cell
+    keep the periodic cell otherwise i. e. if cell[i, i] > qm_radius + buffer
+    test the case of a spherical cluster in a fully periodic cell:
+    fist qm_radius + buffer < cell,
+    thus should give a cluster with pbc=[F, F, F]
+    (qm cluster cell must be DIFFERENT form the original cell)
+    """
+    bulk_at = bulk("Cu", cubic=True)
+    alat = bulk_at.cell[0, 0]
+    at0 = bulk_at * 4
+    size = at0.cell[0, 0]
+    r = at0.get_distances(0, np.arange(len(at0)), mic=True)
+    # should give 12 nearest neighbours + atom in the center
+    R_QM = alat / np.sqrt(2.0) + 1.0e-3
+    qm_mask = r < R_QM
     qmmm = ForceQMMM(at0, qm_mask, qm_calc, mm_calc, buffer_width=0.25 * size)
     # equal to 1 alat
     """ 
@@ -145,9 +166,25 @@ def test_forceqmmm(qm_calc, mm_calc):
     for qm_cluster_cell_dir, orinial_cell_dir in zip(np.diag(qm_cluster.cell),
                                                      np.diag(at0.cell)):
         assert not qm_cluster_cell_dir == orinial_cell_dir
-    # test mixed scenario
+
+def test_qm_pbc_mixed(qm_calc, mm_calc):
+    """
+    test qm cell shape and choice of pbc:
+    make a non-periodic pdc in a direction
+    if qm_radius + buffer is larger than the original cell
+    keep the periodic cell otherwise i. e. if cell[i, i] > qm_radius + buffer
+    testing the mixed scenario when the qm_cluster pbc=[F, F, T]
+    (relevant for dislocation or crack cells)
+    (qm cluster cell must be the same as the original cell in z direction
+    and DIFFERENT form the original cell in x and y directions)
+    """
+    bulk_at = bulk("Cu", cubic=True)
+    alat = bulk_at.cell[0, 0]
     at0 = bulk_at * [4, 4, 1]
+    size = at0.cell[0, 0]
     r = at0.get_distances(0, np.arange(len(at0)), mic=True)
+    # should give 12 nearest neighbours + atom in the center
+    R_QM = alat / np.sqrt(2.0) + 1.0e-3
     qm_mask = r < R_QM
 
     qmmm = ForceQMMM(at0, qm_mask, qm_calc, mm_calc, buffer_width=0.25 * size)
@@ -176,6 +213,16 @@ def test_forceqmmm(qm_calc, mm_calc):
         assert not qm_cluster_cell_dir == original_cell_dir
     # should be the same in Z direction
     assert np.diag(qm_cluster.cell)[2] == np.diag(at0.cell)[2]
+
+@pytest.mark.slow
+def test_forceqmmm(qm_calc, mm_calc):
+
+    # parameters
+    N_cell = 2
+    R_QMs = np.array([3, 7])
+
+    bulk_at = bulk("Cu", cubic=True)
+    sigma = (bulk_at * 2).get_distance(0, 1) * (2. ** (-1. / 6))
 
     # compute MM and QM equations of state
     def strain(at, e, calc):
