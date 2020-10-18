@@ -714,6 +714,9 @@ class ForceQMMM(Calculator):
 
         # get all distances between qm atoms.
         # Treat all X, Y and Z directions independently
+        # this is different to previous cget_distance() call
+        # only distance between qm atoms is calculated
+        # in order to estimate qm radius in thee directions
         R_qm, _ = get_distances(atoms.positions[self.qm_selection_mask],
                                 cell=atoms.cell, pbc=atoms.pbc)
         # estimate qm radius in three directions as 1/2
