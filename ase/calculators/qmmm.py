@@ -736,9 +736,8 @@ class ForceQMMM(Calculator):
         # otherwise change to non pbc
         # and make a cluster in a vacuum configuration
         for i, pbc in enumerate(self.qm_cluster_pbc):
-            if pbc:
-                if cell_size[i] > qm_radius[i] + self.buffer_width:
-                    self.qm_cluster_pbc[i] = False
+            if pbc and cell_size[i] > qm_radius[i] + self.buffer_width:
+                self.qm_cluster_pbc[i] = False
 
         non_pbc_directions = ~self.qm_cluster_pbc
 
