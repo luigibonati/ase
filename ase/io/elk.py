@@ -241,6 +241,10 @@ class ElkReader:
                 newarray = np.empty((2, nkpts, nbands))
                 newarray[0, :, :] = array[0, :, :nbands]
                 newarray[1, :, :] = array[0, :, nbands:]
+                if name == 'eigenvalues':
+                    # Verify that eigenvalues are still sorted:
+                    diffs = np.diff(newarray, axis=2)
+                    assert all(diffs.flat[:] > 0)
                 dct[name] = newarray
         return dct
 
