@@ -17,6 +17,7 @@ import functools
 import inspect
 import os
 import sys
+import numbers
 import warnings
 from pathlib import Path, PurePath
 from typing import (
@@ -876,36 +877,11 @@ def filetype(
     return format
 
 
-def index2range(index, nsteps):
-    """Method to convert a user given *index* option to a list of indices.
+def index2range(index, length):
+    """Convert slice or integer to range.
 
-    Returns a range.
-    """
-    if isinstance(index, int):
-        if index < 0:
-            tmpsnp = nsteps + index
-            trbl = range(tmpsnp, tmpsnp + 1, 1)
-        else:
-            trbl = range(index, index + 1, 1)
-    elif isinstance(index, slice):
-        start = index.start
-        stop = index.stop
-        step = index.step
-
-        if start is None:
-            start = 0
-        elif start < 0:
-            start = nsteps + start
-
-        if step is None:
-            step = 1
-
-        if stop is None:
-            stop = nsteps
-        elif stop < 0:
-            stop = nsteps + stop
-
-        trbl = range(start, stop, step)
-    else:
-        raise RuntimeError("index2range handles integers and slices only.")
-    return trbl
+    If index is an integer, range will contain only that integer."""
+    obj = range(length)[index]
+    if isinstance(obj, numbers.Integral):
+        obj = range(obj, obj + 1)
+    return obj
