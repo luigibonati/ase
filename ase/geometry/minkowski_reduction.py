@@ -165,6 +165,7 @@ def is_minkowski_reduced(cell, pbc=True):
 
     if dim == 2:
         # reorder cell vectors to [shortest, longest, aperiodic]
+        cell = cell.copy()
         cell[np.argmin(pbc)] = 0
         norms = np.linalg.norm(cell, axis=1)
         cell = cell[np.argsort(norms)[[1, 2, 0]]]
