@@ -8,6 +8,7 @@ from ase.optimize import FIRE
 from ase.neighborlist import neighbor_list
 from ase.geometry import get_distances
 
+
 @pytest.fixture
 def mm_calc():
     from ase.calculators.lj import LennardJones
@@ -16,11 +17,13 @@ def mm_calc():
 
     return LennardJones(sigma=sigma, epsilon=0.05)
 
+
 @pytest.fixture
 def qm_calc():
     from ase.calculators.emt import EMT
 
     return EMT()
+
 
 @pytest.mark.slow
 def test_qm_buffer_mask(qm_calc, mm_calc):
@@ -78,6 +81,7 @@ def test_qm_buffer_mask(qm_calc, mm_calc):
         assert qm_mask_region.sum() + \
                buffer_mask_region.sum() == qm_buffer_mask_ref.sum()
 
+
 def test_qm_pbc_fully_periodic(qm_calc, mm_calc):
     """
     test qm cell shape and choice of pbc:
@@ -122,6 +126,7 @@ def test_qm_pbc_fully_periodic(qm_calc, mm_calc):
                                                      np.diag(at0.cell)):
         assert qm_cluster_cell_dir == orinial_cell_dir
 
+
 def test_qm_pbc_non_periodic_sphere(qm_calc, mm_calc):
     """
     test qm cell shape and choice of pbc:
@@ -133,6 +138,7 @@ def test_qm_pbc_non_periodic_sphere(qm_calc, mm_calc):
     thus should give a cluster with pbc=[F, F, F]
     (qm cluster cell must be DIFFERENT form the original cell)
     """
+
     bulk_at = bulk("Cu", cubic=True)
     alat = bulk_at.cell[0, 0]
     at0 = bulk_at * 4
@@ -143,7 +149,7 @@ def test_qm_pbc_non_periodic_sphere(qm_calc, mm_calc):
     qm_mask = r < R_QM
     qmmm = ForceQMMM(at0, qm_mask, qm_calc, mm_calc, buffer_width=0.25 * size)
     # equal to 1 alat
-    """ 
+    """
     print(f"R_QM: {R_QM:.4f}")
     print(f"R_QM + buffer: {0.25 * size + R_QM:.2f}")
     print(f"Cell size: {np.diagonal(at0.cell)}")
@@ -166,6 +172,7 @@ def test_qm_pbc_non_periodic_sphere(qm_calc, mm_calc):
     for qm_cluster_cell_dir, orinial_cell_dir in zip(np.diag(qm_cluster.cell),
                                                      np.diag(at0.cell)):
         assert not qm_cluster_cell_dir == orinial_cell_dir
+
 
 def test_qm_pbc_mixed(qm_calc, mm_calc):
     """
@@ -213,6 +220,7 @@ def test_qm_pbc_mixed(qm_calc, mm_calc):
         assert not qm_cluster_cell_dir == original_cell_dir
     # should be the same in Z direction
     assert np.diag(qm_cluster.cell)[2] == np.diag(at0.cell)[2]
+
 
 @pytest.mark.slow
 def test_forceqmmm(qm_calc, mm_calc):
