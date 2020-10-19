@@ -821,9 +821,6 @@ class Calculator(GetPropertiesMixin):
         else:
             return stress
 
-    def get_spin_polarized(self):
-        return False
-
     def band_structure(self):
         """Create band-structure object for plotting."""
         from ase.spectrum.band_structure import get_band_structure
