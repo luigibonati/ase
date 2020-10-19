@@ -53,10 +53,10 @@ class IOFormat:
         # We can allow more flags as needed (buffering etc.)
         if mode not in list('rwa'):
             raise ValueError("Only modes allowed are 'r', 'w', and 'a'")
-        if mode == 'r' and self.can_read:
+        if mode == 'r' and not self.can_read:
             raise NotImplementedError('No reader implemented for {} format'
                                       .format(self.name))
-        if mode == 'w' and self.can_write:
+        if mode == 'w' and not self.can_write:
             raise NotImplementedError('No writer implemented for {} format'
                                       .format(self.name))
         if mode == 'a' and not self.can_append:
