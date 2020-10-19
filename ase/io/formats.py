@@ -515,7 +515,6 @@ def write(
         filename = str(filename)
 
     if isinstance(filename, str):
-        filename = os.path.expanduser(filename)
         fd = None
         if filename == '-':
             fd = sys.stdout
@@ -686,8 +685,6 @@ def iread(
 @parallel_generator
 def _iread(filename, index, format, io, parallel=None, full_output=False,
            **kwargs):
-    if isinstance(filename, str):
-        filename = os.path.expanduser(filename)
 
     if not io.read:
         raise ValueError("Can't read from {}-format".format(format))
