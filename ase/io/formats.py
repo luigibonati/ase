@@ -320,7 +320,8 @@ F('mustem', 'muSTEM xtl file', '1F',
   ext='xtl')
 F('mysql', 'ASE MySQL database file', '+S',
   module='db')
-F('netcdftrajectory', 'AMBER NetCDF trajectory file', '+S')
+F('netcdftrajectory', 'AMBER NetCDF trajectory file', '+S',
+  magic=b'CDF')
 F('nomad-json', 'JSON from Nomad archive', '+F',
   ext='nomad-json')
 F('nwchem-in', 'NWChem input file', '1F',
@@ -374,11 +375,6 @@ F('xtd', 'Materials Studio file', '+F')
 # xyz: No `ext='xyz'` in the definition below.
 #      The .xyz files are handled by the extxyz module by default.
 F('xyz', 'XYZ-file', '+F')
-
-netcdfconventions2format = {
-    'http://www.etsf.eu/fileformats': 'etsf',
-    'AMBER': 'netcdftrajectory'
-}
 
 
 def get_compression(filename: str) -> Tuple[str, Optional[str]]:
@@ -836,25 +832,6 @@ def filetype(
 
     if len(data) == 0:
         raise UnknownFileTypeError('Empty file: ' + filename)    # type: ignore
-
-    if data.startswith(b'CDF'):
-        # We can only recognize these if we actually have the netCDF4 module.
-        try:
-            import netCDF4
-        except ImportError:
-            pass
-        else:
-            nc = netCDF4.Dataset(filename)
-            if 'Conventions' in nc.ncattrs():
-                if nc.Conventions in netcdfconventions2format:
-                    return netcdfconventions2format[nc.Conventions]
-                else:
-                    raise UnknownFileTypeError(
-                        "Unsupported NetCDF convention: "
-                        "'{}'".format(nc.Conventions))
-            else:
-                raise UnknownFileTypeError("NetCDF file does not have a "
-                                           "'Conventions' attribute.")
 
     for ioformat in ioformats.values():
         if ioformat.match_magic(data):
