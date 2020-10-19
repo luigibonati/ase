@@ -101,5 +101,4 @@ class GetOutputsMixin(ABC):
         return nspins
 
     def get_spin_polarized(self):
-        return self.nspins > 1
         return self.get_number_of_spins() == 2

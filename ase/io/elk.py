@@ -202,7 +202,6 @@ def write_elk_in(fd, atoms, parameters=None):
                      (tuple(scaled[a]) + (m,)))
 
     # if sppath is present in elk.in it overwrites species blocks!
-    #species_path = os.environ['ELK_SPECIES_PATH']
 
     # Elk seems to concatenate path and filename in such a way
     # that we must put a / at the end:
@@ -214,8 +213,8 @@ class ElkReader:
     def __init__(self, path):
         self.path = Path(path)
 
-    def read_everything(self):
-        yield from self.read_energy()
+    def _read_everything(self):
+        yield from self._read_energy()
 
         with (self.path / 'INFO.OUT').open() as fd:
             yield from parse_elk_info(fd)
@@ -226,7 +225,26 @@ class ElkReader:
         with (self.path / 'KPOINTS.OUT').open() as fd:
             yield from parse_elk_kpoints(fd)
 
-    def read_energy(self):
+    def read_everything(self):
+        dct = dict(self._read_everything())
+
+        # The eigenvalue/occupation tables do not say whether there are
+        # two spins, so we have to reshape them from 1 x K x SB to S x K x B:
+        spinpol = dct.pop('spinpol')
+        if spinpol:
+            for name in 'eigenvalues', 'occupations':
+                array = dct[name]
+                _, nkpts, nbands_double = array.shape
+                assert _ == 1
+                assert nbands_double % 2 == 0
+                nbands = nbands_double // 2
+                newarray = np.empty((2, nkpts, nbands))
+                newarray[0, :, :] = array[0, :, :nbands]
+                newarray[1, :, :] = array[0, :, nbands:]
+                dct[name] = newarray
+        return dct
+
+    def _read_energy(self):
         txt = (self.path / 'TOTENERGY.OUT').read_text()
         tokens = txt.split()
         energy = float(tokens[-1]) * Hartree
@@ -256,6 +274,7 @@ def parse_elk_info(fd):
     dct = collections.defaultdict(list)
     fd = iter(fd)
 
+    spinpol = None
     converged = False
     actually_did_not_converge = False
     # Legacy code kept track of both these things, which is strange.
@@ -275,7 +294,15 @@ def parse_elk_info(fd):
         elif 'reached self-consistent loops maximum' in line.lower():
             actually_did_not_converge = True
 
+        if 'Spin treatment' in line:
+            # (Somewhat brittle doing multi-line stuff here.)
+            line = next(fd)
+            spinpol = line.strip() == 'spin-polarised'
+
     yield 'converged', converged and not actually_did_not_converge
+    if spinpol is None:
+        raise RuntimeError('Could not determine spin treatment')
+    yield 'spinpol', spinpol
 
     if 'Fermi' in dct:
         yield 'fermi_level', float(dct['Fermi'][-1]) * Hartree
@@ -284,7 +311,6 @@ def parse_elk_info(fd):
         forces = []
         for line in dct['total force']:
             forces.append(line.split())
-        assert len(forces) == 2
         yield 'forces', np.array(forces, float) * (Hartree / Bohr)
 
 
@@ -305,10 +331,6 @@ def parse_elk_eigval(fd):
     nkpts = match_int(line, 'nkpt')  # 10 : nkpts
     line = next(fd)
     nbands = match_int(line, 'nstsv')  # 15 : nstsv
-    # XXXX Spin polarized
-    #
-    #if self.get_spin_polarized():
-    #    nbands = nbands // 2
 
     eigenvalues = np.empty((nkpts, nbands))
     occupations = np.empty((nkpts, nbands))
