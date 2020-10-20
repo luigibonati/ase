@@ -24,8 +24,23 @@ from shutil import which
 import numpy as np
 
 from ase import units
-from ase.calculators.calculator import EnvironmentError, FileIOCalculator, all_changes
+from ase.calculators.calculator import (EnvironmentError,
+                                        FileIOCalculator,
+                                        all_changes)
 from ase.io.gromos import read_gromos, write_gromos
+
+
+def parse_gromacs_version(output):
+    import re
+    match = re.search(r'GROMACS version\:\s*(\S+)', output, re.M)
+    return match.group(1)
+
+
+def get_gromacs_version(executable):
+    from subprocess import Popen, PIPE
+    output = subprocess.check_output([executable, '--version'],
+                                     encoding='utf-8')
+    return parse_gromacs_version(output)
 
 
 def do_clean(name='#*'):

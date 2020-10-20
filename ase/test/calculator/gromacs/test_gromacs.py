@@ -1,8 +1,34 @@
 """ test run for gromacs calculator """
 
+import re
 import pytest
 
-from ase.calculators.gromacs import Gromacs
+from ase.calculators.gromacs import (Gromacs,
+                                     parse_gromacs_version,
+                                     get_gromacs_version)
+
+
+sample_header = """\
+blahblah...
+Command line:
+  gmx --version
+
+GROMACS version:    2020.1-Ubuntu-2020.1-1
+Precision:          single
+blahblah...
+"""
+
+
+def test_parse_version():
+    assert parse_gromacs_version(sample_header) == '2020.1-Ubuntu-2020.1-1'
+
+
+@pytest.mark.calculator('gromacs')
+def test_get_version(factory):
+    exe = factory.factory.executable
+    version = get_gromacs_version(exe)
+    print(version)
+    assert 'Ubuntu' in version
 
 
 data = """HISE for testing
