@@ -799,7 +799,7 @@ class NewPrimitiveNeighborList:
                 np.logical_and(
                     pair_first <= pair_second,
                     (offset_vec == 0).all(axis=1)
-                    ),
+                ),
                 np.logical_or(
                     offset_vec[:, 0] > 0,
                     np.logical_and(
@@ -808,11 +808,12 @@ class NewPrimitiveNeighborList:
                             offset_vec[:, 1] > 0,
                             np.logical_and(
                                 offset_vec[:, 1] == 0,
-                                offset_vec[:, 2] > 0)
+                                offset_vec[:, 2] > 0
                             )
                         )
                     )
                 )
+            )
             pair_first = pair_first[mask]
             pair_second = pair_second[mask]
             offset_vec = offset_vec[mask]
