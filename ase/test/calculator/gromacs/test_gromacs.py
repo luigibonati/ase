@@ -41,7 +41,7 @@ def test_gromacs(factory):
         outfile.write(data)
 
 
-    CALC_MM_RELAX = factory.calc(
+    calc = factory.calc(
         force_field='charmm27',
         define='-DFLEXIBLE',
         integrator='cg',
@@ -59,14 +59,14 @@ def test_gromacs(factory):
         rvdw='0.6',
         rvdw_switch='0.55',
         DispCorr='Ener')
-    CALC_MM_RELAX.set_own_params_runs(
+    calc.set_own_params_runs(
         'init_structure', GRO_INIT_FILE)
-    CALC_MM_RELAX.generate_topology_and_g96file()
-    CALC_MM_RELAX.write_input()
-    CALC_MM_RELAX.generate_gromacs_run_file()
-    CALC_MM_RELAX.run()
-    atoms = CALC_MM_RELAX.get_atoms()
-    final_energy = CALC_MM_RELAX.get_potential_energy(atoms)
+    calc.generate_topology_and_g96file()
+    calc.write_input()
+    calc.generate_gromacs_run_file()
+    calc.run()
+    atoms = calc.get_atoms()
+    final_energy = calc.get_potential_energy(atoms)
 
     # e.g., -4.17570101 eV = -402.893902 kJ / mol by Gromacs 2019.1 double precision
     final_energy_ref = -4.175
