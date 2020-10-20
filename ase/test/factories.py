@@ -274,7 +274,8 @@ class OpenMXFactory:
     def calc(self, **kwargs):
         from ase.calculators.openmx import OpenMX
         return OpenMX(command=self.executable,
-                      data_path=str(self.data_path))
+                      data_path=str(self.data_path),
+                      **kwargs)
 
     @classmethod
     def fromconfig(cls, config):
