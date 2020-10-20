@@ -34,6 +34,5 @@ p2 = np.array([(2 * p[3], p[4]),
                (p[4], 2 * p[5])])
 a0, c0 = np.linalg.solve(p2.T, -p1)
 
-fd = open('lattice_constant.csv', 'w')
-fd.write('%.3f, %.3f\n' % (a0, c0))
-fd.close()
+with open('lattice_constant.csv', 'w') as fd:
+    fd.write('%.3f, %.3f\n' % (a0, c0))
