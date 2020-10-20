@@ -6,6 +6,7 @@ from ase.constraints import ExpCellFilter
 from ase.optimize import BFGS
 
 
+@pytest.mark.calculator_lite
 @pytest.mark.calculator('lammpsrun')
 def test_Pt_stress_cellopt(factory, pt_eam_potential_file):
     params = {}

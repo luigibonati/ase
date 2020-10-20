@@ -19,7 +19,6 @@ omit =
     ../calculators/demonnano.py
     ../calculators/dftb.py
     ../calculators/exciting.py
-    ../calculators/lammpsrun.py
     ../calculators/qchem.py
     ../calculators/aims.py
     ../calculators/psi4.py
@@ -46,10 +45,6 @@ omit =
     ../calculators/kim/kimpy_wrappers.py
     ../calculators/demon/demon.py
     ../calculators/demon/demon_io.py
-    ../calculators/lammps/inputwriter.py
-    ../calculators/lammps/unitconvert_constants.py
-    ../calculators/lammps/unitconvert.py
-    ../calculators/lammps/coordinatetransform.py
     ../calculators/vasp/create_input.py
     ../calculators/vasp/vasp_data.py
     ../calculators/vasp/setups.py
@@ -66,7 +61,6 @@ omit =
     # TODO: Improve IO format coverage and add include in coverage stats
     ../io/gaussian.py
     ../io/dftb.py
-    ../io/lammpsrun.py
     ../io/pov.py
     ../io/dacapo.py
     ../io/cp2k.py
