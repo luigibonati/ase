@@ -811,7 +811,7 @@ def filetype(
 
     orig_filename = filename
     if hasattr(filename, 'name'):
-        filename = filename.name
+        filename = filename.name  # type: ignore
 
     ext = None
     if isinstance(filename, str):
