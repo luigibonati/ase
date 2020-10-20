@@ -75,7 +75,6 @@ omit =
     ../io/gaussian_reader.py
     ../io/acemolecule.py
     ../io/vtkxml.py
-    ../io/vasp.py
     ../io/elk.py
     ../io/castep.py
     ../io/gpw.py
