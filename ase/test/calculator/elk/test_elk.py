@@ -1,7 +1,7 @@
 import pytest
 
-from ase.build import bulk, molecule
-from ase.units import Hartree
+from ase.build import bulk
+
 
 def systems():
     yield bulk('Si')

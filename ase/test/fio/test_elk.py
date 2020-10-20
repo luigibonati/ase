@@ -1,4 +1,3 @@
-import os
 import io
 import re
 
@@ -19,7 +18,7 @@ def test_elk_in():
     assert re.search(r'mockparameter\s+17\n', text, re.M)
 
 
-mock_elk_eigval_out = f"""
+mock_elk_eigval_out = """
 2 : nkpt
 3 : nstsv
 
@@ -44,6 +43,8 @@ def test_parse_eigval():
     eig = dct['eigenvalues']
     occ = dct['occupations']
     kpts = dct['ibz_kpoints']
-    assert pytest.approx(eig) == [[-1.0, -0.5, 1.0], [1.0, 1.1, 1.2]]
-    assert pytest.approx(occ) == [[2.0, 1.5, 0.0], [1.9, 1.8, 1.7]]
+    assert len(eig) == 1
+    assert len(occ) == 1
+    assert pytest.approx(eig[0]) == [[-1.0, -0.5, 1.0], [1.0, 1.1, 1.2]]
+    assert pytest.approx(occ[0]) == [[2.0, 1.5, 0.0], [1.9, 1.8, 1.7]]
     assert pytest.approx(kpts) == [[0., 0., 0.], [0.0, 0.1, 0.2]]

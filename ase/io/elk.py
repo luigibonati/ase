@@ -1,8 +1,6 @@
 import collections
 from pathlib import Path
-import re
 
-import os
 import numpy as np
 
 from ase import Atoms
@@ -136,6 +134,8 @@ def write_elk_in(fd, atoms, parameters=None):
         del inp['xc']
 
     if 'kpts' in parameters:
+        # XXX should generalize kpts handling.
+        from ase.calculators.calculator import kpts2mp
         mp = kpts2mp(atoms, parameters['kpts'])
         inp['ngridk'] = tuple(mp)
         vkloff = []  # is this below correct?

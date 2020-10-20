@@ -1,11 +1,7 @@
-import os
 from pathlib import Path
 
-import numpy as np
-
-from ase.units import Bohr, Hartree
 from ase.io import write
-from ase.io.elk import read_elk, ElkReader
+from ase.io.elk import ElkReader
 from ase.calculators.calculator import FileIOCalculator
 from ase.calculators.abc import GetOutputsMixin
 
