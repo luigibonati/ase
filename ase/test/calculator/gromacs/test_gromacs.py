@@ -31,6 +31,7 @@ data = """HISE for testing
 
 
 
+@pytest.mark.calculator_lite
 @pytest.mark.calculator('gromacs')
 def test_gromacs(factory):
     GRO_INIT_FILE = 'hise_box.gro'
