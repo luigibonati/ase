@@ -6,6 +6,7 @@ Atoms object in VASP POSCAR format.
 
 import os
 import re
+from warnings import warn
 
 import numpy as np
 
@@ -14,6 +15,7 @@ import ase.units
 from ase import Atoms
 from ase.utils import reader, writer
 from ase.io.utils import ImageIterator, ImageChunk
+from ase.io import ParseError
 
 __all__ = [
     'read_vasp', 'read_vasp_out', 'iread_vasp_out', 'read_vasp_xdatcar',
@@ -93,8 +95,8 @@ def atomtypes_outpot(posfname, numsyms):
             if len(at) == numsyms:
                 return at
 
-    raise IOError('Could not determine chemical symbols. Tried files ' +
-                  str(tried))
+    raise ParseError('Could not determine chemical symbols. Tried files ' +
+                     str(tried))
 
 
 def get_atomtypes_from_formula(formula):
@@ -334,8 +336,17 @@ def _read_outcar_frame(lines, header_data):
                 #     # Make a (3,) dim array
                 #     magmom = np.array(list(map(float, magmom)))
         elif 'in kB ' in line:
-            stress = -np.asarray([float(a) for a in cl(line).split()[2:]])
-            stress = stress[[0, 1, 2, 4, 5, 3]] * 1e-1 * ase.units.GPa
+            try:
+                stress = -np.asarray([float(a) for a in cl(line).split()[2:]])
+            except ValueError:
+                # Vasp FORTRAN string formatting issues, can happen with some bad geometry steps
+                # Alternatively, we can re-raise as a ParseError?
+                warn(
+                    'Found badly formatted stress line. Setting stress to None.'
+                )
+                stress = None
+            else:
+                stress = stress[[0, 1, 2, 4, 5, 3]] * 1e-1 * ase.units.GPa
         elif 'POSITION          ' in line:
             nskip = 2
             for i in range(natoms):
@@ -486,7 +497,7 @@ def _read_outcar_header(fd):
             return header_data
 
     # Incomplete OUTCAR, we can't determine atoms
-    raise IOError('Incomplete OUTCAR')
+    raise ParseError('Incomplete OUTCAR')
 
 
 def outcarchunks(fd):

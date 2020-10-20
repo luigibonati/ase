@@ -1,12 +1,12 @@
+# type: ignore
+from numpy.linalg import norm
+from ase.collections import s22
+from ase.calculators.turbomole import Turbomole
+
 def test_turbomole_2h2o():
     """Water dimer calculation in which each molecule is calculated quantum
     mechanically and the interaction between the molecules is electrostatic.
     The process is repeated until self consitence. """
-
-    from numpy.linalg import norm
-    from ase.collections import s22
-    from ase.calculators.turbomole import Turbomole
-
 
     def polarization_cycle(partition_1, partition_2, charges_2=None):
         """Performs an iteration of a polarization calculation."""

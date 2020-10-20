@@ -7,8 +7,8 @@ dirlist = list(filter(filterre.search, dirlist))
 namelist = [d.strip('.csv') for d in dirlist]
 
 f = open('testoptimize.rst', 'w')
-f.write(
-""".. _optimizer_tests:
+f.write("""\
+.. _optimizer_tests:
 
 ===============
 Optimizer tests
@@ -22,8 +22,7 @@ The most important performance characteristics of an optimizer is the
 total optimization time.
 Different optimizers may perform the same number of steps, but along a different
 path, so the time spent on calculation of energy/forces will be different.
-"""
-)
+""")
 
 for name in namelist:
     lines = open(name + '.csv', 'r').read().split('\n')

@@ -79,6 +79,7 @@ def get_distance_matrix(graph, limit=3):
     mat[mat == np.inf] = 0
     return sp.csr_matrix(mat, dtype=np.int8)
 
+
 def get_distance_indices(distanceMatrix, distance):
     """Get indices for each node that are distance or less away.
 
@@ -671,6 +672,7 @@ def first_neighbors(natoms, first_atom):
         seed[mask] = seed[np.arange(natoms+1)[mask]+1]
         mask = seed == -1
     return seed
+
 
 def get_connectivity_matrix(nl, sparse=True):
     """Return connectivity matrix for a given NeighborList (dtype=numpy.int8).

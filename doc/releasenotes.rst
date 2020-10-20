@@ -9,6 +9,9 @@ Git master branch
 
 :git:`master <>`.
 
+* The linear interpolation (:meth:`ase.neb.interpolate`) between images
+  now supports cell-interpolation and the use of scaled positions.
+
 * Changed units for molecular dynamics modules.  They now accept the
   temperature in Kelvin as a keyword-only argument ``temperature_K``
   and Berendsen NPT accepts the pressure in eV/Å^3 as a keyword-only
@@ -28,7 +31,6 @@ Git master branch
 
 * :meth:`~ase.neb.SingleCalculatorNEB` is deprecated.  Use
   ``ase.neb.NEB(allow_shared_calculator=True)`` instead.
-
 
 Version 3.20.1
 ==============

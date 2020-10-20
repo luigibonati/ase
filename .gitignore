@@ -18,6 +18,9 @@ doc/ase/io/formatoptions.rst
 # Ignore PyCharm settings
 .idea/
 
+# Ignore VS Code settings
+.vscode/
+
 # Vim swap files:
 .*.sw?
 

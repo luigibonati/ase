@@ -16,7 +16,8 @@ class NWChem(FileIOCalculator):
     command = 'nwchem PREFIX.nwi > PREFIX.nwo'
     accepts_bandpath_keyword = True
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=FileIOCalculator._deprecated,
                  label='nwchem', atoms=None, command=None, **kwargs):
         """
         NWChem keywords are specified using (potentially nested)

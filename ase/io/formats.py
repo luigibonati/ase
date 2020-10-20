@@ -348,7 +348,7 @@ F('rmc6f', 'RMCProfile', '1S', ext='rmc6f')
 F('sdf', 'SDF format', '1F')
 F('struct', 'WIEN2k structure file', '1S', module='wien2k')
 F('struct_out', 'SIESTA STRUCT file', '1F', module='siesta')
-F('traj', 'ASE trajectory', '+B', module='trajectory',
+F('traj', 'ASE trajectory', '+B', module='trajectory', ext='traj',
   magic=[b'- of UlmASE-Trajectory', b'AFFormatASE-Trajectory'])
 F('turbomole', 'TURBOMOLE coord file', '1F', glob='coord',
   magic=b'$coord')
@@ -364,7 +364,7 @@ F('vasp-xdatcar', 'VASP XDATCAR file', '+F',
 F('vasp-xml', 'VASP vasprun.xml file', '+F',
   module='vasp', glob='*vasp*.xml')
 F('vti', 'VTK XML Image Data', '1F', module='vtkxml')
-F('vtu', 'VTK XML Unstructured Grid', '1F', module='vtkxml')
+F('vtu', 'VTK XML Unstructured Grid', '1F', module='vtkxml', ext='vtu')
 F('wout', 'Wannier90 output', '1F', module='wannier90')
 F('x3d', 'X3D', '1S')
 F('xsd', 'Materials Studio file', '1F')
@@ -454,21 +454,18 @@ def open_with_compression(filename: str, mode: str = 'r') -> IO:
 
     root, compression = get_compression(filename)
 
-    if compression is None:
-        return open(filename, mode)
-    elif compression == 'gz':
+    if compression == 'gz':
         import gzip
-        fd = gzip.open(filename, mode=mode)
+        return gzip.open(filename, mode=mode)  # type: ignore
     elif compression == 'bz2':
         import bz2
-        fd = bz2.open(filename, mode=mode)
+        return bz2.open(filename, mode=mode)
     elif compression == 'xz':
         import lzma
-        fd = lzma.open(filename, mode)
+        return lzma.open(filename, mode)
     else:
-        fd = open(filename, mode)
-
-    return fd
+        # Either None or unknown string
+        return open(filename, mode)
 
 
 def wrap_read_function(read, filename, index=None, **kwargs):
@@ -530,6 +527,12 @@ def write(
             assert isinstance(format, str)
     else:
         fd = filename  # type: ignore
+        if format is None:
+            try:
+                format = filetype(filename, read=False)
+                assert isinstance(format, str)
+            except UnknownFileTypeError:
+                format = None
         filename = None  # type: ignore
 
     format = format or 'json'  # default is json
@@ -636,7 +639,7 @@ def read(
     filename, index = parse_filename(filename, index, do_not_split_by_at_sign)
     if index is None:
         index = -1
-    format = format or filetype(filename)
+    format = format or filetype(filename, read=isinstance(filename, str))
 
     io = get_ioformat(format)
     if isinstance(index, (slice, str)):
@@ -674,7 +677,7 @@ def iread(
     if not isinstance(index, (slice, str)):
         index = slice(index, (index + 1) or None)
 
-    format = format or filetype(filename)
+    format = format or filetype(filename, read=isinstance(filename, str))
     io = get_ioformat(format)
 
     for atoms in _iread(filename, index, format, io, parallel=parallel,
@@ -782,6 +785,10 @@ def filetype(
         $ ase info filename ...
     """
 
+    orig_filename = filename
+    if hasattr(filename, 'name') and len(getattr(filename, 'name')) > 0:
+        filename = getattr(filename, 'name')
+
     ext = None
     if isinstance(filename, str):
         if os.path.isdir(filename):
@@ -816,7 +823,10 @@ def filetype(
             # askhl: This is strange, we don't know if ext is a format:
             return ext
 
-        fd = open_with_compression(filename, 'rb')
+        if orig_filename == filename:
+            fd = open_with_compression(filename, 'rb')
+        else:
+            fd = orig_filename # type: ignore
     else:
         fd = filename    # type: ignore
         if fd is sys.stdin:

@@ -191,15 +191,15 @@ class Cell:
         return cell
 
     @property
-    def rank(self):
+    def rank(self) -> int:
         """"Return the dimension of the cell.
 
         Equal to the number of nonzero lattice vectors."""
         # The name ndim clashes with ndarray.ndim
-        return self.any(1).sum()
+        return self.any(1).sum()  # type: ignore
 
     @property
-    def orthorhombic(self):
+    def orthorhombic(self) -> bool:
         """Return whether this cell is represented by a diagonal matrix."""
         from ase.geometry.cell import is_orthorhombic
         return is_orthorhombic(self)
@@ -224,7 +224,7 @@ class Cell:
     __nonzero__ = __bool__
 
     @property
-    def volume(self):
+    def volume(self) -> float:
         """Get the volume of this cell.
 
         If there are less than 3 lattice vectors, return 0."""
@@ -233,7 +233,15 @@ class Cell:
         # I think normally it is more convenient just to get zero
         return np.abs(np.linalg.det(self))
 
-    def scaled_positions(self, positions):
+    @property
+    def handedness(self) -> int:
+        """Sign of the determinant of the matrix of cell vectors.
+
+        1 for right-handed cells, -1 for left, and 0 for cells that
+        do not span three dimensions."""
+        return np.sign(np.linalg.det(self))
+
+    def scaled_positions(self, positions) -> np.ndarray:
         """Calculate scaled positions from Cartesian positions.
 
         The scaled positions are the positions given in the basis
@@ -242,7 +250,7 @@ class Cell:
         :meth:`~ase.cell.Cell.complete`."""
         return np.linalg.solve(self.complete().T, positions.T).T
 
-    def cartesian_positions(self, scaled_positions):
+    def cartesian_positions(self, scaled_positions) -> np.ndarray:
         """Calculate Cartesian positions from scaled positions."""
         return scaled_positions @ self.complete()
 
