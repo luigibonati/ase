@@ -170,7 +170,7 @@ class ElkFactory:
 
     def version(self):
         output = read_stdout([self.executable])
-        match = re.search('Elk code version (\S+)', output, re.M)
+        match = re.search(r'Elk code version (\S+)', output, re.M)
         return match.group(1)
 
     def calc(self, **kwargs):
