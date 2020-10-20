@@ -1,6 +1,6 @@
 """ test run for gromacs calculator """
 
-import unittest
+import pytest
 
 from ase.calculators.gromacs import Gromacs
 
@@ -31,11 +31,8 @@ data = """HISE for testing
 
 
 
-def test_gromacs():
-    g = Gromacs()
-    if g.command is None:
-        raise unittest.SkipTest(getattr(g, "missing_gmx", "missing gromacs"))
-
+@pytest.mark.calculator('gromacs')
+def test_gromacs(factory):
     GRO_INIT_FILE = 'hise_box.gro'
 
     # write structure file
@@ -43,7 +40,7 @@ def test_gromacs():
         outfile.write(data)
 
 
-    CALC_MM_RELAX = Gromacs(
+    CALC_MM_RELAX = factory.calc(
         force_field='charmm27',
         define='-DFLEXIBLE',
         integrator='cg',
