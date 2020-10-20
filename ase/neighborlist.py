@@ -795,20 +795,22 @@ class NewPrimitiveNeighborList:
                 use_scaled_positions=self.use_scaled_positions)
 
         if len(positions) > 0 and not self.bothways:
+            offset_x, offset_y, offset_z = offset_vec.T
+
             mask = np.logical_or(
                 np.logical_and(
                     pair_first <= pair_second,
                     (offset_vec == 0).all(axis=1)
                 ),
                 np.logical_or(
-                    offset_vec[:, 0] > 0,
+                    offset_x > 0,
                     np.logical_and(
-                        offset_vec[:, 0] == 0,
+                        offset_x == 0,
                         np.logical_or(
-                            offset_vec[:, 1] > 0,
+                            offset_y > 0,
                             np.logical_and(
-                                offset_vec[:, 1] == 0,
-                                offset_vec[:, 2] > 0
+                                offset_y == 0,
+                                offset_z > 0
                             )
                         )
                     )
