@@ -72,15 +72,16 @@ class IOFormat:
 
     @property
     def can_read(self) -> bool:
-        return self.read is not None
+        return self._readfunc() is not None
 
     @property
     def can_write(self) -> bool:
-        return self.write is not None
+        return self._writefunc() is not None
 
     @property
     def can_append(self) -> bool:
-        return self.can_write and 'append' in self.write.__code__.co_varnames
+        writefunc = self._writefunc()
+        return self.can_write and 'append' in writefunc.__code__.co_varnames
 
     def __repr__(self) -> str:
         tokens = ['{}={}'.format(name, repr(value))
@@ -103,40 +104,71 @@ class IOFormat:
     def _formatname(self) -> str:
         return self.name.replace('-', '_')
 
+    def _readfunc(self):
+        return getattr(self.module, 'read_' + self._formatname, None)
+
+    def _writefunc(self):
+        return getattr(self.module, 'write_' + self._formatname, None)
+
     @property
     def read(self):
-        read = getattr(self.module, 'read_' + self._formatname, None)
-        if read and not inspect.isgeneratorfunction(read):
-            read = functools.partial(wrap_read_function, read)
-        return read
+        if not self.can_read:
+            self._warn_none('read')
+            return None
+
+        return self._read_wrapper
+
+    def _read_wrapper(self, *args, **kwargs):
+        function = self._readfunc()
+        if function is None:
+            self._warn_none('read')
+            return None
+        if not inspect.isgeneratorfunction(function):
+            function = functools.partial(wrap_read_function, function)
+        return function(*args, **kwargs)
+
+    def _warn_none(self, action):
+        msg = ('Accessing the IOFormat.{action} property on a format '
+               'without {action} support will change behaviour in the '
+               'future and return a callable instead of None.  '
+               'Use IOFormat.can_{action} to check whether {action} '
+               'is supported.')
+        warnings.warn(msg.format(action=action), FutureWarning)
 
     @property
     def write(self):
-        return getattr(self.module, 'write_' + self._formatname, None)
+        if not self.can_write:
+            self._warn_none('write')
+            return None
+
+        return self._write_wrapper
+
+    def _write_wrapper(self, *args, **kwargs):
+        function = self._writefunc()
+        if function is None:
+            raise ValueError(f'Cannot write to {self.name}-format')
+        return function(*args, **kwargs)
 
     @property
     def modes(self) -> str:
         modes = ''
-        if self.read:
+        if self.can_read:
             modes += 'r'
-        if self.write:
+        if self.can_write:
             modes += 'w'
         return modes
 
     def full_description(self) -> str:
-        lines = ['Name:        {name}',
-                 'Description: {description}',
-                 'Modes:       {modes}',
-                 'Encoding:    {encoding}',
-                 'Module:      {module_name}',
-                 'Code:        {code}',
-                 'Extensions:  {extensions}',
-                 'Globs:       {globs}',
-                 'Magic:       {magic}']
-        desc = '\n'.join(lines)
-
-        myvars = {name: getattr(self, name) for name in dir(self)}
-        return desc.format(**myvars)
+        lines = [f'Name:        {self.name}',
+                 f'Description: {self.description}',
+                 f'Modes:       {self.modes}',
+                 f'Encoding:    {self.encoding}',
+                 f'Module:      {self.module_name}',
+                 f'Code:        {self.code}',
+                 f'Extensions:  {self.extensions}',
+                 f'Globs:       {self.globs}',
+                 f'Magic:       {self.magic}']
+        return '\n'.join(lines)
 
     @property
     def acceptsfd(self) -> bool:
@@ -549,7 +581,7 @@ def _write(filename, fd, format, io, images, parallel=None, append=False,
                              .format(format))
         images = images[0]
 
-    if io.write is None:
+    if not io.can_write:
         raise ValueError("Can't write to {}-format".format(format))
 
     # Special case for json-format:
@@ -683,7 +715,7 @@ def iread(
 def _iread(filename, index, format, io, parallel=None, full_output=False,
            **kwargs):
 
-    if not io.read:
+    if not io.can_read:
         raise ValueError("Can't read from {}-format".format(format))
 
     if io.single:
@@ -778,8 +810,8 @@ def filetype(
     """
 
     orig_filename = filename
-    if hasattr(filename, 'name') and len(getattr(filename, 'name')) > 0:
-        filename = getattr(filename, 'name')
+    if hasattr(filename, 'name'):
+        filename = filename.name
 
     ext = None
     if isinstance(filename, str):
