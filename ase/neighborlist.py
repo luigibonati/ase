@@ -797,12 +797,11 @@ class NewPrimitiveNeighborList:
         if len(positions) > 0 and not self.bothways:
             offset_x, offset_y, offset_z = offset_vec.T
 
-            mask = np.logical_and(offset_y == 0, offset_z > 0)
-            mask = np.logical_or(offset_y > 0, mask)
-            mask = np.logical_and(offset_x == 0, mask)
-
-            mask = np.logical_or(offset_x > 0, mask)
-
+            mask = offset_z > 0
+            mask &= offset_y == 0
+            mask |= offset_y > 0
+            mask &= offset_x == 0
+            mask |= offset_x > 0
             mask |= (pair_first <= pair_second) & (offset_vec == 0).all(axis=1)
 
             pair_first = pair_first[mask]
