@@ -1,11 +1,8 @@
 """ test run for gromacs calculator """
 
-import re
 import pytest
 
-from ase.calculators.gromacs import (Gromacs,
-                                     parse_gromacs_version,
-                                     get_gromacs_version)
+from ase.calculators.gromacs import parse_gromacs_version, get_gromacs_version
 
 
 sample_header = """\
@@ -19,16 +16,17 @@ blahblah...
 """
 
 
-def test_parse_version():
+def test_parse_gromacs_version():
     assert parse_gromacs_version(sample_header) == '2020.1-Ubuntu-2020.1-1'
 
 
 @pytest.mark.calculator('gromacs')
-def test_get_version(factory):
+def test_get_gromacs_version(factory):
     exe = factory.factory.executable
+    # XXX Can we do this in a different way?
     version = get_gromacs_version(exe)
-    print(version)
-    assert 'Ubuntu' in version
+    # Hmm.  Version could be any string.
+    assert isinstance(version, str) and len(version) > 0
 
 
 data = """HISE for testing

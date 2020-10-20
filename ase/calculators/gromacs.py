@@ -37,7 +37,6 @@ def parse_gromacs_version(output):
 
 
 def get_gromacs_version(executable):
-    from subprocess import Popen, PIPE
     output = subprocess.check_output([executable, '--version'],
                                      encoding='utf-8')
     return parse_gromacs_version(output)
