@@ -147,8 +147,56 @@ def get_layers(atoms, miller, tolerance=0.001):
     return tags, levels
 
 
+def naive_find_mic(v, cell):
+    """Finds the minimum-image representation of vector(s) v.
+    Safe to use for (pbc.all() and (norm(v_mic) < 0.5 * min(cell.lengths()))).
+    Can otherwise fail for non-orthorhombic cells.
+    Described in:
+    W. Smith, "The Minimum Image Convention in Non-Cubic MD Cells", 1989,
+    http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.57.1696."""
+    f = cell.scaled_positions(v)
+    f -= np.floor(f + 0.5)
+    vmin = f @ cell
+    vlen = np.linalg.norm(vmin, axis=1)
+    return vmin, vlen
+
+
+def general_find_mic(v, cell, pbc=True):
+    """Finds the minimum-image representation of vector(s) v. Using the
+    Minkowski reduction the algorithm is relatively slow but safe for any cell.
+    """
+
+    cell = complete_cell(cell)
+    rcell, _ = minkowski_reduce(cell, pbc=pbc)
+    positions = wrap_positions(v, rcell, pbc=pbc, eps=0)
+
+    # In a Minkowski-reduced cell we only need to test nearest neighbors,
+    # or "Voronoi-relevant" vectors. These are a subset of combinations of
+    # [-1, 0, 1] of the reduced cell vectors.
+
+    # Define ranges [-1, 0, 1] for periodic directions and [0] for aperiodic
+    # directions.
+    ranges = [np.arange(-1 * p, p + 1) for p in pbc]
+
+    # Get Voronoi-relevant vectors.
+    # Pre-pend (0, 0, 0) to resolve issue #772
+    hkls = np.array([(0, 0, 0)] + list(itertools.product(*ranges)))
+    vrvecs = hkls @ rcell
+
+    # Map positions into neighbouring cells.
+    x = positions + vrvecs[:, None]
+
+    # Find minimum images
+    lengths = np.linalg.norm(x, axis=2)
+    indices = np.argmin(lengths, axis=0)
+    vmin = x[indices, np.arange(len(positions)), :]
+    vlen = lengths[indices, np.arange(len(positions))]
+    return vmin, vlen
+
+
 def find_mic(v, cell, pbc=True):
-    """Finds the minimum-image representation of vector(s) v"""
+    """Finds the minimum-image representation of vector(s) v using either one
+    of two find mic algorithms depending on the given cell, v and pbc."""
 
     pbc = cell.any(1) & pbc2pbc(pbc)
     dim = np.sum(pbc)
@@ -157,31 +205,15 @@ def find_mic(v, cell, pbc=True):
     v = np.atleast_2d(v)
 
     if dim > 0:
-        cell = complete_cell(cell)
-        rcell, _ = minkowski_reduce(cell, pbc=pbc)
-        positions = wrap_positions(v, rcell, pbc=pbc, eps=0)
+        naive_find_mic_is_safe = False
+        if dim == 3:
+            vmin, vlen = naive_find_mic(v, cell)
+            # naive find mic is safe only for the following condition
+            if (vlen < 0.5 * min(cell.lengths())).all():
+                naive_find_mic_is_safe = True  # hence skip Minkowski reduction
 
-        # In a Minkowski-reduced cell we only need to test nearest neighbors,
-        # or "Voronoi-relevant" vectors. These are a subset of combinations of
-        # [-1, 0, 1] of the reduced cell vectors.
-
-        # Define ranges [-1, 0, 1] for periodic directions and [0] for aperiodic
-        # directions.
-        ranges = [np.arange(-1 * p, p + 1) for p in pbc]
-
-        # Get Voronoi-relevant vectors.
-        # Pre-pend (0, 0, 0) to resolve issue #772
-        hkls = np.array([(0, 0, 0)] + list(itertools.product(*ranges)))
-        vrvecs = hkls @ rcell
-
-        # Map positions into neighbouring cells.
-        x = positions + vrvecs[:, None]
-
-        # Find minimum images
-        lengths = np.linalg.norm(x, axis=2)
-        indices = np.argmin(lengths, axis=0)
-        vmin = x[indices, np.arange(len(positions)), :]
-        vlen = lengths[indices, np.arange(len(positions))]
+        if not naive_find_mic_is_safe:
+            vmin, vlen = general_find_mic(v, cell, pbc=pbc)
     else:
         vmin = v.copy()
         vlen = np.linalg.norm(vmin, axis=1)
