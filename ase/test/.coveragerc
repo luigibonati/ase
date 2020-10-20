@@ -17,7 +17,6 @@ omit =
     ../calculators/gaussian.py
     ../calculators/crystal.py
     ../calculators/demonnano.py
-    ../calculators/dftb.py
     ../calculators/exciting.py
     ../calculators/qchem.py
     ../calculators/aims.py
@@ -60,7 +59,6 @@ omit =
 
     # TODO: Improve IO format coverage and add include in coverage stats
     ../io/gaussian.py
-    ../io/dftb.py
     ../io/pov.py
     ../io/dacapo.py
     ../io/cp2k.py
