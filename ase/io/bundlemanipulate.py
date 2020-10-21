@@ -15,13 +15,12 @@ python -m ase.io.bundlemanipulate inbundle outbundle [start [end [step]]]
 """
 
 import os
-import pickle
 import json
 from typing import Optional
 
 import numpy as np
 
-from ase.io.bundletrajectory import PickleBundleBackend, UlmBundleBackend
+from ase.io.bundletrajectory import UlmBundleBackend
 
 
 def copy_frames(inbundle, outbundle, start=0, end=None, step=1,
@@ -32,14 +31,9 @@ def copy_frames(inbundle, outbundle, start=0, end=None, step=1,
             isinstance(step, int)):
         raise TypeError("copy_frames: start, end and step must be integers.")
     metadata, nframes = read_bundle_info(inbundle)
-    if metadata['backend'] == 'ulm':
-        ulm = True
-        backend = UlmBundleBackend(True, metadata['ulm.singleprecision'])
-    else:
-        ulm = False
-        assert(metadata['backend'] == 'pickle')
-        backend = PickleBundleBackend(True)
-        backend.readpy2 = False
+
+    ulm = True
+    backend = UlmBundleBackend(True, metadata['ulm.singleprecision'])
 
     if start < 0:
         start += nframes
@@ -77,6 +71,7 @@ def copy_frames(inbundle, outbundle, start=0, end=None, step=1,
             if verbose:
                 print("F0 -> F0 (supplemental)")
             # The smalldata.pickle stuff must be updated.
+            #  - Update: No more pickle stuff (2020-10-21)
             # At the same time, check if the number of fragments
             # has not changed.
             data0 = backend.read_small(os.path.join(inbundle, "F0"))
@@ -103,11 +98,7 @@ def copy_frames(inbundle, outbundle, start=0, end=None, step=1,
             else:
                 # Must read and rewrite data
                 # First we read the ID's from frame 0 and N
-                if ulm:
-                    assert 'ID_0.ulm' in firstnames and 'ID_0.ulm' in names
-                else:
-                    assert ('ID_0.pickle' in firstnames
-                            and 'ID_0.pickle' in names)
+                assert 'ID_0.ulm' in firstnames and 'ID_0.ulm' in names
                 backend.nfrag = fragments0
                 f0_id, dummy = backend.read_split(
                     os.path.join(inbundle, "F0"), "ID"
@@ -140,9 +131,8 @@ def copy_frames(inbundle, outbundle, start=0, end=None, step=1,
                             backend.write(outdir, '{}_{}'.format(arrayname, i),
                                           segment)
     # Finally, write the number of frames
-    f = open(os.path.join(outbundle, 'frames'), 'w')
-    f.write(str(len(frames)) + '\n')
-    f.close()
+    with open(os.path.join(outbundle, 'frames'), 'w') as fd:
+        fd.write(str(len(frames)) + '\n')
 
 
 # Helper functions
@@ -153,26 +143,17 @@ def read_bundle_info(name):
     """
     if not os.path.isdir(name):
         raise IOError("No directory (bundle) named '%s' found." % (name,))
-    metaname = bestmetaname = os.path.join(name, 'metadata.json')
-    if os.path.isfile(metaname):
-        with open(metaname) as f:
-            mdata = json.load(f)
-    else:
-        metaname = os.path.join(name, 'metadata')
-        if os.path.isfile(metaname):
-            with open(metaname, "rb") as f:
-                mdata = pickle.load(f)
-        else:
-            raise IOError("'{}' does not appear to be a BundleTrajectory "
-                          "(no {})".format(name, bestmetaname))
+    metaname = os.path.join(name, 'metadata.json')
+    with open(metaname) as fd:
+        mdata = json.load(fd)
     if 'format' not in mdata or mdata['format'] != 'BundleTrajectory':
         raise IOError("'%s' does not appear to be a BundleTrajectory" %
                       (name,))
     if mdata['version'] != 1:
         raise IOError("Cannot manipulate BundleTrajectories with version "
                       "number %s" % (mdata['version'],))
-    f = open(os.path.join(name, "frames"))
-    nframes = int(f.read())
+    with open(os.path.join(name, "frames")) as fd:
+        nframes = int(fd.read())
     if nframes == 0:
         raise IOError("'%s' is an empty BundleTrajectory" % (name,))
     return mdata, nframes
