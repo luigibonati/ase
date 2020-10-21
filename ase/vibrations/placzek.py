@@ -1,6 +1,7 @@
 import numpy as np
 
 import ase.units as u
+from ase.vibrations.raman import Raman, RamanPhonons
 from ase.vibrations.resonant_raman import ResonantRaman
 from ase.calculators.excitation_list import polarizability
 
@@ -22,13 +23,13 @@ class Placzek(ResonantRaman):
         for a, i in zip(self.myindices, self.myxyz):
             exname = '%s.%d%s-' % (self.exname, a, i) + self.exext
             self.log('reading ' + exname)
-            self.exm_r.append(self.exobj(exname, **self.exkwargs))
+            self.exm_r.append(self.exobj.read(exname, **self.exkwargs))
             exname = '%s.%d%s+' % (self.exname, a, i) + self.exext
             self.log('reading ' + exname)
-            self.exp_r.append(self.exobj(exname, **self.exkwargs))
+            self.exp_r.append(self.exobj.read(exname, **self.exkwargs))
 
     def electronic_me_Qcc(self, omega, gamma=0):
-        self.read()
+        self.calculate_energies_and_modes()
         
         self.timer.start('init')
         V_rcc = np.zeros((self.ndof, 3, 3), dtype=complex)
@@ -47,13 +48,46 @@ class Placzek(ResonantRaman):
                                form=self.dipole_form, tensor=True) -
                 polarizability(self.exm_r[i], om,
                                form=self.dipole_form, tensor=True))
+        self.comm.sum(V_rcc)
+        self.timer.stop('alpha derivatives')
+
+        return self.map_to_modes(V_rcc)
+
+
+class PlaczekStatic(Raman):
+    def read_excitations(self):
+        """Read excitations from files written"""
+        self.al0_rr = None  # mark as read
+        self.alm_rr = []
+        self.alp_rr = []
+        for a, i in zip(self.myindices, self.myxyz):
+            exname = '%s.%d%s-' % (self.exname, a, i) + self.exext
+            self.log('reading ' + exname)
+            self.alm_rr.append(np.loadtxt(exname))
+            exname = '%s.%d%s+' % (self.exname, a, i) + self.exext
+            self.log('reading ' + exname)
+            self.alp_rr.append(np.loadtxt(exname))
+            
+    def electronic_me_Qcc(self):
+        self.calculate_energies_and_modes()
+        
+        self.timer.start('init')
+        V_rcc = np.zeros((self.ndof, 3, 3), dtype=complex)
+        pre = 1. / (2 * self.delta)
+        pre *= u.Hartree * u.Bohr  # e^2Angstrom^2 / eV -> Angstrom^3
+        self.timer.stop('init')
+        
+        self.timer.start('alpha derivatives')
+        for i, r in enumerate(self.myr):
+            V_rcc[r] = pre * (self.alp_rr[i] - self.alm_rr[i])
+        self.comm.sum(V_rcc)
         self.timer.stop('alpha derivatives')
  
-        # map to modes
-        self.comm.sum(V_rcc)
-        V_qcc = (V_rcc.T * self.im).T  # units Angstrom^2 / sqrt(amu)
-        V_Qcc = np.dot(V_qcc.T, self.modes.T).T
-        return V_Qcc
+        return self.map_to_modes(V_rcc)
+
+
+class PlaczekStaticPhonons(RamanPhonons, PlaczekStatic):
+    pass
 
 
 class Profeta(ResonantRaman):
@@ -84,7 +118,7 @@ class Profeta(ResonantRaman):
         -------
         Electronic matrix element, unit Angstrom^2
          """
-        self.read()
+        self.calculate_energies_and_modes()
 
         self.timer.start('amplitudes')
 
@@ -142,10 +176,4 @@ class Profeta(ResonantRaman):
                 'Bug: call with {0} should not happen!'.format(
                     self.approximation))
 
-        # map to modes
-        self.timer.start('map R2Q')
-        V_qcc = (Vel_rcc.T * self.im).T  # units Angstrom^2 / sqrt(amu)
-        Vel_Qcc = np.dot(V_qcc.T, self.modes.T).T
-        self.timer.stop('map R2Q')
-
-        return Vel_Qcc
+        return self.map_to_modes(Vel_rcc)
