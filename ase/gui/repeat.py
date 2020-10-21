@@ -1,6 +1,3 @@
-from __future__ import unicode_literals
-import numpy as np
-
 import ase.gui.ui as ui
 from ase.gui.i18n import _
 
@@ -27,14 +24,6 @@ class Repeat:
 
     def set_unit_cell(self):
         self.gui.images.repeat_unit_cell()
-        for r in self.repeat:
-            r.value = 1
-        self.gui.set_frame()
-
-    def set_unit_cell0(self):
-        self.gui.images.A *= self.gui.images.repeat.reshape((3, 1))
-        self.gui.images.E *= self.gui.images.repeat.prod()
-        self.gui.images.repeat = np.ones(3, int)
         for r in self.repeat:
             r.value = 1
         self.gui.set_frame()

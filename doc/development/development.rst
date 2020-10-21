@@ -21,6 +21,4 @@ Development topics:
     bugs
     licenseinfo
     translate
-    todo
-    py3k
     proposals/proposals

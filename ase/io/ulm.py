@@ -123,6 +123,7 @@ Versions
 import os
 import numbers
 from pathlib import Path
+from typing import Union, Set
 
 import numpy as np
 
@@ -250,8 +251,8 @@ class Writer:
                 if not np.little_endian:
                     a.byteswap(True)
                 self.header = ('- of Ulm{0:16}'.format(tag).encode('ascii') +
-                               a.tostring() +
-                               self.offsets.tostring())
+                               a.tobytes() +
+                               self.offsets.tobytes())
             else:
                 if isinstance(fd, Path):
                     fd = fd.open('r+b')
@@ -314,7 +315,7 @@ class Writer:
             self.header = b''
 
     def fill(self, a):
-        """Fill in ndarray chunks for array currently beeing written."""
+        """Fill in ndarray chunks for array currently being written."""
         assert a.dtype == self.dtype
         assert a.shape[1:] == self.shape[len(self.shape) - a.ndim + 1:]
         self.nmissing -= a.size
@@ -531,7 +532,10 @@ class Reader:
     __dir__ = keys  # needed for tab-completion
 
     def __getattr__(self, attr):
-        value = self._data[attr]
+        try:
+            value = self._data[attr]
+        except KeyError:
+            raise AttributeError(attr)
         if isinstance(value, NDArrayReader):
             return value.read()
         return value
@@ -551,7 +555,7 @@ class Reader:
         """Get attr or value if no such attr."""
         try:
             return self.__getattr__(attr)
-        except KeyError:
+        except AttributeError:
             return value
 
     def proxy(self, name, *indices):
@@ -567,7 +571,7 @@ class Reader:
     def _read_data(self, index):
         self._fd.seek(self._offsets[index])
         size = int(readints(self._fd, 1)[0])
-        data = decode(self._fd.read(size).decode())
+        data = decode(self._fd.read(size).decode(), False)
         self._little_endian = data.pop('_little_endian', True)
         return data
 
@@ -677,15 +681,18 @@ def print_ulm_info(filename, index=None, verbose=False):
         print(b[i].tostr(verbose))
 
 
-def copy(reader, writer, exclude=set(), name=''):
+def copy(reader: Union[str, Path, Reader],
+         writer: Union[str, Path, Writer],
+         exclude: Set[str] = set(),
+         name: str = '') -> None:
     """Copy from reader to writer except for keys in exclude."""
     close_reader = False
     close_writer = False
-    if isinstance(reader, str):
-        reader = open(reader)
+    if not isinstance(reader, Reader):
+        reader = Reader(reader)
         close_reader = True
-    if isinstance(writer, str):
-        writer = open(writer, 'w')
+    if not isinstance(writer, Writer):
+        writer = Writer(writer)
         close_writer = True
     for key, value in reader._data.items():
         if name + '.' + key in exclude:

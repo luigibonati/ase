@@ -1,5 +1,8 @@
 .. module:: ase.calculators.vasp.vasp2
 
+.. _vasp2-calculator:
+
+
 ===========
 VASP 2.0
 ===========
@@ -11,12 +14,12 @@ Introduction
 This module introduces an updated version of the ASE VASP_ calculator,
 which adds the functionality of the :class:`~ase.calculators.calculator.Calculator`.
 This allows a more general usage of the other ASE methods,
-such as :class:`~ase.dft.band_structure.BandStructure`.
+such as :class:`~ase.spectrum.band_structure.BandStructure`.
 
 For a general introduction please refer to the :mod:`~ase.calculators.vasp` calculator
 documentation, as this is just a list of things which have changed.
 
-.. _VASP: http://cms.mpi.univie.ac.at/vasp/
+.. _VASP: https://cms.mpi.univie.ac.at/vasp/
 
 .. warning::
    This calculator is currently in BETA testing. If you are not comfortable
@@ -28,7 +31,7 @@ documentation, as this is just a list of things which have changed.
    on the `ASE github`_ or on the `ASE IRC`_.
 
 .. _ASE github: https://gitlab.com/ase/ase
-.. _ASE IRC: http://webchat.freenode.net/?randomnick=0&channels=ase
+.. _ASE IRC: https://webchat.freenode.net/#ase?nick=Guest_?
 
 Environment variables
 =====================
@@ -71,7 +74,7 @@ VASP specific keywords.
 
 
 .. _VASP calculator: vasp.html#vasp-calculator
-.. _VASP manual: http://cms.mpi.univie.ac.at/vasp/vasp/vasp.html
+.. _VASP manual: https://cms.mpi.univie.ac.at/vasp/vasp/vasp.html
 
 .. autoclass:: Vasp2
 
@@ -149,7 +152,7 @@ Examples
 ========
 
 The Vasp 2 calculator now integrates with existing ASE functions, such as
-:class:`~ase.dft.band_structure.BandStructure` or :class:`~ase.dft.bandgap.bandgap`.
+:class:`~ase.spectrum.band_structure.BandStructure` or :class:`~ase.dft.bandgap.bandgap`.
 
 Band structure with VASP
 ------------------------
@@ -174,7 +177,7 @@ initial calculations, in order to construct the band structure for silicon
 	# Make self-consistent ground state
 	calc = Vasp2(kpts=(4, 4, 4), directory=mydir)
 
-	si.set_calculator(calc)
+	si.calc = calc
 	si.get_potential_energy()  # Run the calculation
 
 	# Non-SC calculation along band path

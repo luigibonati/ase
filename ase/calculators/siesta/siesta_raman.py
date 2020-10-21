@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# flake8: noqa
 
 """Infrared and Raman intensities using siesta and MBPT_LCAO"""
 
@@ -9,7 +9,6 @@ import numpy as np
 import ase.units as units
 from ase.parallel import parprint, paropen
 from ase.vibrations import Vibrations
-from ase.utils import basestring
 import warnings
 
 # XXX This class contains much repeated code.  FIXME
@@ -52,7 +51,7 @@ class SiestaRaman(Vibrations):
         The atoms to work on.
     siesta: Siesta calculator
     mbpt_inp: dict
-        dictionnary containing the input for the mbpt_lcao program
+        dictionary containing the input for the mbpt_lcao program
     indices: list of int
         List of indices of atoms to vibrate.  Default behavior is
         to vibrate all atoms.
@@ -120,7 +119,7 @@ class SiestaRaman(Vibrations):
             warnings.warn('WARNING! \n Your Atoms object is constrained. ' +
                   'Some forces may be unintended set to zero. \n')
         self.name = name + '-d%.3f' % delta
-        self.calc = atoms.get_calculator()
+        self.calc = atoms.calc
 
         if directions is None:
             self.directions = np.asarray([0, 1, 2])
@@ -345,7 +344,7 @@ class SiestaRaman(Vibrations):
         elif intensity_unit_ram == 'A^4 amu^-1':
             iu_format_ram = '%9.4f              '
 
-        if isinstance(log, basestring):
+        if isinstance(log, str):
             log = paropen(log, 'a')
 
         parprint('---------------------------------------------------------------------------------------------------------------------------', file=log)
@@ -416,7 +415,7 @@ class SiestaRaman(Vibrations):
         elif intensity_unit_ram == 'A^4 amu^-1':
             iu_format_ram = '%9.4f              '
 
-        if isinstance(log, basestring):
+        if isinstance(log, str):
             log = paropen(log, 'a')
 
         if hline:

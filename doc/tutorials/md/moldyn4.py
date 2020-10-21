@@ -1,6 +1,4 @@
 """Demonstrates molecular dynamics for isolated particles."""
-from __future__ import print_function
-
 from ase.cluster.cubic import FaceCenteredCubic
 from ase.optimize import QuasiNewton
 from ase.md.velocitydistribution import (MaxwellBoltzmannDistribution,
@@ -25,14 +23,14 @@ atoms = FaceCenteredCubic('Cu',
                           vacuum=4)
 
 # Describe the interatomic interactions with the Effective Medium Theory
-atoms.set_calculator(EMT())
+atoms.calc = EMT()
 
 # Do a quick relaxation of the cluster
 qn = QuasiNewton(atoms)
 qn.run(0.001, 10)
 
 # Set the momenta corresponding to T=1200K
-MaxwellBoltzmannDistribution(atoms, 1200 * units.kB)
+MaxwellBoltzmannDistribution(atoms, temperature_K=1200)
 Stationary(atoms)  # zero linear momentum
 ZeroRotation(atoms)  # zero angular momentum
 

@@ -1,0 +1,76 @@
+[run]
+source = ase
+
+# We would write the 'omit' section in the run section.
+# But pytest-cov forgets that when generating report.
+# So we write those paths in the report section instead.
+
+[report]
+precision = 2
+omit =
+    ./*
+    ../utils/sphinx.py
+    ../utils/newrelease.py
+    ../utils/build_web_page.py
+
+    # TODO: Test external calculators and add to listing.
+    ../calculators/gaussian.py
+    ../calculators/crystal.py
+    ../calculators/demonnano.py
+    ../calculators/exciting.py
+    ../calculators/qchem.py
+    ../calculators/aims.py
+    ../calculators/psi4.py
+    ../calculators/gamess_us.py
+    ../calculators/lammpslib.py
+    ../calculators/orca.py
+    ../calculators/dftd3.py
+    ../calculators/fleur.py
+    ../calculators/amber.py
+    ../calculators/turbomole.py
+    ../calculators/onetep.py
+    ../calculators/dmol.py
+    ../calculators/mopac.py
+    ../calculators/acemolecule.py
+    ../calculators/elk.py
+    ../calculators/castep.py
+    ../calculators/gulp.py
+    ../calculators/kim/kim.py
+    ../calculators/kim/exceptions.py
+    ../calculators/kim/kimmodel.py
+    ../calculators/kim/neighborlist.py
+    ../calculators/kim/calculators.py
+    ../calculators/kim/kimpy_wrappers.py
+    ../calculators/demon/demon.py
+    ../calculators/demon/demon_io.py
+    ../calculators/vasp/create_input.py
+    ../calculators/vasp/vasp_data.py
+    ../calculators/vasp/setups.py
+    ../calculators/vasp/interactive.py
+    ../calculators/vasp/vasp2.py
+    ../calculators/vasp/vasp.py
+    ../calculators/siesta/mbpt_lcao.py
+    ../calculators/siesta/mbpt_lcao_utils.py
+    ../calculators/siesta/import_ion_xml.py
+    ../calculators/siesta/siesta_raman.py
+    ../calculators/siesta/mbpt_lcao_io.py
+    ../calculators/siesta/import_functions.py
+
+    # TODO: Improve IO format coverage and add include in coverage stats
+    ../io/gaussian.py
+    ../io/pov.py
+    ../io/dacapo.py
+    ../io/cp2k.py
+    ../io/fortranfile.py
+    ../io/turbomole.py
+    ../io/gaussian_reader.py
+    ../io/acemolecule.py
+    ../io/vtkxml.py
+    ../io/elk.py
+    ../io/castep.py
+    ../io/gpw.py
+    ../io/cmdft.py
+
+
+[html]
+directory = coverage-html

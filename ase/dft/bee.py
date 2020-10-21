@@ -1,4 +1,3 @@
-from __future__ import print_function
 import os
 import pickle
 
@@ -26,7 +25,7 @@ class BEEFEnsemble:
                 assert xc is not None
             else:
                 if isinstance(atoms, Atoms):
-                    calc = atoms.get_calculator()
+                    calc = atoms.calc
                     self.atoms = atoms
                 else:
                     calc = atoms

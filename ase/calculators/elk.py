@@ -15,7 +15,8 @@ class ELK(FileIOCalculator, EigenvalOccupationMixin):
     command = 'elk > elk.out'
     implemented_properties = ['energy', 'forces']
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=FileIOCalculator._deprecated,
                  label=os.curdir, atoms=None, **kwargs):
         """Construct ELK calculator.
 
@@ -221,7 +222,13 @@ class ELK(FileIOCalculator, EigenvalOccupationMixin):
         else:
             # use default species
             # if sppath is present in elk.in it overwrites species blocks!
-            fd.write("sppath\n'%s'\n\n" % os.environ['ELK_SPECIES_PATH'])
+            species_path = os.environ['ELK_SPECIES_PATH']
+
+            # Elk seems to concatenate path and filename in such a way
+            # that we must put a / at the end:
+            if not species_path.endswith('/'):
+                species_path += '/'
+            fd.write("sppath\n'{}'\n\n".format(species_path))
 
     def read(self, label):
         FileIOCalculator.read(self, label)

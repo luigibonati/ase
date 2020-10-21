@@ -18,30 +18,14 @@ from ase.formula import formula_hill, formula_metal
 
 __all__ = ['exec_', 'basestring', 'import_module', 'seterr', 'plural',
            'devnull', 'gcd', 'convert_string_to_fd', 'Lock',
-           'opencew', 'OpenLock', 'rotate', 'irotate', 'givens',
+           'opencew', 'OpenLock', 'rotate', 'irotate', 'pbc2pbc', 'givens',
            'hsv2rgb', 'hsv', 'pickleload', 'FileNotFoundError',
            'formula_hill', 'formula_metal', 'PurePath']
 
 
-# Python 2+3 compatibility stuff:
-if sys.version_info[0] > 2:
-    import builtins
-    exec_ = getattr(builtins, 'exec')
-    basestring = str
-    from io import StringIO
-    pickleload = functools.partial(pickle.load, encoding='bytes')
-    FileNotFoundError = getattr(builtins, 'FileNotFoundError')
-else:
-    class FileNotFoundError(OSError):
-        pass
-
-    # Legacy Python:
-    def exec_(code, dct):
-        exec('exec code in dct')
-    basestring = basestring
-    from StringIO import StringIO
-    pickleload = pickle.load
-StringIO  # appease pyflakes
+# Python 2+3 compatibility stuff (let's try to remove these things):
+basestring = str
+pickleload = functools.partial(pickle.load, encoding='bytes')
 
 
 @contextmanager
@@ -70,6 +54,7 @@ def plural(n, word):
 
 class DevNull:
     encoding = 'UTF-8'
+    closed = False
 
     def write(self, string):
         pass
@@ -108,7 +93,7 @@ def convert_string_to_fd(name, world=None):
         return devnull
     if name == '-':
         return sys.stdout
-    if isinstance(name, (basestring, PurePath)):
+    if isinstance(name, (str, PurePath)):
         return open(str(name), 'w')  # str for py3.5 pathlib
     return name  # we assume name is already a file-descriptor
 
@@ -163,6 +148,7 @@ class Lock:
         while True:
             fd = opencew(self.name, self.world)
             if fd is not None:
+                self.fd = fd
                 break
             time_left = self.timeout - (time.time() - t1)
             if time_left <= 0:
@@ -172,8 +158,12 @@ class Lock:
 
     def release(self):
         self.world.barrier()
+        # Important to close fd before deleting file on windows
+        # as a WinError would otherwise be raised.
+        self.fd.close()
         if self.world.rank == 0:
             os.remove(self.name)
+        self.world.barrier()
 
     def __enter__(self):
         self.acquire()
@@ -211,7 +201,7 @@ def search_current_git_hash(arg, world=None):
         return None
 
     # Check argument
-    if isinstance(arg, basestring):
+    if isinstance(arg, str):
         # Directory path
         dpath = arg
     else:
@@ -315,6 +305,12 @@ def irotate(rotation, initial=np.identity(3)):
     return x, y, z
 
 
+def pbc2pbc(pbc):
+    newpbc = np.empty(3, bool)
+    newpbc[:] = pbc
+    return newpbc
+
+
 def hsv2rgb(h, s, v):
     """http://en.wikipedia.org/wiki/HSL_and_HSV
 
@@ -379,42 +375,46 @@ def workdir(path, mkdir=False):
         path.mkdir(parents=True, exist_ok=True)
 
     olddir = os.getcwd()
-    os.chdir(path.name)
+    os.chdir(str(path))  # py3.6 allows chdir(path) but we still need 3.5
     try:
         yield  # Yield the Path or dirname maybe?
     finally:
         os.chdir(olddir)
 
 
-def iofunction(func, mode):
+class iofunction:
     """Decorate func so it accepts either str or file.
 
     (Won't work on functions that return a generator.)"""
+    def __init__(self, mode):
+        self.mode = mode
 
-    @functools.wraps(func)
-    def iofunc(file, *args, **kwargs):
-        openandclose = isinstance(file, (basestring, PurePath))
-        fd = None
-        try:
-            if openandclose:
-                fd = open(str(file), mode)
-            else:
-                fd = file
-            obj = func(fd, *args, **kwargs)
-            return obj
-        finally:
-            if openandclose and fd is not None:
-                # fd may be None if open() failed
-                fd.close()
-    return iofunc
+    def __call__(self, func):
+        @functools.wraps(func)
+        def iofunc(file, *args, **kwargs):
+            openandclose = isinstance(file, (str, PurePath))
+            fd = None
+            try:
+                if openandclose:
+                    fd = open(str(file), self.mode)
+                else:
+                    fd = file
+                obj = func(fd, *args, **kwargs)
+                return obj
+            finally:
+                if openandclose and fd is not None:
+                    # fd may be None if open() failed
+                    fd.close()
+        return iofunc
+
 
 
 def writer(func):
-    return iofunction(func, 'w')
+    return iofunction('w')(func)
 
 
 def reader(func):
-    return iofunction(func, 'r')
+    return iofunction('r')(func)
 
 
 # The next two functions are for hotplugging into a JSONable class
@@ -428,7 +428,7 @@ def write_json(self, fd):
     _write_json(fd, self)
 
 
-@classmethod
+@classmethod  # type: ignore
 def read_json(cls, fd):
     """Read new instance from JSON file."""
     from ase.io.jsonio import read_json as _read_json
@@ -476,6 +476,56 @@ def experimental(func):
         return func(*args, **kwargs)
     return expfunc
 
+
+def lazymethod(meth):
+    """Decorator for lazy evaluation and caching of data.
+
+    Example::
+
+      class MyClass:
+
+         @lazymethod
+         def thing(self):
+             return expensive_calculation()
+
+    The method body is only executed first time thing() is called, and
+    its return value is stored.  Subsequent calls return the cached
+    value."""
+    name = meth.__name__
+
+    @functools.wraps(meth)
+    def getter(self):
+        try:
+            cache = self._lazy_cache
+        except AttributeError:
+            cache = self._lazy_cache = {}
+
+        if name not in cache:
+            cache[name] = meth(self)
+        return cache[name]
+    return getter
+
+
+def atoms_to_spglib_cell(atoms):
+    """Convert atoms into data suitable for calling spglib."""
+    return (atoms.get_cell(),
+            atoms.get_scaled_positions(),
+            atoms.get_atomic_numbers())
+
+
+def warn_legacy(feature_name):
+    warnings.warn(
+        f'The {feature_name} feature is untested and ASE developers do not '
+        'know whether it works or how to use it.  Please rehabilitate it '
+        '(by writing unittests) or it may be removed.',
+        FutureWarning)
+
+
+def lazyproperty(meth):
+    """Decorator like lazymethod, but making item available as a property."""
+    return property(lazymethod(meth))
+
+
 def deprecated(msg):
     """Return a decorator deprecating a function.
 
@@ -483,7 +533,10 @@ def deprecated(msg):
     def deprecated_decorator(func):
         @functools.wraps(func)
         def deprecated_function(*args, **kwargs):
-            warnings.warn(msg, FutureWarning)
+            warning = msg
+            if not isinstance(warning, Warning):
+                warning = FutureWarning(warning)
+            warnings.warn(warning)
             return func(*args, **kwargs)
         return deprecated_function
     return deprecated_decorator

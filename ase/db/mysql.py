@@ -12,7 +12,7 @@ import ase.io.jsonio
 import json
 
 
-class Connection(object):
+class Connection:
     """
     Wrapper for the MySQL connection
 
@@ -34,6 +34,7 @@ class Connection(object):
         prefix in MySQL. By setting this to True, the prefix is automatically
         added for binary values.
     """
+
     def __init__(self, host=None, user=None, passwd=None, port=3306,
                  db_name=None, binary_prefix=False):
         self.con = connect(host=host, user=user, passwd=passwd, db=db_name,
@@ -48,8 +49,11 @@ class Connection(object):
     def close(self):
         self.con.close()
 
+    def rollback(self):
+        self.con.rollback()
 
-class MySQLCursor(object):
+
+class MySQLCursor:
     """
     Wrapper for the MySQL cursor. The most important task performed by this
     class is to translate SQLite queries to MySQL. Translation is needed
@@ -206,6 +210,15 @@ class MySQLDatabase(SQLite3Database):
         if array is None:
             return None
         return super(MySQLDatabase, self).blob(array).tobytes()
+
+    def get_offset_string(self, offset, limit=None):
+        sql = ''
+        if not limit:
+            # mysql does not allow for setting limit to -1 so
+            # instead we set a large number
+            sql += '\nLIMIT 10000000000'
+        sql += '\nOFFSET {0}'.format(offset)
+        return sql
 
     def get_last_id(self, cur):
         cur.execute('select max(id) as ID from systems')

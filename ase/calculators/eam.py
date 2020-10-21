@@ -14,7 +14,6 @@ from ase.neighborlist import NeighborList
 from ase.calculators.calculator import Calculator, all_changes
 from scipy.interpolate import InterpolatedUnivariateSpline as spline
 from ase.units import Bohr, Hartree
-from ase.utils import basestring
 
 
 class EAM(Calculator):
@@ -37,7 +36,7 @@ potential file or as a set of functions that describe the potential.
 The files containing the potentials for this calculator are not
 included but many suitable potentials can be downloaded from The
 Interatomic Potentials Repository Project at
-http://www.ctcms.nist.gov/potentials/
+https://www.ctcms.nist.gov/potentials/
 
 Theory
 ======
@@ -109,7 +108,7 @@ For example::
     mishin.write_potential('new.eam.alloy')
     mishin.plot()
 
-    slab.set_calculator(mishin)
+    slab.calc = mishin
     slab.get_potential_energy()
     slab.get_forces()
 
@@ -237,7 +236,8 @@ End EAM Interface Documentation
                 b'Generated from eam.py\n',
                 b'blank\n'])
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=Calculator._deprecated,
                  label=os.curdir, atoms=None, form=None, **kwargs):
 
         self.form = form
@@ -284,7 +284,7 @@ End EAM Interface Documentation
         and creates the interpolation functions from the data
         """
 
-        if isinstance(fileobj, basestring):
+        if isinstance(fileobj, str):
             f = open(fileobj)
             if self.form is None:
                 self.set_form(fileobj)

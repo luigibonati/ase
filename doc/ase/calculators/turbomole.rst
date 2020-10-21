@@ -46,7 +46,7 @@ set. After this the calculator can be associated with an existing Atoms object
 
 .. code:: python
 
-  atoms.set_calculator(calc)
+  atoms.calc = calc
 
 The recommended methods to access parameters and properties are the getter
 methods, i.e. these ones starting with *get*. The calculations then are
@@ -89,7 +89,7 @@ calculator and associating it with an atoms object, e.g.:
         'multiplicity': 2
     }
     calc = Turbomole(**params)
-    mol.set_calculator(calc)
+    mol.calc = calc
     calc.initialize()
 
 Optionally the calculator will be associated with the atoms object in one step
@@ -297,13 +297,19 @@ computed numerically using the script NumForce. The keys can be *'central'*
 indicating use of central differences (type *bool*) and *'delta'* specifying
 the coordinate displacements in Angstrom (type *float*).
 
+While ``task`` can be set to ``"optimize"`` to perform a geometry optimization
+using Turbomole's own relaxation algorithms, doing so directly is discouraged.
+Instead, the calculator's ``get_optimizer()`` method should be called to obtain
+a ``TurbomoleOptimizer`` which can be used like any other ASE
+:mod:`Optimizer <ase.optimize>`. An :ref:`example <turbomole_optimizer_example>`
+is given below.
+
 Some parameter names contain spaces. This means that the preferred way to pass
 the parameters is to construct a dictionary, for example:
 
 .. code:: python
 
-  params = {'task': 'optimize',
-            'use resolution of identity': True,
+  params = {'use resolution of identity': True,
             'ri memory': 2000,
             'scf iterations': 80,
             'force convergence': 0.05}
@@ -330,26 +336,34 @@ Single-point energy calculation
 
 This script calculates the total energy of H2:
 
-:git:`ase/test/turbomole/turbomole_H2.py`.
+:git:`ase/test/calculator/turbomole/test_turbomole_H2.py`.
 
 Nudged elastic band calculation
 -------------------------------
 
 The example demonstrates a proton transfer barrier calculation in H3O2-:
 
-:git:`ase/test/turbomole/turbomole_h3o2m.py`.
+:git:`ase/test/calculator/turbomole/test_turbomole_h3o2m.py`.
 
 Single-point gradient calculation of Au13-
 ------------------------------------------
 
 This script demonstrates the use of the restart option.
 
-:git:`ase/test/turbomole/turbomole_au13.py`.
+:git:`ase/test/calculator/turbomole/test_turbomole_au13.py`.
+
+
+.. _turbomole_optimizer_example:
+
+Geometry optimization using TurbomoleOptimizer (recommended)
+------------------------------------------------------------
+
+:git:`ase/test/calculator/turbomole/test_turbomole_optimizer.py`.
 
 Geometry optimization and normal mode analysis for H2O
 ------------------------------------------------------
 
-:git:`ase/test/turbomole/turbomole_h2o.py`.
+:git:`ase/test/calculator/turbomole/test_turbomole_h2o.py`.
 
 
 .. _turbomole qmmm:
@@ -361,7 +375,7 @@ The following example demonstrates how to use the Turbomole calculator in simple
 and explicit QMMM simulations on the examples of a water dimer partitioned into
 an MM and a QM region.
 
-:git:`ase/test/turbomole/turbomole_qmmm.py`.
+:git:`ase/test/calculator/turbomole/test_turbomole_qmmm.py`.
 
 The MM region is treated within a TIP3P model in the MM calculator and as an
 array of point charges in the QM calculation. The interaction between the QM
@@ -391,7 +405,7 @@ QM system:
 
 A more elaborated version of the latter example is used in the test script:
 
-:git:`ase/test/turbomole/turbomole_2h2o.py`.
+:git:`ase/test/calculator/turbomole/test_turbomole_2h2o.py`.
 
 
 Deprecated, non-implemented and unsupported features

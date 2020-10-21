@@ -22,7 +22,7 @@ Example
 
 >>> atoms = bulk('Al','fcc')
 >>> calc = DMol3()
->>> atoms.set_calculator(calc)
+>>> atoms.calc = calc
 >>> print 'Potential energy %5.5f eV' % atoms.get_potential_energy()
 
 
@@ -40,7 +40,7 @@ Reading eigenvalues and kpts are supported.
 Be careful with kpts and their directions (see internal coordinates below).
 
 Outputting the full electron density or specific bands to .grd files can be
-acheived with the plot command. The .grd files can be converted to the cube
+achieved with the plot command. The .grd files can be converted to the cube
 format using grd_to_cube().
 
 
@@ -73,7 +73,6 @@ grd    outfile for orbitals from DMol3 - cellpar in Angstrom
 
 """
 
-from __future__ import print_function
 import os
 import re
 import numpy as np
@@ -96,7 +95,8 @@ class DMol3(FileIOCalculator):
     else:
         command = None
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=FileIOCalculator._deprecated,
                  label='dmol_calc/tmp', atoms=None, **kwargs):
         """ Construct DMol3 calculator. """
         FileIOCalculator.__init__(self, restart, ignore_bad_restart_file,
@@ -163,7 +163,7 @@ class DMol3(FileIOCalculator):
         self.read_results()
 
     def read_results(self):
-        finished, message = self.finished_sucessfully()
+        finished, message = self.finished_successfully()
         if not finished:
             raise RuntimeError('DMol3 run failed, see outmol file for'
                                ' more info\n\n%s' % message)
@@ -172,7 +172,7 @@ class DMol3(FileIOCalculator):
         self.read_energy()
         self.read_forces()
 
-    def finished_sucessfully(self):
+    def finished_successfully(self):
         """ Reads outmol file and checks if job completed or failed.
 
         Returns
@@ -529,7 +529,7 @@ def find_transformation(atoms1, atoms2, verbose=False, only_cell=False):
     x = lstsq_fit[0]
     error = np.linalg.norm(np.dot(A, x) - B)
 
-    # Print comparision between A, B and Ax
+    # Print comparison between A, B and Ax
     if verbose:
         print('%17s %33s %35s %24s' % ('A', 'B', 'Ax', '|Ax-b|'))
         for a, b in zip(A, B):
@@ -620,6 +620,6 @@ if __name__ == '__main__':
 
     atoms = molecule('H2')
     calc = DMol3()
-    atoms.set_calculator(calc)
+    atoms.calc = calc
     # ~ 60 sec calculation
     print('Potential energy %5.5f eV' % atoms.get_potential_energy())

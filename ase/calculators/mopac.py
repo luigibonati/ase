@@ -23,13 +23,15 @@ class MOPAC(FileIOCalculator):
     default_parameters = dict(
         method='PM7',
         task='1SCF GRADIENTS',
+        charge=0,
         relscf=0.0001)
 
     methods = ['AM1', 'MNDO', 'MNDOD', 'PM3', 'PM6', 'PM6-D3', 'PM6-DH+',
                'PM6-DH2', 'PM6-DH2X', 'PM6-D3H4', 'PM6-D3H4X', 'PMEP', 'PM7',
                'PM7-TS', 'RM1']
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=FileIOCalculator._deprecated,
                  label='mopac', atoms=None, **kwargs):
         """Construct MOPAC-calculator object.
 
@@ -83,7 +85,11 @@ class MOPAC(FileIOCalculator):
             s += 'RELSCF={0} '.format(p.relscf)
 
         # Write charge:
-        charge = atoms.get_initial_charges().sum()
+        if p.charge:
+            charge = p.charge
+        else:
+            charge = atoms.get_initial_charges().sum()
+            
         if charge != 0:
             s += 'CHARGE={0} '.format(int(round(charge)))
 

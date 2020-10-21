@@ -11,3 +11,4 @@ Different information can be obtained from this:
    modes
    infrared
    raman
+   franck_condon

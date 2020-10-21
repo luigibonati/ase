@@ -1,5 +1,4 @@
 """Dimer: Diffusion along rows"""
-from __future__ import print_function
 import numpy as np
 
 from math import sqrt
@@ -33,7 +32,7 @@ constraint = FixAtoms(mask=mask)
 initial.set_constraint(constraint)
 
 # Calculate using EMT:
-initial.set_calculator(EMT())
+initial.calc = EMT()
 
 # Relax the initial state:
 QuasiNewton(initial).run(fmax=0.05)

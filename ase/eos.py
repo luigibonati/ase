@@ -1,37 +1,10 @@
-# -*- coding: utf-8 -*-
 import warnings
 
 from ase.units import kJ
-from ase.utils import basestring
 
 import numpy as np
 
-try:
-    from scipy.optimize import curve_fit
-except ImportError:
-    try:
-        from scipy.optimize import leastsq
-
-        # this part comes from
-        # http://projects.scipy.org/scipy/browser/trunk/scipy/optimize/minpack.py
-        def _general_function(params, xdata, ydata, function):
-            return function(xdata, *params) - ydata
-        # end of this part
-
-        def curve_fit(f, x, y, p0):
-            func = _general_function
-            args = (x, y, f)
-            # this part comes from
-            # http://projects.scipy.org/scipy/browser/trunk/scipy/optimize/minpack.py
-            popt, pcov, infodict, mesg, ier = leastsq(func, p0, args=args,
-                                                      full_output=1)
-
-            if ier not in [1, 2, 3, 4]:
-                raise RuntimeError("Optimal parameters not found: " + mesg)
-            # end of this part
-            return popt, pcov
-    except ImportError:
-        curve_fit = None
+from scipy.optimize import curve_fit
 
 
 eos_names = ['sj', 'taylor', 'murnaghan', 'birch', 'birchmurnaghan',
@@ -357,8 +330,8 @@ def plot(eos_string, e0, v0, B, x, y, v, e, ax=None):
         import matplotlib.pyplot as plt
         ax = plt.gca()
 
-    ax.plot(x, y, '-r')
-    ax.plot(v, e, 'ob')
+    ax.plot(x, y, ls='-', color='C3')  # By default red line
+    ax.plot(v, e, ls='', marker='o', mec='C0', mfc='C0')  # By default blue marker
 
     try:
         ax.set_xlabel(u'volume [Å$^3$]')
@@ -407,7 +380,7 @@ def calculate_eos(atoms, npoints=5, eps=0.04, trajectory=None, callback=None):
     p0 = atoms.get_positions()
     c0 = atoms.get_cell()
 
-    if isinstance(trajectory, basestring):
+    if isinstance(trajectory, str):
         from ase.io import Trajectory
         trajectory = Trajectory(trajectory, 'w', atoms)
 
@@ -466,10 +439,7 @@ class CLICommand:
                 # Special case - used by ASE's GUI:
                 import pickle
                 import sys
-                if sys.version_info[0] == 2:
-                    v, e = pickle.load(sys.stdin)
-                else:
-                    v, e = pickle.load(sys.stdin.buffer)
+                v, e = pickle.load(sys.stdin.buffer)
             else:
                 if '@' in name:
                     index = None

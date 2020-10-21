@@ -41,6 +41,7 @@ array([[-0.375,  0.   ,  0.   ],
     Hendrik J. Monkhorst and James D. Pack:
     *Special points for Brillouin-zone integrations*,
     Phys. Rev. B 13, 5188–5192 (1976)
+    :doi:`10.1103/PhysRevB.13.5188`
 
 
 Special points in the Brillouin zone
@@ -64,7 +65,7 @@ The below table lists the special points from [Setyawan-Curtarolo]_.
     Computational Materials Science,
     Volume 49, Issue 2, August 2010, Pages 299–312
 
-    http://dx.doi.org/10.1016/j.commatsci.2010.05.010
+    :doi:`10.1016/j.commatsci.2010.05.010`
 
 You can find the special points in the Brillouin zone:
 
@@ -97,7 +98,7 @@ It is typically created by helper functions such as
 Band structure
 --------------
 
-.. autoclass:: ase.dft.band_structure.BandStructure
+.. autoclass:: ase.spectrum.band_structure.BandStructure
    :members:
 
 Free electron example:

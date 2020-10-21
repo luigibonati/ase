@@ -1,3 +1,4 @@
+# flake8: noqa
 """Tools for analyzing instances of :class:`~ase.Atoms`
 """
 
@@ -9,7 +10,7 @@ from ase import Atoms
 __all__ = ['Analysis']
 
 
-class Analysis(object):
+class Analysis:
     """Analysis class
 
     Parameters for initialization:
@@ -554,7 +555,7 @@ class Analysis(object):
         rmax: float
             Maximum distance of RDF.
         nbins: int
-            Number of bins to devide RDF.
+            Number of bins to divide RDF.
         imageIdx: int/slice/None
             Images to analyze, see :func:`_get_slice` for details.
         elements: str/int/list/tuple

@@ -66,18 +66,14 @@ If you find ASE useful in your research please cite:
    | Lars Pastewka, Andrew Peterson, Carsten Rostgaard, Jakob Schiøtz,
    | Ole Schütt, Mikkel Strange, Kristian S. Thygesen, Tejs Vegge,
    | Lasse Vilhelmsen, Michael Walter, Zhenhua Zeng, Karsten Wedel Jacobsen
-   | `The Atomic Simulation Environment—A Python library for working with atoms`__
+   | :doi:`The Atomic Simulation Environment—A Python library for working with atoms <10.1088/1361-648X/aa680e>`
    | J. Phys.: Condens. Matter Vol. **29** 273002, 2017
-
-   __ https://doi.org/10.1088/1361-648X/aa680e
 
 An older paper corresponding to an early version of ASE is:
 
    | S. R. Bahn and K. W. Jacobsen
-   | `An object-oriented scripting interface to a legacy electronic structure code`__
+   | :doi:`An object-oriented scripting interface to a legacy electronic structure code <10.1109/5992.998641>`
    | Comput. Sci. Eng., Vol. **4**, 56-66, 2002
-
-   __ http://dx.doi.org/10.1109/5992.998641
 
 BibTex (:git:`doc/ASE.bib`):
 

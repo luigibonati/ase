@@ -19,7 +19,6 @@
 
 """
 
-from __future__ import print_function
 import os
 import time
 import subprocess
@@ -38,22 +37,28 @@ from ase.calculators.openmx.writer import write_openmx
 #from ase.calculators.openmx.dos import DOS
 
 
+def parse_omx_version(txt):
+    """Parse version number from stdout header."""
+    match = re.search(r'Welcome to OpenMX\s+Ver\.\s+(\S+)', txt, re.M)
+    return match.group(1)
+
+
 class OpenMX(FileIOCalculator):
     """
     Calculator interface to the OpenMX code.
     """
 
-    implemented_properties = (
+    implemented_properties = [
         'free_energy',       # Same value with energy
         'energy',
+        'energies',
         'forces',
         'stress',
         'dipole',
         'chemical_potential',
         'magmom',
         'magmoms',
-        'eigenvalues',
-    )
+        'eigenvalues']
 
     default_parameters = OpenMXParameters()
 
@@ -74,7 +79,8 @@ class OpenMX(FileIOCalculator):
         'debug': False
     }
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=FileIOCalculator._deprecated,
                  label='./openmx', atoms=None, command=None, mpi=None,
                  pbs=None, **kwargs):
 
@@ -151,7 +157,7 @@ class OpenMX(FileIOCalculator):
         def isRunning(process=None):
             ''' Check mpi is running'''
             return process.poll() is None
-        runfile = get_file_name('.dat', self.label)
+        runfile = get_file_name('.dat', self.label, absolute_directory=False)
         outfile = get_file_name('.log', self.label)
         olddir = os.getcwd()
         abs_dir = os.path.join(olddir, self.directory)
@@ -178,7 +184,7 @@ class OpenMX(FileIOCalculator):
             return process.poll() is None
         processes = self.processes
         threads = self.threads
-        runfile = get_file_name('.dat', self.label)
+        runfile = get_file_name('.dat', self.label, absolute_directory=False)
         outfile = get_file_name('.log', self.label)
         olddir = os.getcwd()
         abs_dir = os.path.join(olddir, self.directory)
@@ -302,9 +308,9 @@ class OpenMX(FileIOCalculator):
         See base FileIOCalculator for documentation.
         """
         if self.parameters.data_path is None:
-            if not 'OPENMX_DFT_DATA_PATH' in os.environ:
+            if 'OPENMX_DFT_DATA_PATH' not in os.environ:
                 warnings.warn('Please either set OPENMX_DFT_DATA_PATH as an'
-                              'enviroment variable or specify dft_data_path as'
+                              'enviroment variable or specify "data_path" as'
                               'a keyword argument')
 
         self.prind("Start Calculation")
@@ -475,8 +481,8 @@ class OpenMX(FileIOCalculator):
                 threads_string = ''
             command += 'mpirun -np ' + \
                 str(processes) + ' ' + self.command + ' %s ' + threads_string + ' |tee %s'
-                #str(processes) + ' openmx %s' + threads_string + ' > %s'
-                
+            #str(processes) + ' openmx %s' + threads_string + ' > %s'
+
         if runfile is None:
             runfile = abs_dir + '/' + self.prefix + '.dat'
         if outfile is None:

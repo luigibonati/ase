@@ -25,7 +25,7 @@ def get_txt(txt, rank):
         return devnull
 
 
-def paropen(name, mode='r', buffering=-1):
+def paropen(name, mode='r', buffering=-1, encoding=None):
     """MPI-safe version of open function.
 
     In read mode, the file is opened on all nodes.  In write and
@@ -34,7 +34,7 @@ def paropen(name, mode='r', buffering=-1):
     """
     if world.rank > 0 and mode[0] != 'r':
         name = '/dev/null'
-    return open(name, mode, buffering)
+    return open(name, mode, buffering, encoding)
 
 
 def parprint(*args, **kwargs):
@@ -185,6 +185,12 @@ elif '_gpaw' in sys.modules:
         world = _gpaw.Communicator()
     except AttributeError:
         pass
+elif '_asap' in sys.modules:
+    import _asap
+    try:
+        world = _asap.Communicator()
+    except AttributeError:
+        pass
 elif 'mpi4py' in sys.modules:
     world = MPI4PY()
 
@@ -275,14 +281,14 @@ def parallel_generator(generator):
                 raise ex
             broadcast((None, None))
         else:
-            ex, result = broadcast((None, None))
-            if ex is not None:
-                raise ex
+            ex2, result = broadcast((None, None))
+            if ex2 is not None:
+                raise ex2
             while result is not None:
                 yield result
-                ex, result = broadcast((None, None))
-                if ex is not None:
-                    raise ex
+                ex2, result = broadcast((None, None))
+                if ex2 is not None:
+                    raise ex2
 
     return new_generator
 
@@ -345,4 +351,4 @@ class ParallelModuleWrapper:
 
 
 _parallel = sys.modules['ase.parallel']
-sys.modules['ase.parallel'] = ParallelModuleWrapper()
+sys.modules['ase.parallel'] = ParallelModuleWrapper()  # type: ignore

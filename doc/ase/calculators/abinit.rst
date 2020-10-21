@@ -11,7 +11,7 @@ ABINIT_ is a density-functional theory code based on pseudopotentials
 and a planewave basis.
 
 
-.. _ABINIT: http://www.abinit.org
+.. _ABINIT: https://www.abinit.org
 
 
 
@@ -35,7 +35,7 @@ Environment variables
 
 Abinit does not provide tarballs of pseudopotentials so the easiest way is to
 download and unpack
-http://wiki.fysik.dtu.dk/abinit-files/abinit-pseudopotentials-2.tar.gz
+https://wiki.fysik.dtu.dk/abinit-files/abinit-pseudopotentials-2.tar.gz
 
 Set the environment variables in your in your shell configuration file::
 
@@ -91,4 +91,4 @@ Example 1
 =========
 
 Here is an example of how to calculate the total energy for bulk Silicon
-:git:`ase/test/abinit/abinit_Si.py`.
+:git:`ase/test/calculator/abinit/test_abinit_Si.py`.

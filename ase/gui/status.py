@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-from __future__ import unicode_literals
 from ase.gui.i18n import _
 from math import sqrt, pi, acos
 
@@ -37,7 +35,6 @@ class Status:  # Status is used as a mixin in GUI
         ordered_indices = [i for i in self.images.selected_ordered
                            if i < len(atoms)]
         n = len(indices)
-        self.nselected = n
 
         if n == 0:
             self.window.update_status_line('')

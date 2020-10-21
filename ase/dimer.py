@@ -1,3 +1,4 @@
+# flake8: noqa
 """Minimum mode follower for finding saddle points in an unbiased way.
 
 There is, currently, only one implemented method: The Dimer method.
@@ -7,14 +8,14 @@ There is, currently, only one implemented method: The Dimer method.
 import sys
 import time
 import warnings
+from math import cos, sin, atan, tan, degrees, pi, sqrt
+from typing import Dict, Any
 
 import numpy as np
 
 from ase.optimize.optimize import Optimizer
-from math import cos, sin, atan, tan, degrees, pi, sqrt
 from ase.parallel import world
 from ase.calculators.singlepoint import SinglePointCalculator
-from ase.utils import basestring
 
 # Handy vector methods
 norm = np.linalg.norm
@@ -306,7 +307,7 @@ class MinModeControl:
     be overwritten.
 
     """
-    parameters = {}
+    parameters: Dict[str, Any] = {}
     def __init__(self, logfile = '-', eigenmode_logfile=None, **kwargs):
         # Overwrite the defaults with the input parameters given
         for key in kwargs:
@@ -330,7 +331,7 @@ class MinModeControl:
         # Set up the regular logfile
         if world.rank != 0:
             logfile = None
-        elif isinstance(logfile, basestring):
+        elif isinstance(logfile, str):
             if logfile == '-':
                 logfile = sys.stdout
             else:
@@ -341,7 +342,7 @@ class MinModeControl:
         if eigenmode_logfile:
             if world.rank != 0:
                 eigenmode_logfile = None
-            elif isinstance(eigenmode_logfile, basestring):
+            elif isinstance(eigenmode_logfile, str):
                 if eigenmode_logfile == '-':
                     eigenmode_logfile = sys.stdout
                 else:
@@ -593,7 +594,7 @@ class MinModeAtoms:
                     self.atoms0,
                     energy=self.atoms.get_potential_energy(),
                     forces=self.atoms.get_forces())
-                self.atoms0.set_calculator(calc)
+                self.atoms0.calc = calc
 
     def initialize_eigenmodes(self, method=None, eigenmodes=None, \
                               gauss_std=None):
@@ -876,14 +877,14 @@ class MinModeAtoms:
             if radius is not None:
                 r_mask = [dist[1] < radius for dist in d]
             else:
-                r_mask = [True for _ in self]
+                r_mask = [True for _ in range(len(self))]
 
             if number_of_atoms is not None:
                 d_sorted = [n[0] for n in sorted(d, key = lambda k: k[1])]
                 n_nearest = d_sorted[:number_of_atoms]
                 n_mask = [k in n_nearest for k in range(len(self))]
             else:
-                n_mask = [True for _ in self]
+                n_mask = [True for _ in range(len(self))]
 
             # Resolve n_mask / r_mask conflicts
             c_mask = [n_mask[k] and r_mask[k] for k in range(len(self))]
@@ -892,7 +893,7 @@ class MinModeAtoms:
 
         # Set up a True mask if there is no mask supplied
         if mask is None:
-            mask = [True for _ in self]
+            mask = [True for _ in range(len(self))]
             if c_mask is None:
                 w = 'It was not possible to figure out which atoms to ' + \
                     'displace, Will try to displace all atoms.\n'
@@ -1106,7 +1107,7 @@ def read_eigenmode(mlog, index = -1):
     To access the pre optimization eigenmode set index = 'null'.
 
     """
-    if isinstance(mlog, basestring):
+    if isinstance(mlog, str):
         f = open(mlog, 'r')
     else:
         f = mlog
@@ -1121,7 +1122,7 @@ def read_eigenmode(mlog, index = -1):
     n_itr = (len(lines) // (n + 1)) - 2
 
     # Locate the correct image.
-    if isinstance(index, basestring):
+    if isinstance(index, str):
         if index.lower() == 'null':
             i = 0
         else:

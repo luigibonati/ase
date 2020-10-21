@@ -3,14 +3,13 @@ import numpy as np
 from ase.atoms import Atoms
 from ase.calculators.singlepoint import SinglePointDFTCalculator
 from ase.calculators.singlepoint import SinglePointKPoint
-from ase.utils import basestring
 
 
 def read_gpaw_out(fileobj, index):
     notfound = []
 
     def index_startswith(lines, string):
-        if not isinstance(string, basestring):
+        if not isinstance(string, str):
             # assume it's a list
             for entry in string:
                 try:
@@ -80,6 +79,7 @@ def read_gpaw_out(fileobj, index):
 
         symbols = []
         positions = []
+        magmoms = []
         for line in lines[i + 1:]:
             words = line.split()
             if len(words) < 5:
@@ -87,6 +87,9 @@ def read_gpaw_out(fileobj, index):
             n, symbol, x, y, z = words[:5]
             symbols.append(symbol.split('.')[0].title())
             positions.append([float(x), float(y), float(z)])
+            if len(words) > 5:
+                mom = float(words[-1].rstrip(')'))
+                magmoms.append(mom)
         if len(symbols):
             atoms = Atoms(symbols=symbols, positions=positions,
                           cell=cell, pbc=pbc)
@@ -185,7 +188,7 @@ def read_gpaw_out(fileobj, index):
         try:
             ii = index_startswith(lines, 'local magnetic moments')
         except ValueError:
-            magmoms = None
+            pass
         else:
             magmoms = []
             for j in range(ii + 1, ii + 1 + len(atoms)):
@@ -200,10 +203,17 @@ def read_gpaw_out(fileobj, index):
             f, i = read_forces(lines, ii)
 
         try:
+            parameters = {}
             ii = index_startswith(lines, 'vdw correction:')
         except ValueError:
-            pass
+            name = 'gpaw'
         else:
+            name = lines[ii - 1].strip()
+            # save uncorrected values
+            parameters.update({
+                'calculator': 'gpaw',
+                'uncorrected_energy': e,
+            })
             line = lines[ii + 1]
             assert line.startswith('energy:')
             e = float(line.split()[-1])
@@ -215,20 +225,24 @@ def read_gpaw_out(fileobj, index):
         if q is not None and len(atoms) > 0:
             n = len(atoms)
             atoms.set_initial_charges([q / n] * n)
-        if magmoms is not None:
+
+        if magmoms:
             atoms.set_initial_magnetic_moments(magmoms)
+        else:
+            magmoms = None
         if e is not None or f is not None:
             calc = SinglePointDFTCalculator(atoms, energy=e, forces=f,
                                             dipole=dipole, magmoms=magmoms,
                                             efermi=eFermi,
                                             bzkpts=bz_kpts, ibzkpts=ibz_kpts)
             calc.eref = Eref
-            calc.name = 'gpaw'
+            calc.name = name
+            calc.parameters = parameters
             if energy_contributions is not None:
                 calc.energy_contributions = energy_contributions
             if kpts is not None:
                 calc.kpts = kpts
-            atoms.set_calculator(calc)
+            atoms.calc = calc
 
         images.append(atoms)
         lines = lines[i:]

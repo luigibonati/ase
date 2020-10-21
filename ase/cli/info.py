@@ -1,14 +1,10 @@
-from __future__ import print_function
 import platform
-import os
 import sys
 
-from ase.utils import import_module, FileNotFoundError
-from ase.utils import search_current_git_hash
-from ase.io.formats import filetype, all_formats, UnknownFileTypeError
+from ase.dependencies import all_dependencies
+from ase.io.formats import filetype, ioformats, UnknownFileTypeError
 from ase.io.ulm import print_ulm_info
 from ase.io.bundletrajectory import print_bundletrajectory_info
-from ase.io.formats import all_formats as fmts
 
 
 class CLICommand:
@@ -52,17 +48,22 @@ class CLICommand:
             return
 
         n = max(len(filename) for filename in args.filename) + 2
+        nfiles_not_found = 0
         for filename in args.filename:
             try:
                 format = filetype(filename)
             except FileNotFoundError:
                 format = '?'
                 description = 'No such file'
+                nfiles_not_found += 1
             except UnknownFileTypeError:
                 format = '?'
                 description = '?'
             else:
-                description, code = all_formats.get(format, ('?', '?'))
+                if format in ioformats:
+                    description = ioformats[format].description
+                else:
+                    description = '?'
 
             print('{:{}}{} ({})'.format(filename + ':', n,
                                         description, format))
@@ -72,31 +73,35 @@ class CLICommand:
                 elif format == 'bundletrajectory':
                     print_bundletrajectory_info(filename)
 
+        raise SystemExit(nfiles_not_found)
+
 
 def print_info():
     versions = [('platform', platform.platform()),
                 ('python-' + sys.version.split()[0], sys.executable)]
-    for name in ['ase', 'numpy', 'scipy', 'ase_ext']:
-        try:
-            module = import_module(name)
-        except ImportError:
-            if name != 'ase_ext':
-                versions.append((name, 'no'))
-        else:
-            # Search for git hash
-            githash = search_current_git_hash(module)
-            if githash is None:
-                githash = ''
-            else:
-                githash = '-{:.10}'.format(githash)
-            versions.append((name + '-' + module.__version__ + githash,
-                            module.__file__.rsplit(os.sep, 1)[0] + os.sep))
 
-    for a, b in versions:
-        print('{:25}{}'.format(a, b))
+    for name, path in versions + all_dependencies():
+        print('{:24} {}'.format(name, path))
 
 
 def print_formats():
     print('Supported formats:')
-    for f in list(sorted(fmts)):
-        print('  {}: {}'.format(f, fmts[f][0]))
+    for fmtname in sorted(ioformats):
+        fmt = ioformats[fmtname]
+
+        infos = [fmt.modes, 'single' if fmt.single else 'multi']
+        if fmt.isbinary:
+            infos.append('binary')
+        if fmt.encoding is not None:
+            infos.append(fmt.encoding)
+        infostring = '/'.join(infos)
+
+        moreinfo = [infostring]
+        if fmt.extensions:
+            moreinfo.append('ext={}'.format('|'.join(fmt.extensions)))
+        if fmt.globs:
+            moreinfo.append('glob={}'.format('|'.join(fmt.globs)))
+
+        print('  {} [{}]: {}'.format(fmt.name,
+                                     ', '.join(moreinfo),
+                                     fmt.description))

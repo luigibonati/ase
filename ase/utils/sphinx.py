@@ -1,18 +1,16 @@
-from __future__ import print_function
 import os
 import traceback
 import warnings
 from os.path import join
 from stat import ST_MTIME
 import re
+import runpy
 
 from docutils import nodes
 from docutils.parsers.rst.roles import set_classes
 
-from ase.utils import exec_
-
 import matplotlib
-matplotlib.use('Agg', warn=False)
+matplotlib.use('Agg')
 
 
 def mol_role(role, rawtext, text, lineno, inliner, options={}, content=[]):
@@ -49,6 +47,15 @@ def git_role_tmpl(urlroot,
             text = text[1:]
         if '?' in name:
             name = name[:name.index('?')]
+    # Check if the link is broken
+    is_tag = text.startswith('..')  # Tags are like :git:`3.19.1 <../3.19.1>`
+    path = os.path.join('..', text)
+    do_exists = os.path.exists(path)
+    if not (is_tag or do_exists):
+        msg = 'Broken link: {}: Non-existing path: {}'.format(rawtext, path)
+        msg = inliner.reporter.error(msg, line=lineno)
+        prb = inliner.problematic(rawtext, rawtext, msg)
+        return [prb], [msg]
     ref = urlroot + text
     set_classes(options)
     node = nodes.reference(rawtext, name, refuri=ref,
@@ -82,7 +89,7 @@ def creates():
                     yield dirpath, filename, outnames
 
 
-def create_png_files():
+def create_png_files(raise_exceptions=False):
     errcode = os.system('povray -h 2> /dev/null')
     if errcode:
         warnings.warn('No POVRAY!')
@@ -122,14 +129,20 @@ def create_png_files():
             import matplotlib.pyplot as plt
             plt.figure()
             try:
-                exec_(compile(open(pyname).read(), pyname, 'exec'), {})
+                runpy.run_path(pyname)
             except KeyboardInterrupt:
                 return
-            except:
-                traceback.print_exc()
+            except Exception:
+                if raise_exceptions:
+                    raise
+                else:
+                    traceback.print_exc()
             finally:
                 os.chdir(olddir)
-            plt.close()
+
+            for n in plt.get_fignums():
+                plt.close(n)
+
             for outname in outnames:
                 print(dir, outname)
 
@@ -167,7 +180,7 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='Process generated files.')
     parser.add_argument('command', nargs='?', default='list',
-                        choices=['list', 'inspect', 'clean'])
+                        choices=['list', 'inspect', 'clean', 'run'])
     args = parser.parse_args()
     if args.command == 'clean':
         clean()
@@ -175,5 +188,7 @@ if __name__ == '__main__':
         for dir, pyname, outnames in creates():
             for outname in outnames:
                 print(os.path.join(dir, outname))
+    elif args.command == 'run':
+        create_png_files(raise_exceptions=True)
     else:
         visual_inspection()

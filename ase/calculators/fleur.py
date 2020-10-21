@@ -1,4 +1,3 @@
-from __future__ import print_function
 """This module defines an ASE interface to FLAPW code FLEUR.
 
 http://www.flapw.de
@@ -288,7 +287,8 @@ class FLEUR:
             self.read()
             self.check_convergence()
 
-        if os.path.exists('out.old'): os.rename('out.old', 'out')
+        if os.path.exists('out.old'):
+            os.rename('out.old', 'out')
         # After convergence clean up broyd* files
         os.system('rm -f broyd*')
         os.chdir(self.start_dir)

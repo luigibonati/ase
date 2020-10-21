@@ -12,6 +12,7 @@ File input and output
 .. toctree::
     :hidden:
 
+    formatoptions
     trajectory
     ulm
     opls
@@ -23,6 +24,11 @@ The :mod:`ase.io` module has three basic functions: :func:`read`,
 .. autofunction:: read
 .. autofunction:: iread
 .. autofunction:: write
+
+Use ``ase info --formats`` to see a list of formats.  This information
+is programmatically accessible as ``ase.io.formats.ioformats``, a
+dictionary which maps format names to :class:`ase.io.formats.IOFormat`
+objects.
 
 These are the file-formats that are recognized (formats with a ``+`` support
 multiple configurations):

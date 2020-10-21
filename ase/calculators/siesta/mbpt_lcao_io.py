@@ -3,7 +3,6 @@
 """
 
 
-from __future__ import division
 import ase.io as aio
 import numpy as np
 
@@ -25,7 +24,7 @@ class read_mbpt_lcao_output:
 
     Parameters
     ----------
-        No input paramters, but the args, and prop variable have
+        No input parameters, but the args, and prop variable have
         to be modify as function of your wishes
 
     References
@@ -60,12 +59,7 @@ class read_hdf5_data:
     """
 
     def __init__(self, args, prop_fig, YFname):
-
-        try:
-            import h5py
-        except:
-            raise ValueError('The module need h5py library in order \
-                        to read hdf5 files!')
+        import h5py
 
         self.atoms = aio.read(prop_fig.fatoms)
         self.determine_fname(args, YFname)
@@ -644,11 +638,11 @@ class read_text_data:
 
             Array = np.zeros((dim[0], dim[1], dim[2]), dtype=float)
 
-            l = end_box
+            l_end = end_box
             for k in range(int(dim[2])):
                 for j in range(int(dim[1])):
-                    Array[:, j, k] = np.array(str2float(LINE[l]))
-                    l = l + 1
+                    Array[:, j, k] = np.array(str2float(LINE[l_end]))
+                    l_end += 1
 
         return dr, origin, lbound, ubound, Array, box, dim
 

@@ -1,5 +1,4 @@
 """Diffusion along rows"""
-from __future__ import print_function
 from math import sqrt
 
 from ase import Atoms, Atom
@@ -41,7 +40,7 @@ print(mask)
 
 for image in images:
     # Let all images use an EMT calculator:
-    image.set_calculator(EMT())
+    image.calc = EMT()
     image.set_constraint(constraint)
 
 # Relax the initial and final states:
