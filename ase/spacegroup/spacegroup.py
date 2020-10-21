@@ -130,11 +130,8 @@ class Spacegroup:
             return
         if not datafile:
             datafile = get_datafile()
-        f = open(datafile, 'r')
-        try:
-            _read_datafile(self, spacegroup, setting, f)
-        finally:
-            f.close()
+        with open(datafile, 'r') as fd:
+            _read_datafile(self, spacegroup, setting, fd)
 
     def __repr__(self):
         return 'Spacegroup(%d, setting=%d)' % (self.no, self.setting)
