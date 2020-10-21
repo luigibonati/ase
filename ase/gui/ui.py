@@ -554,7 +554,7 @@ class ASEFileChooser(LoadFileDialog):
         for format, (description, code) in sorted(all_formats.items(),
                                                   key=key):
             io = get_ioformat(format)
-            if io.read and description != '?':
+            if io.can_read and description != '?':
                 labels.append(_(description))
                 values.append(format)
 

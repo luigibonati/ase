@@ -17,6 +17,7 @@ import functools
 import inspect
 import os
 import sys
+import numbers
 import warnings
 from pathlib import Path, PurePath
 from typing import (
@@ -53,10 +54,10 @@ class IOFormat:
         # We can allow more flags as needed (buffering etc.)
         if mode not in list('rwa'):
             raise ValueError("Only modes allowed are 'r', 'w', and 'a'")
-        if mode == 'r' and self.can_read:
+        if mode == 'r' and not self.can_read:
             raise NotImplementedError('No reader implemented for {} format'
                                       .format(self.name))
-        if mode == 'w' and self.can_write:
+        if mode == 'w' and not self.can_write:
             raise NotImplementedError('No writer implemented for {} format'
                                       .format(self.name))
         if mode == 'a' and not self.can_append:
@@ -71,15 +72,16 @@ class IOFormat:
 
     @property
     def can_read(self) -> bool:
-        return self.read is not None
+        return self._readfunc() is not None
 
     @property
     def can_write(self) -> bool:
-        return self.write is not None
+        return self._writefunc() is not None
 
     @property
     def can_append(self) -> bool:
-        return self.can_write and 'append' in self.write.__code__.co_varnames
+        writefunc = self._writefunc()
+        return self.can_write and 'append' in writefunc.__code__.co_varnames
 
     def __repr__(self) -> str:
         tokens = ['{}={}'.format(name, repr(value))
@@ -102,40 +104,71 @@ class IOFormat:
     def _formatname(self) -> str:
         return self.name.replace('-', '_')
 
+    def _readfunc(self):
+        return getattr(self.module, 'read_' + self._formatname, None)
+
+    def _writefunc(self):
+        return getattr(self.module, 'write_' + self._formatname, None)
+
     @property
     def read(self):
-        read = getattr(self.module, 'read_' + self._formatname, None)
-        if read and not inspect.isgeneratorfunction(read):
-            read = functools.partial(wrap_read_function, read)
-        return read
+        if not self.can_read:
+            self._warn_none('read')
+            return None
+
+        return self._read_wrapper
+
+    def _read_wrapper(self, *args, **kwargs):
+        function = self._readfunc()
+        if function is None:
+            self._warn_none('read')
+            return None
+        if not inspect.isgeneratorfunction(function):
+            function = functools.partial(wrap_read_function, function)
+        return function(*args, **kwargs)
+
+    def _warn_none(self, action):
+        msg = ('Accessing the IOFormat.{action} property on a format '
+               'without {action} support will change behaviour in the '
+               'future and return a callable instead of None.  '
+               'Use IOFormat.can_{action} to check whether {action} '
+               'is supported.')
+        warnings.warn(msg.format(action=action), FutureWarning)
 
     @property
     def write(self):
-        return getattr(self.module, 'write_' + self._formatname, None)
+        if not self.can_write:
+            self._warn_none('write')
+            return None
+
+        return self._write_wrapper
+
+    def _write_wrapper(self, *args, **kwargs):
+        function = self._writefunc()
+        if function is None:
+            raise ValueError(f'Cannot write to {self.name}-format')
+        return function(*args, **kwargs)
 
     @property
     def modes(self) -> str:
         modes = ''
-        if self.read:
+        if self.can_read:
             modes += 'r'
-        if self.write:
+        if self.can_write:
             modes += 'w'
         return modes
 
     def full_description(self) -> str:
-        lines = ['Name:        {name}',
-                 'Description: {description}',
-                 'Modes:       {modes}',
-                 'Encoding:    {encoding}',
-                 'Module:      {module_name}',
-                 'Code:        {code}',
-                 'Extensions:  {extensions}',
-                 'Globs:       {globs}',
-                 'Magic:       {magic}']
-        desc = '\n'.join(lines)
-
-        myvars = {name: getattr(self, name) for name in dir(self)}
-        return desc.format(**myvars)
+        lines = [f'Name:        {self.name}',
+                 f'Description: {self.description}',
+                 f'Modes:       {self.modes}',
+                 f'Encoding:    {self.encoding}',
+                 f'Module:      {self.module_name}',
+                 f'Code:        {self.code}',
+                 f'Extensions:  {self.extensions}',
+                 f'Globs:       {self.globs}',
+                 f'Magic:       {self.magic}']
+        return '\n'.join(lines)
 
     @property
     def acceptsfd(self) -> bool:
@@ -319,7 +352,8 @@ F('mustem', 'muSTEM xtl file', '1F',
   ext='xtl')
 F('mysql', 'ASE MySQL database file', '+S',
   module='db')
-F('netcdftrajectory', 'AMBER NetCDF trajectory file', '+S')
+F('netcdftrajectory', 'AMBER NetCDF trajectory file', '+S',
+  magic=b'CDF')
 F('nomad-json', 'JSON from Nomad archive', '+F',
   ext='nomad-json')
 F('nwchem-in', 'NWChem input file', '1F',
@@ -373,11 +407,6 @@ F('xtd', 'Materials Studio file', '+F')
 # xyz: No `ext='xyz'` in the definition below.
 #      The .xyz files are handled by the extxyz module by default.
 F('xyz', 'XYZ-file', '+F')
-
-netcdfconventions2format = {
-    'http://www.etsf.eu/fileformats': 'etsf',
-    'AMBER': 'netcdftrajectory'
-}
 
 
 def get_compression(filename: str) -> Tuple[str, Optional[str]]:
@@ -515,7 +544,6 @@ def write(
         filename = str(filename)
 
     if isinstance(filename, str):
-        filename = os.path.expanduser(filename)
         fd = None
         if filename == '-':
             fd = sys.stdout
@@ -553,7 +581,7 @@ def _write(filename, fd, format, io, images, parallel=None, append=False,
                              .format(format))
         images = images[0]
 
-    if io.write is None:
+    if not io.can_write:
         raise ValueError("Can't write to {}-format".format(format))
 
     # Special case for json-format:
@@ -686,10 +714,8 @@ def iread(
 @parallel_generator
 def _iread(filename, index, format, io, parallel=None, full_output=False,
            **kwargs):
-    if isinstance(filename, str):
-        filename = os.path.expanduser(filename)
 
-    if not io.read:
+    if not io.can_read:
         raise ValueError("Can't read from {}-format".format(format))
 
     if io.single:
@@ -784,8 +810,8 @@ def filetype(
     """
 
     orig_filename = filename
-    if hasattr(filename, 'name') and len(getattr(filename, 'name')) > 0:
-        filename = getattr(filename, 'name')
+    if hasattr(filename, 'name'):
+        filename = filename.name  # type: ignore
 
     ext = None
     if isinstance(filename, str):
@@ -839,25 +865,6 @@ def filetype(
     if len(data) == 0:
         raise UnknownFileTypeError('Empty file: ' + filename)    # type: ignore
 
-    if data.startswith(b'CDF'):
-        # We can only recognize these if we actually have the netCDF4 module.
-        try:
-            import netCDF4
-        except ImportError:
-            pass
-        else:
-            nc = netCDF4.Dataset(filename)
-            if 'Conventions' in nc.ncattrs():
-                if nc.Conventions in netcdfconventions2format:
-                    return netcdfconventions2format[nc.Conventions]
-                else:
-                    raise UnknownFileTypeError(
-                        "Unsupported NetCDF convention: "
-                        "'{}'".format(nc.Conventions))
-            else:
-                raise UnknownFileTypeError("NetCDF file does not have a "
-                                           "'Conventions' attribute.")
-
     for ioformat in ioformats.values():
         if ioformat.match_magic(data):
             return ioformat.name
@@ -879,36 +886,11 @@ def filetype(
     return format
 
 
-def index2range(index, nsteps):
-    """Method to convert a user given *index* option to a list of indices.
+def index2range(index, length):
+    """Convert slice or integer to range.
 
-    Returns a range.
-    """
-    if isinstance(index, int):
-        if index < 0:
-            tmpsnp = nsteps + index
-            trbl = range(tmpsnp, tmpsnp + 1, 1)
-        else:
-            trbl = range(index, index + 1, 1)
-    elif isinstance(index, slice):
-        start = index.start
-        stop = index.stop
-        step = index.step
-
-        if start is None:
-            start = 0
-        elif start < 0:
-            start = nsteps + start
-
-        if step is None:
-            step = 1
-
-        if stop is None:
-            stop = nsteps
-        elif stop < 0:
-            stop = nsteps + stop
-
-        trbl = range(start, stop, step)
-    else:
-        raise RuntimeError("index2range handles integers and slices only.")
-    return trbl
+    If index is an integer, range will contain only that integer."""
+    obj = range(length)[index]
+    if isinstance(obj, numbers.Integral):
+        obj = range(obj, obj + 1)
+    return obj
