@@ -32,7 +32,6 @@ def copy_frames(inbundle, outbundle, start=0, end=None, step=1,
         raise TypeError("copy_frames: start, end and step must be integers.")
     metadata, nframes = read_bundle_info(inbundle)
 
-    ulm = True
     backend = UlmBundleBackend(True, metadata['ulm.singleprecision'])
 
     if start < 0:
