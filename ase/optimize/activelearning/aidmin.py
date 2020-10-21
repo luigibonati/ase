@@ -456,7 +456,7 @@ class GPMin(AIDMin):
                  bounds=None, update_prior_strategy='maximum',
                  update_hyperparams=False):
 
-               """Optimize atomic positions using GPMin algorithm, which uses both
+        """Optimize atomic positions using GPMin algorithm, which uses both
         potential energies and forces information to build a PES via Gaussian
         Process (GP) regression and then minimizes it.
 
