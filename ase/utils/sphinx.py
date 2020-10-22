@@ -73,7 +73,8 @@ def creates():
         for filename in filenames:
             if filename.endswith('.py'):
                 path = join(dirpath, filename)
-                lines = open(path).readlines()
+                with open(path) as fd:
+                    lines = fd.readlines()
                 if len(lines) == 0:
                     continue
                 if 'coding: utf-8' in lines[0]:
