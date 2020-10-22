@@ -488,21 +488,13 @@ def read_espresso_in(fileobj):
     else:
         alat, cell = ibrav_to_cell(data['system'])
 
-    # Collect locations for pseudos
-    pseudo_dirs = []
-    if 'pseudo_dir' in data['control']:
-        pseudo_dirs.append(data['control']['pseudo_dir'])
-    if 'ESPRESSO_PSEUDO' in os.environ:
-        pseudo_dirs.append(os.environ['ESPRESSO_PSEUDO'])
-    pseudo_dirs.append(path.expanduser('~/espresso/pseudo/'))
-
     # species_info holds some info for each element
     species_card = get_atomic_species(card_lines, n_species=data['system']['ntyp'])
     species_info = {}
     for ispec, (label, weight, pseudo) in enumerate(species_card):
         symbol = label_to_symbol(label)
 
-        for pseudo_dir in pseudo_dirs:
+        for pseudo_dir in get_pseudo_dirs(data):
             if path.exists(path.join(pseudo_dir, pseudo)):
                 valence = grep_valence(path.join(pseudo_dir, pseudo))
                 break
@@ -674,6 +666,28 @@ def ibrav_to_cell(system):
     return alat, cell
 
 
+def get_pseudo_dirs(data):
+    """Guess a list of possible locations for pseudopotential files.
+
+    Parameters
+    ----------
+    data : Namelist
+        Namelist representing the quantum espresso input parameters
+
+    Returns
+    -------
+    pseudo_dirs : list[str]
+        A list of directories where pseudopotential files could be located.
+    """
+    pseudo_dirs = []
+    if 'pseudo_dir' in data['control']:
+        pseudo_dirs.append(data['control']['pseudo_dir'])
+    if 'ESPRESSO_PSEUDO' in os.environ:
+        pseudo_dirs.append(os.environ['ESPRESSO_PSEUDO'])
+    pseudo_dirs.append(path.expanduser('~/espresso/pseudo/'))
+    return pseudo_dirs
+
+
 def get_atomic_positions(lines, n_atoms, cell=None, alat=None):
     """Parse atom positions from ATOMIC_POSITIONS card.
 
@@ -771,18 +785,20 @@ def get_atomic_species(lines, n_species):
 
     species = None
     # no blanks or comment lines, can the consume n_atoms lines for positions
-    trimmed_lines = (line for line in lines
-                     if line.strip() and not line[0] == '#')
+    trimmed_lines = (line.strip() for line in lines
+                     if line.strip() and not line.startswith('#'))
 
     for line in trimmed_lines:
-        if line.strip().startswith('ATOMIC_SPECIES'):
+        if line.startswith('ATOMIC_SPECIES'):
             if species is not None:
                 raise ValueError('Multiple ATOMIC_SPECIES specified')
 
             species = []
             for _dummy in range(n_species):
-                split_line = next(trimmed_lines).split()
-                species.append((split_line[0], float(split_line[1]), split_line[2]))
+                label_weight_pseudo = next(trimmed_lines).split()
+                species.append((label_weight_pseudo[0],
+                                float(label_weight_pseudo[1]),
+                                label_weight_pseudo[2]))
 
     return species
 
@@ -1558,24 +1574,16 @@ def write_espresso_in(fd, atoms, input_data=None, pseudopotentials=None,
         else:
             warnings.warn('Ignored unknown constraint {}'.format(constraint))
 
-    # Deal with pseudopotentials
-    # Look in all possible locations for the pseudos and try to figure
-    # out the number of valence electrons
-    pseudo_dirs = []
-    if 'pseudo_dir' in input_parameters['control']:
-        pseudo_dirs.append(input_parameters['control']['pseudo_dir'])
-    if 'ESPRESSO_PSEUDO' in os.environ:
-        pseudo_dirs.append(os.environ['ESPRESSO_PSEUDO'])
-    pseudo_dirs.append(path.expanduser('~/espresso/pseudo/'))
-
     # Species info holds the information on the pseudopotential and
     # associated for each element
     if pseudopotentials is None:
         pseudopotentials = {}
     species_info = {}
     for species in set(atoms.get_chemical_symbols()):
+        # Look in all possible locations for the pseudos and try to figure
+        # out the number of valence electrons
         pseudo = pseudopotentials.get(species, '{}_dummy.UPF'.format(species))
-        for pseudo_dir in pseudo_dirs:
+        for pseudo_dir in get_pseudo_dirs(input_parameters):
             if path.exists(path.join(pseudo_dir, pseudo)):
                 valence = grep_valence(path.join(pseudo_dir, pseudo))
                 break
