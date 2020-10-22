@@ -488,15 +488,44 @@ def read_espresso_in(fileobj):
     else:
         alat, cell = ibrav_to_cell(data['system'])
 
+    # Collect locations for pseudos
+    pseudo_dirs = []
+    if 'pseudo_dir' in data['control']:
+        pseudo_dirs.append(data['control']['pseudo_dir'])
+    if 'ESPRESSO_PSEUDO' in os.environ:
+        pseudo_dirs.append(os.environ['ESPRESSO_PSEUDO'])
+    pseudo_dirs.append(path.expanduser('~/espresso/pseudo/'))
+
+    # species_info holds some info for each element
+    species_card = get_atomic_species(card_lines, n_species=data['system']['ntyp'])
+    species_info = {}
+    for ispec, (label, weight, pseudo) in enumerate(species_card):
+        symbol = label_to_symbol(label)
+
+        for pseudo_dir in pseudo_dirs:
+            if path.exists(path.join(pseudo_dir, pseudo)):
+                valence = grep_valence(path.join(pseudo_dir, pseudo))
+                break
+        else:  # not found in a file
+            valence = SSSP_VALENCE[atomic_numbers[symbol]]
+
+        # starting_magnetization is in fractions of valence electrons
+        magnet_key = "starting_magnetization({0})".format(ispec + 1)
+        magmom = valence * data["system"].get(magnet_key, 0.0)
+        species_info[symbol] = {"weight": weight, "pseudo": pseudo,
+                                "valence": valence, "magmom": magmom}
+
     positions_card = get_atomic_positions(
         card_lines, n_atoms=data['system']['nat'], cell=cell, alat=alat)
 
     symbols = [label_to_symbol(position[0]) for position in positions_card]
     positions = [position[1] for position in positions_card]
+    magmoms = [species_info[symbol]["magmom"] for symbol in symbols]
 
     # TODO: put more info into the atoms object
     # e.g magmom, forces.
-    atoms = Atoms(symbols=symbols, positions=positions, cell=cell, pbc=True)
+    atoms = Atoms(symbols=symbols, positions=positions, cell=cell, pbc=True,
+                  magmoms=magmoms)
 
     return atoms
 
@@ -718,6 +747,44 @@ def get_atomic_positions(lines, n_atoms, cell=None, alat=None):
                 positions.append((split_line[0], position, force_mult))
 
     return positions
+
+
+def get_atomic_species(lines, n_species):
+    """Parse atomic species from ATOMIC_SPECIES card.
+
+    Parameters
+    ----------
+    lines : list[str]
+        A list of lines containing the ATOMIC_POSITIONS card.
+    n_species : int
+        Expected number of atom types. Only this many lines will be parsed.
+
+    Returns
+    -------
+    species : list[(str, float, str)]
+
+    Raises
+    ------
+    ValueError
+        Any problems parsing the data result in ValueError
+    """
+
+    species = None
+    # no blanks or comment lines, can the consume n_atoms lines for positions
+    trimmed_lines = (line for line in lines
+                     if line.strip() and not line[0] == '#')
+
+    for line in trimmed_lines:
+        if line.strip().startswith('ATOMIC_SPECIES'):
+            if species is not None:
+                raise ValueError('Multiple ATOMIC_SPECIES specified')
+
+            species = []
+            for _dummy in range(n_species):
+                split_line = next(trimmed_lines).split()
+                species.append((split_line[0], float(split_line[1]), split_line[2]))
+
+    return species
 
 
 def get_cell_parameters(lines, alat=None):
