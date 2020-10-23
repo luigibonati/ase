@@ -1,4 +1,3 @@
-
 import os
 import json
 
@@ -90,8 +89,8 @@ def _ref_vacancy_global(_setup_images_global):
     # use distance from moving atom to one of its neighbours as reaction coord
     # relax intermediate image to the saddle point using a bondlength constraint
     images, i1, i2 = _setup_images_global
-    initial, saddle, final = (images[0].copy(), 
-                              images[2].copy(), 
+    initial, saddle, final = (images[0].copy(),
+                              images[2].copy(),
                               images[4].copy())
     initial.calc = calc()
     saddle.calc = calc()
@@ -171,7 +170,7 @@ def test_neb_methods(method, optimizer, precon,
                    'Ef': Ef,
                    'dE': dE}, f)
 
-    centre = 2 # we have 5 images total, so central image has index 2
+    centre = 2  # we have 5 images total, so central image has index 2
     vdiff, _ = find_mic(images[centre].positions - saddle_ref.positions,
                         images[centre].cell)
     print(f'Ef error {Ef - Ef_ref} dE error {dE - dE_ref} '
@@ -204,7 +203,7 @@ def test_precon_initialisation(setup_images):
 
 
 def test_precon_assembly(setup_images):
-    images, _, _ = setup_images    
+    images, _, _ = setup_images
     neb = NEB(images, method='spline', precon='Exp')
     neb.get_forces()  # trigger precon assembly
     
@@ -232,6 +231,4 @@ def test_spline_fit(setup_images):
     
     # ensure derivative is smooth across central fit point
     eps = 1e-4
-    dx_1 = dx_ds_spline(s[2] + eps)
-    dx_2 = dx_ds_spline(s[2] + eps)
-    assert np.allclose(dx_1, dx_2)
+    assert np.allclose(dx_ds_spline(s[2] + eps, dx_ds_spline(s[2] + eps)

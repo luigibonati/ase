@@ -884,7 +884,7 @@ class FF(SparsePrecon):
                 atoms, angle, self.morses, spectral=True)
         else:
             raise NotImplementedError('Not implemented hessian')
-        x = ij_to_x(i, j)
+        x = ijk_to_x(i, j, k)
         row.extend(np.repeat(x, 9))
         col.extend(np.tile(x, 9))
         data.extend(Hx.flatten())
@@ -923,11 +923,11 @@ class FF(SparsePrecon):
         if self.morses is not None:
             for morse in self.morses:
                 self.add_morse(morse, atoms, row, col, data)
-
+                
         if self.bonds is not None:
             for bond in self.bonds:
                 self.add_bond(bond, atoms, row, col, data)
-                
+
         if self.angles is not None:
             for angle in self.angles:
                 self.add_angle(angle, atoms, row, col, data)
@@ -1117,7 +1117,6 @@ class Exp_FF(Exp, FF):
         conn = sparse.lil_matrix((N, N), dtype=bool)
 
         if self.apply_positions and not initial_assembly:
-
             if self.morses is not None:
                 for morse in self.morses:
                     self.add_morse(morse, atoms, row, col, data, conn)

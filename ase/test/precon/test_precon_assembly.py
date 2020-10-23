@@ -21,7 +21,7 @@ def ref_atoms():
 @pytest.fixture
 def atoms(ref_atoms):
     atoms, bonds = ref_atoms
-    atoms.rattle(stdev=0.1, seed=7)    
+    atoms.rattle(stdev=0.1, seed=7)
     return atoms, bonds
 
 
@@ -39,7 +39,7 @@ def check_assembly(precon, system):
     precon = make_precon(precon, atoms, **kwargs)
     assert isinstance(precon, Precon)
     # check its a symmetric positive definite matrix of expected size
-    N = 3 * len(atoms)    
+    N = 3 * len(atoms)
     P = precon.asarray()
     assert P.shape == (N, N)
     assert np.abs(P - P.T).max() < 1e-6
@@ -47,6 +47,7 @@ def check_assembly(precon, system):
 
 
 precons = [None, 'C1', 'Exp', 'Pfrommer', 'FF', 'Exp_FF']
+
 
 @pytest.mark.parametrize('precon', precons)
 def test_assembly_ref_atoms(precon, ref_atoms):

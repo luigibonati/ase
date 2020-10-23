@@ -25,20 +25,9 @@ def test_precon(N):
     with warnings.catch_warnings(record=True) as w:
         # Cause all warnings to always be triggered.
         warnings.simplefilter("always")
-        opt = PreconLBFGS(atoms, precon="auto")
+        PreconLBFGS(atoms, precon="auto")
         if N == 1:
             assert len(w) == 1
             assert "The system is likely too small" in str(w[-1].message)
         else:
             assert len(w) == 0
-
-    # check we get a warning about bad estimate for mu with big cell
-    with warnings.catch_warnings(record=True) as w:
-        # Cause all warnings to always be triggered.
-        warnings.simplefilter("always")
-        opt.run(1e-3)
-        if N == 1:
-            assert len(w) == 0
-        else:
-            assert len(w) == 1
-            assert "capping at mu=1.0" in str(w[-1].message)

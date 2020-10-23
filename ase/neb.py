@@ -597,7 +597,7 @@ class BaseNEB:
                 d_P[i] = np.linalg.norm(dx)
             elif norm == 'precon':
                 if self.precon is None:
-                    raise RuntimeError("preconditioner not yet assembled: " 
+                    raise RuntimeError("preconditioner not yet assembled: "
                                        "call get_forces() before spline_fit()")
                 d_P[i] = np.sqrt(0.5 * (self.precon[i].dot(dx, dx) +
                                         self.precon[i - 1].dot(dx, dx)))
