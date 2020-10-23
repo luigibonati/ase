@@ -32,7 +32,6 @@ omit =
     ../calculators/dmol.py
     ../calculators/mopac.py
     ../calculators/acemolecule.py
-    ../calculators/elk.py
     ../calculators/castep.py
     ../calculators/gulp.py
     ../calculators/kim/kim.py
@@ -66,7 +65,6 @@ omit =
     ../io/gaussian_reader.py
     ../io/acemolecule.py
     ../io/vtkxml.py
-    ../io/elk.py
     ../io/castep.py
     ../io/gpw.py
     ../io/cmdft.py
