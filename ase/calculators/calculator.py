@@ -557,6 +557,9 @@ class Calculator(GetPropertiesMixin):
         if not hasattr(self, 'name'):
             self.name = self.__class__.__name__.lower()
 
+        if not hasattr(self, 'get_spin_polarized'):
+            self.get_spin_polarized = self._deprecated_get_spin_polarized
+
     @property
     def directory(self) -> str:
         return self._directory
@@ -837,6 +840,14 @@ class Calculator(GetPropertiesMixin):
             return stress.flat[[0, 4, 8, 5, 2, 1]]
         else:
             return stress
+
+    def _deprecated_get_spin_polarized(self):
+        msg = ('This calculator does not implement get_spin_polarized().  '
+               'In the future, calc.get_spin_polarized() will work only on '
+               'calculator classes that explicitly implement this method or '
+               'inherit the method via specialized subclasses.')
+        warnings.warn(msg, FutureWarning)
+        return False
 
     def band_structure(self):
         """Create band-structure object for plotting."""
