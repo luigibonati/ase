@@ -11,6 +11,7 @@ import numpy as np
 from ase import io
 from ase import build
 
+from pytest import approx
 
 # This file is parsed correctly by pw.x, even though things are
 # scattered all over the place with some namelist edge cases
@@ -277,7 +278,8 @@ def test_pw_input():
 
     pw_input_atoms = io.read('pw_input.pwi', format='espresso-in')
     assert len(pw_input_atoms) == 8
-    assert np.all(pw_input_atoms.get_initial_magnetic_moments() == [5.12, 5.12, 5.12, 5.12, 5.12, 5.12, 0. , 0. ])
+    assert (pw_input_atoms.get_initial_magnetic_moments()
+            == approx([5.12, 5.12, 5.12, 5.12, 5.12, 5.12, 0., 0.]))
 
 
 def test_get_atomic_species():
@@ -292,8 +294,9 @@ def test_get_atomic_species():
                                           n_species=data['system']['ntyp'])
 
     assert len(species_card) == 2
-    assert species_card[0] == ("H", 1.008, "H.pbe-rrkjus_psl.0.1.UPF")
-    assert species_card[1] == ("Fe", 55.845, "Fe.pbe-spn-rrkjus_psl.0.2.1.UPF")
+    assert species_card[0] == ("H", approx(1.008), "H.pbe-rrkjus_psl.0.1.UPF")
+    assert species_card[1] == ("Fe", approx(55.845),
+                               "Fe.pbe-spn-rrkjus_psl.0.2.1.UPF")
 
 
 def test_pw_output():

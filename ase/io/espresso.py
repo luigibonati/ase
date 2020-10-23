@@ -493,13 +493,7 @@ def read_espresso_in(fileobj):
     species_info = {}
     for ispec, (label, weight, pseudo) in enumerate(species_card):
         symbol = label_to_symbol(label)
-
-        for pseudo_dir in get_pseudo_dirs(data):
-            if path.exists(path.join(pseudo_dir, pseudo)):
-                valence = grep_valence(path.join(pseudo_dir, pseudo))
-                break
-        else:  # not found in a file
-            valence = SSSP_VALENCE[atomic_numbers[symbol]]
+        valence = get_valence_electrons(symbol, data, pseudo)
 
         # starting_magnetization is in fractions of valence electrons
         magnet_key = "starting_magnetization({0})".format(ispec + 1)
@@ -686,6 +680,33 @@ def get_pseudo_dirs(data):
         pseudo_dirs.append(os.environ['ESPRESSO_PSEUDO'])
     pseudo_dirs.append(path.expanduser('~/espresso/pseudo/'))
     return pseudo_dirs
+
+
+def get_valence_electrons(symbol, data, pseudo=None):
+    """The number of valence electrons for a atomic symbol.
+
+    Parameters
+    ----------
+    symbol : str
+        Chemical symbol
+
+    data : Namelist
+        Namelist representing the quantum espresso input parameters
+
+    pseudo : str, optional
+        File defining the pseudopotential to be used. If missing a fallback
+        to the number of valence electrons recommended at
+        http://materialscloud.org/sssp/ is employed.
+    """
+    if pseudo is None:
+        pseudo = '{}_dummy.UPF'.format(symbol)
+    for pseudo_dir in get_pseudo_dirs(data):
+        if path.exists(path.join(pseudo_dir, pseudo)):
+            valence = grep_valence(path.join(pseudo_dir, pseudo))
+            break
+    else:  # not found in a file
+        valence = SSSP_VALENCE[atomic_numbers[symbol]]
+    return valence
 
 
 def get_atomic_positions(lines, n_atoms, cell=None, alat=None):
@@ -1582,16 +1603,9 @@ def write_espresso_in(fd, atoms, input_data=None, pseudopotentials=None,
     for species in set(atoms.get_chemical_symbols()):
         # Look in all possible locations for the pseudos and try to figure
         # out the number of valence electrons
-        pseudo = pseudopotentials.get(species, '{}_dummy.UPF'.format(species))
-        for pseudo_dir in get_pseudo_dirs(input_parameters):
-            if path.exists(path.join(pseudo_dir, pseudo)):
-                valence = grep_valence(path.join(pseudo_dir, pseudo))
-                break
-        else:  # not found in a file
-            valence = SSSP_VALENCE[atomic_numbers[species]]
-
-        species_info[species] = {'pseudo': pseudo,
-                                 'valence': valence}
+        pseudo = pseudopotentials.get(species, None)
+        valence = get_valence_electrons(species, input_parameters, pseudo)
+        species_info[species] = {'pseudo': pseudo, 'valence': valence}
 
     # Convert atoms into species.
     # Each different magnetic moment needs to be a separate type even with
