@@ -57,6 +57,9 @@ class GaussianProcess():
         for pstring in params.keys():
             self.hyperparams[pstring] = params.get(pstring)
 
+        if 'weight' not in self.hyperparams.keys():
+            self.hyperparams.update({'weight': 1})
+
         if 'ratio' in params.keys():
             self.ratio = params.get('ratio')
 
@@ -66,7 +69,7 @@ class GaussianProcess():
         if 'prior' in params.keys():
             self.prior.constant = params.get('prior')
 
-        self.kernel.set_params(params)
+        self.kernel.set_params(self.hyperparams)
         self.noise = noise
 
         # Set noise-weight ratio:
