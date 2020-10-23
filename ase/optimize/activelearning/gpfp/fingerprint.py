@@ -198,25 +198,34 @@ class OganovFP(Fingerprint):
                     continue
 
                 r_indices.append((i, j))
-        self.r_indices = np.array(r_indices, dtype=int)
+
+        self.emptyfingerprint = False
+        if len(r_indices) == 0:
+            self.emptyfingerprint = True
+        else:
+            self.r_indices = np.array(r_indices, dtype=int)
 
         # position vector matrix
-        self.rm = ap[self.r_indices[:, 0]] - ep[self.r_indices[:, 1]]
-        self.dm = np.linalg.norm(self.rm, axis=1)
+        if not self.emptyfingerprint:
 
-        elementlist = list(self.elements)
-        self.prim_symbols = [elementlist.index(s)
-                             for s in self.primaryatoms.get_chemical_symbols()]
-        self.ext_symbols = [elementlist.index(s)
-                            for s in self.extendedatoms.get_chemical_symbols()]
-        self.AB = np.array([(self.prim_symbols[i], self.ext_symbols[j])
-                            for i, j in self.r_indices], dtype=int)
+            self.rm = ap[self.r_indices[:, 0]] - ep[self.r_indices[:, 1]]
+            self.dm = np.linalg.norm(self.rm, axis=1)
+
+            elementlist = list(self.elements)
+            self.prim_symbols = [elementlist.index(s)
+                                 for s in
+                                 self.primaryatoms.get_chemical_symbols()]
+            self.ext_symbols = [elementlist.index(s)
+                                for s in
+                                self.extendedatoms.get_chemical_symbols()]
+            self.AB = np.array([(self.prim_symbols[i], self.ext_symbols[j])
+                                for i, j in self.r_indices], dtype=int)
         return
 
     def get_ncells(self):
         ''' Return number of cells to consider due to periodic
         boundary conditions '''
-        
+
         # Determine unit cell parameters:
         lengths = self.atoms.cell.lengths()
 
@@ -226,6 +235,10 @@ class OganovFP(Fingerprint):
         ''' Calculate the delta peak heights self.h '''
 
         self.constant = 1 / (self.limit / self.N)
+        if self.emptyfingerprint:
+            self.h = []
+            return
+
         self.h = self.constant * (1 / self.dm**2 +
                                   2 / self.limit**3 * self.dm -
                                   3 / self.limit**2)
@@ -235,6 +248,10 @@ class OganovFP(Fingerprint):
         ''' Calculate the Gaussian-broadened fingerprint. '''
 
         self.G = np.zeros([self.n, self.n, self.N])
+
+        if self.emptyfingerprint:
+            return
+
         x = np.linspace(-1.0, self.limit + 2.0, self.N)  # variable array
 
         # Broadening of each peak:
@@ -266,6 +283,10 @@ class OganovFP(Fingerprint):
         index: Atom index with which to differentiate
         '''
         gradient = np.zeros([self.n, self.n, self.N, 3])
+
+        if self.emptyfingerprint:
+            return gradient
+
         n = len(self.primaryatoms)
 
         mask = np.arange(n) == index
@@ -354,7 +375,7 @@ class OganovFP(Fingerprint):
         D = self.distance(self, fp2)
 
         g = self.gradients
-        
+
         if D == 0.0:
             return np.zeros((len(g), 3))
 
@@ -514,7 +535,7 @@ class RadialAngularFP(OganovFP):
     def get_ncells(self):
         ''' Return number of cells to consider due to periodic
         boundary conditions '''
-        
+
         # Determine unit cell parameters:
         lengths = self.atoms.cell.lengths()
 
@@ -563,17 +584,9 @@ class RadialAngularFP(OganovFP):
 
         self.indices = np.array(indices, dtype=int)
 
+        self.emptyanglefingerprint = False
         if len(self.indices) == 0:
-            self.arm = np.array([[]])
-            self.erm = np.array([[]])
-            self.adm = np.array([])
-            self.edm = np.array([])
-            args = np.array([])
-            self.fcij = np.array([])
-            self.fcjk = np.array([])
-            self.thetas = np.array([])
-            self.ABC = np.array([])
-
+            self.emptyanglefingerprint = True
         else:
             self.arm = ap[self.indices[:, 0]] - ep[self.indices[:, 1]]
             self.erm = ep[self.indices[:, 2]] - ep[self.indices[:, 1]]
@@ -612,6 +625,10 @@ class RadialAngularFP(OganovFP):
         ''' Calculate the angular fingerprint with Gaussian broadening  '''
 
         self.H = np.zeros([self.n, self.n, self.n, self.nanglebins])
+
+        if self.emptyanglefingerprint:
+            return self.H
+
         x = np.linspace(- pi / 2, 3 * pi / 2, self.nanglebins)  # variable array
 
         # Broadening of each peak:
@@ -710,6 +727,9 @@ class RadialAngularFP(OganovFP):
         '''
         gradient = np.zeros([self.n, self.n, self.n, self.nanglebins, 3])
 
+        if self.emptyanglefingerprint:
+            return gradient
+
         n = len(self.primaryatoms)
 
         mask = np.arange(n) == index
@@ -748,6 +768,13 @@ class RadialAngularFP(OganovFP):
         return gradient * self.angleconstant
 
     def calculate_all_angle_gradients(self):
+
+        if self.emptyanglefingerprint:
+            ags = [np.zeros([self.n, self.n, self.n, self.nanglebins, 3])
+                   for atom in self.primaryatoms]
+            self.anglegradients = np.array(ags)
+            return self.anglegradients
+
         xvec = np.linspace(-pi / 2, 3 * pi / 2, self.nanglebins)
         diffvecs = np.subtract.outer(xvec, self.thetas).T
         gaussians = np.exp(- diffvecs**2 / 2 / self.ascale**2)
@@ -780,7 +807,8 @@ class RadialAngularFP(OganovFP):
                                                              third_j,
                                                              third_k)
                                for atom in self.primaryatoms]
-        return np.array(self.anglegradients)
+        self.anglegradients = np.array(self.anglegradients)
+        return self.anglegradients
 
     # ::: KERNEL STUFF ::: #
     # -------------------- #
@@ -806,7 +834,7 @@ class RadialAngularFP(OganovFP):
         tildexvec = self.H - fp2.H
 
         result += 1 / D * np.einsum('ijkl,hijklm->hm', tildexvec, gs)
-        
+
         self.pair = fp2
         self.dD_drm_ready = result
 
@@ -855,6 +883,8 @@ class RadialAngularFP(OganovFP):
     def get_fit_aweight(self, fps):
         GHratios = []
         for fp in fps:
+            if fp.emptyanglefingerprint:
+                continue
             GHratios.append(fp.G.flatten().sum() / fp.H.flatten().sum())
         return np.mean(GHratios) * self.aweight
 
