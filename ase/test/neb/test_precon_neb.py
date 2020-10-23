@@ -231,4 +231,4 @@ def test_spline_fit(setup_images):
     
     # ensure derivative is smooth across central fit point
     eps = 1e-4
-    assert np.allclose(dx_ds_spline(s[2] + eps, dx_ds_spline(s[2] + eps)
+    assert np.allclose(dx_ds_spline(s[2] + eps), dx_ds_spline(s[2] + eps))
