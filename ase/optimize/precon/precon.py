@@ -133,6 +133,13 @@ class Precon(ABC):
     @abstractmethod
     def copy(self):
         ...
+        
+    @abstractmethod
+    def asarray(self):
+        """
+        Array representation of preconditioner, as a dense matrix
+        """
+        ...
 
 
 class Logfile:
@@ -335,10 +342,10 @@ class SparsePrecon(Precon):
                 n = len(atoms.atoms)
             else:
                 n = len(atoms)
-            P0 = self._make_sparse_precon(atoms,
-                                          initial_assembly=True)[:3 * n,
+            self._make_sparse_precon(atoms,
+                                     initial_assembly=True)[:3 * n,
                                                                  :3 * n]
-            eigvals, eigvecs = sparse.linalg.eigsh(P0, k=4, which='SM')
+            eigvals, eigvecs = sparse.linalg.eigsh(self.P, k=4, which='SM')
 
             logfile.write('estimate_mu(): lowest 4 eigvals = %f %f %f %f\n'
                             % (eigvals[0], eigvals[1],
@@ -416,15 +423,15 @@ class SparsePrecon(Precon):
         self.mu = 1.0
         self.mu_c = 1.0
 
-        P1 = self._make_sparse_precon(atoms, initial_assembly=True)
+        self._make_sparse_precon(atoms, initial_assembly=True)
 
         # compute right hand side
-        RHS = P1.dot(v1) * v1
+        RHS = self.P.dot(v1) * v1
 
         # use partial sums to compute separate mu for positions and cell DoFs
         self.mu = longsum(LHS[:3 * natoms]) / longsum(RHS[:3 * natoms])
         if self.mu < 1.0:
-            warnings.warn('estimate_mu(): mu (%.3f) < 1.0, '
+            logfile.write('estimate_mu(): mu (%.3f) < 1.0, '
                           'capping at mu=1.0' % self.mu)
             self.mu = 1.0
 
@@ -440,6 +447,9 @@ class SparsePrecon(Precon):
 
         self.P = None  # force a rebuild with new mu (there may be fixed atoms)
         return (self.mu, self.mu_c)
+    
+    def asarray(self):
+        return np.array(self.P.todense())
 
 
 class SparseCoeffPrecon(SparsePrecon):
@@ -603,8 +613,9 @@ class SparseCoeffPrecon(SparsePrecon):
                                           real_atoms.cell) - self.old_positions
             self.old_positions = real_atoms.get_positions()
             max_abs_displacement = abs(displacement).max()
-            # print('max(abs(displacements)) = %.2f A (%.2f r_NN)' %
-            #      (max_abs_displacement, max_abs_displacement / self.r_NN))
+            self.logfile.write('max(abs(displacements)) = %.2f A (%.2f r_NN)' %
+                               (max_abs_displacement, 
+                                max_abs_displacement / self.r_NN))
             if max_abs_displacement < 0.5 * self.r_NN:
                 return
 
@@ -665,12 +676,21 @@ class Pfrommer(Precon):
         self.H0 = sparse.block_diag(blocks, format='csr')
         return
 
-    def dot(self, x, y):
-        raise NotImplementedError
+    def Pdot(self, x):
+        return self.H0.solve(x)
 
     def solve(self, x):
         y = self.H0.dot(x)
         return y
+    
+    def copy(self):
+        return Pfrommer(self.bulk_modulus,
+                        self.phonon_frequency,
+                        self.apply_positions,
+                        self.apply_cell)
+    
+    def asarray(self):
+        return np.array(self.H0.todense())
 
 
 class IdentityPrecon(Precon):
@@ -679,7 +699,7 @@ class IdentityPrecon(Precon):
     """
 
     def make_precon(self, atoms, reinitialize=None):
-        pass
+        self.atoms = atoms
 
     def Pdot(self, x):
         return x
@@ -689,6 +709,9 @@ class IdentityPrecon(Precon):
 
     def copy(self):
         return IdentityPrecon()
+    
+    def asarray(self):
+        return np.eye(3 * len(self.atoms))
 
 
 class C1(SparseCoeffPrecon):
@@ -994,9 +1017,9 @@ class Exp_FF(Exp, FF):
                                           real_atoms.cell) - self.old_positions
             self.old_positions = real_atoms.get_positions()
             max_abs_displacement = abs(displacement).max()
-            print('max(abs(displacements)) = %.2f A (%.2f r_NN)' %
-                  (max_abs_displacement,
-                   max_abs_displacement / self.r_NN))
+            self.logfile.write('max(abs(displacements)) = %.2f A (%.2f r_NN)' %
+                               (max_abs_displacement,
+                                max_abs_displacement / self.r_NN))
             if max_abs_displacement < 0.5 * self.r_NN:
                 return
 
@@ -1004,7 +1027,7 @@ class Exp_FF(Exp, FF):
         start_time = time.time()        
         self._make_sparse_precon(atoms, force_stab=self.force_stab)
         self.logfile.write('--- Precon created in %s seconds ---\n' %
-                           time.time() - start_time)
+                           (time.time() - start_time))
 
     def _make_sparse_precon(self, atoms, initial_assembly=False,
                             force_stab=False):
@@ -1022,10 +1045,10 @@ class Exp_FF(Exp, FF):
 
         """
         self.logfile.write('creating sparse precon: initial_assembly=%r, '
-                            'force_stab=%r, apply_positions=%r, '
-                            'apply_cell=%r\n'
-                            % (initial_assembly, force_stab,
-                                self.apply_positions, self.apply_cell))
+                           'force_stab=%r, apply_positions=%r, '
+                           'apply_cell=%r\n' %
+                            (initial_assembly, force_stab,
+                             self.apply_positions, self.apply_cell))
 
         N = len(atoms)
         start_time = time.time()
@@ -1185,14 +1208,19 @@ class Exp_FF(Exp, FF):
                                (time.time() - start_time))
 
 
-def make_precon(precon):
+def make_precon(precon, atoms=None, **kwargs):
     """
-    Construct preconditioner from a string
+    Construct preconditioner from a string and optionally build for Atoms
 
     Parameters
     ----------
     precon - one of 'C1', 'Exp', 'Pfrommer', 'FF', 'Exp_FF', 'ID', None
              or an instance of a subclass of `ase.optimize.precon.Precon`
+             
+    atoms - ase.atoms.Atoms instance, optional
+            If present, build apreconditioner for this Atoms object
+            
+    **kwargs - additional keyword arguments to pass to Precon constructor
 
     Returns
     -------
@@ -1210,18 +1238,19 @@ def make_precon(precon):
     }
     if isinstance(precon, str) or precon is None:
         cls = lookup[precon]
-        precon = cls()
+        precon = cls(**kwargs)
+    if atoms is not None:
+        precon.make_precon(atoms)
     return precon
 
 
-def make_precon_images(precon, images):
+def make_precon_images(precon, images, **kwargs):
     """
     Build an initial preconditioner and make a copy for each image
     """
     if isinstance(precon, list) and len(precon) == len(images):
         return precon
-    P0 = make_precon(precon)
-    P0.make_precon(images[0])
+    P0 = make_precon(precon, images[0], **kwargs)
     precon = [P0]
     for image in images[1:]:
         P = P0.copy()

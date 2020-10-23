@@ -16,6 +16,7 @@ from ase.calculators.calculator import Calculator
 from ase.calculators.singlepoint import SinglePointCalculator
 from ase.optimize import MDMin
 from ase.optimize.optimize import Optimizer
+from ase.optimize.sciopt import OptimizerConvergenceError
 from ase.geometry import find_mic
 from ase.utils import lazyproperty, deprecated
 from ase.utils.forcecurve import fit_images
@@ -595,6 +596,9 @@ class BaseNEB:
             if norm == 'euclidean':
                 d_P[i] = np.linalg.norm(dx)
             elif norm == 'precon':
+                if self.precon is None:
+                    raise RuntimeError("preconditioner not yet assembled: " 
+                                       "call get_forces() before spline_fit()")
                 d_P[i] = np.sqrt(0.5 * (self.precon[i].dot(dx, dx) +
                                         self.precon[i - 1].dot(dx, dx)))
             else:
@@ -906,7 +910,7 @@ class NEBOptimizer(Optimizer):
         self.nsteps += 1
         self.neb.adjust_positions()
 
-    def run(self, fmax=1e-3, steps=50):
+    def run(self, fmax=0.05, steps=50):
         """
         Optimize images to obtain the minimum energy path
 
@@ -917,16 +921,19 @@ class NEBOptimizer(Optimizer):
         """
 
         if self.method == 'ode':
-            ode12r(self.force_function,
-                   self.get_dofs(),
-                   fmax=fmax,
-                   rtol=self.rtol,
-                   C1=self.C1,
-                   C2=self.C2,
-                   steps=steps,
-                   verbose=self.verbose,
-                   callback=self.callback,
-                   residual=self.get_residual)
+            try:
+                ode12r(self.force_function,
+                       self.get_dofs(),
+                       fmax=fmax,
+                       rtol=self.rtol,
+                       C1=self.C1,
+                       C2=self.C2,
+                       steps=steps,
+                       verbose=self.verbose,
+                       callback=self.callback,
+                       residual=self.get_residual)
+            except OptimizerConvergenceError:
+                warnings.warn(f'NEBOptimizer did not converge in {steps} steps')
         elif self.method == 'krylov':
             res = root(self.force_function,
                        self.get_dofs(),
@@ -936,7 +943,7 @@ class NEBOptimizer(Optimizer):
             if res.success:
                 self.set_dofs(res.x)
             else:
-                raise RuntimeError(f'Krylov did not converge in {steps} steps')
+                warnings.warn(f'NEBOptimizer did not converge in {steps} steps')
         else:
             X = self.get_dofs()
             for step in range(steps):
