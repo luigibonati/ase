@@ -69,6 +69,10 @@ omit =
     ../io/gpw.py
     ../io/cmdft.py
 
+    # The "optimizer tests" are used to generate part of GPAW's web page
+    # but we don't really consider it production code.
+    # Since we don't plan to test it as such, we exclude it from the listing.
+    ../optimize/test/*.py
 
 [html]
 directory = coverage-html
