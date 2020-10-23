@@ -156,19 +156,6 @@ class Logfile:
             return
         self.logfile.write(*args)
 
-class Timer:
-    
-    def __post_init__(self) -> None:
-        if self.name is not None:
-            
-    def start(self) -> None:
-        if self._start_time is not None:
-            
-    def stop(self) -> float:
-        if self._start_time is None:
-        if self.logger:
-        if self.name:
-
 class SparsePrecon(Precon):
     def __init__(self, r_cut=None, r_NN=None,
                  mu=None, mu_c=None,
