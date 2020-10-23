@@ -156,6 +156,18 @@ class Logfile:
             return
         self.logfile.write(*args)
 
+class Timer:
+    
+    def __post_init__(self) -> None:
+        if self.name is not None:
+            
+    def start(self) -> None:
+        if self._start_time is not None:
+            
+    def stop(self) -> float:
+        if self._start_time is None:
+        if self.logger:
+        if self.name:
 
 class SparsePrecon(Precon):
     def __init__(self, r_cut=None, r_NN=None,
@@ -450,6 +462,45 @@ class SparsePrecon(Precon):
     
     def asarray(self):
         return np.array(self.P.todense())
+    
+    def one_dim_to_ndim(self, csc_P, N):
+        """Expand an N x N precon matrix to self.dim*N x self.dim * N
+
+        Args:
+            csc_P (sparse matrix): N x N sparse matrix, in CSC format
+        """
+        start_time = time.time()
+        if self.dim == 1:
+            P = csc_P
+        elif self.array_convention == 'F':
+            csc_P = csc_P.tocsr()
+            P = csc_P
+            for i in range(self.dim - 1):
+                P = sparse.block_diag((P, csc_P)).tocsr()
+        else:
+            # convert back to triplet and read the arrays
+            csc_P = csc_P.tocoo()
+            i = csc_P.row * self.dim
+            j = csc_P.col * self.dim
+            z = csc_P.data
+
+            # N-dimensionalise, interlaced coordinates
+            I = np.hstack([i + d for d in range(self.dim)])
+            J = np.hstack([j + d for d in range(self.dim)])
+            Z = np.hstack([z for d in range(self.dim)])
+            P = sparse.csc_matrix((Z, (I, J)),
+                                       shape=(self.dim * N, self.dim * N))
+            P = self.P.tocsr()
+        self.logfile.write('--- N-dim precon created in %s s ---\n' %
+                           (time.time() - start_time))
+        return P
+
+    def create_solver(self):
+        if self.use_pyamg ad have_pyamg:
+            start_time = time.time()
+            self.ml = create_pyamg_solver(self.P)
+            self.logfile.write('--- multi grid solver created in %s ---\n' %
+                               (time.time() - start_time))
 
 
 class SparseCoeffPrecon(SparsePrecon):
@@ -531,47 +582,14 @@ class SparseCoeffPrecon(SparsePrecon):
             j = diag_i
             coeff = diag_coeff
 
-        # create the matrix
+        # create an N x N precon matrix in compressed sparse column (CSC) format
         start_time = time.time()
         csc_P = sparse.csc_matrix((coeff, (i, j)), shape=(N, N))
         logfile.write('--- created CSC matrix in %s s ---\n' %
                       (time.time() - start_time))
 
-        self.csc_P = csc_P
-
-        start_time = time.time()
-        if self.dim == 1:
-            self.P = csc_P
-        elif self.array_convention == 'F':
-            csc_P = csc_P.tocsr()
-            self.P = csc_P
-            for i in range(self.dim - 1):
-                self.P = sparse.block_diag((self.P, csc_P)).tocsr()
-        else:
-            # convert back to triplet and read the arrays
-            csc_P = csc_P.tocoo()
-            i = csc_P.row * self.dim
-            j = csc_P.col * self.dim
-            z = csc_P.data
-
-            # N-dimensionalise, interlaced coordinates
-            I = np.hstack([i + d for d in range(self.dim)])
-            J = np.hstack([j + d for d in range(self.dim)])
-            Z = np.hstack([z for d in range(self.dim)])
-            self.P = sparse.csc_matrix((Z, (I, J)),
-                                       shape=(self.dim * N, self.dim * N))
-            self.P = self.P.tocsr()
-        logfile.write('--- N-dim precon created in %s s ---\n' %
-                      (time.time() - start_time))
-
-        # Create solver
-        if self.use_pyamg and have_pyamg:
-            start_time = time.time()
-            self.ml = create_pyamg_solver(self.P)
-            logfile.write('--- multi grid solver created in %s ---\n' %
-                          (time.time() - start_time))
-
-        return self.P
+        self.P = self.one_dim_to_ndim(csc_P, N)
+        self.create_solver()
     
     def make_precon(self, atoms, reinitialize=None):
         if self.r_NN is None:
@@ -620,10 +638,7 @@ class SparseCoeffPrecon(SparsePrecon):
                 return
 
         start_time = time.time()
-
-        # Create the preconditioner:
         self._make_sparse_precon(atoms, force_stab=self.force_stab)
-
         self.logfile.write('--- Precon created in %s seconds --- \n' %
                            (time.time() - start_time))
 
@@ -773,6 +788,27 @@ class Exp(SparseCoeffPrecon):
         return -self.mu * np.exp(-self.A * (r / self.r_NN - 1))
 
 
+def ij_to_x(i, j):
+    x = [3 * i, 3 * i + 1, 3 * i + 2,
+         3 * j, 3 * j + 1, 3 * j + 2]
+    return x
+
+
+def ijk_to_x(i, j, k):
+    x = [3 * i, 3 * i + 1, 3 * i + 2, 
+         3 * j, 3 * j + 1, 3 * j + 2, 
+         3 * k, 3 * k + 1, 3 * k + 2]
+    return x
+    
+    
+def ijkl_to_x(i, j, k, l):
+    x = [3 * i, 3 * i + 1, 3 * i + 2, 
+         3 * j, 3 * j + 1, 3 * j + 2, 
+         3 * k, 3 * k + 1, 3 * k + 2, 
+         3 * l, 3 * l + 1, 3 * l + 2]
+    return x
+
+
 class FF(SparsePrecon):
     """Creates matrix using morse/bond/angle/dihedral force field parameters.
     """
@@ -818,7 +854,79 @@ class FF(SparsePrecon):
         self._make_sparse_precon(atoms, force_stab=self.force_stab)
         self.logfile.write('--- Precon created in %s seconds ---\n'
                            % (time.time() - start_time))
+        
+    def add_morse(self, morse, row, col, data, conn=None):
+        if self.hessian == 'reduced':
+            i, j, Hx = ff.get_morse_potential_reduced_hessian(
+                atoms, morse)
+        elif self.hessian == 'spectral':
+            i, j, Hx = ff.get_morse_potential_hessian(
+                atoms, morse, spectral=True)
+        else:
+            raise NotImplementedError('Not implemented hessian')
+        x = ij_to_x(i, j)
+        row.extend(np.repeat(x, 6))
+        col.extend(np.tile(x, 6))
+        data.extend(Hx.flatten())    
+        if conn is not None:
+            conn[i, j] = True
+            conn[j, i] = True
 
+                        
+    def add_bond(self, bond, row, col, data, conn=None):
+        if self.hessian == 'reduced':
+            i, j, Hx = ff.get_bond_potential_reduced_hessian(
+                atoms, bond, self.morses)
+        elif self.hessian == 'spectral':
+            i, j, Hx = ff.get_bond_potential_hessian(
+                atoms, bond, self.morses, spectral=True)
+        else:
+            raise NotImplementedError('Not implemented hessian')
+        x = ij_to_x(i, j)
+        row.extend(np.repeat(x, 6))
+        col.extend(np.tile(x, 6))
+        data.extend(Hx.flatten())
+        if conn is not None:
+            conn[i, j] = True
+            conn[j, i] = True        
+        
+    def add_angle(self, angle, row, col, data, conn=None):
+        if self.hessian == 'reduced':
+            i, j, k, Hx = ff.get_angle_potential_reduced_hessian(
+                atoms, angle, self.morses)
+        elif self.hessian == 'spectral':
+            i, j, k, Hx = ff.get_angle_potential_hessian(
+                atoms, angle, self.morses, spectral=True)
+        else:
+            raise NotImplementedError('Not implemented hessian')
+        x = ij_to_x(i, j)
+        row.extend(np.repeat(x, 9))
+        col.extend(np.tile(x, 9))
+        data.extend(Hx.flatten())
+        if conn is not None:
+            conn[i, j] = conn[i, k] = conn[j, k] = True
+            conn[j, i] = conn[k, i] = conn[k, j] = True
+
+    def add_dihedral(self, dihedral, row, col, data, conn=None):
+        if self.hessian == 'reduced':
+            i, j, k, l, Hx = \
+                ff.get_dihedral_potential_reduced_hessian(
+                    atoms, dihedral, self.morses)
+        elif self.hessian == 'spectral':
+            i, j, k, l, Hx = ff.get_dihedral_potential_hessian(
+                atoms, dihedral, self.morses, spectral=True)
+        else:
+            raise NotImplementedError('Not implemented hessian')
+        x = ijkl_to_x(i, j, k, l)
+        row.extend(np.repeat(x, 12))
+        col.extend(np.tile(x, 12))
+        data.extend(Hx.flatten())
+        if conn is not None:
+            conn[i, j] = conn[i, k] = conn[i, l] = conn[
+                j, k] = conn[j, l] = conn[k, l] = True
+            conn[j, i] = conn[k, i] = conn[l, i] = conn[
+                k, j] = conn[l, j] = conn[l, k] = True
+        
     def _make_sparse_precon(self, atoms, initial_assembly=False,
                             force_stab=False):
         N = len(atoms)
@@ -828,73 +936,22 @@ class FF(SparsePrecon):
         data = []
 
         if self.morses is not None:
-
-            for n in range(len(self.morses)):
-                if self.hessian == 'reduced':
-                    i, j, Hx = ff.get_morse_potential_reduced_hessian(
-                        atoms, self.morses[n])
-                elif self.hessian == 'spectral':
-                    i, j, Hx = ff.get_morse_potential_hessian(
-                        atoms, self.morses[n], spectral=True)
-                else:
-                    raise NotImplementedError('Not implemented hessian')
-                x = [3 * i, 3 * i + 1, 3 * i + 2, 3 * j, 3 * j + 1, 3 * j + 2]
-                row.extend(np.repeat(x, 6))
-                col.extend(np.tile(x, 6))
-                data.extend(Hx.flatten())
+            for morse in self.morses:
+                self.add_morse(morse, row, col, data)
 
         if self.bonds is not None:
-
-            for n in range(len(self.bonds)):
-                if self.hessian == 'reduced':
-                    i, j, Hx = ff.get_bond_potential_reduced_hessian(
-                        atoms, self.bonds[n], self.morses)
-                elif self.hessian == 'spectral':
-                    i, j, Hx = ff.get_bond_potential_hessian(
-                        atoms, self.bonds[n], self.morses, spectral=True)
-                else:
-                    raise NotImplementedError('Not implemented hessian')
-                x = [3 * i, 3 * i + 1, 3 * i + 2, 3 * j, 3 * j + 1, 3 * j + 2]
-                row.extend(np.repeat(x, 6))
-                col.extend(np.tile(x, 6))
-                data.extend(Hx.flatten())
-
+            for bond in self.bonds:
+                self.add_bond(bond, row, col, data)
+                
         if self.angles is not None:
-
-            for n in range(len(self.angles)):
-                if self.hessian == 'reduced':
-                    i, j, k, Hx = ff.get_angle_potential_reduced_hessian(
-                        atoms, self.angles[n], self.morses)
-                elif self.hessian == 'spectral':
-                    i, j, k, Hx = ff.get_angle_potential_hessian(
-                        atoms, self.angles[n], self.morses, spectral=True)
-                else:
-                    raise NotImplementedError('Not implemented hessian')
-                x = [3 * i, 3 * i + 1, 3 * i + 2, 3 * j, 3 *
-                     j + 1, 3 * j + 2, 3 * k, 3 * k + 1, 3 * k + 2]
-                row.extend(np.repeat(x, 9))
-                col.extend(np.tile(x, 9))
-                data.extend(Hx.flatten())
+            for angle in self.angles:
+                self.add_angle(angle, row, col, data)
 
         if self.dihedrals is not None:
+            for dihedral in self.dihedrals:
+                self.add_dihedral(dihedral, row, col, data)
 
-            for n in range(len(self.dihedrals)):
-                if self.hessian == 'reduced':
-                    i, j, k, l, Hx = \
-                        ff.get_dihedral_potential_reduced_hessian(
-                            atoms, self.dihedrals[n], self.morses)
-                elif self.hessian == 'spectral':
-                    i, j, k, l, Hx = ff.get_dihedral_potential_hessian(
-                        atoms, self.dihedrals[n], self.morses, spectral=True)
-                else:
-                    raise NotImplementedError('Not implemented hessian')
-                x = [3 * i, 3 * i + 1, 3 * i + 2, 3 * j, 3 * j + 1, 3 * j +
-                     2, 3 * k, 3 * k + 1, 3 * k + 2, 3 * l, 3 * l + 1,
-                     3 * l + 2]
-                row.extend(np.repeat(x, 12))
-                col.extend(np.tile(x, 12))
-                data.extend(Hx.flatten())
-
+        # add the diagonal
         row.extend(range(self.dim * N))
         col.extend(range(self.dim * N))
         data.extend([self.c_stab] * self.dim * N)
@@ -921,16 +978,9 @@ class FF(SparsePrecon):
             self.P[i, i] = 1.0
 
         self.P = self.P.tocsr()
-
         self.logfile.write('--- N-dim precon created in %s s ---\n' %
                            (time.time() - start_time))
-
-        # Create solver
-        if self.use_pyamg:
-            start_time = time.time()
-            self.ml = create_pyamg_solver(self.P)
-            self.logfile.write('--- multi grid solver created in %s s ---\n' %
-                               (time.time() - start_time))
+        self.create_solver()
 
 
 class Exp_FF(Exp, FF):
@@ -1069,8 +1119,7 @@ class Exp_FF(Exp, FF):
             i = N - 3
             j = N - 2
             k = N - 1
-            x = [3 * i, 3 * i + 1, 3 * i + 2, 3 * j, 3 *
-                 j + 1, 3 * j + 2, 3 * k, 3 * k + 1, 3 * k + 2]
+            x = ijk_to_x(i, j, k)
             row.extend(x)
             col.extend(x)
             if self.apply_cell:
@@ -1085,95 +1134,28 @@ class Exp_FF(Exp, FF):
         if self.apply_positions and not initial_assembly:
 
             if self.morses is not None:
-
-                for n in range(len(self.morses)):
-                    if self.hessian == 'reduced':
-                        i, j, Hx = ff.get_morse_potential_reduced_hessian(
-                            atoms, self.morses[n])
-                    elif self.hessian == 'spectral':
-                        i, j, Hx = ff.get_morse_potential_hessian(
-                            atoms, self.morses[n], spectral=True)
-                    else:
-                        raise NotImplementedError('Not implemented hessian')
-                    x = [3 * i, 3 * i + 1, 3 * i + 2,
-                         3 * j, 3 * j + 1, 3 * j + 2]
-                    row.extend(np.repeat(x, 6))
-                    col.extend(np.tile(x, 6))
-                    data.extend(Hx.flatten())
-                    conn[i, j] = True
-                    conn[j, i] = True
+                for morse in self.morses:
+                    self.add_morse(morse, row, col, data, conn)
 
             if self.bonds is not None:
-
-                for n in range(len(self.bonds)):
-                    if self.hessian == 'reduced':
-                        i, j, Hx = ff.get_bond_potential_reduced_hessian(
-                            atoms, self.bonds[n], self.morses)
-                    elif self.hessian == 'spectral':
-                        i, j, Hx = ff.get_bond_potential_hessian(
-                            atoms, self.bonds[n], self.morses, spectral=True)
-                    else:
-                        raise NotImplementedError('Not implemented hessian')
-                    x = [3 * i, 3 * i + 1, 3 * i + 2,
-                         3 * j, 3 * j + 1, 3 * j + 2]
-                    row.extend(np.repeat(x, 6))
-                    col.extend(np.tile(x, 6))
-                    data.extend(Hx.flatten())
-                    conn[i, j] = True
-                    conn[j, i] = True
+                for bond in self.bonds:
+                    self.add_bond(bond, row, col, data, conn)
 
             if self.angles is not None:
-
-                for n in range(len(self.angles)):
-                    if self.hessian == 'reduced':
-                        i, j, k, Hx = ff.get_angle_potential_reduced_hessian(
-                            atoms, self.angles[n], self.morses)
-                    elif self.hessian == 'spectral':
-                        i, j, k, Hx = ff.get_angle_potential_hessian(
-                            atoms, self.angles[n], self.morses, spectral=True)
-                    else:
-                        raise NotImplementedError('Not implemented hessian')
-                    x = [3 * i, 3 * i + 1, 3 * i + 2, 3 * j, 3 *
-                         j + 1, 3 * j + 2, 3 * k, 3 * k + 1, 3 * k + 2]
-                    row.extend(np.repeat(x, 9))
-                    col.extend(np.tile(x, 9))
-                    data.extend(Hx.flatten())
-                    conn[i, j] = conn[i, k] = conn[j, k] = True
-                    conn[j, i] = conn[k, i] = conn[k, j] = True
+                for angle in self.angles:
+                    self.add_angle(angle, row, col, data, conn)
 
             if self.dihedrals is not None:
-
-                for n in range(len(self.dihedrals)):
-                    if self.hessian == 'reduced':
-                        i, j, k, l, Hx = \
-                            ff.get_dihedral_potential_reduced_hessian(
-                                atoms, self.dihedrals[n], self.morses)
-                    elif self.hessian == 'spectral':
-                        i, j, k, l, Hx = ff.get_dihedral_potential_hessian(
-                            atoms, self.dihedrals[n], self.morses,
-                            spectral=True)
-                    else:
-                        raise NotImplementedError('Not implemented hessian')
-                    x = [3 * i, 3 * i + 1, 3 * i + 2,
-                         3 * j, 3 * j + 1, 3 * j + 2,
-                         3 * k, 3 * k + 1, 3 * k + 2,
-                         3 * l, 3 * l + 1, 3 * l + 2]
-                    row.extend(np.repeat(x, 12))
-                    col.extend(np.tile(x, 12))
-                    data.extend(Hx.flatten())
-                    conn[i, j] = conn[i, k] = conn[i, l] = conn[
-                        j, k] = conn[j, l] = conn[k, l] = True
-                    conn[j, i] = conn[k, i] = conn[l, i] = conn[
-                        k, j] = conn[l, j] = conn[l, k] = True
+                for dihedral in self.dihedrals:
+                    self.add_dihedral(dihedral, row, col, data, conn)
 
         if self.apply_positions:
             for i, j, rij in zip(i_list, j_list, rij_list):
                 if not conn[i, j]:
                     coeff = self.get_coeff(rij)
-                    x = [3 * i, 3 * i + 1, 3 * i + 2]
-                    y = [3 * j, 3 * j + 1, 3 * j + 2]
-                    row.extend(x + x)
-                    col.extend(x + y)
+                    x = ij_to_x(i, j)
+                    row.extend(x)
+                    col.extend(x)
                     data.extend(3 * [-coeff] + 3 * [coeff])
 
         row.extend(range(self.dim * N))
@@ -1199,13 +1181,7 @@ class Exp_FF(Exp, FF):
                 self.P[i, i] = 1.0
 
         self.P = self.P.tocsr()
-
-        # Create solver
-        if self.use_pyamg:
-            start_time = time.time()
-            self.ml = create_pyamg_solver(self.P)
-            self.logfile.write('--- multi grid solver created in %s s ---\n' %
-                               (time.time() - start_time))
+        self.create_solver()
 
 
 def make_precon(precon, atoms=None, **kwargs):
