@@ -19,6 +19,7 @@ from ase.units import kcal, mol, Debye
 class MOPAC(FileIOCalculator):
     implemented_properties = ['energy', 'forces', 'dipole', 'magmom']
     command = 'mopac PREFIX.mop 2> /dev/null'
+    discard_results_on_any_change = True
 
     default_parameters = dict(
         method='PM7',
@@ -68,11 +69,6 @@ class MOPAC(FileIOCalculator):
         """
         FileIOCalculator.__init__(self, restart, ignore_bad_restart_file,
                                   label, atoms, **kwargs)
-
-    def set(self, **kwargs):
-        changed_parameters = FileIOCalculator.set(self, **kwargs)
-        if changed_parameters:
-            self.reset()
 
     def write_input(self, atoms, properties=None, system_changes=None):
         FileIOCalculator.write_input(self, atoms, properties, system_changes)

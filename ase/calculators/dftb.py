@@ -20,6 +20,7 @@ class Dftb(FileIOCalculator):
         command = 'dftb+ > PREFIX.out'
 
     implemented_properties = ['energy', 'forces', 'charges', 'stress']
+    discard_results_on_any_change = True
 
     def __init__(self, restart=None,
                  ignore_bad_restart_file=FileIOCalculator._deprecated,
@@ -264,12 +265,6 @@ class Dftb(FileIOCalculator):
 
 
         outfile.close()
-
-    def set(self, **kwargs):
-        changed_parameters = FileIOCalculator.set(self, **kwargs)
-        if changed_parameters:
-            self.reset()
-        return changed_parameters
 
     def check_state(self, atoms):
         system_changes = FileIOCalculator.check_state(self, atoms)
