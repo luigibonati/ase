@@ -187,7 +187,7 @@ def test_neb_optimizers(setup_images, method):
     mep = NEB(images, method='spline', precon='Exp')
     F0 = mep.get_forces()
     opt = NEBOptimizer(mep, method=method)
-    opt.run(steps=1)  # do a single step
+    opt.run(steps=2)  # take two steps
     F1 = mep.get_forces()
     # check force have got smaller
     assert np.linalg.norm(F1, np.inf) < np.linalg.norm(F0, np.inf)
