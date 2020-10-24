@@ -15,13 +15,13 @@ def magmoms(atoms):
 def test_unpol(magmoms):
     assert not magmoms
     assert magmoms.spincomponents == 1
-    assert magmoms.spin_type == 'unpolarized'
+    assert magmoms.spin_type == 'paired'
     assert not magmoms.polarized
     assert magmoms.collinear
 
 
 def test_pol(atoms, magmoms):
-    atoms.set_initial_magnetic_moments(np.arange(len(atoms)))
+    atoms.set_initial_magnetic_moments(range(len(atoms)))
     assert magmoms
     assert magmoms.spincomponents == 2
     assert magmoms.spin_type == 'collinear'
@@ -41,6 +41,6 @@ def test_noncollinear(atoms, magmoms):
 def test_atoms_magmoms_property(atoms):
     magmoms = atoms.magmoms
     assert not magmoms.polarized
-    atoms.set_initial_magnetic_moments(arange(len(atoms)))
+    atoms.set_initial_magnetic_moments(range(len(atoms)))
     assert magmoms.polarized
     assert magmoms.collinear

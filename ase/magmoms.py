@@ -1,6 +1,6 @@
 class MagneticMoments:
     arrayname = 'initial_magmoms'
-    components2type = {1: 'unpolarized',
+    components2type = {1: 'paired',
                        2: 'collinear',
                        3: 'noncollinear'}
 
@@ -40,7 +40,6 @@ class MagneticMoments:
 
     @property
     def polarized(self) -> bool:
-        """Whether """
         return self._array is not None
 
     @property
