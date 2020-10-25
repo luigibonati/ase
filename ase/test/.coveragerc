@@ -34,12 +34,6 @@ omit =
     ../calculators/acemolecule.py
     ../calculators/castep.py
     ../calculators/gulp.py
-    ../calculators/kim/kim.py
-    ../calculators/kim/exceptions.py
-    ../calculators/kim/kimmodel.py
-    ../calculators/kim/neighborlist.py
-    ../calculators/kim/calculators.py
-    ../calculators/kim/kimpy_wrappers.py
     ../calculators/demon/demon.py
     ../calculators/demon/demon_io.py
     ../calculators/vasp/create_input.py
