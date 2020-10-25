@@ -46,7 +46,7 @@ def test_dcd(cp2k_factory, factories):
     h2.set_pbc(True)
     energy = h2.get_potential_energy()
     assert energy is not None
-    subprocess.call(['cp2k','-i', 'test_dcd.inp', '-o', 'test_dcd.out'])
+    subprocess.call([cp2k_main,'-i', 'test_dcd.inp', '-o', 'test_dcd.out'])
     h2_end = io.read('test_dcd-pos-1.dcd')
     assert (h2_end.symbols == 'X').all()
     traj = io.read('test_dcd-pos-1.dcd', ref_atoms=h2,
