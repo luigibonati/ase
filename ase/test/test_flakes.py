@@ -4,13 +4,6 @@ from collections import defaultdict
 from pathlib import Path
 from subprocess import Popen, PIPE
 
-import pytest
-
-import ase
-
-pytest.importorskip('flake8')
-
-asepath = Path(ase.__path__[0])  # type: ignore
 
 max_errors = {
     # do not compare types, use 'isinstance()'
@@ -130,12 +123,29 @@ def have_documentation():
     return doc_path.is_file()
 
 
-@pytest.mark.slow
-def test_flake8():
-    if not have_documentation():
-        pytest.skip('ase/doc not present; '
-                    'this is probably an installed version ')
+try:
+    # Allow importing this module with only flake8 (not other python
+    # dependencies)
+    import pytest
+except ImportError:
+    pass
+else:
+    @pytest.mark.slow
+    @pytest.mark.lint
+    def test_flake8():
+        import pytest
+        import ase
+        pytest.importorskip('flake8')
+        if not have_documentation():
+            pytest.skip('ase/doc not present; '
+                        'this is probably an installed version ')
 
+        asepath = Path(ase.__path__[0])  # type: ignore
+        errmsg = run_flaketest(asepath)
+        assert errmsg == '', errmsg
+
+
+def run_flaketest(asepath):
     args = [
         sys.executable,
         '-m',
@@ -173,5 +183,23 @@ def test_flake8():
             continue
         errmsg += 'Too many flakes: {} (max={})\n'.format(nerrs, nmaxerrs)
         errmsg += 'Offenses:\n' + '\n'.join(offenses[err]) + '\n'
+    return errmsg
 
-    assert errmsg == '', errmsg
+
+def main():
+    # Run the flaketests directly on the source, without ASE installed.
+    # We like that for one of the lint pipeline job.
+    path = Path(__file__)
+    asepath = path.parent.parent
+    errmsg = run_flaketest(asepath)
+
+    exitcode = 0
+    if errmsg:
+        print(errmsg)
+        exitcode = 1
+
+    raise SystemExit(exitcode)
+
+
+if __name__ == '__main__':
+    main()
