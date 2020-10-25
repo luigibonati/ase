@@ -4,33 +4,42 @@ http://www.cp2k.org
 Author: Ole Schuett <ole.schuett@mat.ethz.ch>
 """
 
-import unittest
 import shutil
 import subprocess
+
 import numpy as np
+import pytest
+
 from ase.build import molecule
 from ase import io
 from ase.io.cp2k import iread_cp2k_dcd
 from ase.calculators.calculator import compare_atoms
 
 
-def test_dcd(cp2k_factory):
-    if not shutil.which("cp2k"):
-        raise unittest.SkipTest('cp2k command not available')
+inp = """&MOTION
+           &PRINT
+             &TRAJECTORY SILENT
+               FORMAT DCD_ALIGNED_CELL
+             &END TRAJECTORY
+           &END PRINT
+           &MD
+             STEPS 5
+           &END MD
+         &END MOTION
+         &GLOBAL
+           RUN_TYPE MD
+         &END GLOBAL"""
 
-    inp = """&MOTION
-               &PRINT
-                 &TRAJECTORY SILENT
-                   FORMAT DCD_ALIGNED_CELL
-                 &END TRAJECTORY
-               &END PRINT
-               &MD
-                 STEPS 5
-               &END MD
-             &END MOTION
-             &GLOBAL
-               RUN_TYPE MD
-             &END GLOBAL"""
+
+def test_dcd(cp2k_factory, factories):
+    exes = factories.executables
+
+    cp2k_main = exes.get('cp2k_main')
+    if cp2k_main is None:
+        pytest.skip('Please define "cp2k_main" in testing executables.  '
+                    'It should point to the main cp2k executable '
+                    '(not the shell)')
+
     calc = cp2k_factory.calc(label='test_dcd', max_scf=1, inp=inp)
     h2 = molecule('H2', calculator=calc)
     h2.center(vacuum=2.0)
@@ -41,11 +50,14 @@ def test_dcd(cp2k_factory):
     subprocess.call(['cp2k','-i', 'test_dcd.inp', '-o', 'test_dcd.out'])
     h2_end = io.read('test_dcd-pos-1.dcd')
     assert (h2_end.symbols == 'X').all()
-    traj = io.read('test_dcd-pos-1.dcd', ref_atoms=h2, index=slice(0,None), aligned=True)
-    ioITraj = io.iread('test_dcd-pos-1.dcd', ref_atoms=h2, index=slice(0,None), aligned=True)
+    traj = io.read('test_dcd-pos-1.dcd', ref_atoms=h2,
+                   index=slice(0, None), aligned=True)
+    ioITraj = io.iread('test_dcd-pos-1.dcd', ref_atoms=h2,
+                       index=slice(0, None), aligned=True)
 
-    with open('test_dcd-pos-1.dcd', 'rb') as f:
-        itraj = iread_cp2k_dcd(f, indices=slice(0,None), ref_atoms=h2, aligned=True)
+    with open('test_dcd-pos-1.dcd', 'rb') as fd:
+        itraj = iread_cp2k_dcd(fd, indices=slice(0, None),
+                               ref_atoms=h2, aligned=True)
         for i,iMol in enumerate(itraj):
             ioIMol = next(ioITraj)
             assert compare_atoms(iMol, traj[i]) == []
