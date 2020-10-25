@@ -53,7 +53,6 @@ omit =
     ../io/gaussian.py
     ../io/pov.py
     ../io/dacapo.py
-    ../io/cp2k.py
     ../io/fortranfile.py
     ../io/turbomole.py
     ../io/gaussian_reader.py

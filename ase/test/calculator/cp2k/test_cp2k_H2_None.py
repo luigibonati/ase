@@ -57,4 +57,3 @@ def test_h2_none(cp2k_factory):
     energy_ref = -30.6989595886
     diff = abs((energy - energy_ref) / energy_ref)
     assert diff < 1e-10
-    print('passed test "H2_None"')
