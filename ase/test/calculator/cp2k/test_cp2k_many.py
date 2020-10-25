@@ -23,16 +23,13 @@ def test_geoopt(cp2k_factory, atoms):
     calc = cp2k_factory.calc(label='test_H2_GOPT', print_level='LOW')
     atoms.calc = calc
 
-    # Run Geo-Opt
     gopt = BFGS(atoms, logfile=None)
     gopt.run(fmax=1e-6)
 
-    # check distance
     dist = atoms.get_distance(0, 1)
     dist_ref = 0.7245595
     assert (dist - dist_ref) / dist_ref < 1e-7
 
-    # check energy
     energy_ref = -30.7025616943
     energy = atoms.get_potential_energy()
     assert (energy - energy_ref) / energy_ref < 1e-10
@@ -90,7 +87,6 @@ def test_md(cp2k_factory):
     atoms = Atoms('HH', positions=positions, calculator=calc)
     atoms.center(vacuum=2.0)
 
-    # Run MD
     MaxwellBoltzmannDistribution(atoms, temperature_K=0.5 * 300,
                                  force_temp=True)
     energy_start = atoms.get_potential_energy() + atoms.get_kinetic_energy()
