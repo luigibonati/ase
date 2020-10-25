@@ -6,12 +6,22 @@ Author: Ole Schuett <ole.schuett@mat.ethz.ch>
 
 from ase.build import molecule
 from ase.optimize import BFGS
+import pytest
+from ase.calculators.calculator import CalculatorSetupError
+from ase import units
+from ase.atoms import Atoms
+from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
+from ase.md.verlet import VelocityVerlet
 
 
-def test_geoopt(cp2k_factory):
+@pytest.fixture
+def atoms():
+    return molecule('H2', vacuum=2.0)
+
+
+def test_geoopt(cp2k_factory, atoms):
     calc = cp2k_factory.calc(label='test_H2_GOPT', print_level='LOW')
-    atoms = molecule('H2', calculator=calc)
-    atoms.center(vacuum=2.0)
+    atoms.calc = calc
 
     # Run Geo-Opt
     gopt = BFGS(atoms, logfile=None)
@@ -27,37 +37,29 @@ def test_geoopt(cp2k_factory):
     energy = atoms.get_potential_energy()
     assert (energy - energy_ref) / energy_ref < 1e-10
 
-from ase.build import molecule
 
-
-def test_h2_lda(cp2k_factory):
+def test_h2_lda(cp2k_factory, atoms):
     calc = cp2k_factory.calc(label='test_H2_LDA')
-    h2 = molecule('H2', calculator=calc)
-    h2.center(vacuum=2.0)
-    energy = h2.get_potential_energy()
+    atoms.calc = calc
+    energy = atoms.get_potential_energy()
     energy_ref = -30.6989595886
     diff = abs((energy - energy_ref) / energy_ref)
     assert diff < 1e-10
 
-from ase.build import molecule
 
-
-def test_h2_libxc(cp2k_factory):
+def test_h2_libxc(cp2k_factory, atoms):
     calc = cp2k_factory.calc(
         xc='XC_GGA_X_PBE XC_GGA_C_PBE',
         pseudo_potential="GTH-PBE",
         label='test_H2_libxc')
-    h2 = molecule('H2', calculator=calc)
-    h2.center(vacuum=2.0)
-    energy = h2.get_potential_energy()
+    atoms.calc = calc
+    energy = atoms.get_potential_energy()
     energy_ref = -31.591716529642
     diff = abs((energy - energy_ref) / energy_ref)
     assert diff < 1e-10
 
-from ase.build import molecule
 
-
-def test_h2_ls(cp2k_factory):
+def test_h2_ls(cp2k_factory, atoms):
     inp = """&FORCE_EVAL
                &DFT
                  &QS
@@ -66,29 +68,20 @@ def test_h2_ls(cp2k_factory):
                &END DFT
              &END FORCE_EVAL"""
     calc = cp2k_factory.calc(label='test_H2_LS', inp=inp)
-    h2 = molecule('H2', calculator=calc)
-    h2.center(vacuum=2.0)
-    energy = h2.get_potential_energy()
+    atoms.calc = calc
+    energy = atoms.get_potential_energy()
     energy_ref = -30.6989581747
     diff = abs((energy - energy_ref) / energy_ref)
     assert diff < 5e-7
 
-from ase.build import molecule
 
-
-def test_h2_pbe(cp2k_factory):
+def test_h2_pbe(cp2k_factory, atoms):
     calc = cp2k_factory.calc(xc='PBE', label='test_H2_PBE')
-    h2 = molecule('H2', calculator=calc)
-    h2.center(vacuum=2.0)
-    energy = h2.get_potential_energy()
+    atoms.calc = calc
+    energy = atoms.get_potential_energy()
     energy_ref = -31.5917284949
     diff = abs((energy - energy_ref) / energy_ref)
     assert diff < 1e-10
-
-from ase import units
-from ase.atoms import Atoms
-from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
-from ase.md.verlet import VelocityVerlet
 
 
 def test_md(cp2k_factory):
@@ -98,21 +91,14 @@ def test_md(cp2k_factory):
     atoms.center(vacuum=2.0)
 
     # Run MD
-    MaxwellBoltzmannDistribution(atoms, temperature_K=0.5 * 300, force_temp=True)
+    MaxwellBoltzmannDistribution(atoms, temperature_K=0.5 * 300,
+                                 force_temp=True)
     energy_start = atoms.get_potential_energy() + atoms.get_kinetic_energy()
     dyn = VelocityVerlet(atoms, 0.5 * units.fs)
-    #def print_md():
-    #    energy = atoms.get_potential_energy() + atoms.get_kinetic_energy()
-    #    print("MD total-energy: %.10feV" %  energy)
-    #dyn.attach(print_md, interval=1)
     dyn.run(20)
 
     energy_end = atoms.get_potential_energy() + atoms.get_kinetic_energy()
-
     assert energy_start - energy_end < 1e-4
-
-from ase.build import molecule
-from ase import units
 
 
 def test_o2(cp2k_factory):
@@ -126,20 +112,14 @@ def test_o2(cp2k_factory):
     diff = abs((energy - energy_ref) / energy_ref)
     assert diff < 1e-10
 
-from ase.build import molecule
 
-
-def test_restart(cp2k_factory):
+def test_restart(cp2k_factory, atoms):
     calc = cp2k_factory.calc()
-    h2 = molecule('H2', calculator=calc)
-    h2.center(vacuum=2.0)
-    h2.get_potential_energy()
+    atoms.calc = calc
+    atoms.get_potential_energy()
     calc.write('test_restart')  # write a restart
     calc2 = cp2k_factory.calc(restart='test_restart')  # load a restart
-    assert not calc2.calculation_required(h2, ['energy'])
-
-import pytest
-from ase.calculators.calculator import CalculatorSetupError
+    assert not calc2.calculation_required(atoms, ['energy'])
 
 
 def test_unknown_keywords(cp2k_factory):
