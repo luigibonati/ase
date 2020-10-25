@@ -4,7 +4,6 @@ http://www.cp2k.org
 Author: Ole Schuett <ole.schuett@mat.ethz.ch>
 """
 
-import shutil
 import subprocess
 
 import numpy as np
@@ -16,22 +15,27 @@ from ase.io.cp2k import iread_cp2k_dcd
 from ase.calculators.calculator import compare_atoms
 
 
-inp = """&MOTION
-           &PRINT
-             &TRAJECTORY SILENT
-               FORMAT DCD_ALIGNED_CELL
-             &END TRAJECTORY
-           &END PRINT
-           &MD
-             STEPS 5
-           &END MD
-         &END MOTION
-         &GLOBAL
-           RUN_TYPE MD
-         &END GLOBAL"""
+inp = """\
+&MOTION
+  &PRINT
+    &TRAJECTORY SILENT
+      FORMAT DCD_ALIGNED_CELL
+    &END TRAJECTORY
+  &END PRINT
+  &MD
+    STEPS 5
+  &END MD
+&END MOTION
+&GLOBAL
+  RUN_TYPE MD
+&END GLOBAL
+"""
 
 
-def test_dcd(cp2k_factory, factories):
+@pytest.mark.calculator_lite
+@pytest.mark.calculator('cp2k')
+def test_dcd(factory, factories):
+    # (Should the cp2k_main executable live on the cp2k factory?)
     exes = factories.executables
 
     cp2k_main = exes.get('cp2k_main')
@@ -40,13 +44,14 @@ def test_dcd(cp2k_factory, factories):
                     'It should point to the main cp2k executable '
                     '(not the shell)')
 
-    calc = cp2k_factory.calc(label='test_dcd', max_scf=1, inp=inp)
+    calc = factory.calc(label='test_dcd', max_scf=1, inp=inp)
     h2 = molecule('H2', calculator=calc)
     h2.center(vacuum=2.0)
     h2.set_pbc(True)
     energy = h2.get_potential_energy()
     assert energy is not None
-    subprocess.call([cp2k_main,'-i', 'test_dcd.inp', '-o', 'test_dcd.out'])
+    subprocess.check_call([cp2k_main, '-i', 'test_dcd.inp', '-o',
+                           'test_dcd.out'])
     h2_end = io.read('test_dcd-pos-1.dcd')
     assert (h2_end.symbols == 'X').all()
     traj = io.read('test_dcd-pos-1.dcd', ref_atoms=h2,
@@ -57,13 +62,12 @@ def test_dcd(cp2k_factory, factories):
     with open('test_dcd-pos-1.dcd', 'rb') as fd:
         itraj = iread_cp2k_dcd(fd, indices=slice(0, None),
                                ref_atoms=h2, aligned=True)
-        for i,iMol in enumerate(itraj):
+        for i, iMol in enumerate(itraj):
             ioIMol = next(ioITraj)
             assert compare_atoms(iMol, traj[i]) == []
             assert compare_atoms(iMol, ioIMol) == []
             assert iMol.get_pbc().all()
 
-    traj = io.read('test_dcd-pos-1.dcd', ref_atoms=h2, index=slice(0,None))
+    traj = io.read('test_dcd-pos-1.dcd', ref_atoms=h2, index=slice(0, None))
     pbc = [mol.get_pbc() for mol in traj]
     assert not np.any(pbc)
-    print('passed test "CP2K_DCD"')
