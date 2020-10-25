@@ -1,3 +1,9 @@
+import numpy as np
+import pytest
+from ase import Atoms
+
+
+@pytest.mark.calculator_lite
 def test_cutoff_skin():
     """
     To test that the calculator handles skin and cutoffs correctly.
@@ -23,11 +29,8 @@ def test_cutoff_skin():
     had failed to ever register as a neighbor, then we'll get zero once
     again.
     """
-    import numpy as np
-    from pytest import importorskip
-    importorskip('kimpy')
+    pytest.importorskip('kimpy')
     from ase.calculators.kim import KIM
-    from ase import Atoms
 
 
     # Create calculator

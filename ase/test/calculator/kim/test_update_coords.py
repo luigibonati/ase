@@ -1,3 +1,9 @@
+import numpy as np
+from ase import Atoms
+from pytest import importorskip, mark
+
+
+@mark.calculator_lite
 def test_update_coords():
     """
     Check that the coordinates registered with the KIM API are updated
@@ -6,9 +12,6 @@ def test_update_coords():
     reassigned to a new memory location -- a problem which was indeed
     occurring at one point (see https://gitlab.com/ase/ase/merge_requests/1442)!
     """
-    import numpy as np
-    from ase import Atoms
-    from pytest import importorskip
     importorskip('kimpy')
     from ase.calculators.kim import KIM
 
