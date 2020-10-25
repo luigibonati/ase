@@ -94,7 +94,7 @@ def test_md(cp2k_factory):
     dyn.run(20)
 
     energy_end = atoms.get_potential_energy() + atoms.get_kinetic_energy()
-    assert energy_start - energy_end < 1e-4
+    assert abs(energy_start - energy_end) < 1e-4
 
 
 def test_o2(cp2k_factory):
