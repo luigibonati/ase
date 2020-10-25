@@ -43,7 +43,6 @@ def test_dcd(cp2k_factory, factories):
     calc = cp2k_factory.calc(label='test_dcd', max_scf=1, inp=inp)
     h2 = molecule('H2', calculator=calc)
     h2.center(vacuum=2.0)
-    h2.set_cell([10.0, 10.0, 10.0, 90.0, 90.0, 90.0])
     h2.set_pbc(True)
     energy = h2.get_potential_energy()
     assert energy is not None
