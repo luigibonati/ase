@@ -26,12 +26,6 @@ def test_geoopt(cp2k_factory):
     energy_ref = -30.7025616943
     energy = atoms.get_potential_energy()
     assert (energy - energy_ref) / energy_ref < 1e-10
-    print('passed test "H2_GEO_OPT"')
-"""Test suit for the CP2K ASE calulator.
-
-http://www.cp2k.org
-Author: Ole Schuett <ole.schuett@mat.ethz.ch>
-"""
 
 from ase.build import molecule
 
@@ -44,12 +38,6 @@ def test_h2_lda(cp2k_factory):
     energy_ref = -30.6989595886
     diff = abs((energy - energy_ref) / energy_ref)
     assert diff < 1e-10
-    print('passed test "H2_LDA"')
-"""Test suit for the CP2K ASE calulator.
-
-http://www.cp2k.org
-Author: Ole Schuett <ole.schuett@mat.ethz.ch>
-"""
 
 from ase.build import molecule
 
@@ -65,12 +53,6 @@ def test_h2_libxc(cp2k_factory):
     energy_ref = -31.591716529642
     diff = abs((energy - energy_ref) / energy_ref)
     assert diff < 1e-10
-    print('passed test "H2_libxc"')
-"""Test suit for the CP2K ASE calulator.
-
-http://www.cp2k.org
-Author: Ole Schuett <ole.schuett@mat.ethz.ch>
-"""
 
 from ase.build import molecule
 
@@ -90,12 +72,6 @@ def test_h2_ls(cp2k_factory):
     energy_ref = -30.6989581747
     diff = abs((energy - energy_ref) / energy_ref)
     assert diff < 5e-7
-    print('passed test "H2_LS"')
-"""Test suit for the CP2K ASE calulator.
-
-http://www.cp2k.org
-Author: Ole Schuett <ole.schuett@mat.ethz.ch>
-"""
 
 from ase.build import molecule
 
@@ -108,12 +84,6 @@ def test_h2_pbe(cp2k_factory):
     energy_ref = -31.5917284949
     diff = abs((energy - energy_ref) / energy_ref)
     assert diff < 1e-10
-    print('passed test "H2_PBE"')
-"""Test suit for the CP2K ASE calulator.
-
-http://www.cp2k.org
-Author: Ole Schuett <ole.schuett@mat.ethz.ch>
-"""
 
 from ase import units
 from ase.atoms import Atoms
@@ -140,12 +110,6 @@ def test_md(cp2k_factory):
     energy_end = atoms.get_potential_energy() + atoms.get_kinetic_energy()
 
     assert energy_start - energy_end < 1e-4
-    print('passed test "H2_MD"')
-"""Test suit for the CP2K ASE calulator.
-
-http://www.cp2k.org
-Author: Ole Schuett <ole.schuett@mat.ethz.ch>
-"""
 
 from ase.build import molecule
 from ase import units
@@ -161,12 +125,6 @@ def test_o2(cp2k_factory):
     energy_ref = -861.057011375
     diff = abs((energy - energy_ref) / energy_ref)
     assert diff < 1e-10
-    print('passed test "O2"')
-"""Test suit for the CP2K ASE calulator.
-
-http://www.cp2k.org
-Author: Ole Schuett <ole.schuett@mat.ethz.ch>
-"""
 
 from ase.build import molecule
 
@@ -179,11 +137,6 @@ def test_restart(cp2k_factory):
     calc.write('test_restart')  # write a restart
     calc2 = cp2k_factory.calc(restart='test_restart')  # load a restart
     assert not calc2.calculation_required(h2, ['energy'])
-    print('passed test "restart"')
-""" Test to check that passing unknown keywords,
-which are not processed by the interface to CP2K,
-raises an error.
-"""
 
 import pytest
 from ase.calculators.calculator import CalculatorSetupError
@@ -192,5 +145,3 @@ from ase.calculators.calculator import CalculatorSetupError
 def test_unknown_keywords(cp2k_factory):
     with pytest.raises(CalculatorSetupError):
         cp2k_factory.calc(dummy_nonexistent_keyword='hello')
-
-    print('passed test "unknown_keywords"')
