@@ -179,9 +179,11 @@ pages:
 lint:
   image: registry.gitlab.com/ase/ase:ase-paperwork
   script:
+    - cd $CI_PROJECT_DIR
     - mypy --color-output -p ase
-    - python $CI_PROJECT_DIR/ase/test/test_flakes $CI_PROJECT_DIR
-    - python -We:invalid -m compileall -f -q $CI_PROJECT_DIR
+    - python ase/test/lint.py
+    - python -We:invalid -m compileall -f -q ase/
+
 
 coverage-combine:
   image: registry.gitlab.com/ase/ase:ase-paperwork
