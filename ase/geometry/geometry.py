@@ -12,6 +12,7 @@ import numpy as np
 from ase.geometry import complete_cell
 from ase.geometry.minkowski_reduction import minkowski_reduce
 from ase.utils import pbc2pbc
+from ase.cell import Cell
 
 
 def translate_pretty(fractional, pbc):
@@ -154,7 +155,7 @@ def naive_find_mic(v, cell):
     Described in:
     W. Smith, "The Minimum Image Convention in Non-Cubic MD Cells", 1989,
     http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.57.1696."""
-    f = cell.scaled_positions(v)
+    f = Cell(cell).scaled_positions(v)
     f -= np.floor(f + 0.5)
     vmin = f @ cell
     vlen = np.linalg.norm(vmin, axis=1)
@@ -198,6 +199,7 @@ def find_mic(v, cell, pbc=True):
     """Finds the minimum-image representation of vector(s) v using either one
     of two find mic algorithms depending on the given cell, v and pbc."""
 
+    cell = Cell(cell)
     pbc = cell.any(1) & pbc2pbc(pbc)
     dim = np.sum(pbc)
     v = np.asarray(v)
