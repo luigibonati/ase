@@ -556,13 +556,21 @@ class RescaledCalculator(Calculator):
         mm_cell = atoms.get_cell()
         scaled_atoms.set_cell(mm_cell / self.alpha, scale_atoms=True)
 
-        forces = self.mm_calc.get_forces(scaled_atoms)
-        energy = self.mm_calc.get_potential_energy(scaled_atoms)
-        stress = self.mm_calc.get_stress(scaled_atoms)
+        results = {}
 
-        self.results = {'energy': energy / self.beta,
-                        'forces': forces / (self.beta * self.alpha),
-                        'stress': stress / (self.beta * self.alpha**3)}
+        if 'energy' in properties:
+            energy = self.mm_calc.get_potential_energy(scaled_atoms)
+            results['energy'] = energy / self.beta
+
+        if 'forces' in properties:
+            forces = self.mm_calc.get_forces(scaled_atoms)
+            results['forces'] = forces / (self.beta * self.alpha)
+
+        if 'stress' in properties:
+            stress = self.mm_calc.get_stress(scaled_atoms)
+            results['stress'] = stress / (self.beta * self.alpha**3)
+
+        self.results = results
 
 
 class ForceConstantCalculator(Calculator):
