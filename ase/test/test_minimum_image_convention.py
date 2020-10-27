@@ -4,6 +4,7 @@ from numpy.testing import assert_allclose
 from ase.lattice.cubic import FaceCenteredCubic
 from ase.neighborlist import mic as NeighborListMic
 from ase.neighborlist import NeighborList, PrimitiveNeighborList
+from ase.geometry import find_mic
 
 
 @pytest.mark.parametrize("dim", [2, 3])
@@ -54,3 +55,13 @@ def test_minimum_image_convention(dim):
         d = np.linalg.norm(p - atoms.positions[0])
         d3[i] = min(d3[i], d)
     assert_allclose(d0, d3)
+
+
+def test_numpy_array():
+    # Tests Issue #787
+    atoms = FaceCenteredCubic(size=[1, 1, 1],
+                              symbol='Cu',
+                              latticeconstant=2,
+                              pbc=True)
+
+    find_mic(atoms.positions, np.array(atoms.cell), pbc=True)
