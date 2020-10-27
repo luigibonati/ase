@@ -222,15 +222,63 @@ def test_qm_pbc_mixed(qm_calc, mm_calc):
     assert np.diag(qm_cluster.cell)[2] == np.diag(at0.cell)[2]
 
 
-@pytest.mark.slow
-def test_forceqmmm(qm_calc, mm_calc):
+def test_rescaled_calculator():
+    """
+    Test rescaled RescaledCalculator() by computing lattice constant
+    and bulk modulus using fit to equation of state
+    and comparing it to the desired values
+    """
 
-    # parameters
-    N_cell = 2
-    R_QMs = np.array([3, 7])
+    from ase.calculators.eam import EAM
 
-    bulk_at = bulk("Cu", cubic=True)
-    sigma = (bulk_at * 2).get_distance(0, 1) * (2. ** (-1. / 6))
+    # A simple empirical N-body potential for
+    # transition metals by M. W. Finnis & J.E. Sinclair
+    # https://www.tandfonline.com/doi/abs/10.1080/01418618408244210
+    # using analytical formulation in order to avoid extra file dependence
+
+    def pair_potential(r):
+        '''
+        returns the pair potential as a equation 27 in pair_potential
+        r - numpy array with the values of distance to compute the pair function
+        '''
+        # parameters for W
+        c = 3.25
+        c0 = 47.1346499
+        c1 = -33.7665655
+        c2 = 6.2541999
+
+        energy = (c0 + c1 * r + c2 * r ** 2.0) * (r - c) ** 2.0
+        energy[r > c] = 0.0
+
+        return energy
+
+    def cohesive_potential(r):
+        '''
+        returns the cohesive potential as a equation 28 in pair_potential
+        r - numpy array with the values of distance to compute the pair function
+        '''
+        # parameters for W
+        d = 4.400224
+
+        rho = (r - d) ** 2.0
+        rho[r > d] = 0.0
+
+        return rho
+
+    def embedding_function(rho):
+        '''
+        returns energy as a function of electronic density from eq 3
+        '''
+
+        A = 1.896373
+        energy = - A * np.sqrt(rho)
+
+        return energy
+
+    cutoff = 4.400224
+    W_FS = EAM(elements=['W'], embedded_energy=np.array([embedding_function]),
+               electron_density=np.array([[cohesive_potential]]),
+               phi=np.array([[pair_potential]]), cutoff=cutoff, form='fs')
 
     # compute MM and QM equations of state
     def strain(at, e, calc):
@@ -241,19 +289,24 @@ def test_forceqmmm(qm_calc, mm_calc):
         e = at.get_potential_energy()
         return v, e
 
-    eps = np.linspace(-0.01, 0.01, 13)
-    v_qm, E_qm = zip(*[strain(bulk_at, e, qm_calc) for e in eps])
-    v_mm, E_mm = zip(*[strain(bulk_at, e, mm_calc) for e in eps])
+    # desired DFT values
+    a0_qm = 3.18556
+    C11_qm = 522  # pm 15 GPa
+    C12_qm = 193  # pm 5 GPa
+    B_qm = (C11_qm + 2.0 * C12_qm) / 3.0
 
-    eos_qm = EquationOfState(v_qm, E_qm)
-    v0_qm, E0_qm, B_qm = eos_qm.fit()
-    a0_qm = v0_qm ** (1.0 / 3.0)
+    bulk_at = bulk("W", cubic=True)
+
+    mm_calc = W_FS
+    eps = np.linspace(-0.01, 0.01, 13)
+    v_mm, E_mm = zip(*[strain(bulk_at, e, mm_calc) for e in eps])
 
     eos_mm = EquationOfState(v_mm, E_mm)
     v0_mm, E0_mm, B_mm = eos_mm.fit()
     a0_mm = v0_mm ** (1.0 / 3.0)
 
     mm_r = RescaledCalculator(mm_calc, a0_qm, B_qm, a0_mm, B_mm)
+    bulk_at = bulk("W", cubic=True, a=a0_qm)
     v_mm_r, E_mm_r = zip(*[strain(bulk_at, e, mm_r) for e in eps])
 
     eos_mm_r = EquationOfState(v_mm_r, E_mm_r)
@@ -261,14 +314,20 @@ def test_forceqmmm(qm_calc, mm_calc):
     a0_mm_r = v0_mm_r ** (1.0 / 3)
 
     # check match of a0 and B after rescaling is adequate
-    # 0.1% error in lattice constant
+    # 0.1% error in lattice constant and bulk modulus
     assert abs((a0_mm_r - a0_qm) / a0_qm) < 1e-3
-    assert abs((B_mm_r - B_qm) / B_qm) < 0.05  # 5% error in bulk modulus
+    assert abs((B_mm_r - B_qm) / B_qm) < 1e-3
 
-    # plt.plot(v_mm, E_mm - np.min(E_mm), 'o-', label='MM')
-    # plt.plot(v_qm, E_qm - np.min(E_qm), 'o-', label='QM')
-    # plt.plot(v_mm_r, E_mm_r - np.min(E_mm_r), 'o-', label='MM rescaled')
-    # plt.legend()
+
+@pytest.mark.slow
+def test_forceqmmm(qm_calc, mm_calc):
+
+    # parameters
+    N_cell = 2
+    R_QMs = np.array([3, 7])
+
+    bulk_at = bulk("Cu", cubic=True)
+    sigma = (bulk_at * 2).get_distance(0, 1) * (2. ** (-1. / 6))
 
     at0 = bulk_at * N_cell
     r = at0.get_distances(0, np.arange(1, len(at0)), mic=True)
