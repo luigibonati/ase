@@ -230,7 +230,7 @@ def test_rescaled_calculator():
     """
 
     from ase.calculators.eam import EAM
-
+    from ase.units import GPa
     # A simple empirical N-body potential for
     # transition metals by M. W. Finnis & J.E. Sinclair
     # https://www.tandfonline.com/doi/abs/10.1080/01418618408244210
@@ -303,6 +303,7 @@ def test_rescaled_calculator():
 
     eos_mm = EquationOfState(v_mm, E_mm)
     v0_mm, E0_mm, B_mm = eos_mm.fit()
+    B_mm /= GPa
     a0_mm = v0_mm ** (1.0 / 3.0)
 
     mm_r = RescaledCalculator(mm_calc, a0_qm, B_qm, a0_mm, B_mm)
@@ -311,6 +312,7 @@ def test_rescaled_calculator():
 
     eos_mm_r = EquationOfState(v_mm_r, E_mm_r)
     v0_mm_r, E0_mm_r, B_mm_r = eos_mm_r.fit()
+    B_mm_r /= GPa
     a0_mm_r = v0_mm_r ** (1.0 / 3)
 
     # check match of a0 and B after rescaling is adequate
