@@ -1045,7 +1045,7 @@ class Exp_FF(Exp, FF):
             if isinstance(atoms, Filter):
                 real_atoms = atoms.atoms
             if self.old_positions is None:
-                self.old_positions = real_atoms.positions,
+                self.old_positions = real_atoms.positions
             displacement, _ = find_mic(real_atoms.positions - self.old_positions,
                                        real_atoms.cell, real_atoms.pbc)
             self.old_positions = real_atoms.get_positions()
