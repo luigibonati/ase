@@ -57,7 +57,7 @@ def read_aims(filename, apply_constraints=True):
             positions.append(floatvect)
             magmoms.append(0.0)
             charges.append(0.0)
-            symbols.append(inp[-1])
+            symbols.append(inp[4])
             i += 1
             xyz = np.array([0, 0, 0])
         elif inp[0] == "atom_frac":
@@ -69,7 +69,7 @@ def read_aims(filename, apply_constraints=True):
             floatvect = float(inp[1]), float(inp[2]), float(inp[3])
             positions.append(floatvect)
             magmoms.append(0.0)
-            symbols.append(inp[-1])
+            symbols.append(inp[4])
             i += 1
             xyz = np.array([0, 0, 0])
 
