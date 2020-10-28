@@ -612,8 +612,8 @@ class SparseCoeffPrecon(SparsePrecon):
                 real_atoms = atoms.atoms
             if self.old_positions is None:
                 self.old_positions = real_atoms.positions
-            displacement = find_mic(real_atoms.positions - self.old_positions,
-                                    real_atoms.cell, real_atoms.pbc)
+            displacement, _ = find_mic(real_atoms.positions - self.old_positions,
+                                       real_atoms.cell, real_atoms.pbc)
             self.old_positions = real_atoms.get_positions()
             max_abs_displacement = abs(displacement).max()
             self.logfile.write('max(abs(displacements)) = %.2f A (%.2f r_NN)' %
@@ -1046,8 +1046,8 @@ class Exp_FF(Exp, FF):
                 real_atoms = atoms.atoms
             if self.old_positions is None:
                 self.old_positions = real_atoms.positions,
-            displacement = find_mic(real_atoms.positions - self.old_positions,
-                                    real_atoms.cell, real_atoms.pbc)
+            displacement, _ = find_mic(real_atoms.positions - self.old_positions,
+                                       real_atoms.cell, real_atoms.pbc)
             self.old_positions = real_atoms.get_positions()
             max_abs_displacement = abs(displacement).max()
             self.logfile.write('max(abs(displacements)) = %.2f A (%.2f r_NN)' %
