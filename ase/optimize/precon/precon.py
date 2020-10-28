@@ -14,7 +14,7 @@ from scipy.sparse.linalg import spsolve
 
 from ase.constraints import Filter, FixAtoms
 from ase.utils import longsum
-from ase.geometry import wrap_positions
+from ase.geometry import find_mic
 import ase.utils.ff as ff
 import ase.units as units
 from ase.optimize.precon.neighbors import (get_neighbours,
@@ -611,10 +611,9 @@ class SparseCoeffPrecon(SparsePrecon):
             if isinstance(atoms, Filter):
                 real_atoms = atoms.atoms
             if self.old_positions is None:
-                self.old_positions = wrap_positions(real_atoms.positions,
-                                                    real_atoms.cell)
-            displacement = wrap_positions(real_atoms.positions,
-                                          real_atoms.cell) - self.old_positions
+                self.old_positions = real_atoms.positions
+            displacement = find_mic(real_atoms.positions - self.old_positions,
+                                    real_atoms.cell, real_atoms.pbc)
             self.old_positions = real_atoms.get_positions()
             max_abs_displacement = abs(displacement).max()
             self.logfile.write('max(abs(displacements)) = %.2f A (%.2f r_NN)' %
@@ -1046,10 +1045,9 @@ class Exp_FF(Exp, FF):
             if isinstance(atoms, Filter):
                 real_atoms = atoms.atoms
             if self.old_positions is None:
-                self.old_positions = wrap_positions(real_atoms.positions,
-                                                    real_atoms.cell)
-            displacement = wrap_positions(real_atoms.positions,
-                                          real_atoms.cell) - self.old_positions
+                self.old_positions = real_atoms.positions,
+            displacement = find_mic(real_atoms.positions - self.old_positions,
+                                    real_atoms.cell, real_atoms.pbc)
             self.old_positions = real_atoms.get_positions()
             max_abs_displacement = abs(displacement).max()
             self.logfile.write('max(abs(displacements)) = %.2f A (%.2f r_NN)' %

@@ -1,10 +1,13 @@
-#import time
-
 import numpy as np
 
 from ase.constraints import Filter, FixAtoms
 from ase.geometry.cell import cell_to_cellpar
-from ase.neighborlist import neighbor_list
+
+try:
+    from matscipy.neighbours import neighbour_list as neighbor_list
+except ImportError:
+    from ase.neighborlist import neighbor_list
+
 
 def get_neighbours(atoms, r_cut, self_interaction=False):
     """Return a list of pairs of atoms within a given distance of each other.
