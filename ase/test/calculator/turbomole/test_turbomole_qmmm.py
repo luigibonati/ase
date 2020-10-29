@@ -1,3 +1,4 @@
+# type: ignore
 from math import cos, sin, pi
 
 import numpy as np
