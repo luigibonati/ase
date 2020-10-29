@@ -106,16 +106,16 @@ expected_lattice_vectors = np.array([
 def test_parse_geometry_lines():
     lines = sample_geometry_1.splitlines()
     atoms = parse_geometry_lines(lines,'sample_geometry_1.in')
-    assert np.all(atoms.get_chemical_symbols() == expected_symbols)
+    assert all(atoms.symbols == expected_symbols)
     assert atoms.get_scaled_positions() == approx(expected_scaled_positions)
     assert atoms.get_cell()[:] == approx(expected_lattice_vectors)
-    assert all(atoms.get_pbc()) == True
+    assert all(atoms.pbc)
 
     lines = sample_geometry_2.splitlines()
     atoms = parse_geometry_lines(lines,'sample_geometry_2.in')
-    assert np.all(atoms.get_chemical_symbols() == expected_symbols)
+    assert all(atoms.symbols == expected_symbols)
     assert atoms.get_scaled_positions() == approx(expected_scaled_positions)
     assert atoms.get_initial_charges() == approx(expected_charges)
     assert atoms.get_initial_magnetic_moments() == approx(expected_moments)
-    assert all(atoms.get_pbc()) == False
+    assert not all(atoms.pbc)
     assert len(atoms.constraints) == 2
