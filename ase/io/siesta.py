@@ -2,6 +2,10 @@
 from pathlib import Path
 from os import fstat
 from re import compile
+
+import numpy as np
+
+from ase import Atoms
 from ase.utils import reader
 
 
@@ -184,27 +188,25 @@ def read_fdf(fname):
     return _read_fdf(fname)
 
 
-def read_struct_out(fname):
+def read_struct_out(fd):
     """Read a siesta struct file"""
-    from ase.atoms import Atoms, Atom
-
-    f = fname
 
     cell = []
     for i in range(3):
-        cell.append([float(x) for x in f.readline().split()])
+        line = next(fd)
+        v = np.array(line.split(), float)
+        cell.append(v)
 
-    natoms = int(f.readline())
+    natoms = int(next(fd))
 
-    atoms = Atoms()
-    for atom in f:
-        Z, pos_x, pos_y, pos_z = atom.split()[1:]
-        atoms.append(Atom(int(Z),
-                          position=(float(pos_x), float(pos_y), float(pos_z))))
+    numbers = np.empty(natoms, int)
+    scaled_positions = np.empty((natoms, 3))
+    for i, line in enumerate(fd):
+        tokens = line.split()
+        numbers[i] = int(tokens[1])
+        scaled_positions[i] = np.array(tokens[2:5], float)
 
-    if len(atoms) != natoms:
-        raise IOError('Badly structured input file')
-
-    atoms.set_cell(cell, scale_atoms=True)
-
-    return atoms
+    return Atoms(numbers,
+                 cell=cell,
+                 pbc=True,
+                 scaled_positions=scaled_positions)
