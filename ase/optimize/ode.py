@@ -116,11 +116,11 @@ def ode12r(f, X0, h=None, verbose=1, fmax=1e-6, maxtol=1e3, steps=100,
         # Pick an extrapolation scheme for the system & find new increment
         y = Fn - Fnew
         if extrapolate == 1:  # F(xn + h Fn)
-            h_ls = h * np.dot(Fn, y) / (np.dot(y, y))
+            h_ls = h * (Fn @ y) / (y @ y)
         elif extrapolate == 2:  # F(Xn + h Fn)
-            h_ls = h * np.dot(Fn, Fnew) / (np.dot(Fn, y) + 1e-10)
+            h_ls = h * (Fn @ Fnew) / (Fn @ y + 1e-10)
         elif extrapolate == 3:  # min | F(Xn + h Fn) |
-            h_ls = h * np.dot(Fn, y) / (np.dot(y, y) + 1e-10)
+            h_ls = h * (Fn @ y) / (y @ y + 1e-10)
         else:
             raise ValueError(f'invalid extrapolate value: {extrapolate}. '
                              'Must be 1, 2 or 3')
