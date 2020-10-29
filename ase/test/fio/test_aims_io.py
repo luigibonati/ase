@@ -117,5 +117,5 @@ def test_parse_geometry_lines():
     assert atoms.get_scaled_positions() == approx(expected_scaled_positions)
     assert atoms.get_initial_charges() == approx(expected_charges)
     assert atoms.get_initial_magnetic_moments() == approx(expected_moments)
-    assert not all(atoms.pbc)
+    assert all(atoms.pbc == [0, 0, 0])
     assert len(atoms.constraints) == 2
