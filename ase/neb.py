@@ -911,7 +911,7 @@ class NEBOptimizer(Optimizer):
         self.nsteps += 1
         self.neb.adjust_positions()
 
-    def run(self, fmax=0.05, steps=50):
+    def run(self, fmax=0.05, steps=None):
         """
         Optimize images to obtain the minimum energy path
 
@@ -933,8 +933,9 @@ class NEBOptimizer(Optimizer):
                        verbose=self.verbose,
                        callback=self.callback,
                        residual=self.get_residual)
+                return True
             except OptimizerConvergenceError:
-                warnings.warn(f'NEBOptimizer did not converge in {steps} steps')
+                return False
         elif self.method == 'krylov':
             res = root(self.force_function,
                        self.get_dofs(),
@@ -943,16 +944,19 @@ class NEBOptimizer(Optimizer):
                        callback=self.callback)
             if res.success:
                 self.set_dofs(res.x)
+                return True
             else:
-                warnings.warn(f'NEBOptimizer did not converge in {steps} steps')
+                return False
         else:
             X = self.get_dofs()
             for step in range(steps):
                 F = self.neb.force_function(X)
                 if self.neb.get_residual() <= fmax:
-                    break
+                    return True
                 X += self.alpha * F
                 self.callback(X)
+            return False
+            
 
 
 class IDPP(Calculator):
