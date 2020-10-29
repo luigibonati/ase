@@ -34,14 +34,8 @@ def _get_stripped_lines(fd):
 
 
 @reader
-def _read_fdf_lines(file, inodes=[]):
+def _read_fdf_lines(file):
     # Read lines and resolve includes
-    fst = fstat(file.fileno())
-    inode = (fst.st_dev, fst.st_ino)
-    if inode in inodes:
-        raise IOError('Cyclic include in fdf file')
-    inodes = inodes + [inode]
-
     lbz = _labelize
 
     lines = []
@@ -54,7 +48,7 @@ def _read_fdf_lines(file, inodes=[]):
             parent_fname = getattr(file, 'name', None)
             if isinstance(parent_fname, str):
                 fname = Path(parent_fname).parent / fname
-            lines += _read_fdf_lines(fname, inodes)
+            lines += _read_fdf_lines(fname)
 
         elif '<' in L:
             L, fname = L.split('<', 1)
@@ -75,7 +69,7 @@ def _read_fdf_lines(file, inodes=[]):
                 # "label < filename.fdf" means that the label
                 # (_only_ that label) is to be resolved from filename.fdf
                 label = lbz(w[0])
-                fdf = _read_fdf(fname, inodes)
+                fdf = _read_fdf(fname)
                 if label in fdf:
                     if _is_block(fdf[label]):
                         lines.append('%%block %s' % label)
@@ -94,11 +88,10 @@ def _read_fdf_lines(file, inodes=[]):
 
 # The reason for creating a separate _read_fdf is simply to hide the
 # inodes-argument
-def _read_fdf(fname, inodes=[]):
-    # inodes is used to detect cyclic includes
+def _read_fdf(fname):
     fdf = {}
     lbz = _labelize
-    lines = _read_fdf_lines(fname, inodes)
+    lines = _read_fdf_lines(fname)
     while lines:
         w = lines.pop(0).split(None, 1)
         if lbz(w[0]) == '%block':
