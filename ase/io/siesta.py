@@ -86,44 +86,6 @@ def _read_fdf_lines(file):
     return lines
 
 
-# The reason for creating a separate _read_fdf is simply to hide the
-# inodes-argument
-def _read_fdf(fname):
-    fdf = {}
-    lbz = _labelize
-    lines = _read_fdf_lines(fname)
-    while lines:
-        w = lines.pop(0).split(None, 1)
-        if lbz(w[0]) == '%block':
-            # Block value
-            if len(w) == 2:
-                label = lbz(w[1])
-                content = []
-                while True:
-                    if len(lines) == 0:
-                        raise IOError('Unexpected EOF reached in %s, '
-                                      'un-ended block %s' % (fname, label))
-                    w = lines.pop(0).split()
-                    if lbz(w[0]) == '%endblock':
-                        break
-                    content.append(w)
-
-                if label not in fdf:
-                    # Only first appearance of label is to be used
-                    fdf[label] = content
-            else:
-                raise IOError('%%block statement without label')
-        else:
-            # Ordinary value
-            label = lbz(w[0])
-            if len(w) == 1:
-                # Siesta interpret blanks as True for logical variables
-                fdf[label] = []
-            else:
-                fdf[label] = w[1].split()
-    return fdf
-
-
 def read_fdf(fname):
     """Read a siesta style fdf-file.
 
@@ -177,8 +139,39 @@ def read_fdf(fname):
          'xcfunctional': ['GGA']}
 
     """
+    fdf = {}
+    lbz = _labelize
+    lines = _read_fdf_lines(fname)
+    while lines:
+        w = lines.pop(0).split(None, 1)
+        if lbz(w[0]) == '%block':
+            # Block value
+            if len(w) == 2:
+                label = lbz(w[1])
+                content = []
+                while True:
+                    if len(lines) == 0:
+                        raise IOError('Unexpected EOF reached in %s, '
+                                      'un-ended block %s' % (fname, label))
+                    w = lines.pop(0).split()
+                    if lbz(w[0]) == '%endblock':
+                        break
+                    content.append(w)
 
-    return _read_fdf(fname)
+                if label not in fdf:
+                    # Only first appearance of label is to be used
+                    fdf[label] = content
+            else:
+                raise IOError('%%block statement without label')
+        else:
+            # Ordinary value
+            label = lbz(w[0])
+            if len(w) == 1:
+                # Siesta interpret blanks as True for logical variables
+                fdf[label] = []
+            else:
+                fdf[label] = w[1].split()
+    return fdf
 
 
 def read_struct_out(fd):
