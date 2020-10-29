@@ -3,6 +3,7 @@
 # (which is also included in oi.py test case)
 # maintained by James Kermode <james.kermode@gmail.com>
 
+from pathlib import Path
 import numpy as np
 import pytest
 
@@ -75,8 +76,7 @@ def test_vec_cell(at, images):
     read_images = ase.io.read('multi.xyz', index=':')
     assert read_images == images
     # also test for vec_cell with whitespaces
-    f = open('structure.xyz', 'w')
-    f.write("""1
+    Path('structure.xyz').write_text("""1
     Coordinates
     C         -7.28250        4.71303       -3.82016
       VEC1 1.0 0.1 1.1
@@ -85,15 +85,14 @@ def test_vec_cell(at, images):
     C         -7.28250        4.71303       -3.82016
     VEC1 1.0 0.1 1.1
     """)
-    f.close()
+
     a = ase.io.read('structure.xyz', index=0)
     b = ase.io.read('structure.xyz', index=1)
     assert a == b
 
     # read xyz containing trailing blank line
     # also test for upper case elements
-    f = open('structure.xyz', 'w')
-    f.write("""4
+    Path('structure.xyz').write_text("""4
     Coordinates
     MG        -4.25650        3.79180       -2.54123
     C         -1.15405        2.86652       -1.26699
@@ -101,22 +100,21 @@ def test_vec_cell(at, images):
     C         -7.28250        4.71303       -3.82016
 
     """)
-    f.close()
+
     a = ase.io.read('structure.xyz')
     assert a[0].symbol == 'Mg'
 
 
 # read xyz with / and @ signs in key value
 def test_read_slash():
-    f = open('slash.xyz', 'w')
-    f.write("""4
+    Path('slash.xyz').write_text("""4
     key1=a key2=a/b key3=a@b key4="a@b"
     Mg        -4.25650        3.79180       -2.54123
     C         -1.15405        2.86652       -1.26699
     C         -5.53758        3.70936        0.63504
     C         -7.28250        4.71303       -3.82016
     """)
-    f.close()
+
     a = ase.io.read('slash.xyz')
     assert a.info['key1'] == r'a'
     assert a.info['key2'] == r'a/b'
@@ -273,15 +271,14 @@ def test_write_multiple(at, images):
 
 # read xyz with blank comment line
 def test_blank_comment():
-    f = open('blankcomment.xyz', 'w')
-    f.write("""4
+    Path('blankcomment.xyz').write_text("""4
 
     Mg        -4.25650        3.79180       -2.54123
     C         -1.15405        2.86652       -1.26699
     C         -5.53758        3.70936        0.63504
     C         -7.28250        4.71303       -3.82016
     """)
-    f.close()
+
     a = ase.io.read('blankcomment.xyz')
     assert a.info == {}
 
@@ -318,7 +315,8 @@ def test_json_scalars():
     a.info['val_2'] = np.float(42.0)
     a.info['val_3'] = np.int64(42)
     a.write('tmp.xyz')
-    comment_line = open('tmp.xyz', 'r').readlines()[1]
+    with open('tmp.xyz', 'r') as fd:
+        comment_line = fd.readlines()[1]
     assert "val_1=42.0" in comment_line and "val_2=42.0" in comment_line and "val_3=42" in comment_line
     b = ase.io.read('tmp.xyz')
     assert abs(b.info['val_1'] - 42.0) < 1e-6

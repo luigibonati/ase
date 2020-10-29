@@ -73,17 +73,17 @@ radii are taken from [Alvarez13]_.
 .. [Meija2016] *Atomic weights of the elements 2013
     (IUPAC Technical Report).* Meija, J., Coplen, T., Berglund, M., et al.
     (2016).  Pure and Applied Chemistry, 88(3), pp. 265-291.
-    Retrieved 30 Nov. 2016, from doi:10.1515/pac-2015-0305
+    Retrieved 30 Nov. 2016, from :doi:`10.1515/pac-2015-0305`
 
 .. [Cordeo08] *Covalent radii revisited*,
     Beatriz Cordero, Verónica Gómez, Ana E. Platero-Prats, Marc Revés,
     Jorge Echeverría, Eduard Cremades, Flavia Barragán and Santiago Alvarez,
-    Dalton Trans., 2008, 2832-2838 DOI:10.1039/B801115J
+    Dalton Trans., 2008, 2832-2838 :doi:`10.1039/B801115J`
 
 .. [Alvarez13] *A cartography of the van der Waals territories*,
     Alvarez, S.,
     Dalton Trans., 2013, 42, 8617-8636,
-    DOI:10.1039/C3DT50599E
+    :doi:`10.1039/C3DT50599E`
 
 .. _vdw.py: https://gitlab.com/ase/ase/blob/master/ase/data/vdw.py
 

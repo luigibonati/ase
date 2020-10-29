@@ -13,7 +13,7 @@ import ase.units as u
 
 md_cls_and_kwargs = [
     (VelocityVerlet, {}),
-    (Langevin, {"temperature": 300 * u.kB, "friction": 0.02}),
+    (Langevin, {"temperature_K": 300, "friction": 0.02}),
 ]
 
 # prepare atoms object for testing
@@ -73,7 +73,9 @@ def test_md(cls_and_kwargs, atoms=dimer, calc=calc, logfile="md.log",
     md.run(steps=5)
 
     # assert log file has correct length
-    length = sum(1 for l in open(logfile))
+    with open(logfile) as fd:
+        length = len(fd.readlines())
+
     assert length == 12, length
 
     with Trajectory(trajectory) as traj, open(logfile) as f:

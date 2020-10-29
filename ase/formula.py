@@ -65,6 +65,13 @@ class Formula:
                 if symbol not in atomic_numbers:
                     raise ValueError('Unknown chemical symbol: ' + symbol)
 
+    def convert(self, fmt: str) -> 'Formula':
+        """Reformat this formula as a new Formula.
+
+        Same formatting rules as Formula(format=...) keyword.
+        """
+        return Formula(self._formula, format=fmt)
+
     def count(self) -> Dict[str, int]:
         """Return dictionary mapping chemical symbol to number of atoms.
 

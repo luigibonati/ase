@@ -17,7 +17,7 @@ is considerably reduced.
 
   This assumption, of course, also needs to be checked --
   at high pressures, for example, nitrogen is
-  `known to polymerize <https://doi.org/10.1038/nmat1146>`__ and so
+  :doi:`known to polymerize <10.1038/nmat1146>` and so
   will no longer consist of individual :mol:`N_2` molecules!
 
 The same approach can also be used e.g. for compounds with polyatomic ions

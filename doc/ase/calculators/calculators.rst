@@ -243,7 +243,6 @@ the :meth:`set` method:
    dftd3
    others
    test
-   ase_qmmm_manyqm
    ace
 
 .. _calculator interface:

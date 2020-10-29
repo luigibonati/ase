@@ -128,7 +128,8 @@ class Aims(FileIOCalculator):
     implemented_properties = ['energy', 'forces', 'stress', 'stresses',
                               'dipole', 'magmom']
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=FileIOCalculator._deprecated,
                  label=os.curdir, atoms=None, cubes=None, radmul=None,
                  tier=None, aims_command=None,
                  outfilename=None, **kwargs):
@@ -843,8 +844,8 @@ class Aims(FileIOCalculator):
         for n, line in enumerate(lines):
             if line.rfind('K-points in task') > -1:
                 kptsstart = n  # last occurrence of (
-        assert not kpts is None
-        assert not kptsstart is None
+        assert kpts is not None
+        assert kptsstart is not None
         text = lines[kptsstart + 1:]
         values = []
         for line in text[:kpts]:
@@ -869,7 +870,7 @@ class Aims(FileIOCalculator):
             if line.rfind('| Number of k-points') > -1:
                 kpts = int(line.split(':')[-1].strip())
                 break
-        assert not kpts is None
+        assert kpts is not None
         assert kpt + 1 <= kpts
         # find last (eigenvalues)
         eigvalstart = None
@@ -878,13 +879,13 @@ class Aims(FileIOCalculator):
             if line.rfind('Preliminary charge convergence reached') > -1:
                 eigvalstart = n
                 break
-        assert not eigvalstart is None
+        assert eigvalstart is not None
         lines = lines[eigvalstart:]
         for n, line in enumerate(lines):
             if line.rfind('Writing Kohn-Sham eigenvalues') > -1:
                 eigvalstart = n
                 break
-        assert not eigvalstart is None
+        assert eigvalstart is not None
         text = lines[eigvalstart + 1:]  # remove first 1 line
         # find the requested k-point
         nbands = self.read_number_of_bands()

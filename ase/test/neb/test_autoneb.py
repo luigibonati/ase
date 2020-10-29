@@ -1,8 +1,8 @@
+from ase.autoneb import AutoNEB
 from ase.build import fcc211, add_adsorbate
 from ase.constraints import FixAtoms
-from ase.optimize import QuasiNewton
 from ase.neb import NEBTools
-from ase.autoneb import AutoNEB
+from ase.optimize import QuasiNewton
 
 
 def test_autoneb(asap3):
@@ -33,11 +33,9 @@ def test_autoneb(asap3):
     # the traj file that remains open.
     del qn
 
-
     def attach_calculators(images):
         for i in range(len(images)):
             images[i].calc = EMT()
-
 
     autoneb = AutoNEB(attach_calculators,
                       prefix='neb',

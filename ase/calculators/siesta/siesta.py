@@ -156,7 +156,7 @@ class SiestaParameters(Parameters):
             symlink_pseudos=None,
             atoms=None,
             restart=None,
-            ignore_bad_restart_file=False,
+            ignore_bad_restart_file=FileIOCalculator._deprecated,
             fdf_arguments=None,
             atomic_coord_format='xyz',
             bandpath=None):

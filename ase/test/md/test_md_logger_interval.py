@@ -13,7 +13,7 @@ import ase.units as units
 
 md_cls_and_kwargs = [
     (VelocityVerlet, {}),
-    (Langevin, {"temperature": 300 * units.kB, "friction": 0.02}),
+    (Langevin, {"temperature_K": 300, "friction": 0.02}),
 ]
 
 

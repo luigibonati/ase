@@ -1,9 +1,13 @@
+import pytest
+
 from ase import Atoms
 from ase.optimize import BFGS
 
 
-def test_dftb_relax_dimer(dftb_factory):
-    calc = dftb_factory.calc(
+@pytest.mark.calculator_lite
+@pytest.mark.calculator('dftb')
+def test_dftb_relax_dimer(factory):
+    calc = factory.calc(
         label='dftb',
         Hamiltonian_SCC='No',
         Hamiltonian_PolynomialRepulsive='SetForAll {Yes}',

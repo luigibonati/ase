@@ -20,8 +20,10 @@ class Dftb(FileIOCalculator):
         command = 'dftb+ > PREFIX.out'
 
     implemented_properties = ['energy', 'forces', 'charges', 'stress']
+    discard_results_on_any_change = True
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=FileIOCalculator._deprecated,
                  label='dftb', atoms=None, kpts=None,
                  slako_dir=None,
                  **kwargs):
@@ -126,7 +128,7 @@ class Dftb(FileIOCalculator):
             initkey = 'Hamiltonian_KPointsAndWeights'
             mp_mesh = None
             offsets = None
- 
+
             if isinstance(self.kpts, dict):
                 if 'path' in self.kpts:
                     # kpts is path in Brillouin zone
@@ -154,7 +156,7 @@ class Dftb(FileIOCalculator):
             if mp_mesh is not None:
                 eps = 1e-10
                 for i in range(3):
-                    key = initkey + '_empty%03d'  % i
+                    key = initkey + '_empty%03d' % i
                     val = [mp_mesh[i] if j == i else 0 for j in range(3)]
                     self.parameters[key] = ' '.join(map(str, val))
                     offsets[i] *= mp_mesh[i]
@@ -217,17 +219,17 @@ class Dftb(FileIOCalculator):
             if key.endswith('_') and len(value) > 0:
                 outfile.write(key.rstrip('_').rsplit('_')[-1] +
                               ' = ' + str(value) + '{ \n')
-            elif (key.endswith('_') and (len(value) == 0) 
+            elif (key.endswith('_') and (len(value) == 0)
                   and current_depth == 0):  # E.g. 'Options {'
                 outfile.write(key.rstrip('_').rsplit('_')[-1] +
                               ' ' + str(value) + '{ \n')
-            elif (key.endswith('_') and (len(value) == 0) 
+            elif (key.endswith('_') and (len(value) == 0)
                   and current_depth > 0):  # E.g. 'Hamiltonian_Max... = {'
                 outfile.write(key.rstrip('_').rsplit('_')[-1] +
                               ' = ' + str(value) + '{ \n')
             elif key.count('_empty') == 1:
                 outfile.write(str(value) + ' \n')
-            elif ((key == 'Hamiltonian_ReadInitialCharges') and 
+            elif ((key == 'Hamiltonian_ReadInitialCharges') and
                   (str(value).upper() == 'YES')):
                 f1 = os.path.isfile(self.directory + os.sep + 'charges.dat')
                 f2 = os.path.isfile(self.directory + os.sep + 'charges.bin')
@@ -263,12 +265,6 @@ class Dftb(FileIOCalculator):
 
 
         outfile.close()
-
-    def set(self, **kwargs):
-        changed_parameters = FileIOCalculator.set(self, **kwargs)
-        if changed_parameters:
-            self.reset()
-        return changed_parameters
 
     def check_state(self, atoms):
         system_changes = FileIOCalculator.check_state(self, atoms)
@@ -335,7 +331,7 @@ class Dftb(FileIOCalculator):
         fermi_levels = self.read_fermi_levels()
         if fermi_levels is not None:
             self.results['fermi_levels'] = fermi_levels
-        
+
         eigenvalues = self.read_eigenvalues()
         if eigenvalues is not None:
             self.results['eigenvalues'] = eigenvalues
@@ -421,7 +417,7 @@ class Dftb(FileIOCalculator):
         else:
             return None
 
-        # Take into account that the last row may lack 
+        # Take into account that the last row may lack
         # columns if nkpt * nspin * nband % ncol != 0
         nrow = int(np.ceil(nkpt * nspin * nband * 1. / ncol))
         index_eig_end = index_eig_begin + nrow
@@ -449,13 +445,14 @@ class Dftb(FileIOCalculator):
 
         fermi_levels = []
         words = self.lines[index_fermi].split()
-        assert len(words) == 2
+        assert len(words) in [1, 2], 'Expected either 1 or 2 Fermi levels'
 
         for word in words:
             e = float(word)
+            # In non-spin-polarized calculations with DFTB+ v17.1,
+            # two Fermi levels are given, with the second one being 0,
+            # but we don't want to add that one to the list
             if abs(e) > 1e-8:
-                # Without spin polarization, one of the Fermi 
-                # levels is equal to 0.000000000000000E+000    
                 fermi_levels.append(e)
 
         return np.array(fermi_levels) * Hartree
@@ -466,7 +463,7 @@ class Dftb(FileIOCalculator):
     def get_number_of_spins(self):
         return self.nspin
 
-    def get_eigenvalues(self, kpt=0, spin=0): 
+    def get_eigenvalues(self, kpt=0, spin=0):
         return self.results['eigenvalues'][spin][kpt].copy()
 
     def get_fermi_levels(self):

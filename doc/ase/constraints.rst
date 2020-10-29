@@ -264,12 +264,22 @@ The FixInternals class
 ======================
 
 This class allows to fix an arbitrary number of bond lengths, angles
-and dihedral angles. The defined constraints are satisfied self
+and dihedral angles as well as linear combinations of bond lengths.
+A fixed linear combination of bond lengths fulfils
+:math:`\sum_i \text{coef}_i \times \text{bond_length}_i 
+= \text{constant}`.
+The defined constraints are satisfied self
 consistently. To define the constraints one needs to specify the
 atoms object on which the constraint works (needed for atomic
 masses), a list of bond, angle and dihedral constraints.
 Those constraint definitions are always list objects containing
-the value to be set and a list of atomic indices. The epsilon value
+the value to be set and a list of atomic indices.
+For the linear combination of bond lengths the list of atomic
+indices is a list of bond definitions with coeficients
+([[a1, a2, coef],[a3, a4, coef],]).
+The usage of mic is supported by providing the keyword argument `mic=True`.
+Using mic slows the algorithm and is probably not necessary in most cases.
+The epsilon value
 specifies the accuracy to which the constraints are fulfilled.
 
 .. autoclass:: FixInternals
@@ -285,16 +295,21 @@ Example of use::
   >>> bond1 = [1.20, [1, 2]]
   >>> angle_indices1 = [2, 3, 4]
   >>> dihedral_indices1 = [2, 3, 4, 5]
+  >>> bondcombo_indices1 = [[6, 7, 1.0], [8, 9, -1.0]]
   >>> angle1 = [atoms.get_angle(*angle_indices1) * pi / 180,
                 angle_indices1]
   >>> dihedral1 = [atoms.get_dihedral(*dihedral_indices1) * pi / 180,
   ...              dihedral_indices1]
+  >>> bondcombo1 = [0.0, bondcombo_indices1]
   >>> c = FixInternals(bonds=[bond1], angles=[angle1],
-  ...                  dihedrals=[dihedral1])
+  ...                  dihedrals=[dihedral1], bondcombos=[bondcombo1])
   >>> atoms.set_constraint(c)
 
 This example defines a bond, an angle and a dihedral angle constraint
-to be fixed at the same time.
+to be fixed at the same time
+at which also the linear combination of bond lengths
+:math:`1.0 * \text{bond}_{6-7} -1.0 * \text{bond}_{8-9}`
+is fixed to the value of 0.0.
 
 
 Combining constraints

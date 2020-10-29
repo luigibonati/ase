@@ -51,7 +51,6 @@ class DFTD3(FileIOCalculator):
 
         self.dft = None
         FileIOCalculator.__init__(self, restart=None,
-                                  ignore_bad_restart_file=False,
                                   label=label,
                                   atoms=atoms,
                                   command=command,

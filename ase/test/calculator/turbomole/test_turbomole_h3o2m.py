@@ -1,14 +1,15 @@
+# type: ignore
+from math import radians, sin, cos
+
+from ase import Atoms
+from ase.neb import NEB
+from ase.constraints import FixAtoms
+from ase.optimize import QuasiNewton, BFGS
+from ase.visualize import view
+
+from ase.calculators.turbomole import Turbomole
+
 def test_turbomole_h3o2m():
-    from math import radians, sin, cos
-
-    from ase import Atoms
-    from ase.neb import NEB
-    from ase.constraints import FixAtoms
-    from ase.optimize import QuasiNewton, BFGS
-    from ase.visualize import view
-
-    from ase.calculators.turbomole import Turbomole
-
     # http://jcp.aip.org/resource/1/jcpsa6/v97/i10/p7507_s1
     doo = 2.74
     doht = 0.957

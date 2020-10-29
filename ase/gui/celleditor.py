@@ -167,6 +167,4 @@ class CellEditor:
                 angles[i] = 0
             self.angles[i].value = angles[i]
 
-            print('GRRR', self.pbc[i].var.get())
             self.pbc[i].var.set(bool(pbc[i]))
-            print('GRRR2', self.pbc[i].var.get())

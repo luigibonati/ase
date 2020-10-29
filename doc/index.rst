@@ -98,8 +98,8 @@ News
 
 * :ref:`Reference paper <cite>` in
   J. Phys. Condens. Matter:
-  `The Atomic Simulation Environment | A Python library for working with
-  atoms <https://doi.org/10.1088/1361-648X/aa680e>`__
+  :doi:`The Atomic Simulation Environment | A Python library for working with
+  atoms <10.1088/1361-648X/aa680e>`
   (7 June 2017).
 
 * :ref:`ASE version 3.13.0 <releasenotes>` released (7 February 2017).
@@ -180,7 +180,7 @@ Contents
     gallery/gallery
     releasenotes
     contact
-    otherprojects
+    ecosystem
     development/development
     faq
     ASE Workshop 2019 <workshop/workshop>

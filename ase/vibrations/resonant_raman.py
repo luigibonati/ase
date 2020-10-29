@@ -7,41 +7,109 @@ import sys
 import numpy as np
 
 import ase.units as u
-from ase.parallel import world, parprint, paropen
+from ase.parallel import world, paropen, parprint
 from ase.vibrations import Vibrations
-from ase.utils.timing import Timer
-from ase.utils import convert_string_to_fd
+from ase.vibrations.raman import Raman, RamanCalculatorBase
 
 
-class ResonantRaman(Vibrations):
-    """Base Class for resonant Raman intensities using finite differences.
-
-    Parameters
-    ----------
-    overlap : function or False
-        Function to calculate overlaps between excitation at
-        equilibrium and at a displaced position. Calculators are
-        given as first and second argument, respectively.
+class ResonantRamanCalculator(RamanCalculatorBase, Vibrations):
+    """Base class for resonant Raman calculators using finite differences.
     """
+    def __init__(self, atoms, ExcitationsCalculator, *args,
+                 exkwargs={}, exext='.ex.gz', overlap=False,
+                 **kwargs):
+        """
+        Parameters
+        ----------
+        atoms: Atoms
+            The Atoms object
+        ExcitationsCalculator: object
+            Calculator for excited states
+        exkwargs: dict
+            Arguments given to the ExcitationsCalculator object
+        exext: string
+            Extension for filenames of Excitation lists (results of
+            the ExcitationsCalculator).
+        overlap : function or False
+            Function to calculate overlaps between excitation at
+            equilibrium and at a displaced position. Calculators are
+            given as first and second argument, respectively.
 
-    def __init__(self, atoms, Excitations,
-                 indices=None,
-                 gsname='rraman',  # name for ground state calculations
-                 exname=None,      # name for excited state calculations
-                 delta=0.01,
-                 nfree=2,
-                 directions=None,
+        Example
+        -------
+
+        >>> from ase.calculators.h2morse import (H2Morse,
+        ...                                      H2MorseExcitedStatesCalculator)
+        >>> from ase.vibrations.resonant_raman import ResonantRamanCalculator
+        >>>
+        >>> atoms = H2Morse()
+        >>> rmc = ResonantRamanCalculator(atoms, H2MorseExcitedStatesCalculator)
+        >>> rmc.run()
+
+        This produces all necessary data for further analysis.
+        """
+        self.exobj = ExcitationsCalculator
+        self.exkwargs = exkwargs
+        self.overlap = overlap
+        super().__init__(atoms, *args, exext=exext, **kwargs)
+
+    def calculate(self, atoms, filename, fd):
+        """Call ground and excited state calculation"""
+        assert(atoms == self.atoms)  # XXX action required
+        self.timer.start('Ground state')
+        forces = self.atoms.get_forces()
+        if world.rank == 0:
+            pickle.dump(forces, fd, protocol=2)
+
+        if self.overlap:
+            """Overlap is determined as
+
+            ov_ij = int dr displaced*_i(r) eqilibrium_j(r)
+            """
+            self.timer.start('Overlap')
+            ov_nn = self.overlap(self.atoms.calc,
+                                 self.eq_calculator)
+            if world.rank == 0:
+                np.save(filename + '.ov', ov_nn)
+            self.timer.stop('Overlap')
+        self.timer.stop('Ground state')
+
+        self.timer.start('Excitations')
+        basename, _ = os.path.splitext(filename)
+        excalc = self.exobj(**self.exkwargs)
+        exlist = excalc.calculate(self.atoms)
+        exlist.write(basename + self.exext)
+        self.timer.stop('Excitations')
+
+    def run(self):
+        if self.overlap:
+            # XXXX stupid way to make a copy
+            self.atoms.get_potential_energy()
+            self.eq_calculator = self.atoms.calc
+            fname = self.exname + '.eq.gpw'
+            self.eq_calculator.write(fname, 'all')
+            self.eq_calculator = self.eq_calculator.__class__.read(fname)
+            try:
+                # XXX GPAW specific
+                self.eq_calculator.converge_wave_functions()
+            except AttributeError:
+                pass
+        Vibrations.run(self)
+
+
+class ResonantRaman(Raman):
+    """Base Class for resonant Raman intensities using finite differences.
+    """
+    def __init__(self, atoms, Excitations, *args,
                  observation={'geometry': '-Z(XX)Z'},
                  form='v',         # form of the dipole operator
                  exkwargs={},      # kwargs to be passed to Excitations
                  exext='.ex.gz',   # extension for Excitation names
-                 txt='-',
-                 verbose=False,
                  overlap=False,
                  minoverlap=0.02,
                  minrep=0.8,
                  comm=world,
-    ):
+                 **kwargs):
         """
         Parameters
         ----------
@@ -65,17 +133,6 @@ class ResonantRaman(Vibrations):
                     units |e| * Angstrom
                 ex.energy:
                     is the transition energy in Hartrees
-        indices: list
-        gsname: string
-            name for ground state calculations, used in run() and
-            for reading of forces (default 'rraman')
-        exname: string
-            name for excited state calculations (defaults to gsname),
-            used for reading excitations
-        delta: float
-            Finite difference displacement in Angstrom.
-        nfree: float
-        directions:
         approximation: string
             Level of approximation used.
         observation: dict
@@ -83,14 +140,6 @@ class ResonantRaman(Vibrations):
         form: string
             Form of the dipole operator, 'v' for velocity form (default)
             and 'r' for length form.
-        exkwargs: dict
-            Arguments given to the Excitations objects in reading.
-        exext: string
-            Extension for filenames of Excitation lists.
-        txt:
-            Output stream
-        verbose:
-            Verbosity level of output
         overlap: bool or function
             Use wavefunction overlaps.
         minoverlap: float ord dict
@@ -99,28 +148,15 @@ class ResonantRaman(Vibrations):
         minrep: float
             Minimal representation to consider derivative, defaults to 0.8
         """
-        assert(nfree == 2)
-        Vibrations.__init__(self, atoms, indices, gsname, delta, nfree)
-        self.name = gsname
-        if exname is None:
-            exname = gsname
-        self.exname = exname
-        self.exext = exext
+        kwargs['exext'] = exext
+        Raman.__init__(self, atoms, *args, **kwargs)
+        assert(self.vibrations.nfree == 2)
 
-        if directions is None:
-            self.directions = np.array([0, 1, 2])
-        else:
-            self.directions = np.array(directions)
-
-        self.observation = observation
         self.exobj = Excitations
         self.exkwargs = exkwargs
+        self.observation = observation
         self.dipole_form = form
 
-        self.timer = Timer()
-        self.txt = convert_string_to_fd(txt)
-
-        self.verbose = verbose
         self.overlap = overlap
         if not isinstance(minoverlap, dict):
             # assume it's a number
@@ -130,7 +166,30 @@ class ResonantRaman(Vibrations):
             self.minoverlap = minoverlap
         self.minrep = minrep
 
-        self.comm = comm
+    def get_absolute_intensities(self, omega, gamma=0.1, delta=0, **kwargs):
+        """Absolute Raman intensity or Raman scattering factor
+
+        Parameter
+        ---------
+        omega: float
+           incoming laser energy, unit eV
+        gamma: float
+           width (imaginary energy), unit eV
+        delta: float
+           pre-factor for asymmetric anisotropy, default 0
+
+        References
+        ----------
+        Porezag and Pederson, PRB 54 (1996) 7830-7836 (delta=0)
+        Baiardi and Barone, JCTC 11 (2015) 3267-3280 (delta=5)
+
+        Returns
+        -------
+        raman intensity, unit Ang**4/amu
+        """
+        alpha2_r, gamma2_r, delta2_r = self._invariants(
+            self.electronic_me_Qcc(omega, gamma, **kwargs))
+        return 45 * alpha2_r + delta * delta2_r + 7 * gamma2_r
 
     @property
     def approximation(self):
@@ -140,74 +199,16 @@ class ResonantRaman(Vibrations):
     def approximation(self, value):
         self.set_approximation(value)
 
-    @staticmethod
-    def m2(z):
-        return (z * z.conj()).real
-
-    def log(self, message, pre='# ', end='\n'):
-        if self.verbose:
-            self.txt.write(pre + message + end)
-            self.txt.flush()
-
-    def run(self):
-        if self.overlap:
-            # XXXX stupid way to make a copy
-            self.atoms.get_potential_energy()
-            calc = self.atoms.calc
-            fname = self.exname + '.eq.gpw'
-            calc.write(fname, 'all')
-            self.eq_calculator = calc.__class__.read(fname)
-            if hasattr(self.eq_calculator, 'converge_wave_functions'):
-                self.eq_calculator.converge_wave_functions()
-
-        Vibrations.run(self)
-
-    def calculate(self, atoms, filename, fd):
-        """Call ground and excited state calculation"""
-        assert(atoms == self.atoms)  # XXX action required
-        self.timer.start('Ground state')
-        forces = self.atoms.get_forces()
-        if world.rank == 0:
-            pickle.dump(forces, fd, protocol=2)
-            fd.close()
-        if self.overlap:
-            self.timer.start('Overlap')
-            """Overlap is determined as
-
-            ov_ij = int dr displaced*_i(r) eqilibrium_j(r)
-            """
-            ov_nn = self.overlap(self.atoms.calc,
-                                 self.eq_calculator)
-            if world.rank == 0:
-                np.save(filename + '.ov', ov_nn)
-            self.timer.stop('Overlap')
-        self.timer.stop('Ground state')
-
-        self.timer.start('Excitations')
-        basename, _ = os.path.splitext(filename)
-        excitations = self.exobj(
-            self.atoms.calc, **self.exkwargs)
-        excitations.write(basename + self.exext)
-        self.timer.stop('Excitations')
-
-    def init_parallel_read(self):
-        """Initialize variables for parallel read"""
-        rank = self.comm.rank
-        self.ndof = 3 * len(self.indices)
-        myn = -(-self.ndof // self.comm.size)  # ceil divide
-        self.slize = s = slice(myn * rank, myn * (rank + 1))
-        self.myindices = np.repeat(self.indices, 3)[s]
-        self.myxyz = ('xyz' * len(self.indices))[s]
-        self.myr = range(self.ndof)[s]
-        self.mynd = len(self.myr)
-
     def read_excitations(self):
         """Read all finite difference excitations and select matching."""
+        if self.overlap:
+            return self.read_excitations_overlap()
+
         self.timer.start('read excitations')
         self.timer.start('really read')
         self.log('reading ' + self.exname + '.eq' + self.exext)
-        ex0_object = self.exobj(self.exname + '.eq' + self.exext,
-                                **self.exkwargs)
+        ex0_object = self.exobj.read(self.exname + '.eq' + self.exext,
+                                     **self.exkwargs)
         eu = ex0_object.energy_to_eV_scale
         self.timer.stop('really read')
         self.timer.start('index')
@@ -217,7 +218,7 @@ class ResonantRaman(Vibrations):
         def append(lst, exname, matching):
             self.timer.start('really read')
             self.log('reading ' + exname, end=' ')
-            exo = self.exobj(exname, **self.exkwargs)
+            exo = self.exobj.read(exname, **self.exkwargs)
             lst.append(exo)
             self.timer.stop('really read')
             self.timer.start('index')
@@ -302,14 +303,14 @@ class ResonantRaman(Vibrations):
         self.timer.start('read excitations')
         self.timer.start('read+rotate')
         self.log('reading ' + self.exname + '.eq' + self.exext)
-        ex0 = self.exobj(self.exname + '.eq' + self.exext,
-                         **self.exkwargs)
+        ex0 = self.exobj.read(self.exname + '.eq' + self.exext,
+                              **self.exkwargs)
         eu = ex0.energy_to_eV_scale
         rep0_p = np.ones((len(ex0)), dtype=float)
 
         def load(name, pm, rep0_p):
             self.log('reading ' + name + pm + self.exext)
-            ex_p = self.exobj(name + pm + self.exext, **self.exkwargs)
+            ex_p = self.exobj.read(name + pm + self.exext, **self.exkwargs)
             self.log('reading ' + name + pm + '.pckl.ov.npy')
             ov_nn = np.load(name + pm + '.pckl.ov.npy')
             # remove numerical garbage
@@ -366,16 +367,15 @@ class ResonantRaman(Vibrations):
         if len(self.myr):
             # indicees: r=coordinate, p=excitation
             # energies in eV
-            self.exmE_rp = np.array(exmE_rp)[:,select] * eu
-            ##print(len(select), np.array(exmE_rp).shape, self.exmE_rp.shape)
-            self.expE_rp = np.array(expE_rp)[:,select] * eu
+            self.exmE_rp = np.array(exmE_rp)[:, select] * eu
+            self.expE_rp = np.array(expE_rp)[:, select] * eu
             # forces in eV / Angstrom
-            self.exF_rp = np.array(exF_rp)[:,select] * eu / 2 / self.delta
+            self.exF_rp = np.array(exF_rp)[:, select] * eu / 2 / self.delta
             # matrix elements in e * Angstrom
-            self.exmm_rpc = np.array(exmm_rpc)[:,select,:] * u.Bohr
-            self.expm_rpc = np.array(expm_rpc)[:,select,:] * u.Bohr
+            self.exmm_rpc = np.array(exmm_rpc)[:, select, :] * u.Bohr
+            self.expm_rpc = np.array(expm_rpc)[:, select, :] * u.Bohr
             # matrix element derivatives in e
-            self.exdmdr_rpc = (np.array(exdmdr_rpc)[:,select,:] *
+            self.exdmdr_rpc = (np.array(exdmdr_rpc)[:, select, :] *
                                u.Bohr / 2 / self.delta)
         else:
             # did not read
@@ -385,26 +385,12 @@ class ResonantRaman(Vibrations):
         self.timer.stop('me and energy')
         self.timer.stop('read excitations')
 
-    def read(self, method='standard', direction='central'):
+    def read(self, *args, **kwargs):
         """Read data from a pre-performed calculation."""
-
         self.timer.start('read')
         self.timer.start('vibrations')
-        Vibrations.read(self, method, direction)
-        # we now have:
-        # self.H     : Hessian matrix
-        # self.im    : 1./sqrt(masses)
-        # self.modes : Eigenmodes of the mass weighted Hessian
-        self.om_Q = self.hnu.real    # energies in eV
-        self.om_v = self.om_Q
-        # pre-factors for one vibrational excitation
-        with np.errstate(divide='ignore'):
-            self.vib01_Q = np.where(self.om_Q > 0,
-                                    1. / np.sqrt(2 * self.om_Q), 0)
-        # -> sqrt(amu) * Angstrom
-        self.vib01_Q *= np.sqrt(u.Ha * u._me / u._amu) * u.Bohr
+        self.vibrations.read(*args, **kwargs)
         self.timer.stop('vibrations')
-
 
         self.timer.start('excitations')
         self.init_parallel_read()
@@ -414,118 +400,11 @@ class ResonantRaman(Vibrations):
             else:
                 self.read_excitations()
         self.timer.stop('excitations')
+
+        self._already_read = True
         self.timer.stop('read')
 
-    def me_Qcc(self, omega, gamma):
-        """Full matrix element
-
-        Returns
-        -------
-        Matrix element in e^2 Angstrom^2 / eV
-        """
-        # Angstrom^2 / sqrt(amu)
-        elme_Qcc = self.electronic_me_Qcc(omega, gamma)
-        # Angstrom^3 -> e^2 Angstrom^2 / eV
-        elme_Qcc /= u.Hartree * u.Bohr  # e^2 Angstrom / eV / sqrt(amu)
-        return elme_Qcc * self.vib01_Q[:, None, None]
-
-    def intensity(self, omega, gamma=0.1):
-        """Raman intensity
-
-        Returns
-        -------
-        unit e^4 Angstrom^4 / eV^2
-        """
-        m2 = ResonantRaman.m2
-        alpha_Qcc = self.me_Qcc(omega, gamma)
-        if not self.observation:  # XXXX remove
-            """Simple sum, maybe too simple"""
-            return m2(alpha_Qcc).sum(axis=1).sum(axis=1)
-        # XXX enable when appropriate
-        #        if self.observation['orientation'].lower() != 'random':
-        #            raise NotImplementedError('not yet')
-
-        # random orientation of the molecular frame
-        # Woodward & Long,
-        # Guthmuller, J. J. Chem. Phys. 2016, 144 (6), 64106
-        alpha2_r, gamma2_r, delta2_r = self._invariants(alpha_Qcc)
-
-        if self.observation['geometry'] == '-Z(XX)Z':  # Porto's notation
-            return (45 * alpha2_r + 5 * delta2_r + 4 * gamma2_r) / 45.
-        elif self.observation['geometry'] == '-Z(XY)Z':  # Porto's notation
-            return gamma2_r / 15.
-        elif self.observation['scattered'] == 'Z':
-            # scattered light in direction of incoming light
-            return (45 * alpha2_r + 5 * delta2_r + 7 * gamma2_r) / 45.
-        elif self.observation['scattered'] == 'parallel':
-            # scattered light perendicular and
-            # polarization in plane
-            return 6 * gamma2_r / 45.
-        elif self.observation['scattered'] == 'perpendicular':
-            # scattered light perendicular and
-            # polarization out of plane
-            return (45 * alpha2_r + 5 * delta2_r + 7 * gamma2_r) / 45.
-        else:
-            raise NotImplementedError
-
-    def _invariants(self, alpha_Qcc):
-        """Raman invariants
-
-        Parameter
-        ---------
-        alpha_Qcc: array
-           Matrix element or polarizability tensor
-
-        Reference
-        ---------
-        Derek A. Long, The Raman Effect, ISBN 0-471-49028-8
-
-        Returns
-        -------
-        mean polarizability, anisotropy, asymmetric anisotropy
-        """
-        m2 = ResonantRaman.m2
-        alpha2_r = m2(alpha_Qcc[:, 0, 0] + alpha_Qcc[:, 1, 1] +
-                      alpha_Qcc[:, 2, 2]) / 9.
-        delta2_r = 3 / 4. * (
-            m2(alpha_Qcc[:, 0, 1] - alpha_Qcc[:, 1, 0]) +
-            m2(alpha_Qcc[:, 0, 2] - alpha_Qcc[:, 2, 0]) +
-            m2(alpha_Qcc[:, 1, 2] - alpha_Qcc[:, 2, 1]))
-        gamma2_r = (3 / 4. * (m2(alpha_Qcc[:, 0, 1] + alpha_Qcc[:, 1, 0]) +
-                              m2(alpha_Qcc[:, 0, 2] + alpha_Qcc[:, 2, 0]) +
-                              m2(alpha_Qcc[:, 1, 2] + alpha_Qcc[:, 2, 1])) +
-                    (m2(alpha_Qcc[:, 0, 0] - alpha_Qcc[:, 1, 1]) +
-                     m2(alpha_Qcc[:, 0, 0] - alpha_Qcc[:, 2, 2]) +
-                     m2(alpha_Qcc[:, 1, 1] - alpha_Qcc[:, 2, 2])) / 2)
-        return alpha2_r, gamma2_r, delta2_r
-
-    def absolute_intensity(self, omega, gamma=0.1, delta=0):
-        """Absolute Raman intensity or Raman scattering factor
-
-        Parameter
-        ---------
-        omega: float
-           incoming laser energy, unit eV
-        gamma: float
-           width (imaginary energy), unit eV
-        delta: float
-           pre-factor for asymmetric anisotropy, default 0
-
-        References
-        ----------
-        Porezag and Pederson, PRB 54 (1996) 7830-7836 (delta=0)
-        Baiardi and Barone, JCTC 11 (2015) 3267-3280 (delta=5)
-
-        Returns
-        -------
-        raman intensity, unit Ang**4/amu
-        """
-
-        alpha2_r, gamma2_r, delta2_r = self._invariants(
-            self.electronic_me_Qcc(omega, gamma))
-        return 45 * alpha2_r + delta * delta2_r + 7 * gamma2_r
-
-    def get_cross_sections(self, omega, gamma=0.1):
+    def get_cross_sections(self, omega, gamma):
         """Returns Raman cross sections for each vibration."""
         I_v = self.intensity(omega, gamma)
         pre = 1. / 16 / np.pi**2 / u._eps0**2 / u._c**4
@@ -620,12 +499,16 @@ class ResonantRaman(Vibrations):
                      (row[0], row[1]))
         fd.close()
 
-    def summary(self, omega=0, gamma=0,
+    def __del__(self):
+        self.timer.write(self.txt)
+
+    def summary(self, omega, gamma=0.1,
                 method='standard', direction='central',
                 log=sys.stdout):
         """Print summary for given omega [eV]"""
-        hnu = self.get_energies(method, direction)
-        intensities = self.absolute_intensity(omega, gamma)
+        self.read(method, direction)
+        hnu = self.get_energies()
+        intensities = self.get_absolute_intensities(omega, gamma)
         te = int(np.log10(intensities.max())) - 2
         scale = 10**(-te)
         if not te:
@@ -641,7 +524,7 @@ class ResonantRaman(Vibrations):
         parprint('-------------------------------------', file=log)
         parprint(' excitation at ' + str(omega) + ' eV', file=log)
         parprint(' gamma ' + str(gamma) + ' eV', file=log)
-        parprint(' method:', self.method, file=log)
+        parprint(' method:', self.vibrations.method, file=log)
         parprint(' approximation:', self.approximation, file=log)
         parprint(' Mode    Frequency        Intensity', file=log)
         parprint('  #    meV     cm^-1      [{0}A^4/amu]'.format(ts), file=log)
@@ -657,11 +540,9 @@ class ResonantRaman(Vibrations):
                      (n, 1000 * e, c, e / u.invcm, c, intensities[n] * scale),
                      file=log)
         parprint('-------------------------------------', file=log)
-        parprint('Zero-point energy: %.3f eV' % self.get_zero_point_energy(),
+        parprint('Zero-point energy: %.3f eV' %
+                 self.vibrations.get_zero_point_energy(),
                  file=log)
-
-    def __del__(self):
-        self.timer.write(self.txt)
 
 
 class LrResonantRaman(ResonantRaman):

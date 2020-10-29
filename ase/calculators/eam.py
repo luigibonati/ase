@@ -236,7 +236,8 @@ End EAM Interface Documentation
                 b'Generated from eam.py\n',
                 b'blank\n'])
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=Calculator._deprecated,
                  label=os.curdir, atoms=None, form=None, **kwargs):
 
         self.form = form
