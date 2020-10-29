@@ -258,7 +258,7 @@ class StringMethod(BaseSplineMethod):
     """
     def adjust_positions(self):
         # fit cubic spline to positions, reinterpolate to equispace images
-        # note this use the precondionted distance metric if state.
+        # note this use the preconditioned distance metric.
         s, _, x, _, _ = self.neb.spline_fit()
         new_s = np.linspace(0.0, 1.0, self.neb.nimages)
         new_positions = x(new_s[1:-1]).reshape(-1, 3)
@@ -854,7 +854,8 @@ class NEBOptimizer(Optimizer):
                  C1=1e-2,
                  C2=2.0):
 
-        Optimizer.__init__(self, None, restart, logfile, trajectory,
+        Optimizer.__init__(self, atoms=neb, restart=restart, 
+                           logfile=logfile, trajectory=trajectory,
                            master=master,
                            append_trajectory=append_trajectory,
                            force_consistent=False)
