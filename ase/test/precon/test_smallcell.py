@@ -1,9 +1,11 @@
 import pytest
-from ase.build import bulk
-from ase.calculators.emt import EMT
+from ase.atoms import Atoms
 from ase.optimize.precon import PreconLBFGS
 
-import warnings
+
+def test_precon_warn():
+    with pytest.warns(UserWarning, match='The system is likely too small'):
+        PreconLBFGS(Atoms('H'))
 
 
 @pytest.mark.skip('FAILS WITH PYAMG')
@@ -13,21 +15,5 @@ def test_precon(N):
     a0 = bulk('Cu', cubic=True)
     a0 *= (N, N, N)
 
-    # perturb the atoms
-    s = a0.get_scaled_positions()
-    s[:, 0] *= 0.995
-    a0.set_scaled_positions(s)
-
-    atoms = a0.copy()
-    atoms.calc = EMT()
-
-    # check we get a warning about small system
-    with warnings.catch_warnings(record=True) as w:
-        # Cause all warnings to always be triggered.
-        warnings.simplefilter("always")
-        PreconLBFGS(atoms, precon="auto")
-        if N == 1:
-            assert len(w) == 1
-            assert "The system is likely too small" in str(w[-1].message)
-        else:
-            assert len(w) == 0
+def test_precon_nowarn():
+    PreconLBFGS(Atoms('100H'))
