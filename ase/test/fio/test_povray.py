@@ -4,5 +4,5 @@ from subprocess import check_call,DEVNULL
 def test_povray_io(povray_executable):
     H2 = molecule('H2')
     write_pov('H2', H2)
-    assert not check_call([povray_executable, 'H2.ini'], stderr=DEVNULL)
+    assert not check_call([povray_executable, 'H2.pov'], stderr=DEVNULL)
     
