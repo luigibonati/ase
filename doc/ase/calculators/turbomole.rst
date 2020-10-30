@@ -240,6 +240,7 @@ values.
                       define_str   str    None        None            True
                      control_kdg  list    None        None            True
                    control_input  list    None        None            True
+                 reset_tolerance float    1e-2        Angstrom        True
          automatic orbital shift float          0.1             eV          True
                   basis set name   str    def-SV(P)           None         False
       closed-shell orbital shift float         None             eV          True
@@ -286,6 +287,12 @@ i.e. this is the stdin for running module ``define``. The ``control_kdg`` is an
 optional list of data groups in control file to be deleted after running module
 ``define`` and ``control_input`` is an optional list of data groups to be added
 to control file after running module ``define``.
+
+If the Atoms object is updated via ``set_atoms()`` method, a check for the changes
+is performed and if the changes in positions are larger than a tolerance
+``reset_tolerance`` then the calculator is reset, the working directory is purged
+and module ``define`` is called. In order to control this behavior the user may
+choose a custom value for ``reset_tolerance``.
 
 The parameter ``initial guess`` can be either the strings *eht* (extended
 Hückel theory) or *hcore* (one-electron core Hamiltonian) or a dictionary
