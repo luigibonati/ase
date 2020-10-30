@@ -96,41 +96,7 @@ def set_high_bondorder_pairs(bondpairs, high_bondorder_pairs=None):
     return bondpairs_
 
 
-class POVRAY(PlottingVariables):
-    default_settings: Dict[str, Any] = {
-        # x, y is the image plane, z is *out* of the screen
-        'display': False,  # display while rendering
-        'pause': True,  # pause when done rendering (only if display)
-        'transparent': True,  # transparent background
-        'canvas_width': None,  # width of canvas in pixels
-        'canvas_height': None,  # height of canvas in pixels
-        'camera_dist': 50.,  # distance from camera to front atom
-        'image_plane': None,  # distance from front atom to image plane
-        'camera_type': 'orthographic',  # perspective, ultra_wide_angle
-        'point_lights': [],  # [[loc1, color1], [loc2, color2],...]
-        'area_light': [(2., 3., 40.),  # location
-                       'White',  # color
-                       .7, .7, 3, 3],  # width, height, Nlamps_x, Nlamps_y
-        'background': 'White',  # color
-        'textures': None,  # length of atoms list of texture names
-        'transmittances': None,  # transmittance of the atoms
-        # use with care - in particular adjust the camera_distance to be closer
-        'depth_cueing': False,  # fog a.k.a. depth cueing
-        'cue_density': 5e-3,  # fog a.k.a. depth cueing
-        'celllinewidth': 0.05,  # radius of the cylinders representing the cell
-        'bondlinewidth': 0.10,  # radius of the cylinders representing bonds
-        'bondatoms': [],  # [[atom1, atom2], ... ] pairs of bonding atoms
-                          # For bond order > 1: [[atom1, atom2, offset,
-                          #                       bond_order, bond_offset],
-                          #                      ... ]
-                          # bond_order: 1, 2, 3 for single, double,
-                          #             and triple bond
-                          # bond_offset: vector for shifting bonds from
-                          #              original position. Coordinates are
-                          #              in Angstrom unit.
-        'exportconstraints': False}  # honour FixAtoms and mark relevant atoms?
-
-
+class POVRAY:
     material_styles_dict = dict(
             simple='finish {phong 0.7}',
             pale=('finish {ambient 0.5 diffuse 0.85 roughness 0.001 '
@@ -151,31 +117,136 @@ class POVRAY(PlottingVariables):
                     'reflection 0.25 roughness 0.001}'),
         )
 
-    def __init__(self, atoms, scale=1.0, **parameters):
+    def __init__(self, pvars, constraints=tuple(), isosurface = None, display = False,
+                pause = True, transparent = True, canvas_width = None, canvas_height
+                = None, camera_dist = 50., image_plane = None, camera_type =
+                'orthographic', point_lights = [], area_light = [(2., 3., 40.),
+                'White', .7, .7, 3, 3], background = 'White', textures = None,
+                transmittances = None, depth_cueing = False, cue_density = 5e-3,
+                celllinewidth = 0.05, bondlinewidth = 0.10, bondatoms = [],
+                exportconstraints = False):
+        """
+        # x, y is the image plane, z is *out* of the screen
+        pvars: PlottingVariables
+            plotting variables (a subset of attributes are taken)
+        constraints: Atoms.constraints
+            constraints to be visualized
+        isosurface: POVRAYIsosurface
+            composite object to write/render POVRAY isosurfaces in addition to atoms
+        display: bool
+            display while rendering
+        pause: bool
+            pause when done rendering (only if display)
+        transparent: bool
+            make background transparent
+        canvas_width: int
+            width of canvas in pixels
+        canvas_height: int
+            height of canvas in pixels
+        camera_dist: float
+            distance from camera to front atom
+        image_plane: float
+            distance from front atom to image plane
+        camera_type: str
+            if 'orthographic' perspective, ultra_wide_angle
+        point_lights: list of 2-element sequences 
+            like [[loc1, color1], [loc2, color2],...]
+        area_light: 3-element sequence of location (3-tuple), color (str), width (float), height (float), Nlamps_x (int), Nlamps_y (int)
+            example [(2., 3., 40.), 'White', .7, .7, 3, 3]
+        background: str
+            color specification, e.g., 'White'
+        textures: list of str
+            length of atoms list of texture names
+        transmittances: list of floats
+            length of atoms list of transmittances of the atoms
+        depth_cueing: bool
+            whether or not to use depth cueing a.k.a. fog
+            use with care - in particular adjust the camera_distance to be closer
+        cue_density: float
+            if there is depth_cueing, how dense is it (how dense is the fog)
+        celllinewidth: float
+            radius of the cylinders representing the cell (Ang.)
+        bondlinewidth: float
+            radius of the cylinders representing bonds (Ang.)
+        bondatoms: list of lists (polymorphic)
+            [[atom1, atom2], ... ] pairs of bonding atoms
+             For bond order > 1 = [[atom1, atom2, offset,
+                                    bond_order, bond_offset],
+                                   ... ]
+             bond_order: 1, 2, 3 for single, double,
+                          and triple bond
+             bond_offset: vector for shifting bonds from
+                           original position. Coordinates are
+                           in Angstrom unit.
+        exportconstraints: bool
+            honour FixAtoms and mark?"""
 
-        for k, v in self.default_settings.items():
-            setattr(self, k, parameters.pop(k, v))
+        # attributes copied from plotting variables
+        self.cell = pvars.cell
+        self.diameters = pvars.d
+        self.colors = pvars.colors
+        self.image_width = pvars.w
+        self.image_height = pvars.h
 
-        PlottingVariables.__init__(self, atoms, scale=scale, **parameters)
-        constr = atoms.constraints
+        # attributes from initialization
+        self.area_light = area_light
+        self.background = background
+        self.bondatoms = bondatoms
+        self.bondlinewidth = bondlinewidth
+        self.camera_dist = camera_dist
+        self.camera_type = camera_type
+        self.celllinewidth = celllinewidth
+        self.cue_density = cue_density
+        self.depth_cueing = depth_cueing
+        self.display = display
+        self.exportconstraints  = exportconstraints
+        self.isosurface = isosurface
+        self.pause = pause
+        self.point_lights = point_lights
+        self.textures = textures
+        self.transmittances = transmittances
+        self.transparent = transparent
+
+        # calculations based on passed inputs
+
+        z0 = pvars.positions[:, 2].max() 
+        self.offset = (pvars.w / 2, pvars.h / 2, z0)
+        self.positions = pvars.positions - self.offset
+
+        if pvars.cell_vertices is not None:
+            self.cell_vertices = pvars.cell_vertices - self.offset
+            self.cell_vertices.shape = (2, 2, 2, 3)
+        else:
+            self.cell_vertices = None
+
+        ratio = float(pvars.w) / pvars.h
+        if canvas_width is None:
+            if canvas_height is None:
+                self.canvas_width = min(pvars.w * 15, 640)
+                self.canvas_height = pvars.h
+            else:
+                self.canvas_width = canvas_height * ratio
+        elif canvas_height is not None:
+            raise RuntimeError("Can't set *both* width and height!")
+
+        # Distance to image plane from camera
+        if image_plane is None:
+            if self.camera_type == 'orthographic':
+                self.image_plane = 1 - self.camera_dist
+            else:
+                self.image_plane = 0
+        self.image_plane += self.camera_dist
+
         self.constrainatoms = []
-        for c in constr:
+        for c in constraints:
             if isinstance(c, FixAtoms):
+#                self.constrainatoms.extend(c.index) # is this list-like?
                 for n, i in enumerate(c.index):
                     self.constrainatoms += [i]
 
 
     def write_ini(self, path):
-        # Determine canvas width and height 
-        ratio = float(self.w) / self.h
-        if self.canvas_width is None:
-            if self.canvas_height is None:
-                self.canvas_width = min(self.w * 15, 640)
-            else:
-                self.canvas_width = self.canvas_height * ratio
-        elif self.canvas_height is not None:
-            raise RuntimeError("Can't set *both* width and height!")
-        # write ini file
+        """Write ini file."""
 
         ini_path = path.with_suffix('.ini')
         ini_str = f"""Input_File_Name={ini_path.with_suffix('.pov').name}
@@ -183,9 +254,9 @@ Output_to_File=True
 Output_File_Type=N
 Output_Alpha={'on' if self.transparent else 'off'}
 ; if you adjust Height, and width, you must preserve the ratio
-; Width / Height = {ratio:f}
+; Width / Height = {self.canvas_width/self.canvas_height:f}
 Width={self.canvas_width}
-Height={self.canvas_width/ratio}
+Height={self.canvas_height}
 Antialias=True
 Antialias_Threshold=0.1
 Display={self.display}
@@ -197,17 +268,7 @@ Verbose=False
         return ini_path
 
     def write_pov(self, path):
-
-        # Distance to image plane from camera
-        if self.image_plane is None:
-            if self.camera_type == 'orthographic':
-                self.image_plane = 1 - self.camera_dist
-            else:
-                self.image_plane = 0
-        self.image_plane += self.camera_dist
-
-
-        # Produce the .pov file
+        """Write pov file."""
 
         point_lights = '\n'.join(f"light_source {{{pa(loc)} {pc(rgb)}}}" 
             for loc,rgb in self.point_lights)
@@ -232,14 +293,10 @@ Verbose=False
         material_styles_dict_keys = '\n'.join(f'#declare {key} = {value}' #semicolon?
             for key, value in self.__class__.material_styles_dict.items())
 
-        z0 = self.positions[:, 2].max() 
-        self.positions -= (self.w / 2, self.h / 2, z0)
 
         # Draw unit cell
         cell_vertices = ''
         if self.cell_vertices is not None:
-            self.cell_vertices -= (self.w / 2, self.h / 2, z0)
-            self.cell_vertices.shape = (2, 2, 2, 3)
             for c in range(3):
                 for j in ([0, 0], [1, 0], [1, 1], [0, 1]):
                     parts = []
@@ -253,13 +310,14 @@ Verbose=False
                         continue
 
                     cell_vertices += f'cylinder {{{pa(parts[0])}, {pa(parts[1])}, '\
-                                     f'Rcell pigment {{Black}}}}\n' # all strings are f-strings for consistencey
+                                     f'Rcell pigment {{Black}}}}\n' 
+                                     # all strings are f-strings for consistency
             cell_vertices = cell_vertices.strip('\n')
 
         # Draw atoms
         a = 0
         atoms = ''
-        for loc, dia, color in zip(self.positions, self.d, self.colors):
+        for loc, dia, color in zip(self.positions, self.diameters, self.colors):
             tex = 'ase3'
             trans = 0.
             if self.textures is not None:
@@ -391,7 +449,7 @@ Verbose=False
         constraints = ''
         if self.exportconstraints:
             for a in self.constrainatoms:
-                dia = self.d[a]
+                dia = self.diameters[a]
                 loc = self.positions[a]
                 trans = 0.0
                 if self.transmittances is not None:
@@ -406,7 +464,7 @@ Verbose=False
 global_settings {{assumed_gamma 1 max_trace_level 6}}
 background {{{pc(self.background)}{' transmit 1.0' if self.transparent else ''}}}
 camera {{{self.camera_type}
-  right {self.w:.2f}*x up {self.h:.2f}*y   
+  right {self.image_width:.2f}*x up {self.image_height:.2f}*y   
   direction {self.image_plane:.2f}*z
   location <0,0,{self.camera_dist:.2f}> look_at <0,0,0>}}
 {point_lights}
@@ -438,10 +496,10 @@ union{{torus{{R, Rcell rotate 45*z texture{{pigment{{color COL transmit TRANS}} 
         return pov_path
 
     def write(self, filename):
-        path = Path(filename)
+        path = Path(filename).with_suffix('')
         self.write_ini(path)
         self.write_pov(path)
-        if hasattr(self, 'isosurface'): 
+        if self.isosurface is not None:
             with open(path.with_suffix('.pov'), 'a') as _:
                 _.write(self.isosurface.format_mesh())
         self.path = path
@@ -633,19 +691,18 @@ class POVRAYIsosurface:
     """
         return mesh2
 
-def write_pov(filename, atoms, run_povray=False, isosurface_data = None, **parameters):
+def write_pov(filename, atoms, plotting_var_settings={}, povray_settings={}, run_povray=False, isosurface_data = None):
+
     if isinstance(atoms, list):
         assert len(atoms) == 1
         atoms = atoms[0]
-    assert 'scale' not in parameters
 
-
-    pov_obj = POVRAY(atoms, **parameters)
+    pvars = PlottingVariables(atoms, scale=1.0, **plotting_var_settings)
+    pov_obj = POVRAY(pvars, atoms.constraints, **povray_settings)
+    #note pov_obj.cell_vertices != pvars.cell_vertices
     if isosurface_data is not None:
-        pov_obj.isosurface = POVRAYIsosurface(**isosurface_data, 
-                cell = atoms.cell, 
-                cell_origin = pov_obj.cell_origin)
-        
+        isosurface = POVRAYIsosurface(cell=pov_obj.cell, cell_origin=pov_obj.cell_vertices[0,0,0],**isosurface_data)
+        pov_obj.isosurface = isosurface
 
     pov_obj.write(filename)
     if run_povray:
@@ -654,12 +711,13 @@ def write_pov(filename, atoms, run_povray=False, isosurface_data = None, **param
 if __name__ == '__main__':
     from ase.build import molecule
     H2 = molecule('H2')
-    write_pov('H2.pov', H2)
+    write_pov('H2.pov', H2, run_povray=True)
 
     from ase.io import read
     from ase.calculators.vasp import VaspChargeDensity
     zno = read('CONTCAR')
     vchg = VaspChargeDensity('CHGCAR')
-    pov_obj = POVRAY(zno)
-    pov_obj.isosurface = POVRAYIsosurface(vchg.chg[0],0.15,zno.cell,pov_obj.cell_vertices[0])
+    pvars = PlottingVariables(zno, scale=1.0)
+    pov_obj = POVRAY(pvars)
+    pov_obj.isosurface = POVRAYIsosurface(vchg.chg[0], 0.15, cell=zno.cell,cell_origin=pov_obj.cell_vertices[0,0,0])
     pov_obj.write('zno').render(clean_up=True)

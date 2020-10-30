@@ -120,8 +120,8 @@ class Render:
             print(" | Writing files for image", filename, "...")
             write_pov(
                 filename, atoms, 
-                radii=radii_scale*self.gui.get_covalent_radii(),
-                **povray_settings) 
+                plotting_var_settings=dict(radii=radii_scale*self.gui.get_covalent_radii()),
+                povray_settings=povray_settings) 
             if self.run_povray_widget.value:
                 run_pov(filename, povray_executable=self.povray_executable.value)
             if not self.keep_files_widget.value:
