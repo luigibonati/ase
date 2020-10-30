@@ -4,6 +4,8 @@ from ase.build import bulk, molecule
 from ase.units import Hartree
 
 
+calc = pytest.mark.calculator
+
 required_quantities = {'eigenvalues',
                        'fermilevel',
                        'version',
@@ -30,16 +32,20 @@ def run(atoms):
     return atoms.calc.results
 
 
-def test_si(abinit_factory):
+@pytest.mark.calculator_lite
+@calc('abinit')
+def test_si(factory):
     atoms = bulk('Si')
-    atoms.calc = abinit_factory.calc(nbands=4 * len(atoms))
+    atoms.calc = factory.calc(nbands=4 * len(atoms), kpts=[4, 4, 4])
     run(atoms)
 
 
+@pytest.mark.calculator_lite
 @pytest.mark.parametrize('pps', ['fhi', 'paw'])
-def test_au(abinit_factory, pps):
+@calc('abinit')
+def test_au(factory, pps):
     atoms = bulk('Au')
-    atoms.calc = abinit_factory.calc(
+    atoms.calc = factory.calc(
         pps=pps,
         nbands=10 * len(atoms),
         tsmear=0.1,
@@ -71,6 +77,7 @@ def test_fe_fixed_magmom(fe_atoms):
     run(fe_atoms)
 
 
+@pytest.mark.calculator_lite
 def test_fe_any_magmom(fe_atoms):
     fe_atoms.calc.set(occopt=7)
     run(fe_atoms)
