@@ -1,6 +1,6 @@
 from ase.gui.i18n import _
 import ase.gui.ui as ui
-from ase.io.pov import write_pov, run_pov, get_bondpairs
+from ase.io.pov import write_pov, get_bondpairs
 from os import unlink
 import numpy as np
 
@@ -84,10 +84,14 @@ class Render:
         size = np.array([width, height]) / scale
         bbox[0:2] = np.dot(self.gui.center, self.gui.axes[:, :2]) - size / 2
         bbox[2:] = bbox[:2] + size
-        povray_settings = {
+
+        plotting_var_settings = {
             'bbox': bbox,
             'rotation': self.gui.axes,
-            'show_unit_cell': self.cell_widget.value,
+            'show_unit_cell': self.cell_widget.value
+            }
+
+        povray_settings = {
             'display': self.show_output_widget.value,
             'transparent': self.transparent.value,
             'camera_type': self.camera_widget.value,
@@ -96,6 +100,7 @@ class Render:
             'celllinewidth': self.linewidth_widget.value,
             'exportconstraints': self.constraints_widget.value,
         }
+
         multiframe = bool(self.frames_widget.value)
         if multiframe:
             assert len(self.gui.images) > 1
@@ -118,12 +123,14 @@ class Render:
                 radii_scale = 0.65                    # value from draw method of View class
             filename = self.update_outputname()
             print(" | Writing files for image", filename, "...")
+            plotting_var_settings['radii'] = radii_scale*self.gui.get_covalent_radii()
             write_pov(
                 filename, atoms, 
-                plotting_var_settings=dict(radii=radii_scale*self.gui.get_covalent_radii()),
-                povray_settings=povray_settings) 
-            if self.run_povray_widget.value:
-                run_pov(filename, povray_executable=self.povray_executable.value)
+                plotting_var_settings=plotting_var_settings,
+                povray_settings=povray_settings,
+                run_povray=self.run_povray_widget.value) 
+#            if self.run_povray_widget.value:
+#                run_pov(filename, povray_executable=self.povray_executable.value)
             if not self.keep_files_widget.value:
                 print(" | Deleting temporary file ", filename)
                 unlink(filename)

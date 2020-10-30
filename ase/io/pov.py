@@ -124,7 +124,7 @@ class POVRAY:
                 'White', .7, .7, 3, 3], background = 'White', textures = None,
                 transmittances = None, depth_cueing = False, cue_density = 5e-3,
                 celllinewidth = 0.05, bondlinewidth = 0.10, bondatoms = [],
-                exportconstraints = False):
+                exportconstraints = False, colors = None):
         """
         # x, y is the image plane, z is *out* of the screen
         pvars: PlottingVariables
@@ -184,7 +184,10 @@ class POVRAY:
         # attributes copied from plotting variables
         self.cell = pvars.cell
         self.diameters = pvars.d
-        self.colors = pvars.colors
+        if colors is None:
+            self.colors = pvars.colors
+        else:
+            self.colors = colors
         self.image_width = pvars.w
         self.image_height = pvars.h
 
@@ -226,7 +229,11 @@ class POVRAY:
                 self.canvas_height = pvars.h
             else:
                 self.canvas_width = canvas_height * ratio
-        elif canvas_height is not None:
+                self.canvas_height = canvas_height
+        elif canvas_height is None:
+            self.canvas_width = canvas_width
+            self.canvas_height = self.canvas_width / ratio
+        else:
             raise RuntimeError("Can't set *both* width and height!")
 
         # Distance to image plane from camera
@@ -706,7 +713,7 @@ def write_pov(filename, atoms, plotting_var_settings={}, povray_settings={}, run
 
     pov_obj.write(filename)
     if run_povray:
-        pov_obj.render(clean_up=True)
+        pov_obj.render()
 
 if __name__ == '__main__':
     from ase.build import molecule
