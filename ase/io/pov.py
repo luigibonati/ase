@@ -3,8 +3,6 @@ Module for povray file format support.
 
 See http://www.povray.org/ for details on the format.
 """
-from typing import Dict, Any
-
 import numpy as np
 
 from ase.io.utils import PlottingVariables
@@ -117,18 +115,30 @@ class POVRAY:
                     'reflection 0.25 roughness 0.001}'),
         )
 
-    def __init__(self, pvars, constraints=tuple(), isosurface = None, display = False,
+    def __init__(self, cell, cell_vertices, positions, diameters, colors, image_width, image_height, constraints=tuple(), isosurface = None, display = False,
                 pause = True, transparent = True, canvas_width = None, canvas_height
                 = None, camera_dist = 50., image_plane = None, camera_type =
                 'orthographic', point_lights = [], area_light = [(2., 3., 40.),
                 'White', .7, .7, 3, 3], background = 'White', textures = None,
                 transmittances = None, depth_cueing = False, cue_density = 5e-3,
                 celllinewidth = 0.05, bondlinewidth = 0.10, bondatoms = [],
-                exportconstraints = False, colors = None):
+                exportconstraints = False):
         """
         # x, y is the image plane, z is *out* of the screen
-        pvars: PlottingVariables
-            plotting variables (a subset of attributes are taken)
+        cell: ase.cell
+            cell object
+        cell_vertices: 2-d numpy array
+            contains the 8 vertices of the cell, each with three coordinates
+        positions: 2-d numpy array
+            number of atoms length array with three coordinates for positions
+        diameters: 1-d numpy array
+            diameter of atoms (in order with positions)
+        colors: list of str
+            colors of atoms (in order with positions)
+        image_width: float
+            image width in pixels
+        image_height: float
+            image height in pixels
         constraints: Atoms.constraints
             constraints to be visualized
         isosurface: POVRAYIsosurface
@@ -181,15 +191,6 @@ class POVRAY:
         exportconstraints: bool
             honour FixAtoms and mark?"""
 
-        # attributes copied from plotting variables
-        self.cell = pvars.cell
-        self.diameters = pvars.d
-        if colors is None:
-            self.colors = pvars.colors
-        else:
-            self.colors = colors
-        self.image_width = pvars.w
-        self.image_height = pvars.h
 
         # attributes from initialization
         self.area_light = area_light
@@ -210,23 +211,29 @@ class POVRAY:
         self.transmittances = transmittances
         self.transparent = transparent
 
+        self.image_width = image_width
+        self.image_height = image_height
+        self.colors = colors
+        self.cell = cell
+        self.diameters = diameters
+
         # calculations based on passed inputs
 
-        z0 = pvars.positions[:, 2].max() 
-        self.offset = (pvars.w / 2, pvars.h / 2, z0)
-        self.positions = pvars.positions - self.offset
+        z0 = positions[:, 2].max() 
+        self.offset = (image_width / 2, image_height / 2, z0)
+        self.positions = positions - self.offset
 
-        if pvars.cell_vertices is not None:
-            self.cell_vertices = pvars.cell_vertices - self.offset
+        if cell_vertices is not None:
+            self.cell_vertices = cell_vertices - self.offset
             self.cell_vertices.shape = (2, 2, 2, 3)
         else:
             self.cell_vertices = None
 
-        ratio = float(pvars.w) / pvars.h
+        ratio = float(self.image_width) / self.image_height
         if canvas_width is None:
             if canvas_height is None:
-                self.canvas_width = min(pvars.w * 15, 640)
-                self.canvas_height = pvars.h
+                self.canvas_width = min(image_width * 15, 640)
+                self.canvas_height = self.image_height
             else:
                 self.canvas_width = canvas_height * ratio
                 self.canvas_height = canvas_height
@@ -250,6 +257,48 @@ class POVRAY:
 #                self.constrainatoms.extend(c.index) # is this list-like?
                 for n, i in enumerate(c.index):
                     self.constrainatoms += [i]
+
+    @classmethod
+    def from_plotting_variables(cls, pvars, **kwargs):
+        cell = pvars.cell
+        cell_vertices = pvars.cell_vertices
+        colors = pvars.colors
+        diameters = pvars.d
+        image_height = pvars.h
+        image_width = pvars.w
+        positions = pvars.positions
+        return cls(cell=cell
+                ,cell_vertices=cell_vertices
+                ,colors=colors
+                ,diameters=diameters
+                ,image_height=image_height
+                ,image_width=image_width
+                ,positions=positions
+                ,**kwargs)
+
+    @classmethod
+    def from_atoms(cls, atoms, **kwargs):
+        return cls.from_plotting_variables(PlottingVariables(atoms), **kwargs)
+
+    @classmethod
+    def from_plotting_variables_and_atoms(cls, pvars, atoms, **kwargs):
+        cell = pvars.cell
+        cell_vertices = pvars.cell_vertices
+        colors = pvars.colors
+        constraints = atoms.constraints
+        diameters = pvars.d
+        image_height = pvars.h
+        image_width = pvars.w
+        positions = pvars.positions
+        return cls(cell=cell
+                ,cell_vertices=cell_vertices
+                ,colors=colors
+                ,constraints=constraints
+                ,diameters=diameters
+                ,image_height=image_height
+                ,image_width=image_width
+                ,positions=positions
+                ,**kwargs)
 
 
     def write_ini(self, path):
@@ -517,12 +566,12 @@ union{{torus{{R, Rcell rotate 45*z texture{{pigment{{color COL transmit TRANS}} 
         cmd = [povray_executable, pov_path.as_posix()]
         if stderr != '-':
             if stderr is None:
-                status = check_call(cmd, stderr=DEVNULL)
+                check_call(cmd, stderr=DEVNULL)
             else:
                 with open(stderr, 'w') as stderr:
-                    status = check_call(cmd, stderr=stderr)
+                    check_call(cmd, stderr=stderr)
         else:
-            status = check_call(cmd)
+            check_call(cmd)
 
         if clean_up:
             unlink(self.path.with_suffix('.ini'))
@@ -588,6 +637,10 @@ class POVRAYIsosurface:
         self.density_grid = density_grid
         self.spacing = tuple(1.0 / np.array(self.density_grid.shape))
 
+
+    @classmethod
+    def from_POVRAY(cls, povray, density_grid, cut_off, **kwargs):
+        return cls(cell=povray.cell, cell_origin=povray.cell_vertices[0,0,0],density_grid=density_grid,cut_off=cut_off,**kwargs)
 
     @staticmethod
     def wrapped_triples_section(triple_list,
@@ -705,11 +758,10 @@ def write_pov(filename, atoms, plotting_var_settings={}, povray_settings={}, run
         atoms = atoms[0]
 
     pvars = PlottingVariables(atoms, scale=1.0, **plotting_var_settings)
-    pov_obj = POVRAY(pvars, atoms.constraints, **povray_settings)
+    pov_obj = POVRAY.from_plotting_variables_and_atoms(pvars, atoms, **povray_settings)
     #note pov_obj.cell_vertices != pvars.cell_vertices
     if isosurface_data is not None:
-        isosurface = POVRAYIsosurface(cell=pov_obj.cell, cell_origin=pov_obj.cell_vertices[0,0,0],**isosurface_data)
-        pov_obj.isosurface = isosurface
+        pov_obj.isosurface = POVRAYIsosurface.from_POVRAY(pov_obj, **isosurface_data)
 
     pov_obj.write(filename)
     if run_povray:
@@ -725,6 +777,6 @@ if __name__ == '__main__':
     zno = read('CONTCAR')
     vchg = VaspChargeDensity('CHGCAR')
     pvars = PlottingVariables(zno, scale=1.0)
-    pov_obj = POVRAY(pvars)
+    pov_obj = POVRAY.from_plotting_variables_and_atoms(pvars, zno)
     pov_obj.isosurface = POVRAYIsosurface(vchg.chg[0], 0.15, cell=zno.cell,cell_origin=pov_obj.cell_vertices[0,0,0])
     pov_obj.write('zno').render(clean_up=True)
