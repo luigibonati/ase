@@ -612,15 +612,15 @@ class POVRAYIsosurface:
             override the color parameter.
         """
 
-        self.cut_off = cut_off
+        self.gradient_direction = 'ascent' if gradient_ascending else 'descent'
         self.color = color
         self.material = material
+        self.closed_edges = closed_edges
+        self._cut_off = cut_off
 
-        if gradient_ascending:
-            self.gradient_direction = 'ascent'
+        if self.gradient_direction == 'ascent':
             cv = 2 * cut_off
         else:
-            self.gradient_direction = 'descent'
             cv = 0
 
         if closed_edges:
@@ -637,6 +637,50 @@ class POVRAYIsosurface:
         self.density_grid = density_grid
         self.spacing = tuple(1.0 / np.array(self.density_grid.shape))
 
+        scaled_verts, faces, normals, values = self.__class__.compute_mesh(
+            self.density_grid,
+            self._cut_off,
+            self.spacing,
+            self.gradient_direction)
+
+        # The verts are scaled by default, this is the super easy way of
+        # distributing them in real space but it's easier to do affine
+        # transformations/rotations on a unit cube so I leave it like that
+        # verts = scaled_verts.dot(self.cell)
+        self.verts = scaled_verts
+        self.faces = faces
+
+    @property
+    def cut_off(self):
+        return self._cut_off
+
+    @cut_off.setter
+    def cut_off(self, value):
+        if self.gradient_direction == 'ascent':
+            cv = 2 * value
+        else:
+            cv = 0
+
+        if self.closed_edges:
+            shape_old = self.density_grid.shape
+            # since well be padding, we need to keep the data at origin
+            self.cell_origin += -(1.0 / np.array(shape_old)) @ self.cell
+            self.density_grid = np.pad(self.density_grid, pad_width=(1,), mode='constant', constant_values=cv)
+            shape_new = self.density_grid.shape
+            s = np.array(shape_new) / np.array(shape_old)
+            self.cell = self.cell @ np.diag(s)
+
+        self.spacing = tuple(1.0 / np.array(self.density_grid.shape))
+
+        scaled_verts, faces, _, _ = self.__class__.compute_mesh(
+            self.density_grid,
+            self.cut_off,
+            self.spacing,
+            self.gradient_direction)
+
+        self.verts = scaled_verts
+        self.faces = faces
+        self._cut_off = value
 
     @classmethod
     def from_POVRAY(cls, povray, density_grid, cut_off, **kwargs):
@@ -704,18 +748,6 @@ class POVRAYIsosurface:
           }'''
         """  # noqa: E501
 
-        scaled_verts, faces, normals, values = self.__class__.compute_mesh(
-            self.density_grid,
-            self.cut_off,
-            self.spacing,
-            self.gradient_direction)
-
-        # The verts are scaled by default, this is the super easy way of
-        # distributing them in real space but it's easier to do affine
-        # transformations/rotations on a unit cube so I leave it like that
-        # verts = scaled_verts.dot(self.cell)
-        verts = scaled_verts
-
         if self.material in POVRAY.material_styles_dict.keys():
             material = f"""material {{
         texture {{
@@ -727,19 +759,19 @@ class POVRAYIsosurface:
             material == self.material
 
         # Start writing the mesh2
-        vertex_vectors = self.__class__.wrapped_triples_section(triple_list=verts,
+        vertex_vectors = self.__class__.wrapped_triples_section(triple_list=self.verts,
                 triple_format="<{:f}, {:f}, {:f}>".format, triples_per_line=4)
 
-        face_indices = self.__class__.wrapped_triples_section(triple_list=faces,
+        face_indices = self.__class__.wrapped_triples_section(triple_list=self.faces,
                 triple_format="<{:n}, {:n}, {:n}>".format, triples_per_line=5)
 
         cell = self.cell
         cell_or = self.cell_origin
         mesh2 = f"""\n\nmesh2 {{
-    vertex_vectors {{  {len(verts):n},
+    vertex_vectors {{  {len(self.verts):n},
     {vertex_vectors}
     }}
-    face_indices {{ {len(faces):n},
+    face_indices {{ {len(self.faces):n},
     {face_indices}
     }}
 {material if material != '' else '// no material'}
