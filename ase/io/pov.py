@@ -278,7 +278,7 @@ class POVRAY:
 
     @classmethod
     def from_atoms(cls, atoms, **kwargs):
-        return cls.from_plotting_variables(PlottingVariables(atoms), **kwargs)
+        return cls.from_plotting_variables(PlottingVariables(atoms, scale=1.0), **kwargs)
 
     @classmethod
     def from_plotting_variables_and_atoms(cls, pvars, atoms, **kwargs):
@@ -811,4 +811,6 @@ if __name__ == '__main__':
     pvars = PlottingVariables(zno, scale=1.0)
     pov_obj = POVRAY.from_plotting_variables_and_atoms(pvars, zno)
     pov_obj.isosurface = POVRAYIsosurface(vchg.chg[0], 0.15, cell=zno.cell,cell_origin=pov_obj.cell_vertices[0,0,0])
-    pov_obj.write('zno').render(clean_up=True)
+    for i in 0.15, 0.20, 0.25:
+        pov_obj.isosurface.cut_off = i
+        pov_obj.write('zno').render(clean_up=True)
