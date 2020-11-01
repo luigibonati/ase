@@ -262,7 +262,10 @@ class POVRAY:
     def from_plotting_variables(cls, pvars, **kwargs):
         cell = pvars.cell
         cell_vertices = pvars.cell_vertices
-        colors = pvars.colors
+        if 'colors' in kwargs.keys():
+            colors = kwargs.pop('colors')
+        else:
+            colors = pvars.colors
         diameters = pvars.d
         image_height = pvars.h
         image_width = pvars.w
@@ -284,7 +287,10 @@ class POVRAY:
     def from_plotting_variables_and_atoms(cls, pvars, atoms, **kwargs):
         cell = pvars.cell
         cell_vertices = pvars.cell_vertices
-        colors = pvars.colors
+        if 'colors' in kwargs.keys():
+            colors = kwargs.pop('colors')
+        else:
+            colors = pvars.colors
         constraints = atoms.constraints
         diameters = pvars.d
         image_height = pvars.h
