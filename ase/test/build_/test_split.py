@@ -1,5 +1,5 @@
 from ase.build import molecule
-from ase.build.split import split_bond
+from ase.build.connected import split_bond
 
 
 def test_split_biphenyl():
