@@ -111,6 +111,7 @@ class PlottingVariables:
         self.cell_vertices = cell_vertices
         self.natoms = natoms
         self.d = 2 * scale * radii
+        self.constraints = atoms.constraints
 
         # extension for partial occupancies
         self.frac_occ = False

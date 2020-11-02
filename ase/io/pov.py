@@ -259,7 +259,7 @@ class POVRAY:
                     self.constrainatoms += [i]
 
     @classmethod
-    def from_plotting_variables(cls, pvars, **kwargs):
+    def from_PlottingVariables(cls, pvars, **kwargs):
         cell = pvars.cell
         cell_vertices = pvars.cell_vertices
         if 'colors' in kwargs.keys():
@@ -270,32 +270,7 @@ class POVRAY:
         image_height = pvars.h
         image_width = pvars.w
         positions = pvars.positions
-        return cls(cell=cell
-                ,cell_vertices=cell_vertices
-                ,colors=colors
-                ,diameters=diameters
-                ,image_height=image_height
-                ,image_width=image_width
-                ,positions=positions
-                ,**kwargs)
-
-    @classmethod
-    def from_atoms(cls, atoms, **kwargs):
-        return cls.from_plotting_variables(PlottingVariables(atoms, scale=1.0), **kwargs)
-
-    @classmethod
-    def from_plotting_variables_and_atoms(cls, pvars, atoms, **kwargs):
-        cell = pvars.cell
-        cell_vertices = pvars.cell_vertices
-        if 'colors' in kwargs.keys():
-            colors = kwargs.pop('colors')
-        else:
-            colors = pvars.colors
-        constraints = atoms.constraints
-        diameters = pvars.d
-        image_height = pvars.h
-        image_width = pvars.w
-        positions = pvars.positions
+        constraints = pvars.constraints
         return cls(cell=cell
                 ,cell_vertices=cell_vertices
                 ,colors=colors
@@ -306,6 +281,9 @@ class POVRAY:
                 ,positions=positions
                 ,**kwargs)
 
+    @classmethod
+    def from_atoms(cls, atoms, **kwargs):
+        return cls.from_plotting_variables(PlottingVariables(atoms, scale=1.0), **kwargs)
 
     def write_ini(self, path):
         """Write ini file."""
@@ -645,7 +623,7 @@ class POVRAYIsosurface:
 
         scaled_verts, faces, normals, values = self.__class__.compute_mesh(
             self.density_grid,
-            self._cut_off,
+            self.cut_off,
             self.spacing,
             self.gradient_direction)
 
@@ -662,8 +640,13 @@ class POVRAYIsosurface:
 
     @cut_off.setter
     def cut_off(self, value):
+        raise Exception("Use the set_cut_off method")
+
+    def set_cut_off(self, value):
+        self._cut_off = value
+
         if self.gradient_direction == 'ascent':
-            cv = 2 * value
+            cv = 2 * self.cut_off 
         else:
             cv = 0
 
@@ -686,7 +669,6 @@ class POVRAYIsosurface:
 
         self.verts = scaled_verts
         self.faces = faces
-        self._cut_off = value
 
     @classmethod
     def from_POVRAY(cls, povray, density_grid, cut_off, **kwargs):
@@ -796,8 +778,7 @@ def write_pov(filename, atoms, plotting_var_settings={}, povray_settings={}, run
         atoms = atoms[0]
 
     pvars = PlottingVariables(atoms, scale=1.0, **plotting_var_settings)
-    pov_obj = POVRAY.from_plotting_variables_and_atoms(pvars, atoms, **povray_settings)
-    #note pov_obj.cell_vertices != pvars.cell_vertices
+    pov_obj = POVRAY.from_PlottingVariables(pvars, **povray_settings)
     if isosurface_data is not None:
         pov_obj.isosurface = POVRAYIsosurface.from_POVRAY(pov_obj, **isosurface_data)
 
@@ -815,8 +796,8 @@ if __name__ == '__main__':
     zno = read('CONTCAR')
     vchg = VaspChargeDensity('CHGCAR')
     pvars = PlottingVariables(zno, scale=1.0)
-    pov_obj = POVRAY.from_plotting_variables_and_atoms(pvars, zno)
-    pov_obj.isosurface = POVRAYIsosurface(vchg.chg[0], 0.15, cell=zno.cell,cell_origin=pov_obj.cell_vertices[0,0,0])
-    for i in 0.15, 0.20, 0.25:
-        pov_obj.isosurface.cut_off = i
+    pov_obj = POVRAY.from_PlottingVariables(pvars)
+    pov_obj.isosurface = POVRAYIsosurface(vchg.chg[0], 0.15, cell=zno.cell, cell_origin=pov_obj.cell_vertices[0,0,0])
+    for cut_off in 0.10, 0.30, 0.60:
+        pov_obj.isosurface.set_cut_off(cut_off)
         pov_obj.write('zno').render(clean_up=True)
