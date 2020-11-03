@@ -542,20 +542,28 @@ union{{torus{{R, Rcell rotate 45*z texture{{pigment{{color COL transmit TRANS}} 
         if self.isosurface is not None:
             with open(path.with_suffix('.pov'), 'a') as _:
                 _.write(self.isosurface.format_mesh())
-        self.path = path
-        return self
+        return POVRAYInputs(path)
 
+class POVRAYInputs:
+    def __init__(self, path):
+        if type(path) is str:
+            path = Path(filename).with_suffix('')
+        self.path = path
     def render(self, povray_executable='povray', stderr=None, clean_up=False):
-        pov_path = self.path.with_suffix('.ini')
+        pov_path = self.path.with_suffix('.pov')
         cmd = [povray_executable, pov_path.as_posix()]
-        if stderr != '-':
-            if stderr is None:
-                check_call(cmd, stderr=DEVNULL)
-            else:
-                with open(stderr, 'w') as stderr:
-                    check_call(cmd, stderr=stderr)
+        if stderr is None:
+            out = DEVNULL
+        elif stderr == '-':
+            out = open(stderr, 'w')
         else:
-            check_call(cmd)
+            out = None
+
+        try:
+            check_call(cmd, stderr=out)
+        finally:
+            if stderr == '-':
+                out.close()
 
         if clean_up:
             unlink(self.path.with_suffix('.ini'))
@@ -782,14 +790,12 @@ def write_pov(filename, atoms, generic_projection_settings={}, povray_settings={
     if isosurface_data is not None:
         pov_obj.isosurface = POVRAYIsosurface.from_POVRAY(pov_obj, **isosurface_data)
 
-    pov_obj.write(filename)
-
-    return pov_obj
+    return pov_obj.write(filename)
 
 if __name__ == '__main__':
     from ase.build import molecule
     H2 = molecule('H2')
-    write_pov('H2.pov', H2, run_povray=True)
+    write_pov('H2.pov', H2).render()
 
     from ase.io import read
     from ase.calculators.vasp import VaspChargeDensity
@@ -800,4 +806,4 @@ if __name__ == '__main__':
     pov_obj.isosurface = POVRAYIsosurface(vchg.chg[0], 0.15, cell=zno.cell, cell_origin=pov_obj.cell_vertices[0,0,0])
     for cut_off in 0.10, 0.30, 0.60:
         pov_obj.isosurface.set_cut_off(cut_off)
-        pov_obj.write('zno').render(clean_up=True)
+        pov_obj.write('zno').render(clean_up=False)
