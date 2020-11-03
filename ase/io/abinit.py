@@ -410,7 +410,9 @@ def read_abinit_out(fd):
         if 'Cartesian components of stress tensor (hartree/bohr^3)' in line:
             results['stress'] = read_stress(fd)
 
-        if energy_header in line:
+        if line.strip() == energy_header:
+            # Header not to be confused with EnergyTermsDC,
+            # therefore we don't use .startswith()
             energy = None
             for line in fd:
                 # Which of the listed energies should we include?
