@@ -394,11 +394,13 @@ def read_abinit_out(fd):
     if use_v9_format:
         energy_header = '--- !EnergyTerms'
         total_energy_name = 'total_energy_eV'
-        read_energy = lambda line: float(line.split(':')[1].strip())
+        def parse_energy(line):
+            return float(line.split(':')[1].strip())
     else:
         energy_header = 'Components of total free energy (in Hartree)'
         total_energy_name = 'Etotal'
-        read_energy = lambda line: float(line.rsplit('=', 2)[1]) * Hartree
+        def parse_energy(line):
+            return float(line.rsplit('=', 2)[1]) * Hartree
 
     for line in fd:
         if 'cartesian coordinates (angstrom) at end' in line:
@@ -413,7 +415,7 @@ def read_abinit_out(fd):
             for line in fd:
                 # Which of the listed energies should we include?
                 if total_energy_name in line:
-                    energy = read_energy(line)
+                    energy = parse_energy(line)
                     break
             if energy is None:
                 raise RuntimeError('No energy found in output')
