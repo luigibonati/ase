@@ -27,9 +27,10 @@ s4.center(vacuum=10, axis=2)
 from ase.io import write
 for atoms, name in [(s1, 's1'), (s2, 's2'), (s3, 's3'), (s4, 's4')]:
     write(name + '.pov', atoms,
-          rotation='-90x',
-          transparent=False,
-          run_povray=True)
+          generic_projection_settings=dict(
+              rotation='-90x'),
+          povray_settings=dict(
+              transparent=False)).render()
 
 import os
 import shutil
