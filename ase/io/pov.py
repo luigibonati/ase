@@ -232,8 +232,8 @@ class POVRAY:
         ratio = float(self.image_width) / self.image_height
         if canvas_width is None:
             if canvas_height is None:
-                self.canvas_width = min(image_width * 15, 640)
-                self.canvas_height = self.image_height
+                self.canvas_width = min(self.image_width * 15, 640)
+                self.canvas_height = min(self.image_height * 15, 640)
             else:
                 self.canvas_width = canvas_height * ratio
                 self.canvas_height = canvas_height
