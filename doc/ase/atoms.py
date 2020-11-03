@@ -14,6 +14,7 @@ wire.positions[:, 0] -= 2 * d
 wire.cell[0, 0] = d
 #view(wire, block=1)
 write('Au-wire.pov', wire,
-      povray_settings = dict(
-          rotation='12x,6y',
+      generic_projection_settings=dict(
+          rotation='12x,6y'),
+      povray_settings=dict(
           transparent=False)).render()

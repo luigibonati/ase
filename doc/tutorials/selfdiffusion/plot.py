@@ -28,10 +28,10 @@ colors = jmol_colors[atoms.numbers]
 colors[16::17] = [1, 0, 0]
 
 renderer = write('Al110slab.pov', atoms,
-      generic_projection_settings=dict(rotation=rotation,
-      colors=colors,
-      radii=radii),
-      povray_settings=dict(
-      canvas_width=500,
-      transparent=False))
+                 generic_projection_settings=dict(rotation=rotation,
+                                                  colors=colors,
+                                                  radii=radii),
+                 povray_settings=dict(
+                     canvas_width=500,
+                     transparent=False))
 renderer.render()

@@ -228,6 +228,7 @@ class ImageIterator:
     Assumes ``ichunks`` is in iterator, which returns ``ImageChunk``
     type objects. See extxyz.py:iread_xyz as an example.
     """
+
     def __init__(self, ichunks):
         self.ichunks = ichunks
 

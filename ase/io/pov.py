@@ -12,9 +12,11 @@ from subprocess import check_call, DEVNULL
 from os import unlink
 from pathlib import Path
 
+
 def pa(array):
     """Povray array syntax"""
     return '<' + ', '.join(f"{x:>6.2f}" for x in tuple(array)) + '>'
+
 
 def pc(array):
     """Povray color syntax"""
@@ -25,7 +27,8 @@ def pc(array):
     l = len(array)
     if l > 2 and l < 6:
         return f"rgb{'' if l == 3 else 't' if l == 4 else 'ft'} <" +\
-                ', '.join(f"{x:.2f}" for x in tuple(array)) + '>'
+            ', '.join(f"{x:.2f}" for x in tuple(array)) + '>'
+
 
 def get_bondpairs(atoms, radius=1.1):
     """Get all pairs of bonding atoms
@@ -96,33 +99,35 @@ def set_high_bondorder_pairs(bondpairs, high_bondorder_pairs=None):
 
 class POVRAY:
     material_styles_dict = dict(
-            simple='finish {phong 0.7}',
-            pale=('finish {ambient 0.5 diffuse 0.85 roughness 0.001 '
-                  'specular 0.200 }'),
-            intermediate=('finish {ambient 0.3 diffuse 0.6 specular 0.1 '
-                          'roughness 0.04}'),
-            vmd=('finish {ambient 0.0 diffuse 0.65 phong 0.1 phong_size 40.0 '
-                 'specular 0.5 }'),
-            jmol=('finish {ambient 0.2 diffuse 0.6 specular 1 roughness 0.001 '
-                  'metallic}'),
-            ase2=('finish {ambient 0.05 brilliance 3 diffuse 0.6 metallic '
-                  'specular 0.7 roughness 0.04 reflection 0.15}'),
-            ase3=('finish {ambient 0.15 brilliance 2 diffuse 0.6 metallic '
-                  'specular 1.0 roughness 0.001 reflection 0.0}'),
-            glass=('finish {ambient 0.05 diffuse 0.3 specular 1.0 '
-                   'roughness 0.001}'),
-            glass2=('finish {ambient 0.01 diffuse 0.3 specular 1.0 '
-                    'reflection 0.25 roughness 0.001}'),
-        )
+        simple='finish {phong 0.7}',
+        pale=('finish {ambient 0.5 diffuse 0.85 roughness 0.001 '
+              'specular 0.200 }'),
+        intermediate=('finish {ambient 0.3 diffuse 0.6 specular 0.1 '
+                      'roughness 0.04}'),
+        vmd=('finish {ambient 0.0 diffuse 0.65 phong 0.1 phong_size 40.0 '
+             'specular 0.5 }'),
+        jmol=('finish {ambient 0.2 diffuse 0.6 specular 1 roughness 0.001 '
+              'metallic}'),
+        ase2=('finish {ambient 0.05 brilliance 3 diffuse 0.6 metallic '
+              'specular 0.7 roughness 0.04 reflection 0.15}'),
+        ase3=('finish {ambient 0.15 brilliance 2 diffuse 0.6 metallic '
+              'specular 1.0 roughness 0.001 reflection 0.0}'),
+        glass=('finish {ambient 0.05 diffuse 0.3 specular 1.0 '
+               'roughness 0.001}'),
+        glass2=('finish {ambient 0.01 diffuse 0.3 specular 1.0 '
+                'reflection 0.25 roughness 0.001}'),
+    )
 
-    def __init__(self, cell, cell_vertices, positions, diameters, colors, image_width, image_height, constraints=tuple(), isosurface = None, display = False,
-                pause = True, transparent = True, canvas_width = None, canvas_height
-                = None, camera_dist = 50., image_plane = None, camera_type =
-                'orthographic', point_lights = [], area_light = [(2., 3., 40.),
-                'White', .7, .7, 3, 3], background = 'White', textures = None,
-                transmittances = None, depth_cueing = False, cue_density = 5e-3,
-                celllinewidth = 0.05, bondlinewidth = 0.10, bondatoms = [],
-                exportconstraints = False):
+    def __init__(self, cell, cell_vertices, positions, diameters, colors, 
+                 image_width, image_height, constraints=tuple(), isosurface=None,
+                 display=False, pause=True, transparent=True, canvas_width=None, 
+                 canvas_height=None, camera_dist=50., image_plane=None, 
+                 camera_type='orthographic', point_lights=[], 
+                 area_light=[(2., 3., 40.), 'White', .7, .7, 3, 3], 
+                 background='White', textures=None, transmittances=None, 
+                 depth_cueing=False, cue_density=5e-3,
+                 celllinewidth=0.05, bondlinewidth=0.10, bondatoms=[],
+                 exportconstraints=False):
         """
         # x, y is the image plane, z is *out* of the screen
         cell: ase.cell
@@ -159,7 +164,7 @@ class POVRAY:
             distance from front atom to image plane
         camera_type: str
             if 'orthographic' perspective, ultra_wide_angle
-        point_lights: list of 2-element sequences 
+        point_lights: list of 2-element sequences
             like [[loc1, color1], [loc2, color2],...]
         area_light: 3-element sequence of location (3-tuple), color (str), width (float), height (float), Nlamps_x (int), Nlamps_y (int)
             example [(2., 3., 40.), 'White', .7, .7, 3, 3]
@@ -191,7 +196,6 @@ class POVRAY:
         exportconstraints: bool
             honour FixAtoms and mark?"""
 
-
         # attributes from initialization
         self.area_light = area_light
         self.background = background
@@ -203,7 +207,7 @@ class POVRAY:
         self.cue_density = cue_density
         self.depth_cueing = depth_cueing
         self.display = display
-        self.exportconstraints  = exportconstraints
+        self.exportconstraints = exportconstraints
         self.isosurface = isosurface
         self.pause = pause
         self.point_lights = point_lights
@@ -219,7 +223,7 @@ class POVRAY:
 
         # calculations based on passed inputs
 
-        z0 = positions[:, 2].max() 
+        z0 = positions[:, 2].max()
         self.offset = (image_width / 2, image_height / 2, z0)
         self.positions = positions - self.offset
 
@@ -254,7 +258,7 @@ class POVRAY:
         self.constrainatoms = []
         for c in constraints:
             if isinstance(c, FixAtoms):
-#                self.constrainatoms.extend(c.index) # is this list-like?
+                # self.constrainatoms.extend(c.index) # is this list-like?
                 for n, i in enumerate(c.index):
                     self.constrainatoms += [i]
 
@@ -271,19 +275,13 @@ class POVRAY:
         image_width = pvars.w
         positions = pvars.positions
         constraints = pvars.constraints
-        return cls(cell=cell
-                ,cell_vertices=cell_vertices
-                ,colors=colors
-                ,constraints=constraints
-                ,diameters=diameters
-                ,image_height=image_height
-                ,image_width=image_width
-                ,positions=positions
-                ,**kwargs)
+        return cls(cell=cell, cell_vertices=cell_vertices, colors=colors, constraints=constraints,
+                   diameters=diameters, image_height=image_height, image_width=image_width, positions=positions, **kwargs)
 
     @classmethod
     def from_atoms(cls, atoms, **kwargs):
-        return cls.from_plotting_variables(PlottingVariables(atoms, scale=1.0), **kwargs)
+        return cls.from_plotting_variables(
+            PlottingVariables(atoms, scale=1.0), **kwargs)
 
     def write_ini(self, path):
         """Write ini file."""
@@ -310,8 +308,8 @@ Verbose=False
     def write_pov(self, path):
         """Write pov file."""
 
-        point_lights = '\n'.join(f"light_source {{{pa(loc)} {pc(rgb)}}}" 
-            for loc,rgb in self.point_lights)
+        point_lights = '\n'.join(f"light_source {{{pa(loc)} {pc(rgb)}}}"
+                                 for loc, rgb in self.point_lights)
 
         area_light = ''
         if self.area_light is not None:
@@ -330,9 +328,8 @@ Verbose=False
                 dist = 1. / self.cue_density
             fog += f'fog {{fog_type 1 distance {dist:.4f} color {pc(self.background)}}}'
 
-        material_styles_dict_keys = '\n'.join(f'#declare {key} = {value}' #semicolon?
-            for key, value in self.material_styles_dict.items())
-
+        material_styles_dict_keys = '\n'.join(f'#declare {key} = {value}'  # semicolon?
+                                              for key, value in self.material_styles_dict.items())
 
         # Draw unit cell
         cell_vertices = ''
@@ -350,8 +347,8 @@ Verbose=False
                         continue
 
                     cell_vertices += f'cylinder {{{pa(parts[0])}, {pa(parts[1])}, '\
-                                     f'Rcell pigment {{Black}}}}\n' 
-                                     # all strings are f-strings for consistency
+                                     f'Rcell pigment {{Black}}}}\n'
+                    # all strings are f-strings for consistency
             cell_vertices = cell_vertices.strip('\n')
 
         # Draw atoms
@@ -453,37 +450,39 @@ Verbose=False
             # To shift the bond, add the shift to the first two coordinate in
             # write statement.
 
-            posa = self.positions[a]; posb = self.positions[b]
-            cola = self.colors[a]; colb = self.colors[b]
+            posa = self.positions[a]
+            posb = self.positions[b]
+            cola = self.colors[a]
+            colb = self.colors[b]
 
             if bond_order == 1:
                 draw_tuples = (posa, mida, cola, transa, texa),\
-                              (posb, midb, colb, transb, texb)  
+                              (posb, midb, colb, transb, texb)
 
             elif bond_order == 2:
                 bs = [x / 2 for x in bond_offset]
-                draw_tuples = (posa-bs, mida-bs, cola, transa, texa),\
-                              (posb-bs, midb-bs, colb, transb, texb),\
-                              (posa+bs, mida+bs, cola, transa, texa),\
-                              (posb+bs, midb+bs, colb, transb, texb)
+                draw_tuples = (posa - bs, mida - bs, cola, transa, texa),\
+                              (posb - bs, midb - bs, colb, transb, texb),\
+                              (posa + bs, mida + bs, cola, transa, texa),\
+                              (posb + bs, midb + bs, colb, transb, texb)
 
             elif bond_order == 3:
                 bs = bond_offset
-                draw_tuples = (posa   , mida   , cola, transa, texa),\
-                              (posb   , midb   , colb, transb, texb),\
-                              (posa+bs, mida+bs, cola, transa, texa),\
-                              (posb+bs, midb+bs, colb, transb, texb),\
-                              (posa-bs, mida-bs, cola, transa, texa),\
-                              (posb-bs, midb-bs, colb, transb, texb)
+                draw_tuples = (posa, mida, cola, transa, texa),\
+                              (posb, midb, colb, transb, texb),\
+                              (posa + bs, mida + bs, cola, transa, texa),\
+                              (posb + bs, midb + bs, colb, transb, texb),\
+                              (posa - bs, mida - bs, cola, transa, texa),\
+                              (posb - bs, midb - bs, colb, transb, texb)
 
             bondatoms += ''.join(f'cylinder {{{pa(p)}, '
-                       f'{pa(m)}, Rbond texture{{pigment '
-                       f'{{color {pc(c)} '
-                       f'transmit {tr}}} finish{{{tx}}}}}}}\n'
-                       for p, m, c, tr, tx in
-                       draw_tuples)
+                                 f'{pa(m)}, Rbond texture{{pigment '
+                                 f'{{color {pc(c)} '
+                                 f'transmit {tr}}} finish{{{tx}}}}}}}\n'
+                                 for p, m, c, tr, tx in
+                                 draw_tuples)
 
-        bondatoms = bondatoms.strip('\n') 
+        bondatoms = bondatoms.strip('\n')
 
         # Draw constraints if requested
         constraints = ''
@@ -495,7 +494,7 @@ Verbose=False
                 if self.transmittances is not None:
                     trans = self.transmittances[a]
                 constraints += f'constrain({pa(loc)}, {dia/2.:.2f}, Black, '\
-                f'{trans}, {tex}) // #{a:n} \n' 
+                    f'{trans}, {tex}) // #{a:n} \n'
         constraints = constraints.strip('\n')
 
         pov = f"""#include "colors.inc"
@@ -504,7 +503,7 @@ Verbose=False
 global_settings {{assumed_gamma 1 max_trace_level 6}}
 background {{{pc(self.background)}{' transmit 1.0' if self.transparent else ''}}}
 camera {{{self.camera_type}
-  right -{self.image_width:.2f}*x up {self.image_height:.2f}*y   
+  right -{self.image_width:.2f}*x up {self.image_height:.2f}*y
   direction {self.image_plane:.2f}*z
   location <0,0,{self.camera_dist:.2f}> look_at <0,0,0>}}
 {point_lights}
@@ -523,11 +522,11 @@ union{{torus{{R, Rcell rotate 45*z texture{{pigment{{color COL transmit TRANS}} 
      translate LOC}}
 #end
 
-{cell_vertices if cell_vertices != '' else '// no cell vertices'} 
+{cell_vertices if cell_vertices != '' else '// no cell vertices'}
 {atoms}
 {bondatoms}
 {constraints if constraints != '' else '// no constraints'}
-""" 
+"""
 
         pov_path = path.with_suffix('.pov')
         with open(pov_path, 'w') as _:
@@ -544,11 +543,13 @@ union{{torus{{R, Rcell rotate 45*z texture{{pigment{{color COL transmit TRANS}} 
                 _.write(self.isosurface.format_mesh())
         return POVRAYInputs(path)
 
+
 class POVRAYInputs:
     def __init__(self, path):
-        if type(path) is str:
+        if isinstance(path, str):
             path = Path(filename).with_suffix('')
         self.path = path
+
     def render(self, povray_executable='povray', stderr=None, clean_up=False):
         pov_path = self.path.with_suffix('.pov')
         cmd = [povray_executable, pov_path.as_posix()]
@@ -570,13 +571,12 @@ class POVRAYInputs:
             unlink(self.path.with_suffix('.pov'))
 
         return self.path.with_suffix('.png')
-       
 
 
 class POVRAYIsosurface:
     def __init__(self, density_grid, cut_off, cell, cell_origin,
-                              closed_edges=False, gradient_ascending=False,
-                              color=(0.85, 0.80, 0.25, 0.2), material='ase3'):
+                 closed_edges=False, gradient_ascending=False,
+                 color=(0.85, 0.80, 0.25, 0.2), material='ase3'):
         """
         density_grid: 3D float ndarray
             A regular grid on that spans the cell. The first dimension corresponds
@@ -619,7 +619,9 @@ class POVRAYIsosurface:
             shape_old = density_grid.shape
             # since well be padding, we need to keep the data at origin
             cell_origin += -(1.0 / np.array(shape_old)) @ cell
-            density_grid = np.pad(density_grid, pad_width=(1,), mode='constant', constant_values=cv)
+            density_grid = np.pad(
+                density_grid, pad_width=(
+                    1,), mode='constant', constant_values=cv)
             shape_new = density_grid.shape
             s = np.array(shape_new) / np.array(shape_old)
             cell = cell @ np.diag(s)
@@ -654,7 +656,7 @@ class POVRAYIsosurface:
         self._cut_off = value
 
         if self.gradient_direction == 'ascent':
-            cv = 2 * self.cut_off 
+            cv = 2 * self.cut_off
         else:
             cv = 0
 
@@ -662,7 +664,9 @@ class POVRAYIsosurface:
             shape_old = self.density_grid.shape
             # since well be padding, we need to keep the data at origin
             self.cell_origin += -(1.0 / np.array(shape_old)) @ self.cell
-            self.density_grid = np.pad(self.density_grid, pad_width=(1,), mode='constant', constant_values=cv)
+            self.density_grid = np.pad(
+                self.density_grid, pad_width=(
+                    1,), mode='constant', constant_values=cv)
             shape_new = self.density_grid.shape
             s = np.array(shape_new) / np.array(shape_old)
             self.cell = self.cell @ np.diag(s)
@@ -680,7 +684,10 @@ class POVRAYIsosurface:
 
     @classmethod
     def from_POVRAY(cls, povray, density_grid, cut_off, **kwargs):
-        return cls(cell=povray.cell, cell_origin=povray.cell_vertices[0,0,0],density_grid=density_grid,cut_off=cut_off,**kwargs)
+        return cls(cell=povray.cell,
+                   cell_origin=povray.cell_vertices[0, 0, 0], 
+                   density_grid=density_grid, 
+                   cut_off=cut_off, **kwargs)
 
     @staticmethod
     def wrapped_triples_section(triple_list,
@@ -696,7 +703,7 @@ class POVRAYIsosurface:
         while c < n - tpl:
             c += tpl
             s += '\n     '
-            s += ', '.join(triples[c-tpl:c])
+            s += ', '.join(triples[c - tpl:c])
         s += '\n    '
         s += ', '.join(triples[c:])
         return s
@@ -705,7 +712,7 @@ class POVRAYIsosurface:
     def compute_mesh(density_grid, cut_off, spacing, gradient_direction):
         """
 
-        Import statement is in this method and not file header since few users will use isosurface rendering. 
+        Import statement is in this method and not file header since few users will use isosurface rendering.
 
         Returns scaled_verts, faces, normals, values. See skimage docs.
 
@@ -713,15 +720,13 @@ class POVRAYIsosurface:
 
         from skimage import measure
         return measure.marching_cubes_lewiner(
-                density_grid,
-                level=cut_off,
-                spacing=spacing,
-                gradient_direction=gradient_direction,
-                allow_degenerate=False)
-
+            density_grid,
+            level=cut_off,
+            spacing=spacing,
+            gradient_direction=gradient_direction,
+            allow_degenerate=False)
 
     def format_mesh(self):
-
         """Returns a formatted data output for POVRAY files
 
         Example:
@@ -756,10 +761,10 @@ class POVRAYIsosurface:
 
         # Start writing the mesh2
         vertex_vectors = self.wrapped_triples_section(triple_list=self.verts,
-                triple_format="<{:f}, {:f}, {:f}>".format, triples_per_line=4)
+                                                      triple_format="<{:f}, {:f}, {:f}>".format, triples_per_line=4)
 
         face_indices = self.wrapped_triples_section(triple_list=self.faces,
-                triple_format="<{:n}, {:n}, {:n}>".format, triples_per_line=5)
+                                                    triple_format="<{:n}, {:n}, {:n}>".format, triples_per_line=5)
 
         cell = self.cell
         cell_or = self.cell_origin
@@ -779,7 +784,9 @@ class POVRAYIsosurface:
     """
         return mesh2
 
-def write_pov(filename, atoms, generic_projection_settings={}, povray_settings={}, isosurface_data = None):
+
+def write_pov(filename, atoms, generic_projection_settings={},
+              povray_settings={}, isosurface_data=None):
 
     if isinstance(atoms, list):
         assert len(atoms) == 1
@@ -788,9 +795,11 @@ def write_pov(filename, atoms, generic_projection_settings={}, povray_settings={
     pvars = PlottingVariables(atoms, scale=1.0, **generic_projection_settings)
     pov_obj = POVRAY.from_PlottingVariables(pvars, **povray_settings)
     if isosurface_data is not None:
-        pov_obj.isosurface = POVRAYIsosurface.from_POVRAY(pov_obj, **isosurface_data)
+        pov_obj.isosurface = POVRAYIsosurface.from_POVRAY(
+            pov_obj, **isosurface_data)
 
     return pov_obj.write(filename)
+
 
 if __name__ == '__main__':
     from ase.build import molecule
@@ -803,7 +812,8 @@ if __name__ == '__main__':
     vchg = VaspChargeDensity('CHGCAR')
     pvars = PlottingVariables(zno, scale=1.0)
     pov_obj = POVRAY.from_PlottingVariables(pvars)
-    pov_obj.isosurface = POVRAYIsosurface(vchg.chg[0], 0.15, cell=zno.cell, cell_origin=pov_obj.cell_vertices[0,0,0])
+    pov_obj.isosurface = POVRAYIsosurface(
+        vchg.chg[0], 0.15, cell=zno.cell, cell_origin=pov_obj.cell_vertices[0, 0, 0])
     for cut_off in 0.10, 0.30, 0.60:
         pov_obj.isosurface.set_cut_off(cut_off)
         pov_obj.write('zno').render(clean_up=False)

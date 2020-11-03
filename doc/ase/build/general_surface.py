@@ -1,15 +1,19 @@
 # creates: s1.png s2.png s3.png s4.png general_surface.pdf
+from pathlib import Path
+import shutil
+import os
+from ase.io import write
+from ase import Atoms
+from ase.build import bulk
 from ase.build import surface
 s1 = surface('Au', (2, 1, 1), 9)
 s1.center(vacuum=10, axis=2)
 
-from ase.build import bulk
 Mobulk = bulk('Mo', 'bcc', a=3.16, cubic=True)
 s2 = surface(Mobulk, (3, 2, 1), 9)
 s2.center(vacuum=10, axis=2)
 
 a = 4.0
-from ase import Atoms
 Pt3Rh = Atoms('Pt3Rh',
               scaled_positions=[(0, 0, 0),
                                 (0.5, 0.5, 0),
@@ -24,7 +28,6 @@ Pt3Rh.set_chemical_symbols('PtRhPt2')
 s4 = surface(Pt3Rh, (2, 1, 1), 9)
 s4.center(vacuum=10, axis=2)
 
-from ase.io import write
 for atoms, name in [(s1, 's1'), (s2, 's2'), (s3, 's3'), (s4, 's4')]:
     write(name + '.pov', atoms,
           generic_projection_settings=dict(
@@ -32,9 +35,6 @@ for atoms, name in [(s1, 's1'), (s2, 's2'), (s3, 's3'), (s4, 's4')]:
           povray_settings=dict(
               transparent=False)).render()
 
-import os
-import shutil
-from pathlib import Path
 
 dir = os.environ.get('PDF_FILE_DIR')
 if dir:

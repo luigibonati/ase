@@ -45,27 +45,27 @@ Nbulk = len(idx)
 multiples = [0, 1, -1]
 for i in multiples:
     for j in multiples:
-            if i == j == 0:
-                continue
-            chunk = atoms[idx]
-            chunk.translate(i * cell[0] + j * cell[1])
-            atoms += chunk
-            transmittances += [0.8] * Nbulk
-            textures += ['pale'] * Nbulk
+        if i == j == 0:
+            continue
+        chunk = atoms[idx]
+        chunk.translate(i * cell[0] + j * cell[1])
+        atoms += chunk
+        transmittances += [0.8] * Nbulk
+        textures += ['pale'] * Nbulk
 
 bbox = [-30, 10, 5, 25]
 
 renderer = write('o2pt100.pov', atoms,
-        generic_projection_settings=dict(
-        rotation='90z,-75x',
-        bbox=bbox,
-        show_unit_cell=0),
-        povray_settings=dict(
-          pause=False,
-          canvas_width=1024,
-          bondatoms=bonded_atoms,
-          camera_type='perspective',
-          transmittances=transmittances,
-          textures=textures))
+                 generic_projection_settings=dict(
+                     rotation='90z,-75x',
+                     bbox=bbox,
+                     show_unit_cell=0),
+                 povray_settings=dict(
+                     pause=False,
+                     canvas_width=1024,
+                     bondatoms=bonded_atoms,
+                     camera_type='perspective',
+                     transmittances=transmittances,
+                     textures=textures))
 
-#renderer.render(clean_up=True)
+# renderer.render(clean_up=True)
