@@ -3,7 +3,7 @@
 import numpy as np
 
 from ase import Atoms
-from ase.io.pov import write_pov, run_pov
+from ase.io import write
 from ase.build import molecule
 
 a = 5.64  # Lattice constant for NaCl
@@ -26,7 +26,7 @@ atoms.cell = cell
 rot = '35x,63y,36z'  # found using ag: 'view -> rotate'
 
 # Common kwargs for eps, png, pov
-kwargs = {
+generic_projection_settings = {
     'rotation'      : rot, # text string with rotation (default='' )
     'radii'         : .85, # float, or a list with one float per atom
     'colors'        : None,# List: one (r, g, b) tuple per atom
@@ -34,7 +34,7 @@ kwargs = {
     }
 
 # Extra kwargs only available for povray (All units in angstrom)
-kwargs.update({
+povray_settings = {
     'display'      : False,# Display while rendering
     'pause'        : True, # Pause when done rendering (only if display)
     'transparent'  : False,# Transparent background
@@ -50,9 +50,12 @@ kwargs.update({
     'background'   : 'White',        # color
     'textures'     : None, # Length of atoms list of texture names
     'celllinewidth': 0.1,  # Radius of the cylinders representing the cell
-    })
+    }
    
 # Write the .pov (and .ini) file. 
-# comment out run_povray to not call the povray executable
-write_pov('NaCl_C6H6.pov', atoms, **kwargs)
-run_pov('NaCl_C6H6.pov')
+# comment out render not call the povray executable
+renderer = write('NaCl_C6H6.pov', atoms, 
+        generic_projection_settings=generic_projection_settings,
+        povray_settings=povray_settings)
+
+renderer.render()
