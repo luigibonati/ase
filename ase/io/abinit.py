@@ -341,7 +341,10 @@ def read_abinit_out(fd):
     line = skipto('Version')
     m = re.match(r'\.*?Version\s+(\S+)\s+of ABINIT', line)
     assert m is not None
-    results['version'] = m.group(1)
+    version = m.group(1)
+    results['version'] = version
+
+    use_v9_format = int(version.split('.', 1)[0]) >= 9
 
     shape_vars = {}
 
@@ -388,6 +391,15 @@ def read_abinit_out(fd):
         arr = np.array(arr).astype(float)
         return arr
 
+    if use_v9_format:
+        energy_header = '--- !EnergyTerms'
+        total_energy_name = 'total_energy_eV'
+        read_energy = lambda line: float(line.split(':')[1].strip())
+    else:
+        energy_header = 'Components of total free energy (in Hartree)'
+        total_energy_name = 'Etotal'
+        read_energy = lambda line: float(line.rsplit('=', 2)[1]) * Hartree
+
     for line in fd:
         if 'cartesian coordinates (angstrom) at end' in line:
             positions = read_array(fd, natoms)
@@ -396,13 +408,17 @@ def read_abinit_out(fd):
         if 'Cartesian components of stress tensor (hartree/bohr^3)' in line:
             results['stress'] = read_stress(fd)
 
-        if 'Components of total free energy (in Hartree)' in line:
+        if energy_header in line:
+            energy = None
             for line in fd:
-                if 'Etotal' in line:
-                    energy = float(line.rsplit('=', 2)[1]) * Hartree
-                    results['energy'] = results['free_energy'] = energy
+                # Which of the listed energies should we include?
+                if total_energy_name in line:
+                    energy = read_energy(line)
                     break
-                    # Which of the listed energies do we take ??
+            if energy is None:
+                raise RuntimeError('No energy found in output')
+            results['energy'] = results['free_energy'] = energy
+
         if 'END DATASET(S)' in line:
             break
 
