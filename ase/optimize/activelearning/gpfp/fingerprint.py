@@ -54,7 +54,7 @@ class Fingerprint():
 
 class OganovFP(Fingerprint):
 
-    def __init__(self, pbc=None, calc_gradients=True,
+    def __init__(self, atoms=None, pbc=None, calc_gradients=True,
                  weight_by_elements=True, **kwargs):
         ''' Parameters:
 
@@ -109,6 +109,9 @@ class OganovFP(Fingerprint):
 
         self.set_params()
         self.pair = None  # for kernel stuff
+
+        if atoms is not None:
+            self.set_atoms(atoms)
 
     def set_params(self):
         self.scale = self.params.get('scale')
@@ -499,7 +502,7 @@ class RadialAngularFP(OganovFP):
         self.N = self.params.get('N')
         self.nanglebins = self.params.get('Na')
 
-        return
+
 
     def set_atoms(self, atoms):
         ''' Set new atoms and initialize '''
@@ -1010,7 +1013,7 @@ class RadialAngularFP_RQ(RadialAngularFP):
 
 class CartesianCoordFP(Fingerprint):
 
-    def __init__(self, **kwargs):
+    def __init__(self, atoms=None, **kwargs):
         ''' Null fingerprint where the fingerprint vector is
         merely the flattened atomic coordinates. '''
 
@@ -1021,6 +1024,9 @@ class CartesianCoordFP(Fingerprint):
         self.params.update(kwargs)
 
         self.set_params()
+
+        if atoms is not None:
+            self.set_atoms(atoms)
         return
 
     def set_atoms(self, atoms):
