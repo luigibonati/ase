@@ -504,7 +504,7 @@ Verbose=False
 global_settings {{assumed_gamma 1 max_trace_level 6}}
 background {{{pc(self.background)}{' transmit 1.0' if self.transparent else ''}}}
 camera {{{self.camera_type}
-  right {self.image_width:.2f}*x up {self.image_height:.2f}*y   
+  right -{self.image_width:.2f}*x up {self.image_height:.2f}*y   
   direction {self.image_plane:.2f}*z
   location <0,0,{self.camera_dist:.2f}> look_at <0,0,0>}}
 {point_lights}

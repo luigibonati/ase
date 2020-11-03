@@ -27,9 +27,11 @@ radii = 1.2
 colors = jmol_colors[atoms.numbers]
 colors[16::17] = [1, 0, 0]
 
-write('Al110slab.pov', atoms,
-      rotation=rotation,
+renderer = write('Al110slab.pov', atoms,
+      generic_projection_settings=dict(rotation=rotation,
       colors=colors,
-      radii=radii,
+      radii=radii),
+      povray_settings=dict(
       canvas_width=500,
-      transparent=False, run_povray=True)
+      transparent=False))
+renderer.render()
