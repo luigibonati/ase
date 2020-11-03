@@ -1891,7 +1891,9 @@ class Atoms:
         else:
             return not eq
 
-    @deprecated('Please use atoms.cell.volume')
+    # @deprecated('Please use atoms.cell.volume')
+    # We kind of want to deprecate this, but the ValueError behaviour
+    # might be desirable.  Should we do this?
     def get_volume(self):
         """Get volume of unit cell."""
         if self.cell.rank != 3:
