@@ -771,20 +771,20 @@ class POVRAYIsosurface:
     """
         return mesh2
 
-def write_pov(filename, atoms, plotting_var_settings={}, povray_settings={}, run_povray=False, isosurface_data = None):
+def write_pov(filename, atoms, generic_projection_settings={}, povray_settings={}, isosurface_data = None):
 
     if isinstance(atoms, list):
         assert len(atoms) == 1
         atoms = atoms[0]
 
-    pvars = PlottingVariables(atoms, scale=1.0, **plotting_var_settings)
+    pvars = PlottingVariables(atoms, scale=1.0, **generic_projection_settings)
     pov_obj = POVRAY.from_PlottingVariables(pvars, **povray_settings)
     if isosurface_data is not None:
         pov_obj.isosurface = POVRAYIsosurface.from_POVRAY(pov_obj, **isosurface_data)
 
     pov_obj.write(filename)
-    if run_povray:
-        pov_obj.render()
+
+    return pov_obj
 
 if __name__ == '__main__':
     from ase.build import molecule

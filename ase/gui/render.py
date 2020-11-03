@@ -124,13 +124,12 @@ class Render:
             filename = self.update_outputname()
             print(" | Writing files for image", filename, "...")
             plotting_var_settings['radii'] = radii_scale*self.gui.get_covalent_radii()
-            write_pov(
+            renderer = write_pov(
                 filename, atoms, 
-                plotting_var_settings=plotting_var_settings,
-                povray_settings=povray_settings,
-                run_povray=self.run_povray_widget.value) 
-#            if self.run_povray_widget.value:
-#                run_pov(filename, povray_executable=self.povray_executable.value)
+                generic_projection_settings=plotting_var_settings,
+                povray_settings=povray_settings)
+            if self.run_povray_widget.value:
+                renderer.render(povray_executable=self.povray_executable.value,clean_up=False)
             if not self.keep_files_widget.value:
                 print(" | Deleting temporary file ", filename)
                 unlink(filename)
