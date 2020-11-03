@@ -331,7 +331,7 @@ Verbose=False
             fog += f'fog {{fog_type 1 distance {dist:.4f} color {pc(self.background)}}}'
 
         material_styles_dict_keys = '\n'.join(f'#declare {key} = {value}' #semicolon?
-            for key, value in self.__class__.material_styles_dict.items())
+            for key, value in self.material_styles_dict.items())
 
 
         # Draw unit cell
@@ -621,7 +621,7 @@ class POVRAYIsosurface:
         self.density_grid = density_grid
         self.spacing = tuple(1.0 / np.array(self.density_grid.shape))
 
-        scaled_verts, faces, normals, values = self.__class__.compute_mesh(
+        scaled_verts, faces, normals, values = self.compute_mesh(
             self.density_grid,
             self.cut_off,
             self.spacing,
@@ -661,7 +661,7 @@ class POVRAYIsosurface:
 
         self.spacing = tuple(1.0 / np.array(self.density_grid.shape))
 
-        scaled_verts, faces, _, _ = self.__class__.compute_mesh(
+        scaled_verts, faces, _, _ = self.compute_mesh(
             self.density_grid,
             self.cut_off,
             self.spacing,
@@ -747,10 +747,10 @@ class POVRAYIsosurface:
             material = self.material
 
         # Start writing the mesh2
-        vertex_vectors = self.__class__.wrapped_triples_section(triple_list=self.verts,
+        vertex_vectors = self.wrapped_triples_section(triple_list=self.verts,
                 triple_format="<{:f}, {:f}, {:f}>".format, triples_per_line=4)
 
-        face_indices = self.__class__.wrapped_triples_section(triple_list=self.faces,
+        face_indices = self.wrapped_triples_section(triple_list=self.faces,
                 triple_format="<{:n}, {:n}, {:n}>".format, triples_per_line=5)
 
         cell = self.cell
