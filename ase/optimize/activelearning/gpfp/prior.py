@@ -49,21 +49,6 @@ class Prior():
             warnings.warn(warning)
 
 
-class ZeroPrior(Prior):
-    '''ZeroPrior object, consisting on a constant prior with 0eV energy.'''
-
-    def __init__(self, **kwargs):
-        Prior.__init__(self, **kwargs)
-
-    def potential(self, x):
-        if self.use_forces:
-            d = len(x.atoms) * 3  # number of forces
-            output = np.zeros(d + 1)
-        else:
-            output = np.zeros(1)
-        return output
-
-
 class ConstantPrior(Prior):
     '''Constant prior, with energy = constant and zero forces
 
@@ -114,6 +99,11 @@ class ConstantPrior(Prior):
         # Set constant
         m = np.dot(w, np.array(Y).flatten()) / np.dot(w, u)
         self.set_constant(m)
+
+
+class ZeroPrior(ConstantPrior):
+    def __init__(self, **kwargs):
+        ConstantPrior.__init__(self, constant=0.0, **kwargs)
 
 
 class CalculatorPrior(ConstantPrior):
