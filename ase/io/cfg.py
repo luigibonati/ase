@@ -7,24 +7,18 @@ from ase.parallel import paropen
 cfg_default_fields = np.array(['positions', 'momenta', 'numbers', 'magmoms'])
 
 
-def write_cfg(f, a):
+@writer
+def write_cfg(fd, atoms):
     """Write atomic configuration to a CFG-file (native AtomEye format).
        See: http://mt.seas.upenn.edu/Archive/Graphics/A/
     """
-    if isinstance(f, str):
-        f = paropen(f, 'w')
-    if isinstance(a, list):
-        if len(a) == 1:
-            a = a[0]
-        else:
-            raise RuntimeError('Cannot write sequence to single .cfg file.')
 
-    f.write('Number of particles = %i\n' % len(a))
-    f.write('A = 1.0 Angstrom\n')
+    fd.write('Number of particles = %i\n' % len(a))
+    fd.write('A = 1.0 Angstrom\n')
     cell = a.get_cell(complete=True)
     for i in range(3):
         for j in range(3):
-            f.write('H0(%1.1i,%1.1i) = %f A\n' % (i + 1, j + 1, cell[i, j]))
+            fd.write('H0(%1.1i,%1.1i) = %f A\n' % (i + 1, j + 1, cell[i, j]))
 
     entry_count = 3
     for x in a.arrays.keys():
@@ -38,26 +32,26 @@ def write_cfg(f, a):
     if isinstance(vels, np.ndarray):
         entry_count += 3
     else:
-        f.write('.NO_VELOCITY.\n')
+        fd.write('.NO_VELOCITY.\n')
 
-    f.write('entry_count = %i\n' % entry_count)
+    fd.write('entry_count = %i\n' % entry_count)
 
     i = 0
     for name, aux in a.arrays.items():
         if name not in cfg_default_fields:
             if len(aux.shape) == 1:
-                f.write('auxiliary[%i] = %s [a.u.]\n' % (i, name))
+                fd.write('auxiliary[%i] = %s [a.u.]\n' % (i, name))
                 i += 1
             else:
                 if aux.shape[1] == 3:
                     for j in range(3):
-                        f.write('auxiliary[%i] = %s_%s [a.u.]\n' %
+                        fd.write('auxiliary[%i] = %s_%s [a.u.]\n' %
                                 (i, name, chr(ord('x') + j)))
                         i += 1
 
                 else:
                     for j in range(aux.shape[1]):
-                        f.write('auxiliary[%i] = %s_%1.1i [a.u.]\n' %
+                        fd.write('auxiliary[%i] = %s_%1.1i [a.u.]\n' %
                                 (i, name, j))
                         i += 1
 
@@ -66,8 +60,8 @@ def write_cfg(f, a):
     for i in a:
         el = i.symbol
 
-        f.write('%f\n' % ase.data.atomic_masses[chemical_symbols.index(el)])
-        f.write('%s\n' % el)
+        fd.write('%f\n' % ase.data.atomic_masses[chemical_symbols.index(el)])
+        fd.write('%s\n' % el)
 
         x, y, z = spos[i.index, :]
         s = '%e %e %e ' % (x, y, z)
@@ -83,7 +77,7 @@ def write_cfg(f, a):
                 else:
                     s += (aux.shape[1] * ' %e') % tuple(aux[i.index].tolist())
 
-        f.write('%s\n' % s)
+        fd.write('%s\n' % s)
 
 
 default_color = {
@@ -94,7 +88,7 @@ default_color = {
 default_radius = {'H': 0.435, 'C': 0.655, 'O': 0.730}
 
 
-def write_clr(f, atoms):
+def write_clr(fd, atoms):
     """Write extra color and radius code to a CLR-file (for use with AtomEye).
        Hit F12 in AtomEye to use.
        See: http://mt.seas.upenn.edu/Archive/Graphics/A/
@@ -118,19 +112,15 @@ def write_clr(f, atoms):
 
     radius.shape = (-1, 1)
 
-    if isinstance(f, str):
-        f = paropen(f, 'w')
     for c1, c2, c3, r in np.append(color, radius, axis=1):
-        f.write('%f %f %f %f\n' % (c1, c2, c3, r))
+        fd.write('%f %f %f %f\n' % (c1, c2, c3, r))
 
 
-def read_cfg(f):
+@reader
+def read_cfg(fd):
     """Read atomic configuration from a CFG-file (native AtomEye format).
        See: http://mt.seas.upenn.edu/Archive/Graphics/A/
     """
-    if isinstance(f, str):
-        f = open(f)
-
     nat = None
     naux = 0
     aux = None
@@ -144,7 +134,7 @@ def read_cfg(f):
     current_symbol = None
     current_mass = None
 
-    L = f.readline()
+    L = fd.readline()
     while L:
         L = L.strip()
         if len(L) != 0 and not L.startswith('#'):
@@ -214,7 +204,7 @@ def read_cfg(f):
                             vels[current_atom, :] = props[3:6]
                         aux[current_atom, :] = props[off:]
                         current_atom += 1
-        L = f.readline()
+        L = fd.readline()
 
     # Sanity check
     if current_atom != nat:
