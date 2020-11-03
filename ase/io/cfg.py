@@ -2,7 +2,8 @@ import numpy as np
 
 import ase
 from ase.data import chemical_symbols
-from ase.parallel import paropen
+from ase.utils import reader, writer
+
 
 cfg_default_fields = np.array(['positions', 'momenta', 'numbers', 'magmoms'])
 
@@ -13,22 +14,22 @@ def write_cfg(fd, atoms):
        See: http://mt.seas.upenn.edu/Archive/Graphics/A/
     """
 
-    fd.write('Number of particles = %i\n' % len(a))
+    fd.write('Number of particles = %i\n' % len(atoms))
     fd.write('A = 1.0 Angstrom\n')
-    cell = a.get_cell(complete=True)
+    cell = atoms.get_cell(complete=True)
     for i in range(3):
         for j in range(3):
             fd.write('H0(%1.1i,%1.1i) = %f A\n' % (i + 1, j + 1, cell[i, j]))
 
     entry_count = 3
-    for x in a.arrays.keys():
+    for x in atoms.arrays.keys():
         if x not in cfg_default_fields:
-            if len(a.get_array(x).shape) == 1:
+            if len(atoms.get_array(x).shape) == 1:
                 entry_count += 1
             else:
-                entry_count += a.get_array(x).shape[1]
+                entry_count += atoms.get_array(x).shape[1]
 
-    vels = a.get_velocities()
+    vels = atoms.get_velocities()
     if isinstance(vels, np.ndarray):
         entry_count += 3
     else:
@@ -37,7 +38,7 @@ def write_cfg(fd, atoms):
     fd.write('entry_count = %i\n' % entry_count)
 
     i = 0
-    for name, aux in a.arrays.items():
+    for name, aux in atoms.arrays.items():
         if name not in cfg_default_fields:
             if len(aux.shape) == 1:
                 fd.write('auxiliary[%i] = %s [a.u.]\n' % (i, name))
@@ -56,8 +57,8 @@ def write_cfg(fd, atoms):
                         i += 1
 
     # Distinct elements
-    spos = a.get_scaled_positions()
-    for i in a:
+    spos = atoms.get_scaled_positions()
+    for i in atoms:
         el = i.symbol
 
         fd.write('%f\n' % ase.data.atomic_masses[chemical_symbols.index(el)])
@@ -70,7 +71,7 @@ def write_cfg(fd, atoms):
             vx, vy, vz = vels[i.index, :]
             s = s + ' %e %e %e ' % (vx, vy, vz)
 
-        for name, aux in a.arrays.items():
+        for name, aux in atoms.arrays.items():
             if name not in cfg_default_fields:
                 if len(aux.shape) == 1:
                     s += ' %e' % aux[i.index]

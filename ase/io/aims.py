@@ -20,7 +20,7 @@ def read_aims(fd, apply_constraints=True):
     """
 
     lines = fd.readlines()
-    return parse_geometry_lines(lines, filename, apply_constraints=True)
+    return parse_geometry_lines(lines, apply_constraints=True)
 
 
 def parse_geometry_lines(lines, apply_constraints=True):
@@ -235,7 +235,8 @@ def write_aims(
             scaled = True
 
     fd.write("#=======================================================\n")
-    fd.write("# FHI-aims file: " + filename + "\n")
+    if hasattr(fd, 'name'):
+        fd.write("# FHI-aims file: " + fd.name + "\n")
     fd.write("# Created using the Atomic Simulation Environment (ASE)\n")
     fd.write("# " + time.asctime() + "\n")
 
