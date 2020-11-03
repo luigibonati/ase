@@ -286,7 +286,6 @@ class POVRAY:
     def write_ini(self, path):
         """Write ini file."""
 
-        ini_path = path.with_suffix('.ini')
         ini_str = f"""Input_File_Name={ini_path.with_suffix('.pov').name}
 Output_to_File=True
 Output_File_Type=N
@@ -528,7 +527,6 @@ union{{torus{{R, Rcell rotate 45*z texture{{pigment{{color COL transmit TRANS}} 
 {constraints if constraints != '' else '// no constraints'}
 """
 
-        pov_path = path.with_suffix('.pov')
         with open(pov_path, 'w') as _:
             _.write(pov)
 
@@ -536,8 +534,8 @@ union{{torus{{R, Rcell rotate 45*z texture{{pigment{{color COL transmit TRANS}} 
 
     def write(self, filename):
         path = Path(filename).with_suffix('')
-        self.write_ini(path)
-        self.write_pov(path)
+        self.write_ini(path.with_suffix('.ini'))
+        self.write_pov(path.with_suffix('.pov'))
         if self.isosurface is not None:
             with open(path.with_suffix('.pov'), 'a') as _:
                 _.write(self.isosurface.format_mesh())
