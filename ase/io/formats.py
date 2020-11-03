@@ -334,7 +334,7 @@ F('gpaw-out', 'GPAW text output', '+F',
 F('gpumd', 'GPUMD input file', '1F', glob='xyz.in')
 F('gpw', 'GPAW restart-file', '1S',
   magic=[b'- of UlmGPAW', b'AFFormatGPAW'])
-F('gromacs', 'Gromacs coordinates', '1S',
+F('gromacs', 'Gromacs coordinates', '1F',
   ext='gro')
 F('gromos', 'Gromos96 geometry file', '1F', ext='g96')
 F('html', 'X3DOM HTML', '1F', module='x3d')
