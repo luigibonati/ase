@@ -92,8 +92,7 @@ def creates():
 def create_png_files(raise_exceptions=False):
     import subprocess
     import pathlib
-    errcode = subprocess.check_call(['povray','-h']
-            ,stderr=subprocess.DEVNULL)
+    errcode = subprocess.check_call(['povray', '-h'], stderr=subprocess.DEVNULL)
     if errcode:
         warnings.warn('No POVRAY!')
         # Replace write_pov with write_png:

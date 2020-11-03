@@ -747,7 +747,7 @@ class POVRAYIsosurface:
           }'''
         """  # noqa: E501
 
-        if self.material in POVRAY.material_styles_dict.keys():
+        if self.material in POVRAY.material_styles_dict:
             material = f"""material {{
         texture {{
           pigment {{ {pc(self.color)} }}
