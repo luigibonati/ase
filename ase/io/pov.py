@@ -744,7 +744,7 @@ class POVRAYIsosurface:
         }}
       }}"""
         else:
-            material == self.material
+            material = self.material
 
         # Start writing the mesh2
         vertex_vectors = self.__class__.wrapped_triples_section(triple_list=self.verts,
