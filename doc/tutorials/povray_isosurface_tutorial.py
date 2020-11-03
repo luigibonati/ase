@@ -39,8 +39,10 @@ generic_projection_settings = {
     'radii': atoms.positions.shape[0] * [0.3],
     'show_unit_cell': 1}
 
-renderer = write('NiO_marching_cubes1.pov', atoms, generic_projection_settings=generic_projection_settings,
-                 povray_settings=povray_settings, isosurface_data=dict(density_grid=vchg.chgdiff[0], cut_off=density_cut_off))
+renderer = write('NiO_marching_cubes2.pov', atoms, 
+    generic_projection_settings=generic_projection_settings,
+    povray_settings=povray_settings, 
+    isosurface_data=dict(density_grid=vchg.chgdiff[0], cut_off=density_cut_off))
 
 renderer.render()
 
@@ -48,9 +50,11 @@ renderer.render()
 # material style from the standard ASE set
 
 
-renderer = write('NiO_marching_cubes2.pov', atoms, generic_projection_settings=generic_projection_settings,
-                 povray_settings=povray_settings, isosurface_data=dict(density_grid=vchg.chgdiff[0], cut_off=density_cut_off,
-                                                                       closed_edges=True, color=[0.25, 0.25, 0.80, 0.1], material='simple'))
+renderer = write('NiO_marching_cubes2.pov', atoms, 
+    generic_projection_settings=generic_projection_settings,
+    povray_settings=povray_settings, 
+    isosurface_data=dict(density_grid=vchg.chgdiff[0], cut_off=density_cut_off,
+        closed_edges=True, color=[0.25, 0.25, 0.80, 0.1], material='simple'))
 
 renderer.render()
 
@@ -74,7 +78,10 @@ fun_material = '''
       collect on
   }'''
 
-renderer = write('NiO_marching_cubes3.pov', atoms, generic_projection_settings=generic_projection_settings,
-                 povray_settings=povray_settings, isosurface_data=dict(density_grid=vchg.chgdiff[0], cut_off=-spin_cut_off, gradient_ascending=True, material=fun_material))
+renderer = write('NiO_marching_cubes3.pov', atoms, 
+    generic_projection_settings=generic_projection_settings,
+    povray_settings=povray_settings, 
+    isosurface_data=dict(density_grid=vchg.chgdiff[0], cut_off=-spin_cut_off,
+        gradient_ascending=True, material=fun_material))
 
 renderer.render()
