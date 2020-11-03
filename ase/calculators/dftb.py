@@ -20,8 +20,10 @@ class Dftb(FileIOCalculator):
         command = 'dftb+ > PREFIX.out'
 
     implemented_properties = ['energy', 'forces', 'charges', 'stress']
+    discard_results_on_any_change = True
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=FileIOCalculator._deprecated,
                  label='dftb', atoms=None, kpts=None,
                  slako_dir=None,
                  **kwargs):
@@ -154,7 +156,7 @@ class Dftb(FileIOCalculator):
             if mp_mesh is not None:
                 eps = 1e-10
                 for i in range(3):
-                    key = initkey + '_empty%03d'  % i
+                    key = initkey + '_empty%03d' % i
                     val = [mp_mesh[i] if j == i else 0 for j in range(3)]
                     self.parameters[key] = ' '.join(map(str, val))
                     offsets[i] *= mp_mesh[i]
@@ -263,12 +265,6 @@ class Dftb(FileIOCalculator):
 
 
         outfile.close()
-
-    def set(self, **kwargs):
-        changed_parameters = FileIOCalculator.set(self, **kwargs)
-        if changed_parameters:
-            self.reset()
-        return changed_parameters
 
     def check_state(self, atoms):
         system_changes = FileIOCalculator.check_state(self, atoms)

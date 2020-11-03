@@ -3,6 +3,7 @@ from numpy.testing import assert_allclose
 from ase.build import fcc111
 
 
+@pytest.mark.calculator_lite
 @pytest.mark.calculator('lammpsrun')
 def test_Pt_md_constraints_multistep(factory, pt_eam_potential_file):
     slab = fcc111('Pt', size=(2, 2, 5), vacuum=30.0)

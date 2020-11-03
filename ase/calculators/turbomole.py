@@ -588,7 +588,7 @@ class Turbomole(FileIOCalculator):
     def __init__(self, label=None, calculate_energy='dscf',
                  calculate_forces='grad', post_HF=False, atoms=None,
                  restart=False, define_str=None, control_kdg=None,
-                 control_input=None, **kwargs):
+                 control_input=None, reset_tolerance=1e-2, **kwargs):
 
         FileIOCalculator.__init__(self)
 
@@ -600,6 +600,7 @@ class Turbomole(FileIOCalculator):
         self.define_str = define_str
         self.control_kdg = control_kdg
         self.control_input = control_input
+        self.reset_tolerance = reset_tolerance
 
         # construct flat dictionaries with parameter attributes
         for p in self.parameter_spec:
@@ -806,7 +807,7 @@ class Turbomole(FileIOCalculator):
     def set_atoms(self, atoms):
         """Create the self.atoms object and writes the coord file. If
         self.atoms exists a check for changes and an update of the atoms
-        are performed. Note: Only positions changes are tracked in this
+        is performed. Note: Only positions changes are tracked in this
         version.
         """
         changes = self.check_state(atoms, tol=1e-13)
@@ -820,7 +821,7 @@ class Turbomole(FileIOCalculator):
             else:
                 return
 
-        changes = self.check_state(atoms, tol=1e-2)
+        changes = self.check_state(atoms, tol=self.reset_tolerance)
         if 'positions' in changes:
             # print(two atoms obj are different')
             self.reset()
@@ -874,7 +875,7 @@ class Turbomole(FileIOCalculator):
         else:
             single_atom_str = '\n'
 
-        if params['multiplicity'] == 1:
+        if params['multiplicity'] == 1 and not params['uhf']:
             norb_str = ''
         else:
             norb_str = 'n\n'

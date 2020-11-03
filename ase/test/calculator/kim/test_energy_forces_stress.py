@@ -1,3 +1,9 @@
+import numpy as np
+from pytest import importorskip, mark
+from ase.lattice.cubic import FaceCenteredCubic
+
+
+@mark.calculator_lite
 def test_energy_forces_stress():
     """
     To test that the calculator can produce correct energy and forces.  This
@@ -5,11 +11,8 @@ def test_energy_forces_stress():
     model to the known value; the forces/stress returned by the model are
     compared to numerical estimates via finite difference.
     """
-    import numpy as np
-    from pytest import importorskip
     importorskip('kimpy')
     from ase.calculators.kim import KIM
-    from ase.lattice.cubic import FaceCenteredCubic
 
     # Create an FCC atoms crystal
     atoms = FaceCenteredCubic(

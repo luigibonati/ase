@@ -104,7 +104,7 @@ class Vasp2(GenerateVaspInput, Calculator):  # type: ignore
                  restart=None,
                  directory='.',
                  label='vasp',
-                 ignore_bad_restart_file=False,
+                 ignore_bad_restart_file=Calculator._deprecated,
                  command=None,
                  txt='vasp.out',
                  **kwargs):
@@ -132,7 +132,7 @@ class Vasp2(GenerateVaspInput, Calculator):  # type: ignore
                                      self.directory, label))
             self.label = label
         else:
-            self.prefix = label     # The label should only contain the prefix
+            self.prefix = label  # The label should only contain the prefix
 
         if isinstance(restart, bool):
             if restart is True:
@@ -240,7 +240,7 @@ class Vasp2(GenerateVaspInput, Calculator):  # type: ignore
         self._xml_calc = None
 
     @contextmanager
-    def txt_outstream(self):
+    def _txt_outstream(self):
         """Custom function for opening a text output stream. Uses self.txt
         to determine the output stream, and accepts a string or an open
         writable object.
@@ -267,7 +267,7 @@ class Vasp2(GenerateVaspInput, Calculator):  # type: ignore
         """
 
         txt = self.txt
-        opened = False
+        open_and_close = False  # Do we open the file?
 
         if txt is None:
             # Suppress stdout
@@ -278,8 +278,11 @@ class Vasp2(GenerateVaspInput, Calculator):  # type: ignore
                     # subprocess.call redirects this to stdout
                     out = None
                 else:
-                    out = open(txt, 'w')
-                    opened = True
+                    # Open the file in the work directory
+                    txt = self._indir(txt)
+                    # We wait with opening the file, until we are inside the
+                    # try/finally
+                    open_and_close = True
             elif hasattr(txt, 'write'):
                 out = txt
             else:
@@ -287,9 +290,11 @@ class Vasp2(GenerateVaspInput, Calculator):  # type: ignore
                                    'or an I/O stream, got {}'.format(txt))
 
         try:
+            if open_and_close:
+                out = open(txt, 'w')
             yield out
         finally:
-            if opened:
+            if open_and_close:
                 out.close()
 
     def calculate(self,
@@ -313,15 +318,10 @@ class Vasp2(GenerateVaspInput, Calculator):  # type: ignore
         command = self.make_command(self.command)
         self.write_input(self.atoms, properties, system_changes)
 
-        olddir = os.getcwd()
-        try:
-            os.chdir(self.directory)
-
-            # Create the text output stream and run VASP
-            with self.txt_outstream() as out:
-                errorcode = self._run(command=command, out=out)
-        finally:
-            os.chdir(olddir)
+        with self._txt_outstream() as out:
+            errorcode = self._run(command=command,
+                                  out=out,
+                                  directory=self.directory)
 
         if errorcode:
             raise calculator.CalculationFailed(
@@ -332,11 +332,16 @@ class Vasp2(GenerateVaspInput, Calculator):  # type: ignore
         self.update_atoms(atoms)
         self.read_results()
 
-    def _run(self, command=None, out=None):
+    def _run(self, command=None, out=None, directory=None):
         """Method to explicitly execute VASP"""
         if command is None:
             command = self.command
-        errorcode = subprocess.call(command, shell=True, stdout=out)
+        if directory is None:
+            directory = self.directory
+        errorcode = subprocess.call(command,
+                                    shell=True,
+                                    stdout=out,
+                                    cwd=directory)
         return errorcode
 
     def check_state(self, atoms, tol=1e-15):
@@ -706,8 +711,8 @@ class Vasp2(GenerateVaspInput, Calculator):  # type: ignore
             _xml_atoms = read(file, index=-1, format='vasp-xml')
             # Silence mypy, we should only ever get a single atoms object
             assert isinstance(_xml_atoms, ase.Atoms)
-        except ElementTree.ParseError:
-            raise calculator.ReadError(incomplete_msg)
+        except ElementTree.ParseError as exc:
+            raise calculator.ReadError(incomplete_msg) from exc
 
         if _xml_atoms is None or _xml_atoms.calc is None:
             raise calculator.ReadError(incomplete_msg)

@@ -105,12 +105,13 @@ def test_castep_interface():
     lattice.calc = c
 
     param_fn = os.path.join(tmp_dir, 'myParam.param')
-    param = open(param_fn, 'w')
-    param.write('XC_FUNCTIONAL : PBE #comment\n')
-    param.write('XC_FUNCTIONAL : PBE #comment\n')
-    param.write('#comment\n')
-    param.write('CUT_OFF_ENERGY : 450.\n')
-    param.close()
+
+    with open(param_fn, 'w') as param:
+        param.write('XC_FUNCTIONAL : PBE #comment\n')
+        param.write('XC_FUNCTIONAL : PBE #comment\n')
+        param.write('#comment\n')
+        param.write('CUT_OFF_ENERGY : 450.\n')
+
     c.merge_param(param_fn)
 
     assert c.calculation_required(lattice)

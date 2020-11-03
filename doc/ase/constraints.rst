@@ -277,6 +277,8 @@ the value to be set and a list of atomic indices.
 For the linear combination of bond lengths the list of atomic
 indices is a list of bond definitions with coeficients
 ([[a1, a2, coef],[a3, a4, coef],]).
+The usage of mic is supported by providing the keyword argument `mic=True`.
+Using mic slows the algorithm and is probably not necessary in most cases.
 The epsilon value
 specifies the accuracy to which the constraints are fulfilled.
 

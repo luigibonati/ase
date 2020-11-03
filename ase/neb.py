@@ -670,17 +670,44 @@ class SingleCalculatorNEB(NEB):
         super().__init__(images, *args, **kwargs)
 
 
-def interpolate(images, mic=False):
+def interpolate(images, mic=False, interpolate_cell=False,
+                use_scaled_coord=False):
     """Given a list of images, linearly interpolate the positions of the
-    interior images."""
-    pos1 = images[0].get_positions()
-    pos2 = images[-1].get_positions()
+    interior images.
+
+    mic: bool
+         Map movement into the unit cell by using the minimum image convention.
+    interpolate_cell: bool
+         Interpolate the three cell vectors linearly just like the atomic
+         positions. Not implemented for NEB calculations!
+    use_scaled_coord: bool
+         Use scaled/internal/fractional coordinates instead of real ones for the
+         interpolation. Not implemented for NEB calculations!
+    """
+    if use_scaled_coord:
+        pos1 = images[0].get_scaled_positions(wrap=mic)
+        pos2 = images[-1].get_scaled_positions(wrap=mic)
+    else:
+        pos1 = images[0].get_positions()
+        pos2 = images[-1].get_positions()
     d = pos2 - pos1
-    if mic:
+    if not use_scaled_coord and mic:
         d = find_mic(d, images[0].get_cell(), images[0].pbc)[0]
     d /= (len(images) - 1.0)
+    if interpolate_cell:
+        cell1 = images[0].get_cell()
+        cell2 = images[-1].get_cell()
+        cell_diff = cell2 - cell1
+        cell_diff /= (len(images) - 1.0)
     for i in range(1, len(images) - 1):
-        images[i].set_positions(pos1 + i * d)
+        # first the new cell, otherwise scaled positions are wrong
+        if interpolate_cell:
+            images[i].set_cell(cell1 + i * cell_diff)
+        new_pos = pos1 + i * d
+        if use_scaled_coord:
+            images[i].set_scaled_positions(new_pos)
+        else:
+            images[i].set_positions(new_pos)
 
 
 def idpp_interpolate(images, traj='idpp.traj', log='idpp.log', fmax=0.1,

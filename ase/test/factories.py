@@ -162,6 +162,28 @@ def read_stdout(args, createfile=None):
     return stdout
 
 
+@factory('elk')
+class ElkFactory:
+    def __init__(self, executable, species_dir):
+        self.executable = executable
+        self.species_dir = species_dir
+
+    def version(self):
+        output = read_stdout([self.executable])
+        match = re.search(r'Elk code version (\S+)', output, re.M)
+        return match.group(1)
+
+    def calc(self, **kwargs):
+        from ase.calculators.elk import ELK
+        command = f'{self.executable} > elk.out'
+        return ELK(command=command, species_dir=self.species_dir,
+                   **kwargs)
+
+    @classmethod
+    def fromconfig(cls, config):
+        return cls(config.executables['elk'], config.datafiles['elk'][0])
+
+
 @factory('espresso')
 class EspressoFactory:
     def __init__(self, executable, pseudo_dir):
@@ -223,6 +245,24 @@ class GPAWFactory:
         return cls()
 
 
+@factory('gromacs')
+class GromacsFactory:
+    def __init__(self, executable):
+        self.executable = executable
+
+    def version(self):
+        from ase.calculators.gromacs import get_gromacs_version
+        return get_gromacs_version(self.executable)
+
+    def calc(self, **kwargs):
+        from ase.calculators.gromacs import Gromacs
+        return Gromacs(command=self.executable, **kwargs)
+
+    @classmethod
+    def fromconfig(cls, config):
+        return cls(config.executables['gromacs'])
+
+
 class BuiltinCalculatorFactory:
     def calc(self, **kwargs):
         from ase.calculators.calculator import get_calculator_class
@@ -255,8 +295,32 @@ class LammpsRunFactory:
 
     @classmethod
     def fromconfig(cls, config):
-        return cls(config.executables['lammps'])
+        return cls(config.executables['lammpsrun'])
 
+
+@factory('openmx')
+class OpenMXFactory:
+    def __init__(self, executable, data_path):
+        self.executable = executable
+        self.data_path = data_path
+
+    def version(self):
+        from ase.calculators.openmx.openmx import parse_omx_version
+        dummyfile = 'omx_dummy_input'
+        stdout = read_stdout([self.executable, dummyfile],
+                             createfile=dummyfile)
+        return parse_omx_version(stdout)
+
+    def calc(self, **kwargs):
+        from ase.calculators.openmx import OpenMX
+        return OpenMX(command=self.executable,
+                      data_path=str(self.data_path),
+                      **kwargs)
+
+    @classmethod
+    def fromconfig(cls, config):
+        return cls(config.executables['openmx'],
+                   data_path=config.datafiles['openmx'][0])
 
 @factory('octopus')
 class OctopusFactory:

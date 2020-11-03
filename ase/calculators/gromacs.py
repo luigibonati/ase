@@ -24,8 +24,22 @@ from shutil import which
 import numpy as np
 
 from ase import units
-from ase.calculators.calculator import EnvironmentError, FileIOCalculator, all_changes
+from ase.calculators.calculator import (EnvironmentError,
+                                        FileIOCalculator,
+                                        all_changes)
 from ase.io.gromos import read_gromos, write_gromos
+
+
+def parse_gromacs_version(output):
+    import re
+    match = re.search(r'GROMACS version\:\s*(\S+)', output, re.M)
+    return match.group(1)
+
+
+def get_gromacs_version(executable):
+    output = subprocess.check_output([executable, '--version'],
+                                     encoding='utf-8')
+    return parse_gromacs_version(output)
 
 
 def do_clean(name='#*'):
@@ -60,6 +74,7 @@ class Gromacs(FileIOCalculator):
     """
 
     implemented_properties = ['energy', 'forces']
+    discard_results_on_any_change = True
 
     default_parameters = dict(
         define='-DFLEXIBLE',
@@ -79,7 +94,8 @@ class Gromacs(FileIOCalculator):
         rvdw_switch='0.75',
         DispCorr='Ener')
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=FileIOCalculator._deprecated,
                  label='gromacs', atoms=None,
                  do_qmmm=False, clean=True,
                  water_model='tip3p', force_field='oplsaa', command=None,
@@ -326,11 +342,6 @@ class Gromacs(FileIOCalculator):
         """Set own gromacs parameter for program parameters
         Add spaces to avoid errors """
         self.params_runs[key] = ' ' + value + ' '
-
-    def set(self, **kwargs):
-        changed_parameters = FileIOCalculator.set(self, **kwargs)
-        if changed_parameters:
-            self.reset()
 
     def write_input(self, atoms=None, properties=None, system_changes=None):
         """Write input parameters to input file."""

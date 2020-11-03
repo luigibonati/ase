@@ -22,6 +22,7 @@ def params():
     return params
 
 
+@pytest.mark.calculator_lite
 @pytest.mark.calculator('lammpsrun')
 def test_Ar_minimize(factory, ar_nc, params):
     with factory.calc(specorder=['Ar'], **params) as calc:
@@ -41,6 +42,7 @@ def test_Ar_minimize(factory, ar_nc, params):
                         atol=1e-4, rtol=1e-4)
 
 
+@pytest.mark.calculator_lite
 @pytest.mark.calculator('lammpsrun')
 def test_Ar_minimize_multistep(factory, ar_nc, params):
     ar_nc = Icosahedron('Ar', noshells=2)

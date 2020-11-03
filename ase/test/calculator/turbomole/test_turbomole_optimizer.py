@@ -1,6 +1,8 @@
+# type: ignore
+from ase.calculators.turbomole import Turbomole
+from ase.build import molecule
+
 def test_turbomole_optimizer():
-    from ase.calculators.turbomole import Turbomole
-    from ase.build import molecule
     water = molecule('H2O')
     params = {
         'title': 'water',

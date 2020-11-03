@@ -26,11 +26,7 @@ class Octopus(FileIOCalculator, EigenvalOccupationMixin):
 
     The label is always assumed to be a directory."""
 
-    implemented_properties = ['energy', 'forces',
-                              'dipole', 'stress',
-                              #'magmom', 'magmoms'
-    ]
-
+    implemented_properties = ['energy', 'forces', 'dipole', 'stress']
     command = 'octopus'
 
     def __init__(self,
@@ -60,7 +56,6 @@ class Octopus(FileIOCalculator, EigenvalOccupationMixin):
         self.kwargs = {}
 
         FileIOCalculator.__init__(self, restart=restart,
-                                  ignore_bad_restart_file=False,
                                   directory=directory,
                                   atoms=atoms,
                                   command=command, **kwargs)

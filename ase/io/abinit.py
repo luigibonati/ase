@@ -510,11 +510,12 @@ def read_eig(fd):
 
 def write_files_file(fd, label, ppp_list):
     """Write files-file, the file which tells abinit about other files."""
-    fd.write('%s\n' % (label + '.in'))  # input
-    fd.write('%s\n' % (label + '.txt'))  # output
-    fd.write('%s\n' % (label + 'i'))  # input
-    fd.write('%s\n' % (label + 'o'))  # output
-    fd.write('%s\n' % (label + '.abinit'))
+    prefix = label.rsplit('/', 1)[-1]
+    fd.write('%s\n' % (prefix + '.in'))  # input
+    fd.write('%s\n' % (prefix + '.txt'))  # output
+    fd.write('%s\n' % (prefix + 'i'))  # input
+    fd.write('%s\n' % (prefix + 'o'))  # output
+    fd.write('%s\n' % (prefix + '.abinit'))
     # Provide the psp files
     for ppp in ppp_list:
         fd.write('%s\n' % (ppp))  # psp file path
