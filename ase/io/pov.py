@@ -119,7 +119,7 @@ class POVRAY:
     )
 
     def __init__(self, cell, cell_vertices, positions, diameters, colors, 
-                 image_width, image_height, constraints=tuple(), isosurface=None,
+                 image_width, image_height, constraints=tuple(), isosurfaces=[],
                  display=False, pause=True, transparent=True, canvas_width=None, 
                  canvas_height=None, camera_dist=50., image_plane=None, 
                  camera_type='orthographic', point_lights=[], 
@@ -146,7 +146,7 @@ class POVRAY:
             image height in pixels
         constraints: Atoms.constraints
             constraints to be visualized
-        isosurface: POVRAYIsosurface
+        isosurfaces: list of POVRAYIsosurface
             composite object to write/render POVRAY isosurfaces in addition to atoms
         display: bool
             display while rendering
@@ -208,7 +208,7 @@ class POVRAY:
         self.depth_cueing = depth_cueing
         self.display = display
         self.exportconstraints = exportconstraints
-        self.isosurface = isosurface
+        self.isosurfaces = isosurfaces
         self.pause = pause
         self.point_lights = point_lights
         self.textures = textures
@@ -536,9 +536,10 @@ union{{torus{{R, Rcell rotate 45*z texture{{pigment{{color COL transmit TRANS}} 
         path = Path(filename).with_suffix('')
         self.write_ini(path.with_suffix('.ini'))
         self.write_pov(path.with_suffix('.pov'))
-        if self.isosurface is not None:
+        if self.isosurfaces is not None:
             with open(path.with_suffix('.pov'), 'a') as _:
-                _.write(self.isosurface.format_mesh())
+                for iso in self.isosurfaces:
+                    _.write(iso.format_mesh())
         return POVRAYInputs(path)
 
 
@@ -792,9 +793,13 @@ def write_pov(filename, atoms, generic_projection_settings={},
 
     pvars = PlottingVariables(atoms, scale=1.0, **generic_projection_settings)
     pov_obj = POVRAY.from_PlottingVariables(pvars, **povray_settings)
-    if isosurface_data is not None:
-        pov_obj.isosurface = POVRAYIsosurface.from_POVRAY(
-            pov_obj, **isosurface_data)
+
+    if type(isosurface_data) is dict:
+        pov_obj.isosurfaces = [POVRAYIsosurface.from_POVRAY(
+            pov_obj, **isosurface_data)]
+    elif type(isosurface_data) is list:
+        pov_obj.isosurfaces = [POVRAYIsosurface.from_POVRAY(
+            pov_obj, **isodata) for isodata in isosurface_data]
 
     return pov_obj.write(filename)
 
@@ -810,8 +815,8 @@ if __name__ == '__main__':
     vchg = VaspChargeDensity('CHGCAR')
     pvars = PlottingVariables(zno, scale=1.0)
     pov_obj = POVRAY.from_PlottingVariables(pvars)
-    pov_obj.isosurface = POVRAYIsosurface(
-        vchg.chg[0], 0.15, cell=zno.cell, cell_origin=pov_obj.cell_vertices[0, 0, 0])
+    pov_obj.isosurfaces = [POVRAYIsosurface(
+        vchg.chg[0], 0.15, cell=zno.cell, cell_origin=pov_obj.cell_vertices[0, 0, 0])]
     for cut_off in 0.10, 0.30, 0.60:
-        pov_obj.isosurface.set_cut_off(cut_off)
+        pov_obj.isosurfaces[0].set_cut_off(cut_off)
         pov_obj.write('zno').render(clean_up=False)
