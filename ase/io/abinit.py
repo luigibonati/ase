@@ -276,8 +276,8 @@ def write_abinit_in(fd, atoms, param=None, species=None):
     fd.write('\n')
 
     fd.write('#Definition of the atoms\n')
-    fd.write('xangst\n')
-    for pos in atoms.positions:
+    fd.write('xcart\n')
+    for pos in atoms.positions / Bohr:
         fd.write('%.14f %.14f %.14f\n' % tuple(pos))
 
     fd.write('chkexit 1 # abinit.exit file in the running '
