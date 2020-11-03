@@ -494,9 +494,9 @@ class RadialAngularFP(OganovFP):
         self.limit = self.params.get('limit')
         self.Rtheta = self.params.get('Rlimit')
         self.delta = self.params.get('delta')
-        # self.ascale = self.params.get('ascale')
-        self.ascale = self.params.get('delta')
-        warnings.warn("Setting ascale to delta!")
+        self.ascale = self.params.get('ascale')
+        # self.ascale = self.params.get('delta')
+        # warnings.warn("Setting ascale to delta!")
 
         self.aweight = self.params.get('aweight')
         self.N = self.params.get('N')

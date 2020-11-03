@@ -2,7 +2,8 @@ from ase.optimize.activelearning.gpfp.fingerprint import RadialAngularFP
 from ase.build import fcc111
 import numpy as np
 
-if __name__ == '__main__':
+
+def test_periodic_fingerprint():
 
     """
     Test that fingerprint behaves as wanted with
@@ -39,12 +40,6 @@ if __name__ == '__main__':
     from ase.visualize import view
     view(slab)
 
-    # from matplotlib import pyplot as plt
-    # plt.plot(vec0)
-    # plt.plot(vec1)
-    # plt.show()
-
-
     assert(d < 1e-8)
 
     assert(np.allclose(vec0, vec1, atol=1e-8))
@@ -55,3 +50,7 @@ if __name__ == '__main__':
 
     t1 = time.time()
     print("time: {:.06f} sec".format(t1 - t0))
+
+    
+if __name__ == '__main__':
+    test_periodic_fingerprint()
