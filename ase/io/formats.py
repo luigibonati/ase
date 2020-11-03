@@ -512,7 +512,11 @@ def write(
         might not be readable by any program! They will nevertheless be
         written without error message.
 
-    The use of additional keywords is format specific."""
+    The use of additional keywords is format specific. write() may
+    return an object after writing certain formats, but this behaviour
+    may change in the future.
+
+    """
 
     if isinstance(filename, PurePath):
         filename = str(filename)
@@ -567,11 +571,13 @@ def _write(filename, fd, format, io, images, parallel=None, append=False,
             if append:
                 mode = mode.replace('w', 'a')
             fd = open_with_compression(filename, mode)
-            # XXX remember to re-enable compressed open
-            # fd = io.open(filename, mode)
-        return io.write(fd, images, **kwargs)
-        if open_new:
-            fd.close()
+                # XXX remember to re-enable compressed open
+                # fd = io.open(filename, mode)
+        try:
+            return io.write(fd, images, **kwargs)
+        finally:
+            if open_new:
+                fd.close()
     else:
         if fd is not None:
             raise ValueError("Can't write {}-format to file-descriptor"
