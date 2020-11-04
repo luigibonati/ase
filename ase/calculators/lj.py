@@ -168,7 +168,7 @@ class LennardJones(Calculator):
                 )
 
         # no lattice, no stress
-        if self.atoms.number_of_lattice_vectors == 3:
+        if self.atoms.cell.rank == 3:
             stresses = full_3x3_to_voigt_6_stress(stresses)
             self.results['stress'] = (
                 stresses.sum(axis=0) / self.atoms.get_volume()
