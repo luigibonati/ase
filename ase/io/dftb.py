@@ -185,7 +185,8 @@ def write_dftb_velocities(atoms, filename='velocities.txt'):
     return
 
 
-def write_dftb(filename, atoms):
+@writer
+def write_dftb(myfile, atoms):
     """Method to write atom structure in DFTB+ format
        (gen format)
     """
@@ -198,16 +199,10 @@ def write_dftb(filename, atoms):
     for i in indexes:
         atomsnew = atomsnew + atoms[i]
 
-    if isinstance(filename, str):
-        myfile = open(filename, 'w')
-    else:
-        # Assume it's a 'file-like object'
-        myfile = filename
-
     ispbc = atoms.get_pbc()
     box = atoms.get_cell()
 
-    if (any(ispbc)):
+    if any(ispbc):
         myfile.write('%8d %2s \n' % (len(atoms), 'S'))
     else:
         myfile.write('%8d %2s \n' % (len(atoms), 'C'))
@@ -229,7 +224,7 @@ def write_dftb(filename, atoms):
                      % (iatom + 1, itype,
                         coords[iatom][0], coords[iatom][1], coords[iatom][2]))
     # write box
-    if (any(ispbc)):
+    if any(ispbc):
         # dftb dummy
         myfile.write(' %19.16f %19.16f %19.16f \n' % (0, 0, 0))
         myfile.write(' %19.16f %19.16f %19.16f \n'
@@ -238,6 +233,3 @@ def write_dftb(filename, atoms):
                      % (box[1][0], box[1][1], box[1][2]))
         myfile.write(' %19.16f %19.16f %19.16f \n'
                      % (box[2][0], box[2][1], box[2][2]))
-
-    if isinstance(filename, str):
-        myfile.close()
