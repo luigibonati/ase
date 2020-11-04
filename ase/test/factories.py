@@ -222,6 +222,21 @@ class EspressoFactory:
         return cls(config.executables['espresso'], paths[0])
 
 
+@factory('exciting')
+class ExcitingFactory:
+    def __init__(self, executable):
+        # XXX species path
+        self.executable = executable
+
+    def calc(self, **kwargs):
+        from ase.calculators.exciting import Exciting
+        return Exciting(bin=self.executable, **kwargs)
+
+    @classmethod
+    def fromconfig(cls, config):
+        return cls(config.executables['exciting'])
+
+
 @factory('gpaw')
 class GPAWFactory:
     importname = 'gpaw'
