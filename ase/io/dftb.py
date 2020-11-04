@@ -1,5 +1,6 @@
 import numpy as np
 from ase.atoms import Atoms
+from ase.utils import writer
 
 
 def read_dftb(filename='dftb_in.hsd'):
