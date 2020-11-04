@@ -59,7 +59,6 @@ class EPS(PlottingVariables):
     def write_trailer(self, fd):
         fd.write('end\n')
         fd.write('showpage\n')
-        fd.close()
 
 
 @writer
