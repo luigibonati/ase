@@ -1,23 +1,25 @@
-def test_exciting():
-    from ase import Atoms
-    from ase.io import read, write
-    from ase.calculators.exciting import Exciting
+import pytest
+from ase import Atoms
+from ase.io import read, write
+from ase.build import molecule
 
 
-    a = Atoms('N3O',
-              [(0, 0, 0), (1, 0, 0), (0, 0, 1), (0.5, 0.5, 0.5)],
-              pbc=True)
+def test_exciting_io():
+    atoms = Atoms('N3O',
+                  cell=[3, 4, 5],
+                  positions=[(0, 0, 0), (1, 0, 0),
+                             (0, 0, 1), (0.5, 0.5, 0.5)],
+                  pbc=True)
 
-    write('input.xml', a)
-    b = read('input.xml')
+    write('input.xml', atoms)
+    atoms2 = read('input.xml')
 
-    print(a)
-    print(a.get_positions())
-    print(b)
-    print(b.get_positions())
+    assert all(atoms.symbols == atoms2.symbols)
+    assert atoms.cell[:] == pytest.approx(atoms2.cell[:])
+    assert atoms.positions == pytest.approx(atoms2.positions)
 
-    Exciting(dir='excitingtestfiles',
-             kpts=(4, 4, 3),
+    #Exciting(dir='excitingtestfiles',
+    #         kpts=(4, 4, 3),
              # bin='/fshome/chm/git/exciting/bin/excitingser',
-             maxscl=3)
+    #         maxscl=3)
     # maybe do something???
