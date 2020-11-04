@@ -118,13 +118,13 @@ class POVRAY:
                 'reflection 0.25 roughness 0.001}'),
     )
 
-    def __init__(self, cell, cell_vertices, positions, diameters, colors, 
+    def __init__(self, cell, cell_vertices, positions, diameters, colors,
                  image_width, image_height, constraints=tuple(), isosurfaces=[],
-                 display=False, pause=True, transparent=True, canvas_width=None, 
-                 canvas_height=None, camera_dist=50., image_plane=None, 
-                 camera_type='orthographic', point_lights=[], 
-                 area_light=[(2., 3., 40.), 'White', .7, .7, 3, 3], 
-                 background='White', textures=None, transmittances=None, 
+                 display=False, pause=True, transparent=True, canvas_width=None,
+                 canvas_height=None, camera_dist=50., image_plane=None,
+                 camera_type='orthographic', point_lights=[],
+                 area_light=[(2., 3., 40.), 'White', .7, .7, 3, 3],
+                 background='White', textures=None, transmittances=None,
                  depth_cueing=False, cue_density=5e-3,
                  celllinewidth=0.05, bondlinewidth=0.10, bondatoms=[],
                  exportconstraints=False):
@@ -147,7 +147,7 @@ class POVRAY:
         constraints: Atoms.constraints
             constraints to be visualized
         isosurfaces: list of POVRAYIsosurface
-            composite object to write/render POVRAY isosurfaces 
+            composite object to write/render POVRAY isosurfaces
         display: bool
             display while rendering
         pause: bool
@@ -166,8 +166,9 @@ class POVRAY:
             if 'orthographic' perspective, ultra_wide_angle
         point_lights: list of 2-element sequences
             like [[loc1, color1], [loc2, color2],...]
-        area_light: 3-element sequence of location (3-tuple), color (str)
-                   , width (float), height (float), Nlamps_x (int), Nlamps_y (int)
+        area_light: 3-element sequence of location (3-tuple), color (str),
+                   width (float), height (float),
+                   Nlamps_x (int), Nlamps_y (int)
             example [(2., 3., 40.), 'White', .7, .7, 3, 3]
         background: str
             color specification, e.g., 'White'
@@ -276,7 +277,7 @@ class POVRAY:
         image_width = pvars.w
         positions = pvars.positions
         constraints = pvars.constraints
-        return cls(cell=cell, cell_vertices=cell_vertices, colors=colors, 
+        return cls(cell=cell, cell_vertices=cell_vertices, colors=colors,
                    constraints=constraints, diameters=diameters,
                    image_height=image_height, image_width=image_width,
                    positions=positions, **kwargs)
@@ -527,7 +528,7 @@ union{{torus{{R, Rcell rotate 45*z texture{{pigment{{color COL transmit TRANS}} 
 {atoms}
 {bondatoms}
 {constraints if constraints != '' else '// no constraints'}
-""" # noqa: E501
+"""  # noqa: E501
 
         with open(path, 'w') as _:
             _.write(pov)
@@ -548,7 +549,7 @@ union{{torus{{R, Rcell rotate 45*z texture{{pigment{{color COL transmit TRANS}} 
 class POVRAYInputs:
     def __init__(self, path):
         if isinstance(path, str):
-            path = Path(filename).with_suffix('')
+            path = Path(path).with_suffix('')
         self.path = path
 
     def render(self, povray_executable='povray', stderr=None, clean_up=False):
@@ -580,30 +581,30 @@ class POVRAYIsosurface:
                  color=(0.85, 0.80, 0.25, 0.2), material='ase3'):
         """
         density_grid: 3D float ndarray
-            A regular grid on that spans the cell. The first dimension 
+            A regular grid on that spans the cell. The first dimension
             corresponds to the first cell vector and so on.
         cut_off: float
             The density value of the isosurface.
         cell: 2D float ndarray or ASE cell object
             The 3 vectors which give the cell's repetition
         cell_origin: 4 float tuple
-            The cell origin as used by POVRAY object 
+            The cell origin as used by POVRAY object
         closed_edges: bool
             Setting this will fill in isosurface edges at the cell boundaries.
-            Filling in the edges can help with visualizing 
+            Filling in the edges can help with visualizing
             highly porous structures.
         gradient_ascending: bool
             Lets you pick the area you want to enclose, i.e., should the denser
             or less dense area be filled in.
         color: povray color string, float, or float tuple
-            1 float is interpreted as grey scale, a 3 float tuple is rgb, 
-            4 float tuple is rgbt, and 5 float tuple is rgbft, where 
-            t is transmission fraction and f is filter fraction. 
-            Named Povray colors are set in colors.inc 
+            1 float is interpreted as grey scale, a 3 float tuple is rgb,
+            4 float tuple is rgbt, and 5 float tuple is rgbft, where
+            t is transmission fraction and f is filter fraction.
+            Named Povray colors are set in colors.inc
             (http://wiki.povray.org/content/Reference:Colors.inc)
         material: string
-            Can be a finish macro defined by POVRAY.material_styles 
-            or a full Povray material {...} specification. Using a 
+            Can be a finish macro defined by POVRAY.material_styles
+            or a full Povray material {...} specification. Using a
             full material specification willoverride the color parameter.
         """
 
@@ -688,8 +689,8 @@ class POVRAYIsosurface:
     @classmethod
     def from_POVRAY(cls, povray, density_grid, cut_off, **kwargs):
         return cls(cell=povray.cell,
-                   cell_origin=povray.cell_vertices[0, 0, 0], 
-                   density_grid=density_grid, 
+                   cell_origin=povray.cell_vertices[0, 0, 0],
+                   density_grid=density_grid,
                    cut_off=cut_off, **kwargs)
 
     @staticmethod
@@ -715,7 +716,7 @@ class POVRAYIsosurface:
     def compute_mesh(density_grid, cut_off, spacing, gradient_direction):
         """
 
-        Import statement is in this method and not file header 
+        Import statement is in this method and not file header
         since few users will use isosurface rendering.
 
         Returns scaled_verts, faces, normals, values. See skimage docs.
@@ -766,7 +767,7 @@ class POVRAYIsosurface:
         # Start writing the mesh2
         vertex_vectors = self.wrapped_triples_section(
             triple_list=self.verts,
-            triple_format="<{:f}, {:f}, {:f}>".format, 
+            triple_format="<{:f}, {:f}, {:f}>".format,
             triples_per_line=4)
 
         face_indices = self.wrapped_triples_section(
@@ -825,7 +826,7 @@ if __name__ == '__main__':
     pvars = PlottingVariables(zno, scale=1.0)
     pov_obj = POVRAY.from_PlottingVariables(pvars)
     pov_obj.isosurfaces = [POVRAYIsosurface(
-        vchg.chg[0], 0.15, 
+        vchg.chg[0], 0.15,
         cell=zno.cell, cell_origin=pov_obj.cell_vertices[0, 0, 0])]
     for cut_off in 0.10, 0.30, 0.60:
         pov_obj.isosurfaces[0].set_cut_off(cut_off)
