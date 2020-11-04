@@ -90,7 +90,7 @@ def write_exciting(fileobj, images):
     rough_string = ET.tostring(root, 'utf-8')
     reparsed = minidom.parseString(rough_string)
     pretty = reparsed.toprettyxml(indent="\t")
-    fileobj.write(pretty.encode('utf-8'))
+    fileobj.write(pretty)
 
 
 def atoms2etree(images):

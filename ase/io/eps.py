@@ -26,7 +26,7 @@ class EPS(PlottingVariables):
         self.write_trailer(fd)
 
     def write_header(self, fd):
-        from matplotlib.backends.backend_ps import RendererPS, psDefs
+        from matplotlib.backends.backend_ps import psDefs
 
         fd.write('%!PS-Adobe-3.0 EPSF-3.0\n')
         fd.write('%%Creator: G2\n')
@@ -50,6 +50,7 @@ class EPS(PlottingVariables):
         fd.write('%d %d 0 0 clipbox\n' % (self.w, self.h))
 
     def write_body(self, fd):
+        from matplotlib.backends.backend_ps import RendererPS
         renderer = RendererPS(self.w, self.h, fd)
         patch_list = make_patch_list(self)
         for patch in patch_list:

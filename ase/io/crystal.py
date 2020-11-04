@@ -1,5 +1,5 @@
 from ase.atoms import Atoms
-from ase.util import reader, writer
+from ase.utils import reader, writer
 
 
 @writer
