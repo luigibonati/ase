@@ -147,7 +147,7 @@ class POVRAY:
         constraints: Atoms.constraints
             constraints to be visualized
         isosurfaces: list of POVRAYIsosurface
-            composite object to write/render POVRAY isosurfaces in addition to atoms
+            composite object to write/render POVRAY isosurfaces 
         display: bool
             display while rendering
         pause: bool
@@ -166,7 +166,8 @@ class POVRAY:
             if 'orthographic' perspective, ultra_wide_angle
         point_lights: list of 2-element sequences
             like [[loc1, color1], [loc2, color2],...]
-        area_light: 3-element sequence of location (3-tuple), color (str), width (float), height (float), Nlamps_x (int), Nlamps_y (int)
+        area_light: 3-element sequence of location (3-tuple), color (str)
+                   , width (float), height (float), Nlamps_x (int), Nlamps_y (int)
             example [(2., 3., 40.), 'White', .7, .7, 3, 3]
         background: str
             color specification, e.g., 'White'
@@ -176,7 +177,7 @@ class POVRAY:
             length of atoms list of transmittances of the atoms
         depth_cueing: bool
             whether or not to use depth cueing a.k.a. fog
-            use with care - in particular adjust the camera_distance to be closer
+            use with care - adjust the camera_distance to be closer
         cue_density: float
             if there is depth_cueing, how dense is it (how dense is the fog)
         celllinewidth: float
@@ -275,8 +276,10 @@ class POVRAY:
         image_width = pvars.w
         positions = pvars.positions
         constraints = pvars.constraints
-        return cls(cell=cell, cell_vertices=cell_vertices, colors=colors, constraints=constraints,
-                   diameters=diameters, image_height=image_height, image_width=image_width, positions=positions, **kwargs)
+        return cls(cell=cell, cell_vertices=cell_vertices, colors=colors, 
+                   constraints=constraints, diameters=diameters,
+                   image_height=image_height, image_width=image_width,
+                   positions=positions, **kwargs)
 
     @classmethod
     def from_atoms(cls, atoms, **kwargs):
@@ -325,27 +328,26 @@ Verbose=False
                 dist = 1e-4
             else:
                 dist = 1. / self.cue_density
-            fog += f'fog {{fog_type 1 distance {dist:.4f} color {pc(self.background)}}}'
+            fog += f'fog {{fog_type 1 distance {dist:.4f} '\
+                   f'color {pc(self.background)}}}'
 
-        material_styles_dict_keys = '\n'.join(f'#declare {key} = {value}'  # semicolon?
-                                              for key, value in self.material_styles_dict.items())
+        mat_style_keys = (f'#declare {k} = {v}'
+                          for k, v in self.material_styles_dict.items())
+        mat_style_keys = '\n'.join(mat_style_keys)
 
         # Draw unit cell
         cell_vertices = ''
         if self.cell_vertices is not None:
             for c in range(3):
                 for j in ([0, 0], [1, 0], [1, 1], [0, 1]):
-                    parts = []
-                    for i in range(2):
-                        j.insert(c, i)
-                        parts.append(self.cell_vertices[tuple(j)])
-                        del j[c]
+                    p1 = self.cell_vertices[tuple(j[:c]) + (0,) + tuple(j[c:])]
+                    p2 = self.cell_vertices[tuple(j[:c]) + (1,) + tuple(j[c:])]
 
-                    distance = np.linalg.norm(parts[1] - parts[0])
+                    distance = np.linalg.norm(p2 - p1)
                     if distance < 1e-12:
                         continue
 
-                    cell_vertices += f'cylinder {{{pa(parts[0])}, {pa(parts[1])}, '\
+                    cell_vertices += f'cylinder {{{pa(p1)}, {pa(p2)}, '\
                                      f'Rcell pigment {{Black}}}}\n'
                     # all strings are f-strings for consistency
             cell_vertices = cell_vertices.strip('\n')
@@ -353,14 +355,14 @@ Verbose=False
         # Draw atoms
         a = 0
         atoms = ''
-        for loc, dia, color in zip(self.positions, self.diameters, self.colors):
+        for loc, dia, col in zip(self.positions, self.diameters, self.colors):
             tex = 'ase3'
             trans = 0.
             if self.textures is not None:
                 tex = self.textures[a]
             if self.transmittances is not None:
                 trans = self.transmittances[a]
-            atoms += f'atom({pa(loc)}, {dia/2.:.2f}, {pc(color)}, '\
+            atoms += f'atom({pa(loc)}, {dia/2.:.2f}, {pc(col)}, '\
                      f'{trans}, {tex}) // #{a:n}\n'
             a += 1
         atoms = atoms.strip('\n')
@@ -409,7 +411,7 @@ Verbose=False
             # Up to here, we should have all a, b, offset, bond_order,
             # bond_offset for all bonds.
 
-            # Rotate bond_offset so that its direction is 90 degree off the bond
+            # Rotate bond_offset so that its direction is 90 deg. off the bond
             # Utilize Atoms object to rotate
             if bond_order > 1 and np.linalg.norm(bond_offset) > 1.e-9:
                 tmp_atoms = Atoms('H3')
@@ -508,7 +510,7 @@ camera {{{self.camera_type}
 {point_lights}
 {area_light if area_light != '' else '// no area light'}
 {fog if fog != '' else '// no fog'}
-{material_styles_dict_keys}
+{mat_style_keys}
 #declare Rcell = {self.celllinewidth:.3f};
 #declare Rbond = {self.bondlinewidth:.3f};
 
@@ -525,7 +527,7 @@ union{{torus{{R, Rcell rotate 45*z texture{{pigment{{color COL transmit TRANS}} 
 {atoms}
 {bondatoms}
 {constraints if constraints != '' else '// no constraints'}
-"""
+""" # noqa: E501
 
         with open(path, 'w') as _:
             _.write(pov)
@@ -578,29 +580,31 @@ class POVRAYIsosurface:
                  color=(0.85, 0.80, 0.25, 0.2), material='ase3'):
         """
         density_grid: 3D float ndarray
-            A regular grid on that spans the cell. The first dimension corresponds
-            to the first cell vector and so on.
+            A regular grid on that spans the cell. The first dimension 
+            corresponds to the first cell vector and so on.
         cut_off: float
             The density value of the isosurface.
         cell: 2D float ndarray or ASE cell object
             The 3 vectors which give the cell's repetition
         cell_origin: 4 float tuple
-            The cell origin as returned by the PlottingVariables instance (used in the POVRAY object)
+            The cell origin as used by POVRAY object 
         closed_edges: bool
             Setting this will fill in isosurface edges at the cell boundaries.
-            Filling in the edges can help with visualizing highly porous structures.
+            Filling in the edges can help with visualizing 
+            highly porous structures.
         gradient_ascending: bool
             Lets you pick the area you want to enclose, i.e., should the denser
             or less dense area be filled in.
         color: povray color string, float, or float tuple
-            1 float is interpreted as grey scale, a 3 float tuple is rgb, 4 float
-            tuple is rgbt, and 5 float tuple is rgbft, where t is transmission
-            fraction and f is filter fraction. Named Povray colors are set in
-            colors.inc (http://wiki.povray.org/content/Reference:Colors.inc)
+            1 float is interpreted as grey scale, a 3 float tuple is rgb, 
+            4 float tuple is rgbt, and 5 float tuple is rgbft, where 
+            t is transmission fraction and f is filter fraction. 
+            Named Povray colors are set in colors.inc 
+            (http://wiki.povray.org/content/Reference:Colors.inc)
         material: string
-            Can be a finish macro defined by POVRAY.material_styles or a full Povray
-            material {...} specification. Using a full material specification will
-            override the color parameter.
+            Can be a finish macro defined by POVRAY.material_styles 
+            or a full Povray material {...} specification. Using a 
+            full material specification willoverride the color parameter.
         """
 
         self.gradient_direction = 'ascent' if gradient_ascending else 'descent'
@@ -711,7 +715,8 @@ class POVRAYIsosurface:
     def compute_mesh(density_grid, cut_off, spacing, gradient_direction):
         """
 
-        Import statement is in this method and not file header since few users will use isosurface rendering.
+        Import statement is in this method and not file header 
+        since few users will use isosurface rendering.
 
         Returns scaled_verts, faces, normals, values. See skimage docs.
 
@@ -759,11 +764,15 @@ class POVRAYIsosurface:
             material = self.material
 
         # Start writing the mesh2
-        vertex_vectors = self.wrapped_triples_section(triple_list=self.verts,
-                                                      triple_format="<{:f}, {:f}, {:f}>".format, triples_per_line=4)
+        vertex_vectors = self.wrapped_triples_section(
+            triple_list=self.verts,
+            triple_format="<{:f}, {:f}, {:f}>".format, 
+            triples_per_line=4)
 
-        face_indices = self.wrapped_triples_section(triple_list=self.faces,
-                                                    triple_format="<{:n}, {:n}, {:n}>".format, triples_per_line=5)
+        face_indices = self.wrapped_triples_section(
+            triple_list=self.faces,
+            triple_format="<{:n}, {:n}, {:n}>".format,
+            triples_per_line=5)
 
         cell = self.cell
         cell_or = self.cell_origin
@@ -816,7 +825,8 @@ if __name__ == '__main__':
     pvars = PlottingVariables(zno, scale=1.0)
     pov_obj = POVRAY.from_PlottingVariables(pvars)
     pov_obj.isosurfaces = [POVRAYIsosurface(
-        vchg.chg[0], 0.15, cell=zno.cell, cell_origin=pov_obj.cell_vertices[0, 0, 0])]
+        vchg.chg[0], 0.15, 
+        cell=zno.cell, cell_origin=pov_obj.cell_vertices[0, 0, 0])]
     for cut_off in 0.10, 0.30, 0.60:
         pov_obj.isosurfaces[0].set_cut_off(cut_off)
         pov_obj.write('zno').render(clean_up=False)
