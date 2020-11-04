@@ -9,6 +9,9 @@ import runpy
 from docutils import nodes
 from docutils.parsers.rst.roles import set_classes
 
+from subprocess import check_call, DEVNULL
+from pathlib import Path
+
 import matplotlib
 matplotlib.use('Agg')
 
@@ -90,10 +93,9 @@ def creates():
 
 
 def create_png_files(raise_exceptions=False):
-    import subprocess
-    import pathlib
-    errcode = subprocess.check_call(['povray', '-h'], stderr=subprocess.DEVNULL)
-    if errcode:
+    try:
+        check_call(['povray', '-h'], stderr=DEVNULL)
+    except FileNotFoundError:
         warnings.warn('No POVRAY!')
         # Replace write_pov with write_png:
         from ase.io import pov
@@ -102,8 +104,14 @@ def create_png_files(raise_exceptions=False):
         def write_pov(filename, atoms, generic_projection_settings={},
                       povray_settings={}, isosurface_data=None):
 
-            write_png(pathlib.Path(filename).with_suffix('png'), atoms, 
+            write_png(Path(filename).with_suffix('.png'), atoms,
                       **generic_projection_settings)
+
+            class DummyRenderer:
+                def render(self):
+                    pass
+
+            return DummyRenderer()
 
         pov.write_pov = write_pov
 
