@@ -405,7 +405,7 @@ class Factories:
     # from list of calculators that we monkeypatch:
     monkeypatch_calculator_constructors = {
         'ace', 'aims', 'amber', 'castep', 'crystal', 'demon', 'demonnano',
-        'dftd3', 'dmol', 'elk', 'exciting', 'fleur', 'gamess_us', 'gaussian',
+        'dftd3', 'dmol', 'exciting', 'fleur', 'gamess_us', 'gaussian',
         'gulp', 'hotbit', 'kim', 'lammpslib', 'mopac', 'onetep', 'orca',
         'Psi4', 'qchem', 'turbomole', 'vasp', 'vasp2',
     }
