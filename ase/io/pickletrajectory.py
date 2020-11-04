@@ -228,8 +228,9 @@ class PickleTrajectory:
                     pass
             if self.write_magmoms:
                 try:
-                    if atoms.calc.get_spin_polarized():
-                        d['magmoms'] = atoms.get_magnetic_moments()
+                    magmoms = atoms.get_magnetic_moments()
+                    if any(np.asarray(magmoms).flat):
+                        d['magmoms'] = magmoms
                 except (PropertyNotImplementedError, AttributeError):
                     pass
 

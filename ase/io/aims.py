@@ -16,6 +16,16 @@ def read_aims(filename, apply_constraints=True):
     include that information in atoms.info["symmetry_block"]
     """
 
+    with open(filename, "r") as fd:
+        lines = fd.readlines()
+
+    atoms = parse_geometry_lines(lines, filename, apply_constraints=True)
+
+    return atoms
+
+
+def parse_geometry_lines(lines, filename, apply_constraints=True):
+
     from ase import Atoms
     from ase.constraints import (
         FixAtoms,
@@ -26,8 +36,6 @@ def read_aims(filename, apply_constraints=True):
     import numpy as np
 
     atoms = Atoms()
-    with open(filename, "r") as fd:
-        lines = fd.readlines()
 
     positions = []
     cell = []
@@ -47,31 +55,24 @@ def read_aims(filename, apply_constraints=True):
         inp = line.split()
         if inp == []:
             continue
-        if inp[0] == "atom":
-            cart_positions = True
+        if inp[0] in ["atom", "atom_frac"]:
+
+            if inp[0] == "atom":
+                cart_positions = True
+            else:
+                scaled_positions = True
+
             if xyz.all():
                 fix.append(i)
             elif xyz.any():
                 fix_cart.append(FixCartesian(i, xyz))
             floatvect = float(inp[1]), float(inp[2]), float(inp[3])
             positions.append(floatvect)
+            symbols.append(inp[4])
             magmoms.append(0.0)
             charges.append(0.0)
-            symbols.append(inp[-1])
-            i += 1
             xyz = np.array([0, 0, 0])
-        elif inp[0] == "atom_frac":
-            scaled_positions = True
-            if xyz.all():
-                fix.append(i)
-            elif xyz.any():
-                fix_cart.append(FixCartesian(i, xyz))
-            floatvect = float(inp[1]), float(inp[2]), float(inp[3])
-            positions.append(floatvect)
-            magmoms.append(0.0)
-            symbols.append(inp[-1])
             i += 1
-            xyz = np.array([0, 0, 0])
 
         elif inp[0] == "lattice_vector":
             floatvect = float(inp[1]), float(inp[2]), float(inp[3])
@@ -409,13 +410,9 @@ def get_sym_block(atoms):
 
     sym_block = []
     if n_total_params > 0:
-        sym_block.append(
-            "#=======================================================\n"
-        )
+        sym_block.append("#" + "="*55 + "\n")
         sym_block.append("# Parametric constraints\n")
-        sym_block.append(
-            "#=======================================================\n"
-        )
+        sym_block.append("#" + "="*55 + "\n")
         sym_block.append(
             "symmetry_n_params {:d} {:d} {:d}\n".format(
                 n_total_params, n_lv_params, n_atomic_params

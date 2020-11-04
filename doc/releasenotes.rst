@@ -22,6 +22,9 @@ Git master branch
 * Extended constraint `ase.constraints.FixInternals` by
   possibility to fix linear combinations of bond lengths.
 
+* Cleaned up and fixed multiple issues with
+  :class:`~ase.calculators.elk.Elk` calculator.
+
 * Reads Wannier90 ``.wout`` files.
   See :func:`ase.io.wannier90.read_wout` and
   :func:`ase.io.wannier90.read_wout_all`.

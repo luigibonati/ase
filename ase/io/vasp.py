@@ -695,7 +695,8 @@ def write_vasp(filename,
                symbol_count=None,
                long_format=True,
                vasp5=False,
-               ignore_constraints=False):
+               ignore_constraints=False,
+               wrap=False):
     """Method to write VASP position (POSCAR/CONTCAR) files.
 
     Writes label, scalefactor, unitcell, # of various kinds of atoms,
@@ -723,9 +724,9 @@ def write_vasp(filename,
 
     # Write atom positions in scaled or cartesian coordinates
     if direct:
-        coord = atoms.get_scaled_positions()
+        coord = atoms.get_scaled_positions(wrap=wrap)
     else:
-        coord = atoms.get_positions()
+        coord = atoms.get_positions(wrap=wrap)
 
     constraints = atoms.constraints and not ignore_constraints
 

@@ -32,15 +32,8 @@ omit =
     ../calculators/dmol.py
     ../calculators/mopac.py
     ../calculators/acemolecule.py
-    ../calculators/elk.py
     ../calculators/castep.py
     ../calculators/gulp.py
-    ../calculators/kim/kim.py
-    ../calculators/kim/exceptions.py
-    ../calculators/kim/kimmodel.py
-    ../calculators/kim/neighborlist.py
-    ../calculators/kim/calculators.py
-    ../calculators/kim/kimpy_wrappers.py
     ../calculators/demon/demon.py
     ../calculators/demon/demon_io.py
     ../calculators/vasp/create_input.py
@@ -60,17 +53,19 @@ omit =
     ../io/gaussian.py
     ../io/pov.py
     ../io/dacapo.py
-    ../io/cp2k.py
     ../io/fortranfile.py
     ../io/turbomole.py
     ../io/gaussian_reader.py
     ../io/acemolecule.py
     ../io/vtkxml.py
-    ../io/elk.py
     ../io/castep.py
     ../io/gpw.py
     ../io/cmdft.py
 
+    # The "optimizer tests" are used to generate part of GPAW's web page
+    # but we don't really consider it production code.
+    # Since we don't plan to test it as such, we exclude it from the listing.
+    ../optimize/test/*.py
 
 [html]
 directory = coverage-html

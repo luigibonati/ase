@@ -42,6 +42,7 @@ class GULPOptimizer:
 class GULP(FileIOCalculator):
     implemented_properties = ['energy', 'forces', 'stress']
     command = 'gulp < PREFIX.gin > PREFIX.got'
+    discard_results_on_any_change = True
     default_parameters = dict(
         keywords='conp gradients',
         options=[],
@@ -76,11 +77,6 @@ class GULP(FileIOCalculator):
         self.library_check()
         self.atom_types = []
         self.fractional_coordinates = None # GULP prints the fractional coordinates before the Final lattice vectors so they need to be stored and then atoms positions need to be set after we get the Final lattice vectors
-
-    def set(self, **kwargs):
-        changed_parameters = FileIOCalculator.set(self, **kwargs)
-        if changed_parameters:
-            self.reset()
 
     def write_input(self, atoms, properties=None, system_changes=None):
         FileIOCalculator.write_input(self, atoms, properties, system_changes)

@@ -1,3 +1,10 @@
+import numpy as np
+from ase import Atoms
+
+from pytest import importorskip, mark
+
+
+@mark.calculator_lite
 def test_multi_neighlist():
     """
     To test that the correct energy/forces/stress can be computed using a
@@ -8,10 +15,6 @@ def test_multi_neighlist():
     compared to a known precomputed value, while the forces and stress
     returned are compared to numerical estimates via finite difference.
     """
-    import numpy as np
-    from ase import Atoms
-
-    from pytest import importorskip
     importorskip('kimpy')
 
     from ase.calculators.kim import KIM
