@@ -99,13 +99,11 @@ def create_png_files(raise_exceptions=False):
         from ase.io import pov
         from ase.io.png import write_png
 
-        def write_pov(filename, atoms, extras=[], **parameters):
-            p = {}
-            for key in ['rotation', 'show_unit_cell', 'radii',
-                        'bbox', 'colors', 'scale']:
-                if key in parameters:
-                    p[key] = parameters[key]
-            write_png(pathlib.Path(filename).with_suffix('png'), atoms, **p)
+        def write_pov(filename, atoms, generic_projection_settings={},
+                      povray_settings={}, isosurface_data=None):
+
+            write_png(pathlib.Path(filename).with_suffix('png'), atoms, 
+                      **generic_projection_settings)
 
         pov.write_pov = write_pov
 
