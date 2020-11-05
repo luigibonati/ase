@@ -538,8 +538,8 @@ def write(
 
     io = get_ioformat(format)
 
-    return _write(filename, fd, format, io, images, parallel=parallel, append=append,
-           **kwargs)
+    return _write(filename, fd, format, io, images,
+                  parallel=parallel, append=append, **kwargs)
 
 
 @parallel_function
@@ -571,8 +571,8 @@ def _write(filename, fd, format, io, images, parallel=None, append=False,
             if append:
                 mode = mode.replace('w', 'a')
             fd = open_with_compression(filename, mode)
-                # XXX remember to re-enable compressed open
-                # fd = io.open(filename, mode)
+            # XXX remember to re-enable compressed open
+            # fd = io.open(filename, mode)
         try:
             return io.write(fd, images, **kwargs)
         finally:
