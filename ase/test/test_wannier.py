@@ -11,6 +11,9 @@ from ase.dft.wannier import gram_schmidt, lowdin, random_orthogonal_matrix, \
     rotation_from_projection, Wannier
 
 
+calc = pytest.mark.calculator
+
+
 @pytest.fixture()
 def rng():
     return np.random.RandomState(0)
@@ -37,7 +40,8 @@ def std_calculator(_std_calculator):
 
 
 @pytest.fixture
-def wan(rng, std_calculator):
+def wan(rng, std_calculator, factories):
+    factories.require('gpaw')
     def _wan(gpts=(8, 8, 8),
              atoms=None,
              calc=None,
@@ -227,7 +231,8 @@ def test_get_functional_value(wan):
     assert f1 < f2
 
 
-def test_get_centers():
+@calc('gpaw')
+def test_get_centers(factory):
     # Rough test on the position of the Wannier functions' centers
     gpaw = pytest.importorskip('gpaw')
     calc = gpaw.GPAW(gpts=(32, 32, 32), nbands=4, txt=None)
