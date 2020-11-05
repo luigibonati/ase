@@ -1,5 +1,4 @@
 import subprocess
-from unittest import SkipTest
 
 import pytest
 
@@ -28,9 +27,10 @@ def test_dftb_bandstructure(dftb_factory):
         else:
             raise RuntimeError('Could not parse DFTB+ version ' + lines)
 
-        if '17.1' not in version:
-            msg = 'Band structure properties not present in results.tag for ' + version
-            raise SkipTest(msg)
+        #if '17.1' not in version:
+        # XXX What's special about the exact version 17.1?
+        #    msg = 'Band structure properties not present in results.tag for ' + version
+        #    raise SkipTest(msg)
 
     # The actual testing starts here
     calc = dftb_factory.calc(
