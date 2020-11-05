@@ -439,6 +439,7 @@ def parse_pwo_start(lines, index=0):
     return info
 
 
+@iofunction('rU')
 def read_espresso_in(fileobj):
     """Parse a Quantum ESPRESSO input files, '.in', '.pwi'.
 
@@ -462,10 +463,6 @@ def read_espresso_in(fileobj):
     KeyError
         Raised for missing keys that are required to process the file
     """
-    # TODO: use ase opening mechanisms
-    if isinstance(fileobj, str):
-        fileobj = open(fileobj, 'rU')
-
     # parse namelist section and extract remaining lines
     data, card_lines = read_fortran_namelist(fileobj)
 
