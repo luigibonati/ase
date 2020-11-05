@@ -20,10 +20,11 @@ def rng():
 
 
 @pytest.fixture(scope='module')
-def _std_calculator(tmp_path_factory):
+def _std_calculator(tmp_path_factory, factories):
+    factories.require('gpaw')
+    import gpaw
     atoms = molecule('H2', pbc=True)
     atoms.center(vacuum=3.)
-    gpaw = pytest.importorskip('gpaw')
     gpw = tmp_path_factory.mktemp('sub') / 'dumpfile.gpw'
     calc = gpaw.GPAW(gpts=(8, 8, 8), nbands=4, kpts=(2, 2, 2),
                      symmetry='off', txt=None)
@@ -35,14 +36,11 @@ def _std_calculator(tmp_path_factory):
 
 @pytest.fixture(scope='module')
 def std_calculator(_std_calculator):
-    gpaw = pytest.importorskip('gpaw')
     return gpaw.GPAW(_std_calculator, txt=None)
 
 
 @pytest.fixture
-def wan(rng, std_calculator, factories):
-    factories.require('gpaw')
-
+def wan(rng, std_calculator):
     def _wan(gpts=(8, 8, 8),
              atoms=None,
              calc=None,
