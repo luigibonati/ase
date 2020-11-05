@@ -9,7 +9,7 @@ import runpy
 from docutils import nodes
 from docutils.parsers.rst.roles import set_classes
 
-from subprocess import check_call, DEVNULL
+from subprocess import check_call, DEVNULL, CalledProcessError
 from pathlib import Path
 
 import matplotlib
@@ -95,7 +95,7 @@ def creates():
 def create_png_files(raise_exceptions=False):
     try:
         check_call(['povray', '-h'], stderr=DEVNULL)
-    except FileNotFoundError:
+    except (FileNotFoundError, CalledProcessError):
         warnings.warn('No POVRAY!')
         # Replace write_pov with write_png:
         from ase.io import pov
