@@ -1,5 +1,3 @@
-import os
-
 from ase import Atoms
 from ase.calculators.acemolecule import ACE
 

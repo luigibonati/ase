@@ -6,7 +6,6 @@ from ase.units import Ry, Ha
 from ase.io.trajectory import Trajectory
 from ase.optimize import QuasiNewton
 from ase.constraints import UnitCellFilter
-from ase.calculators.calculator import PropertyNotImplementedError
 from ase import Atoms
 
 
