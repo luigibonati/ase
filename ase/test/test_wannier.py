@@ -42,6 +42,7 @@ def std_calculator(_std_calculator):
 @pytest.fixture
 def wan(rng, std_calculator, factories):
     factories.require('gpaw')
+
     def _wan(gpts=(8, 8, 8),
              atoms=None,
              calc=None,
