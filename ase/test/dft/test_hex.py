@@ -16,7 +16,7 @@ def test_hex():
         assert lat.name == 'HEX'
         print(repr(a.cell.get_bravais_lattice()))
         #print(crystal_structure_from_cell(a.cell))
-        r = a.get_reciprocal_cell()
+        r = a.cell.reciprocal()
         k = get_special_points(a.cell)['K']
         print(np.dot(k, r))
         a.get_potential_energy()

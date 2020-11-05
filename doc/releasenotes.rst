@@ -19,6 +19,14 @@ Git master branch
   available and still takes temperature and pressure in whatever unit
   the module used to accept, but now issues a warning.
 
+* Deprecated the following methods on :class:`~ase.Atoms` as they can
+  be replaced by ``~ase.cell.Cell``:
+  ``atoms.get_cell_lengths_and_angles()``,
+  ``atoms.get_reciprocal_cell()``,
+  ``atoms.number_of_lattice_vectors``, and ``atoms.get_volume()``.
+  Instead use ``atoms.cell.cellpar()``, ``atoms.cell.reciprocal()``,
+  ``atoms.cell.rank``, and ``atoms.cell.volume``, respectively.
+
 * Extended constraint `ase.constraints.FixInternals` by
   possibility to fix linear combinations of bond lengths.
 

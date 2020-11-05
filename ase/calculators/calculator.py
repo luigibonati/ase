@@ -244,7 +244,7 @@ def kptdensity2monkhorstpack(atoms, kptdensity=3.5, even=True):
         Round up to even numbers.
     """
 
-    recipcell = atoms.get_reciprocal_cell()
+    recipcell = atoms.cell.reciprocal()
     kpts = []
     for i in range(3):
         if atoms.pbc[i]:
