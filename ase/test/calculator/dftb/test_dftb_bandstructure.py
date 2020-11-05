@@ -1,3 +1,4 @@
+from distutils.version import LooseVersion
 import pytest
 
 from ase.build import bulk
@@ -12,6 +13,8 @@ def test_dftb_bandstructure(dftb_factory):
     # cmd = os.environ['ASE_DFTB_COMMAND'].split()[0]
     # cmd = dftb_factory.ex
     version = dftb_factory.version()
+    if LooseVersion(version) < 17.1:
+        pytest.skip('Band structure requires DFTB 17.1+')
 
     calc = dftb_factory.calc(
         label='dftb',
