@@ -21,9 +21,10 @@ class EPS(PlottingVariables):
             **kwargs)
 
     def write(self, fd):
+        renderer = self._renderer(fd)
         self.write_header(fd)
-        self.write_body(fd)
-        self.write_trailer(fd)
+        self.write_body(fd, renderer)
+        self.write_trailer(fd, renderer)
 
     def write_header(self, fd):
         from matplotlib.backends.backend_ps import psDefs
@@ -49,14 +50,17 @@ class EPS(PlottingVariables):
         fd.write('mpldict begin\n')
         fd.write('%d %d 0 0 clipbox\n' % (self.w, self.h))
 
-    def write_body(self, fd):
+    def _renderer(self, fd):
+        # Subclass can override
         from matplotlib.backends.backend_ps import RendererPS
-        renderer = RendererPS(self.w, self.h, fd)
+        return RendererPS(self.w, self.h, fd)
+
+    def write_body(self, fd, renderer):
         patch_list = make_patch_list(self)
         for patch in patch_list:
             patch.draw(renderer)
 
-    def write_trailer(self, fd):
+    def write_trailer(self, fd, renderer):
         fd.write('end\n')
         fd.write('showpage\n')
 
