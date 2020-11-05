@@ -20,23 +20,24 @@ def rng():
 
 
 @pytest.fixture(scope='module')
-def _std_calculator(tmp_path_factory, factories):
+def _std_calculator_gpwfile(tmp_path_factory, factories):
     factories.require('gpaw')
     import gpaw
     atoms = molecule('H2', pbc=True)
     atoms.center(vacuum=3.)
-    gpw = tmp_path_factory.mktemp('sub') / 'dumpfile.gpw'
+    gpw_path = tmp_path_factory.mktemp('sub') / 'dumpfile.gpw'
     calc = gpaw.GPAW(gpts=(8, 8, 8), nbands=4, kpts=(2, 2, 2),
                      symmetry='off', txt=None)
     atoms.calc = calc
     atoms.get_potential_energy()
-    calc.write(gpw, mode='all')
-    return gpw
+    calc.write(gpw_path, mode='all')
+    return gpw_path
 
 
 @pytest.fixture(scope='module')
-def std_calculator(_std_calculator):
-    return gpaw.GPAW(_std_calculator, txt=None)
+def std_calculator(_std_calculator_gpwfile):
+    import gpaw
+    return gpaw.GPAW(_std_calculator_gpwfile, txt=None)
 
 
 @pytest.fixture
