@@ -401,6 +401,15 @@ class Factories:
     builtin_calculators = {'eam', 'emt', 'ff', 'lj', 'morse', 'tip3p', 'tip4p'}
     autoenabled_calculators = {'asap'} | builtin_calculators
 
+    # TODO: Port calculators to use factories.  As we do so, remove names
+    # from list of calculators that we monkeypatch:
+    monkeypatch_calculator_constructors = {
+        'ace', 'aims', 'amber', 'castep', 'crystal', 'demon', 'demonnano',
+        'dftd3', 'dmol', 'exciting', 'fleur', 'gamess_us', 'gaussian',
+        'gulp', 'hotbit', 'kim', 'lammpslib', 'mopac', 'onetep', 'orca',
+        'Psi4', 'qchem', 'turbomole', 'vasp', 'vasp2',
+    }
+
     def __init__(self, requested_calculators):
         executable_config_paths, executables = get_testing_executables()
         assert isinstance(executables, Mapping), executables
@@ -472,7 +481,8 @@ class Factories:
         test_calculator_names = (self.autoenabled_calculators |
                                  self.builtin_calculators |
                                  self.requested_calculators)
-        disable_names = self.all_calculators - test_calculator_names
+        disable_names = self.monkeypatch_calculator_constructors - test_calculator_names
+        #disable_names = self.all_calculators - test_calculator_names
 
         for name in disable_names:
             try:

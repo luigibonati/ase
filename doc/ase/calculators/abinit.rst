@@ -85,10 +85,3 @@ ABINIT_PP_PATH::
 
 At execution, you can select the potential database to use with the ``pps``
 argument, as one of 'fhi', 'hgh', 'hgh.sc', 'hgh.k', 'tm', 'paw', 'pawxml'.
-
-
-Example 1
-=========
-
-Here is an example of how to calculate the total energy for bulk Silicon
-:git:`ase/test/calculator/abinit/test_abinit_Si.py`.

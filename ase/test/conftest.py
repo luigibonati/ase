@@ -211,6 +211,8 @@ def factory(request, factories):
     name, kwargs = request.param
     if not factories.installed(name):
         pytest.skip(f'Not installed: {name}')
+    if not factories.enabled(name):
+        pytest.skip(f'Not enabled: {name}')
     factory = factories[name]
     return CalculatorInputs(factory, kwargs)
 
