@@ -12,7 +12,7 @@ Contributed by James Kermode <james.kermode@gmail.com>
 from itertools import islice
 import re
 import warnings
-
+from io import StringIO, UnsupportedOperation
 import json
 
 import numpy as np
@@ -25,7 +25,7 @@ from ase.spacegroup.spacegroup import Spacegroup
 from ase.parallel import paropen
 from ase.constraints import FixAtoms, FixCartesian
 from ase.io.formats import index2range
-from io import StringIO, UnsupportedOperation
+from ase.utils import reader
 
 __all__ = ['read_xyz', 'write_xyz', 'iread_xyz']
 
@@ -843,7 +843,6 @@ def output_column_format(atoms, columns, arrays,
     return comment_str, property_ncols, dtype, fmt
 
 
-@writer
 def write_xyz(fileobj, images, comment='', columns=None,
               write_info=True,
               write_results=True, plain=False, vec_cell=False,
