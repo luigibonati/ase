@@ -1,17 +1,14 @@
 from io import StringIO
 from ase.io import read
+from ase.utils import reader
 
 # Made from NWChem interface
 
 
-def read_geom_orcainp(filename):
+@reader
+def read_geom_orcainp(fd):
     """Method to read geometry from an ORCA input file."""
-    f = filename
-    if isinstance(filename, str):
-        f = open(filename)
-    lines = f.readlines()
-    if type(filename) == str:
-        f.close()
+    lines = fd.readlines()
 
     # Find geometry region of input file.
     stopline = 0
