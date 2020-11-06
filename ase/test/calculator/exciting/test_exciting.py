@@ -1,7 +1,5 @@
 import pytest
-from ase import Atoms
 from ase.build import bulk
-from ase.io import read, write
 
 
 @pytest.mark.calculator_lite
