@@ -278,7 +278,7 @@ class Dftb(FileIOCalculator):
                 self.do_forces = True
         FileIOCalculator.write_input(
             self, atoms, properties, system_changes)
-        with open(os.path.join(self.directory, 'dftb_in.hsd')) as fd:
+        with open(os.path.join(self.directory, 'dftb_in.hsd'), 'w') as fd:
             self.write_dftb_in(fd)
         write(os.path.join(self.directory, 'geo_end.gen'), atoms)
         # self.atoms is none until results are read out,
