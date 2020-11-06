@@ -1,15 +1,15 @@
 import numpy as np
 from ase.atoms import Atoms
-from ase.utils import writer
+from ase.utils import writer, reader
 
 
-def read_dftb(filename='dftb_in.hsd'):
+@reader
+def read_dftb(fd):
     """Method to read coordinates form DFTB+ input file dftb_in.hsd
     additionally read information about fixed atoms
     and periodic boundary condition
     """
-    with open(filename, 'r') as myfile:
-        lines = myfile.readlines()
+    lines = fd.readlines()
 
     atoms_pos = []
     atom_symbols = []
@@ -119,13 +119,11 @@ def read_dftb_velocities(atoms, filename='geo_end.xyz'):
     return atoms
 
 
-def read_dftb_lattice(fileobj='md.out', images=None):
+@reader
+def read_dftb_lattice(fileobj, images=None):
     """Read lattice vectors from MD and return them as a list.
 
     If a molecules are parsed add them there."""
-    if isinstance(fileobj, str):
-        fileobj = open(fileobj)
-
     if images is not None:
         append = True
         if hasattr(images, 'get_positions'):
@@ -182,8 +180,6 @@ def write_dftb_velocities(atoms, filename='velocities.txt'):
                      % (velocity[0] / ASE2au,
                         velocity[1] / ASE2au,
                         velocity[2] / ASE2au))
-
-    return
 
 
 @writer
