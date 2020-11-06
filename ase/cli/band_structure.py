@@ -92,7 +92,7 @@ def atoms2bandstructure(atoms, parser, args):
 
             path_kpts = bandpath(args.path, atoms.cell, args.points).kpts
 
-            icell = atoms.get_reciprocal_cell()
+            icell = atoms.cell.reciprocal()
             eps = monkhorst_pack_interpolate(path_kpts, eps.transpose(1, 0, 2),
                                              icell, bz2ibz, size, offset)
             eps = eps.transpose(1, 0, 2)

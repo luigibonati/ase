@@ -17,7 +17,6 @@ omit =
     ../calculators/gaussian.py
     ../calculators/crystal.py
     ../calculators/demonnano.py
-    ../calculators/exciting.py
     ../calculators/qchem.py
     ../calculators/aims.py
     ../calculators/psi4.py

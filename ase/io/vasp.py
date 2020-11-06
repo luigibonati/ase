@@ -717,7 +717,7 @@ def write_vasp(filename,
             atoms = atoms[0]
 
     # Check lattice vectors are finite
-    if np.any(atoms.get_cell_lengths_and_angles() == 0.):
+    if np.any(atoms.cell.cellpar() == 0.):
         raise RuntimeError(
             'Lattice vectors must be finite and not coincident. '
             'At least one lattice length or angle is zero.')

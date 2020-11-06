@@ -191,7 +191,7 @@ class XtlmuSTEMWriter:
             s = self.comment
         # 2nd line: lattice parameter
         s += "{} {} {} {} {} {}\n".format(
-            *self.atoms.get_cell_lengths_and_angles().tolist())
+            *self.atoms.cell.cellpar().tolist())
         # 3td line: acceleration voltage
         s += "{}\n".format(self.keV)
         # 4th line: number of different atom
