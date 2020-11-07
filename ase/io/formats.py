@@ -599,17 +599,17 @@ def _write(filename, fd, format, io, images, parallel=None, append=False,
 
     if io.acceptsfd:
         open_new = (fd is None)
-        if open_new:
-            mode = 'wb' if io.isbinary else 'w'
-            if append:
-                mode = mode.replace('w', 'a')
-            fd = open_with_compression(filename, mode)
-            # XXX remember to re-enable compressed open
-            # fd = io.open(filename, mode)
         try:
+            if open_new:
+                mode = 'wb' if io.isbinary else 'w'
+                if append:
+                    mode = mode.replace('w', 'a')
+                fd = open_with_compression(filename, mode)
+                # XXX remember to re-enable compressed open
+                # fd = io.open(filename, mode)
             return io.write(fd, images, **kwargs)
         finally:
-            if open_new:
+            if open_new and fd is not None:
                 fd.close()
     else:
         if fd is not None:
