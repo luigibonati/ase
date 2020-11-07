@@ -1,18 +1,16 @@
+import numpy as np
+from math import pi, sqrt, cos
+from ase import data
+from ase.lattice.cubic import FaceCenteredCubic
+
+
+def checkang(a, b, phi):
+    "Check the angle between two vectors."
+    cosphi = np.dot(a,b) / sqrt(np.dot(a,a) * np.dot(b,b))
+    assert np.abs(cosphi - cos(phi)) < 1e-10
+
+
 def test_center():
-    # flake8: noqa
-    "Test that atoms.center() works when adding vacuum ()"
-
-    import numpy as np
-    from math import pi, sqrt, cos
-    from ase import data
-    from ase.lattice.cubic import FaceCenteredCubic
-
-
-    def checkang(a, b, phi):
-        "Check the angle between two vectors."
-        cosphi = np.dot(a,b) / sqrt(np.dot(a,a) * np.dot(b,b))
-        assert np.abs(cosphi - cos(phi)) < 1e-10
-
     symb = "Cu"
     Z = data.atomic_numbers[symb]
     a0 = data.reference_states[Z]['a']
