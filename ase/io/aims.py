@@ -2,11 +2,14 @@ import time
 import warnings
 
 from ase.units import Ang, fs
+from ase.utils import reader, writer
+
 
 v_unit = Ang / (1000.0 * fs)
 
 
-def read_aims(filename, apply_constraints=True):
+@reader
+def read_aims(fd, apply_constraints=True):
     """Import FHI-aims geometry type files.
 
     Reads unitcell, atom positions and constraints from
@@ -16,15 +19,11 @@ def read_aims(filename, apply_constraints=True):
     include that information in atoms.info["symmetry_block"]
     """
 
-    with open(filename, "r") as fd:
-        lines = fd.readlines()
-
-    atoms = parse_geometry_lines(lines, filename, apply_constraints=True)
-
-    return atoms
+    lines = fd.readlines()
+    return parse_geometry_lines(lines, apply_constraints=True)
 
 
-def parse_geometry_lines(lines, filename, apply_constraints=True):
+def parse_geometry_lines(lines, apply_constraints=True):
 
     from ase import Atoms
     from ase.constraints import (
@@ -188,8 +187,9 @@ def parse_geometry_lines(lines, filename, apply_constraints=True):
     return atoms
 
 
+@writer
 def write_aims(
-    filename,
+    fd,
     atoms,
     scaled=False,
     geo_constrain=False,
@@ -204,8 +204,8 @@ def write_aims(
     supported at the moment).
 
     Args:
-        filename: str
-            Name of file to output structure to
+        fd: file object
+            File to output structure to
         atoms: ase.atoms.Atoms
             structure to output to the file
         scaled: bool
@@ -227,15 +227,6 @@ def write_aims(
 
     import numpy as np
 
-    if isinstance(atoms, (list, tuple)):
-        if len(atoms) > 1:
-            raise RuntimeError(
-                "Don't know how to save more than "
-                "one image to FHI-aims input"
-            )
-        else:
-            atoms = atoms[0]
-
     if geo_constrain:
         if not scaled:
             warnings.warn(
@@ -243,9 +234,9 @@ def write_aims(
             )
             scaled = True
 
-    fd = open(filename, "w")
     fd.write("#=======================================================\n")
-    fd.write("# FHI-aims file: " + filename + "\n")
+    if hasattr(fd, 'name'):
+        fd.write("# FHI-aims file: " + fd.name + "\n")
     fd.write("# Created using the Atomic Simulation Environment (ASE)\n")
     fd.write("# " + time.asctime() + "\n")
 
@@ -431,17 +422,6 @@ def get_sym_block(atoms):
     return sym_block
 
 
-# except KeyError:
-#     continue
-
-
-def read_energy(filename):
-    for line in open(filename, "r"):
-        if line.startswith("  | Total energy corrected"):
-            E = float(line.split()[-2])
-    return E
-
-
 def _parse_atoms(fd, n_atoms, molecular_dynamics=False):
     """parse structure information from aims output to Atoms object"""
     from ase import Atoms, Atom
@@ -464,7 +444,8 @@ def _parse_atoms(fd, n_atoms, molecular_dynamics=False):
     return atoms
 
 
-def read_aims_output(filename, index=-1):
+@reader
+def read_aims_output(fd, index=-1):
     """Import FHI-aims output files with all data available, i.e.
     relaxations, MD information, force information etc etc etc."""
     from ase import Atoms, Atom
@@ -472,7 +453,6 @@ def read_aims_output(filename, index=-1):
     from ase.constraints import FixAtoms, FixCartesian
 
     molecular_dynamics = False
-    fd = open(filename, "r")
     cell = []
     images = []
     fix = []

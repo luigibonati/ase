@@ -282,7 +282,7 @@ F('cif', 'CIF-file', '+B', ext='cif')
 F('cmdft', 'CMDFT-file', '1F', glob='*I_info')
 F('cp2k-dcd', 'CP2K DCD file', '+B',
   module='cp2k', ext='dcd')
-F('crystal', 'Crystal fort.34 format', '1S',
+F('crystal', 'Crystal fort.34 format', '1F',
   ext=['f34', '34'], glob=['f34', '34'])
 F('cube', 'CUBE file', '1F', ext='cube')
 F('dacapo-text', 'Dacapo text output', '1F',
@@ -309,7 +309,7 @@ F('espresso-in', 'Quantum espresso in file', '1F',
   module='espresso', ext='pwi', magic=[b'*\n&system', b'*\n&SYSTEM'])
 F('espresso-out', 'Quantum espresso out file', '+F',
   module='espresso', ext=['out', 'pwo'], magic=b'*Program PWSCF')
-F('exciting', 'exciting input', '1S', glob='input.xml')
+F('exciting', 'exciting input', '1F', glob='input.xml')
 F('extxyz', 'Extended XYZ file', '+F', ext='xyz')
 F('findsym', 'FINDSYM-format', '+F')
 F('gamess-us-out', 'GAMESS-US output file', '1F',
@@ -334,7 +334,7 @@ F('gpaw-out', 'GPAW text output', '+F',
 F('gpumd', 'GPUMD input file', '1F', glob='xyz.in')
 F('gpw', 'GPAW restart-file', '1S',
   magic=[b'- of UlmGPAW', b'AFFormatGPAW'])
-F('gromacs', 'Gromacs coordinates', '1S',
+F('gromacs', 'Gromacs coordinates', '1F',
   ext='gro')
 F('gromos', 'Gromos96 geometry file', '1F', ext='g96')
 F('html', 'X3DOM HTML', '1F', module='x3d')
