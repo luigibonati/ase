@@ -4,15 +4,13 @@ from pytest import importorskip, mark
 
 
 @mark.calculator_lite
-def test_relax():
+def test_relax(KIM):
     """
     Test that a static relaxation that requires multiple neighbor list
     rebuilds can be carried out successfully.  This is verified by relaxing
     an icosahedral cluster of atoms and checking that the relaxed energy
     matches a known precomputed value for an example model.
     """
-    importorskip('kimpy')
-    from ase.calculators.kim import KIM
     from ase.optimize import BFGS
 
     energy_ref = -0.56  # eV
