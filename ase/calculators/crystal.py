@@ -100,8 +100,8 @@ class CRYSTAL(FileIOCalculator):
         p = self.parameters
         if p.basis == 'custom':
             outfile.write('END \n')
-            basisfile = open(os.path.join(self.directory, 'basis'))
-            basis_ = basisfile.readlines()
+            with open(os.path.join(self.directory, 'basis')) as basisfile:
+                basis_ = basisfile.readlines()
             for line in basis_:
                 outfile.write(line)
             outfile.write('99 0 \n')
