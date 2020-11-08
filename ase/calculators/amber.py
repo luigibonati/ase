@@ -233,7 +233,8 @@ class Amber(FileIOCalculator):
 
     def read_energy(self, filename='mden'):
         """ read total energy from amber file """
-        lines = open(filename, 'r').readlines()
+        with open(filename, 'r') as fd:
+            lines = fd.readlines()
         self.results['energy'] = \
             float(lines[16].split()[2]) * units.kcal / units.mol
 
@@ -251,23 +252,18 @@ class Amber(FileIOCalculator):
             Using amber's parmed program to change charges.
         """
         qm_list = list(selection)
-        fout = open(parmed_filename, 'w')
-        fout.write('# update the following QM charges \n')
-        for i, charge in zip(qm_list, charges):
-            fout.write('change charge @' + str(i + 1) + ' ' +
-                       str(charge) + ' \n')
-        fout.write('# Output the topology file \n')
-        fout.write('outparm ' + self.topologyfile + ' \n')
-        fout.close()
+        with open(parmed_filename, 'w') as fout:
+            fout.write('# update the following QM charges \n')
+            for i, charge in zip(qm_list, charges):
+                fout.write('change charge @' + str(i + 1) + ' ' +
+                           str(charge) + ' \n')
+            fout.write('# Output the topology file \n')
+            fout.write('outparm ' + self.topologyfile + ' \n')
         parmed_command = ('parmed -O -i ' + parmed_filename +
                           ' -p ' + self.topologyfile +
                           ' > ' + self.topologyfile + '.log 2>&1')
-        olddir = os.getcwd()
-        try:
-            os.chdir(self.directory)
-            errorcode = subprocess.call(parmed_command, shell=True)
-        finally:
-            os.chdir(olddir)
+        errorcode = subprocess.call(parmed_command, shell=True,
+                                    cwd=self.directory)
         if errorcode:
             raise RuntimeError('%s returned an error: %d' %
                                (self.label, errorcode))
