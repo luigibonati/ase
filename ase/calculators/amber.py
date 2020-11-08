@@ -6,7 +6,6 @@ Before usage, input files (infile, topologyfile, incoordfile)
 
 """
 
-import os
 import subprocess
 import numpy as np
 
@@ -241,10 +240,12 @@ class Amber(FileIOCalculator):
     def read_forces(self, filename='mdfrc'):
         """ read forces from amber file """
         f = netcdf.netcdf_file(filename, 'r')
-        forces = f.variables['forces']
-        self.results['forces'] = forces[-1, :, :] \
-            / units.Ang * units.kcal / units.mol
-        f.close()
+        try:
+            forces = f.variables['forces']
+            self.results['forces'] = forces[-1, :, :] \
+                / units.Ang * units.kcal / units.mol
+        finally:
+            f.close()
 
     def set_charges(self, selection, charges, parmed_filename=None):
         """ Modify amber topology charges to contain the updated
@@ -269,7 +270,8 @@ class Amber(FileIOCalculator):
                                (self.label, errorcode))
 
     def get_virtual_charges(self, atoms):
-        topology = open(self.topologyfile, 'r').readlines()
+        with open(self.topologyfile, 'r') as fd:
+            topology = fd.readlines()
         for n, line in enumerate(topology):
             if '%FLAG CHARGE' in line:
                 chargestart = n + 2
