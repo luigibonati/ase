@@ -339,7 +339,10 @@ class FLEUR:
         the FLEUR calculator object.
         """
 
-        fh = open('inp_simple', 'w')
+        with open('inp_simple', 'w') as fh:
+            self._write_inp(atoms, fh)
+
+    def _write_inp(self, atoms, fh):
         fh.write('FLEUR input generated with ASE\n')
         fh.write('\n')
 
@@ -384,7 +387,6 @@ class FLEUR:
         # avoid "STOP read_record: ERROR reading input"
         fh.write('&end /')
 
-        fh.close()
         try:
             inpgen = os.environ['FLEUR_INPGEN']
         except KeyError:
@@ -396,10 +398,8 @@ class FLEUR:
         os.system('%s -old < inp_simple' % inpgen)
 
         # read the whole inp-file for possible modifications
-        fh = open('inp', 'r')
-        lines = fh.readlines()
-        fh.close()
-
+        with open('inp', 'r') as fh:
+            lines = fh.readlines()
 
         window_ln = -1
         for ln, line in enumerate(lines):
@@ -490,15 +490,15 @@ class FLEUR:
                             lines[ln] = lines[ln].replace(rorig, ("%.6f" % r))
 
         # write everything back to inp
-        fh = open('inp', 'w')
-        for line in lines:
-            fh.write(line)
-        fh.close()
+        with open('inp', 'w') as fh:
+            for line in lines:
+                fh.write(line)
 
     def read(self):
         """Read results from FLEUR's text-output file `out`."""
 
-        lines = open('out', 'r').readlines()
+        with open('out', 'r') as fd:
+            lines = fd.readlines()
 
         # total energies
         self.total_energies = []
@@ -528,16 +528,16 @@ class FLEUR:
         # TODO check charge convergence
 
         # reduce the itmax in inp
-        lines = open('inp', 'r').readlines()
+        with open('inp', 'r') as fh:
+            lines = fh.readlines()
         pat = re.compile('(itmax=)([ 0-9]*)')
-        fh = open('inp', 'w')
-        for line in lines:
-            m = pat.match(line)
-            if m:
-                itmax = int(m.group(2))
-                self.niter += itmax
-                itmax_new = itmax // 2
-                itmax = max(self.itmax_step, itmax_new)
-                line = 'itmax=%2d' % itmax + line[8:]
-            fh.write(line)
-        fh.close()
+        with open('inp', 'w') as fh:
+            for line in lines:
+                m = pat.match(line)
+                if m:
+                    itmax = int(m.group(2))
+                    self.niter += itmax
+                    itmax_new = itmax // 2
+                    itmax = max(self.itmax_step, itmax_new)
+                    line = 'itmax=%2d' % itmax + line[8:]
+                fh.write(line)
