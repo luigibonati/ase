@@ -118,14 +118,12 @@ class ACE(FileIOCalculator):
 
         '''
         FileIOCalculator.write_input(self, atoms, properties, system_changes)
-        inputfile = open(self.label + '.inp', 'w')
+        with open(self.label + '.inp', 'w') as inputfile:
+            xyz_name = "{}.xyz".format(self.label)
+            atoms.write(xyz_name)
 
-        xyz_name = "{}.xyz".format(self.label)
-        atoms.write(xyz_name)
-
-        run_parameters = self.prepare_input(xyz_name, properties)
-        self.write_acemolecule_input(inputfile, run_parameters)
-        inputfile.close()
+            run_parameters = self.prepare_input(xyz_name, properties)
+            self.write_acemolecule_input(inputfile, run_parameters)
 
     def prepare_input(self, geometry_filename, properties):
         '''Initialize parameters dictionary based on geometry filename and calculated properties.
