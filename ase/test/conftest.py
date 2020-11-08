@@ -140,6 +140,23 @@ def use_tmp_workdir(tmp_path):
     print(f'Testpath: {path}')
 
 
+@pytest.fixture
+def KIM():
+    pytest.importorskip('kimpy')
+    from ase.calculators.kim import KIM as _KIM
+    from ase.calculators.kim.exceptions import KIMModelNotFound
+
+    def KIM(*args, **kwargs):
+        try:
+            return _KIM(*args, **kwargs)
+        except KIMModelNotFound:
+            pytest.skip('KIM tests require the example KIM models.  '
+                        'These models are available if the kimpy package is '
+                        'built from source.')
+
+    return KIM
+
+
 @pytest.fixture(scope='session')
 def tkinter():
     import tkinter
