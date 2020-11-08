@@ -149,8 +149,11 @@ def KIM():
     def KIM(*args, **kwargs):
         try:
             return _KIM(*args, **kwargs)
-        except KIMModelNotFound as err:
-            pytest.skip(f'Need to install standard KIM models: {err}')
+        except KIMModelNotFound:
+            pytest.skip('KIM tests require the example KIM models.  '
+                        'These models are available if the kimpy package is '
+                        'built from source.')
+
     return KIM
 
 
