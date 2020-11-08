@@ -1,7 +1,7 @@
 import numpy as np
 from ase import Atoms
 
-from pytest import importorskip, mark
+from pytest import mark
 
 
 @mark.calculator_lite

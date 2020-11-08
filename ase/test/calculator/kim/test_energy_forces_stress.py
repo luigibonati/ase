@@ -1,5 +1,5 @@
 import numpy as np
-from pytest import importorskip, mark
+from pytest import mark
 from ase.lattice.cubic import FaceCenteredCubic
 
 

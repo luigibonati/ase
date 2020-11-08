@@ -1,6 +1,6 @@
 import numpy as np
 from ase.cluster import Icosahedron
-from pytest import importorskip, mark
+from pytest import mark
 
 
 @mark.calculator_lite

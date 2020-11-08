@@ -1,7 +1,6 @@
 import numpy as np
+from pytest import mark
 from ase import Atoms
-from pytest import importorskip, mark
-
 
 
 def squeeze_dimer(atoms, d):
@@ -13,7 +12,7 @@ def squeeze_dimer(atoms, d):
 
 
 def set_positions_to_orig(atoms, box_len, dimer_separation):
-    pos0 = 0.5 * np.full(0.5 * box_len, 3)
+    pos0 = 0.5 * np.full(3, 0.5 * box_len)
     displacement = np.array([0.5 * dimer_separation, 0, 0])
 
     pos1 = pos0 - displacement
