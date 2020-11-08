@@ -108,15 +108,24 @@ class MolecularDynamics(Dynamics):
 
         # Trajectory is attached here instead of in Dynamics.__init__
         # to respect the loginterval argument.
-        if trajectory is not None:
-            if isinstance(trajectory, str):
-                mode = "a" if append_trajectory else "w"
-                trajectory = Trajectory(trajectory, mode=mode, atoms=atoms)
-            self.attach(trajectory, interval=loginterval)
+        try:
+            if trajectory is not None:
+                if isinstance(trajectory, str):
+                    mode = "a" if append_trajectory else "w"
+                    trajectory = self.ensureclose(
+                        Trajectory(trajectory, mode=mode, atoms=atoms)
+                    )
+                self.attach(trajectory, interval=loginterval)
 
-        if logfile:
-            self.attach(MDLogger(dyn=self, atoms=atoms, logfile=logfile),
-                        interval=loginterval)
+            if logfile:
+                logger = self.ensureclose(
+                    MDLogger(dyn=self, atoms=atoms, logfile=logfile))
+                self.attach(logger, interval)
+
+        except BaseException:
+            self._closefiles()
+            raise
+
 
     def todict(self):
         return {'type': 'molecular-dynamics',

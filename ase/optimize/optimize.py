@@ -56,8 +56,7 @@ class Dynamics:
                 if logfile == "-":
                     logfile = sys.stdout
                 else:
-                    logfile = open(logfile, "a")
-                    self._files_to_be_closed.append(logfile)
+                    logfile = self.ensureclose(open(logfile, "a"))
             self.logfile = logfile
 
             self.observers = []
@@ -68,14 +67,17 @@ class Dynamics:
             if trajectory is not None:
                 if isinstance(trajectory, str):
                     mode = "a" if append_trajectory else "w"
-                    trajectory = Trajectory(
+                    trajectory = self.ensureclose(Trajectory(
                         trajectory, mode=mode, atoms=atoms, master=master
-                    )
-                    self._files_to_be_closed.append(trajectory)
+                    ))
                 self.attach(trajectory)
         except BaseException:
             self._closefiles()
             raise
+
+    def ensureclose(self, closeable):
+        self._files_to_be_closed.append(closeable)
+        return closeable
 
     def __enter__(self):
         return self
