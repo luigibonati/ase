@@ -22,8 +22,8 @@ def traj(tmp_path_factory):
 
     temp_path = tmp_path_factory.mktemp("data")
     trajectory = temp_path / 'AlAu.traj'
-    qn = QuasiNewton(slab, trajectory=str(trajectory))
-    qn.run(fmax=0.02)
+    with QuasiNewton(slab, trajectory=str(trajectory)) as qn:
+        qn.run(fmax=0.02)
     return str(trajectory)
 
 
