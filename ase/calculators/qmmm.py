@@ -724,8 +724,8 @@ class ForceQMMM(Calculator):
             qm_atoms = atoms[self.qm_selection_mask]
             symbol_counts = qm_atoms.symbols.formula.count()
             print("QM atoms types:")
-            for symbol in symbol_counts:
-                print(f"{symbol_counts[symbol]:16d} {symbol}")
+            for symbol, count in symbol_counts.items():
+                print(f"{count:16d} {symbol}")
 
     def get_qm_cluster(self, atoms):
 
