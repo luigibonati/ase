@@ -1,9 +1,10 @@
-def test_dihedralconstraint():
-    from ase.calculators.emt import EMT
-    from ase.constraints import FixInternals
-    from ase.optimize.bfgs import BFGS
-    from ase.build import molecule
+from ase.calculators.emt import EMT
+from ase.constraints import FixInternals
+from ase.optimize.bfgs import BFGS
+from ase.build import molecule
 
+
+def test_dihedralconstraint():
     system = molecule('CH3CH2OH', vacuum=5.0)
     system.rattle(stdev=0.3)
 
@@ -44,10 +45,6 @@ def test_dihedralconstraint():
 
     print(constraint)
 
-    calc = EMT()
-
-    opt = BFGS(system, trajectory='opt.traj', logfile='opt.log')
-
     previous_angle = system.get_angle(*indices2)
     previous_dihedral = system.get_dihedral(*indices)
     previous_bondcombo = get_bondcombo(system, bondcombo_def)
@@ -58,10 +55,11 @@ def test_dihedralconstraint():
     print('(target bondlength %s)', target_bondlength)
     print('linear bondcombination before', previous_bondcombo)
 
-    system.calc = calc
+    system.calc = EMT()
     system.set_constraint(constraint)
     print('-----Optimization-----')
-    opt.run(fmax=0.01)
+    with BFGS(system, trajectory='opt.traj', logfile='opt.log') as opt:
+        opt.run(fmax=0.01)
 
     new_angle = system.get_angle(*indices2)
     new_dihedral = system.get_dihedral(*indices)
