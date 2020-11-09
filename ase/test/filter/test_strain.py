@@ -13,8 +13,6 @@ def test_strain_fcc(asap3):
     cu.calc = asap3.EMT()
     f = StrainFilter(cu, [1, 1, 1, 0, 0, 0])
     opt = MDMin(f, dt=0.01)
-    t = Trajectory('Cu.traj', 'w', cu)
-    opt.attach(t)
     opt.run(0.001)
 
 
@@ -26,7 +24,4 @@ def test_strain_hcp(asap3):
     cu.calc = asap3.EMT()
     f = StrainFilter(cu)
     opt = MDMin(f, dt=0.01)
-    t = Trajectory('Cu.traj', 'w', cu)
-    opt.attach(t)
     opt.run(0.01)
-
