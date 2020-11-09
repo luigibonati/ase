@@ -722,11 +722,10 @@ class ForceQMMM(Calculator):
                 print(f"{n_at:16d} {region_id}")
 
             qm_atoms = atoms[self.qm_selection_mask]
-            qm_atoms_types = np.array(qm_atoms.get_chemical_symbols())
+            symbol_counts = qm_atoms.symbols.formula.count()
             print("QM atoms types:")
-            for qm_atom_type in np.unique(qm_atoms_types):
-                print(f"{np.count_nonzero(qm_atoms_types == qm_atom_type):16d}"
-                      f" {qm_atom_type}")
+            for symbol in symbol_counts:
+                print(f"{symbol_counts[symbol]:16d} {symbol}")
 
     def get_qm_cluster(self, atoms):
 
