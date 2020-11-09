@@ -121,7 +121,7 @@ molecules::
     >>> from ase.constraints import FixLinearTriatomic
     >>> atoms = molecule('CO2')
     >>> dimer = atoms + atoms.copy()
-    >>> c = FixLinearTriatomic(pairs=[(1, 0, 2), (4, 3, 5)])
+    >>> c = FixLinearTriatomic(triples=[(1, 0, 2), (4, 3, 5)])
     >>> dimer.set_constraint(c)
 
 .. note::

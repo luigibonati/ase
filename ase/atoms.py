@@ -1304,6 +1304,19 @@ class Atoms:
         else:
             return com
 
+    def set_center_of_mass(self, com, scaled=False):
+        """Set the center of mass.
+
+        If scaled=True the center of mass is expected in scaled coordinates.
+        Constraints are considered for scaled=False.
+        """
+        old_com = self.get_center_of_mass(scaled=scaled)
+        difference = old_com - com
+        if scaled:
+            self.set_scaled_positions(self.get_scaled_positions() + difference)
+        else:
+            self.set_positions(self.get_positions() + difference)
+
     def get_moments_of_inertia(self, vectors=False):
         """Get the moments of inertia along the principal axes.
 
