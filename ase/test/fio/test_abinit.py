@@ -10,7 +10,7 @@ from ase.io.abinit import read_abinit_out
 from ase.units import Hartree, Bohr
 
 
-def test_abinit_roundtrip():
+def test_abinit_inputfile_roundtrip():
     m1 = bulk('Ti')
     m1.set_initial_magnetic_moments(range(len(m1)))
     write('abinit_save.in', images=m1, format='abinit-in')
@@ -55,6 +55,7 @@ sample_outfile = """\
   sigma(2 2)=  2.4  sigma(3 1)=  3.2
   sigma(3 3)=  2.5  sigma(2 1)=  3.3
 
+END DATASET(S)
 """
 
 

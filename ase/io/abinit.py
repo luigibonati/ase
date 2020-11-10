@@ -398,8 +398,8 @@ def read_abinit_out(fd):
         def parse_energy(line):
             return float(line.split(':')[1].strip())
     else:
-        energy_header = 'Components of total free energy (in Hartree)'
-        total_energy_name = 'Etotal'
+        energy_header = 'Components of total free energy (in Hartree) :'
+        total_energy_name = '>>>>>>>>> Etotal'
 
         def parse_energy(line):
             return float(line.rsplit('=', 2)[1]) * Hartree
