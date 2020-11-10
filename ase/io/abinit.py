@@ -276,8 +276,8 @@ def write_abinit_in(fd, atoms, param=None, species=None):
     fd.write('\n')
 
     fd.write('#Definition of the atoms\n')
-    fd.write('xangst\n')
-    for pos in atoms.positions:
+    fd.write('xcart\n')
+    for pos in atoms.positions / Bohr:
         fd.write('%.14f %.14f %.14f\n' % tuple(pos))
 
     fd.write('chkexit 1 # abinit.exit file in the running '
@@ -341,7 +341,10 @@ def read_abinit_out(fd):
     line = skipto('Version')
     m = re.match(r'\.*?Version\s+(\S+)\s+of ABINIT', line)
     assert m is not None
-    results['version'] = m.group(1)
+    version = m.group(1)
+    results['version'] = version
+
+    use_v9_format = int(version.split('.', 1)[0]) >= 9
 
     shape_vars = {}
 
@@ -388,6 +391,19 @@ def read_abinit_out(fd):
         arr = np.array(arr).astype(float)
         return arr
 
+    if use_v9_format:
+        energy_header = '--- !EnergyTerms'
+        total_energy_name = 'total_energy_eV'
+
+        def parse_energy(line):
+            return float(line.split(':')[1].strip())
+    else:
+        energy_header = 'Components of total free energy (in Hartree) :'
+        total_energy_name = '>>>>>>>>> Etotal'
+
+        def parse_energy(line):
+            return float(line.rsplit('=', 2)[1]) * Hartree
+
     for line in fd:
         if 'cartesian coordinates (angstrom) at end' in line:
             positions = read_array(fd, natoms)
@@ -396,13 +412,19 @@ def read_abinit_out(fd):
         if 'Cartesian components of stress tensor (hartree/bohr^3)' in line:
             results['stress'] = read_stress(fd)
 
-        if 'Components of total free energy (in Hartree)' in line:
+        if line.strip() == energy_header:
+            # Header not to be confused with EnergyTermsDC,
+            # therefore we don't use .startswith()
+            energy = None
             for line in fd:
-                if 'Etotal' in line:
-                    energy = float(line.rsplit('=', 2)[1]) * Hartree
-                    results['energy'] = results['free_energy'] = energy
+                # Which of the listed energies should we include?
+                if total_energy_name in line:
+                    energy = parse_energy(line)
                     break
-                    # Which of the listed energies do we take ??
+            if energy is None:
+                raise RuntimeError('No energy found in output')
+            results['energy'] = results['free_energy'] = energy
+
         if 'END DATASET(S)' in line:
             break
 
