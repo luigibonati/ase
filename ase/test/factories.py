@@ -437,7 +437,7 @@ class Factories:
         'ace', 'aims', 'amber', 'castep', 'crystal', 'demon', 'demonnano',
         'dftd3', 'dmol', 'exciting', 'fleur', 'gamess_us', 'gaussian',
         'gulp', 'hotbit', 'lammpslib', 'mopac', 'onetep', 'orca',
-        'Psi4', 'qchem', 'turbomole', 'vasp', 'vasp2',
+        'qchem', 'turbomole', 'vasp', 'vasp2',
     }
 
     def __init__(self, requested_calculators):

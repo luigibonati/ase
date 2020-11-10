@@ -2,11 +2,13 @@
 
 import os
 from numpy.testing import assert_allclose
+import pytest
 
 from ase.build import molecule
 from ase.calculators.psi4 import Psi4
 
 
+@pytest.mark.calculator_lite
 def test_main():
     atoms = molecule('H2O')
     atoms.rotate(30, 'x')
