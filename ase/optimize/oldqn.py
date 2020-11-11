@@ -11,6 +11,7 @@ from numpy.linalg import eigh
 import time
 import numpy as np
 from ase.parallel import paropen
+from ase.io.jsonio import read_json, write_json
 
 
 def f(lamda, Gbar, b, radius):
@@ -165,8 +166,6 @@ class GoodOldQuasiNewton(Optimizer):
 
         self.t0 = time.time()
 
-    def initialize(self): pass
-
     def write_log(self, text):
         if self.logfile is not None:
             self.logfile.write(text + '\n')
@@ -301,8 +300,6 @@ class GoodOldQuasiNewton(Optimizer):
         pos = self.atoms.get_positions().ravel()
         G = -self.atoms.get_forces().ravel()
         energy = self.atoms.get_potential_energy()
-
-        self.write_iteration(energy, G)
 
         if hasattr(self, 'oldenergy'):
 
@@ -454,5 +451,3 @@ class GoodOldQuasiNewton(Optimizer):
             np.dot(dGbar_actual, dGbar_actual)
         self.write_log('Force prediction factor ' + str(f))
         return f
-
-    def write_iteration(self, energy, G): pass
