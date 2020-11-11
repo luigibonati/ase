@@ -147,7 +147,7 @@ class DFTBFactory:
         return cls(config.executables['dftb'])
 
 
-@factory('dft3d')
+@factory('dftd3')
 class DFTD3Factory:
     def __init__(self, executable):
         self.executable = executable
@@ -156,8 +156,9 @@ class DFTD3Factory:
         from ase.calculators.dftd3 import DFTD3
         return DFTD3(command=self.executable, **kwargs)
 
+    @classmethod
     def fromconfig(cls, config):
-        return cls(config.executable['dftd3']
+        return cls(config.executables['dftd3'])
 
 
 def read_stdout(args, createfile=None):
