@@ -1,6 +1,6 @@
+import pytest
 import numpy as np
 
-from ase.calculators.dftd3 import DFTD3
 from ase.data.s22 import create_s22_system
 from ase.build import bulk
 
@@ -20,12 +20,14 @@ def array_close(val, reference, releps=releps, abseps=abseps):
         close(vali, refflat[i], releps, abseps)
 
 
-def test_main():
+@pytest.mark.calculator_lite
+@pytest.mark.calculator('dftd3')
+def test_main(factory):
     # do all non-periodic calculations with Adenine-Thymine complex
     system = create_s22_system('Adenine-thymine_complex_stack')
 
     # Default is D3(zero)
-    system.calc = DFTD3()
+    system.calc = factory.calc()
     close(system.get_potential_energy(), -0.6681154466652238)
 
     # Only check forces once, for the default settings.
