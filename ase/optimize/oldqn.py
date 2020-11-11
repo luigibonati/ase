@@ -7,7 +7,6 @@ Quasi-Newton algorithm
 
 from ase.optimize.optimize import Optimizer
 from numpy.linalg import eigh
-__docformat__ = 'reStructuredText'
 
 import time
 import numpy as np
@@ -22,8 +21,6 @@ def f(lamda, Gbar, b, radius):
 
 def scale_radius_energy(f, r):
     scale = 1.0
-#       if(r<=0.01):
-#               return scale
 
     if f < 0.01:
         scale *= 1.4
@@ -46,8 +43,6 @@ def scale_radius_energy(f, r):
 
 def scale_radius_force(f, r):
     scale = 1.0
-#       if(r<=0.01):
-#               return scale
     g = abs(f - 1)
     if g < 0.01:
         scale *= 1.4
@@ -117,12 +112,12 @@ class GoodOldQuasiNewton(Optimizer):
             The Atoms object to relax.
 
         restart: string
-            Pickle file used to store hessian matrix. If set, file with
+            JSON file used to store hessian matrix. If set, file with
             such a name will be searched and hessian matrix stored will
             be used, if the file exists.
 
         trajectory: string
-            Pickle file used to store trajectory of atomic movement.
+            File used to store trajectory of atomic movement.
 
         maxstep: float
             Used to set the maximum distance an atom can move per
@@ -198,27 +193,23 @@ class GoodOldQuasiNewton(Optimizer):
         self.set_hessian(hessian)
 
     def read_hessian(self, filename):
-        import pickle
-        f = open(filename, 'rb')
-        self.set_hessian(pickle.load(f))
-        f.close()
+        with open(filename, 'r') as fd:
+            self.set_hessian(read_json(fd))
 
     def write_hessian(self, filename):
-        import pickle
-        f = paropen(filename, 'wb')
-        pickle.dump(self.get_hessian(), f)
-        f.close()
+        with paropen(filename, 'w') as fd:
+            write_json(self.get_hessian(), fd)
 
     def write_to_restartfile(self):
-        import pickle
-        f = paropen(self.restartfile, 'wb')
-        pickle.dump((self.oldpos,
-                     self.oldG,
-                     self.oldenergy,
-                     self.radius,
-                     self.hessian,
-                     self.energy_estimate), f)
-        f.close()
+        data = (self.oldpos,
+                self.oldG,
+                self.oldenergy,
+                self.radius,
+                self.hessian,
+                self.energy_estimate)
+
+        with paropen(self.restartfile, 'w') as fd:
+            write_json(fd, data)
 
     def update_hessian(self, pos, G):
         import copy
@@ -402,7 +393,6 @@ class GoodOldQuasiNewton(Optimizer):
         lamdas = np.zeros((len(b)))
 
         D = -Gbar / b
-        #absD = np.sqrt(np.sum(D**2))
         absD = np.sqrt(np.dot(D, D))
 
         eps = 1e-12
@@ -425,12 +415,10 @@ class GoodOldQuasiNewton(Optimizer):
             self.write_log("Corrected Newton step: abs(D) = %2.2f " % (absD))
 
         if not self.transitionstate:
-            # upper limit
             upperlimit = min(0, b[0]) - eps
             lamda = find_lamda(upperlimit, Gbar, b, self.radius)
             lamdas += lamda
         else:
-            # upperlimit
             upperlimit = min(-b[0], b[1], 0) - eps
             lamda = find_lamda(upperlimit, Gbar, b, self.radius)
             lamdas += lamda
