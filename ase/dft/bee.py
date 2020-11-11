@@ -1,11 +1,10 @@
 import os
-import pickle
 
 import numpy as np
 
 from ase.atoms import Atoms
 from ase.parallel import world
-from ase.utils import pickleload
+from ase.io.jsonio import read_json, write_json
 
 
 def ensemble(energy, contributions, xc, verbose=False):
@@ -126,15 +125,15 @@ class BEEFEnsemble:
             if os.path.isfile(fname):
                 os.rename(fname, fname + '.old')
             obj = [self.e, self.de, self.contribs, self.seed, self.xc]
-            with open(fname, 'wb') as f:
-                pickle.dump(obj, f, protocol=2)
+            with open(fname, 'w') as fd:
+                write_json(fd, obj)
 
 
 def readbee(fname, all=False):
     if not fname.endswith('.bee'):
         fname += '.bee'
-    with open(fname, 'rb') as f:
-        e, de, contribs, seed, xc = pickleload(f)
+    with open(fname, 'r') as fd:
+        e, de, contribs, seed, xc = read_json(fd)
     if all:
         return e, de, contribs, seed, xc
     else:
