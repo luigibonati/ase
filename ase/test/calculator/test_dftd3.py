@@ -8,6 +8,10 @@ releps = 1e-6
 abseps = 1e-8
 
 
+pytestmark = [pytest.mark.calculator('dftd3'),
+              pytest.mark.calculator_lite]
+
+
 def close(val, reference, releps=releps, abseps=abseps):
     print(val, reference)
     assert np.abs(val - reference) < max(np.abs(releps * reference), abseps)
@@ -20,8 +24,6 @@ def array_close(val, reference, releps=releps, abseps=abseps):
         close(vali, refflat[i], releps, abseps)
 
 
-@pytest.mark.calculator_lite
-@pytest.mark.calculator('dftd3')
 def test_main(factory):
     # do all non-periodic calculations with Adenine-Thymine complex
     system = create_s22_system('Adenine-thymine_complex_stack')
@@ -98,21 +100,24 @@ def test_main(factory):
     system.calc = factory.calc(xc='revpbe')
     close(system.get_potential_energy(), -1.5274869363442936)
 
-    # Custom damping parameters
+
+def test_custom_damping(factory):
     system.calc = factory.calc(s6=1.1, sr6=1.1, s8=0.6, sr8=0.9, alpha6=13.0)
     close(system.get_potential_energy(), -1.082846357973487)
 
-    # A couple of combinations, but not comprehensive
 
-    # D3(BJ, ABC)
+def test_d3_bj_abc(factory):
+    # A couple of combinations, but not comprehensive
     system.calc = factory.calc(damping='bj', abc=True)
     close(system.get_potential_energy(), -1.1959417763402416)
 
-    # D3(zerom) with B3LYP parameters
+
+def test_d3_zerom_b3lyp(factory):
     system.calc = factory.calc(damping='zerom', xc='b3-lyp')
     close(system.get_potential_energy(), -1.3369234231047677)
 
-    # use diamond for bulk system
+
+def test_diamond_stress(factory):
     system = bulk('C')
 
     system.calc = factory.calc()
