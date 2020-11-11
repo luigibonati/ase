@@ -1,11 +1,11 @@
 """Structure optimization. """
 
 import sys
-import pickle
 import time
 from math import sqrt
 from os.path import isfile
 
+from ase.io.jsonio import read_json, write_json
 from ase.calculators.calculator import PropertyNotImplementedError
 from ase.parallel import world, barrier
 from ase.io.trajectory import Trajectory
@@ -312,12 +312,12 @@ class Optimizer(Dynamics):
 
     def dump(self, data):
         if world.rank == 0 and self.restart is not None:
-            with open(self.restart, "wb") as fd:
-                pickle.dump(data, fd, protocol=2)
+            with open(self.restart, "w") as fd:
+                write_json(fd, data)
 
     def load(self):
         with open(self.restart, "rb") as fd:
-            return pickle.load(fd)
+            return read_json(fd)
 
     def set_force_consistent(self):
         """Automatically sets force_consistent to True if force_consistent
