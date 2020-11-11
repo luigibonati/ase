@@ -22,7 +22,7 @@ class PubchemData:
 
     def get_atoms(self):
         return self.atoms
-    
+
     def get_pubchem_data(self):
         return self.data
 
@@ -226,8 +226,7 @@ def available_conformer_search(search, field, mock_test=False):
     return conformer_ids
 
 
-def pubchem_search(name=None, cid=None, smiles=None, conformer=None,
-                   silent=False, mock_test=False):
+def pubchem_search(*args, mock_test=False, **kwargs):
     """
     Search PubChem for the field and search input on the argument passed in
     returning a PubchemData object. Note that only one argument may be passed
@@ -249,15 +248,14 @@ def pubchem_search(name=None, cid=None, smiles=None, conformer=None,
             requested entry
     """
 
-    search, field = analyze_input(name, cid, smiles, conformer, silent)
+    search, field = analyze_input(*args, **kwargs)
     raw_pubchem = search_pubchem_raw(search, field, mock_test=mock_test)
     atoms, data = parse_pubchem_raw(raw_pubchem)
     result = PubchemData(atoms, data)
     return result
 
 
-def pubchem_conformer_search(name=None, cid=None, smiles=None, conformer=None,
-                             silent=False, mock_test=False):
+def pubchem_conformer_search(*args, mock_test=False, **kwargs):
     """
     Search PubChem for all the conformers of a given compound.
     Note that only one argument may be passed in at a time.
@@ -271,7 +269,7 @@ def pubchem_conformer_search(name=None, cid=None, smiles=None, conformer=None,
             for your search
     """
 
-    search, field = analyze_input(name, cid, smiles, conformer, silent)
+    search, field = analyze_input(*args, **kwargs)
 
     conformer_ids = available_conformer_search(search, field,
                                                mock_test=mock_test)
@@ -283,8 +281,7 @@ def pubchem_conformer_search(name=None, cid=None, smiles=None, conformer=None,
     return conformers
 
 
-def pubchem_atoms_search(name=None, cid=None, smiles=None, conformer=None,
-                         silent=False, mock_test=False):
+def pubchem_atoms_search(*args, **kwargs):
     """
     Search PubChem for the field and search input on the argument passed in
     returning an atoms object.Note that only one argument may be passed
@@ -298,14 +295,10 @@ def pubchem_atoms_search(name=None, cid=None, smiles=None, conformer=None,
             an ASE Atoms object containing the information on the
             requested entry
     """
-    return pubchem_search(name=name, cid=cid, smiles=smiles,
-                          conformer=conformer, silent=silent,
-                          mock_test=mock_test).get_atoms()
+    return pubchem_search(*args, **kwargs).get_atoms()
 
 
-def pubchem_atoms_conformer_search(name=None, cid=None, smiles=None,
-                                   conformer=None, silent=False,
-                                   mock_test=False):
+def pubchem_atoms_conformer_search(*args, **kwargs):
     """
     Search PubChem for all the conformers of a given compound.
     Note that only one argument may be passed in at a time.
@@ -318,9 +311,7 @@ def pubchem_atoms_conformer_search(name=None, cid=None, smiles=None,
             a list containing the atoms objects of all the conformers
             for your search
     """
-    conformers = pubchem_conformer_search(name=name, cid=smiles, smiles=smiles,
-                                          conformer=conformer, silent=silent,
-                                          mock_test=mock_test)
+    conformers = pubchem_conformer_search(*args, **kwargs)
     conformers = [conformer.get_atoms() for conformer in conformers]
     return conformers
 
