@@ -23,7 +23,6 @@ omit =
     ../calculators/gamess_us.py
     ../calculators/lammpslib.py
     ../calculators/orca.py
-    ../calculators/dftd3.py
     ../calculators/fleur.py
     ../calculators/amber.py
     ../calculators/turbomole.py
