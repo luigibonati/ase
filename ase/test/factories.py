@@ -147,6 +147,19 @@ class DFTBFactory:
         return cls(config.executables['dftb'])
 
 
+@factory('dft3d')
+class DFTD3Factory:
+    def __init__(self, executable):
+        self.executable = executable
+
+    def calc(self, **kwargs):
+        from ase.calculators.dftd3 import DFTD3
+        return DFTD3(command=self.executable, **kwargs)
+
+    def fromconfig(cls, config):
+        return cls(config.executable['dftd3']
+
+
 def read_stdout(args, createfile=None):
     import tempfile
     from subprocess import Popen, PIPE
