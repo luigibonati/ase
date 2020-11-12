@@ -12,7 +12,7 @@ Contributed by James Kermode <james.kermode@gmail.com>
 from itertools import islice
 import re
 import warnings
-
+from io import StringIO, UnsupportedOperation
 import json
 
 import numpy as np
@@ -25,7 +25,7 @@ from ase.spacegroup.spacegroup import Spacegroup
 from ase.parallel import paropen
 from ase.constraints import FixAtoms, FixCartesian
 from ase.io.formats import index2range
-from io import StringIO, UnsupportedOperation
+from ase.utils import reader
 
 __all__ = ['read_xyz', 'write_xyz', 'iread_xyz']
 
@@ -600,6 +600,7 @@ class ImageIterator:
 iread_xyz = ImageIterator(ixyzchunks)
 
 
+@reader
 def read_xyz(fileobj, index=-1, properties_parser=key_val_str_to_dict):
     r"""
     Read from a file in Extended XYZ format
@@ -713,8 +714,6 @@ def read_xyz(fileobj, index=-1, properties_parser=key_val_str_to_dict):
     <http://www.ovito.org/index.php/component/content/article?id=25>`_
     onwards).
     """  # noqa: E501
-    if isinstance(fileobj, str):
-        fileobj = open(fileobj)
 
     if not isinstance(index, int) and not isinstance(index, slice):
         raise TypeError('Index argument is neither slice nor integer!')
@@ -844,8 +843,10 @@ def output_column_format(atoms, columns, arrays,
     return comment_str, property_ncols, dtype, fmt
 
 
-def write_xyz(fileobj, images, comment='', columns=None, write_info=True,
-              write_results=True, plain=False, vec_cell=False, append=False):
+def write_xyz(fileobj, images, comment='', columns=None,
+              write_info=True,
+              write_results=True, plain=False, vec_cell=False,
+              append=False):
     """
     Write output in extended XYZ format
 
@@ -1007,7 +1008,9 @@ def write_xyz(fileobj, images, comment='', columns=None, write_info=True,
 
         if plain or comment != '':
             # override key/value pairs with user-speficied comment string
-            comm = comment
+            comm = comment.rstrip()
+            if '\n' in comm:
+                raise ValueError('Comment line should not have line breaks.')
 
         # Pack fr_cols into record array
         data = np.zeros(natoms, dtype)

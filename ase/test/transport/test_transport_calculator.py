@@ -4,10 +4,9 @@ import numpy as np
 
 #Aux. function to write data to a text file.
 def write(fname, xs, ys):
-    fd = open(fname, 'w')
-    for x,y in zip(xs, ys):
-        print(x, y, file=fd)
-    fd.close()
+    with open(fname, 'w') as fd:
+        for x,y in zip(xs, ys):
+            print(x, y, file=fd)
 
 
 def test_transport_calculator():

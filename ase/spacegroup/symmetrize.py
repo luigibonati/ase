@@ -1,10 +1,13 @@
 """
 Provides FixSymmetry class to preserve spacegroup symmetry during optimisation
 """
+import warnings
 import numpy as np
 
 from ase.constraints import (FixConstraint, voigt_6_to_full_3x3_stress,
                              full_3x3_to_voigt_6_stress)
+from ase.utils import atoms_to_spglib_cell
+
 
 __all__ = ['refine_symmetry', 'check_symmetry', 'FixSymmetry']
 
@@ -32,12 +35,7 @@ def refine_symmetry(atoms, symprec=0.01, verbose=False):
     spglib dataset
 
     """
-    # check if we have access to get_spacegroup() from spglib
-    # https://atztogo.github.io/spglib/
-    try:
-        import spglib  # For version 1.9 or later
-    except ImportError:
-        from pyspglib import spglib  # For versions 1.8.x or before
+    import spglib
 
     # test orig config with desired tol
     dataset = check_symmetry(atoms, symprec, verbose=verbose)
@@ -51,7 +49,7 @@ def refine_symmetry(atoms, symprec=0.01, verbose=False):
 
     # get new dataset and primitive cell
     dataset = check_symmetry(atoms, symprec=symprec, verbose=verbose)
-    res = spglib.find_primitive(atoms, symprec=symprec)
+    res = spglib.find_primitive(atoms_to_spglib_cell(atoms), symprec=symprec)
     prim_cell, prim_scaled_pos, prim_types = res
 
     # calculate offset between standard cell and actual cell
@@ -91,13 +89,9 @@ def check_symmetry(atoms, symprec=1.0e-6, verbose=False):
 
     Prints a summary and returns result of `spglib.get_symmetry_dataset()`
     """
-    # check if we have access to get_spacegroup from spglib
-    # https://atztogo.github.io/spglib/
-    try:
-        import spglib  # For version 1.9 or later
-    except ImportError:
-        from pyspglib import spglib  # For versions 1.8.x or before
-    dataset = spglib.get_symmetry_dataset(atoms, symprec=symprec)
+    import spglib
+    dataset = spglib.get_symmetry_dataset(atoms_to_spglib_cell(atoms),
+                                          symprec=symprec)
     if verbose:
         print_symmetry(symprec, dataset)
     return dataset
@@ -122,14 +116,10 @@ def prep_symmetry(atoms, symprec=1.0e-6, verbose=False):
 
     Returns a tuple `(rotations, translations, symm_map)`
     """
-    # check if we have access to get_spacegroup from spglib
-    # https://atztogo.github.io/spglib/
-    try:
-        import spglib  # For version 1.9 or later
-    except ImportError:
-        from pyspglib import spglib  # For versions 1.8.x or before
+    import spglib
 
-    dataset = spglib.get_symmetry_dataset(atoms, symprec=symprec)
+    dataset = spglib.get_symmetry_dataset(atoms_to_spglib_cell(atoms),
+                                          symprec=symprec)
     if verbose:
         print_symmetry(symprec, dataset)
     rotations = dataset['rotations'].copy()
@@ -153,7 +143,7 @@ def symmetrize_rank1(lattice, inv_lattice, forces, rot, trans, symm_map):
     Return symmetrized forces
 
     lattice vectors expected as row vectors (same as ASE get_cell() convention),
-    inv_lattice is its matrix inverse (get_reciprocal_cell().T)
+    inv_lattice is its matrix inverse (reciprocal().T)
     """
     scaled_symmetrized_forces_T = np.zeros(forces.T.shape)
 
@@ -172,7 +162,7 @@ def symmetrize_rank2(lattice, lattice_inv, stress_3_3, rot):
     Return symmetrized stress
 
     lattice vectors expected as row vectors (same as ASE get_cell() convention),
-    inv_lattice is its matrix inverse (get_reciprocal_cell().T)
+    inv_lattice is its matrix inverse (reciprocal().T)
     """
     scaled_stress = np.dot(np.dot(lattice, stress_3_3), lattice.T)
 
@@ -209,11 +199,25 @@ class FixSymmetry(FixConstraint):
         # dF = stress.F^-T quantity that should be symmetrized is therefore dF .
         # F^T assume prev F = I, so just symmetrize dF
         cur_cell = atoms.get_cell()
-        cur_cell_inv = atoms.get_reciprocal_cell().T
+        cur_cell_inv = atoms.cell.reciprocal().T
 
         # F defined such that cell = cur_cell . F^T
         # assume prev F = I, so dF = F - I
         delta_deform_grad = np.dot(cur_cell_inv, cell).T - np.eye(3)
+
+        # symmetrization doesn't work properly with large steps, since
+        # it depends on current cell, and cell is being changed by deformation
+        # gradient
+        max_delta_deform_grad = np.max(np.abs(delta_deform_grad))
+        if max_delta_deform_grad > 0.25:
+            raise RuntimeError('FixSymmetry adjust_cell does not work properly'
+                               ' with large deformation gradient step {} > 0.25'
+                               .format(max_delta_deform_grad))
+        elif max_delta_deform_grad > 0.15:
+            warnings.warn('FixSymmetry adjust_cell may be ill behaved with'
+                          ' large deformation gradient step {}'
+                          .format(max_delta_deform_grad))
+
         symmetrized_delta_deform_grad = symmetrize_rank2(cur_cell, cur_cell_inv,
                                                          delta_deform_grad,
                                                          self.rotations)
@@ -226,7 +230,7 @@ class FixSymmetry(FixConstraint):
         # symmetrize changes in position as rank 1 tensors
         step = new - atoms.positions
         symmetrized_step = symmetrize_rank1(atoms.get_cell(),
-                                            atoms.get_reciprocal_cell().T, step,
+                                            atoms.cell.reciprocal().T, step,
                                             self.rotations, self.translations,
                                             self.symm_map)
         new[:] = atoms.positions + symmetrized_step
@@ -235,7 +239,7 @@ class FixSymmetry(FixConstraint):
         # symmetrize forces as rank 1 tensors
         # print('adjusting forces')
         forces[:] = symmetrize_rank1(atoms.get_cell(),
-                                     atoms.get_reciprocal_cell().T, forces,
+                                     atoms.cell.reciprocal().T, forces,
                                      self.rotations, self.translations,
                                      self.symm_map)
 
@@ -243,7 +247,7 @@ class FixSymmetry(FixConstraint):
         # symmetrize stress as rank 2 tensor
         raw_stress = voigt_6_to_full_3x3_stress(stress)
         symmetrized_stress = symmetrize_rank2(atoms.get_cell(),
-                                              atoms.get_reciprocal_cell().T,
+                                              atoms.cell.reciprocal().T,
                                               raw_stress, self.rotations)
         stress[:] = full_3x3_to_voigt_6_stress(symmetrized_stress)
 

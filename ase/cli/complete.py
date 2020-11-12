@@ -55,7 +55,8 @@ commands = {
     'diff':
         ['-r', '--rank-order', '-c', '--calculator-outputs',
          '--max-lines', '-t', '--template', '--template-help',
-         '-s', '--summary-functions', '--log-file', '--as-csv'],
+         '-s', '--summary-functions', '--log-file', '--as-csv',
+         '--precision'],
     'dimensionality':
         ['--display-all', '--no-merge'],
     'eos':

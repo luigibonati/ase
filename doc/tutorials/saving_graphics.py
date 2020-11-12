@@ -5,6 +5,8 @@ import numpy as np
 
 from ase import Atoms
 from ase.io import write
+from ase.utils import hsv
+
 
 atoms = Atoms('Ag', cell=(2.7, 2.7, 2.7), pbc=True) * (18, 8, 8)
 
@@ -46,7 +48,6 @@ povray_settings = {  # For povray files only
 }
 
 # Make flat png file
-#from ase.io import write
 #write('flat.png', atoms, **kwargs)
 
 # Make the color of the glass beads semi-transparent

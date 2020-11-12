@@ -27,7 +27,7 @@ def _get_geom(atoms, **params):
             if pbci:
                 outpos[:, i] = scpos[:, i]
         npbc = pbc.sum()
-        cellpars = atoms.get_cell_lengths_and_angles()
+        cellpars = atoms.cell.cellpar()
         geom.append('  system {} units angstrom'.format(_system_type[npbc]))
         if npbc == 3:
             geom.append('    lattice_vectors')

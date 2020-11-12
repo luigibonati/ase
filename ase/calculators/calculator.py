@@ -12,6 +12,7 @@ from ase.cell import Cell
 from ase.dft.kpoints import monkhorst_pack
 from ase.outputs import Properties, all_outputs
 from ase.utils import jsonable
+from ase.calculators.abc import GetPropertiesMixin
 
 
 class CalculatorError(RuntimeError):
@@ -243,7 +244,7 @@ def kptdensity2monkhorstpack(atoms, kptdensity=3.5, even=True):
         Round up to even numbers.
     """
 
-    recipcell = atoms.get_reciprocal_cell()
+    recipcell = atoms.cell.reciprocal()
     kpts = []
     for i in range(3):
         if atoms.pbc[i]:
@@ -437,12 +438,10 @@ class Parameters(dict):
             '{}={!r}'.format(key, self[key]) for key in keys) + ')\n'
 
     def write(self, filename):
-        file = open(filename, 'w')
-        file.write(self.tostring())
-        file.close()
+        pathlib.Path(filename).write_text(self.tostring())
 
 
-class Calculator:
+class Calculator(GetPropertiesMixin):
     """Base-class for all ASE calculators.
 
     A calculator must raise PropertyNotImplementedError if asked for a
@@ -469,14 +468,20 @@ class Calculator:
     'Whether we purge the results following any change in the set() method.  '
     'Most (file I/O) calculators will probably want this.'
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False, label=None,
-                 atoms=None, directory='.', **kwargs):
+    _deprecated = object()
+
+    def __init__(self, restart=None, ignore_bad_restart_file=_deprecated,
+                 label=None, atoms=None, directory='.',
+                 **kwargs):
         """Basic calculator implementation.
 
         restart: str
             Prefix for restart file.  May contain a directory. Default
             is None: don't restart.
         ignore_bad_restart_file: bool
+            Deprecated, please do not use.
+            Passing more than one positional argument to Calculator()
+            is deprecated and will stop working in the future.
             Ignore broken or missing restart file.  By default, it is an
             error if the restart file is missing or broken.
         directory: str or PurePath
@@ -496,6 +501,18 @@ class Calculator:
         self.parameters = None  # calculational parameters
         self._directory = None  # Initialize
 
+        if ignore_bad_restart_file is self._deprecated:
+            ignore_bad_restart_file = False
+        else:
+            warnings.warn(FutureWarning(
+                'The keyword "ignore_bad_restart_file" is deprecated and '
+                'will be removed in a future version of ASE.  Passing more '
+                'than one positional argument to Calculator is also '
+                'deprecated and will stop functioning in the future.  '
+                'Please pass arguments by keyword (key=value) except '
+                'optionally the "restart" keyword.'
+            ))
+
         if restart is not None:
             try:
                 self.read(restart)  # read parameters, atoms and results
@@ -508,12 +525,18 @@ class Calculator:
         self.directory = directory
         self.prefix = None
         if label is not None:
-            if self.directory != '.' and '/' in label:
+            if self.directory == '.' and '/' in label:
+                # We specified directory in label, and nothing in the diretory key
+                self.label = label
+            elif '/' not in label:
+                # We specified our directory in the directory keyword
+                # or not at all
+                self.label = '/'.join((self.directory, label))
+            else:
                 raise ValueError('Directory redundantly specified though '
                                  'directory="{}" and label="{}".  '
                                  'Please omit "/" in label.'
                                  .format(self.directory, label))
-            self.label = '/'.join((self.directory, label))
 
         if self.parameters is None:
             # Use default parameters if they were not read from file:
@@ -533,6 +556,9 @@ class Calculator:
 
         if not hasattr(self, 'name'):
             self.name = self.__class__.__name__.lower()
+
+        if not hasattr(self, 'get_spin_polarized'):
+            self.get_spin_polarized = self._deprecated_get_spin_polarized
 
     @property
     def directory(self) -> str:
@@ -692,34 +718,6 @@ class Calculator:
         else:
             return energy
 
-    def get_potential_energies(self, atoms=None):
-        return self.get_property('energies', atoms)
-
-    def get_forces(self, atoms=None):
-        return self.get_property('forces', atoms)
-
-    def get_stress(self, atoms=None):
-        return self.get_property('stress', atoms)
-
-    def get_stresses(self, atoms=None):
-        """the calculator should return intensive stresses, i.e., such that
-                stresses.sum(axis=0) == stress
-        """
-        return self.get_property('stresses', atoms)
-
-    def get_dipole_moment(self, atoms=None):
-        return self.get_property('dipole', atoms)
-
-    def get_charges(self, atoms=None):
-        return self.get_property('charges', atoms)
-
-    def get_magnetic_moment(self, atoms=None):
-        return self.get_property('magmom', atoms)
-
-    def get_magnetic_moments(self, atoms=None):
-        """Calculate magnetic moments projected onto atoms."""
-        return self.get_property('magmoms', atoms)
-
     def get_property(self, name, atoms=None, allow_calculation=True):
         if name not in self.implemented_properties:
             raise PropertyNotImplementedError('{} property not implemented'
@@ -736,12 +734,6 @@ class Calculator:
             if not allow_calculation:
                 return None
             self.calculate(atoms, [name], system_changes)
-
-        if name == 'magmom' and 'magmom' not in self.results:
-            return 0.0
-
-        if name == 'magmoms' and 'magmoms' not in self.results:
-            return np.zeros(len(atoms))
 
         if name not in self.results:
             # For some reason the calculator was not able to do what we want,
@@ -849,7 +841,12 @@ class Calculator:
         else:
             return stress
 
-    def get_spin_polarized(self):
+    def _deprecated_get_spin_polarized(self):
+        msg = ('This calculator does not implement get_spin_polarized().  '
+               'In the future, calc.get_spin_polarized() will work only on '
+               'calculator classes that explicitly implement this method or '
+               'inherit the method via specialized subclasses.')
+        warnings.warn(msg, FutureWarning)
         return False
 
     def band_structure(self):
@@ -889,7 +886,8 @@ class FileIOCalculator(Calculator):
     command: Optional[str] = None
     'Command used to start calculation'
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=Calculator._deprecated,
                  label=None, atoms=None, command=None, **kwargs):
         """File-IO calculator.
 

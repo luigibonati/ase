@@ -310,7 +310,7 @@ class MinimaHopping:
                       len(energies))
         if not thermalized:
             MaxwellBoltzmannDistribution(self._atoms,
-                                         temp=self._temperature * units.kB,
+                                         temperature_K=self._temperature,
                                          force_temp=True)
         traj = io.Trajectory('md%05i.traj' % self._counter, 'a',
                              self._atoms)

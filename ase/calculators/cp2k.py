@@ -169,7 +169,8 @@ class CP2K(Calculator):
         xc='LDA',
         print_level='LOW')
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=Calculator._deprecated,
                  label='cp2k', atoms=None, command=None,
                  debug=False, **kwargs):
         """Construct CP2K-calculator object."""
@@ -199,13 +200,7 @@ class CP2K(Calculator):
         self._shell = Cp2kShell(self.command, self._debug)
 
         if restart is not None:
-            try:
-                self.read(restart)
-            except:
-                if ignore_bad_restart_file:
-                    self.reset()
-                else:
-                    raise
+            self.read(restart)
 
     def __del__(self):
         """Release force_env and terminate cp2k_shell child process"""

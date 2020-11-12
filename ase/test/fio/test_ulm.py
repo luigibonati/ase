@@ -1,47 +1,71 @@
-def test_ulm():
-    import numpy as np
-    import ase.io.ulm as ulm
+"""Test ase.io.ulm file stuff."""
+import pytest
+import numpy as np
+
+import ase.io.ulm as ulm
 
 
-    class A:
-        def write(self, writer):
-            writer.write(x=np.ones((2, 3)))
+class A:
+    def write(self, writer):
+        writer.write(x=np.ones((2, 3)))
 
-        @staticmethod
-        def read(reader):
-            a = A()
-            a.x = reader.x
-            return a
+    @staticmethod
+    def read(reader):
+        a = A()
+        a.x = reader.x
+        return a
 
 
-    w = ulm.open('a.ulm', 'w')
-    w.write(a=A(), y=9)
-    w.write(s='abc')
-    w.sync()
-    w.write(s='abc2')
-    w.sync()
-    w.write(s='abc3', z=np.ones(7, int))
-    w.close()
-    print(w.data)
+@pytest.fixture
+def ulmfile(tmp_path):
+    path = tmp_path / 'a.ulm'
 
-    r = ulm.open('a.ulm')
-    print(r.y, r.s)
-    print(A.read(r.a).x)
-    print(r.a.x)
-    print(r[1].s)
-    print(r[2].s)
-    print(r[2].z)
+    with ulm.open(path, 'w') as w:
+        w.write(a=A(), y=9)
+        w.write(s='abc')
+        w.sync()
+        w.write(s='abc2')
+        w.sync()
+        w.write(s='abc3', z=np.ones(7, int))
 
-    with ulm.open('a.ulm', 'a') as w:
-        print(w.nitems, w.offsets)
+    return path
+
+
+def test_ulm(ulmfile):
+    with ulm.open(ulmfile) as r:
+        assert r.y == 9
+        assert r.s == 'abc'
+        assert (A.read(r.a).x == np.ones((2, 3))).all()
+        assert (r.a.x == np.ones((2, 3))).all()
+        assert r[1].s == 'abc2'
+        assert r[2].s == 'abc3'
+        assert (r[2].z == np.ones(7)).all()
+
+
+def test_append(ulmfile):
+    path = ulmfile.with_name('b.ulm')
+    path.write_bytes(ulmfile.read_bytes())
+    with ulm.open(path, 'a') as w:
+        assert w.nitems == 3
         w.write(d={'h': [1, 'asdf']})
-        w.add_array('psi', (4, 3))
-        w.fill(np.ones((1, 3)))
-        w.fill(np.ones((1, 3)) * 2)
-        w.fill(np.ones((2, 3)) * 3)
+        w.add_array('psi', (4, 2))
+        w.fill(np.ones((1, 2)))
+        w.fill(np.ones((1, 2)) * 2)
+        w.fill(np.ones((2, 2)) * 3)
 
-    print(ulm.open('a.ulm', 'r', 3).d)
-    print(ulm.open('a.ulm')[2].z)
-    print(ulm.open('a.ulm', index=3).proxy('psi')[0:3])
-    for d in ulm.open('a.ulm'):
-        print(d)
+    with ulm.open(path, 'r', 3) as r:
+        assert r.d['h'] == [1, 'asdf']
+    with ulm.open(path) as r:
+        assert (r[2].z == np.ones(7)).all()
+    with ulm.open(path, index=3) as r:
+        psi = r.proxy('psi')[0:3]
+        assert (psi == [[1, 1], [2, 2], [3, 3]]).all()
+
+
+def test_ulm_copy(ulmfile):
+    path = ulmfile.with_name('c.ulm')
+    ulm.copy(ulmfile, path, exclude={'.a'})
+
+    with ulm.open(path) as r:
+        assert 'a' not in r
+        assert 'y' in r

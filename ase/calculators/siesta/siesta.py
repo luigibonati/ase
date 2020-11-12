@@ -156,7 +156,7 @@ class SiestaParameters(Parameters):
             symlink_pseudos=None,
             atoms=None,
             restart=None,
-            ignore_bad_restart_file=False,
+            ignore_bad_restart_file=FileIOCalculator._deprecated,
             fdf_arguments=None,
             atomic_coord_format='xyz',
             bandpath=None):
@@ -656,14 +656,19 @@ class Siesta(FileIOCalculator):
         # no spin. SIESTA default is FM initialization, if the
         # block is not written, but  we must conform to the
         # atoms object.
-        if self['spin'] != 'non-polarized':
-            if sum(abs(magmoms)) == 0:
+        if magmoms is not None:
+            if len(magmoms) == 0:
                 f.write('#Empty block forces ASE initialization.\n')
 
             f.write('%block DM.InitSpin\n')
-            for n, M in enumerate(magmoms):
-                if M != 0:
-                    f.write('    %d %.14f\n' % (n + 1, M))
+            if len(magmoms) != 0 and isinstance(magmoms[0], np.ndarray):
+                for n, M in enumerate(magmoms):
+                    if M[0] != 0:
+                        f.write('    %d %.14f %.14f %.14f \n' % (n + 1, M[0], M[1], M[2]))
+            elif len(magmoms) != 0 and isinstance(magmoms[0], float):
+                for n, M in enumerate(magmoms):
+                    if M != 0:
+                        f.write('    %d %.14f \n' % (n + 1, M))
             f.write('%endblock DM.InitSpin\n')
             f.write('\n')
 

@@ -20,7 +20,6 @@ def test_lammpslib_small_nonperiodic():
     print("Computed energy: {}".format(energy))
     np.testing.assert_allclose(energy, energy_ref, atol=1e-4, rtol=1e-4)
 
-    np.set_printoptions(precision=16)
     forces_ref = np.array([[-0.9420162329811532, 0., 0.],
                            [+0.9420162329811532, 0., 0.]])
     forces = dimer.get_forces()

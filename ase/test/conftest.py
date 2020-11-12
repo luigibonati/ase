@@ -1,3 +1,5 @@
+import sys
+import os
 from pathlib import Path
 from subprocess import Popen, PIPE, check_output
 import zlib
@@ -89,8 +91,20 @@ def calculators_header(config):
                     configtokens.append(f'{varname}={variable}')
                 configinfo = ', '.join(configtokens)
 
-        run = '[x]' if factories.enabled(name) else '[ ]'
-        line = f'  {run} {name:10} {configinfo}'
+        enabled = factories.enabled(name)
+        if enabled:
+            version = '<unknown version>'
+            if hasattr(factory, 'version'):
+                try:
+                    version = factory.version()
+                except Exception:
+                    # XXX Add a test for the version numbers so that
+                    # will fail without crashing the whole test suite.
+                    pass
+            name = f'{name}-{version}'
+
+        run = '[x]' if enabled else '[ ]'
+        line = f'  {run} {name:16} {configinfo}'
         yield line
 
     yield ''
@@ -126,6 +140,23 @@ def use_tmp_workdir(tmp_path):
     print(f'Testpath: {path}')
 
 
+@pytest.fixture
+def KIM():
+    pytest.importorskip('kimpy')
+    from ase.calculators.kim import KIM as _KIM
+    from ase.calculators.kim.exceptions import KIMModelNotFound
+
+    def KIM(*args, **kwargs):
+        try:
+            return _KIM(*args, **kwargs)
+        except KIMModelNotFound:
+            pytest.skip('KIM tests require the example KIM models.  '
+                        'These models are available if the kimpy package is '
+                        'built from source.')
+
+    return KIM
+
+
 @pytest.fixture(scope='session')
 def tkinter():
     import tkinter
@@ -135,11 +166,30 @@ def tkinter():
         pytest.skip('no tkinter: {}'.format(err))
 
 
+@pytest.fixture(autouse=True)
+def _plt_close_figures():
+    yield
+    plt = sys.modules.get('matplotlib.pyplot')
+    if plt is None:
+        return
+    fignums = plt.get_fignums()
+    for fignum in fignums:
+        plt.close(fignum)
+
+
+@pytest.fixture(scope='session', autouse=True)
+def _plt_use_agg():
+    try:
+        import matplotlib
+    except ImportError:
+        pass
+    else:
+        matplotlib.use('Agg')
+
+
 @pytest.fixture(scope='session')
-def plt(tkinter):
-    # XXX Probably we can get rid of tkinter requirement.
-    matplotlib = pytest.importorskip('matplotlib')
-    matplotlib.use('Agg')
+def plt(_plt_use_agg):
+    pytest.importorskip('matplotlib')
 
     import matplotlib.pyplot as plt
     return plt
@@ -178,6 +228,8 @@ def factory(request, factories):
     name, kwargs = request.param
     if not factories.installed(name):
         pytest.skip(f'Not installed: {name}')
+    if not factories.enabled(name):
+        pytest.skip(f'Not enabled: {name}')
     factory = factories[name]
     return CalculatorInputs(factory, kwargs)
 
@@ -189,7 +241,7 @@ def pytest_generate_tests(metafunc):
     if 'seed' in metafunc.fixturenames:
         seeds = metafunc.config.getoption('seed')
         if len(seeds) == 0:
-            seeds = [0, 1]
+            seeds = [0]
         else:
             seeds = list(map(int, seeds))
         metafunc.parametrize('seed', seeds)
@@ -199,15 +251,23 @@ class CLI:
     def __init__(self, calculators):
         self.calculators = calculators
 
-    def ase(self, *args):
+    def ase(self, *args, expect_fail=False):
+        environment = {}
+        environment.update(os.environ)
+        # Prevent failures due to Tkinter-related default backend
+        # on systems without Tkinter.
+        environment['MPLBACKEND'] = 'Agg'
+
         proc = Popen(['ase', '-T'] + list(args),
-                     stdout=PIPE, stdin=PIPE)
+                     stdout=PIPE, stdin=PIPE,
+                     env=environment)
         stdout, _ = proc.communicate(b'')
         status = proc.wait()
-        assert status == 0
+        assert (status != 0) == expect_fail
         return stdout.decode('utf-8')
 
     def shell(self, command, calculator_name=None):
+        # Please avoid using shell comamnds including this method!
         if calculator_name is not None:
             self.calculators.require(calculator_name)
 

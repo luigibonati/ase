@@ -2343,7 +2343,7 @@ def get_castep_version(castep_command):
                 stderr=subprocess.PIPE,
                 stdout=subprocess.PIPE, cwd=temp_dir,
                 universal_newlines=True).communicate()
-    except:
+    except Exception:  # XXX Which kind of exception?
         msg = ''
         msg += 'Could not determine the version of your CASTEP binary \n'
         msg += 'This usually means one of the following \n'
@@ -2411,7 +2411,7 @@ def create_castep_keywords(castep_command, filename='castep_keywords.json',
             pattern = r'((?<=^ )[A-Z_\d]{2,}|(?<=^)[A-Z_\d]{2,})'
 
         raw_options = re.findall(pattern, help_all, re.MULTILINE)
-    except:
+    except Exception:
         warnings.warn('Problem parsing: %s' % help_all)
         raise
 

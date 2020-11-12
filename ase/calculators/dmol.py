@@ -89,13 +89,15 @@ class DMol3(FileIOCalculator):
     implemented_properties = ['energy', 'forces']
     default_parameters = {'functional': 'pbe',
                           'symmetry': 'on'}
+    discard_results_on_any_change = True
 
     if 'DMOL_COMMAND' in os.environ:
         command = os.environ['DMOL_COMMAND'] + ' PREFIX > PREFIX.out'
     else:
         command = None
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=FileIOCalculator._deprecated,
                  label='dmol_calc/tmp', atoms=None, **kwargs):
         """ Construct DMol3 calculator. """
         FileIOCalculator.__init__(self, restart, ignore_bad_restart_file,
@@ -103,11 +105,6 @@ class DMol3(FileIOCalculator):
 
         # tracks if DMol transformed coordinate system
         self.internal_transformation = False
-
-    def set(self, **kwargs):
-        changed_parameters = FileIOCalculator.set(self, **kwargs)
-        if changed_parameters:
-            self.reset()
 
     def write_input(self, atoms, properties=None, system_changes=None):
 

@@ -56,8 +56,8 @@ def info(gui):
         add(_('Lengths [Å]: {:.3f}, {:.3f}, {:.3f}').format(*cellpar[:3]))
         add(_('Angles: {:.1f}°, {:.1f}°, {:.1f}°').format(*cellpar[3:]))
 
-        if atoms.number_of_lattice_vectors == 3:
-            add(_('Volume: {:.3f} Å³').format(atoms.get_volume()))
+        if atoms.cell.rank == 3:
+            add(_('Volume: {:.3f} Å³').format(atoms.cell.volume))
 
         add()
 

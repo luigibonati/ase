@@ -33,10 +33,13 @@ extras_require = {
         'pillow',
     ],
     'test': [
-        'pytest>=3.9.1',
+        'pytest>=5.0.0',  # required by pytest-mock
+        'pytest-mock>=3.3.0',
         'pytest-xdist>=1.22.1',
     ]
 }
+
+# Optional: spglib >= 1.9
 
 
 with open('README.rst') as fd:

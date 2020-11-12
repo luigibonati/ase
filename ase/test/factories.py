@@ -1,4 +1,5 @@
 import os
+import re
 from pathlib import Path
 from typing import Mapping
 import configparser
@@ -41,8 +42,7 @@ def factory(name):
 def make_factory_fixture(name):
     @pytest.fixture(scope='session')
     def _factory(factories):
-        if not factories.installed(name):
-            pytest.skip(f'Not installed: {name}')
+        factories.require(name)
         return factories[name]
     _factory.__name__ = '{}_factory'.format(name)
     return _factory
@@ -53,6 +53,10 @@ class AbinitFactory:
     def __init__(self, executable, pp_paths):
         self.executable = executable
         self.pp_paths = pp_paths
+
+    def version(self):
+        from ase.calculators.abinit import get_abinit_version
+        return get_abinit_version(self.executable)
 
     def _base_kw(self):
         command = '{} < PREFIX.files > PREFIX.log'.format(self.executable)
@@ -82,6 +86,10 @@ class AsapFactory:
         from asap3 import EMT
         return EMT(**kwargs)
 
+    def version(self):
+        import asap3
+        return asap3.__version__
+
     @classmethod
     def fromconfig(cls, config):
         # XXXX TODO Clean this up.  Copy of GPAW.
@@ -98,6 +106,11 @@ class CP2KFactory:
     def __init__(self, executable):
         self.executable = executable
 
+    def version(self):
+        from ase.calculators.cp2k import Cp2kShell
+        shell = Cp2kShell(self.executable, debug=False)
+        return shell.version
+
     def calc(self, **kwargs):
         from ase.calculators.cp2k import CP2K
         return CP2K(command=self.executable, **kwargs)
@@ -111,6 +124,11 @@ class CP2KFactory:
 class DFTBFactory:
     def __init__(self, executable):
         self.executable = executable
+
+    def version(self):
+        stdout = read_stdout([self.executable])
+        match = re.search(r'DFTB\+ release\s*(\S+)', stdout, re.M)
+        return match.group(1)
 
     def calc(self, **kwargs):
         from ase.calculators.dftb import Dftb
@@ -129,6 +147,56 @@ class DFTBFactory:
         return cls(config.executables['dftb'])
 
 
+@factory('dftd3')
+class DFTD3Factory:
+    def __init__(self, executable):
+        self.executable = executable
+
+    def calc(self, **kwargs):
+        from ase.calculators.dftd3 import DFTD3
+        return DFTD3(command=self.executable, **kwargs)
+
+    @classmethod
+    def fromconfig(cls, config):
+        return cls(config.executables['dftd3'])
+
+
+def read_stdout(args, createfile=None):
+    import tempfile
+    from subprocess import Popen, PIPE
+    with tempfile.TemporaryDirectory() as directory:
+        if createfile is not None:
+            path = Path(directory) / createfile
+            path.touch()
+        proc = Popen(args, stdout=PIPE, stderr=PIPE,
+                     cwd=directory, encoding='ascii')
+        stdout, _ = proc.communicate()
+        # Exit code will be != 0 because there isn't an input file
+    return stdout
+
+
+@factory('elk')
+class ElkFactory:
+    def __init__(self, executable, species_dir):
+        self.executable = executable
+        self.species_dir = species_dir
+
+    def version(self):
+        output = read_stdout([self.executable])
+        match = re.search(r'Elk code version (\S+)', output, re.M)
+        return match.group(1)
+
+    def calc(self, **kwargs):
+        from ase.calculators.elk import ELK
+        command = f'{self.executable} > elk.out'
+        return ELK(command=command, species_dir=self.species_dir,
+                   **kwargs)
+
+    @classmethod
+    def fromconfig(cls, config):
+        return cls(config.executables['elk'], config.datafiles['elk'][0])
+
+
 @factory('espresso')
 class EspressoFactory:
     def __init__(self, executable, pseudo_dir):
@@ -138,6 +206,12 @@ class EspressoFactory:
     def _base_kw(self):
         from ase.units import Ry
         return dict(ecutwfc=300 / Ry)
+
+    def version(self):
+        stdout = read_stdout([self.executable])
+        match = re.match(r'\s*Program PWSCF\s*(\S+)', stdout, re.M)
+        assert match is not None
+        return match.group(1)
 
     def calc(self, **kwargs):
         from ase.calculators.espresso import Espresso
@@ -162,6 +236,21 @@ class EspressoFactory:
         return cls(config.executables['espresso'], paths[0])
 
 
+@factory('exciting')
+class ExcitingFactory:
+    def __init__(self, executable):
+        # XXX species path
+        self.executable = executable
+
+    def calc(self, **kwargs):
+        from ase.calculators.exciting import Exciting
+        return Exciting(bin=self.executable, **kwargs)
+
+    @classmethod
+    def fromconfig(cls, config):
+        return cls(config.executables['exciting'])
+
+
 @factory('gpaw')
 class GPAWFactory:
     importname = 'gpaw'
@@ -169,6 +258,10 @@ class GPAWFactory:
     def calc(self, **kwargs):
         from gpaw import GPAW
         return GPAW(**kwargs)
+
+    def version(self):
+        import gpaw
+        return gpaw.__version__
 
     @classmethod
     def fromconfig(cls, config):
@@ -178,6 +271,24 @@ class GPAWFactory:
         if spec is None:
             raise NotInstalled('gpaw')
         return cls()
+
+
+@factory('gromacs')
+class GromacsFactory:
+    def __init__(self, executable):
+        self.executable = executable
+
+    def version(self):
+        from ase.calculators.gromacs import get_gromacs_version
+        return get_gromacs_version(self.executable)
+
+    def calc(self, **kwargs):
+        from ase.calculators.gromacs import Gromacs
+        return Gromacs(command=self.executable, **kwargs)
+
+    @classmethod
+    def fromconfig(cls, config):
+        return cls(config.executables['gromacs'])
 
 
 class BuiltinCalculatorFactory:
@@ -201,19 +312,53 @@ class LammpsRunFactory:
     def __init__(self, executable):
         self.executable = executable
 
+    def version(self):
+        stdout = read_stdout([self.executable])
+        match = re.match(r'LAMMPS\s*\((.+?)\)', stdout, re.M)
+        return match.group(1)
+
     def calc(self, **kwargs):
         from ase.calculators.lammpsrun import LAMMPS
         return LAMMPS(command=self.executable, **kwargs)
 
     @classmethod
     def fromconfig(cls, config):
-        return cls(config.executables['lammps'])
+        return cls(config.executables['lammpsrun'])
 
+
+@factory('openmx')
+class OpenMXFactory:
+    def __init__(self, executable, data_path):
+        self.executable = executable
+        self.data_path = data_path
+
+    def version(self):
+        from ase.calculators.openmx.openmx import parse_omx_version
+        dummyfile = 'omx_dummy_input'
+        stdout = read_stdout([self.executable, dummyfile],
+                             createfile=dummyfile)
+        return parse_omx_version(stdout)
+
+    def calc(self, **kwargs):
+        from ase.calculators.openmx import OpenMX
+        return OpenMX(command=self.executable,
+                      data_path=str(self.data_path),
+                      **kwargs)
+
+    @classmethod
+    def fromconfig(cls, config):
+        return cls(config.executables['openmx'],
+                   data_path=config.datafiles['openmx'][0])
 
 @factory('octopus')
 class OctopusFactory:
     def __init__(self, executable):
         self.executable = executable
+
+    def version(self):
+        stdout = read_stdout([self.executable, '--version'])
+        match = re.match(r'octopus\s*(.+)', stdout)
+        return match.group(1)
 
     def calc(self, **kwargs):
         from ase.calculators.octopus import Octopus
@@ -230,6 +375,14 @@ class SiestaFactory:
     def __init__(self, executable, pseudo_path):
         self.executable = executable
         self.pseudo_path = pseudo_path
+
+    def version(self):
+        from ase.calculators.siesta.siesta import get_siesta_version
+        full_ver = get_siesta_version(self.executable)
+        m = re.match(r'siesta-(\S+)', full_ver, flags=re.I)
+        if m:
+            return m.group(1)
+        return full_ver
 
     def calc(self, **kwargs):
         from ase.calculators.siesta import Siesta
@@ -250,6 +403,13 @@ class NWChemFactory:
     def __init__(self, executable):
         self.executable = executable
 
+    def version(self):
+        stdout = read_stdout([self.executable], createfile='nwchem.nw')
+        match = re.search(
+            r'Northwest Computational Chemistry Package \(NWChem\) (\S+)',
+            stdout, re.M)
+        return match.group(1)
+
     def calc(self, **kwargs):
         from ase.calculators.nwchem import NWChem
         command = f'{self.executable} PREFIX.nwi > PREFIX.nwo'
@@ -268,6 +428,15 @@ class Factories:
     all_calculators = set(calculator_names)
     builtin_calculators = {'eam', 'emt', 'ff', 'lj', 'morse', 'tip3p', 'tip4p'}
     autoenabled_calculators = {'asap'} | builtin_calculators
+
+    # TODO: Port calculators to use factories.  As we do so, remove names
+    # from list of calculators that we monkeypatch:
+    monkeypatch_calculator_constructors = {
+        'ace', 'aims', 'amber', 'castep', 'crystal', 'demon', 'demonnano',
+        'dftd3', 'dmol', 'exciting', 'fleur', 'gamess_us', 'gaussian',
+        'gulp', 'hotbit', 'lammpslib', 'mopac', 'onetep', 'orca',
+        'Psi4', 'qchem', 'turbomole', 'vasp', 'vasp2',
+    }
 
     def __init__(self, requested_calculators):
         executable_config_paths, executables = get_testing_executables()
@@ -330,8 +499,10 @@ class Factories:
         # make them skip.
         # Older tests call require(name) explicitly.
         assert name in calculator_names
+        if not self.installed(name):
+            pytest.skip(f'Not installed: {name}')
         if name not in self.requested_calculators:
-            pytest.skip(f'use --calculators={name} to enable')
+            pytest.skip(f'Use --calculators={name} to enable')
 
     def __getitem__(self, name):
         return self.factories[name]
@@ -340,7 +511,8 @@ class Factories:
         test_calculator_names = (self.autoenabled_calculators |
                                  self.builtin_calculators |
                                  self.requested_calculators)
-        disable_names = self.all_calculators - test_calculator_names
+        disable_names = self.monkeypatch_calculator_constructors - test_calculator_names
+        #disable_names = self.all_calculators - test_calculator_names
 
         for name in disable_names:
             try:

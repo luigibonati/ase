@@ -1,11 +1,12 @@
 # creates: s1.png s2.png s3.png s4.png general_surface.pdf
-from pathlib import Path
-import shutil
 import os
-from ase.io import write
+import shutil
+from pathlib import Path
+
 from ase import Atoms
-from ase.build import bulk
-from ase.build import surface
+from ase.build import surface, bulk
+from ase.io import write
+
 s1 = surface('Au', (2, 1, 1), 9)
 s1.center(vacuum=10, axis=2)
 

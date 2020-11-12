@@ -14,9 +14,9 @@ import warnings
 import numpy as np
 
 from ase.atoms import Atoms
-from ase.parallel import paropen
 from ase.geometry import cellpar_to_cell
 from ase.io.espresso import label_to_symbol
+from ase.utils import reader, writer
 
 
 def read_atom_line(line_full):
@@ -70,12 +70,9 @@ def read_atom_line(line_full):
     return symbol, name, altloc, resname, coord, occupancy, bfactor, resseq
 
 
+@reader
 def read_proteindatabank(fileobj, index=-1, read_arrays=True):
     """Read PDB files."""
-
-    if isinstance(fileobj, str):
-        fileobj = open(fileobj)
-
     images = []
     orig = np.identity(3)
     trans = np.zeros(3)
@@ -181,11 +178,9 @@ def read_proteindatabank(fileobj, index=-1, read_arrays=True):
     return images[index]
 
 
+@writer
 def write_proteindatabank(fileobj, images, write_arrays=True):
     """Write images to PDB-file."""
-    if isinstance(fileobj, str):
-        fileobj = paropen(fileobj, 'w')
-
     if hasattr(images, 'get_positions'):
         images = [images]
 
