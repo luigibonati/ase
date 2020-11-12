@@ -68,4 +68,4 @@ renderer = write('o2pt100.pov', atoms,
                      transmittances=transmittances,
                      textures=textures))
 
-# renderer.render(clean_up=True)
+renderer.render()
