@@ -812,22 +812,3 @@ def write_pov(filename, atoms, generic_projection_settings={},
             pov_obj, **isodata) for isodata in isosurface_data]
 
     return pov_obj.write(filename)
-
-
-if __name__ == '__main__':
-    from ase.build import molecule
-    H2 = molecule('H2')
-    write_pov('H2.pov', H2).render()
-
-    from ase.io import read
-    from ase.calculators.vasp import VaspChargeDensity
-    zno = read('CONTCAR')
-    vchg = VaspChargeDensity('CHGCAR')
-    pvars = PlottingVariables(zno, scale=1.0)
-    pov_obj = POVRAY.from_PlottingVariables(pvars)
-    pov_obj.isosurfaces = [POVRAYIsosurface(
-        vchg.chg[0], 0.15,
-        cell=zno.cell, cell_origin=pov_obj.cell_vertices[0, 0, 0])]
-    for cut_off in 0.10, 0.30, 0.60:
-        pov_obj.isosurfaces[0].set_cut_off(cut_off)
-        pov_obj.write('zno').render(clean_up=False)
