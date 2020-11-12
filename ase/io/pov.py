@@ -553,7 +553,7 @@ class POVRAYInputs:
         self.path = path
 
     def render(self, povray_executable='povray', stderr=None, clean_up=False):
-        pov_path = self.path.with_suffix('.pov')
+        pov_path = self.path.with_suffix('.ini')
         cmd = [povray_executable, pov_path.as_posix()]
         if stderr is None:
             out = DEVNULL
