@@ -1,12 +1,10 @@
 # creates:  nice.png
 
-from ase.utils import hsv
 import numpy as np
 
 from ase import Atoms
 from ase.io import write
 from ase.utils import hsv
-
 
 atoms = Atoms('Ag', cell=(2.7, 2.7, 2.7), pbc=True) * (18, 8, 8)
 
