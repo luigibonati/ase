@@ -1,6 +1,5 @@
 """Vibrational modes."""
 
-import io
 import os
 import os.path as op
 import sys

@@ -9,7 +9,7 @@ import ase.units as u
 from ase.parallel import world, paropen, parprint
 from ase.vibrations import Vibrations
 from ase.vibrations.raman import Raman, RamanCalculatorBase
-from ase.io.jsonio import read_json, write_json
+from ase.io.jsonio import write_json
 
 
 class ResonantRamanCalculator(RamanCalculatorBase, Vibrations):
