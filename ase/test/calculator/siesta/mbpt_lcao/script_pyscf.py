@@ -39,9 +39,9 @@ siesta = Siesta(
 
 Na8.calc = siesta
 e = Na8.get_potential_energy()
-siesta.pyscf_tddft(label="siesta", jcutoff=7, iter_broadening=0.15/Ha,
-                   xc_code='LDA,PZ', tol_loc=1e-6, tol_biloc=1e-7,
-                   freq=np.arange(0.0, 5.0, 0.05))
+freq=np.arange(0.0, 5.0, 0.05)
+siesta.lrtddft(freq, label="siesta", jcutoff=7, iter_broadening=0.15/Ha,
+               xc_code='LDA,PZ', tol_loc=1e-6, tol_biloc=1e-7)
 
 # plot polarizability
 fig = plt.figure(1)
