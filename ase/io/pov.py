@@ -562,7 +562,6 @@ class POVRAYInputs:
         else:
             out = None
 
-        out = None
         try:
             check_call(cmd, stderr=out)
         finally:
