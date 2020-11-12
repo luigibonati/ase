@@ -1,6 +1,5 @@
 import pytest
 import numpy as np
-from ase import Atoms, Atom
 from ase.constraints import Hookean, FixAtoms
 from ase.build import molecule
 
