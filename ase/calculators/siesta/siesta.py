@@ -1213,7 +1213,8 @@ class Siesta(FileIOCalculator):
         # debye to e*Ang
         self.results['dipole'] = dipole * 0.2081943482534
 
-    def lrtddft(self, freq, Edir=np.array([1.0, 0.0, 0.0]), units='au', **kw):
+    def lrtddft(self, freq=np.arange(0.0, 5.0, 0.05),
+                Edir=np.array([1.0, 0.0, 0.0]), units='au', **kw):
         """
         Perform TDDFT calculation using the pynao code for a molecule.
         See https://mbarbry.website.fr.to/pynao/doc/html/ for more
