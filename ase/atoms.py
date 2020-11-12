@@ -764,13 +764,9 @@ class Atoms:
 
     def get_velocities(self):
         """Get array of velocities."""
-        momenta = self.arrays.get('momenta')
-        if momenta is None:
-            return None
-        m = self.arrays.get('masses')
-        if m is None:
-            m = atomic_masses[self.arrays['numbers']]
-        return momenta / m.reshape(-1, 1)
+        momenta = self.get_momenta()
+        masses = self.get_masses()
+        return momenta / masses[:, np.newaxis]
 
     def get_total_energy(self):
         """Get the total energy - potential plus kinetic energy."""
