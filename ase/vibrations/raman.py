@@ -57,14 +57,14 @@ class StaticRamanCalculatorBase(RamanCalculatorBase):
     def __init__(self, atoms, exobj, *args, **kwargs):
         self.exobj = exobj
         super().__init__(atoms, *args, **kwargs)
-        
+
     def calculate(self, atoms, filename, fd):
         # write forces
         super().calculate(atoms, filename, fd)
         # write static polarizability
-        fname = filename.replace('.pckl', self.exext)
+        fname = filename.replace('.json', self.exext)
         np.savetxt(fname, self.exobj().calculate(atoms))
-      
+
 
 class StaticRamanCalculator(StaticRamanCalculatorBase, Vibrations):
     pass

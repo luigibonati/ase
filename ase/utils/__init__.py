@@ -1,6 +1,7 @@
 import errno
 import functools
 import os
+import io
 import pickle
 import sys
 import time
@@ -132,6 +133,13 @@ def opencew(filename, world=None):
     if error:
         raise OSError(error, 'Error', filename)
     return fd
+
+
+def opencew_text(*args, **kwargs):
+    fd = opencew(*args, **kwargs)
+    if fd is None:
+        return None
+    return io.TextIOWrapper(fd)
 
 
 class Lock:

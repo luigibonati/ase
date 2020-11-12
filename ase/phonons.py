@@ -1,7 +1,6 @@
 """Module for calculating phonons of periodic systems."""
 
 import sys
-import pickle
 from math import pi, sqrt
 from os import remove
 from os.path import isfile
@@ -16,7 +15,8 @@ import ase.units as units
 from ase.parallel import world
 from ase.dft import monkhorst_pack
 from ase.io.trajectory import Trajectory
-from ase.utils import opencew, pickleload
+from ase.utils import opencew_text
+from ase.io.jsonio import read_json, write_json
 
 
 class Displacement:
@@ -154,7 +154,7 @@ class Displacement:
         This will do a calculation for 6 displacements per atom, +-x, +-y, and
         +-z. Only those calculations that are not already done will be
         started. Be aware that an interrupted calculation may produce an empty
-        file (ending with .pckl), which must be deleted before restarting the
+        file (ending with .json), which must be deleted before restarting the
         job. Otherwise the calculation for that displacement will not be done.
 
         """
@@ -168,16 +168,16 @@ class Displacement:
         atoms_N.calc = self.calc
 
         # Do calculation on equilibrium structure
-        self.state = 'eq.pckl'
+        self.state = 'eq.json'
         filename = self.name + '.' + self.state
 
-        fd = opencew(filename)
+        fd = opencew_text(filename)
         if fd is not None:
             # Call derived class implementation of __call__
             output = self(atoms_N)
             # Write output to file
             if world.rank == 0:
-                pickle.dump(output, fd, protocol=2)
+                write_json(fd, output)
                 sys.stdout.write('Writing %s\n' % filename)
                 fd.close()
             sys.stdout.flush()
@@ -192,11 +192,11 @@ class Displacement:
             for i in range(3):
                 for sign in [-1, 1]:
                     # Filename for atomic displacement
-                    self.state = '%d%s%s.pckl' % (a, 'xyz'[i], ' +-'[sign])
+                    self.state = '%d%s%s.json' % (a, 'xyz'[i], ' +-'[sign])
                     filename = self.name + '.' + self.state
                     # Wait for ranks before checking for file
                     # barrier()
-                    fd = opencew(filename)
+                    fd = opencew_text(filename)
                     if fd is None:
                         # Skip if already done
                         continue
@@ -211,15 +211,15 @@ class Displacement:
                     atoms_N.positions[offset + a, i] = pos[a, i]
 
     def clean(self):
-        """Delete generated pickle files."""
+        """Delete generated json files."""
 
-        if isfile(self.name + '.eq.pckl'):
-            remove(self.name + '.eq.pckl')
+        if isfile(self.name + '.eq.json'):
+            remove(self.name + '.eq.json')
 
         for a in self.indices:
             for i in 'xyz':
                 for sign in '-+':
-                    name = '%s.%d%s%s.pckl' % (self.name, a, i, sign)
+                    name = '%s.%d%s%s.json' % (self.name, a, i, sign)
                     if isfile(name):
                         remove(name)
 
@@ -325,20 +325,18 @@ class Phonons(Displacement):
         return forces
 
     def calculate(self, atoms_N, filename, fd):
-        # Call derived class implementation of __call__
-        output = self.__call__(atoms_N)
+        output = self(atoms_N)
         # Write output to file
         if world.rank == 0:
-            pickle.dump(output, fd, protocol=2)
+            write_json(fd, output)
             sys.stdout.write('Writing %s\n' % filename)
             sys.stdout.flush()
 
     def check_eq_forces(self):
         """Check maximum size of forces in the equilibrium structure."""
 
-        fname = '%s.eq.pckl' % self.name
-        with open(fname, 'rb') as fd:
-            feq_av = pickleload(fd)
+        fname = '%s.eq.json' % self.name
+        feq_av = read_json(fname)
 
         fmin = feq_av.max()
         fmax = feq_av.min()
@@ -348,7 +346,7 @@ class Phonons(Displacement):
         return fmin, fmax, i_min, i_max
 
     def read_born_charges(self, name=None, neutrality=True):
-        r"""Read Born charges and dieletric tensor from pickle file.
+        r"""Read Born charges and dieletric tensor from JSON file.
 
         The charge neutrality sum-rule::
 
@@ -369,12 +367,11 @@ class Phonons(Displacement):
         # Load file with Born charges and dielectric tensor for atoms in the
         # unit cell
         if name is None:
-            filename = '%s.born.pckl' % self.name
+            filename = '%s.born.json' % self.name
         else:
             filename = name
 
-        with open(filename, 'rb') as fd:
-            Z_avv, eps_vv = pickleload(fd)
+        Z_avv, eps_vv = read_json(filename)
 
         # Neutrality sum-rule
         if neutrality:
@@ -386,7 +383,7 @@ class Phonons(Displacement):
 
     def read(self, method='Frederiksen', symmetrize=3, acoustic=True,
              cutoff=None, born=False, **kwargs):
-        """Read forces from pickle files and calculate force constants.
+        """Read forces from json files and calculate force constants.
 
         Extra keyword arguments will be passed to ``read_born_charges``.
 
@@ -433,10 +430,9 @@ class Phonons(Displacement):
             for j, v in enumerate('xyz'):
                 # Atomic forces for a displacement of atom a in direction v
                 basename = '%s.%d%s' % (self.name, a, v)
-                with open(basename + '-.pckl', 'rb') as fd:
-                    fminus_av = pickleload(fd)
-                with open(basename + '+.pckl', 'rb') as fd:
-                    fplus_av = pickleload(fd)
+
+                fminus_av = read_json(basename + '-.json')
+                fplus_av = read_json(basename + '+.json')
 
                 if method == 'frederiksen':
                     fminus_av[a] -= fminus_av.sum(0)

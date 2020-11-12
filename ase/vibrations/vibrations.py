@@ -13,12 +13,8 @@ from ase.io.trajectory import Trajectory
 from ase.io.jsonio import read_json, write_json
 from ase.parallel import world, paropen
 
-from ase.utils import opencew
+from ase.utils import opencew_text
 from ase.calculators.singlepoint import SinglePointCalculator
-
-def _opencew(*args, **kwargs):
-    fd = opencew(*args, **kwargs)
-    return io.TextIOWrapper(fd)
 
 
 class Vibrations:
@@ -134,7 +130,7 @@ class Vibrations:
                 'to have only one sort of data structure at a time.')
         for dispName, atoms in self.iterdisplace(inplace=True):
             filename = dispName + '.json'
-            fd = _opencew(filename)
+            fd = opencew_text(filename)
             if fd is not None:
                 self.calculate(atoms, filename, fd)
 
@@ -243,7 +239,7 @@ class Vibrations:
                 f = read_json(fd)
             combined_data.update({op.basename(name): f})
         filename = self.name + '.all.json'
-        fd = _opencew(filename)
+        fd = opencew_text(filename)
         if fd is None:
             raise RuntimeError(
                 'Cannot write file ' + filename +
@@ -276,7 +272,7 @@ class Vibrations:
                 raise RuntimeError(
                     'Cannot split. File ' + filename + 'already exists.')
         for name in filenames:
-            fd = _opencew(name)
+            fd = opencew_text(name)
             basename = op.basename(name)
             write_json(fd, combined_data[basename])
             fd.close()
