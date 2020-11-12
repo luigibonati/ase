@@ -976,7 +976,8 @@ class Siesta(FileIOCalculator):
         return self.results['bandstructure']
 
     def read_ion(self, atoms):
-        """Read the ion.xml file of each specie
+        """
+        Read the ion.xml file of each specie
         """
         from ase.calculators.siesta.import_ion_xml import get_ion
 
@@ -1212,18 +1213,15 @@ class Siesta(FileIOCalculator):
         # debye to e*Ang
         self.results['dipole'] = dipole * 0.2081943482534
 
-    def pyscf_tddft(
+    def lrtddft(
             self,
             Edir=np.array([1.0, 0.0, 0.0]),
             freq=np.arange(0.0, 10.0, 0.1),
             units='au',
-            run_tddft=True,
-            save_kernel=True,
-            kernel_name="tddft_kernel.npy",
             fname="pol_tensor.npy",
             fname_nonin="noninpol_tensor.npy", **kw):
         """
-        Perform TDDFT calculation using the pyscf.nao module for a molecule.
+        Perform TDDFT calculation using the pynao code for a molecule.
 
         Parameters
         ----------
@@ -1233,11 +1231,8 @@ class Siesta(FileIOCalculator):
         units : str, optional
             unit for the returned polarizability, can be au (atomic units)
             or nm**2
-        run_tddft: to run the tddft_calculation or not
         fname: str
             Name of input file name for polariazbility tensor.
-            if run_tddft is True: output file
-            if run_tddft is False: input file
 
         kw: keywords for the tddft_iter function from pyscf
 
@@ -1248,7 +1243,7 @@ class Siesta(FileIOCalculator):
             array of dimension (nff) containing the frequency range in eV.
 
         polarizability nonin: array like (complex)
-            array of dimension (nff, 3, 3) with nff the frequency number,
+            array of dimension (3, 3, nff) with nff the frequency number,
             the second and third dimension are the matrix elements of the
             non-interactive polarizability::
 
@@ -1256,7 +1251,7 @@ class Siesta(FileIOCalculator):
 
 
         polarizability: array like (complex)
-            array of dimension (nff, 3, 3) with nff the frequency number,
+            array of dimension (3, 3, nff) with nff the frequency number,
             the second and third dimension are the matrix elements of the
             interactive polarizability::
 
@@ -1270,7 +1265,7 @@ class Siesta(FileIOCalculator):
 
         References
         ----------
-        https://github.com/cfm-mpc/pyscf/tree/nao
+        https://gitlab.com/mbarbry/pynao
 
         Example
         -------
@@ -1324,7 +1319,6 @@ class Siesta(FileIOCalculator):
         plt.show()
         """
 
-        from ase.calculators.siesta.mbpt_lcao_utils import pol2cross_sec
         assert units in ["nm**2", "au"]
 
         if run_tddft:
@@ -1392,7 +1386,7 @@ class Siesta(FileIOCalculator):
                         self.results['polarizability inter'][:, xyz1, xyz2] = \
                             -p_mat[xyz1, xyz2, :]
 
-    def pyscf_tddft_eels(
+    def lrtddft_eels(
             self,
             velec=np.array([20.0, 0.0, 0.0]),
             b=np.array([0.0, 0.0, 0.0]),
@@ -1547,177 +1541,6 @@ class Siesta(FileIOCalculator):
 
         return tddft
 
-    def get_polarizability_mbpt(self, mbpt_inp=None,
-                                output_name='mbpt_lcao.out',
-                                format_output='hdf5', units='au'):
-        """
-        Warning!!
-            Out dated version, try get_polarizability_pyscf
-
-
-        Calculate the polarizability by running the mbpt_lcao program.
-        The mbpt_lcao program need the siesta output, therefore siesta need
-        to be run first.
-
-        Parameters
-        ----------
-        mbpt_inp : dict, optional
-            dictionary of the input for the mbpt_lcao program
-            (http://mbpt-domiprod.wikidot.com/list-of-parameters)
-            if mbpt_inp is None, the function read the output file
-            from a previous mbpt_lcao run.
-        output_name : str, optional
-            Name of the mbpt_lcao output
-        format_output : str, optional
-            Format of the mbpt_lcao output data,
-            if hdf5, the output name is tddft_iter_output.hdf5 if
-            do_tddft_iter is set to 1 the output name is
-            tddft_tem_output.hdf5 if do_tddft_tem is set to 1
-            if txt, a lot of output data files are produced depending on
-            the input, in the text and fortran binaries format
-        units : str, optional
-            unit for the returned polarizability, can be au (atomic units)
-            or nm**2
-
-        Returns
-        -------
-        freq : array like
-            array of dimension (nff) containing the frequency range in eV.
-
-        self.results['polarizability'], array like
-            array of dimension (nff, 3, 3) with nff the frequency number,
-            the second and third dimension are the matrix elements of the
-            polarizability::
-
-                P_xx, P_xy, P_xz, Pyx, .......
-
-        References
-        ----------
-        http://mbpt-domiprod.wikidot.com
-
-        Example
-        -------
-        import os
-        from ase.units import Ry, eV
-        from ase.calculators.siesta import Siesta
-        from ase import Atoms
-        import numpy as np
-        import matplotlib.pyplot as plt
-
-        #Define the systems
-        Na8 = Atoms('Na8',
-        positions=[[-1.90503810, 1.56107288, 0.00000000],
-                    [1.90503810, 1.56107288, 0.00000000],
-                    [1.90503810, -1.56107288, 0.00000000],
-                    [-1.90503810, -1.56107288, 0.00000000],
-                    [0.00000000, 0.00000000, 2.08495836],
-                    [0.00000000, 0.00000000, -2.08495836],
-                    [0.00000000, 3.22798122, 2.08495836],
-                    [0.00000000, 3.22798122, -2.08495836]],
-                    cell=[20, 20, 20])
-
-        #enter siesta input
-        siesta = Siesta(
-            mesh_cutoff=150 * Ry,
-            basis_set='DZP',
-            pseudo_qualifier='',
-            energy_shift=(10 * 10**-3) * eV,
-            fdf_arguments={
-            'SCFMustConverge': False,
-            'COOP.Write': True,
-            'WriteDenchar': True,
-            'PAO.BasisType': 'split',
-            'DM.Tolerance': 1e-4,
-            'DM.MixingWeight': 0.01,
-            'MaxSCFIterations': 300,
-            'DM.NumberPulay': 4})
-
-
-        #mbpt_lcao input
-        mbpt_inp = {'prod_basis_type' : 'MIXED',
-                    'solver_type' : 1,
-                    'gmres_eps' : 0.001,
-                    'gmres_itermax':256,
-                    'gmres_restart':250,
-                    'gmres_verbose':20,
-                    'xc_ord_lebedev':14,
-                    'xc_ord_gl':48,
-                    'nr':512,
-                    'akmx':100,
-                    'eigmin_local':1e-06,
-                    'eigmin_bilocal':1e-08,
-                    'freq_eps_win1':0.15,
-                    'd_omega_win1':0.05,
-                    'dt':0.1,
-                    'omega_max_win1':5.0,
-                    'ext_field_direction':2,
-                    'dr':np.array([0.3, 0.3, 0.3]),
-                    'para_type':'MATRIX',
-                    'chi0_v_algorithm':14,
-                    'format_output':'text',
-                    'comp_dens_chng_and_polarizability':1,
-                    'store_dens_chng':1,
-                    'enh_given_volume_and_freq':0,
-                    'diag_hs':0,
-                    'do_tddft_tem':0,
-                    'do_tddft_iter':1,
-                    'plot_freq':3.02,
-                    'gwa_initialization':'SIESTA_PB'}
-
-
-        Na8.calc = siesta
-        e = Na8.get_potential_energy() #run siesta
-        freq, pol = siesta.get_polarizability_siesta(mbpt_inp,
-                                                     format_output='txt',
-                                                     units='nm**2')
-
-        #plot polarizability
-        plt.plot(freq, pol[:, 0, 0])
-
-        plt.show()
-        """
-        from ase.calculators.siesta.mbpt_lcao import MBPT_LCAO
-        from ase.calculators.siesta.mbpt_lcao_io import read_mbpt_lcao_output
-
-        warnings.warn("Out dated version, try get_polarizability_pyscf")
-
-        if mbpt_inp is not None:
-            tddft = MBPT_LCAO(mbpt_inp)
-            tddft.run_mbpt_lcao(output_name, True)
-
-        r = read_mbpt_lcao_output()
-
-        r.args.format_input = format_output
-
-        # read real part
-        r.args.ReIm = 're'
-        data = r.Read()
-        self.results['polarizability'] = data.Array
-
-        # read imaginary part
-        r.args.ReIm = 'im'
-        data = r.Read()
-        self.results['polarizability'] = (self.results['polarizability'] +
-                                          complex(0.0, 1.0) * data.Array)
-
-        if units == 'nm**2':
-            from ase.calculators.siesta.mbpt_lcao_utils import pol2cross_sec
-            for i in range(2):
-                for j in range(2):
-                    p = pol2cross_sec(self.results['polarizability'][:, i, j],
-                                      data.freq)
-                    self.results['polarizability'][:, i, j] = p
-
-            print('unit nm**2')
-            # self.results['polarizability'] = data.Array
-        elif units == 'au':
-            print('unit au')
-            # self.results['polarizability'] = data.Array
-        else:
-            raise ValueError('units can be only au or nm**2')
-
-        return data.freq, self.results['polarizability']
-
     def get_fermi_level(self):
         return self.results['fermi_energy']
 
@@ -1727,6 +1550,24 @@ class Siesta(FileIOCalculator):
     def get_ibz_k_points(self):
         return self.results['kpoints']
 
+def pol2cross_sec(p, omg):
+    """
+    Convert the polarizability in au to cross section in nm**2
+
+    INPUT PARAMETERS:
+    -----------------
+    p (np array): polarizability from mbpt_lcao calc
+    omg (np.array): frequency range in eV
+
+    OUTPUT_PARAMETERS:
+    ------------------
+    sigma (np array): cross section in nm**2
+    """
+    c = 137  # speed of the light in au
+    omg = omg * 0.036749309  # to convert from eV to Hartree
+    sigma = 4 * np.pi * omg * p / (c)  # bohr**2
+    sigma = sigma * (0.052917725)**2  # nm**2
+    return sigma
 
 class Siesta3_2(Siesta):
     def __init__(self, *args, **kwargs):
