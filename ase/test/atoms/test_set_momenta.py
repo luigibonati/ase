@@ -2,13 +2,12 @@ import pytest
 import numpy as np
 from ase import Atoms, Atom
 from ase.constraints import Hookean, FixAtoms
+from ase.build import molecule
 
 
 @pytest.fixture
 def atoms():
-    atoms = Atoms('H2')
-    atoms.positions[0, 2] = 2.0
-    return atoms
+    return molecule('CH3CH2OH')
 
 
 def test_momenta_fixatoms(atoms):
@@ -25,4 +24,15 @@ def test_momenta_hookean(atoms):
     atoms.set_momenta(np.zeros(atoms.get_momenta().shape))
     actual = atoms.get_momenta()
     desired = np.zeros(atoms.get_momenta().shape)
+    # Why zero memoenta?  Should we not test something juicier?
     assert (actual == desired).all()
+
+
+def test_get_set_velocities(atoms):
+    shape = (len(atoms), 3)
+    assert np.array_equal(atoms.get_velocities(), np.zeros(shape))
+
+    rng = np.random.RandomState(17)
+    v0 = rng.rand(*shape)
+    atoms.set_velocities(v0)
+    assert atoms.get_velocities() == pytest.approx(v0)
