@@ -1,8 +1,8 @@
 """Vibrational modes."""
 
+import io
 import os
 import os.path as op
-import pickle
 import sys
 from math import sin, pi, sqrt, log
 
@@ -10,10 +10,15 @@ import numpy as np
 
 import ase.units as units
 from ase.io.trajectory import Trajectory
+from ase.io.jsonio import read_json, write_json
 from ase.parallel import world, paropen
 
-from ase.utils import opencew, pickleload
+from ase.utils import opencew
 from ase.calculators.singlepoint import SinglePointCalculator
+
+def _opencew(*args, **kwargs):
+    fd = opencew(*args, **kwargs)
+    return io.TextIOWrapper(fd)
 
 
 class Vibrations:
@@ -59,19 +64,19 @@ class Vibrations:
     BFGS:   3  16:01:21        0.262777       0.0088
     >>> vib = Vibrations(n2)
     >>> vib.run()
-    Writing vib.eq.pckl
-    Writing vib.0x-.pckl
-    Writing vib.0x+.pckl
-    Writing vib.0y-.pckl
-    Writing vib.0y+.pckl
-    Writing vib.0z-.pckl
-    Writing vib.0z+.pckl
-    Writing vib.1x-.pckl
-    Writing vib.1x+.pckl
-    Writing vib.1y-.pckl
-    Writing vib.1y+.pckl
-    Writing vib.1z-.pckl
-    Writing vib.1z+.pckl
+    Writing vib.eq.json
+    Writing vib.0x-.json
+    Writing vib.0x+.json
+    Writing vib.0y-.json
+    Writing vib.0y+.json
+    Writing vib.0z-.json
+    Writing vib.0z+.json
+    Writing vib.1x-.json
+    Writing vib.1x+.json
+    Writing vib.1y-.json
+    Writing vib.1y+.json
+    Writing vib.1z-.json
+    Writing vib.1z+.json
     >>> vib.summary()
     ---------------------
     #    meV     cm^-1
@@ -108,7 +113,7 @@ class Vibrations:
         This will calculate the forces for 6 displacements per atom +/-x,
         +/-y, +/-z. Only those calculations that are not already done will be
         started. Be aware that an interrupted calculation may produce an empty
-        file (ending with .pckl), which must be deleted before restarting the
+        file (ending with .json), which must be deleted before restarting the
         job. Otherwise the forces will not be calculated for that
         displacement.
 
@@ -122,14 +127,14 @@ class Vibrations:
         on your own.
         """
 
-        if op.isfile(self.name + '.all.pckl'):
+        if op.isfile(self.name + '.all.json'):
             raise RuntimeError(
                 'Cannot run calculation. ' +
-                self.name + '.all.pckl must be removed or split in order ' +
+                self.name + '.all.json must be removed or split in order ' +
                 'to have only one sort of data structure at a time.')
         for dispName, atoms in self.iterdisplace(inplace=True):
-            filename = dispName + '.pckl'
-            fd = opencew(filename)
+            filename = dispName + '.json'
+            fd = _opencew(filename)
             if fd is not None:
                 self.calculate(atoms, filename, fd)
 
@@ -138,7 +143,7 @@ class Vibrations:
 
         Use this to export the structures for each single-point calculation
         to an external program instead of using ``run()``. Then save the
-        calculated gradients to <name>.pckl and continue using this instance.
+        calculated gradients to <name>.json and continue using this instance.
         """
         atoms = self.atoms if inplace else self.atoms.copy()
         yield self.name + '.eq', atoms
@@ -175,23 +180,23 @@ class Vibrations:
             freq, noninPol, pol = self.get_polarizability()
         if world.rank == 0:
             if self.ir and self.ram:
-                pickle.dump([forces, dipole, freq, noninPol, pol], fd, protocol=2)
+                write_json(fd, [forces, dipole, freq, noninPol, pol])
                 sys.stdout.write(
                     'Writing %s, dipole moment = (%.6f %.6f %.6f)\n' %
                     (filename, dipole[0], dipole[1], dipole[2]))
             elif self.ir and not self.ram:
-                pickle.dump([forces, dipole], fd, protocol=2)
+                write_json(fd, [forces, dipole])
                 sys.stdout.write(
                     'Writing %s, dipole moment = (%.6f %.6f %.6f)\n' %
                     (filename, dipole[0], dipole[1], dipole[2]))
             else:
-                pickle.dump(forces, fd, protocol=2)
+                write_json(fd, forces)
                 sys.stdout.write('Writing %s\n' % filename)
             fd.close()
         sys.stdout.flush()
 
     def clean(self, empty_files=False, combined=True):
-        """Remove pickle-files.
+        """Remove json-files.
 
         Use empty_files=True to remove only empty files and
         combined=False to not remove the combined file.
@@ -202,11 +207,11 @@ class Vibrations:
             return 0
 
         n = 0
-        filenames = [self.name + '.eq.pckl']
+        filenames = [self.name + '.eq.json']
         if combined:
-            filenames.append(self.name + '.all.pckl')
+            filenames.append(self.name + '.all.json')
         for dispName, a, i, disp in self.displacements():
-            filename = dispName + '.pckl'
+            filename = dispName + '.json'
             filenames.append(filename)
 
         for name in filenames:
@@ -217,65 +222,63 @@ class Vibrations:
         return n
 
     def combine(self):
-        """Combine pickle-files to one file ending with '.all.pckl'.
+        """Combine json-files to one file ending with '.all.json'.
 
-        The other pickle-files will be removed in order to have only one sort
+        The other json-files will be removed in order to have only one sort
         of data structure at a time.
 
         """
         if world.rank != 0:
             return 0
-        filenames = [self.name + '.eq.pckl']
+        filenames = [self.name + '.eq.json']
         for dispName, a, i, disp in self.displacements():
-            filename = dispName + '.pckl'
+            filename = dispName + '.json'
             filenames.append(filename)
         combined_data = {}
         for name in filenames:
             if not op.isfile(name) or op.getsize(name) == 0:
                 raise RuntimeError('Calculation is not complete. ' +
                                    name + ' is missing or empty.')
-            with open(name, 'rb') as fl:
-                f = pickleload(fl)
+            with open(name) as fd:
+                f = read_json(fd)
             combined_data.update({op.basename(name): f})
-        filename = self.name + '.all.pckl'
-        fd = opencew(filename)
+        filename = self.name + '.all.json'
+        fd = _opencew(filename)
         if fd is None:
             raise RuntimeError(
                 'Cannot write file ' + filename +
                 '. Remove old file if it exists.')
         else:
-            pickle.dump(combined_data, fd, protocol=2)
+            write_json(fd, combined_data)
             fd.close()
         return self.clean(combined=False)
 
     def split(self):
-        """Split combined pickle-file.
+        """Split combined json-file.
 
-        The combined pickle-file will be removed in order to have only one
+        The combined json-file will be removed in order to have only one
         sort of data structure at a time.
 
         """
         if world.rank != 0:
             return 0
-        combined_name = self.name + '.all.pckl'
+        combined_name = self.name + '.all.json'
         if not op.isfile(combined_name):
             raise RuntimeError('Cannot find combined file: ' +
                                combined_name + '.')
-        with open(combined_name, 'rb') as fl:
-            combined_data = pickleload(fl)
-        filenames = [self.name + '.eq.pckl']
+        with open(combined_name) as fd:
+            combined_data = read_json(fd)
+        filenames = [self.name + '.eq.json']
         for dispName, a, i, disp in self.displacements():
-            filename = dispName + '.pckl'
+            filename = dispName + '.json'
             filenames.append(filename)
             if op.isfile(filename):
                 raise RuntimeError(
                     'Cannot split. File ' + filename + 'already exists.')
         for name in filenames:
-            fd = opencew(name)
-            try:
-                pickle.dump(combined_data[op.basename(name)], fd, protocol=2)
-            except KeyError:
-                pickle.dump(combined_data[name], fd, protocol=2)  # Old version
+            fd = _opencew(name)
+            basename = op.basename(name)
+            write_json(fd, combined_data[basename])
             fd.close()
         os.remove(combined_name)
         return 1  # One file removed
@@ -288,8 +291,8 @@ class Vibrations:
 
         def load(fname, combined_data=None):
             if combined_data is None:
-                with open(fname, 'rb') as fl:
-                    f = pickleload(fl)
+                with open(fname) as fd:
+                    f = read_json(fd)
             else:
                 try:
                     f = combined_data[op.basename(fname)]
@@ -303,24 +306,24 @@ class Vibrations:
         n = 3 * len(self.indices)
         H = np.empty((n, n))
         r = 0
-        if op.isfile(self.name + '.all.pckl'):
-            # Open the combined pickle-file
-            combined_data = load(self.name + '.all.pckl')
+        if op.isfile(self.name + '.all.json'):
+            # Open the combined json-file
+            combined_data = load(self.name + '.all.json')
         else:
             combined_data = None
         if direction != 'central':
-            feq = load(self.name + '.eq.pckl', combined_data)
+            feq = load(self.name + '.eq.json', combined_data)
         for a in self.indices:
             for i in 'xyz':
                 name = '%s.%d%s' % (self.name, a, i)
-                fminus = load(name + '-.pckl', combined_data)
-                fplus = load(name + '+.pckl', combined_data)
+                fminus = load(name + '-.json', combined_data)
+                fplus = load(name + '+.json', combined_data)
                 if self.method == 'frederiksen':
                     fminus[a] -= fminus.sum(0)
                     fplus[a] -= fplus.sum(0)
                 if self.nfree == 4:
-                    fminusminus = load(name + '--.pckl', combined_data)
-                    fplusplus = load(name + '++.pckl', combined_data)
+                    fminusminus = load(name + '--.json', combined_data)
+                    fplusplus = load(name + '++.json', combined_data)
                     if self.method == 'frederiksen':
                         fminusminus[a] -= fminusminus.sum(0)
                         fplusplus[a] -= fplusplus.sum(0)
@@ -455,8 +458,11 @@ class Vibrations:
     def write_jmol(self):
         """Writes file for viewing of the modes with jmol."""
 
-        fd = open(self.name + '.xyz', 'w')
-        symbols = self.atoms.get_chemical_symbols()
+        with open(self.name + '.xyz', 'w') as fd:
+            self._write_jmol(fd)
+
+    def _write_jmol(self, fd):
+        symbols = self.atoms.symbols
         f = self.get_frequencies()
         for n in range(3 * len(self.indices)):
             fd.write('%6d\n' % len(self.atoms))
@@ -475,7 +481,6 @@ class Vibrations:
                 fd.write('%2s %12.5f %12.5f %12.5f %12.5f %12.5f %12.5f \n' %
                          (symbols[i], pos[0], pos[1], pos[2],
                           mode[i, 0], mode[i, 1], mode[i, 2]))
-        fd.close()
 
     def fold(self, frequencies, intensities,
              start=800.0, end=4000.0, npts=None, width=4.0,
@@ -534,10 +539,10 @@ class Vibrations:
         outdata = np.empty([len(energies), 2])
         outdata.T[0] = energies
         outdata.T[1] = spectrum
-        fd = open(out, 'w')
-        fd.write('# %s folded, width=%g cm^-1\n' % (type.title(), width))
-        fd.write('# [cm^-1] arbitrary\n')
-        for row in outdata:
-            fd.write('%.3f  %15.5e\n' %
-                     (row[0], row[1]))
-        fd.close()
+
+        with open(out, 'w') as fd:
+            fd.write('# %s folded, width=%g cm^-1\n' % (type.title(), width))
+            fd.write('# [cm^-1] arbitrary\n')
+            for row in outdata:
+                fd.write('%.3f  %15.5e\n' %
+                         (row[0], row[1]))

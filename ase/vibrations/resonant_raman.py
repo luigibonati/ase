@@ -1,6 +1,5 @@
 """Resonant Raman intensities"""
 
-import pickle
 import os
 import sys
 
@@ -10,6 +9,7 @@ import ase.units as u
 from ase.parallel import world, paropen, parprint
 from ase.vibrations import Vibrations
 from ase.vibrations.raman import Raman, RamanCalculatorBase
+from ase.io.jsonio import read_json, write_json
 
 
 class ResonantRamanCalculator(RamanCalculatorBase, Vibrations):
@@ -59,7 +59,7 @@ class ResonantRamanCalculator(RamanCalculatorBase, Vibrations):
         self.timer.start('Ground state')
         forces = self.atoms.get_forces()
         if world.rank == 0:
-            pickle.dump(forces, fd, protocol=2)
+            write_json(fd, forces)
 
         if self.overlap:
             """Overlap is determined as
@@ -311,8 +311,8 @@ class ResonantRaman(Raman):
         def load(name, pm, rep0_p):
             self.log('reading ' + name + pm + self.exext)
             ex_p = self.exobj.read(name + pm + self.exext, **self.exkwargs)
-            self.log('reading ' + name + pm + '.pckl.ov.npy')
-            ov_nn = np.load(name + pm + '.pckl.ov.npy')
+            self.log('reading ' + name + pm + '.json.ov.npy')
+            ov_nn = np.load(name + pm + '.json.ov.npy')
             # remove numerical garbage
             ov_nn = np.where(np.abs(ov_nn) > self.minoverlap['orbitals'],
                              ov_nn, 0)

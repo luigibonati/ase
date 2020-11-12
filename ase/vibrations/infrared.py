@@ -9,7 +9,7 @@ import numpy as np
 import ase.units as units
 from ase.parallel import parprint, paropen
 from ase.vibrations import Vibrations
-from ase.utils import pickleload
+from ase.io.jsonio import read_json
 
 
 class Infrared(Vibrations):
@@ -158,24 +158,21 @@ class Infrared(Vibrations):
 
         def load(fname, combined_data=None):
             if combined_data is not None:
-                try:
-                    return combined_data[op.basename(fname)]
-                except KeyError:
-                    return combined_data[fname]  # Old version
-            with open(fname, 'rb') as fd:
-                return pickleload(fd)
+                return combined_data[op.basename(fname)]
+            with open(fname) as fd:
+                return read_json(fd)
 
         if direction != 'central':
             raise NotImplementedError(
                 'Only central difference is implemented at the moment.')
 
-        if op.isfile(self.name + '.all.pckl'):
-            # Open the combined pickle-file
-            combined_data = load(self.name + '.all.pckl')
+        if op.isfile(self.name + '.all.json'):
+            # Open the combined json-file
+            combined_data = load(self.name + '.all.json')
         else:
             combined_data = None
         # Get "static" dipole moment and forces
-        name = '%s.eq.pckl' % self.name
+        name = '%s.eq.json' % self.name
         [forces_zero, dipole_zero] = load(name, combined_data)
         self.dipole_zero = (sum(dipole_zero**2)**0.5) / units.Debye
         self.force_zero = max([sum((forces_zero[j])**2)**0.5
@@ -188,13 +185,13 @@ class Infrared(Vibrations):
         for a in self.indices:
             for i in 'xyz':
                 name = '%s.%d%s' % (self.name, a, i)
-                [fminus, dminus] = load(name + '-.pckl', combined_data)
-                [fplus, dplus] = load(name + '+.pckl', combined_data)
+                [fminus, dminus] = load(name + '-.json', combined_data)
+                [fplus, dplus] = load(name + '+.json', combined_data)
                 if self.nfree == 4:
                     [fminusminus, dminusminus] = load(
-                        name + '--.pckl', combined_data)
+                        name + '--.json', combined_data)
                     [fplusplus, dplusplus] = load(
-                        name + '++.pckl', combined_data)
+                        name + '++.json', combined_data)
                 if self.method == 'frederiksen':
                     fminus[a] += -fminus.sum(0)
                     fplus[a] += -fplus.sum(0)
