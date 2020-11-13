@@ -111,21 +111,14 @@ def test_qm_pbc_fully_periodic(qm_calc, mm_calc):
     qmmm.initialize_qm_buffer_mask(at0)
     qm_cluster = qmmm.get_qm_cluster(at0)
     # should give pbc = [T, T, T]
-    for qm_cluster_pbc in qmmm.qm_cluster_pbc:
-        assert qm_cluster_pbc
+    assert all(qmmm.qm_cluster_pbc)
     # same test for qmmm.get_cluster()
-    for qm_cluster_pbc in qm_cluster.pbc:
-        assert qm_cluster_pbc
+    assert all(qm_cluster.pbc)
 
-    # should have the same cell as the original atoms
-    for qm_cell_dir, orinial_cell_dir in zip(np.diag(qmmm.qm_cluster_cell),
-                                             np.diag(at0.cell)):
-        assert qm_cell_dir == orinial_cell_dir
+    np.testing.assert_allclose(qmmm.qm_cluster_cell.array, at0.cell.array)
     # same test for qmmm.get_cluster()
-    for qm_cluster_cell_dir, orinial_cell_dir in zip(np.diag(qm_cluster.cell),
-                                                     np.diag(at0.cell)):
-        assert qm_cluster_cell_dir == orinial_cell_dir
 
+    np.testing.assert_allclose(qm_cluster.cell.array, at0.cell.array)
 
 def test_qm_pbc_non_periodic_sphere(qm_calc, mm_calc):
     """
@@ -158,21 +151,14 @@ def test_qm_pbc_non_periodic_sphere(qm_calc, mm_calc):
     qmmm.initialize_qm_buffer_mask(at0)
     # should give pbc = [F, F, F]
     qm_cluster = qmmm.get_qm_cluster(at0)
-    for qm_cluster_pbc in qmmm.qm_cluster_pbc:
-        assert not qm_cluster_pbc
+    assert not all(qmmm.qm_cluster_pbc)
     # same test for qmmm.get_cluster()
-    for qm_cluster_pbc in qm_cluster.pbc:
-        assert not qm_cluster_pbc
+    assert not all(qm_cluster.pbc)
 
     # should NOT have the same cell as the original atoms
-    for qm_cell_dir, original_cell_dir in zip(np.diag(qmmm.qm_cluster_cell),
-                                              np.diag(at0.cell)):
-        assert not qm_cell_dir == original_cell_dir
+    assert not all(qmmm.qm_cluster_cell.lengths() == at0.cell.lengths)
     # same test for qmmm.get_cluster()
-    for qm_cluster_cell_dir, orinial_cell_dir in zip(np.diag(qm_cluster.cell),
-                                                     np.diag(at0.cell)):
-        assert not qm_cluster_cell_dir == orinial_cell_dir
-
+    assert not all(qm_cluster.cell.lengths() == at0.cell.lengths)
 
 def test_qm_pbc_mixed(qm_calc, mm_calc):
     """
@@ -200,27 +186,25 @@ def test_qm_pbc_mixed(qm_calc, mm_calc):
     qmmm.initialize_qm_buffer_mask(at0)
     qm_cluster = qmmm.get_qm_cluster(at0)
     # should give pbc = [F, F, T]
-    for qm_cluster_pbc in qmmm.qm_cluster_pbc[:2]:
-        assert not qm_cluster_pbc
-    assert qmmm.qm_cluster_pbc[2]  # Z should be periodic
+    desired_pbc = np.array([False, False, True])
+
+    assert all(qmmm.qm_cluster_pbc == desired_pbc)
     # same test for qmmm.get_cluster()
-    for qm_cluster_pbc in qm_cluster.pbc[:2]:
-        assert not qm_cluster_pbc
-    assert qm_cluster.pbc[2]  # Z should be periodic
+    assert all(qm_cluster.pbc == desired_pbc)
 
     # should NOT have the same cell as the original atoms in X and Y directions
-    for qm_cell_dir, original_cell_dir in \
-            zip(np.diag(qmmm.qm_cluster_cell)[:2], np.diag(at0.cell)[:2]):
-        assert not qm_cell_dir == original_cell_dir
+    assert not all(qmmm.qm_cluster_cell.lengths()[~desired_pbc] ==
+                   at0.cell.lengths()[~desired_pbc])
     # should be the same in Z direction
-    assert np.diag(qmmm.qm_cluster_cell)[2] == np.diag(at0.cell)[2]
-    # same test for qmmm.get_cluster()
-    for qm_cluster_cell_dir, original_cell_dir in \
-            zip(np.diag(qm_cluster.cell)[:2], np.diag(at0.cell)[:2]):
-        assert not qm_cluster_cell_dir == original_cell_dir
-    # should be the same in Z direction
-    assert np.diag(qm_cluster.cell)[2] == np.diag(at0.cell)[2]
+    np.testing.assert_allclose(qmmm.qm_cluster_cell.lengths()[desired_pbc],
+                               at0.cell.lengths()[desired_pbc])
 
+    # same test for qmmm.get_qm_cluster()
+    assert not all(qm_cluster.cell.lengths()[~desired_pbc] ==
+                   at0.cell.lengths()[~desired_pbc])
+    # should be the same in Z direction
+    np.testing.assert_allclose(qm_cluster.cell.lengths()[desired_pbc],
+                               at0.cell.lengths()[desired_pbc])
 
 def test_rescaled_calculator():
     """
