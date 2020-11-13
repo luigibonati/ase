@@ -82,7 +82,65 @@ def test_qm_buffer_mask(qm_calc, mm_calc):
                buffer_mask_region.sum() == qm_buffer_mask_ref.sum()
 
 
-def test_qm_pbc_fully_periodic(qm_calc, mm_calc):
+@pytest.fixture
+def bulk_at():
+    bulk_at = bulk("Cu", cubic=True)
+
+    return bulk_at
+
+def compare_qm_cell_and_pbc(qm_calc, mm_calc, bulk_at,
+                            test_size, buffer_width, expected_pbc):
+    """
+    test qm cell shape and choice of pbc:
+    make a non-periodic pdc in a direction
+    if qm_radius + buffer is larger than the original cell
+    keep the periodic cell otherwise i. e. if cell[i, i] > qm_radius + buffer
+    the scenario is controlled by the test_size used to create at0
+    as well as buffer_width.
+    If the size of the at0 is larger than the r_qm + buffer + vacuum
+    the cell stays periodic and the size is the same is original
+    otherwise cell is non-periodic and size is different.
+    """
+
+    alat = bulk_at.cell[0, 0]
+    at0 = bulk_at * test_size
+    size = at0.cell[0, 0]
+    r = at0.get_distances(0, np.arange(len(at0)), mic=True)
+    # should give 12 nearest neighbours + atom in the center
+    R_QM = alat / np.sqrt(2.0) + 1.0e-3
+    qm_mask = r < R_QM
+
+    qmmm = ForceQMMM(at0, qm_mask, qm_calc, mm_calc,
+                     buffer_width=buffer_width * size)
+    # equal to 1 alat
+    # build qm_buffer_mask to build the cell
+    qmmm.initialize_qm_buffer_mask(at0)
+    qm_cluster = qmmm.get_qm_cluster(at0)
+
+    # test if qm pbc match expected
+    assert all(qmmm.qm_cluster_pbc == expected_pbc)
+    # same test for qmmm.get_cluster()
+    assert all(qm_cluster.pbc == expected_pbc)
+
+    if not all(expected_pbc): # at least on F. avoid comparing empty arrays
+        # should NOT have the same cell as the original atoms in non pbc directions
+        assert not all(qmmm.qm_cluster_cell.lengths()[~expected_pbc] ==
+                   at0.cell.lengths()[~expected_pbc])
+    if any(expected_pbc): # at least one T. avoid comparing empty arrays
+        # should be the same in periodic direction
+        np.testing.assert_allclose(qmmm.qm_cluster_cell.lengths()[expected_pbc],
+                               at0.cell.lengths()[expected_pbc])
+
+    # same test for qmmm.get_qm_cluster()
+    if not all(expected_pbc):  # at least one F. avoid comparing empty arrays
+        assert not all(qm_cluster.cell.lengths()[~expected_pbc] ==
+                       at0.cell.lengths()[~expected_pbc])
+    if any(expected_pbc): # at least one T. avoid comparing empty arrays
+        np.testing.assert_allclose(qm_cluster.cell.lengths()[expected_pbc],
+                               at0.cell.lengths()[expected_pbc])
+
+
+def test_qm_pbc_fully_periodic(qm_calc, mm_calc, bulk_at):
     """
     test qm cell shape and choice of pbc:
     make a non-periodic pdc in a direction
@@ -93,34 +151,13 @@ def test_qm_pbc_fully_periodic(qm_calc, mm_calc):
     thus should give a cluster with pbc=[T, T, T]
     (qm cluster is the same as the original cell)
     """
-    bulk_at = bulk("Cu", cubic=True)
-    alat = bulk_at.cell[0, 0]
-    at0 = bulk_at * 4
-    size = at0.cell[0, 0]
-    r = at0.get_distances(0, np.arange(len(at0)), mic=True)
-    # should give 12 nearest neighbours + atom in the center
-    R_QM = alat / np.sqrt(2.0) + 1.0e-3
-    qm_mask = r < R_QM
-    """
-    print(f"R_QM: {R_QM:.4f}")
-    print(f"R_QM + buffer: {1.2 * size + R_QM:.2f}")
-    print(f"Cell size: {np.diagonal(at0.cell)}")
-    """
-    qmmm = ForceQMMM(at0, qm_mask, qm_calc, mm_calc, buffer_width=1.2 * size)
-    # build qm_buffer_mask to build the cell
-    qmmm.initialize_qm_buffer_mask(at0)
-    qm_cluster = qmmm.get_qm_cluster(at0)
-    # should give pbc = [T, T, T]
-    assert all(qmmm.qm_cluster_pbc)
-    # same test for qmmm.get_cluster()
-    assert all(qm_cluster.pbc)
 
-    np.testing.assert_allclose(qmmm.qm_cluster_cell.array, at0.cell.array)
-    # same test for qmmm.get_cluster()
+    compare_qm_cell_and_pbc(qm_calc, mm_calc, bulk_at, test_size=4,
+                            expected_pbc=np.array([True, True, True]),
+                            buffer_width=1.5)
 
-    np.testing.assert_allclose(qm_cluster.cell.array, at0.cell.array)
 
-def test_qm_pbc_non_periodic_sphere(qm_calc, mm_calc):
+def test_qm_pbc_non_periodic_sphere(qm_calc, mm_calc, bulk_at):
     """
     test qm cell shape and choice of pbc:
     make a non-periodic pdc in a direction
@@ -132,35 +169,12 @@ def test_qm_pbc_non_periodic_sphere(qm_calc, mm_calc):
     (qm cluster cell must be DIFFERENT form the original cell)
     """
 
-    bulk_at = bulk("Cu", cubic=True)
-    alat = bulk_at.cell[0, 0]
-    at0 = bulk_at * 4
-    size = at0.cell[0, 0]
-    r = at0.get_distances(0, np.arange(len(at0)), mic=True)
-    # should give 12 nearest neighbours + atom in the center
-    R_QM = alat / np.sqrt(2.0) + 1.0e-3
-    qm_mask = r < R_QM
-    qmmm = ForceQMMM(at0, qm_mask, qm_calc, mm_calc, buffer_width=0.25 * size)
-    # equal to 1 alat
-    """
-    print(f"R_QM: {R_QM:.4f}")
-    print(f"R_QM + buffer: {0.25 * size + R_QM:.2f}")
-    print(f"Cell size: {np.diagonal(at0.cell)}")
-    """
-    # build qm_buffer_mask to build the cell
-    qmmm.initialize_qm_buffer_mask(at0)
-    # should give pbc = [F, F, F]
-    qm_cluster = qmmm.get_qm_cluster(at0)
-    assert not all(qmmm.qm_cluster_pbc)
-    # same test for qmmm.get_cluster()
-    assert not all(qm_cluster.pbc)
+    compare_qm_cell_and_pbc(qm_calc, mm_calc, bulk_at, test_size=4,
+                            expected_pbc=np.array([False, False, False]),
+                            buffer_width=0.25)
 
-    # should NOT have the same cell as the original atoms
-    assert not all(qmmm.qm_cluster_cell.lengths() == at0.cell.lengths)
-    # same test for qmmm.get_cluster()
-    assert not all(qm_cluster.cell.lengths() == at0.cell.lengths)
 
-def test_qm_pbc_mixed(qm_calc, mm_calc):
+def test_qm_pbc_mixed(qm_calc, mm_calc, bulk_at):
     """
     test qm cell shape and choice of pbc:
     make a non-periodic pdc in a direction
@@ -171,40 +185,11 @@ def test_qm_pbc_mixed(qm_calc, mm_calc):
     (qm cluster cell must be the same as the original cell in z direction
     and DIFFERENT form the original cell in x and y directions)
     """
-    bulk_at = bulk("Cu", cubic=True)
-    alat = bulk_at.cell[0, 0]
-    at0 = bulk_at * [4, 4, 1]
-    size = at0.cell[0, 0]
-    r = at0.get_distances(0, np.arange(len(at0)), mic=True)
-    # should give 12 nearest neighbours + atom in the center
-    R_QM = alat / np.sqrt(2.0) + 1.0e-3
-    qm_mask = r < R_QM
 
-    qmmm = ForceQMMM(at0, qm_mask, qm_calc, mm_calc, buffer_width=0.25 * size)
-    # equal to 1 alat
-    # build qm_buffer_mask to build the cell
-    qmmm.initialize_qm_buffer_mask(at0)
-    qm_cluster = qmmm.get_qm_cluster(at0)
-    # should give pbc = [F, F, T]
-    desired_pbc = np.array([False, False, True])
+    compare_qm_cell_and_pbc(qm_calc, mm_calc, bulk_at, test_size=[4, 4, 1],
+                            expected_pbc=np.array([False, False, True]),
+                            buffer_width=0.25)
 
-    assert all(qmmm.qm_cluster_pbc == desired_pbc)
-    # same test for qmmm.get_cluster()
-    assert all(qm_cluster.pbc == desired_pbc)
-
-    # should NOT have the same cell as the original atoms in X and Y directions
-    assert not all(qmmm.qm_cluster_cell.lengths()[~desired_pbc] ==
-                   at0.cell.lengths()[~desired_pbc])
-    # should be the same in Z direction
-    np.testing.assert_allclose(qmmm.qm_cluster_cell.lengths()[desired_pbc],
-                               at0.cell.lengths()[desired_pbc])
-
-    # same test for qmmm.get_qm_cluster()
-    assert not all(qm_cluster.cell.lengths()[~desired_pbc] ==
-                   at0.cell.lengths()[~desired_pbc])
-    # should be the same in Z direction
-    np.testing.assert_allclose(qm_cluster.cell.lengths()[desired_pbc],
-                               at0.cell.lengths()[desired_pbc])
 
 def test_rescaled_calculator():
     """
