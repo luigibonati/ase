@@ -45,7 +45,7 @@ max_errors = {
     # expected 1 blank line, found 0
     'E301': 0,
     # multiple spaces after keyword
-    'E271': 6,
+    'E271': 0,
     # test for object identity should be 'is not'
     'E714': 0,
     # closing bracket does not match visual indentation
@@ -61,7 +61,7 @@ max_errors = {
     # closing bracket does not match indentation of opening bracket's line
     'E123': 0,
     # multiple spaces before operator
-    'E221': 4,
+    'E221': 0,
     # whitespace before '}'
     'E202': 0,
     # whitespace after '{'
