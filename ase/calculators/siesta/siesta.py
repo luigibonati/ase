@@ -1310,7 +1310,7 @@ class Siesta(FileIOCalculator):
 
         try:
             from pynao import tddft_iter
-        except:
+        except RuntimeError:
             raise RuntimeError("running lrtddft with Siesta calculator requires pynao package")
         from ase.units import Ha
 
