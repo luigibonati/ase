@@ -774,6 +774,7 @@ class ForceQMMM(Calculator):
                 / self.qm_cell_round_off)
                 * self.qm_cell_round_off)
 
+        self.qm_cluster_cell = Cell(np.diag(self.qm_cluster_cell))
         qm_cluster.set_cell(self.qm_cluster_cell)
         qm_cluster.pbc = self.qm_cluster_pbc
 
