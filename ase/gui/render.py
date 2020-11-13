@@ -89,7 +89,7 @@ class Render:
             'bbox': bbox,
             'rotation': self.gui.axes,
             'show_unit_cell': self.cell_widget.value
-            }
+        }
 
         povray_settings = {
             'display': self.show_output_widget.value,

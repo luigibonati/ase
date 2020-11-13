@@ -424,7 +424,7 @@ class PointChargePotential:
             external_forces.append(
                 [float(i) for i in line.split()[2:]])
 
-        f = np.array(external_forces)  - f_coul
+        f = np.array(external_forces) - f_coul
         f *= (Hartree / Bohr)
 
         return f

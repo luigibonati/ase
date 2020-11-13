@@ -138,6 +138,7 @@ def test_fracocc(gui):
         f.write(content)
     gui.open(filename='fracocc.cif')
 
+
 def test_povray(gui):
     import pathlib
     mol = molecule('H2O')
@@ -159,6 +160,7 @@ def test_povray(gui):
     with open(pov, 'r') as _:
         _ = _.read()
         assert 'atom' in _
+
 
 @pytest.fixture
 def with_bulk_ti(gui):
@@ -221,6 +223,7 @@ def test_repeat(gui):
 
     repeat.set_unit_cell()
     assert gui.atoms.cell[:] == pytest.approx(expected_atoms.cell[:])
+
 
 def test_surface(gui):
     assert len(gui.atoms) == 0
@@ -307,6 +310,7 @@ def different_dimensionalities():
     yield Atoms('X', cell=[1, 0, 0], pbc=[1, 0, 0])
     yield Atoms('X', cell=[1, 1, 0], pbc=[1, 1, 0])
     yield bulk('Au')
+
 
 @pytest.mark.parametrize('atoms', different_dimensionalities())
 def test_quickinfo(gui, atoms):
