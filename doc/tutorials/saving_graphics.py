@@ -6,7 +6,6 @@ from ase import Atoms
 from ase.io import write
 from ase.utils import hsv
 
-
 atoms = Atoms('Ag', cell=(2.7, 2.7, 2.7), pbc=True) * (18, 8, 8)
 
 # view with ASE-GUI
@@ -20,14 +19,14 @@ colors = hsv(atoms.positions[:, 0])
 tex = ['jmol', ] * 288 + ['glass', ] * 288 + ['ase3', ] * 288 + ['vmd', ] * 288
 
 
-# keywords
-kwargs = {  # Keywords that exist for eps, png, and pov
+# Keywords that exist for eps, png, and povs
+generic_projection_settings = {
     'rotation': rotation,
     'colors': colors,
     'radii': None,
 }
 
-extra_kwargs = {  # For povray files only
+povray_settings = {  # For povray files only
     'display': False,  # Display while rendering
     'pause': False,  # Pause when done rendering (only if display)
     'transparent': False,  # Transparent background
@@ -47,14 +46,17 @@ extra_kwargs = {  # For povray files only
 }
 
 # Make flat png file
-# write('flat.png', atoms, **kwargs)
+#write('flat.png', atoms, **kwargs)
 
 # Make the color of the glass beads semi-transparent
 colors2 = np.zeros((1152, 4))
 colors2[:, :3] = colors
 colors2[288: 576, 3] = 0.95
-kwargs['colors'] = colors2
-kwargs.update(extra_kwargs)
+generic_projection_settings['colors'] = colors2
 
 # Make the raytraced image
-write('nice.pov', atoms, run_povray=True, **kwargs)
+# first write the configuration files, then call the external povray executable
+renderer = write('nice.pov', atoms,
+                 generic_projection_settings=generic_projection_settings,
+                 povray_settings=povray_settings)
+renderer.render()

@@ -540,7 +540,11 @@ def write(
         might not be readable by any program! They will nevertheless be
         written without error message.
 
-    The use of additional keywords is format specific."""
+    The use of additional keywords is format specific. write() may
+    return an object after writing certain formats, but this behaviour
+    may change in the future.
+
+    """
 
     if isinstance(filename, PurePath):
         filename = str(filename)
@@ -567,8 +571,8 @@ def write(
 
     io = get_ioformat(format)
 
-    _write(filename, fd, format, io, images, parallel=parallel, append=append,
-           **kwargs)
+    return _write(filename, fd, format, io, images,
+                  parallel=parallel, append=append, **kwargs)
 
 
 @parallel_function
@@ -589,8 +593,7 @@ def _write(filename, fd, format, io, images, parallel=None, append=False,
     # Special case for json-format:
     if format == 'json' and (len(images) > 1 or append):
         if filename is not None:
-            io.write(filename, images, append=append, **kwargs)
-            return
+            return io.write(filename, images, append=append, **kwargs)
         raise ValueError("Can't write more than one image to file-descriptor "
                          'using json-format.')
 
@@ -603,21 +606,23 @@ def _write(filename, fd, format, io, images, parallel=None, append=False,
             fd = open_with_compression(filename, mode)
             # XXX remember to re-enable compressed open
             # fd = io.open(filename, mode)
-        io.write(fd, images, **kwargs)
-        if open_new:
-            fd.close()
+        try:
+            return io.write(fd, images, **kwargs)
+        finally:
+            if open_new:
+                fd.close()
     else:
         if fd is not None:
             raise ValueError("Can't write {}-format to file-descriptor"
                              .format(format))
         if io.can_append:
-            io.write(filename, images, append=append, **kwargs)
+            return io.write(filename, images, append=append, **kwargs)
         elif append:
             raise ValueError("Cannot append to {}-format, write-function "
                              "does not support the append keyword."
                              .format(format))
         else:
-            io.write(filename, images, **kwargs)
+            return io.write(filename, images, **kwargs)
 
 
 def read(
