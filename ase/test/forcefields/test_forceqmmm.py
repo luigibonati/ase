@@ -175,13 +175,13 @@ def test_qm_pbc_non_periodic_sphere(qm_calc, mm_calc, bulk_at):
                             buffer_width=3.61)
 
 
-def test_qm_pbc_mixed(qm_calc, mm_calc, bulk_at):
+def test_qm_pbc_mixed_crack_and_dislo(qm_calc, mm_calc, bulk_at):
     """
     test qm cell shape and choice of pbc:
     make a non-periodic pdc in a direction
     if qm_radius + buffer is larger than the original cell
     keep the periodic cell otherwise i. e. if cell[i, i] > qm_radius + buffer
-    testing the mixed scenario when the qm_cluster is priodic in one direction
+    testing the mixed scenario when the qm_cluster is periodic in one direction
     (relevant for dislocation or crack cells)
     (qm cluster cell must be the same as the original cell in periodic direction
     and DIFFERENT form the original cell in non periodic directions)
@@ -198,8 +198,16 @@ def test_qm_pbc_mixed(qm_calc, mm_calc, bulk_at):
     compare_qm_cell_and_pbc(qm_calc, mm_calc, bulk_at, test_size=[1, 4, 4],
                             expected_pbc=np.array([True, False, False]),
                             buffer_width=3.61)
+
+
+def test_qm_pbc_mixed_free_surface(qm_calc, mm_calc, bulk_at):
+
     """
-    testing scenario periodic in one direction and non periodic in the other tow
+    test qm cell shape and choice of pbc:
+    make a non-periodic pdc in a direction
+    if qm_radius + buffer is larger than the original cell
+    keep the periodic cell otherwise i. e. if cell[i, i] > qm_radius + buffer
+    testing scenario periodic in one direction and non periodic in the other two
     relevant for surfaces
     """
 
