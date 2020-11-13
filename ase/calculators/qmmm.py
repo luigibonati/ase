@@ -4,6 +4,7 @@ from ase.calculators.calculator import Calculator
 from ase.data import atomic_numbers
 from ase.utils import convert_string_to_fd
 from ase.geometry import get_distances
+from ase.cell import Cell
 
 
 class SimpleQMMM(Calculator):
@@ -759,19 +760,19 @@ class ForceQMMM(Calculator):
         self.qm_cluster_pbc = atoms.pbc & \
                               (cell_size < qm_radius + self.buffer_width)
 
-        non_pbc_directions = ~self.qm_cluster_pbc
-
+        # start with the original orthorhombic cell
+        self.qm_cluster_cell = atoms.cell.lengths()
         # create a cluster in a vacuum cell in non periodic directions
-        for i, non_pbc in enumerate(non_pbc_directions):
-            if non_pbc:
-                self.qm_cluster_cell[i, i] = 2.0 * (qm_radius[i] +
-                                                    self.buffer_width +
-                                                    self.vacuum)
-                # round the qm cell to the required tolerance
-                self.qm_cluster_cell[i, i] = (np.round(
-                    (self.qm_cluster_cell[i, i])
-                    / self.qm_cell_round_off)
-                                              * self.qm_cell_round_off)
+        self.qm_cluster_cell[~self.qm_cluster_pbc] = (
+                2.0 * (qm_radius[~self.qm_cluster_pbc] +
+                self.buffer_width +
+                self.vacuum))
+
+        # round the qm cell to the required tolerance
+        self.qm_cluster_cell[~self.qm_cluster_pbc] = (np.round(
+                (self.qm_cluster_cell[~self.qm_cluster_pbc])
+                / self.qm_cell_round_off)
+                * self.qm_cell_round_off)
 
         qm_cluster.set_cell(self.qm_cluster_cell)
         qm_cluster.pbc = self.qm_cluster_pbc
