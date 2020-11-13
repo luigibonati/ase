@@ -104,14 +104,13 @@ def compare_qm_cell_and_pbc(qm_calc, mm_calc, bulk_at,
 
     alat = bulk_at.cell[0, 0]
     at0 = bulk_at * test_size
-    size = at0.cell[0, 0]
     r = at0.get_distances(0, np.arange(len(at0)), mic=True)
     # should give 12 nearest neighbours + atom in the center
     R_QM = alat / np.sqrt(2.0) + 1.0e-3
     qm_mask = r < R_QM
 
     qmmm = ForceQMMM(at0, qm_mask, qm_calc, mm_calc,
-                     buffer_width=buffer_width * size)
+                     buffer_width=buffer_width)
     # equal to 1 alat
     # build qm_buffer_mask to build the cell
     qmmm.initialize_qm_buffer_mask(at0)
@@ -154,7 +153,7 @@ def test_qm_pbc_fully_periodic(qm_calc, mm_calc, bulk_at):
 
     compare_qm_cell_and_pbc(qm_calc, mm_calc, bulk_at, test_size=4,
                             expected_pbc=np.array([True, True, True]),
-                            buffer_width=1.5)
+                            buffer_width=5 * 3.61)
 
 
 def test_qm_pbc_non_periodic_sphere(qm_calc, mm_calc, bulk_at):
@@ -171,7 +170,7 @@ def test_qm_pbc_non_periodic_sphere(qm_calc, mm_calc, bulk_at):
 
     compare_qm_cell_and_pbc(qm_calc, mm_calc, bulk_at, test_size=4,
                             expected_pbc=np.array([False, False, False]),
-                            buffer_width=0.25)
+                            buffer_width=3.61)
 
 
 def test_qm_pbc_mixed(qm_calc, mm_calc, bulk_at):
@@ -180,15 +179,39 @@ def test_qm_pbc_mixed(qm_calc, mm_calc, bulk_at):
     make a non-periodic pdc in a direction
     if qm_radius + buffer is larger than the original cell
     keep the periodic cell otherwise i. e. if cell[i, i] > qm_radius + buffer
-    testing the mixed scenario when the qm_cluster pbc=[F, F, T]
+    testing the mixed scenario when the qm_cluster is priodic in one direction
     (relevant for dislocation or crack cells)
-    (qm cluster cell must be the same as the original cell in z direction
-    and DIFFERENT form the original cell in x and y directions)
+    (qm cluster cell must be the same as the original cell in periodic direction
+    and DIFFERENT form the original cell in non periodic directions)
     """
 
     compare_qm_cell_and_pbc(qm_calc, mm_calc, bulk_at, test_size=[4, 4, 1],
                             expected_pbc=np.array([False, False, True]),
-                            buffer_width=0.25)
+                            buffer_width=3.61)
+
+    compare_qm_cell_and_pbc(qm_calc, mm_calc, bulk_at, test_size=[4, 1, 4],
+                            expected_pbc=np.array([False, True, False]),
+                            buffer_width=3.61)
+
+    compare_qm_cell_and_pbc(qm_calc, mm_calc, bulk_at, test_size=[1, 4, 4],
+                            expected_pbc=np.array([True, False, False]),
+                            buffer_width=3.61)
+    """
+    testing scenario periodic in one direction and non periodic in the other tow
+    relevant for surfaces
+    """
+
+    compare_qm_cell_and_pbc(qm_calc, mm_calc, bulk_at, test_size=[1, 1, 4],
+                            expected_pbc=np.array([True, True, False]),
+                            buffer_width=3.61)
+
+    compare_qm_cell_and_pbc(qm_calc, mm_calc, bulk_at, test_size=[4, 1, 1],
+                            expected_pbc=np.array([False, True, True]),
+                            buffer_width=3.61)
+
+    compare_qm_cell_and_pbc(qm_calc, mm_calc, bulk_at, test_size=[1, 4, 1],
+                            expected_pbc=np.array([True, False, True]),
+                            buffer_width=3.61)
 
 
 def test_rescaled_calculator():
