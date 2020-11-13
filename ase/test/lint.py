@@ -77,13 +77,13 @@ max_errors = {
     # do not use bare 'except'
     'E722': 0,
     # whitespace before ':'
-    'E203': 38,
+    'E203': 30,
     # blank line at end of file
-    'W391': 39,
+    'W391': 30,
     # continuation line over-indented for hanging indent
     'E126': 27,
     # multiple spaces after ','
-    'E241': 45,
+    'E241': 35,
     # continuation line under-indented for visual indent
     'E128': 39,
     # continuation line over-indented for visual indent
@@ -103,17 +103,17 @@ max_errors = {
     # expected 2 blank lines, found 1
     'E302': 102,
     # unexpected spaces around keyword / parameter equals
-    'E251': 95,
+    'E251': 70,
     # trailing whitespace
     'W291': 169,
     # block comment should start with '# '
     'E265': 172,
     # missing whitespace after ','
-    'E231': 369,
+    'E231': 300,
     # missing whitespace around arithmetic operator
-    'E226': 408,
+    'E226': 308,
     # line too long (93 > 79 characters)
-    'E501': 755}
+    'E501': 740}
 
 
 def run_flaketest():
