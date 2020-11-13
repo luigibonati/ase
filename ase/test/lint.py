@@ -59,17 +59,17 @@ max_errors = {
     # indentation contains tabs
     'W191': 0,
     # closing bracket does not match indentation of opening bracket's line
-    'E123': 13,
+    'E123': 0,
     # multiple spaces before operator
     'E221': 4,
     # whitespace before '}'
-    'E202': 16,
+    'E202': 0,
     # whitespace after '{'
-    'E201': 16,
+    'E201': 0,
     # inline comment should start with '# '
     'E262': 12,
     # the backslash is redundant between brackets
-    'E502': 8,
+    'E502': 0,
     # continuation line missing indentation or outdented
     'E122': 0,
     # indentation is not a multiple of four
