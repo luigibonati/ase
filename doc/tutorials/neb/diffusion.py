@@ -17,8 +17,9 @@ for name, a in zip('ITF', images[::2]):
     del a.constraints
     a = a * (2, 2, 1)
     a.set_cell(cell)
-    write('diffusion-%s.pov' % name, a,
-          transparent=False, display=False, run_povray=True)
+    renderer = write('diffusion-%s.pov' % name, a,
+                     povray_settings=dict(transparent=False, display=False))
+    renderer.render()
 
 nebtools = NEBTools(images)
 assert abs(nebtools.get_barrier()[0] - 0.374) < 1e-3

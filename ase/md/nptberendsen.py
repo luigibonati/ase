@@ -143,7 +143,7 @@ class NPTBerendsen(NVTBerendsen):
         cell = scl_pressure * cell
         self.atoms.set_cell(cell, scale_atoms=True)
 
-    def step(self, f=None):
+    def step(self, forces=None):
         """ move one timestep forward using Berenden NPT molecular dynamics."""
 
         NVTBerendsen.scale_velocities(self)
@@ -152,13 +152,13 @@ class NPTBerendsen(NVTBerendsen):
         # one step velocity verlet
         atoms = self.atoms
 
-        if f is None:
-            f = atoms.get_forces()
+        if forces is None:
+            forces = atoms.get_forces()
 
         p = self.atoms.get_momenta()
-        p += 0.5 * self.dt * f
+        p += 0.5 * self.dt * forces
 
-        if self.fixcm:
+        if self.fix_com:
             # calculate the center of mass
             # momentum and subtract it
             psum = p.sum(axis=0) / float(len(p))
@@ -175,10 +175,10 @@ class NPTBerendsen(NVTBerendsen):
         # cannot use self.masses in the line above.
 
         self.atoms.set_momenta(p)
-        f = self.atoms.get_forces()
-        atoms.set_momenta(self.atoms.get_momenta() + 0.5 * self.dt * f)
+        forces = self.atoms.get_forces()
+        atoms.set_momenta(self.atoms.get_momenta() + 0.5 * self.dt * forces)
 
-        return f
+        return forces
 
     def _process_pressure(self, pressure, pressure_au):
         """Handle that pressure can be specified in multiple units.

@@ -1,14 +1,15 @@
 import numpy as np
 from ase.atoms import Atoms
+from ase.utils import writer, reader
 
 
-def read_dftb(filename='dftb_in.hsd'):
+@reader
+def read_dftb(fd):
     """Method to read coordinates form DFTB+ input file dftb_in.hsd
     additionally read information about fixed atoms
     and periodic boundary condition
     """
-    with open(filename, 'r') as myfile:
-        lines = myfile.readlines()
+    lines = fd.readlines()
 
     atoms_pos = []
     atom_symbols = []
@@ -118,13 +119,11 @@ def read_dftb_velocities(atoms, filename='geo_end.xyz'):
     return atoms
 
 
-def read_dftb_lattice(fileobj='md.out', images=None):
+@reader
+def read_dftb_lattice(fileobj, images=None):
     """Read lattice vectors from MD and return them as a list.
 
     If a molecules are parsed add them there."""
-    if isinstance(fileobj, str):
-        fileobj = open(fileobj)
-
     if images is not None:
         append = True
         if hasattr(images, 'get_positions'):
@@ -182,10 +181,9 @@ def write_dftb_velocities(atoms, filename='velocities.txt'):
                         velocity[1] / ASE2au,
                         velocity[2] / ASE2au))
 
-    return
 
-
-def write_dftb(filename, atoms):
+@writer
+def write_dftb(myfile, atoms):
     """Method to write atom structure in DFTB+ format
        (gen format)
     """
@@ -198,16 +196,10 @@ def write_dftb(filename, atoms):
     for i in indexes:
         atomsnew = atomsnew + atoms[i]
 
-    if isinstance(filename, str):
-        myfile = open(filename, 'w')
-    else:
-        # Assume it's a 'file-like object'
-        myfile = filename
-
     ispbc = atoms.get_pbc()
     box = atoms.get_cell()
 
-    if (any(ispbc)):
+    if any(ispbc):
         myfile.write('%8d %2s \n' % (len(atoms), 'S'))
     else:
         myfile.write('%8d %2s \n' % (len(atoms), 'C'))
@@ -229,7 +221,7 @@ def write_dftb(filename, atoms):
                      % (iatom + 1, itype,
                         coords[iatom][0], coords[iatom][1], coords[iatom][2]))
     # write box
-    if (any(ispbc)):
+    if any(ispbc):
         # dftb dummy
         myfile.write(' %19.16f %19.16f %19.16f \n' % (0, 0, 0))
         myfile.write(' %19.16f %19.16f %19.16f \n'
@@ -238,6 +230,3 @@ def write_dftb(filename, atoms):
                      % (box[1][0], box[1][1], box[1][2]))
         myfile.write(' %19.16f %19.16f %19.16f \n'
                      % (box[2][0], box[2][1], box[2][2]))
-
-    if isinstance(filename, str):
-        myfile.close()

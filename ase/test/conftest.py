@@ -140,6 +140,23 @@ def use_tmp_workdir(tmp_path):
     print(f'Testpath: {path}')
 
 
+@pytest.fixture
+def KIM():
+    pytest.importorskip('kimpy')
+    from ase.calculators.kim import KIM as _KIM
+    from ase.calculators.kim.exceptions import KIMModelNotFound
+
+    def KIM(*args, **kwargs):
+        try:
+            return _KIM(*args, **kwargs)
+        except KIMModelNotFound:
+            pytest.skip('KIM tests require the example KIM models.  '
+                        'These models are available if the kimpy package is '
+                        'built from source.')
+
+    return KIM
+
+
 @pytest.fixture(scope='session')
 def tkinter():
     import tkinter
@@ -211,6 +228,8 @@ def factory(request, factories):
     name, kwargs = request.param
     if not factories.installed(name):
         pytest.skip(f'Not installed: {name}')
+    if not factories.enabled(name):
+        pytest.skip(f'Not enabled: {name}')
     factory = factories[name]
     return CalculatorInputs(factory, kwargs)
 
@@ -307,6 +326,13 @@ def arbitrarily_seed_rng(request):
     yield
     np.random.set_state(state)
 
+@pytest.fixture(scope='session')
+def povray_executable():
+    import shutil
+    exe = shutil.which('povray')
+    if exe is None:
+        pytest.skip('povray not installed')
+    return exe
 
 def pytest_addoption(parser):
     parser.addoption('--calculators', metavar='NAMES', default='',
