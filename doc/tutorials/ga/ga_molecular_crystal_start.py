@@ -28,7 +28,7 @@ blmin = closest_distances_generator(atom_numbers=[Z],
                                     ratio_of_covalent_radii=1.3)
 
 # The bounds for the randomly generated unit cells:
-cellbounds = CellBounds(bounds={'phi': [30, 150], 'chi':[ 30, 150],
+cellbounds = CellBounds(bounds={'phi': [30, 150], 'chi': [30, 150],
                                 'psi': [30, 150], 'a': [3, 50],
                                 'b': [3, 50], 'c': [3, 50]})
 

@@ -22,7 +22,7 @@ def test_h2o():
 
     # energy
     energy = atoms.get_potential_energy()
-    ref = -4.08209*Hartree
+    ref = -4.08209 * Hartree
 
     print('energy')
     print(energy)
@@ -57,7 +57,7 @@ def test_h2o():
 
     positions = atoms.get_positions()
 
-    ref = np.array([[ 0.943765, 0.046188, 0.0],
+    ref = np.array([[0.943765, 0.046188, 0.0],
                     [-0.287409, 0.900126, 0.0],
                     [-0.021346, -0.030774, 0.0]])
 
