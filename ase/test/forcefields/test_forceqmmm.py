@@ -25,14 +25,21 @@ def qm_calc():
     return EMT()
 
 
+@pytest.fixture
+def bulk_at():
+    bulk_at = bulk("Cu", cubic=True)
+
+    return bulk_at
+
+
 @pytest.mark.slow
-def test_qm_buffer_mask(qm_calc, mm_calc):
+def test_qm_buffer_mask(qm_calc, mm_calc, bulk_at):
     """
     test number of atoms in qm_buffer_mask for
     spherical region in a fully periodic cell
     also tests that "region" array returns the same mapping
     """
-    bulk_at = bulk("Cu", cubic=True)
+
     alat = bulk_at.cell[0, 0]
     N_cell_geom = 10
     at0 = bulk_at * N_cell_geom
@@ -80,13 +87,6 @@ def test_qm_buffer_mask(qm_calc, mm_calc):
         buffer_mask_region = region == "buffer"
         assert qm_mask_region.sum() + \
                buffer_mask_region.sum() == qm_buffer_mask_ref.sum()
-
-
-@pytest.fixture
-def bulk_at():
-    bulk_at = bulk("Cu", cubic=True)
-
-    return bulk_at
 
 
 def compare_qm_cell_and_pbc(qm_calc, mm_calc, bulk_at,
@@ -324,13 +324,12 @@ def test_rescaled_calculator():
 
 
 @pytest.mark.slow
-def test_forceqmmm(qm_calc, mm_calc):
+def test_forceqmmm(qm_calc, mm_calc, bulk_at):
 
     # parameters
     N_cell = 2
     R_QMs = np.array([3, 7])
 
-    bulk_at = bulk("Cu", cubic=True)
     sigma = (bulk_at * 2).get_distance(0, 1) * (2. ** (-1. / 6))
 
     at0 = bulk_at * N_cell
