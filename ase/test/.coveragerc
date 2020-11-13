@@ -40,12 +40,6 @@ omit =
     ../calculators/vasp/interactive.py
     ../calculators/vasp/vasp2.py
     ../calculators/vasp/vasp.py
-    ../calculators/siesta/mbpt_lcao.py
-    ../calculators/siesta/mbpt_lcao_utils.py
-    ../calculators/siesta/import_ion_xml.py
-    ../calculators/siesta/siesta_raman.py
-    ../calculators/siesta/mbpt_lcao_io.py
-    ../calculators/siesta/import_functions.py
 
     # TODO: Improve IO format coverage and add include in coverage stats
     ../io/gaussian.py
