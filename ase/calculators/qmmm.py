@@ -745,7 +745,6 @@ class ForceQMMM(Calculator):
         # of max distance between qm atoms
         qm_radius = np.amax(np.amax(R_qm, axis=1), axis=0) * 0.5
 
-        self.qm_cluster_pbc = atoms.pbc.copy()
         self.qm_cluster_cell = atoms.cell.copy()
 
         if atoms.cell.orthorhombic:
@@ -757,9 +756,8 @@ class ForceQMMM(Calculator):
         # in periodic directions of the cell (cell[i] < qm_radius + buffer
         # otherwise change to non pbc
         # and make a cluster in a vacuum configuration
-        for i, pbc in enumerate(self.qm_cluster_pbc):
-            if pbc and cell_size[i] > qm_radius[i] + self.buffer_width:
-                self.qm_cluster_pbc[i] = False
+        self.qm_cluster_pbc = atoms.pbc & \
+                              (cell_size < qm_radius + self.buffer_width)
 
         non_pbc_directions = ~self.qm_cluster_pbc
 
