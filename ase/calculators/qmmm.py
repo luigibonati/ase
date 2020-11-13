@@ -702,7 +702,7 @@ class ForceQMMM(Calculator):
             self.qm_buffer_mask[r_qm < self.buffer_width] = True
 
         if self.add_region:
-            if "region" in atoms.arrays.keys():
+            if "region" in atoms.arrays:
                 region = atoms.get_array("region")
             else:
                 region = np.full_like(atoms, "MM")
