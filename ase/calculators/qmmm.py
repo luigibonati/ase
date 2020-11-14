@@ -690,9 +690,9 @@ class ForceQMMM(Calculator):
         # calculate the distances between all atoms and qm atoms
         # qm_distance_matrix is a [N_QM_atoms x N_atoms] matrix
         _, qm_distance_matrix = get_distances(
-                                atoms.positions[self.qm_selection_mask],
-                                atoms.positions,
-                                atoms.cell, atoms.pbc)
+                            atoms.positions[self.qm_selection_mask],
+                            atoms.positions,
+                            atoms.cell, atoms.pbc)
 
         self.qm_buffer_mask = np.zeros(len(atoms), dtype=bool)
 
@@ -764,15 +764,15 @@ class ForceQMMM(Calculator):
         self.qm_cluster_cell = atoms.cell.lengths()
         # create a cluster in a vacuum cell in non periodic directions
         self.qm_cluster_cell[~self.qm_cluster_pbc] = (
-                2.0 * (qm_radius[~self.qm_cluster_pbc] +
-                self.buffer_width +
-                self.vacuum))
+            2.0 * (qm_radius[~self.qm_cluster_pbc] +
+            self.buffer_width +
+            self.vacuum))
 
         # round the qm cell to the required tolerance
         self.qm_cluster_cell[~self.qm_cluster_pbc] = (np.round(
-                (self.qm_cluster_cell[~self.qm_cluster_pbc])
-                / self.qm_cell_round_off)
-                * self.qm_cell_round_off)
+            (self.qm_cluster_cell[~self.qm_cluster_pbc]) /
+            self.qm_cell_round_off) *
+            self.qm_cell_round_off)
 
         self.qm_cluster_cell = Cell(np.diag(self.qm_cluster_cell))
         qm_cluster.set_cell(self.qm_cluster_cell)
