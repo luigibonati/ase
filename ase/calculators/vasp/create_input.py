@@ -891,6 +891,47 @@ class GenerateVaspInput:
             'gga': 'PS',
             'lhfcalc': True,
             'hfscreen': 0.2
+        },
+        # MN-VFM functionals
+        'sogga': {
+            'gga': 'SA'
+        },
+        'sogga11': {
+            'gga': 'S1'
+        },
+        'sogga11-x': {
+            'gga': 'SX',
+            'lhfcalc': True,
+            'aexx': 0.401
+        },
+        'n12': {
+            'gga': 'N2'
+        },
+        'n12-sx': {
+            'gga': 'NX',
+            'lhfcalc': True,
+            'lhfscreen': 0.2
+        },
+        'mn12l': {
+            'metagga': 'MN12L'
+        },
+        'GAM': {
+            'gga': 'GA'
+        },
+        'mn15l': {
+            'metagga': 'MN15L'
+        },
+        'HLE17': {
+            'metagga': 'HLE17'
+        },
+        'revm06l': {
+            'metagga': 'revM06L'
+        },
+        'm06sx': {
+            'metagga': 'M06SX',
+            'lhfcalc': True,
+            'hfscreen': 0.189,
+            'aexx': 0.335
         }
     }
 
