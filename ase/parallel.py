@@ -8,8 +8,6 @@ import warnings
 
 import numpy as np
 
-from ase.utils import devnull
-
 
 def get_txt(txt, rank):
     if hasattr(txt, 'write'):
