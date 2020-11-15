@@ -25,7 +25,7 @@ def _std_calculator_gpwfile(tmp_path_factory, factories):
     import gpaw
     atoms = molecule('H2', pbc=True)
     atoms.center(vacuum=3.)
-    gpw_path = tmp_path_factory.mktemp('sub') / 'dumpfile.gpw'
+    gpw_path = tmp_path_factory.mktemp('sub') / 'wan_h2.gpw'
     calc = gpaw.GPAW(gpts=(8, 8, 8), nbands=4, kpts=(2, 2, 2),
                      symmetry='off', txt=None)
     atoms.calc = calc
@@ -41,13 +41,13 @@ def std_calculator(_std_calculator_gpwfile):
 
 
 @pytest.fixture(scope='module')
-def _gaas_calculator(tmp_path_factory):
+def _si_calculator(tmp_path_factory):
     gpaw = pytest.importorskip('gpaw')
-    atoms = bulk('GaAs', crystalstructure='zincblende', a=5.6531)
+    atoms = bulk('Si')
     atoms.pbc = (True, True, True)
     atoms.center()
-    gpw = tmp_path_factory.mktemp('wan_calc') / 'wan_gaas.gpw'
-    calc = gpaw.GPAW(gpts=(16, 16, 16), nbands=6,
+    gpw = tmp_path_factory.mktemp('wan_calc') / 'wan_si.gpw'
+    calc = gpaw.GPAW(gpts=(8, 8, 8), nbands=6,
                      kpts={'size': (2, 2, 2), 'gamma': True},
                      symmetry='off', txt=None)
     atoms.calc = calc
@@ -57,9 +57,9 @@ def _gaas_calculator(tmp_path_factory):
 
 
 @pytest.fixture(scope='module')
-def gaas_calculator(_gaas_calculator):
+def si_calculator(_si_calculator):
     gpaw = pytest.importorskip('gpaw')
-    return gpaw.GPAW(_gaas_calculator, txt=None)
+    return gpaw.GPAW(_si_calculator, txt=None)
 
 
 @pytest.fixture(scope='module')
@@ -622,8 +622,8 @@ def test_scdm(ti_calculator):
         assert normalization_error(C_kul[k]) < 1e-10, 'C_ul not normalized'
 
 
-def test_get_optimal_nwannier(wan, gaas_calculator):
-    wanf = wan(calc=gaas_calculator, full_calc=True,
+def test_get_optimal_nwannier(wan, si_calculator):
+    wanf = wan(calc=si_calculator, full_calc=True,
                initialwannier='bloch', std_calc=False,
                nwannier='auto', fixedenergy=0)
     opt_nw = wanf.get_optimal_nwannier()
