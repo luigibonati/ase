@@ -50,10 +50,8 @@ omit =
     ../calculators/vasp/vasp.py
 
     # TODO: Improve IO format coverage and add include in coverage stats
-    ../io/gaussian.py
     ../io/fortranfile.py
     ../io/turbomole.py
-    ../io/gaussian_reader.py
     ../io/acemolecule.py
     ../io/vtkxml.py
     ../io/castep.py
