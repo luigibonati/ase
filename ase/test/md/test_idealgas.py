@@ -18,7 +18,7 @@ def test_idealgas():
 
     md_temp = 1000
 
-    MaxwellBoltzmannDistribution(atoms, md_temp * kB, rng=rng)
+    MaxwellBoltzmannDistribution(atoms, temperature_K=md_temp, rng=rng)
     print("Temperature: {} K".format(atoms.get_temperature()))
 
     md = VelocityVerlet(atoms, timestep=0.1)

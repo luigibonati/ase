@@ -312,10 +312,12 @@ class Optimizer(Dynamics):
 
     def dump(self, data):
         if world.rank == 0 and self.restart is not None:
-            pickle.dump(data, open(self.restart, "wb"), protocol=2)
+            with open(self.restart, "wb") as fd:
+                pickle.dump(data, fd, protocol=2)
 
     def load(self):
-        return pickle.load(open(self.restart, "rb"))
+        with open(self.restart, "rb") as fd:
+            return pickle.load(fd)
 
     def set_force_consistent(self):
         """Automatically sets force_consistent to True if force_consistent

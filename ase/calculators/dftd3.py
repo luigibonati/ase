@@ -8,7 +8,7 @@ from ase.calculators.calculator import (Calculator,
                                         all_changes,
                                         PropertyNotImplementedError)
 from ase.units import Bohr, Hartree
-from ase.io.xyz import write_xyz
+from ase.io import write
 from ase.io.vasp import write_vasp
 from ase.parallel import world
 
@@ -51,7 +51,6 @@ class DFTD3(FileIOCalculator):
 
         self.dft = None
         FileIOCalculator.__init__(self, restart=None,
-                                  ignore_bad_restart_file=False,
                                   label=label,
                                   atoms=atoms,
                                   command=command,
@@ -257,7 +256,7 @@ class DFTD3(FileIOCalculator):
             else:
                 fname = os.path.join(
                     self.directory, '{}.xyz'.format(self.label))
-                write_xyz(fname, atoms, plain=True)
+                write(fname, atoms, format='xyz')
 
         # Generate custom damping parameters file. This is kind of ugly, but
         # I don't know of a better way of doing this.
@@ -377,7 +376,7 @@ class DFTD3(FileIOCalculator):
                             for j, x in enumerate(line.split()):
                                 stress[i, j] = float(x)
                     stress *= Hartree / Bohr / self.atoms.get_volume()
-                    stress = np.dot(stress, self.atoms.cell.T)
+                    stress = np.dot(stress.T, self.atoms.cell)
                 self.comm.broadcast(stress, 0)
                 self.results['stress'] = stress.flat[[0, 4, 8, 5, 2, 1]]
 

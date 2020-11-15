@@ -1,5 +1,6 @@
 from typing import List, Sequence, Set, Dict, Union, Iterator
 import warnings
+import collections.abc
 
 import numpy as np
 
@@ -24,7 +25,7 @@ def symbols2numbers(symbols) -> List[int]:
     return numbers
 
 
-class Symbols:
+class Symbols(collections.abc.Sequence):
     """A sequence of chemical symbols.
 
     ``atoms.symbols`` is a :class:`ase.symbols.Symbols` object.  This
@@ -48,14 +49,14 @@ class Symbols:
     >>> atoms.symbols
     Symbols('C2OMo2UPu3')
     >>> atoms.symbols.formula
-    Formula('CCOMoMoUPuPuPu')
+    Formula('C2OMo2UPu3')
 
     The :class:`ase.formula.Formula` object is useful for extended
     formatting options and analysis.
 
     """
     def __init__(self, numbers) -> None:
-        self.numbers = np.asarray(numbers)
+        self.numbers = np.asarray(numbers, int)
 
     @classmethod
     def fromsymbols(cls, symbols) -> 'Symbols':
@@ -65,7 +66,8 @@ class Symbols:
     @property
     def formula(self) -> Formula:
         """Formula object."""
-        return Formula.from_list([chemical_symbols[Z] for Z in self.numbers])
+        string = Formula.from_list(self).format('reduce')
+        return Formula(string)
 
     def __getitem__(self, key) -> Union['Symbols', str]:
         num = self.numbers[key]
@@ -113,6 +115,7 @@ class Symbols:
         """Get chemical formula.
 
         See documentation of ase.atoms.Atoms.get_chemical_formula()."""
+        # XXX Delegate the work to the Formula object!
         if mode in ('reduce', 'all') and empirical:
             warnings.warn("Empirical chemical formula not available "
                           "for mode '{}'".format(mode))

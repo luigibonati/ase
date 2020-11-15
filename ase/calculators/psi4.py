@@ -27,6 +27,7 @@ class Psi4(Calculator):
     calc.psi4
     """
     implemented_properties = ['energy', 'forces']
+    discard_results_on_any_change = True
 
     default_parameters = {
         "basis": "aug-cc-pvtz",
@@ -123,11 +124,6 @@ class Psi4(Calculator):
         if not os.path.isdir(self.directory):
             os.mkdir(self.directory)
         self.molecule = self.psi4.geometry('\n'.join(geom))
-
-    def set(self, **kwargs):
-        changed_parameters = Calculator.set(self, **kwargs)
-        if changed_parameters:
-            self.reset()
 
     def read(self, label):
         """Read psi4 outputs made from this ASE calculator

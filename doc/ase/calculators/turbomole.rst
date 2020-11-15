@@ -240,6 +240,7 @@ values.
                       define_str   str    None        None            True
                      control_kdg  list    None        None            True
                    control_input  list    None        None            True
+                 reset_tolerance float    1e-2        Angstrom        True
          automatic orbital shift float          0.1             eV          True
                   basis set name   str    def-SV(P)           None         False
       closed-shell orbital shift float         None             eV          True
@@ -287,6 +288,12 @@ optional list of data groups in control file to be deleted after running module
 ``define`` and ``control_input`` is an optional list of data groups to be added
 to control file after running module ``define``.
 
+If the Atoms object is updated via ``set_atoms()`` method, a check for the changes
+is performed and if the changes in positions are larger than a tolerance
+``reset_tolerance`` then the calculator is reset, the working directory is purged
+and module ``define`` is called. In order to control this behavior the user may
+choose a custom value for ``reset_tolerance``.
+
 The parameter ``initial guess`` can be either the strings *eht* (extended
 Hückel theory) or *hcore* (one-electron core Hamiltonian) or a dictionary
 *{'use': '<path/to/control>'}* specifying a path to a control file with the
@@ -297,13 +304,19 @@ computed numerically using the script NumForce. The keys can be *'central'*
 indicating use of central differences (type *bool*) and *'delta'* specifying
 the coordinate displacements in Angstrom (type *float*).
 
+While ``task`` can be set to ``"optimize"`` to perform a geometry optimization
+using Turbomole's own relaxation algorithms, doing so directly is discouraged.
+Instead, the calculator's ``get_optimizer()`` method should be called to obtain
+a ``TurbomoleOptimizer`` which can be used like any other ASE
+:mod:`Optimizer <ase.optimize>`. An :ref:`example <turbomole_optimizer_example>`
+is given below.
+
 Some parameter names contain spaces. This means that the preferred way to pass
 the parameters is to construct a dictionary, for example:
 
 .. code:: python
 
-  params = {'task': 'optimize',
-            'use resolution of identity': True,
+  params = {'use resolution of identity': True,
             'ri memory': 2000,
             'scf iterations': 80,
             'force convergence': 0.05}
@@ -345,6 +358,14 @@ Single-point gradient calculation of Au13-
 This script demonstrates the use of the restart option.
 
 :git:`ase/test/calculator/turbomole/test_turbomole_au13.py`.
+
+
+.. _turbomole_optimizer_example:
+
+Geometry optimization using TurbomoleOptimizer (recommended)
+------------------------------------------------------------
+
+:git:`ase/test/calculator/turbomole/test_turbomole_optimizer.py`.
 
 Geometry optimization and normal mode analysis for H2O
 ------------------------------------------------------

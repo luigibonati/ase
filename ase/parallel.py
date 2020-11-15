@@ -1,3 +1,4 @@
+import os
 import atexit
 import functools
 import pickle
@@ -33,7 +34,7 @@ def paropen(name, mode='r', buffering=-1, encoding=None):
     is opened on all other nodes.
     """
     if world.rank > 0 and mode[0] != 'r':
-        name = '/dev/null'
+        name = os.devnull
     return open(name, mode, buffering, encoding)
 
 
@@ -183,6 +184,12 @@ elif '_gpaw' in sys.modules:
     import _gpaw
     try:
         world = _gpaw.Communicator()
+    except AttributeError:
+        pass
+elif '_asap' in sys.modules:
+    import _asap
+    try:
+        world = _asap.Communicator()
     except AttributeError:
         pass
 elif 'mpi4py' in sys.modules:

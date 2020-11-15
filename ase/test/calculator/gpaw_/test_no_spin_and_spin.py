@@ -1,22 +1,22 @@
-def test_no_spin_and_spin():
-    import unittest
+import pytest
 
+
+@pytest.mark.calculator('gpaw')
+@pytest.mark.filterwarnings('ignore:The keyword')
+# Ignore calculator constructor keyword warning for now
+def test_no_spin_and_spin(factory):
     from ase.build import molecule
     from ase import io
-    try:
-        from gpaw import GPAW
-    except ImportError:
-        raise unittest.SkipTest('GPAW not available')
 
     txt = 'out.txt'
-    if 1:
-        calculator = GPAW(h=0.3, txt=txt)
-        atoms = molecule('H2', calculator=calculator)
-        atoms.center(vacuum=3)
-        atoms.get_potential_energy()
-        atoms.set_initial_magnetic_moments([0.5, 0.5])
-        calculator.set(charge=1)
-        atoms.get_potential_energy()
+
+    calculator = factory.calc(h=0.3, txt=txt)
+    atoms = molecule('H2', calculator=calculator)
+    atoms.center(vacuum=3)
+    atoms.get_potential_energy()
+    atoms.set_initial_magnetic_moments([0.5, 0.5])
+    calculator.set(charge=1)
+    atoms.get_potential_energy()
 
     # read again
     t = io.read(txt, index=':')

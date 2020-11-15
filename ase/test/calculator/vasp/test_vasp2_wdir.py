@@ -1,3 +1,14 @@
+import pytest
+
+import os
+
+from ase.test.calculator.vasp import installed2 as installed
+
+from ase import Atoms
+from ase.calculators.vasp import Vasp2 as Vasp
+
+
+@pytest.mark.filterwarnings('ignore:Specifying directory')
 def test_vasp2_wdir(require_vasp):
     """
     Run tests to ensure that the VASP txt and label arguments function correctly,
@@ -7,25 +18,14 @@ def test_vasp2_wdir(require_vasp):
     or VASP_SCRIPT environment variables
 
     """
-
-    import filecmp
-    import os
-
-    from ase.test.calculator.vasp import installed2 as installed
-
-    from ase import Atoms
-    from ase.calculators.vasp import Vasp2 as Vasp
-
     assert installed()
 
     def compare_paths(path1, path2):
         assert os.path.abspath(path1) == os.path.abspath(path2)
 
-
     # Test setup system, borrowed from vasp_co.py
     d = 1.14
-    atoms = Atoms('CO', positions=[(0, 0, 0), (0, 0, d)],
-                  pbc=True)
+    atoms = Atoms('CO', positions=[(0, 0, 0), (0, 0, d)], pbc=True)
     atoms.center(vacuum=5.)
 
     file1 = '_vasp_dummy_str.out'
@@ -69,14 +69,9 @@ def test_vasp2_wdir(require_vasp):
         atoms.calc = calc2
         atoms.get_potential_energy()
 
-
-    # Make sure the two outputfiles are identical
-    assert filecmp.cmp(os.path.join(calc.directory, file1), file2)
-
     # Test restarting from working directory in test directory
     label2 = os.path.join(testdir, file3)
-    calc2 = Vasp(restart=label,
-                 label=label2)
+    calc2 = Vasp(restart=label, label=label2)
 
     # Check the calculator path is the expected path
     compare_paths(calc2.directory, testdir)

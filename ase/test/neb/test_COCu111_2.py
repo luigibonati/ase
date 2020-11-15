@@ -1,15 +1,20 @@
-from math import sqrt
 import pytest
-from ase import Atoms, Atom
-from ase.constraints import FixAtoms
-from ase.optimize import BFGS
-from ase.neb import SingleCalculatorNEB
+from math import sqrt
+
+from ase import Atoms, Atom, io
 from ase.calculators.emt import EMT
+from ase.constraints import FixAtoms
+from ase.neb import NEB
+from ase.optimize import BFGS
+
+
 # XXXXXXXX this is mostly a copy of COCu111 !!!  Grrrr!
 
 
 @pytest.mark.slow
 def test_COCu111_2():
+    logfile = "-"  # supresses
+
     Optimizer = BFGS
 
     # Distance between Cu atoms on a (111) surface:
@@ -29,60 +34,57 @@ def test_COCu111_2():
     constraint = FixAtoms(indices=indices)
     initial.set_constraint(constraint)
 
-    print('Relax initial image')
-    dyn = Optimizer(initial)
+    dyn = Optimizer(initial, logfile=logfile)
     dyn.run(fmax=0.05)
-    Z = initial.get_positions()[:, 2]
-    print(Z[0] - Z[1])
-    print(Z[1] - Z[2])
-    print(Z[2] - Z[3])
 
+    # relax initial image
     b = 1.2
     h = 1.5
     initial += Atom('C', (d / 2, -b / 2, h))
     initial += Atom('O', (d / 2, +b / 2, h))
-    dyn = Optimizer(initial)
+    dyn = Optimizer(initial, logfile=logfile)
     dyn.run(fmax=0.05)
-    # view(initial)
 
-    print('Relax final image')
+    # relax final image
     final = initial.copy()
     final.calc = EMT()
     final.set_constraint(constraint)
     final[-2].position = final[-1].position
     final[-1].x = d
     final[-1].y = d / sqrt(3)
-    dyn = Optimizer(final)
+    dyn = Optimizer(final, logfile=logfile)
     dyn.run(fmax=0.1)
     # view(final)
 
-    print('Create neb with 2 intermediate steps')
-    neb = SingleCalculatorNEB([initial, final])
-    neb.refine(2)
-    assert neb.n() == 4
+    # Create neb with 2 intermediate steps
+    neb = NEB([initial, initial.copy(), initial.copy(), final],
+              allow_shared_calculator=True)
+    # refine() removed, not implemented any more
+    neb.interpolate()
 
-    print('Optimize neb using a single calculator')
+    # Optimize neb using a single calculator
     neb.set_calculators(EMT())
-    # print('0001', id(neb.images[0]), id(neb.images[0].calc.atoms))
-    dyn = Optimizer(neb, maxstep=0.04, trajectory='mep_2coarse.traj')
+    # refine() removed, not implemented any more
+    dyn = Optimizer(neb, maxstep=0.04, trajectory='mep_2coarse.traj',
+                    logfile=logfile)
     dyn.run(fmax=0.1)
-    # dyn.run(fmax=39.1)
 
-    print('Optimize neb using a many calculators')
-    neb = SingleCalculatorNEB([initial, final])
-    neb.refine(2)
-    neb.set_calculators([EMT() for i in range(neb.n())])
-    dyn = Optimizer(neb, maxstep=0.04, trajectory='mep_2coarse.traj')
+    # Optimize neb using a many calculators
+    neb = NEB([initial, initial.copy(), initial.copy(), final])
+    neb.interpolate()
+    neb.set_calculators([EMT() for _ in range(neb.nimages)])
+    dyn = Optimizer(neb, maxstep=0.04, trajectory='mep_2coarse.traj',
+                    logfile=logfile)
     dyn.run(fmax=0.1)
-    # dyn.run(fmax=39.1)
 
     # read from the trajectory
-    neb = SingleCalculatorNEB('mep_2coarse.traj', index='-4:')
+    neb = NEB(io.read('mep_2coarse.traj', index='-4:'),
+              allow_shared_calculator=True)
 
-    # refine in the important region
-    neb.refine(2, 1, 3)
+    # refine() removed, not implemented any more
     neb.set_calculators(EMT())
-    print('Optimize refined neb using a single calculator')
-    dyn = Optimizer(neb, maxstep=0.04, trajectory='mep_2fine.traj')
+    # Optimize refined neb using a single calculator
+    dyn = Optimizer(neb, maxstep=0.04, trajectory='mep_2fine.traj',
+                    logfile=logfile)
     dyn.run(fmax=0.1)
-    assert len(neb.images) == 8
+    assert len(neb.images) == 4

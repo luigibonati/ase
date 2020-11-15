@@ -1,17 +1,19 @@
+import numpy as np
+
+from ase.cluster import Icosahedron
+from ase.calculators.emt import EMT
+from ase.optimize.fire import FIRE
+from ase.lattice.compounds import L1_2
+
+from ase.ga.utilities import get_rdf
+
+
 def test_utilities():
-    import numpy as np
-
-    from ase.cluster import Icosahedron
-    from ase.calculators.emt import EMT
-    from ase.optimize.fire import FIRE
-    from ase.lattice.compounds import L1_2
-
-    from ase.ga.utilities import get_rdf
-
     eps = 1e-5
 
     atoms = Icosahedron('Cu', 3)
     atoms.numbers[[0, 13, 15, 16, 18, 19, 21, 22, 24, 25, 27, 28, 30]] = 79
+    atoms.center(vacuum=0.0)
     atoms.calc = EMT()
     opt = FIRE(atoms, logfile=None)
     opt.run(fmax=0.05)

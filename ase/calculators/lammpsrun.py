@@ -387,21 +387,20 @@ potentials)
         self.calls += 1
 
         # change into subdirectory for LAMMPS calculations
-        cwd = os.getcwd()
-        os.chdir(self.parameters.tmp_dir)
+        tempdir = self.parameters.tmp_dir
 
         # setup file names for LAMMPS calculation
         label = "{0}{1:>06}".format(self.label, self.calls)
         lammps_in = uns_mktemp(
-            prefix="in_" + label, dir=self.parameters.tmp_dir
+            prefix="in_" + label, dir=tempdir
         )
         lammps_log = uns_mktemp(
-            prefix="log_" + label, dir=self.parameters.tmp_dir
+            prefix="log_" + label, dir=tempdir
         )
         lammps_trj_fd = NamedTemporaryFile(
             prefix="trj_" + label,
             suffix=(".bin" if self.parameters.binary_dump else ""),
-            dir=self.parameters.tmp_dir,
+            dir=tempdir,
             delete=(not self.parameters.keep_tmp_files),
         )
         lammps_trj = lammps_trj_fd.name
@@ -410,7 +409,7 @@ potentials)
         else:
             lammps_data_fd = NamedTemporaryFile(
                 prefix="data_" + label,
-                dir=self.parameters.tmp_dir,
+                dir=tempdir,
                 delete=(not self.parameters.keep_tmp_files),
                 mode='w',
                 encoding='ascii'
@@ -479,10 +478,9 @@ potentials)
 
         exitcode = lmp_handle.poll()
         if exitcode and exitcode != 0:
-            cwd = os.getcwd()
             raise RuntimeError(
                 "LAMMPS exited in {} with exit code: {}."
-                "".format(cwd, exitcode)
+                "".format(tempdir, exitcode)
             )
 
         # A few sanity checks
@@ -540,8 +538,6 @@ potentials)
         lammps_trj_fd.close()
         if not self.parameters.no_data_file:
             lammps_data_fd.close()
-
-        os.chdir(cwd)
 
     def __enter__(self):
         return self

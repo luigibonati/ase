@@ -1,8 +1,6 @@
-import os
 import pickle
 import subprocess
 import sys
-import tempfile
 import weakref
 from functools import partial
 from ase.gui.i18n import _
@@ -10,7 +8,7 @@ from time import time
 
 import numpy as np
 
-from ase import __version__
+from ase import Atoms, __version__
 import ase.gui.ui as ui
 from ase.gui.defaults import read_defaults
 from ase.gui.images import Images
@@ -209,13 +207,16 @@ class GUI(View, Status):
         nselected = sum(self.images.selected)
         if nselected and ui.ask_question('Delete atoms',
                                          'Delete selected atoms?'):
-            mask = self.images.selected[:len(self.atoms)]
-            del self.atoms[mask]
+            self.really_delete_selected_atoms()
 
-            # Will remove selection in other images, too
-            self.images.selected[:] = False
-            self.set_frame()
-            self.draw()
+    def really_delete_selected_atoms(self):
+        mask = self.images.selected[:len(self.atoms)]
+        del self.atoms[mask]
+
+        # Will remove selection in other images, too
+        self.images.selected[:] = False
+        self.set_frame()
+        self.draw()
 
     def constraints_window(self):
         from ase.gui.constraints import Constraints
@@ -295,7 +296,7 @@ class GUI(View, Status):
             self.pipe('eos', plotdata)
 
     def reciprocal(self):
-        if self.atoms.number_of_lattice_vectors != 3:
+        if self.atoms.cell.rank != 3:
             self.bad_plot(_('Requires 3D cell.'))
             return
 
@@ -397,13 +398,72 @@ class GUI(View, Status):
         return save_dialog(self)
 
     def external_viewer(self, name):
-        command = {'xmakemol': 'xmakemol -f',
-                   'rasmol': 'rasmol -xyz'}.get(name, name)
-        fd, filename = tempfile.mkstemp('.xyz', 'ase.gui-')
-        os.close(fd)
-        self.images.write(filename)
-        os.system('(%s %s &); (sleep 60; rm %s) &' %
-                  (command, filename, filename))
+        from ase.visualize import view
+        return view(list(self.images), viewer=name)
+
+    def selected_atoms(self):
+        selection_mask = self.images.selected[:len(self.atoms)]
+        return self.atoms[selection_mask]
+
+    @property
+    def clipboard(self):
+        from ase.gui.clipboard import AtomsClipboard
+        return AtomsClipboard(self.window.win)
+
+    def cut_atoms_to_clipboard(self, event=None):
+        self.copy_atoms_to_clipboard(event)
+        self.really_delete_selected_atoms()
+
+    def copy_atoms_to_clipboard(self, event=None):
+        atoms = self.selected_atoms()
+        self.clipboard.set_atoms(atoms)
+
+    def paste_atoms_from_clipboard(self, event=None):
+        try:
+            atoms = self.clipboard.get_atoms()
+        except Exception as err:
+            ui.error(
+                'Cannot paste atoms',
+                'Pasting currently works only with the ASE JSON format.\n\n'
+                f'Original error:\n\n{err}')
+            return
+
+        if self.atoms == Atoms():
+            self.atoms.cell = atoms.cell
+            self.atoms.pbc = atoms.pbc
+        self.paste_atoms_onto_existing(atoms)
+
+    def paste_atoms_onto_existing(self, atoms):
+        selection = self.selected_atoms()
+        if len(selection):
+            paste_center = selection.positions.sum(axis=0) / len(selection)
+            # atoms.center() is a no-op in directions without a cell vector.
+            # But we actually want the thing centered nevertheless!
+            # Therefore we have to set the cell.
+            atoms = atoms.copy()
+            atoms.cell = (1, 1, 1)  # arrrgh.
+            atoms.center(about=paste_center)
+
+        self.add_atoms_and_select(atoms)
+        self.move_atoms_mask = self.images.selected.copy()
+        self.arrowkey_mode = self.ARROWKEY_MOVE
+        self.draw()
+
+    def add_atoms_and_select(self, new_atoms):
+        atoms = self.atoms
+        atoms += new_atoms
+
+        if len(atoms) > self.images.maxnatoms:
+            self.images.initialize(list(self.images),
+                                   self.images.filenames)
+
+        selected = self.images.selected
+        selected[:] = False
+        # 'selected' array may be longer than current atoms
+        selected[len(atoms) - len(new_atoms):len(atoms)] = True
+
+        self.set_frame()
+        self.draw()
 
     def get_menu_data(self):
         M = ui.MenuItem
@@ -421,8 +481,9 @@ class GUI(View, Status):
               M(_('Select _constrained atoms'), self.select_constrained_atoms),
               M(_('Select _immobile atoms'), self.select_immobile_atoms),
               # M('---'),
-              # M(_('_Copy'), self.copy_atoms, 'Ctrl+C'),
-              # M(_('_Paste'), self.paste_atoms, 'Ctrl+V'),
+              M(_('_Cut'), self.cut_atoms_to_clipboard, 'Ctrl+X'),
+              M(_('_Copy'), self.copy_atoms_to_clipboard, 'Ctrl+C'),
+              M(_('_Paste'), self.paste_atoms_from_clipboard, 'Ctrl+V'),
               M('---'),
               M(_('Hide selected atoms'), self.hide_selected),
               M(_('Show selected atoms'), self.show_selected),

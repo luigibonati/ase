@@ -1,12 +1,13 @@
+import warnings
+
+import numpy as np
+
+from ase.io import read, write
+from ase.calculators.emt import EMT
+from ase.build import bulk
+
+
 def test_issue276():
-    import warnings
-
-    import numpy as np
-
-    from ase.io import read, write
-    from ase.calculators.emt import EMT
-    from ase.build import bulk
-
     at = bulk("Cu")
     at.rattle()
     at.calc = EMT()

@@ -111,6 +111,7 @@ class PlottingVariables:
         self.cell_vertices = cell_vertices
         self.natoms = natoms
         self.d = 2 * scale * radii
+        self.constraints = atoms.constraints
 
         # extension for partial occupancies
         self.frac_occ = False
@@ -227,6 +228,7 @@ class ImageIterator:
     Assumes ``ichunks`` is in iterator, which returns ``ImageChunk``
     type objects. See extxyz.py:iread_xyz as an example.
     """
+
     def __init__(self, ichunks):
         self.ichunks = ichunks
 

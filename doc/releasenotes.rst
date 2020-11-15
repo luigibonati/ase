@@ -1,4 +1,3 @@
-
 .. _releasenotes:
 
 =============
@@ -10,17 +9,75 @@ Git master branch
 
 :git:`master <>`.
 
+* The linear interpolation (:meth:`ase.neb.interpolate`) between images
+  now supports cell-interpolation and the use of scaled positions.
+
+* Changed units for molecular dynamics modules.  They now accept the
+  temperature in Kelvin as a keyword-only argument ``temperature_K``
+  and Berendsen NPT accepts the pressure in eV/Å^3 as a keyword-only
+  argument ``pressure_au``. The previous arguments are still
+  available and still take temperature and pressure in whatever unit
+  the module used to accept, but now issue a warning.
+
+* Made Andersen thermostat available for molecular dynamics simulation.
+
+* Deprecated the following methods on :class:`~ase.Atoms` as they can
+  be replaced by ``~ase.cell.Cell``:
+  ``atoms.get_cell_lengths_and_angles()``,
+  ``atoms.get_reciprocal_cell()``,
+  ``atoms.number_of_lattice_vectors``, and ``atoms.get_volume()``.
+  Instead use ``atoms.cell.cellpar()``, ``atoms.cell.reciprocal()``,
+  ``atoms.cell.rank``, and ``atoms.cell.volume``, respectively.
+
+* Extended constraint `ase.constraints.FixInternals` by
+  possibility to fix linear combinations of bond lengths.
+
+* Cleaned up and fixed multiple issues with
+  :class:`~ase.calculators.elk.Elk` calculator.
+
+* :meth:`~ase.Atoms.get_velocities` will now return an array of zeros
+  consistently with :meth:`~ase.Atoms.get_momenta` if not set.
+  It previously returned ``None``, which was an oversight.
+
+* Reads Wannier90 ``.wout`` files.
+  See :func:`ase.io.wannier90.read_wout` and
+  :func:`ase.io.wannier90.read_wout_all`.
+
+* :class:`~ase.neb.SingleCalculatorNEB` is deprecated.  Use
+  ``ase.neb.NEB(allow_shared_calculator=True)`` instead.
+
+Version 3.20.1
+==============
+
+11 August 2020: :git:`3.20.1 <../3.20.1>`
+
+ * Minor fix related to package version requirements on pypi.
+
+Version 3.19.3
+==============
+
+11 August 2020: :git:`3.19.3 <../3.19.3>`
+
+ * Minor fix related to package version requirements on pypi.
+
+Version 3.20.0
+==============
+
+8 August 2020: :git:`3.20.0 <../3.20.0>`
+
 General changes:
 
-* :meth:`~ase.Atoms.get_calculator` is deprecated.  Use
-  ``atoms.calc`` instead.
-
-* :meth:`~ase.Atoms.set_calculator` is deprecated.  Use
-  ``atoms.calc = calc`` instead.
+* :meth:`~ase.Atoms.get_calculator` and :meth:`~ase.Atoms.set_calculator`
+  are deprecated.  Use ``atoms.calc`` instead.
 
 * ``del atoms.calc`` is deprecated.  Use ``atoms.calc = None`` instead.
 
 * The deprecated ``atoms.cell.pbc`` has been removed.
+
+* More utility methods for ``atoms.symbols``:
+  :meth:`~ase.symbols.Symbols.species`,
+  :meth:`~ase.symbols.Symbols.search`,
+  :meth:`~ase.symbols.Symbols.indices`.
 
 Development:
 
@@ -47,7 +104,8 @@ Algorithms:
 
 * Functions for attaching structures in :mod:`attach <ase.build>` introduced.
 
-* Standardize optimizers maximum step variable name to maxstep and default value to 0.2 for all optimizers.
+* Standardize optimizers maximum step variable name to maxstep and default
+  value to 0.2 for all optimizers.
 
 * Added :class:`Pyberny <ase.optimize.Berny>` geometry optimizer.
   This optimizer can be very
@@ -88,15 +146,17 @@ Algorithms:
 * Added a new tutorial on molecular crystal structure prediction using
   a genetic algorithm, see :ref:`ga_molecular_crystal_tutorial`.
 
+* Allow setting the initial hessian in `optimize.BFGS` via the keyword `alpha` or
+  explicitly via `opt.H0 = ...` after instantiation.
+
+Command-line interface:
+
 * New ``dimensionality`` sub-command for the :ref:`ase <cli>` command line
   interface.
 
 * Added a diff CLI for displaying and comparing the positions, forces,
   and energies of atoms objects.  The classes and functions used in
   the CLI are also available in :mod:`ase.cli.template`.
-
-* Allow setting the initial hessian in `optimize.BFGS` via the keyword `alpha` or
-  explicitly via `opt.H0 = ...` after instantiation.
 
 I/O:
 
@@ -119,6 +179,9 @@ I/O:
 * Removed Dacapo-NetCDF reader which has not worked since ancient times.
 
 GUI:
+
+* Use Ctrl+C, Ctrl+X, and Ctrl+V to copy/cut/paste atoms using the
+  operating system's clipboard.  The copies use the JSON format.
 
 * Removed old GUI modules which were never fully ported to Tkinter.
   If you miss them, please find them in git history and rehabilitate

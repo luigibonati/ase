@@ -31,6 +31,10 @@ Relevant literature References:
    S. Smidstrup, A. Pedersen, K. Stokbro and H. Jonsson,
    J. Chem. Phys. 140, 214106 (2014)
 
+5. 'Scaled and Dynamic Optimizations of Nudged Elastic Bands',
+   P. Lindgren, G. Kastlunger and A. A. Peterson,
+   J. Chem. Theory Comput. 15, 11, 5787-5793 (2019)
+
 
 The NEB class
 =============
@@ -192,18 +196,25 @@ To use the climbing image NEB method, instantiate the NEB object like this::
 Scaled and dynamic optimizations
 ================================
 
+.. autoclass:: ase.dyneb.DyNEB
+
 The convergence of images is often non-uniform, and a large fraction of
 computational resources can be spent calculating images that are below
 the convergence criterion. This can be avoided with a dynamic optimization
-method, where the convergence of each image is carefully monitored.
-Dynamic optimization is implemented as a keyword in the NEB class::
+method that monitors the convergence of each image. Dynamic optimization
+is implemented as a subclass of the NEB method::
 
-  neb = NEB(images, dynamic_relaxation=True)
+    from ase.dyneb import DyNEB
+    neb = DyNEB(images, fmax=0.05, dynamic_relaxation=True)
+
+>>>>>>> refs/remotes/origin/split-neb-methods
+where ``fmax`` must be identical to the ``fmax`` of the optimizer.
 
 .. note::
 
-  Dynamic optimization only works efficiently in series, and will not result
-  in reduced computational time when resources are parallelized over images.
+    Dynamic optimization only works efficiently in series, and will not result
+    in reduced computational time when resources are parallelized over images.
+    ``dynamic_relaxation=False`` reverts to the default NEB implementation.
 
 The saddle point is the important result of an NEB calculation, and the other
 interior images are typically not used in subsequent analyses. The
@@ -211,7 +222,7 @@ convergence criteria can be scaled to focus on the saddle point and increase
 the tolerance in other regions of the PES. Convergence scaling is implemented
 as::
 
-  neb = NEB(images, dynamic_relaxation=True, scale_fmax=1.)
+  neb = DyNEB(images, fmax=0.05, dynamic_relaxation=True, scale_fmax=1.)
 
 where the convergence criterion of each image is scaled based on the position
 of the image relative to the highest point in the band. The rate (slope) of
@@ -220,7 +231,7 @@ convergence scaling is controlled by the keyword ``scale_fmax``.
 .. note::
 
   A low scaling factor (``scale_fmax=1-3``) is often enough to significantly
-  reduce the number of force calls needed for convergence.
+  reduce the number of force calls required for convergence.
 
 Parallelization over images
 ===========================
@@ -245,6 +256,13 @@ For a complete example using GPAW_, see here_.
 .. _GPAW: https://wiki.fysik.dtu.dk/gpaw
 .. _gpaw-python: https://wiki.fysik.dtu.dk/gpaw/documentation/manual.html#parallel-calculations
 .. _here: https://wiki.fysik.dtu.dk/gpaw/tutorials/neb/neb.html
+
+Using Shared Calculators
+========================
+
+Some calculators may parallelize well outside of ASE, or constructing them
+consumes resources, for this purpose the user can allow the usage of shared
+calculators with the `allow_shared_calculator` parameter of NEB.
 
 
 .. _nebtools:

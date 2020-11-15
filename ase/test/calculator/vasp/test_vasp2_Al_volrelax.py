@@ -30,7 +30,9 @@ def test_vasp2_Al_volrelax(require_vasp):
 
         print('Stress after relaxation:\n', calc.read_stress())
 
-        print('Al cell post relaxation from calc:\n', calc.get_atoms().get_cell())
+        print(
+            'Al cell post relaxation from calc:\n',
+            calc.get_atoms().get_cell())
         print('Al cell post relaxation from atoms:\n', Al.get_cell())
         print('Al cell post relaxation from CONTCAR:\n', CONTCAR_Al.get_cell())
 
@@ -58,7 +60,7 @@ def test_vasp2_Al_volrelax(require_vasp):
 
     # Test function for comparing two cells
     def cells_almost_equal(cellA, cellB, tol=0.01):
-        return  (np.abs(cellA - cellB) < tol).all()
+        return (np.abs(cellA - cellB) < tol).all()
 
     # Correct LDA relaxed cell
     a_rel = 4.18

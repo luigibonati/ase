@@ -8,6 +8,7 @@ import numpy as np
 
 from ase.ga.offspring_creator import OffspringCreator
 from ase.ga.element_mutations import get_periodic_table_distance
+from ase.utils import atoms_to_spglib_cell
 
 try:
     import spglib
@@ -491,7 +492,8 @@ class SymmetrySlabPermutation(SlabOperator):
                 for _ in range(2):
                     permute2(atoms, rng=self.rng)
                 self.dcf(atoms)
-                sym_num = spglib.get_symmetry_dataset(atoms)['number']
+                sym_num = spglib.get_symmetry_dataset(
+                    atoms_to_spglib_cell(atoms))['number']
                 if sym_num >= sg:
                     break
             sg -= 1

@@ -139,6 +139,28 @@ def test_fracocc(gui):
     gui.open(filename='fracocc.cif')
 
 
+def test_povray(gui):
+    import pathlib
+    mol = molecule('H2O')
+    gui.new_atoms(mol) # not gui.set_atoms(mol)
+    n = gui.render_window() 
+    assert n.basename_widget.value == 'H2O'
+    n.run_povray_widget.check.deselect()
+    n.keep_files_widget.check.select()
+    # can't set attribute n.run.povray_widge.value = False
+    n.ok()
+    ini = pathlib.Path('./H2O.ini')
+    pov = pathlib.Path('./H2O.pov')
+    assert ini.is_file()
+    assert pov.is_file()
+
+    with open(ini, 'r') as _:
+        _ = _.read()
+        assert 'H2O' in _
+    with open(pov, 'r') as _:
+        _ = _.read()
+        assert 'atom' in _
+
 
 @pytest.fixture
 def with_bulk_ti(gui):
@@ -202,6 +224,7 @@ def test_repeat(gui):
     repeat.set_unit_cell()
     assert gui.atoms.cell[:] == pytest.approx(expected_atoms.cell[:])
 
+
 def test_surface(gui):
     assert len(gui.atoms) == 0
     surf = gui.surface_window()
@@ -238,8 +261,10 @@ def test_bad_reciprocal(gui):
 def test_add_atoms(gui):
     dia = gui.add_atoms()
     dia.combobox.value = 'CH3CH2OH'
+    assert len(gui.atoms) == 0
     dia.add()
     assert str(gui.atoms.symbols) == str(molecule('CH3CH2OH').symbols)
+
 
 def test_cell_editor(gui):
     au = bulk('Au')
@@ -286,6 +311,7 @@ def different_dimensionalities():
     yield Atoms('X', cell=[1, 1, 0], pbc=[1, 1, 0])
     yield bulk('Au')
 
+
 @pytest.mark.parametrize('atoms', different_dimensionalities())
 def test_quickinfo(gui, atoms):
     gui.new_atoms(atoms)
@@ -298,6 +324,57 @@ def test_quickinfo(gui, atoms):
     # This is a bit weird and invasive ...
     txt = dia.things[0].text
     assert refstring in txt
+
+
+def test_clipboard_copy(gui):
+    atoms = molecule('CH3CH2OH')
+    gui.new_atoms(atoms)
+    gui.select_all()
+    assert all(gui.selected_atoms().symbols == atoms.symbols)
+    gui.copy_atoms_to_clipboard()
+    newatoms = gui.clipboard.get_atoms()
+    assert newatoms is not atoms
+    assert newatoms == atoms
+
+
+def test_clipboard_cut_paste(gui):
+    atoms = molecule('H2O')
+    gui.new_atoms(atoms.copy())
+    assert len(gui.atoms) == 3
+    gui.select_all()
+    gui.cut_atoms_to_clipboard()
+    assert len(gui.atoms) == 0
+    assert atoms == gui.clipboard.get_atoms()
+
+
+def test_clipboard_paste_onto_empty(gui):
+    atoms = bulk('Ti')
+    gui.clipboard.set_atoms(atoms)
+    gui.paste_atoms_from_clipboard()
+    # (The paste includes cell and pbc when existing atoms are empty)
+    assert gui.atoms == atoms
+
+
+def test_clipboard_paste_onto_existing(gui):
+    ti = bulk('Ti')
+    gui.new_atoms(ti.copy())
+    assert gui.atoms == ti
+    h2o = molecule('H2O')
+    gui.clipboard.set_atoms(h2o)
+    gui.paste_atoms_from_clipboard()
+    assert gui.atoms == ti + h2o
+
+
+@pytest.mark.parametrize('text', [
+    '',
+    'invalid_atoms',
+    '[1, 2, 3]',  # valid JSON but not Atoms
+])
+def test_clipboard_paste_invalid(gui, text):
+    gui.clipboard.set_text(text)
+    with pytest.raises(GUIError):
+        gui.paste_atoms_from_clipboard()
+
 
 def window():
 

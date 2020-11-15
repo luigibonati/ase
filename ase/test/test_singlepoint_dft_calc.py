@@ -1,10 +1,10 @@
+import numpy as np
+from ase.calculators.singlepoint import (SinglePointDFTCalculator,
+                                         arrays_to_kpoints)
+from ase.build import bulk
+
+
 def test_singlepoint_dft_calc():
-    import numpy as np
-    from ase.calculators.singlepoint import (SinglePointDFTCalculator,
-                                             arrays_to_kpoints)
-    from ase.build import bulk
-
-
     rng = np.random.RandomState(17)
     nspins, nkpts, nbands = shape = 2, 4, 5
     eps = 2 * rng.rand(*shape)
@@ -13,12 +13,9 @@ def test_singlepoint_dft_calc():
 
     kpts = arrays_to_kpoints(eps, occ, weights)
 
-
-
     atoms = bulk('Au')
 
     calc = SinglePointDFTCalculator(atoms)
-
     calc.kpts = kpts
 
     assert calc.get_number_of_spins() == nspins

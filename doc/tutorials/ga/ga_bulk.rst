@@ -9,10 +9,8 @@ Here we will use the GA to predict a crystal structure of a given chemical compo
 The implementation is based on:
 
    | M. Van den Bossche, H. Grönbeck, and B. Hammer
-   | `Tight-Binding Approximation-Enhanced Global Optimization`__
+   | :doi:`Tight-Binding Approximation-Enhanced Global Optimization <10.1021/acs.jctc.8b00039>`
    | J. Chem. Theory Comput. 2018, 14, 2797−2807
-
-   __ https://doi.org/10.1021/acs.jctc.8b00039
 
 and has much the same functionality as e.g. the USPEX program from the Oganov
 group and the XtalOpt code by the Zurek group.

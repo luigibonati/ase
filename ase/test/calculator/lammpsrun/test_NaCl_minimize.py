@@ -6,6 +6,7 @@ from ase.constraints import UnitCellFilter
 from numpy.testing import assert_allclose
 
 
+@pytest.mark.calculator_lite
 @pytest.mark.calculator('lammpsrun')
 def test_NaCl_minimize(factory):
     a = 6.15

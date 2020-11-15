@@ -11,10 +11,11 @@ from distutils.command.build_py import build_py as _build_py
 from glob import glob
 from os.path import join
 
-python_requires = (3, 6)
+python_min_version = (3, 6)
+python_requires = '>=' + '.'.join(str(num) for num in python_min_version)
 
 
-if sys.version_info < python_requires:
+if sys.version_info < python_min_version:
     raise SystemExit('Python 3.6 or later is required!')
 
 
@@ -32,10 +33,13 @@ extras_require = {
         'pillow',
     ],
     'test': [
-        'pytest>=3.9.1',
+        'pytest>=5.0.0',  # required by pytest-mock
+        'pytest-mock>=3.3.0',
         'pytest-xdist>=1.22.1',
     ]
 }
+
+# Optional: spglib >= 1.9
 
 
 with open('README.rst') as fd:
@@ -93,6 +97,7 @@ setup(name='ase',
       license='LGPLv2.1+',
       platforms=['unix'],
       packages=find_packages(),
+      python_requires=python_requires,
       install_requires=install_requires,
       extras_require=extras_require,
       package_data=package_data,

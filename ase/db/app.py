@@ -77,7 +77,7 @@ def update(sid: int, what: str, x: str):
     table = session.create_table(project['database'],
                                  project['uid_key'],
                                  keys=list(project['key_descriptions']))
-    return render_template('ase/db/templates/table.html',
+    return render_template(project['table_template'],
                            t=table,
                            p=project,
                            s=session)
@@ -179,7 +179,8 @@ def add_project(db: Database) -> None:
         'handle_query_function': handle_query,
         'default_columns': all_columns[:],
         'search_template': 'ase/db/templates/search.html',
-        'row_template': 'ase/db/templates/row.html'}
+        'row_template': 'ase/db/templates/row.html',
+        'table_template': 'ase/db/templates/table.html'}
 
 
 if __name__ == '__main__':

@@ -98,10 +98,10 @@ def relaxed(unrelaxed):
 
 
 @fixture()
-def vibname(tmp_path, relaxed):
+def vibname(relaxed):
     atoms = relaxed.copy()
     atoms.calc = relaxed.calc
-    name = str(tmp_path / 'vib')
+    name = 'vib'
     vib = Vibrations(atoms, name=name)
     vib.run()
     return name

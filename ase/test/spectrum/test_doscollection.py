@@ -48,6 +48,7 @@ class TestDOSCollection:
             dc['hello']
 
     linewidths = [1, 5, None]
+
     @pytest.mark.usefixtures("figure")
     @pytest.mark.parametrize('linewidth', linewidths)
     def test_plot(self, mindoscollection, figure, linewidth):
@@ -58,9 +59,10 @@ class TestDOSCollection:
         else:
             mplargs = {'linewidth': linewidth}
 
-        ax = figure.add_subplot()
+        ax = figure.add_subplot(111)
 
-        ax_out = mindoscollection.plot(npts=npts, ax=ax, mplargs=mplargs)
+        with pytest.warns(UserWarning):  # Default width is small for npts=20
+            ax_out = mindoscollection.plot(npts=npts, ax=ax, mplargs=mplargs)
         assert ax_out == ax
 
         assert ([line.get_label() for line in ax.get_legend().get_lines()]
@@ -119,10 +121,11 @@ class TestDOSCollection:
                                           'smearing': 'Gauss'}])
     def test_sample(self, rawdos, another_rawdos, options):
         dc = MinimalDOSCollection([rawdos, another_rawdos])
-        sampled_data = dc.sample(**options)
+        sampled_data = dc._sample(**options)
         for i, data in enumerate((rawdos, another_rawdos)):
             # Check consistency with individual DOSData objects
-            assert np.allclose(sampled_data[i, :], data.sample(**options))
+            newdos_weights = data._sample(**options)
+            assert np.allclose(sampled_data[i, :], newdos_weights)
             # Check we aren't trivially comparing zeros
             assert np.all(sampled_data)
 
@@ -138,30 +141,37 @@ class TestDOSCollection:
 
         # Check auto minimum
         dc = MinimalDOSCollection([rawdos, another_rawdos])
-        energies, dos = dc.sample_grid(10, xmax=options['xmax'],
-                                       padding=options['padding'],
-                                       width=options['width'])
+        dos = dc.sample_grid(10, xmax=options['xmax'],
+                             padding=options['padding'],
+                             width=options['width'])
+        energies = dos.get_energies()
+
         assert (pytest.approx(energies[0])
                 == ref_min - options['padding'] * options['width'])
         assert pytest.approx(energies[-1]) == options['xmax']
 
         # Check auto maximum
-        energies, dos = dc.sample_grid(10, xmin=options['xmin'],
-                                       padding=options['padding'],
-                                       width=options['width'])
+        dos = dc.sample_grid(10, xmin=options['xmin'],
+                             padding=options['padding'],
+                             width=options['width'])
+        energies = dos.get_energies()
         assert pytest.approx(energies[0]) == options['xmin']
         assert (pytest.approx(energies[-1])
                 == ref_max + options['padding'] * options['width'])
 
         # Check values
-        energies, dos = dc.sample_grid(**options)
+        dos = dc.sample_grid(**options)
+        energies = dos.get_energies()
+        weights = dos.get_all_weights()
         for i, data in enumerate((rawdos, another_rawdos)):
-            assert np.allclose(dos[i, :], data.sample_grid(**options)[1])
+            tmp_dos = data.sample_grid(**options)
+            tmp_weights = tmp_dos.get_weights()
+            assert np.allclose(weights[i, :], tmp_weights)
 
     def test_sample_empty(self):
         empty_dc = MinimalDOSCollection([])
         with pytest.raises(IndexError):
-            empty_dc.sample(10)
+            empty_dc._sample(10)
         with pytest.raises(IndexError):
             empty_dc.sample_grid(10)
 
@@ -313,6 +323,10 @@ class TestGridDOSCollection:
         weights = np.cos(energies)
         return GridDOSData(energies, weights, info={'my_key': 'other_value'})
 
+    @pytest.fixture
+    def griddoscollection(self, griddos, another_griddos):
+        return GridDOSCollection([griddos, another_griddos])
+
     def test_init_errors(self, griddos):
         with pytest.raises(TypeError):
             GridDOSCollection([RawDOSData([1.], [1.])])
@@ -380,3 +394,13 @@ class TestGridDOSCollection:
                 assert dos_data.info == info[i]
                 assert np.allclose(dos_data.get_energies(), x)
                 assert np.allclose(dos_data.get_weights(), weights[i])
+
+    @pytest.mark.usefixtures("figure")
+    def test_plot_no_resample(self, griddoscollection, figure):
+        ax = figure.add_subplot(111)
+        griddoscollection.plot(ax=ax)
+
+        assert np.allclose(ax.get_lines()[0].get_xdata(),
+                           griddoscollection[0].get_energies())
+        assert np.allclose(ax.get_lines()[1].get_ydata(),
+                           griddoscollection[1].get_weights())

@@ -63,6 +63,11 @@ Mopac_
 News
 ====
 
+* New bugfix releases :ref:`3.20.1 <releasenotes>` and :ref:`3.19.3
+  <releasenotes>` (11 August 2020).
+
+* :ref:`ASE version 3.20.0 <releasenotes>` released (8 August 2020).
+
 * :ref:`ASE version 3.19.2 <releasenotes>` released (22 July 2020).
 
 * :ref:`ASE version 3.19.1 <releasenotes>` released (4 April 2020).
@@ -93,8 +98,8 @@ News
 
 * :ref:`Reference paper <cite>` in
   J. Phys. Condens. Matter:
-  `The Atomic Simulation Environment | A Python library for working with
-  atoms <https://doi.org/10.1088/1361-648X/aa680e>`__
+  :doi:`The Atomic Simulation Environment | A Python library for working with
+  atoms <10.1088/1361-648X/aa680e>`
   (7 June 2017).
 
 * :ref:`ASE version 3.13.0 <releasenotes>` released (7 February 2017).
@@ -175,7 +180,7 @@ Contents
     gallery/gallery
     releasenotes
     contact
-    otherprojects
+    ecosystem
     development/development
     faq
     ASE Workshop 2019 <workshop/workshop>
