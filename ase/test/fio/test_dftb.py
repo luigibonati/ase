@@ -4,7 +4,8 @@ from ase.io.dftb import read_dftb_lattice
 from ase.atoms import Atoms
 from io import StringIO
 
-#test ase.io.dftb.read_dftb_lattice
+
+# test ase.io.dftb.read_dftb_lattice
 fd = StringIO(u"""
  MD step: 0
  Lattice vectors (A)
@@ -35,12 +36,15 @@ fd = StringIO(u"""
 """)
 
 
-def test_dftb():
+def test_read_dftb_lattice():
     vectors = read_dftb_lattice(fd)
-    mols = [Atoms(),Atoms()]
-    read_dftb_lattice(fd,mols)
+    mols = [Atoms(), Atoms()]
+    read_dftb_lattice(fd, mols)
 
-    compareVec = np.array([[26.1849388999576,5.773808884828536E-006,9.076696618724854E-006],[0.115834159141441,26.1947703089401,9.372892011565608E-006],[0.635711495837792,0.451552307731081,9.42069476334197]])
+    compareVec = np.array([
+        [26.1849388999576, 5.773808884828536e-6, 9.076696618724854e-6],
+        [0.115834159141441, 26.1947703089401, 9.372892011565608e-6],
+        [0.635711495837792, 0.451552307731081, 9.42069476334197]])
 
     assert (vectors[0] == compareVec).all()
     assert len(vectors) == 2
