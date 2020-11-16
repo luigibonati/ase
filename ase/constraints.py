@@ -802,10 +802,7 @@ class FixInternals(FixConstraint):
         self.epsilon = epsilon
 
         self.initialized = False
-        self.removed_dof = (len(self.bonds) +
-                            len(self.angles) +
-                            len(self.dihedrals) +
-                            len(self.bondcombos))
+        self.removed_dof = self.n
 
     def initialize(self, atoms):
         if self.initialized:
@@ -835,11 +832,52 @@ class FixInternals(FixConstraint):
                                                       masses, cell, pbc))
         self.initialized = True
 
+    def shuffle_definitions(self, shuffle_dic, internal_type):
+        dfns = []  # definitions
+        for dfn in internal_type:  # e.g. for bond in self.bonds
+            append = True
+            new_dfn = [dfn[0], list(dfn[1])]
+            for old in dfn[1]:
+                if old in shuffle_dic:
+                    new_dfn[1][dfn[1].index(old)] = shuffle_dic[old]
+                else:
+                    append = False
+                    break
+            if append:
+                dfns.append(new_dfn)
+        return dfns
+
+    def shuffle_combos(self, shuffle_dic):
+        dfns = []  # definitions
+        for dfn in self.bondcombos:
+            append = True
+            bonds = [bond[0:2] for bond in dfn[1]]
+            new_dfn = [dfn[0], list(dfn[1])]
+            for i, bond in enumerate(bonds):
+                for old in bond:
+                    if old in shuffle_dic:
+                        new_dfn[1][i][bond.index(old)] = shuffle_dic[old]
+                    else:
+                        append = False
+                        break
+                if not append:
+                    break
+            if append:
+                dfns.append(new_dfn)
+        return dfns
+
     def index_shuffle(self, atoms, ind):
         # See docstring of superclass
+        shuffle_dic = dict(slice2enlist(ind, len(atoms)))
+        shuffle_dic = {old: new for new, old in shuffle_dic.items()}
+        self.bonds = self.shuffle_definitions(shuffle_dic, self.bonds)
+        self.angles = self.shuffle_definitions(shuffle_dic, self.angles)
+        self.dihedrals = self.shuffle_definitions(shuffle_dic, self.dihedrals)
+        self.bondcombos = self.shuffle_combos(shuffle_dic)
+        self.initialized = False
         self.initialize(atoms)
-        for constraint in self.constraints:
-            constraint.index_shuffle(atoms, ind)
+        if len(self.constraints) == 0:
+            raise IndexError('Constraint not part of slice')
 
     def get_indices(self):
         cons = self.bonds + self.dihedrals + self.angles
@@ -946,13 +984,6 @@ class FixInternals(FixConstraint):
             self.cell = cell
             self.pbc = pbc
 
-        def index_shuffle(self, atoms, ind):
-            indices = len(self.indices) * [-1]
-            for new, old in slice2enlist(ind, len(atoms)):
-                if old in self.indices:
-                    indices[self.indices.index(old)] = new
-            self.indices = indices
-
         def finalize_positions(self, newpos):
             jacobian = self.jacobian / self.masses
             lamda = -self.sigma / np.dot(jacobian, self.jacobian)
@@ -974,26 +1005,16 @@ class FixInternals(FixConstraint):
             self.indices = [defin[0:2] for defin in indices]  # bond defs
             self.coefs = np.asarray([defin[2] for defin in indices])  # coefs
 
-        def index_shuffle(self, atoms, ind):
-            indices = len(self.indices) * [[-1, -1]]
-            for new, old in slice2enlist(ind, len(atoms)):
-                for idx, pair in enumerate(self.indices):
-                    if old in pair:
-                        indices[idx][pair.index(old)] = new
-            self.indices = indices
-
         def prepare_jacobian(self, pos):
             bondvectors = [pos[k] - pos[h] for h, k in self.indices]
             derivs = get_distances_derivatives(bondvectors, cell=self.cell,
                                                pbc=self.pbc)
             nbonds = len(bondvectors)
-
             jacobian = np.zeros((nbonds, *pos.shape))
             for i, idx in enumerate(self.indices):  # populate jacobian with
                 jacobian[i, idx[0]] = derivs[i, 0]  # derivatives for all
                 jacobian[i, idx[1]] = derivs[i, 1]  # defined bonds
             jacobian = jacobian.reshape((nbonds, 3 * len(pos)))
-
             self.jacobian = self.coefs @ jacobian
 
         def adjust_positions(self, oldpos, newpos):
