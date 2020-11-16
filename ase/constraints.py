@@ -934,7 +934,7 @@ class FixInternals(FixConstraint):
         return '\n'.join([repr(c) for c in self.constraints])
 
     # Classes for internal use in FixInternals
-    class FixInternalsSubclass:
+    class FixInternalsBase:
         """Base class for subclasses of FixInternals."""
         def __init__(self, targetvalue, indices, masses, cell, pbc):
             self.targetvalue = targetvalue  # constant target value
@@ -963,7 +963,7 @@ class FixInternals(FixConstraint):
             self.projected_force = np.dot(self.jacobian, forces.ravel())
             self.jacobian /= np.linalg.norm(self.jacobian)
 
-    class FixBondCombo(FixInternalsSubclass):
+    class FixBondCombo(FixInternalsBase):
         """Constraint subobject for fixing linear combination of bond lengths
            within FixInternals."""
 
@@ -1020,7 +1020,7 @@ class FixInternals(FixConstraint):
             return 'FixBondLengthAlt(%s, %d, %d)' % \
                 (repr(self.targetvalue), self.indices[0][0], self.indices[0][1])
 
-    class FixAngle(FixInternalsSubclass):
+    class FixAngle(FixInternalsBase):
         """Constraint object for fixing an angle within
         FixInternals using the SHAKE algorithm.
 
@@ -1056,7 +1056,7 @@ class FixInternals(FixConstraint):
             return 'FixAngle({}, {})'.format(tuple(self.indices),
                                              self.targetvalue)
 
-    class FixDihedral(FixInternalsSubclass):
+    class FixDihedral(FixInternalsBase):
         """Constraint object for fixing a dihedral angle using
         the SHAKE algorithm. This one allows also other constraints.
 
