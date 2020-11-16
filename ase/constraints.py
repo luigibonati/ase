@@ -868,6 +868,7 @@ class FixInternals(FixConstraint):
 
     def index_shuffle(self, atoms, ind):
         # See docstring of superclass
+        self.initialize(atoms)
         shuffle_dic = dict(slice2enlist(ind, len(atoms)))
         shuffle_dic = {old: new for new, old in shuffle_dic.items()}
         self.bonds = self.shuffle_definitions(shuffle_dic, self.bonds)
@@ -880,10 +881,13 @@ class FixInternals(FixConstraint):
             raise IndexError('Constraint not part of slice')
 
     def get_indices(self):
-        cons = self.bonds + self.dihedrals + self.angles
-        indices = [constraint[1] for constraint in cons]
-        indices += [constr[1][0:2] for constr in self.bondcombos]
-        return np.unique(np.ravel(indices))
+        cons = []
+        for dfn in self.bonds + self.dihedrals + self.angles:
+            cons.extend(dfn[1])
+        for dfn in self.bondcombos:
+            for bond in dfn[1]:
+                cons.extend(bond[0:2])
+        return set(cons)
 
     def todict(self):
         return {'name': 'FixInternals',
