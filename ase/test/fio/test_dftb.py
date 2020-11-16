@@ -91,7 +91,7 @@ Driver = {}
 def test_read_dftb_explicit():
     x = 1.356773
     positions = [[0., 0., 0.], [x, x, x]]
-    cell = [[2*x, 2*x, 0.], [0., 2*x, 2*x], [2*x, 0., 2*x]]
+    cell = [[2 * x, 2 * x, 0.], [0., 2 * x, 2 * x], [2 * x, 0., 2 * x]]
     a = Atoms('GaAs', cell=cell, positions=positions, pbc=True)
 
     b = read_dftb(fd_explicit)
