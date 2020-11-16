@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 from ase.spacegroup import Spacegroup
-from ase.lattice import BCC, FCC
+from ase.lattice import FCC
 
 
 def test_spacegroup_miscellaneous():
