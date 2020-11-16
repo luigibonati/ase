@@ -1,6 +1,5 @@
 import pytest
 
-import os
 from ase import Atom, Atoms
 from ase.io import Trajectory, read
 from ase.constraints import FixBondLength
