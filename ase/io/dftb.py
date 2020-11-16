@@ -62,7 +62,7 @@ def read_dftb(fd):
                 pass
 
     if not my_pbc:
-        mycell = [1.0, 1.0, 1.0]
+        mycell = [0.] * 3
 
     start_reading_coords = False
     stop_reading_coords = False
