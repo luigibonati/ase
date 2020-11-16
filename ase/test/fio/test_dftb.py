@@ -5,7 +5,6 @@ from ase.atoms import Atoms
 from ase.units import AUT, Bohr, second
 from ase.io.dftb import (read_dftb, read_dftb_lattice,
                          read_dftb_velocities, write_dftb_velocities)
-from ase.units import AUT, Bohr, second
 
 
 # test ase.io.dftb.read_dftb
