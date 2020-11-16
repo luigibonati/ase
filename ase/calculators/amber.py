@@ -6,7 +6,6 @@ Before usage, input files (infile, topologyfile, incoordfile)
 
 """
 
-import os
 import subprocess
 import numpy as np
 
