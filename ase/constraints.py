@@ -835,6 +835,12 @@ class FixInternals(FixConstraint):
                                                       masses, cell, pbc))
         self.initialized = True
 
+    def index_shuffle(self, atoms, ind):
+        # See docstring of superclass
+        self.initialize(atoms)
+        for constraint in self.constraints:
+            constraint.index_shuffle(atoms, ind)
+
     def get_indices(self):
         cons = self.bonds + self.dihedrals + self.angles
         indices = [constraint[1] for constraint in cons]
@@ -945,6 +951,13 @@ class FixInternals(FixConstraint):
             self.cell = cell
             self.pbc = pbc
 
+        def index_shuffle(self, atoms, ind):
+            indices = len(self.indices) * [-1]
+            for new, old in slice2enlist(ind, len(atoms)):
+                if old in self.indices:
+                    indices[self.indices.index(old)] = new
+            self.indices = indices
+
         def prepare_jacobian(self, pos):
             bondvectors = [pos[k] - pos[h] for h, k in self.indices]
             derivs = get_distances_derivatives(bondvectors, cell=self.cell,
@@ -1009,6 +1022,13 @@ class FixInternals(FixConstraint):
             self.cell = cell
             self.pbc = pbc
 
+        def index_shuffle(self, atoms, ind):
+            indices = len(self.indices) * [-1]
+            for new, old in slice2enlist(ind, len(atoms)):
+                if old in self.indices:
+                    indices[self.indices.index(old)] = new
+            self.indices = indices
+
         def prepare_jacobian(self, pos):
             v0 = pos[self.indices[0]] - pos[self.indices[1]]
             v1 = pos[self.indices[2]] - pos[self.indices[1]]
@@ -1056,6 +1076,13 @@ class FixInternals(FixConstraint):
             self.projected_force = None  # helps optimizers scan along constr.
             self.cell = cell
             self.pbc = pbc
+
+        def index_shuffle(self, atoms, ind):
+            indices = len(self.indices) * [-1]
+            for new, old in slice2enlist(ind, len(atoms)):
+                if old in self.indices:
+                    indices[self.indices.index(old)] = new
+            self.indices = indices
 
         def prepare_jacobian(self, pos):
             v0 = pos[self.indices[1]] - pos[self.indices[0]]
