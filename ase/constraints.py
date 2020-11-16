@@ -887,7 +887,7 @@ class FixInternals(FixConstraint):
         for dfn in self.bondcombos:
             for bond in dfn[1]:
                 cons.extend(bond[0:2])
-        return set(cons)
+        return list(set(cons))
 
     def todict(self):
         return {'name': 'FixInternals',
