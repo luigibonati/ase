@@ -1,9 +1,11 @@
 # additional tests of the dftb I/O
 import numpy as np
-from ase.io.dftb import read_dftb, read_dftb_lattice, write_dftb_velocities
-from ase.atoms import Atoms
-from ase.units import AUT, Bohr
 from io import StringIO
+from ase.atoms import Atoms
+from ase.units import AUT, Bohr, second
+from ase.io.dftb import (read_dftb, read_dftb_lattice,
+                         read_dftb_velocities, write_dftb_velocities)
+from ase.units import AUT, Bohr, second
 
 
 # test ase.io.dftb.read_dftb
@@ -148,11 +150,41 @@ def test_read_dftb_lattice():
     assert mols[1].get_pbc().all()
 
 
+# test ase.io.dftb.read_dftb_velocities
+geo_end_xyz = """
+    2
+MD iter: 0
+    H     -0.74027331      0.66664965      0.15941649      6.47595516      7.80578083     -2.37103779      1.72885170
+    H      0.00689149     -0.00620610     -0.53173510      3.71974623    -10.06970481     -0.32552974     -1.84046359
+    2
+MD iter: 1
+    H     -0.74025441      0.66664391      0.15942066      6.47595186      7.81826390     -2.38149425      1.71663040
+    H      0.00686711     -0.00620687     -0.53173953      3.71975289    -10.08343474     -0.31333511     -1.82747199
+"""
+
+
+def test_read_dftb_velocities():
+    atoms = Atoms('H2')
+
+    filename = 'geo_end.xyz'
+    with open(filename, 'w') as f:
+        f.write(geo_end_xyz)
+
+    # Velocities (in Angstrom / ps) of the last MD iteration
+    read_dftb_velocities(atoms, filename=filename)
+
+    velocities = np.array([[7.81826390, -2.38149425, 1.71663040],
+                           [-10.08343474, -0.31333511, -1.82747199]])
+    velocities /= 1e-12 * second
+    assert np.allclose(velocities, atoms.get_velocities())
+
+
 # test ase.io.dftb.write_dftb_velocities
 def test_write_dftb_velocities():
     atoms = Atoms('H2')
-    atoms.set_velocities([[0.63060001, 10.71652407, 0.41599521],
-                          [-4.78167517, -0.67726160, 6.81193886]])
+    velocities = np.array([[7.81826390, -2.38149425, 1.71663040],
+                           [-10.08343474, -0.31333511, -1.82747199]])
+    atoms.set_velocities(velocities)
     write_dftb_velocities(atoms, filename='velocities.txt')
 
     velocities = np.loadtxt('velocities.txt') * Bohr / AUT
