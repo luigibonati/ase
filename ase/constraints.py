@@ -974,6 +974,14 @@ class FixInternals(FixConstraint):
             self.indices = [defin[0:2] for defin in indices]  # bond defs
             self.coefs = np.asarray([defin[2] for defin in indices])  # coefs
 
+        def index_shuffle(self, atoms, ind):
+            indices = len(self.indices) * [[-1, -1]]
+            for new, old in slice2enlist(ind, len(atoms)):
+                for idx, pair in enumerate(self.indices):
+                    if old in pair:
+                        indices[idx][pair.index(old)] = new
+            self.indices = indices
+
         def prepare_jacobian(self, pos):
             bondvectors = [pos[k] - pos[h] for h, k in self.indices]
             derivs = get_distances_derivatives(bondvectors, cell=self.cell,
