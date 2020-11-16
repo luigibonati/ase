@@ -1,7 +1,8 @@
 # additional tests of the dftb I/O
 import numpy as np
-from ase.io.dftb import read_dftb, read_dftb_lattice
+from ase.io.dftb import read_dftb, read_dftb_lattice, write_dftb_velocities
 from ase.atoms import Atoms
+from ase.units import AUT, Bohr
 from io import StringIO
 
 
@@ -145,3 +146,14 @@ def test_read_dftb_lattice():
     assert len(vectors[1]) == 3
     assert (mols[0].get_cell() == compareVec).all()
     assert mols[1].get_pbc().all()
+
+
+# test ase.io.dftb.write_dftb_velocities
+def test_write_dftb_velocities():
+    atoms = Atoms('H2')
+    atoms.set_velocities([[0.63060001, 10.71652407, 0.41599521],
+                          [-4.78167517, -0.67726160, 6.81193886]])
+    write_dftb_velocities(atoms, filename='velocities.txt')
+
+    velocities = np.loadtxt('velocities.txt') * Bohr / AUT
+    assert np.allclose(velocities, atoms.get_velocities())
