@@ -18,7 +18,7 @@ def test_gen():
         b = read('test.gen')
         assert np.all(b.numbers == a.numbers)
         assert np.allclose(b.positions, a.positions)
-        assert np.all(b.pbc == False)
+        assert np.all(b.pbc == a.pbc)
         assert np.allclose(b.cell, 0.)
 
     # Mixed and full periodicity. This should in both cases
@@ -30,7 +30,7 @@ def test_gen():
         b = read('test.gen')
         assert np.all(b.numbers == a.numbers)
         assert np.allclose(b.positions, a.positions)
-        assert np.all(b.pbc == True)
+        assert np.all(b.pbc)
         assert np.allclose(b.cell, a.cell)
 
     # Try with multiple images. This is not supported by the

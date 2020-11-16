@@ -1,6 +1,6 @@
 import numpy as np
 from ase.atoms import Atoms
-from ase.utils import writer, reader
+from ase.utils import reader
 
 
 @reader
