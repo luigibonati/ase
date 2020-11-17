@@ -28,7 +28,7 @@ basestring = str
 pickleload = functools.partial(pickle.load, encoding='bytes')
 
 
-def deprecated(msg):
+def deprecated(msg, category=FutureWarning):
     """Return a decorator deprecating a function.
 
     Use like @deprecated('warning message and explanation')."""
@@ -37,7 +37,7 @@ def deprecated(msg):
         def deprecated_function(*args, **kwargs):
             warning = msg
             if not isinstance(warning, Warning):
-                warning = FutureWarning(warning)
+                warning = category(warning)
             warnings.warn(warning)
             return func(*args, **kwargs)
         return deprecated_function
@@ -72,7 +72,9 @@ class DevNull:
     encoding = 'UTF-8'
     closed = False
 
-    _use_os_devnull = deprecated('use open(os.devnull) instead')
+    _use_os_devnull = deprecated('use open(os.devnull) instead',
+                                 DeprecationWarning)
+    # Deprecated for ase-3.21.0.  Change to futurewarning later on.
 
     @_use_os_devnull
     def write(self, string):
