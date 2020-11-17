@@ -821,28 +821,15 @@ class FixInternals(FixConstraint):
             cell = atoms.cell
             pbc = atoms.pbc
         self.constraints = []
-        for bond in self.bonds:
-            self.constraints.append(self.FixBondLengthAlt(bond[0], bond[1],
-                                                          masses, cell, pbc))
-        for angle in self.angles:
-            self.constraints.append(self.FixAngle(angle[0], angle[1],
-                                                  masses, cell, pbc))
-        for dihedral in self.dihedrals:
-            self.constraints.append(self.FixDihedral(dihedral[0],
-                                                     dihedral[1],
-                                                     masses, cell, pbc))
-        for bondcombo in self.bondcombos:
-            self.constraints.append(self.FixBondCombo(bondcombo[0],
-                                                      bondcombo[1],
-                                                      masses, cell, pbc))
-        for anglecombo in self.anglecombos:
-            self.constraints.append(self.FixAngleCombo(anglecombo[0],
-                                                       anglecombo[1],
-                                                       masses, cell, pbc))
-        for dihedralcombo in self.dihedralcombos:
-            self.constraints.append(self.FixDihedralCombo(dihedralcombo[0],
-                                                          dihedralcombo[1],
-                                                          masses, cell, pbc))
+        for data, make_constr in [(self.bonds, self.FixBondLengthAlt),
+                                  (self.angles, self.FixAngle),
+                                  (self.dihedrals, self.FixDihedral),
+                                  (self.bondcombos, self.FixBondCombo),
+                                  (self.anglecombos, self.FixAngleCombo),
+                                  (self.dihedralcombos, self.FixDihedralCombo)]:
+            for datum in data:
+                constr = make_constr(datum[0], datum[1], masses, cell, pbc)
+                self.constraints.append(constr)
         self.initialized = True
 
     def shuffle_definitions(self, shuffle_dic, internal_type):
