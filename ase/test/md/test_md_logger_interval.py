@@ -27,8 +27,9 @@ def make_dimer(constraint=True):
         dimer.constraints = FixBondLengths(
             [(3 * i + j, 3 * i + (j + 1) % 3) for i in range(2)
              for j in [0, 1, 2]]
-            )
+        )
     return dimer
+
 
 def fmax(forces):
     return np.sqrt((forces ** 2).sum(axis=1).max())

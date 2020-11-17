@@ -171,7 +171,7 @@ class Dftb(FileIOCalculator):
 
             elif self.kpts_coord is not None:
                 for i, c in enumerate(self.kpts_coord):
-                    key = initkey + '_empty%09d'  % i
+                    key = initkey + '_empty%09d' % i
                     c_str = ' '.join(map(str, c))
                     if 'Klines' in self.parameters[initkey + '_']:
                         c_str = '1 ' + c_str

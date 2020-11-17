@@ -15,7 +15,7 @@ class ACE(FileIOCalculator):
 
 
     name = 'ace'
-    implemented_properties = ['energy', 'forces', 'excitation-energy' ]
+    implemented_properties = ['energy', 'forces', 'excitation-energy']
     #    results = {}
     # 'geometry', 'excitation-energy']
     # defaults is default section_name of ACE-input

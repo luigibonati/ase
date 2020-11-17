@@ -263,11 +263,7 @@ class Amber(FileIOCalculator):
         parmed_command = ('parmed -O -i ' + parmed_filename +
                           ' -p ' + self.topologyfile +
                           ' > ' + self.topologyfile + '.log 2>&1')
-        errorcode = subprocess.call(parmed_command, shell=True,
-                                    cwd=self.directory)
-        if errorcode:
-            raise RuntimeError('%s returned an error: %d' %
-                               (self.label, errorcode))
+        subprocess.check_call(parmed_command, shell=True, cwd=self.directory)
 
     def get_virtual_charges(self, atoms):
         with open(self.topologyfile, 'r') as fd:

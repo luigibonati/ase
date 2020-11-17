@@ -48,8 +48,7 @@ class GULP(FileIOCalculator):
         options=[],
         shel=[],
         library="ffsioh.lib",
-        conditions=None
-        )
+        conditions=None)
 
     def get_optimizer(self, atoms):
         gulp_keywords = self.parameters.keywords.split()
