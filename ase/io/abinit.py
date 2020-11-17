@@ -483,12 +483,12 @@ def read_eig(fd):
     line = next(fd)
     results = {}
     m = re.match(r'\s*Fermi \(or HOMO\) energy \(hartree\)\s*=\s*(\S+)', line)
-    assert m is not None
-    results['fermilevel'] = float(m.group(1)) * Hartree
+    if m is not None:
+        results['fermilevel'] = float(m.group(1)) * Hartree
+        line = next(fd)
 
     nspins = 1
 
-    line = next(fd)
     m = re.match(r'\s*Magnetization \(Bohr magneton\)=\s*(\S+)', line)
     if m is not None:
         nspins = 2
