@@ -28,6 +28,22 @@ basestring = str
 pickleload = functools.partial(pickle.load, encoding='bytes')
 
 
+def deprecated(msg, category=FutureWarning):
+    """Return a decorator deprecating a function.
+
+    Use like @deprecated('warning message and explanation')."""
+    def deprecated_decorator(func):
+        @functools.wraps(func)
+        def deprecated_function(*args, **kwargs):
+            warning = msg
+            if not isinstance(warning, Warning):
+                warning = category(warning)
+            warnings.warn(warning)
+            return func(*args, **kwargs)
+        return deprecated_function
+    return deprecated_decorator
+
+
 @contextmanager
 def seterr(**kwargs):
     """Set how floating-point errors are handled.
@@ -56,24 +72,35 @@ class DevNull:
     encoding = 'UTF-8'
     closed = False
 
+    _use_os_devnull = deprecated('use open(os.devnull) instead',
+                                 DeprecationWarning)
+    # Deprecated for ase-3.21.0.  Change to futurewarning later on.
+
+    @_use_os_devnull
     def write(self, string):
         pass
 
+    @_use_os_devnull
     def flush(self):
         pass
 
+    @_use_os_devnull
     def seek(self, offset, whence=0):
         return 0
 
+    @_use_os_devnull
     def tell(self):
         return 0
 
+    @_use_os_devnull
     def close(self):
         pass
 
+    @_use_os_devnull
     def isatty(self):
         return False
 
+    @_use_os_devnull
     def read(self, n=-1):
         return ''
 
@@ -90,7 +117,7 @@ def convert_string_to_fd(name, world=None):
     if world is None:
         from ase.parallel import world
     if name is None or world.rank != 0:
-        return devnull
+        return open(os.devnull, 'w')
     if name == '-':
         return sys.stdout
     if isinstance(name, (str, PurePath)):
@@ -123,7 +150,7 @@ def opencew(filename, world=None):
             fd = os.fdopen(fd, 'wb')
     else:
         error = 0
-        fd = devnull
+        fd = open(os.devnull, 'wb')
 
     # Syncronize:
     error = world.sum(error)
@@ -524,19 +551,3 @@ def warn_legacy(feature_name):
 def lazyproperty(meth):
     """Decorator like lazymethod, but making item available as a property."""
     return property(lazymethod(meth))
-
-
-def deprecated(msg):
-    """Return a decorator deprecating a function.
-
-    Use like @deprecated('warning message and explanation')."""
-    def deprecated_decorator(func):
-        @functools.wraps(func)
-        def deprecated_function(*args, **kwargs):
-            warning = msg
-            if not isinstance(warning, Warning):
-                warning = FutureWarning(warning)
-            warnings.warn(warning)
-            return func(*args, **kwargs)
-        return deprecated_function
-    return deprecated_decorator

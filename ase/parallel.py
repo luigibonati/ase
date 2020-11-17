@@ -8,8 +8,6 @@ import warnings
 
 import numpy as np
 
-from ase.utils import devnull
-
 
 def get_txt(txt, rank):
     if hasattr(txt, 'write'):
@@ -17,13 +15,13 @@ def get_txt(txt, rank):
         return txt
     elif rank == 0:
         if txt is None:
-            return devnull
+            return open(os.devnull, 'w')
         elif txt == '-':
             return sys.stdout
         else:
             return open(txt, 'w', 1)
     else:
-        return devnull
+        return open(os.devnull, 'w')
 
 
 def paropen(name, mode='r', buffering=-1, encoding=None):
