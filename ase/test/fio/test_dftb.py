@@ -49,21 +49,21 @@ def test_read_dftb_genformat():
                  [0.697047663527725, 0.447111938577178, -1.264187748314973],
                  [0.036334158254826, -1.107555496919721, -0.464934648630337]]
     cell = [[3.75, 0., 0.], [1.5, 4.5, 0.], [0.45, 1.05, 3.75]]
-    a = Atoms('OCH2', cell=cell, positions=positions)
+    atoms = Atoms('OCH2', cell=cell, positions=positions)
 
-    a.set_pbc(True)
-    b = read_dftb(fd_genformat_periodic)
-    assert np.all(b.numbers == a.numbers)
-    assert np.allclose(b.positions, a.positions)
-    assert np.all(b.pbc == a.pbc)
-    assert np.allclose(b.cell, a.cell)
+    atoms.set_pbc(True)
+    atoms_new = read_dftb(fd_genformat_periodic)
+    assert np.all(atoms_new.numbers == atoms.numbers)
+    assert np.allclose(atoms_new.positions, atoms.positions)
+    assert np.all(atoms_new.pbc == atoms.pbc)
+    assert np.allclose(atoms_new.cell, atoms.cell)
 
-    a.set_pbc(False)
-    b = read_dftb(fd_genformat_nonperiodic)
-    assert np.all(b.numbers == a.numbers)
-    assert np.allclose(b.positions, a.positions)
-    assert np.all(b.pbc == a.pbc)
-    assert np.allclose(b.cell, 0.)
+    atoms.set_pbc(False)
+    atoms_new = read_dftb(fd_genformat_nonperiodic)
+    assert np.all(atoms_new.numbers == atoms.numbers)
+    assert np.allclose(atoms_new.positions, atoms.positions)
+    assert np.all(atoms_new.pbc == atoms.pbc)
+    assert np.allclose(atoms_new.cell, 0.)
 
 
 # test ase.io.dftb.read_dftb (with explicit geometry specification;
@@ -92,13 +92,13 @@ def test_read_dftb_explicit():
     x = 1.356773
     positions = [[0., 0., 0.], [x, x, x]]
     cell = [[2 * x, 2 * x, 0.], [0., 2 * x, 2 * x], [2 * x, 0., 2 * x]]
-    a = Atoms('GaAs', cell=cell, positions=positions, pbc=True)
+    atoms = Atoms('GaAs', cell=cell, positions=positions, pbc=True)
 
-    b = read_dftb(fd_explicit)
-    assert np.all(b.numbers == a.numbers), a
-    assert np.allclose(b.positions, a.positions)
-    assert np.all(b.pbc == a.pbc)
-    assert np.allclose(b.cell, a.cell)
+    atoms_new = read_dftb(fd_explicit)
+    assert np.all(atoms_new.numbers == atoms.numbers)
+    assert np.allclose(atoms_new.positions, atoms.positions)
+    assert np.all(atoms_new.pbc == atoms.pbc)
+    assert np.allclose(atoms_new.cell, atoms.cell)
 
 
 # test ase.io.dftb.read_dftb_lattice
@@ -153,12 +153,12 @@ def test_read_dftb_lattice():
 geo_end_xyz = """
     2
 MD iter: 0
-    H     -0.74027331      0.66664965      0.15941649      6.47595516      7.80578083     -2.37103779      1.72885170
-    H      0.00689149     -0.00620610     -0.53173510      3.71974623    -10.06970481     -0.32552974     -1.84046359
+    H    0.0    0.0  0.0  0.0     1.0   0.4  0.2
+    H    0.0    0.0  0.0  0.0     0.8   1.4  2.0
     2
 MD iter: 1
-    H     -0.74025441      0.66664391      0.15942066      6.47595186      7.81826390     -2.38149425      1.71663040
-    H      0.00686711     -0.00620687     -0.53173953      3.71975289    -10.08343474     -0.31333511     -1.82747199
+    H    0.0    0.0  0.0  0.0    -1.0  -0.4  0.2
+    H    0.0    0.0  0.0  0.0     0.8   1.4  2.0
 """
 
 
@@ -166,14 +166,14 @@ def test_read_dftb_velocities():
     atoms = Atoms('H2')
 
     filename = 'geo_end.xyz'
-    with open(filename, 'w') as f:
-        f.write(geo_end_xyz)
+    with open(filename, 'w') as fd:
+        fd.write(geo_end_xyz)
 
     # Velocities (in Angstrom / ps) of the last MD iteration
+    # The first 4 columns are the atom charge and coordinates
     read_dftb_velocities(atoms, filename=filename)
 
-    velocities = np.array([[7.81826390, -2.38149425, 1.71663040],
-                           [-10.08343474, -0.31333511, -1.82747199]])
+    velocities = np.linspace(-1, 2, num=6).reshape(2, 3)
     velocities /= 1e-12 * second
     assert np.allclose(velocities, atoms.get_velocities())
 
@@ -181,9 +181,10 @@ def test_read_dftb_velocities():
 # test ase.io.dftb.write_dftb_velocities
 def test_write_dftb_velocities():
     atoms = Atoms('H2')
-    velocities = np.array([[7.81826390, -2.38149425, 1.71663040],
-                           [-10.08343474, -0.31333511, -1.82747199]])
+
+    velocities = np.linspace(-1, 2, num=6).reshape(2, 3)
     atoms.set_velocities(velocities)
+
     write_dftb_velocities(atoms, filename='velocities.txt')
 
     velocities = np.loadtxt('velocities.txt') * Bohr / AUT
