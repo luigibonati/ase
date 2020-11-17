@@ -22,9 +22,13 @@ def get_dihedralcombo(atoms, dihedralcombo_def):
                 defin in dihedralcombo_def])
 
 
-def setup_fixinternals():
+def setup_atoms():
     atoms = molecule('CH3CH2OH', vacuum=5.0)
     atoms.rattle(stdev=0.3)
+    return atoms
+
+def setup_fixinternals():
+    atoms = setup_atoms()
 
     # Angles, Bonds, Dihedrals are built up with pairs of constraint
     # value and indices defining the constraint
@@ -96,8 +100,7 @@ def test_fixinternals():
 
 
 def setup_combos():
-    atoms = molecule('CH3CH2OH', vacuum=5.0)
-    atoms.rattle(stdev=0.3)
+    atoms = setup_atoms()
 
     # Fix linear combination of two bond lengths with atom indices 0-8 and
     # 0-6 with weighting coefficients 1.0 and -1.0 to the current value.
