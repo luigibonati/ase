@@ -1,6 +1,6 @@
 import numpy as np
 from ase.atoms import Atoms
-from ase.utils import reader
+from ase.utils import reader, writer
 
 
 @reader
@@ -161,6 +161,14 @@ def read_dftb_lattice(fileobj, images=None):
         return
     else:
         return lattices
+
+
+@writer
+def write_dftb(fileobj, images):
+    """Write structure in GEN format (refer to DFTB+ manual).
+       Multiple snapshots are not allowed. """
+    from ase.io.gen import write_gen
+    write_gen(fileobj, images)
 
 
 def write_dftb_velocities(atoms, filename='velocities.txt'):
