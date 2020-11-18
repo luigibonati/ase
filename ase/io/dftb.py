@@ -5,9 +5,17 @@ from ase.utils import reader, writer
 
 @reader
 def read_dftb(fd):
-    """Method to read coordinates form DFTB+ input file dftb_in.hsd
-    additionally read information about fixed atoms
-    and periodic boundary condition
+    """Method to read coordinates from the Geometry section
+    of a DFTB+ input file (typically called "dftb_in.hsd").
+
+    As described in the DFTB+ manual, this section can be
+    in a number of different formats. This reader supports
+    the GEN format and the so-called "explicit" format.
+
+    The "explicit" format is unique to DFTB+ input files.
+    The GEN format can also be used in a stand-alone fashion,
+    as coordinate files with a `.gen` extension. Reading and
+    writing such files is implemented in `ase.io.gen`.
     """
     lines = fd.readlines()
 
