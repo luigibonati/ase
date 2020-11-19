@@ -921,7 +921,7 @@ class GenerateVaspInput:
         'mn15l': {
             'metagga': 'MN15L'
         },
-        'HLE17': {
+        'hle17': {
             'metagga': 'HLE17'
         },
         'revm06l': {
