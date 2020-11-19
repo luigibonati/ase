@@ -290,7 +290,8 @@ class POVRAY:
     def write_ini(self, path):
         """Write ini file."""
 
-        ini_str = f"""Input_File_Name={path.with_suffix('.pov').name}
+        ini_str = f"""\
+Input_File_Name={path.with_suffix('.pov').name}
 Output_to_File=True
 Output_File_Type=N
 Output_Alpha={'on' if self.transparent else 'off'}
@@ -304,8 +305,8 @@ Display={self.display}
 Pause_When_Done={self.pause}
 Verbose=False
 """
-        with open(path, 'w') as _:
-            _.write(ini_str)
+        with open(path, 'w') as fd:
+            fd.write(ini_str)
         return path
 
     def write_pov(self, path):
@@ -530,49 +531,47 @@ union{{torus{{R, Rcell rotate 45*z texture{{pigment{{color COL transmit TRANS}} 
 {constraints if constraints != '' else '// no constraints'}
 """  # noqa: E501
 
-        with open(path, 'w') as _:
-            _.write(pov)
+        with open(path, 'w') as fd:
+            fd.write(pov)
 
         return path
 
-    def write(self, filename):
-        path = Path(filename).with_suffix('')
-        self.write_ini(path.with_suffix('.ini'))
-        self.write_pov(path.with_suffix('.pov'))
+    def write(self, ini_path):
+        ini_path = require_ini(ini_path)
+        pov_path = ini_path.with_suffix('.pov')
+        self.write_ini(ini_path)
+        self.write_pov(pov_path)
         if self.isosurfaces is not None:
-            with open(path.with_suffix('.pov'), 'a') as _:
+            with open(pov_path, 'a') as fd:
                 for iso in self.isosurfaces:
-                    _.write(iso.format_mesh())
-        return POVRAYInputs(path)
+                    fd.write(iso.format_mesh())
+        return POVRAYInputs(ini_path)
 
+
+def require_ini(path):
+    path = Path(path)
+    if path.suffix != '.ini':
+        raise ValueError(f'Expected .ini path, got {path}')
+    return path
 
 class POVRAYInputs:
     def __init__(self, path):
-        if isinstance(path, str):
-            path = Path(path).with_suffix('')
-        self.path = path
+        self.path = require_ini(path)
 
-    def render(self, povray_executable='povray', stderr=None, clean_up=False):
-        pov_path = self.path.with_suffix('.ini')
-        cmd = [povray_executable, pov_path.as_posix()]
-        if stderr is None:
-            out = DEVNULL
-        elif stderr == '-':
-            out = open(stderr, 'w')
-        else:
-            out = None
+    def render(self, povray_executable='povray', stderr=DEVNULL,
+               clean_up=False):
+        cmd = [povray_executable, str(self.path)]
 
-        try:
-            check_call(cmd, stderr=out)
-        finally:
-            if stderr == '-':
-                out.close()
+        check_call(cmd, stderr=stderr)
+        png_path = self.path.with_suffix('.png').absolute()
+        if not png_path.is_file():
+            raise RuntimeError(f'Povray left no output PNG file "{png_path}"')
 
         if clean_up:
-            unlink(self.path.with_suffix('.ini'))
+            unlink(self.path)
             unlink(self.path.with_suffix('.pov'))
 
-        return self.path.with_suffix('.png')
+        return png_path
 
 
 class POVRAYIsosurface:
