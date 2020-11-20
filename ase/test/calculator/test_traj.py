@@ -12,14 +12,13 @@ parameters = {
     #'elk': dict(tasks=0, rgkmax=5.0, epsengy=1.0, epspot=1.0, tforce=True,
     #            pbc=True),
     'vasp': dict(xc='LDA'),
-    'Psi4': {},
 }
 
 calc = pytest.mark.calculator
 @calc('gpaw', mode='lcao',  basis='sz(dzp)',
       marks=pytest.mark.filterwarnings('ignore:The keyword'))
 # Deprecated keyword, remove this once things are resolved
-@calc('abinit', 'cp2k', 'emt')
+@calc('abinit', 'cp2k', 'emt', 'psi4')
 def test_h2_traj(factory):
     run(factory)
 
