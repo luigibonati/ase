@@ -284,7 +284,7 @@ class Psi4Factory:
     @classmethod
     def fromconfig(cls, config):
         try:
-            import psi4
+            import psi4  # noqa
         except ModuleNotFoundError:
             raise NotInstalled('psi4')
         return cls()
