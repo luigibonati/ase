@@ -282,7 +282,7 @@ F('cif', 'CIF-file', '+B', ext='cif')
 F('cmdft', 'CMDFT-file', '1F', glob='*I_info')
 F('cp2k-dcd', 'CP2K DCD file', '+B',
   module='cp2k', ext='dcd')
-F('crystal', 'Crystal fort.34 format', '1S',
+F('crystal', 'Crystal fort.34 format', '1F',
   ext=['f34', '34'], glob=['f34', '34'])
 F('cube', 'CUBE file', '1F', ext='cube')
 F('dacapo-text', 'Dacapo text output', '1F',
@@ -309,7 +309,7 @@ F('espresso-in', 'Quantum espresso in file', '1F',
   module='espresso', ext='pwi', magic=[b'*\n&system', b'*\n&SYSTEM'])
 F('espresso-out', 'Quantum espresso out file', '+F',
   module='espresso', ext=['out', 'pwo'], magic=b'*Program PWSCF')
-F('exciting', 'exciting input', '1S', glob='input.xml')
+F('exciting', 'exciting input', '1F', glob='input.xml')
 F('extxyz', 'Extended XYZ file', '+F', ext='xyz')
 F('findsym', 'FINDSYM-format', '+F')
 F('gamess-us-out', 'GAMESS-US output file', '1F',
@@ -334,7 +334,7 @@ F('gpaw-out', 'GPAW text output', '+F',
 F('gpumd', 'GPUMD input file', '1F', glob='xyz.in')
 F('gpw', 'GPAW restart-file', '1S',
   magic=[b'- of UlmGPAW', b'AFFormatGPAW'])
-F('gromacs', 'Gromacs coordinates', '1S',
+F('gromacs', 'Gromacs coordinates', '1F',
   ext='gro')
 F('gromos', 'Gromos96 geometry file', '1F', ext='g96')
 F('html', 'X3DOM HTML', '1F', module='x3d')
@@ -540,7 +540,11 @@ def write(
         might not be readable by any program! They will nevertheless be
         written without error message.
 
-    The use of additional keywords is format specific."""
+    The use of additional keywords is format specific. write() may
+    return an object after writing certain formats, but this behaviour
+    may change in the future.
+
+    """
 
     if isinstance(filename, PurePath):
         filename = str(filename)
@@ -567,8 +571,8 @@ def write(
 
     io = get_ioformat(format)
 
-    _write(filename, fd, format, io, images, parallel=parallel, append=append,
-           **kwargs)
+    return _write(filename, fd, format, io, images,
+                  parallel=parallel, append=append, **kwargs)
 
 
 @parallel_function
@@ -589,35 +593,36 @@ def _write(filename, fd, format, io, images, parallel=None, append=False,
     # Special case for json-format:
     if format == 'json' and (len(images) > 1 or append):
         if filename is not None:
-            io.write(filename, images, append=append, **kwargs)
-            return
+            return io.write(filename, images, append=append, **kwargs)
         raise ValueError("Can't write more than one image to file-descriptor "
                          'using json-format.')
 
     if io.acceptsfd:
         open_new = (fd is None)
-        if open_new:
-            mode = 'wb' if io.isbinary else 'w'
-            if append:
-                mode = mode.replace('w', 'a')
-            fd = open_with_compression(filename, mode)
-            # XXX remember to re-enable compressed open
-            # fd = io.open(filename, mode)
-        io.write(fd, images, **kwargs)
-        if open_new:
-            fd.close()
+        try:
+            if open_new:
+                mode = 'wb' if io.isbinary else 'w'
+                if append:
+                    mode = mode.replace('w', 'a')
+                fd = open_with_compression(filename, mode)
+                # XXX remember to re-enable compressed open
+                # fd = io.open(filename, mode)
+            return io.write(fd, images, **kwargs)
+        finally:
+            if open_new and fd is not None:
+                fd.close()
     else:
         if fd is not None:
             raise ValueError("Can't write {}-format to file-descriptor"
                              .format(format))
         if io.can_append:
-            io.write(filename, images, append=append, **kwargs)
+            return io.write(filename, images, append=append, **kwargs)
         elif append:
             raise ValueError("Cannot append to {}-format, write-function "
                              "does not support the append keyword."
                              .format(format))
         else:
-            io.write(filename, images, **kwargs)
+            return io.write(filename, images, **kwargs)
 
 
 def read(

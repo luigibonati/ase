@@ -93,13 +93,14 @@ Write animation with 500 ms duration per frame
 >>> write('movie.gif', [bulk(s) for s in ['Cu', 'Ag', 'Au']], interval=500)
 
 
-Write POVRAY file
+Write POVRAY file (the projection settings and povray specific settings are separated)
 
->>> write('slab.pov', slab * (3, 3, 1), rotation='10z,-80x')
+>>> write('slab.pov', slab * (3, 3, 1),
+...       generic_projection_settings = dict(rotation='10z,-80x'))
 
 This will write both a ``slab.pov`` and a ``slab.ini`` file.  Convert
 to PNG with the command ``povray slab.ini`` or use the
-``run_povray=True`` option:
+``.render`` method on the returned object:
 
 .. image:: io2.png
 
@@ -107,11 +108,12 @@ Here is an example using ``bbox``
 
 >>> d = a / 2**0.5
 >>> write('slab.pov', slab * (2, 2, 1),
-...       bbox=(d, 0, 3 * d, d * 3**0.5))
+...       generic_projection_settings = dict(
+...       bbox=(d, 0, 3 * d, d * 3**0.5))).render()
 
 .. image:: io3.png
 
-This is an axample of display bond order for molecule
+This is an example of displaying bond order for a molecule
 
 .. literalinclude:: save_C2H4.py
 

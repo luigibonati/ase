@@ -11,7 +11,7 @@ def test_siesta_zmat(siesta_factory):
     c2 = FixedLine(1, [0.0, 1.0, 0.0])
     c3 = FixedPlane(2, [1.0, 0.0, 0.0])
 
-    atoms.set_constraint([c1,c2,c3])
+    atoms.set_constraint([c1, c2, c3])
 
     custom_dir = './dir1/'
 
@@ -23,7 +23,7 @@ def test_siesta_zmat(siesta_factory):
         fdf_arguments={
             'MD.TypeOfRun': 'CG',
             'MD.NumCGsteps': 1000
-            })
+        })
 
     atoms.calc = siesta
     siesta.write_input(atoms, properties=['energy'])
@@ -35,6 +35,9 @@ def test_siesta_zmat(siesta_factory):
     assert ['%block', 'Zmatrix'] in lsl
     assert ['%endblock', 'Zmatrix'] in lsl
     assert ['MD.TypeOfRun', 'CG'] in lsl
-    assert any([line.split()[4:9] == ['0', '0', '0', '1', 'C'] for line in lines])
-    assert any([line.split()[4:9] == ['0', '1', '0', '2', 'O'] for line in lines])
-    assert any([line.split()[4:9] == ['0', '1', '1', '3', 'O'] for line in lines])
+    assert any([line.split()[4:9] == ['0', '0', '0', '1', 'C']
+                for line in lines])
+    assert any([line.split()[4:9] == ['0', '1', '0', '2', 'O']
+                for line in lines])
+    assert any([line.split()[4:9] == ['0', '1', '1', '3', 'O']
+                for line in lines])

@@ -1,7 +1,8 @@
-def test_info():
-    from ase import Atoms
-    from ase.io import Trajectory
+from ase import Atoms
+from ase.io import Trajectory
 
+
+def test_info():
     # Create a molecule with an info attribute
     info = dict(creation_date='2011-06-27',
                 chemical_name='Hydrogen',
@@ -12,18 +13,14 @@ def test_info():
     molecule = Atoms('H2', positions=[(0., 0., 0.), (0., 0., 1.1)], info=info)
     assert molecule.info == info
 
-    # Copy molecule
     atoms = molecule.copy()
     assert atoms.info == info
 
-    # Save molecule to trajectory
-    traj = Trajectory('info.traj', 'w', atoms=molecule)
-    traj.write()
-    del traj
+    with Trajectory('info.traj', 'w', atoms=molecule) as traj:
+        traj.write()
 
-    # Load molecule from trajectory
-    t = Trajectory('info.traj')
-    atoms = t[-1]
+    with Trajectory('info.traj') as t:
+        atoms = t[-1]
 
     print(atoms.info)
     assert atoms.info == info

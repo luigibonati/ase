@@ -2,10 +2,11 @@ import re
 import numpy as np
 
 from ase.atoms import Atoms
-from ase.parallel import paropen
 from ase.calculators.lammps import Prism, convert
+from ase.utils import reader, writer
 
 
+@reader
 def read_lammps_data(fileobj, Z_of_type=None, style="full",
                      sort_by_id=False, units="metal"):
     """Method which reads a LAMMPS data file.
@@ -14,13 +15,8 @@ def read_lammps_data(fileobj, Z_of_type=None, style="full",
     switch it off.
     Units are set by default to the style=metal setting in LAMMPS.
     """
-    if isinstance(fileobj, str):
-        fd = paropen(fileobj)
-    else:
-        fd = fileobj
-
     # load everything into memory
-    lines = fd.readlines()
+    lines = fileobj.readlines()
 
     # begin read_lammps_data
     comment = None
@@ -406,17 +402,11 @@ def read_lammps_data(fileobj, Z_of_type=None, style="full",
     return at
 
 
-def write_lammps_data(fileobj, atoms, specorder=None, force_skew=False,
+@writer
+def write_lammps_data(fd, atoms, specorder=None, force_skew=False,
                       prismobj=None, velocities=False, units="metal",
                       atom_style='atomic'):
     """Write atomic structure data to a LAMMPS data file."""
-    if isinstance(fileobj, str):
-        fd = paropen(fileobj, "w", encoding="ascii")
-        close_file = True
-    else:
-        # Presume fileobj acts like a fileobj
-        fd = fileobj
-        close_file = False
 
     # FIXME: We should add a check here that the encoding of the file object
     #        is actually ascii once the 'encoding' attribute of IOFormat objects
@@ -548,5 +538,3 @@ def write_lammps_data(fileobj, atoms, specorder=None, force_skew=False,
             )
 
     fd.flush()
-    if close_file:
-        fd.close()

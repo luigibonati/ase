@@ -27,6 +27,7 @@ from ase.dft.kpoints import kpoint_convert
 from ase.constraints import FixAtoms, FixCartesian
 from ase.data import chemical_symbols, atomic_numbers
 from ase.units import create_units
+from ase.utils import iofunction
 
 
 # Quantum ESPRESSO uses CODATA 2006 internally
@@ -67,6 +68,7 @@ class Namelist(OrderedDict):
         return super(Namelist, self).get(key.lower(), default)
 
 
+@iofunction('rU')
 def read_espresso_out(fileobj, index=-1, results_required=True):
     """Reads Quantum ESPRESSO output files.
 
@@ -97,9 +99,6 @@ def read_espresso_out(fileobj, index=-1, results_required=True):
 
 
     """
-    if isinstance(fileobj, str):
-        fileobj = open(fileobj, 'rU')
-
     # work with a copy in memory for faster random access
     pwo_lines = fileobj.readlines()
 
@@ -440,6 +439,7 @@ def parse_pwo_start(lines, index=0):
     return info
 
 
+@iofunction('rU')
 def read_espresso_in(fileobj):
     """Parse a Quantum ESPRESSO input files, '.in', '.pwi'.
 
@@ -463,10 +463,6 @@ def read_espresso_in(fileobj):
     KeyError
         Raised for missing keys that are required to process the file
     """
-    # TODO: use ase opening mechanisms
-    if isinstance(fileobj, str):
-        fileobj = open(fileobj, 'rU')
-
     # parse namelist section and extract remaining lines
     data, card_lines = read_fortran_namelist(fileobj)
 
@@ -1488,7 +1484,7 @@ def kspacing_to_grid(atoms, spacing, calculated_spacing=None):
     """
     # No factor of 2pi in ase, everything in A^-1
     # reciprocal dimensions
-    r_x, r_y, r_z = np.linalg.norm(atoms.get_reciprocal_cell(), axis=1)
+    r_x, r_y, r_z = np.linalg.norm(atoms.cell.reciprocal(), axis=1)
 
     kpoint_grid = [int(r_x / spacing) + 1,
                    int(r_y / spacing) + 1,

@@ -8,23 +8,29 @@ source = ase
 [report]
 precision = 2
 omit =
+    # We don't include the unittests since that's "cheating":
     ./*
+
+    # Tools for releases and web page are not production code:
     ../utils/sphinx.py
-    ../utils/newrelease.py
     ../utils/build_web_page.py
+    ../utils/newrelease.py
+
+    # The "optimizer tests" are used to generate part of GPAW's web page
+    # but we don't really consider it production code.
+    # Since we don't plan to test it as such, we exclude it from the listing.
+    ../optimize/test/*.py
 
     # TODO: Test external calculators and add to listing.
     ../calculators/gaussian.py
     ../calculators/crystal.py
     ../calculators/demonnano.py
-    ../calculators/exciting.py
     ../calculators/qchem.py
     ../calculators/aims.py
     ../calculators/psi4.py
     ../calculators/gamess_us.py
     ../calculators/lammpslib.py
     ../calculators/orca.py
-    ../calculators/dftd3.py
     ../calculators/fleur.py
     ../calculators/amber.py
     ../calculators/turbomole.py
@@ -42,30 +48,13 @@ omit =
     ../calculators/vasp/interactive.py
     ../calculators/vasp/vasp2.py
     ../calculators/vasp/vasp.py
-    ../calculators/siesta/mbpt_lcao.py
-    ../calculators/siesta/mbpt_lcao_utils.py
-    ../calculators/siesta/import_ion_xml.py
-    ../calculators/siesta/siesta_raman.py
-    ../calculators/siesta/mbpt_lcao_io.py
-    ../calculators/siesta/import_functions.py
 
     # TODO: Improve IO format coverage and add include in coverage stats
-    ../io/gaussian.py
-    ../io/pov.py
-    ../io/dacapo.py
     ../io/fortranfile.py
     ../io/turbomole.py
-    ../io/gaussian_reader.py
     ../io/acemolecule.py
     ../io/vtkxml.py
     ../io/castep.py
-    ../io/gpw.py
-    ../io/cmdft.py
-
-    # The "optimizer tests" are used to generate part of GPAW's web page
-    # but we don't really consider it production code.
-    # Since we don't plan to test it as such, we exclude it from the listing.
-    ../optimize/test/*.py
 
 [html]
 directory = coverage-html

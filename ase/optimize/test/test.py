@@ -29,6 +29,7 @@ def get_optimizer(name):
 
 class Wrapper:
     """Atoms-object wrapper that can count number of moves."""
+
     def __init__(self, atoms, gridspacing=0.2, eggbox=0.0):
         # types: (Atoms, float, float) -> None
         self.t0 = time()

@@ -242,7 +242,7 @@ class FLEUR:
             return self.efree * Hartree
         else:
             # Energy extrapolated to zero Kelvin:
-            return  (self.etotal + self.efree) / 2 * Hartree
+            return (self.etotal + self.efree) / 2 * Hartree
 
     def get_number_of_iterations(self, atoms):
         self.update(atoms)

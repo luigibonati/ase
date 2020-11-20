@@ -68,7 +68,7 @@ def all_tested_formats():
     skip = []
 
     # Someone should do something ...
-    skip += ['abinit', 'castep-cell', 'dftb', 'eon', 'gaussian', 'lammps-data']
+    skip += ['dftb', 'eon', 'lammps-data']
 
     # Standalone test used as not compatible with 1D periodicity
     skip += ['v-sim', 'mustem', 'prismatic']

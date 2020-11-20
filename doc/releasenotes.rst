@@ -15,9 +15,19 @@ Git master branch
 * Changed units for molecular dynamics modules.  They now accept the
   temperature in Kelvin as a keyword-only argument ``temperature_K``
   and Berendsen NPT accepts the pressure in eV/Å^3 as a keyword-only
-  argument ``pressure_au``.  The previous arguments are still
-  available and still takes temperature and pressure in whatever unit
-  the module used to accept, but now issues a warning.
+  argument ``pressure_au``. The previous arguments are still
+  available and still take temperature and pressure in whatever unit
+  the module used to accept, but now issue a warning.
+
+* Made Andersen thermostat available for molecular dynamics simulation.
+
+* Deprecated the following methods on :class:`~ase.Atoms` as they can
+  be replaced by ``~ase.cell.Cell``:
+  ``atoms.get_cell_lengths_and_angles()``,
+  ``atoms.get_reciprocal_cell()``,
+  ``atoms.number_of_lattice_vectors``, and ``atoms.get_volume()``.
+  Instead use ``atoms.cell.cellpar()``, ``atoms.cell.reciprocal()``,
+  ``atoms.cell.rank``, and ``atoms.cell.volume``, respectively.
 
 * Extended constraint `ase.constraints.FixInternals` by
   possibility to fix linear combinations of bond lengths.
@@ -25,11 +35,15 @@ Git master branch
 * Cleaned up and fixed multiple issues with
   :class:`~ase.calculators.elk.Elk` calculator.
 
+* :meth:`~ase.Atoms.get_velocities` will now return an array of zeros
+  consistently with :meth:`~ase.Atoms.get_momenta` if not set.
+  It previously returned ``None``, which was an oversight.
+
 * Reads Wannier90 ``.wout`` files.
   See :func:`ase.io.wannier90.read_wout` and
   :func:`ase.io.wannier90.read_wout_all`.
 
-* :meth:`~ase.neb.SingleCalculatorNEB` is deprecated.  Use
+* :class:`~ase.neb.SingleCalculatorNEB` is deprecated.  Use
   ``ase.neb.NEB(allow_shared_calculator=True)`` instead.
 
 Version 3.20.1

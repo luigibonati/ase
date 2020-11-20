@@ -47,15 +47,15 @@ class VelocityVerlet(MolecularDynamics):
                                    loginterval,
                                    append_trajectory=append_trajectory)
 
-    def step(self, f=None):
+    def step(self, forces=None):
 
         atoms = self.atoms
 
-        if f is None:
-            f = atoms.get_forces()
+        if forces is None:
+            forces = atoms.get_forces()
 
         p = atoms.get_momenta()
-        p += 0.5 * self.dt * f
+        p += 0.5 * self.dt * forces
         masses = atoms.get_masses()[:, np.newaxis]
         r = atoms.get_positions()
 
@@ -71,8 +71,8 @@ class VelocityVerlet(MolecularDynamics):
         # migrate along with the atoms.
         atoms.set_momenta(p, apply_constraint=False)
 
-        f = atoms.get_forces(md=True)
+        forces = atoms.get_forces(md=True)
 
         # Second part of RATTLE will be done here:
-        atoms.set_momenta(atoms.get_momenta() + 0.5 * self.dt * f)
-        return f
+        atoms.set_momenta(atoms.get_momenta() + 0.5 * self.dt * forces)
+        return forces

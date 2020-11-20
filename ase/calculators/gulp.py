@@ -48,8 +48,7 @@ class GULP(FileIOCalculator):
         options=[],
         shel=[],
         library="ffsioh.lib",
-        conditions=None
-        )
+        conditions=None)
 
     def get_optimizer(self, atoms):
         gulp_keywords = self.parameters.keywords.split()
@@ -87,7 +86,7 @@ class GULP(FileIOCalculator):
         s += '\ntitle\nASE calculation\nend\n\n'
 
         if all(self.atoms.pbc):
-            cell_params = self.atoms.get_cell_lengths_and_angles()
+            cell_params = self.atoms.cell.cellpar()
             # Formating is necessary since Gulp max-line-length restriction
             s += 'cell\n{0:9.6f} {1:9.6f} {2:9.6f} ' \
                  '{3:8.5f} {4:8.5f} {5:8.5f}\n'.format(*cell_params)

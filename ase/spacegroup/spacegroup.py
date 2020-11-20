@@ -1,6 +1,5 @@
 # Copyright (C) 2010, Jesper Friis
 # (see accompanying license files for details).
-
 """Definition of the Spacegroup class.
 
 This module only depends on NumPy and the space group database.
@@ -9,6 +8,7 @@ This module only depends on NumPy and the space group database.
 import os
 import warnings
 from functools import total_ordering
+from typing import Union
 
 import numpy as np
 
@@ -28,6 +28,10 @@ class SpacegroupNotFoundError(SpacegroupError):
 class SpacegroupValueError(SpacegroupError):
     """Raised when arguments have invalid value."""
     pass
+
+
+# Type alias
+_SPACEGROUP = Union[int, str, 'Spacegroup']
 
 
 @total_ordering
@@ -61,12 +65,10 @@ class Spacegroup:
     symbol = property(
         lambda self: self._symbol,
         doc='Hermann-Mauguin (or international) symbol for the space group.')
-    setting = property(
-        lambda self: self._setting,
-        doc='Space group setting. Either one or two.')
-    lattice = property(
-        lambda self: self._symbol[0],
-        doc="""Lattice type:
+    setting = property(lambda self: self._setting,
+                       doc='Space group setting. Either one or two.')
+    lattice = property(lambda self: self._symbol[0],
+                       doc="""Lattice type:
 
     P     primitive
     I     body centering, h+k+l=2n
@@ -74,9 +76,8 @@ class Spacegroup:
     A,B,C single face centering, k+l=2n, h+l=2n, h+k=2n
     R     rhombohedral centering, -h+k+l=3n (obverse); h-k+l=3n (reverse)
             """)
-    centrosymmetric = property(
-        lambda self: self._centrosymmetric,
-        doc='Whether a center of symmetry exists.')
+    centrosymmetric = property(lambda self: self._centrosymmetric,
+                               doc='Whether a center of symmetry exists.')
     scaled_primitive_cell = property(
         lambda self: self._scaled_primitive_cell,
         doc='Primitive cell in scaled coordinates as a matrix with the '
@@ -85,9 +86,8 @@ class Spacegroup:
         lambda self: self._reciprocal_cell,
         doc='Tree Miller indices that span all kinematically non-forbidden '
         'reflections as a matrix with the Miller indices along the rows.')
-    nsubtrans = property(
-        lambda self: len(self._subtrans),
-        doc='Number of cell-subtranslation vectors.')
+    nsubtrans = property(lambda self: len(self._subtrans),
+                         doc='Number of cell-subtranslation vectors.')
 
     def _get_nsymop(self):
         """Returns total number of symmetry operations."""
@@ -95,6 +95,7 @@ class Spacegroup:
             return 2 * len(self._rotations) * len(self._subtrans)
         else:
             return len(self._rotations) * len(self._subtrans)
+
     nsymop = property(_get_nsymop, doc='Total number of symmetry operations.')
     subtrans = property(
         lambda self: self._subtrans,
@@ -108,7 +109,7 @@ class Spacegroup:
         doc='Symmetry translations. The invertions are not included '
         'for centrosymmetrical crystals.')
 
-    def __init__(self, spacegroup, setting=1, datafile=None):
+    def __init__(self, spacegroup: _SPACEGROUP, setting=1, datafile=None):
         """Returns a new Spacegroup instance.
 
         Parameters:
@@ -193,8 +194,8 @@ class Spacegroup:
         return not self.__eq__(other)
 
     def __lt__(self, other):
-        return self.no < other.no or (
-            self.no == other.no and self.setting < other.setting)
+        return self.no < other.no or (self.no == other.no
+                                      and self.setting < other.setting)
 
     def __index__(self):
         return self.no
@@ -346,8 +347,11 @@ class Spacegroup:
         imask = mask[iperm]
         return hkl[imask]
 
-    def equivalent_sites(self, scaled_positions, onduplicates='error',
-                         symprec=1e-3, occupancies=None):
+    def equivalent_sites(self,
+                         scaled_positions,
+                         onduplicates='error',
+                         symprec=1e-3,
+                         occupancies=None):
         """Returns the scaled positions and all their equivalent sites.
 
         Parameters:
@@ -413,8 +417,8 @@ class Spacegroup:
                     kinds.append(kind)
                     continue
                 t = site - sites
-                mask = np.all((abs(t) < symprec) |
-                              (abs(abs(t) - 1.0) < symprec), axis=1)
+                mask = np.all(
+                    (abs(t) < symprec) | (abs(abs(t) - 1.0) < symprec), axis=1)
                 if np.any(mask):
                     inds = np.argwhere(mask).flatten()
                     for ind in inds:
@@ -427,11 +431,12 @@ class Spacegroup:
                             kinds[ind] = kind
                         elif onduplicates == 'warn':
                             warnings.warn('scaled_positions %d and %d '
-                                          'are equivalent' % (kinds[ind], kind))
+                                          'are equivalent' %
+                                          (kinds[ind], kind))
                         elif onduplicates == 'error':
                             raise SpacegroupValueError(
-                                'scaled_positions %d and %d are equivalent' % (
-                                    kinds[ind], kind))
+                                'scaled_positions %d and %d are equivalent' %
+                                (kinds[ind], kind))
                         else:
                             raise SpacegroupValueError(
                                 'Argument "onduplicates" must be one of: '
@@ -442,7 +447,8 @@ class Spacegroup:
 
         return np.array(sites), kinds
 
-    def symmetry_normalised_sites(self, scaled_positions,
+    def symmetry_normalised_sites(self,
+                                  scaled_positions,
                                   map_to_unitcell=True):
         """Returns an array of same size as *scaled_positions*,
         containing the corresponding symmetry-equivalent sites of
@@ -473,7 +479,10 @@ class Spacegroup:
             normalised[i, :] = sympos[j]
         return normalised
 
-    def unique_sites(self, scaled_positions, symprec=1e-3, output_mask=False,
+    def unique_sites(self,
+                     scaled_positions,
+                     symprec=1e-3,
+                     output_mask=False,
                      map_to_unitcell=True):
         """Returns a subset of *scaled_positions* containing only the
         symmetry-unique positions.  If *output_mask* is True, a boolean
@@ -534,7 +543,8 @@ class Spacegroup:
             sympos %= 1.0
             m = ~np.all(np.any(np.abs(scaled[np.newaxis, :, :] -
                                       sympos[:, np.newaxis, :]) > symprec,
-                               axis=2), axis=0)
+                               axis=2),
+                        axis=0)
             assert not np.any((~mask) & m)
             tags[m] = i
             mask &= ~m
@@ -577,14 +587,15 @@ def format_symbol(symbol):
 # caching to avoid reading the database each time a new Spacegroup
 # instance is created.
 
+
 def _skip_to_blank(f, spacegroup, setting):
     """Read lines from f until a blank line is encountered."""
     while True:
         line = f.readline()
         if not line:
             raise SpacegroupNotFoundError(
-                'invalid spacegroup `%s`, setting `%s` not found in data base' %
-                (spacegroup, setting))
+                'invalid spacegroup `%s`, setting `%s` not found in data base'
+                % (spacegroup, setting))
         if not line.strip():
             break
 
@@ -619,22 +630,21 @@ def _read_datafile_entry(spg, no, symbol, setting, f):
     spg._centrosymmetric = bool(int(f.readline().split()[1]))
     # primitive vectors
     f.readline()
-    spg._scaled_primitive_cell = np.array([[float(floats.get(s, s))
-                                            for s in f.readline().split()]
-                                           for i in range(3)],
-                                          dtype=np.float)
+    spg._scaled_primitive_cell = np.array(
+        [[float(floats.get(s, s)) for s in f.readline().split()]
+         for i in range(3)],
+        dtype=np.float)
     # primitive reciprocal vectors
     f.readline()
-    spg._reciprocal_cell = np.array([[int(i)
-                                      for i in f.readline().split()]
+    spg._reciprocal_cell = np.array([[int(i) for i in f.readline().split()]
                                      for i in range(3)],
                                     dtype=np.int)
     # subtranslations
     spg._nsubtrans = int(f.readline().split()[0])
-    spg._subtrans = np.array([[float(floats.get(t, t))
-                               for t in f.readline().split()]
-                              for i in range(spg._nsubtrans)],
-                             dtype=np.float)
+    spg._subtrans = np.array(
+        [[float(floats.get(t, t)) for t in f.readline().split()]
+         for i in range(spg._nsubtrans)],
+        dtype=np.float)
     # symmetry operations
     nsym = int(f.readline().split()[0])
     symop = np.array([[float(floats.get(s, s)) for s in f.readline().split()]
@@ -660,10 +670,10 @@ def _read_datafile(spg, spacegroup, setting, f):
         compact_symbol = ''.join(_symbol.split())
         _setting = int(line2.strip().split()[1])
         _no = int(_no)
-        if ((isinstance(spacegroup, int) and _no == spacegroup and
-             _setting == setting) or
-            (isinstance(spacegroup, str) and
-             compact_symbol == compact_spacegroup) and
+        if ((isinstance(spacegroup, int) and _no == spacegroup
+             and _setting == setting)
+                or (isinstance(spacegroup, str)
+                    and compact_symbol == compact_spacegroup) and
             (setting is None or _setting == setting)):
             _read_datafile_entry(spg, _no, _symbol, _setting, f)
             break
@@ -735,10 +745,17 @@ def parse_sitesym(symlist, sep=','):
     return rot, trans
 
 
-def spacegroup_from_data(no=None, symbol=None, setting=None,
-                         centrosymmetric=None, scaled_primitive_cell=None,
-                         reciprocal_cell=None, subtrans=None, sitesym=None,
-                         rotations=None, translations=None, datafile=None):
+def spacegroup_from_data(no=None,
+                         symbol=None,
+                         setting=None,
+                         centrosymmetric=None,
+                         scaled_primitive_cell=None,
+                         reciprocal_cell=None,
+                         subtrans=None,
+                         sitesym=None,
+                         rotations=None,
+                         translations=None,
+                         datafile=None):
     """Manually create a new space group instance.  This might be
     useful when reading crystal data with its own spacegroup
     definitions."""
@@ -808,64 +825,10 @@ def get_spacegroup(atoms, symprec=1e-5):
 
     import spglib
 
-    sg = spglib.get_spacegroup((atoms.get_cell(),
-                                atoms.get_scaled_positions(),
+    sg = spglib.get_spacegroup((atoms.get_cell(), atoms.get_scaled_positions(),
                                 atoms.get_atomic_numbers()),
                                symprec=symprec)
     if sg is None:
         raise RuntimeError('Spacegroup not found')
     sg_no = int(sg[sg.find('(') + 1:sg.find(')')])
     return Spacegroup(sg_no)
-
-    # no spglib, we use our own spacegroup finder. Not as fast as spglib.
-    # we center the Atoms positions on each atom in the cell, and find the
-    # spacegroup of highest symmetry
-    #
-    # XXX That function is not finished.
-    # found = None
-    # for kind, pos in enumerate(atoms.get_scaled_positions()):
-    #     sg = _get_spacegroup(atoms, symprec=symprec, center=kind)
-    #     if found is None or sg.no > found.no:
-    #         found = sg
-
-    # return found
-
-
-def _get_spacegroup(atoms, symprec=1e-5, center=None):
-    """ASE implementation of get_spacegroup, pure python."""
-    raise NotImplementedError('get_spacegroup() is not finished')
-
-    # we try all available spacegroups from 230 to 1, backwards
-    # a Space group is the collection of all symmetry operations which lets the
-    # unit cell invariant.
-    found = None
-    positions = atoms.get_scaled_positions(wrap=True)  # in the lattice frame
-
-    # make sure we are insensitive to translation. this choice is arbitrary and
-    # could lead to a 'slightly' wrong guess for the Space group, e.g. do not
-    # guess centro-symmetry.
-    if center is not None:
-        try:
-            positions -= positions[center]
-        except IndexError:
-            pass
-
-    # search space groups from the highest symmetry to the lowest
-    # retain the first match
-    for nb in range(230, 0, -1):
-        sg = Spacegroup(nb)
-        #
-        # now we scan all atoms in the cell and look for equivalent sites
-        sites, kinds = sg.equivalent_sites(positions,
-                                           onduplicates='keep',
-                                           symprec=symprec)
-
-        # the equivalent sites should match all other atom locations in the
-        # cell as the spacegroup transforms the unit cell in itself
-        # we test on the number of equivalent sites
-        if len(sites) == len(positions):
-            # store the space group into the list
-            found = sg
-            break
-
-    return found

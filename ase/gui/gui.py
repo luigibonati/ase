@@ -296,7 +296,7 @@ class GUI(View, Status):
             self.pipe('eos', plotdata)
 
     def reciprocal(self):
-        if self.atoms.number_of_lattice_vectors != 3:
+        if self.atoms.cell.rank != 3:
             self.bad_plot(_('Requires 3D cell.'))
             return
 

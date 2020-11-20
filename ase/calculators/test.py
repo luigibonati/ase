@@ -143,7 +143,7 @@ class FreeElectrons(Calculator):
     def calculate(self, atoms, properties, system_changes):
         Calculator.calculate(self, atoms)
         self.kpts = kpts2ndarray(self.parameters.kpts, atoms)
-        icell = atoms.get_reciprocal_cell() * 2 * np.pi * Bohr
+        icell = atoms.cell.reciprocal() * 2 * np.pi * Bohr
         n = self.parameters.gridsize
         offsets = np.indices((n, n, n)).T.reshape((n**3, 1, 3)) - n // 2
         eps = 0.5 * (np.dot(self.kpts + offsets, icell)**2).sum(2).T
