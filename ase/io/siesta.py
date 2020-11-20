@@ -1,6 +1,5 @@
 """Helper functions for read_fdf."""
 from pathlib import Path
-from os import fstat
 from re import compile
 
 import numpy as np
@@ -69,7 +68,7 @@ def _read_fdf_lines(file):
                 # "label < filename.fdf" means that the label
                 # (_only_ that label) is to be resolved from filename.fdf
                 label = lbz(w[0])
-                fdf = _read_fdf(fname)
+                fdf = read_fdf(fname)
                 if label in fdf:
                     if _is_block(fdf[label]):
                         lines.append('%%block %s' % label)
