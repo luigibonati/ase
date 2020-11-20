@@ -35,11 +35,15 @@ Git master branch
 * Cleaned up and fixed multiple issues with
   :class:`~ase.calculators.elk.Elk` calculator.
 
+* :meth:`~ase.Atoms.get_velocities` will now return an array of zeros
+  consistently with :meth:`~ase.Atoms.get_momenta` if not set.
+  It previously returned ``None``, which was an oversight.
+
 * Reads Wannier90 ``.wout`` files.
   See :func:`ase.io.wannier90.read_wout` and
   :func:`ase.io.wannier90.read_wout_all`.
 
-* :meth:`~ase.neb.SingleCalculatorNEB` is deprecated.  Use
+* :class:`~ase.neb.SingleCalculatorNEB` is deprecated.  Use
   ``ase.neb.NEB(allow_shared_calculator=True)`` instead.
 
 Version 3.20.1

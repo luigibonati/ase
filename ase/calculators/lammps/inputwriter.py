@@ -146,10 +146,10 @@ def write_lammps_in(lammps_in, parameters, atoms, prismobj,
 
     # write units
     if 'units' in parameters:
-       units_line = 'units ' + parameters['units'] + '\n'
-       fileobj.write(units_line.encode('utf-8'))
+        units_line = 'units ' + parameters['units'] + '\n'
+        fileobj.write(units_line.encode('utf-8'))
     else:
-       fileobj.write('units metal\n'.encode('utf-8'))
+        fileobj.write('units metal\n'.encode('utf-8'))
 
     pbc = atoms.get_pbc()
     if "boundary" in parameters:

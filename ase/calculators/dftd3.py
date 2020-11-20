@@ -8,7 +8,7 @@ from ase.calculators.calculator import (Calculator,
                                         all_changes,
                                         PropertyNotImplementedError)
 from ase.units import Bohr, Hartree
-from ase.io.xyz import write_xyz
+from ase.io import write
 from ase.io.vasp import write_vasp
 from ase.parallel import world
 
@@ -256,7 +256,7 @@ class DFTD3(FileIOCalculator):
             else:
                 fname = os.path.join(
                     self.directory, '{}.xyz'.format(self.label))
-                write_xyz(fname, atoms, plain=True)
+                write(fname, atoms, format='xyz')
 
         # Generate custom damping parameters file. This is kind of ugly, but
         # I don't know of a better way of doing this.
