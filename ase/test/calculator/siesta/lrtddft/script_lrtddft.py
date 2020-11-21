@@ -3,6 +3,7 @@ the folder"""
 
 from ase.units import Ry, eV, Ha
 from ase.calculators.siesta import Siesta
+from ase.calculators.siesta.siesta_lrtddft import siesta_lrtddft
 from ase import Atoms
 import numpy as np
 import matplotlib.pyplot as plt
@@ -40,25 +41,19 @@ siesta = Siesta(
 Na8.calc = siesta
 e = Na8.get_potential_energy()
 freq=np.arange(0.0, 5.0, 0.05)
-siesta.lrtddft(freq, label="siesta", jcutoff=7, iter_broadening=0.15/Ha,
-               xc_code='LDA,PZ', tol_loc=1e-6, tol_biloc=1e-7)
+
+lr = siesta_lrtddft(omega=freq)
+pmat = lr.calculate(Na8, label="siesta", jcutoff=7, iter_broadening=0.15,
+                    xc_code='LDA,PZ', tol_loc=1e-6, tol_biloc=1e-7)
 
 # plot polarizability
 fig = plt.figure(1)
-ax1 = fig.add_subplot(121)
-ax2 = fig.add_subplot(122)
-ax1.plot(siesta.results["freq range"], siesta.results["polarizability nonin"][:, 0, 0].imag)
-ax2.plot(siesta.results["freq range"], siesta.results["polarizability inter"][:, 0, 0].imag)
+ax1 = fig.add_subplot(111)
+ax1.plot(freq, pmat[0, 0, :].imag)
 
 ax1.set_xlabel(r"$\omega$ (eV)")
-ax2.set_xlabel(r"$\omega$ (eV)")
-
 ax1.set_ylabel(r"Im($P_{xx}$) (au)")
-ax2.set_ylabel(r"Im($P_{xx}$) (au)")
-
 ax1.set_title(r"Non interacting")
-ax2.set_title(r"Interacting")
 
 fig.tight_layout()
-
 plt.show()
