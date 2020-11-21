@@ -16,7 +16,7 @@ class siesta_lrtddft:
         """Shorthand for calculate"""
         return self.calculate(*args, **kwargs)
 
-    def calculate(self, atoms, Eext=np.array([1.0, 1.0, 1.0]), inter=True **kw):
+    def calculate(self, atoms, Eext=np.array([1.0, 1.0, 1.0]), inter=True, **kw):
         """
         Perform TDDFT calculation using the pynao code for a molecule.
         See https://mbarbry.website.fr.to/pynao/doc/html/ for more
@@ -77,6 +77,7 @@ class siesta_lrtddft:
 
         from ase.build import molecule
         from ase.calculators.siesta import Siesta
+        from ase.calculators.siesta.siesta_lrtddft import siesta_lrtddft
         from ase.units import Ry, eV, Ha
 
         atoms = molecule("CH4")
@@ -107,7 +108,12 @@ class siesta_lrtddft:
         print("DFT potential energy", e)
 
         freq = np.arange(0.0, 25.0, 0.05)
-        plt.plot(freq, siesta.results["polarizability inter"][:, 0, 0].imag)
+        lr = siesta_lrtddft(omega=freq)
+        pmat = lr.calculate(atoms, label="siesta", jcutoff=7, iter_broadening=0.15,
+                            xc_code='LDA,PZ', tol_loc=1e-6, tol_biloc=1e-7)
+
+        # plot polarizability
+        plt.plot(freq, pmat[0, 0, :].imag)
         plt.show()
         """
 
@@ -126,14 +132,14 @@ class siesta_lrtddft:
         freq = self.omega/Ha + 1j*tddft.eps
 
         if inter:
-            pmat = tddft.comp_polariz_inter_Edir(omegas, Eext=Edir)
+            pmat = -tddft.comp_polariz_inter_Edir(freq, Eext=Eext)
             self.dn = tddft.dn
         else:
-            pmat = tddft.comp_polariz_nonin_Edir(omegas, Eext=Edir)
+            pmat = -tddft.comp_polariz_nonin_Edir(freq, Eext=Eext)
             self.dn = tddft.dn0
 
         # take care about units, please
-        return p_mat[:, :, 0]
+        return pmat#[:, :, 0]
 
 def pol2cross_sec(p, omg):
     """
