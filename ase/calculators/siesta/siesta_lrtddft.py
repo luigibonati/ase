@@ -1,7 +1,8 @@
 import numpy as np
+from ase.units import Ha
 
 class siesta_lrtddft:
-    def __init__(self, omega=0.0):
+    def __init__(self, omega=0.0, **kw):
 
         if isinstance(omega, float):
             self.omega = np.array([omega])
@@ -12,11 +13,17 @@ class siesta_lrtddft:
         else:
             raise ValueError("omega soulf")
 
+        self.lrtddft_params = kw
+        # convert iter_broadening to Ha
+        if "iter_broadening" in self.lrtddft_params.keys():
+            self.lrtddft_params["iter_broadening"] /= Ha
+
+
     def __call__(self, *args, **kwargs):
         """Shorthand for calculate"""
         return self.calculate(*args, **kwargs)
 
-    def calculate(self, atoms, Eext=np.array([1.0, 1.0, 1.0]), inter=True, **kw):
+    def calculate(self, atoms, Eext=np.array([1.0, 1.0, 1.0]), inter=True):
         """
         Perform TDDFT calculation using the pynao code for a molecule.
         See https://mbarbry.website.fr.to/pynao/doc/html/ for more
@@ -121,16 +128,10 @@ class siesta_lrtddft:
             from pynao import tddft_iter
         except RuntimeError:
             raise RuntimeError("running lrtddft with Siesta calculator requires pynao package")
-        from ase.units import Ha
 
-        # convert iter_broadening to Ha
-        if "iter_broadening" in kw.keys():
-            kw["iter_broadening"] /= Ha
-
-        tddft = tddft_iter(**kw)
+        tddft = tddft_iter(**self.lrtddft_params)
 
         freq = self.omega/Ha + 1j*tddft.eps
-
         if inter:
             pmat = -tddft.comp_polariz_inter_Edir(freq, Eext=Eext)
             self.dn = tddft.dn
@@ -139,7 +140,12 @@ class siesta_lrtddft:
             self.dn = tddft.dn0
 
         # take care about units, please
-        return pmat#[:, :, 0]
+        if freq.size > 1:
+            return pmat#[:, :, 0]
+        else:
+            # Specific for raman calls, it expects just the tensor for a single
+            # frequency
+            return pmat[:, :, 0]
 
 def pol2cross_sec(p, omg):
     """
