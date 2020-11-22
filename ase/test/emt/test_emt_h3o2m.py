@@ -5,7 +5,6 @@ from ase.neb import NEB
 from ase.constraints import FixAtoms
 from ase.calculators.emt import EMT
 from ase.optimize import QuasiNewton, BFGS
-from ase.visualize import view
 
 
 # http://jcp.aip.org/resource/1/jcpsa6/v97/i10/p7507_s1

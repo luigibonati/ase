@@ -1,7 +1,6 @@
 from math import sqrt
 from ase.constraints import StrainFilter
 from ase.optimize.mdmin import MDMin
-from ase.io import Trajectory
 from ase.build import bulk
 
 
