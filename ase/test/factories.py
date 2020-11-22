@@ -147,6 +147,20 @@ class DFTBFactory:
         return cls(config.executables['dftb'])
 
 
+@factory('dftd3')
+class DFTD3Factory:
+    def __init__(self, executable):
+        self.executable = executable
+
+    def calc(self, **kwargs):
+        from ase.calculators.dftd3 import DFTD3
+        return DFTD3(command=self.executable, **kwargs)
+
+    @classmethod
+    def fromconfig(cls, config):
+        return cls(config.executables['dftd3'])
+
+
 def read_stdout(args, createfile=None):
     import tempfile
     from subprocess import Popen, PIPE
@@ -420,7 +434,7 @@ class Factories:
     monkeypatch_calculator_constructors = {
         'ace', 'aims', 'amber', 'castep', 'crystal', 'demon', 'demonnano',
         'dftd3', 'dmol', 'exciting', 'fleur', 'gamess_us', 'gaussian',
-        'gulp', 'hotbit', 'kim', 'lammpslib', 'mopac', 'onetep', 'orca',
+        'gulp', 'hotbit', 'lammpslib', 'mopac', 'onetep', 'orca',
         'Psi4', 'qchem', 'turbomole', 'vasp', 'vasp2',
     }
 

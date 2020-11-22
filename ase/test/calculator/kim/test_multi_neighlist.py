@@ -1,11 +1,11 @@
 import numpy as np
 from ase import Atoms
 
-from pytest import importorskip, mark
+from pytest import mark
 
 
 @mark.calculator_lite
-def test_multi_neighlist():
+def test_multi_neighlist(KIM):
     """
     To test that the correct energy/forces/stress can be computed using a
     model that implements multiple cutoffs.  This is done by construct a 10
@@ -15,10 +15,6 @@ def test_multi_neighlist():
     compared to a known precomputed value, while the forces and stress
     returned are compared to numerical estimates via finite difference.
     """
-    importorskip('kimpy')
-
-    from ase.calculators.kim import KIM
-
     # Create random cluster of atoms
     positions = np.random.RandomState(34).rand(15, 3) * 10
     atoms = Atoms(

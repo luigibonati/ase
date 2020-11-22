@@ -4,7 +4,7 @@ from ase import Atoms
 
 
 @pytest.mark.calculator_lite
-def test_cutoff_skin():
+def test_cutoff_skin(KIM):
     """
     To test that the calculator handles skin and cutoffs correctly.
     Specifically, note that the neighbor skin distance must be added onto
@@ -29,11 +29,6 @@ def test_cutoff_skin():
     had failed to ever register as a neighbor, then we'll get zero once
     again.
     """
-    pytest.importorskip('kimpy')
-    from ase.calculators.kim import KIM
-
-
-    # Create calculator
     calc = KIM("ex_model_Ar_P_Morse_07C")
 
     # Create dimer with separation just beyond cutoff distance.  We *want*

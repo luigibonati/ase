@@ -149,7 +149,13 @@ class MolecularDynamics(Dynamics):
         """ MD is 'converged' when number of maximum steps is reached. """
         return self.nsteps >= self.max_steps
 
-    # Make the process_temperature funmctiona available to subclasses
+    def _get_com_velocity(self, velocity):
+        """Return the center of mass velocity.
+        Internal use only. This function can be reimplemented by Asap.
+        """
+        return np.dot(self.masses.ravel(), velocity) / self.masses.sum()
+
+    # Make the process_temperature function available to subclasses
     # as a static method.  This makes it easy for MD objects to use
     # it, while functions in md.velocitydistribution have access to it
     # as a function.

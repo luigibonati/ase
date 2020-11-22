@@ -5,7 +5,7 @@ import xml.etree.ElementTree as ET
 from ase.io.exciting import atoms2etree
 from ase.units import Bohr, Hartree
 from ase.calculators.calculator import PropertyNotImplementedError
-from xml.dom import  minidom
+from xml.dom import minidom
 
 
 class Exciting:

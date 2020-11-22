@@ -45,7 +45,7 @@ max_errors = {
     # expected 1 blank line, found 0
     'E301': 0,
     # multiple spaces after keyword
-    'E271': 6,
+    'E271': 0,
     # test for object identity should be 'is not'
     'E714': 0,
     # closing bracket does not match visual indentation
@@ -59,17 +59,17 @@ max_errors = {
     # indentation contains tabs
     'W191': 0,
     # closing bracket does not match indentation of opening bracket's line
-    'E123': 13,
+    'E123': 0,
     # multiple spaces before operator
-    'E221': 4,
+    'E221': 0,
     # whitespace before '}'
-    'E202': 16,
+    'E202': 0,
     # whitespace after '{'
-    'E201': 16,
+    'E201': 0,
     # inline comment should start with '# '
     'E262': 12,
     # the backslash is redundant between brackets
-    'E502': 8,
+    'E502': 0,
     # continuation line missing indentation or outdented
     'E122': 0,
     # indentation is not a multiple of four
@@ -77,13 +77,13 @@ max_errors = {
     # do not use bare 'except'
     'E722': 0,
     # whitespace before ':'
-    'E203': 38,
+    'E203': 30,
     # blank line at end of file
-    'W391': 39,
+    'W391': 30,
     # continuation line over-indented for hanging indent
     'E126': 27,
     # multiple spaces after ','
-    'E241': 45,
+    'E241': 35,
     # continuation line under-indented for visual indent
     'E128': 39,
     # continuation line over-indented for visual indent
@@ -103,17 +103,17 @@ max_errors = {
     # expected 2 blank lines, found 1
     'E302': 102,
     # unexpected spaces around keyword / parameter equals
-    'E251': 95,
+    'E251': 70,
     # trailing whitespace
     'W291': 169,
     # block comment should start with '# '
     'E265': 172,
     # missing whitespace after ','
-    'E231': 369,
+    'E231': 300,
     # missing whitespace around arithmetic operator
-    'E226': 408,
+    'E226': 308,
     # line too long (93 > 79 characters)
-    'E501': 755}
+    'E501': 740}
 
 
 def run_flaketest():
