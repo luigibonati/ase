@@ -42,9 +42,9 @@ Na8.calc = siesta
 e = Na8.get_potential_energy()
 freq=np.arange(0.0, 5.0, 0.05)
 
-lr = siesta_lrtddft(omega=freq)
-pmat = lr.calculate(Na8, label="siesta", jcutoff=7, iter_broadening=0.15,
+lr = siesta_lrtddft(omega=freq, label="siesta", jcutoff=7, iter_broadening=0.15,
                     xc_code='LDA,PZ', tol_loc=1e-6, tol_biloc=1e-7)
+pmat = lr.calculate(Na8)
 
 # plot polarizability
 fig = plt.figure(1)
