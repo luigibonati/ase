@@ -144,8 +144,9 @@ class siesta_lrtddft:
             return pmat#[:, :, 0]
         else:
             # Specific for raman calls, it expects just the tensor for a single
-            # frequency
-            return pmat[:, :, 0]
+            # frequency and need only the real part
+            # For static raman, imaginary part is zero??
+            return pmat[:, :, 0].real
 
 def pol2cross_sec(p, omg):
     """
