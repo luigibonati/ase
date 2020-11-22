@@ -120,7 +120,7 @@ class MolecularDynamics(Dynamics):
             if logfile:
                 logger = self.ensureclose(
                     MDLogger(dyn=self, atoms=atoms, logfile=logfile))
-                self.attach(logger, interval)
+                self.attach(logger, loginterval)
 
         except BaseException:
             self._closefiles()
