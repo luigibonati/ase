@@ -2,28 +2,14 @@ import numpy as np
 from ase.units import Ha
 
 class siesta_lrtddft:
-    def __init__(self, omega=0.0, **kw):
-
-        if isinstance(omega, float):
-            self.omega = np.array([omega])
-        elif isinstance(omega, list):
-            self.omega = np.array([omega])
-        elif isinstance(omega, np.ndarray):
-            self.omega = omega
-        else:
-            raise ValueError("omega soulf")
+    def __init__(self, **kw):
 
         self.lrtddft_params = kw
         # convert iter_broadening to Ha
         if "iter_broadening" in self.lrtddft_params.keys():
             self.lrtddft_params["iter_broadening"] /= Ha
 
-
-    def __call__(self, *args, **kwargs):
-        """Shorthand for calculate"""
-        return self.calculate(*args, **kwargs)
-
-    def calculate(self, atoms, Eext=np.array([1.0, 1.0, 1.0]), inter=True):
+    def get_polarizability(self, omega, Eext=np.array([1.0, 1.0, 1.0]), inter=True):
         """
         Perform TDDFT calculation using the pynao code for a molecule.
         See https://mbarbry.website.fr.to/pynao/doc/html/ for more
@@ -115,9 +101,9 @@ class siesta_lrtddft:
         print("DFT potential energy", e)
 
         freq = np.arange(0.0, 25.0, 0.05)
-        lr = siesta_lrtddft(omega=freq)
-        pmat = lr.calculate(atoms, label="siesta", jcutoff=7, iter_broadening=0.15,
+        lr = siesta_lrtddft(label="siesta", jcutoff=7, iter_broadening=0.15,
                             xc_code='LDA,PZ', tol_loc=1e-6, tol_biloc=1e-7)
+        pmat = lr.get_polarizability(freq)
 
         # plot polarizability
         plt.plot(freq, pmat[0, 0, :].imag)
@@ -129,25 +115,47 @@ class siesta_lrtddft:
         except RuntimeError:
             raise RuntimeError("running lrtddft with Siesta calculator requires pynao package")
 
+        if isinstance(omega, float):
+            freq = np.array([omega])/Ha
+        elif isinstance(omega, list):
+            freq = np.array([omega])/Ha
+        elif isinstance(omega, np.ndarray):
+            freq = omega/Ha
+        else:
+            raise ValueError("omega soulf")
+
         tddft = tddft_iter(**self.lrtddft_params)
 
-        freq = self.omega/Ha + 1j*tddft.eps
         if inter:
-            pmat = -tddft.comp_polariz_inter_Edir(freq, Eext=Eext)
+            pmat = -tddft.comp_polariz_inter_Edir(freq + 1j*tddft.eps, Eext=Eext)
             self.dn = tddft.dn
         else:
-            pmat = -tddft.comp_polariz_nonin_Edir(freq, Eext=Eext)
+            pmat = -tddft.comp_polariz_nonin_Edir(freq + 1j*tddft.eps, Eext=Eext)
             self.dn = tddft.dn0
 
-        # take care about units, please
-        if freq.size > 1:
-            return pmat#[:, :, 0]
-        else:
-            # Specific for raman calls, it expects just the tensor for a single
-            # frequency and need only the real part
-            # For static raman, imaginary part is zero??
-            return pmat[:, :, 0].real
+        return pmat
 
+class siesta_raman(siesta_lrtddft):
+    def __init__(self, omega=0.0, **kw):
+
+        self.omega = omega
+        super().__init__(**kw)
+
+
+    def __call__(self, *args, **kwargs):
+        """Shorthand for calculate"""
+        return self.calculate(*args, **kwargs)
+
+    def calculate(self, atoms, Eext=np.array([1.0, 1.0, 1.0]), inter=True):
+        pmat = self.get_polarizability(self.omega, Eext=Eext, inter=inter)
+
+        # take care about units, please
+        # Specific for raman calls, it expects just the tensor for a single
+        # frequency and need only the real part
+        # For static raman, imaginary part is zero??
+
+        return pmat[:, :, 0].real
+ 
 def pol2cross_sec(p, omg):
     """
     Convert the polarizability in au to cross section in nm**2
