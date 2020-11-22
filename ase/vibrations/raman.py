@@ -54,8 +54,9 @@ class RamanCalculatorBase:
 class StaticRamanCalculatorBase(RamanCalculatorBase):
     """Base class for Raman intensities derived from
     static polarizabilities"""
-    def __init__(self, atoms, exobj, *args, **kwargs):
+    def __init__(self, atoms, exobj, exkwargs={}, *args, **kwargs):
         self.exobj = exobj
+        self.exkwargs = exkwargs
         super().__init__(atoms, *args, **kwargs)
         
     def calculate(self, atoms, filename, fd):
@@ -63,7 +64,7 @@ class StaticRamanCalculatorBase(RamanCalculatorBase):
         super().calculate(atoms, filename, fd)
         # write static polarizability
         fname = filename.replace('.pckl', self.exext)
-        np.savetxt(fname, self.exobj().calculate(atoms))
+        np.savetxt(fname, self.exobj(**self.exkwargs).calculate(atoms))
       
 
 class StaticRamanCalculator(StaticRamanCalculatorBase, Vibrations):
