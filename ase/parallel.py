@@ -97,6 +97,10 @@ def _get_comm():
         import _gpaw
         if hasattr(_gpaw, 'Communicator'):
             return _gpaw.Communicator()
+    if '_asap' in sys.modules:
+        import _asap
+        if hasattr(_asap, 'Communicator'):
+            return _asap.Communicator()
     return DummyMPI()
 
 
