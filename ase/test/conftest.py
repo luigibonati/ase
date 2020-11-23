@@ -151,8 +151,9 @@ def KIM():
             return _KIM(*args, **kwargs)
         except KIMModelNotFound:
             pytest.skip('KIM tests require the example KIM models.  '
-                        'These models are available if the kimpy package is '
-                        'built from source.')
+                        'These models are available if the KIM API is '
+                        'built from source.  See https://openkim.org/kim-api/'
+                        'for more information.')
 
     return KIM
 
@@ -326,6 +327,13 @@ def arbitrarily_seed_rng(request):
     yield
     np.random.set_state(state)
 
+@pytest.fixture(scope='session')
+def povray_executable():
+    import shutil
+    exe = shutil.which('povray')
+    if exe is None:
+        pytest.skip('povray not installed')
+    return exe
 
 def pytest_addoption(parser):
     parser.addoption('--calculators', metavar='NAMES', default='',

@@ -20,7 +20,7 @@ def read_aims(fd, apply_constraints=True):
     """
 
     lines = fd.readlines()
-    return parse_geometry_lines(lines, apply_constraints=True)
+    return parse_geometry_lines(lines, apply_constraints=apply_constraints)
 
 
 def parse_geometry_lines(lines, apply_constraints=True):

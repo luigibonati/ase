@@ -283,12 +283,14 @@ def write_abinit_in(fd, atoms, param=None, species=None):
     fd.write('chkexit 1 # abinit.exit file in the running '
              'directory terminates after the current SCF\n')
 
+
 def write_list(fd, value, unit):
     for element in value:
         fd.write("{} ".format(element))
     if unit is not None:
         fd.write("{}".format(unit))
     fd.write("\n")
+
 
 def read_stress(fd):
     # sigma(1 1)=  4.02063464E-04  sigma(3 2)=  0.00000000E+00

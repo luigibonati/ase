@@ -1,5 +1,6 @@
 import numpy as np
-from ase.io.jsonio import write_json
+from ase.io.jsonio import read_json, write_json
+
 
 class STM:
     def __init__(self, atoms, symmetries=None, use_density=False):

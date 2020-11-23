@@ -46,29 +46,48 @@ class Dynamics:
         """
 
         self.atoms = atoms
-        if master is None:
-            master = world.rank == 0
-        if not master:
-            logfile = None
-        elif isinstance(logfile, str):
-            if logfile == "-":
-                logfile = sys.stdout
-            else:
-                logfile = open(logfile, "a")
-        self.logfile = logfile
+        try:
+            self._files_to_be_closed = []
+            if master is None:
+                master = world.rank == 0
+            if not master:
+                logfile = None
+            elif isinstance(logfile, str):
+                if logfile == "-":
+                    logfile = sys.stdout
+                else:
+                    logfile = self.ensureclose(open(logfile, "a"))
+            self.logfile = logfile
 
-        self.observers = []
-        self.nsteps = 0
-        # maximum number of steps placeholder with maxint
-        self.max_steps = 100000000
+            self.observers = []
+            self.nsteps = 0
+            # maximum number of steps placeholder with maxint
+            self.max_steps = 100000000
 
-        if trajectory is not None:
-            if isinstance(trajectory, str):
-                mode = "a" if append_trajectory else "w"
-                trajectory = Trajectory(
-                    trajectory, mode=mode, atoms=atoms, master=master
-                )
-            self.attach(trajectory)
+            if trajectory is not None:
+                if isinstance(trajectory, str):
+                    mode = "a" if append_trajectory else "w"
+                    trajectory = self.ensureclose(Trajectory(
+                        trajectory, mode=mode, atoms=atoms, master=master
+                    ))
+                self.attach(trajectory)
+        except BaseException:
+            self._closefiles()
+            raise
+
+    def ensureclose(self, closeable):
+        self._files_to_be_closed.append(closeable)
+        return closeable
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self._closefiles()
+
+    def _closefiles(self):
+        for closeable in self._files_to_be_closed:
+            closeable.close()
 
     def get_number_of_steps(self):
         return self.nsteps
