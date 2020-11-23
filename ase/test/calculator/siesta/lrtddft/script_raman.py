@@ -3,9 +3,7 @@ from ase.calculators.siesta import Siesta
 from ase.calculators.siesta.siesta_lrtddft import siesta_raman
 from ase.vibrations.raman import StaticRamanCalculator
 from ase.vibrations.placzek import PlaczekStatic
-#from ase.calculators.siesta.siesta_raman import SiestaRaman
 from ase import Atoms
-from ase.build import bulk
 
 def test_CO2():
     """
@@ -22,24 +20,16 @@ def test_CO2():
                 cell=[20, 20, 20])
 
     # enter siesta input
-    siesta = Siesta(
-        mesh_cutoff=150 * Ry,
+    CO2.calc = Siesta(
+        mesh_cutoff=150*Ry,
         basis_set='DZP',
-        pseudo_qualifier='',
-        energy_shift=(10 * 10**-3) * eV,
+        energy_shift=(10*10**-3) * eV,
         fdf_arguments={
-            'SCFMustConverge': False,
             'COOP.Write': True,
             'WriteDenchar': True,
             'PAO.BasisType': 'split',
             'DM.Tolerance': 1e-4,
-            'DM.MixingWeight': 0.01,
-            'MaxSCFIterations': 300,
-            'DM.NumberPulay': 4,
-            'XML.Write': True,
-            'DM.UseSaveDM': True})
-
-    CO2.calc = siesta
+            'XML.Write': True})
 
     name = 'co2'
     rm = StaticRamanCalculator(CO2, siesta_raman, name=name,
@@ -51,7 +41,6 @@ def test_CO2():
 
     pz = PlaczekStatic(CO2, name=name)
     e_vib = pz.get_energies()
-    i_vib = pz.get_absolute_intensities()
     assert len(e_vib) == 9
     pz.summary()
 

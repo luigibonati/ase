@@ -4,43 +4,28 @@ the folder"""
 from ase.units import Ry, eV
 from ase.calculators.siesta import Siesta
 from ase.calculators.siesta.siesta_lrtddft import siesta_lrtddft
-from ase import Atoms
+from ase.build import molecule
 import numpy as np
 import matplotlib.pyplot as plt
 
 # Define the systems
-Na8 = Atoms('Na8',
-            positions=[[-1.90503810, 1.56107288, 0.00000000],
-                       [1.90503810, 1.56107288, 0.00000000],
-                       [1.90503810, -1.56107288, 0.00000000],
-                       [-1.90503810, -1.56107288, 0.00000000],
-                       [0.00000000, 0.00000000, 2.08495836],
-                       [0.00000000, 0.00000000, -2.08495836],
-                       [0.00000000, 3.22798122, 2.08495836],
-                       [0.00000000, 3.22798122, -2.08495836]],
-            cell=[20, 20, 20])
+CH4 = molecule('CH4')
 
 # enter siesta input
-siesta = Siesta(
-    mesh_cutoff=150 * Ry,
+CH4.calc = Siesta(
+    mesh_cutoff=150*Ry,
     basis_set='DZP',
-    pseudo_qualifier='',
-    energy_shift=(10 * 10**-3) * eV,
+    energy_shift=(10*10**-3) * eV,
     fdf_arguments={
-        'SCFMustConverge': False,
         'COOP.Write': True,
         'WriteDenchar': True,
         'PAO.BasisType': 'split',
         'DM.Tolerance': 1e-4,
         'DM.MixingWeight': 0.01,
-        'MaxSCFIterations': 300,
-        'DM.NumberPulay': 4,
         'XML.Write': True})
 
-
-Na8.calc = siesta
-e = Na8.get_potential_energy()
-freq=np.arange(0.0, 5.0, 0.05)
+e = CH4.get_potential_energy()
+freq=np.arange(0.0, 25.0, 0.05)
 
 lr = siesta_lrtddft(label="siesta", jcutoff=7, iter_broadening=0.15,
                     xc_code='LDA,PZ', tol_loc=1e-6, tol_biloc=1e-7)
