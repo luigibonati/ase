@@ -4,17 +4,19 @@ The BundleTrajectory class writes trajectory into a directory with the
 following structure::
 
     filename.bundle (dir)
-        metadata.pickle        Data about the file format, and about which
+        metadata.json          Data about the file format, and about which
                                data is present.
-        state.pickle           The number of frames
+        frames                 The number of frames (ascii file)
         F0 (dir)               Frame number 0
-            small.pickle       Small data structures in a dictionary
+            smalldata.ulm      Small data structures in a dictionary
                                (pbc, cell, ...)
-            numbers.pickle     Atomic numbers
-            positions.pickle   Positions
-            momenta.pickle     Momenta
+            numbers.ulm        Atomic numbers
+            positions.ulm      Positions
+            momenta.ulm        Momenta
             ...
         F1 (dir)
+
+There is a folder for each frame, and the data is in the ASE Ulm format.
 """
 
 import os
@@ -66,7 +68,7 @@ class BundleTrajectory:
         Use backup=False to disable renaming of an existing file.
 
     backend='ulm':
-        Request a backend.  Supported backends are 'pickle' and 'ulm'.
+        Request a backend.  Currently onle 'ulm' is supported.
         Only honored when writing.
 
     singleprecision=False:
@@ -432,7 +434,7 @@ class BundleTrajectory:
                 raise IOError(
                     'Filename "' + self.filename +
                     '" already exists, but is not a BundleTrajectory.' +
-                    'Cowardly refusing to remove it.')
+                    ' Cowardly refusing to remove it.')
             if self.is_empty_bundle(self.filename):
                 barrier()
                 self.log('Deleting old "%s" as it is empty' % (self.filename,))
@@ -560,7 +562,8 @@ class BundleTrajectory:
         if self.backend_name == 'ulm':
             metadata['ulm.singleprecision'] = self.singleprecision
         metadata['python_ver'] = tuple(sys.version_info)
-        fido = jsonio.encode(metadata)
+        encode = jsonio.MyEncoder(indent=4).encode
+        fido = encode(metadata)
         with paropen(self.metadata_path, 'w') as fd:
             fd.write(fido)
 
@@ -974,11 +977,6 @@ def print_bundletrajectory_info(filename):
                 infoline += '%s = %s, ' % (k, str(v))
             infoline = infoline[:-2] + '.'  # Fix punctuation.
             print(infoline)
-
-
-class PickleBundleBackend:
-    # Leave placeholder class so importing asap3 won't crash.
-    pass
 
 
 def main():

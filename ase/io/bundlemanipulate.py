@@ -4,7 +4,7 @@ This module defines a number of functions that can be used to
 extract and delete data from BundleTrajectories directly on
 disk.  The functions are intended for large-scale MD output,
 so they avoid copying the potentially large amounts of data.
-In stead, data is either directly deleted in-place; or copies
+Instead, data is either directly deleted in-place; or copies
 are made by creating a new directory structure, but hardlinking
 the data files.  Hard links makes it possible to delete the
 original data without invalidating the copy.
@@ -15,13 +15,12 @@ python -m ase.io.bundlemanipulate inbundle outbundle [start [end [step]]]
 """
 
 import os
-import pickle
 import json
 from typing import Optional
 
 import numpy as np
 
-from ase.io.bundletrajectory import PickleBundleBackend, UlmBundleBackend
+from ase.io.bundletrajectory import UlmBundleBackend
 
 
 def copy_frames(inbundle, outbundle, start=0, end=None, step=1,
@@ -35,11 +34,11 @@ def copy_frames(inbundle, outbundle, start=0, end=None, step=1,
     if metadata['backend'] == 'ulm':
         ulm = True
         backend = UlmBundleBackend(True, metadata['ulm.singleprecision'])
+    elif metadata['backend'] == 'pickle':
+        raise IOError("Input BundleTrajectory uses the 'pickle' backend.  " +
+                      "This is not longer supported for security reasons")
     else:
-        ulm = False
-        assert(metadata['backend'] == 'pickle')
-        backend = PickleBundleBackend(True)
-        backend.readpy2 = False
+        raise IOError("Unknown backend type '{}'".format(metadata['backend']))
 
     if start < 0:
         start += nframes
@@ -76,7 +75,7 @@ def copy_frames(inbundle, outbundle, start=0, end=None, step=1,
         if nout == 0 and nin != 0:
             if verbose:
                 print("F0 -> F0 (supplemental)")
-            # The smalldata.pickle stuff must be updated.
+            # The smalldata.ulm stuff must be updated.
             # At the same time, check if the number of fragments
             # has not changed.
             data0 = backend.read_small(os.path.join(inbundle, "F0"))
@@ -103,11 +102,7 @@ def copy_frames(inbundle, outbundle, start=0, end=None, step=1,
             else:
                 # Must read and rewrite data
                 # First we read the ID's from frame 0 and N
-                if ulm:
-                    assert 'ID_0.ulm' in firstnames and 'ID_0.ulm' in names
-                else:
-                    assert ('ID_0.pickle' in firstnames
-                            and 'ID_0.pickle' in names)
+                assert 'ID_0.ulm' in firstnames and 'ID_0.ulm' in names
                 backend.nfrag = fragments0
                 f0_id, dummy = backend.read_split(
                     os.path.join(inbundle, "F0"), "ID"
@@ -160,8 +155,7 @@ def read_bundle_info(name):
     else:
         metaname = os.path.join(name, 'metadata')
         if os.path.isfile(metaname):
-            with open(metaname, "rb") as f:
-                mdata = pickle.load(f)
+            raise IOError("Found obsolete metadata in unsecure Pickle format.  Refusing to load.")
         else:
             raise IOError("'{}' does not appear to be a BundleTrajectory "
                           "(no {})".format(name, bestmetaname))
