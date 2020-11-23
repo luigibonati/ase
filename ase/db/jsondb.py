@@ -1,5 +1,6 @@
 import os
 import sys
+from contextlib import ExitStack
 
 import numpy as np
 
@@ -95,23 +96,21 @@ class JSONDatabase(Database):
         if world.rank > 0:
             return
 
-        if isinstance(self.filename, str):
-            fd = open(self.filename, 'w')
-        else:
-            fd = self.filename
-        print('{', end='', file=fd)
-        for id in ids:
-            dct = bigdct[id]
-            txt = ',\n '.join('"{0}": {1}'.format(key, encode(dct[key]))
-                              for key in sorted(dct.keys()))
-            print('"{0}": {{\n {1}}},'.format(id, txt), file=fd)
-        if self._metadata is not None:
-            print('"metadata": {0},'.format(encode(self.metadata)), file=fd)
-        print('"ids": {0},'.format(ids), file=fd)
-        print('"nextid": {0}}}'.format(nextid), file=fd)
-
-        if fd is not self.filename:
-            fd.close()
+        with ExitStack() as stack:
+            if isinstance(self.filename, str):
+                fd = stack.enter_context(open(self.filename, 'w'))
+            else:
+                fd = self.filename
+            print('{', end='', file=fd)
+            for id in ids:
+                dct = bigdct[id]
+                txt = ',\n '.join('"{0}": {1}'.format(key, encode(dct[key]))
+                                  for key in sorted(dct.keys()))
+                print('"{0}": {{\n {1}}},'.format(id, txt), file=fd)
+            if self._metadata is not None:
+                print('"metadata": {0},'.format(encode(self.metadata)), file=fd)
+            print('"ids": {0},'.format(ids), file=fd)
+            print('"nextid": {0}}}'.format(nextid), file=fd)
 
     @parallel_function
     @lock
