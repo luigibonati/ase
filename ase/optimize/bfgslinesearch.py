@@ -6,7 +6,6 @@
 # *****END NOTICE************
 
 import time
-from contextlib import nullcontext
 import numpy as np
 from numpy import eye, absolute, sqrt, isinf
 from ase.utils.linesearch import LineSearch
@@ -185,13 +184,13 @@ class BFGSLineSearch(Optimizer):
         """Initialize hessian from old trajectory."""
         self.replay = True
 
+        closelater = None
+
         if isinstance(traj, str):
             from ase.io.trajectory import Trajectory
-            context = traj = Trajectory(traj, 'r')
-        else:
-            context = nullcontext()
+            traj = closelater = Trajectory(traj, 'r')
 
-        with context:
+        try:
             r0 = None
             g0 = None
             for i in range(0, len(traj) - 1):
@@ -203,6 +202,9 @@ class BFGSLineSearch(Optimizer):
                 g0 = g.copy()
             self.r0 = r0
             self.g0 = g0
+        finally:
+            if closelater is not None:
+                closelater.close()
 
     def log(self, forces=None):
         if self.logfile is None:
