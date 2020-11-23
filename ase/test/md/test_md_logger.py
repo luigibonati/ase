@@ -39,11 +39,9 @@ def test_optimizer(cls, atoms=dimer, calc=calc,
 
     opt_atoms.calc = calc
 
-    opt = cls(opt_atoms, logfile=logfile, trajectory=trajectory)
-
-    # Run optimizer two times
-    opt.run(0.2)
-    opt.run(0.1)
+    with cls(opt_atoms, logfile=logfile, trajectory=trajectory) as opt:
+        opt.run(0.2)
+        opt.run(0.1)
 
     with Trajectory(trajectory) as traj, open(logfile) as f:
         next(f)
@@ -65,12 +63,10 @@ def test_md(cls_and_kwargs, atoms=dimer, calc=calc, logfile="md.log",
 
     atoms.calc = calc
 
-    md = cls(atoms, logfile=logfile, timestep=timestep,
-             trajectory=trajectory, **kwargs)
-
-    # run md two times
-    md.run(steps=5)
-    md.run(steps=5)
+    with cls(atoms, logfile=logfile, timestep=timestep,
+             trajectory=trajectory, **kwargs) as md:
+        md.run(steps=5)
+        md.run(steps=5)
 
     # assert log file has correct length
     with open(logfile) as fd:
@@ -78,9 +74,9 @@ def test_md(cls_and_kwargs, atoms=dimer, calc=calc, logfile="md.log",
 
     assert length == 12, length
 
-    with Trajectory(trajectory) as traj, open(logfile) as f:
-        next(f)
-        for _, (a, line) in enumerate(zip(traj, f)):
+    with Trajectory(trajectory) as traj, open(logfile) as fd:
+        next(fd)
+        for _, (a, line) in enumerate(zip(traj, fd)):
             Epot1, T1 = float(line.split()[-3]), float(line.split()[-1])
             Epot2, T2 = a.get_potential_energy(), a.get_temperature()
 

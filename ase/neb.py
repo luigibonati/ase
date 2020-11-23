@@ -718,6 +718,7 @@ def idpp_interpolate(images, traj='idpp.traj', log='idpp.log', fmax=0.1,
         neb = images
     else:
         neb = NEB(images)
+
     d1 = neb.images[0].get_all_distances(mic=mic)
     d2 = neb.images[-1].get_all_distances(mic=mic)
     d = (d2 - d1) / (neb.nimages - 1)
@@ -725,8 +726,10 @@ def idpp_interpolate(images, traj='idpp.traj', log='idpp.log', fmax=0.1,
     for i, image in enumerate(neb.images):
         real_calcs.append(image.calc)
         image.calc = IDPP(d1 + i * d, mic=mic)
-    opt = optimizer(neb, trajectory=traj, logfile=log)
-    opt.run(fmax=fmax, steps=steps)
+
+    with optimizer(neb, trajectory=traj, logfile=log) as opt:
+        opt.run(fmax=fmax, steps=steps)
+
     for image, calc in zip(neb.images, real_calcs):
         image.calc = calc
 

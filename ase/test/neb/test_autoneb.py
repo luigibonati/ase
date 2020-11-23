@@ -20,14 +20,14 @@ def test_autoneb(asap3):
     slab.calc = EMT()
 
     # Initial state:
-    qn = QuasiNewton(slab, trajectory='neb000.traj')
-    qn.run(fmax=fmax)
+    with QuasiNewton(slab, trajectory='neb000.traj') as qn:
+        qn.run(fmax=fmax)
 
     # Final state:
     slab[-1].x += slab.get_cell()[0, 0]
     slab[-1].y += 2.8
-    qn = QuasiNewton(slab, trajectory='neb001.traj')
-    qn.run(fmax=fmax)
+    with QuasiNewton(slab, trajectory='neb001.traj') as qn:
+        qn.run(fmax=fmax)
 
     # Stops PermissionError on Win32 for access to
     # the traj file that remains open.
