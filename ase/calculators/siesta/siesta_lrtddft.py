@@ -1,5 +1,5 @@
 import numpy as np
-from ase.units import Ha
+import ase.units as un
 
 class siesta_lrtddft:
     def __init__(self, **kw):
@@ -7,7 +7,7 @@ class siesta_lrtddft:
         self.lrtddft_params = kw
         # convert iter_broadening to Ha
         if "iter_broadening" in self.lrtddft_params.keys():
-            self.lrtddft_params["iter_broadening"] /= Ha
+            self.lrtddft_params["iter_broadening"] /= un.Ha
 
     def get_polarizability(self, omega, Eext=np.array([1.0, 1.0, 1.0]), inter=True):
         """
@@ -116,11 +116,11 @@ class siesta_lrtddft:
             raise RuntimeError("running lrtddft with Siesta calculator requires pynao package")
 
         if isinstance(omega, float):
-            freq = np.array([omega])/Ha
+            freq = np.array([omega])/un.Ha
         elif isinstance(omega, list):
-            freq = np.array([omega])/Ha
+            freq = np.array([omega])/un.Ha
         elif isinstance(omega, np.ndarray):
-            freq = omega/Ha
+            freq = omega/un.Ha
         else:
             raise ValueError("omega soulf")
 
@@ -154,7 +154,11 @@ class siesta_raman(siesta_lrtddft):
         # frequency and need only the real part
         # For static raman, imaginary part is zero??
 
-        return pmat[:, :, 0].real
+        # alpha = alpha*Bohr**3/units._me
+        #dadq = np.array([(dadx[j, :, :, :] / (units.Bohr**2)) /                                                   
+        #         sqrt(m[self.indices[j // 3]] * units._amu / units._me)
+        #return (units.Bohr**4) / (units._me / units._amu), '   A^4 amu^-1' 
+        return pmat[:, :, 0].real#*(units.Bohr**4) / (units._me / units._amu)
  
 def pol2cross_sec(p, omg):
     """
