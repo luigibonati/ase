@@ -63,7 +63,7 @@ def test_fixinternals():
 
     calc = EMT()
 
-    opt = BFGS(atoms, trajectory='opt.traj', logfile='opt.log')
+    opt = BFGS(atoms)
 
     previous_angle = atoms.get_angle(*angle_def)
     previous_dihedral = atoms.get_dihedral(*dihedral_def)
@@ -140,7 +140,7 @@ def test_combos():
     atoms.calc = EMT()
     atoms.set_constraint(constr)
 
-    opt = BFGS(atoms, trajectory='opt.traj', logfile='opt.log')
+    opt = BFGS(atoms)
     opt.run(fmax=0.01)
 
     new_bondcombo = get_bondcombo(atoms, bondcombo_def)
