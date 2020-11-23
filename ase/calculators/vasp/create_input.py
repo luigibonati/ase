@@ -321,6 +321,7 @@ int_keys = [
     'nedos',  # Number of grid points in DOS
     'turbo',  # Ewald, 0 = Normal, 1 = PME
     'omegapar',  # Number of groups for response function calc.
+    'taupar',  # (Possibly Depricated) Number of groups in real time for response function calc.
     'ntaupar',  # Number of groups in real time for response function calc.
     'antires',  # How to treat antiresonant part of response function
     'magatom',  # Index of atom at which to place magnetic field (NMR)
