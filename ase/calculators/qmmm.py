@@ -746,8 +746,6 @@ class ForceQMMM(Calculator):
         # of max distance between qm atoms
         qm_radius = np.amax(np.amax(R_qm, axis=1), axis=0) * 0.5
 
-        self.qm_cluster_cell = atoms.cell.copy()
-
         if atoms.cell.orthorhombic:
             cell_size = np.diagonal(atoms.cell)
         else:
@@ -761,20 +759,20 @@ class ForceQMMM(Calculator):
                               (cell_size < qm_radius + self.buffer_width)
 
         # start with the original orthorhombic cell
-        self.qm_cluster_cell = atoms.cell.lengths()
+        qm_cluster_cell = atoms.cell.lengths()
         # create a cluster in a vacuum cell in non periodic directions
-        self.qm_cluster_cell[~self.qm_cluster_pbc] = (
+        qm_cluster_cell[~self.qm_cluster_pbc] = (
             2.0 * (qm_radius[~self.qm_cluster_pbc] +
             self.buffer_width +
             self.vacuum))
 
         # round the qm cell to the required tolerance
-        self.qm_cluster_cell[~self.qm_cluster_pbc] = (np.round(
-            (self.qm_cluster_cell[~self.qm_cluster_pbc]) /
+        qm_cluster_cell[~self.qm_cluster_pbc] = (np.round(
+            (qm_cluster_cell[~self.qm_cluster_pbc]) /
             self.qm_cell_round_off) *
             self.qm_cell_round_off)
 
-        self.qm_cluster_cell = Cell(np.diag(self.qm_cluster_cell))
+        self.qm_cluster_cell = Cell(np.diag(qm_cluster_cell))
         qm_cluster.set_cell(self.qm_cluster_cell)
         qm_cluster.pbc = self.qm_cluster_pbc
 
