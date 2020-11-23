@@ -51,6 +51,8 @@ def search(project_name: str):
 
     Contains input form for database query and a table result rows.
     """
+    if project_name == 'favicon.ico':
+        return '', 204, []  # 204: "No content"
     session = Session(project_name)
     project = projects[project_name]
     return render_template(project['search_template'],
