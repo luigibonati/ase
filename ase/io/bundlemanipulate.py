@@ -31,6 +31,7 @@ def copy_frames(inbundle, outbundle, start=0, end=None, step=1,
             isinstance(step, int)):
         raise TypeError("copy_frames: start, end and step must be integers.")
     metadata, nframes = read_bundle_info(inbundle)
+
     if metadata['backend'] == 'ulm':
         backend = UlmBundleBackend(True, metadata['ulm.singleprecision'])
     elif metadata['backend'] == 'pickle':
@@ -134,9 +135,8 @@ def copy_frames(inbundle, outbundle, start=0, end=None, step=1,
                             backend.write(outdir, '{}_{}'.format(arrayname, i),
                                           segment)
     # Finally, write the number of frames
-    f = open(os.path.join(outbundle, 'frames'), 'w')
-    f.write(str(len(frames)) + '\n')
-    f.close()
+    with open(os.path.join(outbundle, 'frames'), 'w') as fd:
+        fd.write(str(len(frames)) + '\n')
 
 
 # Helper functions
@@ -147,25 +147,27 @@ def read_bundle_info(name):
     """
     if not os.path.isdir(name):
         raise IOError("No directory (bundle) named '%s' found." % (name,))
-    metaname = bestmetaname = os.path.join(name, 'metadata.json')
-    if os.path.isfile(metaname):
-        with open(metaname) as f:
-            mdata = json.load(f)
-    else:
-        metaname = os.path.join(name, 'metadata')
-        if os.path.isfile(metaname):
+
+    metaname = os.path.join(name, 'metadata.json')
+
+    if not os.path.isfile(metaname):
+        if os.path.isfile(os.path.join(name, 'metadata')):
             raise IOError("Found obsolete metadata in unsecure Pickle format.  Refusing to load.")
         else:
             raise IOError("'{}' does not appear to be a BundleTrajectory "
-                          "(no {})".format(name, bestmetaname))
+                          "(no {})".format(name, metaname))
+
+    with open(metaname) as fd:
+        mdata = json.load(fd)
+
     if 'format' not in mdata or mdata['format'] != 'BundleTrajectory':
         raise IOError("'%s' does not appear to be a BundleTrajectory" %
                       (name,))
     if mdata['version'] != 1:
         raise IOError("Cannot manipulate BundleTrajectories with version "
                       "number %s" % (mdata['version'],))
-    f = open(os.path.join(name, "frames"))
-    nframes = int(f.read())
+    with open(os.path.join(name, "frames")) as fd:
+        nframes = int(fd.read())
     if nframes == 0:
         raise IOError("'%s' is an empty BundleTrajectory" % (name,))
     return mdata, nframes

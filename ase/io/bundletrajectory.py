@@ -1,7 +1,8 @@
 """bundletrajectory - a module for I/O from large MD simulations.
 
 The BundleTrajectory class writes trajectory into a directory with the
-following structure::
+following structure, except we now use JSON instead of pickle,
+so this text needs updating::
 
     filename.bundle (dir)
         metadata.json          Data about the file format, and about which
@@ -68,7 +69,7 @@ class BundleTrajectory:
         Use backup=False to disable renaming of an existing file.
 
     backend='ulm':
-        Request a backend.  Currently onle 'ulm' is supported.
+        Request a backend.  Currently only 'ulm' is supported.
         Only honored when writing.
 
     singleprecision=False:
