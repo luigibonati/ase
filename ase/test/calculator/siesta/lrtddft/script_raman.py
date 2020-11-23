@@ -40,11 +40,10 @@ def test_CO2():
             'DM.UseSaveDM': True})
 
     CO2.calc = siesta
-    delta = 0.02
-    
+
     name = 'co2'
     rm = StaticRamanCalculator(CO2, siesta_raman, name=name,
-                               delta=delta, exkwargs=dict(label="siesta",
+                               exkwargs=dict(label="siesta",
                                    jcutoff=7, iter_broadening=0.15,
                                    xc_code='LDA,PZ', tol_loc=1e-6, tol_biloc=1e-7)
                                )
