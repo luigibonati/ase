@@ -33,7 +33,14 @@ class Cell:
         self.array = array
 
     def cellpar(self, radians=False):
-        """Get cell lengths and angles of this cell.
+        """Get unit cell parameters. Sequence of 6 numbers.
+
+        First three are unit cell vector lengths and second three
+        are angles between them::
+
+            [len(a), len(b), len(c), angle(b,c), angle(a,c), angle(a,b)]
+
+        in degrees.
 
         See also :func:`ase.geometry.cell.cell_to_cellpar`."""
         from ase.geometry.cell import cell_to_cellpar
@@ -254,8 +261,8 @@ class Cell:
         """Calculate Cartesian positions from scaled positions."""
         return scaled_positions @ self.complete()
 
-    def reciprocal(self):
-        """Get reciprocal lattice as a 3x3 array.
+    def reciprocal(self) -> 'Cell':
+        """Get reciprocal lattice as a Cell object.
 
         Does not include factor of 2 pi."""
         return Cell(np.linalg.pinv(self).transpose())

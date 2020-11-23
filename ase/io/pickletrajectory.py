@@ -25,7 +25,6 @@ from ase.calculators.singlepoint import SinglePointCalculator
 from ase.calculators.calculator import PropertyNotImplementedError
 from ase.constraints import FixAtoms
 from ase.parallel import world, barrier
-from ase.utils import devnull
 
 
 class PickleTrajectory:
@@ -124,7 +123,7 @@ class PickleTrajectory:
                 if self.master:
                     self.fd = open(filename, 'ab+')
                 else:
-                    self.fd = devnull
+                    self.fd = open(os.devnull, 'ab+')
         elif mode == 'w':
             if self.master:
                 if isinstance(filename, str):
@@ -139,7 +138,7 @@ class PickleTrajectory:
                             os.rename(filename, filename + '.bak')
                     self.fd = open(filename, 'wb')
             else:
-                self.fd = devnull
+                self.fd = open(os.devnull, 'wb')
         else:
             raise ValueError('mode must be "r", "w" or "a".')
 
@@ -228,8 +227,9 @@ class PickleTrajectory:
                     pass
             if self.write_magmoms:
                 try:
-                    if atoms.calc.get_spin_polarized():
-                        d['magmoms'] = atoms.get_magnetic_moments()
+                    magmoms = atoms.get_magnetic_moments()
+                    if any(np.asarray(magmoms).flat):
+                        d['magmoms'] = magmoms
                 except (PropertyNotImplementedError, AttributeError):
                     pass
 

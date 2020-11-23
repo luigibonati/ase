@@ -224,7 +224,7 @@ class Atoms:
             if scaled_positions is None:
                 positions = np.zeros((len(self.arrays['numbers']), 3))
             else:
-                assert self.number_of_lattice_vectors == 3
+                assert self.cell.rank == 3
                 positions = np.dot(scaled_positions, self.cell)
         else:
             if scaled_positions is not None:
@@ -303,7 +303,8 @@ class Atoms:
     def calc(self):
         self._calc = None
 
-    @property
+    @property  # type: ignore
+    @deprecated('Please use atoms.cell.rank instead')
     def number_of_lattice_vectors(self):
         """Number of (non-zero) lattice vectors."""
         return self.cell.rank
@@ -410,6 +411,7 @@ class Atoms:
 
         return cell
 
+    @deprecated('Please use atoms.cell.cellpar() instead')
     def get_cell_lengths_and_angles(self):
         """Get unit cell parameters. Sequence of 6 numbers.
 
@@ -422,6 +424,7 @@ class Atoms:
         """
         return self.cell.cellpar()
 
+    @deprecated('Please use atoms.cell.reciprocal()')
     def get_reciprocal_cell(self):
         """Get the three reciprocal lattice vectors as a 3x3 ndarray.
 
@@ -761,13 +764,9 @@ class Atoms:
 
     def get_velocities(self):
         """Get array of velocities."""
-        momenta = self.arrays.get('momenta')
-        if momenta is None:
-            return None
-        m = self.arrays.get('masses')
-        if m is None:
-            m = atomic_masses[self.arrays['numbers']]
-        return momenta / m.reshape(-1, 1)
+        momenta = self.get_momenta()
+        masses = self.get_masses()
+        return momenta / masses[:, np.newaxis]
 
     def get_total_energy(self):
         """Get the total energy - potential plus kinetic energy."""
@@ -1301,6 +1300,19 @@ class Atoms:
         else:
             return com
 
+    def set_center_of_mass(self, com, scaled=False):
+        """Set the center of mass.
+
+        If scaled=True the center of mass is expected in scaled coordinates.
+        Constraints are considered for scaled=False.
+        """
+        old_com = self.get_center_of_mass(scaled=scaled)
+        difference = old_com - com
+        if scaled:
+            self.set_scaled_positions(self.get_scaled_positions() + difference)
+        else:
+            self.set_positions(self.get_positions() + difference)
+
     def get_moments_of_inertia(self, vectors=False):
         """Get the moments of inertia along the principal axes.
 
@@ -1417,17 +1429,7 @@ class Atoms:
             elif s > 0:
                 v /= s
 
-        if isinstance(center, str):
-            if center.lower() == 'com':
-                center = self.get_center_of_mass()
-            elif center.lower() == 'cop':
-                center = self.get_positions().mean(axis=0)
-            elif center.lower() == 'cou':
-                center = self.get_cell().sum(axis=0) / 2
-            else:
-                raise ValueError('Cannot interpret center')
-        else:
-            center = np.array(center)
+        center = self._centering_as_array(center)
 
         p = self.arrays['positions'] - center
         self.arrays['positions'][:] = (c * p -
@@ -1440,6 +1442,20 @@ class Atoms:
                           np.cross(rotcell, s * v) +
                           np.outer(np.dot(rotcell, v), (1.0 - c) * v))
             self.set_cell(rotcell)
+
+    def _centering_as_array(self, center):
+        if isinstance(center, str):
+            if center.lower() == 'com':
+                center = self.get_center_of_mass()
+            elif center.lower() == 'cop':
+                center = self.get_positions().mean(axis=0)
+            elif center.lower() == 'cou':
+                center = self.get_cell().sum(axis=0) / 2
+            else:
+                raise ValueError('Cannot interpret center')
+        else:
+            center = np.array(center, float)
+        return center
 
     def euler_rotate(self, phi=0.0, theta=0.0, psi=0.0, center=(0, 0, 0)):
         """Rotate atoms via Euler angles (in degrees).
@@ -1460,17 +1476,7 @@ class Atoms:
             2nd rotation around the z axis.
 
         """
-        if isinstance(center, str):
-            if center.lower() == 'com':
-                center = self.get_center_of_mass()
-            elif center.lower() == 'cop':
-                center = self.get_positions().mean(axis=0)
-            elif center.lower() == 'cou':
-                center = self.get_cell().sum(axis=0) / 2
-            else:
-                raise ValueError('Cannot interpret center')
-        else:
-            center = np.array(center)
+        center = self._centering_as_array(center)
 
         phi *= pi / 180
         theta *= pi / 180
@@ -1893,6 +1899,9 @@ class Atoms:
         else:
             return not eq
 
+    # @deprecated('Please use atoms.cell.volume')
+    # We kind of want to deprecate this, but the ValueError behaviour
+    # might be desirable.  Should we do this?
     def get_volume(self):
         """Get volume of unit cell."""
         if self.cell.rank != 3:

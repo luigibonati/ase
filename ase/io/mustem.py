@@ -10,7 +10,7 @@ import numpy as np
 
 from ase.atoms import Atoms, symbols2numbers
 from ase.data import chemical_symbols
-from ase.utils import reader
+from ase.utils import reader, writer
 from .utils import verify_cell_for_export, verify_dictionary
 from .prismatic import check_numpy_version
 
@@ -191,7 +191,7 @@ class XtlmuSTEMWriter:
             s = self.comment
         # 2nd line: lattice parameter
         s += "{} {} {} {} {} {}\n".format(
-            *self.atoms.get_cell_lengths_and_angles().tolist())
+            *self.atoms.cell.cellpar().tolist())
         # 3td line: acceleration voltage
         s += "{}\n".format(self.keV)
         # 4th line: number of different atom
@@ -228,7 +228,8 @@ class XtlmuSTEMWriter:
         f.write(self._get_file_end())
 
 
-def write_mustem(filename, *args, **kwargs):
+@writer
+def write_mustem(fd, *args, **kwargs):
     r"""Write muSTEM input file.
 
     Parameters:
@@ -264,4 +265,4 @@ def write_mustem(filename, *args, **kwargs):
     check_numpy_version()
 
     writer = XtlmuSTEMWriter(*args, **kwargs)
-    writer.write_to_file(filename)
+    writer.write_to_file(fd)

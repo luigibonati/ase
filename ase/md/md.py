@@ -108,15 +108,24 @@ class MolecularDynamics(Dynamics):
 
         # Trajectory is attached here instead of in Dynamics.__init__
         # to respect the loginterval argument.
-        if trajectory is not None:
-            if isinstance(trajectory, str):
-                mode = "a" if append_trajectory else "w"
-                trajectory = Trajectory(trajectory, mode=mode, atoms=atoms)
-            self.attach(trajectory, interval=loginterval)
+        try:
+            if trajectory is not None:
+                if isinstance(trajectory, str):
+                    mode = "a" if append_trajectory else "w"
+                    trajectory = self.ensureclose(
+                        Trajectory(trajectory, mode=mode, atoms=atoms)
+                    )
+                self.attach(trajectory, interval=loginterval)
 
-        if logfile:
-            self.attach(MDLogger(dyn=self, atoms=atoms, logfile=logfile),
-                        interval=loginterval)
+            if logfile:
+                logger = self.ensureclose(
+                    MDLogger(dyn=self, atoms=atoms, logfile=logfile))
+                self.attach(logger, loginterval)
+
+        except BaseException:
+            self._closefiles()
+            raise
+
 
     def todict(self):
         return {'type': 'molecular-dynamics',
@@ -140,7 +149,13 @@ class MolecularDynamics(Dynamics):
         """ MD is 'converged' when number of maximum steps is reached. """
         return self.nsteps >= self.max_steps
 
-    # Make the process_temperature funmctiona available to subclasses
+    def _get_com_velocity(self, velocity):
+        """Return the center of mass velocity.
+        Internal use only. This function can be reimplemented by Asap.
+        """
+        return np.dot(self.masses.ravel(), velocity) / self.masses.sum()
+
+    # Make the process_temperature function available to subclasses
     # as a static method.  This makes it easy for MD objects to use
     # it, while functions in md.velocitydistribution have access to it
     # as a function.

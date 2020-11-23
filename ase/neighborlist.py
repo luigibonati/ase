@@ -108,9 +108,9 @@ def get_distance_indices(distanceMatrix, distance):
         #find all non-zero
         found = sp.find(row)
         #screen for smaller or equal distance
-        equal = np.where( found[-1] <= distance )[0]
+        equal = np.where(found[-1] <= distance)[0]
         #found[1] contains the indexes
-        indices.append([ found[1][x] for x in equal ])
+        indices.append([found[1][x] for x in equal])
     return indices
 
 
@@ -788,44 +788,39 @@ class NewPrimitiveNeighborList:
         self.cell = np.array(cell, copy=True)
         self.positions = np.array(positions, copy=True)
 
-        self.pair_first, self.pair_second, self.offset_vec = \
+        pair_first, pair_second, offset_vec = \
             primitive_neighbor_list(
                 'ijS', pbc, cell, positions, self.cutoffs, numbers=numbers,
                 self_interaction=self.self_interaction,
                 use_scaled_positions=self.use_scaled_positions)
 
         if len(positions) > 0 and not self.bothways:
-            mask = np.logical_or(
-                np.logical_and(
-                    self.pair_first <= self.pair_second,
-                    (self.offset_vec == 0).all(axis=1)
-                    ),
-                np.logical_or(
-                    self.offset_vec[:, 0] > 0,
-                    np.logical_and(
-                        self.offset_vec[:, 0] == 0,
-                        np.logical_or(
-                            self.offset_vec[:, 1] > 0,
-                            np.logical_and(
-                                self.offset_vec[:, 1] == 0,
-                                self.offset_vec[:, 2] > 0)
-                            )
-                        )
-                    )
-                )
-            self.pair_first = self.pair_first[mask]
-            self.pair_second = self.pair_second[mask]
-            self.offset_vec = self.offset_vec[mask]
+            offset_x, offset_y, offset_z = offset_vec.T
+
+            mask = offset_z > 0
+            mask &= offset_y == 0
+            mask |= offset_y > 0
+            mask &= offset_x == 0
+            mask |= offset_x > 0
+            mask |= (pair_first <= pair_second) & (offset_vec == 0).all(axis=1)
+
+            pair_first = pair_first[mask]
+            pair_second = pair_second[mask]
+            offset_vec = offset_vec[mask]
 
         if len(positions) > 0 and self.sorted:
-            mask = np.argsort(self.pair_first * len(self.pair_first) +
-                              self.pair_second)
-            self.pair_first = self.pair_first[mask]
-            self.pair_second = self.pair_second[mask]
-            self.offset_vec = self.offset_vec[mask]
+            mask = np.argsort(pair_first * len(pair_first) +
+                              pair_second)
+            pair_first = pair_first[mask]
+            pair_second = pair_second[mask]
+            offset_vec = offset_vec[mask]
+
+        self.pair_first = pair_first
+        self.pair_second = pair_second
+        self.offset_vec = offset_vec
 
         # Compute the index array point to the first neighbor
-        self.first_neigh = first_neighbors(len(positions), self.pair_first)
+        self.first_neigh = first_neighbors(len(positions), pair_first)
 
         self.nupdates += 1
 

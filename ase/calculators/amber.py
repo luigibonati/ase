@@ -6,7 +6,6 @@ Before usage, input files (infile, topologyfile, incoordfile)
 
 """
 
-import os
 import subprocess
 import numpy as np
 
@@ -30,6 +29,7 @@ class Amber(FileIOCalculator):
     """
 
     implemented_properties = ['energy', 'forces']
+    discard_results_on_any_change = True
 
     def __init__(self, restart=None,
                  ignore_bad_restart_file=FileIOCalculator._deprecated,
@@ -98,11 +98,6 @@ class Amber(FileIOCalculator):
 
         FileIOCalculator.__init__(self, restart, ignore_bad_restart_file,
                                   label, atoms, **kwargs)
-
-    def set(self, **kwargs):
-        changed_parameters = FileIOCalculator.set(self, **kwargs)
-        if changed_parameters:
-            self.reset()
 
     def write_input(self, atoms=None, properties=None, system_changes=None):
         """Write updated coordinates to a file."""
@@ -266,15 +261,7 @@ class Amber(FileIOCalculator):
         parmed_command = ('parmed -O -i ' + parmed_filename +
                           ' -p ' + self.topologyfile +
                           ' > ' + self.topologyfile + '.log 2>&1')
-        olddir = os.getcwd()
-        try:
-            os.chdir(self.directory)
-            errorcode = subprocess.call(parmed_command, shell=True)
-        finally:
-            os.chdir(olddir)
-        if errorcode:
-            raise RuntimeError('%s returned an error: %d' %
-                               (self.label, errorcode))
+        subprocess.check_call(parmed_command, shell=True, cwd=self.directory)
 
     def get_virtual_charges(self, atoms):
         topology = open(self.topologyfile, 'r').readlines()

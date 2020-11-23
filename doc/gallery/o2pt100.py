@@ -55,14 +55,17 @@ for i in multiples:
 
 bbox = [-30, 10, 5, 25]
 
-write('o2pt100.pov', atoms,
-      rotation='90z,-75x',
-      show_unit_cell=0,
-      run_povray=True,
-      pause=False,
-      canvas_width=1024,
-      bondatoms=bonded_atoms,
-      camera_type='perspective',
-      transmittances=transmittances,
-      textures=textures,
-      bbox=bbox)
+renderer = write('o2pt100.pov', atoms,
+                 generic_projection_settings=dict(
+                     rotation='90z,-75x',
+                     bbox=bbox,
+                     show_unit_cell=0),
+                 povray_settings=dict(
+                     pause=False,
+                     canvas_width=1024,
+                     bondatoms=bonded_atoms,
+                     camera_type='perspective',
+                     transmittances=transmittances,
+                     textures=textures))
+
+renderer.render()

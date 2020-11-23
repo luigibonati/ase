@@ -5,17 +5,19 @@ following structure, except we now use JSON instead of pickle,
 so this text needs updating::
 
     filename.bundle (dir)
-        metadata.pickle        Data about the file format, and about which
+        metadata.json          Data about the file format, and about which
                                data is present.
-        state.pickle           The number of frames
+        frames                 The number of frames (ascii file)
         F0 (dir)               Frame number 0
-            small.pickle       Small data structures in a dictionary
+            smalldata.ulm      Small data structures in a dictionary
                                (pbc, cell, ...)
-            numbers.pickle     Atomic numbers
-            positions.pickle   Positions
-            momenta.pickle     Momenta
+            numbers.ulm        Atomic numbers
+            positions.ulm      Positions
+            momenta.ulm        Momenta
             ...
         F1 (dir)
+
+There is a folder for each frame, and the data is in the ASE Ulm format.
 """
 
 import os
@@ -67,7 +69,8 @@ class BundleTrajectory:
         Use backup=False to disable renaming of an existing file.
 
     backend='ulm':
-        Request a backend.  Only supported backend now is 'ulm'.
+        Request a backend.  Currently only 'ulm' is supported.
+        Only honored when writing.
 
     singleprecision=False:
         Store floating point data in single precision (ulm backend only).
@@ -432,7 +435,7 @@ class BundleTrajectory:
                 raise IOError(
                     'Filename "' + self.filename +
                     '" already exists, but is not a BundleTrajectory.' +
-                    'Cowardly refusing to remove it.')
+                    ' Cowardly refusing to remove it.')
             if self.is_empty_bundle(self.filename):
                 barrier()
                 self.log('Deleting old "%s" as it is empty' % (self.filename,))
@@ -560,7 +563,8 @@ class BundleTrajectory:
         if self.backend_name == 'ulm':
             metadata['ulm.singleprecision'] = self.singleprecision
         metadata['python_ver'] = tuple(sys.version_info)
-        fido = jsonio.encode(metadata)
+        encode = jsonio.MyEncoder(indent=4).encode
+        fido = encode(metadata)
         with paropen(self.metadata_path, 'w') as fd:
             fd.write(fido)
 
@@ -598,9 +602,8 @@ class BundleTrajectory:
         Assumes that it is a bundle."""
         if not os.listdir(filename):
             return True   # Empty folders are empty bundles.
-        f = open(os.path.join(filename, 'frames'), 'rb')
-        nframes = int(f.read())
-        f.close()
+        with open(os.path.join(filename, 'frames'), 'rb') as fd:
+            nframes = int(fd.read())
 
         # File may be removed by the master immediately after this.
         barrier()
@@ -806,29 +809,27 @@ class UlmBundleBackend:
         """
         fn = os.path.join(framedir, name + '.ulm')
         if split is None or os.path.exists(fn):
-            f = ulmopen(fn, 'r')
-            info = dict()
-            info['shape'] = f.shape
-            info['type'] = f.dtype
-            info['stored_as'] = f.stored_as
-            info['identical'] = f.all_identical
-            f.close()
+            with ulmopen(fn, 'r') as fd:
+                info = dict()
+                info['shape'] = fd.shape
+                info['type'] = fd.dtype
+                info['stored_as'] = fd.stored_as
+                info['identical'] = fd.all_identical
             return info
         else:
             info = dict()
             for i in range(split):
                 fn = os.path.join(framedir, name + '_' + str(i) + '.ulm')
-                f = ulmopen(fn, 'r')
-                if i == 0:
-                    info['shape'] = list(f.shape)
-                    info['type'] = f.dtype
-                    info['stored_as'] = f.stored_as
-                    info['identical'] = f.all_identical
-                else:
-                    info['shape'][0] += f.shape[0]
-                    assert info['type'] == f.dtype
-                    info['identical'] = info['identical'] and f.all_identical
-                f.close()
+                with ulmopen(fn, 'r') as fd:
+                    if i == 0:
+                        info['shape'] = list(fd.shape)
+                        info['type'] = fd.dtype
+                        info['stored_as'] = fd.stored_as
+                        info['identical'] = fd.all_identical
+                    else:
+                        info['shape'][0] += fd.shape[0]
+                        assert info['type'] == fd.dtype
+                        info['identical'] = info['identical'] and fd.all_identical
             info['shape'] = tuple(info['shape'])
             return info
 
@@ -920,15 +921,15 @@ def print_bundletrajectory_info(filename):
         return
     # Read the metadata
     fn = os.path.join(filename, 'metadata.json')
-    f = open(fn, 'r')
-    metadata = jsonio.decode(f.read())
-    f.close()
+    with open(fn, 'r') as fd:
+        metadata = jsonio.decode(fd.read())
+
     print('Metadata information of BundleTrajectory "%s":' % (filename,))
     for k, v in metadata.items():
         if k != 'datatypes':
             print("  %s: %s" % (k, v))
-    f = open(os.path.join(filename, 'frames'), 'rb')
-    nframes = int(f.read())
+    with open(os.path.join(filename, 'frames'), 'rb') as fd:
+        nframes = int(fd.read())
     print('Number of frames: %i' % (nframes,))
     print('Data types:')
     for k, v in metadata['datatypes'].items():
@@ -978,11 +979,9 @@ def print_bundletrajectory_info(filename):
             infoline = infoline[:-2] + '.'  # Fix punctuation.
             print(infoline)
 
-
 class PickleBundleBackend:
     # Leave placeholder class so importing asap3 won't crash.
     pass
-
 
 def main():
     import optparse

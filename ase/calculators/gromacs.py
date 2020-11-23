@@ -74,6 +74,7 @@ class Gromacs(FileIOCalculator):
     """
 
     implemented_properties = ['energy', 'forces']
+    discard_results_on_any_change = True
 
     default_parameters = dict(
         define='-DFLEXIBLE',
@@ -341,11 +342,6 @@ class Gromacs(FileIOCalculator):
         """Set own gromacs parameter for program parameters
         Add spaces to avoid errors """
         self.params_runs[key] = ' ' + value + ' '
-
-    def set(self, **kwargs):
-        changed_parameters = FileIOCalculator.set(self, **kwargs)
-        if changed_parameters:
-            self.reset()
 
     def write_input(self, atoms=None, properties=None, system_changes=None):
         """Write input parameters to input file."""

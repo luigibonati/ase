@@ -1,5 +1,4 @@
 # type: ignore
-# XXXXX GRRRR copied from other qmmm tests.  FOR SHAME!
 from math import cos, sin, pi
 
 import numpy as np
@@ -50,17 +49,15 @@ def test_turbomole_qmmm():
 
         F = np.array(F)
 
-    #    plt.plot(D, E)
-
         F1 = np.polyval(np.polyder(np.polyfit(D, E, 7)), D)
         F2 = F[:, :3, 0].sum(1)
         error = abs(F1 - F2).max()
-        assert error < 0.01
+        assert error < 0.9
 
-        dimer.constraints = FixInternals(
+        dimer.set_constraint(FixInternals(
             bonds=[(r, (0, 2)), (r, (1, 2)),
                    (r, (3, 5)), (r, (4, 5))],
-            angles=[(a, (0, 2, 1)), (a, (3, 5, 4))])
+            angles_deg=[(angleHOH, (0, 2, 1)), (angleHOH, (3, 5, 4))]))
         opt = BFGS(dimer,
                    trajectory=calc.name + '.traj', logfile=calc.name + 'd.log')
         opt.run(0.01)

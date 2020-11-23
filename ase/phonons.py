@@ -174,7 +174,7 @@ class Displacement:
         fd = opencew(filename)
         if fd is not None:
             # Call derived class implementation of __call__
-            output = self.__call__(atoms_N)
+            output = self(atoms_N)
             # Write output to file
             if world.rank == 0:
                 pickle.dump(output, fd, protocol=2)
@@ -205,14 +205,8 @@ class Displacement:
                     atoms_N.positions[offset + a, i] = \
                         pos[a, i] + sign * self.delta
 
-                    # Call derived class implementation of __call__
-                    output = self.__call__(atoms_N)
-                    # Write output to file
-                    if world.rank == 0:
-                        pickle.dump(output, fd, protocol=2)
-                        sys.stdout.write('Writing %s\n' % filename)
-                        fd.close()
-                    sys.stdout.flush()
+                    self.calculate(atoms_N, filename, fd)
+
                     # Return to initial positions
                     atoms_N.positions[offset + a, i] = pos[a, i]
 
@@ -329,6 +323,15 @@ class Phonons(Displacement):
         forces = atoms_N.get_forces()
 
         return forces
+
+    def calculate(self, atoms_N, filename, fd):
+        # Call derived class implementation of __call__
+        output = self.__call__(atoms_N)
+        # Write output to file
+        if world.rank == 0:
+            pickle.dump(output, fd, protocol=2)
+            sys.stdout.write('Writing %s\n' % filename)
+            sys.stdout.flush()
 
     def check_eq_forces(self):
         """Check maximum size of forces in the equilibrium structure."""

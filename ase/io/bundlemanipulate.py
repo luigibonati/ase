@@ -4,7 +4,7 @@ This module defines a number of functions that can be used to
 extract and delete data from BundleTrajectories directly on
 disk.  The functions are intended for large-scale MD output,
 so they avoid copying the potentially large amounts of data.
-In stead, data is either directly deleted in-place; or copies
+Instead, data is either directly deleted in-place; or copies
 are made by creating a new directory structure, but hardlinking
 the data files.  Hard links makes it possible to delete the
 original data without invalidating the copy.
@@ -32,7 +32,13 @@ def copy_frames(inbundle, outbundle, start=0, end=None, step=1,
         raise TypeError("copy_frames: start, end and step must be integers.")
     metadata, nframes = read_bundle_info(inbundle)
 
-    backend = UlmBundleBackend(True, metadata['ulm.singleprecision'])
+    if metadata['backend'] == 'ulm':
+        backend = UlmBundleBackend(True, metadata['ulm.singleprecision'])
+    elif metadata['backend'] == 'pickle':
+        raise IOError("Input BundleTrajectory uses the 'pickle' backend.  " +
+                      "This is not longer supported for security reasons")
+    else:
+        raise IOError("Unknown backend type '{}'".format(metadata['backend']))
 
     if start < 0:
         start += nframes
@@ -69,8 +75,7 @@ def copy_frames(inbundle, outbundle, start=0, end=None, step=1,
         if nout == 0 and nin != 0:
             if verbose:
                 print("F0 -> F0 (supplemental)")
-            # The smalldata.pickle stuff must be updated.
-            #  - Update: No more pickle stuff (2020-10-21)
+            # The smalldata.ulm stuff must be updated.
             # At the same time, check if the number of fragments
             # has not changed.
             data0 = backend.read_small(os.path.join(inbundle, "F0"))
@@ -142,9 +147,19 @@ def read_bundle_info(name):
     """
     if not os.path.isdir(name):
         raise IOError("No directory (bundle) named '%s' found." % (name,))
+
     metaname = os.path.join(name, 'metadata.json')
+
+    if not os.path.isfile(metaname):
+        if os.path.isfile(os.path.join(name, 'metadata')):
+            raise IOError("Found obsolete metadata in unsecure Pickle format.  Refusing to load.")
+        else:
+            raise IOError("'{}' does not appear to be a BundleTrajectory "
+                          "(no {})".format(name, metaname))
+
     with open(metaname) as fd:
         mdata = json.load(fd)
+
     if 'format' not in mdata or mdata['format'] != 'BundleTrajectory':
         raise IOError("'%s' does not appear to be a BundleTrajectory" %
                       (name,))

@@ -695,7 +695,8 @@ def write_vasp(filename,
                symbol_count=None,
                long_format=True,
                vasp5=False,
-               ignore_constraints=False):
+               ignore_constraints=False,
+               wrap=False):
     """Method to write VASP position (POSCAR/CONTCAR) files.
 
     Writes label, scalefactor, unitcell, # of various kinds of atoms,
@@ -716,16 +717,16 @@ def write_vasp(filename,
             atoms = atoms[0]
 
     # Check lattice vectors are finite
-    if np.any(atoms.get_cell_lengths_and_angles() == 0.):
+    if np.any(atoms.cell.cellpar() == 0.):
         raise RuntimeError(
             'Lattice vectors must be finite and not coincident. '
             'At least one lattice length or angle is zero.')
 
     # Write atom positions in scaled or cartesian coordinates
     if direct:
-        coord = atoms.get_scaled_positions()
+        coord = atoms.get_scaled_positions(wrap=wrap)
     else:
-        coord = atoms.get_positions()
+        coord = atoms.get_positions(wrap=wrap)
 
     constraints = atoms.constraints and not ignore_constraints
 

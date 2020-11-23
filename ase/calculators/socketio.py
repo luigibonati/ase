@@ -636,7 +636,7 @@ class SocketIOCalculator(Calculator):
         self.atoms = atoms.copy()
         results = self.server.calculate(atoms)
         virial = results.pop('virial')
-        if self.atoms.number_of_lattice_vectors == 3 and any(self.atoms.pbc):
+        if self.atoms.cell.rank == 3 and any(self.atoms.pbc):
             from ase.constraints import full_3x3_to_voigt_6_stress
             vol = atoms.get_volume()
             results['stress'] = -full_3x3_to_voigt_6_stress(virial) / vol

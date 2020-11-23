@@ -199,19 +199,57 @@ fluctuating force is stochastic in nature, so repeating the simulation
 will not give exactly the same trajectory.
 
 When the ``Langevin`` object is created, you must specify a time step,
-a temperature (in energy units) and a friction.  Typical values for
+a temperature (in Kelvin) and a friction.  Typical values for
 the friction are 0.01-0.02 atomic units.
 
 ::
 
   # Room temperature simulation
-  dyn = Langevin(atoms, 5 * units.fs, units.kB * 300, 0.002)
+  dyn = Langevin(atoms, 5 * units.fs, 300, 0.002)
 
 Both the friction and the temperature can be replaced with arrays
 giving per-atom values.  This is mostly useful for the friction, where
 one can choose a rather high friction near the boundaries, and set it
 to zero in the part of the system where the phenomenon being studied
 is located.
+
+
+Andersen dynamics
+-----------------
+
+.. module:: ase.md.andersen
+
+.. autoclass:: Andersen
+
+The Andersen class implements Andersen dynamics, where constant
+temperature is imposed by stochastic collisions with a heat bath.
+With a (small) probability (`andersen_prob`) the collisions act
+occasionally on velocity components of randomly selected particles
+Upon a collision the new velocity is drawn from the
+Maxwell-Boltzmann distribution at the corresponding temperature.
+The system is then integrated numerically at constant energy
+according to the Newtonian laws of motion. The collision probability
+is defined as the average number of collisions per atom and timestep. 
+The algorithm generates a canonical distribution. [1] However, due
+to the random decorrelation of velocities, the dynamics are
+unphysical and cannot represent dynamical properties like e.g.
+diffusion or viscosity. Another disadvantage is that the collisions
+are stochastic in nature, so repeating the simulation will not give
+exactly the same trajectory.
+
+When the ``Andersen`` object is created, you must specify a time step,
+a temperature (in Kelvin) and a collision probability. Typical 
+values for this probability are in the order of 1e-4 to 1e-1.
+
+::
+
+  # Room temperature simulation (300 Kelvin, Andersen probability: 0.002)
+  dyn = Andersen(atoms, 5 * units.fs, 300, 0.002)
+
+References:
+
+[1] D. Frenkel and B. Smit, Understanding Molecular Simulation
+(Academic Press, London, 1996)
 
 
 Nosé-Hoover dynamics
@@ -238,7 +276,7 @@ In Berendsen NVT simulations the velocities are scaled to achieve the desired
 temperature. The speed of the scaling is determined by the parameter taut.
 
 This method does not result proper NVT sampling but it usually is
-sufficiently good in practise (with large taut). For discussion see
+sufficiently good in practice (with large taut). For discussion see
 the gromacs manual at www.gromacs.org.
 
 ::
@@ -282,14 +320,14 @@ The atom positions and the simulation cell are scaled in order to achieve
 the desired pressure.
 
 This method does not result proper NPT sampling but it usually is
-sufficiently good in practise (with large taut and taup). For discussion see
+sufficiently good in practice (with large taut and taup). For discussion see
 the gromacs manual at www.gromacs.org. or amber at ambermd.org
 
 
 ::
 
   # Room temperature simulation (300K, 0.1 fs time step, atmospheric pressure)
-  dyn = NPTBerendsen(atoms, timestep=0.1 * units.fs, temperature=300,
+  dyn = NPTBerendsen(atoms, timestep=0.1 * units.fs, temperature_K=300,
                      taut=100 * units.fs, pressure_au=1.01325 * units.bar,
                      taup=1000 * units.fs, compressibility=4.57e-5 / units.bar)
 
