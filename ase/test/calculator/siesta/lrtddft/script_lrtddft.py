@@ -13,9 +13,9 @@ CH4 = molecule('CH4')
 
 # enter siesta input
 CH4.calc = Siesta(
-    mesh_cutoff=150*Ry,
+    mesh_cutoff=150 * Ry,
     basis_set='DZP',
-    energy_shift=(10*10**-3) * eV,
+    energy_shift=(10 * 10**-3) * eV,
     fdf_arguments={
         'COOP.Write': True,
         'WriteDenchar': True,

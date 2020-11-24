@@ -116,21 +116,21 @@ class siesta_lrtddft:
             raise RuntimeError("running lrtddft with Siesta calculator requires pynao package")
 
         if isinstance(omega, float):
-            freq = np.array([omega])/un.Ha
+            freq = np.array([omega]) / un.Ha
         elif isinstance(omega, list):
-            freq = np.array([omega])/un.Ha
+            freq = np.array([omega]) / un.Ha
         elif isinstance(omega, np.ndarray):
-            freq = omega/un.Ha
+            freq = omega / un.Ha
         else:
             raise ValueError("omega soulf")
 
         tddft = tddft_iter(**self.lrtddft_params)
 
         if inter:
-            pmat = -tddft.comp_polariz_inter_Edir(freq + 1j*tddft.eps, Eext=Eext)
+            pmat = -tddft.comp_polariz_inter_Edir(freq + 1j * tddft.eps, Eext=Eext)
             self.dn = tddft.dn
         else:
-            pmat = -tddft.comp_polariz_nonin_Edir(freq + 1j*tddft.eps, Eext=Eext)
+            pmat = -tddft.comp_polariz_nonin_Edir(freq + 1j * tddft.eps, Eext=Eext)
             self.dn = tddft.dn0
 
         return pmat
@@ -153,8 +153,8 @@ class siesta_raman(siesta_lrtddft):
         # Specific for raman calls, it expects just the tensor for a single
         # frequency and need only the real part
         # For static raman, imaginary part is zero??
-        #alpha = pmat[:, :, 0].real*un.Bohr**3   # Convert from au to Ang**3
-        return pmat[:, :, 0].real*(un.Bohr**2)/un.Ha         # Convert to e**2 Ang**2/eV
+        # Convert to e**2 Ang**2/eV
+        return pmat[:, :, 0].real * (un.Bohr**2) / un.Ha
  
 def pol2cross_sec(p, omg):
     """
@@ -171,7 +171,7 @@ def pol2cross_sec(p, omg):
     """
     from ase.units import Ha, Bohr, alpha
 
-    c = 1/alpha                         # speed of the light in au
-    omg = omg/Ha                        # to convert from eV to Hartree
-    sigma = 4 * np.pi * omg * p / (c)   # bohr**2
-    return sigma*(0.1*Bohr)**2          # nm**2
+    c = 1 / alpha                           # speed of the light in au
+    omg = omg / Ha                          # to convert from eV to Hartree
+    sigma = 4 * np.pi * omg * p / (c)       # bohr**2
+    return sigma * (0.1 * Bohr)**2          # nm**2
