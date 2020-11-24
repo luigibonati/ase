@@ -4,6 +4,9 @@ import ase.units as un
 class siesta_lrtddft:
     """Calculator interface for linear response TDDFT for Siesta via
     [PyNAO](https://mbarbry.website.fr.to/pynao/doc/html/)
+
+    When using PyNAO please cite the papers indicated at in the PyNAO
+    [documentation](https://mbarbry.website.fr.to/pynao/doc/html/references.html)
     """
     def __init__(self, initialize=False, **kw):
         """
@@ -45,39 +48,12 @@ class siesta_lrtddft:
 
         Returns
         -------
-            Add to the self.results dict the following items:
-        freq range: array like
-            array of dimension (nff) containing the frequency range in eV.
-
-        polarizability nonin: array like (complex)
-            array of dimension (nff, 3, 3) with nff the frequency number,
-            the second and third dimension are the matrix elements of the
-            non-interactive polarizability::
-
-                P_xx, P_xy, P_xz, Pyx, .......
-                
-        Returns
-        -------
-        polarizability tensor with unit (e^2 Angstrom^2 / eV).
-        Multiply with Bohr * Ha to get (Angstrom^3)
-
-
         polarizability: array like (complex)
-            array of dimension (nff, 3, 3) with nff the frequency number,
-            the second and third dimension are the matrix elements of the
-            interactive polarizability::
+            array of dimension (3, 3, nff) with nff the number of frequency,
+            the first and second dimension are the matrix elements of the
+            polarizability in atomic units::
 
                 P_xx, P_xy, P_xz, Pyx, .......
-
-        density change nonin: array like (complex)
-            contains the non interacting density change in product basis
-
-        density change inter: array like (complex)
-            contains the interacting density change in product basis
-
-        References
-        ----------
-        https://gitlab.com/mbarbry/pynao
 
         Example
         -------
@@ -151,9 +127,22 @@ class siesta_lrtddft:
         return pmat
 
 class siesta_raman(siesta_lrtddft):
-    """Raman interface for Siesta calculator
+    """Raman interface for Siesta calculator.
+    When using the Raman calculator, please cite
+
+    M. Walter and M. Moseler, Ab Initio Wavelength-Dependent Raman Spectra:
+    Placzek Approximation and Beyond, J. Chem. Theory Comput. 2020, 16, 1, 576–586
     """
     def __init__(self, omega=0.0, **kw):
+        """
+        Parameters
+        ----------
+        omega: float
+            frequency at which the Raman intensity should be computed, in eV
+
+        kw: dictionary
+            The parameter for the siesta_lrtddft object
+        """
 
         self.omega = omega
         super().__init__(**kw)
@@ -166,7 +155,6 @@ class siesta_raman(siesta_lrtddft):
     def calculate(self, atoms):
         """
         Calculate the polarizability for frequency omega
-
 
         Parameters
         ----------
