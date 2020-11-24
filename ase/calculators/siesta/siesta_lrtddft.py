@@ -174,7 +174,7 @@ class siesta_raman(siesta_lrtddft):
             The atoms definition of the system. Not used but required by Raman
             calculator
         """
-        pmat = self.get_polarizability(self.omega, Eext=np,array([1.0, 1.0, 1.0]))
+        pmat = self.get_polarizability(self.omega, Eext=np.array([1.0, 1.0, 1.0]))
 
         # take care about units, please
         # Specific for raman calls, it expects just the tensor for a single
