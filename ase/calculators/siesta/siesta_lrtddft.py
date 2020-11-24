@@ -153,12 +153,8 @@ class siesta_raman(siesta_lrtddft):
         # Specific for raman calls, it expects just the tensor for a single
         # frequency and need only the real part
         # For static raman, imaginary part is zero??
-
-        # alpha = alpha*Bohr**3/units._me
-        #dadq = np.array([(dadx[j, :, :, :] / (units.Bohr**2)) /                                                   
-        #         sqrt(m[self.indices[j // 3]] * units._amu / units._me)
-        #return (units.Bohr**4) / (units._me / units._amu), '   A^4 amu^-1' 
-        return pmat[:, :, 0].real#*(units.Bohr**4) / (units._me / units._amu)
+        #alpha = pmat[:, :, 0].real*un.Bohr**3   # Convert from au to Ang**3
+        return pmat[:, :, 0].real*(un.Bohr**2)/un.Ha         # Convert to e**2 Ang**2/eV
  
 def pol2cross_sec(p, omg):
     """
