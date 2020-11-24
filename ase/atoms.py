@@ -20,7 +20,7 @@ from ase.constraints import (FixConstraint, FixBondLengths, FixLinearTriatomic,
                              voigt_6_to_full_3x3_stress,
                              full_3x3_to_voigt_6_stress)
 from ase.data import atomic_masses, atomic_masses_common
-from ase.geometry import wrap_positions, find_mic, get_angles, get_distances
+from ase.geometry import wrap_positions, find_mic, get_angles, get_distances, get_dihedrals
 from ase.symbols import Symbols, symbols2numbers
 from ase.utils import deprecated
 
@@ -224,7 +224,7 @@ class Atoms:
             if scaled_positions is None:
                 positions = np.zeros((len(self.arrays['numbers']), 3))
             else:
-                assert self.number_of_lattice_vectors == 3
+                assert self.cell.rank == 3
                 positions = np.dot(scaled_positions, self.cell)
         else:
             if scaled_positions is not None:
@@ -303,7 +303,8 @@ class Atoms:
     def calc(self):
         self._calc = None
 
-    @property
+    @property  # type: ignore
+    @deprecated('Please use atoms.cell.rank instead')
     def number_of_lattice_vectors(self):
         """Number of (non-zero) lattice vectors."""
         return self.cell.rank
@@ -410,6 +411,7 @@ class Atoms:
 
         return cell
 
+    @deprecated('Please use atoms.cell.cellpar() instead')
     def get_cell_lengths_and_angles(self):
         """Get unit cell parameters. Sequence of 6 numbers.
 
@@ -422,6 +424,7 @@ class Atoms:
         """
         return self.cell.cellpar()
 
+    @deprecated('Please use atoms.cell.reciprocal()')
     def get_reciprocal_cell(self):
         """Get the three reciprocal lattice vectors as a 3x3 ndarray.
 
@@ -761,13 +764,9 @@ class Atoms:
 
     def get_velocities(self):
         """Get array of velocities."""
-        momenta = self.arrays.get('momenta')
-        if momenta is None:
-            return None
-        m = self.arrays.get('masses')
-        if m is None:
-            m = atomic_masses[self.arrays['numbers']]
-        return momenta / m.reshape(-1, 1)
+        momenta = self.get_momenta()
+        masses = self.get_masses()
+        return momenta / masses[:, np.newaxis]
 
     def get_total_energy(self):
         """Get the total energy - potential plus kinetic energy."""
@@ -1301,6 +1300,19 @@ class Atoms:
         else:
             return com
 
+    def set_center_of_mass(self, com, scaled=False):
+        """Set the center of mass.
+
+        If scaled=True the center of mass is expected in scaled coordinates.
+        Constraints are considered for scaled=False.
+        """
+        old_com = self.get_center_of_mass(scaled=scaled)
+        difference = old_com - com
+        if scaled:
+            self.set_scaled_positions(self.get_scaled_positions() + difference)
+        else:
+            self.set_positions(self.get_positions() + difference)
+
     def get_moments_of_inertia(self, vectors=False):
         """Get the moments of inertia along the principal axes.
 
@@ -1417,17 +1429,7 @@ class Atoms:
             elif s > 0:
                 v /= s
 
-        if isinstance(center, str):
-            if center.lower() == 'com':
-                center = self.get_center_of_mass()
-            elif center.lower() == 'cop':
-                center = self.get_positions().mean(axis=0)
-            elif center.lower() == 'cou':
-                center = self.get_cell().sum(axis=0) / 2
-            else:
-                raise ValueError('Cannot interpret center')
-        else:
-            center = np.array(center)
+        center = self._centering_as_array(center)
 
         p = self.arrays['positions'] - center
         self.arrays['positions'][:] = (c * p -
@@ -1440,6 +1442,20 @@ class Atoms:
                           np.cross(rotcell, s * v) +
                           np.outer(np.dot(rotcell, v), (1.0 - c) * v))
             self.set_cell(rotcell)
+
+    def _centering_as_array(self, center):
+        if isinstance(center, str):
+            if center.lower() == 'com':
+                center = self.get_center_of_mass()
+            elif center.lower() == 'cop':
+                center = self.get_positions().mean(axis=0)
+            elif center.lower() == 'cou':
+                center = self.get_cell().sum(axis=0) / 2
+            else:
+                raise ValueError('Cannot interpret center')
+        else:
+            center = np.array(center, float)
+        return center
 
     def euler_rotate(self, phi=0.0, theta=0.0, psi=0.0, center=(0, 0, 0)):
         """Rotate atoms via Euler angles (in degrees).
@@ -1460,17 +1476,7 @@ class Atoms:
             2nd rotation around the z axis.
 
         """
-        if isinstance(center, str):
-            if center.lower() == 'com':
-                center = self.get_center_of_mass()
-            elif center.lower() == 'cop':
-                center = self.get_positions().mean(axis=0)
-            elif center.lower() == 'cou':
-                center = self.get_cell().sum(axis=0) / 2
-            else:
-                raise ValueError('Cannot interpret center')
-        else:
-            center = np.array(center)
+        center = self._centering_as_array(center)
 
         phi *= pi / 180
         theta *= pi / 180
@@ -1499,40 +1505,48 @@ class Atoms:
         # Move back to the rotation point
         self.positions = np.transpose(rcoords) + center
 
-    def get_dihedral(self, a1, a2, a3, a4, mic=False):
+    def get_dihedral(self, a0, a1, a2, a3, mic=False):
         """Calculate dihedral angle.
 
-        Calculate dihedral angle (in degrees) between the vectors a1->a2
-        and a3->a4.
+        Calculate dihedral angle (in degrees) between the vectors a0->a1
+        and a2->a3.
 
         Use mic=True to use the Minimum Image Convention and calculate the
         angle across periodic boundaries.
         """
+        return self.get_dihedrals([[a0, a1, a2, a3]], mic=mic)[0]
 
-        # vector 1->2, 2->3, 3->4 and their normalized cross products:
-        a = self.positions[a2] - self.positions[a1]
-        b = self.positions[a3] - self.positions[a2]
-        c = self.positions[a4] - self.positions[a3]
+    def get_dihedrals(self, indices, mic=False):
+        """Calculate dihedral angles.
+
+        Calculate dihedral angles (in degrees) between the list of vectors
+        a0->a1 and a2->a3, where a0, a1, a2 and a3 are in each row of indices.
+
+        Use mic=True to use the Minimum Image Convention and calculate the
+        angles across periodic boundaries.
+        """
+        indices = np.array(indices)
+        assert indices.shape[1] == 4
+
+        a0s = self.positions[indices[:, 0]]
+        a1s = self.positions[indices[:, 1]]
+        a2s = self.positions[indices[:, 2]]
+        a3s = self.positions[indices[:, 3]]
+
+        # vectors 0->1, 1->2, 2->3
+        v0 = a1s - a0s
+        v1 = a2s - a1s
+        v2 = a3s - a2s
+
+        cell = None
+        pbc = None
+
         if mic:
-            a, b, c = find_mic([a, b, c], self.cell, self.pbc)[0]
-        bxa = np.cross(b, a)
-        cxb = np.cross(c, b)
-        bxanorm = np.linalg.norm(bxa)
-        cxbnorm = np.linalg.norm(cxb)
-        if bxanorm == 0 or cxbnorm == 0:
-            raise ZeroDivisionError('Undefined dihedral angle')
-        bxa /= bxanorm
-        cxb /= cxbnorm
-        angle = np.vdot(bxa, cxb)
-        # check for numerical trouble due to finite precision:
-        if angle < -1:
-            angle = -1
-        if angle > 1:
-            angle = 1
-        angle = np.arccos(angle) * 180 / pi
-        if np.vdot(bxa, c) > 0:
-            angle = 360 - angle
-        return angle
+            cell = self.cell
+            pbc = self.pbc
+
+        return get_dihedrals(v0, v1, v2, cell=cell, pbc=pbc)
+
 
     def _masked_rotate(self, center, axis, diff, mask):
         # do rotation of subgroup by copying it to temporary atoms object
@@ -1606,26 +1620,25 @@ class Atoms:
     def get_angle(self, a1, a2, a3, mic=False):
         """Get angle formed by three atoms.
 
-        calculate angle in degrees between the vectors a2->a1 and
+        Calculate angle in degrees between the vectors a2->a1 and
         a2->a3.
 
         Use mic=True to use the Minimum Image Convention and calculate the
         angle across periodic boundaries.
         """
-
         return self.get_angles([[a1, a2, a3]], mic=mic)[0]
 
     def get_angles(self, indices, mic=False):
         """Get angle formed by three atoms for multiple groupings.
 
-        calculate angle in degrees between vectors between atoms a2->a1
+        Calculate angle in degrees between vectors between atoms a2->a1
         and a2->a3, where a1, a2, and a3 are in each row of indices.
 
         Use mic=True to use the Minimum Image Convention and calculate
         the angle across periodic boundaries.
         """
-
         indices = np.array(indices)
+        assert indices.shape[1] == 3
 
         a1s = self.positions[indices[:, 0]]
         a2s = self.positions[indices[:, 1]]
@@ -1710,7 +1723,6 @@ class Atoms:
         Use mic=True to use the Minimum Image Convention.
         vector=True gives the distance vector (from a0 to a1).
         """
-
         return self.get_distances(a0, [a1], mic=mic, vector=vector)[0]
 
     def get_distances(self, a, indices, mic=False, vector=False):
@@ -1719,7 +1731,6 @@ class Atoms:
         Use mic=True to use the Minimum Image Convention.
         vector=True gives the distance vector (from a to self[indices]).
         """
-
         R = self.arrays['positions']
         p1 = [R[a]]
         p2 = R[indices]
@@ -1888,6 +1899,9 @@ class Atoms:
         else:
             return not eq
 
+    # @deprecated('Please use atoms.cell.volume')
+    # We kind of want to deprecate this, but the ValueError behaviour
+    # might be desirable.  Should we do this?
     def get_volume(self):
         """Get volume of unit cell."""
         if self.cell.rank != 3:

@@ -64,7 +64,7 @@ class NVTBerendsen(MolecularDynamics):
         self.temperature = self._process_temperature(temperature,
                                                      temperature_K, 'K')
 
-        self.fixcm = fixcm  # will the center of mass be held fixed?
+        self.fix_com = fixcm  # will the center of mass be held fixed?
         self.communicator = communicator
 
     def set_taut(self, taut):
@@ -105,20 +105,20 @@ class NVTBerendsen(MolecularDynamics):
         self.atoms.set_momenta(p)
         return
 
-    def step(self, f=None):
+    def step(self, forces=None):
         """Move one timestep forward using Berenden NVT molecular dynamics."""
         self.scale_velocities()
 
         # one step velocity verlet
         atoms = self.atoms
 
-        if f is None:
-            f = atoms.get_forces()
+        if forces is None:
+            forces = atoms.get_forces()
 
         p = self.atoms.get_momenta()
-        p += 0.5 * self.dt * f
+        p += 0.5 * self.dt * forces
 
-        if self.fixcm:
+        if self.fix_com:
             # calculate the center of mass
             # momentum and subtract it
             psum = p.sum(axis=0) / float(len(p))
@@ -135,7 +135,7 @@ class NVTBerendsen(MolecularDynamics):
         # cannot use self.masses in the line above.
 
         self.atoms.set_momenta(p)
-        f = self.atoms.get_forces()
-        atoms.set_momenta(self.atoms.get_momenta() + 0.5 * self.dt * f)
+        forces = self.atoms.get_forces()
+        atoms.set_momenta(self.atoms.get_momenta() + 0.5 * self.dt * forces)
 
-        return f
+        return forces

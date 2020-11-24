@@ -16,7 +16,9 @@ parameters = {
 }
 
 calc = pytest.mark.calculator
-@calc('gpaw', mode='lcao',  basis='sz(dzp)')
+@calc('gpaw', mode='lcao',  basis='sz(dzp)',
+      marks=pytest.mark.filterwarnings('ignore:The keyword'))
+# Deprecated keyword, remove this once things are resolved
 @calc('abinit', 'cp2k', 'emt')
 def test_h2_traj(factory):
     run(factory)

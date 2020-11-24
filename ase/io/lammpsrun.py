@@ -335,8 +335,41 @@ def read_lammps_dump_binary(
 
     while True:
         try:
+            # Assume that the binary dump file is in the old (pre-29Oct2020)
+            # format
+            magic_string = None
+
             # read header
             ntimestep, = read_variables("=" + bigformat)
+
+            # In the new LAMMPS binary dump format (version 29Oct2020 and
+            # onward), a negative timestep is used to indicate that the next
+            # few bytes will contain certain metadata
+            if ntimestep < 0:
+                # First bigint was actually encoding the negative of the format
+                # name string length (we call this 'magic_string' to
+                magic_string_len = -ntimestep
+
+                # The next `magic_string_len` bytes will hold a string
+                # indicating the format of the dump file
+                magic_string = b''.join(read_variables("=" +
+                    str(magic_string_len) + "c"))
+
+                # Read endianness (integer). For now, we'll disregard the value
+                # and simply use the host machine's endianness (via '='
+                # character used with struct.calcsize).
+                #
+                # TODO: Use the endianness of the dump file in subsequent
+                #       read_variables rather than just assuming it will match
+                #       that of the host
+                endian, = read_variables("=i")
+
+                # Read revision number (integer)
+                revision, = read_variables("=i")
+
+                # Finally, read the actual timestep (bigint)
+                ntimestep, = read_variables("=" + bigformat)
+
             n_atoms, triclinic = read_variables("=" + bigformat + "i")
             boundary = read_variables("=6i")
             diagdisp = read_variables("=6d")
@@ -344,9 +377,33 @@ def read_lammps_dump_binary(
                 offdiag = read_variables("=3d")
             else:
                 offdiag = (0.0,) * 3
-            size_one, nchunk = read_variables("=2i")
+            size_one, = read_variables("=i")
+
             if len(colnames) != size_one:
                 raise ValueError("Provided columns do not match binary file")
+
+            if magic_string and revision > 1:
+                # New binary dump format includes units string, columns string, and
+                # time
+                units_str_len, = read_variables("=i")
+
+                if units_str_len > 0:
+                    # Read lammps units style
+                    _ = b''.join(read_variables("=" + str(units_str_len) +
+                        "c"))
+
+                flag, = read_variables("=c")
+                if flag != b'\x00':
+                    # Flag was non-empty string
+                    time, = read_variables("=d")
+
+                # Length of column string
+                columns_str_len, = read_variables("=i")
+
+                # Read column string (e.g., "id type x y z vx vy vz fx fy fz")
+                _ = b''.join(read_variables("=" + str(columns_str_len) + "c"))
+
+            nchunk, = read_variables("=i")
 
             # lammps cells/boxes can have different boundary conditions on each
             # sides (makes mainly sense for different non-periodic conditions

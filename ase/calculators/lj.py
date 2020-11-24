@@ -41,7 +41,7 @@ class LennardJones(Calculator):
     There is some freedom of choice in assigning atomic energies, i.e.
     choosing a way to partition the total energy into atomic contributions.
 
-    We choose a symmetric approach:
+    We choose a symmetric approach (`bothways=True` in the neighbor list):
 
     ``u_i = 1/2 sum_(j != i) u_ij``
 
@@ -55,14 +55,6 @@ class LennardJones(Calculator):
     with atomic contributions
 
     ``sigma_i  = 1/2 sum_(j != i) f_ij (x) d_ij``
-
-    Implementation note:
-
-    For computational efficiency, we minimise the number of
-    pairwise evaluations, so we iterate once over all the atoms,
-    and use NeighbourList with bothways=False. In terms of the
-    equations, we therefore effectively restrict the sum over `i != j`
-    to `j > i`, and need to manually re-add the "missing" `j < i` contributions.
 
     Another consideration is the cutoff. We have to ensure that the potential
     goes to zero smoothly as an atom moves across the cutoff threshold,
@@ -121,7 +113,7 @@ class LennardJones(Calculator):
         rc = self.parameters.rc
 
         if self.nl is None or 'numbers' in system_changes:
-            self.nl = NeighborList([rc / 2] * natoms, self_interaction=False)
+            self.nl = NeighborList([rc / 2] * natoms, self_interaction=False, bothways=True)
 
         self.nl.update(self.atoms)
 
@@ -159,16 +151,8 @@ class LennardJones(Calculator):
                 pairwise_forces.T, distance_vectors
             )  # equivalent to outer product
 
-            # add j < i contributions
-            for jj, atom_j in enumerate(neighbors):
-                energies[atom_j] += 0.5 * pairwise_energies[jj]
-                forces[atom_j] += -pairwise_forces[jj]  # f_ji = - f_ij
-                stresses[atom_j] += 0.5 * np.outer(
-                    pairwise_forces[jj], distance_vectors[jj]
-                )
-
         # no lattice, no stress
-        if self.atoms.number_of_lattice_vectors == 3:
+        if self.atoms.cell.rank == 3:
             stresses = full_3x3_to_voigt_6_stress(stresses)
             self.results['stress'] = (
                 stresses.sum(axis=0) / self.atoms.get_volume()

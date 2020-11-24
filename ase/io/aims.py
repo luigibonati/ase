@@ -2,11 +2,14 @@ import time
 import warnings
 
 from ase.units import Ang, fs
+from ase.utils import reader, writer
+
 
 v_unit = Ang / (1000.0 * fs)
 
 
-def read_aims(filename, apply_constraints=True):
+@reader
+def read_aims(fd, apply_constraints=True):
     """Import FHI-aims geometry type files.
 
     Reads unitcell, atom positions and constraints from
@@ -15,6 +18,12 @@ def read_aims(filename, apply_constraints=True):
     If geometric constraint (symmetry parameters) are in the file
     include that information in atoms.info["symmetry_block"]
     """
+
+    lines = fd.readlines()
+    return parse_geometry_lines(lines, apply_constraints=apply_constraints)
+
+
+def parse_geometry_lines(lines, apply_constraints=True):
 
     from ase import Atoms
     from ase.constraints import (
@@ -26,8 +35,6 @@ def read_aims(filename, apply_constraints=True):
     import numpy as np
 
     atoms = Atoms()
-    with open(filename, "r") as fd:
-        lines = fd.readlines()
 
     positions = []
     cell = []
@@ -47,31 +54,24 @@ def read_aims(filename, apply_constraints=True):
         inp = line.split()
         if inp == []:
             continue
-        if inp[0] == "atom":
-            cart_positions = True
+        if inp[0] in ["atom", "atom_frac"]:
+
+            if inp[0] == "atom":
+                cart_positions = True
+            else:
+                scaled_positions = True
+
             if xyz.all():
                 fix.append(i)
             elif xyz.any():
                 fix_cart.append(FixCartesian(i, xyz))
             floatvect = float(inp[1]), float(inp[2]), float(inp[3])
             positions.append(floatvect)
+            symbols.append(inp[4])
             magmoms.append(0.0)
             charges.append(0.0)
-            symbols.append(inp[-1])
-            i += 1
             xyz = np.array([0, 0, 0])
-        elif inp[0] == "atom_frac":
-            scaled_positions = True
-            if xyz.all():
-                fix.append(i)
-            elif xyz.any():
-                fix_cart.append(FixCartesian(i, xyz))
-            floatvect = float(inp[1]), float(inp[2]), float(inp[3])
-            positions.append(floatvect)
-            magmoms.append(0.0)
-            symbols.append(inp[-1])
             i += 1
-            xyz = np.array([0, 0, 0])
 
         elif inp[0] == "lattice_vector":
             floatvect = float(inp[1]), float(inp[2]), float(inp[3])
@@ -187,8 +187,9 @@ def read_aims(filename, apply_constraints=True):
     return atoms
 
 
+@writer
 def write_aims(
-    filename,
+    fd,
     atoms,
     scaled=False,
     geo_constrain=False,
@@ -203,8 +204,8 @@ def write_aims(
     supported at the moment).
 
     Args:
-        filename: str
-            Name of file to output structure to
+        fd: file object
+            File to output structure to
         atoms: ase.atoms.Atoms
             structure to output to the file
         scaled: bool
@@ -226,15 +227,6 @@ def write_aims(
 
     import numpy as np
 
-    if isinstance(atoms, (list, tuple)):
-        if len(atoms) > 1:
-            raise RuntimeError(
-                "Don't know how to save more than "
-                "one image to FHI-aims input"
-            )
-        else:
-            atoms = atoms[0]
-
     if geo_constrain:
         if not scaled:
             warnings.warn(
@@ -242,9 +234,9 @@ def write_aims(
             )
             scaled = True
 
-    fd = open(filename, "w")
     fd.write("#=======================================================\n")
-    fd.write("# FHI-aims file: " + filename + "\n")
+    if hasattr(fd, 'name'):
+        fd.write("# FHI-aims file: " + fd.name + "\n")
     fd.write("# Created using the Atomic Simulation Environment (ASE)\n")
     fd.write("# " + time.asctime() + "\n")
 
@@ -409,13 +401,9 @@ def get_sym_block(atoms):
 
     sym_block = []
     if n_total_params > 0:
-        sym_block.append(
-            "#=======================================================\n"
-        )
+        sym_block.append("#" + "="*55 + "\n")
         sym_block.append("# Parametric constraints\n")
-        sym_block.append(
-            "#=======================================================\n"
-        )
+        sym_block.append("#" + "="*55 + "\n")
         sym_block.append(
             "symmetry_n_params {:d} {:d} {:d}\n".format(
                 n_total_params, n_lv_params, n_atomic_params
@@ -432,17 +420,6 @@ def get_sym_block(atoms):
         for constr in atomic_param_constr:
             sym_block.append("symmetry_frac {:s}\n".format(constr))
     return sym_block
-
-
-# except KeyError:
-#     continue
-
-
-def read_energy(filename):
-    for line in open(filename, "r"):
-        if line.startswith("  | Total energy corrected"):
-            E = float(line.split()[-2])
-    return E
 
 
 def _parse_atoms(fd, n_atoms, molecular_dynamics=False):
@@ -467,7 +444,8 @@ def _parse_atoms(fd, n_atoms, molecular_dynamics=False):
     return atoms
 
 
-def read_aims_output(filename, index=-1):
+@reader
+def read_aims_output(fd, index=-1):
     """Import FHI-aims output files with all data available, i.e.
     relaxations, MD information, force information etc etc etc."""
     from ase import Atoms, Atom
@@ -475,7 +453,6 @@ def read_aims_output(filename, index=-1):
     from ase.constraints import FixAtoms, FixCartesian
 
     molecular_dynamics = False
-    fd = open(filename, "r")
     cell = []
     images = []
     fix = []

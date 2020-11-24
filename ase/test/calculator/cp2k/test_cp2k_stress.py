@@ -4,12 +4,14 @@ http://www.cp2k.org
 Author: Ole Schuett <ole.schuett@mat.ethz.ch>
 """
 
+import pytest
 import numpy as np
 from ase.build import bulk
 from ase.constraints import UnitCellFilter
 from ase.optimize import MDMin
 
 
+@pytest.mark.calculator_lite
 def test_cp2k_stress(cp2k_factory):
     """Adopted from ase/test/stress.py"""
 

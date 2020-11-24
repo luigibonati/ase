@@ -663,7 +663,7 @@ class View:
         self.draw(status=False)
 
     def render_window(self):
-        Render(self)
+        return Render(self)
 
     def resize(self, event):
         w, h = self.window.size

@@ -436,7 +436,7 @@ def write_rmc6f(filename, atoms, order=None, atom_type_map=None):
 
     density_str = "Number density (Ang^-3):              {}"
     density_line = density_str.format(len(atoms) / atoms.get_volume())
-    cell_angles = [str(x) for x in atoms.get_cell_lengths_and_angles()]
+    cell_angles = [str(x) for x in atoms.cell.cellpar()]
     cell_line = "Cell (Ang/deg): " + ' '.join(cell_angles)
     header_lines.extend([density_line, cell_line])
 
@@ -444,7 +444,7 @@ def write_rmc6f(filename, atoms, order=None, atom_type_map=None):
     # NOTE: RMCProfile uses a different convention for the fractionalization
     # matrix
 
-    cell_parameters = atoms.get_cell_lengths_and_angles()
+    cell_parameters = atoms.cell.cellpar()
     cell = Cell.fromcellpar(cell_parameters).T
     x_line = ' '.join(['{:12.6f}'.format(i) for i in cell[0]])
     y_line = ' '.join(['{:12.6f}'.format(i) for i in cell[1]])

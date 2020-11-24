@@ -1,3 +1,4 @@
+import os
 import atexit
 import functools
 import pickle
@@ -7,8 +8,6 @@ import warnings
 
 import numpy as np
 
-from ase.utils import devnull
-
 
 def get_txt(txt, rank):
     if hasattr(txt, 'write'):
@@ -16,13 +15,13 @@ def get_txt(txt, rank):
         return txt
     elif rank == 0:
         if txt is None:
-            return devnull
+            return open(os.devnull, 'w')
         elif txt == '-':
             return sys.stdout
         else:
             return open(txt, 'w', 1)
     else:
-        return devnull
+        return open(os.devnull, 'w')
 
 
 def paropen(name, mode='r', buffering=-1, encoding=None):
@@ -33,7 +32,7 @@ def paropen(name, mode='r', buffering=-1, encoding=None):
     is opened on all other nodes.
     """
     if world.rank > 0 and mode[0] != 'r':
-        name = '/dev/null'
+        name = os.devnull
     return open(name, mode, buffering, encoding)
 
 
@@ -98,6 +97,10 @@ def _get_comm():
         import _gpaw
         if hasattr(_gpaw, 'Communicator'):
             return _gpaw.Communicator()
+    if '_asap' in sys.modules:
+        import _asap
+        if hasattr(_asap, 'Communicator'):
+            return _asap.Communicator()
     return DummyMPI()
 
 

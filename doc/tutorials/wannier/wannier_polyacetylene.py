@@ -15,13 +15,14 @@ for i in range(wan.nwannier):
 
 # Print Kohn-Sham bandstructure
 ef = calc.get_fermi_level()
-f = open('KSbands.txt', 'w')
-for k, kpt_c in enumerate(calc.get_ibz_k_points()):
-    for eps in calc.get_eigenvalues(kpt=k):
-        print(kpt_c[0], eps - ef, file=f)
+with open('KSbands.txt', 'w') as fd:
+    for k, kpt_c in enumerate(calc.get_ibz_k_points()):
+        for eps in calc.get_eigenvalues(kpt=k):
+            print(kpt_c[0], eps - ef, file=fd)
 
 # Print Wannier bandstructure
-f = open('WANbands.txt', 'w')
-for k in np.linspace(-.5, .5, 100):
-    for eps in np.linalg.eigvalsh(wan.get_hamiltonian_kpoint([k, 0, 0])).real:
-        print(k, eps - ef, file=f)
+with open('WANbands.txt', 'w') as fd:
+    for k in np.linspace(-.5, .5, 100):
+        ham = wan.get_hamiltonian_kpoint([k, 0, 0])
+        for eps in np.linalg.eigvalsh(ham).real:
+            print(k, eps - ef, file=fd)

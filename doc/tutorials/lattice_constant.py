@@ -1,14 +1,17 @@
 # creates: lattice_constant.csv
 
 import numpy as np
+
+from ase.io import Trajectory
+from ase.build import bulk
+from ase.calculators.emt import EMT
+from ase.io import read
+
 a0 = 3.52 / np.sqrt(2)
 c0 = np.sqrt(8 / 3.0) * a0
 
-from ase.io import Trajectory
 traj = Trajectory('Ni.traj', 'w')
 
-from ase.build import bulk
-from ase.calculators.emt import EMT
 eps = 0.01
 for a in a0 * np.linspace(1 - eps, 1 + eps, 3):
     for c in c0 * np.linspace(1 - eps, 1 + eps, 3):
@@ -17,7 +20,6 @@ for a in a0 * np.linspace(1 - eps, 1 + eps, 3):
         ni.get_potential_energy()
         traj.write(ni)
 
-from ase.io import read
 configs = read('Ni.traj@:')
 energies = [config.get_potential_energy() for config in configs]
 a = np.array([config.cell[0, 0] for config in configs])
@@ -32,6 +34,5 @@ p2 = np.array([(2 * p[3], p[4]),
                (p[4], 2 * p[5])])
 a0, c0 = np.linalg.solve(p2.T, -p1)
 
-fd = open('lattice_constant.csv', 'w')
-fd.write('%.3f, %.3f\n' % (a0, c0))
-fd.close()
+with open('lattice_constant.csv', 'w') as fd:
+    fd.write('%.3f, %.3f\n' % (a0, c0))
