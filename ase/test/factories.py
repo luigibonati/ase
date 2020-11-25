@@ -326,6 +326,31 @@ class LammpsRunFactory:
         return cls(config.executables['lammpsrun'])
 
 
+@factory('lammpslib')
+class LammpsLibFactory:
+    def __init__(self, potentials_path):
+        # Set the path where LAMMPS will look for potential parameter files
+        os.environ["LAMMPS_POTENTIALS"] = str(potentials_path)
+        self.potentials_path = potentials_path
+
+    def version(self):
+        import lammps
+        cmd_args = ["-echo", "log", "-log", "none", "-screen", "none",
+                    "-nocite"]
+        lmp = lammps.lammps(name="", cmdargs=cmd_args, comm=None)
+        try:
+            return lmp.version()
+        finally:
+            lmp.close()
+
+    def calc(self, **kwargs):
+        from ase.calculators.lammpslib import LAMMPSlib
+        return LAMMPSlib(**kwargs)
+
+    @classmethod
+    def fromconfig(cls, config):
+        return cls(config.datafiles['lammps'][0])
+
 @factory('openmx')
 class OpenMXFactory:
     def __init__(self, executable, data_path):
