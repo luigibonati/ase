@@ -58,7 +58,7 @@ class siesta_lrtddft:
 
         siesta = Siesta(**kw)
         atoms.set_calculator(siesta)
-        e = atoms.get_potential_energy()
+        atoms.get_potential_energy()
 
 
     def get_polarizability(self, omega, Eext=np.array([1.0, 1.0, 1.0]), inter=True):
