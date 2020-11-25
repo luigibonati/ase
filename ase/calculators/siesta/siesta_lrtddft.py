@@ -36,6 +36,31 @@ class siesta_lrtddft:
         if self.initialize:
             self.tddft = tddft_iter(**self.lrtddft_params)
 
+    def get_ground_state(self, atoms, **kw):
+        """
+        Run siesta calculations in order to get ground state properties.
+        Makes sure that the proper parameters are unsed in order to be able
+        to run pynao afterward, i.e.,
+
+            COOP.Write = True
+            WriteDenchar = True
+            XML.Write = True
+        """
+        from ase.calculators.siesta import Siesta
+
+        if "fdf_arguments" not in kw.keys():
+                kw["fdf_arguments"] = {"COOP.Write": True,
+                                       "WriteDenchar": True,
+                                       "XML.Write": True}
+        else:
+            for param in ["COOP.Write", "WriteDenchar", "XML.Write"]:
+                kw["fdf_arguments"][param] = True
+
+        siesta = Siesta(**kw)
+        atoms.set_calculator(siesta)
+        e = atoms.get_potential_energy()
+
+
     def get_polarizability(self, omega, Eext=np.array([1.0, 1.0, 1.0]), inter=True):
         """
         Calculate the polarizability of a molecule via linear response TDDFT
@@ -58,49 +83,23 @@ class siesta_lrtddft:
         Example
         -------
 
+        from ase.calculators.siesta.siesta_lrtddft import siesta_lrtddft
+        from ase.build import molecule
         import numpy as np
         import matplotlib.pyplot as plt
 
-        from ase.build import molecule
-        from ase.calculators.siesta import Siesta
-        from ase.calculators.siesta.siesta_lrtddft import siesta_lrtddft
-        from ase.units import Ry, eV, Ha
+        # Define the systems
+        CH4 = molecule('CH4')
 
-        atoms = molecule("CH4")
-
-        siesta = Siesta(
-              mesh_cutoff=250 * Ry,
-              basis_set='DZP',
-              pseudo_qualifier='gga',
-              xc="PBE",
-              energy_shift=(25 * 10**-3) * eV,
-              fdf_arguments={
-                'SCFMustConverge': False,
-                'COOP.Write': True,
-                'WriteDenchar': True,
-                'PAO.BasisType': 'split',
-                'DM.Tolerance': 1e-4,
-                'DM.MixingWeight': 0.01,
-                "MD.NumCGsteps": 0,
-                "MD.MaxForceTol": (0.02, "eV/Ang"),
-                'MaxSCFIterations': 10000,
-                'DM.NumberPulay': 4,
-                'XML.Write': True,
-                "WriteCoorXmol": True})
-
-        atoms.set_calculator(siesta)
-
-        e = atoms.get_potential_energy()
-        print("DFT potential energy", e)
-
-        freq = np.arange(0.0, 25.0, 0.05)
         lr = siesta_lrtddft(label="siesta", jcutoff=7, iter_broadening=0.15,
                             xc_code='LDA,PZ', tol_loc=1e-6, tol_biloc=1e-7)
-        pmat = lr.get_polarizability(freq)
 
-        # plot polarizability
-        plt.plot(freq, pmat[0, 0, :].imag)
-        plt.show()
+        # run DFT calculation with Siesta
+        lr.get_ground_state(CH4)
+
+        # run TDDFT calculation with PyNAO
+        freq=np.arange(0.0, 25.0, 0.05)
+        pmat = lr.get_polarizability(freq) 
         """
         from pynao import tddft_iter
 
