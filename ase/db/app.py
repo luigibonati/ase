@@ -171,15 +171,27 @@ def add_project(db: Database) -> None:
     all_keys: Set[str] = set()
     for row in db.select(columns=['key_value_pairs'], include_data=False):
         all_keys.update(row._keys)
-    kd = {key: (key, '', '') for key in all_keys}
+
+    key_descriptions = {key: (key, '', '') for key in all_keys}
+
+    meta: Dict[str, Any] = db.metadata
+
+    if 'key_descriptions' in meta:
+        key_descriptions.update(meta['key_descriptions'])
+
+    default_columns = meta.get('default_columns')
+    if default_columns is None:
+        default_columns = all_columns[:]
+
     projects['default'] = {
         'name': 'default',
+        'title': meta.get('title', ''),
         'uid_key': 'id',
-        'key_descriptions': create_key_descriptions(kd),
+        'key_descriptions': create_key_descriptions(key_descriptions),
         'database': db,
         'row_to_dict_function': row_to_dict,
         'handle_query_function': handle_query,
-        'default_columns': all_columns[:],
+        'default_columns': default_columns,
         'search_template': 'ase/db/templates/search.html',
         'row_template': 'ase/db/templates/row.html',
         'table_template': 'ase/db/templates/table.html'}
