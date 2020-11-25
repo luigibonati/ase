@@ -298,9 +298,9 @@ class RamanData(RamanBase):
         """Print summary for given omega [eV]"""
         hnu = self.get_energies()
         intensities = self.get_absolute_intensities()
-        te = 0#int(np.log10(intensities.max())) - 2
+        te = int(np.log10(intensities.max())) - 2
         scale = 10**(-te)
-        print(scale, te)
+
         if not te:
             ts = ''
         elif te > -2 and te < 3:
