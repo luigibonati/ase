@@ -49,9 +49,9 @@ class siesta_lrtddft:
         from ase.calculators.siesta import Siesta
 
         if "fdf_arguments" not in kw.keys():
-                kw["fdf_arguments"] = {"COOP.Write": True,
-                                       "WriteDenchar": True,
-                                       "XML.Write": True}
+            kw["fdf_arguments"] = {"COOP.Write": True,
+                                   "WriteDenchar": True,
+                                   "XML.Write": True}
         else:
             for param in ["COOP.Write", "WriteDenchar", "XML.Write"]:
                 kw["fdf_arguments"][param] = True
