@@ -54,8 +54,10 @@ class RamanCalculatorBase:
 class StaticRamanCalculatorBase(RamanCalculatorBase):
     """Base class for Raman intensities derived from
     static polarizabilities"""
-    def __init__(self, atoms, exobj, exkwargs={}, *args, **kwargs):
+    def __init__(self, atoms, exobj, exkwargs=None, *args, **kwargs):
         self.exobj = exobj
+        if exkwargs is None:
+            exkwargs = {}
         self.exkwargs = exkwargs
         super().__init__(atoms, *args, **kwargs)
         
@@ -296,8 +298,9 @@ class RamanData(RamanBase):
         """Print summary for given omega [eV]"""
         hnu = self.get_energies()
         intensities = self.get_absolute_intensities()
-        te = int(np.log10(intensities.max())) - 2
+        te = 0#int(np.log10(intensities.max())) - 2
         scale = 10**(-te)
+        print(scale, te)
         if not te:
             ts = ''
         elif te > -2 and te < 3:

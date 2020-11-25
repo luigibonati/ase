@@ -30,7 +30,7 @@ class siesta_lrtddft:
         self.tddft = None
 
         # convert iter_broadening to Ha
-        if "iter_broadening" in self.lrtddft_params.keys():
+        if "iter_broadening" in self.lrtddft_params:
             self.lrtddft_params["iter_broadening"] /= un.Ha
 
         if self.initialize:
@@ -185,7 +185,7 @@ def pol2cross_sec(p, omg):
     """
     from ase.units import Ha, Bohr, alpha
 
-    c = 1 / alpha                           # speed of the light in au
-    omg = omg / Ha                          # to convert from eV to Hartree
-    sigma = 4 * np.pi * omg * p / (c)       # bohr**2
-    return sigma * (0.1 * Bohr)**2          # nm**2
+    c = 1 / alpha                      # speed of the light in au
+    omg /= Ha                          # to convert from eV to Hartree
+    sigma = 4 * np.pi * omg * p / (c)  # bohr**2
+    return sigma * (0.1 * Bohr)**2     # nm**2
