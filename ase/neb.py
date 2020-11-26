@@ -209,7 +209,7 @@ class BaseSplineMethod(NEBMethod):
         return state.precon.get_tangent(i)
 
     def add_image_force(self, state, tangential_force, tangent, imgforce,
-                        spring1, spring2, i):       
+                        spring1, spring2, i):
         # project out tangential component (Eqs 6 and 7 in Paper IV)
         imgforce -= tangential_force * tangent
 
@@ -354,9 +354,15 @@ class BaseNEB:
             n1 = n2
         return positions
 
-    def set_positions(self, positions, apply_adjust=True):
-        # if apply_adjust:
-        #     positions = self.neb_method.adjust_positions(positions)
+    def set_positions(self, positions, adjust_positions=True):
+        if adjust_positions:
+            # optional reparameterisation step: some NEB methods need to adjust
+            # positions e.g. string method does this to equispace the images)        
+            fit1 = self.spline_fit()
+            print('before', fit1.s)        
+            positions = self.neb_method.adjust_positions(positions)
+            fit2 = self.spline_fit()
+            print('after ', fit2.s)
         n1 = 0
         for image in self.images[1:-1]:
             n2 = n1 + self.natoms
@@ -364,7 +370,7 @@ class BaseNEB:
             n1 = n2
 
     def get_forces(self):
-        """Evaluate and return the forces."""
+        """Evaluate and return the forces."""        
         images = self.images
 
         if not self.allow_shared_calculator:
@@ -476,10 +482,10 @@ class BaseNEB:
                                                 spring2, i)
                 # compute the residual - with ID precon, this is just max force
                 residual = self.precon.get_residual(i, imgforce)
-                self.residuals.append(residual)         
+                self.residuals.append(residual)
 
             spring1 = spring2
-            
+                    
         return forces.reshape((-1, 3))
 
     def get_residual(self):
@@ -642,9 +648,9 @@ class DyNEB(BaseNEB):
                    'with dynamic relaxation.')
             raise ValueError(msg)
 
-    def set_positions(self, positions, apply_adjust=True):
+    def set_positions(self, positions):
         if not self.dynamic_relaxation:
-            return super().set_positions(positions, apply_adjust)
+            return super().set_positions(positions)
 
         n1 = 0
         for i, image in enumerate(self.images[1:-1]):
@@ -763,7 +769,7 @@ class NEB(DyNEB):
         allow_shared_calculator: bool
             Allow images to share the same calculator between them.
             Incompatible with parallelisation over images.
-        precon: string, :class:`ase.optimize.precon.Precon` instance or list of 
+        precon: string, :class:`ase.optimize.precon.Precon` instance or list of
             instances. If present, enable preconditioing as in Paper IV. This is
             possible using the 'spline' or 'string' methods only.
             Default is no preconditioning (precon=None), which is converted to
@@ -810,7 +816,7 @@ class NEBOptimizer(Optimizer):
                  C1=1e-2,
                  C2=2.0):
 
-        super().__init__(atoms=neb, restart=restart, 
+        super().__init__(atoms=neb, restart=restart,
                          logfile=logfile, trajectory=trajectory,
                          master=master,
                          append_trajectory=append_trajectory,
@@ -832,10 +838,8 @@ class NEBOptimizer(Optimizer):
     def force_function(self, X):
         positions = X.reshape((self.neb.nimages - 2) *
                               self.neb.natoms, 3)
-        self.neb.set_positions(positions, apply_adjust=False)
+        self.neb.set_positions(positions)
         forces = self.neb.get_forces().reshape(-1)
-        new_positions = self.neb.neb_method.adjust_positions(positions)
-        self.neb.set_positions(new_positions, apply_adjust=False)
         return forces
 
     def get_residual(self, F=None, X=None):
@@ -881,7 +885,7 @@ class NEBOptimizer(Optimizer):
         res = root(self.force_function,
                    self.neb.get_positions().reshape(-1),
                    method='krylov',
-                   options={'disp': True, 'fatol': fmax, 
+                   options={'disp': True, 'fatol': fmax,
                             'maxiter': self.max_steps},
                    callback=self.callback)
         return res.success
