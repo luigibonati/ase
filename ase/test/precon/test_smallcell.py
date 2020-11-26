@@ -9,14 +9,5 @@ def test_precon_warn():
         PreconLBFGS(Atoms('H'))
 
 
-@pytest.mark.skip('FAILS WITH PYAMG')
-@pytest.mark.slow
-@pytest.mark.parametrize('N', [1, 3])
-def test_precon(N):
-    atoms = bulk('Cu', cubic=True)
-    atoms = (N, N, N)
-    atoms.calc = EMT()
-    opt = PreconLBFGS(atoms, precon="auto")
-
 def test_precon_nowarn():
     PreconLBFGS(Atoms('100H'))
