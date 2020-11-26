@@ -915,7 +915,7 @@ class GenerateVaspInput:
         'mn12l': {
             'metagga': 'MN12L'
         },
-        'GAM': {
+        'gam': {
             'gga': 'GA'
         },
         'mn15l': {
