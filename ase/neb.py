@@ -433,9 +433,8 @@ class BaseNEB:
         if self.precon is None or isinstance(self.precon, str):
             self.precon = PreconImages(self.precon, images)
             
-        # apply preconditioners to transform forces. Also computes residuals,
-        # but these do not include projection of tangent
-        precon_forces, residuals = self.precon.apply(forces, index=slice(1, -1))
+        # apply preconditioners to transform forces
+        precon_forces = self.precon.apply(forces, index=slice(1, -1))
 
         # Save for later use in iterimages:
         self.energies = energies

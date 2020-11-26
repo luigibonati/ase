@@ -69,7 +69,7 @@ class Precon(ABC):
                 will be recalculated before the preconditioner matrix is
                 created. If False, they will be calculated only when they
                 do not currently have a value (ie, the first time this
-                function is called).            
+                function is called).
 
         Returns:
             P: A sparse scipy csr_matrix. BE AWARE that using
@@ -616,7 +616,8 @@ class SparseCoeffPrecon(SparsePrecon):
                 real_atoms = atoms.atoms
             if self.old_positions is None:
                 self.old_positions = real_atoms.positions
-            displacement, _ = find_mic(real_atoms.positions - self.old_positions,
+            displacement, _ = find_mic(real_atoms.positions -
+                                       self.old_positions,
                                        real_atoms.cell, real_atoms.pbc)
             self.old_positions = real_atoms.get_positions()
             max_abs_displacement = abs(displacement).max()
@@ -1051,7 +1052,8 @@ class Exp_FF(Exp, FF):
                 real_atoms = atoms.atoms
             if self.old_positions is None:
                 self.old_positions = real_atoms.positions
-            displacement, _ = find_mic(real_atoms.positions - self.old_positions,
+            displacement, _ = find_mic(real_atoms.positions -
+                                       self.old_positions,
                                        real_atoms.cell, real_atoms.pbc)
             self.old_positions = real_atoms.get_positions()
             max_abs_displacement = abs(displacement).max()
@@ -1287,22 +1289,20 @@ class PreconImages:
             index (slice, optional): Which images to include. Defaults to all.
 
         Returns:
-            precon_forces, residuals: arrays of preconditioned forces and norms
+            precon_forces: array of preconditioned forces
         """
         if index is None:
             index = slice(None)
         precon_forces = []
-        residuals = []
         for precon, image, forces in zip(self.precon[index],
                                          self.images[index],
                                          all_forces):
             f_vec = forces.reshape(-1)
-            pf_vec, residual = precon.apply(f_vec, image)
+            pf_vec, _ = precon.apply(f_vec, image)
             precon_forces.append(pf_vec.reshape(-1, 3))
-            residuals.append(residual)
           
         self.spline = self.spline_fit()
-        return np.array(precon_forces), np.array(residuals)
+        return np.array(precon_forces)
         
     def average_norm(self, i, j, dx):
         """Average norm between images i and j
@@ -1315,7 +1315,7 @@ class PreconImages:
         Returns:
             norm: norm of vector wrt average of precons at i and j
         """
-        return np.sqrt(0.5 * (self.precon[i].dot(dx, dx) + 
+        return np.sqrt(0.5 * (self.precon[i].dot(dx, dx) +
                               self.precon[j].dot(dx, dx)))
     
     def get_tangent(self, i):
@@ -1360,7 +1360,7 @@ class PreconImages:
         """Compute displacements wrt appropriate precon metric for each image
         
         Args:
-            positions (list or array, optional) - images positions. 
+            positions (list or array, optional) - images positions.
                 Shape either (nimages * natoms, 3) or ((nimages-2)*natoms, 3)
 
         Returns:
@@ -1382,10 +1382,10 @@ class PreconImages:
                              [self.images[-1].positions])
         assert len(positions) == len(self.images)
         
-        x[0, :] = positions[0].reshape(-1)            
+        x[0, :] = positions[0].reshape(-1)
         for i in range(1, nimages):
             x[i, :] = positions[i].reshape(-1)
-            dx, _ = find_mic(positions[i] - positions[i-1],
+            dx, _ = find_mic(positions[i] - positions[i - 1],
                              self.images[i - 1].cell,
                              self.images[i - 1].pbc)
             dx = dx.reshape(-1)
@@ -1402,4 +1402,3 @@ class PreconImages:
         """
         s, x = self.get_coordinates(positions)
         return SplineFit(s, x)
-
