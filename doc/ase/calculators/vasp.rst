@@ -115,9 +115,10 @@ keyword         type       default value   description
 For parameters in the list without default value given, VASP will set
 the default value. Most of the parameters used in the VASP :file:`INCAR` file
 are allowed keywords. See the official `VASP manual`_ for more details.
+Input arguments specific to the `VTST add-ons`_ for VASP are also supported.
 
 .. _VASP manual: https://cms.mpi.univie.ac.at/vasp/vasp/vasp.html
-
+.. _VTST add-ons: https://theory.cm.utexas.edu/vtsttools/
 
 .. note::
 
