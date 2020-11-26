@@ -160,8 +160,10 @@ hf                          ``lhfcalc``, ``aexx``, ``aldac``,
 pbe0                        ``gga``, ``lhfcalc``
 b3lyp                       ``gga``, ``lhfcalc``, ``aexx``, ``aggax``,
                             ``aggac``, ``aldac``
-hse03, hse06, hsesol        ``gga``, ``lhfcalc``, ``hfscreen``
+hse03, hse06, hsesol        ``gga``, ``lhfcalc``, ``hfscreen``                          
 ==========================  =====================================
+
+Additional ``xc`` recipes are available for several of the recent functionals from the Truhlar group  (i.e. ``sogga``, ``soga11``, ``n12``, ``n12-sx``, ``mn12l``, ``gam``, ``hle17``, ``revm06l``, ``m06sx``), which require VASP to be patched with the `MN-VFM module <https://comp.chem.umn.edu/mn-vfm/>`_.
 
 It is possible for the user to temporarily add their own ``xc``
 recipes without modifying ASE, by updating a dictionary. For example,
