@@ -357,7 +357,7 @@ class BaseNEB:
     def set_positions(self, positions, adjust_positions=True):
         if adjust_positions:
             # optional reparameterisation step: some NEB methods need to adjust
-            # positions e.g. string method does this to equispace the images)        
+            # positions e.g. string method does this to equispace the images)
             positions = self.neb_method.adjust_positions(positions)
         n1 = 0
         for image in self.images[1:-1]:
@@ -366,7 +366,7 @@ class BaseNEB:
             n1 = n2
 
     def get_forces(self):
-        """Evaluate and return the forces."""        
+        """Evaluate and return the forces."""
         images = self.images
 
         if not self.allow_shared_calculator:
