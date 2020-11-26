@@ -5,7 +5,6 @@ import numpy as np
 import pytest
 
 from ase.calculators.morse import MorsePotential
-from ase.calculators.loggingcalc import LoggingCalculator
 from ase.optimize import BFGS, ODE12r
 from ase.optimize.precon import Exp
 from ase.build import bulk
@@ -17,7 +16,7 @@ from ase.utils.forcecurve import fit_images
 
 
 def calc():
-    return LoggingCalculator(MorsePotential(A=4.0, epsilon=1.0, r0=2.55))
+    return MorsePotential(A=4.0, epsilon=1.0, r0=2.55)
 
 
 @pytest.fixture(scope='module')
@@ -119,6 +118,12 @@ def ref_vacancy(_ref_vacancy_global):
                           ('string', NEBOptimizer, 'Exp', 'ODE')])
 def test_neb_methods(method, optimizer, precon,
                      optmethod, ref_vacancy, setup_images):
+    
+    fmax_history = []
+    
+    def save_fmax_history(mep):
+        fmax_history.append(mep.get_residual())
+    
     # unpack the reference result
     Ef_ref, dE_ref, saddle_ref = ref_vacancy
 
@@ -133,7 +138,7 @@ def test_neb_methods(method, optimizer, precon,
         opt = optimizer(mep, method=optmethod)
     else:
         opt = optimizer(mep)
-    opt.fmax_history = []
+    opt.attach(save_fmax_history, 1, mep)
     opt.run(fmax=1e-2, steps=500)
 
     nebtools = NEBTools(images)
@@ -143,21 +148,10 @@ def test_neb_methods(method, optimizer, precon,
 
     forcefit = fit_images(images)
 
-    # retain biggest force across all images
-    fmax_history = list(np.max([mep.images[i].calc.fmax['(none)']
-                               for i in range(1, mep.nimages - 1)],
-                               axis=0))
-
-    # add up walltime across images
-    walltime = list(np.sum([mep.images[i].calc.fmax['(none)']
-                           for i in range(1, mep.nimages - 1)],
-                           axis=0))
-
     output_dir = os.path.dirname(__file__)
     with open(f'{output_dir}/MEP_{method}_{optimizer.__name__}_{optmethod}'
               f'_{precon}.json', 'w') as f:
         json.dump({'fmax_history': fmax_history,
-                   'walltime': walltime,
                    'method': method,
                    'optmethod': optmethod,
                    'precon': precon,
@@ -198,7 +192,6 @@ def test_precon_initialisation(setup_images):
     mep = NEB(images, method='spline', precon='Exp')
     mep.get_forces()
     assert len(mep.precon) == len(mep.images)
-    assert len(set(mep.precon)) == len(mep.precon)
     assert mep.precon[0].mu == mep.precon[1].mu
 
 
@@ -221,14 +214,15 @@ def test_spline_fit(setup_images):
     images, _, _ = setup_images
     neb = NEB(images)
     neb.get_forces()  # trigger precon assembly
-    s, x, x_spline, dx_ds_spline, d2x_ds2_spline = neb.spline_fit()
+    s, x = neb.precon.get_coordinates()
+    fit = neb.spline_fit()
     
     # check spline points are equally spaced
-    assert np.allclose(s, np.linspace(0, 1, len(images)))
+    assert np.allclose(fit.s, np.linspace(0, 1, len(images)))
     
     # check spline matches target at fit points
-    assert np.allclose(x_spline(s), x)
+    assert np.allclose(fit.x(s), x)
     
     # ensure derivative is smooth across central fit point
     eps = 1e-4
-    assert np.allclose(dx_ds_spline(s[2] + eps), dx_ds_spline(s[2] + eps))
+    assert np.allclose(fit.dx_ds(s[2] + eps), fit.dx_ds(s[2] + eps))
