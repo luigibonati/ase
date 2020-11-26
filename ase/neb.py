@@ -358,11 +358,7 @@ class BaseNEB:
         if adjust_positions:
             # optional reparameterisation step: some NEB methods need to adjust
             # positions e.g. string method does this to equispace the images)        
-            fit1 = self.spline_fit()
-            print('before', fit1.s)        
             positions = self.neb_method.adjust_positions(positions)
-            fit2 = self.spline_fit()
-            print('after ', fit2.s)
         n1 = 0
         for image in self.images[1:-1]:
             n2 = n1 + self.natoms
