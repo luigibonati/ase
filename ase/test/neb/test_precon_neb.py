@@ -64,8 +64,6 @@ def _setup_images_global():
         image = initial.copy()
         image.calc = calc()
         images.append(image)
-        # TODO: rattle images to make test harder!
-        # image.rattle()
     images.append(final)
 
     neb = NEB(images)
@@ -118,28 +116,28 @@ def ref_vacancy(_ref_vacancy_global):
                           ('string', NEBOptimizer, 'Exp', 'ODE')])
 def test_neb_methods(method, optimizer, precon,
                      optmethod, ref_vacancy, setup_images):
-    
-    fmax_history = []
-    
-    def save_fmax_history(mep):
-        fmax_history.append(mep.get_residual())
-    
     # unpack the reference result
     Ef_ref, dE_ref, saddle_ref = ref_vacancy
 
     # now relax the MEP for comparison
     images, _, _ = setup_images
+    
+    fmax_history = []
+    
+    def save_fmax_history(mep):
+        fmax_history.append(mep.get_residual())
 
     k = 0.1
     if precon == 'Exp':
         k = 0.01
     mep = NEB(images, k=k, method=method, precon=precon)
+
     if optmethod is not None:
         opt = optimizer(mep, method=optmethod)
     else:
         opt = optimizer(mep)
     opt.attach(save_fmax_history, 1, mep)
-    opt.run(fmax=1e-2, steps=500)
+    opt.run(fmax=1e-2)
 
     nebtools = NEBTools(images)
     Ef, dE = nebtools.get_barrier(fit=False)
@@ -213,16 +211,14 @@ def test_precon_assembly(setup_images):
 def test_spline_fit(setup_images):
     images, _, _ = setup_images
     neb = NEB(images)
-    neb.get_forces()  # trigger precon assembly
-    s, x = neb.precon.get_coordinates()
     fit = neb.spline_fit()
     
     # check spline points are equally spaced
     assert np.allclose(fit.s, np.linspace(0, 1, len(images)))
     
     # check spline matches target at fit points
-    assert np.allclose(fit.x(s), x)
+    assert np.allclose(fit.x(fit.s), fit.x_data)
     
     # ensure derivative is smooth across central fit point
     eps = 1e-4
-    assert np.allclose(fit.dx_ds(s[2] + eps), fit.dx_ds(s[2] + eps))
+    assert np.allclose(fit.dx_ds(fit.s[2] + eps), fit.dx_ds(fit.s[2] + eps))

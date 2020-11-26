@@ -1213,6 +1213,7 @@ class SplineFit:
     """
     def __init__(self, s, x):
         self._s = s
+        self._x_data = x
         self._x = CubicSpline(self._s, x, bc_type='not-a-knot')
         self._dx_ds = self._x.derivative()
         self._d2x_ds2 = self._x.derivative(2)
@@ -1220,6 +1221,10 @@ class SplineFit:
     @property
     def s(self):
         return self._s
+    
+    @property
+    def x_data(self):
+        return self._x_data
         
     @property
     def x(self):

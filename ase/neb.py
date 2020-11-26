@@ -435,7 +435,7 @@ class BaseNEB:
             
         # apply preconditioners to transform forces. Also computes residuals,
         # but these do not include projection of tangent
-        forces, residuals = self.precon.apply(forces, index=slice(1, -1))
+        precon_forces, residuals = self.precon.apply(forces, index=slice(1, -1))
 
         # Save for later use in iterimages:
         self.energies = energies
@@ -455,9 +455,11 @@ class BaseNEB:
             spring2 = state.spring(i)
             tangent = self.neb_method.get_tangent(state, spring1, spring2, i)
 
-            imgforce = forces[i - 1]
-            # Get overlap between PES-derived force and tangent
-            tangential_force = np.vdot(imgforce, tangent)
+            # Get overlap between full PES-derived force and tangent
+            tangential_force = np.vdot(forces[i - 1], tangent)
+            
+            # from now on we use the preconditioned forces (equal for precon=ID)
+            imgforce = precon_forces[i - 1]
 
             if i == self.imax and self.climb:
                 """The climbing image, imax, is not affected by the spring
@@ -473,13 +475,11 @@ class BaseNEB:
                 self.neb_method.add_image_force(state, tangential_force,
                                                 tangent, imgforce, spring1,
                                                 spring2, i)
-                # compute the residual - without precon, this is max abs force
+                # compute the residual - with ID precon, this is just max force
                 residual = self.precon.get_residual(i, imgforce)
-                self.residuals.append(residual)             
+                self.residuals.append(residual)         
 
             spring1 = spring2
-            
-        print(self.residuals)
             
         return forces.reshape((-1, 3))
 
@@ -862,7 +862,7 @@ class NEBOptimizer(Optimizer):
         self.call_observers()
         self.nsteps += 1
     
-    def run_ode(self, fmax, steps):
+    def run_ode(self, fmax):
         try:
             ode12r(self.force_function,
                    self.neb.get_positions().reshape(-1),
@@ -870,7 +870,7 @@ class NEBOptimizer(Optimizer):
                    rtol=self.rtol,
                    C1=self.C1,
                    C2=self.C2,
-                   steps=steps,
+                   steps=self.max_steps,
                    verbose=self.verbose,
                    callback=self.callback,
                    residual=self.get_residual)
@@ -878,17 +878,18 @@ class NEBOptimizer(Optimizer):
         except OptimizerConvergenceError:
             return False
 
-    def run_krylov(self, fmax, steps):
+    def run_krylov(self, fmax):
         res = root(self.force_function,
                    self.neb.get_positions().reshape(-1),
                    method='krylov',
-                   options={'disp': True, 'fatol': fmax, 'maxiter': steps},
+                   options={'disp': True, 'fatol': fmax, 
+                            'maxiter': self.max_steps},
                    callback=self.callback)
         return res.success
                 
-    def run_static(self, fmax, steps):
+    def run_static(self, fmax):
         X = self.neb.get_positions().reshape(-1)
-        for step in range(steps):
+        for step in range(self.max_steps):
             F = self.neb.force_function(X)
             if self.neb.get_residual() <= fmax:
                 return True
@@ -905,14 +906,16 @@ class NEBOptimizer(Optimizer):
         fmax - desired force tolerance
         steps - maximum number of steps
         """
+        if steps:
+            self.max_steps = steps
         if method is None:
             method = self.method
         if method == 'ode':
-            return self.run_ode(fmax, steps)
+            return self.run_ode(fmax)
         elif method == 'krylov':
-            return self.run_krylov(fmax, steps)
+            return self.run_krylov(fmax)
         elif method == 'static':
-            return self.run_static(fmax, steps)
+            return self.run_static(fmax)
         else:
             raise ValueError(f'unknown method: {self.method}')
 
