@@ -185,7 +185,6 @@ def test_complex_key_val():
         'f_int_array="_JSON [[1, 2], [3, 4]]" '
         'f_bool_bare '
         'f_bool_value=F '
-        'f_irregular_shape="_JSON [[1, 2, 3], [4, 5]]" '
         'f_dict={_JSON {"a" : 1}} '
     )
 
@@ -230,7 +229,6 @@ def test_complex_key_val():
         'f_int_array': np.array([[1, 2], [3, 4]]),
         'f_bool_bare': True,
         'f_bool_value': False,
-        'f_irregular_shape': np.array([[1, 2, 3], [4, 5]], object),
         'f_dict': {"a": 1}
     }
 
