@@ -8,6 +8,7 @@ import numpy as np
 from ase.calculators.calculator import (Calculator, all_changes,
                                         PropertyNotImplementedError)
 import ase.units as units
+from ase.stress import full_3x3_to_voigt_6_stress
 
 
 def actualunixsocketname(name):
@@ -671,7 +672,6 @@ class SocketIOCalculator(Calculator):
         results = self.server.calculate(atoms)
         virial = results.pop('virial')
         if self.atoms.cell.rank == 3 and any(self.atoms.pbc):
-            from ase.constraints import full_3x3_to_voigt_6_stress
             vol = atoms.get_volume()
             results['stress'] = -full_3x3_to_voigt_6_stress(virial) / vol
         self.results.update(results)

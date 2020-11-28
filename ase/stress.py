@@ -1,5 +1,6 @@
 import numpy as np
 
+
 # The indices of the full stiffness matrix of (orthorhombic) interest
 voigt_notation = [(0, 0), (1, 1), (2, 2), (1, 2), (0, 2), (0, 1)]
 
@@ -18,7 +19,6 @@ def voigt_6_to_full_3x3_strain(strain_vector):
     return np.transpose([[1.0 + e1, 0.5 * e6, 0.5 * e5],
                          [0.5 * e6, 1.0 + e2, 0.5 * e4],
                          [0.5 * e5, 0.5 * e4, 1.0 + e3]])
-
 
 
 def voigt_6_to_full_3x3_stress(stress_vector):
