@@ -3,14 +3,16 @@ Module for povray file format support.
 
 See http://www.povray.org/ for details on the format.
 """
+from collections.abc import Mapping, Sequence
+from subprocess import check_call, DEVNULL
+from os import unlink
+from pathlib import Path
+
 import numpy as np
 
 from ase.io.utils import PlottingVariables
 from ase.constraints import FixAtoms
 from ase import Atoms
-from subprocess import check_call, DEVNULL
-from os import unlink
-from pathlib import Path
 
 
 def pa(array):
@@ -793,20 +795,22 @@ class POVRAYIsosurface:
         return mesh2
 
 
-def write_pov(filename, atoms, generic_projection_settings={},
-              povray_settings={}, isosurface_data=None):
+def write_pov(filename, atoms, generic_projection_settings=None,
+              povray_settings=None, isosurface_data=None):
 
-    if isinstance(atoms, list):
-        assert len(atoms) == 1
-        atoms = atoms[0]
+    if generic_projection_settings is None:
+        generic_projection_settings = {}
+
+    if povray_settings is None:
+        povray_settings = {}
 
     pvars = PlottingVariables(atoms, scale=1.0, **generic_projection_settings)
     pov_obj = POVRAY.from_PlottingVariables(pvars, **povray_settings)
 
-    if type(isosurface_data) is dict:
+    if isinstance(isosurface_data, Mapping):
         pov_obj.isosurfaces = [POVRAYIsosurface.from_POVRAY(
             pov_obj, **isosurface_data)]
-    elif type(isosurface_data) is list:
+    elif isinstance(isosurface_data, Sequence):
         pov_obj.isosurfaces = [POVRAYIsosurface.from_POVRAY(
             pov_obj, **isodata) for isodata in isosurface_data]
 

@@ -125,7 +125,7 @@ class Render:
             print(" | Writing files for image", filename, "...")
             plotting_var_settings['radii'] = radii_scale*self.gui.get_covalent_radii()
             renderer = write_pov(
-                filename, atoms, 
+                filename, atoms,
                 generic_projection_settings=plotting_var_settings,
                 povray_settings=povray_settings)
             if self.run_povray_widget.value:
