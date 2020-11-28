@@ -163,10 +163,14 @@ class siesta_raman(siesta_lrtddft):
         """
         pmat = self.get_polarizability(self.omega, Eext=np.array([1.0, 1.0, 1.0]))
 
-        # take care about units, please
         # Specific for raman calls, it expects just the tensor for a single
         # frequency and need only the real part
+
         # For static raman, imaginary part is zero??
+        # Answer from Michael Walter: Yes, in the case of finite systems you may
+        # choose the wavefunctions to be real valued. Then also the density
+        # response function and hence the polarizability are real.
+
         # Convert from atomic units to e**2 Ang**2/eV
         return pmat[:, :, 0].real * (un.Bohr**2) / un.Ha
  
