@@ -258,19 +258,58 @@ def scdm(pseudo_nkG, kpts, fixed_k, Nw):
     return C_kul, U_kww
 
 
-def init_orbitals(atoms, ntot, rng=np.random):
-    """Place d-orbitals for every atom that has some in the valence states
-        and then random s-orbitals close to the other atoms (< 1.5Å).
-       'atoms': ASE Atoms object
-       'ntot': total number of needed orbitals
-       'rng': generator random numbers"""
+def arbitrary_s_orbitals(atoms, Ns, rng=np.random):
+    """
+    Generate a list of Ns randomly placed s-orbitals close to at least
+    one atom (< 1.5Å).
+    The format of the list is the one required by GPAW in initial_wannier().
+    """
+    # Create dummy copy of the Atoms object and dummy H atom
+    tmp_atoms = atoms.copy()
+    tmp_atoms.append('H')
+    s_pos = tmp_atoms.get_scaled_positions()
 
-    # list all the elements that should have occupied d-orbitals
+    orbs = []
+    for i in range(0, Ns):
+        fine = False
+        while not fine:
+            # Random position
+            x, y, z = rng.rand(3)
+            s_pos[-1] = [x, y, z]
+            tmp_atoms.set_scaled_positions(s_pos)
+
+            # Use dummy H atom to measure distance from any other atom
+            dists = tmp_atoms.get_distances(
+                a=-1,
+                indices=range(atoms.get_global_number_of_atoms()))
+
+            # Check if it is close to at least one atom
+            if (dists < 1.5).any():
+                fine = True
+
+        orbs.append([[x, y, z], 0, 1])
+    return orbs
+
+
+def init_orbitals(atoms, ntot, rng=np.random):
+    """
+    Place d-orbitals for every atom that has some in the valence states
+    and then random s-orbitals close to at least one atom (< 1.5Å).
+    'atoms': ASE Atoms object
+    'ntot': total number of needed orbitals
+    'rng': generator random numbers
+    """
+
+    # List all the elements that should have occupied d-orbitals
     # in the valence states (according to GPAW setups)
     d_metals = set(list(range(21, 31)) + list(range(39, 52)) +
         list(range(57, 84)) + list(range(89, 113)))
     orbs = []
+
+    # Start with zero orbitals
     No = 0
+
+    # Add d orbitals to each d-metal
     for i, z in enumerate(atoms.get_atomic_numbers()):
         if z in d_metals:
             No_new = No + 5
@@ -279,23 +318,9 @@ def init_orbitals(atoms, ntot, rng=np.random):
                 No = No_new
 
     if No < ntot:
-        # add random s-like orbitals if there are not enough yet
+        # Add random s-like orbitals if there are not enough yet
         Ns = ntot - No
-        tmp_atoms = atoms.copy()
-        tmp_atoms.append('H')
-        s_pos = tmp_atoms.get_scaled_positions()
-        for i in range(0, Ns):
-            fine = False
-            while not fine:
-                x, y, z = rng.rand(3)
-                s_pos[-1] = [x, y, z]
-                tmp_atoms.set_scaled_positions(s_pos)
-                dists = tmp_atoms.get_distances(
-                    a=-1,
-                    indices=range(atoms.get_global_number_of_atoms()))
-                if (dists < 1.5).any():
-                    fine = True
-            orbs.append([[x, y, z], 0, 1])
+        orbs += arbitrary_s_orbitals(atoms, Ns, rng)
 
     assert sum([orb[1] * 2 + 1 for orb in orbs]) == ntot
     return orbs
@@ -890,12 +915,17 @@ class Wannier:
         return wanniergrid
 
     def write_cube(self, index, fname, repeat=None, real=True):
-        """Dump specified Wannier function to a cube file.
+        """
+        Dump specified Wannier function to a cube file.
 
-        ``index``:  Integer, index of the Wannier function to save.
-        ``repeat``: Array of integer, repeat supercell and Wannier function.
-        ``real``:   If True only save the absolute value, otherwise also save the
-                    complex phase in a separate file."""
+        Arguments:
+
+          ``index``: Integer, index of the Wannier function to save.
+
+          ``repeat``: Array of integer, repeat supercell and Wannier function.
+
+          ``real``: If True only save the absolute value, otherwise also save the
+            complex phase in a separate file."""
         from ase.io import write
 
         # Default size of plotting cell is the one corresponding to k-points.

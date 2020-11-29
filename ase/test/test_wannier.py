@@ -1,5 +1,6 @@
 import pytest
 import numpy as np
+from ase import Atoms
 from ase.transport.tools import dagger, normalize
 from ase.dft.kpoints import monkhorst_pack
 from ase.build import molecule, bulk
@@ -9,7 +10,7 @@ from ase.lattice import CUB, FCC, BCC, TET, BCT, ORC, ORCF, ORCI, ORCC, HEX, \
 from ase.dft.wannier import gram_schmidt, lowdin, random_orthogonal_matrix, \
     neighbor_k_search, calculate_weights, steepest_descent, md_min, \
     rotation_from_projection, init_orbitals, scdm, Wannier, \
-    search_for_gamma_point
+    search_for_gamma_point, arbitrary_s_orbitals
 
 
 calc = pytest.mark.calculator
@@ -582,6 +583,33 @@ def test_nwannier_auto(wan, ti_calculator):
     assert Nw1 < Nw2
 
 
+def test_arbitrary_s_orbitals(rng):
+    atoms = Atoms('3H', positions=[[0, 0, 0],
+                                   [1, 1.5, 1],
+                                   [2, 3, 0]])
+    Ns = 5
+    orbs = arbitrary_s_orbitals(atoms, 10, rng)
+
+    atoms.append('H')
+    s_pos = atoms.get_scaled_positions()
+    for orb in orbs:
+        # Test if they are actually s-orbitals
+        assert orb[1] == 0
+
+        # Read random position
+        x, y, z = orb[0]
+        s_pos[-1] = [x, y, z]
+        atoms.set_scaled_positions(s_pos)
+
+        # Use dummy H atom to measure distance from any other atom
+        dists = atoms.get_distances(
+            a=-1,
+            indices=range(atoms.get_global_number_of_atoms() - 1))
+
+        # Test that the s-orbital is close to at least one atom
+        assert (dists < 1.5).any()
+
+
 def test_init_orbitals(rng):
     atoms = molecule('H2')
     atoms.center(vacuum=3.)
@@ -618,6 +646,7 @@ def test_search_for_gamma_point():
                        [1.5, 2.5, 0.5]]
     gamma_idx = search_for_gamma_point(list_without_gamma)
     assert gamma_idx is None
+
 
 def test_scdm(ti_calculator):
     calc = ti_calculator
