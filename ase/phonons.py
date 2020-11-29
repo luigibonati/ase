@@ -171,22 +171,12 @@ class Displacement:
         atoms_N.calc = self.calc
 
         # Do calculation on equilibrium structure
-        filename = f'{self.name}.eq.json'
-
-        name = f'{self.name}.eq'
-        with self.cache.lock(name) as handle:
+        with self.cache.lock(f'{self.name}.eq') as handle:
             if handle is not None:
-            #fd = opencew_text(filename)
-            #if fd is not None:
-                # Call derived class implementation of __call__
                 output = self(atoms_N)
                 # Write output to file
                 if world.rank == 0:
                     handle.save(output)
-                #write_json(fd, output)
-                #sys.stdout.write('Writing %s\n' % filename)
-                #fd.close()
-            #sys.stdout.flush()
 
         # Positions of atoms to be displaced in the reference cell
         natoms = len(self.atoms)
@@ -197,28 +187,18 @@ class Displacement:
         for a in self.indices:
             for i in range(3):
                 for sign in [-1, 1]:
-                    # Filename for atomic displacement
                     key = '%s.%d%s%s' % (self.name, a, 'xyz'[i], ' +-'[sign])
-                    filename = f'{key}.json'
-
-                    # Wait for ranks before checking for file
-                    # barrier()
                     with self.cache.lock(key) as handle:
                         if handle is None:
                             continue
-                        fd = opencew_text(filename)
-                    #if fd is None:
-                        # Skip if already done
-                        #continue
+                        try:
+                            atoms_N.positions[offset + a, i] = \
+                                pos[a, i] + sign * self.delta
 
-                        # Update atomic positions
-                        atoms_N.positions[offset + a, i] = \
-                            pos[a, i] + sign * self.delta
-
-                        self.calculate(atoms_N, fd, handle)
-
-                        # Return to initial positions
-                        atoms_N.positions[offset + a, i] = pos[a, i]
+                            self.calculate(atoms_N, handle)
+                        finally:
+                            # Return to initial positions
+                            atoms_N.positions[offset + a, i] = pos[a, i]
 
     def clean(self):
         """Delete generated json files."""
@@ -334,11 +314,10 @@ class Phonons(Displacement):
 
         return forces
 
-    def calculate(self, atoms_N, fd, handle):
+    def calculate(self, atoms_N, handle):
         output = self(atoms_N)
         if world.rank == 0:
             handle.save(output)
-            #write_json(fd, output)
 
     def check_eq_forces(self):
         """Check maximum size of forces in the equilibrium structure."""

@@ -26,8 +26,9 @@ def test_names():
     """Test different gs vs excited name. Tests also default names."""
     # do a Vibrations calculation first
     atoms = H2Morse()
-    Vibrations(atoms).run()
-    assert os.path.isfile('vib.0x-.json')
+    vib = Vibrations(atoms)
+    vib.run()
+    assert 'vib.0x-' in vib.cache
 
     # do a Resonant Raman calculation
     rmc = ResonantRamanCalculator(atoms, H2MorseExcitedStatesCalculator,
@@ -35,9 +36,11 @@ def test_names():
     rmc.run()
     # remove the corresponding pickle file,
     # then Placzek can not anymore use it for vibrational properties
-    assert os.path.isfile('raman.0x-.json')
-    os.remove('raman.0x-.json')  # make sure this is not used
-        
+
+    key = 'raman.0x-'
+    assert key in rmc.cache
+    del rmc.cache[key]  # make sure this is not used
+
     om = 1
     gam = 0.1
     pz = Placzek(atoms, H2MorseExcitedStates,

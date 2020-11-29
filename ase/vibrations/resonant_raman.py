@@ -53,7 +53,7 @@ class ResonantRamanCalculator(RamanCalculatorBase, Vibrations):
         self.overlap = overlap
         super().__init__(atoms, *args, exext=exext, **kwargs)
 
-    def calculate(self, atoms, fd, handle):
+    def calculate(self, atoms, handle):
         """Call ground and excited state calculation"""
         assert atoms == self.atoms  # XXX action required
         self.timer.start('Ground state')

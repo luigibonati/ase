@@ -58,9 +58,9 @@ class StaticRamanCalculatorBase(RamanCalculatorBase):
         self.exobj = exobj
         super().__init__(atoms, *args, **kwargs)
 
-    def calculate(self, atoms, fd, handle):
+    def calculate(self, atoms, handle):
         # write forces
-        super().calculate(atoms, fd, handle)
+        super().calculate(atoms, handle)
         # write static polarizability
         fname = handle.key + self.exext
         np.savetxt(fname, self.exobj().calculate(atoms))

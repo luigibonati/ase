@@ -12,7 +12,6 @@ from ase.io.trajectory import Trajectory
 from ase.io.jsonio import read_json, write_json
 from ase.parallel import world, paropen
 
-from ase.utils import opencew_text
 from ase.utils.filecache import MultiFileJSONCache
 from ase.calculators.singlepoint import SinglePointCalculator
 
@@ -134,9 +133,7 @@ class Vibrations:
             with self.cache.lock(name) as handle:
                 if handle is None:
                     continue
-                fd = opencew_text(filename)
-                #if fd is not None:
-                self.calculate(atoms, fd, handle)
+                self.calculate(atoms, handle)
 
     def iterdisplace(self, inplace=False):
         """Yield name and atoms object for initial and displaced structures.
@@ -172,7 +169,7 @@ class Vibrations:
                         disp = ndis * sign * self.delta
                         yield dispName, a, i, disp
 
-    def calculate(self, atoms, fd, handle):
+    def calculate(self, atoms, handle):
         forces = self.calc.get_forces(atoms)
         if self.ir:
             dipole = self.calc.get_dipole_moment(atoms)
