@@ -25,7 +25,7 @@ def gram_schmidt(U):
     """Orthonormalize columns of U according to the Gram-Schmidt procedure."""
     for i, col in enumerate(U.T):
         for col2 in U.T[:i]:
-            col -= col2 * np.dot(col2.conj(), col)
+            col -= col2 * (col2.conj() @ col)
         col /= np.linalg.norm(col)
 
 
@@ -36,7 +36,7 @@ def lowdin(U, S=None):
     """
 
     L, s, R = np.linalg.svd(U, full_matrices=False)
-    U[:] = np.dot(L, R)
+    U[:] = L @ R
 
 
 def neighbor_k_search(k_c, G_c, kpt_kc, tol=1e-4):
@@ -59,7 +59,7 @@ def calculate_weights(cell_cc, normalize=True):
         If normalized they lose the physical dimension."""
     alldirs_dc = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1],
                            [1, 1, 0], [1, 0, 1], [0, 1, 1]], dtype=int)
-    g = np.dot(cell_cc, cell_cc.T)
+    g = cell_cc @ cell_cc.T
     # NOTE: Only first 3 of following 6 weights are presently used:
     w = np.zeros(6)
     w[0] = g[0, 0] - g[0, 1] - g[0, 2]
@@ -185,15 +185,15 @@ def rotation_from_projection(proj_nw, fixed, ortho=True):
         proj_uw = proj_nw[M:]
 
         # Obtain eigenvalues and eigevectors matrix
-        eig_w, C_ww = np.linalg.eigh(np.dot(dag(proj_uw), proj_uw))
+        eig_w, C_ww = np.linalg.eigh(dag(proj_uw) @ proj_uw)
 
         # Sort columns of eigenvectors matrix according to the eigenvalues
         # magnitude, select only the L largest ones. Then use them to obtain
         # the parameter C matrix.
-        C_ul[:] = np.dot(proj_uw, C_ww[:, np.argsort(-eig_w.real)[:L]])
+        C_ul[:] = proj_uw @ C_ww[:, np.argsort(- eig_w.real)[:L]]
 
         # Compute the section of the rotation matrix about 'non fixed' states
-        U_ww[M:] = np.dot(dag(C_ul), proj_uw)
+        U_ww[M:] = dag(C_ul) @ proj_uw
         normalize(C_ul)
     else:
         # If there are no extra degrees of freedom we do not need any parameter
@@ -207,6 +207,7 @@ def rotation_from_projection(proj_nw, fixed, ortho=True):
         normalize(U_ww)
 
     return U_ww, C_ul
+
 
 def search_for_gamma_point(kpts):
     """Returns index of Gamma point in a list of k-points."""
@@ -303,7 +304,7 @@ def init_orbitals(atoms, ntot, rng=np.random):
     # List all the elements that should have occupied d-orbitals
     # in the valence states (according to GPAW setups)
     d_metals = set(list(range(21, 31)) + list(range(39, 52)) +
-        list(range(57, 84)) + list(range(89, 113)))
+                   list(range(57, 84)) + list(range(89, 113)))
     orbs = []
 
     # Start with zero orbitals
@@ -586,7 +587,7 @@ class Wannier:
         for k, M in enumerate(self.fixedstates_k):
             self.V_knw[k, :M] = self.U_kww[k, :M]
             if M < self.nwannier:
-                self.V_knw[k, M:] = np.dot(self.C_kul[k], self.U_kww[k, M:])
+                self.V_knw[k, M:] = self.C_kul[k] @ self.U_kww[k, M:]
             # else: self.V_knw[k, M:] = 0.0
 
         # Calculate the Zk matrix from the large rotation matrix:
@@ -594,17 +595,18 @@ class Wannier:
         for d in range(self.Ndir):
             for k in range(self.Nk):
                 k1 = self.kklst_dk[d, k]
-                self.Z_dkww[d, k] = np.dot(dag(self.V_knw[k]), np.dot(
-                    self.Z_dknn[d, k], self.V_knw[k1]))
+                self.Z_dkww[d, k] = dag(self.V_knw[k]) \
+                    @ (self.Z_dknn[d, k] @ self.V_knw[k1])
 
         # Update the new Z matrix
         self.Z_dww = self.Z_dkww.sum(axis=1) / self.Nk
 
     def get_optimal_nwannier(self, nwrange=5, random_reps=5, tolerance=1e-6):
-        """The optimal value for 'nwannier', maybe
+        """
+        The optimal value for 'nwannier', maybe.
 
-        The optimal value is the one that gives the lowest average value for the
-        spread of the most delocalized Wannier function in the set.
+        The optimal value is the one that gives the lowest average value for
+        the spread of the most delocalized Wannier function in the set.
 
         ``nwrange``: number of different values to try for 'nwannier'.
 
@@ -674,7 +676,7 @@ class Wannier:
         """
         coord_wc = np.angle(self.Z_dww[:3].diagonal(0, 1, 2)).T / (2 * pi) % 1
         if not scaled:
-            coord_wc = np.dot(coord_wc, self.largeunitcell_cc)
+            coord_wc = coord_wc @ self.largeunitcell_cc
         return coord_wc
 
     def get_radii(self):
@@ -686,8 +688,8 @@ class Wannier:
           radius**2 = - >   | --- |   ln |Z|
                         --d \ 2pi /
         """
-        r2 = -np.dot(self.largeunitcell_cc.diagonal()**2 / (2 * pi)**2,
-                     np.log(abs(self.Z_dww[:3].diagonal(0, 1, 2))**2))
+        r2 = - (self.largeunitcell_cc.diagonal()**2 / (2 * pi)**2) \
+            @ np.log(abs(self.Z_dww[:3].diagonal(0, 1, 2))**2)
         return np.sqrt(r2)
 
     def get_spreads(self):
@@ -705,7 +707,7 @@ class Wannier:
         # compute weights without normalization, to keep physical dimension
         weight_d, _ = calculate_weights(self.largeunitcell_cc, normalize=False)
         Z2_dw = np.abs(self.Z_dww.diagonal(0, 1, 2))**2
-        spread_w = - np.dot(np.log(Z2_dw).T, weight_d).real / (2 * np.pi)**2
+        spread_w = - (np.log(Z2_dw).T @ weight_d).real / (2 * np.pi)**2
         return spread_w
 
     def get_spectral_weight(self, w):
@@ -736,7 +738,7 @@ class Wannier:
         vectors of the small cell.
         """
         for kpt_c, U_ww in zip(self.kpt_kc, self.U_kww):
-            U_ww[:, w] *= np.exp(2.j * pi * np.dot(np.array(R), kpt_c))
+            U_ww[:, w] *= np.exp(2.j * pi * (np.array(R) @ kpt_c))
         self.update()
 
     def translate_to_cell(self, w, cell):
@@ -766,7 +768,7 @@ class Wannier:
                      self.kptgrid / (2 * pi))
         trans_wc = np.array(cell)[None] - np.floor(scaled_wc)
         for kpt_c, U_ww in zip(self.kpt_kc, self.U_kww):
-            U_ww *= np.exp(2.j * pi * np.dot(trans_wc, kpt_c))
+            U_ww *= np.exp(2.j * pi * (trans_wc @ kpt_c))
         self.update()
 
     def distances(self, R):
@@ -805,7 +807,7 @@ class Wannier:
         R = np.array([n1, n2, n3], float)
         H_ww = np.zeros([self.nwannier, self.nwannier], complex)
         for k, kpt_c in enumerate(self.kpt_kc):
-            phase = np.exp(-2.j * pi * np.dot(np.array(R), kpt_c))
+            phase = np.exp(-2.j * pi * (np.array(R) @ kpt_c))
             H_ww += self.get_hamiltonian(k) * phase
         return H_ww / self.Nk
 
@@ -833,7 +835,7 @@ class Wannier:
                   k           k    k
         """
         eps_n = self.calc.get_eigenvalues(kpt=k, spin=self.spin)[:self.nbands]
-        return np.dot(dag(self.V_knw[k]) * eps_n, self.V_knw[k])
+        return (dag(self.V_knw[k]) * eps_n) @ self.V_knw[k]
 
     def get_hamiltonian_kpoint(self, kpt_c):
         """Get Hamiltonian at some new arbitrary k-vector
@@ -857,7 +859,7 @@ class Wannier:
                 for n3 in range(-N3, N3 + 1):
                     R = np.array([n1, n2, n3], float)
                     hop_ww = self.get_hopping(R)
-                    phase = np.exp(+2.j * pi * np.dot(R, kpt_c))
+                    phase = np.exp(+2.j * pi * (R @ kpt_c))
                     Hk += hop_ww * phase
         return Hk
 
@@ -894,7 +896,7 @@ class Wannier:
             if isinstance(index, int):
                 vec_n = self.V_knw[k, :, index]
             else:
-                vec_n = np.dot(self.V_knw[k], index)
+                vec_n = self.V_knw[k] @ index
 
             wan_G = np.zeros(dim, complex)
             for n, coeff in enumerate(vec_n):
@@ -905,7 +907,7 @@ class Wannier:
             for n1 in range(N1):
                 for n2 in range(N2):
                     for n3 in range(N3):  # sign?
-                        e = np.exp(-2.j * pi * np.dot([n1, n2, n3], kpt_c))
+                        e = np.exp(-2.j * pi * np.array([n1, n2, n3]) @ kpt_c)
                         wanniergrid[n1 * dim[0]:(n1 + 1) * dim[0],
                                     n2 * dim[1]:(n2 + 1) * dim[1],
                                     n3 * dim[2]:(n3 + 1) * dim[2]] += e * wan_G
@@ -924,8 +926,9 @@ class Wannier:
 
           ``repeat``: Array of integer, repeat supercell and Wannier function.
 
-          ``real``: If True only save the absolute value, otherwise also save the
-            complex phase in a separate file."""
+          ``real``: If True only save the absolute value, otherwise also save
+            the complex phase in a separate file.
+        """
         from ase.io import write
 
         # Default size of plotting cell is the one corresponding to k-points.
@@ -971,10 +974,10 @@ class Wannier:
         where w_i are weights."""
         if self.functional == 'std':
             a_d = np.sum(np.abs(self.Z_dww.diagonal(0, 1, 2))**2, axis=1)
-            fun = np.dot(a_d, self.weight_d).real
+            fun = (a_d @ self.weight_d).real
         elif self.functional == 'var':
             a_dw = np.abs(self.Z_dww.diagonal(0, 1, 2))**2
-            a_w = np.dot(a_dw.T, self.weight_d).real
+            a_w = (a_dw.T @ self.weight_d).real
             fun = np.sum(a_w) - self.nwannier * np.var(a_w)
             if self.verbose:
                 print(f'std: {np.sum(a_w):.4f}',
@@ -1012,8 +1015,8 @@ class Wannier:
 
         if self.functional == 'var':
             O_dw = np.abs(self.Z_dww.diagonal(0, 1, 2))**2
-            O_w = np.dot(O_dw.T, self.weight_d).real
-            O = np.sum(O_w)
+            O_w = (O_dw.T @ self.weight_d).real
+            O_sum = np.sum(O_w)
 
         dU = []
         dC = []
@@ -1042,27 +1045,26 @@ class Wannier:
                 Z_kww = self.Z_dkww[d]
 
                 if L > 0:
-                    Ctemp_nw += weight * np.dot(
-                        np.dot(Z_knn[k], V_knw[k1]) * diagZ_w.conj() +
-                        np.dot(dag(Z_knn[k2]), V_knw[k2]) * diagZ_w,
-                        dag(U_ww))
+                    Ctemp_nw += weight * (
+                        ((Z_knn[k] @ V_knw[k1]) * diagZ_w.conj() +
+                         (dag(Z_knn[k2]) @ V_knw[k2]) * diagZ_w) @ dag(U_ww))
 
                     if self.functional == 'var':
-                        Ctemp_nw += self.nwannier * 2 * O * weight * np.dot(
-                            np.dot(Z_knn[k], V_knw[k1]) * diagZ_w.conj() +
-                            np.dot(dag(Z_knn[k2]), V_knw[k2]) * diagZ_w,
+                        Ctemp_nw += self.nwannier * 2 * O_sum * weight * (
+                            ((Z_knn[k] @ V_knw[k1]) * diagZ_w.conj() +
+                             (dag(Z_knn[k2]) @ V_knw[k2]) * diagZ_w) @
                             dag(U_ww)) / Nw**2
 
-                        Ctemp_nw -= self.nwannier * 2 * weight * np.dot(
-                            np.dot(Z_knn[k], V_knw[k1]) * diagOZ_w.conj() +
-                            np.dot(dag(Z_knn[k2]), V_knw[k2]) * diagOZ_w,
+                        Ctemp_nw -= self.nwannier * 2 * weight * (
+                            ((Z_knn[k] @ V_knw[k1]) * diagOZ_w.conj() +
+                             (dag(Z_knn[k2]) @ V_knw[k2]) * diagOZ_w) @
                             dag(U_ww)) / Nw
 
                 temp = Zii_ww.T * Z_kww[k].conj() - Zii_ww * Z_kww[k2].conj()
                 Utemp_ww += weight * (temp - dag(temp))
 
                 if self.functional == 'var':
-                    Utemp_ww += (self.nwannier * 2 * O * weight *
+                    Utemp_ww += (self.nwannier * 2 * O_sum * weight *
                                  (temp - dag(temp)) / Nw**2)
 
                     temp = (OZii_ww.T * Z_kww[k].conj()
@@ -1076,7 +1078,7 @@ class Wannier:
                 # Ctemp now has same dimension as V, the gradient is in the
                 # lower-right (Nb-M) x L block
                 Ctemp_ul = Ctemp_nw[M:, M:]
-                G_ul = Ctemp_ul - np.dot(np.dot(C_ul, dag(C_ul)), Ctemp_ul)
+                G_ul = Ctemp_ul - ((C_ul @ dag(C_ul)) @ Ctemp_ul)
                 dC.append(G_ul.ravel())
 
         return np.concatenate(dU + dC)
@@ -1094,11 +1096,11 @@ class Wannier:
                 epsilon, Z = np.linalg.eigh(H)
                 # Z contains the eigenvectors as COLUMNS.
                 # Since H = iA, dU = exp(-A) = exp(iH) = ZDZ^d
-                dU = np.dot(Z * np.exp(1.j * epsilon), dag(Z))
+                dU = Z * np.exp(1.j * epsilon) @ dag(Z)
                 if U.dtype == float:
-                    U[:] = np.dot(U, dU).real
+                    U[:] = (U @ dU).real
                 else:
-                    U[:] = np.dot(U, dU)
+                    U[:] = U @ dU
 
         if updatecoeff:
             start = 0

@@ -587,7 +587,6 @@ def test_arbitrary_s_orbitals(rng):
     atoms = Atoms('3H', positions=[[0, 0, 0],
                                    [1, 1.5, 1],
                                    [2, 3, 0]])
-    Ns = 5
     orbs = arbitrary_s_orbitals(atoms, 10, rng)
 
     atoms.append('H')
@@ -642,8 +641,8 @@ def test_search_for_gamma_point():
     assert gamma_idx == 1
 
     list_without_gamma = [[-1.0, -1.0, -1.0],
-                       [0.1, 0.0, 0.0],
-                       [1.5, 2.5, 0.5]]
+                          [0.1, 0.0, 0.0],
+                          [1.5, 2.5, 0.5]]
     gamma_idx = search_for_gamma_point(list_without_gamma)
     assert gamma_idx is None
 
