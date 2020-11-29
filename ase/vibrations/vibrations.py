@@ -223,45 +223,25 @@ class Vibrations:
         assert self.method in ['standard', 'frederiksen']
         assert self.direction in ['central', 'forward', 'backward']
 
-        def load(fname, combined_data=None):
-            fname += '.json'
-            if combined_data is None:
-                with open(fname) as fd:
-                    f = read_json(fd)
-            else:
-                try:
-                    f = combined_data[op.basename(fname)]
-                except KeyError:
-                    f = combined_data[fname]  # Old version
-            if not hasattr(f, 'shape') and not hasattr(f, 'keys'):
-                # output from InfraRed
-                return f[0]
-            return f
-
         n = 3 * len(self.indices)
         H = np.empty((n, n))
         r = 0
 
         data = dict(self.cache)
-        print(set(data))
 
         if direction != 'central':
             feq = data['eq']
         for a in self.indices:
             for i in 'xyz':
-                #f'{a}{i}{sign}'
                 token = f'{self.name}.{a}{i}'
-                #name = '%s.%d%s' % (self.name, a, i)
-                #fminus, fplus = data[]
                 fminus = data[token + '-']
-                fplus = data[token + '+'] #load(name + '+', combined_data)
+                fplus = data[token + '+']
                 if self.method == 'frederiksen':
                     fminus[a] -= fminus.sum(0)
                     fplus[a] -= fplus.sum(0)
                 if self.nfree == 4:
-                    xxxx
-                    fminusminus = load(name + '--', combined_data)
-                    fplusplus = load(name + '++', combined_data)
+                    fminusminus = data[token + '--']
+                    fplusplus = data[token + '++']
                     if self.method == 'frederiksen':
                         fminusminus[a] -= fminusminus.sum(0)
                         fplusplus[a] -= fplusplus.sum(0)

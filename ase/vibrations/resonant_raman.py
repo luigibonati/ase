@@ -55,12 +55,11 @@ class ResonantRamanCalculator(RamanCalculatorBase, Vibrations):
 
     def calculate(self, atoms, fd, handle):
         """Call ground and excited state calculation"""
-        assert(atoms == self.atoms)  # XXX action required
+        assert atoms == self.atoms  # XXX action required
         self.timer.start('Ground state')
         forces = self.atoms.get_forces()
         if world.rank == 0:
             handle.save(forces)
-            #write_json(fd, forces)
 
         if self.overlap:
             """Overlap is determined as
