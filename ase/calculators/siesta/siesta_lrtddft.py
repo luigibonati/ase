@@ -126,7 +126,7 @@ class siestaLRTDDFT:
 
         return pmat
 
-class siesta_raman(siestaLRTDDFT):
+class siestaRaman(siestaLRTDDFT):
     """Raman interface for Siesta calculator.
     When using the Raman calculator, please cite
 

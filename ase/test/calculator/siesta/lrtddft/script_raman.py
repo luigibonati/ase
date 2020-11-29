@@ -1,6 +1,6 @@
 from ase.units import Ry, eV
 from ase.calculators.siesta import Siesta
-from ase.calculators.siesta.siesta_lrtddft import siesta_raman
+from ase.calculators.siesta.siesta_lrtddft import siestaRaman
 from ase.vibrations.raman import StaticRamanCalculator
 from ase.vibrations.placzek import PlaczekStatic
 from ase import Atoms
@@ -32,7 +32,7 @@ def test_CO2():
             'XML.Write': True})
 
     name = 'co2'
-    rm = StaticRamanCalculator(CO2, siesta_raman, name=name, delta=0.011,
+    rm = StaticRamanCalculator(CO2, siestaRaman, name=name, delta=0.011,
                                exkwargs=dict(label="siesta",
                                    jcutoff=7, iter_broadening=0.15,
                                    xc_code='LDA,PZ', tol_loc=1e-6, tol_biloc=1e-7)
