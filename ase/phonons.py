@@ -211,7 +211,7 @@ class Displacement:
                         atoms_N.positions[offset + a, i] = \
                             pos[a, i] + sign * self.delta
 
-                        self.calculate(atoms_N, filename, fd, handle)
+                        self.calculate(atoms_N, fd, handle)
 
                         # Return to initial positions
                         atoms_N.positions[offset + a, i] = pos[a, i]
@@ -330,7 +330,7 @@ class Phonons(Displacement):
 
         return forces
 
-    def calculate(self, atoms_N, filename, fd, handle):
+    def calculate(self, atoms_N, fd, handle):
         output = self(atoms_N)
         if world.rank == 0:
             write_json(fd, output)

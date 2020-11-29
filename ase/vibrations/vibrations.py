@@ -136,7 +136,7 @@ class Vibrations:
                     continue
                 fd = opencew_text(filename)
                 #if fd is not None:
-                self.calculate(atoms, filename, fd, handle)
+                self.calculate(atoms, fd, handle)
 
     def iterdisplace(self, inplace=False):
         """Yield name and atoms object for initial and displaced structures.
@@ -172,7 +172,7 @@ class Vibrations:
                         disp = ndis * sign * self.delta
                         yield dispName, a, i, disp
 
-    def calculate(self, atoms, filename, fd, handle):
+    def calculate(self, atoms, fd, handle):
         forces = self.calc.get_forces(atoms)
         if self.ir:
             dipole = self.calc.get_dipole_moment(atoms)
