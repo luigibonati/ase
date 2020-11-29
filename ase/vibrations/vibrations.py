@@ -13,6 +13,7 @@ from ase.io.jsonio import read_json, write_json
 from ase.parallel import world, paropen
 
 from ase.utils import opencew_text
+from ase.utils.filecache import MultiFileJSONCache
 from ase.calculators.singlepoint import SinglePointCalculator
 
 
@@ -100,7 +101,8 @@ class Vibrations:
         self.nfree = nfree
         self.H = None
         self.ir = None
-        self.ram = None
+
+        self.cache = MultiFileJSONCache('vibration.cache')
 
     def run(self):
         """Run the vibration calculations.
@@ -171,22 +173,12 @@ class Vibrations:
         forces = self.calc.get_forces(atoms)
         if self.ir:
             dipole = self.calc.get_dipole_moment(atoms)
-        if self.ram:
-            freq, noninPol, pol = self.get_polarizability()
         if world.rank == 0:
-            if self.ir and self.ram:
-                write_json(fd, [forces, dipole, freq, noninPol, pol])
-                sys.stdout.write(
-                    'Writing %s, dipole moment = (%.6f %.6f %.6f)\n' %
-                    (filename, dipole[0], dipole[1], dipole[2]))
-            elif self.ir and not self.ram:
-                write_json(fd, [forces, dipole])
-                sys.stdout.write(
-                    'Writing %s, dipole moment = (%.6f %.6f %.6f)\n' %
-                    (filename, dipole[0], dipole[1], dipole[2]))
+            if self.ir:
+                obj = [forces, dipole]
             else:
-                write_json(fd, forces)
-                sys.stdout.write('Writing %s\n' % filename)
+                obj = forces
+            write_json(fd, obj)
             fd.close()
         sys.stdout.flush()
 
