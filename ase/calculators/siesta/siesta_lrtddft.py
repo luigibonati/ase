@@ -2,7 +2,7 @@ import numpy as np
 import ase.units as un
 
 class siestaLRTDDFT:
-    """Calculator interface for linear response TDDFT for Siesta via
+    """Interface for linear response TDDFT for Siesta via
     [PyNAO](https://mbarbry.website.fr.to/pynao/doc/html/)
 
     When using PyNAO please cite the papers indicated at in the PyNAO
@@ -22,8 +22,9 @@ class siestaLRTDDFT:
 
         try:
             from pynao import tddft_iter
-        except RuntimeError:
-            raise RuntimeError("running lrtddft with Siesta calculator requires pynao package")
+        except ModuleNotFoundError as err:
+            msg = "running lrtddft with Siesta calculator requires pynao package"
+            raise ModuleNotFoundError(msg) from err
 
         self.initialize=initialize
         self.lrtddft_params = kw
