@@ -15,8 +15,9 @@ class Locked(Exception):
 
 
 class CacheLock:
-    def __init__(self, fd):
+    def __init__(self, fd, key):
         self.fd = fd
+        self.key = key
 
     def save(self, value):
         json = encode(value)
@@ -53,7 +54,7 @@ class MultiFileJSONCache(MutableMapping):
             if fd is None:
                 yield None
             else:
-                yield CacheLock(fd)
+                yield CacheLock(fd, key)
         finally:
             if fd is not None:
                 fd.close()

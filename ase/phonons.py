@@ -332,11 +332,8 @@ class Phonons(Displacement):
 
     def calculate(self, atoms_N, filename, fd, handle):
         output = self(atoms_N)
-        # Write output to file
         if world.rank == 0:
             write_json(fd, output)
-            #sys.stdout.write('Writing %s\n' % filename)
-            #sys.stdout.flush()
 
     def check_eq_forces(self):
         """Check maximum size of forces in the equilibrium structure."""

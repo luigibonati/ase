@@ -70,15 +70,14 @@ class ResonantRamanCalculator(RamanCalculatorBase, Vibrations):
             ov_nn = self.overlap(self.atoms.calc,
                                  self.eq_calculator)
             if world.rank == 0:
-                np.save(filename + '.ov', ov_nn)
+                np.save(handle.key + '.ov', ov_nn)
             self.timer.stop('Overlap')
         self.timer.stop('Ground state')
 
         self.timer.start('Excitations')
-        basename, _ = os.path.splitext(filename)
         excalc = self.exobj(**self.exkwargs)
         exlist = excalc.calculate(self.atoms)
-        exlist.write(basename + self.exext)
+        exlist.write(handle.key + self.exext)
         self.timer.stop('Excitations')
 
     def run(self):
@@ -311,8 +310,8 @@ class ResonantRaman(Raman):
         def load(name, pm, rep0_p):
             self.log('reading ' + name + pm + self.exext)
             ex_p = self.exobj.read(name + pm + self.exext, **self.exkwargs)
-            self.log('reading ' + name + pm + '.json.ov.npy')
-            ov_nn = np.load(name + pm + '.json.ov.npy')
+            self.log('reading ' + name + pm + '.ov.npy')
+            ov_nn = np.load(name + pm + '.ov.npy')
             # remove numerical garbage
             ov_nn = np.where(np.abs(ov_nn) > self.minoverlap['orbitals'],
                              ov_nn, 0)
