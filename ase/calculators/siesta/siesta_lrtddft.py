@@ -188,9 +188,8 @@ def pol2cross_sec(p, omg):
     ------------------
     sigma (np array): cross section in nm**2
     """
-    from ase.units import Ha, Bohr, alpha
 
-    c = 1 / alpha                      # speed of the light in au
-    omg /= Ha                          # to convert from eV to Hartree
-    sigma = 4 * np.pi * omg * p / (c)  # bohr**2
-    return sigma * (0.1 * Bohr)**2     # nm**2
+    c = 1 / un.alpha                      # speed of the light in au
+    omg /= un.Ha                          # to convert from eV to Hartree
+    sigma = 4 * np.pi * omg * p / (c)     # bohr**2
+    return sigma * (0.1 * un.Bohr)**2     # nm**2
