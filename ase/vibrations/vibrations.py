@@ -181,10 +181,7 @@ class Vibrations:
                 obj = [forces, dipole]
             else:
                 obj = forces
-            #write_json(fd, obj)
             handle.save(obj)
-            #fd.close()
-        #sys.stdout.flush()
 
     def clean(self, empty_files=False, combined=True):
         """Remove json-files.
@@ -194,23 +191,9 @@ class Vibrations:
 
         """
 
-        if world.rank != 0:
-            return 0
-
-        n = 0
-        filenames = [self.name + '.eq.json']
-        if combined:
-            filenames.append(self.name + '.all.json')
-        for dispName, a, i, disp in self.displacements():
-            filename = dispName + '.json'
-            filenames.append(filename)
-
-        for name in filenames:
-            if op.isfile(name):
-                if not empty_files or op.getsize(name) == 0:
-                    os.remove(name)
-                    n += 1
-        return n
+        if world.rank == 0:
+            self.cache.clear()
+        return self.cache.filecount()
 
     def combine(self):
         """Combine json-files to one file ending with '.all.json'.
@@ -219,33 +202,9 @@ class Vibrations:
         of data structure at a time.
 
         """
-        nelements_before = len(self.cache)
+        nelements_before = self.cache.filecount()
         self.cache = self.cache.combine()
         return nelements_before
-        #if world.rank != 0:
-        #    return 0
-        #filenames = [self.name + '.eq.json']
-        #for dispName, a, i, disp in self.displacements():
-        #    filename = dispName + '.json'
-        #    filenames.append(filename)
-        #combined_data = {}
-        #for name in filenames:
-        #    if not op.isfile(name) or op.getsize(name) == 0:
-        #        raise RuntimeError('Calculation is not complete. ' +
-        #                           name + ' is missing or empty.')
-        #    with open(name) as fd:
-        #        f = read_json(fd)
-        #    combined_data.update({op.basename(name): f})
-        #filename = self.name + '.all.json'
-        #fd = opencew_text(filename)
-        #if fd is None:
-        #    raise RuntimeError(
-        #        'Cannot write file ' + filename +
-        #        '. Remove old file if it exists.')
-        #else:
-        #    write_json(fd, combined_data)
-        #    fd.close()
-        #return self.clean(combined=False)
 
     def split(self):
         """Split combined json-file.
@@ -254,30 +213,9 @@ class Vibrations:
         sort of data structure at a time.
 
         """
+        count = self.cache.filecount()
         self.cache = self.cache.join()
-        return 1
-        #if world.rank != 0:
-        #    return 0
-        #combined_name = self.name + '.all.json'
-        #if not op.isfile(combined_name):
-        #    raise RuntimeError('Cannot find combined file: ' +
-        #                       combined_name + '.')
-        #with open(combined_name) as fd:
-        #    combined_data = read_json(fd)
-        #filenames = [self.name + '.eq.json']
-        #for dispName, a, i, disp in self.displacements():
-        #    filename = dispName + '.json'
-        #    filenames.append(filename)
-        #    if op.isfile(filename):
-        #        raise RuntimeError(
-        #            'Cannot split. File ' + filename + 'already exists.')
-        #for name in filenames:
-        #    fd = opencew_text(name)
-        #    basename = op.basename(name)
-        #    write_json(fd, combined_data[basename])
-        #    fd.close()
-        #os.remove(combined_name)
-        #return 1  # One file removed
+        return count
 
     def read(self, method='standard', direction='central'):
         self.method = method.lower()
@@ -303,12 +241,6 @@ class Vibrations:
         n = 3 * len(self.indices)
         H = np.empty((n, n))
         r = 0
-        #if op.isfile(self.name + '.all.json'):
-            # Open the combined json-file
-        #    combined_data = load(self.name + '.all')
-        #else:
-        #    combined_data = None
-        #cache = self.cache
 
         data = dict(self.cache)
         print(set(data))

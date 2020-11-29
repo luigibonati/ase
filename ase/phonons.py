@@ -573,13 +573,11 @@ class Phonons(Displacement):
                 i_a = dist_a > r_c  # np.where(dist_a > r_c)
                 # Zero elements
                 D_Navav[n, i, :, i_a, :] = 0.0
-            # print ""
 
     def get_force_constant(self):
         """Return matrix of force constants."""
 
         assert self.C_N is not None
-
         return self.C_N
 
     def get_band_structure(self, path, modes=False, born=False, verbose=True):

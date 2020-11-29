@@ -93,11 +93,20 @@ class MultiFileJSONCache(MutableMapping):
         assert len(self) == 0
         return cache
 
+    def split(self):
+        return self
+
+    def filecount(self):
+        return len(self)
+
 
 class CombinedJSONCache(Mapping):
     def __init__(self, directory, dct):
         self.directory = Path(directory)
         self._dct = dict(dct)
+
+    def filecount(self):
+        return int(self._filename.is_file())
 
     @property
     def _filename(self):
@@ -130,6 +139,9 @@ class CombinedJSONCache(Mapping):
     def clear(self):
         self._filename.unlink()
         self._dct.clear()
+
+    def combine(self):
+        return self
 
     def split(self):
         cache = MultiFileJSONCache(self.directory)
