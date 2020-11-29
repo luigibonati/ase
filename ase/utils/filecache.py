@@ -10,6 +10,10 @@ def missing(key):
     raise KeyError(key)
 
 
+class Locked(Exception):
+    pass
+
+
 class CacheLock:
     def __init__(self, fd):
         self.fd = fd
@@ -47,7 +51,7 @@ class MultiFileJSONCache(MutableMapping):
         fd = opencew(path)
         try:
             if fd is None:
-                return None
+                yield None
             else:
                 yield CacheLock(fd)
         finally:
@@ -57,7 +61,7 @@ class MultiFileJSONCache(MutableMapping):
     def __setitem__(self, key, value):
         with self.lock(key) as handle:
             if handle is None:
-                raise RuntimeError(f'Locked: {key}')
+                raise Locked(key)
             handle.save(value)
 
     def __getitem__(self, key):

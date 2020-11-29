@@ -1,5 +1,5 @@
 import pytest
-from ase.utils.filecache import MultiFileJSONCache, CombinedJSONCache
+from ase.utils.filecache import MultiFileJSONCache, CombinedJSONCache, Locked
 
 
 @pytest.fixture
@@ -47,3 +47,24 @@ def test_combine():
     cache = combined.split()
     assert dict(cache) == dct
     assert len(combined) == 0
+
+
+def test_lock(cache):
+    with cache.lock('hello') as handle:
+        # When element is locked but nothing is written, the
+        # cache is defined to "contain" None
+        assert 'hello' in cache
+        assert cache['hello'] is None
+
+        # Other keys should function as normal:
+        cache['xx'] = 1
+        assert cache['xx'] == 1
+
+def test_already_locked(cache):
+    with cache.lock('hello') as handle:
+        assert handle is not None
+        with cache.lock('hello') as otherhandle:
+            assert otherhandle is None
+
+        with pytest.raises(Locked):
+            cache['hello'] = 'world'
