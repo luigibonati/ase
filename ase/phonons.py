@@ -352,7 +352,6 @@ class Phonons(Displacement):
             key = name
 
         Z_avv, eps_vv = self.cache[key]
-        #Z_avv, eps_vv = read_json(filename)
 
         # Neutrality sum-rule
         if neutrality:

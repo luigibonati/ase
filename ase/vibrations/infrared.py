@@ -154,33 +154,18 @@ class Infrared(Vibrations):
         self.direction = direction.lower()
         assert self.method in ['standard', 'frederiksen']
 
-        #def load(fname, combined_data=None):
-        #    if combined_data is not None:
-        #        return combined_data[op.basename(fname)]
-        #    with open(fname) as fd:
-        #        return read_json(fd)
-
         data = dict(self.cache)
 
         if direction != 'central':
             raise NotImplementedError(
                 'Only central difference is implemented at the moment.')
 
-        #if op.isfile(self.name + '.all.json'):
-            # Open the combined json-file
-        #    combined_data = load(self.name + '.all.json')
-        #else:
-        #    combined_data = None
-        # Get "static" dipole moment and forces
         name = '%s.eq' % self.name
         forces_zero = data[name]['forces']
         dipole_zero = data[name]['dipole']
-        #[forces_zero, dipole_zero] = data[name]#, combined_data)
         self.dipole_zero = (sum(dipole_zero**2)**0.5) / units.Debye
         self.force_zero = max([sum((forces_zero[j])**2)**0.5
                                for j in self.indices])
-
-        #forces = {name: data[name]['forces'] for name in data
 
         ndof = 3 * len(self.indices)
         H = np.empty((ndof, ndof))
@@ -195,8 +180,6 @@ class Infrared(Vibrations):
                 dminus = d1['dipole']
                 fplus = d2['forces']
                 dplus = d2['dipole']
-                #[fminus, dminus] = data[name + '-']
-                #[fplus, dplus] = data[name + '+']
                 if self.nfree == 4:
                     [fminusminus, dminusminus] = data[name + '--']
                     [fplusplus, dplusplus] = data[name + '++']
@@ -339,8 +322,3 @@ class Infrared(Vibrations):
             for row in outdata:
                 fd.write('%.3f  %15.5e  %15.5e \n' %
                          (row[0], iu * row[1], row[2]))
-
-        # np.savetxt(out, outdata, fmt='%.3f  %15.5e  %15.5e')
-
-
-InfraRed = Infrared  # old name
