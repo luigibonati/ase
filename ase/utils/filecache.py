@@ -137,8 +137,11 @@ class CombinedJSONCache(Mapping):
 
     @classmethod
     def load(cls, path):
-        dct = read_json(path, always_array=False)
-        return cls(path, dct)
+        # XXX Very hacky this one
+        cache = cls(path, {})
+        dct = read_json(cache._filename, always_array=False)
+        cache._dct.update(dct)
+        return cache
 
     def clear(self):
         self._filename.unlink()
@@ -154,3 +157,10 @@ class CombinedJSONCache(Mapping):
         assert set(cache) == set(self)
         self.clear()
         return cache
+
+
+def get_json_cache(directory):
+    try:
+        return CombinedJSONCache.load(directory)
+    except FileNotFoundError:
+        return MultiFileJSONCache(directory)

@@ -9,7 +9,7 @@ import ase.units as units
 from ase.io.trajectory import Trajectory
 from ase.parallel import world, paropen
 
-from ase.utils.filecache import MultiFileJSONCache
+from ase.utils.filecache import get_json_cache
 from ase.calculators.singlepoint import SinglePointCalculator
 
 
@@ -98,7 +98,7 @@ class Vibrations:
         self.H = None
         self.ir = None
 
-        self.cache = MultiFileJSONCache('vibration.cache')
+        self.cache = get_json_cache('vibration.cache')
 
     def run(self):
         """Run the vibration calculations.
