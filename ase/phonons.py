@@ -17,6 +17,7 @@ from ase.dft import monkhorst_pack
 from ase.io.trajectory import Trajectory
 from ase.utils import opencew_text
 from ase.io.jsonio import read_json, write_json
+from ase.utils.filecache import MultiFileJSONCache
 
 
 class Displacement:
@@ -68,6 +69,8 @@ class Displacement:
         self.delta = delta
         self.center_refcell = center_refcell
         self.supercell = supercell
+
+        self.cache = MultiFileJSONCache('phonons-cache')
 
     def define_offset(self):        # Reference cell offset
 
@@ -168,8 +171,7 @@ class Displacement:
         atoms_N.calc = self.calc
 
         # Do calculation on equilibrium structure
-        self.state = 'eq.json'
-        filename = self.name + '.' + self.state
+        filename = f'{self.name}.eq.json'
 
         fd = opencew_text(filename)
         if fd is not None:
@@ -192,23 +194,27 @@ class Displacement:
             for i in range(3):
                 for sign in [-1, 1]:
                     # Filename for atomic displacement
-                    self.state = '%d%s%s.json' % (a, 'xyz'[i], ' +-'[sign])
-                    filename = self.name + '.' + self.state
+                    key = '%s.%d%s%s' % (self.name, a, 'xyz'[i], ' +-'[sign])
+                    filename = f'{key}.json'
+
                     # Wait for ranks before checking for file
                     # barrier()
-                    fd = opencew_text(filename)
-                    if fd is None:
+                    with self.cache.lock(key) as handle:
+                        if handle is None:
+                            continue
+                        fd = opencew_text(filename)
+                    #if fd is None:
                         # Skip if already done
-                        continue
+                        #continue
 
-                    # Update atomic positions
-                    atoms_N.positions[offset + a, i] = \
-                        pos[a, i] + sign * self.delta
+                        # Update atomic positions
+                        atoms_N.positions[offset + a, i] = \
+                            pos[a, i] + sign * self.delta
 
-                    self.calculate(atoms_N, filename, fd)
+                        self.calculate(atoms_N, filename, fd, handle)
 
-                    # Return to initial positions
-                    atoms_N.positions[offset + a, i] = pos[a, i]
+                        # Return to initial positions
+                        atoms_N.positions[offset + a, i] = pos[a, i]
 
     def clean(self):
         """Delete generated json files."""
@@ -324,13 +330,13 @@ class Phonons(Displacement):
 
         return forces
 
-    def calculate(self, atoms_N, filename, fd):
+    def calculate(self, atoms_N, filename, fd, handle):
         output = self(atoms_N)
         # Write output to file
         if world.rank == 0:
             write_json(fd, output)
-            sys.stdout.write('Writing %s\n' % filename)
-            sys.stdout.flush()
+            #sys.stdout.write('Writing %s\n' % filename)
+            #sys.stdout.flush()
 
     def check_eq_forces(self):
         """Check maximum size of forces in the equilibrium structure."""
