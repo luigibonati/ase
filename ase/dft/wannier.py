@@ -5,6 +5,7 @@
 """
 import warnings
 import functools
+from os import path
 from time import time
 from math import sqrt, pi
 from pickle import dump, load
@@ -172,30 +173,47 @@ def rotation_from_projection(proj_nw, fixed, ortho=True):
     U = Nb - M
 
     U_ww = np.empty((Nw, Nw), dtype=proj_nw.dtype)
+
+    # Set the section of the rotation matrix about the 'fixed' states
     U_ww[:M] = proj_nw[:M]
 
-    # If there are extra degrees of freedom we have to select L of them
     if L > 0:
+        # If there are extra degrees of freedom we have to select L of them
         C_ul = np.empty((U, L), dtype=proj_nw.dtype)
+
+        # Get the projections on the 'non fixed' states
         proj_uw = proj_nw[M:]
+
+        # Obtain eigenvalues and eigevectors matrix
         eig_w, C_ww = np.linalg.eigh(np.dot(dag(proj_uw), proj_uw))
-        C_ul = np.dot(proj_uw, C_ww[:, np.argsort(-eig_w.real)[:L]])
-        # eig_u, C_uu = np.linalg.eigh(np.dot(proj_uw, dag(proj_uw)))
-        # C_ul = C_uu[:, np.argsort(-eig_u.real)[:L]]
 
+        # Sort columns of eigenvectors matrix according to the eigenvalues
+        # magnitude, select only the L largest ones. Then use them to obtain
+        # the parameter C matrix.
+        C_ul[:] = np.dot(proj_uw, C_ww[:, np.argsort(-eig_w.real)[:L]])
+
+        # Compute the section of the rotation matrix about 'non fixed' states
         U_ww[M:] = np.dot(dag(C_ul), proj_uw)
-
         normalize(C_ul)
     else:
+        # If there are no extra degrees of freedom we do not need any parameter
+        # matrix C
         C_ul = np.empty((U, 0), dtype=proj_nw.dtype)
 
     if ortho:
-        # gram_schmidt(U_ww)
+        # Orthogonalize with Lowdin to take the closest orthogonal set
         lowdin(U_ww)
     else:
         normalize(U_ww)
 
     return U_ww, C_ul
+
+def search_for_gamma_point(kpts):
+    """Returns index of Gamma point in a list of k-points."""
+    gamma_idx = np.argmin([np.linalg.norm(kpt) for kpt in kpts])
+    if not np.linalg.norm(kpts[gamma_idx]) < 1e-14:
+        gamma_idx = None
+    return gamma_idx
 
 
 def scdm(pseudo_nkG, kpts, fixed_k, Nw):
@@ -218,7 +236,7 @@ def scdm(pseudo_nkG, kpts, fixed_k, Nw):
     U  (u) = Number of non-fixed states
     """
 
-    gamma_idx = [i.all() for i in np.isclose(kpts, 0, atol=1e-10)].index(True)
+    gamma_idx = search_for_gamma_point(kpts)
     Nk = len(kpts)
     U_kww = []
     C_kul = []
@@ -249,8 +267,8 @@ def init_orbitals(atoms, ntot, rng=np.random):
 
     # list all the elements that should have occupied d-orbitals
     # in the valence states (according to GPAW setups)
-    d_metals = list(range(21, 31)) + list(range(39, 52)) + \
-        list(range(57, 84)) + list(range(89, 113))
+    d_metals = set(list(range(21, 31)) + list(range(39, 52)) +
+        list(range(57, 84)) + list(range(89, 113)))
     orbs = []
     No = 0
     for i, z in enumerate(atoms.get_atomic_numbers()):
@@ -872,7 +890,12 @@ class Wannier:
         return wanniergrid
 
     def write_cube(self, index, fname, repeat=None, real=True):
-        """Dump specified Wannier function to a cube file"""
+        """Dump specified Wannier function to a cube file.
+
+        ``index``:  Integer, index of the Wannier function to save.
+        ``repeat``: Array of integer, repeat supercell and Wannier function.
+        ``real``:   If True only save the absolute value, otherwise also save the
+                    complex phase in a separate file."""
         from ase.io import write
 
         # Default size of plotting cell is the one corresponding to k-points.
@@ -880,26 +903,25 @@ class Wannier:
             repeat = self.kptgrid
 
         # Remove constraints, some are not compatible with repeat()
-        atoms = self.calc.get_atoms()
+        atoms = self.calc.get_atoms().copy()
         atoms.set_constraint()
         atoms = atoms * repeat
         func = self.get_function(index, repeat)
 
-        # Handle separation of complex wave into real parts
+        # Separation of complex wave into absolute value and complex angle
         if real:
             if self.Nk == 1:
                 func *= np.exp(-1.j * np.angle(func.max()))
                 if 0:
                     assert max(abs(func.imag).flat) < 1e-4
-                func = func.real
+                func = abs(func)
             else:
-                func = func.real
+                func = abs(func)
         else:
-            phase_fname = fname.split('.cube')
-            phase_fname.insert(1, 'phase')
-            phase_fname = '.'.join(phase_fname) + 'cube'
+            phase_fname, phase_fextension = path.splitext(fname)
+            phase_fname = phase_fname + '_phase' + phase_fextension
             write(phase_fname, atoms, data=np.angle(func), format='cube')
-            func = func.real
+            func = abs(func)
 
         write(fname, atoms, data=func, format='cube')
 

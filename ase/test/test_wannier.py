@@ -8,7 +8,8 @@ from ase.lattice import CUB, FCC, BCC, TET, BCT, ORC, ORCF, ORCI, ORCC, HEX, \
     RHL, MCL, MCLC, TRI, OBL, HEX2D, RECT, CRECT, SQR, LINE
 from ase.dft.wannier import gram_schmidt, lowdin, random_orthogonal_matrix, \
     neighbor_k_search, calculate_weights, steepest_descent, md_min, \
-    rotation_from_projection, init_orbitals, scdm, Wannier
+    rotation_from_projection, init_orbitals, scdm, Wannier, \
+    search_for_gamma_point
 
 
 calc = pytest.mark.calculator
@@ -316,29 +317,34 @@ def test_write_cube_real(wan):
     atoms.center(vacuum=3.)
     wanf = wan(atoms=atoms, kpts=(1, 1, 1), std_calc=False)
     index = 0
-    # It returns some errors when using file objects, so we use simple filename
+
+    # It returns some errors when using file objects, so we use a string
     cubefilename = 'wanf.cube'
     wanf.write_cube(index, cubefilename, real=True)
     with open(cubefilename, mode='r') as inputfile:
         content = read_cube(inputfile)
     assert pytest.approx(content['atoms'].cell.array) == atoms.cell.array
+    assert pytest.approx(content['data']) == abs(wanf.get_function(index))
 
 
 def test_write_cube_complex(wan):
-    atoms = bulk('GaAs', crystalstructure='zincblende', a=5.6531)
-    atoms.center()
-    wanf = wan(atoms=atoms, nwannier=6, kpts=(1, 1, 1), std_calc=False)
+    atoms = bulk('Si')
+    wanf = wan(atoms=atoms, nwannier=6, kpts=(2, 2, 2), std_calc=False)
     index = 0
+
     # It returns some errors when using file objects, so we use simple filename
-    cubefilename = 'wanf.cube'
+    cubefilename = 'wanf_si.cube'
     wanf.write_cube(index, cubefilename, real=False)
-    with open('wanf.phase.cube', mode='r') as inputfile:
+
+    with open('wanf_si_phase.cube', mode='r') as inputfile:
         content = read_cube(inputfile)
-    assert pytest.approx(content['atoms'].cell.array) == atoms.cell.array
+    assert pytest.approx(content['atoms'].cell.array) == atoms.cell.array * 2
     assert pytest.approx(content['data']) == np.angle(wanf.get_function(index))
-    with open('wanf.cube', mode='r') as inputfile:
+
+    with open('wanf_si.cube', mode='r') as inputfile:
         content = read_cube(inputfile)
-    assert pytest.approx(content['data']) == np.real(wanf.get_function(index))
+    assert pytest.approx(content['atoms'].cell.array) == atoms.cell.array * 2
+    assert pytest.approx(content['data']) == abs(wanf.get_function(index))
 
 
 def test_localize(wan):
@@ -598,6 +604,20 @@ def test_init_orbitals(rng):
             bool_d = (orb[1] == 2)
     assert bool_d and bool_s
 
+
+def test_search_for_gamma_point():
+    list_with_gamma = [[-1.0, -1.0, -1.0],
+                       [0.0, 0.0, 0.0],
+                       [0.1, 0.0, 0.0],
+                       [1.5, 2.5, 0.5]]
+    gamma_idx = search_for_gamma_point(list_with_gamma)
+    assert gamma_idx == 1
+
+    list_without_gamma = [[-1.0, -1.0, -1.0],
+                       [0.1, 0.0, 0.0],
+                       [1.5, 2.5, 0.5]]
+    gamma_idx = search_for_gamma_point(list_without_gamma)
+    assert gamma_idx is None
 
 def test_scdm(ti_calculator):
     calc = ti_calculator
