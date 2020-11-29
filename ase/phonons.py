@@ -278,7 +278,7 @@ class Phonons(Displacement):
     def __init__(self, *args, **kwargs):
         """Initialize with base class args and kwargs."""
 
-        if 'name' not in kwargs.keys():
+        if 'name' not in kwargs:
             kwargs['name'] = "phonon"
 
         self.deprecate_refcell(kwargs)
@@ -411,12 +411,8 @@ class Phonons(Displacement):
             for j, v in enumerate('xyz'):
                 # Atomic forces for a displacement of atom a in direction v
                 basename = '%s.%d%s' % (self.name, a, v)
-
                 fminus_av = self.cache[basename + '-']['forces']
                 fplus_av = self.cache[basename + '+']['forces']
-
-                #fminus_av = read_json(basename + '-.json')
-                #fplus_av = read_json(basename + '+.json')
 
                 if method == 'frederiksen':
                     fminus_av[a] -= fminus_av.sum(0)
