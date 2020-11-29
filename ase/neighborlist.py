@@ -108,9 +108,9 @@ def get_distance_indices(distanceMatrix, distance):
         #find all non-zero
         found = sp.find(row)
         #screen for smaller or equal distance
-        equal = np.where( found[-1] <= distance )[0]
+        equal = np.where(found[-1] <= distance)[0]
         #found[1] contains the indexes
-        indices.append([ found[1][x] for x in equal ])
+        indices.append([found[1][x] for x in equal])
     return indices
 
 

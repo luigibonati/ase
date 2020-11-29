@@ -68,7 +68,7 @@ def test_h3o2m(factory):
         for image in images:
             print(image.get_distance(1, 2), image.get_potential_energy())
 
-    dyn = BFGS(neb, trajectory='nwchem_h3o2m.traj')
+    dyn = BFGS(neb)
     dyn.run(fmax=0.10)  # use better basis (e.g. aug-cc-pvdz) for NEB to converge
 
     for image in images:

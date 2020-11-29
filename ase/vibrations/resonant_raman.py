@@ -483,21 +483,23 @@ class ResonantRaman(Raman):
         outdata = np.empty([len(energies), 3])
         outdata.T[0] = energies
         outdata.T[1] = spectrum
-        fd = paropen(out, 'w')
-        fd.write('# Resonant Raman spectrum\n')
-        if hasattr(self, '_approx'):
-            fd.write('# approximation: {0}\n'.format(self._approx))
-        for key in self.observation:
-            fd.write('# {0}: {1}\n'.format(key, self.observation[key]))
-        fd.write('# omega={0:g} eV, gamma={1:g} eV\n'.format(omega, gamma))
-        if width is not None:
-            fd.write('# %s folded, width=%g cm^-1\n' % (type.title(), width))
-        fd.write('# [cm^-1]  [a.u.]\n')
 
-        for row in outdata:
-            fd.write('%.3f  %15.5g\n' %
-                     (row[0], row[1]))
-        fd.close()
+        with paropen(out, 'w') as fd:
+            fd.write('# Resonant Raman spectrum\n')
+            if hasattr(self, '_approx'):
+                fd.write('# approximation: {0}\n'.format(self._approx))
+            for key in self.observation:
+                fd.write('# {0}: {1}\n'.format(key, self.observation[key]))
+            fd.write('# omega={0:g} eV, gamma={1:g} eV\n'
+                     .format(omega, gamma))
+            if width is not None:
+                fd.write('# %s folded, width=%g cm^-1\n'
+                         % (type.title(), width))
+            fd.write('# [cm^-1]  [a.u.]\n')
+
+            for row in outdata:
+                fd.write('%.3f  %15.5g\n' %
+                         (row[0], row[1]))
 
     def __del__(self):
         self.timer.write(self.txt)

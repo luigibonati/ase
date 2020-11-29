@@ -49,9 +49,8 @@ commands = {
          '--sort', '--cut', '-p', '--plot', '--csv', '-w',
          '--open-web-browser', '--no-lock-file', '--analyse',
          '-j', '--json', '-m', '--show-metadata',
-         '--set-metadata', '-M', '--metadata-from-python-script',
-         '--unique', '--strip-data', '--show-keys',
-         '--show-values'],
+         '--set-metadata', '--unique', '--strip-data',
+         '--show-keys', '--show-values'],
     'diff':
         ['-r', '--rank-order', '-c', '--calculator-outputs',
          '--max-lines', '-t', '--template', '--template-help',

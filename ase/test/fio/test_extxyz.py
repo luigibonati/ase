@@ -185,7 +185,6 @@ def test_complex_key_val():
         'f_int_array="_JSON [[1, 2], [3, 4]]" '
         'f_bool_bare '
         'f_bool_value=F '
-        'f_irregular_shape="_JSON [[1, 2, 3], [4, 5]]" '
         'f_dict={_JSON {"a" : 1}} '
     )
 
@@ -230,7 +229,6 @@ def test_complex_key_val():
         'f_int_array': np.array([[1, 2], [3, 4]]),
         'f_bool_bare': True,
         'f_bool_value': False,
-        'f_irregular_shape': np.array([[1, 2, 3], [4, 5]], object),
         'f_dict': {"a": 1}
     }
 
@@ -299,7 +297,8 @@ def test_stress():
     atoms.cell = [10, 10, 10]
     atoms.pbc = True
 
-    atoms.new_array('stress', np.arange(6, dtype=float))  # array with clashing name
+    # array with clashing name
+    atoms.new_array('stress', np.arange(6, dtype=float))
     atoms.calc = EMT()
     a_stress = atoms.get_stress()
     atoms.write('tmp.xyz')
@@ -308,6 +307,7 @@ def test_stress():
     assert abs(b.arrays['stress'] - np.arange(6, dtype=float)).max() < 1e-6
     b_stress = b.info['stress']
     assert abs(full_3x3_to_voigt_6_stress(b_stress) - a_stress).max() < 1e-6
+
 
 def test_json_scalars():
     a = bulk('Si')
@@ -321,4 +321,4 @@ def test_json_scalars():
     b = ase.io.read('tmp.xyz')
     assert abs(b.info['val_1'] - 42.0) < 1e-6
     assert abs(b.info['val_2'] - 42.0) < 1e-6
-    assert abs(b.info['val_3'] - 42)  == 0
+    assert abs(b.info['val_3'] - 42) == 0

@@ -43,12 +43,12 @@ def test_neb(plt):
     neb = NEB(images)
     neb.interpolate()
 
-    dyn = BFGS(neb, trajectory='mep.traj')
-    dyn.run(fmax=fmax)
+    with BFGS(neb, trajectory='mep.traj') as dyn:
+        dyn.run(fmax=fmax)
 
-    # Check climbing image.
-    neb.climb = True
-    dyn.run(fmax=fmax)
+        # Check climbing image.
+        neb.climb = True
+        dyn.run(fmax=fmax)
 
     # Check NEB tools.
     nt_images = ase.io.read('mep.traj', index='-{:d}:'.format(nimages))
