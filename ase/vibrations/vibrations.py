@@ -280,6 +280,7 @@ class Vibrations:
         assert self.direction in ['central', 'forward', 'backward']
 
         def load(fname, combined_data=None):
+            fname += '.json'
             if combined_data is None:
                 with open(fname) as fd:
                     f = read_json(fd)
@@ -298,22 +299,22 @@ class Vibrations:
         r = 0
         if op.isfile(self.name + '.all.json'):
             # Open the combined json-file
-            combined_data = load(self.name + '.all.json')
+            combined_data = load(self.name + '.all')
         else:
             combined_data = None
         if direction != 'central':
-            feq = load(self.name + '.eq.json', combined_data)
+            feq = load(self.name + '.eq', combined_data)
         for a in self.indices:
             for i in 'xyz':
                 name = '%s.%d%s' % (self.name, a, i)
-                fminus = load(name + '-.json', combined_data)
-                fplus = load(name + '+.json', combined_data)
+                fminus = load(name + '-', combined_data)
+                fplus = load(name + '+', combined_data)
                 if self.method == 'frederiksen':
                     fminus[a] -= fminus.sum(0)
                     fplus[a] -= fplus.sum(0)
                 if self.nfree == 4:
-                    fminusminus = load(name + '--.json', combined_data)
-                    fplusplus = load(name + '++.json', combined_data)
+                    fminusminus = load(name + '--', combined_data)
+                    fplusplus = load(name + '++', combined_data)
                     if self.method == 'frederiksen':
                         fminusminus[a] -= fminusminus.sum(0)
                         fplusplus[a] -= fplusplus.sum(0)
