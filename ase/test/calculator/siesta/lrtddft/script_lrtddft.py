@@ -1,4 +1,4 @@
-from ase.calculators.siesta.siesta_lrtddft import siesta_lrtddft
+from ase.calculators.siesta.siesta_lrtddft import siestaLRTDDFT
 from ase.build import molecule
 import numpy as np
 import matplotlib.pyplot as plt
@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 # Define the systems
 CH4 = molecule('CH4')
 
-lr = siesta_lrtddft(label="siesta", jcutoff=7, iter_broadening=0.15,
+lr = siestaLRTDDFT(label="siesta", jcutoff=7, iter_broadening=0.15,
                     xc_code='LDA,PZ', tol_loc=1e-6, tol_biloc=1e-7)
 
 # run siesta

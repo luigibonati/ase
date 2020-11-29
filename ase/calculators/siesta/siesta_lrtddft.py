@@ -1,7 +1,7 @@
 import numpy as np
 import ase.units as un
 
-class siesta_lrtddft:
+class siestaLRTDDFT:
     """Calculator interface for linear response TDDFT for Siesta via
     [PyNAO](https://mbarbry.website.fr.to/pynao/doc/html/)
 
@@ -83,7 +83,7 @@ class siesta_lrtddft:
         Example
         -------
 
-        from ase.calculators.siesta.siesta_lrtddft import siesta_lrtddft
+        from ase.calculators.siesta.siesta_lrtddft import siestaLRTDDFT
         from ase.build import molecule
         import numpy as np
         import matplotlib.pyplot as plt
@@ -91,7 +91,7 @@ class siesta_lrtddft:
         # Define the systems
         CH4 = molecule('CH4')
 
-        lr = siesta_lrtddft(label="siesta", jcutoff=7, iter_broadening=0.15,
+        lr = siestaLRTDDFT(label="siesta", jcutoff=7, iter_broadening=0.15,
                             xc_code='LDA,PZ', tol_loc=1e-6, tol_biloc=1e-7)
 
         # run DFT calculation with Siesta
@@ -125,7 +125,7 @@ class siesta_lrtddft:
 
         return pmat
 
-class siesta_raman(siesta_lrtddft):
+class siesta_raman(siestaLRTDDFT):
     """Raman interface for Siesta calculator.
     When using the Raman calculator, please cite
 
