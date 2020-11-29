@@ -305,22 +305,18 @@ class Phonons(Displacement):
 
     def __call__(self, atoms_N):
         """Calculate forces on atoms in supercell."""
-
-        # Calculate forces
-        forces = atoms_N.get_forces()
-
-        return forces
+        return atoms_N.get_forces()
 
     def calculate(self, atoms_N, handle):
-        output = self(atoms_N)
+        forces = self(atoms_N)
         if world.rank == 0:
-            handle.save(output)
+            handle.save({'forces': forces})
 
     def check_eq_forces(self):
         """Check maximum size of forces in the equilibrium structure."""
 
         name = f'{self.name}.eq'
-        feq_av = self.cache[name]
+        feq_av = self.cache[name]['forces']
 
         fmin = feq_av.max()
         fmax = feq_av.min()
@@ -416,8 +412,8 @@ class Phonons(Displacement):
                 # Atomic forces for a displacement of atom a in direction v
                 basename = '%s.%d%s' % (self.name, a, v)
 
-                fminus_av = self.cache[basename + '-']
-                fplus_av = self.cache[basename + '+']
+                fminus_av = self.cache[basename + '-']['forces']
+                fplus_av = self.cache[basename + '+']['forces']
 
                 #fminus_av = read_json(basename + '-.json')
                 #fplus_av = read_json(basename + '+.json')
