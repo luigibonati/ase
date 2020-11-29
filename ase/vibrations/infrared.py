@@ -156,24 +156,26 @@ class Infrared(Vibrations):
         self.direction = direction.lower()
         assert self.method in ['standard', 'frederiksen']
 
-        def load(fname, combined_data=None):
-            if combined_data is not None:
-                return combined_data[op.basename(fname)]
-            with open(fname) as fd:
-                return read_json(fd)
+        #def load(fname, combined_data=None):
+        #    if combined_data is not None:
+        #        return combined_data[op.basename(fname)]
+        #    with open(fname) as fd:
+        #        return read_json(fd)
+
+        data = dict(self.cache)
 
         if direction != 'central':
             raise NotImplementedError(
                 'Only central difference is implemented at the moment.')
 
-        if op.isfile(self.name + '.all.json'):
+        #if op.isfile(self.name + '.all.json'):
             # Open the combined json-file
-            combined_data = load(self.name + '.all.json')
-        else:
-            combined_data = None
+        #    combined_data = load(self.name + '.all.json')
+        #else:
+        #    combined_data = None
         # Get "static" dipole moment and forces
-        name = '%s.eq.json' % self.name
-        [forces_zero, dipole_zero] = load(name, combined_data)
+        name = '%s.eq' % self.name
+        [forces_zero, dipole_zero] = data[name]#, combined_data)
         self.dipole_zero = (sum(dipole_zero**2)**0.5) / units.Debye
         self.force_zero = max([sum((forces_zero[j])**2)**0.5
                                for j in self.indices])
@@ -185,9 +187,10 @@ class Infrared(Vibrations):
         for a in self.indices:
             for i in 'xyz':
                 name = '%s.%d%s' % (self.name, a, i)
-                [fminus, dminus] = load(name + '-.json', combined_data)
-                [fplus, dplus] = load(name + '+.json', combined_data)
+                [fminus, dminus] = data[name + '-']#.json', combined_data)
+                [fplus, dplus] = data[name + '+'] #.json', combined_data)
                 if self.nfree == 4:
+                    xxx
                     [fminusminus, dminusminus] = load(
                         name + '--.json', combined_data)
                     [fplusplus, dplusplus] = load(

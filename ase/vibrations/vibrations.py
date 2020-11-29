@@ -181,9 +181,10 @@ class Vibrations:
                 obj = [forces, dipole]
             else:
                 obj = forces
-            write_json(fd, obj)
-            fd.close()
-        sys.stdout.flush()
+            #write_json(fd, obj)
+            handle.save(obj)
+            #fd.close()
+        #sys.stdout.flush()
 
     def clean(self, empty_files=False, combined=True):
         """Remove json-files.
@@ -218,30 +219,33 @@ class Vibrations:
         of data structure at a time.
 
         """
-        if world.rank != 0:
-            return 0
-        filenames = [self.name + '.eq.json']
-        for dispName, a, i, disp in self.displacements():
-            filename = dispName + '.json'
-            filenames.append(filename)
-        combined_data = {}
-        for name in filenames:
-            if not op.isfile(name) or op.getsize(name) == 0:
-                raise RuntimeError('Calculation is not complete. ' +
-                                   name + ' is missing or empty.')
-            with open(name) as fd:
-                f = read_json(fd)
-            combined_data.update({op.basename(name): f})
-        filename = self.name + '.all.json'
-        fd = opencew_text(filename)
-        if fd is None:
-            raise RuntimeError(
-                'Cannot write file ' + filename +
-                '. Remove old file if it exists.')
-        else:
-            write_json(fd, combined_data)
-            fd.close()
-        return self.clean(combined=False)
+        nelements_before = len(self.cache)
+        self.cache = self.cache.combine()
+        return nelements_before
+        #if world.rank != 0:
+        #    return 0
+        #filenames = [self.name + '.eq.json']
+        #for dispName, a, i, disp in self.displacements():
+        #    filename = dispName + '.json'
+        #    filenames.append(filename)
+        #combined_data = {}
+        #for name in filenames:
+        #    if not op.isfile(name) or op.getsize(name) == 0:
+        #        raise RuntimeError('Calculation is not complete. ' +
+        #                           name + ' is missing or empty.')
+        #    with open(name) as fd:
+        #        f = read_json(fd)
+        #    combined_data.update({op.basename(name): f})
+        #filename = self.name + '.all.json'
+        #fd = opencew_text(filename)
+        #if fd is None:
+        #    raise RuntimeError(
+        #        'Cannot write file ' + filename +
+        #        '. Remove old file if it exists.')
+        #else:
+        #    write_json(fd, combined_data)
+        #    fd.close()
+        #return self.clean(combined=False)
 
     def split(self):
         """Split combined json-file.
@@ -250,28 +254,30 @@ class Vibrations:
         sort of data structure at a time.
 
         """
-        if world.rank != 0:
-            return 0
-        combined_name = self.name + '.all.json'
-        if not op.isfile(combined_name):
-            raise RuntimeError('Cannot find combined file: ' +
-                               combined_name + '.')
-        with open(combined_name) as fd:
-            combined_data = read_json(fd)
-        filenames = [self.name + '.eq.json']
-        for dispName, a, i, disp in self.displacements():
-            filename = dispName + '.json'
-            filenames.append(filename)
-            if op.isfile(filename):
-                raise RuntimeError(
-                    'Cannot split. File ' + filename + 'already exists.')
-        for name in filenames:
-            fd = opencew_text(name)
-            basename = op.basename(name)
-            write_json(fd, combined_data[basename])
-            fd.close()
-        os.remove(combined_name)
-        return 1  # One file removed
+        self.cache = self.cache.join()
+        return 1
+        #if world.rank != 0:
+        #    return 0
+        #combined_name = self.name + '.all.json'
+        #if not op.isfile(combined_name):
+        #    raise RuntimeError('Cannot find combined file: ' +
+        #                       combined_name + '.')
+        #with open(combined_name) as fd:
+        #    combined_data = read_json(fd)
+        #filenames = [self.name + '.eq.json']
+        #for dispName, a, i, disp in self.displacements():
+        #    filename = dispName + '.json'
+        #    filenames.append(filename)
+        #    if op.isfile(filename):
+        #        raise RuntimeError(
+        #            'Cannot split. File ' + filename + 'already exists.')
+        #for name in filenames:
+        #    fd = opencew_text(name)
+        #    basename = op.basename(name)
+        #    write_json(fd, combined_data[basename])
+        #    fd.close()
+        #os.remove(combined_name)
+        #return 1  # One file removed
 
     def read(self, method='standard', direction='central'):
         self.method = method.lower()
@@ -297,22 +303,31 @@ class Vibrations:
         n = 3 * len(self.indices)
         H = np.empty((n, n))
         r = 0
-        if op.isfile(self.name + '.all.json'):
+        #if op.isfile(self.name + '.all.json'):
             # Open the combined json-file
-            combined_data = load(self.name + '.all')
-        else:
-            combined_data = None
+        #    combined_data = load(self.name + '.all')
+        #else:
+        #    combined_data = None
+        #cache = self.cache
+
+        data = dict(self.cache)
+        print(set(data))
+
         if direction != 'central':
-            feq = load(self.name + '.eq', combined_data)
+            feq = data['eq']
         for a in self.indices:
             for i in 'xyz':
-                name = '%s.%d%s' % (self.name, a, i)
-                fminus = load(name + '-', combined_data)
-                fplus = load(name + '+', combined_data)
+                #f'{a}{i}{sign}'
+                token = f'{self.name}.{a}{i}'
+                #name = '%s.%d%s' % (self.name, a, i)
+                #fminus, fplus = data[]
+                fminus = data[token + '-']
+                fplus = data[token + '+'] #load(name + '+', combined_data)
                 if self.method == 'frederiksen':
                     fminus[a] -= fminus.sum(0)
                     fplus[a] -= fplus.sum(0)
                 if self.nfree == 4:
+                    xxxx
                     fminusminus = load(name + '--', combined_data)
                     fplusplus = load(name + '++', combined_data)
                     if self.method == 'frederiksen':
