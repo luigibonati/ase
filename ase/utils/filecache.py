@@ -25,6 +25,8 @@ class CacheLock:
 
 
 class MultiFileJSONCache(MutableMapping):
+    writable = True
+
     def __init__(self, directory):
         self.directory = Path(directory)
 
@@ -101,6 +103,8 @@ class MultiFileJSONCache(MutableMapping):
 
 
 class CombinedJSONCache(Mapping):
+    writable = False
+
     def __init__(self, directory, dct):
         self.directory = Path(directory)
         self._dct = dict(dct)

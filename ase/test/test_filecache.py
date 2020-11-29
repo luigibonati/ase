@@ -50,7 +50,7 @@ def test_combine():
 
 
 def test_lock(cache):
-    with cache.lock('hello') as handle:
+    with cache.lock('hello'):
         # When element is locked but nothing is written, the
         # cache is defined to "contain" None
         assert 'hello' in cache

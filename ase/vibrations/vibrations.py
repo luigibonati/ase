@@ -1,7 +1,5 @@
 """Vibrational modes."""
 
-import os
-import os.path as op
 import sys
 from math import sin, pi, sqrt, log
 
@@ -9,7 +7,6 @@ import numpy as np
 
 import ase.units as units
 from ase.io.trajectory import Trajectory
-from ase.io.jsonio import read_json, write_json
 from ase.parallel import world, paropen
 
 from ase.utils.filecache import MultiFileJSONCache
@@ -123,13 +120,13 @@ class Vibrations:
         on your own.
         """
 
-        if op.isfile(self.name + '.all.json'):
+        if not self.cache.writable:
             raise RuntimeError(
-                'Cannot run calculation. ' +
-                self.name + '.all.json must be removed or split in order ' +
+                'Cannot run calculation.  '
+                'Cache must be removed or split in order '
                 'to have only one sort of data structure at a time.')
+
         for name, atoms in self.iterdisplace(inplace=True):
-            filename = name + '.json'
             with self.cache.lock(name) as handle:
                 if handle is None:
                     continue

@@ -1,6 +1,5 @@
 """Resonant Raman intensities"""
 
-import os
 import sys
 
 import numpy as np
@@ -9,7 +8,6 @@ import ase.units as u
 from ase.parallel import world, paropen, parprint
 from ase.vibrations import Vibrations
 from ase.vibrations.raman import Raman, RamanCalculatorBase
-from ase.io.jsonio import write_json
 
 
 class ResonantRamanCalculator(RamanCalculatorBase, Vibrations):

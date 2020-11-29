@@ -1,6 +1,5 @@
 """Module for calculating phonons of periodic systems."""
 
-import sys
 from math import pi, sqrt
 from os import remove
 from os.path import isfile
@@ -15,8 +14,6 @@ import ase.units as units
 from ase.parallel import world
 from ase.dft import monkhorst_pack
 from ase.io.trajectory import Trajectory
-from ase.utils import opencew_text
-from ase.io.jsonio import read_json, write_json
 from ase.utils.filecache import MultiFileJSONCache
 
 
@@ -322,9 +319,8 @@ class Phonons(Displacement):
     def check_eq_forces(self):
         """Check maximum size of forces in the equilibrium structure."""
 
-        fname = '%s.eq.json' % self.name
         name = f'{self.name}.eq'
-        feq_av = self.cache[name] #read_json(fname)
+        feq_av = self.cache[name]
 
         fmin = feq_av.max()
         fmax = feq_av.min()

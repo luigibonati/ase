@@ -1,7 +1,6 @@
 """
 Test Placzek type resonant Raman implementations
 """
-import os
 import pytest
 
 from ase.parallel import parprint, world
@@ -50,7 +49,7 @@ def test_names():
 
     # check that work was distributed correctly
     assert len(pz.myindices) <= -(-6 // world.size)
-    
+
 
 def test_overlap():
     """Test equality with and without overlap"""
@@ -104,7 +103,7 @@ def test_compare_placzek_implementation_intensities():
     pri = pr.get_absolute_intensities(omega=om, gamma=gam)[-1]
     print(pri, 'Profeta using frozenset')
     assert pzi == pytest.approx(pri, 1e-3)
-    
+
     # Profeta using overlap
     pr = Profeta(atoms, H2MorseExcitedStates,
                  approximation='Placzek', overlap=True,

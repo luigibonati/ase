@@ -1,6 +1,5 @@
 """Infrared intensities"""
 
-import os.path as op
 from math import sqrt
 from sys import stdout
 
@@ -9,7 +8,6 @@ import numpy as np
 import ase.units as units
 from ase.parallel import parprint, paropen
 from ase.vibrations import Vibrations
-from ase.io.jsonio import read_json
 
 
 class Infrared(Vibrations):
@@ -187,14 +185,11 @@ class Infrared(Vibrations):
         for a in self.indices:
             for i in 'xyz':
                 name = '%s.%d%s' % (self.name, a, i)
-                [fminus, dminus] = data[name + '-']#.json', combined_data)
-                [fplus, dplus] = data[name + '+'] #.json', combined_data)
+                [fminus, dminus] = data[name + '-']
+                [fplus, dplus] = data[name + '+']
                 if self.nfree == 4:
-                    xxx
-                    [fminusminus, dminusminus] = load(
-                        name + '--.json', combined_data)
-                    [fplusplus, dplusplus] = load(
-                        name + '++.json', combined_data)
+                    [fminusminus, dminusminus] = data[name + '--']
+                    [fplusplus, dplusplus] = data[name + '++']
                 if self.method == 'frederiksen':
                     fminus[a] += -fminus.sum(0)
                     fplus[a] += -fplus.sum(0)
