@@ -173,16 +173,20 @@ class Displacement:
         # Do calculation on equilibrium structure
         filename = f'{self.name}.eq.json'
 
-        fd = opencew_text(filename)
-        if fd is not None:
-            # Call derived class implementation of __call__
-            output = self(atoms_N)
-            # Write output to file
-            if world.rank == 0:
-                write_json(fd, output)
-                sys.stdout.write('Writing %s\n' % filename)
-                fd.close()
-            sys.stdout.flush()
+        name = f'{self.name}.eq'
+        with self.cache.lock(name) as handle:
+            if handle is not None:
+            #fd = opencew_text(filename)
+            #if fd is not None:
+                # Call derived class implementation of __call__
+                output = self(atoms_N)
+                # Write output to file
+                if world.rank == 0:
+                    handle.save(output)
+                #write_json(fd, output)
+                #sys.stdout.write('Writing %s\n' % filename)
+                #fd.close()
+            #sys.stdout.flush()
 
         # Positions of atoms to be displaced in the reference cell
         natoms = len(self.atoms)
@@ -333,13 +337,15 @@ class Phonons(Displacement):
     def calculate(self, atoms_N, fd, handle):
         output = self(atoms_N)
         if world.rank == 0:
-            write_json(fd, output)
+            handle.save(output)
+            #write_json(fd, output)
 
     def check_eq_forces(self):
         """Check maximum size of forces in the equilibrium structure."""
 
         fname = '%s.eq.json' % self.name
-        feq_av = read_json(fname)
+        name = f'{self.name}.eq'
+        feq_av = self.cache[name] #read_json(fname)
 
         fmin = feq_av.max()
         fmax = feq_av.min()
@@ -370,11 +376,12 @@ class Phonons(Displacement):
         # Load file with Born charges and dielectric tensor for atoms in the
         # unit cell
         if name is None:
-            filename = '%s.born.json' % self.name
+            key = '%s.born' % self.name
         else:
-            filename = name
+            key = name
 
-        Z_avv, eps_vv = read_json(filename)
+        Z_avv, eps_vv = self.cache[key]
+        #Z_avv, eps_vv = read_json(filename)
 
         # Neutrality sum-rule
         if neutrality:
@@ -434,8 +441,11 @@ class Phonons(Displacement):
                 # Atomic forces for a displacement of atom a in direction v
                 basename = '%s.%d%s' % (self.name, a, v)
 
-                fminus_av = read_json(basename + '-.json')
-                fplus_av = read_json(basename + '+.json')
+                fminus_av = self.cache[basename + '-']
+                fplus_av = self.cache[basename + '+']
+
+                #fminus_av = read_json(basename + '-.json')
+                #fplus_av = read_json(basename + '+.json')
 
                 if method == 'frederiksen':
                     fminus_av[a] -= fminus_av.sum(0)
