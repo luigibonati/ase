@@ -173,10 +173,14 @@ class Infrared(Vibrations):
         #    combined_data = None
         # Get "static" dipole moment and forces
         name = '%s.eq' % self.name
-        [forces_zero, dipole_zero] = data[name]#, combined_data)
+        forces_zero = data[name]['forces']
+        dipole_zero = data[name]['dipole']
+        #[forces_zero, dipole_zero] = data[name]#, combined_data)
         self.dipole_zero = (sum(dipole_zero**2)**0.5) / units.Debye
         self.force_zero = max([sum((forces_zero[j])**2)**0.5
                                for j in self.indices])
+
+        #forces = {name: data[name]['forces'] for name in data
 
         ndof = 3 * len(self.indices)
         H = np.empty((ndof, ndof))
@@ -185,8 +189,14 @@ class Infrared(Vibrations):
         for a in self.indices:
             for i in 'xyz':
                 name = '%s.%d%s' % (self.name, a, i)
-                [fminus, dminus] = data[name + '-']
-                [fplus, dplus] = data[name + '+']
+                d1 = data[name + '-']
+                d2 = data[name + '+']
+                fminus = d1['forces']
+                dminus = d1['dipole']
+                fplus = d2['forces']
+                dplus = d2['dipole']
+                #[fminus, dminus] = data[name + '-']
+                #[fplus, dplus] = data[name + '+']
                 if self.nfree == 4:
                     [fminusminus, dminusminus] = data[name + '--']
                     [fplusplus, dplusplus] = data[name + '++']
@@ -197,6 +207,7 @@ class Infrared(Vibrations):
                         fminusminus[a] += -fminus.sum(0)
                         fplusplus[a] += -fplus.sum(0)
                 if self.nfree == 2:
+                    print(repr(fminus), repr(fplus))
                     H[r] = (fminus - fplus)[self.indices].ravel() / 2.0
                     dpdx[r] = (dminus - dplus)
                 if self.nfree == 4:

@@ -167,15 +167,14 @@ class Vibrations:
                         yield dispName, a, i, disp
 
     def calculate(self, atoms, handle):
-        forces = self.calc.get_forces(atoms)
+        results = {}
+        results['forces'] = self.calc.get_forces(atoms)
+
         if self.ir:
-            dipole = self.calc.get_dipole_moment(atoms)
+            results['dipole'] = self.calc.get_dipole_moment(atoms)
+
         if world.rank == 0:
-            if self.ir:
-                obj = [forces, dipole]
-            else:
-                obj = forces
-            handle.save(obj)
+            handle.save(results)
 
     def clean(self, empty_files=False, combined=True):
         """Remove json-files.
@@ -185,9 +184,17 @@ class Vibrations:
 
         """
 
-        if world.rank == 0:
-            self.cache.clear()
-        return self.cache.filecount()
+
+        if world.rank != 0:
+            return 0
+
+
+        if empty_files:
+            return self.cache.strip_empties()  # XXX Fails on combined cache
+
+        nfiles = self.cache.filecount()
+        self.cache.clear()
+        return nfiles
 
     def combine(self):
         """Combine json-files to one file ending with '.all.json'.
@@ -208,7 +215,7 @@ class Vibrations:
 
         """
         count = self.cache.filecount()
-        self.cache = self.cache.join()
+        self.cache = self.cache.split()
         return count
 
     def read(self, method='standard', direction='central'):
@@ -222,25 +229,28 @@ class Vibrations:
         r = 0
 
         data = dict(self.cache)
+        forces = {key: value['forces'] for key, value in data.items()}
 
         if direction != 'central':
-            feq = data['eq']
+            feq = forces['eq']
         for a in self.indices:
             for i in 'xyz':
                 token = f'{self.name}.{a}{i}'
-                fminus = data[token + '-']
-                fplus = data[token + '+']
+                fminus = forces[token + '-']
+                fplus = forces[token + '+']
                 if self.method == 'frederiksen':
                     fminus[a] -= fminus.sum(0)
                     fplus[a] -= fplus.sum(0)
                 if self.nfree == 4:
-                    fminusminus = data[token + '--']
-                    fplusplus = data[token + '++']
+                    fminusminus = forces[token + '--']
+                    fplusplus = forces[token + '++']
                     if self.method == 'frederiksen':
                         fminusminus[a] -= fminusminus.sum(0)
                         fplusplus[a] -= fplusplus.sum(0)
                 if self.direction == 'central':
                     if self.nfree == 2:
+                        print(repr(fminus))
+                        print(repr(fplus))
                         H[r] = .5 * (fminus - fplus)[self.indices].ravel()
                     else:
                         H[r] = H[r] = (-fminusminus +

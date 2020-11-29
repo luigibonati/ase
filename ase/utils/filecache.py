@@ -101,6 +101,12 @@ class MultiFileJSONCache(MutableMapping):
     def filecount(self):
         return len(self)
 
+    def strip_empties(self):
+        empties = [key for key, value in self.items() if value is None]
+        for key in empties:
+            del self[key]
+        return len(empties)
+
 
 class CombinedJSONCache(Mapping):
     writable = False

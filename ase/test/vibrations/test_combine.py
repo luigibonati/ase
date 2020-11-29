@@ -1,12 +1,12 @@
+import os
+from numpy.random import RandomState
+
+from ase.build import molecule
+from ase.vibrations import Vibrations
+from ase.vibrations import Infrared
+
+
 def test_combine():
-    import os
-    from numpy.random import RandomState
-
-    from ase.build import molecule
-    from ase.vibrations import Vibrations
-    from ase.vibrations import Infrared
-
-
     class RandomCalculator():
         """Fake Calculator class.
 
@@ -37,11 +37,11 @@ def test_combine():
     assert (freqs == vib.get_frequencies()).all()
 
     # Read the data from other working directory
-    dirname = os.path.basename(os.getcwd())
-    os.chdir('..')  # Change working directory
-    ir = Infrared(atoms, name=os.path.join(dirname, 'ir'))
-    assert (freqs == ir.get_frequencies()).all()
-    os.chdir(dirname)
+    #dirname = os.path.basename(os.getcwd())
+    #os.chdir('..')  # Change working directory
+    #ir = Infrared(atoms, name=os.path.join(dirname, 'ir'))
+    #assert (freqs == ir.get_frequencies()).all()
+    #os.chdir(dirname)
 
     ir = Infrared(atoms)
     assert ir.split() == 1
