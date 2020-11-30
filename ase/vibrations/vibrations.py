@@ -145,12 +145,13 @@ class Vibrations:
         """
         atoms = self.atoms if inplace else self.atoms.copy()
         yield self.name + '.eq', atoms
-        for dispName, a, i, disp in self.displacements():
+        for name, a, i, disp in self.displacements():
             if not inplace:
                 atoms = self.atoms.copy()
             pos0 = atoms.positions[a, i]
             atoms.positions[a, i] += disp
-            yield dispName, atoms
+            yield name, atoms
+
             if inplace:
                 atoms.positions[a, i] = pos0
 
@@ -164,11 +165,10 @@ class Vibrations:
             for i in range(3):
                 for sign in [-1, 1]:
                     for ndis in range(1, self.nfree // 2 + 1):
-                        dispName = ('%s.%d%s%s' %
-                                    (self.name, a, 'xyz'[i],
-                                     ndis * ' +-'[sign]))
+                        name = '%s.%d%s%s' % (self.name, a, 'xyz'[i],
+                                              ndis * ' +-'[sign])
                         disp = ndis * sign * self.delta
-                        yield dispName, a, i, disp
+                        yield name, a, i, disp
 
     def calculate(self, atoms, handle):
         results = {}
@@ -250,8 +250,6 @@ class Vibrations:
                         fplusplus[a] -= fplusplus.sum(0)
                 if self.direction == 'central':
                     if self.nfree == 2:
-                        print(repr(fminus))
-                        print(repr(fplus))
                         H[r] = .5 * (fminus - fplus)[self.indices].ravel()
                     else:
                         H[r] = H[r] = (-fminusminus +
