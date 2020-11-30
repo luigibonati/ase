@@ -969,10 +969,11 @@ def write_xyz(fileobj, images, comment='', columns=None,
                     for idx in c0.index:
                         cnstr[idx] = False
                 elif isinstance(c0, FixCartesian):
+                    masks = np.ones((natoms, 3), dtype=np.bool)
                     for i in range(len(cnstr)):
                         idx = cnstr[i].a
-                        cnstr[idx] = cnstr[i].mask
-                    cnstr = np.asarray(cnstr)
+                        masks[idx] = ~cnstr[i].mask
+                    cnstr = masks
             else:
                 fr_cols.remove('move_mask')
 
