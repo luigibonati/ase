@@ -347,11 +347,11 @@ def test_constraints(constraint):
     elif cls == FixCartesian:
         assert len(constraint2) == len(atoms)
         assert isinstance(constraint2[0], cls)
-        assert not np.any(constraint2[0].mask)
+        assert np.all(constraint2[0].mask)
         assert np.all(constraint2[1].mask == constraint.mask)
-        assert not np.any(constraint2[2].mask)
+        assert np.all(constraint2[2].mask)
     elif cls == list:
         assert len(constraint2) == len(atoms)
         assert np.all(constraint2[0].mask == constraint[0].mask)
-        assert not np.any(constraint2[1].mask)
+        assert np.all(constraint2[1].mask)
         assert np.all(constraint2[2].mask == constraint[1].mask)
