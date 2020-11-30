@@ -192,7 +192,8 @@ class Displacement:
                             atoms_N.positions[offset + a, i] = \
                                 pos[a, i] + sign * self.delta
 
-                            self.calculate(atoms_N, handle)
+                            result = self.calculate(atoms_N, handle)
+                            handle.save(result)
                         finally:
                             # Return to initial positions
                             atoms_N.positions[offset + a, i] = pos[a, i]
@@ -309,8 +310,7 @@ class Phonons(Displacement):
 
     def calculate(self, atoms_N, handle):
         forces = self(atoms_N)
-        if world.rank == 0:
-            handle.save({'forces': forces})
+        return {'forces': forces}
 
     def check_eq_forces(self):
         """Check maximum size of forces in the equilibrium structure."""

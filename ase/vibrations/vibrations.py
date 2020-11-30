@@ -130,7 +130,11 @@ class Vibrations:
             with self.cache.lock(name) as handle:
                 if handle is None:
                     continue
-                self.calculate(atoms, handle)
+
+                result = self.calculate(atoms, handle)
+
+                if world.rank == 0:
+                    handle.save(result)
 
     def iterdisplace(self, inplace=False):
         """Yield name and atoms object for initial and displaced structures.
@@ -173,8 +177,7 @@ class Vibrations:
         if self.ir:
             results['dipole'] = self.calc.get_dipole_moment(atoms)
 
-        if world.rank == 0:
-            handle.save(results)
+        return results
 
     def clean(self, empty_files=False, combined=True):
         """Remove json-files.
@@ -184,10 +187,8 @@ class Vibrations:
 
         """
 
-
         if world.rank != 0:
             return 0
-
 
         if empty_files:
             return self.cache.strip_empties()  # XXX Fails on combined cache

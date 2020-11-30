@@ -56,8 +56,6 @@ class ResonantRamanCalculator(RamanCalculatorBase, Vibrations):
         assert atoms == self.atoms  # XXX action required
         self.timer.start('Ground state')
         forces = self.atoms.get_forces()
-        if world.rank == 0:
-            handle.save({'forces': forces})
 
         if self.overlap:
             """Overlap is determined as
@@ -77,6 +75,7 @@ class ResonantRamanCalculator(RamanCalculatorBase, Vibrations):
         exlist = excalc.calculate(self.atoms)
         exlist.write(handle.key + self.exext)
         self.timer.stop('Excitations')
+        return {'forces': forces}
 
     def run(self):
         if self.overlap:

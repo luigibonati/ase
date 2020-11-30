@@ -63,10 +63,11 @@ class StaticRamanCalculatorBase(RamanCalculatorBase):
 
     def calculate(self, atoms, handle):
         # write forces
-        super().calculate(atoms, handle)
+        returnvalue = super().calculate(atoms, handle)
         # write static polarizability
         fname = handle.key + self.exext
         np.savetxt(fname, self.exobj(**self.exkwargs).calculate(atoms))
+        return returnvalue
 
 class StaticRamanCalculator(StaticRamanCalculatorBase, Vibrations):
     pass
