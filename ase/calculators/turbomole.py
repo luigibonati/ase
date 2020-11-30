@@ -1707,7 +1707,14 @@ class Turbomole(FileIOCalculator):
                 y = float(match.group(3)) * Bohr
                 z = float(match.group(5)) * Bohr
                 symbol = str(match.group(7))
-                atoms += Atom(symbol.capitalize(), (x, y, z))
+                
+                # check if dummy atoms were used
+                if symbol != 'q':
+                    atoms += Atom(symbol.capitalize(), (x, y, z))
+                else:
+                    # if dummy atoms are used, replace 'Q' with 'X'
+                    atoms += Atom('X', (x, y, z))
+
                 continue
             # gradient lines
             regex = (
