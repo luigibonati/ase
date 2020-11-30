@@ -32,16 +32,13 @@ def test_CO2():
             'XML.Write': True})
 
     name = 'co2'
+    pynao_args = dict(label="siesta", jcutoff=7, iter_broadening=0.15,
+                      xc_code='LDA,PZ', tol_loc=1e-6, tol_biloc=1e-7)
     rm = StaticRamanCalculator(CO2, siestaRaman, name=name, delta=0.011,
-                               exkwargs=dict(label="siesta",
-                                   jcutoff=7, iter_broadening=0.15,
-                                   xc_code='LDA,PZ', tol_loc=1e-6, tol_biloc=1e-7)
-                               )
+                               exkwargs=pynao_args)
     rm.run()
 
     pz = PlaczekStatic(CO2, name=name)
     e_vib = pz.get_energies()
     assert len(e_vib) == 9
     pz.summary()
-
-test_CO2()
