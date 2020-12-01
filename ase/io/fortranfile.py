@@ -51,8 +51,6 @@ for a file with little-endian data whose record headers are long
 integers.
 """
 
-__docformat__ = "restructuredtext en"
-
 import numpy
 
 try:
@@ -60,13 +58,6 @@ try:
 except NameError:
     # For python3 compatibility
     from io import FileIO as file
-
-try:
-    bytes
-except NameError:
-    # For python2.x compatibility, I think it would have been nicer to
-    bytes = str
-
 
 class FortranFile(file):
 
