@@ -4,12 +4,13 @@ import numpy as np
 
 def test_siesta_lrtddft():
     # Define the systems
-    CH4 = molecule('CH4')
+    ch4 = molecule('CH4')
 
-    lr = siestaLRTDDFT(label="siesta", xc_code='LDA,PZ')
+    LRTDDFT = siestaLRTDDFT(label="siesta", xc_code='LDA,PZ')
 
     # run siesta
-    lr.get_ground_state(CH4)
+    LRTDDFT.get_ground_state(ch4)
 
     freq = np.arange(0.0, 25.0, 0.5)
-    pmat = lr.get_polarizability(freq)
+    pmat = LRTDDFT.get_polarizability(freq)
+    assert pmat.size == 3*3*freq.size

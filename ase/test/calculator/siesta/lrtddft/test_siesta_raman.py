@@ -13,14 +13,14 @@ def test_CO2():
     https://github.com/maxhutch/quantum-espresso/blob/master/PHonon/examples/example15/README
     """
 
-    CO2 = Atoms('CO2',
+    co2 = Atoms('CO2',
                 positions=[[-0.009026, -0.020241, 0.026760],
                            [1.167544, 0.012723, 0.071808],
                            [-1.185592, -0.053316, -0.017945]],
                 cell=[20, 20, 20])
 
     # enter siesta input
-    CO2.calc = Siesta(
+    co2.calc = Siesta(
         mesh_cutoff=150 * Ry,
         basis_set='DZP',
         energy_shift=(10 * 10**-3) * eV,
@@ -34,11 +34,11 @@ def test_CO2():
     name = 'co2'
     pynao_args = dict(label="siesta", jcutoff=7, iter_broadening=0.15,
                       xc_code='LDA,PZ', tol_loc=1e-6, tol_biloc=1e-7)
-    rm = StaticRamanCalculator(CO2, siestaRaman, name=name, delta=0.011,
+    Rm = StaticRamanCalculator(co2, siestaRaman, name=name, delta=0.011,
                                exkwargs=pynao_args)
-    rm.run()
+    Rm.run()
 
-    pz = PlaczekStatic(CO2, name=name)
-    e_vib = pz.get_energies()
+    Pz = PlaczekStatic(CO2, name=name)
+    e_vib = Pz.get_energies()
     assert len(e_vib) == 9
     pz.summary()
