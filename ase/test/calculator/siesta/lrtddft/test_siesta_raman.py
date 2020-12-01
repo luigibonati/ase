@@ -38,7 +38,7 @@ def test_CO2():
                                exkwargs=pynao_args)
     Rm.run()
 
-    Pz = PlaczekStatic(CO2, name=name)
+    Pz = PlaczekStatic(co2, name=name)
     e_vib = Pz.get_energies()
     assert len(e_vib) == 9
-    pz.summary()
+    Pz.summary()
