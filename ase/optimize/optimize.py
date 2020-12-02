@@ -331,11 +331,11 @@ class Optimizer(Dynamics):
 
     def dump(self, data):
         if world.rank == 0 and self.restart is not None:
-            with open(self.restart, "w") as fd:
+            with open(self.restart, 'w') as fd:
                 write_json(fd, data)
 
     def load(self):
-        with open(self.restart, "rb") as fd:
+        with open(self.restart) as fd:
             return read_json(fd)
 
     def set_force_consistent(self):
