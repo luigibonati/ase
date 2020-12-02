@@ -374,7 +374,7 @@ class Wannier:
 
     def save(self, file):
         """Save information on localization and rotation matrices to file."""
-        with open(file, 'w') as fd:
+        with paropen(file, 'w') as fd:
             write_json(fd, (self.Z_dknn, self.U_kww, self.C_kul))
 
     def update(self):
