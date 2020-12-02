@@ -50,6 +50,7 @@ Quick links:
 
    surface
    tools
+   connected
 
 .. seealso::
 
