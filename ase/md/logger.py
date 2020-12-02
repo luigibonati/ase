@@ -1,5 +1,6 @@
 """Logging for molecular dynamics."""
 
+import os
 import weakref
 import sys
 import ase.units as units
@@ -27,7 +28,7 @@ class MDLogger:
                  peratom=False, mode="a"):
         import ase.parallel
         if ase.parallel.world.rank > 0:
-            logfile = "/dev/null"  # Only log on master
+            logfile = os.devnull  # Only log on master
         if hasattr(dyn, "get_time"):
             self.dyn = weakref.proxy(dyn)
         else:
@@ -78,9 +79,16 @@ class MDLogger:
     def __del__(self):
         self.close()
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
     def close(self):
-        if self.ownlogfile:
+        if self.ownlogfile and self.logfile is not None:
             self.logfile.close()
+            self.logfile = None
 
     def __call__(self):
         epot = self.atoms.get_potential_energy()

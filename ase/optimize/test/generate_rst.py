@@ -29,12 +29,12 @@ for name in namelist:
     firstline = lines.pop(0)
     f.write(
         '\n' +
-        name + '\n' + \
+        name + '\n' +
         '=' * len(name) + '\n'
-        'Calculator used: %s\n' % firstline.split(',')[-1] + \
-        '\n' + \
-        '=============== ===== ================= ========== ===============\n' + \
-        'Optimizer       Steps Force evaluations Energy     Note           \n' + \
+        'Calculator used: %s\n' % firstline.split(',')[-1] +
+        '\n' +
+        '=============== ===== ================= ========== ===============\n' +
+        'Optimizer       Steps Force evaluations Energy     Note           \n' +
         '=============== ===== ================= ========== ===============\n'
     )
     for line in lines:

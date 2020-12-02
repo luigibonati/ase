@@ -12,8 +12,9 @@ from ase.io import extxyz
 from ase.atoms import Atoms
 from ase.build import bulk
 from ase.io.extxyz import escape
+from ase.calculators.calculator import compare_atoms
 from ase.calculators.emt import EMT
-from ase.constraints import full_3x3_to_voigt_6_stress
+from ase.constraints import FixAtoms, FixCartesian, full_3x3_to_voigt_6_stress
 from ase.build import molecule
 
 # array data of shape (N, 1) squeezed down to shape (N, ) -- bug fixed
@@ -185,7 +186,6 @@ def test_complex_key_val():
         'f_int_array="_JSON [[1, 2], [3, 4]]" '
         'f_bool_bare '
         'f_bool_value=F '
-        'f_irregular_shape="_JSON [[1, 2, 3], [4, 5]]" '
         'f_dict={_JSON {"a" : 1}} '
     )
 
@@ -230,7 +230,6 @@ def test_complex_key_val():
         'f_int_array': np.array([[1, 2], [3, 4]]),
         'f_bool_bare': True,
         'f_bool_value': False,
-        'f_irregular_shape': np.array([[1, 2, 3], [4, 5]], object),
         'f_dict': {"a": 1}
     }
 
@@ -299,7 +298,8 @@ def test_stress():
     atoms.cell = [10, 10, 10]
     atoms.pbc = True
 
-    atoms.new_array('stress', np.arange(6, dtype=float))  # array with clashing name
+    # array with clashing name
+    atoms.new_array('stress', np.arange(6, dtype=float))
     atoms.calc = EMT()
     a_stress = atoms.get_stress()
     atoms.write('tmp.xyz')
@@ -308,6 +308,7 @@ def test_stress():
     assert abs(b.arrays['stress'] - np.arange(6, dtype=float)).max() < 1e-6
     b_stress = b.info['stress']
     assert abs(full_3x3_to_voigt_6_stress(b_stress) - a_stress).max() < 1e-6
+
 
 def test_json_scalars():
     a = bulk('Si')
@@ -321,4 +322,36 @@ def test_json_scalars():
     b = ase.io.read('tmp.xyz')
     assert abs(b.info['val_1'] - 42.0) < 1e-6
     assert abs(b.info['val_2'] - 42.0) < 1e-6
-    assert abs(b.info['val_3'] - 42)  == 0
+    assert abs(b.info['val_3'] - 42) == 0
+
+
+@pytest.mark.parametrize('constraint', [FixAtoms(indices=(0, 2)),
+                                        FixCartesian(1, mask=(1, 0, 1)),
+                                        [FixCartesian(0), FixCartesian(2)]])
+def test_constraints(constraint):
+    atoms = molecule('H2O')
+    atoms.set_constraint(constraint)
+
+    columns = ['symbols', 'positions', 'move_mask']
+    ase.io.write('tmp.xyz', atoms, columns=columns)
+
+    atoms2 = ase.io.read('tmp.xyz')
+    assert not compare_atoms(atoms, atoms2)
+
+    constraint2 = atoms2.constraints
+    cls = type(constraint)
+    if cls == FixAtoms:
+        assert len(constraint2) == 1
+        assert isinstance(constraint2[0], cls)
+        assert np.all(constraint2[0].index == constraint.index)
+    elif cls == FixCartesian:
+        assert len(constraint2) == len(atoms)
+        assert isinstance(constraint2[0], cls)
+        assert np.all(constraint2[0].mask)
+        assert np.all(constraint2[1].mask == constraint.mask)
+        assert np.all(constraint2[2].mask)
+    elif cls == list:
+        assert len(constraint2) == len(atoms)
+        assert np.all(constraint2[0].mask == constraint[0].mask)
+        assert np.all(constraint2[1].mask)
+        assert np.all(constraint2[2].mask == constraint[1].mask)

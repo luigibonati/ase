@@ -17,12 +17,12 @@ def test_md(factory):
         pytest.skip('No stress tensor until openmx 3.8+')
 
     bud = Atoms('CH4', np.array([
-            [0.000000, 0.000000, 0.100000],
-            [0.682793, 0.682793, 0.682793],
-            [-0.682793, -0.682793, 0.68279],
-            [-0.682793, 0.682793, -0.682793],
-            [0.682793, -0.682793, -0.682793]]),
-            cell=[10, 10, 10])
+        [0.000000, 0.000000, 0.100000],
+        [0.682793, 0.682793, 0.682793],
+        [-0.682793, -0.682793, 0.68279],
+        [-0.682793, 0.682793, -0.682793],
+        [0.682793, -0.682793, -0.682793]]),
+        cell=[10, 10, 10])
 
     calc = factory.calc(
         label='ch4',
@@ -34,12 +34,12 @@ def test_md(factory):
                                       ['H', 'H5.0-s1', 'H_PBE13']],
         kpts=(1, 1, 1),
         eigensolver='Band'
-        )
+    )
 
     bud.calc = calc
     with Trajectory('example.traj', 'w', bud) as traj:
         ucf = UnitCellFilter(
-            bud,mask=[True, True, False, False, False, False])
+            bud, mask=[True, True, False, False, False, False])
         dyn = QuasiNewton(ucf)
         dyn.attach(traj.write)
         dyn.run(fmax=0.1)

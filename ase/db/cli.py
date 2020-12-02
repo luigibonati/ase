@@ -105,8 +105,6 @@ class CLICommand:
             help='Show metadata as json.')
         add('--set-metadata', metavar='something.json',
             help='Set metadata from a json file.')
-        add('-M', '--metadata-from-python-script', metavar='something.py',
-            help='Use metadata from a Python file.')
         add('--unique', action='store_true',
             help='Give rows a new unique id when using --insert-into.')
         add('--strip-data', action='store_true',

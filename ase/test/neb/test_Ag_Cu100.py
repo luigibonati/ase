@@ -44,8 +44,8 @@ def test_Ag_Cu100():
     for image in images:
         print(image.positions[-1], image.get_potential_energy())
 
-    dyn = BFGS(neb, trajectory='mep.traj')
-    dyn.run(fmax=0.05)
+    with BFGS(neb) as dyn:
+        dyn.run(fmax=0.05)
 
     for image in images:
         print(image.positions[-1], image.get_potential_energy())

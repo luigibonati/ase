@@ -151,8 +151,9 @@ def KIM():
             return _KIM(*args, **kwargs)
         except KIMModelNotFound:
             pytest.skip('KIM tests require the example KIM models.  '
-                        'These models are available if the kimpy package is '
-                        'built from source.')
+                        'These models are available if the KIM API is '
+                        'built from source.  See https://openkim.org/kim-api/'
+                        'for more information.')
 
     return KIM
 

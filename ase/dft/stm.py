@@ -1,6 +1,5 @@
-import pickle
-
 import numpy as np
+
 
 class STM:
     def __init__(self, atoms, symmetries=None, use_density=False):
@@ -24,8 +23,11 @@ class STM:
         self.use_density = use_density
 
         if isinstance(atoms, str):
-            with open(atoms, 'rb') as f:
-                self.ldos, self.bias, self.cell = pickle.load(f)
+            # XXX Importing in the beginning causes a cyclic import.
+            # We need to clean up the imports.
+            from ase.io.jsonio import read_json
+            with open(atoms, 'r') as fd:
+                self.ldos, self.bias, self.cell = read_json(fd)
             self.atoms = None
         else:
             self.atoms = atoms
@@ -93,11 +95,12 @@ class STM:
         self.ldos = ldos
 
 
-    def write(self, filename='stm.pckl'):
+    def write(self, filename='stm.json'):
         """Write local density of states to pickle file."""
-        with open(filename, 'wb') as f:
-            pickle.dump((self.ldos, self.bias, self.cell), f,
-                        protocol=pickle.HIGHEST_PROTOCOL)
+        from ase.io.jsonio import write_json
+        # XXX module-level import would cause cyclic error
+        with open(filename, 'w') as fd:
+            write_json(fd, (self.ldos, self.bias, self.cell))
 
 
     def get_averaged_current(self, bias, z):

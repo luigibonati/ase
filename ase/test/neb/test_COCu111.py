@@ -64,15 +64,15 @@ def test_COCu111():
     for image in images:
         print(image.positions[-1], image.get_potential_energy())
 
-    dyn = BFGS(neb, maxstep=0.04, trajectory='mep.traj')
-    dyn.run(fmax=0.1)
+    with BFGS(neb, maxstep=0.04, trajectory='mep.traj') as dyn:
+        dyn.run(fmax=0.1)
 
     for image in images:
         print(image.positions[-1], image.get_potential_energy())
 
     # Trying to read description of optimization from trajectory
-    traj = Trajectory('mep.traj')
-    assert traj.description['optimizer'] == 'BFGS'
-    for key, value in traj.description.items():
-        print(key, value)
-    print(traj.ase_version)
+    with Trajectory('mep.traj') as traj:
+        assert traj.description['optimizer'] == 'BFGS'
+        for key, value in traj.description.items():
+            print(key, value)
+        print(traj.ase_version)

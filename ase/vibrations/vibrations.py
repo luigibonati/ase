@@ -100,7 +100,6 @@ class Vibrations:
         self.nfree = nfree
         self.H = None
         self.ir = None
-        self.ram = None
 
     def run(self):
         """Run the vibration calculations.
@@ -171,15 +170,8 @@ class Vibrations:
         forces = self.calc.get_forces(atoms)
         if self.ir:
             dipole = self.calc.get_dipole_moment(atoms)
-        if self.ram:
-            freq, noninPol, pol = self.get_polarizability()
         if world.rank == 0:
-            if self.ir and self.ram:
-                pickle.dump([forces, dipole, freq, noninPol, pol], fd, protocol=2)
-                sys.stdout.write(
-                    'Writing %s, dipole moment = (%.6f %.6f %.6f)\n' %
-                    (filename, dipole[0], dipole[1], dipole[2]))
-            elif self.ir and not self.ram:
+            if self.ir:
                 pickle.dump([forces, dipole], fd, protocol=2)
                 sys.stdout.write(
                     'Writing %s, dipole moment = (%.6f %.6f %.6f)\n' %
@@ -434,17 +426,15 @@ class Vibrations:
                     self.write_mode(n=index, kT=kT, nimages=nimages)
             return
         mode = self.get_mode(n) * sqrt(kT / abs(self.hnu[n]))
-        p = self.atoms.positions.copy()
+
+        pos0 = self.atoms.get_positions()
         n %= 3 * len(self.indices)
-        traj = Trajectory('%s.%d.traj' % (self.name, n), 'w')
-        calc = self.atoms.calc
-        self.atoms.calc = None
-        for x in np.linspace(0, 2 * pi, nimages, endpoint=False):
-            self.atoms.set_positions(p + sin(x) * mode)
-            traj.write(self.atoms)
-        self.atoms.set_positions(p)
-        self.atoms.calc = calc
-        traj.close()
+        atoms = self.atoms.copy()
+
+        with Trajectory('%s.%d.traj' % (self.name, n), 'w') as traj:
+            for x in np.linspace(0, 2 * pi, nimages, endpoint=False):
+                atoms.set_positions(pos0 + sin(x) * mode)
+                traj.write(atoms)
 
     def show_as_force(self, n, scale=0.2):
         mode = self.get_mode(n) * len(self.hnu) * scale
@@ -455,27 +445,32 @@ class Vibrations:
     def write_jmol(self):
         """Writes file for viewing of the modes with jmol."""
 
-        fd = open(self.name + '.xyz', 'w')
+        with open(self.name + '.xyz', 'w') as fd:
+            self._write_json(fd)
+
+    def _write_jmol(self, fd):
         symbols = self.atoms.get_chemical_symbols()
-        f = self.get_frequencies()
+        freq = self.get_frequencies()
         for n in range(3 * len(self.indices)):
             fd.write('%6d\n' % len(self.atoms))
-            if f[n].imag != 0:
+
+            if freq[n].imag != 0:
                 c = 'i'
-                f[n] = f[n].imag
+                freq[n] = freq[n].imag
             else:
                 c = ' '
-            fd.write('Mode #%d, f = %.1f%s cm^-1' % (n, f[n], c))
+
+            fd.write('Mode #%d, f = %.1f%s cm^-1' % (n, freq[n], c))
             if self.ir:
                 fd.write(', I = %.4f (D/Å)^2 amu^-1.\n' % self.intensities[n])
             else:
                 fd.write('.\n')
+
             mode = self.get_mode(n)
             for i, pos in enumerate(self.atoms.positions):
                 fd.write('%2s %12.5f %12.5f %12.5f %12.5f %12.5f %12.5f \n' %
                          (symbols[i], pos[0], pos[1], pos[2],
                           mode[i, 0], mode[i, 1], mode[i, 2]))
-        fd.close()
 
     def fold(self, frequencies, intensities,
              start=800.0, end=4000.0, npts=None, width=4.0,
@@ -534,10 +529,10 @@ class Vibrations:
         outdata = np.empty([len(energies), 2])
         outdata.T[0] = energies
         outdata.T[1] = spectrum
-        fd = open(out, 'w')
-        fd.write('# %s folded, width=%g cm^-1\n' % (type.title(), width))
-        fd.write('# [cm^-1] arbitrary\n')
-        for row in outdata:
-            fd.write('%.3f  %15.5e\n' %
-                     (row[0], row[1]))
-        fd.close()
+
+        with open(out, 'w') as fd:
+            fd.write('# %s folded, width=%g cm^-1\n' % (type.title(), width))
+            fd.write('# [cm^-1] arbitrary\n')
+            for row in outdata:
+                fd.write('%.3f  %15.5e\n' %
+                         (row[0], row[1]))

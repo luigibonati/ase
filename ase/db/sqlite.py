@@ -19,9 +19,9 @@ import numbers
 import os
 import sqlite3
 import sys
+from contextlib import contextmanager
 
 import numpy as np
-from contextlib import contextmanager
 
 import ase.io.jsonio
 from ase.data import atomic_numbers
