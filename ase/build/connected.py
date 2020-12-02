@@ -39,9 +39,7 @@ def connected_indices(atoms, index, dmax=None, scale=1.5):
         isolated = True
         for i in connected:
             for j in nl.get_neighbors(i)[0]:
-                if j in connected:
-                    pass
-                else:
+                if j not in connected:
                     connected.append(j)
                     isolated = False
 
