@@ -1,6 +1,6 @@
 from ase import Atoms
 from ase.build import molecule
-from ase.build.connected import connected_atoms, split_bond
+from ase.build.connected import connected_atoms, split_bond, separate
 from ase.data.s22 import data
 
 
@@ -34,3 +34,16 @@ def test_connected_atoms():
     atoms1 = connected_atoms(dimer, 0)
     atoms2 = connected_atoms(dimer, -1)
     assert len(dimer) == len(atoms1) + len(atoms2)
+
+
+def test_separate_dimer():
+    dimerdata = data['Methanol-formaldehyde_complex']
+    dimer = Atoms(dimerdata['symbols'], dimerdata['positions'])
+
+    atoms_list = separate(dimer)
+    assert len(atoms_list) == 2
+    assert len(atoms_list[0]) + len(atoms_list[1]) == len(dimer)
+
+    # split into atoms
+    atoms_list = separate(dimer, scale=1e-5)
+    assert len(atoms_list) == len(dimer)

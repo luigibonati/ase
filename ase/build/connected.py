@@ -1,3 +1,4 @@
+from ase.atoms import Atoms
 from ase.data import covalent_radii
 from ase.neighborlist import NeighborList
 
@@ -64,3 +65,22 @@ def split_bond(atoms, index1, index2):
     atoms2 = connected_atoms(atoms_copy, index2 - shift[1])
 
     return atoms1, atoms2
+
+
+def separate(atoms, **kwargs):
+    """Split atoms into separated entities
+
+    Returns:
+      List of Atoms object that connected_indices calls connected.
+    """
+    indices = list(range(len(atoms)))
+
+    separated = []
+    while indices:
+        my_indcs = connected_indices(atoms, indices[0], **kwargs)
+        separated.append(Atoms(cell=atoms.cell, pbc=atoms.pbc))
+        for i in my_indcs:
+            separated[-1].append(atoms[i])
+            del indices[indices.index(i)]
+
+    return separated
