@@ -1,7 +1,9 @@
+import pytest
 from ase.calculators.siesta.siesta_lrtddft import siestaLRTDDFT
 from ase.build import molecule
 import numpy as np
 
+@pytest.mark.calculator('siesta')
 def test_siesta_lrtddft():
     # Define the systems
     ch4 = molecule('CH4')
