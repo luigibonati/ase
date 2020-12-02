@@ -54,11 +54,17 @@ def test_add_columns(database):
     assert 'foo' in table.addcolumns  # ... but we can add it
 
 
+def test_favicon(client):
+    assert client.get('/favicon.ico').status_code == 308  # redirect
+    assert client.get('/favicon.ico/').status_code == 204  # no content
+
+
 def test_db_web(client):
     import io
     from ase.db.web import Session
     from ase.io import read
     c = client
+
     page = c.get('/').data.decode()
     sid = Session.next_id - 1
     assert 'foo' in page

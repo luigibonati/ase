@@ -115,9 +115,10 @@ keyword         type       default value   description
 For parameters in the list without default value given, VASP will set
 the default value. Most of the parameters used in the VASP :file:`INCAR` file
 are allowed keywords. See the official `VASP manual`_ for more details.
+Input arguments specific to the `VTST add-ons`_ for VASP are also supported.
 
 .. _VASP manual: https://cms.mpi.univie.ac.at/vasp/vasp/vasp.html
-
+.. _VTST add-ons: https://theory.cm.utexas.edu/vtsttools/
 
 .. note::
 
@@ -160,8 +161,10 @@ hf                          ``lhfcalc``, ``aexx``, ``aldac``,
 pbe0                        ``gga``, ``lhfcalc``
 b3lyp                       ``gga``, ``lhfcalc``, ``aexx``, ``aggax``,
                             ``aggac``, ``aldac``
-hse03, hse06, hsesol        ``gga``, ``lhfcalc``, ``hfscreen``
+hse03, hse06, hsesol        ``gga``, ``lhfcalc``, ``hfscreen``                          
 ==========================  =====================================
+
+Additional ``xc`` recipes are available for several of the recent functionals from the Truhlar group  (i.e. ``sogga``, ``soga11``, ``n12``, ``n12-sx``, ``mn12l``, ``gam``, ``hle17``, ``revm06l``, ``m06sx``), which require VASP to be patched with the `MN-VFM module <https://comp.chem.umn.edu/mn-vfm/>`_.
 
 It is possible for the user to temporarily add their own ``xc``
 recipes without modifying ASE, by updating a dictionary. For example,

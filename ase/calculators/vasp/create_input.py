@@ -321,7 +321,8 @@ int_keys = [
     'nedos',  # Number of grid points in DOS
     'turbo',  # Ewald, 0 = Normal, 1 = PME
     'omegapar',  # Number of groups for response function calc.
-    'taupar',  # Number of groups in real time for response function calc.
+    'taupar',  # (Possibly Depricated) Number of groups in real time for response function calc.
+    'ntaupar',  # Number of groups in real time for response function calc.
     'antires',  # How to treat antiresonant part of response function
     'magatom',  # Index of atom at which to place magnetic field (NMR)
     'jatom',  # Index of atom at which magnetic moment is evaluated (NMR)
@@ -891,6 +892,47 @@ class GenerateVaspInput:
             'gga': 'PS',
             'lhfcalc': True,
             'hfscreen': 0.2
+        },
+        # MN-VFM functionals
+        'sogga': {
+            'gga': 'SA'
+        },
+        'sogga11': {
+            'gga': 'S1'
+        },
+        'sogga11-x': {
+            'gga': 'SX',
+            'lhfcalc': True,
+            'aexx': 0.401
+        },
+        'n12': {
+            'gga': 'N2'
+        },
+        'n12-sx': {
+            'gga': 'NX',
+            'lhfcalc': True,
+            'lhfscreen': 0.2
+        },
+        'mn12l': {
+            'metagga': 'MN12L'
+        },
+        'gam': {
+            'gga': 'GA'
+        },
+        'mn15l': {
+            'metagga': 'MN15L'
+        },
+        'hle17': {
+            'metagga': 'HLE17'
+        },
+        'revm06l': {
+            'metagga': 'revM06L'
+        },
+        'm06sx': {
+            'metagga': 'M06SX',
+            'lhfcalc': True,
+            'hfscreen': 0.189,
+            'aexx': 0.335
         }
     }
 

@@ -37,4 +37,4 @@ def test_doctest(modname):
 
     mod = importlib.import_module(modname)
     with np.printoptions(legacy='1.13'):
-        print(mod, doctest.testmod(mod, raise_on_error=True))
+        doctest.testmod(mod, raise_on_error=True, verbose=True)

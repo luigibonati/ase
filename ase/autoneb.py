@@ -11,6 +11,7 @@ import os
 import types
 from math import log
 from math import exp
+from contextlib import ExitStack
 
 
 class AutoNEB:
@@ -139,7 +140,17 @@ class AutoNEB:
             os.makedirs(self.iter_folder)
 
     def execute_one_neb(self, n_cur, to_run, climb=False, many_steps=False):
+        with ExitStack() as exitstack:
+            self._execute_one_neb(exitstack, n_cur, to_run,
+                                  climb=climb, many_steps=many_steps)
+
+
+    def _execute_one_neb(self, exitstack, n_cur, to_run,
+                         climb=False, many_steps=False):
         '''Internal method which executes one NEB optimization.'''
+
+        closelater = exitstack.enter_context
+
         self.iteration += 1
         # First we copy around all the images we are not using in this
         # neb (for reproducability purposes)
@@ -147,8 +158,9 @@ class AutoNEB:
             for i in range(n_cur):
                 if i not in to_run[1: -1]:
                     filename = '%s%03d.traj' % (self.prefix, i)
-                    t = Trajectory(filename, mode='w', atoms=self.all_images[i])
-                    t.write()
+                    with Trajectory(filename, mode='w',
+                                    atoms=self.all_images[i]) as traj:
+                        traj.write()
                     filename_ref = self.iter_folder + \
                         '/%s%03diter%03d.traj' % (self.prefix, i,
                                                   self.iteration)
@@ -167,10 +179,12 @@ class AutoNEB:
                   climb=climb)
 
         # Do the actual NEB calculation
-        qn = self.optimizer(neb,
-                            logfile=self.iter_folder +
-                            '/%s_log_iter%03d.log' % (self.prefix,
-                                                      self.iteration))
+        qn = closelater(
+            self.optimizer(neb,
+                           logfile=self.iter_folder +
+                           '/%s_log_iter%03d.log' % (self.prefix,
+                                                     self.iteration))
+        )
 
         # Find the ranks which are masters for each their calculation
         if self.parallel:
@@ -179,15 +193,19 @@ class AutoNEB:
             n = self.world.size // nim      # number of cpu's per image
             j = 1 + self.world.rank // n    # my image number
             assert nim * n == self.world.size
-            traj = Trajectory('%s%03d.traj' % (self.prefix, j + nneb), 'w',
-                              self.all_images[j + nneb],
-                              master=(self.world.rank % n == 0))
+            traj = closelater(Trajectory(
+                '%s%03d.traj' % (self.prefix, j + nneb), 'w',
+                self.all_images[j + nneb],
+                master=(self.world.rank % n == 0)
+            ))
             filename_ref = self.iter_folder + \
                 '/%s%03diter%03d.traj' % (self.prefix,
                                           j + nneb, self.iteration)
-            trajhist = Trajectory(filename_ref, 'w',
-                                  self.all_images[j + nneb],
-                                  master=(self.world.rank % n == 0))
+            trajhist = closelater(Trajectory(
+                filename_ref, 'w',
+                self.all_images[j + nneb],
+                master=(self.world.rank % n == 0)
+            ))
             qn.attach(traj)
             qn.attach(trajhist)
         else:
@@ -195,11 +213,15 @@ class AutoNEB:
             for i, j in enumerate(to_run[1: -1]):
                 filename_ref = self.iter_folder + \
                     '/%s%03diter%03d.traj' % (self.prefix, j, self.iteration)
-                trajhist = Trajectory(filename_ref, 'w', self.all_images[j])
+                trajhist = closelater(Trajectory(
+                    filename_ref, 'w', self.all_images[j]
+                ))
                 qn.attach(seriel_writer(trajhist, i, num).write)
 
-                traj = Trajectory('%s%03d.traj' % (self.prefix, j), 'w',
-                                  self.all_images[j])
+                traj = closelater(Trajectory(
+                    '%s%03d.traj' % (self.prefix, j), 'w',
+                    self.all_images[j]
+                ))
                 qn.attach(seriel_writer(traj, i, num).write)
                 num += 1
 
