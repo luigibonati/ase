@@ -1,13 +1,12 @@
-import pytest
-from ase.units import Ry, eV
+#import pytest
 from ase.calculators.siesta import Siesta
 from ase.calculators.siesta.siesta_lrtddft import siestaRaman
 from ase.vibrations.raman import StaticRamanCalculator
 from ase.vibrations.placzek import PlaczekStatic
 from ase.build import molecule
 
-@pytest.mark.calculator('siesta')
-def test_N2():
+#@pytest.mark.calculator('siesta')
+def test_N2(siesta_factory):
 
     n2 = molecule('N2')
 
