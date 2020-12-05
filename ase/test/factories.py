@@ -168,7 +168,7 @@ def read_stdout(args, createfile=None):
         if createfile is not None:
             path = Path(directory) / createfile
             path.touch()
-        proc = Popen(args, stdout=PIPE, stderr=PIPE,
+        proc = Popen(args, stdout=PIPE, stderr=PIPE, stdin=PIPE,
                      cwd=directory, encoding='ascii')
         stdout, _ = proc.communicate()
         # Exit code will be != 0 because there isn't an input file
