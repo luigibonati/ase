@@ -10,9 +10,6 @@ the following assumptions are made about the lammps data file:
 
   - The cell is orthogonal (xy, xz, yz tilt factors are
     ignored even if they exist)
-
-  - The sections are given in the following order:
-        Masses -> Atoms -> Velocities -> Bonds -> Angles
 """
 import io
 import re
@@ -21,6 +18,11 @@ import pathlib
 import numpy as np
 from ase.calculators.lammps import convert
 
+
+def split_contents_by_section(raw_datafile_contents):
+    return re.split(r"^([A-Za-z]+\s*)$\n", raw_datafile_contents, flags=re.MULTILINE)
+
+
 def extract_cell(raw_datafile_contents):
     """
     NOTE: Assumes an orthogonal cell (xy, xz, yz tilt factors are
@@ -28,9 +30,9 @@ def extract_cell(raw_datafile_contents):
     """
     RE_CELL = re.compile(
         r"""
-            ([0-9e+.-]+)\ ([0-9e+.-]+)\ xlo\ xhi\n
-            ([0-9e+.-]+)\ ([0-9e+.-]+)\ ylo\ yhi\n
-            ([0-9e+.-]+)\ ([0-9e+.-]+)\ zlo\ zhi\n
+            ([0-9e+.-]+)\s+([0-9e+.-]+)\s+xlo\s+xhi\n
+            ([0-9e+.-]+)\s+([0-9e+.-]+)\s+ylo\s+yhi\n
+            ([0-9e+.-]+)\s+([0-9e+.-]+)\s+zlo\s+zhi\n
         """,
         flags=re.VERBOSE,
     )
@@ -45,40 +47,33 @@ def extract_cell(raw_datafile_contents):
 
 def extract_mass(raw_datafile_contents):
     """
-    NOTE: Assumes that only a single atomic species is present and that
-    Masses section is followed immediately by Atoms section
+    NOTE: Assumes that only a single atomic species is present
     """
-    RE_MASS = re.compile(
-        r"""
-            Masses\n
-            .*?\n
-            [0-9]\ ([0-9e+.-]+)\n
-            \nAtoms
-        """,
-        flags=re.VERBOSE | re.DOTALL,
-    )
-    mass = float(RE_MASS.search(raw_datafile_contents).group(1))
+    contents_split_by_section = split_contents_by_section(raw_datafile_contents)
 
-    return mass
+    masses_block = None
+
+    # Grab all atoms lines
+    for ind, block in enumerate(contents_split_by_section):
+        if block.startswith("Masses"):
+            masses_block = contents_split_by_section[ind + 1].strip()
+            break
+
+    if masses_block is None:
+        return None
+    else:
+        mass = re.match(r"\s*[0-9]+\s+([0-9e+.-]+)", masses_block).group(1)
+        return float(mass)
 
 
 def extract_atom_quantities(raw_datafile_contents):
-    """
-    NOTE: Assumes Atoms section is immediately followed by Velocities
-    section
-    """
+    contents_split_by_section = split_contents_by_section(raw_datafile_contents)
+
     # Grab all atoms lines
-    RE_POSITIONS_BLOCK = re.compile(
-        r"""
-            Atoms\n
-            .*?\n
-            (.*)
-            .*?\n\n
-            Velocities
-        """,
-        flags=re.VERBOSE | re.DOTALL,
-    )
-    positions_block = RE_POSITIONS_BLOCK.search(raw_datafile_contents).group(1)
+    for ind, block in enumerate(contents_split_by_section):
+        if block.startswith("Atoms"):
+            positions_block = contents_split_by_section[ind + 1].strip()
+            break
 
     # Now parse each individual atoms line for quantities
     charges = []
@@ -87,40 +82,39 @@ def extract_atom_quantities(raw_datafile_contents):
 
     for atom_line in positions_block.splitlines():
         RE_ATOM_LINE = re.compile(
-            "[0-9]+ [0-9]+ [0-9]+ ([0-9e+.-]+) "
-            "([0-9e+.-]+) ([0-9e+.-]+) ([0-9e+.-]+) "
-            "([0-9-]+) ([0-9-]+) ([0-9-]+)"
+            r"\s*[0-9]+\s+[0-9]+\s+[0-9]+\s+([0-9e+.-]+)\s+"
+            r"([0-9e+.-]+)\s+([0-9e+.-]+)\s+([0-9e+.-]+)\s?"
+            r"([0-9-]+)?\s?([0-9-]+)?\s?([0-9-]+)?"
         )
         q, x, y, z, *travel = RE_ATOM_LINE.match(atom_line).groups()
         charges.append(float(q))
         positions.append(list(map(float, [x, y, z])))
-        travels.append(list(map(int, travel)))
+        if None not in travel:
+            travels.append(list(map(int, travel)))
+        else:
+            travels.append(None)
 
     return charges, positions, travels
 
 
 def extract_velocities(raw_datafile_contents):
     """
-    NOTE: Assumes metal units are used in data file and that Velocities
-    section is followed immediately by Bonds section
+    NOTE: Assumes metal units are used in data file
     """
+    contents_split_by_section = split_contents_by_section(raw_datafile_contents)
+
     # Grab all velocities lines
-    RE_VELOCITIES_BLOCK = re.compile(
-        r"""
-            Velocities\n
-            .*?\n
-            (.*)
-            .*?\n\n
-            Bonds
-        """,
-        flags=re.VERBOSE | re.DOTALL,
-    )
-    velocities_block = RE_VELOCITIES_BLOCK.search(raw_datafile_contents).group(1)
+    for ind, block in enumerate(contents_split_by_section):
+        if block.startswith("Velocities"):
+            velocities_block = contents_split_by_section[ind + 1].strip()
+            break
 
     # Now parse each individual line for velocity
     velocities = []
     for velocities_line in velocities_block.splitlines():
-        RE_VELOCITY = re.compile("[0-9]+ ([0-9e+.-]+) ([0-9e+.-]+) " "([0-9e+.-]+)")
+        RE_VELOCITY = re.compile(
+            r"\s*[0-9]+\s+([0-9e+.-]+)\s+([0-9e+.-]+)" r"\s+([0-9e+.-]+)"
+        )
         v = RE_VELOCITY.match(velocities_line).groups()
         velocities.append(list(map(float, v)))
 
@@ -148,8 +142,10 @@ def lammpsdata_file_extracted_sections(lammpsdata):
         raw_datafile_contents = lammpsdata.read()
 
     else:
-        raise ValueError("Lammps data file content inputted in unsupported "
-            "object type {type(lammpsdata)}")
+        raise ValueError(
+            "Lammps data file content inputted in unsupported "
+            "object type {type(lammpsdata)}"
+        )
 
     cell = extract_cell(raw_datafile_contents)
     mass = extract_mass(raw_datafile_contents)
