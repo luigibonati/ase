@@ -1,3 +1,4 @@
+@pytest.mark.calculator_lite
 def test_lammpslib_interface():
     # test some functionality of the interace
     import numpy as np

@@ -13,6 +13,7 @@ def lattice_params():
     return lattice_params
 
 
+@pytest.mark.calculator_lite
 @pytest.mark.calculator("lammpslib")
 def test_lammpslib_change_cell_bcs(factory, lattice_params, calc_params_NiH):
     """Test that a change in unit cell boundary conditions is
