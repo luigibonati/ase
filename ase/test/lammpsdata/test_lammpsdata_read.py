@@ -11,10 +11,6 @@ import ase.io
 
 from .parse_lammps_data_file import lammpsdata_file_extracted_sections
 
-@pytest.fixture
-def lammpsdata_file_path(datadir):
-    return datadir / "lammpsdata_input.data"
-
 
 def test_lammpsdata_read(lammpsdata_file_path):
     atoms = ase.io.read(lammpsdata_file_path, format="lammps-data", units="metal")
