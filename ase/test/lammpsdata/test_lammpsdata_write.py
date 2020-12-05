@@ -1,18 +1,39 @@
+"""
+Create an atoms object and write it to a lammps data file
+"""
 from io import StringIO
+
+import pytest
 import ase.io
 
-def test_lammpsdata_write(datadir):
-    lammps_data_path = datadir / 'lammpsdata_input.data'
-    lammps_data = ase.io.read(lammps_data_path, format="lammps-data",
-                              units="metal")
+from .parse_lammps_data_file import lammpsdata_file_extracted_sections
 
-    expected_output_path = datadir / 'lammpsdata_expected_output.data'
-    with open(expected_output_path) as f:
-        expected_output = f.read().splitlines()
 
-    buf = StringIO()
-    ase.io.write(buf, lammps_data, format="lammps-data", atom_style="full")
+def test_lammpsdata_write(atoms):
+    # Write atoms object to lammpsdata file-like object
+    lammpsdata_buf = StringIO()
+    ase.io.write(
+        lammpsdata_buf, atoms, format="lammps-data", atom_style="full", velocities=True
+    )
 
-    lines = [line.strip() for line in buf.getvalue().split("\n")]
-    assert lines == expected_output
+    # Now read the output back, parse it, and compare to the original atoms
+    # object attributes
+    written_values = lammpsdata_file_extracted_sections(lammpsdata_buf)
 
+    # Check cell was written correctly
+    cell_written = written_values["cell"]
+    cell_expected = atoms.get_cell()
+    for cell_vec_written, cell_vec_expected in zip(cell_written, cell_expected):
+        assert cell_vec_written == pytest.approx(cell_vec_expected, rel=1e-2)
+
+    # Check that positions were written correctly
+    positions_written = written_values["positions"]
+    positions_expected = atoms.get_positions(wrap=True)
+    for pos_written, pos_expected in zip(positions_written, positions_expected):
+        assert pos_written == pytest.approx(pos_expected, rel=1e-2)
+
+    # Check velocities were read in correctly
+    velocities_written = written_values["velocities"]
+    velocities_expected = atoms.get_velocities()
+    for vel_written, vel_expected in zip(velocities_written, velocities_expected):
+        assert vel_written == pytest.approx(vel_expected, rel=1e-2)
