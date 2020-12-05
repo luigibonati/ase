@@ -30,13 +30,15 @@ def test_lammpsdata_read(lammpsdata_file_path):
     assert masses_read_in == pytest.approx(masses_expected, rel=1e-2)
 
     # Check positions were read in correctly
-    pos_read_in = atoms.get_positions()
-    for pos_read_in, pos_expected in zip(pos_read_in, expected_values["positions"]):
+    positions_read_in = atoms.get_positions()
+    positions_expected = expected_values["positions"]
+    for pos_read_in, pos_expected in zip(positions_read_in, positions_expected):
         assert pos_read_in == pytest.approx(pos_expected, rel=1e-2)
 
     # Check velocities were read in correctly
-    vel_read_in = atoms.get_velocities()
-    for vel_read_in, vel_expected in zip(vel_read_in, expected_values["velocities"]):
+    velocities_read_in = atoms.get_velocities()
+    velocities_expected = expected_values["velocities"]
+    for vel_read_in, vel_expected in zip(velocities_read_in, velocities_expected):
         assert vel_read_in == pytest.approx(vel_expected, rel=1e-2)
 
     # TODO: Also check charges, travels, molecule id, bonds, and angles
