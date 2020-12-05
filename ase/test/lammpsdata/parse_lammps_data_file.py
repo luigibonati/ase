@@ -14,7 +14,9 @@ the following assumptions are made about the lammps data file:
   - The sections are given in the following order:
         Masses -> Atoms -> Velocities -> Bonds -> Angles
 """
+import io
 import re
+import pathlib
 
 import numpy as np
 from ase.calculators.lammps import convert
@@ -128,13 +130,26 @@ def extract_velocities(raw_datafile_contents):
     return velocities
 
 
-def lammpsdata_file_extracted_sections(lammpsdata_file_path):
+def lammpsdata_file_extracted_sections(lammpsdata):
     """
-    Manually read the lammpsdata input file and grep for the different
-    quantities we want to check
+    Manually read a lammpsdata file and grep for the different
+    quantities we want to check.  Accepts either a string indicating the name
+    of the file, a pathlib.Path object indicating the location of the file, a
+    StringIO object containing the file contents, or a file object
     """
-    with open(lammpsdata_file_path) as f:
-        raw_datafile_contents = f.read()
+    if isinstance(lammpsdata, str) or isinstance(lammpsdata, pathlib.Path):
+        with open(lammpsdata) as f:
+            raw_datafile_contents = f.read()
+
+    elif isinstance(lammpsdata, io.StringIO):
+        raw_datafile_contents = lammpsdata.getvalue()
+
+    elif isinstance(lammpsdata, io.TextIOBase):
+        raw_datafile_contents = lammpsdata.read()
+
+    else:
+        raise ValueError("Lammps data file content inputted in unsupported "
+            "object type {type(lammpsdata)}")
 
     cell = extract_cell(raw_datafile_contents)
     mass = extract_mass(raw_datafile_contents)
