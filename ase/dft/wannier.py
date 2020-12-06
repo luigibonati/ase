@@ -419,6 +419,7 @@ class Wannier:
         else:
             self.nbands = calc.get_number_of_bands()
 
+        fermi_level = calc.get_fermi_level()
         if fixedenergy is None and fixedstates is not None:
             if isinstance(fixedstates, int):
                 fixedstates = [fixedstates] * self.Nk
@@ -429,33 +430,40 @@ class Wannier:
             # The reference energy is Ef for metals and CBM for insulators.
             if (bandgap(calc=calc, output=None)[0] < 0.01
                     or fixedenergy < 0.01):
-                cutoff = fixedenergy + calc.get_fermi_level()
+                cutoff = fixedenergy + fermi_level
             else:
                 cutoff = fixedenergy + calc.get_homo_lumo()[1]
 
-            self.fixedstates_k = np.array(
-                [calc.get_eigenvalues(k, spin).searchsorted(cutoff)
-                 for k in range(self.Nk)], int)
+            # Find the states below the energy cutoff at each k-point
+            tmp_fixedstates_k = []
+            for k in range(self.Nk):
+                tmp_fixedstates_k.append(
+                    calc.get_eigenvalues(k, spin).searchsorted(cutoff))
+            self.fixedstates_k = np.array(tmp_fixedstates_k, int)
         elif fixedenergy is not None and fixedstates is not None:
             raise RuntimeError(
                 'You can not set both fixedenergy and fixedstates')
 
-        if np.issubdtype(type(nwannier), np.integer):
+        if isinstance(nwannier, int):
             self.nwannier = nwannier
-            if fixedstates is None and fixedenergy is None:
-                self.fixedstates_k = np.array([self.nwannier] * self.Nk, int)
         elif nwannier == 'auto':
             if fixedenergy is None and fixedstates is None:
-                self.fixedstates_k = np.array(
-                    [calc.get_eigenvalues(k, spin).searchsorted(
-                        calc.get_fermi_level())
-                        for k in range(self.Nk)], int)
+                # Find the states below the Fermi level at each k-point
+                tmp_fixedstates_k = []
+                for k in range(self.Nk):
+                    tmp_fixedstates_k.append(
+                        calc.get_eigenvalues(k, spin).searchsorted(fermi_level)
+                    )
+                self.fixedstates_k = np.array(tmp_fixedstates_k, int)
             self.nwannier = np.max(self.fixedstates_k)
-            if fixedstates is None and fixedenergy is None:
-                self.fixedstates_k = np.array([self.nwannier] * self.Nk, int)
         else:
             raise ValueError('Unexpected value for nwannier.')
 
+        # Without user choice just set nwannier fixed states without EDF
+        if fixedstates is None and fixedenergy is None:
+            self.fixedstates_k = np.array([self.nwannier] * self.Nk, int)
+
+        # Compute the number of extra degrees of freedom (EDF)
         self.edf_k = self.nwannier - self.fixedstates_k
 
         if verbose:
