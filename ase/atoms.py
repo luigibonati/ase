@@ -1239,6 +1239,8 @@ class Atoms:
         # Find the orientations of the faces of the unit cell
         cell = self.cell.complete()
         dirs = np.zeros_like(cell)
+
+        lengths = cell.lengths()
         for i in range(3):
             dirs[i] = np.cross(cell[i - 1], cell[i - 2])
             dirs[i] /= np.linalg.norm(dirs[i])
@@ -1269,24 +1271,32 @@ class Atoms:
                 lng = 0.0  # Do not change unit cell size!
             top = lng + height - p1
             shf = 0.5 * (top - p0)
-            cosphi = cell[i] @ dirs[i] / np.linalg.norm(cell[i])
+            cosphi = cell[i] @ dirs[i] / lengths[i]
             longer[i] = lng / cosphi
             shift[i] = shf / cosphi
 
         # Now, do it!
         translation = np.zeros(3)
         for i in axes:
-            nowlen = np.linalg.norm(cell[i])
-            if vacuum is not None or self.cell[i].any():
+            nowlen = lengths[i]
+            if vacuum is not None:
                 self.cell[i] = cell[i] * (1 + longer[i] / nowlen)
-                translation += shift[i] * cell[i] / nowlen
-        self.arrays['positions'] += translation
+            translation += shift[i] * cell[i] / nowlen
+
+            # We calculated translations using the completed cell,
+            # so directions without cell vectors will have been centered
+            # along a "fake" vector of length 1.
+            # Therefore, we adjust by -0.5:
+            if not any(self.cell[i]):
+                translation[i] -= 0.5
 
         # Optionally, translate to center about a point in space.
         if about is not None:
             for vector in self.cell:
-                self.positions -= vector / 2.0
-            self.positions += about
+                translation -= vector / 2.0
+            translation += about
+
+        self.positions += translation
 
     def get_center_of_mass(self, scaled=False):
         """Get the center of mass.

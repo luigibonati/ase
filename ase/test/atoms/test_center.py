@@ -1,6 +1,9 @@
+from math import pi, sqrt, cos
+
 import pytest
 import numpy as np
-from math import pi, sqrt, cos
+
+from ase import Atoms
 from ase import data
 from ase.lattice.cubic import FaceCenteredCubic
 
@@ -56,7 +59,7 @@ def test_vacuum_all_directions(atoms):
 def atoms_guc():
     return FaceCenteredCubic(size=(5,5,5),
                              directions=[[1,0,0], [0,1,0], [1,0,1]],
-                             symbol="Cu", pbc=(1,1,0))
+                             symbol=symb, pbc=(1,1,0))
 
 
 def test_general_unit_cell(atoms_guc):
@@ -105,3 +108,15 @@ def test_vacuum_one_direction_guc(atoms_guc):
 
     assert abs(atoms.positions - a2.positions).max() < 1e-12
     assert abs(atoms.cell - a2.cell).max() < 1e-12
+
+
+def test_center_empty():
+    atoms = Atoms()
+    atoms.center()
+    assert atoms == Atoms()
+
+
+def test_center_nocell():
+    atoms = Atoms('H', positions=[[1., 2., 3.]])
+    atoms.center()
+    assert atoms.positions == pytest.approx(0)
