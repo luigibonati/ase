@@ -44,9 +44,9 @@ def extract_cell(raw_datafile_contents):
     """
     RE_CELL = re.compile(
         r"""
-            ([0-9e+.-]+)\s+([0-9e+.-]+)\s+xlo\s+xhi\n
-            ([0-9e+.-]+)\s+([0-9e+.-]+)\s+ylo\s+yhi\n
-            ([0-9e+.-]+)\s+([0-9e+.-]+)\s+zlo\s+zhi\n
+            (\S+)\s+(\S+)\s+xlo\s+xhi\n
+            (\S+)\s+(\S+)\s+ylo\s+yhi\n
+            (\S+)\s+(\S+)\s+zlo\s+zhi\n
         """,
         flags=re.VERBOSE,
     )
@@ -68,7 +68,7 @@ def extract_mass(raw_datafile_contents):
     if masses_block is None:
         return None
     else:
-        mass = re.match(r"\s*[0-9]+\s+([0-9e+.-]+)", masses_block).group(1)
+        mass = re.match(r"\s*[0-9]+\s+(\S+)", masses_block).group(1)
         return float(mass)
 
 
@@ -83,8 +83,8 @@ def extract_atom_quantities(raw_datafile_contents):
     travels = []
 
     RE_ATOM_LINE = re.compile(
-        r"\s*[0-9]+\s+[0-9]+\s+[0-9]+\s+([0-9e+.-]+)\s+"
-        r"([0-9e+.-]+)\s+([0-9e+.-]+)\s+([0-9e+.-]+)\s?"
+        r"\s*[0-9]+\s+[0-9]+\s+[0-9]+\s+(\S+)\s+"
+        r"(\S+)\s+(\S+)\s+(\S+)\s?"
         r"([0-9-]+)?\s?([0-9-]+)?\s?([0-9-]+)?"
     )
 
@@ -107,7 +107,7 @@ def extract_velocities(raw_datafile_contents):
     velocities_block = extract_section(raw_datafile_contents, "Velocities")
 
     RE_VELOCITY = re.compile(
-        r"\s*[0-9]+\s+([0-9e+.-]+)\s+([0-9e+.-]+)" r"\s+([0-9e+.-]+)"
+        r"\s*[0-9]+\s+(\S+)\s+(\S+)\s+(\S+)"
     )
 
     # Now parse each individual line for velocity
