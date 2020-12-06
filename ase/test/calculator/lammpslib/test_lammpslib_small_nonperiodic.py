@@ -15,6 +15,7 @@ def dimer_params():
     return dimer_params
 
 
+@pytest.mark.calculator_lite
 @pytest.mark.calculator("lammpslib")
 def test_lammpslib_small_nonperiodic(factory, dimer_params, calc_params_NiH):
     """Test that lammpslib handle nonperiodic cases where the cell size
