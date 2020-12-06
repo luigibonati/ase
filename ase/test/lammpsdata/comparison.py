@@ -1,6 +1,10 @@
 import pytest
+import numpy as np
 
-
-def compare_single_nested_arrays(quantity, expected_values, rel_tol):
-    for vec, vec_expected in zip(quantity, expected_values):
-        assert vec == pytest.approx(vec_expected, rel=rel_tol)
+def compare_with_pytest_approx(quantity, expected_values, rel_tol):
+    """
+    Cast inputted objects to numpy arrays and assert equivalence via
+    pytest.approx with the requested relative tolerance
+    """
+    quantity, expected_values = map(np.asarray, [quantity, expected_values])
+    assert quantity == pytest.approx(expected_values, rel=rel_tol)
