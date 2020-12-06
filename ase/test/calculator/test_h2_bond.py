@@ -51,16 +51,15 @@ def test_h2_bond(factory, atoms):
     E = np.array(E)
     F = np.array(F)
 
-    a, b, c = poly = np.polyfit(X, E, 2)
+    a, b, c = np.polyfit(X, E, 2)
     xmin = -b / (2.0 * a)
     fa, fb = np.polyfit(X, F, 1)
 
     k_from_energy = 2 * a
     k_from_forces = -fa
 
-    print('xmin', xmin)
-    print(k_from_energy, k_from_forces)
-
+    # Not very strict for a bond length, but parameters are not consistent:
+    assert xmin == pytest.approx(0.77, rel=0.05)
     assert k_from_energy == pytest.approx(k_from_forces, rel=0.05)
     assert k_from_energy == pytest.approx(k_refs.get(factory.name, k_ref_0),
                                           rel=0.05)
