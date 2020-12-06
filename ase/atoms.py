@@ -1241,8 +1241,8 @@ class Atoms:
         dirs = np.zeros_like(cell)
         for i in range(3):
             dirs[i] = np.cross(cell[i - 1], cell[i - 2])
-            dirs[i] /= np.sqrt(np.dot(dirs[i], dirs[i]))  # normalize
-            if np.dot(dirs[i], cell[i]) < 0.0:
+            dirs[i] /= np.linalg.norm(dirs[i])
+            if dirs[i] @ cell[i] < 0.0:
                 dirs[i] *= -1
 
         if isinstance(axis, int):
@@ -1250,33 +1250,33 @@ class Atoms:
         else:
             axes = axis
 
-        # if vacuum and any(self.pbc[x] for x in axes):
-        #     warnings.warn(
-        #         'You are adding vacuum along a periodic direction!')
-
         # Now, decide how much each basis vector should be made longer
-        p = self.arrays['positions']
+        pos = self.positions
         longer = np.zeros(3)
         shift = np.zeros(3)
         for i in axes:
-            p0 = np.dot(p, dirs[i]).min() if len(p) else 0
-            p1 = np.dot(p, dirs[i]).max() if len(p) else 0
-            height = np.dot(cell[i], dirs[i])
+            if len(pos):
+                scalarprod = pos @ dirs[i]
+                p0 = scalarprod.min()
+                p1 = scalarprod.max()
+            else:
+                p0 = 0
+                p1 = 0
+            height = cell[i] @ dirs[i]
             if vacuum is not None:
                 lng = (p1 - p0 + 2 * vacuum) - height
             else:
                 lng = 0.0  # Do not change unit cell size!
             top = lng + height - p1
             shf = 0.5 * (top - p0)
-            cosphi = np.dot(cell[i], dirs[i]) / np.sqrt(np.dot(cell[i],
-                                                               cell[i]))
+            cosphi = cell[i] @ dirs[i] / np.linalg.norm(cell[i])
             longer[i] = lng / cosphi
             shift[i] = shf / cosphi
 
         # Now, do it!
         translation = np.zeros(3)
         for i in axes:
-            nowlen = np.sqrt(np.dot(cell[i], cell[i]))
+            nowlen = np.linalg.norm(cell[i])
             if vacuum is not None or self.cell[i].any():
                 self.cell[i] = cell[i] * (1 + longer[i] / nowlen)
                 translation += shift[i] * cell[i] / nowlen
