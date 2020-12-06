@@ -3,7 +3,6 @@ Create an atoms object and write it to a lammps data file
 """
 from io import StringIO
 
-import pytest
 import ase.io
 
 from .parse_lammps_data_file import lammpsdata_file_extracted_sections
