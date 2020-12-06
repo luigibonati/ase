@@ -29,7 +29,6 @@ omit =
     ../calculators/aims.py
     ../calculators/psi4.py
     ../calculators/gamess_us.py
-    ../calculators/lammpslib.py
     ../calculators/orca.py
     ../calculators/fleur.py
     ../calculators/amber.py
