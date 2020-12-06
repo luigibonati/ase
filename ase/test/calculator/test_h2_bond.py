@@ -1,8 +1,6 @@
 import pytest
 import numpy as np
 from ase.build import molecule
-from ase.vibrations import Vibrations
-from ase.optimize.bfgs import BFGS
 
 
 @pytest.fixture
