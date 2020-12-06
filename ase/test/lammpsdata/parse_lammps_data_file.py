@@ -23,6 +23,20 @@ def split_contents_by_section(raw_datafile_contents):
     return re.split(r"^([A-Za-z]+\s*)$\n", raw_datafile_contents, flags=re.MULTILINE)
 
 
+def extract_section(raw_datafile_contents, section_header):
+
+    contents_split_by_section = split_contents_by_section(raw_datafile_contents)
+
+    section = None
+
+    for ind, block in enumerate(contents_split_by_section):
+        if block.startswith(section_header):
+            section = contents_split_by_section[ind + 1].strip()
+            break
+
+    return section
+
+
 def extract_cell(raw_datafile_contents):
     """
     NOTE: Assumes an orthogonal cell (xy, xz, yz tilt factors are
@@ -49,15 +63,7 @@ def extract_mass(raw_datafile_contents):
     """
     NOTE: Assumes that only a single atomic species is present
     """
-    contents_split_by_section = split_contents_by_section(raw_datafile_contents)
-
-    masses_block = None
-
-    # Grab all atoms lines
-    for ind, block in enumerate(contents_split_by_section):
-        if block.startswith("Masses"):
-            masses_block = contents_split_by_section[ind + 1].strip()
-            break
+    masses_block = extract_section(raw_datafile_contents, "Masses")
 
     if masses_block is None:
         return None
@@ -67,25 +73,22 @@ def extract_mass(raw_datafile_contents):
 
 
 def extract_atom_quantities(raw_datafile_contents):
-    contents_split_by_section = split_contents_by_section(raw_datafile_contents)
 
     # Grab all atoms lines
-    for ind, block in enumerate(contents_split_by_section):
-        if block.startswith("Atoms"):
-            positions_block = contents_split_by_section[ind + 1].strip()
-            break
+    atoms_block = extract_section(raw_datafile_contents, "Atoms")
 
     # Now parse each individual atoms line for quantities
     charges = []
     positions = []
     travels = []
 
-    for atom_line in positions_block.splitlines():
-        RE_ATOM_LINE = re.compile(
-            r"\s*[0-9]+\s+[0-9]+\s+[0-9]+\s+([0-9e+.-]+)\s+"
-            r"([0-9e+.-]+)\s+([0-9e+.-]+)\s+([0-9e+.-]+)\s?"
-            r"([0-9-]+)?\s?([0-9-]+)?\s?([0-9-]+)?"
-        )
+    RE_ATOM_LINE = re.compile(
+        r"\s*[0-9]+\s+[0-9]+\s+[0-9]+\s+([0-9e+.-]+)\s+"
+        r"([0-9e+.-]+)\s+([0-9e+.-]+)\s+([0-9e+.-]+)\s?"
+        r"([0-9-]+)?\s?([0-9-]+)?\s?([0-9-]+)?"
+    )
+
+    for atom_line in atoms_block.splitlines():
         q, x, y, z, *travel = RE_ATOM_LINE.match(atom_line).groups()
         charges.append(float(q))
         positions.append(list(map(float, [x, y, z])))
@@ -101,20 +104,15 @@ def extract_velocities(raw_datafile_contents):
     """
     NOTE: Assumes metal units are used in data file
     """
-    contents_split_by_section = split_contents_by_section(raw_datafile_contents)
+    velocities_block = extract_section(raw_datafile_contents, "Velocities")
 
-    # Grab all velocities lines
-    for ind, block in enumerate(contents_split_by_section):
-        if block.startswith("Velocities"):
-            velocities_block = contents_split_by_section[ind + 1].strip()
-            break
+    RE_VELOCITY = re.compile(
+        r"\s*[0-9]+\s+([0-9e+.-]+)\s+([0-9e+.-]+)" r"\s+([0-9e+.-]+)"
+    )
 
     # Now parse each individual line for velocity
     velocities = []
     for velocities_line in velocities_block.splitlines():
-        RE_VELOCITY = re.compile(
-            r"\s*[0-9]+\s+([0-9e+.-]+)\s+([0-9e+.-]+)" r"\s+([0-9e+.-]+)"
-        )
         v = RE_VELOCITY.match(velocities_line).groups()
         velocities.append(list(map(float, v)))
 
