@@ -116,8 +116,6 @@ class siestaLRTDDFT:
         else:
             raise ValueError("omega soulf")
 
-        print("freq: ", freq)
-        print("params: ", self.lrtddft_params)
         freq_cmplx = freq/un.Ha + 1j * self.tddft.eps
         if inter:
             pmat = -self.tddft.comp_polariz_inter_Edir(freq_cmplx, Eext=Eext)
