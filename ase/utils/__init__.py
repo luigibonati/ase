@@ -157,22 +157,23 @@ def _opencew(filename, world=None):
 
     closelater = []
 
+    def opener(file, flags):
+        return os.open(file, flags | CEW_FLAGS)
+
     try:
+        error = 0
         if world.rank == 0:
             try:
-                fd = os.open(filename, CEW_FLAGS)
+                fd = open(filename, 'wb', opener=opener)
             except OSError as ex:
                 error = ex.errno
             else:
-                error = 0
-                fd = os.fdopen(fd, 'wb')
                 closelater.append(fd)
         else:
-            error = 0
             fd = open(os.devnull, 'wb')
             closelater.append(fd)
 
-        # Syncronize:
+        # Synchronize:
         error = world.sum(error)
         if error == errno.EEXIST:
             return None
