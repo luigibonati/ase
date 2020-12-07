@@ -243,8 +243,7 @@ class Atoms:
         self.set_momenta(default(momenta, (0.0, 0.0, 0.0)),
                          apply_constraint=False)
 
-        #                          V-- if instantiaed from list of Atom objs
-        if velocities is not None and None not in velocities:
+        if velocities is not None:
             if momenta is None:
                 self.set_velocities(velocities)
             else:
