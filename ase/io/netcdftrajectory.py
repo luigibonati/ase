@@ -328,14 +328,10 @@ class NetCDFTrajectory:
         self._close()
 
     def _define_file_structure(self, atoms):
-        if not hasattr(self.nc, 'Conventions'):
-            self.nc.Conventions = 'AMBER'
-        if not hasattr(self.nc, 'ConventionVersion'):
-            self.nc.ConventionVersion = '1.0'
-        if not hasattr(self.nc, 'program'):
-            self.nc.program = 'ASE'
-        if not hasattr(self.nc, 'programVersion'):
-            self.nc.programVersion = ase.__version__
+        self.nc.Conventions = 'AMBER'
+        self.nc.ConventionVersion = '1.0'
+        self.nc.program = 'ASE'
+        self.nc.programVersion = ase.__version__
 
         if self._frame_dim not in self.nc.dimensions:
             self.nc.createDimension(self._frame_dim, None)
