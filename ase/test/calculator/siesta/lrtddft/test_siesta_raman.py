@@ -9,8 +9,9 @@ def test_N2(siesta_factory):
     try:
         import pynao
         performTest = True
+        print("pynao version: ", pynao.__version__)
     except ModuleNotFoundError as err:
-        print("Siesta lrtddft tests requires pynao")
+        print("Siesta lrtddft tests requires pynao: ", err)
         performTest = False
 
 
