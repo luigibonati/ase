@@ -477,6 +477,12 @@ class NetCDFTrajectory:
                     data[index[sl]] = var[sl]
         return data
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
     def close(self):
         """Close the trajectory file."""
         if self.nc is not None:
@@ -639,16 +645,14 @@ class NetCDFTrajectory:
 
 
 def read_netcdftrajectory(filename, index=-1):
-    traj = NetCDFTrajectory(filename, mode='r')
-    return traj[index]
+    with NetCDFTrajectory(filename, mode='r') as traj:
+        return traj[index]
 
 
 def write_netcdftrajectory(filename, images):
-    traj = NetCDFTrajectory(filename, mode='w')
-
     if hasattr(images, 'get_positions'):
         images = [images]
 
-    for atoms in images:
-        traj.write(atoms)
-    traj.close()
+    with NetCDFTrajectory(filename, mode='w') as traj:
+        for atoms in images:
+            traj.write(atoms)
