@@ -1,7 +1,7 @@
 import numpy as np
 import ase.units as un
 
-class siestaLRTDDFT:
+class SiestaLRTDDFT:
     """Interface for linear response TDDFT for Siesta via
     [PyNAO](https://mbarbry.website.fr.to/pynao/doc/html/)
 
@@ -58,7 +58,7 @@ class siestaLRTDDFT:
                 kw["fdf_arguments"][param] = True
 
         siesta = Siesta(**kw)
-        atoms.set_calculator(siesta)
+        atoms.calc = siesta
         atoms.get_potential_energy()
 
 
@@ -126,7 +126,7 @@ class siestaLRTDDFT:
 
         return pmat
 
-class siestaRaman(siestaLRTDDFT):
+class RamanCalculatorInterface(SiestaLRTDDFT):
     """Raman interface for Siesta calculator.
     When using the Raman calculator, please cite
 
