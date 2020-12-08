@@ -1,26 +1,21 @@
-from ase.calculators.siesta.siesta_lrtddft import siestaLRTDDFT
+import pytest
+from ase.calculators.siesta.siesta_lrtddft import SiestaLRTDDFT
 from ase.build import molecule
 import numpy as np
 
 def test_siesta_lrtddft(siesta_factory):
 
-    try:
-        import pynao
-        performTest = True
-        print("pynao version: ", pynao.__version__)
-    except ModuleNotFoundError as err:
-        print("Siesta lrtddft tests requires pynao: ", err)
-        performTest = False
+    pynao = pytest.importorskip('pynao')
+    print("pynao version: ", pynao.__version__)
 
-    if performTest:
-        # Define the systems
-        ch4 = molecule('CH4')
+    # Define the systems
+    ch4 = molecule('CH4')
 
-        LRTDDFT = siestaLRTDDFT(label="siesta", xc_code='LDA,PZ')
+    lrtddft = SiestaLRTDDFT(label="siesta", xc_code='LDA,PZ')
 
-        # run siesta
-        LRTDDFT.get_ground_state(ch4)
+    # run siesta
+    lrtddft.get_ground_state(ch4)
 
-        freq = np.arange(0.0, 25.0, 0.5)
-        pmat = LRTDDFT.get_polarizability(freq)
-        assert pmat.size == 3*3*freq.size
+    freq = np.arange(0.0, 25.0, 0.5)
+    pmat = lrtddft.get_polarizability(freq)
+    assert pmat.size == 3*3*freq.size
