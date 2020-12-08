@@ -22,9 +22,9 @@ def test_N2(siesta_factory):
     name = 'n2'
     pynao_args = dict(label="siesta", jcutoff=7, iter_broadening=0.15,
                       xc_code='LDA,PZ', tol_loc=1e-6, tol_biloc=1e-7)
-    Rm = StaticRamanCalculator(n2, RamanCalculatorInterface, name=name,
+    rm = StaticRamanCalculator(n2, RamanCalculatorInterface, name=name,
                                delta=0.011, exkwargs=pynao_args)
-    Rm.run()
+    rm.run()
 
     Pz = PlaczekStatic(n2, name=name)
     e_vib = Pz.get_energies()
