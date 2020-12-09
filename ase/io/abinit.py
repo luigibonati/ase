@@ -309,7 +309,7 @@ def read_stress(fd):
         stress[i] = float(m.group(1))
         stress[i + 3] = float(m.group(2))
     unit = Hartree / Bohr**3
-    return stress / unit
+    return stress * unit
 
 
 def consume_multiline(fd, headerline, nvalues, dtype):
