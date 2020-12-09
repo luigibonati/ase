@@ -14,6 +14,7 @@ from ase.dft.wannier import gram_schmidt, lowdin, random_orthogonal_matrix, \
 
 
 calc = pytest.mark.calculator
+Nk = 2
 
 
 @pytest.fixture()
@@ -28,7 +29,8 @@ def _std_calculator_gpwfile(tmp_path_factory, factories):
     atoms = molecule('H2', pbc=True)
     atoms.center(vacuum=3.)
     gpw_path = tmp_path_factory.mktemp('sub') / 'wan_h2.gpw'
-    calc = gpaw.GPAW(gpts=(8, 8, 8), nbands=4, kpts=(2, 2, 2),
+    calc = gpaw.GPAW(gpts=(8, 8, 8), nbands=4,
+                     kpts={'size': (Nk, Nk, Nk), 'gamma': True},
                      symmetry='off', txt=None)
     atoms.calc = calc
     atoms.get_potential_energy()
@@ -50,7 +52,7 @@ def _si_calculator(tmp_path_factory):
     atoms.center()
     gpw = tmp_path_factory.mktemp('wan_calc') / 'wan_si.gpw'
     calc = gpaw.GPAW(gpts=(8, 8, 8), nbands=6,
-                     kpts={'size': (2, 2, 2), 'gamma': True},
+                     kpts={'size': (Nk, Nk, Nk), 'gamma': True},
                      symmetry='off', txt=None)
     atoms.calc = calc
     atoms.get_potential_energy()
@@ -71,7 +73,8 @@ def _ti_calculator(tmp_path_factory):
     atoms.pbc = (True, True, True)
     atoms.center()
     gpw = tmp_path_factory.mktemp('wan_calc') / 'wan_ti.gpw'
-    calc = gpaw.GPAW(gpts=(8, 8, 8), kpts={'size': (2, 2, 2), 'gamma': True},
+    calc = gpaw.GPAW(gpts=(8, 8, 8),
+                     kpts={'size': (Nk, Nk, Nk), 'gamma': True},
                      symmetry='off', txt=None)
     atoms.calc = calc
     atoms.get_potential_energy()
@@ -488,10 +491,10 @@ def test_get_hamiltonian_bloch(wan):
     atoms = molecule('H2', pbc=True)
     atoms.center(vacuum=3.)
     kpts = (2, 2, 2)
-    Nk = kpts[0] * kpts[1] * kpts[2]
+    number_kpts = kpts[0] * kpts[1] * kpts[2]
     wanf = wan(atoms=atoms, kpts=kpts,
                nwannier=nwannier, initialwannier='bloch')
-    for k in range(Nk):
+    for k in range(number_kpts):
         H_ww = wanf.get_hamiltonian(k=k)
         for i in range(nwannier):
             assert H_ww[i, i] != 0
@@ -505,10 +508,10 @@ def test_get_hamiltonian_random(wan, rng):
     atoms = molecule('H2', pbc=True)
     atoms.center(vacuum=3.)
     kpts = (2, 2, 2)
-    Nk = kpts[0] * kpts[1] * kpts[2]
+    number_kpts = kpts[0] * kpts[1] * kpts[2]
     wanf = wan(atoms=atoms, kpts=kpts, rng=rng,
                nwannier=nwannier, initialwannier='random')
-    for k in range(Nk):
+    for k in range(number_kpts):
         H_ww = wanf.get_hamiltonian(k=k)
         for i in range(nwannier):
             for j in range(i + 1, nwannier):
@@ -571,16 +574,30 @@ def test_initialwannier(init, wan, ti_calculator):
 
 
 def test_nwannier_auto(wan, ti_calculator):
-    # check if the number is changing, but not if it is correct
+    # Check default value
+    wanf = wan(calc=ti_calculator, full_calc=True,
+               initialwannier='bloch', std_calc=False,
+               nwannier='auto')
+    assert wanf.nwannier == 14
+
+    # Check value setting fixedenergy
     wanf = wan(calc=ti_calculator, full_calc=True,
                initialwannier='bloch', std_calc=False,
                nwannier='auto', fixedenergy=0)
-    Nw1 = wanf.get_spreads().size
+    assert wanf.nwannier == 14
     wanf = wan(calc=ti_calculator, full_calc=True,
                initialwannier='bloch', std_calc=False,
                nwannier='auto', fixedenergy=5)
-    Nw2 = wanf.get_spreads().size
-    assert Nw1 < Nw2
+    assert wanf.nwannier == 18
+
+    # Check value setting fixedstates
+    number_kpts = Nk**3
+    list_fixedstates = [14] * number_kpts
+    list_fixedstates[Nk] = 18
+    wanf = wan(calc=ti_calculator, full_calc=True,
+               initialwannier='bloch', std_calc=False,
+               nwannier='auto', fixedstates=list_fixedstates)
+    assert wanf.nwannier == 18
 
 
 def test_arbitrary_s_orbitals(rng):
@@ -653,17 +670,17 @@ def test_scdm(ti_calculator):
     ps = calc.get_pseudo_wave_function(band=Nw, kpt=0, spin=0)
     Ng = ps.size
     kpt_kc = calc.get_bz_k_points()
-    Nk = len(kpt_kc)
+    number_kpts = len(kpt_kc)
     nbands = calc.get_number_of_bands()
-    pseudo_nkG = np.zeros((nbands, Nk, Ng), dtype=np.complex128)
-    for k in range(Nk):
+    pseudo_nkG = np.zeros((nbands, number_kpts, Ng), dtype=np.complex128)
+    for k in range(number_kpts):
         for n in range(nbands):
             pseudo_nkG[n, k] = calc.get_pseudo_wave_function(
                 band=n, kpt=k, spin=0).ravel()
-    fixed_k = [Nw - 2] * Nk
+    fixed_k = [Nw - 2] * number_kpts
     C_kul, U_kww = scdm(pseudo_nkG, kpts=kpt_kc,
                         fixed_k=fixed_k, Nw=Nw)
-    for k in range(Nk):
+    for k in range(number_kpts):
         assert orthonormality_error(U_kww[k]) < 1e-10, 'U_ww not unitary'
         assert orthogonality_error(C_kul[k].T) < 1e-10, \
             'C_ul columns not orthogonal'

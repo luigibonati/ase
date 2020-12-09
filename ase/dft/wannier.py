@@ -350,6 +350,9 @@ class Wannier:
           ``nwannier``: The number of Wannier functions you wish to construct.
             This must be at least half the number of electrons in the system
             and at most equal to the number of bands in the calculation.
+            It can also be set to 'auto' in order to automatically choose the
+            minimum number of needed Wannier function based on the
+            ``fixedenergy`` / ``fixedstates`` parameter.
 
           ``calc``: A converged DFT calculator class.
             If ``file`` arg. is not provided, the calculator *must* provide the
@@ -374,6 +377,8 @@ class Wannier:
             k-points).
             Default is None meaning that the number of fixed states is equated
             to ``nwannier``.
+            The maximal energy is relative to the CBM if there is a finite
+            bandgap or to the Fermi level if there is none.
 
           ``file``: Read localization and rotation matrices from this file.
 
@@ -404,7 +409,10 @@ class Wannier:
         if self.verbose:
             print('Using functional:', functional)
         self.kpt_kc = calc.get_bz_k_points()
+
+        # Make sure there is no symmetry reduction
         assert len(calc.get_ibz_k_points()) == len(self.kpt_kc)
+
         self.kptgrid = get_monkhorst_pack_size_and_offset(self.kpt_kc)[0]
         self.kpt_kc *= sign
 
@@ -425,8 +433,8 @@ class Wannier:
                 fixedstates = [fixedstates] * self.Nk
             self.fixedstates_k = np.array(fixedstates, int)
         elif fixedenergy is not None and fixedstates is None:
-            # Setting number of fixed states and EDF from specified energy.
-            # All states below this energy are fixed.
+            # Setting number of fixed states and EDF from given energy cutoff.
+            # All states below this energy cutoff are fixed.
             # The reference energy is Ef for metals and CBM for insulators.
             if (bandgap(calc=calc, output=None)[0] < 0.01
                     or fixedenergy < 0.01):
@@ -444,20 +452,23 @@ class Wannier:
             raise RuntimeError(
                 'You can not set both fixedenergy and fixedstates')
 
-        if isinstance(nwannier, int):
-            self.nwannier = nwannier
-        elif nwannier == 'auto':
+        if nwannier == 'auto':
             if fixedenergy is None and fixedstates is None:
-                # Find the states below the Fermi level at each k-point
+                # Assume the fixedexergy parameter equal to 0 and
+                # find the states below the Fermi level at each k-point.
+                if verbose:
+                    print("nwannier=auto but no 'fixedenergy' or 'fixedstates'",
+                          "parameter was provided, using Fermi level as",
+                          "energy cutoff.")
                 tmp_fixedstates_k = []
                 for k in range(self.Nk):
                     tmp_fixedstates_k.append(
                         calc.get_eigenvalues(k, spin).searchsorted(fermi_level)
                     )
                 self.fixedstates_k = np.array(tmp_fixedstates_k, int)
-            self.nwannier = np.max(self.fixedstates_k)
-        else:
-            raise ValueError('Unexpected value for nwannier.')
+            nwannier = np.max(self.fixedstates_k)
+
+        self.nwannier = nwannier
 
         # Without user choice just set nwannier fixed states without EDF
         if fixedstates is None and fixedenergy is None:
