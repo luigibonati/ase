@@ -21,8 +21,8 @@ slab = da.get_slab()
 atom_numbers_to_optimize = da.get_atom_numbers_to_optimize()
 n_top = len(atom_numbers_to_optimize)
 blmin = closest_distances_generator(atom_numbers_to_optimize, 1.0)
-cellbounds = CellBounds(bounds={'phi':[30, 150], 'chi': [30, 150],
-                                'psi':[30, 150]})
+cellbounds = CellBounds(bounds={'phi': [30, 150], 'chi': [30, 150],
+                                'psi': [30, 150]})
 
 # Note the "use_tags" keyword argument being used
 # to signal that we want to preserve molecular identity
@@ -46,7 +46,7 @@ blmin_soft = closest_distances_generator(atom_numbers_to_optimize, 0.8)
 softmut = SoftMutation(blmin_soft, bounds=[2., 5.], use_tags=True)
 
 operators = OperationSelector([5, 1, 1, 1, 1, 1], [pairing, rattlemut,
-                              strainmut, rotmut, rattlerotmut, softmut])
+                                                   strainmut, rotmut, rattlerotmut, softmut])
 
 # Relaxing the initial candidates
 while da.get_number_of_unrelaxed_candidates() > 0:
@@ -56,7 +56,7 @@ while da.get_number_of_unrelaxed_candidates() > 0:
 
 # The structure comparator for the population
 comp = OFPComparator(n_top=n_top, dE=1.0, cos_dist_max=5e-3, rcut=10.,
-                     binwidth=0.05, pbc=[True, True, True],sigma=0.05,
+                     binwidth=0.05, pbc=[True, True, True], sigma=0.05,
                      nsigma=4, recalculate=False)
 
 # The population
@@ -99,7 +99,7 @@ for step in range(n_to_test):
 
     # Print out information for easier follow-up/analysis/plotting:
     print('Step %d %s %.3f %.3f %.3f' % (step, desc,
-          get_raw_score(a1), get_raw_score(a2), get_raw_score(a3)))
+                                         get_raw_score(a1), get_raw_score(a2), get_raw_score(a3)))
 
     print('Step %d highest raw score in pop: %.3f' %
           (step, get_raw_score(current_pop[0])))
