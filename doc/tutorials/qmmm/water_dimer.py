@@ -12,7 +12,7 @@ qm_idx = range(3)
 
 # Set up interaction & embedding object
 interaction = LJInteractions({('O', 'O'): (epsilon0, sigma0)})
-embedding = Embedding(rc=0.02)  # Short range analytical potential cutoff 
+embedding = Embedding(rc=0.02)  # Short range analytical potential cutoff
 
 # Set up calculator
 atoms.calc = EIQMMM(qm_idx,
