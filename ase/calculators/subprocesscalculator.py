@@ -1,29 +1,47 @@
 import sys
+from abc import ABC, abstractmethod
+import pickle
 from subprocess import Popen, PIPE
 from ase.calculators.calculator import Calculator, all_properties
 from ase.calculators.singlepoint import SinglePointDFTCalculator
-import pickle
 
 
-class CalculatorInput:
-    def __init__(self, name, kwargs):
-        self.name = name
-        self.kwargs = kwargs
+class PackedCalculator(ABC):
+    """Not all calculators can be pickled or otherwise packed."""
+
+    @abstractmethod
+    def unpack_calculator(self) -> Calculator:
+        """Return the calculator packed inside.
+
+        This is called on the process doing the actual calculation
+        to create the calculator that does the real work."""
+
+    def calculator(self) -> 'SubProcessPythonCalculator':
+        """Return a SubProcessPythonCalculator for this calculator.
+
+        The subprocess calculator wraps a subprocess containing
+        the actual calculator, and computations are done inside that
+        subprocess."""
+        return PythonSubProcessCalculator(self)
+
+
+class NamedPackedCalculator(PackedCalculator):
+    def __init__(self, name, kwargs=None):
+        self._name = name
+        if kwargs is None:
+            kwargs = {}
+        self._kwargs = kwargs
+
+    def unpack_calculator(self):
+        from ase.calculators.calculator import get_calculator_class
+        cls = get_calculator_class(self._name)
+        return cls(**self._kwargs)
 
     def __repr__(self):
-        return 'CalculatorInput({}, {})'.format(self.name, self.kwargs)
+        return 'CalculatorInput({}, {})'.format(self._name, self._kwargs)
 
 
-def wrap_subprocess(calc):
-    calc_input = CalculatorInput(calc.name, calc.parameters)
-    return SubProcessPythonCalculator(calc_input)
-
-# TODO: Generalize outputs somehow?
-#class CalculatorOutput:
-#    def __init__(self, results):
-#        self.results = results
-
-class SubProcessPythonCalculator(Calculator):
+class PythonSubProcessCalculator(Calculator):
     """Calculator for running calculations in external processes.
 
     TODO: This should work with arbitrary commands including MPI stuff.
@@ -35,7 +53,7 @@ class SubProcessPythonCalculator(Calculator):
     def __init__(self, calc_input):
         super().__init__()
         proc = Popen([sys.executable, '-m', __name__],
-                     stdout=PIPE, stdin=PIPE)  #, stderr=PIPE)
+                     stdout=PIPE, stdin=PIPE)
         self.proc = proc
         self.calc_input = calc_input
 
@@ -78,8 +96,6 @@ class SubProcessPythonCalculator(Calculator):
 
 
 def main():
-    from ase.calculators.calculator import get_calculator_class
-
     # We switch stdout so stray print statements won't interfere with outputs:
     binary_stdout = sys.stdout.buffer
     sys.stdout = sys.stderr
@@ -91,9 +107,8 @@ def main():
         pickle.dump(obj, binary_stdout)
         binary_stdout.flush()
 
-    calc_input = recv()
-    cls = get_calculator_class(calc_input.name)
-    calc = cls(**calc_input.kwargs)
+    pack = recv()
+    calc = pack.unpack_calculator()
 
     while True:
         instruction = recv()
@@ -108,6 +123,7 @@ def main():
                        system_changes=system_changes)
         results = calc.results
         send(results)
+
 
 if __name__ == '__main__':
     main()
