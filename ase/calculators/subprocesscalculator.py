@@ -7,17 +7,41 @@ from ase.calculators.singlepoint import SinglePointDFTCalculator
 
 
 class PackedCalculator(ABC):
-    """Not all calculators can be pickled or otherwise packed."""
+    """Portable calculator for use via PythonSubProcessCalculator.
+
+    This class allows creating and talking to a calculator which
+    exists inside a different process, possibly with MPI or srun.
+
+    Use this when you want to use ASE mostly in serial, but run some
+    calculations in a parallel Python environment.
+
+    Most existing calculators can be used this way through the
+    NamedPackedCalculator implementation.  To customize the behaviour
+    for other calculators, write a custom class inheriting this one.
+
+    Example::
+
+      from ase.build import bulk
+
+      atoms = bulk('Au')
+      pack = NamedPackedCalculator('emt')
+
+      with pack.calculator() as atoms.calc:
+          energy = atoms.get_potential_energy()
+
+    The computation takes place inside a subprocess which lives as long
+    as the with statement.
+    """
 
     @abstractmethod
     def unpack_calculator(self) -> Calculator:
         """Return the calculator packed inside.
 
-        This is called on the process doing the actual calculation
-        to create the calculator that does the real work."""
+        This method will be called inside the subprocess doing
+        computations."""
 
-    def calculator(self) -> 'SubProcessPythonCalculator':
-        """Return a SubProcessPythonCalculator for this calculator.
+    def calculator(self) -> 'PythonSubProcessCalculator':
+        """Return a PythonSubProcessCalculator for this calculator.
 
         The subprocess calculator wraps a subprocess containing
         the actual calculator, and computations are done inside that
@@ -26,6 +50,9 @@ class PackedCalculator(ABC):
 
 
 class NamedPackedCalculator(PackedCalculator):
+    """PackedCalculator implementation which works with standard calculators.
+
+    This works with calculators known by ase.calculators.calculator."""
     def __init__(self, name, kwargs=None):
         self._name = name
         if kwargs is None:
@@ -38,7 +65,7 @@ class NamedPackedCalculator(PackedCalculator):
         return cls(**self._kwargs)
 
     def __repr__(self):
-        return 'CalculatorInput({}, {})'.format(self._name, self._kwargs)
+        return f'{self.__class__.__name__}({self._name}, {self._kwargs})'
 
 
 class PythonSubProcessCalculator(Calculator):
@@ -49,15 +76,13 @@ class PythonSubProcessCalculator(Calculator):
     This calculator runs a subprocess wherein it sets up an
     actual calculator.  Calculations are forwarded through pickle
     to that calculator, which returns results through pickle."""
-    implemented_properties = all_properties
+    implemented_properties = list(all_properties)
+
     def __init__(self, calc_input):
         super().__init__()
-        proc = Popen([sys.executable, '-m', __name__],
-                     stdout=PIPE, stdin=PIPE)
-        self.proc = proc
-        self.calc_input = calc_input
 
-        self._send(calc_input)
+        self.proc = None
+        self.calc_input = calc_input
 
     def set(self, **kwargs):
         if hasattr(self, 'proc'):
@@ -75,6 +100,10 @@ class PythonSubProcessCalculator(Calculator):
                                self.calc_input)
 
     def __enter__(self):
+        assert self.proc is None
+        self.proc = Popen([sys.executable, '-m', __name__],
+                          stdout=PIPE, stdin=PIPE)
+        self._send(self.calc_input)
         return self
 
     def __exit__(self, *args):
