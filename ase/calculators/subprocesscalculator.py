@@ -90,7 +90,7 @@ class PythonSubProcessCalculator(Calculator):
         Calculator.calculate(self, atoms, properties, system_changes)
         # We send a pickle of self.atoms because this is a fresh copy
         # of the input, but without an unpicklable calculator:
-        self._run_calculation(self.atoms, properties, system_changes)
+        self._run_calculation(self.atoms.copy(), properties, system_changes)
         results = self._recv()
         self.results.update(results)
 
@@ -119,6 +119,13 @@ def main():
 
         atoms, properties, system_changes = recv()
 
+        # Again we need formalization of the results/outputs, and
+        # a way to programmatically access all available properties.
+        # We do a wild hack for now:
+        calc.results.clear()
+        # If we don't clear(), the caching is broken!  For stress.
+        # But not for forces.  What dark magic from the depths of the
+        # underworld is at play here?
         calc.calculate(atoms=atoms, properties=properties,
                        system_changes=system_changes)
         results = calc.results
