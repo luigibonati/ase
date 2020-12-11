@@ -257,8 +257,8 @@ class Bravais:
         # in the real unit cell by put_atom().
         self.natoms = self.calc_num_atoms()
         self.nput = 0
-        self.atoms = np.zeros((self.natoms, 3), np.float)
-        self.elements = np.zeros(self.natoms, np.int)
+        self.atoms = np.zeros((self.natoms, 3), float)
+        self.elements = np.zeros(self.natoms, int)
         self.farpoint = sum(self.directions)
         # printprogress = self.debug and (len(self.atoms) > 250)
         # Find the radius of the sphere containing the whole system

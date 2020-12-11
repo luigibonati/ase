@@ -965,11 +965,11 @@ def write_xyz(fileobj, images, comment='', columns=None,
             if len(cnstr) > 0:
                 c0 = cnstr[0]
                 if isinstance(c0, FixAtoms):
-                    cnstr = np.ones((natoms,), dtype=np.bool)
+                    cnstr = np.ones((natoms,), dtype=bool)
                     for idx in c0.index:
                         cnstr[idx] = False
                 elif isinstance(c0, FixCartesian):
-                    masks = np.ones((natoms, 3), dtype=np.bool)
+                    masks = np.ones((natoms, 3), dtype=bool)
                     for i in range(len(cnstr)):
                         idx = cnstr[i].a
                         masks[idx] = cnstr[i].mask

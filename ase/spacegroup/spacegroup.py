@@ -532,7 +532,7 @@ class Spacegroup:
         scaled %= 1.0
         scaled %= 1.0
         tags = -np.ones((len(scaled), ), dtype=int)
-        mask = np.ones((len(scaled), ), dtype=np.bool)
+        mask = np.ones((len(scaled), ), dtype=bool)
         rot, trans = self.get_op()
         i = 0
         while mask.any():
@@ -638,7 +638,7 @@ def _read_datafile_entry(spg, no, symbol, setting, f):
     f.readline()
     spg._reciprocal_cell = np.array([[int(i) for i in f.readline().split()]
                                      for i in range(3)],
-                                    dtype=np.int)
+                                    dtype=int)
     # subtranslations
     spg._nsubtrans = int(f.readline().split()[0])
     spg._subtrans = np.array(
@@ -651,7 +651,7 @@ def _read_datafile_entry(spg, no, symbol, setting, f):
                       for i in range(nsym)],
                      dtype=np.float)
     spg._nsymop = nsym
-    spg._rotations = np.array(symop[:, :9].reshape((nsym, 3, 3)), dtype=np.int)
+    spg._rotations = np.array(symop[:, :9].reshape((nsym, 3, 3)), dtype=int)
     spg._translations = symop[:, 9:]
 
 
