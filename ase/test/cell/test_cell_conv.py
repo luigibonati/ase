@@ -2,6 +2,9 @@ import numpy as np
 from ase.geometry import cell_to_cellpar as c2p, cellpar_to_cell as p2c
 
 
+eps = 2 * np.spacing(90., dtype=np.float64)
+
+
 def nearly_equal(a, b):
     return np.all(np.abs(b - a) < eps)
 
@@ -19,9 +22,6 @@ def assert_equal(a, b):
 def test_cell_conv():
     # Make sure we get exactly zeros off-diagonal:
     assert (p2c([1, 1, 1, 90, 90, 90]) == np.eye(3)).all()
-
-    eps = 2 * np.spacing(90., dtype=np.float64)
-
 
     # Constants
     a = 5.43
