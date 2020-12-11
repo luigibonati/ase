@@ -1160,7 +1160,7 @@ class Siesta(FileIOCalculator):
                 self.results['fermi_energy'] = float(f.readline())
                 n, nspin, nkp = map(int, f.readline().split())
                 _ee = np.split(
-                    np.array(f.read().split()).astype(np.float), nkp)
+                    np.array(f.read().split()).astype(float), nkp)
         except (IOError):
             return 1
 
