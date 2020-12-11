@@ -1,3 +1,4 @@
+import os
 import sys
 from abc import ABC, abstractmethod
 import pickle
@@ -40,13 +41,13 @@ class PackedCalculator(ABC):
         This method will be called inside the subprocess doing
         computations."""
 
-    def calculator(self) -> 'PythonSubProcessCalculator':
+    def calculator(self, mpi_command=None) -> 'PythonSubProcessCalculator':
         """Return a PythonSubProcessCalculator for this calculator.
 
         The subprocess calculator wraps a subprocess containing
         the actual calculator, and computations are done inside that
         subprocess."""
-        return PythonSubProcessCalculator(self)
+        return PythonSubProcessCalculator(self, mpi_command=mpi_command)
 
 
 class NamedPackedCalculator(PackedCalculator):
@@ -68,6 +69,34 @@ class NamedPackedCalculator(PackedCalculator):
         return f'{self.__class__.__name__}({self._name}, {self._kwargs})'
 
 
+class MPICommand:
+    def __init__(self, argv):
+        self.argv = argv
+
+    @classmethod
+    def python_argv(cls):
+        return [sys.executable, '-m', __name__]
+
+    @classmethod
+    def parallel(cls, nprocs, mpi_argv=tuple()):
+        return cls(['mpiexec', '-np', str(nprocs)]
+                   + list(mpi_argv)
+                   + cls.python_argv()
+                   + ['mpi4py'])
+
+    @classmethod
+    def serial(cls):
+        return MPICommand(cls.python_argv() + ['serial'])
+
+    def execute(self):
+        # On this computer (Ubuntu 20.04 + OpenMPI) the subprocess crashes
+        # without output during startup if os.environ is not passed along.
+        # Hence we pass os.environ.  Not sure if this is a machine thing
+        # or in general.  --askhl
+        return Popen(self.argv, stdout=PIPE,
+                     stdin=PIPE, env=os.environ)
+
+
 class PythonSubProcessCalculator(Calculator):
     """Calculator for running calculations in external processes.
 
@@ -78,11 +107,14 @@ class PythonSubProcessCalculator(Calculator):
     to that calculator, which returns results through pickle."""
     implemented_properties = list(all_properties)
 
-    def __init__(self, calc_input):
+    def __init__(self, calc_input, mpi_command=None):
         super().__init__()
 
         self.proc = None
         self.calc_input = calc_input
+        if mpi_command is None:
+            mpi_command = MPICommand.serial()
+        self.mpi_command = mpi_command
 
     def set(self, **kwargs):
         if hasattr(self, 'proc'):
@@ -101,8 +133,7 @@ class PythonSubProcessCalculator(Calculator):
 
     def __enter__(self):
         assert self.proc is None
-        self.proc = Popen([sys.executable, '-m', __name__],
-                          stdout=PIPE, stdin=PIPE)
+        self.proc = self.mpi_command.execute()
         self._send(self.calc_input)
         return self
 
@@ -124,17 +155,46 @@ class PythonSubProcessCalculator(Calculator):
         self.results.update(results)
 
 
+run_modes = {'mpi4py', 'serial'}
+
+
+def bad_mode():
+    raise ValueError(f'sys.argv[1] must be one of {run_modes}')
+
+
 def main():
+    try:
+        run_mode = sys.argv[1]
+    except IndexError:
+        bad_mode()
+
+    if run_mode not in run_modes:
+        bad_mode()
+
+    if run_mode == 'mpi4py':
+        # We must import mpi4py before the rest of ASE, or world will not
+        # be correctly initialized.
+        import mpi4py  # noqa
+
     # We switch stdout so stray print statements won't interfere with outputs:
     binary_stdout = sys.stdout.buffer
     sys.stdout = sys.stderr
 
+    from ase.parallel import world, broadcast
+
     def recv():
-        return pickle.load(sys.stdin.buffer)
+        if world.rank == 0:
+            obj = pickle.load(sys.stdin.buffer)
+        else:
+            obj = None
+
+        obj = broadcast(obj, 0, world)
+        return obj
 
     def send(obj):
-        pickle.dump(obj, binary_stdout)
-        binary_stdout.flush()
+        if world.rank == 0:
+            pickle.dump(obj, binary_stdout)
+            binary_stdout.flush()
 
     pack = recv()
     calc = pack.unpack_calculator()

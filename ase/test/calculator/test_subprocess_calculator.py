@@ -1,7 +1,8 @@
 import pytest
-from ase.calculators.subprocesscalculator import NamedPackedCalculator
+from ase.calculators.subprocesscalculator import (NamedPackedCalculator,
+                                                  MPICommand)
 from ase.calculators.emt import EMT
-from ase.build import bulk
+from ase.build import molecule, bulk
 from ase.optimize import BFGS
 from ase.constraints import ExpCellFilter
 
@@ -32,13 +33,14 @@ def test_subprocess_calculator(atoms):
 
     with pack.calculator() as atoms.calc:
         assert_results_equal_to_ordinary_emt(atoms)
-        #atoms.rattle(stdev=0.1, seed=17)
+        atoms.rattle(stdev=0.1, seed=17)
         atoms.cell[1, 2] += 0.1
-        #atoms.pbc[0] = False
+        atoms.pbc[0] = False
         assert_results_equal_to_ordinary_emt(atoms)
 
     # As before, but the results are supposedly cached:
     assert_results_equal_to_ordinary_emt(atoms)
+
 
 def test_subprocess_calculator_optimize(atoms):
     pack = NamedPackedCalculator('emt')
@@ -54,3 +56,21 @@ def test_subprocess_calculator_optimize(atoms):
     fmax_now = get_fmax(atoms.get_forces())
     assert fmax_now < fmax
     assert_results_equal_to_ordinary_emt(atoms)
+
+
+@pytest.mark.calculator('gpaw')
+def test_subprocess_calculator_mpi(factory):
+    pytest.importorskip('mpi4py')
+    atoms = molecule('H2', vacuum=2.0)
+    atoms.pbc = 1
+    pack = NamedPackedCalculator('gpaw', dict(mode='lcao'))
+    mpi = MPICommand.parallel(2)
+    with pack.calculator(mpi) as atoms.calc:
+        atoms.get_potential_energy()
+
+        # props = atoms.get_properties(['energy', 'eigenvalues'])
+
+    # XXX Somehow figure out how to get this to work:
+    # eigs = atoms.calc.results['eigenvalues']
+    # eigs = atoms.calc.get_eigenvalues()
+    # print(eigs)
