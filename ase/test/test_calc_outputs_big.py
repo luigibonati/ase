@@ -29,6 +29,9 @@ def test_properties_big(rng):
         fermi_level=rng.rand(),
         ibz_kpoints=rng.rand(nkpts, 3),
         kpoint_weights=rng.rand(nkpts),
+        dipole=rng.rand(3),
+        magmom=rng.rand(),
+        magmoms=rng.rand(natoms),
     )
 
     props = Properties(results)
