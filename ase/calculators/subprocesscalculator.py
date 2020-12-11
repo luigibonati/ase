@@ -4,7 +4,6 @@ from abc import ABC, abstractmethod
 import pickle
 from subprocess import Popen, PIPE
 from ase.calculators.calculator import Calculator, all_properties
-from ase.calculators.singlepoint import SinglePointDFTCalculator
 
 
 class PackedCalculator(ABC):
@@ -54,6 +53,7 @@ class NamedPackedCalculator(PackedCalculator):
     """PackedCalculator implementation which works with standard calculators.
 
     This works with calculators known by ase.calculators.calculator."""
+
     def __init__(self, name, kwargs=None):
         self._name = name
         if kwargs is None:

@@ -4,7 +4,6 @@ from ase.calculators.subprocesscalculator import (NamedPackedCalculator,
 from ase.calculators.emt import EMT
 from ase.build import molecule, bulk
 from ase.optimize import BFGS
-from ase.constraints import ExpCellFilter
 
 
 def get_fmax(forces):
