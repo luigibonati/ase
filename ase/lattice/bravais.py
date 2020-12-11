@@ -93,7 +93,7 @@ class Bravais:
             # First basis vector along y axis - rotate 90 deg along z
             t = np.array([[0, -1, 0],
                           [1, 0, 0],
-                          [0, 0, 1]], np.float)
+                          [0, 0, 1]], float)
             self.basis = np.dot(self.basis, t)
             transf = t
             if self.debug >= 2:
@@ -101,7 +101,7 @@ class Bravais:
                       "stability.")
                 print(self.basis)
         else:
-            transf = np.identity(3, np.float)
+            transf = np.identity(3, float)
         assert abs(np.linalg.det(transf) - 1) < 1e-6
         # Rotate first basis vector into xy plane
         theta = math.atan2(self.basis[0, 2], self.basis[0, 0])

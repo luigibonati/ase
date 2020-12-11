@@ -80,7 +80,7 @@ class TestKnownUnimodularMatrix():
     def test_2d(self, axis):
         lcell = self.lcell
         pbc = np.roll([0, 1, 1], axis)
-        rcell, op = minkowski_reduce(lcell.astype(np.float), pbc=pbc)
+        rcell, op = minkowski_reduce(lcell.astype(float), pbc=pbc)
         assert (rcell[axis] == lcell[axis]).all()
 
         zcell = np.copy(lcell)
