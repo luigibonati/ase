@@ -15,7 +15,7 @@ from scipy.interpolate import CubicSpline
 
 
 from ase.constraints import Filter, FixAtoms
-from ase.utils import longsum
+from ase.utils import longsum, lazyproperty
 from ase.geometry import find_mic
 import ase.utils.ff as ff
 import ase.units as units
@@ -1301,7 +1301,6 @@ class PreconImages:
             pf_vec, _ = precon.apply(f_vec, image)
             precon_forces.append(pf_vec.reshape(-1, 3))
           
-        self.spline = self.spline_fit()
         return np.array(precon_forces)
         
     def average_norm(self, i, j, dx):
@@ -1402,3 +1401,9 @@ class PreconImages:
         """
         s, x = self.get_coordinates(positions)
         return SplineFit(s, x)
+    
+    @lazyproperty
+    def spline(self):
+        return self.spline_fit()
+    
+    

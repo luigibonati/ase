@@ -436,6 +436,7 @@ class BaseNEB:
             self.precon = PreconImages(self.precon, images)
             
         # apply preconditioners to transform forces
+        # for the default IdentityPrecon this does not change their values
         precon_forces = self.precon.apply(forces, index=slice(1, -1))
 
         # Save for later use in iterimages:
@@ -482,7 +483,7 @@ class BaseNEB:
 
             spring1 = spring2
                     
-        return forces.reshape((-1, 3))
+        return precon_forces.reshape((-1, 3))
 
     def get_residual(self):
         """Return residual force along the band.
