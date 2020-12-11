@@ -75,7 +75,7 @@ class MPICommand:
 
     @classmethod
     def python_argv(cls):
-        return [sys.executable, '-m', __name__]
+        return [sys.executable, '-m', 'ase.calculators.subprocesscalculator']
 
     @classmethod
     def parallel(cls, nprocs, mpi_argv=tuple()):
@@ -159,17 +159,17 @@ run_modes = {'mpi4py', 'serial'}
 
 
 def bad_mode():
-    raise ValueError(f'sys.argv[1] must be one of {run_modes}')
+    return SystemExit(f'sys.argv[1] must be one of {run_modes}')
 
 
 def main():
     try:
         run_mode = sys.argv[1]
     except IndexError:
-        bad_mode()
+        raise bad_mode()
 
     if run_mode not in run_modes:
-        bad_mode()
+        raise bad_mode()
 
     if run_mode == 'mpi4py':
         # We must import mpi4py before the rest of ASE, or world will not
