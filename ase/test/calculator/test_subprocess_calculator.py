@@ -58,6 +58,7 @@ def test_subprocess_calculator_optimize(atoms):
     assert_results_equal_to_ordinary_emt(atoms)
 
 
+@pytest.mark.calculator_lite
 @pytest.mark.calculator('gpaw')
 def test_subprocess_calculator_mpi(factory):
     pytest.importorskip('mpi4py')
