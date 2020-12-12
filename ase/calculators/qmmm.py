@@ -775,7 +775,19 @@ class ForceQMMM(Calculator):
         self.results['forces'] = forces
         self.results['energy'] = 0.0
 
-    def region_from_masks(self, atoms):
+    def region_from_masks(self, atoms=None):
+        '''
+        creates region array from the masks of the calculators. The tags in
+        the array are:
+        QM - qm atoms
+        buffer - buffer atoms
+        MM - atoms treated with mm calculator
+        '''
+        if atoms is None:
+            if self.atoms is None:
+                raise ValueError('Calculator has no atoms')
+            else:
+                atoms = self.atoms
 
         region = np.full_like(atoms, "MM")
 
@@ -799,3 +811,24 @@ class ForceQMMM(Calculator):
             print(f"{count:16d} {symbol}")
 
         return region
+
+    def export_extxyz(self, atoms=None, filename="qmmm_atoms.xyz"):
+        """
+        exports the atoms to extended xyz file with additional "region"
+        array keeping the mapping between QM, buffer and MM parts of
+        the simulation
+        """
+        if atoms is None:
+            if self.atoms is None:
+                raise ValueError('Calculator has no atoms')
+            else:
+                atoms = self.atoms
+
+        region = self.region_from_masks()
+
+        atoms_copy = atoms.copy()
+        atoms_copy.new_array("region", region)
+
+        atoms_copy.calc = self # to keep the calculation results
+
+        atoms_copy.write(filename, format='extxyz')

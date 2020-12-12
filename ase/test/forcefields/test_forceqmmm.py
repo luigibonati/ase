@@ -376,3 +376,39 @@ def test_forceqmmm(qm_calc, mm_calc, bulk_at):
     # biggest QM/MM should match QM result
     assert du_local[-1] < 1e-10
     assert du_global[-1] < 1e-10
+
+def test_export_import(qm_calc, mm_calc, bulk_at):
+
+    """
+    test the export_extxyz function and checks the region adn forces arrays
+    """
+
+    alat = bulk_at.cell[0, 0]
+    at0 = bulk_at * 5
+    r = at0.get_distances(0, np.arange(len(at0)), mic=True)
+    # should give 12 nearest neighbours + atom in the center
+    R_QM = alat / np.sqrt(2.0) + 1.0e-3
+    qm_mask = r < R_QM
+
+    qmmm = ForceQMMM(at0, qm_mask, qm_calc, mm_calc,
+                     buffer_width=3.61)
+
+    qmmm.initialize_qm_buffer_mask(at0)
+    at0.calc = qmmm
+    # evaluating forces to test exporting of forces
+    forces = at0.get_forces()
+    filename = "qmmm_export_test.xyz"
+    qmmm.export_extxyz(filename=filename)
+
+    from ase.io import read
+    read_atoms = read(filename)
+
+    assert "region" in read_atoms.arrays
+    original_region = qmmm.region_from_masks()
+    assert all(original_region == read_atoms.get_array("region"))
+
+    assert "forces" in read_atoms.arrays
+    # absolute tolerance for comparing forces close to zero
+    np.testing.assert_allclose(forces, read_atoms.get_forces(), atol=1.0e-6)
+    import os
+    os.remove(filename)
