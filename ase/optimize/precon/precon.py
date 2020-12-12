@@ -15,7 +15,7 @@ from scipy.interpolate import CubicSpline
 
 
 from ase.constraints import Filter, FixAtoms
-from ase.utils import longsum, lazyproperty
+from ase.utils import longsum
 from ase.geometry import find_mic
 import ase.utils.ff as ff
 import ase.units as units
@@ -1402,7 +1402,7 @@ class PreconImages:
         s, x = self.get_coordinates(positions)
         return SplineFit(s, x)
     
-    @lazyproperty
+    @property
     def spline(self):
         return self.spline_fit()
     
