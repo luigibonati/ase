@@ -638,8 +638,7 @@ class ForceQMMM(Calculator):
                  buffer_width,
                  vacuum=5.,
                  zero_mean=True,
-                 qm_cell_round_off=3,
-                 add_region=True):
+                 qm_cell_round_off=3):
         """
         ForceQMMM calculator
 
@@ -674,7 +673,6 @@ class ForceQMMM(Calculator):
         self.buffer_width = buffer_width
         self.zero_mean = zero_mean
         self.qm_cell_round_off = qm_cell_round_off
-        self.add_region = add_region
 
         self.qm_buffer_mask = None
 
@@ -698,32 +696,8 @@ class ForceQMMM(Calculator):
         for r_qm in qm_distance_matrix:
             self.qm_buffer_mask[r_qm < self.buffer_width] = True
 
-        if self.add_region:
-            if "region" in atoms.arrays:
-                region = atoms.get_array("region")
-            else:
-                region = np.full_like(atoms, "MM")
-                atoms.set_array("region", region)
-
-            region[self.qm_selection_mask] = (
-                np.full_like(region[self.qm_selection_mask], "QM"))
-
-            buffer_only_mask = self.qm_buffer_mask & ~self.qm_selection_mask
-
-            region[buffer_only_mask] = np.full_like(region[buffer_only_mask],
-                                                    "buffer")
-            atoms.set_array("region", region)
-
-            print(f"Mapping of {len(region):5d} atoms in total:")
-            for region_id in np.unique(region):
-                n_at = np.count_nonzero(region == region_id)
-                print(f"{n_at:16d} {region_id}")
-
-            qm_atoms = atoms[self.qm_selection_mask]
-            symbol_counts = qm_atoms.symbols.formula.count()
-            print("QM atoms types:")
-            for symbol, count in symbol_counts.items():
-                print(f"{count:16d} {symbol}")
+        # just to print out the mapping
+        _ = self.region_from_masks(atoms)
 
     def get_qm_cluster(self, atoms):
 
@@ -801,3 +775,27 @@ class ForceQMMM(Calculator):
         self.results['forces'] = forces
         self.results['energy'] = 0.0
 
+    def region_from_masks(self, atoms):
+
+        region = np.full_like(atoms, "MM")
+
+        region[self.qm_selection_mask] = (
+            np.full_like(region[self.qm_selection_mask], "QM"))
+
+        buffer_only_mask = self.qm_buffer_mask & ~self.qm_selection_mask
+
+        region[buffer_only_mask] = np.full_like(region[buffer_only_mask],
+                                                "buffer")
+
+        print(f"Mapping of {len(region):5d} atoms in total:")
+        for region_id in np.unique(region):
+            n_at = np.count_nonzero(region == region_id)
+            print(f"{n_at:16d} {region_id}")
+
+        qm_atoms = atoms[self.qm_selection_mask]
+        symbol_counts = qm_atoms.symbols.formula.count()
+        print("QM atoms types:")
+        for symbol, count in symbol_counts.items():
+            print(f"{count:16d} {symbol}")
+
+        return region

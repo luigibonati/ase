@@ -81,7 +81,7 @@ def test_qm_buffer_mask(qm_calc, mm_calc, bulk_at):
         qm_cluster = qmmm.get_qm_cluster(at)
         assert len(qm_cluster) == qm_buffer_mask_ref.sum()
         # test region mappings
-        region = at.get_array("region")
+        region = qmmm.region_from_masks(at)
         qm_mask_region = region == "QM"
         assert qm_mask_region.sum() == qm_mask.sum()
         buffer_mask_region = region == "buffer"
