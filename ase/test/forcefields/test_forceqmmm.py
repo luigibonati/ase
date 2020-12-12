@@ -117,22 +117,10 @@ def compare_qm_cell_and_pbc(qm_calc, mm_calc, bulk_at,
     qmmm.initialize_qm_buffer_mask(at0)
     qm_cluster = qmmm.get_qm_cluster(at0)
 
-    # test if qm pbc match expected
-    assert all(qmmm.qm_cluster_pbc == expected_pbc)
-    # same test for qmmm.get_cluster()
+    # test if qm pbc match expected in qmmm.get_cluster()
     assert all(qm_cluster.pbc == expected_pbc)
 
-    if not all(expected_pbc):  # at least on F. avoid comparing empty arrays
-        # should NOT have the same cell as the
-        # original atoms in non pbc directions
-        assert not all(qmmm.qm_cluster_cell.lengths()[~expected_pbc] ==
-                       at0.cell.lengths()[~expected_pbc])
-    if any(expected_pbc):  # at least one T. avoid comparing empty arrays
-        # should be the same in periodic direction
-        np.testing.assert_allclose(qmmm.qm_cluster_cell.lengths()[expected_pbc],
-                                   at0.cell.lengths()[expected_pbc])
-
-    # same test for qmmm.get_qm_cluster()
+    # test the cell size for qmmm.get_qm_cluster()
     if not all(expected_pbc):  # at least one F. avoid comparing empty arrays
         assert not all(qm_cluster.cell.lengths()[~expected_pbc] ==
                        at0.cell.lengths()[~expected_pbc])

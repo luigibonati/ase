@@ -677,9 +677,6 @@ class ForceQMMM(Calculator):
         self.add_region = add_region
 
         self.qm_buffer_mask = None
-        self.qm_cluster_cell = None
-        self.qm_cluster_pbc = None
-        self.qm_shift = None
 
         Calculator.__init__(self)
 
@@ -755,26 +752,25 @@ class ForceQMMM(Calculator):
         # in periodic directions of the cell (cell[i] < qm_radius + buffer
         # otherwise change to non pbc
         # and make a cluster in a vacuum configuration
-        self.qm_cluster_pbc = atoms.pbc & \
+        qm_cluster_pbc = atoms.pbc & \
                               (cell_size < qm_radius + self.buffer_width)
 
         # start with the original orthorhombic cell
         qm_cluster_cell = atoms.cell.lengths()
         # create a cluster in a vacuum cell in non periodic directions
-        qm_cluster_cell[~self.qm_cluster_pbc] = (
-            2.0 * (qm_radius[~self.qm_cluster_pbc] +
+        qm_cluster_cell[~qm_cluster_pbc] = (
+            2.0 * (qm_radius[~qm_cluster_pbc] +
             self.buffer_width +
             self.vacuum))
 
         # round the qm cell to the required tolerance
-        qm_cluster_cell[~self.qm_cluster_pbc] = (np.round(
-            (qm_cluster_cell[~self.qm_cluster_pbc]) /
+        qm_cluster_cell[~qm_cluster_pbc] = (np.round(
+            (qm_cluster_cell[~qm_cluster_pbc]) /
             self.qm_cell_round_off) *
             self.qm_cell_round_off)
 
-        self.qm_cluster_cell = Cell(np.diag(qm_cluster_cell))
-        qm_cluster.set_cell(self.qm_cluster_cell)
-        qm_cluster.pbc = self.qm_cluster_pbc
+        qm_cluster.set_cell(Cell(np.diag(qm_cluster_cell)))
+        qm_cluster.pbc = qm_cluster_pbc
 
         qm_shift = (0.5 * qm_cluster.cell.diagonal() -
                     qm_cluster.positions.mean(axis=0))
@@ -783,8 +779,7 @@ class ForceQMMM(Calculator):
             del qm_cluster.info['cell_origin']
 
         # center the cluster only in non pbc directions
-        non_pbc_directions = ~self.qm_cluster_pbc
-        qm_cluster.positions[:, non_pbc_directions] += qm_shift[non_pbc_directions]
+        qm_cluster.positions[:, ~qm_cluster_pbc] += qm_shift[~qm_cluster_pbc]
 
         return qm_cluster
 
