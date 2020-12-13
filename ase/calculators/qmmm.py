@@ -838,6 +838,6 @@ class ForceQMMM(Calculator):
         atoms_copy = atoms.copy()
         atoms_copy.new_array("region", region)
 
-        atoms_copy.calc = self # to keep the calculation results
+        atoms_copy.calc = self  # to keep the calculation results
 
         atoms_copy.write(filename, format='extxyz')
