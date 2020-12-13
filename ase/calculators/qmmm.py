@@ -697,7 +697,7 @@ class ForceQMMM(Calculator):
             self.qm_buffer_mask[r_qm < self.buffer_width] = True
 
         # just to print out the mapping
-        _ = self.region_from_masks(atoms)
+        _ = self.get_region_from_masks(atoms)
 
     def get_qm_cluster(self, atoms):
 
@@ -775,7 +775,7 @@ class ForceQMMM(Calculator):
         self.results['forces'] = forces
         self.results['energy'] = 0.0
 
-    def region_from_masks(self, atoms=None):
+    def get_region_from_masks(self, atoms=None):
         '''
         creates region array from the masks of the calculators. The tags in
         the array are:
@@ -812,6 +812,15 @@ class ForceQMMM(Calculator):
 
         return region
 
+    def set_masks_from_region(self, region):
+        """
+        Sets masks from provided region array
+        """
+        self.qm_selection_mask = region == "QM"
+        buffer_mask = region == "buffer"
+
+        self.qm_buffer_mask = self.qm_selection_mask ^ buffer_mask
+
     def export_extxyz(self, atoms=None, filename="qmmm_atoms.xyz"):
         """
         exports the atoms to extended xyz file with additional "region"
@@ -824,7 +833,7 @@ class ForceQMMM(Calculator):
             else:
                 atoms = self.atoms
 
-        region = self.region_from_masks()
+        region = self.get_region_from_masks()
 
         atoms_copy = atoms.copy()
         atoms_copy.new_array("region", region)

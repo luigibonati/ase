@@ -81,7 +81,7 @@ def test_qm_buffer_mask(qm_calc, mm_calc, bulk_at):
         qm_cluster = qmmm.get_qm_cluster(at)
         assert len(qm_cluster) == qm_buffer_mask_ref.sum()
         # test region mappings
-        region = qmmm.region_from_masks(at)
+        region = qmmm.get_region_from_masks(at)
         qm_mask_region = region == "QM"
         assert qm_mask_region.sum() == qm_mask.sum()
         buffer_mask_region = region == "buffer"
@@ -377,12 +377,8 @@ def test_forceqmmm(qm_calc, mm_calc, bulk_at):
     assert du_local[-1] < 1e-10
     assert du_global[-1] < 1e-10
 
-def test_export_import(qm_calc, mm_calc, bulk_at):
-
-    """
-    test the export_extxyz function and checks the region adn forces arrays
-    """
-
+@pytest.fixture
+def at0(qm_calc, mm_calc, bulk_at):
     alat = bulk_at.cell[0, 0]
     at0 = bulk_at * 5
     r = at0.get_distances(0, np.arange(len(at0)), mic=True)
@@ -395,16 +391,27 @@ def test_export_import(qm_calc, mm_calc, bulk_at):
 
     qmmm.initialize_qm_buffer_mask(at0)
     at0.calc = qmmm
+
+    return at0
+
+def test_export_xyz(at0):
+
+    """
+    test the export_extxyz function and checks the region adn forces arrays
+    """
+
     # evaluating forces to test exporting of forces
     forces = at0.get_forces()
     filename = "qmmm_export_test.xyz"
+
+    qmmm = at0.calc
     qmmm.export_extxyz(filename=filename)
 
     from ase.io import read
     read_atoms = read(filename)
 
     assert "region" in read_atoms.arrays
-    original_region = qmmm.region_from_masks()
+    original_region = qmmm.get_region_from_masks()
     assert all(original_region == read_atoms.get_array("region"))
 
     assert "forces" in read_atoms.arrays
@@ -412,3 +419,31 @@ def test_export_import(qm_calc, mm_calc, bulk_at):
     np.testing.assert_allclose(forces, read_atoms.get_forces(), atol=1.0e-6)
     import os
     os.remove(filename)
+
+def test_set_masks_from_region(at0, qm_calc, mm_calc):
+    """
+    Test setting masks from region array
+    """
+
+    qmmm = at0.calc
+    region = qmmm.get_region_from_masks(at0)
+
+    # initialise another qmmm with different masks
+    r = at0.get_distances(0, np.arange(len(at0)), mic=True)
+    R_QM = 1.0e-3
+    qm_mask = r < R_QM
+
+    test_qmmm = ForceQMMM(at0, qm_mask, qm_calc, mm_calc,
+                          buffer_width=3.61)
+
+    # assert that number of qm atoms is different
+    assert not (np.count_nonzero(qmmm.qm_selection_mask) ==
+                np.count_nonzero(test_qmmm.qm_selection_mask))
+
+    test_qmmm.set_masks_from_region(region)
+
+    assert all(test_qmmm.qm_selection_mask == qmmm.qm_selection_mask)
+    assert all(test_qmmm.qm_buffer_mask == qmmm.qm_buffer_mask)
+
+    test_region = test_qmmm.get_region_from_masks(at0)
+    assert all(region == test_region)
