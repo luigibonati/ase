@@ -638,7 +638,8 @@ class ForceQMMM(Calculator):
                  buffer_width,
                  vacuum=5.,
                  zero_mean=True,
-                 qm_cell_round_off=3):
+                 qm_cell_round_off=3,
+                 qm_radius=None):
         """
         ForceQMMM calculator
 
@@ -658,9 +659,10 @@ class ForceQMMM(Calculator):
             If True, add a correction to zero the mean force in each direction
         qm_cell_round_off: int
             Tolerance value in Angstrom to round the qm cluster cell
-        add_region: bool
-            if True (default) add an array "region" to atoms.arrays
-            with QM, buffer and MM labels
+        qm_radius: 3x1 array of floats qm_radius for [x, y, z]
+            3d qm radius for calculation of qm cluster cell. default is None
+            and the radius is estimated from maximum distance between the atoms
+            in qm region.
         """
 
         if len(atoms[qm_selection_mask]) == 0:
@@ -673,6 +675,7 @@ class ForceQMMM(Calculator):
         self.buffer_width = buffer_width
         self.zero_mean = zero_mean
         self.qm_cell_round_off = qm_cell_round_off
+        self.qm_radius = qm_radius
 
         self.qm_buffer_mask = None
 
@@ -707,15 +710,18 @@ class ForceQMMM(Calculator):
         qm_cluster = atoms[self.qm_buffer_mask]
         del qm_cluster.constraints
 
-        # get all distances between qm atoms.
-        # Treat all X, Y and Z directions independently
-        # only distance between qm atoms is calculated
-        # in order to estimate qm radius in thee directions
-        R_qm, _ = get_distances(atoms.positions[self.qm_selection_mask],
-                                cell=atoms.cell, pbc=atoms.pbc)
-        # estimate qm radius in three directions as 1/2
-        # of max distance between qm atoms
-        qm_radius = np.amax(np.amax(R_qm, axis=1), axis=0) * 0.5
+        round_cell = False
+        if self.qm_radius is None:
+            round_cell = True
+            # get all distances between qm atoms.
+            # Treat all X, Y and Z directions independently
+            # only distance between qm atoms is calculated
+            # in order to estimate qm radius in thee directions
+            R_qm, _ = get_distances(atoms.positions[self.qm_selection_mask],
+                                    cell=atoms.cell, pbc=atoms.pbc)
+            # estimate qm radius in three directions as 1/2
+            # of max distance between qm atoms
+            self.qm_radius = np.amax(np.amax(R_qm, axis=1), axis=0) * 0.5
 
         if atoms.cell.orthorhombic:
             cell_size = np.diagonal(atoms.cell)
@@ -727,21 +733,22 @@ class ForceQMMM(Calculator):
         # otherwise change to non pbc
         # and make a cluster in a vacuum configuration
         qm_cluster_pbc = atoms.pbc & \
-                              (cell_size < qm_radius + self.buffer_width)
+                              (cell_size < self.qm_radius + self.buffer_width)
 
         # start with the original orthorhombic cell
         qm_cluster_cell = atoms.cell.lengths()
         # create a cluster in a vacuum cell in non periodic directions
         qm_cluster_cell[~qm_cluster_pbc] = (
-            2.0 * (qm_radius[~qm_cluster_pbc] +
-            self.buffer_width +
-            self.vacuum))
+            2.0 * (self.qm_radius[~qm_cluster_pbc] +
+                   self.buffer_width +
+                   self.vacuum))
 
-        # round the qm cell to the required tolerance
-        qm_cluster_cell[~qm_cluster_pbc] = (np.round(
-            (qm_cluster_cell[~qm_cluster_pbc]) /
-            self.qm_cell_round_off) *
-            self.qm_cell_round_off)
+        if round_cell:
+            # round the qm cell to the required tolerance
+            qm_cluster_cell[~qm_cluster_pbc] = (np.round(
+                (qm_cluster_cell[~qm_cluster_pbc]) /
+                self.qm_cell_round_off) *
+                self.qm_cell_round_off)
 
         qm_cluster.set_cell(Cell(np.diag(qm_cluster_cell)))
         qm_cluster.pbc = qm_cluster_pbc
