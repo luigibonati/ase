@@ -732,9 +732,9 @@ class ForceQMMM(Calculator):
         # in periodic directions of the cell (cell[i] < qm_radius + buffer
         # otherwise change to non pbc
         # and make a cluster in a vacuum configuration
-        qm_cluster_pbc = atoms.pbc & \
-                              (cell_size <
-                               2.0 * (self.qm_radius + self.buffer_width))
+        qm_cluster_pbc = (atoms.pbc &
+                          (cell_size <
+                           2.0 * (self.qm_radius + self.buffer_width)))
 
         # start with the original orthorhombic cell
         qm_cluster_cell = atoms.cell.lengths()
