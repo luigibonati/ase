@@ -37,7 +37,7 @@ def atoms(positions):
 labels = [
     'BFGS',
     'BFGSLineSearch',
-    'PreconLBFGS_Armijo',  #  XXXX FAILS WITH PYAMG
+    'PreconLBFGS_Armijo',  # XXXX FAILS WITH PYAMG
     'PreconLBFGS_Wolff'    # XXXXX FAILS WITH PYAMG
 ]
 optimizers = [BFGS, BFGSLineSearch, PreconLBFGS, PreconLBFGS]
