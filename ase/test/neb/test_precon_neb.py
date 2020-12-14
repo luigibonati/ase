@@ -172,17 +172,18 @@ def test_neb_methods(method, optimizer, precon,
     assert abs(vdiff).max() < 1e-2
 
 
-@pytest.mark.parametrize('method', ['ODE', 'krylov'])
+@pytest.mark.parametrize('method', ['ODE', 'krylov', 'static'])
 @pytest.mark.filterwarnings('ignore:NEBOptimizer did not converge')
 def test_neb_optimizers(setup_images, method):
     images, _, _ = setup_images
     mep = NEB(images, method='spline', precon='Exp')
-    F0 = mep.get_forces()
+    mep.get_forces()  # needed so residuals are available
+    R0 = mep.get_residual()
     opt = NEBOptimizer(mep, method=method)
     opt.run(steps=2)  # take two steps
-    F1 = mep.get_forces()
-    # check force have got smaller
-    assert np.linalg.norm(F1, np.inf) < np.linalg.norm(F0, np.inf)
+    R1 = mep.get_residual()
+    # check residual has got smaller
+    assert R1 < R0
     
 
 def test_precon_initialisation(setup_images):
