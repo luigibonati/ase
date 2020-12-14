@@ -56,6 +56,22 @@ def test_system_changes(atoms):
     assert atoms.get_potential_energy() == reference_potential_energy
 
 
+def test_finite_difference():
+    """Ensure that we got the modified forces right."""
+    h = 1e-10
+    r = 8.0
+    calc = LennardJones(smooth=True, ro=6, rc=10, sigma=3)
+    atoms = Atoms('H2', positions=[[0, 0, 0], [r, 0, 0]])
+    atoms2 = Atoms('H2', positions=[[0, 0, 0], [r + h, 0, 0]])
+    atoms.calc = calc
+    atoms2.calc = calc
+
+    fd_force = (atoms2.get_potential_energy() - atoms.get_potential_energy()) / h
+    force = atoms.get_forces()[0, 0]
+
+    np.testing.assert_allclose(fd_force, force)
+
+
 # test bulk properties
 stretch = 1.5
 reference_force = pytest.approx(1.57190846e-05)
