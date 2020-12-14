@@ -58,7 +58,7 @@ class LennardJones(Calculator):
 
     ``u = sum_i u_i = 1/2 sum_(i, j != i) u_ij``
 
-    Differentiating `u` with respect to `r_i` yields the force, inpedent of the
+    Differentiating `u` with respect to `r_i` yields the force, indepedent of the
     choice of partitioning.
 
     ::
