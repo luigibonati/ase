@@ -1407,7 +1407,7 @@ class PreconImages:
     def spline(self):
         s, x = self.get_coordinates()
         if self._spline and (np.abs(s - self._old_s).max() < 1e-6 and
-            np.abs(x - self._old_x).max() < 1e-6):
+                             np.abs(x - self._old_x).max() < 1e-6):
             return self._spline
 
         self._spline = self.spline_fit()
