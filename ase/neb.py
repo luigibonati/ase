@@ -890,7 +890,7 @@ class NEBOptimizer(Optimizer):
     def run_static(self, fmax):
         X = self.neb.get_positions().reshape(-1)
         for step in range(self.max_steps):
-            F = self.neb.force_function(X)
+            F = self.force_function(X)
             if self.neb.get_residual() <= fmax:
                 return True
             X += self.alpha * F
