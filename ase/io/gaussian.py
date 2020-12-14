@@ -9,6 +9,7 @@ from ase import Atoms
 from ase.units import Hartree, Bohr
 from ase.calculators.calculator import InputError
 from ase.calculators.singlepoint import SinglePointCalculator
+from ase.calculators.gaussian import Gaussian
 
 
 _link0_keys = [
@@ -225,32 +226,112 @@ _re_chgmult = re.compile(r'^\s*[+-]?\d+(?:,\s*|\s+)[+-]?\d+\s*$')
 # that the line contains exactly two *integers*, separated by either
 # a comma (and possibly whitespace) or some amount of whitespace, we
 # can be more confident that we've actually found the charge and multiplicity.
+_re_link0 = re.compile(r'^\s*%\s*([\w\.-]+)[\s,\/]*='
+                       r'[\s,\/]*([\w\.-]+)[\s,\/]*')
+_re_output_type = re.compile(r'^\s*#\s*([NPTnpt]?)\s*')
+_re_route = re.compile(
+    r"\s*#?\s*([\w-]+)\s*((=|\(|=\s?\()[\s,\/]*([\w'-]+)[)]?[ \t,\/]*((([=]?"
+    r"[\w'-]+)[\s,\/]*)*\))?(((=[\s,\/]*[\w-]+)[\s,\/]*)*)?)?[\s,\/]*(!([\s,"
+    r"\/]*[\w'-]+)+)?")
+_re_chgmult = re.compile(
+    r'^\s*[+-]?(\d+)(?:,\s*|\s+)[+-]?(\d+)\s*$')  # taken from ase
+_re_method_basis = re.compile(
+    r"\s*([\w-]+)\s*\/([\w-]+(\s*\([\w',-]+\))?)\s*(!([\s,\/]*[\w-]+)+)")
+
+
+class GaussianConfiguration:
+
+    def __init__(self, atoms, parameters):
+        self.atoms = atoms
+        self.parameters = parameters
+
+    def get_atoms(self):
+        return self.atoms
+
+    def get_parameters(self):
+        return self.parameters
+
+    def get_calculator(self):
+        self.calc = Gaussian(atoms=self.atoms)
+        self.calc.parameters = self.parameters
+        return self.calc
+
+    @staticmethod
+    def parse_gaussian_input(gaussian_input):
+        parameters = {}
+        route_section = False
+        atoms_section = False
+        symbols = []
+        positions = []
+        pbc = np.zeros(3, dtype=bool)
+        cell = np.zeros((3, 3))
+        npbc = 0
+
+        for line in gaussian_input:
+            link0_match = _re_link0.match(line)
+            output_type_match = _re_output_type.match(line)
+            route_match = _re_route.match(line)
+            chgmult_match = _re_chgmult.match(line)
+            method_basis_match = _re_method_basis.match(line)
+            # The first empty line appears at the end of the route section:
+            if line == '\n':
+                route_section = False
+                atoms_section = False
+            elif link0_match:
+                parameters.update({link0_match.group(1): link0_match.group(2)})
+            elif output_type_match and not route_section:
+                route_section = True
+                # remove #_ ready for looking for basis/parameters
+                line = line.strip(output_type_match.group(0))
+                route_match = _re_route.match(line)
+                method_basis_match = _re_method_basis.match(line)
+                parameters.update({'output_type': output_type_match.group(1)})
+            elif chgmult_match:
+                chgmult = chgmult_match.group(0).split()
+                parameters.update(
+                    {'charge': int(chgmult[0]), 'mult': int(chgmult[1])})
+                route_section = False
+                atoms_section = True
+            elif atoms_section:
+                if (line.split()):
+                    tokens = line.split()
+                    symbol = tokens[0]
+                    pos = list(map(float, tokens[1:4]))
+                    if symbol.upper() == 'TV':
+                        pbc[npbc] = True
+                        cell[npbc] = pos
+                        npbc += 1
+                    else:
+                        symbols.append(symbol)
+                        positions.append(pos)
+
+            if route_section:
+                if method_basis_match:
+                    ase_gen_comment = '! ASE generated method and basis'
+                    if method_basis_match.group(4) == ase_gen_comment:
+                        parameters.update(
+                            {'method': method_basis_match.group(1)})
+                        parameters.update(
+                            {'basis': method_basis_match.group(2)})
+                        continue
+
+                while route_match:
+                    if route_match.group(2) is not None:
+                        parameters.update(
+                            {route_match.group(1):
+                             route_match.group(2).strip('=()').strip(
+                             ).strip('=()')})
+                    else:
+                        parameters.update({route_match.group(1): ''})
+                    line = line.replace(route_match.group(0), '')
+                    route_match = _re_route.match(line)
+
+        atoms = Atoms(symbols, positions, pbc=pbc, cell=cell)
+        return GaussianConfiguration(atoms, parameters)
 
 
 def read_gaussian_in(fd):
-    # TODO: figure out proper way to parse all calculator keywords
-    symbols = []
-    positions = []
-    pbc = np.zeros(3, dtype=bool)
-    cell = np.zeros((3, 3))
-    npbc = 0
-    # We're looking for charge and multiplicity
-    for line in fd:
-        if _re_chgmult.match(line) is not None:
-            tokens = fd.readline().split()
-            while tokens:
-                symbol = tokens[0]
-                pos = list(map(float, tokens[1:4]))
-                if symbol.upper() == 'TV':
-                    pbc[npbc] = True
-                    cell[npbc] = pos
-                    npbc += 1
-                else:
-                    symbols.append(symbol)
-                    positions.append(pos)
-                tokens = fd.readline().split()
-            atoms = Atoms(symbols, positions, pbc=pbc, cell=cell)
-            return atoms
+    return GaussianConfiguration.parse_gaussian_input(fd).get_atoms()
 
 
 # In the interest of using the same RE for both atomic positions and forces,
