@@ -227,10 +227,10 @@ def test_rescaled_calculator():
     # using analytical formulation in order to avoid extra file dependence
 
     def pair_potential(r):
-        '''
+        """
         returns the pair potential as a equation 27 in pair_potential
         r - numpy array with the values of distance to compute the pair function
-        '''
+        """
         # parameters for W
         c = 3.25
         c0 = 47.1346499
@@ -243,10 +243,10 @@ def test_rescaled_calculator():
         return energy
 
     def cohesive_potential(r):
-        '''
+        """
         returns the cohesive potential as a equation 28 in pair_potential
         r - numpy array with the values of distance to compute the pair function
-        '''
+        """
         # parameters for W
         d = 4.400224
 
@@ -256,9 +256,9 @@ def test_rescaled_calculator():
         return rho
 
     def embedding_function(rho):
-        '''
+        """
         returns energy as a function of electronic density from eq 3
-        '''
+        """
 
         A = 1.896373
         energy = - A * np.sqrt(rho)
@@ -377,6 +377,7 @@ def test_forceqmmm(qm_calc, mm_calc, bulk_at):
     assert du_local[-1] < 1e-10
     assert du_global[-1] < 1e-10
 
+
 @pytest.fixture
 def at0(qm_calc, mm_calc, bulk_at):
     alat = bulk_at.cell[0, 0]
@@ -393,6 +394,7 @@ def at0(qm_calc, mm_calc, bulk_at):
     at0.calc = qmmm
 
     return at0
+
 
 def test_export_xyz(at0):
 
@@ -419,6 +421,7 @@ def test_export_xyz(at0):
     np.testing.assert_allclose(forces, read_atoms.get_forces(), atol=1.0e-6)
     import os
     os.remove(filename)
+
 
 def test_set_masks_from_region(at0, qm_calc, mm_calc):
     """
@@ -447,3 +450,23 @@ def test_set_masks_from_region(at0, qm_calc, mm_calc):
 
     test_region = test_qmmm.get_region_from_masks(at0)
     assert all(region == test_region)
+
+
+def test_import_xyz(at0, qm_calc, mm_calc):
+
+    """
+    test the import_extxyz function and checks the mapping
+    """
+
+    filename = "qmmm_export_test.xyz"
+
+    qmmm = at0.calc
+    qmmm.export_extxyz(filename=filename, atoms=at0)
+
+    imported_qmmm = ForceQMMM.import_extxyz(filename, qm_calc, mm_calc)
+
+    assert all(imported_qmmm.qm_selection_mask == qmmm.qm_selection_mask)
+    assert all(imported_qmmm.qm_buffer_mask == qmmm.qm_buffer_mask)
+
+    import os
+    os.remove(filename)

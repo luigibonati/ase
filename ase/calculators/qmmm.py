@@ -776,13 +776,13 @@ class ForceQMMM(Calculator):
         self.results['energy'] = 0.0
 
     def get_region_from_masks(self, atoms=None):
-        '''
+        """
         creates region array from the masks of the calculators. The tags in
         the array are:
         QM - qm atoms
         buffer - buffer atoms
         MM - atoms treated with mm calculator
-        '''
+        """
         if atoms is None:
             if self.atoms is None:
                 raise ValueError('Calculator has no atoms')
@@ -833,7 +833,7 @@ class ForceQMMM(Calculator):
             else:
                 atoms = self.atoms
 
-        region = self.get_region_from_masks()
+        region = self.get_region_from_masks(atoms=atoms)
 
         atoms_copy = atoms.copy()
         atoms_copy.new_array("region", region)
@@ -841,3 +841,44 @@ class ForceQMMM(Calculator):
         atoms_copy.calc = self  # to keep the calculation results
 
         atoms_copy.write(filename, format='extxyz')
+
+    @classmethod
+    def import_extxyz(cls, filename, qm_calc, mm_calc):
+        """
+        A static method to import the the mapping from an estxyz file saved by
+        export_extxyz() function
+        Parameters
+        ----------
+        filename: string
+            filename with saved configuration
+
+        qm_calc: Calculator object
+            QM-calculator.
+        mm_calc: Calculator object
+            MM-calculator (should be scaled, see :class:`RescaledCalculator`)
+            Can use `ForceConstantCalculator` based on QM force constants, if
+            available.
+
+        Returns
+        -------
+        New object of ForceQMMM calculator with qm_selection_mask and
+        qm_buffer_mask set according to the region array in the saved file
+        """
+
+        from ase.io import read
+        atoms = read(filename, format='extxyz')
+
+        if "region" in atoms.arrays:
+            region = atoms.get_array("region")
+        else:
+            raise RuntimeError("Please provide extxyz file with 'region' array")
+
+        dummy_qm_mask = np.full_like(atoms, False, dtype=bool)
+        dummy_qm_mask[0] = True
+
+        self = cls(atoms, dummy_qm_mask,
+                   qm_calc, mm_calc, buffer_width=1.0)
+
+        self.set_masks_from_region(region)
+
+        return self
