@@ -70,9 +70,10 @@ def write_gaussian_in(fd, atoms, properties=None, **params):
     if properties is None:
         properties = ['energy']
 
-    # pop method and basis
+    # pop method and basis and output type
     method = params.pop('method', None)
     basis = params.pop('basis', None)
+    output_type = '#{}'.format(params.pop('output_type', 'P'))
 
     # basisfile, only used if basis=gen
     basisfile = params.pop('basisfile', None)
@@ -84,24 +85,22 @@ def write_gaussian_in(fd, atoms, properties=None, **params):
     # determine method from xc if it is provided
     if method is None:
         xc = params.pop('xc', None)
-        if xc is None:
-            # Default to HF
-            method = 'hf'
-        else:
+        if xc is not None:
             method = _xc_to_method.get(xc.lower(), xc)
 
     # If the user requests a problematic method, rather than raising an error
     # or proceeding blindly, give the user a warning that the results parsed
     # by ASE may not be meaningful.
-    if method.lower() in _problem_methods:
-        warnings.warn(
-            'The requested method, {}, is a composite method. Composite '
-            'methods do not have well-defined potential energy surfaces, '
-            'so the energies, forces, and other properties returned by '
-            'ASE may not be meaningful, or they may correspond to a '
-            'different geometry than the one provided. '
-            'Please use these methods with caution.'.format(method)
-        )
+    if method is not None:
+        if method.lower() in _problem_methods:
+            warnings.warn(
+                'The requested method, {}, is a composite method. Composite '
+                'methods do not have well-defined potential energy surfaces, '
+                'so the energies, forces, and other properties returned by '
+                'ASE may not be meaningful, or they may correspond to a '
+                'different geometry than the one provided. '
+                'Please use these methods with caution.'.format(method)
+            )
 
     # determine charge from initial charges if not passed explicitly
     charge = params.pop('charge', None)
@@ -146,10 +145,13 @@ def write_gaussian_in(fd, atoms, properties=None, **params):
     # begin route line
     # note: unlike in old calculator, each route keyword is put on its own
     # line.
-    if basis is None:
-        out.append('#P {}'.format(method))
+    if basis is None and method is None:
+        out.append('{}'.format(output_type))
+    elif basis is None:
+        out.append('{} {}'.format(output_type, method))
     else:
-        out.append('#P {}/{}'.format(method, basis))
+        out.append('{} {}/{} ! ASE generated basis and method'
+                   .format(output_type, method, basis))
 
     for key, val in params.items():
         # assume bare keyword if val is falsey, i.e. '', None, False, etc.
@@ -162,7 +164,7 @@ def write_gaussian_in(fd, atoms, properties=None, **params):
         elif not isinstance(val, str) and isinstance(val, Iterable):
             out.append('{}({})'.format(key, ','.join(val)))
         else:
-            out.append('{}={}'.format(key, val))
+            out.append('{}({})'.format(key, val))
 
     if ioplist is not None:
         out.append('IOP(' + ', '.join(ioplist) + ')')
