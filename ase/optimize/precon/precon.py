@@ -1271,8 +1271,7 @@ class PreconImages:
             P = P0.copy()
             P.make_precon(image)
             self.precon.append(P)
-        self._old_s, self._old_x = self.get_coordinates()
-        self._spline = self.spline_fit()
+        self._spline = None
             
     def __len__(self):
         return len(self.precon)
@@ -1407,7 +1406,7 @@ class PreconImages:
     @property
     def spline(self):
         s, x = self.get_coordinates()
-        if (np.abs(s - self._old_s).max() < 1e-6 and
+        if self._spline and (np.abs(s - self._old_s).max() < 1e-6 and
             np.abs(x - self._old_x).max() < 1e-6):
             return self._spline
 
