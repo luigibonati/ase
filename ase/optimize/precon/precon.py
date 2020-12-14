@@ -1410,9 +1410,10 @@ class PreconImages:
         if (np.abs(s - self._old_s).max() < 1e-6 and
             np.abs(x - self._old_x).max() < 1e-6):
             return self._spline
-        else:
-            self._spline = self.spline_fit()
-            self._old_s = s
-            self._old_x = x
+
+        self._spline = self.spline_fit()
+        self._old_s = s
+        self._old_x = x
+        return self._spline
     
     
