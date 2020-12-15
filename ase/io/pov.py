@@ -547,7 +547,7 @@ union{{torus{{R, Rcell rotate 45*z texture{{pigment{{color COL transmit TRANS}} 
             with open(pov_path, 'a') as fd:
                 for iso in self.isosurfaces:
                     fd.write(iso.format_mesh())
-        return POVRAYInputs(pov_path)
+        return POVRAYInputs(ini_path)
 
 
 def require_pov(path):
@@ -559,7 +559,7 @@ def require_pov(path):
 
 class POVRAYInputs:
     def __init__(self, path):
-        self.path = require_pov(path)
+        self.path = path
 
     def render(self, povray_executable='povray', stderr=DEVNULL,
                clean_up=False):
