@@ -52,8 +52,8 @@ def test_spacegroup_parse_sitesym_single():
     sitesym = "0.125-y,x-1/4,-z"
     expected_rot = np.array([[0, -1, 0], [1, 0, 0], [0, 0, -1]], dtype=int)
     expected_trans = np.array([0.125, -0.25, 0.0], dtype=float)
-    rot = np.zeros((3, 3), dtype=int)
-    trans = np.zeros(3, dtype=float)
+    rot = np.arange(9, dtype=int).reshape(3, 3)
+    trans = np.zeros(3, dtype=float) + 2.0
     parse_sitesym_single(sitesym, out_rot=rot, out_trans=trans)
     assert np.allclose(rot, expected_rot)
     assert np.allclose(trans, expected_trans)
