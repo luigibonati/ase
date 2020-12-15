@@ -2,7 +2,6 @@
 
 
 import ctypes
-import operator
 
 import numpy as np
 from numpy.linalg import norm
@@ -23,7 +22,7 @@ from ase.geometry import wrap_positions
 #   into a python function that can be called
 # 8. make matscipy as fallback
 # 9. keep_alive not needed with no system changes
-#10. it may be a good idea to unify the cell handling with the one found in
+# 10. it may be a good idea to unify the cell handling with the one found in
 #    lammpsrun.py
 
 
@@ -272,7 +271,7 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
         lammps_cell, self.coord_transform = convert_cell(atoms.get_cell())
 
         xhi, xy, xz, _, yhi, yz, _, _, zhi = convert(
-                lammps_cell.flatten(order='C'), "distance", "ASE", self.units)
+            lammps_cell.flatten(order='C'), "distance", "ASE", self.units)
         box_hi = [xhi, yhi, zhi]
 
         if change:
@@ -287,9 +286,10 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
             if self.parameters.create_box:
                 self.lmp.command('box tilt large')
 
-            # Check if there are any indefinite boundaries. If so, shrink-wrapping will
-            # end up being used, but we want to define the LAMMPS region and box fairly
-            # tight around the atoms to avoid losing any
+            # Check if there are any indefinite boundaries. If so,
+            # shrink-wrapping will end up being used, but we want to
+            # define the LAMMPS region and box fairly tight around the
+            # atoms to avoid losing any
             lammps_boundary_conditions = self.lammpsbc(atoms).split()
             if 's' in lammps_boundary_conditions:
                 pos = atoms.get_positions()
@@ -299,9 +299,9 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
                 posmin = np.amin(pos, axis=0)
                 posmax = np.amax(pos, axis=0)
 
-                for i in range(0,3):
+                for i in range(0, 3):
                     if lammps_boundary_conditions[i] == 's':
-                        box_hi[i] = 1.05*abs(posmax[i] - posmin[i])
+                        box_hi[i] = 1.05 * abs(posmax[i] - posmin[i])
 
             cell_cmd = ('region cell prism    '
                         '0 {} 0 {} 0 {}     '
@@ -358,7 +358,8 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
         if not self.initialized:
             self.initialise_lammps(atoms)
         else:  # still need to reset cell
-            # Apply only requested boundary condition changes. Note this needs to happen
+            # Apply only requested boundary condition changes.
+            # Note this needs to happen
             # before the call to set_cell since 'change_box' will apply any
             # shrink-wrapping *after* it's updated the cell dimensions
             if 'pbc' in system_changes:
@@ -379,7 +380,8 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
         if self.parameters.atom_types is None:
             raise NameError("atom_types are mandatory.")
 
-        do_rebuild = (not np.array_equal(atoms.numbers, self.previous_atoms_numbers)
+        do_rebuild = (not np.array_equal(atoms.numbers,
+                                         self.previous_atoms_numbers)
                       or ("numbers" in system_changes))
         if not do_rebuild:
             do_redo_atom_types = not np.array_equal(
@@ -402,9 +404,14 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
 
         if n_steps > 0:
             if velocity_field is None:
-                vel = convert(atoms.get_velocities(), "velocity", "ASE", self.units)
+                vel = convert(
+                    atoms.get_velocities(),
+                    "velocity",
+                    "ASE",
+                    self.units)
             else:
-                # FIXME: Do we need to worry about converting to lammps units here?
+                # FIXME: Do we need to worry about converting to lammps units
+                # here?
                 vel = atoms.arrays[velocity_field]
 
             # If necessary, transform the velocities to new coordinate system
@@ -449,8 +456,10 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
                                              'ASE'))
 
         # Extract the forces and energy
-        self.results['energy'] = convert(self.lmp.extract_variable('pe', None, 0),
-                                         "energy", self.units, "ASE")
+        self.results['energy'] = convert(
+            self.lmp.extract_variable('pe', None, 0),
+            "energy", self.units, "ASE"
+        )
         self.results['free_energy'] = self.results['energy']
 
         stress = np.empty(6)
@@ -482,7 +491,7 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
         self.results['stress'] = convert(-stress, "pressure", self.units, "ASE")
 
         # definitely yields atom-id ordered force array
-        f = convert(np.array(self.lmp.gather_atoms("f", 1, 3)).reshape(-1,3),
+        f = convert(np.array(self.lmp.gather_atoms("f", 1, 3)).reshape(-1, 3),
                     "force", self.units, "ASE")
 
         if self.coord_transform is not None:
@@ -497,11 +506,11 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
             self.lmp.close()
 
     def lammpsbc(self, atoms):
-        """
-        Determine LAMMPS boundary types based on ASE pbc settings. For non-periodic
-        dimensions, if the cell length is finite then fixed BCs ('f') are used; if the
-        cell length is approximately zero, shrink-wrapped BCs ('s') are used.
-        """
+        """Determine LAMMPS boundary types based on ASE pbc settings. For
+        non-periodic dimensions, if the cell length is finite then
+        fixed BCs ('f') are used; if the cell length is approximately
+        zero, shrink-wrapped BCs ('s') are used."""
+
         retval = ''
         pbc = atoms.get_pbc()
         if np.all(pbc):
@@ -512,7 +521,8 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
                 if pbc[i]:
                     retval += 'p '
                 else:
-                    # See if we're using indefinite ASE boundaries along this direction
+                    # See if we're using indefinite ASE boundaries along this
+                    # direction
                     if np.linalg.norm(cell[i]) < np.finfo(cell[i][0]).tiny:
                         retval += 's '
                     else:
