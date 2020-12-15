@@ -234,15 +234,18 @@ _re_chgmult = re.compile(r'^\s*[+-]?\d+(?:,\s*|\s+)[+-]?\d+\s*$')
 # that the line contains exactly two *integers*, separated by either
 # a comma (and possibly whitespace) or some amount of whitespace, we
 # can be more confident that we've actually found the charge and multiplicity.
-_re_link0 = re.compile(r'^\s*%\s*([\w\.-]+)[\s,\/]*='
-                       r'[\s,\/]*([\w\.-]+)[\s,\/]*')
+
+_re_link0 = re.compile(r'^\s*%([^\=\)\(!]+)=?([^\=\)\(!]+)?(!.+)?')
+# Link0 lines are in the format:
+# % keyword = value
+# or
+# %keyword
+
 _re_output_type = re.compile(r'^\s*#\s*([NPTnpt]?)\s*')
 _re_route = re.compile(
     r"\s*#?\s*([\w\*\+-]+)\s*((=|\(|=\s?\()[\s,\/]*([\w'\*\+-]+)[)]?[ \t,\/]*"
     r"((([=]?[\w'\*\+-]+)[\s,\/]*)*\))?(((=[\s,\/]*[\w\*\+-]+)[\s,\/]*)*)?)?"
     r"[\s,\/]*(!([\s,\/]*[\w\*\+'-]+)+)?")
-_re_chgmult = re.compile(
-    r'^\s*[+-]?(\d+)(?:,\s*|\s+)[+-]?(\d+)\s*$')  # taken from ase
 _re_method_basis = re.compile(
     r"\s*([\w-]+)\s*\/([\w\*\+-]+(\s*\([\w'=\*\+,-]+\))?)([\/]([\w-]+))?\s*"
     r"(!([\s,\/]*[\w-]+)+)")
@@ -282,12 +285,17 @@ class GaussianConfiguration:
             route_match = _re_route.match(line)
             chgmult_match = _re_chgmult.match(line)
             method_basis_match = _re_method_basis.match(line)
-            # The first empty line appears at the end of the route section:
+            # The first blank line appears at the end of the route section
+            # and a blank line appears at the end of the atoms section
             if line == '\n':
                 route_section = False
                 atoms_section = False
             elif link0_match:
-                parameters.update({link0_match.group(1): link0_match.group(2)})
+                value = link0_match.group(2)
+                if value is not None:
+                    value = value.strip()
+                parameters.update({link0_match.group(1).lower().strip():
+                                   value})
             elif output_type_match and not route_section:
                 route_section = True
                 # remove #_ ready for looking for method/basis/parameters:
@@ -299,7 +307,8 @@ class GaussianConfiguration:
                 chgmult = chgmult_match.group(0).split()
                 parameters.update(
                     {'charge': int(chgmult[0]), 'mult': int(chgmult[1])})
-                route_section = False
+                # After the charge and multiplicty have been set, the atoms
+                # section of the input file begins:
                 atoms_section = True
             elif atoms_section:
                 if (line.split()):
