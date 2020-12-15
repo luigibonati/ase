@@ -84,7 +84,7 @@ def test_read_abinit_output():
     assert not results
 
 
-eig_txt = """\
+eig_text = """\
  Fermi (or HOMO) energy (hartree) =   0.123   Average Vxc (hartree)=  -0.456
  Eigenvalues (hartree) for nkpt=  2  k points:
  kpt#   1, nband=  3, wtk=  0.1, kpt=  0.2  0.3  0.4 (reduced coord)
@@ -94,7 +94,7 @@ eig_txt = """\
 """
 
 
-def test_parse_eig():
+def test_parse_eig_with_fermiheader():
     eigval_ref = np.array([
         [-0.2, 0.2, 0.3],
         [-0.3, 0.4, 0.5]
@@ -107,12 +107,22 @@ def test_parse_eig():
 
     weights_ref = [0.1, 0.2]
 
-    eig_buf = StringIO(eig_txt)
+    eig_buf = StringIO(eig_text)
     data = read_eig(eig_buf)
 
     assert data['eigenvalues'] / Hartree == pytest.approx(eigval_ref)
     assert data['ibz_kpoints'] == pytest.approx(kpts_ref)
     assert data['kpoint_weights'] == pytest.approx(weights_ref)
+    assert data['fermilevel'] / Hartree == pytest.approx(0.123)
+
+
+def test_parse_eig_without_fermiheader():
+    fd = StringIO(eig_text)
+    next(fd)  # Header is omitted e.g. in non-selfconsistent calculations.
+
+    data = read_eig(fd)
+    assert 'fermilevel' not in data
+    assert {'eigenvalues', 'ibz_kpoints', 'kpoint_weights'} == set(data)
 
 
 def test_match_kpt_header():
