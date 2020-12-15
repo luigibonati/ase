@@ -21,6 +21,7 @@ import ase.utils.ff as ff
 import ase.units as units
 from ase.optimize.precon.neighbors import (get_neighbours,
                                            estimate_nearest_neighbour_distance)
+from ase.neighborlist import neighbor_list
 
 try:
     from pyamg import smoothed_aggregation_solver
@@ -167,7 +168,8 @@ class SparsePrecon(Precon):
                  reinitialize=False, array_convention='C',
                  solver="auto", solve_tol=1e-8,
                  apply_positions=True, apply_cell=True,
-                 estimate_mu_eigmode=False, logfile=None, rng=None):
+                 estimate_mu_eigmode=False, logfile=None, rng=None,
+                 neighbour_list=neighbor_list):
         """Initialise a preconditioner object based on passed parameters.
 
         Parameters:
@@ -223,6 +225,9 @@ class SparsePrecon(Precon):
                 Use '-' for stdout.
             rng: None or np.random.RandomState instance
                 Random number generator to use for initialising pyamg solver
+            neighbor_list: function (optional). Optionally replace the built-in
+                ASE neighbour list with an alternative with the same call
+                signature, e.g. `matscipy.neighbours.neighbour_list`.
 
         Raises:
             ValueError for problem with arguments
@@ -266,6 +271,8 @@ class SparsePrecon(Precon):
         if rng is None:
             rng = np.random.RandomState()
         self.rng = rng
+        
+        self.neighbor_list = neighbor_list
             
     def copy(self):
         return copy.deepcopy(self)
@@ -326,7 +333,8 @@ class SparsePrecon(Precon):
                              'mu manually instead.')
 
         if self.r_NN is None:
-            self.r_NN = estimate_nearest_neighbour_distance(atoms)
+            self.r_NN = estimate_nearest_neighbour_distance(atoms,
+                                                            self.neighbor_list)
 
         # deformation matrix, default is diagonal
         if H is None:
@@ -525,7 +533,8 @@ class SparseCoeffPrecon(SparsePrecon):
         start_time = time.time()
         if self.apply_positions:
             # compute neighbour list
-            i, j, rij, fixed_atoms = get_neighbours(atoms, self.r_cut)
+            i, j, rij, fix = get_neighbours(atoms, self.r_cut,
+                                            neighbor_list=self.neighbor_list)
             logfile.write('--- neighbour list created in %s s --- \n' %
                           (time.time() - start_time))
 
@@ -533,7 +542,7 @@ class SparseCoeffPrecon(SparsePrecon):
             start_time = time.time()
             coeff = self.get_coeff(rij)
             diag_coeff = np.bincount(i, -coeff, minlength=N).astype(np.float64)
-            if force_stab or len(fixed_atoms) == 0:
+            if force_stab or len(fix) == 0:
                 logfile.write('adding stabilisation to precon')
                 diag_coeff += self.mu * self.c_stab
         else:
@@ -552,9 +561,9 @@ class SparseCoeffPrecon(SparsePrecon):
             # apply the constraints
             start_time = time.time()
             mask = np.ones(N)
-            mask[fixed_atoms] = 0.0
+            mask[fix] = 0.0
             coeff *= mask[i] * mask[j]
-            diag_coeff[fixed_atoms] = 1.0
+            diag_coeff[fix] = 1.0
             logfile.write('--- applied fixed_atoms in %s s ---\n' %
                           (time.time() - start_time))
 
@@ -583,7 +592,8 @@ class SparseCoeffPrecon(SparsePrecon):
     
     def make_precon(self, atoms, reinitialize=None):
         if self.r_NN is None:
-            self.r_NN = estimate_nearest_neighbour_distance(atoms)
+            self.r_NN = estimate_nearest_neighbour_distance(atoms,
+                                                            self.neighbor_list)
 
         if self.r_cut is None:
             # This is the first time this function has been called, and no
@@ -1019,7 +1029,8 @@ class Exp_FF(Exp, FF):
 
     def make_precon(self, atoms, reinitialize=None):
         if self.r_NN is None:
-            self.r_NN = estimate_nearest_neighbour_distance(atoms)
+            self.r_NN = estimate_nearest_neighbour_distance(atoms,
+                                                            self.neighbor_list)
 
         if self.r_cut is None:
             # This is the first time this function has been called, and no
@@ -1095,7 +1106,7 @@ class Exp_FF(Exp, FF):
         if self.apply_positions:
             # compute neighbour list
             i_list, j_list, rij_list, fixed_atoms = get_neighbours(
-                atoms, self.r_cut)
+                atoms, self.r_cut, self.neighbor_list)
             self.logfile.write('--- neighbour list created in %s s ---\n' %
                                (time.time() - start_time))
 
