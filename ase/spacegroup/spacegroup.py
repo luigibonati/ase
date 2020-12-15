@@ -780,6 +780,8 @@ def parse_sitesym_single(sym, out_rot, out_trans, sep=",", force_positive_transl
     
     
     """
+    out_rot[:] = 0.0
+    out_trans[:] = 0.0
     
     for i, element in enumerate(sym.split(sep)):
         e_rot, e_trans = parse_sitesym_element(element)
