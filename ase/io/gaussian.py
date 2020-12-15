@@ -73,7 +73,10 @@ def write_gaussian_in(fd, atoms, properties=None, **params):
     # pop method and basis and output type
     method = params.pop('method', None)
     basis = params.pop('basis', None)
+    fitting_basis = params.pop('fitting_basis', None)
     output_type = '#{}'.format(params.pop('output_type', 'P'))
+    if output_type == '#':
+        output_type = '#P'
 
     # basisfile, only used if basis=gen
     basisfile = params.pop('basisfile', None)
@@ -145,13 +148,18 @@ def write_gaussian_in(fd, atoms, properties=None, **params):
     # begin route line
     # note: unlike in old calculator, each route keyword is put on its own
     # line.
-    if basis is None and method is None:
-        out.append('{}'.format(output_type))
-    elif basis is None:
-        out.append('{} {}'.format(output_type, method))
-    else:
-        out.append('{} {}/{} ! ASE generated basis and method'
+    if basis and method and fitting_basis:
+        out.append('{} {}/{}/{} ! ASE formatted method and basis'
+                   .format(output_type, method, basis, fitting_basis))
+    elif basis and method:
+        out.append('{} {}/{} ! ASE formatted method and basis'
                    .format(output_type, method, basis))
+    else:
+        output_string = '{}'.format(output_type)
+        for value in [method, basis]:
+            if value is not None:
+                output_string += ' {}'.format(value)
+        out.append(output_string)
 
     for key, val in params.items():
         # assume bare keyword if val is falsey, i.e. '', None, False, etc.
@@ -159,8 +167,6 @@ def write_gaussian_in(fd, atoms, properties=None, **params):
         # val are the same
         if not val or (isinstance(val, str) and key.lower() == val.lower()):
             out.append(key)
-        elif isinstance(val, str) and ',' in val:
-            out.append('{}({})'.format(key, val))
         elif not isinstance(val, str) and isinstance(val, Iterable):
             out.append('{}({})'.format(key, ','.join(val)))
         else:
@@ -232,13 +238,14 @@ _re_link0 = re.compile(r'^\s*%\s*([\w\.-]+)[\s,\/]*='
                        r'[\s,\/]*([\w\.-]+)[\s,\/]*')
 _re_output_type = re.compile(r'^\s*#\s*([NPTnpt]?)\s*')
 _re_route = re.compile(
-    r"\s*#?\s*([\w-]+)\s*((=|\(|=\s?\()[\s,\/]*([\w'-]+)[)]?[ \t,\/]*((([=]?"
-    r"[\w'-]+)[\s,\/]*)*\))?(((=[\s,\/]*[\w-]+)[\s,\/]*)*)?)?[\s,\/]*(!([\s,"
-    r"\/]*[\w'-]+)+)?")
+    r"\s*#?\s*([\w\*\+-]+)\s*((=|\(|=\s?\()[\s,\/]*([\w'\*\+-]+)[)]?[ \t,\/]*"
+    r"((([=]?[\w'\*\+-]+)[\s,\/]*)*\))?(((=[\s,\/]*[\w\*\+-]+)[\s,\/]*)*)?)?"
+    r"[\s,\/]*(!([\s,\/]*[\w\*\+'-]+)+)?")
 _re_chgmult = re.compile(
     r'^\s*[+-]?(\d+)(?:,\s*|\s+)[+-]?(\d+)\s*$')  # taken from ase
 _re_method_basis = re.compile(
-    r"\s*([\w-]+)\s*\/([\w-]+(\s*\([\w',-]+\))?)\s*(!([\s,\/]*[\w-]+)+)")
+    r"\s*([\w-]+)\s*\/([\w\*\+-]+(\s*\([\w'=\*\+,-]+\))?)([\/]([\w-]+))?\s*"
+    r"(!([\s,\/]*[\w-]+)+)")
 
 
 class GaussianConfiguration:
@@ -283,7 +290,7 @@ class GaussianConfiguration:
                 parameters.update({link0_match.group(1): link0_match.group(2)})
             elif output_type_match and not route_section:
                 route_section = True
-                # remove #_ ready for looking for basis/parameters
+                # remove #_ ready for looking for method/basis/parameters:
                 line = line.strip(output_type_match.group(0))
                 route_match = _re_route.match(line)
                 method_basis_match = _re_method_basis.match(line)
@@ -309,12 +316,15 @@ class GaussianConfiguration:
 
             if route_section:
                 if method_basis_match:
-                    ase_gen_comment = '! ASE generated method and basis'
-                    if method_basis_match.group(4) == ase_gen_comment:
+                    ase_gen_comment = '! ASE formatted method and basis'
+                    if method_basis_match.group(6) == ase_gen_comment:
                         parameters.update(
                             {'method': method_basis_match.group(1)})
                         parameters.update(
                             {'basis': method_basis_match.group(2)})
+                        if method_basis_match.group(4):
+                            parameters.update(
+                                {'fitting_basis': method_basis_match.group(5)})
                         continue
 
                 while route_match:
@@ -322,7 +332,7 @@ class GaussianConfiguration:
                         parameters.update(
                             {route_match.group(1):
                              route_match.group(2).strip('=()').strip(
-                             ).strip('=()')})
+                            ).strip('=()')})
                     else:
                         parameters.update({route_match.group(1): ''})
                     line = line.replace(route_match.group(0), '')
