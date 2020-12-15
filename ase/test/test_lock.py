@@ -1,4 +1,3 @@
-import os
 import pytest
 from ase.utils import Lock
 

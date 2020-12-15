@@ -18,11 +18,12 @@ def test_xwopen():
 
 def test_xwopen_locked():
     with xwopen(filename) as fd:
+        assert fd is not None
         with xwopen(filename) as fd2:
             assert fd2 is None
 
 
 def test_xwopen_fail(tmp_path):
     with pytest.raises(OSError):
-        with xwopen(tmp_path / 'does_not_exist/file') as fd:
+        with xwopen(tmp_path / 'does_not_exist/file'):
             pass
