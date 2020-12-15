@@ -443,11 +443,20 @@ def read_abinit_out(fd):
     return results
 
 
-def read_eigenvalues_for_one_spin(fd, nkpts):
+def match_kpt_header(line):
     headerpattern = (r'\s*kpt#\s*\S+\s*'
                      r'nband=\s*(\d+),\s*'
-                     r'wtk=([^,]+),\s*'
-                     r'kpt=\s*(\S)+\s*(\S+)\s*(\S+)')
+                     r'wtk=\s*(\S+?),\s*'
+                     r'kpt=\s*(\S+)+\s*(\S+)\s*(\S+)')
+    m = re.match(headerpattern, line)
+    assert m is not None, line
+    nbands = int(m.group(1))
+    weight = float(m.group(2))
+    kvector = np.array(m.group(3, 4, 5)).astype(float)
+    return nbands, weight, kvector
+
+
+def read_eigenvalues_for_one_spin(fd, nkpts):
 
     kpoint_weights = []
     kpoint_coords = []
@@ -455,13 +464,9 @@ def read_eigenvalues_for_one_spin(fd, nkpts):
     eig_kn = []
     for ikpt in range(nkpts):
         header = next(fd)
-        m = re.match(headerpattern, header)
-        assert m is not None, header
-        nbands = int(m.group(1))
-        weight = float(m.group(2))
-        kvector = np.array(m.group(3, 4, 5)).astype(float)
+        nbands, weight, kvector = match_kpt_header(header)
         kpoint_coords.append(kvector)
-        kpoint_weights.append(float(weight))
+        kpoint_weights.append(weight)
 
         eig_n = []
         while len(eig_n) < nbands:
