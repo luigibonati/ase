@@ -538,27 +538,28 @@ union{{torus{{R, Rcell rotate 45*z texture{{pigment{{color COL transmit TRANS}} 
 
         return path
 
-    def write(self, ini_path):
-        ini_path = require_ini(ini_path)
-        pov_path = ini_path.with_suffix('.pov')
+    def write(self, pov_path):
+        pov_path = require_pov(pov_path)
+        ini_path = pov_path.with_suffix('.ini')
         self.write_ini(ini_path)
         self.write_pov(pov_path)
         if self.isosurfaces is not None:
             with open(pov_path, 'a') as fd:
                 for iso in self.isosurfaces:
                     fd.write(iso.format_mesh())
-        return POVRAYInputs(ini_path)
+        return POVRAYInputs(pov_path)
 
 
-def require_ini(path):
+def require_pov(path):
     path = Path(path)
-    if path.suffix != '.ini':
-        raise ValueError(f'Expected .ini path, got {path}')
+    if path.suffix != '.pov':
+        raise ValueError(f'Expected .pov path, got {path}')
     return path
+
 
 class POVRAYInputs:
     def __init__(self, path):
-        self.path = require_ini(path)
+        self.path = require_pov(path)
 
     def render(self, povray_executable='povray', stderr=DEVNULL,
                clean_up=False):
