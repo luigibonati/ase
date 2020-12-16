@@ -238,11 +238,6 @@ _re_output_type = re.compile(r'^\s*#\s*([NPTnpt]?)\s*')
 # The start of the route section begins with a '#', and then may
 # be followed by the desired level of output in the output file: P, N or T.
 
-_re_route = re.compile(
-    r"\s*#?\s*([\w\*\+-]+)\s*((=|\(|=\s?\()[\s,\/]*([\w'\*\+-]+)[)]?[ \t,\/]*"
-    r"((([=]?[\w'\*\+-]+)[\s,\/]*)*\))?(((=[\s,\/]*[\w\*\+-]+)[\s,\/]*)*)?)?"
-    r"[\s,\/]*(!([\s,\/]*[\w\*\+'-]+)+)?")
-
 _re_method_basis = re.compile(
     r"\s*([\w-]+)\s*\/([^/=!]+)([\/]([^!]+))?\s*(!.+)?")
 # Matches method, basis and optional fitting basis in the format:
@@ -290,7 +285,6 @@ class GaussianConfiguration:
         for line in gaussian_input:
             link0_match = _re_link0.match(line)
             output_type_match = _re_output_type.match(line)
-            route_match = _re_route.match(line)
             chgmult_match = _re_chgmult.match(line)
             method_basis_match = _re_method_basis.match(line)
             # The first blank line appears at the end of the route section
@@ -308,7 +302,6 @@ class GaussianConfiguration:
                 route_section = True
                 # remove #_ ready for looking for method/basis/parameters:
                 line = line.strip(output_type_match.group(0))
-                route_match = _re_route.match(line)
                 method_basis_match = _re_method_basis.match(line)
                 parameters.update({'output_type': output_type_match.group(1)})
             elif chgmult_match:
@@ -344,19 +337,60 @@ class GaussianConfiguration:
                                 {'fitting_basis': method_basis_match.group(4)})
                         continue
 
-                while route_match:
-                    if route_match.group(2) is not None:
-                        parameters.update(
-                            {route_match.group(1):
-                             route_match.group(2).strip('=()').strip(
-                            ).strip('=()')})
-                    else:
-                        parameters.update({route_match.group(1): ''})
-                    line = line.replace(route_match.group(0), '')
-                    route_match = _re_route.match(line)
+                parameters.update(GaussianConfiguration.get_route_params(line))
 
         atoms = Atoms(symbols, positions, pbc=pbc, cell=cell)
         return GaussianConfiguration(atoms, parameters)
+
+    @staticmethod
+    def get_route_params(line):
+        params = {}
+        line = line.strip(' #')
+        line = line.split('!')[0]  # removes any comments
+        # First, get the keywords and options sepatated with
+        # parantheses:
+        match_iterator = re.finditer(r'\(([^\)]+)\)', line)
+        index_ranges = []
+        for match in match_iterator:
+            index_range = [match.start(0), match.end(0)]
+            options = match.group(1)
+            # keyword is last word in previous substring:
+            keyword_string = line[:match.start(0)]
+            keyword_match_iter = [k for k in re.finditer(
+                r'[^\,/\s]+', keyword_string) if k.group() != '=']
+            keyword = keyword_match_iter[-1].group().strip(' =')
+            index_range[0] = keyword_match_iter[-1].start()
+            params.update({keyword: options})
+            index_ranges.append(index_range)
+
+        # remove from the line the keywords and options that we have saved:
+        index_ranges.reverse()
+        for index_range in index_ranges:
+            start = index_range[0]
+            stop = index_range[1]
+            line = line[0: start:] + line[stop + 1::]
+
+        # Next, get the keywords and options separated with
+        # an equals sign, and those without an equals sign
+        # must be keywords without options:
+
+        # remove any whitespaces around '=':
+        line = re.sub(r'\s*=\s*', '=', line)
+        line = [x for x in re.split(r'[\s,\/]', line) if x != '']
+
+        for s in line:
+            if '=' in s:
+                s = s.split('=')
+                keyword = s.pop(0)
+                options = s.pop(0)
+                for string in s:
+                    options += '=' + string
+                params.update({keyword: options})
+            else:
+                if len(s) > 0:
+                    params.update({s: None})
+
+        return params
 
 
 def read_gaussian_in(fd):
