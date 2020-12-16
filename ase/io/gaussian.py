@@ -227,6 +227,29 @@ def write_gaussian_in(fd, atoms, properties=None, **params):
     fd.write('\n'.join(out))
 
 
+# Regexp for reading an input file:
+
+_re_link0 = re.compile(r'^\s*%([^\=\)\(!]+)=?([^\=\)\(!]+)?(!.+)?')
+# Link0 lines are in the format:
+# '% keyword = value' or '% keyword'
+# (with or without whitespaces)
+
+_re_output_type = re.compile(r'^\s*#\s*([NPTnpt]?)\s*')
+# The start of the route section begins with a '#', and then may
+# be followed by the desired level of output in the output file: P, N or T.
+
+_re_route = re.compile(
+    r"\s*#?\s*([\w\*\+-]+)\s*((=|\(|=\s?\()[\s,\/]*([\w'\*\+-]+)[)]?[ \t,\/]*"
+    r"((([=]?[\w'\*\+-]+)[\s,\/]*)*\))?(((=[\s,\/]*[\w\*\+-]+)[\s,\/]*)*)?)?"
+    r"[\s,\/]*(!([\s,\/]*[\w\*\+'-]+)+)?")
+
+_re_method_basis = re.compile(
+    r"\s*([\w-]+)\s*\/([^/=!]+)([\/]([^!]+))?\s*(!.+)?")
+# Matches method, basis and optional fitting basis in the format:
+# method/basis/fitting_basis ! comment
+# They will appear in this format if the Gaussian file has been generated
+# by ASE using a calculator with the basis and method keywords set.
+
 _re_chgmult = re.compile(r'^\s*[+-]?\d+(?:,\s*|\s+)[+-]?\d+\s*$')
 # This is a bit more complex of a regex than we typically want, but it
 # can be difficult to determine whether a line contains the charge and
@@ -234,21 +257,6 @@ _re_chgmult = re.compile(r'^\s*[+-]?\d+(?:,\s*|\s+)[+-]?\d+\s*$')
 # that the line contains exactly two *integers*, separated by either
 # a comma (and possibly whitespace) or some amount of whitespace, we
 # can be more confident that we've actually found the charge and multiplicity.
-
-_re_link0 = re.compile(r'^\s*%([^\=\)\(!]+)=?([^\=\)\(!]+)?(!.+)?')
-# Link0 lines are in the format:
-# % keyword = value
-# or
-# %keyword
-
-_re_output_type = re.compile(r'^\s*#\s*([NPTnpt]?)\s*')
-_re_route = re.compile(
-    r"\s*#?\s*([\w\*\+-]+)\s*((=|\(|=\s?\()[\s,\/]*([\w'\*\+-]+)[)]?[ \t,\/]*"
-    r"((([=]?[\w'\*\+-]+)[\s,\/]*)*\))?(((=[\s,\/]*[\w\*\+-]+)[\s,\/]*)*)?)?"
-    r"[\s,\/]*(!([\s,\/]*[\w\*\+'-]+)+)?")
-_re_method_basis = re.compile(
-    r"\s*([\w-]+)\s*\/([\w\*\+-]+(\s*\([\w'=\*\+,-]+\))?)([\/]([\w-]+))?\s*"
-    r"(!([\s,\/]*[\w-]+)+)")
 
 
 class GaussianConfiguration:
@@ -326,14 +334,14 @@ class GaussianConfiguration:
             if route_section:
                 if method_basis_match:
                     ase_gen_comment = '! ASE formatted method and basis'
-                    if method_basis_match.group(6) == ase_gen_comment:
+                    if method_basis_match.group(5) == ase_gen_comment:
                         parameters.update(
                             {'method': method_basis_match.group(1)})
                         parameters.update(
                             {'basis': method_basis_match.group(2)})
                         if method_basis_match.group(4):
                             parameters.update(
-                                {'fitting_basis': method_basis_match.group(5)})
+                                {'fitting_basis': method_basis_match.group(4)})
                         continue
 
                 while route_match:
