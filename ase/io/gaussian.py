@@ -273,6 +273,23 @@ class GaussianConfiguration:
 
     @staticmethod
     def parse_gaussian_input(gaussian_input):
+        '''Reads a gaussian input file into an atoms object and
+        parameters dictionary.
+
+        Parameters
+        ----------
+        gaussian_input
+            An open gaussian input file
+
+        Returns
+        ---------
+        GaussianConfiguration
+            Contains an atoms object created using the structural
+            information from the input file.
+            Contains a parameters dictionary, which stores any
+            keywords and options found in the link-0 and route
+            sections of the input file.
+        '''
         parameters = {}
         route_section = False
         atoms_section = False
@@ -344,6 +361,18 @@ class GaussianConfiguration:
 
     @staticmethod
     def get_route_params(line):
+        '''Reads a line of the route section of a gaussian input file.
+
+        Parameters
+        ----------
+        line (string)
+            A line of the route section of a gaussian input file.
+
+        Returns
+        ---------
+        params (dict)
+            Contains the keywords and options found in the line.
+        '''
         params = {}
         line = line.strip(' #')
         line = line.split('!')[0]  # removes any comments
@@ -393,8 +422,14 @@ class GaussianConfiguration:
         return params
 
 
-def read_gaussian_in(fd):
-    return GaussianConfiguration.parse_gaussian_input(fd).get_atoms()
+def read_gaussian_in(fd, get_calculator=False):
+    gaussian_input = GaussianConfiguration.parse_gaussian_input(fd)
+    atoms = gaussian_input.get_atoms()
+
+    if get_calculator:
+        atoms.calc = gaussian_input.get_calculator()
+
+    return atoms
 
 
 # In the interest of using the same RE for both atomic positions and forces,
