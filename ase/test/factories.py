@@ -67,8 +67,7 @@ class AbinitFactory:
         major_ver = int(version.split('.')[0])
         return major_ver < 9
 
-    def _base_kw(self):
-        v8_legacy_format = self.is_legacy_version()
+    def _base_kw(self, v8_legacy_format):
         if v8_legacy_format:
             command = f'{self.executable} < PREFIX.files > PREFIX.log'
         else:
@@ -83,7 +82,11 @@ class AbinitFactory:
 
     def calc(self, **kwargs):
         from ase.calculators.abinit import Abinit
-        kw = self._base_kw()
+        legacy = kwargs.pop('v8_legacy_format', None)
+        if legacy is None:
+            legacy = self.is_legacy_version()
+
+        kw = self._base_kw(legacy)
         kw.update(kwargs)
         return Abinit(**kw)
 
