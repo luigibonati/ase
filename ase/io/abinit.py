@@ -2,6 +2,7 @@ import os
 from os.path import join
 import re
 from glob import glob
+import warnings
 
 import numpy as np
 
@@ -151,7 +152,7 @@ keys_with_units = {
     'latticeconstant': 'Ang'}
 
 
-def write_abinit_in(fd, atoms, param=None, species=None):
+def write_abinit_in(fd, atoms, param=None, species=None, pseudos=None):
     import copy
     from ase.calculators.calculator import kpts2mp
     from ase.calculators.abinit import Abinit
@@ -263,6 +264,7 @@ def write_abinit_in(fd, atoms, param=None, species=None):
     fd.write('#Enumerate different atomic species\n')
     fd.write('typat')
     fd.write('\n')
+
     types = []
     for Z in atoms.numbers:
         for n, Zs in enumerate(species):
@@ -274,6 +276,11 @@ def write_abinit_in(fd, atoms, param=None, species=None):
         if n > 1 and ((n % n_entries_int) == 1):
             fd.write('\n')
     fd.write('\n')
+
+    if pseudos is not None:
+        listing = ', '.join(pseudos)
+        line = f'pseudos "{listing}"\n'
+        fd.write(line)
 
     fd.write('#Definition of the atoms\n')
     fd.write('xcart\n')
@@ -554,10 +561,29 @@ def get_default_abinit_pp_paths():
     return os.environ.get('ABINIT_PP_PATH', '.').split(':')
 
 
+abinit_input_version_warning = """\
+Abinit input format has changed in Abinit9.
+
+ASE will currently write inputs for Abinit8 by default.  Please
+silence this warning passing either Abinit(v8_legacy_format=True) to
+write the old Abinit8 format, or False for writing
+the new Abinit9+ format.
+
+The default will change to Abinit9+ format from ase-3.22, and this
+warning will be removed.
+
+Please note that stdin to Abinit should be the .files file until version 8
+but the main inputfile (conventionally abinit.in) from abinit9,
+which may require reconfiguring the ASE/Abinit shell command.
+"""
+
+
+
 def write_all_inputs(atoms, properties, parameters,
                      pp_paths=None,
                      raise_exception=True,
-                     label='abinit'):
+                     label='abinit',
+                     *, v8_legacy_format=True):
     species = sorted(set(atoms.numbers))
     if pp_paths is None:
         pp_paths = get_default_abinit_pp_paths()
@@ -567,19 +593,33 @@ def write_all_inputs(atoms, properties, parameters,
                        pps=parameters.pps,
                        search_paths=pp_paths)
 
-    with open(label + '.files', 'w') as fd:
-        write_files_file(fd, label, ppp)
+    if v8_legacy_format is None:
+        warnings.warn(abinit_input_version_warning,
+                      FutureWarning)
+        v8_legacy_format = True
+
+    if v8_legacy_format:
+        with open(label + '.files', 'w') as fd:
+            write_files_file(fd, label, ppp)
+        pseudos = None
+
+        # XXX here we build the txt filename again, which is bad
+        # (also defined in the calculator)
+        output_filename = label + '.txt'
+    else:
+        pseudos = ppp  # Include pseudopotentials in inputfile
+        output_filename = label + '.abo'
 
     # Abinit will write to label.txtA if label.txt already exists,
     # so we remove it if it's there:
-    filename = label + '.txt'
-    if os.path.isfile(filename):
-        os.remove(filename)
+    if os.path.isfile(output_filename):
+        os.remove(output_filename)
 
     parameters.write(label + '.ase')
 
     with open(label + '.in', 'w') as fd:
-        write_abinit_in(fd, atoms, param=parameters, species=species)
+        write_abinit_in(fd, atoms, param=parameters, species=species,
+                        pseudos=pseudos)
 
 
 def read_ase_and_abinit_inputs(label):
@@ -589,10 +629,10 @@ def read_ase_and_abinit_inputs(label):
     return atoms, parameters
 
 
-def read_results(label):
-    filename = label + '.txt'
+def read_results(label, textfilename):
+    # filename = label + '.txt'
     results = {}
-    with open(filename) as fd:
+    with open(textfilename) as fd:
         dct = read_abinit_out(fd)
         results.update(dct)
     # The eigenvalues section in the main file is shortened to
@@ -660,6 +700,11 @@ def get_ppp_list(atoms, species, raise_exception, xc, pps,
                     # warning: see download.sh in
                     # abinit-pseudopotentials*tar.gz for additional
                     # information!
+                    #
+                    # XXXX This is probably buggy, max(filenames) uses
+                    # an lexicographic order so 14 < 8, and it's
+                    # untested so if I change it I'm sure things will
+                    # just be inconsistent.  --askhl
                     filenames[0] = max(filenames)  # Semicore or hard
                 elif pps == 'hgh':
                     # Lowest valence electron count
