@@ -277,20 +277,10 @@ def write_abinit_in(fd, atoms, param=None, species=None, pseudos=None):
             fd.write('\n')
     fd.write('\n')
 
-    # pp_dirpath "$ABI_PSPDIR"   ???
-    #  pseudos "PseudosGTH_pwteter/01h.pspgth"
     if pseudos is not None:
         listing = ', '.join(pseudos)
         line = f'pseudos "{listing}"\n'
         fd.write(line)
-    #    if pseudos.pp_dirpath is not None:
-    #        fd.write(pseudos.format_pp_dirpath())
-    #        fd.write('\n')
-
-    #    fd.write(pseudos.format_pseudo_listing())
-    #    fd.write('\n')
-    #    pseudo_listing = '\, '.join(pseudos)
-    #    fd.write(f'pseudos "{pseudo_listing}"\n')
 
     fd.write('#Definition of the atoms\n')
     fd.write('xcart\n')
@@ -610,15 +600,15 @@ def write_all_inputs(atoms, properties, parameters,
 
         # XXX here we build the txt filename again, which is bad
         # (also defined in the calculator)
-        #output_filename = label + '.txt'
+        output_filename = label + '.txt'
     else:
         pseudos = ppp  # Include pseudopotentials in inputfile
-        #output_filename = label + '.abo'
+        output_filename = label + '.abo'
 
     # Abinit will write to label.txtA if label.txt already exists,
     # so we remove it if it's there:
-    #if os.path.isfile(output_filename):
-    #    os.remove(output_filename)
+    if os.path.isfile(output_filename):
+        os.remove(output_filename)
 
     parameters.write(label + '.ase')
 

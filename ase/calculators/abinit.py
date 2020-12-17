@@ -100,9 +100,9 @@ class Abinit(FileIOCalculator):
         # where basefile determines the file tree.
         FileIOCalculator.read(self, label)
         self.atoms, self.parameters = io.read_ase_and_abinit_inputs(self.label)
-        self.results = io.read_results(self.label, self.get_stdout_filename())
+        self.results = io.read_results(self.label, self._output_filename())
 
-    def get_stdout_filename(self):
+    def _output_filename(self):
         if self.v8_legacy_format:
             ext = '.txt'
         else:
@@ -110,7 +110,7 @@ class Abinit(FileIOCalculator):
         return self.label + ext
 
     def read_results(self):
-        self.results = io.read_results(self.label, self.get_stdout_filename())
+        self.results = io.read_results(self.label, self._output_filename())
 
     def get_number_of_iterations(self):
         return self.results['niter']
