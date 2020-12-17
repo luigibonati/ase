@@ -60,17 +60,13 @@ def test_au(factory, pps):
 
 
 @pytest.fixture
-def fe_atoms(factory):
+def fe_atoms(abinit_factory):
     atoms = bulk('Fe')
     atoms.set_initial_magnetic_moments([1])
-    calc = factory.calc(nbands=8,
+    calc = abinit_factory.calc(nbands=8,
                                kpts=[2, 2, 2])
     atoms.calc = calc
     return atoms
-    # The calculator base class thinks it is smart, returning 0 magmom
-    # automagically when not otherwise given.  This means we get bogus zeros
-    # if/when we didn't parse the magmoms.  This happens when the magmoms
-    # are fixed.  Not going to fix this right now though.
 
 
 def test_fe_fixed_magmom(fe_atoms):
