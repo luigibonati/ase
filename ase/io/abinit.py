@@ -570,8 +570,8 @@ abinit_input_version_warning = """\
 Abinit input format has changed in Abinit9.
 
 ASE will currently write inputs for Abinit8 by default.  Please
-silence this warning passing either Abinit(use_files_file=True) to
-write the old Abinit8 format, or use_files_file=False for writing
+silence this warning passing either Abinit(v8_legacy_format=True) to
+write the old Abinit8 format, or False for writing
 the new Abinit9+ format.
 
 The default will change to Abinit9+ format from ase-3.22, and this
@@ -588,7 +588,7 @@ def write_all_inputs(atoms, properties, parameters,
                      pp_paths=None,
                      raise_exception=True,
                      label='abinit',
-                     *, use_files_file=True):
+                     *, v8_legacy_format=True):
     species = sorted(set(atoms.numbers))
     if pp_paths is None:
         pp_paths = get_default_abinit_pp_paths()
@@ -598,24 +598,27 @@ def write_all_inputs(atoms, properties, parameters,
                        pps=parameters.pps,
                        search_paths=pp_paths)
 
-    if use_files_file is None:
+    if v8_legacy_format is None:
         warnings.warn(abinit_input_version_warning,
                       FutureWarning)
-        use_files_file = True
+        v8_legacy_format = True
 
-    if use_files_file:
+    if v8_legacy_format:
         with open(label + '.files', 'w') as fd:
             write_files_file(fd, label, ppp)
         pseudos = None
-        output_filename = label + '.txt'
+
+        # XXX here we build the txt filename again, which is bad
+        # (also defined in the calculator)
+        #output_filename = label + '.txt'
     else:
         pseudos = ppp  # Include pseudopotentials in inputfile
-        output_filename = label + '.abo'
+        #output_filename = label + '.abo'
 
     # Abinit will write to label.txtA if label.txt already exists,
     # so we remove it if it's there:
-    if os.path.isfile(output_filename):
-        os.remove(output_filename)
+    #if os.path.isfile(output_filename):
+    #    os.remove(output_filename)
 
     parameters.write(label + '.ase')
 
@@ -631,10 +634,10 @@ def read_ase_and_abinit_inputs(label):
     return atoms, parameters
 
 
-def read_results(label):
-    filename = label + '.txt'
+def read_results(label, textfilename):
+    # filename = label + '.txt'
     results = {}
-    with open(filename) as fd:
+    with open(textfilename) as fd:
         dct = read_abinit_out(fd)
         results.update(dct)
     # The eigenvalues section in the main file is shortened to
