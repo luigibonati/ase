@@ -65,11 +65,12 @@ class Abinit(FileIOCalculator):
 
         """
 
+        self.v8_legacy_format = v8_legacy_format
+        self.pp_paths = pp_paths
+
         FileIOCalculator.__init__(self, restart, ignore_bad_restart_file,
                                   label, atoms, **kwargs)
 
-        self.v8_legacy_format = v8_legacy_format
-        self.pp_paths = pp_paths
 
     def write_input(self, atoms, properties, system_changes):
         """Write input parameters to files-file."""
