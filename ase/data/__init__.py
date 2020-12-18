@@ -576,115 +576,115 @@ reference_states = [
     None,  # X
     {'symmetry': 'diatom', 'd': 0.74},  # H
     {'symmetry': 'atom'},  # He
-    {'symmetry': 'bcc', 'a': 3.49},  # Li
-    {'symmetry': 'hcp', 'c/a': 1.567, 'a': 2.29},  # Be
+    {'symmetry': 'bcc', 'a': 3.49, 'sgs': 229},  # Li
+    {'symmetry': 'hcp', 'c/a': 1.567, 'a': 2.29, 'sgs': 194},  # Be
     {'symmetry': 'tetragonal', 'c/a': 0.576, 'a': 8.73,  # B
-     'basis': None},
-    {'symmetry': 'diamond', 'a': 3.57},  # C
+     'basis': None, 'sgs': 134},
+    {'symmetry': 'diamond', 'a': 3.57, 'sgs': 227},  # C
     {'symmetry': 'diatom', 'd': 1.10},  # N
     {'symmetry': 'diatom', 'd': 1.21},  # O
     {'symmetry': 'diatom', 'd': 1.42},  # F
-    {'symmetry': 'fcc', 'a': 4.43},  # Ne
-    {'symmetry': 'bcc', 'a': 4.23},  # Na
-    {'symmetry': 'hcp', 'c/a': 1.624, 'a': 3.21},  # Mg
-    {'symmetry': 'fcc', 'a': 4.05},  # Al
-    {'symmetry': 'diamond', 'a': 5.43},  # Si
+    {'symmetry': 'fcc', 'a': 4.43, 'sgs': 225},  # Ne
+    {'symmetry': 'bcc', 'a': 4.23, 'sgs': 229},  # Na
+    {'symmetry': 'hcp', 'c/a': 1.624, 'a': 3.21, 'sgs': 194},  # Mg
+    {'symmetry': 'fcc', 'a': 4.05, 'sgs': 225},  # Al
+    {'symmetry': 'diamond', 'a': 5.43, 'sgs': 227},  # Si
     {'symmetry': 'cubic', 'a': 7.17,  # P
-     'basis': None},
+     'basis': None, 'sgs': 221},
     {'symmetry': 'orthorhombic', 'c/a': 2.339, 'a': 10.47, 'b/a': 1.229,  # S
-     'basis': None},
+     'basis': None, 'sgs': 70},
     {'symmetry': 'orthorhombic', 'c/a': 1.324, 'a': 6.24, 'b/a': 0.718,  # Cl
-     'basis': None},
-    {'symmetry': 'fcc', 'a': 5.26},  # Ar
-    {'symmetry': 'bcc', 'a': 5.23},  # K
-    {'symmetry': 'fcc', 'a': 5.58},  # Ca
-    {'symmetry': 'hcp', 'c/a': 1.594, 'a': 3.31},  # Sc
-    {'symmetry': 'hcp', 'c/a': 1.588, 'a': 2.95},  # Ti
-    {'symmetry': 'bcc', 'a': 3.02},  # V
-    {'symmetry': 'bcc', 'a': 2.88},  # Cr
+     'basis': None, 'sgs': 64},
+    {'symmetry': 'fcc', 'a': 5.26, 'sgs': 225},  # Ar
+    {'symmetry': 'bcc', 'a': 5.23, 'sgs': 229},  # K
+    {'symmetry': 'fcc', 'a': 5.58, 'sgs': 225},  # Ca
+    {'symmetry': 'hcp', 'c/a': 1.594, 'a': 3.31, 'sgs': 194},  # Sc
+    {'symmetry': 'hcp', 'c/a': 1.588, 'a': 2.95, 'sgs': 194},  # Ti
+    {'symmetry': 'bcc', 'a': 3.02, 'sgs': 229},  # V
+    {'symmetry': 'bcc', 'a': 2.88, 'sgs': 229},  # Cr
     {'symmetry': 'cubic', 'a': 8.89,  # Mn
-     'basis': None},
-    {'symmetry': 'bcc', 'a': 2.87},  # Fe
-    {'symmetry': 'hcp', 'c/a': 1.622, 'a': 2.51},  # Co
-    {'symmetry': 'fcc', 'a': 3.52},  # Ni
-    {'symmetry': 'fcc', 'a': 3.61},  # Cu
-    {'symmetry': 'hcp', 'c/a': 1.856, 'a': 2.66},  # Zn
+     'basis': None, 'sgs': 217},
+    {'symmetry': 'bcc', 'a': 2.87, 'sgs': 229},  # Fe
+    {'symmetry': 'hcp', 'c/a': 1.622, 'a': 2.51, 'sgs': 194},  # Co
+    {'symmetry': 'fcc', 'a': 3.52, 'sgs': 225},  # Ni
+    {'symmetry': 'fcc', 'a': 3.61, 'sgs': 225},  # Cu
+    {'symmetry': 'hcp', 'c/a': 1.856, 'a': 2.66, 'sgs': 194},  # Zn
     {'symmetry': 'orthorhombic', 'c/a': 1.695, 'a': 4.51, 'b/a': 1.001,  # Ga
-     'basis': None},
-    {'symmetry': 'diamond', 'a': 5.66},  # Ge
+     'basis': None, 'sgs': 64},
+    {'symmetry': 'diamond', 'a': 5.66, 'sgs': 227},  # Ge
     {'symmetry': 'rhombohedral', 'a': 4.13, 'alpha': 54.10,  # As
-     'basis_x': np.array(0.226) * (-1, 1)},
+     'basis_x': np.array(0.226) * (-1, 1), 'sgs': 166},
     {'symmetry': 'hcp', 'c/a': 1.136, 'a': 4.36,  # Se
-     'basis': None},  # Needs 3-atom basis
+     'basis': None, 'sgs': 152},  # Needs 3-atom basis
     {'symmetry': 'orthorhombic', 'c/a': 1.307, 'a': 6.67, 'b/a': 0.672,  # Br
-     'basis': None},
-    {'symmetry': 'fcc', 'a': 5.72},  # Kr
-    {'symmetry': 'bcc', 'a': 5.59},  # Rb
-    {'symmetry': 'fcc', 'a': 6.08},  # Sr
-    {'symmetry': 'hcp', 'c/a': 1.571, 'a': 3.65},  # Y
-    {'symmetry': 'hcp', 'c/a': 1.593, 'a': 3.23},  # Zr
-    {'symmetry': 'bcc', 'a': 3.30},  # Nb
-    {'symmetry': 'bcc', 'a': 3.15},  # Mo
-    {'symmetry': 'hcp', 'c/a': 1.604, 'a': 2.74},  # Tc
-    {'symmetry': 'hcp', 'c/a': 1.584, 'a': 2.70},  # Ru
-    {'symmetry': 'fcc', 'a': 3.80},  # Rh
-    {'symmetry': 'fcc', 'a': 3.89},  # Pd
-    {'symmetry': 'fcc', 'a': 4.09},  # Ag
-    {'symmetry': 'hcp', 'c/a': 1.886, 'a': 2.98},  # Cd
+     'basis': None, 'sgs': 64},
+    {'symmetry': 'fcc', 'a': 5.72, 'sgs': 225},  # Kr
+    {'symmetry': 'bcc', 'a': 5.59, 'sgs': 229},  # Rb
+    {'symmetry': 'fcc', 'a': 6.08, 'sgs': 225},  # Sr
+    {'symmetry': 'hcp', 'c/a': 1.571, 'a': 3.65, 'sgs': 194},  # Y
+    {'symmetry': 'hcp', 'c/a': 1.593, 'a': 3.23, 'sgs': 194},  # Zr
+    {'symmetry': 'bcc', 'a': 3.30, 'sgs': 229},  # Nb
+    {'symmetry': 'bcc', 'a': 3.15, 'sgs': 229},  # Mo
+    {'symmetry': 'hcp', 'c/a': 1.604, 'a': 2.74, 'sgs': 194},  # Tc
+    {'symmetry': 'hcp', 'c/a': 1.584, 'a': 2.70, 'sgs': 194},  # Ru
+    {'symmetry': 'fcc', 'a': 3.80, 'sgs': 225},  # Rh
+    {'symmetry': 'fcc', 'a': 3.89, 'sgs': 225},  # Pd
+    {'symmetry': 'fcc', 'a': 4.09, 'sgs': 225},  # Ag
+    {'symmetry': 'hcp', 'c/a': 1.886, 'a': 2.98, 'sgs': 194},  # Cd
     # For In, A&M give a face-centered cell; we need some sqrt2 conversions.
-    {'symmetry': 'bct', 'c/a': 1.076 * 2**.5, 'a': 4.59 / 2**.5},  # In
+    {'symmetry': 'bct', 'c/a': 1.076 * 2**.5, 'a': 4.59 / 2**.5, 'sgs': 139},  # In
     {'symmetry': 'bct', 'c/a': 0.546, 'a': 5.82,  # Sn
-     'basis': [[0.0, 0.0, 0.0], [0.25, 0.75, 0.5]]},
+     'basis': [[0.0, 0.0, 0.0], [0.25, 0.75, 0.5]], 'sgs': 141},
     {'symmetry': 'rhombohedral', 'a': 4.51, 'alpha': 57.60,  # Sb
-     'basis_x': np.array(0.233) * (-1, 1)},
+     'basis_x': np.array(0.233) * (-1, 1), 'sgs': 166},
     {'symmetry': 'hcp', 'c/a': 1.330, 'a': 4.45,  # Te
-     'basis': None},  # Te needs a 3-atom basis.
+     'basis': None, 'sgs': 152},  # Te needs a 3-atom basis.
     {'symmetry': 'orthorhombic', 'c/a': 1.347, 'a': 7.27, 'b/a': 0.659,  # I
-     'basis': None},
-    {'symmetry': 'fcc', 'a': 6.20},  # Xe
-    {'symmetry': 'bcc', 'a': 6.05},  # Cs
-    {'symmetry': 'bcc', 'a': 5.02},  # Ba
-    {'symmetry': 'hcp', 'c/a': 1.619, 'a': 3.75},  # La
-    {'symmetry': 'fcc', 'a': 5.16},  # Ce
-    {'symmetry': 'hcp', 'c/a': 1.614, 'a': 3.67},  # Pr
-    {'symmetry': 'hcp', 'c/a': 1.614, 'a': 3.66},  # Nd
+     'basis': None, 'sgs': 64},
+    {'symmetry': 'fcc', 'a': 6.20, 'sgs': 225},  # Xe
+    {'symmetry': 'bcc', 'a': 6.05, 'sgs': 229},  # Cs
+    {'symmetry': 'bcc', 'a': 5.02, 'sgs': 229},  # Ba
+    {'symmetry': 'hcp', 'c/a': 1.619, 'a': 3.75, 'sgs': 194},  # La
+    {'symmetry': 'fcc', 'a': 5.16, 'sgs': 225},  # Ce
+    {'symmetry': 'hcp', 'c/a': 1.614, 'a': 3.67, 'sgs': 194},  # Pr
+    {'symmetry': 'hcp', 'c/a': 1.614, 'a': 3.66, 'sgs': 194},  # Nd
     None,  # Pm
     {'symmetry': 'rhombohedral', 'a': 9.00, 'alpha': 23.13,
-     'basis_x': np.array(0.222) * (0, -1, 1)},  # Sm
-    {'symmetry': 'bcc', 'a': 4.61},  # Eu
-    {'symmetry': 'hcp', 'c/a': 1.588, 'a': 3.64},  # Gd
-    {'symmetry': 'hcp', 'c/a': 1.581, 'a': 3.60},  # Th
-    {'symmetry': 'hcp', 'c/a': 1.573, 'a': 3.59},  # Dy
-    {'symmetry': 'hcp', 'c/a': 1.570, 'a': 3.58},  # Ho
-    {'symmetry': 'hcp', 'c/a': 1.570, 'a': 3.56},  # Er
-    {'symmetry': 'hcp', 'c/a': 1.570, 'a': 3.54},  # Tm
-    {'symmetry': 'fcc', 'a': 5.49},  # Yb
-    {'symmetry': 'hcp', 'c/a': 1.585, 'a': 3.51},  # Lu
-    {'symmetry': 'hcp', 'c/a': 1.582, 'a': 3.20},  # Hf
-    {'symmetry': 'bcc', 'a': 3.31},  # Ta
-    {'symmetry': 'bcc', 'a': 3.16},  # W
-    {'symmetry': 'hcp', 'c/a': 1.615, 'a': 2.76},  # Re
-    {'symmetry': 'hcp', 'c/a': 1.579, 'a': 2.74},  # Os
-    {'symmetry': 'fcc', 'a': 3.84},  # Ir
-    {'symmetry': 'fcc', 'a': 3.92},  # Pt
-    {'symmetry': 'fcc', 'a': 4.08},  # Au
+     'basis_x': np.array(0.222) * (0, -1, 1), 'sgs': 166},  # Sm
+    {'symmetry': 'bcc', 'a': 4.61, 'sgs': 229},  # Eu
+    {'symmetry': 'hcp', 'c/a': 1.588, 'a': 3.64, 'sgs': 194},  # Gd
+    {'symmetry': 'hcp', 'c/a': 1.581, 'a': 3.60, 'sgs': 194},  # Tb
+    {'symmetry': 'hcp', 'c/a': 1.573, 'a': 3.59, 'sgs': 194},  # Dy
+    {'symmetry': 'hcp', 'c/a': 1.570, 'a': 3.58, 'sgs': 194},  # Ho
+    {'symmetry': 'hcp', 'c/a': 1.570, 'a': 3.56, 'sgs': 194},  # Er
+    {'symmetry': 'hcp', 'c/a': 1.570, 'a': 3.54, 'sgs': 194},  # Tm
+    {'symmetry': 'fcc', 'a': 5.49, 'sgs': 225},  # Yb
+    {'symmetry': 'hcp', 'c/a': 1.585, 'a': 3.51, 'sgs': 194},  # Lu
+    {'symmetry': 'hcp', 'c/a': 1.582, 'a': 3.20, 'sgs': 194},  # Hf
+    {'symmetry': 'bcc', 'a': 3.31, 'sgs': 229},  # Ta
+    {'symmetry': 'bcc', 'a': 3.16, 'sgs': 229},  # W
+    {'symmetry': 'hcp', 'c/a': 1.615, 'a': 2.76, 'sgs': 194},  # Re
+    {'symmetry': 'hcp', 'c/a': 1.579, 'a': 2.74, 'sgs': 194},  # Os
+    {'symmetry': 'fcc', 'a': 3.84, 'sgs': 225},  # Ir
+    {'symmetry': 'fcc', 'a': 3.92, 'sgs': 225},  # Pt
+    {'symmetry': 'fcc', 'a': 4.08, 'sgs': 225},  # Au
     {'symmetry': 'rhombohedral', 'a': 2.99, 'alpha': 70.45,  # Hg
-     'basis_x': np.zeros(1)},
-    {'symmetry': 'hcp', 'c/a': 1.599, 'a': 3.46},  # Tl
-    {'symmetry': 'fcc', 'a': 4.95},  # Pb
+     'basis_x': np.zeros(1), 'sgs': 166},
+    {'symmetry': 'hcp', 'c/a': 1.599, 'a': 3.46, 'sgs': 194},  # Tl
+    {'symmetry': 'fcc', 'a': 4.95, 'sgs': 225},  # Pb
     {'symmetry': 'rhombohedral', 'a': 4.75, 'alpha': 57.14,
-     'basis_x': np.array(0.237) * (-1, 1)},  # Bi
-    {'symmetry': 'sc', 'a': 3.35},  # Po
+     'basis_x': np.array(0.237) * (-1, 1), 'sgs': 166},  # Bi
+    {'symmetry': 'sc', 'a': 3.35, 'sgs': 221},  # Po
     None,  # At
     None,  # Rn
     None,  # Fr
     None,  # Ra
-    {'symmetry': 'fcc', 'a': 5.31},  # Ac
-    {'symmetry': 'fcc', 'a': 5.08},  # Th
-    {'symmetry': 'tetragonal', 'c/a': 0.825, 'a': 3.92},  # Pa
-    {'symmetry': 'orthorhombic', 'c/a': 2.056, 'a': 2.85, 'b/a': 1.736},  # U
-    {'symmetry': 'orthorhombic', 'c/a': 1.411, 'a': 4.72, 'b/a': 1.035},  # Np
-    {'symmetry': 'monoclinic'},  # Pu
+    {'symmetry': 'fcc', 'a': 5.31, 'sgs': 225},  # Ac
+    {'symmetry': 'fcc', 'a': 5.08, 'sgs': 225},  # Th
+    {'symmetry': 'tetragonal', 'c/a': 0.825, 'a': 3.92, 'sgs': 139},  # Pa
+    {'symmetry': 'orthorhombic', 'c/a': 2.056, 'a': 2.85, 'b/a': 1.736, 'sgs': 63},  # U
+    {'symmetry': 'orthorhombic', 'c/a': 1.411, 'a': 4.72, 'b/a': 1.035, 'sgs': 62},  # Np
+    {'symmetry': 'monoclinic', 'sgs': 11},  # Pu
     None,  # Am
     None,  # Cm
     None,  # Bk
