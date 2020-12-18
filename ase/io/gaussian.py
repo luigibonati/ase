@@ -11,6 +11,8 @@ from ase.calculators.calculator import InputError
 from ase.calculators.singlepoint import SinglePointCalculator
 from ase.calculators.gaussian import Gaussian
 
+from ase.data import atomic_numbers
+from ase.data.isotopes import download_isotope_data
 
 _link0_keys = [
     'mem',
@@ -188,14 +190,21 @@ def write_gaussian_in(fd, atoms, properties=None, **params):
             '{:.0f} {:.0f}'.format(charge, mult)]
 
     # atomic positions
-    for atom in atoms:
+    for i, atom in enumerate(atoms):
         # this formatting was chosen for backwards compatibility reasons, but
         # it would probably be better to
         # 1) Ensure proper spacing between entries with explicit spaces
         # 2) Use fewer columns for the element
         # 3) Use 'e' (scientific notation) instead of 'f' for positions
-        out.append('{:<10s}{:20.10f}{:20.10f}{:20.10f}'
-                   .format(atom.symbol, *atom.position))
+        if atoms.arrays['gaussian_info'][i] is not None:
+            symbol_section = atom.symbol + \
+                '(' + atoms.arrays['gaussian_info'][i] + ')'
+            out.append('{:<10s}{:20.10f}{:20.10f}'
+                       '{:20.10f}'.format(symbol_section,
+                                          *atom.position))
+        else:
+            out.append('{:<10s}{:20.10f}{:20.10f}{:20.10f}'
+                       .format(atom.symbol, *atom.position))
 
     # unit cell vectors, in case of periodic boundary conditions
     for ipbc, tv in zip(atoms.pbc, atoms.cell):
@@ -293,11 +302,16 @@ class GaussianConfiguration:
         parameters = {}
         route_section = False
         atoms_section = False
+        atom_masses = []
+        atoms_info = []
         symbols = []
         positions = []
         pbc = np.zeros(3, dtype=bool)
         cell = np.zeros((3, 3))
         npbc = 0
+        count_iso = 0
+        atoms_saved = False
+        readiso = False
 
         for line in gaussian_input:
             link0_match = _re_link0.match(line)
@@ -330,9 +344,41 @@ class GaussianConfiguration:
                 atoms_section = True
             elif atoms_section:
                 if (line.split()):
-                    tokens = line.split()
-                    symbol = tokens[0]
+                    # reads any info in parantheses after the atom symbol
+                    # and stores it in atoms_info as a dict:
+                    atom_info_match = re.search(r'\(([^\)]+)\)', line)
+                    if atom_info_match:
+                        line = line.replace(atom_info_match.group(0), '')
+                        tokens = line.split()
+                        symbol = tokens[0]
+                        atom_info = atom_info_match.group(1)
+                        atom_info_dict = GaussianConfiguration \
+                            .get_route_params(atom_info_match.group(1))
+                        atom_info_dict = {k.lower(): v for k, v
+                                          in atom_info_dict.items()}
+                        atom_mass = atom_info_dict.get('iso', None)
+                        if atom_mass.isnumeric():
+                            # will be true if atom_mass is integer
+                            try:
+                                atom_mass = download_isotope_data(
+                                )[atomic_numbers[symbol]][
+                                    int(atom_mass)]['mass']
+                                atom_info_dict['iso'] = str(atom_mass)
+                            except KeyError:
+                                pass
+                        atom_info = ""
+                        for key, value in atom_info_dict.items():
+                            atom_info += key + '=' + value + ', '
+                        atom_info = atom_info.strip(', ')
+                    else:
+                        tokens = line.split()
+                        symbol = tokens[0]
+                        atom_info = None
+                        atom_mass = None
+                    # try:
                     pos = list(map(float, tokens[1:4]))
+                    # except ValueError:
+                    #     print("Error in molecule specification in gaussian input file.")
                     if symbol.upper() == 'TV':
                         pbc[npbc] = True
                         cell[npbc] = pos
@@ -340,6 +386,52 @@ class GaussianConfiguration:
                     else:
                         symbols.append(symbol)
                         positions.append(pos)
+                        atoms_info.append(atom_info)
+                        atom_masses.append(atom_mass)
+
+                    atoms_saved = True
+            elif atoms_saved:  # we must be after the atoms section
+                if count_iso == 0:
+                    freq_options = parameters.get('freq', None)
+                    if freq_options:
+                        freq_name = 'freq'
+                    else:
+                        freq_options = parameters.get('frequency', None)
+                        freq_name = 'frequency'
+                    if freq_options is not None:
+                        freq_options = freq_options.lower()
+                        if 'readiso' or 'readisotopes' in freq_options:
+                            if 'readisotopes' in freq_options:
+                                iso_name = 'readisotopes'
+                            else:
+                                iso_name = 'readiso'
+                            # print(freq_options.split(','))
+                            freq_options = [v.group() for v in re.finditer(
+                                r'[^\,/\s]+', freq_options)]
+                            freq_options.remove(iso_name)
+                            new_freq_options = ''
+                            for v in freq_options:
+                                new_freq_options += v + ' '
+                            parameters[freq_name] = new_freq_options
+                            readiso = True
+                            atom_masses = []
+                            # when count_iso is 0 we are in the line where
+                            # temperature, pressure, [scale] is saved
+                            line = line.replace(
+                                '[', '').replace(']', '').split('!')[0]
+                            tokens = line.strip().split()
+                            try:
+                                parameters.update({'temperature': tokens[0]})
+                                parameters.update({'pressure': tokens[1]})
+                                parameters.update({'scale': tokens[2]})
+                            except IndexError:
+                                pass
+                elif readiso:
+                    try:
+                        atom_masses.append(float(line.split('!')[0]))
+                    except ValueError:
+                        atom_masses.append(None)
+                count_iso += 1
 
             if route_section:
                 if method_basis_match:
@@ -356,7 +448,13 @@ class GaussianConfiguration:
 
                 parameters.update(GaussianConfiguration.get_route_params(line))
 
-        atoms = Atoms(symbols, positions, pbc=pbc, cell=cell)
+        if readiso:
+            if len(atom_masses) < len(symbols):
+                for i in range(0, len(symbols) - len(atom_masses)):
+                    atom_masses.append(None)
+        atoms = Atoms(symbols, positions, pbc=pbc,
+                      cell=cell, masses=atom_masses)
+        atoms.new_array('gaussian_info', np.array(atoms_info))
         return GaussianConfiguration(atoms, parameters)
 
     @staticmethod
