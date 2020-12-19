@@ -678,3 +678,26 @@ class SocketIOCalculator(Calculator):
 
     def __exit__(self, type, value, traceback):
         self.close()
+
+
+def main(argv=None):
+    import sys
+    from ase.io import read
+    if argv is None:
+        argv = sys.argv
+
+    unixsocket = 'ase-socketio'  #sys.argv[1]
+    timeout = 10
+
+    from ase.build import bulk
+    from ase.calculators.emt import EMT
+
+    atoms = bulk('Au') * (2, 2, 2)
+    atoms.calc = EMT()
+
+    client = SocketClient(host='localhost', unixsocket=unixsocket)
+    client.run(atoms, use_stress=True)
+
+
+if __name__ == '__main__':
+    main()
