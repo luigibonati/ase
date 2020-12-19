@@ -1,6 +1,7 @@
 import os
 import socket
 from subprocess import Popen
+from contextlib import ExitStack
 
 import numpy as np
 
@@ -272,6 +273,8 @@ class SocketServer:
             self.proc = Popen(client_command, shell=True,
                               cwd=self.cwd)
             # self._accept(process_args)
+
+        self._exitstack = ExitStack()
 
     def _accept(self, client_command=None):
         """Wait for client and establish connection."""
@@ -577,11 +580,9 @@ class SocketIOCalculator(Calculator):
         self.server = None
 
         if isinstance(log, str):
-            self.log = open(log, 'w')
-            self.log_was_opened = True
+            self.log = self._exitstack.enter_context(open(log, 'w'))
         else:
             self.log = log
-            self.log_was_opened = False
 
         # We only hold these so we can pass them on to the server.
         # They may both be None as stored here.
@@ -643,14 +644,14 @@ class SocketIOCalculator(Calculator):
         self.results.update(results)
 
     def close(self):
+        self._exitstack.close()
         if self.server is not None:
             self.server.close()
             self.server = None
             self.calculator_initialized = False
-            if self.log_was_opened:
-                self.log.close()
 
     def __enter__(self):
+        self._exitstack.__enter__()
         return self
 
     def __exit__(self, type, value, traceback):
