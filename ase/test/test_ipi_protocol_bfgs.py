@@ -32,7 +32,7 @@ def run_server(launchclient=True, sockettype='unix'):
     unixsocket = None
 
     if sockettype == 'unix':
-        unixsocket = 'ase_ipi_protocol_bfgs_test'
+        unixsocket = f'ase_ipi_protocol_bfgs_test_{pid}'
     else:
         assert sockettype == 'inet'
         port = inet_port
@@ -96,7 +96,12 @@ def launch_client_thread(port, unixsocket):
     return thread
 
 
-@pytest.mark.parametrize('sockettype', ['unix', 'inet'])
+unix_only = pytest.mark.skipif(os.name != 'posix',
+                               reason='requires unix platform')
+@pytest.mark.parametrize('sockettype', [
+    'inet',
+    pytest.param('unix', marks=unix_only),
+])
 def test_ipi_protocol(sockettype):
     try:
         run_server(sockettype=sockettype)
