@@ -1,4 +1,5 @@
 import sys
+import os
 import numpy as np
 from ase.calculators.socketio import SocketIOCalculator, PySocketIOClient
 from ase.calculators.emt import EMT
@@ -20,8 +21,9 @@ def test_socketio_python():
 
     client = PySocketIOClient(calculator_factory)
 
+    pid = os.getpid()
     with SocketIOCalculator(launch_client=client,
-                            unixsocket='ase-socketio') as atoms.calc:
+                            unixsocket='ase-python-{pid}') as atoms.calc:
         opt = BFGS(ExpCellFilter(atoms))
         opt.run(fmax=fmax)
     forces = atoms.get_forces()
