@@ -221,10 +221,24 @@ def temporary_inetsocket(port):
         yield serversocket
 
 
+class FileIOSocketClientLauncher:
+    def __init__(self, calc):
+        self.calc = calc
+
+    def __call__(self, atoms, properties=None, port=None, unixsocket=None):
+        assert self.calc is not None
+        cmd = self.calc.command.replace('PREFIX', self.calc.prefix)
+        self.calc.write_input(atoms, properties=properties,
+                              system_changes=all_changes)
+        cwd = self.calc.directory
+        cmd = cmd.format(port=port, unixsocket=unixsocket)
+        return Popen(cmd, shell=True, cwd=cwd)
+
+
 class SocketServer:
     default_port = 31415
 
-    def __init__(self, launch_client=None,
+    def __init__(self, #launch_client=None,
                  port=None, unixsocket=None, timeout=None,
                  log=None):
         """Create server and listen for connections.
@@ -285,8 +299,8 @@ class SocketServer:
         self.clientsocket = None
         self.address = None
 
-        if launch_client is not None:
-            self.proc = launch_client(port=port, unixsocket=unixsocket)
+        #if launch_client is not None:
+        #    self.proc = launch_client(port=port, unixsocket=unixsocket)
 
     def _accept(self):
         """Wait for client and establish connection."""
@@ -590,7 +604,13 @@ class SocketIOCalculator(Calculator):
 
         self._exitstack = ExitStack()
         Calculator.__init__(self)
-        self.calc = calc
+
+        if calc is not None:
+            if launch_client is not None:
+                raise ValueError('Cannot pass both calc and launch_client')
+            launch_client = FileIOSocketClientLauncher(calc)
+        self.launch_client = launch_client
+        #self.calc = calc
         self.timeout = timeout
         self.server = None
 
@@ -608,7 +628,7 @@ class SocketIOCalculator(Calculator):
         # we are responsible for executing the external process, too, and
         # should do so before blocking.  Without a calculator we want to
         # block immediately:
-        if calc is None:
+        if self.launch_client is None:
             self.server = self.launch_server()
 
     def todict(self):
@@ -618,21 +638,13 @@ class SocketIOCalculator(Calculator):
         #    d['calc'] = self.calc.todict()
         return d
 
-    def launch_server(self, launch_client=None):
+    def launch_server(self):
         return self._exitstack.enter_context(SocketServer(
-            launch_client=launch_client, port=self._port,
+            #launch_client=launch_client,
+            port=self._port,
             unixsocket=self._unixsocket,
             timeout=self.timeout, log=self.log,
         ))
-
-    def launch_client(self, port=None, unixsocket=None):
-        assert self.calc is not None
-        cmd = self.calc.command.replace('PREFIX', self.calc.prefix)
-        self.calc.write_input(atoms, properties=properties,
-                              system_changes=system_changes)
-        cwd = self.calc.directory
-        cmd = cmd.format(port=port, unixsocket=unixsocket)
-        return Popen(cmd, shell=True, cwd=cwd)
 
     def calculate(self, atoms=None, properties=['energy'],
                   system_changes=all_changes):
@@ -647,10 +659,15 @@ class SocketIOCalculator(Calculator):
                 'Please create new socket calculator.'
                 .format(bad if len(bad) > 1 else bad[0]))
 
-        if self.server is None:
-            self.server = self.launch_server(self.launch_client)
-
         self.atoms = atoms.copy()
+
+        if self.server is None:
+            self.server = self.launch_server()
+            proc = self.launch_client(atoms, properties,
+                                      port=self._port,
+                                      unixsocket=self._unixsocket)
+            self.server.proc = proc  # XXX nasty hack
+
         results = self.server.calculate(atoms)
         virial = results.pop('virial')
         if self.atoms.cell.rank == 3 and any(self.atoms.pbc):
