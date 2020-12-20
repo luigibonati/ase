@@ -1,6 +1,6 @@
 import os
 import socket
-from subprocess import Popen
+from subprocess import Popen, PIPE
 from contextlib import ExitStack, contextmanager
 
 import numpy as np
@@ -690,29 +690,44 @@ class SocketIOCalculator(Calculator):
         self.close()
 
 
-def main(argv=None):
-    import sys
-    import pickle
+class PySocketIOClient:
+    def __init__(self, calculator_factory):
+        self._calculator_factory = calculator_factory
 
-    socketinfo = pickle.load(sys.stdin.buffer)
-    atoms = pickle.load(sys.stdin.buffer)
-    get_calculator = pickle.load(sys.stdin.buffer)
+    def __call__(self, atoms, properties=None, port=None, unixsocket=None):
+        import sys
+        import pickle
 
-    if argv is None:
-        argv = sys.argv
+        # We pickle everything first, so we won't need to bother with the
+        # process as long as it succeeds.
+        transferbytes = pickle.dumps([
+            dict(unixsocket=unixsocket, port=port),
+            atoms.copy(),
+            self._calculator_factory,
+        ])
 
-    unixsocket = 'ase-socketio'  #sys.argv[1]
-    timeout = 10
+        proc = Popen([sys.executable, '-m', 'ase.calculators.socketio'],
+                     stdin=PIPE)
 
-    from ase.build import bulk
-    from ase.calculators.emt import EMT
+        proc.stdin.write(transferbytes)
+        proc.stdin.close()
+        return proc
 
-    atoms.calc = get_calculator()
-    client = SocketClient(host='localhost',
-                          unixsocket=socketinfo.get('unixsocket'),
-                          port=socketinfo.get('port'))
-    client.run(atoms, use_stress=True)
+    @staticmethod
+    def main():
+        import sys
+        import pickle
+
+        socketinfo, atoms, get_calculator = pickle.load(sys.stdin.buffer)
+        atoms.calc = get_calculator()
+        client = SocketClient(host='localhost',
+                              unixsocket=socketinfo.get('unixsocket'),
+                              port=socketinfo.get('port'))
+        # XXX In principle we could avoid calculating stress until
+        # someone requests the stress, could we not?
+        # Which would make use_stress boolean unnecessary.
+        client.run(atoms, use_stress=True)
 
 
 if __name__ == '__main__':
-    main()
+    PySocketIOClient.main()
