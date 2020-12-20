@@ -113,7 +113,7 @@ max_errors = {
     # missing whitespace around arithmetic operator
     'E226': 308,
     # line too long (93 > 79 characters)
-    'E501': 740}
+    'E501': 800}
 
 
 def run_flaketest():

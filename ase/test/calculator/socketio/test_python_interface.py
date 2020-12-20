@@ -1,12 +1,7 @@
-import sys
 import os
 import numpy as np
 from ase.calculators.socketio import SocketIOCalculator, PySocketIOClient
 from ase.calculators.emt import EMT
-
-
-def calculator_factory():
-    return EMT()
 
 
 def test_socketio_python():
@@ -19,11 +14,11 @@ def test_socketio_python():
     fmax = 0.01
     atoms.cell += np.random.RandomState(42).rand(3, 3) * 0.05
 
-    client = PySocketIOClient(calculator_factory)
+    client = PySocketIOClient(EMT)
 
     pid = os.getpid()
     with SocketIOCalculator(launch_client=client,
-                            unixsocket='ase-python-{pid}') as atoms.calc:
+                            unixsocket=f'ase-python-{pid}') as atoms.calc:
         opt = BFGS(ExpCellFilter(atoms))
         opt.run(fmax=fmax)
     forces = atoms.get_forces()
