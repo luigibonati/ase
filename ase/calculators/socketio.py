@@ -224,8 +224,9 @@ def temporary_inetsocket(port):
 class SocketServer:
     default_port = 31415
 
-    def __init__(self, client_command=None, port=None,
-                 unixsocket=None, timeout=None, cwd=None, log=None):
+    def __init__(self, launch_client=None,
+                 port=None, unixsocket=None, timeout=None,
+                 log=None):
         """Create server and listen for connections.
 
         Parameters:
@@ -283,18 +284,11 @@ class SocketServer:
         self.protocol = None
         self.clientsocket = None
         self.address = None
-        self.cwd = cwd
 
-        if client_command is not None:
-            client_command = client_command.format(port=port,
-                                                   unixsocket=unixsocket)
-            if log:
-                print('Launch subprocess: {}'.format(client_command), file=log)
-            self.proc = Popen(client_command, shell=True,
-                              cwd=self.cwd)
-            # self._accept(process_args)
+        if launch_client is not None:
+            self.proc = launch_client(port=port, unixsocket=unixsocket)
 
-    def _accept(self, client_command=None):
+    def _accept(self):
         """Wait for client and establish connection."""
         # It should perhaps be possible for process to be launched by user
         log = self.log
@@ -537,7 +531,8 @@ class SocketIOCalculator(Calculator):
     supported_changes = {'positions', 'cell'}
 
     def __init__(self, calc=None, port=None,
-                 unixsocket=None, timeout=None, log=None):
+                 unixsocket=None, timeout=None, log=None, *,
+                 launch_client=None):
         """Initialize socket I/O calculator.
 
         This calculator launches a server which passes atomic
@@ -609,52 +604,51 @@ class SocketIOCalculator(Calculator):
         self._port = port
         self._unixsocket = unixsocket
 
-        # First time calculate() is called, system_changes will be
-        # all_changes.  After that, only positions and cell may change.
-        self.calculator_initialized = False
-
         # If there is a calculator, we will launch in calculate() because
         # we are responsible for executing the external process, too, and
         # should do so before blocking.  Without a calculator we want to
         # block immediately:
         if calc is None:
-            self.launch_server()
+            self.server = self.launch_server()
 
     def todict(self):
         d = {'type': 'calculator',
              'name': 'socket-driver'}
-        if self.calc is not None:
-            d['calc'] = self.calc.todict()
+        #if self.calc is not None:
+        #    d['calc'] = self.calc.todict()
         return d
 
-    def launch_server(self, cmd=None):
-        self.server = self._exitstack.enter_context(SocketServer(
-            client_command=cmd, port=self._port,
+    def launch_server(self, launch_client=None):
+        return self._exitstack.enter_context(SocketServer(
+            launch_client=launch_client, port=self._port,
             unixsocket=self._unixsocket,
             timeout=self.timeout, log=self.log,
-            cwd=(None if self.calc is None
-                 else self.calc.directory)
         ))
+
+    def launch_client(self, port=None, unixsocket=None):
+        assert self.calc is not None
+        cmd = self.calc.command.replace('PREFIX', self.calc.prefix)
+        self.calc.write_input(atoms, properties=properties,
+                              system_changes=system_changes)
+        cwd = self.calc.directory
+        cmd = cmd.format(port=port, unixsocket=unixsocket)
+        return Popen(cmd, shell=True, cwd=cwd)
 
     def calculate(self, atoms=None, properties=['energy'],
                   system_changes=all_changes):
         bad = [change for change in system_changes
                if change not in self.supported_changes]
 
-        if self.calculator_initialized and any(bad):
+        # First time calculate() is called, system_changes will be
+        # all_changes.  After that, only positions and cell may change.
+        if self.atoms is not None and any(bad):
             raise PropertyNotImplementedError(
                 'Cannot change {} through IPI protocol.  '
                 'Please create new socket calculator.'
                 .format(bad if len(bad) > 1 else bad[0]))
 
-        self.calculator_initialized = True
-
         if self.server is None:
-            assert self.calc is not None
-            cmd = self.calc.command.replace('PREFIX', self.calc.prefix)
-            self.calc.write_input(atoms, properties=properties,
-                                  system_changes=system_changes)
-            self.launch_server(cmd)
+            self.server = self.launch_server(self.launch_client)
 
         self.atoms = atoms.copy()
         results = self.server.calculate(atoms)
@@ -668,7 +662,6 @@ class SocketIOCalculator(Calculator):
     def close(self):
         try:
             self.server = None
-            self.calculator_initialized = False
         finally:
             self._exitstack.close()
 
