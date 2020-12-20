@@ -196,7 +196,7 @@ class IPIProtocol:
 
 
 @contextmanager
-def temporary_unixsocket(socketfile):
+def bind_unixsocket(socketfile):
     assert socketfile.startswith('/tmp/ipi_'), socketfile
     serversocket = socket.socket(socket.AF_UNIX)
     try:
@@ -212,7 +212,7 @@ def temporary_unixsocket(socketfile):
 
 
 @contextmanager
-def temporary_inetsocket(port):
+def bind_inetsocket(port):
     serversocket = socket.socket(socket.AF_INET)
     serversocket.setsockopt(socket.SOL_SOCKET,
                             socket.SO_REUSEADDR, 1)
@@ -277,10 +277,10 @@ class SocketServer:
         if unixsocket is not None:
             actualsocket = actualunixsocketname(unixsocket)
             conn_name = 'UNIX-socket {}'.format(actualsocket)
-            socket_context = temporary_unixsocket(actualsocket)
+            socket_context = bind_unixsocket(actualsocket)
         else:
             conn_name = 'INET port {}'.format(port)
-            socket_context = temporary_inetsocket(port)
+            socket_context = bind_inetsocket(port)
 
         self.serversocket = self._exitstack.enter_context(socket_context)
 
@@ -692,7 +692,12 @@ class SocketIOCalculator(Calculator):
 
 def main(argv=None):
     import sys
-    from ase.io import read
+    import pickle
+
+    socketinfo = pickle.load(sys.stdin.buffer)
+    atoms = pickle.load(sys.stdin.buffer)
+    get_calculator = pickle.load(sys.stdin.buffer)
+
     if argv is None:
         argv = sys.argv
 
@@ -702,10 +707,10 @@ def main(argv=None):
     from ase.build import bulk
     from ase.calculators.emt import EMT
 
-    atoms = bulk('Au') * (2, 2, 2)
-    atoms.calc = EMT()
-
-    client = SocketClient(host='localhost', unixsocket=unixsocket)
+    atoms.calc = get_calculator()
+    client = SocketClient(host='localhost',
+                          unixsocket=socketinfo.get('unixsocket'),
+                          port=socketinfo.get('port'))
     client.run(atoms, use_stress=True)
 
 
