@@ -43,7 +43,7 @@ You need a file ``mm.in`` with instructions for the simulation::
 Here is your example Python script::
 
     from ase import Atoms
-    from ase.calculator.amber import Amber
+    from ase.calculators.amber import Amber
 
     atoms = Atoms('OH2OH2',
                   [[-0.956, -0.121, 0],
