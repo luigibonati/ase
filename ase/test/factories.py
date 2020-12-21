@@ -545,7 +545,7 @@ class Factories:
         # make them skip.
         # Older tests call require(name) explicitly.
         assert name in calculator_names
-        if not self.installed(name):
+        if not self.installed(name) and not self.is_adhoc(name):
             pytest.skip(f'Not installed: {name}')
         if name not in self.requested_calculators:
             pytest.skip(f'Use --calculators={name} to enable')
