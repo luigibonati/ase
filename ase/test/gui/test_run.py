@@ -34,16 +34,23 @@ def gui(guifactory):
     return guifactory(None)
 
 
-@pytest.fixture
-def no_blocking_errors_monkeypatch():
-    orig_ui_error = ui.error
-    ui.error = mock_gui_error
-    yield
-    ui.error = orig_ui_error
+@pytest.fixture(autouse=True)
+def no_blocking_errors_monkeypatch(monkeypatch):
+    # If there's an unexpected error in one of the tests, we don't
+    # want a blocking dialog to lock the whole test suite:
+    for name in ['error', 'showerror', 'showwarning', 'showinfo']:
+        monkeypatch.setattr(ui, name, mock_gui_error)
+    #orig_ui_error = ui.error
+    #ui.error = mock_gui_error
+    #ui.showerror = mock_gui_error
+    #ui.showwarning = mock_gui_error
+    #ui.showinfo = mock_ugi_error
+    #yield
+    #ui.error = orig_ui_error
 
 
 @pytest.fixture
-def guifactory(display, no_blocking_errors_monkeypatch):
+def guifactory(display):
     guis = []
 
     def factory(images):
@@ -130,6 +137,19 @@ def test_open_and_save(gui):
         mol.write('h2o.json')
     gui.open(filename='h2o.json')
     save_dialog(gui, 'h2o.cif@-1')
+
+
+@pytest.mark.parametrize('filename', [
+    None, 'output.png', 'output.eps',
+    pytest.param('output.pov', marks=pytest.mark.xfail),
+    'output.traj', 'output.traj@0',
+])
+def test_export_graphics(gui, with_bulk_ti, monkeypatch, filename):
+    # Monkeypatch the blocking dialog:
+    monkeypatch.setattr(ui.SaveFileDialog, 'go', lambda event: filename)
+    dia = gui.save()
+    print(dia)
+    #dia.go = lambda: 'outfile.png'
 
 
 def test_fracocc(gui):
