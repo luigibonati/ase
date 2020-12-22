@@ -55,7 +55,7 @@ povray_settings = {
 # Write the .pov (and .ini) file.
 # comment out render not call the povray executable
 renderer = write('NaCl_C6H6.pov', atoms,
-                 generic_projection_settings=generic_projection_settings,
+                 **generic_projection_settings,
                  povray_settings=povray_settings)
 
 renderer.render()

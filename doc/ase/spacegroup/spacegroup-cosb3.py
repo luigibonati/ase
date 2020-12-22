@@ -26,8 +26,8 @@ for i in range(len(cosb3)):
 
 # Create nice-looking image using povray
 renderer = io.write('spacegroup-cosb3.pov', cosb3,
-                    generic_projection_settings=dict(rotation='90y',
-                                                     radii=0.4),
+                    rotation='90y',
+                    radii=0.4,
                     povray_settings=dict(transparent=False,
                                          camera_type='perspective',
                                          canvas_width=320,

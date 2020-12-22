@@ -31,8 +31,7 @@ s4.center(vacuum=10, axis=2)
 
 for atoms, name in [(s1, 's1'), (s2, 's2'), (s3, 's3'), (s4, 's4')]:
     write(name + '.pov', atoms,
-          generic_projection_settings=dict(
-              rotation='-90x'),
+          rotation='-90x',
           povray_settings=dict(
               transparent=False)).render()
 
