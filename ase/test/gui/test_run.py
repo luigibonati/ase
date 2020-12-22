@@ -147,7 +147,7 @@ def test_open_and_save(gui):
 def test_export_graphics(gui, with_bulk_ti, monkeypatch, filename):
     # Monkeypatch the blocking dialog:
     monkeypatch.setattr(ui.SaveFileDialog, 'go', lambda event: filename)
-    dia = gui.save()
+    gui.save()
     if filename is not None:
         realfilename = filename.rsplit('@')[0]
         assert Path(realfilename).is_file()
@@ -161,7 +161,6 @@ def test_fracocc(gui):
 
 
 def test_povray(gui):
-    import pathlib
     mol = molecule('H2O')
     gui.new_atoms(mol) # not gui.set_atoms(mol)
     n = gui.render_window()
@@ -170,8 +169,8 @@ def test_povray(gui):
     n.keep_files_widget.check.select()
     # can't set attribute n.run.povray_widge.value = False
     n.ok()
-    ini = pathlib.Path('./H2O.ini')
-    pov = pathlib.Path('./H2O.pov')
+    ini = Path('./H2O.ini')
+    pov = Path('./H2O.pov')
     assert ini.is_file()
     assert pov.is_file()
 
