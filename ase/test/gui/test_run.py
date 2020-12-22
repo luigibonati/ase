@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 import pytest
 import numpy as np
@@ -148,8 +149,9 @@ def test_export_graphics(gui, with_bulk_ti, monkeypatch, filename):
     # Monkeypatch the blocking dialog:
     monkeypatch.setattr(ui.SaveFileDialog, 'go', lambda event: filename)
     dia = gui.save()
-    print(dia)
-    #dia.go = lambda: 'outfile.png'
+    if filename is not None:
+        realfilename = filename.rsplit('@')[0]
+        assert Path(realfilename).is_file()
 
 
 def test_fracocc(gui):
