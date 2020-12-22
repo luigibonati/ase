@@ -796,11 +796,9 @@ class POVRAYIsosurface:
         return mesh2
 
 
-def write_pov(filename, atoms, generic_projection_settings=None,
-              povray_settings=None, isosurface_data=None):
-
-    if generic_projection_settings is None:
-        generic_projection_settings = {}
+def write_pov(filename, atoms,
+              povray_settings=None, isosurface_data=None,
+              **generic_projection_settings):
 
     if povray_settings is None:
         povray_settings = {}

@@ -142,8 +142,7 @@ def test_open_and_save(gui):
 
 @pytest.mark.parametrize('filename', [
     None, 'output.png', 'output.eps',
-    pytest.param('output.pov', marks=pytest.mark.xfail),
-    'output.traj', 'output.traj@0',
+    'output.pov', 'output.traj', 'output.traj@0',
 ])
 def test_export_graphics(gui, with_bulk_ti, monkeypatch, filename):
     # Monkeypatch the blocking dialog:
@@ -156,8 +155,8 @@ def test_export_graphics(gui, with_bulk_ti, monkeypatch, filename):
 
 def test_fracocc(gui):
     from ase.test.fio.test_cif import content
-    with open('./fracocc.cif', 'w') as f:
-        f.write(content)
+    with open('./fracocc.cif', 'w') as fd:
+        fd.write(content)
     gui.open(filename='fracocc.cif')
 
 
@@ -165,7 +164,7 @@ def test_povray(gui):
     import pathlib
     mol = molecule('H2O')
     gui.new_atoms(mol) # not gui.set_atoms(mol)
-    n = gui.render_window() 
+    n = gui.render_window()
     assert n.basename_widget.value == 'H2O'
     n.run_povray_widget.check.deselect()
     n.keep_files_widget.check.select()
