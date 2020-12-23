@@ -1,4 +1,5 @@
 from subprocess import check_call, DEVNULL
+import pytest
 from ase.io.pov import write_pov
 from ase.build import molecule
 from ase.io.pov import get_bondpairs, set_high_bondorder_pairs
@@ -36,3 +37,8 @@ def test_povray_highorder(povray_executable):
     pngfile = renderer.render()
     assert pngfile.is_file()
     print(pngfile.absolute())
+
+
+def test_deprecated():
+    with pytest.warns(FutureWarning):
+        write_pov('tmp.pov', molecule('H2'), run_povray=True)

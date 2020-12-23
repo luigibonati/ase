@@ -796,9 +796,21 @@ class POVRAYIsosurface:
         return mesh2
 
 
-def write_pov(filename, atoms,
+def pop_deprecated(dct, name):
+    import warnings
+    if name in dct:
+        del dct[name]
+        warnings.warn(f'The "{name}" keyword of write_pov() is deprecated '
+                      'and has no effect; this will raise an error in the '
+                      'future.', FutureWarning)
+
+
+def write_pov(filename, atoms, *,
               povray_settings=None, isosurface_data=None,
               **generic_projection_settings):
+
+    for name in ['run_povray', 'povray_path', 'stderr', 'extras']:
+        pop_deprecated(generic_projection_settings, name)
 
     if povray_settings is None:
         povray_settings = {}
