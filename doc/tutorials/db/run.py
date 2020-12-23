@@ -27,7 +27,7 @@ for n in [1, 2, 3]:
     a = read('ads.db@Cu{}O'.format(n))[0]
     a *= (2, 2, 1)
     renderer = write('cu{}o.pov'.format(n), a,
-                     generic_projection_settings={'rotation': '-80x'})
+                     rotation='-80x')
     renderer.render()
 
 # A bit of testing:

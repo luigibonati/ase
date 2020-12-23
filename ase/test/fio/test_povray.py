@@ -11,7 +11,6 @@ def test_povray_io(povray_executable):
 
 
 def test_povray_highorder(povray_executable):
-
     atoms = molecule('CH4')
     radii = [0.2] * len(atoms)
     bondpairs = get_bondpairs(atoms, radius=1.0)
@@ -28,8 +27,10 @@ def test_povray_highorder(povray_executable):
 
     renderer = write_pov(
         'atoms.pov', atoms,
-        generic_projection_settings=dict(radii=radii),
-        povray_settings=dict(canvas_width=50, bondatoms=bondpairs))
+        povray_settings=dict(canvas_width=50, bondatoms=bondpairs),
+        radii=radii,
+    )
+
 
     # XXX Not sure how to test that the bondpairs data processing is correct.
     pngfile = renderer.render()
