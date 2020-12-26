@@ -20,8 +20,13 @@ class CacheLock:
         self.key = key
 
     def save(self, value):
-        json = encode(value)
-        self.fd.write(json.encode('utf-8'))
+        json_utf8 = encode(value).encode('utf-8')
+        try:
+            self.fd.write(json_utf8)
+        except Exception as ex:
+            raise RuntimeError(f'Failed to save {value} to cache') from ex
+        finally:
+            self.fd.close()
 
 
 class MultiFileJSONCache(MutableMapping):

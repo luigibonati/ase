@@ -92,13 +92,17 @@ class Vibrations:
         if indices is None:
             indices = range(len(atoms))
         self.indices = np.asarray(indices)
-        self.name = name
+        #self.name = name
         self.delta = delta
         self.nfree = nfree
         self.H = None
         self.ir = None
 
-        self.cache = get_json_cache('vibration.cache')
+        self.cache = get_json_cache(name)
+
+    @property
+    def name(self):
+        return str(self.cache.directory)
 
     def run(self):
         """Run the vibration calculations.
@@ -234,6 +238,7 @@ class Vibrations:
 
         if direction != 'central':
             feq = forces['eq']
+
         for a in self.indices:
             for i in 'xyz':
                 token = f'{self.name}.{a}{i}'
