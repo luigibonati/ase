@@ -92,7 +92,7 @@ class Vibrations:
         if indices is None:
             indices = range(len(atoms))
         self.indices = np.asarray(indices)
-        #self.name = name
+
         self.delta = delta
         self.nfree = nfree
         self.H = None
@@ -140,6 +140,9 @@ class Vibrations:
                 if world.rank == 0:
                     handle.save(result)
 
+    def _prefix(self, string):
+        return f'{self.name}.{string}'
+
     def iterdisplace(self, inplace=False):
         """Yield name and atoms object for initial and displaced structures.
 
@@ -148,7 +151,7 @@ class Vibrations:
         calculated gradients to <name>.json and continue using this instance.
         """
         atoms = self.atoms if inplace else self.atoms.copy()
-        yield self.name + '.eq', atoms
+        yield self._prefix('eq'), atoms
         for name, a, i, disp in self.displacements():
             if not inplace:
                 atoms = self.atoms.copy()
@@ -169,8 +172,10 @@ class Vibrations:
             for i in range(3):
                 for sign in [-1, 1]:
                     for ndis in range(1, self.nfree // 2 + 1):
-                        name = '%s.%d%s%s' % (self.name, a, 'xyz'[i],
-                                              ndis * ' +-'[sign])
+                        stuff = '%d%s%s' % (a, 'xyz'[i],
+                                            ndis * ' +-'[sign])
+
+                        name = self._prefix(stuff)
                         disp = ndis * sign * self.delta
                         yield name, a, i, disp
 
@@ -241,7 +246,7 @@ class Vibrations:
 
         for a in self.indices:
             for i in 'xyz':
-                token = f'{self.name}.{a}{i}'
+                token = self._prefix(f'{a}{i}')
                 fminus = forces[token + '-']
                 fplus = forces[token + '+']
                 if self.method == 'frederiksen':
