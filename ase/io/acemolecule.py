@@ -33,7 +33,6 @@ def parse_geometry(filename):
                     break
         atoms = []
         positions = []
-        print(start_line, end_line)
         for i in range(start_line + 1, end_line):
             atomic_number = lines[i].split()[0]
             atoms.append(str(chemical_symbols[int(atomic_number)]))
@@ -193,7 +192,7 @@ def test_acemolecule_input():
     f = open('acemolecule_test.inp','w')
     f.write(sample_inputfile)
     f.close()
-    atoms = Atoms(symbols='HF',positions = np.array([[1.0, 2.0, -0.6], [-1.0, 3.0, 0.7]]))
+    atoms = Atoms(symbols='HF',positions=np.array([[1.0, 2.0, -0.6], [-1.0, 3.0, 0.7]]))
     atoms.write('acemolecule_test.xyz',format='xyz')
     atoms = read_acemolecule_input('acemolecule_test.inp')
     assert atoms.positions == pytest.approx(
