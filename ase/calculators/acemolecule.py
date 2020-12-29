@@ -1,7 +1,6 @@
 # type: ignore
 import os
 from copy import deepcopy
-from ase.io.acemolecule import read_acemolecule_out
 from ase.io import read
 from ase.calculators.calculator import ReadError
 from ase.calculators.calculator import FileIOCalculator
