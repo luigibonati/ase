@@ -1,5 +1,5 @@
 """
-Reader for CP2Ks DCD_ALIGNED_CELL format.
+Reader for CP2Ks DCD_ALIGNED_CELL format and restart files.
 
 Based on [pwtools](https://github.com/elcorto/pwtools).
 All information about the dcd format is taken from there.
@@ -17,11 +17,13 @@ Contributed by Patrick Melix <chemistry@melix.me>
 import numpy as np
 from itertools import islice
 import os
+from io import StringIO, UnsupportedOperation
 
-from ase.atoms import Atoms
+from ase.atoms import Atoms, Atom
 from ase.io.formats import index2range
+from ase.data import atomic_numbers
 
-__all__ = ['read_cp2k_dcd', 'iread_cp2k_dcd']
+__all__ = ['read_cp2k_dcd', 'iread_cp2k_dcd', 'read_cp2k_restart']
 
 # DCD file header
 #   (name, dtype, shape)
@@ -215,3 +217,83 @@ def _read_cp2k_dcd_frame(fileobj, dtype, natoms, symbols, aligned=False):
     else:
         atoms = Atoms(symbols, coords)
     return atoms
+
+
+def read_cp2k_restart(fileobj):
+    """Read Atoms and Cell from Restart File.
+
+    Reads the elements, coordinates and cell information from the
+    '&SUBSYS' section of a CP2K restart file.
+
+    Tries to convert atom names to elements, if this fails element is set to 'X'.
+
+    Returns an Atoms object.
+    """
+
+    def _parse(inp, ret):
+        """Helper to parse structure to nested dict"""
+        while inp:
+            line = inp.readline().strip()
+            if line.startswith('&END'):
+                return
+            elif line.startswith('&'):
+                key = line.replace('&','')
+                ret[key] = {'content': []}
+                _parse(inp, ret[key])
+            else:
+                ret['content'].append(line)
+
+    #Go to beginning of file
+    try:
+        fileobj.seek(0)
+    except UnsupportedOperation:
+        fileobj = StringIO(fileobj.read())
+        fileobj.seek(0)
+    #fast forward to &SUBSYS section
+    pos = None
+    while fileobj:
+        line = fileobj.readline()
+        if "&SUBSYS" in line:
+            pos = fileobj.tell()
+            break
+    if not pos:
+        raise RuntimeError("No &SUBSYS section found!")
+
+    data = {'content': []}
+    _parse(fileobj, data)
+    #look for &CELL
+    cell = None
+    pbc = [False, False, False]
+    if 'CELL' in data.keys():
+        content = data['CELL']['content'][:]
+        cell = [[0,0,0] for i in range(3)]
+        for line in content:
+            if line.startswith('A '):
+                cell[0] = [float(x) for x in line.split()[1:]]
+                pbc[0] = True
+            if line.startswith('B '):
+                cell[1] = [float(x) for x in line.split()[1:]]
+                pbc[1] = True
+            if line.startswith('C '):
+                cell[2] = [float(x) for x in line.split()[1:]]
+                pbc[2] = True
+        if not set([len(v) for v in cell]) == {3}:
+            raise RuntimeError("Bad Cell Definition found.")
+
+    content = data['COORD']['content'][:]
+    atomList = []
+    for entry in content:
+        entry = entry.split()
+        #Get letters for element symbol
+        el = ""
+        for char in entry[0]:
+            if char.isalpha():
+                el += char
+        el = el.lower().capitalize()
+        #Get positions
+        pos = [ float(x) for x in entry[1:4] ]
+        if el in atomic_numbers.keys():
+            atomList.append(Atom(el, pos))
+        else:
+            atomList.append(Atom('X', pos))
+    return Atoms(atomList, cell=cell, pbc=pbc)
