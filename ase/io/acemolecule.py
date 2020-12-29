@@ -204,6 +204,5 @@ def test_acemolecule_input():
 
 if __name__ == "__main__":
     import sys
-    from ase.io import read as ACE_read
     test_acemolecule_output()
     test_acemolecule_input()

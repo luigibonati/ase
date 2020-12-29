@@ -13,13 +13,8 @@ class ACE(FileIOCalculator):
     It has default parameters of each input section
     And parameters' type = list of dictionaries
     '''
-
-
     name = 'ace'
     implemented_properties = ['energy', 'forces', 'excitation-energy']
-    #    results = {}
-    # 'geometry', 'excitation-energy']
-    # defaults is default section_name of ACE-input
     basic_list = [{
         'Type': 'Scaling', 'Scaling': '0.35', 'Basis': 'Sinc',
                   'Grid': 'Sphere',
@@ -283,4 +278,5 @@ def update_parameter(oldpar, newpar):
         else:
             oldpar[section] = section_param
     return oldpar
+
 
