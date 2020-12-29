@@ -1,6 +1,7 @@
 from ase import Atoms
 from ase.calculators.acemolecule import ACE
 
+
 def dict_is_subset(d1, d2):
     """True if all the key-value pairs in dict 1 are in dict 2"""
     for key, value in d1.items():
@@ -10,7 +11,6 @@ def dict_is_subset(d1, d2):
             return False
     else:
         return True
-
 
 
 def test_acemolecule_calculator():

@@ -6,6 +6,7 @@ from ase.io import read
 from ase.data import chemical_symbols
 import os
 
+
 def parse_geometry(filename):
     '''Read atoms geometry from ACE-Molecule log file and put it to self.data.
     Parameters
@@ -123,6 +124,7 @@ def read_acemolecule_input(filename):
                 break
     atoms = read(geometryfile, format='xyz')
     return atoms
+
 
 def test_acemolecule_output():
     from ase.units import Hartree
