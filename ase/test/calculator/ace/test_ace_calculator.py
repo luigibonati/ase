@@ -14,7 +14,6 @@ def dict_is_subset(d1, d2):
 
 
 def test_acemolecule_calculator():
-    import pytest
 
     #ace_cmd = "mpirun -np ncores /PATH/TO/ace PREFIX.inp > PREFIX.log"
     ace_cmd = "mpirun -np 2 /home/khs/hs_file/programs/ACE-Molecule/ace PREFIX.inp > PREFIX.log"
