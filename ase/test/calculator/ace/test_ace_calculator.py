@@ -25,12 +25,12 @@ def test_acemolecule_calculator():
             Diagonalize={'Tolerance':0.000000001}, Mixing={'MixingType':'Density','MixingParameter':0.3,'MixingMethod':1})
     he = Atoms("He", positions = [[0.0, 0.0, 0.0]])
     he.calc = ACE(command = ace_cmd, BasicInformation=basis,Guess=guess,Scf=scf)
-    sample_parameters =he.calc.parameters
+    sample_parameters = he.calc.parameters
     assert dict_is_subset(basis, sample_parameters['BasicInformation'][0])
     assert dict_is_subset(guess, sample_parameters['Guess'][0])
     assert dict_is_subset(scf, sample_parameters['Scf'][0])
     he.calc.set(BasicInformation={"Pseudopotential": {"UsingDoubleGrid": 1}})
-    sample_parameters =he.calc.parameters
+    sample_parameters = he.calc.parameters
     assert dict_is_subset({"UsingDoubleGrid": 1}, sample_parameters['BasicInformation'][0]["Pseudopotential"])
 
 

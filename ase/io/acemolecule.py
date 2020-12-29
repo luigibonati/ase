@@ -1,5 +1,3 @@
-
-
 import numpy as np
 import ase.units
 from ase.atoms import Atoms
@@ -160,7 +158,7 @@ Total energy       = -1.5
     convert = ase.units.Hartree / ase.units.Bohr
     assert results.pop('forces') / convert == pytest.approx(
         np.array([[0.1, 0.2, 0.3], [0.5, 0.6, 0.7]]))
-    assert results.pop('energy')/ Hartree == -1.5
+    assert results.pop('energy') / Hartree == -1.5
 
 
 def test_acemolecule_input():
