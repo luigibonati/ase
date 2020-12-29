@@ -21,7 +21,7 @@ def test_acemolecule_calculator():
     #ace_cmd = "mpirun -np ncores /PATH/TO/ace PREFIX.inp > PREFIX.log"
     ace_cmd = "mpirun -np 2 /home/khs/hs_file/programs/ACE-Molecule/ace PREFIX.inp > PREFIX.log"
 
-    basis = dict(Scaling='0.5', Cell=7.0, Grid='Basic', Centered=0,Pseudopotential={'Pseudopotential':1,'Format':'upf','PSFilenames':'/PATH/TO/He.pbe.UPF'} )
+    basis = dict(Scaling='0.5', Cell=7.0, Grid='Basic', Centered=0,Pseudopotential={'Pseudopotential':1,'Format':'upf','PSFilenames':'/PATH/TO/He.pbe.UPF'})
     guess = dict(InitialGuess=1,InitialFilenames='/PATH/TO/He.pbe.UPF')
     scf = dict(IterateMaxCycle=50,ConvergenceType='Energy',ConvergenceTolerance=0.000001,EnergyDecomposition=1, 
             ExchangeCorrelation={'XFunctional':'LDA_X','CFunctional':'LDA_C_PW'}, 
