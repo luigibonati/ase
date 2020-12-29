@@ -128,7 +128,7 @@ def read_acemolecule_input(filename):
     return atoms
 
 def test_acemolecule_output():
-    from ase.units import Hartree, Bohr
+    from ase.units import Hartree
     import pytest
     sample_outfile = """\
 
@@ -203,6 +203,5 @@ def test_acemolecule_input():
     os.system('rm acemolecule_test.xyz')
 
 if __name__ == "__main__":
-    import sys
     test_acemolecule_output()
     test_acemolecule_input()
