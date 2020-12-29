@@ -15,7 +15,6 @@ def dict_is_subset(d1, d2):
 
 def test_acemolecule_calculator():
     import pytest
-    from ase import Atoms
     from ase.units import Hartree, Bohr
 
     #ace_cmd = "mpirun -np ncores /PATH/TO/ace PREFIX.inp > PREFIX.log"
