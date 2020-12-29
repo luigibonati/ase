@@ -1,6 +1,7 @@
 import os
 import socket
 from subprocess import Popen
+from contextlib import ExitStack, contextmanager
 
 import numpy as np
 
@@ -194,6 +195,32 @@ class IPIProtocol:
         return r
 
 
+@contextmanager
+def temporary_unixsocket(socketfile):
+    assert socketfile.startswith('/tmp/ipi_'), socketfile
+    serversocket = socket.socket(socket.AF_UNIX)
+    try:
+        serversocket.bind(socketfile)
+    except OSError as err:
+        raise OSError('{}: {}'.format(err, repr(socketfile)))
+
+    try:
+        with serversocket:
+            yield serversocket
+    finally:
+        os.unlink(socketfile)
+
+
+@contextmanager
+def temporary_inetsocket(port):
+    serversocket = socket.socket(socket.AF_INET)
+    serversocket.setsockopt(socket.SOL_SOCKET,
+                            socket.SO_REUSEADDR, 1)
+    serversocket.bind(('', port))
+    with serversocket:
+        yield serversocket
+
+
 class SocketServer:
     default_port = 31415
 
@@ -226,27 +253,21 @@ class SocketServer:
         elif unixsocket is not None and port is not None:
             raise ValueError('Specify only one of unixsocket and port')
 
+        self._exitstack = ExitStack()
         self.port = port
         self.unixsocket = unixsocket
         self.timeout = timeout
         self._closed = False
-        self._created_socket_file = None  # file to be unlinked in close()
 
         if unixsocket is not None:
-            self.serversocket = socket.socket(socket.AF_UNIX)
             actualsocket = actualunixsocketname(unixsocket)
-            try:
-                self.serversocket.bind(actualsocket)
-            except OSError as err:
-                raise OSError('{}: {}'.format(err, repr(actualsocket)))
-            self._created_socket_file = actualsocket
             conn_name = 'UNIX-socket {}'.format(actualsocket)
+            socket_context = temporary_unixsocket(actualsocket)
         else:
-            self.serversocket = socket.socket(socket.AF_INET)
-            self.serversocket.setsockopt(socket.SOL_SOCKET,
-                                         socket.SO_REUSEADDR, 1)
-            self.serversocket.bind(('', port))
             conn_name = 'INET port {}'.format(port)
+            socket_context = temporary_inetsocket(port)
+
+        self.serversocket = self._exitstack.enter_context(socket_context)
 
         if log:
             print('Accepting clients on {}'.format(conn_name), file=log)
@@ -277,7 +298,7 @@ class SocketServer:
         """Wait for client and establish connection."""
         # It should perhaps be possible for process to be launched by user
         log = self.log
-        if self.log:
+        if log:
             print('Awaiting client', file=self.log)
 
         # If we launched the subprocess, the process may crash.
@@ -289,6 +310,7 @@ class SocketServer:
         while True:
             try:
                 self.clientsocket, self.address = self.serversocket.accept()
+                self._exitstack.enter_context(self.clientsocket)
             except socket.timeout:
                 if self.proc is not None:
                     status = self.proc.poll()
@@ -312,6 +334,7 @@ class SocketServer:
         if self._closed:
             return
 
+        self._exitstack.close()
         if self.log:
             print('Close socket server', file=self.log)
         self._closed = True
@@ -321,8 +344,6 @@ class SocketServer:
         # if self.protocol is not None:
         #     self.protocol.end()  # Send end-of-communication string
         self.protocol = None
-        if self.clientsocket is not None:
-            self.clientsocket.close()  # shutdown(socket.SHUT_RDWR)
         if self.proc is not None:
             exitcode = self.proc.wait()
             if exitcode != 0:
@@ -332,12 +353,13 @@ class SocketServer:
                 # Should investigate at some point
                 warnings.warn('Subprocess exited with status {}'
                               .format(exitcode))
-        if self.serversocket is not None:
-            self.serversocket.close()
-        if self._created_socket_file is not None:
-            assert self._created_socket_file.startswith('/tmp/ipi_')
-            os.unlink(self._created_socket_file)
         # self.log('IPI server closed')
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.close()
 
     def calculate(self, atoms):
         """Send geometry to client and return calculated things as dict.
@@ -571,17 +593,16 @@ class SocketIOCalculator(Calculator):
         It is also possible to call calc.close() after
         use.  This is best done in a finally-block."""
 
+        self._exitstack = ExitStack()
         Calculator.__init__(self)
         self.calc = calc
         self.timeout = timeout
         self.server = None
 
         if isinstance(log, str):
-            self.log = open(log, 'w')
-            self.log_was_opened = True
+            self.log = self._exitstack.enter_context(open(log, 'w'))
         else:
             self.log = log
-            self.log_was_opened = False
 
         # We only hold these so we can pass them on to the server.
         # They may both be None as stored here.
@@ -607,11 +628,13 @@ class SocketIOCalculator(Calculator):
         return d
 
     def launch_server(self, cmd=None):
-        self.server = SocketServer(client_command=cmd, port=self._port,
-                                   unixsocket=self._unixsocket,
-                                   timeout=self.timeout, log=self.log,
-                                   cwd=(None if self.calc is None
-                                        else self.calc.directory))
+        self.server = self._exitstack.enter_context(SocketServer(
+            client_command=cmd, port=self._port,
+            unixsocket=self._unixsocket,
+            timeout=self.timeout, log=self.log,
+            cwd=(None if self.calc is None
+                 else self.calc.directory)
+        ))
 
     def calculate(self, atoms=None, properties=['energy'],
                   system_changes=all_changes):
@@ -643,14 +666,14 @@ class SocketIOCalculator(Calculator):
         self.results.update(results)
 
     def close(self):
-        if self.server is not None:
-            self.server.close()
+        try:
             self.server = None
             self.calculator_initialized = False
-            if self.log_was_opened:
-                self.log.close()
+        finally:
+            self._exitstack.close()
 
     def __enter__(self):
+        self._exitstack.__enter__()
         return self
 
     def __exit__(self, type, value, traceback):

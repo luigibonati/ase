@@ -370,9 +370,8 @@ class Demon(FileIOCalculator):
             # write geometry
             self._write_atomic_coordinates(f, atoms)
 
-            # write pickle of Parameters
-            pickle.dump(self.parameters,
-                        open(self.label + '/deMon_parameters.pckl', 'wb'))
+            with open(self.label + '/deMon_parameters.pckl', 'wb') as fd:
+                pickle.dump(self.parameters, fd)
 
             # write xyz file for good measure.
             ase.io.write(self.label + '/deMon_atoms.xyz', self.atoms)
@@ -387,8 +386,8 @@ class Demon(FileIOCalculator):
                             .format(restart_path))
 
         if op.exists(restart_path + '/deMon_parameters.pckl'):
-            parameters = pickle.load(open(restart_path +
-                                          '/deMon_parameters.pckl', 'r'))
+            with open(restart_path + '/deMon_parameters.pckl') as fd:
+                parameters = pickle.load(fd, 'r')
             self.parameters = parameters
 
         self.atoms = self.deMon_inp_to_atoms(restart_path + '/deMon.inp')
@@ -691,8 +690,8 @@ class Demon(FileIOCalculator):
     def deMon_inp_to_atoms(self, filename):
         """Routine to read deMon.inp and convert it to an atoms object."""
 
-        with open(filename, 'r') as f:
-            lines = f.readlines()
+        with open(filename, 'r') as fd:
+            lines = fd.readlines()
 
         # find line where geometry starts
         for i in range(len(lines)):

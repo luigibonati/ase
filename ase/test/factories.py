@@ -53,14 +53,28 @@ class AbinitFactory:
     def __init__(self, executable, pp_paths):
         self.executable = executable
         self.pp_paths = pp_paths
+        self._version = None
 
     def version(self):
         from ase.calculators.abinit import get_abinit_version
-        return get_abinit_version(self.executable)
+        # XXX Ugly
+        if self._version is None:
+            self._version = get_abinit_version(self.executable)
+        return self._version
 
-    def _base_kw(self):
-        command = '{} < PREFIX.files > PREFIX.log'.format(self.executable)
+    def is_legacy_version(self):
+        version = self.version()
+        major_ver = int(version.split('.')[0])
+        return major_ver < 9
+
+    def _base_kw(self, v8_legacy_format):
+        if v8_legacy_format:
+            command = f'{self.executable} < PREFIX.files > PREFIX.log'
+        else:
+            command = f'{self.executable} PREFIX.in > PREFIX.log'
+
         return dict(command=command,
+                    v8_legacy_format=v8_legacy_format,
                     pp_paths=self.pp_paths,
                     ecut=150,
                     chksymbreak=0,
@@ -68,14 +82,21 @@ class AbinitFactory:
 
     def calc(self, **kwargs):
         from ase.calculators.abinit import Abinit
-        kw = self._base_kw()
+        legacy = kwargs.pop('v8_legacy_format', None)
+        if legacy is None:
+            legacy = self.is_legacy_version()
+
+        kw = self._base_kw(legacy)
         kw.update(kwargs)
         return Abinit(**kw)
 
     @classmethod
     def fromconfig(cls, config):
-        return AbinitFactory(config.executables['abinit'],
-                             config.datafiles['abinit'])
+        factory = AbinitFactory(config.executables['abinit'],
+                                config.datafiles['abinit'])
+        # XXX Hack
+        factory._version = factory.version()
+        return factory
 
 
 @factory('asap')
@@ -524,7 +545,7 @@ class Factories:
         # make them skip.
         # Older tests call require(name) explicitly.
         assert name in calculator_names
-        if not self.installed(name):
+        if not self.installed(name) and not self.is_adhoc(name):
             pytest.skip(f'Not installed: {name}')
         if name not in self.requested_calculators:
             pytest.skip(f'Use --calculators={name} to enable')
