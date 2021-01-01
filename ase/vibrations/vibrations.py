@@ -12,6 +12,13 @@ from ase.parallel import world, paropen
 from ase.utils.filecache import get_json_cache
 from ase.calculators.singlepoint import SinglePointCalculator
 
+from collections import namedtuple
+
+
+class Displacement(namedtuple('Displacement', ['name', 'a', 'i', 'step'])):
+    pass
+
+
 
 class Vibrations:
     """Class for calculating vibrational modes using finite difference.
@@ -152,15 +159,16 @@ class Vibrations:
         """
         atoms = self.atoms if inplace else self.atoms.copy()
         yield self._prefix('eq'), atoms
-        for name, a, i, disp in self.displacements():
+
+        for disp in self.displacements():
             if not inplace:
                 atoms = self.atoms.copy()
-            pos0 = atoms.positions[a, i]
-            atoms.positions[a, i] += disp
-            yield name, atoms
+            pos0 = atoms.positions[disp.a, disp.i]
+            atoms.positions[disp.a, disp.i] += disp.step
+            yield disp.name, atoms
 
             if inplace:
-                atoms.positions[a, i] = pos0
+                atoms.positions[disp.a, disp.i] = pos0
 
     def iterimages(self):
         """Yield initial and displaced structures."""
@@ -177,7 +185,7 @@ class Vibrations:
 
                         name = self._prefix(stuff)
                         disp = ndis * sign * self.delta
-                        yield name, a, i, disp
+                        yield Displacement(name, a, i, disp)
 
     def calculate(self, atoms, handle):
         results = {}
