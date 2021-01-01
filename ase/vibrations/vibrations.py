@@ -175,17 +175,20 @@ class Vibrations:
         for name, atoms in self.iterdisplace():
             yield atoms
 
+    def get_displacement(self, a, i, sign, ndisp):
+        stuff = '%d%s%s' % (a, 'xyz'[i],
+                            ndisp * ' +-'[sign])
+
+        name = self._prefix(stuff)
+        disp = ndisp * sign * self.delta
+        return Displacement(name, a, i, disp)
+
     def displacements(self):
         for a in self.indices:
             for i in range(3):
                 for sign in [-1, 1]:
-                    for ndis in range(1, self.nfree // 2 + 1):
-                        stuff = '%d%s%s' % (a, 'xyz'[i],
-                                            ndis * ' +-'[sign])
-
-                        name = self._prefix(stuff)
-                        disp = ndis * sign * self.delta
-                        yield Displacement(name, a, i, disp)
+                    for ndisp in range(1, self.nfree // 2 + 1):
+                        yield self.get_displacement(a, i, sign, ndisp)
 
     def calculate(self, atoms, handle):
         results = {}
