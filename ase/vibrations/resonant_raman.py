@@ -212,11 +212,12 @@ class ResonantRaman(Raman):
         exm_object_list = []
         exp_object_list = []
         for a, i in zip(self.myindices, self.myxyz):
-            name = self._exprefix('%d%s' % (a, i))
+            mfile = self._exfilename(a, i, '-')
+            pfile = self._exfilename(a, i, '+')
             matching = append(exm_object_list,
-                              name + '-' + self.exext, matching)
+                              mfile, matching)
             matching = append(exp_object_list,
-                              name + '+' + self.exext, matching)
+                              pfile, matching)
         self.ndof = 3 * len(self.indices)
         self.nex = len(matching)
 
