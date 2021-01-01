@@ -159,7 +159,7 @@ class Infrared(Vibrations):
             raise NotImplementedError(
                 'Only central difference is implemented at the moment.')
 
-        name = '%s.eq' % self.name
+        name = self._prefix('eq')
         forces_zero = data[name]['forces']
         dipole_zero = data[name]['dipole']
         self.dipole_zero = (sum(dipole_zero**2)**0.5) / units.Debye
@@ -172,7 +172,7 @@ class Infrared(Vibrations):
         r = 0
         for a in self.indices:
             for i in 'xyz':
-                name = '%s.%d%s' % (self.name, a, i)
+                name = self._prefix('%d%s' % (a, i))
                 d1 = data[name + '-']
                 d2 = data[name + '+']
                 fminus = d1['forces']
