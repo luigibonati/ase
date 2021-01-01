@@ -15,18 +15,23 @@ class Placzek(ResonantRaman):
     def set_approximation(self, value):
         raise ValueError('Approximation can not be set.')
 
+    def _exfilename(self, a, axisname, sign):
+        return self._exprefix(f'{a}{axisname}{sign}{self.exext}')
+
+    def _exread(self, a, axisname, sign):
+        exname = self._exfilename(a, axisname, sign)
+        return self.exobj.read(exname, **self.exkwargs)
+
     def read_excitations(self):
         """Read excitations from files written"""
         self.ex0E_p = None  # mark as read
         self.exm_r = []
         self.exp_r = []
         for a, i in zip(self.myindices, self.myxyz):
-            exname = self._exprefix('%d%s-' % (a, i) + self.exext)
-            self.log('reading ' + exname)
-            self.exm_r.append(self.exobj.read(exname, **self.exkwargs))
-            exname = self._exprefix('%d%s+' % (a, i) + self.exext)
-            self.log('reading ' + exname)
-            self.exp_r.append(self.exobj.read(exname, **self.exkwargs))
+            ex_minus = self._exread(a, i, '-')
+            ex_plus = self._exread(a, i, '+')
+            self.exm_r.append(ex_minus)
+            self.exp_r.append(ex_plus)
 
     def electronic_me_Qcc(self, omega, gamma=0):
         self.calculate_energies_and_modes()
