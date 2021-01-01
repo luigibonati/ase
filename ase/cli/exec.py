@@ -39,7 +39,7 @@ class CLICommand:
     @staticmethod
     def run(args, parser):
         if not (args.exec_code or args.exec_file):
-            parser.error("Atleast one of '-e' or '-E' must be provided")
+            parser.error("At least one of '-e' or '-E' must be provided")
 
         if args.read_args:
             args.read_args = eval("dict({0})"
