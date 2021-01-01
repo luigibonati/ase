@@ -15,9 +15,6 @@ class Placzek(ResonantRaman):
     def set_approximation(self, value):
         raise ValueError('Approximation can not be set.')
 
-    def _exfilename(self, a, axisname, sign):
-        return self._exprefix(f'{a}{axisname}{sign}{self.exext}')
-
     def _exread(self, a, axisname, sign):
         exname = self._exfilename(a, axisname, sign)
         return self.exobj.read(exname, **self.exkwargs)
@@ -63,8 +60,7 @@ class PlaczekStatic(Raman):
         self.alp_rr = []
         for a, i in zip(self.myindices, self.myxyz):
             for sign, al_rr in zip('-+', [self.alm_rr, self.alp_rr]):
-                exname = self._exprefix('%d%s%s' % (a, i, sign) + self.exext)
-                self.log('reading ' + exname)
+                exname = self._exfilename(a, i, sign)
                 al_rr.append(np.loadtxt(exname))
 
     def electronic_me_Qcc(self):

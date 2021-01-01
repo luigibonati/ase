@@ -117,6 +117,12 @@ class RamanBase:
             self.txt.write(pre + message + end)
             self.txt.flush()
 
+    def _exprefix(self, string):
+        return f'{self.exname}.{string}'
+
+    def _exfilename(self, a, axisname, sign):
+        return self._exprefix(f'{a}{axisname}{sign}{self.exext}')
+
 
 class RamanData(RamanBase):
     """Base class to evaluate Raman spectra from pre-computed data"""
@@ -138,9 +144,6 @@ class RamanData(RamanBase):
             exname = kwargs.get('name', self.name)
         self.exname = exname
         self._already_read = False
-
-    def _exprefix(self, string):
-        return f'{self.exname}.{string}'
 
     def get_energies(self):
         self.calculate_energies_and_modes()
