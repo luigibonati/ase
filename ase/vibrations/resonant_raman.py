@@ -504,15 +504,21 @@ class LrResonantRaman(ResonantRaman):
 
     Quick and dirty approach to enable loading of LrTDDFT calculations
     """
+
+    def read_exobj(self, filename):
+        return self.exobj(filename, **self.exkwargs)
+
+    def _eq_exfile(self):
+        return self._exprefix('eq') + self.exext
+
     def read_excitations(self):
-        filename = self._exprefix('eq') + self.exext
-        self.log(f'reading {filename}')
-        ex0_object = self.exobj(filename, **self.exkwargs)
+        filename = self._eq_exfile()
+        ex0_object = self.read_exobj(filename)
         eu = ex0_object.energy_to_eV_scale
         matching = frozenset(ex0_object.kss)
 
-        def append(lst, exname, matching):
-            exo = self.exobj(exname, **self.exkwargs)
+        def append(lst, filename, matching):
+            exo = self.read_exobj(filename)
             lst.append(exo)
             matching = matching.intersection(exo.kss)
             return matching
@@ -521,19 +527,22 @@ class LrResonantRaman(ResonantRaman):
         exp_object_list = []
         for a in self.indices:
             for i in 'xyz':
-                name = self._exprefix('%d%s' % (a, i))
+                name1 = self._exfilename(a, i, '-')
+                name2 = self._exfilename(a, i, '+')
                 matching = append(exm_object_list,
-                                  name + '-' + self.exext, matching)
+                                  name1,
+                                  matching)
                 matching = append(exp_object_list,
-                                  name + '+' + self.exext, matching)
+                                  name2,
+                                  matching)
         self.ndof = 3 * len(self.indices)
 
         def select(exl, matching):
             exl.diagonalize(**self.exkwargs)
-            mlst = [ex for ex in exl]
+            mlist = list(exl)
 #            mlst = [ex for ex in exl if ex in matching]
 #            assert(len(mlst) == len(matching))
-            return mlst
+            return mlist
         ex0 = select(ex0_object, matching)
         self.nex = len(ex0)
         exm = []
