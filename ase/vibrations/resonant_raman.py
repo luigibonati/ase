@@ -14,7 +14,7 @@ class ResonantRamanCalculator(RamanCalculatorBase, Vibrations):
     """Base class for resonant Raman calculators using finite differences.
     """
     def __init__(self, atoms, ExcitationsCalculator, *args,
-                 exkwargs={}, exext='.ex.gz', overlap=False,
+                 exkwargs=None, exext='.ex.gz', overlap=False,
                  **kwargs):
         """
         Parameters
@@ -47,9 +47,17 @@ class ResonantRamanCalculator(RamanCalculatorBase, Vibrations):
         This produces all necessary data for further analysis.
         """
         self.exobj = ExcitationsCalculator
+        if exkwargs is None:
+            exkwargs = {}
         self.exkwargs = exkwargs
         self.overlap = overlap
+
         super().__init__(atoms, *args, exext=exext, **kwargs)
+
+    def _new_exobj(self):
+        # XXXX I have to duplicate this because there are two objects
+        # which have exkwargs, why are they not unified?
+        return self.exobj(**self.exkwargs)
 
     def calculate(self, atoms, handle):
         """Call ground and excited state calculation"""
@@ -66,7 +74,7 @@ class ResonantRamanCalculator(RamanCalculatorBase, Vibrations):
             if world.rank == 0:
                 np.save(handle.key + '.ov', ov_nn)
 
-        excalc = self.exobj(**self.exkwargs)
+        excalc = self._new_exobj()
         exlist = excalc.calculate(self.atoms)
         exlist.write(handle.key + self.exext)
         return {'forces': forces}
@@ -91,9 +99,9 @@ class ResonantRaman(Raman):
     """Base Class for resonant Raman intensities using finite differences.
     """
     def __init__(self, atoms, Excitations, *args,
-                 observation={'geometry': '-Z(XX)Z'},
+                 observation=None,
                  form='v',         # form of the dipole operator
-                 exkwargs={},      # kwargs to be passed to Excitations
+                 exkwargs=None,      # kwargs to be passed to Excitations
                  exext='.ex.gz',   # extension for Excitation names
                  overlap=False,
                  minoverlap=0.02,
@@ -138,11 +146,17 @@ class ResonantRaman(Raman):
         minrep: float
             Minimal representation to consider derivative, defaults to 0.8
         """
+
+        if observation is None:
+            observation = {'geometry': '-Z(XX)Z'}
+
         kwargs['exext'] = exext
         Raman.__init__(self, atoms, *args, **kwargs)
         assert(self.vibrations.nfree == 2)
 
         self.exobj = Excitations
+        if exkwargs is None:
+            exkwargs = {}
         self.exkwargs = exkwargs
         self.observation = observation
         self.dipole_form = form
