@@ -156,6 +156,9 @@ class ResonantRaman(Raman):
             self.minoverlap = minoverlap
         self.minrep = minrep
 
+    def read_exobj(self, filename):
+        return self.exobj.read(filename, **self.exkwargs)
+
     def get_absolute_intensities(self, omega, gamma=0.1, delta=0, **kwargs):
         """Absolute Raman intensity or Raman scattering factor
 
@@ -196,12 +199,12 @@ class ResonantRaman(Raman):
 
         filename = self._exprefix('eq') + self.exext
         self.log(f'reading {filename}')
-        ex0_object = self.exobj.read(filename, **self.exkwargs)
+        ex0_object = self.read_exobj(filename)
         eu = ex0_object.energy_to_eV_scale
         matching = frozenset(ex0_object)
 
-        def append(lst, exname, matching):
-            exo = self.exobj.read(exname, **self.exkwargs)
+        def append(lst, filename, matching):
+            exo = self.read_exobj(filename)
             lst.append(exo)
             matching = matching.intersection(exo)
             return matching
@@ -272,14 +275,14 @@ class ResonantRaman(Raman):
         """
         filename = self._exprefix('eq') + self.exext
         self.log(f'reading {filename}')
-        ex0 = self.exobj.read(filename, **self.exkwargs)
+        ex0 = self.read_exobj(filename)
         eu = ex0.energy_to_eV_scale
         rep0_p = np.ones((len(ex0)), dtype=float)
 
         def load(name, pm, rep0_p):
             filename = name + pm + self.exext
             self.log(f'reading {filename}')
-            ex_p = self.exobj.read(filename, **self.exkwargs)
+            ex_p = self.read_exobj(filename)
             numpyname = name + pm + '.ov.npy'
             self.log('reading {numpyname}')
             ov_nn = np.load(numpyname)
@@ -504,9 +507,6 @@ class LrResonantRaman(ResonantRaman):
 
     Quick and dirty approach to enable loading of LrTDDFT calculations
     """
-
-    def read_exobj(self, filename):
-        return self.exobj(filename, **self.exkwargs)
 
     def _eq_exfile(self):
         return self._exprefix('eq') + self.exext

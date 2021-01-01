@@ -16,8 +16,8 @@ class Placzek(ResonantRaman):
         raise ValueError('Approximation can not be set.')
 
     def _exread(self, a, axisname, sign):
-        exname = self._exfilename(a, axisname, sign)
-        return self.exobj.read(exname, **self.exkwargs)
+        filename = self._exfilename(a, axisname, sign)
+        return self.read_exobj(filename)
 
     def read_excitations(self):
         """Read excitations from files written"""
