@@ -12,10 +12,10 @@ def fname():
 def test_exec_fail_withoutcode(cli, fname):
     cli.ase('exec', fname, expect_fail=True)
 
-def test_exec_sample_cell(cli, fname):
+def test_exec_atoms(cli, fname):
     atoms = bulk('Au')
-    out = cli.ase('exec', fname, '-e', 'print(atoms.cell.cellpar()[1])')
-    assert repr(atoms.cell.cellpar()[1]) in out
+    out = cli.ase('exec', fname, '-e', 'print(atoms.symbols)')
+    assert str(atoms.symbols) in out
 
 def test_exec_index(cli, fname):
     out = cli.ase('exec', fname, '-e', 'print(index)')
