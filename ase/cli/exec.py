@@ -1,13 +1,19 @@
 from ase.io import read
+import runpy
 
 
 class CLICommand:
     """ Execute code on files.
 
     The given python code is evaluated on the Atoms object read from
-    the input file for each frame of the file. `atoms` is used to 
-    denote the Atoms object. Either of -e or -E option should provided
-    for evaluating code given as a string or from a file, respectively.
+    the input file for each frame of the file. Either of -e or -E
+    option should provided for evaluating code given as a string or
+    from a file, respectively.
+    
+    Variables which can be used inside the python code:
+    - `index`: Index of the current Atoms object.
+    - `atoms`: Current Atoms object.
+    - `images`: List of all images given as input.
     """
 
     @staticmethod
@@ -54,10 +60,11 @@ class CLICommand:
             else:
                 configs.append(atoms)
 
-        for atoms in configs:
+        variables = {'images': configs}
+        for index, atoms in enumerate(configs):
+            variables['atoms'] = atoms
+            variables['index'] = index
             if args.exec_code:
-                # avoid exec() for Py 2+3 compat.
-                eval(compile(args.exec_code, '<string>', 'exec'))
+                exec(compile(args.exec_code, '<string>', 'exec'), variables)
             if args.exec_file:
-                eval(compile(open(args.exec_file).read(), args.exec_file,
-                             'exec'))
+                runpy.run_path(args.exec_file, init_globals=variables)
