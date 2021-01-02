@@ -1,4 +1,14 @@
-def test_vasp_Al_volrelax(require_vasp):
+import pytest
+import numpy as np
+from ase import io
+from ase.optimize import BFGS
+from ase.build import bulk
+
+calc = pytest.mark.calculator
+
+
+@calc('vasp')
+def test_vasp_Al_volrelax(factory):
     """
     Run VASP tests to ensure that relaxation with the VASP calculator works.
     This is conditional on the existence of the VASP_COMMAND or VASP_SCRIPT
@@ -6,33 +16,26 @@ def test_vasp_Al_volrelax(require_vasp):
 
     """
 
-    from ase.test.calculator.vasp import installed
-
-    assert installed()
-
-    import numpy as np
-    from ase import io
-    # QuasiNewton nowadays is an alias for BFGSLineSearch, which is
-    # broken. Use BFGS instead.
-    from ase.optimize import BFGS as QuasiNewton
-    from ase.build import bulk
-    from ase.calculators.vasp import Vasp
-
     # -- Perform Volume relaxation within Vasp
     def vasp_vol_relax():
         Al = bulk('Al', 'fcc', a=4.5, cubic=True)
-        calc = Vasp(xc='LDA', isif=7, nsw=5,
-                    ibrion=1, ediffg=-1e-3, lwave=False, lcharg=False)
-        calc.calculate(Al)
+        calc = factory.calc(xc='LDA',
+                            isif=7,
+                            nsw=5,
+                            ibrion=1,
+                            ediffg=-1e-3,
+                            lwave=False,
+                            lcharg=False)
+        Al.calc = calc
+        Al.get_potential_energy()  # Execute
 
         # Explicitly parse atomic position output file from Vasp
         CONTCAR_Al = io.read('CONTCAR', format='vasp')
 
         print('Stress after relaxation:\n', calc.read_stress())
 
-        print(
-            'Al cell post relaxation from calc:\n',
-            calc.get_atoms().get_cell())
+        print('Al cell post relaxation from calc:\n',
+              calc.get_atoms().get_cell())
         print('Al cell post relaxation from atoms:\n', Al.get_cell())
         print('Al cell post relaxation from CONTCAR:\n', CONTCAR_Al.get_cell())
 
@@ -45,12 +48,12 @@ def test_vasp_Al_volrelax(require_vasp):
     # -- Perform Volume relaxation using ASE with Vasp as force/stress calculator
     def ase_vol_relax():
         Al = bulk('Al', 'fcc', a=4.5, cubic=True)
-        calc = Vasp(xc='LDA')
+        calc = factory.calc(xc='LDA')
         Al.calc = calc
 
         from ase.constraints import StrainFilter
         sf = StrainFilter(Al)
-        qn = QuasiNewton(sf, logfile='relaxation.log')
+        qn = BFGS(sf, logfile='relaxation.log')
         qn.run(fmax=0.1, steps=5)
 
         print('Stress:\n', calc.read_stress())

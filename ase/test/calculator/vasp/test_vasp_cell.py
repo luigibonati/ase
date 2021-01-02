@@ -1,16 +1,16 @@
+import pytest
+from ase.calculators.vasp import Vasp
+from ase.build import molecule
+
+
 def test_vasp_cell(require_vasp):
     """
-
     Check the unit cell is handled correctly
-
     """
 
-    import pytest
-    from ase.calculators.vasp import Vasp
-    from ase.build import molecule
+    # XXX This test should be able to run without having VASP installed.
 
     # Molecules come with no unit cell
-
     atoms = molecule('CH4')
     calc = Vasp()
 
