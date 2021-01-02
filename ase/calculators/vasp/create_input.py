@@ -1317,7 +1317,7 @@ class GenerateVaspInput:
                    ignore_constraints=self.input_params['ignore_constraints'])
         self.write_incar(atoms, directory=directory)
         self.write_potcar(directory=directory)
-        self.write_kpoints(atoms, directory=directory)
+        self.write_kpoints(atoms=atoms, directory=directory)
         self.write_sort_file(directory=directory)
         self.copy_vdw_kernel(directory=directory)
 
