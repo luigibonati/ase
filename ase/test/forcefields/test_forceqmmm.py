@@ -90,7 +90,9 @@ def test_qm_buffer_mask(qm_calc, mm_calc, bulk_at):
 
 
 def compare_qm_cell_and_pbc(qm_calc, mm_calc, bulk_at,
-                            test_size, buffer_width, expected_pbc):
+                            test_size=4,
+                            expected_pbc=np.array([True, True, True]),
+                            buffer_width=5 * 3.61):
     """
     test qm cell shape and choice of pbc:
     make a non-periodic pdc in a direction
@@ -129,87 +131,59 @@ def compare_qm_cell_and_pbc(qm_calc, mm_calc, bulk_at,
                                    at0.cell.lengths()[expected_pbc])
 
 
-def test_qm_pbc_fully_periodic(qm_calc, mm_calc, bulk_at):
-    """
-    test qm cell shape and choice of pbc:
-    make a non-periodic pdc in a direction
-    if qm_radius + buffer is larger than the original cell
-    keep the periodic cell otherwise i. e. if cell[i, i] > qm_radius + buffer
-    test the case of a cluster in a fully periodic cell:
-    fist qm_radius + buffer > cell,
-    thus should give a cluster with pbc=[T, T, T]
-    (qm cluster is the same as the original cell)
-    """
-
-    compare_qm_cell_and_pbc(qm_calc, mm_calc, bulk_at, test_size=4,
-                            expected_pbc=np.array([True, True, True]),
-                            buffer_width=5 * 3.61)
-
-
-def test_qm_pbc_non_periodic_sphere(qm_calc, mm_calc, bulk_at):
-    """
-    test qm cell shape and choice of pbc:
-    make a non-periodic pdc in a direction
-    if qm_radius + buffer is larger than the original cell
-    keep the periodic cell otherwise i. e. if cell[i, i] > qm_radius + buffer
-    test the case of a spherical cluster in a fully periodic cell:
-    fist qm_radius + buffer < cell,
-    thus should give a cluster with pbc=[F, F, F]
-    (qm cluster cell must be DIFFERENT form the original cell)
-    """
-
-    compare_qm_cell_and_pbc(qm_calc, mm_calc, bulk_at, test_size=4,
-                            expected_pbc=np.array([False, False, False]),
-                            buffer_width=3.61)
-
-
-def test_qm_pbc_mixed_crack_and_dislo(qm_calc, mm_calc, bulk_at):
-    """
-    test qm cell shape and choice of pbc:
-    make a non-periodic pdc in a direction
-    if qm_radius + buffer is larger than the original cell
-    keep the periodic cell otherwise i. e. if cell[i, i] > qm_radius + buffer
-    testing the mixed scenario when the qm_cluster is periodic in one direction
-    (relevant for dislocation or crack cells)
-    (qm cluster cell must be the same as the original cell in periodic direction
-    and DIFFERENT form the original cell in non periodic directions)
-    """
-
-    compare_qm_cell_and_pbc(qm_calc, mm_calc, bulk_at, test_size=[4, 4, 1],
-                            expected_pbc=np.array([False, False, True]),
-                            buffer_width=3.61)
-
-    compare_qm_cell_and_pbc(qm_calc, mm_calc, bulk_at, test_size=[4, 1, 4],
-                            expected_pbc=np.array([False, True, False]),
-                            buffer_width=3.61)
-
-    compare_qm_cell_and_pbc(qm_calc, mm_calc, bulk_at, test_size=[1, 4, 4],
-                            expected_pbc=np.array([True, False, False]),
-                            buffer_width=3.61)
-
-
-def test_qm_pbc_mixed_free_surface(qm_calc, mm_calc, bulk_at):
-
-    """
-    test qm cell shape and choice of pbc:
-    make a non-periodic pdc in a direction
-    if qm_radius + buffer is larger than the original cell
-    keep the periodic cell otherwise i. e. if cell[i, i] > qm_radius + buffer
-    testing scenario periodic in one direction and non periodic in the other two
-    relevant for surfaces
-    """
-
-    compare_qm_cell_and_pbc(qm_calc, mm_calc, bulk_at, test_size=[1, 1, 4],
-                            expected_pbc=np.array([True, True, False]),
-                            buffer_width=3.61)
-
-    compare_qm_cell_and_pbc(qm_calc, mm_calc, bulk_at, test_size=[4, 1, 1],
-                            expected_pbc=np.array([False, True, True]),
-                            buffer_width=3.61)
-
-    compare_qm_cell_and_pbc(qm_calc, mm_calc, bulk_at, test_size=[1, 4, 1],
-                            expected_pbc=np.array([True, False, True]),
-                            buffer_width=3.61)
+@pytest.mark.parametrize("kwargs",
+                         [  # test the case of a cluster in
+                            # a fully periodic cell:
+                            # fist qm_radius + buffer > cell,
+                            # thus should give a cluster with pbc=[T, T, T]
+                            # (qm cluster is the same as the original cell)'''
+                            {"test_size": 4,
+                             "expected_pbc": np.array([True, True, True]),
+                             "buffer_width": 5 * 3.61},
+                            # test the case of a spherical
+                            # cluster in a fully periodic cell:
+                            # fist qm_radius + buffer < cell,
+                            # thus should give a cluster with pbc=[F, F, F]
+                            # (qm cluster cell must be DIFFERENT
+                            # form the original cell)
+                            {"test_size": 4,
+                             "expected_pbc": np.array([False, False, False]),
+                             "buffer_width": 3.61},
+                            # testing the mixed scenario when the qm_cluster
+                            # is periodic in one direction
+                            # (relevant for dislocation or crack cells)
+                            # (qm cluster cell must be the same as
+                            # the original cell in periodic direction
+                            # and DIFFERENT form the original cell
+                            # in non periodic directions
+                            # three tests for three different directions
+                            {"test_size": [4, 4, 1],
+                             "expected_pbc": np.array([False, False, True]),
+                             "buffer_width": 3.61},
+                            {"test_size": [4, 1, 4],
+                             "expected_pbc": np.array([False, True, False]),
+                             "buffer_width": 3.61},
+                            {"test_size": [1, 4, 4],
+                             "expected_pbc": np.array([True, False, False]),
+                             "buffer_width":3.61},
+                             # testing scenario periodic in one direction
+                             # and non periodic in the other two
+                             # relevant for surfaces.
+                             # testing three different scenarios
+                             {"test_size": [1, 1, 4],
+                              "expected_pbc": np.array([True, True, False]),
+                              "buffer_width": 3.61},
+                             {"test_size": [4, 1, 1],
+                              "expected_pbc": np.array([False, True, True]),
+                              "buffer_width": 3.61},
+                             {"test_size": [1, 4, 1],
+                              "expected_pbc": np.array([True, False, True]),
+                              "buffer_width": 3.61}
+                         ])
+def test_qm_pbc(kwargs, qm_calc, mm_calc, bulk_at):
+    kwargs1 = {}
+    kwargs1.update(kwargs)
+    compare_qm_cell_and_pbc(qm_calc, mm_calc, bulk_at, **kwargs1)
 
 
 def test_rescaled_calculator():
