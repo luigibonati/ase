@@ -225,6 +225,8 @@ def test_rescaled_calculator():
     # transition metals by M. W. Finnis & J.E. Sinclair
     # https://www.tandfonline.com/doi/abs/10.1080/01418618408244210
     # using analytical formulation in order to avoid extra file dependence
+    # All the constants are taken from the paper.
+    # Please refer to the paper for more details
 
     def pair_potential(r):
         """
