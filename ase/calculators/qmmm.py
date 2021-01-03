@@ -657,7 +657,7 @@ class ForceQMMM(Calculator):
             Amount of vacuum to add around QM atoms.
         zero_mean: bool
             If True, add a correction to zero the mean force in each direction
-        qm_cell_round_off: int
+        qm_cell_round_off: float
             Tolerance value in Angstrom to round the qm cluster cell
         qm_radius: 3x1 array of floats qm_radius for [x, y, z]
             3d qm radius for calculation of qm cluster cell. default is None
