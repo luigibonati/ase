@@ -421,8 +421,6 @@ def test_export_xyz(at0):
     assert "forces" in read_atoms.arrays
     # absolute tolerance for comparing forces close to zero
     np.testing.assert_allclose(forces, read_atoms.get_forces(), atol=1.0e-6)
-    import os
-    os.remove(filename)
 
 
 def test_set_masks_from_region(at0, qm_calc, mm_calc):
@@ -469,6 +467,3 @@ def test_import_xyz(at0, qm_calc, mm_calc):
 
     assert all(imported_qmmm.qm_selection_mask == qmmm.qm_selection_mask)
     assert all(imported_qmmm.qm_buffer_mask == qmmm.qm_buffer_mask)
-
-    import os
-    os.remove(filename)
