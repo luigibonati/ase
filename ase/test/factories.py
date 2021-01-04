@@ -504,30 +504,10 @@ class Factories:
     # TODO: Port calculators to use factories.  As we do so, remove names
     # from list of calculators that we monkeypatch:
     monkeypatch_calculator_constructors = {
-        'ace',
-        'aims',
-        'amber',
-        'castep',
-        'crystal',
-        'demon',
-        'demonnano',
-        'dftd3',
-        'dmol',
-        'exciting',
-        'fleur',
-        'gamess_us',
-        'gaussian',
-        'gulp',
-        'hotbit',
-        'lammpslib',
-        'mopac',
-        'onetep',
-        'orca',
-        'Psi4',
-        'qchem',
-        'turbomole',
-        'vasp',
-        'vasp2',
+        'ace', 'aims', 'amber', 'castep', 'crystal', 'demon', 'demonnano',
+        'dftd3', 'dmol', 'exciting', 'fleur', 'gamess_us', 'gaussian',
+        'gulp', 'hotbit', 'lammpslib', 'mopac', 'onetep', 'orca',
+        'Psi4', 'qchem', 'turbomole',
     }
 
     def __init__(self, requested_calculators):

@@ -40,7 +40,7 @@ def test_vasp_charge(factory, system, expected_nelect_from_vasp):
 
 
 @calc('vasp')
-def test_vasp_no_inputs(require_vasp, system, factory):
+def test_vasp_no_inputs(system, factory):
     # Make sure that no nelect was written into INCAR yet (as it wasn't necessary)
     calc = factory.calc()
     system.calc = calc
@@ -50,8 +50,7 @@ def test_vasp_no_inputs(require_vasp, system, factory):
 
 
 @calc('vasp')
-def test_vasp_minus_charge(require_vasp, factory, system,
-                           expected_nelect_from_vasp):
+def test_vasp_minus_charge(factory, system, expected_nelect_from_vasp):
     # Compare VASP's output nelect from before minus charge to default nelect
     # determined by us minus charge
     charge = -2
@@ -69,7 +68,7 @@ def test_vasp_minus_charge(require_vasp, factory, system,
 
 
 @calc('vasp')
-def test_vasp_nelect_charge_conflict(require_vasp, factory, system,
+def test_vasp_nelect_charge_conflict(factory, system,
                                      expected_nelect_from_vasp):
     # Test that conflicts between explicitly given nelect and charge are detected
     charge = -2
@@ -87,7 +86,7 @@ def test_vasp_nelect_charge_conflict(require_vasp, factory, system,
 
 
 @calc('vasp')
-def test_vasp_nelect_no_write(require_vasp, factory, system):
+def test_vasp_nelect_no_write(factory, system):
     # Test that nothing is written if charge is 0 and nelect not given
     calc = factory.calc(xc='LDA',
                         nsw=-1,
@@ -103,7 +102,7 @@ def test_vasp_nelect_no_write(require_vasp, factory, system):
 
 
 @calc('vasp')
-def test_vasp_nelect(require_vasp, factory, system):
+def test_vasp_nelect(factory, system):
     # Test that explicitly given nelect still works as expected
     calc = factory.calc(xc='LDA',
                         nsw=-1,

@@ -5,7 +5,7 @@ calc = pytest.mark.calculator
 
 
 @calc('vasp')
-def test_vasp_check_state(require_vasp, factory, atoms_2co):
+def test_vasp_check_state(factory, atoms_2co):
     """
     Run tests to ensure that the VASP check_state() function call works correctly,
     i.e. correctly sets the working directories and works in that directory.
