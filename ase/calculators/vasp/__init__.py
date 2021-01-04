@@ -1,5 +1,5 @@
 from .vasp import Vasp
-from .vasp_auxilliary import VaspChargeDensity, VaspDos, xdat2traj
+from .vasp_auxiliary import VaspChargeDensity, VaspDos, xdat2traj
 from .vasp2 import Vasp2
 from .interactive import VaspInteractive
 __all__ = [
