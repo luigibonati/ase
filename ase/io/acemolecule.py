@@ -4,7 +4,6 @@ from ase.atoms import Atoms
 from ase.calculators.singlepoint import SinglePointCalculator
 from ase.io import read
 from ase.data import chemical_symbols
-import os
 
 
 def parse_geometry(filename):
