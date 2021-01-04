@@ -357,15 +357,16 @@ class GaussianConfiguration:
                         atom_info_dict = {k.lower(): v for k, v
                                           in atom_info_dict.items()}
                         atom_mass = atom_info_dict.get('iso', None)
-                        if atom_mass.isnumeric():
-                            # will be true if atom_mass is integer
-                            try:
-                                atom_mass = download_isotope_data(
-                                )[atomic_numbers[symbol]][
-                                    int(atom_mass)]['mass']
-                                atom_info_dict['iso'] = str(atom_mass)
-                            except KeyError:
-                                pass
+                        if atom_mass is not None:
+                            if atom_mass.isnumeric():
+                                # will be true if atom_mass is integer
+                                try:
+                                    atom_mass = download_isotope_data(
+                                    )[atomic_numbers[symbol]][
+                                        int(atom_mass)]['mass']
+                                    atom_info_dict['iso'] = str(atom_mass)
+                                except KeyError:
+                                    pass
                         atom_info = ""
                         for key, value in atom_info_dict.items():
                             atom_info += key + '=' + value + ', '
