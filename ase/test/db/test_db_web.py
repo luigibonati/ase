@@ -3,7 +3,6 @@ import pytest
 from ase import Atoms
 from ase.db import connect
 from ase.db.web import Session
-from ase.db.app import handle_query
 
 
 @pytest.fixture(scope='module')
@@ -30,6 +29,11 @@ def database(tmp_path_factory):
         db.write(atoms)
 
         yield db
+
+
+def handle_query(args) -> str:
+    """Converts request args to ase.db query string."""
+    return args['query']
 
 
 @pytest.fixture(scope='module')
