@@ -10,6 +10,7 @@ parameters = {
     'gamess_us': dict(label='test_traj'),
     #'elk': dict(tasks=0, rgkmax=5.0, epsengy=1.0, epspot=1.0, tforce=True,
     #            pbc=True),
+    'vasp': dict(xc='LDA'),
     'Psi4': {},
 }
 
