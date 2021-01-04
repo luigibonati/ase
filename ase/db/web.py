@@ -49,6 +49,7 @@ class Session:
         if what == 'query':
             self.query = project['handle_query_function'](args)
             self.nrows = None
+            self.page = 0
 
         elif what == 'sort':
             if x == self.sort:
