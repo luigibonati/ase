@@ -11,5 +11,3 @@ def test_ace():
     forces = mol.get_forces()
     print(forces)
 
-if __name__=='__main__':
-    test_ace()
