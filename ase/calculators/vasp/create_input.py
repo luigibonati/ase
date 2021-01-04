@@ -936,6 +936,9 @@ class GenerateVaspInput:
         }
     }
 
+    # environment variable for PP paths
+    VASP_PP_PATH = 'VASP_PP_PATH'
+
     def __init__(self, restart=None):
         self.float_params = {}
         self.exp_params = {}
@@ -1133,8 +1136,8 @@ class GenerateVaspInput:
         else:
             pp_folder = p['pp']
 
-        if 'VASP_PP_PATH' in os.environ:
-            pppaths = os.environ['VASP_PP_PATH'].split(':')
+        if self.VASP_PP_PATH in os.environ:
+            pppaths = os.environ[self.VASP_PP_PATH].split(':')
         else:
             pppaths = []
         ppp_list = []

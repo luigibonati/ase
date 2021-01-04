@@ -287,6 +287,11 @@ class VaspFactory:
     def calc(self, **kwargs):
         from ase.calculators.vasp import Vasp
         # XXX We assume the user has set VASP_PP_PATH
+        if Vasp.VASP_PP_PATH not in os.environ:
+            # For now, we skip with a message that we cannot run the test
+            pytest.skip(
+                'No VASP pseudopotential path set. Set the ${} environment variable to enable.'
+                .format(Vasp.VASP_PP_PATH))
         return Vasp(command=self.executable, **kwargs)
 
     @classmethod
@@ -504,10 +509,28 @@ class Factories:
     # TODO: Port calculators to use factories.  As we do so, remove names
     # from list of calculators that we monkeypatch:
     monkeypatch_calculator_constructors = {
-        'ace', 'aims', 'amber', 'castep', 'crystal', 'demon', 'demonnano',
-        'dftd3', 'dmol', 'exciting', 'fleur', 'gamess_us', 'gaussian',
-        'gulp', 'hotbit', 'lammpslib', 'mopac', 'onetep', 'orca',
-        'Psi4', 'qchem', 'turbomole',
+        'ace',
+        'aims',
+        'amber',
+        'castep',
+        'crystal',
+        'demon',
+        'demonnano',
+        'dftd3',
+        'dmol',
+        'exciting',
+        'fleur',
+        'gamess_us',
+        'gaussian',
+        'gulp',
+        'hotbit',
+        'lammpslib',
+        'mopac',
+        'onetep',
+        'orca',
+        'Psi4',
+        'qchem',
+        'turbomole',
     }
 
     def __init__(self, requested_calculators):
