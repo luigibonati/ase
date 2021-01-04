@@ -10,7 +10,6 @@ parameters = {
     'gamess_us': dict(label='test_traj'),
     #'elk': dict(tasks=0, rgkmax=5.0, epsengy=1.0, epspot=1.0, tforce=True,
     #            pbc=True),
-    'vasp': dict(xc='LDA'),
     'Psi4': {},
 }
 
@@ -22,7 +21,8 @@ calc = pytest.mark.calculator
       basis='sz(dzp)',
       marks=pytest.mark.filterwarnings('ignore:The keyword'))
 # Deprecated keyword, remove this once things are resolved
-@calc('abinit', 'cp2k', 'emt', 'vasp')
+@calc('abinit', 'cp2k', 'emt')
+@calc('vasp', xc='lda', prec='low')
 def test_h2_traj(factory):
     run(factory)
 
