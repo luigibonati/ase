@@ -47,6 +47,7 @@ omit =
     ../calculators/vasp/interactive.py
     ../calculators/vasp/vasp2.py
     ../calculators/vasp/vasp.py
+    ../calculators/vasp/vasp_auxiliary.py
 
     # TODO: Improve IO format coverage and add include in coverage stats
     ../io/fortranfile.py
