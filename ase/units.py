@@ -214,6 +214,15 @@ def create_units(codata_version):
     # derived
     u['J'] = u['kJ'] / 1000  # Joule = kg * m**2 / s**2
     u['C'] = 1.0 / u['_e']  # Coulomb = A * s
+    u["L"] = u['m']**3 / 1000
+
+    # Imperial units
+    u['ft'] = 0.3048 * u['m']
+    u['in'] = u['ft'] / 12
+    u['lb'] = 0.45359237 * u['kg']
+    u['psi'] = 6.894767 * (1000 * u['Pascal'])
+    u['ft-lb'] = 1.355818 * u['J']
+    u['gal'] = 4.54609 * u['L']
 
     return u
 
