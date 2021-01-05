@@ -198,7 +198,8 @@ def write_gaussian_in(fd, atoms, properties=None, **params):
         # 1) Ensure proper spacing between entries with explicit spaces
         # 2) Use fewer columns for the element
         # 3) Use 'e' (scientific notation) instead of 'f' for positions
-        if atoms.arrays['gaussian_info'][i] is not None:
+        if 'gaussian_info' in atoms.arrays and \
+                atoms.arrays['gaussian_info'][i] is not None:
             symbol_section = atom.symbol + \
                 '(' + atoms.arrays['gaussian_info'][i] + ')'
             out.append('{:<10s}{:20.10f}{:20.10f}'
