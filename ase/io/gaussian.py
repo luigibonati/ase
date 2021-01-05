@@ -14,6 +14,8 @@ from ase.calculators.gaussian import Gaussian
 from ase.data import atomic_numbers
 from ase.data.isotopes import download_isotope_data
 
+from ase.io.zmatrix import parse_zmatrix
+
 _link0_keys = [
     'mem',
     'chk',
@@ -313,6 +315,11 @@ class GaussianConfiguration:
         atoms_saved = False
         readiso = False
 
+        zmatrix_type = False
+        zmatrix_contents = ""
+        zmatrix_var_section = False
+        zmatrix_vars = ""
+
         for line in gaussian_input:
             link0_match = _re_link0.match(line)
             output_type_match = _re_output_type.match(line)
@@ -343,7 +350,16 @@ class GaussianConfiguration:
                 # section of the input file begins:
                 atoms_section = True
             elif atoms_section:
+                line = line.split('!')[0]
                 if (line.split()):
+                    if zmatrix_type:
+                        if zmatrix_var_section:
+                            zmatrix_vars += line
+                            continue
+                        elif 'Variables' in line:
+                            zmatrix_var_section = True
+                            continue
+
                     # reads any info in parantheses after the atom symbol
                     # and stores it in atoms_info as a dict:
                     atom_info_match = re.search(r'\(([^\)]+)\)', line)
@@ -376,22 +392,34 @@ class GaussianConfiguration:
                         symbol = tokens[0]
                         atom_info = None
                         atom_mass = None
-                    # try:
-                    pos = list(map(float, tokens[1:4]))
-                    # except ValueError:
-                    #     print("Error in molecule specification in gaussian input file.")
-                    if symbol.upper() == 'TV':
-                        pbc[npbc] = True
-                        cell[npbc] = pos
-                        npbc += 1
+
+                    if not zmatrix_type:
+                        pos = list(tokens[1:4])
+                        if len(pos) < 3 or (pos[0] == '0' and symbol != 'TV'):
+                            zmatrix_type = True
+                            zmatrix_contents += line
+                        else:
+                            # try:
+                            pos = list(map(float, pos))
+                            # except ValueError:
+                            #     print("VALUE ERROR")
+                        if symbol.upper() == 'TV':
+                            pbc[npbc] = True
+                            cell[npbc] = pos
+                            npbc += 1
+                        else:
+                            symbols.append(symbol)
+                            positions.append(pos)
+                            atoms_info.append(atom_info)
+                            atom_masses.append(atom_mass)
                     else:
-                        symbols.append(symbol)
-                        positions.append(pos)
+                        zmatrix_contents += line
                         atoms_info.append(atom_info)
                         atom_masses.append(atom_mass)
 
                     atoms_saved = True
             elif atoms_saved:  # we must be after the atoms section
+                line.split('!')[0]
                 if count_iso == 0:
                     freq_options = parameters.get('freq', None)
                     if freq_options:
@@ -419,7 +447,7 @@ class GaussianConfiguration:
                             # when count_iso is 0 we are in the line where
                             # temperature, pressure, [scale] is saved
                             line = line.replace(
-                                '[', '').replace(']', '').split('!')[0]
+                                '[', '').replace(']', '')
                             tokens = line.strip().split()
                             try:
                                 parameters.update({'temperature': tokens[0]})
@@ -453,8 +481,18 @@ class GaussianConfiguration:
             if len(atom_masses) < len(symbols):
                 for i in range(0, len(symbols) - len(atom_masses)):
                     atom_masses.append(None)
+
+        if zmatrix_type:
+            if len(zmatrix_vars) > 0:
+                atoms = parse_zmatrix(zmatrix_contents, defs=zmatrix_vars)
+            else:
+                atoms = parse_zmatrix(zmatrix_contents)
+            positions = atoms.positions
+            symbols = atoms.get_chemical_symbols()
+
         atoms = Atoms(symbols, positions, pbc=pbc,
                       cell=cell, masses=atom_masses)
+
         atoms.new_array('gaussian_info', np.array(atoms_info))
         return GaussianConfiguration(atoms, parameters)
 
