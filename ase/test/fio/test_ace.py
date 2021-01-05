@@ -4,7 +4,7 @@ from ase.io.acemolecule import read_acemolecule_out, read_acemolecule_input
 
 
 def test_acemolecule_output():
-    from ase.units import Hartree
+    import ase.units
     import pytest
     sample_outfile = """\
 
@@ -36,7 +36,7 @@ Total energy       = -1.5
     convert = ase.units.Hartree / ase.units.Bohr
     assert results['forces'] / convert == pytest.approx(
         np.array([[0.1, 0.2, 0.3], [0.5, 0.6, 0.7]]))
-    assert results['energy'] / Hartree == -1.5
+    assert results['energy'] / ase.units.Hartree == -1.5
 
 
 def test_acemolecule_input():
