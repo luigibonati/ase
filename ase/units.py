@@ -218,10 +218,10 @@ def create_units(codata_version):
 
     # Imperial units
     u['ft'] = 0.3048 * u['m']
-    u['in'] = u['ft'] / 12
+    u['inch'] = u['ft'] / 12
     u['lb'] = 0.45359237 * u['kg']
     u['psi'] = 6.894767 * (1000 * u['Pascal'])
-    u['ft-lb'] = 1.355818 * u['J']
+    u['ft_lb'] = 1.355818 * u['J']
     u['gal'] = 4.54609 * u['L']
 
     return u
@@ -234,7 +234,8 @@ def create_units(codata_version):
 (_Grav, _Nav, _amu, _auf, _aup, _aut, _auv, _c, _e, _eps0,
  _hbar, _hplanck, _k, _me, _mp, _mu0, alpha, eV, fs, invcm,
  kB, kJ, kcal, kg, m, mol, nm, s, second, A, AUT, Ang, Angstrom,
- Bohr, C, Debye, GPa, Ha, Hartree, J, Pascal, bar, Ry, Rydberg) = [0.0] * 44
+ Bohr, C, Debye, GPa, Ha, Hartree, J, Pascal, bar, Ry, Rydberg,
+ ft, inch, lb, psi, ft_lb, gal, L) = [0.0] * 51
 
 # Now update the module scope:
 globals().update(create_units(__codata_version__))
