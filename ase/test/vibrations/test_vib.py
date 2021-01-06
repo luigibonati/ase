@@ -178,6 +178,18 @@ class TestVibrationsClassic():
                 os.rmdir('run_from_here')
 
 
+class TestVibrationsDataStaticMethods():
+    @pytest.mark.parametrize('mask,expected_indices',
+                        [([True, True, False, True], [0, 1, 3]),
+                         ([False, False], []),
+                         ([], []),
+                         (np.array([True, True]), [0, 1]),
+                         (np.array([False, True, True]), [1, 2]),
+                         (np.array([], dtype=bool), [])])
+    def test_indices_from_mask(self, mask, expected_indices):
+        assert VibrationsData.indices_from_mask(mask) == expected_indices
+
+
 class TestVibrationsData():
     @pytest.fixture
     def n2_data(self):
@@ -289,6 +301,23 @@ class TestVibrationsData():
         assert vib_data.get_indices() == [1, ]
         assert vib_data.get_mask().tolist() == [False, True]
 
+    def test_dos(self, n2_data):
+        vib_data = VibrationsData(n2_data['atoms'], n2_data['hessian'])
+        with pytest.warns(np.ComplexWarning):
+            dos = vib_data.get_dos()
+        assert_array_almost_equal(dos.get_energies(),
+                                  vib_data.get_energies())
+
+    def test_pdos(self, n2_data):
+        vib_data = VibrationsData(n2_data['atoms'], n2_data['hessian'])
+        with pytest.warns(np.ComplexWarning):
+            pdos = vib_data.get_pdos()
+        assert_array_almost_equal(pdos[0].get_energies(),
+                                  vib_data.get_energies())
+        assert_array_almost_equal(pdos[1].get_energies(),
+                                  vib_data.get_energies())
+        assert sum(pdos[0].get_weights()) == pytest.approx(3.0)
+
     def test_todict(self, n2_data):
         vib_data = VibrationsData(n2_data['atoms'], n2_data['hessian'])
         vib_data_dict = vib_data.todict()
@@ -311,6 +340,24 @@ class TestVibrationsData():
             assert_array_almost_equal(
                 getattr(vib_data, array_getter)(),
                 getattr(vib_data_roundtrip, array_getter)())
+
+    @pytest.mark.parametrize('indices, expected_mask',
+                             [([1], [False, True]),
+                              (None, [True, True])])
+    def test_dict_indices(self, n2_data, indices, expected_mask):
+        vib_data = VibrationsData(n2_data['atoms'], n2_data['hessian'])
+        vib_data_dict = vib_data.todict()
+        vib_data_dict['indices'] = indices
+
+        # Reduce size of Hessian if necessary
+        if indices is not None:
+            n_active = len(indices)
+            vib_data_dict['hessian'] = (
+                np.asarray(vib_data_dict['hessian'])[:n_active,:,:n_active,:]
+                .tolist())
+
+        vib_data_fromdict = VibrationsData.fromdict(vib_data_dict)
+        assert_array_almost_equal(vib_data_fromdict.get_mask(), expected_mask)
 
     def test_jmol_roundtrip(self, n2_data):
         ir_intensities = np.random.random(6)
