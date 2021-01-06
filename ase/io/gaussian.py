@@ -367,7 +367,8 @@ class GaussianConfiguration:
                     if atom_info_match:
                         line = line.replace(atom_info_match.group(0), '')
                         tokens = line.split()
-                        symbol = tokens[0]
+                        symbol = GaussianConfiguration.convert_to_symbol(
+                            tokens[0])
                         atom_info = atom_info_match.group(1)
                         atom_info_dict = GaussianConfiguration \
                             .get_route_params(atom_info_match.group(1))
@@ -390,7 +391,8 @@ class GaussianConfiguration:
                         atom_info = atom_info.strip(', ')
                     else:
                         tokens = line.split()
-                        symbol = tokens[0]
+                        symbol = GaussianConfiguration.convert_to_symbol(
+                            tokens[0])
                         atom_info = None
                         atom_mass = None
 
@@ -404,7 +406,7 @@ class GaussianConfiguration:
                             pos = list(map(float, pos))
                             # except ValueError:
                             #     print("VALUE ERROR")
-                        if symbol.upper() == 'TV':
+                        if type(symbol) == 'string' and symbol.upper() == 'TV':
                             pbc[npbc] = True
                             cell[npbc] = pos
                             npbc += 1
@@ -503,6 +505,36 @@ class GaussianConfiguration:
 
         atoms.new_array('gaussian_info', np.array(atoms_info))
         return GaussianConfiguration(atoms, parameters)
+
+    @staticmethod
+    def convert_to_symbol(string):
+        '''Converts an input string into a format
+        that can be input to the 'symbol' parameter of an
+        ASE Atom object (can be a chemical symbol (str)
+        or an atomic number (int).)
+        This is achieved by either stripping any
+        integers from the string, or converting a string
+        containing an atomic number to integer type'''
+        string = GaussianConfiguration.validate_symbol_string(string)
+        if string.isnumeric():
+            atomic_number = int(string)
+            from ase.data import chemical_symbols
+            string = chemical_symbols[atomic_number]
+        else:
+            for i, character in enumerate(string):
+                if character.isdigit():
+                    string = string[:i]
+        return string
+
+    @staticmethod
+    def validate_symbol_string(string):
+        if "-" in string:
+            raise IOError("ERROR: Could not read the Gaussian input file, as"
+                          " molecule specifications for molecular mechanics "
+                          "calculations are not supported.")
+            return
+        else:
+            return string
 
     @staticmethod
     def get_route_params(line):
