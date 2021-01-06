@@ -182,7 +182,7 @@ def test_vasp_args_without_comment(args, expected_len):
     assert len(clean_args) == expected_len
 
 
-def test_vasp_no_cell():
+def test_vasp_no_cell(mock_vasp_calculate):
     """
     Check VASP input handling.
     No calculation will be executed.

@@ -20,3 +20,17 @@ def atoms_2co():
 
     atoms.center(vacuum=5.)
     return atoms
+
+
+@pytest.fixture
+def mock_vasp_calculate(mocker):
+    """Fixture which mocks the VASP run method, so a calculation cannot run.
+    Acts as a safeguard for tests which want to test VASP,
+    but avoid accidentally launching a calculation"""
+    def _mock_run(self, command=None, out=None, directory=None):
+        assert False, 'Test attempted to launch a calculation'
+
+    # Patch the calculate and run methods, so we're certain
+    # calculations aren't accidentally launched
+    mocker.patch('ase.calculators.vasp.Vasp._run', _mock_run)
+    yield
