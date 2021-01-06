@@ -943,7 +943,7 @@ class Vibrations:
     def get_zero_point_energy(self, freq=None):
         if freq:
             raise NotImplementedError()
-        self.get_vibrations().get_zero_point_energy()
+        return self.get_vibrations().get_zero_point_energy()
 
     def get_mode(self, n):
         """Get mode number ."""
@@ -974,7 +974,7 @@ class Vibrations:
         """Writes file for viewing of the modes with jmol."""
 
         with open(self.name + '.xyz', 'w') as fd:
-            self._write_json(fd)
+            self._write_jmol(fd)
 
     def _write_jmol(self, fd):
         symbols = self.atoms.get_chemical_symbols()
@@ -987,10 +987,10 @@ class Vibrations:
                 freq[n] = freq[n].imag
 
             else:
-                freq[n] = float(freq[n].real)
+                freq[n] = freq[n].real
                 c = ' '
 
-            fd.write('Mode #%d, f = %.1f%s cm^-1' % (n, freq[n], c))
+            fd.write('Mode #%d, f = %.1f%s cm^-1' % (n, float(freq[n].real), c))
 
             if self.ir:
                 fd.write(', I = %.4f (D/Å)^2 amu^-1.\n' % self.intensities[n])
