@@ -83,17 +83,16 @@ class LoggingCalculator(Calculator):
             self.write_json('dump.json')
 
     def write_json(self, filename):
-        f = open(filename, 'w')
-        json.dump({'fmax': self.fmax,
-                   'walltime': self.walltime,
-                   'energy_evals': self.energy_evals,
-                   'energy_count': self.energy_count}, f)
-        f.close()
+        with open(filename, 'w') as fd:
+            json.dump({'fmax': self.fmax,
+                       'walltime': self.walltime,
+                       'energy_evals': self.energy_evals,
+                       'energy_count': self.energy_count}, fd)
 
     def read_json(self, filename, append=False, label=None):
-        f = open(filename, 'r')
-        dct = json.load(f)
-        f.close()
+        with open(filename, 'r') as fd:
+            dct = json.load(fd)
+
         labels = dct['fmax'].keys()
         if label is not None and len(labels) == 1:
             for key in ('fmax', 'walltime', 'energy_evals', 'energy_count'):

@@ -1,38 +1,33 @@
-def test_vasp_co(require_vasp):
+import pytest
+import numpy as np
+
+from ase.io import write
+
+calc = pytest.mark.calculator
+
+
+@calc('vasp')
+def test_vasp_co(factory, atoms_co):
     """
     Run some VASP tests to ensure that the VASP calculator works. This
     is conditional on the existence of the VASP_COMMAND or VASP_SCRIPT
     environment variables
 
     """
-
-    from ase.test.calculator.vasp import installed
-
-    assert installed()
-
-    from ase import Atoms
-    from ase.io import write
-    from ase.calculators.vasp import Vasp
-    import numpy as np
-
     def array_almost_equal(a1, a2, tol=np.finfo(type(1.0)).eps):
         """Replacement for old numpy.testing.utils.array_almost_equal."""
         return (np.abs(a1 - a2) < tol).all()
 
-    d = 1.14
-    co = Atoms('CO', positions=[(0, 0, 0), (0, 0, d)],
-                  pbc=True)
-    co.center(vacuum=5.)
+    co = atoms_co  # Aliasing
 
-    calc = Vasp(
-                xc = 'PBE',
-                prec = 'Low',
-                algo = 'Fast',
-                ismear= 0,
-                sigma = 1.,
-                istart = 0,
-                lwave = False,
-                lcharg = False)
+    calc = factory.calc(xc='PBE',
+                        prec='Low',
+                        algo='Fast',
+                        ismear=0,
+                        sigma=1.,
+                        istart=0,
+                        lwave=False,
+                        lcharg=False)
 
     co.calc = calc
     en = co.get_potential_energy()
@@ -41,7 +36,7 @@ def test_vasp_co(require_vasp):
 
     # Secondly, check that restart from the previously created VASP output works
 
-    calc2 = Vasp(restart=True)
+    calc2 = factory.calc(restart=True)
     co2 = calc2.get_atoms()
 
     # Need tolerance of 1e-14 because VASP itself changes coordinates

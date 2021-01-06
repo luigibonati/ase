@@ -445,3 +445,10 @@ def test_symbols_questionmark():
     assert not blocks[0].has_structure()
     with pytest.raises(NoStructureData, match='undetermined'):
         blocks[0].get_atoms()
+
+
+def test_bad_occupancies(atoms):
+    assert 'Au' not in atoms.symbols
+    atoms.symbols[0] = 'Au'
+    with pytest.warns(UserWarning, match='no occupancy info'):
+        write('tmp.cif', atoms)

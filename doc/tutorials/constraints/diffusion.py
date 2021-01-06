@@ -10,5 +10,7 @@ a = images[0] + images[1] + images[2] + images[3] + images[4]
 del a.constraints
 a *= (2, 1, 1)
 a.set_cell(images[0].get_cell())
-write('diffusion-path.pov', a, rotation='-90x',
-      transparent=False, run_povray=True)
+renderer = write('diffusion-path.pov', a,
+                 rotation='-90x',
+                 povray_settings=dict(transparent=False))
+renderer.render()

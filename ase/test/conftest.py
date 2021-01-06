@@ -119,11 +119,6 @@ def calculators_header(config):
                         'to install calculators')
 
 
-@pytest.fixture(scope='session')
-def require_vasp(factories):
-    factories.require('vasp')
-
-
 @pytest.fixture(scope='session', autouse=True)
 def monkeypatch_disabled_calculators(request, factories):
     # XXX Replace with another mechanism.
@@ -138,6 +133,24 @@ def use_tmp_workdir(tmp_path):
         yield tmp_path
     # We print the path so user can see where test failed, if it failed.
     print(f'Testpath: {path}')
+
+
+@pytest.fixture
+def KIM():
+    pytest.importorskip('kimpy')
+    from ase.calculators.kim import KIM as _KIM
+    from ase.calculators.kim.exceptions import KIMModelNotFound
+
+    def KIM(*args, **kwargs):
+        try:
+            return _KIM(*args, **kwargs)
+        except KIMModelNotFound:
+            pytest.skip('KIM tests require the example KIM models.  '
+                        'These models are available if the KIM API is '
+                        'built from source.  See https://openkim.org/kim-api/'
+                        'for more information.')
+
+    return KIM
 
 
 @pytest.fixture(scope='session')
@@ -211,6 +224,8 @@ def factory(request, factories):
     name, kwargs = request.param
     if not factories.installed(name):
         pytest.skip(f'Not installed: {name}')
+    if not factories.enabled(name):
+        pytest.skip(f'Not enabled: {name}')
     factory = factories[name]
     return CalculatorInputs(factory, kwargs)
 
@@ -232,7 +247,7 @@ class CLI:
     def __init__(self, calculators):
         self.calculators = calculators
 
-    def ase(self, *args):
+    def ase(self, *args, expect_fail=False):
         environment = {}
         environment.update(os.environ)
         # Prevent failures due to Tkinter-related default backend
@@ -244,7 +259,7 @@ class CLI:
                      env=environment)
         stdout, _ = proc.communicate(b'')
         status = proc.wait()
-        assert status == 0
+        assert (status != 0) == expect_fail
         return stdout.decode('utf-8')
 
     def shell(self, command, calculator_name=None):
@@ -307,6 +322,13 @@ def arbitrarily_seed_rng(request):
     yield
     np.random.set_state(state)
 
+@pytest.fixture(scope='session')
+def povray_executable():
+    import shutil
+    exe = shutil.which('povray')
+    if exe is None:
+        pytest.skip('povray not installed')
+    return exe
 
 def pytest_addoption(parser):
     parser.addoption('--calculators', metavar='NAMES', default='',

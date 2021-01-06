@@ -6,6 +6,7 @@ from ase.constraints import ExpCellFilter
 from ase.optimize import BFGS
 
 
+@pytest.mark.calculator_lite
 @pytest.mark.calculator('lammpsrun')
 def test_Pt_stress_cellopt(factory, pt_eam_potential_file):
     params = {}
@@ -24,7 +25,7 @@ def test_Pt_stress_cellopt(factory, pt_eam_potential_file):
         assert_allclose(atoms.get_stress(), calc.calculate_numerical_stress(atoms),
                         atol=1e-4, rtol=1e-4)
 
-        opt = BFGS(ExpCellFilter(atoms), trajectory='opt.traj')
+        opt = BFGS(ExpCellFilter(atoms))
         for i, _ in enumerate(opt.irun(fmax=0.001)):
             pass
 

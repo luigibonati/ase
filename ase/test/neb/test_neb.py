@@ -6,11 +6,9 @@ def test_neb(plt):
     from ase.calculators.morse import MorsePotential
     from ase.optimize import BFGS, QuasiNewton
 
-
     def calc():
         # Common calculator for all images.
         return MorsePotential()
-
 
     # Create and relax initial and final states.
     initial = Atoms('H7',
@@ -45,12 +43,12 @@ def test_neb(plt):
     neb = NEB(images)
     neb.interpolate()
 
-    dyn = BFGS(neb, trajectory='mep.traj')
-    dyn.run(fmax=fmax)
+    with BFGS(neb, trajectory='mep.traj') as dyn:
+        dyn.run(fmax=fmax)
 
-    # Check climbing image.
-    neb.climb = True
-    dyn.run(fmax=fmax)
+        # Check climbing image.
+        neb.climb = True
+        dyn.run(fmax=fmax)
 
     # Check NEB tools.
     nt_images = ase.io.read('mep.traj', index='-{:d}:'.format(nimages))

@@ -15,9 +15,9 @@ class ACE(FileIOCalculator):
 
 
     name = 'ace'
-    implemented_properties = ['energy', 'forces', 'excitation-energy' ]
-#    results = {}
-                             # 'geometry', 'excitation-energy']
+    implemented_properties = ['energy', 'forces', 'excitation-energy']
+    #    results = {}
+    # 'geometry', 'excitation-energy']
     # defaults is default section_name of ACE-input
     basic_list = [{
         'Type': 'Scaling', 'Scaling': '0.35', 'Basis': 'Sinc',
@@ -42,7 +42,8 @@ class ACE(FileIOCalculator):
                           'Scf': scf_list, 'Force': force_list, 'TDDFT': tddft_list, 'order': order_list}
 
     def __init__(
-            self, restart=None, ignore_bad_restart_file=False,
+            self, restart=None,
+            ignore_bad_restart_file=FileIOCalculator._deprecated,
             label='ace', atoms=None, command=None,
             basisfile=None, **kwargs):
         FileIOCalculator.__init__(self, restart, ignore_bad_restart_file,
@@ -98,7 +99,7 @@ class ACE(FileIOCalculator):
             lines = f.readlines()
         if 'WARNING' in lines:
             raise ReadError("Not convergy energy in log file {}.".format(filename))
-        if not '! total energy' in lines:
+        if '! total energy' not in lines:
             raise ReadError("Wrong ACE-Molecule log file {}.".format(filename))
 
         if not os.path.isfile(filename):
@@ -117,14 +118,12 @@ class ACE(FileIOCalculator):
 
         '''
         FileIOCalculator.write_input(self, atoms, properties, system_changes)
-        inputfile = open(self.label + '.inp', 'w')
+        with open(self.label + '.inp', 'w') as inputfile:
+            xyz_name = "{}.xyz".format(self.label)
+            atoms.write(xyz_name)
 
-        xyz_name = "{}.xyz".format(self.label)
-        atoms.write(xyz_name)
-
-        run_parameters = self.prepare_input(xyz_name, properties)
-        self.write_acemolecule_input(inputfile, run_parameters)
-        inputfile.close()
+            run_parameters = self.prepare_input(xyz_name, properties)
+            self.write_acemolecule_input(inputfile, run_parameters)
 
     def prepare_input(self, geometry_filename, properties):
         '''Initialize parameters dictionary based on geometry filename and calculated properties.
@@ -139,7 +138,7 @@ class ACE(FileIOCalculator):
         Updated version of self.parameters; geometry file and optionally Force section are updated.
         '''
         copied_parameters = deepcopy(self.parameters)
-        if not properties is None and "forces" in properties and not 'Force' in copied_parameters['order']:
+        if properties is not None and "forces" in properties and 'Force' not in copied_parameters['order']:
             copied_parameters['order'].append('Force')
         copied_parameters["BasicInformation"][0]["GeometryFilename"] = "{}.xyz".format(self.label)
         copied_parameters["BasicInformation"][0]["GeometryFormat"] = "xyz"

@@ -3,9 +3,9 @@ from math import sqrt
 from ase import Atoms, Atom
 from ase.calculators.emt import EMT
 from ase.constraints import FixAtoms
-from ase.optimize import BFGS, QuasiNewton
-from ase.neb import NEB
 from ase.io import Trajectory
+from ase.neb import NEB
+from ase.optimize import BFGS, QuasiNewton
 
 
 def test_COCu111():
@@ -49,6 +49,7 @@ def test_COCu111():
         images.append(image)
 
     # Displace last image:
+    image = images[-1]
     image[-2].position = image[-1].position
     image[-1].x = d
     image[-1].y = d / sqrt(3)
@@ -63,16 +64,15 @@ def test_COCu111():
     for image in images:
         print(image.positions[-1], image.get_potential_energy())
 
-    dyn = BFGS(neb, maxstep=0.04, trajectory='mep.traj')
-    dyn.run(fmax=0.1)
+    with BFGS(neb, maxstep=0.04, trajectory='mep.traj') as dyn:
+        dyn.run(fmax=0.1)
 
     for image in images:
         print(image.positions[-1], image.get_potential_energy())
 
-
     # Trying to read description of optimization from trajectory
-    traj = Trajectory('mep.traj')
-    assert traj.description['optimizer'] == 'BFGS'
-    for key, value in traj.description.items():
-        print(key, value)
-    print(traj.ase_version)
+    with Trajectory('mep.traj') as traj:
+        assert traj.description['optimizer'] == 'BFGS'
+        for key, value in traj.description.items():
+            print(key, value)
+        print(traj.ase_version)

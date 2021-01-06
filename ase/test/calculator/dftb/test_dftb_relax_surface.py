@@ -1,10 +1,13 @@
+import pytest
 from ase.build import diamond100
 from ase.optimize import BFGS
 from ase.constraints import FixAtoms
 
 
-def test_dftb_relax_surface(dftb_factory):
-    calc = dftb_factory.calc(
+@pytest.mark.calculator_lite
+@pytest.mark.calculator('dftb')
+def test_dftb_relax_surface(factory):
+    calc = factory.calc(
         label='dftb',
         kpts=(2, 2, 1),
         Hamiltonian_SCC='Yes',

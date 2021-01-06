@@ -64,19 +64,19 @@ def test_h2of():
                                      (1.765870, 0.148285, 0.000000)])
 
     label = 'h2of-anion'
-    calc = Gaussian(charge=-1.0,
-                    basis='gen',
-                    method='B3LYP',
-                    basisfile='@def2-svp.gbs/N',
-                    label=label,
-                    ioplist=['6/80=1', '6/35=4000000'],
-                    density='current',
-                    addsec=['%s.wfx' % label]
-                   )
+    calc = Gaussian(
+        charge=-1.0,
+        basis='gen',
+        method='B3LYP',
+        basisfile='@def2-svp.gbs/N',
+        label=label,
+        ioplist=['6/80=1', '6/35=4000000'],
+        density='current',
+        addsec=['%s.wfx' % label]
+    )
     # FIXME: the "addsec" argument above is correctly incorporated into the
     # input file, but it doesn't appear to do anything to the calculation.
     # What is it for? What is it suppsoed to do?
 
     atoms.calc = calc
     atoms.get_potential_energy()
-

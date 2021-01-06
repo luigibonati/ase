@@ -57,9 +57,10 @@ def test_optimize(optcls, atoms, ref_atoms):
     kw = {}
     if optcls is PreconLBFGS:
         kw['precon'] = None
-    opt = optcls(atoms, logfile='opt.log', **kw)
+
     fmax = 0.01
-    opt.run(fmax=fmax)
+    with optcls(atoms, logfile='opt.log', **kw) as opt:
+        opt.run(fmax=fmax)
 
     forces = atoms.get_forces()
     final_fmax = max((forces**2).sum(axis=1)**0.5)

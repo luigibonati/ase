@@ -21,7 +21,7 @@ def test_monoclinic():
         a.calc = FreeElectrons(nvalence=1, kpts={'path': path})
         cs = crystal_structure_from_cell(a.cell)
         assert cs == 'monoclinic'
-        r = a.get_reciprocal_cell()
+        r = a.cell.reciprocal()
         k = get_special_points(a.cell)['H']
         print(np.dot(k, r))
         a.get_potential_energy()

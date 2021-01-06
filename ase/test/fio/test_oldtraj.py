@@ -18,9 +18,9 @@ def write():
 
     a2 = Atoms('HLi', cell=[1, 2, 3, 90, 80, 70], pbc=True)
 
-    t = Trajectory('old.traj', 'w')
-    t.write(a1)
-    t.write(a2)
+    with Trajectory('old.traj', 'w') as traj:
+        traj.write(a1)
+        traj.write(a2)
 
     b = Path('old.traj').read_bytes()
     data = b64encode(b)

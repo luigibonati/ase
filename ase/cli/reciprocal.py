@@ -14,7 +14,7 @@ def atoms2bandpath(atoms, path='default',
                    dimension=3,
                    verbose=False):
     cell = atoms.get_cell()
-    icell = atoms.get_reciprocal_cell()
+    icell = atoms.cell.reciprocal()
 
     try:
         cs = crystal_structure_from_cell(cell)

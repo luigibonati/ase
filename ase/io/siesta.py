@@ -1,7 +1,10 @@
 """Helper functions for read_fdf."""
 from pathlib import Path
-from os import fstat
 from re import compile
+
+import numpy as np
+
+from ase import Atoms
 from ase.utils import reader
 
 
@@ -30,14 +33,8 @@ def _get_stripped_lines(fd):
 
 
 @reader
-def _read_fdf_lines(file, inodes=[]):
+def _read_fdf_lines(file):
     # Read lines and resolve includes
-    fst = fstat(file.fileno())
-    inode = (fst.st_dev, fst.st_ino)
-    if inode in inodes:
-        raise IOError('Cyclic include in fdf file')
-    inodes = inodes + [inode]
-
     lbz = _labelize
 
     lines = []
@@ -50,7 +47,7 @@ def _read_fdf_lines(file, inodes=[]):
             parent_fname = getattr(file, 'name', None)
             if isinstance(parent_fname, str):
                 fname = Path(parent_fname).parent / fname
-            lines += _read_fdf_lines(fname, inodes)
+            lines += _read_fdf_lines(fname)
 
         elif '<' in L:
             L, fname = L.split('<', 1)
@@ -71,7 +68,7 @@ def _read_fdf_lines(file, inodes=[]):
                 # "label < filename.fdf" means that the label
                 # (_only_ that label) is to be resolved from filename.fdf
                 label = lbz(w[0])
-                fdf = _read_fdf(fname, inodes)
+                fdf = read_fdf(fname)
                 if label in fdf:
                     if _is_block(fdf[label]):
                         lines.append('%%block %s' % label)
@@ -86,45 +83,6 @@ def _read_fdf_lines(file, inodes=[]):
             # Simple include line L
             lines.append(L)
     return lines
-
-
-# The reason for creating a separate _read_fdf is simply to hide the
-# inodes-argument
-def _read_fdf(fname, inodes=[]):
-    # inodes is used to detect cyclic includes
-    fdf = {}
-    lbz = _labelize
-    lines = _read_fdf_lines(fname, inodes)
-    while lines:
-        w = lines.pop(0).split(None, 1)
-        if lbz(w[0]) == '%block':
-            # Block value
-            if len(w) == 2:
-                label = lbz(w[1])
-                content = []
-                while True:
-                    if len(lines) == 0:
-                        raise IOError('Unexpected EOF reached in %s, '
-                                      'un-ended block %s' % (fname, label))
-                    w = lines.pop(0).split()
-                    if lbz(w[0]) == '%endblock':
-                        break
-                    content.append(w)
-
-                if label not in fdf:
-                    # Only first appearance of label is to be used
-                    fdf[label] = content
-            else:
-                raise IOError('%%block statement without label')
-        else:
-            # Ordinary value
-            label = lbz(w[0])
-            if len(w) == 1:
-                # Siesta interpret blanks as True for logical variables
-                fdf[label] = []
-            else:
-                fdf[label] = w[1].split()
-    return fdf
 
 
 def read_fdf(fname):
@@ -180,31 +138,60 @@ def read_fdf(fname):
          'xcfunctional': ['GGA']}
 
     """
+    fdf = {}
+    lbz = _labelize
+    lines = _read_fdf_lines(fname)
+    while lines:
+        w = lines.pop(0).split(None, 1)
+        if lbz(w[0]) == '%block':
+            # Block value
+            if len(w) == 2:
+                label = lbz(w[1])
+                content = []
+                while True:
+                    if len(lines) == 0:
+                        raise IOError('Unexpected EOF reached in %s, '
+                                      'un-ended block %s' % (fname, label))
+                    w = lines.pop(0).split()
+                    if lbz(w[0]) == '%endblock':
+                        break
+                    content.append(w)
 
-    return _read_fdf(fname)
+                if label not in fdf:
+                    # Only first appearance of label is to be used
+                    fdf[label] = content
+            else:
+                raise IOError('%%block statement without label')
+        else:
+            # Ordinary value
+            label = lbz(w[0])
+            if len(w) == 1:
+                # Siesta interpret blanks as True for logical variables
+                fdf[label] = []
+            else:
+                fdf[label] = w[1].split()
+    return fdf
 
 
-def read_struct_out(fname):
+def read_struct_out(fd):
     """Read a siesta struct file"""
-    from ase.atoms import Atoms, Atom
-
-    f = fname
 
     cell = []
     for i in range(3):
-        cell.append([float(x) for x in f.readline().split()])
+        line = next(fd)
+        v = np.array(line.split(), float)
+        cell.append(v)
 
-    natoms = int(f.readline())
+    natoms = int(next(fd))
 
-    atoms = Atoms()
-    for atom in f:
-        Z, pos_x, pos_y, pos_z = atom.split()[1:]
-        atoms.append(Atom(int(Z),
-                          position=(float(pos_x), float(pos_y), float(pos_z))))
+    numbers = np.empty(natoms, int)
+    scaled_positions = np.empty((natoms, 3))
+    for i, line in enumerate(fd):
+        tokens = line.split()
+        numbers[i] = int(tokens[1])
+        scaled_positions[i] = np.array(tokens[2:5], float)
 
-    if len(atoms) != natoms:
-        raise IOError('Badly structured input file')
-
-    atoms.set_cell(cell, scale_atoms=True)
-
-    return atoms
+    return Atoms(numbers,
+                 cell=cell,
+                 pbc=True,
+                 scaled_positions=scaled_positions)

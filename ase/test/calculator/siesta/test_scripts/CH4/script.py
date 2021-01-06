@@ -36,7 +36,6 @@ calc = Siesta(
     mesh_cutoff=300 * Ry,
     species=[species],
     restart='ch4.XV',
-    ignore_bad_restart_file=True,
     fdf_arguments={'DM.Tolerance': 1E-5,
                    'DM.MixingWeight': 0.15,
                    'DM.NumberPulay': 3,

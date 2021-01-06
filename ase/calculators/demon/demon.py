@@ -38,7 +38,7 @@ class Parameters_deMon(Parameters):
             command=None,
             restart=None,
             basis_path=None,
-            ignore_bad_restart_file=False,
+            ignore_bad_restart_file=FileIOCalculator._deprecated,
             deMon_restart_path='.',
             title='deMon input file',
             scftype='RKS',
@@ -212,7 +212,6 @@ class Demon(FileIOCalculator):
                                ('DEMON_COMMAND') +
                                'or supply the command keyword')
         command = self.command  # .replace('PREFIX', self.prefix)
-        olddir = os.getcwd()
 
         # basis path
         basis_path = self.parameters['basis_path']
@@ -224,57 +223,36 @@ class Demon(FileIOCalculator):
                                ' or the DEMON_BASIS_PATH' +
                                ' environment variable')
 
-        try:
-            # link restart file
-            value = self.parameters['guess']
-            if value.upper() == 'RESTART':
-                value2 = self.parameters['deMon_restart_path']
+        # link restart file
+        value = self.parameters['guess']
+        if value.upper() == 'RESTART':
+            value2 = self.parameters['deMon_restart_path']
 
-                if op.exists(self.directory + '/deMon.rst')\
-                        or op.islink(self.directory + '/deMon.rst'):
-                    os.remove(self.directory + '/deMon.rst')
-                abspath = op.abspath(value2)
+            if op.exists(self.directory + '/deMon.rst')\
+                    or op.islink(self.directory + '/deMon.rst'):
+                os.remove(self.directory + '/deMon.rst')
+            abspath = op.abspath(value2)
 
-                if op.exists(abspath + '/deMon.mem') \
-                        or op.islink(abspath + '/deMon.mem'):
+            if op.exists(abspath + '/deMon.mem') \
+                    or op.islink(abspath + '/deMon.mem'):
 
-                    shutil.copy(abspath + '/deMon.mem',
-                                self.directory + '/deMon.rst')
-                else:
-                    raise RuntimeError(
-                        "{0} doesn't exist".format(abspath + '/deMon.rst'))
+                shutil.copy(abspath + '/deMon.mem',
+                            self.directory + '/deMon.rst')
+            else:
+                raise RuntimeError(
+                    "{0} doesn't exist".format(abspath + '/deMon.rst'))
 
 
-            abspath = op.abspath(basis_path)
+        abspath = op.abspath(basis_path)
 
-            # link basis
-            self.link_file(abspath, self.directory, 'BASIS')
+        for name in ['BASIS', 'AUXIS', 'ECPS', 'MCPS', 'FFDS']:
+            self.link_file(abspath, self.directory, name)
 
-            # link auxis
-            self.link_file(abspath, self.directory, 'AUXIS')
-
-            # link ecps
-            self.link_file(abspath, self.directory, 'ECPS')
-
-            # link mcps
-            self.link_file(abspath, self.directory, 'MCPS')
-
-            # link ffds
-            self.link_file(abspath, self.directory, 'FFDS')
-
-            # go to directory and run calculation
-            os.chdir(self.directory)
-            errorcode = subprocess.call(command, shell=True)
-        finally:
-            os.chdir(olddir)
-
-        if errorcode:
-            raise RuntimeError('%s returned an error: %d' %
-                               (self.name, errorcode))
+        subprocess.check_call(command, shell=True, cwd=self.directory)
 
         try:
             self.read_results()
-        except:
+        except Exception:  # XXX Which kind of exception?
             with open(self.directory + '/deMon.out', 'r') as f:
                 lines = f.readlines()
             debug_lines = 10
@@ -283,9 +261,6 @@ class Demon(FileIOCalculator):
                 print(line.strip())
             print('##### end of deMon.out')
             raise RuntimeError
-
-
-
 
     def set_label(self, label):
         """Set label directory """
@@ -395,9 +370,8 @@ class Demon(FileIOCalculator):
             # write geometry
             self._write_atomic_coordinates(f, atoms)
 
-            # write pickle of Parameters
-            pickle.dump(self.parameters,
-                        open(self.label + '/deMon_parameters.pckl', 'wb'))
+            with open(self.label + '/deMon_parameters.pckl', 'wb') as fd:
+                pickle.dump(self.parameters, fd)
 
             # write xyz file for good measure.
             ase.io.write(self.label + '/deMon_atoms.xyz', self.atoms)
@@ -412,8 +386,8 @@ class Demon(FileIOCalculator):
                             .format(restart_path))
 
         if op.exists(restart_path + '/deMon_parameters.pckl'):
-            parameters = pickle.load(open(restart_path +
-                                          '/deMon_parameters.pckl', 'r'))
+            with open(restart_path + '/deMon_parameters.pckl') as fd:
+                parameters = pickle.load(fd, 'r')
             self.parameters = parameters
 
         self.atoms = self.deMon_inp_to_atoms(restart_path + '/deMon.inp')
@@ -716,8 +690,8 @@ class Demon(FileIOCalculator):
     def deMon_inp_to_atoms(self, filename):
         """Routine to read deMon.inp and convert it to an atoms object."""
 
-        with open(filename, 'r') as f:
-            lines = f.readlines()
+        with open(filename, 'r') as fd:
+            lines = fd.readlines()
 
         # find line where geometry starts
         for i in range(len(lines)):
@@ -758,7 +732,7 @@ class Demon(FileIOCalculator):
                 if len(line) > 5:
                     masses.append(float(line[5]))
 
-            except:
+            except Exception:  # XXX Which kind of exception?
                 raise RuntimeError
 
         if coord_units == 'Bohr':

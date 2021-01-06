@@ -1,8 +1,8 @@
+from ase.autoneb import AutoNEB
 from ase.build import fcc211, add_adsorbate
 from ase.constraints import FixAtoms
-from ase.optimize import QuasiNewton
 from ase.neb import NEBTools
-from ase.autoneb import AutoNEB
+from ase.optimize import QuasiNewton
 
 
 def test_autoneb(asap3):
@@ -20,24 +20,22 @@ def test_autoneb(asap3):
     slab.calc = EMT()
 
     # Initial state:
-    qn = QuasiNewton(slab, trajectory='neb000.traj')
-    qn.run(fmax=fmax)
+    with QuasiNewton(slab, trajectory='neb000.traj') as qn:
+        qn.run(fmax=fmax)
 
     # Final state:
     slab[-1].x += slab.get_cell()[0, 0]
     slab[-1].y += 2.8
-    qn = QuasiNewton(slab, trajectory='neb001.traj')
-    qn.run(fmax=fmax)
+    with QuasiNewton(slab, trajectory='neb001.traj') as qn:
+        qn.run(fmax=fmax)
 
     # Stops PermissionError on Win32 for access to
     # the traj file that remains open.
     del qn
 
-
     def attach_calculators(images):
         for i in range(len(images)):
             images[i].calc = EMT()
-
 
     autoneb = AutoNEB(attach_calculators,
                       prefix='neb',

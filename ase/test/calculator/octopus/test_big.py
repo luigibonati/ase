@@ -3,7 +3,6 @@ import numpy as np
 
 from ase.collections import g2
 from ase.build import bulk, graphene_nanoribbon
-from ase.calculators.interfacechecker import check_interface
 
 
 def calculate(factory, system, **kwargs):
@@ -11,7 +10,6 @@ def calculate(factory, system, **kwargs):
     system.calc = calc
     system.get_potential_energy()
     calc.get_eigenvalues()
-    check_interface(calc)
     return calc
 
 
