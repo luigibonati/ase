@@ -325,23 +325,18 @@ class GaussianConfiguration:
             link0_match = _re_link0.match(line)
             output_type_match = _re_output_type.match(line)
             chgmult_match = _re_chgmult.match(line)
-            method_basis_match = _re_method_basis.match(line)
             # The first blank line appears at the end of the route section
             # and a blank line appears at the end of the atoms section
             if line == '\n':
                 route_section = False
                 atoms_section = False
             elif link0_match:
-                value = link0_match.group(2)
-                if value is not None:
-                    value = value.strip()
-                parameters.update({link0_match.group(1).lower().strip():
-                                   value})
+                GaussianConfiguration.save_link0_param(
+                    link0_match, parameters)
             elif output_type_match and not route_section:
                 route_section = True
                 # remove #_ ready for looking for method/basis/parameters:
                 line = line.strip(output_type_match.group(0))
-                method_basis_match = _re_method_basis.match(line)
                 parameters.update({'output_type': output_type_match.group(1)})
             elif chgmult_match:
                 chgmult = chgmult_match.group(0).split()
@@ -363,18 +358,19 @@ class GaussianConfiguration:
 
                     # reads any info in parantheses after the atom symbol
                     # and stores it in atoms_info as a dict:
-                    atom_info_match = re.search(r'\(([^\)]+)\)', line)
-                    if atom_info_match:
-                        line = line.replace(atom_info_match.group(0), '')
+                    # GaussianConfiguration.save_nuclei_params(line)
+                    nuclei_props_match = re.search(r'\(([^\)]+)\)', line)
+                    if nuclei_props_match:
+                        line = line.replace(nuclei_props_match.group(0), '')
                         tokens = line.split()
                         symbol = GaussianConfiguration.convert_to_symbol(
                             tokens[0])
-                        atom_info = atom_info_match.group(1)
-                        atom_info_dict = GaussianConfiguration \
-                            .get_route_params(atom_info_match.group(1))
-                        atom_info_dict = {k.lower(): v for k, v
-                                          in atom_info_dict.items()}
-                        atom_mass = atom_info_dict.get('iso', None)
+                        nuclei_props = nuclei_props_match.group(1)
+                        nuclei_props_dict = GaussianConfiguration \
+                            .get_route_params(nuclei_props_match.group(1))
+                        nuclei_props_dict = {k.lower(): v for k, v
+                                             in nuclei_props_dict.items()}
+                        atom_mass = nuclei_props_dict.get('iso', None)
                         if atom_mass is not None:
                             if atom_mass.isnumeric():
                                 # will be true if atom_mass is integer
@@ -382,18 +378,18 @@ class GaussianConfiguration:
                                     atom_mass = download_isotope_data(
                                     )[atomic_numbers[symbol]][
                                         int(atom_mass)]['mass']
-                                    atom_info_dict['iso'] = str(atom_mass)
+                                    nuclei_props_dict['iso'] = str(atom_mass)
                                 except KeyError:
                                     pass
-                        atom_info = ""
-                        for key, value in atom_info_dict.items():
-                            atom_info += key + '=' + value + ', '
-                        atom_info = atom_info.strip(', ')
+                        nuclei_props = ""
+                        for key, value in nuclei_props_dict.items():
+                            nuclei_props += key + '=' + value + ', '
+                        nuclei_props = nuclei_props.strip(', ')
                     else:
                         tokens = line.split()
                         symbol = GaussianConfiguration.convert_to_symbol(
                             tokens[0])
-                        atom_info = None
+                        nuclei_props = None
                         atom_mass = None
 
                     if not zmatrix_type:
@@ -413,7 +409,7 @@ class GaussianConfiguration:
                         else:
                             symbols.append(symbol)
                             positions.append(pos)
-                            atoms_info.append(atom_info)
+                            atoms_info.append(nuclei_props)
                             atom_masses.append(atom_mass)
                     else:
                         line_list = line.split()
@@ -424,87 +420,54 @@ class GaussianConfiguration:
                                 "two bond angles instead of a bond angle and "
                                 "a dihedral angle is not supported.")
                         zmatrix_contents += line
-                        atoms_info.append(atom_info)
+                        atoms_info.append(nuclei_props)
                         atom_masses.append(atom_mass)
 
                     atoms_saved = True
             elif atoms_saved:  # we must be after the atoms section
-                line.split('!')[0]
+                if line.split()[0] == '!':
+                    continue
+                line = line.split('!')[0]
                 if count_iso == 0:
-                    freq_options = parameters.get('freq', None)
-                    if freq_options:
-                        freq_name = 'freq'
-                    else:
-                        freq_options = parameters.get('frequency', None)
-                        freq_name = 'frequency'
-                    if freq_options is not None:
-                        freq_options = freq_options.lower()
-                        if 'readiso' or 'readisotopes' in freq_options:
-                            if 'readisotopes' in freq_options:
-                                iso_name = 'readisotopes'
-                            else:
-                                iso_name = 'readiso'
-                            # print(freq_options.split(','))
-                            freq_options = [v.group() for v in re.finditer(
-                                r'[^\,/\s]+', freq_options)]
-                            freq_options.remove(iso_name)
-                            new_freq_options = ''
-                            for v in freq_options:
-                                new_freq_options += v + ' '
-                            parameters[freq_name] = new_freq_options
-                            readiso = True
-                            atom_masses = []
-                            # when count_iso is 0 we are in the line where
-                            # temperature, pressure, [scale] is saved
-                            line = line.replace(
-                                '[', '').replace(']', '')
-                            tokens = line.strip().split()
-                            try:
-                                parameters.update({'temperature': tokens[0]})
-                                parameters.update({'pressure': tokens[1]})
-                                parameters.update({'scale': tokens[2]})
-                            except IndexError:
-                                pass
+                    readiso = GaussianConfiguration.save_readiso_info(
+                        line, parameters)
+                    if readiso:
+                        atom_masses = []
                 elif readiso:
                     try:
-                        atom_masses.append(float(line.split('!')[0]))
+                        atom_masses.append(float(line))
                     except ValueError:
                         atom_masses.append(None)
                 count_iso += 1
 
             if route_section:
-                if method_basis_match:
-                    ase_gen_comment = '! ASE formatted method and basis'
-                    if method_basis_match.group(5) == ase_gen_comment:
-                        parameters.update(
-                            {'method': method_basis_match.group(1)})
-                        parameters.update(
-                            {'basis': method_basis_match.group(2)})
-                        if method_basis_match.group(4):
-                            parameters.update(
-                                {'fitting_basis': method_basis_match.group(4)})
-                        continue
+                GaussianConfiguration.save_route_params(
+                    line, parameters)
 
-                parameters.update(GaussianConfiguration.get_route_params(line))
+        if zmatrix_type:
+            positions, symbols = GaussianConfiguration.read_zmatrix(
+                zmatrix_contents, zmatrix_vars)
 
         if readiso:
             if len(atom_masses) < len(symbols):
                 for i in range(0, len(symbols) - len(atom_masses)):
                     atom_masses.append(None)
-
-        if zmatrix_type:
-            if len(zmatrix_vars) > 0:
-                atoms = parse_zmatrix(zmatrix_contents, defs=zmatrix_vars)
-            else:
-                atoms = parse_zmatrix(zmatrix_contents)
-            positions = atoms.positions
-            symbols = atoms.get_chemical_symbols()
+            elif len(atom_masses) > len(symbols):
+                atom_masses = atom_masses[:len(symbols)]
 
         atoms = Atoms(symbols, positions, pbc=pbc,
                       cell=cell, masses=atom_masses)
 
         atoms.new_array('gaussian_info', np.array(atoms_info))
         return GaussianConfiguration(atoms, parameters)
+
+    @staticmethod
+    def save_link0_param(link0_match, parameters):
+        value = link0_match.group(2)
+        if value is not None:
+            value = value.strip()
+        parameters.update({link0_match.group(1).lower().strip():
+                           value})
 
     @staticmethod
     def convert_to_symbol(string):
@@ -597,6 +560,78 @@ class GaussianConfiguration:
                     params.update({s: None})
 
         return params
+
+    @staticmethod
+    def save_route_params(line, parameters):
+        '''Reads keywords and values from a line in
+        a Gaussian input file's route section,
+        and saves them to the parameters dictionary'''
+        method_basis_match = _re_method_basis.match(line)
+        if method_basis_match:
+            ase_gen_comment = '! ASE formatted method and basis'
+            if method_basis_match.group(5) == ase_gen_comment:
+                parameters.update(
+                    {'method': method_basis_match.group(1)})
+                parameters.update(
+                    {'basis': method_basis_match.group(2)})
+                if method_basis_match.group(4):
+                    parameters.update(
+                        {'fitting_basis': method_basis_match.group(4)})
+        else:
+            parameters.update(GaussianConfiguration.get_route_params(line))
+
+    # @staticmethod
+    # def save_nuclei_params(line):
+
+    @staticmethod
+    def save_readiso_info(line, parameters):
+        '''Reads the temperature, pressure and scale from the first line
+        of a ReadIso section of a Gaussian input file. Saves these as
+        route section parameters'''
+        freq_options = parameters.get('freq', None)
+        if freq_options:
+            freq_name = 'freq'
+        else:
+            freq_options = parameters.get('frequency', None)
+            freq_name = 'frequency'
+        if freq_options is not None:
+            freq_options = freq_options.lower()
+            if 'readiso' or 'readisotopes' in freq_options:
+                if 'readisotopes' in freq_options:
+                    iso_name = 'readisotopes'
+                else:
+                    iso_name = 'readiso'
+                freq_options = [v.group() for v in re.finditer(
+                    r'[^\,/\s]+', freq_options)]
+                freq_options.remove(iso_name)
+                new_freq_options = ''
+                for v in freq_options:
+                    new_freq_options += v + ' '
+                parameters[freq_name] = new_freq_options
+                # when count_iso is 0 we are in the line where
+                # temperature, pressure, [scale] is saved
+                line = line.replace(
+                    '[', '').replace(']', '')
+                tokens = line.strip().split()
+                try:
+                    parameters.update({'temperature': tokens[0]})
+                    parameters.update({'pressure': tokens[1]})
+                    parameters.update({'scale': tokens[2]})
+                except IndexError:
+                    pass
+                return True
+
+    @staticmethod
+    def read_zmatrix(zmatrix_contents, zmatrix_vars):
+        ''' Reads a z-matrix using its list of variables,
+        and returns atom positions and symbols '''
+        if len(zmatrix_vars) > 0:
+            atoms = parse_zmatrix(zmatrix_contents, defs=zmatrix_vars)
+        else:
+            atoms = parse_zmatrix(zmatrix_contents)
+        positions = atoms.positions
+        symbols = atoms.get_chemical_symbols()
+        return positions, symbols
 
 
 def read_gaussian_in(fd, get_calculator=False):
