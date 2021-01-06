@@ -414,6 +414,13 @@ class GaussianConfiguration:
                             atoms_info.append(atom_info)
                             atom_masses.append(atom_mass)
                     else:
+                        line_list = line.split()
+                        if len(line_list) == 8 and line_list[7] == '1':
+                            raise IOError(
+                                "ERROR: Could not read the Gaussian input file"
+                                ", as the alternative Z-matrix format using "
+                                "two bond angles instead of a bond angle and "
+                                "a dihedral angle is not supported.")
                         zmatrix_contents += line
                         atoms_info.append(atom_info)
                         atom_masses.append(atom_mass)
