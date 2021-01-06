@@ -333,10 +333,11 @@ class TestVibrationsData():
         vib_data_dict = vib_data.todict()
         vib_data_roundtrip = VibrationsData.fromdict(vib_data_dict)
 
-        for getter in ('get_atoms', 'get_indices'):
+        for getter in ('get_atoms',):
             assert (getattr(vib_data, getter)()
                     == getattr(vib_data_roundtrip, getter)())
-        for array_getter in ('get_hessian', 'get_hessian_2d', 'get_mask'):
+        for array_getter in ('get_hessian', 'get_hessian_2d',
+                             'get_mask', 'get_indices'):
             assert_array_almost_equal(
                 getattr(vib_data, array_getter)(),
                 getattr(vib_data_roundtrip, array_getter)())

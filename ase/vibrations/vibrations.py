@@ -58,9 +58,9 @@ class VibrationsData:
                  ) -> None:
 
         if indices is None:
-            self._indices = None
+            self._indices = np.array(range(len(atoms)))
         else:
-            self._indices = list(indices)
+            self._indices = np.array(indices, dtype=int)
 
         n_atoms = self._check_dimensions(atoms, np.asarray(hessian),
                                          indices=self._indices)
@@ -91,6 +91,10 @@ class VibrationsData:
             indices: Indices of (non-frozen) atoms included in Hessian
 
         """
+        if indices is None:
+            indices = range(len(atoms))
+        assert indices is not None  # Show Mypy that indices is now a sequence
+
         hessian_2d_array = np.asarray(hessian_2d)
         n_atoms = cls._check_dimensions(atoms, hessian_2d_array,
                                         indices=indices, two_d=True)
@@ -127,7 +131,7 @@ class VibrationsData:
     @staticmethod
     def _check_dimensions(atoms: Atoms,
                           hessian: np.ndarray,
-                          indices: Union[Sequence[int], None] = None,
+                          indices: Sequence[int],
                           two_d: bool = False) -> int:
         """Sanity check on array shapes from input data
 
@@ -143,10 +147,8 @@ class VibrationsData:
             ValueError if Hessian dimensions are not (N, 3, N, 3)
 
         """
-        if indices is None:
-            n_atoms = len(atoms)
-        else:
-            n_atoms = len(atoms[indices])
+
+        n_atoms = len(atoms[indices])
 
         if two_d:
             ref_shape = [n_atoms * 3, n_atoms * 3]
@@ -167,10 +169,7 @@ class VibrationsData:
         return self._atoms.copy()
 
     def get_indices(self) -> Union[None, np.ndarray]:
-        if self._indices is None:
-            return None
-        else:
-            return np.array(self._indices, dtype=int)
+        return np.array(self._indices, dtype=int)
 
     def get_mask(self) -> np.ndarray:
         """Boolean mask of atoms selected by indices"""
@@ -182,14 +181,13 @@ class VibrationsData:
                            ) -> np.ndarray:
         """Boolean mask of atoms selected by indices"""
         natoms = len(atoms)
-        if indices is None:
-            return np.full(natoms, True, dtype=bool)
-        else:
-            # Wrap indices to allow negative values
-            indices = np.asarray(indices) % natoms
-            mask = np.full(natoms, False, dtype=bool)
-            mask[indices] = True
-            return mask
+
+        # Wrap indices to allow negative values
+        indices = np.asarray(indices) % natoms
+
+        mask = np.full(natoms, False, dtype=bool)
+        mask[indices] = True
+        return mask
 
     def get_hessian(self) -> np.ndarray:
         """The Hessian; second derivative of energy wrt positions
@@ -235,9 +233,14 @@ class VibrationsData:
         return self._hessian2d.copy()
 
     def todict(self) -> Dict[str, Any]:
+        if np.allclose(self._indices, range(len(self._atoms))):
+            indices = None
+        else:
+            indices = self.get_indices()
+
         return {'atoms': self.get_atoms(),
                 'hessian': self.get_hessian(),
-                'indices': self.get_indices()}
+                'indices': indices}
 
     @classmethod
     def fromdict(cls, data: Dict[str, Any]) -> 'VibrationsData':
