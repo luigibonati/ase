@@ -60,11 +60,10 @@ def atomtypes_outpot(posfname, numsyms):
 
     # First check files with exactly same name except POTCAR/OUTCAR instead
     # of POSCAR/CONTCAR.
-    fnames = [
-        posfname.replace('POSCAR', 'POTCAR').replace('CONTCAR', 'POTCAR')
-    ]
-    fnames.append(
-        posfname.replace('POSCAR', 'OUTCAR').replace('CONTCAR', 'OUTCAR'))
+    fnames = ['POTCAR'.join(posfname.rsplit('POSCAR',1)),
+              'OUTCAR'.join(posfname.rsplit('POSCAR',1)),
+              'POTCAR'.join(posfname.rsplit('CONTCAR',1)),
+              'OUTCAR'.join(posfname.rsplit('CONTCAR',1))]
     # Try the same but with compressed files
     fsc = []
     for fn in fnames:
