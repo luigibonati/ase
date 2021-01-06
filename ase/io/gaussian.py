@@ -402,7 +402,7 @@ class GaussianConfiguration:
                             pos = list(map(float, pos))
                             # except ValueError:
                             #     print("VALUE ERROR")
-                        if type(symbol) == 'string' and symbol.upper() == 'TV':
+                        if symbol.upper() == 'TV':
                             pbc[npbc] = True
                             cell[npbc] = pos
                             npbc += 1
