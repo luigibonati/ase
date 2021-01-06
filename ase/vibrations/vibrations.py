@@ -458,7 +458,8 @@ class Vibrations:
                 freq[n] = freq[n].real
                 c = ' '
 
-            fd.write('Mode #%d, f = %.1f%s cm^-1' % (n, float(freq[n].real), c))
+            fd.write('Mode #%d, f = %.1f%s cm^-1'
+                     % (n, float(freq[n].real), c))
 
             if self.ir:
                 fd.write(', I = %.4f (D/Å)^2 amu^-1.\n' % self.intensities[n])
