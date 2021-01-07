@@ -1,5 +1,4 @@
 import pytest
-from unittest import mock
 
 import numpy as np
 from ase.calculators.vasp.create_input import GenerateVaspInput
@@ -24,14 +23,15 @@ def nacl(rng):
 
 
 @pytest.fixture
-def vaspinput_factory(nacl):
+def vaspinput_factory(nacl, monkeypatch):
     """Factory for GenerateVaspInput class, which mocks the generation of
     pseudopotentials."""
     def _vaspinput_factory(atoms, **kwargs) -> GenerateVaspInput:
-        mocker = mock.Mock()
         inputs = GenerateVaspInput()
         inputs.set(**kwargs)
-        inputs._build_pp_list = mocker(return_value=None)  # type: ignore
+        def _build_pp_list(*args, **kwargs):
+            return None
+        monkeypatch.setattr(inputs, '_build_pp_list', _build_pp_list)
         inputs.initialize(atoms)
         return inputs
 
