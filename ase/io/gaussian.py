@@ -352,8 +352,13 @@ class GaussianConfiguration:
                         if zmatrix_var_section:
                             zmatrix_vars += line
                             continue
-                        elif 'Variables' in line:
+                        elif 'variables' in line.lower():
                             zmatrix_var_section = True
+                            continue
+                        elif 'constants' in line.lower():
+                            print("WARNING: Constants in the optimisation are "
+                                  "not currently supported. Instead setting "
+                                  "constants as variables.")
                             continue
 
                     # reads any info in parantheses after the atom symbol
@@ -383,8 +388,15 @@ class GaussianConfiguration:
                                     pass
                         nuclei_props = ""
                         for key, value in nuclei_props_dict.items():
-                            nuclei_props += key + '=' + value + ', '
-                        nuclei_props = nuclei_props.strip(', ')
+                            if "fragment" not in key.lower():
+                                nuclei_props += key + '=' + value + ', '
+                            else:
+                                print("WARNING: Fragments are not currently"
+                                      " supported.")
+                        if len(nuclei_props) == 0:
+                            nuclei_props = None
+                        else:
+                            nuclei_props = nuclei_props.strip(', ')
                     else:
                         tokens = line.split()
                         symbol = GaussianConfiguration.convert_to_symbol(
@@ -393,10 +405,17 @@ class GaussianConfiguration:
                         atom_mass = None
 
                     if not zmatrix_type:
-                        pos = list(tokens[1:4])
+                        pos = list(tokens[1:])
                         if len(pos) < 3 or (pos[0] == '0' and symbol != 'TV'):
                             zmatrix_type = True
                             zmatrix_contents += line
+                        elif len(pos) > 3:
+                            raise IOError("ERROR: Gaussian input file could "
+                                          "not be read as freeze codes are not"
+                                          " supported. If using cartesian "
+                                          "coordinates, these must be "
+                                          "given as 3 numbers separated "
+                                          "by whitespace.")
                         else:
                             # try:
                             pos = list(map(float, pos))
@@ -443,6 +462,8 @@ class GaussianConfiguration:
             if route_section:
                 GaussianConfiguration.save_route_params(
                     line, parameters)
+
+        GaussianConfiguration.validate_params(parameters)
 
         if zmatrix_type:
             positions, symbols = GaussianConfiguration.read_zmatrix(
@@ -622,13 +643,52 @@ class GaussianConfiguration:
                 return True
 
     @staticmethod
+    def validate_params(parameters):
+        # Check whether charge and multiplicity have been read.
+        if 'charge' not in parameters.keys() or \
+                'mult' not in parameters.keys():
+            print("WARNING: Could not read the charge and multiplicity "
+                  "from the Gaussian input file. These must be 2 "
+                  "integers separated with whitespace or a comma.")
+
+        # Check for unsupported settings
+        unsupported_settings = [
+            "Z-matrix", "ModRedun", "AddRedun", "ReadOpt", "RdOpt"]
+        for s in unsupported_settings:
+            for v in parameters.values():
+                if v is not None:
+                    if s.lower() in str(v).lower():
+                        raise IOError(
+                            "ERROR: Could not read the Gaussian input file"
+                            ", as the option: {} is currently unsupported."
+                            .format(s))
+        for k in parameters.keys():
+            if "popt" in k.lower():
+                parameters["Opt"] = parameters.pop(k)
+                print("WARNING: The option {} is currently unsupported. "
+                      "This has been replaced with {}."
+                      .format("POpt", "Opt"))
+                return
+
+    @ staticmethod
     def read_zmatrix(zmatrix_contents, zmatrix_vars):
         ''' Reads a z-matrix using its list of variables,
         and returns atom positions and symbols '''
-        if len(zmatrix_vars) > 0:
-            atoms = parse_zmatrix(zmatrix_contents, defs=zmatrix_vars)
-        else:
-            atoms = parse_zmatrix(zmatrix_contents)
+        try:
+            if len(zmatrix_vars) > 0:
+                atoms = parse_zmatrix(zmatrix_contents, defs=zmatrix_vars)
+            else:
+                atoms = parse_zmatrix(zmatrix_contents)
+        except ValueError as e:
+            raise IOError("Failed to read Z-matrix from "
+                          "Gaussian input file: ", e)
+        except KeyError as e:
+            raise IOError("Failed to read Z-matrix from "
+                          "Gaussian input file, as symbol: {}"
+                          "could not be recognised. Please make "
+                          "sure you use element symbols, not "
+                          "atomic numbers in the element labels.".format(e))
+
         positions = atoms.positions
         symbols = atoms.get_chemical_symbols()
         return positions, symbols
