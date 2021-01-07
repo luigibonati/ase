@@ -130,6 +130,7 @@ def idcdchunks(fd, ref_atoms, aligned):
 
 class DCDImageIterator:
     """"""
+
     def __init__(self, ichunks):
         self.ichunks = ichunks
 
@@ -225,7 +226,7 @@ def read_cp2k_restart(fileobj):
     Reads the elements, coordinates and cell information from the
     '&SUBSYS' section of a CP2K restart file.
 
-    Tries to convert atom names to elements, if this fails element is set to 'X'.
+    Tries to convert atom names to elements, if this fails element is set to X.
 
     Returns an Atoms object.
     """
@@ -237,19 +238,19 @@ def read_cp2k_restart(fileobj):
             if line.startswith('&END'):
                 return
             elif line.startswith('&'):
-                key = line.replace('&','')
+                key = line.replace('&', '')
                 ret[key] = {'content': []}
                 _parse(inp, ret[key])
             else:
                 ret['content'].append(line)
 
-    #Go to beginning of file
+    # Go to beginning of file
     try:
         fileobj.seek(0)
     except UnsupportedOperation:
         fileobj = StringIO(fileobj.read())
         fileobj.seek(0)
-    #fast forward to &SUBSYS section
+    # fast forward to &SUBSYS section
     pos = None
     while fileobj:
         line = fileobj.readline()
@@ -261,12 +262,12 @@ def read_cp2k_restart(fileobj):
 
     data = {'content': []}
     _parse(fileobj, data)
-    #look for &CELL
+    # look for &CELL
     cell = None
     pbc = [False, False, False]
     if 'CELL' in data.keys():
         content = data['CELL']['content'][:]
-        cell = [[0,0,0] for i in range(3)]
+        cell = [[0, 0, 0] for i in range(3)]
         for line in content:
             if line.startswith('A '):
                 cell[0] = [float(x) for x in line.split()[1:]]
@@ -284,14 +285,14 @@ def read_cp2k_restart(fileobj):
     atomList = []
     for entry in content:
         entry = entry.split()
-        #Get letters for element symbol
+        # Get letters for element symbol
         el = ""
         for char in entry[0]:
             if char.isalpha():
                 el += char
         el = el.lower().capitalize()
-        #Get positions
-        pos = [ float(x) for x in entry[1:4] ]
+        # Get positions
+        pos = [float(x) for x in entry[1:4]]
         if el in atomic_numbers.keys():
             atomList.append(Atom(el, pos))
         else:
