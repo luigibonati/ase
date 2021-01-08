@@ -327,7 +327,7 @@ class GaussianConfiguration:
             chgmult_match = _re_chgmult.match(line)
             # The first blank line appears at the end of the route section
             # and a blank line appears at the end of the atoms section
-            if line == '\n':
+            if line == '\n' and not readiso:
                 route_section = False
                 atoms_section = False
             elif link0_match:
@@ -444,9 +444,10 @@ class GaussianConfiguration:
 
                     atoms_saved = True
             elif atoms_saved:  # we must be after the atoms section
-                if line.split()[0] == '!':
-                    continue
-                line = line.split('!')[0]
+                if line.split():
+                    if line.split()[0] == '!':
+                        continue
+                    line = line.split('!')[0]
                 if count_iso == 0:
                     readiso = GaussianConfiguration.save_readiso_info(
                         line, parameters)
@@ -592,12 +593,12 @@ class GaussianConfiguration:
             ase_gen_comment = '! ASE formatted method and basis'
             if method_basis_match.group(5) == ase_gen_comment:
                 parameters.update(
-                    {'method': method_basis_match.group(1)})
+                    {'method': method_basis_match.group(1).strip()})
                 parameters.update(
-                    {'basis': method_basis_match.group(2)})
+                    {'basis': method_basis_match.group(2).strip()})
                 if method_basis_match.group(4):
                     parameters.update(
-                        {'fitting_basis': method_basis_match.group(4)})
+                        {'fitting_basis': method_basis_match.group(4).strip()})
         else:
             parameters.update(GaussianConfiguration.get_route_params(line))
 
