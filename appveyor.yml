@@ -38,7 +38,7 @@ install:
   # install ase into the current python
   - "echo %cd%"
   - "where pip"
-  - "pip install ."
+  - "pip install .[test]"
 
 build: off
 
