@@ -447,8 +447,10 @@ class GaussianConfiguration:
                 if line.split():
                     if line.split()[0] == '!':
                         continue
-                    line = line.split('!')[0]
-                if count_iso == 0:
+                    line = line.strip().split('!')[0]
+                if len(line) > 0 and line[0] == '@':
+                    parameters['basisfile'] = line
+                elif count_iso == 0:
                     readiso = GaussianConfiguration.save_readiso_info(
                         line, parameters)
                     if readiso:
@@ -458,7 +460,8 @@ class GaussianConfiguration:
                         atom_masses.append(float(line))
                     except ValueError:
                         atom_masses.append(None)
-                count_iso += 1
+                if readiso:
+                    count_iso += 1
 
             if route_section:
                 GaussianConfiguration.save_route_params(
@@ -551,7 +554,7 @@ class GaussianConfiguration:
                 r'[^\,/\s]+', keyword_string) if k.group() != '=']
             keyword = keyword_match_iter[-1].group().strip(' =')
             index_range[0] = keyword_match_iter[-1].start()
-            params.update({keyword: options})
+            params.update({keyword.lower(): options})
             index_ranges.append(index_range)
 
         # remove from the line the keywords and options that we have saved:
@@ -576,10 +579,10 @@ class GaussianConfiguration:
                 options = s.pop(0)
                 for string in s:
                     options += '=' + string
-                params.update({keyword: options})
+                params.update({keyword.lower(): options})
             else:
                 if len(s) > 0:
-                    params.update({s: None})
+                    params.update({s.lower(): None})
 
         return params
 
