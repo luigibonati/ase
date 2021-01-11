@@ -82,12 +82,14 @@ def write_gaussian_in(fd, atoms, properties=None, **params):
     if output_type == '#':
         output_type = '#P'
 
-    # basisfile, only used if basis=gen
+    # basisfile or basis_set, only used if basis=gen
     basisfile = params.pop('basisfile', None)
+    basis_set = params.pop('basis_set', None)
 
     # basis can be omitted if basisfile is provided
-    if basisfile is not None and basis is None:
-        basis = 'gen'
+    if basis is None:
+        if basisfile is not None or basis_set is not None:
+            basis = 'gen'
 
     # determine method from xc if it is provided
     if method is None:
@@ -224,9 +226,11 @@ def write_gaussian_in(fd, atoms, properties=None, **params):
         else:
             with open(basisfile, 'r') as f:
                 out.append(f.read())
+    elif basis_set is not None:
+        out.append(basis_set)
     else:
         if basis is not None and basis.lower() == 'gen':
-            raise InputError('Please set basisfile')
+            raise InputError('Please set basisfile or basis_set')
 
     if addsec is not None:
         out.append('')
@@ -320,6 +324,8 @@ class GaussianConfiguration:
         zmatrix_contents = ""
         zmatrix_var_section = False
         zmatrix_vars = ""
+
+        basis_set = ""
 
         for line in gaussian_input:
             link0_match = _re_link0.match(line)
@@ -426,10 +432,11 @@ class GaussianConfiguration:
                             cell[npbc] = pos
                             npbc += 1
                         else:
-                            symbols.append(symbol)
-                            positions.append(pos)
                             atoms_info.append(nuclei_props)
                             atom_masses.append(atom_mass)
+                            if not zmatrix_type:
+                                symbols.append(symbol)
+                                positions.append(pos)
                     else:
                         line_list = line.split()
                         if len(line_list) == 8 and line_list[7] == '1':
@@ -444,24 +451,36 @@ class GaussianConfiguration:
 
                     atoms_saved = True
             elif atoms_saved:  # we must be after the atoms section
+
+                if positions == []:
+                    if zmatrix_type:
+                        positions, symbols = GaussianConfiguration\
+                                .read_zmatrix(zmatrix_contents, zmatrix_vars)
+
                 if line.split():
                     if line.split()[0] == '!':
                         continue
                     line = line.strip().split('!')[0]
+
+                readiso = GaussianConfiguration.get_readiso_param(parameters)
+
                 if len(line) > 0 and line[0] == '@':
                     parameters['basisfile'] = line
-                elif count_iso == 0:
-                    readiso = GaussianConfiguration.save_readiso_info(
-                        line, parameters)
-                    if readiso:
+                elif readiso and count_iso < len(symbols):
+                    if count_iso == 0:
+                        GaussianConfiguration.save_readiso_info(
+                            line, parameters)
                         atom_masses = []
-                elif readiso:
-                    try:
-                        atom_masses.append(float(line))
-                    except ValueError:
-                        atom_masses.append(None)
-                if readiso:
+                    else:
+                        try:
+                            atom_masses.append(float(line))
+                        except ValueError:
+                            atom_masses.append(None)
                     count_iso += 1
+                else:
+                    if parameters.get('basis', '').lower() == 'gen' or 'gen' in parameters.keys():
+                        if line.strip() != "":
+                            basis_set += line + '\n'
 
             if route_section:
                 GaussianConfiguration.save_route_params(
@@ -469,16 +488,18 @@ class GaussianConfiguration:
 
         GaussianConfiguration.validate_params(parameters)
 
-        if zmatrix_type:
-            positions, symbols = GaussianConfiguration.read_zmatrix(
-                zmatrix_contents, zmatrix_vars)
-
         if readiso:
+            GaussianConfiguration.delete_readiso_param(parameters)
             if len(atom_masses) < len(symbols):
                 for i in range(0, len(symbols) - len(atom_masses)):
                     atom_masses.append(None)
             elif len(atom_masses) > len(symbols):
                 atom_masses = atom_masses[:len(symbols)]
+
+        if basis_set != "":
+            parameters['basis_set'] = basis_set
+            parameters['basis'] = 'gen'
+            parameters.pop('gen', None)
 
         atoms = Atoms(symbols, positions, pbc=pbc,
                       cell=cell, masses=atom_masses)
@@ -488,6 +509,8 @@ class GaussianConfiguration:
 
     @staticmethod
     def save_link0_param(link0_match, parameters):
+        '''saves link0 keywords and options to the
+        parameters dictionary '''
         value = link0_match.group(2)
         if value is not None:
             value = value.strip()
@@ -609,10 +632,10 @@ class GaussianConfiguration:
     # def save_nuclei_params(line):
 
     @staticmethod
-    def save_readiso_info(line, parameters):
-        '''Reads the temperature, pressure and scale from the first line
-        of a ReadIso section of a Gaussian input file. Saves these as
-        route section parameters'''
+    def get_readiso_param(parameters):
+        ''' Returns the a dictionary containing the frequency
+        keyword and its options, if the frequency keyword is
+        present in parameters and ReadIso is one of its options'''
         freq_options = parameters.get('freq', None)
         if freq_options:
             freq_name = 'freq'
@@ -622,29 +645,50 @@ class GaussianConfiguration:
         if freq_options is not None:
             freq_options = freq_options.lower()
             if 'readiso' or 'readisotopes' in freq_options:
-                if 'readisotopes' in freq_options:
-                    iso_name = 'readisotopes'
-                else:
-                    iso_name = 'readiso'
-                freq_options = [v.group() for v in re.finditer(
-                    r'[^\,/\s]+', freq_options)]
-                freq_options.remove(iso_name)
-                new_freq_options = ''
-                for v in freq_options:
-                    new_freq_options += v + ' '
-                parameters[freq_name] = new_freq_options
-                # when count_iso is 0 we are in the line where
-                # temperature, pressure, [scale] is saved
-                line = line.replace(
-                    '[', '').replace(']', '')
-                tokens = line.strip().split()
-                try:
-                    parameters.update({'temperature': tokens[0]})
-                    parameters.update({'pressure': tokens[1]})
-                    parameters.update({'scale': tokens[2]})
-                except IndexError:
-                    pass
-                return True
+                return {freq_name: freq_options}
+
+    @staticmethod
+    def save_readiso_info(line, parameters):
+        '''Reads the temperature, pressure and scale from the first line
+        of a ReadIso section of a Gaussian input file. Saves these as
+        route section parameters'''
+        freq_param = GaussianConfiguration.get_readiso_param(parameters)
+        if freq_param is not None:
+            # when count_iso is 0 we are in the line where
+            # temperature, pressure, [scale] is saved
+            line = line.replace(
+                '[', '').replace(']', '')
+            tokens = line.strip().split()
+            try:
+                parameters.update({'temperature': tokens[0]})
+                parameters.update({'pressure': tokens[1]})
+                parameters.update({'scale': tokens[2]})
+            except IndexError:
+                pass
+            return True
+
+    @staticmethod
+    def delete_readiso_param(parameters):
+        '''Removes the readiso parameter from the parameters dict'''
+        freq_param = GaussianConfiguration.get_readiso_param(parameters)
+        if freq_param is not None:
+            freq_name = [k for k in freq_param.keys()][0]
+            freq_options = [v for v in freq_param.values()][0].lower()
+            if 'readisotopes' in freq_options:
+                iso_name = 'readisotopes'
+            else:
+                iso_name = 'readiso'
+            freq_options = [v.group() for v in re.finditer(
+                r'[^\,/\s]+', freq_options)]
+            freq_options.remove(iso_name)
+            new_freq_options = ''
+            for v in freq_options:
+                new_freq_options += v + ' '
+            if new_freq_options == '':
+                new_freq_options = None
+            else:
+                new_freq_options = new_freq_options.strip()
+            parameters[freq_name] = new_freq_options
 
     @staticmethod
     def validate_params(parameters):
