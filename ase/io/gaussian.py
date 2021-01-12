@@ -193,23 +193,50 @@ def write_gaussian_in(fd, atoms, properties=None, **params):
     out += ['', 'Gaussian input prepared by ASE', '',
             '{:.0f} {:.0f}'.format(charge, mult)]
 
-    # atomic positions
+    # atomic positions and nuclear properties
     for i, atom in enumerate(atoms):
+
+        symbol_section = atom.symbol + \
+            '('
+        # Check whether any nuclear properties of the atom have been set,
+        # and if so, add them to the symbol section.
+        nuclei_props_set = False
+        for keyword, array_name in _nuclei_prop_array_names.items():
+            array = atoms.arrays.get(array_name, None)
+            if array is not None and array[i] is not None:
+                string = keyword + '=' + str(array[i]) + ', '
+                symbol_section += string
+                nuclei_props_set = True
+
+        # Check whether the mass of the atom has been modified,
+        # and if so, add it to the symbol section:
+        mass_set = False
+        from ase.data import chemical_symbols, atomic_masses_iupac2016
+        symbol = atom.symbol
+        if symbol in chemical_symbols:
+            expected_mass = atomic_masses_iupac2016[chemical_symbols.index(
+                symbol)]
+        else:
+            expected_mass = None
+        if expected_mass != atoms.get_masses()[i]:
+            mass_set = True
+            string = 'iso' + '=' + str(atoms.get_masses()[i])
+            symbol_section += string
+
+        if nuclei_props_set or mass_set:
+            symbol_section = symbol_section.strip(', ')
+            symbol_section += ')'
+        else:
+            symbol_section = symbol_section.strip('(')
+
+        # Then attach the properties appropriately
         # this formatting was chosen for backwards compatibility reasons, but
         # it would probably be better to
         # 1) Ensure proper spacing between entries with explicit spaces
         # 2) Use fewer columns for the element
         # 3) Use 'e' (scientific notation) instead of 'f' for positions
-        if 'gaussian_info' in atoms.arrays and \
-                atoms.arrays['gaussian_info'][i] is not None:
-            symbol_section = atom.symbol + \
-                '(' + atoms.arrays['gaussian_info'][i] + ')'
-            out.append('{:<10s}{:20.10f}{:20.10f}'
-                       '{:20.10f}'.format(symbol_section,
-                                          *atom.position))
-        else:
-            out.append('{:<10s}{:20.10f}{:20.10f}{:20.10f}'
-                       .format(atom.symbol, *atom.position))
+        out.append('{:<10s}{:20.10f}{:20.10f}{:20.10f}'.format(symbol_section,
+                                                               *atom.position))
 
     # unit cell vectors, in case of periodic boundary conditions
     for ipbc, tv in zip(atoms.pbc, atoms.cell):
@@ -269,6 +296,11 @@ _re_chgmult = re.compile(r'^\s*[+-]?\d+(?:,\s*|\s+)[+-]?\d+\s*$')
 # a comma (and possibly whitespace) or some amount of whitespace, we
 # can be more confident that we've actually found the charge and multiplicity.
 
+_nuclei_prop_array_names = {'spin': 'gaussian_Spin', 'zeff': 'gaussian_ZEff',
+                            'qmom': 'gaussian_QMom', 'nmagm': 'gaussian_NMagM',
+                            'znuc': 'gaussian_ZNuc',
+                            'radnuclear': 'gaussian_RadNuclear'}
+
 
 class GaussianConfiguration:
 
@@ -310,7 +342,8 @@ class GaussianConfiguration:
         route_section = False
         atoms_section = False
         atom_masses = []
-        atoms_info = []
+        nuclei_props = {'spin': [], 'zeff': [],
+                        'qmom': [], 'nmagm': [], 'znuc': [], 'radnuclear': []}
         symbols = []
         positions = []
         pbc = np.zeros(3, dtype=bool)
@@ -367,48 +400,11 @@ class GaussianConfiguration:
                                   "constants as variables.")
                             continue
 
-                    # reads any info in parantheses after the atom symbol
-                    # and stores it in atoms_info as a dict:
-                    # GaussianConfiguration.save_nuclei_params(line)
-                    nuclei_props_match = re.search(r'\(([^\)]+)\)', line)
-                    if nuclei_props_match:
-                        line = line.replace(nuclei_props_match.group(0), '')
-                        tokens = line.split()
-                        symbol = GaussianConfiguration.convert_to_symbol(
-                            tokens[0])
-                        nuclei_props = nuclei_props_match.group(1)
-                        nuclei_props_dict = GaussianConfiguration \
-                            .get_route_params(nuclei_props_match.group(1))
-                        nuclei_props_dict = {k.lower(): v for k, v
-                                             in nuclei_props_dict.items()}
-                        atom_mass = nuclei_props_dict.get('iso', None)
-                        if atom_mass is not None:
-                            if atom_mass.isnumeric():
-                                # will be true if atom_mass is integer
-                                try:
-                                    atom_mass = download_isotope_data(
-                                    )[atomic_numbers[symbol]][
-                                        int(atom_mass)]['mass']
-                                    nuclei_props_dict['iso'] = str(atom_mass)
-                                except KeyError:
-                                    pass
-                        nuclei_props = ""
-                        for key, value in nuclei_props_dict.items():
-                            if "fragment" not in key.lower():
-                                nuclei_props += key + '=' + value + ', '
-                            else:
-                                print("WARNING: Fragments are not currently"
-                                      " supported.")
-                        if len(nuclei_props) == 0:
-                            nuclei_props = None
-                        else:
-                            nuclei_props = nuclei_props.strip(', ')
-                    else:
-                        tokens = line.split()
-                        symbol = GaussianConfiguration.convert_to_symbol(
-                            tokens[0])
-                        nuclei_props = None
-                        atom_mass = None
+                    line, info = GaussianConfiguration.save_nuclei_props(
+                        line, nuclei_props, atom_masses)
+
+                    symbol = info[0]
+                    tokens = info[1]
 
                     if not zmatrix_type:
                         pos = list(tokens[1:])
@@ -432,8 +428,6 @@ class GaussianConfiguration:
                             cell[npbc] = pos
                             npbc += 1
                         else:
-                            atoms_info.append(nuclei_props)
-                            atom_masses.append(atom_mass)
                             if not zmatrix_type:
                                 symbols.append(symbol)
                                 positions.append(pos)
@@ -446,8 +440,6 @@ class GaussianConfiguration:
                                 "two bond angles instead of a bond angle and "
                                 "a dihedral angle is not supported.")
                         zmatrix_contents += line
-                        atoms_info.append(nuclei_props)
-                        atom_masses.append(atom_mass)
 
                     atoms_saved = True
             elif atoms_saved:  # we must be after the atoms section
@@ -455,7 +447,7 @@ class GaussianConfiguration:
                 if positions == []:
                     if zmatrix_type:
                         positions, symbols = GaussianConfiguration\
-                                .read_zmatrix(zmatrix_contents, zmatrix_vars)
+                            .read_zmatrix(zmatrix_contents, zmatrix_vars)
 
                 if line.split():
                     if line.split()[0] == '!':
@@ -478,7 +470,8 @@ class GaussianConfiguration:
                             atom_masses.append(None)
                     count_iso += 1
                 else:
-                    if parameters.get('basis', '').lower() == 'gen' or 'gen' in parameters.keys():
+                    if parameters.get('basis', '').lower() == 'gen' \
+                            or 'gen' in parameters.keys():
                         if line.strip() != "":
                             basis_set += line + '\n'
 
@@ -504,7 +497,7 @@ class GaussianConfiguration:
         atoms = Atoms(symbols, positions, pbc=pbc,
                       cell=cell, masses=atom_masses)
 
-        atoms.new_array('gaussian_info', np.array(atoms_info))
+        GaussianConfiguration.attach_nuclei_props_to_atoms(atoms, nuclei_props)
         return GaussianConfiguration(atoms, parameters)
 
     @staticmethod
@@ -628,8 +621,74 @@ class GaussianConfiguration:
         else:
             parameters.update(GaussianConfiguration.get_route_params(line))
 
-    # @staticmethod
-    # def save_nuclei_params(line):
+    @staticmethod
+    def save_nuclei_props(line, nuclei_props, atom_masses):
+        # reads any info in parantheses after the atom symbol
+        # and stores it in atoms_info as a dict:
+        # GaussianConfiguration.save_nuclei_props(line)
+        nuclei_props_match = re.search(r'\(([^\)]+)\)', line)
+        if nuclei_props_match:
+            line = line.replace(nuclei_props_match.group(0), '')
+            tokens = line.split()
+            symbol = GaussianConfiguration.convert_to_symbol(
+                tokens[0])
+            current_nuclei_props = GaussianConfiguration \
+                .get_route_params(nuclei_props_match.group(1))
+            current_nuclei_props = {k.lower(): v for k, v
+                                    in current_nuclei_props.items()
+                                    }
+            atom_mass = current_nuclei_props.pop('iso', None)
+        else:
+            tokens = line.split()
+            symbol = GaussianConfiguration.convert_to_symbol(
+                tokens[0])
+            current_nuclei_props = {}
+            atom_mass = None
+
+        if symbol.upper() != 'TV':
+            for k in nuclei_props:
+                if k in current_nuclei_props.keys():
+                    nuclei_props[k].append(
+                        current_nuclei_props.pop(k))
+                else:
+                    nuclei_props[k].append(None)
+
+            if current_nuclei_props != {}:
+                for key, value in current_nuclei_props.items():
+                    if "fragment" in key.lower():
+                        print("WARNING: Fragments are not"
+                              "currently supported.")
+
+                print("WARNING: The following nuclei properties "
+                      "could not be saved: {}".format(
+                          current_nuclei_props))
+
+            GaussianConfiguration.save_mass(atom_mass, atom_masses, symbol)
+        return line, [symbol, tokens]
+
+    @staticmethod
+    def save_mass(atom_mass, atom_masses, symbol):
+        if atom_mass is not None:
+            if atom_mass.isnumeric():
+                # will be true if atom_mass is integer
+                try:
+                    atom_mass = download_isotope_data(
+                    )[atomic_numbers[symbol]][
+                        round(float(atom_mass))]['mass']
+                except KeyError:
+                    pass
+        atom_masses.append(atom_mass)
+
+    @staticmethod
+    def attach_nuclei_props_to_atoms(atoms, nuclei_props):
+        for key in nuclei_props:
+            values_set = False
+            for value in nuclei_props[key]:
+                if value is not None:
+                    values_set = True
+            if values_set:
+                atoms.new_array(_nuclei_prop_array_names[key],
+                                np.array(nuclei_props[key]))
 
     @staticmethod
     def get_readiso_param(parameters):
