@@ -19,6 +19,9 @@ class Displacement(namedtuple('Displacement', ['a', 'i', 'sign', 'ndisp',
                                                'delta'])):
     @property
     def name(self):
+        if self.sign == 0:
+            return 'eq'
+
         axisname = 'xyz'[self.i]
         dispname = self.ndisp * ' +-'[self.sign]
         return f'{self.a}{axisname}{dispname}'
@@ -26,6 +29,10 @@ class Displacement(namedtuple('Displacement', ['a', 'i', 'sign', 'ndisp',
     @property
     def step(self):
         return self.ndisp * self.sign * self.delta
+
+    @classmethod
+    def zero_displacement(cls):
+        return cls(0, 0, 0, 0, 0.0)
 
 
 class Vibrations:
@@ -166,9 +173,12 @@ class Vibrations:
         calculated gradients to <name>.json and continue using this instance.
         """
         atoms = self.atoms if inplace else self.atoms.copy()
-        yield self._prefix('eq'), atoms
+        displacements = self.displacements()
+        eq_disp = next(displacements)
+        assert eq_disp.name == 'eq'
+        yield self._prefix(eq_disp.name), atoms
 
-        for disp in self.displacements():
+        for disp in displacements:
             if not inplace:
                 atoms = self.atoms.copy()
             pos0 = atoms.positions[disp.a, disp.i]
@@ -184,6 +194,8 @@ class Vibrations:
             yield atoms
 
     def displacements(self):
+        yield Displacement.zero_displacement()
+
         for a in self.indices:
             for i in range(3):
                 for sign in [-1, 1]:
