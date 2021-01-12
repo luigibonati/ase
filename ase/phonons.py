@@ -148,6 +148,11 @@ class Displacement:
 
         self.indices = indices
 
+    def _disp(self, a, i, step):
+        from ase.vibrations.vibrations import Displacement as VDisplacement
+        return VDisplacement(a, i, np.sign(step), abs(step), self.delta,
+                             self.name)
+
     def run(self):
         """Run the calculations for the required displacements.
 
@@ -168,7 +173,9 @@ class Displacement:
         atoms_N.calc = self.calc
 
         # Do calculation on equilibrium structure
-        with self.cache.lock(f'{self.name}.eq') as handle:
+        eq_disp = self._disp(0, 0, 0)
+        #with self.cache.lock(f'{self.name}.eq') as handle:
+        with self.cache.lock(eq_disp.fullname) as handle:
             if handle is not None:
                 output = self(atoms_N)
                 # Write output to file
@@ -184,15 +191,16 @@ class Displacement:
         for a in self.indices:
             for i in range(3):
                 for sign in [-1, 1]:
-                    key = '%s.%d%s%s' % (self.name, a, 'xyz'[i], ' +-'[sign])
-                    with self.cache.lock(key) as handle:
+                    disp = self._disp(a, i, sign)
+                    #key = '%s.%d%s%s' % (self.name, a, 'xyz'[i], ' +-'[sign])
+                    with self.cache.lock(disp.fullname) as handle:
                         if handle is None:
                             continue
                         try:
                             atoms_N.positions[offset + a, i] = \
                                 pos[a, i] + sign * self.delta
 
-                            result = self.calculate(atoms_N, handle)
+                            result = self.calculate(atoms_N, disp)
                             handle.save(result)
                         finally:
                             # Return to initial positions
@@ -308,7 +316,7 @@ class Phonons(Displacement):
         """Calculate forces on atoms in supercell."""
         return atoms_N.get_forces()
 
-    def calculate(self, atoms_N, handle):
+    def calculate(self, atoms_N, disp):
         forces = self(atoms_N)
         return {'forces': forces}
 

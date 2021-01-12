@@ -16,7 +16,7 @@ from collections import namedtuple
 
 
 class Displacement(namedtuple('Displacement', ['a', 'i', 'sign', 'ndisp',
-                                               'delta'])):
+                                               'delta', 'prefix'])):
     @property
     def name(self):
         if self.sign == 0:
@@ -25,6 +25,10 @@ class Displacement(namedtuple('Displacement', ['a', 'i', 'sign', 'ndisp',
         axisname = 'xyz'[self.i]
         dispname = self.ndisp * ' +-'[self.sign]
         return f'{self.a}{axisname}{dispname}'
+
+    @property
+    def fullname(self):
+        return f'{self.prefix}.{self.name}'
 
     @property
     def step(self):
@@ -148,12 +152,12 @@ class Vibrations:
                 'Cache must be removed or split in order '
                 'to have only one sort of data structure at a time.')
 
-        for name, atoms in self.iterdisplace(inplace=True):
-            with self.cache.lock(name) as handle:
+        for disp, atoms in self.iterdisplace(inplace=True):
+            with self.cache.lock(disp.fullname) as handle:
                 if handle is None:
                     continue
 
-                result = self.calculate(atoms, handle)
+                result = self.calculate(atoms, disp)
 
                 if world.rank == 0:
                     handle.save(result)
@@ -168,18 +172,19 @@ class Vibrations:
         to an external program instead of using ``run()``. Then save the
         calculated gradients to <name>.json and continue using this instance.
         """
+        # XXX change of type of disp
         atoms = self.atoms if inplace else self.atoms.copy()
         displacements = self.displacements()
         eq_disp = next(displacements)
         assert eq_disp.name == 'eq'
-        yield self._prefix(eq_disp.name), atoms
+        yield eq_disp, atoms
 
         for disp in displacements:
             if not inplace:
                 atoms = self.atoms.copy()
             pos0 = atoms.positions[disp.a, disp.i]
             atoms.positions[disp.a, disp.i] += disp.step
-            yield self._prefix(disp.name), atoms
+            yield disp, atoms
 
             if inplace:
                 atoms.positions[disp.a, disp.i] = pos0
@@ -190,7 +195,8 @@ class Vibrations:
             yield atoms
 
     def _disp(self, a, i, step):
-        return Displacement(a, i, np.sign(step), abs(step), self.delta)
+        return Displacement(a, i, np.sign(step), abs(step), self.delta,
+                            self.name)
 
     def _iter_ai(self):
         for a in self.indices:
@@ -205,7 +211,7 @@ class Vibrations:
                 for ndisp in range(1, self.nfree // 2 + 1):
                     yield self._disp(a, i, sign * ndisp)
 
-    def calculate(self, atoms, handle):
+    def calculate(self, atoms, disp):
         results = {}
         results['forces'] = self.calc.get_forces(atoms)
 

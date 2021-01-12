@@ -59,7 +59,7 @@ class ResonantRamanCalculator(RamanCalculatorBase, Vibrations):
         # which have exkwargs, why are they not unified?
         return self.exobj(**self.exkwargs)
 
-    def calculate(self, atoms, handle):
+    def calculate(self, atoms, disp):
         """Call ground and excited state calculation"""
         assert atoms == self.atoms  # XXX action required
         forces = self.atoms.get_forces()
@@ -72,11 +72,11 @@ class ResonantRamanCalculator(RamanCalculatorBase, Vibrations):
             ov_nn = self.overlap(self.atoms.calc,
                                  self.eq_calculator)
             if world.rank == 0:
-                np.save(handle.key + '.ov', ov_nn)
+                np.save(disp.fullname + '.ov', ov_nn)
 
         excalc = self._new_exobj()
         exlist = excalc.calculate(self.atoms)
-        exlist.write(handle.key + self.exext)
+        exlist.write(disp.fullname + self.exext)
         return {'forces': forces}
 
     def run(self):
