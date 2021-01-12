@@ -30,10 +30,6 @@ class Displacement(namedtuple('Displacement', ['a', 'i', 'sign', 'ndisp',
     def step(self):
         return self.ndisp * self.sign * self.delta
 
-    @classmethod
-    def zero_displacement(cls):
-        return cls(0, 0, 0, 0, 0.0)
-
 
 class Vibrations:
     """Class for calculating vibrational modes using finite difference.
@@ -202,7 +198,7 @@ class Vibrations:
                 yield a, i
 
     def displacements(self):
-        yield Displacement.zero_displacement()
+        yield self._disp(0, 0, 0)
 
         for a, i in self._iter_ai():
             for sign in [-1, 1]:
@@ -275,16 +271,19 @@ class Vibrations:
             feq = forces['eq']
 
         for a, i in self._iter_ai():
-            i = 'xyz'[i]  # XXXX
-            token = self._prefix(f'{a}{i}')
-            fminus = forces[token + '-']
-            fplus = forces[token + '+']
+            disp_minus = self._disp(a, i, -1)
+            disp_plus = self._disp(a, i, 1)
+
+            fminus = forces[self._prefix(disp_minus.name)]
+            fplus = forces[self._prefix(disp_plus.name)]
             if self.method == 'frederiksen':
                 fminus[a] -= fminus.sum(0)
                 fplus[a] -= fplus.sum(0)
             if self.nfree == 4:
-                fminusminus = forces[token + '--']
-                fplusplus = forces[token + '++']
+                disp_minusminus = self._disp(a, i, -2)
+                disp_plusplus = self._disp(a, i, 2)
+                fminusminus = forces[disp_minusminus.name]
+                fplusplus = forces[disp_plusplus.name]
                 if self.method == 'frederiksen':
                     fminusminus[a] -= fminusminus.sum(0)
                     fplusplus[a] -= fplusplus.sum(0)
@@ -292,6 +291,7 @@ class Vibrations:
                 if self.nfree == 2:
                     H[r] = .5 * (fminus - fplus)[self.indices].ravel()
                 else:
+                    assert self.nfree == 4
                     H[r] = H[r] = (-fminusminus +
                                    8 * fminus -
                                    8 * fplus +
@@ -305,13 +305,13 @@ class Vibrations:
             r += 1
         H += H.copy().T
         self.H = H
-        m = self.atoms.get_masses()
-        if 0 in [m[index] for index in self.indices]:
+        masses = self.atoms.get_masses()
+        if any(masses[self.indices] == 0):
             raise RuntimeError('Zero mass encountered in one or more of '
                                'the vibrated atoms. Use Atoms.set_masses()'
                                ' to set all masses to non-zero values.')
 
-        self.im = np.repeat(m[self.indices]**-0.5, 3)
+        self.im = np.repeat(masses[self.indices]**-0.5, 3)
         omega2, modes = np.linalg.eigh(self.im[:, None] * H * self.im)
         self.modes = modes.T.copy()
 
