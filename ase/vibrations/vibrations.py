@@ -15,9 +15,17 @@ from ase.calculators.singlepoint import SinglePointCalculator
 from collections import namedtuple
 
 
-class Displacement(namedtuple('Displacement', ['name', 'a', 'i', 'step'])):
-    pass
+class Displacement(namedtuple('Displacement', ['a', 'i', 'sign', 'ndisp',
+                                               'delta'])):
+    @property
+    def name(self):
+        axisname = 'xyz'[self.i]
+        dispname = self.ndisp * ' +-'[self.sign]
+        return f'{self.a}{axisname}{dispname}'
 
+    @property
+    def step(self):
+        return self.ndisp * self.sign * self.delta
 
 
 class Vibrations:
@@ -165,7 +173,7 @@ class Vibrations:
                 atoms = self.atoms.copy()
             pos0 = atoms.positions[disp.a, disp.i]
             atoms.positions[disp.a, disp.i] += disp.step
-            yield disp.name, atoms
+            yield self._prefix(disp.name), atoms
 
             if inplace:
                 atoms.positions[disp.a, disp.i] = pos0
@@ -175,20 +183,12 @@ class Vibrations:
         for name, atoms in self.iterdisplace():
             yield atoms
 
-    def get_displacement(self, a, i, sign, ndisp):
-        stuff = '%d%s%s' % (a, 'xyz'[i],
-                            ndisp * ' +-'[sign])
-
-        name = self._prefix(stuff)
-        disp = ndisp * sign * self.delta
-        return Displacement(name, a, i, disp)
-
     def displacements(self):
         for a in self.indices:
             for i in range(3):
                 for sign in [-1, 1]:
                     for ndisp in range(1, self.nfree // 2 + 1):
-                        yield self.get_displacement(a, i, sign, ndisp)
+                        yield Displacement(a, i, sign, ndisp, self.delta)
 
     def calculate(self, atoms, handle):
         results = {}
