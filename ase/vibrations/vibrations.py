@@ -196,14 +196,18 @@ class Vibrations:
     def _disp(self, a, i, step):
         return Displacement(a, i, np.sign(step), abs(step), self.delta)
 
+    def _iter_ai(self):
+        for a in self.indices:
+            for i in range(3):
+                yield a, i
+
     def displacements(self):
         yield Displacement.zero_displacement()
 
-        for a in self.indices:
-            for i in range(3):
-                for sign in [-1, 1]:
-                    for ndisp in range(1, self.nfree // 2 + 1):
-                        yield self._disp(a, i, sign * ndisp)
+        for a, i in self._iter_ai():
+            for sign in [-1, 1]:
+                for ndisp in range(1, self.nfree // 2 + 1):
+                    yield self._disp(a, i, sign * ndisp)
 
     def calculate(self, atoms, handle):
         results = {}
@@ -270,35 +274,35 @@ class Vibrations:
         if direction != 'central':
             feq = forces['eq']
 
-        for a in self.indices:
-            for i in 'xyz':
-                token = self._prefix(f'{a}{i}')
-                fminus = forces[token + '-']
-                fplus = forces[token + '+']
+        for a, i in self._iter_ai():
+            i = 'xyz'[i]  # XXXX
+            token = self._prefix(f'{a}{i}')
+            fminus = forces[token + '-']
+            fplus = forces[token + '+']
+            if self.method == 'frederiksen':
+                fminus[a] -= fminus.sum(0)
+                fplus[a] -= fplus.sum(0)
+            if self.nfree == 4:
+                fminusminus = forces[token + '--']
+                fplusplus = forces[token + '++']
                 if self.method == 'frederiksen':
-                    fminus[a] -= fminus.sum(0)
-                    fplus[a] -= fplus.sum(0)
-                if self.nfree == 4:
-                    fminusminus = forces[token + '--']
-                    fplusplus = forces[token + '++']
-                    if self.method == 'frederiksen':
-                        fminusminus[a] -= fminusminus.sum(0)
-                        fplusplus[a] -= fplusplus.sum(0)
-                if self.direction == 'central':
-                    if self.nfree == 2:
-                        H[r] = .5 * (fminus - fplus)[self.indices].ravel()
-                    else:
-                        H[r] = H[r] = (-fminusminus +
-                                       8 * fminus -
-                                       8 * fplus +
-                                       fplusplus)[self.indices].ravel() / 12.0
-                elif self.direction == 'forward':
-                    H[r] = (feq - fplus)[self.indices].ravel()
+                    fminusminus[a] -= fminusminus.sum(0)
+                    fplusplus[a] -= fplusplus.sum(0)
+            if self.direction == 'central':
+                if self.nfree == 2:
+                    H[r] = .5 * (fminus - fplus)[self.indices].ravel()
                 else:
-                    assert self.direction == 'backward'
-                    H[r] = (fminus - feq)[self.indices].ravel()
-                H[r] /= 2 * self.delta
-                r += 1
+                    H[r] = H[r] = (-fminusminus +
+                                   8 * fminus -
+                                   8 * fplus +
+                                   fplusplus)[self.indices].ravel() / 12.0
+            elif self.direction == 'forward':
+                H[r] = (feq - fplus)[self.indices].ravel()
+            else:
+                assert self.direction == 'backward'
+                H[r] = (fminus - feq)[self.indices].ravel()
+            H[r] /= 2 * self.delta
+            r += 1
         H += H.copy().T
         self.H = H
         m = self.atoms.get_masses()
