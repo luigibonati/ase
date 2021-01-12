@@ -395,9 +395,9 @@ class GaussianConfiguration:
                             zmatrix_var_section = True
                             continue
                         elif 'constants' in line.lower():
-                            print("WARNING: Constants in the optimisation are "
-                                  "not currently supported. Instead setting "
-                                  "constants as variables.")
+                            warnings.warn("Constants in the optimisation are "
+                                          "not currently supported. Instead setting "
+                                          "constants as variables.")
                             continue
 
                     line, info = GaussianConfiguration.save_nuclei_props(
@@ -656,12 +656,12 @@ class GaussianConfiguration:
             if current_nuclei_props != {}:
                 for key, value in current_nuclei_props.items():
                     if "fragment" in key.lower():
-                        print("WARNING: Fragments are not"
-                              "currently supported.")
+                        warnings.warn("Fragments are not"
+                                      "currently supported.")
 
-                print("WARNING: The following nuclei properties "
-                      "could not be saved: {}".format(
-                          current_nuclei_props))
+                warnings.warn("The following nuclei properties "
+                              "could not be saved: {}".format(
+                                  current_nuclei_props))
 
             GaussianConfiguration.save_mass(atom_mass, atom_masses, symbol)
         return line, [symbol, tokens]
@@ -754,9 +754,9 @@ class GaussianConfiguration:
         # Check whether charge and multiplicity have been read.
         if 'charge' not in parameters.keys() or \
                 'mult' not in parameters.keys():
-            print("WARNING: Could not read the charge and multiplicity "
-                  "from the Gaussian input file. These must be 2 "
-                  "integers separated with whitespace or a comma.")
+            warnings.warn("Could not read the charge and multiplicity "
+                          "from the Gaussian input file. These must be 2 "
+                          "integers separated with whitespace or a comma.")
 
         # Check for unsupported settings
         unsupported_settings = [
@@ -772,9 +772,9 @@ class GaussianConfiguration:
         for k in parameters.keys():
             if "popt" in k.lower():
                 parameters["Opt"] = parameters.pop(k)
-                print("WARNING: The option {} is currently unsupported. "
-                      "This has been replaced with {}."
-                      .format("POpt", "Opt"))
+                warnings.warn("The option {} is currently unsupported. "
+                              "This has been replaced with {}."
+                              .format("POpt", "Opt"))
                 return
 
     @ staticmethod
