@@ -193,6 +193,9 @@ class Vibrations:
         for name, atoms in self.iterdisplace():
             yield atoms
 
+    def _disp(self, a, i, step):
+        return Displacement(a, i, np.sign(step), abs(step), self.delta)
+
     def displacements(self):
         yield Displacement.zero_displacement()
 
@@ -200,7 +203,7 @@ class Vibrations:
             for i in range(3):
                 for sign in [-1, 1]:
                     for ndisp in range(1, self.nfree // 2 + 1):
-                        yield Displacement(a, i, sign, ndisp, self.delta)
+                        yield self._disp(a, i, sign * ndisp)
 
     def calculate(self, atoms, handle):
         results = {}
