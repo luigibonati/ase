@@ -280,8 +280,8 @@ class Vibrations:
             disp_minus = self._disp(a, i, -1)
             disp_plus = self._disp(a, i, 1)
 
-            fminus = forces[self._prefix(disp_minus.name)]
-            fplus = forces[self._prefix(disp_plus.name)]
+            fminus = forces[disp_minus.fullname]
+            fplus = forces[disp_plus.fullname]
             if self.method == 'frederiksen':
                 fminus[a] -= fminus.sum(0)
                 fplus[a] -= fplus.sum(0)
