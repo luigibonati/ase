@@ -119,6 +119,7 @@ def test_readwrite_gaussian():
         new_params = atoms_new.calc.parameters
         matching_params = {k: new_params[k] for k in new_params
                            if k in params and new_params[k] == params[k]}
+
         if 'basis_set' in params:
             new_params = atoms_new.calc.parameters
             new_params_to_check = copy.deepcopy(new_params)
@@ -135,15 +136,7 @@ def test_readwrite_gaussian():
                                if k in params_to_check and
                                new_params_to_check[k] == params_to_check[k]}
 
-        if params['freq'] == "ReadIso":
-            # All of the parameters should be the same except for the freq.
-            # This is because although freq is set to ReadIso, we do not save
-            # this option to the calculator, we instead save the temperature,
-            # pressure, scale and masses separately.
-            assert (len(params) - 1 == len(matching_params))
-            assert (new_params['freq'] is None)
-        else:
-            assert (len(params) == len(matching_params))
+        assert (len(params) == len(matching_params))
 
     def test_write_gaussian(atoms, atoms_new):
         atoms_new.calc.label = 'gaussian_input_file'
@@ -255,10 +248,14 @@ SP   1   1.00
 
     params = {'chk': 'example.chk', 'nprocshared': '16', 'output_type': 'T',
               'b3lyp': None, 'gen': None, 'opt': 'Tight, MaxCyc=100',
-              'freq': 'ReadIso',
-              'integral': 'Ultrafine', 'charge': 0, 'mult': 1,
+              'freq': None, 'integral': 'Ultrafine', 'charge': 0, 'mult': 1,
               'temperature': '300', 'pressure': '1.0',
               'basisfile': '@basis-set-filename.gbs'}
+
+    # Note that although the freq is set to ReadIso in the input text,
+    # here we have set it to None. This is because when reading in a file
+    # this option does not get saved to the calculator, it instead saves
+    # the temperature, pressure, scale and masses separately.
 
     # Test reading the gaussian input
     atoms_new = read_gaussian_in(fd_zmatrix, True)
