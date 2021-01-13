@@ -6,8 +6,7 @@ from ase.calculators.vasp.create_input import GenerateVaspInput
 from ase.calculators.vasp.create_input import _args_without_comment
 from ase.calculators.vasp.create_input import _to_vasp_bool, _from_vasp_bool
 
-from ase.build import molecule, bulk
-from ase.calculators.vasp import Vasp
+from ase.build import bulk
 
 
 @pytest.fixture
@@ -180,22 +179,3 @@ def test_vasp_args_without_comment(args, expected_len):
     """Test comment splitting logic"""
     clean_args = _args_without_comment(args)
     assert len(clean_args) == expected_len
-
-
-def test_vasp_no_cell(mock_vasp_calculate):
-    """
-    Check VASP input handling.
-    No calculation will be executed.
-    """
-    # Molecules come with no unit cell
-    atoms = molecule('CH4')
-    # We should have a cell
-    assert atoms.get_cell().sum() == 0
-
-    with pytest.raises(RuntimeError):
-        atoms.write('POSCAR')
-
-    calc = Vasp()
-    atoms.calc = calc
-    with pytest.raises(ValueError):
-        atoms.get_total_energy()

@@ -6,8 +6,23 @@ from ase.io import write
 calc = pytest.mark.calculator
 
 
+@pytest.fixture
+def calc_settings():
+    """Some simple fast calculation settings"""
+    return dict(xc='lda',
+                prec='Low',
+                algo='Fast',
+                setups='minimal',
+                ismear=0,
+                nelm=1,
+                sigma=1.,
+                istart=0,
+                lwave=False,
+                lcharg=False)
+
+
 @calc('vasp')
-def test_vasp_co(factory, atoms_co):
+def test_vasp_co(factory, atoms_co, calc_settings):
     """
     Run some VASP tests to ensure that the VASP calculator works. This
     is conditional on the existence of the VASP_COMMAND or VASP_SCRIPT
@@ -20,20 +35,11 @@ def test_vasp_co(factory, atoms_co):
 
     co = atoms_co  # Aliasing
 
-    calc = factory.calc(xc='PBE',
-                        prec='Low',
-                        algo='Fast',
-                        ismear=0,
-                        sigma=1.,
-                        istart=0,
-                        lwave=False,
-                        lcharg=False)
+    calc = factory.calc(**calc_settings)
 
     co.calc = calc
     en = co.get_potential_energy()
     write('vasp_co.traj', co)
-    assert abs(en + 14.918933) < 5e-3
-
     # Secondly, check that restart from the previously created VASP output works
 
     calc2 = factory.calc(restart=True)
@@ -44,7 +50,7 @@ def test_vasp_co(factory, atoms_co):
     # steps are made.
     assert array_almost_equal(co.positions, co2.positions, 1e-14)
 
-    assert en - co2.get_potential_energy() == 0.
+    assert en - co2.get_potential_energy() == pytest.approx(0)
     assert array_almost_equal(calc.get_stress(co), calc2.get_stress(co2))
     assert array_almost_equal(calc.get_forces(co), calc2.get_forces(co2))
     assert array_almost_equal(calc.get_eigenvalues(), calc2.get_eigenvalues())
