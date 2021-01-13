@@ -209,16 +209,16 @@ class Infrared(Vibrations):
                     dpdx[r][n] = 0
             r += 1
         # Calculate eigenfrequencies and eigenvectors
-        m = self.atoms.get_masses()
+        masses = self.atoms.get_masses()
         H += H.copy().T
         self.H = H
-        m = self.atoms.get_masses()
-        self.im = np.repeat(m[self.indices]**-0.5, 3)
+
+        self.im = np.repeat(masses[self.indices]**-0.5, 3)
         omega2, modes = np.linalg.eigh(self.im[:, None] * H * self.im)
         self.modes = modes.T.copy()
 
         # Calculate intensities
-        dpdq = np.array([dpdx[j] / sqrt(m[self.indices[j // 3]] *
+        dpdq = np.array([dpdx[j] / sqrt(masses[self.indices[j // 3]] *
                                         units._amu / units._me)
                          for j in range(ndof)])
         dpdQ = np.dot(dpdq.T, modes)
