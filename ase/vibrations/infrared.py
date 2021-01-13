@@ -159,9 +159,9 @@ class Infrared(Vibrations):
             raise NotImplementedError(
                 'Only central difference is implemented at the moment.')
 
-        name = self._prefix('eq')
-        forces_zero = data[name]['forces']
-        dipole_zero = data[name]['dipole']
+        disp = self._eq_disp()
+        forces_zero = data[disp.fullname]['forces']
+        dipole_zero = data[disp.fullname]['dipole']
         self.dipole_zero = (sum(dipole_zero**2)**0.5) / units.Debye
         self.force_zero = max([sum((forces_zero[j])**2)**0.5
                                for j in self.indices])
@@ -171,17 +171,21 @@ class Infrared(Vibrations):
         dpdx = np.empty((ndof, 3))
         r = 0
         for a in self.indices:
-            for i in 'xyz':
-                name = self._prefix('%d%s' % (a, i))
-                d1 = data[name + '-']
-                d2 = data[name + '+']
+            for i in range(3):#  'xyz':
+                disp_minus = self._disp(a, i, -1)
+                disp_plus = self._disp(a, i, 1)
+
+                d1 = data[disp_minus.fullname]
+                d2 = data[disp_plus.fullname]
                 fminus = d1['forces']
                 dminus = d1['dipole']
                 fplus = d2['forces']
                 dplus = d2['dipole']
                 if self.nfree == 4:
-                    [fminusminus, dminusminus] = data[name + '--']
-                    [fplusplus, dplusplus] = data[name + '++']
+                    disp_mm = self._disp(a, i, -2)
+                    disp_pp = self._disp(a, i, 2)
+                    [fminusminus, dminusminus] = data[disp_mm.fullname]
+                    [fplusplus, dplusplus] = data[disp_pp.fullname]
                 if self.method == 'frederiksen':
                     fminus[a] += -fminus.sum(0)
                     fplus[a] += -fplus.sum(0)

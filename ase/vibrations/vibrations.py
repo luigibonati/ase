@@ -198,13 +198,16 @@ class Vibrations:
         return Displacement(a, i, np.sign(step), abs(step), self.delta,
                             self.name)
 
+    def _eq_disp(self):
+        return self._disp(0, 0, 0)
+
     def _iter_ai(self):
         for a in self.indices:
             for i in range(3):
                 yield a, i
 
     def displacements(self):
-        yield self._disp(0, 0, 0)
+        yield self._eq_disp()
 
         for a, i in self._iter_ai():
             for sign in [-1, 1]:
