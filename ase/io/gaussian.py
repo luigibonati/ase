@@ -396,8 +396,8 @@ class GaussianConfiguration:
                             continue
                         elif 'constants' in line.lower():
                             warnings.warn("Constants in the optimisation are "
-                                          "not currently supported. Instead setting "
-                                          "constants as variables.")
+                                          "not currently supported. Instead "
+                                          "setting constants as variables.")
                             continue
 
                     line, info = GaussianConfiguration.save_nuclei_props(
@@ -444,7 +444,7 @@ class GaussianConfiguration:
                     atoms_saved = True
             elif atoms_saved:  # we must be after the atoms section
 
-                if positions == []:
+                if len(positions) == 0:
                     if zmatrix_type:
                         positions, symbols = GaussianConfiguration\
                             .read_zmatrix(zmatrix_contents, zmatrix_vars)

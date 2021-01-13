@@ -67,7 +67,7 @@ SP   1   1.00
 ''')
 
 # make an example input string with a z-matrix:
-fd_zmatrix = StringIO('''
+fd_zmatrix = StringIO(u'''
 %chk=example.chk
 %Nprocshared=16
 # T B3LYP
