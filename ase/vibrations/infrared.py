@@ -170,44 +170,44 @@ class Infrared(Vibrations):
         H = np.empty((ndof, ndof))
         dpdx = np.empty((ndof, 3))
         r = 0
-        for a in self.indices:
-            for i in range(3):#  'xyz':
-                disp_minus = self._disp(a, i, -1)
-                disp_plus = self._disp(a, i, 1)
 
-                d1 = data[disp_minus.fullname]
-                d2 = data[disp_plus.fullname]
-                fminus = d1['forces']
-                dminus = d1['dipole']
-                fplus = d2['forces']
-                dplus = d2['dipole']
+        for a, i in self._iter_ai():
+            disp_minus = self._disp(a, i, -1)
+            disp_plus = self._disp(a, i, 1)
+
+            d1 = data[disp_minus.fullname]
+            d2 = data[disp_plus.fullname]
+            fminus = d1['forces']
+            dminus = d1['dipole']
+            fplus = d2['forces']
+            dplus = d2['dipole']
+            if self.nfree == 4:
+                disp_mm = self._disp(a, i, -2)
+                disp_pp = self._disp(a, i, 2)
+                [fminusminus, dminusminus] = data[disp_mm.fullname]
+                [fplusplus, dplusplus] = data[disp_pp.fullname]
+            if self.method == 'frederiksen':
+                fminus[a] += -fminus.sum(0)
+                fplus[a] += -fplus.sum(0)
                 if self.nfree == 4:
-                    disp_mm = self._disp(a, i, -2)
-                    disp_pp = self._disp(a, i, 2)
-                    [fminusminus, dminusminus] = data[disp_mm.fullname]
-                    [fplusplus, dplusplus] = data[disp_pp.fullname]
-                if self.method == 'frederiksen':
-                    fminus[a] += -fminus.sum(0)
-                    fplus[a] += -fplus.sum(0)
-                    if self.nfree == 4:
-                        fminusminus[a] += -fminus.sum(0)
-                        fplusplus[a] += -fplus.sum(0)
-                if self.nfree == 2:
-                    print(repr(fminus), repr(fplus))
-                    H[r] = (fminus - fplus)[self.indices].ravel() / 2.0
-                    dpdx[r] = (dminus - dplus)
-                if self.nfree == 4:
-                    H[r] = (-fminusminus + 8 * fminus - 8 * fplus +
-                            fplusplus)[self.indices].ravel() / 12.0
-                    dpdx[r] = (-dplusplus + 8 * dplus - 8 * dminus +
-                               dminusminus) / 6.0
-                H[r] /= 2 * self.delta
-                dpdx[r] /= 2 * self.delta
-                for n in range(3):
-                    if n not in self.directions:
-                        dpdx[r][n] = 0
-                        dpdx[r][n] = 0
-                r += 1
+                    fminusminus[a] += -fminus.sum(0)
+                    fplusplus[a] += -fplus.sum(0)
+            if self.nfree == 2:
+                print(repr(fminus), repr(fplus))
+                H[r] = (fminus - fplus)[self.indices].ravel() / 2.0
+                dpdx[r] = (dminus - dplus)
+            if self.nfree == 4:
+                H[r] = (-fminusminus + 8 * fminus - 8 * fplus +
+                        fplusplus)[self.indices].ravel() / 12.0
+                dpdx[r] = (-dplusplus + 8 * dplus - 8 * dminus +
+                           dminusminus) / 6.0
+            H[r] /= 2 * self.delta
+            dpdx[r] /= 2 * self.delta
+            for n in range(3):
+                if n not in self.directions:
+                    dpdx[r][n] = 0
+                    dpdx[r][n] = 0
+            r += 1
         # Calculate eigenfrequencies and eigenvectors
         m = self.atoms.get_masses()
         H += H.copy().T
