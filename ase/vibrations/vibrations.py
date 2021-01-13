@@ -162,9 +162,6 @@ class Vibrations:
                 if world.rank == 0:
                     handle.save(result)
 
-    def _prefix(self, string):
-        return f'{self.name}.{string}'
-
     def iterdisplace(self, inplace=False):
         """Yield name and atoms object for initial and displaced structures.
 
