@@ -153,15 +153,13 @@ class Infrared(Vibrations):
         self.direction = direction.lower()
         assert self.method in ['standard', 'frederiksen']
 
-        data = dict(self.cache)
-
         if direction != 'central':
             raise NotImplementedError(
                 'Only central difference is implemented at the moment.')
 
         disp = self._eq_disp()
-        forces_zero = data[disp.fullname]['forces']
-        dipole_zero = data[disp.fullname]['dipole']
+        forces_zero = disp.forces()
+        dipole_zero = disp.dipole()
         self.dipole_zero = (sum(dipole_zero**2)**0.5) / units.Debye
         self.force_zero = max([sum((forces_zero[j])**2)**0.5
                                for j in self.indices])
@@ -175,17 +173,20 @@ class Infrared(Vibrations):
             disp_minus = self._disp(a, i, -1)
             disp_plus = self._disp(a, i, 1)
 
-            d1 = data[disp_minus.fullname]
-            d2 = data[disp_plus.fullname]
-            fminus = d1['forces']
-            dminus = d1['dipole']
-            fplus = d2['forces']
-            dplus = d2['dipole']
+            fminus = disp_minus.forces()
+            dminus = disp_minus.dipole()
+
+            fplus = disp_plus.forces()
+            dplus = disp_plus.dipole()
+
             if self.nfree == 4:
                 disp_mm = self._disp(a, i, -2)
                 disp_pp = self._disp(a, i, 2)
-                [fminusminus, dminusminus] = data[disp_mm.fullname]
-                [fplusplus, dplusplus] = data[disp_pp.fullname]
+                fminusminus = disp_mm.forces()
+                dminusminus = disp_mm.dipole()
+
+                fplusplus = disp_pp.forces()
+                dplusplus = disp_pp.dipole()
             if self.method == 'frederiksen':
                 fminus[a] += -fminus.sum(0)
                 fplus[a] += -fplus.sum(0)
@@ -193,7 +194,6 @@ class Infrared(Vibrations):
                     fminusminus[a] += -fminus.sum(0)
                     fplusplus[a] += -fplus.sum(0)
             if self.nfree == 2:
-                print(repr(fminus), repr(fplus))
                 H[r] = (fminus - fplus)[self.indices].ravel() / 2.0
                 dpdx[r] = (dminus - dplus)
             if self.nfree == 4:

@@ -27,6 +27,16 @@ class Displacement(namedtuple('Displacement', ['a', 'i', 'sign', 'ndisp',
         return f'{self.a}{axisname}{dispname}'
 
     @property
+    def _cached(self):
+        return self.cache[self.fullname]
+
+    def forces(self):
+        return self._cached['forces'].copy()
+
+    def dipole(self):
+        return self._cached['dipole'].copy()
+
+    @property
     def fullname(self):
         return f'{self.prefix}.{self.name}'
 
@@ -192,8 +202,10 @@ class Vibrations:
             yield atoms
 
     def _disp(self, a, i, step):
-        return Displacement(a, i, np.sign(step), abs(step), self.delta,
+        disp = Displacement(a, i, np.sign(step), abs(step), self.delta,
                             self.name)
+        disp.cache = self.cache
+        return disp  # XXX hack
 
     def _eq_disp(self):
         return self._disp(0, 0, 0)
@@ -280,16 +292,14 @@ class Vibrations:
             disp_minus = self._disp(a, i, -1)
             disp_plus = self._disp(a, i, 1)
 
-            fminus = forces[disp_minus.fullname]
-            fplus = forces[disp_plus.fullname]
+            fminus = disp_minus.forces()
+            fplus = disp_plus.forces()
             if self.method == 'frederiksen':
                 fminus[a] -= fminus.sum(0)
                 fplus[a] -= fplus.sum(0)
             if self.nfree == 4:
-                disp_minusminus = self._disp(a, i, -2)
-                disp_plusplus = self._disp(a, i, 2)
-                fminusminus = forces[disp_minusminus.name]
-                fplusplus = forces[disp_plusplus.name]
+                fminusminus = self._disp(a, i, -2).forces()
+                fplusplus = self._disp(a, i, 2).forces()
                 if self.method == 'frederiksen':
                     fminusminus[a] -= fminusminus.sum(0)
                     fplusplus[a] -= fplusplus.sum(0)
