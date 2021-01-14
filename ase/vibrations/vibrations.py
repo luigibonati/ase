@@ -17,15 +17,19 @@ from collections import namedtuple
 
 class AtomicDisplacements:
     def _disp(self, a, i, step):
+        if isinstance(i, str):  # XXX Simplify by removing this.
+            i = 'xyz'.index(i)
         return Displacement(a, i, np.sign(step), abs(step), self)
 
     def _eq_disp(self):
         return self._disp(0, 0, 0)
 
+    @property
+    def ndof(self):
+        return 3 * len(self.indices)
 
 
 class Displacement(namedtuple('Displacement', ['a', 'i', 'sign', 'ndisp',
-                                               # 'delta', 'prefix',
                                                'vib'])):
     @property
     def name(self):
@@ -51,24 +55,6 @@ class Displacement(namedtuple('Displacement', ['a', 'i', 'sign', 'ndisp',
     def forces(self):
         return self._cached['forces'].copy()
 
-    # XXX only valid for infrared
-    def dipole(self):
-        return self._cached['dipole'].copy()
-
-    # XXX only valid for TDDFT excitation stuff
-    @property
-    def exfilename(self):
-        return self.fullname + self.vib.exext
-
-    def save_ov_nn(self, ov_nn):
-        np.save(self.fullname + '.ov', ov_nn)
-
-    #def read_exobj(self):
-    #    self.
-
-    def load_ov_nn(self):
-        return np.load(self.fullname + '.ov.npy')
-
     @property
     def fullname(self):
         return f'{self.prefix}.{self.name}'
@@ -78,9 +64,27 @@ class Displacement(namedtuple('Displacement', ['a', 'i', 'sign', 'ndisp',
     def step(self):
         return self.ndisp * self.sign * self.delta
 
+    # XXX dipole only valid for infrared
+    def dipole(self):
+        return self._cached['dipole'].copy()
+
+    # XXX below stuff only valid for TDDFT excitation stuff
+    @property
+    def exfilename(self):
+        return self.fullname + self.vib.exext
+
+    def save_ov_nn(self, ov_nn):
+        np.save(self.fullname + '.ov', ov_nn)
+
+    def load_ov_nn(self):
+        return np.load(self.fullname + '.ov.npy')
+
+    def read_exobj(self):
+        return self.vib.read_exobj(self._exname)
+
     @property
     def _exname(self):
-        return self.fullname + self.vib.exext
+        return f'{self.vib.exname}.{self.name}{self.vib.exext}'
 
     def calculate_and_save_static_polarizability(self, atoms):
         exobj = self.vib._new_exobj()

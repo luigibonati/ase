@@ -153,7 +153,6 @@ class RamanData(RamanBase):
         """Initialize variables for parallel read"""
         rank = self.comm.rank
         indices = self.indices
-        self.ndof = 3 * len(indices)
         myn = -(-self.ndof // self.comm.size)  # ceil divide
         self.slize = s = slice(myn * rank, myn * (rank + 1))
         self.myindices = np.repeat(indices, 3)[s]

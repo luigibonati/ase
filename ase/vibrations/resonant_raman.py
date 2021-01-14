@@ -212,16 +212,13 @@ class ResonantRaman(Raman):
         if self.overlap:
             return self.read_excitations_overlap()
 
-        #disp = self._eq_disp()
-        filename = self._exprefix('eq') + self.exext
-        #filename = disp.exfilename
-        self.log(f'reading {filename}')
-        ex0_object = self.read_exobj(filename)
+        disp = self._eq_disp()
+        ex0_object = disp.read_exobj()
         eu = ex0_object.energy_to_eV_scale
         matching = frozenset(ex0_object)
 
-        def append(lst, filename, matching):
-            exo = self.read_exobj(filename)
+        def append(lst, disp, matching):
+            exo = disp.read_exobj()
             lst.append(exo)
             matching = matching.intersection(exo)
             return matching
@@ -229,19 +226,18 @@ class ResonantRaman(Raman):
         exm_object_list = []
         exp_object_list = []
         for a, i in zip(self.myindices, self.myxyz):
-            mfile = self._exfilename(a, i, '-')
-            pfile = self._exfilename(a, i, '+')
+            mdisp = self._disp(a, i, -1)
+            pdisp = self._disp(a, i, 1)
             matching = append(exm_object_list,
-                              mfile, matching)
+                              mdisp, matching)
             matching = append(exp_object_list,
-                              pfile, matching)
-        self.ndof = 3 * len(self.indices)
-        self.nex = len(matching)
+                              pdisp, matching)
 
         def select(exl, matching):
             mlst = [ex for ex in exl if ex in matching]
             assert(len(mlst) == len(matching))
             return mlst
+
         ex0 = select(ex0_object, matching)
         exm = []
         exp = []
@@ -556,7 +552,6 @@ class LrResonantRaman(ResonantRaman):
                 matching = append(exp_object_list,
                                   name2,
                                   matching)
-        self.ndof = 3 * len(self.indices)
 
         def select(exl, matching):
             exl.diagonalize(**self.exkwargs)
@@ -565,7 +560,6 @@ class LrResonantRaman(ResonantRaman):
 #            assert(len(mlst) == len(matching))
             return mlist
         ex0 = select(ex0_object, matching)
-        self.nex = len(ex0)
         exm = []
         exp = []
         r = 0
