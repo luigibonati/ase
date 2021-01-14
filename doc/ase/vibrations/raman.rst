@@ -144,7 +144,7 @@ to be present. We therefore have to invoke the ``Albrecht`` object as::
   from ase.vibrations.albrecht import Albrecht
   
   photonenergy = 7.5  # eV
-  al = Albrecht(H2Morse(), approximation='Albrecht', overlap=True)
+  al = Albrecht(H2Morse(), H2MorseExcitedStates, approximation='Albrecht', overlap=True)
   x, y = al.get_spectrum(photonenergy, start=4000, end=5000, method='frederiksen', type='Lorentzian')
 
 ``Albrecht`` splits the spectra in two contributions that can be accessed as
