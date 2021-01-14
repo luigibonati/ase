@@ -16,7 +16,8 @@ from collections import namedtuple
 
 
 class Displacement(namedtuple('Displacement', ['a', 'i', 'sign', 'ndisp',
-                                               'delta', 'prefix'])):
+                                               # 'delta', 'prefix',
+                                               'vib'])):
     @property
     def name(self):
         if self.sign == 0:
@@ -27,8 +28,16 @@ class Displacement(namedtuple('Displacement', ['a', 'i', 'sign', 'ndisp',
         return f'{self.a}{axisname}{dispname}'
 
     @property
+    def delta(self):
+        return self.vib.delta
+
+    @property
+    def prefix(self):
+        return self.vib.name
+
+    @property
     def _cached(self):
-        return self.cache[self.fullname]
+        return self.vib.cache[self.fullname]
 
     def forces(self):
         return self._cached['forces'].copy()
@@ -37,8 +46,14 @@ class Displacement(namedtuple('Displacement', ['a', 'i', 'sign', 'ndisp',
         return self._cached['dipole'].copy()
 
     @property
+    def exfilename(self):
+        # XXXX move to subclass or something
+        return self.fullname + self.exext
+
+    @property
     def fullname(self):
         return f'{self.prefix}.{self.name}'
+        #return f'{self.name}'
 
     @property
     def step(self):
@@ -202,10 +217,7 @@ class Vibrations:
             yield atoms
 
     def _disp(self, a, i, step):
-        disp = Displacement(a, i, np.sign(step), abs(step), self.delta,
-                            self.name)
-        disp.cache = self.cache
-        return disp  # XXX hack
+        return Displacement(a, i, np.sign(step), abs(step), self)
 
     def _eq_disp(self):
         return self._disp(0, 0, 0)
@@ -282,11 +294,10 @@ class Vibrations:
         H = np.empty((n, n))
         r = 0
 
-        data = dict(self.cache)
-        forces = {key: value['forces'] for key, value in data.items()}
+        eq_disp = self._eq_disp()
 
         if direction != 'central':
-            feq = forces['eq']
+            feq = eq_disp.forces()
 
         for a, i in self._iter_ai():
             disp_minus = self._disp(a, i, -1)

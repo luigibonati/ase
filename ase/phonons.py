@@ -150,8 +150,7 @@ class Displacement:
 
     def _disp(self, a, i, step):
         from ase.vibrations.vibrations import Displacement as VDisplacement
-        return VDisplacement(a, i, np.sign(step), abs(step), self.delta,
-                             self.name)
+        return VDisplacement(a, i, np.sign(step), abs(step), self)
 
     def run(self):
         """Run the calculations for the required displacements.
