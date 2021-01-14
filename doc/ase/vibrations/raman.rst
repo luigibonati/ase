@@ -69,15 +69,15 @@ We therfore write data including the overlap as
 
 In GPAW this is implemented in ``Overlap``
 (approximated by pseudo-wavefunction overlaps) and can be triggered
-in ``ResonantRaman`` by::
+in ``ResonantRamanCalculator`` by::
 
   from ase.vibrations.resonant_raman import ResonantRamanCalculator
   from gpaw.analyse.overlap import Overlap
 
-  rr = ResonantRamanCalculator(atoms, LrTDDFT,
-                               overlap=lambda x, y: Overlap(x).pseudo(y),
-                              )
-  rr.run()
+  rmc = ResonantRamanCalculator(atoms, LrTDDFT,
+                                overlap=lambda x, y: Overlap(x).pseudo(y),
+                                )
+  rmc.run()
 
 
 2. Analysis of the results
@@ -121,7 +121,7 @@ for more analysis::
   from ase.vibrations.placzek import Profeta
   
   photonenergy = 7.5  # eV
-  pr = Profeta(H2Morse(), approximation='Placzek')
+  pr = Profeta(H2Morse(), H2MorseExcitedStates, approximation='Placzek')
   x, y = pr.get_spectrum(photonenergy, start=4000, end=5000, method='frederiksen', type='Lorentzian')
   plt.plot(x, y)
   plt.show()
