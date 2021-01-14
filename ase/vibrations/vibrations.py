@@ -15,6 +15,15 @@ from ase.calculators.singlepoint import SinglePointCalculator
 from collections import namedtuple
 
 
+class AtomicDisplacements:
+    def _disp(self, a, i, step):
+        return Displacement(a, i, np.sign(step), abs(step), self)
+
+    def _eq_disp(self):
+        return self._disp(0, 0, 0)
+
+
+
 class Displacement(namedtuple('Displacement', ['a', 'i', 'sign', 'ndisp',
                                                # 'delta', 'prefix',
                                                'vib'])):
@@ -42,13 +51,23 @@ class Displacement(namedtuple('Displacement', ['a', 'i', 'sign', 'ndisp',
     def forces(self):
         return self._cached['forces'].copy()
 
+    # XXX only valid for infrared
     def dipole(self):
         return self._cached['dipole'].copy()
 
+    # XXX only valid for TDDFT excitation stuff
     @property
     def exfilename(self):
-        # XXXX move to subclass or something
-        return self.fullname + self.exext
+        return self.fullname + self.vib.exext
+
+    def save_ov_nn(self, ov_nn):
+        np.save(self.fullname + '.ov', ov_nn)
+
+    #def read_exobj(self):
+    #    self.
+
+    def load_ov_nn(self):
+        return np.load(self.fullname + '.ov.npy')
 
     @property
     def fullname(self):
@@ -59,8 +78,17 @@ class Displacement(namedtuple('Displacement', ['a', 'i', 'sign', 'ndisp',
     def step(self):
         return self.ndisp * self.sign * self.delta
 
+    @property
+    def _exname(self):
+        return self.fullname + self.vib.exext
 
-class Vibrations:
+    def calculate_and_save_static_polarizability(self, atoms):
+        exobj = self.vib._new_exobj()
+        excitation_data = exobj.calculate(atoms)
+        np.savetxt(self._exname, excitation_data)
+
+
+class Vibrations(AtomicDisplacements):
     """Class for calculating vibrational modes using finite difference.
 
     The vibrational modes are calculated from a finite difference
@@ -215,12 +243,6 @@ class Vibrations:
         """Yield initial and displaced structures."""
         for name, atoms in self.iterdisplace():
             yield atoms
-
-    def _disp(self, a, i, step):
-        return Displacement(a, i, np.sign(step), abs(step), self)
-
-    def _eq_disp(self):
-        return self._disp(0, 0, 0)
 
     def _iter_ai(self):
         for a in self.indices:

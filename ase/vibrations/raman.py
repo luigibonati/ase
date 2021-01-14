@@ -4,7 +4,7 @@ import numpy as np
 import ase.units as u
 from ase.parallel import world, parprint, paropen
 from ase.phonons import Phonons
-from ase.vibrations import Vibrations
+from ase.vibrations.vibrations import Vibrations, AtomicDisplacements
 from ase.utils import convert_string_to_fd
 from ase.dft import monkhorst_pack
 
@@ -64,10 +64,7 @@ class StaticRamanCalculatorBase(RamanCalculatorBase):
 
     def calculate(self, atoms, disp):
         returnvalue = super().calculate(atoms, disp)
-        # write static polarizability
-        fname = disp.fullname + self.exext
-        exobj = self._new_exobj()
-        np.savetxt(fname, exobj.calculate(atoms))
+        disp.calculate_and_save_static_polarizability(atoms)
         return returnvalue
 
 class StaticRamanCalculator(StaticRamanCalculatorBase, Vibrations):
@@ -78,7 +75,7 @@ class StaticRamanPhononsCalculator(StaticRamanCalculatorBase, Phonons):
     pass
 
 
-class RamanBase:
+class RamanBase(AtomicDisplacements):
     def __init__(self, atoms,  # XXX do we need atoms at this stage ?
                  *args,
                  name='raman',

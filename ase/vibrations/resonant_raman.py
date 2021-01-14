@@ -54,11 +54,6 @@ class ResonantRamanCalculator(RamanCalculatorBase, Vibrations):
 
         super().__init__(atoms, *args, exext=exext, **kwargs)
 
-    def _disp(self, *args, **kwargs):
-        disp = super()._disp(*args, **kwargs)
-        disp.exext = self.exext
-        return disp
-
     def _new_exobj(self):
         # XXXX I have to duplicate this because there are two objects
         # which have exkwargs, why are they not unified?
@@ -77,7 +72,7 @@ class ResonantRamanCalculator(RamanCalculatorBase, Vibrations):
             ov_nn = self.overlap(self.atoms.calc,
                                  self.eq_calculator)
             if world.rank == 0:
-                np.save(disp.fullname + '.ov', ov_nn)
+                disp.save_ov_nn(ov_nn)
 
         excalc = self._new_exobj()
         exlist = excalc.calculate(self.atoms)
@@ -334,6 +329,9 @@ class ResonantRaman(Raman):
         expm_rpc = []
         exdmdr_rpc = []
         for a, i in zip(self.myindices, self.myxyz):
+            mdisp = self._disp(a, i, -1)
+            pdisp = self._disp(a, i, 1)
+
             name = self._exprefix('%d%s' % (a, i))
             ex, ov = load(name, '-', rep0_p)
             exmE_p, exmm_pc = rotate(ex, ov)
