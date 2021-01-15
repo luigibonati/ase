@@ -1,11 +1,13 @@
-def test_vib():
-    import os
-    from ase import Atoms
-    from ase.calculators.emt import EMT
-    from ase.optimize import QuasiNewton
-    from ase.vibrations import Vibrations
-    from ase.thermochemistry import IdealGasThermo
+from ase import Atoms
+from ase.calculators.emt import EMT
+from ase.optimize import QuasiNewton
+from ase.vibrations import Vibrations
+from ase.thermochemistry import IdealGasThermo
+from ase.utils import workdir
+from pathlib import Path
 
+
+def test_vib():
     n2 = Atoms('N2',
                positions=[(0, 0, 0), (0, 0, 1.1)],
                calculator=EMT())
@@ -47,15 +49,9 @@ def test_vib():
     assert vib.combine() == 13
     # Read the data from other working directory
 
-    from ase.utils import workdir
-    from pathlib import Path
     dirname = Path.cwd().name
-    #origdir = os.getcwd()
     newname = f'{dirname}/vib'
     with workdir('..'):
-        # os.path.join(dirname, 'vib'))
-    #dirname = os.path.basename(os.getcwd())
-    #os.chdir('..')  # Change working directory
         vib = Vibrations(n2, name=newname)
         assert (freqs == vib.get_frequencies()).all()
         assert vib.clean() == 1

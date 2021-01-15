@@ -1,4 +1,3 @@
-import os
 from numpy.random import RandomState
 
 from ase.build import molecule
