@@ -41,14 +41,6 @@ class Displacement(namedtuple('Displacement', ['a', 'i', 'sign', 'ndisp',
         return f'{self.a}{axisname}{dispname}'
 
     @property
-    def delta(self):
-        return self.vib.delta
-
-    @property
-    def prefix(self):
-        return self.vib.name
-
-    @property
     def _cached(self):
         return self.vib.cache[self.name]
 
@@ -57,7 +49,7 @@ class Displacement(namedtuple('Displacement', ['a', 'i', 'sign', 'ndisp',
 
     @property
     def step(self):
-        return self.ndisp * self.sign * self.delta
+        return self.ndisp * self.sign * self.vib.delta
 
     # XXX dipole only valid for infrared
     def dipole(self):
