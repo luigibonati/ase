@@ -30,18 +30,29 @@ def get_atomtypes(fname):
     bzip2.
 
     """
+    fpath = Path(fname)
+
     atomtypes = []
-    if fname.find('.gz') != -1:
+    atomtypes_alt = []
+    if fpath.suffix.endswith('.gz'):
         import gzip
-        f = gzip.open(fname)
-    elif fname.find('.bz2') != -1:
+        f = gzip.open(fpath)
+    elif fpath.suffix.endswith('.bz2'):
         import bz2
-        f = bz2.BZ2File(fname)
+        f = bz2.BZ2File(fpath)
     else:
-        f = open(fname)
+        f = open(fpath)
     for line in f:
         if line.find('TITEL') != -1:
             atomtypes.append(line.split()[3].split('_')[0].split('.')[0])
+        elif line.find('POTCAR:') != -1:
+            atomtypes_alt.append(line.split()[2].split('_')[0].split('.')[0])
+    if len(atomtypes) == 0 and len(atomtypes_alt) > 0:
+        # old VASP doesn't echo TITEL, but all versions print out species lines
+        # preceded by "POTCAR:", twice
+        assert len(atomtypes_alt) % 2 == 0
+        atomtypes = atomtypes_alt[0:len(atomtypes_alt)//2]
+
     return atomtypes
 
 
@@ -59,21 +70,24 @@ def atomtypes_outpot(posfname, numsyms):
     import os.path as op
     import glob
 
+    posfpath = Path(posfname)
+
     # only try to apply this logic if file is named POSCAR/CONTCAR,
     # i.e. this looks like a normal VASP run directory
-    if Path(posfname).name != 'POSCAR' and Path(posfname).name != 'CONTCAR':
+    if posfpath.name != 'POSCAR' and posfpath.name != 'CONTCAR':
         raise ParseError('Can only guess atom types from POTCAR or OUTCAR '
                          'if file is named POSCAR or CONTCAR')
 
     # First check files with exactly same path except POTCAR/OUTCAR instead
     # of POSCAR/CONTCAR.
-    fnames = [Path(posfname).with_name('POTCAR'),
-              Path(posfname).with_name('OUTCAR')]
+    fnames = [posfpath.with_name('POTCAR'),
+              posfpath.with_name('OUTCAR')]
     # Try the same but with compressed files
     fsc = []
     for fn in fnames:
-        fsc.append(fn + '.gz')
-        fsc.append(fn + '.bz2')
+        fnpath = Path(fn)
+        fsc.append(fnpath.parent / (fnpath.name + '.gz'))
+        fsc.append(fnpath.parent / (fnpath.name + '.bz2'))
     for f in fsc:
         fnames.append(f)
     # Finally try anything with POTCAR or OUTCAR in the name
@@ -86,9 +100,8 @@ def atomtypes_outpot(posfname, numsyms):
         fnames.append(f)
 
     tried = []
-    files_in_dir = os.listdir(Path(posfname).parent)
     for fn in fnames:
-        if fn in files_in_dir:
+        if fn in posfpath.parent.iterdir():
             tried.append(fn)
             at = get_atomtypes(fn)
             if len(at) == numsyms:
