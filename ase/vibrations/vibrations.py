@@ -70,9 +70,6 @@ class Displacement(namedtuple('Displacement', ['a', 'i', 'sign', 'ndisp',
     def load_ov_nn(self):
         return np.load(self.name + '.ov.npy')
 
-    def read_exobj(self):
-        return self.vib.read_exobj(self._exname)
-
     @property
     def _exname(self):
         return f'{self.vib.exname}.{self.name}{self.vib.exext}'
@@ -84,6 +81,9 @@ class Displacement(namedtuple('Displacement', ['a', 'i', 'sign', 'ndisp',
 
     def load_static_polarizability(self):
         return np.loadtxt(self._exname)
+
+    def read_exobj(self):
+        return self.vib.read_exobj(self._exname)
 
     def calculate_and_save_exlist(self, atoms):
         #exo = self.vib._new_exobj()
