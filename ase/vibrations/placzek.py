@@ -57,9 +57,9 @@ class PlaczekStatic(Raman):
         self.alm_rr = []
         self.alp_rr = []
         for a, i in zip(self.myindices, self.myxyz):
-            for sign, al_rr in zip('-+', [self.alm_rr, self.alp_rr]):
-                exname = self._exfilename(a, i, sign)
-                al_rr.append(np.loadtxt(exname))
+            for sign, al_rr in zip([-1, 1], [self.alm_rr, self.alp_rr]):
+                disp = self._disp(a, i, sign)
+                al_rr.append(disp.load_static_polarizability())
 
     def electronic_me_Qcc(self):
         self.calculate_energies_and_modes()
@@ -71,7 +71,7 @@ class PlaczekStatic(Raman):
         for i, r in enumerate(self.myr):
             V_rcc[r] = pre * (self.alp_rr[i] - self.alm_rr[i])
         self.comm.sum(V_rcc)
- 
+
         return self.map_to_modes(V_rcc)
 
 

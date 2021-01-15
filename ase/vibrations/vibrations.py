@@ -69,10 +69,6 @@ class Displacement(namedtuple('Displacement', ['a', 'i', 'sign', 'ndisp',
         return self._cached['dipole'].copy()
 
     # XXX below stuff only valid for TDDFT excitation stuff
-    @property
-    def exfilename(self):
-        return self.fullname + self.vib.exext
-
     def save_ov_nn(self, ov_nn):
         np.save(self.fullname + '.ov', ov_nn)
 
@@ -90,6 +86,15 @@ class Displacement(namedtuple('Displacement', ['a', 'i', 'sign', 'ndisp',
         exobj = self.vib._new_exobj()
         excitation_data = exobj.calculate(atoms)
         np.savetxt(self._exname, excitation_data)
+
+    def load_static_polarizability(self):
+        return np.loadtxt(self._exname)
+
+    def calculate_and_save_exlist(self, atoms):
+        #exo = self.vib._new_exobj()
+        excalc = self.vib._new_exobj()
+        exlist = excalc.calculate(atoms)
+        exlist.write(self._exname)
 
 
 class Vibrations(AtomicDisplacements):

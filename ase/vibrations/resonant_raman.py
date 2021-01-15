@@ -74,10 +74,7 @@ class ResonantRamanCalculator(RamanCalculatorBase, Vibrations):
             if world.rank == 0:
                 disp.save_ov_nn(ov_nn)
 
-        excalc = self._new_exobj()
-        exlist = excalc.calculate(self.atoms)
-        exlist.write(disp.exfilename)
-        #exlist.write(disp.fullname + self.exext)
+        disp.calculate_and_save_exlist(atoms)
         return {'forces': forces}
 
     def run(self):
