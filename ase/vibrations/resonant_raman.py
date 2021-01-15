@@ -291,18 +291,13 @@ class ResonantRaman(Raman):
         eu = ex0.energy_to_eV_scale
         rep0_p = np.ones((len(ex0)), dtype=float)
 
-        def load(name, pm, rep0_p):
-            filename = name + pm + self.exext
-            self.log(f'reading {filename}')
-            ex_p = self.read_exobj(filename)
-            numpyname = name + pm + '.ov.npy'
-            self.log('reading {numpyname}')
-            ov_nn = np.load(numpyname)
+        def load(disp, rep0_p):
+            ex_p = disp.read_exobj()
+            ov_nn = disp.load_ov_nn()
             # remove numerical garbage
             ov_nn = np.where(np.abs(ov_nn) > self.minoverlap['orbitals'],
                              ov_nn, 0)
             ov_pp = ex_p.overlap(ov_nn, ex0)
-            # remove numerical garbage
             ov_pp = np.where(np.abs(ov_pp) > self.minoverlap['excitations'],
                              ov_pp, 0)
             rep0_p *= (ov_pp.real**2 + ov_pp.imag**2).sum(axis=0)
@@ -325,11 +320,9 @@ class ResonantRaman(Raman):
         for a, i in zip(self.myindices, self.myxyz):
             mdisp = self._disp(a, i, -1)
             pdisp = self._disp(a, i, 1)
-
-            name = self._exprefix('%d%s' % (a, i))
-            ex, ov = load(name, '-', rep0_p)
+            ex, ov = load(mdisp, rep0_p)
             exmE_p, exmm_pc = rotate(ex, ov)
-            ex, ov = load(name, '+', rep0_p)
+            ex, ov = load(pdisp, rep0_p)
             expE_p, expm_pc = rotate(ex, ov)
             exmE_rp.append(exmE_p)
             expE_rp.append(expE_p)
