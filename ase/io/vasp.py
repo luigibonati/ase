@@ -59,7 +59,13 @@ def atomtypes_outpot(posfname, numsyms):
     import os.path as op
     import glob
 
-    # First check files with exactly same name except POTCAR/OUTCAR instead
+    # only try to apply this logic if file is named POSCAR/CONTCAR,
+    # i.e. this looks like a normal VASP run directory
+    if Path(posfsname).name != 'POSCAR' and Path(posfsname).name != 'CONTCAR'
+        raise ParseError('Can only guess atom types from POTCAR or OUTCAR '
+                         'if file is named POSCAR or CONTCAR')
+
+    # First check files with exactly same path except POTCAR/OUTCAR instead
     # of POSCAR/CONTCAR.
     fnames = [Path(posfsname).with_name('POTCAR'),
               Path(posfsname).with_name('OUTCAR')]
