@@ -27,7 +27,8 @@ class STM:
             # We need to clean up the imports.
             from ase.io.jsonio import read_json
             with open(atoms, 'r') as fd:
-                self.ldos, self.bias, self.cell = read_json(fd)
+                self.ldos, self.bias, self.cell = read_json(fd,
+                                                            always_array=False)
             self.atoms = None
         else:
             self.atoms = atoms

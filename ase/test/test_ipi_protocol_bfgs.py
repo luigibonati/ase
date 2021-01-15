@@ -15,7 +15,7 @@ from ase.cluster.icosahedron import Icosahedron
 # maxpid is commonly 32768, and max port number is 65536.
 # But in case maxpid is much larger for some reason:
 pid = os.getpid()
-port = (3141 + pid) % 65536
+inet_port = (3141 + pid) % 65536
 # We could also use a Unix port perhaps, but not yet implemented
 
 #unixsocket = 'grumble'
@@ -25,13 +25,23 @@ def getatoms():
     return Icosahedron('Au', 3)
 
 
-def run_server(launchclient=True):
+def run_server(launchclient=True, sockettype='unix'):
     atoms = getatoms()
 
+    port = None
+    unixsocket = None
+
+    if sockettype == 'unix':
+        unixsocket = f'ase_ipi_protocol_bfgs_test_{pid}'
+    else:
+        assert sockettype == 'inet'
+        port = inet_port
+
     with SocketIOCalculator(log=sys.stdout, port=port,
+                            unixsocket=unixsocket,
                             timeout=timeout) as calc:
         if launchclient:
-            thread = launch_client_thread()
+            thread = launch_client_thread(port=port, unixsocket=unixsocket)
         atoms.calc = calc
         opt = BFGS(atoms)
         opt.run()
@@ -64,13 +74,14 @@ def run_normal():
     opt.run()
     return atoms
 
-def run_client():
+def run_client(port, unixsocket):
     atoms = getatoms()
     atoms.calc = EMT()
 
     try:
         with open('client.log', 'w') as fd:
             client = SocketClient(log=fd, port=port,
+                                  unixsocket=unixsocket,
                                   timeout=timeout)
             client.run(atoms, use_stress=False)
     except BrokenPipeError:
@@ -79,15 +90,21 @@ def run_client():
         pass
 
 
-def launch_client_thread():
-    thread = threading.Thread(target=run_client)
+def launch_client_thread(port, unixsocket):
+    thread = threading.Thread(target=run_client, args=(port, unixsocket))
     thread.start()
     return thread
 
 
-def test_ipi_protocol():
+unix_only = pytest.mark.skipif(os.name != 'posix',
+                               reason='requires unix platform')
+@pytest.mark.parametrize('sockettype', [
+    'inet',
+    pytest.param('unix', marks=unix_only),
+])
+def test_ipi_protocol(sockettype):
     try:
-        run_server()
+        run_server(sockettype=sockettype)
     except OSError as err:
         # The AppVeyor CI tests sometimes fail when we try to open sockets on
         # computers where this is forbidden.  For now we will simply skip

@@ -7,13 +7,16 @@ from pathlib import Path
 import ase.visualize
 ase.visualize.view = lambda *args, **kwargs: None
 
+
 def run(script):
     return runpy.run_path(Path('selfdiffusion') / script)
+
 
 def run_and_get_ptp_energy(script):
     dct = run(script)
     energy = np.ptp([i.get_potential_energy() for i in dct['images']])
     return energy
+
 
 e1 = run_and_get_ptp_energy('neb1.py')
 assert abs(e1 - 0.111) < 0.002

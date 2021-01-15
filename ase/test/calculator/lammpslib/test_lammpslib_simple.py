@@ -55,6 +55,7 @@ def Atoms_Fe(lammps_data_file_Fe):
     return Atoms_Fe
 
 
+@pytest.mark.calculator_lite
 @pytest.mark.calculator("lammpslib")
 def test_lammpslib_simple(
     factory,

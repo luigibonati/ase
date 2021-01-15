@@ -57,6 +57,6 @@ generic_projection_settings['colors'] = colors2
 # Make the raytraced image
 # first write the configuration files, then call the external povray executable
 renderer = write('nice.pov', atoms,
-                 generic_projection_settings=generic_projection_settings,
+                 **generic_projection_settings,
                  povray_settings=povray_settings)
 renderer.render()

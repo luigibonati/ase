@@ -467,7 +467,7 @@ class Spacegroup:
                [ 0.,  0.,  0.]])
         """
         scaled = np.array(scaled_positions, ndmin=2)
-        normalised = np.empty(scaled.shape, np.float)
+        normalised = np.empty(scaled.shape, float)
         rot, trans = self.get_op()
         for i, pos in enumerate(scaled):
             sympos = np.dot(rot, pos) + trans
@@ -532,7 +532,7 @@ class Spacegroup:
         scaled %= 1.0
         scaled %= 1.0
         tags = -np.ones((len(scaled), ), dtype=int)
-        mask = np.ones((len(scaled), ), dtype=np.bool)
+        mask = np.ones((len(scaled), ), dtype=bool)
         rot, trans = self.get_op()
         i = 0
         while mask.any():
@@ -633,25 +633,25 @@ def _read_datafile_entry(spg, no, symbol, setting, f):
     spg._scaled_primitive_cell = np.array(
         [[float(floats.get(s, s)) for s in f.readline().split()]
          for i in range(3)],
-        dtype=np.float)
+        dtype=float)
     # primitive reciprocal vectors
     f.readline()
     spg._reciprocal_cell = np.array([[int(i) for i in f.readline().split()]
                                      for i in range(3)],
-                                    dtype=np.int)
+                                    dtype=int)
     # subtranslations
     spg._nsubtrans = int(f.readline().split()[0])
     spg._subtrans = np.array(
         [[float(floats.get(t, t)) for t in f.readline().split()]
          for i in range(spg._nsubtrans)],
-        dtype=np.float)
+        dtype=float)
     # symmetry operations
     nsym = int(f.readline().split()[0])
     symop = np.array([[float(floats.get(s, s)) for s in f.readline().split()]
                       for i in range(nsym)],
-                     dtype=np.float)
+                     dtype=float)
     spg._nsymop = nsym
-    spg._rotations = np.array(symop[:, :9].reshape((nsym, 3, 3)), dtype=np.int)
+    spg._rotations = np.array(symop[:, :9].reshape((nsym, 3, 3)), dtype=int)
     spg._translations = symop[:, 9:]
 
 
@@ -681,7 +681,119 @@ def _read_datafile(spg, spacegroup, setting, f):
             _skip_to_blank(f, spacegroup, setting)
 
 
-def parse_sitesym(symlist, sep=','):
+def parse_sitesym_element(element):
+    """Parses one element from a single site symmetry in the form used
+    by the International Tables.
+    
+    Examples:
+    
+    >>> parse_sitesym_element("x")
+    ([(0, 1)], 0.0)
+    >>> parse_sitesym_element("-1/2-y")
+    ([(1, -1)], -0.5)
+    >>> parse_sitesym_element("z+0.25")
+    ([(2, 1)], 0.25)
+    >>> parse_sitesym_element("x-z+0.5")
+    ([(0, 1), (2, -1)], 0.5)
+    
+    
+    
+    Parameters
+    ----------
+    
+    element: str
+      Site symmetry like "x" or "-y+1/4" or "0.5+z".
+      
+      
+    Returns
+    -------
+    
+    list[tuple[int, int]]
+      Rotation information in the form '(index, sign)' where index is
+      0 for "x", 1 for "y" and 2 for "z" and sign is '1' for a positive
+      entry and '-1' for a negative entry. E.g. "x" is '(0, 1)' and
+      "-z" is (2, -1).
+      
+    float
+      Translation information in fractional space. E.g. "-1/4" is
+      '-0.25' and "1/2" is '0.5' and "0.75" is '0.75'.
+    
+    
+    """
+    element = element.lower()
+    is_positive = True
+    is_frac = False
+    sng_trans = None
+    fst_trans = []
+    snd_trans = []
+    rot = []
+    
+    for char in element:
+        if char == "+":
+            is_positive = True
+        elif char == "-":
+            is_positive = False
+        elif char == "/":
+            is_frac = True
+        elif char in "xyz":
+            rot.append((ord(char)-ord("x"), 1 if is_positive else -1))
+        elif char.isdigit() or char == ".":
+            if sng_trans is None:
+                sng_trans = 1.0 if is_positive else -1.0
+            if is_frac:
+                snd_trans.append(char)
+            else:
+                fst_trans.append(char)
+    
+    trans = 0.0 if not fst_trans else (sng_trans * float("".join(fst_trans)))
+    if is_frac:
+        trans /= float("".join(snd_trans))
+        
+    return rot, trans
+        
+
+def parse_sitesym_single(sym, out_rot, out_trans, sep=",", force_positive_translation=False):
+    """Parses a single site symmetry in the form used by International 
+    Tables and overwrites 'out_rot' and 'out_trans' with data.
+    
+    Parameters
+    ----------
+    
+    sym: str
+      Site symmetry in the form used by International Tables (e.g. "x,y,z", "y-1/2,x,-z").
+      
+    out_rot: np.array
+      A 3x3-integer array representing rotations (changes are made inplace).
+      
+    out_rot: np.array
+      A 3-float array representing translations (changes are made inplace).
+      
+    sep: str
+      String separator ("," in "x,y,z").
+      
+    force_positive_translation: bool
+      Forces fractional translations to be between 0 and 1 (otherwise negative values might be accepted).
+      Defaults to 'False'.
+      
+      
+    Returns
+    -------
+    
+    Nothing is returned: 'out_rot' and 'out_trans' are changed inplace.
+    
+    
+    """
+    out_rot[:] = 0.0
+    out_trans[:] = 0.0
+    
+    for i, element in enumerate(sym.split(sep)):
+        e_rot_list, e_trans = parse_sitesym_element(element)
+        for rot_idx, rot_sgn in e_rot_list:
+            out_rot[i][rot_idx] = rot_sgn
+        out_trans[i] = (e_trans % 1.0) if force_positive_translation else e_trans
+        
+        
+def parse_sitesym(symlist, sep=',', force_positive_translation=False):
     """Parses a sequence of site symmetries in the form used by
     International Tables and returns corresponding rotation and
     translation arrays.
@@ -692,6 +804,7 @@ def parse_sitesym(symlist, sep=','):
     ...     'x,y,z',
     ...     '-y+1/2,x+1/2,z',
     ...     '-y,-x,-z',
+    ...     'x-1/4, y-1/4, -z'
     ... ]
     >>> rot, trans = parse_sitesym(symlist)
     >>> rot
@@ -705,43 +818,25 @@ def parse_sitesym(symlist, sep=','):
     <BLANKLINE>
            [[ 0, -1,  0],
             [-1,  0,  0],
+            [ 0,  0, -1]],
+    <BLANKLINE>
+           [[ 1,  0,  0],
+            [ 0,  1,  0],
             [ 0,  0, -1]]])
     >>> trans
-    array([[ 0. ,  0. ,  0. ],
-           [ 0.5,  0.5,  0. ],
-           [ 0. ,  0. ,  0. ]])
+    array([[ 0.  ,  0.  ,  0.  ],
+           [ 0.5 ,  0.5 ,  0.  ],
+           [ 0.  ,  0.  ,  0.  ],
+           [-0.25, -0.25,  0.  ]])
     """
+    
     nsym = len(symlist)
     rot = np.zeros((nsym, 3, 3), dtype='int')
     trans = np.zeros((nsym, 3))
+    
     for i, sym in enumerate(symlist):
-        for j, s in enumerate(sym.split(sep)):
-            s = s.lower().strip()
-            while s:
-                sign = 1
-                if s[0] in '+-':
-                    if s[0] == '-':
-                        sign = -1
-                    s = s[1:].lstrip()
-                if s[0] in 'xyz':
-                    k = ord(s[0]) - ord('x')
-                    rot[i, j, k] = sign
-                    s = s[1:].lstrip()
-                elif s[0].isdigit() or s[0] == '.':
-                    n = 0
-                    while n < len(s) and (s[n].isdigit() or s[n] in '/.'):
-                        n += 1
-                    t = s[:n]
-                    s = s[n:].lstrip()
-                    if '/' in t:
-                        q, r = t.split('/')
-                        trans[i, j] = float(q) / float(r)
-                    else:
-                        trans[i, j] = float(t)
-                else:
-                    raise SpacegroupValueError(
-                        'Error parsing %r. Invalid site symmetry: %s' %
-                        (s, sym))
+        parse_sitesym_single(sym, rot[i], trans[i], sep=sep, force_positive_translation=force_positive_translation)
+        
     return rot, trans
 
 

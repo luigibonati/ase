@@ -29,7 +29,6 @@ omit =
     ../calculators/aims.py
     ../calculators/psi4.py
     ../calculators/gamess_us.py
-    ../calculators/lammpslib.py
     ../calculators/orca.py
     ../calculators/fleur.py
     ../calculators/amber.py
@@ -48,6 +47,7 @@ omit =
     ../calculators/vasp/interactive.py
     ../calculators/vasp/vasp2.py
     ../calculators/vasp/vasp.py
+    ../calculators/vasp/vasp_auxiliary.py
 
     # TODO: Improve IO format coverage and add include in coverage stats
     ../io/fortranfile.py
