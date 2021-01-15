@@ -287,9 +287,7 @@ class ResonantRaman(Raman):
 
         ov_ij = int dr displaced*_i(r) eqilibrium_j(r)
         """
-        filename = self._exprefix('eq') + self.exext
-        self.log(f'reading {filename}')
-        ex0 = self.read_exobj(filename)
+        ex0 = self._eq_disp().read_exobj()
         eu = ex0.energy_to_eV_scale
         rep0_p = np.ones((len(ex0)), dtype=float)
 
@@ -525,17 +523,14 @@ class LrResonantRaman(ResonantRaman):
     Quick and dirty approach to enable loading of LrTDDFT calculations
     """
 
-    def _eq_exfile(self):
-        return self._exprefix('eq') + self.exext
-
     def read_excitations(self):
-        filename = self._eq_exfile()
-        ex0_object = self.read_exobj(filename)
+        eq_disp = self._eq_disp()
+        ex0_object = eq_disp.read_exobj()
         eu = ex0_object.energy_to_eV_scale
         matching = frozenset(ex0_object.kss)
 
-        def append(lst, filename, matching):
-            exo = self.read_exobj(filename)
+        def append(lst, disp, matching):
+            exo = disp.read_exobj()
             lst.append(exo)
             matching = matching.intersection(exo.kss)
             return matching
@@ -544,13 +539,14 @@ class LrResonantRaman(ResonantRaman):
         exp_object_list = []
         for a in self.indices:
             for i in 'xyz':
-                name1 = self._exfilename(a, i, '-')
-                name2 = self._exfilename(a, i, '+')
+                disp1 = self._disp(a, i, -1)
+                disp2 = self._disp(a, i, 1)
+
                 matching = append(exm_object_list,
-                                  name1,
+                                  disp1,
                                   matching)
                 matching = append(exp_object_list,
-                                  name2,
+                                  disp2,
                                   matching)
 
         def select(exl, matching):
