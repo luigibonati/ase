@@ -4,7 +4,6 @@ Atoms object in VASP POSCAR format.
 
 """
 
-import os
 import re
 
 import numpy as np

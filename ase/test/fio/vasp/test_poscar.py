@@ -17,7 +17,7 @@ def poscar_no_species(datadir):
 
 
 
-def test_read_poscar(outcar, poscar_no_species, tmp_path):
+def test_read_poscar_no_species(outcar, poscar_no_species, tmp_path):
     copyfile(outcar, tmp_path / 'OUTCAR')
     copyfile(poscar_no_species, tmp_path / 'POSCAR')
 
