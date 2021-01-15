@@ -43,11 +43,6 @@ class RamanCalculatorBase:
 
         self.comm = comm
 
-    def log(self, message, pre='# ', end='\n'):
-        if self.verbose:
-            self.txt.write(pre + message + end)
-            self.txt.flush()
-
 
 class StaticRamanCalculatorBase(RamanCalculatorBase):
     """Base class for Raman intensities derived from
@@ -112,10 +107,6 @@ class RamanBase(AtomicDisplacements):
 
         self.comm = comm
 
-    def log(self, message, pre='# ', end='\n'):
-        if self.verbose:
-            self.txt.write(pre + message + end)
-            self.txt.flush()
 
 
 class RamanData(RamanBase):
