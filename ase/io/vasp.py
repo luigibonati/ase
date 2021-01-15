@@ -14,6 +14,7 @@ from ase.utils import reader, writer
 from ase.io.utils import ImageIterator
 from ase.io import ParseError
 from .vasp_parsers import vasp_outcar_parsers as vop
+from pathlib import Path
 
 __all__ = [
     'read_vasp', 'read_vasp_out', 'iread_vasp_out', 'read_vasp_xdatcar',
@@ -60,10 +61,8 @@ def atomtypes_outpot(posfname, numsyms):
 
     # First check files with exactly same name except POTCAR/OUTCAR instead
     # of POSCAR/CONTCAR.
-    fnames = ['POTCAR'.join(posfname.rsplit('POSCAR',1)),
-              'OUTCAR'.join(posfname.rsplit('POSCAR',1)),
-              'POTCAR'.join(posfname.rsplit('CONTCAR',1)),
-              'OUTCAR'.join(posfname.rsplit('CONTCAR',1))]
+    fnames = [Path(posfsname).with_name('POTCAR'),
+              Path(posfsname).with_name('OUTCAR')]
     # Try the same but with compressed files
     fsc = []
     for fn in fnames:
@@ -81,7 +80,7 @@ def atomtypes_outpot(posfname, numsyms):
         fnames.append(f)
 
     tried = []
-    files_in_dir = os.listdir('.')
+    files_in_dir = os.listdir(Path(posfsname).parent)
     for fn in fnames:
         if fn in files_in_dir:
             tried.append(fn)
