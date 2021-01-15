@@ -174,7 +174,7 @@ class Displacement:
         # Do calculation on equilibrium structure
         eq_disp = self._disp(0, 0, 0)
         #with self.cache.lock(f'{self.name}.eq') as handle:
-        with self.cache.lock(eq_disp.fullname) as handle:
+        with self.cache.lock(eq_disp.name) as handle:
             if handle is not None:
                 output = self(atoms_N)
                 # Write output to file
@@ -192,7 +192,7 @@ class Displacement:
                 for sign in [-1, 1]:
                     disp = self._disp(a, i, sign)
                     #key = '%s.%d%s%s' % (self.name, a, 'xyz'[i], ' +-'[sign])
-                    with self.cache.lock(disp.fullname) as handle:
+                    with self.cache.lock(disp.name) as handle:
                         if handle is None:
                             continue
                         try:

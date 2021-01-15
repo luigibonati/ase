@@ -50,14 +50,10 @@ class Displacement(namedtuple('Displacement', ['a', 'i', 'sign', 'ndisp',
 
     @property
     def _cached(self):
-        return self.vib.cache[self.fullname]
+        return self.vib.cache[self.name]
 
     def forces(self):
         return self._cached['forces'].copy()
-
-    @property
-    def fullname(self):
-        return f'{self.name}'
 
     @property
     def step(self):
@@ -69,10 +65,10 @@ class Displacement(namedtuple('Displacement', ['a', 'i', 'sign', 'ndisp',
 
     # XXX below stuff only valid for TDDFT excitation stuff
     def save_ov_nn(self, ov_nn):
-        np.save(self.fullname + '.ov', ov_nn)
+        np.save(self.name + '.ov', ov_nn)
 
     def load_ov_nn(self):
-        return np.load(self.fullname + '.ov.npy')
+        return np.load(self.name + '.ov.npy')
 
     def read_exobj(self):
         return self.vib.read_exobj(self._exname)
@@ -214,7 +210,7 @@ class Vibrations(AtomicDisplacements):
                 'to have only one sort of data structure at a time.')
 
         for disp, atoms in self.iterdisplace(inplace=True):
-            with self.cache.lock(disp.fullname) as handle:
+            with self.cache.lock(disp.name) as handle:
                 if handle is None:
                     continue
 
