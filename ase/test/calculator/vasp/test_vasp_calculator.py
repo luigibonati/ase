@@ -74,7 +74,7 @@ def test_vasp_no_cell(mock_vasp_calculate):
     # Molecules come with no unit cell
     atoms = molecule('CH4')
     # We should not have a cell
-    assert atoms.get_cell().sum() == 0
+    assert atoms.cell.rank == 0
 
     with pytest.raises(CalculatorSetupError):
         check_cell(atoms)
