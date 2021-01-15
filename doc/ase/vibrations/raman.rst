@@ -122,7 +122,7 @@ for more analysis::
   
   photonenergy = 7.5  # eV
   pr = Profeta(H2Morse(), H2MorseExcitedStates, approximation='Placzek')
-  x, y = pr.get_spectrum(photonenergy, start=4000, end=5000, method='frederiksen', type='Lorentzian')
+  x, y = pr.get_spectrum(photonenergy, start=4000, end=5000, type='Lorentzian')
   plt.plot(x, y)
   plt.show()
 
@@ -145,7 +145,7 @@ to be present. We therefore have to invoke the ``Albrecht`` object as::
   
   photonenergy = 7.5  # eV
   al = Albrecht(H2Morse(), H2MorseExcitedStates, approximation='Albrecht', overlap=True)
-  x, y = al.get_spectrum(photonenergy, start=4000, end=5000, method='frederiksen', type='Lorentzian')
+  x, y = al.get_spectrum(photonenergy, start=4000, end=5000, type='Lorentzian')
 
 ``Albrecht`` splits the spectra in two contributions that can be accessed as
 ``approximation='Albrecht A'`` and ``approximation='Albrecht BC'``,
