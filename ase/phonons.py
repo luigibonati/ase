@@ -416,7 +416,8 @@ class Phonons(Displacement):
         for i, a in enumerate(self.indices):
             for j, v in enumerate('xyz'):
                 # Atomic forces for a displacement of atom a in direction v
-                basename = '%s.%d%s' % (self.name, a, v)
+                # basename = '%s.%d%s' % (self.name, a, v)
+                basename = '%d%s' % (a, v)
                 fminus_av = self.cache[basename + '-']['forces']
                 fplus_av = self.cache[basename + '+']['forces']
 

@@ -27,7 +27,7 @@ def test_names():
     atoms = H2Morse()
     vib = Vibrations(atoms)
     vib.run()
-    assert 'vib.0x-' in vib.cache
+    assert '0x-' in vib.cache
 
     # do a Resonant Raman calculation
     rmc = ResonantRamanCalculator(atoms, H2MorseExcitedStatesCalculator,
@@ -36,7 +36,7 @@ def test_names():
     # remove the corresponding pickle file,
     # then Placzek can not anymore use it for vibrational properties
 
-    key = 'raman.0x-'
+    key = '0x-'
     assert key in rmc.cache
     del rmc.cache[key]  # make sure this is not used
 

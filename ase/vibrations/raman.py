@@ -108,7 +108,6 @@ class RamanBase(AtomicDisplacements):
         self.comm = comm
 
 
-
 class RamanData(RamanBase):
     """Base class to evaluate Raman spectra from pre-computed data"""
     def __init__(self, atoms,  # XXX do we need atoms at this stage ?

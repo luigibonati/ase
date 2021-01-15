@@ -57,8 +57,7 @@ class Displacement(namedtuple('Displacement', ['a', 'i', 'sign', 'ndisp',
 
     @property
     def fullname(self):
-        return f'{self.prefix}.{self.name}'
-        #return f'{self.name}'
+        return f'{self.name}'
 
     @property
     def step(self):
