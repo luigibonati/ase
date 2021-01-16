@@ -46,19 +46,19 @@ General changes:
   :func:`ase.utils.xwopen` which is a contextmanager and ensures
   that the file is closed correctly.
 
-* Clusters created by :module:`ase.cluster` will no longer have cell vectors
+* Clusters created by :mod:`ase.cluster` will no longer have cell vectors
   and will be centered around (0, 0, 0).
   Previously they had a “tight” cell and coordinates
   centered with zero vacuum.
 
-* Refactored external viewers in :module:`ase.visualize.view`.
+* Refactored external viewers in :mod:`ase.visualize.view`.
   Viewers will now clean up their temporary files correctly on non-UNIX
   platforms.
 
-* Band structure module moved to :module:`ase.spectrum.band_structure`.
+* Band structure module moved to :mod:`ase.spectrum.band_structure`.
 
 * New objects for working with DOS and collections of DOS in
-  :module:`ase.spectrum`.  To begin with, this will mostly be relevant
+  :mod:`ase.spectrum`.  To begin with, this will mostly be relevant
   for format readers that want to retrieve such objects from
   calculations.
 
