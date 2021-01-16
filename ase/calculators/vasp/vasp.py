@@ -1208,7 +1208,7 @@ def check_cell(atoms: ase.Atoms) -> None:
     """Check if there is a zero unit cell.
     Raises CalculatorSetupError if the cell is wrong.
     """
-    if not atoms.cell.any():
+    if atoms.cell.rank < 3:
         raise calculator.CalculatorSetupError(
             "The lattice vectors are zero! "
             "This is the default value - please specify a "
