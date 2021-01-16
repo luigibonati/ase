@@ -452,3 +452,16 @@ def test_bad_occupancies(atoms):
     atoms.symbols[0] = 'Au'
     with pytest.warns(UserWarning, match='no occupancy info'):
         write('tmp.cif', atoms)
+
+
+def test_spacegroup_named_setting():
+    ciffile = io.BytesIO(b"""\
+data_test
+_space_group_crystal_system rhombohedral
+_symmetry_space_group_name_H-M         'R-3m   '
+""")
+    blocks = list(parse_cif(ciffile))
+    assert len(blocks) == 1
+    spg = blocks[0].get_spacegroup(False)
+    assert int(spg) == 166
+    assert spg.setting == 2
