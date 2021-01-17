@@ -974,8 +974,6 @@ class Wannier:
         if real:
             if self.Nk == 1:
                 func *= np.exp(-1.j * np.angle(func.max()))
-                if 0:
-                    assert max(abs(func.imag).flat) < 1e-4
                 func = abs(func)
             else:
                 func = abs(func)
