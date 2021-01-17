@@ -405,6 +405,13 @@ class CIFBlock(collections.abc.Mapping):
         return spg
 
     def get_unsymmetrized_structure(self) -> Atoms:
+        """Return Atoms without symmetrizing coordinates.
+
+        This returns a (normally) unphysical Atoms object
+        corresponding only to those coordinates included
+        in the CIF file, useful for e.g. debugging.
+
+        This method may change behaviour in the future."""
         return Atoms(symbols=self.get_symbols(),
                      cell=self.get_cell(),
                      masses=self._get_masses(),
