@@ -403,6 +403,7 @@ class Wannier:
 
         self.verbose = verbose
         self.calc = calc
+        self.atoms = calc.get_atoms()
         self.spin = spin
         self.functional = functional
         self.initialwannier = initialwannier
@@ -417,7 +418,7 @@ class Wannier:
         self.kpt_kc *= sign
 
         self.Nk = len(self.kpt_kc)
-        self.unitcell_cc = calc.get_atoms().get_cell()
+        self.unitcell_cc = self.atoms.get_cell()
         self.largeunitcell_cc = (self.unitcell_cc.T * self.kptgrid).T
         self.weight_d, self.Gdir_dc = calculate_weights(self.largeunitcell_cc)
         self.Ndir = len(self.weight_d)  # Number of directions
@@ -571,7 +572,7 @@ class Wannier:
                     self.C_kul.append(np.array([]))
         elif initialwannier == 'orbitals':
             self.C_kul, self.U_kww = self.calc.initial_wannier(
-                init_orbitals(self.calc.get_atoms(), self.nwannier, rng),
+                init_orbitals(self.atoms, self.nwannier, rng),
                 self.kptgrid, self.fixedstates_k,
                 self.edf_k, self.spin, self.nbands)
         elif initialwannier == 'scdm':
@@ -955,7 +956,7 @@ class Wannier:
             repeat = self.kptgrid
 
         # Remove constraints, some are not compatible with repeat()
-        atoms = self.calc.get_atoms().copy()
+        atoms = self.atoms.copy()
         atoms.set_constraint()
         atoms = atoms * repeat
         func = self.get_function(index, repeat)
