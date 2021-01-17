@@ -41,3 +41,11 @@ class KimpyError(CalculatorError):
     """
 
     pass
+
+class InputError(Exception):
+    def __init__(self, msg):
+        super(InputError, self).__init__(msg)
+        self.msg = msg
+
+    def __expr__(self):
+        return self.msg

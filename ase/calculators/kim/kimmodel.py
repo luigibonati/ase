@@ -15,6 +15,9 @@ from ase.calculators.calculator import compare_atoms
 from . import kimpy_wrappers
 from . import neighborlist
 
+from collections import OrderedDict
+from .exceptions import InputError
+import copy
 
 class KIMModelData:
     """Initializes and subsequently stores the KIM API Portable Model
@@ -243,6 +246,8 @@ class KIMModelCalculator(Calculator):
             self.model_name, ase_neigh, neigh_skin_ratio, self.debug
         )
 
+        self.old_kim_parameters = {}
+
     def __enter__(self):
         return self
 
@@ -279,10 +284,14 @@ class KIMModelCalculator(Calculator):
             and 'pbc'.
         """
 
-        Calculator.calculate(self, atoms, properties, system_changes)
+        parameters_change = self._parameters_change()
+        if parameters_change:
+            system_changes.append('calculator')
+        # else:
+        #     Calculator.calculate(self, atoms, properties, system_changes)
 
         # Update KIM API input data and neighbor list, if necessary
-        if system_changes:
+        if system_changes or parameters_change:
             if self.need_neigh_update(atoms, system_changes):
                 self.update_neigh(atoms, self.species_map)
                 self.energy = np.array([0.0], dtype=np.double)
@@ -422,3 +431,237 @@ class KIMModelCalculator(Calculator):
     @property
     def update_neigh(self):
         return self.neigh.update
+
+    @property
+    def params_names(self):
+        """Names of all parameters in the model."""
+        nparams = self.kim_model.kim_model.get_number_of_parameters()
+        names = []
+        for ii in range(nparams):
+            names.append(list(
+                self._get_one_parameter_metadata(ii).keys()
+            )[0]
+            )
+        return names
+
+    def echo_parameter_metadata(self):
+        """Print metadata of all the parameters in the model.
+            name : name of a KIM portable model parameter
+            dtype : data type of the parameter ('Integer' or 'Double')
+            extent : length of the parameter list
+            description : description of the parameter
+        It will be useful to call this method before setting custom
+        parameters to check the name of the parameters in the model
+        and their extents.
+        """
+        num_params = self.kim_model.kim_model.get_number_of_parameters()
+        print("#"*80)
+        print(f"# Parameters' metadata for {self.model_name}")
+        print("#"*80)
+        print()
+        for ii in range(num_params):
+            name, items = list(
+                self._get_one_parameter_metadata(ii).items()
+            )[0]
+            print(f"name : {name}")
+            print(f"dtype : {items['dtype']}")
+            print(f"extent : {items['extent']}")
+            print(f"description : {items['description']}")
+            print()
+
+    def get_parameters(self, **kwargs):
+        """Get values of parameters like
+            get_parameters(name1=index_range1,
+                           name2=index_range2,
+                           ...)
+        index_range can be an integer or a list of integers.
+
+        This will return a dictionary containing parameters that are
+        previously set in KIM calculator. Initially, this would be
+        the default parameter values stored in KIM portable model.
+
+        As an example, suppose we want to get epsilons and sigmas for
+        Mo-Mo (index 4879), Mo-S (index 2006) and S-S (index 1980)
+        interactions in LJ universal model. Then we would call
+            calc.get_parameters('epsilons'=[4879, 2006, 1980],
+                                'sigmas'=[4879, 2006, 1980])
+        """
+        parameters = {}
+        for param_name, index_range in kwargs.items():
+            parameters.update(
+                self._get_one_parameter(
+                    param_name, index_range
+                )
+            )
+        return parameters
+
+    def set_parameters(self, **kwargs):
+        """Set values of parameters like
+            set_parameters(name1=[index_range1, values1],
+                           name2=[index_range2, values2],
+                           ...)
+        index_range and values can be float or integer, or list of
+        floats and integers.
+
+        This will return a dictionary containing parameters that
+        are set.
+
+        As an example, suppose we want to set epsilons for Mo-Mo
+        (index 4879), Mo-S (index 2006) and S-S (index 1980)
+        interactions in LJ universal model to 5.0, 4.5, and 4.0,
+        respectively. Then we would call
+            calc.set_parameters('epsilons'=[[4879, 2006, 1980],
+                                            [5.0, 4.5, 4.0]])
+        """
+        parameters = {}
+        for param_name, param_data in kwargs.items():
+            self._set_one_parameter(
+                param_name, param_data[0], param_data[1]
+            )
+            parameters.update(
+                {param_name: param_data}
+            )
+        self.kim_model.kim_model.clear_then_refresh()
+        return parameters
+
+    def _get_one_parameter(self, param_name, index_range):
+        """Get values of one of the parameter."""
+        # Check if model has param_name
+        if param_name not in self.params_names:
+            raise InputError(
+                f'Parameter {param_name} is not supported.')
+
+        param_name_index = self._get_param_name_index(param_name)
+        param_metadata = self._get_one_parameter_metadata(
+            param_name_index
+        )
+        dtype = list(param_metadata.values())[0]['dtype']
+
+        index_range_dim = np.ndim(index_range)
+        if index_range_dim==0:
+            values = self._get_one_value(
+                param_name_index, int(index_range), dtype
+            )
+        elif index_range_dim==1:
+            values = []
+            for idx in index_range:
+                values.append(
+                    self._get_one_value(
+                        param_name_index, int(idx), dtype
+                    )
+                )
+        else:
+            raise ValueError(
+                'Index range must be an integer or a list of integer'
+            )
+        return {param_name: values}
+
+    def _set_one_parameter(self, param_name, index_range, values):
+        """Set values of one parameter in kim calculator.
+        """
+        # Check if model has param_name
+        if param_name not in self.params_names:
+            raise InputError(
+                f'Parameter {param_name} is not supported.')
+
+        param_name_index = self._get_param_name_index(param_name)
+        param_metadata = self._get_one_parameter_metadata(
+            param_name_index
+        )
+        dtype = list(param_metadata.values())[0]['dtype']
+
+        index_range_dim = np.ndim(index_range)
+        values_dim = np.ndim(values)
+
+        # Check the shape of index_range and values
+        msg = 'index_range and values must have the same shape'
+        assert index_range_dim==values_dim, msg
+
+        if index_range_dim==0:
+            self._set_one_value(
+                param_name_index, index_range, dtype, values
+            )
+        elif index_range_dim==1:
+            assert len(index_range)==len(values), msg
+            for idx, value in zip(index_range, values):
+                self._set_one_value(
+                    param_name_index, idx, dtype, value
+                )
+        else:
+            raise ValueError(
+                'Index range must be an integer or a list of integer'
+            )
+
+    def _get_one_parameter_metadata(self, index_parameter):
+        """Get parameter metadata."""
+        out = self.kim_model.kim_model.get_parameter_metadata(
+            index_parameter
+        )
+        dtype, extent, name, description, error = out
+        dtype = dtype.__repr__()
+        pdata = {name:
+                 OrderedDict(
+                     {'dtype': dtype,
+                      'extent': extent,
+                      'description': description,
+                      'error': error}
+                 )}
+        return pdata
+
+    def _get_param_name_index(self, param_name):
+        """Given param_name, find index of parameter stored in the
+        model.
+        """
+        param_name_index = np.where(
+            np.asarray(self.params_names)==param_name
+        )[0]
+        return param_name_index
+
+    def _get_one_value(self, index_param, index_extent, dtype):
+        """Get values of one parameter."""
+        if dtype=='Double':
+            pp = self.kim_model.kim_model.get_parameter_double(
+                index_param, index_extent
+            )[0]
+        else:
+            pp = self.kim_model.kim_model.get_parameter_int(
+                index_param, index_extent
+            )[0]
+        return pp
+
+    def _set_one_value(self, index_param, index_extent,
+                       dtype, value):
+        """Update one parameter in kim model."""
+        if dtype == 'Integer':
+            self.kim_model.kim_model.set_parameter(
+                index_param, int(index_extent), int(value)
+            )
+        elif dtype == 'Double':
+            self.kim_model.kim_model.set_parameter(
+                index_param, int(index_extent), float(value)
+            )
+
+    def _parameters_change(self):
+        """Check if model parameters change."""
+        old_params = self.old_kim_parameters
+        new_params = self.kim_parameters
+        same = old_params==new_params
+        self.old_kim_parameters = copy.deepcopy(new_params)
+        return not same
+
+    @property
+    def kim_parameters(self):
+        """Parameters in KIM model."""
+        parameters = OrderedDict()
+        for ii, name in enumerate(self.params_names):
+            metadata = self._get_one_parameter_metadata(ii)
+            dtype = metadata[name]['dtype']
+            extent = metadata[name]['extent']
+
+            pvalues = []
+            for idx in range(extent):
+                pvalues.append(
+                    self._get_one_value(ii, idx, dtype)
+                )
+            parameters.update({name:pvalues})
+        return parameters
