@@ -628,7 +628,8 @@ class Wannier:
         The optimal value is the one that gives the lowest average value for
         the spread of the most delocalized Wannier function in the set.
 
-        ``nwrange``: number of different values to try for 'nwannier'.
+        ``nwrange``: number of different values to try for 'nwannier', the
+        values will span a symmetric range around ``nwannier`` if possible.
 
         ``random_reps``: number of repetitions with random seed, the value is
         then an average over these repetitions.
@@ -637,15 +638,23 @@ class Wannier:
         useful to increase the speed, with a cost in accuracy.
         """
 
-        if (self.nwannier - np.floor(nwrange / 2)) < np.max(self.fixedstates_k):
-            Nws = np.arange(np.max(self.fixedstates_k),
-                            np.min([np.max(self.fixedstates_k) + nwrange,
-                                    self.nbands + 1])).astype(int)
+        # Define the range of values to try based on the maximum number of fixed
+        # states (that is the minimum number of WFs we need) and the number of
+        # available bands we have.
+        min_range_value = self.nwannier - np.floor(nwrange / 2)
+        max_number_fixedstates = np.max(self.fixedstates_k)
+        if min_range_value < max_number_fixedstates:
+            Nws = np.arange(max_number_fixedstates,
+                            np.min([max_number_fixedstates + nwrange,
+                                    self.nbands + 1]))
+            Nws[:] = Nws.astype(int)
         else:
-            Nws = np.arange(np.max(self.fixedstates_k) - np.floor(nwrange / 2),
-                            np.min([np.max(self.fixedstates_k) -
-                                    np.floor(nwrange / 2) + nwrange,
-                                    self.nbands + 1])).astype(int)
+            Nws = np.arange(min_range_value,
+                            np.min([min_range_value + nwrange,
+                                    self.nbands + 1]))
+            Nws[:] = Nws.astype(int)
+
+        print(Nws)
 
         # If there is no randomness, there is no need to repeat
         random_initials = ['random', 'orbitals']

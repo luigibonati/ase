@@ -574,6 +574,8 @@ def test_initialwannier(init, wan, ti_calculator):
 
 
 def test_nwannier_auto(wan, ti_calculator):
+    """ Test 'auto' value for parameter 'nwannier'. """
+
     # Check default value
     wanf = wan(calc=ti_calculator, full_calc=True,
                initialwannier='bloch', std_calc=False,
@@ -688,8 +690,32 @@ def test_scdm(ti_calculator):
 
 
 def test_get_optimal_nwannier(wan, si_calculator):
+    """ Test method to compute the optimal 'nwannier' value. """
+
     wanf = wan(calc=si_calculator, full_calc=True,
                initialwannier='bloch', std_calc=False,
                nwannier='auto', fixedenergy=0)
+
+    # Test with default parameters
     opt_nw = wanf.get_optimal_nwannier()
     assert opt_nw == 4
+
+    # Test with non-default parameters.
+    # This is mostly to test that is does actually support this parameters,
+    # it's not really testing the actual result.
+    opt_nw = wanf.get_optimal_nwannier(nwrange=10)
+    assert opt_nw == 4
+    opt_nw = wanf.get_optimal_nwannier(tolerance=1e-2)
+    assert opt_nw == 4
+
+    # This should give same result since the initialwannier does not include
+    # randomness.
+    opt_nw = wanf.get_optimal_nwannier(random_reps=10)
+    assert opt_nw == 4
+
+    # Test with random repetitions, just test if it runs.
+    wanf = wan(calc=si_calculator, full_calc=True,
+               initialwannier='orbitals', std_calc=False,
+               nwannier='auto', fixedenergy=0)
+    opt_nw = wanf.get_optimal_nwannier(random_reps=10)
+    assert opt_nw >= 0
