@@ -998,13 +998,21 @@ class Wannier:
 
           Tr[|ZI|^2]=sum(I)sum(n) w_i|Z_(i)_nn|^2,
 
-        where w_i are weights."""
+        where w_i are weights.
+
+        If the functional is set to 'var' it subtracts a variance term
+
+        ::
+
+          Nw * var(sum(n) w_i|Z_(i)_nn|^2),
+
+        where Nw is the number of WFs ``nwannier``.
+        """
+        a_dw = np.abs(self.Z_dww.diagonal(0, 1, 2))**2
+        a_w = (a_dw.T @ self.weight_d).real
         if self.functional == 'std':
-            a_d = np.sum(np.abs(self.Z_dww.diagonal(0, 1, 2))**2, axis=1)
-            fun = (a_d @ self.weight_d).real
+            fun = np.sum(a_w)
         elif self.functional == 'var':
-            a_dw = np.abs(self.Z_dww.diagonal(0, 1, 2))**2
-            a_w = (a_dw.T @ self.weight_d).real
             fun = np.sum(a_w) - self.nwannier * np.var(a_w)
             if self.verbose:
                 print(f'std: {np.sum(a_w):.4f}',
