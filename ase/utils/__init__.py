@@ -129,7 +129,8 @@ def convert_string_to_fd(name, world=None):
 CEW_FLAGS = os.O_CREAT | os.O_EXCL | os.O_WRONLY | getattr(os, 'O_BINARY', 0)
 
 
-def opencew(filename, world=None):
+@contextmanager
+def xwopen(filename, world=None):
     """Create and open filename exclusively for writing.
 
     If master cpu gets exclusive write access to filename, a file
@@ -137,28 +138,53 @@ def opencew(filename, world=None):
     slaves).  If the master cpu does not get write access, None is
     returned on all processors."""
 
+    fd = opencew(filename, world)
+    try:
+        yield fd
+    finally:
+        if fd is not None:
+            fd.close()
+
+
+#@deprecated('use "with xwopen(...) as fd: ..." to prevent resource leak')
+def opencew(filename, world=None):
+    return _opencew(filename, world)
+
+
+def _opencew(filename, world=None):
     if world is None:
         from ase.parallel import world
 
-    if world.rank == 0:
-        try:
-            fd = os.open(filename, CEW_FLAGS)
-        except OSError as ex:
-            error = ex.errno
-        else:
-            error = 0
-            fd = os.fdopen(fd, 'wb')
-    else:
-        error = 0
-        fd = open(os.devnull, 'wb')
+    closelater = []
 
-    # Syncronize:
-    error = world.sum(error)
-    if error == errno.EEXIST:
-        return None
-    if error:
-        raise OSError(error, 'Error', filename)
-    return fd
+    def opener(file, flags):
+        return os.open(file, flags | CEW_FLAGS)
+
+    try:
+        error = 0
+        if world.rank == 0:
+            try:
+                fd = open(filename, 'wb', opener=opener)
+            except OSError as ex:
+                error = ex.errno
+            else:
+                closelater.append(fd)
+        else:
+            fd = open(os.devnull, 'wb')
+            closelater.append(fd)
+
+        # Synchronize:
+        error = world.sum(error)
+        if error == errno.EEXIST:
+            return None
+        if error:
+            raise OSError(error, 'Error', filename)
+
+        return fd
+    except BaseException:
+        for fd in closelater:
+            fd.close()
+        raise
 
 
 class Lock:

@@ -25,7 +25,8 @@ class STM:
 
         if isinstance(atoms, str):
             with open(atoms, 'r') as fd:
-                self.ldos, self.bias, self.cell = read_json(fd)
+                self.ldos, self.bias, self.cell = read_json(fd,
+                                                            always_array=False)
             self.atoms = None
         else:
             self.atoms = atoms

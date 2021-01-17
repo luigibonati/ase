@@ -1,4 +1,11 @@
-def test_vasp2_check_state(require_vasp):
+import os
+import pytest
+
+calc = pytest.mark.calculator
+
+
+@calc('vasp')
+def test_vasp_check_state(factory, atoms_2co):
     """
     Run tests to ensure that the VASP check_state() function call works correctly,
     i.e. correctly sets the working directories and works in that directory.
@@ -8,21 +15,7 @@ def test_vasp2_check_state(require_vasp):
 
     """
 
-    from ase.test.calculator.vasp import installed2 as installed
-
-    import os
-    from ase import Atoms
-    from ase.calculators.vasp import Vasp2 as Vasp
-    assert installed()
-
-    # Test setup system, borrowed from vasp_co.py
-    d = 1.14
-    atoms = Atoms('CO', positions=[(0, 0, 0), (0, 0, d)],
-                  pbc=True)
-    atoms.extend(Atoms('CO', positions=[(0, 2, 0), (0, 2, d)]))
-
-    atoms.center(vacuum=5.)
-
+    atoms = atoms_2co  # aliasing
 
     # Test
     settings = dict(xc='LDA',
@@ -36,7 +29,7 @@ def test_vasp2_check_state(require_vasp):
 
     s1 = atoms.get_chemical_symbols()
 
-    calc = Vasp(**settings)
+    calc = factory.calc(**settings)
 
     atoms.calc = calc
 
@@ -48,12 +41,12 @@ def test_vasp2_check_state(require_vasp):
 
     assert os.path.isfile(fi)
 
-    calc2 = Vasp()
+    calc2 = factory.calc()
     calc2.read_json(fi)
     assert not calc2.calculation_required(atoms, ['energy', 'forces'])
     en2 = calc2.get_potential_energy()
     assert abs(en1 - en2) < 1e-8
-    os.remove(fi)                   # Clean up the JSON file
+    os.remove(fi)  # Clean up the JSON file
 
     # Check that the symbols remain in order (non-sorted)
     s2 = calc.atoms.get_chemical_symbols()
@@ -62,7 +55,7 @@ def test_vasp2_check_state(require_vasp):
     assert s2 != s3
 
     # Check that get_atoms() doesn't reset results
-    r1 = dict(calc.results)         # Force a copy
+    r1 = dict(calc.results)  # Force a copy
     calc.get_atoms()
     r2 = dict(calc.results)
     assert r1 == r2
@@ -85,7 +78,6 @@ def test_vasp2_check_state(require_vasp):
     # Check that this requires a new calculation
     assert calc.check_state(atoms) == ['input_params']
     assert calc.calculation_required(atoms, ['energy', 'forces'])
-
 
     # Clean up
     calc.clean()

@@ -49,8 +49,7 @@ pipinstall:
   script:
     - python --version
     - pip install psycopg2-binary pymysql cryptography
-    - pip install pytest pytest-xdist
-    - pip install .
+    - pip install .[test]
     - ase test --pytest --color=yes
   when: manual
 
@@ -119,7 +118,7 @@ calculators:
   script:
     - pip install --no-deps --editable .
     - ase info --calculators
-    - ase test calculator --calculators abinit,asap,cp2k,dftb,espresso,gpaw,lammpsrun,nwchem,octopus,siesta --coverage --pytest --color=yes --durations 20
+    - ase test calculator --calculators abinit,asap,cp2k,dftb,espresso,gpaw,kim,lammpslib,lammpsrun,nwchem,octopus,siesta --coverage --pytest --color=yes --durations 20
     - mv ase/test/coverage-html coverage-calculators
     - mv ase/test/.coverage coverage-calculators/coverage.dat
   when: manual

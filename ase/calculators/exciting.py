@@ -165,7 +165,7 @@ class Exciting:
         forcesnodes = info.findall(
             'groundstate/scl/structure')[-1].findall('species/atom/forces/totalforce')
         for force in forcesnodes:
-            forces.append(np.array(list(force.attrib.values())).astype(np.float))
+            forces.append(np.array(list(force.attrib.values())).astype(float))
         self.forces = np.reshape(forces, (-1, 3)) * Hartree / Bohr
 
         if str(info.find('groundstate').attrib['status']) == 'finished':

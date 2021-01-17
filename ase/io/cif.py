@@ -399,10 +399,9 @@ class CIFBlock(collections.abc.Mapping):
                     'This may result in wrong setting!' % (
                         setting_name, spacegroup))
 
-        spg = Spacegroup(spacegroup)
+        spg = Spacegroup(spacegroup, setting)
         if no is not None:
             assert int(spg) == no, (int(spg), no)
-        assert spg.setting == setting, (spg.setting, setting)
         return spg
 
     def get_unsymmetrized_structure(self) -> Atoms:
@@ -737,7 +736,6 @@ def expand_kinds(atoms, coords):
         for i, kind in enumerate(kinds):
             occ_info_kind = occ_info[kind]
             symbol = symbols[i]
-            print('ARGH', symbol)
             if symbol not in occ_info_kind:
                 raise BadOccupancies('Occupancies present but no occupancy '
                                      'info for "{symbol}"')

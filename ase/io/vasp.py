@@ -310,7 +310,7 @@ def read_vasp_xdatcar(filename='XDATCAR', index=-1):
             fd.readline()
 
         coords = [
-            np.array(fd.readline().split(), np.float) for ii in range(total)
+            np.array(fd.readline().split(), float) for ii in range(total)
         ]
 
         image = Atoms(atomic_formula, cell=cell, pbc=True)

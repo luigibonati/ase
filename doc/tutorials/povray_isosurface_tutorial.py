@@ -42,7 +42,7 @@ generic_projection_settings = {
 # write returns a renderer object which needs to have the render method called
 
 write('NiO_marching_cubes1.pov', atoms,
-      generic_projection_settings=generic_projection_settings,
+      **generic_projection_settings,
       povray_settings=povray_settings,
       isosurface_data=dict(density_grid=vchg.chgdiff[0],
                            cut_off=density_cut_off)).render()
@@ -52,7 +52,7 @@ write('NiO_marching_cubes1.pov', atoms,
 
 
 write('NiO_marching_cubes2.pov', atoms,
-      generic_projection_settings=generic_projection_settings,
+      **generic_projection_settings,
       povray_settings=povray_settings,
       isosurface_data=dict(density_grid=vchg.chgdiff[0],
                            cut_off=density_cut_off,
@@ -81,7 +81,7 @@ fun_material = '''
   }'''
 
 write('NiO_marching_cubes3.pov', atoms,
-      generic_projection_settings=generic_projection_settings,
+      **generic_projection_settings,
       povray_settings=povray_settings,
       isosurface_data=dict(density_grid=vchg.chgdiff[0],
                            cut_off=-spin_cut_off,

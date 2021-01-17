@@ -452,3 +452,26 @@ def test_bad_occupancies(atoms):
     atoms.symbols[0] = 'Au'
     with pytest.warns(UserWarning, match='no occupancy info'):
         write('tmp.cif', atoms)
+
+
+@pytest.mark.parametrize(
+    'setting_name, ref_setting',
+    [
+        ('hexagonal', 1),
+        ('trigonal', 2),
+        ('rhombohedral', 2)
+    ]
+)
+def test_spacegroup_named_setting(setting_name, ref_setting):
+    """The rhombohedral crystal system signifies setting=2"""
+    ciffile = io.BytesIO("""\
+data_test
+_space_group_crystal_system {}
+_symmetry_space_group_name_H-M         'R-3m'
+""".format(setting_name).encode('ascii'))
+
+    blocks = list(parse_cif(ciffile))
+    assert len(blocks) == 1
+    spg = blocks[0].get_spacegroup(False)
+    assert int(spg) == 166
+    assert spg.setting == ref_setting
