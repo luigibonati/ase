@@ -149,10 +149,13 @@ I/O:
   which can be used like this::
 
     png_path = write_pov('myfile.pov').render()
+
 * Refactored CIF reader and writer, adding more extensive testing
   and fixing multiple bugs.
 
-* Removed dummy data written to CIFs for historical reasons.
+* CIF writer now uses up-to-date variable definitions from the CIF
+  standard instead of deprecated ones.  Also, it no longer writes columns
+  of dummy data that doesn't depend on the atoms.
 
 * Added :class:`ase.io.cif.CIFBlock` for direct access to data
   inside a CIF, and :func:`ase.io.cif.parse_cif` to iterate over

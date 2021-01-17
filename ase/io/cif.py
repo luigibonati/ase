@@ -319,10 +319,10 @@ class CIFBlock(collections.abc.Mapping):
                               '_symmetry_int_tables_number'])
 
     def _get_spacegroup_name(self):
-        hm_symbol = self._get_any(['_space_group.Patterson_name_h-m',
-                                   '_space_group.patterson_name_h-m',
+        hm_symbol = self._get_any(['_space_group_name_h-m_alt',
                                    '_symmetry_space_group_name_h-m',
-                                   '_space_group_name_h-m_alt'])
+                                   '_space_group.Patterson_name_h-m',
+                                   '_space_group.patterson_name_h-m'])
 
         hm_symbol = old_spacegroup_names.get(hm_symbol, hm_symbol)
         return hm_symbol
@@ -611,11 +611,11 @@ def format_cell(cell: Cell) -> str:
 def format_generic_spacegroup_info() -> str:
     # We assume no symmetry whatsoever
     return '\n'.join([
-        '_symmetry_space_group_name_H-M    "P 1"',
-        '_symmetry_int_tables_number       1',
+        '_space_group_name_H-M_alt    "P 1"',
+        '_space_group_IT_number       1',
         '',
         'loop_',
-        '  _symmetry_equiv_pos_as_xyz',
+        '  _space_group_symop_operation_xyz',
         "  'x, y, z'",
         '',
     ])
