@@ -48,10 +48,8 @@ def std_calculator(_std_calculator_gpwfile):
 def _si_calculator(tmp_path_factory):
     gpaw = pytest.importorskip('gpaw')
     atoms = bulk('Si')
-    atoms.pbc = (True, True, True)
-    atoms.center()
     gpw = tmp_path_factory.mktemp('wan_calc') / 'wan_si.gpw'
-    calc = gpaw.GPAW(gpts=(8, 8, 8), nbands=6,
+    calc = gpaw.GPAW(gpts=(8, 8, 8), nbands=8,
                      kpts={'size': (Nk, Nk, Nk), 'gamma': True},
                      symmetry='off', txt=None)
     atoms.calc = calc
@@ -70,8 +68,6 @@ def si_calculator(_si_calculator):
 def _ti_calculator(tmp_path_factory):
     gpaw = pytest.importorskip('gpaw')
     atoms = bulk('Ti', crystalstructure='hcp')
-    atoms.pbc = (True, True, True)
-    atoms.center()
     gpw = tmp_path_factory.mktemp('wan_calc') / 'wan_ti.gpw'
     calc = gpaw.GPAW(gpts=(8, 8, 8),
                      kpts={'size': (Nk, Nk, Nk), 'gamma': True},
@@ -580,13 +576,13 @@ def test_nwannier_auto(wan, ti_calculator):
     wanf = wan(calc=ti_calculator, full_calc=True,
                initialwannier='bloch', std_calc=False,
                nwannier='auto')
-    assert wanf.nwannier == 14
+    assert wanf.nwannier == 15
 
     # Check value setting fixedenergy
     wanf = wan(calc=ti_calculator, full_calc=True,
                initialwannier='bloch', std_calc=False,
                nwannier='auto', fixedenergy=0)
-    assert wanf.nwannier == 14
+    assert wanf.nwannier == 15
     wanf = wan(calc=ti_calculator, full_calc=True,
                initialwannier='bloch', std_calc=False,
                nwannier='auto', fixedenergy=5)
@@ -694,24 +690,24 @@ def test_get_optimal_nwannier(wan, si_calculator):
 
     wanf = wan(calc=si_calculator, full_calc=True,
                initialwannier='bloch', std_calc=False,
-               nwannier='auto', fixedenergy=0)
+               nwannier='auto', fixedenergy=1)
 
     # Test with default parameters
     opt_nw = wanf.get_optimal_nwannier()
-    assert opt_nw == 4
+    assert opt_nw == 8
 
     # Test with non-default parameters.
     # This is mostly to test that is does actually support this parameters,
     # it's not really testing the actual result.
     opt_nw = wanf.get_optimal_nwannier(nwrange=10)
-    assert opt_nw == 4
+    assert opt_nw == 8
     opt_nw = wanf.get_optimal_nwannier(tolerance=1e-2)
-    assert opt_nw == 4
+    assert opt_nw == 6
 
     # This should give same result since the initialwannier does not include
     # randomness.
     opt_nw = wanf.get_optimal_nwannier(random_reps=10)
-    assert opt_nw == 4
+    assert opt_nw == 8
 
     # Test with random repetitions, just test if it runs.
     wanf = wan(calc=si_calculator, full_calc=True,
