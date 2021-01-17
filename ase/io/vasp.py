@@ -694,7 +694,7 @@ def write_vasp(filename,
                sort=None,
                symbol_count=None,
                long_format=True,
-               vasp5=False,
+               vasp5=True,
                ignore_constraints=False,
                wrap=False):
     """Method to write VASP position (POSCAR/CONTCAR) files.
