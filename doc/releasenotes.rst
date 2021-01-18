@@ -9,6 +9,14 @@ Git master branch
 
 :git:`master <>`.
 
+* No changes yet
+
+
+Version 3.21.0
+==============
+
+18 January 2021: :git:`3.21.0 <../3.21.0>`
+
 General changes:
 
 * :meth:`~ase.Atoms.center` now centers around 0 along directions which
