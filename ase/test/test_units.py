@@ -27,7 +27,11 @@ def test_units(version):
                 '_amu': 'atomic mass unit-kilogram relationship'}
 
     scipy_CODATA = getattr(scipy.constants.codata,
-                           f'_physical_constants_{version}')
+                           f'_physical_constants_{version}', None)
+    if version == '2018' and scipy_CODATA is None:
+        pytest.skip('No CODATA for 2018 with this scipy')
+
+    assert scipy_CODATA is not None
 
     for asename, scipyname in name_map.items():
         aseval = CODATA[version][asename]
