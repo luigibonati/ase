@@ -32,7 +32,7 @@ General changes:
   and ``atoms.cell.rank``, respectively.
 
 * Removed deprecated code on :class:`~ase.Atoms` for handling angles
-  in radiuns.
+  in radians.
 
 * :meth:`~ase.Atoms.get_velocities` will now return zeros rather than ``None``
   when there are no velocities, consistently with other optionals such as
@@ -45,10 +45,6 @@ General changes:
   All remaining use of pickle for persistent storage will be likewise replaced
   in next release.  Users are advised as always not to open pickle-files
   from untrusted sources.
-
-* :meth:`~ase.Atoms.get_velocities` will now return an array of zeros
-  consistently with :meth:`~ase.Atoms.get_momenta` if not set.
-  It previously returned ``None``, which was an oversight.
 
 * :func:`ase.utils.opencew` to be replaced by
   :func:`ase.utils.xwopen` which is a contextmanager and ensures
