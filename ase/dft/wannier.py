@@ -1083,15 +1083,23 @@ class Wannier:
                          (dag(Z_knn[k2]) @ V_knw[k2]) * diagZ_w) @ dag(U_ww))
 
                     if self.functional == 'var':
-                        Ctemp_nw += self.nwannier * 2 * O_sum * weight * (
-                            ((Z_knn[k] @ V_knw[k1]) * diagZ_w.conj() +
-                             (dag(Z_knn[k2]) @ V_knw[k2]) * diagZ_w) @
-                            dag(U_ww)) / Nw**2
+                        # Gradient of the variance term, split in two terms
+                        def variance_term_computer(factor):
+                            result = (
+                                self.nwannier * 2 * weight * (
+                                 ((Z_knn[k] @ V_knw[k1]) * factor.conj() +
+                                  (dag(Z_knn[k2]) @ V_knw[k2]) * factor) @
+                                 dag(U_ww)) / Nw**2
+                            )
+                            return result
 
-                        Ctemp_nw -= self.nwannier * 2 * weight * (
-                            ((Z_knn[k] @ V_knw[k1]) * diagOZ_w.conj() +
-                             (dag(Z_knn[k2]) @ V_knw[k2]) * diagOZ_w) @
-                            dag(U_ww)) / Nw
+                        first_term = \
+                                O_sum * variance_term_computer(diagZ_w) / Nw**2
+
+                        second_term = \
+                                - variance_term_computer(diagOZ_w) / Nw
+
+                        Ctemp_nw += first_term + second_term
 
                 temp = Zii_ww.T * Z_kww[k].conj() - Zii_ww * Z_kww[k2].conj()
                 Utemp_ww += weight * (temp - dag(temp))
