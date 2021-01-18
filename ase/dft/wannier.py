@@ -716,6 +716,9 @@ class Wannier:
                         --  /  L  \ 2       2
           radius**2 = - >   | --- |   ln |Z|
                         --d \ 2pi /
+
+        Note that this function can fail with some Bravais lattices,
+        see `get_spreads()` for a more robust alternative.
         """
         r2 = - (self.largeunitcell_cc.diagonal()**2 / (2 * pi)**2) \
             @ np.log(abs(self.Z_dww[:3].diagonal(0, 1, 2))**2)
