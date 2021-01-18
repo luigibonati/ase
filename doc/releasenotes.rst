@@ -91,7 +91,7 @@ Algorithms:
 * :class:`~ase.neb.SingleCalculatorNEB` is deprecated.  Use
   ``ase.neb.NEB(allow_shared_calculator=True)`` instead.
 
-* Extended constraint `ase.constraints.FixInternals` by
+* Extended constraint :class:`ase.constraints.FixInternals` by
   possibility to fix linear combinations of bond lengths.
 
 * :class:`~ase.constraints.FixInternals` constraints now support
@@ -120,7 +120,7 @@ Calculators:
   explicitly.
 
 * Cleaned up and fixed multiple issues with
-  :class:`~ase.calculators.elk.Elk` calculator.
+  :class:`~ase.calculators.elk.ELK` calculator.
 
 * Make-shift cleanup and fixes for
   :class:`~ase.calculators.exciting.Exciting` calculator.
