@@ -33,19 +33,21 @@ def get_atomtypes(fname):
 
     atomtypes = []
     atomtypes_alt = []
-    if fpath.suffix.endswith('.gz'):
+    if fpath.suffix == '.gz':
         import gzip
-        f = gzip.open(fpath)
-    elif fpath.suffix.endswith('.bz2'):
+        opener = gzip.open
+    elif fpath.suffix == '.bz2':
         import bz2
-        f = bz2.BZ2File(fpath)
+        opener = bz2.BZ2File
     else:
-        f = open(fpath)
-    for line in f:
-        if line.find('TITEL') != -1:
-            atomtypes.append(line.split()[3].split('_')[0].split('.')[0])
-        elif line.find('POTCAR:') != -1:
-            atomtypes_alt.append(line.split()[2].split('_')[0].split('.')[0])
+        opener = open
+    with opener(fpath) as f:
+        for line in f:
+            if line.find('TITEL') != -1:
+                atomtypes.append(line.split()[3].split('_')[0].split('.')[0])
+            elif line.find('POTCAR:') != -1:
+                atomtypes_alt.append(line.split()[2].split('_')[0].split('.')[0])
+
     if len(atomtypes) == 0 and len(atomtypes_alt) > 0:
         # old VASP doesn't echo TITEL, but all versions print out species lines
         # preceded by "POTCAR:", twice
@@ -66,9 +68,6 @@ def atomtypes_outpot(posfname, numsyms):
     numsyms -- The number of symbols we must find
 
     """
-    import os.path as op
-    import glob
-
     posfpath = Path(posfname)
 
     # only try to apply this logic if file is named POSCAR/CONTCAR,
@@ -77,26 +76,19 @@ def atomtypes_outpot(posfname, numsyms):
         raise ParseError('Can only guess atom types from POTCAR or OUTCAR '
                          'if file is named POSCAR or CONTCAR')
 
-    # First check files with exactly same path except POTCAR/OUTCAR instead
+    # Check files with exactly same path except POTCAR/OUTCAR instead
     # of POSCAR/CONTCAR.
     fnames = [posfpath.with_name('POTCAR'),
               posfpath.with_name('OUTCAR')]
     # Try the same but with compressed files
     fsc = []
-    for fn in fnames:
-        fnpath = Path(fn)
+    for fnpath in fnames:
         fsc.append(fnpath.parent / (fnpath.name + '.gz'))
         fsc.append(fnpath.parent / (fnpath.name + '.bz2'))
     for f in fsc:
         fnames.append(f)
-    # Finally try anything with POTCAR or OUTCAR in the name
-    vaspdir = op.dirname(posfname)
-    fs = glob.glob(vaspdir + '*POTCAR*')
-    for f in fs:
-        fnames.append(f)
-    fs = glob.glob(vaspdir + '*OUTCAR*')
-    for f in fs:
-        fnames.append(f)
+    # Code used to try anything with POTCAR or OUTCAR in the name
+    # but this is no longer supported
 
     tried = []
     for fn in fnames:

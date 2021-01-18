@@ -1,4 +1,3 @@
-# flake8: noqa
 # import inspect
 import pytest
 import numpy as np
