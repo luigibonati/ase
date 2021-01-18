@@ -735,7 +735,7 @@ class Wannier:
         """
         # compute weights without normalization, to keep physical dimension
         weight_d, _ = calculate_weights(self.largeunitcell_cc, normalize=False)
-        Z2_dw = np.abs(self.Z_dww.diagonal(0, 1, 2))**2
+        Z2_dw = self._square_modulus_of_Z_diagonal()
         spread_w = - (np.log(Z2_dw).T @ weight_d).real / (2 * np.pi)**2
         return spread_w
 
@@ -1008,8 +1008,7 @@ class Wannier:
 
         where Nw is the number of WFs ``nwannier``.
         """
-        a_dw = np.abs(self.Z_dww.diagonal(0, 1, 2))**2
-        a_w = (a_dw.T @ self.weight_d).real
+        a_w = self._spread_contributions()
         if self.functional == 'std':
             fun = np.sum(a_w)
         elif self.functional == 'var':
@@ -1049,8 +1048,8 @@ class Wannier:
         Nw = self.nwannier
 
         if self.functional == 'var':
-            O_dw = np.abs(self.Z_dww.diagonal(0, 1, 2))**2
-            O_w = (O_dw.T @ self.weight_d).real
+            O_dw = self._square_modulus_of_Z_diagonal()
+            O_w = self._spread_contributions()
             O_sum = np.sum(O_w)
 
         dU = []
@@ -1117,6 +1116,19 @@ class Wannier:
                 dC.append(G_ul.ravel())
 
         return np.concatenate(dU + dC)
+
+    def _square_modulus_of_Z_diagonal(self):
+        """
+        Square modulus of the Z matrix diagonal, the diagonal is taken
+        for the indexes running on the WFs.
+        """
+        return np.abs(self.Z_dww.diagonal(0, 1, 2))**2
+
+    def _spread_contributions(self):
+        """
+        Compute the contribution of each WF to the spread functional.
+        """
+        return (self._square_modulus_of_Z_diagonal().T @ self.weight_d).real
 
     def step(self, dX, updaterot=True, updatecoeff=True):
         # dX is (A, dC) where U->Uexp(-A) and C->C+dC
