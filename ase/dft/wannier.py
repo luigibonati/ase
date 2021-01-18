@@ -1048,7 +1048,6 @@ class Wannier:
         Nw = self.nwannier
 
         if self.functional == 'var':
-            O_dw = self._square_modulus_of_Z_diagonal()
             O_w = self._spread_contributions()
             O_sum = np.sum(O_w)
 

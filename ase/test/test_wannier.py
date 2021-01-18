@@ -716,6 +716,7 @@ def test_get_optimal_nwannier(wan, si_calculator):
     opt_nw = wanf.get_optimal_nwannier(random_reps=10)
     assert opt_nw >= 0
 
+
 def test_square_modulus_of_Z_diagonal(wan):
     # Only a test on a constant value to make sure it does not deviate too much
     wan1 = wan()
@@ -726,6 +727,7 @@ def test_square_modulus_of_Z_diagonal(wan):
     for d, test_values_d in enumerate(test_values_dw):
         for w, test_value in enumerate(test_values_d):
             assert test_value == pytest.approx(ref_values_dw[d][w], abs=1e-5)
+
 
 def test_spread_contributions(wan):
     # Only a test on a constant value to make sure it does not deviate too much
