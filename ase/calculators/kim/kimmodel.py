@@ -478,6 +478,12 @@ class KIMModelCalculator(Calculator):
         interactions in LJ universal model. Then we would call
             calc.get_parameters('epsilons'=[4879, 2006, 1980],
                                 'sigmas'=[4879, 2006, 1980])
+
+        Return
+            dict: Parameters requested
+                {name1: [index_range1, values1],
+                 name2: [index_range2, values2],
+                 ...}
         """
         parameters = {}
         for parameter_name, index_range in kwargs.items():
@@ -505,6 +511,12 @@ class KIMModelCalculator(Calculator):
         respectively. Then we would call
             calc.set_parameters('epsilons'=[[4879, 2006, 1980],
                                             [5.0, 4.5, 4.0]])
+
+        Return
+            dict: Parameters set
+                {name1: [index_range1, values1],
+                 name2: [index_range2, values2],
+                 ...}
         """
         parameters = {}
         for parameter_name, parameter_data in kwargs.items():
@@ -552,7 +564,7 @@ class KIMModelCalculator(Calculator):
             raise ValueError(
                 'Index range must be an integer or a list of integer'
             )
-        return {parameter_name: values}
+        return {parameter_name: [index_range, values]}
 
     def _set_one_parameter(self, parameter_name,
                            index_range, values):
