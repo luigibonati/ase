@@ -426,7 +426,7 @@ class KIMModelCalculator(Calculator):
         return self.neigh.update
 
     @property
-    def params_names(self):
+    def parameter_names(self):
         """Names of all parameters in the model."""
         nparams = self.kim_model.kim_model.get_number_of_parameters()
         names = []
@@ -480,10 +480,10 @@ class KIMModelCalculator(Calculator):
                                 'sigmas'=[4879, 2006, 1980])
         """
         parameters = {}
-        for param_name, index_range in kwargs.items():
+        for parameter_name, index_range in kwargs.items():
             parameters.update(
                 self._get_one_parameter(
-                    param_name, index_range
+                    parameter_name, index_range
                 )
             )
         return parameters
@@ -507,62 +507,69 @@ class KIMModelCalculator(Calculator):
                                             [5.0, 4.5, 4.0]])
         """
         parameters = {}
-        for param_name, param_data in kwargs.items():
+        for parameter_name, parameter_data in kwargs.items():
             self._set_one_parameter(
-                param_name, param_data[0], param_data[1]
+                parameter_name,
+                parameter_data[0], parameter_data[1]
             )
             parameters.update(
-                {param_name: param_data}
+                {parameter_name: parameter_data}
             )
         self.kim_model.kim_model.clear_then_refresh()
         self._parameters_changed = True
         return parameters
 
-    def _get_one_parameter(self, param_name, index_range):
+    def _get_one_parameter(self, parameter_name,
+                           index_range):
         """Get values of one of the parameter."""
-        # Check if model has param_name
-        if param_name not in self.params_names:
+        # Check if model has parameter_name
+        if parameter_name not in self.parameter_names:
             raise ValueError(
-                f'Parameter {param_name} is not supported.')
+                f'Parameter {parameter_name} is not supported.')
 
-        param_name_index = self._get_param_name_index(param_name)
-        param_metadata = self._get_one_parameter_metadata(
-            param_name_index
+        parameter_name_index = self._get_parameter_name_index(
+            parameter_name
         )
-        dtype = list(param_metadata.values())[0]['dtype']
+        parameter_metadata = self._get_one_parameter_metadata(
+            parameter_name_index
+        )
+        dtype = list(parameter_metadata.values())[0]['dtype']
 
         index_range_dim = np.ndim(index_range)
         if index_range_dim == 0:
             values = self._get_one_value(
-                param_name_index, int(index_range), dtype
+                parameter_name_index, int(index_range), dtype
             )
         elif index_range_dim == 1:
             values = []
             for idx in index_range:
                 values.append(
                     self._get_one_value(
-                        param_name_index, int(idx), dtype
+                        parameter_name_index, int(idx), dtype
                     )
                 )
         else:
             raise ValueError(
                 'Index range must be an integer or a list of integer'
             )
-        return {param_name: values}
+        return {parameter_name: values}
 
-    def _set_one_parameter(self, param_name, index_range, values):
+    def _set_one_parameter(self, parameter_name,
+                           index_range, values):
         """Set values of one parameter in kim calculator.
         """
-        # Check if model has param_name
-        if param_name not in self.params_names:
+        # Check if model has parameter_name
+        if parameter_name not in self.parameter_names:
             raise ValueError(
-                f'Parameter {param_name} is not supported.')
+                f'Parameter {parameter_name} is not supported.')
 
-        param_name_index = self._get_param_name_index(param_name)
-        param_metadata = self._get_one_parameter_metadata(
-            param_name_index
+        parameter_name_index = self._get_parameter_name_index(
+            parameter_name
         )
-        dtype = list(param_metadata.values())[0]['dtype']
+        parameter_metadata = self._get_one_parameter_metadata(
+            parameter_name_index
+        )
+        dtype = list(parameter_metadata.values())[0]['dtype']
 
         index_range_dim = np.ndim(index_range)
         values_dim = np.ndim(values)
@@ -573,13 +580,13 @@ class KIMModelCalculator(Calculator):
 
         if index_range_dim == 0:
             self._set_one_value(
-                param_name_index, index_range, dtype, values
+                parameter_name_index, index_range, dtype, values
             )
         elif index_range_dim == 1:
             assert len(index_range) == len(values), msg
             for idx, value in zip(index_range, values):
                 self._set_one_value(
-                    param_name_index, idx, dtype, value
+                    parameter_name_index, idx, dtype, value
                 )
         else:
             raise ValueError(
@@ -599,14 +606,14 @@ class KIMModelCalculator(Calculator):
                         'error': error}}
         return pdata
 
-    def _get_param_name_index(self, param_name):
-        """Given param_name, find index of parameter stored in the
+    def _get_parameter_name_index(self, parameter_name):
+        """Given parameter_name, find index of parameter stored in the
         model.
         """
-        param_name_index = np.where(
-            np.asarray(self.params_names) == param_name
+        parameter_name_index = np.where(
+            np.asarray(self.parameter_names) == parameter_name
         )[0]
-        return param_name_index
+        return parameter_name_index
 
     def _get_one_value(self, index_param, index_extent, dtype):
         """Get values of one parameter."""
