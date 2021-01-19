@@ -7,6 +7,7 @@ def dict_is_subset(d1, d2):
     
     return all(key in d2 and d2[key] == d1[key] for key in d1)
 
+
 def test_acemolecule_calculator():
 
     ace_cmd = "_ase_dummy_ace_command"
