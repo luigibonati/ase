@@ -16,7 +16,6 @@ from . import kimpy_wrappers
 from . import neighborlist
 
 from collections import OrderedDict
-from .exceptions import InputError
 
 class KIMModelData:
     """Initializes and subsequently stores the KIM API Portable Model
@@ -525,7 +524,7 @@ class KIMModelCalculator(Calculator):
         """Get values of one of the parameter."""
         # Check if model has param_name
         if param_name not in self.params_names:
-            raise InputError(
+            raise ValueError(
                 f'Parameter {param_name} is not supported.')
 
         param_name_index = self._get_param_name_index(param_name)
@@ -558,7 +557,7 @@ class KIMModelCalculator(Calculator):
         """
         # Check if model has param_name
         if param_name not in self.params_names:
-            raise InputError(
+            raise ValueError(
                 f'Parameter {param_name} is not supported.')
 
         param_name_index = self._get_param_name_index(param_name)
