@@ -446,7 +446,7 @@ class Vibrations:
         """Writes file for viewing of the modes with jmol."""
 
         with open(self.name + '.xyz', 'w') as fd:
-            self._write_json(fd)
+            self._write_jmol(fd)
 
     def _write_jmol(self, fd):
         symbols = self.atoms.get_chemical_symbols()
