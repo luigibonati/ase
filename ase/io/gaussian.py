@@ -543,10 +543,16 @@ class GaussianConfiguration:
             parameters['basis'] = 'gen'
             parameters.pop('gen', None)
 
-        atoms = Atoms(symbols, positions, pbc=pbc,
-                      cell=cell, masses=atom_masses)
+        try:
+            atoms = Atoms(symbols, positions, pbc=pbc,
+                          cell=cell, masses=atom_masses)
+        except (IndexError, ValueError, KeyError) as e:
+            raise IOError("ERROR: Could not read the Gaussian input file, "
+                          "due to a problem with the molecule specification:"
+                          " {}".format(e))
 
-        GaussianConfiguration._attach_nuclei_props_to_atoms(atoms, nuclei_props)
+        GaussianConfiguration._attach_nuclei_props_to_atoms(atoms,
+                                                            nuclei_props)
 
         return GaussianConfiguration(atoms, parameters)
 
