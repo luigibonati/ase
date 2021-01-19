@@ -15,6 +15,7 @@ from ase.calculators.calculator import compare_atoms
 from . import kimpy_wrappers
 from . import neighborlist
 
+
 class KIMModelData:
     """Initializes and subsequently stores the KIM API Portable Model
     object, KIM API ComputeArguments object, and the neighbor list
@@ -437,8 +438,9 @@ class KIMModelCalculator(Calculator):
             )
         return names
 
-    def echo_parameter_metadata(self):
-        """Print metadata of all the parameters in the model.
+    @property
+    def parameters_metadata(self):
+        """Get metadata of all the parameters in the model.
             name : name of a KIM portable model parameter
             dtype : data type of the parameter ('Integer' or 'Double')
             extent : length of the parameter list
@@ -446,21 +448,22 @@ class KIMModelCalculator(Calculator):
         It will be useful to call this method before setting custom
         parameters to check the name of the parameters in the model
         and their extents.
+
+        Return
+            dict: Metadata of the parameters in dictionary
+                {name1: {'dtype': dtype,
+                         'extent': extent,
+                         'description': description},
+                 name2: {...},
+                 ...}
         """
         num_params = self.kim_model.kim_model.get_number_of_parameters()
-        print("#"*80)
-        print(f"# Parameters' metadata for {self.model_name}")
-        print("#"*80)
-        print()
+        metadata = {}
         for ii in range(num_params):
-            name, items = list(
-                self._get_one_parameter_metadata(ii).items()
-            )[0]
-            print(f"name : {name}")
-            print(f"dtype : {items['dtype']}")
-            print(f"extent : {items['extent']}")
-            print(f"description : {items['description']}")
-            print()
+            metadata.update(
+                self._get_one_parameter_metadata(ii)
+            )
+        return metadata
 
     def get_parameters(self, **kwargs):
         """Get values of parameters like
