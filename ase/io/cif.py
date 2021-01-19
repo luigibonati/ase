@@ -319,10 +319,10 @@ class CIFBlock(collections.abc.Mapping):
                               '_symmetry_int_tables_number'])
 
     def _get_spacegroup_name(self):
-        hm_symbol = self._get_any(['_space_group.Patterson_name_h-m',
-                                   '_space_group.patterson_name_h-m',
+        hm_symbol = self._get_any(['_space_group_name_h-m_alt',
                                    '_symmetry_space_group_name_h-m',
-                                   '_space_group_name_h-m_alt'])
+                                   '_space_group.Patterson_name_h-m',
+                                   '_space_group.patterson_name_h-m'])
 
         hm_symbol = old_spacegroup_names.get(hm_symbol, hm_symbol)
         return hm_symbol
@@ -399,13 +399,19 @@ class CIFBlock(collections.abc.Mapping):
                     'This may result in wrong setting!' % (
                         setting_name, spacegroup))
 
-        spg = Spacegroup(spacegroup)
+        spg = Spacegroup(spacegroup, setting)
         if no is not None:
             assert int(spg) == no, (int(spg), no)
-        assert spg.setting == setting, (spg.setting, setting)
         return spg
 
     def get_unsymmetrized_structure(self) -> Atoms:
+        """Return Atoms without symmetrizing coordinates.
+
+        This returns a (normally) unphysical Atoms object
+        corresponding only to those coordinates included
+        in the CIF file, useful for e.g. debugging.
+
+        This method may change behaviour in the future."""
         return Atoms(symbols=self.get_symbols(),
                      cell=self.get_cell(),
                      masses=self._get_masses(),
@@ -605,11 +611,11 @@ def format_cell(cell: Cell) -> str:
 def format_generic_spacegroup_info() -> str:
     # We assume no symmetry whatsoever
     return '\n'.join([
-        '_symmetry_space_group_name_H-M    "P 1"',
-        '_symmetry_int_tables_number       1',
+        '_space_group_name_H-M_alt    "P 1"',
+        '_space_group_IT_number       1',
         '',
         'loop_',
-        '  _symmetry_equiv_pos_as_xyz',
+        '  _space_group_symop_operation_xyz',
         "  'x, y, z'",
         '',
     ])
@@ -737,7 +743,6 @@ def expand_kinds(atoms, coords):
         for i, kind in enumerate(kinds):
             occ_info_kind = occ_info[kind]
             symbol = symbols[i]
-            print('ARGH', symbol)
             if symbol not in occ_info_kind:
                 raise BadOccupancies('Occupancies present but no occupancy '
                                      'info for "{symbol}"')

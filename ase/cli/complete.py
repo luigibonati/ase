@@ -60,6 +60,9 @@ commands = {
         ['--display-all', '--no-merge'],
     'eos':
         ['-p', '--plot', '-t', '--type'],
+    'exec':
+        ['-e', '--exec-code', '-E', '--exec-file', '-i', '--input-format',
+         '-n', '--image-number', '--read-args'],
     'find':
         ['-v', '--verbose', '-l', '--long', '-i', '--include', '-x',
          '--exclude'],

@@ -49,8 +49,7 @@ pipinstall:
   script:
     - python --version
     - pip install psycopg2-binary pymysql cryptography
-    - pip install pytest pytest-xdist
-    - pip install .
+    - pip install .[test]
     - ase test --pytest --color=yes
   when: manual
 

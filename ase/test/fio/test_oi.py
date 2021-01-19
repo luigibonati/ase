@@ -61,7 +61,8 @@ def check(a, ref_atoms, format):
 
 @pytest.fixture
 def catch_warnings():
-    return warnings.catch_warnings()
+    with warnings.catch_warnings():
+        yield
 
 
 def all_tested_formats():
@@ -95,6 +96,8 @@ def all_tested_formats():
 def test_ioformat(format, atoms, catch_warnings):
     if format in ['proteindatabank', 'netcdftrajectory']:
         warnings.simplefilter('ignore', UserWarning)
+        # netCDF4 uses np.bool which may cause warnings in new numpy.
+        warnings.simplefilter('ignore', DeprecationWarning)
 
     if format == 'dlp4':
         atoms.pbc = (1, 1, 0)

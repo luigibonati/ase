@@ -246,7 +246,7 @@ class Cell:
 
         1 for right-handed cells, -1 for left, and 0 for cells that
         do not span three dimensions."""
-        return np.sign(np.linalg.det(self))
+        return int(np.sign(np.linalg.det(self)))
 
     def scaled_positions(self, positions) -> np.ndarray:
         """Calculate scaled positions from Cartesian positions.
