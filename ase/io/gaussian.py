@@ -356,9 +356,18 @@ class GaussianConfiguration:
             keywords and options found in the link-0 and route
             sections of the input file.
         '''
+        # The parameters dict to attach to the calculator
         parameters = {}
+
+        # These variables indicate which section of the
+        # input file is currently being read:
         route_section = False
         atoms_section = False
+        atoms_saved = False
+        readiso = False
+        count_iso = 0
+
+        # These will contain info that will be attached to the Atoms object:
         atom_masses = []
         nuclei_props = {'spin': [], 'zeff': [],
                         'qmom': [], 'nmagm': [], 'znuc': [], 'radnuclear': []}
@@ -367,15 +376,14 @@ class GaussianConfiguration:
         pbc = np.zeros(3, dtype=bool)
         cell = np.zeros((3, 3))
         npbc = 0
-        count_iso = 0
-        atoms_saved = False
-        readiso = False
 
+        # Info relating to the z-matrix definition (if set)
         zmatrix_type = False
         zmatrix_contents = ""
         zmatrix_var_section = False
         zmatrix_vars = ""
 
+        # Will store the basis set definition (if set)
         basis_set = ""
 
         for line in fd:
@@ -388,7 +396,7 @@ class GaussianConfiguration:
                 route_section = False
                 atoms_section = False
             elif link0_match:
-                GaussianConfiguration.save_link0_param(
+                GaussianConfiguration._save_link0_param(
                     link0_match, parameters)
             elif output_type_match and not route_section:
                 route_section = True
@@ -399,13 +407,14 @@ class GaussianConfiguration:
                 chgmult = chgmult_match.group(0).split()
                 parameters.update(
                     {'charge': int(chgmult[0]), 'mult': int(chgmult[1])})
-                # After the charge and multiplicty have been set, the atoms
-                # section of the input file begins:
+                # After the charge and multiplicty have been set, the
+                # molecule specification section of the input file begins:
                 atoms_section = True
             elif atoms_section:
                 line = line.split('!')[0]
                 if (line.split()):
                     if zmatrix_type:
+                        # Save any variables set when defining the z-matrix:
                         if zmatrix_var_section:
                             zmatrix_vars += line
                             continue
@@ -418,7 +427,7 @@ class GaussianConfiguration:
                                           "setting constants as variables.")
                             continue
 
-                    line, info = GaussianConfiguration.save_nuclei_props(
+                    line, info = GaussianConfiguration._save_nuclei_props(
                         line, nuclei_props, atom_masses)
 
                     symbol = info[0]
@@ -437,10 +446,12 @@ class GaussianConfiguration:
                                           "given as 3 numbers separated "
                                           "by whitespace.")
                         else:
-                            # try:
-                            pos = list(map(float, pos))
-                            # except ValueError:
-                            #     print("VALUE ERROR")
+                            try:
+                                pos = list(map(float, pos))
+                            except ValueError:
+                                raise(IOError(
+                                    "ERROR: Molecule specification in"
+                                    "Gaussian input file could not be read"))
                         if symbol.upper() == 'TV':
                             pbc[npbc] = True
                             cell[npbc] = pos
@@ -460,53 +471,73 @@ class GaussianConfiguration:
                         zmatrix_contents += line
 
                     atoms_saved = True
-            elif atoms_saved:  # we must be after the atoms section
-
+            elif atoms_saved:
+                # Now that we are past the molecule spec. section, we can read
+                # the entire z-matrix (if set):
                 if len(positions) == 0:
                     if zmatrix_type:
                         positions, symbols = GaussianConfiguration\
-                            .read_zmatrix(zmatrix_contents, zmatrix_vars)
+                            ._read_zmatrix(zmatrix_contents, zmatrix_vars)
 
                 if line.split():
+                    # check that the line isn't just a comment
                     if line.split()[0] == '!':
                         continue
                     line = line.strip().split('!')[0]
 
-                readiso = GaussianConfiguration.get_readiso_param(parameters)
+                readiso = GaussianConfiguration._get_readiso_param(parameters)
 
                 if len(line) > 0 and line[0] == '@':
+                    # If the name of a basis file is specified, this line
+                    # begins with a '@'
                     parameters['basisfile'] = line
-                elif readiso and count_iso < len(symbols):
+                elif readiso and count_iso < len(symbols) + 1:
+                    # The ReadIso section has 1 more line than the number of
+                    # symbols
                     if count_iso == 0:
-                        GaussianConfiguration.save_readiso_info(
+                        # The first line in the readiso section contains the
+                        # temperature, pressure, scale. Here we save this:
+                        GaussianConfiguration._save_readiso_info(
                             line, parameters)
+                        # If the atom masses were set in the nuclei properties
+                        # section, they will be overwritten by the ReadIso
+                        # section
                         atom_masses = []
+
                     else:
+                        # The remaining lines in the ReadIso section are
+                        # the masses of the atoms
                         try:
                             atom_masses.append(float(line))
                         except ValueError:
                             atom_masses.append(None)
                     count_iso += 1
                 else:
+                    # If the rest of the file is not the ReadIso section,
+                    # then it must be the definition of the basis set.
                     if parameters.get('basis', '').lower() == 'gen' \
                             or 'gen' in parameters.keys():
                         if line.strip() != "":
                             basis_set += line + '\n'
 
             if route_section:
-                GaussianConfiguration.save_route_params(
+                GaussianConfiguration._save_route_params(
                     line, parameters)
 
-        GaussianConfiguration.validate_params(parameters)
+        GaussianConfiguration._validate_params(parameters)
 
         if readiso:
-            GaussianConfiguration.delete_readiso_param(parameters)
+            GaussianConfiguration._delete_readiso_param(parameters)
+            # Ensures the masses array is the same length as the
+            # symbols array:
             if len(atom_masses) < len(symbols):
                 for i in range(0, len(symbols) - len(atom_masses)):
                     atom_masses.append(None)
             elif len(atom_masses) > len(symbols):
                 atom_masses = atom_masses[:len(symbols)]
 
+        # Saves the basis set definition to the parameters array if
+        # it has been set:
         if basis_set != "":
             parameters['basis_set'] = basis_set
             parameters['basis'] = 'gen'
@@ -515,11 +546,12 @@ class GaussianConfiguration:
         atoms = Atoms(symbols, positions, pbc=pbc,
                       cell=cell, masses=atom_masses)
 
-        GaussianConfiguration.attach_nuclei_props_to_atoms(atoms, nuclei_props)
+        GaussianConfiguration._attach_nuclei_props_to_atoms(atoms, nuclei_props)
+
         return GaussianConfiguration(atoms, parameters)
 
     @staticmethod
-    def save_link0_param(link0_match, parameters):
+    def _save_link0_param(link0_match, parameters):
         '''Saves link0 keywords and options to the
         parameters dictionary '''
         value = link0_match.group(2)
@@ -529,7 +561,7 @@ class GaussianConfiguration:
                            value})
 
     @staticmethod
-    def convert_to_symbol(string):
+    def _convert_to_symbol(string):
         '''Converts an input string into a format
         that can be input to the 'symbol' parameter of an
         ASE Atom object (can be a chemical symbol (str)
@@ -537,7 +569,7 @@ class GaussianConfiguration:
         This is achieved by either stripping any
         integers from the string, or converting a string
         containing an atomic number to integer type'''
-        string = GaussianConfiguration.validate_symbol_string(string)
+        string = GaussianConfiguration._validate_symbol_string(string)
         if string.isnumeric():
             atomic_number = int(string)
             from ase.data import chemical_symbols
@@ -549,7 +581,7 @@ class GaussianConfiguration:
         return string
 
     @staticmethod
-    def validate_symbol_string(string):
+    def _validate_symbol_string(string):
         if "-" in string:
             raise IOError("ERROR: Could not read the Gaussian input file, as"
                           " molecule specifications for molecular mechanics "
@@ -559,7 +591,7 @@ class GaussianConfiguration:
             return string
 
     @staticmethod
-    def get_route_params(line):
+    def _get_route_params(line):
         '''Reads a line of the route section of a gaussian input file.
 
         Parameters
@@ -621,7 +653,7 @@ class GaussianConfiguration:
         return params
 
     @staticmethod
-    def save_route_params(line, parameters):
+    def _save_route_params(line, parameters):
         '''Reads keywords and values from a line in
         a Gaussian input file's route section,
         and saves them to the parameters dictionary'''
@@ -637,32 +669,35 @@ class GaussianConfiguration:
                     parameters.update(
                         {'fitting_basis': method_basis_match.group(4).strip()})
         else:
-            parameters.update(GaussianConfiguration.get_route_params(line))
+            parameters.update(GaussianConfiguration._get_route_params(line))
 
     @staticmethod
-    def save_nuclei_props(line, nuclei_props, atom_masses):
-        # reads any info in parantheses after the atom symbol
-        # and stores it in atoms_info as a dict:
-        # GaussianConfiguration.save_nuclei_props(line)
+    def _save_nuclei_props(line, nuclei_props, atom_masses):
+        ''' Reads any info in parantheses in the line and stores
+        it in the nuceli_props dict, except for the mass which
+        gets added to the atom_masses list. Returns the line with
+        the nuclei properties removed, along with the atom symbol
+        and tokens which contains its position'''
         nuclei_props_match = re.search(r'\(([^\)]+)\)', line)
         if nuclei_props_match:
             line = line.replace(nuclei_props_match.group(0), '')
             tokens = line.split()
-            symbol = GaussianConfiguration.convert_to_symbol(
+            symbol = GaussianConfiguration._convert_to_symbol(
                 tokens[0])
             current_nuclei_props = GaussianConfiguration \
-                .get_route_params(nuclei_props_match.group(1))
+                ._get_route_params(nuclei_props_match.group(1))
             current_nuclei_props = {k.lower(): v for k, v
                                     in current_nuclei_props.items()
                                     }
             atom_mass = current_nuclei_props.pop('iso', None)
         else:
             tokens = line.split()
-            symbol = GaussianConfiguration.convert_to_symbol(
+            symbol = GaussianConfiguration._convert_to_symbol(
                 tokens[0])
             current_nuclei_props = {}
             atom_mass = None
 
+        # Only save this info if the line is not defining PBCs:
         if symbol.upper() != 'TV':
             for k in nuclei_props:
                 if k in current_nuclei_props.keys():
@@ -681,11 +716,15 @@ class GaussianConfiguration:
                               "could not be saved: {}".format(
                                   current_nuclei_props))
 
-            GaussianConfiguration.save_mass(atom_mass, atom_masses, symbol)
+            GaussianConfiguration._save_mass(atom_mass, atom_masses, symbol)
         return line, [symbol, tokens]
 
     @staticmethod
-    def save_mass(atom_mass, atom_masses, symbol):
+    def _save_mass(atom_mass, atom_masses, symbol):
+        ''' Saves a mass (atom_mass) to the atom_masses
+        list. If the mass is an integer, this will be converted
+        to the exact isotope mass for the element represented
+        by the symbol (str)'''
         if atom_mass is not None:
             if atom_mass.isnumeric():
                 # will be true if atom_mass is integer
@@ -698,7 +737,9 @@ class GaussianConfiguration:
         atom_masses.append(atom_mass)
 
     @staticmethod
-    def attach_nuclei_props_to_atoms(atoms, nuclei_props):
+    def _attach_nuclei_props_to_atoms(atoms, nuclei_props):
+        ''' Attaches each nuclear property as a custom array
+        in the atoms object'''
         for key in nuclei_props:
             values_set = False
             for value in nuclei_props[key]:
@@ -709,8 +750,8 @@ class GaussianConfiguration:
                                 np.array(nuclei_props[key]))
 
     @staticmethod
-    def get_readiso_param(parameters):
-        ''' Returns the a dictionary containing the frequency
+    def _get_readiso_param(parameters):
+        ''' Returns a dictionary containing the frequency
         keyword and its options, if the frequency keyword is
         present in parameters and ReadIso is one of its options'''
         freq_options = parameters.get('freq', None)
@@ -725,11 +766,12 @@ class GaussianConfiguration:
                 return {freq_name: freq_options}
 
     @staticmethod
-    def save_readiso_info(line, parameters):
+    def _save_readiso_info(line, parameters):
         '''Reads the temperature, pressure and scale from the first line
         of a ReadIso section of a Gaussian input file. Saves these as
-        route section parameters'''
-        freq_param = GaussianConfiguration.get_readiso_param(parameters)
+        route section parameters. Returns True if this info exists and
+        has been saved.'''
+        freq_param = GaussianConfiguration._get_readiso_param(parameters)
         if freq_param is not None:
             # when count_iso is 0 we are in the line where
             # temperature, pressure, [scale] is saved
@@ -745,9 +787,9 @@ class GaussianConfiguration:
             return True
 
     @staticmethod
-    def delete_readiso_param(parameters):
+    def _delete_readiso_param(parameters):
         '''Removes the readiso parameter from the parameters dict'''
-        freq_param = GaussianConfiguration.get_readiso_param(parameters)
+        freq_param = GaussianConfiguration._get_readiso_param(parameters)
         if freq_param is not None:
             freq_name = [k for k in freq_param.keys()][0]
             freq_options = [v for v in freq_param.values()][0].lower()
@@ -768,7 +810,10 @@ class GaussianConfiguration:
             parameters[freq_name] = new_freq_options
 
     @staticmethod
-    def validate_params(parameters):
+    def _validate_params(parameters):
+        '''Checks whether all of the required parameters exist in the
+        parameters dict and whether it contains any unsupported settings
+        '''
         # Check whether charge and multiplicity have been read.
         if 'charge' not in parameters.keys() or \
                 'mult' not in parameters.keys():
@@ -796,9 +841,9 @@ class GaussianConfiguration:
                 return
 
     @ staticmethod
-    def read_zmatrix(zmatrix_contents, zmatrix_vars):
-        ''' Reads a z-matrix using its list of variables,
-        and returns atom positions and symbols '''
+    def _read_zmatrix(zmatrix_contents, zmatrix_vars):
+        ''' Reads a z-matrix (zmatrix_contents) using its list of variables
+        (zmatrix_vars), and returns atom positions and symbols '''
         try:
             if len(zmatrix_vars) > 0:
                 atoms = parse_zmatrix(zmatrix_contents, defs=zmatrix_vars)
