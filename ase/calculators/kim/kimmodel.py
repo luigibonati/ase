@@ -15,8 +15,6 @@ from ase.calculators.calculator import compare_atoms
 from . import kimpy_wrappers
 from . import neighborlist
 
-from collections import OrderedDict
-
 class KIMModelData:
     """Initializes and subsequently stores the KIM API Portable Model
     object, KIM API ComputeArguments object, and the neighbor list
@@ -594,14 +592,11 @@ class KIMModelCalculator(Calculator):
             index_parameter
         )
         dtype, extent, name, description, error = out
-        dtype = dtype.__repr__()
-        pdata = {name:
-                 OrderedDict(
-                     {'dtype': dtype,
-                      'extent': extent,
-                      'description': description,
-                      'error': error}
-                 )}
+        dtype = repr(dtype)
+        pdata = {name: {'dtype': dtype,
+                        'extent': extent,
+                        'description': description,
+                        'error': error}}
         return pdata
 
     def _get_param_name_index(self, param_name):
