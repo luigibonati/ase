@@ -3,7 +3,7 @@
 import pytest
 
 from ase.build import molecule
-from ase.calculators.calculator import CalculatorSetupError
+from ase.calculators.calculator import CalculatorSetupError, get_calculator_class
 from ase.calculators.vasp import Vasp
 from ase.calculators.vasp.vasp import check_atoms, check_pbc, check_cell, check_atoms_type
 
@@ -88,3 +88,19 @@ def test_vasp_no_cell(mock_vasp_calculate):
     atoms.calc = calc
     with pytest.raises(CalculatorSetupError):
         atoms.get_total_energy()
+
+
+def test_vasp_name(mock_vasp_calculate):
+    """Test the calculator class has the expected name"""
+    expected = 'vasp'
+    assert Vasp.name == expected  # Test class attribute
+    assert Vasp().name == expected  # Ensure instance attribute hasn't changed
+
+
+def test_vasp_get_calculator(mock_vasp_calculate):
+    cls_ = get_calculator_class('vasp')
+
+    assert cls_ == Vasp
+
+    # Test we get the correct calculator when loading from name
+    assert get_calculator_class(Vasp.name) == cls_

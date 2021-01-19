@@ -74,17 +74,17 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
 
                 - Examples:
 
-                    >>> Vasp2(label='mylabel', txt='vasp.out') # Redirect stdout
-                    >>> Vasp2(txt='myfile.txt') # Redirect stdout
-                    >>> Vasp2(txt='-') # Print vasp output to stdout
-                    >>> Vasp2(txt=None)  # Suppress txt output
+                    >>> Vasp(label='mylabel', txt='vasp.out') # Redirect stdout
+                    >>> Vasp(txt='myfile.txt') # Redirect stdout
+                    >>> Vasp(txt='-') # Print vasp output to stdout
+                    >>> Vasp(txt=None)  # Suppress txt output
 
             command: str
                 Custom instructions on how to execute VASP. Has priority over
                 environment variables.
     """
-    name = 'Vasp2'
-    ase_objtype = 'vasp2_calculator'  # For JSON storage
+    name = 'vasp'
+    ase_objtype = 'vasp_calculator'  # For JSON storage
 
     # Environment commands
     env_commands = ('ASE_VASP_COMMAND', 'VASP_COMMAND', 'VASP_SCRIPT')
@@ -423,7 +423,7 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
         return dct
 
     def fromdict(self, dct):
-        """Restore calculator from a :func:`~ase.calculators.vasp.Vasp2.asdict`
+        """Restore calculator from a :func:`~ase.calculators.vasp.Vasp.asdict`
         dictionary.
 
         Parameters:
@@ -457,7 +457,7 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
         jsonio.write_json(filename, dct)
 
     def read_json(self, filename):
-        """Load Calculator state from an exported JSON Vasp2 file."""
+        """Load Calculator state from an exported JSON Vasp file."""
         dct = jsonio.read_json(filename)
         self.fromdict(dct)
 
