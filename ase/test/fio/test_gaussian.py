@@ -33,7 +33,7 @@ fd_cartesian_basis_set = StringIO(u'''
 %chk=example.chk
 %Nprocshared=16
 # N B3LYP/Gen ! ASE formatted method and basis
-# Opt(Tight, MaxCyc=100)/Integral=Ultrafine, Freq
+# Opt(Tight MaxCyc=100) Integral=Ultrafine Freq
 
 Gaussian input prepared by ASE
 
@@ -72,7 +72,9 @@ fd_zmatrix = StringIO(u'''
 %Nprocshared=16
 # T B3LYP
 Gen
-# opt(Tight, MaxCyc=100)/integral=Ultrafine, freq=ReadIso
+# opt=(Tight, MaxCyc=100)
+# integral(Ultrafine)
+# freq=ReadIso
 
 Gaussian input with Z matrix
 
@@ -195,6 +197,7 @@ def test_readwrite_gaussian():
     # - Masses defined using nuclei properties
 
     atoms = Atoms('OH2', positions=positions, masses=masses)
+    params['opt'] = 'Tight MaxCyc=100'
     params['basis'] = 'gen'
     params['basis_set'] = '''H     0
 S    2   1.00
