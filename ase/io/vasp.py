@@ -51,7 +51,9 @@ def get_atomtypes(fname):
     if len(atomtypes) == 0 and len(atomtypes_alt) > 0:
         # old VASP doesn't echo TITEL, but all versions print out species lines
         # preceded by "POTCAR:", twice
-        assert len(atomtypes_alt) % 2 == 0
+        if len(atomtypes_alt) % 2 != 0:
+            raise ParseError(f'Tried to get atom types from {len(atomtypes_alt)} "POTCAR": '
+                              'lines in OUTCAR, but expected an even number')
         atomtypes = atomtypes_alt[0:len(atomtypes_alt)//2]
 
     return atomtypes
@@ -69,12 +71,6 @@ def atomtypes_outpot(posfname, numsyms):
 
     """
     posfpath = Path(posfname)
-
-    # only try to apply this logic if file is named POSCAR/CONTCAR,
-    # i.e. this looks like a normal VASP run directory
-    if posfpath.name != 'POSCAR' and posfpath.name != 'CONTCAR':
-        raise ParseError('Can only guess atom types from POTCAR or OUTCAR '
-                         'if file is named POSCAR or CONTCAR')
 
     # Check files with exactly same path except POTCAR/OUTCAR instead
     # of POSCAR/CONTCAR.
