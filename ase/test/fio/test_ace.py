@@ -1,11 +1,12 @@
 from ase.atoms import Atoms
 import numpy as np
 from ase.io.acemolecule import read_acemolecule_out, read_acemolecule_input
+import pytest
 
 
 def test_acemolecule_output():
+    
     import ase.units
-    import pytest
     sample_outfile = """\
 
 ====================  Atoms  =====================
@@ -40,7 +41,7 @@ Total energy       = -1.5
 
 
 def test_acemolecule_input():
-    import pytest
+    
     sample_inputfile = """\
 %% BasicInformation
     Type Points
@@ -73,5 +74,3 @@ def test_acemolecule_input():
     assert atoms.positions == pytest.approx(
         np.array([[1.0, 2.0, -0.6], [-1.0, 3.0, 0.7]]))
     assert all(atoms.symbols == 'HF')
-    #os.system('rm acemolecule_test.inp')
-    #os.system('rm acemolecule_test.xyz')
