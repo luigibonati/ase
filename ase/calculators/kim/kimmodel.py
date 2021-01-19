@@ -17,7 +17,6 @@ from . import neighborlist
 
 from collections import OrderedDict
 from .exceptions import InputError
-import copy
 
 class KIMModelData:
     """Initializes and subsequently stores the KIM API Portable Model
@@ -246,7 +245,7 @@ class KIMModelCalculator(Calculator):
             self.model_name, ase_neigh, neigh_skin_ratio, self.debug
         )
 
-        self.old_kim_parameters = {}
+        self._parameters_changed = False
 
     def __enter__(self):
         return self
@@ -284,14 +283,11 @@ class KIMModelCalculator(Calculator):
             and 'pbc'.
         """
 
-        parameters_change = self._parameters_change()
-        if parameters_change:
+        if self._parameters_changed:
             system_changes.append('calculator')
-        # else:
-        #     Calculator.calculate(self, atoms, properties, system_changes)
+            self._parameters_changed = False
 
-        # Update KIM API input data and neighbor list, if necessary
-        if system_changes or parameters_change:
+        if system_changes:
             if self.need_neigh_update(atoms, system_changes):
                 self.update_neigh(atoms, self.species_map)
                 self.energy = np.array([0.0], dtype=np.double)
@@ -522,6 +518,7 @@ class KIMModelCalculator(Calculator):
                 {param_name: param_data}
             )
         self.kim_model.kim_model.clear_then_refresh()
+        self._parameters_changed = True
         return parameters
 
     def _get_one_parameter(self, param_name, index_range):
@@ -538,11 +535,11 @@ class KIMModelCalculator(Calculator):
         dtype = list(param_metadata.values())[0]['dtype']
 
         index_range_dim = np.ndim(index_range)
-        if index_range_dim==0:
+        if index_range_dim == 0:
             values = self._get_one_value(
                 param_name_index, int(index_range), dtype
             )
-        elif index_range_dim==1:
+        elif index_range_dim == 1:
             values = []
             for idx in index_range:
                 values.append(
@@ -575,14 +572,14 @@ class KIMModelCalculator(Calculator):
 
         # Check the shape of index_range and values
         msg = 'index_range and values must have the same shape'
-        assert index_range_dim==values_dim, msg
+        assert index_range_dim == values_dim, msg
 
-        if index_range_dim==0:
+        if index_range_dim == 0:
             self._set_one_value(
                 param_name_index, index_range, dtype, values
             )
-        elif index_range_dim==1:
-            assert len(index_range)==len(values), msg
+        elif index_range_dim == 1:
+            assert len(index_range) == len(values), msg
             for idx, value in zip(index_range, values):
                 self._set_one_value(
                     param_name_index, idx, dtype, value
@@ -613,13 +610,13 @@ class KIMModelCalculator(Calculator):
         model.
         """
         param_name_index = np.where(
-            np.asarray(self.params_names)==param_name
+            np.asarray(self.params_names) == param_name
         )[0]
         return param_name_index
 
     def _get_one_value(self, index_param, index_extent, dtype):
         """Get values of one parameter."""
-        if dtype=='Double':
+        if dtype == 'Double':
             pp = self.kim_model.kim_model.get_parameter_double(
                 index_param, index_extent
             )[0]
@@ -640,28 +637,3 @@ class KIMModelCalculator(Calculator):
             self.kim_model.kim_model.set_parameter(
                 index_param, int(index_extent), float(value)
             )
-
-    def _parameters_change(self):
-        """Check if model parameters change."""
-        old_params = self.old_kim_parameters
-        new_params = self.kim_parameters
-        same = old_params==new_params
-        self.old_kim_parameters = copy.deepcopy(new_params)
-        return not same
-
-    @property
-    def kim_parameters(self):
-        """Parameters in KIM model."""
-        parameters = OrderedDict()
-        for ii, name in enumerate(self.params_names):
-            metadata = self._get_one_parameter_metadata(ii)
-            dtype = metadata[name]['dtype']
-            extent = metadata[name]['extent']
-
-            pvalues = []
-            for idx in range(extent):
-                pvalues.append(
-                    self._get_one_value(ii, idx, dtype)
-                )
-            parameters.update({name:pvalues})
-        return parameters
