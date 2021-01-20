@@ -440,22 +440,7 @@ class KIMModelCalculator(Calculator):
 
     @property
     def parameters_metadata(self):
-        """Get metadata of all the parameters in the model.
-            name : name of a KIM portable model parameter
-            dtype : data type of the parameter ('Integer' or 'Double')
-            extent : length of the parameter list
-            description : description of the parameter
-        It will be useful to call this method before setting custom
-        parameters to check the name of the parameters in the model
-        and their extents.
-
-        Return
-            dict: Metadata of the parameters in dictionary
-                {name1: {'dtype': dtype,
-                         'extent': extent,
-                         'description': description},
-                 name2: {...},
-                 ...}
+        """Metadata of all the parameters in the model.
         """
         num_params = self.kim_model.kim_model.get_number_of_parameters()
         metadata = {}
@@ -466,27 +451,37 @@ class KIMModelCalculator(Calculator):
         return metadata
 
     def get_parameters(self, **kwargs):
-        """Get values of parameters like
-            get_parameters(name1=index_range1,
-                           name2=index_range2,
-                           ...)
-        index_range can be an integer or a list of integers.
+        """Get values of parameters for given names of the parameters
+        and the requested indices.
 
-        This will return a dictionary containing parameters that are
-        previously set in KIM calculator. Initially, this would be
-        the default parameter values stored in KIM portable model.
+        Parameters
+        ----------
+        **kwargs
+            Names of the parameters and the requested indices.
 
-        As an example, suppose we want to get epsilons and sigmas for
-        Mo-Mo (index 4879), Mo-S (index 2006) and S-S (index 1980)
-        interactions in LJ universal model. Then we would call
-            calc.get_parameters('epsilons'=[4879, 2006, 1980],
-                                'sigmas'=[4879, 2006, 1980])
+        Returns
+        -------
+        dict
+            The requested indices and the parameters' values.
 
-        Return
-            dict: Parameters requested
-                {name1: [index_range1, values1],
-                 name2: [index_range2, values2],
-                 ...}
+        Note
+        ----
+        The output of this method can be used as input of
+        ``set_parameters``.
+
+        Example
+        -------
+        To get `epsilons` and `sigmas` in LJ universal model for Mo-Mo
+        (index 4879), Mo-S (index 2006) and S-S (index 1980) interactions::
+
+            >>> LJ = 'LJ_ElliottAkerson_2015_Universal__MO_959249795837_003'
+            >>> calc = KIM(LJ)
+            >>> calc.get_parameters(epsilons=[4879, 2006, 1980],
+            ...                     sigmas=[4879, 2006, 1980])
+            {'epsilons': [[4879, 2006, 1980],
+                          [4.47499, 4.421814057295943, 4.36927]],
+             'sigmas': [[4879, 2006, 1980],
+                        [2.74397, 2.30743, 1.87089]]}
         """
         parameters = {}
         for parameter_name, index_range in kwargs.items():
@@ -498,28 +493,32 @@ class KIMModelCalculator(Calculator):
         return parameters
 
     def set_parameters(self, **kwargs):
-        """Set values of parameters like
-            set_parameters(name1=[index_range1, values1],
-                           name2=[index_range2, values2],
-                           ...)
-        index_range and values can be float or integer, or list of
-        floats and integers.
+        """Set values of parameters for given names of the parameters
+        and the requested indices.
 
-        This will return a dictionary containing parameters that
-        are set.
+        Parameters
+        ----------
+        **kwargs
+            Names of the parameters with the requested indices and
+            values to set.
 
-        As an example, suppose we want to set epsilons for Mo-Mo
-        (index 4879), Mo-S (index 2006) and S-S (index 1980)
-        interactions in LJ universal model to 5.0, 4.5, and 4.0,
-        respectively. Then we would call
-            calc.set_parameters('epsilons'=[[4879, 2006, 1980],
-                                            [5.0, 4.5, 4.0]])
+        Returns
+        -------
+        dict
+            The requested indices and the parameters' values set.
 
-        Return
-            dict: Parameters set
-                {name1: [index_range1, values1],
-                 name2: [index_range2, values2],
-                 ...}
+        Example
+        -------
+        To set `epsilons` in LJ universal model for Mo-Mo (index 4879),
+        Mo-S (index 2006) and S-S (index 1980) interactions to 5.0, 4.5,
+        and 4.0, respectively::
+
+            >>> LJ = 'LJ_ElliottAkerson_2015_Universal__MO_959249795837_003'
+            >>> calc = KIM(LJ)
+            >>> calc.set_parameters(epsilons=[[4879, 2006, 1980],
+            ...                               [5.0, 4.5, 4.0]])
+            {'epsilons': [[4879, 2006, 1980],
+                          [5.0, 4.5, 4.0]]}
         """
         parameters = {}
         for parameter_name, parameter_data in kwargs.items():
@@ -534,9 +533,8 @@ class KIMModelCalculator(Calculator):
         self._parameters_changed = True
         return parameters
 
-    def _get_one_parameter(self, parameter_name,
-                           index_range):
-        """Get values of one of the parameter."""
+    def _get_one_parameter(self, parameter_name, index_range):
+        """Get values of one of kim model's parameter."""
         # Check if model has parameter_name
         if parameter_name not in self.parameter_names:
             raise ValueError(
@@ -553,14 +551,14 @@ class KIMModelCalculator(Calculator):
         index_range_dim = np.ndim(index_range)
         if index_range_dim == 0:
             values = self._get_one_value(
-                parameter_name_index, int(index_range), dtype
+                parameter_name_index, index_range, dtype
             )
         elif index_range_dim == 1:
             values = []
             for idx in index_range:
                 values.append(
                     self._get_one_value(
-                        parameter_name_index, int(idx), dtype
+                        parameter_name_index, idx, dtype
                     )
                 )
         else:
@@ -571,8 +569,7 @@ class KIMModelCalculator(Calculator):
 
     def _set_one_parameter(self, parameter_name,
                            index_range, values):
-        """Set values of one parameter in kim calculator.
-        """
+        """Set values of one parameter."""
         # Check if model has parameter_name
         if parameter_name not in self.parameter_names:
             raise ValueError(
@@ -609,7 +606,7 @@ class KIMModelCalculator(Calculator):
             )
 
     def _get_one_parameter_metadata(self, index_parameter):
-        """Get parameter metadata."""
+        """Get metadata of one parameter."""
         out = self.kim_model.kim_model.get_parameter_metadata(
             index_parameter
         )
@@ -631,25 +628,25 @@ class KIMModelCalculator(Calculator):
         return parameter_name_index
 
     def _get_one_value(self, index_param, index_extent, dtype):
-        """Get values of one parameter."""
+        """Get one value of parameter."""
         if dtype == 'Double':
             pp = self.kim_model.kim_model.get_parameter_double(
-                index_param, index_extent
+                index_param, np.intc(index_extent)
             )[0]
         else:
             pp = self.kim_model.kim_model.get_parameter_int(
-                index_param, index_extent
+                index_param, np.intc(index_extent)
             )[0]
         return pp
 
     def _set_one_value(self, index_param, index_extent,
                        dtype, value):
-        """Update one parameter in kim model."""
+        """Set one value of parameter."""
         if dtype == 'Integer':
             self.kim_model.kim_model.set_parameter(
-                index_param, int(index_extent), int(value)
+                index_param, np.intc(index_extent), np.intc(value)
             )
         elif dtype == 'Double':
             self.kim_model.kim_model.set_parameter(
-                index_param, int(index_extent), float(value)
+                index_param, np.intc(index_extent), np.double(value)
             )
