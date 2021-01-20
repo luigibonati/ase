@@ -43,9 +43,9 @@ def get_atomtypes(fname):
         opener = open
     with opener(fpath) as f:
         for line in f:
-            if line.find('TITEL') != -1:
+            if 'TITEL' in line:
                 atomtypes.append(line.split()[3].split('_')[0].split('.')[0])
-            elif line.find('POTCAR:') != -1:
+            elif 'POTCAR:' in line:
                 atomtypes_alt.append(line.split()[2].split('_')[0].split('.')[0])
 
     if len(atomtypes) == 0 and len(atomtypes_alt) > 0:
@@ -465,7 +465,7 @@ def read_vasp_xml(filename='vasprun.xml', index=-1):
     except ET.ParseError as parse_error:
         if atoms_init is None:
             raise parse_error
-        if calculation and calculation[-1].find('energy') is None:
+        if calculation and 'energy' not in calculation[-1]:
             calculation = calculation[:-1]
         if not calculation:
             yield atoms_init
