@@ -34,9 +34,10 @@ class KIMModelData:
 
         # Set cutoff
         model_influence_dist = self.kim_model.get_influence_distance()
-        model_cutoffs, padding_not_require_neigh = (
-            self.kim_model.get_neighbor_list_cutoffs_and_hints()
-        )
+        (
+            model_cutoffs,
+            padding_not_require_neigh,
+        ) = self.kim_model.get_neighbor_list_cutoffs_and_hints()
 
         self.species_map = self.create_species_map()
 
@@ -221,7 +222,7 @@ class KIMModelCalculator(Calculator):
         release_GIL=False,
         debug=False,
         *args,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(*args, **kwargs)
 
@@ -282,7 +283,7 @@ class KIMModelCalculator(Calculator):
         """
 
         if self._parameters_changed:
-            system_changes.append('calculator')
+            system_changes.append("calculator")
             self._parameters_changed = False
 
         if system_changes:
@@ -312,8 +313,11 @@ class KIMModelCalculator(Calculator):
         self.results["stress"] = stress
 
     def check_state(self, atoms, tol=1e-15):
-        return compare_atoms(self.atoms, atoms, excluded_properties={'initial_charges',
-            'initial_magmoms'})
+        return compare_atoms(
+            self.atoms,
+            atoms,
+            excluded_properties={"initial_charges", "initial_magmoms"},
+        )
 
     def assemble_padding_forces(self):
         """
@@ -432,10 +436,7 @@ class KIMModelCalculator(Calculator):
         nparams = self.kim_model.kim_model.get_number_of_parameters()
         names = []
         for ii in range(nparams):
-            names.append(list(
-                self._get_one_parameter_metadata(ii).keys()
-            )[0]
-            )
+            names.append(list(self._get_one_parameter_metadata(ii).keys())[0])
         return names
 
     @property
@@ -445,9 +446,7 @@ class KIMModelCalculator(Calculator):
         num_params = self.kim_model.kim_model.get_number_of_parameters()
         metadata = {}
         for ii in range(num_params):
-            metadata.update(
-                self._get_one_parameter_metadata(ii)
-            )
+            metadata.update(self._get_one_parameter_metadata(ii))
         return metadata
 
     def get_parameters(self, **kwargs):
@@ -485,11 +484,7 @@ class KIMModelCalculator(Calculator):
         """
         parameters = {}
         for parameter_name, index_range in kwargs.items():
-            parameters.update(
-                self._get_one_parameter(
-                    parameter_name, index_range
-                )
-            )
+            parameters.update(self._get_one_parameter(parameter_name, index_range))
         return parameters
 
     def set_parameters(self, **kwargs):
@@ -524,12 +519,9 @@ class KIMModelCalculator(Calculator):
         parameters = {}
         for parameter_name, parameter_data in kwargs.items():
             self._set_one_parameter(
-                parameter_name,
-                parameter_data[0], parameter_data[1]
+                parameter_name, parameter_data[0], parameter_data[1]
             )
-            parameters.update(
-                {parameter_name: parameter_data}
-            )
+            parameters.update({parameter_name: parameter_data})
         self.kim_model.kim_model.clear_then_refresh()
         self._parameters_changed = True
         return parameters
@@ -551,38 +543,24 @@ class KIMModelCalculator(Calculator):
         """
         # Check if model has parameter_name
         if parameter_name not in self.parameter_names:
-            raise ValueError(
-                f'Parameter {parameter_name} is not supported.')
+            raise ValueError(f"Parameter {parameter_name} is not supported.")
 
-        parameter_name_index = self._get_parameter_name_index(
-            parameter_name
-        )
-        parameter_metadata = self._get_one_parameter_metadata(
-            parameter_name_index
-        )
-        dtype = list(parameter_metadata.values())[0]['dtype']
+        parameter_name_index = self._get_parameter_name_index(parameter_name)
+        parameter_metadata = self._get_one_parameter_metadata(parameter_name_index)
+        dtype = list(parameter_metadata.values())[0]["dtype"]
 
         index_range_dim = np.ndim(index_range)
         if index_range_dim == 0:
-            values = self._get_one_value(
-                parameter_name_index, index_range, dtype
-            )
+            values = self._get_one_value(parameter_name_index, index_range, dtype)
         elif index_range_dim == 1:
             values = []
             for idx in index_range:
-                values.append(
-                    self._get_one_value(
-                        parameter_name_index, idx, dtype
-                    )
-                )
+                values.append(self._get_one_value(parameter_name_index, idx, dtype))
         else:
-            raise ValueError(
-                'Index range must be an integer or a list of integer'
-            )
+            raise ValueError("Index range must be an integer or a list of integer")
         return {parameter_name: [index_range, values]}
 
-    def _set_one_parameter(self, parameter_name,
-                           index_range, values):
+    def _set_one_parameter(self, parameter_name, index_range, values):
         """Set values of one model's parameter.
 
         Parameters
@@ -596,38 +574,27 @@ class KIMModelCalculator(Calculator):
         """
         # Check if model has parameter_name
         if parameter_name not in self.parameter_names:
-            raise ValueError(
-                f'Parameter {parameter_name} is not supported.')
+            raise ValueError(f"Parameter {parameter_name} is not supported.")
 
-        parameter_name_index = self._get_parameter_name_index(
-            parameter_name
-        )
-        parameter_metadata = self._get_one_parameter_metadata(
-            parameter_name_index
-        )
-        dtype = list(parameter_metadata.values())[0]['dtype']
+        parameter_name_index = self._get_parameter_name_index(parameter_name)
+        parameter_metadata = self._get_one_parameter_metadata(parameter_name_index)
+        dtype = list(parameter_metadata.values())[0]["dtype"]
 
         index_range_dim = np.ndim(index_range)
         values_dim = np.ndim(values)
 
         # Check the shape of index_range and values
-        msg = 'index_range and values must have the same shape'
+        msg = "index_range and values must have the same shape"
         assert index_range_dim == values_dim, msg
 
         if index_range_dim == 0:
-            self._set_one_value(
-                parameter_name_index, index_range, dtype, values
-            )
+            self._set_one_value(parameter_name_index, index_range, dtype, values)
         elif index_range_dim == 1:
             assert len(index_range) == len(values), msg
             for idx, value in zip(index_range, values):
-                self._set_one_value(
-                    parameter_name_index, idx, dtype, value
-                )
+                self._set_one_value(parameter_name_index, idx, dtype, value)
         else:
-            raise ValueError(
-                'Index range must be an integer or a list of integer'
-            )
+            raise ValueError("Index range must be an integer or a list of integer")
 
     def _get_one_parameter_metadata(self, index_parameter):
         """Get metadata of one model's parameter.
@@ -642,15 +609,17 @@ class KIMModelCalculator(Calculator):
         dict
             Metadata of the model's parameter requested.
         """
-        out = self.kim_model.kim_model.get_parameter_metadata(
-            index_parameter
-        )
+        out = self.kim_model.kim_model.get_parameter_metadata(index_parameter)
         dtype, extent, name, description, error = out
         dtype = repr(dtype)
-        pdata = {name: {'dtype': dtype,
-                        'extent': extent,
-                        'description': description,
-                        'error': error}}
+        pdata = {
+            name: {
+                "dtype": dtype,
+                "extent": extent,
+                "description": description,
+                "error": error,
+            }
+        }
         return pdata
 
     def _get_parameter_name_index(self, parameter_name):
@@ -695,21 +664,22 @@ class KIMModelCalculator(Calculator):
         ValueError
             If ``dtype`` is not one of "Integer" or "Double"
         """
-        if dtype == 'Integer':
+        if dtype == "Integer":
             pp = self.kim_model.kim_model.get_parameter_int(
                 index_param, np.intc(index_extent)
             )[0]
-        elif dtype == 'Double':
+        elif dtype == "Double":
             pp = self.kim_model.kim_model.get_parameter_double(
                 index_param, np.intc(index_extent)
             )[0]
         else:
-            raise ValueError(f"Invalid data type {dtype}.  Allowed values are "
-                    "'Integer' or 'Double'.")
+            raise ValueError(
+                f"Invalid data type {dtype}.  Allowed values are "
+                "'Integer' or 'Double'."
+            )
         return pp
 
-    def _set_one_value(self, index_param, index_extent,
-                       dtype, value):
+    def _set_one_value(self, index_param, index_extent, dtype, value):
         """
         Set one value of parameter.
 
@@ -729,14 +699,16 @@ class KIMModelCalculator(Calculator):
         ValueError
             If ``dtype`` is not one of "Integer" or "Double".
         """
-        if dtype == 'Integer':
+        if dtype == "Integer":
             self.kim_model.kim_model.set_parameter(
                 index_param, np.intc(index_extent), np.intc(value)
             )
-        elif dtype == 'Double':
+        elif dtype == "Double":
             self.kim_model.kim_model.set_parameter(
                 index_param, np.intc(index_extent), np.double(value)
             )
         else:
-            raise ValueError(f"Invalid data type {dtype}.  Allowed values are "
-                    "'Integer' or 'Double'.")
+            raise ValueError(
+                f"Invalid data type {dtype}.  Allowed values are "
+                "'Integer' or 'Double'."
+            )
