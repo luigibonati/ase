@@ -674,8 +674,8 @@ class GaussianConfiguration:
                 if method_basis_match.group(4):
                     parameters.update(
                         {'fitting_basis': method_basis_match.group(4).strip()})
-        else:
-            parameters.update(GaussianConfiguration._get_route_params(line))
+                return
+        parameters.update(GaussianConfiguration._get_route_params(line))
 
     @staticmethod
     def _save_nuclei_props(line, nuclei_props, atom_masses):
