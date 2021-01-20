@@ -623,18 +623,19 @@ class KIMModelCalculator(Calculator):
         return pdata
 
     def _get_parameter_name_index(self, parameter_name):
-        """Given `parameter_name`, find index of parameter stored in the
-        model.
+        """
+        Given the name of a model parameter, find the index used by the KIM
+        API to refer to it.
 
         Parameters
         ----------
         parameter_name : str
-            Name of model's parameter.
+            Name of model parameter registered in the KIM API.
 
         Returns
         -------
         int
-            Index of model's parameter.
+            Zero-based index used by the KIM API to refer to this model parameter.
         """
         parameter_name_index = np.where(
             np.asarray(self.parameter_names) == parameter_name
@@ -643,21 +644,24 @@ class KIMModelCalculator(Calculator):
 
     def _get_one_value(self, index_param, index_extent, dtype):
         """
-        Get one value of parameter.
+        Retrieve the value of a single component of a model parameter array.
 
         Parameters
         ----------
         index_param : int
-            Index of model's parameter requested.
+            Zero-based index used by the KIM API to refer to this model
+            parameter.
         index_extent : int
-            Index of parameter's extent requested.
+            Zero-based index locating the component of the model parameter
+            array that is to be retrieved.
         dtype : "Integer" or "Double"
-            Data type of the model's parameter.
+            Data type of the model's parameter.  Allowed types: "Integer" or
+            "Double".
 
         Returns
         -------
         int or float
-            Value of model's parameter requested
+            Value of the requested component of the model parameter array.
 
         Raises
         ------
@@ -681,18 +685,22 @@ class KIMModelCalculator(Calculator):
 
     def _set_one_value(self, index_param, index_extent, dtype, value):
         """
-        Set one value of parameter.
+        Set the value of a single component of a model parameter array.
 
         Parameters
         ----------
         index_param : int
-            Index of model's parameter.
+            Zero-based index used by the KIM API to refer to this model
+            parameter.
         index_extent : int
-            Index of parameter's extent.
+            Zero-based index locating the component of the model parameter
+            array that is to be mutated.
         dtype : "Integer" or "Double"
-            Data type of the model's parameter.
+            Data type of the model's parameter.  Allowed types: "Integer" or
+            "Double".
         value : int or float
-            Value of model's parameter to set.
+            Value to assign the the requested component of the model
+            parameter array.
 
         Raises
         ------
