@@ -664,12 +664,12 @@ class KIMModelCalculator(Calculator):
         ValueError
             If ``dtype`` is not one of "Integer" or "Double"
         """
-        if dtype == "Integer":
-            pp = self.kim_model.kim_model.get_parameter_int(
+        if dtype == "Double":
+            pp = self.kim_model.kim_model.get_parameter_double(
                 index_param, np.intc(index_extent)
             )[0]
-        elif dtype == "Double":
-            pp = self.kim_model.kim_model.get_parameter_double(
+        elif dtype == "Integer":
+            pp = self.kim_model.kim_model.get_parameter_int(
                 index_param, np.intc(index_extent)
             )[0]
         else:
@@ -699,13 +699,13 @@ class KIMModelCalculator(Calculator):
         ValueError
             If ``dtype`` is not one of "Integer" or "Double".
         """
-        if dtype == "Integer":
-            self.kim_model.kim_model.set_parameter(
-                index_param, np.intc(index_extent), np.intc(value)
-            )
-        elif dtype == "Double":
+        if dtype == "Double":
             self.kim_model.kim_model.set_parameter(
                 index_param, np.intc(index_extent), np.double(value)
+            )
+        elif dtype == "Integer":
+            self.kim_model.kim_model.set_parameter(
+                index_param, np.intc(index_extent), np.intc(value)
             )
         else:
             raise ValueError(
