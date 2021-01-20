@@ -9,7 +9,11 @@ Git master branch
 
 :git:`master <>`.
 
-* No changes yet
+Calculators:
+
+* :class:`ase.calculators.qmmm.ForceQMMM` was updated to enable correct
+  handling of various periodic boundary conditions.
+  Functions to import and export files with QM/MM mapping were also added.
 
 
 Version 3.21.0
