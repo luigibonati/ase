@@ -451,18 +451,18 @@ class KIMModelCalculator(Calculator):
         return metadata
 
     def get_parameters(self, **kwargs):
-        """Get values of parameters for given names of the parameters
-        and the requested indices.
+        """Get values of model's parameters for given names of the
+        parameters and the requested indices.
 
         Parameters
         ----------
         **kwargs
-            Names of the parameters and the requested indices.
+            Names of the model's parameters and the requested indices.
 
         Returns
         -------
         dict
-            The requested indices and the parameters' values.
+            The requested indices and the values of the model's parameters.
 
         Note
         ----
@@ -499,13 +499,14 @@ class KIMModelCalculator(Calculator):
         Parameters
         ----------
         **kwargs
-            Names of the parameters with the requested indices and
-            values to set.
+            Names of the model's parameters with the requested indices
+            and values to set.
 
         Returns
         -------
         dict
-            The requested indices and the parameters' values set.
+            The requested indices and the values of the model's parameters
+            set.
 
         Example
         -------
@@ -534,7 +535,20 @@ class KIMModelCalculator(Calculator):
         return parameters
 
     def _get_one_parameter(self, parameter_name, index_range):
-        """Get values of one of kim model's parameter."""
+        """Get values of one model's parameter.
+
+        Parameters
+        ----------
+        parameter_name : str
+            Name of model's parameter requested.
+        index_range: int or list
+            Index or list of indices of parameter's extent requested.
+
+        Returns
+        -------
+        dict
+            The requested indices and the values of the model's parameter.
+        """
         # Check if model has parameter_name
         if parameter_name not in self.parameter_names:
             raise ValueError(
@@ -569,7 +583,17 @@ class KIMModelCalculator(Calculator):
 
     def _set_one_parameter(self, parameter_name,
                            index_range, values):
-        """Set values of one parameter."""
+        """Set values of one model's parameter.
+
+        Parameters
+        ----------
+        parameter_name : str
+            Name of model's parameter.
+        index_range : int or list
+            Index or list of indices of parameter's extent.
+        values : int/float or list
+            Value(s) of model's parameter to set.
+        """
         # Check if model has parameter_name
         if parameter_name not in self.parameter_names:
             raise ValueError(
@@ -606,7 +630,18 @@ class KIMModelCalculator(Calculator):
             )
 
     def _get_one_parameter_metadata(self, index_parameter):
-        """Get metadata of one parameter."""
+        """Get metadata of one model's parameter.
+
+        Parameters
+        ----------
+        index_parameter : int
+            Index of model's parameter requested.
+
+        Returns
+        -------
+        dict
+            Metadata of the model's parameter requested.
+        """
         out = self.kim_model.kim_model.get_parameter_metadata(
             index_parameter
         )
@@ -619,8 +654,18 @@ class KIMModelCalculator(Calculator):
         return pdata
 
     def _get_parameter_name_index(self, parameter_name):
-        """Given parameter_name, find index of parameter stored in the
+        """Given `parameter_name`, find index of parameter stored in the
         model.
+
+        Parameters
+        ----------
+        parameter_name : str
+            Name of model's parameter.
+
+        Returns
+        -------
+        int
+            Index of model's parameter.
         """
         parameter_name_index = np.where(
             np.asarray(self.parameter_names) == parameter_name
@@ -628,20 +673,47 @@ class KIMModelCalculator(Calculator):
         return parameter_name_index
 
     def _get_one_value(self, index_param, index_extent, dtype):
-        """Get one value of parameter."""
-        if dtype == 'Double':
-            pp = self.kim_model.kim_model.get_parameter_double(
+        """Get one value of parameter.
+
+        Parameters
+        ----------
+        index_param : int
+            Index of model's parameter requested.
+        index_extent : int
+            Index of parameter's extent requested.
+        dtype : "Integer" or "Double"
+            Data type of the model's parameter.
+
+        Returns
+        -------
+        int or float
+            Value of model's parameter requested
+        """
+        if dtype == 'Integer':
+            pp = self.kim_model.kim_model.get_parameter_int(
                 index_param, np.intc(index_extent)
             )[0]
-        else:
-            pp = self.kim_model.kim_model.get_parameter_int(
+        elif dtype == 'Double':
+            pp = self.kim_model.kim_model.get_parameter_double(
                 index_param, np.intc(index_extent)
             )[0]
         return pp
 
     def _set_one_value(self, index_param, index_extent,
                        dtype, value):
-        """Set one value of parameter."""
+        """Set one value of parameter.
+
+        Parameters
+        ----------
+        index_param : int
+            Index of model's parameter.
+        index_extent : int
+            Index of parameter's extent.
+        dtype : "Integer" or "Double"
+            Data type of the model's parameter.
+        value : int or float
+            Value of model's parameter to set.
+        """
         if dtype == 'Integer':
             self.kim_model.kim_model.set_parameter(
                 index_param, np.intc(index_extent), np.intc(value)
