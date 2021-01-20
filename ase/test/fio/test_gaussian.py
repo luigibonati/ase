@@ -70,11 +70,10 @@ SP   1   1.00
 fd_zmatrix = StringIO(u'''
 %chk=example.chk
 %Nprocshared=16
-# T B3LYP
-Gen
+# T B3LYP/Gen
 # opt=(Tight, MaxCyc=100)
 # integral(Ultrafine)
-# freq=ReadIso
+freq=ReadIso
 
 Gaussian input with Z matrix
 
@@ -170,12 +169,12 @@ def test_readwrite_gaussian():
               'basis': "6-31G(d',p')", 'opt': 'Tight, MaxCyc=100',
               'integral': 'Ultrafine', 'freq': None, 'charge': 0,
               'mult': 1}
-    NMagM = np.array([None, '-8.89', None])
-    ZEff = np.array([None, '-1', None])
-    ZNuc = np.array([None, None, '2'])
-    QMom = np.array([None, None, '1'])
-    RadNuclear = np.array([None, None, '1'])
-    Spin = np.array([None, None, '1'])
+    NMagM = np.array([None, -8.89, None])
+    ZEff = np.array([None, -1, None])
+    ZNuc = np.array([None, None, 2])
+    QMom = np.array([None, None, 1])
+    RadNuclear = np.array([None, None, 1])
+    Spin = np.array([None, None, 1])
     atoms.new_array('gaussian_NMagM', NMagM)
     atoms.new_array('gaussian_ZEff', ZEff)
     atoms.new_array('gaussian_ZNuc', ZNuc)

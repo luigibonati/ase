@@ -692,9 +692,16 @@ class GaussianConfiguration:
                 tokens[0])
             current_nuclei_props = GaussianConfiguration \
                 ._get_route_params(nuclei_props_match.group(1))
-            current_nuclei_props = {k.lower(): v for k, v
-                                    in current_nuclei_props.items()
-                                    }
+            updated_current_nuclei_props = {}
+            for k, v in current_nuclei_props.items():
+                if v.isnumeric():
+                    v = int(v)
+                else:
+                    v = float(v)
+                updated_current_nuclei_props[k.lower()] = v
+
+            current_nuclei_props = updated_current_nuclei_props
+
             atom_mass = current_nuclei_props.pop('iso', None)
         else:
             tokens = line.split()
@@ -732,7 +739,7 @@ class GaussianConfiguration:
         to the exact isotope mass for the element represented
         by the symbol (str)'''
         if atom_mass is not None:
-            if atom_mass.isnumeric():
+            if isinstance(atom_mass, int):
                 # will be true if atom_mass is integer
                 try:
                     atom_mass = download_isotope_data(
