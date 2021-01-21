@@ -425,30 +425,29 @@ class Aims(FileIOCalculator):
             raise ValueError('No atoms object attached')
         self.write_input(self.atoms)
 
-    def write_control(self, atoms, filename, debug=False):
+    def write_control(self, atoms, filename):
+        with open(filename, 'w') as output:
+            self._write_control(output, atoms, self.parameters,
+                                cubes=self.cubes)
+
+    def _write_control(self, output, atoms, parameters, cubes=tuple()):
         lim = '#' + '='*79
-        output = open(filename, 'w')
         output.write(lim + '\n')
-        for line in ['FHI-aims file: ' + filename,
+        for line in ['FHI-aims file',
                      'Created using the Atomic Simulation Environment (ASE)',
                      time.asctime(),
                      ]:
             output.write('# ' + line + '\n')
-        if debug:
-            output.write('# \n# List of parameters used to initialize the calculator:',)
-            for p, v in self.parameters.items():
-                s = '#     {} : {}\n'.format(p, v)
-                output.write(s)
         output.write(lim + '\n')
 
 
-        assert not ('kpts' in self.parameters and 'k_grid' in self.parameters)
-        assert not ('smearing' in self.parameters and
-                    'occupation_type' in self.parameters)
+        assert not ('kpts' in parameters and 'k_grid' in parameters)
+        assert not ('smearing' in parameters and
+                    'occupation_type' in parameters)
 
-        for key, value in self.parameters.items():
+        for key, value in parameters.items():
             if key == 'kpts':
-                mp = kpts2mp(atoms, self.parameters.kpts)
+                mp = kpts2mp(atoms, parameters.kpts)
                 output.write('%-35s%d %d %d\n' % (('k_grid',) + tuple(mp)))
                 dk = 0.5 - 0.5 / np.array(mp)
                 output.write('%-35s%f %f %f\n' % (('k_offset',) + tuple(dk)))
@@ -457,13 +456,13 @@ class Aims(FileIOCalculator):
             elif key == 'plus_u':
                 continue
             elif key == 'smearing':
-                name = self.parameters.smearing[0].lower()
+                name = parameters.smearing[0].lower()
                 if name == 'fermi-dirac':
                     name = 'fermi'
-                width = self.parameters.smearing[1]
+                width = parameters.smearing[1]
                 output.write('%-35s%s %f' % ('occupation_type', name, width))
                 if name == 'methfessel-paxton':
-                    order = self.parameters.smearing[2]
+                    order = parameters.smearing[2]
                     output.write(' %d' % order)
                 output.write('\n' % order)
             elif key == 'output':
@@ -480,8 +479,8 @@ class Aims(FileIOCalculator):
                 output.write('%-35s%s\n' % (key, value))
             else:
                 output.write('%-35s%r\n' % (key, value))
-        if self.cubes:
-            self.cubes.write(output)
+        if cubes:
+            cubes.write(output)
         output.write(lim + '\n\n')
         output.close()
 
