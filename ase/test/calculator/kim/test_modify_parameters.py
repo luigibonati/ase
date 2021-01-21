@@ -23,11 +23,11 @@ def test_modify_parameters(KIM):
     dimer_separation = np.random.uniform(0, cutoff)
     atoms = Atoms("Mo" * 2, positions=[[0, 0, 0], [0, 0, dimer_separation]])
 
-    calc = KIM('LennardJones612_UniversalShifted__MO_959249795837_003')
+    calc = KIM("LennardJones612_UniversalShifted__MO_959249795837_003")
     atoms.calc = calc
 
     # Retrieve the original energy scaling parameter
-    eps_orig = calc.get_parameters(epsilons=4879)['epsilons'][1]  # eV
+    eps_orig = calc.get_parameters(epsilons=4879)["epsilons"][1]  # eV
 
     # Get the energy using the original parameter as a reference value
     E_orig = atoms.get_potential_energy()  # eV
