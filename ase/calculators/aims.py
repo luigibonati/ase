@@ -7,7 +7,6 @@ Simon P. Rittmeyer simon.rittmeyer@tum.de
 
 import os
 import warnings
-import time
 from typing import Optional
 import re
 

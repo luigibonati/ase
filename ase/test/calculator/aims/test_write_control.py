@@ -1,6 +1,5 @@
 from io import StringIO
 import re
-import pytest
 from ase.io.aims import write_aims_control
 from ase.build import bulk
 
