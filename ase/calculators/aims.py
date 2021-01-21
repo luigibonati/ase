@@ -426,19 +426,20 @@ class Aims(FileIOCalculator):
         self.write_input(self.atoms)
 
     def write_control(self, atoms, filename):
-        with open(filename, 'w') as output:
-            self._write_control(output, atoms, self.parameters,
+        with open(filename, 'w') as fd:
+            self._write_control(fd, atoms, self.parameters,
                                 cubes=self.cubes)
 
-    def _write_control(self, output, atoms, parameters, cubes=tuple()):
+    def _write_control(self, fd, atoms, parameters, cubes=None):
         lim = '#' + '='*79
-        output.write(lim + '\n')
-        for line in ['FHI-aims file',
-                     'Created using the Atomic Simulation Environment (ASE)',
-                     time.asctime(),
-                     ]:
-            output.write('# ' + line + '\n')
-        output.write(lim + '\n')
+        fd.write(lim + '\n')
+        for line in [
+                'FHI-aims file',
+                'Created using the Atomic Simulation Environment (ASE)',
+                time.asctime(),
+        ]:
+            fd.write(f'# {line}\n')
+        fd.write(f'{lim}\n')
 
 
         assert not ('kpts' in parameters and 'k_grid' in parameters)
@@ -448,9 +449,9 @@ class Aims(FileIOCalculator):
         for key, value in parameters.items():
             if key == 'kpts':
                 mp = kpts2mp(atoms, parameters.kpts)
-                output.write('%-35s%d %d %d\n' % (('k_grid',) + tuple(mp)))
+                fd.write('%-35s%d %d %d\n' % (('k_grid',) + tuple(mp)))
                 dk = 0.5 - 0.5 / np.array(mp)
-                output.write('%-35s%f %f %f\n' % (('k_offset',) + tuple(dk)))
+                fd.write('%-35s%f %f %f\n' % (('k_offset',) + tuple(dk)))
             elif key == 'species_dir' or key == 'run_command':
                 continue
             elif key == 'plus_u':
@@ -460,29 +461,30 @@ class Aims(FileIOCalculator):
                 if name == 'fermi-dirac':
                     name = 'fermi'
                 width = parameters.smearing[1]
-                output.write('%-35s%s %f' % ('occupation_type', name, width))
+                fd.write('%-35s%s %f' % ('occupation_type', name, width))
                 if name == 'methfessel-paxton':
                     order = parameters.smearing[2]
-                    output.write(' %d' % order)
-                output.write('\n' % order)
+                    fd.write(' %d' % order)
+                fd.write('\n' % order)
             elif key == 'output':
                 for output_type in value:
-                    output.write('%-35s%s\n' % (key, output_type))
+                    fd.write('%-35s%s\n' % (key, output_type))
             elif key == 'vdw_correction_hirshfeld' and value:
-                output.write('%-35s\n' % key)
+                fd.write('%-35s\n' % key)
             elif key in bool_keys:
-                output.write('%-35s.%s.\n' % (key, repr(bool(value)).lower()))
+                fd.write('%-35s.%s.\n' % (key, repr(bool(value)).lower()))
             elif isinstance(value, (tuple, list)):
-                output.write('%-35s%s\n' %
+                fd.write('%-35s%s\n' %
                              (key, ' '.join(str(x) for x in value)))
             elif isinstance(value, str):
-                output.write('%-35s%s\n' % (key, value))
+                fd.write('%-35s%s\n' % (key, value))
             else:
-                output.write('%-35s%r\n' % (key, value))
-        if cubes:
-            cubes.write(output)
-        output.write(lim + '\n\n')
-        output.close()
+                fd.write('%-35s%r\n' % (key, value))
+
+        if cubes is not None:
+            cubes.write(fd)
+
+        fd.write(f'{lim}\n\n')
 
     def read(self, label=None):
         if label is None:
