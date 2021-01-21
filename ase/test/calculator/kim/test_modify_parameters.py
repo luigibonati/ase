@@ -7,12 +7,18 @@ from ase import Atoms
 @mark.calculator_lite
 def test_modify_parameters(KIM):
     """
-    Test that the parameters of the KIM calculator are correctly updated. This
-    is done by first constructing a Mo dimer with random separation. Using the
-    Lennard-Jones model, the energy is proportional to the value of epsilon. The
-    energies of the system, computed using 2 different values of epsilon, are
-    then compared. The ratio of these energies are equal to the ratio of the 2
-    epsilon values that are used to compute them.
+    Check that the KIM calculator is capable of retrieving and updating model
+    parameters correctly.  This is done by instantiating the calculator for a
+    specific Lennard-Jones (LJ) potential, included with the KIM API, with a
+    known cutoff for Mo-Mo interactions.  An Mo dimer is then constructed with
+    a random separation that falls within the cutoff and its energy using the
+    original potential parameters is computed.  Next, the original value of the
+    "epsilon" parameter for Mo is retrieved.  The value of the parameter is
+    then set to a scaling factor times the original value and the energy
+    recomputed.  In the Lennard-Jones potential, the energy is directly
+    proportional to the value of parameter "epsilon"; thus, the final energy
+    computed is asserted to be approximately equal to the scaling factor times
+    the original energy.
     """
 
     # In LennardJones612_UniversalShifted__MO_959249795837_003, the cutoff
