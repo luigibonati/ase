@@ -1,6 +1,8 @@
 import time
 import warnings
 
+import numpy as np
+
 from ase.units import Ang, fs
 from ase.utils import reader, writer
 
@@ -751,46 +753,48 @@ list_keys = [
 ]
 
 
+_delimiter = '# ' + '=' * 72
+_control_header = f"""\
+{_delimiter}
+# FHI-aims control file
+# Created using the Atomic Simulation Environment (ASE)
+{_delimiter}
+"""
+
 @writer
 def write_aims_control(fd, atoms, parameters=None, cubes=None):
     if parameters is None:
         parameters = {}
 
-    lim = '#' + '=' * 79
-    fd.write(f'{lim}\n')
-    for line in [
-            'FHI-aims file',
-            'Created using the Atomic Simulation Environment (ASE)',
-            time.asctime(),
-    ]:
-        fd.write(f'# {line}\n')
-    fd.write(f'{lim}\n')
+    parameters = dict(parameters)
 
+    fd.write(_control_header)
 
     assert not ('kpts' in parameters and 'k_grid' in parameters)
     assert not ('smearing' in parameters and
                 'occupation_type' in parameters)
 
+    ignorekeys = ['species_dir', 'run_command', 'plus_u']
+    for key in ignorekeys:
+        parameters.pop(key, None)
+
     for key, value in parameters.items():
         if key == 'kpts':
-            mp = kpts2mp(atoms, parameters.kpts)
+            from ase.calculators.calculator import kpts2mp
+            mp = kpts2mp(atoms, parameters['kpts'])
             fd.write('%-35s%d %d %d\n' % (('k_grid',) + tuple(mp)))
             dk = 0.5 - 0.5 / np.array(mp)
             fd.write('%-35s%f %f %f\n' % (('k_offset',) + tuple(dk)))
-        elif key == 'species_dir' or key == 'run_command':
-            continue
-        elif key == 'plus_u':
-            continue
         elif key == 'smearing':
-            name = parameters.smearing[0].lower()
+            name = parameters['smearing'][0].lower()
             if name == 'fermi-dirac':
                 name = 'fermi'
-            width = parameters.smearing[1]
+            width = parameters['smearing'][1]
             fd.write('%-35s%s %f' % ('occupation_type', name, width))
             if name == 'methfessel-paxton':
-                order = parameters.smearing[2]
+                order = parameters['smearing'][2]
                 fd.write(' %d' % order)
-            fd.write('\n' % order)
+            fd.write('\n')
         elif key == 'output':
             for output_type in value:
                 fd.write('%-35s%s\n' % (key, output_type))
@@ -809,4 +813,4 @@ def write_aims_control(fd, atoms, parameters=None, cubes=None):
     if cubes is not None:
         cubes.write(fd)
 
-    fd.write(f'{lim}\n\n')
+    fd.write(_delimiter + '\n')
