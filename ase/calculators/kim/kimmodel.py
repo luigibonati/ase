@@ -432,7 +432,7 @@ class KIMModelCalculator(Calculator):
 
     @property
     def parameter_names(self):
-        """Names of all parameters in the model."""
+        """Names of model parameters registered in the KIM API."""
         nparams = self.kim_model.kim_model.get_number_of_parameters()
         names = []
         for ii in range(nparams):
@@ -441,8 +441,7 @@ class KIMModelCalculator(Calculator):
 
     @property
     def parameters_metadata(self):
-        """Metadata of all the parameters in the model.
-        """
+        """Metadata associated with all model parameters."""
         num_params = self.kim_model.kim_model.get_number_of_parameters()
         metadata = {}
         for ii in range(num_params):
@@ -450,13 +449,18 @@ class KIMModelCalculator(Calculator):
         return metadata
 
     def get_parameters(self, **kwargs):
-        """Get values of model's parameters for given names of the
-        parameters and the requested indices.
+        """
+        Get the values of one or more model parameter arrays.
+
+        Given the names of one or more model parameters and a set of indices
+        for each of them, retrieve the corresponding elements of the relevant
+        model parameter arrays.
 
         Parameters
         ----------
         **kwargs
-            Names of the model's parameters and the requested indices.
+            Names of the model parameters and the indices whose values should
+            be retrieved.
 
         Returns
         -------
@@ -470,7 +474,7 @@ class KIMModelCalculator(Calculator):
 
         Example
         -------
-        To get `epsilons` and `sigmas` in LJ universal model for Mo-Mo
+        To get `epsilons` and `sigmas` in the LJ universal model for Mo-Mo
         (index 4879), Mo-S (index 2006) and S-S (index 1980) interactions::
 
             >>> LJ = 'LJ_ElliottAkerson_2015_Universal__MO_959249795837_003'
@@ -488,26 +492,30 @@ class KIMModelCalculator(Calculator):
         return parameters
 
     def set_parameters(self, **kwargs):
-        """Set values of parameters for given names of the parameters
-        and the requested indices.
+        """
+        Set the values of one or more model parameter arrays.
+
+        Given the names of one or more model parameters and a set of indices
+        and corresponding values for each of them, mutate the corresponding
+        elements of the relevant model parameter arrays.
 
         Parameters
         ----------
         **kwargs
-            Names of the model's parameters with the requested indices
-            and values to set.
+            Names of the model parameters to mutate and the corresponding
+            indices and values to set.
 
         Returns
         -------
         dict
             The requested indices and the values of the model's parameters
-            set.
+            that were set.
 
         Example
         -------
-        To set `epsilons` in LJ universal model for Mo-Mo (index 4879),
-        Mo-S (index 2006) and S-S (index 1980) interactions to 5.0, 4.5,
-        and 4.0, respectively::
+        To set `epsilons` in the LJ universal model for Mo-Mo (index 4879),
+        Mo-S (index 2006) and S-S (index 1980) interactions to 5.0, 4.5, and
+        4.0, respectively::
 
             >>> LJ = 'LJ_ElliottAkerson_2015_Universal__MO_959249795837_003'
             >>> calc = KIM(LJ)
@@ -527,19 +535,23 @@ class KIMModelCalculator(Calculator):
         return parameters
 
     def _get_one_parameter(self, parameter_name, index_range):
-        """Get values of one model's parameter.
+        """
+        Retrieve the value of one or more components of a model parameter array.
 
         Parameters
         ----------
         parameter_name : str
-            Name of model's parameter requested.
-        index_range: int or list
-            Index or list of indices of parameter's extent requested.
+            Name of model parameter registered in the KIM API.
+        index_range : int or list
+            Zero-based index (int) or indices (list of int) specifying the
+            component(s) of the corresponding model parameter array that are
+            to be retrieved.
 
         Returns
         -------
         dict
-            The requested indices and the values of the model's parameter.
+            The requested indices and the corresponding values of the model
+            parameter array.
         """
         # Check if model has parameter_name
         if parameter_name not in self.parameter_names:
@@ -561,16 +573,20 @@ class KIMModelCalculator(Calculator):
         return {parameter_name: [index_range, values]}
 
     def _set_one_parameter(self, parameter_name, index_range, values):
-        """Set values of one model's parameter.
+        """
+        Set the value of one or more components of a model parameter array.
 
         Parameters
         ----------
         parameter_name : str
-            Name of model's parameter.
+            Name of model parameter registered in the KIM API.
         index_range : int or list
-            Index or list of indices of parameter's extent.
+            Zero-based index (int) or indices (list of int) specifying the
+            component(s) of the corresponding model parameter array that are
+            to be mutated.
         values : int/float or list
-            Value(s) of model's parameter to set.
+            Value(s) to assign to the component(s) of the model parameter
+            array specified by ``index_range``.
         """
         # Check if model has parameter_name
         if parameter_name not in self.parameter_names:
@@ -594,20 +610,24 @@ class KIMModelCalculator(Calculator):
             for idx, value in zip(index_range, values):
                 self._set_one_value(parameter_name_index, idx, dtype, value)
         else:
-            raise ValueError("Index range must be an integer or a list of integer")
+            raise ValueError(
+                "Index range must be an integer or a list containing a single integer"
+            )
 
     def _get_one_parameter_metadata(self, index_parameter):
-        """Get metadata of one model's parameter.
+        """
+        Get metadata associated with a single model parameter.
 
         Parameters
         ----------
         index_parameter : int
-            Index of model's parameter requested.
+            Zero-based index used by the KIM API to refer to this model
+            parameter.
 
         Returns
         -------
         dict
-            Metadata of the model's parameter requested.
+            Metadata associated with the requested model parameter.
         """
         out = self.kim_model.kim_model.get_parameter_metadata(index_parameter)
         dtype, extent, name, description, error = out
