@@ -17,7 +17,6 @@ def test_empty():
 def test_kpts():
     txt = control2txt(kpts=[4, 4, 4])
     assert re.search(r'k_grid\s+4 4 4', txt)
-    assert re.search(r'k_offset\s+0\.37', txt)  # What's with the offset?
 
 
 def test_smearing():

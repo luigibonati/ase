@@ -761,6 +761,7 @@ _control_header = f"""\
 {_delimiter}
 """
 
+
 @writer
 def write_aims_control(fd, atoms, parameters=None, cubes=None):
     if parameters is None:
@@ -783,8 +784,8 @@ def write_aims_control(fd, atoms, parameters=None, cubes=None):
             from ase.calculators.calculator import kpts2mp
             mp = kpts2mp(atoms, parameters['kpts'])
             fd.write('%-35s%d %d %d\n' % (('k_grid',) + tuple(mp)))
-            dk = 0.5 - 0.5 / np.array(mp)
-            fd.write('%-35s%f %f %f\n' % (('k_offset',) + tuple(dk)))
+            # dk = 0.5 - 0.5 / np.array(mp)
+            # fd.write('%-35s%f %f %f\n' % (('k_offset',) + tuple(dk)))
         elif key == 'smearing':
             name = parameters['smearing'][0].lower()
             if name == 'fermi-dirac':
