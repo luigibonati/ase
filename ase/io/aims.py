@@ -705,33 +705,34 @@ def write_aims_control(fd, atoms, parameters=None, cubes=None):
         if key == 'kpts':
             from ase.calculators.calculator import kpts2mp
             mp = kpts2mp(atoms, parameters['kpts'])
-            fd.write('%-35s%d %d %d\n' % (('k_grid',) + tuple(mp)))
-            # dk = 0.5 - 0.5 / np.array(mp)
-            # fd.write('%-35s%f %f %f\n' % (('k_offset',) + tuple(dk)))
+            txt = '%-35s%d %d %d\n' % (('k_grid',) + tuple(mp))
         elif key == 'smearing':
             name = parameters['smearing'][0].lower()
             if name == 'fermi-dirac':
                 name = 'fermi'
             width = parameters['smearing'][1]
-            fd.write('%-35s%s %f' % ('occupation_type', name, width))
+            txt = '%-35s%s %f' % ('occupation_type', name, width)
             if name == 'methfessel-paxton':
                 order = parameters['smearing'][2]
-                fd.write(' %d' % order)
-            fd.write('\n')
+                txt += ' %d' % order
+            txt += '\n'
         elif key == 'output':
             for output_type in value:
-                fd.write('%-35s%s\n' % (key, output_type))
+                txt = '%-35s%s\n' % (key, output_type)
         elif key == 'vdw_correction_hirshfeld' and value:
-            fd.write('%-35s\n' % key)
-        elif key in bool_keys:
-            fd.write('%-35s.%s.\n' % (key, repr(bool(value)).lower()))
+            txt = '%-35s\n' % key
+        elif value is True:
+            txt = '%-35s.%s.\n' % (key, 'true')
+        elif value is False:
+            txt = '%-35s.%s.\n' % (key, 'false')
         elif isinstance(value, (tuple, list)):
-            fd.write('%-35s%s\n' %
-                         (key, ' '.join(str(x) for x in value)))
+            txt = '%-35s%s\n' % (key, ' '.join(str(x) for x in value))
         elif isinstance(value, str):
-            fd.write('%-35s%s\n' % (key, value))
+            txt = '%-35s%s\n' % (key, value)
         else:
-            fd.write('%-35s%r\n' % (key, value))
+            txt = '%-35s%r\n' % (key, value)
+
+        fd.write(txt)
 
     if cubes is not None:
         cubes.write(fd)
