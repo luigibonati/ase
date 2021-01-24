@@ -16,6 +16,19 @@ Calculators:
   Functions to import and export files with QM/MM mapping were also added.
 
 
+Version 3.21.1
+==============
+
+24 January 2021: :git:`3.21.1 <../3.21.1>`
+
+* Fix incorrect positions written to CIF files with mixed boundary
+  conditions.
+* Writing a CIF with only 1 or 2 lattice will now raise an error since
+  CIF cannot represent those systems.
+* The name of the Vasp calculator is now ``'vasp'`` as intended.
+* Fix attribute error in :meth:`~ase.vibrations.Vibrations.write_jmol`.
+
+
 Version 3.21.0
 ==============
 
