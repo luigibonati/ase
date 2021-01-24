@@ -16,6 +16,14 @@ Calculators:
   Functions to import and export files with QM/MM mapping were also added.
 
 
+Version 3.21.1
+==============
+
+24 January 2021: :git:`3.21.1 <../3.21.1>`
+
+* No changes yet
+
+
 Version 3.21.0
 ==============
 
