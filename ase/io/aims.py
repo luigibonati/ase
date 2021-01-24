@@ -1,5 +1,6 @@
 import time
 import warnings
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -648,33 +649,6 @@ def read_aims_output(fd, index=-1):
         return [images[i] for i in range(start, stop, step)]
 
 
-bool_keys = [
-    'collect_eigenvectors',
-    'compute_forces',
-    'compute_kinetic',
-    'compute_numerical_stress',
-    'compute_analytical_stress',
-    'compute_heat_flux',
-    'distributed_spline_storage',
-    'evaluate_work_function',
-    'final_forces_cleaned',
-    'hessian_to_restart_geometry',
-    'load_balancing',
-    'MD_clean_rotations',
-    'MD_restart',
-    'override_illconditioning',
-    'override_relativity',
-    'restart_relaxations',
-    'squeeze_memory',
-    'symmetry_reduced_k_grid',
-    'use_density_matrix',
-    'use_dipole_correction',
-    'use_local_index',
-    'use_logsbt',
-    'vdw_correction_hirshfeld',
-]
-
-
 _delimiter = '# ' + '=' * 72
 _control_header = f"""\
 {_delimiter}
@@ -684,22 +658,25 @@ _control_header = f"""\
 """
 
 
+# Some keys can be written multiple times in different lines.  ASE
+# expects those keys as a sequence, but then formats them into
+# different lines.
 repeating_keys = {'output'}
-
-
-from collections.abc import Sequence
 
 
 def format_parameters(parameters):
     for key, value in normalize_parameters(parameters):
-        yield f'{key:34s} {value}\n'
+        if value is None:
+            yield key + '\n'
+        else:
+            yield f'{key:34s} {value}\n'
 
 
 def normalize_parameters(parameters):
     for key, value in parameters.items():
         if key in repeating_keys:
             for subvalue in value:
-                yield from normalize_parameter(key, subvalue)
+                yield key, value2string(subvalue)
         else:
             if key == 'kpts':
                 key = 'k_grid'
@@ -714,10 +691,10 @@ def normalize_parameters(parameters):
                     order = value[2]
                     value.append(order)
 
-            yield from normalize_parameter(key, value)
+            yield key, value2string(value)
 
 
-def normalize_parameter(key, value):
+def value2string(value):
     if isinstance(value, bool):
         if value:
             txt = '.true.'
@@ -731,7 +708,7 @@ def normalize_parameter(key, value):
         txt = ''
     else:
         txt = str(value)
-    yield key, txt
+    return txt
 
 
 @writer
