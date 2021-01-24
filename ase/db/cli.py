@@ -1,6 +1,7 @@
 import json
 import sys
 from collections import defaultdict
+from contextlib import contextmanager
 from random import randint
 
 import ase.io
@@ -210,21 +211,22 @@ def main(args):
         nrows = 0
         with connect(args.insert_into,
                      use_lock_file=not args.no_lock_file) as db2:
-            for row in db.select(query,
-                                 sort=args.sort,
-                                 limit=args.limit,
-                                 offset=args.offset):
-                kvp = row.get('key_value_pairs', {})
-                nkvp -= len(kvp)
-                kvp.update(add_key_value_pairs)
-                nkvp += len(kvp)
-                if args.unique:
-                    row['unique_id'] = '%x' % randint(16**31, 16**32 - 1)
-                if args.strip_data:
-                    db2.write(row.toatoms(), **kvp)
-                else:
-                    db2.write(row, data=row.get('data'), **kvp)
-                nrows += 1
+            with progressbar(db.select(query,
+                                       sort=args.sort,
+                                       limit=args.limit,
+                                       offset=args.offset)) as rows:
+                for row in rows:
+                    kvp = row.get('key_value_pairs', {})
+                    nkvp -= len(kvp)
+                    kvp.update(add_key_value_pairs)
+                    nkvp += len(kvp)
+                    if args.unique:
+                        row['unique_id'] = '%x' % randint(16**31, 16**32 - 1)
+                    if args.strip_data:
+                        db2.write(row.toatoms(), **kvp)
+                    else:
+                        db2.write(row, data=row.get('data'), **kvp)
+                    nrows += 1
 
         out('Added %s (%s updated)' %
             (plural(nkvp, 'key-value pair'),
@@ -402,6 +404,24 @@ def row2str(row) -> str:
         S.append('{:{}} | {:{}} | {}'
                  .format(key, width0, desc, width1, value))
     return '\n'.join(S)
+
+
+def progressbar(iterable):
+    """Try to import the one from click and use that one."""
+    # People using ase.db will most likely have flask installed
+    # and therfore also click.
+    try:
+        from click import progressbar
+        return progressbar(iterable)
+    except ImportError:
+        pass
+
+    @contextmanager
+    def pbar(iterable):
+        """Do nothing implementation."""
+        yield iterable
+
+    return pbar(iterable)
 
 
 def check_jsmol():
