@@ -684,6 +684,56 @@ _control_header = f"""\
 """
 
 
+repeating_keys = {'output'}
+
+
+from collections.abc import Sequence
+
+
+def format_parameters(parameters):
+    for key, value in normalize_parameters(parameters):
+        yield f'{key:34s} {value}\n'
+
+
+def normalize_parameters(parameters):
+    for key, value in parameters.items():
+        if key in repeating_keys:
+            for subvalue in value:
+                yield from normalize_parameter(key, subvalue)
+        else:
+            if key == 'kpts':
+                key = 'k_grid'
+            elif key == 'smearing':
+                name = value[0].lower()
+                if name == 'fermi-dirac':
+                    name = 'fermi'
+                width = value[1]
+                key = 'occupation_type'
+                value = [name, width]
+                if name == 'methfessel-paxton':
+                    order = value[2]
+                    value.append(order)
+
+            yield from normalize_parameter(key, value)
+
+
+def normalize_parameter(key, value):
+    if isinstance(value, bool):
+        if value:
+            txt = '.true.'
+        else:
+            txt = '.false.'
+    elif isinstance(value, str):
+        txt = value
+    elif isinstance(value, Sequence):
+        txt = ' '.join(str(obj) for obj in value)
+    elif value is None:
+        txt = ''
+    else:
+        txt = str(value)
+    yield key, txt
+
+
 @writer
 def write_aims_control(fd, atoms, parameters=None, cubes=None):
     if parameters is None:
@@ -701,38 +751,8 @@ def write_aims_control(fd, atoms, parameters=None, cubes=None):
     for key in ignorekeys:
         parameters.pop(key, None)
 
-    for key, value in parameters.items():
-        if key == 'kpts':
-            from ase.calculators.calculator import kpts2mp
-            mp = kpts2mp(atoms, parameters['kpts'])
-            txt = '%-35s%d %d %d\n' % (('k_grid',) + tuple(mp))
-        elif key == 'smearing':
-            name = parameters['smearing'][0].lower()
-            if name == 'fermi-dirac':
-                name = 'fermi'
-            width = parameters['smearing'][1]
-            txt = '%-35s%s %f' % ('occupation_type', name, width)
-            if name == 'methfessel-paxton':
-                order = parameters['smearing'][2]
-                txt += ' %d' % order
-            txt += '\n'
-        elif key == 'output':
-            for output_type in value:
-                txt = '%-35s%s\n' % (key, output_type)
-        elif key == 'vdw_correction_hirshfeld' and value:
-            txt = '%-35s\n' % key
-        elif value is True:
-            txt = '%-35s.%s.\n' % (key, 'true')
-        elif value is False:
-            txt = '%-35s.%s.\n' % (key, 'false')
-        elif isinstance(value, (tuple, list)):
-            txt = '%-35s%s\n' % (key, ' '.join(str(x) for x in value))
-        elif isinstance(value, str):
-            txt = '%-35s%s\n' % (key, value)
-        else:
-            txt = '%-35s%r\n' % (key, value)
-
-        fd.write(txt)
+    for line in format_parameters(parameters):
+        fd.write(line)
 
     if cubes is not None:
         cubes.write(fd)
