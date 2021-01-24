@@ -12,6 +12,14 @@ Git master branch
 * No changes yet
 
 
+Version 3.21.1
+==============
+
+24 January 2021: :git:`3.21.1 <../3.21.1>`
+
+* No changes yet
+
+
 Version 3.21.0
 ==============
 
