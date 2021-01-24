@@ -825,8 +825,8 @@ def write_cif_image(blockname, atoms, fd, *, wrap,
         fd.write(format_generic_spacegroup_info())
         fd.write('\n')
     elif rank != 0:
-        warnings.warn(f'Discarding {rank} cell vectors and PBC information.  '
-                      'Need either 0 or 3 vectors.')
+        raise ValueError('CIF format can only represent systems with '
+                         f'0 or 3 lattice vectors.  Got {rank}.')
 
     loopdata, coord_headers = atoms_to_loop_data(atoms, wrap, labels,
                                                  loop_keys)

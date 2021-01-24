@@ -517,12 +517,10 @@ def test_cif_missingvector(atoms):
     atoms.cell[0] = 0.0
     atoms.pbc[0] = False
 
-    with pytest.warns(UserWarning, match='Discarding 2 cell'):
-        atoms1 = roundtrip(atoms)
+    assert atoms.cell.rank == 2
 
-    assert atoms1.cell.rank == 0
-    assert not any(atoms1.pbc)
-    assert atoms1.positions == pytest.approx(atoms.positions, abs=1e-5)
+    with pytest.raises(ValueError, match='CIF format can only'):
+        roundtrip(atoms)
 
 
 def test_cif_roundtrip_mixed():
