@@ -4,8 +4,16 @@ from collections.abc import Sequence
 
 import numpy as np
 
+from ase import Atoms
 from ase.units import Ang, fs
 from ase.utils import reader, writer
+from ase.constraints import (
+    FixAtoms,
+    FixCartesian,
+    FixScaledParametricRelations,
+    FixCartesianParametricRelations,
+)
+
 
 
 v_unit = Ang / (1000.0 * fs)
@@ -27,16 +35,6 @@ def read_aims(fd, apply_constraints=True):
 
 
 def parse_geometry_lines(lines, apply_constraints=True):
-
-    from ase import Atoms
-    from ase.constraints import (
-        FixAtoms,
-        FixCartesian,
-        FixScaledParametricRelations,
-        FixCartesianParametricRelations,
-    )
-    import numpy as np
-
     atoms = Atoms()
 
     positions = []
@@ -226,10 +224,6 @@ def write_aims(
             Wrap atom positions to cell before writing
     """
 
-    from ase.constraints import FixAtoms, FixCartesian
-
-    import numpy as np
-
     if geo_constrain:
         if not scaled:
             warnings.warn(
@@ -328,13 +322,6 @@ def write_aims(
 
 def get_sym_block(atoms):
     """Get symmetry block for Parametric constraints in atoms.constraints"""
-    import numpy as np
-
-    from ase.constraints import (
-        FixScaledParametricRelations,
-        FixCartesianParametricRelations,
-    )
-
     # Initialize param/expressions lists
     atomic_sym_params = []
     lv_sym_params = []
