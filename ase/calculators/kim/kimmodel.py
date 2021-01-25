@@ -548,8 +548,7 @@ class KIMModelCalculator(Calculator):
             parameter array.
         """
         # Check if model has parameter_name
-        if parameter_name not in self.parameter_names:
-            raise ValueError(f"Parameter {parameter_name} is not supported.")
+        self._parameter_is_supported(parameter_name)
 
         parameter_name_index = self._get_parameter_name_index(parameter_name)
         parameter_metadata = self._get_one_parameter_metadata(parameter_name_index)
@@ -583,8 +582,7 @@ class KIMModelCalculator(Calculator):
             array specified by ``index_range``.
         """
         # Check if model has parameter_name
-        if parameter_name not in self.parameter_names:
-            raise ValueError(f"Parameter {parameter_name} is not supported.")
+        self._parameter_is_supported(parameter_name)
 
         parameter_name_index = self._get_parameter_name_index(parameter_name)
         parameter_metadata = self._get_one_parameter_metadata(parameter_name_index)
@@ -734,3 +732,19 @@ class KIMModelCalculator(Calculator):
                 f"Invalid data type {dtype}.  Allowed values are "
                 "'Integer' or 'Double'."
             )
+
+    def _parameter_is_supported(self, parameter_name):
+        """Check if ``parameter_name`` is registered in the KIM API.
+
+        Parameters
+        ----------
+        parameter_name : str
+            Name of model parameter requested.
+
+        Raises
+        ------
+        ValueError
+            If ``parameter_name`` is not registered in the KIM API.
+        """
+        if parameter_name not in self.parameter_names:
+            raise ValueError(f"Parameter {parameter_name} is not supported.")
