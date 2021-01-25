@@ -425,15 +425,6 @@ class KIMModelCalculator(Calculator):
         return self.neigh.update
 
     @property
-    def parameter_names(self):
-        """Names of model parameters registered in the KIM API."""
-        nparams = self.kim_model.kim_model.get_number_of_parameters()
-        names = []
-        for ii in range(nparams):
-            names.append(list(self._get_one_parameter_metadata(ii).keys())[0])
-        return names
-
-    @property
     def parameters_metadata(self):
         """Metadata associated with all model parameters."""
         num_params = self.kim_model.kim_model.get_number_of_parameters()
@@ -441,6 +432,21 @@ class KIMModelCalculator(Calculator):
         for ii in range(num_params):
             metadata.update(self._get_one_parameter_metadata(ii))
         return metadata
+
+    def parameter_names(self):
+        """Names of model parameters registered in the KIM API.
+
+        Returns
+        -------
+        list
+            Names of model parameters registered in the KIM API
+        """
+        nparams = self.kim_model.kim_model.get_number_of_parameters()
+        names = []
+        for ii in range(nparams):
+            name = list(self._get_one_parameter_metadata(ii))[0]
+            names.append(name)
+        return names
 
     def get_parameters(self, **kwargs):
         """
@@ -650,7 +656,7 @@ class KIMModelCalculator(Calculator):
             Zero-based index used by the KIM API to refer to this model parameter.
         """
         parameter_name_index = np.where(
-            np.asarray(self.parameter_names) == parameter_name
+            np.asarray(self.parameter_names()) == parameter_name
         )[0]
         return parameter_name_index
 
@@ -746,5 +752,5 @@ class KIMModelCalculator(Calculator):
         ValueError
             If ``parameter_name`` is not registered in the KIM API.
         """
-        if parameter_name not in self.parameter_names:
+        if parameter_name not in self.parameter_names():
             raise ValueError(f"Parameter {parameter_name} is not supported.")
