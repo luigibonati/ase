@@ -10,7 +10,6 @@ University of Minnesota
 import numpy as np
 
 from ase.calculators.calculator import Calculator
-from ase.calculators.calculator import compare_atoms
 
 from . import kimpy_wrappers
 from . import neighborlist
@@ -214,6 +213,8 @@ class KIMModelCalculator(Calculator):
 
     implemented_properties = ["energy", "forces", "stress"]
 
+    ignored_changes = {"initial_charges", "initial_magmoms"}
+
     def __init__(
         self,
         model_name,
@@ -311,13 +312,6 @@ class KIMModelCalculator(Calculator):
         self.results["free_energy"] = energy
         self.results["forces"] = forces
         self.results["stress"] = stress
-
-    def check_state(self, atoms, tol=1e-15):
-        return compare_atoms(
-            self.atoms,
-            atoms,
-            excluded_properties={"initial_charges", "initial_magmoms"},
-        )
 
     def assemble_padding_forces(self):
         """
