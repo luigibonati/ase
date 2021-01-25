@@ -553,14 +553,10 @@ class KIMModelCalculator(Calculator):
             The requested indices and the corresponding values of the model
             parameter array.
         """
-        # Check if model has parameter_name
-        self._parameter_is_supported(parameter_name)
+        (parameter_name_index, dtype, index_range_dim) = self._one_parameter_data(
+            parameter_name, index_range
+        )
 
-        parameter_name_index = self._get_parameter_name_index(parameter_name)
-        parameter_metadata = self._get_one_parameter_metadata(parameter_name_index)
-        dtype = list(parameter_metadata.values())[0]["dtype"]
-
-        index_range_dim = np.ndim(index_range)
         if index_range_dim == 0:
             values = self._get_one_value(parameter_name_index, index_range, dtype)
         elif index_range_dim == 1:
@@ -587,14 +583,9 @@ class KIMModelCalculator(Calculator):
             Value(s) to assign to the component(s) of the model parameter
             array specified by ``index_range``.
         """
-        # Check if model has parameter_name
-        self._parameter_is_supported(parameter_name)
-
-        parameter_name_index = self._get_parameter_name_index(parameter_name)
-        parameter_metadata = self._get_one_parameter_metadata(parameter_name_index)
-        dtype = list(parameter_metadata.values())[0]["dtype"]
-
-        index_range_dim = np.ndim(index_range)
+        (parameter_name_index, dtype, index_range_dim) = self._one_parameter_data(
+            parameter_name, index_range
+        )
         values_dim = np.ndim(values)
 
         # Check the shape of index_range and values
@@ -739,18 +730,38 @@ class KIMModelCalculator(Calculator):
                 "'Integer' or 'Double'."
             )
 
-    def _parameter_is_supported(self, parameter_name):
-        """Check if ``parameter_name`` is registered in the KIM API.
+    def _one_parameter_data(self, parameter_name, index_range):
+        """Get the data of one of the parameter. The data will be used in
+        ``_get_one_parameter`` and ``_set_one_parameter``.
 
         Parameters
         ----------
         parameter_name : str
-            Name of model parameter requested.
+            Name of model parameter registered in the KIM API.
+        index_range : int or list
+            Zero-based index (int) or indices (list of int) specifying the
+            component(s) of the corresponding model parameter array that are
+            to be mutated.
+
+        Returns
+        -------
+        list
+            Contains index of model's parameter, metadata of the parameter,
+            dtype, and dimension of ``index_range``.
 
         Raises
         ------
         ValueError
             If ``parameter_name`` is not registered in the KIM API.
         """
+        # Check if model has parameter_name
         if parameter_name not in self.parameter_names():
             raise ValueError(f"Parameter {parameter_name} is not supported.")
+
+        parameter_name_index = self._get_parameter_name_index(parameter_name)
+        metadata = self._get_one_parameter_metadata(parameter_name_index)
+        dtype = list(metadata.values())[0]["dtype"]
+
+        index_range_dim = np.ndim(index_range)
+
+        return parameter_name_index, dtype, index_range_dim
