@@ -717,18 +717,18 @@ class KIMModelCalculator(Calculator):
             If ``dtype`` is not one of "Integer" or "Double".
         """
         if dtype == "Double":
-            self.kim_model.kim_model.set_parameter(
-                index_param, np.intc(index_extent), np.double(value)
-            )
+            value_typecast = np.double(value)
         elif dtype == "Integer":
-            self.kim_model.kim_model.set_parameter(
-                index_param, np.intc(index_extent), np.intc(value)
-            )
+            value_typecast = np.intc(value)
         else:
             raise ValueError(
                 f"Invalid data type {dtype}.  Allowed values are "
                 "'Integer' or 'Double'."
             )
+
+        self.kim_model.kim_model.set_parameter(
+            index_param, np.intc(index_extent), value_typecast
+        )
 
     def _one_parameter_data(self, parameter_name, index_range):
         """Get the data of one of the parameter. The data will be used in
