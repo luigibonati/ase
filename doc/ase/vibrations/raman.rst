@@ -86,16 +86,6 @@ in ``ResonantRamanCalculator`` by::
 We assume that the steps above were performed and are able to analyse the
 results in different approximations.
 
-In order to do the full Albrecht analysis later we 
-We save the standard names::
-
-  # standard name for Vibrations
-  name = 'vib'
-  # standard name for Infrared
-  name = 'ir'
-  # standard name for the ResonantRamanCalculator
-  name = 'rraman'
-
 Placzek
 ```````
 
