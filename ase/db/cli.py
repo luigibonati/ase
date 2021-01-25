@@ -427,7 +427,7 @@ def row2str(row) -> str:
 
 @contextmanager
 def no_progressbar(iterable: Iterable,
-                   length: int = None) -> Iterator:
+                   length: int = None) -> Iterator[Iterable]:
     """A do-nothing implementation."""
     yield iterable
 
