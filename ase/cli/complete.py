@@ -50,7 +50,7 @@ commands = {
          '--open-web-browser', '--no-lock-file', '--analyse',
          '-j', '--json', '-m', '--show-metadata',
          '--set-metadata', '--unique', '--strip-data',
-         '--show-keys', '--show-values'],
+         '--progress-bar', '--show-keys', '--show-values'],
     'diff':
         ['-r', '--rank-order', '-c', '--calculator-outputs',
          '--max-lines', '-t', '--template', '--template-help',

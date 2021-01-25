@@ -3,6 +3,7 @@ import sys
 from collections import defaultdict
 from contextlib import contextmanager
 from random import randint
+from typing import Iterable, Iterator
 
 import ase.io
 from ase.db import connect
@@ -110,6 +111,8 @@ class CLICommand:
             help='Give rows a new unique id when using --insert-into.')
         add('--strip-data', action='store_true',
             help='Strip data when using --insert-into.')
+        add('--progress-bar', action='store_true',
+            help='Show a progress bar when using --insert-into.')
         add('--show-keys', action='store_true',
             help='Show all keys.')
         add('--show-values', metavar='key1,key2,...',
@@ -207,6 +210,21 @@ def main(args):
     if args.insert_into:
         if args.limit == -1:
             args.limit = 0
+
+        progressbar = no_progressbar
+        length = None
+
+        if args.progress_bar:
+            # Try to import the one from click.
+            # People using ase.db will most likely have flask installed
+            # and therfore also click.
+            try:
+                from click import progressbar
+            except ImportError:
+                pass
+            else:
+                length = db.count(query)
+
         nkvp = 0
         nrows = 0
         with connect(args.insert_into,
@@ -214,7 +232,8 @@ def main(args):
             with progressbar(db.select(query,
                                        sort=args.sort,
                                        limit=args.limit,
-                                       offset=args.offset)) as rows:
+                                       offset=args.offset),
+                             length=length) as rows:
                 for row in rows:
                     kvp = row.get('key_value_pairs', {})
                     nkvp -= len(kvp)
@@ -406,22 +425,11 @@ def row2str(row) -> str:
     return '\n'.join(S)
 
 
-def progressbar(iterable):
-    """Try to import the one from click and use that one."""
-    # People using ase.db will most likely have flask installed
-    # and therfore also click.
-    try:
-        from click import progressbar
-        return progressbar(iterable)
-    except ImportError:
-        pass
-
-    @contextmanager
-    def pbar(iterable):
-        """Do nothing implementation."""
-        yield iterable
-
-    return pbar(iterable)
+@contextmanager
+def no_progressbar(iterable: Iterable,
+                   length: int = None) -> Iterator:
+    """A do-nothing implementation."""
+    yield iterable
 
 
 def check_jsmol():
