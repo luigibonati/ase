@@ -1,4 +1,4 @@
-"""Testing of "ase db" command line interface."""
+"""Testing of "ase db" command-line interface."""
 from pathlib import Path
 
 import pytest
@@ -22,5 +22,6 @@ def test_insert_into(cli, dbfile):
     """Test progress bar code."""
     out = dbfile.with_name('x1.db')
     cli.ase(*f'db {dbfile} -L1 -i {out} --progress-bar'.split())
-    num = int(cli.ase(*f'db {out} -n'.split()).split()[0])
+    txt = cli.ase(*f'db {out} -n'.split())
+    num = int(txt.split()[0])
     assert num == 1
