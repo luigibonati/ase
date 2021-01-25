@@ -424,9 +424,14 @@ class KIMModelCalculator(Calculator):
     def update_neigh(self):
         return self.neigh.update
 
-    @property
     def parameters_metadata(self):
-        """Metadata associated with all model parameters."""
+        """Metadata associated with all model parameters.
+
+        Returns
+        -------
+        dict
+            Meta data associated with all model parameters.
+        """
         num_params = self.kim_model.kim_model.get_number_of_parameters()
         metadata = {}
         for ii in range(num_params):
