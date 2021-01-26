@@ -233,6 +233,7 @@ class KIMModelCalculator(Calculator):
 
         if neigh_skin_ratio < 0:
             raise ValueError('Argument "neigh_skin_ratio" must be non-negative')
+        self.neigh_skin_ratio = neigh_skin_ratio
 
         # Model output
         self.energy = None
@@ -536,6 +537,18 @@ class KIMModelCalculator(Calculator):
             )
             parameters.update({parameter_name: parameter_data})
         self.kim_model.kim_model.clear_then_refresh()
+
+        # Update skin, influence distance and cutoff
+        model_influence_dist = self.kim_model.get_influence_distance()
+        (
+            model_cutoffs,
+            _,
+        ) = self.kim_model.get_neighbor_list_cutoffs_and_hints()
+        skin = self.neigh_skin_ratio * model_influence_dist
+        self.neigh.skin = skin
+        self.neigh.influence_dist = model_influence_dist + skin
+        self.neigh.cutoffs = model_cutoffs + skin
+
         self._parameters_changed = True
         return parameters
 
