@@ -39,7 +39,7 @@ from ase.calculators.vasp.create_input import GenerateVaspInput
 
 
 def get_vasp_version(string):
-    match = re.search(r'(vasp\.\S+)', string, re.M)
+    match = re.search(r'vasp\.(\S+)', string, re.M)
     return match.group(1)
 
 
