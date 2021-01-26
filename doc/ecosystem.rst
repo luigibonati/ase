@@ -7,8 +7,7 @@ If you know of a project which
 should be listed here, but isn't, please open a merge request adding
 link and descriptive paragraph.
 
-.. 
-  Listed in alphabetical order, for want of a better approach.
+Listed in alphabetical order, for want of a better approach.
 
  * `atomicrex <https://atomicrex.org/>`_:
    atomicrex is a versatile tool for the construction of interatomic
@@ -55,5 +54,3 @@ link and descriptive paragraph.
    equilibrium shapes of nanoparticles. WulffPack constructs both continuum 
    models and atomistic structures for further modeling with, e.g., molecular 
    dynamics or density functional theory.
-
-
