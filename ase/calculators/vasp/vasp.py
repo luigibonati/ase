@@ -38,6 +38,11 @@ from ase.calculators.singlepoint import SinglePointDFTCalculator
 from ase.calculators.vasp.create_input import GenerateVaspInput
 
 
+def get_vasp_version(string):
+    match = re.search(r'(vasp\.\S+)', string, re.M)
+    return match.group(1)
+
+
 class Vasp(GenerateVaspInput, Calculator):  # type: ignore
     """ASE interface for the Vienna Ab initio Simulation Package (VASP),
     with the Calculator interface.
