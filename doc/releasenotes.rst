@@ -23,7 +23,7 @@ Version 3.21.1
 
 * Fix incorrect positions written to CIF files with mixed boundary
   conditions.
-* Writing a CIF with only 1 or 2 lattice will now raise an error since
+* Writing a CIF with only 1 or 2 lattice vectors will now raise an error since
   CIF cannot represent those systems.
 * The name of the Vasp calculator is now ``'vasp'`` as intended.
 * Fix attribute error in :meth:`~ase.vibrations.Vibrations.write_jmol`.
