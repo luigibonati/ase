@@ -412,6 +412,8 @@ class GaussianConfiguration:
                 atoms_section = True
             elif atoms_section:
                 line = line.split('!')[0]
+                line = line.replace('/', ' ')
+                line = line.replace(',', ' ')
                 if (line.split()):
                     if zmatrix_type:
                         # Save any variables set when defining the z-matrix:
