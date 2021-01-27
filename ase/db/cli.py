@@ -2,7 +2,6 @@ import json
 import sys
 from collections import defaultdict
 from contextlib import contextmanager
-from random import randint
 from typing import Iterable, Iterator
 
 import ase.io
