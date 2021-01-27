@@ -39,6 +39,14 @@ from ase.calculators.vasp.create_input import GenerateVaspInput
 
 
 def get_vasp_version(string):
+    """Extract version number from header of stdout.
+
+    Example::
+
+      >>> get_vasp_version('potato vasp.6.1.2 bumblebee')
+      '6.1.2'
+
+    """
     match = re.search(r'vasp\.(\S+)', string, re.M)
     return match.group(1)
 
