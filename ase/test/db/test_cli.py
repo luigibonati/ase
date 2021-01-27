@@ -19,9 +19,12 @@ def dbfile(tmp_path_factory) -> Path:
 
 
 def test_insert_into(cli, dbfile):
-    """Test progress bar code."""
+    """Test --insert-into."""
     out = dbfile.with_name('x1.db')
-    cli.ase(*f'db {dbfile} -L1 -i {out} --progress-bar'.split())
-    txt = cli.ase(*f'db {out} -n'.split())
+    # Insert 1 row:
+    cli.ase(
+        *f'db {dbfile} --limit 1 --insert-into {out} --progress-bar'.split())
+    # Count:
+    txt = cli.ase(*f'db {out} --count'.split())
     num = int(txt.split()[0])
     assert num == 1

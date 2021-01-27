@@ -107,8 +107,6 @@ class CLICommand:
             help='Show metadata as json.')
         add('--set-metadata', metavar='something.json',
             help='Set metadata from a json file.')
-        add('--unique', action='store_true',
-            help='Give rows a new unique id when using --insert-into.')
         add('--strip-data', action='store_true',
             help='Strip data when using --insert-into.')
         add('--progress-bar', action='store_true',
@@ -239,8 +237,6 @@ def main(args):
                     nkvp -= len(kvp)
                     kvp.update(add_key_value_pairs)
                     nkvp += len(kvp)
-                    if args.unique:
-                        row['unique_id'] = '%x' % randint(16**31, 16**32 - 1)
                     if args.strip_data:
                         db2.write(row.toatoms(), **kvp)
                     else:
