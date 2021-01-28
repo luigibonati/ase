@@ -305,6 +305,11 @@ class VaspFactory:
     def __init__(self, executable):
         self.executable = executable
 
+    def version(self):
+        from ase.calculators.vasp import get_vasp_version
+        header = read_stdout([self.executable], createfile='INCAR')
+        return get_vasp_version(header)
+
     def calc(self, **kwargs):
         from ase.calculators.vasp import Vasp
         # XXX We assume the user has set VASP_PP_PATH
