@@ -220,7 +220,7 @@ def create_units(codata_version):
     u['ft'] = 0.3048 * u['m']
     u['inch'] = u['ft'] / 12
     u['lb'] = 0.45359237 * u['kg']
-    u['psi'] = 6.894767 * (1000 * u['Pascal'])
+    u['psi'] = 6.894757 * (1000 * u['Pascal'])
     u['ft_lb'] = 1.355818 * u['J']
     u['gal'] = 4.54609 * u['L']
 
