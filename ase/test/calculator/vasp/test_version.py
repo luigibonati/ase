@@ -1,4 +1,4 @@
-from ase.calculators.vasp.vasp import get_vasp_version
+from ase.calculators.vasp import get_vasp_version
 
 vasp_sample_header = """\
  running on    1 total cores

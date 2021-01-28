@@ -306,7 +306,7 @@ class VaspFactory:
         self.executable = executable
 
     def version(self):
-        from ase.calculators.vasp.vasp import get_vasp_version
+        from ase.calculators.vasp import get_vasp_version
         header = read_stdout([self.executable], createfile='INCAR')
         return get_vasp_version(header)
 
