@@ -215,6 +215,7 @@ def create_units(codata_version):
     u['J'] = u['kJ'] / 1000  # Joule = kg * m**2 / s**2
     u['C'] = 1.0 / u['_e']  # Coulomb = A * s
     u["L"] = u['m']**3 / 1000
+    u['Newton'] = u['Pascal'] / (u['m']**2)
 
     # Imperial units
     u['ft'] = 0.3048 * u['m']
@@ -235,7 +236,7 @@ def create_units(codata_version):
  _hbar, _hplanck, _k, _me, _mp, _mu0, alpha, eV, fs, invcm,
  kB, kJ, kcal, kg, m, mol, nm, s, second, A, AUT, Ang, Angstrom,
  Bohr, C, Debye, GPa, Ha, Hartree, J, Pascal, bar, Ry, Rydberg,
- ft, inch, lb, psi, ft_lb, gal, L) = [0.0] * 51
+ ft, inch, lb, psi, ft_lb, gal, L, Newton) = [0.0] * 52
 
 # Now update the module scope:
 globals().update(create_units(__codata_version__))
