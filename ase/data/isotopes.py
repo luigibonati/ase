@@ -44,15 +44,13 @@ def download_isotope_data():
     0.7372
     """
 
-    raw_data = ""
-
     url = 'http://physics.nist.gov/cgi-bin/Compositions/stand_alone.pl' \
         '?ele=&ascii=ascii&isotype=all'
 
     with request.urlopen(url) as fd:
         txt = fd.read()
 
-        raw_data = txt.decode().splitlines()
+    raw_data = txt.decode().splitlines()
 
     return parse_isotope_data(raw_data)
 
