@@ -460,32 +460,116 @@ def parse_coordinates(fd, natoms):
     return Atoms(symbols, positions=positions)
 
 
-def parse_aims_output(fd):
+class Matcher:
+    def __init__(self, fd):
+        self._fd = fd
 
-    def _grep(func, expr):
-        for line in fd:
+    def _grep(self, func, expr):
+        for line in self._fd:
             match = func(expr, line)
             if match is not None:
                 return match
+
         raise ParseError(f'Failed {func}: {expr}')
 
-    def match(expr):
-        return _grep(re.match, expr)
+    def match(self, expr):
+        return self._grep(re.match, expr)
 
-    def search(expr):
-        return _grep(re.search, expr)
+    def search(self, expr):
+        return self._grep(re.search, expr)
 
-    version = search(r'FHI-aims version\s*:\s*(\S+)').group(1)
+    def error(self, msg):
+        raise ParseError(msg)
+
+    def expect(self, condition, msg=None):
+        if not condition:
+            self.error(msg)
+
+
+def parse_aims_output(fd):
+    matcher = Matcher(fd)
+
+    version = matcher.search(r'FHI-aims version\s*:\s*(\S+)').group(1)
     yield 'version', version
-    natoms = int(search(r'\| Number of atoms\s*:\s*(\d+)').group(1))
+    natoms = int(matcher.search(r'\| Number of atoms\s*:\s*(\d+)').group(1))
     yield 'natoms', natoms
 
-    match(r'\s*Input geometry:')
+    # Jump to atomic coordinates via headers:
+    matcher.match(r'\s*Reading geometry description geometry.in')
+    matcher.match(r'\s*Input geometry:')
+    matcher.match(r'\s*\|\s*Atom\s*x \[A\]')
 
-    match = search(r'Atom\s*x.*')
     atoms = parse_coordinates(fd, natoms)
-
     # XXX | Unit cell
+    yield 'atoms', atoms
+
+    yield from parse_last_eigenblock_from_scf(matcher, fd)
+    yield from parse_aims_output_results(matcher, fd)
+
+
+def find_eigen_lines(matcher, fd):
+    header = r'\s*State\s*Occupation\s*Eigenvalue \[Ha\]\s*Eigenvalue \[eV\]'
+    matcher.match(header)
+    lines = []
+    for line in fd:
+        line = line.strip()
+        if not line:
+            return
+        yield line
+
+
+def parse_last_eigenblock_from_scf(matcher, fd):
+    eigen_lines = None
+
+    while True:
+        match = matcher.match(r'\s*(Writing Kohn-Sham eigenvalues'
+                              r'|Self-consistency cycle converged)')
+        group = match.group()
+        if 'Writing' in group:
+            eigen_lines = list(find_eigen_lines(matcher, fd))
+        elif 'Self-consistency' in group:
+            matcher.expect(eigen_lines is not None, 'No eigenvalues found')
+            data = np.array([ln.split() for ln in eigen_lines]).astype(float)
+            yield 'occupations', data[:, 1]
+            yield 'eigenvalues', data[:, 3]
+            return
+
+
+def parse_aims_output_results(matcher, fd):
+    matcher.match(r'\s*Energy and forces in a compact form:')
+    table = {}
+    for line in fd:
+        if not line.lstrip().startswith('|'):
+            break
+        # match lines like: "| any text : 1.2345 eV"
+        match = re.match(r'\s*\|\s*(.+?)\s*:\s*(\S+)\s*(\S+)', line)
+        name, value, unit = match.group(1, 2, 3)
+        matcher.expect(unit == 'eV')
+        table[name] = float(value)
+
+    yield 'energy', table['Total energy uncorrected']
+    yield 'free_energy', table['Total energy corrected']
+
+    force_header = 'Total atomic forces (unitary forces cleaned) [eV/Ang]'
+    matcher.expect(force_header in line)
+    forces = parse_forces(fd)
+    yield 'forces', forces
+
+    matcher.match(r'\s*Have a nice day')
+
+
+def parse_forces(fd):
+    forces = []
+
+    for line in fd:
+        print(line)
+        if not line.lstrip().startswith('|'):
+            break
+        _, index, *force = line.split()
+        forces.append(force)
+
+    forces = np.array(forces, dtype=float)
+    return forces
 
 
 @reader
