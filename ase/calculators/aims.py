@@ -298,15 +298,6 @@ class Aims(FileIOCalculator):
         self.write_species(atoms, os.path.join(self.directory, 'control.in'))
         self.parameters.write(os.path.join(self.directory, 'parameters.ase'))
 
-    def prepare_input_files(self):
-        """
-        Wrapper function to prepare input filesi, e.g., to a run on a remote
-        machine
-        """
-        if self.atoms is None:
-            raise ValueError('No atoms object attached')
-        self.write_input(self.atoms)
-
     def write_control(self, atoms, filename):
         from ase.io.aims import write_aims_control
         write_aims_control(filename, atoms, parameters=self.parameters,
