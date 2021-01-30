@@ -434,6 +434,21 @@ def _parse_atoms(fd, n_atoms, molecular_dynamics=False):
     return atoms
 
 
+import re
+def parse_aims_output(fd):
+
+    def search(expr):
+        for line in fd:
+            match = re.search(expr, line)
+            if match is not None:
+                return match
+
+    version = search(r'FHI-aims version\s*:\s*(\S+)').group(1)
+    yield 'version', version
+    natoms = int(search(r'\| Number of atoms\s*:\s*(\d+)').group(1))
+    yield 'natoms', natoms
+
+
 @reader
 def read_aims_output(fd, index=-1):
     """Import FHI-aims output files with all data available, i.e.
