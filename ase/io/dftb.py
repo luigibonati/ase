@@ -179,7 +179,7 @@ def write_dftb(fileobj, images):
     write_gen(fileobj, images)
 
 
-def write_dftb_velocities(atoms, filename='velocities.txt'):
+def write_dftb_velocities(atoms, filename):
     """Method to write velocities (in atomic units) from ASE
        to a file to be read by dftb+
     """

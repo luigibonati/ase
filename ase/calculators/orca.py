@@ -150,7 +150,7 @@ class PointChargePotential:
     def set_charges(self, mmcharges):
         self.q_p = mmcharges
 
-    def write_mmcharges(self, filename='orca_mm'):
+    def write_mmcharges(self, filename):
         pc_file = open(os.path.join(self.directory,
                                     filename + '.pc'), 'w')
 
