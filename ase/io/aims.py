@@ -604,37 +604,10 @@ def read_aims_output(fd, index=-1):
                 )
                 images[-1].calc = calc
 
-    fd.close()
     if molecular_dynamics:
         images = images[1:]
 
-    # return requested images, code borrowed from ase/io/trajectory.py
-    if isinstance(index, int):
-        return images[index]
-    else:
-        step = index.step or 1
-        if step > 0:
-            start = index.start or 0
-            if start < 0:
-                start += len(images)
-            stop = index.stop or len(images)
-            if stop < 0:
-                stop += len(images)
-        else:
-            if index.start is None:
-                start = len(images) - 1
-            else:
-                start = index.start
-                if start < 0:
-                    start += len(images)
-            if index.stop is None:
-                stop = -1
-            else:
-                stop = index.stop
-                if stop < 0:
-                    stop += len(images)
-        return [images[i] for i in range(start, stop, step)]
-
+    return images[index]
 
 _delimiter = '# ' + '=' * 72
 _control_header = f"""\
