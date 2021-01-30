@@ -435,18 +435,57 @@ def _parse_atoms(fd, n_atoms, molecular_dynamics=False):
 
 
 import re
+from ase.io import ParseError
+
+def parse_coordinates(fd, natoms):
+    # Match lines of symbols and coordinates, e.g.:
+    # |    1: Species H 2.3 4.5 6.7
+    # |    2: Species O 2.3 4.5 6.7
+    # etc.
+    symbols = []
+    positions = []
+    for i, line in enumerate(fd):
+        match = re.match(r'\s*\|\s*(\d+):\s*Species\s+'
+                         r'(\S+)\s*(\S+)\s*(\S+)\s*(\S+)', line)
+        if match is None:
+            break
+
+        index, symbol, *xyz = match.group(1, 2, 3, 4, 5)
+        symbols.append(symbol)
+        positions.append(xyz)
+
+    if i != natoms:
+        raise ParseError(f'Expected {natoms} atom lines, got {i}')
+
+    return Atoms(symbols, positions=positions)
+
+
 def parse_aims_output(fd):
 
-    def search(expr):
+    def _grep(func, expr):
         for line in fd:
-            match = re.search(expr, line)
+            match = func(expr, line)
             if match is not None:
                 return match
+        raise ParseError(f'Failed {func}: {expr}')
+
+    def match(expr):
+        return _grep(re.match, expr)
+
+    def search(expr):
+        return _grep(re.search, expr)
 
     version = search(r'FHI-aims version\s*:\s*(\S+)').group(1)
     yield 'version', version
     natoms = int(search(r'\| Number of atoms\s*:\s*(\d+)').group(1))
     yield 'natoms', natoms
+
+    match(r'\s*Input geometry:')
+
+    match = search(r'Atom\s*x.*')
+    atoms = parse_coordinates(fd, natoms)
+
+    # XXX | Unit cell
 
 
 @reader
