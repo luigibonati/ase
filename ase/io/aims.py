@@ -705,6 +705,10 @@ def write_aims_control(fd, atoms, parameters=None, cubes=None):
 
     parameters = dict(parameters)
 
+    xc = parameters.get('xc')
+    if xc is not None:
+        parameters['xc'] = {'LDA': 'pw-lda', 'PBE': 'pbe'}.get(xc, xc)
+
     fd.write(_control_header)
 
     assert not ('kpts' in parameters and 'k_grid' in parameters)

@@ -31,6 +31,7 @@ class Aims(FileIOCalculator):
 
     implemented_properties = ['energy', 'forces', 'stress', 'stresses',
                               'dipole', 'magmom']
+    discard_results_on_any_change = True
 
     def __init__(self, restart=None,
                  ignore_bad_restart_file=FileIOCalculator._deprecated,
@@ -265,23 +266,6 @@ class Aims(FileIOCalculator):
     def out(self):
         return os.path.join(self.label, self.outfilename)
 
-    def check_state(self, atoms):
-        system_changes = FileIOCalculator.check_state(self, atoms)
-        # Ignore unit cell for molecules:
-        if not atoms.pbc.any() and 'cell' in system_changes:
-            system_changes.remove('cell')
-        return system_changes
-
-    def set(self, **kwargs):
-        xc = kwargs.get('xc')
-        if xc:
-            kwargs['xc'] = {'LDA': 'pw-lda', 'PBE': 'pbe'}.get(xc, xc)
-
-        changed_parameters = FileIOCalculator.set(self, **kwargs)
-
-        if changed_parameters:
-            self.reset()
-        return changed_parameters
 
     def write_input(self, atoms, properties=None, system_changes=None,
                     ghosts=None, geo_constrain=None, scaled=None, velocities=None):
