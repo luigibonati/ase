@@ -29,6 +29,7 @@ k_refs = dict(
 
 calc = pytest.mark.calculator
 @calc('abinit', chksymtnons=0)
+@calc('aims', kpts=[1, 1, 1], compute_forces=True)
 @calc('cp2k')
 @calc('espresso', tprnfor=True)
 @calc('gpaw', mode='pw', symmetry='off', txt=None)

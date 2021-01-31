@@ -820,6 +820,9 @@ def write_aims_control(fd, atoms, parameters=None, cubes=None):
     if xc is not None:
         parameters['xc'] = {'LDA': 'pw-lda', 'PBE': 'pbe'}.get(xc, xc)
 
+    if atoms.has('initial_magmoms') and parameters.get('spin') is None:
+        parameters['spin'] = 'collinear'
+
     fd.write(_control_header)
 
     assert not ('kpts' in parameters and 'k_grid' in parameters)
