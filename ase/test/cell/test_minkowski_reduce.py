@@ -36,7 +36,7 @@ def test_random(it):
 
     # Test idempotency
     _, _H = minkowski_reduce(R)
-    assert (_H == np.eye(3).astype(np.int)).all()
+    assert (_H == np.eye(3).astype(int)).all()
 
     rcell, _ = Cell(B).minkowski_reduce()
     assert_allclose(rcell, R, atol=TOL)
@@ -80,7 +80,7 @@ class TestKnownUnimodularMatrix():
     def test_2d(self, axis):
         lcell = self.lcell
         pbc = np.roll([0, 1, 1], axis)
-        rcell, op = minkowski_reduce(lcell.astype(np.float), pbc=pbc)
+        rcell, op = minkowski_reduce(lcell.astype(float), pbc=pbc)
         assert (rcell[axis] == lcell[axis]).all()
 
         zcell = np.copy(lcell)

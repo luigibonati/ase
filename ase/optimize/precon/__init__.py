@@ -20,13 +20,29 @@ Optional dependencies
     - scipy, `pip install scipy` for efficient sparse linear algebra,
       important for large systems (>1000 atoms).
     - PyAMG, `pip install pyamg`, for iterative adaptive multi grid
-      invesion of the preconditioner, again important for large systems.
+      inversion of the preconditioner, again important for large systems.
 """
 
-
-from ase.optimize.precon.precon import Precon, Exp, C1, Pfrommer, FF, Exp_FF
+from ase.optimize.precon.precon import (Precon, Exp, C1, Pfrommer,
+                                        FF, Exp_FF, make_precon,
+                                        PreconImages, SplineFit)
 from ase.optimize.precon.lbfgs import PreconLBFGS
 from ase.optimize.precon.fire import PreconFIRE
 
-__all__ = ['Precon', 'Exp', 'C1', 'Pfrommer',
-           'FF', 'Exp_FF', 'PreconLBFGS', 'PreconFIRE']
+from ase.optimize.ode import ODE12r
+
+
+class PreconODE12r(ODE12r):
+    """
+    Subclass of ase.optimize.ode.ODE12r with 'Exp' preconditioning on by default
+    """
+
+    def __init__(self, *args, **kwargs):
+        if 'precon' not in kwargs:
+            kwargs['precon'] = 'Exp'
+        ODE12r.__init__(self, *args, **kwargs)
+
+
+__all__ = ['make_precon', 'PreconImages', 'SplineFit',
+           'Precon', 'Exp', 'C1', 'Pfrommer', 'FF', 'Exp_FF',
+           'PreconLBFGS', 'PreconFIRE', 'PreconODE12r']

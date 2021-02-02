@@ -190,14 +190,15 @@ class KpointHeader(SimpleVaspHeaderParser):
         # for parsing that
         # Move cursor down to next delimiter
         delim2 = 'k-points in reciprocal lattice and weights'
-        for offset, line in enumerate(lines[cursor:], start=1):
+        for offset, line in enumerate(lines[cursor:], start=0):
             line = line.strip()
             if delim2 in line:
                 # build k-points
                 ibzkpts = np.zeros((nkpts, 3))
                 kpt_weights = np.zeros(nkpts)
                 for nk in range(nkpts):
-                    line = lines[cursor + offset + nk + 3].strip()
+                    # Offset by 1, as k-points starts on the next line
+                    line = lines[cursor + offset + nk + 1].strip()
                     parts = line.split()
                     ibzkpts[nk] = list(map(float, parts[:3]))
                     kpt_weights[nk] = float(parts[-1])

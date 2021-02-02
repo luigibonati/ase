@@ -4,7 +4,6 @@ Atoms object in VASP POSCAR format.
 
 """
 
-import os
 import re
 
 import numpy as np
@@ -14,6 +13,7 @@ from ase.utils import reader, writer
 from ase.io.utils import ImageIterator
 from ase.io import ParseError
 from .vasp_parsers import vasp_outcar_parsers as vop
+from pathlib import Path
 
 __all__ = [
     'read_vasp', 'read_vasp_out', 'iread_vasp_out', 'read_vasp_xdatcar',
@@ -29,18 +29,33 @@ def get_atomtypes(fname):
     bzip2.
 
     """
+    fpath = Path(fname)
+
     atomtypes = []
-    if fname.find('.gz') != -1:
+    atomtypes_alt = []
+    if fpath.suffix == '.gz':
         import gzip
-        f = gzip.open(fname)
-    elif fname.find('.bz2') != -1:
+        opener = gzip.open
+    elif fpath.suffix == '.bz2':
         import bz2
-        f = bz2.BZ2File(fname)
+        opener = bz2.BZ2File
     else:
-        f = open(fname)
-    for line in f:
-        if line.find('TITEL') != -1:
-            atomtypes.append(line.split()[3].split('_')[0].split('.')[0])
+        opener = open
+    with opener(fpath) as f:
+        for line in f:
+            if 'TITEL' in line:
+                atomtypes.append(line.split()[3].split('_')[0].split('.')[0])
+            elif 'POTCAR:' in line:
+                atomtypes_alt.append(line.split()[2].split('_')[0].split('.')[0])
+
+    if len(atomtypes) == 0 and len(atomtypes_alt) > 0:
+        # old VASP doesn't echo TITEL, but all versions print out species lines
+        # preceded by "POTCAR:", twice
+        if len(atomtypes_alt) % 2 != 0:
+            raise ParseError(f'Tried to get atom types from {len(atomtypes_alt)} "POTCAR": '
+                              'lines in OUTCAR, but expected an even number')
+        atomtypes = atomtypes_alt[0:len(atomtypes_alt)//2]
+
     return atomtypes
 
 
@@ -55,36 +70,25 @@ def atomtypes_outpot(posfname, numsyms):
     numsyms -- The number of symbols we must find
 
     """
-    import os.path as op
-    import glob
+    posfpath = Path(posfname)
 
-    # First check files with exactly same name except POTCAR/OUTCAR instead
+    # Check files with exactly same path except POTCAR/OUTCAR instead
     # of POSCAR/CONTCAR.
-    fnames = [
-        posfname.replace('POSCAR', 'POTCAR').replace('CONTCAR', 'POTCAR')
-    ]
-    fnames.append(
-        posfname.replace('POSCAR', 'OUTCAR').replace('CONTCAR', 'OUTCAR'))
+    fnames = [posfpath.with_name('POTCAR'),
+              posfpath.with_name('OUTCAR')]
     # Try the same but with compressed files
     fsc = []
-    for fn in fnames:
-        fsc.append(fn + '.gz')
-        fsc.append(fn + '.bz2')
+    for fnpath in fnames:
+        fsc.append(fnpath.parent / (fnpath.name + '.gz'))
+        fsc.append(fnpath.parent / (fnpath.name + '.bz2'))
     for f in fsc:
         fnames.append(f)
-    # Finally try anything with POTCAR or OUTCAR in the name
-    vaspdir = op.dirname(posfname)
-    fs = glob.glob(vaspdir + '*POTCAR*')
-    for f in fs:
-        fnames.append(f)
-    fs = glob.glob(vaspdir + '*OUTCAR*')
-    for f in fs:
-        fnames.append(f)
+    # Code used to try anything with POTCAR or OUTCAR in the name
+    # but this is no longer supported
 
     tried = []
-    files_in_dir = os.listdir('.')
     for fn in fnames:
-        if fn in files_in_dir:
+        if fn in posfpath.parent.iterdir():
             tried.append(fn)
             at = get_atomtypes(fn)
             if len(at) == numsyms:
@@ -310,7 +314,7 @@ def read_vasp_xdatcar(filename='XDATCAR', index=-1):
             fd.readline()
 
         coords = [
-            np.array(fd.readline().split(), np.float) for ii in range(total)
+            np.array(fd.readline().split(), float) for ii in range(total)
         ]
 
         image = Atoms(atomic_formula, cell=cell, pbc=True)
@@ -461,7 +465,7 @@ def read_vasp_xml(filename='vasprun.xml', index=-1):
     except ET.ParseError as parse_error:
         if atoms_init is None:
             raise parse_error
-        if calculation and calculation[-1].find('energy') is None:
+        if calculation and 'energy' not in calculation[-1]:
             calculation = calculation[:-1]
         if not calculation:
             yield atoms_init
@@ -694,7 +698,7 @@ def write_vasp(filename,
                sort=None,
                symbol_count=None,
                long_format=True,
-               vasp5=False,
+               vasp5=True,
                ignore_constraints=False,
                wrap=False):
     """Method to write VASP position (POSCAR/CONTCAR) files.

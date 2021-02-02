@@ -313,7 +313,7 @@ def test_stress():
 def test_json_scalars():
     a = bulk('Si')
     a.info['val_1'] = 42.0
-    a.info['val_2'] = np.float(42.0)
+    a.info['val_2'] = 42.0  # was np.float but that's the same.  Can remove
     a.info['val_3'] = np.int64(42)
     a.write('tmp.xyz')
     with open('tmp.xyz', 'r') as fd:

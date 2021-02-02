@@ -9,6 +9,7 @@ import os
 import warnings
 import time
 from typing import Optional
+import re
 
 import numpy as np
 
@@ -17,6 +18,11 @@ from ase.io.aims import write_aims, read_aims
 from ase.data import atomic_numbers
 from ase.calculators.calculator import FileIOCalculator, Parameters, kpts2mp, \
     ReadError, PropertyNotImplementedError
+
+
+def get_aims_version(string):
+    match = re.search(r'\s*FHI-aims version\s*:\s*(\S+)', string, re.M)
+    return match.group(1)
 
 
 float_keys = [

@@ -7,8 +7,7 @@ If you know of a project which
 should be listed here, but isn't, please open a merge request adding
 link and descriptive paragraph.
 
-.. 
-  Listed in alphabetical order, for want of a better approach.
+Listed in alphabetical order, for want of a better approach.
 
  * `atomicrex <https://atomicrex.org/>`_:
    atomicrex is a versatile tool for the construction of interatomic
@@ -17,11 +16,11 @@ link and descriptive paragraph.
    libraries.
 
  * `CLEASE <https://gitlab.com/computationalmaterials/clease#clease>`_:
-    CLuster Expansion in Atomic Simulation Environment (CLEASE) is a package 
-    that automates the cumbersome setup and construction procedure of cluster 
-    expansion (CE). It provides a comprehensive list of tools for specifying 
-    parameters for CE, generating training structures, fitting effective cluster 
-    interaction (ECI) values and running Monte Carlo simulations.
+   CLuster Expansion in Atomic Simulation Environment (CLEASE) is a package
+   that automates the cumbersome setup and construction procedure of cluster
+   expansion (CE). It provides a comprehensive list of tools for specifying
+   parameters for CE, generating training structures, fitting effective cluster
+   interaction (ECI) values and running Monte Carlo simulations.
 
  * `COGEF <https://cogef.gitlab.io/cogef/>`_:
    COnstrained Geometries simulate External Force.  This
@@ -52,8 +51,6 @@ link and descriptive paragraph.
 
  * `Wulffpack <https://wulffpack.materialsmodeling.org/>`_:
    Python package for making Wulff constructions, typically for finding
-   equilibrium shapes of nanoparticles. WulffPack constructs both continuum 
-   models and atomistic structures for further modeling with, e.g., molecular 
+   equilibrium shapes of nanoparticles. WulffPack constructs both continuum
+   models and atomistic structures for further modeling with, e.g., molecular
    dynamics or density functional theory.
-
-
