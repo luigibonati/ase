@@ -23,7 +23,6 @@ install_requires = [
     'numpy>=1.11.3',
     'scipy>=0.18.1',
     'matplotlib>=2.0.0',
-    'requests>=2.25.1'
 ]
 
 
