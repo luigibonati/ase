@@ -28,6 +28,11 @@ Listed in alphabetical order, for want of a better approach.
    reactions, such as how much force is required to break a chemical
    bond.
 
+ * `evgraf <https://github.com/pmla/evgraf>`_:
+   A python library for crystal reduction (i.e. finding primitive cells), and
+   identification and symmetrization of structures with inversion
+   pseudosymmetry.
+
  * `hiphive <https://hiphive.materialsmodeling.org>`_:
    hiPhive is a tool for efficiently extracting high-order force
    constants. It is interfaced with ASE to enable easy integration
