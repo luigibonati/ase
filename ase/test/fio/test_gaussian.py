@@ -267,4 +267,10 @@ SP   1   1.00
     # Now we have tested reading the input, we can test writing it
     # and reading it back in.
 
+    # ASE does not support reading in output files in 'terse' format, so
+    # it does not support writing input files with this setting. Therefore,
+    # the output type automatically set to P in the case that T is chosen
+
+    params['output_type'] = 'P'
+
     test_write_gaussian(atoms, atoms_new)

@@ -119,8 +119,8 @@ keyword           type     default value   description
 ================= ======== =============== ==================================================
 ``label``         ``str``  ``'Gaussian'``  Name to use for input and output files.
 ``output_type``   ``str``  ``P``           Level of output to record in the Gaussian 
-                                           output file - this may be ``N``- normal, ``P`` - 
-                                           additional, or ``T`` - terse. 
+                                           output file - this may be ``N``- normal or ``P`` - 
+                                           additional.
 ``method``        ``str``  None            Level of theory to use, e.g. ``hf``, ``ccsd``,
                                            ``mp2``, or ``b3lyp``.  Overrides ``xc``
                                            (see below).

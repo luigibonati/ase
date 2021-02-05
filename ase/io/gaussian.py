@@ -97,7 +97,9 @@ def write_gaussian_in(fd, atoms, properties=None, **params):
     basis = params.pop('basis', None)
     fitting_basis = params.pop('fitting_basis', None)
     output_type = '#{}'.format(params.pop('output_type', 'P'))
-    if output_type == '#':
+    # Change output type to P if it has been set to T, because ASE
+    # does not support reading info from 'terse' output files.
+    if output_type == '#' or 't' in output_type.lower():
         output_type = '#P'
 
     # basisfile or basis_set, only used if basis=gen
