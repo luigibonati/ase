@@ -427,7 +427,7 @@ class ResonantRaman(Raman):
         self.type = type.lower()
         assert self.type in ['gaussian', 'lorentzian']
 
-        frequencies = self.get_energies().real * u.invcm
+        frequencies = self.get_energies().real / u.invcm
         intensities = self.get_cross_sections(omega, gamma)
         if width is None:
             return [frequencies, intensities]
