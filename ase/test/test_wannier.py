@@ -15,6 +15,7 @@ from ase.dft.wannier import gram_schmidt, lowdin, random_orthogonal_matrix, \
 
 calc = pytest.mark.calculator
 Nk = 2
+gpts = (8, 8, 8)
 
 
 @pytest.fixture()
@@ -30,7 +31,7 @@ def _std_calculator_gpwfile(tmp_path_factory, factories):
     atoms.center(vacuum=3.)
     gpw_path = tmp_path_factory.mktemp('sub') / 'wan_h2.gpw'
     calc = gpaw.GPAW(
-        gpts=(8, 8, 8),
+        gpts=gpts,
         nbands=4,
         kpts={'size': (Nk, Nk, Nk), 'gamma': True},
         symmetry='off',
@@ -54,7 +55,7 @@ def _si_calculator_gpwfile(tmp_path_factory, factories):
     atoms = bulk('Si')
     gpw_path = tmp_path_factory.mktemp('wan_calc') / 'wan_si.gpw'
     calc = gpaw.GPAW(
-        gpts=(8, 8, 8),
+        gpts=gpts,
         nbands=8,
         kpts={'size': (Nk, Nk, Nk), 'gamma': True},
         symmetry='off',
@@ -79,7 +80,7 @@ def _ti_calculator_gpwfile(tmp_path_factory, factories):
     atoms = bulk('Ti', crystalstructure='hcp')
     gpw_path = tmp_path_factory.mktemp('wan_calc') / 'wan_ti.gpw'
     calc = gpaw.GPAW(
-        gpts=(8, 8, 8),
+        gpts=gpts,
         kpts={'size': (Nk, Nk, Nk), 'gamma': True},
         symmetry='off',
         txt=None
@@ -98,20 +99,20 @@ def ti_calculator(_ti_calculator_gpwfile):
 
 @pytest.fixture
 def wan(rng, std_calculator):
-    def _wan(gpts=(8, 8, 8),
-             atoms=None,
-             calc=None,
-             nwannier=2,
-             fixedstates=None,
-             fixedenergy=None,
-             initialwannier='bloch',
-             functional='std',
-             kpts=(1, 1, 1),
-             file=None,
-             rng=rng,
-             full_calc=False,
-             std_calc=True,
-             verbose=False):
+    def _wan(
+        atoms=None,
+        calc=None,
+        nwannier=2,
+        fixedstates=None,
+        fixedenergy=None,
+        initialwannier='bloch',
+        functional='std',
+        kpts=(1, 1, 1),
+        file=None,
+        rng=rng,
+        full_calc=False,
+        std_calc=True,
+    ):
         if std_calc and calc is None:
             calc = std_calculator
             if atoms is not None:
@@ -121,8 +122,13 @@ def wan(rng, std_calculator):
         else:
             if calc is None:
                 gpaw = pytest.importorskip('gpaw')
-                calc = gpaw.GPAW(gpts=gpts, nbands=nwannier, kpts=kpts,
-                                 symmetry='off', txt=None)
+                calc = gpaw.GPAW(
+                    gpts=gpts,
+                    nbands=nwannier,
+                    kpts=kpts,
+                    symmetry='off',
+                    txt=None
+                )
             if atoms is None and not full_calc:
                 pbc = (np.array(kpts) > 1).any()
                 atoms = molecule('H2', pbc=pbc)
@@ -130,15 +136,16 @@ def wan(rng, std_calculator):
             if not full_calc:
                 atoms.calc = calc
                 atoms.get_potential_energy()
-        return Wannier(nwannier=nwannier,
-                       fixedstates=fixedstates,
-                       fixedenergy=fixedenergy,
-                       calc=calc,
-                       initialwannier=initialwannier,
-                       file=None,
-                       functional=functional,
-                       rng=rng,
-                       verbose=verbose)
+        return Wannier(
+            nwannier=nwannier,
+            fixedstates=fixedstates,
+            fixedenergy=fixedenergy,
+            calc=calc,
+            initialwannier=initialwannier,
+            file=None,
+            functional=functional,
+            rng=rng,
+        )
     return _wan
 
 
@@ -544,15 +551,20 @@ def test_get_function(wan):
     atoms = molecule('H2', pbc=True)
     atoms.center(vacuum=3.)
     nk = 2
-    gpts = np.array([8, 8, 8])
-    wanf = wan(atoms=atoms, gpts=gpts, kpts=(nk, nk, nk), rng=rng,
-               nwannier=nwannier, initialwannier='bloch')
+    gpts_np = np.array(gpts)
+    wanf = wan(
+        atoms=atoms,
+        kpts=(nk, nk, nk),
+        rng=rng,
+        nwannier=nwannier,
+        initialwannier='bloch'
+    )
     assert (wanf.get_function(index=[0, 0]) == 0).all()
     assert wanf.get_function(index=[0, 1]) + wanf.get_function(index=[1, 0]) \
         == pytest.approx(wanf.get_function(index=[1, 1]))
     for i in range(nwannier):
-        assert (gpts * nk == wanf.get_function(index=i).shape).all()
-        assert (gpts * [1, 2, 3] ==
+        assert (gpts_np * nk == wanf.get_function(index=i).shape).all()
+        assert (gpts_np * [1, 2, 3] ==
                 wanf.get_function(index=i, repeat=[1, 2, 3]).shape).all()
 
 
