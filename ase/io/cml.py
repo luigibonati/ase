@@ -5,8 +5,7 @@ https://wiki.openchemistry.org/Chemical_JSON
 import json
 import numpy as np
 
-from ase import Atoms, Atom
-from ase.data import chemical_symbols
+from ase import Atoms
 from ase.cell import Cell
 
 
@@ -15,8 +14,7 @@ def read_cml(fileobj):
     atoms = Atoms()
     datoms = data['atoms']
 
-    for i in datoms['elements']['number']:
-        atoms.append(Atom(chemical_symbols[i]))
+    atoms = Atoms(datoms['elements']['number'])
 
     if 'unit cell' in data:
         cell = data['unit cell']
@@ -27,6 +25,7 @@ def read_cml(fileobj):
         beta = cell['beta']
         gamma = cell['gamma']
         atoms.cell = Cell.fromcellpar([a, b, c, alpha, beta, gamma])
+        atoms.pbc = True
     
     coords = datoms['coords']
     if '3d' in coords:

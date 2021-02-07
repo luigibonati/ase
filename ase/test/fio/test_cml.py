@@ -81,8 +81,7 @@ def test_ethane():
     
     atoms = io.read(fname)
 
-    assert atoms[0].symbol == 'H'
-    assert atoms[1].symbol == 'C'
+    assert str(atoms.symbols) == 'HCH2CH3'
 
 
 def test_rutile():
@@ -91,10 +90,11 @@ def test_rutile():
         f.write(tio2)
     
     atoms = io.read(fname)
+    
+    assert atoms.pbc.all()
     cell = atoms.cell
 
-    assert atoms[0].symbol == 'Ti'
-    assert atoms[3].symbol == 'O'
+    assert str(atoms.symbols) == 'Ti2O4'
     assert atoms[1].position == pytest.approx(cell.diagonal() / 2)
     
     assert cell[1, 1] == cell[2, 2]
