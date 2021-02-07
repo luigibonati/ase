@@ -29,9 +29,12 @@ def _std_calculator_gpwfile(tmp_path_factory, factories):
     atoms = molecule('H2', pbc=True)
     atoms.center(vacuum=3.)
     gpw_path = tmp_path_factory.mktemp('sub') / 'wan_h2.gpw'
-    calc = gpaw.GPAW(gpts=(8, 8, 8), nbands=4,
-                     kpts={'size': (Nk, Nk, Nk), 'gamma': True},
-                     symmetry='off', txt=None)
+    calc = gpaw.GPAW(
+        gpts=(8, 8, 8),
+        nbands=4,
+        kpts={'size': (Nk, Nk, Nk), 'gamma': True},
+        symmetry='off',
+        txt=None)
     atoms.calc = calc
     atoms.get_potential_energy()
     calc.write(gpw_path, mode='all')
@@ -45,43 +48,52 @@ def std_calculator(_std_calculator_gpwfile):
 
 
 @pytest.fixture(scope='module')
-def _si_calculator(tmp_path_factory):
-    gpaw = pytest.importorskip('gpaw')
+def _si_calculator_gpwfile(tmp_path_factory, factories):
+    factories.require('gpaw')
+    import gpaw
     atoms = bulk('Si')
-    gpw = tmp_path_factory.mktemp('wan_calc') / 'wan_si.gpw'
-    calc = gpaw.GPAW(gpts=(8, 8, 8), nbands=8,
-                     kpts={'size': (Nk, Nk, Nk), 'gamma': True},
-                     symmetry='off', txt=None)
+    gpw_path = tmp_path_factory.mktemp('wan_calc') / 'wan_si.gpw'
+    calc = gpaw.GPAW(
+        gpts=(8, 8, 8),
+        nbands=8,
+        kpts={'size': (Nk, Nk, Nk), 'gamma': True},
+        symmetry='off',
+        txt=None
+    )
     atoms.calc = calc
     atoms.get_potential_energy()
-    calc.write(gpw, mode='all')
-    return gpw
+    calc.write(gpw_path, mode='all')
+    return gpw_path
 
 
 @pytest.fixture(scope='module')
-def si_calculator(_si_calculator):
-    gpaw = pytest.importorskip('gpaw')
-    return gpaw.GPAW(_si_calculator, txt=None)
+def si_calculator(_si_calculator_gpwfile):
+    import gpaw
+    return gpaw.GPAW(_si_calculator_gpwfile, txt=None)
 
 
 @pytest.fixture(scope='module')
-def _ti_calculator(tmp_path_factory):
-    gpaw = pytest.importorskip('gpaw')
+def _ti_calculator_gpwfile(tmp_path_factory, factories):
+    factories.require('gpaw')
+    import gpaw
     atoms = bulk('Ti', crystalstructure='hcp')
-    gpw = tmp_path_factory.mktemp('wan_calc') / 'wan_ti.gpw'
-    calc = gpaw.GPAW(gpts=(8, 8, 8),
-                     kpts={'size': (Nk, Nk, Nk), 'gamma': True},
-                     symmetry='off', txt=None)
+    gpw_path = tmp_path_factory.mktemp('wan_calc') / 'wan_ti.gpw'
+    calc = gpaw.GPAW(
+        gpts=(8, 8, 8),
+        kpts={'size': (Nk, Nk, Nk), 'gamma': True},
+        symmetry='off',
+        txt=None
+    )
     atoms.calc = calc
     atoms.get_potential_energy()
-    calc.write(gpw, mode='all')
-    return gpw
+    calc.write(gpw_path, mode='all')
+    return gpw_path
 
 
 @pytest.fixture(scope='module')
-def ti_calculator(_ti_calculator):
-    gpaw = pytest.importorskip('gpaw')
-    return gpaw.GPAW(_ti_calculator, txt=None)
+def ti_calculator(_ti_calculator_gpwfile):
+    import gpaw
+    return gpaw.GPAW(_ti_calculator_gpwfile, txt=None)
 
 
 @pytest.fixture
@@ -721,18 +733,18 @@ def test_square_modulus_of_Z_diagonal(wan):
     # Only a test on a constant value to make sure it does not deviate too much
     wan1 = wan()
     test_values_dw = wan1._square_modulus_of_Z_diagonal()
-    ref_values_dw = [[0.219030, 0.005829],
-                     [0.219708, 0.021938],
-                     [0.223603, 0.018495]]
+    ref_values_dw = [[0.219316, 0.005829],
+                     [0.219317, 0.029610],
+                     [0.224224, 0.018495]]
     for d, test_values_d in enumerate(test_values_dw):
         for w, test_value in enumerate(test_values_d):
-            assert test_value == pytest.approx(ref_values_dw[d][w], abs=1e-5)
+            assert test_value == pytest.approx(ref_values_dw[d][w], abs=1e-4)
 
 
 def test_spread_contributions(wan):
     # Only a test on a constant value to make sure it does not deviate too much
     wan1 = wan()
     test_values_w = wan1._spread_contributions()
-    ref_values_w = [0.571582, 0.0405197]
+    ref_values_w = [0.572121, 0.046604]
     for w, test_value in enumerate(test_values_w):
-        assert test_value == pytest.approx(ref_values_w[w], abs=1e-5)
+        assert test_value == pytest.approx(ref_values_w[w], abs=1e-4)
