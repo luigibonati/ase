@@ -24,46 +24,55 @@ def rng():
 
 
 @pytest.fixture(scope='module')
-def _std_calculator_gpwfile(tmp_path_factory, factories):
-    factories.require('gpaw')
-    import gpaw
+def _base_calculator_gpwfile(tmp_path_factory, factories):
+    """
+    Generic method to cache calculator in a file on disk.
+    """
+    def __base_calculator_gpwfile(atoms, filename,
+                                  nbands, gpts=gpts,
+                                  kpts=(Nk, Nk, Nk)):
+        factories.require('gpaw')
+        import gpaw
+        gpw_path = tmp_path_factory.mktemp('sub') / filename
+        calc = gpaw.GPAW(
+            gpts=gpts,
+            nbands=nbands,
+            kpts={'size': kpts, 'gamma': True},
+            symmetry='off',
+            txt=None)
+        atoms.calc = calc
+        atoms.get_potential_energy()
+        calc.write(gpw_path, mode='all')
+        return gpw_path
+    return __base_calculator_gpwfile
+
+
+@pytest.fixture(scope='module')
+def _h2_calculator_gpwfile(_base_calculator_gpwfile):
     atoms = molecule('H2', pbc=True)
     atoms.center(vacuum=3.)
-    gpw_path = tmp_path_factory.mktemp('sub') / 'wan_h2.gpw'
-    calc = gpaw.GPAW(
-        gpts=gpts,
-        nbands=4,
-        kpts={'size': (Nk, Nk, Nk), 'gamma': True},
-        symmetry='off',
-        txt=None)
-    atoms.calc = calc
-    atoms.get_potential_energy()
-    calc.write(gpw_path, mode='all')
+    gpw_path = _base_calculator_gpwfile(
+        atoms=atoms,
+        filename='wan_h2.gpw',
+        nbands=4
+    )
     return gpw_path
 
 
 @pytest.fixture(scope='module')
-def std_calculator(_std_calculator_gpwfile):
+def h2_calculator(_h2_calculator_gpwfile):
     import gpaw
-    return gpaw.GPAW(_std_calculator_gpwfile, txt=None)
+    return gpaw.GPAW(_h2_calculator_gpwfile, txt=None)
 
 
 @pytest.fixture(scope='module')
-def _si_calculator_gpwfile(tmp_path_factory, factories):
-    factories.require('gpaw')
-    import gpaw
+def _si_calculator_gpwfile(_base_calculator_gpwfile):
     atoms = bulk('Si')
-    gpw_path = tmp_path_factory.mktemp('wan_calc') / 'wan_si.gpw'
-    calc = gpaw.GPAW(
-        gpts=gpts,
-        nbands=8,
-        kpts={'size': (Nk, Nk, Nk), 'gamma': True},
-        symmetry='off',
-        txt=None
+    gpw_path = _base_calculator_gpwfile(
+        atoms=atoms,
+        filename='wan_si.gpw',
+        nbands=8
     )
-    atoms.calc = calc
-    atoms.get_potential_energy()
-    calc.write(gpw_path, mode='all')
     return gpw_path
 
 
@@ -74,20 +83,13 @@ def si_calculator(_si_calculator_gpwfile):
 
 
 @pytest.fixture(scope='module')
-def _ti_calculator_gpwfile(tmp_path_factory, factories):
-    factories.require('gpaw')
-    import gpaw
+def _ti_calculator_gpwfile(_base_calculator_gpwfile):
     atoms = bulk('Ti', crystalstructure='hcp')
-    gpw_path = tmp_path_factory.mktemp('wan_calc') / 'wan_ti.gpw'
-    calc = gpaw.GPAW(
-        gpts=gpts,
-        kpts={'size': (Nk, Nk, Nk), 'gamma': True},
-        symmetry='off',
-        txt=None
+    gpw_path = _base_calculator_gpwfile(
+        atoms=atoms,
+        filename='wan_ti.gpw',
+        nbands=None
     )
-    atoms.calc = calc
-    atoms.get_potential_energy()
-    calc.write(gpw_path, mode='all')
     return gpw_path
 
 
@@ -98,7 +100,7 @@ def ti_calculator(_ti_calculator_gpwfile):
 
 
 @pytest.fixture
-def wan(rng, std_calculator):
+def wan(rng, h2_calculator):
     def _wan(
         atoms=None,
         calc=None,
@@ -114,7 +116,7 @@ def wan(rng, std_calculator):
         std_calc=True,
     ):
         if std_calc and calc is None:
-            calc = std_calculator
+            calc = h2_calculator
             if atoms is not None:
                 atoms.calc = calc
                 calc.atoms = atoms
@@ -283,25 +285,25 @@ def test_save(tmpdir, wan):
 
 # The following test always fails because get_radii() is broken.
 @pytest.mark.parametrize('lat', bravais_lattices())
-def test_get_radii(lat, std_calculator, wan):
+def test_get_radii(lat, h2_calculator, wan):
     if ((lat.tocell() == FCC(a=1).tocell()).all() or
             (lat.tocell() == ORCF(a=1, b=2, c=3).tocell()).all()):
         pytest.skip("lattices not supported, yet")
     atoms = molecule('H2', pbc=True)
     atoms.cell = lat.tocell()
     atoms.center(vacuum=3.)
-    calc = std_calculator
+    calc = h2_calculator
     wanf = wan(nwannier=4, fixedstates=2, atoms=atoms, calc=calc,
                initialwannier='bloch', full_calc=True, std_calc=False)
     assert not (wanf.get_radii() == 0).all()
 
 
 @pytest.mark.parametrize('lat', bravais_lattices())
-def test_get_spreads(lat, std_calculator, wan):
+def test_get_spreads(lat, h2_calculator, wan):
     atoms = molecule('H2', pbc=True)
     atoms.cell = lat.tocell()
     atoms.center(vacuum=3.)
-    calc = std_calculator
+    calc = h2_calculator
     wanf = wan(nwannier=4, fixedstates=2, atoms=atoms, calc=calc,
                initialwannier='bloch', full_calc=True, std_calc=False)
     assert not (wanf.get_spreads() == 0).all()
@@ -403,9 +405,9 @@ def test_get_pdos(wan):
         assert pdos_n[i] != pytest.approx(0)
 
 
-def test_translate(wan, std_calculator):
+def test_translate(wan, h2_calculator):
     nwannier = 2
-    calc = std_calculator
+    calc = h2_calculator
     atoms = calc.get_atoms()
     wanf = wan(nwannier=nwannier, initialwannier='bloch',
                calc=calc, full_calc=True)
@@ -421,9 +423,9 @@ def test_translate(wan, std_calculator):
         assert c1_w == pytest.approx(c2_w)
 
 
-def test_translate_to_cell(wan, std_calculator):
+def test_translate_to_cell(wan, h2_calculator):
     nwannier = 2
-    calc = std_calculator
+    calc = h2_calculator
     atoms = calc.get_atoms()
     wanf = wan(nwannier=nwannier, initialwannier='bloch',
                calc=calc, full_calc=True)
@@ -441,9 +443,9 @@ def test_translate_to_cell(wan, std_calculator):
         assert c0_w == pytest.approx(c1_w)
 
 
-def test_translate_all_to_cell(wan, std_calculator):
+def test_translate_all_to_cell(wan, h2_calculator):
     nwannier = 2
-    calc = std_calculator
+    calc = h2_calculator
     atoms = calc.get_atoms()
     wanf = wan(nwannier=nwannier, initialwannier='bloch',
                calc=calc, full_calc=True)
@@ -458,9 +460,9 @@ def test_translate_all_to_cell(wan, std_calculator):
             pytest.approx(np.linalg.norm(atoms.cell.array.diagonal()))
 
 
-def test_distances(wan, std_calculator):
+def test_distances(wan, h2_calculator):
     nwannier = 2
-    calc = std_calculator
+    calc = h2_calculator
     atoms = calc.get_atoms()
     wanf = wan(nwannier=nwannier, initialwannier='bloch')
     cent_w = wanf.get_centers()
@@ -533,9 +535,9 @@ def test_get_hamiltonian_random(wan, rng):
                 assert np.abs(H_ww[i, j]) == pytest.approx(np.abs(H_ww[j, i]))
 
 
-def test_get_hamiltonian_kpoint(wan, rng, std_calculator):
+def test_get_hamiltonian_kpoint(wan, rng, h2_calculator):
     nwannier = 4
-    calc = std_calculator
+    calc = h2_calculator
     atoms = calc.get_atoms()
     wanf = wan(nwannier=nwannier, initialwannier='random')
     kpts = atoms.cell.bandpath(density=50).cartesian_kpts()
