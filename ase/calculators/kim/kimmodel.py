@@ -35,11 +35,11 @@ class KIMModelData:
 
         # Ask model to provide information relevant for neighbor list
         # construction
-        model_influence_dist = self.kim_model.get_influence_distance()
         (
+            model_influence_dist,
             model_cutoffs,
             padding_not_require_neigh,
-        ) = self.kim_model.get_neighbor_list_cutoffs_and_hints()
+        ) = self.get_model_neighbor_list_parameters()
 
         # Initialize neighbor list object
         self.init_neigh(
@@ -88,6 +88,15 @@ class KIMModelData:
             padding_not_require_neigh,
             self.debug,
         )
+
+    def get_model_neighbor_list_parameters(self):
+        model_influence_dist = self.kim_model.get_influence_distance()
+        (
+            model_cutoffs,
+            padding_not_require_neigh,
+        ) = self.kim_model.get_neighbor_list_cutoffs_and_hints()
+
+        return model_influence_dist, model_cutoffs, padding_not_require_neigh
 
     def update_compute_args_pointers(self, energy, forces):
         self.compute_args.update(
@@ -244,7 +253,7 @@ class KIMModelCalculator(Calculator):
         # API Portable Model object, KIM API ComputeArguments object, and the neighbor
         # list object that our calculator needs
         self.kimmodeldata = KIMModelData(
-            self.model_name, ase_neigh, neigh_skin_ratio, self.debug
+            self.model_name, ase_neigh, self.neigh_skin_ratio, self.debug
         )
 
         self._parameters_changed = False
@@ -542,14 +551,18 @@ class KIMModelCalculator(Calculator):
         self.kim_model.kim_model.clear_then_refresh()
 
         # Update neighbor list parameters
-        model_influence_dist = self.kim_model.get_influence_distance()
         (
+            model_influence_dist,
             model_cutoffs,
             padding_not_require_neigh,
-        ) = self.kim_model.get_neighbor_list_cutoffs_and_hints()
+        ) = self.get_model_neighbor_list_parameters()
 
-        self.neigh.set_neigh_parameters(self.neigh_skin_ratio, model_influence_dist,
-                model_cutoffs, padding_not_require_neigh)
+        self.neigh.set_neigh_parameters(
+            self.neigh_skin_ratio,
+            model_influence_dist,
+            model_cutoffs,
+            padding_not_require_neigh,
+        )
 
         self._parameters_changed = True
         return parameters
