@@ -41,13 +41,16 @@ Quick links:
   :func:`~ase.build.find_optimal_cell_shape`,
   :func:`~ase.build.make_supercell`
 
-
+* Separation: :func:`~ase.build.connected_indices`,
+  :func:`~ase.build.connected_atoms`, :func:`~ase.build.separate`,
+  :func:`~ase.build.split_bond`
 
 .. toctree::
    :maxdepth: 2
 
    surface
    tools
+   connected
 
 .. seealso::
 

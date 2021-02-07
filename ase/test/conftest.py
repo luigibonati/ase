@@ -119,11 +119,6 @@ def calculators_header(config):
                         'to install calculators')
 
 
-@pytest.fixture(scope='session')
-def require_vasp(factories):
-    factories.require('vasp')
-
-
 @pytest.fixture(scope='session', autouse=True)
 def monkeypatch_disabled_calculators(request, factories):
     # XXX Replace with another mechanism.
@@ -151,8 +146,9 @@ def KIM():
             return _KIM(*args, **kwargs)
         except KIMModelNotFound:
             pytest.skip('KIM tests require the example KIM models.  '
-                        'These models are available if the kimpy package is '
-                        'built from source.')
+                        'These models are available if the KIM API is '
+                        'built from source.  See https://openkim.org/kim-api/'
+                        'for more information.')
 
     return KIM
 

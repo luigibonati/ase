@@ -1,9 +1,10 @@
-def test_trajectory_heterogeneous():
-    from ase.constraints import FixAtoms, FixBondLength
-    from ase.build import molecule, bulk
-    from ase.io.trajectory import Trajectory, get_header_data
-    from ase.io import read
+from ase.constraints import FixAtoms, FixBondLength
+from ase.build import molecule, bulk
+from ase.io.trajectory import Trajectory, get_header_data
+from ase.io import read
 
+
+def test_trajectory_heterogeneous():
     a0 = molecule('H2O')
     a1 = a0.copy()
     a1.rattle(stdev=0.5)
@@ -22,15 +23,14 @@ def test_trajectory_heterogeneous():
         if i == 2:
             img.constraints.append(FixBondLength(5, 6))
 
-    traj = Trajectory('out.traj', 'w')
-    for i, img in enumerate(images):
-        traj.write(img)
-        print(i, traj.multiple_headers)
-        assert traj.multiple_headers == (i >= 2)
-    traj.close()
+    with Trajectory('out.traj', 'w') as traj:
+        for i, img in enumerate(images):
+            traj.write(img)
+            print(i, traj.multiple_headers)
+            assert traj.multiple_headers == (i >= 2)
 
-    rtraj = Trajectory('out.traj')
-    newimages = list(rtraj)
+    with Trajectory('out.traj') as rtraj:
+        newimages = list(rtraj)
 
     assert len(images) == len(newimages)
     for i in range(len(images)):

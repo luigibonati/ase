@@ -49,8 +49,9 @@ SPECIAL_3_3_KEYS = ['Lattice', 'virial', 'stress']
 
 # partition ase.calculators.calculator.all_properties into two lists:
 #  'per-atom' and 'per-config'
-per_atom_properties = ['forces',  'stresses', 'charges',  'magmoms', 'energies']
+per_atom_properties = ['forces', 'stresses', 'charges', 'magmoms', 'energies']
 per_config_properties = ['energy', 'stress', 'dipole', 'magmom', 'free_energy']
+
 
 def key_val_str_to_dict(string, sep=None):
     """
@@ -496,7 +497,7 @@ def _read_xyz_frame(lines, natoms, properties_parser=key_val_str_to_dict,
         if properties['move_mask'][1] == 3:
             cons = []
             for a in range(natoms):
-                cons.append(FixCartesian(a, mask=arrays['move_mask'][a, :]))
+                cons.append(FixCartesian(a, mask=~arrays['move_mask'][a, :]))
             atoms.set_constraint(cons)
         elif properties['move_mask'][1] == 1:
             atoms.set_constraint(FixAtoms(mask=~arrays['move_mask']))
@@ -965,14 +966,15 @@ def write_xyz(fileobj, images, comment='', columns=None,
             if len(cnstr) > 0:
                 c0 = cnstr[0]
                 if isinstance(c0, FixAtoms):
-                    cnstr = np.ones((natoms,), dtype=np.bool)
+                    cnstr = np.ones((natoms,), dtype=bool)
                     for idx in c0.index:
                         cnstr[idx] = False
                 elif isinstance(c0, FixCartesian):
+                    masks = np.ones((natoms, 3), dtype=bool)
                     for i in range(len(cnstr)):
                         idx = cnstr[i].a
-                        cnstr[idx] = cnstr[i].mask
-                    cnstr = np.asarray(cnstr)
+                        masks[idx] = cnstr[i].mask
+                    cnstr = masks
             else:
                 fr_cols.remove('move_mask')
 

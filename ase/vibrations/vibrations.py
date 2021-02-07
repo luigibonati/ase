@@ -100,7 +100,6 @@ class Vibrations:
         self.nfree = nfree
         self.H = None
         self.ir = None
-        self.ram = None
 
     def run(self):
         """Run the vibration calculations.
@@ -171,15 +170,8 @@ class Vibrations:
         forces = self.calc.get_forces(atoms)
         if self.ir:
             dipole = self.calc.get_dipole_moment(atoms)
-        if self.ram:
-            freq, noninPol, pol = self.get_polarizability()
         if world.rank == 0:
-            if self.ir and self.ram:
-                pickle.dump([forces, dipole, freq, noninPol, pol], fd, protocol=2)
-                sys.stdout.write(
-                    'Writing %s, dipole moment = (%.6f %.6f %.6f)\n' %
-                    (filename, dipole[0], dipole[1], dipole[2]))
-            elif self.ir and not self.ram:
+            if self.ir:
                 pickle.dump([forces, dipole], fd, protocol=2)
                 sys.stdout.write(
                     'Writing %s, dipole moment = (%.6f %.6f %.6f)\n' %
@@ -454,7 +446,7 @@ class Vibrations:
         """Writes file for viewing of the modes with jmol."""
 
         with open(self.name + '.xyz', 'w') as fd:
-            self._write_json(fd)
+            self._write_jmol(fd)
 
     def _write_jmol(self, fd):
         symbols = self.atoms.get_chemical_symbols()

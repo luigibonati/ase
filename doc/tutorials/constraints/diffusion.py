@@ -11,6 +11,6 @@ del a.constraints
 a *= (2, 1, 1)
 a.set_cell(images[0].get_cell())
 renderer = write('diffusion-path.pov', a,
-                 generic_projection_settings=dict(rotation='-90x'),
+                 rotation='-90x',
                  povray_settings=dict(transparent=False))
 renderer.render()

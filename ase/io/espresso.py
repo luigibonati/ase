@@ -359,7 +359,11 @@ def read_espresso_out(fileobj, index=-1, results_required=True):
                         kpts.append(kpt)
 
         # Put everything together
+        #
+        # I have added free_energy.  Can and should we distinguish
+        # energy and free_energy?  --askhl
         calc = SinglePointDFTCalculator(structure, energy=energy,
+                                        free_energy=energy,
                                         forces=forces, stress=stress,
                                         magmoms=magmoms, efermi=efermi,
                                         ibzkpts=ibzkpts)

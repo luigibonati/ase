@@ -48,10 +48,12 @@ def test_unitcellfilter(asap3):
     cu.calc = asap3.EMT()
     f = UnitCellFilter(cu, [1, 1, 1, 0, 0, 0])
     opt = LBFGS(f)
-    t = Trajectory('Cu-fcc.traj', 'w', cu)
-    opt.attach(t)
-    opt.run(5.0)
+
+    with Trajectory('Cu-fcc.traj', 'w', cu) as t:
+        opt.attach(t)
+        opt.run(5.0)
     # No assertions??
+
 
 def test_unitcellfilter_hcp(asap3):
     cu = bulk('Cu', 'hcp', a=3.6 / 2.0**0.5)
@@ -62,7 +64,7 @@ def test_unitcellfilter_hcp(asap3):
     print(cu.get_stress())
     f = UnitCellFilter(cu)
     opt = MDMin(f, dt=0.01)
-    t = Trajectory('Cu-hcp.traj', 'w', cu)
-    opt.attach(t)
-    opt.run(0.2)
+    with Trajectory('Cu-hcp.traj', 'w', cu) as t:
+        opt.attach(t)
+        opt.run(0.2)
     # No assertions??

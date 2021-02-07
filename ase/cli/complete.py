@@ -49,9 +49,8 @@ commands = {
          '--sort', '--cut', '-p', '--plot', '--csv', '-w',
          '--open-web-browser', '--no-lock-file', '--analyse',
          '-j', '--json', '-m', '--show-metadata',
-         '--set-metadata', '-M', '--metadata-from-python-script',
-         '--unique', '--strip-data', '--show-keys',
-         '--show-values'],
+         '--set-metadata', '--strip-data', '--progress-bar',
+         '--show-keys', '--show-values'],
     'diff':
         ['-r', '--rank-order', '-c', '--calculator-outputs',
          '--max-lines', '-t', '--template', '--template-help',
@@ -61,6 +60,9 @@ commands = {
         ['--display-all', '--no-merge'],
     'eos':
         ['-p', '--plot', '-t', '--type'],
+    'exec':
+        ['-e', '--exec-code', '-E', '--exec-file', '-i', '--input-format',
+         '-n', '--image-number', '--read-args'],
     'find':
         ['-v', '--verbose', '-l', '--long', '-i', '--include', '-x',
          '--exclude'],

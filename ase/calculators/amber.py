@@ -6,7 +6,6 @@ Before usage, input files (infile, topologyfile, incoordfile)
 
 """
 
-import os
 import subprocess
 import numpy as np
 
@@ -233,17 +232,20 @@ class Amber(FileIOCalculator):
 
     def read_energy(self, filename='mden'):
         """ read total energy from amber file """
-        lines = open(filename, 'r').readlines()
+        with open(filename, 'r') as fd:
+            lines = fd.readlines()
         self.results['energy'] = \
             float(lines[16].split()[2]) * units.kcal / units.mol
 
     def read_forces(self, filename='mdfrc'):
         """ read forces from amber file """
         f = netcdf.netcdf_file(filename, 'r')
-        forces = f.variables['forces']
-        self.results['forces'] = forces[-1, :, :] \
-            / units.Ang * units.kcal / units.mol
-        f.close()
+        try:
+            forces = f.variables['forces']
+            self.results['forces'] = forces[-1, :, :] \
+                / units.Ang * units.kcal / units.mol
+        finally:
+            f.close()
 
     def set_charges(self, selection, charges, parmed_filename=None):
         """ Modify amber topology charges to contain the updated
@@ -251,29 +253,21 @@ class Amber(FileIOCalculator):
             Using amber's parmed program to change charges.
         """
         qm_list = list(selection)
-        fout = open(parmed_filename, 'w')
-        fout.write('# update the following QM charges \n')
-        for i, charge in zip(qm_list, charges):
-            fout.write('change charge @' + str(i + 1) + ' ' +
-                       str(charge) + ' \n')
-        fout.write('# Output the topology file \n')
-        fout.write('outparm ' + self.topologyfile + ' \n')
-        fout.close()
+        with open(parmed_filename, 'w') as fout:
+            fout.write('# update the following QM charges \n')
+            for i, charge in zip(qm_list, charges):
+                fout.write('change charge @' + str(i + 1) + ' ' +
+                           str(charge) + ' \n')
+            fout.write('# Output the topology file \n')
+            fout.write('outparm ' + self.topologyfile + ' \n')
         parmed_command = ('parmed -O -i ' + parmed_filename +
                           ' -p ' + self.topologyfile +
                           ' > ' + self.topologyfile + '.log 2>&1')
-        olddir = os.getcwd()
-        try:
-            os.chdir(self.directory)
-            errorcode = subprocess.call(parmed_command, shell=True)
-        finally:
-            os.chdir(olddir)
-        if errorcode:
-            raise RuntimeError('%s returned an error: %d' %
-                               (self.label, errorcode))
+        subprocess.check_call(parmed_command, shell=True, cwd=self.directory)
 
     def get_virtual_charges(self, atoms):
-        topology = open(self.topologyfile, 'r').readlines()
+        with open(self.topologyfile, 'r') as fd:
+            topology = fd.readlines()
         for n, line in enumerate(topology):
             if '%FLAG CHARGE' in line:
                 chargestart = n + 2
