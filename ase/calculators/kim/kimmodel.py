@@ -31,14 +31,15 @@ class KIMModelData:
         # Initialize KIM API Portable Model object and ComputeArguments object
         self.init_kim()
 
-        # Set cutoff
+        self.species_map = self.create_species_map()
+
+        # Ask model to provide information relevant for neighbor list
+        # construction
         model_influence_dist = self.kim_model.get_influence_distance()
         (
             model_cutoffs,
             padding_not_require_neigh,
         ) = self.kim_model.get_neighbor_list_cutoffs_and_hints()
-
-        self.species_map = self.create_species_map()
 
         # Initialize neighbor list object
         self.init_neigh(
@@ -283,6 +284,8 @@ class KIMModelCalculator(Calculator):
             combination of these six: 'positions', 'numbers', 'cell',
             and 'pbc'.
         """
+
+        Calculator.calculate(self, atoms, properties, system_changes)
 
         if self._parameters_changed:
             system_changes.append("calculator")
@@ -538,16 +541,15 @@ class KIMModelCalculator(Calculator):
             parameters.update({parameter_name: parameter_data})
         self.kim_model.kim_model.clear_then_refresh()
 
-        # Update skin, influence distance and cutoff
+        # Update neighbor list parameters
         model_influence_dist = self.kim_model.get_influence_distance()
         (
             model_cutoffs,
-            _,
+            padding_not_require_neigh,
         ) = self.kim_model.get_neighbor_list_cutoffs_and_hints()
-        skin = self.neigh_skin_ratio * model_influence_dist
-        self.neigh.skin = skin
-        self.neigh.influence_dist = model_influence_dist + skin
-        self.neigh.cutoffs = model_cutoffs + skin
+
+        self.neigh.set_neigh_parameters(self.neigh_skin_ratio, model_influence_dist,
+                model_cutoffs, padding_not_require_neigh)
 
         self._parameters_changed = True
         return parameters

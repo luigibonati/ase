@@ -46,10 +46,9 @@ class NeighborList:
         debug,
     ):
 
-        self.skin = neigh_skin_ratio * model_influence_dist
-        self.influence_dist = model_influence_dist + self.skin
-        self.cutoffs = model_cutoffs + self.skin
-        self.padding_need_neigh = not padding_not_require_neigh.all()
+        self.set_neigh_parameters(self, neigh_skin_ratio, model_influence_dist,
+                model_cutoffs, padding_not_require_neigh)
+
         self.debug = debug
 
         if self.debug:
@@ -82,6 +81,13 @@ class NeighborList:
         self.species_code = None
         self.need_neigh = None
         self.last_update_positions = None
+
+    def set_neigh_parameters(self, neigh_skin_ratio, model_influence_dist,
+            model_cutoffs, padding_not_require_neigh):
+        self.skin = neigh_skin_ratio * model_influence_dist
+        self.influence_dist = model_influence_dist + self.skin
+        self.cutoffs = model_cutoffs + self.skin
+        self.padding_need_neigh = not padding_not_require_neigh.all()
 
     def update_kim_coords(self, atoms):
         """Update atomic positions in self.coords, which is where the KIM
