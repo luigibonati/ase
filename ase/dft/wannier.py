@@ -1090,17 +1090,17 @@ class Wannier:
                         def variance_term_computer(factor):
                             result = (
                                 self.nwannier * 2 * weight * (
-                                 ((Z_knn[k] @ V_knw[k1]) * factor.conj() +
-                                  (dag(Z_knn[k2]) @ V_knw[k2]) * factor) @
-                                 dag(U_ww)) / Nw**2
+                                    ((Z_knn[k] @ V_knw[k1]) * factor.conj() +
+                                     (dag(Z_knn[k2]) @ V_knw[k2]) * factor) @
+                                    dag(U_ww)) / Nw**2
                             )
                             return result
 
                         first_term = \
-                                O_sum * variance_term_computer(diagZ_w) / Nw**2
+                            O_sum * variance_term_computer(diagZ_w) / Nw**2
 
                         second_term = \
-                                - variance_term_computer(diagOZ_w) / Nw
+                            - variance_term_computer(diagOZ_w) / Nw
 
                         Ctemp_nw += first_term + second_term
 
