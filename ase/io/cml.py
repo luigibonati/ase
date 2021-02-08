@@ -11,10 +11,10 @@ from ase.cell import Cell
 
 # contract and lower case string
 def contract(dictionary):
-    keys = list(dictionary.keys())
-    for key in keys:
-        dictionary[key.replace(' ', '').lower()] = dictionary[key]
-    return dictionary
+    dcopy = {}
+    for key in dictionary:
+        dcopy[key.replace(' ', '').lower()] = dictionary[key]
+    return dcopy
 
 
 def read_cml(fileobj):
