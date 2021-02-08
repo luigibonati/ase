@@ -280,6 +280,7 @@ F('castep-phonon', 'CASTEP phonon file', '1F',
 F('cfg', 'AtomEye configuration', '1F')
 F('cif', 'CIF-file', '+B', ext='cif')
 F('cmdft', 'CMDFT-file', '1F', glob='*I_info')
+F('cml', 'Chemical json file', '1F', ext='cml')
 F('cp2k-dcd', 'CP2K DCD file', '+B',
   module='cp2k', ext='dcd')
 F('crystal', 'Crystal fort.34 format', '1F',
@@ -857,7 +858,7 @@ def filetype(
         if orig_filename == filename:
             fd = open_with_compression(filename, 'rb')
         else:
-            fd = orig_filename # type: ignore
+            fd = orig_filename  # type: ignore
     else:
         fd = filename    # type: ignore
         if fd is sys.stdin:
