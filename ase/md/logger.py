@@ -93,8 +93,8 @@ class MDLogger:
     def __call__(self):
         epot = self.atoms.get_potential_energy()
         ekin = self.atoms.get_kinetic_energy()
+        temp = self.atoms.get_temperature()
         global_natoms = self.atoms.get_global_number_of_atoms()
-        temp = ekin / (1.5 * units.kB * global_natoms)
         if self.peratom:
             epot /= global_natoms
             ekin /= global_natoms
