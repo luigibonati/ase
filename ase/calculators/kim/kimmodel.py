@@ -294,8 +294,6 @@ class KIMModelCalculator(Calculator):
             and 'pbc'.
         """
 
-        Calculator.calculate(self, atoms, properties, system_changes)
-
         if self._parameters_changed:
             system_changes.append("calculator")
             self._parameters_changed = False
