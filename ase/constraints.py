@@ -150,7 +150,8 @@ class FixAtoms(FixConstraint):
         if self.index.ndim != 1:
             raise ValueError('Wrong argument to FixAtoms class!')
 
-        self.removed_dof = 3 * len(self.index)
+    def get_removed_dof(self, atoms):
+        return 3 * len(self.index)
 
     def adjust_positions(self, atoms, new):
         new[self.index] = atoms.positions[self.index]
@@ -219,9 +220,8 @@ class FixCom(FixConstraint):
 
     """
 
-    def __init__(self):
-
-        self.removed_dof = 3
+    def get_removed_dof(self, atoms):
+        return 3
 
     def adjust_positions(self, atoms, new):
         masses = atoms.get_masses()
@@ -259,7 +259,8 @@ class FixBondLengths(FixConstraint):
         self.tolerance = tolerance
         self.bondlengths = bondlengths
 
-        self.removed_dof = len(pairs)
+    def get_removed_dof(self, atoms):
+        return len(self.pairs)
 
     def adjust_positions(self, atoms, new):
         old = atoms.positions
@@ -388,7 +389,8 @@ class FixLinearTriatomic(FixConstraint):
             raise ValueError('"triples" has wrong size')
         self.bondlengths = None
 
-        self.removed_dof = 4 * len(triples)
+    def get_removed_dof(self, atoms):
+        return 4 * len(self.triples)
 
     @property
     def n_ind(self):
@@ -613,6 +615,9 @@ class FixedMode(FixConstraint):
     def __init__(self, mode):
         self.mode = (np.asarray(mode) / np.sqrt((mode**2).sum())).reshape(-1)
 
+    def get_removed_dof(self, atoms):
+        return len(atoms)
+
     def adjust_positions(self, atoms, newpositions):
         newpositions = newpositions.ravel()
         oldpositions = atoms.positions.ravel()
@@ -652,11 +657,12 @@ class FixedPlane(FixConstraintSingle):
 
     The plane is defined by its normal vector *direction*."""
 
-    removed_dof = 1
-
     def __init__(self, a, direction):
         self.a = a
         self.dir = np.asarray(direction) / sqrt(np.dot(direction, direction))
+
+    def get_removed_dof(self, atoms):
+        return 1
 
     def adjust_positions(self, atoms, newpositions):
         step = newpositions[self.a] - atoms.positions[self.a]
@@ -678,11 +684,12 @@ class FixedLine(FixConstraintSingle):
 
     The line is defined by its vector *direction*."""
 
-    removed_dof = 2
-
     def __init__(self, a, direction):
         self.a = a
         self.dir = np.asarray(direction) / sqrt(np.dot(direction, direction))
+
+    def get_removed_dof(self, atoms):
+        return 2
 
     def adjust_positions(self, atoms, newpositions):
         step = newpositions[self.a] - atoms.positions[self.a]
@@ -706,7 +713,9 @@ class FixCartesian(FixConstraintSingle):
     def __init__(self, a, mask=(1, 1, 1)):
         self.a = a
         self.mask = ~np.asarray(mask, bool)
-        self.removed_dof = 3 - self.mask.sum()
+
+    def get_removed_dof(self, atoms):
+        return 3 - self.mask.sum()
 
     def adjust_positions(self, atoms, new):
         step = new[self.a] - atoms.positions[self.a]
@@ -732,7 +741,9 @@ class FixScaled(FixConstraintSingle):
         self.cell = np.asarray(cell)
         self.a = a
         self.mask = np.array(mask, bool)
-        self.removed_dof = self.mask.sum()
+
+    def get_removed_dof(self, atoms):
+        return self.mask.sum()
 
     def adjust_positions(self, atoms, new):
         scaled_old = atoms.cell.scaled_positions(atoms.positions)
@@ -799,22 +810,23 @@ class FixInternals(FixConstraint):
         self.anglecombos = anglecombos or []
         self.dihedralcombos = dihedralcombos or []
         self.mic = mic
-
-        # Initialize these at run-time:
-        self.n = 0
-        self.constraints = []
         self.epsilon = epsilon
 
+        self.n = (len(self.bonds) + len(self.angles) + len(self.dihedrals)
+                  + len(self.bondcombos) + len(self.anglecombos)
+                  + len(self.dihedralcombos))
+
+        # Initialize these at run-time:
+        self.constraints = []
         self.initialized = False
-        self.removed_dof = self.n
+
+    def get_removed_dof(self, atoms):
+        return self.n
 
     def initialize(self, atoms):
         if self.initialized:
             return
         masses = np.repeat(atoms.get_masses(), 3)
-        self.n = (len(self.bonds) + len(self.angles) + len(self.dihedrals)
-                  + len(self.bondcombos) + len(self.anglecombos)
-                  + len(self.dihedralcombos))
         cell = None
         pbc = None
         if self.mic:
@@ -1617,6 +1629,9 @@ class Hookean(FixConstraint):
         self.threshold = rt
         self.spring = k
 
+    def get_removed_dof(self, atoms):
+        return 0
+
     def todict(self):
         dct = {'name': 'Hookean'}
         dct['kwargs'] = {'rt': self.threshold,
@@ -1749,6 +1764,9 @@ class ExternalForce(FixConstraint):
     def __init__(self, a1, a2, f_ext):
         self.indices = [a1, a2]
         self.external_force = f_ext
+
+    def get_removed_dof(self, atoms):
+        return 0
 
     def adjust_positions(self, atoms, new):
         pass
