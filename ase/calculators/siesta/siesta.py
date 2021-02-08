@@ -20,7 +20,8 @@ import numpy as np
 
 from ase.units import Ry, eV, Bohr
 from ase.data import atomic_numbers
-from ase.calculators.siesta.import_functions import read_rho, xv_to_atoms
+from ase.io.siesta import read_siesta_xv
+from ase.calculators.siesta.import_functions import read_rho
 from ase.calculators.siesta.import_functions import \
     get_valence_charge, read_vca_synth_block
 from ase.calculators.calculator import FileIOCalculator, ReadError
@@ -604,7 +605,8 @@ class Siesta(FileIOCalculator):
         fname = self.getpath(filename)
         if not os.path.exists(fname):
             raise ReadError("The restart file '%s' does not exist" % fname)
-        self.atoms = xv_to_atoms(fname)
+        with open(fname) as fd:
+            self.atoms = read_siesta_xv(fd)
         self.read_results()
 
     def getpath(self, fname=None, ext=None):

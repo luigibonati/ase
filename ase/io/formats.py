@@ -186,8 +186,8 @@ class IOFormat:
         try:
             return import_module(self.module_name)
         except ImportError as err:
-            raise UnknownFileTypeError('File format not recognized: %s.  '
-                                       'Error: %s' % (format, err))
+            raise UnknownFileTypeError(
+                f'File format not recognized: {self.name}.  Error: {err}')
 
     def match_name(self, basename: str) -> bool:
         from fnmatch import fnmatch
@@ -381,6 +381,8 @@ F('qbox', 'QBOX output file', '+F',
 F('res', 'SHELX format', '1S', ext='shelx')
 F('rmc6f', 'RMCProfile', '1S', ext='rmc6f')
 F('sdf', 'SDF format', '1F')
+F('siesta-xv', 'Siesta .XV file', '1F',
+  glob='*.XV', module='siesta')
 F('struct', 'WIEN2k structure file', '1S', module='wien2k')
 F('struct_out', 'SIESTA STRUCT file', '1F', module='siesta')
 F('traj', 'ASE trajectory', '+B', module='trajectory', ext='traj',
