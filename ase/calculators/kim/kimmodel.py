@@ -546,6 +546,20 @@ class KIMModelCalculator(Calculator):
                 parameter_name, parameter_data[0], parameter_data[1]
             )
             parameters.update({parameter_name: parameter_data})
+
+        self._model_refresh_and_update_neighbor_list_parameters()
+
+        self._parameters_changed = True
+        return parameters
+
+    def _model_refresh_and_update_neighbor_list_parameters(self):
+        """
+        Call the model's refresh routine and update the neighbor list object
+        for any necessary changes arising from changes to the model parameters,
+        e.g. a change in one of its cutoffs.  After a model's parameters have
+        been changed, this method *must* be called before calling the model's
+        compute routine.
+        """
         self.kim_model.kim_model.clear_then_refresh()
 
         # Update neighbor list parameters
@@ -561,9 +575,6 @@ class KIMModelCalculator(Calculator):
             model_cutoffs,
             padding_not_require_neigh,
         )
-
-        self._parameters_changed = True
-        return parameters
 
     def _get_one_parameter(self, parameter_name, index_range):
         """
