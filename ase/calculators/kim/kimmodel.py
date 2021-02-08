@@ -553,7 +553,7 @@ class KIMModelCalculator(Calculator):
             model_influence_dist,
             model_cutoffs,
             padding_not_require_neigh,
-        ) = self.get_model_neighbor_list_parameters()
+        ) = self.kimmodeldata.get_model_neighbor_list_parameters()
 
         self.neigh.set_neigh_parameters(
             self.neigh_skin_ratio,
