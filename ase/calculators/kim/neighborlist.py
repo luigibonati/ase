@@ -46,7 +46,7 @@ class NeighborList:
         debug,
     ):
 
-        self.set_neigh_parameters(self, neigh_skin_ratio, model_influence_dist,
+        self.set_neigh_parameters(neigh_skin_ratio, model_influence_dist,
                 model_cutoffs, padding_not_require_neigh)
 
         self.debug = debug
