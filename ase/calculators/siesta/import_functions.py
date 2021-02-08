@@ -1,7 +1,5 @@
-import os
 import numpy as np
 
-from ase.units import Bohr
 from ase.io.fortranfile import FortranFile
 
 
