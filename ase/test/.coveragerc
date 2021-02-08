@@ -38,6 +38,7 @@ omit =
     ../calculators/gulp.py
     ../calculators/demon/demon.py
     ../calculators/demon/demon_io.py
+    ../calculators/acemolecule.py
 
     # TODO: Improve IO format coverage and add include in coverage stats
     ../io/fortranfile.py
