@@ -9,15 +9,23 @@ from ase import Atoms
 from ase.cell import Cell
 
 
+# contract and lower case string
+def contract(dictionary):
+    keys = list(dictionary.keys())
+    for key in keys:
+        dictionary[key.replace(' ', '').lower()] = dictionary[key]
+    return dictionary
+
+
 def read_cml(fileobj):
-    data = json.load(fileobj)
+    data = contract(json.load(fileobj))
     atoms = Atoms()
     datoms = data['atoms']
 
     atoms = Atoms(datoms['elements']['number'])
 
-    if 'unit cell' in data:
-        cell = data['unit cell']
+    if 'unitcell' in data:
+        cell = data['unitcell']
         a = cell['a']
         b = cell['b']
         c = cell['c']
@@ -27,12 +35,12 @@ def read_cml(fileobj):
         atoms.cell = Cell.fromcellpar([a, b, c, alpha, beta, gamma])
         atoms.pbc = True
     
-    coords = datoms['coords']
+    coords = contract(datoms['coords'])
     if '3d' in coords:
         positions = np.array(coords['3d']).reshape(len(atoms), 3)
         atoms.set_positions(positions)
     else:
-        positions = np.array(coords['3d fractional']).reshape(len(atoms), 3)
+        positions = np.array(coords['3dfractional']).reshape(len(atoms), 3)
         atoms.set_scaled_positions(positions)
         
     yield atoms
