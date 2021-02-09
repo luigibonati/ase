@@ -157,7 +157,6 @@ class SiestaParameters(Parameters):
             symlink_pseudos=None,
             atoms=None,
             restart=None,
-            ignore_bad_restart_file=FileIOCalculator._deprecated,
             fdf_arguments=None,
             atomic_coord_format='xyz',
             bandpath=None):
@@ -247,10 +246,6 @@ class Siesta(FileIOCalculator):
            - restart      : str.  Prefix for restart file.
                             May contain a directory.
                             Default is  None, don't restart.
-           - ignore_bad_restart_file: bool.
-                            Ignore broken or missing restart file.
-                            By default, it is an error if the restart
-                            file is missing or broken.
            - fdf_arguments: Explicitly given fdf arguments. Dictonary using
                             Siesta keywords as given in the manual. List values
                             are written as fdf blocks with each element on a
