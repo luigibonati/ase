@@ -77,14 +77,6 @@ def find_lamda(upperlimit,Gbar,b,radius):
 
         return lamda
 
-def get_hessian_inertia(eigenvalues):
-        # return number of negative modes
-        n = 0
-        print('eigenvalues ',eigenvalues[0],eigenvalues[1],eigenvalues[2])
-        while eigenvalues[n]<0:
-                n+=1
-        return n
-
 
 from numpy.linalg import eigh
 
@@ -166,10 +158,6 @@ class GoodOldQuasiNewton(Optimizer):
             self.logfile.write(text + '\n')
             self.logfile.flush()
 
-    def set_max_radius(self, maxradius):
-                self.maxradius = maxradius
-                self.radius = min(self.maxradius, self.radius)
-
     def set_hessian(self,hessian):
         self.hessian = hessian
 
@@ -185,31 +173,6 @@ class GoodOldQuasiNewton(Optimizer):
         for i in range(n):
                         hessian[i][i] = self.diagonal
         self.set_hessian(hessian)
-
-    def read_hessian(self,filename):
-        import pickle
-        f = open(filename,'rb')
-        self.set_hessian(pickle.load(f))
-        f.close()
-
-    def write_hessian(self,filename):
-        import pickle
-        f = paropen(filename,'wb')
-        pickle.dump(self.get_hessian(),f)
-        f.close()
-
-    def write_to_restartfile(self):
-        import pickle
-        f = paropen(self.restartfile,'wb')
-        pickle.dump((self.oldpos,
-                      self.oldG,
-                      self.oldenergy,
-                      self.radius,
-                      self.hessian,
-                      self.energy_estimate),f)
-        f.close()
-
-
 
     def update_hessian(self,pos,G):
         import copy
@@ -307,9 +270,6 @@ class GoodOldQuasiNewton(Optimizer):
         G = -self.atoms.get_forces().ravel()
         energy = self.atoms.get_potential_energy()
 
-
-        self.write_iteration(energy,G)
-
         if hasattr(self,'oldenergy'):
 
                 self.write_log('energies ' + str(energy) + ' ' + str(self.oldenergy))
@@ -381,9 +341,6 @@ class GoodOldQuasiNewton(Optimizer):
 
         self.atoms.set_positions(pos.reshape((-1, 3)))
 
-
-
-
     def get_energy_estimate(self,D,Gbar,b):
 
         de = 0.0
@@ -434,19 +391,6 @@ class GoodOldQuasiNewton(Optimizer):
 
         return lamdas
 
-
-
-    def print_hessian(self):
-        hessian = self.get_hessian()
-        n = len(hessian)
-        for i in range(n):
-            for j in range(n):
-                print("%2.4f " %(hessian[i][j]), end=' ')
-            print(" ")
-
-
-
-
     def get_hessian_inertia(self,eigenvalues):
         # return number of negative modes
         self.write_log("eigenvalues %2.2f %2.2f %2.2f "%(eigenvalues[0],
@@ -466,5 +410,3 @@ class GoodOldQuasiNewton(Optimizer):
         f = np.dot(dGbar_actual,dGbar_predicted)/np.dot(dGbar_actual,dGbar_actual)
         self.write_log('Force prediction factor ' + str(f))
         return f
-
-    def write_iteration(self,energy,G):pass
