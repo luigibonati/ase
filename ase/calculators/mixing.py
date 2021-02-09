@@ -49,7 +49,8 @@ class LinearCombinationCalculator(Calculator):
                                               'list of supported properties ({})'.format(self.implemented_properties))
 
         for w, calc in zip(self.weights, self.calcs):
-            calc.calculate(atoms, properties, system_changes)
+            if calc.calculation_required(atoms, properties):
+                calc.calculate(atoms, properties, system_changes)
 
             for k in properties:
                 if k not in self.results:
