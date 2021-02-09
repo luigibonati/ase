@@ -101,7 +101,7 @@ def read_dftb(fd):
     return atoms
 
 
-def read_dftb_velocities(atoms, filename='geo_end.xyz'):
+def read_dftb_velocities(atoms, filename):
     """Method to read velocities (AA/ps) from DFTB+ output file geo_end.xyz
     """
     from ase.units import second
