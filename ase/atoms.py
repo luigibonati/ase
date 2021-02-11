@@ -1883,7 +1883,7 @@ class Atoms:
         """Get the temperature in Kelvin."""
         dof = len(self) * 3
         for constraint in self._constraints:
-            dof -= constraint.removed_dof
+            dof -= constraint.get_removed_dof(self)
         ekin = self.get_kinetic_energy()
         return 2 * ekin / (dof * units.kB)
 

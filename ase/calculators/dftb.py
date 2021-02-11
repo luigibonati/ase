@@ -489,7 +489,7 @@ class PointChargePotential:
     def set_charges(self, mmcharges):
         self.mmcharges = mmcharges
 
-    def write_mmcharges(self, filename='dftb_external_charges.dat'):
+    def write_mmcharges(self, filename):
         """ mok all
         write external charges as monopoles for dftb+.
 

@@ -25,7 +25,7 @@ def parse_geometry(filename):
         for i, line in enumerate(lines):
             if line == '====================  Atoms  =====================\n':
                 start_line = i
-            if start_line > 20 and len(line.split('=')) > 3:
+            if start_line != 0 and len(line.split('=')) > 3:
                 end_line = i
                 if not start_line == end_line:
                     break
@@ -125,11 +125,3 @@ def read_acemolecule_input(filename):
     return atoms
 
 
-if __name__ == "__main__":
-    import sys
-    from ase.io import read as ACE_read
-    label = str(sys.argv[1].split('.inp')[0])
-    system_changes = None
-    a = ACE_read(label + '.inp', format='acemolecule-input')
-
-    filename = label + '.log'

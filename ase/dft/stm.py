@@ -96,7 +96,7 @@ class STM:
         self.ldos = ldos
 
 
-    def write(self, filename='stm.json'):
+    def write(self, filename):
         """Write local density of states to pickle file."""
         from ase.io.jsonio import write_json
         # XXX module-level import would cause cyclic error

@@ -20,8 +20,12 @@ def get_vasp_version(string):
 
 
 class VaspChargeDensity:
-    """Class for representing VASP charge density"""
-    def __init__(self, filename='CHG'):
+    """Class for representing VASP charge density.
+
+    Filename is normally CHG."""
+    # Can the filename be CHGCAR?  There's a povray tutorial
+    # in doc/tutorials where it's CHGCAR as of January 2021.  --askhl
+    def __init__(self, filename):
         # Instance variables
         self.atoms = []  # List of Atoms objects
         self.chg = []  # Charge density
@@ -59,7 +63,7 @@ class VaspChargeDensity:
                 chg[:, yy, zz] = np.fromfile(fobj, count=chg.shape[0], sep=' ')
         chg /= volume
 
-    def read(self, filename='CHG'):
+    def read(self, filename):
         """Read CHG or CHGCAR file.
 
         If CHG contains charge density from multiple steps all the
@@ -179,10 +183,8 @@ class VaspChargeDensity:
                                chgtmp[len(chgtmp) - len(chgtmp) % 5 + ii])
         # Write a newline whatever format it is
         fobj.write('\n')
-        # Clean up
-        del chgtmp
 
-    def write(self, filename='CHG', format=None):
+    def write(self, filename, format=None):
         """Write VASP charge density in CHG format.
 
         filename: str
