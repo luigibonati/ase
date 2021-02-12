@@ -88,7 +88,7 @@ class ResonantRamanCalculator(RamanCalculatorBase, Vibrations):
             self.eq_calculator = self.atoms.calc
             fname = self.exname + '.eq.gpw'
             self.eq_calculator.write(fname, 'all')
-            self.eq_calculator = self.eq_calculator.__class__.read(fname)
+            self.eq_calculator = self.eq_calculator.__class__(restart=fname)
             try:
                 # XXX GPAW specific
                 self.eq_calculator.converge_wave_functions()
