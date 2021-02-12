@@ -1,23 +1,33 @@
 import os
 import pickle
+from typing import Any, Union
 
 import numpy as np
 
 from ase.atoms import Atoms
-from ase.parallel import world
+from ase.parallel import world, parprint
 from ase.utils import pickleload
 
+DFTCalculator = Any
 
-def ensemble(energy, contributions, xc, verbose=False):
+
+def ensemble(energy: float,
+             contributions: np.ndarray,
+             xc: str,
+             verbose: bool = False) -> np.ndarray:
     """Returns an array of ensemble total energies."""
     ensemble = BEEFEnsemble(None, energy, contributions, xc, verbose)
     return ensemble.get_ensemble_energies()
 
 
 class BEEFEnsemble:
-    """BEEF type ensemble error estimation"""
-    def __init__(self, atoms=None, e=None, contribs=None, xc=None,
-                 verbose=True):
+    """BEEF type ensemble error estimation."""
+    def __init__(self,
+                 atoms: Union[Atoms, DFTCalculator] = None,
+                 e: float = None,
+                 contribs: np.ndarray = None,
+                 xc: str = None,
+                 verbose: bool = True):
         if (atoms is not None or contribs is not None or xc is not None):
             if atoms is None:
                 assert e is not None
@@ -44,13 +54,15 @@ class BEEFEnsemble:
             elif self.xc == 'mBEEF-vdW':
                 self.beef_type = 'mbeefvdw'
             else:
-                raise NotImplementedError('No ensemble for xc = %s' % self.xc)
+                raise NotImplementedError(f'No ensemble for xc = {self.xc}')
 
-    def get_ensemble_energies(self, size=2000, seed=0):
+    def get_ensemble_energies(self,
+                              size: int = 2000,
+                              seed: int = 0) -> np.ndarray:
         """Returns an array of ensemble total energies"""
         self.seed = seed
-        if world.rank == 0 and self.verbose:
-            print(self.beef_type, 'ensemble started')
+        if self.verbose:
+            parprint(self.beef_type, 'ensemble started')
 
         if self.contribs is None:
             self.contribs = self.calc.get_nonselfconsistent_energies(
@@ -68,8 +80,8 @@ class BEEFEnsemble:
         self.de = np.dot(coefs, self.contribs)
         self.done = True
 
-        if world.rank == 0 and self.verbose:
-            print(self.beef_type, 'ensemble finished')
+        if self.verbose:
+            parprint(self.beef_type, 'ensemble finished')
 
         return self.e + self.de
 
@@ -130,7 +142,7 @@ class BEEFEnsemble:
                 pickle.dump(obj, f, protocol=2)
 
 
-def readbee(fname, all=False):
+def readbee(fname: str, all: bool = False):
     if not fname.endswith('.bee'):
         fname += '.bee'
     with open(fname, 'rb') as f:
