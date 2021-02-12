@@ -74,17 +74,17 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
 
                 - Examples:
 
-                    >>> Vasp2(label='mylabel', txt='vasp.out') # Redirect stdout
-                    >>> Vasp2(txt='myfile.txt') # Redirect stdout
-                    >>> Vasp2(txt='-') # Print vasp output to stdout
-                    >>> Vasp2(txt=None)  # Suppress txt output
+                    >>> Vasp(label='mylabel', txt='vasp.out') # Redirect stdout
+                    >>> Vasp(txt='myfile.txt') # Redirect stdout
+                    >>> Vasp(txt='-') # Print vasp output to stdout
+                    >>> Vasp(txt=None)  # Suppress txt output
 
             command: str
                 Custom instructions on how to execute VASP. Has priority over
                 environment variables.
     """
-    name = 'Vasp2'
-    ase_objtype = 'vasp2_calculator'  # For JSON storage
+    name = 'vasp'
+    ase_objtype = 'vasp_calculator'  # For JSON storage
 
     # Environment commands
     env_commands = ('ASE_VASP_COMMAND', 'VASP_COMMAND', 'VASP_SCRIPT')
@@ -423,7 +423,7 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
         return dct
 
     def fromdict(self, dct):
-        """Restore calculator from a :func:`~ase.calculators.vasp.Vasp2.asdict`
+        """Restore calculator from a :func:`~ase.calculators.vasp.Vasp.asdict`
         dictionary.
 
         Parameters:
@@ -457,7 +457,7 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
         jsonio.write_json(filename, dct)
 
     def read_json(self, filename):
-        """Load Calculator state from an exported JSON Vasp2 file."""
+        """Load Calculator state from an exported JSON Vasp file."""
         dct = jsonio.read_json(filename)
         self.fromdict(dct)
 
@@ -495,7 +495,7 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
         self.read_sort()
 
         # Read atoms
-        self.atoms = self.read_atoms()
+        self.atoms = self.read_atoms(filename=self._indir('CONTCAR'))
 
         # Read parameters
         self.read_incar(filename=self._indir('INCAR'))
@@ -527,10 +527,9 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
             atoms = read(self._indir('CONTCAR'))
             self.initialize(atoms)
 
-    def read_atoms(self, filename='CONTCAR'):
+    def read_atoms(self, filename):
         """Read the atoms from file located in the VASP
-        working directory. Defaults to CONTCAR."""
-        filename = self._indir(filename)
+        working directory. Normally called CONTCAR."""
         return read(filename)[self.resort]
 
     def update_atoms(self, atoms):
@@ -771,7 +770,8 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
         return nelect
 
     def get_k_point_weights(self):
-        return self.read_k_point_weights()
+        filename = self._indir('IBZKPT')
+        return self.read_k_point_weights(filename)
 
     def get_dos(self, spin=None, **kwargs):
         """
@@ -1081,8 +1081,8 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
                 converged = True
         return converged
 
-    def read_k_point_weights(self, filename='IBZKPT'):
-        """Read k-point weighting. Defaults to IBZKPT file."""
+    def read_k_point_weights(self, filename):
+        """Read k-point weighting. Normally named IBZKPT."""
 
         lines = self.load_file(filename)
 

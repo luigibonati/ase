@@ -1840,7 +1840,13 @@ class Atoms:
 
         If wrap is True, atoms outside the unit cell will be wrapped into
         the cell in those directions with periodic boundary conditions
-        so that the scaled coordinates are between zero and one."""
+        so that the scaled coordinates are between zero and one.
+
+        If any cell vectors are zero, the corresponding coordinates
+        are evaluated as if the cell were completed using
+        ``cell.complete()``.  This means coordinates will be Cartesian
+        as long as the non-zero cell vectors span a Cartesian axis or
+        plane."""
 
         fractional = self.cell.scaled_positions(self.positions)
 
@@ -1877,7 +1883,7 @@ class Atoms:
         """Get the temperature in Kelvin."""
         dof = len(self) * 3
         for constraint in self._constraints:
-            dof -= constraint.removed_dof
+            dof -= constraint.get_removed_dof(self)
         ekin = self.get_kinetic_energy()
         return 2 * ekin / (dof * units.kB)
 

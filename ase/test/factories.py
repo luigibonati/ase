@@ -101,6 +101,27 @@ class AbinitFactory:
         return factory
 
 
+@factory('aims')
+class AimsFactory:
+    def __init__(self, executable):
+        self.executable = executable
+        # XXX pseudo_dir
+
+    def calc(self, **kwargs):
+        from ase.calculators.aims import Aims
+        kwargs1 = dict(xc='LDA')
+        kwargs1.update(kwargs)
+        return Aims(command=self.executable, **kwargs1)
+
+    def version(self):
+        from ase.calculators.aims import get_aims_version
+        txt = read_stdout([self.executable])
+        return get_aims_version(txt)
+
+    @classmethod
+    def fromconfig(cls, config):
+        return cls(config.executables['aims'])
+
 @factory('asap')
 class AsapFactory:
     importname = 'asap3'
@@ -283,6 +304,11 @@ class ExcitingFactory:
 class VaspFactory:
     def __init__(self, executable):
         self.executable = executable
+
+    def version(self):
+        from ase.calculators.vasp import get_vasp_version
+        header = read_stdout([self.executable], createfile='INCAR')
+        return get_vasp_version(header)
 
     def calc(self, **kwargs):
         from ase.calculators.vasp import Vasp

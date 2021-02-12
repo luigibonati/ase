@@ -375,7 +375,7 @@ class PointChargePotential:
     def set_charges(self, mmcharges):
         self.mmcharges = mmcharges
 
-    def write_mmcharges(self, filename='POINTCHG.INP'):
+    def write_mmcharges(self, filename):
         """ mok all
         write external charges as monopoles for CRYSTAL.
 

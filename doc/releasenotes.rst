@@ -9,6 +9,35 @@ Git master branch
 
 :git:`master <>`.
 
+Calculators:
+
+* :class:`ase.calculators.qmmm.ForceQMMM` was updated to enable correct
+  handling of various periodic boundary conditions.
+  Functions to import and export files with QM/MM mapping were also added.
+
+I/O:
+
+* Reading of "chemical json" file types with name ``*.cml`` is enabled.
+
+
+Version 3.21.1
+==============
+
+24 January 2021: :git:`3.21.1 <../3.21.1>`
+
+* Fix incorrect positions written to CIF files with mixed boundary
+  conditions.
+* Writing a CIF with only 1 or 2 lattice vectors will now raise an error since
+  CIF cannot represent those systems.
+* The name of the Vasp calculator is now ``'vasp'`` as intended.
+* Fix attribute error in :meth:`~ase.vibrations.Vibrations.write_jmol`.
+
+
+Version 3.21.0
+==============
+
+18 January 2021: :git:`3.21.0 <../3.21.0>`
+
 General changes:
 
 * :meth:`~ase.Atoms.center` now centers around 0 along directions which
@@ -24,7 +53,7 @@ General changes:
   and ``atoms.cell.rank``, respectively.
 
 * Removed deprecated code on :class:`~ase.Atoms` for handling angles
-  in radiuns.
+  in radians.
 
 * :meth:`~ase.Atoms.get_velocities` will now return zeros rather than ``None``
   when there are no velocities, consistently with other optionals such as
@@ -37,10 +66,6 @@ General changes:
   All remaining use of pickle for persistent storage will be likewise replaced
   in next release.  Users are advised as always not to open pickle-files
   from untrusted sources.
-
-* :meth:`~ase.Atoms.get_velocities` will now return an array of zeros
-  consistently with :meth:`~ase.Atoms.get_momenta` if not set.
-  It previously returned ``None``, which was an oversight.
 
 * :func:`ase.utils.opencew` to be replaced by
   :func:`ase.utils.xwopen` which is a contextmanager and ensures
@@ -87,7 +112,7 @@ Algorithms:
 * :class:`~ase.neb.SingleCalculatorNEB` is deprecated.  Use
   ``ase.neb.NEB(allow_shared_calculator=True)`` instead.
 
-* Extended constraint `ase.constraints.FixInternals` by
+* Extended constraint :class:`ase.constraints.FixInternals` by
   possibility to fix linear combinations of bond lengths.
 
 * :class:`~ase.constraints.FixInternals` constraints now support
@@ -116,7 +141,7 @@ Calculators:
   explicitly.
 
 * Cleaned up and fixed multiple issues with
-  :class:`~ase.calculators.elk.Elk` calculator.
+  :class:`~ase.calculators.elk.ELK` calculator.
 
 * Make-shift cleanup and fixes for
   :class:`~ase.calculators.exciting.Exciting` calculator.
@@ -149,10 +174,13 @@ I/O:
   which can be used like this::
 
     png_path = write_pov('myfile.pov').render()
+
 * Refactored CIF reader and writer, adding more extensive testing
   and fixing multiple bugs.
 
-* Removed dummy data written to CIFs for historical reasons.
+* CIF writer now uses up-to-date variable definitions from the CIF
+  standard instead of deprecated ones.  Also, it no longer writes columns
+  of dummy data that doesn't depend on the atoms.
 
 * Added :class:`ase.io.cif.CIFBlock` for direct access to data
   inside a CIF, and :func:`ase.io.cif.parse_cif` to iterate over
@@ -163,6 +191,8 @@ I/O:
 
 * Vasp output formats return atoms with fully periodic boundary conditions
   as appropriate.
+
+* Vasp POSCAR/CONTCAR writer will now use the Vasp5 format by default.
 
 Development:
 

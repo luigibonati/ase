@@ -93,10 +93,9 @@ class STM:
 
         self.ldos = ldos
 
-    def write(self, filename='stm.json'):
+    def write(self, filename):
         """Write local density of states to JSON file."""
-        with open(filename, 'w') as fd:
-            write_json(fd, (self.ldos, self.bias, self.cell))
+        write_json(filename, (self.ldos, self.bias, self.cell))
 
     def get_averaged_current(self, bias, z):
         """Calculate avarage current at height z (in Angstrom).

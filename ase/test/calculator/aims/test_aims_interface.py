@@ -1,10 +1,12 @@
+import tempfile
+import os
+
+import pytest
+from ase.calculators.aims import Aims
+from ase import Atoms
+
+@pytest.mark.skip('legacy test with hardcoded paths and commands')
 def test_aims_interface():
-    import tempfile
-    import os
-
-    from ase.calculators.aims import Aims
-    from ase import Atoms
-
     # test the new command handling + legacy behavior
     aims_command = 'aims.x'
     aims_command_alternative = 'mpirun -np 4 fhiaims.x'

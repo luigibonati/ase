@@ -54,7 +54,7 @@ def test_neb_tr():
         qn.run(steps=20)
 
         # Switch to CI-NEB, still removing the external degrees of freedom
-        # Also spesify the linearly varying spring constants
+        # Also specify the linearly varying spring constants
         neb = NEB(images, climb=True,
                   remove_rotation_and_translation=remove_rotation_and_translation)
         qn = FIRE(neb, dt=0.005, maxstep=0.05, dtmax=0.1)

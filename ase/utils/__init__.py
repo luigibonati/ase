@@ -20,7 +20,7 @@ __all__ = ['exec_', 'basestring', 'import_module', 'seterr', 'plural',
            'devnull', 'gcd', 'convert_string_to_fd', 'Lock',
            'opencew', 'OpenLock', 'rotate', 'irotate', 'pbc2pbc', 'givens',
            'hsv2rgb', 'hsv', 'pickleload', 'FileNotFoundError',
-           'formula_hill', 'formula_metal', 'PurePath']
+           'formula_hill', 'formula_metal', 'PurePath', 'xwopen']
 
 
 # Python 2+3 compatibility stuff (let's try to remove these things):

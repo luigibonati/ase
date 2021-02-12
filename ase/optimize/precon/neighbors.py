@@ -1,12 +1,12 @@
-#import time
-
 import numpy as np
 
 from ase.constraints import Filter, FixAtoms
 from ase.geometry.cell import cell_to_cellpar
 from ase.neighborlist import neighbor_list
 
-def get_neighbours(atoms, r_cut, self_interaction=False):
+
+def get_neighbours(atoms, r_cut, self_interaction=False, 
+                   neighbor_list=neighbor_list):
     """Return a list of pairs of atoms within a given distance of each other.
 
     Uses ase.neighborlist.neighbour_list to compute neighbors.
@@ -16,6 +16,9 @@ def get_neighbours(atoms, r_cut, self_interaction=False):
         r_cut: cutoff radius (float). Pairs of atoms are considered neighbours
             if they are within a distance r_cut of each other (note that this
             is double the parameter used in the ASE's neighborlist module)
+        neighbor_list: function (optional). Optionally replace the built-in
+            ASE neighbour list with an alternative with the same call
+            signature, e.g. `matscipy.neighbours.neighbour_list`.
 
     Returns: a tuple (i_list, j_list, d_list, fixed_atoms):
         i_list, j_list: i and j indices of each neighbour pair
@@ -44,12 +47,16 @@ def get_neighbours(atoms, r_cut, self_interaction=False):
     return i_list, j_list, d_list, fixed_atoms
 
 
-def estimate_nearest_neighbour_distance(atoms):
+def estimate_nearest_neighbour_distance(atoms,
+                                        neighbor_list=neighbor_list):
     """
     Estimate nearest neighbour distance r_NN
 
     Args:
         atoms: Atoms object
+        neighbor_list: function (optional). Optionally replace the built-in
+            ASE neighbour list with an alternative with the same call
+            signature, e.g. `matscipy.neighbours.neighbour_list`.        
 
     Returns:
         rNN: float
@@ -59,7 +66,7 @@ def estimate_nearest_neighbour_distance(atoms):
     if isinstance(atoms, Filter):
         atoms = atoms.atoms
 
-    #start_time = time.time()
+    # start_time = time.time()
     # compute number of neighbours of each atom. If any atom doesn't
     # have a neighbour we increase the cutoff and try again, until our
     # cutoff exceeds the size of the system
@@ -69,13 +76,14 @@ def estimate_nearest_neighbour_distance(atoms):
     # cell lengths and angles
     a, b, c, alpha, beta, gamma = cell_to_cellpar(atoms.cell)
     extent = [a, b, c]
-    #print('estimate_nearest_neighbour_distance(): extent=%r' % extent)
+    # print('estimate_nearest_neighbour_distance(): extent=%r' % extent)
 
     while r_cut < 2.0 * max(extent):
-        #print('estimate_nearest_neighbour_distance(): '
+        # print('estimate_nearest_neighbour_distance(): '
         #            'calling neighbour_list with r_cut=%.2f A' % r_cut)
         i, j, rij, fixed_atoms = get_neighbours(
-            atoms, r_cut, self_interaction=True)
+            atoms, r_cut, self_interaction=True,
+            neighbor_list=neighbor_list)
         if len(i) != 0:
             nn_i = np.bincount(i, minlength=len(atoms))
             if (nn_i != 0).all():
@@ -91,6 +99,6 @@ def estimate_nearest_neighbour_distance(atoms):
     nn_distances = [np.min(rij[i == I]) for I in range(len(atoms))]
     r_NN = np.max(nn_distances)
 
-    #print('estimate_nearest_neighbour_distance(): got r_NN=%.3f in %s s' %
+    # print('estimate_nearest_neighbour_distance(): got r_NN=%.3f in %s s' %
     #            (r_NN, time.time() - start_time))
     return r_NN
