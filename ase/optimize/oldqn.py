@@ -9,15 +9,18 @@ Quasi-Newton algorithm
 __docformat__ = 'reStructuredText'
 
 import time
+
 import numpy as np
+from numpy.linalg import eigh
+
 from ase.parallel import paropen
+from ase.optimize.optimize import Optimizer
 
 
 def f(lamda,Gbar,b,radius):
         b1 = b - lamda
         g = radius**2 - np.dot(Gbar/b1, Gbar/b1)
         return g
-
 
 
 def scale_radius_energy(f,r):
@@ -78,12 +81,6 @@ def find_lamda(upperlimit,Gbar,b,radius):
         return lamda
 
 
-from numpy.linalg import eigh
-
-from ase.optimize.optimize import Optimizer
-
-
-
 class GoodOldQuasiNewton(Optimizer):
 
     def __init__(self, atoms, restart=None, logfile='-', trajectory=None,
@@ -98,12 +95,12 @@ class GoodOldQuasiNewton(Optimizer):
             The Atoms object to relax.
 
         restart: string
-            Pickle file used to store hessian matrix. If set, file with
+            File used to store hessian matrix. If set, file with
             such a name will be searched and hessian matrix stored will
             be used, if the file exists.
 
         trajectory: string
-            Pickle file used to store trajectory of atomic movement.
+            File used to store trajectory of atomic movement.
 
         maxstep: float
             Used to set the maximum distance an atom can move per
