@@ -21,7 +21,7 @@ def ensemble(energy: float,
 
 
 class BEEFEnsemble:
-    """BEEF type ensemble error estimation"""
+    """BEEF type ensemble error estimation."""
     def __init__(self,
                  atoms: Union[Atoms, DFTCalculator] = None,
                  e: float = None,
@@ -54,7 +54,7 @@ class BEEFEnsemble:
             elif self.xc == 'mBEEF-vdW':
                 self.beef_type = 'mbeefvdw'
             else:
-                raise NotImplementedError('No ensemble for xc = %s' % self.xc)
+                raise NotImplementedError(f'No ensemble for xc = {self.xc}')
 
     def get_ensemble_energies(self,
                               size: int = 2000,

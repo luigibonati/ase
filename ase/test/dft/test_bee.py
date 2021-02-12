@@ -38,11 +38,11 @@ def test_bee(xc):
     # From a file:
     ens.write(f'{xc}.bee')
     e, de, contribs, seed, xc = readbee(f'{xc}.bee', all=True)
-    assert (e + de == energies).all()
+    assert e + de == pytest.approx(energies, abs=1e-12)
     e2000 = ensemble(e, contribs, xc)
     assert e2000.shape == (2000,)
 
     # From data:
     ens = BEEFEnsemble(e=e, contribs=contribs, xc=xc, verbose=False)
     energies2 = ens.get_ensemble_energies(size)
-    assert (energies2 == energies).all()
+    assert energies2 == pytest.approx(energies, abs=1e-12)
