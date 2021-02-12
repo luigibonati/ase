@@ -12,6 +12,10 @@ from ase.io.trajectory import Trajectory
 import collections.abc
 
 
+class RestartError(RuntimeError):
+    pass
+
+
 class Dynamics:
     """Base-class for all MD and structure optimization classes."""
 
@@ -336,7 +340,12 @@ class Optimizer(Dynamics):
 
     def load(self):
         with open(self.restart) as fd:
-            return read_json(fd)
+            try:
+                return read_json(fd, always_array=False)
+            except Exception as ex:
+                msg = ('Could not decode restart file as JSON.  '
+                       f'You may need to delete the restart file {self.restart}')
+                raise RestartError(msg) from ex
 
     def set_force_consistent(self):
         """Automatically sets force_consistent to True if force_consistent
