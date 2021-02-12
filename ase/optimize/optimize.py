@@ -1,15 +1,19 @@
 """Structure optimization. """
 
 import sys
-import pickle
 import time
 from math import sqrt
 from os.path import isfile
 
+from ase.io.jsonio import read_json, write_json
 from ase.calculators.calculator import PropertyNotImplementedError
 from ase.parallel import world, barrier
 from ase.io.trajectory import Trajectory
 import collections.abc
+
+
+class RestartError(RuntimeError):
+    pass
 
 
 class Dynamics:
@@ -331,12 +335,17 @@ class Optimizer(Dynamics):
 
     def dump(self, data):
         if world.rank == 0 and self.restart is not None:
-            with open(self.restart, "wb") as fd:
-                pickle.dump(data, fd, protocol=2)
+            with open(self.restart, 'w') as fd:
+                write_json(fd, data)
 
     def load(self):
-        with open(self.restart, "rb") as fd:
-            return pickle.load(fd)
+        with open(self.restart) as fd:
+            try:
+                return read_json(fd, always_array=False)
+            except Exception as ex:
+                msg = ('Could not decode restart file as JSON.  '
+                       f'You may need to delete the restart file {self.restart}')
+                raise RestartError(msg) from ex
 
     def set_force_consistent(self):
         """Automatically sets force_consistent to True if force_consistent

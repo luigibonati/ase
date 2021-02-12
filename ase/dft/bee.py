@@ -1,12 +1,11 @@
 import os
-import pickle
 from typing import Any, Union
 
 import numpy as np
 
-from ase.atoms import Atoms
+from ase import Atoms
+from ase.io.jsonio import read_json, write_json
 from ase.parallel import world, parprint
-from ase.utils import pickleload
 
 DFTCalculator = Any
 
@@ -138,15 +137,15 @@ class BEEFEnsemble:
             if os.path.isfile(fname):
                 os.rename(fname, fname + '.old')
             obj = [self.e, self.de, self.contribs, self.seed, self.xc]
-            with open(fname, 'wb') as f:
-                pickle.dump(obj, f, protocol=2)
+            with open(fname, 'w') as fd:
+                write_json(fd, obj)
 
 
 def readbee(fname: str, all: bool = False):
     if not fname.endswith('.bee'):
         fname += '.bee'
-    with open(fname, 'rb') as f:
-        e, de, contribs, seed, xc = pickleload(f)
+    with open(fname, 'r') as fd:
+        e, de, contribs, seed, xc = read_json(fd, always_array=False)
     if all:
         return e, de, contribs, seed, xc
     else:
