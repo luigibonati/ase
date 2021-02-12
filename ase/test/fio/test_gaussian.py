@@ -160,7 +160,7 @@ def test_readwrite_gaussian():
                  [-0.464, 1.137, 0.0],
                  [0.441, -0.143, 0.0]]
     cell = [[10., 0., 0.], [0., 10., 0.], [0., 0., 10.]]
-    masses = [15.999, 0.1134289259, 2.01410177812]
+    masses = [15.999, 0.1134289259, 2]
     atoms = Atoms('OH2', cell=cell, positions=positions,
                   masses=masses)
     atoms.set_pbc(True)

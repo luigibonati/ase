@@ -11,8 +11,6 @@ from ase.calculators.calculator import InputError
 from ase.calculators.singlepoint import SinglePointCalculator
 from ase.calculators.gaussian import Gaussian
 
-from ase.data import atomic_numbers
-from ase.data.isotopes import download_isotope_data
 
 from ase.io.zmatrix import parse_zmatrix
 
@@ -501,18 +499,13 @@ def _save_nuclei_props(line, nuclei_props, atom_masses):
 
 def _save_mass(atom_mass, atom_masses, symbol):
     ''' Saves a mass (atom_mass) to the atom_masses
-    list. If the mass is an integer, this will be converted
-    to the exact isotope mass for the element represented
-    by the symbol (str)'''
+    list. '''
     if atom_mass is not None:
         if isinstance(atom_mass, int):
-            # will be true if atom_mass is integer
-            try:
-                atom_mass = download_isotope_data(
-                )[atomic_numbers[symbol]][
-                    round(float(atom_mass))]['mass']
-            except KeyError:
-                pass
+            warnings.warn("Mass for atom: {} has been saved as an integer "
+                          "value: {}. You may wish to update this if you "
+                          "require a more accurate mass to be saved to "
+                          "the Atoms object.".format(symbol, atom_mass))
     atom_masses.append(atom_mass)
 
 
@@ -900,8 +893,10 @@ def read_gaussian_in(fd, get_calculator=False):
         read from the input file: symbols, positions, cell, nuclei properties,
         and masses.
         It is able to read in masses set in the nuclei properties section or
-        in the ReadIsotopes section
-        (if ``freq=ReadIso`` is set)
+        in the ReadIsotopes section (if ``freq=ReadIso`` is set). Note that if
+        a mass has been set to an integer value in the input file, when this is
+        read into the Atoms object, it will be kept as an integer, not
+        automatically converted to the correct isotopic mass.
 
     Notes
     ----------
