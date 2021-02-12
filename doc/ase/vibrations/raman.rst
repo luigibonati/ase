@@ -69,15 +69,10 @@ We therfore write data including the overlap as
 
 In GPAW this is implemented in ``Overlap``
 (approximated by pseudo-wavefunction overlaps) and can be triggered
-in ``ResonantRamanCalculator`` by::
+in ``ResonantRamanCalculator`` by
 
-  from ase.vibrations.resonant_raman import ResonantRamanCalculator
-  from gpaw.analyse.overlap import Overlap
 
-  rmc = ResonantRamanCalculator(atoms, LrTDDFT,
-                                overlap=lambda x, y: Overlap(x).pseudo(y),
-                                )
-  rmc.run()
+.. literalinclude:: H2_optical_overlap.py
 
 
 2. Analysis of the results
