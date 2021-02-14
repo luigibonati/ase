@@ -256,11 +256,11 @@ class CLI:
 
         proc = Popen(['ase', '-T'] + list(args),
                      stdout=PIPE, stdin=PIPE,
-                     env=environment)
-        stdout, _ = proc.communicate(b'')
+                     env=environment, encoding='utf-8')
+        stdout, _ = proc.communicate()
         status = proc.wait()
         assert (status != 0) == expect_fail
-        return stdout.decode('utf-8')
+        return stdout
 
     def shell(self, command, calculator_name=None):
         # Please avoid using shell comamnds including this method!
