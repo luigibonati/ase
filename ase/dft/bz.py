@@ -1,15 +1,21 @@
 from math import pi, sin, cos
 import numpy as np
 
+from ase.cell import Cell
 
-def bz_vertices(icell, dim=3):
+
+def bz_vertices(icell):
     """See https://xkcd.com/1421 ..."""
     from scipy.spatial import Voronoi
-    icell = icell.copy()
-    if dim < 3:
-        icell[2, 2] = 1e-3
-    if dim < 2:
-        icell[1, 1] = 1e-3
+    icell = Cell.ascell(icell)
+
+
+    # Replace zero cell vectors with "almost zero" vectors:
+    cellmask = icell.any(1)
+    icell = icell.complete()
+    for i in range(3):
+        if not cellmask[i]:
+            icell[i] *= 1e-3
 
     I = (np.indices((3, 3, 3)) - 1).reshape((3, 27))
     G = np.dot(icell.T, I).T
@@ -31,8 +37,12 @@ def bz_plot(cell, vectors=False, paths=None, points=None,
     if ax is None:
         fig = plt.gcf()
 
-    dimensions = cell.any(1).sum()
-    assert dimensions > 0, 'No BZ for 0D!'
+    cell = Cell.new(cell)
+    dimensions = cell.rank
+    if dimensions == 0:
+        raise ValueError('No BZ for 0D cell')
+
+    verysmall = 1e-6
 
     if dimensions == 3:
         from mpl_toolkits.mplot3d import Axes3D
@@ -60,33 +70,32 @@ def bz_plot(cell, vectors=False, paths=None, points=None,
             ax = fig.gca(projection='3d')
     elif dimensions == 2:
         # 2d in xy
-        assert all(abs(cell[2][0:2]) < 1e-6) and all(abs(cell.T[2]
-                                                         [0:2]) < 1e-6)
+        assert (all(abs(cell[2][0:2]) < verysmall) and
+                all(abs(cell.T[2][0:2]) < verysmall))
         ax = plt.gca()
         cell = cell.copy()
     else:
         # 1d in x
-        assert (all(abs(cell[2][0:2]) < 1e-6) and
-                all(abs(cell.T[2][0:2]) < 1e-6) and
-                abs(cell[0][1]) < 1e-6 and abs(cell[1][0]) < 1e-6)
+        assert (all(abs(cell[2][:2]) < verysmall) and
+                all(abs(cell.T[2][:2]) < verysmall) and
+                abs(cell[0][1]) < verysmall and abs(cell[1][0]) < verysmall)
         ax = plt.gca()
         cell = cell.copy()
 
     icell = cell.reciprocal()
     kpoints = points
-    bz1 = bz_vertices(icell, dim=dimensions)
+    vertices = bz_vertices(icell)
 
     maxp = 0.0
     minp = 0.0
     if dimensions == 1:
-        x = np.array([-0.5 * icell[0, 0],
-                      0.5 * icell[0, 0],
-                      -0.5 * icell[0, 0]])
-        y = np.array([0, 0, 0])
+        length = icell[0, 0]
+        x = 0.5 * length * np.array([-1, 1, -1])
+        y = np.zeros(3)
         ax.plot(x, y, c='k', ls='-')
-        maxp = icell[0, 0]
+        maxp = length
     else:
-        for points, normal in bz1:
+        for points, normal in vertices:
             x, y, z = np.concatenate([points, points[:1]]).T
             if dimensions == 3:
                 if np.dot(normal, view) < 0 and not interactive:
@@ -101,31 +110,20 @@ def bz_plot(cell, vectors=False, paths=None, points=None,
 
     if vectors:
         if dimensions == 3:
-            ax.add_artist(Arrow3D([0, icell[0, 0]],
-                                  [0, icell[0, 1]],
-                                  [0, icell[0, 2]],
-                                  mutation_scale=20, lw=1,
-                                  arrowstyle='-|>', color='k'))
-            ax.add_artist(Arrow3D([0, icell[1, 0]],
-                                  [0, icell[1, 1]],
-                                  [0, icell[1, 2]],
-                                  mutation_scale=20, lw=1,
-                                  arrowstyle='-|>', color='k'))
-            ax.add_artist(Arrow3D([0, icell[2, 0]],
-                                  [0, icell[2, 1]],
-                                  [0, icell[2, 2]],
-                                  mutation_scale=20, lw=1,
-                                  arrowstyle='-|>', color='k'))
+            for i in range(3):
+                ax.add_artist(Arrow3D([0, icell[i, 0]],
+                                      [0, icell[i, 1]],
+                                      [0, icell[i, 2]],
+                                      mutation_scale=20, lw=1,
+                                      arrowstyle='-|>', color='k'))
+
             maxp = max(maxp, 0.6 * icell.max())
         elif dimensions == 2:
-            ax.arrow(0, 0, icell[0, 0], icell[0, 1],
-                     lw=1, color='k',
-                     length_includes_head=True,
-                     head_width=0.03, head_length=0.05)
-            ax.arrow(0, 0, icell[1, 0], icell[1, 1],
-                     lw=1, color='k',
-                     length_includes_head=True,
-                     head_width=0.03, head_length=0.05)
+            for i in range(2):
+                ax.arrow(0, 0, icell[i, 0], icell[i, 1],
+                         lw=1, color='k',
+                         length_includes_head=True,
+                         head_width=0.03, head_length=0.05)
             maxp = max(maxp, icell.max())
         else:
             ax.arrow(0, 0, icell[0, 0], 0,
