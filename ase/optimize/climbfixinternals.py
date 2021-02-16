@@ -3,6 +3,7 @@ from numpy.linalg import eigh
 
 from ase.optimize.bfgs import BFGS
 from ase.constraints import FixInternals
+from ase.visualize import view
 
 
 class ClimbFixInternals(BFGS):
@@ -71,61 +72,64 @@ class ClimbFixInternals(BFGS):
 
     def get_constr2climb(self, atoms, climb_coordinate):
         atoms.set_positions(atoms.get_positions())  # initialize FixInternals
-        constr = list(map(type, atoms.constraints))
-        index = constr.index(FixInternals)
+        available_constraint_types = list(map(type, atoms.constraints))
+        index = available_constraint_types.index(FixInternals)
         for subconstr in atoms.constraints[index].constraints:
             if repr(subconstr).startswith(climb_coordinate[0]):
                 if subconstr.indices == climb_coordinate[1]:
                     return subconstr
         raise ValueError('Given `climb_coordinate` not found on Atoms.')
 
-    def get_projected_force(self):
-        f = self.constr2climb.projected_force * self.constr2climb.jacobian
-        f = -1 * f.reshape(self.atoms.get_positions().shape)
-        return f
-
-    def initialize(self):  # called if restart is None
+    def initialize(self):
         BFGS.initialize(self)
-        self.projected_force = None
+        self.projected_forces = None
 
-    def read(self):  # called if restart is not None
+    def read(self):
         (self.H, self.r0, self.f0, self.maxstep,
-         self.projected_force, self.targetvalue) = self.load()
-        self.constr2climb.targetvalue = self.targetvalue
+         self.projected_forces, self.targetvalue) = self.load()
+        self.constr2climb.targetvalue = self.targetvalue  # update constr.
 
     def step(self, f=None):
         atoms = self.atoms
-        #f = self.projected_force
-        f = self.get_projected_force()
+        f = self.get_projected_forces()  # initially computed during self.log()
 
-        if f is not None:
-            BFGS.step(self, f=f)  # dumps incomplete
-            self.dump((self.H, self.r0, self.f0, self.maxstep,
-                       f, self.targetvalue))
+        # similar to BFGS.step()
+        r = atoms.get_positions()
+        f = f.reshape(-1)
+        self.update(r.flat, f, self.r0, self.f0)
+        omega, V = eigh(self.H)
+        dr = np.dot(V, np.dot(f, V) / np.fabs(omega)).reshape((-1, 3))
+        steplengths = (dr**2).sum(1)**0.5
+        dr = self.determine_step(dr, steplengths)
 
-            self.targetvalue += self.constr2climb.sigma  # climb constraint
-            self.constr2climb.targetvalue = self.targetvalue  # update constr.
-            atoms.set_positions(atoms.get_positions())  # adjust positions
+        self.constr2climb.adjust_positions(r, r+dr)  # update constr2climb.sigma
+        self.targetvalue += self.constr2climb.sigma  # climb the constraint
+        self.constr2climb.targetvalue = self.targetvalue  # adjust positions...
+        atoms.set_positions(atoms.get_positions())        # ...to targetvalue
+
+        self.r0 = r.flat.copy()
+        self.f0 = f.copy()
 
         optB = self.optB(atoms, **self.optB_kwargs)  # optimize remaining...
         optB.run(self.optB_fmax)                     # ...degrees of freedom
 
-        assert False
+        self.projected_forces = self.get_projected_forces()
 
-        #self.projected_force = -1 * self.constr2climb.projected_force
-        self.projected_force = self.get_projected_force()
+        self.dump((self.H, self.r0, self.f0, self.maxstep,
+                   self.projected_forces, self.targetvalue))
 
-        self.dump((self.H, self.r0, self.f0, self.maxstep,  # the correct dump
-                   self.projected_force, self.targetvalue))
+    def get_projected_forces(self):
+        f = self.constr2climb.projected_force * self.constr2climb.jacobian
+        f = f.reshape(self.atoms.get_positions().shape)
+        return f
 
-    def converged(self):
-        forces = self.projected_force
+    def converged(self):  # converge projected_forces
+        forces = self.projected_forces
         return BFGS.converged(self, forces=forces)
 
     def log(self):
-        forces = self.projected_force
-        if forces is None:
-            self.atoms.get_forces()
-            #forces = self.constr2climb.projected_force
-            forces = self.get_projected_force()
+        forces = self.projected_forces
+        if forces is None:  # always log fmax(projected_forces)
+            self.atoms.get_forces()  # compute projected_forces
+            forces = self.get_projected_forces()
         BFGS.log(self, forces=forces)

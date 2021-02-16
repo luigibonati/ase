@@ -3,6 +3,7 @@ from ase.constraints import FixInternals
 from ase.calculators.emt import EMT
 from ase.optimize.climbfixinternals import ClimbFixInternals
 from ase.visualize import view
+from ase.io import read
 
 def get_bondcombo(atoms, bondcombo):
     """Returns current value of linear combination of bonds defined via
@@ -35,18 +36,14 @@ def test_climb_fix_internals():
     atoms.get_potential_energy()
 
     # Set the optimizer
-    opt = ClimbFixInternals(atoms,
+    dyn = ClimbFixInternals(atoms,
                             climb_coordinate=['FixBondCombo',
-                                              [[0, 4], [0, 5]]])
+                                              [[0, 4], [0, 5]]],
+                            trajectory='opt.traj')
     
     # Converge to a saddle point
-    opt.run(fmax=0.2)
-    view(atoms)
-    quit()
+    dyn.run(fmax=0.01)
+    #a = read('opt.traj', index=':')
 
     # Test the results
-    #tolerance = 1e-3
-    #assert(d_atoms.get_barrier_energy() - 1.03733136918 < tolerance)
-    #assert(abs(d_atoms.get_curvature() + 0.900467048707) < tolerance)
-    #assert(d_atoms.get_eigenmode()[-1][1] < -0.99)
-    #assert(abs(d_atoms.get_positions()[-1][1]) < tolerance)
+    assert(abs(get_bondcombo(atoms, reaction_coord)) < 0.003)
