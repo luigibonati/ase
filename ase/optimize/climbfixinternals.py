@@ -7,6 +7,16 @@ from ase.visualize import view
 
 
 class ClimbFixInternals(BFGS):
+    """Class for transition state optimization
+
+    Climbs the 1D reaction coordinate defined as constrained internal coordinate
+    via the :class:`~ase.constraints.FixInternals` class while minimizing all
+    remaining degrees of freedom.
+
+    Two optimizers are applied orthogonal to each other.
+    Optimizer 'A' climbs the constrained coordinate while optimizer 'B'
+    optimizes the remaining degrees of freedom after each climbing step.
+    """
     def __init__(self, atoms, restart=None, logfile='-', trajectory=None,
                  maxstep=None, master=None, alpha=None,
                  climb_coordinate=None,
@@ -14,50 +24,44 @@ class ClimbFixInternals(BFGS):
                  #auto_thresh=True, fixed_conv_ratio=0.8, max_interval_steps=3,
                  #interval_step=0.5, adaptive_thresh=0.6, linear_interpol=False,
                  #cubic=None):
-
-        """Class for transition state optimization
-
-        Climbs the 1D reaction coordinate defined as constrained internal
-        coordinate via the :class:`~ase.constraints.FixInternals` class while
-        minimizing all remaining degrees of freedom.
-
-        Two optimizers are applied orthogonal to each other.
-        Optimizer 'A' climbs the constrained coordinate while optimizer 'B'
-        optimizes the remaining degrees of freedom after each climbing step.
-
-        Other constraints are considered.
-
+        """
         Parameters:
         -----------
         atoms: :class:`~ase.Atoms` object
-            The Atoms object to be optimized with a
-            :class:`~ase.constraints.FixInternals` constraint attached.
+            The Atoms object to be optimized. The reaction coordinate to be
+            climbed should be attached as :class:`~ase.constraints.FixInternals`
+            constraint.
 
         climb_coordinate: list
             Specifies which subconstraint of the
             :class:`~ase.constraints.FixInternals` should be climbed.
-            Provide a list with 'constraint name' and corresponding
-            indices (without coefficient in case of combo constraints).
-
+            Provide the 'constraint name' and corresponding indices as list
+            (without coefficient in the case of combo constraints).
+            Examples:
+                * `['FixBondLengthAlt', [[0, 1]]]`
+                * `['FixAngle', [[0, 1, 2]]]`
+                * `['FixDihedral', [[0, 1, 2, 3]]]`
+                * `['FixBondCombo', [[0, 1], [2, 3]]]`
+                * `['FixAngleCombo', [[0, 1, 2], [3, 4, 5]]]`
+                * `['FixDihedralCombo', [[0, 1, 2, 3], [4, 5, 6, 7]]]`
      
         optB: any ASE optimizer
-            Optimizer 'B' used for the optimization of all degrees of
-            freedom but the constrained coordinate to be climbed.
-            Default: :class:`~ase.optimize.BFGS`
+            Optimizer 'B' for optimization of remaining degrees of freedom.
+            Default: :class:`~ase.optimize.bfgs.BFGS`
 
         optB_log:
             Specifies logging of optimizer 'B'.
+            Default: 'optB_{}.log' where {} is the current value of the climbed
+            coordinate
 
         optB_kwargs: dict
             Specifies arguments to be passed to optimizer 'B'.
 
         optB_fmax:
-            Specifies `fmax` of optimizer 'B' during optimization of the
-            remaining degrees of freedom.
-
+            Specifies the convergence criterion `fmax` of optimizer 'B'.
 
         For further parameters see the parent class
-        :class:`~ase.optimize.Optimizer`.
+        :class:`~ase.optimize.bfgs.BFGS`.
         """
         BFGS.__init__(self, atoms, restart, logfile, trajectory,
                       maxstep, master, alpha)
