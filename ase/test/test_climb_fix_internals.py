@@ -51,16 +51,16 @@ def test_climb_fix_internals():
     # Converge to a saddle point
     dyn.run(fmax=0.01)
 
-    # Test the results
+    # Validate transition state by its symmetry
     assert abs(get_combo_value(atoms, reaction_coord)) < 0.003
 
 def test_initialization_with_different_constraints():
-    """Bond length, angle and dihedral coordinates have to be provided as
-    nested lists to the optimizer."""
+    """Remember to provide reaction coordinates as nested lists."""
     atoms = setup_atoms()
     bond = FixInternals(bonds=[[1.2, [0, 1]]])
     angle = FixInternals(angles_deg=[[atoms.get_angle(0, 1, 2), [0, 1, 2]]])
-    dihedral = FixInternals(dihedrals_deg=[[atoms.get_dihedral(0, 1, 2, 3), [0, 1, 2, 3]]])
+    dihedral = FixInternals(dihedrals_deg=[[atoms.get_dihedral(0, 1, 2, 3),
+                                            [0, 1, 2, 3]]])
     names = ['FixBondLengthAlt', 'FixAngle', 'FixDihedral']
     for i, constr in enumerate([bond, angle, dihedral]):
         atoms.set_constraint()
@@ -69,20 +69,18 @@ def test_initialization_with_different_constraints():
                                 climb_coordinate=[names[i],
                                                   [list(range(0, 2+i))]])
     bc = [[0, 4, -1.0], [0, 5, 1.0]]
-    bondcombo = FixInternals(bondcombos=[get_combo_value(atoms, bc), bc])
+    bondcombo = FixInternals(bondcombos=[[get_combo_value(atoms, bc), bc]])
     ac = [[5, 0, 3, -1.0], [5, 0, 2, 1.0]]
-    anglecombo = FixInternals(anglecombos=[get_combo_value(atoms, ac), ac])
+    anglecombo = FixInternals(anglecombos=[[get_combo_value(atoms, ac), ac]])
     dc = [[5, 0, 3, 4, -1.0], [5, 0, 2, 4, 1.0]]
-    dihedralcombo = FixInternals(dihedralcombos=[get_combo_value(atoms, dc), dc])
+    dihedralcombo = FixInternals(dihedralcombos=[[get_combo_value(atoms, dc),
+                                                  dc]])
     names = ['FixBondCombo', 'FixAngleCombo', 'FixDihedralCombo']
     coord = [bc, ac, dc]
     for i, constr in enumerate([bondcombo, anglecombo, dihedralcombo]):
         atoms.set_constraint()
         atoms.set_constraint(constr)
-        print(i)
-        print(names[i])
-        print(coord[i])
-        print([c[:-1] for c in coord[i]])
+        atoms.set_positions(atoms.get_positions())
         dyn = ClimbFixInternals(atoms,
                                 climb_coordinate=[names[i],
-                                                 [c[:-1] for c in coord[i]]])
+                                                  [c[:-1] for c in coord[i]]])
