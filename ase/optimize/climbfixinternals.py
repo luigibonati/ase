@@ -3,7 +3,6 @@ from numpy.linalg import eigh
 
 from ase.optimize.bfgs import BFGS
 from ase.constraints import FixInternals
-from ase.visualize import view
 
 
 class ClimbFixInternals(BFGS):
@@ -21,9 +20,9 @@ class ClimbFixInternals(BFGS):
                  maxstep=None, master=None, alpha=None,
                  climb_coordinate=None,
                  optB=BFGS, optB_kwargs=None, optB_fmax=0.05):
-                 # auto_thresh=True, fixed_conv_ratio=0.8, max_interval_steps=3,
-                 # interval_step=0.5, adaptive_thresh=0.6, linear_interpol=False,
-                 # cubic=None):
+        # auto_thresh=True, fixed_conv_ratio=0.8, max_interval_steps=3,
+        # interval_step=0.5, adaptive_thresh=0.6, linear_interpol=False,
+        # cubic=None):
         """
         Parameters:
         -----------
@@ -44,7 +43,7 @@ class ClimbFixInternals(BFGS):
                 * `['FixBondCombo', [[0, 1], [2, 3]]]`
                 * `['FixAngleCombo', [[0, 1, 2], [3, 4, 5]]]`
                 * `['FixDihedralCombo', [[0, 1, 2, 3], [4, 5, 6, 7]]]`
-     
+
         optB: any ASE optimizer
             Optimizer 'B' for optimization of remaining degrees of freedom.
             Default: :class:`~ase.optimize.bfgs.BFGS`
@@ -106,7 +105,7 @@ class ClimbFixInternals(BFGS):
         steplengths = (dr**2).sum(1)**0.5
         dr = self.determine_step(dr, steplengths)
 
-        self.constr2climb.adjust_positions(r, r+dr)  # update constr2climb.sigma
+        self.constr2climb.adjust_positions(r, r + dr)  # update constr.sigma
         self.targetvalue += self.constr2climb.sigma  # climb the constraint
         self.constr2climb.targetvalue = self.targetvalue  # adjust positions...
         atoms.set_positions(atoms.get_positions())        # ...to targetvalue
@@ -115,7 +114,8 @@ class ClimbFixInternals(BFGS):
         self.f0 = f.copy()
 
         if self.optB_autolog:
-            self.optB_kwargs['logfile'] = '/optB_{}.log'.format(self.targetvalue)
+            logfilename = '/optB_{}.log'.format(self.targetvalue)
+            self.optB_kwargs['logfile'] = logfilename
         optB = self.optB(atoms, **self.optB_kwargs)  # optimize remaining...
         optB.run(self.optB_fmax)                     # ...degrees of freedom
 

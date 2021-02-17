@@ -3,6 +3,7 @@ from ase.constraints import FixInternals
 from ase.calculators.emt import EMT
 from ase.optimize.climbfixinternals import ClimbFixInternals
 
+
 def setup_atoms():
     """Setup transition state search for an SN2 reaction:
     The substitution of MeCl by Cl (in this demonstration Cu is used instead of
@@ -15,6 +16,7 @@ def setup_atoms():
                  [7.36058358, 5.14853782, 9.81663707]]
     atoms = Atoms(symbols='CH3Cu2', positions=positions)
     return atoms
+
 
 def get_combo_value(atoms, combo):
     """Return current value of linear combination of bonds lengths, angles or
@@ -29,6 +31,7 @@ def get_combo_value(atoms, combo):
         get_value = atoms.get_dihedral
     return sum([defin[coord_type] * get_value(*defin[:coord_type]) for
                 defin in combo])
+
 
 def test_climb_fix_internals():
     """Climb along the constrained bondcombo coordinate while optimizing the
@@ -47,12 +50,13 @@ def test_climb_fix_internals():
     dyn = ClimbFixInternals(atoms,
                             climb_coordinate=['FixBondCombo',
                                               [[0, 4], [0, 5]]])
-    
+
     # Converge to a saddle point
     dyn.run(fmax=0.001)
 
     # Validate transition state by its symmetry
     assert abs(get_combo_value(atoms, reaction_coord)) < 0.003
+
 
 def test_initialization_with_different_constraints():
     """Remember to provide reaction coordinates as nested lists."""
@@ -65,9 +69,9 @@ def test_initialization_with_different_constraints():
     for i, constr in enumerate([bond, angle, dihedral]):
         atoms.set_constraint()
         atoms.set_constraint(constr)
-        dyn = ClimbFixInternals(atoms,
-                                climb_coordinate=[names[i],
-                                                  [list(range(0, 2+i))]])
+        ClimbFixInternals(atoms,
+                          climb_coordinate=[names[i],
+                                            [list(range(0, 2 + i))]])
     bc = [[0, 4, -1.0], [0, 5, 1.0]]
     bondcombo = FixInternals(bondcombos=[[get_combo_value(atoms, bc), bc]])
     ac = [[5, 0, 3, -1.0], [5, 0, 2, 1.0]]
@@ -81,6 +85,6 @@ def test_initialization_with_different_constraints():
         atoms.set_constraint()
         atoms.set_constraint(constr)
         atoms.set_positions(atoms.get_positions())
-        dyn = ClimbFixInternals(atoms,
-                                climb_coordinate=[names[i],
-                                                  [c[:-1] for c in coord[i]]])
+        ClimbFixInternals(atoms,
+                          climb_coordinate=[names[i],
+                                            [c[:-1] for c in coord[i]]])
