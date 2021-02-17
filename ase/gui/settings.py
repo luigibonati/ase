@@ -10,11 +10,11 @@ class Settings:
 
         # Constraints
         win.add(_('Constraints:'))
-        win.add([ui.Button(_('Constrain'), self.constrain_selected),
+        win.add([ui.Button(_('Fix'), self.constrain_selected),
                  '/',
                  ui.Button(_('release'), self.release_selected),
                  _(' selected atoms')])
-        win.add(ui.Button(_('Constrain immobile atoms'), self.immobile))
+        win.add(ui.Button(_('Fix immobile atoms'), self.immobile))
         win.add(ui.Button(_('Clear all constraints'), self.clear_constraints))
 
         # Visibility
