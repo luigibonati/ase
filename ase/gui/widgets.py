@@ -35,8 +35,8 @@ class Element(list):
         # This infobox is indescribably ugly because of the
         # ridiculously large font size used by Tkinter.  Ouch!
         msg = _('Enter a chemical symbol or the name of a molecule '
-                'from the G2 testset:\n'
-                '{}'.format(', '.join(names)))
+                'from the G2 testset:')
+        msg += '\n{}'.format(', '.join(names))
         ui.showinfo('Info', msg)
 
     @property
