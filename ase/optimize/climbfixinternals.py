@@ -39,12 +39,12 @@ class ClimbFixInternals(BFGS):
             Provide the 'constraint name' and corresponding indices as a list
             (without coefficients in the case of combo constraints).
             Examples:
-                * `['FixBondLengthAlt', [[0, 1]]]`
-                * `['FixAngle', [[0, 1, 2]]]`
-                * `['FixDihedral', [[0, 1, 2, 3]]]`
-                * `['FixBondCombo', [[0, 1], [2, 3]]]`
-                * `['FixAngleCombo', [[0, 1, 2], [3, 4, 5]]]`
-                * `['FixDihedralCombo', [[0, 1, 2, 3], [4, 5, 6, 7]]]`
+            * `['FixBondLengthAlt', [[0, 1]]]`
+            * `['FixAngle', [[0, 1, 2]]]`
+            * `['FixDihedral', [[0, 1, 2, 3]]]`
+            * `['FixBondCombo', [[0, 1], [2, 3]]]`
+            * `['FixAngleCombo', [[0, 1, 2], [3, 4, 5]]]`
+            * `['FixDihedralCombo', [[0, 1, 2, 3], [4, 5, 6, 7]]]`
     
         optB: any ASE optimizer, optional
             Optimizer 'B' for optimization of remaining degrees of freedom.
