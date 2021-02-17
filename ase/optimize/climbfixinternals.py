@@ -20,10 +20,10 @@ class ClimbFixInternals(BFGS):
     def __init__(self, atoms, restart=None, logfile='-', trajectory=None,
                  maxstep=None, master=None, alpha=None,
                  climb_coordinate=None,
-                 optB=BFGS, optB_log=None, optB_kwargs=None, optB_fmax=0.05):
-                 #auto_thresh=True, fixed_conv_ratio=0.8, max_interval_steps=3,
-                 #interval_step=0.5, adaptive_thresh=0.6, linear_interpol=False,
-                 #cubic=None):
+                 optB=BFGS, optB_kwargs=None, optB_fmax=0.05):
+                 # auto_thresh=True, fixed_conv_ratio=0.8, max_interval_steps=3,
+                 # interval_step=0.5, adaptive_thresh=0.6, linear_interpol=False,
+                 # cubic=None):
         """
         Parameters:
         -----------
@@ -70,9 +70,9 @@ class ClimbFixInternals(BFGS):
         self.targetvalue = self.constr2climb.targetvalue
 
         self.optB = optB
-        self.optB_log = optB_log or '/optB_{}.log'.format(self.targetvalue)
         self.optB_kwargs = optB_kwargs or {}
         self.optB_fmax = optB_fmax
+        self.optB_autolog = False if 'logfile' in self.optB_kwargs else True
 
     def get_constr2climb(self, atoms, climb_coordinate):
         atoms.set_positions(atoms.get_positions())  # initialize FixInternals
@@ -114,6 +114,8 @@ class ClimbFixInternals(BFGS):
         self.r0 = r.flat.copy()
         self.f0 = f.copy()
 
+        if self.optB_autolog:
+            self.optB_kwargs['logfile'] = '/optB_{}.log'.format(self.targetvalue)
         optB = self.optB(atoms, **self.optB_kwargs)  # optimize remaining...
         optB.run(self.optB_fmax)                     # ...degrees of freedom
 

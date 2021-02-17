@@ -49,7 +49,7 @@ def test_climb_fix_internals():
                                               [[0, 4], [0, 5]]])
     
     # Converge to a saddle point
-    dyn.run(fmax=0.01)
+    dyn.run(fmax=0.001)
 
     # Validate transition state by its symmetry
     assert abs(get_combo_value(atoms, reaction_coord)) < 0.003
