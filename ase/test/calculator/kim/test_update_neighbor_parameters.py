@@ -7,58 +7,63 @@ from ase import Atoms
 @mark.calculator_lite
 def test_update_neighbor_parameters(KIM):
     """
-    Check that the neighbor parameters are updated properly when model parameter
-    is updated. This is done by instantiating the calculator for a specific
+    Check that the neighbor lists are updated properly when model parameters
+    are updated. This is done by instantiating the calculator for a specific
     Lennard-Jones (LJ) potential, included with the KIM API, for Mo-Mo
-    interactions. An Mo dimer is constructed with a random, but small,
-    separation. The energy is then computed as a reference. Then an Mo trimer is
-    constructed, by adding an atom near, but still within, the cutoff. The
-    energy of the trimer is computed and asserted to be different than the
-    energy of the dimer. Then, the cutoff parameter is modified to exclude the
-    atom on the far side and the energy of the trimer is computed again. The
-    final energy is asserted to be approximately equal to the energy of the
-    dimer.
+    interactions.  First, an equally spaced collinear trimer is constructed
+    whose separation distances are just over half the cutoff distance
+    associated with Mo so that only nearest-neighbor interactions occur (the
+    end atoms do not interact with one another) and the energy is computed.
+    Next, the model's cutoff parameter associated with Mo is increased to a
+    distance greater than the distance between the end atoms, so that their
+    interaction will produce a (fairly small) non-zero value.  The energy is
+    computed once again and it is verified that this energy differs
+    significantly from the initial energy computed, thus implying that the
+    neighbor lists of the end atoms must have been updated so as to contain one
+    another.
     """
 
-    # Create KIM calculator
-    calc = KIM("LennardJones612_UniversalShifted__MO_959249795837_003")
-    index = 4879  # Index for Mo-Mo interaction
-    cutoff = calc.get_parameters(cutoffs=index)["cutoffs"][1]
-    calc.set_parameters(shift=[0, 0])  # Disable energy shifting
+    # Create LJ calculator and disable energy shifting.  Otherwise, the energy
+    # would always change when the cutoff changes, even if the neighbor lists
+    # remained the same.
+    calc = KIM(
+        "LennardJones612_UniversalShifted__MO_959249795837_003",
+        options={"neigh_skin_ratio": 0.0},
+    )
+    calc.set_parameters(shift=[0, 0])
 
-    # Define separation distance
-    closer_separation = np.random.RandomState(11).uniform(0.25 * cutoff, 0.35 * cutoff)
-    farther_separation = np.random.RandomState(11).uniform(0.8 * cutoff, 0.9 * cutoff)
-    separations = [closer_separation, farther_separation]
-    positions_trimer = [
+    # Set all "cutoffs" parameters in the calculator to zero, except for the
+    # one used for Mo.  This is necessary because we want to control the
+    # influence distance, which is the maximum of all of the cutoffs.
+    Mo_cutoff_index = 4879
+    Mo_cutoff = calc.get_parameters(cutoffs=Mo_cutoff_index)["cutoffs"][1]
+    cutoffs_extent = calc.parameters_metadata()["cutoffs"]["extent"]
+    calc.set_parameters(cutoffs=[list(range(cutoffs_extent)), [0.0] * cutoffs_extent])
+    calc.set_parameters(cutoffs=[Mo_cutoff_index, Mo_cutoff])
+
+    # Create trimer such that nearest neighbor interactions occur:  each of the
+    # end atoms see the middle atom, and the middle atom sees both end atoms,
+    # but the end atoms do not interact with one another
+    nearest_neighbor_separation = np.random.RandomState(11).uniform(
+        0.6 * Mo_cutoff, 0.65 * Mo_cutoff
+    )
+    pos = [
         [0, 0, 0],
-        [0, 0, separations[0]],
-        [0, 0, separations[1]],
+        [0, 0, nearest_neighbor_separation],
+        [0, 0, 2 * nearest_neighbor_separation],
     ]
-
-    # Create a dimer
-    dimer = Atoms("Mo" * 2, positions=positions_trimer[:2])
-    dimer.calc = calc
-
-    # Create a trimer
-    trimer = Atoms("Mo" * 3, positions=positions_trimer)
+    trimer = Atoms("Mo" * 3, positions=pos)
     trimer.calc = calc
 
-    # Energy of the dimer
-    eng_dimer = dimer.get_potential_energy()
+    eng_orig = trimer.get_potential_energy()
 
-    # Original energy of the trimer
-    eng_trimer_orig = trimer.get_potential_energy()
-
-    # Update the cutoff parameter
-    scaling_factor = 0.4
-    calc.set_parameters(cutoffs=[index, cutoff * scaling_factor])
+    # Update the cutoff parameter so that the end atoms will interact with one
+    # another
+    long_cutoff = 1.1 * np.linalg.norm(np.array(pos[2][:]) - np.array(pos[0][:]))
+    calc.set_parameters(cutoffs=[Mo_cutoff_index, long_cutoff])
 
     # Energy of the trimer after modifying cutoff
-    eng_trimer_modified = trimer.get_potential_energy()
+    eng_modified = trimer.get_potential_energy()
 
-    # Check if the far atom is included when the original cutoff is used
-    assert eng_trimer_orig != pytest.approx(eng_dimer, rel=1e-4)
-
-    # Check if the far atom is excluded when the modified cutoff is used
-    assert eng_trimer_modified == pytest.approx(eng_dimer, rel=1e-4)
+    # Check if the far atom is excluded when the original cutoff is used
+    assert eng_modified != pytest.approx(eng_orig, rel=1e-4)
