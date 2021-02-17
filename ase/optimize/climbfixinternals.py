@@ -114,7 +114,7 @@ class ClimbFixInternals(BFGS):
         self.f0 = f.copy()
 
         if self.optB_autolog:
-            logfilename = '/optB_{}.log'.format(self.targetvalue)
+            logfilename = 'optB_{}.log'.format(self.targetvalue)
             self.optB_kwargs['logfile'] = logfilename
         optB = self.optB(atoms, **self.optB_kwargs)  # optimize remaining...
         optB.run(self.optB_fmax)                     # ...degrees of freedom
