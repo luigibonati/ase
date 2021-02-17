@@ -27,7 +27,7 @@ class ClimbFixInternals(BFGS):
         # interval_step=0.5, adaptive_thresh=0.6, linear_interpol=False,
         # cubic=None):
         """Initialize like the parent class :class:`~ase.optimize.bfgs.BFGS`
-        with the following additional parameters:
+        with the following additional parameters.
 
         Parameters:
         ===========
