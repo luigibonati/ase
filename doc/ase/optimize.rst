@@ -525,6 +525,6 @@ Transition state search
 There are several strategies and tools for the search and optimization of
 transition states available in ASE.
 The transition state search and optimization algorithms available in ASE are:
-:class:`ClimbFixInternals`, :module:`~ase.neb` and :module:`~ase.dimer`.
+:class:`ClimbFixInternals`, :mod:`~ase.neb` and :mod:`~ase.dimer`.
 
 .. autoclass:: ClimbFixInternals
