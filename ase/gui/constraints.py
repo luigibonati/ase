@@ -7,8 +7,6 @@ class Constraints:
         win = ui.Window(_('Constraints'))
         win.add([ui.Button(_('Fix'), self.selected),
                  _('selected atoms')])
-        win.add([ui.Button(_('Fix'), self.immobile),
-                 _('immobile atoms')])
         win.add([ui.Button(_('Release'), self.unconstrain),
                  _('selected atoms')])
         win.add(ui.Button(_('Clear all constraints'), self.clear))
@@ -20,11 +18,6 @@ class Constraints:
 
     def unconstrain(self):
         self.gui.images.set_dynamic(self.gui.images.selected, True)
-        self.gui.draw()
-
-    def immobile(self):
-        # XXX not working.
-        # Should constrain atoms that are not moving
         self.gui.draw()
 
     def clear(self):
