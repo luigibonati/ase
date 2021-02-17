@@ -26,17 +26,20 @@ class Element(list):
         self.z_entry.entry.focus_set()
 
     def show_help(self):
-        names = []
-        import re
-        for name in g2.names:
-            if not re.match('^[A-Z][a-z]?$', name):  # Not single atoms
-                names.append(name)
+        msg = _('Enter a chemical symbol or the atomic number')
+        if self.allow_molecule:
+            names = []
+            import re
+            for name in g2.names:
+                if not re.match('^[A-Z][a-z]?$', name):  # Not single atoms
+                    names.append(name)
 
-        # This infobox is indescribably ugly because of the
-        # ridiculously large font size used by Tkinter.  Ouch!
-        msg = _('Enter a chemical symbol or the name of a molecule '
-                'from the G2 testset:')
-        msg += '\n{}'.format(', '.join(names))
+            # This infobox is indescribably ugly because of the
+            # ridiculously large font size used by Tkinter.  Ouch!
+            msg += _(' or the name of a molecule from the G2 testset:')
+            msg += '\n{}'.format(', '.join(names))
+        else:
+            msg += '.'
         ui.showinfo('Info', msg)
 
     @property
