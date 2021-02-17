@@ -33,33 +33,33 @@ class ClimbFixInternals(BFGS):
 
         Parameters
         ----------
-            climb_coordinate: list
-                Specifies which subconstraint of the
-                :class:`~ase.constraints.FixInternals` constraint is to be climbed.
-                Provide the 'constraint name' and corresponding indices as a list
-                (without coefficients in the case of combo constraints).
-                Examples:
-                    * `['FixBondLengthAlt', [[0, 1]]]`
-                    * `['FixAngle', [[0, 1, 2]]]`
-                    * `['FixDihedral', [[0, 1, 2, 3]]]`
-                    * `['FixBondCombo', [[0, 1], [2, 3]]]`
-                    * `['FixAngleCombo', [[0, 1, 2], [3, 4, 5]]]`
-                    * `['FixDihedralCombo', [[0, 1, 2, 3], [4, 5, 6, 7]]]`
+        climb_coordinate: list
+            Specifies which subconstraint of the
+            :class:`~ase.constraints.FixInternals` constraint is to be climbed.
+            Provide the 'constraint name' and corresponding indices as a list
+            (without coefficients in the case of combo constraints).
+            Examples:
+                * `['FixBondLengthAlt', [[0, 1]]]`
+                * `['FixAngle', [[0, 1, 2]]]`
+                * `['FixDihedral', [[0, 1, 2, 3]]]`
+                * `['FixBondCombo', [[0, 1], [2, 3]]]`
+                * `['FixAngleCombo', [[0, 1, 2], [3, 4, 5]]]`
+                * `['FixDihedralCombo', [[0, 1, 2, 3], [4, 5, 6, 7]]]`
     
-            optB: any ASE optimizer, optional
-                Optimizer 'B' for optimization of remaining degrees of freedom.
-                Default: :class:`~ase.optimize.bfgs.BFGS`
+        optB: any ASE optimizer, optional
+            Optimizer 'B' for optimization of remaining degrees of freedom.
+            Default: :class:`~ase.optimize.bfgs.BFGS`
     
-            optB_log: str, optional
-                Specifies the filename for logging of optimizer 'B'.
-                Default: 'optB_{}.log' where {} is the current value of the
-                coordinate to be climbed
+        optB_log: str, optional
+            Specifies the filename for logging of optimizer 'B'.
+            Default: 'optB_{}.log' where {} is the current value of the
+            coordinate to be climbed
     
-            optB_kwargs: dict, optional
-                Specifies keyword arguments to be passed to optimizer 'B'.
+        optB_kwargs: dict, optional
+            Specifies keyword arguments to be passed to optimizer 'B'.
     
-            optB_fmax: float, optional
-                Specifies the convergence criterion `fmax` of optimizer 'B'.
+        optB_fmax: float, optional
+            Specifies the convergence criterion `fmax` of optimizer 'B'.
         """
         BFGS.__init__(self, atoms, restart, logfile, trajectory,
                       maxstep, master, alpha)
