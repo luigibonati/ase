@@ -30,7 +30,7 @@ class ClimbFixInternals(BFGS):
         with the following additional parameters:
 
         Parameters:
-        -----------
+        ===========
         climb_coordinate: list
             Specifies which subconstraint of the
             :class:`~ase.constraints.FixInternals` constraint is to be climbed.
