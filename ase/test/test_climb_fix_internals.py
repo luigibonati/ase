@@ -44,7 +44,7 @@ def test_climb_fix_internals():
     # Define reaction coordinate via linear combination of bond lengths
     reaction_coord = [[0, 4, 1.0], [1, 4, 1.0]]  # 1 * bond_1 + 1 * bond_2
     bondcombo = [get_combo_value(atoms, reaction_coord), reaction_coord]
-    atoms.set_constraint(atoms.constraints + [FixInternals(bondcombos=[bondcombo])])
+    atoms.set_constraint([FixInternals(bondcombos=[bondcombo])] + atoms.constraints)
 
     # Optimizer for transition state search along reaction coordinate
     dyn = ClimbFixInternals(atoms,
