@@ -7,9 +7,7 @@ from ase.constraints import FixInternals
 
 class ClimbFixInternals(BFGS):
     """
-
     Class for transition state search and optimization
-    --------------------------------------------------
 
     Climbs the 1D reaction coordinate defined as constrained internal coordinate
     via the :class:`~ase.constraints.FixInternals` class while minimizing all
@@ -150,18 +148,18 @@ class ClimbFixInternals(BFGS):
         self.dump((self.H, self.r0, self.f0, self.maxstep,
                    self.projected_forces, self.targetvalue))
 
-    def get_projected_forces(self):
+    def get_projected_forces(self):  # get projected forces in uphill direction
         f = self.constr2climb.projected_force * self.constr2climb.jacobian
         f = -1 * f.reshape(self.atoms.get_positions().shape)
         return f
 
-    def converged(self):  # converge projected_forces
+    def converged(self):  # converge check with projected_forces
         forces = self.projected_forces
         return BFGS.converged(self, forces=forces)
 
-    def log(self):
+    def log(self):  # always log fmax(projected_forces)
         forces = self.projected_forces
-        if forces is None:  # always log fmax(projected_forces)
-            self.atoms.get_forces()  # compute projected_forces
+        if forces is None:  # compute projected_forces
+            self.atoms.get_forces()
             forces = self.get_projected_forces()
         BFGS.log(self, forces=forces)
