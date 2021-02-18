@@ -5,7 +5,7 @@ from ase.optimize.fire import FIRE as QuasiNewton
 
 # Optimise molecule.
 initial = molecule('C2H6')
-initial.set_calculator(EMT())
+initial.calc = EMT()
 relax = QuasiNewton(initial)
 relax.run(fmax=0.05)
 
@@ -20,8 +20,8 @@ for i in range(9):
     images.append(initial.copy())
 
 for image in images:
-    image.set_calculator(EMT())
-   
+    image.calc = EMT()
+
 images.append(final)
 
 # Run linear interpolation.

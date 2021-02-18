@@ -19,17 +19,20 @@ from ase.units import kcal, mol, Debye
 class MOPAC(FileIOCalculator):
     implemented_properties = ['energy', 'forces', 'dipole', 'magmom']
     command = 'mopac PREFIX.mop 2> /dev/null'
+    discard_results_on_any_change = True
 
     default_parameters = dict(
         method='PM7',
         task='1SCF GRADIENTS',
+        charge=0,
         relscf=0.0001)
 
     methods = ['AM1', 'MNDO', 'MNDOD', 'PM3', 'PM6', 'PM6-D3', 'PM6-DH+',
                'PM6-DH2', 'PM6-DH2X', 'PM6-D3H4', 'PM6-D3H4X', 'PMEP', 'PM7',
                'PM7-TS', 'RM1']
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=FileIOCalculator._deprecated,
                  label='mopac', atoms=None, **kwargs):
         """Construct MOPAC-calculator object.
 
@@ -67,11 +70,6 @@ class MOPAC(FileIOCalculator):
         FileIOCalculator.__init__(self, restart, ignore_bad_restart_file,
                                   label, atoms, **kwargs)
 
-    def set(self, **kwargs):
-        changed_parameters = FileIOCalculator.set(self, **kwargs)
-        if changed_parameters:
-            self.reset()
-
     def write_input(self, atoms, properties=None, system_changes=None):
         FileIOCalculator.write_input(self, atoms, properties, system_changes)
         p = self.parameters
@@ -83,7 +81,11 @@ class MOPAC(FileIOCalculator):
             s += 'RELSCF={0} '.format(p.relscf)
 
         # Write charge:
-        charge = atoms.get_initial_charges().sum()
+        if p.charge:
+            charge = p.charge
+        else:
+            charge = atoms.get_initial_charges().sum()
+            
         if charge != 0:
             s += 'CHARGE={0} '.format(int(round(charge)))
 

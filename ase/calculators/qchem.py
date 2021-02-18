@@ -20,16 +20,16 @@ class QChem(FileIOCalculator):
                           'jobtype': None,
                           'charge': 0}
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=FileIOCalculator._deprecated,
                  label='qchem', scratch=None, np=1, nt=1, pbs=False,
                  basisfile=None, ecpfile=None, atoms=None, **kwargs):
         """
         The scratch directory, number of processor and threads as well as a few
         other command line options can be set using the arguments explained
         below. The remaining kwargs are copied as options to the input file.
-        The calculator will convert these options to lower case for storage
-        and convert back to upper case (Q-Chem standard) when writing the
-        input file.
+        The calculator will convert these options to upper case
+        (Q-Chem standard) when writing the input file.
 
         scratch: str
             path of the scratch directory

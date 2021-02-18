@@ -160,6 +160,8 @@ def parameters_to_keywords(label=None, atoms=None, parameters=None,
 
     # keywords['scf_stress_tensor'] = 'stress' in properties
     # This is not working due to the UnitCellFilter method.
+    if 'energies' in properties:
+        keywords['energy_decomposition'] = True
     if 'stress' in properties:
         keywords['scf_stress_tensor'] = True
 
@@ -357,9 +359,25 @@ def get_atoms_speciesandcoordinates(atoms, parameters):
     for i, element in enumerate(elements):
         atoms_speciesandcoordinates.append([str(i + 1), element])
     # Appending positions
-    positions = atoms.get_positions()
+    unit = parameters.get('atoms_speciesandcoordinates_unit', 'ang').lower()
+    if unit == 'ang':
+        positions = atoms.get_positions()
+    elif unit == 'frac':
+        positions = atoms.get_scaled_positions(wrap=False)
+    elif unit == 'au':
+        positions = atoms.get_positions() / Bohr
     for i, position in enumerate(positions):
         atoms_speciesandcoordinates[i].extend(position)
+
+    # Even if 'atoms_speciesandcoordinates_unit' exists, `positions` goes first
+    if parameters.get('atoms_speciesandcoordinates') is not None:
+        atoms_spncrd = parameters['atoms_speciesandcoordinates'].copy()
+        for i in range(len(atoms)):
+            atoms_spncrd[i][2] = atoms_speciesandcoordinates[i][2]
+            atoms_spncrd[i][3] = atoms_speciesandcoordinates[i][3]
+            atoms_spncrd[i][4] = atoms_speciesandcoordinates[i][4]
+        return atoms_spncrd
+
     # Appending magnetic moment
     magmoms = atoms.get_initial_magnetic_moments()
     for i, magmom in enumerate(magmoms):
@@ -449,7 +467,11 @@ def get_atoms_unitvectors(atoms, parameters):
     if np.all(atoms.get_cell() == zero_vec) is True:
         default_cell = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
         return parameters.get('atoms_unitvectors', default_cell)
-    atoms_unitvectors = atoms.get_cell()
+    unit = parameters.get('atoms_unitvectors_unit', 'ang').lower()
+    if unit == 'ang':
+        atoms_unitvectors = atoms.get_cell()
+    elif unit == 'au':
+        atoms_unitvectors = atoms.get_cell() / Bohr
     return atoms_unitvectors
 
 
@@ -486,7 +508,7 @@ def get_band_kpath(atoms, parameters):
 
 
 def get_mo_kpoint(atoms, parameters):
-    return parameters.get('get_mo_kpoint', [])
+    return parameters.get('mo_kpoint', [])
 
 
 def get_wannier_initial_projectors(atoms, parameters):
@@ -510,72 +532,72 @@ def get_wannier_initial_projectors(atoms, parameters):
 
 
 def get_kpath(self, kpts=None, symbols=None, band_kpath=None, eps=1e-5):
-        """
-        Convert band_kpath <-> kpts. Symbols will be guess automatically
-        by using dft space group method
-        For example,
-        kpts  = [(0, 0, 0), (0.125, 0, 0) ... (0.875, 0, 0),
-                 (1, 0, 0), (1, 0.0625, 0) .. (1, 0.4375,0),
-                 (1, 0.5,0),(0.9375, 0.5,0).. (    ...    ),
-                 (0.5, 0.5, 0.5) ...               ...     ,
-                    ...          ...               ...     ,
-                    ...        (0.875, 0, 0),(1.0, 0.0, 0.0)]
-        band_kpath =
-        [['15','0.0','0.0','0.0','1.0','0.0','0.0','g','X'],
-         ['15','1.0','0.0','0.0','1.0','0.5','0.0','X','W'],
-         ['15','1.0','0.5','0.0','0.5','0.5','0.5','W','L'],
-         ['15','0.5','0.5','0.5','0.0','0.0','0.0','L','g'],
-         ['15','0.0','0.0','0.0','1.0','0.0','0.0','g','X']]
-        where, it will be written as
-         <Band.kpath
-          15  0.0 0.0 0.0   1.0 0.0 0.0   g X
-          15  1.0 0.0 0.0   1.0 0.5 0.0   X W
-          15  1.0 0.5 0.0   0.5 0.5 0.5   W L
-          15  0.5 0.5 0.5   0.0 0.0 0.0   L g
-          15  0.0 0.0 0.0   1.0 0.0 0.0   g X
-         Band.kpath>
-        """
-        if kpts is None:
-            kx_linspace = np.linspace(band_kpath[0]['start_point'][0],
-                                      band_kpath[0]['end_point'][0],
-                                      band_kpath[0][0])
-            ky_linspace = np.linspace(band_kpath[0]['start_point'][1],
-                                      band_kpath[0]['end_point'][1],
-                                      band_kpath[0]['kpts'])
-            kz_linspace = np.linspace(band_kpath[0]['start_point'][2],
-                                      band_kpath[0]['end_point'][2],
-                                      band_kpath[0]['kpts'])
-            kpts = np.array([kx_linspace, ky_linspace, kz_linspace]).T
-            for path in band_kpath[1:]:
-                kx_linspace = np.linspace(path['start_point'][0],
-                                          path['end_point'][0],
-                                          path['kpts'])
-                ky_linspace = np.linspace(path['start_point'][1],
-                                          path['end_point'][1],
-                                          path['kpts'])
-                kz_linspace = np.linspace(path['start_point'][2],
-                                          path['end_point'][2],
-                                          path['kpts'])
-                k_lin = np.array([kx_linspace, ky_linspace, kz_linspace]).T
-                kpts = np.append(kpts, k_lin, axis=0)
-            return kpts
-        elif band_kpath is None:
-            band_kpath = []
-            points = np.asarray(kpts)
-            diffs = points[1:] - points[:-1]
-            kinks = abs(diffs[1:] - diffs[:-1]).sum(1) > eps
-            N = len(points)
-            indices = [0]
-            indices.extend(np.arange(1, N - 1)[kinks])
-            indices.append(N - 1)
-            for start, end, s_sym, e_sym in zip(indices[1:], indices[:-1],
-                                                symbols[1:], symbols[:-1]):
-                band_kpath.append({'start_point': start, 'end_point': end,
-                                   'kpts': 20,
-                                   'path_symbols': (s_sym, e_sym)})
-        else:
-            raise KeyError('You should specify band_kpath or kpts')
-            return band_kpath
+    """
+    Convert band_kpath <-> kpts. Symbols will be guess automatically
+    by using dft space group method
+    For example,
+    kpts  = [(0, 0, 0), (0.125, 0, 0) ... (0.875, 0, 0),
+             (1, 0, 0), (1, 0.0625, 0) .. (1, 0.4375,0),
+             (1, 0.5,0),(0.9375, 0.5,0).. (    ...    ),
+             (0.5, 0.5, 0.5) ...               ...     ,
+                ...          ...               ...     ,
+                ...        (0.875, 0, 0),(1.0, 0.0, 0.0)]
+    band_kpath =
+    [['15','0.0','0.0','0.0','1.0','0.0','0.0','g','X'],
+     ['15','1.0','0.0','0.0','1.0','0.5','0.0','X','W'],
+     ['15','1.0','0.5','0.0','0.5','0.5','0.5','W','L'],
+     ['15','0.5','0.5','0.5','0.0','0.0','0.0','L','g'],
+     ['15','0.0','0.0','0.0','1.0','0.0','0.0','g','X']]
+    where, it will be written as
+     <Band.kpath
+      15  0.0 0.0 0.0   1.0 0.0 0.0   g X
+      15  1.0 0.0 0.0   1.0 0.5 0.0   X W
+      15  1.0 0.5 0.0   0.5 0.5 0.5   W L
+      15  0.5 0.5 0.5   0.0 0.0 0.0   L g
+      15  0.0 0.0 0.0   1.0 0.0 0.0   g X
+     Band.kpath>
+    """
+    if kpts is None:
+        kx_linspace = np.linspace(band_kpath[0]['start_point'][0],
+                                  band_kpath[0]['end_point'][0],
+                                  band_kpath[0][0])
+        ky_linspace = np.linspace(band_kpath[0]['start_point'][1],
+                                  band_kpath[0]['end_point'][1],
+                                  band_kpath[0]['kpts'])
+        kz_linspace = np.linspace(band_kpath[0]['start_point'][2],
+                                  band_kpath[0]['end_point'][2],
+                                  band_kpath[0]['kpts'])
+        kpts = np.array([kx_linspace, ky_linspace, kz_linspace]).T
+        for path in band_kpath[1:]:
+            kx_linspace = np.linspace(path['start_point'][0],
+                                      path['end_point'][0],
+                                      path['kpts'])
+            ky_linspace = np.linspace(path['start_point'][1],
+                                      path['end_point'][1],
+                                      path['kpts'])
+            kz_linspace = np.linspace(path['start_point'][2],
+                                      path['end_point'][2],
+                                      path['kpts'])
+            k_lin = np.array([kx_linspace, ky_linspace, kz_linspace]).T
+            kpts = np.append(kpts, k_lin, axis=0)
+        return kpts
+    elif band_kpath is None:
+        band_kpath = []
+        points = np.asarray(kpts)
+        diffs = points[1:] - points[:-1]
+        kinks = abs(diffs[1:] - diffs[:-1]).sum(1) > eps
+        N = len(points)
+        indices = [0]
+        indices.extend(np.arange(1, N - 1)[kinks])
+        indices.append(N - 1)
+        for start, end, s_sym, e_sym in zip(indices[1:], indices[:-1],
+                                            symbols[1:], symbols[:-1]):
+            band_kpath.append({'start_point': start, 'end_point': end,
+                               'kpts': 20,
+                               'path_symbols': (s_sym, e_sym)})
+    else:
+        raise KeyError('You should specify band_kpath or kpts')
+        return band_kpath
 
 
 def write_string(f, key, value):
@@ -616,23 +638,23 @@ def write_bool(f, key, value):
 
 
 def write_list_int(f, key, value):
-    f.write("".join(key) + "     ".join(map(str, value)))
+    f.write("".join(key) + ' ' + "     ".join(map(str, value)))
 
 
 def write_list_bool(f, key, value):
     omx_bl = {True: 'On', False: 'Off'}
-    f.write("".join(key) + "     ".join([omx_bl[bl] for bl in value]))
+    f.write("".join(key) + ' ' + "     ".join([omx_bl[bl] for bl in value]))
 
 
 def write_list_float(f, key, value):
-    f.write("".join(key) + "     ".join(map(str, value)))
+    f.write("".join(key) + ' ' + "     ".join(map(str, value)))
 
 
 def write_matrix(f, key, value):
     f.write('<' + key)
     f.write("\n")
     for line in value:
-        f.write("    "+"  ".join(map(str, line)))
+        f.write("    " + "  ".join(map(str, line)))
         f.write("\n")
     f.write(key + '>')
     f.write("\n\n")

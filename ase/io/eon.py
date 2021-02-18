@@ -13,10 +13,10 @@ import numpy as np
 from ase.atoms import Atoms
 from ase.constraints import FixAtoms
 from ase.geometry import cellpar_to_cell, cell_to_cellpar
-from ase.parallel import paropen
+from ase.utils import writer
 
 
-def read_eon(fileobj, index = -1):
+def read_eon(fileobj, index=-1):
     """Reads an EON reactant.con file.  If *fileobj* is the name of a
     "states" directory created by EON, all the structures will be read."""
     if isinstance(fileobj, str):
@@ -69,11 +69,9 @@ def read_eon(fileobj, index = -1):
 
         images.append(atoms)
 
-
         first_line = f.readline()
         if first_line == '':
             more_images_to_read = False
-
 
     if isinstance(fileobj, str):
         f.close()
@@ -93,14 +91,10 @@ def read_states(states_dir):
     return images
 
 
+@writer
 def write_eon(fileobj, images):
     """Writes structure to EON reactant.con file
     Multiple snapshots are allowed."""
-    if isinstance(fileobj, str):
-        f = paropen(fileobj, 'w')
-    else:
-        f = fileobj
-
     if isinstance(images, Atoms):
         atoms = images
     elif len(images) == 1:
@@ -154,8 +148,5 @@ def write_eon(fileobj, images):
             out.append('%22.17f %22.17f %22.17f %d %4d' %
                        (tuple(xyz) + (fix, atom_id)))
             atom_id += 1
-    f.write('\n'.join(out))
-    f.write('\n')
-
-    if isinstance(fileobj, str):
-        f.close()
+    fileobj.write('\n'.join(out))
+    fileobj.write('\n')

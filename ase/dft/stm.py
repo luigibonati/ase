@@ -1,6 +1,6 @@
-import pickle
-
 import numpy as np
+from ase.io.jsonio import read_json, write_json
+
 
 class STM:
     def __init__(self, atoms, symmetries=None, use_density=False):
@@ -24,8 +24,9 @@ class STM:
         self.use_density = use_density
 
         if isinstance(atoms, str):
-            with open(atoms, 'rb') as f:
-                self.ldos, self.bias, self.cell = pickle.load(f)
+            with open(atoms, 'r') as fd:
+                self.ldos, self.bias, self.cell = read_json(fd,
+                                                            always_array=False)
             self.atoms = None
         else:
             self.atoms = atoms
@@ -92,13 +93,9 @@ class STM:
 
         self.ldos = ldos
 
-
-    def write(self, filename='stm.pckl'):
-        """Write local density of states to pickle file."""
-        with open(filename, 'wb') as f:
-            pickle.dump((self.ldos, self.bias, self.cell), f,
-                        protocol=pickle.HIGHEST_PROTOCOL)
-
+    def write(self, filename):
+        """Write local density of states to JSON file."""
+        write_json(filename, (self.ldos, self.bias, self.cell))
 
     def get_averaged_current(self, bias, z):
         """Calculate avarage current at height z (in Angstrom).

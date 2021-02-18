@@ -76,7 +76,7 @@ class Infrared(Vibrations):
     ...             idipol=4,       # calculate the total dipole moment
     ...             dipol=water.get_center_of_mass(scaled=True),
     ...             ldipol=True)
-    >>> water.set_calculator(calc)
+    >>> water.calc = calc
     >>> ir = Infrared(water)
     >>> ir.run()
     >>> ir.summary()
@@ -130,7 +130,7 @@ class Infrared(Vibrations):
     >>> calc.set_fdf('LatticeConstant', 1.000000 * Ang)
     >>> calc.set_fdf('WriteCoorXmol',       'T')
 
-    >>> bud.set_calculator(calc)
+    >>> bud.calc = calc
 
     >>> ir = Infrared(bud)
     >>> ir.run()
@@ -162,7 +162,8 @@ class Infrared(Vibrations):
                     return combined_data[op.basename(fname)]
                 except KeyError:
                     return combined_data[fname]  # Old version
-            return pickleload(open(fname, 'rb'))
+            with open(fname, 'rb') as fd:
+                return pickleload(fd)
 
         if direction != 'central':
             raise NotImplementedError(
@@ -323,16 +324,16 @@ class Infrared(Vibrations):
         outdata.T[0] = energies
         outdata.T[1] = spectrum
         outdata.T[2] = spectrum2
-        fd = open(out, 'w')
-        fd.write('# %s folded, width=%g cm^-1\n' % (type.title(), width))
-        iu, iu_string = self.intensity_prefactor(intensity_unit)
-        if normalize:
-            iu_string = 'cm ' + iu_string
-        fd.write('# [cm^-1] %14s\n' % ('[' + iu_string + ']'))
-        for row in outdata:
-            fd.write('%.3f  %15.5e  %15.5e \n' %
-                     (row[0], iu * row[1], row[2]))
-        fd.close()
+        with open(out, 'w') as fd:
+            fd.write('# %s folded, width=%g cm^-1\n' % (type.title(), width))
+            iu, iu_string = self.intensity_prefactor(intensity_unit)
+            if normalize:
+                iu_string = 'cm ' + iu_string
+            fd.write('# [cm^-1] %14s\n' % ('[' + iu_string + ']'))
+            for row in outdata:
+                fd.write('%.3f  %15.5e  %15.5e \n' %
+                         (row[0], iu * row[1], row[2]))
+
         # np.savetxt(out, outdata, fmt='%.3f  %15.5e  %15.5e')
 
 

@@ -24,8 +24,8 @@ def match(word, *suffixes):
 # Beginning of computer generated data:
 commands = {
     'band-structure':
-        ['-q', '--quiet', '-k', '--path', '-n', '--points', '-r',
-         '--range'],
+        ['-q', '--quiet', '-k', '--path', '-n', '--points', '-o',
+         '--output', '-r', '--range'],
     'build':
         ['-M', '--magnetic-moment', '--modify', '-V', '--vacuum', '-v',
          '--vacuum0', '--unit-cell', '--bond-length', '-x',
@@ -49,11 +49,20 @@ commands = {
          '--sort', '--cut', '-p', '--plot', '--csv', '-w',
          '--open-web-browser', '--no-lock-file', '--analyse',
          '-j', '--json', '-m', '--show-metadata',
-         '--set-metadata', '-M', '--metadata-from-python-script',
-         '--unique', '--strip-data', '--show-keys',
-         '--show-values'],
+         '--set-metadata', '--strip-data', '--progress-bar',
+         '--show-keys', '--show-values'],
+    'diff':
+        ['-r', '--rank-order', '-c', '--calculator-outputs',
+         '--max-lines', '-t', '--template', '--template-help',
+         '-s', '--summary-functions', '--log-file', '--as-csv',
+         '--precision'],
+    'dimensionality':
+        ['--display-all', '--no-merge'],
     'eos':
         ['-p', '--plot', '-t', '--type'],
+    'exec':
+        ['-e', '--exec-code', '-E', '--exec-file', '-i', '--input-format',
+         '-n', '--image-number', '--read-args'],
     'find':
         ['-v', '--verbose', '-l', '--long', '-i', '--include', '-x',
          '--exclude'],
@@ -79,8 +88,9 @@ commands = {
          '--maximum-stress', '-E', '--equation-of-state',
          '--eos-type', '-o', '--output', '--modify', '--after'],
     'test':
-        ['-c', '--calculators', '--list', '--list-calculators', '-j',
-         '--jobs', '-v', '--verbose', '--strict', '--nogui',
+        ['-c', '--calculators', '--help-calculators', '--list',
+         '--list-calculators', '-j', '--jobs', '-v', '--verbose',
+         '--strict', '--fast', '--coverage', '--nogui',
          '--pytest'],
     'ulm':
         ['-n', '--index', '-d', '--delete', '-v', '--verbose']}
@@ -120,12 +130,13 @@ def complete(word, previous, line, point):
         if previous in ['-c', '--calculators']:
             from ase.calculators.calculator import names as words
         elif not word.startswith('-'):
-            # Suggest names of tests.  We suggest all matching tests.
-            # It might be better to autocomplete only up to directory
-            # names.
-            from ase.test.newtestsuite import TestModule
-            words = [mod.testname
-                     for mod in TestModule.glob_all_test_modules()]
+            from ase.test.testsuite import all_test_modules_and_groups
+            words = []
+            for path in all_test_modules_and_groups():
+                path = str(path)
+                if not path.endswith('.py'):
+                    path += '/'
+                words.append(path)
 
     return words
 

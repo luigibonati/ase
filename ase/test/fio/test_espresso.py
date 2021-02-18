@@ -11,6 +11,7 @@ import numpy as np
 from ase import io
 from ase import build
 
+from pytest import approx
 
 # This file is parsed correctly by pw.x, even though things are
 # scattered all over the place with some namelist edge cases
@@ -277,6 +278,25 @@ def test_pw_input():
 
     pw_input_atoms = io.read('pw_input.pwi', format='espresso-in')
     assert len(pw_input_atoms) == 8
+    assert (pw_input_atoms.get_initial_magnetic_moments()
+            == approx([5.12, 5.12, 5.12, 5.12, 5.12, 5.12, 0., 0.]))
+
+
+def test_get_atomic_species():
+    """Parser for atomic species section"""
+    from ase.io.espresso import get_atomic_species, read_fortran_namelist
+
+    with open('pw_input.pwi', 'w') as pw_input_f:
+        pw_input_f.write(pw_input_text)
+    with open('pw_input.pwi', 'r') as pw_input_f:
+        data, card_lines = read_fortran_namelist(pw_input_f)
+        species_card = get_atomic_species(card_lines,
+                                          n_species=data['system']['ntyp'])
+
+    assert len(species_card) == 2
+    assert species_card[0] == ("H", approx(1.008), "H.pbe-rrkjus_psl.0.1.UPF")
+    assert species_card[1] == ("Fe", approx(55.845),
+                               "Fe.pbe-spn-rrkjus_psl.0.2.1.UPF")
 
 
 def test_pw_output():
@@ -296,19 +316,19 @@ def test_pw_results_required():
 
     # ignore 'final coordinates' with no results
     pw_output_traj = io.read('pw_output.pwo', index=':')
-    assert 'energy' in pw_output_traj[-1].get_calculator().results
+    assert 'energy' in pw_output_traj[-1].calc.results
     assert len(pw_output_traj) == 2
     # include un-calculated final config
     pw_output_traj = io.read('pw_output.pwo', index=':',
                              results_required=False)
     assert len(pw_output_traj) == 3
-    assert 'energy' not in pw_output_traj[-1].get_calculator().results
+    assert 'energy' not in pw_output_traj[-1].calc.results
     # get default index=-1 with results
     pw_output_config = io.read('pw_output.pwo')
-    assert 'energy' in pw_output_config.get_calculator().results
+    assert 'energy' in pw_output_config.calc.results
     # get default index=-1 with no results "final coordinates'
     pw_output_config = io.read('pw_output.pwo', results_required=False)
-    assert 'energy' not in pw_output_config.get_calculator().results
+    assert 'energy' not in pw_output_config.calc.results
 
 
 def test_pw_input_write():

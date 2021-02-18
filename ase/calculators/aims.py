@@ -6,16 +6,23 @@ Simon P. Rittmeyer simon.rittmeyer@tum.de
 """
 
 import os
-
-import numpy as np
 import warnings
 import time
+from typing import Optional
+import re
+
+import numpy as np
 
 from ase.units import Hartree
 from ase.io.aims import write_aims, read_aims
 from ase.data import atomic_numbers
 from ase.calculators.calculator import FileIOCalculator, Parameters, kpts2mp, \
     ReadError, PropertyNotImplementedError
+
+
+def get_aims_version(string):
+    match = re.search(r'\s*FHI-aims version\s*:\s*(\S+)', string, re.M)
+    return match.group(1)
 
 
 float_keys = [
@@ -127,7 +134,8 @@ class Aims(FileIOCalculator):
     implemented_properties = ['energy', 'forces', 'stress', 'stresses',
                               'dipole', 'magmom']
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=FileIOCalculator._deprecated,
                  label=os.curdir, atoms=None, cubes=None, radmul=None,
                  tier=None, aims_command=None,
                  outfilename=None, **kwargs):
@@ -243,9 +251,10 @@ class Aims(FileIOCalculator):
         self.tier = tier
 
     # handling the filtering for dynamical commands with properties,
-    @property
-    def command(self):
+    @property  # type: ignore
+    def command(self) -> Optional[str]:  # type: ignore
         return self.__command
+
     @command.setter
     def command(self, x):
         self.__update_command(command=x)
@@ -275,7 +284,7 @@ class Aims(FileIOCalculator):
         # new class variables due to dynamical command handling
         self.__aims_command = None
         self.__outfilename = None
-        self.__command = None
+        self.__command: Optional[str] = None
 
         # filter the command and set the member variables "aims_command" and "outfilename"
         self.__update_command(command=command,
@@ -351,13 +360,12 @@ class Aims(FileIOCalculator):
         self.atoms = atoms
 
     def set_label(self, label, update_outfilename=False):
-        self.label = label
-        self.directory = label
-        self.prefix = ''
-        # change outfile name to "<label.out>"
-        if update_outfilename:
-            self.outfilename="{}.out".format(os.path.basename(label))
-        self.out = os.path.join(label, self.outfilename)
+        msg = "Aims.set_label is not supported anymore, please use `directory`"
+        raise RuntimeError(msg)
+
+    @property
+    def out(self):
+        return os.path.join(self.label, self.outfilename)
 
     def check_state(self, atoms):
         system_changes = FileIOCalculator.check_state(self, atoms)
@@ -524,7 +532,7 @@ class Aims(FileIOCalculator):
             not self.atoms.pbc.any()):
             self.read_dipole()
 
-    def write_species(self, atoms, filename='control.in'):
+    def write_species(self, atoms, filename):
         self.ctrlname = filename
         species_path = self.parameters.get('species_dir')
         if species_path is None:
@@ -842,8 +850,8 @@ class Aims(FileIOCalculator):
         for n, line in enumerate(lines):
             if line.rfind('K-points in task') > -1:
                 kptsstart = n  # last occurrence of (
-        assert not kpts is None
-        assert not kptsstart is None
+        assert kpts is not None
+        assert kptsstart is not None
         text = lines[kptsstart + 1:]
         values = []
         for line in text[:kpts]:
@@ -868,7 +876,7 @@ class Aims(FileIOCalculator):
             if line.rfind('| Number of k-points') > -1:
                 kpts = int(line.split(':')[-1].strip())
                 break
-        assert not kpts is None
+        assert kpts is not None
         assert kpt + 1 <= kpts
         # find last (eigenvalues)
         eigvalstart = None
@@ -877,13 +885,13 @@ class Aims(FileIOCalculator):
             if line.rfind('Preliminary charge convergence reached') > -1:
                 eigvalstart = n
                 break
-        assert not eigvalstart is None
+        assert eigvalstart is not None
         lines = lines[eigvalstart:]
         for n, line in enumerate(lines):
             if line.rfind('Writing Kohn-Sham eigenvalues') > -1:
                 eigvalstart = n
                 break
-        assert not eigvalstart is None
+        assert eigvalstart is not None
         text = lines[eigvalstart + 1:]  # remove first 1 line
         # find the requested k-point
         nbands = self.read_number_of_bands()

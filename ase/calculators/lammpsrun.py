@@ -31,6 +31,7 @@ from re import compile as re_compile, IGNORECASE
 from tempfile import mkdtemp, NamedTemporaryFile, mktemp as uns_mktemp
 import inspect
 import warnings
+from typing import Dict, Any
 import numpy as np
 
 from ase import Atoms
@@ -53,13 +54,15 @@ class LAMMPS(Calculator):
     """The LAMMPS calculators object
 
     files: list
-        List of files typically containing relevant potentials for the calculation
+        List of files typically containing relevant potentials for the
+        calculation
     parameters: dict
         Dictionary of settings to be passed into the input file for calculation.
     specorder: list
         Within LAAMPS, atoms are identified by an integer value starting from 1.
-        This variable allows the user to define the order of the indices assigned to the
-        atoms in the calculation, with the default if not given being alphabetical
+        This variable allows the user to define the order of the indices
+        assigned to the atoms in the calculation, with the default
+        if not given being alphabetical
     keep_tmp_files: bool
         Retain any temporary files created. Mostly useful for debugging.
     tmp_dir: str
@@ -101,10 +104,11 @@ potentials)
 
     lammps = LAMMPS(parameters=parameters, files=files)
 
-    NiH.set_calculator(lammps)
+    NiH.calc = lammps
     print("Energy ", NiH.get_potential_energy())
 
-(Remember you also need to set the environment variable ``$ASE_LAMMPSRUN_COMMAND``)
+(Remember you also need to set the environment variable
+``$ASE_LAMMPSRUN_COMMAND``)
 
     """
 
@@ -112,7 +116,7 @@ potentials)
     implemented_properties = ["energy", "forces", "stress", "energies"]
 
     # parameters to choose options in LAMMPSRUN
-    ase_parameters = dict(
+    ase_parameters: Dict[str, Any] = dict(
         specorder=None,
         always_triclinic=False,
         keep_alive=True,
@@ -383,21 +387,20 @@ potentials)
         self.calls += 1
 
         # change into subdirectory for LAMMPS calculations
-        cwd = os.getcwd()
-        os.chdir(self.parameters.tmp_dir)
+        tempdir = self.parameters.tmp_dir
 
         # setup file names for LAMMPS calculation
         label = "{0}{1:>06}".format(self.label, self.calls)
         lammps_in = uns_mktemp(
-            prefix="in_" + label, dir=self.parameters.tmp_dir
+            prefix="in_" + label, dir=tempdir
         )
         lammps_log = uns_mktemp(
-            prefix="log_" + label, dir=self.parameters.tmp_dir
+            prefix="log_" + label, dir=tempdir
         )
         lammps_trj_fd = NamedTemporaryFile(
             prefix="trj_" + label,
             suffix=(".bin" if self.parameters.binary_dump else ""),
-            dir=self.parameters.tmp_dir,
+            dir=tempdir,
             delete=(not self.parameters.keep_tmp_files),
         )
         lammps_trj = lammps_trj_fd.name
@@ -406,7 +409,7 @@ potentials)
         else:
             lammps_data_fd = NamedTemporaryFile(
                 prefix="data_" + label,
-                dir=self.parameters.tmp_dir,
+                dir=tempdir,
                 delete=(not self.parameters.keep_tmp_files),
                 mode='w',
                 encoding='ascii'
@@ -475,10 +478,9 @@ potentials)
 
         exitcode = lmp_handle.poll()
         if exitcode and exitcode != 0:
-            cwd = os.getcwd()
             raise RuntimeError(
                 "LAMMPS exited in {} with exit code: {}."
-                "".format(cwd, exitcode)
+                "".format(tempdir, exitcode)
             )
 
         # A few sanity checks
@@ -537,8 +539,6 @@ potentials)
         if not self.parameters.no_data_file:
             lammps_data_fd.close()
 
-        os.chdir(cwd)
-
     def __enter__(self):
         return self
 
@@ -583,7 +583,7 @@ potentials)
             if 'ERROR:' in line:
                 if close_log_file:
                     fileobj.close()
-                raise RuntimeError('LAMMPS exits with error message: {}'.format(line))
+                raise RuntimeError(f'LAMMPS exits with error message: {line}')
 
             # get thermo output
             if line.startswith(_custom_thermo_mark):
@@ -670,7 +670,7 @@ if __name__ == "__main__":
     print("forces for a = {0}".format(a0))
     print(calc.get_forces(bulk))
     # single points for various lattice constants
-    bulk.set_calculator(calc)
+    bulk.calc = calc
     for i in range(-5, 5, 1):
         a = a0 * (1 + i / 100.0)
         bulk.set_cell([a] * 3)

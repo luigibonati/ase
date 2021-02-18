@@ -1,9 +1,11 @@
 """Determine symmetry equivalence of two structures.
 Based on the recipe from Comput. Phys. Commun. 183, 690-697 (2012)."""
 from collections import Counter
-from itertools import combinations, product
+from itertools import combinations, product, filterfalse
+
 import numpy as np
 from scipy.spatial import cKDTree as KDTree
+
 from ase import Atom, Atoms
 from ase.build.tools import niggli_reduce
 
@@ -13,12 +15,6 @@ def normalize(cell):
         cell[i] /= np.linalg.norm(cell[i])
 
 
-try:
-    from itertools import filterfalse
-except ImportError:  # python2.7
-    from itertools import ifilterfalse as filterfalse
-
-
 class SpgLibNotFoundError(Exception):
     """Raised if SPG lib is not found when needed."""
 
@@ -26,7 +22,7 @@ class SpgLibNotFoundError(Exception):
         super(SpgLibNotFoundError, self).__init__(msg)
 
 
-class SymmetryEquivalenceCheck(object):
+class SymmetryEquivalenceCheck:
     """Compare two structures to determine if they are symmetry equivalent.
 
     Based on the recipe from Comput. Phys. Commun. 183, 690-697 (2012).
@@ -211,7 +207,7 @@ class SymmetryEquivalenceCheck(object):
         """Check that the Niggli unit vectors has the same internal angles."""
         ang1 = np.sort(self._get_angles(self.s1.get_cell()))
         ang2 = np.sort(self._get_angles(self.s2.get_cell()))
-        
+
         return np.allclose(ang1, ang2, rtol=0, atol=self.angle_tol)
 
     def _has_same_volume(self):

@@ -45,7 +45,8 @@ def info(gui):
         add()
         add(_('Unit cell [Å]:'))
         add(ucellformat.format(*atoms.cell.ravel()))
-        periodic = [[_('no'), _('yes')][periodic] for periodic in atoms.pbc]
+        periodic = [[_('no'), _('yes')][int(periodic)]
+                    for periodic in atoms.pbc]
         # TRANSLATORS: This has the form Periodic: no, no, yes
         add(_('Periodic: {}, {}, {}').format(*periodic))
         add()
@@ -55,8 +56,8 @@ def info(gui):
         add(_('Lengths [Å]: {:.3f}, {:.3f}, {:.3f}').format(*cellpar[:3]))
         add(_('Angles: {:.1f}°, {:.1f}°, {:.1f}°').format(*cellpar[3:]))
 
-        if atoms.number_of_lattice_vectors == 3:
-            add(_('Volume: {:.3f} Å³').format(atoms.get_volume()))
+        if atoms.cell.rank == 3:
+            add(_('Volume: {:.3f} Å³').format(atoms.cell.volume))
 
         add()
 
@@ -66,11 +67,13 @@ def info(gui):
             else:
                 add(_('Unit cell varies.'))
 
-        if atoms.pbc[:2].all():
+        if atoms.pbc[:2].all() and atoms.cell.rank >= 1:
             try:
                 lat = atoms.cell.get_bravais_lattice()
             except RuntimeError:
                 add(_('Could not recognize the lattice type'))
+            except Exception:
+                add(_('Unexpected error determining lattice type'))
             else:
                 add(_('Reduced Bravais lattice:\n{}').format(lat))
 

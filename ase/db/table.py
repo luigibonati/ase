@@ -1,3 +1,4 @@
+from typing import Optional, List
 import numpy as np
 
 from ase.db.core import float_to_time_string, now
@@ -67,6 +68,7 @@ class Table:
         self.right = None
         self.keys = None
         self.unique_key = unique_key
+        self.addcolumns: Optional[List[str]] = None
 
     def select(self, query, columns, sort, limit, offset):
         sql_columns = get_sql_columns(columns)
@@ -147,7 +149,6 @@ class Row:
         self.dct = dct
         self.values = None
         self.strings = None
-        self.more = False
         self.set_columns(columns)
         self.uid = dct[unique_key]
 
@@ -161,9 +162,6 @@ class Row:
             else:
                 value = getattr(self.dct, c, None)
             self.values.append(value)
-
-    def toggle(self):
-        self.more = not self.more
 
     def format(self, columns, subscript=None):
         self.strings = []

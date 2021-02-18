@@ -2,11 +2,14 @@ import time
 import warnings
 
 from ase.units import Ang, fs
+from ase.utils import reader, writer
+
 
 v_unit = Ang / (1000.0 * fs)
 
 
-def read_aims(filename, apply_constraints=True):
+@reader
+def read_aims(fd, apply_constraints=True):
     """Import FHI-aims geometry type files.
 
     Reads unitcell, atom positions and constraints from
@@ -15,6 +18,12 @@ def read_aims(filename, apply_constraints=True):
     If geometric constraint (symmetry parameters) are in the file
     include that information in atoms.info["symmetry_block"]
     """
+
+    lines = fd.readlines()
+    return parse_geometry_lines(lines, apply_constraints=apply_constraints)
+
+
+def parse_geometry_lines(lines, apply_constraints=True):
 
     from ase import Atoms
     from ase.constraints import (
@@ -26,8 +35,6 @@ def read_aims(filename, apply_constraints=True):
     import numpy as np
 
     atoms = Atoms()
-    with open(filename, "r") as fd:
-        lines = fd.readlines()
 
     positions = []
     cell = []
@@ -47,31 +54,24 @@ def read_aims(filename, apply_constraints=True):
         inp = line.split()
         if inp == []:
             continue
-        if inp[0] == "atom":
-            cart_positions = True
+        if inp[0] in ["atom", "atom_frac"]:
+
+            if inp[0] == "atom":
+                cart_positions = True
+            else:
+                scaled_positions = True
+
             if xyz.all():
                 fix.append(i)
             elif xyz.any():
                 fix_cart.append(FixCartesian(i, xyz))
             floatvect = float(inp[1]), float(inp[2]), float(inp[3])
             positions.append(floatvect)
+            symbols.append(inp[4])
             magmoms.append(0.0)
             charges.append(0.0)
-            symbols.append(inp[-1])
-            i += 1
             xyz = np.array([0, 0, 0])
-        elif inp[0] == "atom_frac":
-            scaled_positions = True
-            if xyz.all():
-                fix.append(i)
-            elif xyz.any():
-                fix_cart.append(FixCartesian(i, xyz))
-            floatvect = float(inp[1]), float(inp[2]), float(inp[3])
-            positions.append(floatvect)
-            magmoms.append(0.)
-            symbols.append(inp[-1])
             i += 1
-            xyz = np.array([0, 0, 0])
 
         elif inp[0] == "lattice_vector":
             floatvect = float(inp[1]), float(inp[2]), float(inp[3])
@@ -187,8 +187,9 @@ def read_aims(filename, apply_constraints=True):
     return atoms
 
 
+@writer
 def write_aims(
-    filename,
+    fd,
     atoms,
     scaled=False,
     geo_constrain=False,
@@ -203,8 +204,8 @@ def write_aims(
     supported at the moment).
 
     Args:
-        filename: str
-            Name of file to output structure to
+        fd: file object
+            File to output structure to
         atoms: ase.atoms.Atoms
             structure to output to the file
         scaled: bool
@@ -226,15 +227,6 @@ def write_aims(
 
     import numpy as np
 
-    if isinstance(atoms, (list, tuple)):
-        if len(atoms) > 1:
-            raise RuntimeError(
-                "Don't know how to save more than "
-                "one image to FHI-aims input"
-            )
-        else:
-            atoms = atoms[0]
-
     if geo_constrain:
         if not scaled:
             warnings.warn(
@@ -242,9 +234,9 @@ def write_aims(
             )
             scaled = True
 
-    fd = open(filename, "w")
     fd.write("#=======================================================\n")
-    fd.write("# FHI-aims file: " + filename + "\n")
+    if hasattr(fd, 'name'):
+        fd.write("# FHI-aims file: " + fd.name + "\n")
     fd.write("# Created using the Atomic Simulation Environment (ASE)\n")
     fd.write("# " + time.asctime() + "\n")
 
@@ -332,7 +324,7 @@ def write_aims(
 
 
 def get_sym_block(atoms):
-    """Get the symmetry block for the Parametric constraints in atoms.constraints"""
+    """Get symmetry block for Parametric constraints in atoms.constraints"""
     import numpy as np
 
     from ase.constraints import (
@@ -353,7 +345,8 @@ def get_sym_block(atoms):
 
             if np.any(atomic_param_constr[constr.indices] != ""):
                 warnings.warn(
-                    "multiple parametric constraints defined for the same atom, using the last one defined"
+                    "multiple parametric constraints defined for the same "
+                    "atom, using the last one defined"
                 )
 
             atomic_param_constr[constr.indices] = [
@@ -364,7 +357,8 @@ def get_sym_block(atoms):
 
             if np.any(lv_param_constr[constr.indices] != ""):
                 warnings.warn(
-                    "multiple parametric constraints defined for the same lattice vector, using the last one defined"
+                    "multiple parametric constraints defined for the same "
+                    "lattice vector, using the last one defined"
                 )
 
             lv_param_constr[constr.indices] = [
@@ -377,19 +371,22 @@ def get_sym_block(atoms):
     # Check Constraint Parameters
     if len(atomic_sym_params) != len(np.unique(atomic_sym_params)):
         warnings.warn(
-            "Some parameters were used across constraints, they will be combined in the aims calculations"
+            "Some parameters were used across constraints, they will be "
+            "combined in the aims calculations"
         )
         atomic_sym_params = np.unique(atomic_sym_params)
 
     if len(lv_sym_params) != len(np.unique(lv_sym_params)):
         warnings.warn(
-            "Some parameters were used across constraints, they will be combined in the aims calculations"
+            "Some parameters were used across constraints, they will be "
+            "combined in the aims calculations"
         )
         lv_sym_params = np.unique(lv_sym_params)
 
     if np.any(atomic_param_constr == ""):
         raise IOError(
-            "FHI-aims input files require all atoms have defined parametric constraints"
+            "FHI-aims input files require all atoms have defined parametric "
+            "constraints"
         )
 
     cell_inds = np.where(lv_param_constr == "")[0]
@@ -404,13 +401,9 @@ def get_sym_block(atoms):
 
     sym_block = []
     if n_total_params > 0:
-        sym_block.append(
-            "#=======================================================\n"
-        )
+        sym_block.append("#" + "="*55 + "\n")
         sym_block.append("# Parametric constraints\n")
-        sym_block.append(
-            "#=======================================================\n"
-        )
+        sym_block.append("#" + "="*55 + "\n")
         sym_block.append(
             "symmetry_n_params {:d} {:d} {:d}\n".format(
                 n_total_params, n_lv_params, n_atomic_params
@@ -429,18 +422,30 @@ def get_sym_block(atoms):
     return sym_block
 
 
-# except KeyError:
-#     continue
+def _parse_atoms(fd, n_atoms, molecular_dynamics=False):
+    """parse structure information from aims output to Atoms object"""
+    from ase import Atoms, Atom
+
+    next(fd)
+    atoms = Atoms()
+    for i in range(n_atoms):
+        inp = next(fd).split()
+        if "lattice_vector" in inp[0]:
+            cell = []
+            for i in range(3):
+                cell += [[float(inp[1]), float(inp[2]), float(inp[3])]]
+                inp = next(fd).split()
+            atoms.set_cell(cell)
+            inp = next(fd).split()
+        atoms.append(Atom(inp[4], (inp[1], inp[2], inp[3])))
+        if molecular_dynamics:
+            inp = next(fd).split()
+
+    return atoms
 
 
-def read_energy(filename):
-    for line in open(filename, "r"):
-        if line.startswith("  | Total energy corrected"):
-            E = float(line.split()[-2])
-    return E
-
-
-def read_aims_output(filename, index=-1):
+@reader
+def read_aims_output(fd, index=-1):
     """Import FHI-aims output files with all data available, i.e.
     relaxations, MD information, force information etc etc etc."""
     from ase import Atoms, Atom
@@ -448,7 +453,6 @@ def read_aims_output(filename, index=-1):
     from ase.constraints import FixAtoms, FixCartesian
 
     molecular_dynamics = False
-    fd = open(filename, "r")
     cell = []
     images = []
     fix = []
@@ -494,30 +498,20 @@ def read_aims_output(filename, index=-1):
                     fix_cart.append(FixCartesian(ind, xyz))
                 else:
                     fix_cart[n].mask[xyz.index(1)] = 0
+
         if "Atomic structure:" in line and not molecular_dynamics:
             next(fd)
             atoms = Atoms()
-            for i in range(n_atoms):
+            for _ in range(n_atoms):
                 inp = next(fd).split()
                 atoms.append(Atom(inp[3], (inp[4], inp[5], inp[6])))
+
         if "Complete information for previous time-step:" in line:
             molecular_dynamics = True
+
         if "Updated atomic structure:" in line and not molecular_dynamics:
-            next(fd)
-            atoms = Atoms()
-            for i in range(n_atoms):
-                inp = next(fd).split()
-                if "lattice_vector" in inp[0]:
-                    cell = []
-                    for i in range(3):
-                        cell += [[float(inp[1]), float(inp[2]), float(inp[3])]]
-                        inp = next(fd).split()
-                    atoms.set_cell(cell)
-                    inp = next(fd).split()
-                atoms.append(Atom(inp[4], (inp[1], inp[2], inp[3])))
-                if molecular_dynamics:
-                    inp = next(fd).split()
-        if "Atomic structure (and velocities)" in line:
+            atoms = _parse_atoms(fd, n_atoms=n_atoms)
+        elif "Atomic structure (and velocities)" in line:
             next(fd)
             atoms = Atoms()
             velocities = []
@@ -533,6 +527,23 @@ def read_aims_output(filename, index=-1):
             else:
                 atoms.set_constraint(fix_cart)
             images.append(atoms)
+
+        # if we enter here, the SocketIO/PIMD Wrapper was used
+        elif (
+            "Atomic structure that "
+            "was used in the preceding time step of the wrapper"
+        ) in line:
+            # parse atoms and add calculator information, i.e., the energies
+            # and forces that were already collected
+            atoms = _parse_atoms(fd, n_atoms=n_atoms)
+            results = images[-1].calc.results
+            atoms.calc = SinglePointCalculator(atoms, **results)
+
+            # replace last image with updated atoms
+            images[-1] = atoms
+
+            # make sure `atoms` does not point to `images[-1` later on
+            atoms = atoms.copy()
 
         # FlK: add analytical stress and replace stress=None
         if "Analytical stress tensor - Symmetrized" in line:
@@ -560,7 +571,7 @@ def read_aims_output(filename, index=-1):
                     calc = SinglePointCalculator(
                         atoms, energy=e, forces=f, stress=stress
                     )
-                images[-1].set_calculator(calc)
+                images[-1].calc = calc
             e = None
             f = None
 
@@ -570,7 +581,7 @@ def read_aims_output(filename, index=-1):
                 atoms.set_cell(cell)
                 atoms.pbc = True
             if not found_aims_calculator:
-                atoms.set_calculator(SinglePointCalculator(atoms, energy=e))
+                atoms.calc = SinglePointCalculator(atoms, energy=e)
             if not molecular_dynamics:
                 if len(fix):
                     atoms.set_constraint([FixAtoms(indices=fix)] + fix_cart)
@@ -580,7 +591,7 @@ def read_aims_output(filename, index=-1):
             e = None
             # if found_aims_calculator:
             # calc.set_results(images[-1])
-            # images[-1].set_calculator(calc)
+            # images[-1].calc = calc
 
         # FlK: add stress per atom
         if "Per atom stress (eV) used for heat flux calculation" in line:
@@ -601,7 +612,7 @@ def read_aims_output(filename, index=-1):
                 calc = SinglePointCalculator(
                     atoms, energy=e, forces=f, stress=stress, stresses=stresses
                 )
-                images[-1].set_calculator(calc)
+                images[-1].calc = calc
 
     fd.close()
     if molecular_dynamics:

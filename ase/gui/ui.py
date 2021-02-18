@@ -1,3 +1,4 @@
+# type: ignore
 import re
 import sys
 from collections import namedtuple
@@ -51,7 +52,7 @@ def helpwindow(text):
     win.add(Text(text))
 
 
-class BaseWindow(object):
+class BaseWindow:
     def __init__(self, title, close=None):
         self.title = title
         if close:
@@ -86,7 +87,7 @@ class Window(BaseWindow):
         BaseWindow.__init__(self, title, close)
 
 
-class Widget(object):
+class Widget:
     def pack(self, parent, side='top', anchor='center'):
         widget = self.create(parent)
         widget.pack(side=side, anchor=anchor)
@@ -130,10 +131,13 @@ class Label(Widget):
     def __init__(self, text='', color=None):
         self.creator = partial(tk.Label, text=text, fg=color)
 
+    @property
+    def text(self):
+        return self.widget['text']
+
+    @text.setter
     def text(self, new):
         self.widget.config(text=new)
-
-    text = property(None, text)
 
 
 class Text(Widget):
@@ -550,7 +554,7 @@ class ASEFileChooser(LoadFileDialog):
         for format, (description, code) in sorted(all_formats.items(),
                                                   key=key):
             io = get_ioformat(format)
-            if io.read and description != '?':
+            if io.can_read and description != '?':
                 labels.append(_(description))
                 values.append(format)
 

@@ -42,7 +42,7 @@ class NetCDFTrajectory:
     _cell_spatial_dim = 'cell_spatial'
     _cell_angular_dim = 'cell_angular'
     _label_dim = 'label'
-    _Voigt_dim = 'Voigt' # For stress/strain tensors
+    _Voigt_dim = 'Voigt'  # For stress/strain tensors
 
     # Default field names. If it is a list, check for any of these names upon
     # opening. Upon writing, use the first name.
@@ -90,8 +90,8 @@ class NetCDFTrajectory:
             The Atoms object to be written in write or append mode.
 
         types_to_numbers=None:
-            Dictionary for conversion of atom types to atomic numbers when
-            reading a trajectory file.
+            Dictionary or list for conversion of atom types to atomic numbers
+            when reading a trajectory file.
 
         double=True:
             Create new variable in double precision.
@@ -136,8 +136,10 @@ class NetCDFTrajectory:
         self._set_atoms(atoms)
 
         self.types_to_numbers = None
-        if types_to_numbers:
-            self.types_to_numbers = np.array(types_to_numbers)
+        if isinstance(types_to_numbers, list):
+            types_to_numbers = {x: y for x, y in enumerate(types_to_numbers)}
+        if types_to_numbers is not None:
+            self.types_to_numbers = types_to_numbers
 
         self.index_var = index_var
 
@@ -274,7 +276,7 @@ class NetCDFTrajectory:
             self._add_velocities()
             self._get_variable(self._velocities_var)[i] = \
                 atoms.get_momenta() / atoms.get_masses().reshape(-1, 1)
-        a, b, c, alpha, beta, gamma = atoms.get_cell_lengths_and_angles()
+        a, b, c, alpha, beta, gamma = atoms.cell.cellpar()
         if np.any(np.logical_not(atoms.pbc)):
             warnings.warn('Atoms have nonperiodic directions. Cell lengths in '
                           'these directions are lost and will be '
@@ -326,14 +328,10 @@ class NetCDFTrajectory:
         self._close()
 
     def _define_file_structure(self, atoms):
-        if not hasattr(self.nc, 'Conventions'):
-            self.nc.Conventions = 'AMBER'
-        if not hasattr(self.nc, 'ConventionVersion'):
-            self.nc.ConventionVersion = '1.0'
-        if not hasattr(self.nc, 'program'):
-            self.nc.program = 'ASE'
-        if not hasattr(self.nc, 'programVersion'):
-            self.nc.programVersion = ase.__version__
+        self.nc.Conventions = 'AMBER'
+        self.nc.ConventionVersion = '1.0'
+        self.nc.program = 'ASE'
+        self.nc.programVersion = ase.__version__
 
         if self._frame_dim not in self.nc.dimensions:
             self.nc.createDimension(self._frame_dim, None)
@@ -417,9 +415,9 @@ class NetCDFTrajectory:
                 else:
                     raise TypeError("Don't know how to dump array of shape {0}"
                                     " into NetCDF trajectory.".format(shape))
-            try:
-                t = self.dtype_conv[type.char]
-            except:
+            if hasattr(type, 'char'):
+                t = self.dtype_conv.get(type.char, type)
+            else:
                 t = type
             self.nc.createVariable(array_name, t, dims)
 
@@ -473,11 +471,17 @@ class NetCDFTrajectory:
             else:
                 # If this is a large data set, only read chunks from it to
                 # reduce memory footprint of the NetCDFTrajectory reader.
-                for i in range((s-1)//self.chunk_size+1):
-                    sl = slice(i*self.chunk_size,
-                               min((i+1)*self.chunk_size, s))
+                for i in range((s - 1) // self.chunk_size + 1):
+                    sl = slice(i * self.chunk_size,
+                               min((i + 1) * self.chunk_size, s))
                     data[index[sl]] = var[sl]
         return data
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
 
     def close(self):
         """Close the trajectory file."""
@@ -531,7 +535,11 @@ class NetCDFTrajectory:
             if self.numbers is None:
                 self.numbers = np.ones(self.n_atoms, dtype=int)
             if self.types_to_numbers is not None:
-                self.numbers = self.types_to_numbers[self.numbers]
+                d = set(self.numbers).difference(self.types_to_numbers.keys())
+                if len(d) > 0:
+                    self.types_to_numbers.update({num: num for num in d})
+                func = np.vectorize(self.types_to_numbers.get)
+                self.numbers = func(self.numbers)
             self.masses = atomic_masses[self.numbers]
 
             # Read positions
@@ -637,16 +645,14 @@ class NetCDFTrajectory:
 
 
 def read_netcdftrajectory(filename, index=-1):
-    traj = NetCDFTrajectory(filename, mode='r')
-    return traj[index]
+    with NetCDFTrajectory(filename, mode='r') as traj:
+        return traj[index]
 
 
 def write_netcdftrajectory(filename, images):
-    traj = NetCDFTrajectory(filename, mode='w')
-
     if hasattr(images, 'get_positions'):
         images = [images]
 
-    for atoms in images:
-        traj.write(atoms)
-    traj.close()
+    with NetCDFTrajectory(filename, mode='w') as traj:
+        for atoms in images:
+            traj.write(atoms)

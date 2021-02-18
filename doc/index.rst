@@ -38,19 +38,18 @@ Supported :mod:`Calculators <ase.calculators>`
 ==============================================
 
 |abinit| |Asap| |Atomistica| |CASTEP| |CP2K| |CRYSTAL| |deMon| |dftb|
-|dftd4| |elk| |exciting| |EMT|
+|dftd4| |DFTK| |elk| |exciting| |EMT|
 |fhi-aims| |fleur| |gamess_us| |gpaw| |gromacs|
 |hotbit| |jdftx| |kim| |lammps| |nwchem|
-|octopus| |onetep| |openmx| |psi4| |q_espresso| |siesta| |turbomole| |vasp|
+|octopus| |onetep| |openmx| |psi4| |qchem| |q_espresso| |siesta| |turbomole| |vasp|
 |xtb| |orca|
 :mod:`ACE-Molecule <ase.calculators.acemolecule>`
 :mod:`~ase.calculators.amber`
 :mod:`DMol³ <ase.calculators.dmol>`
-Gaussian_
+:mod:`Gaussian <ase.calculators.gaussian>`
 :mod:`Grimme DFT-D3 <ase.calculators.dftd3>`
 :mod:`~ase.calculators.gulp`
 Mopac_
-:mod:`~ase.calculators.qchem`
 :mod:`~ase.calculators.qmmm`
 :mod:`~ase.calculators.tip3p`
 :mod:`~deMon-Nano <ase.calculators.demonnano>`
@@ -63,6 +62,19 @@ Mopac_
 
 News
 ====
+
+* :ref:`ASE version 3.21.1 <releasenotes>` released (24 January 2021).
+
+* :ref:`ASE version 3.21.0 <releasenotes>` released (18 January 2021).
+
+* New bugfix releases :ref:`3.20.1 <releasenotes>` and :ref:`3.19.3
+  <releasenotes>` (11 August 2020).
+
+* :ref:`ASE version 3.20.0 <releasenotes>` released (8 August 2020).
+
+* :ref:`ASE version 3.19.2 <releasenotes>` released (22 July 2020).
+
+* :ref:`ASE version 3.19.1 <releasenotes>` released (4 April 2020).
 
 * :ref:`ASE version 3.19.0 <releasenotes>` released (16 December 2019).
 
@@ -90,8 +102,8 @@ News
 
 * :ref:`Reference paper <cite>` in
   J. Phys. Condens. Matter:
-  `The Atomic Simulation Environment | A Python library for working with
-  atoms <https://doi.org/10.1088/1361-648X/aa680e>`__
+  :doi:`The Atomic Simulation Environment | A Python library for working with
+  atoms <10.1088/1361-648X/aa680e>`
   (7 June 2017).
 
 * :ref:`ASE version 3.13.0 <releasenotes>` released (7 February 2017).
@@ -172,7 +184,7 @@ Contents
     gallery/gallery
     releasenotes
     contact
-    otherprojects
+    ecosystem
     development/development
     faq
     ASE Workshop 2019 <workshop/workshop>
@@ -212,6 +224,9 @@ Contents
    :align: middle
 .. |dftb| image:: static/dftb.png
    :target: ase/calculators/dftb.html
+   :align: middle
+.. |DFTK| image:: static/dftk.png
+   :target: https://dftk.org/q/ase
    :align: middle
 .. |fhi-aims| image:: static/fhi-aims.png
    :target: ase/calculators/FHI-aims.html
@@ -255,6 +270,10 @@ Contents
 .. |psi4| image:: static/psi4.png
    :target: ase/calculators/psi4.html
    :align: middle
+.. |qchem| image:: static/qchem.png
+   :target: ase/calculators/qchem.html
+   :align: middle
+   :scale: 40
 .. |q_espresso| image:: static/espresso.png
    :target: ase/calculators/espresso.html
    :align: middle
@@ -275,7 +294,6 @@ Contents
    :target: ase/calculators/orca.html
    :align: middle
 
-.. _Gaussian: http://gaussian.com/
 .. _Mopac: ase/calculators/mopac.html
 .. _Sphinx: http://sphinx.pocoo.org
 .. _Asap: https://wiki.fysik.dtu.dk/asap

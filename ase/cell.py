@@ -33,7 +33,14 @@ class Cell:
         self.array = array
 
     def cellpar(self, radians=False):
-        """Get cell lengths and angles of this cell.
+        """Get unit cell parameters. Sequence of 6 numbers.
+
+        First three are unit cell vector lengths and second three
+        are angles between them::
+
+            [len(a), len(b), len(c), angle(b,c), angle(a,c), angle(a,b)]
+
+        in degrees.
 
         See also :func:`ase.geometry.cell.cell_to_cellpar`."""
         from ase.geometry.cell import cell_to_cellpar
@@ -166,18 +173,10 @@ class Cell:
             return bandpath.transform(op)
         else:
             from ase.dft.kpoints import BandPath, resolve_custom_points
-            path = resolve_custom_points(path, special_points, eps=eps)
+            path, special_points = resolve_custom_points(
+                path, special_points, eps=eps)
             bandpath = BandPath(cell, path=path, special_points=special_points)
             return bandpath.interpolate(npoints=npoints, density=density)
-
-
-    # XXX adapt the transformation stuff and include in the bandpath method.
-    def oldbandpath(self, path=None, npoints=None, density=None, eps=2e-4):
-        """Legacy implementation, please ignore."""
-        bravais = self.get_bravais_lattice(eps=eps)
-        transformation = bravais.get_transformation(self.array)
-        return bravais.bandpath(path=path, npoints=npoints, density=density,
-                                transformation=transformation)
 
     def uncomplete(self, pbc):
         """Return new cell, zeroing cell vectors where not periodic."""
@@ -199,22 +198,22 @@ class Cell:
         return cell
 
     @property
-    def rank(self):
+    def rank(self) -> int:
         """"Return the dimension of the cell.
 
         Equal to the number of nonzero lattice vectors."""
         # The name ndim clashes with ndarray.ndim
-        return self.any(1).sum()
+        return self.any(1).sum()  # type: ignore
 
     @property
-    def orthorhombic(self):
+    def orthorhombic(self) -> bool:
         """Return whether this cell is represented by a diagonal matrix."""
         from ase.geometry.cell import is_orthorhombic
         return is_orthorhombic(self)
 
     def lengths(self):
         """Return the length of each lattice vector as an array."""
-        return np.array([np.linalg.norm(v) for v in self])
+        return np.linalg.norm(self, axis=1)
 
     def angles(self):
         """Return an array with the three angles alpha, beta, and gamma."""
@@ -232,7 +231,7 @@ class Cell:
     __nonzero__ = __bool__
 
     @property
-    def volume(self):
+    def volume(self) -> float:
         """Get the volume of this cell.
 
         If there are less than 3 lattice vectors, return 0."""
@@ -241,7 +240,15 @@ class Cell:
         # I think normally it is more convenient just to get zero
         return np.abs(np.linalg.det(self))
 
-    def scaled_positions(self, positions):
+    @property
+    def handedness(self) -> int:
+        """Sign of the determinant of the matrix of cell vectors.
+
+        1 for right-handed cells, -1 for left, and 0 for cells that
+        do not span three dimensions."""
+        return int(np.sign(np.linalg.det(self)))
+
+    def scaled_positions(self, positions) -> np.ndarray:
         """Calculate scaled positions from Cartesian positions.
 
         The scaled positions are the positions given in the basis
@@ -250,12 +257,12 @@ class Cell:
         :meth:`~ase.cell.Cell.complete`."""
         return np.linalg.solve(self.complete().T, positions.T).T
 
-    def cartesian_positions(self, scaled_positions):
+    def cartesian_positions(self, scaled_positions) -> np.ndarray:
         """Calculate Cartesian positions from scaled positions."""
         return scaled_positions @ self.complete()
 
-    def reciprocal(self):
-        """Get reciprocal lattice as a 3x3 array.
+    def reciprocal(self) -> 'Cell':
+        """Get reciprocal lattice as a Cell object.
 
         Does not include factor of 2 pi."""
         return Cell(np.linalg.pinv(self).transpose())

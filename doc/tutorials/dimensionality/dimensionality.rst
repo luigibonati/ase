@@ -27,10 +27,10 @@ the example below demonstrates.
 The method is described in the article:
 
   | P.M. Larsen, M. Pandey, M. Strange, and K. W. Jacobsen
-  | `Definition of a scoring parameter to identify low-dimensional materials components`__
+  | :doi:`Definition of a scoring parameter to identify low-dimensional materials components <10.1103/PhysRevMaterials.3.034003>`
   | Phys. Rev. Materials 3 034003, 2019
 
-__ https://doi.org/10.1103/PhysRevMaterials.3.034003
+A preprint is available :arxiv:`here <1808.02114>`.
 
 .. seealso::
 
@@ -39,3 +39,5 @@ __ https://doi.org/10.1103/PhysRevMaterials.3.034003
 
 
 .. autofunction:: ase.geometry.dimensionality.analyze_dimensionality
+
+.. autofunction:: ase.geometry.dimensionality.isolate_components

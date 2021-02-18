@@ -1,9 +1,7 @@
 import platform
-import os
 import sys
-from importlib import import_module
 
-from ase.utils import search_current_git_hash
+from ase.dependencies import all_dependencies
 from ase.io.formats import filetype, ioformats, UnknownFileTypeError
 from ase.io.ulm import print_ulm_info
 from ase.io.bundletrajectory import print_bundletrajectory_info
@@ -50,12 +48,14 @@ class CLICommand:
             return
 
         n = max(len(filename) for filename in args.filename) + 2
+        nfiles_not_found = 0
         for filename in args.filename:
             try:
                 format = filetype(filename)
             except FileNotFoundError:
                 format = '?'
                 description = 'No such file'
+                nfiles_not_found += 1
             except UnknownFileTypeError:
                 format = '?'
                 description = '?'
@@ -73,28 +73,15 @@ class CLICommand:
                 elif format == 'bundletrajectory':
                     print_bundletrajectory_info(filename)
 
+        raise SystemExit(nfiles_not_found)
+
 
 def print_info():
     versions = [('platform', platform.platform()),
                 ('python-' + sys.version.split()[0], sys.executable)]
-    for name in ['ase', 'numpy', 'scipy', 'ase_ext']:
-        try:
-            module = import_module(name)
-        except ImportError:
-            if name != 'ase_ext':
-                versions.append((name, 'no'))
-        else:
-            # Search for git hash
-            githash = search_current_git_hash(module)
-            if githash is None:
-                githash = ''
-            else:
-                githash = '-{:.10}'.format(githash)
-            versions.append((name + '-' + module.__version__ + githash,
-                            module.__file__.rsplit(os.sep, 1)[0] + os.sep))
 
-    for a, b in versions:
-        print('{:25}{}'.format(a, b))
+    for name, path in versions + all_dependencies():
+        print('{:24} {}'.format(name, path))
 
 
 def print_formats():

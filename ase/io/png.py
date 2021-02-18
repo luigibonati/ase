@@ -1,45 +1,27 @@
-from distutils.version import LooseVersion
-
 import numpy as np
-
 from ase.io.eps import EPS
 
 
 class PNG(EPS):
-    def write_header(self):
+    def write_header(self, fd):
+        pass
+
+    def _renderer(self, fd):
         from matplotlib.backends.backend_agg import RendererAgg
+        dpi = 72
+        return RendererAgg(self.w, self.h, dpi)
 
-        try:
-            from matplotlib.transforms import Value
-        except ImportError:
-            dpi = 72
-        else:
-            dpi = Value(72)
-
-        self.renderer = RendererAgg(self.w, self.h, dpi)
-
-    def write_trailer(self):
-        renderer = self.renderer
-        if hasattr(renderer._renderer, 'write_png'):
-            # Old version of matplotlib:
-            renderer._renderer.write_png(self.filename)
-        else:
-            from matplotlib import _png
-            # buffer_rgba does not accept arguments from version 1.2.0
-            # https://github.com/matplotlib/matplotlib/commit/f4fee350f9f
-            import matplotlib
-            if LooseVersion(matplotlib.__version__) < '1.2.0':
-                _png.write_png(renderer.buffer_rgba(0, 0),
-                               renderer.width, renderer.height,
-                               self.filename, 72)
-            else:
-                x = renderer.buffer_rgba()
-                try:
-                    _png.write_png(x, self.w, self.h, self.filename, 72)
-                except (TypeError, ValueError):
-                    x = np.frombuffer(x, np.uint8).reshape(
-                        (int(self.h), int(self.w), 4))
-                    _png.write_png(x, self.filename, 72)
+    def write_trailer(self, fd, renderer):
+        # The array conversion magic is necessary to make things work with
+        # matplotlib 2.0.0, 3.2.x, and 3.3.0 at the same time.
+        import matplotlib.image
+        buf = renderer.buffer_rgba()
+        # Buf is of type bytes (matplotlib < 3.3.0) or memoryview.
+        # That might be an implementation detail.
+        array = np.frombuffer(buf, dtype=np.uint8).reshape(
+            int(self.h), int(self.w), 4)
+        matplotlib.image.imsave(
+            fd, array, format="png")
 
 
 def write_png(filename, atoms, **parameters):

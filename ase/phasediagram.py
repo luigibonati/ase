@@ -2,6 +2,7 @@ import fractions
 import functools
 import re
 from collections import OrderedDict
+from typing import List, Tuple, Dict
 
 import numpy as np
 from scipy.spatial import ConvexHull
@@ -9,7 +10,7 @@ from scipy.spatial import ConvexHull
 import ase.units as units
 from ase.formula import Formula
 
-_solvated = []
+_solvated: List[Tuple[str, Dict[str, int], float, bool, float]] = []
 
 
 def parse_formula(formula):
@@ -149,15 +150,7 @@ class Pourbaix:
             if name == 'O':
                 continue
             count, charge, aq = parse_formula(name)
-
-            for symbol in count:
-                if aq:
-                    if not (symbol in 'HO' or symbol in kwargs):
-                        break
-                else:
-                    if symbol not in kwargs:
-                        break
-            else:
+            if all(symbol in kwargs for symbol in count):
                 self.references.append((count, charge, aq, energy, name))
 
         self.references.append(({}, -1, False, 0.0, 'e-'))  # an electron

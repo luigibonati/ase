@@ -14,7 +14,7 @@ if use_asap:
 else:
     from ase.calculators.emt import EMT
     size = 3
-    
+
 # Set up a crystal
 atoms = FaceCenteredCubic(directions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
                           symbol='Cu',
@@ -22,10 +22,10 @@ atoms = FaceCenteredCubic(directions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
                           pbc=True)
 
 # Describe the interatomic interactions with the Effective Medium Theory
-atoms.set_calculator(EMT())
+atoms.calc = EMT()
 
 # Set the momenta corresponding to T=300K
-MaxwellBoltzmannDistribution(atoms, 300 * units.kB)
+MaxwellBoltzmannDistribution(atoms, temperature_K=300)
 
 # We want to run MD with constant energy using the VelocityVerlet algorithm.
 dyn = VelocityVerlet(atoms, 5 * units.fs)  # 5 fs time step.
@@ -37,6 +37,7 @@ def printenergy(a):
     ekin = a.get_kinetic_energy() / len(a)
     print('Energy per atom: Epot = %.3feV  Ekin = %.3feV (T=%3.0fK)  '
           'Etot = %.3feV' % (epot, ekin, ekin / (1.5 * units.kB), epot + ekin))
+
 
 # Now run the dynamics
 printenergy(atoms)

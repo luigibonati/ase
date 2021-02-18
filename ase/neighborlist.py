@@ -2,6 +2,7 @@ import numpy as np
 import itertools
 from scipy import sparse as sp
 from scipy.spatial import cKDTree
+import scipy.sparse.csgraph as csgraph
 
 from ase.data import atomic_numbers, covalent_radii
 from ase.geometry import complete_cell, find_mic, wrap_positions
@@ -74,9 +75,10 @@ def get_distance_matrix(graph, limit=3):
     Why not dok_matrix like the connectivity-matrix? Because row-picking
     is most likely and this is super fast with csr.
     """
-    mat = sp.csgraph.dijkstra(graph, directed=False, limit=limit)
+    mat = csgraph.dijkstra(graph, directed=False, limit=limit)
     mat[mat == np.inf] = 0
     return sp.csr_matrix(mat, dtype=np.int8)
+
 
 def get_distance_indices(distanceMatrix, distance):
     """Get indices for each node that are distance or less away.
@@ -106,9 +108,9 @@ def get_distance_indices(distanceMatrix, distance):
         #find all non-zero
         found = sp.find(row)
         #screen for smaller or equal distance
-        equal = np.where( found[-1] <= distance )[0]
+        equal = np.where(found[-1] <= distance)[0]
         #found[1] contains the indexes
-        indices.append([ found[1][x] for x in equal ])
+        indices.append([found[1][x] for x in equal])
     return indices
 
 
@@ -216,11 +218,11 @@ def primitive_neighbor_list(quantities, pbc, cell, positions, cutoff,
 
     # Return empty neighbor list if no atoms are passed here
     if len(positions) == 0:
-        empty_types = dict(i=(np.int, (0, )),
-                           j=(np.int, (0, )),
-                           D=(np.float, (0, 3)),
-                           d=(np.float, (0, )),
-                           S=(np.int, (0, 3)))
+        empty_types = dict(i=(int, (0, )),
+                           j=(int, (0, )),
+                           D=(float, (0, 3)),
+                           d=(float, (0, )),
+                           S=(int, (0, 3)))
         retvals = []
         for i in quantities:
             dtype, shape = empty_types[i]
@@ -252,8 +254,8 @@ def primitive_neighbor_list(quantities, pbc, cell, positions, cutoff,
 
     # We use a minimum bin size of 3 A
     bin_size = max(max_cutoff, 3)
-    # Compute number of bins such that a sphere of radius cutoff fit into eight
-    # neighboring bins.
+    # Compute number of bins such that a sphere of radius cutoff fits into
+    # eight neighboring bins.
     nbins_c = np.maximum((face_dist_c / bin_size).astype(int), [1, 1, 1])
     nbins = np.prod(nbins_c)
     # Make sure we limit the amount of memory used by the explicit bins.
@@ -264,6 +266,12 @@ def primitive_neighbor_list(quantities, pbc, cell, positions, cutoff,
     # Compute over how many bins we need to loop in the neighbor list search.
     neigh_search_x, neigh_search_y, neigh_search_z = \
         np.ceil(bin_size * nbins_c / face_dist_c).astype(int)
+
+    # If we only have a single bin and the system is not periodic, then we
+    # do not need to search neighboring bins
+    neigh_search_x = 0 if nbins_c[0] == 1 and not pbc[0] else neigh_search_x
+    neigh_search_y = 0 if nbins_c[1] == 1 and not pbc[1] else neigh_search_y
+    neigh_search_z = 0 if nbins_c[2] == 1 and not pbc[2] else neigh_search_z
 
     # Sort atoms into bins.
     if use_scaled_positions:
@@ -665,6 +673,7 @@ def first_neighbors(natoms, first_atom):
         mask = seed == -1
     return seed
 
+
 def get_connectivity_matrix(nl, sparse=True):
     """Return connectivity matrix for a given NeighborList (dtype=numpy.int8).
 
@@ -779,44 +788,39 @@ class NewPrimitiveNeighborList:
         self.cell = np.array(cell, copy=True)
         self.positions = np.array(positions, copy=True)
 
-        self.pair_first, self.pair_second, self.offset_vec = \
+        pair_first, pair_second, offset_vec = \
             primitive_neighbor_list(
                 'ijS', pbc, cell, positions, self.cutoffs, numbers=numbers,
                 self_interaction=self.self_interaction,
                 use_scaled_positions=self.use_scaled_positions)
 
         if len(positions) > 0 and not self.bothways:
-            mask = np.logical_or(
-                np.logical_and(
-                    self.pair_first <= self.pair_second,
-                    (self.offset_vec == 0).all(axis=1)
-                    ),
-                np.logical_or(
-                    self.offset_vec[:, 0] > 0,
-                    np.logical_and(
-                        self.offset_vec[:, 0] == 0,
-                        np.logical_or(
-                            self.offset_vec[:, 1] > 0,
-                            np.logical_and(
-                                self.offset_vec[:, 1] == 0,
-                                self.offset_vec[:, 2] > 0)
-                            )
-                        )
-                    )
-                )
-            self.pair_first = self.pair_first[mask]
-            self.pair_second = self.pair_second[mask]
-            self.offset_vec = self.offset_vec[mask]
+            offset_x, offset_y, offset_z = offset_vec.T
+
+            mask = offset_z > 0
+            mask &= offset_y == 0
+            mask |= offset_y > 0
+            mask &= offset_x == 0
+            mask |= offset_x > 0
+            mask |= (pair_first <= pair_second) & (offset_vec == 0).all(axis=1)
+
+            pair_first = pair_first[mask]
+            pair_second = pair_second[mask]
+            offset_vec = offset_vec[mask]
 
         if len(positions) > 0 and self.sorted:
-            mask = np.argsort(self.pair_first * len(self.pair_first) +
-                              self.pair_second)
-            self.pair_first = self.pair_first[mask]
-            self.pair_second = self.pair_second[mask]
-            self.offset_vec = self.offset_vec[mask]
+            mask = np.argsort(pair_first * len(pair_first) +
+                              pair_second)
+            pair_first = pair_first[mask]
+            pair_second = pair_second[mask]
+            offset_vec = offset_vec[mask]
+
+        self.pair_first = pair_first
+        self.pair_second = pair_second
+        self.offset_vec = offset_vec
 
         # Compute the index array point to the first neighbor
-        self.first_neigh = first_neighbors(len(positions), self.pair_first)
+        self.first_neigh = first_neighbors(len(positions), pair_first)
 
         self.nupdates += 1
 
@@ -921,7 +925,7 @@ class PrimitiveNeighborList:
 
         tree = cKDTree(positions, copy_data=True)
         offsets = cell.scaled_positions(positions - positions0)
-        offsets = offsets.round().astype(np.int)
+        offsets = offsets.round().astype(int)
 
         for n1, n2, n3 in itertools.product(range(0, N[0] + 1),
                                             range(-N[1], N[1] + 1),
@@ -1050,6 +1054,10 @@ class NeighborList:
         See :meth:`ase.neighborlist.PrimitiveNeighborList.get_neighbors` or
         :meth:`ase.neighborlist.PrimitiveNeighborList.get_neighbors`.
         """
+        if self.nl.nupdates <= 0:
+            raise RuntimeError('Must call update(atoms) on your neighborlist '
+                               'first!')
+
         return self.nl.get_neighbors(a)
 
     def get_connectivity_matrix(self, sparse=True):

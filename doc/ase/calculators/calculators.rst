@@ -2,7 +2,7 @@
    :synopsis: Energy, force and stress calculators.
 
 .. _calculators:
-	      
+
 ===========
 Calculators
 ===========
@@ -14,8 +14,8 @@ energy and forces and sometimes also stresses.
 In order to calculate forces and energies, you need to attach a
 calculator object to your atoms object:
 
->>> a = read('molecule.xyz')
->>> e = a.get_potential_energy()  # doctest: IGNORE_EXCEPTION_DETAIL
+>>> atoms = read('molecule.xyz')
+>>> e = atoms.get_potential_energy()  # doctest: IGNORE_EXCEPTION_DETAIL
 Traceback (most recent call last):
   File "<stdin>", line 1, in <module>
   File "/home/jjmo/ase/atoms/ase.py", line 399, in get_potential_energy
@@ -23,22 +23,14 @@ Traceback (most recent call last):
 RuntimeError: Atoms object has no calculator.
 >>> from ase.calculators.abinit import Abinit
 >>> calc = Abinit(...)
->>> a.set_calculator(calc)
->>> e = a.get_potential_energy()
+>>> atoms.calc = calc
+>>> e = atoms.get_potential_energy()
 >>> print(e)
 -42.0
 
-Here, we used the :meth:`~ase.Atoms.set_calculator` method to attach
+Here we attached
 an instance of the :mod:`ase.calculators.abinit` class and then
 we asked for the energy.
-
-Alternatively, a calculator can be attached like this::
-
-  atoms = Atoms(..., calculator=Abinit(...))
-
-or this::
-
-  atoms.calc = Abinit(...)
 
 
 .. _supported calculators:
@@ -48,7 +40,7 @@ Supported calculators
 
 The calculators can be divided in four groups:
 
-1) Asap_, GPAW_, and Hotbit_ have their own native ASE interfaces.
+1) Asap_, DFTK_, GPAW_, and Hotbit_ have their own native ASE interfaces.
 
 2) ABINIT, AMBER, CP2K, CASTEP, deMon2k, DFTB+, ELK, EXCITING, FHI-aims, FLEUR, GAUSSIAN,
    Gromacs, LAMMPS, MOPAC, NWChem, Octopus, ONETEP, psi4, Q-Chem, Quantum ESPRESSO, SIESTA,
@@ -69,6 +61,7 @@ The calculators can be divided in four groups:
 name                                      description
 ========================================= ===========================================
 Asap_                                     Highly efficient EMT code
+DFTK_                                     Plane-wave code for DFT and related models
 GPAW_                                     Real-space/plane-wave/LCAO PAW code
 Hotbit_                                   DFT based tight binding
 :mod:`~ase.calculators.abinit`            Plane-wave pseudopotential code
@@ -86,7 +79,7 @@ elk                                       Full Potential LAPW code
 :mod:`~ase.calculators.aims`              Numeric atomic orbital, full potential code
 :mod:`~ase.calculators.fleur`             Full Potential LAPW code
 :mod:`~ase.calculators.gamess_us`         Gaussian based electronic structure code
-gaussian                                  Gaussian based electronic structure code
+:mod:`~ase.calculators.gaussian`          Gaussian based electronic structure code
 :mod:`~ase.calculators.gromacs`           Classical molecular dynamics code
 :mod:`~ase.calculators.gulp`              Interatomic potential code
 :mod:`~ase.calculators.kim`               Classical MD with standardized models
@@ -134,6 +127,7 @@ where ``abc`` is the module name and ``ABC`` is the class name.
 .. _Asap: https://wiki.fysik.dtu.dk/asap
 .. _GPAW: https://wiki.fysik.dtu.dk/gpaw
 .. _Hotbit: https://github.com/pekkosk/hotbit
+.. _DFTK: https://dftk.org
 
 Calculator keywords
 ===================
@@ -223,6 +217,7 @@ the :meth:`set` method:
    FHI-aims
    fleur
    gamess_us
+   gaussian
    gromacs
    gulp
    socketio/socketio
@@ -248,7 +243,6 @@ the :meth:`set` method:
    dftd3
    others
    test
-   ase_qmmm_manyqm
    ace
 
 .. _calculator interface:

@@ -29,6 +29,7 @@ def get_optimizer(name):
 
 class Wrapper:
     """Atoms-object wrapper that can count number of moves."""
+
     def __init__(self, atoms, gridspacing=0.2, eggbox=0.0):
         # types: (Atoms, float, float) -> None
         self.t0 = time()
@@ -54,7 +55,7 @@ class Wrapper:
         t1 = time()
         e = self.atoms.get_potential_energy(force_consistent)
 
-        if self.eggbox is not None:
+        if self.eggbox:
             # Add egg-box error:
             s = np.dot(self.atoms.positions, self.x)
             e += np.cos(2 * pi * s).sum() * self.eggbox / 6
@@ -70,7 +71,7 @@ class Wrapper:
         t1 = time()
         f = self.atoms.get_forces()
 
-        if self.eggbox is not None:
+        if self.eggbox:
             # Add egg-box error:
             s = np.dot(self.atoms.positions, self.x)
             f += np.dot(np.sin(2 * pi * s),

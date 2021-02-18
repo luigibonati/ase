@@ -9,6 +9,7 @@ from ase.data import atomic_numbers, chemical_symbols
 
 current_selection_string = _('(selection)')
 
+
 class AddAtoms:
     def __init__(self, gui):
         self.gui = gui
@@ -133,7 +134,6 @@ class AddAtoms:
         newatoms.positions += newcenter - previous_center
 
         atoms = self.gui.atoms
-
         if len(atoms) and self.picky.value:
             from ase.geometry import get_distances
             disps, dists = get_distances(atoms.positions,
@@ -146,15 +146,4 @@ class AddAtoms:
                                'uncheck the check positions option.'))
                 return
 
-        atoms += newatoms
-
-        if len(atoms) > self.gui.images.maxnatoms:
-            self.gui.images.initialize(list(self.gui.images),
-                                       self.gui.images.filenames)
-
-        self.gui.images.selected[:] = False
-
-        # 'selected' array may be longer than current atoms
-        self.gui.images.selected[len(atoms) - len(newatoms):len(atoms)] = True
-        self.gui.set_frame()
-        self.gui.draw()
+        self.gui.add_atoms_and_select(newatoms)

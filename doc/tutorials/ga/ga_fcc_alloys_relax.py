@@ -31,7 +31,7 @@ def relax(input_atoms, ref_db):
 
     # Since calculations are extremely fast with EMT we can also do a volume
     # relaxation
-    atoms.set_calculator(EMT())
+    atoms.calc = EMT()
     eps = 0.05
     volumes = (a * np.linspace(1 - eps, 1 + eps, 9))**3
     energies = []
@@ -49,12 +49,12 @@ def relax(input_atoms, ref_db):
     # Place the calculated parameters in the info dictionary of the
     # input_atoms object
     input_atoms.info['key_value_pairs']['hof'] = hof
-    
+
     # Raw score must always be set
     # Use one of the following two; they are equivalent
     input_atoms.info['key_value_pairs']['raw_score'] = -hof
     # set_raw_score(input_atoms, -hof)
-    
+
     input_atoms.info['key_value_pairs']['latticeconstant'] = latticeconstant
 
     # Setting the atoms_string directly for easier analysis

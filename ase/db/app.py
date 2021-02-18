@@ -24,7 +24,7 @@ or this::
 
 import io
 import sys
-from typing import Dict, Any
+from typing import Dict, Any, Set
 from pathlib import Path
 
 from flask import Flask, render_template, request
@@ -40,7 +40,7 @@ from ase.db.table import all_columns
 root = Path(__file__).parent.parent.parent
 app = Flask(__name__, template_folder=str(root))
 
-projects = {}  # type: Dict[str, Dict[str, Any]]
+projects: Dict[str, Dict[str, Any]] = {}
 
 
 @app.route('/', defaults={'project_name': 'default'})
@@ -51,6 +51,8 @@ def search(project_name: str):
 
     Contains input form for database query and a table result rows.
     """
+    if project_name == 'favicon.ico':
+        return '', 204, []  # 204: "No content"
     session = Session(project_name)
     project = projects[project_name]
     return render_template(project['search_template'],
@@ -74,8 +76,10 @@ def update(sid: int, what: str, x: str):
     session = Session.get(sid)
     project = projects[session.project_name]
     session.update(what, x, request.args, project)
-    table = session.create_table(project['database'], project['uid_key'])
-    return render_template('ase/db/templates/table.html',
+    table = session.create_table(project['database'],
+                                 project['uid_key'],
+                                 keys=list(project['key_descriptions']))
+    return render_template(project['table_template'],
                            t=table,
                            p=project,
                            s=session)
@@ -150,11 +154,6 @@ def robots():
             200)
 
 
-@app.route('/favicon.ico')
-def favicon():
-    return ''
-
-
 def handle_query(args) -> str:
     """Converts request args to ase.db query string."""
     return args['query']
@@ -169,20 +168,33 @@ def row_to_dict(row: AtomsRow, project: Dict[str, Any]) -> Dict[str, Any]:
 
 def add_project(db: Database) -> None:
     """Add database to projects with name 'default'."""
-    all_keys = set()
+    all_keys: Set[str] = set()
     for row in db.select(columns=['key_value_pairs'], include_data=False):
         all_keys.update(row._keys)
-    kd = {key: (key, '', '') for key in all_keys}
+
+    key_descriptions = {key: (key, '', '') for key in all_keys}
+
+    meta: Dict[str, Any] = db.metadata
+
+    if 'key_descriptions' in meta:
+        key_descriptions.update(meta['key_descriptions'])
+
+    default_columns = meta.get('default_columns')
+    if default_columns is None:
+        default_columns = all_columns[:]
+
     projects['default'] = {
         'name': 'default',
+        'title': meta.get('title', ''),
         'uid_key': 'id',
-        'key_descriptions': create_key_descriptions(kd),
+        'key_descriptions': create_key_descriptions(key_descriptions),
         'database': db,
         'row_to_dict_function': row_to_dict,
         'handle_query_function': handle_query,
-        'default_columns': all_columns[:],
+        'default_columns': default_columns,
         'search_template': 'ase/db/templates/search.html',
-        'row_template': 'ase/db/templates/row.html'}
+        'row_template': 'ase/db/templates/row.html',
+        'table_template': 'ase/db/templates/table.html'}
 
 
 if __name__ == '__main__':
