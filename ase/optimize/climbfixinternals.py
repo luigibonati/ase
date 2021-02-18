@@ -7,6 +7,7 @@ from ase.constraints import FixInternals
 
 class ClimbFixInternals(BFGS):
     """
+
     Class for transition state search and optimization
     --------------------------------------------------
 
