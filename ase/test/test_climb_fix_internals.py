@@ -41,33 +41,31 @@ def test_climb_fix_internals():
     atoms = setup_atoms()
     atoms.calc = EMT()
 
-    # Define reaction coordinate via linear combination of bond lengths
-    #reaction_coord = [[0, 4, -1.0], [0, 5, 1.0]]  # -1 * bond_1 + 1 * bond_2
+    ### Define reaction coordinate via linear combination of bond lengths
     reaction_coord = [[0, 4, 1.0], [1, 4, 1.0]]  # 1 * bond_1 + 1 * bond_2
     bondcombo = [get_combo_value(atoms, reaction_coord), reaction_coord]
-    #atoms.set_constraint(atoms.constraints + [FixInternals(bondcombos=[bondcombo])])
-    atoms.set_constraint([FixInternals(bondcombos=[bondcombo])] + atoms.constraints)
+    atoms.set_constraint(atoms.constraints + [FixInternals(bondcombos=[bondcombo])])
 
-    # Optimizer for transition state search along reaction coordinate
+    ### Optimizer for transition state search along reaction coordinate
     dyn = ClimbFixInternals(atoms,
                             climb_coordinate=['FixBondCombo',
                                               #[[0, 4], [0, 5]]],
                                               [[0, 4], [1, 4]]],
                             trajectory='opt.traj')
 
-    # Converge to a saddle point
+    ### Converge to a saddle point
     dyn.run(fmax=0.005)
 
-    # Visualize transition state search
+    ### Visualize transition state search
     # a = read('opt.traj', index=':')
     # view(a)
 
-    # Validate transition state by one imaginary vibrational mode
+    ### Validate transition state by one imaginary vibrational mode
     vib = Vibrations(atoms, indices=[4])
     vib.run()
     assert ((np.imag(vib.get_energies()) > 0) == [True, False, False]).all()
 
-    # Visualize imaginary vibrational mode
+    ### Visualize imaginary vibrational mode
     # vib.write_mode(0)
     # v = read('vib.0.traj', index=':')
     # view(v)

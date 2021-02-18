@@ -8,6 +8,7 @@ from ase.constraints import FixInternals
 class ClimbFixInternals(BFGS):
     """
     Class for transition state search and optimization
+    --------------------------------------------------
 
     Climbs the 1D reaction coordinate defined as constrained internal coordinate
     via the :class:`~ase.constraints.FixInternals` class while minimizing all
@@ -20,7 +21,12 @@ class ClimbFixInternals(BFGS):
     Optimizer 'A' uses the BFGS algorithm to climb along the projected force of
     the selected constraint. Optimizer 'B' can be user-defined (default: BFGS).
 
-    Inspired by concepts described by Plessow [1]_ implemented by J. Amsler.
+    In combination with other constraints, the order of constraints matters.
+    Generally, the FixInternals constraint should come last in the list of
+    constraints, i.e., `atoms.set_constraint(list_of_constraints)`.
+    This has been tested with the :class:`~ase.constraints.FixAtoms` constraint.
+
+    Inspired by concepts described by Plessow [1]_, implemented by J. Amsler.
 
     .. [1] P. N. Plessow, Efficient Transition State Optimization of Periodic
            Structures through Automated Relaxed Potential Energy Surface Scans.
@@ -112,7 +118,6 @@ class ClimbFixInternals(BFGS):
         self.constr2climb.adjust_positions(r, r + dr)  # update constr.sigma
         self.targetvalue += self.constr2climb.sigma  # climb the constraint
         self.constr2climb.targetvalue = self.targetvalue  # adjust positions...
-        ###TODO: test if following line is necessary
         atoms.set_positions(atoms.get_positions())        # ...to targetvalue
 
         self.r0 = r.flat.copy()
