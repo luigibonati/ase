@@ -36,10 +36,8 @@ class ClimbFixInternals(BFGS):
     def __init__(self, atoms, restart=None, logfile='-', trajectory=None,
                  maxstep=None, master=None, alpha=None,
                  climb_coordinate=None,
-                 optB=BFGS, optB_kwargs=None, optB_fmax=0.05):
-        # auto_thresh=True, fixed_conv_ratio=0.8, max_interval_steps=3,
-        # interval_step=0.5, adaptive_thresh=0.6, linear_interpol=False,
-        # cubic=None):
+                 optB=BFGS, optB_kwargs=None, optB_fmax=0.05,
+                 optB_fmax_scaling=0.0):
         """
         Initialize like the parent class :class:`~ase.optimize.bfgs.BFGS`
         with the following additional parameters.
@@ -71,6 +69,17 @@ class ClimbFixInternals(BFGS):
     
         optB_fmax: float, optional
             Specifies the convergence criterion `fmax` of optimizer 'B'.
+
+        optB_fmax_scaling: float, optional
+            Scaling factor to dynamically tighten `fmax` of optimizer 'B' to
+            the value of `optB_fmax` when close to convergence.
+            Can speed up the climbing process. The scaling formula is
+
+            `fmax = optB_fmax + optB_fmax_scaling * (projected_force - optB_fmax)`
+
+            The final optimization with optimizer 'B' is performed with
+            `optB_fmax` independent of `optB_fmax_scaling`.
+            Default: 0.0
         """
         BFGS.__init__(self, atoms, restart, logfile, trajectory,
                       maxstep, master, alpha)
@@ -81,6 +90,7 @@ class ClimbFixInternals(BFGS):
         self.optB = optB
         self.optB_kwargs = optB_kwargs or {}
         self.optB_fmax = optB_fmax
+        self.scaling = optB_fmax_scaling
         self.optB_autolog = False if 'logfile' in self.optB_kwargs else True
 
     def get_constr2climb(self, atoms, climb_coordinate):
@@ -126,10 +136,16 @@ class ClimbFixInternals(BFGS):
         if self.optB_autolog:
             logfilename = 'optB_{}.log'.format(self.targetvalue)
             self.optB_kwargs['logfile'] = logfilename
+
         optB = self.optB(atoms, **self.optB_kwargs)  # optimize remaining...
-        optB.run(self.optB_fmax)                     # ...degrees of freedom
+        fmax = (self.optB_fmax + self.scaling
+                * (self.constr2climb.projected_force - self.optB_fmax))
+        optB.run(fmax)                               # ...degrees of freedom
 
         self.projected_forces = self.get_projected_forces()
+
+        if self.converged() and fmax > self.optB_fmax:
+            optB.run(self.optB_fmax)  # final optimization with desired fmax
 
         self.dump((self.H, self.r0, self.f0, self.maxstep,
                    self.projected_forces, self.targetvalue))
