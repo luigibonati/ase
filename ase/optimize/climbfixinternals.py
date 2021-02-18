@@ -22,7 +22,7 @@ class ClimbFixInternals(BFGS):
     the selected constraint. Optimizer 'B' can be user-defined (default: BFGS).
 
     In combination with other constraints, the order of constraints matters.
-    Generally, the FixInternals constraint should come last in the list of
+    Generally, the FixInternals constraint should come first in the list of
     constraints, i.e., `atoms.set_constraint(list_of_constraints)`.
     This has been tested with the :class:`~ase.constraints.FixAtoms` constraint.
 
