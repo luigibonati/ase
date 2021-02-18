@@ -19,6 +19,13 @@ class ClimbFixInternals(BFGS):
 
     Optimizer 'A' uses the BFGS algorithm to climb along the projected force of
     the selected constraint. Optimizer 'B' can be user-defined (default: BFGS).
+
+    Inspired by concepts described by Plessow [1]_ implemented by J. Amsler.
+
+    .. [1] P. N. Plessow, Efficient Transition State Optimization of Periodic
+           Structures through Automated Relaxed Potential Energy Surface Scans.
+           J. Chem. Theory Comput. 2018, 14 (2), 981–990.
+           https://doi.org/10.1021/acs.jctc.7b01070.
     """
     def __init__(self, atoms, restart=None, logfile='-', trajectory=None,
                  maxstep=None, master=None, alpha=None,
@@ -47,16 +54,14 @@ class ClimbFixInternals(BFGS):
             * `['FixDihedralCombo', [[0, 1, 2, 3], [4, 5, 6, 7]]]`
     
         optB: any ASE optimizer, optional
-            Optimizer 'B' for optimization of remaining degrees of freedom.
+            Optimizer 'B' for optimization of the remaining degrees of freedom.
             Default: :class:`~ase.optimize.bfgs.BFGS`
     
-        optB_log: str, optional
-            Specifies the filename for logging of optimizer 'B'.
-            Default: 'optB_{}.log' where {} is the current value of the
-            coordinate to be climbed
-    
         optB_kwargs: dict, optional
-            Specifies keyword arguments to be passed to optimizer 'B'.
+            Specifies keyword arguments to be passed to optimizer 'B' at its
+            initialization.
+            Default: {'logfile': 'optB_{...}.log'} where {...} is the current
+            value of the coordinate to be climbed
     
         optB_fmax: float, optional
             Specifies the convergence criterion `fmax` of optimizer 'B'.
@@ -80,7 +85,7 @@ class ClimbFixInternals(BFGS):
             if repr(subconstr).startswith(climb_coordinate[0]):
                 if subconstr.indices == climb_coordinate[1]:
                     return subconstr
-        raise ValueError('Given `climb_coordinate` not found on Atoms.')
+        raise ValueError('Given `climb_coordinate` not found on Atoms object.')
 
     def initialize(self):
         BFGS.initialize(self)
@@ -107,6 +112,7 @@ class ClimbFixInternals(BFGS):
         self.constr2climb.adjust_positions(r, r + dr)  # update constr.sigma
         self.targetvalue += self.constr2climb.sigma  # climb the constraint
         self.constr2climb.targetvalue = self.targetvalue  # adjust positions...
+        ###TODO: test if following line is necessary
         atoms.set_positions(atoms.get_positions())        # ...to targetvalue
 
         self.r0 = r.flat.copy()

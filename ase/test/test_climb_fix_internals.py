@@ -53,7 +53,6 @@ def test_climb_fix_internals():
                             climb_coordinate=['FixBondCombo',
                                               #[[0, 4], [0, 5]]],
                                               [[0, 4], [1, 4]]],
-                            optB_kwargs={'logfile': '-'}, optB_fmax=0.05,
                             trajectory='opt.traj')
 
     # Converge to a saddle point
