@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: ase\n"
 "Report-Msgid-Bugs-To: ase-users@listserv.fysik.dtu.dk\n"
-"POT-Creation-Date: 2021-02-17 15:08+0200\n"
-"PO-Revision-Date: 2021-02-17 15:14+0200\n"
+"POT-Creation-Date: 2021-02-19 09:17+0200\n"
+"PO-Revision-Date: 2021-02-19 09:18+0200\n"
 "Last-Translator: Tuomas Rossi <tuomas.rossi@alumni.aalto.fi>\n"
 "Language-Team: Finnish\n"
 "Language: fi\n"
@@ -943,7 +943,7 @@ msgid "No valid atoms."
 msgstr "Sopivia atomeja ei ole."
 
 #: ../nanoparticle.py:530 ../nanotube.py:83 ../surfaceslab.py:222
-#: ../widgets.py:114
+#: ../widgets.py:95
 msgid "You have not (yet) specified a consistent set of parameters."
 msgstr "Kaikki asetukset eivät ole johdonmukaisia."
 
@@ -1471,7 +1471,7 @@ msgstr "Verkkosivu"
 msgid "About"
 msgstr "Tietoja"
 
-#: ../ui.py:47 ../ui.py:51 ../widgets.py:16
+#: ../ui.py:47 ../ui.py:51 ../widgets.py:14
 msgid "Help"
 msgstr "Ohje"
 
@@ -1495,28 +1495,27 @@ msgstr "Lukuvirhe"
 msgid "Could not read {}: {}"
 msgstr "Ei pysty lukemaan {}: {}"
 
-#: ../widgets.py:13
+#: ../widgets.py:12
 msgid "Element:"
 msgstr "Alkuaine:"
 
-#: ../widgets.py:29
-msgid "Enter a chemical symbol or the atomic number"
-msgstr "Anna kemiallinen merkki tai järjestysluku"
+#: ../widgets.py:26
+msgid "Enter a chemical symbol or the atomic number."
+msgstr "Anna kemiallinen merkki tai järjestysluku."
 
-#. This infobox is indescribably ugly because of the
-#. ridiculously large font size used by Tkinter.  Ouch!
-#: ../widgets.py:39
-msgid " or the name of a molecule from the G2 testset:"
-msgstr " tai G2-testijoukon molekyylin nimi:"
+#. Title of a popup window
+#: ../widgets.py:28
+msgid "Info"
+msgstr "Ohje"
 
-#: ../widgets.py:74
+#: ../widgets.py:58
 msgid "No element specified!"
 msgstr "Alkuainetta ei ole määritetty!"
 
-#: ../widgets.py:96
+#: ../widgets.py:77
 msgid "ERROR: Invalid element!"
 msgstr "VIRHE: Epäkelpo alkuaine!"
 
-#: ../widgets.py:113
+#: ../widgets.py:94
 msgid "No Python code"
 msgstr "Ei Python-koodia"
