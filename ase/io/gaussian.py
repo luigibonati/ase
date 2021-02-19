@@ -10,7 +10,7 @@ from ase.units import Hartree, Bohr
 from ase.calculators.calculator import InputError
 from ase.calculators.singlepoint import SinglePointCalculator
 from ase.calculators.gaussian import Gaussian
-
+from ase.data import chemical_symbols, atomic_masses_iupac2016
 
 from ase.io.zmatrix import parse_zmatrix
 
@@ -229,16 +229,15 @@ def write_gaussian_in(fd, atoms, properties=None, **params):
         # Check whether the mass of the atom has been modified,
         # and if so, add it to the symbol section:
         mass_set = False
-        from ase.data import chemical_symbols, atomic_masses_iupac2016
         symbol = atom.symbol
         if symbol in chemical_symbols:
             expected_mass = atomic_masses_iupac2016[chemical_symbols.index(
                 symbol)]
         else:
             expected_mass = None
-        if expected_mass != atoms.get_masses()[i]:
+        if expected_mass != atoms[i].mass:
             mass_set = True
-            string = 'iso' + '=' + str(atoms.get_masses()[i])
+            string = 'iso' + '=' + str(atoms[i].mass)
             symbol_section += string
 
         if nuclei_props_set or mass_set:
@@ -344,12 +343,10 @@ def _convert_to_symbol(string):
     string = _validate_symbol_string(string)
     if string.isnumeric():
         atomic_number = int(string)
-        from ase.data import chemical_symbols
         string = chemical_symbols[atomic_number]
     else:
-        for i, character in enumerate(string):
-            if character.isdigit():
-                string = string[:i]
+        match = re.match(r'([A-Za-z]+)', string)
+        string = match.group(1)
     return string
 
 
@@ -358,9 +355,7 @@ def _validate_symbol_string(string):
         raise IOError("ERROR: Could not read the Gaussian input file, as"
                       " molecule specifications for molecular mechanics "
                       "calculations are not supported.")
-        return
-    else:
-        return string
+    return string
 
 
 def _get_route_params(line):
@@ -500,12 +495,6 @@ def _save_nuclei_props(line, nuclei_props, atom_masses):
 def _save_mass(atom_mass, atom_masses, symbol):
     ''' Saves a mass (atom_mass) to the atom_masses
     list. '''
-    if atom_mass is not None:
-        if isinstance(atom_mass, int):
-            warnings.warn("Mass for atom: {} has been saved as an integer "
-                          "value: {}. You may wish to update this if you "
-                          "require a more accurate mass to be saved to "
-                          "the Atoms object.".format(symbol, atom_mass))
     atom_masses.append(atom_mass)
 
 
@@ -733,7 +722,7 @@ class GaussianConfiguration:
                     if zmatrix_type:
                         # Save any variables set when defining the z-matrix:
                         if zmatrix_var_section:
-                            zmatrix_vars += line
+                            zmatrix_vars += line.strip() + '\n'
                             continue
                         elif 'variables' in line.lower():
                             zmatrix_var_section = True
@@ -754,7 +743,7 @@ class GaussianConfiguration:
                         pos = list(tokens[1:])
                         if len(pos) < 3 or (pos[0] == '0' and symbol != 'TV'):
                             zmatrix_type = True
-                            zmatrix_contents += line
+                            zmatrix_contents += line.strip() + '\n'
                         elif len(pos) > 3:
                             raise IOError("ERROR: Gaussian input file could "
                                           "not be read as freeze codes are not"
@@ -785,7 +774,7 @@ class GaussianConfiguration:
                                 ", as the alternative Z-matrix format using "
                                 "two bond angles instead of a bond angle and "
                                 "a dihedral angle is not supported.")
-                        zmatrix_contents += line
+                        zmatrix_contents += line.strip() + '\n'
 
                     atoms_saved = True
             elif atoms_saved:
