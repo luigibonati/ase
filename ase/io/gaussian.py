@@ -65,6 +65,9 @@ _xc_to_method = dict(
     revtpss='revtpssrevtpss',
 )
 
+_nuclei_prop_array_names = ['spin', 'zeff', 'qmom', 'nmagm', 'znuc',
+                            'radnuclear', 'iso']
+
 
 def write_gaussian_in(fd, atoms, properties=None, **params):
     '''
@@ -149,6 +152,12 @@ def write_gaussian_in(fd, atoms, properties=None, **params):
     # also pull out 'addsec', which e.g. contains modredundant info
     addsec = params.pop('addsec', None)
 
+    # pull out nuclei properties:
+    nuclei_props = {}
+    for keyword in _nuclei_prop_array_names:
+        nuclei_props[keyword] = params.pop(keyword, None)
+    nuclei_props.pop('iso')
+
     # set up link0 arguments
     out = []
     for key in _link0_keys:
@@ -219,8 +228,7 @@ def write_gaussian_in(fd, atoms, properties=None, **params):
         # Check whether any nuclear properties of the atom have been set,
         # and if so, add them to the symbol section.
         nuclei_props_set = False
-        for keyword, array_name in _nuclei_prop_array_names.items():
-            array = atoms.arrays.get(array_name, None)
+        for keyword, array in nuclei_props.items():
             if array is not None and array[i] is not None:
                 string = keyword + '=' + str(array[i]) + ', '
                 symbol_section += string
@@ -313,11 +321,6 @@ _re_chgmult = re.compile(r'^\s*[+-]?\d+(?:,\s*|\s+)[+-]?\d+\s*$')
 # a comma (and possibly whitespace) or some amount of whitespace, we
 # can be more confident that we've actually found the charge and multiplicity.
 
-_nuclei_prop_array_names = {'spin': 'gaussian_Spin', 'zeff': 'gaussian_ZEff',
-                            'qmom': 'gaussian_QMom', 'nmagm': 'gaussian_NMagM',
-                            'znuc': 'gaussian_ZNuc',
-                            'radnuclear': 'gaussian_RadNuclear'}
-
 # The following methods are used in GaussianConfiguration's
 # parse_gaussian_input method:
 
@@ -340,14 +343,14 @@ def _convert_to_symbol(string):
     This is achieved by either stripping any
     integers from the string, or converting a string
     containing an atomic number to integer type'''
-    string = _validate_symbol_string(string)
-    if string.isnumeric():
-        atomic_number = int(string)
-        string = chemical_symbols[atomic_number]
+    symbol = _validate_symbol_string(string)
+    if symbol.isnumeric():
+        atomic_number = int(symbol)
+        symbol = chemical_symbols[atomic_number]
     else:
-        match = re.match(r'([A-Za-z]+)', string)
-        string = match.group(1)
-    return string
+        match = re.match(r'([A-Za-z]+)', symbol)
+        symbol = match.group(1)
+    return symbol
 
 
 def _validate_symbol_string(string):
@@ -439,10 +442,9 @@ def _save_route_params(line, parameters):
     parameters.update(_get_route_params(line))
 
 
-def _save_nuclei_props(line, nuclei_props, atom_masses):
+def _save_nuclei_props(line, nuclei_props):
     ''' Reads any info in parantheses in the line and stores
-    it in the nuceli_props dict, except for the mass which
-    gets added to the atom_masses list. Returns the line with
+    it in the nuceli_props dict. Returns the line with
     the nuclei properties removed, along with the atom symbol
     and tokens which contains its position'''
     nuclei_props_match = re.search(r'\(([^\)]+)\)', line)
@@ -462,12 +464,10 @@ def _save_nuclei_props(line, nuclei_props, atom_masses):
 
         current_nuclei_props = updated_current_nuclei_props
 
-        atom_mass = current_nuclei_props.pop('iso', None)
     else:
         tokens = line.split()
         symbol = _convert_to_symbol(tokens[0])
         current_nuclei_props = {}
-        atom_mass = None
 
     # Only save this info if the line is not defining PBCs:
     if symbol.upper() != 'TV':
@@ -488,27 +488,21 @@ def _save_nuclei_props(line, nuclei_props, atom_masses):
                           "could not be saved: {}".format(
                               current_nuclei_props))
 
-        _save_mass(atom_mass, atom_masses, symbol)
     return line, [symbol, tokens]
 
 
-def _save_mass(atom_mass, atom_masses, symbol):
-    ''' Saves a mass (atom_mass) to the atom_masses
-    list. '''
-    atom_masses.append(atom_mass)
-
-
-def _attach_nuclei_props_to_atoms(atoms, nuclei_props):
+def _add_nuclei_props_to_params(parameters, nuclei_props):
     ''' Attaches each nuclear property as a custom array
     in the atoms object'''
+    params = deepcopy(parameters)
     for key in nuclei_props:
         values_set = False
         for value in nuclei_props[key]:
             if value is not None:
                 values_set = True
         if values_set:
-            atoms.new_array(_nuclei_prop_array_names[key],
-                            np.array(nuclei_props[key]))
+            params[key] = nuclei_props[key]
+    return params
 
 
 def _get_readiso_param(parameters):
@@ -672,9 +666,7 @@ class GaussianConfiguration:
         count_iso = 0
 
         # These will contain info that will be attached to the Atoms object:
-        atom_masses = []
-        nuclei_props = {'spin': [], 'zeff': [],
-                        'qmom': [], 'nmagm': [], 'znuc': [], 'radnuclear': []}
+        nuclei_props = {key: [] for key in _nuclei_prop_array_names}
         symbols = []
         positions = []
         pbc = np.zeros(3, dtype=bool)
@@ -715,8 +707,7 @@ class GaussianConfiguration:
                 # molecule specification section of the input file begins:
                 atoms_section = True
             elif atoms_section:
-                line = line.split('!')[0]
-                line = line.replace('/', ' ')
+                line = line.split('!')[0].replace('/', ' ')
                 line = line.replace(',', ' ')
                 if (line.split()):
                     if zmatrix_type:
@@ -734,7 +725,7 @@ class GaussianConfiguration:
                             continue
 
                     line, info = _save_nuclei_props(
-                        line, nuclei_props, atom_masses)
+                        line, nuclei_props)
 
                     symbol = info[0]
                     tokens = info[1]
@@ -807,15 +798,15 @@ class GaussianConfiguration:
                         # If the atom masses were set in the nuclei properties
                         # section, they will be overwritten by the ReadIso
                         # section
-                        atom_masses = []
+                        parameters['iso'] = []
 
                     else:
                         # The remaining lines in the ReadIso section are
                         # the masses of the atoms
                         try:
-                            atom_masses.append(float(line))
+                            parameters['iso'].append(float(line))
                         except ValueError:
-                            atom_masses.append(None)
+                            parameters['iso'].append(None)
                     count_iso += 1
                 else:
                     # If the rest of the file is not the ReadIso section,
@@ -834,11 +825,11 @@ class GaussianConfiguration:
             _delete_readiso_param(parameters)
             # Ensures the masses array is the same length as the
             # symbols array:
-            if len(atom_masses) < len(symbols):
-                for i in range(0, len(symbols) - len(atom_masses)):
-                    atom_masses.append(None)
-            elif len(atom_masses) > len(symbols):
-                atom_masses = atom_masses[:len(symbols)]
+            if len(parameters['iso']) < len(symbols):
+                for i in range(0, len(symbols) - len(parameters['iso'])):
+                    parameters['iso'].append(None)
+            elif len(parameters['iso']) > len(symbols):
+                parameters['iso'] = parameters['iso'][:len(symbols)]
 
         # Saves the basis set definition to the parameters array if
         # it has been set:
@@ -848,14 +839,13 @@ class GaussianConfiguration:
             parameters.pop('gen', None)
 
         try:
-            atoms = Atoms(symbols, positions, pbc=pbc,
-                          cell=cell, masses=atom_masses)
+            atoms = Atoms(symbols, positions, pbc=pbc, cell=cell)
         except (IndexError, ValueError, KeyError) as e:
             raise IOError("ERROR: Could not read the Gaussian input file, "
                           "due to a problem with the molecule specification:"
                           " {}".format(e))
 
-        _attach_nuclei_props_to_atoms(atoms, nuclei_props)
+        parameters = _add_nuclei_props_to_params(parameters, nuclei_props)
 
         return GaussianConfiguration(atoms, parameters)
 

@@ -126,18 +126,12 @@ def test_readwrite_gaussian(fd_cartesian, fd_cartesian_basis_set, fd_zmatrix):
         assert np.allclose(atoms_new.positions, atoms.positions, atol=1e-3)
         assert np.all(atoms_new.pbc == atoms.pbc)
         assert np.allclose(atoms_new.cell, atoms.cell)
-        for key, array in atoms.arrays.items():
-            if key[:8] == "gaussian":
-                assert (atoms_new.arrays[key] == atoms.arrays[key]).all()
 
         new_params = atoms_new.calc.parameters
-        matching_params = {k: new_params[k] for k in new_params
-                           if k in params and new_params[k] == params[k]}
+        new_params_to_check = copy.deepcopy(new_params)
+        params_to_check = copy.deepcopy(params)
 
         if 'basis_set' in params:
-            new_params = atoms_new.calc.parameters
-            new_params_to_check = copy.deepcopy(new_params)
-            params_to_check = copy.deepcopy(params)
             params_to_check['basis_set'] = params_to_check['basis_set'].split(
                 '\n')
             params_to_check['basis_set'] = [line.strip()
@@ -145,12 +139,13 @@ def test_readwrite_gaussian(fd_cartesian, fd_cartesian_basis_set, fd_zmatrix):
                                             params_to_check['basis_set']]
             new_params_to_check['basis_set'] = new_params_to_check[
                 'basis_set'].strip().split('\n')
-            matching_params = {k: new_params_to_check[k]
-                               for k in new_params_to_check
-                               if k in params_to_check and
-                               new_params_to_check[k] == params_to_check[k]}
-
-        assert (len(params) == len(matching_params))
+        for key, value in new_params_to_check.items():
+            params_equal = new_params_to_check.get(
+                key) == params_to_check.get(key)
+            if isinstance(params_equal, np.ndarray):
+                assert(params_equal.all())
+            else:
+                assert(params_equal)
 
     def test_write_gaussian(atoms, atoms_new):
         atoms_new.calc.label = 'gaussian_input_file'
@@ -160,7 +155,14 @@ def test_readwrite_gaussian(fd_cartesian, fd_cartesian_basis_set, fd_zmatrix):
 
         with open(out_file) as fd:
             atoms_written = read_gaussian_in(fd, True)
-            check_atom_properties(atoms, atoms_written, params)
+            atoms_written.set_masses(get_iso_masses(atoms_written))
+        check_atom_properties(atoms, atoms_written, params)
+
+    def get_iso_masses(atoms):
+        iso_masses = []
+        for mass in atoms.calc.parameters['iso']:
+            iso_masses.append(mass)
+        return iso_masses
 
     # Tests reading a Gaussian input file with:
     # - Cartesian coordinates for the atom positions.
@@ -174,6 +176,7 @@ def test_readwrite_gaussian(fd_cartesian, fd_cartesian_basis_set, fd_zmatrix):
                  [0.441, -0.143, 0.0]]
     cell = [[10., 0., 0.], [0., 10., 0.], [0., 0., 10.]]
     masses = [15.999, 0.1134289259, 2]
+    iso_masses = [None, 0.1134289259, 2]
     atoms = Atoms('OH2', cell=cell, positions=positions,
                   masses=masses)
     atoms.set_pbc(True)
@@ -182,20 +185,15 @@ def test_readwrite_gaussian(fd_cartesian, fd_cartesian_basis_set, fd_zmatrix):
               'basis': "6-31G(d',p')", 'opt': 'Tight, MaxCyc=100',
               'integral': 'Ultrafine', 'freq': None, 'charge': 0,
               'mult': 1}
-    NMagM = np.array([None, -8.89, None])
-    ZEff = np.array([None, -1, None])
-    ZNuc = np.array([None, None, 2])
-    QMom = np.array([None, None, 1])
-    RadNuclear = np.array([None, None, 1])
-    Spin = np.array([None, None, 1])
-    atoms.new_array('gaussian_NMagM', NMagM)
-    atoms.new_array('gaussian_ZEff', ZEff)
-    atoms.new_array('gaussian_ZNuc', ZNuc)
-    atoms.new_array('gaussian_QMom', QMom)
-    atoms.new_array('gaussian_RadNuclear', RadNuclear)
-    atoms.new_array('gaussian_Spin', Spin)
+    params['nmagm'] = np.array([None, -8.89, None])
+    params['zeff'] = np.array([None, -1, None])
+    params['znuc'] = np.array([None, None, 2])
+    params['qmom'] = np.array([None, None, 1])
+    params['radnuclear'] = np.array([None, None, 1])
+    params['spin'] = np.array([None, None, 1])
+    params['iso'] = np.array(iso_masses)
     atoms_new = read_gaussian_in(fd_cartesian, True)
-
+    atoms_new.set_masses(get_iso_masses(atoms_new))
     check_atom_properties(atoms, atoms_new, params)
 
     # Now we have tested reading the input, we can test writing it
@@ -209,6 +207,8 @@ def test_readwrite_gaussian(fd_cartesian, fd_cartesian_basis_set, fd_zmatrix):
     # - Masses defined using nuclei properties
 
     atoms = Atoms('OH2', positions=positions, masses=masses)
+    nuclei_props = ['nmagm', 'zeff', 'znuc', 'qmom', 'radnuclear', 'spin']
+    params = {k: v for k, v in params.items() if k not in nuclei_props}
     params['opt'] = 'Tight MaxCyc=100'
     params['basis'] = 'gen'
     params['basis_set'] = '''H     0
@@ -233,6 +233,7 @@ SP   1   1.00
     0.3736840000D+00       0.1000000000D+01       0.1000000000D+01
 ****'''
     atoms_new = read_gaussian_in(fd_cartesian_basis_set, True)
+    atoms_new.set_masses(get_iso_masses(atoms_new))
     check_atom_properties(atoms, atoms_new, params)
 
     # Now we have tested reading the input, we can test writing it
@@ -266,6 +267,7 @@ SP   1   1.00
               'freq': None, 'integral': 'Ultrafine', 'charge': 0, 'mult': 1,
               'temperature': '300', 'pressure': '1.0',
               'basisfile': '@basis-set-filename.gbs'}
+    params['iso'] = np.array(masses)
 
     # Note that although the freq is set to ReadIso in the input text,
     # here we have set it to None. This is because when reading in a file
@@ -274,7 +276,7 @@ SP   1   1.00
 
     # Test reading the gaussian input
     atoms_new = read_gaussian_in(fd_zmatrix, True)
-
+    atoms_new.set_masses(get_iso_masses(atoms_new))
     check_atom_properties(atoms, atoms_new, params)
 
     # Now we have tested reading the input, we can test writing it
