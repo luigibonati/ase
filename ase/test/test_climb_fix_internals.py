@@ -22,7 +22,7 @@ def get_combo_value(atoms, combo):
     """Return current value of linear combination of bonds lengths, angles or
     dihedrals defined as bondcombo, anglecombo or dihedralcombo
     (see the FixInternals class)."""
-    coord_type = len(combo)
+    coord_type = len(combo[0]) - 1
     if coord_type == 2:
         get_value = atoms.get_distance
     elif coord_type == 3:
