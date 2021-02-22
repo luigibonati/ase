@@ -125,7 +125,7 @@ def build_molecule(args):
     try:
         # Known molecule or atom?
         atoms = molecule(args.name)
-    except NotImplementedError:
+    except (NotImplementedError, KeyError):
         symbols = string2symbols(args.name)
         if len(symbols) == 1:
             Z = atomic_numbers[symbols[0]]

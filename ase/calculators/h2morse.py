@@ -37,7 +37,7 @@ def H2Morse(state=0):
     """Return H2 as a Morse-Potential with calculator attached."""
     atoms = Atoms('H2', positions=np.zeros((2, 3)))
     atoms[1].position[2] = Re[state]
-    atoms.calc = H2MorseCalculator(state)
+    atoms.calc = H2MorseCalculator(state=state)
     atoms.get_potential_energy()
     return atoms
 
@@ -46,8 +46,9 @@ class H2MorseCalculator(MorsePotential):
     """H2 ground or excited state as Morse potential"""
     _count = count(0)
 
-    def __init__(self, state):
+    def __init__(self, restart=None, state=0):
         MorsePotential.__init__(self,
+                                restart=restart,
                                 epsilon=De[state],
                                 r0=Re[state], rho0=rho0[state])
 
@@ -80,9 +81,8 @@ class H2MorseCalculator(MorsePotential):
         berry = (-1)**np.random.randint(0, 2, 4)
         self.wfs = [wf * b for wf, b in zip(wfs, berry)]
 
-    @classmethod
-    def read(cls, filename):
-        ms = cls(3)
+    def read(self, filename):
+        ms = self
         with open(filename) as f:
             ms.wfs = [int(f.readline().split()[0])]
             for i in range(1, 4):
@@ -140,7 +140,7 @@ class H2MorseExcitedStatesCalculator():
         for i in range(1, self.nstates + 1):
             hvec = cgs.wfs[0] * cgs.wfs[i]
             energy = Ha * (0.5 - 1. / 8) - E0
-            calc = H2MorseCalculator(i)
+            calc = H2MorseCalculator(state=i)
             calc.calculate(atoms)
             energy += calc.get_potential_energy()
 

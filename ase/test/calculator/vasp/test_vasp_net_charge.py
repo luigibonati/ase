@@ -47,7 +47,7 @@ def test_vasp_net_charge(factory, system):
                             net_charge=net_charge)
         calc.initialize(system)
         calc.write_input(system)
-        calc.read_incar()
+        calc.read_incar('INCAR')
     assert calc.float_params['nelect'] == default_nelect_from_vasp + net_charge
 
     # Test that conflicts between explicitly given nelect and net charge are
@@ -89,5 +89,5 @@ def test_vasp_net_charge(factory, system):
                             net_charge=0)
         calc.initialize(system)
         calc.write_input(system)
-        calc.read_incar()
+        calc.read_incar('INCAR')
     assert calc.float_params['nelect'] is None

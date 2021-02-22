@@ -1,23 +1,32 @@
 import os
-import pickle
+from typing import Any, Union
 
 import numpy as np
 
-from ase.atoms import Atoms
-from ase.parallel import world
-from ase.utils import pickleload
+from ase import Atoms
+from ase.io.jsonio import read_json, write_json
+from ase.parallel import world, parprint
+
+DFTCalculator = Any
 
 
-def ensemble(energy, contributions, xc, verbose=False):
+def ensemble(energy: float,
+             contributions: np.ndarray,
+             xc: str,
+             verbose: bool = False) -> np.ndarray:
     """Returns an array of ensemble total energies."""
     ensemble = BEEFEnsemble(None, energy, contributions, xc, verbose)
     return ensemble.get_ensemble_energies()
 
 
 class BEEFEnsemble:
-    """BEEF type ensemble error estimation"""
-    def __init__(self, atoms=None, e=None, contribs=None, xc=None,
-                 verbose=True):
+    """BEEF type ensemble error estimation."""
+    def __init__(self,
+                 atoms: Union[Atoms, DFTCalculator] = None,
+                 e: float = None,
+                 contribs: np.ndarray = None,
+                 xc: str = None,
+                 verbose: bool = True):
         if (atoms is not None or contribs is not None or xc is not None):
             if atoms is None:
                 assert e is not None
@@ -44,13 +53,15 @@ class BEEFEnsemble:
             elif self.xc == 'mBEEF-vdW':
                 self.beef_type = 'mbeefvdw'
             else:
-                raise NotImplementedError('No ensemble for xc = %s' % self.xc)
+                raise NotImplementedError(f'No ensemble for xc = {self.xc}')
 
-    def get_ensemble_energies(self, size=2000, seed=0):
+    def get_ensemble_energies(self,
+                              size: int = 2000,
+                              seed: int = 0) -> np.ndarray:
         """Returns an array of ensemble total energies"""
         self.seed = seed
-        if world.rank == 0 and self.verbose:
-            print(self.beef_type, 'ensemble started')
+        if self.verbose:
+            parprint(self.beef_type, 'ensemble started')
 
         if self.contribs is None:
             self.contribs = self.calc.get_nonselfconsistent_energies(
@@ -68,8 +79,8 @@ class BEEFEnsemble:
         self.de = np.dot(coefs, self.contribs)
         self.done = True
 
-        if world.rank == 0 and self.verbose:
-            print(self.beef_type, 'ensemble finished')
+        if self.verbose:
+            parprint(self.beef_type, 'ensemble finished')
 
         return self.e + self.de
 
@@ -126,15 +137,15 @@ class BEEFEnsemble:
             if os.path.isfile(fname):
                 os.rename(fname, fname + '.old')
             obj = [self.e, self.de, self.contribs, self.seed, self.xc]
-            with open(fname, 'wb') as f:
-                pickle.dump(obj, f, protocol=2)
+            with open(fname, 'w') as fd:
+                write_json(fd, obj)
 
 
-def readbee(fname, all=False):
+def readbee(fname: str, all: bool = False):
     if not fname.endswith('.bee'):
         fname += '.bee'
-    with open(fname, 'rb') as f:
-        e, de, contribs, seed, xc = pickleload(f)
+    with open(fname, 'r') as fd:
+        e, de, contribs, seed, xc = read_json(fd, always_array=False)
     if all:
         return e, de, contribs, seed, xc
     else:
