@@ -65,8 +65,8 @@ _xc_to_method = dict(
     revtpss='revtpssrevtpss',
 )
 
-_nuclei_prop_array_names = ['spin', 'zeff', 'qmom', 'nmagm', 'znuc',
-                            'radnuclear', 'iso']
+_nuclei_prop_names = ['spin', 'zeff', 'qmom', 'nmagm', 'znuc',
+                      'radnuclear', 'iso']
 
 
 def write_gaussian_in(fd, atoms, properties=None, **params):
@@ -154,7 +154,7 @@ def write_gaussian_in(fd, atoms, properties=None, **params):
 
     # pull out nuclei properties:
     nuclei_props = {}
-    for keyword in _nuclei_prop_array_names:
+    for keyword in _nuclei_prop_names:
         nuclei_props[keyword] = params.pop(keyword, None)
     nuclei_props.pop('iso')
 
@@ -325,14 +325,13 @@ _re_chgmult = re.compile(r'^\s*[+-]?\d+(?:,\s*|\s+)[+-]?\d+\s*$')
 # parse_gaussian_input method:
 
 
-def _save_link0_param(link0_match, parameters):
-    '''Saves link0 keywords and options to the
-    parameters dictionary '''
+def _get_link0_param(link0_match):
+    '''Gets link0 keyword and option from a re.Match and returns them
+    in a dictionary format'''
     value = link0_match.group(2)
     if value is not None:
         value = value.strip()
-    parameters.update({link0_match.group(1).lower().strip():
-                       value})
+    return {link0_match.group(1).lower().strip(): value}
 
 
 def _convert_to_symbol(string):
@@ -361,13 +360,14 @@ def _validate_symbol_string(string):
     return string
 
 
-def _get_route_params(line):
-    '''Reads a line of the route section of a gaussian input file.
+def _get_key_value_pairs(line):
+    '''Reads a line of a gaussian input file, which contains keywords and options
+    separated according to the rules of the route section.
 
     Parameters
     ----------
     line (string)
-        A line of the route section of a gaussian input file.
+        A line of a gaussian input file.
 
     Returns
     ---------
@@ -423,23 +423,23 @@ def _get_route_params(line):
     return params
 
 
-def _save_route_params(line, parameters):
+def _get_route_params(line):
     '''Reads keywords and values from a line in
     a Gaussian input file's route section,
-    and saves them to the parameters dictionary'''
+    and returns them as a dictionary'''
     method_basis_match = _re_method_basis.match(line)
     if method_basis_match:
+        parameters = {}
         ase_gen_comment = '! ASE formatted method and basis'
         if method_basis_match.group(5) == ase_gen_comment:
-            parameters.update(
-                {'method': method_basis_match.group(1).strip()})
-            parameters.update(
-                {'basis': method_basis_match.group(2).strip()})
+            parameters['method'] = method_basis_match.group(1).strip()
+            parameters['basis'] = method_basis_match.group(2).strip()
             if method_basis_match.group(4):
-                parameters.update(
-                    {'fitting_basis': method_basis_match.group(4).strip()})
-            return
-    parameters.update(_get_route_params(line))
+                parameters['fitting_basis'] = method_basis_match.group(
+                    4).strip()
+            return parameters
+
+    return _get_key_value_pairs(line)
 
 
 def _save_nuclei_props(line, nuclei_props):
@@ -453,7 +453,7 @@ def _save_nuclei_props(line, nuclei_props):
         tokens = line.split()
         symbol = _convert_to_symbol(
             tokens[0])
-        current_nuclei_props = _get_route_params(nuclei_props_match.group(1))
+        current_nuclei_props = _get_key_value_pairs(nuclei_props_match.group(1))
         updated_current_nuclei_props = {}
         for k, v in current_nuclei_props.items():
             if v.isnumeric():
@@ -521,12 +521,12 @@ def _get_readiso_param(parameters):
             return {freq_name: freq_options}
 
 
-def _save_readiso_info(line, parameters):
+def _get_readiso_info(line, parameters):
     '''Reads the temperature, pressure and scale from the first line
-    of a ReadIso section of a Gaussian input file. Saves these as
-    route section parameters. Returns True if this info exists and
-    has been saved.'''
+    of a ReadIso section of a Gaussian input file. Returns these in
+    a dictionary.'''
     freq_param = _get_readiso_param(parameters)
+    readiso_params = {}
     if freq_param is not None:
         # when count_iso is 0 we are in the line where
         # temperature, pressure, [scale] is saved
@@ -534,16 +534,18 @@ def _save_readiso_info(line, parameters):
             '[', '').replace(']', '')
         tokens = line.strip().split()
         try:
-            parameters.update({'temperature': tokens[0]})
-            parameters.update({'pressure': tokens[1]})
-            parameters.update({'scale': tokens[2]})
+            readiso_params['temperature'] = tokens[0]
+            readiso_params['pressure'] = tokens[1]
+            readiso_params['scale'] = tokens[2]
         except IndexError:
             pass
-        return True
+    if readiso_params != {}:
+        return readiso_params
 
 
 def _delete_readiso_param(parameters):
     '''Removes the readiso parameter from the parameters dict'''
+    parameters = deepcopy(parameters)
     freq_param = _get_readiso_param(parameters)
     if freq_param is not None:
         freq_name = [k for k in freq_param.keys()][0]
@@ -563,6 +565,19 @@ def _delete_readiso_param(parameters):
         else:
             new_freq_options = new_freq_options.strip()
         parameters[freq_name] = new_freq_options
+    return parameters
+
+
+def _update_readiso_params(parameters, symbols):
+    parameters = _delete_readiso_param(parameters)
+    # Ensures the masses array is the same length as the
+    # symbols array:
+    if len(parameters['iso']) < len(symbols):
+        for i in range(0, len(symbols) - len(parameters['iso'])):
+            parameters['iso'].append(None)
+    elif len(parameters['iso']) > len(symbols):
+        parameters['iso'] = parameters['iso'][:len(symbols)]
+    return parameters
 
 
 def _validate_params(parameters):
@@ -635,7 +650,7 @@ class GaussianConfiguration:
         calc = Gaussian(atoms=self.atoms, **self.parameters)
         return calc
 
-    @staticmethod
+    @ staticmethod
     def parse_gaussian_input(fd):
         '''Reads a gaussian input file into an atoms object and
         parameters dictionary.
@@ -666,7 +681,7 @@ class GaussianConfiguration:
         count_iso = 0
 
         # These will contain info that will be attached to the Atoms object:
-        nuclei_props = {key: [] for key in _nuclei_prop_array_names}
+        nuclei_props = {key: [] for key in _nuclei_prop_names}
         symbols = []
         positions = []
         pbc = np.zeros(3, dtype=bool)
@@ -692,8 +707,8 @@ class GaussianConfiguration:
                 route_section = False
                 atoms_section = False
             elif link0_match:
-                _save_link0_param(
-                    link0_match, parameters)
+                parameters.update(_get_link0_param(
+                    link0_match))
             elif output_type_match and not route_section:
                 route_section = True
                 # remove #_ ready for looking for method/basis/parameters:
@@ -707,8 +722,9 @@ class GaussianConfiguration:
                 # molecule specification section of the input file begins:
                 atoms_section = True
             elif atoms_section:
-                line = line.split('!')[0].replace('/', ' ')
-                line = line.replace(',', ' ')
+                # Remove any comments and replace '/' and ',' with whitespace,
+                # as these are equivalent:
+                line = line.split('!')[0].replace('/', ' ').replace(',', ' ')
                 if (line.split()):
                     if zmatrix_type:
                         # Save any variables set when defining the z-matrix:
@@ -794,7 +810,7 @@ class GaussianConfiguration:
                     if count_iso == 0:
                         # The first line in the readiso section contains the
                         # temperature, pressure, scale. Here we save this:
-                        _save_readiso_info(line, parameters)
+                        parameters.update(_get_readiso_info(line, parameters))
                         # If the atom masses were set in the nuclei properties
                         # section, they will be overwritten by the ReadIso
                         # section
@@ -817,19 +833,14 @@ class GaussianConfiguration:
                             basis_set += line + '\n'
 
             if route_section:
-                _save_route_params(line, parameters)
+                parameters.update(_get_route_params(line))
 
         _validate_params(parameters)
 
+        parameters = _add_nuclei_props_to_params(parameters, nuclei_props)
+
         if readiso:
-            _delete_readiso_param(parameters)
-            # Ensures the masses array is the same length as the
-            # symbols array:
-            if len(parameters['iso']) < len(symbols):
-                for i in range(0, len(symbols) - len(parameters['iso'])):
-                    parameters['iso'].append(None)
-            elif len(parameters['iso']) > len(symbols):
-                parameters['iso'] = parameters['iso'][:len(symbols)]
+            parameters = _update_readiso_params(parameters, symbols)
 
         # Saves the basis set definition to the parameters array if
         # it has been set:
@@ -844,8 +855,6 @@ class GaussianConfiguration:
             raise IOError("ERROR: Could not read the Gaussian input file, "
                           "due to a problem with the molecule specification:"
                           " {}".format(e))
-
-        parameters = _add_nuclei_props_to_params(parameters, nuclei_props)
 
         return GaussianConfiguration(atoms, parameters)
 
