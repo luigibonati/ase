@@ -102,10 +102,10 @@ def setup_combos():
     dihedralcombo_def = [[3, 2, 1, 4, 1.0], [2, 1, 0, 7, 1.0]]
     target_dihedralcombo = FixInternals.get_combo(atoms, dihedralcombo_def)
 
-    # Initialize constraint
+    # Initialize constraint; 'None' value should be converted to current value
     constr = FixInternals(bondcombos=[(target_bondcombo, bondcombo_def)],
                           anglecombos=[(target_anglecombo, anglecombo_def)],
-                          dihedralcombos=[(target_dihedralcombo,
+                          dihedralcombos=[(None,
                           dihedralcombo_def)], epsilon=1e-10)
     print(constr)
     return (atoms, constr, bondcombo_def, target_bondcombo, anglecombo_def,
@@ -123,6 +123,15 @@ def test_combos():
 
     atoms.calc = EMT()
     atoms.set_constraint(constr)
+
+    atoms2 = atoms.copy()  # check if 'None' value converts to current value
+    atoms2.set_positions(atoms2.get_positions())
+    checked_dihedral = False
+    for subconstr in atoms2.constraints[0].constraints:
+        if repr(subconstr).startswith('FixDihedralCombo'):
+            assert subconstr.targetvalue == target_dihedralcombo
+            checked_dihedral = True
+    assert checked_dihedral
 
     opt = BFGS(atoms)
     opt.run(fmax=0.01)
