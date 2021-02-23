@@ -777,11 +777,18 @@ class FixScaled(FixConstraintSingle):
 # TODO: Better interface might be to use dictionaries in place of very
 # nested lists/tuples
 class FixInternals(FixConstraint):
-    """Constraint object for fixing multiple internal coordinates.
+    """
+    Constraint object for fixing multiple internal coordinates.
 
-    Allows fixing bonds, angles, and dihedrals.
-    Please provide angular units in degrees using angles_deg and
-    dihedrals_deg.
+    Allows fixing bonds, angles, and dihedrals as well as their linear
+    combinations.
+    A constrained internal coordinate is defined as a nested list:
+    '[value, [atom indices]]'. The constraint is initialized with a list of
+    constrained internal coordinates, i.e. '[[value, [atom indices]], ...]'.
+    If 'value' is None, the current value of the coordinate is constrained.
+
+    Please provide angular units in degrees using `angles_deg` and
+    `dihedrals_deg`.
     """
     def __init__(self, bonds=None, angles=None, dihedrals=None,
                  angles_deg=None, dihedrals_deg=None,
@@ -842,7 +849,16 @@ class FixInternals(FixConstraint):
                                   (self.anglecombos, self.FixAngleCombo),
                                   (self.dihedralcombos, self.FixDihedralCombo)]:
             for datum in data:
-                constr = make_constr(datum[0], datum[1], masses, cell, pbc)
+                # Set targetvalue 'tv' to current value if initialized with None
+                if make_constr is self.FixBondLengthAlt:
+                    tv = datum[0] or atoms.get_distance(*datum[1], mic=self.mic)
+                elif make_constr is self.FixAngle:
+                    tv = datum[0] or atoms.get_angle(*datum[1], mic=self.mic)
+                elif make_constr is self.FixDihedral:
+                    tv = datum[0] or atoms.get_dihedral(*datum[1], mic=self.mic)
+                else:
+                    tv = datum[0] or self.get_combo(atoms, datum[1], self.mic)
+                constr = make_constr(tv, datum[1], masses, cell, pbc)
                 self.constraints.append(constr)
         self.initialized = True
 
