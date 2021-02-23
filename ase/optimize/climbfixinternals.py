@@ -160,8 +160,7 @@ class ClimbFixInternals(BFGS):
         return BFGS.converged(self, forces=forces)
 
     def log(self):  # always log fmax(projected_forces)
-        forces = self.projected_forces
-        if forces is None:  # compute projected_forces
-            self.atoms.get_forces()
-            forces = self.get_projected_forces()
-        BFGS.log(self, forces=forces)
+        if self.projected_forces is None:
+            self.atoms.get_forces()  # compute projected_forces
+            self.projected_forces = self.get_projected_forces()
+        BFGS.log(self, forces=self.projected_forces)

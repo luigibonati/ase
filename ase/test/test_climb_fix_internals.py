@@ -54,7 +54,7 @@ def test_climb_fix_internals():
                             trajectory='opt.traj')
 
     # Converge to a saddle point
-    dyn.run(fmax=0.005)
+    dyn.run(fmax=0.05)
 
     # Visualize transition state search
     # a = read('opt.traj', index=':')
