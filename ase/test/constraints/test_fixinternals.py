@@ -6,22 +6,6 @@ import copy
 import pytest
 
 
-# Convenience functions to compute linear combinations of internal coordinates
-def get_bondcombo(atoms, bondcombo_def):
-    return sum([defin[2] * atoms.get_distance(*defin[0:2]) for
-                defin in bondcombo_def])
-
-
-def get_anglecombo(atoms, anglecombo_def):
-    return sum([defin[3] * atoms.get_angle(*defin[0:3]) for
-                defin in anglecombo_def])
-
-
-def get_dihedralcombo(atoms, dihedralcombo_def):
-    return sum([defin[4] * atoms.get_dihedral(*defin[0:4]) for
-                defin in dihedralcombo_def])
-
-
 def setup_atoms():
     atoms = molecule('CH3CH2OH', vacuum=5.0)
     atoms.rattle(stdev=0.3)
@@ -107,16 +91,16 @@ def setup_combos():
     # In other words, fulfil the following constraint:
     # 1.0 * atoms.get_distance(2, 1) + -1.0 * atoms.get_distance(2, 3) = const.
     bondcombo_def = [[2, 1, 1.0], [2, 3, -1.0]]
-    target_bondcombo = get_bondcombo(atoms, bondcombo_def)
+    target_bondcombo = FixInternals.get_combo(atoms, bondcombo_def)
 
     # Fix linear combination of two angles
     # 1. * atoms.get_angle(7, 0, 8) + 1. * atoms.get_angle(7, 0, 6) = const.
     anglecombo_def = [[7, 0, 8, 1.], [7, 0, 6, 1]]
-    target_anglecombo = get_anglecombo(atoms, anglecombo_def)
+    target_anglecombo = FixInternals.get_combo(atoms, anglecombo_def)
 
     # Fix linear combination of two dihedrals
     dihedralcombo_def = [[3, 2, 1, 4, 1.0], [2, 1, 0, 7, 1.0]]
-    target_dihedralcombo = get_dihedralcombo(atoms, dihedralcombo_def)
+    target_dihedralcombo = FixInternals.get_combo(atoms, dihedralcombo_def)
 
     # Initialize constraint
     constr = FixInternals(bondcombos=[(target_bondcombo, bondcombo_def)],
@@ -133,9 +117,9 @@ def test_combos():
      target_anglecombo, dihedralcombo_def,
      target_dihedralcombo) = setup_combos()
 
-    ref_bondcombo = get_bondcombo(atoms, bondcombo_def)
-    ref_anglecombo = get_anglecombo(atoms, anglecombo_def)
-    ref_dihedralcombo = get_dihedralcombo(atoms, dihedralcombo_def)
+    ref_bondcombo = FixInternals.get_combo(atoms, bondcombo_def)
+    ref_anglecombo = FixInternals.get_combo(atoms, anglecombo_def)
+    ref_dihedralcombo = FixInternals.get_combo(atoms, dihedralcombo_def)
 
     atoms.calc = EMT()
     atoms.set_constraint(constr)
@@ -143,9 +127,9 @@ def test_combos():
     opt = BFGS(atoms)
     opt.run(fmax=0.01)
 
-    new_bondcombo = get_bondcombo(atoms, bondcombo_def)
-    new_anglecombo = get_anglecombo(atoms, anglecombo_def)
-    new_dihedralcombo = get_dihedralcombo(atoms, dihedralcombo_def)
+    new_bondcombo = FixInternals.get_combo(atoms, bondcombo_def)
+    new_anglecombo = FixInternals.get_combo(atoms, anglecombo_def)
+    new_dihedralcombo = FixInternals.get_combo(atoms, dihedralcombo_def)
 
     err_bondcombo = new_bondcombo - ref_bondcombo
     err_anglecombo = new_anglecombo - ref_anglecombo

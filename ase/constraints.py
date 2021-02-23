@@ -864,12 +864,12 @@ class FixInternals(FixConstraint):
 
     @staticmethod
     def get_combo(atoms, combo, mic=False):
-        """For the given ASE Atoms object 'atoms', return the value of the
-        combo coordinate defined as bondcombo, anglecombo of dihedralcombo
-        (linear combination of bonds lengths, angles or dihedrals).
+        """Convenience function to return the value of the combo coordinate
+        defined as bondcombo, anglecombo or dihedralcombo (linear combination of
+        bond lengths, angles or dihedrals) for the given Atoms object 'atoms'.
 
-        Example: Get current value of linear combination of two bond lengths
-        defined as `combo = [[0, 1, 1.0], [2, 3, -1.0]]`."""
+        Example: Get the current value of the linear combination of two bond
+        lengths defined as `combo = [[0, 1, 1.0], [2, 3, -1.0]]`."""
         get_value = [atoms.get_distance, atoms.get_angle, atoms.get_dihedral]
         i = len(combo[0]) - 1
         return sum(dfn[i] * get_value[i-2](*dfn[:i], mic=mic) for dfn in combo)
