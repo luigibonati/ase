@@ -32,6 +32,12 @@ class ClimbFixInternals(BFGS):
            J. Chem. Theory Comput. 2018, 14 (2), 981–990.
            https://doi.org/10.1021/acs.jctc.7b01070.
 
+
+    .. note::
+       Convergence is based on 'fmax' of the total forces, i.e. on 'fmax' of
+       the sum of the projected forces and the forces of the remaining degrees
+       of freedom.
+
     Example
     -------
     >>> from ase.constraints import FixInternals
@@ -85,8 +91,9 @@ class ClimbFixInternals(BFGS):
 
             `fmax = optB_fmax + optB_fmax_scaling * projected_force`
 
-            The final optimization with optimizer 'B' is performed with
-            `optB_fmax` independent of `optB_fmax_scaling`.
+            The first and the final optimization with optimizer 'B' are
+            performed with `optB_fmax` independent of `optB_fmax_scaling`.
+            Recommended values are in the order of 0.5.
             Default: 0.0
         """
         BFGS.__init__(self, atoms, restart, logfile, trajectory,
@@ -118,10 +125,6 @@ class ClimbFixInternals(BFGS):
                     return subconstr
         raise ValueError('Given `climb_coordinate` not found on Atoms object.')
 
-    def initialize(self):
-        BFGS.initialize(self)
-        self.projected_forces = None
-
     def read(self):
         (self.H, self.r0, self.f0, self.maxstep,
          self.projected_forces, self.targetvalue) = self.load()
@@ -129,9 +132,19 @@ class ClimbFixInternals(BFGS):
 
     def step(self, f=None):
         atoms = self.atoms
-        f = self.get_projected_forces()  # initially computed during self.log()
 
-        # similar to BFGS.step()
+        # setup optimizer 'B'
+        if self.optB_autolog:
+            logfilename = 'optB_{}.log'.format(self.targetvalue)
+            self.optB_kwargs['logfile'] = logfilename
+        optB = self.optB(atoms, **self.optB_kwargs)
+
+        # initial relaxation of remaining degrees of freedom with optimizer 'B'
+        if self.nsteps == 0:
+            optB.run(self.optB_fmax)
+
+        f = self.get_projected_forces()  # get directions for climbing
+        # climb with optimizer 'A', similar to BFGS.step()
         r = atoms.get_positions()
         f = f.reshape(-1)
         self.update(r.flat, f, self.r0, self.f0)
@@ -148,35 +161,29 @@ class ClimbFixInternals(BFGS):
         self.r0 = r.flat.copy()
         self.f0 = f.copy()
 
-        if self.optB_autolog:
-            logfilename = 'optB_{}.log'.format(self.targetvalue)
-            self.optB_kwargs['logfile'] = logfilename
-
-        optB = self.optB(atoms, **self.optB_kwargs)  # optimize remaining...
+        # optimize remaining degrees of freedom with optimizer 'B'
         fmax = self.optB_fmax + self.scaling * self.constr2climb.projected_force
-        optB.run(fmax)                               # ...degrees of freedom
-
-        self.projected_forces = self.get_projected_forces()
-
+        optB.run(fmax)  # optimize with scaled fmax
         if self.converged() and fmax > self.optB_fmax:
             optB.run(self.optB_fmax)  # final optimization with desired fmax
 
-        self.dump((self.H, self.r0, self.f0, self.maxstep,
-                   self.projected_forces, self.targetvalue))
+        self.dump((self.H, self.r0, self.f0, self.maxstep, self.targetvalue))
 
     def get_projected_forces(self):  # get projected forces in uphill direction
         f = self.constr2climb.projected_force * self.constr2climb.jacobian
         f = -1 * f.reshape(self.atoms.positions.shape)
         return f
 
-    def converged(self, forces=None):  # check total forces incl. projected f.
-        """Did the optimization converge?"""
+    def get_total_forces(self, forces=None):
         forces = forces or self.atoms.get_forces()
-        forces += self.projected_forces
+        forces += self.get_projected_forces()
+        return forces
+
+    def converged(self, forces=None):
+        """Did the optimization converge for the total forces?"""
+        forces = self.get_total_forces(forces)
         return BFGS.converged(self, forces=forces)
 
-    def log(self):  # always log fmax(projected_forces)
-        if self.projected_forces is None:
-            self.atoms.get_forces()  # compute projected_forces
-            self.projected_forces = self.get_projected_forces()
-        BFGS.log(self, forces=self.projected_forces)
+    def log(self, forces=None):
+        forces = self.get_total_forces(forces)
+        BFGS.log(self, forces=forces)
