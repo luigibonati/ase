@@ -93,12 +93,19 @@ class ClimbFixInternals(BFGS):
         self.optB_autolog = False if 'logfile' in self.optB_kwargs else True
 
     def get_constr2climb(self, atoms, climb_coordinate):
+        """Get pointer to the subconstraint that is to be climbed.
+        Identification by its definition via indices (and coefficients)."""
         atoms.set_positions(atoms.get_positions())  # initialize FixInternals
         available_constraint_types = list(map(type, atoms.constraints))
         index = available_constraint_types.index(FixInternals)
         for subconstr in atoms.constraints[index].constraints:
-            if repr(subconstr).startswith(climb_coordinate[0]):
-                if subconstr.indices == climb_coordinate[1]:
+            if 'Combo' in repr(subconstr):
+                defin = [d + [c] for d, c in zip(subconstr.indices,
+                                                 subconstr.coefs)]
+                if defin == climb_coordinate:  # identify Combo constraints...
+                    return subconstr  # ...by combination of indices and coefs.
+            else:  # identify primitive constraints by their indices
+                if subconstr.indices == [climb_coordinate]:
                     return subconstr
         raise ValueError('Given `climb_coordinate` not found on Atoms object.')
 
