@@ -153,8 +153,10 @@ class ClimbFixInternals(BFGS):
         f = -1 * f.reshape(self.atoms.get_positions().shape)
         return f
 
-    def converged(self):  # converge check with projected_forces
-        forces = self.projected_forces
+    def converged(self, forces=None):  # check total forces incl. projected f.
+        """Did the optimization converge?"""
+        forces = forces or self.atoms.get_forces()
+        forces += self.projected_forces
         return BFGS.converged(self, forces=forces)
 
     def log(self):  # always log fmax(projected_forces)
