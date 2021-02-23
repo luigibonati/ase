@@ -289,6 +289,8 @@ and dihedrals_deg.
 
 .. autoclass:: FixInternals
 
+    .. automethod:: get_combo
+
 
 Example of use::
 
