@@ -25,13 +25,13 @@ class ClimbFixInternals(BFGS):
     constraints, i.e., `atoms.set_constraint(list_of_constraints)`.
     This has been tested with the :class:`~ase.constraints.FixAtoms` constraint.
 
-    Inspired by concepts described by Plessow [1]_, implemented by J. Amsler.
+    Inspired by concepts described by P. N. Plessow [1]_,
+    implemented by J. Amsler.
 
     .. [1] P. N. Plessow, Efficient Transition State Optimization of Periodic
            Structures through Automated Relaxed Potential Energy Surface Scans.
            J. Chem. Theory Comput. 2018, 14 (2), 981–990.
            https://doi.org/10.1021/acs.jctc.7b01070.
-
 
     .. note::
        Convergence is based on 'fmax' of the total forces, i.e. on 'fmax' of
@@ -43,10 +43,10 @@ class ClimbFixInternals(BFGS):
     >>> from ase.constraints import FixInternals
     >>> from ase.optimize.climbfixinternals import ClimbFixInternals
     >>> # define the reaction coordinate as a linear combination of bond lengths
-    >>> # 1.0 * bond(0,1) -1.0 * bond(2,3) = constant
+    >>> # 1.0 * bond(0,1) -1.0 * bond(2,3)
     >>> reaction_coordinate = [[0, 1, 1.0], [2, 3, -1.0]]
-    >>> constr = FixInternals(bondcombos=[[None, bond_combo]])  # 'None' will...
-    >>> # ...automatically set the initial constraint value to the current value
+    >>> constr = FixInternals(bondcombos=[[None, bond_combo]])
+    >>> # 'None' automatically takes initial constraint value as current value
     >>> atoms.set_constraint(constr)  # 'atoms' is an ASE Atoms object
     >>> dyn = ClimbFixInternals(atoms, climb_coordinate=reaction_coordinate)
     >>> dyn.run()  # climbs the reaction coord. while relaxing everything else
@@ -70,17 +70,17 @@ class ClimbFixInternals(BFGS):
             Examples:
             * `[0, 1]` defines a constrained bond
             * `[[0, 1, 1.0], [2, 3, -1.0]]` defines a constrained linear combination of bond lengths
-    
+
         optB: any ASE optimizer, optional
             Optimizer 'B' for optimization of the remaining degrees of freedom.
             Default: :class:`~ase.optimize.bfgs.BFGS`
-    
+
         optB_kwargs: dict, optional
             Specifies keyword arguments to be passed to optimizer 'B' at its
             initialization.
             Default: {'logfile': 'optB_{...}.log'} where {...} is the current
             value of the coordinate to be climbed
-    
+
         optB_fmax: float, optional
             Specifies the convergence criterion `fmax` of optimizer 'B'.
 
