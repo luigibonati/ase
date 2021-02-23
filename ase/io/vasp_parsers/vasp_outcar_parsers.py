@@ -424,15 +424,21 @@ class Kpoints(VaspChunkPropertyParser):
 
 class DefaultParsersContainer:
     """Container for the default OUTCAR parsers.
-    Allows for modification of the global default parsers."""
-    def __init__(self, parsers_cls):
-        self.parsers_dct = {
-            parser.get_name(): parser
-            for parser in parsers_cls
-        }
+    Allows for modification of the global default parsers.
+    
+    Takes in an arbitrary number of parsers. The parsers should be uninitialized,
+    as they are created on request.
+    """
+    def __init__(self, *parsers_cls):
+        self._parsers_dct = {}
+        for parser in parsers_cls:
+            self.add_parser(parser)
 
     @property
-    def parsers(self):
+    def parsers_dct(self):
+        return self._parsers_dct
+
+    def make_parsers(self):
         """Return a copy of the internally stored parsers"""
         return list(parser() for parser in self.parsers_dct.values())
 
@@ -533,7 +539,7 @@ class OutcarChunkParser(ChunkParser):
                  header: _HEADER = None,
                  parsers: Sequence[VaspChunkPropertyParser] = None):
         global default_chunk_parsers
-        parsers = parsers or default_chunk_parsers.parsers
+        parsers = parsers or default_chunk_parsers.make_parsers()
         super().__init__(parsers, header=header)
 
     def build(self, lines: _CHUNK) -> Atoms:
@@ -572,7 +578,7 @@ class OutcarHeaderParser(HeaderParser):
                  parsers: Sequence[VaspHeaderPropertyParser] = None,
                  workdir: Union[str, PurePath] = None):
         global default_header_parsers
-        parsers = parsers or default_header_parsers.parsers
+        parsers = parsers or default_header_parsers.make_parsers()
         super().__init__(parsers)
         self.workdir = workdir
 
@@ -714,7 +720,7 @@ def outcarchunks(fd: TextIO,
 
 
 # Create the default chunk parsers
-default_chunk_parsers = DefaultParsersContainer([
+default_chunk_parsers = DefaultParsersContainer(
     Cell,
     PositionsAndForces,
     Stress,
@@ -723,12 +729,12 @@ default_chunk_parsers = DefaultParsersContainer([
     EFermi,
     Kpoints,
     Energy,
-])
+)
 
 # Create the default header parsers
-default_header_parsers = DefaultParsersContainer([
+default_header_parsers = DefaultParsersContainer(
     SpeciesTypes,
     IonsPerSpecies,
     Spinpol,
     KpointHeader,
-])
+)
