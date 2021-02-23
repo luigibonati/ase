@@ -15,7 +15,7 @@ def fd_cartesian():
     %chk=example.chk
     %Nprocshared=16
     # N B3LYP/6-31G(d',p') ! ASE formatted method and basis
-    # Opt(Tight, MaxCyc=100)/Integral=Ultrafine, Freq
+    # POpt(Tight, MaxCyc=100)/Integral=Ultrafine
 
     Gaussian input prepared by ASE
 
@@ -159,10 +159,7 @@ def test_readwrite_gaussian(fd_cartesian, fd_cartesian_basis_set, fd_zmatrix):
         check_atom_properties(atoms, atoms_written, params)
 
     def get_iso_masses(atoms):
-        iso_masses = []
-        for mass in atoms.calc.parameters['iso']:
-            iso_masses.append(mass)
-        return iso_masses
+        return list(atoms.calc.parameters['iso'])
 
     # Tests reading a Gaussian input file with:
     # - Cartesian coordinates for the atom positions.
@@ -181,10 +178,9 @@ def test_readwrite_gaussian(fd_cartesian, fd_cartesian_basis_set, fd_zmatrix):
                   masses=masses)
     atoms.set_pbc(True)
     params = {'chk': 'example.chk', 'nprocshared': '16',
-              'output_type': 'N', 'method': 'B3LYP',
-              'basis': "6-31G(d',p')", 'opt': 'Tight, MaxCyc=100',
-              'integral': 'Ultrafine', 'freq': None, 'charge': 0,
-              'mult': 1}
+              'output_type': 'n', 'method': 'b3lyp',
+              'basis': "6-31g(d',p')", 'opt': 'tight, maxcyc=100',
+              'integral': 'ultrafine', 'charge': 0, 'mult': 1}
     params['nmagm'] = np.array([None, -8.89, None])
     params['zeff'] = np.array([None, -1, None])
     params['znuc'] = np.array([None, None, 2])
@@ -192,7 +188,10 @@ def test_readwrite_gaussian(fd_cartesian, fd_cartesian_basis_set, fd_zmatrix):
     params['radnuclear'] = np.array([None, None, 1])
     params['spin'] = np.array([None, None, 1])
     params['iso'] = np.array(iso_masses)
-    atoms_new = read_gaussian_in(fd_cartesian, True)
+    warn_text = "The option {} is currently unsupported. \
+This has been replaced with {}.".format("POpt", "opt")
+    with pytest.warns(UserWarning, match=warn_text):
+        atoms_new = read_gaussian_in(fd_cartesian, True)
     atoms_new.set_masses(get_iso_masses(atoms_new))
     check_atom_properties(atoms, atoms_new, params)
 
@@ -209,7 +208,8 @@ def test_readwrite_gaussian(fd_cartesian, fd_cartesian_basis_set, fd_zmatrix):
     atoms = Atoms('OH2', positions=positions, masses=masses)
     nuclei_props = ['nmagm', 'zeff', 'znuc', 'qmom', 'radnuclear', 'spin']
     params = {k: v for k, v in params.items() if k not in nuclei_props}
-    params['opt'] = 'Tight MaxCyc=100'
+    params['opt'] = 'tight maxcyc=100'
+    params['freq'] = None
     params['basis'] = 'gen'
     params['basis_set'] = '''H     0
 S    2   1.00
@@ -262,9 +262,9 @@ SP   1   1.00
     masses[1] = 0.1134289259
     atoms = Atoms('BH2BH4', positions=positions, masses=masses)
 
-    params = {'chk': 'example.chk', 'nprocshared': '16', 'output_type': 'T',
-              'b3lyp': None, 'gen': None, 'opt': 'Tight, MaxCyc=100',
-              'freq': None, 'integral': 'Ultrafine', 'charge': 0, 'mult': 1,
+    params = {'chk': 'example.chk', 'nprocshared': '16', 'output_type': 't',
+              'b3lyp': None, 'gen': None, 'opt': 'tight, maxcyc=100',
+              'freq': None, 'integral': 'ultrafine', 'charge': 0, 'mult': 1,
               'temperature': '300', 'pressure': '1.0',
               'basisfile': '@basis-set-filename.gbs'}
     params['iso'] = np.array(masses)
@@ -286,6 +286,6 @@ SP   1   1.00
     # it does not support writing input files with this setting. Therefore,
     # the output type automatically set to P in the case that T is chosen
 
-    params['output_type'] = 'P'
+    params['output_type'] = 'p'
 
     test_write_gaussian(atoms, atoms_new)

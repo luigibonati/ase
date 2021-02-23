@@ -4,15 +4,14 @@ from collections.abc import Iterable
 from copy import deepcopy
 
 import numpy as np
-
 from ase import Atoms
-from ase.units import Hartree, Bohr
 from ase.calculators.calculator import InputError
-from ase.calculators.singlepoint import SinglePointCalculator
 from ase.calculators.gaussian import Gaussian
-from ase.data import chemical_symbols, atomic_masses_iupac2016
-
+from ase.calculators.singlepoint import SinglePointCalculator
+from ase.data import atomic_masses_iupac2016, chemical_symbols
+from ase.io import ParseError
 from ase.io.zmatrix import parse_zmatrix
+from ase.units import Bohr, Hartree
 
 _link0_keys = [
     'mem',
@@ -65,25 +64,25 @@ _xc_to_method = dict(
     revtpss='revtpssrevtpss',
 )
 
-_nuclei_prop_names = ['spin', 'zeff', 'qmom', 'nmagm', 'znuc',
-                      'radnuclear', 'iso']
+_nuclear_prop_names = ['spin', 'zeff', 'qmom', 'nmagm', 'znuc',
+                       'radnuclear', 'iso']
 
 
-def _get_molecule_spec(atoms, nuclei_props):
+def _get_molecule_spec(atoms, nuclear_props):
     ''' Generate the molecule specfication section to write
     to the Gaussian input file, from the Atoms object and dict
-    of nuclei properties'''
+    of nuclear properties'''
     molecule_spec = []
     for i, atom in enumerate(atoms):
         symbol_section = atom.symbol + '('
         # Check whether any nuclear properties of the atom have been set,
         # and if so, add them to the symbol section.
-        nuclei_props_set = False
-        for keyword, array in nuclei_props.items():
+        nuclear_props_set = False
+        for keyword, array in nuclear_props.items():
             if array is not None and array[i] is not None:
                 string = keyword + '=' + str(array[i]) + ', '
                 symbol_section += string
-                nuclei_props_set = True
+                nuclear_props_set = True
 
         # Check whether the mass of the atom has been modified,
         # and if so, add it to the symbol section:
@@ -99,7 +98,7 @@ def _get_molecule_spec(atoms, nuclei_props):
             string = 'iso' + '=' + str(atoms[i].mass)
             symbol_section += string
 
-        if nuclei_props_set or mass_set:
+        if nuclear_props_set or mass_set:
             symbol_section = symbol_section.strip(', ')
             symbol_section += ')'
         else:
@@ -133,7 +132,7 @@ def write_gaussian_in(fd, atoms, properties=None, **params):
         Contains information about the Gaussian calculation,
         including the method and basis, charge and multiplicity,
         link 0 commands, route section keywords and options, and
-        the nuclei properties. Note that the masses of the atoms
+        the nuclear properties. Note that the masses of the atoms
         will be taken from the Atoms object, not from this dict.
     '''
 
@@ -201,11 +200,11 @@ def write_gaussian_in(fd, atoms, properties=None, **params):
     # also pull out 'addsec', which e.g. contains modredundant info
     addsec = params.pop('addsec', None)
 
-    # pull out nuclei properties, and discard iso:
-    nuclei_props = {}
-    for keyword in _nuclei_prop_names:
-        nuclei_props[keyword] = params.pop(keyword, None)
-    nuclei_props.pop('iso')
+    # pull out nuclear properties, and discard iso:
+    nuclear_props = {}
+    for keyword in _nuclear_prop_names:
+        nuclear_props[keyword] = params.pop(keyword, None)
+    nuclear_props.pop('iso')
 
     # set up link0 arguments
     out = []
@@ -270,7 +269,7 @@ def write_gaussian_in(fd, atoms, properties=None, **params):
             '{:.0f} {:.0f}'.format(charge, mult)]
 
     # atomic positions and nuclear properties:
-    molecule_spec = _get_molecule_spec(atoms, nuclei_props)
+    molecule_spec = _get_molecule_spec(atoms, nuclear_props)
     for line in molecule_spec:
         out.append(line)
 
@@ -332,8 +331,8 @@ _re_chgmult = re.compile(r'^\s*[+-]?\d+(?:,\s*|\s+)[+-]?\d+\s*$')
 # a comma (and possibly whitespace) or some amount of whitespace, we
 # can be more confident that we've actually found the charge and multiplicity.
 
-_re_nuclei_props = re.compile(r'\(([^\)]+)\)')
-# Matches the nuclei properties, which are contained in parantheses.
+_re_nuclear_props = re.compile(r'\(([^\)]+)\)')
+# Matches the nuclear properties, which are contained in parantheses.
 
 # The following methods are used in GaussianConfiguration's
 # parse_gaussian_input method:
@@ -345,7 +344,7 @@ def _get_link0_param(link0_match):
     value = link0_match.group(2)
     if value is not None:
         value = value.strip()
-    return {link0_match.group(1).lower().strip(): value}
+    return {link0_match.group(1).lower().strip(): value.lower()}
 
 
 def _convert_to_symbol(string):
@@ -368,9 +367,9 @@ def _convert_to_symbol(string):
 
 def _validate_symbol_string(string):
     if "-" in string:
-        raise IOError("ERROR: Could not read the Gaussian input file, as"
-                      " molecule specifications for molecular mechanics "
-                      "calculations are not supported.")
+        raise ParseError("ERROR: Could not read the Gaussian input file, as"
+                         " molecule specifications for molecular mechanics "
+                         "calculations are not supported.")
     return string
 
 
@@ -404,7 +403,7 @@ def _get_key_value_pairs(line):
             r'[^\,/\s]+', keyword_string) if k.group() != '=']
         keyword = keyword_match_iter[-1].group().strip(' =')
         index_range[0] = keyword_match_iter[-1].start()
-        params.update({keyword.lower(): options})
+        params.update({keyword.lower(): options.lower()})
         index_ranges.append(index_range)
 
     # remove from the line the keywords and options that we have saved:
@@ -429,7 +428,7 @@ def _get_key_value_pairs(line):
             options = s.pop(0)
             for string in s:
                 options += '=' + string
-            params.update({keyword.lower(): options})
+            params.update({keyword.lower(): options.lower()})
         else:
             if len(s) > 0:
                 params.update({s.lower(): None})
@@ -446,55 +445,54 @@ def _get_route_params(line):
         params = {}
         ase_gen_comment = '! ASE formatted method and basis'
         if method_basis_match.group(5) == ase_gen_comment:
-            params['method'] = method_basis_match.group(1).strip()
-            params['basis'] = method_basis_match.group(2).strip()
+            params['method'] = method_basis_match.group(1).strip().lower()
+            params['basis'] = method_basis_match.group(2).strip().lower()
             if method_basis_match.group(4):
                 params['fitting_basis'] = method_basis_match.group(
-                    4).strip()
+                    4).strip().lower()
             return params
 
     return _get_key_value_pairs(line)
 
 
-def _get_nuclei_props(line):
+def _get_nuclear_props(line):
     ''' Reads any info in parantheses in the line and returns
-    a dictionary of the nuclei properties.'''
-    nuclei_props_match = _re_nuclei_props.search(line)
-    nuclei_props = {}
-    if nuclei_props_match:
-        nuclei_props = _get_key_value_pairs(nuclei_props_match.group(1))
-        updated_nuclei_props = {}
-        for key, value in nuclei_props.items():
+    a dictionary of the nuclear properties.'''
+    nuclear_props_match = _re_nuclear_props.search(line)
+    nuclear_props = {}
+    if nuclear_props_match:
+        nuclear_props = _get_key_value_pairs(nuclear_props_match.group(1))
+        updated_nuclear_props = {}
+        for key, value in nuclear_props.items():
             if value.isnumeric():
                 value = int(value)
             else:
                 value = float(value)
-            key = key.lower()
-            if key not in _nuclei_prop_names:
-                if "fragment" in key.lower():
+            if key not in _nuclear_prop_names:
+                if "fragment" in key:
                     warnings.warn("Fragments are not"
                                   "currently supported.")
 
-                warnings.warn("The following nuclei properties "
+                warnings.warn("The following nuclear properties "
                               "could not be saved: {}".format(
                                   {key: value}))
             else:
-                updated_nuclei_props[key.lower()] = value
-        nuclei_props = updated_nuclei_props
+                updated_nuclear_props[key] = value
+        nuclear_props = updated_nuclear_props
 
-    for k in _nuclei_prop_names:
-        if k not in nuclei_props.keys():
-            nuclei_props[k] = None
+    for k in _nuclear_prop_names:
+        if k not in nuclear_props:
+            nuclear_props[k] = None
 
-    return nuclei_props
+    return nuclear_props
 
 
 def _get_atoms_info(line):
     '''Returns the symbol and position of an atom from a line
     in the molecule specification section'''
-    nuclei_props_match = _re_nuclei_props.search(line)
-    if nuclei_props_match:
-        line = line.replace(nuclei_props_match.group(0), '')
+    nuclear_props_match = _re_nuclear_props.search(line)
+    if nuclear_props_match:
+        line = line.replace(nuclear_props_match.group(0), '')
     tokens = line.split()
     symbol = _convert_to_symbol(tokens[0])
     pos = list(tokens[1:])
@@ -510,17 +508,17 @@ def _get_cartesian_atom_coords(symbol, pos):
         # no cartesian coords.
         return
     elif len(pos) > 3:
-        raise IOError("ERROR: Gaussian input file could "
-                      "not be read as freeze codes are not"
-                      " supported. If using cartesian "
-                      "coordinates, these must be "
-                      "given as 3 numbers separated "
-                      "by whitespace.")
+        raise ParseError("ERROR: Gaussian input file could "
+                         "not be read as freeze codes are not"
+                         " supported. If using cartesian "
+                         "coordinates, these must be "
+                         "given as 3 numbers separated "
+                         "by whitespace.")
     else:
         try:
             return list(map(float, pos))
         except ValueError:
-            raise(IOError(
+            raise(ParseError(
                 "ERROR: Molecule specification in"
                 "Gaussian input file could not be read"))
 
@@ -530,7 +528,7 @@ def _get_zmatrix_line(line):
     be added to the z-matrix contents '''
     line_list = line.split()
     if len(line_list) == 8 and line_list[7] == '1':
-        raise IOError(
+        raise ParseError(
             "ERROR: Could not read the Gaussian input file"
             ", as the alternative Z-matrix format using "
             "two bond angles instead of a bond angle and "
@@ -538,11 +536,11 @@ def _get_zmatrix_line(line):
     return(line.strip() + '\n')
 
 
-def _get_nuclei_props_for_all_atoms(nuclei_props):
-    ''' Returns the nuclei properties for all atoms as a dictionary,
+def _get_nuclear_props_for_all_atoms(nuclear_props):
+    ''' Returns the nuclear properties for all atoms as a dictionary,
     in the format needed for it to be added to the parameters dictionary.'''
-    params = {k: [] for k in _nuclei_prop_names}
-    for dictionary in nuclei_props:
+    params = {k: [] for k in _nuclear_prop_names}
+    for dictionary in nuclear_props:
         for key, value in dictionary.items():
             params[key].append(value)
 
@@ -557,7 +555,7 @@ def _get_nuclei_props_for_all_atoms(nuclei_props):
 
 
 def _get_readiso_param(parameters):
-    ''' Returns a dictionary containing the frequency
+    ''' Returns a tuple containing the frequency
     keyword and its options, if the frequency keyword is
     present in parameters and ReadIso is one of its options'''
     freq_options = parameters.get('freq', None)
@@ -567,18 +565,18 @@ def _get_readiso_param(parameters):
         freq_options = parameters.get('frequency', None)
         freq_name = 'frequency'
     if freq_options is not None:
-        freq_options = freq_options.lower()
         if 'readiso' or 'readisotopes' in freq_options:
-            return {freq_name: freq_options}
+            return freq_name, freq_options
+    else:
+        return None, None
 
 
 def _get_readiso_info(line, parameters):
     '''Reads the temperature, pressure and scale from the first line
     of a ReadIso section of a Gaussian input file. Returns these in
     a dictionary.'''
-    freq_param = _get_readiso_param(parameters)
     readiso_params = {}
-    if freq_param is not None:
+    if _get_readiso_param(parameters)[0] is not None:
         # when count_iso is 0 we are in the line where
         # temperature, pressure, [scale] is saved
         line = line.replace(
@@ -597,10 +595,8 @@ def _get_readiso_info(line, parameters):
 def _delete_readiso_param(parameters):
     '''Removes the readiso parameter from the parameters dict'''
     parameters = deepcopy(parameters)
-    freq_param = _get_readiso_param(parameters)
-    if freq_param is not None:
-        freq_name = [k for k in freq_param.keys()][0]
-        freq_options = [v for v in freq_param.values()][0].lower()
+    freq_name, freq_options = _get_readiso_param(parameters)
+    if freq_name is not None:
         if 'readisotopes' in freq_options:
             iso_name = 'readisotopes'
         else:
@@ -637,29 +633,27 @@ def _validate_params(parameters):
     parameters dict and whether it contains any unsupported settings
     '''
     # Check whether charge and multiplicity have been read.
-    if 'charge' not in parameters.keys() or \
-            'mult' not in parameters.keys():
+    if 'charge' not in parameters or 'mult' not in parameters:
         warnings.warn("Could not read the charge and multiplicity "
                       "from the Gaussian input file. These must be 2 "
                       "integers separated with whitespace or a comma.")
 
     # Check for unsupported settings
-    unsupported_settings = [
-        "Z-matrix", "ModRedun", "AddRedun", "ReadOpt", "RdOpt"]
-    for s in unsupported_settings:
-        for v in parameters.values():
-            if v is not None:
-                if s.lower() in str(v).lower():
-                    raise IOError(
-                        "ERROR: Could not read the Gaussian input file"
-                        ", as the option: {} is currently unsupported."
-                        .format(s))
+    unsupported_settings = {
+        "z-matrix", "modredun", "addredun", "readopt", "rdopt"}
+
+    unsupported = unsupported_settings & set(parameters)
+    if unsupported:
+        raise ParseError("ERROR: Could not read the Gaussian input file"
+                         ", as the option: {} is currently unsupported."
+                         .format(unsupported))
+
     for k in parameters.keys():
-        if "popt" in k.lower():
-            parameters["Opt"] = parameters.pop(k)
+        if "popt" in k:
+            parameters["opt"] = parameters.pop(k)
             warnings.warn("The option {} is currently unsupported. "
                           "This has been replaced with {}."
-                          .format("POpt", "Opt"))
+                          .format("POpt", "opt"))
             return
 
 
@@ -672,14 +666,14 @@ def _read_zmatrix(zmatrix_contents, zmatrix_vars):
         else:
             atoms = parse_zmatrix(zmatrix_contents)
     except ValueError as e:
-        raise IOError("Failed to read Z-matrix from "
-                      "Gaussian input file: ", e)
+        raise ParseError("Failed to read Z-matrix from "
+                         "Gaussian input file: ", e)
     except KeyError as e:
-        raise IOError("Failed to read Z-matrix from "
-                      "Gaussian input file, as symbol: {}"
-                      "could not be recognised. Please make "
-                      "sure you use element symbols, not "
-                      "atomic numbers in the element labels.".format(e))
+        raise ParseError("Failed to read Z-matrix from "
+                         "Gaussian input file, as symbol: {}"
+                         "could not be recognised. Please make "
+                         "sure you use element symbols, not "
+                         "atomic numbers in the element labels.".format(e))
 
     positions = atoms.positions
     symbols = atoms.get_chemical_symbols()
@@ -724,9 +718,9 @@ class GaussianConfiguration:
         # The parameters dict to attach to the calculator
         parameters = {}
 
-        # Will contain a dictionary of nuclei properties for each atom,
+        # Will contain a dictionary of nuclear properties for each atom,
         # that will later be saved to the parameters dict:
-        nuclei_props = []
+        nuclear_props = []
 
         # These variables indicate which section of the
         # input file is currently being read:
@@ -770,7 +764,8 @@ class GaussianConfiguration:
                 route_section = True
                 # remove #_ ready for looking for method/basis/parameters:
                 line = line.strip(output_type_match.group(0))
-                parameters.update({'output_type': output_type_match.group(1)})
+                parameters.update(
+                    {'output_type': output_type_match.group(1).lower()})
             elif chgmult_match:
                 chgmult = chgmult_match.group(0).split()
                 parameters.update(
@@ -798,7 +793,7 @@ class GaussianConfiguration:
                             continue
 
                     symbol, pos = _get_atoms_info(line)
-                    current_nuclei_props = _get_nuclei_props(line)
+                    current_nuclear_props = _get_nuclear_props(line)
 
                     if not zmatrix_type:
                         pos = _get_cartesian_atom_coords(symbol,
@@ -811,7 +806,7 @@ class GaussianConfiguration:
                             cell[npbc] = pos
                             npbc += 1
                         else:
-                            nuclei_props.append(current_nuclei_props)
+                            nuclear_props.append(current_nuclear_props)
                             if not zmatrix_type:
                                 symbols.append(symbol)
                                 positions.append(pos)
@@ -838,7 +833,7 @@ class GaussianConfiguration:
                 # This may include the ReadIso section and the basis set
                 # definition or filename
 
-                readiso = _get_readiso_param(parameters)
+                readiso = _get_readiso_param(parameters)[0]
 
                 if len(line) > 0 and line[0] == '@':
                     # If the name of a basis file is specified, this line
@@ -853,7 +848,7 @@ class GaussianConfiguration:
                         readiso_info = _get_readiso_info(line, parameters)
                         if readiso_info is not None:
                             parameters.update(readiso_info)
-                        # If the atom masses were set in the nuclei properties
+                        # If the atom masses were set in the nuclear properties
                         # section, they will be overwritten by the ReadIso
                         # section
                         readiso_masses = []
@@ -868,8 +863,8 @@ class GaussianConfiguration:
                 else:
                     # If the rest of the file is not the ReadIso section,
                     # then it must be the definition of the basis set.
-                    if parameters.get('basis', '').lower() == 'gen' \
-                            or 'gen' in parameters.keys():
+                    if parameters.get('basis', '') == 'gen' \
+                            or 'gen' in parameters:
                         if line.strip() != "":
                             basis_set += line + '\n'
 
@@ -880,7 +875,7 @@ class GaussianConfiguration:
 
         _validate_params(parameters)
 
-        parameters.update(_get_nuclei_props_for_all_atoms(nuclei_props))
+        parameters.update(_get_nuclear_props_for_all_atoms(nuclear_props))
 
         if readiso:
             parameters['iso'] = readiso_masses
@@ -896,14 +891,14 @@ class GaussianConfiguration:
         try:
             atoms = Atoms(symbols, positions, pbc=pbc, cell=cell)
         except (IndexError, ValueError, KeyError) as e:
-            raise IOError("ERROR: Could not read the Gaussian input file, "
-                          "due to a problem with the molecule specification:"
-                          " {}".format(e))
+            raise ParseError("ERROR: Could not read the Gaussian input file, "
+                             "due to a problem with the molecule specification:"
+                             " {}".format(e))
 
         return GaussianConfiguration(atoms, parameters)
 
 
-def read_gaussian_in(fd, get_calculator=False):
+def read_gaussian_in(fd, attach_calculator=False):
     '''
     Reads a gaussian input file and returns an Atoms object.
 
@@ -912,7 +907,7 @@ def read_gaussian_in(fd, get_calculator=False):
     fd: file-like
         Contains the contents of a gaussian input file
 
-    get_calculator: bool
+    attach_calculator: bool
         When set to ``True``, a Gaussian calculator will be
         attached to the Atoms object which is returned.
         This will mean that additional information is read
@@ -933,7 +928,7 @@ def read_gaussian_in(fd, get_calculator=False):
     z-matrix definition where two bond angles are set instead of a bond angle
     and a dihedral angle is not currently supported.
 
-    If the parameter ``get_calculator`` is set to ``True``, then the Atoms
+    If the parameter ``attach_calculator`` is set to ``True``, then the Atoms
     object is returned with a Gaussian calculator attached.
 
     This Gaussian calculator will contain a parameters dictionary which will
@@ -948,9 +943,9 @@ def read_gaussian_in(fd, get_calculator=False):
 
     • Basis file name/definition if set
 
-    • Nuclei properties
+    • Nuclear properties
 
-    • Masses set in the nuclei properties section or in the ReadIsotopes
+    • Masses set in the nuclear properties section or in the ReadIsotopes
       section (if ``freq=ReadIso`` is set). These will be saved in an array
       with keyword ``iso``, in the parameters dictionary.
 
@@ -967,7 +962,7 @@ def read_gaussian_in(fd, get_calculator=False):
     gaussian_input = GaussianConfiguration.parse_gaussian_input(fd)
     atoms = gaussian_input.get_atoms()
 
-    if get_calculator:
+    if attach_calculator:
         atoms.calc = gaussian_input.get_calculator()
 
     return atoms
