@@ -648,7 +648,7 @@ def _validate_params(parameters):
                          ", as the option: {} is currently unsupported."
                          .format(unsupported))
 
-    for k in parameters.keys():
+    for k in list(parameters.keys()):
         if "popt" in k:
             parameters["opt"] = parameters.pop(k)
             warnings.warn("The option {} is currently unsupported. "
@@ -892,8 +892,8 @@ class GaussianConfiguration:
             atoms = Atoms(symbols, positions, pbc=pbc, cell=cell)
         except (IndexError, ValueError, KeyError) as e:
             raise ParseError("ERROR: Could not read the Gaussian input file, "
-                             "due to a problem with the molecule specification:"
-                             " {}".format(e))
+                             "due to a problem with the molecule "
+                             "specification: {}".format(e))
 
         return GaussianConfiguration(atoms, parameters)
 
