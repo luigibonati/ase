@@ -18,21 +18,6 @@ def setup_atoms():
     return atoms
 
 
-def get_combo_value(atoms, combo):
-    """Return current value of linear combination of bonds lengths, angles or
-    dihedrals defined as bondcombo, anglecombo or dihedralcombo
-    (see the FixInternals class)."""
-    coord_type = len(combo[0]) - 1
-    if coord_type == 2:
-        get_value = atoms.get_distance
-    elif coord_type == 3:
-        get_value = atoms.get_angle
-    elif coord_type == 4:
-        get_value = atoms.get_dihedral
-    return sum([defin[coord_type] * get_value(*defin[:coord_type]) for
-                defin in combo])
-
-
 def test_climb_fix_internals():
     """Climb along the constrained bondcombo coordinate while optimizing the
     remaining degrees of freedom after each climbing step.
@@ -43,7 +28,8 @@ def test_climb_fix_internals():
 
     # Define reaction coordinate via linear combination of bond lengths
     reaction_coord = [[0, 4, 1.0], [1, 4, 1.0]]  # 1 * bond_1 + 1 * bond_2
-    bondcombo = [get_combo_value(atoms, reaction_coord), reaction_coord]
+    # Use current value `FixInternals.get_combo(atoms, reaction_coord)` as initial value
+    bondcombo = [FixInternals.get_combo(atoms, reaction_coord), reaction_coord]
     atoms.set_constraint([FixInternals(bondcombos=[bondcombo])] + atoms.constraints)
 
     # Optimizer for transition state search along reaction coordinate
@@ -87,11 +73,11 @@ def test_initialization_with_different_constraints():
                           climb_coordinate=[names[i],
                                             [list(range(0, 2 + i))]])
     bc = [[0, 4, -1.0], [1, 4, 1.0]]
-    bondcombo = FixInternals(bondcombos=[[get_combo_value(atoms, bc), bc]])
+    bondcombo = FixInternals(bondcombos=[[FixInternals.get_combo(atoms, bc), bc]])
     ac = [[0, 1, 2, -1.0], [0, 2, 3, 1.0]]
-    anglecombo = FixInternals(anglecombos=[[get_combo_value(atoms, ac), ac]])
+    anglecombo = FixInternals(anglecombos=[[FixInternals.get_combo(atoms, ac), ac]])
     dc = [[0, 1, 2, 3, -1.0], [0, 1, 4, 3, 1.0]]
-    dihedralcombo = FixInternals(dihedralcombos=[[get_combo_value(atoms, dc),
+    dihedralcombo = FixInternals(dihedralcombos=[[FixInternals.get_combo(atoms, dc),
                                                   dc]])
     names = ['FixBondCombo', 'FixAngleCombo', 'FixDihedralCombo']
     coord = [bc, ac, dc]
