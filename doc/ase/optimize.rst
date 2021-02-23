@@ -196,7 +196,7 @@ Read more about this algorithm here:
              N is the number of atoms and n the number of steps.
              If the number of atoms is sufficiently high, this
              may cause a memory issue.
-             This class prints a warning if the user tries to 
+             This class prints a warning if the user tries to
              run GPMin with more than 100 atoms in the unit cell.
 
 
@@ -529,6 +529,8 @@ The transition state search and optimization algorithms available in ASE are:
 
 ClimbFixInternals
 -----------------
+The :class:`ClimbFixInternals` optimizer can be used to climb a reaction
+coordinate defined using the :class:`~ase.constraints.FixInternals` class.
 
 .. module:: ase.optimize.climbfixinternals
 
