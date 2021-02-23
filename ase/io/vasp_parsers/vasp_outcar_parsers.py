@@ -150,12 +150,35 @@ class SpeciesTypes(SimpleVaspHeaderParser):
 
     Example line:
     "POSCAR: Mg Al"
+    or
+    "POSCAR: Ir2 O4"
+
+    Gives a list of the species, in the order of appearance.
+    Does not return informaiton about the number of ions per species.
     """
     LINE_DELIMITER = 'POSCAR:'
 
     def parse(self, cursor: _CURSOR, lines: _CHUNK) -> _RESULT:
         line = lines[cursor].strip()
-        species = line.split()[1:]
+        parts = line.split(':')
+
+        # We should only have 2 parts:
+        # ['POSCAR', <species>]
+        if len(parts) != 2:
+            raise ParseError(
+                f'Got an unexpected line when parsing species: {line}')
+        # Get the species from the line
+        species_line = parts[-1]
+        # Split the species, and parse them individually
+        parts = species_line.split()
+        species = []
+        for part in parts:
+            # We may need to strip numbers from the species, we determine
+            # the number of species later
+            # e.g. in the case of "Ir2 O4" we just want "Ir" and "O"
+            specie = ''.join(c for c in part if not c.isnumeric())
+            species.append(specie)
+
         return {'species': species}
 
 
