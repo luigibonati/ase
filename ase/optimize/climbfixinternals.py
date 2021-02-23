@@ -31,6 +31,17 @@ class ClimbFixInternals(BFGS):
            Structures through Automated Relaxed Potential Energy Surface Scans.
            J. Chem. Theory Comput. 2018, 14 (2), 981–990.
            https://doi.org/10.1021/acs.jctc.7b01070.
+
+    Example
+    -------
+    >>> # define the reaction coordinate as a linear combination of bond lengths
+    >>> # 1.0 * bond(0,1) -1.0 * bond(2,3) = constant
+    >>> reaction_coordinate = [[0, 1, 1.0], [2, 3, -1.0]]
+    >>> # using 'None' sets the initial value to the current value
+    >>> constr = FixInternals(bondcombos=[[None, bond_combo]])
+    >>> atoms.set_constraint(constr)
+    >>> dyn = ClimbFixInternals(atoms, climb_coordinate=reaction_coordinate)
+    >>> dyn.run()  # climbs the reaction coord. while relaxing everything else
     """
     def __init__(self, atoms, restart=None, logfile='-', trajectory=None,
                  maxstep=None, master=None, alpha=None,
@@ -46,15 +57,11 @@ class ClimbFixInternals(BFGS):
         climb_coordinate: list
             Specifies which subconstraint of the
             :class:`~ase.constraints.FixInternals` constraint is to be climbed.
-            Provide the 'constraint name' and corresponding indices as a list
-            (without coefficients in the case of combo constraints).
+            Provide the corresponding nested list of indices
+            (including coefficients in the case of Combo constraints).
             Examples:
-            * `['FixBondLengthAlt', [[0, 1]]]`
-            * `['FixAngle', [[0, 1, 2]]]`
-            * `['FixDihedral', [[0, 1, 2, 3]]]`
-            * `['FixBondCombo', [[0, 1], [2, 3]]]`
-            * `['FixAngleCombo', [[0, 1, 2], [3, 4, 5]]]`
-            * `['FixDihedralCombo', [[0, 1, 2, 3], [4, 5, 6, 7]]]`
+            * `[0, 1]` defines a constrained bond
+            * `[[0, 1, 1.0], [2, 3, -1.0]]` defines a constrained linear combination of bond lengths
     
         optB: any ASE optimizer, optional
             Optimizer 'B' for optimization of the remaining degrees of freedom.
