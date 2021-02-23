@@ -150,7 +150,7 @@ class ClimbFixInternals(BFGS):
 
     def get_projected_forces(self):  # get projected forces in uphill direction
         f = self.constr2climb.projected_force * self.constr2climb.jacobian
-        f = -1 * f.reshape(self.atoms.get_positions().shape)
+        f = -1 * f.reshape(self.atoms.positions.shape)
         return f
 
     def converged(self, forces=None):  # check total forces incl. projected f.
