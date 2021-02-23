@@ -91,9 +91,9 @@ class ClimbFixInternals(BFGS):
 
             `fmax = optB_fmax + optB_fmax_scaling * projected_force`
 
-            The first and the final optimization with optimizer 'B' are
+            The final optimization with optimizer 'B' is
             performed with `optB_fmax` independent of `optB_fmax_scaling`.
-            Recommended values are in the order of 0.5.
+            Recommended values are below 1.0.
             Default: 0.0
         """
         BFGS.__init__(self, atoms, restart, logfile, trajectory,
@@ -141,7 +141,7 @@ class ClimbFixInternals(BFGS):
 
         # initial relaxation of remaining degrees of freedom with optimizer 'B'
         if self.nsteps == 0:
-            optB.run(self.optB_fmax)
+            optB.run(self.get_scaled_fmax())  # optimize with scaled fmax
 
         f = self.get_projected_forces()  # get directions for climbing
         # climb with optimizer 'A', similar to BFGS.step()
@@ -162,12 +162,17 @@ class ClimbFixInternals(BFGS):
         self.f0 = f.copy()
 
         # optimize remaining degrees of freedom with optimizer 'B'
-        fmax = self.optB_fmax + self.scaling * self.constr2climb.projected_force
+        fmax = self.get_scaled_fmax()
         optB.run(fmax)  # optimize with scaled fmax
         if self.converged() and fmax > self.optB_fmax:
             optB.run(self.optB_fmax)  # final optimization with desired fmax
 
         self.dump((self.H, self.r0, self.f0, self.maxstep, self.targetvalue))
+
+    def get_scaled_fmax(self):
+        """Determine adaptive 'fmax' based on the estimated distance to the
+        transition state."""
+        return self.optB_fmax + self.scaling * self.constr2climb.projected_force
 
     def get_projected_forces(self):  # get projected forces in uphill direction
         f = self.constr2climb.projected_force * self.constr2climb.jacobian
