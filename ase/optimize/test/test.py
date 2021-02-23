@@ -14,6 +14,7 @@ from ase.io import Trajectory
 all_optimizers = ase.optimize.__all__ + ['PreconLBFGS', 'PreconFIRE',
                                          'SciPyFminCG', 'SciPyFminBFGS']
 all_optimizers.remove('QuasiNewton')
+all_optimizers.remove('RestartError')
 
 
 def get_optimizer(name):
