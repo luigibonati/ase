@@ -34,12 +34,14 @@ class ClimbFixInternals(BFGS):
 
     Example
     -------
+    >>> from ase.constraints import FixInternals
+    >>> from ase.optimize.climbfixinternals import ClimbFixInternals
     >>> # define the reaction coordinate as a linear combination of bond lengths
     >>> # 1.0 * bond(0,1) -1.0 * bond(2,3) = constant
     >>> reaction_coordinate = [[0, 1, 1.0], [2, 3, -1.0]]
-    >>> # using 'None' sets the initial value to the current value
-    >>> constr = FixInternals(bondcombos=[[None, bond_combo]])
-    >>> atoms.set_constraint(constr)
+    >>> constr = FixInternals(bondcombos=[[None, bond_combo]])  # 'None' will...
+    >>> # ...automatically set the initial constraint value to the current value
+    >>> atoms.set_constraint(constr)  # 'atoms' is an ASE Atoms object
     >>> dyn = ClimbFixInternals(atoms, climb_coordinate=reaction_coordinate)
     >>> dyn.run()  # climbs the reaction coord. while relaxing everything else
     """
