@@ -203,7 +203,7 @@ def write_gaussian_in(fd, atoms, properties=None, **params):
     # pull out nuclear properties, and discard iso:
     nuclear_props = {}
     for keyword in _nuclear_prop_names:
-        nuclear_props[keyword] = params.pop(keyword, None)
+        nuclear_props[keyword] = params.pop(keyword + 'list', None)
     nuclear_props.pop('iso')
 
     # set up link0 arguments
@@ -539,10 +539,10 @@ def _get_zmatrix_line(line):
 def _get_nuclear_props_for_all_atoms(nuclear_props):
     ''' Returns the nuclear properties for all atoms as a dictionary,
     in the format needed for it to be added to the parameters dictionary.'''
-    params = {k: [] for k in _nuclear_prop_names}
+    params = {k + 'list': [] for k in _nuclear_prop_names}
     for dictionary in nuclear_props:
         for key, value in dictionary.items():
-            params[key].append(value)
+            params[key + 'list'].append(value)
 
     for key, array in params.items():
         values_set = False
@@ -619,12 +619,12 @@ def _update_readiso_params(parameters, symbols):
     parameters = _delete_readiso_param(parameters)
     # Ensures the masses array is the same length as the
     # symbols array:
-    if parameters.get('iso') is not None:
-        if len(parameters['iso']) < len(symbols):
-            for i in range(0, len(symbols) - len(parameters['iso'])):
-                parameters['iso'].append(None)
-        elif len(parameters['iso']) > len(symbols):
-            parameters['iso'] = parameters['iso'][:len(symbols)]
+    if parameters.get('isolist') is not None:
+        if len(parameters['isolist']) < len(symbols):
+            for i in range(0, len(symbols) - len(parameters['isolist'])):
+                parameters['isolist'].append(None)
+        elif len(parameters['isolist']) > len(symbols):
+            parameters['isolist'] = parameters['isolist'][:len(symbols)]
     return parameters
 
 
@@ -878,7 +878,7 @@ class GaussianConfiguration:
         parameters.update(_get_nuclear_props_for_all_atoms(nuclear_props))
 
         if readiso:
-            parameters['iso'] = readiso_masses
+            parameters['isolist'] = readiso_masses
             parameters = _update_readiso_params(parameters, symbols)
 
         # Saves the basis set definition to the parameters array if

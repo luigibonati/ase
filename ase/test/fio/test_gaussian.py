@@ -159,7 +159,7 @@ def test_readwrite_gaussian(fd_cartesian, fd_cartesian_basis_set, fd_zmatrix):
         check_atom_properties(atoms, atoms_written, params)
 
     def get_iso_masses(atoms):
-        return list(atoms.calc.parameters['iso'])
+        return list(atoms.calc.parameters['isolist'])
 
     # Tests reading a Gaussian input file with:
     # - Cartesian coordinates for the atom positions.
@@ -181,13 +181,13 @@ def test_readwrite_gaussian(fd_cartesian, fd_cartesian_basis_set, fd_zmatrix):
               'output_type': 'n', 'method': 'b3lyp',
               'basis': "6-31g(d',p')", 'opt': 'tight, maxcyc=100',
               'integral': 'ultrafine', 'charge': 0, 'mult': 1}
-    params['nmagm'] = np.array([None, -8.89, None])
-    params['zeff'] = np.array([None, -1, None])
-    params['znuc'] = np.array([None, None, 2])
-    params['qmom'] = np.array([None, None, 1])
-    params['radnuclear'] = np.array([None, None, 1])
-    params['spin'] = np.array([None, None, 1])
-    params['iso'] = np.array(iso_masses)
+    params['nmagmlist'] = np.array([None, -8.89, None])
+    params['zefflist'] = np.array([None, -1, None])
+    params['znuclist'] = np.array([None, None, 2])
+    params['qmomlist'] = np.array([None, None, 1])
+    params['radnuclearlist'] = np.array([None, None, 1])
+    params['spinlist'] = np.array([None, None, 1])
+    params['isolist'] = np.array(iso_masses)
     warn_text = "The option {} is currently unsupported. \
 This has been replaced with {}.".format("POpt", "opt")
     with pytest.warns(UserWarning, match=warn_text):
@@ -206,7 +206,8 @@ This has been replaced with {}.".format("POpt", "opt")
     # - Masses defined using nuclei properties
 
     atoms = Atoms('OH2', positions=positions, masses=masses)
-    nuclei_props = ['nmagm', 'zeff', 'znuc', 'qmom', 'radnuclear', 'spin']
+    nuclei_props = ['nmagmlist', 'zefflist', 'znuclist', 'qmomlist',
+                    'radnuclearlist', 'spinlist']
     params = {k: v for k, v in params.items() if k not in nuclei_props}
     params['opt'] = 'tight maxcyc=100'
     params['freq'] = None
@@ -267,7 +268,7 @@ SP   1   1.00
               'freq': None, 'integral': 'ultrafine', 'charge': 0, 'mult': 1,
               'temperature': '300', 'pressure': '1.0',
               'basisfile': '@basis-set-filename.gbs'}
-    params['iso'] = np.array(masses)
+    params['isolist'] = np.array(masses)
 
     # Note that although the freq is set to ReadIso in the input text,
     # here we have set it to None. This is because when reading in a file
