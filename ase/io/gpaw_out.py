@@ -1,4 +1,3 @@
-import ast
 import re
 import numpy as np
 from ase.atoms import Atoms
@@ -6,43 +5,7 @@ from ase.calculators.singlepoint import SinglePointDFTCalculator
 from ase.calculators.singlepoint import SinglePointKPoint
 
 
-def read_gpaw_toml(fileobj, index):
-    images = []
-    print(index)
-    for text in fileobj.read().split('[[steps]]\n')[1:]:
-        dct = loads(text)
-        if not dct:
-            break
-        symbols = []
-        positions = []
-        for i, symbol, position, magmom in dct['atoms']:
-            symbols.append(symbol)
-            positions.append(position)
-        atoms = Atoms(symbols, positions,
-                      cell=dct['cell'],
-                      pbc=dct['periodic'])
-        images.append(atoms)
-    return images[index]
-
-
-def loads(text):
-    text = text.replace('[\n', '[')
-    text = text.replace('],\n', '],')
-    text = text.replace(' ', '')
-    dct = {}
-    for name in ['atoms', 'cell', 'periodic']:
-        match = re.search(name + r'=\[(.*)\]', text)
-        if match:
-            thing = match[1].replace('true', 'True').replace('false', 'False')
-            dct[name] = ast.literal_eval(thing)
-    return dct
-
-
 def read_gpaw_out(fileobj, index):
-    line = fileobj.readline()
-    if line.startswith('#'):
-        return read_gpaw_toml(fileobj, index)
-
     notfound = []
 
     def index_startswith(lines, string):
