@@ -40,8 +40,7 @@ class ClimbFixInternals(BFGS):
        'fmax' of the remaining degrees of freedom without the projected forces.
        The projected forces can be inspected using the `get_projected_forces`
        method, e.g.
-       >>> for _ in dyn.irun():
-               projected_forces = dyn.get_projected_forces()
+       >>> for _ in dyn.irun(): projected_forces = dyn.get_projected_forces()
 
     Example
     -------
