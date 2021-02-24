@@ -36,7 +36,12 @@ class ClimbFixInternals(BFGS):
     .. note::
        Convergence is based on 'fmax' of the total forces, i.e. on 'fmax' of
        the sum of the projected forces and the forces of the remaining degrees
-       of freedom.
+       of freedom. The value is logged in the `logfile`. Optimizer 'B' logs
+       'fmax' of the remaining degrees of freedom without the projected forces.
+       The projected forces can be inspected using the `get_projected_forces`
+       method, e.g.
+       >>> for _ in dyn.irun():
+               projected_forces = dyn.get_projected_forces()
 
     Example
     -------
@@ -180,7 +185,9 @@ class ClimbFixInternals(BFGS):
         transition state."""
         return self.optB_fmax + self.scaling * self.constr2climb.projected_force
 
-    def get_projected_forces(self):  # get projected forces in uphill direction
+    def get_projected_forces(self):
+        """Return the projected forces along the constrained coordinate in
+        uphill direction (negative sign)."""
         f = self.constr2climb.projected_force * self.constr2climb.jacobian
         f = -1 * f.reshape(self.atoms.positions.shape)
         return f
