@@ -69,7 +69,8 @@ class ClimbFixInternals(BFGS):
             (including coefficients in the case of Combo constraints).
             Examples:
             * `[0, 1]` defines a constrained bond
-            * `[[0, 1, 1.0], [2, 3, -1.0]]` defines a constrained linear combination of bond lengths
+            * `[[0, 1, 1.0], [2, 3, -1.0]]` defines a constrained linear
+            combination of bond lengths
 
         optB: any ASE optimizer, optional
             Optimizer 'B' for optimization of the remaining degrees of freedom.
@@ -77,9 +78,12 @@ class ClimbFixInternals(BFGS):
 
         optB_kwargs: dict, optional
             Specifies keyword arguments to be passed to optimizer 'B' at its
-            initialization.
-            Default: {'logfile': 'optB_{...}.log'} where {...} is the current
-            value of the coordinate to be climbed
+            initialization. By default, optimizer 'B' writes a logfile and
+            trajectory (optB_{...}.log, optB_{...}.traj) where {...} is the
+            current value of the `climb_coordinate`. Set `logfile` to '-' for
+            console output. Set `trajectory` to 'None' to suppress writing of
+            the trajectory file.
+            Default: None
 
         optB_fmax: float, optional
             Specifies the convergence criterion `fmax` of optimizer 'B'.
@@ -108,7 +112,6 @@ class ClimbFixInternals(BFGS):
         self.optB_kwargs = optB_kwargs or {}
         self.optB_fmax = optB_fmax
         self.scaling = optB_fmax_scaling
-        self.optB_autolog = False if 'logfile' in self.optB_kwargs else True
 
     def get_constr2climb(self, atoms, climb_coordinate):
         """Get pointer to the subconstraint that is to be climbed.
@@ -134,9 +137,12 @@ class ClimbFixInternals(BFGS):
         atoms = self.atoms
 
         # setup optimizer 'B'
-        if self.optB_autolog:
+        if 'logfile' not in self.optB_kwargs:  # autologging
             logfilename = 'optB_{}.log'.format(self.targetvalue)
             self.optB_kwargs['logfile'] = logfilename
+        if 'trajectory' not in self.optB_kwargs:  # autologging
+            trajfilename = 'optB_{}.traj'.format(self.targetvalue)
+            self.optB_kwargs['trajectory'] = trajfilename
         optB = self.optB(atoms, **self.optB_kwargs)
 
         # initial relaxation of remaining degrees of freedom with optimizer 'B'
