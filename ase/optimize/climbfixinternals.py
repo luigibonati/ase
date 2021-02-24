@@ -98,11 +98,10 @@ class ClimbFixInternals(BFGS):
             the value of `optB_fmax` when close to convergence.
             Can speed up the climbing process. The scaling formula is
 
-            `fmax = optB_fmax + optB_fmax_scaling * projected_force`
+            `fmax = optB_fmax + optB_fmax_scaling * norm_of_projected_force`
 
             The final optimization with optimizer 'B' is
             performed with `optB_fmax` independent of `optB_fmax_scaling`.
-            Recommended values are below 1.0.
             Default: 0.0
         """
         self.targetvalue = None  # may be assigned during restart in self.read()
