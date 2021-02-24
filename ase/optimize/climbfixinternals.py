@@ -96,11 +96,13 @@ class ClimbFixInternals(BFGS):
             Recommended values are below 1.0.
             Default: 0.0
         """
+        self.targetvalue = None  # may be assigned during restart in self.read()
         BFGS.__init__(self, atoms, restart, logfile, trajectory,
                       maxstep, master, alpha)
 
         self.constr2climb = self.get_constr2climb(self.atoms, climb_coordinate)
-        self.targetvalue = self.constr2climb.targetvalue
+        if self.targetvalue is None:  # if not assigned during restart
+            self.targetvalue = self.constr2climb.targetvalue
 
         self.optB = optB
         self.optB_kwargs = optB_kwargs or {}
@@ -113,7 +115,7 @@ class ClimbFixInternals(BFGS):
         Identification by its definition via indices (and coefficients)."""
         atoms.set_positions(atoms.get_positions())  # initialize FixInternals
         available_constraint_types = list(map(type, atoms.constraints))
-        index = available_constraint_types.index(FixInternals)
+        index = available_constraint_types.index(FixInternals)  # locate constr.
         for subconstr in atoms.constraints[index].constraints:
             if 'Combo' in repr(subconstr):
                 defin = [d + [c] for d, c in zip(subconstr.indices,
@@ -126,9 +128,7 @@ class ClimbFixInternals(BFGS):
         raise ValueError('Given `climb_coordinate` not found on Atoms object.')
 
     def read(self):
-        (self.H, self.r0, self.f0, self.maxstep,
-         self.projected_forces, self.targetvalue) = self.load()
-        self.constr2climb.targetvalue = self.targetvalue  # update constr.
+        self.H, self.r0, self.f0, self.maxstep, self.targetvalue = self.load()
 
     def step(self, f=None):
         atoms = self.atoms
@@ -185,7 +185,7 @@ class ClimbFixInternals(BFGS):
         return forces
 
     def converged(self, forces=None):
-        """Did the optimization converge for the total forces?"""
+        """Did the optimization converge based on the total forces?"""
         forces = self.get_total_forces(forces)
         return BFGS.converged(self, forces=forces)
 
