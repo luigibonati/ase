@@ -116,6 +116,10 @@ class ClimbFixInternals(BFGS):
         self.optB_fmax = optB_fmax
         self.scaling = optB_fmax_scaling
 
+        # log optimizer 'B' in logfiles named after current value of constraint
+        self.autolog = 'logfile' not in self.optB_kwargs
+        self.autotraj = 'trajectory' not in self.optB_kwargs
+
     def get_constr2climb(self, atoms, climb_coordinate):
         """Get pointer to the subconstraint that is to be climbed.
         Identification by its definition via indices (and coefficients)."""
@@ -140,10 +144,10 @@ class ClimbFixInternals(BFGS):
         atoms = self.atoms
 
         # setup optimizer 'B'
-        if 'logfile' not in self.optB_kwargs:  # autologging
+        if self.autolog:
             logfilename = 'optB_{}.log'.format(self.targetvalue)
             self.optB_kwargs['logfile'] = logfilename
-        if 'trajectory' not in self.optB_kwargs:  # autologging
+        if self.autotraj:
             trajfilename = 'optB_{}.traj'.format(self.targetvalue)
             self.optB_kwargs['trajectory'] = trajfilename
         optB = self.optB(atoms, **self.optB_kwargs)
