@@ -75,7 +75,7 @@ class DiatomReferenceState(BaseReferenceState):
 class BulkReferenceState(BaseReferenceState):
     @property
     def _crystal_data(self):
-        # Avoid early import of spacegroup
+        # This is to avoid early import of spacegroup
         import ase.spacegroup.crystal_data as crystal_data
         return crystal_data
 
@@ -85,17 +85,17 @@ class BulkReferenceState(BaseReferenceState):
 
     @property
     def crystal_family(self):
-        return self._crystal_data.crystal_family[self._spacegroup_int]
+        return self._crystal_data._crystal_family[self._spacegroup_int]
 
     @property
     def lattice_centering(self):
-        return self._crystal_data.lattice_centering[self._spacegroup_int]
+        return self._crystal_data._lattice_centering[self._spacegroup_int]
 
     @property
-    def bravais_class(self):
-        return self._crystal_data.get_bravais_class(self._spacegroup)
+    def _bravais_class(self):
+        return self._crystal_data.get_bravais_class(self._spacegroup_int)
 
     @lazyproperty
     def spacegroup(self):
         from ase.spacegroup import Spacegroup
-        return Spacegroup(self._spacegroup)
+        return Spacegroup(self._spacegroup_int)

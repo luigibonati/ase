@@ -14,8 +14,12 @@ def test_basics():
     state = define_reference_state(Z, **dct)
     assert state.symbol == symbol
     assert state.Z == Z
-    assert dict(state) == dct
     print(state)
+
+    # Check the Mapping methods:
+    assert list(state) == list(dct)
+    assert len(state) == len(dct)
+    assert dict(state) == dct
 
 
 def test_atom():
@@ -38,3 +42,10 @@ def test_dimer():
     assert pytest.approx(atoms.positions[:, :2]) == 0
     assert pytest.approx(atoms.positions[:, 2]) == [-d0 / 2, d0 / 2]
     assert all(atoms.numbers == Z)
+
+
+def test_bulk_fcc():
+    state = define_reference_state(Z, symmetry='fcc', a=4.0, sgs=225)
+    assert int(state.spacegroup) == 225
+    assert state.lattice_centering == 'F'  # face-centered'
+    assert state.crystal_family == 'c'  # cubic
