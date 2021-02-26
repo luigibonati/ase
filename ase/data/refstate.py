@@ -28,7 +28,7 @@ def define_reference_state(Z, **data):
     raise bad_structure(symm)
 
 
-class BaseReferenceState(Mapping):
+class ReferenceState(Mapping):
     def __init__(self, Z, **data):
         self._Z = Z
         self._data = data
@@ -56,13 +56,19 @@ class BaseReferenceState(Mapping):
     def copy(self):
         return copy(self)
 
+    def __repr__(self):
+        clsname = type(self).__name__
+        tokens = [repr(self.symbol)]
+        tokens += [f'{key}={value}' for key, value in self.items()]
+        varlist = ', '.join(tokens)
+        return f'{clsname}[{varlist}]'
 
-class AtomReferenceState(BaseReferenceState):
+class AtomReferenceState(ReferenceState):
     def toatoms(self):
         return ase.Atoms([self._Z])
 
 
-class DiatomReferenceState(BaseReferenceState):
+class DiatomReferenceState(ReferenceState):
     def toatoms(self):
         # XXX magmoms
         d_half = 0.5 * self.bondlength
@@ -74,11 +80,8 @@ class DiatomReferenceState(BaseReferenceState):
     def bondlength(self):
         return self['d']
 
-    def __repr__(self):
-        return f'Diatom[{self.symbol!r}, bondlength={self.bondlength}]'
 
-
-class BulkReferenceState(BaseReferenceState):
+class BulkReferenceState(ReferenceState):
     @property
     def _crystal_data(self):
         # This is to avoid early import of spacegroup
