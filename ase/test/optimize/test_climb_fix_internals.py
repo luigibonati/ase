@@ -39,6 +39,7 @@ def test_climb_fix_internals():
     vib = Vibrations(atoms, indices=[4])
     vib.run()
     assert ((np.imag(vib.get_energies()) > 0) == [True, False, False]).all()
+# end example for documentation
 
 
 def test_initialization_with_different_constraints():

@@ -47,7 +47,7 @@ class ClimbFixInternals(BFGS):
     via the :class:`~ase.constraints.FixInternals` class.
 
     .. literalinclude:: ../../ase/test/optimize/test_climb_fix_internals.py
-       :end-before: def test_initialization_with_different_constraints():
+       :end-before: # end example for documentation
     """
     def __init__(self, atoms, restart=None, logfile='-', trajectory=None,
                  maxstep=None, master=None, alpha=None,
