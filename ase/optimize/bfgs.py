@@ -85,6 +85,12 @@ class BFGS(Optimizer):
             f = atoms.get_forces()
 
         r = atoms.get_positions()
+        dr, steplengths = self.prepare_step(r, f)
+        dr = self.determine_step(dr, steplengths)
+        atoms.set_positions(r + dr)
+        self.dump((self.H, self.r0, self.f0, self.maxstep))
+
+    def prepare_step(self, r, f):
         f = f.reshape(-1)
         self.update(r.flat, f, self.r0, self.f0)
         omega, V = eigh(self.H)
@@ -103,11 +109,9 @@ class BFGS(Optimizer):
 
         dr = np.dot(V, np.dot(f, V) / np.fabs(omega)).reshape((-1, 3))
         steplengths = (dr**2).sum(1)**0.5
-        dr = self.determine_step(dr, steplengths)
-        atoms.set_positions(r + dr)
         self.r0 = r.flat.copy()
         self.f0 = f.copy()
-        self.dump((self.H, self.r0, self.f0, self.maxstep))
+        return dr, steplengths
 
     def determine_step(self, dr, steplengths):
         """Determine step to take according to maxstep
