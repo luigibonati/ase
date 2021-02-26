@@ -15,6 +15,11 @@ Calculators:
   handling of various periodic boundary conditions.
   Functions to import and export files with QM/MM mapping were also added.
 
+Optimizers:
+
+* add :class:`ase.optimize.climbfixinternals.ClimbFixInternals` class for
+  transition state search and optimization along internal reaction coordinates
+
 I/O:
 
 * Reading of "chemical json" file types with name ``*.cml`` is enabled.
