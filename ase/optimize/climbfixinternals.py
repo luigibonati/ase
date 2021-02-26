@@ -19,10 +19,10 @@ class ClimbFixInternals(BFGS):
 
     In combination with other constraints, the order of constraints matters.
     Generally, the FixInternals constraint should come first in the list of
-    constraints, i.e., `atoms.set_constraint(list_of_constraints)`.
+    constraints.
     This has been tested with the :class:`~ase.constraints.FixAtoms` constraint.
 
-    Inspired by concepts described by P. N. Plessow [1]_,
+    Inspired by concepts described by P. N. Plessow, [1]_
     implemented by J. Amsler.
 
     .. [1] P. N. Plessow, Efficient Transition State Optimization of Periodic
@@ -33,23 +33,24 @@ class ClimbFixInternals(BFGS):
     .. note::
        Convergence is based on 'fmax' of the total forces, i.e. on 'fmax' of
        the sum of the projected forces and the forces of the remaining degrees
-       of freedom. This value is logged in the `logfile`. Optimizer 'B' logs
+       of freedom. This value is logged in the 'logfile'. Optimizer 'B' logs
        'fmax' of the remaining degrees of freedom without the projected forces.
-       The projected forces can be inspected using the `get_projected_forces`
-       method, e.g.
+       The projected forces can be inspected using the
+       :meth:`get_projected_forces` method, e.g.
+
        >>> for _ in dyn.irun():
        ...     projected_forces = dyn.get_projected_forces()
 
     Example
     -------
+    Define a linear combination of bond lengths as the 1D reaction coordinate
+    via the :class:`~ase.constraints.FixInternals` class.
+
     >>> from ase.constraints import FixInternals
     >>> from ase.optimize.climbfixinternals import ClimbFixInternals
-    >>> # define the reaction coordinate as a linear combination of bond lengths
-    >>> # 1.0 * bond(0,1) -1.0 * bond(2,3)
     >>> reaction_coordinate = [[0, 1, 1.0], [2, 3, -1.0]]
-    >>> constr = FixInternals(bondcombos=[[None, bond_combo]])
-    >>> # 'None' automatically takes initial constraint value as current value
-    >>> atoms.set_constraint(constr)  # 'atoms' is an ASE Atoms object
+    >>> constr = FixInternals(bondcombos=[[None, reaction_coordinate]])
+    >>> atoms.set_constraint(constr)
     >>> dyn = ClimbFixInternals(atoms, climb_coordinate=reaction_coordinate)
     >>> dyn.run()  # climbs the reaction coord. while relaxing everything else
     """
@@ -58,9 +59,8 @@ class ClimbFixInternals(BFGS):
                  climb_coordinate=None,
                  optB=BFGS, optB_kwargs=None, optB_fmax=0.05,
                  optB_fmax_scaling=0.0):
-        """
-        Initialize like the parent class :class:`~ase.optimize.bfgs.BFGS`
-        with the following additional parameters.
+        """Allowed parameters are similar to the parent class
+        :class:`~ase.optimize.bfgs.BFGS` with the following additions:
 
         Parameters
         ----------
@@ -69,37 +69,33 @@ class ClimbFixInternals(BFGS):
             :class:`~ase.constraints.FixInternals` constraint is to be climbed.
             Provide the corresponding nested list of indices
             (including coefficients in the case of Combo constraints).
-            Examples:
-            * `[0, 1]` defines a constrained bond
-            * `[[0, 1, 1.0], [2, 3, -1.0]]` defines a constrained linear
-            combination of bond lengths
+            See the example above.
 
         optB: any ASE optimizer, optional
-            Optimizer 'B' for optimization of the remaining degrees of freedom.
-            Default: :class:`~ase.optimize.bfgs.BFGS`
+            Optimizer 'B' for optimization of the remaining degrees of freedom
+            after each climbing step.
 
         optB_kwargs: dict, optional
             Specifies keyword arguments to be passed to optimizer 'B' at its
             initialization. By default, optimizer 'B' writes a logfile and
             trajectory (optB_{...}.log, optB_{...}.traj) where {...} is the
-            current value of the `climb_coordinate`. Set `logfile` to '-' for
-            console output. Set `trajectory` to 'None' to suppress writing of
-            the trajectory file.
-            Default: None
+            current value of the ``climb_coordinate``. Set ``logfile`` to '-'
+            for console output. Set ``trajectory`` to 'None' to suppress
+            writing of the trajectory file.
 
         optB_fmax: float, optional
-            Specifies the convergence criterion `fmax` of optimizer 'B'.
+            Specifies the convergence criterion 'fmax' of optimizer 'B'.
 
         optB_fmax_scaling: float, optional
-            Scaling factor to dynamically tighten `fmax` of optimizer 'B' to
-            the value of `optB_fmax` when close to convergence.
+            Scaling factor to dynamically tighten 'fmax' of optimizer 'B' to
+            the value of ``optB_fmax`` when close to convergence.
             Can speed up the climbing process. The scaling formula is
 
-            `fmax = optB_fmax + optB_fmax_scaling * norm_of_projected_force`
+            'fmax' = ``optB_fmax`` + ``optB_fmax_scaling``
+            :math:`\cdot` norm_of_projected_force
 
             The final optimization with optimizer 'B' is
-            performed with `optB_fmax` independent of `optB_fmax_scaling`.
-            Default: 0.0
+            performed with ``optB_fmax`` independent of ``optB_fmax_scaling``.
         """
         self.targetvalue = None  # may be assigned during restart in self.read()
         BFGS.__init__(self, atoms, restart, logfile, trajectory,
@@ -174,7 +170,7 @@ class ClimbFixInternals(BFGS):
         self.dump((self.H, self.r0, self.f0, self.maxstep, self.targetvalue))
 
     def get_scaled_fmax(self):
-        """Determine adaptive 'fmax' based on the estimated distance to the
+        """Return the adaptive 'fmax' based on the estimated distance to the
         transition state."""
         return self.optB_fmax + self.scaling * self.constr2climb.projected_force
 
