@@ -1,5 +1,5 @@
 import ase
-from copy import deepcopy
+from copy import copy, deepcopy
 from abc import abstractmethod
 from collections.abc import Mapping
 
@@ -34,6 +34,7 @@ class BaseReferenceState(Mapping):
         self._data = data
 
     def __len__(self):
+        """Length of internal dictionary of reference state data."""
         return len(self._data)
 
     def __iter__(self):
@@ -44,11 +45,16 @@ class BaseReferenceState(Mapping):
 
     @property
     def Z(self):
+        """Atomic number."""
         return self._Z
 
     @property
     def symbol(self):
+        """Chemical symbol."""
         return chemical_symbols[self._Z]
+
+    def copy(self):
+        return copy(self)
 
 
 class AtomReferenceState(BaseReferenceState):

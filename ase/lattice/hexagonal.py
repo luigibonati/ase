@@ -23,6 +23,8 @@ Example for using Graphene to create atoms object gra::
     io.write('test.xyz', gra, format='xyz')
 """
 
+from collections.abc import Mapping
+
 from ase.lattice.triclinic import TriclinicFactory
 
 
@@ -34,7 +36,10 @@ class HexagonalFactory(TriclinicFactory):
     def make_crystal_basis(self):
         """Make the basis matrix for the crystal and system unit cells."""
         # First convert the basis specification to a triclinic one
-        if isinstance(self.latticeconstant, type({})):
+        if isinstance(self.latticeconstant, Mapping):
+            # XXX Not so good that we have not normalized/copied data
+            # before the fun began.  --askhl
+            self.latticeconstant = dict(self.latticeconstant)
             self.latticeconstant['alpha'] = 90
             self.latticeconstant['beta'] = 90
             self.latticeconstant['gamma'] = 120

@@ -14,7 +14,7 @@ def test_basics():
     state = define_reference_state(Z, **dct)
     assert state.symbol == symbol
     assert state.Z == Z
-    print(state)
+    assert 'oranges=5' in str(state)
 
     # Check the Mapping methods:
     assert list(state) == list(dct)
