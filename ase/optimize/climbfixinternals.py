@@ -84,7 +84,7 @@ class ClimbFixInternals(BFGS):
             Can speed up the climbing process. The scaling formula is
 
             'fmax' = ``optB_fmax`` + ``optB_fmax_scaling``
-            :math:`\cdot` norm_of_projected_force
+            :math:`\\cdot` norm_of_projected_force
 
             The final optimization with optimizer 'B' is
             performed with ``optB_fmax`` independent of ``optB_fmax_scaling``.
