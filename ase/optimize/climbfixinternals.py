@@ -146,6 +146,7 @@ class ClimbFixInternals(BFGS):
         f = self.get_projected_forces()  # get directions for climbing
         r = atoms.get_positions()
         dr, steplengths = self.prepare_step(r, f)
+        dr = self.determine_step(dr, steplengths)
 
         # adjust constrained targetvalue of constraint and update positions
         self.constr2climb.adjust_positions(r, r + dr)  # update constr.sigma
