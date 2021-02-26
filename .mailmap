@@ -1,3 +1,21 @@
+# The .mailmap file is used to unify distinct names and mail address of
+# committers as a single committer.
+#
+# Often the same committer has multiple aliases in commit history 
+# because of inconsistent configuration or changing university e-mail 
+# addresses; for the University giveth, and the University taketh away.
+#
+# If you can read this, consider updating your aliases below so you are 
+# listed by "git shortlog -se" only once and with your real name and 
+# working e-mail address.
+#
+# Example:
+#
+#   Name Lastname <email@example.com> Othername <oldemail@example.com>
+#
+# This specifies that commits under Othername <oldemail@example.com> should
+# be listed as Name Lastname <email@example.com> instead.
+
 Adam Arvidsson <adamar@chalmers.se>
 Adam Fekete <adam@fekete.co.uk> Adam Fekete <adam.fekete@kcl.ac.uk>
 Adam J. Jackson <a.j.jackson@physics.org> Adam J. Jackson <a.j.jackson@bath.ac.uk>
