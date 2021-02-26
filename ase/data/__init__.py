@@ -566,13 +566,26 @@ covalent_radii = np.array([
 ])
 
 
+def define_all_reference_states(reference_data):
+    from ase.data.refstate import define_reference_state
+
+    reference_states = []
+    for i, dct in enumerate(reference_data):
+        if dct is None:
+            refstate = None
+        else:
+            refstate = define_reference_state(i, **dct)
+        reference_states.append(refstate)
+    return reference_states
+
+
 # This data is from Ashcroft and Mermin.
 # Most constants are listed in periodic table, inside front cover.
 # Reference states that have a non-trivial basis have a 'basis' key.
 # If the basis is None, it means it has a basis but we have not tabulated it.
 # For basis of RHL systems (represented here as basis_x) see page 127.
 # For TET systems see page 127, too.
-reference_states = [
+reference_states = define_all_reference_states([
     None,  # X
     {'symmetry': 'diatom', 'd': 0.74},  # H
     {'symmetry': 'atom'},  # He
@@ -632,7 +645,8 @@ reference_states = [
     {'symmetry': 'fcc', 'a': 4.09, 'sgs': 225},  # Ag
     {'symmetry': 'hcp', 'c/a': 1.886, 'a': 2.98, 'sgs': 194},  # Cd
     # For In, A&M give a face-centered cell; we need some sqrt2 conversions.
-    {'symmetry': 'bct', 'c/a': 1.076 * 2**.5, 'a': 4.59 / 2**.5, 'sgs': 139},  # In
+    {'symmetry': 'bct', 'c/a': 1.076 * 2**.5, 'a': 4.59 / 2**.5,
+     'sgs': 139},  # In
     {'symmetry': 'bct', 'c/a': 0.546, 'a': 5.82,  # Sn
      'basis': [[0.0, 0.0, 0.0], [0.25, 0.75, 0.5]], 'sgs': 141},
     {'symmetry': 'rhombohedral', 'a': 4.51, 'alpha': 57.60,  # Sb
@@ -682,8 +696,10 @@ reference_states = [
     {'symmetry': 'fcc', 'a': 5.31, 'sgs': 225},  # Ac
     {'symmetry': 'fcc', 'a': 5.08, 'sgs': 225},  # Th
     {'symmetry': 'tetragonal', 'c/a': 0.825, 'a': 3.92, 'sgs': 139},  # Pa
-    {'symmetry': 'orthorhombic', 'c/a': 2.056, 'a': 2.85, 'b/a': 1.736, 'sgs': 63},  # U
-    {'symmetry': 'orthorhombic', 'c/a': 1.411, 'a': 4.72, 'b/a': 1.035, 'sgs': 62},  # Np
+    {'symmetry': 'orthorhombic', 'c/a': 2.056, 'a': 2.85, 'b/a': 1.736,
+     'sgs': 63},  # U
+    {'symmetry': 'orthorhombic', 'c/a': 1.411, 'a': 4.72, 'b/a': 1.035,
+     'sgs': 62},  # Np
     {'symmetry': 'monoclinic', 'sgs': 11},  # Pu
     None,  # Am
     None,  # Cm
@@ -709,7 +725,7 @@ reference_states = [
     None,  # Lv
     None,  # Ts
     None,  # Og
-]
+])
 
 # http://www.webelements.com
 ground_state_magnetic_moments = np.array([
