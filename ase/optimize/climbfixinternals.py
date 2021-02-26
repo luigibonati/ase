@@ -43,9 +43,6 @@ class ClimbFixInternals(BFGS):
 
     Example
     -------
-    Define a linear combination of bond lengths as the 1D reaction coordinate
-    via the :class:`~ase.constraints.FixInternals` class.
-
     .. literalinclude:: ../../ase/test/optimize/test_climb_fix_internals.py
        :end-before: # end example for documentation
     """
