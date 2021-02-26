@@ -5,9 +5,6 @@ from ase.optimize.climbfixinternals import ClimbFixInternals
 from ase.vibrations import Vibrations
 import numpy as np
 
-# from ase.io import read
-# from ase.visualize import view
-
 
 def setup_atoms():
     """Setup transition state search for the diffusion barrier for a Pt atom
@@ -33,24 +30,15 @@ def test_climb_fix_internals():
     atoms.set_constraint([FixInternals(bondcombos=[bondcombo])] + atoms.constraints)
 
     # Optimizer for transition state search along reaction coordinate
-    dyn = ClimbFixInternals(atoms, climb_coordinate=reaction_coord, trajectory='opt.traj')
+    dyn = ClimbFixInternals(atoms, climb_coordinate=reaction_coord)
 
     # Converge to a saddle point
     dyn.run(fmax=0.05)
-
-    # Visualize transition state search
-    # a = read('opt.traj', index=':')
-    # view(a)
 
     # Validate transition state by one imaginary vibrational mode
     vib = Vibrations(atoms, indices=[4])
     vib.run()
     assert ((np.imag(vib.get_energies()) > 0) == [True, False, False]).all()
-
-    # Visualize imaginary vibrational mode
-    # vib.write_mode(0)
-    # v = read('vib.0.traj', index=':')
-    # view(v)
 
 
 def test_initialization_with_different_constraints():
