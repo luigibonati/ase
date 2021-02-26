@@ -46,13 +46,8 @@ class ClimbFixInternals(BFGS):
     Define a linear combination of bond lengths as the 1D reaction coordinate
     via the :class:`~ase.constraints.FixInternals` class.
 
-    >>> from ase.constraints import FixInternals
-    >>> from ase.optimize.climbfixinternals import ClimbFixInternals
-    >>> reaction_coordinate = [[0, 1, 1.0], [2, 3, -1.0]]
-    >>> constr = FixInternals(bondcombos=[[None, reaction_coordinate]])
-    >>> atoms.set_constraint(constr)
-    >>> dyn = ClimbFixInternals(atoms, climb_coordinate=reaction_coordinate)
-    >>> dyn.run()  # climbs the reaction coord. while relaxing everything else
+    .. literalinclude:: ../../ase/test/optimize/test_climb_fix_internals.py
+       :end-before: def test_initialization_with_different_constraints():
     """
     def __init__(self, atoms, restart=None, logfile='-', trajectory=None,
                  maxstep=None, master=None, alpha=None,
