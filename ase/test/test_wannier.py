@@ -109,35 +109,48 @@ def wan(rng, h2_calculator):
         fixedenergy=None,
         initialwannier='bloch',
         functional='std',
-        kpts=(1, 1, 1),
+        kpts=None,
         file=None,
         rng=rng,
         full_calc=False,
         std_calc=True,
     ):
-        if std_calc and calc is None:
+        """
+        Generate a Wannier object.
+
+        full_calc: the provided calculator has a converged calculation
+        std_calc: the default H2 calculator object is used
+        """
+        # If the calculator, or some fundamental parameters, are provided
+        # we clearly do not want a default calculator
+        if calc is not None or kpts is not None or atoms is not None:
+            std_calc = False
+            # Default value for kpts, if we need to generate atoms/calc
+            if kpts is None:
+                kpts = (Nk, Nk, Nk)
+
+        if std_calc:
             calc = h2_calculator
-            if atoms is not None:
-                atoms.calc = calc
-                calc.atoms = atoms
-                atoms.get_potential_energy()
-        else:
-            if calc is None:
-                gpaw = pytest.importorskip('gpaw')
-                calc = gpaw.GPAW(
-                    gpts=gpts,
-                    nbands=nwannier,
-                    kpts=kpts,
-                    symmetry='off',
-                    txt=None
-                )
-            if atoms is None and not full_calc:
-                pbc = (np.array(kpts) > 1).any()
-                atoms = molecule('H2', pbc=pbc)
-                atoms.center(vacuum=3.)
-            if not full_calc:
-                atoms.calc = calc
-                atoms.get_potential_energy()
+            full_calc = True
+        elif atoms is None and not full_calc:
+            pbc = (np.array(kpts) > 1).any()
+            atoms = molecule('H2', pbc=pbc)
+            atoms.center(vacuum=3.)
+
+        if calc is None:
+            gpaw = pytest.importorskip('gpaw')
+            calc = gpaw.GPAW(
+                gpts=gpts,
+                nbands=nwannier,
+                kpts=kpts,
+                symmetry='off',
+                txt=None
+            )
+
+        if not full_calc:
+            atoms.calc = calc
+            atoms.get_potential_energy()
+
         return Wannier(
             nwannier=nwannier,
             fixedstates=fixedstates,
@@ -292,9 +305,7 @@ def test_get_radii(lat, h2_calculator, wan):
     atoms = molecule('H2', pbc=True)
     atoms.cell = lat.tocell()
     atoms.center(vacuum=3.)
-    calc = h2_calculator
-    wanf = wan(nwannier=4, fixedstates=2, atoms=atoms, calc=calc,
-               initialwannier='bloch', full_calc=True, std_calc=False)
+    wanf = wan(nwannier=4, fixedstates=2, atoms=atoms, initialwannier='bloch')
     assert not (wanf.get_radii() == 0).all()
 
 
@@ -303,9 +314,7 @@ def test_get_spreads(lat, h2_calculator, wan):
     atoms = molecule('H2', pbc=True)
     atoms.cell = lat.tocell()
     atoms.center(vacuum=3.)
-    calc = h2_calculator
-    wanf = wan(nwannier=4, fixedstates=2, atoms=atoms, calc=calc,
-               initialwannier='bloch', full_calc=True, std_calc=False)
+    wanf = wan(nwannier=4, fixedstates=2, atoms=atoms, initialwannier='bloch')
     assert not (wanf.get_spreads() == 0).all()
 
 
@@ -336,7 +345,7 @@ def test_get_centers(factory):
 def test_write_cube_real(wan):
     atoms = molecule('H2')
     atoms.center(vacuum=3.)
-    wanf = wan(atoms=atoms, kpts=(1, 1, 1), std_calc=False)
+    wanf = wan(atoms=atoms, kpts=(1, 1, 1))
     index = 0
 
     # It returns some errors when using file objects, so we use a string
@@ -350,7 +359,7 @@ def test_write_cube_real(wan):
 
 def test_write_cube_complex(wan):
     atoms = bulk('Si')
-    wanf = wan(atoms=atoms, nwannier=6, kpts=(2, 2, 2), std_calc=False)
+    wanf = wan(atoms=atoms, nwannier=6, kpts=(2, 2, 2))
     index = 0
 
     # It returns some errors when using file objects, so we use simple filename
@@ -550,22 +559,13 @@ def test_get_hamiltonian_kpoint(wan, rng, h2_calculator):
 
 def test_get_function(wan):
     nwannier = 2
-    atoms = molecule('H2', pbc=True)
-    atoms.center(vacuum=3.)
-    nk = 2
     gpts_np = np.array(gpts)
-    wanf = wan(
-        atoms=atoms,
-        kpts=(nk, nk, nk),
-        rng=rng,
-        nwannier=nwannier,
-        initialwannier='bloch'
-    )
+    wanf = wan(nwannier=nwannier, initialwannier='bloch')
     assert (wanf.get_function(index=[0, 0]) == 0).all()
     assert wanf.get_function(index=[0, 1]) + wanf.get_function(index=[1, 0]) \
         == pytest.approx(wanf.get_function(index=[1, 1]))
     for i in range(nwannier):
-        assert (gpts_np * nk == wanf.get_function(index=i).shape).all()
+        assert (gpts_np * Nk == wanf.get_function(index=i).shape).all()
         assert (gpts_np * [1, 2, 3] ==
                 wanf.get_function(index=i, repeat=[1, 2, 3]).shape).all()
 
@@ -573,7 +573,7 @@ def test_get_function(wan):
 @pytest.mark.parametrize('fun', ['std', 'var'])
 def test_get_gradients(fun, wan, rng):
     wanf = wan(nwannier=4, fixedstates=2, kpts=(1, 1, 1),
-               initialwannier='bloch', std_calc=False, functional=fun)
+               initialwannier='bloch', functional=fun)
     # create an anti-hermitian array/matrix
     step = rng.rand(wanf.get_gradients().size) + \
         1.j * rng.rand(wanf.get_gradients().size)
@@ -590,8 +590,7 @@ def test_get_gradients(fun, wan, rng):
 def test_initialwannier(init, wan, ti_calculator):
     # dummy check to run the module with different initialwannier methods
     wanf = wan(calc=ti_calculator, full_calc=True,
-               initialwannier=init, std_calc=False,
-               nwannier=14, fixedstates=12)
+               initialwannier=init, nwannier=14, fixedstates=12)
     assert wanf.get_functional_value() > 0
 
 
@@ -600,18 +599,15 @@ def test_nwannier_auto(wan, ti_calculator):
 
     # Check default value
     wanf = wan(calc=ti_calculator, full_calc=True,
-               initialwannier='bloch', std_calc=False,
-               nwannier='auto')
+               initialwannier='bloch', nwannier='auto')
     assert wanf.nwannier == 15
 
     # Check value setting fixedenergy
     wanf = wan(calc=ti_calculator, full_calc=True,
-               initialwannier='bloch', std_calc=False,
-               nwannier='auto', fixedenergy=0)
+               initialwannier='bloch', nwannier='auto', fixedenergy=0)
     assert wanf.nwannier == 15
     wanf = wan(calc=ti_calculator, full_calc=True,
-               initialwannier='bloch', std_calc=False,
-               nwannier='auto', fixedenergy=5)
+               initialwannier='bloch', nwannier='auto', fixedenergy=5)
     assert wanf.nwannier == 18
 
     # Check value setting fixedstates
@@ -619,8 +615,8 @@ def test_nwannier_auto(wan, ti_calculator):
     list_fixedstates = [14] * number_kpts
     list_fixedstates[Nk] = 18
     wanf = wan(calc=ti_calculator, full_calc=True,
-               initialwannier='bloch', std_calc=False,
-               nwannier='auto', fixedstates=list_fixedstates)
+               initialwannier='bloch', nwannier='auto',
+               fixedstates=list_fixedstates)
     assert wanf.nwannier == 18
 
 
@@ -715,8 +711,7 @@ def test_get_optimal_nwannier(wan, si_calculator):
     """ Test method to compute the optimal 'nwannier' value. """
 
     wanf = wan(calc=si_calculator, full_calc=True,
-               initialwannier='bloch', std_calc=False,
-               nwannier='auto', fixedenergy=1)
+               initialwannier='bloch', nwannier='auto', fixedenergy=1)
 
     # Test with default parameters
     opt_nw = wanf.get_optimal_nwannier()
@@ -737,8 +732,7 @@ def test_get_optimal_nwannier(wan, si_calculator):
 
     # Test with random repetitions, just test if it runs.
     wanf = wan(calc=si_calculator, full_calc=True,
-               initialwannier='orbitals', std_calc=False,
-               nwannier='auto', fixedenergy=0)
+               initialwannier='orbitals', nwannier='auto', fixedenergy=0)
     opt_nw = wanf.get_optimal_nwannier(random_reps=10)
     assert opt_nw >= 0
 
