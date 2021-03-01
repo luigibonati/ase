@@ -8,7 +8,8 @@ from ase.constraints import ExpCellFilter
 atoms = bulk('Si')
 atoms.rattle(stdev=0.1, seed=42)
 
-pps = '/home/askhl/src/ase-datafiles/asetest/datafiles/abinit/LDA_FHI'
+# Configuration parameters; please edit as appropriate
+pps = '/path/to/pseudopotentials'
 pseudopotentials = {'Si': '14-Si.LDA.fhi'}
 exe = 'abinit'
 
@@ -35,7 +36,6 @@ boilerplate_kwargs = dict(
     ntime=100_000,  # Allow "infinitely" many iterations in Abinit
     ecutsm=0.5,  # Smoothing PW cutoff energy (mandatory for cell optimization)
 )
-
 
 
 kwargs = dict(
