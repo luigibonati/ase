@@ -16,7 +16,7 @@ def test_logging():
                               size=(size, size, size),
                               pbc=True)
 
-    atoms.set_calculator(EMT())
+    atoms.calc = EMT()
     atoms.rattle(stdev=0.18 , seed = 312)
     
     md_temp = 300

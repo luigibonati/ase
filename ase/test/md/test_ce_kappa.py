@@ -18,7 +18,6 @@ def test_kappa1():
 
     atoms.set_momenta([[0,0,0],[0,10,0]])
 
-    atoms.set_calculator(EMT())
     initial_energy = atoms.get_potential_energy()
 
     print("Target Radius (1/kappa) {: .6f} Ang".format( radius))
@@ -58,7 +57,6 @@ def test_kappa2():
 
     atoms.set_momenta([[0,-10,0],[0,10,0]])
 
-    atoms.set_calculator(EMT())
     initial_energy = atoms.get_potential_energy()
 
     print("Target Radius (1/kappa) {: .6f} Ang".format( radius))

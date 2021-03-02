@@ -16,7 +16,7 @@ def test_potentiostat():
                               size=(size, size, size),
                               pbc=True)
 
-    atoms.set_calculator(EMT())
+    atoms.calc = EMT()
     E0 = atoms.get_potential_energy()
 
     atoms.rattle(stdev=0.18 , seed = 312)
@@ -50,7 +50,7 @@ def test_potentiostat():
 
     
     for i in range(5):
-        dyn.run(10)
+        dyn.run(5)
         energy_error = (atoms.get_potential_energy()-initial_energy)/len(atoms)
         print('Potentiostat Error {: .4f} eV/atom'.format( energy_error))
         assert 0 == pytest.approx(energy_error, abs=0.01)
@@ -67,7 +67,7 @@ def test_potentiostat_no_FS():
 
     atoms.set_momenta([[0,-10,0],[0,10,0]])
 
-    atoms.set_calculator(EMT())
+    atoms.calc = EMT()
     initial_energy = atoms.get_potential_energy()
 
     print("Pair distance {: .6f} Ang".format( radius))
