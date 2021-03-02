@@ -141,6 +141,7 @@ class ClimbFixInternals(BFGS):
         # initial relaxation of remaining degrees of freedom with optimizer 'B'
         if self.nsteps == 0:
             optB.run(self.get_scaled_fmax())  # optimize with scaled fmax
+            self.log(log_nstep_0=True)
 
         # climb with optimizer 'A'
         f = self.get_projected_forces()  # get directions for climbing
@@ -184,6 +185,8 @@ class ClimbFixInternals(BFGS):
         forces = self.get_total_forces(forces)
         return BFGS.converged(self, forces=forces)
 
-    def log(self, forces=None):
+    def log(self, forces=None, log_nstep_0=False):
+        if self.nsteps == 0 and not log_nstep_0:
+            return True  # the case (nstep == 0) is logged during self.step()
         forces = self.get_total_forces(forces)
         BFGS.log(self, forces=forces)
