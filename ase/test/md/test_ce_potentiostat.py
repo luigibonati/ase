@@ -96,6 +96,4 @@ def test_potentiostat_no_FS():
 
 
 
-if __name__ == '__main__':
-    test_potentiostat()
-    test_potentiostat_no_FS()
+

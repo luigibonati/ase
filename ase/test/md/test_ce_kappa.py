@@ -87,6 +87,4 @@ def test_kappa2():
         assert 0 == pytest.approx(radius - 1/dyn.kappa, abs=1e-3)
 
 
-if __name__ == '__main__':
-    test_kappa1()
-    test_kappa2()
+

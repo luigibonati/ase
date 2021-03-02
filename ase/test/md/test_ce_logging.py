@@ -95,5 +95,4 @@ def test_logging():
             log_dev = float(line.split()[5])
             assert np.allclose(log_dev, deviation_per_atom[i], atol=1e-5)
 
-if __name__ == '__main__':
-    test_logging()
+
