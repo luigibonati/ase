@@ -6,7 +6,7 @@ import time
 class contour_exploration(Dynamics):
     def __init__(self, atoms,
                  maxstep=0.5,
-                 parallel_drift=0.2,
+                 parallel_drift=0.1,
                  energy_target=None,
                  angle_limit=None,
                  force_parallel_step_scale=None,
@@ -14,13 +14,117 @@ class contour_exploration(Dynamics):
                  use_FS=True,
                  initialize_old=True, initialization_step_scale=1e-2,
                  use_target_shift=True, target_shift_previous_steps=10,
-                 rng=None,
-                 verbose=False,
-                 trajectory=None, logfile=None,
                  use_tangent_curvature=False,
+                 verbose=False,
+                 rng=None,
                  force_consistent=None,
+                 trajectory=None, logfile=None,
                  append_trajectory=False, loginterval=1):
-        '''Perpendicular drift breaks orbits like dimer form, so they spin on new axes'''
+        """Contour Exploration evolves the system along constant potentials 
+        energy contours on the potential energy surface. The method uses 
+        curvature based extrapolation and a potentiostat to correct for 
+        potential energy errors. It is similar to molecular dynamics but with a 
+        potentiostat rather than a thermostat and it has no timestep. This 
+        module was developed in conjuction with the following work:
+
+        M. J. Waters and J. M. Rondinelli, `Contour Exploration with 
+        Potentiostatic Kinematics` ArXiv 2021
+
+        Parameters:
+
+        atoms: Atoms object
+            The Atoms object to operate on.
+
+        maxstep: float
+            Used to set the maximum distance an atom can move per
+            iteration (default value is 0.5 Å).
+
+        parallel_drift: float
+            The fraction of the update step that is parallel to the contour but 
+            in a random direction. Used to break symmetries.
+        
+        energy_target: float
+            The total system potential energy for that the potentiostat attepts
+            to maintain. (defaults the initial potential energy)
+        
+        angle_limit: float
+            Limits the stepsize to a maximum change of direction angle using the 
+            curvature. Gives a scale-free means of tuning the stepsize on the 
+            fly. Typically less than 30 degrees gives reasonable results but 
+            lower angle limits result in higher potentiostatic accuracy. Units 
+            of degrees. (default None)
+            
+        force_parallel_step_scale: float
+            Scales the size of the potentiostat step. The potentiostat step is 
+            determined by linear extrapolation from the current potential energy 
+            to the target_energy with the current forces. A 
+            force_parallel_step_scale > 1.0 overcorrects and < 1.0 
+            undercorrects. By default, a simple hueristic is used to selected
+            the valued based on the parallel_drift. (default None)
+            
+        remove_translation: boolean
+            When True, the net momentum is removed at each step. Improves 
+            potentiostatic accuracy slightly for bulk systems but should not be
+            used with constraints. (default False)
+        
+        use_FS: Bool
+            Controls whether or not the Taylor expansion of the Frenet-Serret
+            formulas for curved path extrapolation are used. Required for using
+            angle_limit based step scalling. (default True)
+        
+        initialize_old: boolean 
+            When use_FS == True, a previous step is required for calculating the 
+            curvature. When initialize_old=True a small step is made to 
+            initialize the curvature. (default True)
+        
+        initialization_step_scale: float
+            Controls the scale of the initial step as a multiple of maxstep.
+            (default 1e-2)
+            
+        use_target_shift: boolean
+            Enables shifting of the potentiostat target to compensate for 
+            systematic undercorrection or overcorrection by the potentiostat. 
+            Uses the average of the *target_shift_previous_steps* to prevent 
+            coupled occilations. (default True)
+        
+        target_shift_previous_steps: int 
+            The number of pevious steps to average when using use_target_shift.
+            (default 10)
+            
+        use_tangent_curvature: boolean
+            Use the velocity unit tangent rather than the contour normals from 
+            forces to compute the curvature. Usually not as accurate. 
+            (default False)
+
+        verbose: boolean
+            Controls output of dumping of stepsize, forces, and curvature info 
+            to screen on each step. (default False)
+        
+        rng: a random number generator
+            Lets users control the random number generator for the 
+            parallel_drift vector. (default numpy.random)
+        
+         force_consistent: boolean
+             (default Nones)
+
+        trajectory: Trajectory object or str  (optional)
+            Attach trajectory object.  If *trajectory* is a string a
+            Trajectory will be constructed.  Default: None.
+
+        logfile: file object or str (optional)
+            If *logfile* is a string, a file with that name will be opened.
+            Use '-' for stdout.  Default: None.
+
+        loginterval: int (optional)
+            Only write a log line for every *loginterval* time steps.  
+            Default: 1
+
+        append_trajectory: boolean
+            Defaults to False, which causes the trajectory file to be
+            overwriten each time the dynamics is restarted from scratch.
+            If True, the new structures are appended to the trajectory
+            file instead.
+        """
 
         if force_parallel_step_scale is None:
             # a hureistic guess since most systems will overshoot when there is
@@ -81,7 +185,6 @@ class contour_exploration(Dynamics):
             print("No Velocities found, random velocities applied")
 
         if initialize_old:
-            #self.step_size  = maxstep*initialization_step_scale
             self.maxstep = maxstep * initialization_step_scale
             self.parallel_drift = 0.0
             # should force_parallel_step_scale be 0.0 for a better initial curvature?
@@ -91,7 +194,6 @@ class contour_exploration(Dynamics):
             self.atoms = atoms
             self.step()
 
-        # self.step_size = maxstep # this interfers with logging
         self.maxstep = maxstep
         self.angle_limit = angle_limit
         self.parallel_drift = parallel_drift
