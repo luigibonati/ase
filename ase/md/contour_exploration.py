@@ -3,23 +3,23 @@ from ase.optimize.optimize import Dynamics
 import time
 
 
-class contour_exploration(Dynamics):
+class ContourExploration(Dynamics):
     def __init__(self, atoms,
-                 maxstep=0.5,
-                 parallel_drift=0.1,
-                 energy_target=None,
-                 angle_limit=None,
-                 force_parallel_step_scale=None,
-                 remove_translation=False,
-                 use_FS=True,
-                 initialize_old=True, initialization_step_scale=1e-2,
-                 use_target_shift=True, target_shift_previous_steps=10,
-                 use_tangent_curvature=False,
-                 verbose=False,
-                 rng=None,
-                 force_consistent=None,
-                 trajectory=None, logfile=None,
-                 append_trajectory=False, loginterval=1):
+                 maxstep = 0.5,
+                 parallel_drift = 0.1,
+                 energy_target = None,
+                 angle_limit = None,
+                 force_parallel_step_scale = None,
+                 remove_translation = False,
+                 use_fs = True,
+                 initialize_old = True, initialization_step_scale = 1e-2,
+                 use_target_shift = True, target_shift_previous_steps = 10,
+                 use_tangent_curvature = False,
+                 #verbose=False,
+                 rng = np.random,
+                 force_consistent = None,
+                 trajectory = None, logfile = None,
+                 append_trajectory = False, loginterval = 1):
         """Contour Exploration evolves the system along constant potentials 
         energy contours on the potential energy surface. The method uses 
         curvature based extrapolation and a potentiostat to correct for 
@@ -67,13 +67,13 @@ class contour_exploration(Dynamics):
             potentiostatic accuracy slightly for bulk systems but should not be
             used with constraints. (default False)
         
-        use_FS: Bool
+        use_fs: Bool
             Controls whether or not the Taylor expansion of the Frenet-Serret
             formulas for curved path extrapolation are used. Required for using
             angle_limit based step scalling. (default True)
         
         initialize_old: boolean 
-            When use_FS == True, a previous step is required for calculating the 
+            When use_fs == True, a previous step is required for calculating the 
             curvature. When initialize_old=True a small step is made to 
             initialize the curvature. (default True)
         
@@ -95,10 +95,6 @@ class contour_exploration(Dynamics):
             Use the velocity unit tangent rather than the contour normals from 
             forces to compute the curvature. Usually not as accurate. 
             (default False)
-
-        verbose: boolean
-            Controls output of dumping of stepsize, forces, and curvature info 
-            to screen on each step. (default False)
         
         rng: a random number generator
             Lets users control the random number generator for the 
@@ -126,6 +122,12 @@ class contour_exploration(Dynamics):
             file instead.
         """
 
+#        """
+#        verbose: boolean
+#            Controls output of dumping of stepsize, forces, and curvature info 
+#            to screen on each step. (default False)"""
+
+
         if force_parallel_step_scale is None:
             # a hureistic guess since most systems will overshoot when there is
             # drift
@@ -133,14 +135,13 @@ class contour_exploration(Dynamics):
         else:
             FPSS = force_parallel_step_scale
 
-        self.verbose = verbose
-        #self.seed = seed
+        self.rng = rng
         self.remove_translation = remove_translation
-        self.use_FS = use_FS
+        self.use_fs = use_fs
         self.force_consistent = force_consistent
         self.kappa = 0.0  # initializing so logging can work
         self.use_tangent_curvature = use_tangent_curvature
-        # for FS taylor expansion
+        # for fs taylor expansion
         self.T = None
         self.Told = None
 
@@ -149,46 +150,38 @@ class contour_exploration(Dynamics):
 
         self.r_old = None
         self.r = None
-        # initialize rng
-        if rng is None:
-            self.rng = np.random
-        else:
-            self.rng = rng
-            
 
-        #######
+
         if energy_target is None:
             self.energy_target = atoms.get_potential_energy(
-                force_consistent=self.force_consistent)
+                force_consistent = self.force_consistent)
         else:
             self.energy_target = energy_target
 
-        # these need to be initialized before the initialize_old step so it
-        # doesn't crash
-        self.previous_energies = np.zeros(target_shift_previous_steps)
-        # initizing the previous steps at the target energy slows
-        # target shifting untill the system has had
-        # 'target_shift_previous_steps' steps to equilibrate
-        # this should prevent occilations
-        self.previous_energies.fill(self.energy_target)
+        # Initizing the previous steps at the target energy slows target 
+        # shifting untill the system has had 'target_shift_previous_steps' steps
+        # to equilibrate and should prevent occilations.
+        # These need to be initialized before the initialize_old step so to 
+        # prevent a crash
+        self.previous_energies = np.full(target_shift_previous_steps, 
+                        self.energy_target)
 
         # we need velocities or this won't run and will produce NaNs,
         # if none are provided we make random ones
-        p = atoms.get_momenta()
-        masses = atoms.get_masses()[:, np.newaxis]
-        v = p / masses
+        velocities = atoms.get_velocities()
         from ase import units
-        if np.linalg.norm(v) < 1e-6:
+        if np.linalg.norm(velocities) < 1e-6:
             # we have to pass dimension since atoms are not yet stored
-            v = self.rand_vect((len(atoms), 3))
-            atoms.set_momenta(v / masses)
+            velocities = self.rand_vect((len(atoms), 3))
+            atoms.set_momenta(velocities / masses)
             print("No Velocities found, random velocities applied")
 
         if initialize_old:
             self.maxstep = maxstep * initialization_step_scale
             self.parallel_drift = 0.0
-            # should force_parallel_step_scale be 0.0 for a better initial curvature?
-            # Or at least smaller than 1.0? doesn't seem to matter much
+            # should force_parallel_step_scale be 0.0 for a better initial 
+            # curvature? Or at least smaller than 1.0? 
+            # Doesn't seem to matter much
             self.force_parallel_step_scale = 1.0
             self.use_target_shift = False
             self.atoms = atoms
@@ -213,20 +206,10 @@ class contour_exploration(Dynamics):
                 'dyn-type': self.__class__.__name__,
                 'stepsize': self.step_size}
 
-    def irun(self, steps=50):
-        """ Call Dynamics.irun and adjust max_steps """
-        self.max_steps = steps + self.nsteps
-        return Dynamics.irun(self)
-
-    def run(self, steps=50):
+    def run(self, steps = 50):
         """ Call Dynamics.run and adjust max_steps """
         self.max_steps = steps + self.nsteps
         return Dynamics.run(self)
-
-    # do I need this for CED?
-    def converged(self):
-        """ MD is 'converged' when number of maximum steps is reached. """
-        return self.nsteps >= self.max_steps
 
     def log(self):
 
@@ -234,7 +217,6 @@ class contour_exploration(Dynamics):
         if self.logfile is not None:
             name = self.__class__.__name__
             if self.nsteps == 0:
-                #args = (" " * len(name), "Step", "Energy_Target", "Energy", "Radius", "Step_Size", "Energy_Deviation_per_atom")
                 args = (
                     "Step",
                     "Energy_Target",
@@ -244,11 +226,8 @@ class contour_exploration(Dynamics):
                     "Energy_Deviation_per_atom")
                 msg = "# %4s %15s %15s %12s %12s %15s\n" % args
                 self.logfile.write(msg)
-            #args = (name, self.nsteps, T[3], T[4], T[5], e, ast, fmax)
-            #msg = "%s:  %3d %02d:%02d:%02d %15.6f%1s %12.4f\n" % args
-
             e = self.atoms.get_potential_energy(
-                force_consistent=self.force_consistent)
+                force_consistent = self.force_consistent)
             dev_per_atom = (e - self.energy_target) / len(self.atoms)
             args = (
                 self.nsteps,
@@ -262,27 +241,22 @@ class contour_exploration(Dynamics):
 
             self.logfile.flush()
 
-    # CED specific stuff
-    def dot(self, a, b):
-        '''a dot product for 3 column vectors of atoms.get_forces'''
-        return (a * b).sum()
-
     def vector_rejection(self, a, b):
         '''returns new vector that removes vector a's projection vector b'''
-        aout = a - self.dot(a, b) / self.dot(b, b) * b
+        aout = a - np.vdot(a, b) / np.vdot(b, b) * b
         return aout
 
     def unit_vect(self, a):
         return a / np.linalg.norm(a)
 
-    def rand_vect(self, dims=None):
+    def rand_vect(self, dims = None):
         if dims is None:
             vect = self.rng.random((len(self.atoms), 3))
         else:
             vect = self.rng.random(dims)
         return vect
 
-    def step(self, f=None):
+    def step(self, f = None):
         atoms = self.atoms
 
         if f is None:
@@ -290,35 +264,30 @@ class contour_exploration(Dynamics):
 
         self.r = atoms.get_positions()
         current_energy = atoms.get_potential_energy(
-            force_consistent=self.force_consistent)
+            force_consistent = self.force_consistent)
 
-        # update our history of self.previous_energies to include
-        # our current energy
-        # np.roll shifts the values to keep nice sequential ordering
+        # Update our history of self.previous_energies to include our current 
+        # energy. np.roll shifts the values to keep nice sequential ordering.
         self.previous_energies = np.roll(self.previous_energies, 1)
         self.previous_energies[0] = current_energy
-        if self.verbose:
-            print('Previous Energies', self.previous_energies)
 
         if self.use_target_shift:
             target_shift = self.energy_target - np.mean(self.previous_energies)
             # does this help balance the small steps never reaching? nope. makes std worse
             #target_shift = target_shift/self.force_parallel_step_scale
-            if self.verbose:
-                print(
-                    'Energy Target [Shift]:',
-                    self.energy_target,
-                    '[%f]' %
-                    target_shift)
+#            if self.verbose:
+#                print(
+#                    'Energy Target [Shift]:',
+#                    self.energy_target,
+#                    '[%f]' %
+#                    target_shift)
         else:
             target_shift = 0.0
         deltaU = current_energy - (self.energy_target + target_shift)
 
         # get the velocity vector and old kinetic energy for momentum rescaling
-        p = atoms.get_momenta()
+        velocities = atoms.get_velocities()
         KEold = atoms.get_kinetic_energy()
-        masses = atoms.get_masses()[:, np.newaxis]
-        v = p / masses
 
         # get force an and correction distance
         f_norm = np.linalg.norm(f)
@@ -329,11 +298,11 @@ class contour_exploration(Dynamics):
             self.force_parallel_step_scale
 
         # remove velocity  projection on forces
-        v_parallel = self.vector_rejection(v, self.N)
+        v_parallel = self.vector_rejection(velocities, self.N)
         self.T = self.unit_vect(v_parallel)
         ###
 
-        if self.Nold is None or self.use_FS == False:
+        if self.Nold is None or not self.use_fs :
             # we cannot apply the FS taylor expansion without a previous point
             # so we do a dumb jump to start
             dr_perpendicular = self.N * delta_s_perpendicular
@@ -356,7 +325,7 @@ class contour_exploration(Dynamics):
                 drift = self.vector_rejection(drift, self.N)
                 drift = self.vector_rejection(drift, self.T)
                 # removes net translation, so systems don't wander
-                drift = drift - drift.sum(axis=0) / len(atoms)
+                drift = drift - drift.sum(axis = 0) / len(atoms)
                 D = self.unit_vect(drift)
                 dr_drift = D * delta_s_drift
                 ###
@@ -398,12 +367,12 @@ class contour_exploration(Dynamics):
                 self.step_size = np.sqrt(2 - 2 * np.cos(phi)) / kappa
                 self.step_size = min(self.step_size, self.maxstep)
 
-            if self.verbose:
-                print('Curvature, kappa', kappa, 'Radius, (1/kappa)', 1 / kappa)
-                print(
-                    'T.Nfs', self.dot(
-                        self.T, Nfs), 'N.Nfs', self.dot(
-                        self.N, Nfs))
+#            if self.verbose:
+#                print('Curvature, kappa', kappa, 'Radius, (1/kappa)', 1 / kappa)
+#                print(
+#                    'T.Nfs', self.dot(
+#                        self.T, Nfs), 'N.Nfs', self.dot(
+#                        self.N, Nfs))
 
             # computing step
             if abs(delta_s_perpendicular) < self.step_size:
@@ -425,7 +394,7 @@ class contour_exploration(Dynamics):
                 drift = self.vector_rejection(drift, N_guess)
                 drift = self.vector_rejection(drift, T_guess)
                 # removes net translation, so systems don't wander
-                drift = drift - drift.sum(axis=0) / len(atoms)
+                drift = drift - drift.sum(axis = 0) / len(atoms)
                 D = self.unit_vect(drift)
                 dr_drift = D * delta_s_drift
 
@@ -443,13 +412,13 @@ class contour_exploration(Dynamics):
                 dr = self.step_size / \
                     abs(delta_s_perpendicular) * dr_perpendicular
 
-        if self.verbose:
-            print('step_size %f in (perpendicular), [parallel], {drift}: (%f) [%f] {%f}' %
-                  (self.step_size, delta_s_perpendicular, delta_s_parallel, delta_s_drift))
+#        if self.verbose:
+#            print('step_size %f in (perpendicular), [parallel], {drift}: (%f) [%f] {%f}' %
+#                  (self.step_size, delta_s_perpendicular, delta_s_parallel, delta_s_drift))
 
         # now that dr is done, we check if there is translation
         if self.remove_translation:
-            net_motion = dr.sum(axis=0) / len(atoms)
+            net_motion = dr.sum(axis = 0) / len(atoms)
             # print(net_motion)
             dr = dr - net_motion
             dr_unit = dr / np.linalg.norm(dr)
@@ -460,32 +429,35 @@ class contour_exploration(Dynamics):
         self.Nold = self.N
         self.rold = self.r
 
-        ### the update section ###
+        ##### the update section #####
 
         # if we have constraints then this will do the first part of the
         # RATTLE algorithm:
+        # If we can avoid using momenta, this will be simpler.
+        masses = atoms.get_masses()[:, np.newaxis]
         atoms.set_positions(self.r + dr)
-        p = (atoms.get_positions() - self.r) * masses  # / self.dt
+        new_momenta = (atoms.get_positions() - self.r) * masses  # / self.dt
 
         # We need to store the momenta on the atoms before calculating
         # the forces, as in a parallel Asap calculation atoms may
         # migrate during force calculations, and the momenta need to
         # migrate along with the atoms.
-        atoms.set_momenta(p, apply_constraint=False)
+        atoms.set_momenta(new_momenta, apply_constraint = False)
 
         # Now we get the new forces!
-        f = atoms.get_forces(md=True)
+        f = atoms.get_forces(md = True)
 
         # I don't really know if removing md=True from above will break
-        # compatibility.
+        # compatibility with RATTLE, leaving it alone for now.
         f_constrained = atoms.get_forces()
-        # but this projection needs the forces to be consistent with the constraints.
-        # set new velocities perpendicular so they get logged properly in the
-        # trajectory files
-        vnew = self.vector_rejection(
-            atoms.get_momenta() / masses, f_constrained)
+        # but this projection needs the forces to be consistent with the
+        # constraints. We have to set the new velocities perpendicular so they 
+        # get logged properly in the trajectory files.
+        vnew = self.vector_rejection( atoms.get_velocities(), f_constrained)
+        # using the md = True forces like this: 
         #vnew = self.vector_rejection(atoms.get_velocities(), f)
-        atoms.set_momenta(vnew * masses)
+        # will not work with constraints
+        atoms.set_velocities(vnew )
 
         # rescaling momentum to maintain constant kinetic energy.
         KEnew = atoms.get_kinetic_energy()

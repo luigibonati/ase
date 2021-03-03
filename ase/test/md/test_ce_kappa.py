@@ -2,7 +2,7 @@
 
 import pytest
 from ase import Atoms
-from ase.md.contour_exploration import contour_exploration
+from ase.md.contour_exploration import ContourExploration
 import numpy as np
 from ase.calculators.emt import EMT
 from ase.constraints import FixAtoms
@@ -23,16 +23,17 @@ def test_kappa1():
     print("Target Radius (1/kappa) {: .6f} Ang".format( radius))
 
     name = 'test_kappa1'
-    traj_name = name+'.traj'
-    log_name = name+'.log'
+    traj_name = name + '.traj'
+    log_name = name + '.log'
 
 
-    dyn = contour_exploration(atoms,
+    dyn = ContourExploration(atoms,
                     maxstep = 1.5,
                     parallel_drift = 0.0,
                     remove_translation  = False,
                     force_parallel_step_scale = None,
                     energy_target = initial_energy,
+                    use_fs = True,
                     angle_limit = 30,
                     use_tangent_curvature= False,
                     #trajectory = traj_name,
@@ -62,16 +63,17 @@ def test_kappa2():
     print("Target Radius (1/kappa) {: .6f} Ang".format( radius))
 
     name = 'test_kappa2'
-    traj_name = name+'.traj'
-    log_name = name+'.log'
+    traj_name = name + '.traj'
+    log_name = name + '.log'
 
 
-    dyn = contour_exploration(atoms,
+    dyn = ContourExploration(atoms,
                     maxstep = 1.0,
                     parallel_drift = 0.0,
                     remove_translation  = False,
                     force_parallel_step_scale = None,
                     energy_target = initial_energy,
+                    use_fs = True,
                     angle_limit = 15,
                     use_tangent_curvature= False,
                     #trajectory = traj_name,

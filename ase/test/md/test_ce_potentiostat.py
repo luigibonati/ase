@@ -3,7 +3,7 @@
 import pytest
 from ase.lattice.cubic import FaceCenteredCubic
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
-from ase.md.contour_exploration import contour_exploration
+from ase.md.contour_exploration import ContourExploration
 import numpy as np
 from ase.calculators.emt import EMT
 from ase import Atoms
@@ -12,11 +12,11 @@ def test_potentiostat():
     
     size = 2
     md_temp = 300
-    seed=19460926
+    seed = 19460926
     
-    atoms = FaceCenteredCubic(directions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
-                              symbol='Al',
-                              size=(size, size, size),
+    atoms = FaceCenteredCubic(directions = [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+                              symbol = 'Al',
+                              size = (size, size, size),
                               pbc=True)
 
     atoms.calc = EMT()
@@ -25,7 +25,7 @@ def test_potentiostat():
     atoms.rattle(stdev=0.18 , seed = seed)
     
     rng = np.random.RandomState(seed)
-    MaxwellBoltzmannDistribution(atoms, temperature_K=md_temp, rng=rng)
+    MaxwellBoltzmannDistribution(atoms, temperature_K = md_temp, rng = rng)
 
 
     initial_energy = atoms.get_potential_energy()
@@ -34,16 +34,17 @@ def test_potentiostat():
         (initial_energy-E0)/len(atoms)))
 
     name = 'test_potentiostat'
-    traj_name = name+'.traj'
-    log_name = name+'.log'
+    traj_name = name + '.traj'
+    log_name = name + '.log'
 
 
-    dyn = contour_exploration(atoms,
+    dyn = ContourExploration(atoms,
                     maxstep = 1.0,
                     parallel_drift = 0.05,
                     remove_translation  = True,
                     force_parallel_step_scale = None,
                     energy_target = initial_energy,
+                    use_fs = True,
                     angle_limit = 20,
                     use_tangent_curvature= False,
                     rng=rng,
@@ -64,8 +65,8 @@ def test_potentiostat():
 def test_potentiostat_no_FS():
     
     radius = 2.6 
-    atoms = Atoms('AlAl', positions=[[-radius/2, 0, 0],[radius/2,0,0]])
-    atoms.center(vacuum=10)
+    atoms = Atoms('AlAl', positions = [[-radius/2, 0, 0],[radius/2,0,0]])
+    atoms.center(vacuum = 10)
     atoms.calc = EMT()
 
     atoms.set_momenta([[0,-10,0],[0,10,0]])
@@ -76,16 +77,16 @@ def test_potentiostat_no_FS():
     print("Pair distance {: .6f} Ang".format( radius))
 
     name = 'test_potentiostat_no_FS'
-    traj_name = name+'.traj'
-    log_name = name+'.log'
+    traj_name = name + '.traj'
+    log_name = name + '.log'
 
-    dyn = contour_exploration(atoms,
+    dyn = ContourExploration(atoms,
                     maxstep = 0.2,
                     parallel_drift = 0.0,
                     remove_translation  = False,
                     force_parallel_step_scale = None,
                     energy_target = initial_energy,
-                    use_FS = False,
+                    use_fs = False,
                     #trajectory = traj_name,
                     #logfile = log_name,
                     ) 

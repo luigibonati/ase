@@ -3,7 +3,7 @@
 import pytest
 from ase.lattice.cubic import FaceCenteredCubic
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
-from ase.md.contour_exploration import contour_exploration
+from ase.md.contour_exploration import ContourExploration
 import numpy as np
 from ase.calculators.emt import EMT
 from ase import io
@@ -12,31 +12,32 @@ def test_logging():
     
     size = 2
     md_temp = 300
-    seed=19460926
+    seed = 19460926
     
-    atoms = FaceCenteredCubic(directions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
-                              symbol='Al',
-                              size=(size, size, size),
-                              pbc=True)
+    atoms = FaceCenteredCubic(directions = [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+                              symbol = 'Al',
+                              size = (size, size, size),
+                              pbc = True)
 
     atoms.calc = EMT()
-    atoms.rattle(stdev=0.18 , seed = seed)
+    atoms.rattle(stdev = 0.18 , seed = seed)
     
     rng = np.random.RandomState(seed)
-    MaxwellBoltzmannDistribution(atoms, temperature_K=md_temp, rng=rng)
+    MaxwellBoltzmannDistribution(atoms, temperature_K = md_temp, rng = rng)
 
     initial_energy = atoms.get_potential_energy()
 
     name = 'test_logging'
-    traj_name = name+'.traj'
-    log_name = name+'.log'
+    traj_name = name + '.traj'
+    log_name = name + '.log'
 
 
-    dyn = contour_exploration(atoms,
+    dyn = ContourExploration(atoms,
                     maxstep = 1.0,
                     parallel_drift = 0.05,
                     remove_translation  = True,
                     force_parallel_step_scale = None,
+                    use_fs = True,
                     angle_limit = 20,
                     loginterval=1,
                     initialize_old = True,
