@@ -11,18 +11,19 @@ from ase import io
 def test_logging():
     
     size = 2
+    md_temp = 300
+    seed=19460926
+    
     atoms = FaceCenteredCubic(directions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
                               symbol='Al',
                               size=(size, size, size),
                               pbc=True)
 
     atoms.calc = EMT()
-    atoms.rattle(stdev=0.18 , seed = 312)
+    atoms.rattle(stdev=0.18 , seed = seed)
     
-    md_temp = 300
-    rng = np.random.RandomState(60622)
+    rng = np.random.RandomState(seed)
     MaxwellBoltzmannDistribution(atoms, temperature_K=md_temp, rng=rng)
-
 
     initial_energy = atoms.get_potential_energy()
 
@@ -39,6 +40,7 @@ def test_logging():
                     angle_limit = 20,
                     loginterval=1,
                     initialize_old = True,
+                    rng=rng,
                     trajectory = traj_name,
                     logfile = log_name,
                     ) 

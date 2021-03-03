@@ -1,5 +1,4 @@
 import numpy as np
-from numpy.random import default_rng
 from ase.optimize.optimize import Dynamics
 import time
 
@@ -15,7 +14,7 @@ class contour_exploration(Dynamics):
                  use_FS=True,
                  initialize_old=True, initialization_step_scale=1e-2,
                  use_target_shift=True, target_shift_previous_steps=10,
-                 seed=19460926,
+                 rng=None,
                  verbose=False,
                  trajectory=None, logfile=None,
                  use_tangent_curvature=False,
@@ -31,7 +30,7 @@ class contour_exploration(Dynamics):
             FPSS = force_parallel_step_scale
 
         self.verbose = verbose
-        self.seed = seed
+        #self.seed = seed
         self.remove_translation = remove_translation
         self.use_FS = use_FS
         self.force_consistent = force_consistent
@@ -47,7 +46,11 @@ class contour_exploration(Dynamics):
         self.r_old = None
         self.r = None
         # initialize rng
-        self.rng = default_rng(seed)
+        if rng is None:
+            self.rng = np.random
+        else:
+            self.rng = rng
+            
 
         #######
         if energy_target is None:

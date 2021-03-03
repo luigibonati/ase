@@ -11,6 +11,9 @@ from ase import Atoms
 def test_potentiostat():
     
     size = 2
+    md_temp = 300
+    seed=19460926
+    
     atoms = FaceCenteredCubic(directions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
                               symbol='Al',
                               size=(size, size, size),
@@ -18,11 +21,10 @@ def test_potentiostat():
 
     atoms.calc = EMT()
     E0 = atoms.get_potential_energy()
-
-    atoms.rattle(stdev=0.18 , seed = 312)
     
-    md_temp = 300
-    rng = np.random.RandomState(60622)
+    atoms.rattle(stdev=0.18 , seed = seed)
+    
+    rng = np.random.RandomState(seed)
     MaxwellBoltzmannDistribution(atoms, temperature_K=md_temp, rng=rng)
 
 
@@ -44,6 +46,7 @@ def test_potentiostat():
                     energy_target = initial_energy,
                     angle_limit = 20,
                     use_tangent_curvature= False,
+                    rng=rng,
                     #trajectory = traj_name,
                     #logfile = log_name,
                     ) 
