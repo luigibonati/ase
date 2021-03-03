@@ -31,12 +31,10 @@ class ClimbFixInternals(BFGS):
            https://doi.org/10.1021/acs.jctc.7b01070.
 
     .. note::
-       Convergence is based on 'fmax' of the total forces, i.e. on 'fmax' of
-       the sum of the projected forces and the forces of the remaining degrees
-       of freedom. This value is logged in the 'logfile'. Optimizer 'B' logs
-       'fmax' of the remaining degrees of freedom without the projected forces.
-       The projected forces can be inspected using the
-       :meth:`get_projected_forces` method, e.g.
+       Convergence is based on 'fmax' of the projected forces. This value is
+       logged in the 'logfile'. Optimizer 'B' logs 'fmax' of the remaining
+       degrees of freedom without the projected forces.  The projected forces
+       can be inspected using the :meth:`get_projected_forces` method, e.g.
 
        >>> for _ in dyn.irun():
        ...     projected_forces = dyn.get_projected_forces()
@@ -181,8 +179,8 @@ class ClimbFixInternals(BFGS):
         return forces
 
     def converged(self, forces=None):
-        """Did the optimization converge based on the total forces?"""
-        forces = self.get_total_forces(forces)
+        """Did the optimization converge based on the projected forces?"""
+        forces = self.get_projected_forces()
         return BFGS.converged(self, forces=forces)
 
     def log(self, forces=None, log_nstep_0=False):
