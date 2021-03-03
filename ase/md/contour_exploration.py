@@ -1,7 +1,5 @@
 import numpy as np
 from ase.optimize.optimize import Dynamics
-import time
-
 
 class ContourExploration(Dynamics):
     def __init__(self, atoms,
@@ -15,7 +13,6 @@ class ContourExploration(Dynamics):
                  initialize_old = True, initialization_step_scale = 1e-2,
                  use_target_shift = True, target_shift_previous_steps = 10,
                  use_tangent_curvature = False,
-                 #verbose=False,
                  rng = np.random,
                  force_consistent = None,
                  trajectory = None, logfile = None,
@@ -212,8 +209,6 @@ class ContourExploration(Dynamics):
         return Dynamics.run(self)
 
     def log(self):
-
-        # T = time.localtime() # time logging seems silly
         if self.logfile is not None:
             name = self.__class__.__name__
             if self.nsteps == 0:
@@ -256,6 +251,17 @@ class ContourExploration(Dynamics):
             vect = self.rng.random(dims)
         return vect
 
+    def create_drift_unit_vector(self, N, T):
+        '''Creates a random drift unit vector with no projection on N or T and
+        with out a net translation so systems don't wander'''
+        drift = self.rand_vect()
+        drift = self.vector_rejection(drift, N)
+        drift = self.vector_rejection(drift, T)
+        # removes net translation, so systems don't wander
+        drift = drift - drift.sum(axis = 0) / len(self.atoms)
+        D = self.unit_vect(drift)
+        return D
+
     def step(self, f = None):
         atoms = self.atoms
 
@@ -292,7 +298,6 @@ class ContourExploration(Dynamics):
         # get force an and correction distance
         f_norm = np.linalg.norm(f)
         self.N = self.unit_vect(f)
-        # maybe reduce parallel step component to enhance stability?
         # can be positive or negative
         delta_s_perpendicular = (deltaU / f_norm) * \
             self.force_parallel_step_scale
@@ -320,13 +325,7 @@ class ContourExploration(Dynamics):
                 dr_parallel = delta_s_parallel * self.T
                 delta_s_drift = contour_step_size * self.parallel_drift
 
-                # create drift unit with no projection on N or T
-                drift = self.rand_vect()
-                drift = self.vector_rejection(drift, self.N)
-                drift = self.vector_rejection(drift, self.T)
-                # removes net translation, so systems don't wander
-                drift = drift - drift.sum(axis = 0) / len(atoms)
-                D = self.unit_vect(drift)
+                D = self.create_drift_unit_vector(self.N, self.T)   
                 dr_drift = D * delta_s_drift
                 ###
 
@@ -352,9 +351,9 @@ class ContourExploration(Dynamics):
             if self.use_tangent_curvature:
                 kappa = np.linalg.norm(dTds)
             else:
-                # normals are better since they are fixed to the reality of forces
-                # I see smaller forces and energy errors in bulk systems with
-                # normals
+                # normals are better since they are fixed to the reality of 
+                # forces. I see smaller forces and energy errors in bulk systems
+                # using the normals for kappa
                 kappa = np.linalg.norm(dNds)
             self.kappa = kappa
 
@@ -374,7 +373,7 @@ class ContourExploration(Dynamics):
 #                        self.T, Nfs), 'N.Nfs', self.dot(
 #                        self.N, Nfs))
 
-            # computing step
+            # now we can compute a safe step
             if abs(delta_s_perpendicular) < self.step_size:
                 contour_step_size = np.sqrt(
                     self.step_size**2 - delta_s_perpendicular**2)
@@ -389,13 +388,8 @@ class ContourExploration(Dynamics):
 
                 dr_parallel = delta_s_parallel * self.T * (1 - (delta_s_parallel * kappa)**2 / 6.0) \
                     + self.N * kappa / 2 * delta_s_parallel**2
-                # Drift vector
-                drift = self.rand_vect()
-                drift = self.vector_rejection(drift, N_guess)
-                drift = self.vector_rejection(drift, T_guess)
-                # removes net translation, so systems don't wander
-                drift = drift - drift.sum(axis = 0) / len(atoms)
-                D = self.unit_vect(drift)
+
+                D = self.create_drift_unit_vector(N_guess, T_guess)
                 dr_drift = D * delta_s_drift
 
                 # combine the components
@@ -408,7 +402,9 @@ class ContourExploration(Dynamics):
                 # in this case all priority goes to potentiostat terms
                 delta_s_parallel = 0.0
                 delta_s_drift = 0.0
-                dr_perpendicular = self.N * delta_s_perpendicular
+                # if dr_perpendicular was used here alone, the step size could 
+                # be larger than the step_size which is adaptive to the 
+                # curvature the in this case. 
                 dr = self.step_size / \
                     abs(delta_s_perpendicular) * dr_perpendicular
 
