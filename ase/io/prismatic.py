@@ -15,14 +15,6 @@ from ase.utils import reader
 from .utils import verify_cell_for_export, verify_dictionary
 
 
-def check_numpy_version():
-    # This writer doesn't support numpy < 1.14 because of the issue:
-    # https://github.com/numpy/numpy/issues/10018
-    from distutils.version import LooseVersion
-    if LooseVersion(np.__version__) < LooseVersion("1.14"):
-        raise NotImplementedError("Writing this format needs numpy >= 1.14.")
-
-
 @reader
 def read_prismatic(fd):
     r"""Import prismatic and computem xyz input file as an Atoms object.
@@ -39,8 +31,6 @@ def read_prismatic(fd):
         B = RMS^2 * 8\pi^2
 
     """
-    check_numpy_version()
-
     # Read comment:
     fd.readline()
 
@@ -180,8 +170,6 @@ def write_prismatic(fd, *args, **kwargs):
         provided, write the total number of atoms and the chemical formula.
 
     """
-
-    check_numpy_version()
 
     writer = XYZPrismaticWriter(*args, **kwargs)
     writer.write_to_file(fd)
