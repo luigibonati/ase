@@ -33,6 +33,7 @@ def tokenize_version(version_string: str):
     tokens = []
     for component in version_string.split('.'):
         match = re.match(r'(\d*)(.*)', component)
+        assert match is not None, f'Cannot parse component {component}'
         number, tail = match.group(1, 2)
         try:
             number = int(number)
