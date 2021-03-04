@@ -11,6 +11,8 @@ from ase.atoms import Atoms
 from ase.io.jsonio import encode, decode
 from ase.io.pickletrajectory import PickleTrajectory
 from ase.parallel import world
+from ase.utils import tokenize_version
+
 
 __all__ = ['Trajectory', 'PickleTrajectory']
 
@@ -339,14 +341,13 @@ def read_atoms(backend,
         try:
             return read_atoms(backend, header, traj, False)
         except Exception as ex:
-            from distutils.version import LooseVersion
-            if (traj is not None and
-                LooseVersion(__version__) < traj.ase_version):
-                msg = ('You are trying to read a trajectory file written ' +
-                       'with ASE-{v1} from ASE-{v2}. ' +
-                       'It might help to update your ASE').format(
-                    v1=traj.ase_version,
-                    v2=__version__)
+            version_now = __version__
+            version_traj = traj.ase_version
+            if (traj is not None and tokenize_version(version_now) <
+                    tokenize_version(version_traj)):
+                msg = ('You are trying to read a trajectory file written '
+                       f'with ASE-{version_traj} from ASE-{version_now}. '
+                       'It might help to update your ASE')
                 raise VersionTooOldError(msg) from ex
             else:
                 raise
