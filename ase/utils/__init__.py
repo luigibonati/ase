@@ -11,6 +11,7 @@ from math import sin, cos, radians, atan2, degrees
 from contextlib import contextmanager
 from math import gcd
 from pathlib import PurePath, Path
+import re
 
 import numpy as np
 
@@ -20,7 +21,25 @@ __all__ = ['exec_', 'basestring', 'import_module', 'seterr', 'plural',
            'devnull', 'gcd', 'convert_string_to_fd', 'Lock',
            'opencew', 'OpenLock', 'rotate', 'irotate', 'pbc2pbc', 'givens',
            'hsv2rgb', 'hsv', 'pickleload', 'FileNotFoundError',
-           'formula_hill', 'formula_metal', 'PurePath', 'xwopen']
+           'formula_hill', 'formula_metal', 'PurePath', 'xwopen',
+           'versionize']
+
+
+def versionize(string):
+    """Parse version string into a tuple for version comparisons.
+
+    Usage: versionize('3.8') < versionize('3.8.1').
+    """
+    tokens = []
+    for component in string.split('.'):
+        match = re.match(r'(\d*)(.*)', component)
+        number, tail = match.group(1, 2)
+        try:
+            number = int(number)
+        except ValueError:
+            number = -1
+        tokens += [number, tail]
+    return tuple(tokens)
 
 
 # Python 2+3 compatibility stuff (let's try to remove these things):
