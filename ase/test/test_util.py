@@ -1,5 +1,5 @@
 import pytest
-from ase.utils import deprecated, devnull, versionize
+from ase.utils import deprecated, devnull, tokenize_version
 
 
 def test_deprecated_decorator():
@@ -29,11 +29,12 @@ def test_deprecated_devnull():
     ('3a', '3b'),
     ('3', '3a'),
 ])
-def test_version_lessthan(v1, v2):
-    v1 = versionize(v1)
-    v2 = versionize(v2)
+def test_tokenize_version_lessthan(v1, v2):
+    v1 = tokenize_version(v1)
+    v2 = tokenize_version(v2)
     assert v1 < v2
 
 
-def test_versionize_equal():
-    assert versionize('3.8x.xx') == versionize('3.8x.xx')
+def test_tokenize_version_equal():
+    version = '3.8x.xx'
+    assert tokenize_version(version) == tokenize_version(version)

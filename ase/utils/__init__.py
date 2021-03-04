@@ -22,16 +22,16 @@ __all__ = ['exec_', 'basestring', 'import_module', 'seterr', 'plural',
            'opencew', 'OpenLock', 'rotate', 'irotate', 'pbc2pbc', 'givens',
            'hsv2rgb', 'hsv', 'pickleload', 'FileNotFoundError',
            'formula_hill', 'formula_metal', 'PurePath', 'xwopen',
-           'versionize']
+           'tokenize_version']
 
 
-def versionize(string):
+def tokenize_version(version_string: str):
     """Parse version string into a tuple for version comparisons.
 
-    Usage: versionize('3.8') < versionize('3.8.1').
+    Usage: tokenize_version('3.8') < tokenize_version('3.8.1').
     """
     tokens = []
-    for component in string.split('.'):
+    for component in version_string.split('.'):
         match = re.match(r'(\d*)(.*)', component)
         number, tail = match.group(1, 2)
         try:
