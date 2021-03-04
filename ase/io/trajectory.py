@@ -341,12 +341,10 @@ def read_atoms(backend,
         try:
             return read_atoms(backend, header, traj, False)
         except Exception as ex:
-            version_now = __version__
-            version_traj = traj.ase_version
-            if (traj is not None and tokenize_version(version_now) <
-                    tokenize_version(version_traj)):
+            if (traj is not None and tokenize_version(__version__) <
+                    tokenize_version(traj.ase_version)):
                 msg = ('You are trying to read a trajectory file written '
-                       f'with ASE-{version_traj} from ASE-{version_now}. '
+                       f'by ASE-{traj.ase_version} from ASE-{__version__}. '
                        'It might help to update your ASE')
                 raise VersionTooOldError(msg) from ex
             else:
