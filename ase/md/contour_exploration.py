@@ -128,7 +128,7 @@ class ContourExploration(Dynamics):
         if force_parallel_step_scale is None:
             # a hureistic guess since most systems will overshoot when there is
             # drift
-            FPSS = 0.9 + 0.5 * parallel_drift
+            FPSS = 1.1 + 0.6 * parallel_drift
         else:
             FPSS = force_parallel_step_scale
 
@@ -383,6 +383,10 @@ class ContourExploration(Dynamics):
 
                 N_guess = self.N + dNds * delta_s_parallel
                 T_guess = self.T + dTds * delta_s_parallel
+                # the extrapolation is good at keeping N_guess and T_guess 
+                # orthogonal but not normalized:
+                N_guess = self.unit_vect(N_guess)
+                T_guess = self.unit_vect(T_guess)
 
                 dr_perpendicular = delta_s_perpendicular * (N_guess)
 
