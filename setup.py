@@ -20,9 +20,9 @@ if sys.version_info < python_min_version:
 
 
 install_requires = [
-    'numpy>=1.11.3',
-    'scipy>=0.18.1',
-    'matplotlib>=2.0.0',
+    'numpy>=1.15.0',  # July 2018
+    'scipy>=1.1.0',  # May 2018
+    'matplotlib>=2.2.0',  # March 2018
 ]
 
 
