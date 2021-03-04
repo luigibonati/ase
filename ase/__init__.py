@@ -4,7 +4,6 @@
 """Atomic Simulation Environment."""
 
 import sys
-import numpy as np
 
 
 if sys.version_info[0] == 2:
