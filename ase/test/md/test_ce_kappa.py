@@ -1,5 +1,5 @@
-#this test ensures that the computed PEC curvature matched the actual geometry
-
+'''These tests ensure that the computed PEC curvature matche the actual 
+geometries using a somewhat agressive angle_limit for each stepsize.'''
 import pytest
 from ase import Atoms
 from ase.md.contour_exploration import ContourExploration
@@ -7,84 +7,64 @@ import numpy as np
 from ase.calculators.emt import EMT
 from ase.constraints import FixAtoms
 
+def Al_atom_pair(pair_distance):
+    atoms = Atoms('AlAl', positions = [
+                        [-pair_distance/2, 0, 0],
+                        [ pair_distance/2, 0, 0]])
+    atoms.center(vacuum = 10)
+    atoms.calc = EMT()
+    return atoms
 
 def test_kappa1():
-    
-    radius = 2.6 
-    atoms = Atoms('AlAl', positions=[[0, 0, 0],[radius,0,0]])
-    atoms.set_constraint(FixAtoms(indices=[0]))
-    atoms.center(vacuum=10)
-    atoms.calc = EMT()
-
-    atoms.set_momenta([[0,0,0],[0,10,0]])
-
-    initial_energy = atoms.get_potential_energy()
-
-    print("Target Radius (1/kappa) {: .6f} Ang".format( radius))
-
+    '''This basic test has an atom spinning counter-clockwise around a fixed
+    atom. The radius (1/kappa) must therefore be very close the pair_distance.'''
     name = 'test_kappa1'
-    traj_name = name + '.traj'
-    log_name = name + '.log'
-
+    
+    radius = pair_distance = 2.6
+    atoms = Al_atom_pair(pair_distance)
+    
+    atoms.set_constraint(FixAtoms(indices = [0]))
+    atoms.set_velocities( [[0, 0, 0], [0, 1, 0]] )
 
     dyn = ContourExploration(atoms,
                     maxstep = 1.5,
                     parallel_drift = 0.0,
-                    remove_translation  = False,
-                    force_parallel_step_scale = None,
-                    energy_target = initial_energy,
-                    use_fs = True,
                     angle_limit = 30,
-                    use_tangent_curvature= False,
-                    #trajectory = traj_name,
-                    #logfile = log_name,
+                    trajectory = name + '.traj',
+                    logfile    = name + '.log',
                     ) 
 
+    print("Target Radius (1/kappa) {: .6f} Ang".format( radius))
     for i in range(5):
         dyn.run(30)
-        
         print('Radius (1/kappa) {: .6f} Ang'.format( 1/dyn.kappa))
-        assert 0 == pytest.approx(radius - 1/dyn.kappa, abs=5e-3)
-        
-
+        assert 0 == pytest.approx(radius - 1/dyn.kappa, abs=2e-3)
 
 def test_kappa2():
-    
-    pair_distance = 2.6 
-    radius = pair_distance*np.sqrt(2)/2
-    atoms = Atoms('AlAl', positions=[[-pair_distance/2, 0, 0],[pair_distance/2,0,0]])
-    atoms.center(vacuum=10)
-    atoms.calc = EMT()
-
-    atoms.set_momenta([[0,-10,0],[0,10,0]])
-
-    initial_energy = atoms.get_potential_energy()
-
-    print("Target Radius (1/kappa) {: .6f} Ang".format( radius))
-
+    '''This test has two atoms spinning counter-clockwise around eachother. the
+    The radius (1/kappa) is less obviously pair_distance*sqrt(2)/2. This is the 
+    simplest multi-body analytic curvature test.'''
     name = 'test_kappa2'
-    traj_name = name + '.traj'
-    log_name = name + '.log'
-
+    
+    pair_distance = 2.5
+    radius = pair_distance*np.sqrt(2)/2
+    atoms = Al_atom_pair(pair_distance)
+    
+    atoms.set_velocities( [[0, -1, 0], [0, 1, 0]])
 
     dyn = ContourExploration(atoms,
                     maxstep = 1.0,
                     parallel_drift = 0.0,
-                    remove_translation  = False,
-                    force_parallel_step_scale = None,
-                    energy_target = initial_energy,
-                    use_fs = True,
-                    angle_limit = 15,
-                    use_tangent_curvature= False,
-                    #trajectory = traj_name,
-                    #logfile = log_name,
-                    ) 
-
+                    angle_limit = 30,
+                    trajectory = name + '.traj',
+                    logfile    = name + '.log',
+                    )
+    
+    print("Target Radius (1/kappa) {: .6f} Ang".format( radius))
     for i in range(5):
         dyn.run(30)
-        
         print('Radius (1/kappa) {: .6f} Ang'.format( 1/dyn.kappa))
-        assert 0 == pytest.approx(radius - 1/dyn.kappa, abs=1e-3)
+        assert 0 == pytest.approx(radius - 1/dyn.kappa, abs=2e-3)
 
 
 

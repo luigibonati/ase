@@ -1,4 +1,4 @@
-#this test ensures that we can stay on (near) the PEC 
+'''These tests ensure that the potentiostat can keep a sysytem near the PEC'''
 
 import pytest
 from ase.lattice.cubic import FaceCenteredCubic
@@ -9,35 +9,28 @@ from ase.calculators.emt import EMT
 from ase import Atoms
 
 def test_potentiostat():
+    '''This is very realistic and stringent test of the potentiostatic accuracy
+     with 32 atoms at ~235 meV/atom above the ground state.'''
+    name = 'test_potentiostat'
     
     size = 2
-    md_temp = 300
     seed = 19460926
     
-    atoms = FaceCenteredCubic(directions = [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+    atoms = FaceCenteredCubic(directions = [[1, 0, 0],
+                                            [0, 1, 0],
+                                            [0, 0, 1]],
                               symbol = 'Al',
                               size = (size, size, size),
                               pbc=True)
-
     atoms.calc = EMT()
+    
     E0 = atoms.get_potential_energy()
     
-    atoms.rattle(stdev=0.18 , seed = seed)
+    atoms.rattle(stdev = 0.18, seed = seed)
+    initial_energy = atoms.get_potential_energy()
     
     rng = np.random.RandomState(seed)
-    MaxwellBoltzmannDistribution(atoms, temperature_K = md_temp, rng = rng)
-
-
-    initial_energy = atoms.get_potential_energy()
-
-    print("Energy Above Ground State: {: .4f} eV/atom".format(
-        (initial_energy-E0)/len(atoms)))
-
-    name = 'test_potentiostat'
-    traj_name = name + '.traj'
-    log_name = name + '.log'
-
-
+    MaxwellBoltzmannDistribution(atoms, temperature_K = 300, rng = rng)
     dyn = ContourExploration(atoms,
                     maxstep = 1.0,
                     parallel_drift = 0.05,
@@ -46,13 +39,13 @@ def test_potentiostat():
                     energy_target = initial_energy,
                     use_fs = True,
                     angle_limit = 20,
-                    use_tangent_curvature= False,
                     rng=rng,
-                    #trajectory = traj_name,
-                    #logfile = log_name,
+                    trajectory = name + '.traj',
+                    logfile    = name + '.log',
                     ) 
 
-    
+    print("Energy Above Ground State: {: .4f} eV/atom".format(
+        (initial_energy-E0)/len(atoms)))
     for i in range(5):
         dyn.run(5)
         energy_error = (atoms.get_potential_energy()-initial_energy)/len(atoms)
@@ -62,35 +55,28 @@ def test_potentiostat():
 
 
 
-def test_potentiostat_no_FS():
-    
-    radius = 2.6 
-    atoms = Atoms('AlAl', positions = [[-radius/2, 0, 0],[radius/2,0,0]])
+def test_potentiostat_no_fs():
+    '''This test ensures that the potentiostat is working even when curvature
+    extrapolation (use_fs) is turned off.'''
+    name = 'test_potentiostat_no_fs'
+    radius = 2.6
+    atoms = Atoms('AlAl', positions = [[-radius/2, 0, 0],[radius/2, 0, 0]] )
     atoms.center(vacuum = 10)
     atoms.calc = EMT()
 
-    atoms.set_momenta([[0,-10,0],[0,10,0]])
+    atoms.set_momenta([ [0, -1, 0],[0, 1, 0]])
 
-    atoms.calc = EMT()
     initial_energy = atoms.get_potential_energy()
-
-    print("Pair distance {: .6f} Ang".format( radius))
-
-    name = 'test_potentiostat_no_FS'
-    traj_name = name + '.traj'
-    log_name = name + '.log'
-
     dyn = ContourExploration(atoms,
                     maxstep = 0.2,
                     parallel_drift = 0.0,
                     remove_translation  = False,
-                    force_parallel_step_scale = None,
                     energy_target = initial_energy,
+                    force_parallel_step_scale = None,
                     use_fs = False,
-                    #trajectory = traj_name,
-                    #logfile = log_name,
-                    ) 
-
+                    trajectory = name + '.traj',
+                    logfile    = name + '.log',
+                    )
 
     for i in range(5):
         dyn.run(10)
