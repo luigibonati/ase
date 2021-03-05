@@ -34,7 +34,11 @@ oldlibs:
   extends: .database-configuration
   script:
     - pip install --no-deps .
-    - ase test --pytest --color=yes -W "ignore:can't resolve package" -m 'not lint'
+    - >
+      ase test --pytest --color=yes
+      -W "ignore:can't resolve package"
+      -W ignore::PendingDeprecationWarning
+      -m 'not lint'
 
 # For testing newest versions of libraries against standard images
 # on dockerhub.

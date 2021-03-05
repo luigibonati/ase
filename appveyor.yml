@@ -51,7 +51,6 @@ test_script:
 after_test:
   # This step builds distribution.
   - "cd %APPVEYOR_BUILD_FOLDER%"
-  # use pip as distutils doesn't implemet bdist_wheel
   - "pip wheel -w dist --no-deps ."
 
 artifacts:
