@@ -16,7 +16,7 @@
 # Then you can run 'LANG=de_DE.UTF8 ase-gui' and your translations should be
 # visible if you have a developer installation.
 #
-# For distutils installation, the po-files are globbed from setup.py so
+# During build, the po-files are globbed from setup.py so
 # they are automatically included when you run install.
 
 # List of files calling gettext.
