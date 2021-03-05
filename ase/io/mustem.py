@@ -12,7 +12,6 @@ from ase.atoms import Atoms, symbols2numbers
 from ase.data import chemical_symbols
 from ase.utils import reader, writer
 from .utils import verify_cell_for_export, verify_dictionary
-from .prismatic import check_numpy_version
 
 
 @reader
@@ -28,8 +27,6 @@ def read_mustem(fd):
         B = RMS * 8\pi^2
 
     """
-    check_numpy_version()
-
     from ase.geometry import cellpar_to_cell
 
     # Read comment:
@@ -262,7 +259,5 @@ def write_mustem(fd, *args, **kwargs):
         positions are positive. If `False` (default), the atoms positions and
         the cell are unchanged.
     """
-    check_numpy_version()
-
     writer = XtlmuSTEMWriter(*args, **kwargs)
     writer.write_to_file(fd)
