@@ -3,7 +3,6 @@ reporting the same values as in the ContourExploration object."""
 
 import pytest
 from ase.lattice.cubic import FaceCenteredCubic
-from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from ase.md.contour_exploration import ContourExploration
 import numpy as np
 from ase.calculators.emt import EMT
