@@ -54,7 +54,7 @@ def test_logging():
     de = 0.001 * len(atoms)
 
     # these print statements, mirror the log file.
-    #print(energy_target, dyn.kappa, dyn.step_size, dev)
+    # print(energy_target, dyn.kappa, dyn.step_size, dev)
 
     for i in range(0, 5):
         energy_target = initial_energy + de * i
@@ -62,7 +62,7 @@ def test_logging():
         dyn.energy_target = energy_target
         dyn.run(1)
         dev = (atoms.get_potential_energy() - energy_target) / len(atoms)
-        #print(energy_target, dyn.kappa, dyn.step_size, dev)
+        # print(energy_target, dyn.kappa, dyn.step_size, dev)
 
         energy_targets.append(energy_target)
         kappas.append(dyn.kappa)

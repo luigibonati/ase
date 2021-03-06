@@ -273,7 +273,6 @@ class ContourExploration(Dynamics):
 
             D = self.create_drift_unit_vector(self.N, self.T)
             dr_drift = D * delta_s_drift
-            ###
 
             dr = dr_parallel + dr_drift + dr_perpendicular
         else:
@@ -411,8 +410,6 @@ class ContourExploration(Dynamics):
         self.Nold = self.N
         self.rold = self.r
 
-        ##### the update section #####
-
         # if we have constraints then this will do the first part of the
         # RATTLE algorithm:
         # If we can avoid using momenta, this will be simpler.
@@ -447,5 +444,5 @@ class ContourExploration(Dynamics):
         atoms.set_momenta(Ms * atoms.get_momenta())
 
         # Normally this would be the second part of RATTLE will be done here like this:
-        ### atoms.set_momenta(atoms.get_momenta() + 0.5 * self.dt * f)
+        #  atoms.set_momenta(atoms.get_momenta() + 0.5 * self.dt * f)
         return f
