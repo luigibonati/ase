@@ -12,7 +12,6 @@ from ase import io
 def test_logging():
 
     size = 2
-    md_temp = 300
     seed = 19460926
 
     atoms = FaceCenteredCubic(directions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
@@ -28,8 +27,6 @@ def test_logging():
     initial_energy = atoms.get_potential_energy()
 
     name = 'test_logging'
-    traj_name = name + '.traj'
-    log_name = name + '.log'
 
     dyn = ContourExploration(atoms,
                              maxstep=1.0,
@@ -41,8 +38,8 @@ def test_logging():
                              loginterval=1,
                              initialize_old=True,
                              rng=rng,
-                             trajectory=traj_name,
-                             logfile=log_name,
+                             trajectory=name + '.traj',
+                             logfile=name + '.log',
                              )
 
     energy_target = initial_energy

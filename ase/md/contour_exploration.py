@@ -241,7 +241,7 @@ class ContourExploration(Dynamics):
         return a / np.linalg.norm(a)
 
     def rand_vect(self):
-        vect = self.rng.random((len(self.atoms), 3)) - 0.5
+        vect = self.rng.rand(len(self.atoms), 3) - 0.5
         return vect
 
     def create_drift_unit_vector(self, N, T):
@@ -306,8 +306,8 @@ class ContourExploration(Dynamics):
         self.kappa = kappa
 
         # on a perfect trajectory, the normal can be computed this way,
-        # I think the normal should always be tied to forces
-        Nfs = dTds / kappa
+        # But the normal should always be tied to forces
+        # N = dTds / kappa
 
         if self.angle_limit is not None:
             phi = np.pi / 180 * self.angle_limit
