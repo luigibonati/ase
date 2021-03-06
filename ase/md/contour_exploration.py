@@ -205,7 +205,7 @@ class ContourExploration(Dynamics):
 
     def log(self):
         if self.logfile is not None:
-            name = self.__class__.__name__
+            # name = self.__class__.__name__
             if self.nsteps == 0:
                 args = (
                     "Step",

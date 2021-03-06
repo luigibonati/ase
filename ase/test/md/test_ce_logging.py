@@ -28,6 +28,9 @@ def test_logging():
 
     name = 'test_logging'
 
+    traj_name = name + '.traj'
+    log_name = name + '.log'
+
     dyn = ContourExploration(atoms,
                              maxstep=1.0,
                              parallel_drift=0.05,
@@ -38,8 +41,8 @@ def test_logging():
                              loginterval=1,
                              initialize_old=True,
                              rng=rng,
-                             trajectory=name + '.traj',
-                             logfile=name + '.log',
+                             trajectory=traj_name,
+                             logfile=log_name,
                              )
 
     energy_target = initial_energy
@@ -81,16 +84,16 @@ def test_logging():
         for i, (im, line) in enumerate(zip(traj, lines)):
 
             log_energy_target = float(line.split()[1])
-            assert np.allclose(log_energy_target, energy_targets[i], atol=1e-5)
+            assert 0 == pytest.approx(log_energy_target - energy_targets[i], abs=1e-5)
 
             log_energy = float(line.split()[2])
-            assert np.allclose(log_energy, im.get_potential_energy(), atol=1e-5)
+            assert 0 == pytest.approx(log_energy - im.get_potential_energy(), abs=1e-5)
 
             log_kappa = float(line.split()[3])
-            assert np.allclose(log_kappa, kappas[i], atol=1e-5)
+            assert 0 == pytest.approx(log_kappa - kappas[i], abs=1e-5)
 
             log_step_size = float(line.split()[4])
-            assert np.allclose(log_step_size, stepsizes[i], atol=1e-5)
+            assert 0 == pytest.approx(log_step_size - stepsizes[i], abs=1e-5)
 
             log_dev = float(line.split()[5])
-            assert np.allclose(log_dev, deviation_per_atom[i], atol=1e-5)
+            assert 0 == pytest.approx(log_dev - deviation_per_atom[i], abs=1e-5)
