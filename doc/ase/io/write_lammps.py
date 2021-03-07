@@ -1,5 +1,6 @@
 from ase.io.opls import OPLSff, OPLSStructure
 
 s = OPLSStructure('172_ext.xyz')
-opls = OPLSff('172_defs.par')
+with open("pclpars.par") as fd:
+    opls = OPLSff(fd)
 opls.write_lammps(s, prefix='lmp')

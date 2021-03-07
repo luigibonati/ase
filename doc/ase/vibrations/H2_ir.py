@@ -1,6 +1,6 @@
 from ase.build import molecule
 from ase import optimize
-from ase.vibrations.infrared import InfraRed
+from ase.vibrations.infrared import Infrared
 
 from gpaw.cluster import Cluster
 from gpaw import GPAW, FermiDirac
@@ -18,5 +18,6 @@ dyn.run(fmax=0.05)
 atoms.write('relaxed.traj')
 
 # finite displacement for vibrations
-ir = InfraRed(atoms)
+atoms.calc.set(symmetry={'point_group': False})
+ir = Infrared(atoms)
 ir.run()

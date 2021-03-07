@@ -88,7 +88,7 @@ class ResonantRamanCalculator(RamanCalculatorBase, Vibrations):
             self.eq_calculator = self.atoms.calc
             fname = self.exname + '.eq.gpw'
             self.eq_calculator.write(fname, 'all')
-            self.eq_calculator = self.eq_calculator.__class__.read(fname)
+            self.eq_calculator = self.eq_calculator.__class__(restart=fname)
             try:
                 # XXX GPAW specific
                 self.eq_calculator.converge_wave_functions()
@@ -409,12 +409,12 @@ class ResonantRaman(Raman):
         I_v = self.intensity(omega, gamma)
         pre = 1. / 16 / np.pi**2 / u._eps0**2 / u._c**4
         # frequency of scattered light
-        omS_v = omega - self.om_v
+        omS_v = omega - self.om_Q
         return pre * omega * omS_v**3 * I_v
 
     def get_spectrum(self, omega, gamma=0.1,
                      start=None, end=None, npts=None, width=20,
-                     type='Gaussian', method='standard', direction='central',
+                     type='Gaussian',
                      intensity_unit='????', normalize=False):
         """Get resonant Raman spectrum.
 
@@ -427,15 +427,15 @@ class ResonantRaman(Raman):
         self.type = type.lower()
         assert self.type in ['gaussian', 'lorentzian']
 
-        frequencies = self.get_frequencies(method, direction).real
+        frequencies = self.get_energies().real / u.invcm
         intensities = self.get_cross_sections(omega, gamma)
         if width is None:
             return [frequencies, intensities]
 
         if start is None:
-            start = min(self.om_v) / u.invcm - 3 * width
+            start = min(self.om_Q) / u.invcm - 3 * width
         if end is None:
-            end = max(self.om_v) / u.invcm + 3 * width
+            end = max(self.om_Q) / u.invcm + 3 * width
 
         if not npts:
             npts = int((end - start) / width * 10 + 1)
@@ -468,8 +468,7 @@ class ResonantRaman(Raman):
                        out='resonant-raman-spectra.dat',
                        start=200, end=4000,
                        npts=None, width=10,
-                       type='Gaussian', method='standard',
-                       direction='central'):
+                       type='Gaussian'):
         """Write out spectrum to file.
 
         Start and end
@@ -477,7 +476,7 @@ class ResonantRaman(Raman):
         in cm^-1."""
         energies, spectrum = self.get_spectrum(omega, gamma,
                                                start, end, npts, width,
-                                               type, method, direction)
+                                               type)
 
         # Write out spectrum in file. First column is absolute intensities.
         outdata = np.empty([len(energies), 3])

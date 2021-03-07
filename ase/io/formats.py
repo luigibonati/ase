@@ -186,8 +186,8 @@ class IOFormat:
         try:
             return import_module(self.module_name)
         except ImportError as err:
-            raise UnknownFileTypeError('File format not recognized: %s.  '
-                                       'Error: %s' % (format, err))
+            raise UnknownFileTypeError(
+                f'File format not recognized: {self.name}.  Error: {err}')
 
     def match_name(self, basename: str) -> bool:
         from fnmatch import fnmatch
@@ -280,6 +280,7 @@ F('castep-phonon', 'CASTEP phonon file', '1F',
 F('cfg', 'AtomEye configuration', '1F')
 F('cif', 'CIF-file', '+B', ext='cif')
 F('cmdft', 'CMDFT-file', '1F', glob='*I_info')
+F('cml', 'Chemical json file', '1F', ext='cml')
 F('cp2k-dcd', 'CP2K DCD file', '+B',
   module='cp2k', ext='dcd')
 F('crystal', 'Crystal fort.34 format', '1F',
@@ -380,6 +381,8 @@ F('qbox', 'QBOX output file', '+F',
 F('res', 'SHELX format', '1S', ext='shelx')
 F('rmc6f', 'RMCProfile', '1S', ext='rmc6f')
 F('sdf', 'SDF format', '1F')
+F('siesta-xv', 'Siesta .XV file', '1F',
+  glob='*.XV', module='siesta')
 F('struct', 'WIEN2k structure file', '1S', module='wien2k')
 F('struct_out', 'SIESTA STRUCT file', '1F', module='siesta')
 F('traj', 'ASE trajectory', '+B', module='trajectory', ext='traj',
@@ -857,7 +860,7 @@ def filetype(
         if orig_filename == filename:
             fd = open_with_compression(filename, 'rb')
         else:
-            fd = orig_filename # type: ignore
+            fd = orig_filename  # type: ignore
     else:
         fd = filename    # type: ignore
         if fd is sys.stdin:

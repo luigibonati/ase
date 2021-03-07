@@ -24,12 +24,10 @@ import time
 import subprocess
 import re
 import warnings
-from distutils.version import LooseVersion
 import numpy as np
 from ase.geometry import cell_to_cellpar
 from ase.calculators.calculator import (FileIOCalculator, Calculator, equal,
-                                        all_changes, kptdensity2monkhorstpack,
-                                        PropertyNotImplementedError)
+                                        all_changes, kptdensity2monkhorstpack)
 from ase.calculators.openmx.parameters import OpenMXParameters
 from ase.calculators.openmx.default_settings import default_dictionary
 from ase.calculators.openmx.reader import read_openmx, get_file_name
@@ -503,24 +501,8 @@ class OpenMX(FileIOCalculator):
         if atoms is None:
             atoms = self.atoms
 
-        def check_version():
-            if LooseVersion(self.version) < '3.8':
-                raise PropertyNotImplementedError(
-                    'Version lower than 3.8 does not support stress '
-                    'calculation.  Your version is %s' % self.version)
-
-        # We may not yet know what version we are, since that can only
-        # be seen from the output
-        if getattr(self, 'version', None) is not None:
-            check_version()
-
-        try:
-            stress = self.get_property('stress', atoms)
-        except PropertyNotImplementedError:
-            # Now we know the version number, either we raise version
-            # error or the original error (the latter should not happen)
-            check_version()
-            raise
+        # Note: Stress is only supported from OpenMX 3.8+.
+        stress = self.get_property('stress', atoms)
 
         return stress
 

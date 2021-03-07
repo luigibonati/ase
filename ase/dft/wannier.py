@@ -7,7 +7,6 @@ import warnings
 import functools
 from time import time
 from math import sqrt, pi
-from pickle import dump, load
 from scipy.linalg import qr
 
 import numpy as np
@@ -16,6 +15,7 @@ from ase.parallel import paropen
 from ase.dft.bandgap import bandgap
 from ase.dft.kpoints import get_monkhorst_pack_size_and_offset
 from ase.transport.tools import dagger, normalize
+from ase.io.jsonio import read_json, write_json
 
 dag = dagger
 
@@ -547,7 +547,9 @@ class Wannier:
         Nb = self.nbands
 
         if file is not None:
-            self.Z_dknn, self.U_kww, self.C_kul = load(paropen(file, 'rb'))
+            with paropen(file, 'r') as fd:
+                self.Z_dknn, self.U_kww, self.C_kul = read_json(fd)
+
         elif initialwannier == 'bloch':
             # Set U and C to pick the lowest Bloch states
             self.U_kww = np.zeros((self.Nk, Nw, Nw), complex)
@@ -600,7 +602,8 @@ class Wannier:
 
     def save(self, file):
         """Save information on localization and rotation matrices to file."""
-        dump((self.Z_dknn, self.U_kww, self.C_kul), paropen(file, 'wb'))
+        with paropen(file, 'w') as fd:
+            write_json(fd, (self.Z_dknn, self.U_kww, self.C_kul))
 
     def update(self):
         # Update large rotation matrix V (from rotation U and coeff C)

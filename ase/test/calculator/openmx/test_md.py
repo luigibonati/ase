@@ -1,4 +1,3 @@
-from distutils.version import LooseVersion
 import numpy as np
 import pytest
 
@@ -7,13 +6,14 @@ from ase.io.trajectory import Trajectory
 from ase.optimize import QuasiNewton
 from ase.constraints import UnitCellFilter
 from ase import Atoms
+from ase.utils import tokenize_version
 
 
 @pytest.mark.calculator('openmx')
 def test_md(factory):
     # XXX ugly hack
     ver = factory.factory.version()
-    if LooseVersion(ver) < '3.8':
+    if tokenize_version(ver) < tokenize_version('3.8'):
         pytest.skip('No stress tensor until openmx 3.8+')
 
     bud = Atoms('CH4', np.array([

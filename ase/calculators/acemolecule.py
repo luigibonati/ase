@@ -1,7 +1,7 @@
 # type: ignore
 import os
 from copy import deepcopy
-from ase.io.acemolecule import read_acemolecule_out
+from ase.io import read
 from ase.calculators.calculator import ReadError
 from ase.calculators.calculator import FileIOCalculator
 
@@ -12,13 +12,8 @@ class ACE(FileIOCalculator):
     It has default parameters of each input section
     And parameters' type = list of dictionaries
     '''
-
-
     name = 'ace'
     implemented_properties = ['energy', 'forces', 'excitation-energy']
-    #    results = {}
-    # 'geometry', 'excitation-energy']
-    # defaults is default section_name of ACE-input
     basic_list = [{
         'Type': 'Scaling', 'Scaling': '0.35', 'Basis': 'Sinc',
                   'Grid': 'Sphere',
@@ -154,9 +149,10 @@ class ACE(FileIOCalculator):
         atoms : ASE atoms object
         '''
         filename = self.label + '.log'
-#        quantities = ['energy', 'forces', 'atoms', 'excitation-energy']
+        #quantities = ['energy', 'forces', 'atoms', 'excitation-energy']
         #for section_name in quantities:
-        self.results = read_acemolecule_out(filename)
+        #self.results = read_acemolecule_out(filename)
+        self.results = read(filename, format='acemolecule-out')
 
     def write_acemolecule_section(self, fpt, section, depth=0):
         '''Write parameters in each section of input
@@ -170,10 +166,15 @@ class ACE(FileIOCalculator):
         for section, section_param in section.items():
             if isinstance(section_param, str) or isinstance(section_param, int) or isinstance(section_param, float):
                 fpt.write('    ' * depth + str(section) + " " + str(section_param) + "\n")
-            elif isinstance(section_param, dict):
-                fpt.write('    ' * depth + "%% " + str(section) + "\n")
-                self.write_acemolecule_section(fpt, section_param, depth + 1)
-                fpt.write('    ' * depth + "%% End\n")
+            else:
+                if isinstance(section_param, dict):
+                    fpt.write('    ' * depth + "%% " + str(section) + "\n")
+                    self.write_acemolecule_section(fpt, section_param, depth + 1)
+                    fpt.write('    ' * depth + "%% End\n")
+                if isinstance(section_param, list):
+                    for val in section_param:
+                        fpt.write('    ' * depth + str(section) + " " + str(val) + "\n")
+
 
     def write_acemolecule_input(self, fpt, param, depth=0):
         '''Write ACE-Molecule input
@@ -276,4 +277,5 @@ def update_parameter(oldpar, newpar):
         else:
             oldpar[section] = section_param
     return oldpar
+
 

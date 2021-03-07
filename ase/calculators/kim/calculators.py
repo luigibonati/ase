@@ -132,6 +132,7 @@ def LAMMPSLibCalculator(model_name, supported_species, supported_units, options)
         lammps_header=model_init,
         lammps_name=None,
         lmpcmds=kim_interactions,
+        post_changebox_cmds=kim_interactions,
         atom_types=atom_types,
         log_file="lammps.log",
         keep_alive=True,
