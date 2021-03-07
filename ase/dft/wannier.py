@@ -948,7 +948,7 @@ class Wannier:
         wanniergrid /= np.sqrt(self.Nk)
         return wanniergrid
 
-    def write_cube(self, index, fname, repeat=None, real=True):
+    def write_cube(self, index, fname, repeat=None, angle=False):
         """
         Dump specified Wannier function to a cube file.
 
@@ -958,8 +958,10 @@ class Wannier:
 
           ``repeat``: Array of integer, repeat supercell and Wannier function.
 
-          ``real``: If True only save the absolute value, otherwise also save
-            the complex phase in a separate file.
+          ``fname``: Name of the cube file.
+
+          ``angle``: If False, save the absolute value. If True, save
+                    the complex phase of the Wannier function.
         """
         from ase.io import write
 
@@ -973,20 +975,17 @@ class Wannier:
         atoms = atoms * repeat
         func = self.get_function(index, repeat)
 
-        # Separation of complex wave into absolute value and complex angle
-        if real:
+        # Compute absolute value or complex angle
+        if angle:
+            write(fname, atoms, data=np.angle(func), format='cube')
+        else:
             if self.Nk == 1:
                 func *= np.exp(-1.j * np.angle(func.max()))
                 func = abs(func)
             else:
                 func = abs(func)
-        else:
-            phase_fname, phase_fextension = path.splitext(fname)
-            phase_fname = phase_fname + '_phase' + phase_fextension
-            write(phase_fname, atoms, data=np.angle(func), format='cube')
-            func = abs(func)
+            write(fname, atoms, data=func, format='cube')
 
-        write(fname, atoms, data=func, format='cube')
 
     def localize(self, step=0.25, tolerance=1e-08,
                  updaterot=True, updatecoeff=True):

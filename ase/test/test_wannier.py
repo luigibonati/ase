@@ -297,7 +297,7 @@ def test_save(tmpdir, wan):
 
 
 @pytest.mark.parametrize('lat', bravais_lattices())
-def test_get_radii(lat, h2_calculator, wan):
+def test_get_radii(lat, wan):
     # Sanity check, the Wannier functions' spread should always be positive.
     # Also, make sure that the method does not fail for any lattice.
     if ((lat.tocell() == FCC(a=1).tocell()).all() or
@@ -312,7 +312,7 @@ def test_get_radii(lat, h2_calculator, wan):
 
 
 @pytest.mark.parametrize('lat', bravais_lattices())
-def test_get_spreads(lat, h2_calculator, wan):
+def test_get_spreads(lat, wan):
     # Sanity check, the Wannier functions' spread should always be positive.
     # Also, make sure that the method does not fail for any lattice.
     atoms = molecule('H2', pbc=True)
@@ -346,7 +346,27 @@ def test_get_centers(factory):
     assert np.abs(centers - [com, com]).max() < 1e-4
 
 
-def test_write_cube_real(wan):
+def test_write_cube_default(wan, h2_calculator):
+    # Chek the value saved in the CUBE file and the atoms object.
+    # The default saved value is the absolute value of the Wannier function,
+    # and the supercell is repeated per the number of k-points in each
+    # direction.
+    atoms = h2_calculator.atoms
+    wanf = wan(calc=h2_calculator, full_calc=True)
+    index = 0
+
+    # It returns some errors when using file objects, so we use a string
+    cubefilename = 'wanf.cube'
+    wanf.write_cube(index, cubefilename)
+    with open(cubefilename, mode='r') as inputfile:
+        content = read_cube(inputfile)
+    assert pytest.approx(content['atoms'].cell.array) == atoms.cell.array * 2
+    assert pytest.approx(content['data']) == abs(wanf.get_function(index))
+
+
+def test_write_cube_angle(wan):
+    # Check that the complex phase is correctly saved to the CUBE file, together
+    # with the right atoms object.
     atoms = molecule('H2')
     atoms.center(vacuum=3.)
     wanf = wan(atoms=atoms, kpts=(1, 1, 1))
@@ -354,31 +374,32 @@ def test_write_cube_real(wan):
 
     # It returns some errors when using file objects, so we use a string
     cubefilename = 'wanf.cube'
-    wanf.write_cube(index, cubefilename, real=True)
+    wanf.write_cube(index, cubefilename, angle=True)
     with open(cubefilename, mode='r') as inputfile:
         content = read_cube(inputfile)
     assert pytest.approx(content['atoms'].cell.array) == atoms.cell.array
-    assert pytest.approx(content['data']) == abs(wanf.get_function(index))
-
-
-def test_write_cube_complex(wan):
-    atoms = bulk('Si')
-    wanf = wan(atoms=atoms, nwannier=6, kpts=(2, 2, 2))
-    index = 0
-
-    # It returns some errors when using file objects, so we use simple filename
-    cubefilename = 'wanf_si.cube'
-    wanf.write_cube(index, cubefilename, real=False)
-
-    with open('wanf_si_phase.cube', mode='r') as inputfile:
-        content = read_cube(inputfile)
-    assert pytest.approx(content['atoms'].cell.array) == atoms.cell.array * 2
     assert pytest.approx(content['data']) == np.angle(wanf.get_function(index))
 
-    with open('wanf_si.cube', mode='r') as inputfile:
+
+def test_write_cube_repeat(wan):
+    # Check that the repeated supercell and Wannier functions are correctly
+    # saved to the CUBE file, together with the right atoms object.
+    atoms = molecule('H2')
+    atoms.center(vacuum=3.)
+    wanf = wan(atoms=atoms, kpts=(1, 1, 1))
+    index = 0
+    repetition = [4, 4, 4]
+
+    # It returns some errors when using file objects, so we use simple filename
+    cubefilename = 'wanf.cube'
+    wanf.write_cube(index, cubefilename, repeat=repetition)
+
+    with open(cubefilename, mode='r') as inputfile:
         content = read_cube(inputfile)
-    assert pytest.approx(content['atoms'].cell.array) == atoms.cell.array * 2
-    assert pytest.approx(content['data']) == abs(wanf.get_function(index))
+    assert pytest.approx(content['atoms'].cell.array) == \
+            (atoms * repetition).cell.array
+    assert pytest.approx(content['data']) == \
+            abs(wanf.get_function(index, repetition))
 
 
 def test_localize(wan):
