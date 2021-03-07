@@ -290,10 +290,10 @@ def test_rotation_from_projection(rng):
 
 def test_save(tmpdir, wan):
     wanf = wan(nwannier=4, fixedstates=2, initialwannier='bloch')
-    picklefile = tmpdir.join('wanf.pickle')
+    jsonfile = tmpdir.join('wanf.json')
     f1 = wanf.get_functional_value()
-    wanf.save(picklefile)
-    wanf.initialize(file=picklefile, initialwannier='bloch')
+    wanf.save(jsonfile)
+    wanf.initialize(file=jsonfile, initialwannier='bloch')
     assert pytest.approx(f1) == wanf.get_functional_value()
 
 
