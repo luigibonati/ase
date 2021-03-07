@@ -671,27 +671,28 @@ def test_arbitrary_s_orbitals(rng):
         assert (dists < 1.5).any()
 
 
-def test_init_orbitals(rng):
+def test_init_orbitals_h2(rng):
+    # Check that the initial orbitals for H2 are as many as requested and they
+    # are all s-orbitals (l=0).
     atoms = molecule('H2')
     atoms.center(vacuum=3.)
     ntot = 2
     orbs = init_orbitals(atoms=atoms, ntot=ntot, rng=rng)
-    assert sum([orb[1] * 2 + 1 for orb in orbs]) == ntot
-    for orb in orbs:
-        assert orb[1] == 0
+    angular_momenta = [orb[1] for orb in orbs]
+    assert sum([l * 2 + 1 for l in angular_momenta]) == ntot
+    assert angular_momenta == [0] * ntot
+
+
+def test_init_orbitals_ti(rng):
+    # Check that the initial orbitals for Ti bulk are as many as requested and
+    # there are both s-orbitals (l=0) and d-orbitals (l=2).
     atoms = bulk('Ti')
     ntot = 14
     orbs = init_orbitals(atoms=atoms, ntot=ntot, rng=rng)
-    assert sum([orb[1] * 2 + 1 for orb in orbs]) == ntot
-    # check if there are both s- and d-orbitals in transition metal
-    bool_s = False
-    bool_d = False
-    for orb in orbs:
-        if not bool_s:
-            bool_s = (orb[1] == 0)
-        if not bool_d:
-            bool_d = (orb[1] == 2)
-    assert bool_d and bool_s
+    angular_momenta = [orb[1] for orb in orbs]
+    assert sum([l * 2 + 1 for l in angular_momenta]) == ntot
+    assert 0 in angular_momenta
+    assert 2 in angular_momenta
 
 
 def test_search_for_gamma_point():

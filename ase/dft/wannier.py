@@ -296,6 +296,7 @@ def init_orbitals(atoms, ntot, rng=np.random):
     """
     Place d-orbitals for every atom that has some in the valence states
     and then random s-orbitals close to at least one atom (< 1.5Å).
+    The orbitals list format is compatible with GPAW.get_initial_wannier().
     'atoms': ASE Atoms object
     'ntot': total number of needed orbitals
     'rng': generator random numbers
