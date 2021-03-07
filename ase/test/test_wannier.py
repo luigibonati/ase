@@ -1,5 +1,6 @@
 import pytest
 import numpy as np
+from functools import partial
 from ase import Atoms
 from ase.transport.tools import dagger, normalize
 from ase.dft.kpoints import monkhorst_pack
@@ -621,27 +622,29 @@ def test_initialwannier(init, wan, ti_calculator):
 
 def test_nwannier_auto(wan, ti_calculator):
     """ Test 'auto' value for parameter 'nwannier'. """
+    partial_wan = partial(
+        wan,
+        calc=ti_calculator,
+        full_calc=True,
+        initialwannier='bloch',
+        nwannier='auto'
+    )
 
     # Check default value
-    wanf = wan(calc=ti_calculator, full_calc=True,
-               initialwannier='bloch', nwannier='auto')
+    wanf = partial_wan()
     assert wanf.nwannier == 15
 
     # Check value setting fixedenergy
-    wanf = wan(calc=ti_calculator, full_calc=True,
-               initialwannier='bloch', nwannier='auto', fixedenergy=0)
+    wanf = partial_wan(fixedenergy=0)
     assert wanf.nwannier == 15
-    wanf = wan(calc=ti_calculator, full_calc=True,
-               initialwannier='bloch', nwannier='auto', fixedenergy=5)
+    wanf = partial_wan(fixedenergy=5)
     assert wanf.nwannier == 18
 
     # Check value setting fixedstates
     number_kpts = Nk**3
     list_fixedstates = [14] * number_kpts
     list_fixedstates[Nk] = 18
-    wanf = wan(calc=ti_calculator, full_calc=True,
-               initialwannier='bloch', nwannier='auto',
-               fixedstates=list_fixedstates)
+    wanf = partial_wan(fixedstates=list_fixedstates)
     assert wanf.nwannier == 18
 
 
