@@ -296,26 +296,30 @@ def test_save(tmpdir, wan):
     assert pytest.approx(f1) == wanf.get_functional_value()
 
 
-# The following test always fails because get_radii() is broken.
 @pytest.mark.parametrize('lat', bravais_lattices())
 def test_get_radii(lat, h2_calculator, wan):
+    # Sanity check, the Wannier functions' spread should always be positive.
+    # Also, make sure that the method does not fail for any lattice.
     if ((lat.tocell() == FCC(a=1).tocell()).all() or
             (lat.tocell() == ORCF(a=1, b=2, c=3).tocell()).all()):
-        pytest.skip("lattices not supported, yet")
+        pytest.skip("Lattices not supported by this function,"
+                    " use get_spreads() instead.")
     atoms = molecule('H2', pbc=True)
     atoms.cell = lat.tocell()
     atoms.center(vacuum=3.)
     wanf = wan(nwannier=4, fixedstates=2, atoms=atoms, initialwannier='bloch')
-    assert not (wanf.get_radii() == 0).all()
+    assert all(wanf.get_radii() > 0)
 
 
 @pytest.mark.parametrize('lat', bravais_lattices())
 def test_get_spreads(lat, h2_calculator, wan):
+    # Sanity check, the Wannier functions' spread should always be positive.
+    # Also, make sure that the method does not fail for any lattice.
     atoms = molecule('H2', pbc=True)
     atoms.cell = lat.tocell()
     atoms.center(vacuum=3.)
     wanf = wan(nwannier=4, fixedstates=2, atoms=atoms, initialwannier='bloch')
-    assert not (wanf.get_spreads() == 0).all()
+    assert all(wanf.get_spreads() > 0)
 
 
 @pytest.mark.parametrize('fun', ['std', 'var'])
