@@ -5,7 +5,6 @@
 """
 import warnings
 import functools
-from os import path
 from time import time
 from math import sqrt, pi
 from pickle import dump, load
@@ -986,7 +985,6 @@ class Wannier:
             else:
                 func = abs(func)
             write(fname, atoms, data=func, format='cube')
-
 
     def localize(self, step=0.25, tolerance=1e-08,
                  updaterot=True, updatecoeff=True):

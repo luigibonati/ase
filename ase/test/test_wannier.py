@@ -398,9 +398,9 @@ def test_write_cube_repeat(wan):
     with open(cubefilename, mode='r') as inputfile:
         content = read_cube(inputfile)
     assert pytest.approx(content['atoms'].cell.array) == \
-            (atoms * repetition).cell.array
+        (atoms * repetition).cell.array
     assert pytest.approx(content['data']) == \
-            abs(wanf.get_function(index, repetition))
+        abs(wanf.get_function(index, repetition))
 
 
 def test_localize(wan):
