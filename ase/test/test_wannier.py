@@ -190,7 +190,7 @@ class Paraboloid:
         return np.sum(self.pos**2) + self.shift
 
 
-def orthonormality_error(matrix):
+def unitarity_error(matrix):
     return np.abs(dagger(matrix) @ matrix - np.eye(len(matrix))).max()
 
 
@@ -210,26 +210,26 @@ def normalization_error(matrix):
 
 def test_gram_schmidt(rng):
     matrix = rng.rand(4, 4)
-    assert orthonormality_error(matrix) > 1
+    assert unitarity_error(matrix) > 1
     gram_schmidt(matrix)
-    assert orthonormality_error(matrix) < 1e-12
+    assert unitarity_error(matrix) < 1e-12
 
 
 def test_lowdin(rng):
     matrix = rng.rand(4, 4)
-    assert orthonormality_error(matrix) > 1
+    assert unitarity_error(matrix) > 1
     lowdin(matrix)
-    assert orthonormality_error(matrix) < 1e-12
+    assert unitarity_error(matrix) < 1e-12
 
 
 def test_random_orthogonal_matrix(rng):
     dim = 4
     matrix = random_orthogonal_matrix(dim, rng=rng, real=True)
     assert matrix.shape[0] == matrix.shape[1]
-    assert orthonormality_error(matrix) < 1e-12
+    assert unitarity_error(matrix) < 1e-12
     matrix = random_orthogonal_matrix(dim, rng=rng, real=False)
     assert matrix.shape[0] == matrix.shape[1]
-    assert orthonormality_error(matrix) < 1e-12
+    assert unitarity_error(matrix) < 1e-12
 
 
 def test_neighbor_k_search():
@@ -278,9 +278,9 @@ def test_md_min():
 
 def test_rotation_from_projection(rng):
     proj_nw = rng.rand(6, 4)
-    assert orthonormality_error(proj_nw[:int(min(proj_nw.shape))]) > 1
+    assert unitarity_error(proj_nw[:int(min(proj_nw.shape))]) > 1
     U_ww, C_ul = rotation_from_projection(proj_nw, fixed=2, ortho=True)
-    assert orthonormality_error(U_ww) < 1e-10, 'U_ww not unitary'
+    assert unitarity_error(U_ww) < 1e-10, 'U_ww not unitary'
     assert orthogonality_error(C_ul.T) < 1e-10, 'C_ul columns not orthogonal'
     assert normalization_error(C_ul) < 1e-10, 'C_ul not normalized'
     U_ww, C_ul = rotation_from_projection(proj_nw, fixed=2, ortho=False)
@@ -701,7 +701,7 @@ def test_scdm(ti_calculator):
     C_kul, U_kww = scdm(pseudo_nkG, kpts=kpt_kc,
                         fixed_k=fixed_k, Nw=Nw)
     for k in range(number_kpts):
-        assert orthonormality_error(U_kww[k]) < 1e-10, 'U_ww not unitary'
+        assert unitarity_error(U_kww[k]) < 1e-10, 'U_ww not unitary'
         assert orthogonality_error(C_kul[k].T) < 1e-10, \
             'C_ul columns not orthogonal'
         assert normalization_error(C_kul[k]) < 1e-10, 'C_ul not normalized'
