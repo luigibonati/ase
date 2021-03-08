@@ -1,11 +1,13 @@
+import os
+import pytest
+from numpy.random import RandomState
+
+from ase.build import molecule
+from ase.vibrations import Vibrations
+from ase.vibrations import Infrared
+
+
 def test_combine():
-    import os
-    from numpy.random import RandomState
-
-    from ase.build import molecule
-    from ase.vibrations import Vibrations
-    from ase.vibrations import Infrared
-
 
     class RandomCalculator():
         """Fake Calculator class.
@@ -19,7 +21,6 @@ def test_combine():
 
         def get_dipole_moment(self, atoms):
             return self.rng.rand(3)
-
 
     atoms = molecule('C2H6')
     ir = Infrared(atoms)
@@ -52,3 +53,11 @@ def test_combine():
     assert (freqs == vib.get_frequencies()).all()
 
     assert ir.clean() == 49
+
+    for folding in ['Gaussian', 'Lorentzian']:
+        x, y = ir.get_spectrum(start=freqs.real.min() - 100,
+                               end=freqs.real.max() + 100,
+                               type=folding,
+                               normalize=True)
+        assert ir.intensities.sum() == pytest.approx(
+            y.sum() * (x[1] - x[0]), 1e-2)
