@@ -198,21 +198,28 @@ class Amber(FileIOCalculator):
 
         fin = netcdf.netcdf_file(filename, 'r')
         all_coordinates = fin.variables['coordinates'][:]
-        if all_coordinates.ndim == 3:
+        get_last_frame = False
+        if hasattr(all_coordinates, 'ndim'):
+            if all_coordinates.ndim == 3:
+                get_last_frame = True
+        elif hasattr(all_coordinates, 'shape'):
+            if len(all_coordinates.shape) == 3:
+                get_last_frame = True
+        if get_last_frame:
             all_coordinates = all_coordinates[-1]
         atoms.set_positions(all_coordinates)
         if 'velocities' in fin.variables:
             all_velocities = fin.variables['velocities'][:] / (1000 * units.fs)
-            if all_velocities.ndim == 3:
+            if get_last_frame:
                 all_velocities = all_velocities[-1]
             atoms.set_velocities(all_velocities)
         if 'cell_lengths' in fin.variables:
             all_abc = fin.variables['cell_lengths']
-            if all_abc.ndim == 2:
+            if get_last_frame:
                 all_abc = all_abc[-1]
             a, b, c = all_abc
             all_angles = fin.variables['cell_angles']
-            if all_angles.ndim == 2:
+            if get_last_frame:
                 all_angles = all_angles[-1]
             alpha, beta, gamma = all_angles
 
