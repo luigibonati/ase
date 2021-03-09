@@ -534,3 +534,21 @@ def test_cif_roundtrip_mixed():
         atoms1.get_scaled_positions(), abs=1e-5)
     #assert pytest.approx(atoms.positions) == atoms1.positions
     #assert atoms1.cell.rank == 0
+
+
+cif_with_whitespace_after_loop = b"""\
+data_image0
+loop_
+ _hello
+ banana
+ 
+_potato 42
+"""
+
+
+def test_loop_with_space():
+    # Regression test for https://gitlab.com/ase/ase/-/issues/859 .
+    buf = io.BytesIO(cif_with_whitespace_after_loop)
+    blocks = list(parse_cif(buf))
+    assert len(blocks) == 1
+    assert blocks[0]['_potato'] == 42
