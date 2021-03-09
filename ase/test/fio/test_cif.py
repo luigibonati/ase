@@ -551,4 +551,4 @@ def test_loop_with_space():
     buf = io.BytesIO(cif_with_whitespace_after_loop)
     blocks = list(parse_cif(buf))
     assert len(blocks) == 1
-    print(blocks[0])
+    assert blocks[0]['_potato'] == 42
