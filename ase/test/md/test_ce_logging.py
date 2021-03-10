@@ -35,7 +35,7 @@ def test_logging():
                              maxstep=1.0,
                              parallel_drift=0.05,
                              remove_translation=True,
-                             force_parallel_step_scale=None,
+                             potentiostat_step_scale=None,
                              use_frenet_serret=True,
                              angle_limit=20,
                              loginterval=1,

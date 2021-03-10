@@ -4,13 +4,12 @@ from ase.optimize.optimize import Dynamics
 
 class ContourExploration(Dynamics):
 
-
     def __init__(self, atoms,
                  maxstep=0.5,
                  parallel_drift=0.1,
                  energy_target=None,
                  angle_limit=None,
-                 force_parallel_step_scale=None,
+                 potentiostat_step_scale=None,
                  remove_translation=False,
                  use_frenet_serret=True,
                  initialization_step_scale=1e-2,
@@ -56,11 +55,11 @@ class ContourExploration(Dynamics):
             lower angle limits result in higher potentiostatic accuracy. Units
             of degrees. (default None)
 
-        force_parallel_step_scale: float or None
+        potentiostat_step_scale: float or None
             Scales the size of the potentiostat step. The potentiostat step is
             determined by linear extrapolation from the current potential energy
             to the target_energy with the current forces. A
-            force_parallel_step_scale > 1.0 overcorrects and < 1.0
+            potentiostat_step_scale > 1.0 overcorrects and < 1.0
             undercorrects. By default, a simple hueristic is used to selected
             the valued based on the parallel_drift. (default None)
 
@@ -73,11 +72,6 @@ class ContourExploration(Dynamics):
             Controls whether or not the Taylor expansion of the Frenet-Serret
             formulas for curved path extrapolation are used. Required for using
             angle_limit based step scalling. (default True)
-
-        initialize_old: boolean
-            When use_frenet_serret == True, a previous step is required for calculating the
-            curvature. When initialize_old=True a small step is made to
-            initialize the curvature. (default True)
 
         initialization_step_scale: float
             Controls the scale of the initial step as a multiple of maxstep.
@@ -124,26 +118,31 @@ class ContourExploration(Dynamics):
             file instead.
         """
 
-        if force_parallel_step_scale is None:
+        if potentiostat_step_scale is None:
             # a hureistic guess since most systems will overshoot when there is
             # drift
-            FPSS = 1.1 + 0.6 * parallel_drift
+            self.potentiostat_step_scale = 1.1 + 0.6 * parallel_drift
         else:
-            FPSS = force_parallel_step_scale
-
-        #self.atoms = atoms
+            self.potentiostat_step_scale = potentiostat_step_scale
+        
         self.rng = rng
         self.remove_translation = remove_translation
         self.use_frenet_serret = use_frenet_serret
         self.force_consistent = force_consistent
         self.use_tangent_curvature = use_tangent_curvature
         self.initialization_step_scale = initialization_step_scale
+        self.maxstep = maxstep
+        self.angle_limit = angle_limit
+        self.parallel_drift = parallel_drift
+        self.use_target_shift = use_target_shift
 
-        # these will be populated once self.step() is called, but could be set
-        # after instantiating with ContourExploration(..., initialize_old=False)
-        # to resume a previous contour trajectory
-
-        self.curvature =0
+        # These will be populated once self.step() is called, but could be set
+        # after instantiating with ce = ContourExploration(...) like so:
+        # ce.Nold = Nold
+        # ce.r_old = atoms_old.get_positions()
+        # ce.Told  = Told
+        # to resume a previous contour trajectory.
+        
         self.T = None
         self.Told = None
         self.N = None
@@ -172,25 +171,11 @@ class ContourExploration(Dynamics):
             # we have to pass dimension since atoms are not yet stored
             atoms.set_velocities(self.rand_vect(atoms))
 
-#        if initialize_old:
-#            self.maxstep = maxstep * initialization_step_scale
-#            self.parallel_drift = 0.0
-#            # should force_parallel_step_scale be 0.0 for a better initial
-#            # curvature? Or at least smaller than 1.0?
-#            # Doesn't seem to matter much
-#            self.force_parallel_step_scale = 1.0
-#            self.use_target_shift = False
-#            #self.atoms = atoms
-#            self.step()
-
-
-        self.maxstep = maxstep
-        # this is purely for logging, auto scaling will still occur
+        # these first two are purely for logging, 
+        # auto scaling will still occur
+        # and curvature will still be found if use_frenet_serret == True
         self.step_size = 0.0
-        self.angle_limit = angle_limit
-        self.parallel_drift = parallel_drift
-        self.force_parallel_step_scale = FPSS
-        self.use_target_shift = use_target_shift
+        self.curvature = 0
 
         # loginterval exists for the MolecularDynamics class but not for
         # the more general Dynamics class
@@ -249,9 +234,8 @@ class ContourExploration(Dynamics):
 
     def rand_vect(self,atoms=None):
         if atoms is None:
-            vect = self.rng.rand(len(self.atoms), 3) - 0.5
-        else:
-            vect = self.rng.rand(len(atoms), 3) - 0.5
+            atoms = self.atoms
+        vect = self.rng.rand(len(atoms), 3) - 0.5
         return vect
 
     def create_drift_unit_vector(self, N, T):
@@ -265,34 +249,46 @@ class ContourExploration(Dynamics):
         D = self.normalize(drift)
         return D
 
-    def _compute_update_without_fs(self, delta_s_perpendicular, scale = 1):
+    def compute_step_contributions(self, potentiostat_step_size):
+        if abs(potentiostat_step_size) < self.step_size:
+            delta_s_perpendicular = potentiostat_step_size
+            contour_step_size = np.sqrt(
+                self.step_size**2 - potentiostat_step_size**2)
+            delta_s_parallel = np.sqrt(
+                1 - self.parallel_drift**2) * contour_step_size
+            delta_s_drift = contour_step_size * self.parallel_drift
+            
+        else:
+            # in this case all priority goes to potentiostat terms
+            delta_s_parallel = 0.0
+            delta_s_drift = 0.0
+            delta_s_perpendicular = np.sign(potentiostat_step_size)*self.step_size
+            
+        return delta_s_perpendicular, delta_s_parallel, delta_s_drift
 
-        dr_perpendicular = self.N * delta_s_perpendicular
+    def _compute_update_without_fs(self, potentiostat_step_size, scale=1.0):
+
+        
         # Without the use of curvature there is no way to estimate the
         # limiting step size
         self.step_size = self.maxstep * scale
 
-        if abs(delta_s_perpendicular) < self.step_size:
-            contour_step_size = np.sqrt(
-                self.step_size**2 - delta_s_perpendicular**2)
+                
+        delta_s_perpendicular, delta_s_parallel, delta_s_drift = \
+                                    self.compute_step_contributions(
+                                                     potentiostat_step_size)
+        
+        dr_perpendicular = self.N * delta_s_perpendicular
+        dr_parallel = delta_s_parallel * self.T
+        #delta_s_drift = contour_step_size * self.parallel_drift
+        D = self.create_drift_unit_vector(self.N, self.T)
+        dr_drift = D * delta_s_drift
 
-            delta_s_parallel = np.sqrt(
-                1 - self.parallel_drift**2) * contour_step_size
-            dr_parallel = delta_s_parallel * self.T
-            delta_s_drift = contour_step_size * self.parallel_drift
-
-            D = self.create_drift_unit_vector(self.N, self.T)
-            dr_drift = D * delta_s_drift
-
-            dr = dr_parallel + dr_drift + dr_perpendicular
-        else:
-            delta_s_parallel = 0.0
-            delta_s_drift = 0.0
-            dr = self.step_size / \
-                abs(delta_s_perpendicular) * dr_perpendicular
+        dr = dr_parallel + dr_drift + dr_perpendicular
+        dr = self.step_size * self.normalize(dr)
         return dr
 
-    def _compute_update_with_fs(self, delta_s_perpendicular):
+    def _compute_update_with_fs(self, potentiostat_step_size):
         '''Uses the Frenet–Serret formulas to perform curvature based
         extrapolation'''
         # this should keep the dr clear of the constraints
@@ -307,6 +303,9 @@ class ContourExploration(Dynamics):
         dNds = delta_N / delta_s
         if self.use_tangent_curvature:
             curvature = np.linalg.norm(dTds)
+            # on a perfect trajectory, the normal can be computed this way,
+            # But the normal should always be tied to forces
+            # N = dTds / curvature
         else:
             # normals are better since they are fixed to the reality of
             # forces. I see smaller forces and energy errors in bulk systems
@@ -314,54 +313,36 @@ class ContourExploration(Dynamics):
             curvature = np.linalg.norm(dNds)
         self.curvature = curvature
 
-        # on a perfect trajectory, the normal can be computed this way,
-        # But the normal should always be tied to forces
-        # N = dTds / curvature
-
         if self.angle_limit is not None:
             phi = np.pi / 180 * self.angle_limit
             self.step_size = np.sqrt(2 - 2 * np.cos(phi)) / curvature
             self.step_size = min(self.step_size, self.maxstep)
 
         # now we can compute a safe step
-        if abs(delta_s_perpendicular) < self.step_size:
-            contour_step_size = np.sqrt(
-                self.step_size**2 - delta_s_perpendicular**2)
-            delta_s_parallel = np.sqrt(
-                1 - self.parallel_drift**2) * contour_step_size
-            delta_s_drift = contour_step_size * self.parallel_drift
+        delta_s_perpendicular, delta_s_parallel, delta_s_drift = \
+                                    self.compute_step_contributions(
+                                                     potentiostat_step_size)
 
-            N_guess = self.N + dNds * delta_s_parallel
-            T_guess = self.T + dTds * delta_s_parallel
-            # the extrapolation is good at keeping N_guess and T_guess
-            # orthogonal but not normalized:
-            N_guess = self.normalize(N_guess)
-            T_guess = self.normalize(T_guess)
+        N_guess = self.N + dNds * delta_s_parallel
+        T_guess = self.T + dTds * delta_s_parallel
+        # the extrapolation is good at keeping N_guess and T_guess
+        # orthogonal but not normalized:
+        N_guess = self.normalize(N_guess)
+        T_guess = self.normalize(T_guess)
 
-            dr_perpendicular = delta_s_perpendicular * (N_guess)
+        dr_perpendicular = delta_s_perpendicular * (N_guess)
 
-            dr_parallel = delta_s_parallel * self.T * (1 - (delta_s_parallel * curvature)**2 / 6.0) \
-                + self.N * (curvature / 2.0) * delta_s_parallel**2
+        dr_parallel = delta_s_parallel * self.T * (1 - (delta_s_parallel * curvature)**2 / 6.0) \
+            + self.N * (curvature / 2.0) * delta_s_parallel**2
 
-            D = self.create_drift_unit_vector(N_guess, T_guess)
-            dr_drift = D * delta_s_drift
+        D = self.create_drift_unit_vector(N_guess, T_guess)
+        dr_drift = D * delta_s_drift
 
-            # combine the components
-            dr = dr_perpendicular + dr_parallel + dr_drift
-            dr = self.step_size * self.normalize(dr)
-            # because we guess our orthonormalization directions,
-            # we renormalize to ensure a correct step size
-
-        else:
-            # in this case all priority goes to potentiostat terms
-            delta_s_parallel = 0.0
-            delta_s_drift = 0.0
-            # if dr_perpendicular was used here alone, the step size could
-            # be larger than the step_size which is adaptive to the
-            # curvature the in this case.
-            dr = self.step_size / \
-                abs(delta_s_perpendicular) * dr_perpendicular
-
+        # combine the components
+        dr = dr_perpendicular + dr_parallel + dr_drift
+        dr = self.step_size * self.normalize(dr)
+        # because we guess our orthonormalization directions,
+        # we renormalize to ensure a correct step size
         return dr
 
     def step(self, f=None):
@@ -395,8 +376,8 @@ class ContourExploration(Dynamics):
         f_norm = np.linalg.norm(f)
         self.N = self.normalize(f)
         # can be positive or negative
-        delta_s_perpendicular = (deltaU / f_norm) * \
-            self.force_parallel_step_scale
+        potentiostat_step_size = (deltaU / f_norm) * \
+            self.potentiostat_step_scale
 
         # remove velocity  projection on forces
         v_parallel = self.vector_rejection(velocities, self.N)
@@ -404,14 +385,14 @@ class ContourExploration(Dynamics):
 
         if self.use_frenet_serret:
             if self.Nold is not None and self.Told is not None:
-                dr = self._compute_update_with_fs(delta_s_perpendicular)
+                dr = self._compute_update_with_fs(potentiostat_step_size)
             else:
                 # we must have the old positions and vectors for an FS step
                 # if we don't, we can only do a small step
-                dr = self._compute_update_without_fs(delta_s_perpendicular,
+                dr = self._compute_update_without_fs(potentiostat_step_size,
                                         scale = self.initialization_step_scale)
         else: # of course we can run less accuratly without FS. 
-            dr = self._compute_update_without_fs(delta_s_perpendicular)
+            dr = self._compute_update_without_fs(potentiostat_step_size)
 
 
         # now that dr is done, we check if there is translation
