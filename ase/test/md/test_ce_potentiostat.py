@@ -9,6 +9,8 @@ from ase.calculators.emt import EMT
 from ase import Atoms
 
 
+from test_ce_kappa import Al_atom_pair
+
 def test_potentiostat():
     '''This is very realistic and stringent test of the potentiostatic accuracy
      with 32 atoms at ~235 meV/atom above the ground state.'''
@@ -59,10 +61,11 @@ def test_potentiostat_no_fs():
     '''This test ensures that the potentiostat is working even when curvature
     extrapolation (use_fs) is turned off.'''
     name = 'test_potentiostat_no_fs'
-    radius = 2.6
-    atoms = Atoms('AlAl', positions=[[-radius / 2, 0, 0], [radius / 2, 0, 0]])
-    atoms.center(vacuum=10)
-    atoms.calc = EMT()
+#    radius = 2.5
+#    atoms = Atoms('AlAl', positions=[[-radius / 2, 0, 0], [radius / 2, 0, 0]])
+#    atoms.center(vacuum=10)
+#    atoms.calc = EMT()
+    atoms = Al_atom_pair()
 
     atoms.set_momenta([[0, -1, 0], [0, 1, 0]])
 
