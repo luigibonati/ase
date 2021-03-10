@@ -91,16 +91,16 @@ def setup_combos():
     # In other words, fulfil the following constraint:
     # 1.0 * atoms.get_distance(2, 1) + -1.0 * atoms.get_distance(2, 3) = const.
     bondcombo_def = [[2, 1, 1.0], [2, 3, -1.0]]
-    target_bondcombo = FixInternals.get_combo(atoms, bondcombo_def)
+    target_bondcombo = FixInternals.get_value(atoms, bondcombo_def)
 
     # Fix linear combination of two angles
     # 1. * atoms.get_angle(7, 0, 8) + 1. * atoms.get_angle(7, 0, 6) = const.
     anglecombo_def = [[7, 0, 8, 1.], [7, 0, 6, 1]]
-    target_anglecombo = FixInternals.get_combo(atoms, anglecombo_def)
+    target_anglecombo = FixInternals.get_value(atoms, anglecombo_def)
 
     # Fix linear combination of two dihedrals
     dihedralcombo_def = [[3, 2, 1, 4, 1.0], [2, 1, 0, 7, 1.0]]
-    target_dihedralcombo = FixInternals.get_combo(atoms, dihedralcombo_def)
+    target_dihedralcombo = FixInternals.get_value(atoms, dihedralcombo_def)
 
     # Initialize constraint; 'None' value should be converted to current value
     constr = FixInternals(bondcombos=[(target_bondcombo, bondcombo_def)],
@@ -117,9 +117,9 @@ def test_combos():
      target_anglecombo, dihedralcombo_def,
      target_dihedralcombo) = setup_combos()
 
-    ref_bondcombo = FixInternals.get_combo(atoms, bondcombo_def)
-    ref_anglecombo = FixInternals.get_combo(atoms, anglecombo_def)
-    ref_dihedralcombo = FixInternals.get_combo(atoms, dihedralcombo_def)
+    ref_bondcombo = FixInternals.get_value(atoms, bondcombo_def)
+    ref_anglecombo = FixInternals.get_value(atoms, anglecombo_def)
+    ref_dihedralcombo = FixInternals.get_value(atoms, dihedralcombo_def)
 
     atoms.calc = EMT()
     atoms.set_constraint(constr)
@@ -136,9 +136,9 @@ def test_combos():
     opt = BFGS(atoms)
     opt.run(fmax=0.01)
 
-    new_bondcombo = FixInternals.get_combo(atoms, bondcombo_def)
-    new_anglecombo = FixInternals.get_combo(atoms, anglecombo_def)
-    new_dihedralcombo = FixInternals.get_combo(atoms, dihedralcombo_def)
+    new_bondcombo = FixInternals.get_value(atoms, bondcombo_def)
+    new_anglecombo = FixInternals.get_value(atoms, anglecombo_def)
+    new_dihedralcombo = FixInternals.get_value(atoms, dihedralcombo_def)
 
     err_bondcombo = new_bondcombo - ref_bondcombo
     err_anglecombo = new_anglecombo - ref_anglecombo

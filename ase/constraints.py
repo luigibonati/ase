@@ -842,7 +842,7 @@ class FixInternals(FixConstraint):
             cell = atoms.cell
             pbc = atoms.pbc
         self.constraints = []
-        for data, make_constr in [(self.bonds, self.FixBondLengthAlt),
+        for data, ConstrClass in [(self.bonds, self.FixBondLengthAlt),
                                   (self.angles, self.FixAngle),
                                   (self.dihedrals, self.FixDihedral),
                                   (self.bondcombos, self.FixBondCombo),
@@ -850,20 +850,13 @@ class FixInternals(FixConstraint):
                                   (self.dihedralcombos, self.FixDihedralCombo)]:
             for datum in data:
                 # Set targetvalue 'tv' to current value if initialized with None
-                if make_constr is self.FixBondLengthAlt:
-                    tv = datum[0] or atoms.get_distance(*datum[1], mic=self.mic)
-                elif make_constr is self.FixAngle:
-                    tv = datum[0] or atoms.get_angle(*datum[1], mic=self.mic)
-                elif make_constr is self.FixDihedral:
-                    tv = datum[0] or atoms.get_dihedral(*datum[1], mic=self.mic)
-                else:
-                    tv = datum[0] or self.get_combo(atoms, datum[1], self.mic)
-                constr = make_constr(tv, datum[1], masses, cell, pbc)
+                tv = datum[0] or ConstrClass.get_value(atoms, datum[1], self.mic)
+                constr = ConstrClass(tv, datum[1], masses, cell, pbc)
                 self.constraints.append(constr)
         self.initialized = True
 
     @staticmethod
-    def get_combo(atoms, combo, mic=False):
+    def get_value(atoms, indices, mic=False):
         """Convenience function to return the value of the combo coordinate
         defined as bondcombo, anglecombo or dihedralcombo (linear combination of
         bond lengths, angles or dihedrals) for the given Atoms object 'atoms'.
@@ -871,8 +864,8 @@ class FixInternals(FixConstraint):
         Example: Get the current value of the linear combination of two bond
         lengths defined as `combo = [[0, 1, 1.0], [2, 3, -1.0]]`."""
         get_value = [atoms.get_distance, atoms.get_angle, atoms.get_dihedral]
-        i = len(combo[0]) - 1
-        return sum(dfn[i] * get_value[i-2](*dfn[:i], mic=mic) for dfn in combo)
+        i = len(indices[0]) - 1
+        return sum(dfn[i] * get_value[i-2](*dfn[:i], mic=mic) for dfn in indices)
 
     def shuffle_definitions(self, shuffle_dic, internal_type):
         dfns = []  # definitions
@@ -1036,6 +1029,10 @@ class FixInternals(FixConstraint):
             self.cell = cell
             self.pbc = pbc
 
+        @staticmethod  # is overwritten by the Classes for primitive coordinates
+        def get_value(atoms, indices, mic):
+            return FixInternals.get_value(atoms, indices, mic=mic)
+
         def finalize_jacobian(self, pos, n_internals, n, derivs):
             """Populate jacobian with derivatives for `n_internals` defined
             internals. n = 2 (bonds), 3 (angles), 4 (dihedrals)."""
@@ -1088,6 +1085,10 @@ class FixInternals(FixConstraint):
             indices = [list(indices) + [1.]]  # bond definition with coef 1.
             super().__init__(targetvalue, indices, masses, cell=cell, pbc=pbc)
 
+        @staticmethod
+        def get_value(atoms, indices, mic):
+            return atoms.get_distance(*indices, mic=mic)
+
         def __repr__(self):
             return 'FixBondLengthAlt({}, {})'.format(self.targetvalue,
                                                      *self.indices)
@@ -1131,6 +1132,10 @@ class FixInternals(FixConstraint):
             """Fix atom movement to construct a constant angle."""
             indices = [list(indices) + [1.]]  # angle definition with coef 1.
             super().__init__(targetvalue, indices, masses, cell=cell, pbc=pbc)
+
+        @staticmethod
+        def get_value(atoms, indices, mic):
+            return atoms.get_angle(*indices, mic=mic)
 
         def __repr__(self):
             return 'FixAngle({}, {})'.format(self.targetvalue, *self.indices)
@@ -1183,6 +1188,10 @@ class FixInternals(FixConstraint):
             # apply minimum dihedral difference 'convention': (diff <= 180)
             self.sigma = (value - self.targetvalue + 180) % 360 - 180
             self.finalize_positions(newpos)
+
+        @staticmethod
+        def get_value(atoms, indices, mic):
+            return atoms.get_dihedral(*indices, mic=mic)
 
         def __repr__(self):
             return 'FixDihedral({}, {})'.format(self.targetvalue, *self.indices)
