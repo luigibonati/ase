@@ -122,9 +122,10 @@ class ClimbFixInternals(BFGS):
         raise ValueError('Given `climb_coordinate` not found on Atoms object.')
 
     def read(self):
-        self.H, self.r0, self.f0, self.maxstep, self.targetvalue = self.load()
+        (self.H, self.pos0, self.forces0, self.maxstep,
+         self.targetvalue) = self.load()
 
-    def step(self, f=None):
+    def step(self, forces=None):
         atoms = self.atoms
 
         # setup optimizer 'B'
@@ -142,13 +143,13 @@ class ClimbFixInternals(BFGS):
             self.log(log_nstep_0=True)
 
         # climb with optimizer 'A'
-        f = self.get_projected_forces()  # get directions for climbing
-        r = atoms.get_positions()
-        dr, steplengths = self.prepare_step(r, f)
-        dr = self.determine_step(dr, steplengths)
+        proj_forces = self.get_projected_forces()  # get directions for climbing
+        pos = atoms.get_positions()
+        dpos, steplengths = self.prepare_step(pos, proj_forces)
+        dpos = self.determine_step(dpos, steplengths)
 
         # adjust constrained targetvalue of constraint and update positions
-        self.constr2climb.adjust_positions(r, r + dr)  # update constr.sigma
+        self.constr2climb.adjust_positions(pos, pos + dpos)  # update sigma
         self.targetvalue += self.constr2climb.sigma  # climb the constraint
         self.constr2climb.targetvalue = self.targetvalue  # adjust positions...
         atoms.set_positions(atoms.get_positions())        # ...to targetvalue
@@ -159,7 +160,8 @@ class ClimbFixInternals(BFGS):
         if self.converged() and fmax > self.optB_fmax:
             optB.run(self.optB_fmax)  # final optimization with desired fmax
 
-        self.dump((self.H, self.r0, self.f0, self.maxstep, self.targetvalue))
+        self.dump((self.H, self.pos0, self.forces0, self.maxstep,
+                   self.targetvalue))
 
     def get_scaled_fmax(self):
         """Return the adaptive 'fmax' based on the estimated distance to the
@@ -169,9 +171,9 @@ class ClimbFixInternals(BFGS):
     def get_projected_forces(self):
         """Return the projected forces along the constrained coordinate in
         uphill direction (negative sign)."""
-        f = self.constr2climb.projected_force * self.constr2climb.jacobian
-        f = -1 * f.reshape(self.atoms.positions.shape)
-        return f
+        forces = self.constr2climb.projected_force * self.constr2climb.jacobian
+        forces = -forces.reshape(self.atoms.positions.shape)
+        return forces
 
     def get_total_forces(self, forces=None):
         forces = forces or self.atoms.get_forces()
