@@ -125,7 +125,7 @@ class ClimbFixInternals(BFGS):
         (self.H, self.pos0, self.forces0, self.maxstep,
          self.targetvalue) = self.load()
 
-    def step(self, forces=None):
+    def step(self):
         atoms = self.atoms
 
         # setup optimizer 'B'
@@ -175,18 +175,15 @@ class ClimbFixInternals(BFGS):
         forces = -forces.reshape(self.atoms.positions.shape)
         return forces
 
-    def get_total_forces(self, forces=None):
-        forces = forces or self.atoms.get_forces()
-        forces += self.get_projected_forces()
-        return forces
+    def get_total_forces(self):
+        """Return forces obeying all constraints plus projected forces."""
+        return self.atoms.get_forces() + self.get_projected_forces()
 
-    def converged(self, forces=None):
+    def converged(self):
         """Did the optimization converge based on the projected forces?"""
-        forces = self.get_projected_forces()
-        return BFGS.converged(self, forces=forces)
+        return BFGS.converged(self, forces=self.get_projected_forces())
 
-    def log(self, forces=None, log_nstep_0=False):
+    def log(self, log_nstep_0=False):
         if self.nsteps == 0 and not log_nstep_0:
-            return True  # the case (nstep == 0) is logged during self.step()
-        forces = self.get_total_forces(forces)
-        BFGS.log(self, forces=forces)
+            return  # this case is logged during self.step()
+        BFGS.log(self, forces=self.get_total_forces())
