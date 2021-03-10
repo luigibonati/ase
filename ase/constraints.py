@@ -856,7 +856,7 @@ class FixInternals(FixConstraint):
         self.initialized = True
 
     @staticmethod
-    def get_value(atoms, indices, mic=False):
+    def get_combo(atoms, indices, mic=False):
         """Convenience function to return the value of the combo coordinate
         defined as bondcombo, anglecombo or dihedralcombo (linear combination of
         bond lengths, angles or dihedrals) for the given Atoms object 'atoms'.
@@ -1031,7 +1031,7 @@ class FixInternals(FixConstraint):
 
         @staticmethod  # is overwritten by the Classes for primitive coordinates
         def get_value(atoms, indices, mic):
-            return FixInternals.get_value(atoms, indices, mic=mic)
+            return FixInternals.get_combo(atoms, indices, mic=mic)
 
         def finalize_jacobian(self, pos, n_internals, n, derivs):
             """Populate jacobian with derivatives for `n_internals` defined
