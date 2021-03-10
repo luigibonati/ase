@@ -9,17 +9,16 @@ from ase.calculators.emt import EMT
 from ase import io
 
 
+
+
+from test_ce_potentiostat  import Al_block, bulk_Al_settings 
+
+
 def test_logging():
 
-    size = 2
     seed = 19460926
 
-    atoms = FaceCenteredCubic(directions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
-                              symbol='Al',
-                              size=(size, size, size),
-                              pbc=True)
-
-    atoms.calc = EMT()
+    atoms=Al_block()
     atoms.rattle(stdev=0.18, seed=seed)
 
     rng = np.random.RandomState(seed)
@@ -32,18 +31,11 @@ def test_logging():
     log_name = name + '.log'
 
     dyn = ContourExploration(atoms,
-                             maxstep=1.0,
-                             parallel_drift=0.05,
-                             remove_translation=True,
-                             potentiostat_step_scale=None,
-                             use_frenet_serret=True,
-                             angle_limit=20,
-                             loginterval=1,
-                             #initialize_old=True,
-                             rng=rng,
-                             trajectory=traj_name,
-                             logfile=log_name,
-                             )
+                            **bulk_Al_settings,
+                            rng=rng,
+                            trajectory=traj_name,
+                            logfile=log_name,
+                            )
 
     energy_target = initial_energy
     dev = (atoms.get_potential_energy() - energy_target) / len(atoms)
