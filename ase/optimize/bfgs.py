@@ -72,10 +72,10 @@ class BFGS(Optimizer):
     def read(self):
         self.H, self.pos0, self.forces0, self.maxstep = self.load()
 
-    def step(self, forces=None):
+    def step(self):
         atoms = self.atoms
 
-        forces = forces or atoms.get_forces()
+        forces = atoms.get_forces()
 
         pos = atoms.get_positions()
         dpos, steplengths = self.prepare_step(pos, forces)
