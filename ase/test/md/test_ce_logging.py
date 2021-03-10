@@ -36,10 +36,10 @@ def test_logging():
                              parallel_drift=0.05,
                              remove_translation=True,
                              force_parallel_step_scale=None,
-                             use_fs=True,
+                             use_frenet_serret=True,
                              angle_limit=20,
                              loginterval=1,
-                             initialize_old=True,
+                             #initialize_old=True,
                              rng=rng,
                              trajectory=traj_name,
                              logfile=log_name,
@@ -48,7 +48,7 @@ def test_logging():
     energy_target = initial_energy
     dev = (atoms.get_potential_energy() - energy_target) / len(atoms)
     energy_targets = [energy_target]
-    kappas = [dyn.kappa]
+    curvatures = [dyn.curvature]
     stepsizes = [dyn.step_size]
     deviation_per_atom = [dev]
 
@@ -57,7 +57,7 @@ def test_logging():
     de = 0.001 * len(atoms)
 
     # these print statements, mirror the log file.
-    # print(energy_target, dyn.kappa, dyn.step_size, dev)
+    # print(energy_target, dyn.curvature, dyn.step_size, dev)
 
     for i in range(0, 5):
         energy_target = initial_energy + de * i
@@ -65,10 +65,10 @@ def test_logging():
         dyn.energy_target = energy_target
         dyn.run(1)
         dev = (atoms.get_potential_energy() - energy_target) / len(atoms)
-        # print(energy_target, dyn.kappa, dyn.step_size, dev)
+        # print(energy_target, dyn.curvature, dyn.step_size, dev)
 
         energy_targets.append(energy_target)
-        kappas.append(dyn.kappa)
+        curvatures.append(dyn.curvature)
         stepsizes.append(dyn.step_size)
         deviation_per_atom.append(dev)
 
@@ -83,17 +83,19 @@ def test_logging():
         lines = fd.readlines()[1:]
         for i, (im, line) in enumerate(zip(traj, lines)):
 
-            log_energy_target = float(line.split()[1])
+            lineparts = [float(part) for part in line.split()]
+            
+            log_energy_target = lineparts[1]
             assert 0 == pytest.approx(log_energy_target - energy_targets[i], abs=1e-5)
 
-            log_energy = float(line.split()[2])
+            log_energy = lineparts[2]
             assert 0 == pytest.approx(log_energy - im.get_potential_energy(), abs=1e-5)
 
-            log_kappa = float(line.split()[3])
-            assert 0 == pytest.approx(log_kappa - kappas[i], abs=1e-5)
+            log_curvature = lineparts[3]
+            assert 0 == pytest.approx(log_curvature - curvatures[i], abs=1e-5)
 
-            log_step_size = float(line.split()[4])
+            log_step_size = lineparts[4]
             assert 0 == pytest.approx(log_step_size - stepsizes[i], abs=1e-5)
 
-            log_dev = float(line.split()[5])
+            log_dev = lineparts[5]
             assert 0 == pytest.approx(log_dev - deviation_per_atom[i], abs=1e-5)

@@ -38,7 +38,7 @@ def test_potentiostat():
                              remove_translation=True,
                              force_parallel_step_scale=None,
                              energy_target=initial_energy,
-                             use_fs=True,
+                             use_frenet_serret=True,
                              angle_limit=20,
                              rng=rng,
                              trajectory=name + '.traj',
@@ -73,7 +73,7 @@ def test_potentiostat_no_fs():
                              remove_translation=False,
                              energy_target=initial_energy,
                              force_parallel_step_scale=None,
-                             use_fs=False,
+                             use_frenet_serret=False,
                              trajectory=name + '.traj',
                              logfile=name + '.log',
                              )

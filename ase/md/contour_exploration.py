@@ -3,6 +3,8 @@ from ase.optimize.optimize import Dynamics
 
 
 class ContourExploration(Dynamics):
+
+
     def __init__(self, atoms,
                  maxstep=0.5,
                  parallel_drift=0.1,
@@ -10,8 +12,8 @@ class ContourExploration(Dynamics):
                  angle_limit=None,
                  force_parallel_step_scale=None,
                  remove_translation=False,
-                 use_fs=True,
-                 initialize_old=True, initialization_step_scale=1e-2,
+                 use_frenet_serret=True,
+                 initialization_step_scale=1e-2,
                  use_target_shift=True, target_shift_previous_steps=10,
                  use_tangent_curvature=False,
                  rng=np.random,
@@ -67,13 +69,13 @@ class ContourExploration(Dynamics):
             potentiostatic accuracy slightly for bulk systems but should not be
             used with constraints. (default False)
 
-        use_fs: Bool
+        use_frenet_serret: Bool
             Controls whether or not the Taylor expansion of the Frenet-Serret
             formulas for curved path extrapolation are used. Required for using
             angle_limit based step scalling. (default True)
 
         initialize_old: boolean
-            When use_fs == True, a previous step is required for calculating the
+            When use_frenet_serret == True, a previous step is required for calculating the
             curvature. When initialize_old=True a small step is made to
             initialize the curvature. (default True)
 
@@ -129,17 +131,19 @@ class ContourExploration(Dynamics):
         else:
             FPSS = force_parallel_step_scale
 
-        self.atoms = atoms
+        #self.atoms = atoms
         self.rng = rng
         self.remove_translation = remove_translation
-        self.use_fs = use_fs
+        self.use_frenet_serret = use_frenet_serret
         self.force_consistent = force_consistent
-        self.kappa = 0.0  # initializing a value so logging can work.
         self.use_tangent_curvature = use_tangent_curvature
+        self.initialization_step_scale = initialization_step_scale
 
         # these will be populated once self.step() is called, but could be set
         # after instantiating with ContourExploration(..., initialize_old=False)
         # to resume a previous contour trajectory
+
+        self.curvature =0
         self.T = None
         self.Told = None
         self.N = None
@@ -166,20 +170,23 @@ class ContourExploration(Dynamics):
         velocities = atoms.get_velocities()
         if np.linalg.norm(velocities) < 1e-6:
             # we have to pass dimension since atoms are not yet stored
-            atoms.set_velocities(self.rand_vect())
+            atoms.set_velocities(self.rand_vect(atoms))
 
-        if initialize_old:
-            self.maxstep = maxstep * initialization_step_scale
-            self.parallel_drift = 0.0
-            # should force_parallel_step_scale be 0.0 for a better initial
-            # curvature? Or at least smaller than 1.0?
-            # Doesn't seem to matter much
-            self.force_parallel_step_scale = 1.0
-            self.use_target_shift = False
-            #self.atoms = atoms
-            self.step()
+#        if initialize_old:
+#            self.maxstep = maxstep * initialization_step_scale
+#            self.parallel_drift = 0.0
+#            # should force_parallel_step_scale be 0.0 for a better initial
+#            # curvature? Or at least smaller than 1.0?
+#            # Doesn't seem to matter much
+#            self.force_parallel_step_scale = 1.0
+#            self.use_target_shift = False
+#            #self.atoms = atoms
+#            self.step()
+
 
         self.maxstep = maxstep
+        # this is purely for logging, auto scaling will still occur
+        self.step_size = 0.0
         self.angle_limit = angle_limit
         self.parallel_drift = parallel_drift
         self.force_parallel_step_scale = FPSS
@@ -223,7 +230,7 @@ class ContourExploration(Dynamics):
                 self.nsteps,
                 self.energy_target,
                 e,
-                self.kappa,
+                self.curvature,
                 self.step_size,
                 dev_per_atom)
             msg = "%6d %15.6f %15.6f %12.6f %12.6f %24.9f\n" % args
@@ -240,8 +247,11 @@ class ContourExploration(Dynamics):
         '''Makes a unit vector out of a vector'''
         return a / np.linalg.norm(a)
 
-    def rand_vect(self):
-        vect = self.rng.rand(len(self.atoms), 3) - 0.5
+    def rand_vect(self,atoms=None):
+        if atoms is None:
+            vect = self.rng.rand(len(self.atoms), 3) - 0.5
+        else:
+            vect = self.rng.rand(len(atoms), 3) - 0.5
         return vect
 
     def create_drift_unit_vector(self, N, T):
@@ -255,12 +265,12 @@ class ContourExploration(Dynamics):
         D = self.normalize(drift)
         return D
 
-    def _compute_update_without_fs(self, delta_s_perpendicular):
+    def _compute_update_without_fs(self, delta_s_perpendicular, scale = 1):
 
         dr_perpendicular = self.N * delta_s_perpendicular
         # Without the use of curvature there is no way to estimate the
         # limiting step size
-        self.step_size = self.maxstep
+        self.step_size = self.maxstep * scale
 
         if abs(delta_s_perpendicular) < self.step_size:
             contour_step_size = np.sqrt(
@@ -296,21 +306,21 @@ class ContourExploration(Dynamics):
         dTds = delta_T / delta_s
         dNds = delta_N / delta_s
         if self.use_tangent_curvature:
-            kappa = np.linalg.norm(dTds)
+            curvature = np.linalg.norm(dTds)
         else:
             # normals are better since they are fixed to the reality of
             # forces. I see smaller forces and energy errors in bulk systems
-            # using the normals for kappa
-            kappa = np.linalg.norm(dNds)
-        self.kappa = kappa
+            # using the normals for curvature
+            curvature = np.linalg.norm(dNds)
+        self.curvature = curvature
 
         # on a perfect trajectory, the normal can be computed this way,
         # But the normal should always be tied to forces
-        # N = dTds / kappa
+        # N = dTds / curvature
 
         if self.angle_limit is not None:
             phi = np.pi / 180 * self.angle_limit
-            self.step_size = np.sqrt(2 - 2 * np.cos(phi)) / kappa
+            self.step_size = np.sqrt(2 - 2 * np.cos(phi)) / curvature
             self.step_size = min(self.step_size, self.maxstep)
 
         # now we can compute a safe step
@@ -330,8 +340,8 @@ class ContourExploration(Dynamics):
 
             dr_perpendicular = delta_s_perpendicular * (N_guess)
 
-            dr_parallel = delta_s_parallel * self.T * (1 - (delta_s_parallel * kappa)**2 / 6.0) \
-                + self.N * (kappa / 2.0) * delta_s_parallel**2
+            dr_parallel = delta_s_parallel * self.T * (1 - (delta_s_parallel * curvature)**2 / 6.0) \
+                + self.N * (curvature / 2.0) * delta_s_parallel**2
 
             D = self.create_drift_unit_vector(N_guess, T_guess)
             dr_drift = D * delta_s_drift
@@ -392,10 +402,17 @@ class ContourExploration(Dynamics):
         v_parallel = self.vector_rejection(velocities, self.N)
         self.T = self.normalize(v_parallel)
 
-        if self.Nold is None or not self.use_fs:
+        if self.use_frenet_serret:
+            if self.Nold is not None and self.Told is not None:
+                dr = self._compute_update_with_fs(delta_s_perpendicular)
+            else:
+                # we must have the old positions and vectors for an FS step
+                # if we don't, we can only do a small step
+                dr = self._compute_update_without_fs(delta_s_perpendicular,
+                                        scale = self.initialization_step_scale)
+        else: # of course we can run less accuratly without FS. 
             dr = self._compute_update_without_fs(delta_s_perpendicular)
-        else:
-            dr = self._compute_update_with_fs(delta_s_perpendicular)
+
 
         # now that dr is done, we check if there is translation
         if self.remove_translation:

@@ -17,10 +17,10 @@ def Al_atom_pair(pair_distance):
     return atoms
 
 
-def test_kappa1():
+def test_curvature1():
     '''This basic test has an atom spinning counter-clockwise around a fixed
-    atom. The radius (1/kappa) must therefore be very close the pair_distance.'''
-    name = 'test_kappa1'
+    atom. The radius (1/curvature) must therefore be very close the pair_distance.'''
+    name = 'test_curvature1'
 
     radius = pair_distance = 2.6
     atoms = Al_atom_pair(pair_distance)
@@ -36,18 +36,18 @@ def test_kappa1():
                              logfile=name + '.log',
                              )
 
-    print("Target Radius (1/kappa) {: .6f} Ang".format(radius))
+    print("Target Radius (1/curvature) {: .6f} Ang".format(radius))
     for i in range(5):
         dyn.run(30)
-        print('Radius (1/kappa) {: .6f} Ang'.format(1 / dyn.kappa))
-        assert 0 == pytest.approx(radius - 1 / dyn.kappa, abs=2e-3)
+        print('Radius (1/curvature) {: .6f} Ang'.format(1 / dyn.curvature))
+        assert 0 == pytest.approx(radius - 1 / dyn.curvature, abs=2e-3)
 
 
-def test_kappa2():
+def test_curvature2():
     '''This test has two atoms spinning counter-clockwise around eachother. the
-    The radius (1/kappa) is less obviously pair_distance*sqrt(2)/2. This is the
+    The radius (1/curvature) is less obviously pair_distance*sqrt(2)/2. This is the
     simplest multi-body analytic curvature test.'''
-    name = 'test_kappa2'
+    name = 'test_curvature2'
 
     pair_distance = 2.5
     radius = pair_distance * np.sqrt(2) / 2
@@ -63,8 +63,8 @@ def test_kappa2():
                              logfile=name + '.log',
                              )
 
-    print("Target Radius (1/kappa) {: .6f} Ang".format(radius))
+    print("Target Radius (1/curvature) {: .6f} Ang".format(radius))
     for i in range(5):
         dyn.run(30)
-        print('Radius (1/kappa) {: .6f} Ang'.format(1 / dyn.kappa))
-        assert 0 == pytest.approx(radius - 1 / dyn.kappa, abs=2e-3)
+        print('Radius (1/curvature) {: .6f} Ang'.format(1 / dyn.curvature))
+        assert 0 == pytest.approx(radius - 1 / dyn.curvature, abs=2e-3)
