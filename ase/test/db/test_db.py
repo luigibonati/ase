@@ -19,9 +19,7 @@ dbnames = [
     'db',
     'postgresql',
     'mysql',
-    'mariadb'
-]
-
+    'mariadb']
 
 
 @pytest.mark.slow
