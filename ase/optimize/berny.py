@@ -64,12 +64,6 @@ class Berny(Optimizer):
             steprms=0.,
             dihedral=dihedral,
         )
-        # override the default logger to alower per-instance logfile
-        log = logging.getLogger('{}.{}'.format(__name__, id(self)))
-        log.addHandler(logging.StreamHandler(self.logfile))
-        self._berny._log = BernyAdapter(log, self._berny._log_extra)
-        # Berny yields the initial geometry the first time because it is
-        # typically used as a generator, see berny.optimize()
         next(self._berny)
 
     def step(self, f=None):
