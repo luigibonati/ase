@@ -142,7 +142,7 @@ doc:
     - sphinx-build -W . build
   artifacts:
     paths:
-      - build/
+      - $CI_PROJECT_DIR/doc/build/
     expire_in: 1 week
 
 distribution-package:
