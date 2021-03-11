@@ -9,11 +9,24 @@ Git master branch
 
 :git:`master <>`.
 
+Miscellaneous:
+
+* 3D Brillouin zone plots are now guaranteed isometric with Matplotlib 3.3+.
+
 Calculators:
 
 * :class:`ase.calculators.qmmm.ForceQMMM` was updated to enable correct
   handling of various periodic boundary conditions.
   Functions to import and export files with QM/MM mapping were also added.
+
+* It is now possible to use :class:`~ase.calculators.abinit.Abinit`
+  together with :class:`~ase.calculators.socketio.SocketIOCalculator`.
+  Requires Abinit 9.4+.
+
+Algorithms:
+
+* :meth:`phonons.get_dos` now returns a DOS object based on the new
+  framework in :mod:`ase.spectrum`.
 
 I/O:
 
