@@ -320,6 +320,7 @@ def arbitrarily_seed_rng(request):
     state = np.random.get_state()
     np.random.seed(seed)
     yield
+    print(f'Global seed for "{hashable_string}" was: {seed}')
     np.random.set_state(state)
 
 @pytest.fixture(scope='session')
