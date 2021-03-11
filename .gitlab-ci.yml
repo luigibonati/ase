@@ -140,6 +140,10 @@ doc:
     - cd $CI_PROJECT_DIR/doc
     - python -m ase.utils.sphinx run  # test scripts
     - sphinx-build -W . build
+  artifacts:
+    paths:
+      - build/html
+    expire_in: 1 week
 
 distribution-package:
   image: registry.gitlab.com/ase/ase:ase-main
