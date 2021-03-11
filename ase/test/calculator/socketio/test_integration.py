@@ -29,10 +29,11 @@ calc = pytest.mark.calculator
 @calc('espresso', ecutwfc=200 / Ry)
 @calc('abinit', ecut=200, **abinit_boilerplate)
 def test_socketio_espresso(factory):
+    factory.require_version('9.4')
     atoms = bulk('Si')
 
     name = factory.name
-    exe = factory.factory.executable  # XXX ugly
+    exe = factory.factory.executable
     unixsocket = f'ase_test_socketio_{name}'
 
     espresso = factory.calc(
