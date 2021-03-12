@@ -5,7 +5,7 @@ from copy import deepcopy
 
 import numpy as np
 from ase import Atoms
-from ase.calculators.calculator import InputError
+from ase.calculators.calculator import InputError, Calculator
 from ase.calculators.gaussian import Gaussian
 from ase.calculators.singlepoint import SinglePointCalculator
 from ase.data import atomic_masses_iupac2016, chemical_symbols
@@ -701,7 +701,11 @@ class GaussianConfiguration:
         return self.parameters
 
     def get_calculator(self):
-        calc = Gaussian(atoms=self.atoms, **self.parameters)
+        # Explicitly set parameters that must for security reasons not be
+        # taken from file:
+        calc = Gaussian(atoms=self.atoms, command=None, restart=None,
+                        ignore_bad_restart_file=Calculator._deprecated,
+                        label='Gaussian', directory='.', **self.parameters)
         return calc
 
     @ staticmethod
