@@ -650,15 +650,13 @@ def _validate_params(parameters):
 
     # Check for unsupported settings
     unsupported_settings = {
-        "z-matrix", "modredun", "addredun", "readopt", "rdopt"}
-
-    for s in unsupported_settings:
-        for v in parameters.values():
-            if v is not None and s in str(v):
-                raise ParseError(
-                    "ERROR: Could not read the Gaussian input file"
-                    ", as the option: {} is currently unsupported."
-                    .format(s))
+        "z-matrix", "modredun", "modredundant", "addredundant", "addredun",
+        "readopt", "rdopt"}
+    unsupported = unsupported_settings & set(parameters.values())
+    if unsupported:
+        raise ParseError("ERROR: Could not read the Gaussian input file"
+                         ", as the option: {} is currently unsupported."
+                         .format(unsupported))
 
     for k in list(parameters.keys()):
         if "popt" in k:
