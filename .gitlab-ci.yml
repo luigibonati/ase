@@ -210,3 +210,21 @@ coverage-combine:
     paths:
       - coverage-html
     expire_in: 1 week
+
+
+experimental:
+  image: registry.gitlab.com/ase/ase:ase-full-monty
+  tags:
+    - camd-experimental
+  script:
+    - cd ase/test  # Next to .coveragerc and friends
+    - coverage combine ../../coverage-main/coverage.dat ../../coverage-calculators-lite/coverage.dat
+    - coverage report
+    - coverage html
+    - cd ../..
+    - mv ase/test/coverage-html .
+  coverage: '/TOTAL.+ ([0-9]+\.[0-9]+%)/'
+  artifacts:
+    paths:
+      - coverage-html
+    expire_in: 1 day
