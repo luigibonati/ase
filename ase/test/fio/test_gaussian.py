@@ -194,6 +194,20 @@ def fd_no_charge_mult():
     return StringIO(unsupported_text)
 
 
+@pytest.fixture
+def fd_command_set():
+    # Make an example input string where command is set in link0:
+    unsupported_text = ""
+    for i, line in enumerate(_zmatrix_file_text.split('\n')):
+        if i == 1:
+            # add in unsupported setting:
+            unsupported_text += '%command = echo arbitrary_code_execution'
+        else:
+            unsupported_text += line + '\n'
+
+    return StringIO(unsupported_text)
+
+
 def _test_write_gaussian(atoms, params_expected, properties=None):
     '''Writes atoms to gaussian input file, reads this back in and
     checks that the resulting atoms object is equal to atoms and
@@ -371,7 +385,8 @@ def test_readwrite_gaussian(fd_cartesian, fd_cartesian_basis_set, fd_zmatrix):
 
 def test_read_gaussian_in_errors(fd_incorrect_zmatrix_var,
                                  fd_incorrect_zmatrix_symbol,
-                                 fd_unsupported_option, fd_no_charge_mult):
+                                 fd_unsupported_option, fd_no_charge_mult,
+                                 fd_command_set):
 
     def test_incorrect_mol_spec():
         # checks parse error raised when freezecode set:
@@ -408,6 +423,11 @@ def test_read_gaussian_in_errors(fd_incorrect_zmatrix_var,
         # Expect error as undefined var appears in matrix:
         with pytest.raises(ParseError):
             read_gaussian_in(fd_incorrect_zmatrix_var, True)
+
+    # Expect error if 'command' is set in link0 section as this
+    # would try to set the command for the calculator:
+    with pytest.raises(TypeError):
+        read_gaussian_in(fd_command_set, True)
 
     test_incorrect_mol_spec()
 
