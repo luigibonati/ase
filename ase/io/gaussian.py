@@ -69,7 +69,7 @@ _nuclear_prop_names = ['spin', 'zeff', 'qmom', 'nmagm', 'znuc',
 
 
 def _get_molecule_spec(atoms, nuclear_props):
-    ''' Generate the molecule specfication section to write
+    ''' Generate the molecule specification section to write
     to the Gaussian input file, from the Atoms object and dict
     of nuclear properties'''
     molecule_spec = []
@@ -88,11 +88,8 @@ def _get_molecule_spec(atoms, nuclear_props):
         # and if so, add it to the symbol section:
         mass_set = False
         symbol = atom.symbol
-        if symbol in chemical_symbols:
-            expected_mass = atomic_masses_iupac2016[chemical_symbols.index(
-                symbol)]
-        else:
-            expected_mass = None
+        expected_mass = atomic_masses_iupac2016[chemical_symbols.index(
+            symbol)]
         if expected_mass != atoms[i].mass:
             mass_set = True
             string = 'iso' + '=' + str(atoms[i].mass)
@@ -344,6 +341,8 @@ def _get_link0_param(link0_match):
     value = link0_match.group(2)
     if value is not None:
         value = value.strip()
+    else:
+        value = ''
     return {link0_match.group(1).lower().strip(): value.lower()}
 
 
@@ -426,8 +425,6 @@ def _get_key_value_pairs(line):
             s = s.split('=')
             keyword = s.pop(0)
             options = s.pop(0)
-            for string in s:
-                options += '=' + string
             params.update({keyword.lower(): options.lower()})
         else:
             if len(s) > 0:
@@ -470,9 +467,8 @@ def _get_nuclear_props(line):
                 value = float(value)
             if key not in _nuclear_prop_names:
                 if "fragment" in key:
-                    warnings.warn("Fragments are not"
+                    warnings.warn("Fragments are not "
                                   "currently supported.")
-
                 warnings.warn("The following nuclear properties "
                               "could not be saved: {}".format(
                                   {key: value}))
@@ -565,10 +561,9 @@ def _get_readiso_param(parameters):
         freq_options = parameters.get('frequency', None)
         freq_name = 'frequency'
     if freq_options is not None:
-        if 'readiso' or 'readisotopes' in freq_options:
+        if ('readiso' or 'readisotopes') in freq_options:
             return freq_name, freq_options
-    else:
-        return None, None
+    return None, None
 
 
 def _get_readiso_info(line, parameters):
@@ -589,6 +584,7 @@ def _get_readiso_info(line, parameters):
         except IndexError:
             pass
     if readiso_params != {}:
+
         return readiso_params
 
 
@@ -636,8 +632,9 @@ def _update_readiso_params(parameters, symbols):
         if len(parameters['isolist']) < len(symbols):
             for i in range(0, len(symbols) - len(parameters['isolist'])):
                 parameters['isolist'].append(None)
-        elif len(parameters['isolist']) > len(symbols):
-            parameters['isolist'] = parameters['isolist'][:len(symbols)]
+        if all(m is None for m in parameters['isolist']):
+            parameters['isolist'] = None
+
     return parameters
 
 
@@ -647,19 +644,21 @@ def _validate_params(parameters):
     '''
     # Check whether charge and multiplicity have been read.
     if 'charge' not in parameters or 'mult' not in parameters:
-        warnings.warn("Could not read the charge and multiplicity "
-                      "from the Gaussian input file. These must be 2 "
-                      "integers separated with whitespace or a comma.")
+        raise ParseError("ERROR: Could not read the charge and multiplicity "
+                         "from the Gaussian input file. These must be 2 "
+                         "integers separated with whitespace or a comma.")
 
     # Check for unsupported settings
     unsupported_settings = {
         "z-matrix", "modredun", "addredun", "readopt", "rdopt"}
 
-    unsupported = unsupported_settings & set(parameters)
-    if unsupported:
-        raise ParseError("ERROR: Could not read the Gaussian input file"
-                         ", as the option: {} is currently unsupported."
-                         .format(unsupported))
+    for s in unsupported_settings:
+        for v in parameters.values():
+            if v is not None and s in str(v):
+                raise ParseError(
+                    "ERROR: Could not read the Gaussian input file"
+                    ", as the option: {} is currently unsupported."
+                    .format(s))
 
     for k in list(parameters.keys()):
         if "popt" in k:
@@ -670,15 +669,12 @@ def _validate_params(parameters):
             return
 
 
-def _read_zmatrix(zmatrix_contents, zmatrix_vars):
+def _read_zmatrix(zmatrix_contents, zmatrix_vars=None):
     ''' Reads a z-matrix (zmatrix_contents) using its list of variables
     (zmatrix_vars), and returns atom positions and symbols '''
     try:
-        if len(zmatrix_vars) > 0:
-            atoms = parse_zmatrix(zmatrix_contents, defs=zmatrix_vars)
-        else:
-            atoms = parse_zmatrix(zmatrix_contents)
-    except ValueError as e:
+        atoms = parse_zmatrix(zmatrix_contents, defs=zmatrix_vars)
+    except (ValueError, AssertionError) as e:
         raise ParseError("Failed to read Z-matrix from "
                          "Gaussian input file: ", e)
     except KeyError as e:
@@ -687,7 +683,6 @@ def _read_zmatrix(zmatrix_contents, zmatrix_vars):
                          "could not be recognised. Please make "
                          "sure you use element symbols, not "
                          "atomic numbers in the element labels.".format(e))
-
     positions = atoms.positions
     symbols = atoms.get_chemical_symbols()
     return positions, symbols
@@ -800,6 +795,7 @@ class GaussianConfiguration:
                             zmatrix_var_section = True
                             continue
                         elif 'constants' in line.lower():
+                            zmatrix_var_section = True
                             warnings.warn("Constants in the optimisation are "
                                           "not currently supported. Instead "
                                           "setting constants as variables.")
@@ -833,6 +829,8 @@ class GaussianConfiguration:
                 # the entire z-matrix (if set):
                 if len(positions) == 0:
                     if zmatrix_type:
+                        if zmatrix_vars == '':
+                            zmatrix_vars = None
                         positions, symbols = _read_zmatrix(
                             zmatrix_contents, zmatrix_vars)
 
