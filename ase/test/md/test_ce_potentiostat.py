@@ -8,8 +8,8 @@ import numpy as np
 from ase.calculators.emt import EMT
 
 
-
 from test_ce_curvature import Al_atom_pair
+
 
 def Al_block():
     size = 2
@@ -17,14 +17,16 @@ def Al_block():
     atoms.calc = EMT()
     return atoms
 
-bulk_Al_settings ={
-    'maxstep' : 1.0,
-    'parallel_drift' : 0.05,
-    'remove_translation' : True,
-    'potentiostat_step_scale' : None,
-    'use_frenet_serret' : True,
-    'angle_limit' : 20,
-    'loginterval' : 1}
+
+bulk_Al_settings = {
+    'maxstep': 1.0,
+    'parallel_drift': 0.05,
+    'remove_translation': True,
+    'potentiostat_step_scale': None,
+    'use_frenet_serret': True,
+    'angle_limit': 20,
+    'loginterval': 1}
+
 
 def test_potentiostat():
     '''This is very realistic and stringent test of the potentiostatic accuracy

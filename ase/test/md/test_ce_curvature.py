@@ -8,8 +8,6 @@ from ase.calculators.emt import EMT
 from ase.constraints import FixAtoms
 
 
-
-
 pair_distance = 2.5
 
 def Al_atom_pair(pair_distance=pair_distance):
@@ -23,10 +21,11 @@ def Al_atom_pair(pair_distance=pair_distance):
 
 def test_curvature1():
     '''This basic test has an atom spinning counter-clockwise around a fixed
-    atom. The radius (1/curvature) must therefore be very close the pair_distance.'''
+    atom. The radius (1/curvature) must therefore be very
+    close the pair_distance.'''
     name = 'test_curvature1'
 
-    radius = pair_distance 
+    radius = pair_distance
     atoms = Al_atom_pair(pair_distance)
 
     atoms.set_constraint(FixAtoms(indices=[0]))
@@ -44,16 +43,15 @@ def test_curvature1():
     for i in range(5):
         dyn.run(30)
         print('Radius (1/curvature) {: .6f} Ang'.format(1 / dyn.curvature))
-        assert radius == pytest.approx( 1.0 / dyn.curvature, abs=2e-3)
+        assert radius == pytest.approx(1.0 / dyn.curvature, abs=2e-3)
 
 
 def test_curvature2():
     '''This test has two atoms spinning counter-clockwise around eachother. the
-    The radius (1/curvature) is less obviously pair_distance*sqrt(2)/2. This is the
-    simplest multi-body analytic curvature test.'''
+    The radius (1/curvature) is less obviously pair_distance*sqrt(2)/2.
+    This is the simplest multi-body analytic curvature test.'''
     name = 'test_curvature2'
 
-    #pair_distance = 2.5
     radius = pair_distance * np.sqrt(2) / 2
     atoms = Al_atom_pair(pair_distance)
 
@@ -71,4 +69,4 @@ def test_curvature2():
     for i in range(5):
         dyn.run(30)
         print('Radius (1/curvature) {: .6f} Ang'.format(1 / dyn.curvature))
-        assert radius == pytest.approx( 1.0 / dyn.curvature, abs=2e-3)
+        assert radius == pytest.approx(1.0 / dyn.curvature, abs=2e-3)

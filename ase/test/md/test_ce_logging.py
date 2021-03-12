@@ -2,23 +2,19 @@
 reporting the same values as in the ContourExploration object."""
 
 import pytest
-from ase.lattice.cubic import FaceCenteredCubic
 from ase.md.contour_exploration import ContourExploration
 import numpy as np
-from ase.calculators.emt import EMT
 from ase import io
 
 
-
-
-from test_ce_potentiostat  import Al_block, bulk_Al_settings 
+from test_ce_potentiostat import Al_block, bulk_Al_settings
 
 
 def test_logging():
 
     seed = 19460926
 
-    atoms=Al_block()
+    atoms = Al_block()
     atoms.rattle(stdev=0.18, seed=seed)
 
     rng = np.random.RandomState(seed)
@@ -31,11 +27,11 @@ def test_logging():
     log_name = name + '.log'
 
     dyn = ContourExploration(atoms,
-                            **bulk_Al_settings,
-                            rng=rng,
-                            trajectory=traj_name,
-                            logfile=log_name,
-                            )
+                             **bulk_Al_settings,
+                             rng=rng,
+                             trajectory=traj_name,
+                             logfile=log_name,
+                             )
 
     energy_target = initial_energy
     dev = (atoms.get_potential_energy() - energy_target) / len(atoms)
@@ -76,12 +72,14 @@ def test_logging():
         for i, (im, line) in enumerate(zip(traj, lines)):
 
             lineparts = [float(part) for part in line.split()]
-            
+
             log_energy_target = lineparts[1]
-            assert 0 == pytest.approx(log_energy_target - energy_targets[i], abs=1e-5)
+            assert 0 == pytest.approx(
+                log_energy_target - energy_targets[i], abs=1e-5)
 
             log_energy = lineparts[2]
-            assert 0 == pytest.approx(log_energy - im.get_potential_energy(), abs=1e-5)
+            assert 0 == pytest.approx(
+                log_energy - im.get_potential_energy(), abs=1e-5)
 
             log_curvature = lineparts[3]
             assert 0 == pytest.approx(log_curvature - curvatures[i], abs=1e-5)

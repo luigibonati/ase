@@ -124,7 +124,7 @@ class ContourExploration(Dynamics):
             self.potentiostat_step_scale = 1.1 + 0.6 * parallel_drift
         else:
             self.potentiostat_step_scale = potentiostat_step_scale
-        
+
         self.rng = rng
         self.remove_translation = remove_translation
         self.use_frenet_serret = use_frenet_serret
@@ -142,7 +142,7 @@ class ContourExploration(Dynamics):
         # ce.r_old = atoms_old.get_positions()
         # ce.Told  = Told
         # to resume a previous contour trajectory.
-        
+
         self.T = None
         self.Told = None
         self.N = None
@@ -171,7 +171,7 @@ class ContourExploration(Dynamics):
             # we have to pass dimension since atoms are not yet stored
             atoms.set_velocities(self.rand_vect(atoms))
 
-        # these first two are purely for logging, 
+        # these first two are purely for logging,
         # auto scaling will still occur
         # and curvature will still be found if use_frenet_serret == True
         self.step_size = 0.0
@@ -232,7 +232,7 @@ class ContourExploration(Dynamics):
         '''Makes a unit vector out of a vector'''
         return a / np.linalg.norm(a)
 
-    def rand_vect(self,atoms=None):
+    def rand_vect(self, atoms=None):
         if atoms is None:
             atoms = self.atoms
         vect = self.rng.rand(len(atoms), 3) - 0.5
@@ -257,30 +257,28 @@ class ContourExploration(Dynamics):
             delta_s_parallel = np.sqrt(
                 1 - self.parallel_drift**2) * contour_step_size
             delta_s_drift = contour_step_size * self.parallel_drift
-            
+
         else:
             # in this case all priority goes to potentiostat terms
             delta_s_parallel = 0.0
             delta_s_drift = 0.0
-            delta_s_perpendicular = np.sign(potentiostat_step_size)*self.step_size
-            
+            delta_s_perpendicular = np.sign(
+                potentiostat_step_size) * self.step_size
+
         return delta_s_perpendicular, delta_s_parallel, delta_s_drift
 
     def _compute_update_without_fs(self, potentiostat_step_size, scale=1.0):
-
-        
         # Without the use of curvature there is no way to estimate the
         # limiting step size
         self.step_size = self.maxstep * scale
 
-                
         delta_s_perpendicular, delta_s_parallel, delta_s_drift = \
-                                    self.compute_step_contributions(
-                                                     potentiostat_step_size)
-        
+            self.compute_step_contributions(
+                potentiostat_step_size)
+
         dr_perpendicular = self.N * delta_s_perpendicular
         dr_parallel = delta_s_parallel * self.T
-        #delta_s_drift = contour_step_size * self.parallel_drift
+
         D = self.create_drift_unit_vector(self.N, self.T)
         dr_drift = D * delta_s_drift
 
@@ -292,6 +290,7 @@ class ContourExploration(Dynamics):
         '''Uses the Frenet–Serret formulas to perform curvature based
         extrapolation'''
         # this should keep the dr clear of the constraints
+        # by using the actual change, not a velocity vector
         delta_r = self.r - self.rold
         delta_s = np.linalg.norm(delta_r)
         # approximation of delta_s we use this incase an adaptive step_size
@@ -320,8 +319,8 @@ class ContourExploration(Dynamics):
 
         # now we can compute a safe step
         delta_s_perpendicular, delta_s_parallel, delta_s_drift = \
-                                    self.compute_step_contributions(
-                                                     potentiostat_step_size)
+            self.compute_step_contributions(
+                potentiostat_step_size)
 
         N_guess = self.N + dNds * delta_s_parallel
         T_guess = self.T + dTds * delta_s_parallel
@@ -332,7 +331,8 @@ class ContourExploration(Dynamics):
 
         dr_perpendicular = delta_s_perpendicular * (N_guess)
 
-        dr_parallel = delta_s_parallel * self.T * (1 - (delta_s_parallel * curvature)**2 / 6.0) \
+        dr_parallel = delta_s_parallel * self.T * \
+            (1 - (delta_s_parallel * curvature)**2 / 6.0) \
             + self.N * (curvature / 2.0) * delta_s_parallel**2
 
         D = self.create_drift_unit_vector(N_guess, T_guess)
@@ -389,11 +389,11 @@ class ContourExploration(Dynamics):
             else:
                 # we must have the old positions and vectors for an FS step
                 # if we don't, we can only do a small step
-                dr = self._compute_update_without_fs(potentiostat_step_size,
-                                        scale = self.initialization_step_scale)
-        else: # of course we can run less accuratly without FS. 
+                dr = self._compute_update_without_fs(
+                    potentiostat_step_size,
+                    scale=self.initialization_step_scale)
+        else:  # of course we can run less accuratly without FS.
             dr = self._compute_update_without_fs(potentiostat_step_size)
-
 
         # now that dr is done, we check if there is translation
         if self.remove_translation:
@@ -432,7 +432,7 @@ class ContourExploration(Dynamics):
         # get logged properly in the trajectory files.
         vnew = self.vector_rejection(atoms.get_velocities(), f_constrained)
         # using the md = True forces like this:
-        #vnew = self.vector_rejection(atoms.get_velocities(), f)
+        # vnew = self.vector_rejection(atoms.get_velocities(), f)
         # will not work with constraints
         atoms.set_velocities(vnew)
 
@@ -441,6 +441,7 @@ class ContourExploration(Dynamics):
         Ms = np.sqrt(KEold / KEnew)  # Ms = Momentum_scale
         atoms.set_momenta(Ms * atoms.get_momenta())
 
-        # Normally this would be the second part of RATTLE will be done here like this:
+        # Normally this would be the second part of RATTLE
+        # will be done here like this:
         #  atoms.set_momenta(atoms.get_momenta() + 0.5 * self.dt * f)
         return f
