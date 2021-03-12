@@ -243,7 +243,7 @@ def parse_selection(selection, **kwargs):
         for op in ['!=', '<=', '>=', '<', '>', '=']:
             if op in expression:
                 break
-        else:
+        else:  # no break
             if expression in atomic_numbers:
                 comparisons.append((expression, '>', 0))
             else:

@@ -1638,8 +1638,10 @@ class GenerateVaspInput:
 
     # The below functions are used to restart a calculation
 
-    def read_incar(self, filename='INCAR'):
-        """Method that imports settings from INCAR file."""
+    def read_incar(self, filename):
+        """Method that imports settings from INCAR file.
+
+        Typically named INCAR."""
 
         self.spinpol = False
         with open(filename, 'r') as fd:
@@ -1776,7 +1778,8 @@ class GenerateVaspInput:
             except IndexError:
                 raise IOError('Value missing for keyword "%s".' % key)
 
-    def read_kpoints(self, filename='KPOINTS'):
+    def read_kpoints(self, filename):
+        """Read kpoints file, typically named KPOINTS."""
         # If we used VASP builtin kspacing,
         if self.float_params['kspacing'] is not None:
             # Don't update kpts array
@@ -1803,7 +1806,7 @@ class GenerateVaspInput:
                 [list(map(float, line.split())) for line in lines[3:]])
         self.set(kpts=kpts)
 
-    def read_potcar(self, filename='POTCAR'):
+    def read_potcar(self, filename):
         """ Read the pseudopotential XC functional from POTCAR file.
         """
 

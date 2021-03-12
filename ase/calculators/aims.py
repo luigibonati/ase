@@ -532,7 +532,7 @@ class Aims(FileIOCalculator):
             not self.atoms.pbc.any()):
             self.read_dipole()
 
-    def write_species(self, atoms, filename='control.in'):
+    def write_species(self, atoms, filename):
         self.ctrlname = filename
         species_path = self.parameters.get('species_dir')
         if species_path is None:

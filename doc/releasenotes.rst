@@ -15,6 +15,10 @@ Calculators:
   handling of various periodic boundary conditions.
   Functions to import and export files with QM/MM mapping were also added.
 
+I/O:
+
+* Reading of "chemical json" file types with name ``*.cml`` is enabled.
+
 
 Version 3.21.1
 ==============

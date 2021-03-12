@@ -16,11 +16,10 @@ import numpy as np
 import ase.units as units
 from ase.atom import Atom
 from ase.cell import Cell
-from ase.constraints import (FixConstraint, FixBondLengths, FixLinearTriatomic,
-                             voigt_6_to_full_3x3_stress,
-                             full_3x3_to_voigt_6_stress)
+from ase.stress import voigt_6_to_full_3x3_stress, full_3x3_to_voigt_6_stress
 from ase.data import atomic_masses, atomic_masses_common
-from ase.geometry import wrap_positions, find_mic, get_angles, get_distances, get_dihedrals
+from ase.geometry import (wrap_positions, find_mic, get_angles, get_distances,
+                          get_dihedrals)
 from ase.symbols import Symbols, symbols2numbers
 from ase.utils import deprecated
 
@@ -1107,13 +1106,12 @@ class Atoms:
         conadd = []
         # Constraints need to be deepcopied, but only the relevant ones.
         for con in copy.deepcopy(self.constraints):
-            if isinstance(con, (FixConstraint, FixBondLengths,
-                                FixLinearTriatomic)):
-                try:
-                    con.index_shuffle(self, i)
-                    conadd.append(con)
-                except IndexError:
-                    pass
+            try:
+                con.index_shuffle(self, i)
+            except (IndexError, NotImplementedError):
+                pass
+            else:
+                conadd.append(con)
 
         atoms = self.__class__(cell=self.cell, pbc=self.pbc, info=self.info,
                                # should be communicated to the slice as well
@@ -1883,7 +1881,7 @@ class Atoms:
         """Get the temperature in Kelvin."""
         dof = len(self) * 3
         for constraint in self._constraints:
-            dof -= constraint.removed_dof
+            dof -= constraint.get_removed_dof(self)
         ekin = self.get_kinetic_energy()
         return 2 * ekin / (dof * units.kB)
 

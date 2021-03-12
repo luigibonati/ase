@@ -27,7 +27,7 @@ def test_gs_io_overlap():
     calc0 = atoms0.calc
     fname = 'calc0'
     calc0.write(fname)
-    calc1 = H2MorseCalculator.read(fname)
+    calc1 = H2MorseCalculator(fname)
     for wf0, wf1 in zip(calc0.wfs, calc1.wfs):
         assert wf0 == pytest.approx(wf1, 1e-5)
     

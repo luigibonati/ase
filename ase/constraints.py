@@ -2,12 +2,14 @@ from math import sqrt
 from warnings import warn
 
 import numpy as np
+from scipy.linalg import expm, logm
 from ase.calculators.calculator import PropertyNotImplementedError
 from ase.geometry import (find_mic, wrap_positions, get_distances_derivatives,
                           get_angles_derivatives, get_dihedrals_derivatives,
                           conditional_find_mic, get_angles, get_dihedrals)
 from ase.utils.parsemath import eval_expression
-from scipy.linalg import expm, logm
+from ase.stress import (full_3x3_to_voigt_6_stress,
+                        voigt_6_to_full_3x3_stress)
 
 __all__ = [
     'FixCartesian', 'FixBondLength', 'FixedMode',
@@ -150,7 +152,8 @@ class FixAtoms(FixConstraint):
         if self.index.ndim != 1:
             raise ValueError('Wrong argument to FixAtoms class!')
 
-        self.removed_dof = 3 * len(self.index)
+    def get_removed_dof(self, atoms):
+        return 3 * len(self.index)
 
     def adjust_positions(self, atoms, new):
         new[self.index] = atoms.positions[self.index]
@@ -219,9 +222,8 @@ class FixCom(FixConstraint):
 
     """
 
-    def __init__(self):
-
-        self.removed_dof = 3
+    def get_removed_dof(self, atoms):
+        return 3
 
     def adjust_positions(self, atoms, new):
         masses = atoms.get_masses()
@@ -259,7 +261,8 @@ class FixBondLengths(FixConstraint):
         self.tolerance = tolerance
         self.bondlengths = bondlengths
 
-        self.removed_dof = len(pairs)
+    def get_removed_dof(self, atoms):
+        return len(self.pairs)
 
     def adjust_positions(self, atoms, new):
         old = atoms.positions
@@ -388,7 +391,8 @@ class FixLinearTriatomic(FixConstraint):
             raise ValueError('"triples" has wrong size')
         self.bondlengths = None
 
-        self.removed_dof = 4 * len(triples)
+    def get_removed_dof(self, atoms):
+        return 4 * len(self.triples)
 
     @property
     def n_ind(self):
@@ -613,6 +617,9 @@ class FixedMode(FixConstraint):
     def __init__(self, mode):
         self.mode = (np.asarray(mode) / np.sqrt((mode**2).sum())).reshape(-1)
 
+    def get_removed_dof(self, atoms):
+        return len(atoms)
+
     def adjust_positions(self, atoms, newpositions):
         newpositions = newpositions.ravel()
         oldpositions = atoms.positions.ravel()
@@ -652,11 +659,12 @@ class FixedPlane(FixConstraintSingle):
 
     The plane is defined by its normal vector *direction*."""
 
-    removed_dof = 1
-
     def __init__(self, a, direction):
         self.a = a
         self.dir = np.asarray(direction) / sqrt(np.dot(direction, direction))
+
+    def get_removed_dof(self, atoms):
+        return 1
 
     def adjust_positions(self, atoms, newpositions):
         step = newpositions[self.a] - atoms.positions[self.a]
@@ -678,11 +686,12 @@ class FixedLine(FixConstraintSingle):
 
     The line is defined by its vector *direction*."""
 
-    removed_dof = 2
-
     def __init__(self, a, direction):
         self.a = a
         self.dir = np.asarray(direction) / sqrt(np.dot(direction, direction))
+
+    def get_removed_dof(self, atoms):
+        return 2
 
     def adjust_positions(self, atoms, newpositions):
         step = newpositions[self.a] - atoms.positions[self.a]
@@ -706,7 +715,9 @@ class FixCartesian(FixConstraintSingle):
     def __init__(self, a, mask=(1, 1, 1)):
         self.a = a
         self.mask = ~np.asarray(mask, bool)
-        self.removed_dof = 3 - self.mask.sum()
+
+    def get_removed_dof(self, atoms):
+        return 3 - self.mask.sum()
 
     def adjust_positions(self, atoms, new):
         step = new[self.a] - atoms.positions[self.a]
@@ -732,7 +743,9 @@ class FixScaled(FixConstraintSingle):
         self.cell = np.asarray(cell)
         self.a = a
         self.mask = np.array(mask, bool)
-        self.removed_dof = self.mask.sum()
+
+    def get_removed_dof(self, atoms):
+        return self.mask.sum()
 
     def adjust_positions(self, atoms, new):
         scaled_old = atoms.cell.scaled_positions(atoms.positions)
@@ -799,22 +812,23 @@ class FixInternals(FixConstraint):
         self.anglecombos = anglecombos or []
         self.dihedralcombos = dihedralcombos or []
         self.mic = mic
-
-        # Initialize these at run-time:
-        self.n = 0
-        self.constraints = []
         self.epsilon = epsilon
 
+        self.n = (len(self.bonds) + len(self.angles) + len(self.dihedrals)
+                  + len(self.bondcombos) + len(self.anglecombos)
+                  + len(self.dihedralcombos))
+
+        # Initialize these at run-time:
+        self.constraints = []
         self.initialized = False
-        self.removed_dof = self.n
+
+    def get_removed_dof(self, atoms):
+        return self.n
 
     def initialize(self, atoms):
         if self.initialized:
             return
         masses = np.repeat(atoms.get_masses(), 3)
-        self.n = (len(self.bonds) + len(self.angles) + len(self.dihedrals)
-                  + len(self.bondcombos) + len(self.anglecombos)
-                  + len(self.dihedralcombos))
         cell = None
         pbc = None
         if self.mic:
@@ -1617,6 +1631,9 @@ class Hookean(FixConstraint):
         self.threshold = rt
         self.spring = k
 
+    def get_removed_dof(self, atoms):
+        return 0
+
     def todict(self):
         dct = {'name': 'Hookean'}
         dct['kwargs'] = {'rt': self.threshold,
@@ -1749,6 +1766,9 @@ class ExternalForce(FixConstraint):
     def __init__(self, a1, a2, f_ext):
         self.indices = [a1, a2]
         self.external_force = f_ext
+
+    def get_removed_dof(self, atoms):
+        return 0
 
     def adjust_positions(self, atoms, new):
         pass
@@ -2238,65 +2258,6 @@ class StrainFilter(Filter):
 
     def __len__(self):
         return 2
-
-
-# The indices of the full stiffness matrix of (orthorhombic) interest
-voigt_notation = [(0, 0), (1, 1), (2, 2), (1, 2), (0, 2), (0, 1)]
-
-
-def full_3x3_to_voigt_6_index(i, j):
-    if i == j:
-        return i
-    return 6 - i - j
-
-
-def voigt_6_to_full_3x3_strain(strain_vector):
-    """
-    Form a 3x3 strain matrix from a 6 component vector in Voigt notation
-    """
-    e1, e2, e3, e4, e5, e6 = np.transpose(strain_vector)
-    return np.transpose([[1.0 + e1, 0.5 * e6, 0.5 * e5],
-                         [0.5 * e6, 1.0 + e2, 0.5 * e4],
-                         [0.5 * e5, 0.5 * e4, 1.0 + e3]])
-
-
-def voigt_6_to_full_3x3_stress(stress_vector):
-    """
-    Form a 3x3 stress matrix from a 6 component vector in Voigt notation
-    """
-    s1, s2, s3, s4, s5, s6 = np.transpose(stress_vector)
-    return np.transpose([[s1, s6, s5],
-                         [s6, s2, s4],
-                         [s5, s4, s3]])
-
-
-def full_3x3_to_voigt_6_strain(strain_matrix):
-    """
-    Form a 6 component strain vector in Voigt notation from a 3x3 matrix
-    """
-    strain_matrix = np.asarray(strain_matrix)
-    return np.transpose([strain_matrix[..., 0, 0] - 1.0,
-                         strain_matrix[..., 1, 1] - 1.0,
-                         strain_matrix[..., 2, 2] - 1.0,
-                         strain_matrix[..., 1, 2] + strain_matrix[..., 2, 1],
-                         strain_matrix[..., 0, 2] + strain_matrix[..., 2, 0],
-                         strain_matrix[..., 0, 1] + strain_matrix[..., 1, 0]])
-
-
-def full_3x3_to_voigt_6_stress(stress_matrix):
-    """
-    Form a 6 component stress vector in Voigt notation from a 3x3 matrix
-    """
-    stress_matrix = np.asarray(stress_matrix)
-    return np.transpose([stress_matrix[..., 0, 0],
-                         stress_matrix[..., 1, 1],
-                         stress_matrix[..., 2, 2],
-                         (stress_matrix[..., 1, 2] +
-                          stress_matrix[..., 1, 2]) / 2,
-                         (stress_matrix[..., 0, 2] +
-                          stress_matrix[..., 0, 2]) / 2,
-                         (stress_matrix[..., 0, 1] +
-                          stress_matrix[..., 0, 1]) / 2])
 
 
 class UnitCellFilter(Filter):

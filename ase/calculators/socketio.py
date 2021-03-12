@@ -8,6 +8,7 @@ import numpy as np
 from ase.calculators.calculator import (Calculator, all_changes,
                                         PropertyNotImplementedError)
 import ase.units as units
+from ase.stress import full_3x3_to_voigt_6_stress
 
 
 def actualunixsocketname(name):
@@ -541,7 +542,7 @@ class SocketClient:
 
 
 class SocketIOCalculator(Calculator):
-    implemented_properties = ['energy', 'forces', 'stress']
+    implemented_properties = ['energy', 'free_energy', 'forces', 'stress']
     supported_changes = {'positions', 'cell'}
 
     def __init__(self, calc=None, port=None,
@@ -669,9 +670,9 @@ class SocketIOCalculator(Calculator):
             self.server.proc = proc  # XXX nasty hack
 
         results = self.server.calculate(atoms)
+        results['free_energy'] = results['energy']
         virial = results.pop('virial')
         if self.atoms.cell.rank == 3 and any(self.atoms.pbc):
-            from ase.constraints import full_3x3_to_voigt_6_stress
             vol = atoms.get_volume()
             results['stress'] = -full_3x3_to_voigt_6_stress(virial) / vol
         self.results.update(results)
