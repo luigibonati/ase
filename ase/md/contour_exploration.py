@@ -8,7 +8,7 @@ class ContourExploration(Dynamics):
                  maxstep=0.5,
                  parallel_drift=0.1,
                  energy_target=None,
-                 angle_limit=None,
+                 angle_limit=20,
                  potentiostat_step_scale=None,
                  remove_translation=False,
                  use_frenet_serret=True,
@@ -19,15 +19,7 @@ class ContourExploration(Dynamics):
                  force_consistent=None,
                  trajectory=None, logfile=None,
                  append_trajectory=False, loginterval=1):
-        """Contour Exploration evolves the system along constant potentials
-        energy contours on the potential energy surface. The method uses
-        curvature based extrapolation and a potentiostat to correct for
-        potential energy errors. It is similar to molecular dynamics but with a
-        potentiostat rather than a thermostat and it has no timestep.
-        This module was developed in conjuction with the following work:
-
-        M. J. Waters and J. M. Rondinelli, `Contour Exploration with
-        Potentiostatic Kinematics` ArXiv 2021
+        """Contour Exploration object.
 
         Parameters:
 
@@ -53,7 +45,7 @@ class ContourExploration(Dynamics):
             curvature. Gives a scale-free means of tuning the stepsize on the
             fly. Typically less than 30 degrees gives reasonable results but
             lower angle limits result in higher potentiostatic accuracy. Units
-            of degrees. (default None)
+            of degrees. (default 20°)
 
         potentiostat_step_scale: float or None
             Scales the size of the potentiostat step. The potentiostat step is

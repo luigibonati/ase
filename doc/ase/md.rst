@@ -331,6 +331,38 @@ the gromacs manual at www.gromacs.org. or amber at ambermd.org
                      taut=100 * units.fs, pressure_au=1.01325 * units.bar,
                      taup=1000 * units.fs, compressibility=4.57e-5 / units.bar)
 
+
+Contour Exploration
+-------------------
+.. module:: ase.md.contour_exploration
+
+.. autoclass:: ContourExploration
+
+Contour Exploration evolves the system along constant potentials energy
+contours on the potential energy surface. The method uses curvature based
+extrapolation and a potentiostat to correct for potential energy errors. It is
+similar to molecular dynamics but with a potentiostat rather than a thermostat.
+Without changes in kinetic energy, it is more useful to automatically scale
+step sizes to the curvature of the potential energy contour via an
+``angle_limit`` while enforcing a ``maxstep`` to ensure potentiostatic 
+accuracy. [1] To escape loops on the pontential energy surface or to break
+symmetries, a random drift vector parallel to the contour can be applied as a
+fraction of the step size via ``parallel_drift``. The method cannot be used at
+minima since the contour is a single point.
+
+
+::
+
+  # Contour exploration at the current potential energy
+  dyn = ContourExploration(atoms)
+
+References:
+
+[1] M. J. Waters and J. M. Rondinelli, `Contour Exploration with Potentiostatic
+Kinematics` ArXiv 2021
+
+
+
 Velocity distributions
 ======================
 
