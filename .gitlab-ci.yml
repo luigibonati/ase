@@ -39,6 +39,7 @@ oldlibs:
       -W "ignore:can't resolve package"
       -W ignore::PendingDeprecationWarning
       -m 'not lint'
+  when: manual
 
 # For testing newest versions of libraries against standard images
 # on dockerhub.
@@ -93,6 +94,7 @@ main:
     paths:
       - coverage-main/
     expire_in: 1 week
+  when: manual
 
 
 # Calculator integration tests which always run.
@@ -109,6 +111,7 @@ calculators-lite:
     paths:
       - coverage-calculators-lite/
     expire_in: 1 week
+  when: manual
 
 
 # Plan: Test as many calculators as possible as well as possible.
@@ -130,6 +133,7 @@ calculators:
     paths:
       - coverage-calculators/
     expire_in: 1 week
+  when: manual
 
 doc:
   image: registry.gitlab.com/ase/ase:ase-main
@@ -144,6 +148,7 @@ doc:
     paths:
       - $CI_PROJECT_DIR/doc/build/
     expire_in: 1 week
+  when: manual
 
 distribution-package:
   image: registry.gitlab.com/ase/ase:ase-main
@@ -182,6 +187,7 @@ pages:
     expire_in: 2 weeks
   only:
     - master
+  when: manual
 
 lint:
   image: registry.gitlab.com/ase/ase:ase-paperwork
@@ -190,6 +196,7 @@ lint:
     - mypy --color-output -p ase
     - python ase/test/lint.py
     - python -We:invalid -m compileall -f -q ase/
+  when: manual
 
 
 coverage-combine:
@@ -210,6 +217,7 @@ coverage-combine:
     paths:
       - coverage-html
     expire_in: 1 week
+  when: manual
 
 
 experimental:
@@ -217,12 +225,10 @@ experimental:
   tags:
     - camd-experimental
   script:
-    - cd ase/test  # Next to .coveragerc and friends
-    - coverage combine ../../coverage-main/coverage.dat ../../coverage-calculators-lite/coverage.dat
-    - coverage report
-    - coverage html
-    - cd ../..
-    - mv ase/test/coverage-html .
+    - pip install --no-deps --editable .
+    - ase test calculator --calculators=auto --coverage --pytest -m calculator_lite --color=yes --durations=20
+    - mv ase/test/coverage-html coverage-calculators-lite
+    - mv ase/test/.coverage coverage-calculators-lite/coverage.dat
   coverage: '/TOTAL.+ ([0-9]+\.[0-9]+%)/'
   artifacts:
     paths:
