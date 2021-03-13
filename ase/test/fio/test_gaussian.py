@@ -173,7 +173,7 @@ def fd_unsupported_option():
     for i, line in enumerate(_zmatrix_file_text.split('\n')):
         if i == 4:
             # add in unsupported setting:
-            unsupported_text += 'Geom=ModRedundant'
+            unsupported_text += 'Geom=ModRedundant freq=ReadIso\n'
         else:
             unsupported_text += line + '\n'
 
@@ -241,10 +241,10 @@ def _check_atom_properties(atoms, atoms_new, params):
     params_to_check = copy.deepcopy(params)
 
     if 'basis_set' in params:
+        # Makes sure both basis sets are formatted comparably for the test:
         params_to_check['basis_set'] = params_to_check['basis_set'].split(
             '\n')
-        params_to_check['basis_set'] = [line.strip()
-                                        for line in
+        params_to_check['basis_set'] = [line.strip() for line in
                                         params_to_check['basis_set']]
         new_params_to_check['basis_set'] = new_params_to_check[
             'basis_set'].strip().split('\n')
@@ -309,7 +309,7 @@ def test_readwrite_gaussian(fd_cartesian, fd_cartesian_basis_set, fd_zmatrix):
     # Tests reading a Gaussian input file with:
     # - Cartesian coordinates for the atom positions.
     # - ASE formatted method and basis
-    # - Masses defined using nuclei properties
+    # - Masses defined using readiso section
     atoms = Atoms('OH2', positions=positions, masses=masses)
     nuclei_props = ['nmagmlist', 'zefflist', 'znuclist', 'qmomlist',
                     'radnuclearlist', 'spinlist']

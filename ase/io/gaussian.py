@@ -346,6 +346,19 @@ def _get_link0_param(link0_match):
     return {link0_match.group(1).lower().strip(): value.lower()}
 
 
+def _get_all_link0_params(link0_section):
+    ''' Given a string link0_section which contains the link0
+    section of a gaussian input file, returns a dictionary of
+    keywords and values'''
+    parameters = {}
+    for line in link0_section:
+        link0_match = _re_link0.match(line)
+        link0_param = _get_link0_param(link0_match)
+        if link0_param is not None:
+            parameters.update(link0_param)
+    return parameters
+
+
 def _convert_to_symbol(string):
     '''Converts an input string into a format
     that can be input to the 'symbol' parameter of an
@@ -452,6 +465,39 @@ def _get_route_params(line):
     return _get_key_value_pairs(line)
 
 
+def _get_all_route_params(route_section):
+    ''' Given a string: route_section which contains the route
+    section of a gaussian input file, returns a dictionary of
+    keywords and values'''
+    parameters = {}
+
+    for line in route_section:
+        output_type_match = _re_output_type.match(line)
+        if not parameters.get('output_type') and output_type_match:
+            line = line.strip(output_type_match.group(0))
+            parameters.update(
+                {'output_type': output_type_match.group(1).lower()})
+        # read route section
+        route_params = _get_route_params(line)
+        if route_params is not None:
+            parameters.update(route_params)
+    return parameters
+
+
+def _get_charge_mult(chgmult_section):
+    '''return a dict with the charge and multiplicity from
+    a list chgmult_section that contains the charge and multiplicity
+    line, read from a gaussian input file'''
+    chgmult_match = _re_chgmult.match(str(chgmult_section))
+    try:
+        chgmult = chgmult_match.group(0).split()
+        return {'charge': int(chgmult[0]), 'mult': int(chgmult[1])}
+    except (IndexError, AttributeError):
+        raise ParseError("ERROR: Could not read the charge and multiplicity "
+                         "from the Gaussian input file. These must be 2 "
+                         "integers separated with whitespace or a comma.")
+
+
 def _get_nuclear_props(line):
     ''' Reads any info in parantheses in the line and returns
     a dictionary of the nuclear properties.'''
@@ -532,6 +578,25 @@ def _get_zmatrix_line(line):
     return(line.strip() + '\n')
 
 
+def _read_zmatrix(zmatrix_contents, zmatrix_vars=None):
+    ''' Reads a z-matrix (zmatrix_contents) using its list of variables
+    (zmatrix_vars), and returns atom positions and symbols '''
+    try:
+        atoms = parse_zmatrix(zmatrix_contents, defs=zmatrix_vars)
+    except (ValueError, AssertionError) as e:
+        raise ParseError("Failed to read Z-matrix from "
+                         "Gaussian input file: ", e)
+    except KeyError as e:
+        raise ParseError("Failed to read Z-matrix from "
+                         "Gaussian input file, as symbol: {}"
+                         "could not be recognised. Please make "
+                         "sure you use element symbols, not "
+                         "atomic numbers in the element labels.".format(e))
+    positions = atoms.positions
+    symbols = atoms.get_chemical_symbols()
+    return positions, symbols
+
+
 def _get_nuclear_props_for_all_atoms(nuclear_props):
     ''' Returns the nuclear properties for all atoms as a dictionary,
     in the format needed for it to be added to the parameters dictionary.'''
@@ -548,6 +613,89 @@ def _get_nuclear_props_for_all_atoms(nuclear_props):
         if not values_set:
             params[key] = None
     return params
+
+
+def _get_atoms_from_molspec(molspec_section):
+    ''' Takes a string: molspec_section which contains the molecule
+    specification section of a gaussian input file, and returns an atoms
+    object that represents this.'''
+    # These will contain info that will be attached to the Atoms object:
+    symbols = []
+    positions = []
+    pbc = np.zeros(3, dtype=bool)
+    cell = np.zeros((3, 3))
+    npbc = 0
+
+    # Will contain a dictionary of nuclear properties for each atom,
+    # that will later be saved to the parameters dict:
+    nuclear_props = []
+
+    # Info relating to the z-matrix definition (if set)
+    zmatrix_type = False
+    zmatrix_contents = ""
+    zmatrix_var_section = False
+    zmatrix_vars = ""
+
+    for line in molspec_section:
+        # Remove any comments and replace '/' and ',' with whitespace,
+        # as these are equivalent:
+        line = line.split('!')[0].replace('/', ' ').replace(',', ' ')
+        if (line.split()):
+            if zmatrix_type:
+                # Save any variables set when defining the z-matrix:
+                if zmatrix_var_section:
+                    zmatrix_vars += line.strip() + '\n'
+                    continue
+                elif 'variables' in line.lower():
+                    zmatrix_var_section = True
+                    continue
+                elif 'constants' in line.lower():
+                    zmatrix_var_section = True
+                    warnings.warn("Constants in the optimisation are "
+                                  "not currently supported. Instead "
+                                  "setting constants as variables.")
+                    continue
+
+            symbol, pos = _get_atoms_info(line)
+            current_nuclear_props = _get_nuclear_props(line)
+
+            if not zmatrix_type:
+                pos = _get_cartesian_atom_coords(symbol, pos)
+                if pos is None:
+                    zmatrix_type = True
+
+                if symbol.upper() == 'TV' and pos is not None:
+                    pbc[npbc] = True
+                    cell[npbc] = pos
+                    npbc += 1
+                else:
+                    nuclear_props.append(current_nuclear_props)
+                    if not zmatrix_type:
+                        symbols.append(symbol)
+                        positions.append(pos)
+
+            if zmatrix_type:
+                zmatrix_contents += _get_zmatrix_line(line)
+
+    # Now that we are past the molecule spec. section, we can read
+    # the entire z-matrix (if set):
+    if len(positions) == 0:
+        if zmatrix_type:
+            if zmatrix_vars == '':
+                zmatrix_vars = None
+            positions, symbols = _read_zmatrix(
+                zmatrix_contents, zmatrix_vars)
+
+    try:
+        atoms = Atoms(symbols, positions, pbc=pbc, cell=cell)
+    except (IndexError, ValueError, KeyError) as e:
+        raise ParseError("ERROR: Could not read the Gaussian input file, "
+                         "due to a problem with the molecule "
+                         "specification: {}".format(e))
+
+    nuclear_props = _get_nuclear_props_for_all_atoms(nuclear_props)
+
+    return atoms, nuclear_props
 
 
 def _get_readiso_param(parameters):
@@ -642,21 +790,18 @@ def _validate_params(parameters):
     '''Checks whether all of the required parameters exist in the
     parameters dict and whether it contains any unsupported settings
     '''
-    # Check whether charge and multiplicity have been read.
-    if 'charge' not in parameters or 'mult' not in parameters:
-        raise ParseError("ERROR: Could not read the charge and multiplicity "
-                         "from the Gaussian input file. These must be 2 "
-                         "integers separated with whitespace or a comma.")
-
     # Check for unsupported settings
     unsupported_settings = {
         "z-matrix", "modredun", "modredundant", "addredundant", "addredun",
         "readopt", "rdopt"}
-    unsupported = unsupported_settings & set(parameters.values())
-    if unsupported:
-        raise ParseError("ERROR: Could not read the Gaussian input file"
-                         ", as the option: {} is currently unsupported."
-                         .format(unsupported))
+
+    for s in unsupported_settings:
+        for v in parameters.values():
+            if v is not None and s in str(v):
+                raise ParseError(
+                    "ERROR: Could not read the Gaussian input file"
+                    ", as the option: {} is currently unsupported."
+                    .format(s))
 
     for k in list(parameters.keys()):
         if "popt" in k:
@@ -667,23 +812,124 @@ def _validate_params(parameters):
             return
 
 
-def _read_zmatrix(zmatrix_contents, zmatrix_vars=None):
-    ''' Reads a z-matrix (zmatrix_contents) using its list of variables
-    (zmatrix_vars), and returns atom positions and symbols '''
-    try:
-        atoms = parse_zmatrix(zmatrix_contents, defs=zmatrix_vars)
-    except (ValueError, AssertionError) as e:
-        raise ParseError("Failed to read Z-matrix from "
-                         "Gaussian input file: ", e)
-    except KeyError as e:
-        raise ParseError("Failed to read Z-matrix from "
-                         "Gaussian input file, as symbol: {}"
-                         "could not be recognised. Please make "
-                         "sure you use element symbols, not "
-                         "atomic numbers in the element labels.".format(e))
-    positions = atoms.positions
-    symbols = atoms.get_chemical_symbols()
-    return positions, symbols
+def _get_extra_section_params(extra_section, parameters, atoms):
+    ''' Takes a list of strings: extra_section, which contains
+    the 'extra' lines in a gaussian input file. Also takes the parameters
+    that have been read so far, and the atoms that have been read from the
+    file.
+    Returns an updated version of the parameters dict, containing details from
+    this extra section. This may include the basis set definition or filename,
+    and/or the readiso section.'''
+
+    new_parameters = deepcopy(parameters)
+    # Will store the basis set definition (if set):
+    basis_set = ""
+    # This will indicate whether we have a readiso section:
+    readiso = _get_readiso_param(new_parameters)[0]
+    # This will indicate which line of the readiso section we are reading:
+    count_iso = 0
+    readiso_masses = []
+
+    for line in extra_section:
+        if line.split():
+            # check that the line isn't just a comment
+            if line.split()[0] == '!':
+                continue
+            line = line.strip().split('!')[0]
+
+        if len(line) > 0 and line[0] == '@':
+            # If the name of a basis file is specified, this line
+            # begins with a '@'
+            new_parameters['basisfile'] = line
+        elif readiso and count_iso < len(atoms.symbols) + 1:
+            # The ReadIso section has 1 more line than the number of
+            # symbols
+            if count_iso == 0 and line != '\n':
+                # The first line in the readiso section contains the
+                # temperature, pressure, scale. Here we save this:
+                readiso_info = _get_readiso_info(line, new_parameters)
+                if readiso_info is not None:
+                    new_parameters.update(readiso_info)
+                # If the atom masses were set in the nuclear properties
+                # section, they will be overwritten by the ReadIso
+                # section
+                readiso_masses = []
+                count_iso += 1
+            elif count_iso > 0:
+                # The remaining lines in the ReadIso section are
+                # the masses of the atoms
+                try:
+                    readiso_masses.append(float(line))
+                except ValueError:
+                    readiso_masses.append(None)
+                count_iso += 1
+        else:
+            # If the rest of the file is not the ReadIso section,
+            # then it must be the definition of the basis set.
+            if new_parameters.get('basis', '') == 'gen' \
+                    or 'gen' in new_parameters:
+                if line.strip() != '':
+                    basis_set += line + '\n'
+
+    if readiso:
+        new_parameters['isolist'] = readiso_masses
+        new_parameters = _update_readiso_params(new_parameters, atoms.symbols)
+
+    # Saves the basis set definition to the parameters array if
+    # it has been set:
+    if basis_set != '':
+        new_parameters['basis_set'] = basis_set
+        new_parameters['basis'] = 'gen'
+        new_parameters.pop('gen', None)
+
+    return new_parameters
+
+
+def _get_gaussian_in_sections(fd):
+    ''' Reads a gaussian input file and returns
+    a dictionary of the sections of the file - each dictionary
+    value is a list of strings - each string is a line in that
+    section. '''
+    # These variables indicate which section of the
+    # input file is currently being read:
+    route_section = False
+    atoms_section = False
+    atoms_saved = False
+    # Here we will store the sections of the file in a dictionary,
+    # as lists of strings
+    gaussian_sections = {'link0': [], 'route': [],
+                         'charge_mult': [], 'mol_spec': [], 'extra': []}
+
+    for line in fd:
+        line = line.strip(' ')
+        link0_match = _re_link0.match(line)
+        output_type_match = _re_output_type.match(line)
+        chgmult_match = _re_chgmult.match(line)
+        if link0_match:
+            gaussian_sections['link0'].append(line)
+        # The first blank line appears at the end of the route section
+        # and a blank line appears at the end of the atoms section:
+        elif line == '\n' and (route_section or atoms_section):
+            route_section = False
+            atoms_section = False
+        elif output_type_match or route_section:
+            route_section = True
+            gaussian_sections['route'].append(line)
+        elif chgmult_match:
+            gaussian_sections['charge_mult'] = line
+            # After the charge and multiplicty have been set, the
+            # molecule specification section of the input file begins:
+            atoms_section = True
+        elif atoms_section:
+            gaussian_sections['mol_spec'].append(line)
+            atoms_saved = True
+        elif atoms_saved:
+            # Next we read the other sections below the molecule spec.
+            # This may include the ReadIso section and the basis set
+            # definition or filename
+            gaussian_sections['extra'].append(line)
+
+    return gaussian_sections
 
 
 class GaussianConfiguration:
@@ -728,185 +974,20 @@ class GaussianConfiguration:
         # The parameters dict to attach to the calculator
         parameters = {}
 
-        # Will contain a dictionary of nuclear properties for each atom,
-        # that will later be saved to the parameters dict:
-        nuclear_props = []
+        file_sections = _get_gaussian_in_sections(fd)
 
-        # These variables indicate which section of the
-        # input file is currently being read:
-        route_section = False
-        atoms_section = False
-        atoms_saved = False
-        readiso = False
-        count_iso = 0
-
-        # These will contain info that will be attached to the Atoms object:
-        symbols = []
-        positions = []
-        pbc = np.zeros(3, dtype=bool)
-        cell = np.zeros((3, 3))
-        npbc = 0
-
-        # Info relating to the z-matrix definition (if set)
-        zmatrix_type = False
-        zmatrix_contents = ""
-        zmatrix_var_section = False
-        zmatrix_vars = ""
-
-        # Will store the basis set definition (if set)
-        basis_set = ""
-
-        for line in fd:
-            link0_match = _re_link0.match(line)
-            output_type_match = _re_output_type.match(line)
-            chgmult_match = _re_chgmult.match(line)
-            if link0_match:
-                link0_param = _get_link0_param(
-                    link0_match)
-                if link0_param is not None:
-                    parameters.update(link0_param)
-            # The first blank line appears at the end of the route section
-            # and a blank line appears at the end of the atoms section:
-            elif line == '\n' and not readiso:
-                route_section = False
-                atoms_section = False
-            elif output_type_match and not route_section:
-                route_section = True
-                # remove #_ ready for looking for method/basis/parameters:
-                line = line.strip(output_type_match.group(0))
-                parameters.update(
-                    {'output_type': output_type_match.group(1).lower()})
-            elif chgmult_match:
-                chgmult = chgmult_match.group(0).split()
-                parameters.update(
-                    {'charge': int(chgmult[0]), 'mult': int(chgmult[1])})
-                # After the charge and multiplicty have been set, the
-                # molecule specification section of the input file begins:
-                atoms_section = True
-            elif atoms_section:
-                # Remove any comments and replace '/' and ',' with whitespace,
-                # as these are equivalent:
-                line = line.split('!')[0].replace('/', ' ').replace(',', ' ')
-                if (line.split()):
-                    if zmatrix_type:
-                        # Save any variables set when defining the z-matrix:
-                        if zmatrix_var_section:
-                            zmatrix_vars += line.strip() + '\n'
-                            continue
-                        elif 'variables' in line.lower():
-                            zmatrix_var_section = True
-                            continue
-                        elif 'constants' in line.lower():
-                            zmatrix_var_section = True
-                            warnings.warn("Constants in the optimisation are "
-                                          "not currently supported. Instead "
-                                          "setting constants as variables.")
-                            continue
-
-                    symbol, pos = _get_atoms_info(line)
-                    current_nuclear_props = _get_nuclear_props(line)
-
-                    if not zmatrix_type:
-                        pos = _get_cartesian_atom_coords(symbol,
-                                                         pos)
-                        if pos is None:
-                            zmatrix_type = True
-
-                        if symbol.upper() == 'TV' and pos is not None:
-                            pbc[npbc] = True
-                            cell[npbc] = pos
-                            npbc += 1
-                        else:
-                            nuclear_props.append(current_nuclear_props)
-                            if not zmatrix_type:
-                                symbols.append(symbol)
-                                positions.append(pos)
-
-                    if zmatrix_type:
-                        zmatrix_contents += _get_zmatrix_line(line)
-
-                    atoms_saved = True
-            elif atoms_saved:
-                # Now that we are past the molecule spec. section, we can read
-                # the entire z-matrix (if set):
-                if len(positions) == 0:
-                    if zmatrix_type:
-                        if zmatrix_vars == '':
-                            zmatrix_vars = None
-                        positions, symbols = _read_zmatrix(
-                            zmatrix_contents, zmatrix_vars)
-
-                if line.split():
-                    # check that the line isn't just a comment
-                    if line.split()[0] == '!':
-                        continue
-                    line = line.strip().split('!')[0]
-
-                # Next we read the other sections below the molecule spec.
-                # This may include the ReadIso section and the basis set
-                # definition or filename
-
-                readiso = _get_readiso_param(parameters)[0]
-
-                if len(line) > 0 and line[0] == '@':
-                    # If the name of a basis file is specified, this line
-                    # begins with a '@'
-                    parameters['basisfile'] = line
-                elif readiso and count_iso < len(symbols) + 1:
-                    # The ReadIso section has 1 more line than the number of
-                    # symbols
-                    if count_iso == 0:
-                        # The first line in the readiso section contains the
-                        # temperature, pressure, scale. Here we save this:
-                        readiso_info = _get_readiso_info(line, parameters)
-                        if readiso_info is not None:
-                            parameters.update(readiso_info)
-                        # If the atom masses were set in the nuclear properties
-                        # section, they will be overwritten by the ReadIso
-                        # section
-                        readiso_masses = []
-                    else:
-                        # The remaining lines in the ReadIso section are
-                        # the masses of the atoms
-                        try:
-                            readiso_masses.append(float(line))
-                        except ValueError:
-                            readiso_masses.append(None)
-                    count_iso += 1
-                else:
-                    # If the rest of the file is not the ReadIso section,
-                    # then it must be the definition of the basis set.
-                    if parameters.get('basis', '') == 'gen' \
-                            or 'gen' in parameters:
-                        if line.strip() != "":
-                            basis_set += line + '\n'
-
-            if route_section:
-                route_params = _get_route_params(line)
-                if route_params is not None:
-                    parameters.update(route_params)
+        # Update the parameters dictionary with the keywords and values
+        # from each section of the input file:
+        parameters.update(_get_all_link0_params(file_sections['link0']))
+        parameters.update(_get_all_route_params(file_sections['route']))
+        parameters.update(_get_charge_mult(file_sections['charge_mult']))
+        atoms, nuclear_props = _get_atoms_from_molspec(
+            file_sections['mol_spec'])
+        parameters.update(nuclear_props)
+        parameters.update(_get_extra_section_params(
+            file_sections['extra'], parameters, atoms))
 
         _validate_params(parameters)
-
-        parameters.update(_get_nuclear_props_for_all_atoms(nuclear_props))
-
-        if readiso:
-            parameters['isolist'] = readiso_masses
-            parameters = _update_readiso_params(parameters, symbols)
-
-        # Saves the basis set definition to the parameters array if
-        # it has been set:
-        if basis_set != "":
-            parameters['basis_set'] = basis_set
-            parameters['basis'] = 'gen'
-            parameters.pop('gen', None)
-
-        try:
-            atoms = Atoms(symbols, positions, pbc=pbc, cell=cell)
-        except (IndexError, ValueError, KeyError) as e:
-            raise ParseError("ERROR: Could not read the Gaussian input file, "
-                             "due to a problem with the molecule "
-                             "specification: {}".format(e))
 
         return GaussianConfiguration(atoms, parameters)
 
