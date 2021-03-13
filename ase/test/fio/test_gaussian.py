@@ -5,11 +5,13 @@ from io import StringIO
 import numpy as np
 import pytest
 from ase.atoms import Atoms
-from ase.io import ParseError
 from ase.calculators.calculator import InputError
 from ase.calculators.gaussian import Gaussian
+from ase.io import ParseError
 from ase.io.gaussian import (_get_atoms_info, _get_cartesian_atom_coords,
-                             _get_zmatrix_line, _validate_symbol_string,
+                             _get_zmatrix_line, _re_chgmult, _re_link0,
+                             _re_method_basis, _re_nuclear_props,
+                             _re_output_type, _validate_symbol_string,
                              read_gaussian_in)
 
 
@@ -522,3 +524,49 @@ def test_write_gaussian_calc():
     params_expected = calc.parameters
     params_expected['basis_set'] = _basis_set_text
     _test_write_gaussian(atoms, params_expected, properties='forces')
+
+
+def test_read_gaussian_regex():
+    ''' Test regex used in read_gaussian_in'''
+    # Test link0 regex:
+    link0_line = '%chk=example.chk'
+    link0_match = _re_link0.match(link0_line)
+    assert(link0_match.group(1) == 'chk')
+    assert(link0_match.group(2) == 'example.chk')
+    link0_line = '%chk'
+    link0_match = _re_link0.match(link0_line)
+    assert(link0_match.group(1) == 'chk')
+    assert(link0_match.group(2) is None)
+
+    # Test output type regex:
+    output_type_lines = ['#P B3LYP', ' #P', '# P']
+    for line in output_type_lines:
+        output_type_match = _re_output_type.match(line)
+        assert(output_type_match.group(1) == 'P')
+
+    # Test method and basis regex:
+    # On line with method/basis/fitting basis
+    method_basis_line = 'g1/Gen/TZVPFit ! ASE formatted method and basis'
+    method_basis_match = _re_method_basis.match(method_basis_line)
+    assert(method_basis_match.group(1) == 'g1')
+    assert(method_basis_match.group(2) == 'Gen')
+    assert(method_basis_match.group(4) == 'TZVPFit ')
+    assert(method_basis_match.group(5) == '! ASE formatted method and basis')
+    # On line with method/basis
+    method_basis_line = 'g1/Gen ! ASE formatted method and basis'
+    method_basis_match = _re_method_basis.match(method_basis_line)
+    assert(method_basis_match.group(1) == 'g1')
+    assert(method_basis_match.group(2) == 'Gen ')
+    assert(method_basis_match.group(5) == '! ASE formatted method and basis')
+
+    # Test charge and multiplicity regex - here we are just interested in
+    #  whether we get a match
+    chgmult_lines = ['0 1', ' 0 1', '0, 2']
+    for line in chgmult_lines:
+        assert(_re_chgmult.match(line).group(0) == line)
+
+    # Test nuclear properties regex:
+    nuclear_props = '(iso=0.1134289259, NMagM=-8.89, ZEff=-1)'
+    nuclear_prop_line = '1{}, -0.464,   1.137,   0.0'.format(nuclear_props)
+    assert(_re_nuclear_props.search(nuclear_prop_line).group(0)
+           == nuclear_props)
