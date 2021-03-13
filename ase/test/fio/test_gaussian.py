@@ -151,7 +151,6 @@ def fd_incorrect_zmatrix_var():
     return StringIO(incorrect_zmatrix_text)
 
 
-@pytest.fixture
 def fd_incorrect_zmatrix_symbol():
     # Make an example input string with a z-matrix with
     # an unrecognised symbol
@@ -166,7 +165,6 @@ def fd_incorrect_zmatrix_symbol():
     return StringIO(incorrect_zmatrix_text)
 
 
-@pytest.fixture
 def fd_unsupported_option():
     # Make an example string with an unsupported route option:
     unsupported_text = ""
@@ -180,7 +178,6 @@ def fd_unsupported_option():
     return StringIO(unsupported_text)
 
 
-@pytest.fixture
 def fd_no_charge_mult():
     # Make an example input string without specifying charge and multiplicity:
     unsupported_text = ""
@@ -252,9 +249,11 @@ def _check_atom_properties(atoms, atoms_new, params):
         params_equal = new_params_to_check.get(
             key) == params_to_check.get(key)
         if isinstance(params_equal, np.ndarray):
-            assert(params_equal.all())
+            assert((new_params_to_check.get(
+                key) == params_to_check.get(key)).all())
         else:
-            assert(params_equal)
+            assert(new_params_to_check.get(
+                key) == params_to_check.get(key))
 
 
 def _get_iso_masses(atoms):
@@ -262,7 +261,27 @@ def _get_iso_masses(atoms):
         return list(atoms.calc.parameters['isolist'])
 
 
-def test_readwrite_gaussian(fd_cartesian, fd_cartesian_basis_set, fd_zmatrix):
+@pytest.fixture
+def cartesian_setup():
+    positions = [[-0.464, 0.177, 0.0],
+                 [-0.464, 1.137, 0.0],
+                 [0.441, -0.143, 0.0]]
+    cell = [[10., 0., 0.], [0., 10., 0.], [0., 0., 10.]]
+    masses = [15.999, 0.1134289259, 2]
+
+    atoms = Atoms('OH2', cell=cell, positions=positions,
+                  masses=masses, pbc=True)
+
+    params = {'chk': 'example.chk', 'nprocshared': '16',
+              'output_type': 'n', 'method': 'b3lyp',
+              'basis': "6-31g(d',p')", 'opt': 'tight, maxcyc=100',
+              'integral': 'ultrafine', 'charge': 0, 'mult': 1,
+              'isolist': np.array([None, 0.1134289259, 2])}
+
+    return atoms, params
+
+
+def test_read_write_gaussian_cartesian(fd_cartesian, cartesian_setup):
     '''Tests the read_gaussian_in and write_gaussian_in methods.
     For the input text given by each fixture we do the following:
     - Check reading in the text generates the Atoms object and Calculator that
@@ -276,25 +295,13 @@ def test_readwrite_gaussian(fd_cartesian, fd_cartesian_basis_set, fd_zmatrix):
     # - PBCs
     # - All nuclei properties set
     # - Masses defined using nuclei properties
-    positions = [[-0.464, 0.177, 0.0],
-                 [-0.464, 1.137, 0.0],
-                 [0.441, -0.143, 0.0]]
-    cell = [[10., 0., 0.], [0., 10., 0.], [0., 0., 10.]]
-    masses = [15.999, 0.1134289259, 2]
-    iso_masses = [None, 0.1134289259, 2]
-    atoms = Atoms('OH2', cell=cell, positions=positions,
-                  masses=masses, pbc=True)
-    params = {'chk': 'example.chk', 'nprocshared': '16',
-              'output_type': 'n', 'method': 'b3lyp',
-              'basis': "6-31g(d',p')", 'opt': 'tight, maxcyc=100',
-              'integral': 'ultrafine', 'charge': 0, 'mult': 1}
+    atoms, params = cartesian_setup
     params['nmagmlist'] = np.array([None, -8.89, None])
     params['zefflist'] = np.array([None, -1, None])
     params['znuclist'] = np.array([None, None, 2])
     params['qmomlist'] = np.array([None, None, 1])
     params['radnuclearlist'] = np.array([None, None, 1])
     params['spinlist'] = np.array([None, None, 1])
-    params['isolist'] = np.array(iso_masses)
     # Expect warning due to fragments not being supported:
     with pytest.warns(UserWarning):
         atoms_new = read_gaussian_in(fd_cartesian, True)
@@ -306,14 +313,16 @@ def test_readwrite_gaussian(fd_cartesian, fd_cartesian_basis_set, fd_zmatrix):
 
     _test_write_gaussian(atoms_new, params)
 
+
+def test_read_write_gaussian_cartesian_basis_set(fd_cartesian_basis_set,
+                                                 cartesian_setup):
     # Tests reading a Gaussian input file with:
     # - Cartesian coordinates for the atom positions.
     # - ASE formatted method and basis
     # - Masses defined using readiso section
-    atoms = Atoms('OH2', positions=positions, masses=masses)
-    nuclei_props = ['nmagmlist', 'zefflist', 'znuclist', 'qmomlist',
-                    'radnuclearlist', 'spinlist']
-    params = {k: v for k, v in params.items() if k not in nuclei_props}
+    atoms, params = cartesian_setup
+    atoms.pbc = None
+    atoms.cell = None
     iso_params = {'temperature': '300', 'pressure': '1.0', 'scale': '1.0'}
     params.update(iso_params)
     params['opt'] = 'tight maxcyc=100'
@@ -334,6 +343,8 @@ def test_readwrite_gaussian(fd_cartesian, fd_cartesian_basis_set, fd_zmatrix):
     with pytest.warns(UserWarning):
         _test_write_gaussian(atoms_new, params)
 
+
+def test_read_write_gaussian_zmatrix(fd_zmatrix):
     # Tests reading a Gaussian input file with:
     # - Z-matrix format for structure definition
     # - Variables in the Z-matrix
@@ -383,39 +394,28 @@ def test_readwrite_gaussian(fd_cartesian, fd_cartesian_basis_set, fd_zmatrix):
     _test_write_gaussian(atoms_new, params)
 
 
-def test_read_gaussian_in_errors(fd_incorrect_zmatrix_var,
-                                 fd_incorrect_zmatrix_symbol,
-                                 fd_unsupported_option, fd_no_charge_mult,
-                                 fd_command_set):
+def test_incorrect_mol_spec(fd_incorrect_zmatrix_var):
+    ''' Tests that incorrect lines in the molecule
+    specification fail to be read.'''
+    # checks parse error raised when freezecode set:
+    freeze_code_line = 'H 1 1.0 2.0 3.0'
+    symbol, pos = _get_atoms_info(freeze_code_line)
+    with pytest.raises(ParseError):
+        _get_cartesian_atom_coords(symbol, pos)
 
-    def test_incorrect_mol_spec():
-        # checks parse error raised when freezecode set:
-        freeze_code_line = 'H 1 1.0 2.0 3.0'
-        symbol, pos = _get_atoms_info(freeze_code_line)
-        with pytest.raises(ParseError):
-            _get_cartesian_atom_coords(symbol, pos)
+    # checks parse error raised when 'alternate' z-matrix
+    # definition is used
+    incorrect_zmatrix = 'C4 O1 0.8 C2 121.4 O2 150.0 1'
 
-        # checks parse error raised when 'alternate' z-matrix
-        # definition is used
-        incorrect_zmatrix = 'C4 O1 0.8 C2 121.4 O2 150.0 1'
+    with pytest.raises(ParseError):
+        _get_zmatrix_line(incorrect_zmatrix)
 
-        with pytest.raises(ParseError):
-            _get_zmatrix_line(incorrect_zmatrix)
-
-        incorrect_symbol = 'C1-7 0 1 2 3'
-        # Checks parse error raised when
-        # molecule specifications for molecular mechanics
-        # calculations have been used.
-        with pytest.raises(ParseError):
-            _validate_symbol_string(incorrect_symbol)
-
-    # These are all files which we should not be able to read in:
-    unsupported_files = [fd_incorrect_zmatrix_symbol,
-                         fd_unsupported_option, fd_no_charge_mult]
-
-    for f in unsupported_files:
-        with pytest.raises(ParseError):
-            read_gaussian_in(f, True)
+    incorrect_symbol = 'C1-7 0 1 2 3'
+    # Checks parse error raised when
+    # molecule specifications for molecular mechanics
+    # calculations have been used.
+    with pytest.raises(ParseError):
+        _validate_symbol_string(incorrect_symbol)
 
     # Expect warning as constants aren't supported so they're
     # set as vars instead:
@@ -424,12 +424,20 @@ def test_read_gaussian_in_errors(fd_incorrect_zmatrix_var,
         with pytest.raises(ParseError):
             read_gaussian_in(fd_incorrect_zmatrix_var, True)
 
+
+@pytest.mark.parametrize("unsupported_file", [fd_incorrect_zmatrix_symbol(),
+                                              fd_unsupported_option(),
+                                              fd_no_charge_mult()])
+def test_read_gaussian_in_errors(fd_command_set, unsupported_file):
+    with pytest.raises(ParseError):
+        read_gaussian_in(unsupported_file, True)
+
+
+def test_read_gaussian_in_command(fd_command_set):
     # Expect error if 'command' is set in link0 section as this
     # would try to set the command for the calculator:
     with pytest.raises(TypeError):
         read_gaussian_in(fd_command_set, True)
-
-    test_incorrect_mol_spec()
 
 
 def test_write_gaussian_calc():
@@ -444,7 +452,6 @@ def test_write_gaussian_calc():
     atoms = Atoms('H2', [[0, 0, 0], [0, 0, 0.74]])
     params = {'mem': '1GB', 'charge': 0, 'mult': 1, 'xc': 'PBE',
               'save': None, 'basis': 'EPR-III', 'scf': 'qc',
-              #   'integral': 'integral',
               'ioplist': ['1/2', '2/3'], 'freq': 'readiso',
               'addsec': '297 3 1', 'extra': 'Opt = Tight'}
     atoms.calc = Gaussian(**params)
