@@ -13,6 +13,7 @@ read_xyz() generator and a write_xyz() function.  This and other
 information can be obtained from ioformats['xyz'].
 """
 
+import re
 import functools
 import inspect
 import os
@@ -48,6 +49,7 @@ class IOFormat:
         self.extensions: List[str] = []
         self.globs: List[str] = []
         self.magic: List[str] = []
+        self.magic_regex: Optional[bytes] = None
 
     def open(self, fname, mode: str = 'r') -> IO:
         # We might want append mode, too
@@ -195,7 +197,11 @@ class IOFormat:
                    for pattern in self.globs)
 
     def match_magic(self, data: bytes) -> bool:
-        # XXX We should use a regex for this!
+        if self.magic_regex:
+            assert not self.magic, 'Define only one of magic and magig_regex'
+            match = re.search(self.magic_regex, data, re.M)
+            return match is not None
+
         from fnmatch import fnmatchcase
         return any(fnmatchcase(data, magic + b'*')  # type: ignore
                    for magic in self.magic)
@@ -210,7 +216,8 @@ format2modulename = {}  # Left for compatibility only.
 
 
 def define_io_format(name, desc, code, *, module=None, ext=None,
-                     glob=None, magic=None, encoding=None):
+                     glob=None, magic=None, encoding=None,
+                     magic_regex=None):
     if module is None:
         module = name.replace('-', '_')
         format2modulename[name] = module
@@ -229,6 +236,9 @@ def define_io_format(name, desc, code, *, module=None, ext=None,
     fmt.extensions = normalize_patterns(ext)
     fmt.globs = normalize_patterns(glob)
     fmt.magic = normalize_patterns(magic)
+
+    if magic_regex is not None:
+        fmt.magic_regex = magic_regex
 
     for ext in fmt.extensions:
         if ext in extension2format:
@@ -342,7 +352,7 @@ F('html', 'X3DOM HTML', '1F', module='x3d')
 F('json', 'ASE JSON database file', '+F', ext='json', module='db')
 F('jsv', 'JSV file format', '1F')
 F('lammps-dump-text', 'LAMMPS text dump file', '+F',
-  module='lammpsrun', magic=b'*\nITEM: TIMESTEP\n')
+  module='lammpsrun', magic_regex=b'^ITEM: TIMESTEP$')
 F('lammps-dump-binary', 'LAMMPS binary dump file', '+B',
   module='lammpsrun')
 F('lammps-data', 'LAMMPS data file', '1F', module='lammpsdata',
