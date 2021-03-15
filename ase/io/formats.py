@@ -833,7 +833,7 @@ def parse_filename(filename, index=None, do_not_split_by_at_sign=False):
     return newfilename, newindex
 
 
-def match_magic(data: bytes) -> Optional[IOFormat]:
+def match_magic(data: bytes) -> IOFormat:
     data = data[:PEEK_BYTES]
     for ioformat in ioformats.values():
         if ioformat.match_magic(data):
