@@ -1,8 +1,6 @@
 import numpy as np
 import pytest
-from ase.io.formats import ioformats, filetype, match_magic
-from ase.io.bytes import parse_atoms
-from ase.io import write
+from ase.io.formats import ioformats, match_magic
 
 
 def lammpsdump_headers():

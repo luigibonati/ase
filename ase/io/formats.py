@@ -32,6 +32,7 @@ from ase.parallel import parallel_function, parallel_generator
 
 PEEK_BYTES = 50000
 
+
 class UnknownFileTypeError(Exception):
     pass
 
