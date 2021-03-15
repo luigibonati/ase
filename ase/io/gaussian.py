@@ -260,36 +260,36 @@ def write_gaussian_in(fd, atoms, properties=['energy'],
     properties: list
         Properties to calculate
     method: str
-        Level of theory to use, e.g. hf, ccsd, mp2, or b3lyp. Overrides xc
-        (see below).
+        Level of theory to use, e.g. ``hf``, ``ccsd``, ``mp2``, or ``b3lyp``.
+        Overrides ``xc`` (see below).
     xc: str
         Level of theory to use. Translates several XC functionals from
-        their common name (e.g. PBE) to their internal Gaussian name
-        (e.g. PBEPBE).
+        their common name (e.g. ``PBE``) to their internal Gaussian name
+        (e.g. ``PBEPBE``).
     basis: str
         The basis set to use. If not provided, no basis set will be requested,
-         which usually results in STO-3G. Maybe omitted if basisfile is set
-         (see below).
+        which usually results in ``STO-3G``. Maybe omitted if basisfile is set
+        (see below).
     fitting_basis: str
         The name of the fitting basis set to use.
     output_type: str
         Level of output to record in the Gaussian
-         output file - this may be ``N``- normal or ``P`` -
-         additional.
+        output file - this may be ``N``- normal or ``P`` -
+        additional.
     basisfile: str
         The name of the basis file to use. If a value is provided, basis may
-         be omitted (it will be automatically set to 'gen')
+        be omitted (it will be automatically set to 'gen')
     basis_set: str
         The basis set definition to use. This is an alternative
         to basisfile, and would be the same as the contents
         of such a file.
     charge: int
         The system charge. If not provided, it will be automatically
-         determined from the Atoms object’s initial_charges.
+        determined from the ``Atoms`` object’s initial_charges.
     mult: int
-        The system multiplicity (spin + 1). If not provided, it will be
-         automatically determined from the Atoms object’s
-         initial_magnetic_moments.
+        The system multiplicity (``spin + 1``). If not provided, it will be
+        automatically determined from the ``Atoms`` object’s
+        ``initial_magnetic_moments``.
     extra: str
         Extra lines to be included in the route section verbatim.
         It should not be necessary to use this, but it is included for
@@ -298,7 +298,7 @@ def write_gaussian_in(fd, atoms, properties=['energy'],
         A collection of IOPs definitions to be included in the route line.
     addsec: str
         Text to be added after the molecular geometry specification, e.g. for
-         defining constraints with opt='modredundant'.
+        defining masses with ``freq=ReadIso``.
     spinlist: list
         A list of nuclear spins to be added into the nuclear
         propeties section of the molecule specification.
@@ -321,15 +321,14 @@ def write_gaussian_in(fd, atoms, properties=['energy'],
         propeties section of the molecule specification.
     params: dict
         Contains any extra keywords and values that will be included in either
-         the link0 section or route section of the gaussian input file.
+        the link0 section or route section of the gaussian input file.
         To be included in the link0 section, the keyword must be one of the
-         following:
-        'mem', 'chk', 'oldchk', 'schk', 'rwf', 'oldmatrix', 'oldrawmatrix',
-        'int', 'd2e', 'save', 'nosave', 'errorsave', 'cpu', 'nprocshared',
-        'gpucpu', 'lindaworkers', 'usessh', 'ssh', 'debuglinda'.
+        following: ``mem``, ``chk``, ``oldchk``, ``schk``, ``rwf``,
+        ``oldmatrix``, ``oldrawmatrix``, ``int``, ``d2e``, ``save``,
+        ``nosave``, ``errorsave``, ``cpu``, ``nprocshared``, ``gpucpu``,
+        ``lindaworkers``, ``usessh``, ``ssh``, ``debuglinda``.
         Any other keywords will be placed (along with their values) in the
-         route section.
-
+        route section.
     '''
 
     params = deepcopy(params)
