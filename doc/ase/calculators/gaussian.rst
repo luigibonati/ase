@@ -154,19 +154,19 @@ keyword            type     default value   description
 ``ioplist``        ``list`` None            A collection of IOPs definitions to be included in
                                             the route line.
 ``spinlist``       ``list`` None            A list of nuclear spins to be added into the nuclear
-                                            propeties section of the molecule specification.
+                                            properties section of the molecule specification.
 ``zefflist``       ``list`` None            A list of effective charges to be added into the nuclear
-                                            propeties section of the molecule specification.
+                                            properties section of the molecule specification.
 ``qmomlist``       ``list`` None            A list of nuclear quadropole moments to be added into 
-                                            the nuclear propeties section of the molecule
+                                            the nuclear properties section of the molecule
                                             specification.
 ``nmagmlist``      ``list`` None            A list of nuclear magnetic moments to be added into
                                             the nuclear
-                                            propeties section of the molecule specification.
+                                            properties section of the molecule specification.
 ``znuclist``       ``list`` None            A list of nuclear charges to be added into the nuclear
-                                            propeties section of the molecule specification.
+                                            properties section of the molecule specification.
 ``radnuclearlist`` ``list`` None            A list of nuclear radii to be added into the nuclear
-                                            propeties section of the molecule specification. 
+                                            properties section of the molecule specification. 
 ================== ======== =============== ==================================================
 
 

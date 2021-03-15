@@ -261,24 +261,24 @@ def write_gaussian_in(fd, atoms, properties=['energy'],
         Properties to calculate
     method: str
         Level of theory to use, e.g. hf, ccsd, mp2, or b3lyp. Overrides xc
-         (see below).
+        (see below).
     xc: str
         Level of theory to use. Translates several XC functionals from
         their common name (e.g. PBE) to their internal Gaussian name
         (e.g. PBEPBE).
-    basis:
+    basis: str
         The basis set to use. If not provided, no basis set will be requested,
          which usually results in STO-3G. Maybe omitted if basisfile is set
          (see below).
-    fitting_basis:
+    fitting_basis: str
         The name of the fitting basis set to use.
-    output_type:
+    output_type: str
         Level of output to record in the Gaussian
          output file - this may be ``N``- normal or ``P`` -
          additional.
-    basisfile:
-        The basis file to use. If a value is provided, basis may be omitted
-         (it will be automatically set to 'gen')
+    basisfile: str
+        The name of the basis file to use. If a value is provided, basis may
+         be omitted (it will be automatically set to 'gen')
     basis_set: str
         The basis set definition to use. This is an alternative
         to basisfile, and would be the same as the contents
@@ -299,7 +299,6 @@ def write_gaussian_in(fd, atoms, properties=['energy'],
     addsec: str
         Text to be added after the molecular geometry specification, e.g. for
          defining constraints with opt='modredundant'.
-    The following are all nuclear properties:
     spinlist: list
         A list of nuclear spins to be added into the nuclear
         propeties section of the molecule specification.
