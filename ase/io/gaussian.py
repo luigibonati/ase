@@ -110,101 +110,48 @@ def _get_molecule_spec(atoms, nuclear_props):
         molecule_spec.append('{:<10s}{:20.10f}{:20.10f}{:20.10f}'.format(
             symbol_section, *atom.position))
 
+    # unit cell vectors, in case of periodic boundary conditions
+    for ipbc, tv in zip(atoms.pbc, atoms.cell):
+        if ipbc:
+            molecule_spec.append('TV {:20.10f}{:20.10f}{:20.10f}'.format(*tv))
+
+    molecule_spec.append('')
+
     return molecule_spec
 
 
-def write_gaussian_in(fd, atoms, properties=None, **params):
-    '''
-    Generates a Gaussian input file
-
-    Parameters
-    -----------
-    fd: file-like
-        where the Gaussian input file will be written
-    atoms: Atoms
-        Structure to write to the input file
-    properties: list
-        Properties to calculate
-    params: dict
-        Contains information about the Gaussian calculation,
-        including the method and basis, charge and multiplicity,
-        link 0 commands, route section keywords and options, and
-        the nuclear properties. Note that the masses of the atoms
-        will be taken from the Atoms object, not from this dict.
-    '''
-
-    params = deepcopy(params)
-
-    if properties is None:
-        properties = ['energy']
-
-    # pop method and basis and output type
-    method = params.pop('method', None)
-    basis = params.pop('basis', None)
-    fitting_basis = params.pop('fitting_basis', None)
-    output_type = '#{}'.format(params.pop('output_type', 'P'))
+def _format_output_type(output_type):
+    ''' Given a letter: output_type, return
+    a string formatted for a gaussian input file'''
     # Change output type to P if it has been set to T, because ASE
     # does not support reading info from 'terse' output files.
-    if output_type == '#' or 't' in output_type.lower():
-        output_type = '#P'
+    if output_type is None or output_type == '' or 't' in output_type.lower():
+        output_type = 'P'
 
-    # basisfile or basis_set, only used if basis=gen
-    basisfile = params.pop('basisfile', None)
-    basis_set = params.pop('basis_set', None)
+    return '#{}'.format(output_type)
 
-    # basis can be omitted if basisfile is provided
-    if basis is None:
-        if basisfile is not None or basis_set is not None:
-            basis = 'gen'
 
-    # determine method from xc if it is provided
-    if method is None:
-        xc = params.pop('xc', None)
-        if xc is not None:
-            method = _xc_to_method.get(xc.lower(), xc)
+def _check_problem_methods(method):
+    ''' Check method string for problem methods and warn appropriately'''
+    if method.lower() in _problem_methods:
+        warnings.warn(
+            'The requested method, {}, is a composite method. Composite '
+            'methods do not have well-defined potential energy surfaces, '
+            'so the energies, forces, and other properties returned by '
+            'ASE may not be meaningful, or they may correspond to a '
+            'different geometry than the one provided. '
+            'Please use these methods with caution.'.format(method)
+        )
 
-    # If the user requests a problematic method, rather than raising an error
-    # or proceeding blindly, give the user a warning that the results parsed
-    # by ASE may not be meaningful.
-    if method is not None:
-        if method.lower() in _problem_methods:
-            warnings.warn(
-                'The requested method, {}, is a composite method. Composite '
-                'methods do not have well-defined potential energy surfaces, '
-                'so the energies, forces, and other properties returned by '
-                'ASE may not be meaningful, or they may correspond to a '
-                'different geometry than the one provided. '
-                'Please use these methods with caution.'.format(method)
-            )
 
-    # determine charge from initial charges if not passed explicitly
-    charge = params.pop('charge', None)
-    if charge is None:
-        charge = atoms.get_initial_charges().sum()
-
-    # determine multiplicity from initial magnetic moments
-    # if not passed explicitly
-    mult = params.pop('mult', None)
-    if mult is None:
-        mult = atoms.get_initial_magnetic_moments().sum() + 1
-
-    # pull out raw list of explicit keywords for backwards compatibility
-    extra = params.pop('extra', None)
-
-    # pull out any explicit IOPS
-    ioplist = params.pop('ioplist', None)
-
-    # also pull out 'addsec', which e.g. contains modredundant info
-    addsec = params.pop('addsec', None)
-
-    # pull out nuclear properties, and discard iso:
-    nuclear_props = {}
-    for keyword in _nuclear_prop_names:
-        nuclear_props[keyword] = params.pop(keyword + 'list', None)
-    nuclear_props.pop('iso')
-
-    # set up link0 arguments
+def _pop_link0_params(params):
+    '''Takes the params dict and returns a dict with the link0 keywords
+    removed, and a list containing the link0 keywords and options
+    to be written to the gaussian input file'''
+    params = deepcopy(params)
     out = []
+    # Remove keywords from params, so they are not set again later in
+    # route section
     for key in _link0_keys:
         if key not in params:
             continue
@@ -223,22 +170,29 @@ def write_gaussian_in(fd, atoms, properties=None, **params):
             val = ' '.join(val)
         out.append('%{} L{}'.format(key, val))
 
-    # begin route line
-    # note: unlike in old calculator, each route keyword is put on its own
-    # line.
+    return params, out
+
+
+def _format_method_basis(output_type, method, basis, fitting_basis):
+    output_string = ""
     if basis and method and fitting_basis:
-        out.append('{} {}/{}/{} ! ASE formatted method and basis'
-                   .format(output_type, method, basis, fitting_basis))
+        output_string = '{} {}/{}/{} ! ASE formatted method and basis'.format(
+            output_type, method, basis, fitting_basis)
     elif basis and method:
-        out.append('{} {}/{} ! ASE formatted method and basis'
-                   .format(output_type, method, basis))
+        output_string = '{} {}/{} ! ASE formatted method and basis'.format(
+            output_type, method, basis)
     else:
         output_string = '{}'.format(output_type)
         for value in [method, basis]:
             if value is not None:
                 output_string += ' {}'.format(value)
-        out.append(output_string)
+    return output_string
 
+
+def _format_route_params(params):
+    '''Get keywords and values from the params dictionary and return
+    as a list of lines to add to the gaussian input file'''
+    out = []
     for key, val in params.items():
         # assume bare keyword if val is falsey, i.e. '', None, False, etc.
         # also, for backwards compatibility: assume bare keyword if key and
@@ -249,34 +203,27 @@ def write_gaussian_in(fd, atoms, properties=None, **params):
             out.append('{}({})'.format(key, ','.join(val)))
         else:
             out.append('{}({})'.format(key, val))
+    return out
 
-    if ioplist is not None:
-        out.append('IOP(' + ', '.join(ioplist) + ')')
 
-    if extra is not None:
-        out.append(extra)
+def _format_addsec(addsec):
+    '''Format addsec string as a list of lines to be added to the gaussian
+     input file.'''
+    out = []
+    if addsec is not None:
+        out.append('')
+        if isinstance(addsec, str):
+            out.append(addsec)
+        elif isinstance(addsec, Iterable):
+            out += list(addsec)
+    return out
 
-    # Add 'force' iff the user requested forces, since Gaussian crashes when
-    # 'force' is combined with certain other keywords such as opt and irc.
-    if 'forces' in properties and 'force' not in params:
-        out.append('force')
 
-    # header, charge, and mult
-    out += ['', 'Gaussian input prepared by ASE', '',
-            '{:.0f} {:.0f}'.format(charge, mult)]
-
-    # atomic positions and nuclear properties:
-    molecule_spec = _get_molecule_spec(atoms, nuclear_props)
-    for line in molecule_spec:
-        out.append(line)
-
-    # unit cell vectors, in case of periodic boundary conditions
-    for ipbc, tv in zip(atoms.pbc, atoms.cell):
-        if ipbc:
-            out.append('TV {:20.10f}{:20.10f}{:20.10f}'.format(*tv))
-
-    out.append('')
-
+def _format_basis_set(basis, basisfile, basis_set):
+    '''Format either: the basis set filename (basisfile), the basis set file
+    contents (from reading basisfile), or the basis_set text as a list of
+    strings to be added to the gaussian input file.'''
+    out = []
     # if basis='gen', set basisfile. Either give a path to a basisfile, or
     # read in the provided file and paste it verbatim
     if basisfile is not None:
@@ -290,13 +237,182 @@ def write_gaussian_in(fd, atoms, properties=None, **params):
     else:
         if basis is not None and basis.lower() == 'gen':
             raise InputError('Please set basisfile or basis_set')
+    return out
 
-    if addsec is not None:
-        out.append('')
-        if isinstance(addsec, str):
-            out.append(addsec)
-        elif isinstance(addsec, Iterable):
-            out += list(addsec)
+
+def write_gaussian_in(fd, atoms, properties=['energy'],
+                      method=None, basis=None, fitting_basis=None,
+                      output_type='P', basisfile=None, basis_set=None,
+                      xc=None, charge=None, mult=None, extra=None,
+                      ioplist=None, addsec=None, spinlist=None,
+                      zefflist=None, qmomlist=None, nmagmlist=None,
+                      znuclist=None, radnuclearlist=None,
+                      **params):
+    '''
+    Generates a Gaussian input file
+
+    Parameters
+    -----------
+    fd: file-like
+        where the Gaussian input file will be written
+    atoms: Atoms
+        Structure to write to the input file
+    properties: list
+        Properties to calculate
+    method: str
+        Level of theory to use, e.g. hf, ccsd, mp2, or b3lyp. Overrides xc
+         (see below).
+    xc: str
+        Level of theory to use. Translates several XC functionals from
+        their common name (e.g. PBE) to their internal Gaussian name
+        (e.g. PBEPBE).
+    basis:
+        The basis set to use. If not provided, no basis set will be requested,
+         which usually results in STO-3G. Maybe omitted if basisfile is set
+         (see below).
+    fitting_basis:
+        The name of the fitting basis set to use.
+    output_type:
+        Level of output to record in the Gaussian
+         output file - this may be ``N``- normal or ``P`` -
+         additional.
+    basisfile:
+        The basis file to use. If a value is provided, basis may be omitted
+         (it will be automatically set to 'gen')
+    basis_set: str
+        The basis set definition to use. This is an alternative
+        to basisfile, and would be the same as the contents
+        of such a file.
+    charge: int
+        The system charge. If not provided, it will be automatically
+         determined from the Atoms object’s initial_charges.
+    mult: int
+        The system multiplicity (spin + 1). If not provided, it will be
+         automatically determined from the Atoms object’s
+         initial_magnetic_moments.
+    extra: str
+        Extra lines to be included in the route section verbatim.
+        It should not be necessary to use this, but it is included for
+        backwards compatibility.
+    ioplist: list
+        A collection of IOPs definitions to be included in the route line.
+    addsec: str
+        Text to be added after the molecular geometry specification, e.g. for
+         defining constraints with opt='modredundant'.
+    The following are all nuclear properties:
+    spinlist: list
+        A list of nuclear spins to be added into the nuclear
+        propeties section of the molecule specification.
+    zefflist: list
+        A list of effective charges to be added into the nuclear
+        propeties section of the molecule specification.
+    qmomlist: list
+        A list of nuclear quadropole moments to be added into
+        the nuclear propeties section of the molecule
+        specification.
+    nmagmlist: list
+        A list of nuclear magnetic moments to be added into
+        the nuclear propeties section of the molecule
+        specification.
+    znuclist: list
+        A list of nuclear charges to be added into the nuclear
+        propeties section of the molecule specification.
+    radnuclearlist: list
+        A list of nuclear radii to be added into the nuclear
+        propeties section of the molecule specification.
+    params: dict
+        Contains any extra keywords and values that will be included in either
+         the link0 section or route section of the gaussian input file.
+        To be included in the link0 section, the keyword must be one of the
+         following:
+        'mem', 'chk', 'oldchk', 'schk', 'rwf', 'oldmatrix', 'oldrawmatrix',
+        'int', 'd2e', 'save', 'nosave', 'errorsave', 'cpu', 'nprocshared',
+        'gpucpu', 'lindaworkers', 'usessh', 'ssh', 'debuglinda'.
+        Any other keywords will be placed (along with their values) in the
+         route section.
+
+    '''
+
+    params = deepcopy(params)
+
+    if properties is None:
+        properties = ['energy']
+
+    output_type = _format_output_type(output_type)
+
+    # basis can be omitted if basisfile is provided
+    if basis is None:
+        if basisfile is not None or basis_set is not None:
+            basis = 'gen'
+
+    # determine method from xc if it is provided
+    if method is None:
+        if xc is not None:
+            method = _xc_to_method.get(xc.lower(), xc)
+
+    # If the user requests a problematic method, rather than raising an error
+    # or proceeding blindly, give the user a warning that the results parsed
+    # by ASE may not be meaningful.
+    if method is not None:
+        _check_problem_methods(method)
+
+    # determine charge from initial charges if not passed explicitly
+    if charge is None:
+        charge = atoms.get_initial_charges().sum()
+
+    # determine multiplicity from initial magnetic moments
+    # if not passed explicitly
+    if mult is None:
+        mult = atoms.get_initial_magnetic_moments().sum() + 1
+
+    # set up link0 arguments
+    out = []
+    params, link0_list = _pop_link0_params(params)
+    out.extend(link0_list)
+
+    # begin route line
+    # note: unlike in old calculator, each route keyword is put on its own
+    # line.
+    out.append(_format_method_basis(output_type, method, basis, fitting_basis))
+
+    # If the calculator's parameter dictionary contains an isolist, we ignore
+    # this - it is up to the user to attach this info as the atoms' masses
+    # if they wish for it to be used:
+    params.pop('isolist', None)
+
+    # Any params left will belong in the route section of the file:
+    out.extend(_format_route_params(params))
+
+    if ioplist is not None:
+        out.append('IOP(' + ', '.join(ioplist) + ')')
+
+    # raw list of explicit keywords for backwards compatibility
+    if extra is not None:
+        out.append(extra)
+
+    # Add 'force' iff the user requested forces, since Gaussian crashes when
+    # 'force' is combined with certain other keywords such as opt and irc.
+    if 'forces' in properties and 'force' not in params:
+        out.append('force')
+
+    # header, charge, and mult
+    out += ['', 'Gaussian input prepared by ASE', '',
+            '{:.0f} {:.0f}'.format(charge, mult)]
+
+    # make dict of nuclear properties:
+    nuclear_props = {'spin': spinlist, 'zeff': zefflist, 'qmom': qmomlist,
+                     'nmagm': nmagmlist, 'znuc': znuclist,
+                     'radnuclear': radnuclearlist}
+    nuclear_props = {k: v for k, v in nuclear_props.items() if v is not None}
+
+    # atomic positions and nuclear properties:
+    molecule_spec = _get_molecule_spec(atoms, nuclear_props)
+    for line in molecule_spec:
+        out.append(line)
+
+    out.extend(_format_basis_set(basis, basisfile, basis_set))
+
+    out.extend(_format_addsec(addsec))
 
     out += ['', '']
     fd.write('\n'.join(out))
