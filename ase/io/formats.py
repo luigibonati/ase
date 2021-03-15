@@ -13,6 +13,7 @@ read_xyz() generator and a write_xyz() function.  This and other
 information can be obtained from ioformats['xyz'].
 """
 
+import io
 import re
 import functools
 import inspect
@@ -28,6 +29,8 @@ from ase.atoms import Atoms
 from importlib import import_module
 from ase.parallel import parallel_function, parallel_generator
 
+
+PEEK_BYTES = 50000
 
 class UnknownFileTypeError(Exception):
     pass
@@ -71,6 +74,41 @@ class IOFormat:
 
         path = Path(fname)
         return path.open(mode, encoding=self.encoding)
+
+    def _buf_as_filelike(self, data: Union[str, bytes]) -> IO:
+        encoding = self.encoding
+        if encoding is None:
+            encoding = 'utf-8'  # Best hacky guess.
+
+        if self.isbinary:
+            if isinstance(data, str):
+                data = data.encode(encoding)
+        else:
+            if isinstance(data, bytes):
+                data = data.decode(encoding)
+
+        return self._ioclass(data)
+
+    @property
+    def _ioclass(self):
+        if self.isbinary:
+            return io.BytesIO
+        else:
+            return io.StringIO
+
+    def parse_images(self, data: Union[str, bytes],
+                     **kwargs) -> Sequence[Atoms]:
+        with self._buf_as_filelike(data) as fd:
+            outputs = self.read(fd, **kwargs)
+            if self.single:
+                assert isinstance(outputs, Atoms)
+                return [outputs]
+            else:
+                return list(self.read(fd, **kwargs))
+
+    def parse_atoms(self, data: Union[str, bytes], **kwargs) -> Atoms:
+        images = self.parse_images(data, **kwargs)
+        return images[-1]
 
     @property
     def can_read(self) -> bool:
@@ -198,7 +236,7 @@ class IOFormat:
 
     def match_magic(self, data: bytes) -> bool:
         if self.magic_regex:
-            assert not self.magic, 'Define only one of magic and magig_regex'
+            assert not self.magic, 'Define only one of magic and magic_regex'
             match = re.search(self.magic_regex, data, re.M)
             return match is not None
 
@@ -794,6 +832,14 @@ def parse_filename(filename, index=None, do_not_split_by_at_sign=False):
     return newfilename, newindex
 
 
+def match_magic(data: bytes) -> Optional[IOFormat]:
+    data = data[:PEEK_BYTES]
+    for ioformat in ioformats.values():
+        if ioformat.match_magic(data):
+            return ioformat
+    raise UnknownFileTypeError('Cannot guess file type from contents')
+
+
 def string2index(string: str) -> Union[int, slice, str]:
     """Convert index string to either int or slice"""
     if ':' not in string:
@@ -876,7 +922,7 @@ def filetype(
         if fd is sys.stdin:
             return 'json'
 
-    data = fd.read(50000)
+    data = fd.read(PEEK_BYTES)
     if fd is not filename:
         fd.close()
     else:
@@ -885,9 +931,10 @@ def filetype(
     if len(data) == 0:
         raise UnknownFileTypeError('Empty file: ' + filename)    # type: ignore
 
-    for ioformat in ioformats.values():
-        if ioformat.match_magic(data):
-            return ioformat.name
+    try:
+        return match_magic(data).name
+    except UnknownFileTypeError:
+        pass
 
     format = None
     if ext in extension2format:
