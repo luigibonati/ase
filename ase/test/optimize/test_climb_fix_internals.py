@@ -1,7 +1,7 @@
 from ase.build import fcc100, add_adsorbate
 from ase.constraints import FixAtoms, FixInternals
 from ase.calculators.emt import EMT
-from ase.optimize.climbfixinternals import ClimbFixInternals
+from ase.optimize.climbfixinternals import BFGSClimbFixInternals
 from ase.vibrations import Vibrations
 import numpy as np
 
@@ -30,7 +30,7 @@ def test_climb_fix_internals():
     atoms.set_constraint([FixInternals(bondcombos=[bondcombo])] + atoms.constraints)
 
     # Optimizer for transition state search along reaction coordinate
-    dyn = ClimbFixInternals(atoms, climb_coordinate=reaction_coord)
+    dyn = BFGSClimbFixInternals(atoms, climb_coordinate=reaction_coord)
 
     # Converge to a saddle point
     dyn.run(fmax=0.05)
@@ -67,9 +67,9 @@ def test_initialization_with_different_constraints():
     value = FixInternals.get_combo(atoms, dc)
     dihedralcombo = FixInternals(dihedralcombos=[[value, dc]])
 
-    # test initialization of ClimbFixInternals with different constraints
+    # test initialization of BFGSClimbFixInternals with different constraints
     coord = [[0, 1], [0, 1, 2], [0, 1, 2, 3], bc, ac, dc]
     for i, constr in enumerate([bond, angle, dihedral,
                                 bondcombo, anglecombo, dihedralcombo]):
         atoms.set_constraint(constr)
-        ClimbFixInternals(atoms, climb_coordinate=coord[i])
+        BFGSClimbFixInternals(atoms, climb_coordinate=coord[i])

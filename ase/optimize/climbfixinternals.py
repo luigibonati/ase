@@ -2,9 +2,8 @@ from ase.optimize.bfgs import BFGS
 from ase.constraints import FixInternals
 
 
-class ClimbFixInternals(BFGS):
-    """
-    Class for transition state search and optimization
+class BFGSClimbFixInternals(BFGS):
+    """Class for transition state search and optimization
 
     Climbs the 1D reaction coordinate defined as constrained internal coordinate
     via the :class:`~ase.constraints.FixInternals` class while minimizing all
