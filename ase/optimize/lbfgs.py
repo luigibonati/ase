@@ -127,7 +127,7 @@ class LBFGS(Optimizer):
         a = np.empty((loopmax,), dtype=np.float64)
 
         # ## The algorithm itself:
-        q = -f.reshape(-1)
+        q = -forces.reshape(-1)
         for i in range(loopmax - 1, -1, -1):
             a[i] = rho[i] * np.dot(s[i], q)
             q -= a[i] * y[i]
