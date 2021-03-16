@@ -114,38 +114,60 @@ convenient for scripting purposes.
 Aside from the link-line and route section arguments, the Gaussian calculator
 accepts a few additional convenience arguments.
 
-============== ======== =============== ==================================================
-keyword        type     default value   description
-============== ======== =============== ==================================================
-``label``      ``str``  ``'Gaussian'``  Name to use for input and output files.
-``method``     ``str``  None            Level of theory to use, e.g. ``hf``, ``ccsd``,
-                                        ``mp2``, or ``b3lyp``.  Overrides ``xc``
-                                        (see below).
-``xc``         ``str``  None            Level of theory to use. Translates several XC
-                                        functionals from their common name (e.g. PBE) to
-                                        their internal Gaussian name (e.g. PBEPBE).
-``basis``      ``str``  None            The basis set to use. If not provided, no basis
-                                        set will be requested, which usually results
-                                        in STO-3G.  Maybe omitted if ``basisfile`` is set
-                                        (see below).
-``charge``     ``int``  See description The system charge. If not provided, it will be
-                                        automatically determined from the Atoms object's
-                                        ``initial_charges``.
-``mult``       ``int``  See description The system multiplicity (spin + 1). If not
-                                        provided, it will be automatically determined from
-                                        the Atoms object's ``initial_magnetic_moments``.
-``basisfile``  ``str``  None            The basis file to use. If a value is provided,
-                                        ``basis`` may be omitted (it will be automatically
-                                        set to ``'gen'``)
-``extra``      ``str``  None            Extra lines to be included in the route section
-                                        verbatim. It should not be necessary to use this,
-                                        but it is included for backwards compatibility.
-``addsec``     ``str``  None            Text to be added after the molecular geometry
-                                        specification, e.g. for defining constraints
-                                        with ``opt='modredundant'``.
-``ioplist``    ``list`` None            A collection of IOPs definitions to be included in
-                                        the route line.
-============== ======== =============== ==================================================
+================== ======== =============== ==================================================
+keyword            type     default value   description
+================== ======== =============== ==================================================
+``label``          ``str``  ``'Gaussian'``  Name to use for input and output files.
+``output_type``    ``str``  ``P``           Level of output to record in the Gaussian 
+                                            output file - this may be ``N``- normal or ``P`` - 
+                                            additional.
+``method``         ``str``  None            Level of theory to use, e.g. ``hf``, ``ccsd``,
+                                            ``mp2``, or ``b3lyp``.  Overrides ``xc``
+                                            (see below).
+``xc``             ``str``  None            Level of theory to use. Translates several XC
+                                            functionals from their common name (e.g. PBE) to
+                                            their internal Gaussian name (e.g. PBEPBE).
+``basis``          ``str``  None            The basis set to use. If not provided, no basis
+                                            set will be requested, which usually results
+                                            in STO-3G.  Maybe omitted if ``basisfile`` is set
+                                            (see below).
+``fitting_basis``  ``str``  None	           The fitting basis set to use.
+``charge``         ``int``  See description The system charge. If not provided, it will be
+                                            automatically determined from the Atoms object's
+                                            ``initial_charges``.
+``mult``           ``int``  See description The system multiplicity (spin + 1). If not
+                                            provided, it will be automatically determined
+                                            from the Atoms object's 
+                                            ``initial_magnetic_moments``.
+``basisfile``      ``str``  None            The basis file to use. If a value is provided,
+                                            ``basis`` may be omitted (it will be automatically
+                                            set to ``'gen'``)
+``basis_set``      ``str``  None            The basis set definition to use. This is an alternative
+                                            to ``basisfile``, and would be the same as the contents
+                                            of such a file.
+``extra``          ``str``  None            Extra lines to be included in the route section
+                                            verbatim. It should not be necessary to use this,
+                                            but it is included for backwards compatibility.
+``addsec``         ``str``  None            Text to be added after the molecular geometry
+                                            specification, e.g. for defining constraints
+                                            with ``opt='modredundant'``.
+``ioplist``        ``list`` None            A collection of IOPs definitions to be included in
+                                            the route line.
+``spinlist``       ``list`` None            A list of nuclear spins to be added into the nuclear
+                                            properties section of the molecule specification.
+``zefflist``       ``list`` None            A list of effective charges to be added into the nuclear
+                                            properties section of the molecule specification.
+``qmomlist``       ``list`` None            A list of nuclear quadropole moments to be added into 
+                                            the nuclear properties section of the molecule
+                                            specification.
+``nmagmlist``      ``list`` None            A list of nuclear magnetic moments to be added into
+                                            the nuclear
+                                            properties section of the molecule specification.
+``znuclist``       ``list`` None            A list of nuclear charges to be added into the nuclear
+                                            properties section of the molecule specification.
+``radnuclearlist`` ``list`` None            A list of nuclear radii to be added into the nuclear
+                                            properties section of the molecule specification. 
+================== ======== =============== ==================================================
 
 
 GaussianOptimizer and GaussianIRC
