@@ -87,8 +87,9 @@ class BFGSClimbFixInternals(BFGS):
             performed with ``optB_fmax`` independent of ``optB_fmax_scaling``.
         """
         self.targetvalue = None  # may be assigned during restart in self.read()
-        BFGS.__init__(self, atoms, restart, logfile, trajectory,
-                      maxstep, master, alpha)
+        BFGS.__init__(self, atoms, restart=restart, logfile=logfile,
+                      trajectory=trajectory, maxstep=maxstep, master=master,
+                      alpha=alpha)
 
         self.constr2climb = self.get_constr2climb(self.atoms, climb_coordinate)
         self.targetvalue = self.targetvalue or self.constr2climb.targetvalue
