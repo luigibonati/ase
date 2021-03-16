@@ -359,7 +359,7 @@ minima since the contour is a single point.
 References:
 
 [1] M. J. Waters and J. M. Rondinelli, `Contour Exploration with Potentiostatic
-Kinematics` ArXiv 2021
+Kinematics` ArXiv:2103.08054 (https://arxiv.org/abs/2103.08054)
 
 
 
