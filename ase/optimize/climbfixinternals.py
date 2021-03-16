@@ -92,8 +92,7 @@ class ClimbFixInternals(BFGS):
                       maxstep, master, alpha)
 
         self.constr2climb = self.get_constr2climb(self.atoms, climb_coordinate)
-        if self.targetvalue is None:  # if not assigned during restart
-            self.targetvalue = self.constr2climb.targetvalue
+        self.targetvalue = self.targetvalue or self.constr2climb.targetvalue
 
         self.optB = optB
         self.optB_kwargs = optB_kwargs or {}
@@ -125,7 +124,7 @@ class ClimbFixInternals(BFGS):
         (self.H, self.pos0, self.forces0, self.maxstep,
          self.targetvalue) = self.load()
 
-    def step(self):
+    def step(self, proj_forces=None):
         atoms = self.atoms
 
         # setup optimizer 'B'
@@ -142,8 +141,8 @@ class ClimbFixInternals(BFGS):
             optB.run(self.get_scaled_fmax())  # optimize with scaled fmax
             self.log(log_nstep_0=True)
 
-        # climb with optimizer 'A'
-        proj_forces = self.get_projected_forces()  # get directions for climbing
+        # get directions for climbing and climb with optimizer 'A'
+        proj_forces = proj_forces or self.get_projected_forces()
         pos = atoms.get_positions()
         dpos, steplengths = self.prepare_step(pos, proj_forces)
         dpos = self.determine_step(dpos, steplengths)
