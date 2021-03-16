@@ -98,7 +98,6 @@ class ClimbFixInternals(BFGS):
         self.optB_kwargs = optB_kwargs or {}
         self.optB_fmax = optB_fmax
         self.scaling = optB_fmax_scaling
-
         # log optimizer 'B' in logfiles named after current value of constraint
         self.autolog = 'logfile' not in self.optB_kwargs
         self.autotraj = 'trajectory' not in self.optB_kwargs
