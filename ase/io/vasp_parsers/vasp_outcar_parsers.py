@@ -550,7 +550,7 @@ class OutcarChunkParser(ChunkParser):
         symbols = self.header['symbols']
         constraint = self.header.get('constraint', None)
 
-        atoms_kwargs = dict(symbols=symbols, constraint=constraint)
+        atoms_kwargs = dict(symbols=symbols, constraint=constraint, pbc=True)
 
         # Find some required properties in the parsed results.
         # Raise ParseError if they are not present
