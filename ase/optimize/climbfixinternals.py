@@ -123,43 +123,52 @@ class ClimbFixInternals(BFGS):
         (self.H, self.pos0, self.forces0, self.maxstep,
          self.targetvalue) = self.load()
 
-    def step(self, proj_forces=None):
-        atoms = self.atoms
+    def step(self):
+        optB = self.setup_optB()
 
-        # setup optimizer 'B'
+        if self.nsteps == 0:  # initial relaxation with optimizer 'B'
+            optB.run(self.get_scaled_fmax())
+            self.log(log_nstep_0=True)
+
+        pos, dpos = self.pretend2climb()  # with optimizer 'A'
+        self.update_positions_and_targetvalue(pos, dpos)  # obey constraints
+
+        self.relax_remaining_dof(optB)  # with optimizer 'B'
+
+        self.dump((self.H, self.pos0, self.forces0, self.maxstep,
+                   self.targetvalue))
+
+    def setup_optB(self):
         if self.autolog:
             logfilename = 'optB_{}.log'.format(self.targetvalue)
             self.optB_kwargs['logfile'] = logfilename
         if self.autotraj:
             trajfilename = 'optB_{}.traj'.format(self.targetvalue)
             self.optB_kwargs['trajectory'] = trajfilename
-        optB = self.optB(atoms, **self.optB_kwargs)
+        optB = self.optB(self.atoms, **self.optB_kwargs)
+        return optB
 
-        # initial relaxation of remaining degrees of freedom with optimizer 'B'
-        if self.nsteps == 0:
-            optB.run(self.get_scaled_fmax())  # optimize with scaled fmax
-            self.log(log_nstep_0=True)
-
-        # get directions for climbing and climb with optimizer 'A'
-        proj_forces = proj_forces or self.get_projected_forces()
-        pos = atoms.get_positions()
+    def pretend2climb(self):
+        """Get directions for climbing and climb with optimizer 'A'."""
+        proj_forces = self.get_projected_forces()
+        pos = self.atoms.get_positions()
         dpos, steplengths = self.prepare_step(pos, proj_forces)
         dpos = self.determine_step(dpos, steplengths)
+        return pos, dpos
 
-        # adjust constrained targetvalue of constraint and update positions
+    def update_positions_and_targetvalue(self, pos, dpos):
+        """Adjust constrained targetvalue of constraint and update positions."""
         self.constr2climb.adjust_positions(pos, pos + dpos)  # update sigma
-        self.targetvalue += self.constr2climb.sigma  # climb the constraint
-        self.constr2climb.targetvalue = self.targetvalue  # adjust positions...
-        atoms.set_positions(atoms.get_positions())        # ...to targetvalue
+        self.targetvalue += self.constr2climb.sigma          # climb constraint
+        self.constr2climb.targetvalue = self.targetvalue     # adjust positions
+        self.atoms.set_positions(self.atoms.get_positions())  #  to targetvalue
 
-        # optimize remaining degrees of freedom with optimizer 'B'
+    def relax_remaining_dof(self, optB):
+        """Optimize remaining degrees of freedom with optimizer 'B'."""
         fmax = self.get_scaled_fmax()
         optB.run(fmax)  # optimize with scaled fmax
         if self.converged() and fmax > self.optB_fmax:
-            optB.run(self.optB_fmax)  # final optimization with desired fmax
-
-        self.dump((self.H, self.pos0, self.forces0, self.maxstep,
-                   self.targetvalue))
+            optB.run(self.optB_fmax)  # (final) optimization with desired fmax
 
     def get_scaled_fmax(self):
         """Return the adaptive 'fmax' based on the estimated distance to the
