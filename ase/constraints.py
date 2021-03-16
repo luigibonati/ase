@@ -867,6 +867,21 @@ class FixInternals(FixConstraint):
         i = len(indices[0]) - 1
         return sum(dfn[i] * get_value[i-2](*dfn[:i], mic=mic) for dfn in indices)
 
+    def get_subconstraint(self, atoms, definition):
+        """Get pointer to a specific subconstraint.
+        Identification by its definition via indices (and coefficients)."""
+        self.initialize(atoms)
+        for subconstr in self.constraints:
+            if type(definition[0]) == list:  # identify Combo constraint
+                defin = [d + [c] for d, c in zip(subconstr.indices,
+                                                 subconstr.coefs)]
+                if defin == definition:
+                    return subconstr
+            else:  # identify primitive constraints by their indices
+                if subconstr.indices == [definition]:
+                    return subconstr
+        raise ValueError('Given `definition` not found on Atoms object.')
+
     def shuffle_definitions(self, shuffle_dic, internal_type):
         dfns = []  # definitions
         for dfn in internal_type:  # e.g. for bond in self.bonds
@@ -930,8 +945,8 @@ class FixInternals(FixConstraint):
     def todict(self):
         return {'name': 'FixInternals',
                 'kwargs': {'bonds': self.bonds,
-                           'angles': self.angles,
-                           'dihedrals': self.dihedrals,
+                           'angles_deg': self.angles,
+                           'dihedrals_deg': self.dihedrals,
                            'bondcombos': self.bondcombos,
                            'anglecombos': self.anglecombos,
                            'dihedralcombos': self.dihedralcombos,

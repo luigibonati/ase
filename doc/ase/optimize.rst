@@ -529,12 +529,12 @@ The transition state search and optimization algorithms are:
 
 ClimbFixInternals
 -----------------
-The :class:`ClimbFixInternals` optimizer can be used to climb a reaction
+The :class:`BFGSClimbFixInternals` optimizer can be used to climb a reaction
 coordinate defined using the :class:`~ase.constraints.FixInternals` class.
 
 .. module:: ase.optimize.climbfixinternals
 
-.. autoclass:: ClimbFixInternals
+.. autoclass:: BFGSClimbFixInternals
 
    .. automethod:: get_projected_forces
    .. automethod:: get_scaled_fmax
