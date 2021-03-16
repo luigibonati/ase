@@ -64,7 +64,7 @@ class Berny(Optimizer):
         next(self._berny)
 
     def step(self, forces=None):
-        forces = forces or self.atoms.get_forces()
+        forces = forces or self.atoms.get_forces()  # THIS LINE IS NOT USED?
         energy = self.atoms.get_potential_energy()
         gradients = -self.atoms.get_forces()
         debug = self._berny.send((energy / Ha, gradients / Ha * Bohr))
