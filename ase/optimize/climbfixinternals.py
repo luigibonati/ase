@@ -1,3 +1,4 @@
+from numpy.linalg import norm
 from ase.optimize.bfgs import BFGS
 from ase.constraints import FixInternals
 
@@ -81,7 +82,7 @@ class BFGSClimbFixInternals(BFGS):
             Can speed up the climbing process. The scaling formula is
 
             'fmax' = ``optB_fmax`` + ``optB_fmax_scaling``
-            :math:`\\cdot` norm_of_projected_force
+            :math:`\\cdot` norm_of_projected_forces
 
             The final optimization with optimizer 'B' is
             performed with ``optB_fmax`` independent of ``optB_fmax_scaling``.
@@ -168,12 +169,13 @@ class BFGSClimbFixInternals(BFGS):
     def get_scaled_fmax(self):
         """Return the adaptive 'fmax' based on the estimated distance to the
         transition state."""
-        return self.optB_fmax + self.scaling * self.constr2climb.projected_force
+        return (self.optB_fmax +
+                self.scaling * norm(self.constr2climb.projected_forces))
 
     def get_projected_forces(self):
         """Return the projected forces along the constrained coordinate in
         uphill direction (negative sign)."""
-        forces = self.constr2climb.projected_force * self.constr2climb.jacobian
+        forces = self.constr2climb.projected_forces
         forces = -forces.reshape(self.atoms.positions.shape)
         return forces
 
