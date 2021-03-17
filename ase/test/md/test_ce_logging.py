@@ -7,7 +7,7 @@ import numpy as np
 from ase import io
 
 
-from test_ce_potentiostat import Al_block, bulk_Al_settings
+from .test_ce_potentiostat import Al_block, bulk_Al_settings
 
 
 def test_logging():

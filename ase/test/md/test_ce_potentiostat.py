@@ -8,7 +8,7 @@ import numpy as np
 from ase.calculators.emt import EMT
 
 
-from test_ce_curvature import Al_atom_pair
+from .test_ce_curvature import Al_atom_pair
 
 
 def Al_block():
