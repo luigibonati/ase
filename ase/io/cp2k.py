@@ -17,9 +17,9 @@ Contributed by Patrick Melix <chemistry@melix.me>
 import numpy as np
 from itertools import islice
 import os
-from io import StringIO, UnsupportedOperation
 
 from ase.atoms import Atoms, Atom
+from ase.cell import Cell
 from ase.io.formats import index2range
 from ase.data import atomic_numbers
 
@@ -244,20 +244,14 @@ def read_cp2k_restart(fileobj):
             else:
                 ret['content'].append(line)
 
-    # Go to beginning of file
-    try:
-        fileobj.seek(0)
-    except UnsupportedOperation:
-        fileobj = StringIO(fileobj.read())
-        fileobj.seek(0)
     # fast forward to &SUBSYS section
-    pos = None
+    found = False
     while fileobj:
         line = fileobj.readline()
         if "&SUBSYS" in line:
-            pos = fileobj.tell()
+            found = True
             break
-    if not pos:
+    if not found:
         raise RuntimeError("No &SUBSYS section found!")
 
     data = {'content': []}
@@ -265,36 +259,31 @@ def read_cp2k_restart(fileobj):
     # look for &CELL
     cell = None
     pbc = [False, False, False]
-    if 'CELL' in data.keys():
-        content = data['CELL']['content'][:]
-        cell = [[0, 0, 0] for i in range(3)]
+    if 'CELL' in data:
+        content = data['CELL']['content']
+        cell = Cell([[0, 0, 0] for i in range(3)])
+        char2idx = {'A ': 0, 'B ': 1, 'C ': 2}
         for line in content:
-            if line.startswith('A '):
-                cell[0] = [float(x) for x in line.split()[1:]]
-                pbc[0] = True
-            if line.startswith('B '):
-                cell[1] = [float(x) for x in line.split()[1:]]
-                pbc[1] = True
-            if line.startswith('C '):
-                cell[2] = [float(x) for x in line.split()[1:]]
-                pbc[2] = True
+            # lines starting with A/B/C<whitespace> have cell
+            if line[:2] in char2idx:
+                idx = char2idx[line[:2]]
+                cell[idx] = [float(x) for x in line.split()[1:]]
+                pbc[idx] = True
+
         if not set([len(v) for v in cell]) == {3}:
             raise RuntimeError("Bad Cell Definition found.")
 
-    content = data['COORD']['content'][:]
-    atomList = []
+    content = data['COORD']['content']
+    atom_list = []
     for entry in content:
         entry = entry.split()
         # Get letters for element symbol
-        el = ""
-        for char in entry[0]:
-            if char.isalpha():
-                el += char
-        el = el.lower().capitalize()
+        el = [char.lower() for char in entry[0] if char.isalpha()]
+        el = "".join(el).capitalize()
         # Get positions
         pos = [float(x) for x in entry[1:4]]
         if el in atomic_numbers.keys():
-            atomList.append(Atom(el, pos))
+            atom_list.append(Atom(el, pos))
         else:
-            atomList.append(Atom('X', pos))
-    return Atoms(atomList, cell=cell, pbc=pbc)
+            atom_list.append(Atom('X', pos))
+    return Atoms(atom_list, cell=cell, pbc=pbc)
