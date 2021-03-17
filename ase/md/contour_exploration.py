@@ -227,9 +227,6 @@ class ContourExploration(Dynamics):
         return a / np.linalg.norm(a)
 
     def rand_vect(self):
-    #def rand_vect(self, atoms=None):
-        #if atoms is None:
-        #    atoms = self.atoms
         vect = self.rng.rand(len(self.atoms), 3) - 0.5
         return vect
 
