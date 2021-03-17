@@ -176,8 +176,6 @@ class ContourExploration(Dynamics):
             # we have to pass dimension since atoms are not yet stored
             atoms.set_velocities(self.rand_vect())
 
-
-
     # Required stuff for Dynamics
     def todict(self):
         return {'type': 'contour-exploration',
@@ -227,6 +225,7 @@ class ContourExploration(Dynamics):
         return a / np.linalg.norm(a)
 
     def rand_vect(self):
+        '''Returns a random (Natoms,3) vector'''
         vect = self.rng.rand(len(self.atoms), 3) - 0.5
         return vect
 
