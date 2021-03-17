@@ -94,9 +94,8 @@ def test_fixinternals():
     print('error in dihedral', repr(err2))
     print('error in bondlength', repr(err3))
 
-    assert err1 < 1e-11
-    assert err2 < 1e-12
-    assert err3 < 1e-12
+    for err in [err1, err2, err3]:
+        assert abs(err) < 1e-11
 
 
 def setup_combos():
@@ -156,7 +155,7 @@ def test_combos():
     print('error in dihedralcombo:', repr(err_dihedralcombo))
 
     for err in [err_bondcombo, err_anglecombo, err_dihedralcombo]:
-        assert err < 1e-12
+        assert abs(err) < 1e-11
 
 
 def test_index_shuffle():
