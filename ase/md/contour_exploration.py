@@ -156,13 +156,6 @@ class ContourExploration(Dynamics):
         self.previous_energies = np.full(target_shift_previous_steps,
                                          self.energy_target)
 
-        # we need velocities or NaNs will be produced,
-        # if none are provided we make random ones
-        velocities = atoms.get_velocities()
-        if np.linalg.norm(velocities) < 1e-6:
-            # we have to pass dimension since atoms are not yet stored
-            atoms.set_velocities(self.rand_vect(atoms))
-
         # these first two are purely for logging,
         # auto scaling will still occur
         # and curvature will still be found if use_frenet_serret == True
@@ -175,6 +168,15 @@ class ContourExploration(Dynamics):
                           logfile, trajectory,  # loginterval,
                           append_trajectory=append_trajectory,
                           )
+
+        # we need velocities or NaNs will be produced,
+        # if none are provided we make random ones
+        velocities = self.atoms.get_velocities()
+        if np.linalg.norm(velocities) < 1e-6:
+            # we have to pass dimension since atoms are not yet stored
+            atoms.set_velocities(self.rand_vect())
+
+
 
     # Required stuff for Dynamics
     def todict(self):
@@ -224,10 +226,11 @@ class ContourExploration(Dynamics):
         '''Makes a unit vector out of a vector'''
         return a / np.linalg.norm(a)
 
-    def rand_vect(self, atoms=None):
-        if atoms is None:
-            atoms = self.atoms
-        vect = self.rng.rand(len(atoms), 3) - 0.5
+    def rand_vect(self):
+    #def rand_vect(self, atoms=None):
+        #if atoms is None:
+        #    atoms = self.atoms
+        vect = self.rng.rand(len(self.atoms), 3) - 0.5
         return vect
 
     def create_drift_unit_vector(self, N, T):
