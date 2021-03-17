@@ -909,8 +909,8 @@ class FixInternals(FixConstraint):
     def todict(self):
         return {'name': 'FixInternals',
                 'kwargs': {'bonds': self.bonds,
-                           'angles': self.angles,
-                           'dihedrals': self.dihedrals,
+                           'angles_deg': self.angles,
+                           'dihedrals_deg': self.dihedrals,
                            'bondcombos': self.bondcombos,
                            'anglecombos': self.anglecombos,
                            'dihedralcombos': self.dihedralcombos,
