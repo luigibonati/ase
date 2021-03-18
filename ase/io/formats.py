@@ -238,7 +238,7 @@ class IOFormat:
     def match_magic(self, data: bytes) -> bool:
         if self.magic_regex:
             assert not self.magic, 'Define only one of magic and magic_regex'
-            match = re.search(self.magic_regex, data, re.M)
+            match = re.match(self.magic_regex, data, re.M | re.S)
             return match is not None
 
         from fnmatch import fnmatchcase
@@ -391,7 +391,7 @@ F('html', 'X3DOM HTML', '1F', module='x3d')
 F('json', 'ASE JSON database file', '+F', ext='json', module='db')
 F('jsv', 'JSV file format', '1F')
 F('lammps-dump-text', 'LAMMPS text dump file', '+F',
-  module='lammpsrun', magic_regex=b'^ITEM: TIMESTEP$')
+  module='lammpsrun', magic_regex=b'.*?^ITEM: TIMESTEP$')
 F('lammps-dump-binary', 'LAMMPS binary dump file', '+B',
   module='lammpsrun')
 F('lammps-data', 'LAMMPS data file', '1F', module='lammpsdata',
