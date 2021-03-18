@@ -150,12 +150,35 @@ class SpeciesTypes(SimpleVaspHeaderParser):
 
     Example line:
     "POSCAR: Mg Al"
+    or
+    "POSCAR: Ir2 O4"
+
+    Gives a list of the species, in the order of appearance.
+    Does not return informaiton about the number of ions per species.
     """
     LINE_DELIMITER = 'POSCAR:'
 
     def parse(self, cursor: _CURSOR, lines: _CHUNK) -> _RESULT:
         line = lines[cursor].strip()
-        species = line.split()[1:]
+        parts = line.split(':')
+
+        # We should only have 2 parts:
+        # ['POSCAR', <species>]
+        if len(parts) != 2:
+            raise ParseError(
+                f'Got an unexpected line when parsing species: {line}')
+        # Get the species from the line
+        species_line = parts[-1]
+        # Split the species, and parse them individually
+        parts = species_line.split()
+        species = []
+        for part in parts:
+            # We may need to strip numbers from the species, we determine
+            # the number of species later
+            # e.g. in the case of "Ir2 O4" we just want "Ir" and "O"
+            specie = ''.join(c for c in part if not c.isnumeric())
+            species.append(specie)
+
         return {'species': species}
 
 
@@ -401,15 +424,21 @@ class Kpoints(VaspChunkPropertyParser):
 
 class DefaultParsersContainer:
     """Container for the default OUTCAR parsers.
-    Allows for modification of the global default parsers."""
-    def __init__(self, parsers_cls):
-        self.parsers_dct = {
-            parser.get_name(): parser
-            for parser in parsers_cls
-        }
+    Allows for modification of the global default parsers.
+    
+    Takes in an arbitrary number of parsers. The parsers should be uninitialized,
+    as they are created on request.
+    """
+    def __init__(self, *parsers_cls):
+        self._parsers_dct = {}
+        for parser in parsers_cls:
+            self.add_parser(parser)
 
     @property
-    def parsers(self):
+    def parsers_dct(self):
+        return self._parsers_dct
+
+    def make_parsers(self):
         """Return a copy of the internally stored parsers"""
         return list(parser() for parser in self.parsers_dct.values())
 
@@ -510,7 +539,7 @@ class OutcarChunkParser(ChunkParser):
                  header: _HEADER = None,
                  parsers: Sequence[VaspChunkPropertyParser] = None):
         global default_chunk_parsers
-        parsers = parsers or default_chunk_parsers.parsers
+        parsers = parsers or default_chunk_parsers.make_parsers()
         super().__init__(parsers, header=header)
 
     def build(self, lines: _CHUNK) -> Atoms:
@@ -521,7 +550,7 @@ class OutcarChunkParser(ChunkParser):
         symbols = self.header['symbols']
         constraint = self.header.get('constraint', None)
 
-        atoms_kwargs = dict(symbols=symbols, constraint=constraint)
+        atoms_kwargs = dict(symbols=symbols, constraint=constraint, pbc=True)
 
         # Find some required properties in the parsed results.
         # Raise ParseError if they are not present
@@ -549,7 +578,7 @@ class OutcarHeaderParser(HeaderParser):
                  parsers: Sequence[VaspHeaderPropertyParser] = None,
                  workdir: Union[str, PurePath] = None):
         global default_header_parsers
-        parsers = parsers or default_header_parsers.parsers
+        parsers = parsers or default_header_parsers.make_parsers()
         super().__init__(parsers)
         self.workdir = workdir
 
@@ -691,7 +720,7 @@ def outcarchunks(fd: TextIO,
 
 
 # Create the default chunk parsers
-default_chunk_parsers = DefaultParsersContainer([
+default_chunk_parsers = DefaultParsersContainer(
     Cell,
     PositionsAndForces,
     Stress,
@@ -700,12 +729,12 @@ default_chunk_parsers = DefaultParsersContainer([
     EFermi,
     Kpoints,
     Energy,
-])
+)
 
 # Create the default header parsers
-default_header_parsers = DefaultParsersContainer([
+default_header_parsers = DefaultParsersContainer(
     SpeciesTypes,
     IonsPerSpecies,
     Spinpol,
     KpointHeader,
-])
+)

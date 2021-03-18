@@ -688,11 +688,13 @@ def parse_sitesym_element(element):
     Examples:
     
     >>> parse_sitesym_element("x")
-    ((0, 1), 0.0)
+    ([(0, 1)], 0.0)
     >>> parse_sitesym_element("-1/2-y")
-    ((1, -1), -0.5)
+    ([(1, -1)], -0.5)
     >>> parse_sitesym_element("z+0.25")
-    ((2, 1), 0.25)
+    ([(2, 1)], 0.25)
+    >>> parse_sitesym_element("x-z+0.5")
+    ([(0, 1), (2, -1)], 0.5)
     
     
     
@@ -706,7 +708,7 @@ def parse_sitesym_element(element):
     Returns
     -------
     
-    tuple[int, int]
+    list[tuple[int, int]]
       Rotation information in the form '(index, sign)' where index is
       0 for "x", 1 for "y" and 2 for "z" and sign is '1' for a positive
       entry and '-1' for a negative entry. E.g. "x" is '(0, 1)' and
@@ -724,6 +726,7 @@ def parse_sitesym_element(element):
     sng_trans = None
     fst_trans = []
     snd_trans = []
+    rot = []
     
     for char in element:
         if char == "+":
@@ -733,7 +736,7 @@ def parse_sitesym_element(element):
         elif char == "/":
             is_frac = True
         elif char in "xyz":
-            rot = (ord(char)-ord("x"), 1 if is_positive else -1)
+            rot.append((ord(char)-ord("x"), 1 if is_positive else -1))
         elif char.isdigit() or char == ".":
             if sng_trans is None:
                 sng_trans = 1.0 if is_positive else -1.0
@@ -784,8 +787,9 @@ def parse_sitesym_single(sym, out_rot, out_trans, sep=",", force_positive_transl
     out_trans[:] = 0.0
     
     for i, element in enumerate(sym.split(sep)):
-        e_rot, e_trans = parse_sitesym_element(element)
-        out_rot[i][e_rot[0]] = e_rot[1]
+        e_rot_list, e_trans = parse_sitesym_element(element)
+        for rot_idx, rot_sgn in e_rot_list:
+            out_rot[i][rot_idx] = rot_sgn
         out_trans[i] = (e_trans % 1.0) if force_positive_translation else e_trans
         
         

@@ -49,8 +49,9 @@ SPECIAL_3_3_KEYS = ['Lattice', 'virial', 'stress']
 
 # partition ase.calculators.calculator.all_properties into two lists:
 #  'per-atom' and 'per-config'
-per_atom_properties = ['forces',  'stresses', 'charges',  'magmoms', 'energies']
+per_atom_properties = ['forces', 'stresses', 'charges', 'magmoms', 'energies']
 per_config_properties = ['energy', 'stress', 'dipole', 'magmom', 'free_energy']
+
 
 def key_val_str_to_dict(string, sep=None):
     """

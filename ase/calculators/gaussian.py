@@ -118,7 +118,7 @@ class Gaussian(FileIOCalculator):
     def write_input(self, atoms, properties=None, system_changes=None):
         FileIOCalculator.write_input(self, atoms, properties, system_changes)
         write(self.label + '.com', atoms, properties=properties,
-              format='gaussian-in', **self.parameters)
+              format='gaussian-in', parallel=False, **self.parameters)
 
     def read_results(self):
         output = read(self.label + '.log', format='gaussian-out')

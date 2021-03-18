@@ -111,7 +111,15 @@ def lammps_data_to_ase_atoms(
 
     # slice data block into columns
     # + perform necessary conversions to ASE units
+    xpositions = get_quantity(["xu", "yu", "zu"], "distance")
     positions = get_quantity(["x", "y", "z"], "distance")
+
+    if positions is None:
+        # Useful info on lammps-dump positions:
+        #  https://lammps.sandia.gov/doc/dump.html
+        # There's at least one more kind of position which we should support.
+        positions = xpositions
+
     scaled_positions = get_quantity(["xs", "ys", "zs"])
     velocities = get_quantity(["vx", "vy", "vz"], "velocity")
     charges = get_quantity(["q"], "charge")
@@ -225,7 +233,6 @@ def read_lammps_dump_text(fileobj, index=-1, **kwargs):
     """
     # Load all dumped timesteps into memory simultaneously
     lines = deque(fileobj.readlines())
-
     index_end = get_max_index(index)
 
     n_atoms = 0

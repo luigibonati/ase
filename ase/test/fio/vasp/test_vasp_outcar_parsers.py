@@ -4,6 +4,24 @@ import numpy as np
 import ase.io.vasp_parsers.vasp_outcar_parsers as vop
 
 
+def compare_result_to_expected(result, exp):
+    """Helper function for doing comparisons between
+    and expected result, and the actual result"""
+    if isinstance(exp, (np.ndarray, list, tuple)):
+        assert len(result) == len(exp)
+        for v1, v2 in zip(result, exp):
+            if isinstance(v2, str):
+                # Compare strings directly
+                assert v1 == v2
+            else:
+                # Assume numerical stuff
+                np.allclose(v1, v2)
+    elif exp is None or isinstance(exp, bool):
+        assert result == exp
+    else:
+        assert pytest.approx(result) == exp
+
+
 @pytest.fixture
 def do_test_parser():
     def _do_test_parser(header, cursor, lines, parser, expected):
@@ -12,12 +30,7 @@ def do_test_parser():
         result = parser.parse(cursor, lines)
         for k, v in result.items():
             exp = expected[k]
-            if isinstance(exp, (np.ndarray, list, tuple)):
-                assert np.allclose(v, exp)
-            elif exp is None or isinstance(exp, bool):
-                assert v == exp
-            else:
-                assert pytest.approx(v) == exp
+            compare_result_to_expected(v, exp)
 
     return _do_test_parser
 
@@ -29,12 +42,7 @@ def do_test_header_parser():
         result = parser.parse(cursor, lines)
         for k, v in result.items():
             exp = expected[k]
-            if isinstance(exp, (np.ndarray, list, tuple)):
-                assert np.allclose(v, exp)
-            elif exp is None or isinstance(exp, bool):
-                assert v == exp
-            else:
-                assert pytest.approx(v) == exp
+            compare_result_to_expected(v, exp)
 
     return _do_test_parser
 
@@ -397,4 +405,33 @@ k-points in reciprocal lattice and weights: KPOINTS created by Atomic Simulation
     parser = vop.KpointHeader()
 
     # Test we got some expected results
+    do_test_header_parser(cursor, lines, parser, expected)
+
+
+@pytest.mark.parametrize('line, expected', [
+    ('POSCAR: Mg Al', ('Mg', 'Al')),
+    ('POSCAR: Ir2 O4', ('Ir', 'O')),
+    ('POSCAR: Ir2 O4 Ir', ('Ir', 'O', 'Ir')),
+])
+def test_parse_symbols(line, expected, do_test_header_parser):
+    cursor = 0  # single line, cursor always starts at 0
+    lines = [line]
+    parser = vop.SpeciesTypes()
+    expected = {'species': expected}
+    do_test_header_parser(cursor, lines, parser, expected)
+
+
+@pytest.mark.parametrize(
+    'line, expected',
+    [
+        ('   ions per type =              32  31   2', (32, 31, 2)),
+        ('   ions per type =               2   4', (2, 4)),
+    ],
+    # Add ID, as the line is a little long, looks quite verbose
+    ids=['ions1', 'ions2'])
+def test_ions_per_species(line, expected, do_test_header_parser):
+    cursor = 0  # single line, cursor always starts at 0
+    lines = [line]
+    parser = vop.IonsPerSpecies()
+    expected = {'ion_types': expected}
     do_test_header_parser(cursor, lines, parser, expected)

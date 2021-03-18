@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+import warnings
 
 from ase import Atom, Atoms
 from ase.io import read
@@ -9,6 +10,15 @@ from ase.io import NetCDFTrajectory
 @pytest.fixture(scope='module')
 def netCDF4():
     return pytest.importorskip('netCDF4')
+
+
+@pytest.fixture(autouse=True)
+def catch_netcdf4_warning():
+    with warnings.catch_warnings():
+        # XXX Ignore deprecation warning from numpy over how netCDF4
+        # uses numpy.  We can't really do anything about that.
+        warnings.simplefilter('ignore', DeprecationWarning)
+        yield
 
 
 @pytest.fixture

@@ -1,6 +1,6 @@
 import os
 import socket
-from subprocess import Popen
+from subprocess import Popen, PIPE
 from contextlib import ExitStack, contextmanager
 
 import numpy as np
@@ -8,6 +8,7 @@ import numpy as np
 from ase.calculators.calculator import (Calculator, all_changes,
                                         PropertyNotImplementedError)
 import ase.units as units
+from ase.stress import full_3x3_to_voigt_6_stress
 
 
 def actualunixsocketname(name):
@@ -196,7 +197,7 @@ class IPIProtocol:
 
 
 @contextmanager
-def temporary_unixsocket(socketfile):
+def bind_unixsocket(socketfile):
     assert socketfile.startswith('/tmp/ipi_'), socketfile
     serversocket = socket.socket(socket.AF_UNIX)
     try:
@@ -212,7 +213,7 @@ def temporary_unixsocket(socketfile):
 
 
 @contextmanager
-def temporary_inetsocket(port):
+def bind_inetsocket(port):
     serversocket = socket.socket(socket.AF_INET)
     serversocket.setsockopt(socket.SOL_SOCKET,
                             socket.SO_REUSEADDR, 1)
@@ -221,11 +222,26 @@ def temporary_inetsocket(port):
         yield serversocket
 
 
+class FileIOSocketClientLauncher:
+    def __init__(self, calc):
+        self.calc = calc
+
+    def __call__(self, atoms, properties=None, port=None, unixsocket=None):
+        assert self.calc is not None
+        cmd = self.calc.command.replace('PREFIX', self.calc.prefix)
+        self.calc.write_input(atoms, properties=properties,
+                              system_changes=all_changes)
+        cwd = self.calc.directory
+        cmd = cmd.format(port=port, unixsocket=unixsocket)
+        return Popen(cmd, shell=True, cwd=cwd)
+
+
 class SocketServer:
     default_port = 31415
 
-    def __init__(self, client_command=None, port=None,
-                 unixsocket=None, timeout=None, cwd=None, log=None):
+    def __init__(self, #launch_client=None,
+                 port=None, unixsocket=None, timeout=None,
+                 log=None):
         """Create server and listen for connections.
 
         Parameters:
@@ -262,10 +278,10 @@ class SocketServer:
         if unixsocket is not None:
             actualsocket = actualunixsocketname(unixsocket)
             conn_name = 'UNIX-socket {}'.format(actualsocket)
-            socket_context = temporary_unixsocket(actualsocket)
+            socket_context = bind_unixsocket(actualsocket)
         else:
             conn_name = 'INET port {}'.format(port)
-            socket_context = temporary_inetsocket(port)
+            socket_context = bind_inetsocket(port)
 
         self.serversocket = self._exitstack.enter_context(socket_context)
 
@@ -283,18 +299,11 @@ class SocketServer:
         self.protocol = None
         self.clientsocket = None
         self.address = None
-        self.cwd = cwd
 
-        if client_command is not None:
-            client_command = client_command.format(port=port,
-                                                   unixsocket=unixsocket)
-            if log:
-                print('Launch subprocess: {}'.format(client_command), file=log)
-            self.proc = Popen(client_command, shell=True,
-                              cwd=self.cwd)
-            # self._accept(process_args)
+        #if launch_client is not None:
+        #    self.proc = launch_client(port=port, unixsocket=unixsocket)
 
-    def _accept(self, client_command=None):
+    def _accept(self):
         """Wait for client and establish connection."""
         # It should perhaps be possible for process to be launched by user
         log = self.log
@@ -533,11 +542,12 @@ class SocketClient:
 
 
 class SocketIOCalculator(Calculator):
-    implemented_properties = ['energy', 'forces', 'stress']
+    implemented_properties = ['energy', 'free_energy', 'forces', 'stress']
     supported_changes = {'positions', 'cell'}
 
     def __init__(self, calc=None, port=None,
-                 unixsocket=None, timeout=None, log=None):
+                 unixsocket=None, timeout=None, log=None, *,
+                 launch_client=None):
         """Initialize socket I/O calculator.
 
         This calculator launches a server which passes atomic
@@ -595,7 +605,13 @@ class SocketIOCalculator(Calculator):
 
         self._exitstack = ExitStack()
         Calculator.__init__(self)
-        self.calc = calc
+
+        if calc is not None:
+            if launch_client is not None:
+                raise ValueError('Cannot pass both calc and launch_client')
+            launch_client = FileIOSocketClientLauncher(calc)
+        self.launch_client = launch_client
+        #self.calc = calc
         self.timeout = timeout
         self.server = None
 
@@ -609,31 +625,26 @@ class SocketIOCalculator(Calculator):
         self._port = port
         self._unixsocket = unixsocket
 
-        # First time calculate() is called, system_changes will be
-        # all_changes.  After that, only positions and cell may change.
-        self.calculator_initialized = False
-
         # If there is a calculator, we will launch in calculate() because
         # we are responsible for executing the external process, too, and
         # should do so before blocking.  Without a calculator we want to
         # block immediately:
-        if calc is None:
-            self.launch_server()
+        if self.launch_client is None:
+            self.server = self.launch_server()
 
     def todict(self):
         d = {'type': 'calculator',
              'name': 'socket-driver'}
-        if self.calc is not None:
-            d['calc'] = self.calc.todict()
+        #if self.calc is not None:
+        #    d['calc'] = self.calc.todict()
         return d
 
-    def launch_server(self, cmd=None):
-        self.server = self._exitstack.enter_context(SocketServer(
-            client_command=cmd, port=self._port,
+    def launch_server(self):
+        return self._exitstack.enter_context(SocketServer(
+            #launch_client=launch_client,
+            port=self._port,
             unixsocket=self._unixsocket,
             timeout=self.timeout, log=self.log,
-            cwd=(None if self.calc is None
-                 else self.calc.directory)
         ))
 
     def calculate(self, atoms=None, properties=['energy'],
@@ -641,26 +652,27 @@ class SocketIOCalculator(Calculator):
         bad = [change for change in system_changes
                if change not in self.supported_changes]
 
-        if self.calculator_initialized and any(bad):
+        # First time calculate() is called, system_changes will be
+        # all_changes.  After that, only positions and cell may change.
+        if self.atoms is not None and any(bad):
             raise PropertyNotImplementedError(
                 'Cannot change {} through IPI protocol.  '
                 'Please create new socket calculator.'
                 .format(bad if len(bad) > 1 else bad[0]))
 
-        self.calculator_initialized = True
+        self.atoms = atoms.copy()
 
         if self.server is None:
-            assert self.calc is not None
-            cmd = self.calc.command.replace('PREFIX', self.calc.prefix)
-            self.calc.write_input(atoms, properties=properties,
-                                  system_changes=system_changes)
-            self.launch_server(cmd)
+            self.server = self.launch_server()
+            proc = self.launch_client(atoms, properties,
+                                      port=self._port,
+                                      unixsocket=self._unixsocket)
+            self.server.proc = proc  # XXX nasty hack
 
-        self.atoms = atoms.copy()
         results = self.server.calculate(atoms)
+        results['free_energy'] = results['energy']
         virial = results.pop('virial')
         if self.atoms.cell.rank == 3 and any(self.atoms.pbc):
-            from ase.constraints import full_3x3_to_voigt_6_stress
             vol = atoms.get_volume()
             results['stress'] = -full_3x3_to_voigt_6_stress(virial) / vol
         self.results.update(results)
@@ -668,7 +680,6 @@ class SocketIOCalculator(Calculator):
     def close(self):
         try:
             self.server = None
-            self.calculator_initialized = False
         finally:
             self._exitstack.close()
 
@@ -678,3 +689,46 @@ class SocketIOCalculator(Calculator):
 
     def __exit__(self, type, value, traceback):
         self.close()
+
+
+class PySocketIOClient:
+    def __init__(self, calculator_factory):
+        self._calculator_factory = calculator_factory
+
+    def __call__(self, atoms, properties=None, port=None, unixsocket=None):
+        import sys
+        import pickle
+
+        # We pickle everything first, so we won't need to bother with the
+        # process as long as it succeeds.
+        transferbytes = pickle.dumps([
+            dict(unixsocket=unixsocket, port=port),
+            atoms.copy(),
+            self._calculator_factory,
+        ])
+
+        proc = Popen([sys.executable, '-m', 'ase.calculators.socketio'],
+                     stdin=PIPE)
+
+        proc.stdin.write(transferbytes)
+        proc.stdin.close()
+        return proc
+
+    @staticmethod
+    def main():
+        import sys
+        import pickle
+
+        socketinfo, atoms, get_calculator = pickle.load(sys.stdin.buffer)
+        atoms.calc = get_calculator()
+        client = SocketClient(host='localhost',
+                              unixsocket=socketinfo.get('unixsocket'),
+                              port=socketinfo.get('port'))
+        # XXX In principle we could avoid calculating stress until
+        # someone requests the stress, could we not?
+        # Which would make use_stress boolean unnecessary.
+        client.run(atoms, use_stress=True)
+
+
+if __name__ == '__main__':
+    PySocketIOClient.main()

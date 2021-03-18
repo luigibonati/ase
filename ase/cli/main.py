@@ -34,7 +34,8 @@ commands = [
     ('convert', 'ase.cli.convert'),
     ('reciprocal', 'ase.cli.reciprocal'),
     ('completion', 'ase.cli.completion'),
-    ('diff', 'ase.cli.diff')
+    ('diff', 'ase.cli.diff'),
+    ('exec', 'ase.cli.exec')
 ]
 
 

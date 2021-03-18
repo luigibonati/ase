@@ -36,6 +36,7 @@ def factory(name):
         cls.name = name
         factory_classes[name] = cls
         return cls
+
     return decorator
 
 
@@ -44,6 +45,7 @@ def make_factory_fixture(name):
     def _factory(factories):
         factories.require(name)
         return factories[name]
+
     _factory.__name__ = '{}_factory'.format(name)
     return _factory
 
@@ -98,6 +100,27 @@ class AbinitFactory:
         factory._version = factory.version()
         return factory
 
+
+@factory('aims')
+class AimsFactory:
+    def __init__(self, executable):
+        self.executable = executable
+        # XXX pseudo_dir
+
+    def calc(self, **kwargs):
+        from ase.calculators.aims import Aims
+        kwargs1 = dict(xc='LDA')
+        kwargs1.update(kwargs)
+        return Aims(command=self.executable, **kwargs1)
+
+    def version(self):
+        from ase.calculators.aims import get_aims_version
+        txt = read_stdout([self.executable])
+        return get_aims_version(txt)
+
+    @classmethod
+    def fromconfig(cls, config):
+        return cls(config.executables['aims'])
 
 @factory('asap')
 class AsapFactory:
@@ -159,9 +182,10 @@ class DFTBFactory:
         command = f'{self.executable} > PREFIX.out'
         datadir = Path(__file__).parent / 'testdata'
         assert datadir.exists()
-        return Dftb(command=command,
-                    slako_dir=str(datadir) + '/',  # XXX not obvious
-                    **kwargs)
+        return Dftb(
+            command=command,
+            slako_dir=str(datadir) + '/',  # XXX not obvious
+            **kwargs)
 
     @classmethod
     def fromconfig(cls, config):
@@ -189,8 +213,12 @@ def read_stdout(args, createfile=None):
         if createfile is not None:
             path = Path(directory) / createfile
             path.touch()
-        proc = Popen(args, stdout=PIPE, stderr=PIPE, stdin=PIPE,
-                     cwd=directory, encoding='ascii')
+        proc = Popen(args,
+                     stdout=PIPE,
+                     stderr=PIPE,
+                     stdin=PIPE,
+                     cwd=directory,
+                     encoding='ascii')
         stdout, _ = proc.communicate()
         # Exit code will be != 0 because there isn't an input file
     return stdout
@@ -210,8 +238,7 @@ class ElkFactory:
     def calc(self, **kwargs):
         from ase.calculators.elk import ELK
         command = f'{self.executable} > elk.out'
-        return ELK(command=command, species_dir=self.species_dir,
-                   **kwargs)
+        return ELK(command=command, species_dir=self.species_dir, **kwargs)
 
     @classmethod
     def fromconfig(cls, config):
@@ -246,7 +273,8 @@ class EspressoFactory:
 
         kw = self._base_kw()
         kw.update(kwargs)
-        return Espresso(command=command, pseudo_dir=str(self.pseudo_dir),
+        return Espresso(command=command,
+                        pseudo_dir=str(self.pseudo_dir),
                         pseudopotentials=pseudopotentials,
                         **kw)
 
@@ -270,6 +298,31 @@ class ExcitingFactory:
     @classmethod
     def fromconfig(cls, config):
         return cls(config.executables['exciting'])
+
+
+@factory('vasp')
+class VaspFactory:
+    def __init__(self, executable):
+        self.executable = executable
+
+    def version(self):
+        from ase.calculators.vasp import get_vasp_version
+        header = read_stdout([self.executable], createfile='INCAR')
+        return get_vasp_version(header)
+
+    def calc(self, **kwargs):
+        from ase.calculators.vasp import Vasp
+        # XXX We assume the user has set VASP_PP_PATH
+        if Vasp.VASP_PP_PATH not in os.environ:
+            # For now, we skip with a message that we cannot run the test
+            pytest.skip(
+                'No VASP pseudopotential path set. Set the ${} environment variable to enable.'
+                .format(Vasp.VASP_PP_PATH))
+        return Vasp(command=self.executable, **kwargs)
+
+    @classmethod
+    def fromconfig(cls, config):
+        return cls(config.executables['vasp'])
 
 
 @factory('gpaw')
@@ -356,8 +409,9 @@ class LammpsLibFactory:
 
     def version(self):
         import lammps
-        cmd_args = ["-echo", "log", "-log", "none", "-screen", "none",
-                    "-nocite"]
+        cmd_args = [
+            "-echo", "log", "-log", "none", "-screen", "none", "-nocite"
+        ]
         lmp = lammps.lammps(name="", cmdargs=cmd_args, comm=None)
         try:
             return lmp.version()
@@ -371,6 +425,7 @@ class LammpsLibFactory:
     @classmethod
     def fromconfig(cls, config):
         return cls(config.datafiles['lammps'][0])
+
 
 @factory('openmx')
 class OpenMXFactory:
@@ -395,6 +450,7 @@ class OpenMXFactory:
     def fromconfig(cls, config):
         return cls(config.executables['openmx'],
                    data_path=config.datafiles['openmx'][0])
+
 
 @factory('octopus')
 class OctopusFactory:
@@ -433,7 +489,8 @@ class SiestaFactory:
     def calc(self, **kwargs):
         from ase.calculators.siesta import Siesta
         command = '{} < PREFIX.fdf > PREFIX.out'.format(self.executable)
-        return Siesta(command=command, pseudo_path=str(self.pseudo_path),
+        return Siesta(command=command,
+                      pseudo_path=str(self.pseudo_path),
                       **kwargs)
 
     @classmethod
@@ -478,10 +535,28 @@ class Factories:
     # TODO: Port calculators to use factories.  As we do so, remove names
     # from list of calculators that we monkeypatch:
     monkeypatch_calculator_constructors = {
-        'ace', 'aims', 'amber', 'castep', 'crystal', 'demon', 'demonnano',
-        'dftd3', 'dmol', 'exciting', 'fleur', 'gamess_us', 'gaussian',
-        'gulp', 'hotbit', 'lammpslib', 'mopac', 'onetep', 'orca',
-        'Psi4', 'qchem', 'turbomole', 'vasp', 'vasp2',
+        'ace',
+        'aims',
+        'amber',
+        'castep',
+        'crystal',
+        'demon',
+        'demonnano',
+        'dftd3',
+        'dmol',
+        'exciting',
+        'fleur',
+        'gamess_us',
+        'gaussian',
+        'gulp',
+        'hotbit',
+        'lammpslib',
+        'mopac',
+        'onetep',
+        'orca',
+        'Psi4',
+        'qchem',
+        'turbomole',
     }
 
     def __init__(self, requested_calculators):
@@ -554,9 +629,9 @@ class Factories:
         return self.factories[name]
 
     def monkeypatch_disabled_calculators(self):
-        test_calculator_names = (self.autoenabled_calculators |
-                                 self.builtin_calculators |
-                                 self.requested_calculators)
+        test_calculator_names = (self.autoenabled_calculators
+                                 | self.builtin_calculators
+                                 | self.requested_calculators)
         disable_names = self.monkeypatch_calculator_constructors - test_calculator_names
         #disable_names = self.all_calculators - test_calculator_names
 
@@ -566,13 +641,16 @@ class Factories:
             except ImportError:
                 pass
             else:
+
                 def get_mock_init(name):
                     def mock_init(obj, *args, **kwargs):
                         pytest.skip(f'use --calculators={name} to enable')
+
                     return mock_init
 
                 def mock_del(obj):
                     pass
+
                 cls.__init__ = get_mock_init(name)
                 cls.__del__ = mock_del
 
@@ -599,7 +677,9 @@ def parametrize_calculator_tests(metafunc):
             calculator_inputs.append(param)
 
     if calculator_inputs:
-        metafunc.parametrize('factory', calculator_inputs, indirect=True,
+        metafunc.parametrize('factory',
+                             calculator_inputs,
+                             indirect=True,
                              ids=lambda input: input[0])
 
 
@@ -610,14 +690,21 @@ class CalculatorInputs:
         self.parameters = parameters
         self.factory = factory
 
+    def require_version(self, version):
+        from ase.utils import tokenize_version
+        installed_version = self.factory.version()
+        old = tokenize_version(installed_version) < tokenize_version(version)
+        if old:
+            pytest.skip('Version too old: Requires {}; got {}'
+                        .format(version, installed_version))
+
     @property
     def name(self):
         return self.factory.name
 
     def __repr__(self):
         cls = type(self)
-        return '{}({}, {})'.format(cls.__name__,
-                                   self.name, self.parameters)
+        return '{}({}, {})'.format(cls.__name__, self.name, self.parameters)
 
     def new(self, **kwargs):
         kw = dict(self.parameters)

@@ -205,8 +205,8 @@ class GUI(View, Status):
     def delete_selected_atoms(self, widget=None, data=None):
         import ase.gui.ui as ui
         nselected = sum(self.images.selected)
-        if nselected and ui.ask_question('Delete atoms',
-                                         'Delete selected atoms?'):
+        if nselected and ui.ask_question(_('Delete atoms'),
+                                         _('Delete selected atoms?')):
             self.really_delete_selected_atoms()
 
     def really_delete_selected_atoms(self):

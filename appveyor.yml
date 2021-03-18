@@ -26,7 +26,7 @@ install:
       {
         echo "install with conda"
         conda update -yq conda
-        conda install -yq pip wheel numpy scipy pyflakes matplotlib flask pytest
+        conda install -yq pip wheel numpy scipy pyflakes matplotlib flask pytest pytest-mock
       }
       else
       {
@@ -38,7 +38,7 @@ install:
   # install ase into the current python
   - "echo %cd%"
   - "where pip"
-  - "pip install ."
+  - "pip install .[test]"
 
 build: off
 
@@ -51,7 +51,6 @@ test_script:
 after_test:
   # This step builds distribution.
   - "cd %APPVEYOR_BUILD_FOLDER%"
-  # use pip as distutils doesn't implemet bdist_wheel
   - "pip wheel -w dist --no-deps ."
 
 artifacts:

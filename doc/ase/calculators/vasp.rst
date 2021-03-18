@@ -6,6 +6,9 @@
 VASP
 ====
 
+.. contents:: Table of Conents
+
+
 Introduction
 ============
 
@@ -17,24 +20,42 @@ calculation.
 
 
 .. _VASP: https://cms.mpi.univie.ac.at/vasp/
-.. _Vasp 2.0: vasp2.html
 
-.. note::
-   A new VASP_ calculator is currently in BETA testing, see
-   :mod:`~ase.calculators.vasp.vasp2`,
-   which implements the calculator using the
-   :class:`~ase.calculators.calculator.FileIOCalculator`.
 
 Environment variables
 =====================
 
-You need to write a script called :file:`run_vasp.py` containing
+VASP execution
+---------------
+
+You need to add an environment variable which contains instructions
+on how to execute VASP. This must be stored as either :envvar:`ASE_VASP_COMMAND`
+or :envvar:`VASP_COMMAND` (the latter for legacy reasons). This could look
+something like this:
+
+.. highlight:: bash
+
+::
+
+   $ export ASE_VASP_COMMAND="mpirun vasp_std"
+
+This is not required, if the ``command`` keyword is specified in the
+calculator itself. The ``command`` keyword also overrides the enrivonment
+variables, e.g.::
+
+  Vasp(command='mpiexec vasp_std')
+
+*Alternatively*, you can write a script called :file:`run_vasp.py` containing
 something like this::
 
   import os
   exitcode = os.system('vasp')
 
 The environment variable :envvar:`VASP_SCRIPT` must point to that file.
+This approach allows for doing other things pre- and post-calculation.
+
+Pseudopotentials
+----------------
 
 A directory containing the pseudopotential directories :file:`potpaw`
 (LDA XC) :file:`potpaw_GGA` (PW91 XC) and :file:`potpaw_PBE` (PBE XC)
@@ -55,7 +76,7 @@ Set both environment variables in your shell configuration file:
 The following environment variable can be used to automatically copy the
 van der Waals kernel to the calculation directory. The kernel is needed for
 vdW calculations, see `VASP vdW wiki`_, for more details. The kernel is looked
-for, whenever ``luse_vdw=True``.
+for whenever ``luse_vdw=True``.
 
 .. highlight:: bash
 
@@ -78,6 +99,22 @@ Below follows a list with a selection of parameters
 ==============  =========  ==============  ============================
 keyword         type       default value   description
 ==============  =========  ==============  ============================
+``directory``   ``str``    ``.``           Directory of the VASP run.
+                                           Defaults to running in the current
+                                           working directory.
+``command``     ``str``    None            Instructions on how to execute VASP.
+                                           If this is ``None``, either the
+                                           :envvar:`ASE_VASP_COMMAND`,
+                                           :envvar:`VASP_COMMAND`,
+                                           or :envvar:`VASP_SCRIPT` will
+                                           be used (in that order).
+``txt``         Various    ``vasp.out``    Where to redict the stdout text
+                                           from the VASP execution.
+                                           Defaults to ``vasp.out``.
+                                           If it is set to a string,
+                                           the file will always be opened in
+                                           folder specified by the
+                                           ``directory`` keyword.
 ``restart``     ``bool``   None            Restart old calculation or
                                            use ASE for post-processing
 ``xc``          ``str``    'PW91'          XC-functional. Defaults to
@@ -94,10 +131,10 @@ keyword         type       default value   description
 ``charge``      ``int``    None            Net charge per unit cell given in
                                            units of the elementary charge, as
                                            an alternative to specifying
-                                           ``nelect``. *Note: The
+                                           ``nelect``. **Note**: The
                                            now-deprecated ``net_charge``
                                            parameter worked just like this one
-                                           but with the sign inverted.*
+                                           but with the sign inverted.
 ``prec``        ``str``                    Accuracy of calculation
 ``encut``       ``float``                  Kinetic energy cutoff
 ``ediff``       ``float``                  Convergence break condition
@@ -401,13 +438,150 @@ calculations, in the directory of the previous calculation do:
 >>> atoms.get_potential_energy()
 -4.7386889999999999
 
-New Calculator
-==============
 
-A new VASP_ calculator is currently in BETA testing, see
-:mod:`~ase.calculators.vasp.vasp2`, which implements the calculator using the
-:class:`~ase.calculators.calculator.FileIOCalculator`.
+Storing the calculator state
+============================
+The results from the Vasp calculator can exported as a dictionary, which can then be saved in a JSON format,
+which enables easy and compressed sharing and storing of the input & outputs of
+a VASP calculation. The following methods of :py:class:`Vasp` can be used for this purpose:
 
-.. toctree::
+.. automethod:: ase.calculators.vasp.Vasp.asdict
+.. automethod:: ase.calculators.vasp.Vasp.fromdict
+.. automethod:: ase.calculators.vasp.Vasp.write_json
+.. automethod:: ase.calculators.vasp.Vasp.read_json
 
-   vasp2
+First we can dump the state of the calculation using the :meth:`~ase.calculators.vasp.Vasp.write_json` method:
+
+
+.. code-block:: python
+
+	# After a calculation
+	calc.write_json('mystate.json')
+
+	# This is equivalent to
+	from ase.io import jsonio
+	dct = calc.asdict()  # Get the calculator in a dictionary format
+	jsonio.write_json('mystate.json', dct)
+
+At a later stage, that file can be used to restore a the input and (simple) output parameters of a calculation,
+without the need to copy around all the VASP specific files, using either the :meth:`ase.io.jsonio.read_json` function
+or the Vasp :meth:`~ase.calculators.vasp.Vasp.fromdict` method.
+
+.. code-block:: python
+
+	calc = Vasp()
+	calc.read_json('mystate.json')
+	atoms = calc.get_atoms()  # Get the atoms object
+
+	# This is equivalent to
+	from ase.calculators.vasp import Vasp
+	from ase.io import jsonio
+	dct = jsonio.read_json('mystate.json')  # Load exported dict object from the JSON file
+	calc = Vasp()
+	calc.fromdict(dct)
+	atoms = calc.get_atoms()  # Get the atoms object
+
+The dictionary object, which is created from the :py:meth:`todict` method, also contains information about the ASE
+and VASP version which was used at the time of the calculation, through the
+:py:const:`ase_version` and :py:const:`vasp_version` keys.
+
+.. code-block:: python
+
+    import json
+    with open('mystate.json', 'r') as f:
+        dct = json.load(f)
+    print('ASE version: {}, VASP version: {}'.format(dct['ase_version'], dct['vasp_version']))
+
+.. note::
+    The ASE calculator contains no information about the wavefunctions or charge densities, so these are NOT stored
+    in the dictionary or JSON file, and therefore results may vary on a restarted calculation.
+
+Examples
+========
+
+The Vasp 2 calculator now integrates with existing ASE functions, such as
+:class:`~ase.spectrum.band_structure.BandStructure` or :class:`~ase.dft.bandgap.bandgap`.
+
+Band structure with VASP
+------------------------
+.. _Si band structure: https://cms.mpi.univie.ac.at/wiki/index.php/Si_bandstructure
+
+The VASP manual has an example of creating a `Si band structure`_ - we can
+easily reproduce a similar result, by using the ASE Vasp calculator.
+
+We can use the ``directory`` keyword to control the folder in which the calculations
+take place, and keep a more structured folder structure. The following script does the
+initial calculations, in order to construct the band structure for silicon
+
+.. code-block:: python
+
+	from ase.build import bulk
+	from ase.calculators.vasp import Vasp
+
+	si = bulk('Si')
+
+	mydir = 'bandstructure'    # Directory where we will do the calculations
+
+	# Make self-consistent ground state
+	calc = Vasp(kpts=(4, 4, 4), directory=mydir)
+
+	si.calc = calc
+	si.get_potential_energy()  # Run the calculation
+
+	# Non-SC calculation along band path
+	kpts = {'path': 'WGX',     # The BS path
+	        'npoints': 30}     # Number of points along the path
+
+	calc.set(isym=0,           # Turn off kpoint symmetry reduction
+	         icharg=11,        # Non-SC calculation
+    		 kpts=kpts)
+
+	# Run the calculation
+	si.get_potential_energy()
+
+As this calculation might be longer, depending on your system, it may
+be more convenient to split the plotting into a separate file, as all
+of the VASP data is written to files. The plotting can then be achieved
+by using the ``restart`` keyword, in a second script
+
+.. code-block:: python
+
+	from ase.calculators.vasp import Vasp
+
+	mydir = 'bandstructure'    # Directory where we did the calculations
+
+	# Load the calculator from the VASP output files
+	calc_load = Vasp(restart=True, directory=mydir)
+
+	bs = calc_load.band_structure() # ASE Band structure object
+	bs.plot(emin=-13, show=True)    # Plot the band structure
+
+Which results in the following image
+
+.. image:: vasp_si_bandstructure.png
+
+We could also find the band gap in the same calculation,
+
+>>> from ase.dft.bandgap import bandgap
+>>> bandgap(calc_load)
+Gap: 0.474 eV
+Transition (v -> c):
+  (s=0, k=15, n=3, [0.000, 0.000, 0.000]) -> (s=0, k=27, n=4, [0.429, 0.000, 0.429])
+
+.. note::
+   When using hybrids, due to the exact-exchange calculations, one needs to treat
+   the k-point sampling more carefully, see `VASP HSE band structure wiki`_.
+
+   Currently, we have no functions to easily handle this issue, but may be added
+   in the future.
+
+.. _VASP HSE band structure wiki: https://cms.mpi.univie.ac.at/wiki/index.php/Si_HSE_bandstructure#Procedure_2:_0-weight_.28Fake.29_SC_procedure_.28works_DFT_.26_hybrid_functionals.29
+
+
+Density of States
+------------------------
+
+The Vasp calculator also allows for quick access to the Density of States (DOS), through the ASE DOS module, see :class:`~ase.dft.dos.DOS`.
+Quick access to this function, however, can be found by using the ``get_dos()`` function:
+
+>>> energies, dos = calc.get_dos()

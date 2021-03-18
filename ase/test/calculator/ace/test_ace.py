@@ -8,4 +8,6 @@ def test_ace():
     basic = [dict(Cell= '5.0')]
     ace = ACE(label=label, BasicInformation=basic)
     mol.calc = ace
-    mol.get_forces()
+    forces = mol.get_forces()
+    print(forces)
+

@@ -9,42 +9,205 @@ Git master branch
 
 :git:`master <>`.
 
-* The linear interpolation (:meth:`ase.neb.interpolate`) between images
-  now supports cell-interpolation and the use of scaled positions.
+Calculators:
+
+* :class:`ase.calculators.qmmm.ForceQMMM` was updated to enable correct
+  handling of various periodic boundary conditions.
+  Functions to import and export files with QM/MM mapping were also added.
+
+I/O:
+
+* Reading of "chemical json" file types with name ``*.cml`` is enabled.
+
+
+Version 3.21.1
+==============
+
+24 January 2021: :git:`3.21.1 <../3.21.1>`
+
+* Fix incorrect positions written to CIF files with mixed boundary
+  conditions.
+* Writing a CIF with only 1 or 2 lattice vectors will now raise an error since
+  CIF cannot represent those systems.
+* The name of the Vasp calculator is now ``'vasp'`` as intended.
+* Fix attribute error in :meth:`~ase.vibrations.Vibrations.write_jmol`.
+
+
+Version 3.21.0
+==============
+
+18 January 2021: :git:`3.21.0 <../3.21.0>`
+
+General changes:
+
+* :meth:`~ase.Atoms.center` now centers around 0 along directions which
+  do not have a cell vector.  Previously this operation had no effect
+  in those directions.
+
+* Deprecated the following methods on :class:`~ase.Atoms` as they can
+  be replaced by ``~ase.cell.Cell``:
+  ``atoms.get_cell_lengths_and_angles()``,
+  ``atoms.get_reciprocal_cell()``,
+  ``atoms.number_of_lattice_vectors``.
+  Instead use ``atoms.cell.cellpar()``, ``atoms.cell.reciprocal()``,
+  and ``atoms.cell.rank``, respectively.
+
+* Removed deprecated code on :class:`~ase.Atoms` for handling angles
+  in radians.
+
+* :meth:`~ase.Atoms.get_velocities` will now return zeros rather than ``None``
+  when there are no velocities, consistently with other optionals such as
+  momenta.
+
+* For security reasons, *pickle will no longer be used for persistent
+  file storage* in the future.  Pickle has so far been replaced with JSON in
+  :class:`ase.io.bundletrajectory.BundleTrajectory`
+  and :class:`ase.dft.stm.STM`.
+  All remaining use of pickle for persistent storage will be likewise replaced
+  in next release.  Users are advised as always not to open pickle-files
+  from untrusted sources.
+
+* :func:`ase.utils.opencew` to be replaced by
+  :func:`ase.utils.xwopen` which is a contextmanager and ensures
+  that the file is closed correctly.
+
+* Clusters created by :mod:`ase.cluster` will no longer have cell vectors
+  and will be centered around (0, 0, 0).
+  Previously they had a “tight” cell and coordinates
+  centered with zero vacuum.
+
+* Refactored external viewers in :mod:`ase.visualize.view`.
+  Viewers will now clean up their temporary files correctly on non-UNIX
+  platforms.
+
+* Band structure module moved to :mod:`ase.spectrum.band_structure`.
+
+* New objects for working with DOS and collections of DOS in
+  :mod:`ase.spectrum`.  To begin with, this will mostly be relevant
+  for format readers that want to retrieve such objects from
+  calculations.
+
+Command-line interface:
+
+* Added ``ase exec`` sub-command for the :ref:`ase <cli>`
+  command line interface.
+
+
+Algorithms:
 
 * Changed units for molecular dynamics modules.  They now accept the
   temperature in Kelvin as a keyword-only argument ``temperature_K``
-  and Berendsen NPT accepts the pressure in eV/Å^3 as a keyword-only
+  and Berendsen NPT accepts the pressure in eV/Å³ as a keyword-only
   argument ``pressure_au``. The previous arguments are still
   available and still take temperature and pressure in whatever unit
   the module used to accept, but now issue a warning.
 
 * Made Andersen thermostat available for molecular dynamics simulation.
 
-* Deprecated the following methods on :class:`~ase.Atoms` as they can
-  be replaced by ``~ase.cell.Cell``:
-  ``atoms.get_cell_lengths_and_angles()``,
-  ``atoms.get_reciprocal_cell()``,
-  ``atoms.number_of_lattice_vectors``, and ``atoms.get_volume()``.
-  Instead use ``atoms.cell.cellpar()``, ``atoms.cell.reciprocal()``,
-  ``atoms.cell.rank``, and ``atoms.cell.volume``, respectively.
+* Refactored :class:`ase.neb.NEB`.
 
-* Extended constraint `ase.constraints.FixInternals` by
+* The linear interpolation (:meth:`ase.neb.interpolate`) between images
+  now supports cell-interpolation and the use of scaled positions.
+
+* :class:`~ase.neb.SingleCalculatorNEB` is deprecated.  Use
+  ``ase.neb.NEB(allow_shared_calculator=True)`` instead.
+
+* Extended constraint :class:`ase.constraints.FixInternals` by
   possibility to fix linear combinations of bond lengths.
 
-* Cleaned up and fixed multiple issues with
-  :class:`~ase.calculators.elk.Elk` calculator.
+* :class:`~ase.constraints.FixInternals` constraints now support
+  constraining linear combinations of angles or dihedrals.
+  It is also possible to slice atoms objects with
+  :class:`~ase.constraints.FixInternals` constraints on them.
 
-* :meth:`~ase.Atoms.get_velocities` will now return an array of zeros
-  consistently with :meth:`~ase.Atoms.get_momenta` if not set.
-  It previously returned ``None``, which was an oversight.
+* Added :mod:`ase.build.connected` which finds groups of connected
+  atoms inside an :class:`~ase.Atoms` object.
+
+* Optimizers and molecular dynamics objects, which may open trajectories
+  or logfiles, can now be used as context managers.  Doing so ensures
+  correct closing of the files that they open.
+
+* Faster codepath for minimum-image convention (MIC) distance calculations
+  with “well-behaved” unit cells.
+  This improves the speed of neighbour lists and certain
+  constraints.
+
+* Cleanup and deprecations of certain methods on :class:`~ase.phonons.Phonons`.
+
+Calculators:
+
+* The ``ignore_bad_restart_file`` argument supported by many calculators
+  has been deprecated.  The user should choose this kind of behaviour
+  explicitly.
+
+* Cleaned up and fixed multiple issues with
+  :class:`~ase.calculators.elk.ELK` calculator.
+
+* Make-shift cleanup and fixes for
+  :class:`~ase.calculators.exciting.Exciting` calculator.
+
+* :class:`ase.calculators.abinit.Abinit` updated to work with Abinit 9.
+
+* Improved cleanup of old socket files under some types of failure with
+  :class:`ase.calculators.socketio.SocketIOCalculator`.
+
+* :class:`~ase.calculators.vasp.Vasp` now uses the newer implementation
+  formerly known as Vasp2.
+
+* Added smooth cutoff option to :class:`ase.calculators.lj.LennardJones`.
+  This makes the forces continuous as atoms move past the cutoff radius.
+
+* :class:`~ase.calculators.lj.LennardJones` is now much more efficient.
+
+* Many calculators would change the working directory in order to facilitate
+  work with files.  However doing so breaks threading.  This has been fixed
+  for most calculators (abinit, lammpsrun, )
+
+I/O:
 
 * Reads Wannier90 ``.wout`` files.
   See :func:`ase.io.wannier90.read_wout` and
   :func:`ase.io.wannier90.read_wout_all`.
 
-* :class:`~ase.neb.SingleCalculatorNEB` is deprecated.  Use
-  ``ase.neb.NEB(allow_shared_calculator=True)`` instead.
+* :func:`ase.io.pov.write_pov` no longer includes an option to run
+  povray on top of the written output.  Instead it returns a renderer
+  which can be used like this::
+
+    png_path = write_pov('myfile.pov').render()
+
+* Refactored CIF reader and writer, adding more extensive testing
+  and fixing multiple bugs.
+
+* CIF writer now uses up-to-date variable definitions from the CIF
+  standard instead of deprecated ones.  Also, it no longer writes columns
+  of dummy data that doesn't depend on the atoms.
+
+* Added :class:`ase.io.cif.CIFBlock` for direct access to data
+  inside a CIF, and :func:`ase.io.cif.parse_cif` to iterate over
+  such blocks from a CIF.
+
+* Fixed many cases of careless I/O handling where format readers or writers
+  would open files without necessarily closing them.
+
+* Vasp output formats return atoms with fully periodic boundary conditions
+  as appropriate.
+
+* Vasp POSCAR/CONTCAR writer will now use the Vasp5 format by default.
+
+Development:
+
+* Test suite now prints a descriptive header with dependency versions
+  including a list of installed/enabled calculators.
+
+* All tests with random numbers now use a specific seed so as to run
+  reproducibly.
+
+* CI now supports integration testing with many additional calculators.
+  The full list of external calculators that can be integration-tested via CI
+  is: Abinit, Asap, CP2K, DFTB, DFTD3, Elk, Espresso,
+  Exciting, GPAW, Gromacs, Lammpslib, Lammpsrun, NWChem, Octopus,
+  OpenMX, Siesta.
+
 
 Version 3.20.1
 ==============

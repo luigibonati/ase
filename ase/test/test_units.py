@@ -2,12 +2,19 @@
 implementation that SciPy brings with it.
 """
 
+import numpy as np
+import pytest
 
-def test_units():
-    import numpy as np
-    from ase.units import CODATA
-    import scipy.constants.codata
+import ase.units
+from ase.units import CODATA, create_units
+import scipy.constants.codata
 
+
+# Scipy lacks data for some of the codata versions:
+codata_scipy_versions = set(CODATA) - {'1998', '1986'}
+
+@pytest.mark.parametrize('version', sorted(codata_scipy_versions))
+def test_units(version):
     name_map = {'_c': 'speed of light in vacuum',
                 '_mu0': 'mag. const.',
                 '_Grav': 'Newtonian constant of gravitation',
@@ -19,45 +26,36 @@ def test_units():
                 '_k': 'Boltzmann constant',
                 '_amu': 'atomic mass unit-kilogram relationship'}
 
-    for version in sorted(CODATA.keys()):
-        print('Checking CODATA version "{0}"'.format(version))
+    scipy_CODATA = getattr(scipy.constants.codata,
+                           f'_physical_constants_{version}', None)
+    if version == '2018' and scipy_CODATA is None:
+        pytest.skip('No CODATA for 2018 with this scipy')
 
+    assert scipy_CODATA is not None
+
+    for asename, scipyname in name_map.items():
+        aseval = CODATA[version][asename]
         try:
-            scipy_CODATA = getattr(scipy.constants.codata,
-                                   '_physical_constants_{0}'.format(version))
-        except AttributeError:
-            print('\tNot available through scipy, skipping')
-            continue
+            scipyval = scipy_CODATA[scipyname][0]
+        except KeyError:
+            # XXX Can we be more specific?
+            continue  # 2002 in scipy contains too little data
 
-        for unit, scipyname in name_map.items():
-            aseval = CODATA[version][unit]
-            try:
-                scipyval = scipy_CODATA[name_map[unit]][0]
-                msg = 'Unit "{0}" : '.format(name_map[unit])
-                ok = True
-                if np.isclose(aseval, scipyval):
-                    msg += '[OK]'
-                else:
-                    msg += '[FALSE]'
-                    ok = False
-                print('\t' + msg)
-                if not ok:
-                    raise AssertionError
-
-            except KeyError:
-                # 2002 in scipy contains too little data
-                continue
+        assert np.isclose(aseval, scipyval), scipyname
 
 
 def test_create_units():
     """Check that units are created and allow attribute access."""
 
-    import ase.units
-
-    print('Checking create_units and attribute access')
     # just use current CODATA version
     new_units = ase.units.create_units(ase.units.__codata_version__)
     assert new_units.eV == new_units['eV'] == ase.units.eV
-    for unit_name in new_units.keys():
+    for unit_name in new_units:
         assert getattr(new_units, unit_name) == getattr(ase.units, unit_name)
         assert new_units[unit_name] == getattr(ase.units, unit_name)
+
+
+def test_bad_codata():
+    name = 'my_bad_codata_version'
+    with pytest.raises(NotImplementedError, match=name):
+        create_units(name)

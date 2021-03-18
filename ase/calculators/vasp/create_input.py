@@ -936,6 +936,9 @@ class GenerateVaspInput:
         }
     }
 
+    # environment variable for PP paths
+    VASP_PP_PATH = 'VASP_PP_PATH'
+
     def __init__(self, restart=None):
         self.float_params = {}
         self.exp_params = {}
@@ -1011,8 +1014,8 @@ class GenerateVaspInput:
 
     def set(self, **kwargs):
 
-        if (('ldauu' in kwargs) and ('ldaul' in kwargs)
-             and ('ldauj' in kwargs) and ('ldau_luj' in kwargs)):
+        if (('ldauu' in kwargs) and ('ldaul' in kwargs) and ('ldauj' in kwargs)
+                and ('ldau_luj' in kwargs)):
             raise NotImplementedError(
                 'You can either specify ldaul, ldauu, and ldauj OR '
                 'ldau_luj. ldau_luj is not a VASP keyword. It is a '
@@ -1133,8 +1136,8 @@ class GenerateVaspInput:
         else:
             pp_folder = p['pp']
 
-        if 'VASP_PP_PATH' in os.environ:
-            pppaths = os.environ['VASP_PP_PATH'].split(':')
+        if self.VASP_PP_PATH in os.environ:
+            pppaths = os.environ[self.VASP_PP_PATH].split(':')
         else:
             pppaths = []
         ppp_list = []
@@ -1257,6 +1260,7 @@ class GenerateVaspInput:
         """
 
         self.check_xc()
+        self.atoms = atoms
         self.all_symbols = atoms.get_chemical_symbols()
         self.natoms = len(atoms)
 
@@ -1297,10 +1301,9 @@ class GenerateVaspInput:
         """
         symbol_valences = []
         for filename in self.ppp_list:
-            ppp_file = open_potcar(filename=filename)
-            r = read_potcar_numbers_of_electrons(ppp_file)
-            symbol_valences.extend(r)
-            ppp_file.close()
+            with open_potcar(filename=filename) as ppp_file:
+                r = read_potcar_numbers_of_electrons(ppp_file)
+                symbol_valences.extend(r)
         assert len(self.symbol_count) == len(symbol_valences)
         default_nelect = 0
         for ((symbol1, count),
@@ -1317,7 +1320,7 @@ class GenerateVaspInput:
                    ignore_constraints=self.input_params['ignore_constraints'])
         self.write_incar(atoms, directory=directory)
         self.write_potcar(directory=directory)
-        self.write_kpoints(directory=directory)
+        self.write_kpoints(atoms=atoms, directory=directory)
         self.write_sort_file(directory=directory)
         self.copy_vdw_kernel(directory=directory)
 
@@ -1559,8 +1562,11 @@ class GenerateVaspInput:
                 key.upper(), value))
         incar.close()
 
-    def write_kpoints(self, directory='./', **kwargs):
+    def write_kpoints(self, atoms=None, directory='./', **kwargs):
         """Writes the KPOINTS file."""
+
+        if atoms is None:
+            atoms = self.atoms
 
         # Don't write anything if KSPACING is being used
         if self.float_params['kspacing'] is not None:
@@ -1572,53 +1578,51 @@ class GenerateVaspInput:
                                  "".format(self.float_params['kspacing']))
 
         p = self.input_params
-        kpoints = open(join(directory, 'KPOINTS'), 'w')
-        kpoints.write('KPOINTS created by Atomic Simulation Environment\n')
+        with open(join(directory, 'KPOINTS'), 'w') as kpoints:
+            kpoints.write('KPOINTS created by Atomic Simulation Environment\n')
 
-        if isinstance(p['kpts'], dict):
-            p['kpts'] = kpts2ndarray(p['kpts'], atoms=self.atoms)
-            p['reciprocal'] = True
+            if isinstance(p['kpts'], dict):
+                p['kpts'] = kpts2ndarray(p['kpts'], atoms=atoms)
+                p['reciprocal'] = True
 
-        shape = np.array(p['kpts']).shape
+            shape = np.array(p['kpts']).shape
 
-        # Wrap scalar in list if necessary
-        if shape == ():
-            p['kpts'] = [p['kpts']]
-            shape = (1, )
+            # Wrap scalar in list if necessary
+            if shape == ():
+                p['kpts'] = [p['kpts']]
+                shape = (1, )
 
-        if len(shape) == 1:
-            kpoints.write('0\n')
-            if shape == (1, ):
-                kpoints.write('Auto\n')
-            elif p['gamma']:
-                kpoints.write('Gamma\n')
-            else:
-                kpoints.write('Monkhorst-Pack\n')
-            [kpoints.write('%i ' % kpt) for kpt in p['kpts']]
-            kpoints.write('\n0 0 0\n')
-        elif len(shape) == 2:
-            kpoints.write('%i \n' % (len(p['kpts'])))
-            if p['reciprocal']:
-                kpoints.write('Reciprocal\n')
-            else:
-                kpoints.write('Cartesian\n')
-            for n in range(len(p['kpts'])):
-                [kpoints.write('%f ' % kpt) for kpt in p['kpts'][n]]
-                if shape[1] == 4:
-                    kpoints.write('\n')
-                elif shape[1] == 3:
-                    kpoints.write('1.0 \n')
-        kpoints.close()
+            if len(shape) == 1:
+                kpoints.write('0\n')
+                if shape == (1, ):
+                    kpoints.write('Auto\n')
+                elif p['gamma']:
+                    kpoints.write('Gamma\n')
+                else:
+                    kpoints.write('Monkhorst-Pack\n')
+                [kpoints.write('%i ' % kpt) for kpt in p['kpts']]
+                kpoints.write('\n0 0 0\n')
+            elif len(shape) == 2:
+                kpoints.write('%i \n' % (len(p['kpts'])))
+                if p['reciprocal']:
+                    kpoints.write('Reciprocal\n')
+                else:
+                    kpoints.write('Cartesian\n')
+                for n in range(len(p['kpts'])):
+                    [kpoints.write('%f ' % kpt) for kpt in p['kpts'][n]]
+                    if shape[1] == 4:
+                        kpoints.write('\n')
+                    elif shape[1] == 3:
+                        kpoints.write('1.0 \n')
 
     def write_potcar(self, suffix="", directory='./'):
         """Writes the POTCAR file."""
-        potfile = open(join(directory, 'POTCAR' + suffix), 'w')
-        for filename in self.ppp_list:
-            ppp_file = open_potcar(filename=filename)
-            for line in ppp_file:
-                potfile.write(line)
-            ppp_file.close()
-        potfile.close()
+
+        with open(join(directory, 'POTCAR' + suffix), 'w') as potfile:
+            for filename in self.ppp_list:
+                with open_potcar(filename=filename) as ppp_file:
+                    for line in ppp_file:
+                        potfile.write(line)
 
     def write_sort_file(self, directory='./'):
         """Writes a sortings file.
@@ -1634,8 +1638,10 @@ class GenerateVaspInput:
 
     # The below functions are used to restart a calculation
 
-    def read_incar(self, filename='INCAR'):
-        """Method that imports settings from INCAR file."""
+    def read_incar(self, filename):
+        """Method that imports settings from INCAR file.
+
+        Typically named INCAR."""
 
         self.spinpol = False
         with open(filename, 'r') as fd:
@@ -1772,7 +1778,8 @@ class GenerateVaspInput:
             except IndexError:
                 raise IOError('Value missing for keyword "%s".' % key)
 
-    def read_kpoints(self, filename='KPOINTS'):
+    def read_kpoints(self, filename):
+        """Read kpoints file, typically named KPOINTS."""
         # If we used VASP builtin kspacing,
         if self.float_params['kspacing'] is not None:
             # Don't update kpts array
@@ -1799,7 +1806,7 @@ class GenerateVaspInput:
                 [list(map(float, line.split())) for line in lines[3:]])
         self.set(kpts=kpts)
 
-    def read_potcar(self, filename='POTCAR'):
+    def read_potcar(self, filename):
         """ Read the pseudopotential XC functional from POTCAR file.
         """
 

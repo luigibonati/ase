@@ -14,7 +14,8 @@ from ase.build import bulk
 from ase.io.extxyz import escape
 from ase.calculators.calculator import compare_atoms
 from ase.calculators.emt import EMT
-from ase.constraints import FixAtoms, FixCartesian, full_3x3_to_voigt_6_stress
+from ase.constraints import FixAtoms, FixCartesian
+from ase.stress import full_3x3_to_voigt_6_stress
 from ase.build import molecule
 
 # array data of shape (N, 1) squeezed down to shape (N, ) -- bug fixed

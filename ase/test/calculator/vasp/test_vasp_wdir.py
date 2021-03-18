@@ -1,15 +1,12 @@
+import os
 import pytest
 
-import os
-
-from ase.test.calculator.vasp import installed2 as installed
-
-from ase import Atoms
-from ase.calculators.vasp import Vasp2 as Vasp
+calc = pytest.mark.calculator
 
 
 @pytest.mark.filterwarnings('ignore:Specifying directory')
-def test_vasp2_wdir(require_vasp):
+@calc('vasp')
+def test_vasp_wdir(factory, atoms_co):
     """
     Run tests to ensure that the VASP txt and label arguments function correctly,
     i.e. correctly sets the working directories and works in that directory.
@@ -18,15 +15,10 @@ def test_vasp2_wdir(require_vasp):
     or VASP_SCRIPT environment variables
 
     """
-    assert installed()
-
     def compare_paths(path1, path2):
         assert os.path.abspath(path1) == os.path.abspath(path2)
 
-    # Test setup system, borrowed from vasp_co.py
-    d = 1.14
-    atoms = Atoms('CO', positions=[(0, 0, 0), (0, 0, d)], pbc=True)
-    atoms.center(vacuum=5.)
+    atoms = atoms_co  # Aliasing
 
     file1 = '_vasp_dummy_str.out'
     file2 = '_vasp_dummy_io.out'
@@ -47,8 +39,8 @@ def test_vasp2_wdir(require_vasp):
                     lcharg=False)
 
     # Make 2 copies of the calculator object
-    calc = Vasp(**settings)
-    calc2 = Vasp(**settings)
+    calc = factory.calc(**settings)
+    calc2 = factory.calc(**settings)
 
     # Check the calculator path is the expected path
     compare_paths(calc.directory, testdir)
@@ -71,7 +63,7 @@ def test_vasp2_wdir(require_vasp):
 
     # Test restarting from working directory in test directory
     label2 = os.path.join(testdir, file3)
-    calc2 = Vasp(restart=label, label=label2)
+    calc2 = factory.calc(restart=label, label=label2)
 
     # Check the calculator path is the expected path
     compare_paths(calc2.directory, testdir)
