@@ -103,6 +103,8 @@ class BFGSClimbFixInternals(BFGS):
         self.autolog = 'logfile' not in self.optB_kwargs
         self.autotraj = 'trajectory' not in self.optB_kwargs
 
+        self.nsteps = -1  # custom .log and .call_observers for initial step
+
     def get_constr2climb(self, atoms, climb_coordinate):
         """Get pointer to the subconstraint that is to be climbed.
         Identification by its definition via indices (and coefficients)."""
@@ -122,9 +124,11 @@ class BFGSClimbFixInternals(BFGS):
     def step(self):
         optB = self.setup_optB()
 
-        if self.nsteps == 0:  # initial relaxation with optimizer 'B'
+        if self.nsteps == -1:  # initial relaxation with optimizer 'B'
+            self.nsteps = 0    # optimizer 'B' logs from the 'True' beginning
             optB.run(self.get_scaled_fmax())
-            self.log(log_nstep_0=True)
+            self.log()             # custom logging of optimizer 'A'
+            self.call_observers()  # custom logging of optimizer 'A'
 
         pos, dpos = self.pretend2climb()  # with optimizer 'A'
         self.update_positions_and_targetvalue(pos, dpos)  # obey constraints
@@ -186,8 +190,7 @@ class BFGSClimbFixInternals(BFGS):
     def converged(self):
         """Did the optimization converge based on the projected forces?"""
         return BFGS.converged(self, forces=self.get_projected_forces())
+        #return BFGS.converged(self, forces=self.get_total_forces())
 
-    def log(self, log_nstep_0=False):
-        if self.nsteps == 0 and not log_nstep_0:
-            return  # this case is logged during self.step()
+    def log(self):
         BFGS.log(self, forces=self.get_total_forces())
