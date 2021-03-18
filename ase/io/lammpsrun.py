@@ -114,10 +114,12 @@ def lammps_data_to_ase_atoms(
     xpositions = get_quantity(["xu", "yu", "zu"], "distance")
     positions = get_quantity(["x", "y", "z"], "distance")
 
-    # Do we not need any processing of xpositions?
     if positions is None:
+        # Useful info on lammps-dump positions:
+        #  https://lammps.sandia.gov/doc/dump.html
+        # There's at least one more kind of position which we should support.
         positions = xpositions
-    print(positions)
+
     scaled_positions = get_quantity(["xs", "ys", "zs"])
     velocities = get_quantity(["vx", "vy", "vz"], "velocity")
     charges = get_quantity(["q"], "charge")
