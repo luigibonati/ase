@@ -31,10 +31,11 @@ class BFGSClimbFixInternals(BFGS):
            https://doi.org/10.1021/acs.jctc.7b01070.
 
     .. note::
-       Convergence is based on 'fmax' of the projected forces. This value is
-       logged in the 'logfile'. Optimizer 'B' logs 'fmax' of the remaining
-       degrees of freedom without the projected forces.  The projected forces
-       can be inspected using the :meth:`get_projected_forces` method, e.g.
+       Convergence is based on 'fmax' of the total forces which is the sum of
+       the projected forces and the forces of the remaining degrees of freedom.
+       This value is logged in the 'logfile'. Optimizer 'B' logs 'fmax' of the
+       remaining degrees of freedom without the projected forces. The projected
+       forces can be inspected using the :meth:`get_projected_forces` method:
 
        >>> for _ in dyn.irun():
        ...     projected_forces = dyn.get_projected_forces()
@@ -122,12 +123,10 @@ class BFGSClimbFixInternals(BFGS):
     def step(self):
         optB = self.setup_optB()
 
-        self.relax_remaining_dof(optB)  # initial optimization with opt. 'B'
+        self.relax_remaining_dof(optB)  # optimization with optimizer 'B'
 
         pos, dpos = self.pretend2climb()  # with optimizer 'A'
-        self.update_positions_and_targetvalue(pos, dpos)  # obey constraints
-
-        #self.relax_remaining_dof(optB)  # with optimizer 'B'
+        self.update_positions_and_targetvalue(pos, dpos)  # obey other constr.
 
         self.dump((self.H, self.pos0, self.forces0, self.maxstep,
                    self.targetvalue))
@@ -182,7 +181,7 @@ class BFGSClimbFixInternals(BFGS):
         return self.atoms.get_forces() + self.get_projected_forces()
 
     def converged(self, forces=None):
-        """Did the optimization converge based on the projected forces?"""
+        """Did the optimization converge based on the total forces?"""
         #forces = forces or self.get_projected_forces()
         forces = forces or self.get_total_forces()
         return super().converged(forces=forces)
