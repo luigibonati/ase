@@ -88,9 +88,9 @@ class BFGSClimbFixInternals(BFGS):
             performed with ``optB_fmax`` independent of ``optB_fmax_scaling``.
         """
         self.targetvalue = None  # may be assigned during restart in self.read()
-        BFGS.__init__(self, atoms, restart=restart, logfile=logfile,
-                      trajectory=trajectory, maxstep=maxstep, master=master,
-                      alpha=alpha)
+        super().__init__(atoms, restart=restart, logfile=logfile,
+                         trajectory=trajectory, maxstep=maxstep, master=master,
+                         alpha=alpha)
 
         self.constr2climb = self.get_constr2climb(self.atoms, climb_coordinate)
         self.targetvalue = self.targetvalue or self.constr2climb.targetvalue
@@ -102,8 +102,6 @@ class BFGSClimbFixInternals(BFGS):
         # log optimizer 'B' in logfiles named after current value of constraint
         self.autolog = 'logfile' not in self.optB_kwargs
         self.autotraj = 'trajectory' not in self.optB_kwargs
-
-        self.nsteps = -1  # custom .log and .call_observers for initial step
 
     def get_constr2climb(self, atoms, climb_coordinate):
         """Get pointer to the subconstraint that is to be climbed.
@@ -124,16 +122,12 @@ class BFGSClimbFixInternals(BFGS):
     def step(self):
         optB = self.setup_optB()
 
-        if self.nsteps == -1:  # initial relaxation with optimizer 'B'
-            self.nsteps = 0    # optimizer 'B' logs from the 'True' beginning
-            optB.run(self.get_scaled_fmax())
-            self.log()             # custom logging of optimizer 'A'
-            self.call_observers()  # custom logging of optimizer 'A'
+        self.relax_remaining_dof(optB)  # initial optimization with opt. 'B'
 
         pos, dpos = self.pretend2climb()  # with optimizer 'A'
         self.update_positions_and_targetvalue(pos, dpos)  # obey constraints
 
-        self.relax_remaining_dof(optB)  # with optimizer 'B'
+        #self.relax_remaining_dof(optB)  # with optimizer 'B'
 
         self.dump((self.H, self.pos0, self.forces0, self.maxstep,
                    self.targetvalue))
@@ -187,10 +181,12 @@ class BFGSClimbFixInternals(BFGS):
         """Return forces obeying all constraints plus projected forces."""
         return self.atoms.get_forces() + self.get_projected_forces()
 
-    def converged(self):
+    def converged(self, forces=None):
         """Did the optimization converge based on the projected forces?"""
-        return BFGS.converged(self, forces=self.get_projected_forces())
-        #return BFGS.converged(self, forces=self.get_total_forces())
+        #forces = forces or self.get_projected_forces()
+        forces = forces or self.get_total_forces()
+        return super().converged(forces=forces)
 
-    def log(self):
-        BFGS.log(self, forces=self.get_total_forces())
+    def log(self, forces=None):
+        forces = forces or self.get_total_forces()
+        super().log(forces=forces)
