@@ -9,7 +9,6 @@ from pathlib import Path, PurePath
 
 import numpy as np
 import ase
-from ase.data import atomic_numbers
 from ase import Atoms
 from ase.io import ParseError, read
 from ase.io.utils import ImageChunk
