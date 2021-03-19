@@ -408,13 +408,10 @@ k-points in reciprocal lattice and weights: KPOINTS created by Atomic Simulation
     do_test_header_parser(cursor, lines, parser, expected)
 
 
-@pytest.mark.parametrize('line, expected', [
-    ('POSCAR: Mg Al', ('Mg', 'Al')),
-    ('POSCAR: Ir2 O4', ('Ir', 'O')),
-    ('POSCAR: Ir2 O4 Ir', ('Ir', 'O', 'Ir')),
-])
-def test_parse_symbols(line, expected, do_test_header_parser):
-    cursor = 0  # single line, cursor always starts at 0
+@pytest.mark.parametrize('line, expected',
+                         [(' POTCAR:    PAW_PBE Ni 02Aug2007', ['Ni'])])
+def test_parse_potcar_in_outcar(line, expected, do_test_header_parser):
+    cursor = 0
     lines = [line]
     parser = vop.SpeciesTypes()
     expected = {'species': expected}
@@ -435,3 +432,45 @@ def test_ions_per_species(line, expected, do_test_header_parser):
     parser = vop.IonsPerSpecies()
     expected = {'ion_types': expected}
     do_test_header_parser(cursor, lines, parser, expected)
+
+
+def test_potcar_repeated_entry():
+    """Test reading an OUTCAR where we have repeated "POTCAR:" entries.
+    We should only expect to insert every second entry.
+    Also test that we properly reset after calling reset()
+    """
+
+    lines = """
+    POTCAR:    PAW_PBE Ni 02Aug2007
+    POTCAR:    PAW_PBE Ni 02Aug2007
+    POTCAR:    PAW_PBE H1.25 02Aug2007 
+    POTCAR:    PAW_PBE H1.25 02Aug2007
+    POTCAR:    PAW_PBE Au_GW 02Aug2007
+    POTCAR:    PAW_PBE Au_GW 02Aug2007
+    """
+    # Prepare input as list of strings
+    lines = lines.split('\n')
+
+    # Emulate the parser, reading the lines 1-by-1
+    parser = vop.SpeciesTypes()
+    result = parser.parse(1, lines)
+    result2 = parser.parse(2, lines)
+    assert result == result2
+    assert result == {'species': ['Ni']}
+    result = parser.parse(3, lines)
+    result2 = parser.parse(4, lines)
+    assert result == result2
+    assert result == {'species': ['Ni', 'H']}
+    result = parser.parse(5, lines)
+    result2 = parser.parse(6, lines)
+    assert result == result2
+    assert result == {'species': ['Ni', 'H', 'Au']}
+
+    assert len(parser.species) == 3
+    assert parser.species_count == 6
+    parser.reset()
+    assert len(parser.species) == 0
+    assert parser.species_count == 0
+    # Now parse again, ensure we get the expected result
+    result = parser.parse(1, lines)
+    assert result == {'species': ['Ni']}

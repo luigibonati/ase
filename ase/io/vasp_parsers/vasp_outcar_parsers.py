@@ -9,6 +9,7 @@ from pathlib import Path, PurePath
 
 import numpy as np
 import ase
+from ase.data import atomic_numbers
 from ase import Atoms
 from ase.io import ParseError, read
 from ase.io.utils import ImageChunk
@@ -79,7 +80,11 @@ class VaspPropertyParser(ABC):
     def parse(self, cursor: _CURSOR, lines: _CHUNK) -> _RESULT:
         """Extract a property from the cursor position.
         Assumes that "has_property" would evaluate to True
-        from cursor position"""
+        from cursor position """
+
+    def reset(self) -> None:
+        """Reset any potential state variables which may be used during a parse"""
+        pass
 
 
 class SimpleProperty(VaspPropertyParser, ABC):
@@ -149,37 +154,50 @@ class SpeciesTypes(SimpleVaspHeaderParser):
     """Parse species types.
 
     Example line:
-    "POSCAR: Mg Al"
-    or
-    "POSCAR: Ir2 O4"
+    " POTCAR:    PAW_PBE Ni 02Aug2007"
 
-    Gives a list of the species, in the order of appearance.
-    Does not return informaiton about the number of ions per species.
+    We must parse this multiple times, as it's scattered in the header.
+    So this class has to simply parse the entire header.
     """
-    LINE_DELIMITER = 'POSCAR:'
+    LINE_DELIMITER = 'POTCAR:'
+
+    def __init__(self, *args, **kwargs):
+        self._species = []  # Store species as we find them
+        # We count the number of times we found the line,
+        # as we only want to parse every second,
+        # due to repeated entries in the OUTCAR
+        self.species_count = 0
+        super().__init__(*args, **kwargs)
+
+    @property
+    def species(self) -> list:
+        return self._species
+
+    def reset(self) -> None:
+        """Clear the species"""
+        self._species = []
+        self.species_count = 0
+        super().reset()
+
+    def _make_returnval(self) -> _RESULT:
+        """Construct the return value for the "parse" method"""
+        return {'species': self.species}
 
     def parse(self, cursor: _CURSOR, lines: _CHUNK) -> _RESULT:
         line = lines[cursor].strip()
-        parts = line.split(':')
+        self.species_count += 1
+        if self.species_count % 2 == 0:
+            # the 'POTCAR:' line always appears twice,
+            # so only parse every second occurence
+            return self._make_returnval()
+        print('TEST', line)
+        sym = line.split()[2]
+        for c in ['.', '_', '1']:
+            if c in sym:
+                sym = sym[:sym.find(c)]
+        self.species.append(sym)
 
-        # We should only have 2 parts:
-        # ['POSCAR', <species>]
-        if len(parts) != 2:
-            raise ParseError(
-                f'Got an unexpected line when parsing species: {line}')
-        # Get the species from the line
-        species_line = parts[-1]
-        # Split the species, and parse them individually
-        parts = species_line.split()
-        species = []
-        for part in parts:
-            # We may need to strip numbers from the species, we determine
-            # the number of species later
-            # e.g. in the case of "Ir2 O4" we just want "Ir" and "O"
-            specie = ''.join(c for c in part if not c.isnumeric())
-            species.append(specie)
-
-        return {'species': species}
+        return self._make_returnval()
 
 
 class IonsPerSpecies(SimpleVaspHeaderParser):
@@ -482,7 +500,14 @@ class TypeParser(ABC):
                 if parser.has_property(cursor, lines):
                     prop = parser.parse(cursor, lines)
                     properties.update(prop)
+        self.reset_parsers()
         return properties
+
+    def reset_parsers(self):
+        """Reset all parsers, for resetting the parsers
+        after parsing a file """
+        for parser in self.parsers:
+            parser.reset()
 
 
 class ChunkParser(TypeParser, ABC):
@@ -706,6 +731,7 @@ def outcarchunks(fd: TextIO,
 
     lines = build_header(fd)
     header = header_parser.build(lines)
+    header_parser.reset_parsers()
     assert isinstance(header, dict)
 
     chunk_parser = chunk_parser or OutcarChunkParser()
@@ -715,6 +741,7 @@ def outcarchunks(fd: TextIO,
             lines = build_chunk(fd)
         except StopIteration:
             # End of file
+            chunk_parser.reset_parsers()
             return
         yield OUTCARChunk(lines, header, parser=chunk_parser)
 
