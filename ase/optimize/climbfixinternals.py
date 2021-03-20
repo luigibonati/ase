@@ -182,7 +182,6 @@ class BFGSClimbFixInternals(BFGS):
 
     def converged(self, forces=None):
         """Did the optimization converge based on the total forces?"""
-        #forces = forces or self.get_projected_forces()
         forces = forces or self.get_total_forces()
         return super().converged(forces=forces)
 
