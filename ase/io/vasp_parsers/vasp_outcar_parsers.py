@@ -210,7 +210,7 @@ class SpeciesTypes(SimpleVaspHeaderParser):
         # remove any non-alphabetic characters
         sym = ''.join([s for s in sym if s.isalpha()])
 
-        if not sym in atomic_numbers:
+        if sym not in atomic_numbers:
             # Check that we have properly parsed the symbol, and we found
             # an element
             raise ParseError(
