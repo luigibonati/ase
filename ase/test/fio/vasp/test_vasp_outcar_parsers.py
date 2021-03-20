@@ -414,7 +414,9 @@ k-points in reciprocal lattice and weights: KPOINTS created by Atomic Simulation
         (' POTCAR:    PAW_PBE Ni 02Aug2007', ['Ni']),
         (' POTCAR:    PAW_PBE Fe_pv 02Aug2007', ['Fe']),
         (' POTCAR:    H  1/r potential', ['H']),  # The H_AE POTCAR
-        (' POTCAR:    PAW_PBE H1.25 07Sep2000', ['H'])
+        (' POTCAR:    PAW_PBE H1.25 07Sep2000', ['H']),
+        # Non-PBE potential
+        (' POTCAR:    PAW Ca_sv_GW 31Mar2010', ['Ca']),
     ])
 def test_parse_potcar_in_outcar(line, expected, do_test_header_parser):
     cursor = 0
