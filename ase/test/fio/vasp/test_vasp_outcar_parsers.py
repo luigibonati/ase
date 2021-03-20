@@ -1,6 +1,7 @@
 import pytest
 
 import numpy as np
+from ase.io import ParseError
 import ase.io.vasp_parsers.vasp_outcar_parsers as vop
 
 
@@ -424,6 +425,22 @@ def test_parse_potcar_in_outcar(line, expected, do_test_header_parser):
     parser = vop.SpeciesTypes()
     expected = {'species': expected}
     do_test_header_parser(cursor, lines, parser, expected)
+
+
+@pytest.mark.parametrize(
+    'line',
+    [
+        ' POTCAR:    PAW_PBE Nis 02Aug2007',  # Purely made-up typo in the element
+        ' POTCAR:    PAW_PBE M 02Aug2007',  # Purely made-up typo in the element
+    ])
+def test_parse_potcar_parse_error(line):
+    """Test that we raise a ParseError for a corrupted POTCAR line.
+    Note, that this line is purely made-up, just to test a crash"""
+    cursor = 0
+    lines = [line]
+    parser = vop.SpeciesTypes()
+    with pytest.raises(ParseError):
+        parser.parse(cursor, lines)
 
 
 @pytest.mark.parametrize(
