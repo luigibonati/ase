@@ -10,6 +10,7 @@ from pathlib import Path, PurePath
 import numpy as np
 import ase
 from ase import Atoms
+from ase.data import atomic_numbers
 from ase.io import ParseError, read
 from ase.io.utils import ImageChunk
 from ase.calculators.singlepoint import SinglePointDFTCalculator, SinglePointKPoint
@@ -189,11 +190,32 @@ class SpeciesTypes(SimpleVaspHeaderParser):
             # the 'POTCAR:' line always appears twice,
             # so only parse every second occurence
             return self._make_returnval()
-        print('TEST', line)
-        sym = line.split()[2]
-        for c in ['.', '_', '1']:
-            if c in sym:
-                sym = sym[:sym.find(c)]
+        parts = line.split()
+        # Determine in what position we'd expect to find the symbol
+        if '1/r potential' in line:
+            # This denotes an AE potential
+            # Currently only H_AE
+            # "  H  1/r potential  "
+            idx = 1
+        else:
+            # Regular PAW potential, e.g.
+            # "PAW_PBE H1.25 07Sep2000" or
+            # "PAW_PBE Fe_pv 02Aug2007"
+            idx = 2
+
+        sym = parts[idx]
+        # remove "_h", "_GW", "_3" tags etc.
+        sym = sym.split('_')[0]
+        # in the case of the "H1.25" potentials etc.,
+        # remove any non-alphabetic characters
+        sym = ''.join([s for s in sym if s.isalpha()])
+
+        if not sym in atomic_numbers:
+            # Check that we have properly parsed the symbol, and we found
+            # an element
+            raise ParseError(
+                f'Found an unexpected symbol {sym} in line {line}')
+
         self.species.append(sym)
 
         return self._make_returnval()
