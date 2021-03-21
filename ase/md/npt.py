@@ -20,8 +20,8 @@ using a centered difference method [3].
     Review A, 41, p. 4552 (1990).
 '''
 
-import sys
 import weakref
+import warnings
 
 import numpy as np
 
@@ -68,8 +68,8 @@ class NPT(MolecularDynamics):
         temperature_K: float
             The desired temperature in K.
 
-        externalstress: float or nparray
-            The external stress in eV/A^3.  Either a symmetric
+        externalstress: float or ndarray
+            The external stress in eV/Å³.  Either a symmetric
             3x3 tensor, a 6-vector representing the same, or a
             scalar representing the pressure.  Note that the
             stress is positive in tension whereas the pressure is
@@ -84,10 +84,10 @@ class NPT(MolecularDynamics):
             A constant in the barostat differential equation.  If
             a characteristic barostat timescale of ptime is
             desired, set pfactor to ptime^2 * B (where ptime is in units matching
-            eV, Å, u; and B is the Bulk Modulus, given in eV/Å^3).
+            eV, Å, u; and B is the Bulk Modulus, given in eV/Å³).
             Set to None to disable the barostat.
             Typical metallic bulk moduli are of the order of
-            100 GPa or 0.6 eV/A^3.
+            100 GPa or 0.6 eV/Å³.
 
         mask: None or 3-tuple or 3x3 nparray (optional)
             Optional argument.  A tuple of three integers (0 or 1),
@@ -303,7 +303,7 @@ class NPT(MolecularDynamics):
         #
         # print "Making a timestep"
         dt = self.dt
-        h_future = self.h_past + 2 * dt * np.dot(self.h, self.eta)
+        h_future = self.h_past + 2 * dt * np.dot(self.h, self.eta) * 2
         if self.pfactor_given is None:
             deltaeta = np.zeros(6, float)
         else:
@@ -563,8 +563,7 @@ class NPT(MolecularDynamics):
     # A number of convenient helper methods
     def _warning(self, text):
         "Emit a warning."
-        sys.stderr.write("WARNING: " + text + "\n")
-        sys.stderr.flush()
+        warnings.warn(text)
 
     def _calculate_q_future(self, force):
         "Calculate future q.  Needed in Timestep and Initialization."
