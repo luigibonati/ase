@@ -82,10 +82,6 @@ class VaspPropertyParser(ABC):
         Assumes that "has_property" would evaluate to True
         from cursor position """
 
-    def reset(self) -> None:
-        """Reset any potential state variables which may be used during a parse"""
-        pass
-
 
 class SimpleProperty(VaspPropertyParser, ABC):
     LINE_DELIMITER = None  # type: str
@@ -172,12 +168,6 @@ class SpeciesTypes(SimpleVaspHeaderParser):
     @property
     def species(self) -> list:
         return self._species
-
-    def reset(self) -> None:
-        """Clear the species"""
-        self._species = []
-        self.species_count = 0
-        super().reset()
 
     def _make_returnval(self) -> _RESULT:
         """Construct the return value for the "parse" method"""
@@ -478,7 +468,8 @@ class DefaultParsersContainer:
         return self._parsers_dct
 
     def make_parsers(self):
-        """Return a copy of the internally stored parsers"""
+        """Return a copy of the internally stored parsers.
+        Parsers are created upon request."""
         return list(parser() for parser in self.parsers_dct.values())
 
     def remove_parser(self, name: str):
@@ -521,14 +512,7 @@ class TypeParser(ABC):
                 if parser.has_property(cursor, lines):
                     prop = parser.parse(cursor, lines)
                     properties.update(prop)
-        self.reset_parsers()
         return properties
-
-    def reset_parsers(self):
-        """Reset all parsers, for resetting the parsers
-        after parsing a file """
-        for parser in self.parsers:
-            parser.reset()
 
 
 class ChunkParser(TypeParser, ABC):
@@ -752,7 +736,6 @@ def outcarchunks(fd: TextIO,
 
     lines = build_header(fd)
     header = header_parser.build(lines)
-    header_parser.reset_parsers()
     assert isinstance(header, dict)
 
     chunk_parser = chunk_parser or OutcarChunkParser()
@@ -762,7 +745,6 @@ def outcarchunks(fd: TextIO,
             lines = build_chunk(fd)
         except StopIteration:
             # End of file
-            chunk_parser.reset_parsers()
             return
         yield OUTCARChunk(lines, header, parser=chunk_parser)
 

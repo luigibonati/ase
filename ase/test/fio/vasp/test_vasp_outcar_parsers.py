@@ -462,7 +462,6 @@ def test_ions_per_species(line, expected, do_test_header_parser):
 def test_potcar_repeated_entry():
     """Test reading an OUTCAR where we have repeated "POTCAR:" entries.
     We should only expect to insert every second entry.
-    Also test that we properly reset after calling reset()
     """
 
     lines = """
@@ -493,9 +492,3 @@ def test_potcar_repeated_entry():
 
     assert len(parser.species) == 3
     assert parser.species_count == 6
-    parser.reset()
-    assert len(parser.species) == 0
-    assert parser.species_count == 0
-    # Now parse again, ensure we get the expected result
-    result = parser.parse(1, lines)
-    assert result == {'species': ['Ni']}
