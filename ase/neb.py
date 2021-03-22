@@ -319,7 +319,7 @@ class BaseNEB:
                                 **results_to_include):
         atoms.calc = SinglePointCalculator(atoms=atoms, **results_to_include)
 
-    def interpolate(self, method='linear', mic=False):
+    def interpolate(self, method='linear', mic=False, apply_constraint=True):
         """Interpolate the positions of the interior images between the
         initial state (image 0) and final state (image -1).
 
@@ -329,11 +329,13 @@ class BaseNEB:
             idpp uses an image-dependent pair potential.
         mic: bool
             Use the minimum-image convention when interpolating.
+        apply_constraint: bool
+            If False ignores constraints when setting interpolated positions
         """
         if self.remove_rotation_and_translation:
             minimize_rotation_and_translation(self.images[0], self.images[-1])
 
-        interpolate(self.images, mic)
+        interpolate(self.images, mic, apply_constraint=apply_constraint)
 
         if method == 'idpp':
             idpp_interpolate(images=self, traj=None, log=None, mic=mic)
@@ -971,7 +973,7 @@ class SingleCalculatorNEB(NEB):
 
 
 def interpolate(images, mic=False, interpolate_cell=False,
-                use_scaled_coord=False):
+                use_scaled_coord=False, apply_constraint=True):
     """Given a list of images, linearly interpolate the positions of the
     interior images.
 
@@ -983,6 +985,8 @@ def interpolate(images, mic=False, interpolate_cell=False,
     use_scaled_coord: bool
          Use scaled/internal/fractional coordinates instead of real ones for the
          interpolation. Not implemented for NEB calculations!
+    apply_constraint: bool
+         If False ignores constraints when setting interpolated positions
     """
     if use_scaled_coord:
         pos1 = images[0].get_scaled_positions(wrap=mic)
@@ -1007,7 +1011,7 @@ def interpolate(images, mic=False, interpolate_cell=False,
         if use_scaled_coord:
             images[i].set_scaled_positions(new_pos)
         else:
-            images[i].set_positions(new_pos)
+            images[i].set_positions(new_pos, apply_constraint=apply_constraint)
 
 
 def idpp_interpolate(images, traj='idpp.traj', log='idpp.log', fmax=0.1,
