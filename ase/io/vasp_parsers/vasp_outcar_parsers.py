@@ -465,7 +465,7 @@ class DefaultParsersContainer:
             self.add_parser(parser)
 
     @property
-    def parsers_dct(self):
+    def parsers_dct(self) -> dict:
         return self._parsers_dct
 
     def make_parsers(self):
@@ -493,7 +493,7 @@ class TypeParser(ABC):
         return self._parsers
 
     @parsers.setter
-    def parsers(self, new_parsers):
+    def parsers(self, new_parsers) -> None:
         self._check_parsers(new_parsers)
         self._parsers = new_parsers
 
@@ -501,7 +501,7 @@ class TypeParser(ABC):
     def _check_parsers(self, parsers) -> None:
         """Check the parsers are of correct type"""
 
-    def parse(self, lines):
+    def parse(self, lines) -> _RESULT:
         """Execute the attached paresers, and return the parsed properties"""
         properties = {}
         for cursor, _ in enumerate(lines):
@@ -527,11 +527,11 @@ class ChunkParser(TypeParser, ABC):
         return self._header
 
     @header.setter
-    def header(self, value: Optional[_HEADER]):
+    def header(self, value: Optional[_HEADER]) -> None:
         self._header = value or {}
         self.update_parser_headers()
 
-    def update_parser_headers(self):
+    def update_parser_headers(self) -> None:
         """Apply the header to all available parsers"""
         for parser in self.parsers:
             parser.header = self.header
