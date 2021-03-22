@@ -492,3 +492,28 @@ def test_potcar_repeated_entry():
 
     assert len(parser.species) == 3
     assert parser.species_count == 6
+
+
+def test_default_header_parser_make_parsers():
+    """Test we can make two sets of identical parsers,
+    but that we do not actually return the same parser
+    instances
+    """
+    parsers1 = vop.default_header_parsers.make_parsers()
+    parsers2 = vop.default_header_parsers.make_parsers()
+
+    assert len(parsers1) > 0
+    assert len(parsers1) == len(parsers2)
+    # Test we made all of the parsers
+    assert len(parsers1) == len(vop.default_header_parsers.parsers_dct)
+
+    # Compare parsers
+    for p1, p2 in zip(parsers1, parsers2):
+        # We should've made instances of the same type
+        assert type(p1) == type(p2)
+        assert p1.get_name() == p2.get_name()
+        assert p1.LINE_DELIMITER == p2.LINE_DELIMITER
+        assert p1.LINE_DELIMITER is not None
+        # However, they should not actually BE the same parser
+        # but separate instances, i.e. two separate memory addresses
+        assert p1 is not p2

@@ -2,7 +2,8 @@
 Module for parsing OUTCAR files.
 """
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Sequence, TextIO, Iterator, Optional, Union
+from typing import (Dict, Any, Sequence, TextIO, Iterator, Optional, Union,
+                    List)
 import re
 from warnings import warn
 from pathlib import Path, PurePath
@@ -166,7 +167,7 @@ class SpeciesTypes(SimpleVaspHeaderParser):
         super().__init__(*args, **kwargs)
 
     @property
-    def species(self) -> list:
+    def species(self) -> List[str]:
         return self._species
 
     def _make_returnval(self) -> _RESULT:
@@ -482,7 +483,8 @@ class DefaultParsersContainer:
 
 
 class TypeParser(ABC):
-    """Base class for parsing a type, e.g. header or chunk, by applying the internal attached parsers"""
+    """Base class for parsing a type, e.g. header or chunk, 
+    by applying the internal attached parsers"""
     def __init__(self, parsers):
         self.parsers = parsers
 
