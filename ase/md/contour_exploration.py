@@ -64,7 +64,7 @@ class ContourExploration(Dynamics):
             determined by linear extrapolation from the current potential energy
             to the target_energy with the current forces. A
             potentiostat_step_scale > 1.0 overcorrects and < 1.0
-            undercorrects. By default, a simple hueristic is used to selected
+            undercorrects. By default, a simple heuristic is used to selected
             the valued based on the parallel_drift. (default None)
 
         remove_translation: boolean
@@ -123,7 +123,7 @@ class ContourExploration(Dynamics):
         """
 
         if potentiostat_step_scale is None:
-            # a hureistic guess since most systems will overshoot when there is
+            # a heuristic guess since most systems will overshoot when there is
             # drift
             self.potentiostat_step_scale = 1.1 + 0.6 * parallel_drift
         else:
