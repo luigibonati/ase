@@ -4,6 +4,7 @@ import pytest
 import numpy as np
 from ase import Atoms
 from ase.io import read, iread
+from ase.calculators.calculator import compare_atoms
 
 
 @pytest.fixture
@@ -72,3 +73,13 @@ def test_vasp_out_pbc(outcar, atoms):
     images = read(outcar, index=':')
     for atoms_it in images:
         assert all(atoms_it.pbc)
+
+
+def test_read_vasp_multiple_times(outcar):
+    result1 = read(outcar)
+    result2 = read(outcar)
+    assert isinstance(result1, Atoms)
+    assert isinstance(result2, Atoms)
+    print(result1)
+    print(result2)
+    assert len(compare_atoms(result1, result2)) == 0
