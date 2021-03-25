@@ -244,6 +244,8 @@ class ContourExploration(Dynamics):
         return D
 
     def compute_step_contributions(self, potentiostat_step_size):
+        '''Computes the orthogonal component sizes of the step so that the net
+        step obeys the smaller of step_size or maxstep.'''
         if abs(potentiostat_step_size) < self.step_size:
             delta_s_perpendicular = potentiostat_step_size
             contour_step_size = np.sqrt(
@@ -262,6 +264,8 @@ class ContourExploration(Dynamics):
         return delta_s_perpendicular, delta_s_parallel, delta_s_drift
 
     def _compute_update_without_fs(self, potentiostat_step_size, scale=1.0):
+        '''Only uses the forces to compute an orthogonal update vector'''
+        
         # Without the use of curvature there is no way to estimate the
         # limiting step size
         self.step_size = self.maxstep * scale
@@ -282,7 +286,7 @@ class ContourExploration(Dynamics):
 
     def _compute_update_with_fs(self, potentiostat_step_size):
         '''Uses the Frenet–Serret formulas to perform curvature based
-        extrapolation'''
+        extrapolation to compute the update vector'''
         # this should keep the dr clear of the constraints
         # by using the actual change, not a velocity vector
         delta_r = self.r - self.rold
@@ -339,40 +343,51 @@ class ContourExploration(Dynamics):
         # we renormalize to ensure a correct step size
         return dr
 
-    def step(self, f=None):
-        atoms = self.atoms
-
-        if f is None:
-            f = atoms.get_forces()
-
-        self.r = atoms.get_positions()
-        current_energy = atoms.get_potential_energy(
-            force_consistent=self.force_consistent)
-
-        # Update our history of self.previous_energies to include our current
-        # energy. np.roll shifts the values to keep nice sequential ordering.
+    def update_previous_energies(self, energy):
+        '''Updates the energy history in self.previous_energies to include the
+         current energy.'''
+        #np.roll shifts the values to keep nice sequential ordering.
         self.previous_energies = np.roll(self.previous_energies, 1)
-        self.previous_energies[0] = current_energy
+        self.previous_energies[0] = energy
 
+
+    def compute_potentiostat_step_size(self, forces, energy):
+        '''Computes the potentiostat step size by linear extrapolation of the
+        potential energy using the forces. The step size can be positive or
+        negative depending on whether or not the energy is too high or too low.
+        '''
         if self.use_target_shift:
             target_shift = self.energy_target - np.mean(self.previous_energies)
         else:
             target_shift = 0.0
 
         # deltaU is the potential error that will be corrected for
-        deltaU = current_energy - (self.energy_target + target_shift)
+        deltaU = energy - (self.energy_target + target_shift)
+    
+        f_norm = np.linalg.norm(forces)
+        # can be positive or negative
+        potentiostat_step_size = (deltaU / f_norm) * \
+            self.potentiostat_step_scale
+        return potentiostat_step_size
+
+
+    def step(self, f=None):
+        atoms = self.atoms
+
+        if f is None:
+            f = atoms.get_forces()
 
         # get the velocity vector and old kinetic energy for momentum rescaling
         velocities = atoms.get_velocities()
         KEold = atoms.get_kinetic_energy()
-
-        # get force an and correction distance
-        f_norm = np.linalg.norm(f)
+        
+        energy = atoms.get_potential_energy(
+            force_consistent=self.force_consistent)
+        self.update_previous_energies(energy)
+        potentiostat_step_size = self.compute_potentiostat_step_size(f, energy)
+        
         self.N = normalize(f)
-        # can be positive or negative
-        potentiostat_step_size = (deltaU / f_norm) * \
-            self.potentiostat_step_scale
-
+        self.r = atoms.get_positions()
         # remove velocity  projection on forces
         v_parallel = subtract_projection(velocities, self.N)
         self.T = normalize(v_parallel)
@@ -398,9 +413,9 @@ class ContourExploration(Dynamics):
             dr = dr_unit * self.step_size
 
         # save old positions before update
-        self.Told = self.T
         self.Nold = self.N
         self.rold = self.r
+        self.Told = self.T
 
         # if we have constraints then this will do the first part of the
         # RATTLE algorithm:
