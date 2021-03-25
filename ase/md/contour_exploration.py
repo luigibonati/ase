@@ -2,6 +2,18 @@ import numpy as np
 from ase.optimize.optimize import Dynamics
 
 
+def subtract_projection(a, b):
+    '''returns new vector that removes vector a's projection vector b. Is
+    also equivalent to the vector rejection.'''
+    aout = a - np.vdot(a, b) / np.vdot(b, b) * b
+    return aout
+
+
+def normalize(a):
+    '''Makes a unit vector out of a vector'''
+    return a / np.linalg.norm(a)
+
+
 class ContourExploration(Dynamics):
 
     def __init__(self, atoms,
@@ -215,15 +227,6 @@ class ContourExploration(Dynamics):
 
             self.logfile.flush()
 
-    def vector_rejection(self, a, b):
-        '''returns new vector that removes vector a's projection vector b'''
-        aout = a - np.vdot(a, b) / np.vdot(b, b) * b
-        return aout
-
-    def normalize(self, a):
-        '''Makes a unit vector out of a vector'''
-        return a / np.linalg.norm(a)
-
     def rand_vect(self):
         '''Returns a random (Natoms,3) vector'''
         vect = self.rng.rand(len(self.atoms), 3) - 0.5
@@ -233,11 +236,11 @@ class ContourExploration(Dynamics):
         '''Creates a random drift unit vector with no projection on N or T and
         with out a net translation so systems don't wander'''
         drift = self.rand_vect()
-        drift = self.vector_rejection(drift, N)
-        drift = self.vector_rejection(drift, T)
+        drift = subtract_projection(drift, N)
+        drift = subtract_projection(drift, T)
         # removes net translation, so systems don't wander
         drift = drift - drift.sum(axis=0) / len(self.atoms)
-        D = self.normalize(drift)
+        D = normalize(drift)
         return D
 
     def compute_step_contributions(self, potentiostat_step_size):
@@ -274,7 +277,7 @@ class ContourExploration(Dynamics):
         dr_drift = D * delta_s_drift
 
         dr = dr_parallel + dr_drift + dr_perpendicular
-        dr = self.step_size * self.normalize(dr)
+        dr = self.step_size * normalize(dr)
         return dr
 
     def _compute_update_with_fs(self, potentiostat_step_size):
@@ -317,8 +320,8 @@ class ContourExploration(Dynamics):
         T_guess = self.T + dTds * delta_s_parallel
         # the extrapolation is good at keeping N_guess and T_guess
         # orthogonal but not normalized:
-        N_guess = self.normalize(N_guess)
-        T_guess = self.normalize(T_guess)
+        N_guess = normalize(N_guess)
+        T_guess = normalize(T_guess)
 
         dr_perpendicular = delta_s_perpendicular * (N_guess)
 
@@ -331,7 +334,7 @@ class ContourExploration(Dynamics):
 
         # combine the components
         dr = dr_perpendicular + dr_parallel + dr_drift
-        dr = self.step_size * self.normalize(dr)
+        dr = self.step_size * normalize(dr)
         # because we guess our orthonormalization directions,
         # we renormalize to ensure a correct step size
         return dr
@@ -365,14 +368,14 @@ class ContourExploration(Dynamics):
 
         # get force an and correction distance
         f_norm = np.linalg.norm(f)
-        self.N = self.normalize(f)
+        self.N = normalize(f)
         # can be positive or negative
         potentiostat_step_size = (deltaU / f_norm) * \
             self.potentiostat_step_scale
 
         # remove velocity  projection on forces
-        v_parallel = self.vector_rejection(velocities, self.N)
-        self.T = self.normalize(v_parallel)
+        v_parallel = subtract_projection(velocities, self.N)
+        self.T = normalize(v_parallel)
 
         if self.use_frenet_serret:
             if self.Nold is not None and self.Told is not None:
@@ -421,9 +424,9 @@ class ContourExploration(Dynamics):
         # but this projection needs the forces to be consistent with the
         # constraints. We have to set the new velocities perpendicular so they
         # get logged properly in the trajectory files.
-        vnew = self.vector_rejection(atoms.get_velocities(), f_constrained)
+        vnew = subtract_projection(atoms.get_velocities(), f_constrained)
         # using the md = True forces like this:
-        # vnew = self.vector_rejection(atoms.get_velocities(), f)
+        # vnew = subtract_projection(atoms.get_velocities(), f)
         # will not work with constraints
         atoms.set_velocities(vnew)
 

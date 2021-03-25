@@ -347,8 +347,8 @@ step sizes to the curvature of the potential energy contour via an
 ``angle_limit`` while enforcing a ``maxstep`` to ensure potentiostatic 
 accuracy. [1] To escape loops on the pontential energy surface or to break
 symmetries, a random drift vector parallel to the contour can be applied as a
-fraction of the step size via ``parallel_drift``. The method cannot be used at
-minima since the contour is a single point.
+fraction of the step size via ``parallel_drift``. Contour exploration cannot 
+be used at minima since the contour is a single point.
 
 
 ::
