@@ -265,7 +265,7 @@ class ContourExploration(Dynamics):
 
     def _compute_update_without_fs(self, potentiostat_step_size, scale=1.0):
         '''Only uses the forces to compute an orthogonal update vector'''
-        
+
         # Without the use of curvature there is no way to estimate the
         # limiting step size
         self.step_size = self.maxstep * scale
@@ -346,10 +346,9 @@ class ContourExploration(Dynamics):
     def update_previous_energies(self, energy):
         '''Updates the energy history in self.previous_energies to include the
          current energy.'''
-        #np.roll shifts the values to keep nice sequential ordering.
+        # np.roll shifts the values to keep nice sequential ordering.
         self.previous_energies = np.roll(self.previous_energies, 1)
         self.previous_energies[0] = energy
-
 
     def compute_potentiostat_step_size(self, forces, energy):
         '''Computes the potentiostat step size by linear extrapolation of the
@@ -363,13 +362,12 @@ class ContourExploration(Dynamics):
 
         # deltaU is the potential error that will be corrected for
         deltaU = energy - (self.energy_target + target_shift)
-    
+
         f_norm = np.linalg.norm(forces)
         # can be positive or negative
         potentiostat_step_size = (deltaU / f_norm) * \
             self.potentiostat_step_scale
         return potentiostat_step_size
-
 
     def step(self, f=None):
         atoms = self.atoms
@@ -380,12 +378,12 @@ class ContourExploration(Dynamics):
         # get the velocity vector and old kinetic energy for momentum rescaling
         velocities = atoms.get_velocities()
         KEold = atoms.get_kinetic_energy()
-        
+
         energy = atoms.get_potential_energy(
             force_consistent=self.force_consistent)
         self.update_previous_energies(energy)
         potentiostat_step_size = self.compute_potentiostat_step_size(f, energy)
-        
+
         self.N = normalize(f)
         self.r = atoms.get_positions()
         # remove velocity  projection on forces
