@@ -973,7 +973,7 @@ class SingleCalculatorNEB(NEB):
 
 
 def interpolate(images, mic=False, interpolate_cell=False,
-                use_scaled_coord=False, apply_constraint=True):
+                use_scaled_coord=False, apply_constraint=None):
     """Given a list of images, linearly interpolate the positions of the
     interior images.
 
@@ -986,7 +986,13 @@ def interpolate(images, mic=False, interpolate_cell=False,
          Use scaled/internal/fractional coordinates instead of real ones for the
          interpolation. Not implemented for NEB calculations!
     apply_constraint: bool
-         If False ignores constraints when setting interpolated positions
+         Controls if the constraints attached to the images
+         are ignored or applied when setting the interpolated positions.
+         Default value is None, in this case the resulting constrained positions
+         (apply_constraint=True) are compared with unconstrained positions
+         (apply_constraint=False), if the positions are not the same
+         the user is required to specify the desired behaviour
+         by setting up apply_constraint keyword argument to False or True.
     """
     if use_scaled_coord:
         pos1 = images[0].get_scaled_positions(wrap=mic)
@@ -1011,7 +1017,24 @@ def interpolate(images, mic=False, interpolate_cell=False,
         if use_scaled_coord:
             images[i].set_scaled_positions(new_pos)
         else:
-            images[i].set_positions(new_pos, apply_constraint=apply_constraint)
+            if apply_constraint is None:
+                unconstrained_image = images[i].copy()
+                unconstrained_image.set_positions(new_pos,
+                                                  apply_constraint=False)
+                images[i].set_positions(new_pos, apply_constraint=True)
+                try:
+                    np.testing.assert_allclose(unconstrained_image.positions,
+                                               images[i].positions)
+                except AssertionError:
+                    raise RuntimeError(f"Constraint(s) in image number {i} \n"
+                                       f"affect the interpolation results.\n"
+                                       "Please specify if you want to \n"
+                                       "apply or ignore the constraints \n"
+                                       "during the interpolation \n"
+                                       "with apply_constraint argument.")
+            else:
+                images[i].set_positions(new_pos,
+                                        apply_constraint=apply_constraint)
 
 
 def idpp_interpolate(images, traj='idpp.traj', log='idpp.log', fmax=0.1,
