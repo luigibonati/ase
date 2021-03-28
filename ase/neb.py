@@ -596,7 +596,7 @@ class BaseNEB:
         f = CubicSpline(fit.s, forces, bc_type=bc_type)
 
         s = np.linspace(0.0, 1.0, spline_points, endpoint=True)
-        dE = f(s) * fit.dx(s)
+        dE = f(s) * fit.dx_ds(s)
         F = dE.sum(axis=1)
         E = -cumtrapz(F, s, initial=0.0)
         return s, E, F
