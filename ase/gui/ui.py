@@ -53,7 +53,7 @@ def helpwindow(text):
 
 
 class BaseWindow:
-    def __init__(self, title, close=None):
+    def __init__(self, title, close=None, wmtype='normal'):
         self.title = title
         if close:
             self.win.protocol('WM_DELETE_WINDOW', close)
@@ -62,6 +62,9 @@ class BaseWindow:
 
         self.things = []
         self.exists = True
+        #WM_TYPE, for possible settings see
+        #https://specifications.freedesktop.org/wm-spec/wm-spec-latest.html#idm45623487848608
+        self.win.wm_attributes('-type', wmtype)
 
     def close(self):
         self.win.destroy()
@@ -82,9 +85,9 @@ class BaseWindow:
 
 
 class Window(BaseWindow):
-    def __init__(self, title, close=None):
+    def __init__(self, title, close=None, wmtype='normal'):
         self.win = tk.Toplevel()
-        BaseWindow.__init__(self, title, close)
+        BaseWindow.__init__(self, title, close, wmtype)
 
 
 class Widget:
@@ -485,7 +488,6 @@ class MenuItem:
 class MainWindow(BaseWindow):
     def __init__(self, title, close=None, menu=[]):
         self.win = tk.Tk()
-        self.win.attributes('-type','dialog')
         BaseWindow.__init__(self, title, close)
 
         # self.win.tk.call('tk', 'scaling', 3.0)
