@@ -94,6 +94,9 @@ class Vibrations:
         self.calc = atoms.calc
         if indices is None:
             indices = range(len(atoms))
+        if len(indices) != len(set(indices)):
+            raise ValueError(
+                'one (or more) indices included more than once')
         self.indices = np.asarray(indices)
         self.name = name
         self.delta = delta
