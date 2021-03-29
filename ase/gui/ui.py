@@ -485,6 +485,7 @@ class MenuItem:
 class MainWindow(BaseWindow):
     def __init__(self, title, close=None, menu=[]):
         self.win = tk.Tk()
+        self.win.attributes('-type','dialog')
         BaseWindow.__init__(self, title, close)
 
         # self.win.tk.call('tk', 'scaling', 3.0)
