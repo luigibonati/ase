@@ -22,6 +22,7 @@ last image. Examples: "name@-1": last image,
 
 def save_dialog(gui, filename=None):
     dialog = ui.SaveFileDialog(gui.window.win, _('Save ...'))
+    dialog.top.wm_attributes('-type', 'dialog') #fix tkinter not automatically setting this
     ui.Text(text).pack(dialog.top)
     filename = filename or dialog.go()
     if not filename:

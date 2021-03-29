@@ -548,6 +548,7 @@ class ASEFileChooser(LoadFileDialog):
     def __init__(self, win, formatcallback=lambda event: None):
         from ase.io.formats import all_formats, get_ioformat
         LoadFileDialog.__init__(self, win, _('Open ...'))
+        self.top.wm_attributes('-type', 'dialog') #fix tkinter not automatically setting this
         labels = [_('Automatic')]
         values = ['']
 

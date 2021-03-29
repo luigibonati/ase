@@ -65,6 +65,7 @@ class Graphs:
     def save(self):
         dialog = ui.SaveFileDialog(self.gui.window.win,
                                    _('Save data to file ... '))
+        dialog.top.wm_attributes('-type', 'dialog') #fix tkinter not automatically setting this
         filename = dialog.go()
         if filename:
             expr = self.expr.value
