@@ -47,12 +47,9 @@ def test_interpolate_images_fixed(images, initial, average_pos):
     for image in images:
         image.set_constraint(FixAtoms([0]))
 
-    # should raise a RuntimeError here
-    try:
+    # test raising a RuntimeError here
+    with pytest.raises(RuntimeError, match=r"Constraint\(s\) in image number"):
         interpolate(images)
-    except RuntimeError as error:
-        print("\nExpected RuntimeError message:")
-        print(error)
 
     interpolate(images, apply_constraint=True)
     assert images[1].positions == pytest.approx(images[0].positions)
