@@ -18,7 +18,7 @@ __all__ = [
     'error', 'ask_question', 'MainWindow', 'LoadFileDialog', 'SaveFileDialog',
     'ASEGUIWindow', 'Button', 'CheckButton', 'ComboBox', 'Entry', 'Label',
     'Window', 'MenuItem', 'RadioButton', 'RadioButtons', 'Rows', 'Scale',
-    'showinfo', 'showwarning', 'SpinBox', 'Text']
+    'showinfo', 'showwarning', 'SpinBox', 'Text', 'set_windowtype_to_dialog']
 
 
 if sys.platform == 'darwin':
@@ -51,6 +51,8 @@ def helpwindow(text):
     win = Window(_('Help'))
     win.add(Text(text))
 
+def set_windowtype_to_dialog(win):
+    win.top.wm_attributes('-type', 'dialog')
 
 class BaseWindow:
     def __init__(self, title, close=None, wmtype='normal'):
@@ -548,7 +550,7 @@ class ASEFileChooser(LoadFileDialog):
     def __init__(self, win, formatcallback=lambda event: None):
         from ase.io.formats import all_formats, get_ioformat
         LoadFileDialog.__init__(self, win, _('Open ...'))
-        self.top.wm_attributes('-type', 'dialog') #fix tkinter not automatically setting this
+        set_windowtype_to_dialog(self) #fix tkinter not automatically setting this
         labels = [_('Automatic')]
         values = ['']
 
