@@ -80,6 +80,9 @@ class NPT(MolecularDynamics):
             Characteristic timescale of the thermostat, in ASE internal units
             Set to None to disable the thermostat.
 
+            WARNING: Not specifying ttime sets it to None, disabling the
+            thermostat.            
+
         pfactor: float
             A constant in the barostat differential equation.  If
             a characteristic barostat timescale of ptime is
@@ -137,10 +140,8 @@ class NPT(MolecularDynamics):
                                    append_trajectory=append_trajectory)
         # self.atoms = atoms
         # self.timestep = timestep
-        if externalstress is None:
+        if externalstress is None and pfactor is not None:
             raise TypeError("Missing 'externalstress' argument.")
-        if ttime is None:
-            raise TypeError("Missing 'ttime' argument.")
         self.zero_center_of_mass_momentum(verbose=1)
         self.temperature = units.kB * self._process_temperature(
             temperature, temperature_K, 'eV')
