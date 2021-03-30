@@ -18,7 +18,7 @@ class ModifyAtoms:
             ui.error(_('No atoms selected!'))
             return
 
-        win = ui.Window(_('Modify'))
+        win = ui.Window(_('Modify'), wmtype='dialog')
         element = Element(callback=self.set_element)
         win.add(element)
         win.add(ui.Button(_('Change element'),

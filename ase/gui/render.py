@@ -13,7 +13,7 @@ class Render:
 
     def __init__(self, gui):
         self.gui = gui
-        self.win = win = ui.Window(_('Render current view in povray ... '))
+        self.win = win = ui.Window(_('Render current view in povray ... '), wmtype='dialog')
         win.add(ui.Label(_("Rendering %d atoms.") % len(self.gui.atoms)))
 
         guiwidth, guiheight = self.get_guisize()

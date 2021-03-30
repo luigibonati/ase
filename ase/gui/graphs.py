@@ -33,7 +33,7 @@ Symbols:
 
 class Graphs:
     def __init__(self, gui):
-        win = ui.Window('Graphs')
+        win = ui.Window('Graphs', wmtype='dialog')
         self.expr = ui.Entry('', 50, self.plot)
         win.add([self.expr, ui.helpbutton(graph_help_text)])
 

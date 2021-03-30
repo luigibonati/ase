@@ -6,7 +6,7 @@ import ase.gui.ui as ui
 class Settings:
     def __init__(self, gui):
         self.gui = gui
-        win = ui.Window(_('Settings'))
+        win = ui.Window(_('Settings'), wmtype='dialog')
 
         # Constraints
         win.add(_('Constraints:'))
