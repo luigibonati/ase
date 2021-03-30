@@ -18,6 +18,8 @@ Calculators:
 I/O:
 
 * Reading of "chemical json" file types with name ``*.cml`` is enabled.
+* LAMMPS dump: Reading of elements column added, with priority over types
+  if given. All four of the position specifier columns read correctly now.
 
 
 Version 3.21.1
