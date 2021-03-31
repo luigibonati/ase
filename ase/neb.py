@@ -319,7 +319,7 @@ class BaseNEB:
                                 **results_to_include):
         atoms.calc = SinglePointCalculator(atoms=atoms, **results_to_include)
 
-    def interpolate(self, method='linear', mic=False, apply_constraint=True):
+    def interpolate(self, method='linear', mic=False, apply_constraint=None):
         """Interpolate the positions of the interior images between the
         initial state (image 0) and final state (image -1).
 
@@ -330,7 +330,14 @@ class BaseNEB:
         mic: bool
             Use the minimum-image convention when interpolating.
         apply_constraint: bool
-            If False ignores constraints when setting interpolated positions
+            Controls if the constraints attached to the images
+            are ignored or applied when setting the interpolated positions.
+            Default value is None, in this case the resulting constrained
+            positions (apply_constraint=True) are compared with unconstrained
+            positions (apply_constraint=False),
+            if the positions are not the same
+            the user is required to specify the desired behaviour
+            by setting up apply_constraint keyword argument to False or True.
         """
         if self.remove_rotation_and_translation:
             minimize_rotation_and_translation(self.images[0], self.images[-1])
