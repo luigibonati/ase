@@ -35,7 +35,7 @@ extras_require = {
     'test': [
         'pytest>=5.0.0',  # required by pytest-mock
         'pytest-mock>=3.3.0',
-        'pytest-xdist>=1.22.1',
+        'pytest-xdist>=1.30.0',
     ]
 }
 
