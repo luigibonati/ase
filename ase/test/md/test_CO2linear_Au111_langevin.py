@@ -15,7 +15,7 @@ def test_CO2linear_Au111_langevin():
     triatomic molecules"""
 
     rng = np.random.RandomState(0)
-    eref = 3.1356
+    eref = 3.133526
 
     zpos = cos(134.3 / 2.0 * pi / 180.0) * 1.197
     xpos = sin(134.3 / 2.0 * pi / 180.0) * 1.19

@@ -347,7 +347,7 @@ class NPT(MolecularDynamics):
         # self.stresscalculator()
 
     def forcecalculator(self):
-        return self.atoms.get_forces()
+        return self.atoms.get_forces(md=True)
 
     def stresscalculator(self):
         return self.atoms.get_stress(include_ideal_gas=True)
@@ -590,7 +590,7 @@ class NPT(MolecularDynamics):
         dt = self.dt
         for i in range(2):
             self.q_past = self.q - dt * np.dot(p / m, self.inv_h)
-            self._calculate_q_future(self.atoms.get_forces())
+            self._calculate_q_future(self.atoms.get_forces(md=True))
             p = np.dot(self.q_future - self.q_past, self.h / (2 * dt)) * m
             e = ekin(p)
             if e < 1e-5:
