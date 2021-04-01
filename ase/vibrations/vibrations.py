@@ -1,19 +1,18 @@
-"""Vibrational modes."""
+"""A class for computing vibrational modes"""
 
+from math import pi, sqrt, log
 import os
 import os.path as op
 import pickle
 import sys
-from math import sin, pi, sqrt, log
 
 import numpy as np
 
 import ase.units as units
-from ase.io.trajectory import Trajectory
+import ase.io
 from ase.parallel import world, paropen
-
 from ase.utils import opencew, pickleload
-from ase.calculators.singlepoint import SinglePointCalculator
+from .data import VibrationsData
 
 
 class Vibrations:
@@ -103,6 +102,7 @@ class Vibrations:
         self.nfree = nfree
         self.H = None
         self.ir = None
+        self._vibrations = None
 
     def run(self):
         """Run the vibration calculations.
@@ -120,8 +120,8 @@ class Vibrations:
         case it is not found.
 
         If the program you want to use does not have a calculator in ASE, use
-        ``iterdisplace`` to get all displaced structures and calculate the forces
-        on your own.
+        ``iterdisplace`` to get all displaced structures and calculate the
+        forces on your own.
         """
 
         if op.isfile(self.name + '.all.pckl'):
@@ -163,11 +163,11 @@ class Vibrations:
             for i in range(3):
                 for sign in [-1, 1]:
                     for ndis in range(1, self.nfree // 2 + 1):
-                        dispName = ('%s.%d%s%s' %
-                                    (self.name, a, 'xyz'[i],
-                                     ndis * ' +-'[sign]))
+                        disp_name = ('%s.%d%s%s' %
+                                     (self.name, a, 'xyz'[i],
+                                      ndis * ' +-'[sign]))
                         disp = ndis * sign * self.delta
-                        yield dispName, a, i, disp
+                        yield disp_name, a, i, disp
 
     def calculate(self, atoms, filename, fd):
         forces = self.calc.get_forces(atoms)
@@ -343,6 +343,9 @@ class Vibrations:
                                ' to set all masses to non-zero values.')
 
         self.im = np.repeat(m[self.indices]**-0.5, 3)
+
+        self._vibrations = self.get_vibrations(read_cache=False)
+
         omega2, modes = np.linalg.eigh(self.im[:, None] * H * self.im)
         self.modes = modes.T.copy()
 
@@ -350,75 +353,72 @@ class Vibrations:
         s = units._hbar * 1e10 / sqrt(units._e * units._amu)
         self.hnu = s * omega2.astype(complex)**0.5
 
+    def get_vibrations(self, method='standard', direction='central',
+                       read_cache=True, **kw):
+        """Get vibrations as VibrationsData object
+
+        If read() has not yet been called, this will be called to assemble data
+        from the outputs of run(). Most of the arguments to this function are
+        options to be passed to read() in this case.
+
+        Args:
+            method (str): Calculation method passed to read()
+            direction (str): Finite-difference scheme passed to read()
+            read_cache (bool): The VibrationsData object will be cached for
+                quick access. Set False to force regeneration of the cache with
+                the current atoms/Hessian/indices data.
+            **kw: Any remaining keyword arguments are passed to read()
+
+        Returns:
+            VibrationsData
+
+        """
+        if read_cache and (self._vibrations is not None):
+            return self._vibrations
+
+        else:
+            if (self.H is None or method.lower() != self.method or
+                direction.lower() != self.direction):
+                self.read(method, direction, **kw)
+
+            return VibrationsData.from_2d(self.atoms, self.H,
+                                          indices=self.indices)
+
     def get_energies(self, method='standard', direction='central', **kw):
         """Get vibration energies in eV."""
-
-        if (self.H is None or method.lower() != self.method or
-            direction.lower() != self.direction):
-            self.read(method, direction, **kw)
-        return self.hnu
+        return self.get_vibrations(method=method,
+                                   direction=direction, **kw).get_energies()
 
     def get_frequencies(self, method='standard', direction='central'):
         """Get vibration frequencies in cm^-1."""
-
-        s = 1. / units.invcm
-        return s * self.get_energies(method, direction)
+        return self.get_vibrations(method=method,
+                                   direction=direction).get_frequencies()
 
     def summary(self, method='standard', direction='central', freq=None,
                 log=sys.stdout):
-        """Print a summary of the vibrational frequencies.
-
-        Parameters:
-
-        method : string
-            Can be 'standard'(default) or 'Frederiksen'.
-        direction: string
-            Direction for finite differences. Can be one of 'central'
-            (default), 'forward', 'backward'.
-        freq : numpy array
-            Optional. Can be used to create a summary on a set of known
-            frequencies.
-        log : if specified, write output to a different location than
-            stdout. Can be an object with a write() method or the name of a
-            file to create.
-        """
-
-        if isinstance(log, str):
-            log = paropen(log, 'a')
-        write = log.write
-
-        s = 0.01 * units._e / units._c / units._hplanck
         if freq is not None:
-            hnu = freq / s
+            energies = freq * units.invcm
         else:
-            hnu = self.get_energies(method, direction)
-        write('---------------------\n')
-        write('  #    meV     cm^-1\n')
-        write('---------------------\n')
-        for n, e in enumerate(hnu):
-            if e.imag != 0:
-                c = 'i'
-                e = e.imag
-            else:
-                c = ' '
-                e = e.real
-            write('%3d %6.1f%s  %7.1f%s\n' % (n, 1000 * e, c, s * e, c))
-        write('---------------------\n')
-        write('Zero-point energy: %.3f eV\n' %
-              self.get_zero_point_energy(freq=freq))
+            energies = self.get_energies(method=method, direction=direction)
+
+        summary_lines = VibrationsData._tabulate_from_energies(energies)
+
+        if log is None:
+            for line in summary_lines:
+                print(line)
+
+        elif isinstance(log, str):
+            with paropen(log, 'a') as log_file:
+                log_file.write('\n'.join(summary_lines) + '\n')
 
     def get_zero_point_energy(self, freq=None):
-        if freq is None:
-            return 0.5 * self.hnu.real.sum()
-        else:
-            s = 0.01 * units._e / units._c / units._hplanck
-            return 0.5 * freq.real.sum() / s
+        if freq:
+            raise NotImplementedError()
+        return self.get_vibrations().get_zero_point_energy()
 
     def get_mode(self, n):
         """Get mode number ."""
-        mode = np.zeros((len(self.atoms), 3))
-        mode[self.indices] = (self.modes[n] * self.im).reshape((-1, 3))
-        return mode
+        return self.get_vibrations().get_modes()[n]
 
     def write_mode(self, n=None, kT=units.kB * 300, nimages=30):
         """Write mode number n to trajectory file. If n is not specified,
@@ -428,22 +428,18 @@ class Vibrations:
                 if abs(energy) > 1e-5:
                     self.write_mode(n=index, kT=kT, nimages=nimages)
             return
-        mode = self.get_mode(n) * sqrt(kT / abs(self.hnu[n]))
 
-        pos0 = self.atoms.get_positions()
-        n %= 3 * len(self.indices)
-        atoms = self.atoms.copy()
+        else:
+            n = n % len(self.get_energies())
 
-        with Trajectory('%s.%d.traj' % (self.name, n), 'w') as traj:
-            for x in np.linspace(0, 2 * pi, nimages, endpoint=False):
-                atoms.set_positions(pos0 + sin(x) * mode)
-                traj.write(atoms)
+        with ase.io.Trajectory('%s.%d.traj' % (self.name, n), 'w') as traj:
+            for image in (self.get_vibrations()
+                          .iter_animated_mode(n,
+                                              temperature=kT, frames=nimages)):
+                traj.write(image)
 
-    def show_as_force(self, n, scale=0.2):
-        mode = self.get_mode(n) * len(self.hnu) * scale
-        calc = SinglePointCalculator(self.atoms, forces=mode)
-        self.atoms.calc = calc
-        self.atoms.edit()
+    def show_as_force(self, n, scale=0.2, show=True):
+        return self.get_vibrations().show_as_force(n, scale=scale, show=show)
 
     def write_jmol(self):
         """Writes file for viewing of the modes with jmol."""
@@ -460,10 +456,14 @@ class Vibrations:
             if freq[n].imag != 0:
                 c = 'i'
                 freq[n] = freq[n].imag
+
             else:
+                freq[n] = freq[n].real
                 c = ' '
 
-            fd.write('Mode #%d, f = %.1f%s cm^-1' % (n, freq[n], c))
+            fd.write('Mode #%d, f = %.1f%s cm^-1'
+                     % (n, float(freq[n].real), c))
+
             if self.ir:
                 fd.write(', I = %.4f (D/Å)^2 amu^-1.\n' % self.intensities[n])
             else:
@@ -471,7 +471,7 @@ class Vibrations:
 
             mode = self.get_mode(n)
             for i, pos in enumerate(self.atoms.positions):
-                fd.write('%2s %12.5f %12.5f %12.5f %12.5f %12.5f %12.5f \n' %
+                fd.write('%2s %12.5f %12.5f %12.5f %12.5f %12.5f %12.5f\n' %
                          (symbols[i], pos[0], pos[1], pos[2],
                           mode[i, 0], mode[i, 1], mode[i, 2]))
 

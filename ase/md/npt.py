@@ -80,6 +80,9 @@ class NPT(MolecularDynamics):
             Characteristic timescale of the thermostat, in ASE internal units
             Set to None to disable the thermostat.
 
+            WARNING: Not specifying ttime sets it to None, disabling the
+            thermostat.            
+
         pfactor: float
             A constant in the barostat differential equation.  If
             a characteristic barostat timescale of ptime is
@@ -87,7 +90,10 @@ class NPT(MolecularDynamics):
             eV, Å, u; and B is the Bulk Modulus, given in eV/Å^3).
             Set to None to disable the barostat.
             Typical metallic bulk moduli are of the order of
-            100 GPa or 0.6 eV/A^3.
+            100 GPa or 0.6 eV/A^3.  
+
+            WARNING: Not specifying pfactor sets it to None, disabling the
+            barostat.
 
         mask: None or 3-tuple or 3x3 nparray (optional)
             Optional argument.  A tuple of three integers (0 or 1),
@@ -134,12 +140,8 @@ class NPT(MolecularDynamics):
                                    append_trajectory=append_trajectory)
         # self.atoms = atoms
         # self.timestep = timestep
-        if externalstress is None:
+        if externalstress is None and pfactor is not None:
             raise TypeError("Missing 'externalstress' argument.")
-        if ttime is None:
-            raise TypeError("Missing 'ttime' argument.")
-        if pfactor is None:
-            raise TypeError("Missing 'pfactor' argument.")
         self.zero_center_of_mass_momentum(verbose=1)
         self.temperature = units.kB * self._process_temperature(
             temperature, temperature_K, 'eV')
