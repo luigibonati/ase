@@ -28,21 +28,17 @@ c0 = np.array([1.000787451, 0.1926284063, 1.896191546])
 T = cost0 * 2 / 3
 
 
-def make_ensemble(N=1000, seed=None):
-    np.random.seed(seed)  # None means /dev/urandom seed
+def make_ensemble(N=1000, rng=np.random):
     M = np.array([(0.066, -0.812, 1.996),
                   (0.055, 0.206, 0.082),
                   (-0.034, 0.007, 0.004)])
-    alpha = np.random.normal(0.0, 1.0, (N, 3))
+    alpha = rng.normal(0.0, 1.0, (N, 3))
     return c0 + np.dot(alpha, M)
 
 
-c = make_ensemble()
-
-
-def get_ensemble_energies(atoms, c=c):
+def get_ensemble_energies(atoms, ensemble):
     if hasattr(atoms, 'get_calculator'):
         coefs = atoms.calc.get_ensemble_coefficients()
     else:
         coefs = atoms
-    return coefs[0] + np.dot(c, coefs[1:])
+    return coefs[0] + np.dot(ensemble, coefs[1:])

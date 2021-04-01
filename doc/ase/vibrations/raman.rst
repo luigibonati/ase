@@ -1,7 +1,8 @@
 Resonant and non-resonant Raman spectra
 =======================================
 
-Note: :ref:`Siesta Raman` are possible also.
+.. note::
+   Raman spectra can also be obtained via :mod:`~ase.calculators.siesta` calculator.
 
 Raman spectra can be calculated in various approximations [1]_.
 While the examples below are using GPAW_ explicitly,

@@ -8,19 +8,19 @@ Requirements
 ============
 
 * Python_ 3.6 or newer
-* NumPy_ 1.11 or newer (base N-dimensional array package)
-* SciPy_ 0.18 or newer (library for scientific computing)
+* NumPy_ (base N-dimensional array package)
+* SciPy_ (library for scientific computing)
 
 Optional but strongly recommended:
 
-* Matplotlib_ 2.0.0 or newer for plotting
+* Matplotlib_ for plotting
 * :mod:`tkinter` for :mod:`ase.gui`
 
 Optional:
 
 * Flask_ for :mod:`ase.db` web-interface
-* pytest_ 3.6.1 or newer for running tests
-* pytest-xdist_ 1.22.1 or newer for running tests in parallel
+* pytest_ for running tests
+* pytest-xdist_ for running tests in parallel
 * spglib_ for certain symmetry-related features
 
 .. _Python: https://www.python.org/

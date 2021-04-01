@@ -4,6 +4,7 @@ import pytest
 import numpy as np
 from ase import Atoms
 from ase.io import read, iread
+from ase.calculators.calculator import compare_atoms
 
 
 @pytest.fixture
@@ -63,3 +64,22 @@ def test_vasp_kpt_value(calc, kpt, spin, n, eps_n, f_n):
     # Test a few specific k-points we read off from the OUTCAR file
     assert np.isclose(calc.get_occupation_numbers(kpt=kpt, spin=spin)[n], f_n)
     assert np.isclose(calc.get_eigenvalues(kpt=kpt, spin=spin)[n], eps_n)
+
+
+def test_vasp_out_pbc(outcar, atoms):
+    """Ensure atoms read by the OUTCAR always has pbc=True"""
+    assert all(atoms.pbc)
+    # Test reading with index=':'
+    images = read(outcar, index=':')
+    for atoms_it in images:
+        assert all(atoms_it.pbc)
+
+
+def test_read_vasp_multiple_times(outcar):
+    result1 = read(outcar)
+    result2 = read(outcar)
+    assert isinstance(result1, Atoms)
+    assert isinstance(result2, Atoms)
+    print(result1)
+    print(result2)
+    assert len(compare_atoms(result1, result2)) == 0
