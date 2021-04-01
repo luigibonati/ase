@@ -1,9 +1,6 @@
 """A class for computing vibrational modes"""
 
 from math import pi, sqrt, log
-import os
-import os.path as op
-import pickle
 import sys
 
 import numpy as np
@@ -13,8 +10,6 @@ import ase.io
 from ase.parallel import world, paropen
 
 from ase.utils.filecache import get_json_cache
-from ase.calculators.singlepoint import SinglePointCalculator
-from ase.utils import opencew, pickleload
 from .data import VibrationsData
 
 from collections import namedtuple
