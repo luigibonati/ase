@@ -126,9 +126,9 @@ class TestVibrationsClassic():
             log_txt = f.read()
             assert log_txt == vibrations_n2_log
 
-        mode1 = vib.get_mode(1)
-        assert_array_almost_equal(mode1, [[0.188935, -0.000213, 0.],
-                                          [0.188935, -0.000213, -0.]])
+        mode1 = vib.get_mode(-1)
+        assert_array_almost_equal(mode1, [[0., 0., -0.188935],
+                                          [0., 0., 0.188935]])
 
         assert_array_almost_equal(vib.show_as_force(-1, show=False)
                                   .get_forces(),
