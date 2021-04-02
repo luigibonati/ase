@@ -7,6 +7,7 @@ University of Minnesota
 
 import functools
 
+import numpy as np
 import kimpy
 
 from .exceptions import KIMModelNotFound, KIMModelInitializationError, KimpyError
@@ -111,6 +112,8 @@ class PortableModel:
     """ Creates a KIM API Portable Model object and provides a minimal interface to it
     """
 
+    intc = np.intc
+
     def __init__(self, model_name, debug):
         self.model_name = model_name
         self.debug = debug
@@ -184,16 +187,22 @@ class PortableModel:
         return self.kim_model.clear_then_refresh()
 
     def get_parameter_metadata(self, index_parameter):
-        return self.kim_model.get_parameter_metadata(index_parameter)
+        return self.kim_model.get_parameter_metadata(self.intc(index_parameter))
 
     def get_parameter_int(self, index_param, index_extent):
-        return self.kim_model.get_parameter_int(index_param, index_extent)
+        return self.kim_model.get_parameter_int(
+            self.intc(index_param), self.intc(index_extent)
+        )
 
     def get_parameter_double(self, index_param, index_extent):
-        return self.kim_model.get_parameter_double(index_param, index_extent)
+        return self.kim_model.get_parameter_double(
+            self.intc(index_param), self.intc(index_extent)
+        )
 
     def set_parameter(self, index_param, index_extent, value_typecast):
-        return self.kim_model.set_parameter(index_param, index_extent, value_typecast)
+        return self.kim_model.set_parameter(
+            self.intc(index_param), self.intc(index_extent), value_typecast
+        )
 
     @check_call_wrapper
     def compute(self, compute_args_wrapped, release_GIL):
