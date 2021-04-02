@@ -10,6 +10,7 @@ University of Minnesota
 import numpy as np
 
 from ase.calculators.calculator import Calculator
+from ase.calculators.calculator import compare_atoms
 
 from . import kimpy_wrappers
 from . import neighborlist
@@ -294,8 +295,9 @@ class KIMModelCalculator(Calculator):
             and 'pbc'.
         """
 
+        super().calculate(atoms, properties, system_changes)
+
         if self._parameters_changed:
-            system_changes.append("calculator")
             self._parameters_changed = False
 
         if system_changes:
@@ -323,6 +325,18 @@ class KIMModelCalculator(Calculator):
         self.results["free_energy"] = energy
         self.results["forces"] = forces
         self.results["stress"] = stress
+
+    def check_state(self, atoms, tol=1e-15):
+        # Check for change in atomic configuration (positions or pbc)
+        system_changes = compare_atoms(
+            self.atoms, atoms, excluded_properties=self.ignored_changes
+        )
+
+        # Check if model parameters were changed
+        if self._parameters_changed:
+            system_changes.append("calculator")
+
+        return system_changes
 
     def assemble_padding_forces(self):
         """
