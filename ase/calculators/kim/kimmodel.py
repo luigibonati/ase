@@ -457,7 +457,7 @@ class KIMModelCalculator(Calculator):
         dict
             Meta data associated with all model parameters.
         """
-        num_params = self.kim_model.kim_model.get_number_of_parameters()
+        num_params = self.kim_model.get_number_of_parameters()
         metadata = {}
         for ii in range(num_params):
             metadata.update(self._get_one_parameter_metadata(ii))
@@ -471,7 +471,7 @@ class KIMModelCalculator(Calculator):
         list
             Names of model parameters registered in the KIM API
         """
-        nparams = self.kim_model.kim_model.get_number_of_parameters()
+        nparams = self.kim_model.get_number_of_parameters()
         names = []
         for ii in range(nparams):
             name = list(self._get_one_parameter_metadata(ii))[0]
@@ -574,7 +574,7 @@ class KIMModelCalculator(Calculator):
         been changed, this method *must* be called before calling the model's
         compute routine.
         """
-        self.kim_model.kim_model.clear_then_refresh()
+        self.kim_model.clear_then_refresh()
 
         # Update neighbor list parameters
         (
@@ -674,7 +674,7 @@ class KIMModelCalculator(Calculator):
         dict
             Metadata associated with the requested model parameter.
         """
-        out = self.kim_model.kim_model.get_parameter_metadata(index_parameter)
+        out = self.kim_model.get_parameter_metadata(index_parameter)
         dtype, extent, name, description, error = out
         dtype = repr(dtype)
         pdata = {
@@ -734,13 +734,11 @@ class KIMModelCalculator(Calculator):
             If ``dtype`` is not one of "Integer" or "Double"
         """
         if dtype == "Double":
-            pp = self.kim_model.kim_model.get_parameter_double(
+            pp = self.kim_model.get_parameter_double(
                 index_param, np.intc(index_extent)
             )[0]
         elif dtype == "Integer":
-            pp = self.kim_model.kim_model.get_parameter_int(
-                index_param, np.intc(index_extent)
-            )[0]
+            pp = self.kim_model.get_parameter_int(index_param, np.intc(index_extent))[0]
         else:
             raise ValueError(
                 f"Invalid data type {dtype}.  Allowed values are "
@@ -782,9 +780,7 @@ class KIMModelCalculator(Calculator):
                 "'Integer' or 'Double'."
             )
 
-        self.kim_model.kim_model.set_parameter(
-            index_param, np.intc(index_extent), value_typecast
-        )
+        self.kim_model.set_parameter(index_param, np.intc(index_extent), value_typecast)
 
     def _one_parameter_data(self, parameter_name, index_range):
         """Get the data of one of the parameter. The data will be used in
