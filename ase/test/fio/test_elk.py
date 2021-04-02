@@ -6,6 +6,7 @@ import pytest
 from ase.build import bulk
 from ase.io import write
 from ase.io.elk import parse_elk_eigval
+from ase.units import Hartree
 
 
 def test_elk_in():
@@ -40,7 +41,7 @@ mock_elk_eigval_out = """
 def test_parse_eigval():
     fd = io.StringIO(mock_elk_eigval_out)
     dct = dict(parse_elk_eigval(fd))
-    eig = dct['eigenvalues']
+    eig = dct['eigenvalues'] / Hartree
     occ = dct['occupations']
     kpts = dct['ibz_kpoints']
     assert len(eig) == 1

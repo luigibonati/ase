@@ -218,11 +218,11 @@ def primitive_neighbor_list(quantities, pbc, cell, positions, cutoff,
 
     # Return empty neighbor list if no atoms are passed here
     if len(positions) == 0:
-        empty_types = dict(i=(np.int, (0, )),
-                           j=(np.int, (0, )),
-                           D=(np.float, (0, 3)),
-                           d=(np.float, (0, )),
-                           S=(np.int, (0, 3)))
+        empty_types = dict(i=(int, (0, )),
+                           j=(int, (0, )),
+                           D=(float, (0, 3)),
+                           d=(float, (0, )),
+                           S=(int, (0, 3)))
         retvals = []
         for i in quantities:
             dtype, shape = empty_types[i]
@@ -925,7 +925,7 @@ class PrimitiveNeighborList:
 
         tree = cKDTree(positions, copy_data=True)
         offsets = cell.scaled_positions(positions - positions0)
-        offsets = offsets.round().astype(np.int)
+        offsets = offsets.round().astype(int)
 
         for n1, n2, n3 in itertools.product(range(0, N[0] + 1),
                                             range(-N[1], N[1] + 1),

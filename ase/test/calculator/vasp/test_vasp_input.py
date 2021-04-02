@@ -6,11 +6,13 @@ from ase.calculators.vasp.create_input import GenerateVaspInput
 from ase.calculators.vasp.create_input import _args_without_comment
 from ase.calculators.vasp.create_input import _to_vasp_bool, _from_vasp_bool
 
-from ase.build import molecule, bulk
+from ase.build import bulk
+
 
 @pytest.fixture
 def rng():
     return np.random.RandomState(seed=42)
+
 
 @pytest.fixture
 def nacl(rng):
@@ -18,6 +20,7 @@ def nacl(rng):
                  cubic=True) * (3, 3, 3)
     rng.shuffle(atoms.symbols)  # Ensure symbols are mixed
     return atoms
+
 
 @pytest.fixture
 def vaspinput_factory(nacl):
@@ -70,6 +73,7 @@ def magmoms_factory(rng, request):
         # Array of 0's and 1's
         def rand_binary(x):
             return rng.randint(2, size=x)
+
         func = rand_binary
     else:
         raise ValueError(f'Unknown kind: {kind}')
@@ -78,6 +82,7 @@ def magmoms_factory(rng, request):
         magmoms = func(len(atoms))
         assert len(magmoms) == len(atoms)
         return magmoms
+
     return _magmoms_factory
 
 
@@ -113,7 +118,9 @@ def assert_magmom_equal_to_incar_value():
         resort = vaspinput.resort
         # We round to 4 digits
         assert np.allclose(expected_magmom, new_magmom[resort], atol=1e-3)
-        assert np.allclose(np.array(expected_magmom)[srt], new_magmom, atol=1e-3)
+        assert np.allclose(np.array(expected_magmom)[srt],
+                           new_magmom,
+                           atol=1e-3)
 
     return _assert_magmom_equal_to_incar_value
 
@@ -151,6 +158,7 @@ def test_vasp_from_bool():
     with pytest.raises(AssertionError):
         _from_vasp_bool(True)
 
+
 def test_vasp_to_bool():
     for x in ('T', '.true.', True):
         assert _to_vasp_bool(x) == '.TRUE.'
@@ -163,37 +171,11 @@ def test_vasp_to_bool():
         _to_vasp_bool(1)
 
 
-@pytest.mark.parametrize('args, expected_len', [
-    (['a', 'b', '#', 'c'], 2),
-    (['a', 'b', '!', 'c', '#', 'd'], 2),
-    (['#', 'a', 'b', '!', 'c', '#', 'd'], 0)
-])
+@pytest.mark.parametrize('args, expected_len',
+                         [(['a', 'b', '#', 'c'], 2),
+                          (['a', 'b', '!', 'c', '#', 'd'], 2),
+                          (['#', 'a', 'b', '!', 'c', '#', 'd'], 0)])
 def test_vasp_args_without_comment(args, expected_len):
     """Test comment splitting logic"""
     clean_args = _args_without_comment(args)
     assert len(clean_args) == expected_len
-
-
-
-def test_vasp_input(require_vasp):
-    """
-
-    Check VASP input handling
-
-    """
-    from ase.calculators.vasp import Vasp
-
-    # Molecules come with no unit cell
-
-    atoms = molecule('CH4')
-    calc = Vasp()
-
-    with pytest.raises(RuntimeError):
-        atoms.write('POSCAR')
-
-    with pytest.raises(ValueError):
-        atoms.calc = calc
-        atoms.get_total_energy()
-
-
-

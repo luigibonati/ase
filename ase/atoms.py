@@ -16,11 +16,10 @@ import numpy as np
 import ase.units as units
 from ase.atom import Atom
 from ase.cell import Cell
-from ase.constraints import (FixConstraint, FixBondLengths, FixLinearTriatomic,
-                             voigt_6_to_full_3x3_stress,
-                             full_3x3_to_voigt_6_stress)
+from ase.stress import voigt_6_to_full_3x3_stress, full_3x3_to_voigt_6_stress
 from ase.data import atomic_masses, atomic_masses_common
-from ase.geometry import wrap_positions, find_mic, get_angles, get_distances, get_dihedrals
+from ase.geometry import (wrap_positions, find_mic, get_angles, get_distances,
+                          get_dihedrals)
 from ase.symbols import Symbols, symbols2numbers
 from ase.utils import deprecated
 
@@ -243,8 +242,7 @@ class Atoms:
         self.set_momenta(default(momenta, (0.0, 0.0, 0.0)),
                          apply_constraint=False)
 
-        #                          V-- if instantiaed from list of Atom objs
-        if velocities is not None and None not in velocities:
+        if velocities is not None:
             if momenta is None:
                 self.set_velocities(velocities)
             else:
@@ -1108,13 +1106,12 @@ class Atoms:
         conadd = []
         # Constraints need to be deepcopied, but only the relevant ones.
         for con in copy.deepcopy(self.constraints):
-            if isinstance(con, (FixConstraint, FixBondLengths,
-                                FixLinearTriatomic)):
-                try:
-                    con.index_shuffle(self, i)
-                    conadd.append(con)
-                except IndexError:
-                    pass
+            try:
+                con.index_shuffle(self, i)
+            except (IndexError, NotImplementedError):
+                pass
+            else:
+                conadd.append(con)
 
         atoms = self.__class__(cell=self.cell, pbc=self.pbc, info=self.info,
                                # should be communicated to the slice as well
@@ -1239,10 +1236,12 @@ class Atoms:
         # Find the orientations of the faces of the unit cell
         cell = self.cell.complete()
         dirs = np.zeros_like(cell)
+
+        lengths = cell.lengths()
         for i in range(3):
             dirs[i] = np.cross(cell[i - 1], cell[i - 2])
-            dirs[i] /= np.sqrt(np.dot(dirs[i], dirs[i]))  # normalize
-            if np.dot(dirs[i], cell[i]) < 0.0:
+            dirs[i] /= np.linalg.norm(dirs[i])
+            if dirs[i] @ cell[i] < 0.0:
                 dirs[i] *= -1
 
         if isinstance(axis, int):
@@ -1250,53 +1249,61 @@ class Atoms:
         else:
             axes = axis
 
-        # if vacuum and any(self.pbc[x] for x in axes):
-        #     warnings.warn(
-        #         'You are adding vacuum along a periodic direction!')
-
         # Now, decide how much each basis vector should be made longer
-        p = self.arrays['positions']
+        pos = self.positions
         longer = np.zeros(3)
         shift = np.zeros(3)
         for i in axes:
-            p0 = np.dot(p, dirs[i]).min() if len(p) else 0
-            p1 = np.dot(p, dirs[i]).max() if len(p) else 0
-            height = np.dot(cell[i], dirs[i])
+            if len(pos):
+                scalarprod = pos @ dirs[i]
+                p0 = scalarprod.min()
+                p1 = scalarprod.max()
+            else:
+                p0 = 0
+                p1 = 0
+            height = cell[i] @ dirs[i]
             if vacuum is not None:
                 lng = (p1 - p0 + 2 * vacuum) - height
             else:
                 lng = 0.0  # Do not change unit cell size!
             top = lng + height - p1
             shf = 0.5 * (top - p0)
-            cosphi = np.dot(cell[i], dirs[i]) / np.sqrt(np.dot(cell[i],
-                                                               cell[i]))
+            cosphi = cell[i] @ dirs[i] / lengths[i]
             longer[i] = lng / cosphi
             shift[i] = shf / cosphi
 
         # Now, do it!
         translation = np.zeros(3)
         for i in axes:
-            nowlen = np.sqrt(np.dot(cell[i], cell[i]))
-            if vacuum is not None or self.cell[i].any():
+            nowlen = lengths[i]
+            if vacuum is not None:
                 self.cell[i] = cell[i] * (1 + longer[i] / nowlen)
-                translation += shift[i] * cell[i] / nowlen
-        self.arrays['positions'] += translation
+            translation += shift[i] * cell[i] / nowlen
+
+            # We calculated translations using the completed cell,
+            # so directions without cell vectors will have been centered
+            # along a "fake" vector of length 1.
+            # Therefore, we adjust by -0.5:
+            if not any(self.cell[i]):
+                translation[i] -= 0.5
 
         # Optionally, translate to center about a point in space.
         if about is not None:
             for vector in self.cell:
-                self.positions -= vector / 2.0
-            self.positions += about
+                translation -= vector / 2.0
+            translation += about
+
+        self.positions += translation
 
     def get_center_of_mass(self, scaled=False):
         """Get the center of mass.
 
         If scaled=True the center of mass in scaled coordinates
         is returned."""
-        m = self.get_masses()
-        com = np.dot(m, self.arrays['positions']) / m.sum()
+        masses = self.get_masses()
+        com = masses @ self.positions / masses.sum()
         if scaled:
-            return np.linalg.solve(self.cell.T, com)
+            return self.cell.scaled_positions(com)
         else:
             return com
 
@@ -1831,7 +1838,13 @@ class Atoms:
 
         If wrap is True, atoms outside the unit cell will be wrapped into
         the cell in those directions with periodic boundary conditions
-        so that the scaled coordinates are between zero and one."""
+        so that the scaled coordinates are between zero and one.
+
+        If any cell vectors are zero, the corresponding coordinates
+        are evaluated as if the cell were completed using
+        ``cell.complete()``.  This means coordinates will be Cartesian
+        as long as the non-zero cell vectors span a Cartesian axis or
+        plane."""
 
         fractional = self.cell.scaled_positions(self.positions)
 
@@ -1868,7 +1881,7 @@ class Atoms:
         """Get the temperature in Kelvin."""
         dof = len(self) * 3
         for constraint in self._constraints:
-            dof -= constraint.removed_dof
+            dof -= constraint.get_removed_dof(self)
         ekin = self.get_kinetic_energy()
         return 2 * ekin / (dof * units.kB)
 

@@ -334,9 +334,8 @@ class CP2K(Calculator):
             print('Writting to file: ' + fn)
             print(content)
         if self._shell.version < 2.0:
-            f = open(fn, 'w')
-            f.write(content)
-            f.close()
+            with open(fn, 'w') as fd:
+                fd.write(content)
         else:
             lines = content.split('\n')
             if self._shell.version < 2.1:

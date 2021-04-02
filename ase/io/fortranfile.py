@@ -51,8 +51,6 @@ for a file with little-endian data whose record headers are long
 integers.
 """
 
-__docformat__ = "restructuredtext en"
-
 import numpy
 
 try:
@@ -60,13 +58,6 @@ try:
 except NameError:
     # For python3 compatibility
     from io import FileIO as file
-
-try:
-    bytes
-except NameError:
-    # For python2.x compatibility, I think it would have been nicer to
-    bytes = str
-
 
 class FortranFile(file):
 
@@ -148,7 +139,7 @@ class FortranFile(file):
             data += read_data
 
     def _read_check(self):
-        return numpy.fromstring(
+        return numpy.frombuffer(
             self._read_exactly(self._header_length),
             dtype=self.ENDIAN + self.HEADER_PREC,
         )[0]
@@ -212,7 +203,7 @@ class FortranFile(file):
             raise ValueError('Not an appropriate precision')
 
         data_str = self.readRecord()
-        return numpy.fromstring(data_str, dtype=self.ENDIAN + prec)
+        return numpy.frombuffer(data_str, dtype=self.ENDIAN + prec)
 
     def writeReals(self, reals, prec='f'):
         """Write an array of floats in given precision
@@ -247,7 +238,7 @@ class FortranFile(file):
             raise ValueError('Not an appropriate precision')
 
         data_str = self.readRecord()
-        return numpy.fromstring(data_str, dtype=self.ENDIAN + prec)
+        return numpy.frombuffer(data_str, dtype=self.ENDIAN + prec)
 
     def writeInts(self, ints, prec='i'):
         """Write an array of integers in given precision

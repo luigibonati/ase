@@ -1,4 +1,5 @@
 import numpy as np
+from ase.io.jsonio import read_json, write_json
 
 
 class STM:
@@ -23,9 +24,6 @@ class STM:
         self.use_density = use_density
 
         if isinstance(atoms, str):
-            # XXX Importing in the beginning causes a cyclic import.
-            # We need to clean up the imports.
-            from ase.io.jsonio import read_json
             with open(atoms, 'r') as fd:
                 self.ldos, self.bias, self.cell = read_json(fd,
                                                             always_array=False)
@@ -95,14 +93,9 @@ class STM:
 
         self.ldos = ldos
 
-
-    def write(self, filename='stm.json'):
-        """Write local density of states to pickle file."""
-        from ase.io.jsonio import write_json
-        # XXX module-level import would cause cyclic error
-        with open(filename, 'w') as fd:
-            write_json(fd, (self.ldos, self.bias, self.cell))
-
+    def write(self, filename):
+        """Write local density of states to JSON file."""
+        write_json(filename, (self.ldos, self.bias, self.cell))
 
     def get_averaged_current(self, bias, z):
         """Calculate avarage current at height z (in Angstrom).

@@ -29,7 +29,7 @@ emax = 0.035
 bs.plot(ax=ax, emin=0.0, emax=emax)
 
 dosax = fig.add_axes([.8, .07, .17, .85])
-dosax.fill_between(dos.weights[0], dos.energy, y2=0, color='grey',
+dosax.fill_between(dos.get_weights(), dos.get_energies(), y2=0, color='grey',
                    edgecolor='k', lw=1)
 
 dosax.set_ylim(0, emax)

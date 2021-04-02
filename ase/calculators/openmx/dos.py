@@ -69,13 +69,14 @@ class DOS:
             if orbital != '':
                 period = '.'
             filename += '.atom' + str(atom_index) + period + orbital
-        f = open(filename, 'r')
-        line = '\n'
-        number_of_lines = -1
-        while line != '':
-            line = f.readline()
-            number_of_lines += 1
-        f.close()
+
+        with open(filename, 'r') as fd:
+            line = '\n'
+            number_of_lines = -1
+            while line != '':
+                line = fd.readline()
+                number_of_lines += 1
+
         key = ''
         atom_and_orbital = ''
         if pdos:

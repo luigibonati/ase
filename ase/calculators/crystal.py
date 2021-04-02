@@ -83,7 +83,10 @@ class CRYSTAL(FileIOCalculator):
         """
 
         # write BLOCK 1 (only SP with gradients)
-        outfile = open(filename, 'wt', encoding='latin-1')
+        with open(filename, 'wt', encoding='latin-1') as outfile:
+            self._write_crystal_in(outfile)
+
+    def _write_crystal_in(self, outfile):
         outfile.write('Single point + Gradient crystal calculation \n')
         outfile.write('EXTERNAL \n')
         outfile.write('NEIGHPRT \n')
@@ -97,8 +100,8 @@ class CRYSTAL(FileIOCalculator):
         p = self.parameters
         if p.basis == 'custom':
             outfile.write('END \n')
-            basisfile = open(os.path.join(self.directory, 'basis'))
-            basis_ = basisfile.readlines()
+            with open(os.path.join(self.directory, 'basis')) as basisfile:
+                basis_ = basisfile.readlines()
             for line in basis_:
                 outfile.write(line)
             outfile.write('99 0 \n')
@@ -216,8 +219,6 @@ class CRYSTAL(FileIOCalculator):
         # also on the charges
         outfile.write('GRADCAL \n')
         outfile.write('END \n')
-
-        outfile.close()
 
     def write_input(self, atoms, properties=None, system_changes=None):
         FileIOCalculator.write_input(
@@ -374,7 +375,7 @@ class PointChargePotential:
     def set_charges(self, mmcharges):
         self.mmcharges = mmcharges
 
-    def write_mmcharges(self, filename='POINTCHG.INP'):
+    def write_mmcharges(self, filename):
         """ mok all
         write external charges as monopoles for CRYSTAL.
 
@@ -382,13 +383,12 @@ class PointChargePotential:
         if self.mmcharges is None:
             print("CRYSTAL: Warning: not writing external charges ")
             return
-        charge_file = open(os.path.join(self.directory, filename), 'w')
-        charge_file.write(str(len(self.mmcharges))+' \n')
-        for [pos, charge] in zip(self.mmpositions, self.mmcharges):
-            [x, y, z] = pos
-            charge_file.write('%12.6f %12.6f %12.6f %12.6f \n'
-                              % (x, y, z, charge))
-        charge_file.close()
+        with open(os.path.join(self.directory, filename), 'w') as charge_file:
+            charge_file.write(str(len(self.mmcharges))+' \n')
+            for [pos, charge] in zip(self.mmpositions, self.mmcharges):
+                [x, y, z] = pos
+                charge_file.write('%12.6f %12.6f %12.6f %12.6f \n'
+                                  % (x, y, z, charge))
 
     def get_forces(self, calc, get_forces=True):
         """ returns forces on point charges if the flag get_forces=True """
@@ -399,9 +399,8 @@ class PointChargePotential:
 
     def read_forces_on_pointcharges(self):
         """Read Forces from CRYSTAL output file (OUTPUT)."""
-        infile = open(os.path.join(self.directory, 'OUTPUT'), 'r')
-        lines = infile.readlines()
-        infile.close()
+        with open(os.path.join(self.directory, 'OUTPUT'), 'r') as infile:
+            lines = infile.readlines()
 
         print('PCPOT crys_pcc: '+str(self.crys_pcc))
         # read in force and energy Coulomb corrections
@@ -435,9 +434,9 @@ class PointChargePotential:
             to be subtracted again.
             This will be standard in future CRYSTAL versions .'''
 
-        infile = open(os.path.join(self.directory, 'FORCES_CHG.DAT'), 'r')
-        lines = infile.readlines()
-        infile.close()
+        with open(os.path.join(self.directory,
+                               'FORCES_CHG.DAT'), 'r') as infile:
+            lines = infile.readlines()
 
         e = [float(x.split()[-1])
              for x in lines if 'SELF-INTERACTION ENERGY(AU)' in x][0]

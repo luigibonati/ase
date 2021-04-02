@@ -1,7 +1,8 @@
 Resonant and non-resonant Raman spectra
 =======================================
 
-Note: :ref:`Siesta Raman` are possible also.
+.. note::
+   Raman spectra can also be obtained via :mod:`~ase.calculators.siesta` calculator.
 
 Raman spectra can be calculated in various approximations [1]_.
 While the examples below are using GPAW_ explicitly,
@@ -69,15 +70,10 @@ We therfore write data including the overlap as
 
 In GPAW this is implemented in ``Overlap``
 (approximated by pseudo-wavefunction overlaps) and can be triggered
-in ``ResonantRaman`` by::
+in ``ResonantRamanCalculator`` by
 
-  from ase.vibrations.resonant_raman import ResonantRamanCalculator
-  from gpaw.analyse.overlap import Overlap
 
-  rr = ResonantRamanCalculator(atoms, LrTDDFT,
-                               overlap=lambda x, y: Overlap(x).pseudo(y),
-                              )
-  rr.run()
+.. literalinclude:: H2_optical_overlap.py
 
 
 2. Analysis of the results
@@ -85,16 +81,6 @@ in ``ResonantRaman`` by::
 
 We assume that the steps above were performed and are able to analyse the
 results in different approximations.
-
-In order to do the full Albrecht analysis later we 
-We save the standard names::
-
-  # standard name for Vibrations
-  name = 'vib'
-  # standard name for Infrared
-  name = 'ir'
-  # standard name for the ResonantRamanCalculator
-  name = 'rraman'
 
 Placzek
 ```````
@@ -121,8 +107,8 @@ for more analysis::
   from ase.vibrations.placzek import Profeta
   
   photonenergy = 7.5  # eV
-  pr = Profeta(H2Morse(), approximation='Placzek')
-  x, y = pr.get_spectrum(photonenergy, start=4000, end=5000, method='frederiksen', type='Lorentzian')
+  pr = Profeta(H2Morse(), H2MorseExcitedStates, approximation='Placzek')
+  x, y = pr.get_spectrum(photonenergy, start=4000, end=5000, type='Lorentzian')
   plt.plot(x, y)
   plt.show()
 
@@ -144,8 +130,8 @@ to be present. We therefore have to invoke the ``Albrecht`` object as::
   from ase.vibrations.albrecht import Albrecht
   
   photonenergy = 7.5  # eV
-  al = Albrecht(H2Morse(), approximation='Albrecht', overlap=True)
-  x, y = al.get_spectrum(photonenergy, start=4000, end=5000, method='frederiksen', type='Lorentzian')
+  al = Albrecht(H2Morse(), H2MorseExcitedStates, approximation='Albrecht', overlap=True)
+  x, y = al.get_spectrum(photonenergy, start=4000, end=5000, type='Lorentzian')
 
 ``Albrecht`` splits the spectra in two contributions that can be accessed as
 ``approximation='Albrecht A'`` and ``approximation='Albrecht BC'``,

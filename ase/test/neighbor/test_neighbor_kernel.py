@@ -198,11 +198,11 @@ def test_neighbor_kernel():
 
     # Empty atoms object
     i, D, d, j, S = neighbor_list("iDdjS", ase.Atoms(), 1.0)
-    assert i.dtype == np.int
-    assert j.dtype == np.int
-    assert d.dtype == np.float
-    assert D.dtype == np.float
-    assert S.dtype == np.int
+    assert i.dtype == int
+    assert j.dtype == int
+    assert d.dtype == float
+    assert D.dtype == float
+    assert S.dtype == int
     assert i.shape == (0,)
     assert j.shape == (0,)
     assert d.shape == (0,)
@@ -212,5 +212,5 @@ def test_neighbor_kernel():
     # Check that only a scalar (not a tuple) is returned if we request a single
     # argument.
     i = neighbor_list("i", ase.Atoms(), 1.0)
-    assert i.dtype == np.int
+    assert i.dtype == int
     assert i.shape == (0,)

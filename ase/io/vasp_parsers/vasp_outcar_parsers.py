@@ -2,7 +2,8 @@
 Module for parsing OUTCAR files.
 """
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Sequence, TextIO, Iterator, Optional, Union
+from typing import (Dict, Any, Sequence, TextIO, Iterator, Optional, Union,
+                    List)
 import re
 from warnings import warn
 from pathlib import Path, PurePath
@@ -10,6 +11,7 @@ from pathlib import Path, PurePath
 import numpy as np
 import ase
 from ase import Atoms
+from ase.data import atomic_numbers
 from ase.io import ParseError, read
 from ase.io.utils import ImageChunk
 from ase.calculators.singlepoint import SinglePointDFTCalculator, SinglePointKPoint
@@ -79,7 +81,7 @@ class VaspPropertyParser(ABC):
     def parse(self, cursor: _CURSOR, lines: _CHUNK) -> _RESULT:
         """Extract a property from the cursor position.
         Assumes that "has_property" would evaluate to True
-        from cursor position"""
+        from cursor position """
 
 
 class SimpleProperty(VaspPropertyParser, ABC):
@@ -149,14 +151,65 @@ class SpeciesTypes(SimpleVaspHeaderParser):
     """Parse species types.
 
     Example line:
-    "POSCAR: Mg Al"
+    " POTCAR:    PAW_PBE Ni 02Aug2007"
+
+    We must parse this multiple times, as it's scattered in the header.
+    So this class has to simply parse the entire header.
     """
-    LINE_DELIMITER = 'POSCAR:'
+    LINE_DELIMITER = 'POTCAR:'
+
+    def __init__(self, *args, **kwargs):
+        self._species = []  # Store species as we find them
+        # We count the number of times we found the line,
+        # as we only want to parse every second,
+        # due to repeated entries in the OUTCAR
+        self.species_count = 0
+        super().__init__(*args, **kwargs)
+
+    @property
+    def species(self) -> List[str]:
+        return self._species
+
+    def _make_returnval(self) -> _RESULT:
+        """Construct the return value for the "parse" method"""
+        return {'species': self.species}
 
     def parse(self, cursor: _CURSOR, lines: _CHUNK) -> _RESULT:
         line = lines[cursor].strip()
-        species = line.split()[1:]
-        return {'species': species}
+        self.species_count += 1
+        if self.species_count % 2 == 0:
+            # the 'POTCAR:' line always appears twice,
+            # so only parse every second occurence
+            return self._make_returnval()
+        parts = line.split()
+        # Determine in what position we'd expect to find the symbol
+        if '1/r potential' in line:
+            # This denotes an AE potential
+            # Currently only H_AE
+            # "  H  1/r potential  "
+            idx = 1
+        else:
+            # Regular PAW potential, e.g.
+            # "PAW_PBE H1.25 07Sep2000" or
+            # "PAW_PBE Fe_pv 02Aug2007"
+            idx = 2
+
+        sym = parts[idx]
+        # remove "_h", "_GW", "_3" tags etc.
+        sym = sym.split('_')[0]
+        # in the case of the "H1.25" potentials etc.,
+        # remove any non-alphabetic characters
+        sym = ''.join([s for s in sym if s.isalpha()])
+
+        if sym not in atomic_numbers:
+            # Check that we have properly parsed the symbol, and we found
+            # an element
+            raise ParseError(
+                f'Found an unexpected symbol {sym} in line {line}')
+
+        self.species.append(sym)
+
+        return self._make_returnval()
 
 
 class IonsPerSpecies(SimpleVaspHeaderParser):
@@ -190,14 +243,15 @@ class KpointHeader(SimpleVaspHeaderParser):
         # for parsing that
         # Move cursor down to next delimiter
         delim2 = 'k-points in reciprocal lattice and weights'
-        for offset, line in enumerate(lines[cursor:], start=1):
+        for offset, line in enumerate(lines[cursor:], start=0):
             line = line.strip()
             if delim2 in line:
                 # build k-points
                 ibzkpts = np.zeros((nkpts, 3))
                 kpt_weights = np.zeros(nkpts)
                 for nk in range(nkpts):
-                    line = lines[cursor + offset + nk + 3].strip()
+                    # Offset by 1, as k-points starts on the next line
+                    line = lines[cursor + offset + nk + 1].strip()
                     parts = line.split()
                     ibzkpts[nk] = list(map(float, parts[:3]))
                     kpt_weights[nk] = float(parts[-1])
@@ -400,16 +454,23 @@ class Kpoints(VaspChunkPropertyParser):
 
 class DefaultParsersContainer:
     """Container for the default OUTCAR parsers.
-    Allows for modification of the global default parsers."""
-    def __init__(self, parsers_cls):
-        self.parsers_dct = {
-            parser.get_name(): parser
-            for parser in parsers_cls
-        }
+    Allows for modification of the global default parsers.
+    
+    Takes in an arbitrary number of parsers. The parsers should be uninitialized,
+    as they are created on request.
+    """
+    def __init__(self, *parsers_cls):
+        self._parsers_dct = {}
+        for parser in parsers_cls:
+            self.add_parser(parser)
 
     @property
-    def parsers(self):
-        """Return a copy of the internally stored parsers"""
+    def parsers_dct(self) -> dict:
+        return self._parsers_dct
+
+    def make_parsers(self):
+        """Return a copy of the internally stored parsers.
+        Parsers are created upon request."""
         return list(parser() for parser in self.parsers_dct.values())
 
     def remove_parser(self, name: str):
@@ -422,7 +483,8 @@ class DefaultParsersContainer:
 
 
 class TypeParser(ABC):
-    """Base class for parsing a type, e.g. header or chunk, by applying the internal attached parsers"""
+    """Base class for parsing a type, e.g. header or chunk, 
+    by applying the internal attached parsers"""
     def __init__(self, parsers):
         self.parsers = parsers
 
@@ -431,7 +493,7 @@ class TypeParser(ABC):
         return self._parsers
 
     @parsers.setter
-    def parsers(self, new_parsers):
+    def parsers(self, new_parsers) -> None:
         self._check_parsers(new_parsers)
         self._parsers = new_parsers
 
@@ -439,7 +501,7 @@ class TypeParser(ABC):
     def _check_parsers(self, parsers) -> None:
         """Check the parsers are of correct type"""
 
-    def parse(self, lines):
+    def parse(self, lines) -> _RESULT:
         """Execute the attached paresers, and return the parsed properties"""
         properties = {}
         for cursor, _ in enumerate(lines):
@@ -465,11 +527,11 @@ class ChunkParser(TypeParser, ABC):
         return self._header
 
     @header.setter
-    def header(self, value: Optional[_HEADER]):
+    def header(self, value: Optional[_HEADER]) -> None:
         self._header = value or {}
         self.update_parser_headers()
 
-    def update_parser_headers(self):
+    def update_parser_headers(self) -> None:
         """Apply the header to all available parsers"""
         for parser in self.parsers:
             parser.header = self.header
@@ -509,7 +571,7 @@ class OutcarChunkParser(ChunkParser):
                  header: _HEADER = None,
                  parsers: Sequence[VaspChunkPropertyParser] = None):
         global default_chunk_parsers
-        parsers = parsers or default_chunk_parsers.parsers
+        parsers = parsers or default_chunk_parsers.make_parsers()
         super().__init__(parsers, header=header)
 
     def build(self, lines: _CHUNK) -> Atoms:
@@ -520,7 +582,7 @@ class OutcarChunkParser(ChunkParser):
         symbols = self.header['symbols']
         constraint = self.header.get('constraint', None)
 
-        atoms_kwargs = dict(symbols=symbols, constraint=constraint)
+        atoms_kwargs = dict(symbols=symbols, constraint=constraint, pbc=True)
 
         # Find some required properties in the parsed results.
         # Raise ParseError if they are not present
@@ -548,7 +610,7 @@ class OutcarHeaderParser(HeaderParser):
                  parsers: Sequence[VaspHeaderPropertyParser] = None,
                  workdir: Union[str, PurePath] = None):
         global default_header_parsers
-        parsers = parsers or default_header_parsers.parsers
+        parsers = parsers or default_header_parsers.make_parsers()
         super().__init__(parsers)
         self.workdir = workdir
 
@@ -690,7 +752,7 @@ def outcarchunks(fd: TextIO,
 
 
 # Create the default chunk parsers
-default_chunk_parsers = DefaultParsersContainer([
+default_chunk_parsers = DefaultParsersContainer(
     Cell,
     PositionsAndForces,
     Stress,
@@ -699,12 +761,12 @@ default_chunk_parsers = DefaultParsersContainer([
     EFermi,
     Kpoints,
     Energy,
-])
+)
 
 # Create the default header parsers
-default_header_parsers = DefaultParsersContainer([
+default_header_parsers = DefaultParsersContainer(
     SpeciesTypes,
     IonsPerSpecies,
     Spinpol,
     KpointHeader,
-])
+)

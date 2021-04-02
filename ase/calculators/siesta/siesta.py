@@ -20,7 +20,8 @@ import numpy as np
 
 from ase.units import Ry, eV, Bohr
 from ase.data import atomic_numbers
-from ase.calculators.siesta.import_functions import read_rho, xv_to_atoms
+from ase.io.siesta import read_siesta_xv
+from ase.calculators.siesta.import_functions import read_rho
 from ase.calculators.siesta.import_functions import \
     get_valence_charge, read_vca_synth_block
 from ase.calculators.calculator import FileIOCalculator, ReadError
@@ -156,7 +157,6 @@ class SiestaParameters(Parameters):
             symlink_pseudos=None,
             atoms=None,
             restart=None,
-            ignore_bad_restart_file=FileIOCalculator._deprecated,
             fdf_arguments=None,
             atomic_coord_format='xyz',
             bandpath=None):
@@ -246,10 +246,6 @@ class Siesta(FileIOCalculator):
            - restart      : str.  Prefix for restart file.
                             May contain a directory.
                             Default is  None, don't restart.
-           - ignore_bad_restart_file: bool.
-                            Ignore broken or missing restart file.
-                            By default, it is an error if the restart
-                            file is missing or broken.
            - fdf_arguments: Explicitly given fdf arguments. Dictonary using
                             Siesta keywords as given in the manual. List values
                             are written as fdf blocks with each element on a
@@ -604,7 +600,8 @@ class Siesta(FileIOCalculator):
         fname = self.getpath(filename)
         if not os.path.exists(fname):
             raise ReadError("The restart file '%s' does not exist" % fname)
-        self.atoms = xv_to_atoms(fname)
+        with open(fname) as fd:
+            self.atoms = read_siesta_xv(fd)
         self.read_results()
 
     def getpath(self, fname=None, ext=None):
@@ -1160,7 +1157,7 @@ class Siesta(FileIOCalculator):
                 self.results['fermi_energy'] = float(f.readline())
                 n, nspin, nkp = map(int, f.readline().split())
                 _ee = np.split(
-                    np.array(f.read().split()).astype(np.float), nkp)
+                    np.array(f.read().split()).astype(float), nkp)
         except (IOError):
             return 1
 

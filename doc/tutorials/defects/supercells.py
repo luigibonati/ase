@@ -96,7 +96,7 @@ class CellFigure():
         Add some annotation to the lower left corner of the plot.
         """
         self.ax.text(1.1, 0, -0.2, text, ha='left', va='center')
-    
+
 
 # extent of plotted area
 dim = 0.82

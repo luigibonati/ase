@@ -16,7 +16,7 @@ blocks = [('N2', 8)]
 box_volume = 30. * 8
 
 # The cell splitting scheme:
-splits = {(2,):1, (1,):1}
+splits = {(2,): 1, (1,): 1}
 
 # The minimal interatomic distances which the
 # initial structures must satisfy. We can take these

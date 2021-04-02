@@ -15,7 +15,7 @@ constraint = FixAtoms(mask=[atom.symbol != 'N' for atom in initial])
 for config in configs:
     config.calc = EMT()
     config.set_constraint(constraint)
-    
+
 band = NEB(configs)
 band.interpolate()
 

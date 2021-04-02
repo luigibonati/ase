@@ -60,6 +60,7 @@ calc = pytest.mark.calculator
 
 @pytest.mark.calculator_lite
 @calc('abinit', ecut=300, chksymbreak=0, toldfe=1e-4)
+@calc('aims')
 @calc('cp2k')
 @calc('espresso', ecutwfc=300 / Ry)
 @calc('gpaw', symmetry='off', mode='pw', txt='gpaw.txt', mixer={'beta': 0.6},
