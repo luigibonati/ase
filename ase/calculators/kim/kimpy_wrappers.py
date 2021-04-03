@@ -12,6 +12,13 @@ import kimpy
 
 from .exceptions import KIMModelNotFound, KIMModelInitializationError, KimpyError
 
+# Function used for casting parameter/extent indices to C-compatible ints
+c_int = np.intc
+
+# Function used for casting floating point parameter values to C-compatible
+# doubles
+c_double = np.double
+
 
 def check_call(f, *args):
     """
@@ -112,8 +119,6 @@ class PortableModel:
     """ Creates a KIM API Portable Model object and provides a minimal interface to it
     """
 
-    intc = np.intc
-
     def __init__(self, model_name, debug):
         self.model_name = model_name
         self.debug = debug
@@ -187,21 +192,19 @@ class PortableModel:
         return self.kim_model.clear_then_refresh()
 
     def get_parameter_metadata(self, index_parameter):
-        return self.kim_model.get_parameter_metadata(self.intc(index_parameter))
+        return self.kim_model.get_parameter_metadata(c_int(index_parameter))
 
     def get_parameter_int(self, index_param, index_extent):
-        return self.kim_model.get_parameter_int(
-            self.intc(index_param), self.intc(index_extent)
-        )
+        return self.kim_model.get_parameter_int(c_int(index_param), c_int(index_extent))
 
     def get_parameter_double(self, index_param, index_extent):
         return self.kim_model.get_parameter_double(
-            self.intc(index_param), self.intc(index_extent)
+            c_int(index_param), c_int(index_extent)
         )
 
     def set_parameter(self, index_param, index_extent, value_typecast):
         return self.kim_model.set_parameter(
-            self.intc(index_param), self.intc(index_extent), value_typecast
+            c_int(index_param), c_int(index_extent), value_typecast
         )
 
     @check_call_wrapper

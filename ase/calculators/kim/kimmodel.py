@@ -303,8 +303,10 @@ class KIMModelCalculator(Calculator):
         if system_changes:
             if self.need_neigh_update(atoms, system_changes):
                 self.update_neigh(atoms, self.species_map)
-                self.energy = np.array([0.0], dtype=np.double)
-                self.forces = np.zeros([self.num_particles[0], 3], dtype=np.double)
+                self.energy = np.array([0.0], dtype=kimpy_wrappers.c_double)
+                self.forces = np.zeros(
+                    [self.num_particles[0], 3], dtype=kimpy_wrappers.c_double
+                )
                 self.update_compute_args_pointers(self.energy, self.forces)
             else:
                 self.update_kim_coords(atoms)
@@ -769,9 +771,9 @@ class KIMModelCalculator(Calculator):
         self._check_parameter_data_type(dtype)
 
         if dtype == "Double":
-            value_typecast = np.double(value)
+            value_typecast = kimpy_wrappers.c_double(value)
         elif dtype == "Integer":
-            value_typecast = np.intc(value)
+            value_typecast = kimpy_wrappers.c_int(value)
 
         self.kim_model.set_parameter(index_param, index_extent, value_typecast)
 

@@ -6,19 +6,19 @@ from kimpy import neighlist
 from ase.neighborlist import neighbor_list
 from ase import Atom
 
-from .kimpy_wrappers import check_call_wrapper
+from .kimpy_wrappers import check_call_wrapper, c_int, c_double
 
 
 class NeighborList:
 
     kimpy_arrays = {
-        "num_particles": np.intc,
-        "coords": np.double,
-        "particle_contributing": np.intc,
-        "species_code": np.intc,
-        "cutoffs": np.double,
-        "padding_image_of": np.intc,
-        "need_neigh": np.intc,
+        "num_particles": c_int,
+        "coords": c_double,
+        "particle_contributing": c_int,
+        "species_code": c_int,
+        "cutoffs": c_double,
+        "padding_image_of": c_int,
+        "need_neigh": c_int,
     }
 
     def __setattr__(self, name, value):
@@ -266,7 +266,7 @@ class ASENeighborList(NeighborList):
         neigh_lists = []
         for cut in self.cutoffs:
             neigh_list = [
-                np.array(neigh_list[k], dtype=np.intc)[neigh_dists[k] <= cut]
+                np.array(neigh_list[k], dtype=c_int)[neigh_dists[k] <= cut]
                 for k in range(neighbor_list_size)
             ]
             neigh_lists.append(neigh_list)
@@ -361,9 +361,9 @@ class KimpyNeighborList(NeighborList):
         self, cell, pbc, contributing_coords, contributing_species_code
     ):
         # Cast things passed through kimpy to numpy arrays
-        cell = np.asarray(cell, dtype=np.double)
-        pbc = np.asarray(pbc, dtype=np.intc)
-        contributing_coords = np.asarray(contributing_coords, dtype=np.double)
+        cell = np.asarray(cell, dtype=c_double)
+        pbc = np.asarray(pbc, dtype=c_int)
+        contributing_coords = np.asarray(contributing_coords, dtype=c_double)
 
         return neighlist.create_paddings(
             self.influence_dist,
@@ -388,9 +388,9 @@ class KimpyNeighborList(NeighborList):
         """
 
         # Get info from Atoms object
-        cell = np.asarray(atoms.get_cell(), dtype=np.double)
-        pbc = np.asarray(atoms.get_pbc(), dtype=np.intc)
-        contributing_coords = np.asarray(atoms.get_positions(), dtype=np.double)
+        cell = np.asarray(atoms.get_cell(), dtype=c_double)
+        pbc = np.asarray(atoms.get_pbc(), dtype=c_int)
+        contributing_coords = np.asarray(atoms.get_positions(), dtype=c_double)
         self.num_contributing_particles = atoms.get_global_number_of_atoms()
         num_contributing = self.num_contributing_particles
 
@@ -398,7 +398,7 @@ class KimpyNeighborList(NeighborList):
         try:
             contributing_species_code = np.array(
                 [species_map[s] for s in atoms.get_chemical_symbols()],
-                dtype=np.intc)
+                dtype=c_int)
         except KeyError as e:
             raise RuntimeError("Species not supported by KIM model; {}"
                                .format(str(e)))
