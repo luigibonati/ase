@@ -20,6 +20,22 @@ c_int = np.intc
 c_double = np.double
 
 
+def c_int_args(func):
+    """
+    Decorator for instance methods that will cast all of the args passed,
+    excluding the first (which corresponds to 'self'), to C-compatible
+    integers.
+    """
+
+    @functools.wraps(func)
+    def myfunc(*args, **kwargs):
+        args_cast = [args[0]]
+        args_cast += map(c_int, args[1:])
+        return func(*args, **kwargs)
+
+    return myfunc
+
+
 def check_call(f, *args):
     """
     Given a function that returns either an integer error code or a
@@ -191,16 +207,17 @@ class PortableModel:
     def clear_then_refresh(self):
         return self.kim_model.clear_then_refresh()
 
+    @c_int_args
     def get_parameter_metadata(self, index_parameter):
-        return self.kim_model.get_parameter_metadata(c_int(index_parameter))
+        return self.kim_model.get_parameter_metadata(index_parameter)
 
+    @c_int_args
     def get_parameter_int(self, index_param, index_extent):
-        return self.kim_model.get_parameter_int(c_int(index_param), c_int(index_extent))
+        return self.kim_model.get_parameter_int(index_param, index_extent)
 
+    @c_int_args
     def get_parameter_double(self, index_param, index_extent):
-        return self.kim_model.get_parameter_double(
-            c_int(index_param), c_int(index_extent)
-        )
+        return self.kim_model.get_parameter_double(index_param, index_extent)
 
     def set_parameter(self, index_param, index_extent, value_typecast):
         return self.kim_model.set_parameter(
