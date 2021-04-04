@@ -30,9 +30,9 @@ class KIMModelData:
         self.debug = debug
 
         # Initialize KIM API Portable Model object and ComputeArguments object
-        self.init_kim()
+        self._init_kim()
 
-        self.species_map = self.create_species_map()
+        self.species_map = self._create_species_map()
 
         # Ask model to provide information relevant for neighbor list
         # construction
@@ -43,7 +43,7 @@ class KIMModelData:
         ) = self.get_model_neighbor_list_parameters()
 
         # Initialize neighbor list object
-        self.init_neigh(
+        self._init_neigh(
             neigh_skin_ratio,
             model_influence_dist,
             model_cutoffs,
@@ -53,7 +53,7 @@ class KIMModelData:
     def __del__(self):
         self.clean()
 
-    def init_kim(self):
+    def _init_kim(self):
         """Create the KIM API Portable Model object and KIM API ComputeArguments
         object
         """
@@ -66,7 +66,7 @@ class KIMModelData:
         # object, so we must pass it as a parameter
         self.compute_args = self.kim_model.compute_arguments_create()
 
-    def init_neigh(
+    def _init_neigh(
         self,
         neigh_skin_ratio,
         model_influence_dist,
@@ -103,13 +103,13 @@ class KIMModelData:
         self.compute_args.update(
             self.num_particles,
             self.species_code,
-            self.particle_contributing,
+            self._particle_contributing,
             self.coords,
             energy,
             forces,
         )
 
-    def create_species_map(self):
+    def _create_species_map(self):
         """Get all the supported species of the KIM model and the
         corresponding integer codes used by the model
 
@@ -121,7 +121,7 @@ class KIMModelData:
             value : int
                 species integer code (e.g. 1)
         """
-        supported_species, codes = self.get_model_supported_species_and_codes()
+        supported_species, codes = self._get_model_supported_species_and_codes()
         species_map = dict()
         for i, spec in enumerate(supported_species):
             species_map[spec] = codes[i]
@@ -132,15 +132,15 @@ class KIMModelData:
 
         return species_map
 
-    def clean_neigh(self):
+    def _clean_neigh(self):
         """If the neighbor list method being used is the one in the
         kimpy neighlist module, deallocate its memory
         """
-        if self.neigh_initialized:
+        if self._neigh_initialized:
             self.neigh.clean()
             del self.neigh
 
-    def clean_kim(self):
+    def _clean_kim(self):
         """Deallocate the memory allocated to the KIM API Portable Model object
         and KIM API ComputeArguments object
         """
@@ -153,8 +153,8 @@ class KIMModelData:
         """Deallocate the KIM API Portable Model object, KIM API ComputeArguments
         object, and, if applicable, the neighbor list object
         """
-        self.clean_neigh()
-        self.clean_kim()
+        self._clean_neigh()
+        self._clean_kim()
 
     @property
     def padding_image_of(self):
@@ -169,7 +169,7 @@ class KIMModelData:
         return self.neigh.coords
 
     @property
-    def particle_contributing(self):
+    def _particle_contributing(self):
         return self.neigh.particle_contributing
 
     @property
@@ -181,11 +181,11 @@ class KIMModelData:
         return hasattr(self, "kim_model")
 
     @property
-    def neigh_initialized(self):
+    def _neigh_initialized(self):
         return hasattr(self, "neigh")
 
     @property
-    def get_model_supported_species_and_codes(self):
+    def _get_model_supported_species_and_codes(self):
         return self.kim_model.get_model_supported_species_and_codes
 
 
@@ -253,7 +253,7 @@ class KIMModelCalculator(Calculator):
         # Create KIMModelData object. This will take care of creating and storing the KIM
         # API Portable Model object, KIM API ComputeArguments object, and the neighbor
         # list object that our calculator needs
-        self.kimmodeldata = KIMModelData(
+        self._kimmodeldata = KIMModelData(
             self.model_name, ase_neigh, self.neigh_skin_ratio, self.debug
         )
 
@@ -265,7 +265,7 @@ class KIMModelCalculator(Calculator):
     def __exit__(self, exc_type, value, traceback):
         # Explicitly deallocate all three objects held by the KIMModelData
         # instance referenced by our calculator
-        self.kimmodeldata.clean()
+        self._kimmodeldata.clean()
 
     def __repr__(self):
         return "KIMModelCalculator(model_name={})".format(self.model_name)
@@ -301,24 +301,24 @@ class KIMModelCalculator(Calculator):
             self._parameters_changed = False
 
         if system_changes:
-            if self.need_neigh_update(atoms, system_changes):
-                self.update_neigh(atoms, self.species_map)
+            if self._need_neigh_update(atoms, system_changes):
+                self._update_neigh(atoms, self._species_map)
                 self.energy = np.array([0.0], dtype=kimpy_wrappers.c_double)
                 self.forces = np.zeros(
-                    [self.num_particles[0], 3], dtype=kimpy_wrappers.c_double
+                    [self._num_particles[0], 3], dtype=kimpy_wrappers.c_double
                 )
-                self.update_compute_args_pointers(self.energy, self.forces)
+                self._update_compute_args_pointers(self.energy, self.forces)
             else:
-                self.update_kim_coords(atoms)
+                self._update_kim_coords(atoms)
 
-            self.kim_model.compute(self.compute_args, self.release_GIL)
+            self._kim_model.compute(self._compute_args, self.release_GIL)
 
         energy = self.energy[0]
-        forces = self.assemble_padding_forces()
+        forces = self._assemble_padding_forces()
 
         try:
             volume = atoms.get_volume()
-            stress = self.compute_virial_stress(self.forces, self.coords, volume)
+            stress = self._compute_virial_stress(self.forces, self._coords, volume)
         except ValueError:  # Volume cannot be computed
             stress = None
 
@@ -340,7 +340,7 @@ class KIMModelCalculator(Calculator):
 
         return system_changes
 
-    def assemble_padding_forces(self):
+    def _assemble_padding_forces(self):
         """
         Assemble forces on padding atoms back to contributing atoms.
 
@@ -361,17 +361,17 @@ class KIMModelCalculator(Calculator):
             Total forces on contributing atoms.
         """
 
-        total_forces = np.array(self.forces[: self.num_contributing_particles])
+        total_forces = np.array(self.forces[: self._num_contributing_particles])
 
-        if self.padding_image_of.size != 0:
-            pad_forces = self.forces[self.num_contributing_particles :]
-            for f, org_index in zip(pad_forces, self.padding_image_of):
+        if self._padding_image_of.size != 0:
+            pad_forces = self.forces[self._num_contributing_particles :]
+            for f, org_index in zip(pad_forces, self._padding_image_of):
                 total_forces[org_index] += f
 
         return total_forces
 
     @staticmethod
-    def compute_virial_stress(forces, coords, volume):
+    def _compute_virial_stress(forces, coords, volume):
         """Compute the virial stress in Voigt notation.
 
         Parameters
@@ -400,56 +400,53 @@ class KIMModelCalculator(Calculator):
 
         return stress
 
-    def get_model_supported_species_and_codes(self):
-        return self.kimmodeldata.get_model_supported_species_and_codes
+    @property
+    def _update_compute_args_pointers(self):
+        return self._kimmodeldata.update_compute_args_pointers
 
     @property
-    def update_compute_args_pointers(self):
-        return self.kimmodeldata.update_compute_args_pointers
+    def _kim_model(self):
+        return self._kimmodeldata.kim_model
 
     @property
-    def kim_model(self):
-        return self.kimmodeldata.kim_model
+    def _compute_args(self):
+        return self._kimmodeldata.compute_args
 
     @property
-    def compute_args(self):
-        return self.kimmodeldata.compute_args
+    def _num_particles(self):
+        return self._kimmodeldata.num_particles
 
     @property
-    def num_particles(self):
-        return self.kimmodeldata.num_particles
+    def _coords(self):
+        return self._kimmodeldata.coords
 
     @property
-    def coords(self):
-        return self.kimmodeldata.coords
+    def _padding_image_of(self):
+        return self._kimmodeldata.padding_image_of
 
     @property
-    def padding_image_of(self):
-        return self.kimmodeldata.padding_image_of
+    def _species_map(self):
+        return self._kimmodeldata.species_map
 
     @property
-    def species_map(self):
-        return self.kimmodeldata.species_map
+    def _neigh(self):
+        return self._kimmodeldata.neigh
 
     @property
-    def neigh(self):
-        return self.kimmodeldata.neigh
+    def _num_contributing_particles(self):
+        return self._neigh.num_contributing_particles
 
     @property
-    def num_contributing_particles(self):
-        return self.neigh.num_contributing_particles
+    def _update_kim_coords(self):
+        return self._neigh.update_kim_coords
 
     @property
-    def update_kim_coords(self):
-        return self.neigh.update_kim_coords
+    def _need_neigh_update(self):
+        return self._neigh.need_neigh_update
 
     @property
-    def need_neigh_update(self):
-        return self.neigh.need_neigh_update
-
-    @property
-    def update_neigh(self):
-        return self.neigh.update
+    def _update_neigh(self):
+        return self._neigh.update
 
     def parameters_metadata(self):
         """Metadata associated with all model parameters.
@@ -459,7 +456,7 @@ class KIMModelCalculator(Calculator):
         dict
             Meta data associated with all model parameters.
         """
-        num_params = self.kim_model.get_number_of_parameters()
+        num_params = self._kim_model.get_number_of_parameters()
         metadata = {}
         for ii in range(num_params):
             metadata.update(self._get_one_parameter_metadata(ii))
@@ -473,7 +470,7 @@ class KIMModelCalculator(Calculator):
         list
             Names of model parameters registered in the KIM API
         """
-        nparams = self.kim_model.get_number_of_parameters()
+        nparams = self._kim_model.get_number_of_parameters()
         names = []
         for ii in range(nparams):
             name = list(self._get_one_parameter_metadata(ii))[0]
@@ -576,16 +573,16 @@ class KIMModelCalculator(Calculator):
         been changed, this method *must* be called before calling the model's
         compute routine.
         """
-        self.kim_model.clear_then_refresh()
+        self._kim_model.clear_then_refresh()
 
         # Update neighbor list parameters
         (
             model_influence_dist,
             model_cutoffs,
             padding_not_require_neigh,
-        ) = self.kimmodeldata.get_model_neighbor_list_parameters()
+        ) = self._kimmodeldata.get_model_neighbor_list_parameters()
 
-        self.neigh.set_neigh_parameters(
+        self._neigh.set_neigh_parameters(
             self.neigh_skin_ratio,
             model_influence_dist,
             model_cutoffs,
@@ -676,7 +673,7 @@ class KIMModelCalculator(Calculator):
         dict
             Metadata associated with the requested model parameter.
         """
-        out = self.kim_model.get_parameter_metadata(index_parameter)
+        out = self._kim_model.get_parameter_metadata(index_parameter)
         dtype, extent, name, description, error = out
         dtype = repr(dtype)
         pdata = {
@@ -738,9 +735,9 @@ class KIMModelCalculator(Calculator):
         self._check_parameter_data_type(dtype)
 
         if dtype == "Double":
-            pp = self.kim_model.get_parameter_double(index_param, index_extent)[0]
+            pp = self._kim_model.get_parameter_double(index_param, index_extent)[0]
         elif dtype == "Integer":
-            pp = self.kim_model.get_parameter_int(index_param, index_extent)[0]
+            pp = self._kim_model.get_parameter_int(index_param, index_extent)[0]
 
         return pp
 
@@ -775,7 +772,7 @@ class KIMModelCalculator(Calculator):
         elif dtype == "Integer":
             value_typecast = kimpy_wrappers.c_int(value)
 
-        self.kim_model.set_parameter(index_param, index_extent, value_typecast)
+        self._kim_model.set_parameter(index_param, index_extent, value_typecast)
 
     def _one_parameter_data(self, parameter_name, index_range):
         """Get the data of one of the parameter. The data will be used in
