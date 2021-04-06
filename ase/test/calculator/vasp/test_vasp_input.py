@@ -11,12 +11,11 @@ from ase.build import bulk
 
 def dict_is_subset(d1, d2):
     """True if all the key-value pairs in dict 1 are in dict 2"""
-    for key, value in d1.items():
-        if key not in d2:
-            return False
-        elif d2[key] != value:
-            return False
-    return True
+    # Note, we are using direct comparison, so we should not compare
+    # floats if any real computations are made, as that would be unsafe.
+    # Cannot use pytest.approx here, because of of string comparison
+    # not being available in python 3.6.
+    return all(key in d2 and d1[key] == d2[key] for key in d1)
 
 
 @pytest.fixture
