@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 
 from ase.io import read
+from ase.io.formats import match_magic
 import ase.units as units
 
 
@@ -45,6 +46,10 @@ buf = r"""
  -------------------------------------------------------------------
 """
 
+def test_match_magic():
+    bytebuf = buf.encode('ascii')
+    assert match_magic(bytebuf).name == 'gaussian-out'
+
 def test_gaussian_out():
     fd = StringIO(buf)
     atoms = read(fd, format='gaussian-out')
@@ -57,8 +62,6 @@ def test_gaussian_out():
     assert not any(atoms.pbc)
     assert atoms.cell.rank == 0
 
-    print(atoms.calc)
-    print(atoms.positions / units.Bohr)
     energy = atoms.get_potential_energy()
     forces = atoms.get_forces()
     assert energy / units.Ha == pytest.approx(-12.3456789)
@@ -67,5 +70,3 @@ def test_gaussian_out():
         [0.4, 0.5, 0.6],
         [0.7, 0.8, 0.9],
     ]))
-
-    # dipole = atoms.get_dipole_moment()
