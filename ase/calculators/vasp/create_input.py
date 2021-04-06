@@ -532,7 +532,7 @@ bool_keys = [
     'oddonlygw',  # Avoid gamma point in response function calc.
     'evenonlygw',  # Avoid even points in response function calc.
     'lspectralgw',  # More accurate self-energy calculation
-    'ch_lspec',  # Calculate matrix elements between core and conduction states
+    'ch_lspec',  # Calculate matrix elements btw. core and conduction states
     'fletcher_reeves',  # Undocumented dimer parameter
     'lidm_selective',  # Undocumented dimer parameter
     'lblueout',  # Write output of blue-moon algorithm
