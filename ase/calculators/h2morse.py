@@ -46,7 +46,8 @@ class H2MorseCalculator(MorsePotential):
     """H2 ground or excited state as Morse potential"""
     _count = count(0)
 
-    def __init__(self, restart=None, state=0):
+    def __init__(self, restart=None, state=0, rng=np.random):
+        self.rng = rng
         MorsePotential.__init__(self,
                                 restart=restart,
                                 epsilon=De[state],
@@ -62,23 +63,20 @@ class H2MorseCalculator(MorsePotential):
         # Berry phase (arbitrary sign) and
         # random orientation of wave functions perpendicular
         # to the molecular axis
-        
+
         # molecular axis
         vr = atoms[1].position - atoms[0].position
         r = np.linalg.norm(vr)
         hr = vr / r
-        # defined seed for tests
-        seed = next(self._count)
-        np.random.seed(seed)
         # perpendicular axes
-        vrand = np.random.rand(3)
+        vrand = self.rng.rand(3)
         hx = np.cross(hr, vrand)
         hx /= np.linalg.norm(hx)
         hy = np.cross(hr, hx)
         hy /= np.linalg.norm(hy)
         wfs = [1, hr, hx, hy]
         # Berry phase
-        berry = (-1)**np.random.randint(0, 2, 4)
+        berry = (-1)**self.rng.randint(0, 2, 4)
         self.wfs = [wf * b for wf, b in zip(wfs, berry)]
 
     def read(self, filename):
@@ -91,7 +89,7 @@ class H2MorseCalculator(MorsePotential):
                               for x in f.readline().split()[:4]]))
         ms.filename = filename
         return ms
-        
+
     def write(self, filename, option=None):
         """write calculated state to a file"""
         with open(filename, 'w') as f:
@@ -135,7 +133,7 @@ class H2MorseExcitedStatesCalculator():
         cgs = atoms.calc
         r = atoms.get_distance(0, 1)
         E0 = cgs.get_potential_energy(atoms)
-        
+
         exl = H2MorseExcitedStates()
         for i in range(1, self.nstates + 1):
             hvec = cgs.wfs[0] * cgs.wfs[i]

@@ -2,11 +2,10 @@ import numpy as np
 import ase.units as un
 
 class SiestaLRTDDFT:
-    """Interface for linear response TDDFT for Siesta via
-    [PyNAO](https://mbarbry.website.fr.to/pynao/doc/html/)
+    """Interface for linear response TDDFT for Siesta via `PyNAO`_
 
-    When using PyNAO please cite the papers indicated at in the PyNAO
-    [documentation](https://mbarbry.website.fr.to/pynao/doc/html/references.html)
+    When using PyNAO please cite the papers indicated in the
+    `documentation <https://mbarbrywebsite.ddns.net/pynao/doc/html/references.html>`_
     """
     def __init__(self, initialize=False, **kw):
         """
