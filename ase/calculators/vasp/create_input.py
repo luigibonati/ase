@@ -807,7 +807,7 @@ class GenerateVaspInput:
             'metagga': 'MBJ',
         },
         'tb09': {
-            # Alternative name for MBJ
+            # Alias for MBJ
             'metagga': 'MBJ',
         },
         # vdW-DFs
@@ -1703,7 +1703,7 @@ class GenerateVaspInput:
                         self.bool_params[key] = False
 
                 elif key in list_bool_keys:
-                    self.list_bool_keys[key] = [
+                    self.list_bool_params[key] = [
                         _from_vasp_bool(x)
                         for x in _args_without_comment(data[2:])
                     ]
