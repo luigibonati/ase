@@ -14,7 +14,7 @@ def dict_is_subset(d1, d2):
     for key, value in d1.items():
         if key not in d2:
             return False
-        elif d2[key] != pytest.approx(value):
+        elif d2[key] != value:
             return False
     return True
 
