@@ -131,6 +131,7 @@ float_keys = [
     'auger_temp',  # Temperature for Auger calculation
     'dq',  # Finite difference displacement magnitude (NMR)
     'avgap',  # Average gap (Model GW)
+    'ch_sigma',  # Broadening of the core electron absorption spectrum
     'bpotim',  # Undocumented Bond-Boost parameter (GH patches)
     'qrr',  # Undocumented Bond-Boost parameter (GH patches)
     'prr',  # Undocumented Bond-Boost parameter (GH patches)
@@ -531,6 +532,7 @@ bool_keys = [
     'oddonlygw',  # Avoid gamma point in response function calc.
     'evenonlygw',  # Avoid even points in response function calc.
     'lspectralgw',  # More accurate self-energy calculation
+    'ch_lspec',  # Calculate matrix elements between core and conduction states
     'fletcher_reeves',  # Undocumented dimer parameter
     'lidm_selective',  # Undocumented dimer parameter
     'lblueout',  # Write output of blue-moon algorithm
