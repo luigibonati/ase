@@ -52,7 +52,7 @@ def test_parse_eigval():
     assert pytest.approx(kpts) == [[0., 0., 0.], [0.0, 0.1, 0.2]]
 
 
-elk_geometry_out = f"""
+elk_geometry_out = """
 scale
  1.0
 
