@@ -415,6 +415,7 @@ int_keys = [
     'nkoffopt',  # K-point "counter offset" for Optics
     'nbvalopt',  # Number of valence bands to write in OPTICS file
     'nbconopt',  # Number of conduction bands to write in OPTICS file
+    'ch_nedos',  # Number dielectric function calculation grid points for XAS
     'plevel',  # No timings for routines with "level" higher than this
     'qnl',  # Lanczos matrix size (instanton)
 ]
