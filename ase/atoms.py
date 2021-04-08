@@ -6,7 +6,7 @@
 This module defines the central object in the ASE package: the Atoms
 object.
 """
-from typing import Dict, Any, Union
+from typing import Dict, Any, Optional
 
 import copy
 import numbers
@@ -25,7 +25,7 @@ from ase.symbols import Symbols, symbols2numbers
 from ase.utils import deprecated
 
 
-def correct_occupancy_inplace(info: Dict[Union[int, str], Any]) -> None:
+def correct_occupancy_inplace(info: Optional[Dict[str, Any]]) -> None:
     """ A dictionary info['occupancy'] should have integer keys.
     Default JSON machinery converts all dictionary keys to strings.
     Hence, here is a correcting procedure.
