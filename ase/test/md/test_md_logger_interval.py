@@ -36,7 +36,7 @@ def fmax(forces):
 
 
 @pytest.mark.parametrize('cls', [FIRE, BFGS])
-def test_optimization_log_and_trajectory_length(cls):
+def test_optimization_log_and_trajectory_length(cls, testdir):
     logfile = 'opt.log'
     trajectory = 'opt.traj'
     atoms = make_dimer()
@@ -62,7 +62,7 @@ def test_optimization_log_and_trajectory_length(cls):
 
 @pytest.mark.parametrize('loginterval', [1, 2])
 @pytest.mark.parametrize('cls, kwargs', md_cls_and_kwargs)
-def test_md_log_and_trajectory_length(cls, kwargs, loginterval):
+def test_md_log_and_trajectory_length(cls, testdir, kwargs, loginterval):
     timestep = 1 * units.fs
     trajectory = 'md.traj'
     logfile = 'md.log'

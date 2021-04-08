@@ -22,6 +22,11 @@ from ase.build import molecule
 # in commit r4541
 
 
+@pytest.fixture(autouse=True)
+def _intempdir(tempdir):
+    pass
+
+
 @pytest.fixture
 def at():
     return bulk('Si')

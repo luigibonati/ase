@@ -5,13 +5,13 @@ from ase.build import molecule
 from ase.io.pov import get_bondpairs, set_high_bondorder_pairs
 
 
-def test_povray_io(povray_executable):
+def test_povray_io(testdir, povray_executable):
     H2 = molecule('H2')
     write_pov('H2.pov', H2)
     check_call([povray_executable, 'H2.pov'], stderr=DEVNULL)
 
 
-def test_povray_highorder(povray_executable):
+def test_povray_highorder(testdir, povray_executable):
     atoms = molecule('CH4')
     radii = [0.2] * len(atoms)
     bondpairs = get_bondpairs(atoms, radius=1.0)
@@ -39,6 +39,6 @@ def test_povray_highorder(povray_executable):
     print(pngfile.absolute())
 
 
-def test_deprecated():
+def test_deprecated(testdir):
     with pytest.warns(FutureWarning):
         write_pov('tmp.pov', molecule('H2'), run_povray=True)
