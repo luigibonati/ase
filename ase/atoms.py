@@ -6,6 +6,7 @@
 This module defines the central object in the ASE package: the Atoms
 object.
 """
+from typing import Dict, Any, Union
 
 import copy
 import numbers
@@ -22,6 +23,20 @@ from ase.geometry import (wrap_positions, find_mic, get_angles, get_distances,
                           get_dihedrals)
 from ase.symbols import Symbols, symbols2numbers
 from ase.utils import deprecated
+
+
+def correct_occupancy_inplace(info: Dict[Union[int, str], Any]) -> None:
+    """ A dictionary info['occupancy'] should have integer keys.
+    Default JSON machinery converts all dictionary keys to strings.
+    Hence, here is a correcting procedure.
+    """
+    if info is None or 'occupancy' not in info:
+        return
+
+    occ = info['occupancy']
+    for k in list(occ):
+        occ[int(k)] = occ[k]
+        del occ[k]
 
 
 class Atoms:
@@ -941,9 +956,12 @@ class Atoms:
             from ase.constraints import dict2constraint
             constraints = [dict2constraint(d) for d in constraints]
 
+        info = dct.pop('info', None)
+        correct_occupancy_inplace(info)
+
         atoms = cls(constraint=constraints,
                     celldisp=dct.pop('celldisp', None),
-                    info=dct.pop('info', None), **kw)
+                    info=info, **kw)
         natoms = len(atoms)
 
         # Some arrays are named differently from the atoms __init__ keywords.

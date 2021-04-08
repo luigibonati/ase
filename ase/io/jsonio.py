@@ -9,7 +9,6 @@ class MyEncoder(json.JSONEncoder):
     def default(self, obj):
         if hasattr(obj, 'todict'):
             d = obj.todict()
-
             if not isinstance(d, dict):
                 raise RuntimeError('todict() of {} returned object of type {} '
                                    'but should have returned dict'
