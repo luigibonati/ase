@@ -126,26 +126,35 @@ def monkeypatch_disabled_calculators(request, factories):
 
 
 @pytest.fixture(scope='session', autouse=True)
-def goto_testing_path(tmp_path_factory):
+def sessionlevel_testing_path(tmp_path_factory):
     path = Path(tmp_path_factory.mktemp('ase-test'))
+
     with workdir(path):
         yield path
-    for subpath in path.iterdir():
-        pytest.error(
-            'Test created a file as side effect but did not use the '
-            'testdir fixture.  Please declare the test so it uses that '
-            'fixture, e.g., "def mytest(testdir, ...)", if the test needs to '
-            'use the file system.')
 
 
 @pytest.fixture(autouse=True)
-def use_tmp_workdir(tmp_path):
+def _check_no_undeclared_leftover_files(sessionlevel_testing_path):
+    nfiles_before = len(list(sessionlevel_testing_path.iterdir()))
+    yield
+    nfiles_after = len(list(sessionlevel_testing_path.iterdir()))
+    if nfiles_after > nfiles_before:
+        raise RuntimeError(
+            'Test created a file as side effect but did not use the '
+            'testdir fixture.  For filesystem hygiene, please declare the '
+            'test so it uses that fixture, e.g.'
+            '"def mytest(testdir, ...): ...".  '
+            '(Or refrain from writing files from the test.).')
+
+
+@pytest.fixture(autouse=False)
+def testdir(tmp_path):
     # Pytest can on some systems provide a Path from pathlib2.  Normalize:
     path = Path(str(tmp_path))
     with workdir(path, mkdir=True):
         yield tmp_path
     # We print the path so user can see where test failed, if it failed.
-    print(f'Testpath: {path}')
+    print(f'Testdir: {path}')
 
 
 @pytest.fixture
