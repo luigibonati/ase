@@ -332,6 +332,7 @@ class NetCDFTrajectory:
         self.nc.ConventionVersion = '1.0'
         self.nc.program = 'ASE'
         self.nc.programVersion = ase.__version__
+        self.nc.title = "MOL"
 
         if self._frame_dim not in self.nc.dimensions:
             self.nc.createDimension(self._frame_dim, None)

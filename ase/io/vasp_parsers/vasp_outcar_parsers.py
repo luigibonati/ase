@@ -2,7 +2,8 @@
 Module for parsing OUTCAR files.
 """
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Sequence, TextIO, Iterator, Optional, Union
+from typing import (Dict, Any, Sequence, TextIO, Iterator, Optional, Union,
+                    List)
 import re
 from warnings import warn
 from pathlib import Path, PurePath
@@ -10,6 +11,7 @@ from pathlib import Path, PurePath
 import numpy as np
 import ase
 from ase import Atoms
+from ase.data import atomic_numbers
 from ase.io import ParseError, read
 from ase.io.utils import ImageChunk
 from ase.calculators.singlepoint import SinglePointDFTCalculator, SinglePointKPoint
@@ -79,7 +81,7 @@ class VaspPropertyParser(ABC):
     def parse(self, cursor: _CURSOR, lines: _CHUNK) -> _RESULT:
         """Extract a property from the cursor position.
         Assumes that "has_property" would evaluate to True
-        from cursor position"""
+        from cursor position """
 
 
 class SimpleProperty(VaspPropertyParser, ABC):
@@ -149,37 +151,65 @@ class SpeciesTypes(SimpleVaspHeaderParser):
     """Parse species types.
 
     Example line:
-    "POSCAR: Mg Al"
-    or
-    "POSCAR: Ir2 O4"
+    " POTCAR:    PAW_PBE Ni 02Aug2007"
 
-    Gives a list of the species, in the order of appearance.
-    Does not return informaiton about the number of ions per species.
+    We must parse this multiple times, as it's scattered in the header.
+    So this class has to simply parse the entire header.
     """
-    LINE_DELIMITER = 'POSCAR:'
+    LINE_DELIMITER = 'POTCAR:'
+
+    def __init__(self, *args, **kwargs):
+        self._species = []  # Store species as we find them
+        # We count the number of times we found the line,
+        # as we only want to parse every second,
+        # due to repeated entries in the OUTCAR
+        self.species_count = 0
+        super().__init__(*args, **kwargs)
+
+    @property
+    def species(self) -> List[str]:
+        return self._species
+
+    def _make_returnval(self) -> _RESULT:
+        """Construct the return value for the "parse" method"""
+        return {'species': self.species}
 
     def parse(self, cursor: _CURSOR, lines: _CHUNK) -> _RESULT:
         line = lines[cursor].strip()
-        parts = line.split(':')
+        self.species_count += 1
+        if self.species_count % 2 == 0:
+            # the 'POTCAR:' line always appears twice,
+            # so only parse every second occurence
+            return self._make_returnval()
+        parts = line.split()
+        # Determine in what position we'd expect to find the symbol
+        if '1/r potential' in line:
+            # This denotes an AE potential
+            # Currently only H_AE
+            # "  H  1/r potential  "
+            idx = 1
+        else:
+            # Regular PAW potential, e.g.
+            # "PAW_PBE H1.25 07Sep2000" or
+            # "PAW_PBE Fe_pv 02Aug2007"
+            idx = 2
 
-        # We should only have 2 parts:
-        # ['POSCAR', <species>]
-        if len(parts) != 2:
+        sym = parts[idx]
+        # remove "_h", "_GW", "_3" tags etc.
+        sym = sym.split('_')[0]
+        # in the case of the "H1.25" potentials etc.,
+        # remove any non-alphabetic characters
+        sym = ''.join([s for s in sym if s.isalpha()])
+
+        if sym not in atomic_numbers:
+            # Check that we have properly parsed the symbol, and we found
+            # an element
             raise ParseError(
-                f'Got an unexpected line when parsing species: {line}')
-        # Get the species from the line
-        species_line = parts[-1]
-        # Split the species, and parse them individually
-        parts = species_line.split()
-        species = []
-        for part in parts:
-            # We may need to strip numbers from the species, we determine
-            # the number of species later
-            # e.g. in the case of "Ir2 O4" we just want "Ir" and "O"
-            specie = ''.join(c for c in part if not c.isnumeric())
-            species.append(specie)
+                f'Found an unexpected symbol {sym} in line {line}')
 
-        return {'species': species}
+        self.species.append(sym)
+
+        return self._make_returnval()
 
 
 class IonsPerSpecies(SimpleVaspHeaderParser):
@@ -435,11 +465,12 @@ class DefaultParsersContainer:
             self.add_parser(parser)
 
     @property
-    def parsers_dct(self):
+    def parsers_dct(self) -> dict:
         return self._parsers_dct
 
     def make_parsers(self):
-        """Return a copy of the internally stored parsers"""
+        """Return a copy of the internally stored parsers.
+        Parsers are created upon request."""
         return list(parser() for parser in self.parsers_dct.values())
 
     def remove_parser(self, name: str):
@@ -452,7 +483,8 @@ class DefaultParsersContainer:
 
 
 class TypeParser(ABC):
-    """Base class for parsing a type, e.g. header or chunk, by applying the internal attached parsers"""
+    """Base class for parsing a type, e.g. header or chunk, 
+    by applying the internal attached parsers"""
     def __init__(self, parsers):
         self.parsers = parsers
 
@@ -461,7 +493,7 @@ class TypeParser(ABC):
         return self._parsers
 
     @parsers.setter
-    def parsers(self, new_parsers):
+    def parsers(self, new_parsers) -> None:
         self._check_parsers(new_parsers)
         self._parsers = new_parsers
 
@@ -469,7 +501,7 @@ class TypeParser(ABC):
     def _check_parsers(self, parsers) -> None:
         """Check the parsers are of correct type"""
 
-    def parse(self, lines):
+    def parse(self, lines) -> _RESULT:
         """Execute the attached paresers, and return the parsed properties"""
         properties = {}
         for cursor, _ in enumerate(lines):
@@ -495,11 +527,11 @@ class ChunkParser(TypeParser, ABC):
         return self._header
 
     @header.setter
-    def header(self, value: Optional[_HEADER]):
+    def header(self, value: Optional[_HEADER]) -> None:
         self._header = value or {}
         self.update_parser_headers()
 
-    def update_parser_headers(self):
+    def update_parser_headers(self) -> None:
         """Apply the header to all available parsers"""
         for parser in self.parsers:
             parser.header = self.header
@@ -550,7 +582,7 @@ class OutcarChunkParser(ChunkParser):
         symbols = self.header['symbols']
         constraint = self.header.get('constraint', None)
 
-        atoms_kwargs = dict(symbols=symbols, constraint=constraint)
+        atoms_kwargs = dict(symbols=symbols, constraint=constraint, pbc=True)
 
         # Find some required properties in the parsed results.
         # Raise ParseError if they are not present

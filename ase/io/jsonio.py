@@ -89,6 +89,9 @@ def create_ase_object(objtype, dct):
     elif objtype == 'atoms':
         from ase import Atoms
         obj = Atoms.fromdict(dct)
+    elif objtype == 'vibrationsdata':
+        from ase.vibrations import VibrationsData
+        obj = VibrationsData.fromdict(dct)
     else:
         raise ValueError('Do not know how to decode object type {} '
                          'into an actual object'.format(objtype))
