@@ -19,14 +19,7 @@ def op2(a, m):
     return a, a.positions[0]
 
 
-def test_sqlite():
-    print('test_single_file')
-
-    try:
-        os.remove('checkpoints.db')
-    except OSError:
-        pass
-
+def test_sqlite(testdir):
     CP = Checkpoint('checkpoints.db')
     a = Diamond('Si', size=[2, 2, 2])
     a = CP(op1)(a, 1.0)
@@ -45,11 +38,6 @@ def test_sqlite():
 
 
 def rattle_calc(atoms, calc):
-    try:
-        os.remove('checkpoints.db')
-    except OSError:
-        pass
-
     orig_atoms = atoms.copy()
 
     # first do a couple of calculations
