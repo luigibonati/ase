@@ -125,6 +125,19 @@ def monkeypatch_disabled_calculators(request, factories):
     factories.monkeypatch_disabled_calculators()
 
 
+@pytest.fixture(scope='session', autouse=True)
+def goto_testing_path(tmp_path_factory):
+    path = Path(tmp_path_factory.mktemp('ase-test'))
+    with workdir(path):
+        yield path
+    for subpath in path.iterdir():
+        pytest.error(
+            'Test created a file as side effect but did not use the '
+            'testdir fixture.  Please declare the test so it uses that '
+            'fixture, e.g., "def mytest(testdir, ...)", if the test needs to '
+            'use the file system.')
+
+
 @pytest.fixture(autouse=True)
 def use_tmp_workdir(tmp_path):
     # Pytest can on some systems provide a Path from pathlib2.  Normalize:
