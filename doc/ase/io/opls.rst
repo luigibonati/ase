@@ -28,7 +28,7 @@ Defining the force field
 The definitions of the force field can be stored in an Amber like style 
 (``172_defs.par``):
 
-.. literalinclude:: 172_defs.par
+.. literalinclude:: ../../../ase/test/testdata/172_defs.par
 
 We can write LAMMPS input using the information above:
 

@@ -242,159 +242,89 @@ keyword                 type      default value description
                                                 coordinates will be written in.
 ======================= ========= ============= =====================================
 
-TDDFT Calculations
-==================
-
-It is possible to run Time Dependent Density Functional Theory (TDDFT) using the 
-`PYSCF-NAO <https://github.com/cfm-mpc/pyscf/tree/nao/pyscf/lib/nao>`_ code together 
-with the SIESTA code. This code allows to run TDDFT up to 
-thousand atoms with small computational ressources. Visit the 
-`github <https://github.com/cfm-mpc/pyscf/tree/nao>`_ webpage for 
-further informations about PYSCF-NAO.
-
-Example of code to calculate polarizability of Na8 cluster,::
-
-  from ase.units import Ry, eV, Ha
-  from ase.calculators.siesta import Siesta
-  from ase import Atoms
-  import numpy as np
-  import matplotlib.pyplot as plt
-
-  # Define the systems
-  Na8 = Atoms('Na8',
-               positions=[[-1.90503810, 1.56107288, 0.00000000],
-                          [1.90503810, 1.56107288, 0.00000000],
-                          [1.90503810, -1.56107288, 0.00000000],
-                          [-1.90503810, -1.56107288, 0.00000000],
-                          [0.00000000, 0.00000000, 2.08495836],
-                          [0.00000000, 0.00000000, -2.08495836],
-                          [0.00000000, 3.22798122, 2.08495836],
-                          [0.00000000, 3.22798122, -2.08495836]],
-               cell=[20, 20, 20])
-
-  # Siesta input
-  siesta = Siesta(
-              mesh_cutoff=150 * Ry,
-              basis_set='DZP',
-              pseudo_qualifier='',
-              energy_shift=(10 * 10**-3) * eV,
-              fdf_arguments={
-                  'SCFMustConverge': False,
-                  'COOP.Write': True,
-                  'WriteDenchar': True,
-                  'PAO.BasisType': 'split',
-                  'SCF.DM.Tolerance': 1e-4,
-                  'DM.MixingWeight': 0.01,
-                  'MaxSCFIterations': 300,
-                  'DM.NumberPulay': 4,
-                  'XML.Write': True})
-
-  Na8.calc = siesta
-  e = Na8.get_potential_energy()
-  freq, pol = siesta.get_polarizability_pyscf_inter(label="siesta",
-                                                    jcutoff=7,
-                                                    iter_broadening=0.15/Ha,
-                                                    xc_code='LDA,PZ',
-                                                    tol_loc=1e-6,
-                                                    tol_biloc=1e-7,
-                                                    freq = np.arange(0.0, 5.0, 0.05))
-  # plot polarizability
-  plt.plot(freq, pol[:, 0, 0].imag)
-  plt.show()
-
-Remark: 
--------
-
-The PYSCF-NAO code is still under active development and to have access to
-it with ASE you will need to use this PYSCF `fork <https://github.com/cfm-mpc/pyscf>`_ 
-and use the branch nao. To summarize::
-
-  git clone https://github.com/cfm-mpc/pyscf
-  git fetch
-  git checkout nao
-
-Then you can follow the instruction of the `README <https://github.com/cfm-mpc/pyscf/blob/nao/pyscf/lib/nao/README.md>`_.
-The installation is relatively easy, go to the lib directory::
-  
-  cd pyscf/pyscf/lib
-  cp cmake_arch_config/cmake.arch.inc-your-config cmake.arch.inc
-  mkdir build
-  cd build
-  cmake ..
-  make
-
-Then you need to add the pyscf directory to your PYTHONPATH
-
-.. code-block:: none
-
-  export PYTHONPATH=/PATH-TO-PYSCF/pyscf:$PYTHONPATH
-
-.. _Siesta Raman:
-
-Raman Calculations with SIESTA and PYSCF-NAO
-============================================
-
-It is possible to calculate the Raman spectra with SIESTA, PYSCF-NAO anf the
-vibration module from ASE. Example with CO2,::
-
-  from ase.units import Ry, eV, Ha
-  from ase.calculators.siesta import Siesta
-  from ase.calculators.siesta.siesta_raman import SiestaRaman
-  from ase import Atoms
-  import numpy as np
-
-  # Define the systems
-  # example of Raman calculation for CO2 molecule,
-  # comparison with QE calculation can be done from
-  # https://github.com/maxhutch/quantum-espresso/blob/master/PHonon/examples/example15/README
-
-  CO2 = Atoms('CO2',
-              positions=[[-0.009026, -0.020241, 0.026760],
-                         [1.167544, 0.012723, 0.071808],
-                         [-1.185592, -0.053316, -0.017945]],
-              cell=[20, 20, 20])
-
-  # enter siesta input
-  # To perform good vibrational calculations it is strongly advised
-  # to relax correctly the molecule geometry before to actually run the
-  # calculations. Then to use a large mesh_cutoff and to have the option
-  # PAO.SoftDefault turned on
-  siesta = Siesta(
-      mesh_cutoff=450 * Ry,
-      basis_set='DZP',
-      xc="GGA",
-      pseudo_qualifier='gga',
-      energy_shift=(10 * 10**-3) * eV,
-      fdf_arguments={
-          'SCFMustConverge': False,
-          'COOP.Write': True,
-          'WriteDenchar': True,
-          'PAO.BasisType': 'split',
-          "PAO.SoftDefault": True,
-          'SCF.DM.Tolerance': 1e-4,
-          'DM.MixingWeight': 0.01,
-          'MaxSCFIterations': 300,
-          'DM.NumberPulay': 4,
-          'XML.Write': True,
-          'DM.UseSaveDM': True})
-
-  CO2.calc = siesta
-
-  ram = SiestaRaman(CO2, siesta, nfree=4, label="siesta", jcutoff=7, iter_broadening=0.15/Ha,
-          xc_code='LDA,PZ', tol_loc=1e-6, tol_biloc=1e-7, freq = np.arange(0.0, 5.0, 0.05))
-
-  ram.run()
-  ram.summary(intensity_unit_ram='A^4 amu^-1')
-  ram.write_spectra(start=200, intensity_unit_ram='A^4 amu^-1')
-
-
-Further Examples
-================
-See also ``ase/test/calculators/siesta/test_scripts`` for further examples
-on how the calculator can be used.
-
-
 Siesta Calculator Class
 =======================
 
 .. autoclass:: ase.calculators.siesta.siesta.Siesta
+
+
+Excited states calculations
+===========================
+
+The `PyNAO <https://mbarbrywebsite.ddns.net/pynao/doc/html/>`_ code can be used
+to access excited state properties after having obtained the ground state
+properties with SIESTA. PyNAO allows to perform
+
+* Time Dependent Density Functional Theory (TDDFT) calculations
+* GW approximation calculations
+* Bethe-Salpeter equation (BSE) calculations.
+
+Example of code to calculate polarizability of CH4 molecule::
+
+  from ase.calculators.siesta.siesta_lrtddft import SiestaLRTDDFT
+  from ase.build import molecule
+  import numpy as np
+
+  # Define the systems
+  ch4 = molecule('CH4')
+  lrtddft = SiestaLRTDDFT(label="siesta", xc_code='LDA,PZ')
+
+  # run DFT with siesta
+  lrtddft.get_ground_state(ch4)
+
+  # Run TDDFT with PyNAO
+  freq = np.arange(0.0, 25.0, 0.5)
+  pmat = lrtddft.get_polarizability(freq)
+
+  import matplotlib.pyplot as plt
+
+  plt.plot(freq, pmat[0, 0, :].imag)
+  plt.show()
+
+Raman Calculations with SIESTA and PyNAO
+========================================
+
+It is possible to calculate the Raman spectra with SIESTA and PyNAO using the
+Raman function of the vibration module::
+
+  from ase.calculators.siesta.siesta_lrtddft import RamanCalculatorInterface
+  from ase.calculators.siesta import Siesta
+  from ase.vibrations.raman import StaticRamanCalculator
+  from ase.vibrations.placzek import PlaczekStatic
+  from ase.build import molecule
+
+  n2 = molecule('N2')
+
+  # enter siesta input
+  n2.calc = Siesta(
+      basis_set='DZP',
+      fdf_arguments={
+          'COOP.Write': True,
+          'WriteDenchar': True,
+          'XML.Write': True})
+
+  name = 'n2'
+  pynao_args = dict(label="siesta", jcutoff=7, iter_broadening=0.15,
+                    xc_code='LDA,PZ', tol_loc=1e-6, tol_biloc=1e-7)
+  rm = StaticRamanCalculator(n2, RamanCalculatorInterface, name=name,
+                             delta=0.011, exkwargs=pynao_args)
+  rm.run()
+
+  Pz = PlaczekStatic(n2, name=name)
+  e_vib = Pz.get_energies()
+  Pz.summary()
+
+Further Examples
+================
+See also ``ase/test/calculators/siesta/lrtddft`` for further examples
+on how the calculator can be used.
+
+Siesta lrtddft Class
+====================
+
+.. autoclass:: ase.calculators.siesta.siesta_lrtddft.SiestaLRTDDFT
+
+Siesta RamanCalculatorInterface Calculator Class
+================================================
+
+.. autoclass:: ase.calculators.siesta.siesta_lrtddft.RamanCalculatorInterface

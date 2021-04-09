@@ -37,6 +37,8 @@ Algorithms:
 I/O:
 
 * Reading of "chemical json" file types with name ``*.cml`` is enabled.
+* LAMMPS dump: Reading of elements column added, with priority over types
+  if given. All four of the position specifier columns read correctly now.
 
 * Format readers that would by default read or write specific files
   into current working directory no longer do so.  A path, whether
