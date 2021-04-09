@@ -28,6 +28,12 @@ Algorithms:
 * :meth:`phonons.get_dos` now returns a DOS object based on the new
   framework in :mod:`ase.spectrum`.
 
+* :class:`ase.neb.NEB` has been overhauled and given support for
+  preconditioning via a new `precon` argument to its constructor,
+  and two newly supported methods, `spline` for spline-interpolated
+  tangets and `string` for the string method, both of which support
+  preconditioning. The default behaviour should be unchanged.
+
 I/O:
 
 * Reading of "chemical json" file types with name ``*.cml`` is enabled.
