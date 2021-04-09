@@ -1,8 +1,18 @@
-def test_jsonio_atoms():
-    import numpy as np
-    from ase.build import bulk, molecule
-    from ase.io.jsonio import encode, decode
+from ase.io.jsonio import encode, decode
+from ase.build import bulk, molecule
+import numpy as np
 
+def test_jsonio_atoms_info():
+    atoms_ref = bulk('Ti')
+    atoms_ref.info['occupancy'] = {0: 'anything'}
+    txt = encode(atoms_ref)
+    atoms = decode(txt)
+    key = next(iter(atoms.info['occupancy']))
+    assert isinstance(key, int)
+
+
+
+def test_jsonio_atoms():
 
     def assert_equal(atoms1, atoms2):
         assert atoms1 == atoms2
