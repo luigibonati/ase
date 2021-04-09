@@ -6,8 +6,6 @@
 This module defines the central object in the ASE package: the Atoms
 object.
 """
-from typing import Dict, Any, Optional
-
 import copy
 import numbers
 from math import cos, sin, pi
@@ -23,20 +21,7 @@ from ase.geometry import (wrap_positions, find_mic, get_angles, get_distances,
                           get_dihedrals)
 from ase.symbols import Symbols, symbols2numbers
 from ase.utils import deprecated
-
-
-def correct_info_inplace(info: Optional[Dict[str, Any]]) -> None:
-    """ A dictionary info['occupancy'] should have integer keys.
-    Default JSON machinery converts all dictionary keys to strings.
-    Hence, here is a correcting procedure.
-    """
-    if info is None:
-        return
-
-    occ = info['occupancy']
-    for k in list(occ):
-        occ[int(k)] = occ[k]
-        del occ[k]
+from ase.utils.jsonio_atoms import get_original_atoms_info, get_json_safe_atoms_info
 
 
 class Atoms:
@@ -939,7 +924,7 @@ class Atoms:
         if self.constraints:
             d['constraints'] = self.constraints
         if self.info:
-            d['info'] = self.info
+            d['info'] = get_json_safe_atoms_info(self.info)
         # Calculator...  trouble.
         return d
 
@@ -956,8 +941,8 @@ class Atoms:
             from ase.constraints import dict2constraint
             constraints = [dict2constraint(d) for d in constraints]
 
-        info = dct.pop('info', None)
-        correct_info_inplace(info)
+        info_json = dct.pop('info', None)
+        info = get_original_atoms_info(info_json) if info_json else info_json
 
         atoms = cls(constraint=constraints,
                     celldisp=dct.pop('celldisp', None),

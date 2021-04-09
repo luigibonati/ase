@@ -5,10 +5,10 @@ import numpy as np
 
 def test_jsonio_atoms_info():
     atoms_ref = bulk('Ti')
-    atoms_ref.info['occupancy'] = {0: 'anything'}
+    atoms_ref.info['any_name_for_a_dictionary'] = {0: 'anything'}
     text = encode(atoms_ref)
     atoms = decode(text)
-    key = next(iter(atoms.info['occupancy']))
+    key = next(iter(atoms.info['any_name_for_a_dictionary']))
     assert isinstance(key, int)
 
 
@@ -20,7 +20,6 @@ def test_jsonio_atoms():
         for name in atoms1.arrays:
             assert np.array_equal(atoms1.arrays[name], atoms2.arrays[name]), name
 
-
     atoms = bulk('Ti')
     print('atoms', atoms)
     txt = encode(atoms)
@@ -31,7 +30,6 @@ def test_jsonio_atoms():
     txt1 = encode(atoms1)
     assert txt == txt1
     assert_equal(atoms, atoms1)
-
 
     BeH = molecule('BeH')
     assert BeH.has('initial_magmoms')
