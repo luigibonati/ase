@@ -125,7 +125,7 @@ class SetupNanoparticle:
         self.no_update = True
         self.old_structure = 'undefined'
 
-        win = self.win = ui.Window(_('Nanoparticle'), wmtype='dialog')
+        win = self.win = ui.Window(_('Nanoparticle'), wmtype='utility')
         win.add(ui.Text(introtext))
 
         self.element = Element('', self.apply)

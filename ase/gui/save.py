@@ -22,7 +22,11 @@ last image. Examples: "name@-1": last image,
 
 def save_dialog(gui, filename=None):
     dialog = ui.SaveFileDialog(gui.window.win, _('Save ...'))
-    ui.set_windowtype_to_dialog(dialog) #fix tkinter not automatically setting this
+    # fix tkinter not automatically setting dialog type
+    # remove from Python3.8+
+    # see https://github.com/python/cpython/pull/25187
+    # and https://bugs.python.org/issue43655
+    ui.set_windowtype_to_dialog(dialog)
     ui.Text(text).pack(dialog.top)
     filename = filename or dialog.go()
     if not filename:

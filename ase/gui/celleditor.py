@@ -45,7 +45,7 @@ class CellEditor:
         self.vacuum = ui.SpinBox(5, 0, 15, 0.1, self.apply_vacuum)
 
         # TRANSLATORS: This is a title of a window.
-        win = self.win = ui.Window(_('Cell Editor'), wmtype='dialog')
+        win = self.win = ui.Window(_('Cell Editor'), wmtype='utility')
 
         x, y, z = self.cell_grid
 
