@@ -142,9 +142,9 @@ float_keys = [
     'efirst',  # Energy of first NEB image (GH patches)
     'elast',  # Energy of final NEB image (GH patches)
     'fmagval',  # Force magnitude convergence criterion (GH patches)
-    'cmbj',  # Undocumented MetaGGA parameter
-    'cmbja',  # Undocumented MetaGGA parameter
-    'cmbjb',  # Undocumented MetaGGA parameter
+    'cmbj',  # Modified Becke-Johnson MetaGGA c-parameter
+    'cmbja',  # Modified Becke-Johnson MetaGGA alpha-parameter
+    'cmbjb',  # Modified Becke-Johnson MetaGGA beta-parameter
     'sigma_nc_k',  # Width of ion gaussians (VASPsol)
     'sigma_k',  # Width of dielectric cavidty (VASPsol)
     'nc_k',  # Cavity turn-on density (VASPsol)
@@ -804,6 +804,14 @@ class GenerateVaspInput:
             'metagga': 'SCAN',
             'luse_vdw': True,
             'bparam': 15.7
+        },
+        'mbj': {
+            # Modified Becke-Johnson
+            'metagga': 'MBJ',
+        },
+        'tb09': {
+            # Alias for MBJ
+            'metagga': 'MBJ',
         },
         # vdW-DFs
         'vdw-df': {
@@ -1698,7 +1706,7 @@ class GenerateVaspInput:
                         self.bool_params[key] = False
 
                 elif key in list_bool_keys:
-                    self.list_bool_keys[key] = [
+                    self.list_bool_params[key] = [
                         _from_vasp_bool(x)
                         for x in _args_without_comment(data[2:])
                     ]
