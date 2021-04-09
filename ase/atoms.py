@@ -25,12 +25,12 @@ from ase.symbols import Symbols, symbols2numbers
 from ase.utils import deprecated
 
 
-def correct_occupancy_inplace(info: Optional[Dict[str, Any]]) -> None:
+def correct_info_inplace(info: Optional[Dict[str, Any]]) -> None:
     """ A dictionary info['occupancy'] should have integer keys.
     Default JSON machinery converts all dictionary keys to strings.
     Hence, here is a correcting procedure.
     """
-    if info is None or 'occupancy' not in info:
+    if info is None:
         return
 
     occ = info['occupancy']
@@ -957,7 +957,7 @@ class Atoms:
             constraints = [dict2constraint(d) for d in constraints]
 
         info = dct.pop('info', None)
-        correct_occupancy_inplace(info)
+        correct_info_inplace(info)
 
         atoms = cls(constraint=constraints,
                     celldisp=dct.pop('celldisp', None),
