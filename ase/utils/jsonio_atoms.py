@@ -4,6 +4,7 @@ import copy
 """ These functions could not be in ase.io.jsonio since
     a circular dependency arises. """
 
+
 def convert_to_ase_json_dict(dct: Dict[str, Any]) -> Dict[str, Any]:
     """ ... to preserve types of keys in a dictionary.
         It makes the data json-safe.
