@@ -6,7 +6,6 @@
 This module defines the central object in the ASE package: the Atoms
 object.
 """
-
 import copy
 import numbers
 from math import cos, sin, pi
@@ -22,6 +21,7 @@ from ase.geometry import (wrap_positions, find_mic, get_angles, get_distances,
                           get_dihedrals)
 from ase.symbols import Symbols, symbols2numbers
 from ase.utils import deprecated
+from ase.utils.jsonio_atoms import get_original_atoms_info, get_json_safe_atoms_info
 
 
 class Atoms:
@@ -924,7 +924,7 @@ class Atoms:
         if self.constraints:
             d['constraints'] = self.constraints
         if self.info:
-            d['info'] = self.info
+            d['info'] = get_json_safe_atoms_info(self.info)
         # Calculator...  trouble.
         return d
 
@@ -941,9 +941,12 @@ class Atoms:
             from ase.constraints import dict2constraint
             constraints = [dict2constraint(d) for d in constraints]
 
+        info_json = dct.pop('info', None)
+        info = get_original_atoms_info(info_json) if info_json else info_json
+
         atoms = cls(constraint=constraints,
                     celldisp=dct.pop('celldisp', None),
-                    info=dct.pop('info', None), **kw)
+                    info=info, **kw)
         natoms = len(atoms)
 
         # Some arrays are named differently from the atoms __init__ keywords.
