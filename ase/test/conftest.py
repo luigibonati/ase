@@ -125,16 +125,26 @@ def monkeypatch_disabled_calculators(request, factories):
     factories.monkeypatch_disabled_calculators()
 
 
-@pytest.fixture(scope='session', autouse=True)
-def sessionlevel_testing_path(tmp_path_factory):
-    path = Path(tmp_path_factory.mktemp('ase-test'))
-
-    with workdir(path):
-        yield path
-
-
 class BadUnitTest(Exception):
     pass
+
+
+def excess_files():
+    return BadUnitTest("""\
+Stale files: There are tests or fixtures which create files.  \
+Please use the testdir fixture to ensure that they have a clean directory, \
+e.g. "def mytest(testdir, ...): ...".  Higher-scoped fixtures should use \
+the tmp_path_factory fixture to create a tempdir.""")
+
+
+@pytest.fixture(scope='session', autouse=True)
+def sessionlevel_testing_path(tmp_path_factory):
+    path = Path(tmp_path_factory.mktemp('ase-test-workdir'))
+    with workdir(path):
+        yield path
+    garbage = list(path.iterdir())
+    if garbage:
+        raise excess_files()
 
 
 @pytest.fixture(autouse=True)
@@ -147,12 +157,7 @@ def _check_no_undeclared_leftover_files(sessionlevel_testing_path):
     if len(files_after) > len(files_before):
         print('Files created by test:')
         print(files_after - files_before)
-        raise BadUnitTest(
-            'Test created a file as side effect but did not use the '
-            'testdir fixture.  For filesystem hygiene, please declare the '
-            'test so it uses that fixture, e.g.'
-            '"def mytest(testdir, ...): ...".  '
-            '(Or refrain from writing files from the test.).')
+        raise excess_files()
 
 
 @pytest.fixture(autouse=False)
