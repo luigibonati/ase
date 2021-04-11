@@ -7,7 +7,7 @@ from ase.optimize import FIRE, BFGS
 
 
 @pytest.mark.slow
-def test_neb_tr():
+def test_neb_tr(testdir):
     nimages = 3
     fmax = 0.01
 
