@@ -10,7 +10,7 @@ from ase.constraints import FixLinearTriatomic
 import ase.units as units
 
 
-def test_rattle_linear():
+def test_rattle_linear(testdir):
     """Test RATTLE and QM/MM for rigid linear acetonitrile."""
 
 

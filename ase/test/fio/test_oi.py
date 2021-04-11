@@ -93,7 +93,7 @@ def all_tested_formats():
 
 
 @pytest.mark.parametrize('format', all_tested_formats())
-def test_ioformat(testdir, format, atoms, catch_warnings):
+def test_ioformat(format, atoms, catch_warnings):
     if format in ['proteindatabank', 'netcdftrajectory']:
         warnings.simplefilter('ignore', UserWarning)
         # netCDF4 uses np.bool which may cause warnings in new numpy.

@@ -153,14 +153,14 @@ def test_export_graphics(gui, testdir, with_bulk_ti, monkeypatch, filename):
         assert Path(realfilename).is_file()
 
 
-def test_fracocc(gui):
+def test_fracocc(gui, testdir):
     from ase.test.fio.test_cif import content
     with open('./fracocc.cif', 'w') as fd:
         fd.write(content)
     gui.open(filename='fracocc.cif')
 
 
-def test_povray(gui):
+def test_povray(gui, testdir):
     mol = molecule('H2O')
     gui.new_atoms(mol) # not gui.set_atoms(mol)
     n = gui.render_window()

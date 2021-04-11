@@ -31,7 +31,7 @@ def final(initial):
     return atoms
 
 
-def test_emt_h3o2m(initial, final):
+def test_emt_h3o2m(initial, final, testdir):
     # Make band:
     images = [initial.copy()]
     for i in range(3):

@@ -12,7 +12,7 @@ from ase.optimize import BFGS
 
 
 @pytest.mark.slow
-def test_COCu111_2():
+def test_COCu111_2(testdir):
     logfile = "-"  # supresses
 
     Optimizer = BFGS
