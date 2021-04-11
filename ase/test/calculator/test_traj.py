@@ -24,12 +24,12 @@ calc = pytest.mark.calculator
 # Deprecated keyword, remove this once things are resolved
 @calc('abinit', 'cp2k', 'emt')
 @calc('vasp', xc='lda', prec='low')
-def test_h2_traj(factory):
+def test_h2_traj(factory, testdir):
     run(factory)
 
 
 @pytest.mark.parametrize('name', sorted(parameters))
-def test_h2_traj_old(name):
+def test_h2_traj_old(name, testdir):
     factory = ObsoleteFactoryWrapper(name)
     run(factory)
 
