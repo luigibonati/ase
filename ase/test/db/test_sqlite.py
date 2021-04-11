@@ -1,6 +1,10 @@
+import pytest
+
 import os
 from ase.db import connect
 
+
+pytestmark = pytest.mark.usefixtures('testdir')
 db_name = "test_vacuum.db"
 
 

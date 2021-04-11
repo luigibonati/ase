@@ -140,7 +140,7 @@ def test_db2(testdir, name):
     assert next(c.select(offset=offset)).id == ids[offset]
 
 
-def test_sqlite_user():
+def test_sqlite_user(testdir):
     """Make sure user=someone works.  Is called username in SQLite."""
     db = connect('test_user.db')
     assert list(db.select(user='someone')) == []

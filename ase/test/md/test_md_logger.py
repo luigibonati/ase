@@ -36,7 +36,7 @@ md_cls_and_kwargs = [
 
 
 @pytest.mark.parametrize('cls', [FIRE, BFGS])
-def test_optimizer(cls, testdir, atoms, calc, testdir):
+def test_optimizer(cls, testdir, atoms, calc):
     """run optimization and verify that log and trajectory coincide"""
 
     opt_atoms = atoms.copy()
