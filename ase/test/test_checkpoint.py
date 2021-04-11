@@ -1,5 +1,3 @@
-import os
-
 import numpy as np
 
 from ase import Atom
@@ -69,7 +67,7 @@ def rattle_calc(atoms, calc):
     assert(np.abs(f12 - f22).max() < 1e-5)
 
 
-def test_new_style_interface():
+def test_new_style_interface(testdir):
     calc = LennardJones()
     atoms = bulk('Cu')
     rattle_calc(atoms, calc)
