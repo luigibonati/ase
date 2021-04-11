@@ -9,6 +9,15 @@ from ase.calculators.vasp.create_input import _to_vasp_bool, _from_vasp_bool
 from ase.build import bulk
 
 
+def dict_is_subset(d1, d2):
+    """True if all the key-value pairs in dict 1 are in dict 2"""
+    # Note, we are using direct comparison, so we should not compare
+    # floats if any real computations are made, as that would be unsafe.
+    # Cannot use pytest.approx here, because of of string comparison
+    # not being available in python 3.6.
+    return all(key in d2 and d1[key] == d2[key] for key in d1)
+
+
 @pytest.fixture
 def rng():
     return np.random.RandomState(seed=42)
@@ -26,7 +35,9 @@ def nacl(rng):
 def vaspinput_factory(nacl):
     """Factory for GenerateVaspInput class, which mocks the generation of
     pseudopotentials."""
-    def _vaspinput_factory(atoms, **kwargs) -> GenerateVaspInput:
+    def _vaspinput_factory(atoms=None, **kwargs) -> GenerateVaspInput:
+        if atoms is None:
+            atoms = nacl
         mocker = mock.Mock()
         inputs = GenerateVaspInput()
         inputs.set(**kwargs)
@@ -39,7 +50,7 @@ def vaspinput_factory(nacl):
 
 def test_sorting(nacl, vaspinput_factory):
     """Test that the sorting/resorting scheme works"""
-    vaspinput = vaspinput_factory(nacl)
+    vaspinput = vaspinput_factory(atoms=nacl)
     srt = vaspinput.sort
     resrt = vaspinput.resort
     atoms = nacl.copy()
@@ -132,7 +143,7 @@ def test_write_magmom(magmoms_factory, list_func, nacl, vaspinput_factory,
     passing different types of sequences"""
     magmom = magmoms_factory(nacl)
 
-    vaspinput = vaspinput_factory(nacl, magmom=magmom, ispin=2)
+    vaspinput = vaspinput_factory(atoms=nacl, magmom=magmom, ispin=2)
     assert vaspinput.spinpol
     assert_magmom_equal_to_incar_value(nacl, magmom, vaspinput)
 
@@ -143,7 +154,7 @@ def test_atoms_with_initial_magmoms(magmoms_factory, nacl, vaspinput_factory,
     magmom = magmoms_factory(nacl)
     assert len(magmom) == len(nacl)
     nacl.set_initial_magnetic_moments(magmom)
-    vaspinput = vaspinput_factory(nacl)
+    vaspinput = vaspinput_factory(atoms=nacl)
     assert vaspinput.spinpol
     assert_magmom_equal_to_incar_value(nacl, magmom, vaspinput)
 
@@ -179,3 +190,44 @@ def test_vasp_args_without_comment(args, expected_len):
     """Test comment splitting logic"""
     clean_args = _args_without_comment(args)
     assert len(clean_args) == expected_len
+
+
+def test_vasp_xc(vaspinput_factory):
+    """
+    Run some tests to ensure that the xc setting in the VASP calculator
+    works.
+    """
+
+    calc_vdw = vaspinput_factory(xc='optb86b-vdw')
+
+    assert dict_is_subset({
+        'param1': 0.1234,
+        'param2': 1.0
+    }, calc_vdw.float_params)
+    assert calc_vdw.bool_params['luse_vdw'] is True
+
+    calc_hse = vaspinput_factory(xc='hse06',
+                                 hfscreen=0.1,
+                                 gga='RE',
+                                 encut=400,
+                                 sigma=0.5)
+
+    assert dict_is_subset({
+        'hfscreen': 0.1,
+        'encut': 400,
+        'sigma': 0.5
+    }, calc_hse.float_params)
+    assert calc_hse.bool_params['lhfcalc'] is True
+    assert dict_is_subset({'gga': 'RE'}, calc_hse.string_params)
+
+    calc_pw91 = vaspinput_factory(xc='pw91',
+                                  kpts=(2, 2, 2),
+                                  gamma=True,
+                                  lreal='Auto')
+    assert dict_is_subset(
+        {
+            'pp': 'PW91',
+            'kpts': (2, 2, 2),
+            'gamma': True,
+            'reciprocal': False
+        }, calc_pw91.input_params)

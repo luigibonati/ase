@@ -80,6 +80,9 @@ class NPT(MolecularDynamics):
             Characteristic timescale of the thermostat, in ASE internal units
             Set to None to disable the thermostat.
 
+            WARNING: Not specifying ttime sets it to None, disabling the
+            thermostat.            
+
         pfactor: float
             A constant in the barostat differential equation.  If
             a characteristic barostat timescale of ptime is
@@ -88,6 +91,9 @@ class NPT(MolecularDynamics):
             Set to None to disable the barostat.
             Typical metallic bulk moduli are of the order of
             100 GPa or 0.6 eV/Å³.
+
+            WARNING: Not specifying pfactor sets it to None, disabling the
+            barostat.
 
         mask: None or 3-tuple or 3x3 nparray (optional)
             Optional argument.  A tuple of three integers (0 or 1),
@@ -134,12 +140,8 @@ class NPT(MolecularDynamics):
                                    append_trajectory=append_trajectory)
         # self.atoms = atoms
         # self.timestep = timestep
-        if externalstress is None:
+        if externalstress is None and pfactor is not None:
             raise TypeError("Missing 'externalstress' argument.")
-        if ttime is None:
-            raise TypeError("Missing 'ttime' argument.")
-        if pfactor is None:
-            raise TypeError("Missing 'pfactor' argument.")
         self.zero_center_of_mass_momentum(verbose=1)
         self.temperature = units.kB * self._process_temperature(
             temperature, temperature_K, 'eV')
@@ -345,7 +347,7 @@ class NPT(MolecularDynamics):
         # self.stresscalculator()
 
     def forcecalculator(self):
-        return self.atoms.get_forces()
+        return self.atoms.get_forces(md=True)
 
     def stresscalculator(self):
         return self.atoms.get_stress(include_ideal_gas=True)
@@ -587,7 +589,7 @@ class NPT(MolecularDynamics):
         dt = self.dt
         for i in range(2):
             self.q_past = self.q - dt * np.dot(p / m, self.inv_h)
-            self._calculate_q_future(self.atoms.get_forces())
+            self._calculate_q_future(self.atoms.get_forces(md=True))
             p = np.dot(self.q_future - self.q_past, self.h / (2 * dt)) * m
             e = ekin(p)
             if e < 1e-5:

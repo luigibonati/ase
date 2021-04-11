@@ -332,6 +332,8 @@ F('cmdft', 'CMDFT-file', '1F', glob='*I_info')
 F('cml', 'Chemical json file', '1F', ext='cml')
 F('cp2k-dcd', 'CP2K DCD file', '+B',
   module='cp2k', ext='dcd')
+F('cp2k-restart', 'CP2K restart file', '1F',
+  module='cp2k', ext='restart')
 F('crystal', 'Crystal fort.34 format', '1F',
   ext=['f34', '34'], glob=['f34', '34'])
 F('cube', 'CUBE file', '1F', ext='cube')
