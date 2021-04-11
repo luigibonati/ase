@@ -129,35 +129,44 @@ class BadUnitTest(Exception):
     pass
 
 
-def excess_files():
-    return BadUnitTest("""\
-Stale files: There are tests or fixtures which create files.  \
-Please use the testdir fixture to ensure that they have a clean directory, \
-e.g. "def mytest(testdir, ...): ...".  Higher-scoped fixtures should use \
-the tmp_path_factory fixture to create a tempdir.""")
+def raise_if_stale_files(path):
+    garbage = [str(p) for p in path.iterdir()]
+    if garbage:
+        raise BadUnitTest(f"""\
+Stale leftover files: There are tests or fixtures which create files.  \
+Please use the testdir fixture to ensure that they run inside a clean \
+directory, e.g., "def mytest(testdir, ...): ...", or use the tmp_path \
+or tmp_path_factory fixtures to generate paths outside the workdir.
+
+Files: {garbage}""")
 
 
 @pytest.fixture(scope='session', autouse=True)
 def sessionlevel_testing_path(tmp_path_factory):
+    # We cd into a tempdir so tests and fixtures won't create files
+    # elsewhere (e.g. in the unsuspecting user's directory).
+    #
+    # However we regard it as an error if the tests leave files there,
+    # because they can access each others' files and hence are not
+    # independent.  Therefore we want them to explicitly use the
+    # "testdir" fixture which ensures that each has a clean directory.
     path = Path(tmp_path_factory.mktemp('ase-test-workdir'))
     with workdir(path):
         yield path
-    garbage = list(path.iterdir())
-    if garbage:
-        raise excess_files()
+
+    raise_if_stale_files(path)
 
 
 @pytest.fixture(autouse=True)
 def _check_no_undeclared_leftover_files(sessionlevel_testing_path):
-    files_before = set(str(path)
-                       for path in sessionlevel_testing_path.iterdir())
+    # Instead of testing for stale files only at the end, we also test
+    # after each test so most trouble can be attributed to the test
+    # which caused it.
+    already_bad = any(sessionlevel_testing_path.iterdir())
     yield
-    files_after = set(str(path)
-                      for path in sessionlevel_testing_path.iterdir())
-    if len(files_after) > len(files_before):
-        print('Files created by test:')
-        print(files_after - files_before)
-        raise excess_files()
+    # We don't want to fail the whole test suite once we have a culprit:
+    if not already_bad:
+        raise_if_stale_files(sessionlevel_testing_path)
 
 
 @pytest.fixture(autouse=False)

@@ -102,7 +102,7 @@ class TestVibrationsClassic():
         vib.clean()
 
     @pytest.mark.xfail
-    def test_vibrations(self, n2_emt, n2_optimized):
+    def test_vibrations(self, testdir, n2_emt, n2_optimized):
         atoms = n2_emt
         vib = Vibrations(atoms)
         vib.run()
