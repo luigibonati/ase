@@ -13,7 +13,6 @@ tolerance = 1E-5
 
 @pytest.fixture
 def xrd():
-    # previously calculated values
     # test system -- cluster of 587 silver atoms
     atoms = FaceCenteredCubic('Ag', [(1, 0, 0), (1, 1, 0), (1, 1, 1)],
                               [6, 8, 8], 4.09)
@@ -22,28 +21,27 @@ def xrd():
 
 
 def test_get(xrd):
-    # test get()
-    expected_get = 116850.37344
-
-    obtained_get = xrd.get(s=0.09)
-    assert np.abs((obtained_get - expected_get) / expected_get) < tolerance
+    expected = 116850.37344
+    obtained = xrd.get(s=0.09)
+    assert np.abs((obtained - expected) / expected) < tolerance
 
 
 def test_xrd(xrd):
-    expected_xrd = np.array([18549.274677, 52303.116995, 38502.372027])
-    obtained_xrd = xrd.calc_pattern(x=np.array([15, 30, 50]), mode='XRD')
-    assert np.allclose(obtained_xrd, expected_xrd, rtol=tolerance)
+    expected = np.array([18549.274677, 52303.116995, 38502.372027])
+    obtained = xrd.calc_pattern(x=np.array([15, 30, 50]), mode='XRD')
+    assert np.allclose(obtained, expected, rtol=tolerance)
     xrd.write_pattern('tmp.txt')
     assert Path('tmp.txt').exists()
 
 
 def test_saxs_and_files(figure, xrd):
-    expected_saxs = np.array([372650934.006398, 280252013.563702,
-                              488123.103628])
-    obtained_saxs = xrd.calc_pattern(x=np.array([0.021, 0.09, 0.53]),
-                                     mode='SAXS')
-    assert np.allclose(obtained_saxs, expected_saxs, rtol=tolerance)
+    expected = np.array([372650934.006398, 280252013.563702,
+                         488123.103628])
+    obtained = xrd.calc_pattern(x=np.array([0.021, 0.09, 0.53]),
+                                mode='SAXS')
+    assert np.allclose(obtained, expected, rtol=tolerance)
 
+    # (Admittedly these tests are a little bit toothless)
     xrd.write_pattern('tmp.txt')
     assert Path('tmp.txt').exists()
     ax = figure.add_subplot(111)
