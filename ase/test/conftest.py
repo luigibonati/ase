@@ -139,12 +139,14 @@ class BadUnitTest(Exception):
 
 @pytest.fixture(autouse=True)
 def _check_no_undeclared_leftover_files(sessionlevel_testing_path):
-    files_before = list(sessionlevel_testing_path.iterdir())
+    files_before = set(str(path)
+                       for path in sessionlevel_testing_path.iterdir())
     yield
-    files_after = list(sessionlevel_testing_path.iterdir())
+    files_after = set(str(path)
+                      for path in sessionlevel_testing_path.iterdir())
     if len(files_after) > len(files_before):
         print('Files created by test:')
-        print(set(files_after) - set(files_before))
+        print(files_after - files_before)
         raise BadUnitTest(
             'Test created a file as side effect but did not use the '
             'testdir fixture.  For filesystem hygiene, please declare the '
