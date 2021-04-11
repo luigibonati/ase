@@ -9,9 +9,6 @@ Git master branch
 
 :git:`master <>`.
 
-Miscellaneous:
-
-* 3D Brillouin zone plots are now guaranteed isometric with Matplotlib 3.3+.
 
 Calculators:
 
@@ -25,8 +22,17 @@ Calculators:
 
 Algorithms:
 
+* Dedicated class :class:`ase.vibrations.VibrationsData` to improve
+  the representation of vibrational modes and associated data.
+
+* Major refactoring of :class:`ase.vibrations.Vibrations`.
+  The calculated vibrational data can now be exported as
+  a :class:`~ase.vibrations.VibrationsData` object.
+
 * :meth:`phonons.get_dos` now returns a DOS object based on the new
   framework in :mod:`ase.spectrum`.
+
+* Contour exploration [MJW please add description]
 
 * :class:`ase.neb.NEB` has been overhauled and given support for
   preconditioning via a new `precon` argument to its constructor,
@@ -34,7 +40,19 @@ Algorithms:
   tangets and `string` for the string method, both of which support
   preconditioning. The default behaviour should be unchanged.
 
+* Interpolating NEB images on constrained atoms will now raise an
+  error if the interpolated positions would become different depending
+  on whether the constraints were applied.  Pass
+  ``apply_constraint=True`` or ``False`` to
+  :meth:`ase.neb.NEB.interpolate` or :func:`ase.neb.interpolate` to
+  choose a specific behaviour and silence the error.
+
+* 3D Brillouin zone plots are now guaranteed isometric with Matplotlib 3.3+.
+
 I/O:
+
+* Gaussian input file parsing has been greatly improved.  The parser now
+  extracts all variables from the input file.
 
 * Reading of "chemical json" file types with name ``*.cml`` is enabled.
 * LAMMPS dump: Reading of elements column added, with priority over types
@@ -45,6 +63,9 @@ I/O:
   absolute or relative, is now mandatory for all I/O functions.
 
 * The Siesta .XV format is now a recognized I/O format, ``siesta-xv``.
+
+* Parsing an OUTCAR file will now produce an Atoms object
+  with periodic boundary conditions.
 
 Breaking change:
 
@@ -69,6 +90,20 @@ Breaking change:
 GUI:
 
 * Added Finnish translation.
+
+Bug fixes:
+
+* Fix deadlock with DFTD3 calculator in MPI calculations.
+* Fix parsing of Quantum Espresso outputs with more than 1000 atoms.
+* Write netcdf trajectories compatible with Amber 20.
+* Fix bug where constraints could be applied inconsistently in MD
+  simulations.
+* Allow disabling thermostat and barostat in NPT molecular dynamics.
+* Fix problem with whitespace in CIF parser.
+* Fix a problem where constraints would be applied inconsistently in
+  MD simulations.  As the interactions between MD and constraints are
+  not trivial, users should in general verify carefully that simulations
+  behave physically correctly.
 
 
 Version 3.21.1
