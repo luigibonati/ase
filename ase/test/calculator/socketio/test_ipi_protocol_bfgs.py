@@ -102,7 +102,7 @@ unix_only = pytest.mark.skipif(os.name != 'posix',
     'inet',
     pytest.param('unix', marks=unix_only),
 ])
-def test_ipi_protocol(sockettype):
+def test_ipi_protocol(sockettype, testdir):
     try:
         run_server(sockettype=sockettype)
     except OSError as err:

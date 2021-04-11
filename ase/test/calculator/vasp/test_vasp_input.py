@@ -127,7 +127,7 @@ def assert_magmom_equal_to_incar_value():
 
 @pytest.mark.parametrize('list_func', [list, tuple, np.array])
 def test_write_magmom(magmoms_factory, list_func, nacl, vaspinput_factory,
-                      assert_magmom_equal_to_incar_value):
+                      assert_magmom_equal_to_incar_value, testdir):
     """Test writing magnetic moments to INCAR, and ensure we can do it
     passing different types of sequences"""
     magmom = magmoms_factory(nacl)
@@ -138,7 +138,8 @@ def test_write_magmom(magmoms_factory, list_func, nacl, vaspinput_factory,
 
 
 def test_atoms_with_initial_magmoms(magmoms_factory, nacl, vaspinput_factory,
-                                    assert_magmom_equal_to_incar_value):
+                                    assert_magmom_equal_to_incar_value,
+                                    testdir):
     """Test passing atoms with initial magnetic moments"""
     magmom = magmoms_factory(nacl)
     assert len(magmom) == len(nacl)

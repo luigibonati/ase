@@ -5,7 +5,7 @@ from pytest import mark
 
 
 @mark.calculator_lite
-def test_multi_neighlist(KIM):
+def test_multi_neighlist(KIM, testdir):
     """
     To test that the correct energy/forces/stress can be computed using a
     model that implements multiple cutoffs.  This is done by construct a 10
