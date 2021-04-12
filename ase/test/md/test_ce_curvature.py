@@ -19,7 +19,7 @@ def Al_atom_pair(pair_distance=pair_distance):
     return atoms
 
 
-def test_curvature1():
+def test_curvature1(testdir):
     '''This basic test has an atom spinning counter-clockwise around a fixed
     atom. The radius (1/curvature) must therefore be very
     close the pair_distance.'''
@@ -46,7 +46,7 @@ def test_curvature1():
         assert radius == pytest.approx(1.0 / dyn.curvature, abs=2e-3)
 
 
-def test_curvature2():
+def test_curvature2(testdir):
     '''This test has two atoms spinning counter-clockwise around eachother. the
     The radius (1/curvature) is less obviously pair_distance*sqrt(2)/2.
     This is the simplest multi-body analytic curvature test.'''

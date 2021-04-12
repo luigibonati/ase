@@ -30,7 +30,7 @@ def make_4mer():
 
 
 @pytest.mark.slow
-def test_combine_mm2():
+def test_combine_mm2(testdir):
     # More biased initial positions for faster test. Set
     # to false for a slower, harder test.
     fast_test = True

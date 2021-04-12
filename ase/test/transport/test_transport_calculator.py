@@ -9,7 +9,7 @@ def write(fname, xs, ys):
             print(x, y, file=fd)
 
 
-def test_transport_calculator():
+def test_transport_calculator(testdir):
     H_lead = np.zeros([4,4])
 
     # On-site energies are zero

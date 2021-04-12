@@ -23,7 +23,7 @@ def rrname(atoms):
     return name
 
 
-def test_one_state(rrname, atoms):
+def test_one_state(testdir, rrname, atoms):
     om = 1
     gam = 0.1
 
@@ -40,7 +40,7 @@ def test_one_state(rrname, atoms):
     assert ali == pytest.approx(aoi, 1e-9)
 
 
-def test_all_states(rrname, atoms):
+def test_all_states(testdir, rrname, atoms):
     """Include degenerate states"""
     om = 1
     gam = 0.1
@@ -56,11 +56,11 @@ def test_all_states(rrname, atoms):
     assert ali == pytest.approx(aoi, 1e-5)
 
 
-def test_multiples(rrname, atoms):
+def test_multiples(testdir, rrname, atoms):
     """Run multiple vibrational excitations"""
     om = 1
     gam = 0.1
-    
+
     ao = Albrecht(atoms, H2MorseExcitedStates,
                   name=rrname, overlap=True, combinations=2,
                   approximation='Albrecht A', txt=None)
@@ -68,15 +68,15 @@ def test_multiples(rrname, atoms):
     assert len(aoi) == 27
 
 
-def test_summary(rrname, atoms):
+def test_summary(testdir, rrname, atoms):
     om = 1
     gam = 0.1
-    
+
     ao = Albrecht(atoms, H2MorseExcitedStates,
                   name=rrname, overlap=True,
                   approximation='Albrecht B', txt=None)
     ao.summary(om, gam)
-    
+
     ao = Albrecht(atoms, H2MorseExcitedStates,
                   name=rrname, overlap=True, combinations=2,
                   approximation='Albrecht A', txt=None)

@@ -12,7 +12,7 @@ from ase.vibrations.franck_condon import (FranckCondonOverlap,
                                           FranckCondon)
 
 
-def test_franck_condon():
+def test_franck_condon(testdir):
 
     def equal(x, y, tolerance=0, fail=True, msg=''):
         """Compare x and y."""
@@ -98,7 +98,7 @@ def relaxed(unrelaxed):
 
 
 @fixture()
-def vibname(relaxed):
+def vibname(testdir, relaxed):
     atoms = relaxed.copy()
     atoms.calc = relaxed.calc
     name = 'vib'

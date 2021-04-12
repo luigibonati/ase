@@ -11,32 +11,38 @@ from ase.md.langevin import Langevin
 from ase.io import Trajectory
 import ase.units as u
 
-md_cls_and_kwargs = [
-    (VelocityVerlet, {}),
-    (Langevin, {"temperature_K": 300, "friction": 0.02}),
-]
 
-# prepare atoms object for testing
-dimer = s22.create_s22_system("Water_dimer")
+@pytest.fixture
+def atoms():
+    dimer = s22.create_s22_system("Water_dimer")
+    dimer.constraints = FixBondLengths(
+        [(3 * i + j, 3 * i + (j + 1) % 3) for i in range(2) for j in [0, 1, 2]]
+    )
+    return dimer
 
-calc = TIP3P(rc=9.0)
-dimer.constraints = FixBondLengths(
-    [(3 * i + j, 3 * i + (j + 1) % 3) for i in range(2) for j in [0, 1, 2]]
-)
+@pytest.fixture
+def calc():
+    return TIP3P(rc=9.0)
 
 
 def fmax(forces):
     return np.sqrt((forces ** 2).sum(axis=1).max())
 
 
+md_cls_and_kwargs = [
+    (VelocityVerlet, {}),
+    (Langevin, {"temperature_K": 300, "friction": 0.02}),
+]
+
+
 @pytest.mark.parametrize('cls', [FIRE, BFGS])
-def test_optimizer(cls, atoms=dimer, calc=calc,
-                   logfile="opt.log", trajectory="opt.traj"):
+def test_optimizer(cls, testdir, atoms, calc):
     """run optimization and verify that log and trajectory coincide"""
 
     opt_atoms = atoms.copy()
     opt_atoms.constraints = atoms.constraints
-
+    logfile = 'opt.log'
+    trajectory = 'opt.traj'
     opt_atoms.calc = calc
 
     with cls(opt_atoms, logfile=logfile, trajectory=trajectory) as opt:
@@ -53,8 +59,7 @@ def test_optimizer(cls, atoms=dimer, calc=calc,
 
 
 @pytest.mark.parametrize('cls_and_kwargs', md_cls_and_kwargs)
-def test_md(cls_and_kwargs, atoms=dimer, calc=calc, logfile="md.log",
-            timestep=1 * u.fs, trajectory="md.traj"):
+def test_md(cls_and_kwargs, atoms, calc, testdir):
     """ run MD for 10 steps and verify that trajectory and log coincide """
 
     cls, kwargs = cls_and_kwargs
@@ -62,6 +67,10 @@ def test_md(cls_and_kwargs, atoms=dimer, calc=calc, logfile="md.log",
         del atoms.constraints
 
     atoms.calc = calc
+
+    logfile = 'md.log'
+    trajectory = 'md.traj'
+    timestep = 1 * u.fs
 
     with cls(atoms, logfile=logfile, timestep=timestep,
              trajectory=trajectory, **kwargs) as md:

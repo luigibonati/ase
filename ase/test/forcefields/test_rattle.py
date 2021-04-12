@@ -8,7 +8,7 @@ from ase.constraints import FixBondLengths
 
 
 @pytest.mark.slow
-def test_rattle():
+def test_rattle(testdir):
 
     i = LJInteractions({('O', 'O'): (epsilon0, sigma0)})
 

@@ -13,7 +13,7 @@ from ase.calculators.h2morse import (H2Morse,
                                      H2MorseExcitedStatesCalculator)
 
 
-def test_summary():
+def test_summary(testdir):
     atoms = H2Morse()
     rmc = ResonantRamanCalculator(atoms, H2MorseExcitedStatesCalculator)
     rmc.run()
@@ -22,7 +22,7 @@ def test_summary():
     pz.summary(1.)
 
 
-def test_names():
+def test_names(testdir):
     """Test different gs vs excited name. Tests also default names."""
     # do a Vibrations calculation first
     atoms = H2Morse()
@@ -37,7 +37,7 @@ def test_names():
     # then Placzek can not anymore use it for vibrational properties
     assert os.path.isfile('raman.0x-.pckl')
     os.remove('raman.0x-.pckl')  # make sure this is not used
-        
+
     om = 1
     gam = 0.1
     pz = Placzek(atoms, H2MorseExcitedStates,
@@ -47,9 +47,9 @@ def test_names():
 
     # check that work was distributed correctly
     assert len(pz.myindices) <= -(-6 // world.size)
-    
 
-def test_overlap():
+
+def test_overlap(testdir):
     """Test equality with and without overlap"""
     atoms = H2Morse()
     name = 'rrmorse'
@@ -76,7 +76,7 @@ def test_overlap():
     assert pri == pytest.approx(poi, 1e-4)
 
 
-def test_compare_placzek_implementation_intensities():
+def test_compare_placzek_implementation_intensities(testdir):
     """Intensities of different Placzek implementations
     should be similar"""
     atoms = H2Morse()
@@ -101,7 +101,7 @@ def test_compare_placzek_implementation_intensities():
     pri = pr.get_absolute_intensities(omega=om, gamma=gam)[-1]
     print(pri, 'Profeta using frozenset')
     assert pzi == pytest.approx(pri, 1e-3)
-    
+
     # Profeta using overlap
     pr = Profeta(atoms, H2MorseExcitedStates,
                  approximation='Placzek', overlap=True,

@@ -36,7 +36,7 @@ def myread(file, fdcmp=None):
         assert file is fdcmp
 
 
-def test_pathlib_support():
+def test_pathlib_support(testdir):
     path = Path('tmp_plib_testdir')
 
     # Test PurePath catches path

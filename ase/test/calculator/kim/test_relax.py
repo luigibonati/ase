@@ -4,7 +4,7 @@ from pytest import mark
 
 
 @mark.calculator_lite
-def test_relax(KIM):
+def test_relax(KIM, testdir):
     """
     Test that a static relaxation that requires multiple neighbor list
     rebuilds can be carried out successfully.  This is verified by relaxing

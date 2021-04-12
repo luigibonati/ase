@@ -1,12 +1,15 @@
-def test_bandstructure_transform_mcl():
+import numpy as np
+
+from ase import Atoms
+from ase.utils import workdir
+from ase.spectrum.band_structure import calculate_band_structure
+from ase.calculators.test import FreeElectrons
+from ase.cell import Cell
+
+
+def test_bandstructure_transform_mcl(testdir):
     # Test that bandpath() correctly transforms the band path from
     # reference (canonical) cell to actual cell provided by user.
-    import numpy as np
-    from ase import Atoms
-    from ase.utils import workdir
-    from ase.spectrum.band_structure import calculate_band_structure
-    from ase.calculators.test import FreeElectrons
-    from ase.cell import Cell
 
     def _atoms(cell):
         atoms = Atoms(cell=cell, pbc=True)

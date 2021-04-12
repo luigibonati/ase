@@ -8,7 +8,7 @@ from ase.neb import NEB
 from ase.optimize import BFGS, QuasiNewton
 
 
-def test_COCu111():
+def test_COCu111(testdir):
     # Distance between Cu atoms on a (111) surface:
     a = 3.6
     d = a / sqrt(2)
