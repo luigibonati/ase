@@ -49,7 +49,7 @@ class TestVibrationsClassic():
         # energy changes
         assert_array_almost_equal(vib.get_mode(5), vib_data.get_modes()[5])
 
-    def test_pickle_manipulation(self, n2_emt):
+    def test_pickle_manipulation(self, testdir, n2_emt):
         atoms = n2_emt
         vib = Vibrations(atoms, name='interrupt')
         vib.run()
