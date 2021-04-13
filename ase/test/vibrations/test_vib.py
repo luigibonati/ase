@@ -362,6 +362,7 @@ class TestVibrationsData:
                                   n2_vibdata.get_energies())
         assert_array_almost_equal(pdos[1].get_energies(),
                                   n2_vibdata.get_energies())
+        # 3N states = 6, divided equally over two N atoms = 3.0
         assert sum(pdos[0].get_weights()) == pytest.approx(3.0)
 
     def test_todict(self, n2_data, n2_vibdata):
@@ -404,7 +405,7 @@ class TestVibrationsData:
         assert_array_almost_equal(vib_data_fromdict.get_mask(), expected_mask)
 
     def test_jmol_roundtrip(self, testdir, n2_data):
-        ir_intensities = np.random.random(6)
+        ir_intensities = np.random.RandomState(42).random(6)
 
         vib_data = VibrationsData(n2_data['atoms'], n2_data['hessian'])
         vib_data.write_jmol(self.jmol_file, ir_intensities=ir_intensities)
