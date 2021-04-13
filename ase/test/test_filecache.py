@@ -33,14 +33,14 @@ def test_cache(dct, cache):
     assert dict(cache) == dct
 
 
-def test_split(cache):
+def test_combine(cache):
     dct = sample_dict()
     cache.update(dct)
     combined = cache.combine()
     assert dict(combined) == dct
 
 
-def test_combine():
+def test_split():
     dct = sample_dict()
     combined = CombinedJSONCache.dump_cache('cache', dct)
     assert dict(combined) == dct
@@ -59,6 +59,7 @@ def test_lock(cache):
         # Other keys should function as normal:
         cache['xx'] = 1
         assert cache['xx'] == 1
+
 
 def test_already_locked(cache):
     with cache.lock('hello') as handle:
