@@ -4,7 +4,7 @@ from ase.lattice.cubic import FaceCenteredCubic
 
 
 @mark.calculator_lite
-def test_energy_forces_stress(KIM):
+def test_energy_forces_stress(KIM, testdir):
     """
     To test that the calculator can produce correct energy and forces.  This
     is done by comparing the energy for an FCC argon lattice with an example

@@ -28,7 +28,7 @@ bulk_Al_settings = {
     'loginterval': 1}
 
 
-def test_potentiostat():
+def test_potentiostat(testdir):
     '''This is very realistic and stringent test of the potentiostatic accuracy
      with 32 atoms at ~235 meV/atom above the ground state.'''
     name = 'test_potentiostat'
@@ -61,7 +61,7 @@ def test_potentiostat():
         assert 0 == pytest.approx(energy_error, abs=0.01)
 
 
-def test_potentiostat_no_fs():
+def test_potentiostat_no_fs(testdir):
     '''This test ensures that the potentiostat is working even when curvature
     extrapolation (use_fs) is turned off.'''
     name = 'test_potentiostat_no_fs'

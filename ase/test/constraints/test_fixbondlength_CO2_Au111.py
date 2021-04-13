@@ -10,7 +10,7 @@ from ase.build import fcc111, add_adsorbate
 
 @pytest.mark.slow
 @pytest.mark.parametrize('wrap', [False, True])
-def test_CO2_Au111(wrap):
+def test_CO2_Au111(wrap, testdir):
     zpos = cos(134.3 / 2.0 * pi / 180.0) * 1.197
     xpos = sin(134.3 / 2.0 * pi / 180.0) * 1.19
     co2 = Atoms('COO', positions=[(-xpos + 1.2, 0, -zpos),

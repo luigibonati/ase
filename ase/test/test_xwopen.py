@@ -2,6 +2,9 @@ import pytest
 from ase.utils import xwopen
 
 
+pytestmark = pytest.mark.usefixtures('testdir')
+
+
 poem = 'Wer reitet so spät durch Nacht und Wind\n'.encode('utf-8')
 filename = 'poem.txt'
 

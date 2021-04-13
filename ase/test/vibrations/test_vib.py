@@ -36,7 +36,7 @@ class TestVibrationsClassic():
         atoms.calc = EMT()
         return atoms
 
-    def test_consistency_with_vibrationsdata(self, n2_emt):
+    def test_consistency_with_vibrationsdata(self, testdir, n2_emt):
         atoms = n2_emt
         vib = Vibrations(atoms)
         vib.run()
@@ -102,7 +102,7 @@ class TestVibrationsClassic():
         #vib.clean()
 
     @pytest.mark.xfail
-    def test_vibrations(self, n2_emt, n2_optimized):
+    def test_vibrations(self, testdir, n2_emt, n2_optimized):
         atoms = n2_emt
         vib = Vibrations(atoms)
         vib.run()
@@ -361,7 +361,7 @@ class TestVibrationsData():
         vib_data_fromdict = VibrationsData.fromdict(vib_data_dict)
         assert_array_almost_equal(vib_data_fromdict.get_mask(), expected_mask)
 
-    def test_jmol_roundtrip(self, n2_data):
+    def test_jmol_roundtrip(self, testdir, n2_data):
         ir_intensities = np.random.random(6)
 
         vib_data = VibrationsData(n2_data['atoms'], n2_data['hessian'])
@@ -415,7 +415,7 @@ class TestSlab():
 
         self.n2_on_ag = Atoms(**n2_on_ag_data)
 
-    def test_vibrations_on_surface(self):
+    def test_vibrations_on_surface(self, testdir):
         atoms = self.n2_on_ag.copy()
         atoms.calc = EMT()
         vibs = Vibrations(atoms, indices=[-2, -1])

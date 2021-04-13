@@ -18,7 +18,7 @@ def Cbulk():
     return Cbulk
 
 
-def test_bulk(Cbulk):
+def test_bulk(Cbulk, testdir):
     """Bulk FCC carbon (for EMT) self consistency"""
     delta = 0.02
 
@@ -49,7 +49,7 @@ def test_bulk(Cbulk):
     pz.summary()
 
 
-def test_bulk_kpts(Cbulk):
+def test_bulk_kpts(Cbulk, testdir):
     """Bulk FCC carbon (for EMT) for phonons"""
 
     name = 'phbp'
@@ -68,7 +68,7 @@ def test_bulk_kpts(Cbulk):
     pz.summary()
 
 
-def test_c3():
+def test_c3(testdir):
     """Can we calculate triangular (EMT groundstate) C3?"""
     y, z = 0.30646191, 1.14411339  # emt relaxed
     atoms = Atoms('C3', positions=[[0, 0, 0], [0, y, z], [0, z, y]])
