@@ -205,6 +205,8 @@ class Vibrations(AtomicDisplacements):
                 'Cache must be removed or split in order '
                 'to have only one sort of data structure at a time.')
 
+        self._check_old_pickles()
+
         for disp, atoms in self.iterdisplace(inplace=True):
             with self.cache.lock(disp.name) as handle:
                 if handle is None:
@@ -214,6 +216,16 @@ class Vibrations(AtomicDisplacements):
 
                 if world.rank == 0:
                     handle.save(result)
+
+    def _check_old_pickles(self):
+        from pathlib import Path
+        eq_pickle_path = Path(f'{self.name}.eq.pckl')
+        pickle2json_instructions =f"""\
+Found old pickle files such as {eq_pickle_path}.  \
+Please remove them and recalculate or see \
+"run python -m ase.vibrations.pickle2json --help"."""
+        if len(self.cache) == 0 and eq_pickle_path.exists():
+            raise RuntimeError(pickle2json_instructions)
 
     def iterdisplace(self, inplace=False):
         """Yield name and atoms object for initial and displaced structures.
