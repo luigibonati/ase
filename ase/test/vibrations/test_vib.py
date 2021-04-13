@@ -277,29 +277,37 @@ class TestVibrationsData:
                     ]).reshape((2, 3, 2, 3))
                }
 
+    @pytest.fixture
+    def n2_vibdata(self, n2_data):
+        return VibrationsData(n2_data['atoms'], n2_data['hessian'])
+
     def setup(self):
         self.jmol_file = 'vib-data.xyz'
 
-    def test_energies_and_modes(self, n2_data):
-        vib_data = VibrationsData(n2_data['atoms'], n2_data['hessian'])
-        energies, modes = vib_data.get_energies_and_modes()
+    def test_init(self, n2_data):
+        # Check that init runs without error; properties are checked in other
+        # methods using the (identical) n2_vibdata fixture
+        VibrationsData(n2_data['atoms'], n2_data['hessian'])
+
+    def test_energies_and_modes(self, n2_data, n2_vibdata):
+        energies, modes = n2_vibdata.get_energies_and_modes()
         assert_array_almost_equal(n2_data['ref_frequencies'],
                                   energies / units.invcm,
                                   decimal=5)
         assert_array_almost_equal(n2_data['ref_frequencies'],
-                                  vib_data.get_energies() / units.invcm,
+                                  n2_vibdata.get_energies() / units.invcm,
                                   decimal=5)
         assert_array_almost_equal(n2_data['ref_frequencies'],
-                                  vib_data.get_frequencies(),
+                                  n2_vibdata.get_frequencies(),
                                   decimal=5)
 
-        assert (vib_data.get_zero_point_energy()
+        assert (n2_vibdata.get_zero_point_energy()
                 == pytest.approx(n2_data['ref_zpe']))
 
-        assert vib_data.tabulate() == (
+        assert n2_vibdata.tabulate() == (
             '\n'.join(VibrationsData._tabulate_from_energies(energies)) + '\n')
 
-        atoms_with_forces = vib_data.show_as_force(-1, show=False)
+        atoms_with_forces = n2_vibdata.show_as_force(-1, show=False)
 
         try:
             assert_array_almost_equal(atoms_with_forces.get_forces(),
@@ -325,14 +333,13 @@ class TestVibrationsData:
         with pytest.raises(ValueError):
             vib_data.get_energies_and_modes()
 
-    def test_new_mass(self, n2_data):
-        vib_data = VibrationsData(n2_data['atoms'], n2_data['hessian'])
-        original_masses = vib_data.get_atoms().get_masses()
+    def test_new_mass(self, n2_data, n2_vibdata):
+        original_masses = n2_vibdata.get_atoms().get_masses()
         new_masses = original_masses * 3
-        new_vib_data = vib_data.with_new_masses(new_masses)
+        new_vib_data = n2_vibdata.with_new_masses(new_masses)
         assert_array_almost_equal(new_vib_data.get_atoms().get_masses(),
                                   new_masses)
-        assert_array_almost_equal(vib_data.get_energies() / np.sqrt(3),
+        assert_array_almost_equal(n2_vibdata.get_energies() / np.sqrt(3),
                                   new_vib_data.get_energies())
 
     def test_fixed_atoms(self, n2_data):
@@ -342,26 +349,23 @@ class TestVibrationsData:
         assert vib_data.get_indices() == [1, ]
         assert vib_data.get_mask().tolist() == [False, True]
 
-    def test_dos(self, n2_data):
-        vib_data = VibrationsData(n2_data['atoms'], n2_data['hessian'])
+    def test_dos(self, n2_vibdata):
         with pytest.warns(np.ComplexWarning):
-            dos = vib_data.get_dos()
+            dos = n2_vibdata.get_dos()
         assert_array_almost_equal(dos.get_energies(),
-                                  vib_data.get_energies())
+                                  n2_vibdata.get_energies())
 
-    def test_pdos(self, n2_data):
-        vib_data = VibrationsData(n2_data['atoms'], n2_data['hessian'])
+    def test_pdos(self, n2_vibdata):
         with pytest.warns(np.ComplexWarning):
-            pdos = vib_data.get_pdos()
+            pdos = n2_vibdata.get_pdos()
         assert_array_almost_equal(pdos[0].get_energies(),
-                                  vib_data.get_energies())
+                                  n2_vibdata.get_energies())
         assert_array_almost_equal(pdos[1].get_energies(),
-                                  vib_data.get_energies())
+                                  n2_vibdata.get_energies())
         assert sum(pdos[0].get_weights()) == pytest.approx(3.0)
 
-    def test_todict(self, n2_data):
-        vib_data = VibrationsData(n2_data['atoms'], n2_data['hessian'])
-        vib_data_dict = vib_data.todict()
+    def test_todict(self, n2_data, n2_vibdata):
+        vib_data_dict = n2_vibdata.todict()
 
         assert vib_data_dict['indices'] is None
         assert_array_almost_equal(vib_data_dict['atoms'].positions,
@@ -369,26 +373,24 @@ class TestVibrationsData:
         assert_array_almost_equal(vib_data_dict['hessian'],
                                   n2_data['hessian'])
 
-    def test_dict_roundtrip(self, n2_data):
-        vib_data = VibrationsData(n2_data['atoms'], n2_data['hessian'])
-        vib_data_dict = vib_data.todict()
+    def test_dict_roundtrip(self, n2_vibdata):
+        vib_data_dict = n2_vibdata.todict()
         vib_data_roundtrip = VibrationsData.fromdict(vib_data_dict)
 
         for getter in ('get_atoms',):
-            assert (getattr(vib_data, getter)()
+            assert (getattr(n2_vibdata, getter)()
                     == getattr(vib_data_roundtrip, getter)())
         for array_getter in ('get_hessian', 'get_hessian_2d',
                              'get_mask', 'get_indices'):
             assert_array_almost_equal(
-                getattr(vib_data, array_getter)(),
+                getattr(n2_vibdata, array_getter)(),
                 getattr(vib_data_roundtrip, array_getter)())
 
     @pytest.mark.parametrize('indices, expected_mask',
                              [([1], [False, True]),
                               (None, [True, True])])
-    def test_dict_indices(self, n2_data, indices, expected_mask):
-        vib_data = VibrationsData(n2_data['atoms'], n2_data['hessian'])
-        vib_data_dict = vib_data.todict()
+    def test_dict_indices(self, n2_vibdata, indices, expected_mask):
+        vib_data_dict = n2_vibdata.todict()
         vib_data_dict['indices'] = indices
 
         # Reduce size of Hessian if necessary
