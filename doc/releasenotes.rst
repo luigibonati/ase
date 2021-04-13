@@ -32,7 +32,11 @@ Algorithms:
 * :meth:`phonons.get_dos` now returns a DOS object based on the new
   framework in :mod:`ase.spectrum`.
 
-* Contour exploration [MJW please add description]
+* Added :class:`ase.md.contour_exploration.ContourExploration`.
+  It evolves systems at fixed potential energy. This is useful for tracing
+  potential energy contour lines or rapidly exploring the potential
+  energy surface of a system and can be tuned to preferentially sample
+  highly curved regions of the potential energy surface. 
 
 * :class:`ase.neb.NEB` has been overhauled and given support for
   preconditioning via a new `precon` argument to its constructor,
