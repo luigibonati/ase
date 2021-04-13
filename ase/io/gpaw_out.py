@@ -1,59 +1,56 @@
 import re
+from typing import List, Tuple, Union
+
 import numpy as np
 from ase.atoms import Atoms
-from ase.calculators.singlepoint import SinglePointDFTCalculator
-from ase.calculators.singlepoint import SinglePointKPoint
+from ase.calculators.singlepoint import (SinglePointDFTCalculator,
+                                         SinglePointKPoint)
 
 
-def read_gpaw_out(fileobj, index):
-    notfound = []
+def index_startswith(lines: List[str], string: str) -> int:
+    for i, line in enumerate(lines):
+        if line.startswith(string):
+            return i
+    raise ValueError
 
-    def index_startswith(lines, string):
-        if not isinstance(string, str):
-            # assume it's a list
-            for entry in string:
-                try:
-                    return index_startswith(lines, entry)
-                except ValueError:
-                    pass
-            raise ValueError
 
-        if string in notfound:
-            raise ValueError
-        for i, line in enumerate(lines):
-            if line.startswith(string):
-                return i
-        notfound.append(string)
-        raise ValueError
+def index_pattern(lines: List[str], pattern: str) -> int:
+    repat = re.compile(pattern)
+    for i, line in enumerate(lines):
+        if repat.match(line):
+            return i
+    raise ValueError
 
-    def index_pattern(lines, pattern):
-        repat = re.compile(pattern)
-        if pattern in notfound:
-            raise ValueError
-        for i, line in enumerate(lines):
-            if repat.match(line):
-                return i
-        notfound.append(pattern)
-        raise ValueError
 
-    def read_forces(lines, ii):
-        f = []
-        for i in range(ii + 1, ii + 1 + len(atoms)):
-            try:
-                x, y, z = lines[i].split()[-3:]
-                f.append((float(x), float(y), float(z)))
-            except (ValueError, IndexError) as m:
-                raise IOError('Malformed GPAW log file: %s' % m)
-        return f, i
-
-    lines = [line.lower() for line in fileobj.readlines()]
-    images = []
-    while True:
+def read_forces(lines: List[str],
+                ii: int,
+                atoms: Atoms) -> Tuple[List[Tuple[float, float, float]], int]:
+    f = []
+    for i in range(ii + 1, ii + 1 + len(atoms)):
         try:
-            i = index_startswith(lines, 'reference energy:')
-            Eref = float(lines[i].split()[-1])
-        except ValueError:
-            Eref = None
+            x, y, z = lines[i].split()[-3:]
+            f.append((float(x), float(y), float(z)))
+        except (ValueError, IndexError) as m:
+            raise IOError('Malformed GPAW log file: %s' % m)
+    return f, i
+
+
+def read_gpaw_out(fileobj, index) -> Union[Atoms, List[Atoms]]:
+    """Read text output from GPAW calculation."""
+    lines = [line.lower() for line in fileobj.readlines()]
+
+    blocks = []
+    i1 = 0
+    for i2, line in enumerate(lines):
+        if line.startswith('reference energy:'):
+            if i1 > 0:
+                blocks.append(lines[i1:i2])
+            i1 = i2
+    blocks.append(lines[i1:])
+
+    images = []
+    for lines in blocks:
+        Eref = float(lines[0].split()[-1])
         try:
             i = lines.index('unit cell:\n')
         except ValueError:
@@ -200,7 +197,7 @@ def read_gpaw_out(fileobj, index):
         except ValueError:
             f = None
         else:
-            f, i = read_forces(lines, ii)
+            f, i = read_forces(lines, ii, atoms)
 
         try:
             parameters = {}
