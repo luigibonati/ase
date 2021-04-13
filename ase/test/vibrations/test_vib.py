@@ -198,6 +198,32 @@ class TestVibrationsDataStaticMethods:
     def test_indices_from_mask(self, mask, expected_indices):
         assert VibrationsData.indices_from_mask(mask) == expected_indices
 
+    def test_tabulate_energies(self):
+        # Test the private classmethod _tabulate_from_energies
+        # used by public tabulate() method
+        energies = np.array([1., complex(2., 1.), complex(1., 1e-3)])
+
+        table = VibrationsData._tabulate_from_energies(energies, im_tol=1e-2)
+
+        for sep_row in 0, 2, 6:
+            assert table[sep_row] == '-' * 21
+        assert tuple(table[1].strip().split()) == ('#', 'meV', 'cm^-1')
+
+        expected_rows = [
+            # energy in eV should be converted to meV and cm-1
+            ('0', '1000.0', '8065.5'),
+            # Imaginary component over threshold detected
+            ('1', '1000.0i', '8065.5i'),
+            # Small imaginary component ignored
+            ('2', '1000.0', '8065.5')]
+
+        for row, expected in zip(table[3:6], expected_rows):
+            assert tuple(row.split()) == expected
+
+        # ZPE = (1 + 2 + 1) / 2  - currently we keep all real parts
+        assert table[7].split()[2] == '2.000'
+        assert len(table) == 8
+
 
 class TestVibrationsData:
     @pytest.fixture

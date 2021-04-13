@@ -382,19 +382,16 @@ class VibrationsData:
         return 0.5 * np.asarray(energies).real.sum()
 
     def tabulate(self, im_tol: float = 1e-8) -> str:
-        """Print a summary of the vibrational frequencies.
+        """Get a summary of the vibrational frequencies.
 
         Args:
-            logfile: if specified, write output to this destination. This can
-                be an object with a write() method or the name of a file to
-                create. Otherwise, summary is returned as a string.
             im_tol:
                 Tolerance for imaginary frequency in eV. If frequency has a
                 larger imaginary component than im_tol, the imaginary component
                 is shown in the summary table.
 
         Returns:
-            Summary text, if no output was set.
+            Summary table as formatted text
         """
 
         energies = self.get_energies()
