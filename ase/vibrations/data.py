@@ -10,7 +10,7 @@ import numpy as np
 from ase.atoms import Atoms
 import ase.units as units
 import ase.io
-from ase.utils import jsonable
+from ase.utils import jsonable, lazymethod
 
 from ase.calculators.singlepoint import SinglePointCalculator
 from ase.spectrum.dosdata import RawDOSData
@@ -62,9 +62,6 @@ class VibrationsData:
 
         self._hessian2d = (np.asarray(hessian)
                            .reshape(3 * n_atoms, 3 * n_atoms).copy())
-
-        self._energies = None  # type: Union[np.ndarray, None]
-        self._modes = None  # type: Union[np.ndarray, None]
 
     _setter_error = ("VibrationsData properties cannot be modified: construct "
                      "a new VibrationsData with consistent atoms, Hessian and "
@@ -251,7 +248,8 @@ class VibrationsData:
 
         return cls(data['atoms'], data['hessian'], indices=data['indices'])
 
-    def _calculate_energies_and_modes(self) -> Tuple[np.ndarray, np.ndarray]:
+    @lazymethod
+    def _energies_and_modes(self) -> Tuple[np.ndarray, np.ndarray]:
         """Diagonalise the Hessian to obtain harmonic modes
 
         This method is an internal implementation of get_energies_and_modes(),
@@ -304,20 +302,18 @@ class VibrationsData:
             where indices correspond to the (mode_index, atom, direction).
 
         """
-        if self._energies is None or self._modes is None:
-            self._energies, self._modes = self._calculate_energies_and_modes()
-            return self.get_energies_and_modes()
+
+        energies, modes_from_hessian = self._energies_and_modes()
+
+        if all_atoms:
+            n_active_atoms = len(self.get_indices())
+            n_all_atoms = len(self._atoms)
+            modes = np.zeros((3 * n_active_atoms, n_all_atoms, 3))
+            modes[:, self.get_mask(), :] = modes_from_hessian
         else:
+            modes = modes_from_hessian.copy()
 
-            if all_atoms:
-                n_active_atoms = len(self.get_indices())
-                n_all_atoms = len(self._atoms)
-                modes = np.zeros((3 * n_active_atoms, n_all_atoms, 3))
-                modes[:, self.get_mask(), :] = self._modes
-            else:
-                modes = self._modes.copy()
-
-            return (self._energies.copy(), modes)
+        return (energies.copy(), modes)
 
     def get_modes(self, all_atoms: bool = False) -> np.ndarray:
         """Diagonalise the Hessian to obtain harmonic modes
