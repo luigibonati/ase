@@ -35,7 +35,7 @@ def read_forces(lines: List[str],
     return f, i
 
 
-def read_gpaw_out(fileobj, index) -> Union[Atoms, List[Atoms]]:
+def read_gpaw_out(fileobj, index):  # -> Union[Atoms, List[Atoms]]:
     """Read text output from GPAW calculation."""
     lines = [line.lower() for line in fileobj.readlines()]
 
@@ -48,7 +48,7 @@ def read_gpaw_out(fileobj, index) -> Union[Atoms, List[Atoms]]:
             i1 = i2
     blocks.append(lines[i1:])
 
-    images = []
+    images: List[Atoms] = []
     for lines in blocks:
         Eref = float(lines[0].split()[-1])
         try:
@@ -58,7 +58,7 @@ def read_gpaw_out(fileobj, index) -> Union[Atoms, List[Atoms]]:
         else:
             if lines[i + 2].startswith('  -'):
                 del lines[i + 2]  # old format
-            cell = []
+            cell: List[Union[float, List[float]]] = []
             pbc = []
             for line in lines[i + 2:i + 5]:
                 words = line.split()
@@ -214,7 +214,7 @@ def read_gpaw_out(fileobj, index) -> Union[Atoms, List[Atoms]]:
             line = lines[ii + 1]
             assert line.startswith('energy:')
             e = float(line.split()[-1])
-            f, i = read_forces(lines, ii + 3)
+            f, i = read_forces(lines, ii + 3, atoms)
 
         if len(images) > 0 and e is None:
             break
