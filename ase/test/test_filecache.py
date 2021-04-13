@@ -2,6 +2,9 @@ import pytest
 from ase.utils.filecache import MultiFileJSONCache, CombinedJSONCache, Locked
 
 
+pytestmark = pytest.mark.usefixtures('testdir')
+
+
 @pytest.fixture
 def cache():
     return MultiFileJSONCache('cache')
