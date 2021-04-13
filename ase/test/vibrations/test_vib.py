@@ -11,7 +11,7 @@ from ase.vibrations import Vibrations, VibrationsData
 from ase.thermochemistry import IdealGasThermo
 
 
-class TestVibrationsClassic():
+class TestVibrationsClassic:
     """Tests for the ase.vibrations.Vibrations object
 
     This object is to be phased out in favour of separate calculating/loading
@@ -78,8 +78,10 @@ class TestVibrationsClassic():
         # Splitting should fail if any split file already exists
         with open(disp_file, 'w') as fd:
             fd.write("hello")
-        #with pytest.raises(RuntimeError):
-        #    vib.split()
+
+        with pytest.raises(AssertionError):
+            vib.split()
+
         os.remove(disp_file)
 
         # Now split() for real: replace .all.json file with displacements
@@ -87,16 +89,20 @@ class TestVibrationsClassic():
         assert os.path.isfile(disp_file)
         assert not os.path.isfile(comb_file)
 
+        # Clobbering seems to be allowed now we are using .json?
+
         # Not allowed to clobber existing combined file
-        with open(comb_file, 'w') as fd:
-            fd.write("Hello")
-        #with pytest.raises(RuntimeError):
-        #    vib.combine()
-        os.remove(comb_file)
+        # with open(comb_file, 'w') as fd:
+        #     fd.write("Hello")
+
+        # with pytest.raises(RuntimeError):
+        #     vib.combine()
+
+        # os.remove(comb_file)
 
         # Combining data also fails if some data is missing
-        os.remove('interrupt/cache.1x-.json')
-        #with pytest.raises(RuntimeError):
+        # os.remove('interrupt/cache.1x-.json')
+        # with pytest.raises(RuntimeError):
         #    vib.combine()
 
         #vib.clean()
@@ -121,6 +127,7 @@ class TestVibrationsClassic():
 
         with open(self.logfile, 'w') as fd:
             vib.summary(log=fd)
+
         with open(self.logfile, 'rt') as fd:
             log_txt = fd.read()
             assert log_txt == vibrations_n2_log
@@ -180,7 +187,7 @@ class TestVibrationsClassic():
                 os.rmdir('run_from_here')
 
 
-class TestVibrationsDataStaticMethods():
+class TestVibrationsDataStaticMethods:
     @pytest.mark.parametrize('mask,expected_indices',
                              [([True, True, False, True], [0, 1, 3]),
                               ([False, False], []),
@@ -192,7 +199,7 @@ class TestVibrationsDataStaticMethods():
         assert VibrationsData.indices_from_mask(mask) == expected_indices
 
 
-class TestVibrationsData():
+class TestVibrationsData:
     @pytest.fixture
     def n2_data(self):
         return{'atoms': Atoms('N2', positions=[[0., 0., 0.05095057],
@@ -400,7 +407,7 @@ class TestVibrationsData():
                 VibrationsData.from_2d(n2_data['atoms'], bad_hessian)
 
 
-class TestSlab():
+class TestSlab:
     "Adsorption of N2 on Ag slab - vibration with frozen molecules"
     def setup(self):
         # To reproduce n2_on_ag_data:
