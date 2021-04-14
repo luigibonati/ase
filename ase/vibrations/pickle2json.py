@@ -4,7 +4,6 @@ import pickle
 
 import numpy as np
 
-from ase.utils import workdir
 from ase.utils.filecache import MultiFileJSONCache
 
 description = """
@@ -29,8 +28,14 @@ def port(picklefile):
     cache = MultiFileJSONCache(picklefile.parent / vibname)
 
     obj = pickle.loads(picklefile.read_bytes())
-    assert isinstance(obj, np.ndarray), f'not supported: {type(obj)}'
-    dct = {'forces': obj}
+    if isinstance(obj, np.ndarray):  # vibrations
+        dct = {'forces': obj}
+    else:  # Infrared
+        forces, dipole = obj
+        assert isinstance(forces, np.ndarray), f'not supported: {type(obj)}'
+        assert isinstance(dipole, np.ndarray), f'not supported: {type(obj)}'
+        dct = {'forces': forces, 'dipole': dipole}
+
     outfilename = cache._filename(key)
 
     if key in cache:
