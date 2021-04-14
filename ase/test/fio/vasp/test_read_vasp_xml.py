@@ -11,16 +11,20 @@ def vasprun(datadir):
 
 
 def test_atoms(vasprun, tmp_path):
+
     copyfile(vasprun, tmp_path / 'vasprun.xml')
+    atoms = read(tmp_path / 'vasprun.xml', index=-1)
+
+    # check number of atoms
+    assert len(atoms) == 2
+
+    # make sure it is still tungsten
+    assert all(np.array(atoms.get_chemical_symbols()) == "W")
+
+    # check scaled_positions
     expected_scaled_positions = np.array([[0.0, 0.0, 0.0],
                                          [0.5,  0.5, 0.5]])
 
-    atoms = read(tmp_path / 'vasprun.xml', index=-1)
-
-    # chek number of atoms
-    assert len(atoms)==2
-
-    # check scaled_positions
     np.testing.assert_allclose(atoms.get_scaled_positions(),
                                expected_scaled_positions)
 
@@ -35,3 +39,5 @@ def test_atoms(vasprun, tmp_path):
     np.testing.assert_allclose(atoms.positions,
                                expected_scaled_positions @
                                atoms.cell.complete())
+
+
