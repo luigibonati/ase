@@ -32,8 +32,8 @@ def port(picklefile):
         dct = {'forces': obj}
     else:  # Infrared
         forces, dipole = obj
-        assert isinstance(forces, np.ndarray), f'not supported: {type(obj)}'
-        assert isinstance(dipole, np.ndarray), f'not supported: {type(obj)}'
+        assert isinstance(forces, np.ndarray), f'not supported: {type(forces)}'
+        assert isinstance(dipole, np.ndarray), f'not supported: {type(dipole)}'
         dct = {'forces': forces, 'dipole': dipole}
 
     outfilename = cache._filename(key)
