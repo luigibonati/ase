@@ -119,7 +119,7 @@ def test_atoms(vasprun):
     expected_scaled_positions = np.array([[0.0, 0.0, 0.0],
                                          [0.5,  0.5, 0.5]])
 
-    np.testing.assert_array_equal(atoms.get_scaled_positions(),
+    np.testing.assert_allclose(atoms.get_scaled_positions(),
                                   expected_scaled_positions)
 
     expected_cell = np.array([[3.16, 0.0, 0.0],
@@ -127,10 +127,10 @@ def test_atoms(vasprun):
                               [0.0, 0.0, 3.16]])
 
     # check cell
-    np.testing.assert_array_equal(atoms.cell, expected_cell)
+    np.testing.assert_allclose(atoms.cell, expected_cell)
 
     # check real positions
-    np.testing.assert_array_equal(atoms.positions,
+    np.testing.assert_allclose(atoms.positions,
                                   expected_scaled_positions @
                                   atoms.cell.complete())
 
@@ -150,7 +150,7 @@ def test_calculation(vasprun):
 
     expected_forces = np.array([[7.58587457, -5.22590317, 6.88227285],
                                 [-7.58587457, 5.22590317, -6.88227285]])
-    np.testing.assert_array_equal(atoms.get_forces(),
+    np.testing.assert_allclose(atoms.get_forces(),
                                   expected_forces)
 
     expected_stress = np.array([[4300.36902090, -284.50040544, -1468.20603140],
@@ -160,7 +160,7 @@ def test_calculation(vasprun):
     expected_stress *= -0.1 * GPa
     expected_stress = expected_stress.reshape(9)[[0, 4, 8, 5, 2, 1]]
 
-    np.testing.assert_array_equal(atoms.get_stress(), expected_stress)
+    np.testing.assert_allclose(atoms.get_stress(), expected_stress)
 
     expected_kpoints = np.array([[0.0, 0.0, 0.0]])
-    np.testing.assert_array_equal(atoms.calc.ibz_kpts, expected_kpoints)
+    np.testing.assert_allclose(atoms.calc.ibz_kpts, expected_kpoints)
