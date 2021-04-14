@@ -1,7 +1,6 @@
 """
 Test Placzek type resonant Raman implementations
 """
-import os
 import pytest
 
 from ase.parallel import parprint, world
@@ -26,8 +25,9 @@ def test_names(testdir):
     """Test different gs vs excited name. Tests also default names."""
     # do a Vibrations calculation first
     atoms = H2Morse()
-    Vibrations(atoms).run()
-    assert os.path.isfile('vib.0x-.pckl')
+    vib = Vibrations(atoms)
+    vib.run()
+    assert '0x-' in vib.cache
 
     # do a Resonant Raman calculation
     rmc = ResonantRamanCalculator(atoms, H2MorseExcitedStatesCalculator,
@@ -35,8 +35,10 @@ def test_names(testdir):
     rmc.run()
     # remove the corresponding pickle file,
     # then Placzek can not anymore use it for vibrational properties
-    assert os.path.isfile('raman.0x-.pckl')
-    os.remove('raman.0x-.pckl')  # make sure this is not used
+
+    key = '0x-'
+    assert key in rmc.cache
+    del rmc.cache[key]  # make sure this is not used
 
     om = 1
     gam = 0.1

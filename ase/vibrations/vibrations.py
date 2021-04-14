@@ -1,9 +1,6 @@
 """A class for computing vibrational modes"""
 
 from math import pi, sqrt, log
-import os
-import os.path as op
-import pickle
 import sys
 
 import numpy as np
@@ -11,11 +8,83 @@ import numpy as np
 import ase.units as units
 import ase.io
 from ase.parallel import world, paropen
-from ase.utils import opencew, pickleload
+
+from ase.utils.filecache import get_json_cache
 from .data import VibrationsData
 
+from collections import namedtuple
 
-class Vibrations:
+
+class AtomicDisplacements:
+    def _disp(self, a, i, step):
+        if isinstance(i, str):  # XXX Simplify by removing this.
+            i = 'xyz'.index(i)
+        return Displacement(a, i, np.sign(step), abs(step), self)
+
+    def _eq_disp(self):
+        return self._disp(0, 0, 0)
+
+    @property
+    def ndof(self):
+        return 3 * len(self.indices)
+
+
+class Displacement(namedtuple('Displacement', ['a', 'i', 'sign', 'ndisp',
+                                               'vib'])):
+    @property
+    def name(self):
+        if self.sign == 0:
+            return 'eq'
+
+        axisname = 'xyz'[self.i]
+        dispname = self.ndisp * ' +-'[self.sign]
+        return f'{self.a}{axisname}{dispname}'
+
+    @property
+    def _cached(self):
+        return self.vib.cache[self.name]
+
+    def forces(self):
+        return self._cached['forces'].copy()
+
+    @property
+    def step(self):
+        return self.ndisp * self.sign * self.vib.delta
+
+    # XXX dipole only valid for infrared
+    def dipole(self):
+        return self._cached['dipole'].copy()
+
+    # XXX below stuff only valid for TDDFT excitation stuff
+    def save_ov_nn(self, ov_nn):
+        np.save(self.name + '.ov', ov_nn)
+
+    def load_ov_nn(self):
+        return np.load(self.name + '.ov.npy')
+
+    @property
+    def _exname(self):
+        return f'{self.vib.exname}.{self.name}{self.vib.exext}'
+
+    def calculate_and_save_static_polarizability(self, atoms):
+        exobj = self.vib._new_exobj()
+        excitation_data = exobj.calculate(atoms)
+        np.savetxt(self._exname, excitation_data)
+
+    def load_static_polarizability(self):
+        return np.loadtxt(self._exname)
+
+    def read_exobj(self):
+        return self.vib.read_exobj(self._exname)
+
+    def calculate_and_save_exlist(self, atoms):
+        #exo = self.vib._new_exobj()
+        excalc = self.vib._new_exobj()
+        exlist = excalc.calculate(atoms)
+        exlist.write(self._exname)
+
+
+class Vibrations(AtomicDisplacements):
     """Class for calculating vibrational modes using finite difference.
 
     The vibrational modes are calculated from a finite difference
@@ -58,19 +127,19 @@ class Vibrations:
     BFGS:   3  16:01:21        0.262777       0.0088
     >>> vib = Vibrations(n2)
     >>> vib.run()
-    Writing vib.eq.pckl
-    Writing vib.0x-.pckl
-    Writing vib.0x+.pckl
-    Writing vib.0y-.pckl
-    Writing vib.0y+.pckl
-    Writing vib.0z-.pckl
-    Writing vib.0z+.pckl
-    Writing vib.1x-.pckl
-    Writing vib.1x+.pckl
-    Writing vib.1y-.pckl
-    Writing vib.1y+.pckl
-    Writing vib.1z-.pckl
-    Writing vib.1z+.pckl
+    Writing vib.eq.json
+    Writing vib.0x-.json
+    Writing vib.0x+.json
+    Writing vib.0y-.json
+    Writing vib.0y+.json
+    Writing vib.0z-.json
+    Writing vib.0z+.json
+    Writing vib.1x-.json
+    Writing vib.1x+.json
+    Writing vib.1y-.json
+    Writing vib.1y+.json
+    Writing vib.1z-.json
+    Writing vib.1z+.json
     >>> vib.summary()
     ---------------------
     #    meV     cm^-1
@@ -97,12 +166,18 @@ class Vibrations:
             raise ValueError(
                 'one (or more) indices included more than once')
         self.indices = np.asarray(indices)
-        self.name = name
+
         self.delta = delta
         self.nfree = nfree
         self.H = None
         self.ir = None
         self._vibrations = None
+
+        self.cache = get_json_cache(name)
+
+    @property
+    def name(self):
+        return str(self.cache.directory)
 
     def run(self):
         """Run the vibration calculations.
@@ -110,7 +185,7 @@ class Vibrations:
         This will calculate the forces for 6 displacements per atom +/-x,
         +/-y, +/-z. Only those calculations that are not already done will be
         started. Be aware that an interrupted calculation may produce an empty
-        file (ending with .pckl), which must be deleted before restarting the
+        file (ending with .json), which must be deleted before restarting the
         job. Otherwise the forces will not be calculated for that
         displacement.
 
@@ -124,69 +199,87 @@ class Vibrations:
         forces on your own.
         """
 
-        if op.isfile(self.name + '.all.pckl'):
+        if not self.cache.writable:
             raise RuntimeError(
-                'Cannot run calculation. ' +
-                self.name + '.all.pckl must be removed or split in order ' +
+                'Cannot run calculation.  '
+                'Cache must be removed or split in order '
                 'to have only one sort of data structure at a time.')
-        for dispName, atoms in self.iterdisplace(inplace=True):
-            filename = dispName + '.pckl'
-            fd = opencew(filename)
-            if fd is not None:
-                self.calculate(atoms, filename, fd)
+
+        self._check_old_pickles()
+
+        for disp, atoms in self.iterdisplace(inplace=True):
+            with self.cache.lock(disp.name) as handle:
+                if handle is None:
+                    continue
+
+                result = self.calculate(atoms, disp)
+
+                if world.rank == 0:
+                    handle.save(result)
+
+    def _check_old_pickles(self):
+        from pathlib import Path
+        eq_pickle_path = Path(f'{self.name}.eq.pckl')
+        pickle2json_instructions =f"""\
+Found old pickle files such as {eq_pickle_path}.  \
+Please remove them and recalculate or run \
+"python -m ase.vibrations.pickle2json --help"."""
+        if len(self.cache) == 0 and eq_pickle_path.exists():
+            raise RuntimeError(pickle2json_instructions)
 
     def iterdisplace(self, inplace=False):
         """Yield name and atoms object for initial and displaced structures.
 
         Use this to export the structures for each single-point calculation
         to an external program instead of using ``run()``. Then save the
-        calculated gradients to <name>.pckl and continue using this instance.
+        calculated gradients to <name>.json and continue using this instance.
         """
+        # XXX change of type of disp
         atoms = self.atoms if inplace else self.atoms.copy()
-        yield self.name + '.eq', atoms
-        for dispName, a, i, disp in self.displacements():
+        displacements = self.displacements()
+        eq_disp = next(displacements)
+        assert eq_disp.name == 'eq'
+        yield eq_disp, atoms
+
+        for disp in displacements:
             if not inplace:
                 atoms = self.atoms.copy()
-            pos0 = atoms.positions[a, i]
-            atoms.positions[a, i] += disp
-            yield dispName, atoms
+            pos0 = atoms.positions[disp.a, disp.i]
+            atoms.positions[disp.a, disp.i] += disp.step
+            yield disp, atoms
+
             if inplace:
-                atoms.positions[a, i] = pos0
+                atoms.positions[disp.a, disp.i] = pos0
 
     def iterimages(self):
         """Yield initial and displaced structures."""
         for name, atoms in self.iterdisplace():
             yield atoms
 
-    def displacements(self):
+    def _iter_ai(self):
         for a in self.indices:
             for i in range(3):
-                for sign in [-1, 1]:
-                    for ndis in range(1, self.nfree // 2 + 1):
-                        disp_name = ('%s.%d%s%s' %
-                                     (self.name, a, 'xyz'[i],
-                                      ndis * ' +-'[sign]))
-                        disp = ndis * sign * self.delta
-                        yield disp_name, a, i, disp
+                yield a, i
 
-    def calculate(self, atoms, filename, fd):
-        forces = self.calc.get_forces(atoms)
+    def displacements(self):
+        yield self._eq_disp()
+
+        for a, i in self._iter_ai():
+            for sign in [-1, 1]:
+                for ndisp in range(1, self.nfree // 2 + 1):
+                    yield self._disp(a, i, sign * ndisp)
+
+    def calculate(self, atoms, disp):
+        results = {}
+        results['forces'] = self.calc.get_forces(atoms)
+
         if self.ir:
-            dipole = self.calc.get_dipole_moment(atoms)
-        if world.rank == 0:
-            if self.ir:
-                pickle.dump([forces, dipole], fd, protocol=2)
-                sys.stdout.write(
-                    'Writing %s, dipole moment = (%.6f %.6f %.6f)\n' %
-                    (filename, dipole[0], dipole[1], dipole[2]))
-            else:
-                pickle.dump(forces, fd, protocol=2)
-                sys.stdout.write('Writing %s\n' % filename)
-            fd.close()
-        sys.stdout.flush()
+            results['dipole'] = self.calc.get_dipole_moment(atoms)
+
+        return results
 
     def clean(self, empty_files=False, combined=True):
-        """Remove pickle-files.
+        """Remove json-files.
 
         Use empty_files=True to remove only empty files and
         combined=False to not remove the combined file.
@@ -196,84 +289,34 @@ class Vibrations:
         if world.rank != 0:
             return 0
 
-        n = 0
-        filenames = [self.name + '.eq.pckl']
-        if combined:
-            filenames.append(self.name + '.all.pckl')
-        for dispName, a, i, disp in self.displacements():
-            filename = dispName + '.pckl'
-            filenames.append(filename)
+        if empty_files:
+            return self.cache.strip_empties()  # XXX Fails on combined cache
 
-        for name in filenames:
-            if op.isfile(name):
-                if not empty_files or op.getsize(name) == 0:
-                    os.remove(name)
-                    n += 1
-        return n
+        nfiles = self.cache.filecount()
+        self.cache.clear()
+        return nfiles
 
     def combine(self):
-        """Combine pickle-files to one file ending with '.all.pckl'.
+        """Combine json-files to one file ending with '.all.json'.
 
-        The other pickle-files will be removed in order to have only one sort
+        The other json-files will be removed in order to have only one sort
         of data structure at a time.
 
         """
-        if world.rank != 0:
-            return 0
-        filenames = [self.name + '.eq.pckl']
-        for dispName, a, i, disp in self.displacements():
-            filename = dispName + '.pckl'
-            filenames.append(filename)
-        combined_data = {}
-        for name in filenames:
-            if not op.isfile(name) or op.getsize(name) == 0:
-                raise RuntimeError('Calculation is not complete. ' +
-                                   name + ' is missing or empty.')
-            with open(name, 'rb') as fl:
-                f = pickleload(fl)
-            combined_data.update({op.basename(name): f})
-        filename = self.name + '.all.pckl'
-        fd = opencew(filename)
-        if fd is None:
-            raise RuntimeError(
-                'Cannot write file ' + filename +
-                '. Remove old file if it exists.')
-        else:
-            pickle.dump(combined_data, fd, protocol=2)
-            fd.close()
-        return self.clean(combined=False)
+        nelements_before = self.cache.filecount()
+        self.cache = self.cache.combine()
+        return nelements_before
 
     def split(self):
-        """Split combined pickle-file.
+        """Split combined json-file.
 
-        The combined pickle-file will be removed in order to have only one
+        The combined json-file will be removed in order to have only one
         sort of data structure at a time.
 
         """
-        if world.rank != 0:
-            return 0
-        combined_name = self.name + '.all.pckl'
-        if not op.isfile(combined_name):
-            raise RuntimeError('Cannot find combined file: ' +
-                               combined_name + '.')
-        with open(combined_name, 'rb') as fl:
-            combined_data = pickleload(fl)
-        filenames = [self.name + '.eq.pckl']
-        for dispName, a, i, disp in self.displacements():
-            filename = dispName + '.pckl'
-            filenames.append(filename)
-            if op.isfile(filename):
-                raise RuntimeError(
-                    'Cannot split. File ' + filename + 'already exists.')
-        for name in filenames:
-            fd = opencew(name)
-            try:
-                pickle.dump(combined_data[op.basename(name)], fd, protocol=2)
-            except KeyError:
-                pickle.dump(combined_data[name], fd, protocol=2)  # Old version
-            fd.close()
-        os.remove(combined_name)
-        return 1  # One file removed
+        count = self.cache.filecount()
+        self.cache = self.cache.split()
+        return count
 
     def read(self, method='standard', direction='central'):
         self.method = method.lower()
@@ -281,69 +324,55 @@ class Vibrations:
         assert self.method in ['standard', 'frederiksen']
         assert self.direction in ['central', 'forward', 'backward']
 
-        def load(fname, combined_data=None):
-            if combined_data is None:
-                with open(fname, 'rb') as fl:
-                    f = pickleload(fl)
-            else:
-                try:
-                    f = combined_data[op.basename(fname)]
-                except KeyError:
-                    f = combined_data[fname]  # Old version
-            if not hasattr(f, 'shape') and not hasattr(f, 'keys'):
-                # output from InfraRed
-                return f[0]
-            return f
-
         n = 3 * len(self.indices)
         H = np.empty((n, n))
         r = 0
-        if op.isfile(self.name + '.all.pckl'):
-            # Open the combined pickle-file
-            combined_data = load(self.name + '.all.pckl')
-        else:
-            combined_data = None
+
+        eq_disp = self._eq_disp()
+
         if direction != 'central':
-            feq = load(self.name + '.eq.pckl', combined_data)
-        for a in self.indices:
-            for i in 'xyz':
-                name = '%s.%d%s' % (self.name, a, i)
-                fminus = load(name + '-.pckl', combined_data)
-                fplus = load(name + '+.pckl', combined_data)
+            feq = eq_disp.forces()
+
+        for a, i in self._iter_ai():
+            disp_minus = self._disp(a, i, -1)
+            disp_plus = self._disp(a, i, 1)
+
+            fminus = disp_minus.forces()
+            fplus = disp_plus.forces()
+            if self.method == 'frederiksen':
+                fminus[a] -= fminus.sum(0)
+                fplus[a] -= fplus.sum(0)
+            if self.nfree == 4:
+                fminusminus = self._disp(a, i, -2).forces()
+                fplusplus = self._disp(a, i, 2).forces()
                 if self.method == 'frederiksen':
-                    fminus[a] -= fminus.sum(0)
-                    fplus[a] -= fplus.sum(0)
-                if self.nfree == 4:
-                    fminusminus = load(name + '--.pckl', combined_data)
-                    fplusplus = load(name + '++.pckl', combined_data)
-                    if self.method == 'frederiksen':
-                        fminusminus[a] -= fminusminus.sum(0)
-                        fplusplus[a] -= fplusplus.sum(0)
-                if self.direction == 'central':
-                    if self.nfree == 2:
-                        H[r] = .5 * (fminus - fplus)[self.indices].ravel()
-                    else:
-                        H[r] = H[r] = (-fminusminus +
-                                       8 * fminus -
-                                       8 * fplus +
-                                       fplusplus)[self.indices].ravel() / 12.0
-                elif self.direction == 'forward':
-                    H[r] = (feq - fplus)[self.indices].ravel()
+                    fminusminus[a] -= fminusminus.sum(0)
+                    fplusplus[a] -= fplusplus.sum(0)
+            if self.direction == 'central':
+                if self.nfree == 2:
+                    H[r] = .5 * (fminus - fplus)[self.indices].ravel()
                 else:
-                    assert self.direction == 'backward'
-                    H[r] = (fminus - feq)[self.indices].ravel()
-                H[r] /= 2 * self.delta
-                r += 1
+                    assert self.nfree == 4
+                    H[r] = H[r] = (-fminusminus +
+                                   8 * fminus -
+                                   8 * fplus +
+                                   fplusplus)[self.indices].ravel() / 12.0
+            elif self.direction == 'forward':
+                H[r] = (feq - fplus)[self.indices].ravel()
+            else:
+                assert self.direction == 'backward'
+                H[r] = (fminus - feq)[self.indices].ravel()
+            H[r] /= 2 * self.delta
+            r += 1
         H += H.copy().T
         self.H = H
-        m = self.atoms.get_masses()
-        if 0 in [m[index] for index in self.indices]:
+        masses = self.atoms.get_masses()
+        if any(masses[self.indices] == 0):
             raise RuntimeError('Zero mass encountered in one or more of '
                                'the vibrated atoms. Use Atoms.set_masses()'
                                ' to set all masses to non-zero values.')
 
-        self.im = np.repeat(m[self.indices]**-0.5, 3)
-
+        self.im = np.repeat(masses[self.indices]**-0.5, 3)
         self._vibrations = self.get_vibrations(read_cache=False)
 
         omega2, modes = np.linalg.eigh(self.im[:, None] * H * self.im)
