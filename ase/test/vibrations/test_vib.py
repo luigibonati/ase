@@ -225,6 +225,39 @@ class TestVibrationsDataStaticMethods:
         assert table[7].split()[2] == '2.000'
         assert len(table) == 8
 
+    na2 = Atoms('Na2', cell=[2, 2, 2], positions=[[0, 0, 0],
+                                                  [1, 1, 1]])
+    na2_image_1 = na2.copy()
+    na2_image_1.info.update({'mode#': '0',
+                             'frequency_cm-1': 8065.5})
+    na2_image_1.arrays['mode'] = np.array([[1., 1., 1.],
+                                           [0.5, 0.5, 0.5]])
+
+    @pytest.mark.parametrize('kwargs,expected',
+                             [(dict(atoms=na2,
+                                   energies=[1.],
+                                   modes=np.array([[[1., 1., 1.],
+                                                    [0.5, 0.5, 0.5]]])),
+                               [na2_image_1])
+                              ])
+    def test_get_jmol_images(self, kwargs, expected):
+        # Test the private staticmethod _get_jmol_images
+        # used by the public write_jmol_images() method
+        from ase.calculators.calculator import compare_atoms
+
+        jmol_images = list(VibrationsData._get_jmol_images(**kwargs))
+
+        assert len(jmol_images) == len(expected)
+
+        for image, reference in zip(jmol_images, expected):
+            assert compare_atoms(image, reference) == []
+            for key, value in reference.info.items():
+                if key == 'frequency_cm-1':
+                    assert float(image.info[key]) == pytest.approx(value,
+                                                                   abs=0.1)
+                else:
+                    assert image.info[key] == value
+
 
 class TestVibrationsData:
     @pytest.fixture
