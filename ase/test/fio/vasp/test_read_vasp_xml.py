@@ -41,7 +41,7 @@ def test_atoms(vasprun, tmp_path):
                                   atoms.cell.complete())
 
 
-def test_results(vasprun, tmp_path):
+def test_calculation(vasprun, tmp_path):
 
     from ase.units import GPa
 
@@ -68,3 +68,6 @@ def test_results(vasprun, tmp_path):
     expected_stress = expected_stress.reshape(9)[[0, 4, 8, 5, 2, 1]]
 
     np.testing.assert_array_equal(atoms.get_stress(), expected_stress)
+
+    expected_kpoints = np.array([[0.0, 0.0, 0.0]])
+    np.testing.assert_array_equal(atoms.calc.ibz_kpts, expected_kpoints)
