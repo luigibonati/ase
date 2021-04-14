@@ -1,19 +1,113 @@
-# import inspect
 import pytest
+
 import numpy as np
-from shutil import copyfile
 from ase.io import read
+from io import StringIO
 
 
-@pytest.fixture
-def vasprun(datadir):
-    return datadir / 'vasp' / 'vasprun.xml'
+@pytest.fixture()
+def vasprun():
+    # "Hand-written" (reduced) vasprun.xml
+    sample_vasprun = """\
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<modeling>
+ <structure name="primitive_cell" >
+  <crystal>
+   <varray name="basis" >
+    <v>       3.16000000       0.00000000       0.00000000 </v>
+    <v>       0.00000000       3.16000000       0.00000000 </v>
+    <v>       0.00000000       0.00000000       3.16000000 </v>
+   </varray>
+  </crystal>
+  <varray name="positions" >
+   <v>       0.00000000       0.00000000       0.00000000 </v>
+   <v>       0.50000000       0.50000000       0.50000000 </v>
+  </varray>
+ </structure>
+ <kpoints>
+  <varray name="kpointlist" >
+   <v>       0.00000000       0.00000000       0.00000000 </v>
+  </varray>
+ </kpoints>
+ <atominfo>
+  <atoms>       2 </atoms>
+  <types>       1 </types>
+  <array name="atoms" >
+   <set>
+    <rc><c>W </c><c>   1</c></rc>
+    <rc><c>W </c><c>   1</c></rc>
+   </set>
+  </array>
+ </atominfo>
+ <structure name="initialpos" >
+  <crystal>
+   <varray name="basis" >
+    <v>       3.16000000       0.00000000       0.00000000 </v>
+    <v>       0.00000000       3.16000000       0.00000000 </v>
+    <v>       0.00000000       0.00000000       3.16000000 </v>
+   </varray>
+   <i name="volume">     31.55449600 </i>
+  </crystal>
+  <varray name="positions" >
+   <v>       0.00000000       0.00000000       0.00000000 </v>
+   <v>       0.50000000       0.50000000       0.50000000 </v>
+  </varray>
+ </structure>
+ <calculation>
+  <scstep>
+   <energy>
+    <i name="e_fr_energy">     32.61376955 </i>
+    <i name="e_wo_entrp">     32.60797165 </i>
+    <i name="e_0_energy">     32.61183692 </i>
+   </energy>
+  </scstep>
+  <scstep>
+   <energy>
+    <i name="e_fr_energy">    -29.67243317 </i>
+    <i name="e_wo_entrp">    -29.68588381 </i>
+    <i name="e_0_energy">    -29.67691672 </i>
+   </energy>
+  </scstep>
+  <structure>
+   <crystal>
+    <varray name="basis" >
+     <v>       3.16000000       0.00000000       0.00000000 </v>
+     <v>       0.00000000       3.16000000       0.00000000 </v>
+     <v>       0.00000000       0.00000000       3.16000000 </v>
+    </varray>
+    <i name="volume">     31.55449600 </i>
+    <varray name="rec_basis" >
+     <v>       0.31645570       0.00000000       0.00000000 </v>
+     <v>       0.00000000       0.31645570       0.00000000 </v>
+     <v>       0.00000000       0.00000000       0.31645570 </v>
+    </varray>
+   </crystal>
+   <varray name="positions" >
+    <v>       0.00000000       0.00000000       0.00000000 </v>
+    <v>       0.50000000       0.50000000       0.50000000 </v>
+   </varray>
+  </structure>
+  <varray name="forces" >
+   <v>       7.58587457      -5.22590317       6.88227285 </v>
+   <v>      -7.58587457       5.22590317      -6.88227285 </v>
+  </varray>
+  <varray name="stress" >
+   <v>    4300.36902090    -284.50040544   -1468.20603140 </v>
+   <v>    -284.50040595    4824.17435683   -1625.37541639 </v>
+   <v>   -1468.20603158   -1625.37541697    5726.84189498 </v>
+  </varray>
+  <energy>
+   <i name="e_fr_energy">    -29.67243317 </i>
+   <i name="e_wo_entrp">    -29.68588381 </i>
+   <i name="e_0_energy">    -29.67691672 </i>
+  </energy>
+"""
+    return StringIO(sample_vasprun)
 
 
-def test_atoms(vasprun, tmp_path):
+def test_atoms(vasprun):
 
-    copyfile(vasprun, tmp_path / 'vasprun.xml')
-    atoms = read(tmp_path / 'vasprun.xml', index=-1)
+    atoms = read(vasprun, index=-1, format='vasp-xml')
 
     # check number of atoms
     assert len(atoms) == 2
@@ -41,12 +135,11 @@ def test_atoms(vasprun, tmp_path):
                                   atoms.cell.complete())
 
 
-def test_calculation(vasprun, tmp_path):
+def test_calculation(vasprun):
 
     from ase.units import GPa
 
-    copyfile(vasprun, tmp_path / 'vasprun.xml')
-    atoms = read(tmp_path / 'vasprun.xml', index=-1)
+    atoms = read(vasprun, index=-1, format='vasp-xml')
 
     expected_e_0_energy = -29.67691672
     assert atoms.get_potential_energy() == expected_e_0_energy
