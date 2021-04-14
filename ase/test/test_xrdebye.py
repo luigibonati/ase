@@ -26,7 +26,7 @@ def test_get(xrd):
     assert np.abs((obtained - expected) / expected) < tolerance
 
 
-def test_xrd(xrd):
+def test_xrd(testdir, xrd):
     expected = np.array([18549.274677, 52303.116995, 38502.372027])
     obtained = xrd.calc_pattern(x=np.array([15, 30, 50]), mode='XRD')
     assert np.allclose(obtained, expected, rtol=tolerance)
@@ -34,7 +34,7 @@ def test_xrd(xrd):
     assert Path('tmp.txt').exists()
 
 
-def test_saxs_and_files(figure, xrd):
+def test_saxs_and_files(testdir, figure, xrd):
     expected = np.array([372650934.006398, 280252013.563702,
                          488123.103628])
     obtained = xrd.calc_pattern(x=np.array([0.021, 0.09, 0.53]),
