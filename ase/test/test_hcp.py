@@ -47,7 +47,7 @@ def polyfit(x, y, order=3):
     return p
 
 
-def test_hcp():
+def test_hcp(testdir):
     a0 = 3.52 / np.sqrt(2)
     c0 = np.sqrt(8 / 3.0) * a0
     print('%.4f %.3f' % (a0, c0 / a0))

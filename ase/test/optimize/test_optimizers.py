@@ -49,7 +49,7 @@ optclasses = [
 
 @pytest.mark.parametrize('optcls', optclasses)
 @pytest.mark.filterwarnings('ignore: estimate_mu')
-def test_optimize(optcls, atoms, ref_atoms):
+def test_optimize(optcls, atoms, ref_atoms, testdir):
     if optcls is Berny:
         pytest.importorskip('berny')  # check if pyberny installed
         optcls = partial(optcls, dihedral=False)

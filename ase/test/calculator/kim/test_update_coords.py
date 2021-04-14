@@ -21,7 +21,7 @@ def set_positions_to_orig(atoms, box_len, dimer_separation):
 
 
 @mark.calculator_lite
-def test_update_coords(KIM):
+def test_update_coords(KIM, testdir):
     """
     Check that the coordinates registered with the KIM API are updated
     appropriately when the atomic positions are updated.  This can go awry

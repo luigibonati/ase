@@ -1,7 +1,8 @@
-def test_ag(cli):
-    from ase import Atoms
-    from ase.io import write
+from ase import Atoms
+from ase.io import write
 
+
+def test_ag(cli, testdir):
     write('x.json', Atoms('X'))
 
     # Make sure ASE's gui can run in terminal mode without $DISPLAY and tkinter:

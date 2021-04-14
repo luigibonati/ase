@@ -25,7 +25,7 @@ class BEECalculator:
 
 
 @pytest.mark.parametrize('xc', ['mBEEF', 'BEEF-vdW', 'mBEEF-vdW'])
-def test_bee(xc):
+def test_bee(xc, testdir):
     """Check BEEF ensemble code."""
     size = 7  # size of ensemble
 

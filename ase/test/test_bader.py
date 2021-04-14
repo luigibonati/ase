@@ -4,7 +4,7 @@ from ase.build import molecule
 from ase.io.bader import attach_charges
 
 
-def test_bader():
+def test_bader(testdir):
     fname = 'ACF.dat'
     Path(fname).write_text("""
        #         X           Y           Z        CHARGE     MIN DIST

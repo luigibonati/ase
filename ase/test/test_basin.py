@@ -8,7 +8,7 @@ from ase.units import kB
 
 
 @pytest.mark.slow
-def test_basin():
+def test_basin(testdir):
     # Global minima from
     # Wales and Doye, J. Phys. Chem. A, vol 101 (1997) 5111-5116
     E_global = {
