@@ -172,7 +172,7 @@ class TestVibrationsClassic:
         atoms3 = n2_optimized.copy()  # No calculator needed!
 
         with ase.utils.workdir('run_from_here', mkdir=True):
-            vib = Vibrations(atoms3, name=str(Path.cwd.parent))
+            vib = Vibrations(atoms3, name=str(Path.cwd().parent / 'vib'))
             assert_array_almost_equal(freqs, vib.get_frequencies())
             assert vib.clean() == 13
 

@@ -421,10 +421,13 @@ Please remove them and recalculate or run \
             energies = self.get_energies(method=method, direction=direction)
 
         summary_lines = VibrationsData._tabulate_from_energies(energies)
+        log_text = '\n'.join(summary_lines) + '\n'
 
         if isinstance(log, str):
             with paropen(log, 'a') as log_file:
-                log_file.write('\n'.join(summary_lines) + '\n')
+                log_file.write(log_text)
+        else:
+            log.write(log_text)
 
         else:
             for line in summary_lines:
