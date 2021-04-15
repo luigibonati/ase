@@ -100,7 +100,7 @@ def calculation():
    <v>      -7.58587457       5.22590317      -6.88227285 </v>
   </varray>
   <varray name="stress" >
-   <v>    4300.36902090    -284.50040544   -1468.20603140 </v>
+   <v>    4300.3690209     -284.50040544   -1468.2060314 </v>
    <v>    -284.50040595    4824.17435683   -1625.37541639 </v>
    <v>   -1468.20603158   -1625.37541697    5726.84189498 </v>
   </varray>
@@ -128,7 +128,7 @@ def test_atoms(vasprun):
                                          [0.5,  0.5, 0.5]])
 
     np.testing.assert_allclose(atoms.get_scaled_positions(),
-                                  expected_scaled_positions)
+                               expected_scaled_positions)
 
     expected_cell = np.array([[3.16, 0.0, 0.0],
                               [0.0, 3.16, 0.0],
@@ -143,11 +143,12 @@ def test_atoms(vasprun):
                                   atoms.cell.complete())
 
 
-def test_calculation(vasprun, calculation):
+def test_calculation(vasprun, calculation, index=-1):
 
     from ase.units import GPa
 
-    atoms = read(StringIO(vasprun + calculation), index=-1, format='vasp-xml')
+    atoms = read(StringIO(vasprun + calculation), index=index,
+                 format='vasp-xml')
 
     expected_e_0_energy = -29.67691672
     assert atoms.get_potential_energy() == expected_e_0_energy
@@ -159,7 +160,7 @@ def test_calculation(vasprun, calculation):
     expected_forces = np.array([[7.58587457, -5.22590317, 6.88227285],
                                 [-7.58587457, 5.22590317, -6.88227285]])
     np.testing.assert_allclose(atoms.get_forces(),
-                                  expected_forces)
+                               expected_forces)
 
     expected_stress = np.array([[4300.36902090, -284.50040544, -1468.20603140],
                                [-284.50040595, 4824.17435683, -1625.37541639],
@@ -169,3 +170,60 @@ def test_calculation(vasprun, calculation):
     expected_stress = expected_stress.reshape(9)[[0, 4, 8, 5, 2, 1]]
 
     np.testing.assert_allclose(atoms.get_stress(), expected_stress)
+
+
+def test_two_calculations(vasprun, calculation):
+    from ase.units import GPa
+    # replace the energy values to make sure we read the second one
+    expected_e_0_energy = -2.0
+    expected_e_fr_energy = -3.0
+    second_calculation = calculation.replace("-29.67691672",
+                                             str(expected_e_0_energy))
+    second_calculation = second_calculation.replace("-29.67243317",
+                                                    str(expected_e_fr_energy))
+
+    def replace_values(old_value, new_values, calc, separator="      "):
+
+        for new_val, old_val in zip(new_values, old_value):
+            old_val_string = np.array2string(old_val,
+                                             separator=separator)[1:-1]
+            new_val_string = np.array2string(new_val,
+                                             separator=separator)[1:-1]
+            calc = calc.replace(old_val_string, new_val_string)
+
+        return calc
+
+    # replace forces
+    old_forces = np.array([[7.58587457, -5.22590317, 6.88227285],
+                           [-7.58587457, 5.22590317, -6.88227285]])
+
+    expected_forces = np.full_like(old_forces, np.pi)
+
+    second_calculation = replace_values(old_forces, expected_forces,
+                                        second_calculation)
+
+    old_stress = np.array([[4300.36902090, -284.50040544, -1468.20603140],
+                           [-284.50040595, 4824.17435683, -1625.37541639],
+                           [-1468.20603158, -1625.37541697, 5726.84189498]])
+
+    expected_stress = np.full_like(old_stress, 2.0 * np.pi)
+
+    second_calculation = replace_values(old_stress, expected_stress,
+                                        second_calculation, separator="   ")
+
+    extended_vasprun = vasprun + calculation + second_calculation
+    atoms = read(StringIO(extended_vasprun),
+                 format="vasp-xml", index=-1)
+
+    assert atoms.get_potential_energy() == expected_e_0_energy
+    assert (atoms.get_potential_energy(force_consistent=True) ==
+            expected_e_fr_energy)
+
+    np.testing.assert_allclose(atoms.get_forces(), expected_forces)
+    expected_stress *= -0.1 * GPa
+    expected_stress = expected_stress.reshape(9)[[0, 4, 8, 5, 2, 1]]
+    np.testing.assert_allclose(atoms.get_stress(), expected_stress)
+
+    # make sure we can read the first (second from the end)
+    # calculation by passing index=-2
+    test_calculation(extended_vasprun, calculation="", index=-2)
