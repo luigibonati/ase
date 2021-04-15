@@ -17,7 +17,6 @@ from ase.calculators.castep import (Castep, CastepOption,
 
 calc = pytest.mark.calculator
 
-
 def make_castep(keyword_tolerance=3, **kwargs):
     # Prepare a dummy Keywords file?
     # This could be changed into a kind of factory fixture using tmp_path
@@ -51,7 +50,6 @@ def castep_keywords(tmp_path):
         pytest.skip(
             'Invalid CASTEP_COMMAND provided - please set the correct one to '
             'run the full set of Castep tests')
-
     try:
         with pytest.warns(None):
             castep_keywords = import_castep_keywords(
@@ -60,7 +58,6 @@ def castep_keywords(tmp_path):
         pytest.skip('Cannot determine castep version')
 
     return castep_keywords
-
 
 @pytest.mark.xfail
 def test_fundamental_params():
