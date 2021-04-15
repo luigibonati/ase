@@ -134,7 +134,7 @@ def second_calculation(calculation):
 
         return calc
 
-    # replace forces
+    # replace forces and stress to another values
     old_forces = np.array([[7.58587457, -5.22590317, 6.88227285],
                            [-7.58587457, 5.22590317, -6.88227285]])
 
@@ -227,5 +227,16 @@ def test_two_calculations(vasprun, calculation, second_calculation):
 
     # make sure we can read the first (second from the end)
     # calculation by passing index=-2
-    test_calculation(extended_vasprun, calculation=second_calculation,
+    test_calculation(extended_vasprun, second_calculation,
                      index=-2)
+
+
+def test_vasprun_corrupted(vasprun, calculation, second_calculation):
+
+    # corrupted calculation that does not have energy record.
+    # Thus the parser is expected to read the previous one.
+    corrupted_calculation = '\n'.join(second_calculation.split('\n')[:-6])
+    # assert that we actually do have two calculations in the set up
+    test_calculation(vasprun + calculation, corrupted_calculation, index=-2)
+    # check that the parser skips the corrupted last one
+    test_calculation(vasprun + calculation, corrupted_calculation, index=-1)
