@@ -114,7 +114,6 @@ class TestVibrationsClassic:
         vib.run()
         freqs = vib.get_frequencies()
         vib.write_mode(n=None, nimages=5)
-        vib.write_jmol()
         vib_energies = vib.get_energies()
 
         for image in vib.iterimages():
@@ -151,10 +150,6 @@ class TestVibrationsClassic:
         with pytest.raises(AssertionError):
             assert_array_almost_equal(mode_traj[4].get_all_distances(),
                                       atoms.get_all_distances())
-
-        with open('vib.xyz', 'rt') as fd:
-            jmol_txt = fd.read()
-            assert jmol_txt == jmol_txt_ref
 
         assert vib.clean(empty_files=True) == 0
         assert vib.clean() == 13
@@ -246,7 +241,6 @@ class TestVibrationsDataStaticMethods:
         from ase.calculators.calculator import compare_atoms
 
         jmol_images = list(VibrationsData._get_jmol_images(**kwargs))
-
         assert len(jmol_images) == len(expected)
 
         for image, reference in zip(jmol_images, expected):
@@ -559,29 +553,3 @@ n2_on_ag_data = {"positions": np.array([
              [2.8733651749041575, 4.976814471633033, 0.0],
              [0.0, 0.0, 0.0]],
     "pbc": [True, True, False]}
-
-jmol_txt_ref = """     2
-Mode #0, f = 0.0  cm^-1.
- N      0.00000      0.00000      0.05095     -0.00000     -0.00000     -0.18894
- N      0.00000      0.00000      1.04905      0.00000     -0.00000     -0.18894
-     2
-Mode #1, f = 0.0  cm^-1.
- N      0.00000      0.00000      0.05095      0.18893     -0.00021      0.00000
- N      0.00000      0.00000      1.04905      0.18893     -0.00021     -0.00000
-     2
-Mode #2, f = 0.0  cm^-1.
- N      0.00000      0.00000      0.05095     -0.00021     -0.18893      0.00000
- N      0.00000      0.00000      1.04905     -0.00021     -0.18893      0.00000
-     2
-Mode #3, f = 13.5  cm^-1.
- N      0.00000      0.00000      0.05095     -0.18893     -0.00021      0.00000
- N      0.00000      0.00000      1.04905      0.18893      0.00021      0.00000
-     2
-Mode #4, f = 13.5  cm^-1.
- N      0.00000      0.00000      0.05095     -0.00021      0.18893      0.00000
- N      0.00000      0.00000      1.04905      0.00021     -0.18893      0.00000
-     2
-Mode #5, f = 1231.2  cm^-1.
- N      0.00000      0.00000      0.05095      0.00000      0.00000     -0.18894
- N      0.00000      0.00000      1.04905      0.00000     -0.00000      0.18894
-"""  # noqa: E501
