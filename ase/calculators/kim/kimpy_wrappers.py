@@ -209,7 +209,10 @@ class PortableModel:
 
     @c_int_args
     def _get_parameter_metadata(self, index_parameter):
-        return self.kim_model.get_parameter_metadata(index_parameter)
+        dtype, extent, name, description, error = self.kim_model.get_parameter_metadata(index_parameter)
+        if error:
+            raise KimpyError(f"Failed to retrieve metadata for parameter {name}")
+        return dtype, extent, name, description
 
     @c_int_args
     def _get_parameter_int(self, index_param, index_extent):
@@ -230,7 +233,7 @@ class PortableModel:
         Returns
         -------
         dict
-            Meta data associated with all model parameters.
+            Metadata associated with all model parameters.
         """
         num_params = self._get_number_of_parameters()
         metadata = {}
@@ -422,15 +425,12 @@ class PortableModel:
         dict
             Metadata associated with the requested model parameter.
         """
-        out = self._get_parameter_metadata(index_parameter)
-        dtype, extent, name, description, error = out
-        dtype = repr(dtype)
+        dtype, extent, name, description= self._get_parameter_metadata(index_parameter)
         pdata = {
             name: {
-                "dtype": dtype,
+                "dtype": repr(dtype),
                 "extent": extent,
                 "description": description,
-                "error": error,
             }
         }
         return pdata
