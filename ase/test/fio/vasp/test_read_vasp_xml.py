@@ -53,6 +53,14 @@ def vasprun():
    <v>       0.50000000       0.50000000       0.50000000 </v>
   </varray>
  </structure>
+"""
+    return sample_vasprun
+
+
+@pytest.fixture()
+def calculation():
+    # "Hand-written" calculation record
+    sample_calculation ="""\
  <calculation>
   <scstep>
    <energy>
@@ -102,12 +110,12 @@ def vasprun():
    <i name="e_0_energy">    -29.67691672 </i>
   </energy>
 """
-    return StringIO(sample_vasprun)
+    return sample_calculation
 
 
 def test_atoms(vasprun):
 
-    atoms = read(vasprun, index=-1, format='vasp-xml')
+    atoms = read(StringIO(vasprun), index=-1, format='vasp-xml')
 
     # check number of atoms
     assert len(atoms) == 2
@@ -135,11 +143,11 @@ def test_atoms(vasprun):
                                   atoms.cell.complete())
 
 
-def test_calculation(vasprun):
+def test_calculation(vasprun, calculation):
 
     from ase.units import GPa
 
-    atoms = read(vasprun, index=-1, format='vasp-xml')
+    atoms = read(StringIO(vasprun + calculation), index=-1, format='vasp-xml')
 
     expected_e_0_energy = -29.67691672
     assert atoms.get_potential_energy() == expected_e_0_energy
@@ -161,6 +169,3 @@ def test_calculation(vasprun):
     expected_stress = expected_stress.reshape(9)[[0, 4, 8, 5, 2, 1]]
 
     np.testing.assert_allclose(atoms.get_stress(), expected_stress)
-
-    expected_kpoints = np.array([[0.0, 0.0, 0.0]])
-    np.testing.assert_allclose(atoms.calc.ibz_kpts, expected_kpoints)
