@@ -239,4 +239,82 @@ def test_vasprun_corrupted(vasprun, calculation, second_calculation):
     # assert that we actually do have two calculations in the set up
     test_calculation(vasprun + calculation, corrupted_calculation, index=-2)
     # check that the parser skips the corrupted last one
+    # Should there be a warning in this case?
     test_calculation(vasprun + calculation, corrupted_calculation, index=-1)
+
+
+def test_vasp_parameters(vasprun, calculation):
+
+    from collections import OrderedDict
+
+    vasp_parameters = """\
+ <kpoints>
+  <generation param="Monkhorst-Pack">
+   <v type="int" name="divisions">       1        1        1 </v>
+   <v name="usershift">      0.00000000       0.00000000       0.00000000 </v>
+   <v name="genvec1">      1.00000000       0.00000000       0.00000000 </v>
+   <v name="genvec2">      0.00000000       1.00000000       0.00000000 </v>
+   <v name="genvec3">      0.00000000       0.00000000       1.00000000 </v>
+   <v name="shift">      0.00000000       0.00000000       0.00000000 </v>
+  </generation>
+  <varray name="kpointlist" >
+   <v>       0.00000000       0.00000000       0.00000000 </v>
+  </varray>
+  <varray name="weights" >
+   <v>       1.00000000 </v>
+  </varray>
+ </kpoints>
+<parameters>
+  <separator name="electronic" >
+   <i type="string" name="PREC">medium</i>
+   <i name="ENMAX">    500.00000000</i>
+   <i name="ENAUG">    373.43800000</i>
+   <i name="EDIFF">      1.00000000</i>
+   <separator name="electronic smearing" >
+    <i type="int" name="ISMEAR">     1</i>
+    <i name="SIGMA">      0.10000000</i>
+    <i name="KSPACING">      0.50000000</i>
+   </separator>
+   <separator name="electronic startup" >
+    <i type="int" name="ISTART">     0</i>
+    <i type="int" name="ICHARG">     2</i>
+    <i type="int" name="INIWAV">     1</i>
+   </separator>
+   <separator name="electronic exchange-correlation" >
+    <i type="logical" name="LASPH"> F  </i>
+    <i type="logical" name="LMETAGGA"> F  </i>
+   </separator>
+  </separator>
+  <separator name="ionic" >
+   <i type="int" name="NSW"> 10000</i>
+   <i type="int" name="IBRION">    11</i>
+   <i name="EDIFFG">     10.00000000</i>
+  </separator>
+  <separator name="symmetry" >
+   <i type="int" name="ISYM">     0</i>
+   <i name="SYMPREC">      0.00001000</i>
+  </separator>
+ </parameters>   
+    """
+
+    atoms = read(StringIO(vasprun + calculation + vasp_parameters),
+                 index=-1, format="vasp-xml")
+
+    expected_parameters = \
+        OrderedDict([('kpoints_generation',
+                      OrderedDict([('divisions', [1, 1, 1]),
+                                   ('usershift', [0.0, 0.0, 0.0]),
+                                   ('genvec1', [1.0, 0.0, 0.0]),
+                                   ('genvec2', [0.0, 1.0, 0.0]),
+                                   ('genvec3', [0.0, 0.0, 1.0]),
+                                   ('shift', [0.0, 0.0, 0.0])])),
+                     ('prec', 'medium'), ('enmax', 500.0),
+                     ('enaug', 373.438), ('ediff', 1.0),
+                     ('ismear', 1), ('sigma', 0.1),
+                     ('kspacing', 0.5), ('istart', 0),
+                     ('icharg', 2), ('iniwav', 1),
+                     ('lasph', False), ('lmetagga', False),
+                     ('nsw', 10000), ('ibrion', 11), ('ediffg', 10.0),
+                     ('isym', 0), ('symprec', 1e-05)])
+
+    assert atoms.calc.parameters == expected_parameters
