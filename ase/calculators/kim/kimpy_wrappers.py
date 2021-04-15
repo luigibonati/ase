@@ -201,28 +201,372 @@ class PortableModel:
 
         return species, codes
 
-    def get_number_of_parameters(self):
-        return self.kim_model.get_number_of_parameters()
-
     def clear_then_refresh(self):
         return self.kim_model.clear_then_refresh()
 
+    def _get_number_of_parameters(self):
+        return self.kim_model.get_number_of_parameters()
+
     @c_int_args
-    def get_parameter_metadata(self, index_parameter):
+    def _get_parameter_metadata(self, index_parameter):
         return self.kim_model.get_parameter_metadata(index_parameter)
 
     @c_int_args
-    def get_parameter_int(self, index_param, index_extent):
+    def _get_parameter_int(self, index_param, index_extent):
         return self.kim_model.get_parameter_int(index_param, index_extent)
 
     @c_int_args
-    def get_parameter_double(self, index_param, index_extent):
+    def _get_parameter_double(self, index_param, index_extent):
         return self.kim_model.get_parameter_double(index_param, index_extent)
 
-    def set_parameter(self, index_param, index_extent, value_typecast):
+    def _set_parameter(self, index_param, index_extent, value_typecast):
         return self.kim_model.set_parameter(
             c_int(index_param), c_int(index_extent), value_typecast
         )
+
+    def parameters_metadata(self):
+        """Metadata associated with all model parameters.
+
+        Returns
+        -------
+        dict
+            Meta data associated with all model parameters.
+        """
+        num_params = self._get_number_of_parameters()
+        metadata = {}
+        for ii in range(num_params):
+            metadata.update(self._get_one_parameter_metadata(ii))
+        return metadata
+
+    def parameter_names(self):
+        """Names of model parameters registered in the KIM API.
+
+        Returns
+        -------
+        list
+            Names of model parameters registered in the KIM API
+        """
+        nparams = self._get_number_of_parameters()
+        names = []
+        for ii in range(nparams):
+            name = list(self._get_one_parameter_metadata(ii))[0]
+            names.append(name)
+        return names
+
+    def get_parameters(self, **kwargs):
+        """
+        Get the values of one or more model parameter arrays.
+
+        Given the names of one or more model parameters and a set of indices
+        for each of them, retrieve the corresponding elements of the relevant
+        model parameter arrays.
+
+        Parameters
+        ----------
+        **kwargs
+            Names of the model parameters and the indices whose values should
+            be retrieved.
+
+        Returns
+        -------
+        dict
+            The requested indices and the values of the model's parameters.
+
+        Note
+        ----
+        The output of this method can be used as input of
+        ``set_parameters``.
+
+        Example
+        -------
+        To get `epsilons` and `sigmas` in the LJ universal model for Mo-Mo
+        (index 4879), Mo-S (index 2006) and S-S (index 1980) interactions::
+
+            >>> LJ = 'LJ_ElliottAkerson_2015_Universal__MO_959249795837_003'
+            >>> calc = KIM(LJ)
+            >>> calc.get_parameters(epsilons=[4879, 2006, 1980],
+            ...                     sigmas=[4879, 2006, 1980])
+            {'epsilons': [[4879, 2006, 1980],
+                          [4.47499, 4.421814057295943, 4.36927]],
+             'sigmas': [[4879, 2006, 1980],
+                        [2.74397, 2.30743, 1.87089]]}
+        """
+        parameters = {}
+        for parameter_name, index_range in kwargs.items():
+            parameters.update(self._get_one_parameter(parameter_name, index_range))
+        return parameters
+
+    def set_parameters(self, **kwargs):
+        """
+        Set the values of one or more model parameter arrays.
+
+        Given the names of one or more model parameters and a set of indices
+        and corresponding values for each of them, mutate the corresponding
+        elements of the relevant model parameter arrays.
+
+        Parameters
+        ----------
+        **kwargs
+            Names of the model parameters to mutate and the corresponding
+            indices and values to set.
+
+        Returns
+        -------
+        dict
+            The requested indices and the values of the model's parameters
+            that were set.
+
+        Example
+        -------
+        To set `epsilons` in the LJ universal model for Mo-Mo (index 4879),
+        Mo-S (index 2006) and S-S (index 1980) interactions to 5.0, 4.5, and
+        4.0, respectively::
+
+            >>> LJ = 'LJ_ElliottAkerson_2015_Universal__MO_959249795837_003'
+            >>> calc = KIM(LJ)
+            >>> calc.set_parameters(epsilons=[[4879, 2006, 1980],
+            ...                               [5.0, 4.5, 4.0]])
+            {'epsilons': [[4879, 2006, 1980],
+                          [5.0, 4.5, 4.0]]}
+        """
+        parameters = {}
+        for parameter_name, parameter_data in kwargs.items():
+            self._set_one_parameter(
+                parameter_name, parameter_data[0], parameter_data[1]
+            )
+            parameters.update({parameter_name: parameter_data})
+
+        return parameters
+
+    def _get_one_parameter(self, parameter_name, index_range):
+        """
+        Retrieve the value of one or more components of a model parameter array.
+
+        Parameters
+        ----------
+        parameter_name : str
+            Name of model parameter registered in the KIM API.
+        index_range : int or list
+            Zero-based index (int) or indices (list of int) specifying the
+            component(s) of the corresponding model parameter array that are
+            to be retrieved.
+
+        Returns
+        -------
+        dict
+            The requested indices and the corresponding values of the model
+            parameter array.
+        """
+        (parameter_name_index, dtype, index_range_dim) = self._one_parameter_data(
+            parameter_name, index_range
+        )
+
+        if index_range_dim == 0:
+            values = self._get_one_value(parameter_name_index, index_range, dtype)
+        elif index_range_dim == 1:
+            values = []
+            for idx in index_range:
+                values.append(self._get_one_value(parameter_name_index, idx, dtype))
+        else:
+            raise ValueError("Index range must be an integer or a list of integer")
+        return {parameter_name: [index_range, values]}
+
+    def _set_one_parameter(self, parameter_name, index_range, values):
+        """
+        Set the value of one or more components of a model parameter array.
+
+        Parameters
+        ----------
+        parameter_name : str
+            Name of model parameter registered in the KIM API.
+        index_range : int or list
+            Zero-based index (int) or indices (list of int) specifying the
+            component(s) of the corresponding model parameter array that are
+            to be mutated.
+        values : int/float or list
+            Value(s) to assign to the component(s) of the model parameter
+            array specified by ``index_range``.
+        """
+        (parameter_name_index, dtype, index_range_dim) = self._one_parameter_data(
+            parameter_name, index_range
+        )
+        values_dim = np.ndim(values)
+
+        # Check the shape of index_range and values
+        msg = "index_range and values must have the same shape"
+        assert index_range_dim == values_dim, msg
+
+        if index_range_dim == 0:
+            self._set_one_value(parameter_name_index, index_range, dtype, values)
+        elif index_range_dim == 1:
+            assert len(index_range) == len(values), msg
+            for idx, value in zip(index_range, values):
+                self._set_one_value(parameter_name_index, idx, dtype, value)
+        else:
+            raise ValueError(
+                "Index range must be an integer or a list containing a single integer"
+            )
+
+    def _get_one_parameter_metadata(self, index_parameter):
+        """
+        Get metadata associated with a single model parameter.
+
+        Parameters
+        ----------
+        index_parameter : int
+            Zero-based index used by the KIM API to refer to this model
+            parameter.
+
+        Returns
+        -------
+        dict
+            Metadata associated with the requested model parameter.
+        """
+        out = self._get_parameter_metadata(index_parameter)
+        dtype, extent, name, description, error = out
+        dtype = repr(dtype)
+        pdata = {
+            name: {
+                "dtype": dtype,
+                "extent": extent,
+                "description": description,
+                "error": error,
+            }
+        }
+        return pdata
+
+    def _get_parameter_name_index(self, parameter_name):
+        """
+        Given the name of a model parameter, find the index used by the KIM
+        API to refer to it.
+
+        Parameters
+        ----------
+        parameter_name : str
+            Name of model parameter registered in the KIM API.
+
+        Returns
+        -------
+        int
+            Zero-based index used by the KIM API to refer to this model parameter.
+        """
+        parameter_name_index = np.where(
+            np.asarray(self.parameter_names()) == parameter_name
+        )[0]
+        return parameter_name_index
+
+    def _get_one_value(self, index_param, index_extent, dtype):
+        """
+        Retrieve the value of a single component of a model parameter array.
+
+        Parameters
+        ----------
+        index_param : int
+            Zero-based index used by the KIM API to refer to this model
+            parameter.
+        index_extent : int
+            Zero-based index locating the component of the model parameter
+            array that is to be retrieved.
+        dtype : "Integer" or "Double"
+            Data type of the model's parameter.  Allowed types: "Integer" or
+            "Double".
+
+        Returns
+        -------
+        int or float
+            Value of the requested component of the model parameter array.
+
+        Raises
+        ------
+        ValueError
+            If ``dtype`` is not one of "Integer" or "Double"
+        """
+        self._check_parameter_data_type(dtype)
+
+        if dtype == "Double":
+            pp = self._get_parameter_double(index_param, index_extent)[0]
+        elif dtype == "Integer":
+            pp = self._get_parameter_int(index_param, index_extent)[0]
+
+        return pp
+
+    def _set_one_value(self, index_param, index_extent, dtype, value):
+        """
+        Set the value of a single component of a model parameter array.
+
+        Parameters
+        ----------
+        index_param : int
+            Zero-based index used by the KIM API to refer to this model
+            parameter.
+        index_extent : int
+            Zero-based index locating the component of the model parameter
+            array that is to be mutated.
+        dtype : "Integer" or "Double"
+            Data type of the model's parameter.  Allowed types: "Integer" or
+            "Double".
+        value : int or float
+            Value to assign the the requested component of the model
+            parameter array.
+
+        Raises
+        ------
+        ValueError
+            If ``dtype`` is not one of "Integer" or "Double".
+        """
+        self._check_parameter_data_type(dtype)
+
+        if dtype == "Double":
+            value_typecast = c_double(value)
+        elif dtype == "Integer":
+            value_typecast = c_int(value)
+
+        self._set_parameter(index_param, index_extent, value_typecast)
+
+    def _one_parameter_data(self, parameter_name, index_range):
+        """Get the data of one of the parameter. The data will be used in
+        ``_get_one_parameter`` and ``_set_one_parameter``.
+
+        Parameters
+        ----------
+        parameter_name : str
+            Name of model parameter registered in the KIM API.:w
+
+        index_range : int or list
+            Zero-based index (int) or indices (list of int) specifying the
+            to be mutated.
+            component(s) of the corresponding model parameter array that are
+
+        Returns
+        -------
+        list
+            Contains index of model's parameter, metadata of the parameter,
+            dtype, and dimension of ``index_range``.
+
+        Raises
+        ------
+        ValueError
+            If ``parameter_name`` is not registered in the KIM API.
+        """
+        # Check if model has parameter_name
+        if parameter_name not in self.parameter_names():
+            raise ValueError(f"Parameter {parameter_name} is not supported.")
+
+        parameter_name_index = self._get_parameter_name_index(parameter_name)
+        metadata = self._get_one_parameter_metadata(parameter_name_index)
+        dtype = list(metadata.values())[0]["dtype"]
+
+        index_range_dim = np.ndim(index_range)
+
+        return parameter_name_index, dtype, index_range_dim
+
+    @staticmethod
+    def _check_parameter_data_type(dtype):
+        if dtype not in ["Integer", "Double"]:
+            raise ValueError(
+                f"Invalid data type {dtype}.  Allowed values are "
+                "'Integer' or 'Double'."
+            )
 
     @check_call_wrapper
     def compute(self, compute_args_wrapped, release_GIL):
