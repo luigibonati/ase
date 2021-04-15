@@ -452,7 +452,7 @@ Please remove them and recalculate or run \
             return
 
         else:
-            n = n % len(self.get_energies())
+            n %= len(self.get_energies())
 
         with ase.io.Trajectory('%s.%d.traj' % (self.name, n), 'w') as traj:
             for image in (self.get_vibrations()
