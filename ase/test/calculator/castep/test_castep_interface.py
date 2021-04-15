@@ -1,52 +1,69 @@
-def test_castep_interface():
-    """Simple shallow test of the CASTEP interface"""
-    import os
-    import re
-    import tempfile
-    import warnings
+import os
+import re
+import warnings
 
-    import numpy as np
-    import ase
-    import ase.lattice.cubic
-    from ase.calculators.castep import (Castep, CastepOption,
-                                        CastepParam, CastepCell,
-                                        make_cell_dict, make_param_dict,
-                                        CastepKeywords,
-                                        create_castep_keywords,
-                                        import_castep_keywords,
-                                        CastepVersionError)
+import pytest
+import numpy as np
+import ase
+import ase.lattice.cubic
+from ase.calculators.castep import (Castep, CastepOption,
+                                    CastepParam, CastepCell,
+                                    make_cell_dict, make_param_dict,
+                                    CastepKeywords,
+                                    create_castep_keywords,
+                                    import_castep_keywords,
+                                    CastepVersionError)
+
+
+calc = pytest.mark.calculator
+
+
+def make_castep(keyword_tolerance=3, **kwargs):
+    # Prepare a dummy Keywords file?
+    # This could be changed into a kind of factory fixture using tmp_path
+    return Castep(keyword_tolerance=keyword_tolerance, **kwargs)
+
+
+@pytest.fixture
+def castep_keywords(tmp_path):
+    """For simple shallow tests of the CASTEP interface"""
 
     # XXX on porting this test to pytest it wasn't skipped as it should be.
     # At any rate it failed then.  Maybe someone should look into that ...
     #
     # Hence, call the constructor to trigger our test skipping hack:
-    Castep()
+    # Castep()
 
-    tmp_dir = tempfile.mkdtemp()
+    # We have fundamentally two sets of tests: one if CASTEP is
+    # present, the other if it isn't
 
-    # We have fundamentally two sets of tests: one if CASTEP is present, the other
-    # if it isn't
-    has_castep = False
     # Try creating and importing the castep keywords first
     try:
         create_castep_keywords(
             castep_command=os.environ['CASTEP_COMMAND'],
-            path=tmp_dir,
+            path=tmp_path,
             fetch_only=20)
-        has_castep = True  # If it worked, it must be present
     except KeyError:
-        print('Could not find the CASTEP_COMMAND environment variable - please'
-              ' set it to run the full set of Castep tests')
+        pytest.skip(
+            'Could not find the CASTEP_COMMAND environment variable - please'
+            ' set it to run the full set of Castep tests')
     except CastepVersionError:
-        print('Invalid CASTEP_COMMAND provided - please set the correct one to '
-              'run the full set of Castep tests')
+        pytest.skip(
+            'Invalid CASTEP_COMMAND provided - please set the correct one to '
+            'run the full set of Castep tests')
 
     try:
-        castep_keywords = import_castep_keywords(
-            castep_command=os.environ.get('CASTEP_COMMAND', ''))
+        with pytest.warns(None):
+            castep_keywords = import_castep_keywords(
+                castep_command=os.environ.get('CASTEP_COMMAND', ''))
     except CastepVersionError:
-        castep_keywords = None
+        pytest.skip('Cannot determine castep version')
 
+    return castep_keywords
+
+
+@pytest.mark.xfail
+def test_fundamental_params():
     # Start by testing the fundamental parts of a CastepCell/CastepParam object
     boolOpt = CastepOption('test_bool', 'basic', 'defined')
     boolOpt.value = 'TRUE'
@@ -68,7 +85,7 @@ def test_castep_interface():
     assert mock_cparam.reuse.value is None
 
     mock_ccell.species_pot = ('Si', 'Si.usp')
-    mock_ccell.species_pot = ('C',  'C.usp')
+    mock_ccell.species_pot = ('C', 'C.usp')
     assert 'Si Si.usp' in mock_ccell.species_pot.value
     assert 'C C.usp' in mock_ccell.species_pot.value
     symops = (np.eye(3)[None], np.zeros(3)[None])
@@ -78,23 +95,28 @@ def test_castep_interface():
     0.0 0.0 1.0
     0.0 0.0 0.0""" in mock_ccell.symmetry_ops.value
 
+
+def test_castep_opt_cell_comparison(castep_keywords):
     # check if the CastepOpt, CastepCell comparison mechanism works
-    if castep_keywords:
-        p1 = CastepParam(castep_keywords)
-        p2 = CastepParam(castep_keywords)
+    p1 = CastepParam(castep_keywords)
+    p2 = CastepParam(castep_keywords)
 
-        assert p1._options == p2._options
+    assert p1._options == p2._options
 
-        p1._options['xc_functional'].value = 'PBE'
-        p1.xc_functional = 'PBE'
+    p1._options['xc_functional'].value = 'PBE'
+    p1.xc_functional = 'PBE'
 
-        assert p1._options != p2._options
+    assert p1._options != p2._options
 
-    c = Castep(directory=tmp_dir, label='test_label', keyword_tolerance=2)
-    if castep_keywords:
-        c.xc_functional = 'PBE'
-    else:
-        c.param.xc_functional = 'PBE'  # In "forgiving" mode, we need to specify
+
+@pytest.mark.xfail
+def test_xc_functionals(tmp_path):
+    # castep_keywords = None  # XXX change me.  Add fixture for castep keywords?
+    c = make_castep(directory=tmp_path, label='test_label', keyword_tolerance=2)
+    # if castep_keywords:
+    #    c.xc_functional = 'PBE'
+    # else:
+    c.param.xc_functional = 'PBE'  # In "forgiving" mode, we need to specify
 
     lattice = ase.lattice.cubic.BodyCenteredCubic('Li')
 
@@ -104,7 +126,7 @@ def test_castep_interface():
 
     lattice.calc = c
 
-    param_fn = os.path.join(tmp_dir, 'myParam.param')
+    param_fn = tmp_path / 'myParam.param'
 
     with open(param_fn, 'w') as param:
         param.write('XC_FUNCTIONAL : PBE #comment\n')
@@ -115,13 +137,14 @@ def test_castep_interface():
     c.merge_param(param_fn)
 
     assert c.calculation_required(lattice)
-    if has_castep:
-        assert c.dryrun_ok()
+    # if has_castep:
+    #     assert c.dryrun_ok()
 
     c.prepare_input_files(lattice)
 
-    # detecting pseudopotentials tests
 
+@pytest.fixture
+def pp_path(tmp_path):
     # typical filenames
     files = ['Ag_00PBE.usp',
              'Ag_00.recpot',
@@ -133,18 +156,22 @@ def test_castep_interface():
              'fe_pbe_v1.5.uspp.F.UPF',
              'Cu_01.recpot']
 
-    pp_path = os.path.join(tmp_dir, 'test_pp')
-    os.makedirs(pp_path)
+    pp_path = tmp_path / 'test_pp'
+    pp_path.mkdir()
 
     for f in files:
         with open(os.path.join(pp_path, f), 'w') as _f:
             _f.write('DUMMY PP')
 
+    return pp_path
 
-    c = Castep(directory=tmp_dir, label='test_label_pspots',
-               castep_pp_path=pp_path)
-    c._pedantic=True
-    atoms=ase.build.bulk('Ag')
+
+@pytest.mark.xfail
+def test_detect_pseudopotentials(tmp_path, pp_path):
+    c = make_castep(directory=tmp_path, label='test_label_pspots',
+                    castep_pp_path=pp_path)
+    c._pedantic = True
+    atoms = ase.build.bulk('Ag')
     atoms.calc = c
 
     # I know, unittest would be nicer... maybe at a later point
@@ -165,35 +192,37 @@ def test_castep_interface():
 
     try:
         # this should yield non-unique files
-        atoms.calc.find_pspots(suffix = 'recpot')
+        atoms.calc.find_pspots(suffix='recpot')
         raise AssertionError
     except RuntimeError:
         pass
 
     # now let's see if we find all...
-    atoms.calc.find_pspots(pspot = '00PBE', suffix = 'usp')
+    atoms.calc.find_pspots(pspot='00PBE', suffix='usp')
     assert atoms.calc.cell.species_pot.value.split()[-1] == 'Ag_00PBE.usp'
 
-    atoms.calc.find_pspots(pspot = '00', suffix = 'recpot')
+    atoms.calc.find_pspots(pspot='00', suffix='recpot')
     assert atoms.calc.cell.species_pot.value.split()[-1] == 'Ag_00.recpot'
 
-    atoms.calc.find_pspots(pspot = 'C18_PBE_OTF', suffix = 'usp')
+    atoms.calc.find_pspots(pspot='C18_PBE_OTF', suffix='usp')
     assert atoms.calc.cell.species_pot.value.split()[-1] == 'Ag_C18_PBE_OTF.usp'
 
-    atoms.calc.find_pspots(pspot = 'optgga1', suffix = 'recpot')
+    atoms.calc.find_pspots(pspot='optgga1', suffix='recpot')
     assert atoms.calc.cell.species_pot.value.split()[-1] == 'ag-optgga1.recpot'
 
-    atoms.calc.find_pspots(pspot = 'OTF', suffix = 'usp')
+    atoms.calc.find_pspots(pspot='OTF', suffix='usp')
     assert atoms.calc.cell.species_pot.value.split()[-1] == 'Ag_OTF.usp'
 
-    atoms.calc.find_pspots(suffix = 'UPF')
+    atoms.calc.find_pspots(suffix='UPF')
     assert (atoms.calc.cell.species_pot.value.split()[-1] ==
             'ag_pbe_v1.4.uspp.F.UPF')
 
 
-    # testing regular workflow
-    c = Castep(directory=tmp_dir, label='test_label_pspots',
-               castep_pp_path=pp_path, find_pspots=True, keyword_tolerance=2)
+@pytest.mark.xfail
+def test_regular_workflow(tmp_path, pp_path):
+    c = make_castep(
+        directory=tmp_path, label='test_label_pspots',
+        castep_pp_path=pp_path, find_pspots=True, keyword_tolerance=2)
     c._build_missing_pspots = False
     atoms = ase.build.bulk('Ag')
     atoms.calc = c
@@ -211,20 +240,23 @@ def test_castep_interface():
         c._fetch_pspots()
 
     # test writing to file
-    tmp_dir = os.path.join(tmp_dir, 'input_files')
-    c = Castep(directory=tmp_dir,
-               find_pspots=True, castep_pp_path=pp_path, keyword_tolerance=2)
+    tmp_dir = tmp_path / 'input_files'
+    c = make_castep(directory=tmp_dir,
+                    find_pspots=True, castep_pp_path=pp_path,
+                    keyword_tolerance=2)
     c._label = 'test'
     atoms = ase.build.bulk('Cu')
     atoms.calc = c
     c.prepare_input_files()
 
-    with open(os.path.join(tmp_dir, 'test.cell'), 'r') as f:
-        assert re.search(r'Cu Cu_01\.recpot', ''.join(f.readlines())) is not None
+    with (tmp_dir / 'test.cell').open() as fd:
+        assert re.search(r'Cu Cu_01\.recpot',
+                         ''.join(fd.readlines())) is not None
 
 
-    # test keyword conflict management
-    c = Castep(cut_off_energy=300.)
+@pytest.mark.xfail
+def test_keyword_conflict_management():
+    c = make_castep(cut_off_energy=300.)
     assert float(c.param.cut_off_energy.value) == 300.0
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
@@ -243,18 +275,23 @@ def test_castep_interface():
         assert issubclass(w[-1].category, UserWarning)
         assert 'option "cut_off_energy" conflicts' in str(w[-1].message)
 
-    # test kpoint setup options
+
+@pytest.mark.xfail
+def test_kpoint_setup_options():
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         # This block of tests is going to generate a lot of conflict warnings.
         # We already tested that those work, so just hide them from the output.
 
-        c = Castep(kpts=[(0.0, 0.0, 0.0, 1.0),])
+        c = make_castep(kpts=[(0.0, 0.0, 0.0, 1.0)])
+
         assert c.cell.kpoint_list.value == '0.0 0.0 0.0 1.0'
         c.set_kpts(((0.0, 0.0, 0.0, 0.25), (0.25, 0.25, 0.3, 0.75)))
-        assert c.cell.kpoint_list.value == '0.0 0.0 0.0 0.25\n0.25 0.25 0.3 0.75'
+        assert (c.cell.kpoint_list.value ==
+                '0.0 0.0 0.0 0.25\n0.25 0.25 0.3 0.75')
         c.set_kpts(c.cell.kpoint_list.value.split('\n'))
-        assert c.cell.kpoint_list.value == '0.0 0.0 0.0 0.25\n0.25 0.25 0.3 0.75'
+        assert (c.cell.kpoint_list.value ==
+                '0.0 0.0 0.0 0.25\n0.25 0.25 0.3 0.75')
         c.set_kpts([3, 3, 2])
         assert c.cell.kpoint_mp_grid.value == '3 3 2'
         c.set_kpts(None)
@@ -274,18 +311,21 @@ def test_castep_interface():
         c.set_kpts({'density': 10, 'gamma': False, 'even': None})
         assert c.cell.kpoint_mp_grid.value == '27 27 27'
         assert c.cell.kpoint_mp_offset.value == '0.018519 0.018519 0.018519'
-        c.set_kpts({'spacing': (1 / (np.pi *10)), 'gamma': False, 'even': True})
+        c.set_kpts({'spacing': (1 / (np.pi * 10)),
+                    'gamma': False, 'even': True})
         assert c.cell.kpoint_mp_grid.value == '28 28 28'
         assert c.cell.kpoint_mp_offset.value == '0.0 0.0 0.0'
 
-    # test band structure setup
+
+@pytest.mark.xfail
+def test_band_structure_setup():
     from ase.dft.kpoints import BandPath
     atoms = ase.build.bulk('Ag')
     bp = BandPath(cell=atoms.cell,
                   path='GX',
                   special_points={'G': [0, 0, 0], 'X': [0.5, 0, 0.5]})
     bp = bp.interpolate(npoints=10)
-    c = Castep(bandpath=bp)
+    c = make_castep(bandpath=bp)
     kpt_list = c.cell.bs_kpoint_list.value.split('\n')
     assert len(kpt_list) == 10
     assert list(map(float, kpt_list[0].split())) == [0., 0., 0.]

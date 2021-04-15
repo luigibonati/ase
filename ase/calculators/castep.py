@@ -2327,7 +2327,12 @@ def get_castep_version(castep_command):
        For newer CASTEP versions ( > 6.1) the --version command line option
        has been added; this will be attempted first.
     """
-    temp_dir = tempfile.mkdtemp()
+    import tempfile
+    with tempfile.TemporaryDirectory() as temp_dir:
+        return _get_castep_version(castep_command, temp_dir)
+
+
+def _get_castep_version(castep_command, temp_dir):
     jname = 'dummy_jobname'
     stdout, stderr = '', ''
     fallback_version = 16.  # CASTEP 16.0 and 16.1 report version wrongly
@@ -2362,7 +2367,7 @@ def get_castep_version(castep_command):
         output_txt = output.readlines()
         output.close()
         version_re = re.compile(r'(?<=CASTEP version )[0-9.]*')
-    shutil.rmtree(temp_dir)
+    # shutil.rmtree(temp_dir)
     for line in output_txt:
         if 'CASTEP version' in line:
             try:
