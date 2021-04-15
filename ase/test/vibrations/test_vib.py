@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import pytest
 import numpy as np
 from numpy.testing import assert_array_almost_equal
@@ -54,20 +55,20 @@ class TestVibrationsClassic:
         vib = Vibrations(atoms, name='interrupt')
         vib.run()
 
-        disp_file = 'interrupt/cache.1x-.json'
-        comb_file = 'interrupt/combined.json'
-        assert os.path.isfile(disp_file)
-        assert not os.path.isfile(comb_file)
+        disp_file = Path('interrupt/cache.1x-.json')
+        comb_file = Path('interrupt/combined.json')
+        assert disp_file.is_file()
+        assert not comb_file.is_file()
 
-        #with pytest.raises(RuntimeError):
+        # with pytest.raises(RuntimeError):
         #    vib.split()
 
         # Build a combined file
         assert vib.combine() == 13
 
         # Individual displacements should be gone, combination should exist
-        assert not os.path.isfile(disp_file)
-        assert os.path.isfile(comb_file)
+        assert not disp_file.is_file()
+        assert comb_file.is_file()
 
         # Not allowed to run after data has been combined
         with pytest.raises(RuntimeError):
@@ -86,8 +87,8 @@ class TestVibrationsClassic:
 
         # Now split() for real: replace .all.json file with displacements
         vib.split()
-        assert os.path.isfile(disp_file)
-        assert not os.path.isfile(comb_file)
+        assert disp_file.is_file()
+        assert not comb_file.is_file()
 
         # Clobbering seems to be allowed now we are using .json?
 
@@ -142,7 +143,7 @@ class TestVibrationsClassic:
                                    [0., 0., 2.26722e-1]])
 
         for i in range(3):
-            assert not os.path.isfile('vib.{}.traj'.format(i))
+            assert not Path('vib.{}.traj'.format(i)).is_file()
         mode_traj = ase.io.read('vib.3.traj', index=':')
         assert len(mode_traj) == 5
         assert_array_almost_equal(mode_traj[0].get_all_distances(),
@@ -170,17 +171,10 @@ class TestVibrationsClassic:
         # write/read the data from another working directory
         atoms3 = n2_optimized.copy()  # No calculator needed!
 
-        workdir = os.path.abspath(os.path.curdir)
-        try:
-            os.mkdir('run_from_here')
-            os.chdir('run_from_here')
-            vib = Vibrations(atoms3, name=os.path.join(os.pardir, 'vib'))
+        with ase.utils.workdir('run_from_here', mkdir=True):
+            vib = Vibrations(atoms3, name=str(Path.cwd.parent))
             assert_array_almost_equal(freqs, vib.get_frequencies())
             assert vib.clean() == 13
-        finally:
-            os.chdir(workdir)
-            if os.path.isdir('run_from_here'):
-                os.rmdir('run_from_here')
 
 
 class TestVibrationsDataStaticMethods:
