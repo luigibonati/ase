@@ -14,52 +14,118 @@ from ase.calculators.castep import (Castep, CastepOption,
                                     import_castep_keywords,
                                     CastepVersionError)
 
-
 calc = pytest.mark.calculator
 
-def make_castep(keyword_tolerance=3, **kwargs):
-    # Prepare a dummy Keywords file?
-    # This could be changed into a kind of factory fixture using tmp_path
-    return Castep(keyword_tolerance=keyword_tolerance, **kwargs)
+# We use 'fake keywords' to test all the generic CastepOptions and
+# whether they work
+kw_types = ['Real', 'String', 'Defined', 'Integer Vector',
+            'Boolean (Logical)', 'Integer', 'Real Vector',
+            'Block', 'Physical']
+kw_levels = ['Dummy', 'Intermediate', 'Expert', 'Basic']
 
 
 @pytest.fixture
-def castep_keywords(tmp_path):
-    """For simple shallow tests of the CASTEP interface"""
+def testing_keywords():
 
-    # XXX on porting this test to pytest it wasn't skipped as it should be.
-    # At any rate it failed then.  Maybe someone should look into that ...
-    #
-    # Hence, call the constructor to trigger our test skipping hack:
-    # Castep()
+    kw_data = {}
 
-    # We have fundamentally two sets of tests: one if CASTEP is
-    # present, the other if it isn't
+    for kwt in kw_types:
+        kwtlow = kwt.lower().replace(' ', '_')
+        if 'Boolean' in kwt:
+            kwtlow = 'boolean'
+        kw = 'test_{0}_kw'.format(kwtlow)
 
-    # Try creating and importing the castep keywords first
-    try:
-        create_castep_keywords(
-            castep_command=os.environ['CASTEP_COMMAND'],
-            path=tmp_path,
-            fetch_only=20)
-    except KeyError:
-        pytest.skip(
-            'Could not find the CASTEP_COMMAND environment variable - please'
-            ' set it to run the full set of Castep tests')
-    except CastepVersionError:
-        pytest.skip(
-            'Invalid CASTEP_COMMAND provided - please set the correct one to '
-            'run the full set of Castep tests')
-    try:
-        with pytest.warns(None):
-            castep_keywords = import_castep_keywords(
-                castep_command=os.environ.get('CASTEP_COMMAND', ''))
-    except CastepVersionError:
-        pytest.skip('Cannot determine castep version')
+        kw_data[kw] = {
+            'docstring': 'A fake {0} keyword'.format(kwt),
+            'option_type': kwt,
+            'keyword': kw,
+            'level': 'Dummy'
+        }
 
+    # Add the special ones for cell and param that have custom parsers
+
+    # Special keywords for the CastepParam object
+    param_kws = [('continuation', 'String'), ('reuse', 'String')]
+
+    param_kw_data = {}
+    for (pkw, t) in param_kws:
+        param_kw_data[pkw] = {
+            'docstring': 'Dummy {0} keyword'.format(pkw),
+            'option_type': t,
+            'keyword': pkw,
+            'level': 'Dummy'
+        }
+    param_kw_data.update(kw_data)
+
+    # Special keywords for the CastepCell object
+    cell_kws = [('species_pot', 'Block'),
+                ('symmetry_ops', 'Block'),
+                ('positions_abs_intermediate', 'Block'),
+                ('positions_abs_product', 'Block'),
+                ('positions_frac_intermediate', 'Block'),
+                ('positions_frac_product', 'Block'),
+                ('kpoint_mp_grid', 'Integer Vector'),
+                ('kpoint_mp_offset', 'Real Vector'),
+                ('kpoint_list', 'Block'),
+                ('bs_kpoint_list', 'Block')]
+
+    cell_kw_data = {}
+    for (ckw, t) in cell_kws:
+        cell_kw_data[ckw] = {
+            'docstring': 'Dummy {0} keyword'.format(ckw),
+            'option_type': t,
+            'keyword': ckw,
+            'level': 'Dummy'
+        }
+    cell_kw_data.update(kw_data)
+
+    param_dict = make_param_dict(param_kw_data)
+    cell_dict = make_cell_dict(cell_kw_data)
+
+    return CastepKeywords(param_dict, cell_dict, kw_types, kw_levels,
+                          'Castep v.Fake')
+
+
+@pytest.fixture
+def pspot_tmp_path(tmp_path):
+
+    path = os.path.join(tmp_path, 'ppots')
+    os.mkdir(path)
+
+    for el in ase.data.chemical_symbols:
+        with open(os.path.join(path, '{0}_test.usp'.format(el)), 'w') as f:
+            f.write('Fake PPOT')
+
+    return path
+
+
+@pytest.fixture
+def testing_calculator(testing_keywords, tmp_path, pspot_tmp_path):
+    castep_path = os.path.join(tmp_path, 'CASTEP')
+    os.mkdir(castep_path)
+
+    return Castep(castep_keywords=testing_keywords, directory=castep_path,
+                  castep_pp_path=pspot_tmp_path)
+
+
+has_castep = (os.environ.get('CASTEP_COMMAND', None) is not None)
+
+
+@pytest.fixture
+def castep_command():
+    return os.environ['CASTEP_COMMAND']
+
+
+@pytest.fixture
+def castep_keywords(castep_command, tmp_path):
+    create_castep_keywords(castep_command=castep_command, path=tmp_path,
+                           fetch_only=20)
+    with pytest.warns(None):
+        castep_keywords = import_castep_keywords(castep_command=castep_command,
+                                                 path=tmp_path)
     return castep_keywords
 
-@pytest.mark.xfail
+
 def test_fundamental_params():
     # Start by testing the fundamental parts of a CastepCell/CastepParam object
     boolOpt = CastepOption('test_bool', 'basic', 'defined')
@@ -78,7 +144,8 @@ def test_fundamental_params():
 
     # Test special parsers
     mock_cparam.continuation = 'default'
-    mock_cparam.reuse = 'default'
+    with pytest.warns(None):
+        mock_cparam.reuse = 'default'
     assert mock_cparam.reuse.value is None
 
     mock_ccell.species_pot = ('Si', 'Si.usp')
@@ -88,241 +155,175 @@ def test_fundamental_params():
     symops = (np.eye(3)[None], np.zeros(3)[None])
     mock_ccell.symmetry_ops = symops
     assert """1.0 0.0 0.0
-    0.0 1.0 0.0
-    0.0 0.0 1.0
-    0.0 0.0 0.0""" in mock_ccell.symmetry_ops.value
+0.0 1.0 0.0
+0.0 0.0 1.0
+0.0 0.0 0.0""" == mock_ccell.symmetry_ops.value.strip()
 
 
-def test_castep_opt_cell_comparison(castep_keywords):
-    # check if the CastepOpt, CastepCell comparison mechanism works
-    p1 = CastepParam(castep_keywords)
-    p2 = CastepParam(castep_keywords)
+def test_castep_option(testing_keywords):
+
+    # check if the CastepOption assignment and comparison mechanisms work
+    p1 = CastepParam(testing_keywords)
+    p2 = CastepParam(testing_keywords)
 
     assert p1._options == p2._options
 
-    p1._options['xc_functional'].value = 'PBE'
-    p1.xc_functional = 'PBE'
+    # Set some values
+    p1.test_real_kw = 3.0
+    p1.test_string_kw = 'PBE'
+    p1.test_defined_kw = True
+    p1.test_integer_kw = 10
+    p1.test_integer_vector_kw = [3, 3, 3]
+    p1.test_real_vector_kw = [3.0, 3.0, 3.0]
+    p1.test_boolean_kw = False
+    p1.test_physical_kw = '3.0 ang'
+
+    assert p1.test_real_kw.value == '3.0'
+    assert p1.test_string_kw.value == 'PBE'
+    assert p1.test_defined_kw.value == 'TRUE'
+    assert p1.test_integer_kw.value == '10'
+    assert p1.test_integer_vector_kw.value == '3 3 3'
+    assert p1.test_real_vector_kw.value == '3.0 3.0 3.0'
+    assert p1.test_boolean_kw.value == 'FALSE'
+    assert p1.test_physical_kw.value == '3.0 ang'
 
     assert p1._options != p2._options
 
 
-@pytest.mark.xfail
-def test_xc_functionals(tmp_path):
-    # castep_keywords = None  # XXX change me.  Add fixture for castep keywords?
-    c = make_castep(directory=tmp_path, label='test_label', keyword_tolerance=2)
-    # if castep_keywords:
-    #    c.xc_functional = 'PBE'
-    # else:
-    c.param.xc_functional = 'PBE'  # In "forgiving" mode, we need to specify
+def test_castep_cell(testing_keywords):
 
-    lattice = ase.lattice.cubic.BodyCenteredCubic('Li')
+    ccell = CastepCell(testing_keywords, keyword_tolerance=2)
 
-    print('For the sake of evaluating this test, warnings')
-    print('about auto-generating pseudo-potentials are')
-    print('normal behavior and can be safely ignored')
+    # Here we test the special keywords exclusive to cell
 
-    lattice.calc = c
+    # 1. species_pot
+    ccell.species_pot = ('H', 'H_test.usp')  # Setting with a single value
+    assert ccell.species_pot.value == """
+H H_test.usp"""
 
-    param_fn = tmp_path / 'myParam.param'
+    ccell.species_pot = [('H', 'H_test.usp'), ('He', 'He_test.usp')]  # Two
+    assert ccell.species_pot.value == """
+H H_test.usp
+He He_test.usp"""
 
-    with open(param_fn, 'w') as param:
-        param.write('XC_FUNCTIONAL : PBE #comment\n')
-        param.write('XC_FUNCTIONAL : PBE #comment\n')
-        param.write('#comment\n')
-        param.write('CUT_OFF_ENERGY : 450.\n')
+    # 2. symmetry_ops
+    # Create for example the P-1 spacegroup
+    R = np.array([np.eye(3), -np.eye(3)])
+    T = np.zeros((2, 3))
+    ccell.symmetry_ops = (R, T)
+    strblock = [l.strip() for l in ccell.symmetry_ops.value.split('\n')
+                if l.strip() != '']
+    fblock = np.array([list(map(float, l.split())) for l in strblock])
 
-    c.merge_param(param_fn)
+    assert np.isclose(fblock[:3], R[0]).all()
+    assert np.isclose(fblock[3], T[0]).all()
+    assert np.isclose(fblock[4:7], R[1]).all()
+    assert np.isclose(fblock[7], T[1]).all()
 
-    assert c.calculation_required(lattice)
-    # if has_castep:
-    #     assert c.dryrun_ok()
+    # # 3. transition state blocks (postponed until fix is merged)
+    # a = ase.Atoms('H', positions=[[0, 0, 1]])
 
-    c.prepare_input_files(lattice)
+    # ccell.positions_abs_product = a
 
-
-@pytest.fixture
-def pp_path(tmp_path):
-    # typical filenames
-    files = ['Ag_00PBE.usp',
-             'Ag_00.recpot',
-             'Ag_C18_PBE_OTF.usp',
-             'ag-optgga1.recpot',
-             'Ag_OTF.usp',
-             'ag_pbe_v1.4.uspp.F.UPF',
-             'Ni_OTF.usp',
-             'fe_pbe_v1.5.uspp.F.UPF',
-             'Cu_01.recpot']
-
-    pp_path = tmp_path / 'test_pp'
-    pp_path.mkdir()
-
-    for f in files:
-        with open(os.path.join(pp_path, f), 'w') as _f:
-            _f.write('DUMMY PP')
-
-    return pp_path
+    # Test example conflict
+    ccell.kpoint_mp_grid = '3 3 3'
+    with pytest.warns(UserWarning):
+        ccell.kpoint_mp_spacing = 10.0
 
 
-@pytest.mark.xfail
-def test_detect_pseudopotentials(tmp_path, pp_path):
-    c = make_castep(directory=tmp_path, label='test_label_pspots',
-                    castep_pp_path=pp_path)
-    c._pedantic = True
-    atoms = ase.build.bulk('Ag')
-    atoms.calc = c
+def test_castep_param(testing_keywords):
 
-    # I know, unittest would be nicer... maybe at a later point
+    cparam = CastepParam(testing_keywords, keyword_tolerance=2)
 
-    # disabled, but may be useful still
-    # try:
-    # # this should yield no files
-    # atoms.calc.find_pspots(suffix='uspp')
-    # raise AssertionError
-    #    # this should yield no files
-    #    atoms.calc.find_pspots(suffix='uspp')
-    #    raise AssertionError
-    # except RuntimeError as e:
-    # #print(e)
-    # pass
-    #     # print(e)
-    #     pass
+    # Special keywords for param
 
-    try:
-        # this should yield non-unique files
-        atoms.calc.find_pspots(suffix='recpot')
-        raise AssertionError
-    except RuntimeError:
-        pass
+    # 1. continuation and reuse
+    cparam.continuation = True
+    with pytest.warns(UserWarning):
+        cparam.reuse = False   # This conflicts with the previous one
+    cparam.continuation = None
+    cparam.reuse = True
+    with pytest.warns(UserWarning):
+        cparam.continuation = True   # This conflicts with the previous one
 
-    # now let's see if we find all...
-    atoms.calc.find_pspots(pspot='00PBE', suffix='usp')
-    assert atoms.calc.cell.species_pot.value.split()[-1] == 'Ag_00PBE.usp'
-
-    atoms.calc.find_pspots(pspot='00', suffix='recpot')
-    assert atoms.calc.cell.species_pot.value.split()[-1] == 'Ag_00.recpot'
-
-    atoms.calc.find_pspots(pspot='C18_PBE_OTF', suffix='usp')
-    assert atoms.calc.cell.species_pot.value.split()[-1] == 'Ag_C18_PBE_OTF.usp'
-
-    atoms.calc.find_pspots(pspot='optgga1', suffix='recpot')
-    assert atoms.calc.cell.species_pot.value.split()[-1] == 'ag-optgga1.recpot'
-
-    atoms.calc.find_pspots(pspot='OTF', suffix='usp')
-    assert atoms.calc.cell.species_pot.value.split()[-1] == 'Ag_OTF.usp'
-
-    atoms.calc.find_pspots(suffix='UPF')
-    assert (atoms.calc.cell.species_pot.value.split()[-1] ==
-            'ag_pbe_v1.4.uspp.F.UPF')
+    # Test conflict
+    cparam.cut_off_energy = 500
+    with pytest.warns(UserWarning):
+        cparam.basis_precision = 'FINE'
 
 
-@pytest.mark.xfail
-def test_regular_workflow(tmp_path, pp_path):
-    c = make_castep(
-        directory=tmp_path, label='test_label_pspots',
-        castep_pp_path=pp_path, find_pspots=True, keyword_tolerance=2)
+def test_workflow(testing_calculator):
+    c = testing_calculator
     c._build_missing_pspots = False
+    c._find_pspots = True
+    c.set_label('test_label_pspots')
+
     atoms = ase.build.bulk('Ag')
     atoms.calc = c
 
-    # this should raise an error due to ambuiguity
-    try:
-        c._fetch_pspots()
-        raise AssertionError
-    except RuntimeError:
-        pass
+    # Should find them automatically!
+    c._fetch_pspots()
 
-    for e in ['Ni', 'Fe', 'Cu']:
-        atoms = ase.build.bulk(e)
-        atoms.calc = c
-        c._fetch_pspots()
+    assert os.path.isfile(os.path.join(c._directory, 'Ag_test.usp'))
 
-    # test writing to file
-    tmp_dir = tmp_path / 'input_files'
-    c = make_castep(directory=tmp_dir,
-                    find_pspots=True, castep_pp_path=pp_path,
-                    keyword_tolerance=2)
-    c._label = 'test'
-    atoms = ase.build.bulk('Cu')
-    atoms.calc = c
+    # Try creating input files
     c.prepare_input_files()
 
-    with (tmp_dir / 'test.cell').open() as fd:
-        assert re.search(r'Cu Cu_01\.recpot',
-                         ''.join(fd.readlines())) is not None
+    assert os.path.isfile(os.path.join(c._directory, c._label + '.cell'))
+    assert os.path.isfile(os.path.join(c._directory, c._label + '.param'))
 
 
-@pytest.mark.xfail
-def test_keyword_conflict_management():
-    c = make_castep(cut_off_energy=300.)
-    assert float(c.param.cut_off_energy.value) == 300.0
-    with warnings.catch_warnings(record=True) as w:
-        warnings.simplefilter("always")
+def test_set_kpoints(testing_calculator):
 
-        c.basis_precision = 'MEDIUM'
-        assert issubclass(w[-1].category, UserWarning)
-        assert "conflicts" in str(w[-1].message)
-        assert c.param.cut_off_energy.value is None
-        assert c.param.basis_precision.value.strip() == 'MEDIUM'
+    c = testing_calculator
 
-    with warnings.catch_warnings(record=True) as w:
-        warnings.simplefilter("always")
-
-        c.cut_off_energy = 200.0
-        assert c.param.basis_precision.value is None
-        assert issubclass(w[-1].category, UserWarning)
-        assert 'option "cut_off_energy" conflicts' in str(w[-1].message)
-
-
-@pytest.mark.xfail
-def test_kpoint_setup_options():
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        # This block of tests is going to generate a lot of conflict warnings.
-        # We already tested that those work, so just hide them from the output.
-
-        c = make_castep(kpts=[(0.0, 0.0, 0.0, 1.0)])
-
-        assert c.cell.kpoint_list.value == '0.0 0.0 0.0 1.0'
-        c.set_kpts(((0.0, 0.0, 0.0, 0.25), (0.25, 0.25, 0.3, 0.75)))
-        assert (c.cell.kpoint_list.value ==
-                '0.0 0.0 0.0 0.25\n0.25 0.25 0.3 0.75')
-        c.set_kpts(c.cell.kpoint_list.value.split('\n'))
-        assert (c.cell.kpoint_list.value ==
-                '0.0 0.0 0.0 0.25\n0.25 0.25 0.3 0.75')
-        c.set_kpts([3, 3, 2])
-        assert c.cell.kpoint_mp_grid.value == '3 3 2'
-        c.set_kpts(None)
-        assert c.cell.kpoints_list.value is None
-        assert c.cell.kpoint_list.value is None
-        assert c.cell.kpoint_mp_grid.value is None
-        c.set_kpts('2 2 3')
-        assert c.cell.kpoint_mp_grid.value == '2 2 3'
-        c.set_kpts({'even': True, 'gamma': True})
-        assert c.cell.kpoint_mp_grid.value == '2 2 2'
-        assert c.cell.kpoint_mp_offset.value == '0.25 0.25 0.25'
-        c.set_kpts({'size': (2, 2, 4), 'even': False})
-        assert c.cell.kpoint_mp_grid.value == '3 3 5'
-        assert c.cell.kpoint_mp_offset.value == '0.0 0.0 0.0'
-        atoms = ase.build.bulk('Ag')
-        atoms.calc = c
-        c.set_kpts({'density': 10, 'gamma': False, 'even': None})
-        assert c.cell.kpoint_mp_grid.value == '27 27 27'
-        assert c.cell.kpoint_mp_offset.value == '0.018519 0.018519 0.018519'
-        c.set_kpts({'spacing': (1 / (np.pi * 10)),
-                    'gamma': False, 'even': True})
-        assert c.cell.kpoint_mp_grid.value == '28 28 28'
-        assert c.cell.kpoint_mp_offset.value == '0.0 0.0 0.0'
+    c.set_kpts([(0.0, 0.0, 0.0, 1.0)])
+    assert c.cell.kpoint_list.value == '0.0 0.0 0.0 1.0'
+    c.set_kpts(((0.0, 0.0, 0.0, 0.25), (0.25, 0.25, 0.3, 0.75)))
+    assert (c.cell.kpoint_list.value ==
+            '0.0 0.0 0.0 0.25\n0.25 0.25 0.3 0.75')
+    c.set_kpts(c.cell.kpoint_list.value.split('\n'))
+    assert (c.cell.kpoint_list.value ==
+            '0.0 0.0 0.0 0.25\n0.25 0.25 0.3 0.75')
+    c.set_kpts([3, 3, 2])
+    assert c.cell.kpoint_mp_grid.value == '3 3 2'
+    c.set_kpts(None)
+    assert c.cell.kpoints_list.value is None
+    assert c.cell.kpoint_list.value is None
+    assert c.cell.kpoint_mp_grid.value is None
+    c.set_kpts('2 2 3')
+    assert c.cell.kpoint_mp_grid.value == '2 2 3'
+    c.set_kpts({'even': True, 'gamma': True})
+    assert c.cell.kpoint_mp_grid.value == '2 2 2'
+    assert c.cell.kpoint_mp_offset.value == '0.25 0.25 0.25'
+    c.set_kpts({'size': (2, 2, 4), 'even': False})
+    assert c.cell.kpoint_mp_grid.value == '3 3 5'
+    assert c.cell.kpoint_mp_offset.value == '0.0 0.0 0.0'
+    atoms = ase.build.bulk('Ag')
+    atoms.calc = c
+    c.set_kpts({'density': 10, 'gamma': False, 'even': None})
+    assert c.cell.kpoint_mp_grid.value == '27 27 27'
+    assert c.cell.kpoint_mp_offset.value == '0.018519 0.018519 0.018519'
+    c.set_kpts({'spacing': (1 / (np.pi * 10)),
+                'gamma': False, 'even': True})
+    assert c.cell.kpoint_mp_grid.value == '28 28 28'
+    assert c.cell.kpoint_mp_offset.value == '0.0 0.0 0.0'
 
 
-@pytest.mark.xfail
-def test_band_structure_setup():
+def test_band_structure_setup(testing_calculator):
+
+    c = testing_calculator
+
     from ase.dft.kpoints import BandPath
+
     atoms = ase.build.bulk('Ag')
     bp = BandPath(cell=atoms.cell,
                   path='GX',
                   special_points={'G': [0, 0, 0], 'X': [0.5, 0, 0.5]})
     bp = bp.interpolate(npoints=10)
-    c = make_castep(bandpath=bp)
+
+    c.set_bandpath(bp)
+
     kpt_list = c.cell.bs_kpoint_list.value.split('\n')
     assert len(kpt_list) == 10
     assert list(map(float, kpt_list[0].split())) == [0., 0., 0.]

@@ -195,6 +195,10 @@ Keyword                    Description
 
                            3 = no attempt is made to look for
                            castep_keywords.json at all
+``castep_keywords``        Can be used to pass a CastepKeywords object that is
+                           then used with no attempt to actually load a 
+                           castep_keywords.json file. Most useful for debugging
+                           and testing purposes.
 
 =========================  ====================================================
 
@@ -452,7 +456,7 @@ End CASTEP Interface Documentation
     def __init__(self, directory='CASTEP', label='castep',
                  castep_command=None, check_castep_version=False,
                  castep_pp_path=None, find_pspots=False, keyword_tolerance=1,
-                 **kwargs):
+                 castep_keywords=None, **kwargs):
 
         self.__name__ = 'Castep'
 
@@ -462,19 +466,20 @@ End CASTEP Interface Documentation
         from ase.io.castep import write_cell
         self._write_cell = write_cell
 
-        castep_keywords = CastepKeywords(make_param_dict(),
-                                         make_cell_dict(),
-                                         [],
-                                         [],
-                                         0)
-        if keyword_tolerance < 3:
-            try:
-                castep_keywords = import_castep_keywords(castep_command)
-            except CastepVersionError as e:
-                if keyword_tolerance == 0:
-                    raise e
-                else:
-                    warnings.warn(str(e))
+        if castep_keywords is None:
+            castep_keywords = CastepKeywords(make_param_dict(),
+                                             make_cell_dict(),
+                                             [],
+                                             [],
+                                             0)
+            if keyword_tolerance < 3:
+                try:
+                    castep_keywords = import_castep_keywords(castep_command)
+                except CastepVersionError as e:
+                    if keyword_tolerance == 0:
+                        raise e
+                    else:
+                        warnings.warn(str(e))
 
         self._kw_tol = keyword_tolerance
         keyword_tolerance = max(keyword_tolerance, 2)  # 3 not accepted below
@@ -894,7 +899,8 @@ End CASTEP Interface Documentation
         record_start, record_end, end_found, _\
             = self._castep_find_last_record(out)
         if not end_found:
-            warnings.warn('No regular end found in %s file. %s' % (castep_file, self._error))
+            warnings.warn('No regular end found in %s file. %s' %
+                          (castep_file, self._error))
             if _close:
                 out.close()
             return
@@ -1393,7 +1399,7 @@ End CASTEP Interface Documentation
                                        atoms_assigned) if not assigned]
                 warnings.warn('%s atoms not assigned. '
                               ' DEBUGINFO: The following atoms where not assigned: %s' %
-                               (atoms_assigned.count(False), not_assigned))
+                              (atoms_assigned.count(False), not_assigned))
             else:
                 self.atoms.set_scaled_positions(positions_frac_atoms)
 
@@ -1469,7 +1475,8 @@ End CASTEP Interface Documentation
 
         if isinstance(castep_castep, str):
             if not os.path.isfile(castep_castep):
-                warnings.warn('Warning: CASTEP file %s not found!' % castep_castep)
+                warnings.warn('Warning: CASTEP file %s not found!' %
+                              castep_castep)
             f = paropen(castep_castep, 'r')
             _close = True
         else:
@@ -2222,7 +2229,8 @@ End CASTEP Interface Documentation
         if m:
             self._kpoints = int(m.group(1))
         else:
-            warnings.warn('Couldn\'t fetch number of kpoints from dryrun CASTEP file')
+            warnings.warn(
+                'Couldn\'t fetch number of kpoints from dryrun CASTEP file')
 
         err_file = os.path.join(temp_dir, '%s.0001.err' % seed)
         if match is None and os.path.exists(err_file):
@@ -2318,9 +2326,10 @@ End CASTEP Interface Documentation
                     else:
                         if self._pedantic:
                             warnings.warn('Warning: PP files have neither been '
-                                'linked nor copied to the working directory. Make '
-                                'sure to set the evironment variable PSPOT_DIR '
-                                'accordingly!')
+                                          'linked nor copied to the working directory. Make '
+                                          'sure to set the evironment variable PSPOT_DIR '
+                                          'accordingly!')
+
 
 def get_castep_version(castep_command):
     """This returns the version number as printed in the CASTEP banner.
@@ -2769,15 +2778,16 @@ class CastepInputFile:
         # If it is, use the appropriate parser, unless a custom one is defined
         attrparse = '_parse_%s' % attr.lower()
 
-        # Check for any conflicts
-        cset = self._conflict_dict.get(attr.lower(), {})
-        for c in cset:
-            if (c in self._options and self._options[c].value):
-                warnings.warn(
-                    'option "{attr}" conflicts with "{conflict}" in '
-                    'calculator. Setting "{conflict}" to '
-                    'None.'.format(attr=attr, conflict=c))
-                self._options[c].value = None
+        # Check for any conflicts if the value is not None
+        if not (value is None):
+            cset = self._conflict_dict.get(attr.lower(), {})
+            for c in cset:
+                if (c in self._options and self._options[c].value):
+                    warnings.warn(
+                        'option "{attr}" conflicts with "{conflict}" in '
+                        'calculator. Setting "{conflict}" to '
+                        'None.'.format(attr=attr, conflict=c))
+                    self._options[c].value = None
 
         if hasattr(self, attrparse):
             self._options[attr].value = self.__getattribute__(attrparse)(value)
@@ -2823,6 +2833,8 @@ class CastepParam(CastepInputFile):
 
     # .param specific parsers
     def _parse_reuse(self, value):
+        if value is None:
+            return None # Reset the value
         try:
             if self._options['continuation'].value:
                 warnings.warn('Cannot set reuse if continuation is set, and '
@@ -2834,6 +2846,8 @@ class CastepParam(CastepInputFile):
         return 'default' if (value is True) else str(value)
 
     def _parse_continuation(self, value):
+        if value is None:
+            return None # Reset the value
         try:
             if self._options['reuse'].value:
                 warnings.warn('Cannot set reuse if continuation is set, and '
@@ -2873,7 +2887,7 @@ class CastepCell(CastepInputFile):
         {'optics_kpoint_mp_grid', 'optics_kpoint_mp_spacing', 'optics_kpoint_list',
          'optics_kpoint_path'},
         {'supercell_kpoint_mp_grid', 'supercell_kpoint_mp_spacing', 'supercell_kpoint_list',
-         'supercell_kpoint_path'},]
+         'supercell_kpoint_path'}, ]
 
     def __init__(self, castep_keywords, keyword_tolerance=1):
         self._castep_version = castep_keywords.castep_version
@@ -3130,6 +3144,7 @@ if __name__ == '__main__':
             with open('castep_keywords.json') as f:
                 json.load(f)
         except Exception as e:
-            warnings.warn('%s Ooops, something went wrong with the CASTEP keywords' % e)
+            warnings.warn(
+                '%s Ooops, something went wrong with the CASTEP keywords' % e)
         else:
             warnings.warn('Import works. Looking good!')
