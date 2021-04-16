@@ -809,6 +809,7 @@ def ijkl_to_x(i, j, k, l):
          3 * l, 3 * l + 1, 3 * l + 2]
     return x
 
+
 def apply_fixed(atoms, P):
     fixed_atoms = []
     for constraint in atoms.constraints:
@@ -824,6 +825,7 @@ def apply_fixed(atoms, P):
         P[:, i] = 0.0
         P[i, i] = 1.0
     return P    
+
 
 class FF(SparsePrecon):
     """Creates matrix using morse/bond/angle/dihedral force field parameters.
