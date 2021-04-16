@@ -1,12 +1,15 @@
+import pytest
+import numpy as np
+
+from ase import Atoms
+from ase.calculators.test import FreeElectrons
+from ase.geometry import (crystal_structure_from_cell, cell_to_cellpar,
+                          cellpar_to_cell)
+from ase.dft.kpoints import get_special_points
+
+
 def test_monoclinic():
     """Test band structure from different variations of hexagonal cells."""
-    import numpy as np
-    from ase import Atoms
-    from ase.calculators.test import FreeElectrons
-    from ase.geometry import (crystal_structure_from_cell, cell_to_cellpar,
-                              cellpar_to_cell)
-    from ase.dft.kpoints import get_special_points
-
     mc1 = [[1, 0, 0], [0, 1, 0], [0, 0.2, 1]]
     par = cell_to_cellpar(mc1)
     mc2 = cellpar_to_cell(par)
@@ -19,7 +22,8 @@ def test_monoclinic():
         a = Atoms(cell=cell, pbc=True)
         a.cell *= 3
         a.calc = FreeElectrons(nvalence=1, kpts={'path': path})
-        cs = crystal_structure_from_cell(a.cell)
+        with pytest.warns(FutureWarning):  # deprecated
+            cs = crystal_structure_from_cell(a.cell)
         assert cs == 'monoclinic'
         r = a.cell.reciprocal()
         k = get_special_points(a.cell)['H']
