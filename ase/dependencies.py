@@ -23,5 +23,5 @@ def format_dependency(modname: str) -> Tuple[str, str]:
 
 def all_dependencies() -> List[Tuple[str, str]]:
     names = ['ase', 'numpy', 'scipy', 'matplotlib', 'spglib',
-             'ase_ext', 'flask', 'psycopg2']
+             'ase_ext', 'flask', 'psycopg2', 'matscipy', 'pyamg']
     return [format_dependency(name) for name in names]
