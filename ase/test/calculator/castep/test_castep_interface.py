@@ -90,8 +90,8 @@ def pspot_tmp_path(tmp_path):
     os.mkdir(path)
 
     for el in ase.data.chemical_symbols:
-        with open(os.path.join(path, '{0}_test.usp'.format(el)), 'w') as f:
-            f.write('Fake PPOT')
+        with open(os.path.join(path, '{0}_test.usp'.format(el)), 'w') as fd:
+            fd.write('Fake PPOT')
 
     return path
 
@@ -105,12 +105,12 @@ def testing_calculator(testing_keywords, tmp_path, pspot_tmp_path):
                   castep_pp_path=pspot_tmp_path)
 
 
-has_castep = (os.environ.get('CASTEP_COMMAND', None) is not None)
-
-
 @pytest.fixture
-def castep_command():
-    return os.environ['CASTEP_COMMAND']
+def castep_command(factories):
+    if factories.is_enabled('castep'):
+        return factories['castep'].executable
+    else:
+        pytest.skip('Castep not enabled')
 
 
 @pytest.fixture
