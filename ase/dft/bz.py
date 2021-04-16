@@ -1,3 +1,4 @@
+import warnings
 from math import pi, sin, cos
 import numpy as np
 
@@ -51,11 +52,13 @@ def bz_plot(cell, vectors=False, paths=None, points=None,
                                                    zs3d, renderer.M)
                 self.set_positions((xs[0], ys[0]), (xs[1], ys[1]))
                 FancyArrowPatch.draw(self, renderer)
+
         azim = pi / 5
         elev = elev or pi / 6
         x = sin(azim)
         y = cos(azim)
         view = [x * cos(elev), y * cos(elev), sin(elev)]
+
         if ax is None:
             ax = fig.gca(projection='3d')
     elif dimensions == 2:
@@ -99,39 +102,34 @@ def bz_plot(cell, vectors=False, paths=None, points=None,
             maxp = max(maxp, points.max())
             minp = min(minp, points.min())
 
+    def draw_axis3d(ax, vector):
+        ax.add_artist(Arrow3D(
+            [0, vector[0]],
+            [0, vector[1]],
+            [0, vector[2]],
+            mutation_scale=20,
+            arrowstyle='-|>',
+            color='k',
+        ))
+
+    def draw_axis2d(ax, x, y):
+        ax.arrow(0, 0, x, y,
+                 lw=1, color='k',
+                 length_includes_head=True,
+                 head_width=0.03,
+                 head_length=0.05)
+
     if vectors:
         if dimensions == 3:
-            ax.add_artist(Arrow3D([0, icell[0, 0]],
-                                  [0, icell[0, 1]],
-                                  [0, icell[0, 2]],
-                                  mutation_scale=20, lw=1,
-                                  arrowstyle='-|>', color='k'))
-            ax.add_artist(Arrow3D([0, icell[1, 0]],
-                                  [0, icell[1, 1]],
-                                  [0, icell[1, 2]],
-                                  mutation_scale=20, lw=1,
-                                  arrowstyle='-|>', color='k'))
-            ax.add_artist(Arrow3D([0, icell[2, 0]],
-                                  [0, icell[2, 1]],
-                                  [0, icell[2, 2]],
-                                  mutation_scale=20, lw=1,
-                                  arrowstyle='-|>', color='k'))
+            for i in range(3):
+                draw_axis3d(ax, vector=icell[i])
             maxp = max(maxp, 0.6 * icell.max())
         elif dimensions == 2:
-            ax.arrow(0, 0, icell[0, 0], icell[0, 1],
-                     lw=1, color='k',
-                     length_includes_head=True,
-                     head_width=0.03, head_length=0.05)
-            ax.arrow(0, 0, icell[1, 0], icell[1, 1],
-                     lw=1, color='k',
-                     length_includes_head=True,
-                     head_width=0.03, head_length=0.05)
+            for i in range(2):
+                draw_axis2d(ax, icell[i, 0], icell[i, 1])
             maxp = max(maxp, icell.max())
         else:
-            ax.arrow(0, 0, icell[0, 0], 0,
-                     lw=1, color='k',
-                     length_includes_head=True,
-                     head_width=0.03, head_length=0.05)
+            draw_axis2d(ax, icell[0, 0], 0)
             maxp = max(maxp, icell.max())
 
     if paths is not None:
@@ -220,6 +218,14 @@ def bz_plot(cell, vectors=False, paths=None, points=None,
         ax.set_xlim3d(minp0, maxp0)
         ax.set_ylim3d(minp0, maxp0)
         ax.set_zlim3d(minp0, maxp0)
+
+        if hasattr(ax, 'set_box_aspect'):
+            ax.set_box_aspect([1, 1, 1])
+        else:
+            msg = ('Matplotlib axes have no set_box_aspect() method.  '
+                   'Aspect ratio will likely be wrong.  '
+                   'Consider updating to Matplotlib >= 3.3.')
+            warnings.warn(msg)
 
     if show:
         plt.show()

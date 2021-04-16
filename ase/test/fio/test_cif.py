@@ -3,8 +3,11 @@ import numpy as np
 import warnings
 import pytest
 
+from ase import Atoms
+from ase.build import molecule
 from ase.io import read, write
 from ase.io.cif import CIFLoop, parse_loop, NoStructureData, parse_cif
+from ase.calculators.calculator import compare_atoms
 
 
 def check_fractional_occupancies(atoms):
@@ -353,18 +356,18 @@ def test_cif_icsd():
 
 
 @pytest.fixture
-def atoms():
+def cif_atoms():
     cif_file = io.StringIO(content)
     return read(cif_file, format='cif')
 
 
-def test_cif_loop_keys(atoms):
+def test_cif_loop_keys(cif_atoms):
     data = {}
     # test case has 20 entries
     data['someKey'] = [[str(i) + "test" for i in range(20)]]
     # test case has 20 entries
     data['someIntKey'] = [[str(i) + "123" for i in range(20)]]
-    atoms.write('testfile.cif', loop_keys=data)
+    cif_atoms.write('testfile.cif', loop_keys=data)
 
     atoms1 = read('testfile.cif', store_tags=True)
     # keys are read lowercase only
@@ -376,8 +379,8 @@ def test_cif_loop_keys(atoms):
 
 
 # test if automatic numbers written after elements are correct
-def test_cif_writer_label_numbers(atoms):
-    atoms.write('testfile.cif')
+def test_cif_writer_label_numbers(cif_atoms):
+    cif_atoms.write('testfile.cif')
     atoms1 = read('testfile.cif', store_tags=True)
     labels = atoms1.info['_atom_site_label']
     # cannot use atoms.symbols as K is missing there
@@ -389,9 +392,9 @@ def test_cif_writer_label_numbers(atoms):
     assert build_labels.sort() == labels.sort()
 
 
-def test_cif_labels(atoms):
+def test_cif_labels(cif_atoms):
     data = [["label" + str(i) for i in range(20)]]  # test case has 20 entries
-    atoms.write('testfile.cif', labels=data)
+    cif_atoms.write('testfile.cif', labels=data)
 
     atoms1 = read('testfile.cif', store_tags=True)
     print(atoms1.info)
@@ -447,11 +450,11 @@ def test_symbols_questionmark():
         blocks[0].get_atoms()
 
 
-def test_bad_occupancies(atoms):
-    assert 'Au' not in atoms.symbols
-    atoms.symbols[0] = 'Au'
+def test_bad_occupancies(cif_atoms):
+    assert 'Au' not in cif_atoms.symbols
+    cif_atoms.symbols[0] = 'Au'
     with pytest.warns(UserWarning, match='no occupancy info'):
-        write('tmp.cif', atoms)
+        write('tmp.cif', cif_atoms)
 
 
 @pytest.mark.parametrize(
@@ -475,3 +478,77 @@ _symmetry_space_group_name_H-M         'R-3m'
     spg = blocks[0].get_spacegroup(False)
     assert int(spg) == 166
     assert spg.setting == ref_setting
+
+
+@pytest.fixture
+def atoms():
+    return Atoms('CO', cell=[2., 3., 4., 50., 60., 70.], pbc=True,
+                 scaled_positions=[[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]])
+
+
+def roundtrip(atoms):
+    from ase.io.bytes import to_bytes, parse_atoms
+    buf = to_bytes(atoms, format='cif')
+    return parse_atoms(buf, format='cif')
+
+
+def test_cif_roundtrip_periodic(atoms):
+    # Reading and writing the cell loses the rotation information,
+    # but preserves cellpar and scaled positions.
+    atoms1 = roundtrip(atoms)
+
+    assert str(atoms1.symbols) == 'CO'
+    assert all(atoms1.pbc)
+    assert atoms.cell.cellpar() == pytest.approx(
+        atoms1.cell.cellpar(), abs=1e-5)
+    assert atoms.get_scaled_positions() == pytest.approx(
+        atoms1.get_scaled_positions(), abs=1e-5)
+
+
+def test_cif_roundtrip_nonperiodic():
+    atoms = molecule('H2O')
+    atoms1 = roundtrip(atoms)
+    assert not compare_atoms(atoms, atoms1, tol=1e-5)
+
+
+def test_cif_missingvector(atoms):
+    # We don't know any way to represent only 2 cell vectors in CIF.
+    # So we discard them and warn the user.
+    atoms.cell[0] = 0.0
+    atoms.pbc[0] = False
+
+    assert atoms.cell.rank == 2
+
+    with pytest.raises(ValueError, match='CIF format can only'):
+        roundtrip(atoms)
+
+
+def test_cif_roundtrip_mixed():
+    atoms = Atoms('Au', cell=[1., 2., 3.], pbc=[1, 1, 0])
+    atoms1 = roundtrip(atoms)
+
+    # We cannot preserve PBC info for this case:
+    assert all(atoms1.pbc)
+    assert compare_atoms(atoms, atoms1, tol=1e-5) == ['pbc']
+    assert atoms.get_scaled_positions() == pytest.approx(
+        atoms1.get_scaled_positions(), abs=1e-5)
+    #assert pytest.approx(atoms.positions) == atoms1.positions
+    #assert atoms1.cell.rank == 0
+
+
+cif_with_whitespace_after_loop = b"""\
+data_image0
+loop_
+ _hello
+ banana
+ 
+_potato 42
+"""
+
+
+def test_loop_with_space():
+    # Regression test for https://gitlab.com/ase/ase/-/issues/859 .
+    buf = io.BytesIO(cif_with_whitespace_after_loop)
+    blocks = list(parse_cif(buf))
+    assert len(blocks) == 1
+    assert blocks[0]['_potato'] == 42

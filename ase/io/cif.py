@@ -173,13 +173,13 @@ def parse_loop(lines: List[str]) -> Dict[str, List[CIFDataValue]]:
 def parse_items(lines: List[str], line: str) -> Dict[str, CIFData]:
     """Parse a CIF data items and return a dict with all tags."""
     tags: Dict[str, CIFData] = {}
+
     while True:
         if not lines:
             break
-        line = lines.pop()
+        line = lines.pop().strip()
         if not line:
-            break
-        line = line.strip()
+            continue
         lowerline = line.lower()
         if not line or line.startswith('#'):
             continue
@@ -247,6 +247,8 @@ class CIFBlock(collections.abc.Mapping):
         coords = [self.get(name) for name in ['_atom_site_fract_x',
                                               '_atom_site_fract_y',
                                               '_atom_site_fract_z']]
+        # XXX Shall we try to handle mixed coordinates?
+        # (Some scaled vs others fractional)
         if None in coords:
             return None
         return np.array(coords).T
@@ -259,15 +261,18 @@ class CIFBlock(collections.abc.Mapping):
             return None
         return np.array(coords).T
 
-    def get_scaled_positions(self):
-        scaled_positions = self._raw_scaled_positions()
-        if scaled_positions is None:
-            positions = self._raw_positions()
-            if positions is None:
-                raise NoStructureData('No positions found in structure')
-            cell = self.get_cell()
-            scaled_positions = cell.scaled_positions(positions)
-        return scaled_positions
+    def _get_site_coordinates(self):
+        scaled = self._raw_scaled_positions()
+
+        if scaled is not None:
+            return 'scaled', scaled
+
+        cartesian = self._raw_positions()
+
+        if cartesian is None:
+            raise NoStructureData('No positions found in structure')
+
+        return 'cartesian', cartesian
 
     def _get_symbols_with_deuterium(self):
         labels = self._get_any(['_atom_site_type_symbol',
@@ -412,20 +417,30 @@ class CIFBlock(collections.abc.Mapping):
         in the CIF file, useful for e.g. debugging.
 
         This method may change behaviour in the future."""
-        return Atoms(symbols=self.get_symbols(),
+        symbols = self.get_symbols()
+        coordtype, coords = self._get_site_coordinates()
+
+        atoms = Atoms(symbols=symbols,
                      cell=self.get_cell(),
-                     masses=self._get_masses(),
-                     scaled_positions=self.get_scaled_positions())
+                     masses=self._get_masses())
+
+        if coordtype == 'scaled':
+            atoms.set_scaled_positions(coords)
+        else:
+            assert coordtype == 'cartesian'
+            atoms.positions[:] = coords
+
+        return atoms
 
     def has_structure(self):
         """Whether this CIF block has an atomic configuration."""
         try:
-            symbols = self.get_symbols()
-            coords = self.get_scaled_positions()
+            self.get_symbols()
+            self._get_site_coordinates()
         except NoStructureData:
             return False
         else:
-            return symbols is not None and coords is not None
+            return True
 
     def get_atoms(self, store_tags=False, primitive_cell=False,
                   subtrans_included=True, fractional_occupancies=True) -> Atoms:
@@ -757,7 +772,7 @@ def expand_kinds(atoms, coords):
 
 
 def atoms_to_loop_data(atoms, wrap, labels, loop_keys):
-    if all(atoms.pbc):
+    if atoms.cell.rank == 3:
         coord_type = 'fract'
         coords = atoms.get_scaled_positions(wrap).tolist()
     else:
@@ -803,11 +818,15 @@ def write_cif_image(blockname, atoms, fd, *, wrap,
     fd.write(blockname)
     fd.write(chemical_formula_header(atoms))
 
-    if atoms.cell.rank == 3:
+    rank = atoms.cell.rank
+    if rank == 3:
         fd.write(format_cell(atoms.cell))
         fd.write('\n')
         fd.write(format_generic_spacegroup_info())
         fd.write('\n')
+    elif rank != 0:
+        raise ValueError('CIF format can only represent systems with '
+                         f'0 or 3 lattice vectors.  Got {rank}.')
 
     loopdata, coord_headers = atoms_to_loop_data(atoms, wrap, labels,
                                                  loop_keys)

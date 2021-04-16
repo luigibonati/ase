@@ -1,6 +1,7 @@
 import errno
 import functools
 import os
+import io
 import pickle
 import sys
 import time
@@ -11,6 +12,7 @@ from math import sin, cos, radians, atan2, degrees
 from contextlib import contextmanager
 from math import gcd
 from pathlib import PurePath, Path
+import re
 
 import numpy as np
 
@@ -20,7 +22,26 @@ __all__ = ['exec_', 'basestring', 'import_module', 'seterr', 'plural',
            'devnull', 'gcd', 'convert_string_to_fd', 'Lock',
            'opencew', 'OpenLock', 'rotate', 'irotate', 'pbc2pbc', 'givens',
            'hsv2rgb', 'hsv', 'pickleload', 'FileNotFoundError',
-           'formula_hill', 'formula_metal', 'PurePath', 'xwopen']
+           'formula_hill', 'formula_metal', 'PurePath', 'xwopen',
+           'tokenize_version']
+
+
+def tokenize_version(version_string: str):
+    """Parse version string into a tuple for version comparisons.
+
+    Usage: tokenize_version('3.8') < tokenize_version('3.8.1').
+    """
+    tokens = []
+    for component in version_string.split('.'):
+        match = re.match(r'(\d*)(.*)', component)
+        assert match is not None, f'Cannot parse component {component}'
+        number_str, tail = match.group(1, 2)
+        try:
+            number = int(number_str)
+        except ValueError:
+            number = -1
+        tokens += [number, tail]
+    return tuple(tokens)
 
 
 # Python 2+3 compatibility stuff (let's try to remove these things):
@@ -185,6 +206,13 @@ def _opencew(filename, world=None):
         for fd in closelater:
             fd.close()
         raise
+
+
+def opencew_text(*args, **kwargs):
+    fd = opencew(*args, **kwargs)
+    if fd is None:
+        return None
+    return io.TextIOWrapper(fd)
 
 
 class Lock:

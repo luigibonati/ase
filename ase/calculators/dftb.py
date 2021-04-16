@@ -280,7 +280,7 @@ class Dftb(FileIOCalculator):
             self, atoms, properties, system_changes)
         with open(os.path.join(self.directory, 'dftb_in.hsd'), 'w') as fd:
             self.write_dftb_in(fd)
-        write(os.path.join(self.directory, 'geo_end.gen'), atoms)
+        write(os.path.join(self.directory, 'geo_end.gen'), atoms, parallel=False)
         # self.atoms is none until results are read out,
         # then it is set to the ones at writing input
         self.atoms_input = atoms
@@ -489,7 +489,7 @@ class PointChargePotential:
     def set_charges(self, mmcharges):
         self.mmcharges = mmcharges
 
-    def write_mmcharges(self, filename='dftb_external_charges.dat'):
+    def write_mmcharges(self, filename):
         """ mok all
         write external charges as monopoles for dftb+.
 

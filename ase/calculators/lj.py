@@ -2,7 +2,7 @@ import numpy as np
 
 from ase.neighborlist import NeighborList
 from ase.calculators.calculator import Calculator, all_changes
-from ase.constraints import full_3x3_to_voigt_6_stress
+from ase.stress import full_3x3_to_voigt_6_stress
 
 
 class LennardJones(Calculator):

@@ -36,7 +36,7 @@ class TestPlotManager:
 
         assert np.allclose(ax.lines[0].get_xydata().transpose(), xy_data)
 
-    def test_plot_manager_axis_file(self, xy_data, figure):
+    def test_plot_manager_axis_file(self, testdir, xy_data, figure):
         filename = 'plot.png'
         x, y = xy_data
         ax = figure.add_subplot(111)

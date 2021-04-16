@@ -34,7 +34,11 @@ oldlibs:
   extends: .database-configuration
   script:
     - pip install --no-deps .
-    - ase test --pytest --color=yes -W "ignore:can't resolve package" -m 'not lint'
+    - >
+      ase test --pytest --color=yes
+      -W "ignore:can't resolve package"
+      -W ignore::PendingDeprecationWarning
+      -m 'not lint'
 
 # For testing newest versions of libraries against standard images
 # on dockerhub.
@@ -136,6 +140,10 @@ doc:
     - cd $CI_PROJECT_DIR/doc
     - python -m ase.utils.sphinx run  # test scripts
     - sphinx-build -W . build
+  artifacts:
+    paths:
+      - $CI_PROJECT_DIR/doc/build/
+    expire_in: 1 week
 
 distribution-package:
   image: registry.gitlab.com/ase/ase:ase-main

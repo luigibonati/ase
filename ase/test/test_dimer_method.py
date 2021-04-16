@@ -4,7 +4,7 @@ from ase.calculators.emt import EMT
 from ase.dimer import DimerControl, MinModeAtoms, MinModeTranslate
 
 
-def test_dimer_method():
+def test_dimer_method(testdir):
     # Set up a small "slab" with an adatoms
     atoms = fcc100('Pt', size=(2, 2, 1), vacuum=10.0)
     add_adsorbate(atoms, 'Pt', 1.611, 'hollow')

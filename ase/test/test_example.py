@@ -5,7 +5,7 @@ from ase.optimize import QuasiNewton
 from ase.calculators.morse import MorsePotential
 
 
-def test_example():
+def test_example(testdir):
     atoms = Atoms('H7',
                   positions=[(0, 0, 0),
                              (1, 0, 0),

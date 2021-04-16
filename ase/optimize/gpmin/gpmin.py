@@ -1,9 +1,9 @@
 import numpy as np
-import pickle
 import warnings
 
 from scipy.optimize import minimize
 from ase.parallel import world
+from ase.io.jsonio import write_json
 from ase.optimize.optimize import Optimizer
 from ase.optimize.gpmin.gp import GaussianProcess
 from ase.optimize.gpmin.kernel import SquaredExponential
@@ -48,7 +48,7 @@ class GPMin(Optimizer, GaussianProcess):
             The Atoms object to relax.
 
         restart: string
-            Pickle file used to store the training set. If set, file with
+            JSON file used to store the training set. If set, file with
             such a name will be searched and the data in the file incorporated
             to the new training set, if the file exists.
 
@@ -57,7 +57,7 @@ class GPMin(Optimizer, GaussianProcess):
             Use '-' for stdout
 
         trajectory: string
-            Pickle file used to store trajectory of atomic movement.
+            File used to store trajectory of atomic movement.
 
         master: boolean
             Defaults to None, which causes only rank 0 to save files. If
@@ -292,7 +292,7 @@ class GPMin(Optimizer, GaussianProcess):
         """Save the training set"""
         if world.rank == 0 and self.restart is not None:
             with open(self.restart, 'wb') as fd:
-                pickle.dump((self.x_list, self.y_list), fd, protocol=2)
+                write_json(fd, (self.x_list, self.y_list))
 
     def read(self):
         self.x_list, self.y_list = self.load()

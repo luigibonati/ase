@@ -1,48 +1,6 @@
-import os
 import numpy as np
 
-from ase.units import Bohr
 from ase.io.fortranfile import FortranFile
-
-
-def xv_to_atoms(filename):
-    """Create atoms object from xv file.
-
-    Parameters:
-        -filename : str. The filename of the '.XV' file.
-
-    return : An Atoms object
-    """
-    from ase.atoms import Atoms
-    if not os.path.exists(filename):
-        filename += '.gz'
-
-    with open(filename, 'r') as f:
-        # Read cell vectors (lines 1-3)
-        vectors = []
-        for i in range(3):
-            data = f.readline().split()
-            vectors.append([float(data[j]) * Bohr for j in range(3)])
-
-        # Read number of atoms (line 4)
-        natoms = int(f.readline().split()[0])
-
-        # Read remaining lines
-        speciesnumber, atomnumbers, xyz, V = [], [], [], []
-        for line in f.readlines():
-            if len(line) > 5:  # Ignore blank lines
-                data = line.split()
-                speciesnumber.append(int(data[0]))
-                atomnumbers.append(int(data[1]))
-                xyz.append([float(data[2 + j]) * Bohr for j in range(3)])
-                V.append([float(data[5 + j]) * Bohr for j in range(3)])
-
-    vectors = np.array(vectors)
-    atomnumbers = np.array(atomnumbers)
-    xyz = np.array(xyz)
-    atoms = Atoms(numbers=atomnumbers, positions=xyz, cell=vectors)
-    assert natoms == len(atoms)
-    return atoms
 
 
 def read_rho(fname):

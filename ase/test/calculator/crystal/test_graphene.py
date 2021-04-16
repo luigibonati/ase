@@ -1,7 +1,8 @@
-def test_graphene():
-    from ase import Atoms
-    from ase.calculators.crystal import CRYSTAL
+from ase import Atoms
+from ase.calculators.crystal import CRYSTAL
 
+
+def test_graphene(testdir):
     with open('basis', 'w') as fd:
         fd.write("""6 4
     0 0 6 2.0 1.0
@@ -15,7 +16,7 @@ def test_graphene():
      3.665 -0.3959 0.2365
      0.7705 1.216 0.8606
     0 1 1 0.0 1.0
-     0.26 1.0 1.0 
+     0.26 1.0 1.0
     0 3 1 0.0 1.0
      0.8 1.0
     """)

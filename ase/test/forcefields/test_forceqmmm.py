@@ -372,7 +372,7 @@ def at0(qm_calc, mm_calc, bulk_at):
     return at0
 
 
-def test_export_xyz(at0):
+def test_export_xyz(at0, testdir):
 
     """
     test the export_extxyz function and checks the region adn forces arrays
@@ -426,7 +426,7 @@ def test_set_masks_from_region(at0, qm_calc, mm_calc):
     assert all(region == test_region)
 
 
-def test_import_xyz(at0, qm_calc, mm_calc):
+def test_import_xyz(at0, qm_calc, mm_calc, testdir):
 
     """
     test the import_extxyz function and checks the mapping
