@@ -105,24 +105,6 @@ def testing_calculator(testing_keywords, tmp_path, pspot_tmp_path):
                   castep_pp_path=pspot_tmp_path)
 
 
-@pytest.fixture
-def castep_command(factories):
-    if factories.is_enabled('castep'):
-        return factories['castep'].executable
-    else:
-        pytest.skip('Castep not enabled')
-
-
-@pytest.fixture
-def castep_keywords(castep_command, tmp_path):
-    create_castep_keywords(castep_command=castep_command, path=tmp_path,
-                           fetch_only=20)
-    with pytest.warns(None):
-        castep_keywords = import_castep_keywords(castep_command=castep_command,
-                                                 path=tmp_path)
-    return castep_keywords
-
-
 def test_fundamental_params():
     # Start by testing the fundamental parts of a CastepCell/CastepParam object
     boolOpt = CastepOption('test_bool', 'basic', 'defined')
