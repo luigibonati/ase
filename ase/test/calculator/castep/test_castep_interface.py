@@ -7,9 +7,7 @@ import ase.lattice.cubic
 from ase.calculators.castep import (Castep, CastepOption,
                                     CastepParam, CastepCell,
                                     make_cell_dict, make_param_dict,
-                                    CastepKeywords,
-                                    create_castep_keywords,
-                                    import_castep_keywords)
+                                    CastepKeywords)
 
 calc = pytest.mark.calculator
 
