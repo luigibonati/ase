@@ -1,6 +1,4 @@
 import os
-import re
-import warnings
 
 import pytest
 import numpy as np
@@ -11,8 +9,7 @@ from ase.calculators.castep import (Castep, CastepOption,
                                     make_cell_dict, make_param_dict,
                                     CastepKeywords,
                                     create_castep_keywords,
-                                    import_castep_keywords,
-                                    CastepVersionError)
+                                    import_castep_keywords)
 
 calc = pytest.mark.calculator
 
