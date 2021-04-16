@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 from ase import Atoms
+from ase.build import bulk, molecule
 from ase.db import connect
 
 
@@ -13,7 +14,8 @@ def dbfile(tmp_path_factory) -> Path:
 
     with connect(path) as db:
         db.write(Atoms())
-        db.write(Atoms())
+        db.write(molecule('H2O'), key_value_pairs={'carrots': 3})
+        db.write(bulk('Ti'), key_value_pairs={'oranges': 42, 'carrots': 4})
 
     return path
 
@@ -28,3 +30,41 @@ def test_insert_into(cli, dbfile):
     txt = cli.ase(*f'db {out} --count'.split())
     num = int(txt.split()[0])
     assert num == 1
+
+
+def test_analyse(cli, dbfile):
+    txt = cli.ase('db', dbfile, '--show-keys')
+    print(txt)
+    assert 'carrots: 2' in txt
+    assert 'oranges: 1' in txt
+
+
+def test_show_values(cli, dbfile):
+    txt = cli.ase('db', dbfile, '--show-values', 'oranges,carrots')
+    print(txt)
+    assert 'carrots: [3..4]' in txt
+
+
+def check_tokens(tokens):
+    assert tokens[:4] == ['id', 'age', 'user', 'formula']
+    assert 'H2O' in tokens
+    assert 'Ti2' in tokens
+
+
+def test_table(cli, dbfile):
+    txt = cli.ase('db', dbfile)
+    tokens = [token.strip() for token in txt.split('|')]
+    check_tokens(tokens)
+
+
+def test_table_csv(cli, dbfile):
+    txt = cli.ase('db', dbfile, '--csv')
+    tokens = txt.split(', ')
+    check_tokens(tokens)
+
+
+def test_long(cli, dbfile):
+    txt = cli.ase('db', dbfile, 'formula=Ti2', '--long')
+    print(txt)
+    assert 'length' in txt  # about cell vector lengths
+    assert 'oranges' in txt
