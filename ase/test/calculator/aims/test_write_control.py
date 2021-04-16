@@ -4,6 +4,7 @@ import pytest
 from ase.io.aims import write_aims_control, value2string
 from ase.build import bulk
 
+
 def control2txt(**parameters):
     buf = StringIO()
     write_aims_control(buf, bulk('Au'), parameters)

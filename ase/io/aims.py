@@ -1,12 +1,14 @@
 import time
 import warnings
 from collections.abc import Sequence
+import re
 
 import numpy as np
 
 from ase import Atoms
 from ase.units import Ang, fs
 from ase.utils import reader, writer
+from ase.io import ParseError
 from ase.constraints import (
     FixAtoms,
     FixCartesian,
@@ -434,9 +436,6 @@ def _parse_atoms(fd, n_atoms, molecular_dynamics=False):
     return atoms
 
 
-import re
-from ase.io import ParseError
-
 def parse_coordinates(fd, natoms):
     # Match lines of symbols and coordinates, e.g.:
     # |    1: Species H 2.3 4.5 6.7
@@ -510,7 +509,7 @@ def parse_aims_output(fd):
 def find_eigen_lines(matcher, fd):
     header = r'\s*State\s*Occupation\s*Eigenvalue \[Ha\]\s*Eigenvalue \[eV\]'
     matcher.match(header)
-    lines = []
+
     for line in fd:
         line = line.strip()
         if not line:
