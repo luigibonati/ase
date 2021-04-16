@@ -59,8 +59,16 @@ def vasprun():
 
 @pytest.fixture()
 def calculation():
-    # "Hand-written" calculation record
-    sample_calculation = """\
+    def factory(e_0_energy=-29.67691672,
+                e_fr_energy=-29.67243317,
+                forces=np.array([[7.58587457, -5.22590317, 6.88227285],
+                                [-7.58587457, 5.22590317, -6.88227285]]),
+                stress=np.array(
+                        [[4300.36902090, -284.50040544, -1468.20603140],
+                         [-284.50040595, 4824.17435683, -1625.37541639],
+                         [-1468.20603158, -1625.37541697, 5726.84189498]])):
+        # "Hand-written" calculation record
+        sample_calculation = f"""\
  <calculation>
   <scstep>
    <energy>
@@ -71,9 +79,9 @@ def calculation():
   </scstep>
   <scstep>
    <energy>
-    <i name="e_fr_energy">    -29.67243317 </i>
+    <i name="e_fr_energy">   {e_fr_energy:.8f} </i>
     <i name="e_wo_entrp">    -29.68588381 </i>
-    <i name="e_0_energy">    -29.67691672 </i>
+    <i name="e_0_energy">    {e_0_energy:.8f}   </i>
    </energy>
   </scstep>
   <structure>
@@ -96,63 +104,23 @@ def calculation():
    </varray>
   </structure>
   <varray name="forces" >
-   <v>       7.58587457      -5.22590317       6.88227285 </v>
-   <v>      -7.58587457       5.22590317      -6.88227285 </v>
+   <v>      {forces[0, 0]:.8f} {forces[0, 1]:.8f} {forces[0, 2]:.8f} </v>
+   <v>      {forces[1, 0]:.8f} {forces[1, 1]:.8f} {forces[1, 2]:.8f} </v>
   </varray>
   <varray name="stress" >
-   <v>    4300.3690209     -284.50040544   -1468.2060314  </v>
-   <v>    -284.50040595    4824.17435683   -1625.37541639 </v>
-   <v>   -1468.20603158   -1625.37541697    5726.84189498 </v>
+   <v>    {stress[0, 0]:.8f} {stress[0, 1]:.8f} {stress[0, 2]:.8f}  </v>
+   <v>    {stress[1, 0]:.8f} {stress[1, 1]:.8f} {stress[1, 2]:.8f} </v>
+   <v>    {stress[2, 0]:.8f} {stress[2, 1]:.8f} {stress[2, 2]:.8f} </v>
   </varray>
   <energy>
-   <i name="e_fr_energy">    -29.67243317 </i>
+   <i name="e_fr_energy">   {e_fr_energy:.8f} </i>
    <i name="e_wo_entrp">    -29.68588381 </i>
-   <i name="e_0_energy">    -29.67691672 </i>
+   <i name="e_0_energy">    {e_0_energy:.8f} </i>
   </energy>
 """
-    return sample_calculation
+        return sample_calculation
 
-
-@pytest.fixture()
-def second_calculation(calculation):
-
-    # replace the energy values to make sure we read the second one
-    expected_e_0_energy = -2.0
-    expected_e_fr_energy = -3.0
-    second_calculation = calculation.replace("-29.67691672",
-                                             str(expected_e_0_energy))
-    second_calculation = second_calculation.replace("-29.67243317",
-                                                    str(expected_e_fr_energy))
-
-    def replace_values(old_value, new_values, calc, separator="      "):
-        for new_val, old_val in zip(new_values, old_value):
-            old_val_string = np.array2string(old_val,
-                                             separator=separator)[1:-1]
-            new_val_string = np.array2string(new_val,
-                                             separator=separator)[1:-1]
-            calc = calc.replace(old_val_string, new_val_string)
-
-        return calc
-
-    # replace forces and stress to another values
-    old_forces = np.array([[7.58587457, -5.22590317, 6.88227285],
-                           [-7.58587457, 5.22590317, -6.88227285]])
-
-    new_forces = np.full_like(old_forces, np.pi)
-
-    second_calculation = replace_values(old_forces, new_forces,
-                                        second_calculation)
-
-    old_stress = np.array([[4300.36902090, -284.50040544, -1468.20603140],
-                           [-284.50040595, 4824.17435683, -1625.37541639],
-                           [-1468.20603158, -1625.37541697, 5726.84189498]])
-
-    new_stress = np.full_like(old_stress, 2.0 * np.pi)
-
-    second_calculation = replace_values(old_stress, new_stress,
-                                        second_calculation, separator="   ")
-
-    return second_calculation
+    return factory
 
 
 def test_atoms(vasprun):
@@ -167,7 +135,7 @@ def test_atoms(vasprun):
 
     # check scaled_positions
     expected_scaled_positions = np.array([[0.0, 0.0, 0.0],
-                                         [0.5,  0.5, 0.5]])
+                                          [0.5,  0.5, 0.5]])
 
     np.testing.assert_allclose(atoms.get_scaled_positions(),
                                expected_scaled_positions)
@@ -185,21 +153,21 @@ def test_atoms(vasprun):
                                atoms.cell.complete())
 
 
-def test_calculation(vasprun, calculation, index=-1,
-                     expected_e_0_energy=-29.67691672,
-                     expected_e_fr_energy=-29.67243317,
-                     expected_forces=np.array(
+def check_calculation(vasprun, index=-1,
+                      expected_e_0_energy=-29.67691672,
+                      expected_e_fr_energy=-29.67243317,
+                      expected_forces=np.array(
                          [[7.58587457, -5.22590317, 6.88227285],
                           [-7.58587457, 5.22590317, -6.88227285]]),
-                     expected_stress=np.array(
+                      expected_stress=np.array(
                          [[4300.36902090, -284.50040544, -1468.20603140],
                           [-284.50040595, 4824.17435683, -1625.37541639],
                           [-1468.20603158, -1625.37541697, 5726.84189498]])
-                     ):
+                      ):
 
     from ase.units import GPa
 
-    atoms = read(StringIO(vasprun + calculation), index=index,
+    atoms = read(StringIO(vasprun), index=index,
                  format='vasp-xml')
 
     assert atoms.get_potential_energy() == expected_e_0_energy
@@ -216,31 +184,56 @@ def test_calculation(vasprun, calculation, index=-1,
     np.testing.assert_allclose(atoms.get_stress(), assertion_stress)
 
 
-def test_two_calculations(vasprun, calculation, second_calculation):
+def test_calculation(vasprun, calculation):
 
-    extended_vasprun = vasprun + calculation
-    test_calculation(extended_vasprun, second_calculation,
-                     expected_e_0_energy=-2.0,
-                     expected_e_fr_energy=-3.0,
-                     expected_forces=np.full((2, 3), np.pi),
-                     expected_stress=np.full((3, 3), 2.0 * np.pi))
+    check_calculation(vasprun + calculation())
+
+
+def test_two_calculations(vasprun, calculation):
+
+    second_e_0_energy = -2.0
+    second_e_fr_energy = -3.0
+    second_forces = np.full((2, 3), np.pi)
+    second_stress = np.full((3, 3), 2.0 * np.pi)
+
+    second_calculation_record = calculation(e_0_energy=second_e_0_energy,
+                                            e_fr_energy=second_e_fr_energy,
+                                            forces=second_forces,
+                                            stress=second_stress)
+
+    extended_vasprun = vasprun + calculation() + second_calculation_record
+    check_calculation(extended_vasprun,
+                      expected_e_0_energy=second_e_0_energy,
+                      expected_e_fr_energy=second_e_fr_energy,
+                      expected_forces=second_forces,
+                      expected_stress=second_stress)
 
     # make sure we can read the first (second from the end)
     # calculation by passing index=-2
-    test_calculation(extended_vasprun, second_calculation,
-                     index=-2)
+    check_calculation(extended_vasprun,
+                      index=-2)
 
 
-def test_vasprun_corrupted(vasprun, calculation, second_calculation):
+def test_corrupted_calculation(vasprun, calculation):
+
+    corrupted_e_0_energy = -10.0
+    corrupted_e_fr_energy = -15.0
+    corrupted_forces = np.full((2, 3), np.pi)
+    corrupted_stress = np.full((3, 3), 2.0 * np.pi)
+
+    second_calculation = calculation(e_0_energy=corrupted_e_0_energy,
+                                     e_fr_energy=corrupted_e_fr_energy,
+                                     forces=corrupted_forces,
+                                     stress=corrupted_stress)
 
     # corrupted calculation that does not have energy record.
     # Thus the parser is expected to read the previous one.
-    corrupted_calculation = '\n'.join(second_calculation.split('\n')[:-6])
+    corrupted_record = '\n'.join(second_calculation.split('\n')[:-6])
     # assert that we actually do have two calculations in the set up
-    test_calculation(vasprun + calculation, corrupted_calculation, index=-2)
+    check_calculation(vasprun + calculation() + corrupted_record, index=-2)
     # check that the parser skips the corrupted last one
     # Should there be a warning in this case?
-    test_calculation(vasprun + calculation, corrupted_calculation, index=-1)
+    check_calculation(vasprun + calculation() + corrupted_record, index=-1)
 
 
 def test_vasp_parameters(vasprun, calculation):
@@ -296,8 +289,7 @@ def test_vasp_parameters(vasprun, calculation):
   </separator>
  </parameters>   
     """
-
-    atoms = read(StringIO(vasprun + calculation + vasp_parameters),
+    atoms = read(StringIO(vasprun + calculation() + vasp_parameters),
                  index=-1, format="vasp-xml")
 
     expected_parameters = \
