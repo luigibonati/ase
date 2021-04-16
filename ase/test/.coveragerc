@@ -21,5 +21,6 @@ omit =
     # Since we don't plan to test it as such, we exclude it from the listing.
     ../optimize/test/*.py
 
+
 [html]
 directory = coverage-html
