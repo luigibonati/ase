@@ -128,8 +128,11 @@ class CombinedJSONCache(Mapping):
         return self.directory / 'combined.json'
 
     def _dump_json(self):
+        target = self._filename
+        if target.exists():
+            raise RuntimeError(f'Already exists: {target}')
         self.directory.mkdir(exist_ok=True, parents=True)
-        write_json(self._filename, self._dct)
+        write_json(target, self._dct)
 
     def __len__(self):
         return len(self._dct)
