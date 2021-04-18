@@ -46,7 +46,9 @@ def test_show_values(cli, dbfile):
 
 
 def check_tokens(tokens):
-    assert tokens[:4] == ['id', 'age', 'user', 'formula']
+    # Order of headers is not reproducible so we just check
+    # that certain headers are included:
+    assert {'id', 'age', 'user', 'formula'} < set(tokens)
     assert 'H2O' in tokens
     assert 'Ti2' in tokens
 
