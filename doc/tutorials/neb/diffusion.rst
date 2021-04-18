@@ -27,7 +27,7 @@ and select Tools->NEB.
 You can also create a series of plots like above, that show the progression
 of the NEB relaxation, directly at the command line::
 
-    $ ase nebplot -xy neb.traj
+    $ ase nebplot --share-x --share-y neb.traj
 
 For more customizable analysis of the output of many NEB jobs, you can use
 the :class:`ase.neb.NEBTools` class. Some examples of its use are below; the
