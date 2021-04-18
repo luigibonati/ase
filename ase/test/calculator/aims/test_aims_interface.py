@@ -5,6 +5,7 @@ import pytest
 from ase.calculators.aims import Aims
 from ase import Atoms
 
+
 @pytest.mark.skip('legacy test with hardcoded paths and commands')
 def test_aims_interface():
     # test the new command handling + legacy behavior

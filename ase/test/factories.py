@@ -122,6 +122,7 @@ class AimsFactory:
     def fromconfig(cls, config):
         return cls(config.executables['aims'])
 
+
 @factory('asap')
 class AsapFactory:
     importname = 'asap3'

@@ -28,6 +28,7 @@ def test_ideal_gas_thermo(testdir):
 
     # Harmonic thermo.
 
+
 def test_harmonic_thermo(testdir):
     atoms = fcc100('Cu', (2, 2, 2), vacuum=10.)
     atoms.calc = EMT()
@@ -70,6 +71,7 @@ def test_crystal_thermo(asap3, testdir):
 
     # Hindered translator / rotor.
     # (Taken directly from the example given in the documentation.)
+
 
 def test_hindered_thermo():
     vibs = np.array([3049.060670,

@@ -20,6 +20,7 @@ def atoms():
     )
     return dimer
 
+
 @pytest.fixture
 def calc():
     return TIP3P(rc=9.0)
