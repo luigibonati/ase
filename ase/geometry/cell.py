@@ -14,6 +14,9 @@ from numpy import pi, sin, cos, arccos, sqrt, dot
 from numpy.linalg import norm
 
 
+from ase.utils import deprecated
+
+
 def unit_vector(x):
     """Return a unit vector in the same direction as x."""
     y = np.array(x, dtype='float')
@@ -145,6 +148,7 @@ def metric_from_cell(cell):
     return np.dot(cell, cell.T)
 
 
+@deprecated('Use cell.get_bravais_lattice() to determine lattice')
 def crystal_structure_from_cell(cell, eps=2e-4, niggli_reduce=True):
     """Return the crystal structure as a string calculated from the cell.
 
