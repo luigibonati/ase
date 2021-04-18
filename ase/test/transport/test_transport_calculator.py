@@ -3,6 +3,8 @@ from ase.transport.calculators import TransportCalculator
 import numpy as np
 
 #Aux. function to write data to a text file.
+
+
 def write(fname, xs, ys):
     with open(fname, 'w') as fd:
         for x,y in zip(xs, ys):

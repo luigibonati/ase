@@ -30,6 +30,7 @@ def var_cell(atoms):
     atoms, bonds = atoms
     return UnitCellFilter(atoms), bonds
 
+
 @pytest.fixture
 def fixed_atoms(atoms):
     atoms, bonds = atoms
@@ -69,6 +70,7 @@ def test_assembly_atoms(precon, atoms):
 def test_assembly_var_cell(precon, var_cell):
     check_assembly(precon, var_cell)
     
+
 @pytest.mark.parametrize('precon', precons)
 def test_assembly_fixed_atoms(precon, fixed_atoms):
     check_assembly(precon, fixed_atoms)
@@ -103,6 +105,7 @@ def check_apply(precon, system):
 @pytest.mark.parametrize('precon', precons)
 def test_apply_atoms(precon, atoms):
     check_apply(precon, atoms)
+
 
 @pytest.mark.parametrize('precon', precons)
 def test_apply_fixed_atoms(precon, fixed_atoms):
