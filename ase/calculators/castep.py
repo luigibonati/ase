@@ -71,6 +71,35 @@ def _self_getter(getf):
     return decor_getf
 
 
+def _parse_tss_block(value, scaled=False):
+    # Parse the assigned value for a Transition State Search structure block
+    is_atoms = isinstance(value, ase.atoms.Atoms)
+    try:
+        is_strlist = all(map(lambda x: isinstance(x, str), value))
+    except TypeError:
+        is_strlist = False
+
+    if not is_atoms:
+        if not is_strlist:
+            # Invalid!
+            raise TypeError('castep.cell.positions_abs/frac_intermediate/'
+                            'product expects Atoms object or list of strings')
+
+        # First line must be Angstroms!
+        if (not scaled) and value[0].strip() != 'ang':
+            raise RuntimeError('Only ang units currently supported in castep.'
+                               'cell.positions_abs_intermediate/product')
+        return '\n'.join(map(str.strip, value))
+    else:
+        text_block = '' if scaled else 'ang\n'
+        positions = (value.get_scaled_positions() if scaled else
+                     value.get_positions())
+        symbols = value.get_chemical_symbols()
+        for s, p in zip(symbols, positions):
+            text_block += '    {0} {1:.3f} {2:.3f} {3:.3f}\n'.format(s, *p)
+
+        return text_block
+
 class Castep(Calculator):
     r"""
 CASTEP Interface Documentation
@@ -2945,38 +2974,16 @@ class CastepCell(CastepInputFile):
         return text_block
 
     def _parse_positions_abs_intermediate(self, value):
-        if not isinstance(value, ase.atoms.Atoms):
-            raise TypeError('castep.cell.positions_abs_intermediate/product '
-                            'expect Atoms object')
-
-        text_block = 'ang\n'
-        for elem, pos in zip(value.get_chemical_symbols(),
-                             value.get_positions()):
-            text_block += ('    %4s %9.6f %9.6f %9.6f\n' % (elem,
-                                                            pos[0],
-                                                            pos[1],
-                                                            pos[2]))
-        return text_block
+        return _parse_tss_block(value)
 
     def _parse_positions_abs_product(self, value):
-        return self._positions_abs_intermediate(self, value)
+        return _parse_tss_block(value)
 
     def _parse_positions_frac_intermediate(self, value):
-        if not isinstance(value, ase.atoms.Atoms):
-            raise TypeError('castep.cell.positions_frac_intermediate/product '
-                            'expect Atoms object')
-
-        text_block = 'ang\n'
-        for elem, pos in zip(value.get_chemical_symbols(),
-                             value.get_scaled_positions()):
-            text_block += ('    %4s %9.6f %9.6f %9.6f\n' % (elem,
-                                                            pos[0],
-                                                            pos[1],
-                                                            pos[2]))
-        return text_block
+        return _parse_tss_block(value, True)
 
     def _parse_positions_frac_product(self, value):
-        return self._positions_frac_intermediate(self, value)
+        return _parse_tss_block(value, True)
 
 
 CastepKeywords = namedtuple('CastepKeywords',
