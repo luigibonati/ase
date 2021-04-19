@@ -67,7 +67,7 @@ class Displacement:
         self.center_refcell = center_refcell
         self.supercell = supercell
 
-        self.cache = MultiFileJSONCache('phonons-cache')
+        self.cache = MultiFileJSONCache(self.name)
 
     def define_offset(self):        # Reference cell offset
 
