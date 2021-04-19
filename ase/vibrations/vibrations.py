@@ -4,6 +4,7 @@ from math import pi, sqrt, log
 import sys
 
 import numpy as np
+from pathlib import Path
 
 import ase.units as units
 import ase.io
@@ -64,7 +65,7 @@ class Displacement(namedtuple('Displacement', ['a', 'i', 'sign', 'ndisp',
 
     @property
     def _exname(self):
-        return f'{self.vib.exname}.{self.name}{self.vib.exext}'
+        return Path(self.vib.exname) / f'ex.{self.name}{self.vib.exext}'
 
     def calculate_and_save_static_polarizability(self, atoms):
         exobj = self.vib._new_exobj()
@@ -220,7 +221,7 @@ class Vibrations(AtomicDisplacements):
     def _check_old_pickles(self):
         from pathlib import Path
         eq_pickle_path = Path(f'{self.name}.eq.pckl')
-        pickle2json_instructions =f"""\
+        pickle2json_instructions = f"""\
 Found old pickle files such as {eq_pickle_path}.  \
 Please remove them and recalculate or run \
 "python -m ase.vibrations.pickle2json --help"."""

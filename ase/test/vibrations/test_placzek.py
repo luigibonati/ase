@@ -2,6 +2,7 @@
 Test Placzek type resonant Raman implementations
 """
 import pytest
+from pathlib import Path
 
 from ase.parallel import parprint, world
 from ase.vibrations.vibrations import Vibrations
@@ -33,9 +34,13 @@ def test_names(testdir):
     rmc = ResonantRamanCalculator(atoms, H2MorseExcitedStatesCalculator,
                                   verbose=True)
     rmc.run()
+
+    # excitation files should reside in the same directory as cache files
+    assert (Path(rmc.name) / ('ex.eq' + rmc.exext)).exists()
+
+    # XXX does this still make sense?
     # remove the corresponding pickle file,
     # then Placzek can not anymore use it for vibrational properties
-
     key = '0x-'
     assert key in rmc.cache
     del rmc.cache[key]  # make sure this is not used
