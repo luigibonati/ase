@@ -65,7 +65,7 @@ class Displacement(namedtuple('Displacement', ['a', 'i', 'sign', 'ndisp',
 
     @property
     def _exname(self):
-        return Path(self.vib.exname) / f'ex.{self.name}{self.vib.exext}'
+        return str(Path(self.vib.exname) / f'ex.{self.name}{self.vib.exext}')
 
     def calculate_and_save_static_polarizability(self, atoms):
         exobj = self.vib._new_exobj()
