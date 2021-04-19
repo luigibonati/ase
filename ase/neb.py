@@ -806,7 +806,7 @@ class NEB(DyNEB):
 
 class NEBOptimizer(Optimizer):
     """
-    This optimizer applies an adaptive ODE or Krylov solver to a NEB
+    This optimizer applies an adaptive ODE solver to a NEB
 
     Details of the adaptive ODE solver are described in paper IV
     """
@@ -886,16 +886,7 @@ class NEBOptimizer(Optimizer):
             return True
         except OptimizerConvergenceError:
             return False
-
-    def run_krylov(self, fmax):
-        res = root(self.force_function,
-                   self.neb.get_positions().reshape(-1),
-                   method='krylov',
-                   options={'disp': True, 'fatol': fmax,
-                            'maxiter': self.max_steps},
-                   callback=self.callback)
-        return res.success
-                
+               
     def run_static(self, fmax):
         X = self.neb.get_positions().reshape(-1)
         for step in range(self.max_steps):
@@ -921,8 +912,6 @@ class NEBOptimizer(Optimizer):
             method = self.method
         if method == 'ode':
             return self.run_ode(fmax)
-        elif method == 'krylov':
-            return self.run_krylov(fmax)
         elif method == 'static':
             return self.run_static(fmax)
         else:
