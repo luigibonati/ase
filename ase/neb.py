@@ -8,7 +8,6 @@ import numpy as np
 
 from scipy.interpolate import CubicSpline
 from scipy.integrate import cumtrapz
-from scipy.optimize import root
 
 import ase.parallel
 from ase.build import minimize_rotation_and_translation
