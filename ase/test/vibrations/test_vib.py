@@ -50,7 +50,7 @@ class TestVibrationsClassic:
         # energy changes
         assert_array_almost_equal(vib.get_mode(5), vib_data.get_modes()[5])
 
-    def test_pickle_manipulation(self, testdir, n2_emt):
+    def test_json_manipulation(self, testdir, n2_emt):
         atoms = n2_emt
         vib = Vibrations(atoms, name='interrupt')
         vib.run()
@@ -74,7 +74,7 @@ class TestVibrationsClassic:
         with pytest.raises(RuntimeError):
             vib.run()
         # But reading is allowed
-            vib.read()
+        vib.read()
 
         # Splitting should fail if any split file already exists
         with open(disp_file, 'w') as fd:
