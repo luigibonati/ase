@@ -65,7 +65,7 @@ class Displacement(namedtuple('Displacement', ['a', 'i', 'sign', 'ndisp',
 
     @property
     def _exname(self):
-        return str(Path(self.vib.exname) / f'ex.{self.name}{self.vib.exext}')
+        return Path(self.vib.exname) / f'ex.{self.name}{self.vib.exext}'
 
     def calculate_and_save_static_polarizability(self, atoms):
         exobj = self.vib._new_exobj()
@@ -76,13 +76,15 @@ class Displacement(namedtuple('Displacement', ['a', 'i', 'sign', 'ndisp',
         return np.loadtxt(self._exname)
 
     def read_exobj(self):
-        return self.vib.read_exobj(self._exname)
+        # XXX each exobj should allow for self._exname as Path
+        return self.vib.read_exobj(str(self._exname))
 
     def calculate_and_save_exlist(self, atoms):
         #exo = self.vib._new_exobj()
         excalc = self.vib._new_exobj()
         exlist = excalc.calculate(atoms)
-        exlist.write(self._exname)
+        # XXX each exobj should allow for self._exname as Path
+        exlist.write(str(self._exname))
 
 
 class Vibrations(AtomicDisplacements):

@@ -36,7 +36,7 @@ def test_names(testdir):
     rmc.run()
 
     # excitation files should reside in the same directory as cache files
-    assert (Path(rmc.name) / ('ex.eq' + rmc.exext)).exists()
+    assert (Path(rmc.name) / ('ex.eq' + rmc.exext)).is_file()
 
     # XXX does this still make sense?
     # remove the corresponding pickle file,
