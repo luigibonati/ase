@@ -80,7 +80,7 @@ class Displacement(namedtuple('Displacement', ['a', 'i', 'sign', 'ndisp',
         return self.vib.read_exobj(str(self._exname))
 
     def calculate_and_save_exlist(self, atoms):
-        #exo = self.vib._new_exobj()
+        # exo = self.vib._new_exobj()
         excalc = self.vib._new_exobj()
         exlist = excalc.calculate(atoms)
         # XXX each exobj should allow for self._exname as Path
@@ -130,19 +130,6 @@ class Vibrations(AtomicDisplacements):
     BFGS:   3  16:01:21        0.262777       0.0088
     >>> vib = Vibrations(n2)
     >>> vib.run()
-    Writing vib.eq.json
-    Writing vib.0x-.json
-    Writing vib.0x+.json
-    Writing vib.0y-.json
-    Writing vib.0y+.json
-    Writing vib.0z-.json
-    Writing vib.0z+.json
-    Writing vib.1x-.json
-    Writing vib.1x+.json
-    Writing vib.1y-.json
-    Writing vib.1y+.json
-    Writing vib.1z-.json
-    Writing vib.1z+.json
     >>> vib.summary()
     ---------------------
     #    meV     cm^-1
@@ -150,11 +137,11 @@ class Vibrations(AtomicDisplacements):
     0    0.0       0.0
     1    0.0       0.0
     2    0.0       0.0
-    3    2.5      20.4
-    4    2.5      20.4
-    5  152.6    1230.8
+    3    1.4      11.5
+    4    1.4      11.5
+    5  152.7    1231.3
     ---------------------
-    Zero-point energy: 0.079 eV
+    Zero-point energy: 0.078 eV
     >>> vib.write_mode(-1)  # write last mode to trajectory file
 
     """
@@ -435,9 +422,9 @@ Please remove them and recalculate or run \
 
         summary_lines = VibrationsData._tabulate_from_energies(energies)
 
-        if log is None:
+        if log is not None:
             for line in summary_lines:
-                print(line)
+                print(line, file=log)
 
         elif isinstance(log, str):
             with paropen(log, 'a') as log_file:
