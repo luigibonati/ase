@@ -44,27 +44,12 @@ def check_call(f, *args):
     an exception.  Otherwise, pass along the rest of the objects
     returned by the function call.
     """
+    try:
+        ret = f(*args)
+    except RuntimeError:
+        raise KimpyError('Calling "{}" failed.'.format(f.__name__))
 
-    def _check_error(error, msg):
-        if error != 0 and error is not None:
-            raise KimpyError('Calling "{}" failed.'.format(msg))
-
-    ret = f(*args)
-
-    if isinstance(ret, int):
-        # Only an error code was returned
-        _check_error(ret, f.__name__)
-    else:
-        # An error code plus other variables were returned
-        error = ret[-1]
-        _check_error(error, f.__name__)
-
-        if len(ret[:-1]) == 1:
-            # Pick the single remaining element out of the tuple
-            return ret[0]
-        else:
-            # Return the tuple containing the rest of the elements
-            return ret[:-1]
+    return ret
 
 
 def check_call_wrapper(func):
@@ -75,7 +60,7 @@ def check_call_wrapper(func):
     return myfunc
 
 
-# kimpy methods wrapped in ``check_error``
+# kimpy methods
 collections_create = functools.partial(check_call, kimpy.collections.create)
 model_create = functools.partial(check_call, kimpy.model.create)
 simulator_model_create = functools.partial(check_call, kimpy.simulator_model.create)
@@ -98,33 +83,25 @@ class ModelCollections:
     def __init__(self):
         self.collection = collections_create()
 
-    def __del__(self):
-        self.destroy()
-
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, value, traceback):
-        self.destroy()
+        pass
 
     def get_item_type(self, model_name):
         try:
             model_type = check_call(self.collection.get_item_type, model_name)
         except KimpyError:
             msg = (
-                "Could not find model {} installed in any of the KIM API model "
-                "collections on this system.  See "
-                "https://openkim.org/doc/usage/obtaining-models/ for instructions on "
-                "installing models.".format(model_name)
+                "Could not find model {} installed in any of the KIM API "
+                "model collections on this system.  See "
+                "https://openkim.org/doc/usage/obtaining-models/ for "
+                "instructions on installing models.".format(model_name)
             )
             raise KIMModelNotFound(msg)
 
         return model_type
-
-    def destroy(self):
-        if self.initialized:
-            kimpy.collections.destroy(self.collection)
-            del self.collection
 
     @property
     def initialized(self):
@@ -164,14 +141,11 @@ class PortableModel:
             print("Time unit is: {}".format(ti_unit))
             print()
 
-    def __del__(self):
-        self.destroy()
-
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, value, traceback):
-        self.destroy()
+        pass
 
     def get_model_supported_species_and_codes(self):
         """Get all of the supported species for this model and their
@@ -193,39 +167,71 @@ class PortableModel:
 
         for i in range(num_kim_species):
             species_name = get_species_name(i)
-            species_support, code = self.get_species_support_and_code(species_name)
 
-            if species_support:
+            species_is_supported, code = self.get_species_support_and_code(
+                species_name)
+
+            if species_is_supported:
                 species.append(str(species_name))
                 codes.append(code)
 
         return species, codes
 
     def clear_then_refresh(self):
-        return self.kim_model.clear_then_refresh()
+        self.kim_model.clear_then_refresh()
 
     def _get_number_of_parameters(self):
         return self.kim_model.get_number_of_parameters()
 
     @c_int_args
     def _get_parameter_metadata(self, index_parameter):
-        dtype, extent, name, description, error = self.kim_model.get_parameter_metadata(index_parameter)
-        if error:
-            raise KimpyError(f"Failed to retrieve metadata for parameter {name}")
+        try:
+            dtype, extent, name, description = \
+                self.kim_model.get_parameter_metadata(index_parameter)
+        except RuntimeError:
+            raise KimpyError(
+                "Failed to retrieve metadata for parameter "
+                "at index = {}".format(index_parameter))
+
         return dtype, extent, name, description
 
     @c_int_args
-    def _get_parameter_int(self, index_param, index_extent):
-        return self.kim_model.get_parameter_int(index_param, index_extent)
+    def _get_parameter_int(self, index_parameter, index_extent):
+        try:
+            return self.kim_model.get_parameter_int(index_parameter, index_extent)
+        except RuntimeError:
+            msg = (
+                "index_param = {} is invalid! or\nindex_extent = {} is "
+                "invalid! or\nthe specified parameter and parameter_value are "
+                "of different data types!".format(index_parameter, index_extent)
+            )
+            raise KimpyError(msg)
 
     @c_int_args
-    def _get_parameter_double(self, index_param, index_extent):
-        return self.kim_model.get_parameter_double(index_param, index_extent)
+    def _get_parameter_double(self, index_parameter, index_extent):
+        try:
+            return self.kim_model.get_parameter_double(
+                index_parameter, index_extent)
+        except RuntimeError:
+            msg = (
+                "index_parameter = {} is invalid! or\nindex_extent = {} is "
+                "invalid! or\nthe specified parameter and parameter_value are "
+                "of different data types!".format(index_parameter, index_extent)
+            )
+            raise KimpyError(msg)
 
-    def _set_parameter(self, index_param, index_extent, value_typecast):
-        return self.kim_model.set_parameter(
-            c_int(index_param), c_int(index_extent), value_typecast
-        )
+    def _set_parameter(self, index_parameter, index_extent, value_typecast):
+        try:
+            self.kim_model.set_parameter(
+                c_int(index_parameter), c_int(index_extent), value_typecast
+            )
+        except RuntimeError:
+            msg = (
+                "index_parameter = {} is invalid! or\nindex_extent = {} is "
+                "invalid! or\nthe specified parameter and parameter_value are "
+                "of different data types!".format(index_parameter, index_extent)
+            )
+            raise KimpyError(msg)
 
     def parameters_metadata(self):
         """Metadata associated with all model parameters.
@@ -484,9 +490,9 @@ class PortableModel:
         self._check_parameter_data_type(dtype)
 
         if dtype == "Double":
-            pp = self._get_parameter_double(index_param, index_extent)[0]
+            pp = self._get_parameter_double(index_param, index_extent)
         elif dtype == "Integer":
-            pp = self._get_parameter_int(index_param, index_extent)[0]
+            pp = self._get_parameter_int(index_param, index_extent)
 
         return pp
 
@@ -584,14 +590,6 @@ class PortableModel:
 
     def compute_arguments_create(self):
         return ComputeArguments(self, self.debug)
-
-    def compute_arguments_destroy(self, compute_args_wrapped):
-        compute_args_wrapped.destroy()
-
-    def destroy(self):
-        if self.initialized:
-            kimpy.model.destroy(self.kim_model)
-            del self.kim_model
 
     @property
     def initialized(self):
@@ -714,12 +712,6 @@ class ComputeArguments:
             print("Debug: called update_kim")
             print()
 
-    @check_call_wrapper
-    def destroy(self):
-        return self.kim_model_wrapped.kim_model.compute_arguments_destroy(
-            self.compute_args
-        )
-
 
 class SimulatorModel:
     """ Creates a KIM API Simulator Model object and provides a minimal
@@ -736,19 +728,11 @@ class SimulatorModel:
         # Need to close template map in order to access simulator model metadata
         self.simulator_model.close_template_map()
 
-    def __del__(self):
-        self.destroy()
-
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, value, traceback):
-        self.destroy()
-
-    def destroy(self):
-        if self.initialized:
-            kimpy.simulator_model.destroy(self.simulator_model)
-            del self.simulator_model
+        pass
 
     @property
     def simulator_name(self):
@@ -760,12 +744,10 @@ class SimulatorModel:
         num_supported_species = self.simulator_model.get_number_of_supported_species()
         if num_supported_species == 0:
             raise KIMModelInitializationError(
-                "Unable to determine supported species of simulator model {}.".format(
-                    self.model_name
-                )
+                "Unable to determine supported species of "
+                "simulator model {}.".format(self.model_name)
             )
-        else:
-            return num_supported_species
+        return num_supported_species
 
     @property
     def supported_species(self):
@@ -802,9 +784,8 @@ class SimulatorModel:
             supported_units = self.metadata["units"][0]
         except (KeyError, IndexError):
             raise KIMModelInitializationError(
-                "Unable to determine supported units of simulator model {}.".format(
-                    self.model_name
-                )
+                "Unable to determine supported units of "
+                "simulator model {}.".format(self.model_name)
             )
 
         return supported_units

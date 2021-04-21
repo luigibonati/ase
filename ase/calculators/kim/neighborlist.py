@@ -342,7 +342,8 @@ class KimpyNeighborList(NeighborList):
             debug,
         )
 
-        self.neigh = neighlist.initialize()
+        self.neigh = neighlist.NeighList()
+
         compute_args.set_callback_pointer(
             kimpy.compute_callback_name.GetNeighborList,
             neighlist.get_neigh_kim(),
@@ -351,10 +352,10 @@ class KimpyNeighborList(NeighborList):
 
     @check_call_wrapper
     def build(self):
-        return neighlist.build(
-            self.neigh, self.coords, self.influence_dist,
-            self.cutoffs, self.need_neigh
-        )
+        return self.neigh.build(self.coords,
+                                self.influence_dist,
+                                self.cutoffs,
+                                self.need_neigh)
 
     @check_call_wrapper
     def create_paddings(
@@ -438,6 +439,3 @@ class KimpyNeighborList(NeighborList):
         if self.debug:
             print("Debug: called update_kimpy_neigh")
             print()
-
-    def clean(self):
-        neighlist.clean(self.neigh)
