@@ -1,9 +1,8 @@
 """Module for calculating phonons of periodic systems."""
 
 from math import pi, sqrt
-from os import remove
-from os.path import isfile
 import warnings
+from pathlib import Path
 
 import numpy as np
 import numpy.linalg as la
@@ -67,7 +66,7 @@ class Displacement:
         self.center_refcell = center_refcell
         self.supercell = supercell
 
-        self.cache = MultiFileJSONCache('phonons-cache')
+        self.cache = MultiFileJSONCache(self.name)
 
     def define_offset(self):        # Reference cell offset
 
@@ -173,7 +172,7 @@ class Displacement:
 
         # Do calculation on equilibrium structure
         eq_disp = self._disp(0, 0, 0)
-        #with self.cache.lock(f'{self.name}.eq') as handle:
+        # with self.cache.lock(f'{self.name}.eq') as handle:
         with self.cache.lock(eq_disp.name) as handle:
             if handle is not None:
                 output = self(atoms_N)
@@ -191,7 +190,7 @@ class Displacement:
             for i in range(3):
                 for sign in [-1, 1]:
                     disp = self._disp(a, i, sign)
-                    #key = '%s.%d%s%s' % (self.name, a, 'xyz'[i], ' +-'[sign])
+                    # key = '%s.%d%s%s' % (self.name, a, 'xyz'[i], ' +-'[sign])
                     with self.cache.lock(disp.name) as handle:
                         if handle is None:
                             continue
@@ -206,17 +205,16 @@ class Displacement:
                             atoms_N.positions[offset + a, i] = pos[a, i]
 
     def clean(self):
-        """Delete generated json files."""
+        """Delete generated files."""
+        name = Path(self.name)
 
-        if isfile(self.name + '.eq.json'):
-            remove(self.name + '.eq.json')
-
-        for a in self.indices:
-            for i in 'xyz':
-                for sign in '-+':
-                    name = '%s.%d%s%s.json' % (self.name, a, i, sign)
-                    if isfile(name):
-                        remove(name)
+        n = 0
+        if name.is_dir():
+            for fname in name.iterdir():
+                fname.unlink()
+                n += 1
+            name.rmdir()
+        return n
 
 
 class Phonons(Displacement):
