@@ -164,6 +164,8 @@ class PortableModel:
             print("Time unit is: {}".format(ti_unit))
             print()
 
+        self._create_parameters()
+
     def __del__(self):
         self.destroy()
 
@@ -172,6 +174,33 @@ class PortableModel:
 
     def __exit__(self, exc_type, value, traceback):
         self.destroy()
+
+    def _get_number_of_parameters(self):
+        return self.kim_model.get_number_of_parameters()
+
+    @c_int_args
+    def _get_parameter_metadata(self, index_parameter):
+        dtype, extent, name, description, error = self.kim_model.get_parameter_metadata(
+            index_parameter
+        )
+        if error:
+            raise KimpyError(f"Failed to retrieve metadata for parameter {name}")
+        return dtype, extent, name, description
+
+    def _create_parameters(self):
+        self._parameters = {}
+        num_params = self._get_number_of_parameters()
+        for index_param in range(num_params):
+            parameter_metadata = self._get_one_parameter_metadata(index_param)
+            name = parameter_metadata["name"]
+            self._parameters[name] = KIMModelParameter(
+                self.kim_model,
+                parameter_metadata["dtype"],
+                parameter_metadata["extent"],
+                name,
+                parameter_metadata["description"],
+                parameter_index=index_param,
+            )
 
     def get_model_supported_species_and_codes(self):
         """Get all of the supported species for this model and their
@@ -204,29 +233,6 @@ class PortableModel:
     def clear_then_refresh(self):
         return self.kim_model.clear_then_refresh()
 
-    def _get_number_of_parameters(self):
-        return self.kim_model.get_number_of_parameters()
-
-    @c_int_args
-    def _get_parameter_metadata(self, index_parameter):
-        dtype, extent, name, description, error = self.kim_model.get_parameter_metadata(index_parameter)
-        if error:
-            raise KimpyError(f"Failed to retrieve metadata for parameter {name}")
-        return dtype, extent, name, description
-
-    @c_int_args
-    def _get_parameter_int(self, index_param, index_extent):
-        return self.kim_model.get_parameter_int(index_param, index_extent)
-
-    @c_int_args
-    def _get_parameter_double(self, index_param, index_extent):
-        return self.kim_model.get_parameter_double(index_param, index_extent)
-
-    def _set_parameter(self, index_param, index_extent, value_typecast):
-        return self.kim_model.set_parameter(
-            c_int(index_param), c_int(index_extent), value_typecast
-        )
-
     def parameters_metadata(self):
         """Metadata associated with all model parameters.
 
@@ -235,26 +241,19 @@ class PortableModel:
         dict
             Metadata associated with all model parameters.
         """
-        num_params = self._get_number_of_parameters()
-        metadata = {}
-        for ii in range(num_params):
-            metadata.update(self._get_one_parameter_metadata(ii))
-        return metadata
+        return {
+            param_name: param.metadata for param_name, param in self._parameters.items()
+        }
 
     def parameter_names(self):
         """Names of model parameters registered in the KIM API.
 
         Returns
         -------
-        list
+        tuple
             Names of model parameters registered in the KIM API
         """
-        nparams = self._get_number_of_parameters()
-        names = []
-        for ii in range(nparams):
-            name = list(self._get_one_parameter_metadata(ii))[0]
-            names.append(name)
-        return names
+        return tuple(self._parameters.keys())
 
     def get_parameters(self, **kwargs):
         """
@@ -334,9 +333,8 @@ class PortableModel:
         """
         parameters = {}
         for parameter_name, parameter_data in kwargs.items():
-            self._set_one_parameter(
-                parameter_name, parameter_data[0], parameter_data[1]
-            )
+            index_range, values = parameter_data
+            self._set_one_parameter(parameter_name, index_range, values)
             parameters.update({parameter_name: parameter_data})
 
         return parameters
@@ -360,19 +358,7 @@ class PortableModel:
             The requested indices and the corresponding values of the model
             parameter array.
         """
-        (parameter_name_index, dtype, index_range_dim) = self._one_parameter_data(
-            parameter_name, index_range
-        )
-
-        if index_range_dim == 0:
-            values = self._get_one_value(parameter_name_index, index_range, dtype)
-        elif index_range_dim == 1:
-            values = []
-            for idx in index_range:
-                values.append(self._get_one_value(parameter_name_index, idx, dtype))
-        else:
-            raise ValueError("Index range must be an integer or a list of integer")
-        return {parameter_name: [index_range, values]}
+        return self._parameters[parameter_name].get_values(index_range)
 
     def _set_one_parameter(self, parameter_name, index_range, values):
         """
@@ -390,25 +376,7 @@ class PortableModel:
             Value(s) to assign to the component(s) of the model parameter
             array specified by ``index_range``.
         """
-        (parameter_name_index, dtype, index_range_dim) = self._one_parameter_data(
-            parameter_name, index_range
-        )
-        values_dim = np.ndim(values)
-
-        # Check the shape of index_range and values
-        msg = "index_range and values must have the same shape"
-        assert index_range_dim == values_dim, msg
-
-        if index_range_dim == 0:
-            self._set_one_value(parameter_name_index, index_range, dtype, values)
-        elif index_range_dim == 1:
-            assert len(index_range) == len(values), msg
-            for idx, value in zip(index_range, values):
-                self._set_one_value(parameter_name_index, idx, dtype, value)
-        else:
-            raise ValueError(
-                "Index range must be an integer or a list containing a single integer"
-            )
+        self._parameters[parameter_name].set_values(index_range, values)
 
     def _get_one_parameter_metadata(self, index_parameter):
         """
@@ -425,148 +393,14 @@ class PortableModel:
         dict
             Metadata associated with the requested model parameter.
         """
-        dtype, extent, name, description= self._get_parameter_metadata(index_parameter)
-        pdata = {
-            name: {
-                "dtype": repr(dtype),
-                "extent": extent,
-                "description": description,
-            }
+        dtype, extent, name, description = self._get_parameter_metadata(index_parameter)
+        parameter_metadata = {
+            "name": name,
+            "dtype": repr(dtype),
+            "extent": extent,
+            "description": description,
         }
-        return pdata
-
-    def _get_parameter_name_index(self, parameter_name):
-        """
-        Given the name of a model parameter, find the index used by the KIM
-        API to refer to it.
-
-        Parameters
-        ----------
-        parameter_name : str
-            Name of model parameter registered in the KIM API.
-
-        Returns
-        -------
-        int
-            Zero-based index used by the KIM API to refer to this model parameter.
-        """
-        parameter_name_index = np.where(
-            np.asarray(self.parameter_names()) == parameter_name
-        )[0]
-        return parameter_name_index
-
-    def _get_one_value(self, index_param, index_extent, dtype):
-        """
-        Retrieve the value of a single component of a model parameter array.
-
-        Parameters
-        ----------
-        index_param : int
-            Zero-based index used by the KIM API to refer to this model
-            parameter.
-        index_extent : int
-            Zero-based index locating the component of the model parameter
-            array that is to be retrieved.
-        dtype : "Integer" or "Double"
-            Data type of the model's parameter.  Allowed types: "Integer" or
-            "Double".
-
-        Returns
-        -------
-        int or float
-            Value of the requested component of the model parameter array.
-
-        Raises
-        ------
-        ValueError
-            If ``dtype`` is not one of "Integer" or "Double"
-        """
-        self._check_parameter_data_type(dtype)
-
-        if dtype == "Double":
-            pp = self._get_parameter_double(index_param, index_extent)[0]
-        elif dtype == "Integer":
-            pp = self._get_parameter_int(index_param, index_extent)[0]
-
-        return pp
-
-    def _set_one_value(self, index_param, index_extent, dtype, value):
-        """
-        Set the value of a single component of a model parameter array.
-
-        Parameters
-        ----------
-        index_param : int
-            Zero-based index used by the KIM API to refer to this model
-            parameter.
-        index_extent : int
-            Zero-based index locating the component of the model parameter
-            array that is to be mutated.
-        dtype : "Integer" or "Double"
-            Data type of the model's parameter.  Allowed types: "Integer" or
-            "Double".
-        value : int or float
-            Value to assign the the requested component of the model
-            parameter array.
-
-        Raises
-        ------
-        ValueError
-            If ``dtype`` is not one of "Integer" or "Double".
-        """
-        self._check_parameter_data_type(dtype)
-
-        if dtype == "Double":
-            value_typecast = c_double(value)
-        elif dtype == "Integer":
-            value_typecast = c_int(value)
-
-        self._set_parameter(index_param, index_extent, value_typecast)
-
-    def _one_parameter_data(self, parameter_name, index_range):
-        """Get the data of one of the parameter. The data will be used in
-        ``_get_one_parameter`` and ``_set_one_parameter``.
-
-        Parameters
-        ----------
-        parameter_name : str
-            Name of model parameter registered in the KIM API.:w
-
-        index_range : int or list
-            Zero-based index (int) or indices (list of int) specifying the
-            to be mutated.
-            component(s) of the corresponding model parameter array that are
-
-        Returns
-        -------
-        list
-            Contains index of model's parameter, metadata of the parameter,
-            dtype, and dimension of ``index_range``.
-
-        Raises
-        ------
-        ValueError
-            If ``parameter_name`` is not registered in the KIM API.
-        """
-        # Check if model has parameter_name
-        if parameter_name not in self.parameter_names():
-            raise ValueError(f"Parameter {parameter_name} is not supported.")
-
-        parameter_name_index = self._get_parameter_name_index(parameter_name)
-        metadata = self._get_one_parameter_metadata(parameter_name_index)
-        dtype = list(metadata.values())[0]["dtype"]
-
-        index_range_dim = np.ndim(index_range)
-
-        return parameter_name_index, dtype, index_range_dim
-
-    @staticmethod
-    def _check_parameter_data_type(dtype):
-        if dtype not in ["Integer", "Double"]:
-            raise ValueError(
-                f"Invalid data type {dtype}.  Allowed values are "
-                "'Integer' or 'Double'."
-            )
+        return parameter_metadata
 
     @check_call_wrapper
     def compute(self, compute_args_wrapped, release_GIL):
@@ -596,6 +430,80 @@ class PortableModel:
     @property
     def initialized(self):
         return hasattr(self, "kim_model")
+
+
+class KIMModelParameter:
+    def __init__(self, kim_model, dtype, extent, name, description, parameter_index):
+        self._kim_model = kim_model
+        self._dtype = dtype
+        self._extent = extent
+        self._name = name
+        self._description = description
+
+        # Ensure that parameter_index is cast to a C-compatible integer. This
+        # is necessary because this is passed to kimpy.
+        self._parameter_index = c_int(parameter_index)
+
+        self.metadata = {
+            "dtype": self._dtype,
+            "extent": self._extent,
+            "name": self._name,
+            "description": self._description,
+        }
+
+    @c_int_args
+    def _get_parameter_int(self, index_extent):
+        return self._kim_model.get_parameter_int(self._parameter_index, index_extent)
+
+    @c_int_args
+    def _get_parameter_double(self, index_extent):
+        return self._kim_model.get_parameter_double(self._parameter_index, index_extent)
+
+    def _get_one_value(self, index_extent):
+        if self._dtype == "Double":
+            return self._get_parameter_double(index_extent)[0]
+        elif self._dtype == "Integer":
+            return self._get_parameter_int(index_extent)[0]
+
+    def _set_one_value(self, index_extent, value):
+
+        if self._dtype == "Double":
+            value_typecast = c_double(value)
+        elif self._dtype == "Integer":
+            value_typecast = c_int(value)
+
+        self._kim_model.set_parameter(
+            self._parameter_index, c_int(index_extent), value_typecast
+        )
+
+    def get_values(self, index_range):
+        index_range_dim = np.ndim(index_range)
+        if index_range_dim == 0:
+            values = self._get_one_value(index_range)
+        elif index_range_dim == 1:
+            values = []
+            for idx in index_range:
+                values.append(self._get_one_value(idx))
+        else:
+            raise ValueError("Index range must be an integer or a list of integers")
+        return {self._name: [index_range, values]}
+
+    def set_values(self, index_range, values):
+        index_range_dim = np.ndim(index_range)
+        values_dim = np.ndim(values)
+
+        # Check the shape of index_range and values
+        msg = "index_range and values must have the same shape"
+        assert index_range_dim == values_dim, msg
+
+        if index_range_dim == 0:
+            self._set_one_value(index_range, values)
+        elif index_range_dim == 1:
+            assert len(index_range) == len(values), msg
+            for idx, value in zip(index_range, values):
+                self._set_one_value(idx, value)
+        else:
+            raise ValueError("Index range must be an integer or a list of integers")
 
 
 class ComputeArguments:
