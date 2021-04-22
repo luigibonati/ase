@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from ase.build import bulk
-from ase.constraints import UnitCellFilter
+from ase.constraints import FixAtoms, UnitCellFilter
 from ase.calculators.emt import EMT
 from ase.optimize.precon import make_precon, Precon
 from ase.neighborlist import neighbor_list
@@ -29,6 +29,13 @@ def atoms(ref_atoms):
 def var_cell(atoms):
     atoms, bonds = atoms
     return UnitCellFilter(atoms), bonds
+
+
+@pytest.fixture
+def fixed_atoms(atoms):
+    atoms, bonds = atoms
+    atoms.set_constraint(FixAtoms(indices=[0]))
+    return atoms, bonds
 
 
 def check_assembly(precon, system):
@@ -62,6 +69,11 @@ def test_assembly_atoms(precon, atoms):
 @pytest.mark.parametrize('precon', precons)
 def test_assembly_var_cell(precon, var_cell):
     check_assembly(precon, var_cell)
+    
+
+@pytest.mark.parametrize('precon', precons)
+def test_assembly_fixed_atoms(precon, fixed_atoms):
+    check_assembly(precon, fixed_atoms)
 
     
 def check_apply(precon, system):
@@ -79,8 +91,22 @@ def check_apply(precon, system):
     # force norm should not get much bigger when we precondition:
     # in this case all norms get smaller, but this will not be true in general
     assert residual_P <= residual
+    
+    # forces on any fixed atoms be zero, and remain zero after applying precon
+    fixed_atoms = []
+    for constraint in atoms.constraints:
+        if isinstance(constraint, FixAtoms):
+            fixed_atoms.extend(list(constraint.index))
+    if len(fixed_atoms) != 0:
+        assert np.linalg.norm(forces[fixed_atoms], np.inf) < 1e-8
+        assert np.linalg.norm(precon_forces[fixed_atoms], np.inf) < 1e-8
 
     
 @pytest.mark.parametrize('precon', precons)
 def test_apply_atoms(precon, atoms):
     check_apply(precon, atoms)
+
+
+@pytest.mark.parametrize('precon', precons)
+def test_apply_fixed_atoms(precon, fixed_atoms):
+    check_apply(precon, fixed_atoms)

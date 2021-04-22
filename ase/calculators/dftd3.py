@@ -1,16 +1,15 @@
 import os
-from warnings import warn
 import subprocess
-import numpy as np
+from warnings import warn
 
-from ase.calculators.calculator import (Calculator,
-                                        FileIOCalculator,
-                                        all_changes,
-                                        PropertyNotImplementedError)
-from ase.units import Bohr, Hartree
+import numpy as np
+from ase.calculators.calculator import (Calculator, FileIOCalculator,
+                                        PropertyNotImplementedError,
+                                        all_changes)
 from ase.io import write
 from ase.io.vasp import write_vasp
 from ase.parallel import world
+from ase.units import Bohr, Hartree
 
 
 class DFTD3(FileIOCalculator):
@@ -256,7 +255,7 @@ class DFTD3(FileIOCalculator):
             else:
                 fname = os.path.join(
                     self.directory, '{}.xyz'.format(self.label))
-                write(fname, atoms, format='xyz')
+                write(fname, atoms, format='xyz', parallel=False)
 
         # Generate custom damping parameters file. This is kind of ugly, but
         # I don't know of a better way of doing this.

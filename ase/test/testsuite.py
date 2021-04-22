@@ -101,6 +101,7 @@ octopus = octopus
 siesta = /usr/local/bin/siesta
 """
 
+
 class CLICommand:
     """Run ASE's test-suite.
 

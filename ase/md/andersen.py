@@ -101,7 +101,7 @@ class Andersen(MolecularDynamics):
         atoms = self.atoms
 
         if forces is None:
-            forces = atoms.get_forces()
+            forces = atoms.get_forces(md=True)
 
         self.v = atoms.get_velocities()
 

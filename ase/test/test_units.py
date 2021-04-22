@@ -13,6 +13,7 @@ import scipy.constants.codata
 # Scipy lacks data for some of the codata versions:
 codata_scipy_versions = set(CODATA) - {'1998', '1986'}
 
+
 @pytest.mark.parametrize('version', sorted(codata_scipy_versions))
 def test_units(version):
     name_map = {'_c': 'speed of light in vacuum',

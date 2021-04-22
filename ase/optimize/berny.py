@@ -61,6 +61,9 @@ class Berny(Optimizer):
             steprms=0.,
             dihedral=dihedral,
         )
+
+        # Berny yields the initial geometry the first time because it is
+        # typically used as a generator, see berny.optimize()
         next(self._berny)
 
     def step(self, forces=None):

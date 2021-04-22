@@ -8,7 +8,6 @@ import numpy as np
 
 from scipy.interpolate import CubicSpline
 from scipy.integrate import cumtrapz
-from scipy.optimize import root
 
 import ase.parallel
 from ase.build import minimize_rotation_and_translation
@@ -319,7 +318,7 @@ class BaseNEB:
                                 **results_to_include):
         atoms.calc = SinglePointCalculator(atoms=atoms, **results_to_include)
 
-    def interpolate(self, method='linear', mic=False):
+    def interpolate(self, method='linear', mic=False, apply_constraint=None):
         """Interpolate the positions of the interior images between the
         initial state (image 0) and final state (image -1).
 
@@ -329,11 +328,20 @@ class BaseNEB:
             idpp uses an image-dependent pair potential.
         mic: bool
             Use the minimum-image convention when interpolating.
+        apply_constraint: bool
+            Controls if the constraints attached to the images
+            are ignored or applied when setting the interpolated positions.
+            Default value is None, in this case the resulting constrained
+            positions (apply_constraint=True) are compared with unconstrained
+            positions (apply_constraint=False),
+            if the positions are not the same
+            the user is required to specify the desired behaviour
+            by setting up apply_constraint keyword argument to False or True.
         """
         if self.remove_rotation_and_translation:
             minimize_rotation_and_translation(self.images[0], self.images[-1])
 
-        interpolate(self.images, mic)
+        interpolate(self.images, mic, apply_constraint=apply_constraint)
 
         if method == 'idpp':
             idpp_interpolate(images=self, traj=None, log=None, mic=mic)
@@ -594,7 +602,7 @@ class BaseNEB:
         f = CubicSpline(fit.s, forces, bc_type=bc_type)
 
         s = np.linspace(0.0, 1.0, spline_points, endpoint=True)
-        dE = f(s) * fit.dx(s)
+        dE = f(s) * fit.dx_ds(s)
         F = dE.sum(axis=1)
         E = -cumtrapz(F, s, initial=0.0)
         return s, E, F
@@ -797,7 +805,7 @@ class NEB(DyNEB):
 
 class NEBOptimizer(Optimizer):
     """
-    This optimizer applies an adaptive ODE or Krylov solver to a NEB
+    This optimizer applies an adaptive ODE solver to a NEB
 
     Details of the adaptive ODE solver are described in paper IV
     """
@@ -877,16 +885,7 @@ class NEBOptimizer(Optimizer):
             return True
         except OptimizerConvergenceError:
             return False
-
-    def run_krylov(self, fmax):
-        res = root(self.force_function,
-                   self.neb.get_positions().reshape(-1),
-                   method='krylov',
-                   options={'disp': True, 'fatol': fmax,
-                            'maxiter': self.max_steps},
-                   callback=self.callback)
-        return res.success
-                
+               
     def run_static(self, fmax):
         X = self.neb.get_positions().reshape(-1)
         for step in range(self.max_steps):
@@ -912,8 +911,6 @@ class NEBOptimizer(Optimizer):
             method = self.method
         if method == 'ode':
             return self.run_ode(fmax)
-        elif method == 'krylov':
-            return self.run_krylov(fmax)
         elif method == 'static':
             return self.run_static(fmax)
         else:
@@ -971,7 +968,7 @@ class SingleCalculatorNEB(NEB):
 
 
 def interpolate(images, mic=False, interpolate_cell=False,
-                use_scaled_coord=False):
+                use_scaled_coord=False, apply_constraint=None):
     """Given a list of images, linearly interpolate the positions of the
     interior images.
 
@@ -983,6 +980,14 @@ def interpolate(images, mic=False, interpolate_cell=False,
     use_scaled_coord: bool
          Use scaled/internal/fractional coordinates instead of real ones for the
          interpolation. Not implemented for NEB calculations!
+    apply_constraint: bool
+         Controls if the constraints attached to the images
+         are ignored or applied when setting the interpolated positions.
+         Default value is None, in this case the resulting constrained positions
+         (apply_constraint=True) are compared with unconstrained positions
+         (apply_constraint=False), if the positions are not the same
+         the user is required to specify the desired behaviour
+         by setting up apply_constraint keyword argument to False or True.
     """
     if use_scaled_coord:
         pos1 = images[0].get_scaled_positions(wrap=mic)
@@ -1007,7 +1012,24 @@ def interpolate(images, mic=False, interpolate_cell=False,
         if use_scaled_coord:
             images[i].set_scaled_positions(new_pos)
         else:
-            images[i].set_positions(new_pos)
+            if apply_constraint is None:
+                unconstrained_image = images[i].copy()
+                unconstrained_image.set_positions(new_pos,
+                                                  apply_constraint=False)
+                images[i].set_positions(new_pos, apply_constraint=True)
+                try:
+                    np.testing.assert_allclose(unconstrained_image.positions,
+                                               images[i].positions)
+                except AssertionError:
+                    raise RuntimeError(f"Constraint(s) in image number {i} \n"
+                                       f"affect the interpolation results.\n"
+                                       "Please specify if you want to \n"
+                                       "apply or ignore the constraints \n"
+                                       "during the interpolation \n"
+                                       "with apply_constraint argument.")
+            else:
+                images[i].set_positions(new_pos,
+                                        apply_constraint=apply_constraint)
 
 
 def idpp_interpolate(images, traj='idpp.traj', log='idpp.log', fmax=0.1,

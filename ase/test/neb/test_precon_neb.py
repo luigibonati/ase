@@ -172,7 +172,7 @@ def test_neb_methods(method, optimizer, precon,
     assert abs(vdiff).max() < 1e-2
 
 
-@pytest.mark.parametrize('method', ['ODE', 'krylov', 'static'])
+@pytest.mark.parametrize('method', ['ODE', 'static'])
 @pytest.mark.filterwarnings('ignore:NEBOptimizer did not converge')
 def test_neb_optimizers(setup_images, method):
     images, _, _ = setup_images
@@ -223,3 +223,22 @@ def test_spline_fit(setup_images):
     # ensure derivative is smooth across central fit point
     eps = 1e-4
     assert np.allclose(fit.dx_ds(fit.s[2] + eps), fit.dx_ds(fit.s[2] + eps))
+
+
+def test_integrate_forces(setup_images):
+    images, _, _ = setup_images
+    forcefit = fit_images(images)
+
+    neb = NEB(images)
+    spline_points = 1000  # it is the default value
+    s, E, F = neb.integrate_forces(spline_points=spline_points)
+    # check the difference between initial and final images
+    np.testing.assert_allclose(E[0] - E[-1],
+                               forcefit.energies[0] - forcefit.energies[-1],
+                               atol=1.0e-10)
+    # assert the maximum Energy value is in the middle
+    assert np.argmax(E) == spline_points // 2 - 1
+    # check the maximum values (barrier value)
+    # tolerance value is rather high since the images are not relaxed
+    np.testing.assert_allclose(E.max(),
+                               forcefit.energies.max(), rtol=2.5e-2)

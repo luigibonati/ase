@@ -23,6 +23,7 @@ def test_props(forceprop):
     assert forceprop['forces'].shape == (natoms, 3)
     assert forceprop['natoms'] == natoms
 
+
 def test_props_set_twice(forceprop):
     with pytest.raises(ValueError):
         # Cannot set same thing twice.

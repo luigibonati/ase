@@ -9,6 +9,7 @@ from ase.visualize import view
 
 from ase.calculators.turbomole import Turbomole
 
+
 def test_turbomole_h3o2m():
     # http://jcp.aip.org/resource/1/jcpsa6/v97/i10/p7507_s1
     doo = 2.74

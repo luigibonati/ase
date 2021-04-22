@@ -31,7 +31,6 @@ omit =
     ../calculators/onetep.py
     ../calculators/dmol.py
     ../calculators/mopac.py
-    ../calculators/castep.py
     ../calculators/gulp.py
     ../calculators/demon/demon.py
     ../calculators/demon/demon_io.py

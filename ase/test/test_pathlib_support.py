@@ -9,6 +9,8 @@ from ase.utils import PurePath, convert_string_to_fd, reader, writer
 
 # Test reader/writer
 teststr = 'Teststring!'
+
+
 @writer
 def mywrite(file, fdcmp=None):
     assert isinstance(file, io.TextIOBase)
@@ -36,7 +38,7 @@ def myread(file, fdcmp=None):
         assert file is fdcmp
 
 
-def test_pathlib_support():
+def test_pathlib_support(testdir):
     path = Path('tmp_plib_testdir')
 
     # Test PurePath catches path

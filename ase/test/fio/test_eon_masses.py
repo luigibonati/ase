@@ -5,6 +5,7 @@ import ase.lattice.compounds
 import ase.data
 import ase.io
 
+
 def test_eon_masses():
     # Error tolerance.
     TOL = 1e-8
