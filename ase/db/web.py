@@ -133,7 +133,8 @@ class Session:
 
         table = Table(db, uid_key)
         table.select(query, self.columns, self.sort,
-                     self.limit, offset=self.page * self.limit)
+                     self.limit, offset=self.page * self.limit,
+                     show_empty_columns=True)
         table.format()
         assert self.columns is not None
         table.addcolumns = sorted(column for column in
