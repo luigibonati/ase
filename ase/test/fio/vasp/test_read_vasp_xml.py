@@ -178,10 +178,10 @@ def check_calculation(vasprun, index=-1,
     atoms = read(StringIO(vasprun), index=index,
                  format='vasp-xml')
 
-    assert atoms.get_potential_energy() == expected_e_0_energy
+    assert atoms.get_potential_energy() == pytest.approx(expected_e_0_energy)
 
     assert (atoms.get_potential_energy(force_consistent=True) ==
-            expected_e_fr_energy)
+            pytest.approx(expected_e_fr_energy))
 
     np.testing.assert_allclose(atoms.get_forces(),
                                expected_forces)
