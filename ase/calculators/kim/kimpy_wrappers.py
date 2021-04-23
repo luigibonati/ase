@@ -38,18 +38,17 @@ def c_int_args(func):
 
 def check_call(f, *args):
     """
-    Given a function that returns either an integer error code or a
-    tuple whose last element is an integer error code, call it with the
-    requested arguments.  If a non-zero error code was returned, raise
-    an exception.  Otherwise, pass along the rest of the objects
-    returned by the function call.
+    Call a kimpy function using its arguments and, if a RuntimeError is raised,
+    catch it and raise a KimpyError with the exception's message.
+
+    (Starting with kimpy 2.0.0, a RuntimeError is the only exception type raised
+    when something goes wrong.)
     """
     try:
-        ret = f(*args)
-    except RuntimeError:
-        raise KimpyError('Calling "{}" failed.'.format(f.__name__))
-
-    return ret
+        return f(*args)
+    except RuntimeError as e:
+        raise KimpyError(f'Calling kimpy function "{f.__name__}" failed: '
+                f'{str(e)}')
 
 
 def check_call_wrapper(func):
