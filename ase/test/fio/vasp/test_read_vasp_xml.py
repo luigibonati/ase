@@ -210,6 +210,9 @@ def test_two_calculations(vasprun, calculation):
                                             stress=second_stress)
 
     extended_vasprun = vasprun + calculation() + second_calculation_record
+    # make sure we have two atoms objects in the list if we read all records
+    images = read(StringIO(extended_vasprun), index=':', format="vasp-xml")
+    assert len(images) == 2
     check_calculation(extended_vasprun,
                       expected_e_0_energy=second_e_0_energy,
                       expected_e_fr_energy=second_e_fr_energy,
@@ -238,6 +241,9 @@ def test_corrupted_calculation(vasprun, calculation):
     # Thus the parser is expected to read the previous one.
     corrupted_record = '\n'.join(second_calculation.split('\n')[:-6])
     # assert that we actually do have two calculations in the set up
+    xml_string = vasprun + calculation() + corrupted_record
+    images = read(StringIO(xml_string), index=':', format="vasp-xml")
+    assert len(images) == 1
     check_calculation(vasprun + calculation() + corrupted_record, index=-2)
     # check that the parser skips the corrupted last one
     # Should there be a warning in this case?
