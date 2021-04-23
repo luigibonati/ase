@@ -11,8 +11,8 @@ class TestConnection:
                sort,
                include_data,
                columns):
-        return [SimpleNamespace(id=1, unique_key='id', a='hello'),
-                SimpleNamespace(id=2, unique_key='id', a='hi!!!', b=117)]
+        return [SimpleNamespace(id=1, a='hello'),
+                SimpleNamespace(id=2, a='hi!!!', b=117)]
 
 
 def test_hide_empty_columns():

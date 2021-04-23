@@ -156,7 +156,7 @@ class Row:
         self.values = None
         self.strings = None
         self.set_columns(columns)
-        self.uid = dct.unique_key
+        self.uid = getattr(dct, unique_key)
 
     def set_columns(self, columns):
         self.values = []
