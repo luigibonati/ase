@@ -371,7 +371,8 @@ class PortableModel:
             for idx in index_range:
                 values.append(self._get_one_value(parameter_name_index, idx, dtype))
         else:
-            raise ValueError("Index range must be an integer or a list of integer")
+            raise ValueError("Index range must be an integer or a list of "
+                    "integers")
         return {parameter_name: [index_range, values]}
 
     def _set_one_parameter(self, parameter_name, index_range, values):
@@ -550,7 +551,9 @@ class PortableModel:
         """
         # Check if model has parameter_name
         if parameter_name not in self.parameter_names():
-            raise ValueError(f"Parameter {parameter_name} is not supported.")
+            raise ValueError(f"Parameter '{parameter_name}' is not supported by "
+                    "this model. Please check that the parameter name is "
+                    "spelled correctly.")
 
         parameter_name_index = self._get_parameter_name_index(parameter_name)
         metadata = self._get_one_parameter_metadata(parameter_name_index)
@@ -564,7 +567,7 @@ class PortableModel:
     def _check_parameter_data_type(dtype):
         if dtype not in ["Integer", "Double"]:
             raise ValueError(
-                f"Invalid data type {dtype}.  Allowed values are "
+                f"Invalid data type '{dtype}'.  Allowed values are "
                 "'Integer' or 'Double'."
             )
 
