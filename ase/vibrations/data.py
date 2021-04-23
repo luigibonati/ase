@@ -52,7 +52,7 @@ class VibrationsData:
                  ) -> None:
 
         if indices is None:
-            self._indices = np.array(range(len(atoms)))
+            self._indices = np.arange(len(atoms), dtype=int)
         else:
             self._indices = np.array(indices, dtype=int)
 
@@ -162,8 +162,8 @@ class VibrationsData:
     def get_atoms(self) -> Atoms:
         return self._atoms.copy()
 
-    def get_indices(self) -> Union[None, np.ndarray]:
-        return np.array(self._indices, dtype=int)
+    def get_indices(self) -> np.ndarray:
+        return self._indices.copy()
 
     def get_mask(self) -> np.ndarray:
         """Boolean mask of atoms selected by indices"""
