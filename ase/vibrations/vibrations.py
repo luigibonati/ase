@@ -437,7 +437,7 @@ Please remove them and recalculate or run \
 
     def get_mode(self, n):
         """Get mode number ."""
-        return self.get_vibrations().get_modes()[n]
+        return self.get_vibrations().get_modes(all_atoms=True)[n]
 
     def write_mode(self, n=None, kT=units.kB * 300, nimages=30):
         """Write mode number n to trajectory file. If n is not specified,
