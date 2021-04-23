@@ -64,6 +64,8 @@ collections_create = functools.partial(check_call, kimpy.collections.create)
 model_create = functools.partial(check_call, kimpy.model.create)
 simulator_model_create = functools.partial(check_call, kimpy.simulator_model.create)
 get_species_name = functools.partial(check_call, kimpy.species_name.get_species_name)
+get_number_of_species_names = functools.partial(check_call,
+        kimpy.species_name.get_number_of_species_names)
 
 # kimpy attributes (here to avoid importing kimpy in higher-level modules)
 collection_item_type_portableModel = kimpy.collection_item_type.portableModel
@@ -162,7 +164,7 @@ class PortableModel:
         """
         species = []
         codes = []
-        num_kim_species = kimpy.species_name.get_number_of_species_names()
+        num_kim_species = get_number_of_species_names()
 
         for i in range(num_kim_species):
             species_name = get_species_name(i)
