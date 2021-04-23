@@ -10,7 +10,8 @@ import functools
 import numpy as np
 import kimpy
 
-from .exceptions import KIMModelNotFound, KIMModelInitializationError, KimpyError
+from .exceptions import (KIMModelNotFound, KIMModelInitializationError,
+        KimpyError, KIMModelParameterError)
 
 # Function used for casting parameter/extent indices to C-compatible ints
 c_int = np.intc
@@ -47,8 +48,8 @@ def check_call(f, *args):
     try:
         return f(*args)
     except RuntimeError as e:
-        raise KimpyError(f'Calling kimpy function "{f.__name__}" failed: '
-                f'{str(e)}')
+        raise KimpyError(f'Calling kimpy function "{f.__name__}" failed:\n'
+                f'  {str(e)}')
 
 
 def check_call_wrapper(func):
@@ -187,52 +188,44 @@ class PortableModel:
     @c_int_args
     def _get_parameter_metadata(self, index_parameter):
         try:
-            dtype, extent, name, description = \
-                self.kim_model.get_parameter_metadata(index_parameter)
-        except RuntimeError:
-            raise KimpyError(
-                "Failed to retrieve metadata for parameter "
-                "at index = {}".format(index_parameter))
+            dtype, extent, name, description = check_call(
+                   self.kim_model.get_parameter_metadata, index_parameter
+            )
+        except KimpyError as e:
+            raise KIMModelParameterError("Failed to retrieve metadata for "
+                    f"parameter at index {index_parameter}") from e
 
         return dtype, extent, name, description
 
     @c_int_args
     def _get_parameter_int(self, index_parameter, index_extent):
         try:
-            return self.kim_model.get_parameter_int(index_parameter, index_extent)
-        except RuntimeError:
-            msg = (
-                "index_param = {} is invalid! or\nindex_extent = {} is "
-                "invalid! or\nthe specified parameter and parameter_value are "
-                "of different data types!".format(index_parameter, index_extent)
-            )
-            raise KimpyError(msg)
+            return check_call(self.kim_model.get_parameter_int, index_parameter,
+                    index_extent)
+        except KimpyError as e:
+            raise KIMModelParameterError("Failed to access component "
+                    f"{index_extent} of model parameter of type integer at "
+                    f"index {index_parameter}") from e
 
     @c_int_args
     def _get_parameter_double(self, index_parameter, index_extent):
         try:
-            return self.kim_model.get_parameter_double(
-                index_parameter, index_extent)
-        except RuntimeError:
-            msg = (
-                "index_parameter = {} is invalid! or\nindex_extent = {} is "
-                "invalid! or\nthe specified parameter and parameter_value are "
-                "of different data types!".format(index_parameter, index_extent)
-            )
-            raise KimpyError(msg)
+            return check_call(self.kim_model.get_parameter_double,
+                    index_parameter, index_extent)
+        except KimpyError as e:
+            raise KIMModelParameterError("Failed to access component "
+                    f"{index_extent} of model parameter of type double at "
+                    f"index {index_parameter}") from e
 
     def _set_parameter(self, index_parameter, index_extent, value_typecast):
         try:
-            self.kim_model.set_parameter(
+            check_call(self.kim_model.set_parameter,
                 c_int(index_parameter), c_int(index_extent), value_typecast
             )
-        except RuntimeError:
-            msg = (
-                "index_parameter = {} is invalid! or\nindex_extent = {} is "
-                "invalid! or\nthe specified parameter and parameter_value are "
-                "of different data types!".format(index_parameter, index_extent)
-            )
-            raise KimpyError(msg)
+        except KimpyError as e:
+            raise KIMModelParameterError("Failed to set component "
+                    f"{index_extent} of model parameter at index "
+                    f"{index_parameter}") from e
 
     def parameters_metadata(self):
         """Metadata associated with all model parameters.
