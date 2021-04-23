@@ -10,8 +10,12 @@ import functools
 import numpy as np
 import kimpy
 
-from .exceptions import (KIMModelNotFound, KIMModelInitializationError,
-        KimpyError, KIMModelParameterError)
+from .exceptions import (
+    KIMModelNotFound,
+    KIMModelInitializationError,
+    KimpyError,
+    KIMModelParameterError,
+)
 
 # Function used for casting parameter/extent indices to C-compatible ints
 c_int = np.intc
@@ -48,8 +52,9 @@ def check_call(f, *args):
     try:
         return f(*args)
     except RuntimeError as e:
-        raise KimpyError(f'Calling kimpy function "{f.__name__}" failed:\n'
-                f'  {str(e)}')
+        raise KimpyError(
+            f'Calling kimpy function "{f.__name__}" failed:\n  {str(e)}'
+        )
 
 
 def check_call_wrapper(func):
@@ -65,8 +70,9 @@ collections_create = functools.partial(check_call, kimpy.collections.create)
 model_create = functools.partial(check_call, kimpy.model.create)
 simulator_model_create = functools.partial(check_call, kimpy.simulator_model.create)
 get_species_name = functools.partial(check_call, kimpy.species_name.get_species_name)
-get_number_of_species_names = functools.partial(check_call,
-        kimpy.species_name.get_number_of_species_names)
+get_number_of_species_names = functools.partial(
+    check_call, kimpy.species_name.get_number_of_species_names
+)
 
 # kimpy attributes (here to avoid importing kimpy in higher-level modules)
 collection_item_type_portableModel = kimpy.collection_item_type.portableModel
@@ -170,8 +176,7 @@ class PortableModel:
         for i in range(num_kim_species):
             species_name = get_species_name(i)
 
-            species_is_supported, code = self.get_species_support_and_code(
-                species_name)
+            species_is_supported, code = self.get_species_support_and_code(species_name)
 
             if species_is_supported:
                 species.append(str(species_name))
@@ -189,43 +194,56 @@ class PortableModel:
     def _get_parameter_metadata(self, index_parameter):
         try:
             dtype, extent, name, description = check_call(
-                   self.kim_model.get_parameter_metadata, index_parameter
+                self.kim_model.get_parameter_metadata, index_parameter
             )
         except KimpyError as e:
-            raise KIMModelParameterError("Failed to retrieve metadata for "
-                    f"parameter at index {index_parameter}") from e
+            raise KIMModelParameterError(
+                "Failed to retrieve metadata for "
+                f"parameter at index {index_parameter}"
+            ) from e
 
         return dtype, extent, name, description
 
     @c_int_args
     def _get_parameter_int(self, index_parameter, index_extent):
         try:
-            return check_call(self.kim_model.get_parameter_int, index_parameter,
-                    index_extent)
+            return check_call(
+                self.kim_model.get_parameter_int, index_parameter, index_extent
+            )
         except KimpyError as e:
-            raise KIMModelParameterError("Failed to access component "
-                    f"{index_extent} of model parameter of type integer at "
-                    f"index {index_parameter}") from e
+            raise KIMModelParameterError(
+                "Failed to access component "
+                f"{index_extent} of model parameter of type integer at "
+                f"index {index_parameter}"
+            ) from e
 
     @c_int_args
     def _get_parameter_double(self, index_parameter, index_extent):
         try:
-            return check_call(self.kim_model.get_parameter_double,
-                    index_parameter, index_extent)
+            return check_call(
+                self.kim_model.get_parameter_double, index_parameter, index_extent
+            )
         except KimpyError as e:
-            raise KIMModelParameterError("Failed to access component "
-                    f"{index_extent} of model parameter of type double at "
-                    f"index {index_parameter}") from e
+            raise KIMModelParameterError(
+                "Failed to access component "
+                f"{index_extent} of model parameter of type double at "
+                f"index {index_parameter}"
+            ) from e
 
     def _set_parameter(self, index_parameter, index_extent, value_typecast):
         try:
-            check_call(self.kim_model.set_parameter,
-                c_int(index_parameter), c_int(index_extent), value_typecast
+            check_call(
+                self.kim_model.set_parameter,
+                c_int(index_parameter),
+                c_int(index_extent),
+                value_typecast,
             )
         except KimpyError as e:
-            raise KIMModelParameterError("Failed to set component "
-                    f"{index_extent} of model parameter at index "
-                    f"{index_parameter}") from e
+            raise KIMModelParameterError(
+                "Failed to set component "
+                f"{index_extent} of model parameter at index "
+                f"{index_parameter}"
+            ) from e
 
     def parameters_metadata(self):
         """Metadata associated with all model parameters.
@@ -371,8 +389,7 @@ class PortableModel:
             for idx in index_range:
                 values.append(self._get_one_value(parameter_name_index, idx, dtype))
         else:
-            raise ValueError("Index range must be an integer or a list of "
-                    "integers")
+            raise ValueError("Index range must be an integer or a list of integers")
         return {parameter_name: [index_range, values]}
 
     def _set_one_parameter(self, parameter_name, index_range, values):
@@ -426,13 +443,9 @@ class PortableModel:
         dict
             Metadata associated with the requested model parameter.
         """
-        dtype, extent, name, description= self._get_parameter_metadata(index_parameter)
+        dtype, extent, name, description = self._get_parameter_metadata(index_parameter)
         pdata = {
-            name: {
-                "dtype": repr(dtype),
-                "extent": extent,
-                "description": description,
-            }
+            name: {"dtype": repr(dtype), "extent": extent, "description": description,}
         }
         return pdata
 
@@ -551,9 +564,11 @@ class PortableModel:
         """
         # Check if model has parameter_name
         if parameter_name not in self.parameter_names():
-            raise ValueError(f"Parameter '{parameter_name}' is not supported by "
-                    "this model. Please check that the parameter name is "
-                    "spelled correctly.")
+            raise ValueError(
+                f"Parameter '{parameter_name}' is not supported by "
+                "this model. Please check that the parameter name is "
+                "spelled correctly."
+            )
 
         parameter_name_index = self._get_parameter_name_index(parameter_name)
         metadata = self._get_one_parameter_metadata(parameter_name_index)
