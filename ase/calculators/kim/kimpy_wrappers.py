@@ -52,9 +52,7 @@ def check_call(f, *args):
     try:
         return f(*args)
     except RuntimeError as e:
-        raise KimpyError(
-            f'Calling kimpy function "{f.__name__}" failed:\n  {str(e)}'
-        )
+        raise KimpyError(f'Calling kimpy function "{f.__name__}" failed:\n  {str(e)}')
 
 
 def check_call_wrapper(func):
@@ -389,7 +387,9 @@ class PortableModel:
             for idx in index_range:
                 values.append(self._get_one_value(parameter_name_index, idx, dtype))
         else:
-            raise ValueError("Index range must be an integer or a list of integers")
+            raise KIMModelParameterError(
+                "Index range must be an integer or a list of integers"
+            )
         return {parameter_name: [index_range, values]}
 
     def _set_one_parameter(self, parameter_name, index_range, values):
@@ -424,7 +424,7 @@ class PortableModel:
             for idx, value in zip(index_range, values):
                 self._set_one_value(parameter_name_index, idx, dtype, value)
         else:
-            raise ValueError(
+            raise KIMModelParameterError(
                 "Index range must be an integer or a list containing a single integer"
             )
 
@@ -489,11 +489,6 @@ class PortableModel:
         -------
         int or float
             Value of the requested component of the model parameter array.
-
-        Raises
-        ------
-        ValueError
-            If ``dtype`` is not one of "Integer" or "Double"
         """
         self._check_parameter_data_type(dtype)
 
@@ -522,11 +517,6 @@ class PortableModel:
         value : int or float
             Value to assign the the requested component of the model
             parameter array.
-
-        Raises
-        ------
-        ValueError
-            If ``dtype`` is not one of "Integer" or "Double".
         """
         self._check_parameter_data_type(dtype)
 
@@ -559,12 +549,13 @@ class PortableModel:
 
         Raises
         ------
-        ValueError
-            If ``parameter_name`` is not registered in the KIM API.
+        KIMModelParameterError
+            If ``parameter_name`` is not registered in the KIM API for the
+            current model.
         """
         # Check if model has parameter_name
         if parameter_name not in self.parameter_names():
-            raise ValueError(
+            raise KIMModelParameterError(
                 f"Parameter '{parameter_name}' is not supported by "
                 "this model. Please check that the parameter name is "
                 "spelled correctly."
@@ -581,7 +572,7 @@ class PortableModel:
     @staticmethod
     def _check_parameter_data_type(dtype):
         if dtype not in ["Integer", "Double"]:
-            raise ValueError(
+            raise KIMModelParameterError(
                 f"Invalid data type '{dtype}'.  Allowed values are "
                 "'Integer' or 'Double'."
             )
