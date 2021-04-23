@@ -119,9 +119,10 @@ class TestVibrationsClassic():
         thermo.get_gibbs_energy(temperature=298.15, pressure=2 * 101325.,
                                 verbose=False)
 
-        vib.summary(log=self.logfile)
-        with open(self.logfile, 'rt') as f:
-            log_txt = f.read()
+        with open(self.logfile, 'w') as fd:
+            vib.summary(log=fd)
+        with open(self.logfile, 'rt') as fd:
+            log_txt = fd.read()
             assert log_txt == vibrations_n2_log
 
         mode1 = vib.get_mode(-1)
