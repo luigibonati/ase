@@ -60,7 +60,8 @@ def vasprun():
 @pytest.fixture()
 def calculation():
     def factory(test_case_index=0):
-        # an list of dictionaries desired values for the test cases
+        # list of dictionaries with the expected values for
+        # test calculation xml strings
         expected_values = [{"e_0_energy": -29.67691672,
                             "e_fr_energy": -29.67243317,
                             "forces": np.array([[7.58587457,
