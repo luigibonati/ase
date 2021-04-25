@@ -92,7 +92,6 @@ class Table:
                     if row.values[n] is not None:
                         delete.remove(n)
             delete = sorted(delete, reverse=True)
-            print(delete)
             for row in self.rows:
                 for n in delete:
                     del row.values[n]
