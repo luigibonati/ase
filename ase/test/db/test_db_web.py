@@ -56,7 +56,7 @@ def test_add_columns(database):
 
     session.update('query', '', {'query': 'id=2'}, project)
     table = session.create_table(database, 'id', ['foo'])
-    assert table.columns == []  # selected row doesn't have a foo key
+    assert table.columns == ['bar']  # selected row doesn't have a foo key
     assert 'foo' in table.addcolumns  # ... but we can add it
 
 
