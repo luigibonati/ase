@@ -26,7 +26,7 @@ install:
       {
         echo "install with conda"
         conda update -yq conda
-        conda install -yq pip wheel numpy scipy pyflakes matplotlib flask pytest pytest-mock
+        conda install -yq pip=21.0.1 wheel numpy scipy pyflakes matplotlib flask pytest pytest-mock
       }
       else
       {
