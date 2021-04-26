@@ -9,6 +9,8 @@ from ase.utils import PurePath, convert_string_to_fd, reader, writer
 
 # Test reader/writer
 teststr = 'Teststring!'
+
+
 @writer
 def mywrite(file, fdcmp=None):
     assert isinstance(file, io.TextIOBase)

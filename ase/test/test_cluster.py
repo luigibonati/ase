@@ -34,6 +34,8 @@ def test_icosa(shells):
 
 
 octa_sizes = [0, 1, 6, 19, 44, 85, 146, 231, 344]
+
+
 @pytest.mark.parametrize('shells', range(1, 8))
 def test_regular_octahedron(shells):
     octa = Octahedron(sym, length=shells, cutoff=0)

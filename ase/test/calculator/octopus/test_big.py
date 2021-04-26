@@ -15,6 +15,7 @@ def calculate(factory, system, **kwargs):
 
 calc = pytest.mark.calculator
 
+
 @calc('octopus', Spacing='0.25 * angstrom')
 @pytest.mark.xfail
 def test_h2o(factory):
@@ -37,6 +38,7 @@ def test_h2o(factory):
     #energy_err = abs(-463.5944954 - E)
     #assert energy_err < 0.01, energy_err
 
+
 @calc('octopus', Spacing='0.2 * angstrom')
 def test_o2(factory):
     atoms = g2['O2']
@@ -50,6 +52,7 @@ def test_o2(factory):
     #magmoms = calc.get_magnetic_moments()
     #print('magmom', magmom)
     #print('magmoms', magmoms)
+
 
 @calc('octopus')
 def test_si(factory):

@@ -72,3 +72,9 @@ def test_already_locked(cache):
 
         with pytest.raises(Locked):
             cache['hello'] = 'world'
+
+
+def test_no_overwrite_combine(cache):
+    cache.combine()
+    with pytest.raises(RuntimeError, match='Already exists'):
+        cache.combine()

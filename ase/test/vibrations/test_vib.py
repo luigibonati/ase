@@ -119,9 +119,10 @@ class TestVibrationsClassic():
         thermo.get_gibbs_energy(temperature=298.15, pressure=2 * 101325.,
                                 verbose=False)
 
-        vib.summary(log=self.logfile)
-        with open(self.logfile, 'rt') as f:
-            log_txt = f.read()
+        with open(self.logfile, 'w') as fd:
+            vib.summary(log=fd)
+        with open(self.logfile, 'rt') as fd:
+            log_txt = fd.read()
             assert log_txt == vibrations_n2_log
 
         mode1 = vib.get_mode(-1)
@@ -422,9 +423,23 @@ class TestSlab():
         vibs.run()
 
         freqs = vibs.get_frequencies()
+        assert len(freqs) == 6
 
         vib_data = vibs.get_vibrations()
         assert_array_almost_equal(freqs, vib_data.get_frequencies())
+
+        # These should blow up if the vectors don't match number of atoms
+        vibs.summary()
+        vibs.write_jmol()
+
+        for i in range(6):
+            # Frozen atoms should have zero displacement
+            assert_array_almost_equal(vibs.get_mode(i)[0], [0., 0., 0.])
+
+            # At least one of the N atoms should have finite displacement
+            # (It's a strange test system, the N aren't interacting.)
+
+            assert np.any(vibs.get_mode(i)[-2:, :])
 
 
 n2_on_ag_data = {"positions": np.array([

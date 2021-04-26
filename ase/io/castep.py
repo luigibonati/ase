@@ -611,8 +611,8 @@ def read_castep_cell(fd, index=None, calculator_args={}, find_spg=False,
             if otype == 'block':
                 val = val.split('\n')  # Avoids a bug for one-line blocks
             calc.cell.__setattr__(k, val)
-        except Exception:
-            raise RuntimeError('Problem setting calc.cell.%s = %s' % (k, val))
+        except Exception as e:
+            raise RuntimeError('Problem setting calc.cell.%s = %s: %s' % (k, val, e))
 
     # Get the relevant additional info
     aargs['magmoms'] = np.array(add_info_arrays['SPIN'])

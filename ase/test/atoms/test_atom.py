@@ -1,5 +1,6 @@
 from ase import Atom, Atoms
 
+
 def test_atom():
     m = Atoms('H2')
     a = m[0]

@@ -175,6 +175,7 @@ h1               5
  -0.564541792647E-01  0.840544009392E-01  0.319768855941
 """)
 
+
 def test_dlp2():
     mol = aseIO.read(fd2, format='dlp4', symbols=['C', 'Cl', 'H', 'H', 'H'])
     assert (mol.get_array('dlp4_labels') == np.array(['1', '', '', '', '1'])).all()

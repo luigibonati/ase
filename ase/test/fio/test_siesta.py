@@ -36,6 +36,7 @@ COFFEE 6.5
 %endblock spam
 """
 
+
 def test_read_fdf():
     dct = read_fdf(StringIO(sample_fdf))
     # This is a "raw" parser, no type conversion is done.
@@ -56,6 +57,7 @@ xv_file = """\
   1    22  0.0  0.0  0.0     0.0  0.0  0.0
   1    22  0.0  3.2  4.4     0.0  0.0  0.0
 """
+
 
 def test_read_xv():
     path = Path('tmp.XV')

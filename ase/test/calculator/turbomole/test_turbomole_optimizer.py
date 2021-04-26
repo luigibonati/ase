@@ -2,6 +2,7 @@
 from ase.calculators.turbomole import Turbomole
 from ase.build import molecule
 
+
 def test_turbomole_optimizer():
     water = molecule('H2O')
     params = {
