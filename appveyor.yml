@@ -33,12 +33,12 @@ install:
         echo "install with pip"
         #pip install --upgrade pip
         python.exe -m pip install --upgrade pip==21.0.1
-        pip install wheel pytest
+        pip install wheel pytest --disable-pip-version-check
       }
   # install ase into the current python
   - "echo %cd%"
   - "where pip"
-  - "pip install .[test]"
+  - "pip install .[test] --disable-pip-version-check"
 
 build: off
 
