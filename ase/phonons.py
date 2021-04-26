@@ -206,6 +206,9 @@ class Displacement:
 
     def clean(self):
         """Delete generated files."""
+        if world.rank != 0:
+            return 0
+
         name = Path(self.name)
 
         n = 0
