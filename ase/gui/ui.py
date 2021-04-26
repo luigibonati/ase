@@ -550,6 +550,7 @@ class ASEFileChooser(LoadFileDialog):
     def __init__(self, win, formatcallback=lambda event: None):
         from ase.io.formats import all_formats, get_ioformat
         LoadFileDialog.__init__(self, win, _('Open ...'))
+        #TODO: remove when switching to Python3.8, see https://github.com/python/cpython/pull/25592
         set_windowtype_to_dialog(self) #fix tkinter not automatically setting this
         labels = [_('Automatic')]
         values = ['']
