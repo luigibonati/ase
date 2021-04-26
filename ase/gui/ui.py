@@ -18,7 +18,7 @@ __all__ = [
     'error', 'ask_question', 'MainWindow', 'LoadFileDialog', 'SaveFileDialog',
     'ASEGUIWindow', 'Button', 'CheckButton', 'ComboBox', 'Entry', 'Label',
     'Window', 'MenuItem', 'RadioButton', 'RadioButtons', 'Rows', 'Scale',
-    'showinfo', 'showwarning', 'SpinBox', 'Text', 'set_windowtype_to_dialog']
+    'showinfo', 'showwarning', 'SpinBox', 'Text', 'set_windowtype']
 
 
 if sys.platform == 'darwin':
@@ -39,7 +39,8 @@ def about(name, version, webpage):
             '',
             _('Version') + ': ' + version,
             _('Web-page') + ': ' + webpage]
-    win = Window(_('About'), wmtype='dialog')
+    win = Window(_('About'))
+    set_windowtype(win, 'dialog')
     win.add(Text('\n'.join(text)))
 
 
@@ -48,11 +49,17 @@ def helpbutton(text):
 
 
 def helpwindow(text):
-    win = Window(_('Help'), wmtype='dialog')
+    win = Window(_('Help'))
+    set_windowtype(win, 'dialog')
     win.add(Text(text))
 
-def set_windowtype_to_dialog(win):
-    win.top.wm_attributes('-type', 'dialog')
+def set_windowtype(win, wmtype):
+    #only on X11
+    #WM_TYPE, for possible settings see
+    #https://specifications.freedesktop.org/wm-spec/wm-spec-latest.html#idm45623487848608
+    #you want dialog, normal or utility most likely
+    if win._windowingsystem == "x11":
+        win.wm_attributes('-type', wmtype)
 
 class BaseWindow:
     def __init__(self, title, close=None, wmtype='normal'):
@@ -64,9 +71,7 @@ class BaseWindow:
 
         self.things = []
         self.exists = True
-        #WM_TYPE, for possible settings see
-        #https://specifications.freedesktop.org/wm-spec/wm-spec-latest.html#idm45623487848608
-        self.win.wm_attributes('-type', wmtype)
+        set_windowtype(self.win, wmtype)
 
     def close(self):
         self.win.destroy()
@@ -550,8 +555,12 @@ class ASEFileChooser(LoadFileDialog):
     def __init__(self, win, formatcallback=lambda event: None):
         from ase.io.formats import all_formats, get_ioformat
         LoadFileDialog.__init__(self, win, _('Open ...'))
-        #TODO: remove when switching to Python3.8, see https://github.com/python/cpython/pull/25592
-        set_windowtype_to_dialog(self) #fix tkinter not automatically setting this
+        # fix tkinter not automatically setting dialog type
+        # remove from Python3.8+
+        # see https://github.com/python/cpython/pull/25187
+        # and https://bugs.python.org/issue43655
+        # and https://github.com/python/cpython/pull/25592
+        set_windowtype(self.top, 'dialog')
         labels = [_('Automatic')]
         values = ['']
 

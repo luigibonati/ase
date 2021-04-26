@@ -69,7 +69,8 @@ class Graphs:
         # remove from Python3.8+
         # see https://github.com/python/cpython/pull/25187
         # and https://bugs.python.org/issue43655
-        ui.set_windowtype_to_dialog(dialog)
+        # and https://github.com/python/cpython/pull/25592
+        ui.set_windowtype(dialog.top, 'dialog')
         filename = dialog.go()
         if filename:
             expr = self.expr.value

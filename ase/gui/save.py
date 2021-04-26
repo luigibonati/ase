@@ -26,7 +26,8 @@ def save_dialog(gui, filename=None):
     # remove from Python3.8+
     # see https://github.com/python/cpython/pull/25187
     # and https://bugs.python.org/issue43655
-    ui.set_windowtype_to_dialog(dialog)
+    # and https://github.com/python/cpython/pull/25592
+    ui.set_windowtype(dialog.top, 'dialog')
     ui.Text(text).pack(dialog.top)
     filename = filename or dialog.go()
     if not filename:
