@@ -1,7 +1,6 @@
 import io
 from ase.io import read
 
-
 header = """
   ___ ___ ___ _ _ _
  |   |   |_  | | | |
