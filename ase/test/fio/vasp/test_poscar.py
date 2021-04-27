@@ -10,6 +10,7 @@ from ase.io import read # , iread
 def outcar(datadir):
     return datadir / 'vasp' / 'OUTCAR_example_1'
 
+
 @pytest.fixture
 def poscar_no_species(datadir):
     return datadir / 'vasp' / 'POSCAR_example_1'

@@ -10,6 +10,7 @@ from ase.constraints import FixAtoms
 
 pair_distance = 2.5
 
+
 def Al_atom_pair(pair_distance=pair_distance):
     atoms = Atoms('AlAl', positions=[
         [-pair_distance / 2, 0, 0],

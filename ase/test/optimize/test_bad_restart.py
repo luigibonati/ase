@@ -3,6 +3,7 @@ import pytest
 from ase import Atoms
 from ase.optimize import BFGS, RestartError
 
+
 def test_bad_restart(testdir):
     fname = 'tmp.dat'
 

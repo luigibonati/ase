@@ -46,9 +46,11 @@ buf = r"""
  -------------------------------------------------------------------
 """
 
+
 def test_match_magic():
     bytebuf = buf.encode('ascii')
     assert match_magic(bytebuf).name == 'gaussian-out'
+
 
 def test_gaussian_out():
     fd = StringIO(buf)

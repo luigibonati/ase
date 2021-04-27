@@ -1,6 +1,7 @@
 import pytest
 import numpy as np
 
+
 def compare_with_pytest_approx(quantity, expected_values, rel_tol):
     """
     Cast inputted objects to numpy arrays and assert equivalence via

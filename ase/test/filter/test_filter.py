@@ -3,6 +3,7 @@ from ase.constraints import Filter
 from ase.optimize import QuasiNewton
 from ase.calculators.emt import EMT
 
+
 def test_filter(testdir):
     """Test that the filter and trajectories are playing well together."""
 

@@ -52,7 +52,7 @@ class VibrationsData:
                  ) -> None:
 
         if indices is None:
-            self._indices = np.array(range(len(atoms)))
+            self._indices = np.arange(len(atoms), dtype=int)
         else:
             self._indices = np.array(indices, dtype=int)
 
@@ -162,8 +162,8 @@ class VibrationsData:
     def get_atoms(self) -> Atoms:
         return self._atoms.copy()
 
-    def get_indices(self) -> Union[None, np.ndarray]:
-        return np.array(self._indices, dtype=int)
+    def get_indices(self) -> np.ndarray:
+        return self._indices.copy()
 
     def get_mask(self) -> np.ndarray:
         """Boolean mask of atoms selected by indices"""
@@ -280,11 +280,19 @@ class VibrationsData:
 
         return (energies, modes)
 
-    def get_energies_and_modes(self) -> Tuple[np.ndarray, np.ndarray]:
+    def get_energies_and_modes(self, all_atoms: bool = False
+                               ) -> Tuple[np.ndarray, np.ndarray]:
         """Diagonalise the Hessian to obtain harmonic modes
 
         Results are cached so diagonalization will only be performed once for
         this object instance.
+
+        Args:
+            all_atoms:
+                If True, return modes as (3N, [N + N_frozen], 3) array where
+                the second axis corresponds to the full list of atoms in the
+                attached atoms object. Atoms that were not included in the
+                Hessian will have displacement vectors of (0, 0, 0).
 
         Returns:
             tuple (energies, modes)
@@ -295,27 +303,40 @@ class VibrationsData:
             Modes are given in Cartesian coordinates as a (3N, N, 3) array
             where indices correspond to the (mode_index, atom, direction).
 
-            Note that in this array only the moving atoms are included.
-
         """
         if self._energies is None or self._modes is None:
             self._energies, self._modes = self._calculate_energies_and_modes()
             return self.get_energies_and_modes()
         else:
-            return (self._energies.copy(), self._modes.copy())
 
-    def get_modes(self) -> np.ndarray:
+            if all_atoms:
+                n_active_atoms = len(self.get_indices())
+                n_all_atoms = len(self._atoms)
+                modes = np.zeros((3 * n_active_atoms, n_all_atoms, 3))
+                modes[:, self.get_mask(), :] = self._modes
+            else:
+                modes = self._modes.copy()
+
+            return (self._energies.copy(), modes)
+
+    def get_modes(self, all_atoms: bool = False) -> np.ndarray:
         """Diagonalise the Hessian to obtain harmonic modes
 
         Results are cached so diagonalization will only be performed once for
         this object instance.
+
+        all_atoms:
+            If True, return modes as (3N, [N + N_frozen], 3) array where
+            the second axis corresponds to the full list of atoms in the
+            attached atoms object. Atoms that were not included in the
+            Hessian will have displacement vectors of (0, 0, 0).
 
         Returns:
             Modes in Cartesian coordinates as a (3N, N, 3) array where indices
             correspond to the (mode_index, atom, direction).
 
         """
-        return self.get_energies_and_modes()[1]
+        return self.get_energies_and_modes(all_atoms=all_atoms)[1]
 
     def get_energies(self) -> np.ndarray:
         """Diagonalise the Hessian to obtain eigenvalues
@@ -422,13 +443,12 @@ class VibrationsData:
 
         """
 
-        mode = (self.get_modes()[mode_index]
+        mode = (self.get_modes(all_atoms=True)[mode_index]
                 * sqrt(temperature / abs(self.get_energies()[mode_index])))
 
         for phase in np.linspace(0, 2 * pi, frames, endpoint=False):
             atoms = self.get_atoms()
-            atoms.positions[self.get_mask()] = (
-                atoms.positions[self.get_mask()] + sin(phase) * mode)
+            atoms.positions += sin(phase) * mode
 
             yield atoms
 
@@ -450,7 +470,7 @@ class VibrationsData:
         """
 
         atoms = self.get_atoms()
-        mode = self.get_modes()[mode] * len(atoms) * 3 * scale
+        mode = self.get_modes(all_atoms=True)[mode] * len(atoms) * 3 * scale
         atoms.calc = SinglePointCalculator(atoms, forces=mode)
         if show:
             atoms.edit()
@@ -477,7 +497,7 @@ class VibrationsData:
                 be convenient when comparing to experimental data.
         """
 
-        energies_and_modes = self.get_energies_and_modes()
+        energies_and_modes = self.get_energies_and_modes(all_atoms=True)
 
         all_images = []
         for i, (energy, mode) in enumerate(zip(*energies_and_modes)):
@@ -491,8 +511,7 @@ class VibrationsData:
             image.info.update({'mode#': str(i),
                                'frequency_cm-1': energy / units.invcm,
                                })
-            image.arrays['mode'] = np.zeros_like(image.positions)
-            image.arrays['mode'][self.get_mask()] = mode
+            image.arrays['mode'] = mode
 
             # Custom masses are quite useful in vibration analysis, but will
             # show up in the xyz file unless we remove them

@@ -48,6 +48,8 @@ def test_bulk(Cbulk, testdir):
     assert i_vib[3:] == approx(i_phonons[3:], 1)
     pz.summary()
 
+    assert rm.clean() == 25
+
 
 def test_bulk_kpts(Cbulk, testdir):
     """Bulk FCC carbon (for EMT) for phonons"""

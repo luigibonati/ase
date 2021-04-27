@@ -42,6 +42,7 @@ def test_interpolate_images_default(images, initial, average_pos):
     assert_interpolated([image.positions for image in images])
     assert np.allclose(images[1].cell, initial.cell)
 
+
 def test_interpolate_images_fixed(images, initial, average_pos):
 
     for image in images:
@@ -59,6 +60,7 @@ def test_interpolate_images_fixed(images, initial, average_pos):
     assert images[1].positions == pytest.approx(average_pos)
     assert_interpolated([image.positions for image in images])
     assert np.allclose(images[1].cell, initial.cell)
+
 
 def test_interpolate_images_scaled_coord(images, initial):
     interpolate(images, use_scaled_coord=True)

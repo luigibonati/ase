@@ -3,6 +3,7 @@ from ase.calculators.siesta.siesta_lrtddft import SiestaLRTDDFT
 from ase.build import molecule
 import numpy as np
 
+
 def test_siesta_lrtddft(siesta_factory):
 
     pynao = pytest.importorskip('pynao')
