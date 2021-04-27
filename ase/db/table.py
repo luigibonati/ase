@@ -87,7 +87,6 @@ class Table:
         if not show_empty_columns:
             delete = set(range(len(columns)))
             for row in self.rows:
-                print(row, row.values)
                 for n in delete.copy():
                     if row.values[n] is not None:
                         delete.remove(n)
