@@ -1,5 +1,3 @@
-from __future__ import print_function
-# -*- coding: utf-8 -*-
 """This module defines I/O routines with CASTEP files.
 The key idea is that all function accept or return  atoms objects.
 CASTEP specific parameters will be returned through the <atoms>.calc
@@ -17,6 +15,7 @@ from ase.parallel import paropen
 from ase.spacegroup import Spacegroup
 from ase.geometry.cell import cellpar_to_cell
 from ase.constraints import FixAtoms, FixedPlane, FixedLine, FixCartesian
+from ase.utils import atoms_to_spglib_cell
 
 # independent unit management included here:
 # When high accuracy is required, this allows to easily pin down
@@ -164,7 +163,7 @@ def write_castep_cell(fd, atoms, positions_frac=False, force_write=False,
     """
 
     if atoms is None:
-        print('Atoms object not initialized')
+        warnings.warn('Atoms object not initialized')
         return False
     if isinstance(atoms, list):
         if len(atoms) > 1:
@@ -246,8 +245,8 @@ def write_castep_cell(fd, atoms, positions_frac=False, force_write=False,
 
         for constr in constraints:
             if not isinstance(constr, _supported_constraints):
-                print('Warning: you have constraints in your atoms, that are')
-                print('         not supported by the CASTEP ase interface')
+                warnings.warn('Warning: you have constraints in your atoms, that are '
+                              'not supported by the CASTEP ase interface')
                 break
             if isinstance(constr, FixAtoms):
                 for i in constr.index:
@@ -259,11 +258,11 @@ def write_castep_cell(fd, atoms, positions_frac=False, force_write=False,
                         raise UserWarning('Unrecognized index in'
                                           + ' constraint %s' % constr)
                     for j in range(3):
-                        l = '%6d %3s %3d   ' % (len(constr_block) + 1,
+                        L = '%6d %3s %3d   ' % (len(constr_block) + 1,
                                                 symbol,
                                                 nis)
-                        l += ['1 0 0', '0 1 0', '0 0 1'][j]
-                        constr_block += [l]
+                        L += ['1 0 0', '0 1 0', '0 0 1'][j]
+                        constr_block += [L]
 
             elif isinstance(constr, FixCartesian):
                 n = constr.a
@@ -273,18 +272,18 @@ def write_castep_cell(fd, atoms, positions_frac=False, force_write=False,
                 for i, m in enumerate(constr.mask):
                     if m == 1:
                         continue
-                    l = '%6d %3s %3d   ' % (len(constr_block) + 1, symbol, nis)
-                    l += ' '.join(['1' if j == i else '0' for j in range(3)])
-                    constr_block += [l]
+                    L = '%6d %3s %3d   ' % (len(constr_block) + 1, symbol, nis)
+                    L += ' '.join(['1' if j == i else '0' for j in range(3)])
+                    constr_block += [L]
 
             elif isinstance(constr, FixedPlane):
                 n = constr.a
                 symbol = atoms.get_chemical_symbols()[n]
                 nis = atoms.calc._get_number_in_species(n)
 
-                l = '%6d %3s %3d   ' % (len(constr_block) + 1, symbol, nis)
-                l += ' '.join([str(d) for d in constr.dir])
-                constr_block += [l]
+                L = '%6d %3s %3d   ' % (len(constr_block) + 1, symbol, nis)
+                L += ' '.join([str(d) for d in constr.dir])
+                constr_block += [L]
 
             elif isinstance(constr, FixedLine):
                 n = constr.a
@@ -338,13 +337,13 @@ def read_freeform(fd):
     for i, l in enumerate(filelines):
 
         # Strip all comments, aka anything after a hash
-        l = re.split(r'[#!;]', l, 1)[0].strip()
+        L = re.split(r'[#!;]', l, 1)[0].strip()
 
-        if l == '':
+        if L == '':
             # Empty line... skip
             continue
 
-        lsplit = re.split(r'\s*[:=]*\s+', l, 1)
+        lsplit = re.split(r'\s*[:=]*\s+', L, 1)
 
         if read_block:
             if lsplit[0].lower() == '%endblock':
@@ -355,7 +354,7 @@ def read_freeform(fd):
                     read_block = False
                     inputobj.__setattr__(keyw, block_lines)
             else:
-                block_lines += [l]
+                block_lines += [L]
         else:
             # Check the first word
 
@@ -416,13 +415,13 @@ def read_castep_cell(fd, index=None, calculator_args={}, find_spg=False,
 
     if calc.cell.castep_version == 0 and calc._kw_tol < 3:
         # No valid castep_keywords.json was found
-        print('read_cell: Warning - Was not able to validate CASTEP input.')
-        print('           This may be due to a non-existing '
-              '"castep_keywords.json"')
-        print('           file or a non-existing CASTEP installation.')
-        print('           Parsing will go on but keywords will not be '
-              'validated and may cause problems if incorrect during a CASTEP '
-              'run.')
+        warnings.warn('read_cell: Warning - Was not able to validate CASTEP input. '
+                      'This may be due to a non-existing '
+                      '"castep_keywords.json" '
+                      'file or a non-existing CASTEP installation. '
+                      'Parsing will go on but keywords will not be '
+                      'validated and may cause problems if incorrect during a CASTEP '
+                      'run.')
 
     celldict = read_freeform(fd)
 
@@ -432,10 +431,9 @@ def read_castep_cell(fd, index=None, calculator_args={}, find_spg=False,
             usymb = line_tokens[0][0].lower()
             u = cell_units.get(usymb, 1)
             if usymb not in cell_units:
-                warnings.warn(('read_cell: Warning - ignoring invalid '
+                warnings.warn('read_cell: Warning - ignoring invalid '
                                'unit specifier in %BLOCK {0} '
-                               '(assuming Angstrom instead)'
-                               ).format(blockname))
+                               '(assuming Angstrom instead)'.format(blockname))
             line_tokens = line_tokens[1:]
         return u, line_tokens
 
@@ -506,7 +504,7 @@ def read_castep_cell(fd, index=None, calculator_args={}, find_spg=False,
     lines = pos_block.split('\n')
     line_tokens = [l.split() for l in lines]
 
-    if not 'scaled' in pos_type:
+    if 'scaled' not in pos_type:
         u, line_tokens = parse_blockunit(line_tokens, 'positions_abs')
     else:
         u = 1.0
@@ -613,8 +611,8 @@ def read_castep_cell(fd, index=None, calculator_args={}, find_spg=False,
             if otype == 'block':
                 val = val.split('\n')  # Avoids a bug for one-line blocks
             calc.cell.__setattr__(k, val)
-        except Exception:
-            raise RuntimeError('Problem setting calc.cell.%s = %s' % (k, val))
+        except Exception as e:
+            raise RuntimeError('Problem setting calc.cell.%s = %s: %s' % (k, val, e))
 
     # Get the relevant additional info
     aargs['magmoms'] = np.array(add_info_arrays['SPIN'])
@@ -634,16 +632,12 @@ def read_castep_cell(fd, index=None, calculator_args={}, find_spg=False,
         try:
             import spglib
         except ImportError:
-            try:
-                from pyspglib import spglib
-            except ImportError:
-                # spglib is not present
-                warnings.warn('spglib not found installed on this system - '
-                              'automatic spacegroup detection is not possible')
-                spglib = None
+            warnings.warn('spglib not found installed on this system - '
+                          'automatic spacegroup detection is not possible')
+            spglib = None
 
         if spglib is not None:
-            symmd = spglib.get_symmetry_dataset(atoms)
+            symmd = spglib.get_symmetry_dataset(atoms_to_spglib_cell(atoms))
             atoms_spg = Spacegroup(int(symmd['number']))
             atoms.info['spacegroup'] = atoms_spg
 
@@ -658,16 +652,16 @@ def read_castep_cell(fd, index=None, calculator_args={}, find_spg=False,
         if len(value) == 3:
             # Check if they are linearly independent
             if np.linalg.det(value) == 0:
-                print('Error: Found linearly dependent constraints attached '
-                      'to atoms %s' % (absolute_nr))
+                warnings.warn('Error: Found linearly dependent constraints attached '
+                              'to atoms %s' % (absolute_nr))
                 continue
             fixed_atoms.append(absolute_nr)
         elif len(value) == 2:
             direction = np.cross(value[0], value[1])
             # Check if they are linearly independent
             if np.linalg.norm(direction) == 0:
-                print('Error: Found linearly dependent constraints attached '
-                      'to atoms %s' % (absolute_nr))
+                warnings.warn('Error: Found linearly dependent constraints attached '
+                              'to atoms %s' % (absolute_nr))
                 continue
             constraint = ase.constraints.FixedLine(
                 a=absolute_nr,
@@ -679,8 +673,8 @@ def read_castep_cell(fd, index=None, calculator_args={}, find_spg=False,
                 direction=np.array(value[0], dtype=np.float32))
             constraints.append(constraint)
         else:
-            print('Error: Found %s statements attached to atoms %s'
-                  % (len(value), absolute_nr))
+            warnings.warn('Error: Found %s statements attached to atoms %s' %
+                          (len(value), absolute_nr))
 
     # we need to sort the fixed atoms list in order not to raise an assertion
     # error in FixAtoms
@@ -731,7 +725,7 @@ def read_castep_castep(fd, index=None):
         calc = Castep()
     except Exception as e:
         # No CASTEP keywords found?
-        print('WARNING:\n{0}\nUsing fallback .castep reader...'.format(e))
+        warnings.warn('WARNING: {0} Using fallback .castep reader...'.format(e))
         # Fall back on the old method
         return read_castep_castep_old(fd, index)
 
@@ -827,7 +821,7 @@ def read_castep_castep_old(fd, index=None):
                                             forces=None,
                                             magmoms=None,
                                             stress=None)
-            atoms.set_calculator(sp_calc)
+            atoms.calc = sp_calc
             traj.append(atoms)
     if index is None:
         return traj
@@ -859,8 +853,8 @@ def read_castep_geom(fd, index=None, units=units_CODATA2002):
 
     Contribution by Wei-Bing Zhang. Thanks!
 
-    Routine now accepts a filedescriptor in order to out-source the *.gz and
-    *.bz2 handling to formats.py. Note that there is a fallback routine
+    Routine now accepts a filedescriptor in order to out-source the gz and
+    bz2 handling to formats.py. Note that there is a fallback routine
     read_geom() that behaves like previous versions did.
     """
     from ase.calculators.singlepoint import SinglePointCalculator
@@ -899,9 +893,8 @@ def read_castep_geom(fd, index=None, units=units_CODATA2002):
                                txt[geom_stop:geom_stop
                                    + (geom_stop - geom_start)]])
             image = ase.Atoms(species, geom, cell=cell, pbc=True)
-            image.set_calculator(
-                SinglePointCalculator(atoms=image, energy=energy,
-                                      forces=forces))
+            image.calc = SinglePointCalculator(
+                atoms=image, energy=energy, forces=forces)
             traj.append(image)
 
     if index is None:
@@ -953,10 +946,10 @@ def read_castep_phonon(fd, index=None, read_vib_data=False,
     masses = []
 
     # header
-    l = 0
-    while l < len(lines):
+    L = 0
+    while L < len(lines):
 
-        line = lines[l]
+        line = lines[L]
 
         if 'Number of ions' in line:
             N = int(line.split()[3])
@@ -966,24 +959,24 @@ def read_castep_phonon(fd, index=None, read_vib_data=False,
             Nq = int(line.split()[3])
         elif 'Unit cell vectors (A)' in line:
             for ll in range(3):
-                l += 1
-                fields = lines[l].split()
+                L += 1
+                fields = lines[L].split()
                 cell.append([float(x) for x in fields[0:3]])
         elif 'Fractional Co-ordinates' in line:
             for ll in range(N):
-                l += 1
-                fields = lines[l].split()
+                L += 1
+                fields = lines[L].split()
                 scaled_positions.append([float(x) for x in fields[1:4]])
                 symbols.append(fields[4])
                 masses.append(float(fields[5]))
         elif 'END header' in line:
-            l += 1
+            L += 1
             atoms = ase.Atoms(symbols=symbols,
                               scaled_positions=scaled_positions,
                               cell=cell)
             break
 
-        l += 1
+        L += 1
 
     # Eigenmodes and -vectors
     if frequency_factor is None:
@@ -998,18 +991,18 @@ def read_castep_phonon(fd, index=None, read_vib_data=False,
     frequencies = []
     displacements = []
     for nq in range(Nq):
-        fields = lines[l].split()
+        fields = lines[L].split()
         qpoints.append([float(x) for x in fields[2:5]])
         weights.append(float(fields[5]))
     freqs = []
     for ll in range(Nb):
-        l += 1
-        fields = lines[l].split()
+        L += 1
+        fields = lines[L].split()
         freqs.append(frequency_factor * float(fields[1]))
     frequencies.append(np.array(freqs))
 
     # skip the two Phonon Eigenvectors header lines
-    l += 2
+    L += 2
 
     # generate a list of displacements with a structure that is identical to
     # what is stored internally in the Vibrations class (see in
@@ -1020,8 +1013,8 @@ def read_castep_phonon(fd, index=None, read_vib_data=False,
     for ll in range(Nb):
         disp_coords = []
         for lll in range(N):
-            l += 1
-            fields = lines[l].split()
+            L += 1
+            fields = lines[L].split()
             disp_x = float(fields[2]) + float(fields[3]) * 1.0j
             disp_y = float(fields[4]) + float(fields[5]) * 1.0j
             disp_z = float(fields[6]) + float(fields[7]) * 1.0j
@@ -1081,10 +1074,10 @@ def read_castep_md(fd, index=None, return_scalars=False,
     # fd is closed by embracing read() routine
     lines = fd.readlines()
 
-    l = 0
-    while 'END header' not in lines[l]:
-        l += 1
-    l_end_header = l
+    L = 0
+    while 'END header' not in lines[L]:
+        L += 1
+    l_end_header = L
     lines = lines[l_end_header + 1:]
     times = []
     energies = []
@@ -1111,10 +1104,10 @@ def read_castep_md(fd, index=None, return_scalars=False,
     cell_velocities = []
     stress = []
 
-    for (l, line) in enumerate(lines):
+    for (L, line) in enumerate(lines):
         fields = line.split()
         if len(fields) == 0:
-            if l != 0:
+            if L != 0:
                 times.append(time)
                 energies.append([Epot, EH, Ekin])
                 temperatures.append(temperature)
@@ -1124,13 +1117,12 @@ def read_castep_md(fd, index=None, return_scalars=False,
                                   cell=cell)
                 atoms.set_velocities(velocities)
                 if len(stress) == 0:
-                    atoms.set_calculator(
-                        SinglePointCalculator(atoms=atoms, energy=Epot,
-                                              forces=forces))
+                    atoms.calc = SinglePointCalculator(
+                        atoms=atoms, energy=Epot, forces=forces)
                 else:
-                    atoms.set_calculator(
-                        SinglePointCalculator(atoms=atoms, energy=Epot,
-                                              forces=forces, stress=stress))
+                    atoms.calc = SinglePointCalculator(
+                        atoms=atoms, energy=Epot,
+                        forces=forces, stress=stress)
                 traj.append(atoms)
             symbols = []
             positions = []
@@ -1257,8 +1249,8 @@ def write_param(filename, param, check_checkfile=False,
         if a restart file exists in the same directory
     """
     if os.path.isfile(filename) and not force_write:
-        print('ase.io.castep.write_param: Set optional argument')
-        print('force_write=True to overwrite %s.' % filename)
+        warnings.warn('ase.io.castep.write_param: Set optional argument ' 
+                      'force_write=True to overwrite %s.' % filename)
         return False
 
     out = paropen(filename, 'w')
@@ -1347,8 +1339,65 @@ def read_seed(seed, new_seed=None, ignore_internal_keys=False):
         # setting without a castep file...
         pass
         # No print statement required in these cases
-        print('Corresponding *.castep file not found.')
-        print('Atoms object will be restored from *.cell and *.param only.')
+        warnings.warn('Corresponding *.castep file not found. '
+                      'Atoms object will be restored from *.cell and *.param only.')
     atoms.calc.push_oldstate()
 
     return atoms
+
+
+def read_bands(filename='', fd=None, units=units_CODATA2002):
+    """Read Castep.bands file to kpoints, weights and eigenvalues
+
+    Args:
+        filename (str):
+            path to seedname.bands file
+        fd (fd):
+            file descriptor for open bands file
+        units (dict):
+            Conversion factors for atomic units
+
+    Returns:
+        (tuple):
+            (kpts, weights, eigenvalues, efermi)
+
+            Where ``kpts`` and ``weights`` are 1d numpy arrays, eigenvalues
+            is an array of shape (spin, kpts, nbands) and efermi is a float
+    """
+
+    Hartree = units['Eh']
+
+    if fd is None:
+        if filename == '':
+            raise ValueError('One between filename and fd must be provided')
+        fd = open(filename)
+    elif filename:
+        warnings.warn('Filestream used to read param, file name will be '
+                      'ignored')
+
+    nkpts, nspin, _, nbands, efermi = [t(fd.readline().split()[-1]) for t in
+                                       [int, int, float, int, float]]
+
+    kpts, weights = np.zeros((nkpts, 3)), np.zeros(nkpts)
+    eigenvalues = np.zeros((nspin, nkpts, nbands))
+
+    # Skip unit cell
+    for _ in range(4):
+        fd.readline()
+
+    def _kptline_to_i_k_wt(line):
+        line = line.split()
+        line = [int(line[1])] + list(map(float, line[2:]))
+        return (line[0] - 1, line[1:4], line[4])
+
+    # CASTEP often writes these out-of-order, so check index and write directly
+    # to the correct row
+    for kpt_line in range(nkpts):
+        i_kpt, kpt, wt = _kptline_to_i_k_wt(fd.readline())
+        kpts[i_kpt, :], weights[i_kpt] = kpt, wt
+        for spin in range(nspin):
+            fd.readline()  # Skip 'Spin component N' line
+            eigenvalues[spin, i_kpt, :] = [float(fd.readline())
+                                           for _ in range(nbands)]
+
+    return (kpts, weights, eigenvalues * Hartree, efermi * Hartree)

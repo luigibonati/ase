@@ -1,4 +1,3 @@
-from __future__ import print_function
 import os
 
 import numpy as np
@@ -6,8 +5,7 @@ import xml.etree.ElementTree as ET
 from ase.io.exciting import atoms2etree
 from ase.units import Bohr, Hartree
 from ase.calculators.calculator import PropertyNotImplementedError
-from ase.utils import basestring
-from xml.dom import  minidom
+from xml.dom import minidom
 
 
 class Exciting:
@@ -87,10 +85,21 @@ class Exciting:
         self.pbc = atoms.get_pbc().copy()
 
         self.initialize(atoms)
-        syscall = ('cd %(dir)s; %(bin)s;' %
-                   {'dir': self.dir, 'bin': self.excitingbinary})
-        print(syscall)
-        assert os.system(syscall) == 0
+        from pathlib import Path
+        xmlfile = Path(self.dir) / 'input.xml'
+        assert xmlfile.is_file()
+        print(xmlfile.read_text())
+        argv = [self.excitingbinary, 'input.xml']
+        from subprocess import check_call
+        check_call(argv, cwd=self.dir)
+
+        assert (Path(self.dir) / 'INFO.OUT').is_file()
+        assert (Path(self.dir) / 'info.xml').exists()
+
+        #syscall = ('cd %(dir)s; %(bin)s;' %
+        #           {'dir': self.dir, 'bin': self.excitingbinary})
+        #print(syscall)
+        #assert os.system(syscall) == 0
         self.read()
 
     def write(self, atoms):
@@ -124,9 +133,9 @@ class Exciting:
 
     def dicttoxml(self, pdict, element):
         for key, value in pdict.items():
-            if (isinstance(value, basestring) and key == 'text()'):
+            if (isinstance(value, str) and key == 'text()'):
                 element.text = value
-            elif (isinstance(value, basestring)):
+            elif (isinstance(value, str)):
                 element.attrib[key] = value
             elif (isinstance(value, list)):
                 for item in value:
@@ -156,7 +165,7 @@ class Exciting:
         forcesnodes = info.findall(
             'groundstate/scl/structure')[-1].findall('species/atom/forces/totalforce')
         for force in forcesnodes:
-            forces.append(np.array(list(force.attrib.values())).astype(np.float))
+            forces.append(np.array(list(force.attrib.values())).astype(float))
         self.forces = np.reshape(forces, (-1, 3)) * Hartree / Bohr
 
         if str(info.find('groundstate').attrib['status']) == 'finished':

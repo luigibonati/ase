@@ -1,6 +1,7 @@
 import errno
 import functools
 import os
+import io
 import pickle
 import sys
 import time
@@ -9,48 +10,59 @@ import warnings
 from importlib import import_module
 from math import sin, cos, radians, atan2, degrees
 from contextlib import contextmanager
-
-try:
-    from math import gcd
-except ImportError:
-    from fractions import gcd
-
-try:
-    from pathlib import PurePath
-except ImportError:
-    class PurePath:
-        pass
+from math import gcd
+from pathlib import PurePath, Path
+import re
 
 import numpy as np
 
-from ase.utils.formula import formula_hill, formula_metal
+from ase.formula import formula_hill, formula_metal
 
 __all__ = ['exec_', 'basestring', 'import_module', 'seterr', 'plural',
            'devnull', 'gcd', 'convert_string_to_fd', 'Lock',
-           'opencew', 'OpenLock', 'rotate', 'irotate', 'givens',
+           'opencew', 'OpenLock', 'rotate', 'irotate', 'pbc2pbc', 'givens',
            'hsv2rgb', 'hsv', 'pickleload', 'FileNotFoundError',
-           'formula_hill', 'formula_metal', 'PurePath']
+           'formula_hill', 'formula_metal', 'PurePath', 'xwopen',
+           'tokenize_version']
 
 
-# Python 2+3 compatibility stuff:
-if sys.version_info[0] > 2:
-    import builtins
-    exec_ = getattr(builtins, 'exec')
-    basestring = str
-    from io import StringIO
-    pickleload = functools.partial(pickle.load, encoding='bytes')
-    FileNotFoundError = getattr(builtins, 'FileNotFoundError')
-else:
-    class FileNotFoundError(OSError):
-        pass
+def tokenize_version(version_string: str):
+    """Parse version string into a tuple for version comparisons.
 
-    # Legacy Python:
-    def exec_(code, dct):
-        exec('exec code in dct')
-    basestring = basestring
-    from StringIO import StringIO
-    pickleload = pickle.load
-StringIO  # appease pyflakes
+    Usage: tokenize_version('3.8') < tokenize_version('3.8.1').
+    """
+    tokens = []
+    for component in version_string.split('.'):
+        match = re.match(r'(\d*)(.*)', component)
+        assert match is not None, f'Cannot parse component {component}'
+        number_str, tail = match.group(1, 2)
+        try:
+            number = int(number_str)
+        except ValueError:
+            number = -1
+        tokens += [number, tail]
+    return tuple(tokens)
+
+
+# Python 2+3 compatibility stuff (let's try to remove these things):
+basestring = str
+pickleload = functools.partial(pickle.load, encoding='bytes')
+
+
+def deprecated(msg, category=FutureWarning):
+    """Return a decorator deprecating a function.
+
+    Use like @deprecated('warning message and explanation')."""
+    def deprecated_decorator(func):
+        @functools.wraps(func)
+        def deprecated_function(*args, **kwargs):
+            warning = msg
+            if not isinstance(warning, Warning):
+                warning = category(warning)
+            warnings.warn(warning)
+            return func(*args, **kwargs)
+        return deprecated_function
+    return deprecated_decorator
 
 
 @contextmanager
@@ -60,8 +72,10 @@ def seterr(**kwargs):
     See np.seterr() for more details.
     """
     old = np.seterr(**kwargs)
-    yield
-    np.seterr(**old)
+    try:
+        yield
+    finally:
+        np.seterr(**old)
 
 
 def plural(n, word):
@@ -77,25 +91,37 @@ def plural(n, word):
 
 class DevNull:
     encoding = 'UTF-8'
+    closed = False
 
+    _use_os_devnull = deprecated('use open(os.devnull) instead',
+                                 DeprecationWarning)
+    # Deprecated for ase-3.21.0.  Change to futurewarning later on.
+
+    @_use_os_devnull
     def write(self, string):
         pass
 
+    @_use_os_devnull
     def flush(self):
         pass
 
+    @_use_os_devnull
     def seek(self, offset, whence=0):
         return 0
 
+    @_use_os_devnull
     def tell(self):
         return 0
 
+    @_use_os_devnull
     def close(self):
         pass
 
+    @_use_os_devnull
     def isatty(self):
         return False
 
+    @_use_os_devnull
     def read(self, n=-1):
         return ''
 
@@ -112,11 +138,11 @@ def convert_string_to_fd(name, world=None):
     if world is None:
         from ase.parallel import world
     if name is None or world.rank != 0:
-        return devnull
+        return open(os.devnull, 'w')
     if name == '-':
         return sys.stdout
-    if isinstance(name, basestring):
-        return open(name, 'w')
+    if isinstance(name, (str, PurePath)):
+        return open(str(name), 'w')  # str for py3.5 pathlib
     return name  # we assume name is already a file-descriptor
 
 
@@ -124,7 +150,8 @@ def convert_string_to_fd(name, world=None):
 CEW_FLAGS = os.O_CREAT | os.O_EXCL | os.O_WRONLY | getattr(os, 'O_BINARY', 0)
 
 
-def opencew(filename, world=None):
+@contextmanager
+def xwopen(filename, world=None):
     """Create and open filename exclusively for writing.
 
     If master cpu gets exclusive write access to filename, a file
@@ -132,28 +159,60 @@ def opencew(filename, world=None):
     slaves).  If the master cpu does not get write access, None is
     returned on all processors."""
 
+    fd = opencew(filename, world)
+    try:
+        yield fd
+    finally:
+        if fd is not None:
+            fd.close()
+
+
+#@deprecated('use "with xwopen(...) as fd: ..." to prevent resource leak')
+def opencew(filename, world=None):
+    return _opencew(filename, world)
+
+
+def _opencew(filename, world=None):
     if world is None:
         from ase.parallel import world
 
-    if world.rank == 0:
-        try:
-            fd = os.open(filename, CEW_FLAGS)
-        except OSError as ex:
-            error = ex.errno
-        else:
-            error = 0
-            fd = os.fdopen(fd, 'wb')
-    else:
-        error = 0
-        fd = devnull
+    closelater = []
 
-    # Syncronize:
-    error = world.sum(error)
-    if error == errno.EEXIST:
+    def opener(file, flags):
+        return os.open(file, flags | CEW_FLAGS)
+
+    try:
+        error = 0
+        if world.rank == 0:
+            try:
+                fd = open(filename, 'wb', opener=opener)
+            except OSError as ex:
+                error = ex.errno
+            else:
+                closelater.append(fd)
+        else:
+            fd = open(os.devnull, 'wb')
+            closelater.append(fd)
+
+        # Synchronize:
+        error = world.sum(error)
+        if error == errno.EEXIST:
+            return None
+        if error:
+            raise OSError(error, 'Error', filename)
+
+        return fd
+    except BaseException:
+        for fd in closelater:
+            fd.close()
+        raise
+
+
+def opencew_text(*args, **kwargs):
+    fd = opencew(*args, **kwargs)
+    if fd is None:
         return None
-    if error:
-        raise OSError(error, 'Error', filename)
-    return fd
+    return io.TextIOWrapper(fd)
 
 
 class Lock:
@@ -170,6 +229,7 @@ class Lock:
         while True:
             fd = opencew(self.name, self.world)
             if fd is not None:
+                self.fd = fd
                 break
             time_left = self.timeout - (time.time() - t1)
             if time_left <= 0:
@@ -179,8 +239,12 @@ class Lock:
 
     def release(self):
         self.world.barrier()
+        # Important to close fd before deleting file on windows
+        # as a WinError would otherwise be raised.
+        self.fd.close()
         if self.world.rank == 0:
             os.remove(self.name)
+        self.world.barrier()
 
     def __enter__(self):
         self.acquire()
@@ -218,7 +282,7 @@ def search_current_git_hash(arg, world=None):
         return None
 
     # Check argument
-    if isinstance(arg, basestring):
+    if isinstance(arg, str):
         # Directory path
         dpath = arg
     else:
@@ -322,6 +386,12 @@ def irotate(rotation, initial=np.identity(3)):
     return x, y, z
 
 
+def pbc2pbc(pbc):
+    newpbc = np.empty(3, bool)
+    newpbc[:] = pbc
+    return newpbc
+
+
 def hsv2rgb(h, s, v):
     """http://en.wikipedia.org/wiki/HSL_and_HSV
 
@@ -378,35 +448,54 @@ def longsum(x):
     return float(np.asarray(x, dtype=np.longdouble).sum())
 
 
-def iofunction(func, mode):
+@contextmanager
+def workdir(path, mkdir=False):
+    """Temporarily change, and optionally create, working directory."""
+    path = Path(path)
+    if mkdir:
+        path.mkdir(parents=True, exist_ok=True)
+
+    olddir = os.getcwd()
+    os.chdir(str(path))  # py3.6 allows chdir(path) but we still need 3.5
+    try:
+        yield  # Yield the Path or dirname maybe?
+    finally:
+        os.chdir(olddir)
+
+
+class iofunction:
     """Decorate func so it accepts either str or file.
 
     (Won't work on functions that return a generator.)"""
+    def __init__(self, mode):
+        self.mode = mode
 
-    @functools.wraps(func)
-    def iofunc(file, *args, **kwargs):
-        openandclose = isinstance(file, basestring)
-        fd = None
-        try:
-            if openandclose:
-                fd = open(file, mode)
-            else:
-                fd = file
-            obj = func(fd, *args, **kwargs)
-            return obj
-        finally:
-            if openandclose and fd is not None:
-                # fd may be None if open() failed
-                fd.close()
-    return iofunc
+    def __call__(self, func):
+        @functools.wraps(func)
+        def iofunc(file, *args, **kwargs):
+            openandclose = isinstance(file, (str, PurePath))
+            fd = None
+            try:
+                if openandclose:
+                    fd = open(str(file), self.mode)
+                else:
+                    fd = file
+                obj = func(fd, *args, **kwargs)
+                return obj
+            finally:
+                if openandclose and fd is not None:
+                    # fd may be None if open() failed
+                    fd.close()
+        return iofunc
+
 
 
 def writer(func):
-    return iofunction(func, 'w')
+    return iofunction('w')(func)
 
 
 def reader(func):
-    return iofunction(func, 'r')
+    return iofunction('r')(func)
 
 
 # The next two functions are for hotplugging into a JSONable class
@@ -420,7 +509,7 @@ def write_json(self, fd):
     _write_json(fd, self)
 
 
-@classmethod
+@classmethod  # type: ignore
 def read_json(cls, fd):
     """Read new instance from JSON file."""
     from ase.io.jsonio import read_json as _read_json
@@ -467,3 +556,52 @@ def experimental(func):
                       ExperimentalFeatureWarning)
         return func(*args, **kwargs)
     return expfunc
+
+
+def lazymethod(meth):
+    """Decorator for lazy evaluation and caching of data.
+
+    Example::
+
+      class MyClass:
+
+         @lazymethod
+         def thing(self):
+             return expensive_calculation()
+
+    The method body is only executed first time thing() is called, and
+    its return value is stored.  Subsequent calls return the cached
+    value."""
+    name = meth.__name__
+
+    @functools.wraps(meth)
+    def getter(self):
+        try:
+            cache = self._lazy_cache
+        except AttributeError:
+            cache = self._lazy_cache = {}
+
+        if name not in cache:
+            cache[name] = meth(self)
+        return cache[name]
+    return getter
+
+
+def atoms_to_spglib_cell(atoms):
+    """Convert atoms into data suitable for calling spglib."""
+    return (atoms.get_cell(),
+            atoms.get_scaled_positions(),
+            atoms.get_atomic_numbers())
+
+
+def warn_legacy(feature_name):
+    warnings.warn(
+        f'The {feature_name} feature is untested and ASE developers do not '
+        'know whether it works or how to use it.  Please rehabilitate it '
+        '(by writing unittests) or it may be removed.',
+        FutureWarning)
+
+
+def lazyproperty(meth):
+    """Decorator like lazymethod, but making item available as a property."""
+    return property(lazymethod(meth))

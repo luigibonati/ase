@@ -3,13 +3,11 @@
 See https://en.wikipedia.org/wiki/Chemical_table_file#SDF
 """
 from ase.atoms import Atoms
-from ase.utils import basestring
+from ase.utils import reader
 
 
+@reader
 def read_sdf(fileobj):
-    if isinstance(fileobj, basestring):
-        fileobj = open(fileobj)
-
     lines = fileobj.readlines()
     # first three lines header
     del lines[:3]

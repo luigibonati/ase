@@ -59,6 +59,8 @@ Diamond
 .. literalinclude:: spacegroup-diamond.py
 
 
+.. _nacl:
+
 Sodium chloride
 ---------------
 
@@ -83,7 +85,7 @@ CoSb3 skutterudite
 Skutterudites_ are quite interesting structures with 32 atoms
 in the unit cell.
 
-.. _Skutterudites: http://en.wikipedia.org/wiki/Skutterudite
+.. _Skutterudites: https://en.wikipedia.org/wiki/Skutterudite
 
 .. literalinclude:: spacegroup-skutterudite.py
 
@@ -175,3 +177,29 @@ four symmetry-equivalent sites.
 
 .. autoclass:: Spacegroup
 .. autofunction:: get_spacegroup
+
+Getting a reduced atomic basis
+===============================
+
+You can also get a basis representation of a given crystal within a particular spagegroup,
+using the :func:`ase.spacegroup.get_basis` function.
+
+As an example, let's look at rocksalt NaCl, and see how we can reproduce the basis from an :class:`ase.Atoms` object:
+
+>>> from ase.build import bulk
+>>> from ase.spacegroup import get_basis
+>>> atoms = bulk('NaCl', crystalstructure='rocksalt', a=5.64)
+>>> spacegroup = 225  # Rocksalt
+>>> basis = get_basis(atoms, spacegroup=spacegroup)
+>>> basis
+[[0.  0.  0. ]
+ [0.5 0.5 0.5]]
+
+which gives us our expected 2 basis vectors for rocksalt, from the :ref:`previous example<nacl>`.
+
+.. _spglib: https://spglib.github.io/spglib/
+
+.. note::
+   Inferring the spacegroup requires the installation of `spglib`_, otherwise the space group must be passed explicitly.
+
+.. autofunction:: get_basis

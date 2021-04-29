@@ -1,5 +1,5 @@
-from __future__ import print_function
 import warnings
+from typing import Tuple
 
 import numpy as np
 
@@ -11,6 +11,8 @@ from ase.atoms import Atoms
 from ase.io.jsonio import encode, decode
 from ase.io.pickletrajectory import PickleTrajectory
 from ase.parallel import world
+from ase.utils import tokenize_version
+
 
 __all__ = ['Trajectory', 'PickleTrajectory']
 
@@ -107,7 +109,8 @@ class TrajectoryWriter:
         if self.master:
             self.backend = ulm.open(filename, mode, tag='ASE-Trajectory')
             if len(self.backend) > 0 and mode == 'a':
-                atoms = Trajectory(filename)[0]
+                with Trajectory(filename) as traj:
+                    atoms = traj[0]
                 self.header_data = get_header_data(atoms)
         else:
             self.backend = ulm.DummyWriter()
@@ -152,7 +155,7 @@ class TrajectoryWriter:
 
         write_atoms(b, atoms, write_header=write_header)
 
-        calc = atoms.get_calculator()
+        calc = atoms.calc
 
         if calc is None and len(kwargs) > 0:
             calc = SinglePointCalculator(atoms)
@@ -179,6 +182,7 @@ class TrajectoryWriter:
                                                   allow_calculation=False)
                         except (PropertyNotImplementedError, KeyError):
                             # KeyError is needed for Jacapo.
+                            # XXX We can perhaps remove this.
                             x = None
                 if x is not None:
                     if prop in ['stress', 'dipole']:
@@ -250,14 +254,18 @@ class TrajectoryReader:
         self.backend.close()
 
     def __getitem__(self, i=-1):
+        if isinstance(i, slice):
+            return SlicedTrajectory(self, i)
         b = self.backend[i]
         if 'numbers' in b:
             # numbers and other header info was written alongside the image:
-            atoms = read_atoms(b)
+            atoms = read_atoms(b, traj=self)
         else:
             # header info was not written because they are the same:
-            atoms = read_atoms(b, header=[self.pbc, self.numbers, self.masses,
-                                          self.constraints])
+            atoms = read_atoms(b,
+                               header=[self.pbc, self.numbers, self.masses,
+                                       self.constraints],
+                               traj=self)
         if 'calculator' in b:
             results = {}
             implemented_properties = []
@@ -272,7 +280,7 @@ class TrajectoryReader:
 
             if 'parameters' in c:
                 calc.parameters.update(c.parameters)
-            atoms.set_calculator(calc)
+            atoms.calc = calc
 
         return atoms
 
@@ -282,6 +290,27 @@ class TrajectoryReader:
     def __iter__(self):
         for i in range(len(self)):
             yield self[i]
+
+
+class SlicedTrajectory:
+    """Wrapper to return a slice from a trajectory without loading
+    from disk. Initialize with a trajectory (in read mode) and the
+    desired slice object."""
+
+    def __init__(self, trajectory, sliced):
+        self.trajectory = trajectory
+        self.map = range(len(self.trajectory))[sliced]
+
+    def __getitem__(self, i):
+        if isinstance(i, slice):
+            # Map directly to the original traj, not recursively.
+            traj = SlicedTrajectory(self.trajectory, slice(0, None))
+            traj.map = self.map[i]
+            return traj
+        return self.trajectory[self.map[i]]
+
+    def __len__(self):
+        return len(self.map)
 
 
 def get_header_data(atoms):
@@ -299,7 +328,28 @@ def headers_equal(headers1, headers2):
     return eq
 
 
-def read_atoms(backend, header=None):
+class VersionTooOldError(Exception):
+    pass
+
+
+def read_atoms(backend,
+               header: Tuple = None,
+               traj: TrajectoryReader = None,
+               _try_except: bool = True) -> Atoms:
+
+    if _try_except:
+        try:
+            return read_atoms(backend, header, traj, False)
+        except Exception as ex:
+            if (traj is not None and tokenize_version(__version__) <
+                    tokenize_version(traj.ase_version)):
+                msg = ('You are trying to read a trajectory file written '
+                       f'by ASE-{traj.ase_version} from ASE-{__version__}. '
+                       'It might help to update your ASE')
+                raise VersionTooOldError(msg) from ex
+            else:
+                raise
+
     b = backend
     if header:
         pbc, numbers, masses, constraints = header

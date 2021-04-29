@@ -1,4 +1,3 @@
-from __future__ import print_function
 """Function-like objects creating orthorhombic lattices.
 
 The following lattice creators are defined:
@@ -78,6 +77,7 @@ class SimpleOrthorhombicFactory(Bravais):
 
 SimpleOrthorhombic = SimpleOrthorhombicFactory()
 
+
 class BaseCenteredOrthorhombicFactory(SimpleOrthorhombicFactory):
     "A factory for creating base-centered orthorhombic lattices."
 
@@ -102,6 +102,7 @@ class BaseCenteredOrthorhombicFactory(SimpleOrthorhombicFactory):
 
 BaseCenteredOrthorhombic = BaseCenteredOrthorhombicFactory()
 
+
 class BodyCenteredOrthorhombicFactory(SimpleOrthorhombicFactory):
     "A factory for creating body-centered orthorhombic lattices."
 
@@ -122,6 +123,8 @@ class BodyCenteredOrthorhombicFactory(SimpleOrthorhombicFactory):
             print("WARNING: Got volume %f, expected %f" % (vol1, vol2))
 
 BodyCenteredOrthorhombic = BodyCenteredOrthorhombicFactory()
+
+
 class FaceCenteredOrthorhombicFactory(SimpleOrthorhombicFactory):
     "A factory for creating face-centered orthorhombic lattices."
 

@@ -19,7 +19,7 @@ def get_sorted_dist_list(atoms, mic=False):
     return pair_cor
 
 
-class InteratomicDistanceComparator(object):
+class InteratomicDistanceComparator:
 
     """ An implementation of the comparison criteria described in
           L.B. Vilhelmsen and B. Hammer, PRL, 108, 126101 (2012)
@@ -84,7 +84,7 @@ class InteratomicDistanceComparator(object):
         return (total_cum_diff, max_diff)
 
 
-class SequentialComparator(object):
+class SequentialComparator:
     """Use more than one comparison class and test them all in sequence.
 
     Supply a list of integers if for example two comparison tests both
@@ -125,7 +125,7 @@ class SequentialComparator(object):
         return False
 
 
-class StringComparator(object):
+class StringComparator:
     """Compares the calculated hash strings. These strings should be stored
        in atoms.info['key_value_pairs'][key1] and
        atoms.info['key_value_pairs'][key2] ...
@@ -142,7 +142,7 @@ class StringComparator(object):
         return False
 
 
-class EnergyComparator(object):
+class EnergyComparator:
     """Compares the energy of the supplied atoms objects using
        get_potential_energy().
 
@@ -162,7 +162,7 @@ class EnergyComparator(object):
             return True
 
 
-class RawScoreComparator(object):
+class RawScoreComparator:
     """Compares the raw_score of the supplied individuals
        objects using a1.info['key_value_pairs']['raw_score'].
 
@@ -182,19 +182,19 @@ class RawScoreComparator(object):
             return True
 
 
-class NoComparator(object):
+class NoComparator:
     """Returns False always. If you don't want any comparator."""
     def looks_like(self, *args):
         return False
 
 
-class AtomsComparator(object):
+class AtomsComparator:
     """Compares the Atoms objects directly."""
     def looks_like(self, a1, a2):
         return a1 == a2
 
 
-class CompositionComparator(object):
+class CompositionComparator:
     """Compares the composition of the Atoms objects."""
     def looks_like(self, a1, a2):
         return a1.get_chemical_formula() == a2.get_chemical_formula()

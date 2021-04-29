@@ -1,10 +1,7 @@
-from __future__ import print_function
 import numpy as np
-from ase.utils import basestring
 
 
 delta = 1e-10
-_debug = False
 
 
 def wulff_construction(symbol, surfaces, energies, size, structure,
@@ -43,9 +40,6 @@ def wulff_construction(symbol, surfaces, energies, size, structure,
     the right cluster size is printed.
     """
 
-    global _debug
-    _debug = debug
-
     if debug:
         print('Wulff: Aiming for cluster with %i atoms (%s)' %
               (size, rounding))
@@ -54,7 +48,7 @@ def wulff_construction(symbol, surfaces, energies, size, structure,
             raise ValueError('Invalid rounding: %s' % rounding)
 
     # Interpret structure, if it is a string.
-    if isinstance(structure, basestring):
+    if isinstance(structure, str):
         if structure == 'fcc':
             from ase.cluster.cubic import FaceCenteredCubic as structure
         elif structure == 'bcc':
@@ -185,7 +179,4 @@ def make_atoms(symbol, surfaces, energies, factor, structure, latticeconstant):
     layers = np.round(layers1).astype(int)
     atoms = structure(symbol, surfaces, layers,
                       latticeconstant=latticeconstant)
-    if _debug:
-        print('Created a cluster with %i atoms: %s' % (len(atoms),
-                                                       str(layers)))
     return (atoms, layers)

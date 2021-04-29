@@ -23,8 +23,20 @@ step, and then you perform dynamics by calling its
                        trajectory='md.traj', logfile='md.log')
   dyn.run(1000)  # take 1000 steps
 
-A number of different algorithms can be used to perform molecular
+A number of algorithms can be used to perform molecular
 dynamics, with slightly different results.
+
+
+.. note::
+
+   Prior to ASE version 3.21.0, inconsistent units were used to
+   specify temperature.  Some modules expected kT (in eV), others T
+   (in Kelvin).  From ASE 3.21.0, all molecular dynamics modules
+   expecting a temperature take a parameter ``temperature_K`` which is
+   the temperature in Kelvin.  For compatibility, they still accept
+   the ``temperature`` parameter in the same unit as previous versions
+   (eV or K), but using the old parameter will issue a warning.
+
 
 
 Choosing the time step
@@ -102,8 +114,8 @@ cyclic reference to the dynamics.
    object directly to the logging object. Instead, create a weak reference
    using the ``proxy`` method of the ``weakref`` package. See the
    *ase.md.MDLogger* source code for an example. (If this is not done, a
-   cyclic reference may be created which can cause certain calculators,
-   such as Jacapo, to not terminate correctly.)
+   cyclic reference may be created which can cause certain calculators
+   to not terminate correctly.)
 
 
 .. autoclass:: MDLogger
@@ -157,12 +169,13 @@ force and a friction term.  In Nosé-Hoover dynamics, a term
 representing the heat bath through a single degree of freedom is
 introduced into the Hamiltonian.
 
+
 Langevin dynamics
 -----------------
 
 .. module:: ase.md.langevin
 
-.. class:: Langevin(atoms, timestep, temperature, friction)
+.. autoclass:: Langevin
 
 The Langevin class implements Langevin dynamics, where a (small)
 friction term and a fluctuating force are added to Newton's second law
@@ -186,19 +199,57 @@ fluctuating force is stochastic in nature, so repeating the simulation
 will not give exactly the same trajectory.
 
 When the ``Langevin`` object is created, you must specify a time step,
-a temperature (in energy units) and a friction.  Typical values for
+a temperature (in Kelvin) and a friction.  Typical values for
 the friction are 0.01-0.02 atomic units.
 
 ::
 
   # Room temperature simulation
-  dyn = Langevin(atoms, 5 * units.fs, units.kB * 300, 0.002)
+  dyn = Langevin(atoms, 5 * units.fs, 300, 0.002)
 
 Both the friction and the temperature can be replaced with arrays
 giving per-atom values.  This is mostly useful for the friction, where
 one can choose a rather high friction near the boundaries, and set it
 to zero in the part of the system where the phenomenon being studied
 is located.
+
+
+Andersen dynamics
+-----------------
+
+.. module:: ase.md.andersen
+
+.. autoclass:: Andersen
+
+The Andersen class implements Andersen dynamics, where constant
+temperature is imposed by stochastic collisions with a heat bath.
+With a (small) probability (`andersen_prob`) the collisions act
+occasionally on velocity components of randomly selected particles
+Upon a collision the new velocity is drawn from the
+Maxwell-Boltzmann distribution at the corresponding temperature.
+The system is then integrated numerically at constant energy
+according to the Newtonian laws of motion. The collision probability
+is defined as the average number of collisions per atom and timestep. 
+The algorithm generates a canonical distribution. [1] However, due
+to the random decorrelation of velocities, the dynamics are
+unphysical and cannot represent dynamical properties like e.g.
+diffusion or viscosity. Another disadvantage is that the collisions
+are stochastic in nature, so repeating the simulation will not give
+exactly the same trajectory.
+
+When the ``Andersen`` object is created, you must specify a time step,
+a temperature (in Kelvin) and a collision probability. Typical 
+values for this probability are in the order of 1e-4 to 1e-1.
+
+::
+
+  # Room temperature simulation (300 Kelvin, Andersen probability: 0.002)
+  dyn = Andersen(atoms, 5 * units.fs, 300, 0.002)
+
+References:
+
+[1] D. Frenkel and B. Smit, Understanding Molecular Simulation
+(Academic Press, London, 1996)
 
 
 Nosé-Hoover dynamics
@@ -219,30 +270,14 @@ Berendsen NVT dynamics
 -----------------------
 .. module:: ase.md.nvtberendsen
 
-.. class:: NVTBerendsen(atoms, timestep, temperature, taut, fixcm)
+.. autoclass:: NVTBerendsen
 
 In Berendsen NVT simulations the velocities are scaled to achieve the desired
 temperature. The speed of the scaling is determined by the parameter taut.
 
 This method does not result proper NVT sampling but it usually is
-sufficiently good in practise (with large taut). For discussion see
+sufficiently good in practice (with large taut). For discussion see
 the gromacs manual at www.gromacs.org.
-
-*atoms*:
-    The list of atoms.
-
-*timestep*:
-    The time step.
-
-*temperature*:
-    The desired temperature, in Kelvin.
-
-*taut*:
-    Time constant for Berendsen temperature coupling.
-
-*fixcm*:
-    If True, the position and momentum of the center of mass is
-    kept unperturbed.  Default: True.
 
 ::
 
@@ -256,124 +291,27 @@ Constant NPT simulations (the isothermal-isobaric ensemble)
 
 .. module:: ase.md.npt
 
-.. class:: NPT(atoms, timestep, temperature, externalstress, ttime, pfactor, mask=None)
+.. autoclass:: NPT
 
-Dynamics with constant pressure (or optionally, constant stress) and
-constant temperature (NPT or N,stress,T ensemble).  It uses the
-combination of Nosé-Hoover and Parrinello-Rahman dynamics proposed by
-Melchionna et al. [1] and later modified by Melchionna [2].  The
-differential equations are integrated using a centered difference
-method [3].  Details of the implementation are available in the
-document XXX NPTdynamics.tex, distributed with the module.
+    .. automethod:: run 
+    .. automethod:: set_stress
+    .. automethod:: set_temperature 
+    .. automethod:: set_mask 
+    .. automethod:: set_fraction_traceless 
+    .. automethod:: get_strain_rate 
+    .. automethod:: set_strain_rate 
+    .. automethod:: get_time 
+    .. automethod:: initialize
+    .. automethod:: get_gibbs_free_energy 
+    .. automethod:: zero_center_of_mass_momentum 
+    .. automethod:: attach 
 
-The dynamics object is called with the following parameters:
-
-*atoms*:
-  The atoms object.
-
-*timestep*:
-  The timestep in units matching eV, Å, u.  Use the *units.fs* constant.
-
-*temperature*:
-  The desired temperature in eV.
-
-*externalstress*:
-  The external stress in eV/Å^3.  Either a symmetric
-  3x3 tensor, a 6-vector representing the same, or a scalar
-  representing the pressure.  Note that the stress is positive in
-  tension whereas the pressure is positive in compression: giving a
-  scalar p is equivalent to giving the tensor (-p. -p, -p, 0, 0, 0).
-
-*ttime*:
-  Characteristic timescale of the thermostat.  Set to None to
-  disable the thermostat.
-
-*pfactor*:
-  A constant in the barostat differential equation.  If a
-  characteristic barostat timescale of ptime is desired, set pfactor
-  to ptime^2 * B (where B is the Bulk Modulus).  Set to None to
-  disable the barostat.  Typical metallic bulk moduli are of the order
-  of 100 GPa or 0.6 eV/Å^3.
-
-*mask=None*:
-  Optional argument.  A tuple of three integers (0 or 1),
-  indicating if the system can change size along the three Cartesian
-  axes.  Set to (1,1,1) or None to allow a fully flexible
-  computational box.  Set to (1,1,0) to disallow elongations along the
-  z-axis etc.
-
-
-Useful parameter values:
-
-* The same *timestep* can be used as in Verlet dynamics, i.e. 5 fs is fine
-  for bulk copper.
-
-* The *ttime* and *pfactor* are quite critical[4], too small values may
-  cause instabilites and/or wrong fluctuations in T / p.  Too
-  large values cause an oscillation which is slow to die.  Good
-  values for the characteristic times seem to be 25 fs for *ttime*,
-  and 75 fs for *ptime* (used to calculate pfactor), at least for
-  bulk copper with 15000-200000 atoms.  But this is not well
-  tested, it is IMPORTANT to monitor the temperature and
-  stress/pressure fluctuations.
-
-It has the following methods:
-
-.. method:: NPT.run(n):
-
-  Perform n timesteps.
-
-.. method:: NPT.initialize():
-
-  Estimates the dynamic variables for time=-1 to start the
-  algorithm.  This is automatically called before the first timestep.
-
-.. method:: NPT.set_stress():
-
-  Set the external stress.  Use with care.  It is
-  preferable to set the right value when creating the object.
-
-.. method:: NPT.set_mask():
-
-  Change the mask.  Use with care, as you may "freeze" a
-  fluctuation in the strain rate.
-
-.. method:: NPT.set_strain_rate(eps):
-
-  Set the strain rate.  ``eps`` must be an upper-triangular matrix.
-  If you set a strain rate along a direction that is "masked out"
-  (see ``set_mask``), the strain rate along that direction will be
-  maintained constantly.
-
-.. method:: NPT.get_strain_rate():
-
-  Set the instantaneous strain rate (due to the fluctuations in the
-  shape of the computational box).
-
-.. method:: NPT.get_gibbs_free_energy():
-
-  Gibbs free energy is supposed to be
-  preserved by this dynamics.  This is mainly intended as a diagnostic
-  tool.
-
-References:
-
-[1] S. Melchionna, G. Ciccotti and B. L. Holian, Molecular Physics
-78, p. 533 (1993).
-
-[2] S. Melchionna, Physical Review E 61, p. 6165 (2000).
-
-[3] B. L. Holian, A. J. De Groot, W. G. Hoover, and C. G. Hoover,
-Physical Review A 41, p. 4552 (1990).
-
-[4] F. D. Di Tolla and M. Ronchetti, Physical Review E 48, p. 1726 (1993).
-
-
+       
 Berendsen NPT dynamics
 -----------------------
 .. module:: ase.md.nptberendsen
 
-.. class:: NPTBerendsen(atoms, timestep, temperature, taut, pressure, taup, compressibility, fixcm)
+.. autoclass:: NPTBerendsen
 
 In Berendsen NPT simulations the velocities are scaled to achieve the desired
 temperature. The speed of the scaling is determined by the parameter taut.
@@ -382,40 +320,48 @@ The atom positions and the simulation cell are scaled in order to achieve
 the desired pressure.
 
 This method does not result proper NPT sampling but it usually is
-sufficiently good in practise (with large taut and taup). For discussion see
+sufficiently good in practice (with large taut and taup). For discussion see
 the gromacs manual at www.gromacs.org. or amber at ambermd.org
 
-*atoms*:
-    The list of atoms.
-
-*timestep*:
-    The time step.
-
-*temperature*:
-    The desired temperature, in Kelvin.
-
-*taut*:
-    Time constant for Berendsen temperature coupling.
-
-*pressure*:
-    The desired pressure, in bar (1 bar = 1e5 Pa).
-
-*taup*:
-    Time constant for Berendsen pressure coupling.
-
-*compressibility*:
-    The compressibility of the material, water 4.57E-5 bar-1, in bar-1
-
-*fixcm*:
-    If True, the position and momentum of the center of mass is
-    kept unperturbed.  Default: True.
 
 ::
 
   # Room temperature simulation (300K, 0.1 fs time step, atmospheric pressure)
-  dyn = NPTBerendsen(atoms, timestep=0.1 * units.fs, temperature=300,
-                     taut=0.1 * 1000 * units.fs, pressure=1.01325,
-                     taup=1.0 * 1000 * units.fs, compressibility=4.57e-5)
+  dyn = NPTBerendsen(atoms, timestep=0.1 * units.fs, temperature_K=300,
+                     taut=100 * units.fs, pressure_au=1.01325 * units.bar,
+                     taup=1000 * units.fs, compressibility=4.57e-5 / units.bar)
+
+
+Contour Exploration
+-------------------
+.. module:: ase.md.contour_exploration
+
+.. autoclass:: ContourExploration
+
+Contour Exploration evolves the system along constant potentials energy
+contours on the potential energy surface. The method uses curvature based
+extrapolation and a potentiostat to correct for potential energy errors. It is
+similar to molecular dynamics but with a potentiostat rather than a thermostat.
+Without changes in kinetic energy, it is more useful to automatically scale
+step sizes to the curvature of the potential energy contour via an
+``angle_limit`` while enforcing a ``maxstep`` to ensure potentiostatic 
+accuracy. [1] To escape loops on the pontential energy surface or to break
+symmetries, a random drift vector parallel to the contour can be applied as a
+fraction of the step size via ``parallel_drift``. Contour exploration cannot 
+be used at minima since the contour is a single point.
+
+
+::
+
+  # Contour exploration at the current potential energy
+  dyn = ContourExploration(atoms)
+
+References:
+
+[1] M. J. Waters and J. M. Rondinelli, `Contour Exploration with Potentiostatic
+Kinematics` ArXiv:2103.08054 (https://arxiv.org/abs/2103.08054)
+
+
 
 Velocity distributions
 ======================
@@ -434,3 +380,13 @@ to the correct temperature.
 .. autofunction:: PhononHarmonics
 
 .. autofunction:: phonon_harmonics
+
+Post-simulation Analysis
+========================
+
+Functionality is provided to perform analysis of atomic/molecular behaviour as calculation in a molecular dynamics simulation. Currently, this is presented as a class to address the Einstein equation for diffusivity.
+
+.. module:: ase.md.analysis
+
+.. autoclass:: DiffusionCoefficient
+

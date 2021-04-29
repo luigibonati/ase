@@ -3,7 +3,7 @@ to make the relaxations run more smoothly."""
 from math import sqrt
 import numpy as np
 
-class VariansBreak(object):
+class VariansBreak:
 
     """ Helper class which can be attached to a structure optimization,
         in order to terminale stalling calculations.
@@ -39,7 +39,7 @@ class VariansBreak(object):
 
 
 
-class DivergenceBreak(object):
+class DivergenceBreak:
 
     """ Helper class which can be attached to a structure optimization,
         in order to terminate diverging calculations.

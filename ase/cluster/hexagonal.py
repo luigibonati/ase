@@ -75,4 +75,3 @@ class GraphiteFactory(HexagonalFactory):
                              [2./3., 1./3., .5]])
 
 Graphite = GraphiteFactory()
-

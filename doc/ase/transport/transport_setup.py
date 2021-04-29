@@ -38,6 +38,7 @@ def pos(atoms, x):
     atoms2.translate([x, 0, 0])
     return atoms2
 
+
 princ = pos(A, 0) + pos(B, 1) + pos(C, 2)
 large = (pos(princ, -8) +
          pos(princ, -4) +
@@ -89,6 +90,8 @@ colors[322:328] = H  # Molecule H
 
 # write('test.png', large, rotation='-90x,-13y', radii=.9,
 #       show_unit_cell=0, colors=colors)
-write('transport_setup.pov', large, rotation='-90x,-13y', radii=1.06,
-      show_unit_cell=0, colors=colors,
-      display=False, transparent=False, run_povray=True)
+write('transport_setup.pov', large,
+      rotation='-90x,-13y', radii=1.06,
+      show_unit_cell=0,
+      povray_settings=dict(colors=colors,
+                           transparent=False)).render()

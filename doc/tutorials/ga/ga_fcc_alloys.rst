@@ -1,8 +1,8 @@
 .. _fcc_alloys_tutorial:
 
-===============================
-GA Search for stable FCC alloys
-===============================
+==============================================
+Genetic algorithm Search for stable FCC alloys
+==============================================
 
 In this tutorial we will emulate an older paper [Johannesson]_ and determine
 the most stable FCC alloy using the genetic algorithm. Since the purpose is
@@ -12,10 +12,8 @@ to the recent search for mixed metal ammines with superior properties for
 ammonia storage described here:
 
    | P. B. Jensen, S. Lysgaard, U. J. Quaade and T. Vegge
-   | `Designing Mixed Metal Halide Ammines for Ammonia Storage Using Density Functional Theory and Genetic Algorithms`__
+   | :doi:`Designing Mixed Metal Halide Ammines for Ammonia Storage Using Density Functional Theory and Genetic Algorithms <10.1039/C4CP03133D>`
    | Physical Chemistry Chemical Physics, Vol **16**, No. 36, pp. 19732-19740, (2014)
-
-   __ http://dx.doi.org/10.1039/C4CP03133D
 
 .. contents::
 

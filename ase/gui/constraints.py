@@ -1,4 +1,3 @@
-from __future__ import unicode_literals
 import ase.gui.ui as ui
 from ase.gui.i18n import _
 
@@ -6,13 +5,11 @@ from ase.gui.i18n import _
 class Constraints:
     def __init__(self, gui):
         win = ui.Window(_('Constraints'))
-        win.add([ui.Button(_('Constrain'), self.selected),
+        win.add([ui.Button(_('Fix'), self.selected),
                  _('selected atoms')])
-        win.add([ui.Button(_('Constrain'), self.immobile),
-                 _('immobile atoms')])
-        win.add([ui.Button(_('Unconstrain'), self.unconstrain),
+        win.add([ui.Button(_('Release'), self.unconstrain),
                  _('selected atoms')])
-        win.add(ui.Button(_('Clear constraints'), self.clear))
+        win.add(ui.Button(_('Clear all constraints'), self.clear))
         self.gui = gui
 
     def selected(self):
@@ -21,11 +18,6 @@ class Constraints:
 
     def unconstrain(self):
         self.gui.images.set_dynamic(self.gui.images.selected, True)
-        self.gui.draw()
-
-    def immobile(self):
-        # XXX not working.
-        # Should constrain atoms that are not moving
         self.gui.draw()
 
     def clear(self):

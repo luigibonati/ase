@@ -61,13 +61,13 @@ can be accessed and changed with get- and set-methods. For example
 the positions of the atoms can be addressed as
 
 >>> from ase import Atoms
->>> a = Atoms('N3', [(0, 0, 0), (1, 0, 0), (0, 0, 1)])
->>> a.get_positions()
+>>> atoms = Atoms('N3', [(0, 0, 0), (1, 0, 0), (0, 0, 1)])
+>>> atoms.get_positions()
 array([[ 0.,  0.,  0.],
        [ 1.,  0.,  0.],
        [ 0.,  0.,  1.]])
->>> a.set_positions([(2, 0, 0), (0, 2, 2), (2, 2, 0)])
->>> a.get_positions()
+>>> atoms.set_positions([(2, 0, 0), (0, 2, 2), (2, 2, 0)])
+>>> atoms.get_positions()
 array([[ 2.,  0.,  0.],
        [ 0.,  2.,  2.],
        [ 2.,  2.,  0.]])
@@ -131,7 +131,7 @@ common to all the atoms or defined for the collection of atoms:
     -
   * - :meth:`~Atoms.get_magnetic_moment`
     -
-  * - :meth:`~Atoms.get_number_of_atoms`
+  * - :meth:`~Atoms.get_global_number_of_atoms`
     -
   * - :meth:`~Atoms.get_pbc`
     - :meth:`~Atoms.set_pbc`
@@ -148,26 +148,27 @@ common to all the atoms or defined for the collection of atoms:
 Unit cell and boundary conditions
 =================================
 
-The :class:`Atoms` object holds a unit cell which is a 3x3 matrix as can be
-seen from
+The :class:`Atoms` object holds a unit cell.  The unit cell
+is a :class:`~ase.cell.Cell` object which resembles a 3x3 matrix
+when used with numpy, arithmetic operations, or indexing:
 
->>> a.get_cell()
-array([[ 0.,  0.,  0.],
-       [ 0.,  0.,  0.],
-       [ 0.,  0.,  0.]])
+>>> atoms.cell
+Cell([0.0, 0.0, 0.0], pbc=False)
+>>> atoms.cell[:]
+array([[0., 0., 0.],
+       [0., 0., 0.],
+       [0., 0., 0.]])
 
 The cell can be defined or changed using the
 :meth:`~Atoms.set_cell` method. Changing the unit cell
 does per default not move the atoms:
 
 >>> import numpy as np
->>> a.set_cell(2 * np.identity(3))
->>> a.get_cell()
-array([[ 2.,  0.,  0.],
-       [ 0.,  2.,  0.],
-       [ 0.,  0.,  2.]])
->>> a.set_positions([(2, 0, 0), (1, 1, 0), (2, 2, 0)])
->>> a.get_positions()
+>>> atoms.set_cell(2 * np.identity(3))
+>>> atoms.get_cell()
+Cell([2.0, 2.0, 2.0], pbc=False)
+>>> atoms.set_positions([(2, 0, 0), (1, 1, 0), (2, 2, 0)])
+>>> atoms.get_positions()
 array([[ 2.,  0.,  0.],
        [ 1.,  1.,  0.],
        [ 2.,  2.,  0.]])
@@ -175,8 +176,8 @@ array([[ 2.,  0.,  0.],
 However if we set ``scale_atoms=True`` the atomic positions are scaled with
 the unit cell:
 
->>> a.set_cell(np.identity(3), scale_atoms=True)
->>> a.get_positions()
+>>> atoms.set_cell(np.identity(3), scale_atoms=True)
+>>> atoms.get_positions()
 array([[ 1. ,  0. ,  0. ],
        [ 0.5,  0.5,  0. ],
        [ 1. ,  1. ,  0. ]])
@@ -187,12 +188,11 @@ three vectors of the unit cell.  A slab calculation with periodic
 boundary conditions in *x* and *y* directions and free boundary
 conditions in the *z* direction is obtained through
 
->>> a.set_pbc((True, True, False))
+>>> atoms.set_pbc((True, True, False))
 
 or
 
->>> a.pbc = (True, True, False)
-
+>>> atoms.pbc = (True, True, False)
 
 .. _atoms_special_attributes:
 
@@ -206,35 +206,56 @@ we change the position of the 2nd atom (which has count number 1
 because Python starts counting at zero) and the type of the first
 atom:
 
->>> a.positions *= 2
->>> a.positions[1] = (1, 1, 0)
->>> a.get_positions()
+>>> atoms.positions *= 2
+>>> atoms.positions[1] = (1, 1, 0)
+>>> atoms.get_positions()
 array([[ 2.,  0.,  0.],
        [ 1.,  1.,  0.],
        [ 2.,  2.,  0.]])
->>> a.positions
+>>> atoms.positions
 array([[ 2.,  0.,  0.],
        [ 1.,  1.,  0.],
        [ 2.,  2.,  0.]])
->>> a.numbers
+>>> atoms.numbers
 array([7, 7, 7])
->>> a.numbers[0] = 13
->>> a.get_chemical_symbols()
+>>> atoms.numbers[0] = 13
+>>> atoms.get_chemical_symbols()
 ['Al', 'N', 'N']
+
+The atomic numbers can also be edited using the :attr:`~Atoms.symbols`
+shortcut (see also :class:`ase.symbols.Symbols`):
+
+>>> atoms.symbols
+Symbols('AlN2')
+>>> atoms.symbols[2] = 'Cu'
+>>> atoms.symbols
+Symbols('AlNCu')
+>>> atoms.numbers
+array([13,  7, 29])
 
 Check for periodic boundary conditions:
 
->>> a.pbc  # equivalent to a.get_pbc()
+>>> atoms.pbc  # equivalent to atoms.get_pbc()
 array([ True,  True, False], dtype=bool)
->>> a.pbc.any()
+>>> atoms.pbc.any()
 True
->>> a.pbc[2] = 1
->>> a.pbc
+>>> atoms.pbc[2] = 1
+>>> atoms.pbc
 array([ True,  True,  True], dtype=bool)
 
 Hexagonal unit cell:
 
->>> a.cell = [2.5, 2.5, 15, 90, 90, 120]
+>>> atoms.cell = [2.5, 2.5, 15, 90, 90, 120]
+
+Attributes that can be edited directly are:
+
+* :meth:`~Atoms.numbers`
+* :meth:`~Atoms.symbols`
+* :meth:`~Atoms.positions`
+* :meth:`~Atoms.cell`
+* :meth:`~Atoms.pbc`
+* :meth:`~Atoms.constraints`
+
 
 
 Adding a calculator
@@ -246,12 +267,12 @@ different :mod:`ase.calculators`.
 
 A calculator object *calc* is attached to the atoms like this:
 
->>> a.set_calculator(calc)
+>>> atoms.calc = calc
 
 After the calculator has been appropriately setup the energy of the
 atoms can be obtained through
 
->>> a.get_potential_energy()
+>>> atoms.get_potential_energy()
 
 The term "potential energy" here means for example the total energy of
 a DFT calculation, which includes both kinetic, electrostatic, and
@@ -259,7 +280,7 @@ exchange-correlation energy for the electrons. The reason it is called
 potential energy is that the atoms might also have a kinetic energy
 (from the moving nuclei) and that is obtained with
 
->>> a.get_kinetic_energy()
+>>> atoms.get_kinetic_energy()
 
 In case of a DFT calculator, it is up to the user to check exactly what
 the :meth:`~Atoms.get_potential_energy` method returns. For

@@ -7,7 +7,7 @@ import time
 from ase.io import write, read
 
 
-class ParallelLocalRun(object):
+class ParallelLocalRun:
 
     """ Class that allows for the simultaneous relaxation of
          several candidates on the same computer.

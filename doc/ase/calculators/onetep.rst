@@ -30,7 +30,7 @@ The environment variable :envvar:`ASE_ONETEP_COMMAND` must hold the command
 to invoke the ONETEP calculation. The variable must be a string with a link
 to the ONETEP binary, and any other settings required for the parallel
 execution
-Example: 
+Example:
 
 You can this environment variable in your shell configuration file:
 
@@ -80,7 +80,7 @@ Here is an example of setting up a calculation on a water molecule: ::
     from ase.build import molecule
     wat = molecule('H2O')
     wat.center(6)
-    
+
     # Set up a ONETEP geometry optimisation calculation using the PBE functional
     from ase.calculators.onetep import Onetep
     from os import environ
@@ -89,7 +89,7 @@ Here is an example of setting up a calculation on a water molecule: ::
     calc.set(pseudo_path='/path/to/pseudos')
     calc.set(pseudo_suffix='.PBE-paw.abinit') # use pseudopotentials from JTH library in abinit format
     calc.set(task='GeometryOptimization',paw=True,xc='PBE',cutoff_energy='600 eV')
-    wat.set_calculator(calc)
+    wat.calc = calc
     wat.get_forces()
 
 .. highlight:: python
@@ -134,7 +134,7 @@ pseudopotentials and atomic solver strings): ::
     clat = 31.85
     gra = Graphene(symbol = 'C',latticeconstant={'a':alat,'c':clat},size=(index1,index2,1))
 
-    # find atom near centre of cell to make impurity
+    # find atom near center of cell to make impurity
     j = 80
     sym = gra.get_chemical_symbols()
     sym[j] = 'N'
@@ -145,7 +145,7 @@ pseudopotentials and atomic solver strings): ::
     tags[j] = -1 # exclude impurity
     shell_rad = [1.5,2.5,3.0,4.0,4.5]
     for k in range(len(shell_rad)):
-        tags = [ k+1 if ((gra.get_distance(i,j)<shell_rad[k]) and 
+        tags = [ k+1 if ((gra.get_distance(i,j)<shell_rad[k]) and
                          (tags[i]==0)) else tags[i] for i in range(len(gra)) ]
     tags[j] = 0 # reset impurity tag
     gra.set_tags(tags)

@@ -1,16 +1,15 @@
 import os
-from warnings import warn
 import subprocess
-import numpy as np
+from warnings import warn
 
-from ase.calculators.calculator import (Calculator,
-                                        FileIOCalculator,
-                                        all_changes,
-                                        PropertyNotImplementedError)
-from ase.units import Bohr, Hartree
-from ase.io.xyz import write_xyz
+import numpy as np
+from ase.calculators.calculator import (Calculator, FileIOCalculator,
+                                        PropertyNotImplementedError,
+                                        all_changes)
+from ase.io import write
 from ase.io.vasp import write_vasp
 from ase.parallel import world
+from ase.units import Bohr, Hartree
 
 
 class DFTD3(FileIOCalculator):
@@ -51,7 +50,6 @@ class DFTD3(FileIOCalculator):
 
         self.dft = None
         FileIOCalculator.__init__(self, restart=None,
-                                  ignore_bad_restart_file=False,
                                   label=label,
                                   atoms=atoms,
                                   command=command,
@@ -250,11 +248,14 @@ class DFTD3(FileIOCalculator):
             if pbc:
                 fname = os.path.join(self.directory,
                                      '{}.POSCAR'.format(self.label))
-                write_vasp(fname, atoms)
+                # We sort the atoms so that the atomtypes list becomes as
+                # short as possible.  The dftd3 program can only handle 10
+                # atomtypes
+                write_vasp(fname, atoms, sort=True)
             else:
                 fname = os.path.join(
                     self.directory, '{}.xyz'.format(self.label))
-                write_xyz(fname, atoms, plain=True)
+                write(fname, atoms, format='xyz', parallel=False)
 
         # Generate custom damping parameters file. This is kind of ugly, but
         # I don't know of a better way of doing this.
@@ -359,6 +360,9 @@ class DFTD3(FileIOCalculator):
                         forces[i] = np.array([float(x) for x in line.split()])
                 forces *= -Hartree / Bohr
             self.comm.broadcast(forces, 0)
+            if self.atoms.pbc.any():
+                ind = np.argsort(self.atoms.get_chemical_symbols())
+                forces[ind] = forces.copy()
             self.results['forces'] = forces
 
             if any(self.atoms.pbc):
@@ -371,7 +375,7 @@ class DFTD3(FileIOCalculator):
                             for j, x in enumerate(line.split()):
                                 stress[i, j] = float(x)
                     stress *= Hartree / Bohr / self.atoms.get_volume()
-                    stress = np.dot(stress, self.atoms.cell.T)
+                    stress = np.dot(stress.T, self.atoms.cell)
                 self.comm.broadcast(stress, 0)
                 self.results['stress'] = stress.flat[[0, 4, 8, 5, 2, 1]]
 

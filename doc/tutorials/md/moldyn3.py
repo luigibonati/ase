@@ -1,6 +1,4 @@
 """Demonstrates molecular dynamics with constant temperature."""
-from __future__ import print_function
-
 from ase.lattice.cubic import FaceCenteredCubic
 from ase.md.langevin import Langevin
 from ase.io.trajectory import Trajectory
@@ -18,7 +16,7 @@ atoms = FaceCenteredCubic(directions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
                           pbc=False)
 
 # Describe the interatomic interactions with the Effective Medium Theory
-atoms.set_calculator(EMT())
+atoms.calc = EMT()
 
 # We want to run MD with constant energy using the Langevin algorithm
 # with a time step of 5 fs, the temperature T and the friction
@@ -32,7 +30,8 @@ def printenergy(a=atoms):  # store a reference to atoms in the definition.
     ekin = a.get_kinetic_energy() / len(a)
     print('Energy per atom: Epot = %.3feV  Ekin = %.3feV (T=%3.0fK)  '
           'Etot = %.3feV' % (epot, ekin, ekin / (1.5 * units.kB), epot + ekin))
-    
+
+
 dyn.attach(printenergy, interval=50)
 
 # We also want to save the positions of all atoms after every 100th time step.

@@ -12,6 +12,7 @@ File input and output
 .. toctree::
     :hidden:
 
+    formatoptions
     trajectory
     ulm
     opls
@@ -23,6 +24,11 @@ The :mod:`ase.io` module has three basic functions: :func:`read`,
 .. autofunction:: read
 .. autofunction:: iread
 .. autofunction:: write
+
+Use ``ase info --formats`` to see a list of formats.  This information
+is programmatically accessible as ``ase.io.formats.ioformats``, a
+dictionary which maps format names to :class:`ase.io.formats.IOFormat`
+objects.
 
 These are the file-formats that are recognized (formats with a ``+`` support
 multiple configurations):
@@ -50,8 +56,7 @@ multiple configurations):
 .. note::
 
     ASE can read and write directly to compressed files. Simply add ``.gz``,
-    ``.bz2`` or ``.xz`` to your filename (``.xz`` requires the
-    ``backports.lzma`` module on Python 2).
+    ``.bz2`` or ``.xz`` to your filename.
 
 The :func:`read` function is only designed to retrieve the atomic configuration
 from a file, but for the CUBE format you can import the function:
@@ -88,13 +93,14 @@ Write animation with 500 ms duration per frame
 >>> write('movie.gif', [bulk(s) for s in ['Cu', 'Ag', 'Au']], interval=500)
 
 
-Write POVRAY file
+Write POVRAY file (the projection settings and povray specific settings are separated)
 
->>> write('slab.pov', slab * (3, 3, 1), rotation='10z,-80x')
+>>> write('slab.pov', slab * (3, 3, 1),
+...       generic_projection_settings = dict(rotation='10z,-80x'))
 
 This will write both a ``slab.pov`` and a ``slab.ini`` file.  Convert
 to PNG with the command ``povray slab.ini`` or use the
-``run_povray=True`` option:
+``.render`` method on the returned object:
 
 .. image:: io2.png
 
@@ -102,9 +108,16 @@ Here is an example using ``bbox``
 
 >>> d = a / 2**0.5
 >>> write('slab.pov', slab * (2, 2, 1),
-...       bbox=(d, 0, 3 * d, d * 3**0.5))
+...       generic_projection_settings = dict(
+...       bbox=(d, 0, 3 * d, d * 3**0.5))).render()
 
 .. image:: io3.png
+
+This is an example of displaying bond order for a molecule
+
+.. literalinclude:: save_C2H4.py
+
+.. image:: C2H4.png
 
 Note that in general the XYZ-format does not contain information about the unit cell, however, ASE uses the extended XYZ-format which stores the unitcell:
 

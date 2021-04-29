@@ -9,12 +9,11 @@
 
 import os
 import numpy as np
-from ase.test import NotAvailable
+
 from ase.neighborlist import NeighborList
 from ase.calculators.calculator import Calculator, all_changes
 from scipy.interpolate import InterpolatedUnivariateSpline as spline
 from ase.units import Bohr, Hartree
-from ase.utils import basestring
 
 
 class EAM(Calculator):
@@ -37,7 +36,7 @@ potential file or as a set of functions that describe the potential.
 The files containing the potentials for this calculator are not
 included but many suitable potentials can be downloaded from The
 Interatomic Potentials Repository Project at
-http://www.ctcms.nist.gov/potentials/
+https://www.ctcms.nist.gov/potentials/
 
 Theory
 ======
@@ -109,7 +108,7 @@ For example::
     mishin.write_potential('new.eam.alloy')
     mishin.plot()
 
-    slab.set_calculator(mishin)
+    slab.calc = mishin
     slab.get_potential_energy()
     slab.get_forces()
 
@@ -122,8 +121,9 @@ Arguments
 =========================  ====================================================
 Keyword                    Description
 =========================  ====================================================
-``potential``              file of potential in ``.alloy``, ``.adp`` or ``.fs``
-                           format (This is generally all you need to supply)
+``potential``              file of potential in ``.eam``, ``.alloy``, ``.adp`` or ``.fs``
+                           format or file object (This is generally all you need to supply).
+                           In case of file object the ``form`` argument is required
 
 ``elements[N]``            array of N element abbreviations
 
@@ -148,9 +148,9 @@ Keyword                    Description
                            call to the ``update()`` method then the neighbor
                            list can be reused. Defaults to 1.0.
 
-``form``                   the form of the potential ``alloy``, ``adp`` or
+``form``                   the form of the potential ``eam``, ``alloy``, ``adp`` or
                            ``fs``. This will be determined from the file suffix
-                           or must be set if using equations
+                           or must be set if using equations or file object
 
 =========================  ====================================================
 
@@ -236,8 +236,11 @@ End EAM Interface Documentation
                 b'Generated from eam.py\n',
                 b'blank\n'])
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
-                 label=os.curdir, atoms=None, **kwargs):
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=Calculator._deprecated,
+                 label=os.curdir, atoms=None, form=None, **kwargs):
+
+        self.form = form
 
         if 'potential' in kwargs:
             self.read_potential(kwargs['potential'])
@@ -251,7 +254,7 @@ End EAM Interface Documentation
                       # derivatives
                       'd_embedded_energy', 'd_electron_density', 'd_phi',
                       'd', 'q', 'd_d', 'd_q',  # adp terms
-                      'skin', 'form', 'Z', 'nr', 'nrho', 'mass')
+                      'skin', 'Z', 'nr', 'nrho', 'mass')
 
         # set any additional keyword arguments
         for arg, val in self.parameters.items():
@@ -261,9 +264,9 @@ End EAM Interface Documentation
                 raise RuntimeError('unknown keyword arg "%s" : not in %s'
                                    % (arg, valid_args))
 
-    def set_form(self, fileobj):
+    def set_form(self, name):
         """set the form variable based on the file name suffix"""
-        extension = os.path.splitext(fileobj)[1]
+        extension = os.path.splitext(name)[1]
 
         if extension == '.eam':
             self.form = 'eam'
@@ -276,16 +279,23 @@ End EAM Interface Documentation
         else:
             raise RuntimeError('unknown file extension type: %s' % extension)
 
-    def read_potential(self, fileobj):
+    def read_potential(self, filename):
         """Reads a LAMMPS EAM file in alloy or adp format
         and creates the interpolation functions from the data
         """
 
-        if isinstance(fileobj, basestring):
-            f = open(fileobj)
-            self.set_form(fileobj)
+        if isinstance(filename, str):
+            with open(filename) as fd:
+                self._read_potential(fd)
         else:
-            f = fileobj
+            fd = filename
+            self._read_potential(fd)
+
+    def _read_potential(self, fd):
+        if self.form is None:
+            self.set_form(fd.name)
+
+        lines = fd.readlines()
 
         def lines_to_list(lines):
             """Make the data one long line so as not to care how its formatted
@@ -295,7 +305,6 @@ End EAM Interface Documentation
                 data.extend(line.split())
             return data
 
-        lines = f.readlines()
         if self.form == 'eam':        # single element eam file (aka funcfl)
             self.header = lines[:1]
 
@@ -549,20 +558,22 @@ End EAM Interface Documentation
         wide.  Note: array lengths need to be an exact multiple of nc
         """
 
-        f = open(filename, 'wb')
+        with open(filename, 'wb') as fd:
+            self._write_potential(fd, nc=nc, numformat=numformat)
 
+    def _write_potential(self, fd, nc, numformat):
         assert self.nr % nc == 0
         assert self.nrho % nc == 0
 
         for line in self.header:
-            f.write(line)
+            fd.write(line)
 
-        f.write('{0} '.format(self.Nelements).encode())
-        f.write(' '.join(self.elements).encode() + b'\n')
+        fd.write('{0} '.format(self.Nelements).encode())
+        fd.write(' '.join(self.elements).encode() + b'\n')
 
-        f.write(('%d %f %d %f %f \n' %
-                 (self.nrho, self.drho, self.nr,
-                  self.dr, self.cutoff)).encode())
+        fd.write(('%d %f %d %f %f \n' %
+                  (self.nrho, self.drho, self.nr,
+                   self.dr, self.cutoff)).encode())
 
         # start of each section for each element
 #        rs = np.linspace(0, self.nr * self.dr, self.nr)
@@ -572,30 +583,30 @@ End EAM Interface Documentation
         rhos = np.arange(0, self.nrho) * self.drho
 
         for i in range(self.Nelements):
-            f.write(('%d %f %f %s\n' %
-                     (self.Z[i], self.mass[i],
-                      self.a[i], str(self.lattice[i]))).encode())
-            np.savetxt(f,
+            fd.write(('%d %f %f %s\n' %
+                      (self.Z[i], self.mass[i],
+                       self.a[i], str(self.lattice[i]))).encode())
+            np.savetxt(fd,
                        self.embedded_energy[i](rhos).reshape(self.nrho // nc,
                                                              nc),
                        fmt=nc * [numformat])
             if self.form == 'fs':
                 for j in range(self.Nelements):
-                    np.savetxt(f,
-                               self.electron_density[i, j](rs).reshape(self.nr // nc,
-                                                                       nc),
+                    np.savetxt(fd,
+                               self.electron_density[i, j](rs).reshape(
+                                   self.nr // nc, nc),
                                fmt=nc * [numformat])
             else:
-                np.savetxt(f,
-                           self.electron_density[i](rs).reshape(self.nr // nc,
-                                                                nc),
+                np.savetxt(fd,
+                           self.electron_density[i](rs).reshape(
+                               self.nr // nc, nc),
                            fmt=nc * [numformat])
 
         # write out the pair potentials in Lammps DYNAMO setfl format
         # as r*phi for alloy format
         for i in range(self.Nelements):
             for j in range(i, self.Nelements):
-                np.savetxt(f,
+                np.savetxt(fd,
                            (rs * self.phi[i, j](rs)).reshape(self.nr // nc,
                                                              nc),
                            fmt=nc * [numformat])
@@ -604,14 +615,12 @@ End EAM Interface Documentation
             # these are the u(r) or dipole values
             for i in range(self.Nelements):
                 for j in range(i + 1):
-                    np.savetxt(f, self.d_data[i, j])
+                    np.savetxt(fd, self.d_data[i, j])
 
             # these are the w(r) or quadrupole values
             for i in range(self.Nelements):
                 for j in range(i + 1):
-                    np.savetxt(f, self.q_data[i, j])
-
-        f.close()
+                    np.savetxt(fd, self.q_data[i, j])
 
     def update(self, atoms):
         # check all the elements are available in the potential
@@ -883,11 +892,7 @@ End EAM Interface Documentation
     def plot(self, name=''):
         """Plot the individual curves"""
 
-        try:
-            import matplotlib.pyplot as plt
-
-        except ImportError:
-            raise NotAvailable('This needs matplotlib module.')
+        import matplotlib.pyplot as plt
 
         if self.form == 'eam' or self.form == 'alloy' or self.form == 'fs':
             nrow = 2

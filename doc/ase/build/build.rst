@@ -41,13 +41,16 @@ Quick links:
   :func:`~ase.build.find_optimal_cell_shape`,
   :func:`~ase.build.make_supercell`
 
-
+* Separation: :func:`~ase.build.connected_indices`,
+  :func:`~ase.build.connected_atoms`, :func:`~ase.build.separate`,
+  :func:`~ase.build.split_bond`
 
 .. toctree::
    :maxdepth: 2
 
    surface
    tools
+   connected
 
 .. seealso::
 
@@ -110,6 +113,10 @@ database:
 plus ``Be2``, ``C7NH5``, ``BDA``, ``biphenyl`` and ``C60`` (for historical
 reasons).
 
+More complicated molecules may be obtained using the PubChem API integration in
+the :func:`~ase.data.pubchem.pubchem_atoms_search` and :func:`~ase.data.pubchem.pubchem_atoms_conformer_search`
+functions. You may search based on common name, chemical identification number 
+(cid), smiles string, or conformer identification number.
 
 .. _bulk-crystal-section:
 
@@ -189,5 +196,11 @@ mainly molecules, bulk crystals and surfaces.  Some of these modules
 have overlapping functionality, but strike a different balance between
 flexibility and ease-of-use.
 
+.. _attaching-section:
 
+Attaching structures
+====================
 
+.. autofunction:: ase.build.attach.attach
+.. autofunction:: ase.build.attach.attach_randomly
+.. autofunction:: ase.build.attach.attach_randomly_and_broadcast

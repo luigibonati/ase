@@ -9,37 +9,32 @@ P.M. Larsen, M. Pandey, M. Strange, and K. W. Jacobsen
 Phys. Rev. Materials 3 034003, 2019
 https://doi.org/10.1103/PhysRevMaterials.3.034003
 """
-
-
 import itertools
 import collections
 import numpy as np
 
-import ase
-from ase.data import covalent_radii
-from ase.neighborlist import NeighborList
-
+from ase import Atoms
+from ase.geometry.cell import complete_cell
 from ase.geometry.dimensionality import analyze_dimensionality
-from ase.geometry.dimensionality import interval_analysis
 from ase.geometry.dimensionality import rank_determination
+from ase.geometry.dimensionality.bond_generator import next_bond
+from ase.geometry.dimensionality.interval_analysis import merge_intervals
 
 
 def orthogonal_basis(X, Y=None):
 
     is_1d = Y is None
-    if Y is None:
-        while 1:
-            Y = np.random.uniform(-1, 1, 3)
-            if abs(np.dot(X, Y)) < 0.5:
-                break
+    b = np.zeros((3, 3))
+    b[0] = X
+    if not is_1d:
+        b[1] = Y
+    b = complete_cell(b)
 
-    b = np.array([X, Y, np.cross(X, Y)])
     Q = np.linalg.qr(b.T)[0].T
-
-    if np.dot(X, Q[0]) < 0:
+    if np.dot(b[0], Q[0]) < 0:
         Q[0] = -Q[0]
 
-    if np.dot(Y, Q[1]) < 0:
+    if np.dot(b[2], Q[1]) < 0:
         Q[1] = -Q[1]
 
     if np.linalg.det(Q) < 0:
@@ -52,9 +47,9 @@ def orthogonal_basis(X, Y=None):
 
 
 def select_cutoff(atoms):
-
-    intervals = analyze_dimensionality(atoms, method='RDA')
-    m = intervals[0]
+    intervals = analyze_dimensionality(atoms, method='RDA', merge=False)
+    dimtype = max(merge_intervals(intervals), key=lambda x: x.score).dimtype
+    m = next(e for e in intervals if e.dimtype == dimtype)
     if m.b == float("inf"):
         return m.a + 0.1
     else:
@@ -62,43 +57,29 @@ def select_cutoff(atoms):
 
 
 def traverse_graph(atoms, kcutoff):
-
     if kcutoff is None:
         kcutoff = select_cutoff(atoms)
 
-    rs = covalent_radii[atoms.get_atomic_numbers()]
-    nl = NeighborList(kcutoff * rs, skin=0, self_interaction=False)
-    nl.update(atoms)
-    bonds = interval_analysis.get_bond_list(atoms, nl, rs)
-
     rda = rank_determination.RDA(len(atoms))
-    for (k, i, j, offset) in bonds:
+    for (k, i, j, offset) in next_bond(atoms):
+        if k > kcutoff:
+            break
         rda.insert_bond(i, j, offset)
 
-    components = rda.graph.get_components()
-    adj = rank_determination.build_adjacency_list(components, rda.bonds)
-    all_visited, ranks = rank_determination.traverse_component_graphs(adj)
-    return components, all_visited
+    rda.check()
+    return rda.graph.find_all(), rda.all_visited, rda.ranks
 
 
 def build_supercomponent(atoms, components, k, v, anchor=True):
-
     # build supercomponent by mapping components into visited cells
     positions = []
     numbers = []
-    seen = set()
-    for c, offset in v:
 
-        # only want one copy of each sub-component
-        if c in seen:
-            continue
-        else:
-            seen.add(c)
-
+    for c, offset in dict(v[::-1]).items():
         indices = np.where(components == c)[0]
-        ps = atoms.positions[indices] + np.dot(offset, atoms.get_cell())
-        positions += list(ps)
-        numbers += list(atoms.numbers[indices])
+        ps = atoms.positions + np.dot(offset, atoms.get_cell())
+        positions.extend(ps[indices])
+        numbers.extend(atoms.numbers[indices])
     positions = np.array(positions)
     numbers = np.array(numbers)
 
@@ -161,7 +142,7 @@ def isolate_chain(atoms, components, k, v):
     cell = np.diag([4 * rmax, 4 * rmax, norm])
 
     # construct a new atoms object containing the isolated chain
-    return ase.Atoms(numbers=numbers, positions=pos, cell=cell, pbc=[0, 0, 1])
+    return Atoms(numbers=numbers, positions=pos, cell=cell, pbc=[0, 0, 1])
 
 
 def construct_inplane_basis(atoms, k, v):
@@ -215,32 +196,26 @@ def isolate_monolayer(atoms, components, k, v):
     cell[2] *= 4 * zmax
 
     # construct a new atoms object containing the isolated chain
-    return ase.Atoms(numbers=numbers, positions=pos, cell=cell, pbc=[1, 1, 0])
+    return Atoms(numbers=numbers, positions=pos, cell=cell, pbc=[1, 1, 0])
 
 
 def isolate_bulk(atoms, components, k, v):
-
     positions, numbers = build_supercomponent(atoms, components, k, v,
                                               anchor=False)
-    atoms = ase.Atoms(numbers=numbers, positions=positions, cell=atoms.cell,
-                      pbc=[1, 1, 1])
-    atoms.wrap()
+    atoms = Atoms(numbers=numbers, positions=positions, cell=atoms.cell,
+                  pbc=[1, 1, 1])
+    atoms.wrap(eps=0)
     return atoms
 
 
 def isolate_cluster(atoms, components, k, v):
-
     positions, numbers = build_supercomponent(atoms, components, k, v)
     positions -= np.min(positions, axis=0)
     cell = np.diag(np.max(positions, axis=0))
-
-    atoms = ase.Atoms(numbers=numbers, positions=positions, cell=cell,
-                      pbc=[0, 0, 0])
-    return atoms
+    return Atoms(numbers=numbers, positions=positions, cell=cell, pbc=False)
 
 
 def isolate_components(atoms, kcutoff=None):
-
     """Isolates components by dimensionality type.
 
     Given a k-value cutoff the components (connected clusters) are
@@ -248,16 +223,16 @@ def isolate_components(atoms, kcutoff=None):
     that component only.  The geometry of the resulting Atoms object depends
     on the component dimensionality type:
 
-        0D: The cell is a tight box around the atoms.  pbc=[0,0,0].
+        0D: The cell is a tight box around the atoms.  pbc=[0, 0, 0].
             The cell has no physical meaning.
 
-        1D: The chain is aligned along the z-axis.  pbc=[0,0,1].
+        1D: The chain is aligned along the z-axis.  pbc=[0, 0, 1].
             The x and y cell directions have no physical meaning.
 
-        2D: The layer is aligned in the x-y plane.  pbc=[1,1,0].
+        2D: The layer is aligned in the x-y plane.  pbc=[1, 1, 0].
             The z cell direction has no physical meaning.
 
-        3D: The original cell is used. pbc=[1,1,1].
+        3D: The original cell is used. pbc=[1, 1, 1].
 
     Parameters:
 
@@ -273,26 +248,23 @@ def isolate_components(atoms, kcutoff=None):
         key: the component dimenionalities.
         values: a list of Atoms objects for each dimensionality type.
     """
-
     data = {}
-    components, all_visited = traverse_graph(atoms, kcutoff)
+    components, all_visited, ranks = traverse_graph(atoms, kcutoff)
 
     for k, v in all_visited.items():
         v = sorted(list(v))
 
         # identify the components which constitute the component
         key = tuple(np.unique([c for c, offset in v]))
+        dim = ranks[k]
 
-        cells = np.array([offset for c, offset in v if c == k])
-        rank = rank_determination.calc_rank(cells)
-
-        if rank == 0:
+        if dim == 0:
             data[('0D', key)] = isolate_cluster(atoms, components, k, v)
-        elif rank == 1:
+        elif dim == 1:
             data[('1D', key)] = isolate_chain(atoms, components, k, v)
-        elif rank == 2:
+        elif dim == 2:
             data[('2D', key)] = isolate_monolayer(atoms, components, k, v)
-        elif rank == 3:
+        elif dim == 3:
             data[('3D', key)] = isolate_bulk(atoms, components, k, v)
 
     result = collections.defaultdict(list)

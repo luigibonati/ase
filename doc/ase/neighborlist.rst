@@ -1,5 +1,3 @@
-.. module:: ase
-
 Building neighbor-lists
 =======================
 
@@ -8,9 +6,9 @@ a number of spheres of different radius located at different points,
 it calculates the pairs of spheres that overlap.
 
 ASE provides two implementations of neighbor lists.  The newer
-linearly-scaling function
+linearly scaling function
 :func:`~ase.neighborlist.neighbor_list` and
-the older quadratically-scaling class
+the older quadratically scaling class
 :class:`~ase.neighborlist.PrimitiveNeighborList`.  The latter will likely
 use the former as a backend in the future for linear scaling.
 

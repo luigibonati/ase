@@ -12,7 +12,6 @@ import html
 
 subs_dict = {
     '\r': '',            # Windows line ending
-    '\n': ' ',           # newline
     '\t': ' ',           # tabs
 
     r'\a': u'\u03b1',    # alpha
@@ -372,7 +371,7 @@ subscript_dict = {
 }
 
 
-def replace_subscript(s, subscript=True):
+def replace_subscript(s: str, subscript=True) -> str:
 
     target = '~'
     rdict = subscript_dict
@@ -387,7 +386,8 @@ def replace_subscript(s, subscript=True):
             inside = not inside
         elif not inside:
             replaced += [char]
-        elif char.isdigit():
+        # note: do not use char.isdigit - this also matches (sub/super)scripts
+        elif char in rdict:
             replaced += [rdict[char]]
         else:
             replaced += [char]
@@ -395,7 +395,7 @@ def replace_subscript(s, subscript=True):
     return ''.join(replaced)
 
 
-def multiple_replace(text, adict):
+def multiple_replace(text: str, adict) -> str:
     rx = re.compile('|'.join(map(re.escape, adict)))
 
     def one_xlat(match):
@@ -404,7 +404,7 @@ def multiple_replace(text, adict):
     return rx.sub(one_xlat, text)
 
 
-def format_unicode(s):
+def format_unicode(s: str) -> str:
     """Converts a string in CIF text-format to unicode.  Any HTML tags
     contained in the string are removed.  HTML numeric character references
     are unescaped (i.e. converted to unicode).
@@ -422,8 +422,11 @@ def format_unicode(s):
 
     s = html.unescape(s)
     s = multiple_replace(s, subs_dict)
-    s = replace_subscript(s, subscript=True)
-    s = replace_subscript(s, subscript=False)
-
     tagclean = re.compile('<.*?>')
     return re.sub(tagclean, '', s)
+
+
+def handle_subscripts(s: str) -> str:
+    s = replace_subscript(s, subscript=True)
+    s = replace_subscript(s, subscript=False)
+    return s

@@ -2,19 +2,13 @@ import numpy as np
 
 from ase.atoms import Atoms
 from ase.units import Hartree
-from ase.parallel import paropen
 from ase.data import atomic_numbers
 from ase.calculators.singlepoint import SinglePointCalculator
-from ase.utils import basestring
+from ase.utils import writer, reader
 
 
+@writer
 def write_xsf(fileobj, images, data=None):
-    if isinstance(fileobj, basestring):
-        fileobj = paropen(fileobj, 'w')
-
-    if hasattr(images, 'get_positions'):
-        images = [images]
-
     is_anim = len(images) > 1
 
     if is_anim:
@@ -61,7 +55,7 @@ def write_xsf(fileobj, images, data=None):
             fileobj.write('ATOMS%s\n' % anim_token)
 
         # Get the forces if it's not too expensive:
-        calc = atoms.get_calculator()
+        calc = atoms.calc
         if (calc is not None and
             (hasattr(calc, 'calculation_required') and
              not calc.calculation_required(atoms, ['forces']))):
@@ -120,6 +114,7 @@ def write_xsf(fileobj, images, data=None):
     fileobj.write('END_BLOCK_DATAGRID_3D\n')
 
 
+@reader
 def iread_xsf(fileobj, read_data=False):
     """Yield images and optionally data from xsf file.
 
@@ -128,9 +123,6 @@ def iread_xsf(fileobj, read_data=False):
     Images are Atoms objects and data is a numpy array.
 
     Presently supports only a single 3D datagrid."""
-    if isinstance(fileobj, basestring):
-        fileobj = open(fileobj)
-
     def _line_generator_func():
         for line in fileobj:
             line = line.strip()
@@ -220,7 +212,7 @@ def iread_xsf(fileobj, read_data=False):
         image = Atoms(numbers, positions, cell=cell, pbc=pbc)
 
         if forces is not None:
-            image.set_calculator(SinglePointCalculator(image, forces=forces))
+            image.calc = SinglePointCalculator(image, forces=forces)
         yield image
 
     if read_data:

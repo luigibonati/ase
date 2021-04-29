@@ -1,13 +1,9 @@
-# -*- coding: utf-8 -*-
-
-from __future__ import print_function, division
 import numpy as np
 
 import ase.units as u
+from ase.vibrations.raman import Raman, RamanPhonons
 from ase.vibrations.resonant_raman import ResonantRaman
-
-# XXX remove gpaw dependence
-from gpaw.lrtddft.spectrum import polarizability
+from ase.calculators.excitation_list import polarizability
 
 
 class Placzek(ResonantRaman):
@@ -19,22 +15,22 @@ class Placzek(ResonantRaman):
     def set_approximation(self, value):
         raise ValueError('Approximation can not be set.')
 
-    def read_excitations(self):
-        self.ex0E_p = None  # mark as read
-        self.exm_r = []
-        self.exp_r = []
+    def _signed_disps(self, sign):
         for a, i in zip(self.myindices, self.myxyz):
-            exname = '%s.%d%s-' % (self.exname, a, i) + self.exext
-            self.log('reading ' + exname)
-            self.exm_r.append(self.exobj(exname, **self.exkwargs))
-            exname = '%s.%d%s+' % (self.exname, a, i) + self.exext
-            self.log('reading ' + exname)
-            self.exp_r.append(self.exobj(exname, **self.exkwargs))
+            yield self._disp(a, i, sign)
+
+    def _read_exobjs(self, sign):
+        return [disp.read_exobj() for disp in self._signed_disps(sign)]
+
+    def read_excitations(self):
+        """Read excitations from files written"""
+        self.ex0E_p = None  # mark as read
+        self.exm_r = self._read_exobjs(sign=-1)
+        self.exp_r = self._read_exobjs(sign=1)
 
     def electronic_me_Qcc(self, omega, gamma=0):
-        self.read()
-        
-        self.timer.start('init')
+        self.calculate_energies_and_modes()
+
         V_rcc = np.zeros((self.ndof, 3, 3), dtype=complex)
         pre = 1. / (2 * self.delta)
         pre *= u.Hartree * u.Bohr  # e^2Angstrom^2 / eV -> Angstrom^3
@@ -42,22 +38,45 @@ class Placzek(ResonantRaman):
         om = omega
         if gamma:
             om += 1j * gamma
-        self.timer.stop('init')
-        
-        self.timer.start('alpha derivatives')
+
         for i, r in enumerate(self.myr):
             V_rcc[r] = pre * (
                 polarizability(self.exp_r[i], om,
                                form=self.dipole_form, tensor=True) -
                 polarizability(self.exm_r[i], om,
                                form=self.dipole_form, tensor=True))
-        self.timer.stop('alpha derivatives')
- 
-        # map to modes
         self.comm.sum(V_rcc)
-        V_qcc = (V_rcc.T * self.im).T  # units Angstrom^2 / sqrt(amu)
-        V_Qcc = np.dot(V_qcc.T, self.modes.T).T
-        return V_Qcc
+
+        return self.map_to_modes(V_rcc)
+
+
+class PlaczekStatic(Raman):
+    def read_excitations(self):
+        """Read excitations from files written"""
+        self.al0_rr = None  # mark as read
+        self.alm_rr = []
+        self.alp_rr = []
+        for a, i in zip(self.myindices, self.myxyz):
+            for sign, al_rr in zip([-1, 1], [self.alm_rr, self.alp_rr]):
+                disp = self._disp(a, i, sign)
+                al_rr.append(disp.load_static_polarizability())
+
+    def electronic_me_Qcc(self):
+        self.calculate_energies_and_modes()
+
+        V_rcc = np.zeros((self.ndof, 3, 3), dtype=complex)
+        pre = 1. / (2 * self.delta)
+        pre *= u.Hartree * u.Bohr  # e^2Angstrom^2 / eV -> Angstrom^3
+
+        for i, r in enumerate(self.myr):
+            V_rcc[r] = pre * (self.alp_rr[i] - self.alm_rr[i])
+        self.comm.sum(V_rcc)
+
+        return self.map_to_modes(V_rcc)
+
+
+class PlaczekStaticPhonons(RamanPhonons, PlaczekStatic):
+    pass
 
 
 class Profeta(ResonantRaman):
@@ -88,15 +107,11 @@ class Profeta(ResonantRaman):
         -------
         Electronic matrix element, unit Angstrom^2
          """
-        self.read()
+        self.calculate_energies_and_modes()
 
-        self.timer.start('amplitudes')
-
-        self.timer.start('init')
         V_rcc = np.zeros((self.ndof, 3, 3), dtype=complex)
         pre = 1. / (2 * self.delta)
         pre *= u.Hartree * u.Bohr  # e^2Angstrom^2 / eV -> Angstrom^3
-        self.timer.stop('init')
 
         def kappa_cc(me_pc, e_p, omega, gamma, form='v'):
             """Kappa tensor after Profeta and Mauri
@@ -109,7 +124,6 @@ class Profeta(ResonantRaman):
                     k_cc += me_cc.conj() / (e_p[p] + omega + 1j * gamma)
             return k_cc
 
-        self.timer.start('kappa')
         mr = 0
         for a, i, r in zip(self.myindices, self.myxyz, self.myr):
             if not energy_derivative < 0:
@@ -126,8 +140,6 @@ class Profeta(ResonantRaman):
                              omega, gamma, self.dipole_form))
             mr += 1
         self.comm.sum(V_rcc)
-        self.timer.stop('kappa')
-        self.timer.stop('amplitudes')
 
         return V_rcc
 
@@ -146,10 +158,4 @@ class Profeta(ResonantRaman):
                 'Bug: call with {0} should not happen!'.format(
                     self.approximation))
 
-        # map to modes
-        self.timer.start('map R2Q')
-        V_qcc = (Vel_rcc.T * self.im).T  # units Angstrom^2 / sqrt(amu)
-        Vel_Qcc = np.dot(V_qcc.T, self.modes.T).T
-        self.timer.stop('map R2Q')
-
-        return Vel_Qcc
+        return self.map_to_modes(Vel_rcc)

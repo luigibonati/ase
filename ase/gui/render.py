@@ -1,9 +1,7 @@
-# -*- encoding: utf-8 -*-
-from __future__ import print_function, unicode_literals
 from ase.gui.i18n import _
 import ase.gui.ui as ui
-from ase.io.pov import write_pov
-from os import system
+from ase.io.pov import write_pov, get_bondpairs
+from os import unlink
 import numpy as np
 
 pack = error = Help = 42
@@ -37,6 +35,8 @@ class Render:
         self.basename_widget = ui.Entry(width=30, value=formula,
                                         callback=self.update_outputname)
         win.add([ui.Label(_('Output basename: ')), self.basename_widget])
+        self.povray_executable = ui.Entry(width=30,value='povray')
+        win.add([ui.Label(_('POVRAY executable')), self.povray_executable])
         self.outputname_widget = ui.Label()
         win.add([ui.Label(_('Output filename: ')), self.outputname_widget])
         self.update_outputname()
@@ -84,11 +84,14 @@ class Render:
         size = np.array([width, height]) / scale
         bbox[0:2] = np.dot(self.gui.center, self.gui.axes[:, :2]) - size / 2
         bbox[2:] = bbox[:2] + size
-        povray_settings = {
-            'run_povray': self.run_povray_widget.value,
+
+        plotting_var_settings = {
             'bbox': bbox,
             'rotation': self.gui.axes,
-            'show_unit_cell': self.cell_widget.value,
+            'show_unit_cell': self.cell_widget.value
+        }
+
+        povray_settings = {
             'display': self.show_output_widget.value,
             'transparent': self.transparent.value,
             'camera_type': self.camera_widget.value,
@@ -97,6 +100,7 @@ class Render:
             'celllinewidth': self.linewidth_widget.value,
             'exportconstraints': self.constraints_widget.value,
         }
+
         multiframe = bool(self.frames_widget.value)
         if multiframe:
             assert len(self.gui.images) > 1
@@ -112,17 +116,26 @@ class Render:
             povray_settings['textures'] = self.get_textures()
             povray_settings['colors'] = self.gui.get_colors(rgb=True)
             atoms = self.gui.images.get_atoms(frame)
+            radii_scale = 1                           # atom size multiplier
+            if self.gui.window['toggle-show-bonds']:  # self.gui.config['show_bonds'] is always False
+                print(" | Building bonds")
+                povray_settings['bondatoms'] = get_bondpairs(atoms)
+                radii_scale = 0.65                    # value from draw method of View class
             filename = self.update_outputname()
             print(" | Writing files for image", filename, "...")
-            write_pov(
-                filename, atoms, radii=self.gui.get_covalent_radii(),
-                **povray_settings)
+            plotting_var_settings['radii'] = radii_scale*self.gui.get_covalent_radii()
+            renderer = write_pov(
+                filename, atoms,
+                povray_settings=povray_settings,
+                **plotting_var_settings)
+            if self.run_povray_widget.value:
+                renderer.render(povray_executable=self.povray_executable.value,clean_up=False)
             if not self.keep_files_widget.value:
                 print(" | Deleting temporary file ", filename)
-                system("rm " + filename)
+                unlink(filename)
                 filename = filename[:-4] + '.ini'
                 print(" | Deleting temporary file ", filename)
-                system("rm " + filename)
+                unlink(filename)
         self.gui.set_frame(initial_frame)
         self.update_outputname()
 
@@ -149,7 +162,7 @@ class Render:
         return [self.texture_widget.value] * len(self.gui.atoms)
         #natoms = len(self.gui.atoms)
         #textures = natoms * [
-            #self.texture_list[0]  #self.default_texture.get_active()]
+        #self.texture_list[0]  #self.default_texture.get_active()]
         #]
         #for mat in self.materials:
         #    sel = mat[1]

@@ -1,10 +1,13 @@
-from math import sqrt
-
 import numpy as np
+import itertools
 from scipy import sparse as sp
+from scipy.spatial import cKDTree
+import scipy.sparse.csgraph as csgraph
 
 from ase.data import atomic_numbers, covalent_radii
-from ase.geometry import complete_cell
+from ase.geometry import complete_cell, find_mic, wrap_positions
+from ase.geometry import minkowski_reduce
+from ase.cell import Cell
 
 
 def natural_cutoffs(atoms, mult=1, **kwargs):
@@ -72,9 +75,10 @@ def get_distance_matrix(graph, limit=3):
     Why not dok_matrix like the connectivity-matrix? Because row-picking
     is most likely and this is super fast with csr.
     """
-    mat = sp.csgraph.dijkstra(graph, directed=False, limit=limit)
+    mat = csgraph.dijkstra(graph, directed=False, limit=limit)
     mat[mat == np.inf] = 0
     return sp.csr_matrix(mat, dtype=np.int8)
+
 
 def get_distance_indices(distanceMatrix, distance):
     """Get indices for each node that are distance or less away.
@@ -104,14 +108,14 @@ def get_distance_indices(distanceMatrix, distance):
         #find all non-zero
         found = sp.find(row)
         #screen for smaller or equal distance
-        equal = np.where( found[-1] <= distance )[0]
+        equal = np.where(found[-1] <= distance)[0]
         #found[1] contains the indexes
-        indices.append([ found[1][x] for x in equal ])
+        indices.append([found[1][x] for x in equal])
     return indices
 
 
 
-def mic(dr, cell, pbc=None):
+def mic(dr, cell, pbc=True):
     """
     Apply minimum image convention to an array of distance vectors.
 
@@ -131,15 +135,8 @@ def mic(dr, cell, pbc=None):
         Array of distance vectors, wrapped according to the minimum image
         convention.
     """
-    # Check where distance larger than 1/2 cell. Particles have crossed
-    # periodic boundaries then and need to be unwrapped.
-    icell = np.linalg.pinv(cell)
-    if pbc is not None:
-        icell *= np.array(pbc, dtype=int).reshape(3, 1)
-    cell_shift_vectors = np.round(np.dot(dr, icell))
-
-    # Unwrap
-    return dr - np.dot(cell_shift_vectors, cell)
+    dr, _ = find_mic(dr, cell, pbc)
+    return dr
 
 
 def primitive_neighbor_list(quantities, pbc, cell, positions, cutoff,
@@ -221,11 +218,11 @@ def primitive_neighbor_list(quantities, pbc, cell, positions, cutoff,
 
     # Return empty neighbor list if no atoms are passed here
     if len(positions) == 0:
-        empty_types = dict(i=(np.int, (0, )),
-                           j=(np.int, (0, )),
-                           D=(np.float, (0, 3)),
-                           d=(np.float, (0, )),
-                           S=(np.int, (0, 3)))
+        empty_types = dict(i=(int, (0, )),
+                           j=(int, (0, )),
+                           D=(float, (0, 3)),
+                           d=(float, (0, )),
+                           S=(int, (0, 3)))
         retvals = []
         for i in quantities:
             dtype, shape = empty_types[i]
@@ -257,8 +254,8 @@ def primitive_neighbor_list(quantities, pbc, cell, positions, cutoff,
 
     # We use a minimum bin size of 3 A
     bin_size = max(max_cutoff, 3)
-    # Compute number of bins such that a sphere of radius cutoff fit into eight
-    # neighboring bins.
+    # Compute number of bins such that a sphere of radius cutoff fits into
+    # eight neighboring bins.
     nbins_c = np.maximum((face_dist_c / bin_size).astype(int), [1, 1, 1])
     nbins = np.prod(nbins_c)
     # Make sure we limit the amount of memory used by the explicit bins.
@@ -269,6 +266,12 @@ def primitive_neighbor_list(quantities, pbc, cell, positions, cutoff,
     # Compute over how many bins we need to loop in the neighbor list search.
     neigh_search_x, neigh_search_y, neigh_search_z = \
         np.ceil(bin_size * nbins_c / face_dist_c).astype(int)
+
+    # If we only have a single bin and the system is not periodic, then we
+    # do not need to search neighboring bins
+    neigh_search_x = 0 if nbins_c[0] == 1 and not pbc[0] else neigh_search_x
+    neigh_search_y = 0 if nbins_c[1] == 1 and not pbc[1] else neigh_search_y
+    neigh_search_z = 0 if nbins_c[2] == 1 and not pbc[2] else neigh_search_z
 
     # Sort atoms into bins.
     if use_scaled_positions:
@@ -670,6 +673,7 @@ def first_neighbors(natoms, first_atom):
         mask = seed == -1
     return seed
 
+
 def get_connectivity_matrix(nl, sparse=True):
     """Return connectivity matrix for a given NeighborList (dtype=numpy.int8).
 
@@ -784,44 +788,39 @@ class NewPrimitiveNeighborList:
         self.cell = np.array(cell, copy=True)
         self.positions = np.array(positions, copy=True)
 
-        self.pair_first, self.pair_second, self.offset_vec = \
+        pair_first, pair_second, offset_vec = \
             primitive_neighbor_list(
                 'ijS', pbc, cell, positions, self.cutoffs, numbers=numbers,
                 self_interaction=self.self_interaction,
                 use_scaled_positions=self.use_scaled_positions)
 
         if len(positions) > 0 and not self.bothways:
-            mask = np.logical_or(
-                np.logical_and(
-                    self.pair_first <= self.pair_second,
-                    (self.offset_vec == 0).all(axis=1)
-                    ),
-                np.logical_or(
-                    self.offset_vec[:, 0] > 0,
-                    np.logical_and(
-                        self.offset_vec[:, 0] == 0,
-                        np.logical_or(
-                            self.offset_vec[:, 1] > 0,
-                            np.logical_and(
-                                self.offset_vec[:, 1] == 0,
-                                self.offset_vec[:, 2] > 0)
-                            )
-                        )
-                    )
-                )
-            self.pair_first = self.pair_first[mask]
-            self.pair_second = self.pair_second[mask]
-            self.offset_vec = self.offset_vec[mask]
+            offset_x, offset_y, offset_z = offset_vec.T
+
+            mask = offset_z > 0
+            mask &= offset_y == 0
+            mask |= offset_y > 0
+            mask &= offset_x == 0
+            mask |= offset_x > 0
+            mask |= (pair_first <= pair_second) & (offset_vec == 0).all(axis=1)
+
+            pair_first = pair_first[mask]
+            pair_second = pair_second[mask]
+            offset_vec = offset_vec[mask]
 
         if len(positions) > 0 and self.sorted:
-            mask = np.argsort(self.pair_first * len(self.pair_first) +
-                              self.pair_second)
-            self.pair_first = self.pair_first[mask]
-            self.pair_second = self.pair_second[mask]
-            self.offset_vec = self.offset_vec[mask]
+            mask = np.argsort(pair_first * len(pair_first) +
+                              pair_second)
+            pair_first = pair_first[mask]
+            pair_second = pair_second[mask]
+            offset_vec = offset_vec[mask]
+
+        self.pair_first = pair_first
+        self.pair_second = pair_second
+        self.offset_vec = offset_vec
 
         # Compute the index array point to the first neighbor
-        self.first_neigh = first_neighbors(len(positions), self.pair_first)
+        self.first_neigh = first_neighbors(len(positions), pair_first)
 
         self.nupdates += 1
 
@@ -842,7 +841,6 @@ class NewPrimitiveNeighborList:
 
         return (self.pair_second[self.first_neigh[a]:self.first_neigh[a+1]],
                 self.offset_vec[self.first_neigh[a]:self.first_neigh[a+1]])
-
 
 
 class PrimitiveNeighborList:
@@ -885,7 +883,7 @@ class PrimitiveNeighborList:
         to self.use_scaled_positions.
         """
         self.pbc = pbc = np.array(pbc, copy=True)
-        self.cell = cell = np.array(cell, copy=True)
+        self.cell = cell = Cell(cell)
         self.coordinates = coordinates = np.array(coordinates, copy=True)
 
         if len(self.cutoffs) != len(coordinates):
@@ -897,61 +895,69 @@ class PrimitiveNeighborList:
         else:
             rcmax = 0.0
 
-        icell = np.linalg.pinv(cell)
-
         if self.use_scaled_positions:
-            scaled = coordinates
-            positions = np.dot(scaled, cell)
+            positions0 = cell.cartesian_positions(coordinates)
         else:
-            positions = coordinates
-            scaled = np.dot(positions, icell)
+            positions0 = coordinates
 
-        scaled0 = scaled.copy()
+        rcell, op = minkowski_reduce(cell, pbc)
+        positions = wrap_positions(positions0, rcell, pbc=pbc, eps=0)
+
+        natoms = len(positions)
+        self.nneighbors = 0
+        self.npbcneighbors = 0
+        self.neighbors = [np.empty(0, int) for a in range(natoms)]
+        self.displacements = [np.empty((0, 3), int) for a in range(natoms)]
+        self.nupdates += 1
+        if natoms == 0:
+            return
 
         N = []
+        ircell = np.linalg.pinv(rcell)
         for i in range(3):
             if self.pbc[i]:
-                scaled0[:, i] %= 1.0
-                v = icell[:, i]
-                h = 1 / sqrt(np.dot(v, v))
+                v = ircell[:, i]
+                h = 1 / np.linalg.norm(v)
                 n = int(2 * rcmax / h) + 1
             else:
                 n = 0
             N.append(n)
 
-        offsets = (scaled0 - scaled).round().astype(int)
-        positions0 = positions + np.dot(offsets, self.cell)
-        natoms = len(positions)
-        indices = np.arange(natoms)
+        tree = cKDTree(positions, copy_data=True)
+        offsets = cell.scaled_positions(positions - positions0)
+        offsets = offsets.round().astype(int)
 
-        self.nneighbors = 0
-        self.npbcneighbors = 0
-        self.neighbors = [np.empty(0, int) for a in range(natoms)]
-        self.displacements = [np.empty((0, 3), int) for a in range(natoms)]
-        for n1 in range(0, N[0] + 1):
-            for n2 in range(-N[1], N[1] + 1):
-                for n3 in range(-N[2], N[2] + 1):
-                    if n1 == 0 and (n2 < 0 or n2 == 0 and n3 < 0):
-                        continue
-                    displacement = np.dot((n1, n2, n3), self.cell)
-                    for a in range(natoms):
-                        d = positions0 + displacement - positions0[a]
-                        i = indices[(d**2).sum(1) <
-                                    (self.cutoffs + self.cutoffs[a])**2]
-                        if n1 == 0 and n2 == 0 and n3 == 0:
-                            if self.self_interaction:
-                                i = i[i >= a]
-                            else:
-                                i = i[i > a]
-                        self.nneighbors += len(i)
-                        self.neighbors[a] = np.concatenate(
-                            (self.neighbors[a], i))
-                        disp = np.empty((len(i), 3), int)
-                        disp[:] = (n1, n2, n3)
-                        disp += offsets[i] - offsets[a]
-                        self.npbcneighbors += disp.any(1).sum()
-                        self.displacements[a] = np.concatenate(
-                            (self.displacements[a], disp))
+        for n1, n2, n3 in itertools.product(range(0, N[0] + 1),
+                                            range(-N[1], N[1] + 1),
+                                            range(-N[2], N[2] + 1)):
+            if n1 == 0 and (n2 < 0 or n2 == 0 and n3 < 0):
+                continue
+
+            displacement = (n1, n2, n3) @ rcell
+            for a in range(natoms):
+
+                indices = tree.query_ball_point(positions[a] - displacement,
+                                                r=self.cutoffs[a] + rcmax)
+                if not len(indices):
+                    continue
+
+                indices = np.array(indices)
+                delta = positions[indices] + displacement - positions[a]
+                cutoffs = self.cutoffs[indices] + self.cutoffs[a]
+                i = indices[np.linalg.norm(delta, axis=1) < cutoffs]
+                if n1 == 0 and n2 == 0 and n3 == 0:
+                    if self.self_interaction:
+                        i = i[i >= a]
+                    else:
+                        i = i[i > a]
+
+                self.nneighbors += len(i)
+                self.neighbors[a] = np.concatenate((self.neighbors[a], i))
+
+                disp = (n1, n2, n3) @ op + offsets[i] - offsets[a]
+                self.npbcneighbors += disp.any(1).sum()
+                self.displacements[a] = np.concatenate((self.displacements[a],
+                                                        disp))
 
         if self.bothways:
             neighbors2 = [[] for a in range(natoms)]
@@ -962,8 +968,7 @@ class PrimitiveNeighborList:
                     displacements2[b].append(-disp)
             for a in range(natoms):
                 nbs = np.concatenate((self.neighbors[a], neighbors2[a]))
-                disp = np.array(list(self.displacements[a]) +
-                                displacements2[a])
+                disp = np.array(list(self.displacements[a]) + displacements2[a])
                 # Force correct type and shape for case of no neighbors:
                 self.neighbors[a] = nbs.astype(int)
                 self.displacements[a] = disp.astype(int).reshape((-1, 3))
@@ -975,15 +980,11 @@ class PrimitiveNeighborList:
                     j = i[mask]
                     offsets = self.displacements[a][mask]
                     for b, offset in zip(j, offsets):
-                        self.neighbors[b] = np.concatenate(
-                            (self.neighbors[b], [a]))
-                        self.displacements[b] = np.concatenate(
-                            (self.displacements[b], [-offset]))
+                        self.neighbors[b] = np.concatenate((self.neighbors[b], [a]))
+                        self.displacements[b] = np.concatenate((self.displacements[b], [-offset]))
                     mask = np.logical_not(mask)
                     self.neighbors[a] = self.neighbors[a][mask]
                     self.displacements[a] = self.displacements[a][mask]
-
-        self.nupdates += 1
 
     def get_neighbors(self, a):
         """Return neighbors of atom number a.
@@ -994,7 +995,7 @@ class PrimitiveNeighborList:
 
           indices, offsets = nl.get_neighbors(42)
           for i, offset in zip(indices, offsets):
-              print(atoms.positions[i] + dot(offset, atoms.get_cell()))
+              print(atoms.positions[i] + offset @ atoms.get_cell())
 
         Notice that if get_neighbors(a) gives atom b as a neighbor,
         then get_neighbors(b) will not return a as a neighbor - unless
@@ -1053,6 +1054,10 @@ class NeighborList:
         See :meth:`ase.neighborlist.PrimitiveNeighborList.get_neighbors` or
         :meth:`ase.neighborlist.PrimitiveNeighborList.get_neighbors`.
         """
+        if self.nl.nupdates <= 0:
+            raise RuntimeError('Must call update(atoms) on your neighborlist '
+                               'first!')
+
         return self.nl.get_neighbors(a)
 
     def get_connectivity_matrix(self, sparse=True):

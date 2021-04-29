@@ -22,7 +22,7 @@ Example
 
 >>> atoms = bulk('Al','fcc')
 >>> calc = DMol3()
->>> atoms.set_calculator(calc)
+>>> atoms.calc = calc
 >>> print 'Potential energy %5.5f eV' % atoms.get_potential_energy()
 
 
@@ -40,7 +40,7 @@ Reading eigenvalues and kpts are supported.
 Be careful with kpts and their directions (see internal coordinates below).
 
 Outputting the full electron density or specific bands to .grd files can be
-acheived with the plot command. The .grd files can be converted to the cube
+achieved with the plot command. The .grd files can be converted to the cube
 format using grd_to_cube().
 
 
@@ -73,7 +73,6 @@ grd    outfile for orbitals from DMol3 - cellpar in Angstrom
 
 """
 
-from __future__ import print_function
 import os
 import re
 import numpy as np
@@ -90,13 +89,15 @@ class DMol3(FileIOCalculator):
     implemented_properties = ['energy', 'forces']
     default_parameters = {'functional': 'pbe',
                           'symmetry': 'on'}
+    discard_results_on_any_change = True
 
     if 'DMOL_COMMAND' in os.environ:
         command = os.environ['DMOL_COMMAND'] + ' PREFIX > PREFIX.out'
     else:
         command = None
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=FileIOCalculator._deprecated,
                  label='dmol_calc/tmp', atoms=None, **kwargs):
         """ Construct DMol3 calculator. """
         FileIOCalculator.__init__(self, restart, ignore_bad_restart_file,
@@ -104,11 +105,6 @@ class DMol3(FileIOCalculator):
 
         # tracks if DMol transformed coordinate system
         self.internal_transformation = False
-
-    def set(self, **kwargs):
-        changed_parameters = FileIOCalculator.set(self, **kwargs)
-        if changed_parameters:
-            self.reset()
 
     def write_input(self, atoms, properties=None, system_changes=None):
 
@@ -132,8 +128,10 @@ class DMol3(FileIOCalculator):
 
     def write_input_file(self):
         """ Writes the input file. """
+        with open(self.label + '.input', 'w') as fd:
+            self._write_input_file(fd)
 
-        f = open(self.label + '.input', 'w')
+    def _write_input_file(self, f):
         f.write('%-32s %s\n' % ('calculate', 'gradient'))
 
         # if no key about eigs
@@ -163,7 +161,7 @@ class DMol3(FileIOCalculator):
         self.read_results()
 
     def read_results(self):
-        finished, message = self.finished_sucessfully()
+        finished, message = self.finished_successfully()
         if not finished:
             raise RuntimeError('DMol3 run failed, see outmol file for'
                                ' more info\n\n%s' % message)
@@ -172,7 +170,7 @@ class DMol3(FileIOCalculator):
         self.read_energy()
         self.read_forces()
 
-    def finished_sucessfully(self):
+    def finished_successfully(self):
         """ Reads outmol file and checks if job completed or failed.
 
         Returns
@@ -183,7 +181,7 @@ class DMol3(FileIOCalculator):
         """
         finished = False
         message = ""
-        for line in open(self.label + '.outmol', 'r'):
+        for line in self._outmol_lines():
             if line.rfind('Message: DMol3 job finished successfully') > -1:
                 finished = True
             if line.startswith('Error'):
@@ -259,7 +257,7 @@ class DMol3(FileIOCalculator):
         atoms (Atoms object): read atoms object
         """
 
-        lines = open(self.label + '.outmol', 'r').readlines()
+        lines = self._outmol_lines()
         found_cell = False
         cell = np.zeros((3, 3))
         symbols = []
@@ -292,7 +290,7 @@ class DMol3(FileIOCalculator):
         """ Find and return last occurrence of Ef in outmole file. """
         energy_regex = re.compile(r'^Ef\s+(\S+)Ha')
         found = False
-        for line in open(self.label + '.outmol', 'r'):
+        for line in self._outmol_lines():
             match = energy_regex.match(line)
             if match:
                 energy = float(match.group(1))
@@ -304,7 +302,9 @@ class DMol3(FileIOCalculator):
     def read_forces(self):
         """ Read forces from .grad file. Applies self.rotation_matrix if
         self.internal_transformation is True. """
-        lines = open(self.label + '.grad', 'r').readlines()
+        with open(self.label + '.grad', 'r') as fd:
+            lines = fd.readlines()
+
         forces = []
         for i, line in enumerate(lines):
             if line.startswith('$gradients'):
@@ -363,7 +363,7 @@ class DMol3(FileIOCalculator):
         """
 
         assert mode in ['eigenvalues', 'occupations']
-        lines = open(self.label + '.outmol', 'r').readlines()
+        lines = self._outmol_lines()
         pattern_kpts = re.compile(r'Eigenvalues for kvector\s+%d' % (kpt + 1))
         for n, line in enumerate(lines):
 
@@ -405,11 +405,15 @@ class DMol3(FileIOCalculator):
                 return np.array(values)
         return None
 
+    def _outmol_lines(self):
+        with open(self.label + '.outmol', 'r') as fd:
+            return fd.readlines()
+
     def read_kpts(self, mode='ibz_k_points'):
         """ Returns list of kpts coordinates or kpts weights.  """
 
         assert mode in ['ibz_k_points', 'k_point_weights']
-        lines = open(self.label + '.outmol', 'r').readlines()
+        lines = self._outmol_ines()
 
         values = []
         for n, line in enumerate(lines):
@@ -426,7 +430,7 @@ class DMol3(FileIOCalculator):
     def read_spin_polarized(self):
         """Reads, from outmol file, if calculation is spin polarized."""
 
-        lines = open(self.label + '.outmol', 'r').readlines()
+        lines = self._outmol_lines()
         for n, line in enumerate(lines):
             if line.rfind('Calculation is Spin_restricted') > -1:
                 return False
@@ -440,7 +444,7 @@ class DMol3(FileIOCalculator):
         Example line in outmol:
         Fermi Energy:           -0.225556 Ha     -6.138 eV   xyz text
         """
-        lines = open(self.label + '.outmol', 'r').readlines()
+        lines = self._outmol_lines()
         pattern_fermi = re.compile(r'Fermi Energy:\s+(\S+)\s+Ha')
         for line in lines:
             m = pattern_fermi.match(line)
@@ -451,7 +455,7 @@ class DMol3(FileIOCalculator):
     def read_energy_contributions(self):
         """Reads the different energy contributions."""
 
-        lines = open(self.label + '.outmol', 'r').readlines()
+        lines = self._outmol_lines()
         energies = dict()
         for n, line in enumerate(lines):
             if line.startswith('Energy components'):
@@ -510,10 +514,10 @@ def find_transformation(atoms1, atoms2, verbose=False, only_cell=False):
 
     if only_cell:
         N = 3
-    elif atoms1.get_number_of_atoms() != atoms2.get_number_of_atoms():
+    elif len(atoms1) != len(atoms2):
         raise RuntimeError('Atoms object must be of same length')
     else:
-        N = atoms1.get_number_of_atoms() + 3
+        N = len(atoms1) + 3
 
     # Setup matrices A and B
     A = np.zeros((N, 3))
@@ -529,7 +533,7 @@ def find_transformation(atoms1, atoms2, verbose=False, only_cell=False):
     x = lstsq_fit[0]
     error = np.linalg.norm(np.dot(A, x) - B)
 
-    # Print comparision between A, B and Ax
+    # Print comparison between A, B and Ax
     if verbose:
         print('%17s %33s %35s %24s' % ('A', 'B', 'Ax', '|Ax-b|'))
         for a, b in zip(A, B):
@@ -583,7 +587,8 @@ def read_grd(filename):
     """
     from ase.geometry.cell import cellpar_to_cell
 
-    lines = open(filename, 'r').readlines()
+    with open(filename, 'r') as fd:
+        lines = fd.readlines()
 
     cell_data = np.array([float(fld) for fld in lines[2].split()])
     cell = cellpar_to_cell(cell_data)
@@ -620,6 +625,6 @@ if __name__ == '__main__':
 
     atoms = molecule('H2')
     calc = DMol3()
-    atoms.set_calculator(calc)
+    atoms.calc = calc
     # ~ 60 sec calculation
     print('Potential energy %5.5f eV' % atoms.get_potential_energy())

@@ -17,7 +17,6 @@ functional theories.
     You should have received a copy of the GNU Lesser General Public License
     along with ASE.  If not, see <http://www.gnu.org/licenses/>.
 """
-from __future__ import print_function
 import numpy as np
 import os
 import subprocess
@@ -29,15 +28,7 @@ from ase.calculators.openmx.reader import rn as read_nth_to_last_value
 def input_command(calc, executable_name, input_files, argument_format='%s'):
     input_files = tuple(input_files)
     command = executable_name + ' ' + argument_format % input_files
-    olddir = os.getcwd()
-    try:
-        os.chdir(calc.directory)
-        error_code = subprocess.call(command, shell=True)
-    finally:
-        os.chdir(olddir)
-    if error_code:
-        raise RuntimeError('%s returned an error: %d' %
-                           (executable_name, error_code))
+    subprocess.check_call(command, shell=True, cwd=calc.directory)
 
 
 class DOS:
@@ -51,7 +42,7 @@ class DOS:
         """
         function for reading DOS from the following OpenMX file extensions:
          ~.[DOS|PDOS].[Tetrahedron|Gaussian]<.atom(int).(orbital)
-        :param method: the method which has been used to calcualte the density
+        :param method: the method which has been used to calculate the density
                        of states ('Tetrahedron' or 'Gaussian')
         :param pdos: True if the pseudo-density of states have been calculated,
                      False if only the total density of states has been
@@ -78,13 +69,14 @@ class DOS:
             if orbital != '':
                 period = '.'
             filename += '.atom' + str(atom_index) + period + orbital
-        f = open(filename, 'r')
-        line = '\n'
-        number_of_lines = -1
-        while line != '':
-            line = f.readline()
-            number_of_lines += 1
-        f.close()
+
+        with open(filename, 'r') as fd:
+            line = '\n'
+            number_of_lines = -1
+            while line != '':
+                line = fd.readline()
+                number_of_lines += 1
+
         key = ''
         atom_and_orbital = ''
         if pdos:

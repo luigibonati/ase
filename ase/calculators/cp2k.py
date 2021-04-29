@@ -1,12 +1,9 @@
-# -*- coding: utf-8 -*-
-
 """This module defines an ASE interface to CP2K.
 
-http://www.cp2k.org
+https://www.cp2k.org/
 Author: Ole Schuett <ole.schuett@mat.ethz.ch>
 """
 
-from __future__ import print_function
 
 import os
 import os.path
@@ -15,7 +12,8 @@ from subprocess import Popen, PIPE
 import numpy as np
 import ase.io
 from ase.units import Rydberg
-from ase.calculators.calculator import Calculator, all_changes, Parameters
+from ase.calculators.calculator import (Calculator, all_changes, Parameters,
+                                        CalculatorSetupError)
 
 
 class CP2K(Calculator):
@@ -30,7 +28,7 @@ class CP2K(Calculator):
     CP2K is freely available under the GPL license.
     It is written in Fortran 2003 and can be run efficiently in parallel.
 
-    Check http://www.cp2k.org about how to obtain and install CP2K.
+    Check https://www.cp2k.org about how to obtain and install CP2K.
     Make sure that you also have the CP2K-shell available, since it is required
     by the CP2K-calulator.
 
@@ -49,7 +47,6 @@ class CP2K(Calculator):
     ``cp2k_shell``. To run a parallelized simulation use something like this:
 
     >>> CP2K.command="env OMP_NUM_THREADS=2 mpiexec -np 4 cp2k_shell.psmp"
-
 
     Arguments:
 
@@ -72,7 +69,7 @@ class CP2K(Calculator):
         The command used to launch the CP2K-shell.
         If ``command`` is not passed as an argument to the
         constructor, the class-variable ``CP2K.command``,
-        and then the environment variabel
+        and then the environment variable
         ``$ASE_CP2K_COMMAND`` are checked.
         Eventually, ``cp2k_shell`` is used as default.
     cutoff: float
@@ -92,6 +89,28 @@ class CP2K(Calculator):
         gives access to all features of CP2K.
         Note, that most keywords accept ``None`` to disable the generation
         of the corresponding input section.
+
+        This input template is important for advanced CP2K
+        inputs, but is also needed for e.g. controlling the Brillouin
+        zone integration. The example below illustrates some common
+        options::
+
+           >>> inp = '''&FORCE_EVAL
+           >>>    &DFT
+           >>>      &KPOINTS
+           >>>        SCHEME MONKHORST-PACK 12 12 8
+           >>>      &END KPOINTS
+           >>>      &SCF
+           >>>        ADDED_MOS 10
+           >>>        &SMEAR
+           >>>          METHOD FERMI_DIRAC
+           >>>          ELECTRONIC_TEMPERATURE [K] 500.0
+           >>>        &END SMEAR
+           >>>      &END SCF
+           >>>    &END DFT
+           >>>  &END FORCE_EVAL
+           >>>  '''
+
     max_scf: int
         Maximum number of SCF iteration to be performed for
         one optimization. Default is ``50``.
@@ -122,13 +141,12 @@ class CP2K(Calculator):
     print_level: str
         PRINT_LEVEL of global output.
         Possible options are:
-        DEBUG Everything is written out, useful for debugging purposes only 
-        HIGH Lots of output 
-        LOW Little output 
-        MEDIUM Quite some output 
-        SILENT Almost no output 
+        DEBUG Everything is written out, useful for debugging purposes only
+        HIGH Lots of output
+        LOW Little output
+        MEDIUM Quite some output
+        SILENT Almost no output
         Default is 'LOW'
-        
     """
 
     implemented_properties = ['energy', 'free_energy', 'forces', 'stress']
@@ -151,7 +169,8 @@ class CP2K(Calculator):
         xc='LDA',
         print_level='LOW')
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=Calculator._deprecated,
                  label='cp2k', atoms=None, command=None,
                  debug=False, **kwargs):
         """Construct CP2K-calculator object."""
@@ -174,19 +193,14 @@ class CP2K(Calculator):
         else:
             self.command = 'cp2k_shell'  # default
 
-        Calculator.__init__(self, restart, ignore_bad_restart_file,
-                            label, atoms, **kwargs)
+        Calculator.__init__(self, restart=restart,
+                            ignore_bad_restart_file=ignore_bad_restart_file,
+                            label=label, atoms=atoms, **kwargs)
 
         self._shell = Cp2kShell(self.command, self._debug)
 
         if restart is not None:
-            try:
-                self.read(restart)
-            except:
-                if ignore_bad_restart_file:
-                    self.reset()
-                else:
-                    raise
+            self.read(restart)
 
     def __del__(self):
         """Release force_env and terminate cp2k_shell child process"""
@@ -196,6 +210,13 @@ class CP2K(Calculator):
 
     def set(self, **kwargs):
         """Set parameters like set(key1=value1, key2=value2, ...)."""
+        msg = '"%s" is not a known keyword for the CP2K calculator. ' \
+              'To access all features of CP2K by means of an input ' \
+              'template, consider using the "inp" keyword instead.'
+        for key in kwargs:
+            if key not in self.default_parameters:
+                raise CalculatorSetupError(msg % key)
+
         changed_parameters = Calculator.set(self, **kwargs)
         if changed_parameters:
             self.reset()
@@ -203,17 +224,20 @@ class CP2K(Calculator):
     def write(self, label):
         'Write atoms, parameters and calculated results into restart files.'
         if self._debug:
-            print("Writting restart to: ", label)
+            print("Writing restart to: ", label)
         self.atoms.write(label + '_restart.traj')
         self.parameters.write(label + '_params.ase')
-        open(label + '_results.ase', 'w').write(repr(self.results))
+        from ase.io.jsonio import write_json
+        with open(label + '_results.json', 'w') as fd:
+            write_json(fd, self.results)
 
     def read(self, label):
         'Read atoms, parameters and calculated results from restart files.'
         self.atoms = ase.io.read(label + '_restart.traj')
         self.parameters = Parameters.read(label + '_params.ase')
-        results_txt = open(label + '_results.ase').read()
-        self.results = eval(results_txt, {'array': np.array})
+        from ase.io.jsonio import read_json
+        with open(label + '_results.json') as fd:
+            self.results = read_json(fd)
 
     def calculate(self, atoms=None, properties=None,
                   system_changes=all_changes):
@@ -310,9 +334,8 @@ class CP2K(Calculator):
             print('Writting to file: ' + fn)
             print(content)
         if self._shell.version < 2.0:
-            f = open(fn, 'w')
-            f.write(content)
-            f.close()
+            with open(fn, 'w') as fd:
+                fd.write(content)
         else:
             lines = content.split('\n')
             if self._shell.version < 2.1:
@@ -436,7 +459,7 @@ class CP2K(Calculator):
         return '\n'.join(output_lines)
 
 
-class Cp2kShell(object):
+class Cp2kShell:
     """Wrapper for CP2K-shell child-process"""
 
     def __init__(self, command, debug):
@@ -511,7 +534,7 @@ class Cp2kShell(object):
         received = self.recv()
         assert received == line
 
-class InputSection(object):
+class InputSection:
     """Represents a section of a CP2K input file"""
     def __init__(self, name, params=None):
         self.name = name.upper()

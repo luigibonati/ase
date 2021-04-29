@@ -1,46 +1,41 @@
-from __future__ import print_function
 """bundletrajectory - a module for I/O from large MD simulations.
 
 The BundleTrajectory class writes trajectory into a directory with the
-following structure::
+following structure, except we now use JSON instead of pickle,
+so this text needs updating::
 
     filename.bundle (dir)
-        metadata.pickle        Data about the file format, and about which
+        metadata.json          Data about the file format, and about which
                                data is present.
-        state.pickle           The number of frames
+        frames                 The number of frames (ascii file)
         F0 (dir)               Frame number 0
-            small.pickle       Small data structures in a dictionary
+            smalldata.ulm      Small data structures in a dictionary
                                (pbc, cell, ...)
-            numbers.pickle     Atomic numbers
-            positions.pickle   Positions
-            momenta.pickle     Momenta
+            numbers.ulm        Atomic numbers
+            positions.ulm      Positions
+            momenta.ulm        Momenta
             ...
         F1 (dir)
+
+There is a folder for each frame, and the data is in the ASE Ulm format.
 """
 
-import ase.parallel
-from ase.parallel import paropen
-from ase.calculators.singlepoint import (SinglePointCalculator,
-                                         PropertyNotImplementedError)
-from ase.io.ulm import open as ulmopen
-import numpy as np
 import os
 import sys
 import shutil
 import time
+from pathlib import Path
+
+import numpy as np
+
+from ase import Atoms
 # The system json module causes memory leaks!  Use ase's own.
 # import json
 from ase.io import jsonio
-try:
-    import cPickle as pickle   # Need efficient pickle if using Python 2
-except ImportError:
-    import pickle              # Python 3 pickle is efficient.
-import collections
-# We would like to use an OrderedDict for nice printing
-try:
-    from collections import OrderedDict as odict
-except ImportError:
-    odict = dict
+from ase.io.ulm import open as ulmopen
+from ase.parallel import paropen, world, barrier
+from ase.calculators.singlepoint import (SinglePointCalculator,
+                                         PropertyNotImplementedError)
 
 
 class BundleTrajectory:
@@ -74,7 +69,7 @@ class BundleTrajectory:
         Use backup=False to disable renaming of an existing file.
 
     backend='ulm':
-        Request a backend.  Supported backends are 'pickle' and 'ulm'.
+        Request a backend.  Currently only 'ulm' is supported.
         Only honored when writing.
 
     singleprecision=False:
@@ -88,7 +83,7 @@ class BundleTrajectory:
         self.filename = filename
         self.pre_observers = []  # callback functions before write is performed
         self.post_observers = []  # callback functions after write is performed
-        self.master = ase.parallel.rank == 0
+        self.master = world.rank == 0
         self.extra_data = []
         self.singleprecision = singleprecision
         self._set_defaults()
@@ -107,7 +102,6 @@ class BundleTrajectory:
         "Set default values for internal parameters."
         self.version = 1
         self.subtype = 'normal'
-        # self.backend_name = 'pickle'
         self.datatypes = {'positions': True,
                           'numbers': 'once',
                           'tags': 'once',
@@ -123,9 +117,8 @@ class BundleTrajectory:
         """Set the backed doing the actual I/O."""
         if backend is not None:
             self.backend_name = backend
-        if self.backend_name == 'pickle':
-            self.backend = PickleBundleBackend(self.master)
-        elif self.backend_name == 'ulm':
+
+        if self.backend_name == 'ulm':
             self.backend = UlmBundleBackend(self.master, self.singleprecision)
         else:
             raise NotImplementedError(
@@ -169,8 +162,7 @@ class BundleTrajectory:
         # Write 'small' data structures.  They are written jointly.
         smalldata = {'pbc': atoms.get_pbc(),
                      'cell': atoms.get_cell(),
-                     # GLOBAL number of atoms:
-                     'natoms': atoms.get_number_of_atoms(),
+                     'natoms': atoms.get_global_number_of_atoms(),
                      'constraints': atoms.constraints}
         if datatypes.get('energy'):
             try:
@@ -348,7 +340,7 @@ class BundleTrajectory:
             self.atom_id, dummy = self.backend.read_split(framedir, 'ID')
         else:
             self.atom_id = None
-        atoms = ase.Atoms(**data)
+        atoms = Atoms(**data)
         natoms = smalldata['natoms']
         for name in ('positions', 'numbers', 'tags', 'masses',
                      'momenta'):
@@ -372,7 +364,7 @@ class BundleTrajectory:
                                          forces=forces,
                                          stress=smalldata.get('stress'),
                                          magmoms=magmoms)
-            atoms.set_calculator(calc)
+            atoms.calc = calc
         return atoms
 
     def read_extra_data(self, name, n=0):
@@ -423,7 +415,7 @@ class BundleTrajectory:
             lfn = os.path.join(self.filename, 'log.txt')
         else:
             lfn = os.path.join(self.filename, ('log-node%d.txt' %
-                                               (ase.parallel.rank,)))
+                                               (world.rank,)))
         self.logfile = open(lfn, 'a', 1)   # Append to log if it exists.
         if hasattr(self, 'logdata'):
             for text in self.logdata:
@@ -438,33 +430,33 @@ class BundleTrajectory:
         self.atoms = atoms
         if os.path.exists(self.filename):
             # The output directory already exists.
-            ase.parallel.barrier()  # all must have time to see it exists
+            barrier()  # all must have time to see it exists
             if not self.is_bundle(self.filename, allowempty=True):
                 raise IOError(
                     'Filename "' + self.filename +
                     '" already exists, but is not a BundleTrajectory.' +
-                    'Cowardly refusing to remove it.')
+                    ' Cowardly refusing to remove it.')
             if self.is_empty_bundle(self.filename):
-                ase.parallel.barrier()
+                barrier()
                 self.log('Deleting old "%s" as it is empty' % (self.filename,))
                 self.delete_bundle(self.filename)
             elif not backup:
-                ase.parallel.barrier()
+                barrier()
                 self.log('Deleting old "%s" as backup is turned off.' %
                          (self.filename,))
                 self.delete_bundle(self.filename)
             else:
-                ase.parallel.barrier()
+                barrier()
                 # Make a backup file
                 bakname = self.filename + '.bak'
                 if os.path.exists(bakname):
-                    ase.parallel.barrier()  # All must see it exists
+                    barrier()  # All must see it exists
                     self.log('Deleting old backup file "%s"' % (bakname,))
                     self.delete_bundle(bakname)
                 self.log('Renaming "%s" to "%s"' % (self.filename, bakname))
                 self._rename_bundle(self.filename, bakname)
         # Ready to create a new bundle.
-        ase.parallel.barrier()
+        barrier()
         self.log('Creating new "%s"' % (self.filename,))
         self._make_bundledir(self.filename)
         self.state = 'prewrite'
@@ -505,14 +497,13 @@ class BundleTrajectory:
             self.pythonmajor = 2  # Assume written with Python 2.
         # We need to know if we are running Python 3.X and try to read
         # a bundle written with Python 2.X
-        self.backend.readpy2 = (sys.version_info[0] >= 3 and
-                                self.pythonmajor == 2)
+        self.backend.readpy2 = (self.pythonmajor == 2)
         self.state = 'read'
 
     def _open_append(self, atoms):
         if not os.path.exists(self.filename):
             # OK, no old bundle.  Open as for write instead.
-            ase.parallel.barrier()
+            barrier()
             self._open_write(atoms, False)
             return
         if not self.is_bundle(self.filename):
@@ -540,18 +531,23 @@ class BundleTrajectory:
         self.state = 'write'
         self.atoms = atoms
 
+    @property
+    def path(self):
+        return Path(self.filename)
+
+    @property
+    def metadata_path(self):
+        return self.path / 'metadata.json'
+
     def _write_nframes(self, n):
         "Write the number of frames in the bundle."
         assert self.state == 'write' or self.state == 'prewrite'
-        f = paropen(os.path.join(self.filename, 'frames'), 'w')
-        f.write(str(n) + '\n')
-        f.close()
+        with paropen(self.path / 'frames', 'w') as fd:
+            fd.write(str(n) + '\n')
 
     def _read_nframes(self):
         "Read the number of frames."
-        f = open(os.path.join(self.filename, 'frames'))
-        n = int(f.read())
-        return n
+        return int((self.path / 'frames').read_text())
 
     def _write_metadata(self, metadata):
         """Write the metadata file of the bundle.
@@ -567,56 +563,33 @@ class BundleTrajectory:
         if self.backend_name == 'ulm':
             metadata['ulm.singleprecision'] = self.singleprecision
         metadata['python_ver'] = tuple(sys.version_info)
-        f = paropen(os.path.join(self.filename, 'metadata.json'), 'w')
-        fido = jsonio.encode(metadata)
-        f.write(fido)
-        f.close()
-        # Write a compatibility .pickle file - will be picked up by
-        # older versions of ASE and result in a meaningful error.
-        metadata['comment'] = ('For compatibility only - '
-                               'see metadata.json instead.')
-        f = paropen(os.path.join(self.filename, 'metadata'), 'wb')
-        pickle.dump(metadata, f, protocol=0)
-        del metadata['comment']
-        f.close()
+        encode = jsonio.MyEncoder(indent=4).encode
+        fido = encode(metadata)
+        with paropen(self.metadata_path, 'w') as fd:
+            fd.write(fido)
 
     def _read_metadata(self):
         """Read the metadata."""
         assert self.state == 'read'
-        metafile = os.path.join(self.filename, 'metadata.json')
-        if os.path.exists(metafile):
-            f = open(metafile, 'r')
-            metadata = jsonio.decode(f.read())
-        else:
-            metafile = os.path.join(self.filename, 'metadata')
-            f = open(metafile, 'rb')
-            metadata = pickle.load(f)
-        f.close()
-        return metadata
+        return jsonio.decode(self.metadata_path.read_text())
 
     @staticmethod
     def is_bundle(filename, allowempty=False):
         """Check if a filename exists and is a BundleTrajectory.
 
-        If allowempty=True, an empty folder is regarded as an 
+        If allowempty=True, an empty folder is regarded as an
         empty BundleTrajectory."""
-        if not os.path.isdir(filename):
+        filename = Path(filename)
+        if not filename.is_dir():
             return False
         if allowempty and not os.listdir(filename):
             return True   # An empty BundleTrajectory
-        metaname = os.path.join(filename, 'metadata.json')
-        if os.path.isfile(metaname):
-            f = open(metaname, 'r')
-            mdata = jsonio.decode(f.read())
-            f.close()
+        metaname = filename / 'metadata.json'
+        if metaname.is_file():
+            mdata = jsonio.decode(metaname.read_text())
         else:
-            metaname = os.path.join(filename, 'metadata')
-            if os.path.isfile(metaname):
-                f = open(metaname, 'rb')
-                mdata = pickle.load(f)
-                f.close()
-            else:
-                return False
+            return False
+
         try:
             return mdata['format'] == 'BundleTrajectory'
         except KeyError:
@@ -629,18 +602,17 @@ class BundleTrajectory:
         Assumes that it is a bundle."""
         if not os.listdir(filename):
             return True   # Empty folders are empty bundles.
-        f = open(os.path.join(filename, 'frames'), 'rb')
-        nframes = int(f.read())
-        f.close()
+        with open(os.path.join(filename, 'frames'), 'rb') as fd:
+            nframes = int(fd.read())
 
         # File may be removed by the master immediately after this.
-        ase.parallel.barrier()
+        barrier()
         return nframes == 0
 
     @classmethod
     def delete_bundle(cls, filename):
         "Deletes a bundle."
-        if ase.parallel.rank == 0:
+        if world.rank == 0:
             # Only the master deletes
             if not cls.is_bundle(filename, allowempty=True):
                 raise IOError(
@@ -659,7 +631,7 @@ class BundleTrajectory:
         # The master may not proceed before all tasks have seen the
         # directory go away, as it might otherwise create a new bundle
         # with the same name, fooling the wait loop in _make_bundledir.
-        ase.parallel.barrier()
+        barrier()
 
     def _rename_bundle(self, oldname, newname):
         "Rename a bundle.  Used to create the .bak"
@@ -670,7 +642,7 @@ class BundleTrajectory:
                 time.sleep(1)
         # The master may not proceed before all tasks have seen the
         # directory go away.
-        ase.parallel.barrier()
+        barrier()
 
     def _make_bundledir(self, filename):
         """Make the main bundle directory.
@@ -680,7 +652,7 @@ class BundleTrajectory:
         """
         self.log('Making directory ' + filename)
         assert not os.path.isdir(filename)
-        ase.parallel.barrier()
+        barrier()
         if self.master:
             os.mkdir(filename)
         else:
@@ -713,7 +685,7 @@ class BundleTrajectory:
 
         All other arguments are stored, and passed to the function.
         """
-        if not isinstance(function, collections.Callable):
+        if not callable(function):
             raise ValueError('Callback object must be callable.')
         self.pre_observers.append((function, interval, args, kwargs))
 
@@ -726,7 +698,7 @@ class BundleTrajectory:
 
         All other arguments are stored, and passed to the function.
         """
-        if not isinstance(function, collections.Callable):
+        if not callable(function):
             raise ValueError('Callback object must be callable.')
         self.post_observers.append((function, interval, args, kwargs))
 
@@ -762,9 +734,8 @@ class UlmBundleBackend:
     def write_small(self, framedir, smalldata):
         "Write small data to be written jointly."
         if self.writesmall:
-            f = ulmopen(os.path.join(framedir, 'smalldata.ulm'), 'w')
-            f.write(**smalldata)
-            f.close()
+            with ulmopen(os.path.join(framedir, 'smalldata.ulm'), 'w') as fd:
+                fd.write(**smalldata)
 
     def write(self, framedir, name, data):
         "Write data to separate file."
@@ -801,35 +772,33 @@ class UlmBundleBackend:
                     stored_as = 'float32'
                     data = data.astype(np.float32)
             fn = os.path.join(framedir, name + '.ulm')
-            f = ulmopen(fn, 'w')
-            f.write(shape=shape,
-                    dtype=dtype,
-                    stored_as=stored_as,
-                    all_identical=all_identical,
-                    data=data)
-            f.close()
+            with ulmopen(fn, 'w') as fd:
+                fd.write(shape=shape,
+                         dtype=dtype,
+                         stored_as=stored_as,
+                         all_identical=all_identical,
+                         data=data)
+
 
     def read_small(self, framedir):
         "Read small data."
-        f = ulmopen(os.path.join(framedir, 'smalldata.ulm'), 'r')
-        data = f.asdict()
-        f.close()
-        return data
+        with ulmopen(os.path.join(framedir, 'smalldata.ulm'), 'r') as fd:
+            return fd.asdict()
 
     def read(self, framedir, name):
         "Read data from separate file."
         fn = os.path.join(framedir, name + '.ulm')
-        f = ulmopen(fn, 'r')
-        if f.all_identical:
-            # Only a single data value
-            data = np.zeros(f.shape, dtype=getattr(np, f.dtype)) + f.data
-        elif f.dtype == f.stored_as:
-            # Easy, the array can be returned as-is.
-            data = f.data
-        else:
-            # Cast the data back
-            data = f.data.astype(getattr(np, f.dtype))
-        f.close()
+        with ulmopen(fn, 'r') as fd:
+            if fd.all_identical:
+                # Only a single data value
+                data = np.zeros(fd.shape,
+                                dtype=getattr(np, fd.dtype)) + fd.data
+            elif fd.dtype == fd.stored_as:
+                # Easy, the array can be returned as-is.
+                data = fd.data
+            else:
+                # Cast the data back
+                data = fd.data.astype(getattr(np, fd.dtype))
         return data
 
     def read_info(self, framedir, name, split=None):
@@ -840,29 +809,27 @@ class UlmBundleBackend:
         """
         fn = os.path.join(framedir, name + '.ulm')
         if split is None or os.path.exists(fn):
-            f = ulmopen(fn, 'r')
-            info = odict()
-            info['shape'] = f.shape
-            info['type'] = f.dtype
-            info['stored_as'] = f.stored_as
-            info['identical'] = f.all_identical
-            f.close()
+            with ulmopen(fn, 'r') as fd:
+                info = dict()
+                info['shape'] = fd.shape
+                info['type'] = fd.dtype
+                info['stored_as'] = fd.stored_as
+                info['identical'] = fd.all_identical
             return info
         else:
-            info = odict()
+            info = dict()
             for i in range(split):
                 fn = os.path.join(framedir, name + '_' + str(i) + '.ulm')
-                f = ulmopen(fn, 'r')
-                if i == 0:
-                    info['shape'] = list(f.shape)
-                    info['type'] = f.dtype
-                    info['stored_as'] = f.stored_as
-                    info['identical'] = f.all_identical
-                else:
-                    info['shape'][0] += f.shape[0]
-                    assert info['type'] == f.dtype
-                    info['identical'] = info['identical'] and f.all_identical
-                f.close()
+                with ulmopen(fn, 'r') as fd:
+                    if i == 0:
+                        info['shape'] = list(fd.shape)
+                        info['type'] = fd.dtype
+                        info['stored_as'] = fd.stored_as
+                        info['identical'] = fd.all_identical
+                    else:
+                        info['shape'][0] += fd.shape[0]
+                        assert info['type'] == fd.dtype
+                        info['identical'] = info['identical'] and fd.all_identical
             info['shape'] = tuple(info['shape'])
             return info
 
@@ -897,132 +864,6 @@ class UlmBundleBackend:
         pass
 
 
-class PickleBundleBackend:
-    """Backend for BundleTrajectories stored as pickle files."""
-    def __init__(self, master):
-        # Store if this backend will actually write anything
-        self.writesmall = master
-        self.writelarge = master
-
-        # To be overwritten after the backend is initialized
-        self.readpy2 = False
-
-    def write_small(self, framedir, smalldata):
-        "Write small data to be written jointly."
-        if self.writesmall:
-            f = open(os.path.join(framedir, 'smalldata.pickle'), 'wb')
-            pickle.dump(smalldata, f, -1)
-            f.close()
-
-    def write(self, framedir, name, data):
-        "Write data to separate file."
-        if self.writelarge:
-            fn = os.path.join(framedir, name + '.pickle')
-            f = open(fn, 'wb')
-            try:
-                info = (data.shape, str(data.dtype))
-            except AttributeError:
-                info = None
-            pickle.dump(info, f, -1)
-            pickle.dump(data, f, -1)
-            f.close()
-
-    def read_small(self, framedir):
-        "Read small data."
-        f = open(os.path.join(framedir, 'smalldata.pickle'), 'rb')
-        if self.readpy2:
-            data = pickle.load(f, encoding='latin1')
-        else:
-            data = pickle.load(f)
-        f.close()
-        return data
-
-    def read(self, framedir, name):
-        "Read data from separate file."
-        fn = os.path.join(framedir, name + '.pickle')
-        f = open(fn, 'rb')
-        if self.readpy2:
-            pickle.load(f, encoding='latin1')  # Discarded.
-            data = pickle.load(f, encoding='latin1')
-        else:
-            pickle.load(f)  # Discarded.
-            data = pickle.load(f)
-        f.close()
-        return data
-
-    def read_info(self, framedir, name, split=None):
-        "Read information about file contents without reading the data."
-        fn = os.path.join(framedir, name + '.pickle')
-        if split is None or os.path.exists(fn):
-            f = open(fn, 'rb')
-            if self.readpy2:
-                info = pickle.load(f, encoding='latin1')
-            else:
-                info = pickle.load(f)
-            f.close()
-            result = odict()
-            result['shape'] = info[0]
-            result['type'] = info[1]
-            return result
-        else:
-            for i in range(split):
-                fn = os.path.join(framedir, name + '_' + str(i) + '.pickle')
-                f = open(fn, 'rb')
-                if self.readpy2:
-                    info = pickle.load(f, encoding='latin1')
-                else:
-                    info = pickle.load(f)
-                f.close()
-                if i == 0:
-                    shape = list(info[0])
-                    dtype = info[1]
-                else:
-                    shape[0] += info[0][0]
-                    assert dtype == info[1]
-            result = odict()
-            result['shape'] = info[0]
-            result['type'] = info[1]
-            return result
-
-    def set_fragments(self, nfrag):
-        self.nfrag = nfrag
-
-    def read_split(self, framedir, name):
-        """Read data from multiple files.
-
-        Falls back to reading from single file if that is how data is stored.
-
-        Returns the data and an object indicating if the data was really
-        read from split files.  The latter object is False if not read from
-        split files, but is an array of the segment length if split files
-        were used.
-        """
-        data = []
-        if os.path.exists(os.path.join(framedir, name + '.pickle')):
-            # Not stored in split form!
-            return (self.read(framedir, name), False)
-        for i in range(self.nfrag):
-            suf = '_%d' % (i,)
-            fn = os.path.join(framedir, name + suf + '.pickle')
-            f = open(fn, 'rb')
-            if self.readpy2:
-                pickle.load(f, encoding='latin1')  # Discarding the shape.
-                data.append(pickle.load(f, encoding='latin1'))
-            else:
-                pickle.load(f)  # Discarding the shape.
-                data.append(pickle.load(f))
-            f.close()
-        seglengths = [len(d) for d in data]
-        return (np.concatenate(data), seglengths)
-
-    def close(self, log=None):
-        """Close anything that needs to be closed by the backend.
-
-        The default backend does nothing here.
-        """
-        pass
-
-
 def read_bundletrajectory(filename, index=-1):
     """Reads one or more atoms objects from a BundleTrajectory.
 
@@ -1040,21 +881,25 @@ def read_bundletrajectory(filename, index=-1):
         yield traj[i]
 
 
-def write_bundletrajectory(filename, images):
+def write_bundletrajectory(filename, images, append=False):
     """Write image(s) to a BundleTrajectory.
 
     Write also energy, forces, and stress if they are already
     calculated.
     """
 
-    traj = BundleTrajectory(filename, mode='w')
+    if append:
+        mode = 'a'
+    else:
+        mode = 'w'
+    traj = BundleTrajectory(filename, mode=mode)
 
     if hasattr(images, 'get_positions'):
         images = [images]
 
     for atoms in images:
         # Avoid potentially expensive calculations:
-        calc = atoms.get_calculator()
+        calc = atoms.calc
         if hasattr(calc, 'calculation_required'):
             for quantity in ('energy', 'forces', 'stress', 'magmoms'):
                 traj.select_data(quantity,
@@ -1076,20 +921,15 @@ def print_bundletrajectory_info(filename):
         return
     # Read the metadata
     fn = os.path.join(filename, 'metadata.json')
-    if os.path.exists(fn):
-        f = open(fn, 'r')
-        metadata = jsonio.decode(f.read())
-    else:
-        fn = os.path.join(filename, 'metadata')
-        f = open(fn, 'rb')
-        metadata = pickle.load(f)
-    f.close()
+    with open(fn, 'r') as fd:
+        metadata = jsonio.decode(fd.read())
+
     print('Metadata information of BundleTrajectory "%s":' % (filename,))
     for k, v in metadata.items():
         if k != 'datatypes':
             print("  %s: %s" % (k, v))
-    f = open(os.path.join(filename, 'frames'), 'rb')
-    nframes = int(f.read())
+    with open(os.path.join(filename, 'frames'), 'rb') as fd:
+        nframes = int(fd.read())
     print('Number of frames: %i' % (nframes,))
     print('Data types:')
     for k, v in metadata['datatypes'].items():
@@ -1098,9 +938,7 @@ def print_bundletrajectory_info(filename):
         elif v:
             print('  %s: All frames.' % (k,))
     # Look at first frame
-    if metadata['backend'] == 'pickle':
-        backend = PickleBundleBackend(True)
-    elif metadata['backend'] == 'ulm':
+    if metadata['backend'] == 'ulm':
         backend = UlmBundleBackend(True, False)
     else:
         raise NotImplementedError('Backend %s not supported.'
@@ -1111,7 +949,7 @@ def print_bundletrajectory_info(filename):
     for k, v in small.items():
         if k == 'constraints':
             if v:
-                print('  %i constraints are present')
+                print('  {} constraints are present'.format(len(v)))
             else:
                 print('  Constraints are absent.')
         elif k == 'pbc':
@@ -1141,6 +979,9 @@ def print_bundletrajectory_info(filename):
             infoline = infoline[:-2] + '.'  # Fix punctuation.
             print(infoline)
 
+class PickleBundleBackend:
+    # Leave placeholder class so importing asap3 won't crash.
+    pass
 
 def main():
     import optparse

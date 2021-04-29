@@ -6,7 +6,7 @@ import time
 from ase.io import write, read
 
 
-class MultiprocessingRun(object):
+class MultiprocessingRun:
     """Class that allows for the simultaneous relaxation of
     several candidates on a cluster. Best used if each individual
     calculation is too small for using a queueing system.

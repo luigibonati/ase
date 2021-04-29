@@ -1,12 +1,11 @@
-from __future__ import print_function
-
+from typing import Optional, List
 import numpy as np
 
 from ase.db.core import float_to_time_string, now
 
 
 all_columns = ['id', 'age', 'user', 'formula', 'calculator',
-               'energy', 'fmax', 'pbc', 'volume',
+               'energy', 'natoms', 'fmax', 'pbc', 'volume',
                'charge', 'mass', 'smax', 'magmom']
 
 
@@ -69,8 +68,11 @@ class Table:
         self.right = None
         self.keys = None
         self.unique_key = unique_key
+        self.addcolumns: Optional[List[str]] = None
 
-    def select(self, query, columns, sort, limit, offset):
+    def select(self, query, columns, sort, limit, offset,
+               show_empty_columns=False):
+        """Query datatbase and create rows."""
         sql_columns = get_sql_columns(columns)
         self.limit = limit
         self.offset = offset
@@ -80,19 +82,21 @@ class Table:
                          limit=limit, offset=offset, sort=sort,
                          include_data=False, columns=sql_columns)]
 
-        delete = set(range(len(columns)))
-        for row in self.rows:
-            for n in delete.copy():
-                if row.values[n] is not None:
-                    delete.remove(n)
-        delete = sorted(delete, reverse=True)
-        for row in self.rows:
-            for n in delete:
-                del row.values[n]
-
         self.columns = list(columns)
-        for n in delete:
-            del self.columns[n]
+
+        if not show_empty_columns:
+            delete = set(range(len(columns)))
+            for row in self.rows:
+                for n in delete.copy():
+                    if row.values[n] is not None:
+                        delete.remove(n)
+            delete = sorted(delete, reverse=True)
+            for row in self.rows:
+                for n in delete:
+                    del row.values[n]
+
+            for n in delete:
+                del self.columns[n]
 
     def format(self, subscript=None):
         right = set()  # right-adjust numbers
@@ -149,9 +153,8 @@ class Row:
         self.dct = dct
         self.values = None
         self.strings = None
-        self.more = False
         self.set_columns(columns)
-        self.uid = dct[unique_key]
+        self.uid = getattr(dct, unique_key)
 
     def set_columns(self, columns):
         self.values = []
@@ -159,13 +162,10 @@ class Row:
             if c == 'age':
                 value = float_to_time_string(now() - self.dct.ctime)
             elif c == 'pbc':
-                value = ''.join('FT'[p] for p in self.dct.pbc)
+                value = ''.join('FT'[int(p)] for p in self.dct.pbc)
             else:
                 value = getattr(self.dct, c, None)
             self.values.append(value)
-
-    def toggle(self):
-        self.more = not self.more
 
     def format(self, columns, subscript=None):
         self.strings = []

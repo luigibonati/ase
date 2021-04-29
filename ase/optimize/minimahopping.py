@@ -2,7 +2,7 @@ import os
 import numpy as np
 from ase import io, units
 from ase.optimize import QuasiNewton
-from ase.parallel import paropen, rank, world
+from ase.parallel import paropen, world
 from ase.md import VelocityVerlet
 from ase.md import MDLogger
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
@@ -81,7 +81,7 @@ class MinimaHopping:
 
         status = np.array(-1.)
         exists = self._read_minima()
-        if rank == 0:
+        if world.rank == 0:
             if not exists:
                 # Fresh run with new minima file.
                 status = np.array(0.)
@@ -223,7 +223,7 @@ class MinimaHopping:
     def _log(self, cat='msg', message=None):
         """Records the message as a line in the log file."""
         if cat == 'init':
-            if rank == 0:
+            if world.rank == 0:
                 if os.path.exists(self._logfile):
                     raise RuntimeError('File exists: %s' % self._logfile)
             f = paropen(self._logfile, 'w')
@@ -253,17 +253,17 @@ class MinimaHopping:
     def _optimize(self):
         """Perform an optimization."""
         self._atoms.set_momenta(np.zeros(self._atoms.get_momenta().shape))
-        opt = self._optimizer(self._atoms,
-                              trajectory='qn%05i.traj' % self._counter,
-                              logfile='qn%05i.log' % self._counter)
-        self._log('msg', 'Optimization: qn%05i' % self._counter)
-        opt.run(fmax=self._fmax)
-        self._log('ene')
+        with self._optimizer(self._atoms,
+                             trajectory='qn%05i.traj' % self._counter,
+                             logfile='qn%05i.log' % self._counter) as opt:
+            self._log('msg', 'Optimization: qn%05i' % self._counter)
+            opt.run(fmax=self._fmax)
+            self._log('ene')
 
     def _record_minimum(self):
         """Adds the current atoms configuration to the minima list."""
-        traj = io.Trajectory(self._minima_traj, 'a')
-        traj.write(self._atoms)
+        with io.Trajectory(self._minima_traj, 'a') as traj:
+            traj.write(self._atoms)
         self._read_minima()
         self._log('msg', 'Recorded minima #%i.' % (len(self._minima) - 1))
 
@@ -273,8 +273,8 @@ class MinimaHopping:
         if exists:
             empty = os.path.getsize(self._minima_traj) == 0
             if not empty:
-                traj = io.Trajectory(self._minima_traj, 'r')
-                self._minima = [atoms for atoms in traj]
+                with io.Trajectory(self._minima_traj, 'r') as traj:
+                    self._minima = [atoms for atoms in traj]
             else:
                 self._minima = []
             return True
@@ -296,13 +296,13 @@ class MinimaHopping:
                           'qn%05i.traj.' % (resume, resume - 1))
                 atoms = io.read('qn%05i.traj' % (resume - 1), index=-1)
             else:
-                images = io.Trajectory('md%05i.traj' % resume, 'r')
-                for atoms in images:
-                    energies.append(atoms.get_potential_energy())
-                    oldpositions.append(atoms.positions.copy())
-                    passedmin = self._passedminimum(energies)
-                    if passedmin:
-                        mincount += 1
+                with io.Trajectory('md%05i.traj' % resume, 'r') as images:
+                    for atoms in images:
+                        energies.append(atoms.get_potential_energy())
+                        oldpositions.append(atoms.positions.copy())
+                        passedmin = self._passedminimum(energies)
+                        if passedmin:
+                            mincount += 1
                 self._atoms.set_momenta(atoms.get_momenta())
                 thermalized = True
             self._atoms.positions = atoms.get_positions()
@@ -310,24 +310,26 @@ class MinimaHopping:
                       len(energies))
         if not thermalized:
             MaxwellBoltzmannDistribution(self._atoms,
-                                         temp=self._temperature * units.kB,
+                                         temperature_K=self._temperature,
                                          force_temp=True)
         traj = io.Trajectory('md%05i.traj' % self._counter, 'a',
                              self._atoms)
         dyn = VelocityVerlet(self._atoms, timestep=self._timestep * units.fs)
         log = MDLogger(dyn, self._atoms, 'md%05i.log' % self._counter,
                        header=True, stress=False, peratom=False)
-        dyn.attach(log, interval=1)
-        dyn.attach(traj, interval=1)
-        while mincount < self._mdmin:
-            dyn.run(1)
-            energies.append(self._atoms.get_potential_energy())
-            passedmin = self._passedminimum(energies)
-            if passedmin:
-                mincount += 1
-            oldpositions.append(self._atoms.positions.copy())
-        # Reset atoms to minimum point.
-        self._atoms.positions = oldpositions[passedmin[0]]
+
+        with traj, dyn, log:
+            dyn.attach(log, interval=1)
+            dyn.attach(traj, interval=1)
+            while mincount < self._mdmin:
+                dyn.run(1)
+                energies.append(self._atoms.get_potential_energy())
+                passedmin = self._passedminimum(energies)
+                if passedmin:
+                    mincount += 1
+                oldpositions.append(self._atoms.positions.copy())
+            # Reset atoms to minimum point.
+            self._atoms.positions = oldpositions[passedmin[0]]
 
     def _unique_minimum_position(self):
         """Identifies if the current position of the atoms, which should be
@@ -495,9 +497,10 @@ class MHPlot:
     def _read_log(self):
         """Reads relevant parts of the log file."""
         data = []  # format: [energy, status, temperature, ediff]
-        f = open(os.path.join(self._rundirectory, self._logname), 'r')
-        lines = f.read().splitlines()
-        f.close()
+
+        with open(os.path.join(self._rundirectory, self._logname), 'r') as fd:
+            lines = fd.read().splitlines()
+
         step_almost_over = False
         step_over = False
         for line in lines:

@@ -1,16 +1,44 @@
 import numpy as np
 
 from ase.md.md import MolecularDynamics
-
+import warnings
 
 class VelocityVerlet(MolecularDynamics):
     def __init__(self, atoms, timestep=None, trajectory=None, logfile=None,
                  loginterval=1, dt=None, append_trajectory=False):
-        # FloK: rename dt -> timestep and make sure nobody is affected
+        """Molecular Dynamics object.
+
+        Parameters:
+
+        atoms: Atoms object
+            The Atoms object to operate on.
+
+        timestep: float
+            The time step in ASE time units.
+
+        trajectory: Trajectory object or str  (optional)
+            Attach trajectory object.  If *trajectory* is a string a
+            Trajectory will be constructed.  Default: None.
+
+        logfile: file object or str (optional)
+            If *logfile* is a string, a file with that name will be opened.
+            Use '-' for stdout.  Default: None.
+
+        loginterval: int (optional)
+            Only write a log line for every *loginterval* time steps.  
+            Default: 1
+
+        append_trajectory: boolean
+            Defaults to False, which causes the trajectory file to be
+            overwriten each time the dynamics is restarted from scratch.
+            If True, the new structures are appended to the trajectory
+            file instead.
+
+        dt: float (deprecated)
+            Alias for timestep.
+        """
         if dt is not None:
-            import warnings
-            warnings.warn('dt variable is deprecated; please use timestep.',
-                          DeprecationWarning)
+            warnings.warn(FutureWarning('dt variable is deprecated; please use timestep.'))
             timestep = dt
         if timestep is None:
             raise TypeError('Missing timestep argument')
@@ -19,15 +47,15 @@ class VelocityVerlet(MolecularDynamics):
                                    loginterval,
                                    append_trajectory=append_trajectory)
 
-    def step(self, f=None):
+    def step(self, forces=None):
 
         atoms = self.atoms
 
-        if f is None:
-            f = atoms.get_forces()
+        if forces is None:
+            forces = atoms.get_forces(md=True)
 
         p = atoms.get_momenta()
-        p += 0.5 * self.dt * f
+        p += 0.5 * self.dt * forces
         masses = atoms.get_masses()[:, np.newaxis]
         r = atoms.get_positions()
 
@@ -43,8 +71,8 @@ class VelocityVerlet(MolecularDynamics):
         # migrate along with the atoms.
         atoms.set_momenta(p, apply_constraint=False)
 
-        f = atoms.get_forces(md=True)
+        forces = atoms.get_forces(md=True)
 
         # Second part of RATTLE will be done here:
-        atoms.set_momenta(atoms.get_momenta() + 0.5 * self.dt * f)
-        return f
+        atoms.set_momenta(atoms.get_momenta() + 0.5 * self.dt * forces)
+        return forces

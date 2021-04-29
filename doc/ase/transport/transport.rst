@@ -88,6 +88,6 @@ For an example of how to use the :mod:`ase.transport` module, see section 9.2
 in the ASE-paper:
 
   J. Phys. Condens. Matter:
-  `The Atomic Simulation Environment | A Python library for working with
-  atoms <https://doi.org/10.1088/1361-648X/aa680e>`__
+  :doi:`The Atomic Simulation Environment | A Python library for working with
+  atoms <10.1088/1361-648X/aa680e>`
   (7 June 2017).

@@ -35,19 +35,20 @@ class GULPOptimizer:
         self.calc.set(**gulp_kwargs)
         self.atoms.calc = self.calc
         self.atoms.get_potential_energy()
+        self.atoms.cell = self.calc.get_atoms().cell
         self.atoms.positions[:] = self.calc.get_atoms().positions
 
 
 class GULP(FileIOCalculator):
-    implemented_properties = ['energy', 'forces']
+    implemented_properties = ['energy', 'forces', 'stress']
     command = 'gulp < PREFIX.gin > PREFIX.got'
+    discard_results_on_any_change = True
     default_parameters = dict(
         keywords='conp gradients',
         options=[],
         shel=[],
         library="ffsioh.lib",
-        conditions=None
-        )
+        conditions=None)
 
     def get_optimizer(self, atoms):
         gulp_keywords = self.parameters.keywords.split()
@@ -61,23 +62,20 @@ class GULP(FileIOCalculator):
 
 #conditions=[['O', 'default', 'O1'], ['O', 'O2', 'H', '<', '1.6']]
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=FileIOCalculator._deprecated,
                  label='gulp', atoms=None, optimized=None,
                  Gnorm=1000.0, steps=1000, conditions=None, **kwargs):
         """Construct GULP-calculator object."""
         FileIOCalculator.__init__(self, restart, ignore_bad_restart_file,
                                   label, atoms, **kwargs)
-        self.optimized  = optimized
-        self.Gnorm      = Gnorm
-        self.steps      = steps
+        self.optimized = optimized
+        self.Gnorm = Gnorm
+        self.steps = steps
         self.conditions = conditions
         self.library_check()
         self.atom_types = []
-
-    def set(self, **kwargs):
-        changed_parameters = FileIOCalculator.set(self, **kwargs)
-        if changed_parameters:
-            self.reset()
+        self.fractional_coordinates = None # GULP prints the fractional coordinates before the Final lattice vectors so they need to be stored and then atoms positions need to be set after we get the Final lattice vectors
 
     def write_input(self, atoms, properties=None, system_changes=None):
         FileIOCalculator.write_input(self, atoms, properties, system_changes)
@@ -88,7 +86,7 @@ class GULP(FileIOCalculator):
         s += '\ntitle\nASE calculation\nend\n\n'
 
         if all(self.atoms.pbc):
-            cell_params = self.atoms.get_cell_lengths_and_angles()
+            cell_params = self.atoms.cell.cellpar()
             # Formating is necessary since Gulp max-line-length restriction
             s += 'cell\n{0:9.6f} {1:9.6f} {2:9.6f} ' \
                  '{3:8.5f} {4:8.5f} {5:8.5f}\n'.format(*cell_params)
@@ -160,6 +158,40 @@ class GULP(FileIOCalculator):
                 forces = np.array(forces)
                 self.results['forces'] = forces
 
+            elif line.find('Final internal derivatives') != -1:
+                s = i + 5
+                forces = []
+                while(True):
+                    s = s + 1
+                    if lines[s].find("------------") != -1:
+                        break
+                    g = lines[s].split()[3:6]
+
+                    # Uncomment the section below to separate the numbers when there is no space between them, in the case of long numbers. This prevents the code to break if numbers are too big.
+
+                    '''for t in range(3-len(g)):
+                        g.append(' ')
+                    for j in range(2):
+                        min_index=[i+1 for i,e in enumerate(g[j][1:]) if e == '-']
+                        if j==0 and len(min_index) != 0:
+                            if len(min_index)==1:
+                                g[2]=g[1]
+                                g[1]=g[0][min_index[0]:]
+                                g[0]=g[0][:min_index[0]]
+                            else:
+                                g[2]=g[0][min_index[1]:]
+                                g[1]=g[0][min_index[0]:min_index[1]]
+                                g[0]=g[0][:min_index[0]]
+                                break
+                        if j==1 and len(min_index) != 0:
+                            g[2]=g[1][min_index[0]:]
+                            g[1]=g[1][:min_index[0]]'''
+
+                    G = [-float(x) * eV / Ang for x in g]
+                    forces.append(G)
+                forces = np.array(forces)
+                self.results['forces'] = forces
+
             elif line.find('Final cartesian coordinates of atoms') != -1:
                 s = i + 5
                 positions = []
@@ -174,6 +206,42 @@ class GULP(FileIOCalculator):
                     positions.append(XYZ)
                 positions = np.array(positions)
                 self.atoms.set_positions(positions)
+
+            elif line.find('Final stress tensor components') != -1:
+                res=[0.,0.,0.,0.,0.,0.]
+                for j in range(3):
+                    var=lines[i+j+3].split()[1]
+                    res[j]=float(var)
+                    var=lines[i+j+3].split()[3]
+                    res[j+3]=float(var)
+                stress=np.array(res)
+                self.results['stress']=stress
+
+            elif line.find('Final Cartesian lattice vectors') != -1:
+                lattice_vectors = np.zeros((3,3))
+                s = i + 2
+                for j in range(s, s+3):
+                    temp=lines[j].split()
+                    for k in range(3):
+                        lattice_vectors[j-s][k]=float(temp[k])
+                self.atoms.set_cell(lattice_vectors)
+                if self.fractional_coordinates is not None:
+                    self.fractional_coordinates = np.array(self.fractional_coordinates)
+                    self.atoms.set_scaled_positions(self.fractional_coordinates)
+
+            elif line.find('Final fractional coordinates of atoms') != -1:
+                s = i + 5
+                scaled_positions = []
+                while True:
+                    s = s + 1
+                    if lines[s].find("------------") != -1:
+                        break
+                    if lines[s].find(" s ") != -1:
+                        continue
+                    xyz = lines[s].split()[3:6]
+                    XYZ = [float(x) for x in xyz]
+                    scaled_positions.append(XYZ)
+                self.fractional_coordinates = scaled_positions
 
         self.steps = cycles
 
@@ -249,7 +317,7 @@ class Conditions:
         # atom_symbol
         #
         # Example: [['O','O1','O2'],['H', 'H_C', 'H_O']]
-        # this beacuse Atoms oject accept only atoms symbols
+        # this because Atoms oject accept only atoms symbols
         self.atom_types.append([sym1, ifcloselabel1, elselabel1])
         self.atom_types.append([sym2, ifcloselabel2])
 

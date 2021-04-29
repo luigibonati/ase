@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 # ******NOTICE***************
 # optimize.py module by Travis E. Oliphant
 #
@@ -12,8 +10,6 @@ import numpy as np
 from numpy import eye, absolute, sqrt, isinf
 from ase.utils.linesearch import LineSearch
 from ase.optimize.optimize import Optimizer
-from ase.utils import basestring
-
 
 # These have been copied from Numeric's MLab.py
 # I don't think they made the transition to scipy_core
@@ -26,7 +22,7 @@ __version__ = '0.1'
 
 
 class BFGSLineSearch(Optimizer):
-    def __init__(self, atoms, restart=None, logfile='-', maxstep=.2,
+    def __init__(self, atoms, restart=None, logfile='-', maxstep=None,
                  trajectory=None, c1=0.23, c2=0.46, alpha=10.0, stpmax=50.0,
                  master=None, force_consistent=None):
         """Optimize atomic positions in the BFGSLineSearch algorithm, which
@@ -63,7 +59,10 @@ class BFGSLineSearch(Optimizer):
             force-consistent energies if available in the calculator, but
             falls back to force_consistent=False if not.
         """
-        self.maxstep = maxstep
+        if maxstep is None:
+            self.maxstep = self.defaults['maxstep']
+        else:
+            self.maxstep = maxstep
         self.stpmax = stpmax
         self.alpha = alpha
         self.H = None
@@ -83,14 +82,13 @@ class BFGSLineSearch(Optimizer):
         self.replay = False
 
         Optimizer.__init__(self, atoms, restart, logfile, trajectory,
-                           master, force_consistent)
+                           master, force_consistent=force_consistent)
 
     def read(self):
         self.r0, self.g0, self.e0, self.task, self.H = self.load()
         self.load_restart = True
 
     def reset(self):
-        print('reset')
         self.H = None
         self.r0 = None
         self.g0 = None
@@ -185,20 +183,28 @@ class BFGSLineSearch(Optimizer):
     def replay_trajectory(self, traj):
         """Initialize hessian from old trajectory."""
         self.replay = True
-        if isinstance(traj, basestring):
+
+        closelater = None
+
+        if isinstance(traj, str):
             from ase.io.trajectory import Trajectory
-            traj = Trajectory(traj, 'r')
-        r0 = None
-        g0 = None
-        for i in range(0, len(traj) - 1):
-            r = traj[i].get_positions().ravel()
-            g = - traj[i].get_forces().ravel() / self.alpha
-            self.update(r, g, r0, g0, self.p)
-            self.p = -np.dot(self.H, g)
-            r0 = r.copy()
-            g0 = g.copy()
-        self.r0 = r0
-        self.g0 = g0
+            traj = closelater = Trajectory(traj, 'r')
+
+        try:
+            r0 = None
+            g0 = None
+            for i in range(0, len(traj) - 1):
+                r = traj[i].get_positions().ravel()
+                g = - traj[i].get_forces().ravel() / self.alpha
+                self.update(r, g, r0, g0, self.p)
+                self.p = -np.dot(self.H, g)
+                r0 = r.copy()
+                g0 = g.copy()
+            self.r0 = r0
+            self.g0 = g0
+        finally:
+            if closelater is not None:
+                closelater.close()
 
     def log(self, forces=None):
         if self.logfile is None:

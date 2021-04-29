@@ -1,4 +1,3 @@
-# encoding: utf-8
 # VelocityDistributions.py -- set up a velocity distribution
 
 """Module for setting up velocity distributions such as Maxwell–Boltzmann.
@@ -13,40 +12,122 @@ temperature.
 import numpy as np
 from ase.parallel import world
 from ase import units
+from ase.md.md import process_temperature
+
+# define a ``zero'' temperature to avoid divisions by zero
+eps_temp = 1e-12
 
 
-def _maxwellboltzmanndistribution(
-    masses, temp, communicator=world, rng=np.random
-):
-    # For parallel GPAW simulations, the random velocities should be
-    # distributed.  Uses gpaw world communicator as default, but allow
-    # option of specifying other communicator (for ensemble runs)
+class UnitError(Exception):
+    """Exception raised when wrong units are specified"""
+
+
+def force_temperature(atoms, temperature, unit="K"):
+    """ force (nucl.) temperature to have a precise value
+
+    Parameters:
+    atoms: ase.Atoms
+        the structure
+    temperature: float
+        nuclear temperature to set
+    unit: str
+        'K' or 'eV' as unit for the temperature
+    """
+
+    if unit == "K":
+        E_temp = temperature * units.kB
+    elif unit == "eV":
+        E_temp = temperature
+    else:
+        raise UnitError("'{}' is not supported, use 'K' or 'eV'.".format(unit))
+
+    if temperature > eps_temp:
+        E_kin0 = atoms.get_kinetic_energy() / len(atoms) / 1.5
+        gamma = E_temp / E_kin0
+    else:
+        gamma = 0.0
+    atoms.set_momenta(atoms.get_momenta() * np.sqrt(gamma))
+
+
+def _maxwellboltzmanndistribution(masses, temp, communicator=None, rng=None):
+    """Return a Maxwell-Boltzmann distribution with a given temperature.
+
+    Paremeters:
+
+    masses: float
+        The atomic masses.
+
+    temp: float
+        The temperature in electron volt.
+
+    communicator: MPI communicator (optional)
+        Communicator used to distribute an identical distribution to 
+        all tasks.  Set to 'serial' to disable communication (setting to None
+        gives the default).  Default: ase.parallel.world
+
+    rng: numpy RNG (optional)
+        The random number generator.  Default: np.random
+
+    Returns:
+
+    A numpy array with Maxwell-Boltzmann distributed momenta.
+    """
+    if rng is None:
+        rng = np.random
+    if communicator is None:
+        communicator = world
     xi = rng.standard_normal((len(masses), 3))
-    communicator.broadcast(xi, 0)
+    if communicator != 'serial':
+        communicator.broadcast(xi, 0)
     momenta = xi * np.sqrt(masses * temp)[:, np.newaxis]
     return momenta
 
 
 def MaxwellBoltzmannDistribution(
-    atoms, temp, communicator=world, force_temp=False, rng=np.random
+    atoms, temp=None, *, temperature_K=None,
+    communicator=None, force_temp=False,
+    rng=None
 ):
     """Sets the momenta to a Maxwell-Boltzmann distribution.
 
-    temp should be fed in energy units; i.e., for 300 K use
-    temp=300.*units.kB. If force_temp is set to True, it scales the
-    random momenta such that the temperature request is precise."""
-    momenta = _maxwellboltzmanndistribution(
-        atoms.get_masses(), temp, communicator, rng
-    )
+    Parameters:
+
+    atoms: Atoms object
+        The atoms.  Their momenta will be modified.
+
+    temp: float (deprecated)
+        The temperature in eV.  Deprecated, used temperature_K instead.
+
+    temperature_K: float
+        The temperature in Kelvin.
+
+    communicator: MPI communicator (optional)
+        Communicator used to distribute an identical distribution to
+        all tasks.  Set to 'serial' to disable communication.  Leave as None to
+        get the default: ase.parallel.world
+
+    force_temp: bool (optinal, default: False)
+        If True, random the momenta are rescaled so the kinetic energy is 
+        exactly 3/2 N k T.  This is a slight deviation from the correct
+        Maxwell-Boltzmann distribution.
+
+    rng: Numpy RNG (optional)
+        Random number generator.  Default: numpy.random
+    """
+    temp = units.kB * process_temperature(temp, temperature_K, 'eV')
+    masses = atoms.get_masses()
+    momenta = _maxwellboltzmanndistribution(masses, temp, communicator, rng)
     atoms.set_momenta(momenta)
     if force_temp:
-        temp0 = atoms.get_kinetic_energy() / len(atoms) / 1.5
-        gamma = temp / temp0
-        atoms.set_momenta(atoms.get_momenta() * np.sqrt(gamma))
+        force_temperature(atoms, temperature=temp, unit="eV")
 
 
-def Stationary(atoms):
+def Stationary(atoms, preserve_temperature=True):
     "Sets the center-of-mass momentum to zero."
+
+    # Save initial temperature
+    temp0 = atoms.get_temperature()
+
     p = atoms.get_momenta()
     p0 = np.sum(p, 0)
     # We should add a constant velocity, not momentum, to the atoms
@@ -56,9 +137,16 @@ def Stationary(atoms):
     p -= v0 * m[:, np.newaxis]
     atoms.set_momenta(p)
 
+    if preserve_temperature:
+        force_temperature(atoms, temp0)
 
-def ZeroRotation(atoms):
+
+def ZeroRotation(atoms, preserve_temperature=True):
     "Sets the total angular momentum to zero by counteracting rigid rotations."
+
+    # Save initial temperature
+    temp0 = atoms.get_temperature()
+
     # Find the principal moments of inertia and principal axes basis vectors
     Ip, basis = atoms.get_moments_of_inertia(vectors=True)
     # Calculate the total angular momentum and transform to principal basis
@@ -72,6 +160,9 @@ def ZeroRotation(atoms):
     positions -= com  # translate center of mass to origin
     velocities = atoms.get_velocities()
     atoms.set_velocities(velocities - np.cross(omega, positions))
+
+    if preserve_temperature:
+        force_temperature(atoms, temp0)
 
 
 def n_BE(temp, omega):
@@ -89,7 +180,7 @@ def n_BE(temp, omega):
     omega = np.asarray(omega)
 
     # 0K limit
-    if temp < 1e-12:
+    if temp < eps_temp:
         n = np.zeros_like(omega)
     else:
         n = 1 / (np.exp(omega / (temp)) - 1)
@@ -99,7 +190,9 @@ def n_BE(temp, omega):
 def phonon_harmonics(
     force_constants,
     masses,
-    temp,
+    temp=None,
+    *,
+    temperature_K=None,
     rng=np.random.rand,
     quantum=False,
     plus_minus=False,
@@ -112,31 +205,42 @@ def phonon_harmonics(
 
     force_constants: array of size 3N x 3N
         force constants (Hessian) of the system in eV/Å²
+
     masses: array of length N
         masses of the structure in amu
-    temp: float
-        Temperature converted to eV (T * units.kB)
+
+    temp: float (deprecated)
+        Temperature converted to eV (T * units.kB).  Deprecated, use 
+        ``temperature_K``.
+
+    temperature_K: float
+        Temperature in Kelvin.
+
     rng: function
         Random number generator function, e.g., np.random.rand
+
     quantum: bool
         True for Bose-Einstein distribution, False for Maxwell-Boltzmann
         (classical limit)
+
     plus_minus: bool
         Displace atoms with +/- the amplitude accoding to PRB 94, 075125
+
     return_eigensolution: bool
         return eigenvalues and eigenvectors of the dynamical matrix
+
     failfast: bool
         True for sanity checking the phonon spectrum for negative
         frequencies at Gamma
 
     Returns:
 
-        displacements, velocities generated from the eigenmodes,
-        (optional: eigenvalues, eigenvectors of dynamical matrix)
+    Displacements, velocities generated from the eigenmodes,
+    (optional: eigenvalues, eigenvectors of dynamical matrix)
 
     Purpose:
 
-        Excite phonon modes to specified temperature.
+    Excite phonon modes to specified temperature.
 
     This excites all phonon modes randomly so that each contributes,
     on average, equally to the given temperature.  Both potential
@@ -172,6 +276,9 @@ def phonon_harmonics(
     Reference: [West, Estreicher; PRL 96, 22 (2006)]
     """
 
+    # Handle the temperature units
+    temp = units.kB * process_temperature(temp, temperature_K, 'eV')
+
     # Build dynamical matrix
     rminv = (masses ** -0.5).repeat(3)
     dynamical_matrix = force_constants * rminv[:, None] * rminv[None, :]
@@ -184,17 +291,13 @@ def phonon_harmonics(
         zeros = w2_s[:3]
         worst_zero = np.abs(zeros).max()
         if worst_zero > 1e-3:
-            raise ValueError(
-                "Translational modes have suspiciously large "
-                "energies; should be close to zero: {}".format(w2_s[:3])
-            )
+            msg = "Translational deviate from 0 significantly: "
+            raise ValueError(msg + "{}".format(w2_s[:3]))
 
         w2min = w2_s[3:].min()
         if w2min < 0:
-            raise ValueError(
-                "Dynamical matrix has negative eigenvalues "
-                "such as {}".format(w2min)
-            )
+            msg = "Dynamical matrix has negative eigenvalues such as "
+            raise ValueError(msg + "{}".format(w2min))
 
     # First three modes are translational so ignore:
     nw = len(w2_s) - 3
@@ -264,7 +367,9 @@ def phonon_harmonics(
 def PhononHarmonics(
     atoms,
     force_constants,
-    temp,
+    temp=None,
+    *,
+    temperature_K=None,
     rng=np.random,
     quantum=False,
     plus_minus=False,
@@ -280,16 +385,24 @@ def PhononHarmonics(
     Parameters:
 
     atoms: ase.atoms.Atoms() object
-        Grumble
+        Positions and momenta of this object are perturbed.
+
     force_constants: ndarray of size 3N x 3N
         Force constants for the the structure represented by atoms in eV/Å²
-    temp: float
-        Temperature in eV (T * units.kB)
+
+    temp: float (deprecated).
+        Temperature in eV.  Deprecated, use ``temperature_K`` instead.
+
+    temperature_K: float
+        Temperature in Kelvin.
+
     rng: Random number generator
         RandomState or other random number generator, e.g., np.random.rand
+
     quantum: bool
         True for Bose-Einstein distribution, False for Maxwell-Boltzmann
         (classical limit)
+
     failfast: bool
         True for sanity checking the phonon spectrum for negative frequencies
         at Gamma.
@@ -301,6 +414,7 @@ def PhononHarmonics(
         force_constants=force_constants,
         masses=atoms.get_masses(),
         temp=temp,
+        temperature_K=temperature_K,
         rng=rng.rand,
         plus_minus=plus_minus,
         quantum=quantum,

@@ -3,7 +3,7 @@ based on population stagnation or max raw score reached"""
 from ase.ga import get_raw_score
 
 
-class Convergence(object):
+class Convergence:
     """
     Base class for all convergence object to be based on.
     It is necessary to supply the population instance, to be
@@ -94,7 +94,7 @@ class RawScoreConvergence(Convergence):
         return False
 
         
-class NeverConvergence(object):
+class NeverConvergence:
     """Test class that never converges."""
     def __init__(self):
         pass
