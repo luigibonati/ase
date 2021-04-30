@@ -245,7 +245,6 @@ He He_test.usp"""
     assert pfi[1][0][0] == 'H'
     assert np.isclose(pfi[1][0][1], a.get_scaled_positions()[0]).all()
 
-
     # Test example conflict
     ccell.kpoint_mp_grid = '3 3 3'
     with pytest.warns(UserWarning):

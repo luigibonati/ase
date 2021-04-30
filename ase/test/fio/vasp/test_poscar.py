@@ -16,7 +16,6 @@ def poscar_no_species(datadir):
     return datadir / 'vasp' / 'POSCAR_example_1'
 
 
-
 def test_read_poscar_no_species(outcar, poscar_no_species, tmp_path):
     copyfile(outcar, tmp_path / 'OUTCAR')
     copyfile(poscar_no_species, tmp_path / 'POSCAR')

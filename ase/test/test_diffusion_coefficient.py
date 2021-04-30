@@ -19,7 +19,6 @@ def test_atom():
     traj_he = [he.copy() for i in range(2)]
     traj_he[1].set_positions([(1, 1, 1)])
 
-
     dc_he = DiffusionCoefficient(traj_he, timestep)
     dc_he.calculate(ignore_n_images=0, number_of_segments=1)
     ans = dc_he.get_diffusion_coefficients()[0][0]

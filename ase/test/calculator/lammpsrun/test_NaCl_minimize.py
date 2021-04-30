@@ -17,7 +17,6 @@ def test_NaCl_minimize(factory):
     # Buckingham parameters from
     # https://physics.stackexchange.com/questions/250018
 
-
     pair_style = 'buck/coul/long 12.0'
     pair_coeff = ['1 1 3796.9 0.2603 124.90']
     pair_coeff += ['2 2 1227.2 0.3214 124.90']

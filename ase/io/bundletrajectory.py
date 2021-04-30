@@ -779,7 +779,6 @@ class UlmBundleBackend:
                          all_identical=all_identical,
                          data=data)
 
-
     def read_small(self, framedir):
         "Read small data."
         with ulmopen(os.path.join(framedir, 'smalldata.ulm'), 'r') as fd:

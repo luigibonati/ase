@@ -17,7 +17,6 @@ def test_h2o_xas_xes():
     basis = {'all': 'aug-cc-pvdz'}
     auxis = {'all': 'GEN-A2*'}
 
-
     # XAS hch
     input_arguments = {'GRID': 'FINE',
                        'MOMODIFY': [[1, 0],
@@ -71,7 +70,6 @@ def test_h2o_xas_xes():
 
     tol = 1.0e-4
     assert(error < tol)
-
 
     # XES
     input_arguments = {'GRID': 'FINE',
@@ -142,7 +140,6 @@ def test_h2o_xas_xes():
 
     atoms.calc = calc
 
-
     # energy
     print('')
     print('XPS')
@@ -172,7 +169,6 @@ def test_h2o_xas_xes():
 
     atoms.calc = calc
 
-
     # energy
     print('')
     print('EXC')
@@ -186,6 +182,5 @@ def test_h2o_xas_xes():
 
     tol = 1.0e-4
     assert(error < tol)
-
 
     print('tests passed')

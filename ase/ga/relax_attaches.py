@@ -39,7 +39,6 @@ class VariansBreak:
             self.dyn.converged = lambda x: True
 
 
-
 class DivergenceBreak:
 
     """ Helper class which can be attached to a structure optimization,

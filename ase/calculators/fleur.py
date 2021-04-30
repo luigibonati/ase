@@ -53,7 +53,6 @@ class FLEUR:
                  width=None, kmax=None, mixer=None, maxiter=None,
                  maxrelax=20, workdir=None, equivatoms=True, rmt=None,
                  lenergy=None):
-
         """Construct FLEUR-calculator object.
 
         Parameters
@@ -160,7 +159,6 @@ class FLEUR:
             if stat != 0:
                 os.chdir(self.start_dir)
                 raise RuntimeError(executable_use + ' exited with a code %d' % stat)
-
 
     def update(self, atoms):
         """Update a FLEUR calculation."""
@@ -326,7 +324,6 @@ class FLEUR:
                 os.chdir(self.start_dir)
                 raise RuntimeError('Failed to relax in %d iterations' % self.maxrelax)
             self.converged = False
-
 
     def write_inp(self, atoms):
         """Write the *inp* input file of FLEUR.

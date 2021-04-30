@@ -93,7 +93,7 @@ max_errors = {
     # ambiguous variable name 'O'
     'E741': 77,
     # too many blank lines (2)
-    'E303': 188,
+    'E303': 0,
     # expected 2 blank lines after class or function definition, found 1
     'E305': 0,
     # module level import not at top of file

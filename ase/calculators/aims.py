@@ -234,7 +234,6 @@ class Aims(FileIOCalculator):
             # we go for the FileIOCalculator default way (env variable) with the former default as fallback
             command = os.environ.get('ASE_AIMS_COMMAND', Aims.__command_default)
 
-
         # filter the command and set the member variables "aims_command" and "outfilename"
         self.__init_command(command=command,
                             aims_command=aims_command,
@@ -440,7 +439,6 @@ class Aims(FileIOCalculator):
                 s = '#     {} : {}\n'.format(p, v)
                 output.write(s)
         output.write(lim + '\n')
-
 
         assert not ('kpts' in self.parameters and 'k_grid' in self.parameters)
         assert not ('smearing' in self.parameters and

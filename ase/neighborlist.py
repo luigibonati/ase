@@ -114,7 +114,6 @@ def get_distance_indices(distanceMatrix, distance):
     return indices
 
 
-
 def mic(dr, cell, pbc=True):
     """
     Apply minimum image convention to an array of distance vectors.

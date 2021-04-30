@@ -175,7 +175,6 @@ class ACE(FileIOCalculator):
                     for val in section_param:
                         fpt.write('    ' * depth + str(section) + " " + str(val) + "\n")
 
-
     def write_acemolecule_input(self, fpt, param, depth=0):
         '''Write ACE-Molecule input
 

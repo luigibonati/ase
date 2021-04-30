@@ -3,14 +3,12 @@ def test_bravais_lattices():
     from ase.lattice import (bravais_lattices, all_variants,
                              get_lattice_from_canonical_cell)
 
-
     for name in bravais_lattices:
         latcls = bravais_lattices[name]
         assert latcls.name == name
         assert latcls.longname is not None
         for par in latcls.parameters:
             assert par in ['a', 'b', 'c', 'alpha', 'beta', 'gamma']
-
 
     for lat in all_variants():
         print(lat.variant)

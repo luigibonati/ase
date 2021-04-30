@@ -61,7 +61,6 @@ class SiestaLRTDDFT:
         atoms.calc = siesta
         atoms.get_potential_energy()
 
-
     def get_polarizability(self, omega, Eext=np.array([1.0, 1.0, 1.0]), inter=True):
         """
         Calculate the polarizability of a molecule via linear response TDDFT
@@ -147,7 +146,6 @@ class RamanCalculatorInterface(SiestaLRTDDFT):
 
         self.omega = omega
         super().__init__(**kw)
-
 
     def __call__(self, *args, **kwargs):
         """Shorthand for calculate"""

@@ -36,7 +36,6 @@ class TriclinicFactory(Bravais):
                                 _refstate[self.atomicnumber]['symmetry']))
         return _refstate[self.atomicnumber].copy()
 
-
     def make_crystal_basis(self):
         "Make the basis matrix for the crystal unit cell and the system unit cell."
         lattice = self.latticeconstant

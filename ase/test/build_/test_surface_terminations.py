@@ -13,7 +13,6 @@ def test_surface_terminations():
     slb = surface(rutile, indices=(1, 1, 0), layers=4, vacuum=10)
     slb *= (1, 2, 1)
 
-
     def check_surf_composition(images, formula):
         for atoms in images:
             zmax = atoms.positions[:, 2].max()
@@ -21,13 +20,11 @@ def test_surface_terminations():
             red_formula, _ = sym.formula.reduce()
             assert red_formula == formula
 
-
     images = surfaces_with_termination(rutile,
                                        indices=(1, 1, 0),
                                        layers=4,
                                        vacuum=10,
                                        termination='O')
-
 
     check_surf_composition(images, 'O')
 

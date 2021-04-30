@@ -189,9 +189,6 @@ class Demon(FileIOCalculator):
             raise RuntimeError(
                 "{0} doesn't exist".format(fromdir + '/' + filename))
 
-
-
-
     def calculate(self,
                   atoms=None,
                   properties=['energy'],
@@ -240,7 +237,6 @@ class Demon(FileIOCalculator):
             else:
                 raise RuntimeError(
                     "{0} doesn't exist".format(abspath + '/deMon.rst'))
-
 
         abspath = op.abspath(basis_path)
 
@@ -650,7 +646,6 @@ class Demon(FileIOCalculator):
     def read_xray(self):
         """Read deMon.xry if present."""
 
-
         # try to read core IP from, .out file
         filename = self.label + '/deMon.out'
         core_IP = None
@@ -675,8 +670,6 @@ class Demon(FileIOCalculator):
                             'core_IP': core_IP}
 
             self.results['xray'] = xray_results
-
-
 
     def deMon_inp_to_atoms(self, filename):
         """Routine to read deMon.inp and convert it to an atoms object."""

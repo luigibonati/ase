@@ -28,7 +28,6 @@ def test_analysis():
 
     assert len(ana.get_angles('C', 'C', 'H', unique=False)[0]) == len(ana.get_angles('C', 'C', 'H', unique=True)[0])*2
 
-
     csixty = molecule('C60')
     mol = molecule('C7NH5')
 

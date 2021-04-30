@@ -11,7 +11,6 @@ def test_root_surf():
     from ase.build import root_surface
     from ase.build import root_surface_analysis
 
-
     # Manually checked set of roots for FCC111
     fcc111_21_set = set([1, 3, 4, 7, 9, 12, 13, 16, 19, 21])
 

@@ -351,7 +351,6 @@ class CRYSTAL(FileIOCalculator):
         # debye to e*Ang
         self.results['dipole'] = dipole * 0.2081943482534
 
-
     def embed(self, mmcharges=None, directory='./'):
         """Embed atoms in point-charges (mmcharges)
         """
