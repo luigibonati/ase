@@ -3,6 +3,7 @@ to make the relaxations run more smoothly."""
 from math import sqrt
 import numpy as np
 
+
 class VariansBreak:
 
     """ Helper class which can be attached to a structure optimization,

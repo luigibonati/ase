@@ -84,6 +84,7 @@ class SimpleCubicFactory(Bravais):
 
 SimpleCubic = SimpleCubicFactory()
 
+
 class FaceCenteredCubicFactory(SimpleCubicFactory):
     "A factory for creating face-centered cubic lattices."
 
@@ -100,6 +101,7 @@ class FaceCenteredCubicFactory(SimpleCubicFactory):
     atoms_in_unit_cell = 4
 
 FaceCenteredCubic = FaceCenteredCubicFactory()
+
 
 class BodyCenteredCubicFactory(SimpleCubicFactory):
     "A factory for creating body-centered cubic lattices."

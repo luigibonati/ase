@@ -101,7 +101,7 @@ max_errors = {
     # at least two spaces before inline comment
     'E261': 71,
     # expected 2 blank lines, found 1
-    'E302': 102,
+    'E302': 0,
     # unexpected spaces around keyword / parameter equals
     'E251': 70,
     # trailing whitespace

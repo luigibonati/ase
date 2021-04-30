@@ -17,6 +17,7 @@ import numpy as np
 from ase.units import eV, Ang
 from ase.calculators.calculator import FileIOCalculator, ReadError
 
+
 class GULPOptimizer:
     def __init__(self, atoms, calc):
         self.atoms = atoms
@@ -259,6 +260,7 @@ class GULP(FileIOCalculator):
             if 'GULP_LIB' not in os.environ:
                 raise RuntimeError("Be sure to have set correctly $GULP_LIB "
                                    "or to have the force field library.")
+
 
 class Conditions:
     """Atomic labels for the GULP calculator.

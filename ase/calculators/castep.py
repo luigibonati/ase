@@ -100,6 +100,7 @@ def _parse_tss_block(value, scaled=False):
 
         return text_block
 
+
 class Castep(Calculator):
     r"""
 CASTEP Interface Documentation

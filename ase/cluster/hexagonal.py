@@ -6,6 +6,7 @@ import numpy as np
 from ase.cluster.factory import ClusterFactory
 from ase.data import reference_states as _refstate
 
+
 class HexagonalFactory(ClusterFactory):
     spacegroup = 191
 
@@ -54,6 +55,7 @@ class HexagonalFactory(ClusterFactory):
 
 Hexagonal = HexagonalFactory()
 
+
 class HexagonalClosedPackedFactory(HexagonalFactory):
     """A factory for creating HCP clusters."""
     spacegroup = 194
@@ -64,6 +66,7 @@ class HexagonalClosedPackedFactory(HexagonalFactory):
                              [1./3., 2./3., .5]])
 
 HexagonalClosedPacked = HexagonalClosedPackedFactory()
+
 
 class GraphiteFactory(HexagonalFactory):
     """A factory for creating graphite clusters."""

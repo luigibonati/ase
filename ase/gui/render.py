@@ -6,6 +6,7 @@ import numpy as np
 
 pack = error = Help = 42
 
+
 class Render:
     texture_list = ['ase2', 'ase3', 'glass', 'simple', 'pale',
                     'intermediate', 'vmd', 'jmol']

@@ -3,6 +3,7 @@ import os.path as op
 import numpy as np
 from ase.units import Hartree
 
+
 def parse_xray(filename):
     #filename = self.label + '/deMon.xry'
     if op.isfile(filename):

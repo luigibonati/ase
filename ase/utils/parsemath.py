@@ -138,6 +138,7 @@ def limit(max_=None):
 
     return decorator
 
+
 @limit(max_=max_value)
 def _eval(node):
     """Evaluate a mathematical expression string parsed by ast"""

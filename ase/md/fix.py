@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class FixRotation:
     """Remove rotation from an atoms object.
     

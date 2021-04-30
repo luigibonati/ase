@@ -39,6 +39,7 @@ import numpy as np
 import os
 from ase.calculators.calculator import FileIOCalculator
 
+
 class CRYSTAL(FileIOCalculator):
     """ A crystal calculator with ase-FileIOCalculator nomenclature
     """

@@ -14,6 +14,7 @@ import numpy as np
 from ase.units import Hartree, Bohr
 from ase.calculators.calculator import PropertyNotImplementedError
 
+
 class FLEUR:
     """Class for doing FLEUR calculations.
 

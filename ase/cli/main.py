@@ -141,6 +141,7 @@ class Formatter(argparse.HelpFormatter):
             out += '\n'
         return out[:-1]
 
+
 def old():
     cmd = sys.argv[0].split('-')[-1]
     print('Please use "ase {cmd}" instead of "ase-{cmd}"'.format(cmd=cmd))

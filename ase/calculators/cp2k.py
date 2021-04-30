@@ -534,6 +534,7 @@ class Cp2kShell:
         received = self.recv()
         assert received == line
 
+
 class InputSection:
     """Represents a section of a CP2K input file"""
     def __init__(self, name, params=None):

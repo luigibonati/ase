@@ -1219,6 +1219,7 @@ class Siesta(FileIOCalculator):
     def get_ibz_k_points(self):
         return self.results['kpoints']
 
+
 class Siesta3_2(Siesta):
     def __init__(self, *args, **kwargs):
         warnings.warn(

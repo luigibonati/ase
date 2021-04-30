@@ -30,6 +30,7 @@ class SimpleMonoclinicFactory(TriclinicFactory):
         
 SimpleMonoclinic = SimpleMonoclinicFactory()
 
+
 class BaseCenteredMonoclinicFactory(SimpleMonoclinicFactory):
     # The natural basis vectors of the crystal structure
     int_basis = np.array([[1, -1, 0],

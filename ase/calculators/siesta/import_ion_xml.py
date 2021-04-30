@@ -2,6 +2,7 @@ import re
 import numpy as np
 from xml.dom import minidom
 
+
 def get_ion(fname):
     """
     Read the ion.xml file of a specie
@@ -172,6 +173,7 @@ def extract_projector(pro_xml):
     pro['ref_energy'] = str2float(pro_xml.attributes['ref_energy'].value)[0]
 
     return pro
+
 
 def str2float(string):
     numeric_const_pattern = r"""

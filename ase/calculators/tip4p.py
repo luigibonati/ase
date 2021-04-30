@@ -15,6 +15,7 @@ sigma0 = (A / B)**(1 / 6.)
 epsilon0 = B**2 / (4 * A)
 # https://doi.org/10.1063/1.445869
 
+
 class TIP4P(TIP3P):
     def __init__(self, rc=7.0, width=1.0):
         """ TIP4P potential for water.

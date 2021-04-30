@@ -979,9 +979,11 @@ def print_bundletrajectory_info(filename):
             infoline = infoline[:-2] + '.'  # Fix punctuation.
             print(infoline)
 
+
 class PickleBundleBackend:
     # Leave placeholder class so importing asap3 won't crash.
     pass
+
 
 def main():
     import optparse

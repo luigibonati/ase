@@ -1,6 +1,7 @@
 import numpy as np
 import ase.units as un
 
+
 class SiestaLRTDDFT:
     """Interface for linear response TDDFT for Siesta via `PyNAO`_
 
@@ -125,6 +126,7 @@ class SiestaLRTDDFT:
 
         return pmat
 
+
 class RamanCalculatorInterface(SiestaLRTDDFT):
     """Raman interface for Siesta calculator.
     When using the Raman calculator, please cite
@@ -174,6 +176,7 @@ class RamanCalculatorInterface(SiestaLRTDDFT):
         # Convert from atomic units to e**2 Ang**2/eV
         return pmat[:, :, 0].real * (un.Bohr**2) / un.Ha
  
+
 def pol2cross_sec(p, omg):
     """
     Convert the polarizability in au to cross section in nm**2
