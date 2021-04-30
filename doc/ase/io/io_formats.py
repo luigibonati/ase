@@ -17,4 +17,3 @@ with open('formatoptions.rst', 'w') as fd:
         if (not fmt.can_read) and (not fmt.can_write):
             print('\n No automatic documentation of this module found.', file=fd)
             print('\n Visit https://gitlab.com/ase/ase/tree/master/ase/io/{:}.py to see if you find the information needed in the source code.\n\n'.format(fmt.module_name), file=fd)
-

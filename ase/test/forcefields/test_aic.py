@@ -11,4 +11,3 @@ def test_aic():
     df = atoms.calc.calculate_numerical_forces(atoms, 1e-6) - f
     print(df)
     assert abs(df).max() < 2e-6
-

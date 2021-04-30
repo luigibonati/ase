@@ -277,5 +277,3 @@ def update_parameter(oldpar, newpar):
         else:
             oldpar[section] = section_param
     return oldpar
-
-

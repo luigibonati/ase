@@ -49,5 +49,3 @@ def test_analysis():
 
     assert len(ana2.get_angles('C','C','H', unique=False)[0]) == len(ana2.get_angles('C','C','H', unique=True)[0]) * 2
     assert len(ana2.get_dihedrals('H','C','C','H',unique=False)[0]) == len(ana2.get_dihedrals('H','C','C','H',unique=True)[0]) * 2
-
-

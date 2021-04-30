@@ -23,4 +23,3 @@ dyn = BFGS(mol, trajectory='test.traj')
 dyn.run(fmax=0.01)
 
 write('h2o_optimized.xyz', mol)
-

@@ -145,4 +145,3 @@ class FaceCenteredOrthorhombicFactory(SimpleOrthorhombicFactory):
             print("WARNING: Got volume %f, expected %f" % (vol1, vol2))
 
 FaceCenteredOrthorhombic = FaceCenteredOrthorhombicFactory()
-

@@ -10,4 +10,3 @@ def test_ace():
     mol.calc = ace
     forces = mol.get_forces()
     print(forces)
-

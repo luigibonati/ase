@@ -41,4 +41,3 @@ def test_surface():
     assert (list(surface_fcc.pbc) == [True, True, True])
     expected_length = 4.05*3**0.5  # for FCC with a=4.05
     assert math.isclose(surface_fcc.cell[2][2], expected_length)
-

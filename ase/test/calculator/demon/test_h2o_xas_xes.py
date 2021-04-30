@@ -189,5 +189,3 @@ def test_h2o_xas_xes():
 
 
     print('tests passed')
-
-

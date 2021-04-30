@@ -18,4 +18,3 @@ def test_turbomole_optimizer():
     calc = Turbomole(**params)
     optimizer = calc.get_optimizer(water)
     optimizer.run(fmax=0.01, steps=5)
-

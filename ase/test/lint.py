@@ -79,7 +79,7 @@ max_errors = {
     # whitespace before ':'
     'E203': 0,
     # blank line at end of file
-    'W391': 30,
+    'W391': 0,
     # continuation line over-indented for hanging indent
     'E126': 27,
     # multiple spaces after ','

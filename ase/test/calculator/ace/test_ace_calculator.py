@@ -26,4 +26,3 @@ def test_acemolecule_calculator():
     he.calc.set(BasicInformation={"Pseudopotential": {"UsingDoubleGrid": 1}})
     sample_parameters = he.calc.parameters
     assert dict_is_subset({"UsingDoubleGrid": 1}, sample_parameters['BasicInformation'][0]["Pseudopotential"])
-

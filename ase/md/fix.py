@@ -42,4 +42,3 @@ class FixRotation:
         w = np.dot(np.linalg.inv(I), np.sum(np.cross(r, p), axis=0))
 
         self.atoms.set_velocities(v - np.cross(w, r))
-

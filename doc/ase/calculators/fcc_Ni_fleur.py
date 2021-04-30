@@ -14,4 +14,3 @@ for s in linspace(0.95, 1.05, 7):
     atoms.set_cell((cell))
     ene = atoms.get_potential_energy()
     traj.write()
-
