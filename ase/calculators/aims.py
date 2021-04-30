@@ -227,7 +227,7 @@ class Aims(FileIOCalculator):
             if command:
                 warnings.warn('Caution! Argument "command" overwrites "run_command.')
             else:
-                command=run_command
+                command = run_command
 
         # this is the fallback to the default value for empty init
         if np.all([i is None for i in (command, aims_command, outfilename)]):
@@ -616,7 +616,7 @@ class Aims(FileIOCalculator):
 
     def set_radial_multiplier(self):
         assert isinstance(self.radmul, int)
-        newctrl = self.ctrlname +'.new'
+        newctrl = self.ctrlname + '.new'
         fin = open(self.ctrlname, 'r')
         fout = open(newctrl, 'w')
         newline = "    radial_multiplier   %i\n" % self.radmul

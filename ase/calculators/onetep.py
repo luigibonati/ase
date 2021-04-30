@@ -243,10 +243,10 @@ class Onetep(FileIOCalculator):
             symbols[j] = ''.join(i for i in symbols[j] if not i.isdigit())
         for j in range(len(tags)):
             tags[j] = ''.join(i for i in tags[j] if not i.isalpha())
-            if tags[j]=='':
-                tags[j]='0'
+            if tags[j] == '':
+                tags[j] = '0'
             tags[j] = int(tags[j])
-        if len(self.atoms)!=len(symbols):
+        if len(self.atoms) != len(symbols):
             self.atoms = Atoms(symbols=symbols,positions=positions)
         self.atoms.set_chemical_symbols(symbols)
         self.atoms.set_tags(tags)
@@ -374,7 +374,7 @@ class Onetep(FileIOCalculator):
         line = out.readline()
         while line:
             words = line.split()
-            if len(words)==0:
+            if len(words) == 0:
                 break
             excitations.append([float(words[0]),float(words[1])*Hartree,float(words[2])])
             line = out.readline()
@@ -404,7 +404,7 @@ class Onetep(FileIOCalculator):
             species_ngwf_num_var = 'species_ngwf_number_cond'
         for sp in set(zip(atoms.get_atomic_numbers(),
                           atoms.get_chemical_symbols(),
-                          ["" if i==0 else str(i) for i in atoms.get_tags()])):
+                          ["" if i == 0 else str(i) for i in atoms.get_tags()])):
             try:
                 ngrad = parameters[species_ngwf_rad_var][sp[1]]
             except KeyError:
@@ -580,7 +580,7 @@ class Onetep(FileIOCalculator):
 
         keyword = 'POSITIONS_ABS'
         positions = atoms.get_positions()
-        tags = ["" if i==0 else str(i) for i in atoms.get_tags()]
+        tags = ["" if i == 0 else str(i) for i in atoms.get_tags()]
         pos_block = [('%s %8.6f %8.6f %8.6f' %
                       (x+z, y[0], y[1], y[2])) for (x, y, z)
                      in zip(atoms.get_chemical_symbols(), positions, tags)]
@@ -599,7 +599,7 @@ class Onetep(FileIOCalculator):
         fd.write('%%ENDBLOCK %s\n\n' % keyword)
 
         if ((self.parameters['ngwf_radius_cond'] > 0) or
-            len(self.species_cond)==len(self.species)):
+            len(self.species_cond) == len(self.species)):
             keyword = 'SPECIES_COND'
             sp_block = [('%s %s %d %d %8.6f' % sp) for sp in self.species_cond]
             fd.write('%%BLOCK %s\n' % keyword)
@@ -620,7 +620,7 @@ class Onetep(FileIOCalculator):
         fd.write('%%ENDBLOCK %s\n\n' % keyword)
 
         if ((self.parameters['ngwf_radius_cond'] > 0) or
-            len(self.solvers_cond)==len(self.species)):
+            len(self.solvers_cond) == len(self.species)):
             keyword = 'SPECIES_ATOMIC_SET_COND'
             fd.write('%%BLOCK %s\n' % keyword)
             for sp in sorted(self.solvers_cond):

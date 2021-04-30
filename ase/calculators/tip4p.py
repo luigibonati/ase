@@ -173,7 +173,7 @@ class TIP4P(TIP3P):
         charges[0::4] = 0.00  # O
         charges[1::4] = qH  # H1
         charges[2::4] = qH  # H2
-        charges[3::4] = - 2* qH  # X1
+        charges[3::4] = - 2 * qH  # X1
         return charges
 
     def redistribute_forces(self, forces):

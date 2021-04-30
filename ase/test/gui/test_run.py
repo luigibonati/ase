@@ -232,7 +232,7 @@ def test_repeat(gui):
 
     multiplier = [2, 3, 4]
     expected_atoms = fe * multiplier
-    natoms= np.prod(multiplier)
+    natoms = np.prod(multiplier)
     for i, value in enumerate(multiplier):
         repeat.repeat[i].value = value
 

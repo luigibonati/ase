@@ -51,10 +51,10 @@ def test_h2o_xas_xes():
     results = calc.results
 
     print('xray, first transition, energy')
-    value =results['xray']['E_trans'][0]
+    value = results['xray']['E_trans'][0]
     print(value)
     ref = 539.410015646
-    error = np.sqrt(np.sum((value- ref)**2))
+    error = np.sqrt(np.sum((value - ref)**2))
     print('diff from reference:')
     print(error)
 
@@ -65,7 +65,7 @@ def test_h2o_xas_xes():
     value = results['xray']['trans_dip'][0]
     print(value)
     ref = np.array([1.11921906e-02, 1.61393975e-02, 1.70983631e-07])
-    error = np.sqrt(np.sum((value- ref)**2))
+    error = np.sqrt(np.sum((value - ref)**2))
     print('diff from reference:')
     print(error)
 
@@ -105,10 +105,10 @@ def test_h2o_xas_xes():
     results = calc.results
 
     print('xray, first transition, energy')
-    value =results['xray']['E_trans'][0]
+    value = results['xray']['E_trans'][0]
     print(value)
     ref = 486.862715888  # 539.410015646
-    error = np.sqrt(np.sum((value- ref)**2))
+    error = np.sqrt(np.sum((value - ref)**2))
     print('diff from reference:')
     print(error)
 
@@ -119,7 +119,7 @@ def test_h2o_xas_xes():
     value = results['xray']['trans_dip'][0]
     print(value)
     ref = np.array([6.50528073e-03, 9.37895253e-03, 6.99433480e-09])
-    error = np.sqrt(np.sum((value- ref)**2))
+    error = np.sqrt(np.sum((value - ref)**2))
     print('diff from reference:')
     print(error)
 

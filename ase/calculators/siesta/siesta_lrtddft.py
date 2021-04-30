@@ -25,7 +25,7 @@ class SiestaLRTDDFT:
             msg = "running lrtddft with Siesta calculator requires pynao package"
             raise ModuleNotFoundError(msg) from err
 
-        self.initialize=initialize
+        self.initialize = initialize
         self.lrtddft_params = kw
         self.tddft = None
 

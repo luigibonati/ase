@@ -120,7 +120,7 @@ def test_neighbor_kernel():
         a = ase.lattice.hexagonal.Graphite('C', latticeconstant=(2.5, 10.0),
                                            size=[sx+1,sx+1,1])
         i = neighbor_list("i", a, 1.85)
-        assert np.all(np.bincount(i)==3)
+        assert np.all(np.bincount(i) == 3)
 
     # test_first_neighbors
     i = [1,1,1,1,3,3,3]
