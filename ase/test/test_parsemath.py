@@ -109,4 +109,3 @@ def test_parsemath():
         raise RuntimeError("This should not be reached, the parser can execute malicious code")
     except TypeError:
         pass
-

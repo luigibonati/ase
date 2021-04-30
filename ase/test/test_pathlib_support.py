@@ -44,7 +44,6 @@ def test_pathlib_support(testdir):
     # Test PurePath catches path
     assert isinstance(path, PurePath)
 
-
     path.mkdir(exist_ok=True)
 
     myf = path / 'test.txt'
@@ -57,12 +56,10 @@ def test_pathlib_support(testdir):
     assert isinstance(fd, io.TextIOBase)
     fd.close()
 
-
     for f in [myf, str(myf)]:
         myf.unlink()                # Remove the file first
         mywrite(f)
         myread(f)
-
 
     # Check reader, writer on open filestream
     # Here, the filestream shouldn't be altered

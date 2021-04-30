@@ -6,7 +6,7 @@ from ase.constraints import ExpCellFilter
 def test_dftb_relax_bulk(dftb_factory):
     calc = dftb_factory.calc(
         label='dftb',
-        kpts=(3,3,3),
+        kpts=(3, 3, 3),
         Hamiltonian_SCC='Yes'
     )
 

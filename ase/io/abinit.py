@@ -578,7 +578,6 @@ which may require reconfiguring the ASE/Abinit shell command.
 """
 
 
-
 def write_all_inputs(atoms, properties, parameters,
                      pp_paths=None,
                      raise_exception=True,

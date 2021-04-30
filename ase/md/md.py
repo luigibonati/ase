@@ -126,7 +126,6 @@ class MolecularDynamics(Dynamics):
             self._closefiles()
             raise
 
-
     def todict(self):
         return {'type': 'molecular-dynamics',
                 'md-type': self.__class__.__name__,

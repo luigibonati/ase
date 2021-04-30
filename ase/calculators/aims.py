@@ -227,13 +227,12 @@ class Aims(FileIOCalculator):
             if command:
                 warnings.warn('Caution! Argument "command" overwrites "run_command.')
             else:
-                command=run_command
+                command = run_command
 
         # this is the fallback to the default value for empty init
         if np.all([i is None for i in (command, aims_command, outfilename)]):
             # we go for the FileIOCalculator default way (env variable) with the former default as fallback
             command = os.environ.get('ASE_AIMS_COMMAND', Aims.__command_default)
-
 
         # filter the command and set the member variables "aims_command" and "outfilename"
         self.__init_command(command=command,
@@ -441,7 +440,6 @@ class Aims(FileIOCalculator):
                 output.write(s)
         output.write(lim + '\n')
 
-
         assert not ('kpts' in self.parameters and 'k_grid' in self.parameters)
         assert not ('smearing' in self.parameters and
                     'occupation_type' in self.parameters)
@@ -616,7 +614,7 @@ class Aims(FileIOCalculator):
 
     def set_radial_multiplier(self):
         assert isinstance(self.radmul, int)
-        newctrl = self.ctrlname +'.new'
+        newctrl = self.ctrlname + '.new'
         fin = open(self.ctrlname, 'r')
         fout = open(newctrl, 'w')
         newline = "    radial_multiplier   %i\n" % self.radmul

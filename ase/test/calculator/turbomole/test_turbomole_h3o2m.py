@@ -60,7 +60,6 @@ def test_turbomole_h3o2m():
         dyn2 = QuasiNewton(images[-1])
         dyn2.run(fmax=0.10)
 
-
     # Interpolate positions between initial and final states:
     neb.interpolate()
     if 1:

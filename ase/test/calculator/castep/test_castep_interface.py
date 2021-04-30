@@ -217,7 +217,7 @@ He He_test.usp"""
             if l == '':
                 continue
             el, x, y, z = l.split()
-            xyz = np.array(list(map(float, [x,y,z])))
+            xyz = np.array(list(map(float, [x, y, z])))
             pos_lines.append((el, xyz))
 
         return units, pos_lines
@@ -244,7 +244,6 @@ He He_test.usp"""
 
     assert pfi[1][0][0] == 'H'
     assert np.isclose(pfi[1][0][1], a.get_scaled_positions()[0]).all()
-
 
     # Test example conflict
     ccell.kpoint_mp_grid = '3 3 3'

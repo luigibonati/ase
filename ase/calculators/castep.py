@@ -100,6 +100,7 @@ def _parse_tss_block(value, scaled=False):
 
         return text_block
 
+
 class Castep(Calculator):
     r"""
 CASTEP Interface Documentation
@@ -2863,7 +2864,7 @@ class CastepParam(CastepInputFile):
     # .param specific parsers
     def _parse_reuse(self, value):
         if value is None:
-            return None # Reset the value
+            return None  # Reset the value
         try:
             if self._options['continuation'].value:
                 warnings.warn('Cannot set reuse if continuation is set, and '
@@ -2876,7 +2877,7 @@ class CastepParam(CastepInputFile):
 
     def _parse_continuation(self, value):
         if value is None:
-            return None # Reset the value
+            return None  # Reset the value
         try:
             if self._options['reuse'].value:
                 warnings.warn('Cannot set reuse if continuation is set, and '

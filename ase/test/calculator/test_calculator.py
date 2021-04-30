@@ -3,7 +3,6 @@ import pytest
 from ase.calculators.calculator import Calculator
 
 
-
 def test_directory_and_label():
     def normalize(path):
         """Helper function to normalize path"""

@@ -14,6 +14,7 @@ import numpy as np
 from ase.units import Hartree, Bohr
 from ase.calculators.calculator import PropertyNotImplementedError
 
+
 class FLEUR:
     """Class for doing FLEUR calculations.
 
@@ -52,7 +53,6 @@ class FLEUR:
                  width=None, kmax=None, mixer=None, maxiter=None,
                  maxrelax=20, workdir=None, equivatoms=True, rmt=None,
                  lenergy=None):
-
         """Construct FLEUR-calculator object.
 
         Parameters
@@ -98,8 +98,8 @@ class FLEUR:
         self.nbands = nbands
         self.width = width
         self.kmax = kmax
-        self.itmax_step_default = 9 # SCF steps per run (default)
-        self.itmax_step = 5 # SCF steps per run
+        self.itmax_step_default = 9  # SCF steps per run (default)
+        self.itmax_step = 5  # SCF steps per run
         assert self.itmax_step_default <= 9
         assert self.itmax_step <= self.itmax_step_default
         self.itmax_default = 40
@@ -114,7 +114,7 @@ class FLEUR:
             self.convergence = convergence
             self.convergence['energy'] /= Hartree
         else:
-            self.convergence = {'energy' : 0.0001}
+            self.convergence = {'energy': 0.0001}
 
         self.start_dir = None
         self.workdir = workdir
@@ -139,7 +139,7 @@ class FLEUR:
 
         executable_use = executable
         if executable == 'FLEUR_SERIAL' and not os.environ.get(executable, ''):
-            executable_use = 'FLEUR' # use FLEUR if FLEUR_SERIAL not set
+            executable_use = 'FLEUR'  # use FLEUR if FLEUR_SERIAL not set
         try:
             code_exe = os.environ[executable_use]
         except KeyError:
@@ -159,7 +159,6 @@ class FLEUR:
             if stat != 0:
                 os.chdir(self.start_dir)
                 raise RuntimeError(executable_use + ' exited with a code %d' % stat)
-
 
     def update(self, atoms):
         """Update a FLEUR calculation."""
@@ -326,7 +325,6 @@ class FLEUR:
                 raise RuntimeError('Failed to relax in %d iterations' % self.maxrelax)
             self.converged = False
 
-
     def write_inp(self, atoms):
         """Write the *inp* input file of FLEUR.
 
@@ -379,7 +377,7 @@ class FLEUR:
                 # generate inequivalent atoms, by using non-integer Z
                 # (only the integer part will be used as Z of the atom)
                 # see http://www.flapw.de/pm/index.php?n=User-Documentation.InputFileForTheInputGenerator
-                fh.write('%3d.%04d' % (Z, n)) # MDTMP don't think one can calculate more that 10**4 atoms
+                fh.write('%3d.%04d' % (Z, n))  # MDTMP don't think one can calculate more that 10**4 atoms
             for el in pos:
                 fh.write(' %21.16f' % el)
             fh.write('\n')

@@ -80,7 +80,6 @@ def test_aims_interface():
     assert calc.aims_command == aims_command_alternative
     assert calc.outfilename == outfilename
 
-
     # test writing files
     tmp_dir = tempfile.mkdtemp()
     water = Atoms('HOH', [(1, 0, 0), (0, 0, 0), (0, 1, 0)])
@@ -102,4 +101,4 @@ def test_aims_interface():
     calc.atoms = water
     calc.prepare_input_files()
     for f in ['control.in', 'geometry.in']:
-        assert os.path.isfile(os.path.join(tmp_dir,f))
+        assert os.path.isfile(os.path.join(tmp_dir, f))

@@ -295,8 +295,8 @@ def write_nwchem_in(fd, atoms, properties=None, **params):
     label = params.get('label', 'nwchem')
     perm = os.path.abspath(params.pop('perm', label))
     scratch = os.path.abspath(params.pop('scratch', label))
-    restart_kw = params.get('restart_kw','start')
-    if restart_kw not in ('start','restart'):
+    restart_kw = params.get('restart_kw', 'start')
+    if restart_kw not in ('start', 'restart'):
         raise ValueError("Unrecognised restart keyword: {}!"
                          .format(restart_kw))
     short_label = label.rsplit('/', 1)[-1]

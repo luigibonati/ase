@@ -32,7 +32,6 @@ def test_icosa(shells):
     assert ncorners == ico_corners
 
 
-
 octa_sizes = [0, 1, 6, 19, 44, 85, 146, 231, 344]
 
 

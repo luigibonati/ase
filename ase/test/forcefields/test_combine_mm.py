@@ -18,7 +18,6 @@ def test_combine_mm():
     from ase.calculators.tip4p import epsilon0 as eps4
     from ase.calculators.tip4p import sigma0 as sig4
 
-
     def make_atoms():
         r = rOH
         a = angleHOH * pi / 180
@@ -35,7 +34,6 @@ def test_combine_mm():
         dimer.positions[3:, 0] += 2.8
 
         return dimer
-
 
     dimer = make_atoms()
     rc = 3.0
@@ -60,7 +58,6 @@ def test_combine_mm():
         print(dF)
         assert abs(dF).max() < 1e-8
 
-
     # Also check a TIP3P/TIP4P combination against numerical forces:
     eps1 = np.array([eps3, 0, 0])
     sig1 = np.array([sig3, 0, 0])
@@ -75,7 +72,6 @@ def test_combine_mm():
     print('TIP3P/TIP4P')
     print(dF)
     assert abs(dF).max() < 1e-8
-
 
     # LJInteractionsGeneral with CombineMM.
     # As it is used within EIQMMM, but avoiding long calculations for tests.
@@ -92,7 +88,6 @@ def test_combine_mm():
 
     sigNa = 1.868 * (1.0/2.0)**(1.0/6.0) * 10
     epsNa = 0.00277 * units.kcal / units.mol
-
 
     # ACI for atoms 0 and 1 of the MM subsystem (2 and 3 for the total system)
     # 1 atom 'per molecule'. The rest is TIP4P, 3 atoms per molecule:

@@ -3,6 +3,7 @@ to make the relaxations run more smoothly."""
 from math import sqrt
 import numpy as np
 
+
 class VariansBreak:
 
     """ Helper class which can be attached to a structure optimization,
@@ -36,7 +37,6 @@ class VariansBreak:
 
         if len(self.forces) >= self.N and stdev < self.min_stdev:
             self.dyn.converged = lambda x: True
-
 
 
 class DivergenceBreak:

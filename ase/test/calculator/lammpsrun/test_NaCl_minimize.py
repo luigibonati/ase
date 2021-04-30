@@ -1,6 +1,6 @@
 import pytest
 from ase.spacegroup import crystal
-from ase.data import atomic_numbers,  atomic_masses
+from ase.data import atomic_numbers, atomic_masses
 from ase.optimize import QuasiNewton
 from ase.constraints import UnitCellFilter
 from numpy.testing import assert_allclose
@@ -16,7 +16,6 @@ def test_NaCl_minimize(factory):
 
     # Buckingham parameters from
     # https://physics.stackexchange.com/questions/250018
-
 
     pair_style = 'buck/coul/long 12.0'
     pair_coeff = ['1 1 3796.9 0.2603 124.90']
