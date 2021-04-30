@@ -158,7 +158,7 @@ def test_atoms(vasprun):
 
     # check scaled_positions
     expected_scaled_positions = np.array([[0.0, 0.0, 0.0],
-                                          [0.5,  0.5, 0.5]])
+                                          [0.5, 0.5, 0.5]])
 
     np.testing.assert_allclose(atoms.get_scaled_positions(),
                                expected_scaled_positions)

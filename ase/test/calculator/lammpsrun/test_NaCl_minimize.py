@@ -1,6 +1,6 @@
 import pytest
 from ase.spacegroup import crystal
-from ase.data import atomic_numbers,  atomic_masses
+from ase.data import atomic_numbers, atomic_masses
 from ase.optimize import QuasiNewton
 from ase.constraints import UnitCellFilter
 from numpy.testing import assert_allclose

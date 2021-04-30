@@ -767,7 +767,7 @@ class NewPrimitiveNeighborList:
         self.nneighbors = 0
         self.npbcneighbors = 0
 
-    def update(self,  pbc, cell, positions, numbers=None):
+    def update(self, pbc, cell, positions, numbers=None):
         """Make sure the list is up to date."""
 
         if self.nupdates == 0:

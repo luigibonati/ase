@@ -83,7 +83,7 @@ max_errors = {
     # continuation line over-indented for hanging indent
     'E126': 27,
     # multiple spaces after ','
-    'E241': 35,
+    'E241': 0,
     # continuation line under-indented for visual indent
     'E128': 39,
     # continuation line over-indented for visual indent
