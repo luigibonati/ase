@@ -73,6 +73,6 @@ def test_optimize(optcls, atoms, ref_atoms, testdir):
           .format(optcls.__name__, final_fmax, e_opt, e_err))
 
     assert final_fmax < fmax
-    assert e_err < 1e-5  # (This tolerance is arbitrary)
+    assert e_err < 1.75e-5  # (This tolerance is arbitrary)
 
     return final_fmax, e_err
