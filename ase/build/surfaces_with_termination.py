@@ -42,7 +42,7 @@ def surfaces_with_termination(lattice, indices, layers, vacuum=None, tol=1e-10,
     for item in lats:
         too_similar = False
         surf = surface(item, indices, layers, vacuum=vacuum, tol=tol)
-        surf.wrap(pbc = [True] * 3)  # standardize slabs
+        surf.wrap(pbc=[True] * 3)  # standardize slabs
         
         positions = surf.get_scaled_positions().flatten()
         for i, value in enumerate(positions):

@@ -103,7 +103,7 @@ max_errors = {
     # expected 2 blank lines, found 1
     'E302': 0,
     # unexpected spaces around keyword / parameter equals
-    'E251': 70,
+    'E251': 0,
     # trailing whitespace
     'W291': 169,
     # block comment should start with '# '

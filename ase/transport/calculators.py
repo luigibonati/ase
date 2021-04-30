@@ -308,7 +308,7 @@ class TransportCalculator:
         pl.axis('tight')
         pl.show()
 
-    def get_current(self, bias, T = 0., E=None, T_e=None, spinpol=False):
+    def get_current(self, bias, T=0., E=None, T_e=None, spinpol=False):
         '''Returns the current as a function of the
         bias voltage.
 

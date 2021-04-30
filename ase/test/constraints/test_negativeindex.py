@@ -2,9 +2,9 @@ def test_negativeindex():
     from ase.atoms import Atoms
     from ase.constraints import FixScaled
 
-    a1 = Atoms(symbols = 'X2',
-               positions = [[0.,0.,0.], [2.,0.,0.], ],
-               cell = [[4.,0.,0.], [0.,4.,0.], [0.,0.,4.], ],
+    a1 = Atoms(symbols='X2',
+               positions=[[0.,0.,0.], [2.,0.,0.], ],
+               cell=[[4.,0.,0.], [0.,4.,0.], [0.,0.,4.], ],
                )
 
     fs1 = FixScaled(a1.get_cell(), -1, mask=(True, False, False))

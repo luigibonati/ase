@@ -17,8 +17,8 @@ def test_acemolecule_calculator():
     scf = dict(IterateMaxCycle=50,ConvergenceType='Energy',ConvergenceTolerance=0.000001,EnergyDecomposition=1, 
             ExchangeCorrelation={'XFunctional':'LDA_X','CFunctional':'LDA_C_PW'}, 
             Diagonalize={'Tolerance':1e-7}, Mixing={'MixingType':'Density','MixingParameter':0.3,'MixingMethod':1})
-    he = Atoms("He", positions = [[0.0, 0.0, 0.0]])
-    he.calc = ACE(command = ace_cmd, BasicInformation=basis,Guess=guess,Scf=scf)
+    he = Atoms("He", positions=[[0.0, 0.0, 0.0]])
+    he.calc = ACE(command=ace_cmd, BasicInformation=basis,Guess=guess,Scf=scf)
     sample_parameters = he.calc.parameters
     assert dict_is_subset(basis, sample_parameters['BasicInformation'][0])
     assert dict_is_subset(guess, sample_parameters['Guess'][0])
