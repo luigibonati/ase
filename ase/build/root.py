@@ -182,10 +182,9 @@ def root_surface(primitive_slab, root, eps=1e-8):
                          [0, 0, 1]]
 
     new_cell = np.array([np.dot(x, standard_rotation) for x in atoms.cell])
-    new_positions = np.array([np.dot(x, standard_rotation) for x in atoms.positions])
+    new_positions = np.array([np.dot(x, standard_rotation)
+                              for x in atoms.positions])
 
     atoms.cell = new_cell
     atoms.positions = new_positions
-
     return atoms
-                                                                            
