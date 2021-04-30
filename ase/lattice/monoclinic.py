@@ -28,6 +28,7 @@ class SimpleMonoclinicFactory(TriclinicFactory):
 
         TriclinicFactory.make_crystal_basis(self)
         
+
 SimpleMonoclinic = SimpleMonoclinicFactory()
 
 
@@ -43,5 +44,6 @@ class BaseCenteredMonoclinicFactory(SimpleMonoclinicFactory):
                               [-1, 1, 0],
                               [0, 0, 1]])
     inverse_basis_factor = 1.0
+
 
 BaseCenteredMonoclinic = BaseCenteredMonoclinicFactory()

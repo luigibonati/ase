@@ -56,6 +56,7 @@ def test_scaled_wrapped(atoms=atoms):
             new_atoms.positions,
         )
 
+
 sample_geometry_1 = """\
 lattice_vector 4.5521460059804628 0.0000000000000000 0.0000000000000000
 lattice_vector -2.2760730029902314 3.9422740829149499 0.0000000000000000 # Dummy comment

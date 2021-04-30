@@ -53,6 +53,7 @@ class HexagonalFactory(ClusterFactory):
 
         ClusterFactory.set_surfaces_layers(self, surfaces, layers)
 
+
 Hexagonal = HexagonalFactory()
 
 
@@ -65,6 +66,7 @@ class HexagonalClosedPackedFactory(HexagonalFactory):
     atomic_basis = np.array([[0., 0., 0.],
                              [1./3., 2./3., .5]])
 
+
 HexagonalClosedPacked = HexagonalClosedPackedFactory()
 
 
@@ -76,5 +78,6 @@ class GraphiteFactory(HexagonalFactory):
                              [1./3., 2./3., 0.],
                              [1./3., 2./3., .5],
                              [2./3., 1./3., .5]])
+
 
 Graphite = GraphiteFactory()

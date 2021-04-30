@@ -75,6 +75,7 @@ class SimpleOrthorhombicFactory(Bravais):
         if abs(vol1-vol2) > 1e-5:
             print("WARNING: Got volume %f, expected %f" % (vol1, vol2))
 
+
 SimpleOrthorhombic = SimpleOrthorhombicFactory()
 
 
@@ -100,6 +101,7 @@ class BaseCenteredOrthorhombicFactory(SimpleOrthorhombicFactory):
         if abs(vol1-vol2) > 1e-5:
             print("WARNING: Got volume %f, expected %f" % (vol1, vol2))
 
+
 BaseCenteredOrthorhombic = BaseCenteredOrthorhombicFactory()
 
 
@@ -122,6 +124,7 @@ class BodyCenteredOrthorhombicFactory(SimpleOrthorhombicFactory):
         if abs(vol1-vol2) > 1e-5:
             print("WARNING: Got volume %f, expected %f" % (vol1, vol2))
 
+
 BodyCenteredOrthorhombic = BodyCenteredOrthorhombicFactory()
 
 
@@ -143,5 +146,6 @@ class FaceCenteredOrthorhombicFactory(SimpleOrthorhombicFactory):
         vol2 = self.calc_num_atoms() * np.linalg.det(self.latticeconstant) / 4.0
         if abs(vol1-vol2) > 1e-5:
             print("WARNING: Got volume %f, expected %f" % (vol1, vol2))
+
 
 FaceCenteredOrthorhombic = FaceCenteredOrthorhombicFactory()

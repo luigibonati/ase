@@ -81,4 +81,5 @@ class TriclinicFactory(Bravais):
         assert abs(np.dot(lattice[1],lattice[1]) - b*b) < 1e-5
         assert abs(np.dot(lattice[2],lattice[2]) - c*c) < 1e-5
 
+
 Triclinic = TriclinicFactory()
