@@ -57,7 +57,7 @@ def test_o2(factory):
 @calc('octopus')
 def test_si(factory):
     calc = calculate(factory,
-                     bulk('Si'), #, orthorhombic=True),
+                     bulk('Si'),  # , orthorhombic=True),
                      KPointsGrid=[[4, 4, 4]],
                      KPointsUseSymmetries=True,
                      SmearingFunction='fermi_dirac',

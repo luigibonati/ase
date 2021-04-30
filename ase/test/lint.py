@@ -67,13 +67,13 @@ max_errors = {
     # whitespace after '{'
     'E201': 0,
     # inline comment should start with '# '
-    'E262': 12,
+    'E262': 0,
     # the backslash is redundant between brackets
     'E502': 0,
     # continuation line missing indentation or outdented
     'E122': 0,
     # indentation is not a multiple of four
-    'E111': 28,
+    'E111': 0,
     # do not use bare 'except'
     'E722': 0,
     # whitespace before ':'

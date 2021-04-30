@@ -3,7 +3,7 @@ from ase.atoms import Atoms
 from ase.units import fs as fs_conversion
 
 eps = 1e-10
-timestep = 1 * fs_conversion #fs
+timestep = 1 * fs_conversion  # fs
 # Answer in \AA^2/<ASE time unit>
 ans_orig = 5.0e-01 / fs_conversion
 

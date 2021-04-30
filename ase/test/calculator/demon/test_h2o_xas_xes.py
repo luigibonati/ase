@@ -39,7 +39,7 @@ def test_h2o_xas_xes():
     print('energy')
     energy = atoms.get_potential_energy()
     print(energy)
-    ref = -1815.44708987 #-469.604737006
+    ref = -1815.44708987  # -469.604737006
     error = np.sqrt(np.sum((energy - ref)**2))
     print('diff from reference:')
     print(error)
@@ -107,7 +107,7 @@ def test_h2o_xas_xes():
     print('xray, first transition, energy')
     value =results['xray']['E_trans'][0]
     print(value)
-    ref = 486.862715888 #539.410015646
+    ref = 486.862715888  # 539.410015646
     error = np.sqrt(np.sum((value- ref)**2))
     print('diff from reference:')
     print(error)
