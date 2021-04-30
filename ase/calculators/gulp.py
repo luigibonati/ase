@@ -76,7 +76,7 @@ class GULP(FileIOCalculator):
         self.conditions = conditions
         self.library_check()
         self.atom_types = []
-        self.fractional_coordinates = None # GULP prints the fractional coordinates before the Final lattice vectors so they need to be stored and then atoms positions need to be set after we get the Final lattice vectors
+        self.fractional_coordinates = None  # GULP prints the fractional coordinates before the Final lattice vectors so they need to be stored and then atoms positions need to be set after we get the Final lattice vectors
 
     def write_input(self, atoms, properties=None, system_changes=None):
         FileIOCalculator.write_input(self, atoms, properties, system_changes)

@@ -671,7 +671,7 @@ class Demon(FileIOCalculator):
                             'ntrans': ntrans,
                             'E_trans': E_trans,
                             'osc_strength': osc_strength,  # units?
-                            'trans_dip': trans_dip, # units?
+                            'trans_dip': trans_dip,  # units?
                             'core_IP':core_IP}
 
             self.results['xray'] = xray_results

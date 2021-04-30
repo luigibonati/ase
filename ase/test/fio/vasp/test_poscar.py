@@ -3,7 +3,7 @@ import pytest
 import numpy as np
 from shutil import copyfile
 # from ase import Atoms
-from ase.io import read # , iread
+from ase.io import read  # , iread
 
 
 @pytest.fixture

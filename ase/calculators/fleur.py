@@ -99,8 +99,8 @@ class FLEUR:
         self.nbands = nbands
         self.width = width
         self.kmax = kmax
-        self.itmax_step_default = 9 # SCF steps per run (default)
-        self.itmax_step = 5 # SCF steps per run
+        self.itmax_step_default = 9  # SCF steps per run (default)
+        self.itmax_step = 5  # SCF steps per run
         assert self.itmax_step_default <= 9
         assert self.itmax_step <= self.itmax_step_default
         self.itmax_default = 40
@@ -140,7 +140,7 @@ class FLEUR:
 
         executable_use = executable
         if executable == 'FLEUR_SERIAL' and not os.environ.get(executable, ''):
-            executable_use = 'FLEUR' # use FLEUR if FLEUR_SERIAL not set
+            executable_use = 'FLEUR'  # use FLEUR if FLEUR_SERIAL not set
         try:
             code_exe = os.environ[executable_use]
         except KeyError:
@@ -380,7 +380,7 @@ class FLEUR:
                 # generate inequivalent atoms, by using non-integer Z
                 # (only the integer part will be used as Z of the atom)
                 # see http://www.flapw.de/pm/index.php?n=User-Documentation.InputFileForTheInputGenerator
-                fh.write('%3d.%04d' % (Z, n)) # MDTMP don't think one can calculate more that 10**4 atoms
+                fh.write('%3d.%04d' % (Z, n))  # MDTMP don't think one can calculate more that 10**4 atoms
             for el in pos:
                 fh.write(' %21.16f' % el)
             fh.write('\n')

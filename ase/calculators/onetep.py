@@ -431,7 +431,7 @@ class Onetep(FileIOCalculator):
                 try:
                     pseudo_string = sp[1] + self.parameters['pseudo_suffix']
                 except KeyError:
-                    pseudo_string = sp[1] # bare elem name if pseudo suffix empty
+                    pseudo_string = sp[1]  # bare elem name if pseudo suffix empty
             self.pseudos.append((sp[0], pseudo_string))
 
     def _generate_solver_block(self,cond=False):

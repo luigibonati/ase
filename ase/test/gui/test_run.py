@@ -162,7 +162,7 @@ def test_fracocc(gui, testdir):
 
 def test_povray(gui, testdir):
     mol = molecule('H2O')
-    gui.new_atoms(mol) # not gui.set_atoms(mol)
+    gui.new_atoms(mol)  # not gui.set_atoms(mol)
     n = gui.render_window()
     assert n.basename_widget.value == 'H2O'
     n.run_povray_widget.check.deselect()

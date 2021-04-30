@@ -99,7 +99,7 @@ max_errors = {
     # module level import not at top of file
     'E402': 0,
     # at least two spaces before inline comment
-    'E261': 71,
+    'E261': 0,
     # expected 2 blank lines, found 1
     'E302': 0,
     # unexpected spaces around keyword / parameter equals

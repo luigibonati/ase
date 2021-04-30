@@ -42,7 +42,7 @@ def surfaces_with_termination(lattice, indices, layers, vacuum=None, tol=1e-10,
     for item in lats:
         too_similar = False
         surf = surface(item, indices, layers, vacuum=vacuum, tol=tol)
-        surf.wrap(pbc = [True] * 3) # standardize slabs
+        surf.wrap(pbc = [True] * 3)  # standardize slabs
         
         positions = surf.get_scaled_positions().flatten()
         for i, value in enumerate(positions):
@@ -50,7 +50,7 @@ def surfaces_with_termination(lattice, indices, layers, vacuum=None, tol=1e-10,
                 positions[i] -= 1
         surf.set_scaled_positions(np.reshape(positions, (len(surf), 3)))
         #rep = find_z_layers(surf)
-        z_layers, hs = get_layers(surf, (0, 0, 1)) # just z layers matter
+        z_layers, hs = get_layers(surf, (0, 0, 1))  # just z layers matter
         # get the indicies of the atoms in the highest layer
         top_layer = [i for i, val in enumerate(z_layers == max(z_layers)) if val]
          

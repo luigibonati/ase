@@ -91,7 +91,7 @@ if 0:
     # Experimental feature: mixed periodicity.  Let us not do this for now...
     graphene = graphene_nanoribbon(2, 2, sheet=True)
     graphene.positions = graphene.positions[:, [0, 2, 1]]
-    graphene.pbc = [1, 1, 0] # from 1, 0, 1
+    graphene.pbc = [1, 1, 0]  # from 1, 0, 1
     calc = calculate('graphene',
                      graphene,
                      KPointsGrid=[[2, 1, 2]],

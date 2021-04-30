@@ -2,13 +2,13 @@ import numpy as np
 
 
 class LeadSelfEnergy:
-    conv = 1e-8 # Convergence criteria for surface Green function
+    conv = 1e-8  # Convergence criteria for surface Green function
     
     def __init__(self, hs_dii, hs_dij, hs_dim, eta=1e-4):
-        self.h_ii, self.s_ii = hs_dii # onsite principal layer
-        self.h_ij, self.s_ij = hs_dij # coupling between principal layers
-        self.h_im, self.s_im = hs_dim # coupling to the central region
-        self.nbf = self.h_im.shape[1] # nbf for the scattering region
+        self.h_ii, self.s_ii = hs_dii  # onsite principal layer
+        self.h_ij, self.s_ij = hs_dij  # coupling between principal layers
+        self.h_im, self.s_im = hs_dim  # coupling to the central region
+        self.nbf = self.h_im.shape[1]  # nbf for the scattering region
         self.eta = eta
         self.energy = None
         self.bias = 0

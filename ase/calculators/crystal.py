@@ -271,7 +271,7 @@ class CRYSTAL(FileIOCalculator):
             e_coul, f_coul = self.pcpot.coulomb_corrections
 
         energy = float(self.lines[index_energy].split()[pos_en]) * Hartree
-        energy -= e_coul # e_coul already in eV.
+        energy -= e_coul  # e_coul already in eV.
 
         self.results['energy'] = energy
         # Force line indexes
