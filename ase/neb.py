@@ -19,7 +19,7 @@ from ase.optimize.sciopt import OptimizerConvergenceError
 from ase.geometry import find_mic
 from ase.utils import lazyproperty, deprecated
 from ase.utils.forcecurve import fit_images
-from ase.optimize.precon import PreconImages
+from ase.optimize.precon import Precon, PreconImages
 from ase.optimize.ode import ode12r
 
 
@@ -440,7 +440,8 @@ class BaseNEB:
                 self.world.broadcast(forces[i - 1], root)
                 
         # if this is the first force call, we need to build the preconditioners
-        if self.precon is None or isinstance(self.precon, str):
+        if (self.precon is None or isinstance(self.precon, str) or
+            isinstance(self.precon, Precon)):
             self.precon = PreconImages(self.precon, images)
             
         # apply preconditioners to transform forces

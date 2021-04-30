@@ -194,6 +194,15 @@ def test_precon_initialisation(setup_images):
     assert mep.precon[0].mu == mep.precon[1].mu
 
 
+def test_single_precon_initialisation(setup_images):
+    images, _, _ = setup_images
+    precon = Exp()
+    mep = NEB(images, method='spline', precon=precon)
+    mep.get_forces()
+    assert len(mep.precon) == len(mep.images)
+    assert mep.precon[0].mu == mep.precon[1].mu
+    
+
 def test_precon_assembly(setup_images):
     images, _, _ = setup_images
     neb = NEB(images, method='spline', precon='Exp')
