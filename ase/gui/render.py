@@ -36,7 +36,7 @@ class Render:
         self.basename_widget = ui.Entry(width=30, value=formula,
                                         callback=self.update_outputname)
         win.add([ui.Label(_('Output basename: ')), self.basename_widget])
-        self.povray_executable = ui.Entry(width=30,value='povray')
+        self.povray_executable = ui.Entry(width=30, value='povray')
         win.add([ui.Label(_('POVRAY executable')), self.povray_executable])
         self.outputname_widget = ui.Label()
         win.add([ui.Label(_('Output filename: ')), self.outputname_widget])
@@ -130,7 +130,7 @@ class Render:
                 povray_settings=povray_settings,
                 **plotting_var_settings)
             if self.run_povray_widget.value:
-                renderer.render(povray_executable=self.povray_executable.value,clean_up=False)
+                renderer.render(povray_executable=self.povray_executable.value, clean_up=False)
             if not self.keep_files_widget.value:
                 print(" | Deleting temporary file ", filename)
                 unlink(filename)

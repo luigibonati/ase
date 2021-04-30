@@ -217,7 +217,7 @@ He He_test.usp"""
             if l == '':
                 continue
             el, x, y, z = l.split()
-            xyz = np.array(list(map(float, [x,y,z])))
+            xyz = np.array(list(map(float, [x, y, z])))
             pos_lines.append((el, xyz))
 
         return units, pos_lines

@@ -90,7 +90,7 @@ def write_lammps_in(lammps_in, parameters, atoms, prismobj,
         # write additional lines needed for some LAMMPS potentials
         if 'model_post' in parameters:
             mlines = parameters['model_post']
-            for ii in range(0,len(mlines)):
+            for ii in range(0, len(mlines)):
                 fileobj.write(mlines[ii].encode('utf-8'))
 
         if "masses" in parameters:
@@ -141,7 +141,7 @@ def write_lammps_in(lammps_in, parameters, atoms, prismobj,
     # write initialization lines needed for some LAMMPS potentials
     if 'model_init' in parameters:
         mlines = parameters['model_init']
-        for ii in range(0,len(mlines)):
+        for ii in range(0, len(mlines)):
             fileobj.write(mlines[ii].encode('utf-8'))
 
     # write units

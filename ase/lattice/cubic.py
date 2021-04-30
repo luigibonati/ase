@@ -126,7 +126,7 @@ BodyCenteredCubic = BodyCenteredCubicFactory()
 class DiamondFactory(FaceCenteredCubicFactory):
     "A factory for creating diamond lattices."
     xtal_name = "diamond"
-    bravais_basis = [[0,0,0], [0.25, 0.25, 0.25]]
+    bravais_basis = [[0, 0, 0], [0.25, 0.25, 0.25]]
 
 
 Diamond = DiamondFactory()

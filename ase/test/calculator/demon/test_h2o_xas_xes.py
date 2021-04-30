@@ -20,10 +20,10 @@ def test_h2o_xas_xes():
 
     # XAS hch
     input_arguments = {'GRID': 'FINE',
-                       'MOMODIFY': [[1,0],
-                                    [1,0.5]], 
-                       'CHARGE':0,
-                       'XRAY':'XAS'}
+                       'MOMODIFY': [[1, 0],
+                                    [1, 0.5]], 
+                       'CHARGE': 0,
+                       'XRAY': 'XAS'}
 
     calc = demon.Demon(basis=basis,
                        auxis=auxis,
@@ -75,8 +75,8 @@ def test_h2o_xas_xes():
 
     # XES
     input_arguments = {'GRID': 'FINE',
-                       'CHARGE':0,
-                       'XRAY':'XES ALPHA=1-1'}
+                       'CHARGE': 0,
+                       'XRAY': 'XES ALPHA=1-1'}
 
     calc = demon.Demon(basis=basis,
                        auxis=auxis,
@@ -128,10 +128,10 @@ def test_h2o_xas_xes():
 
     # and XPS
     input_arguments = {'GRID': 'FINE',
-                       'MOMODIFY': [[1,0],
-                                    [1,0.0]], 
-                       'CHARGE':0,
-                       'XRAY':'XAS'}
+                       'MOMODIFY': [[1, 0],
+                                    [1, 0.0]], 
+                       'CHARGE': 0,
+                       'XRAY': 'XAS'}
 
     calc = demon.Demon(basis=basis,
                        auxis=auxis,
@@ -159,9 +159,9 @@ def test_h2o_xas_xes():
 
     # First excited state
     input_arguments = {'GRID': 'FINE',
-                       'MOMODIFY': [[1,0],
-                                    [1,0.0]], 
-                       'CHARGE':-1}
+                       'MOMODIFY': [[1, 0],
+                                    [1, 0.0]], 
+                       'CHARGE': -1}
 
     calc = demon.Demon(basis=basis,
                        auxis=auxis,

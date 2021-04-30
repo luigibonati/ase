@@ -14,7 +14,7 @@ def atoms(asap3):
     rng = np.random.RandomState(0)
     atoms = bulk('Cu', cubic=True)
     atoms.positions[:, 0] *= 0.995
-    atoms.cell += rng.uniform(-1e-2, 1e-2, size=9).reshape((3,3))
+    atoms.cell += rng.uniform(-1e-2, 1e-2, size=9).reshape((3, 3))
     atoms.calc = asap3.EMT()
     return atoms
 
@@ -58,7 +58,7 @@ def test_unitcellfilter(asap3, testdir):
 
 def test_unitcellfilter_hcp(asap3, testdir):
     cu = bulk('Cu', 'hcp', a=3.6 / 2.0**0.5)
-    cu.cell[1,0] -= 0.05
+    cu.cell[1, 0] -= 0.05
     cu *= (6, 6, 3)
     cu.calc = asap3.EMT()
     print(cu.get_forces())

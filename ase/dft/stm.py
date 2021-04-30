@@ -66,7 +66,7 @@ class STM:
                           for k in range(nkpts)]
                          for s in range(nspins)])
         eigs -= calc.get_fermi_level()
-        ldos = np.zeros(calc.get_pseudo_wave_function(0,0,0).shape)
+        ldos = np.zeros(calc.get_pseudo_wave_function(0, 0, 0).shape)
 
         for s in range(nspins):
             for k in range(nkpts):
@@ -260,7 +260,7 @@ class STM:
             print(b, biases[b])
             I[b] = self.pointcurrent(biases[b], x, y, z)
 
-        dIdV = np.gradient(I,biasstep)
+        dIdV = np.gradient(I, biasstep)
 
         return biases, I, dIdV
 

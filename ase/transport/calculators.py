@@ -353,7 +353,7 @@ class TransportCalculator:
             E = self.energies.copy()
             T_e = self.T_e.copy()
 
-        if not isinstance(bias, (int,float)):
+        if not isinstance(bias, (int, float)):
             bias = bias[np.newaxis]
             E = E[:, np.newaxis]
             T_e = T_e[:, np.newaxis]

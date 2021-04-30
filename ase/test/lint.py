@@ -109,7 +109,7 @@ max_errors = {
     # block comment should start with '# '
     'E265': 172,
     # missing whitespace after ','
-    'E231': 300,
+    'E231': 0,
     # missing whitespace around arithmetic operator
     'E226': 308,
     # line too long (93 > 79 characters)

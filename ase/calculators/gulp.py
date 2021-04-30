@@ -209,7 +209,7 @@ class GULP(FileIOCalculator):
                 self.atoms.set_positions(positions)
 
             elif line.find('Final stress tensor components') != -1:
-                res = [0.,0.,0.,0.,0.,0.]
+                res = [0., 0., 0., 0., 0., 0.]
                 for j in range(3):
                     var = lines[i+j+3].split()[1]
                     res[j] = float(var)
@@ -219,7 +219,7 @@ class GULP(FileIOCalculator):
                 self.results['stress'] = stress
 
             elif line.find('Final Cartesian lattice vectors') != -1:
-                lattice_vectors = np.zeros((3,3))
+                lattice_vectors = np.zeros((3, 3))
                 s = i + 2
                 for j in range(s, s+3):
                     temp = lines[j].split()

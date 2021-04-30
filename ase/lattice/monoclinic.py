@@ -22,7 +22,7 @@ class SimpleMonoclinicFactory(TriclinicFactory):
             self.latticeconstant['gamma'] = 90
         else:
             if len(self.latticeconstant) == 4:
-                self.latticeconstant = self.latticeconstant + (90,90)
+                self.latticeconstant = self.latticeconstant + (90, 90)
             else:
                 raise ValueError("Improper lattice constants for monoclinic crystal.")
 

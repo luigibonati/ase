@@ -54,14 +54,14 @@ def test_dlp():
     cells.append(np.array([[22.90, -0.3925E-01, 0.4591E-01], [-0.9443E-01, 22.88, 0.4531], [0.6538, 0.7660, 19.12]]))
     cells.append(np.array([[22.73, -0.3896E-01, 0.4557E-01], [-0.9374E-01, 22.71, 0.4497], [0.6490, 0.7603, 18.98]]))
 
-    traj = aseIO.read(fd, format='dlp-history', index=slice(0,None))
+    traj = aseIO.read(fd, format='dlp-history', index=slice(0, None))
     assert len(traj) == 3
 
-    traj = aseIO.iread(fd, format='dlp-history', index=slice(0,None))
+    traj = aseIO.iread(fd, format='dlp-history', index=slice(0, None))
     for i, frame in enumerate(traj):
         assert len(frame) == 2
         assert all(frame.symbols == 'ONi')
-        assert np.isclose(frame.get_cell(),cells[i]).all()
+        assert np.isclose(frame.get_cell(), cells[i]).all()
 
     symbols = frame.get_chemical_symbols()
 
@@ -69,7 +69,7 @@ def test_dlp():
     for i, frame in enumerate(traj):
         assert len(frame) == 2
         assert all(frame.symbols == 'ONi')
-        assert np.isclose(frame.get_cell(),cells[i]).all()
+        assert np.isclose(frame.get_cell(), cells[i]).all()
 
 
 #Test HISTORY reading with frames count
@@ -132,14 +132,14 @@ def test_dlp3():
     cells.append(np.array([[23.9999947494, 0.0, 0.0], [0.0, 23.9999947494, 0.0], [0.0, 0.0, 23.9999947494]]))
     cells.append(np.array([[23.9999911871, 0.0, 0.0], [0.0, 23.9999911871, 0.0], [0.0, 0.0, 23.9999911871]]))
 
-    traj = aseIO.read(fd3, format='dlp-history', index=slice(0,None))
+    traj = aseIO.read(fd3, format='dlp-history', index=slice(0, None))
     assert len(traj) == 3
 
-    traj = aseIO.iread(fd3, format='dlp-history', index=slice(0,None))
+    traj = aseIO.iread(fd3, format='dlp-history', index=slice(0, None))
     for i, frame in enumerate(traj):
         assert len(frame) == 4
         assert all(frame.symbols == 'OHHX')
-        assert np.isclose(frame.get_cell(),cells[i]).all()
+        assert np.isclose(frame.get_cell(), cells[i]).all()
 
     symbols = frame.get_chemical_symbols()
 
@@ -147,7 +147,7 @@ def test_dlp3():
     for i, frame in enumerate(traj):
         assert len(frame) == 4
         assert all(frame.symbols == 'OHHX')
-        assert np.isclose(frame.get_cell(),cells[i]).all()
+        assert np.isclose(frame.get_cell(), cells[i]).all()
         assert frame.has('initial_charges')
 
 

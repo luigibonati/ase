@@ -126,9 +126,9 @@ class Onetep(FileIOCalculator):
                 self._read_positions(out)
                 read_positions = True
             elif '%block species_cond' in clean_line:
-                self._read_species(out,cond=True)
+                self._read_species(out, cond=True)
             elif '%block species_atomic_set_cond' in clean_line:
-                self._read_species_solver(out,cond=True)
+                self._read_species_solver(out, cond=True)
             elif 'warn' in line.lower():
                 warnings.append(line)
             line = out.readline()
@@ -145,7 +145,7 @@ class Onetep(FileIOCalculator):
 
         self.read_results(label)
 
-    def read_results(self,label=None):
+    def read_results(self, label=None):
         FileIOCalculator.read_results(self)
 
         if label is None:
@@ -247,7 +247,7 @@ class Onetep(FileIOCalculator):
                 tags[j] = '0'
             tags[j] = int(tags[j])
         if len(self.atoms) != len(symbols):
-            self.atoms = Atoms(symbols=symbols,positions=positions)
+            self.atoms = Atoms(symbols=symbols, positions=positions)
         self.atoms.set_chemical_symbols(symbols)
         self.atoms.set_tags(tags)
         self.atoms.set_positions(positions)
@@ -367,7 +367,7 @@ class Onetep(FileIOCalculator):
             fields = line.split()
         self.results['forces'] = array(forces)
 
-    def _read_excitations(self,out):
+    def _read_excitations(self, out):
         """ Extract the computed electronic excitations from a onetep output
         file."""
         excitations = []
@@ -376,7 +376,7 @@ class Onetep(FileIOCalculator):
             words = line.split()
             if len(words) == 0:
                 break
-            excitations.append([float(words[0]),float(words[1])*Hartree,float(words[2])])
+            excitations.append([float(words[0]), float(words[1])*Hartree, float(words[2])])
             line = out.readline()
         self.results['excitations'] = array(excitations)
 
@@ -434,7 +434,7 @@ class Onetep(FileIOCalculator):
                     pseudo_string = sp[1]  # bare elem name if pseudo suffix empty
             self.pseudos.append((sp[0], pseudo_string))
 
-    def _generate_solver_block(self,cond=False):
+    def _generate_solver_block(self, cond=False):
         """Create a default onetep pseudoatomic solvers block, using 'SOLVE'
         unless the user has set overrides for specific species by setting
         specific entries in species_solver (_cond)"""
@@ -451,7 +451,7 @@ class Onetep(FileIOCalculator):
             if not cond:
                 self.solvers.append((sp[0], atomic_string))
             else:
-                self.solvers_cond.append((sp[0],atomic_string))
+                self.solvers_cond.append((sp[0], atomic_string))
 
     def _generate_core_wf_block(self):
         """Create a default onetep core wavefunctions block, using 'NONE'

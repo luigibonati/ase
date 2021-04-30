@@ -102,4 +102,4 @@ def test_aims_interface():
     calc.atoms = water
     calc.prepare_input_files()
     for f in ['control.in', 'geometry.in']:
-        assert os.path.isfile(os.path.join(tmp_dir,f))
+        assert os.path.isfile(os.path.join(tmp_dir, f))

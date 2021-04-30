@@ -4,7 +4,7 @@ from ase.calculators.acemolecule import ACE
 
 def test_ace():
     label = "test"
-    mol = Atoms('H2',[(0, 0, 0),(0, 0, 0.7)])
+    mol = Atoms('H2', [(0, 0, 0), (0, 0, 0.7)])
     basic = [dict(Cell='5.0')]
     ace = ACE(label=label, BasicInformation=basic)
     mol.calc = ace
