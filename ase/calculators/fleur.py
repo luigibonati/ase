@@ -114,7 +114,7 @@ class FLEUR:
             self.convergence = convergence
             self.convergence['energy'] /= Hartree
         else:
-            self.convergence = {'energy' : 0.0001}
+            self.convergence = {'energy': 0.0001}
 
         self.start_dir = None
         self.workdir = workdir

@@ -77,7 +77,7 @@ max_errors = {
     # do not use bare 'except'
     'E722': 0,
     # whitespace before ':'
-    'E203': 30,
+    'E203': 0,
     # blank line at end of file
     'W391': 30,
     # continuation line over-indented for hanging indent
