@@ -39,8 +39,9 @@ def handle_query(args) -> str:
 @pytest.fixture(scope='module')
 def client(database):
     pytest.importorskip('flask')
-    import ase.db.app as app
+    from ase.db.app import DBApp
 
+    app = DBApp()
     app.add_project(database)
     app.app.testing = True
     return app.app.test_client()
