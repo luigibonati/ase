@@ -9,8 +9,8 @@ def test_loggingcalc(tmp_path, figure):
     atoms.calc = calc
 
     for i in range(4):
-        forces = atoms.get_forces()
-        energy = atoms.get_potential_energy()
+        atoms.get_forces()
+        atoms.get_potential_energy()
         atoms.positions[0, 0] += 0.1
 
     # This is kind of improper testing.
