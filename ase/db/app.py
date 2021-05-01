@@ -173,7 +173,7 @@ def new_app(projects):
     def gui(id: int):
         """Pop ud ase gui window."""
         from ase.visualize import view
-        atoms = self.projects['default']['database'].get_atoms(id)
+        atoms = projects['default']['database'].get_atoms(id)
         view(atoms)
         return '', 204, []
 
@@ -196,11 +196,11 @@ def new_app(projects):
     return app
 
 
-def main():
-    db = connect(sys.argv[1])
-    add_project(db)
-    app.run(host='0.0.0.0', debug=True)
+# def main():
+#    db = connect(sys.argv[1])
+#    add_project(db)
+#    app.run(host='0.0.0.0', debug=True)
 
 
-if __name__ == '__main__':
-    main()
+# if __name__ == '__main__':
+#    main()
