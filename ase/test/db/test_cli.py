@@ -17,12 +17,12 @@ def dbfile(tmp_path_factory) -> Path:
         db.write(molecule('H2O'), key_value_pairs={'carrots': 3})
         db.write(bulk('Ti'), key_value_pairs={'oranges': 42, 'carrots': 4})
 
-    return path
+    return str(path)
 
 
 def test_insert_into(cli, dbfile):
     """Test --insert-into."""
-    out = dbfile.with_name('x1.db')
+    out = Path(dbfile).with_name('x1.db')
     # Insert 1 row:
     cli.ase(
         *f'db {dbfile} --limit 1 --insert-into {out} --progress-bar'.split())
