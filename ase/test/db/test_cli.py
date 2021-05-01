@@ -55,12 +55,14 @@ def check_tokens(tokens):
 
 def test_table(cli, dbfile):
     txt = cli.ase('db', dbfile)
+    print(txt)
     tokens = [token.strip() for token in txt.split('|')]
     check_tokens(tokens)
 
 
 def test_table_csv(cli, dbfile):
     txt = cli.ase('db', dbfile, '--csv')
+    print(txt)
     tokens = txt.split(', ')
     check_tokens(tokens)
 
