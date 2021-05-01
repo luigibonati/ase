@@ -114,7 +114,6 @@ def get_distance_indices(distanceMatrix, distance):
     return indices
 
 
-
 def mic(dr, cell, pbc=True):
     """
     Apply minimum image convention to an array of distance vectors.
@@ -767,7 +766,7 @@ class NewPrimitiveNeighborList:
         self.nneighbors = 0
         self.npbcneighbors = 0
 
-    def update(self,  pbc, cell, positions, numbers=None):
+    def update(self, pbc, cell, positions, numbers=None):
         """Make sure the list is up to date."""
 
         if self.nupdates == 0:

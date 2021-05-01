@@ -62,6 +62,7 @@ class StaticRamanCalculatorBase(RamanCalculatorBase):
         disp.calculate_and_save_static_polarizability(atoms)
         return returnvalue
 
+
 class StaticRamanCalculator(StaticRamanCalculatorBase, Vibrations):
     pass
 

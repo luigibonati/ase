@@ -779,7 +779,6 @@ class UlmBundleBackend:
                          all_identical=all_identical,
                          data=data)
 
-
     def read_small(self, framedir):
         "Read small data."
         with ulmopen(os.path.join(framedir, 'smalldata.ulm'), 'r') as fd:
@@ -979,9 +978,11 @@ def print_bundletrajectory_info(filename):
             infoline = infoline[:-2] + '.'  # Fix punctuation.
             print(infoline)
 
+
 class PickleBundleBackend:
     # Leave placeholder class so importing asap3 won't crash.
     pass
+
 
 def main():
     import optparse

@@ -21,7 +21,7 @@ gui_default_settings = {
     'show_axes': True,
     'show_bonds': False,
     'shift_cell': False,
-    'swap_mouse' : False,
+    'swap_mouse': False,
 }
 
 

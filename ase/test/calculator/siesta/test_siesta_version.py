@@ -7,7 +7,6 @@ def test_siesta_version():
         print(version)
         assert version == reference, (version, reference)
 
-
     # These reference version numbers have been found on the internet
     # by searching for "reinit: Reading from standard input".
     #

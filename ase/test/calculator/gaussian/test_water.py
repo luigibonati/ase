@@ -4,7 +4,6 @@ def test_water():
     from ase.optimize.lbfgs import LBFGS
     from ase.io import read
 
-
     # First test to make sure Gaussian works
     calc = Gaussian(xc='pbe', chk='water.chk', label='water')
     calc.clean()

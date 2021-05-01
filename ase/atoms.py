@@ -1557,7 +1557,6 @@ class Atoms:
 
         return get_dihedrals(v0, v1, v2, cell=cell, pbc=pbc)
 
-
     def _masked_rotate(self, center, axis, diff, mask):
         # do rotation of subgroup by copying it to temporary atoms object
         # and then rotating that

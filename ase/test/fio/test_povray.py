@@ -32,7 +32,6 @@ def test_povray_highorder(testdir, povray_executable):
         radii=radii,
     )
 
-
     # XXX Not sure how to test that the bondpairs data processing is correct.
     pngfile = renderer.render()
     assert pngfile.is_file()

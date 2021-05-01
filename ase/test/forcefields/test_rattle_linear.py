@@ -13,7 +13,6 @@ import ase.units as units
 def test_rattle_linear(testdir):
     """Test RATTLE and QM/MM for rigid linear acetonitrile."""
 
-
     sigma = np.array([sigma_me, sigma_c, sigma_n])
     epsilon = np.array([epsilon_me, epsilon_c, epsilon_n])
     i = LJInteractionsGeneral(sigma, epsilon, sigma, epsilon, 3)

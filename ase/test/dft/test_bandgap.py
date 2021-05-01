@@ -1,7 +1,6 @@
 def test_bandgap():
     from ase.dft.bandgap import bandgap
 
-
     class Test:
         def get_ibz_k_points(self):
             return [(0, 0, 0)]
@@ -14,7 +13,6 @@ def test_bandgap():
 
         def get_fermi_level(self):
             return 0.5
-
 
     gaps = [2, 11, 1, 2, 11, 1]
 

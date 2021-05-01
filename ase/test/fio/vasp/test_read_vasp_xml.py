@@ -158,7 +158,7 @@ def test_atoms(vasprun):
 
     # check scaled_positions
     expected_scaled_positions = np.array([[0.0, 0.0, 0.0],
-                                          [0.5,  0.5, 0.5]])
+                                          [0.5, 0.5, 0.5]])
 
     np.testing.assert_allclose(atoms.get_scaled_positions(),
                                expected_scaled_positions)
@@ -236,7 +236,7 @@ def test_corrupted_calculation(vasprun, calculation):
     # Thus the parser is expected to read the previous one.
     corrupted_record = '\n'.join(second_calculation_record.split('\n')[:-6])
     # assert that we actually do have two calculations in the set up
-    xml_string = vasprun + first_calculation_record+ corrupted_record
+    xml_string = vasprun + first_calculation_record + corrupted_record
     images = read(StringIO(xml_string), index=':', format="vasp-xml")
     assert len(images) == 1
     check_calculation(vasprun + first_calculation_record + corrupted_record,

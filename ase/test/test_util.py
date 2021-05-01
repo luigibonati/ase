@@ -11,7 +11,6 @@ def test_deprecated_decorator():
     def add(a, b):
         return a + b
 
-
     with pytest.warns(MyWarning, match='hello'):
         assert add(2, 2) == 4
 

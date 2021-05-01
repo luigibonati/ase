@@ -67,7 +67,6 @@ def test_mixingcalc():
     except ValueError:
         assert True
 
-
     # test  MixedCalculator and energy contributions
     w1, w2 = 0.78, 0.22
     atoms1 = atoms.copy()

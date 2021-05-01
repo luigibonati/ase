@@ -33,6 +33,7 @@ class SimpleTetragonalFactory(_Tetragonalize, SimpleOrthorhombicFactory):
     "A factory for creating simple tetragonal lattices."
     orthobase = SimpleOrthorhombicFactory
 
+
 SimpleTetragonal = SimpleTetragonalFactory()
 
 
@@ -40,5 +41,6 @@ class CenteredTetragonalFactory(_Tetragonalize,
                                 BodyCenteredOrthorhombicFactory):
     "A factory for creating centered tetragonal lattices."
     orthobase = BodyCenteredOrthorhombicFactory
+
 
 CenteredTetragonal = CenteredTetragonalFactory()

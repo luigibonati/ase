@@ -44,7 +44,7 @@ def test_singleFile_falseCalc_multipleImages(cli, traj):
 
 
 def test_singleFile_trueCalc_multipleImages(cli, traj):
-    cli.ase('diff', traj,  '-c')
+    cli.ase('diff', traj, '-c')
 
 
 def test_twoFiles_falseCalc_singleImage(cli, traj):

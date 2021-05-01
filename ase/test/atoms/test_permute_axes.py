@@ -4,9 +4,7 @@ def test_permute_axes():
     from ase import Atoms
     from ase.geometry import permute_axes
 
-
     TOL = 1E-10
-
 
     rng = np.random.RandomState(0)
     for i in range(20):
