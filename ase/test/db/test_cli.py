@@ -8,7 +8,7 @@ from ase.db import connect
 
 
 @pytest.fixture(scope='module')
-def dbfile(tmp_path_factory) -> Path:
+def dbfile(tmp_path_factory) -> str:
     """Create a database file (x.db) with two rows."""
     path = tmp_path_factory.mktemp('db') / 'x.db'
 
