@@ -158,6 +158,78 @@ def show_values(db, query, keys):
                                     for v, n in vals.items())))
 
 
+def plot(db, query, *, keys, sort, tags):
+    import matplotlib.pyplot as plt
+    plots = defaultdict(list)
+    X = {}
+    labels = []
+    for row in db.select(query, sort=sort, include_data=False):
+        name = ','.join(str(row[tag]) for tag in tags)
+        x = row.get(keys[0])
+        if x is not None:
+            if isinstance(x, str):
+                if x not in X:
+                    X[x] = len(X)
+                    labels.append(x)
+                x = X[x]
+            plots[name].append([x] + [row.get(key) for key in keys[1:]])
+    for name, plot in plots.items():
+        xyy = zip(*plot)
+        x = xyy[0]
+        for y, key in zip(xyy[1:], keys[1:]):
+            plt.plot(x, y, label=name + ':' + key)
+    if X:
+        plt.xticks(range(len(labels)), labels, rotation=90)
+    plt.legend()
+    plt.show()
+
+
+def dump_to_stdout(db, query):
+    row = db.get(query)
+    db2 = connect(sys.stdout, 'json', use_lock_file=False)
+    kvp = row.get('key_value_pairs', {})
+    db2.write(row, data=row.get('data'), **kvp)
+
+
+def get_table(db, query, c, *, sort, limit, offset):
+    columns = list(all_columns)
+    if c and c.startswith('++'):
+        keys = set()
+        for row in db.select(query,
+                             limit=limit, offset=offset,
+                             include_data=False):
+            keys.update(row._keys)
+        columns.extend(keys)
+        if c[2:3] == ',':
+            c = c[3:]
+        else:
+            c = ''
+    if c:
+        if c[0] == '+':
+            c = c[1:]
+        elif c[0] != '-':
+            columns = []
+        for col in c.split(','):
+            if col[0] == '-':
+                columns.remove(col[1:])
+            else:
+                columns.append(col.lstrip('+'))
+
+    table = Table(db, verbosity=verbosity, cut=cut)
+    table.select(query, columns, sort, limit, offset)
+    return table
+
+
+def delete(db, query, yes):
+    ids = [row['id'] for row in db.select(query, include_data=False)]
+    if ids and not args.yes:
+        msg = 'Delete %s? (yes/No): ' % plural(len(ids), 'row')
+        if input(msg).lower() != 'yes':
+            return
+    db.delete(ids)
+    out('Deleted %s' % plural(len(ids), 'row'))
+
+
 def main(args):
     verbosity = 1 - args.quiet + args.verbose
     query = ','.join(args.query)
@@ -294,13 +366,7 @@ def main(args):
         return
 
     if args.delete:
-        ids = [row['id'] for row in db.select(query, include_data=False)]
-        if ids and not args.yes:
-            msg = 'Delete %s? (yes/No): ' % plural(len(ids), 'row')
-            if input(msg).lower() != 'yes':
-                return
-        db.delete(ids)
-        out('Deleted %s' % plural(len(ids), 'row'))
+        delete(db, query, yes=args.yes)
         return
 
     if args.plot:
@@ -311,36 +377,11 @@ def main(args):
             tags = []
             keys = args.plot
         keys = keys.split(',')
-        plots = defaultdict(list)
-        X = {}
-        labels = []
-        for row in db.select(query, sort=args.sort, include_data=False):
-            name = ','.join(str(row[tag]) for tag in tags)
-            x = row.get(keys[0])
-            if x is not None:
-                if isinstance(x, str):
-                    if x not in X:
-                        X[x] = len(X)
-                        labels.append(x)
-                    x = X[x]
-                plots[name].append([x] + [row.get(key) for key in keys[1:]])
-        import matplotlib.pyplot as plt
-        for name, plot in plots.items():
-            xyy = zip(*plot)
-            x = xyy[0]
-            for y, key in zip(xyy[1:], keys[1:]):
-                plt.plot(x, y, label=name + ':' + key)
-        if X:
-            plt.xticks(range(len(labels)), labels, rotation=90)
-        plt.legend()
-        plt.show()
+        plot(db, query, keys=keys, sort=args.sort, tags=tags)
         return
 
     if args.json:
-        row = db.get(query)
-        db2 = connect(sys.stdout, 'json', use_lock_file=False)
-        kvp = row.get('key_value_pairs', {})
-        db2.write(row, data=row.get('data'), **kvp)
+        dump_to_stdout(db, query)
         return
 
     if args.long:
@@ -357,32 +398,9 @@ def main(args):
         DBApp.run_db(db)
         return
 
-    columns = list(all_columns)
-    c = args.columns
-    if c and c.startswith('++'):
-        keys = set()
-        for row in db.select(query,
-                             limit=args.limit, offset=args.offset,
-                             include_data=False):
-            keys.update(row._keys)
-        columns.extend(keys)
-        if c[2:3] == ',':
-            c = c[3:]
-        else:
-            c = ''
-    if c:
-        if c[0] == '+':
-            c = c[1:]
-        elif c[0] != '-':
-            columns = []
-        for col in c.split(','):
-            if col[0] == '-':
-                columns.remove(col[1:])
-            else:
-                columns.append(col.lstrip('+'))
-
-    table = Table(db, verbosity=verbosity, cut=args.cut)
-    table.select(query, columns, args.sort, args.limit, args.offset)
+    table = get_table(db, query, args.columns, cut=args.cut,
+                      sort=args.sort, limit=args.limit,
+                      offset=args.offset)
     if args.csv:
         table.write_csv()
     else:
