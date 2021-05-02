@@ -1,8 +1,11 @@
+import io
 import pytest
 
 from ase import Atoms
 from ase.db import connect
 from ase.db.web import Session
+from ase.db.app import DBApp
+from ase.io import read
 
 
 @pytest.fixture(scope='module')
@@ -39,26 +42,11 @@ def handle_query(args) -> str:
 @pytest.fixture(scope='module')
 def client(database):
     pytest.importorskip('flask')
-    from ase.db.app import DBApp
 
     app = DBApp()
     app.add_project(database)
     app.app.testing = True
     return app.app.test_client()
-
-
-def test_add_columns(database):
-    """Test that all keys can be added also for row withous keys."""
-    pytest.importorskip('flask')
-
-    session = Session('name')
-    project = {'default_columns': ['bar'],
-               'handle_query_function': handle_query}
-
-    session.update('query', '', {'query': 'id=2'}, project)
-    table = session.create_table(database, 'id', ['foo'])
-    assert table.columns == ['bar']  # selected row doesn't have a foo key
-    assert 'foo' in table.addcolumns  # ... but we can add it
 
 
 def test_favicon(client):
@@ -67,46 +55,56 @@ def test_favicon(client):
 
 
 def test_db_web(client):
-    import io
-    from ase.db.web import Session
-    from ase.io import read
-    c = client
-
-    page = c.get('/').data.decode()
+    page = client.get('/').data.decode()
     sid = Session.next_id - 1
     assert 'foo' in page
     for url in [f'/update/{sid}/query/bla/?query=id=1',
                 '/default/row/1']:
-        resp = c.get(url)
+        resp = client.get(url)
         assert resp.status_code == 200
 
     for type in ['json', 'xyz', 'cif']:
         url = f'atoms/default/1/{type}'
-        resp = c.get(url)
+        resp = client.get(url)
         assert resp.status_code == 200
         atoms = read(io.StringIO(resp.data.decode()), format=type)
         print(atoms.numbers)
         assert (atoms.numbers == [1, 1, 8]).all()
 
 
-def test_paging(database):
-    """Test paging."""
+@pytest.fixture
+def dbsetup(database):
     pytest.importorskip('flask')
+    class DBSetup:
+        def __init__(self):
+            self.session = Session('name')
+            self.project = {'default_columns': ['bar'],
+                            'handle_query_function': handle_query}
+            self.session.update('query', '', {'query': ''}, self.project)
+            self.table = self.session.create_table(database, 'id', ['foo'])
 
-    session = Session('name')
-    project = {'default_columns': ['bar'],
-               'handle_query_function': handle_query}
+    return DBSetup()
 
-    session.update('query', '', {'query': ''}, project)
-    table = session.create_table(database, 'id', ['foo'])
-    assert len(table.rows) == 2
 
-    session.update('limit', '1', {}, project)
-    session.update('page', '1', {}, project)
+def test_add_columns(database, dbsetup):
+    """Test that all keys can be added also for row withous keys."""
+    table = dbsetup.table
+    table = dbsetup.session.create_table(database, 'id', ['foo'])
+    assert table.columns == ['bar']  # selected row doesn't have a foo key
+    assert 'foo' in table.addcolumns  # ... but we can add it
+
+
+def test_paging(database, dbsetup):
+    """Test paging."""
+    assert len(dbsetup.table.rows) == 2
+
+    session = dbsetup.session
+    session.update('limit', '1', {}, dbsetup.project)
+    session.update('page', '1', {}, dbsetup.project)
     table = session.create_table(database, 'id', ['foo'])
     assert len(table.rows) == 1
 
     # We are now on page 2 and select something on page 1:
-    session.update('query', '', {'query': 'id=1'}, project)
+    session.update('query', '', {'query': 'id=1'}, dbsetup.project)
     table = session.create_table(database, 'id', ['foo'])
     assert len(table.rows) == 1
