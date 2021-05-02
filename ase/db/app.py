@@ -27,8 +27,6 @@ import sys
 from typing import Dict, Any, Set
 from pathlib import Path
 
-from flask import Flask, render_template, request
-
 from ase.db import connect
 from ase.db.core import Database
 from ase.formula import Formula
@@ -95,6 +93,7 @@ class DBApp:
 
 
 def new_app(projects):
+    from flask import Flask, render_template, request
     app = Flask(__name__, template_folder=str(DBApp.root))
 
     @app.route('/', defaults={'project_name': 'default'})
