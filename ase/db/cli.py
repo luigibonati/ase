@@ -191,7 +191,7 @@ def dump_to_stdout(db, query):
     db2.write(row, data=row.get('data'), **kvp)
 
 
-def get_table(db, query, c, *, sort, limit, offset):
+def get_table(db, query, c, *, sort, limit, offset, cut, verbosity):
     columns = list(all_columns)
     if c and c.startswith('++'):
         keys = set()
@@ -220,9 +220,9 @@ def get_table(db, query, c, *, sort, limit, offset):
     return table
 
 
-def delete(db, query, yes):
+def delete(db, query, yes, out):
     ids = [row['id'] for row in db.select(query, include_data=False)]
-    if ids and not args.yes:
+    if ids and not yes:
         msg = 'Delete %s? (yes/No): ' % plural(len(ids), 'row')
         if input(msg).lower() != 'yes':
             return
@@ -366,7 +366,7 @@ def main(args):
         return
 
     if args.delete:
-        delete(db, query, yes=args.yes)
+        delete(db, query, yes=args.yes, out=out)
         return
 
     if args.plot:
@@ -399,6 +399,7 @@ def main(args):
         return
 
     table = get_table(db, query, args.columns, cut=args.cut,
+                      verbosity=verbosity,
                       sort=args.sort, limit=args.limit,
                       offset=args.offset)
     if args.csv:
