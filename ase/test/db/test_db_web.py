@@ -4,7 +4,7 @@ import pytest
 from ase import Atoms
 from ase.db import connect
 from ase.db.web import Session
-from ase.db.app import DBApp
+from ase.db.app import DBApp, request2string
 from ase.io import read
 
 
@@ -32,11 +32,6 @@ def database(tmp_path_factory):
         db.write(atoms)
 
         yield db
-
-
-def handle_query(args) -> str:
-    """Converts request args to ase.db query string."""
-    return args['query']
 
 
 @pytest.fixture(scope='module')
@@ -79,7 +74,7 @@ def dbsetup(database):
         def __init__(self):
             self.session = Session('name')
             self.project = {'default_columns': ['bar'],
-                            'handle_query_function': handle_query}
+                            'handle_query_function': request2string}
             self.session.update('query', '', {'query': ''}, self.project)
             self.table = self.session.create_table(database, 'id', ['foo'])
 
