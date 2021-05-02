@@ -202,7 +202,7 @@ def new_app(projects):
     return app
 
 
-def main(cls):
+def main():
     db = connect(sys.argv[1])
     DBApp.run_db(db)
 
