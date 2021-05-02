@@ -8,7 +8,6 @@ def test_create_database():
     if os.path.isfile(db_file):
         os.remove(db_file)
 
-
     from ase.build import fcc111
 
     atom_numbers = np.array([78, 78, 79, 79])

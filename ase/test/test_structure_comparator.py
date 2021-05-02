@@ -9,6 +9,7 @@ from ase.spacegroup import spacegroup, crystal
 
 heavy_test = False
 
+
 @pytest.fixture(scope='module')
 def comparator():
     return SymmetryEquivalenceCheck()

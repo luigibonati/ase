@@ -6,7 +6,6 @@ from ase.build import bulk
 from ase.calculators.emt import EMT
 
 
-
 class NDPoly:
     def __init__(self, ndims=1, order=3):
         """Multivariate polynomium.

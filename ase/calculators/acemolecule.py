@@ -33,7 +33,7 @@ class ACE(FileIOCalculator):
 
     order_list = ['BasicInformation', 'Guess', 'Scf']
     guess_list = [{}]
-    default_parameters = {'BasicInformation': basic_list, 'Guess' : guess_list,
+    default_parameters = {'BasicInformation': basic_list, 'Guess': guess_list,
                           'Scf': scf_list, 'Force': force_list, 'TDDFT': tddft_list, 'order': order_list}
 
     def __init__(
@@ -175,7 +175,6 @@ class ACE(FileIOCalculator):
                     for val in section_param:
                         fpt.write('    ' * depth + str(section) + " " + str(val) + "\n")
 
-
     def write_acemolecule_input(self, fpt, param, depth=0):
         '''Write ACE-Molecule input
 
@@ -277,5 +276,3 @@ def update_parameter(oldpar, newpar):
         else:
             oldpar[section] = section_param
     return oldpar
-
-

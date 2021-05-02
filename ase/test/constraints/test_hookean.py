@@ -14,7 +14,6 @@ def test_hookean():
     from ase.md import VelocityVerlet
     from ase import units
 
-
     class SaveEnergy:
         """Class to save energy."""
 
@@ -24,7 +23,6 @@ def test_hookean():
 
         def __call__(self):
             self.energies.append(atoms.get_total_energy())
-
 
     # Make Pt 110 slab with Cu2 adsorbate.
     atoms = fcc110('Pt', (2, 2, 2), vacuum=7.)

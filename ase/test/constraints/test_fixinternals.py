@@ -27,6 +27,7 @@ def setup_atoms():
     atoms.rattle(stdev=0.3)
     return atoms
 
+
 def setup_fixinternals():
     atoms = setup_atoms()
 

@@ -42,7 +42,7 @@ def test_dftb_bandstructure(dftb_factory):
     calc = dftb_factory.calc(
         atoms=atoms,
         label='dftb',
-        kpts={'path':'WGXWLG', 'npoints':50},
+        kpts={'path': 'WGXWLG', 'npoints': 50},
         Hamiltonian_SCC='Yes',
         Hamiltonian_MaxSCCIterations=1,
         Hamiltonian_ReadInitialCharges='Yes',

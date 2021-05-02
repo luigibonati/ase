@@ -1424,5 +1424,3 @@ class PreconImages:
         self._old_s = s
         self._old_x = x
         return self._spline
-    
-    

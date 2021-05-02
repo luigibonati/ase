@@ -553,8 +553,6 @@ class Siesta(FileIOCalculator):
             elif self['spin'] == 'non-collinear':
                 f.write(format_fdf('NonCollinear', (True, "# Backwards compatibility.")))
 
-
-
             # Write functional.
             functional, authors = self['xc']
             f.write(format_fdf('XC.functional', functional))
@@ -1218,6 +1216,7 @@ class Siesta(FileIOCalculator):
 
     def get_ibz_k_points(self):
         return self.results['kpoints']
+
 
 class Siesta3_2(Siesta):
     def __init__(self, *args, **kwargs):

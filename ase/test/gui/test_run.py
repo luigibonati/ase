@@ -162,7 +162,7 @@ def test_fracocc(gui, testdir):
 
 def test_povray(gui, testdir):
     mol = molecule('H2O')
-    gui.new_atoms(mol) # not gui.set_atoms(mol)
+    gui.new_atoms(mol)  # not gui.set_atoms(mol)
     n = gui.render_window()
     assert n.basename_widget.value == 'H2O'
     n.run_povray_widget.check.deselect()
@@ -232,7 +232,7 @@ def test_repeat(gui):
 
     multiplier = [2, 3, 4]
     expected_atoms = fe * multiplier
-    natoms= np.prod(multiplier)
+    natoms = np.prod(multiplier)
     for i, value in enumerate(multiplier):
         repeat.repeat[i].value = value
 

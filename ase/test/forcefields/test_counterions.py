@@ -10,7 +10,7 @@ def test_counterions():
     sigma = 1.868 * (1.0/2.0)**(1.0/6.0)
     epsilon = 0.00277 * units.kcal / units.mol
 
-    atoms = Atoms('3Na', positions=np.array([[0, 0, -2], [0,0,0], [0,0,2]]))
+    atoms = Atoms('3Na', positions=np.array([[0, 0, -2], [0, 0, 0], [0, 0, 2]]))
     atoms.cell = [10, 10, 10]
     atoms.pbc = True
 

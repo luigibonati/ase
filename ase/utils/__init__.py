@@ -489,7 +489,6 @@ class iofunction:
         return iofunc
 
 
-
 def writer(func):
     return iofunction('w')(func)
 

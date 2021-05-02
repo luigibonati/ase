@@ -4,6 +4,7 @@ from ase.optimize.optimize import Optimizer
 from ase.constraints import UnitCellFilter
 import time
 
+
 class PreconFIRE(Optimizer):
 
     def __init__(self, atoms, restart=None, logfile='-', trajectory=None,

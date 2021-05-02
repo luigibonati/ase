@@ -28,7 +28,6 @@ def test_cell_conv():
     d = a / 2.0
     h = a / np.sqrt(2.0)
 
-
     # Systems
     # Primitive cell, non-orthorhombic, non-cubic
     # Parameters
@@ -42,7 +41,6 @@ def test_cell_conv():
                            [1.0, np.sqrt(3.0), 0.],
                            [1.0, np.sqrt(3.0) / 3.0, 2 * np.sqrt(2 / 3)]])
     si_prim_m2 *= h / 2.0
-
 
     # Orthorhombic cell, non-cubic
     # Parameters

@@ -3,6 +3,7 @@ import numpy as np
 from ase.md.md import MolecularDynamics
 import warnings
 
+
 class VelocityVerlet(MolecularDynamics):
     def __init__(self, atoms, timestep=None, trajectory=None, logfile=None,
                  loginterval=1, dt=None, append_trajectory=False):

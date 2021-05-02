@@ -12,7 +12,6 @@ def test_animate(plt):
     if 'html' not in writers.list():
         pytest.skip('matplotlib html writer not present')
 
-
     images = [molecule('H2O'), bulk('Cu'), fcc111('Au', size=(1, 1, 1))]
 
     # gif and mp4 writers may not be available.  Easiest solution is to only

@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class FixRotation:
     """Remove rotation from an atoms object.
     
@@ -24,9 +25,9 @@ class FixRotation:
         p = atoms.get_momenta()
         m = atoms.get_masses()
 
-        x = r[:,0]
-        y = r[:,1]
-        z = r[:,2]
+        x = r[:, 0]
+        y = r[:, 1]
+        z = r[:, 2]
 
         I11 = np.sum(m * (y**2 + z**2))
         I22 = np.sum(m * (x**2 + z**2))
@@ -42,4 +43,3 @@ class FixRotation:
         w = np.dot(np.linalg.inv(I), np.sum(np.cross(r, p), axis=0))
 
         self.atoms.set_velocities(v - np.cross(w, r))
-

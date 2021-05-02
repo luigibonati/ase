@@ -172,7 +172,7 @@ def test_neb_methods(method, optimizer, precon,
     assert abs(vdiff).max() < 1e-2
 
 
-@pytest.mark.parametrize('method', ['ODE', 'krylov', 'static'])
+@pytest.mark.parametrize('method', ['ODE', 'static'])
 @pytest.mark.filterwarnings('ignore:NEBOptimizer did not converge')
 def test_neb_optimizers(setup_images, method):
     images, _, _ = setup_images
@@ -193,6 +193,15 @@ def test_precon_initialisation(setup_images):
     assert len(mep.precon) == len(mep.images)
     assert mep.precon[0].mu == mep.precon[1].mu
 
+
+def test_single_precon_initialisation(setup_images):
+    images, _, _ = setup_images
+    precon = Exp()
+    mep = NEB(images, method='spline', precon=precon)
+    mep.get_forces()
+    assert len(mep.precon) == len(mep.images)
+    assert mep.precon[0].mu == mep.precon[1].mu
+    
 
 def test_precon_assembly(setup_images):
     images, _, _ = setup_images
