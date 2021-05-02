@@ -9,7 +9,9 @@ from ase.db import connect
 from ase.db.core import convert_str_to_int_float_or_str
 from ase.db.row import row2dct
 from ase.db.table import Table, all_columns
+from ase.db.app import DBApp
 from ase.utils import plural
+from ase.cli.main import CLIError
 
 
 class CLICommand:
@@ -129,7 +131,31 @@ def count_keys(db, query):
     n = max(len(key) for key in keys) + 1
     for key, number in keys.items():
         print('{:{}} {}'.format(key + ':', n, number))
-    return
+
+
+def show_values(db, query, keys):
+    values = {key: defaultdict(int) for key in keys}
+    numbers = set()
+    for row in db.select(query):
+        kvp = row.key_value_pairs
+        for key in keys:
+            value = kvp.get(key)
+            if value is not None:
+                values[key][value] += 1
+                if not isinstance(value, str):
+                    numbers.add(key)
+
+    n = max(len(key) for key in keys) + 1
+    for key in keys:
+        vals = values[key]
+        if key in numbers:
+            print('{:{}} [{}..{}]'
+                  .format(key + ':', n, min(vals), max(vals)))
+        else:
+            print('{:{}} {}'
+                  .format(key + ':', n,
+                          ', '.join('{}({})'.format(v, n)
+                                    for v, n in vals.items())))
 
 
 def main(args):
@@ -169,29 +195,7 @@ def main(args):
         return
 
     if args.show_values:
-        keys = args.show_values.split(',')
-        values = {key: defaultdict(int) for key in keys}
-        numbers = set()
-        for row in db.select(query):
-            kvp = row.key_value_pairs
-            for key in keys:
-                value = kvp.get(key)
-                if value is not None:
-                    values[key][value] += 1
-                    if not isinstance(value, str):
-                        numbers.add(key)
-
-        n = max(len(key) for key in keys) + 1
-        for key in keys:
-            vals = values[key]
-            if key in numbers:
-                print('{:{}} [{}..{}]'
-                      .format(key + ':', n, min(vals), max(vals)))
-            else:
-                print('{:{}} {}'
-                      .format(key + ':', n,
-                              ', '.join('{}({})'.format(v, n)
-                                        for v, n in vals.items())))
+        show_values(db, query, keys=args.show_values.split(','))
         return
 
     if args.add_from_file:
@@ -348,12 +352,9 @@ def main(args):
         try:
             import flask  # noqa
         except ImportError:
-            print('Please install Flask: python3 -m pip install flask')
-            return
+            raise CLIError('Please install Flask: python3 -m pip install flask')
         check_jsmol()
-        import ase.db.app as app
-        app.add_project(db)
-        app.app.run(host='0.0.0.0', debug=True)
+        DBApp.run_db(db)
         return
 
     columns = list(all_columns)
@@ -433,8 +434,8 @@ def no_progressbar(iterable: Iterable,
 
 
 def check_jsmol():
-    from ase.db.app import root
-    static = root / 'ase/db/static'
+    from ase.db.app import DBApp
+    static = DBApp.root / 'ase/db/static'
     if not (static / 'jsmol/JSmol.min.js').is_file():
         print(f"""
     WARNING:

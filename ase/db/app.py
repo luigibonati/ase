@@ -51,9 +51,11 @@ def row_to_dict(row: AtomsRow,
 
 
 class DBApp:
+    root = Path(__file__).parent.parent.parent
+
     def __init__(self):
         self.projects = {}
-        self.app = new_app(self.projects)
+        self.flask = new_app(self.projects)
 
     def add_project(self, db: Database) -> None:
         """Add database to projects with name 'default'."""
@@ -85,10 +87,15 @@ class DBApp:
             'row_template': 'ase/db/templates/row.html',
             'table_template': 'ase/db/templates/table.html'}
 
+    @classmethod
+    def run_db(cls, db):
+        app = cls()
+        app.add_project(db)
+        app.flask.run(host='0.0.0.0', debug=True)
+
 
 def new_app(projects):
-    root = Path(__file__).parent.parent.parent
-    app = Flask(__name__, template_folder=str(root))
+    app = Flask(__name__, template_folder=str(DBApp.root))
 
     @app.route('/', defaults={'project_name': 'default'})
     @app.route('/<project_name>')
@@ -196,11 +203,10 @@ def new_app(projects):
     return app
 
 
-# def main():
-#    db = connect(sys.argv[1])
-#    add_project(db)
-#    app.run(host='0.0.0.0', debug=True)
+def main(cls):
+    db = connect(sys.argv[1])
+    DBApp.run_db(db)
 
 
-# if __name__ == '__main__':
-#    main()
+if __name__ == '__main__':
+    main()

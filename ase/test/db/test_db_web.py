@@ -40,8 +40,8 @@ def client(database):
 
     app = DBApp()
     app.add_project(database)
-    app.app.testing = True
-    return app.app.test_client()
+    app.flask.testing = True
+    return app.flask.test_client()
 
 
 def test_favicon(client):
@@ -70,6 +70,7 @@ def test_db_web(client):
 @pytest.fixture
 def dbsetup(database):
     pytest.importorskip('flask')
+
     class DBSetup:
         def __init__(self):
             self.session = Session('name')
