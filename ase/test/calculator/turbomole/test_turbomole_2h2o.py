@@ -3,6 +3,7 @@ from numpy.linalg import norm
 from ase.collections import s22
 from ase.calculators.turbomole import Turbomole
 
+
 def test_turbomole_2h2o():
     """Water dimer calculation in which each molecule is calculated quantum
     mechanically and the interaction between the molecules is electrostatic.

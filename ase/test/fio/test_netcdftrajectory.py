@@ -145,6 +145,7 @@ def test_netcdftrajectory(co):
     a = read('5.nc')
     assert(len(a) == 2)
 
+
 def test_netcdf_with_variable_atomic_numbers(netCDF4):
     # Create a NetCDF file with a per-file definition of atomic numbers. ASE
     # NetCDFTrajectory can read but not write these types of files.

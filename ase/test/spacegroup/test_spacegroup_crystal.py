@@ -4,7 +4,7 @@ from ase.spacegroup import crystal
 from ase.io import write
 
 
-def test_diamond():
+def test_diamond(testdir):
     diamond = crystal('C', [(0, 0, 0)], spacegroup=227,
                       cellpar=[3.57, 3.57, 3.57, 90, 90, 90])
 

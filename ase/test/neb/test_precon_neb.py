@@ -172,7 +172,7 @@ def test_neb_methods(method, optimizer, precon,
     assert abs(vdiff).max() < 1e-2
 
 
-@pytest.mark.parametrize('method', ['ODE', 'krylov', 'static'])
+@pytest.mark.parametrize('method', ['ODE', 'static'])
 @pytest.mark.filterwarnings('ignore:NEBOptimizer did not converge')
 def test_neb_optimizers(setup_images, method):
     images, _, _ = setup_images

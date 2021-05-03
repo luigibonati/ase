@@ -125,14 +125,58 @@ def monkeypatch_disabled_calculators(request, factories):
     factories.monkeypatch_disabled_calculators()
 
 
+class BadUnitTest(Exception):
+    pass
+
+
+def raise_if_stale_files(path):
+    garbage = [str(p) for p in path.iterdir()]
+    if garbage:
+        raise BadUnitTest(f"""\
+Stale leftover files: There are tests or fixtures which create files.  \
+Please use the testdir fixture to ensure that they run inside a clean \
+directory, e.g., "def mytest(testdir, ...): ...", or use the tmp_path \
+or tmp_path_factory fixtures to generate paths outside the workdir.
+
+Files: {garbage}""")
+
+
+@pytest.fixture(scope='session', autouse=True)
+def sessionlevel_testing_path(tmp_path_factory):
+    # We cd into a tempdir so tests and fixtures won't create files
+    # elsewhere (e.g. in the unsuspecting user's directory).
+    #
+    # However we regard it as an error if the tests leave files there,
+    # because they can access each others' files and hence are not
+    # independent.  Therefore we want them to explicitly use the
+    # "testdir" fixture which ensures that each has a clean directory.
+    path = Path(tmp_path_factory.mktemp('ase-test-workdir'))
+    with workdir(path):
+        yield path
+
+    raise_if_stale_files(path)
+
+
 @pytest.fixture(autouse=True)
-def use_tmp_workdir(tmp_path):
+def _check_no_undeclared_leftover_files(sessionlevel_testing_path):
+    # Instead of testing for stale files only at the end, we also test
+    # after each test so most trouble can be attributed to the test
+    # which caused it.
+    already_bad = any(sessionlevel_testing_path.iterdir())
+    yield
+    # We don't want to fail the whole test suite once we have a culprit:
+    if not already_bad:
+        raise_if_stale_files(sessionlevel_testing_path)
+
+
+@pytest.fixture(autouse=False)
+def testdir(tmp_path):
     # Pytest can on some systems provide a Path from pathlib2.  Normalize:
     path = Path(str(tmp_path))
     with workdir(path, mkdir=True):
         yield tmp_path
     # We print the path so user can see where test failed, if it failed.
-    print(f'Testpath: {path}')
+    print(f'Testdir: {path}')
 
 
 @pytest.fixture
@@ -323,6 +367,7 @@ def arbitrarily_seed_rng(request):
     print(f'Global seed for "{hashable_string}" was: {seed}')
     np.random.set_state(state)
 
+
 @pytest.fixture(scope='session')
 def povray_executable():
     import shutil
@@ -330,6 +375,7 @@ def povray_executable():
     if exe is None:
         pytest.skip('povray not installed')
     return exe
+
 
 def pytest_addoption(parser):
     parser.addoption('--calculators', metavar='NAMES', default='',

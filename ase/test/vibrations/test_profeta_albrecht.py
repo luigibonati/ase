@@ -11,7 +11,7 @@ from ase.calculators.h2morse import (H2Morse,
                                      H2MorseExcitedStatesCalculator)
 
 
-def test_compare_placzek_albrecht_intensities():
+def test_compare_placzek_albrecht_intensities(testdir):
     atoms = H2Morse()
     name = 'rrmorse'
     rmc = ResonantRamanCalculator(atoms, H2MorseExcitedStatesCalculator,

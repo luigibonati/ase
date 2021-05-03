@@ -1,7 +1,7 @@
 db_file = 'gadb_logics_test.db'
 
 
-def test_database_logic(seed):
+def test_database_logic(seed, testdir):
     from ase.ga.data import PrepareDB
     from ase.ga.data import DataConnection
     from ase.ga.startgenerator import StartGenerator

@@ -10,6 +10,7 @@ from ase.calculators.turbomole import Turbomole
 from ase.constraints import FixInternals
 from ase.optimize import BFGS
 
+
 def test_turbomole_qmmm():
     """Test the Turbomole calculator in simple QMMM and
     explicit interaction QMMM simulations."""

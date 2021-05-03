@@ -24,7 +24,7 @@ db_file = 'gadb.db'
 
 
 @pytest.mark.slow
-def test_basic_example_main_run(seed):
+def test_basic_example_main_run(seed, testdir):
     # set up the random number generator
     rng = np.random.RandomState(seed)
 

@@ -1,16 +1,17 @@
-def test_qmmm():
-    from math import cos, sin, pi
+from math import cos, sin, pi
 
-    import numpy as np
+import numpy as np
 
-    import ase.units as units
-    from ase import Atoms
-    from ase.calculators.tip3p import TIP3P, epsilon0, sigma0, rOH, angleHOH
-    from ase.calculators.qmmm import (SimpleQMMM, EIQMMM, LJInteractions,
-                                      LJInteractionsGeneral)
-    from ase.constraints import FixInternals
-    from ase.optimize import GPMin
+import ase.units as units
+from ase import Atoms
+from ase.calculators.tip3p import TIP3P, epsilon0, sigma0, rOH, angleHOH
+from ase.calculators.qmmm import (SimpleQMMM, EIQMMM, LJInteractions,
+                                  LJInteractionsGeneral)
+from ase.constraints import FixInternals
+from ase.optimize import GPMin
 
+
+def test_qmmm(testdir):
     r = rOH
     a = angleHOH * pi / 180
 

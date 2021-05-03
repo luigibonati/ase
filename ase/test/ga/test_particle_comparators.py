@@ -10,6 +10,7 @@ def make_ico(sym):
     atoms.center(vacuum=4.0)
     return atoms
 
+
 def test_particle_comparators(seed):
 
     # set up the random number generator

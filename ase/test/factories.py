@@ -122,6 +122,7 @@ class AimsFactory:
     def fromconfig(cls, config):
         return cls(config.executables['aims'])
 
+
 @factory('asap')
 class AsapFactory:
     importname = 'asap3'
@@ -162,6 +163,24 @@ class CP2KFactory:
     @classmethod
     def fromconfig(cls, config):
         return CP2KFactory(config.executables['cp2k'])
+
+
+@factory('castep')
+class CastepFactory:
+    def __init__(self, executable):
+        self.executable = executable
+
+    def version(self):
+        from ase.calculators.castep import get_castep_version
+        return get_castep_version(self.executable)
+
+    def calc(self, **kwargs):
+        from ase.calculators.castep import Castep
+        return Castep(castep_command=self.executable, **kwargs)
+
+    @classmethod
+    def fromconfig(cls, config):
+        return cls(config.executables['castep'])
 
 
 @factory('dftb')
@@ -538,7 +557,6 @@ class Factories:
         'ace',
         'aims',
         'amber',
-        'castep',
         'crystal',
         'demon',
         'demonnano',

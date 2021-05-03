@@ -135,6 +135,7 @@ cells_out = np.array([
 
 conf = Atoms(pbc=True)
 
+
 @pytest.mark.parametrize('i', range(len(cells_in)))
 def test_niggli(i):
     cell = cells_in[i]
