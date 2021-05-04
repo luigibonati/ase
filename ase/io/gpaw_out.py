@@ -42,7 +42,7 @@ def read_gpaw_out(fileobj, index):  # -> Union[Atoms, List[Atoms]]:
     blocks = []
     i1 = 0
     for i2, line in enumerate(lines):
-        if line.startswith('reference energy:'):
+        if line == 'positions:\n':
             if i1 > 0:
                 blocks.append(lines[i1:i2])
             i1 = i2
@@ -50,7 +50,6 @@ def read_gpaw_out(fileobj, index):  # -> Union[Atoms, List[Atoms]]:
 
     images: List[Atoms] = []
     for lines in blocks:
-        Eref = float(lines[0].split()[-1])
         try:
             i = lines.index('unit cell:\n')
         except ValueError:
@@ -65,19 +64,14 @@ def read_gpaw_out(fileobj, index):  # -> Union[Atoms, List[Atoms]]:
                 if len(words) == 5:  # old format
                     cell.append(float(words[2]))
                     pbc.append(words[1] == 'yes')
-                else:                # new format with GUC
+                else:  # new format with GUC
                     cell.append([float(word) for word in words[3:6]])
                     pbc.append(words[2] == 'yes')
-
-        try:
-            i = lines.index('positions:\n')
-        except ValueError:
-            break
 
         symbols = []
         positions = []
         magmoms = []
-        for line in lines[i + 1:]:
+        for line in lines[1:]:
             words = line.split()
             if len(words) < 5:
                 break
@@ -92,7 +86,7 @@ def read_gpaw_out(fileobj, index):  # -> Union[Atoms, List[Atoms]]:
                           cell=cell, pbc=pbc)
         else:
             atoms = Atoms(cell=cell, pbc=pbc)
-        lines = lines[i + 5:]
+
         try:
             ii = index_pattern(lines, '\\d+ k-point')
             word = lines[ii].split()
@@ -232,7 +226,6 @@ def read_gpaw_out(fileobj, index):  # -> Union[Atoms, List[Atoms]]:
                                             dipole=dipole, magmoms=magmoms,
                                             efermi=eFermi,
                                             bzkpts=bz_kpts, ibzkpts=ibz_kpts)
-            calc.eref = Eref
             calc.name = name
             calc.parameters = parameters
             if energy_contributions is not None:
@@ -242,7 +235,6 @@ def read_gpaw_out(fileobj, index):  # -> Union[Atoms, List[Atoms]]:
             atoms.calc = calc
 
         images.append(atoms)
-        lines = lines[i:]
 
     if len(images) == 0:
         raise IOError('Corrupted GPAW-text file!')
