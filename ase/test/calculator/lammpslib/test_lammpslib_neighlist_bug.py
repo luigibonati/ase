@@ -6,7 +6,7 @@ from ase.atoms import Atoms
 
 @pytest.mark.calculator_lite
 @pytest.mark.calculator("lammpslib")
-def test_lammps_neighlist_buf(factory):
+def test_lammps_neighlist_buf(factory, testdir):
     # this is a perfectly symmetric FCC configurations, all forces should be zero
     # As of 6 May 2021, if lammpslib does wrap before rotating into lammps coord system
     # lammps messes up the neighbor list.  This may or may not be fixed in lammps eventually,
