@@ -1,10 +1,8 @@
 import pytest
 
 import numpy as np
-from ase.calculators.lammpslib import LAMMPSlib
 from ase.atoms import Atoms
 
-import ase.calculators.lammpslib
 
 @pytest.mark.calculator_lite
 @pytest.mark.calculator("lammpslib")
@@ -19,7 +17,7 @@ def test_lammps_neighlist_buf(factory):
     atoms *= 6
 
     calc = factory.calc(lmpcmds=['pair_style lj/cut 0.5995011000293092E+01', 'pair_coeff * * 3.0 3.0'],
-                        atom_types={ 'H' : 1, 'He' : 2 }, log_file='ase_eval.log',
+                        atom_types={'H': 1, 'He': 2}, log_file=None,
                         keep_alive=True, lammps_header=['units metal', 'atom_style atomic',
                                                         'atom_modify map array sort 0 0'])
 
