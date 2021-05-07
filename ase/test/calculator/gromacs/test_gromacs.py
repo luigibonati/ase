@@ -54,7 +54,6 @@ data = """HISE for testing
    4.00000   4.00000   4.00000"""
 
 
-
 @pytest.mark.calculator_lite
 @pytest.mark.calculator('gromacs')
 def test_gromacs(factory):
@@ -63,7 +62,6 @@ def test_gromacs(factory):
     # write structure file
     with open(GRO_INIT_FILE, 'w') as outfile:
         outfile.write(data)
-
 
     calc = factory.calc(
         force_field='charmm27',

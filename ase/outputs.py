@@ -145,7 +145,6 @@ _defineprop('occupations', float, shape=('nspins', 'nkpts', 'nbands'))
 # concepts to have a formalization outside the Atoms class.
 
 
-
 #def to_singlepoint(self, atoms):
 #    from ase.calculators.singlepoint import SinglePointDFTCalculator
 #    return SinglePointDFTCalculator(atoms,

@@ -10,7 +10,6 @@ def test_bravais_check():
     for name in bravais_lattices:
         bravais[name.lower()] = bravais_lattices[name]
 
-
     def check_single(name, cell, pbc=None):
         c = Cell(cell)
 
@@ -31,7 +30,6 @@ def test_bravais_check():
         print(name, '-->', name1, 'OK' if ok else 'ERR', c.cellpar())
         assert ok, 'Expected {} but found {}'.format(latname, name1)
 
-
     def check(name, cell, pbc=None):
         if pbc is None:
             pbc = cell.any(1)
@@ -45,7 +43,6 @@ def test_bravais_check():
         if cell.rank == 3 and pbc.sum() != 1:
             check_single(name + '@201', cell[[2, 0, 1]], pbc=pbc[[2, 0, 1]])
             check_single(name + '@120', cell[[1, 2, 0]], pbc=pbc[[1, 2, 0]])
-
 
     check('cub', bravais['cub'](3.3).tocell())
     check('fcc', bravais['fcc'](3.4).tocell())

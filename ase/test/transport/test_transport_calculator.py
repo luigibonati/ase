@@ -3,13 +3,15 @@ from ase.transport.calculators import TransportCalculator
 import numpy as np
 
 #Aux. function to write data to a text file.
+
+
 def write(fname, xs, ys):
     with open(fname, 'w') as fd:
         for x,y in zip(xs, ys):
             print(x, y, file=fd)
 
 
-def test_transport_calculator():
+def test_transport_calculator(testdir):
     H_lead = np.zeros([4,4])
 
     # On-site energies are zero

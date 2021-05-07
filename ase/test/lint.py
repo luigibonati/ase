@@ -67,49 +67,49 @@ max_errors = {
     # whitespace after '{'
     'E201': 0,
     # inline comment should start with '# '
-    'E262': 12,
+    'E262': 0,
     # the backslash is redundant between brackets
     'E502': 0,
     # continuation line missing indentation or outdented
     'E122': 0,
     # indentation is not a multiple of four
-    'E111': 28,
+    'E111': 0,
     # do not use bare 'except'
     'E722': 0,
     # whitespace before ':'
-    'E203': 30,
+    'E203': 0,
     # blank line at end of file
-    'W391': 30,
+    'W391': 0,
     # continuation line over-indented for hanging indent
     'E126': 27,
     # multiple spaces after ','
-    'E241': 35,
+    'E241': 0,
     # continuation line under-indented for visual indent
     'E128': 39,
     # continuation line over-indented for visual indent
     'E127': 32,
     # missing whitespace around operator
-    'E225': 43,
+    'E225': 0,
     # ambiguous variable name 'O'
     'E741': 77,
     # too many blank lines (2)
-    'E303': 188,
+    'E303': 0,
     # expected 2 blank lines after class or function definition, found 1
-    'E305': 35,
+    'E305': 0,
     # module level import not at top of file
     'E402': 0,
     # at least two spaces before inline comment
-    'E261': 71,
+    'E261': 0,
     # expected 2 blank lines, found 1
-    'E302': 102,
+    'E302': 0,
     # unexpected spaces around keyword / parameter equals
-    'E251': 70,
+    'E251': 0,
     # trailing whitespace
     'W291': 169,
     # block comment should start with '# '
     'E265': 172,
     # missing whitespace after ','
-    'E231': 300,
+    'E231': 0,
     # missing whitespace around arithmetic operator
     'E226': 308,
     # line too long (93 > 79 characters)

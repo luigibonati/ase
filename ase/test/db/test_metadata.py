@@ -16,7 +16,7 @@ plot = {'a': [0, 1, 2],
 
 
 @pytest.mark.parametrize('name', ['md.json', 'md.db'])
-def test_metadata(name):
+def test_metadata(name, testdir):
     print(name)
     db = connect(name)
     db.write(Atoms('H'), answer=42, kind='atom', foo=True)

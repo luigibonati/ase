@@ -5,7 +5,7 @@ from ase.neb import NEBTools
 from ase.optimize import QuasiNewton
 
 
-def test_autoneb(asap3):
+def test_autoneb(asap3, testdir):
     EMT = asap3.EMT
     fmax = 0.02
 

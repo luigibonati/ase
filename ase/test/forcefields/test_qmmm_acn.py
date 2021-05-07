@@ -10,7 +10,7 @@ from ase.constraints import FixLinearTriatomic
 from ase.optimize import BFGS
 
 
-def test_qmmm_acn():
+def test_qmmm_acn(testdir):
     # From https://www.sciencedirect.com/science/article/pii/S0166128099002079
     eref = 4.9 * units.kcal / units.mol
     dref = 3.368

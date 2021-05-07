@@ -27,7 +27,7 @@ ase.symbols
 # Fixme: The phasediagram module specifies unknown solver options
 @pytest.mark.filterwarnings('ignore:Unknown solver options')
 @pytest.mark.parametrize('modname', module_names)
-def test_doctest(modname):
+def test_doctest(testdir, modname):
     mod = importlib.import_module(modname)
     with np.printoptions(legacy='1.13'):
         doctest.testmod(mod, raise_on_error=True, verbose=True)

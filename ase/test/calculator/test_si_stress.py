@@ -12,6 +12,8 @@ ref_stress = np.array([-0.22, -0.17, -0.17,
                        -0.17, 0.18, 0.18])
 
 calc = pytest.mark.calculator
+
+
 @calc('gpaw', mode={'name': 'pw', 'ecut': 350}, txt=None)
 @calc('abinit', chksymtnons=0, ecut=350)
 @calc('espresso', tprnfor=True, tstress=True, ecutwfc=350 / u.Ry)

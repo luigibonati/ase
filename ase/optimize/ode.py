@@ -74,7 +74,7 @@ def ode12r(f, X0, h=None, verbose=1, fmax=1e-6, maxtol=1e3, steps=100,
     if apply_precon is None:
         def apply_precon(F, X):
             return F, residual(F, X)
-    Fn, Rn = apply_precon(Fn, X)
+    Fp, Rp = apply_precon(Fn, X)
     
     def log(*args):
         if verbose >= 1:
@@ -96,31 +96,32 @@ def ode12r(f, X0, h=None, verbose=1, fmax=1e-6, maxtol=1e3, steps=100,
                                         "at iteration 0")
 
     # computation of the initial step
-    r = residual(Fn, X)  # pick the biggest force
+    r = residual(Fp, X)  # pick the biggest force
     if h is None:
         h = 0.5 * rtol ** 0.5 / r  # Chose a stepsize based on that force
         h = max(h, hmin)  # Make sure the step size is not too big
 
     for nit in range(1, steps):
-        Xnew = X + h * Fn  # Pick a new position
-        Fnew = f(Xnew)  # Calculate the new forces at this position
-        Fnew, Rnew = apply_precon(Fnew, Xnew)
+        Xnew = X + h * Fp  # Pick a new position
+        Fn_new = f(Xnew)  # Calculate the new forces at this position
+        Rn_new = residual(Fn_new, Xnew)
+        Fp_new, Rp_new = apply_precon(Fn_new, Xnew)
 
-        e = 0.5 * h * (Fnew - Fn)  # Estimate the area under the forces curve
+        e = 0.5 * h * (Fp_new - Fp)  # Estimate the area under the forces curve
         err = np.linalg.norm(e, np.inf)  # Error estimate
 
         # Accept step if residual decreases sufficiently and/or error acceptable
-        accept = ((Rnew <= Rn * (1 - C1 * h)) or
-                  ((Rnew <= Rn * C2) and err <= rtol))
+        accept = ((Rp_new <= Rp * (1 - C1 * h)) or
+                  ((Rp_new <= Rp * C2) and err <= rtol))
 
         # Pick an extrapolation scheme for the system & find new increment
-        y = Fn - Fnew
-        if extrapolate == 1:  # F(xn + h Fn)
-            h_ls = h * (Fn @ y) / (y @ y)
-        elif extrapolate == 2:  # F(Xn + h Fn)
-            h_ls = h * (Fn @ Fnew) / (Fn @ y + 1e-10)
-        elif extrapolate == 3:  # min | F(Xn + h Fn) |
-            h_ls = h * (Fn @ y) / (y @ y + 1e-10)
+        y = Fp - Fp_new
+        if extrapolate == 1:  # F(xn + h Fp)
+            h_ls = h * (Fp @ y) / (y @ y)
+        elif extrapolate == 2:  # F(Xn + h Fp)
+            h_ls = h * (Fp @ Fp_new) / (Fp @ y + 1e-10)
+        elif extrapolate == 3:  # min | F(Xn + h Fp) |
+            h_ls = h * (Fp @ y) / (y @ y + 1e-10)
         else:
             raise ValueError(f'invalid extrapolate value: {extrapolate}. '
                              'Must be 1, 2 or 3')
@@ -132,8 +133,10 @@ def ode12r(f, X0, h=None, verbose=1, fmax=1e-6, maxtol=1e3, steps=100,
         # Accept the step and do the update
         if accept:
             X = Xnew
-            Fn = Fnew
-            Rn = Rnew
+            Rn = Rn_new
+            Fn = Fn_new
+            Fp = Fp_new
+            Rp = Rp_new
             callback(X)
 
             # We check the residuals again
@@ -151,7 +154,7 @@ def ode12r(f, X0, h=None, verbose=1, fmax=1e-6, maxtol=1e3, steps=100,
             h = max(0.25 * h,
                     min(4 * h, h_err, h_ls))  # Log steep-size analytic results
 
-            debug(f"ODE12r:      accept: new h = {h}, |F| = {Rn}")
+            debug(f"ODE12r:      accept: new h = {h}, |F| = {Rp}")
             debug(f"ODE12r:                hls = {h_ls}")
             debug(f"ODE12r:               herr = {h_err}")
         else:
@@ -159,9 +162,9 @@ def ode12r(f, X0, h=None, verbose=1, fmax=1e-6, maxtol=1e3, steps=100,
             h = max(0.1 * h, min(0.25 * h, h_err,
                                  h_ls))
             debug(f"ODE12r:      reject: new h = {h}")
-            debug(f"ODE12r:               |Fnew| = {Rnew}")
-            debug(f"ODE12r:               |Fold| = {Rn}")
-            debug(f"ODE12r:        |Fnew|/|Fold| = {Rnew/Rn}")
+            debug(f"ODE12r:               |Fnew| = {Rp_new}")
+            debug(f"ODE12r:               |Fold| = {Rp}")
+            debug(f"ODE12r:        |Fnew|/|Fold| = {Rp_new/Rp}")
 
         # abort if step size is too small
         if abs(h) <= hmin:

@@ -1,6 +1,7 @@
 from ase import Atoms
 from ase.calculators.gaussian import Gaussian
 
+
 basis = """H     0
 S   3   1.00
      13.0107010              0.19682158E-01
@@ -54,7 +55,7 @@ D   1   1.00
 """
 
 
-def test_h2of():
+def test_h2of(testdir):
     with open('def2-svp.gbs', 'w') as bfile:
         bfile.write(basis)
 

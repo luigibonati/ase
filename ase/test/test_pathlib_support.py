@@ -9,6 +9,8 @@ from ase.utils import PurePath, convert_string_to_fd, reader, writer
 
 # Test reader/writer
 teststr = 'Teststring!'
+
+
 @writer
 def mywrite(file, fdcmp=None):
     assert isinstance(file, io.TextIOBase)
@@ -36,12 +38,11 @@ def myread(file, fdcmp=None):
         assert file is fdcmp
 
 
-def test_pathlib_support():
+def test_pathlib_support(testdir):
     path = Path('tmp_plib_testdir')
 
     # Test PurePath catches path
     assert isinstance(path, PurePath)
-
 
     path.mkdir(exist_ok=True)
 
@@ -55,12 +56,10 @@ def test_pathlib_support():
     assert isinstance(fd, io.TextIOBase)
     fd.close()
 
-
     for f in [myf, str(myf)]:
         myf.unlink()                # Remove the file first
         mywrite(f)
         myread(f)
-
 
     # Check reader, writer on open filestream
     # Here, the filestream shouldn't be altered

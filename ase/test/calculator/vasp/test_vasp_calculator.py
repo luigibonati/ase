@@ -86,7 +86,7 @@ def test_bad_pbc(atoms, pbc):
         atoms.get_potential_energy()
 
 
-def test_vasp_no_cell():
+def test_vasp_no_cell(testdir):
     """Check missing cell handling."""
     # Molecules come with no unit cell
     atoms = molecule('CH4')

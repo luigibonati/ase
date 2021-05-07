@@ -24,7 +24,7 @@ db_file = 'gadb.db'
 
 
 @pytest.mark.slow
-def test_basic_example_main_run(seed):
+def test_basic_example_main_run(seed, testdir):
     # set up the random number generator
     rng = np.random.RandomState(seed)
 
@@ -72,7 +72,6 @@ def test_basic_example_main_run(seed):
 
     for a in starting_population:
         d.add_unrelaxed_candidate(a)
-
 
     # XXXXXXXXXX This should be the beginning of a new test,
     # but we are using some resources from the precious part.

@@ -25,9 +25,11 @@ ref_info = {
 # Maybe we can test those, but not today.
 assert len(ref_info) == 14 - 3
 
+
 def ref_info_iter():
     for key, val in ref_info.items():
         yield key, val
+
 
 @pytest.mark.parametrize('lattice_name,ref_nops', ref_info_iter())
 def test_generate_niggli_table(lattice_name, ref_nops):

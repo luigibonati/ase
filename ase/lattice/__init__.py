@@ -470,7 +470,6 @@ class Orthorhombic(BravaisLattice):
         BravaisLattice.__init__(self, a=a, b=b, c=c)
 
 
-
 @bravaisclass('primitive orthorhombic', 'orthorhombic', 'orthorhombic', 'oP',
               'abc',
               [['ORC', 'GRSTUXYZ', 'GXSYGZURTZ,YT,UX,SR',

@@ -19,6 +19,7 @@ warn_template = 'Property "%s" is None. Typically, this is because the ' \
                 'Espresso at a "low" verbosity level (the default). ' \
                 'Please try running Quantum Espresso with "high" verbosity.'
 
+
 class Espresso(FileIOCalculator):
     """
     """

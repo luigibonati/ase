@@ -123,5 +123,3 @@ def read_acemolecule_input(filename):
                 break
     atoms = read(geometryfile, format='xyz')
     return atoms
-
-
