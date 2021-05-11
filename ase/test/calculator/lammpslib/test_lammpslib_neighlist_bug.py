@@ -1,3 +1,4 @@
+import os
 import pytest
 
 import numpy as np
@@ -12,6 +13,8 @@ def test_lammps_neighlist_buf(factory, testdir):
     # lammps messes up the neighbor list.  This may or may not be fixed in lammps eventually,
     # but can also be worked around by having lammpslib do the wrap just before passing coords
     # to lammps
+
+    os.chdir(testdir)
 
     atoms = Atoms('He', cell=[[2.045, 2.045, 0.0], [2.045, 0.0, 2.045], [0.0, 2.045, 2.045]], pbc=[True]*3)
     atoms *= 6
