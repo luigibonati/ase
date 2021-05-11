@@ -278,7 +278,7 @@ def write_abinit_in(fd, atoms, param=None, species=None, pseudos=None):
     fd.write('\n')
 
     if pseudos is not None:
-        listing = ', '.join(pseudos)
+        listing = ',\n'.join(pseudos)
         line = f'pseudos "{listing}"\n'
         fd.write(line)
 
