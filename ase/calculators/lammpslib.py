@@ -339,7 +339,7 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
             cell = np.dot(cell, self.coord_transform.T)
 
         # wrap only after scaling and rotating to reduce chances of
-        # lammps neighbor list bugs
+        # lammps neighbor list bugs.
         pos = wrap_positions(pos, cell, atoms.get_pbc())
 
         # Convert ase position matrix to lammps-style position array
