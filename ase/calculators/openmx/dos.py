@@ -98,10 +98,10 @@ class DOS:
             self.dos_dict[key + atom_and_orbital] = np.ndarray(number_of_lines)
             self.dos_dict[key + '_cum_' + atom_and_orbital] = \
                 np.ndarray(number_of_lines)
-        f = open(filename, 'r')
+        fd = open(filename, 'r')
         if spin_polarization:
             for i in range(number_of_lines):
-                line = f.readline()
+                line = fd.readline()
                 self.dos_dict[key + '_energies_' + atom_and_orbital][i] = \
                     read_nth_to_last_value(line, 5)
                 self.dos_dict[key + atom_and_orbital + 'up'][i] = \
@@ -114,7 +114,7 @@ class DOS:
                     read_nth_to_last_value(line)
         elif add:
             for i in range(number_of_lines):
-                line = f.readline()
+                line = fd.readline()
                 self.dos_dict[key + '_energies_' + atom_and_orbital][i] = \
                     read_nth_to_last_value(line, 5)
                 self.dos_dict[key + atom_and_orbital][i] = \
@@ -125,14 +125,14 @@ class DOS:
                     float(read_nth_to_last_value(line))
         else:
             for i in range(number_of_lines):
-                line = f.readline()
+                line = fd.readline()
                 self.dos_dict[key + '_energies_' + atom_and_orbital][i] = \
                     read_nth_to_last_value(line, 3)
                 self.dos_dict[key + atom_and_orbital][i] = \
                     read_nth_to_last_value(line, 2)
                 self.dos_dict[key + '_cum_' + atom_and_orbital][i] = \
                     read_nth_to_last_value(line)
-        f.close()
+        fd.close()
 
     def subplot_dos(self, axis, density=True, cum=False, pdos=False,
                     atom_index=1, orbital='', spin='',

@@ -102,7 +102,7 @@ def read_file(filename, debug=False):
     line = '\n'
     if(debug):
         print('Read results from %s' % filename)
-    with open(filename, 'r') as f:
+    with open(filename, 'r') as fd:
         '''
          Read output file line by line. When the `line` matches the pattern
         of certain keywords in `param.[dtype]_keys`, for example,
@@ -121,7 +121,7 @@ def read_file(filename, debug=False):
         '''
         while line != '':
             pattern_matched = False
-            line = f.readline()
+            line = fd.readline()
             try:
                 _line = line.split()[0]
             except IndexError:
@@ -139,21 +139,21 @@ def read_file(filename, debug=False):
 
             for key in param.matrix_keys:
                 if '<'+key in line:
-                    out_data[get_standard_key(key)] = read_matrix(line, key, f)
+                    out_data[get_standard_key(key)] = read_matrix(line, key, fd)
                     pattern_matched = True
                     continue
             if pattern_matched:
                 continue
             for key in patterns.keys():
                 if key in line:
-                    out_data[patterns[key][0]] = patterns[key][1](line, f, debug=debug)
+                    out_data[patterns[key][0]] = patterns[key][1](line, fd, debug=debug)
                     pattern_matched = True
                     continue
             if pattern_matched:
                 continue
             for key in special_patterns.keys():
                 if key in line:
-                    a, b = special_patterns[key][1](line, f)
+                    a, b = special_patterns[key][1](line, fd)
                     out_data[special_patterns[key][0][0]] = a
                     out_data[special_patterns[key][0][1]] = b
                     pattern_matched = True

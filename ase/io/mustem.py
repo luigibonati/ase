@@ -208,21 +208,21 @@ class XtlmuSTEMWriter:
 
     def write_to_file(self, f):
         if isinstance(f, str):
-            f = open(f, 'w')
+            fd = open(f, 'w')
 
-        f.write(self._get_file_header())
+        fd.write(self._get_file_header())
         for atom_type, number, occupancy in zip(self.atom_types,
                                                 self.numbers,
                                                 self.occupancies):
             positions = self._get_position_array_single_atom_type(number)
             atom_type_number = positions.shape[0]
-            f.write(self._get_element_header(atom_type, atom_type_number,
+            fd.write(self._get_element_header(atom_type, atom_type_number,
                                              number,
                                              self.occupancies[atom_type],
                                              self.RMS[atom_type]))
-            np.savetxt(fname=f, X=positions, fmt='%.6g', newline='\n')
+            np.savetxt(fname=fd, X=positions, fmt='%.6g', newline='\n')
 
-        f.write(self._get_file_end())
+        fd.write(self._get_file_end())
 
 
 @writer

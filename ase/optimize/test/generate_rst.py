@@ -31,13 +31,13 @@ def main():
     dirlist = list(filter(filterre.search, dirlist))
     namelist = [d.strip('.csv') for d in dirlist]
 
-    f = open('testoptimize.rst', 'w')
-    f.write(rst)
+    fd = open('testoptimize.rst', 'w')
+    fd.write(rst)
 
     for name in namelist:
         lines = open(name + '.csv', 'r').read().split('\n')
         firstline = lines.pop(0)
-        f.write(
+        fd.write(
             '\n' +
             name + '\n' +
             '=' * len(name) + '\n'
@@ -50,13 +50,13 @@ def main():
         for line in lines:
             if len(line):
                 print(line.split(','))
-                f.write(
+                fd.write(
                     '%-15s %5s %17s %10s %s\n' % tuple(line.split(','))
                 )
-        f.write(
+        fd.write(
             bars
         )
-    f.close()
+    fd.close()
 
 
 if __name__ == '__main__':

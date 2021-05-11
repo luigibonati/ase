@@ -1107,12 +1107,13 @@ def read_eigenmode(mlog, index = -1):
     To access the pre optimization eigenmode set index = 'null'.
 
     """
-    if isinstance(mlog, str):
-        f = open(mlog, 'r')
+    mlog_is_str = isinstance(mlog, str)
+    if mlog_is_str:
+        fd = open(mlog, 'r')
     else:
-        f = mlog
+        fd = mlog
 
-    lines = f.readlines()
+    lines = fd.readlines()
 
     # Detect the amount of atoms and iterations
     k = 2
@@ -1143,6 +1144,9 @@ def read_eigenmode(mlog, index = -1):
         for k_dim in range(3):
             mode[k_atom][k_dim] = float(line[k_dim + 2])
         k_atom += 1
+
+    if mlog_is_str:
+        fd.close()
 
     return mode
 
