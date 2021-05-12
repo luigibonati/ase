@@ -7,7 +7,7 @@ from ase import Atoms
 import numpy as np
 
 
-def test_sql_db_ext_tables(psycopg2):
+def test_sql_db_ext_tables(psycopg2, testdir):
     DB_NAMES = ["test_ext_tables.db", "postgresql", "mysql", "mariadb"]
 
     def get_db_name(name):
