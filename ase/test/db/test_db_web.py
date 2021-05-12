@@ -1,11 +1,8 @@
-import io
 import pytest
 
 from ase import Atoms
 from ase.db import connect
 from ase.db.web import Session
-from ase.db.app import DBApp, request2string
-from ase.io import read
 
 
 @pytest.fixture(scope='module')
@@ -34,14 +31,33 @@ def database(tmp_path_factory):
         yield db
 
 
+def handle_query(args) -> str:
+    """Converts request args to ase.db query string."""
+    return args['query']
+
+
 @pytest.fixture(scope='module')
 def client(database):
     pytest.importorskip('flask')
+    import ase.db.app as app
 
-    app = DBApp()
     app.add_project(database)
-    app.flask.testing = True
-    return app.flask.test_client()
+    app.app.testing = True
+    return app.app.test_client()
+
+
+def test_add_columns(database):
+    """Test that all keys can be added also for row withous keys."""
+    pytest.importorskip('flask')
+
+    session = Session('name')
+    project = {'default_columns': ['bar'],
+               'handle_query_function': handle_query}
+
+    session.update('query', '', {'query': 'id=2'}, project)
+    table = session.create_table(database, 'id', ['foo'])
+    assert table.columns == ['bar']  # selected row doesn't have a foo key
+    assert 'foo' in table.addcolumns  # ... but we can add it
 
 
 def test_favicon(client):
@@ -50,57 +66,46 @@ def test_favicon(client):
 
 
 def test_db_web(client):
-    page = client.get('/').data.decode()
+    import io
+    from ase.db.web import Session
+    from ase.io import read
+    c = client
+
+    page = c.get('/').data.decode()
     sid = Session.next_id - 1
     assert 'foo' in page
     for url in [f'/update/{sid}/query/bla/?query=id=1',
                 '/default/row/1']:
-        resp = client.get(url)
+        resp = c.get(url)
         assert resp.status_code == 200
 
     for type in ['json', 'xyz', 'cif']:
         url = f'atoms/default/1/{type}'
-        resp = client.get(url)
+        resp = c.get(url)
         assert resp.status_code == 200
         atoms = read(io.StringIO(resp.data.decode()), format=type)
         print(atoms.numbers)
         assert (atoms.numbers == [1, 1, 8]).all()
 
 
-@pytest.fixture
-def dbsetup(database):
+def test_paging(database):
+    """Test paging."""
     pytest.importorskip('flask')
 
-    class DBSetup:
-        def __init__(self):
-            self.session = Session('name')
-            self.project = {'default_columns': ['bar'],
-                            'handle_query_function': request2string}
-            self.session.update('query', '', {'query': ''}, self.project)
-            self.table = self.session.create_table(database, 'id', ['foo'])
+    session = Session('name')
+    project = {'default_columns': ['bar'],
+               'handle_query_function': handle_query}
 
-    return DBSetup()
+    session.update('query', '', {'query': ''}, project)
+    table = session.create_table(database, 'id', ['foo'])
+    assert len(table.rows) == 2
 
-
-def test_add_columns(database, dbsetup):
-    """Test that all keys can be added also for row withous keys."""
-    table = dbsetup.table
-    table = dbsetup.session.create_table(database, 'id', ['foo'])
-    assert table.columns == ['bar']  # selected row doesn't have a foo key
-    assert 'foo' in table.addcolumns  # ... but we can add it
-
-
-def test_paging(database, dbsetup):
-    """Test paging."""
-    assert len(dbsetup.table.rows) == 2
-
-    session = dbsetup.session
-    session.update('limit', '1', {}, dbsetup.project)
-    session.update('page', '1', {}, dbsetup.project)
+    session.update('limit', '1', {}, project)
+    session.update('page', '1', {}, project)
     table = session.create_table(database, 'id', ['foo'])
     assert len(table.rows) == 1
 
     # We are now on page 2 and select something on page 1:
-    session.update('query', '', {'query': 'id=1'}, dbsetup.project)
+    session.update('query', '', {'query': 'id=1'}, project)
     table = session.create_table(database, 'id', ['foo'])
     assert len(table.rows) == 1
