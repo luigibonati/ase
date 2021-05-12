@@ -29,8 +29,8 @@ def read_output(regex):
         if filename.startswith('job.') or filename.endswith('.out'):
             checkfiles.append(filename)
     for filename in checkfiles:
-        with open(filename, 'rt') as f:
-            lines = f.readlines()
+        with open(filename, 'rt') as fd:
+            lines = fd.readlines()
             for line in lines:
                 match = re.search(regex, line)
                 if match:

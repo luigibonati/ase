@@ -104,8 +104,8 @@ class MOPAC(FileIOCalculator):
             if p:
                 s += 'Tv {0} {1} {2}\n'.format(*v)
 
-        with open(self.label + '.mop', 'w') as f:
-            f.write(s)
+        with open(self.label + '.mop', 'w') as fd:
+            fd.write(s)
 
     def get_spin_polarized(self):
         return self.nspins == 2
@@ -120,8 +120,8 @@ class MOPAC(FileIOCalculator):
         if not os.path.isfile(self.label + '.out'):
             raise ReadError
 
-        with open(self.label + '.out') as f:
-            lines = f.readlines()
+        with open(self.label + '.out') as fd:
+            lines = fd.readlines()
 
         self.parameters = Parameters(task='', method='')
         p = self.parameters
@@ -185,8 +185,8 @@ class MOPAC(FileIOCalculator):
         if not os.path.isfile(self.label + '.out'):
             raise ReadError
 
-        with open(self.label + '.out') as f:
-            lines = f.readlines()
+        with open(self.label + '.out') as fd:
+            lines = fd.readlines()
 
         for i, line in enumerate(lines):
             if line.find('TOTAL ENERGY') != -1:

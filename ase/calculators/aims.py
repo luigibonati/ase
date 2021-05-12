@@ -694,14 +694,14 @@ class Aims(FileIOCalculator):
 
     def read_stresses(self):
         """ Read stress per atom """
-        with open(self.out) as f:
-            next(l for l in f if
+        with open(self.out) as fd:
+            next(l for l in fd if
                  'Per atom stress (eV) used for heat flux calculation' in l)
             # scroll to boundary
-            next(l for l in f if '-------------' in l)
+            next(l for l in fd if '-------------' in l)
 
             stresses = []
-            for l in [next(f) for _ in range(len(self.atoms))]:
+            for l in [next(fd) for _ in range(len(self.atoms))]:
                 # Read stresses and rearrange from
                 # (xx, yy, zz, xy, xz, yz) to (xx, yy, zz, yz, xz, xy)
                 xx, yy, zz, xy, xz, yz = [float(d) for d in l.split()[2:8]]
