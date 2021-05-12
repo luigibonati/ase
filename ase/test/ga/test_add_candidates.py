@@ -1,4 +1,3 @@
-import os
 import pytest
 from ase.build import fcc111
 from ase.ga.data import PrepareDB, DataConnection
