@@ -18,8 +18,8 @@ def parse_geometry(filename):
     retval["Atomic_numbers"]: list of atomic numbers
     retval["Positions"]: list of [x, y, z] coordinates for each atoms.
     '''
-    with open(filename, 'r') as f:
-        lines = f.readlines()
+    with open(filename, 'r') as fd:
+        lines = fd.readlines()
         start_line = 0
         end_line = 0
         for i, line in enumerate(lines):
@@ -68,8 +68,8 @@ def read_acemolecule_out(filename):
     excitation_energy = None
 #    results = {}
 #    if len(results)<1:
-    with open(filename, 'r') as f:
-        lines = f.readlines()
+    with open(filename, 'r') as fd:
+        lines = fd.readlines()
 
     for i in range(len(lines) - 1, 1, -1):
         line = lines[i].split()
@@ -116,8 +116,8 @@ def read_acemolecule_input(filename):
     =======
     ASE atoms object containing geometry only.
     '''
-    with open(filename, 'r') as f:
-        for line in f:
+    with open(filename, 'r') as fd:
+        for line in fd:
             if len(line.split('GeometryFilename')) > 1:
                 geometryfile = line.split()[1]
                 break

@@ -30,7 +30,7 @@ def read_eon(fileobj, index=-1):
     more_images_to_read = True
     images = []
 
-    first_line = f.readline()
+    first_line = fd.readline()
     while more_images_to_read:
 
         comment = first_line.strip()
