@@ -9,9 +9,7 @@ from ase.db import connect
 from ase.db.core import convert_str_to_int_float_or_str
 from ase.db.row import row2dct
 from ase.db.table import Table, all_columns
-from ase.db.app import DBApp
 from ase.utils import plural
-from ase.cli.main import CLIError
 
 
 class CLICommand:
@@ -131,103 +129,7 @@ def count_keys(db, query):
     n = max(len(key) for key in keys) + 1
     for key, number in keys.items():
         print('{:{}} {}'.format(key + ':', n, number))
-
-
-def show_values(db, query, keys):
-    values = {key: defaultdict(int) for key in keys}
-    numbers = set()
-    for row in db.select(query):
-        kvp = row.key_value_pairs
-        for key in keys:
-            value = kvp.get(key)
-            if value is not None:
-                values[key][value] += 1
-                if not isinstance(value, str):
-                    numbers.add(key)
-
-    n = max(len(key) for key in keys) + 1
-    for key in keys:
-        vals = values[key]
-        if key in numbers:
-            print('{:{}} [{}..{}]'
-                  .format(key + ':', n, min(vals), max(vals)))
-        else:
-            print('{:{}} {}'
-                  .format(key + ':', n,
-                          ', '.join('{}({})'.format(v, n)
-                                    for v, n in vals.items())))
-
-
-def plot(db, query, *, keys, sort, tags):
-    import matplotlib.pyplot as plt
-    plots = defaultdict(list)
-    X = {}
-    labels = []
-    for row in db.select(query, sort=sort, include_data=False):
-        name = ','.join(str(row[tag]) for tag in tags)
-        x = row.get(keys[0])
-        if x is not None:
-            if isinstance(x, str):
-                if x not in X:
-                    X[x] = len(X)
-                    labels.append(x)
-                x = X[x]
-            plots[name].append([x] + [row.get(key) for key in keys[1:]])
-    for name, plot in plots.items():
-        xyy = zip(*plot)
-        x = xyy[0]
-        for y, key in zip(xyy[1:], keys[1:]):
-            plt.plot(x, y, label=name + ':' + key)
-    if X:
-        plt.xticks(range(len(labels)), labels, rotation=90)
-    plt.legend()
-    plt.show()
-
-
-def dump_to_stdout(db, query):
-    row = db.get(query)
-    db2 = connect(sys.stdout, 'json', use_lock_file=False)
-    kvp = row.get('key_value_pairs', {})
-    db2.write(row, data=row.get('data'), **kvp)
-
-
-def get_table(db, query, c, *, sort, limit, offset, cut, verbosity):
-    columns = list(all_columns)
-    if c and c.startswith('++'):
-        keys = set()
-        for row in db.select(query,
-                             limit=limit, offset=offset,
-                             include_data=False):
-            keys.update(row._keys)
-        columns.extend(keys)
-        if c[2:3] == ',':
-            c = c[3:]
-        else:
-            c = ''
-    if c:
-        if c[0] == '+':
-            c = c[1:]
-        elif c[0] != '-':
-            columns = []
-        for col in c.split(','):
-            if col[0] == '-':
-                columns.remove(col[1:])
-            else:
-                columns.append(col.lstrip('+'))
-
-    table = Table(db, verbosity=verbosity, cut=cut)
-    table.select(query, columns, sort, limit, offset)
-    return table
-
-
-def delete(db, query, yes, out):
-    ids = [row['id'] for row in db.select(query, include_data=False)]
-    if ids and not yes:
-        msg = 'Delete %s? (yes/No): ' % plural(len(ids), 'row')
-        if input(msg).lower() != 'yes':
-            return
-    db.delete(ids)
-    out('Deleted %s' % plural(len(ids), 'row'))
+    return
 
 
 def main(args):
@@ -267,7 +169,29 @@ def main(args):
         return
 
     if args.show_values:
-        show_values(db, query, keys=args.show_values.split(','))
+        keys = args.show_values.split(',')
+        values = {key: defaultdict(int) for key in keys}
+        numbers = set()
+        for row in db.select(query):
+            kvp = row.key_value_pairs
+            for key in keys:
+                value = kvp.get(key)
+                if value is not None:
+                    values[key][value] += 1
+                    if not isinstance(value, str):
+                        numbers.add(key)
+
+        n = max(len(key) for key in keys) + 1
+        for key in keys:
+            vals = values[key]
+            if key in numbers:
+                print('{:{}} [{}..{}]'
+                      .format(key + ':', n, min(vals), max(vals)))
+            else:
+                print('{:{}} {}'
+                      .format(key + ':', n,
+                              ', '.join('{}({})'.format(v, n)
+                                        for v, n in vals.items())))
         return
 
     if args.add_from_file:
@@ -366,7 +290,13 @@ def main(args):
         return
 
     if args.delete:
-        delete(db, query, yes=args.yes, out=out)
+        ids = [row['id'] for row in db.select(query, include_data=False)]
+        if ids and not args.yes:
+            msg = 'Delete %s? (yes/No): ' % plural(len(ids), 'row')
+            if input(msg).lower() != 'yes':
+                return
+        db.delete(ids)
+        out('Deleted %s' % plural(len(ids), 'row'))
         return
 
     if args.plot:
@@ -377,11 +307,36 @@ def main(args):
             tags = []
             keys = args.plot
         keys = keys.split(',')
-        plot(db, query, keys=keys, sort=args.sort, tags=tags)
+        plots = defaultdict(list)
+        X = {}
+        labels = []
+        for row in db.select(query, sort=args.sort, include_data=False):
+            name = ','.join(str(row[tag]) for tag in tags)
+            x = row.get(keys[0])
+            if x is not None:
+                if isinstance(x, str):
+                    if x not in X:
+                        X[x] = len(X)
+                        labels.append(x)
+                    x = X[x]
+                plots[name].append([x] + [row.get(key) for key in keys[1:]])
+        import matplotlib.pyplot as plt
+        for name, plot in plots.items():
+            xyy = zip(*plot)
+            x = xyy[0]
+            for y, key in zip(xyy[1:], keys[1:]):
+                plt.plot(x, y, label=name + ':' + key)
+        if X:
+            plt.xticks(range(len(labels)), labels, rotation=90)
+        plt.legend()
+        plt.show()
         return
 
     if args.json:
-        dump_to_stdout(db, query)
+        row = db.get(query)
+        db2 = connect(sys.stdout, 'json', use_lock_file=False)
+        kvp = row.get('key_value_pairs', {})
+        db2.write(row, data=row.get('data'), **kvp)
         return
 
     if args.long:
@@ -393,15 +348,40 @@ def main(args):
         try:
             import flask  # noqa
         except ImportError:
-            raise CLIError('Please install Flask: python3 -m pip install flask')
+            print('Please install Flask: python3 -m pip install flask')
+            return
         check_jsmol()
-        DBApp.run_db(db)
+        import ase.db.app as app
+        app.add_project(db)
+        app.app.run(host='0.0.0.0', debug=True)
         return
 
-    table = get_table(db, query, args.columns, cut=args.cut,
-                      verbosity=verbosity,
-                      sort=args.sort, limit=args.limit,
-                      offset=args.offset)
+    columns = list(all_columns)
+    c = args.columns
+    if c and c.startswith('++'):
+        keys = set()
+        for row in db.select(query,
+                             limit=args.limit, offset=args.offset,
+                             include_data=False):
+            keys.update(row._keys)
+        columns.extend(keys)
+        if c[2:3] == ',':
+            c = c[3:]
+        else:
+            c = ''
+    if c:
+        if c[0] == '+':
+            c = c[1:]
+        elif c[0] != '-':
+            columns = []
+        for col in c.split(','):
+            if col[0] == '-':
+                columns.remove(col[1:])
+            else:
+                columns.append(col.lstrip('+'))
+
+    table = Table(db, verbosity=verbosity, cut=args.cut)
+    table.select(query, columns, args.sort, args.limit, args.offset)
     if args.csv:
         table.write_csv()
     else:
@@ -453,8 +433,8 @@ def no_progressbar(iterable: Iterable,
 
 
 def check_jsmol():
-    from ase.db.app import DBApp
-    static = DBApp.root / 'ase/db/static'
+    from ase.db.app import root
+    static = root / 'ase/db/static'
     if not (static / 'jsmol/JSmol.min.js').is_file():
         print(f"""
     WARNING:
