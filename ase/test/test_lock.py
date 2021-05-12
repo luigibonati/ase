@@ -2,10 +2,10 @@ import pytest
 from ase.utils import Lock
 
 
-def test_cannot_acquire_lock_twice():
+def test_cannot_acquire_lock_twice(tmp_path):
     """Test timeout on Lock.acquire()."""
 
-    lock = Lock('lockfile', timeout=0.3)
+    lock = Lock(tmp_path / 'lockfile', timeout=0.3)
     with lock:
         with pytest.raises(TimeoutError):
             with lock:
