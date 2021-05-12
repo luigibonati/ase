@@ -204,34 +204,34 @@ class VaspChargeDensity:
                 format = 'chgcar'
             else:
                 format = 'chg'
-        with open(filename, 'w') as f:
+        with open(filename, 'w') as fd:
             for ii, chg in enumerate(self.chg):
                 if format == 'chgcar' and ii != len(self.chg) - 1:
                     continue  # Write only the last image for CHGCAR
-                aiv.write_vasp(f,
+                aiv.write_vasp(fd,
                                self.atoms[ii],
                                direct=True,
                                long_format=False)
-                f.write('\n')
+                fd.write('\n')
                 for dim in chg.shape:
-                    f.write(' %4i' % dim)
-                f.write('\n')
+                    fd.write(' %4i' % dim)
+                fd.write('\n')
                 vol = self.atoms[ii].get_volume()
-                self._write_chg(f, chg, vol, format)
+                self._write_chg(fd, chg, vol, format)
                 if format == 'chgcar':
-                    f.write(self.aug)
+                    fd.write(self.aug)
                 if self.is_spin_polarized():
                     if format == 'chg':
-                        f.write('\n')
+                        fd.write('\n')
                     for dim in chg.shape:
-                        f.write(' %4i' % dim)
-                    f.write('\n')  # a new line after dim is required
-                    self._write_chg(f, self.chgdiff[ii], vol, format)
+                        fd.write(' %4i' % dim)
+                    fd.write('\n')  # a new line after dim is required
+                    self._write_chg(fd, self.chgdiff[ii], vol, format)
                     if format == 'chgcar':
                         # a new line is always provided self._write_chg
-                        f.write(self.augdiff)
+                        fd.write(self.augdiff)
                 if format == 'chg' and len(self.chg) > 1:
-                    f.write('\n')
+                    fd.write('\n')
 
 
 class VaspDos:
