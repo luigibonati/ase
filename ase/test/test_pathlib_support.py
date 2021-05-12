@@ -63,10 +63,10 @@ def test_pathlib_support(testdir):
 
     # Check reader, writer on open filestream
     # Here, the filestream shouldn't be altered
-    with myf.open('w') as f:
-        mywrite(f, fdcmp=f)
-    with myf.open('r') as f:
-        myread(f, fdcmp=f)
+    with myf.open('w') as fd:
+        mywrite(fd, fdcmp=fd)
+    with myf.open('r') as fd:
+        myread(fd, fdcmp=fd)
 
     # Check that we can read and write atoms with pathlib
     atoms = molecule('H2', vacuum=5)

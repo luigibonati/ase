@@ -300,8 +300,8 @@ def search_current_git_hash(arg, world=None):
     HEAD_file = os.path.join(git_dpath, 'HEAD')
     if not os.path.isfile(HEAD_file):
         return None
-    with open(HEAD_file, 'r') as f:
-        line = f.readline().strip()
+    with open(HEAD_file, 'r') as fd:
+        line = fd.readline().strip()
     if line.startswith('ref: '):
         ref = line[5:]
         ref_file = os.path.join(git_dpath, ref)
@@ -310,8 +310,8 @@ def search_current_git_hash(arg, world=None):
         ref_file = HEAD_file
     if not os.path.isfile(ref_file):
         return None
-    with open(ref_file, 'r') as f:
-        line = f.readline().strip()
+    with open(ref_file, 'r') as fd:
+        line = fd.readline().strip()
     if all(c in string.hexdigits for c in line):
         return line
     return None

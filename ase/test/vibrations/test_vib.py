@@ -144,8 +144,8 @@ class TestVibrationsClassic():
             assert_array_almost_equal(mode_traj[4].get_all_distances(),
                                       atoms.get_all_distances())
 
-        with open('vib.xyz', 'rt') as f:
-            jmol_txt = f.read()
+        with open('vib.xyz', 'rt') as fd:
+            jmol_txt = fd.read()
             assert jmol_txt == jmol_txt_ref
 
         assert vib.clean(empty_files=True) == 0

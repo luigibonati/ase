@@ -56,8 +56,8 @@ def test_vasp_wdir(factory, atoms_co):
 
     # We open file2 in our current directory, so we don't want it to write
     # in the label directory
-    with open(file2, 'w') as f:
-        calc2.set(txt=f)
+    with open(file2, 'w') as fd:
+        calc2.set(txt=fd)
         atoms.calc = calc2
         atoms.get_potential_energy()
 

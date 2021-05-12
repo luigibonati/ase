@@ -206,9 +206,9 @@ class XtlmuSTEMWriter:
     def _get_file_end(self):
         return "Orientation\n   1 0 0\n   0 1 0\n   0 0 1\n"
 
-    def write_to_file(self, f):
-        if isinstance(f, str):
-            fd = open(f, 'w')
+    def write_to_file(self, fd):
+        if isinstance(fd, str):
+            fd = open(fd, 'w')
 
         fd.write(self._get_file_header())
         for atom_type, number, occupancy in zip(self.atom_types,

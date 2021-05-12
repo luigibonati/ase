@@ -225,8 +225,8 @@ data = ase.Atoms('Cu96',
 def test_eon_readwrite():
     # First, write a correct .con file and try to read it.
     con_file = 'pos.con'
-    with open(con_file, 'w') as f:
-        f.write(CON_FILE)
+    with open(con_file, 'w') as fd:
+        fd.write(CON_FILE)
     box = ase.io.read(con_file, format='eon')
     # Check cell vectors.
     assert (abs(box.cell - data.cell)).sum() < TOL  # read: cell vector check
