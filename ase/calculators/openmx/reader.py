@@ -389,7 +389,7 @@ def read_electron_valency(filename='H_CA13'):
     array = []
     with open(filename, 'r') as fd:
         array = fd.readlines()
-        f.close()
+        fd.close()
     required_line = ''
     for line in array:
         if 'valence.electron' in line:
