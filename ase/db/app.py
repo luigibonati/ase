@@ -209,10 +209,12 @@ except ImportError:
     _global_dbapp = None
     projects = {}
     app = None
+    add_project = None
 else:
     _global_dbapp = DBApp()
     projects = _global_dbapp.projects
     app = _global_dbapp.flask
+    add_project = _global_dbapp.add_project
 handle_query = request2string
 
 
