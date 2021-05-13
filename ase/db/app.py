@@ -211,7 +211,7 @@ except ImportError:
     app = None
 else:
     _global_dbapp = DBApp()
-    projects: Dict[str, Any] = _global_dbapp.projects
+    projects = _global_dbapp.projects
     app = _global_dbapp.flask
 handle_query = request2string
 
