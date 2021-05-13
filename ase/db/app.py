@@ -204,7 +204,7 @@ def new_app(projects):
 
 # TODO: Issue deprecation warnings if someone accesses these variables.
 try:
-    import flask
+    import flask  # noqa
 except ImportError:
     _global_dbapp = None
     projects = {}
