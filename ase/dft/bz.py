@@ -36,8 +36,10 @@ def bz_plot(cell, vectors=False, paths=None, points=None,
     assert dimensions > 0, 'No BZ for 0D!'
 
     if dimensions == 3:
+        from mpl_toolkits.mplot3d import Axes3D
         from mpl_toolkits.mplot3d import proj3d
         from matplotlib.patches import FancyArrowPatch
+        Axes3D  # silence pyflakes
 
         class Arrow3D(FancyArrowPatch):
             def __init__(self, xs, ys, zs, *args, **kwargs):
