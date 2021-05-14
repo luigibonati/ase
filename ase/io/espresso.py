@@ -319,7 +319,12 @@ def read_espresso_out(fileobj, index=-1, results_required=True):
 
         for bands_index in indexes[_PW_BANDS] + indexes[_PW_BANDSTRUCTURE]:
             if image_index < bands_index < next_index:
-                bands_index += 2
+                bands_index += 1
+                # skip over the lines with DFT+U occupation matrices
+                if 'enter write_ns' in pwo_lines[bands_index]:
+                    while 'exit write_ns' not in pwo_lines[bands_index]:
+                        bands_index += 1
+                bands_index += 1
 
                 if pwo_lines[bands_index].strip() == kpoints_warning:
                     continue
