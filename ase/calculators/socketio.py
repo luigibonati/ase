@@ -239,7 +239,7 @@ class FileIOSocketClientLauncher:
 class SocketServer:
     default_port = 31415
 
-    def __init__(self, #launch_client=None,
+    def __init__(self,  # launch_client=None,
                  port=None, unixsocket=None, timeout=None,
                  log=None):
         """Create server and listen for connections.

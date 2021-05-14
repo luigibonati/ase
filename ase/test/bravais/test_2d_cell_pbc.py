@@ -3,9 +3,9 @@ def test_bravais_2d_cell_pbc():
 
     from ase.cell import Cell
 
-    cell = Cell([[1.,0.,0.],
-                 [.1,1.,0.],
-                 [0.,0.,0.]])
+    cell = Cell([[1., 0., 0.],
+                 [.1, 1., 0.],
+                 [0., 0., 0.]])
     lat = cell.get_bravais_lattice()
     print(cell.cellpar())
     print(lat)

@@ -176,7 +176,7 @@ class XtlmuSTEMWriter:
     def _get_position_array_single_atom_type(self, number):
         # Get the scaled (reduced) position for a single atom type
         return self.atoms.get_scaled_positions()[
-            self.atoms.numbers==number]
+            self.atoms.numbers == number]
 
     def _get_file_header(self):
         # 1st line: comment line

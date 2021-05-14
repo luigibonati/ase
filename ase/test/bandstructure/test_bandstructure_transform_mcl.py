@@ -16,7 +16,6 @@ def test_bandstructure_transform_mcl(testdir):
         atoms.calc = FreeElectrons()
         return atoms
 
-
     # MCL with beta > 90, which is a common convention -- but ours is
     # alpha < 90.  We want the bandpath returned by that cell to yield the
     # exact same band structure as our own (alpha < 90) version of the

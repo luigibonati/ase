@@ -6,7 +6,6 @@ def test_external_force():
     from ase.calculators.emt import EMT
     from numpy.linalg import norm
 
-
     f_ext = 0.2
 
     atom1 = 0

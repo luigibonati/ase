@@ -110,7 +110,6 @@ class Albrecht(ResonantRaman):
         -------
         Unitless displacements in Eigenmode coordinates
         """
-        self.timer.start('unitless_displacements')
         assert(len(forces_r.flat) == self.ndof)
         
         if not hasattr(self, 'Dm1_q'):
@@ -127,7 +126,6 @@ class Albrecht(ResonantRaman):
         s = 1.e-20 / u.kg / u.C / u._hbar**2
         d_Q *= np.sqrt(s * self.om_Q)
 
-        self.timer.stop('unitless_displacements')
         return d_Q
 
     def omegaLS(self, omega, gamma):
@@ -157,8 +155,6 @@ class Albrecht(ResonantRaman):
         """
         self.read()
 
-        self.timer.start('AlbrechtA')
-
         if not hasattr(self, 'fcr'):
             self.fcr = FranckCondonRecursive()
 
@@ -178,22 +174,14 @@ class Albrecht(ResonantRaman):
             wm_Q = np.zeros((self.ndof), dtype=complex)
             wp_Q = np.zeros((self.ndof), dtype=complex)
             for m in range(self.nm):
-                self.timer.start('0mm1')
                 fco_Q = self.fcr.direct0mm1(m, d_Q)
-                self.timer.stop('0mm1')
-                
-                self.timer.start('weight_Q')
                 e_Q = energy_Q + m * self.om_Q
                 wm_Q += fco_Q / (e_Q - omL)
                 wp_Q += fco_Q / (e_Q + omS_Q)
-                self.timer.stop('weight_Q')
-            self.timer.start('einsum')
             m_Qcc += np.einsum('a,bc->abc', wm_Q, me_cc)
             m_Qcc += np.einsum('a,bc->abc', wp_Q, me_cc.conj())
-            self.timer.stop('einsum')
         self.comm.sum(m_Qcc)
 
-        self.timer.stop('AlbrechtA')
         return m_Qcc  # e^2 Angstrom^2 / eV
 
     def meAmult(self, omega, gamma=0.1):
@@ -204,8 +192,6 @@ class Albrecht(ResonantRaman):
         Full Albrecht A matrix element. Unit: e^2 Angstrom^2 / eV
         """
         self.read()
-
-        self.timer.start('AlbrechtA')
 
         if not hasattr(self, 'fcr'):
             self.fcr = FranckCondonRecursive()
@@ -252,25 +238,19 @@ class Albrecht(ResonantRaman):
             energy_v = energy - self.d_vQ.dot(om_Q * S_Q)
             me_cc = np.outer(self.ex0m_pc[p], self.ex0m_pc[p].conj())
 
-            # Franck-Condon factors
-            self.timer.start('0mm1/2')
             fco1_mQ = np.empty((self.nm, nQ), dtype=float)
             fco2_mQ = np.empty((self.nm, nQ), dtype=float)
             for m in range(self.nm):
                 fco1_mQ[m] = self.fcr.direct0mm1(m, d_Q)
                 fco2_mQ[m] = self.fcr.direct0mm2(m, d_Q)
-            self.timer.stop('0mm1/2')
 
             wm_v = np.zeros((nv), dtype=complex)
             wp_v = np.zeros((nv), dtype=complex)
             for m in range(self.nm):
-                self.timer.start('0mm1/2')
                 fco1_v = np.where(n_ov[0] == 2,
                                   d_ovQ[0].dot(fco2_mQ[m]),
                                   d_ovQ[0].dot(fco1_mQ[m]))
-                self.timer.stop('0mm1/2')
 
-                self.timer.start('weight_Q')
                 em_v = energy_v + m * om_ov[0]
                 # multiples of same kind
                 fco_v = nvib_ov[0] * fco1_v
@@ -284,14 +264,11 @@ class Albrecht(ResonantRaman):
                         fco_v = nvib_ov[1] * fco1_v * fco2_v
                         wm_v += fco_v / (e_v - omL)
                         wp_v += fco_v / (e_v + omS_v)
-                self.timer.stop('weight_Q')
-            self.timer.start('einsum')
+
             m_vcc += np.einsum('a,bc->abc', wm_v, me_cc)
             m_vcc += np.einsum('a,bc->abc', wp_v, me_cc.conj())
-            self.timer.stop('einsum')
         self.comm.sum(m_vcc)
-                
-        self.timer.stop('AlbrechtA')
+
         return m_vcc  # e^2 Angstrom^2 / eV
 
     def meBC(self, omega, gamma=0.1,
@@ -305,8 +282,6 @@ class Albrecht(ResonantRaman):
         """
         self.read()
 
-        self.timer.start('AlbrechtBC')
-        self.timer.start('initialize')
         if not hasattr(self, 'fco'):
             self.fco = FranckCondonOverlap()
 
@@ -320,7 +295,6 @@ class Albrecht(ResonantRaman):
             self.exdmdr_rpc, [n_p, 3], self.ex0m_pc.dtype)
         dmdq_qpc = (exdmdr_rpc.T * self.im_r).T  # unit e / sqrt(amu)
         dmdQ_Qpc = np.dot(dmdq_qpc.T, self.modes_Qq.T).T  # unit e / sqrt(amu)
-        self.timer.stop('initialize')
 
         me_Qcc = np.zeros((self.ndof, 3, 3), dtype=complex)
         for p in myp:
@@ -340,20 +314,16 @@ class Albrecht(ResonantRaman):
             wCLS_Q = np.zeros((self.ndof), dtype=complex)
             wCSL_Q = np.zeros((self.ndof), dtype=complex)
             for m in range(self.nm):
-                self.timer.start('0mm1/2')
                 f0mmQ1_Q = (self.fco.directT0(m, S_Q) +
                             np.sqrt(2) * self.fco.direct0mm2(m, S_Q))
                 f0Qmm1_Q = self.fco.direct(1, m, S_Q)
-                self.timer.stop('0mm1/2')
-                
-                self.timer.start('weight_Q')
+
                 em_Q = energy_Q + m * self.om_Q
                 wBLS_Q += f0mmQ1_Q / (em_Q - omL)
                 wBSL_Q += f0Qmm1_Q / (em_Q - omL)
                 wCLS_Q += f0mmQ1_Q / (em_Q + omS_Q)
                 wCSL_Q += f0Qmm1_Q / (em_Q + omS_Q)
-                self.timer.stop('weight_Q')
-            self.timer.start('einsum')
+
             # unit e^2 Angstrom / sqrt(amu)
             mdmdQ_Qcc = np.einsum('a,bc->bac', m_c, dmdQ_Qc.conj())
             dmdQm_Qcc = np.einsum('ab,c->abc', dmdQ_Qc, m_c.conj())
@@ -363,10 +333,8 @@ class Albrecht(ResonantRaman):
             if 'C' in term:
                 me_Qcc += np.multiply(wCLS_Q, mdmdQ_Qcc.T).T
                 me_Qcc += np.multiply(wCSL_Q, dmdQm_Qcc.T).T
-            self.timer.stop('einsum')
+
         self.comm.sum(me_Qcc)
-        
-        self.timer.stop('AlbrechtBC')
         return me_Qcc  # unit e^2 Angstrom / eV / sqrt(amu)
 
     def electronic_me_Qcc(self, omega, gamma):

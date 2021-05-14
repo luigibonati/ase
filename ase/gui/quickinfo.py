@@ -77,7 +77,6 @@ def info(gui):
             else:
                 add(_('Reduced Bravais lattice:\n{}').format(lat))
 
-
         # Print electronic structure information if we have a calculator
         if atoms.calc:
             calc = atoms.calc

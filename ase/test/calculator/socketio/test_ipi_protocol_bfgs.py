@@ -21,6 +21,7 @@ inet_port = (3141 + pid) % 65536
 #unixsocket = 'grumble'
 timeout = 20.0
 
+
 def getatoms():
     return Icosahedron('Au', 3)
 
@@ -67,12 +68,14 @@ def run_server(launchclient=True, sockettype='unix'):
     assert ferr < 1e-11, ferr
     assert perr < 1e-11, perr
 
+
 def run_normal():
     atoms = getatoms()
     atoms.calc = EMT()
     opt = BFGS(atoms)
     opt.run()
     return atoms
+
 
 def run_client(port, unixsocket):
     atoms = getatoms()
@@ -98,6 +101,8 @@ def launch_client_thread(port, unixsocket):
 
 unix_only = pytest.mark.skipif(os.name != 'posix',
                                reason='requires unix platform')
+
+
 @pytest.mark.parametrize('sockettype', [
     'inet',
     pytest.param('unix', marks=unix_only),

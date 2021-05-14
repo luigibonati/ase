@@ -87,7 +87,6 @@ def parse_singletag(lines: List[str], line: str) -> Tuple[str, CIFDataValue]:
     return key, convert_value(value)
 
 
-
 def parse_cif_loop_headers(lines: List[str]) -> Iterator[str]:
     header_pattern = r'\s*(_\S*)'
 

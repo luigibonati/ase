@@ -1357,7 +1357,6 @@ class FixParametricRelations(FixConstraint):
             args = args[:-1]
         return cls(*args)
 
-
     @property
     def expressions(self):
         """Generate the expressions represented by the current self.Jacobian and self.const_shift objects"""
@@ -1407,7 +1406,6 @@ class FixParametricRelations(FixConstraint):
                 "use_cell": self.use_cell,
             }
         }
-
 
     def __repr__(self):
         """The str representation of the constraint"""
@@ -1470,7 +1468,6 @@ class FixScaledParametricRelations(FixParametricRelations):
             self.const_shift,
         )
         positions[self.indices] = self.adjust_B(atoms.cell, positions[self.indices])
-
 
     def adjust_B(self, cell, positions):
         """Wraps the positions back to the unit cell and adjust B to keep track of this change"""

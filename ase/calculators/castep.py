@@ -71,6 +71,36 @@ def _self_getter(getf):
     return decor_getf
 
 
+def _parse_tss_block(value, scaled=False):
+    # Parse the assigned value for a Transition State Search structure block
+    is_atoms = isinstance(value, ase.atoms.Atoms)
+    try:
+        is_strlist = all(map(lambda x: isinstance(x, str), value))
+    except TypeError:
+        is_strlist = False
+
+    if not is_atoms:
+        if not is_strlist:
+            # Invalid!
+            raise TypeError('castep.cell.positions_abs/frac_intermediate/'
+                            'product expects Atoms object or list of strings')
+
+        # First line must be Angstroms!
+        if (not scaled) and value[0].strip() != 'ang':
+            raise RuntimeError('Only ang units currently supported in castep.'
+                               'cell.positions_abs_intermediate/product')
+        return '\n'.join(map(str.strip, value))
+    else:
+        text_block = '' if scaled else 'ang\n'
+        positions = (value.get_scaled_positions() if scaled else
+                     value.get_positions())
+        symbols = value.get_chemical_symbols()
+        for s, p in zip(symbols, positions):
+            text_block += '    {0} {1:.3f} {2:.3f} {3:.3f}\n'.format(s, *p)
+
+        return text_block
+
+
 class Castep(Calculator):
     r"""
 CASTEP Interface Documentation
@@ -195,6 +225,10 @@ Keyword                    Description
 
                            3 = no attempt is made to look for
                            castep_keywords.json at all
+``castep_keywords``        Can be used to pass a CastepKeywords object that is
+                           then used with no attempt to actually load a 
+                           castep_keywords.json file. Most useful for debugging
+                           and testing purposes.
 
 =========================  ====================================================
 
@@ -452,7 +486,7 @@ End CASTEP Interface Documentation
     def __init__(self, directory='CASTEP', label='castep',
                  castep_command=None, check_castep_version=False,
                  castep_pp_path=None, find_pspots=False, keyword_tolerance=1,
-                 **kwargs):
+                 castep_keywords=None, **kwargs):
 
         self.__name__ = 'Castep'
 
@@ -462,19 +496,20 @@ End CASTEP Interface Documentation
         from ase.io.castep import write_cell
         self._write_cell = write_cell
 
-        castep_keywords = CastepKeywords(make_param_dict(),
-                                         make_cell_dict(),
-                                         [],
-                                         [],
-                                         0)
-        if keyword_tolerance < 3:
-            try:
-                castep_keywords = import_castep_keywords(castep_command)
-            except CastepVersionError as e:
-                if keyword_tolerance == 0:
-                    raise e
-                else:
-                    warnings.warn(str(e))
+        if castep_keywords is None:
+            castep_keywords = CastepKeywords(make_param_dict(),
+                                             make_cell_dict(),
+                                             [],
+                                             [],
+                                             0)
+            if keyword_tolerance < 3:
+                try:
+                    castep_keywords = import_castep_keywords(castep_command)
+                except CastepVersionError as e:
+                    if keyword_tolerance == 0:
+                        raise e
+                    else:
+                        warnings.warn(str(e))
 
         self._kw_tol = keyword_tolerance
         keyword_tolerance = max(keyword_tolerance, 2)  # 3 not accepted below
@@ -894,7 +929,8 @@ End CASTEP Interface Documentation
         record_start, record_end, end_found, _\
             = self._castep_find_last_record(out)
         if not end_found:
-            warnings.warn('No regular end found in %s file. %s' % (castep_file, self._error))
+            warnings.warn('No regular end found in %s file. %s' %
+                          (castep_file, self._error))
             if _close:
                 out.close()
             return
@@ -1393,7 +1429,7 @@ End CASTEP Interface Documentation
                                        atoms_assigned) if not assigned]
                 warnings.warn('%s atoms not assigned. '
                               ' DEBUGINFO: The following atoms where not assigned: %s' %
-                               (atoms_assigned.count(False), not_assigned))
+                              (atoms_assigned.count(False), not_assigned))
             else:
                 self.atoms.set_scaled_positions(positions_frac_atoms)
 
@@ -1469,7 +1505,8 @@ End CASTEP Interface Documentation
 
         if isinstance(castep_castep, str):
             if not os.path.isfile(castep_castep):
-                warnings.warn('Warning: CASTEP file %s not found!' % castep_castep)
+                warnings.warn('Warning: CASTEP file %s not found!' %
+                              castep_castep)
             f = paropen(castep_castep, 'r')
             _close = True
         else:
@@ -2222,7 +2259,8 @@ End CASTEP Interface Documentation
         if m:
             self._kpoints = int(m.group(1))
         else:
-            warnings.warn('Couldn\'t fetch number of kpoints from dryrun CASTEP file')
+            warnings.warn(
+                'Couldn\'t fetch number of kpoints from dryrun CASTEP file')
 
         err_file = os.path.join(temp_dir, '%s.0001.err' % seed)
         if match is None and os.path.exists(err_file):
@@ -2318,16 +2356,22 @@ End CASTEP Interface Documentation
                     else:
                         if self._pedantic:
                             warnings.warn('Warning: PP files have neither been '
-                                'linked nor copied to the working directory. Make '
-                                'sure to set the evironment variable PSPOT_DIR '
-                                'accordingly!')
+                                          'linked nor copied to the working directory. Make '
+                                          'sure to set the evironment variable PSPOT_DIR '
+                                          'accordingly!')
+
 
 def get_castep_version(castep_command):
     """This returns the version number as printed in the CASTEP banner.
        For newer CASTEP versions ( > 6.1) the --version command line option
        has been added; this will be attempted first.
     """
-    temp_dir = tempfile.mkdtemp()
+    import tempfile
+    with tempfile.TemporaryDirectory() as temp_dir:
+        return _get_castep_version(castep_command, temp_dir)
+
+
+def _get_castep_version(castep_command, temp_dir):
     jname = 'dummy_jobname'
     stdout, stderr = '', ''
     fallback_version = 16.  # CASTEP 16.0 and 16.1 report version wrongly
@@ -2362,7 +2406,7 @@ def get_castep_version(castep_command):
         output_txt = output.readlines()
         output.close()
         version_re = re.compile(r'(?<=CASTEP version )[0-9.]*')
-    shutil.rmtree(temp_dir)
+    # shutil.rmtree(temp_dir)
     for line in output_txt:
         if 'CASTEP version' in line:
             try:
@@ -2764,15 +2808,16 @@ class CastepInputFile:
         # If it is, use the appropriate parser, unless a custom one is defined
         attrparse = '_parse_%s' % attr.lower()
 
-        # Check for any conflicts
-        cset = self._conflict_dict.get(attr.lower(), {})
-        for c in cset:
-            if (c in self._options and self._options[c].value):
-                warnings.warn(
-                    'option "{attr}" conflicts with "{conflict}" in '
-                    'calculator. Setting "{conflict}" to '
-                    'None.'.format(attr=attr, conflict=c))
-                self._options[c].value = None
+        # Check for any conflicts if the value is not None
+        if not (value is None):
+            cset = self._conflict_dict.get(attr.lower(), {})
+            for c in cset:
+                if (c in self._options and self._options[c].value):
+                    warnings.warn(
+                        'option "{attr}" conflicts with "{conflict}" in '
+                        'calculator. Setting "{conflict}" to '
+                        'None.'.format(attr=attr, conflict=c))
+                    self._options[c].value = None
 
         if hasattr(self, attrparse):
             self._options[attr].value = self.__getattribute__(attrparse)(value)
@@ -2818,6 +2863,8 @@ class CastepParam(CastepInputFile):
 
     # .param specific parsers
     def _parse_reuse(self, value):
+        if value is None:
+            return None  # Reset the value
         try:
             if self._options['continuation'].value:
                 warnings.warn('Cannot set reuse if continuation is set, and '
@@ -2829,6 +2876,8 @@ class CastepParam(CastepInputFile):
         return 'default' if (value is True) else str(value)
 
     def _parse_continuation(self, value):
+        if value is None:
+            return None  # Reset the value
         try:
             if self._options['reuse'].value:
                 warnings.warn('Cannot set reuse if continuation is set, and '
@@ -2868,7 +2917,7 @@ class CastepCell(CastepInputFile):
         {'optics_kpoint_mp_grid', 'optics_kpoint_mp_spacing', 'optics_kpoint_list',
          'optics_kpoint_path'},
         {'supercell_kpoint_mp_grid', 'supercell_kpoint_mp_spacing', 'supercell_kpoint_list',
-         'supercell_kpoint_path'},]
+         'supercell_kpoint_path'}, ]
 
     def __init__(self, castep_keywords, keyword_tolerance=1):
         self._castep_version = castep_keywords.castep_version
@@ -2926,38 +2975,16 @@ class CastepCell(CastepInputFile):
         return text_block
 
     def _parse_positions_abs_intermediate(self, value):
-        if not isinstance(value, ase.atoms.Atoms):
-            raise TypeError('castep.cell.positions_abs_intermediate/product '
-                            'expect Atoms object')
-
-        text_block = 'ang\n'
-        for elem, pos in zip(value.get_chemical_symbols(),
-                             value.get_positions()):
-            text_block += ('    %4s %9.6f %9.6f %9.6f\n' % (elem,
-                                                            pos[0],
-                                                            pos[1],
-                                                            pos[2]))
-        return text_block
+        return _parse_tss_block(value)
 
     def _parse_positions_abs_product(self, value):
-        return self._positions_abs_intermediate(self, value)
+        return _parse_tss_block(value)
 
     def _parse_positions_frac_intermediate(self, value):
-        if not isinstance(value, ase.atoms.Atoms):
-            raise TypeError('castep.cell.positions_frac_intermediate/product '
-                            'expect Atoms object')
-
-        text_block = 'ang\n'
-        for elem, pos in zip(value.get_chemical_symbols(),
-                             value.get_scaled_positions()):
-            text_block += ('    %4s %9.6f %9.6f %9.6f\n' % (elem,
-                                                            pos[0],
-                                                            pos[1],
-                                                            pos[2]))
-        return text_block
+        return _parse_tss_block(value, True)
 
     def _parse_positions_frac_product(self, value):
-        return self._positions_frac_intermediate(self, value)
+        return _parse_tss_block(value, True)
 
 
 CastepKeywords = namedtuple('CastepKeywords',
@@ -3125,6 +3152,7 @@ if __name__ == '__main__':
             with open('castep_keywords.json') as f:
                 json.load(f)
         except Exception as e:
-            warnings.warn('%s Ooops, something went wrong with the CASTEP keywords' % e)
+            warnings.warn(
+                '%s Ooops, something went wrong with the CASTEP keywords' % e)
         else:
             warnings.warn('Import works. Looking good!')

@@ -118,6 +118,7 @@ def test_sym_rot_adj_cell(filter):
     di, df = symmetrized_optimisation(at_sym_3_rot, filter)
     assert di["number"] == 229 and is_subgroup(sub_data=di, sup_data=df)
 
+
 @pytest.mark.filterwarnings('ignore:ASE Atoms-like input is deprecated')
 def test_fix_symmetry_shuffle_indices():
     atoms = Atoms('AlFeAl6', cell=[6] * 3,

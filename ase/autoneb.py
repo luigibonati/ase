@@ -144,7 +144,6 @@ class AutoNEB:
             self._execute_one_neb(exitstack, n_cur, to_run,
                                   climb=climb, many_steps=many_steps)
 
-
     def _execute_one_neb(self, exitstack, n_cur, to_run,
                          climb=False, many_steps=False):
         '''Internal method which executes one NEB optimization.'''
@@ -580,7 +579,6 @@ class seriel_writer:
     def write(self):
         if self.num % (self.i + 1) == 0:
             self.traj.write()
-
 
 
 def store_E_and_F_in_spc(self):
