@@ -35,7 +35,7 @@ def lammps_create_atoms(fileobj, parameters, atoms, prismobj):
 
     # Get cell parameters and convert from ASE units to LAMMPS units
     xhi, yhi, zhi, xy, xz, yz = convert(prismobj.get_lammps_prism(),
-            "distance", "ASE", parameters.units)
+                                        "distance", "ASE", parameters.units)
 
     if parameters["always_triclinic"] or prismobj.is_skewed():
         fileobj.write(

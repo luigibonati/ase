@@ -304,8 +304,8 @@ class Population:
                     max_gen = ' '
                 fd = open(self.logfile, 'a')
                 fd.write('{time}: {gen}: {pop}\n'.format(time=now(),
-                                                        pop=','.join(ids),
-                                                        gen=max_gen))
+                                                         pop=','.join(ids),
+                                                         gen=max_gen))
                 fd.close()
 
     def is_uniform(self, func, min_std, pop=None):

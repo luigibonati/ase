@@ -561,9 +561,9 @@ class Siesta(FileIOCalculator):
 
             # Write mesh cutoff and energy shift.
             fd.write(format_fdf('MeshCutoff',
-                               (self['mesh_cutoff'], 'eV')))
+                                (self['mesh_cutoff'], 'eV')))
             fd.write(format_fdf('PAO.EnergyShift',
-                               (self['energy_shift'], 'eV')))
+                                (self['energy_shift'], 'eV')))
             fd.write("\n")
 
             # Write the minimal arg

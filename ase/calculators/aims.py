@@ -515,11 +515,11 @@ class Aims(FileIOCalculator):
 
         if ('sc_accuracy_stress' in self.parameters or
                 ('compute_numerical_stress' in self.parameters
-                and self.parameters['compute_numerical_stress']) or
+                 and self.parameters['compute_numerical_stress']) or
                 ('compute_analytical_stress' in self.parameters
-                and self.parameters['compute_analytical_stress']) or
+                 and self.parameters['compute_analytical_stress']) or
                 ('compute_heat_flux' in self.parameters
-                and self.parameters['compute_heat_flux'])):
+                 and self.parameters['compute_heat_flux'])):
             self.read_stress()
 
         if ('compute_heat_flux' in self.parameters

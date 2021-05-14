@@ -122,8 +122,8 @@ def test_sym_rot_adj_cell(filter):
 @pytest.mark.filterwarnings('ignore:ASE Atoms-like input is deprecated')
 def test_fix_symmetry_shuffle_indices():
     atoms = Atoms('AlFeAl6', cell=[6] * 3,
-               positions=[[0, 0, 0], [2.9, 2.9, 2.9], [0, 0, 3], [0, 3, 0],
-                          [0, 3, 3], [3, 0, 0], [3, 0, 3], [3, 3, 0]], pbc=True)
+                  positions=[[0, 0, 0], [2.9, 2.9, 2.9], [0, 0, 3], [0, 3, 0],
+                             [0, 3, 3], [3, 0, 0], [3, 0, 3], [3, 3, 0]], pbc=True)
     atoms.set_constraint(FixSymmetry(atoms))
     at_permut = atoms[[0, 2, 3, 4, 5, 6, 7, 1]]
     pos0 = atoms.get_positions()

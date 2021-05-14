@@ -198,10 +198,10 @@ class XtlmuSTEMWriter:
     def _get_element_header(self, atom_type, number, atom_type_number,
                             occupancy, RMS):
         return "{0}\n{1} {2} {3} {4:.3g}\n".format(atom_type,
-                                                  number,
-                                                  atom_type_number,
-                                                  occupancy,
-                                                  RMS)
+                                                   number,
+                                                   atom_type_number,
+                                                   occupancy,
+                                                   RMS)
 
     def _get_file_end(self):
         return "Orientation\n   1 0 0\n   0 1 0\n   0 0 1\n"
@@ -217,9 +217,9 @@ class XtlmuSTEMWriter:
             positions = self._get_position_array_single_atom_type(number)
             atom_type_number = positions.shape[0]
             fd.write(self._get_element_header(atom_type, atom_type_number,
-                                             number,
-                                             self.occupancies[atom_type],
-                                             self.RMS[atom_type]))
+                                              number,
+                                              self.occupancies[atom_type],
+                                              self.RMS[atom_type]))
             np.savetxt(fname=fd, X=positions, fmt='%.6g', newline='\n')
 
         fd.write(self._get_file_end())

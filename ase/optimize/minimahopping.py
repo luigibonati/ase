@@ -228,9 +228,9 @@ class MinimaHopping:
                     raise RuntimeError('File exists: %s' % self._logfile)
             fd = paropen(self._logfile, 'w')
             fd.write('par: %12s %12s %12s\n' % ('T (K)', 'Ediff (eV)',
-                                               'mdmin'))
+                                                'mdmin'))
             fd.write('ene: %12s %12s %12s\n' % ('E_current', 'E_previous',
-                                               'Difference'))
+                                                'Difference'))
             fd.close()
             return
         fd = paropen(self._logfile, 'a')

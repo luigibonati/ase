@@ -5,8 +5,8 @@ def test_gulp():
     import numpy as np
 
     cluster = Atoms(symbols='O4SiOSiO2SiO2SiO2SiOSiO2SiO3SiO3H8',
-              pbc=np.array([False, False, False], dtype=bool),
-              cell=np.array(
+                    pbc=np.array([False, False, False], dtype=bool),
+                    cell=np.array(
           [[ 0.,  0.,  0.],
            [ 0.,  0.,  0.],
            [ 0.,  0.,  0.]]),

@@ -420,8 +420,8 @@ class CIFBlock(collections.abc.Mapping):
         coordtype, coords = self._get_site_coordinates()
 
         atoms = Atoms(symbols=symbols,
-                     cell=self.get_cell(),
-                     masses=self._get_masses())
+                      cell=self.get_cell(),
+                      masses=self._get_masses())
 
         if coordtype == 'scaled':
             atoms.set_scaled_positions(coords)

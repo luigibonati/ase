@@ -59,7 +59,7 @@ def main():
     p = argparse.ArgumentParser(description='Generate new release of ASE.',
                                 epilog='Run from the root directory of ASE.')
     p.add_argument('version', nargs=1,
-                 help='version number for new release')
+                   help='version number for new release')
     p.add_argument('nextversion', nargs=1,
                    help='development version after release')
     p.add_argument('--clean', action='store_true',

@@ -129,7 +129,7 @@ class LineSearch:
                 self.bracket = False
             stage = self.isave[1]
             (ginit, gtest, gx, gy, finit, fx, fy, stx, sty, stmin, stmax, \
-            width, width1) =self.dsave
+             width, width1) =self.dsave
 
 #           If psi(stp) <= 0 and f'(stp) >= 0 for some step, then the
 #           algorithm enters the second stage.
@@ -187,8 +187,8 @@ class LineSearch:
 #           Call step to update stx, sty, and to compute the new step.
 
             stx, sty, stp, gx, fx, gy, fy= self.update(stx, fx, gx, sty,
-                                               fy, gy, stp, f, g,
-                                               stmin, stmax)
+                                                       fy, gy, stp, f, g,
+                                                       stmin, stmax)
 
 
 #           Decide if a bisection step is needed.
