@@ -5,7 +5,6 @@ from ase.io.aims import read_aims as read
 from ase.io.aims import parse_geometry_lines
 from pytest import approx
 
-parent = Path(__file__).parent
 format = "aims"
 
 atoms = bulk("Si")
