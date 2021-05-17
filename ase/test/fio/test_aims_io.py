@@ -1,4 +1,3 @@
-from pathlib import Path
 import numpy as np
 from ase.build import bulk
 from ase.io.aims import read_aims as read
