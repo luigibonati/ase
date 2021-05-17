@@ -125,24 +125,8 @@ def monkeypatch_disabled_calculators(request, factories):
     factories.monkeypatch_disabled_calculators()
 
 
-class BadUnitTest(Exception):
-    pass
-
-
-def raise_if_stale_files(path):
-    garbage = [str(p) for p in path.iterdir()]
-    if garbage:
-        raise BadUnitTest(f"""\
-Stale leftover files: There are tests or fixtures which create files.  \
-Please use the testdir fixture to ensure that they run inside a clean \
-directory, e.g., "def mytest(testdir, ...): ...", or use the tmp_path \
-or tmp_path_factory fixtures to generate paths outside the workdir.
-
-Files: {garbage}""")
-
-
 @pytest.fixture(scope='session', autouse=True)
-def sessionlevel_testing_path(tmp_path_factory):
+def sessionlevel_testing_path():
     # We cd into a tempdir so tests and fixtures won't create files
     # elsewhere (e.g. in the unsuspecting user's directory).
     #
@@ -150,23 +134,19 @@ def sessionlevel_testing_path(tmp_path_factory):
     # because they can access each others' files and hence are not
     # independent.  Therefore we want them to explicitly use the
     # "testdir" fixture which ensures that each has a clean directory.
-    path = Path(tmp_path_factory.mktemp('ase-test-workdir'))
-    with workdir(path):
-        yield path
-
-    raise_if_stale_files(path)
-
-
-@pytest.fixture(autouse=True)
-def _check_no_undeclared_leftover_files(sessionlevel_testing_path):
-    # Instead of testing for stale files only at the end, we also test
-    # after each test so most trouble can be attributed to the test
-    # which caused it.
-    already_bad = any(sessionlevel_testing_path.iterdir())
-    yield
-    # We don't want to fail the whole test suite once we have a culprit:
-    if not already_bad:
-        raise_if_stale_files(sessionlevel_testing_path)
+    #
+    # To prevent tests from writing files, we chmod the directory.
+    # But if the tests are killed, we cannot clean it up and it will
+    # disturb other pytest runs if we use the pytest tempdir factory.
+    #
+    # So we use the tempfile module for this temporary directory.
+    import tempfile
+    with tempfile.TemporaryDirectory(prefix='ase-test-workdir-') as tempdir:
+        path = Path(tempdir)
+        path.chmod(0o555)
+        with workdir(path):
+            yield path
+        path.chmod(0o755)
 
 
 @pytest.fixture(autouse=False)
