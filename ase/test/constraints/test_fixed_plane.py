@@ -28,7 +28,7 @@ def test_repr(indices):
     )
 
 def test_constrained_optimization_single():
-    c = _FixedPlane(0, [1, 0, 0])
+    c = FixedPlane(0, [1, 0, 0])
 
     mol = molecule("butadiene")
     mol.set_constraint(c)
