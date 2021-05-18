@@ -27,3 +27,23 @@ def test_repr(indices):
     repr(FixedLine(indices, [1, 0, 0])) == (
         "<FixedLine: {'indices': " + str(indices) + ", 'direction': [1. 0. 0.]}>"
     )
+
+def test_constrained_optimization_single():
+    c = FixedLine(0, [1, 0, 0])
+
+    mol = molecule("butadiene")
+    mol.set_constraint(c)
+
+    assert len(mol.constraints) == 1
+    assert isinstance(c.dir, np.ndarray)
+    assert (np.asarray([1, 0, 0]) == c.dir).all()
+
+    mol.calc = EMT()
+
+    cold_positions = mol[0].position.copy()
+    opt = BFGS(mol)
+    opt.run(steps=5)
+    cnew_positions = mol[0].position.copy()
+
+    assert np.max(np.abs(cnew_positions[1:] - cold_positions[1:])) < 1e-8
+    assert np.max(np.abs(cnew_positions[0] - cold_positions[0])) > 1e-8
