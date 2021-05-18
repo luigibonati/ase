@@ -709,7 +709,7 @@ class FixedPlane(FixConstraint):
             )
 
         if self.index.ndim != 1:
-            raise ValueError('Wrong argument to FixedLine class!')
+            raise ValueError('Wrong argument to FixedPlane class!')
 
         if len(direction) != 3:
             raise ValueError("len(direction) is {len(direction)}. Has to be 3")
@@ -732,7 +732,7 @@ class FixedPlane(FixConstraint):
 
     def todict(self):
         return {
-            'name': 'FixedLine',
+            'name': 'FixedPlane',
             'kwargs': {'indices': self.index, 'direction': self.dir.tolist()}
         }
 
