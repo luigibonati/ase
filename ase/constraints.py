@@ -680,6 +680,7 @@ class _FixedPlane(FixConstraintSingle):
     def __repr__(self):
         return 'FixedPlane(%d, %s)' % (self.a, self.dir.tolist())
 
+
 class FixedPlane(FixConstraint):
     """Constraint object for fixing chosen atoms to only move in a plane."""
 
@@ -703,7 +704,9 @@ class FixedPlane(FixConstraint):
         # Check for duplicates:
         srt = np.sort(self.index)
         if (np.diff(srt) == 0).any():
-            raise ValueError('FixAtoms: The indices array contained duplicates.')
+            raise ValueError(
+                'FixAtoms: The indices array contained duplicates.'
+            )
 
         if self.index.ndim != 1:
             raise ValueError('Wrong argument to FixedLine class!')
@@ -715,7 +718,7 @@ class FixedPlane(FixConstraint):
         self.stack_dir = np.stack((self.dir,) * len(indices))
 
     def get_removed_dof(self, atoms):
-        return 1*len(self.index)
+        return 1 * len(self.index)
 
     def adjust_positions(self, atoms, newpositions):
         step = newpositions[self.index] - atoms.positions[self.index]
@@ -723,7 +726,9 @@ class FixedPlane(FixConstraint):
         newpositions[self.index] -= self.stack_dir * x[:, None]
 
     def adjust_forces(self, atoms, forces):
-        forces[self.index] -= self.stack_dir * np.dot(forces[self.index], self.dir)[:, None]
+        forces[self.index] -= self.stack_dir * np.dot(
+            forces[self.index], self.dir
+        )[:, None]
 
     def todict(self):
         return {
@@ -734,9 +739,10 @@ class FixedPlane(FixConstraint):
     def __repr__(self):
         return f'FixedPlane(indices={self.index}, {self.dir.tolist()})'
 
+
 class FixedLine(FixConstraint):
     """
-    Constrain an atom index or a list of atom indices to move on a given line only.
+    Constrain an atom index or a list of atom indices to move on a line only.
 
     The line is defined by its vector *direction*
     """
@@ -755,7 +761,10 @@ class FixedLine(FixConstraint):
         --------
         Fix all Copper atoms to only move in the x-direction:
         >>> from ase.constraints import FixAtoms
-        >>> c = FixedLine(indices=[atom.index for atom in atoms if atom.symbol == 'Cu'], direction=[1, 0, 0])
+        >>> c = FixedLine(
+            indices=[atom.index for atom in atoms if atom.symbol == 'Cu'],
+            direction=[1, 0, 0],
+        )
         >>> atoms.set_constraint(c)
 
         or fix only a single Copper atom with the index 0 in the z-direction
@@ -769,7 +778,9 @@ class FixedLine(FixConstraint):
         # Check for duplicates:
         srt = np.sort(self.index)
         if (np.diff(srt) == 0).any():
-            raise ValueError('FixAtoms: The indices array contained duplicates.')
+            raise ValueError(
+                'FixAtoms: The indices array contained duplicates.'
+            )
 
         if self.index.ndim != 1:
             raise ValueError('Wrong argument to FixedLine class!')
@@ -783,13 +794,16 @@ class FixedLine(FixConstraint):
     def adjust_positions(self, atoms, newpositions):
         step = newpositions[self.index] - atoms.positions[self.index]
         x = np.dot(step, self.dir)
-        newpositions[self.index] = atoms.positions[self.index] + self.stack_dir * x[:, None]
+        newpositions[self.index] = atoms.positions[self.index] + \
+            self.stack_dir * x[:, None]
 
     def adjust_forces(self, atoms, forces):
-        forces[self.index] = self.stack_dir * np.dot(forces[self.index], self.dir)[:, None]
+        forces[self.index] = self.stack_dir * np.dot(
+            forces[self.index], self.dir
+        )[:, None]
 
     def get_removed_dof(self, atoms):
-        return 2*len(atoms)
+        return 2 * len(atoms)
 
     def __repr__(self):
         return f'FixedLine(indices={self.index}, {self.dir.tolist()})'
@@ -799,6 +813,7 @@ class FixedLine(FixConstraint):
             'name': 'FixedLine',
             'kwargs': {'indices': self.index, 'direction': self.dir.tolist()}
         }
+
 
 class _FixedLine(FixConstraintSingle):
     """Constrain an atom index *a* to move on a given line only.
