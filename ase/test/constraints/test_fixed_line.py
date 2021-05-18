@@ -47,3 +47,24 @@ def test_constrained_optimization_single():
 
     assert np.max(np.abs(cnew_positions[1:] - cold_positions[1:])) < 1e-8
     assert np.max(np.abs(cnew_positions[0] - cold_positions[0])) > 1e-8
+
+def test_constrained_optimization_multiple():
+    indices = [0, 1]
+    c = FixedLine(indices, [1, 0, 0])
+
+    mol = molecule("butadiene")
+    mol.set_constraint(c)
+
+    assert len(mol.constraints) == 1
+    assert isinstance(c.dir, np.ndarray)
+    assert (np.asarray([1, 0, 0]) == c.dir).all()
+
+    mol.calc = EMT()
+
+    cold_positions = mol[indices].positions.copy()
+    opt = BFGS(mol)
+    opt.run(steps=5)
+    cnew_positions = mol[indices].positions.copy()
+
+    assert np.max(np.abs(cnew_positions[:, 1:] - cold_positions[:, 1:])) < 1e-8
+    assert np.max(np.abs(cnew_positions[:, 0] - cold_positions[:, 0])) > 1e-8
