@@ -707,6 +707,13 @@ class FixedPlane(FixConstraint):
     def get_removed_dof(self, atoms):
         return 1*len(self.index)
 
+    def todict(self):
+        return {'name': 'FixedPlane',
+                'kwargs': {'a': self.a, 'direction': self.dir.tolist()}}
+
+    def __repr__(self):
+        return 'FixedPlane(%d, %s)' % (self.a, self.dir.tolist())
+
 class FixedLine(FixConstraint):
     """
     Constrain an atom index or a list of atom indices to move on a given line only.
