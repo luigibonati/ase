@@ -734,6 +734,9 @@ class FixedLine(FixConstraint):
     def adjust_forces(self, atoms, forces):
         forces[self.index] = self.stack_dir * np.dot(forces[self.index], self.dir)[:, None]
 
+    def get_removed_dof(self, atoms):
+        return 2*len(atoms)
+
 class _FixedLine(FixConstraintSingle):
     """Constrain an atom index *a* to move on a given line only.
 
