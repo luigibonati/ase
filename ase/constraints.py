@@ -709,10 +709,11 @@ class FixedPlane(FixConstraint):
 
     def adjust_positions(self, atoms, newpositions):
         step = newpositions[self.index] - atoms.positions[self.index]
-        newpositions[self.index] -= self.dir * np.dot(step, self.dir)
+        x = np.dot(step, self.dir)
+        newpositions[self.index] -= self.stack_dir * x[:, None]
 
     def adjust_forces(self, atoms, forces):
-        forces[self.index] -= self.dir * np.dot(forces[self.index], self.dir)
+        forces[self.index] -= self.stack_dir * np.dot(forces[self.index], self.dir)[:, None]
 
     def todict(self):
         return {
