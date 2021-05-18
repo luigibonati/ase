@@ -737,6 +737,9 @@ class FixedLine(FixConstraint):
     def get_removed_dof(self, atoms):
         return 2*len(atoms)
 
+    def __repr__(self):
+        return f'FixedLine(indices={self.index}, {self.dir.tolist()})'
+
 class _FixedLine(FixConstraintSingle):
     """Constrain an atom index *a* to move on a given line only.
 
