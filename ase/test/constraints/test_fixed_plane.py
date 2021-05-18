@@ -8,7 +8,8 @@ import pytest
 
 @pytest.mark.parametrize('indices', [0, [0], [0, 1]])
 def test_valid_inputs(indices):
-    c = FixedPlane(indices, [1, 0, 0])
+    _ = FixedPlane(indices, [1, 0, 0])
+
 
 @pytest.mark.parametrize(
     'indices', [
@@ -17,15 +18,17 @@ def test_valid_inputs(indices):
     ]
 )
 def test_invalid_inputs(indices):
-    with pytest.raises(ValueError) as e_info:
-        c = FixedPlane(indices, [1, 0, 0])
+    with pytest.raises(ValueError) as _:
+        _ = FixedPlane(indices, [1, 0, 0])
+
 
 @pytest.mark.parametrize('indices', [0, [0], [0, 1]])
 def test_repr(indices):
-    c = FixedPlane(indices, [1, 0, 0])
     repr(FixedPlane(indices, [1, 0, 0])) == (
-        "<FixedPlane: {'indices': " + str(indices) + ", 'direction': [1. 0. 0.]}>"
+        "<FixedPlane: "
+        "{'indices': " + str(indices) + ", 'direction': [1. 0. 0.]}>"
     )
+
 
 def test_constrained_optimization_single():
     c = FixedPlane(0, [1, 0, 0])
@@ -49,6 +52,7 @@ def test_constrained_optimization_single():
 
     assert np.max(np.abs(cnew_positions[1:] - cold_positions[1:])) > 1e-8
     assert np.max(np.abs(cnew_positions[0] - cold_positions[0])) < 1e-8
+
 
 def test_constrained_optimization_multiple():
     indices = [0, 1]
