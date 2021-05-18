@@ -654,7 +654,7 @@ class FixedMode(FixConstraint):
         return 'FixedMode(%s)' % self.mode.tolist()
 
 
-class FixedPlane(FixConstraintSingle):
+class _FixedPlane(FixConstraintSingle):
     """Constrain an atom index *a* to move in a given plane only.
 
     The plane is defined by its normal vector *direction*."""
@@ -679,6 +679,30 @@ class FixedPlane(FixConstraintSingle):
 
     def __repr__(self):
         return 'FixedPlane(%d, %s)' % (self.a, self.dir.tolist())
+
+class FixedPlane(FixConstraint):
+    """Constrain an atom index *a* to move in a given plane only.
+
+    The plane is defined by its normal vector *direction*."""
+
+    def __init__(self, indices, direction):
+        if isinstance(indices, int):
+            indices = [indices]
+        self.index = np.asarray(indices, int)
+
+        # Check for duplicates:
+        srt = np.sort(self.index)
+        if (np.diff(srt) == 0).any():
+            raise ValueError('FixAtoms: The indices array contained duplicates.')
+
+        if self.index.ndim != 1:
+            raise ValueError('Wrong argument to FixedLine class!')
+
+        if len(direction) != 3:
+            raise ValueError("len(direction) is {len(direction)}. Has to be 3")
+        self.dir = np.asarray(direction) / sqrt(np.dot(direction, direction))
+
+        self.stack_dir = np.stack((self.dir,) * len(indices))
 
 class FixedLine(FixConstraint):
     """
