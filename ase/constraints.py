@@ -715,8 +715,10 @@ class FixedPlane(FixConstraint):
         forces[self.index] -= self.dir * np.dot(forces[self.index], self.dir)
 
     def todict(self):
-        return {'name': 'FixedPlane',
-                'kwargs': {'a': self.a, 'direction': self.dir.tolist()}}
+        return {
+            'name': 'FixedLine',
+            'kwargs': {'indices': self.index, 'direction': self.dir.tolist()}
+        }
 
     def __repr__(self):
         return f'FixedPlane(indices={self.index}, {self.dir.tolist()})'
