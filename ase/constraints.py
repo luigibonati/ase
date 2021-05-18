@@ -740,6 +740,12 @@ class FixedLine(FixConstraint):
     def __repr__(self):
         return f'FixedLine(indices={self.index}, {self.dir.tolist()})'
 
+    def todict(self):
+        return {
+            'name': 'FixedLine',
+            'kwargs': {'indices': self.index, 'direction': self.dir.tolist()}
+        }
+
 class _FixedLine(FixConstraintSingle):
     """Constrain an atom index *a* to move on a given line only.
 
