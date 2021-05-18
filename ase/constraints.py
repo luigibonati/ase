@@ -680,8 +680,53 @@ class FixedPlane(FixConstraintSingle):
     def __repr__(self):
         return 'FixedPlane(%d, %s)' % (self.a, self.dir.tolist())
 
+class FixedLine(FixConstraint):
+    """
+    Constrain an atom index or a list of atom indices to move on a given line only.
 
-class FixedLine(FixConstraintSingle):
+    The line is defined by its vector *direction*
+    """
+    def __init__(self, indices, direction):
+        """
+        Constrain chosen atoms.
+
+        Parameters
+        ----------
+        indices : int or list of int
+            Index or indices for those atoms that should be constrained
+        direction : xxx
+            ...
+
+        Examples
+        --------
+        Fix all Copper atoms to only move in the x-direction:
+        >>> from ase.constraints import FixAtoms
+        >>> c = FixedLine(indices=[atom.index for atom in atoms if atom.symbol == 'Cu'], direction=[1, 0, 0])
+        >>> atoms.set_constraint(c)
+
+        or fix only a single Copper atom with the index 0 in the z-direction
+        >>> c = FixedLine(indices=0, direction=[0, 0, 0])
+        >>> atoms.set_constraint(c)
+        """
+        if isinstance(indices, int):
+            indices = [indices]
+        self.index = np.asarray(indices, int)
+
+        # Check for duplicates:
+        srt = np.sort(self.index)
+        if (np.diff(srt) == 0).any():
+            raise ValueError('FixAtoms: The indices array contained duplicates.')
+
+        if self.index.ndim != 1:
+            raise ValueError('Wrong argument to FixedLine class!')
+
+        if len(direction) != 3:
+            raise ValueError("len(direction) is {len(direction)}. Has to be 3")
+        self.dir = np.asarray(direction) / sqrt(np.dot(direction, direction))
+
+        self.stack_dir = np.stack((self.dir,) * len(indices))
+
+class _FixedLine(FixConstraintSingle):
     """Constrain an atom index *a* to move on a given line only.
 
     The line is defined by its vector *direction*."""
