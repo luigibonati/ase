@@ -726,6 +726,14 @@ class FixedLine(FixConstraint):
 
         self.stack_dir = np.stack((self.dir,) * len(indices))
 
+    def adjust_positions(self, atoms, newpositions):
+        step = newpositions[self.index] - atoms.positions[self.index]
+        x = np.dot(step, self.dir)
+        newpositions[self.index] = atoms.positions[self.index] + self.stack_dir * x[:, None]
+
+    def adjust_forces(self, atoms, forces):
+        forces[self.index] = self.stack_dir * np.dot(forces[self.index], self.dir)[:, None]
+
 class _FixedLine(FixConstraintSingle):
     """Constrain an atom index *a* to move on a given line only.
 
