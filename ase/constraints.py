@@ -707,12 +707,19 @@ class FixedPlane(FixConstraint):
     def get_removed_dof(self, atoms):
         return 1*len(self.index)
 
+    def adjust_positions(self, atoms, newpositions):
+        step = newpositions[self.index] - atoms.positions[self.index]
+        newpositions[self.index] -= self.dir * np.dot(step, self.dir)
+
+    def adjust_forces(self, atoms, forces):
+        forces[self.index] -= self.dir * np.dot(forces[self.index], self.dir)
+
     def todict(self):
         return {'name': 'FixedPlane',
                 'kwargs': {'a': self.a, 'direction': self.dir.tolist()}}
 
     def __repr__(self):
-        return 'FixedPlane(%d, %s)' % (self.a, self.dir.tolist())
+        return f'FixedPlane(indices={self.index}, {self.dir.tolist()})'
 
 class FixedLine(FixConstraint):
     """
