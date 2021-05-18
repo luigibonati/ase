@@ -1,10 +1,10 @@
-from ase.constraints import FixedLine
 from ase.build import molecule
-from ase.constraints import FixedLine
 from ase.calculators.emt import EMT
+from ase.constraints import FixedLine
+from ase.constraints import FixedLine
 from ase.optimize import BFGS
-import pytest
 import numpy as np
+import pytest
 
 
 @pytest.mark.parametrize('indices', [0, [0], [0, 1]])
