@@ -682,19 +682,36 @@ class _FixedPlane(FixConstraintSingle):
 
 
 class FixedPlane(FixConstraint):
-    """Constraint object for fixing chosen atoms to only move in a plane."""
+    """
+    Constraint object for fixing chosen atoms to only move in a plane.
+
+    The plane is defined by its normal vector *direction*
+    """
 
     def __init__(self, indices, direction):
         """Constrain chosen atoms.
 
+        Parameters
+        ----------
+        indices : int or list of int
+            Index or indices for atoms that should be constrained
+        direction : list of 3 int
+            Direction of the normal vector
+
         Examples
         --------
-        Fix all Copper atoms to only move in the xy-plane
-        >>> from ase.constraints import FixPlane
-        >>> c = FixPlane(
-            indices=[atom.index for atom in atoms if atom.symbol == 'Cu'],
-            direction=[1, 0, 0],
-        )
+        Fix all Copper atoms to only move in the yz-plane:
+
+        >>> from ase.constraints import FixedPlane
+        >>> c = FixedPlane(
+        >>>     indices=[atom.index for atom in atoms if atom.symbol == 'Cu'],
+        >>>     direction=[1, 0, 0],
+        >>> )
+        >>> atoms.set_constraint(c)
+
+        or constrain a single atom with the index 0 to move in the xy-plane:
+
+        >>> c = FixedPlane(indices=0, direction=[0, 0, 1])
         >>> atoms.set_constraint(c)
         """
         if isinstance(indices, int):
