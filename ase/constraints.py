@@ -764,27 +764,28 @@ class FixedLine(FixConstraint):
     The line is defined by its vector *direction*
     """
     def __init__(self, indices, direction):
-        """
-        Constrain chosen atoms.
+        """Constrain chosen atoms.
 
         Parameters
         ----------
-        indices : int or list of ints
-            Index or indices for those atoms that should be constrained
-        direction : list of 3 ints
-            Direction to allow movement in
+        indices : int or list of int
+            Index or indices for atoms that should be constrained
+        direction : list of 3 int
+            Direction of the vector defining the line
 
         Examples
         --------
         Fix all Copper atoms to only move in the x-direction:
-        >>> from ase.constraints import FixAtoms
+
+        >>> from ase.constraints import FixedLine
         >>> c = FixedLine(
-            indices=[atom.index for atom in atoms if atom.symbol == 'Cu'],
-            direction=[1, 0, 0],
-        )
+        >>>     indices=[atom.index for atom in atoms if atom.symbol == 'Cu'],
+        >>>     direction=[1, 0, 0],
+        >>> )
         >>> atoms.set_constraint(c)
 
-        or fix only a single atom with the index 0 in the z-direction
+        or constrain a single atom with the index 0 to move in the z-direction:
+
         >>> c = FixedLine(indices=0, direction=[0, 0, 1])
         >>> atoms.set_constraint(c)
         """
