@@ -7,7 +7,7 @@ import pytest
 
 
 @pytest.mark.parametrize('indices', [0, [0], [0, 1]])
-def test_valid_inputs(indices):
+def test_valid_inputs_indices(indices):
     _ = FixedLine(indices, [1, 0, 0])
 
 
@@ -17,9 +17,20 @@ def test_valid_inputs(indices):
         [[0, 1], [0, 1]],
     ]
 )
-def test_invalid_inputs(indices):
+def test_invalid_inputs_indices(indices):
     with pytest.raises(ValueError) as _:
         _ = FixedLine(indices, [1, 0, 0])
+
+
+@pytest.mark.parametrize('direction', [[0, 0, 1], (0, 0, 1)])
+def test_valid_inputs_direction(direction):
+    _ = FixedLine(0, direction)
+
+
+@pytest.mark.parametrize('direction', [[0, 1], None, "42"])
+def test_invalid_inputs_direction(direction):
+    with pytest.raises(Exception) as _:
+        _ = FixedLine(0, direction)
 
 
 @pytest.mark.parametrize('indices', [0, [0], [0, 1]])

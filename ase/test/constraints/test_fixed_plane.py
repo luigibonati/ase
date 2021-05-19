@@ -22,6 +22,17 @@ def test_invalid_inputs(indices):
         _ = FixedPlane(indices, [1, 0, 0])
 
 
+@pytest.mark.parametrize('direction', [[0, 0, 1], (0, 0, 1)])
+def test_valid_inputs_direction(direction):
+    _ = FixedPlane(0, direction)
+
+
+@pytest.mark.parametrize('direction', [[0, 1], None, "42"])
+def test_invalid_inputs_direction(direction):
+    with pytest.raises(Exception) as _:
+        _ = FixedPlane(0, direction)
+
+
 @pytest.mark.parametrize('indices', [0, [0], [0, 1]])
 def test_repr(indices):
     repr(FixedPlane(indices, [1, 0, 0])) == (
