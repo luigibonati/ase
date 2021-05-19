@@ -654,33 +654,6 @@ class FixedMode(FixConstraint):
         return 'FixedMode(%s)' % self.mode.tolist()
 
 
-class _FixedPlane(FixConstraintSingle):
-    """Constrain an atom index *a* to move in a given plane only.
-
-    The plane is defined by its normal vector *direction*."""
-
-    def __init__(self, a, direction):
-        self.a = a
-        self.dir = np.asarray(direction) / sqrt(np.dot(direction, direction))
-
-    def get_removed_dof(self, atoms):
-        return 1
-
-    def adjust_positions(self, atoms, newpositions):
-        step = newpositions[self.a] - atoms.positions[self.a]
-        newpositions[self.a] -= self.dir * np.dot(step, self.dir)
-
-    def adjust_forces(self, atoms, forces):
-        forces[self.a] -= self.dir * np.dot(forces[self.a], self.dir)
-
-    def todict(self):
-        return {'name': 'FixedPlane',
-                'kwargs': {'a': self.a, 'direction': self.dir.tolist()}}
-
-    def __repr__(self):
-        return 'FixedPlane(%d, %s)' % (self.a, self.dir.tolist())
-
-
 class FixedPlane(FixConstraint):
     """
     Constraint object for fixing chosen atoms to only move in a plane.
@@ -831,34 +804,6 @@ class FixedLine(FixConstraint):
             'name': 'FixedLine',
             'kwargs': {'indices': self.index, 'direction': self.dir.tolist()}
         }
-
-
-class _FixedLine(FixConstraintSingle):
-    """Constrain an atom index *a* to move on a given line only.
-
-    The line is defined by its vector *direction*."""
-
-    def __init__(self, a, direction):
-        self.a = a
-        self.dir = np.asarray(direction) / sqrt(np.dot(direction, direction))
-
-    def get_removed_dof(self, atoms):
-        return 2
-
-    def adjust_positions(self, atoms, newpositions):
-        step = newpositions[self.a] - atoms.positions[self.a]
-        x = np.dot(step, self.dir)
-        newpositions[self.a] = atoms.positions[self.a] + x * self.dir
-
-    def adjust_forces(self, atoms, forces):
-        forces[self.a] = self.dir * np.dot(forces[self.a], self.dir)
-
-    def __repr__(self):
-        return 'FixedLine(%d, %s)' % (self.a, self.dir.tolist())
-
-    def todict(self):
-        return {'name': 'FixedLine',
-                'kwargs': {'a': self.a, 'direction': self.dir.tolist()}}
 
 
 class FixCartesian(FixConstraintSingle):
