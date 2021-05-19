@@ -752,10 +752,10 @@ class FixedLine(FixConstraint):
 
         Parameters
         ----------
-        indices : int or list of int
+        indices : int or list of ints
             Index or indices for those atoms that should be constrained
-        direction : xxx
-            ...
+        direction : list of 3 ints
+            Direction to allow movement in
 
         Examples
         --------
@@ -767,8 +767,8 @@ class FixedLine(FixConstraint):
         )
         >>> atoms.set_constraint(c)
 
-        or fix only a single Copper atom with the index 0 in the z-direction
-        >>> c = FixedLine(indices=0, direction=[0, 0, 0])
+        or fix only a single atom with the index 0 in the z-direction
+        >>> c = FixedLine(indices=0, direction=[0, 0, 1])
         >>> atoms.set_constraint(c)
         """
         if isinstance(indices, int):
