@@ -615,6 +615,34 @@ class ForceConstantCalculator(Calculator):
 
 
 class ForceQMMM(Calculator):
+    def __init__(self, qmmm_data, qm_calc, mm_calc):
+        self.qm_calc = qm_calc
+        self.mm_calc = mm_calc
+        self.qmmm_data = qmmm_data
+
+    def calculate(self, atoms, properties, system_changes):
+        assert not compare_atoms(self.qmmm_data.atoms, atoms)
+        Calculator.calculate(self, atoms, properties, system_changes)
+
+        qmmm = self.qmmm_data
+
+        qm_cluster = qmmm.get_qm_cluster(atoms)
+
+        forces = self.mm_calc.get_forces(atoms)
+        qm_forces = self.qm_calc.get_forces(qm_cluster)
+
+        forces[qmmm.qm_selection_mask] = \
+            qm_forces[qmmm.qm_selection_mask[qmmm.qm_buffer_mask]]
+
+        if qmmm.zero_mean:
+            # Target is that: forces.sum(axis=1) == [0., 0., 0.]
+            forces[:] -= forces.mean(axis=0)
+
+        self.results['forces'] = forces
+        self.results['energy'] = 0.0
+
+
+class ForceQMMMData:
     """
     Force-based QM/MM calculator
 
@@ -633,8 +661,6 @@ class ForceQMMM(Calculator):
     def __init__(self,
                  atoms,
                  qm_selection_mask,
-                 qm_calc,
-                 mm_calc,
                  buffer_width,
                  vacuum=5.,
                  zero_mean=True,
@@ -761,24 +787,6 @@ class ForceQMMM(Calculator):
         qm_cluster.positions[:, ~qm_cluster_pbc] += qm_shift[~qm_cluster_pbc]
 
         return qm_cluster
-
-    def calculate(self, atoms, properties, system_changes):
-        Calculator.calculate(self, atoms, properties, system_changes)
-
-        qm_cluster = self.get_qm_cluster(atoms)
-
-        forces = self.mm_calc.get_forces(atoms)
-        qm_forces = self.qm_calc.get_forces(qm_cluster)
-
-        forces[self.qm_selection_mask] = \
-            qm_forces[self.qm_selection_mask[self.qm_buffer_mask]]
-
-        if self.zero_mean:
-            # Target is that: forces.sum(axis=1) == [0., 0., 0.]
-            forces[:] -= forces.mean(axis=0)
-
-        self.results['forces'] = forces
-        self.results['energy'] = 0.0
 
     def get_region_from_masks(self, atoms=None, print_mapping=False):
         """
