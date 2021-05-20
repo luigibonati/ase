@@ -87,7 +87,7 @@ max_errors = {
     # continuation line under-indented for visual indent
     'E128': 39,
     # continuation line over-indented for visual indent
-    'E127': 32,
+    'E127': 40,
     # missing whitespace around operator
     'E225': 0,
     # ambiguous variable name 'O'
