@@ -9,7 +9,7 @@ import string
 import warnings
 from importlib import import_module
 from math import sin, cos, radians, atan2, degrees
-from contextlib import contextmanager
+from contextlib import contextmanager, ExitStack
 from math import gcd
 from pathlib import PurePath, Path
 import re
@@ -129,6 +129,8 @@ class DevNull:
 devnull = DevNull()
 
 
+@deprecated('Does not facilitate proper resource management.  '
+            'Please use e.g. ase.utils.IOContext class instead.')
 def convert_string_to_fd(name, world=None):
     """Create a file-descriptor for text output.
 
@@ -604,3 +606,30 @@ def warn_legacy(feature_name):
 def lazyproperty(meth):
     """Decorator like lazymethod, but making item available as a property."""
     return property(lazymethod(meth))
+
+
+class IOContext:
+    @lazyproperty
+    def _exitstack(self):
+        return ExitStack()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self._exitstack.close()
+
+    def _closelater(self, fd):
+        return self._exitstack.enter_context(fd)
+
+    def openfile(self, file, comm):
+        if hasattr(file, 'close'):
+            return file  # File already opened, not for us to close.
+
+        if file is None or comm.rank != 0:
+            return self._closelater(open(os.devnull, 'w'))
+
+        if file == '-':
+            return sys.stdout
+
+        return self._closelater(open(file, mode='w'))
