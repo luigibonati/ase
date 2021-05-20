@@ -424,6 +424,12 @@ class Writer:
 
 
 class DummyWriter:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, tb):
+        self.close()
+
     def add_array(self, name, shape, dtype=float):
         pass
 
