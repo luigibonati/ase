@@ -31,7 +31,7 @@ class CellFigure():
         """
         Axes3D  # silence pyflakes
         self.fig = plt.figure(figsize=(5, 5))
-        self.ax = self.fig.gca(projection='3d')
+        self.ax = self.fig.add_subplot(projection='3d')
         x = sin(azim)
         y = cos(azim)
         self.view = [x * cos(elev), y * cos(elev), sin(elev)]

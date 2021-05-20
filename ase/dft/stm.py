@@ -121,7 +121,6 @@ class STM:
         matplotlibs contourf() function like this:
 
         >>> import matplotlib.pyplot as plt
-        >>> plt.gca(aspect='equal')
         >>> plt.contourf(x, y, z)
         >>> plt.show()
 
@@ -156,7 +155,6 @@ class STM:
         matplotlibs contourf() function like this:
 
         >>> import matplotlib.pyplot as plt
-        >>> plt.gca(aspect='equal')
         >>> plt.contourf(x, y, I)
         >>> plt.show()
 
