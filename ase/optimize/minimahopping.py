@@ -226,14 +226,14 @@ class MinimaHopping:
             if world.rank == 0:
                 if os.path.exists(self._logfile):
                     raise RuntimeError('File exists: %s' % self._logfile)
-            f = paropen(self._logfile, 'w')
-            f.write('par: %12s %12s %12s\n' % ('T (K)', 'Ediff (eV)',
-                                               'mdmin'))
-            f.write('ene: %12s %12s %12s\n' % ('E_current', 'E_previous',
-                                               'Difference'))
-            f.close()
+            fd = paropen(self._logfile, 'w')
+            fd.write('par: %12s %12s %12s\n' % ('T (K)', 'Ediff (eV)',
+                                                'mdmin'))
+            fd.write('ene: %12s %12s %12s\n' % ('E_current', 'E_previous',
+                                                'Difference'))
+            fd.close()
             return
-        f = paropen(self._logfile, 'a')
+        fd = paropen(self._logfile, 'a')
         if cat == 'msg':
             line = 'msg: %s' % message
         elif cat == 'par':
@@ -247,8 +247,8 @@ class MinimaHopping:
                         (current, previous, current - previous))
             else:
                 line = ('ene: %12.5f' % current)
-        f.write(line + '\n')
-        f.close()
+        fd.write(line + '\n')
+        fd.close()
 
     def _optimize(self):
         """Perform an optimization."""

@@ -454,7 +454,7 @@ class LJInteractionsGeneral:
                     e = 4 * eps[qa, :] * (c12 - c6)
                     energy += np.dot(e.sum(1), t)
                     f = t[:, None, None] * (24 * eps[qa, :] *
-                         (2 * c12 - c6) / d2)[:, :, None] * R
+                                            (2 * c12 - c6) / d2)[:, :, None] * R
                     f00 = - (e.sum(1) * dt / d00)[:, None] * R00
                     mmforces += f.reshape((-1, 3))
                     qmforces[q * self.qms + qa, :] -= f.sum(0).sum(0)

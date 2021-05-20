@@ -534,7 +534,7 @@ class SparseCoeffPrecon(SparsePrecon):
         if self.apply_positions:
             # compute neighbour list
             i, j, rij, fixed_atoms = get_neighbours(atoms, self.r_cut,
-                                            neighbor_list=self.neighbor_list)
+                                                    neighbor_list=self.neighbor_list)
             logfile.write('--- neighbour list created in %s s --- \n' %
                           (time.time() - start_time))
 

@@ -231,23 +231,23 @@ class XrDebye:
 
     def write_pattern(self, filename):
         """ Save calculated data to file specified by ``filename`` string."""
-        f = open(filename, 'w')
-        f.write('# Wavelength = %f\n' % self.wavelength)
+        fd = open(filename, 'w')
+        fd.write('# Wavelength = %f\n' % self.wavelength)
         if self.mode == 'XRD':
             x, y = self.twotheta_list, self.intensity_list
-            f.write('# 2theta \t Intesity\n')
+            fd.write('# 2theta \t Intesity\n')
         elif self.mode == 'SAXS':
             x, y = self.q_list, self.intensity_list
-            f = open(filename, 'w')
-            f.write('# q(1/A)\tIntesity\n')
+            fd = open(filename, 'w')
+            fd.write('# q(1/A)\tIntesity\n')
         else:
-            f.close()
+            fd.close()
             raise Exception('No data available, call calc_pattern() first.')
 
         for i in range(len(x)):
-            f.write('  %f\t%f\n' % (x[i], y[i]))
+            fd.write('  %f\t%f\n' % (x[i], y[i]))
 
-        f.close()
+        fd.close()
 
     def plot_pattern(self, filename=None, show=False, ax=None):
         """ Plot XRD or SAXS depending on filled data

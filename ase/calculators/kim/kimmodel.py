@@ -310,7 +310,7 @@ class KIMModelCalculator(Calculator):
 
     def check_state(self, atoms, tol=1e-15):
         return compare_atoms(self.atoms, atoms, excluded_properties={'initial_charges',
-            'initial_magmoms'})
+                                                                     'initial_magmoms'})
 
     def assemble_padding_forces(self):
         """

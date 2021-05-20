@@ -140,12 +140,12 @@ class Population:
         """ Returns a copy of the population as it where
         after generation gen"""
         if self.logfile is not None:
-            f = open(self.logfile, 'r')
+            fd = open(self.logfile, 'r')
             gens = {}
-            for l in f:
+            for l in fd:
                 _, no, popul = l.split(':')
                 gens[int(no)] = [int(i) for i in popul.split(',')]
-            f.close()
+            fd.close()
             return [c.copy() for c in self.all_cand[::-1]
                     if c.info['relax_id'] in gens[gen]]
 
@@ -302,11 +302,11 @@ class Population:
                     max_gen = max(gen_nums)
                 except KeyError:
                     max_gen = ' '
-                f = open(self.logfile, 'a')
-                f.write('{time}: {gen}: {pop}\n'.format(time=now(),
-                                                        pop=','.join(ids),
-                                                        gen=max_gen))
-                f.close()
+                fd = open(self.logfile, 'a')
+                fd.write('{time}: {gen}: {pop}\n'.format(time=now(),
+                                                         pop=','.join(ids),
+                                                         gen=max_gen))
+                fd.close()
 
     def is_uniform(self, func, min_std, pop=None):
         """Tests whether the current population is uniform or diverse.
