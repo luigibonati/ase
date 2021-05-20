@@ -5,11 +5,15 @@ import ase.units as u
 from ase.parallel import world, parprint, paropen
 from ase.phonons import Phonons
 from ase.vibrations.vibrations import Vibrations, AtomicDisplacements
-from ase.utils import convert_string_to_fd
 from ase.dft import monkhorst_pack
+from ase.utils import IOContext
+
+from ase.parallel import paropen
+
+from contextlib import contextmanager
 
 
-class RamanCalculatorBase:
+class RamanCalculatorBase(IOContext):
     def __init__(self, atoms,  # XXX do we need atoms at this stage ?
                  *args,
                  name='raman',
@@ -38,7 +42,7 @@ class RamanCalculatorBase:
 
         self.exext = exext
 
-        self.txt = convert_string_to_fd(txt)
+        self.txt = self.openfile(txt, comm)
         self.verbose = verbose
 
         self.comm = comm
@@ -71,7 +75,7 @@ class StaticRamanPhononsCalculator(StaticRamanCalculatorBase, Phonons):
     pass
 
 
-class RamanBase(AtomicDisplacements):
+class RamanBase(AtomicDisplacements, IOContext):
     def __init__(self, atoms,  # XXX do we need atoms at this stage ?
                  *args,
                  name='raman',
@@ -95,7 +99,7 @@ class RamanBase(AtomicDisplacements):
           Communicator, default world
         """
         self.atoms = atoms
-        
+
         self.name = name
         if exname is None:
             self.exname = name
@@ -103,7 +107,7 @@ class RamanBase(AtomicDisplacements):
             self.exname = exname
         self.exext = exext
 
-        self.txt = convert_string_to_fd(txt)
+        self.txt = self.openfile(txt, comm)
         self.verbose = verbose
 
         self.comm = comm
