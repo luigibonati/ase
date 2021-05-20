@@ -1,16 +1,11 @@
-import sys
 import numpy as np
 
 import ase.units as u
-from ase.parallel import world, parprint, paropen
+from ase.parallel import world
 from ase.phonons import Phonons
 from ase.vibrations.vibrations import Vibrations, AtomicDisplacements
 from ase.dft import monkhorst_pack
 from ase.utils import IOContext
-
-from ase.parallel import paropen
-
-from contextlib import contextmanager
 
 
 class RamanCalculatorBase(IOContext):
@@ -275,8 +270,13 @@ class RamanData(RamanBase):
                      m2(alpha_Qcc[:, 1, 1] - alpha_Qcc[:, 2, 2])) / 2)
         return alpha2_r, gamma2_r, delta2_r
 
-    def summary(self, log=sys.stdout):
+    def summary(self, log='-'):
         """Print summary for given omega [eV]"""
+        with IOContext() as io:
+            log = io.openfile(log, comm=self.comm, mode='a')
+            return self._summary(log)
+
+    def _summary(self, log):
         hnu = self.get_energies()
         intensities = self.get_absolute_intensities()
         te = int(np.log10(intensities.max())) - 2
@@ -289,13 +289,10 @@ class RamanData(RamanBase):
         else:
             ts = '10^{0}'.format(te)
 
-        if isinstance(log, str):
-            log = paropen(log, 'a')
-
-        parprint('-------------------------------------', file=log)
-        parprint(' Mode    Frequency        Intensity', file=log)
-        parprint('  #    meV     cm^-1      [{0}A^4/amu]'.format(ts), file=log)
-        parprint('-------------------------------------', file=log)
+        print('-------------------------------------', file=log)
+        print(' Mode    Frequency        Intensity', file=log)
+        print('  #    meV     cm^-1      [{0}A^4/amu]'.format(ts), file=log)
+        print('-------------------------------------', file=log)
         for n, e in enumerate(hnu):
             if e.imag != 0:
                 c = 'i'
@@ -303,10 +300,10 @@ class RamanData(RamanBase):
             else:
                 c = ' '
                 e = e.real
-            parprint('%3d %6.1f%s  %7.1f%s  %9.2f' %
-                     (n, 1000 * e, c, e / u.invcm, c, intensities[n] * scale),
-                     file=log)
-        parprint('-------------------------------------', file=log)
+            print('%3d %6.1f%s  %7.1f%s  %9.2f' %
+                  (n, 1000 * e, c, e / u.invcm, c, intensities[n] * scale),
+                  file=log)
+        print('-------------------------------------', file=log)
         # XXX enable this in phonons
         # parprint('Zero-point energy: %.3f eV' %
         #         self.vibrations.get_zero_point_energy(),

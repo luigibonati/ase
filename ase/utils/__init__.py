@@ -623,7 +623,7 @@ class IOContext:
     def _closelater(self, fd):
         return self._exitstack.enter_context(fd)
 
-    def openfile(self, file, comm=None):
+    def openfile(self, file, comm=None, mode='w'):
         from ase.parallel import world
         if comm is None:
             comm = world
@@ -632,9 +632,9 @@ class IOContext:
             return file  # File already opened, not for us to close.
 
         if file is None or comm.rank != 0:
-            return self._closelater(open(os.devnull, 'w'))
+            return self._closelater(open(os.devnull, mode=mode))
 
         if file == '-':
             return sys.stdout
 
-        return self._closelater(open(file, mode='w'))
+        return self._closelater(open(file, mode=mode))
