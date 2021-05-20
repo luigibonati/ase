@@ -145,8 +145,7 @@ def test_neb_methods(testdir, method, optimizer, precon,
 
     forcefit = fit_images(images)
 
-    output_dir = os.path.dirname(__file__)
-    with open(f'{output_dir}/MEP_{method}_{optimizer.__name__}_{optmethod}'
+    with open(f'MEP_{method}_{optimizer.__name__}_{optmethod}'
               f'_{precon}.json', 'w') as fd:
         json.dump({'fmax_history': fmax_history,
                    'method': method,
