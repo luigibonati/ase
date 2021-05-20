@@ -129,7 +129,8 @@ class DevNull:
 devnull = DevNull()
 
 
-@deprecated('Does not facilitate proper resource management.  '
+@deprecated('convert_string_to_fd does not facilitate proper resource '
+            'management.  '
             'Please use e.g. ase.utils.IOContext class instead.')
 def convert_string_to_fd(name, world=None):
     """Create a file-descriptor for text output.
@@ -622,7 +623,11 @@ class IOContext:
     def _closelater(self, fd):
         return self._exitstack.enter_context(fd)
 
-    def openfile(self, file, comm):
+    def openfile(self, file, comm=None):
+        from ase.parallel import world
+        if comm is None:
+            comm = world
+
         if hasattr(file, 'close'):
             return file  # File already opened, not for us to close.
 

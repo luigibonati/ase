@@ -2,6 +2,9 @@
 
 from pathlib import Path
 import io
+
+import pytest
+
 from ase.build import molecule
 from ase.io import read, write
 from ase.utils import PurePath, convert_string_to_fd, reader, writer
@@ -48,13 +51,15 @@ def test_pathlib_support(testdir):
 
     myf = path / 'test.txt'
 
-    fd = convert_string_to_fd(myf)
-    assert isinstance(fd, io.TextIOBase)
-    fd.close()
+    with pytest.warns(FutureWarning):
+        fd = convert_string_to_fd(myf)
+        fd.close()
+        assert isinstance(fd, io.TextIOBase)
 
-    fd = convert_string_to_fd(str(myf))
-    assert isinstance(fd, io.TextIOBase)
-    fd.close()
+    with pytest.warns(FutureWarning):
+        fd = convert_string_to_fd(str(myf))
+        fd.close()
+        assert isinstance(fd, io.TextIOBase)
 
     for f in [myf, str(myf)]:
         myf.unlink()                # Remove the file first
