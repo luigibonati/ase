@@ -3,6 +3,7 @@ import pytest
 
 @pytest.mark.calculator('gpaw')
 @pytest.mark.filterwarnings('ignore:The keyword')
+@pytest.mark.filterwarnings('ignore:FutureWarning')
 # Ignore calculator constructor keyword warning for now
 def test_no_spin_and_spin(factory):
     from ase.build import molecule
