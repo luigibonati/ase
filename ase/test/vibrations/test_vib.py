@@ -426,7 +426,7 @@ class TestVibrationsData:
         assert_array_almost_equal(vib_data_fromdict.get_mask(), expected_mask)
 
     def test_jmol_roundtrip(self, testdir, n2_data):
-        ir_intensities = np.random.RandomState(42).random(6)
+        ir_intensities = np.random.RandomState(42).rand(6)
 
         vib_data = VibrationsData(n2_data['atoms'], n2_data['hessian'])
         vib_data.write_jmol(self.jmol_file, ir_intensities=ir_intensities)
