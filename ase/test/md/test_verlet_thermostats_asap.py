@@ -5,16 +5,9 @@ from ase.md import VelocityVerlet
 from ase.md import Langevin
 from ase.md import Andersen
 from ase.io import Trajectory, read
-from ase.utils import seterr
 import pytest
 from ase.md.velocitydistribution import (MaxwellBoltzmannDistribution,
                                          Stationary)
-
-
-@pytest.fixture
-def allraise():
-    with seterr(all='raise'):
-        yield
 
 
 # test Verlet, Langevin and Andersen with asap3
