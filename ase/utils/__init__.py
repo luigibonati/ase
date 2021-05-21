@@ -618,10 +618,13 @@ class IOContext:
         return self
 
     def __exit__(self, *args):
-        self._exitstack.close()
+        self.close()
 
     def closelater(self, fd):
         return self._exitstack.enter_context(fd)
+
+    def close(self):
+        self._exitstack.close()
 
     def openfile(self, file, comm=None, mode='w'):
         from ase.parallel import world

@@ -30,9 +30,9 @@ def test_verlet_thermostats_asap(asap3, testdir, allraise):
     a_verlet, traj = prepare_md(a, calculator)
     with traj:
         e0 = a_verlet.get_total_energy()
-        md = VelocityVerlet(a_verlet, **md_kwargs)
-        md.attach(traj.write, 100)
-        md.run(steps=10000)
+        with VelocityVerlet(a_verlet, **md_kwargs) as md:
+            md.attach(traj.write, 100)
+            md.run(steps=10000)
         traj_verlet = read('Au7Ag.traj', index=':')
     assert abs(traj_verlet[-1].get_total_energy() - e0) < 0.0001
 
