@@ -79,7 +79,7 @@ class MolecularDynamics(Dynamics):
             Use '-' for stdout.
 
         loginterval: int (optional)
-            Only write a log line for every *loginterval* time steps.  
+            Only write a log line for every *loginterval* time steps.
             Default: 1
 
         append_trajectory: boolean (optional)
@@ -108,23 +108,18 @@ class MolecularDynamics(Dynamics):
 
         # Trajectory is attached here instead of in Dynamics.__init__
         # to respect the loginterval argument.
-        try:
-            if trajectory is not None:
-                if isinstance(trajectory, str):
-                    mode = "a" if append_trajectory else "w"
-                    trajectory = self.ensureclose(
-                        Trajectory(trajectory, mode=mode, atoms=atoms)
-                    )
-                self.attach(trajectory, interval=loginterval)
+        if trajectory is not None:
+            if isinstance(trajectory, str):
+                mode = "a" if append_trajectory else "w"
+                trajectory = self.closelater(
+                    Trajectory(trajectory, mode=mode, atoms=atoms)
+                )
+            self.attach(trajectory, interval=loginterval)
 
-            if logfile:
-                logger = self.ensureclose(
-                    MDLogger(dyn=self, atoms=atoms, logfile=logfile))
-                self.attach(logger, loginterval)
-
-        except BaseException:
-            self._closefiles()
-            raise
+        if logfile:
+            logger = self.closelater(
+                MDLogger(dyn=self, atoms=atoms, logfile=logfile))
+            self.attach(logger, loginterval)
 
     def todict(self):
         return {'type': 'molecular-dynamics',

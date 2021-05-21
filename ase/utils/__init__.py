@@ -620,7 +620,7 @@ class IOContext:
     def __exit__(self, *args):
         self._exitstack.close()
 
-    def _closelater(self, fd):
+    def closelater(self, fd):
         return self._exitstack.enter_context(fd)
 
     def openfile(self, file, comm=None, mode='w'):
@@ -632,9 +632,9 @@ class IOContext:
             return file  # File already opened, not for us to close.
 
         if file is None or comm.rank != 0:
-            return self._closelater(open(os.devnull, mode=mode))
+            return self.closelater(open(os.devnull, mode=mode))
 
         if file == '-':
             return sys.stdout
 
-        return self._closelater(open(file, mode=mode))
+        return self.closelater(open(file, mode=mode))
