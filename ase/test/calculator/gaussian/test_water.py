@@ -12,8 +12,8 @@ def test_water():
                   positions=[(0, 0, 0), (1, 0, 0), (0, 1, 0)],
                   calculator=calc)
 
-    opt = LBFGS(water)
-    opt.run(fmax=0.05)
+    with LBFGS(water) as opt:
+        opt.run(fmax=0.05)
 
     forces = water.get_forces()
     energy = water.get_potential_energy()
