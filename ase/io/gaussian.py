@@ -230,8 +230,8 @@ def _format_basis_set(basis, basisfile, basis_set):
         if basisfile[0] == '@':
             out.append(basisfile)
         else:
-            with open(basisfile, 'r') as f:
-                out.append(f.read())
+            with open(basisfile, 'r') as fd:
+                out.append(fd.read())
     elif basis_set is not None:
         out.append(basis_set)
     else:

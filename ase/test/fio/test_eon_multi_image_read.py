@@ -296,8 +296,8 @@ data = ase.Atoms('Cr17',cell = array([[8.123222, 0, 0],
 def test_eon():
     # First, write a correct .con file and try to read it.
     con_file = 'neb.con'
-    with open(con_file, 'w') as f:
-        f.write(CON_FILE)
+    with open(con_file, 'w') as fd:
+        fd.write(CON_FILE)
     images = ase.io.read(con_file, format='eon', index =':')
     box = images[-2]
     # Check cell vectors.

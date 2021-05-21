@@ -3149,8 +3149,8 @@ if __name__ == '__main__':
 
     if generated:
         try:
-            with open('castep_keywords.json') as f:
-                json.load(f)
+            with open('castep_keywords.json') as fd:
+                json.load(fd)
         except Exception as e:
             warnings.warn(
                 '%s Ooops, something went wrong with the CASTEP keywords' % e)

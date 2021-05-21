@@ -90,8 +90,8 @@ class ACE(FileIOCalculator):
         FileIOCalculator.read(self, label)
         filename = self.label + ".log"
 
-        with open(filename, 'r') as f:
-            lines = f.readlines()
+        with open(filename, 'r') as fd:
+            lines = fd.readlines()
         if 'WARNING' in lines:
             raise ReadError("Not convergy energy in log file {}.".format(filename))
         if '! total energy' not in lines:

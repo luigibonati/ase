@@ -24,8 +24,8 @@ Total energy       = -1.5
 !================================================
 
     """
-    with open('acemolecule_test.log', 'w') as f:
-        f.write(sample_outfile)
+    with open('acemolecule_test.log', 'w') as fd:
+        fd.write(sample_outfile)
     #fd = StringIO(sample_outfile)
     results = read_acemolecule_out('acemolecule_test.log')
     #os.system('rm acemolecule_test.log')

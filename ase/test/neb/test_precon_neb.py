@@ -146,7 +146,7 @@ def test_neb_methods(testdir, method, optimizer, precon,
     forcefit = fit_images(images)
 
     with open(f'MEP_{method}_{optimizer.__name__}_{optmethod}'
-              f'_{precon}.json', 'w') as f:
+              f'_{precon}.json', 'w') as fd:
         json.dump({'fmax_history': fmax_history,
                    'method': method,
                    'optmethod': optmethod,
@@ -158,7 +158,7 @@ def test_neb_methods(testdir, method, optimizer, precon,
                    'fit_energies': forcefit.fit_energies.tolist(),
                    'lines': np.array(forcefit.lines).tolist(),
                    'Ef': Ef,
-                   'dE': dE}, f)
+                   'dE': dE}, fd)
 
     centre = 2  # we have 5 images total, so central image has index 2
     vdiff, _ = find_mic(images[centre].positions - saddle_ref.positions,

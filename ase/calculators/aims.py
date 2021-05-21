@@ -515,11 +515,11 @@ class Aims(FileIOCalculator):
 
         if ('sc_accuracy_stress' in self.parameters or
                 ('compute_numerical_stress' in self.parameters
-                and self.parameters['compute_numerical_stress']) or
+                 and self.parameters['compute_numerical_stress']) or
                 ('compute_analytical_stress' in self.parameters
-                and self.parameters['compute_analytical_stress']) or
+                 and self.parameters['compute_analytical_stress']) or
                 ('compute_heat_flux' in self.parameters
-                and self.parameters['compute_heat_flux'])):
+                 and self.parameters['compute_heat_flux'])):
             self.read_stress()
 
         if ('compute_heat_flux' in self.parameters
@@ -694,14 +694,14 @@ class Aims(FileIOCalculator):
 
     def read_stresses(self):
         """ Read stress per atom """
-        with open(self.out) as f:
-            next(l for l in f if
+        with open(self.out) as fd:
+            next(l for l in fd if
                  'Per atom stress (eV) used for heat flux calculation' in l)
             # scroll to boundary
-            next(l for l in f if '-------------' in l)
+            next(l for l in fd if '-------------' in l)
 
             stresses = []
-            for l in [next(f) for _ in range(len(self.atoms))]:
+            for l in [next(fd) for _ in range(len(self.atoms))]:
                 # Read stresses and rearrange from
                 # (xx, yy, zz, xy, xz, yz) to (xx, yy, zz, yz, xz, xy)
                 xx, yy, zz, xy, xz, yz = [float(d) for d in l.split()[2:8]]

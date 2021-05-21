@@ -1,20 +1,7 @@
-from numpy.random import RandomState
-
 from ase.build import molecule
 from ase.vibrations import Vibrations, Infrared
 from ase.utils import workdir
-
-
-class RandomCalculator:
-    """Fake Calculator class."""
-    def __init__(self):
-        self.rng = RandomState(42)
-
-    def get_forces(self, atoms):
-        return self.rng.rand(len(atoms), 3)
-
-    def get_dipole_moment(self, atoms):
-        return self.rng.rand(3)
+from ase.test.utils import RandomCalculator
 
 
 def test_combine(testdir):
