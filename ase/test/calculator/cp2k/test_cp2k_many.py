@@ -23,8 +23,8 @@ def test_geoopt(cp2k_factory, atoms):
     calc = cp2k_factory.calc(label='test_H2_GOPT', print_level='LOW')
     atoms.calc = calc
 
-    gopt = BFGS(atoms, logfile=None)
-    gopt.run(fmax=1e-6)
+    with BFGS(atoms, logfile=None) as gopt:
+        gopt.run(fmax=1e-6)
 
     dist = atoms.get_distance(0, 1)
     dist_ref = 0.7245595
