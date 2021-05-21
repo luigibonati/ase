@@ -16,6 +16,7 @@ import numpy as np
 from ase.optimize.optimize import Optimizer
 from ase.parallel import world
 from ase.calculators.singlepoint import SinglePointCalculator
+from ase.utils import IOContext
 
 # Handy vector methods
 norm = np.linalg.norm
@@ -296,7 +297,8 @@ class DimerEigenmodeSearch:
         self.atoms.set_positions(self.pos0)
         self.forces1E = None
 
-class MinModeControl:
+
+class MinModeControl(IOContext):
     """A parent class for controlling minimum mode saddle point searches.
 
     Method specific control classes inherit this one. The only thing
@@ -308,46 +310,23 @@ class MinModeControl:
 
     """
     parameters: Dict[str, Any] = {}
-    def __init__(self, logfile = '-', eigenmode_logfile=None, **kwargs):
+    def __init__(self, logfile='-', eigenmode_logfile=None, **kwargs):
         # Overwrite the defaults with the input parameters given
         for key in kwargs:
-            if not key in self.parameters.keys():
+            if not key in self.parameters:
                 e = 'Invalid parameter >>%s<< with value >>%s<< in %s' % \
                     (key, str(kwargs[key]), self.__class__.__name__)
                 raise ValueError(e)
             else:
                 self.set_parameter(key, kwargs[key], log = False)
 
-        # Initialize the log files
         self.initialize_logfiles(logfile, eigenmode_logfile)
-
-        # Initialize the counters
         self.counters = {'forcecalls': 0, 'rotcount': 0, 'optcount': 0}
-
         self.log()
 
     def initialize_logfiles(self, logfile=None, eigenmode_logfile=None):
-        """Set up the log files."""
-        # Set up the regular logfile
-        if world.rank != 0:
-            logfile = None
-        elif isinstance(logfile, str):
-            if logfile == '-':
-                logfile = sys.stdout
-            else:
-                logfile = open(logfile, 'a')
-        self.logfile = logfile
-
-        # Set up the eigenmode logfile
-        if eigenmode_logfile:
-            if world.rank != 0:
-                eigenmode_logfile = None
-            elif isinstance(eigenmode_logfile, str):
-                if eigenmode_logfile == '-':
-                    eigenmode_logfile = sys.stdout
-                else:
-                    eigenmode_logfile = open(eigenmode_logfile, 'a')
-        self.eigenmode_logfile = eigenmode_logfile
+        self.logfile = self.openfile(logfile, comm=world)
+        self.eigenmode_logfile = self.openfile(eigenmode_logfile, comm=world)
 
     def log(self, parameter=None):
         """Log the parameters of the eigenmode search."""
@@ -355,7 +334,7 @@ class MinModeControl:
 
     def set_parameter(self, parameter, value, log=True):
         """Change a parameter's value."""
-        if not parameter in self.parameters.keys():
+        if not parameter in self.parameters:
             e = 'Invalid parameter >>%s<< with value >>%s<<' % \
                 (parameter, str(value))
             raise ValueError(e)
@@ -365,7 +344,7 @@ class MinModeControl:
 
     def get_parameter(self, parameter):
         """Returns the value of a parameter."""
-        if not parameter in self.parameters.keys():
+        if not parameter in self.parameters:
             e = 'Invalid parameter >>%s<<' % \
                 (parameter)
             raise ValueError(e)
@@ -393,7 +372,7 @@ class MinModeControl:
 
     def reset_all_counters(self):
         """Reset all counters."""
-        for key in self.counters.keys():
+        for key in self.counters:
             self.counters[key] = 0
 
 class DimerControl(MinModeControl):
