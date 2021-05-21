@@ -56,8 +56,8 @@ def test_ch4(tmp_path, spec):
 
 
 calc = pytest.mark.calculator
-
 filterwarnings = pytest.mark.filterwarnings
+
 
 @pytest.mark.calculator_lite
 @calc('abinit', ecut=300, chksymbreak=0, toldfe=1e-4)

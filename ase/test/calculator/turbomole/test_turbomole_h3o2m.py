@@ -5,7 +5,6 @@ from ase import Atoms
 from ase.neb import NEB
 from ase.constraints import FixAtoms
 from ase.optimize import QuasiNewton, BFGS
-from ase.visualize import view
 
 from ase.calculators.turbomole import Turbomole
 

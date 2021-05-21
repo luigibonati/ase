@@ -21,7 +21,6 @@ def test_external_force():
     atom2 = 1
     atom3 = 2
 
-
     atoms = Atoms('H3', positions=[(0, 0, 0), (0.751, 0, 0), (0, 1., 0)])
     atoms.calc = EMT()
 
