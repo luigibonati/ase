@@ -22,17 +22,12 @@ def test_turbomole_h3o2m():
                                (0., 0., doh),
                                (0., 0., doo),
                                (sin(angle) * doht, 0., doo - cos(angle) * doht)])
-    if 0:
-        view(initial)
-
     final = Atoms('HOHOH',
                   positions=[(- sin(angle) * doht, 0., cos(angle) * doht),
                              (0., 0., 0.),
                              (0., 0., doo - doh),
                              (0., 0., doo),
                              (sin(angle) * doht, 0., doo - cos(angle) * doht)])
-    if 0:
-        view(final)
 
     # Make band:
     images = [initial.copy()]
@@ -54,20 +49,18 @@ def test_turbomole_h3o2m():
         image.set_constraint(constraint)
 
     # Relax initial and final states:
-    if 1:
-        dyn1 = QuasiNewton(images[0])
+    with QuasiNewton(images[0]) as dyn1:
         dyn1.run(fmax=0.10)
-        dyn2 = QuasiNewton(images[-1])
+    with QuasiNewton(images[-1]) as dyn2:
         dyn2.run(fmax=0.10)
 
     # Interpolate positions between initial and final states:
     neb.interpolate()
-    if 1:
-        for image in images:
-            print(image.get_distance(1, 2), image.get_potential_energy())
+    for image in images:
+        print(image.get_distance(1, 2), image.get_potential_energy())
 
-    dyn = BFGS(neb, trajectory='turbomole_h3o2m.traj')
-    dyn.run(fmax=0.10)
+    with BFGS(neb, trajectory='turbomole_h3o2m.traj') as dyn:
+        dyn.run(fmax=0.10)
 
     for image in images:
         print(image.get_distance(1, 2), image.get_potential_energy())
