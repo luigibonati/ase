@@ -1,6 +1,5 @@
 """Structure optimization. """
 
-import sys
 import time
 from math import sqrt
 from os.path import isfile
