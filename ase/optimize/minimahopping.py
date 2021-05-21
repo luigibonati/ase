@@ -613,9 +613,9 @@ class MHPlot:
             return
         energies = [self._data[step - 1][0]]
         file = os.path.join(self._rundirectory, 'md%05i.traj' % step)
-        traj = io.Trajectory(file, 'r')
-        for atoms in traj:
-            energies.append(atoms.get_potential_energy())
+        with io.Trajectory(file, 'r') as traj:
+            for atoms in traj:
+                energies.append(atoms.get_potential_energy())
         xi = step - 1 + .5
         if len(energies) > 2:
             xf = xi + (step + 0.25 - xi) * len(energies) / (len(energies) - 2.)
@@ -633,9 +633,9 @@ class MHPlot:
         file = os.path.join(self._rundirectory, 'qn%05i.traj' % index)
         if os.path.getsize(file) == 0:
             return
-        traj = io.Trajectory(file, 'r')
-        energies = [traj[0].get_potential_energy(),
-                    traj[-1].get_potential_energy()]
+        with io.Trajectory(file, 'r') as traj:
+            energies = [traj[0].get_potential_energy(),
+                        traj[-1].get_potential_energy()]
         if index > 0:
             file = os.path.join(self._rundirectory, 'md%05i.traj' % index)
             atoms = io.read(file, index=-3)
