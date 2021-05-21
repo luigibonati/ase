@@ -26,13 +26,13 @@ def test_logging(testdir):
     traj_name = name + '.traj'
     log_name = name + '.log'
 
-    with ContourExploration(atoms,
-                             **bulk_Al_settings,
-                             rng=rng,
-                             trajectory=traj_name,
-                             logfile=log_name,
-                             ) as dyn:
-
+    with ContourExploration(
+            atoms,
+            **bulk_Al_settings,
+            rng=rng,
+            trajectory=traj_name,
+            logfile=log_name,
+    ) as dyn:
         energy_target = initial_energy
         dev = (atoms.get_potential_energy() - energy_target) / len(atoms)
         energy_targets = [energy_target]
