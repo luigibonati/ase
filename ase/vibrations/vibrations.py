@@ -429,10 +429,6 @@ Please remove them and recalculate or run \
         else:
             log.write(log_text)
 
-        else:
-            for line in summary_lines:
-                print(line, file=log)
-
     def get_zero_point_energy(self, freq=None):
         if freq:
             raise NotImplementedError()
