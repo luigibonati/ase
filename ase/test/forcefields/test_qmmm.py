@@ -66,10 +66,13 @@ def test_qmmm(testdir):
         dimer.constraints = FixInternals(
             bonds=[(r, (0, 2)), (r, (1, 2)),
                    (r, (3, 5)), (r, (4, 5))],
-            angles_deg=[(np.degrees(a), (0, 2, 1)), (np.degrees(a), (3, 5, 4))])
-        opt = GPMin(dimer,
-                    trajectory=calc.name + '.traj', logfile=calc.name + 'd.log')
-        opt.run(0.01)
+            angles_deg=[(np.degrees(a), (0, 2, 1)), (np.degrees(a),
+                                                     (3, 5, 4))])
+
+        with GPMin(dimer,
+                   trajectory=calc.name + '.traj',
+                   logfile=calc.name + 'd.log') as opt:
+            opt.run(0.01)
 
         e0 = dimer.get_potential_energy()
         d0 = dimer.get_distance(2, 5)
