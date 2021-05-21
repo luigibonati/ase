@@ -26,39 +26,39 @@ def test_logging(testdir):
     traj_name = name + '.traj'
     log_name = name + '.log'
 
-    dyn = ContourExploration(atoms,
+    with ContourExploration(atoms,
                              **bulk_Al_settings,
                              rng=rng,
                              trajectory=traj_name,
                              logfile=log_name,
-                             )
+                             ) as dyn:
 
-    energy_target = initial_energy
-    dev = (atoms.get_potential_energy() - energy_target) / len(atoms)
-    energy_targets = [energy_target]
-    curvatures = [dyn.curvature]
-    stepsizes = [dyn.step_size]
-    deviation_per_atom = [dev]
-
-    # we shift the target_energy to ensure it's actaully being logged when it
-    # changes.
-    de = 0.001 * len(atoms)
-
-    # these print statements, mirror the log file.
-    # print(energy_target, dyn.curvature, dyn.step_size, dev)
-
-    for i in range(0, 5):
-        energy_target = initial_energy + de * i
-
-        dyn.energy_target = energy_target
-        dyn.run(1)
+        energy_target = initial_energy
         dev = (atoms.get_potential_energy() - energy_target) / len(atoms)
+        energy_targets = [energy_target]
+        curvatures = [dyn.curvature]
+        stepsizes = [dyn.step_size]
+        deviation_per_atom = [dev]
+
+        # we shift the target_energy to ensure it's actaully being logged when it
+        # changes.
+        de = 0.001 * len(atoms)
+
+        # these print statements, mirror the log file.
         # print(energy_target, dyn.curvature, dyn.step_size, dev)
 
-        energy_targets.append(energy_target)
-        curvatures.append(dyn.curvature)
-        stepsizes.append(dyn.step_size)
-        deviation_per_atom.append(dev)
+        for i in range(0, 5):
+            energy_target = initial_energy + de * i
+
+            dyn.energy_target = energy_target
+            dyn.run(1)
+            dev = (atoms.get_potential_energy() - energy_target) / len(atoms)
+            # print(energy_target, dyn.curvature, dyn.step_size, dev)
+
+            energy_targets.append(energy_target)
+            curvatures.append(dyn.curvature)
+            stepsizes.append(dyn.step_size)
+            deviation_per_atom.append(dev)
 
     # Now we check the contents of the log file
     # assert log file has correct length
