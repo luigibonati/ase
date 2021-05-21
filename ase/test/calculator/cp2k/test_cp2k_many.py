@@ -90,8 +90,8 @@ def test_md(cp2k_factory):
     MaxwellBoltzmannDistribution(atoms, temperature_K=0.5 * 300,
                                  force_temp=True)
     energy_start = atoms.get_potential_energy() + atoms.get_kinetic_energy()
-    dyn = VelocityVerlet(atoms, 0.5 * units.fs)
-    dyn.run(20)
+    with VelocityVerlet(atoms, 0.5 * units.fs) as dyn:
+        dyn.run(20)
 
     energy_end = atoms.get_potential_energy() + atoms.get_kinetic_energy()
     assert abs(energy_start - energy_end) < 1e-4

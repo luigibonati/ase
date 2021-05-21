@@ -14,8 +14,8 @@ def test_dftb_relax_bulk(dftb_factory):
     atoms.calc = calc
 
     ecf = ExpCellFilter(atoms)
-    dyn = QuasiNewton(ecf)
-    dyn.run(fmax=0.01)
+    with QuasiNewton(ecf) as dyn:
+        dyn.run(fmax=0.01)
 
     e = atoms.get_potential_energy()
     assert abs(e - -73.150819) < 1., e

@@ -52,9 +52,8 @@ def test_COCu111_2(testdir):
     final[-2].position = final[-1].position
     final[-1].x = d
     final[-1].y = d / sqrt(3)
-    dyn = Optimizer(final, logfile=logfile)
-    dyn.run(fmax=0.1)
-    # view(final)
+    with Optimizer(final, logfile=logfile) as dyn:
+        dyn.run(fmax=0.1)
 
     # Create neb with 2 intermediate steps
     neb = NEB([initial, initial.copy(), initial.copy(), final],
