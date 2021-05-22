@@ -189,7 +189,7 @@ lint:
     - cd $CI_PROJECT_DIR
     - mypy --color-output -p ase
     - python -We:invalid -m compileall -f -q ase/
-    - flake8 ase
+    - flake8 .
 
 
 coverage-combine:
