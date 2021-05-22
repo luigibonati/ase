@@ -1,12 +1,7 @@
-import numpy as np
-
 from ase import Atoms
 from ase.io import read
 from ase.io.jsonio import read_json
-from ase.geometry import crystal_structure_from_cell
-from ase.dft.kpoints import (get_special_points, special_paths, BandPath,
-                             parse_path_string, labels_from_kpts,
-                             get_monkhorst_pack_size_and_offset)
+from ase.dft.kpoints import BandPath
 from ase.cli.main import CLIError
 from ase.io.formats import UnknownFileTypeError
 
