@@ -1,10 +1,6 @@
-import pytest
-import numpy as np
-
 from ase import Atoms
 from ase.calculators.test import FreeElectrons
 from ase.cell import Cell
-from ase.dft.kpoints import get_special_points
 
 
 def test_monoclinic():

@@ -14,9 +14,6 @@ from numpy import pi, sin, cos, arccos, sqrt, dot
 from numpy.linalg import norm
 
 
-from ase.utils import deprecated
-
-
 def unit_vector(x):
     """Return a unit vector in the same direction as x."""
     y = np.array(x, dtype='float')
