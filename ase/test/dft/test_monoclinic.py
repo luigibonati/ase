@@ -3,18 +3,17 @@ import numpy as np
 
 from ase import Atoms
 from ase.calculators.test import FreeElectrons
-from ase.geometry import (crystal_structure_from_cell, cell_to_cellpar,
-                          cellpar_to_cell)
+from ase.cell import Cell
 from ase.dft.kpoints import get_special_points
 
 
 def test_monoclinic():
     """Test band structure from different variations of hexagonal cells."""
-    mc1 = [[1, 0, 0], [0, 1, 0], [0, 0.2, 1]]
-    par = cell_to_cellpar(mc1)
-    mc2 = cellpar_to_cell(par)
-    mc3 = [[1, 0, 0], [0, 1, 0], [-0.2, 0, 1]]
-    mc4 = [[1, 0, 0], [-0.2, 1, 0], [0, 0, 1]]
+    mc1 = Cell([[1, 0, 0], [0, 1, 0], [0, 0.2, 1]])
+    par = mc1.cellpar()
+    mc2 = Cell.new(par)
+    mc3 = Cell([[1, 0, 0], [0, 1, 0], [-0.2, 0, 1]])
+    mc4 = Cell([[1, 0, 0], [-0.2, 1, 0], [0, 0, 1]])
     path = 'GYHCEM1AXH1'
 
     firsttime = True
@@ -22,18 +21,15 @@ def test_monoclinic():
         a = Atoms(cell=cell, pbc=True)
         a.cell *= 3
         a.calc = FreeElectrons(nvalence=1, kpts={'path': path})
-        with pytest.warns(FutureWarning):  # deprecated
-            cs = crystal_structure_from_cell(a.cell)
-        assert cs == 'monoclinic'
-        r = a.cell.reciprocal()
-        k = get_special_points(a.cell)['H']
-        print(np.dot(k, r))
+
+        lat = a.cell.get_bravais_lattice()
+        assert lat.name == 'MCL'
         a.get_potential_energy()
         bs = a.calc.band_structure()
         coords, labelcoords, labels = bs.get_labels()
         assert ''.join(labels) == path
         e_skn = bs.energies
-        # bs.plot()
+
         if firsttime:
             coords1 = coords
             labelcoords1 = labelcoords
