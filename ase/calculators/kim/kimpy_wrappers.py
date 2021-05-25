@@ -156,8 +156,9 @@ class PortableModel:
     def __exit__(self, exc_type, value, traceback):
         pass
 
+    @check_call_wrapper
     def _get_number_of_parameters(self):
-        return check_call(self.kim_model.get_number_of_parameters)
+        return self.kim_model.get_number_of_parameters()
 
     def _create_parameters(self):
         self._parameters = {}
@@ -203,8 +204,9 @@ class PortableModel:
 
         return species, codes
 
+    @check_call_wrapper
     def clear_then_refresh(self):
-        check_call(self.kim_model.clear_then_refresh)
+        self.kim_model.clear_then_refresh()
 
     @c_int_args
     def _get_parameter_metadata(self, index_parameter):
@@ -409,9 +411,11 @@ class PortableModel:
     def get_species_support_and_code(self, species_name):
         return self.kim_model.get_species_support_and_code(species_name)
 
+    @check_call_wrapper
     def get_influence_distance(self):
         return self.kim_model.get_influence_distance()
 
+    @check_call_wrapper
     def get_neighbor_list_cutoffs_and_hints(self):
         return self.kim_model.get_neighbor_list_cutoffs_and_hints()
 
