@@ -61,23 +61,24 @@ def test_overlap(testdir):
     atoms = H2Morse()
     name = 'rrmorse'
     nstates = 3
-    rmc = ResonantRamanCalculator(atoms, H2MorseExcitedStatesCalculator,
-                                  exkwargs={'nstates': nstates},
-                                  overlap=lambda x, y: x.overlap(y),
-                                  name=name, txt='-')
-    rmc.run()
+    with ResonantRamanCalculator(atoms, H2MorseExcitedStatesCalculator,
+                                 exkwargs={'nstates': nstates},
+                                 overlap=lambda x, y: x.overlap(y),
+                                 name=name, txt='-') as rmc:
+        rmc.run()
 
     om = 1
     gam = 0.1
-    po = Profeta(atoms, H2MorseExcitedStates,
-                 exkwargs={'nstates': nstates}, approximation='Placzek',
-                 overlap=True, name=name, txt='-')
-    poi = po.get_absolute_intensities(omega=om, gamma=gam)[-1]
 
-    pr = Profeta(atoms, H2MorseExcitedStates,
+    with Profeta(atoms, H2MorseExcitedStates,
                  exkwargs={'nstates': nstates}, approximation='Placzek',
-                 name=name, txt=None)
-    pri = pr.get_absolute_intensities(omega=om, gamma=gam)[-1]
+                 overlap=True, name=name, txt='-') as po:
+        poi = po.get_absolute_intensities(omega=om, gamma=gam)[-1]
+
+    with Profeta(atoms, H2MorseExcitedStates,
+                 exkwargs={'nstates': nstates}, approximation='Placzek',
+                 name=name, txt=None) as pr:
+        pri = pr.get_absolute_intensities(omega=om, gamma=gam)[-1]
 
     print('overlap', pri, poi, poi / pri)
     assert pri == pytest.approx(poi, 1e-4)
@@ -88,31 +89,31 @@ def test_compare_placzek_implementation_intensities(testdir):
     should be similar"""
     atoms = H2Morse()
     name = 'placzek'
-    rmc = ResonantRamanCalculator(atoms, H2MorseExcitedStatesCalculator,
+    with ResonantRamanCalculator(atoms, H2MorseExcitedStatesCalculator,
                                   overlap=lambda x, y: x.overlap(y),
-                                  name=name, txt='-')
-    rmc.run()
+                                  name=name, txt='-') as rmc:
+        rmc.run()
 
     om = 1
     gam = 0.1
 
-    pz = Placzek(atoms, H2MorseExcitedStates,
-                 name=name, txt=None)
-    pzi = pz.get_absolute_intensities(omega=om, gamma=gam)[-1]
+    with Placzek(atoms, H2MorseExcitedStates,
+                 name=name, txt=None) as pz:
+        pzi = pz.get_absolute_intensities(omega=om, gamma=gam)[-1]
     print(pzi, 'Placzek')
 
     # Profeta using frozenset
-    pr = Profeta(atoms, H2MorseExcitedStates,
+    with Profeta(atoms, H2MorseExcitedStates,
                  approximation='Placzek',
-                 name=name, txt=None)
-    pri = pr.get_absolute_intensities(omega=om, gamma=gam)[-1]
+                 name=name, txt=None) as pr:
+        pri = pr.get_absolute_intensities(omega=om, gamma=gam)[-1]
     print(pri, 'Profeta using frozenset')
     assert pzi == pytest.approx(pri, 1e-3)
 
     # Profeta using overlap
-    pr = Profeta(atoms, H2MorseExcitedStates,
+    with Profeta(atoms, H2MorseExcitedStates,
                  approximation='Placzek', overlap=True,
-                 name=name, txt=None)
-    pro = pr.get_absolute_intensities(omega=om, gamma=gam)[-1]
+                 name=name, txt=None) as pr:
+        pro = pr.get_absolute_intensities(omega=om, gamma=gam)[-1]
     print(pro, 'Profeta using overlap')
     assert pro == pytest.approx(pri, 1e-3)

@@ -17,8 +17,8 @@ def test_example(testdir):
                   constraint=[FixAtoms(range(6))],
                   calculator=MorsePotential())
 
-    with Trajectory('H.traj', 'w', atoms) as traj:
-        dyn = QuasiNewton(atoms, maxstep=0.2)
+    with Trajectory('H.traj', 'w', atoms) as traj, \
+         QuasiNewton(atoms, maxstep=0.2) as dyn:
         dyn.attach(traj.write)
         dyn.run(fmax=0.01, steps=100)
 

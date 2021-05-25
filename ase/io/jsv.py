@@ -112,29 +112,29 @@ def read_jsv(f):
     return atoms
 
 
-def write_jsv(f, atoms):
+def write_jsv(fd, atoms):
     """Writes JSV file."""
-    f.write('asymmetric_unit_cell\n')
+    fd.write('asymmetric_unit_cell\n')
 
-    f.write('[cell]')
+    fd.write('[cell]')
     for v in cell_to_cellpar(atoms.cell):
-        f.write('  %g' % v)
-    f.write('\n')
+        fd.write('  %g' % v)
+    fd.write('\n')
 
-    f.write('[natom]  %d\n' % len(atoms))
-    f.write('[nbond]  0\n')  # FIXME
-    f.write('[npoly]  0\n')  # FIXME
+    fd.write('[natom]  %d\n' % len(atoms))
+    fd.write('[nbond]  0\n')  # FIXME
+    fd.write('[npoly]  0\n')  # FIXME
 
     if 'spacegroup' in atoms.info:
         sg = Spacegroup(atoms.info['spacegroup'])
-        f.write('[space_group]  %d %d\n' % (sg.no, sg.setting))
+        fd.write('[space_group]  %d %d\n' % (sg.no, sg.setting))
     else:
-        f.write('[space_group]  1  1\n')
+        fd.write('[space_group]  1  1\n')
 
-    f.write('[title] %s\n' % atoms.info.get('title', 'untitled'))
+    fd.write('[title] %s\n' % atoms.info.get('title', 'untitled'))
 
-    f.write('\n')
-    f.write('[atoms]\n')
+    fd.write('\n')
+    fd.write('[atoms]\n')
     if 'labels' in atoms.info:
         labels = atoms.info['labels']
     else:
@@ -143,14 +143,14 @@ def write_jsv(f, atoms):
     numbers = atoms.get_atomic_numbers()
     scaled = atoms.get_scaled_positions()
     for l, n, p in zip(labels, numbers, scaled):
-        f.write('%-4s  %2d  %9.6f  %9.6f  %9.6f\n' % (l, n, p[0], p[1], p[2]))
+        fd.write('%-4s  %2d  %9.6f  %9.6f  %9.6f\n' % (l, n, p[0], p[1], p[2]))
 
-    f.write('Label  AtomicNumber  x y z (repeat natom times)\n')
+    fd.write('Label  AtomicNumber  x y z (repeat natom times)\n')
 
-    f.write('\n')
-    f.write('[bonds]\n')
+    fd.write('\n')
+    fd.write('[bonds]\n')
 
-    f.write('\n')
-    f.write('[poly]\n')
+    fd.write('\n')
+    fd.write('[poly]\n')
 
-    f.write('\n')
+    fd.write('\n')

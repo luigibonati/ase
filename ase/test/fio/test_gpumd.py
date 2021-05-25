@@ -37,8 +37,8 @@ gpumd_input_text = """16 4 1.1 0 1 2
 
 def test_read_gpumd_input():
     """Read GPUMD input file."""
-    with open('xyz.in', 'w') as f:
-        f.write(gpumd_input_text)
+    with open('xyz.in', 'w') as fd:
+        fd.write(gpumd_input_text)
 
     # Test when specifying the species
     species = ['Si', 'C']
@@ -72,13 +72,13 @@ def test_read_gpumd_input():
 
 def test_load_gpumd_input():
     """Load all information from a GPUMD input file."""
-    with open('xyz.in', 'w') as f:
-        f.write(gpumd_input_text)
+    with open('xyz.in', 'w') as fd:
+        fd.write(gpumd_input_text)
 
     species_ref = ['Si', 'C']
-    with open('xyz.in', 'r') as f:
+    with open('xyz.in', 'r') as fd:
         atoms, input_parameters, species =\
-            load_xyz_input_gpumd(f, species=species_ref)
+            load_xyz_input_gpumd(fd, species=species_ref)
     input_parameters_ref = {'N': 16, 'M': 4, 'cutoff': 1.1,
                             'triclinic': 0, 'has_velocity': 1,
                             'num_of_groups': 2}
@@ -98,8 +98,8 @@ def test_gpumd_input_write():
 
     # Test write and read with triclinic cell
     atoms.write('xyz.in', use_triclinic=True)
-    with open('xyz.in', 'r') as f:
-        readback, input_parameters, _ = load_xyz_input_gpumd(f)
+    with open('xyz.in', 'r') as fd:
+        readback, input_parameters, _ = load_xyz_input_gpumd(fd)
     assert input_parameters['triclinic'] == 1
     assert np.allclose(atoms.positions, readback.positions)
     assert np.allclose(atoms.cell, readback.cell)
@@ -114,8 +114,8 @@ def test_gpumd_input_write():
     groups = [[[j for j, group in enumerate(grouping) if i in group][0]
                for grouping in groupings] for i in range(len(atoms))]
     atoms.write('xyz.in', groupings=groupings)
-    with open('xyz.in', 'r') as f:
-        readback, input_parameters, _ = load_xyz_input_gpumd(f)
+    with open('xyz.in', 'r') as fd:
+        readback, input_parameters, _ = load_xyz_input_gpumd(fd)
     assert input_parameters['num_of_groups'] == 2
     assert len(readback.info) == len(atoms)
     assert all(np.array_equal(
@@ -129,7 +129,7 @@ def test_gpumd_input_write():
                            [-0.1, 1.4, -1.9], [-1.0, -0.5, -1.2]])
     atoms.set_velocities(velocities)
     atoms.write('xyz.in')
-    with open('xyz.in', 'r') as f:
-        readback, input_parameters, _ = load_xyz_input_gpumd(f)
+    with open('xyz.in', 'r') as fd:
+        readback, input_parameters, _ = load_xyz_input_gpumd(fd)
     assert input_parameters['has_velocity'] == 1
     assert np.allclose(readback.get_velocities(), atoms.get_velocities())

@@ -517,8 +517,8 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
         if os.path.isfile(sortfile):
             self.sort = []
             self.resort = []
-            with open(sortfile, 'r') as f:
-                for line in f:
+            with open(sortfile, 'r') as fd:
+                for line in fd:
                     sort, resort = line.split()
                     self.sort.append(int(sort))
                     self.resort.append(int(resort))
@@ -651,16 +651,16 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
         >>> outcar = load_file('OUTCAR')
         """
         filename = self._indir(filename)
-        with open(filename, 'r') as f:
-            return f.readlines()
+        with open(filename, 'r') as fd:
+            return fd.readlines()
 
     @contextmanager
     def load_file_iter(self, filename):
         """Return a file iterator"""
 
         filename = self._indir(filename)
-        with open(filename, 'r') as f:
-            yield f
+        with open(filename, 'r') as fd:
+            yield fd
 
     def read_outcar(self, lines=None):
         """Read results from the OUTCAR file.

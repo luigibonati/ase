@@ -99,18 +99,18 @@ def test_basic_example_main_run(seed, testdir):
 
     pairing = CutAndSplicePairing(slab, n_to_optimize, blmin, rng=rng)
     mutations = OperationSelector([1., 1., 1.],
-                            [MirrorMutation(blmin, n_to_optimize, rng=rng),
-                             RattleMutation(blmin, n_to_optimize, rng=rng),
-                             PermutationMutation(n_to_optimize, rng=rng)],
-                             rng=rng)
+                                  [MirrorMutation(blmin, n_to_optimize, rng=rng),
+                                   RattleMutation(blmin, n_to_optimize, rng=rng),
+                                   PermutationMutation(n_to_optimize, rng=rng)],
+                                  rng=rng)
 
     # Relax all unrelaxed structures (e.g. the starting population)
     while da.get_number_of_unrelaxed_candidates() > 0:
         a = da.get_an_unrelaxed_candidate()
         a.calc = EMT()
         print('Relaxing starting candidate {0}'.format(a.info['confid']))
-        dyn = BFGS(a, trajectory=None, logfile=None)
-        dyn.run(fmax=0.05, steps=100)
+        with BFGS(a, trajectory=None, logfile=None) as dyn:
+            dyn.run(fmax=0.05, steps=100)
         set_raw_score(a, -a.get_potential_energy())
         da.add_relaxed_step(a)
 
@@ -138,8 +138,8 @@ def test_basic_example_main_run(seed, testdir):
 
         # Relax the new candidate
         a3.calc = EMT()
-        dyn = BFGS(a3, trajectory=None, logfile=None)
-        dyn.run(fmax=0.05, steps=100)
+        with BFGS(a3, trajectory=None, logfile=None) as dyn:
+            dyn.run(fmax=0.05, steps=100)
         set_raw_score(a3, -a3.get_potential_energy())
         da.add_relaxed_step(a3)
         population.update()

@@ -422,13 +422,13 @@ Please remove them and recalculate or run \
 
         summary_lines = VibrationsData._tabulate_from_energies(energies)
 
-        if log is not None:
-            for line in summary_lines:
-                print(line, file=log)
-
-        elif isinstance(log, str):
+        if isinstance(log, str):
             with paropen(log, 'a') as log_file:
                 log_file.write('\n'.join(summary_lines) + '\n')
+
+        else:
+            for line in summary_lines:
+                print(line, file=log)
 
     def get_zero_point_energy(self, freq=None):
         if freq:

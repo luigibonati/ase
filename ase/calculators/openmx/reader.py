@@ -102,7 +102,7 @@ def read_file(filename, debug=False):
     line = '\n'
     if(debug):
         print('Read results from %s' % filename)
-    with open(filename, 'r') as f:
+    with open(filename, 'r') as fd:
         '''
          Read output file line by line. When the `line` matches the pattern
         of certain keywords in `param.[dtype]_keys`, for example,
@@ -121,7 +121,7 @@ def read_file(filename, debug=False):
         '''
         while line != '':
             pattern_matched = False
-            line = f.readline()
+            line = fd.readline()
             try:
                 _line = line.split()[0]
             except IndexError:
@@ -139,21 +139,21 @@ def read_file(filename, debug=False):
 
             for key in param.matrix_keys:
                 if '<'+key in line:
-                    out_data[get_standard_key(key)] = read_matrix(line, key, f)
+                    out_data[get_standard_key(key)] = read_matrix(line, key, fd)
                     pattern_matched = True
                     continue
             if pattern_matched:
                 continue
             for key in patterns.keys():
                 if key in line:
-                    out_data[patterns[key][0]] = patterns[key][1](line, f, debug=debug)
+                    out_data[patterns[key][0]] = patterns[key][1](line, fd, debug=debug)
                     pattern_matched = True
                     continue
             if pattern_matched:
                 continue
             for key in special_patterns.keys():
                 if key in line:
-                    a, b = special_patterns[key][1](line, f)
+                    a, b = special_patterns[key][1](line, fd)
                     out_data[special_patterns[key][0][0]] = a
                     out_data[special_patterns[key][0][1]] = b
                     pattern_matched = True
@@ -303,37 +303,37 @@ def read_scfout_file(filename=None):
                         Hks[spin][ct_AN][h_AN].append(floa(f.read(8*TNO2)))
         return Hks
 
-    f = open(filename, mode='rb')
-    atomnum, SpinP_switch = inte(f.read(8))
-    Catomnum, Latomnum, Ratomnum, TCpyCell = inte(f.read(16))
-    atv = floa(f.read(8*4*(TCpyCell+1)), shape=(TCpyCell+1, 4))
-    atv_ijk = inte(f.read(4*4*(TCpyCell+1)), shape=(TCpyCell+1, 4))
-    Total_NumOrbs = np.insert(inte(f.read(4*(atomnum))), 0, 1, axis=0)
-    FNAN = np.insert(inte(f.read(4*(atomnum))), 0, 0, axis=0)
-    natn = ins(spl(inte(f.read(4*sum(FNAN[1:] + 1))), cum(FNAN[1:] + 1)),
+    fd = open(filename, mode='rb')
+    atomnum, SpinP_switch = inte(fd.read(8))
+    Catomnum, Latomnum, Ratomnum, TCpyCell = inte(fd.read(16))
+    atv = floa(fd.read(8*4*(TCpyCell+1)), shape=(TCpyCell+1, 4))
+    atv_ijk = inte(fd.read(4*4*(TCpyCell+1)), shape=(TCpyCell+1, 4))
+    Total_NumOrbs = np.insert(inte(fd.read(4*(atomnum))), 0, 1, axis=0)
+    FNAN = np.insert(inte(fd.read(4*(atomnum))), 0, 0, axis=0)
+    natn = ins(spl(inte(fd.read(4*sum(FNAN[1:] + 1))), cum(FNAN[1:] + 1)),
                0, zeros(FNAN[0] + 1), axis=0)[:-1]
-    ncn = ins(spl(inte(f.read(4*np.sum(FNAN[1:] + 1))), cum(FNAN[1:] + 1)),
+    ncn = ins(spl(inte(fd.read(4*np.sum(FNAN[1:] + 1))), cum(FNAN[1:] + 1)),
               0, np.zeros(FNAN[0] + 1), axis=0)[:-1]
-    tv = ins(floa(f.read(8*3*4), shape=(3, 4)), 0, [0, 0, 0, 0], axis=0)
-    rtv = ins(floa(f.read(8*3*4), shape=(3, 4)), 0, [0, 0, 0, 0], axis=0)
-    Gxyz = ins(floa(f.read(8*(atomnum)*4), shape=(atomnum, 4)), 0,
+    tv = ins(floa(fd.read(8*3*4), shape=(3, 4)), 0, [0, 0, 0, 0], axis=0)
+    rtv = ins(floa(fd.read(8*3*4), shape=(3, 4)), 0, [0, 0, 0, 0], axis=0)
+    Gxyz = ins(floa(fd.read(8*(atomnum)*4), shape=(atomnum, 4)), 0,
                [0., 0., 0., 0.], axis=0)
-    Hks = readHam(SpinP_switch, FNAN, atomnum, Total_NumOrbs, natn, f)
+    Hks = readHam(SpinP_switch, FNAN, atomnum, Total_NumOrbs, natn, fd)
     iHks = []
     if SpinP_switch == 3:
-        iHks = readHam(SpinP_switch, FNAN, atomnum, Total_NumOrbs, natn, f)
-    OLP = readOverlap(atomnum, Total_NumOrbs, FNAN, natn, f)
-    OLPpox = readOverlap(atomnum, Total_NumOrbs, FNAN, natn, f)
-    OLPpoy = readOverlap(atomnum, Total_NumOrbs, FNAN, natn, f)
-    OLPpoz = readOverlap(atomnum, Total_NumOrbs, FNAN, natn, f)
-    DM = readHam(SpinP_switch, FNAN, atomnum, Total_NumOrbs, natn, f)
-    Solver = inte(f.read(4))
-    ChemP, E_Temp = floa(f.read(8*2))
-    dipole_moment_core = floa(f.read(8*3))
-    dipole_moment_background = floa(f.read(8*3))
-    Valence_Electrons, Total_SpinS = floa(f.read(8*2))
+        iHks = readHam(SpinP_switch, FNAN, atomnum, Total_NumOrbs, natn, fd)
+    OLP = readOverlap(atomnum, Total_NumOrbs, FNAN, natn, fd)
+    OLPpox = readOverlap(atomnum, Total_NumOrbs, FNAN, natn, fd)
+    OLPpoy = readOverlap(atomnum, Total_NumOrbs, FNAN, natn, fd)
+    OLPpoz = readOverlap(atomnum, Total_NumOrbs, FNAN, natn, fd)
+    DM = readHam(SpinP_switch, FNAN, atomnum, Total_NumOrbs, natn, fd)
+    Solver = inte(fd.read(4))
+    ChemP, E_Temp = floa(fd.read(8*2))
+    dipole_moment_core = floa(fd.read(8*3))
+    dipole_moment_background = floa(fd.read(8*3))
+    Valence_Electrons, Total_SpinS = floa(fd.read(8*2))
 
-    f.close()
+    fd.close()
     scf_out = {'atomnum': atomnum, 'SpinP_switch': SpinP_switch,
                'Catomnum': Catomnum, 'Latomnum': Latomnum, 'Hks': Hks,
                'Ratomnum': Ratomnum, 'TCpyCell': TCpyCell, 'atv': atv,
@@ -355,7 +355,7 @@ def read_band_file(filename=None):
         return {}
     band_kpath = []
     eigen_bands = []
-    with open(filename, 'r') as f:
+    with open(filename, 'r') as fd:
         line = f.readline().split()
         nkpts = 0
         nband = int(line[0])
@@ -387,9 +387,9 @@ def read_band_file(filename=None):
 
 def read_electron_valency(filename='H_CA13'):
     array = []
-    with open(filename, 'r') as f:
-        array = f.readlines()
-        f.close()
+    with open(filename, 'r') as fd:
+        array = fd.readlines()
+        fd.close()
     required_line = ''
     for line in array:
         if 'valence.electron' in line:

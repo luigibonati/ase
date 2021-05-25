@@ -12,19 +12,19 @@ from ase.vibrations.franck_condon import (FranckCondonOverlap,
                                           FranckCondon)
 
 
+def equal(x, y, tolerance=0, fail=True, msg=''):
+    """Compare x and y."""
+
+    if not np.isfinite(x - y).any() or (np.abs(x - y) > tolerance).any():
+        msg = (msg + '%s != %s (error: |%s| > %.9g)' %
+               (x, y, x - y, tolerance))
+        if fail:
+            raise AssertionError(msg)
+        else:
+            sys.stderr.write('WARNING: %s\n' % msg)
+
+
 def test_franck_condon(testdir):
-
-    def equal(x, y, tolerance=0, fail=True, msg=''):
-        """Compare x and y."""
-
-        if not np.isfinite(x - y).any() or (np.abs(x - y) > tolerance).any():
-            msg = (msg + '%s != %s (error: |%s| > %.9g)' %
-                   (x, y, x - y, tolerance))
-            if fail:
-                raise AssertionError(msg)
-            else:
-                sys.stderr.write('WARNING: %s\n' % msg)
-
     # FCOverlap
 
     fco = FranckCondonOverlap()
@@ -92,8 +92,8 @@ def forces_a(unrelaxed):
 def relaxed(unrelaxed):
     atoms = unrelaxed.copy()
     atoms.calc = unrelaxed.calc
-    opt = BFGS(atoms, logfile=None)
-    opt.run(fmax=0.01)
+    with BFGS(atoms, logfile=None) as opt:
+        opt.run(fmax=0.01)
     return atoms
 
 
@@ -125,7 +125,7 @@ def test_ch4_all(forces_a, relaxed, vibname):
     assert len(FC[0]) == 2 * ndof + 1
     assert len(freq[0]) == 2 * ndof + 1
 
-    
+
 def test_ch4_minfreq(forces_a, relaxed, vibname):
     # FC factor for relevant frequencies only
     fc = FranckCondon(relaxed, vibname, minfreq=2000)

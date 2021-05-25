@@ -15,8 +15,8 @@ def test_acemolecule_calculator():
     basis = dict(Scaling='0.5', Cell=7.0, Grid='Basic', Centered=0, Pseudopotential={'Pseudopotential': 1, 'Format': 'upf', 'PSFilenames': '/PATH/TO/He.pbe.UPF'})
     guess = dict(InitialGuess=1, InitialFilenames='/PATH/TO/He.pbe.UPF')
     scf = dict(IterateMaxCycle=50, ConvergenceType='Energy', ConvergenceTolerance=0.000001, EnergyDecomposition=1, 
-            ExchangeCorrelation={'XFunctional': 'LDA_X', 'CFunctional': 'LDA_C_PW'}, 
-            Diagonalize={'Tolerance': 1e-7}, Mixing={'MixingType': 'Density', 'MixingParameter': 0.3, 'MixingMethod': 1})
+               ExchangeCorrelation={'XFunctional': 'LDA_X', 'CFunctional': 'LDA_C_PW'}, 
+               Diagonalize={'Tolerance': 1e-7}, Mixing={'MixingType': 'Density', 'MixingParameter': 0.3, 'MixingMethod': 1})
     he = Atoms("He", positions=[[0.0, 0.0, 0.0]])
     he.calc = ACE(command=ace_cmd, BasicInformation=basis, Guess=guess, Scf=scf)
     sample_parameters = he.calc.parameters

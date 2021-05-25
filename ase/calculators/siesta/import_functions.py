@@ -46,11 +46,11 @@ def read_rho(fname):
 
 def get_valence_charge(filename):
     """ Read the valence charge from '.psf'-file."""
-    with open(filename, 'r') as f:
-        f.readline()
-        f.readline()
-        f.readline()
-        valence = -float(f.readline().split()[-1])
+    with open(filename, 'r') as fd:
+        fd.readline()
+        fd.readline()
+        fd.readline()
+        valence = -float(fd.readline().split()[-1])
 
     return valence
 
@@ -66,8 +66,8 @@ def read_vca_synth_block(filename, species_number=None):
 
     Returns: A string that can be inserted into the main '.fdf-file'.
     """
-    with open(filename, 'r') as f:
-        lines = f.readlines()
+    with open(filename, 'r') as fd:
+        lines = fd.readlines()
     lines = lines[1:-1]
 
     if species_number is not None:
