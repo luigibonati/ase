@@ -58,7 +58,7 @@ def check_call(f, *args):
 def check_call_wrapper(func):
     @functools.wraps(func)
     def myfunc(*args, **kwargs):
-        return check_call(func, *args)
+        return check_call(func, *args, **kwargs)
 
     return myfunc
 
