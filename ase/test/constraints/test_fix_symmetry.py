@@ -55,10 +55,10 @@ def symmetrized_optimisation(at_init, filter):
     at.calc = NoisyLennardJones(rng=rng)
 
     at_cell = filter(at)
-    dyn = PreconLBFGS(at_cell, precon=None)
     print("Initial Energy", at.get_potential_energy(), at.get_volume())
-    dyn.run(steps=300, fmax=0.001)
-    print("n_steps", dyn.get_number_of_steps())
+    with PreconLBFGS(at_cell, precon=None) as dyn:
+        dyn.run(steps=300, fmax=0.001)
+        print("n_steps", dyn.get_number_of_steps())
     print("Final Energy", at.get_potential_energy(), at.get_volume())
     print("Final forces\n", at.get_forces())
     print("Final stress\n", at.get_stress())

@@ -8,7 +8,7 @@ import pytest
 import numpy as np
 
 import ase
-from ase.utils import workdir
+from ase.utils import workdir, seterr
 from ase.test.factories import (CalculatorInputs,
                                 factory_classes,
                                 NoSuchCalculator,
@@ -157,6 +157,12 @@ def testdir(tmp_path):
         yield tmp_path
     # We print the path so user can see where test failed, if it failed.
     print(f'Testdir: {path}')
+
+
+@pytest.fixture
+def allraise():
+    with seterr(all='raise'):
+        yield
 
 
 @pytest.fixture

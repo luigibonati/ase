@@ -47,10 +47,10 @@ def test_hookean():
     atoms.set_momenta(momenta)
 
     # Propagate in Velocity Verlet (NVE).
-    dyn = VelocityVerlet(atoms, timestep=1.0*units.fs)
-    energies = SaveEnergy(atoms)
-    dyn.attach(energies)
-    dyn.run(steps=100)
+    with VelocityVerlet(atoms, timestep=1.0*units.fs) as dyn:
+        energies = SaveEnergy(atoms)
+        dyn.attach(energies)
+        dyn.run(steps=100)
 
     # Test the max bond length and position.
     bondlength = np.linalg.norm(atoms[8].position - atoms[9].position)

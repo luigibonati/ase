@@ -139,11 +139,10 @@ def test_lammpslib_simple(
     # a more complicated example, reading in a LAMMPS data file
     calc = factory.calc(**calc_params_Fe)
     Atoms_Fe.calc = calc
-    dyn = VelocityVerlet(Atoms_Fe, 1 * units.fs)
+    with VelocityVerlet(Atoms_Fe, 1 * units.fs) as dyn:
+        energy = Atoms_Fe.get_potential_energy()
+        assert energy == pytest.approx(2041.411982950972, rel=1e-4)
 
-    energy = Atoms_Fe.get_potential_energy()
-    assert energy == pytest.approx(2041.411982950972, rel=1e-4)
-
-    dyn.run(10)
-    energy = Atoms_Fe.get_potential_energy()
-    assert energy == pytest.approx(312.4315854721744, rel=1e-4)
+        dyn.run(10)
+        energy = Atoms_Fe.get_potential_energy()
+        assert energy == pytest.approx(312.4315854721744, rel=1e-4)

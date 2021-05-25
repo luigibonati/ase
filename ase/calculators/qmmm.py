@@ -2,7 +2,7 @@ import numpy as np
 
 from ase.calculators.calculator import Calculator
 from ase.data import atomic_numbers
-from ase.utils import convert_string_to_fd
+from ase.utils import IOContext
 from ase.geometry import get_distances
 from ase.cell import Cell
 
@@ -86,7 +86,7 @@ class SimpleQMMM(Calculator):
         self.results['forces'] = forces
 
 
-class EIQMMM(Calculator):
+class EIQMMM(Calculator, IOContext):
     """Explicit interaction QMMM calculator."""
     implemented_properties = ['energy', 'forces']
 
@@ -138,7 +138,7 @@ class EIQMMM(Calculator):
                                          interaction.name,
                                          mmcalc.name)
 
-        self.output = convert_string_to_fd(output)
+        self.output = self.openfile(output)
 
         Calculator.__init__(self)
 

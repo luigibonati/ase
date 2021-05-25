@@ -27,19 +27,13 @@ def test_basin(testdir):
 
     ftraj = 'lowest.traj'
 
-    for GlobalOptimizer in [BasinHopping(s,
-                                         temperature=100 * kB,
-                                         dr=0.5,
-                                         trajectory=ftraj,
-                                         optimizer_logfile=None)]:
-
-        if isinstance(GlobalOptimizer, BasinHopping):
-            GlobalOptimizer.run(10)
-            Emin, smin = GlobalOptimizer.get_minimum()
-        else:
-            GlobalOptimizer(totalsteps=10)
-            Emin = s.get_potential_energy()
-            smin = s
+    with BasinHopping(s,
+                      temperature=100 * kB,
+                      dr=0.5,
+                      trajectory=ftraj,
+                      optimizer_logfile=None) as GlobalOptimizer:
+        GlobalOptimizer.run(10)
+        Emin, smin = GlobalOptimizer.get_minimum()
         print("N=", N, 'minimal energy found', Emin,
               ' global minimum:', E_global[N])
 

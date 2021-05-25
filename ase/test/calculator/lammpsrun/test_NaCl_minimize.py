@@ -48,8 +48,8 @@ def test_NaCl_minimize(factory):
         nacl.get_potential_energy()
 
         ucf = UnitCellFilter(nacl)
-        dyn = QuasiNewton(ucf, force_consistent=False)
-        dyn.run(fmax=1.0E-2)
+        with QuasiNewton(ucf, force_consistent=False) as dyn:
+            dyn.run(fmax=1.0E-2)
 
         assert_allclose(nacl.get_potential_energy(), -1897.208861729178,
                         atol=1e-4, rtol=1e-4)

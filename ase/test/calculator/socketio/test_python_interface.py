@@ -23,7 +23,7 @@ def test_socketio_python():
     pid = os.getpid()
     with SocketIOCalculator(launch_client=client,
                             unixsocket=f'ase-python-{pid}') as atoms.calc:
-        opt = BFGS(ExpCellFilter(atoms))
-        opt.run(fmax=fmax)
+        with BFGS(ExpCellFilter(atoms)) as opt:
+            opt.run(fmax=fmax)
     forces = atoms.get_forces()
     assert np.linalg.norm(forces, axis=0).max() < fmax
