@@ -90,24 +90,6 @@ class TestVibrationsClassic:
         assert disp_file.is_file()
         assert not comb_file.is_file()
 
-        # Clobbering seems to be allowed now we are using .json?
-
-        # Not allowed to clobber existing combined file
-        # with open(comb_file, 'w') as fd:
-        #     fd.write("Hello")
-
-        # with pytest.raises(RuntimeError):
-        #     vib.combine()
-
-        # os.remove(comb_file)
-
-        # Combining data also fails if some data is missing
-        # os.remove('interrupt/cache.1x-.json')
-        # with pytest.raises(RuntimeError):
-        #    vib.combine()
-
-        #vib.clean()
-
     @pytest.mark.xfail
     def test_vibrations(self, testdir, n2_emt, n2_optimized):
         atoms = n2_emt
