@@ -335,7 +335,7 @@ class KIMModelCalculator(Calculator):
         total_forces = np.array(self.forces[: self._num_contributing_particles])
 
         if self._padding_image_of.size != 0:
-            pad_forces = self.forces[self._num_contributing_particles :]
+            pad_forces = self.forces[self._num_contributing_particles:]
             for f, org_index in zip(pad_forces, self._padding_image_of):
                 total_forces[org_index] += f
 
