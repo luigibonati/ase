@@ -7,52 +7,82 @@ from numpy.testing import assert_array_almost_equal
 from ase import units, Atoms
 import ase.io
 from ase.calculators.emt import EMT
+from ase.calculators.qmmm import ForceConstantCalculator
 from ase.optimize import QuasiNewton
 from ase.vibrations import Vibrations, VibrationsData
 from ase.thermochemistry import IdealGasThermo
 
 
-class TestVibrationsClassic:
-    """Tests for the ase.vibrations.Vibrations object
-
-    This object is to be phased out in favour of separate calculating/loading
-    and results/data objects. It therefore requires especially thorough
-    testing to ensure there are no unexpected losses/changes in the process.
-
+class TestHarmonicVibrations:
+    """Test the ase.vibrations.Vibrations object using a harmonic calculator
     """
     def setup(self):
         self.logfile = 'vibrations-log.txt'
 
-    @pytest.fixture(scope="class")
-    def n2_optimized(self):
-        n2 = Atoms('N2',
-                   positions=[(0, 0, 0), (0, 0, 1.1)],
-                   calculator=EMT())
-        QuasiNewton(n2).run(fmax=0.01)
-        return n2
-
     @pytest.fixture
-    def n2_emt(self, n2_optimized):
-        atoms = n2_optimized.copy()
-        atoms.calc = EMT()
+    def random_dimer(self):
+        rs = np.random.RandomState(42)
+
+        d = 1 + 0.5 * rs.rand()
+        z_values = rs.randint(1, high=50, size=2)
+
+        hessian = rs.rand(6, 6)
+        hessian += hessian.T  # Ensure the random Hessian is symmetric
+
+        atoms = Atoms(z_values, [[0, 0, 0], [0, 0, d]])
+        ref_atoms = atoms.copy()
+        atoms.calc = ForceConstantCalculator(D=hessian,
+                                             ref=ref_atoms,
+                                             f0=np.zeros((2, 3)))
         return atoms
 
-    def test_consistency_with_vibrationsdata(self, testdir, n2_emt):
-        atoms = n2_emt
-        vib = Vibrations(atoms)
+    def test_harmonic_vibrations(self, testdir):
+        """Check the numerics with a trivial case: one atom in harmonic well"""
+        rs = np.random.RandomState(42)
+
+        k = rs.rand()
+
+        ref_atoms = Atoms('H', positions=np.zeros([1, 3]))
+        atoms = ref_atoms.copy()
+        mass = atoms.get_masses()[0]
+
+        atoms.calc = ForceConstantCalculator(D=np.eye(3) * k,
+                                             ref=ref_atoms,
+                                             f0=np.zeros((1, 3)))
+        vib = Vibrations(atoms, name='harmonic')
+        vib.run()
+        vib.read()
+
+        expected_energy = (units._hbar  # In J/s
+                           * np.sqrt(k  # In eV/A^2
+                                     * units._e  # eV -> J
+                                     * units.m**2  # A^-2 -> m^-2
+                                     / mass  # in amu
+                                     / units._amu  # amu^-1 -> kg^-1
+                                     )
+                           ) / units._e  # J/s -> eV/s
+
+        assert np.allclose(vib.get_energies(), expected_energy)
+
+    def test_consistency_with_vibrationsdata(self, testdir, random_dimer):
+        vib = Vibrations(random_dimer, delta=1e-6, nfree=4)
         vib.run()
         vib_data = vib.get_vibrations()
 
         assert_array_almost_equal(vib.get_energies(),
                                   vib_data.get_energies())
 
-        # Compare the last mode as the others may be re-ordered by negligible
-        # energy changes
-        assert_array_almost_equal(vib.get_mode(5), vib_data.get_modes()[5])
+        for mode_index in range(3 * len(vib.atoms)):
+            assert_array_almost_equal(vib.get_mode(mode_index),
+                                      vib_data.get_modes()[mode_index])
 
-    def test_json_manipulation(self, testdir, n2_emt):
-        atoms = n2_emt
-        vib = Vibrations(atoms, name='interrupt')
+        # Hessian should be close to the ForceConstantCalculator input
+        assert_array_almost_equal(random_dimer.calc.D,
+                                  vib_data.get_hessian_2d(),
+                                  decimal=6)
+
+    def test_json_manipulation(self, testdir, random_dimer):
+        vib = Vibrations(random_dimer, name='interrupt')
         vib.run()
 
         disp_file = Path('interrupt/cache.1x-.json')
@@ -60,8 +90,9 @@ class TestVibrationsClassic:
         assert disp_file.is_file()
         assert not comb_file.is_file()
 
-        # with pytest.raises(RuntimeError):
-        #    vib.split()
+        # Should do nothing harmful as files are already split
+        # (It used to raise an error but this is no longer implemented.)
+        vib.split()
 
         # Build a combined file
         assert vib.combine() == 13
@@ -90,20 +121,17 @@ class TestVibrationsClassic:
         assert disp_file.is_file()
         assert not comb_file.is_file()
 
-    @pytest.mark.xfail
-    def test_vibrations(self, testdir, n2_emt, n2_optimized):
-        atoms = n2_emt
-        vib = Vibrations(atoms)
+    def test_vibrations_methods(self, testdir, random_dimer):
+        vib = Vibrations(random_dimer)
         vib.run()
         freqs = vib.get_frequencies()
-        vib.write_mode(n=None, nimages=5)
         vib_energies = vib.get_energies()
 
         for image in vib.iterimages():
             assert len(image) == 2
 
         thermo = IdealGasThermo(vib_energies=vib_energies, geometry='linear',
-                                atoms=atoms, symmetrynumber=2, spin=0)
+                                atoms=vib.atoms, symmetrynumber=2, spin=0)
         thermo.get_gibbs_energy(temperature=298.15, pressure=2 * 101325.,
                                 verbose=False)
 
@@ -115,24 +143,23 @@ class TestVibrationsClassic:
             assert log_txt == '\n'.join(
                 VibrationsData._tabulate_from_energies(vib_energies)) + '\n'
 
-        mode1 = vib.get_mode(-1)
-        assert_array_almost_equal(mode1, [[0., 0., -0.188935],
-                                          [0., 0., 0.188935]])
+        last_mode = vib.get_mode(-1)
+        scale = 0.5
+        assert_array_almost_equal(vib.show_as_force(-1, scale=scale,
+                                                    show=False).get_forces(),
+                                  last_mode * 3 * len(vib.atoms) * scale)
 
-        assert_array_almost_equal(vib.show_as_force(-1, show=False)
-                                  .get_forces(),
-                                  [[0., 0., -2.26722e-1],
-                                   [0., 0., 2.26722e-1]])
-
+        vib.write_mode(n=3, nimages=5)
         for i in range(3):
             assert not Path('vib.{}.traj'.format(i)).is_file()
         mode_traj = ase.io.read('vib.3.traj', index=':')
         assert len(mode_traj) == 5
+
         assert_array_almost_equal(mode_traj[0].get_all_distances(),
-                                  atoms.get_all_distances())
+                                  random_dimer.get_all_distances())
         with pytest.raises(AssertionError):
             assert_array_almost_equal(mode_traj[4].get_all_distances(),
-                                      atoms.get_all_distances())
+                                      random_dimer.get_all_distances())
 
         assert vib.clean(empty_files=True) == 0
         assert vib.clean() == 13
@@ -141,20 +168,19 @@ class TestVibrationsClassic:
         d = dict(vib.iterdisplace(inplace=False))
 
         for name, image in vib.iterdisplace(inplace=True):
-            assert d[name] == atoms
+            assert d[name] == random_dimer
 
-        atoms2 = n2_emt
-        vib2 = Vibrations(atoms2)
-        vib2.run()
-
-        assert_array_almost_equal(freqs,
-                                  vib.get_frequencies())
+    def test_vibrations_restart_dir(self, testdir, random_dimer):
+        vib = Vibrations(random_dimer)
+        vib.run()
+        freqs = vib.get_frequencies()
+        assert freqs is not None
 
         # write/read the data from another working directory
-        atoms3 = n2_optimized.copy()  # No calculator needed!
+        atoms = random_dimer.copy()  # This copy() removes the Calculator
 
         with ase.utils.workdir('run_from_here', mkdir=True):
-            vib = Vibrations(atoms3, name=str(Path.cwd().parent / 'vib'))
+            vib = Vibrations(random_dimer, name=str(Path.cwd().parent / 'vib'))
             assert_array_almost_equal(freqs, vib.get_frequencies())
             assert vib.clean() == 13
 
