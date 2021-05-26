@@ -207,7 +207,7 @@ class KIMModelCalculator(Calculator):
         release_GIL=False,
         debug=False,
         *args,
-        **kwargs,
+        **kwargs
     ):
         super().__init__(*args, **kwargs)
 
@@ -272,6 +272,15 @@ class KIMModelCalculator(Calculator):
             self._parameters_changed = False
 
         if system_changes:
+
+            # Ask model to update all of its parameters and the parameters
+            # related to the neighbor list(s). This update is necessary to do
+            # here since the user will generally have made changes the model
+            # parameters since the last time an update was performed and we
+            # need to ensure that any properties calculated here are made using
+            # the up-to-date model and neighbor list parameters.
+            self._model_refresh_and_update_neighbor_list_parameters()
+
             if self._need_neigh_update(atoms, system_changes):
                 self._update_neigh(atoms, self._species_map)
                 self.energy = np.array([0.0], dtype=kimpy_wrappers.c_double)
@@ -332,7 +341,7 @@ class KIMModelCalculator(Calculator):
             Total forces on contributing atoms.
         """
 
-        total_forces = np.array(self.forces[: self._num_contributing_particles])
+        total_forces = np.array(self.forces[:self._num_contributing_particles])
 
         if self._padding_image_of.size != 0:
             pad_forces = self.forces[self._num_contributing_particles:]
@@ -401,6 +410,12 @@ class KIMModelCalculator(Calculator):
 
     @property
     def _neigh(self):
+        # WARNING: This property is underscored for a reason! The
+        # neighborlist(s) itself (themselves) may not be up to date with
+        # respect to changes that have been made to the model's parameters, or
+        # even since the positions in the Atoms object may have changed.
+        # Neighbor lists are only potentially updated inside the ``calculate``
+        # method.
         return self._kimmodeldata.neigh
 
     @property
@@ -429,13 +444,17 @@ class KIMModelCalculator(Calculator):
 
     @property
     def get_parameters(self):
+        # Ask model to update all of its parameters and the parameters related
+        # to the neighbor list(s). This update is necessary to do here since
+        # the user will generally have made changes the model parameters since
+        # the last time an update was performed and we need to ensure the
+        # parameters returned by this method are fully up to date.
+        self._model_refresh_and_update_neighbor_list_parameters()
+
         return self._kim_model.get_parameters
 
     def set_parameters(self, **kwargs):
         parameters = self._kim_model.set_parameters(**kwargs)
-
-        self._model_refresh_and_update_neighbor_list_parameters()
-
         self._parameters_changed = True
 
         return parameters
