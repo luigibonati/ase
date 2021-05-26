@@ -8,7 +8,6 @@ from ase import units, Atoms
 import ase.io
 from ase.calculators.emt import EMT
 from ase.calculators.qmmm import ForceConstantCalculator
-from ase.optimize import QuasiNewton
 from ase.vibrations import Vibrations, VibrationsData
 from ase.thermochemistry import IdealGasThermo
 
@@ -124,7 +123,6 @@ class TestHarmonicVibrations:
     def test_vibrations_methods(self, testdir, random_dimer):
         vib = Vibrations(random_dimer)
         vib.run()
-        freqs = vib.get_frequencies()
         vib_energies = vib.get_energies()
 
         for image in vib.iterimages():
@@ -180,7 +178,7 @@ class TestHarmonicVibrations:
         atoms = random_dimer.copy()  # This copy() removes the Calculator
 
         with ase.utils.workdir('run_from_here', mkdir=True):
-            vib = Vibrations(random_dimer, name=str(Path.cwd().parent / 'vib'))
+            vib = Vibrations(atoms, name=str(Path.cwd().parent / 'vib'))
             assert_array_almost_equal(freqs, vib.get_frequencies())
             assert vib.clean() == 13
 
@@ -232,9 +230,9 @@ class TestVibrationsDataStaticMethods:
 
     @pytest.mark.parametrize('kwargs,expected',
                              [(dict(atoms=na2,
-                                   energies=[1.],
-                                   modes=np.array([[[1., 1., 1.],
-                                                    [0.5, 0.5, 0.5]]])),
+                                    energies=[1.],
+                                    modes=np.array([[[1., 1., 1.],
+                                                     [0.5, 0.5, 0.5]]])),
                                [na2_image_1])
                               ])
     def test_get_jmol_images(self, kwargs, expected):
@@ -256,6 +254,23 @@ class TestVibrationsDataStaticMethods:
 
 
 class TestVibrationsData:
+    @pytest.fixture
+    def random_dimer(self):
+        rs = np.random.RandomState(42)
+
+        d = 1 + 0.5 * rs.rand()
+        z_values = rs.randint(1, high=50, size=2)
+
+        hessian = rs.rand(6, 6)
+        hessian += hessian.T  # Ensure the random Hessian is symmetric
+
+        atoms = Atoms(z_values, [[0, 0, 0], [0, 0, d]])
+        ref_atoms = atoms.copy()
+        atoms.calc = ForceConstantCalculator(D=hessian,
+                                             ref=ref_atoms,
+                                             f0=np.zeros((2, 3)))
+        return atoms
+
     @pytest.fixture
     def n2_data(self):
         return{'atoms': Atoms('N2', positions=[[0., 0., 0.05095057],
