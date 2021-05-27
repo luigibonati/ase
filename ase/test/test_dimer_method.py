@@ -18,20 +18,20 @@ def test_dimer_method(testdir):
     atoms.get_potential_energy()
 
     # Set up the dimer
-    d_control = DimerControl(initial_eigenmode_method='displacement',
-                             displacement_method='vector', logfile=None,
-                             mask=[0, 0, 0, 0, 1])
-    d_atoms = MinModeAtoms(atoms, d_control)
+    with DimerControl(initial_eigenmode_method='displacement',
+                      displacement_method='vector', logfile=None,
+                      mask=[0, 0, 0, 0, 1]) as d_control:
+        d_atoms = MinModeAtoms(atoms, d_control)
 
-    # Displace the atoms
-    displacement_vector = [[0.0] * 3] * 5
-    displacement_vector[-1][1] = -0.1
-    d_atoms.displace(displacement_vector=displacement_vector)
+        # Displace the atoms
+        displacement_vector = [[0.0] * 3] * 5
+        displacement_vector[-1][1] = -0.1
+        d_atoms.displace(displacement_vector=displacement_vector)
 
-    # Converge to a saddle point
-    dim_rlx = MinModeTranslate(d_atoms, trajectory='dimer_method.traj',
-                               logfile=None)
-    dim_rlx.run(fmax=0.001)
+        # Converge to a saddle point
+        with MinModeTranslate(d_atoms, trajectory='dimer_method.traj',
+                              logfile=None) as dim_rlx:
+            dim_rlx.run(fmax=0.001)
 
     # Test the results
     tolerance = 1e-3

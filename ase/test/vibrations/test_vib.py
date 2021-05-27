@@ -144,8 +144,8 @@ class TestVibrationsClassic():
             assert_array_almost_equal(mode_traj[4].get_all_distances(),
                                       atoms.get_all_distances())
 
-        with open('vib.xyz', 'rt') as f:
-            jmol_txt = f.read()
+        with open('vib.xyz', 'rt') as fd:
+            jmol_txt = fd.read()
             assert jmol_txt == jmol_txt_ref
 
         assert vib.clean(empty_files=True) == 0
@@ -182,12 +182,12 @@ class TestVibrationsClassic():
 
 class TestVibrationsDataStaticMethods():
     @pytest.mark.parametrize('mask,expected_indices',
-                        [([True, True, False, True], [0, 1, 3]),
-                         ([False, False], []),
-                         ([], []),
-                         (np.array([True, True]), [0, 1]),
-                         (np.array([False, True, True]), [1, 2]),
-                         (np.array([], dtype=bool), [])])
+                             [([True, True, False, True], [0, 1, 3]),
+                              ([False, False], []),
+                              ([], []),
+                              (np.array([True, True]), [0, 1]),
+                              (np.array([False, True, True]), [1, 2]),
+                              (np.array([], dtype=bool), [])])
     def test_indices_from_mask(self, mask, expected_indices):
         assert VibrationsData.indices_from_mask(mask) == expected_indices
 

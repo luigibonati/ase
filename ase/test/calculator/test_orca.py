@@ -9,8 +9,8 @@ def test_orca():
     atoms.calc = ORCA(label='water',
                       orcasimpleinput='BLYP def2-SVP')
 
-    opt = BFGS(atoms)
-    opt.run(fmax=0.05)
+    with BFGS(atoms) as opt:
+        opt.run(fmax=0.05)
 
     final_energy = atoms.get_potential_energy()
     print(final_energy)

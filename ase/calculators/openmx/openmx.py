@@ -332,8 +332,8 @@ class OpenMX(FileIOCalculator):
             # self.clean()
         except RuntimeError as e:
             try:
-                with open(get_file_name('.log'), 'r') as f:
-                    lines = f.readlines()
+                with open(get_file_name('.log'), 'r') as fd:
+                    lines = fd.readlines()
                 debug_lines = 10
                 print('##### %d last lines of the OpenMX output' % debug_lines)
                 for line in lines[-20:]:
@@ -371,9 +371,9 @@ class OpenMX(FileIOCalculator):
         self.prind('Reading input file'+self.label)
         filename = get_file_name('.dat', self.label)
         if not nohup:
-            with open(filename, 'r') as f:
+            with open(filename, 'r') as fd:
                 while True:
-                    line = f.readline()
+                    line = fd.readline()
                     print(line.strip())
                     if not line:
                         break
@@ -698,11 +698,11 @@ class OpenMX(FileIOCalculator):
         while not os.path.isfile(file):
             self.prind('Waiting for %s to come out' % file)
             time.sleep(5)
-        with open(file, 'r') as f:
+        with open(file, 'r') as fd:
             while running(**args):
-                f.seek(last_position)
-                new_data = f.read()
-                prev_position = f.tell()
+                fd.seek(last_position)
+                new_data = fd.read()
+                prev_position = fd.tell()
                 # self.prind('pos', prev_position != last_position)
                 if prev_position != last_position:
                     if not self.nohup:

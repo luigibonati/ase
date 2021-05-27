@@ -281,11 +281,11 @@ def _write_output(filename, header_lines, data, fmt, order=None):
         If not None, gives a list of atom types for the order
         to write out each.
     """
-    f = filename
+    fd = filename
 
     # Write header section
     for line in header_lines:
-        f.write("%s \n" % line)
+        fd.write("%s \n" % line)
 
     # If specifying the order, fix the atom id and write to file
     natoms = data.shape[0]
@@ -296,11 +296,11 @@ def _write_output(filename, header_lines, data, fmt, order=None):
                 if atype == data[i][1]:
                     new_id += 1
                     data[i][0] = new_id
-                    f.write(fmt % tuple(data[i]))
+                    fd.write(fmt % tuple(data[i]))
     # ...just write rows to file
     else:
         for i in range(natoms):
-            f.write(fmt % tuple(data[i]))
+            fd.write(fmt % tuple(data[i]))
 
 
 @reader
@@ -326,8 +326,8 @@ def read_rmc6f(filename, atom_type_map=None):
         The Atoms object read in from the rmc6f file.
     """
 
-    f = filename
-    lines = f.readlines()
+    fd = filename
+    lines = fd.readlines()
 
     # Process the rmc6f file to extract positions and cell
     pos, cell = _read_process_rmc6f_lines_to_pos_and_cell(lines)

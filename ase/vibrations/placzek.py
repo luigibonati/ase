@@ -98,7 +98,7 @@ class Profeta(ResonantRaman):
             self._approx = value
         else:
             raise ValueError('Please use "Profeta", "Placzek" or "P-P".')
-        
+
     def electronic_me_profeta_rcc(self, omega, gamma=0.1,
                                   energy_derivative=False):
         """Raman spectra in Profeta and Mauri approximation

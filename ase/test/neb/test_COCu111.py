@@ -25,8 +25,8 @@ def test_COCu111(testdir):
     indices = [i for i, z in enumerate(Z) if z < Z.mean()]
     constraint = FixAtoms(indices=indices)
     slab.set_constraint(constraint)
-    dyn = QuasiNewton(slab)
-    dyn.run(fmax=0.05)
+    with QuasiNewton(slab) as dyn:
+        dyn.run(fmax=0.05)
     Z = slab.get_positions()[:, 2]
     print(Z[0] - Z[1])
     print(Z[1] - Z[2])
@@ -36,8 +36,8 @@ def test_COCu111(testdir):
     h = 1.5
     slab += Atom('C', (d / 2, -b / 2, h))
     slab += Atom('O', (d / 2, +b / 2, h))
-    dyn = QuasiNewton(slab)
-    dyn.run(fmax=0.05)
+    with QuasiNewton(slab) as dyn:
+        dyn.run(fmax=0.05)
 
     # Make band:
     images = [slab]
@@ -54,8 +54,8 @@ def test_COCu111(testdir):
     image[-1].x = d
     image[-1].y = d / sqrt(3)
 
-    dyn = QuasiNewton(images[-1])
-    dyn.run(fmax=0.05)
+    with QuasiNewton(images[-1]) as dyn:
+        dyn.run(fmax=0.05)
     neb = NEB(images, climb=not True)
 
     # Interpolate positions between initial and final states:

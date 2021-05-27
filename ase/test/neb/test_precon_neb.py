@@ -1,4 +1,3 @@
-import os
 import json
 
 import numpy as np
@@ -114,16 +113,16 @@ def ref_vacancy(_ref_vacancy_global):
                           ('improvedtangent', BFGS, None, None),
                           ('spline', NEBOptimizer, None, 'ODE'),
                           ('string', NEBOptimizer, 'Exp', 'ODE')])
-def test_neb_methods(method, optimizer, precon,
+def test_neb_methods(testdir, method, optimizer, precon,
                      optmethod, ref_vacancy, setup_images):
     # unpack the reference result
     Ef_ref, dE_ref, saddle_ref = ref_vacancy
 
     # now relax the MEP for comparison
     images, _, _ = setup_images
-    
+
     fmax_history = []
-    
+
     def save_fmax_history(mep):
         fmax_history.append(mep.get_residual())
 
@@ -146,9 +145,8 @@ def test_neb_methods(method, optimizer, precon,
 
     forcefit = fit_images(images)
 
-    output_dir = os.path.dirname(__file__)
-    with open(f'{output_dir}/MEP_{method}_{optimizer.__name__}_{optmethod}'
-              f'_{precon}.json', 'w') as f:
+    with open(f'MEP_{method}_{optimizer.__name__}_{optmethod}'
+              f'_{precon}.json', 'w') as fd:
         json.dump({'fmax_history': fmax_history,
                    'method': method,
                    'optmethod': optmethod,
@@ -160,7 +158,7 @@ def test_neb_methods(method, optimizer, precon,
                    'fit_energies': forcefit.fit_energies.tolist(),
                    'lines': np.array(forcefit.lines).tolist(),
                    'Ef': Ef,
-                   'dE': dE}, f)
+                   'dE': dE}, fd)
 
     centre = 2  # we have 5 images total, so central image has index 2
     vdiff, _ = find_mic(images[centre].positions - saddle_ref.positions,
@@ -184,7 +182,7 @@ def test_neb_optimizers(setup_images, method):
     R1 = mep.get_residual()
     # check residual has got smaller
     assert R1 < R0
-    
+
 
 def test_precon_initialisation(setup_images):
     images, _, _ = setup_images
@@ -201,13 +199,13 @@ def test_single_precon_initialisation(setup_images):
     mep.get_forces()
     assert len(mep.precon) == len(mep.images)
     assert mep.precon[0].mu == mep.precon[1].mu
-    
+
 
 def test_precon_assembly(setup_images):
     images, _, _ = setup_images
     neb = NEB(images, method='spline', precon='Exp')
     neb.get_forces()  # trigger precon assembly
-    
+
     # check precon for each image is symmetric positive definite
     for image, precon in zip(neb.images, neb.precon):
         assert isinstance(precon, Exp)
@@ -222,13 +220,13 @@ def test_spline_fit(setup_images):
     images, _, _ = setup_images
     neb = NEB(images)
     fit = neb.spline_fit()
-    
+
     # check spline points are equally spaced
     assert np.allclose(fit.s, np.linspace(0, 1, len(images)))
-    
+
     # check spline matches target at fit points
     assert np.allclose(fit.x(fit.s), fit.x_data)
-    
+
     # ensure derivative is smooth across central fit point
     eps = 1e-4
     assert np.allclose(fit.dx_ds(fit.s[2] + eps), fit.dx_ds(fit.s[2] + eps))

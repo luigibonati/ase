@@ -29,8 +29,8 @@ def read_output(regex):
         if filename.startswith('job.') or filename.endswith('.out'):
             checkfiles.append(filename)
     for filename in checkfiles:
-        with open(filename, 'rt') as f:
-            lines = f.readlines()
+        with open(filename, 'rt') as fd:
+            lines = fd.readlines()
             for line in lines:
                 match = re.search(regex, line)
                 if match:
@@ -86,13 +86,13 @@ def add_data_group(data_group, string=None, raw=False):
         if string:
             data += ' ' + string
         data += '\n'
-    f = open('control', 'r+')
-    lines = f.readlines()
-    f.seek(0)
-    f.truncate()
+    fd = open('control', 'r+')
+    lines = fd.readlines()
+    fd.seek(0)
+    fd.truncate()
     lines.insert(2, data)
-    f.write(''.join(lines))
-    f.close()
+    fd.write(''.join(lines))
+    fd.close()
 
 
 def read_data_group(data_group):
