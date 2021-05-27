@@ -41,7 +41,7 @@ def c_int_args(func):
     return myfunc
 
 
-def check_call(f, *args):
+def check_call(f, *args, **kwargs):
     """
     Call a kimpy function using its arguments and, if a RuntimeError is raised,
     catch it and raise a KimpyError with the exception's message.
@@ -50,7 +50,7 @@ def check_call(f, *args):
     when something goes wrong.)
     """
     try:
-        return f(*args)
+        return f(*args, **kwargs)
     except RuntimeError as e:
         raise KimpyError(f'Calling kimpy function "{f.__name__}" failed:\n  {str(e)}')
 
