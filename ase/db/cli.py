@@ -211,7 +211,7 @@ def main(args):
 
     if args.insert_into:
         if args.limit == -1:
-            args.limit = 0
+            args.limit = 99999999999999
 
         progressbar = no_progressbar
         length = None
@@ -227,15 +227,27 @@ def main(args):
             else:
                 length = db.count(query)
 
+        def y():
+            offset = args.offset
+            while True:
+                limit = min(args.limit, 100)
+                n = 0
+                for row in db.select(query,
+                                     sort=args.sort,
+                                     limit=limit,
+                                     offset=offset):
+                    yield row
+                    n += 1
+                if n < limit:
+                    return
+                args.limit -= n
+                offset += n
+
         nkvp = 0
         nrows = 0
         with connect(args.insert_into,
                      use_lock_file=not args.no_lock_file) as db2:
-            with progressbar(db.select(query,
-                                       sort=args.sort,
-                                       limit=args.limit,
-                                       offset=args.offset),
-                             length=length) as rows:
+            with progressbar(y(), length=length) as rows:
                 for row in rows:
                     kvp = row.get('key_value_pairs', {})
                     nkvp -= len(kvp)
