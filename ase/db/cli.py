@@ -227,7 +227,7 @@ def main(args):
             else:
                 length = db.count(query)
 
-        def y():
+        def block():
             offset = args.offset
             while True:
                 limit = min(args.limit, 100)
@@ -247,7 +247,7 @@ def main(args):
         nrows = 0
         with connect(args.insert_into,
                      use_lock_file=not args.no_lock_file) as db2:
-            with progressbar(y(), length=length) as rows:
+            with progressbar(block(), length=length) as rows:
                 for row in rows:
                     kvp = row.get('key_value_pairs', {})
                     nkvp -= len(kvp)
