@@ -241,6 +241,8 @@ def main(args):
                 if n < limit:
                     return
                 args.limit -= n
+                if args.limit == 0:
+                    return
                 offset += n
 
         nkvp = 0
