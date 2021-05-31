@@ -7,13 +7,19 @@ from ase.units import Bohr, Hartree
 from ase.calculators.calculator import PropertyNotImplementedError
 from xml.dom import minidom
 
+class Exciting:
+    """Class for doing exciting calculations."""
+    def __init__(
+            self,
+            dir : str = 'calc', paramdict=None : Dict[str, any],
+            species_path=None,
+            exciting_binary='excitingser', kpts=(1, 1, 1),
+            autormt=False, tshift=True, **kwargs)
+        """Construct exciting-calculator object.
 
- """Construct exciting-calculator object.
-
-        Parameters
-        ==========
-        dir (string): directory in which to execute exciting.
-        paramdict (dict): Dictionary containing XML parameters. String
+        Args:
+            dir: directory in which to execute exciting.
+            paramdict (dict): Dictionary containing XML parameters. String
             values are translated to attributes, nested dictionaries are
             translated to sub elements. A list of dictionaries is
             translated to a  list of sub elements named after the key
