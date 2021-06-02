@@ -11,34 +11,34 @@ class Exciting:
     """Class for doing exciting calculations."""
     def __init__(
             self,
-            dir : str = 'calc', paramdict=None : Dict[str, any],
-            species_path=None,
+            dir : str = 'calc', paramdict: Optiona[Dict] = None,
+            species_path : Optional[str] = None,
             exciting_binary='excitingser', kpts=(1, 1, 1),
             autormt=False, tshift=True, **kwargs)
         """Construct exciting-calculator object.
 
         Args:
             dir: directory in which to execute exciting.
-            paramdict (dict): Dictionary containing XML parameters. String
-            values are translated to attributes, nested dictionaries are
-            translated to sub elements. A list of dictionaries is
-            translated to a  list of sub elements named after the key
-            of which the list is the value. Default: None
-        species_path: string
-            Directory or URL to look up species files folder.
-        exciting_binary (string): Path to executable of exciting code.
-            Default: 'excitingser'
-        kpts (list of ints): Number of k-points. List len should be 3.
-        autormt (bool): Assign the autormt boolean. If true the muffin tin
-            radius is set automatically by rmtapm.
-        kwargs (dict like): list of key value pairs to be
-            converted into groundstate attributes.
+            paramdict: Dictionary containing XML parameters. String
+                values are translated to attributes, nested dictionaries are
+                translated to sub elements. A list of dictionaries is
+                translated to a  list of sub elements named after the key
+                of which the list is the value. Default: None
+            species_path: string
+                Directory or URL to look up species files folder.
+            exciting_binary: Path to executable of exciting code.
+                Default: 'excitingser'
+            kpts: Number of k-points. List len should be 3.
+            autormt: Assign the autormt boolean. If true the muffin tin
+                radius is set automatically by rmtapm.
+            kwargs: List of key, value pairs to be
+                converted into groundstate attributes.
         """
         # Assign member variables using contructor arguments.
         self.dir = dir
         self.energy = None
         self.paramdict = paramdict
-        # If the speciespath is not gives, try to locate it.
+        # If the speciespath is not given, try to locate it.
         print(species_path)
         # if species_path is None:
         #     try: # TODO: check whether this dir exists.
@@ -72,13 +72,12 @@ class Exciting:
             self.groundstate_attributes[
                 'ngridk'] = ' '.join(map(str, kpts))
 
-    def update(self, atoms):
+    def update(self, atoms: ase.Atoms):
         """Initialize calc if needed then run exciting calc.
         
-        Parameters
-        ====================================================
-        atoms (ASE Atoms Object): atom numbers, positions and
-            periodic boundary conditions.
+        Args:
+            atoms: atom numbers, positions and
+                periodic boundary conditions in an ase.Atoms obj.
         """
         # If the calculation is not over or the numbers
         # member variable hasn't been initalized we initalize
@@ -95,7 +94,7 @@ class Exciting:
               (self.cell != atoms.get_cell()).any()):
             self.calculate(atoms)
 
-    def initialize(self, atoms):
+    def initialize(self, atoms: ase.Atoms):
         """Initialize atomic information by writing input file.
         
         Parameters:
@@ -111,13 +110,11 @@ class Exciting:
     def get_potential_energy(self, atoms):
         """Get potential energy.
 
-        Parameters:
-        ===========
-        atoms (ASE Atoms Object): positions, cell and pbc of input.
+        Args:
+            atoms (ASE Atoms Object): Positions, cell and pbc of input.
 
         Returns:
-        ==========
-        forces (list of floats): total forces on the structure.
+            Total energy of the calculation.
         """
         # Update the atoms.
         self.update(atoms)
