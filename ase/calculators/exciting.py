@@ -45,16 +45,16 @@ class Exciting:
         self.energy = None
         self.paramdict = paramdict
         # If the speciespath is not given, try to locate it.
-        print(species_path)
         if species_path is None:
             try:  # TODO: check whether this dir exists.
                 species_path = os.environ['EXCITINGROOT'] + '/species'
             except KeyError:
                 raise RuntimeError('No species path given and no EXCITINGROOT local var found')
-        try:
-            assert os.isdir(species_path)
-        except KeyError:
-            raise RuntimeError('Species path given: %s, does not exist as a directory' % species_path)
+        else:  # Try to see if the species path directory actually exists.
+            try:
+                assert os.pathisdir(species_path)
+            except KeyError:
+                raise RuntimeError('Species path given: %s, does not exist as a directory' % species_path)
         self.species_path = species_path
         # We initialize our _calc.s+caconverged flag indicating
         # whether the calculation is finished to False.
