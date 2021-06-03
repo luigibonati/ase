@@ -1,7 +1,10 @@
 import os
 
+from typing import Optional, Dict
 import numpy as np
 import xml.etree.ElementTree as ET
+
+import ase
 from ase.io.exciting import atoms2etree
 from ase.units import Bohr, Hartree
 from ase.calculators.calculator import PropertyNotImplementedError
@@ -10,11 +13,11 @@ from xml.dom import minidom
 class Exciting:
     """Class for doing exciting calculations."""
     def __init__(
-            self,
-            dir : str = 'calc', paramdict: Optiona[Dict] = None,
-            species_path : Optional[str] = None,
-            exciting_binary='excitingser', kpts=(1, 1, 1),
-            autormt=False, tshift=True, **kwargs)
+                self,
+                dir : str = 'calc', paramdict: Optional[Dict] = None,
+                species_path : Optional[str] = None,
+                exciting_binary='excitingser', kpts=(1, 1, 1),
+                autormt=False, tshift=True, **kwargs):
         """Construct exciting-calculator object.
 
         Args:
@@ -40,16 +43,15 @@ class Exciting:
         self.paramdict = paramdict
         # If the speciespath is not given, try to locate it.
         print(species_path)
-        # if species_path is None:
-        #     try: # TODO: check whether this dir exists.
-        #         species_path = os.environ['EXCITINGROOT'] + '/species'
-        #     except KeyError:
-        #         print('No EXCITINGROOT local variable found and no species path given.')
-        #         sys.exit('No species path given and no EXCITINGROOT local var found')
-        # try:
-        #     assert os.isdir(species_path)
-        # except:
-        #     print('hmm')
+        if species_path is None:
+            try: # TODO: check whether this dir exists.
+                species_path = os.environ['EXCITINGROOT'] + '/species'
+            except KeyError:
+                sys.exit('No species path given and no EXCITINGROOT local var found')
+        try:
+            assert os.isdir(species_path)
+        except:
+            print('hmm')
         self.species_path = species_path
         # We initialize our _calc.s+caconverged flag indicating
         # whether the calculation is finished to False.
