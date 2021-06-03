@@ -1,11 +1,10 @@
-import pytest
-from ase.build import bulk
-
-
-import ase
-import ase.io
-import ase.calculators.exciting as exciting
+"""Test file for exciting ASE calculator."""
 import unittest
+
+import pytest
+
+from ase.build import bulk
+import ase.calculators.exciting as exciting
 
 @pytest.mark.calculator_lite
 @pytest.mark.calculator('exciting')
@@ -18,11 +17,9 @@ def test_exciting_bulk(factory):
 
 
 class TestExciting(unittest.TestCase):
+    """Test class for all exciting unit tests."""
     def test_exciting_constructor(self):
         """Test write an input for exciting."""
-        # nitrous_oxide = ase.Atoms('N3O',
-        #       [(0, 0, 0), (1, 0, 0), (0.5, 0.5, 0.5)],
-        #       pbc=True)
         calc_dir = 'ase/test/calculator/exciting'
         species_path = '/None'
         exciting_binary = '/fshome/chm/git/exciting/bin/excitingser'
@@ -34,9 +31,7 @@ class TestExciting(unittest.TestCase):
             maxscl=3)
         # Since we didn't pass any keyworded arguments to the calculator
         # the ngridk should be set to '3 3 3'.
-        self.assertEqual(
-                exciting_calc.groundstate_attributes['ngridk'],
-                '3 3 3')
+        self.assertEqual(exciting_calc.groundstate_attributes['ngridk'], '3 3 3')
         self.assertEqual(exciting_calc.dir, calc_dir)
         self.assertEqual(exciting_calc.species_path, species_path)
         self.assertEqual(exciting_calc.exciting_binary, exciting_binary)
@@ -46,6 +41,3 @@ class TestExciting(unittest.TestCase):
         self.assertFalse(exciting_calc.autormt)
         # Should be true by default unless arg is passed to constructor.
         self.assertTrue(exciting_calc.tshift)
-
-
-

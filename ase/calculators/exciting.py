@@ -1,21 +1,24 @@
+"""ASE Calculator for the exciting DFT code."""
+
 import os
-
-from typing import Optional, Dict
-import numpy as np
 import xml.etree.ElementTree as ET
+from xml.dom import minidom
+from typing import Optional, Dict
 
+import numpy as np
 import ase
+# TODO(dts): use import ase for all of these imports, no need for simplifying path.
 from ase.io.exciting import atoms2etree
 from ase.units import Bohr, Hartree
 from ase.calculators.calculator import PropertyNotImplementedError
-from xml.dom import minidom
+
 
 class Exciting:
     """Class for doing exciting calculations."""
     def __init__(
                 self,
-                dir : str = 'calc', paramdict: Optional[Dict] = None,
-                species_path : Optional[str] = None,
+                dir: str = 'calc', paramdict: Optional[Dict] = None,
+                species_path: Optional[str] = None,
                 exciting_binary='excitingser', kpts=(1, 1, 1),
                 autormt=False, tshift=True, **kwargs):
         """Construct exciting-calculator object.
@@ -44,30 +47,28 @@ class Exciting:
         # If the speciespath is not given, try to locate it.
         print(species_path)
         if species_path is None:
-            try: # TODO: check whether this dir exists.
+            try:  # TODO: check whether this dir exists.
                 species_path = os.environ['EXCITINGROOT'] + '/species'
             except KeyError:
-                sys.exit('No species path given and no EXCITINGROOT local var found')
+                raise RuntimeError('No species path given and no EXCITINGROOT local var found')
         try:
             assert os.isdir(species_path)
-        except:
-            print('hmm')
+        except KeyError:
+            raise RuntimeError('Species path given: %s, does not exist as a directory' % species_path)
         self.species_path = species_path
         # We initialize our _calc.s+caconverged flag indicating
         # whether the calculation is finished to False.
         self.converged = False
         self.exciting_binary = exciting_binary
-        # TODO: find out what this does? Add comment.
+        # TODO(dts): find out what this does? Add comment.
         self.autormt = autormt
-        # TODO: find out what this does, add comment. 
-        # this is not a param in the constructor?.
+        # TODO(dts): find out what this does, add comment.
         self.tshift = tshift
         # Instead of defining paramdict you can also define
         # kwargs seperately._calc.ss+ca
         self.groundstate_attributes = kwargs
         # If we can't find ngrik in kwargs and paramdict=None
-        if ('ngridk' not in kwargs.keys() and (
-                not (self.paramdict))):
+        if ('ngridk' not in kwargs.keys() and not (self.paramdict)):
             # Set the groundstate attributes ngridk value
             # using the kpts constructure param. The join and map
             # convert [2, 2, 2] into '2 2 2'.
@@ -99,9 +100,9 @@ class Exciting:
     def initialize(self, atoms: ase.Atoms):
         """Initialize atomic information by writing input file.
         
-        Parameters:
-        atoms (ASE object): ASE atoms object holding
-            geometry, atomic information about calculation.
+        Args:
+            atoms (ASE object): ASE atoms object holding
+                geometry, atomic information about calculation.
         """
         # Get a list of the atomic numbers (a.m.u) save
         # it to the member variable called self.numbers.
@@ -126,13 +127,11 @@ class Exciting:
     def get_forces(self, atoms):
         """Run exciting calc and get forces.
 
-        Parameters:
-        ===========
-        atoms (ASE Atoms Object): positions, cell and pbc of input.
+        Args:
+            atoms: Positions, cell and pbc of input.
 
         Returns:
-        ==========
-        forces (list of floats): total forces on the structure.
+            forces: Total forces as a list on the structure.
         """
         # Run exciting calculation and read output.
         self.update(atoms)
@@ -145,10 +144,8 @@ class Exciting:
     def calculate(self, atoms):
         """Run exciting calculation.
         
-        Parameters:
-        ===========================
-        atoms (ASE Atoms Object): contains atomic
-            information.
+        Args:
+            atoms: Contains atomic information.
         """
         # Get positions of the ASE Atoms object atom positions.
         self.positions = atoms.get_positions().copy()
@@ -220,15 +217,13 @@ class Exciting:
                 fd.write(prettify(root))
                 fd.close()
 
-    def dicttoxml(self, pdict, element):
+    def dicttoxml(self, pdict: Dict, element):
         """Write dictionary k,v paris to XML DOM object.
 
-        Parameters:
-        ================================
-        pdict (dict): dict with k,v pairs that go into
-            the xml like file.
-        element (XML DOM object): the XML object
-            that we want to modify using dict k,v pairs.
+        Args:
+
+            pdict: Dictionary with k,v pairs that go into the xml like file.
+            element: The XML object (XML DOM object) that we want to modify using dict k,v pairs.
         """
         for key, value in pdict.items():
             if (isinstance(value, str) and key == 'text()'):
@@ -251,10 +246,7 @@ class Exciting:
                 print('cannot deal with', key, '=', value)
 
     def read(self):
-        """ Read total energy and forces from info.xml output.
-        
-        Reads info.xml output file into an object.
-        """
+        """ Read total energy and forces from info.xml output."""
         # Define where to find output file which is called
         # info.xml in exciing.
         output_file = self.dir + '/info.xml'
@@ -265,7 +257,8 @@ class Exciting:
                 parsed_output = ET.parse(outfile)
         except IOError:
             raise RuntimeError(
-                "Output file %s doesn't exist" % output_fle)
+                "Output file %s doesn't exist" % output_file)
+        info = ET.parse(outfile)
         # Find the last istance of 'totalEnergy'.
         self.energy = float(parsed_output.findall(
             'groundstate/scl/iter/energies')[-1].attrib[
