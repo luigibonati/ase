@@ -4,6 +4,8 @@ import os
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
 from typing import Optional, Dict
+import pathlib
+import subprocess
 
 import numpy as np
 import ase
@@ -101,8 +103,7 @@ class Exciting:
         """Initialize atomic information by writing input file.
         
         Args:
-            atoms (ASE object): ASE atoms object holding
-                geometry, atomic information about calculation.
+            atoms: Holds geometry, atomic information about calculation.
         """
         # Get a list of the atomic numbers (a.m.u) save
         # it to the member variable called self.numbers.
@@ -110,11 +111,11 @@ class Exciting:
         # Write ASE atoms information into input.
         self.write(atoms)
 
-    def get_potential_energy(self, atoms):
+    def get_potential_energy(self, atoms: ase.Atoms):
         """Get potential energy.
 
         Args:
-            atoms (ASE Atoms Object): Positions, cell and pbc of input.
+            atoms: Holds geometry, atomic information about calculation.
 
         Returns:
             Total energy of the calculation.
@@ -124,11 +125,11 @@ class Exciting:
         # Return the total energy of the calculation.
         return self.energy
 
-    def get_forces(self, atoms):
-        """Run exciting calc and get forces.
+    def get_forces(self, atoms: ase.Atoms):
+        """Run exciting calculation and get forces.
 
         Args:
-            atoms: Positions, cell and pbc of input.
+            atoms: Holds geometry, atomic information about calculation.
 
         Returns:
             forces: Total forces as a list on the structure.
@@ -138,14 +139,25 @@ class Exciting:
         # return forces.
         return self.forces.copy()
 
-    def get_stress(self, atoms):
+    def get_stress(self, atoms: ase.Atoms):
+        """Get the stress on the unit cell.
+        
+        This method has not been implemented.
+        TODO(dts): Talk to Alex and see if this has been implemented in exciting.
+        
+        Args:
+            atoms: Holds geometry, atomic information about calculation.
+
+        Raises:
+            PropertyNotImplementedError every call since this function needs to be implemented.
+        """
         raise PropertyNotImplementedError
 
-    def calculate(self, atoms):
+    def calculate(self, atoms: ase.Atoms):
         """Run exciting calculation.
         
         Args:
-            atoms: Contains atomic information.
+            atoms: Holds geometry, atomic information about calculation.
         """
         # Get positions of the ASE Atoms object atom positions.
         self.positions = atoms.get_positions().copy()
@@ -156,16 +168,22 @@ class Exciting:
         # Write input file.
         self.initialize(atoms)
 
-        from pathlib import Path
-        xmlfile = Path(self.dir) / 'input.xml'
-        assert xmlfile.is_file()
-        print(xmlfile.read_text())
-        argv = [self.excitingbinary, 'input.xml']
-        from subprocess import check_call
-        check_call(argv, cwd=self.dir)
+        #TODO(dts): This code portion needs a rewrite for readability.
 
-        assert (Path(self.dir) / 'INFO.OUT').is_file()
-        assert (Path(self.dir) / 'info.xml').exists()
+        xmlfile = pathlib.Path(self.dir) / 'input.xml'
+        # CHeck that the xml file exists in this location: self.dir/input.xml 
+        assert xmlfile.is_file()
+        # Read the input and print it to the console.
+        print(xmlfile.read_text())
+        # Use subprocess to call the exciting binary and tell it to use input.xml as a first argument.
+        argv = [self.excitingbinary, 'input.xml']
+        subprocess.check_call(argv, cwd=self.dir)
+        # Ensure that the calculation created output files INFO.OUT which is the
+        # the text based output of excicing and info.xml which is the 
+        assert (pathlib.Path(self.dir) / 'INFO.OUT').is_file()
+        assert (pathlib.Path(self.dir) / 'info.xml').exists()
+
+        # This was the previous code portion to call exciting.
 
         # Command line call to calculate exciting.
         # syscall = 'cd ' + self.dir + 's;' + self.exciting_binary + 's;'
@@ -175,8 +193,15 @@ class Exciting:
         # Read the results of the calculation.
         self.read()
 
-    def write(self, atoms):
-        """Write atomic info inputs to an xml."""
+    def write(self, atoms: ase.Atoms):
+        """Write atomic info inputs to an xml.
+        
+        Write input parameters into an xml file that will be used by the exciting binary
+        to run a calculation.
+
+        Args:
+            atoms: Holds geometry and atomic information of the unit cell of atoms.
+        """
         # Check if the directory where we want to save our file exists.
         # If not, create the directory.
         if not os.path.isdir(self.dir):
@@ -221,7 +246,6 @@ class Exciting:
         """Write dictionary k,v paris to XML DOM object.
 
         Args:
-
             pdict: Dictionary with k,v pairs that go into the xml like file.
             element: The XML object (XML DOM object) that we want to modify using dict k,v pairs.
         """
@@ -246,7 +270,7 @@ class Exciting:
                 print('cannot deal with', key, '=', value)
 
     def read(self):
-        """ Read total energy and forces from info.xml output."""
+        """ Read total energy and forces from the info.xml output file."""
         # Define where to find output file which is called
         # info.xml in exciing.
         output_file = self.dir + '/info.xml'
