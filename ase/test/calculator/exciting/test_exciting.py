@@ -6,6 +6,7 @@ import pytest
 from ase.build import bulk
 import ase.calculators.exciting as exciting
 
+
 @pytest.mark.calculator_lite
 @pytest.mark.calculator('exciting')
 def test_exciting_bulk(factory):
