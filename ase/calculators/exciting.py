@@ -52,7 +52,7 @@ class Exciting:
                 raise RuntimeError('No species path given and no EXCITINGROOT local var found')
         else:  # Try to see if the species path directory actually exists.
             try:
-                assert os.pathisdir(species_path)
+                assert os.path.isdir(species_path)
             except KeyError:
                 raise RuntimeError('Species path given: %s, does not exist as a directory' % species_path)
         self.species_path = species_path
