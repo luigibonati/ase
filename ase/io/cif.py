@@ -588,9 +588,10 @@ def read_cif(fileobj, index, store_tags=False, primitive_cell=False,
     cell.
 
     If *fractional_occupancies* is true, the resulting atoms object will be
-    tagged equipped with an array `occupancy`. Also, in case of mixed
-    occupancies, the atom's chemical symbol will be that of the most dominant
-    species.
+    tagged equipped with a dictionary `occupancy`. The keys of this dictionary
+    will be integers converted to strings.
+    Also, in case of mixed occupancies, the atom's chemical symbol will be
+    that of the most dominant species.
 
     String *reader* is used to select CIF reader. Value `ase` selects
     built-in CIF reader (default), while `pycodcif` selects CIF reader based
