@@ -488,7 +488,7 @@ class CIFBlock(collections.abc.Mapping):
                 # Compile an occupancies dictionary
                 occ_dict = {}
                 for i, sym in enumerate(atoms.symbols):
-                    occ_dict[i] = {sym: occupancies[i]}
+                    occ_dict[str(i)] = {sym: occupancies[i]}
                 atoms.info['occupancy'] = occ_dict
 
         return atoms
