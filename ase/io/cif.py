@@ -589,7 +589,9 @@ def read_cif(fileobj, index, store_tags=False, primitive_cell=False,
 
     If *fractional_occupancies* is true, the resulting atoms object will be
     tagged equipped with a dictionary `occupancy`. The keys of this dictionary
-    will be integers converted to strings.
+    will be integers converted to strings. The conversion to string is done
+    in order to avoid troubles with JSON encoding/decoding of the dictionaries
+    with non-string keys.
     Also, in case of mixed occupancies, the atom's chemical symbol will be
     that of the most dominant species.
 
