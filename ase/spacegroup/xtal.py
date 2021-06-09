@@ -44,6 +44,9 @@ def crystal(symbols=None, basis=None, occupancies=None, spacegroup=1, setting=1,
         Occupancies of the unique sites. Defaults to 1.0 and thus no mixed
         occupancies are considered if not explicitly asked for. If occupancies
         are given, the most dominant species will yield the atomic number.
+        The occupancies in the atoms.info['occupancy'] dictionary will have
+        integers keys converted to strings. The conversion is done in order
+        to avoid unexpected conversions when using the JSON serializer.
     spacegroup : int | string | Spacegroup instance
         Space group given either as its number in International Tables
         or as its Hermann-Mauguin symbol.
