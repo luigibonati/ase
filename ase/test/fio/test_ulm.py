@@ -35,8 +35,13 @@ class MyFile:
     def __fspath__(self):
         return 'hello'
 
+
 def test_open_anypathlike():
-    ulm.open(MyFile())
+    # File does not exist, but we still want to test that it is correctly
+    # converted into a (nonexistent) path
+    with pytest.raises(FileNotFoundError):
+        ulm.open(MyFile())
+
 
 def test_ulm(ulmfile):
     with ulm.open(ulmfile) as r:
