@@ -31,6 +31,13 @@ def ulmfile(tmp_path):
     return path
 
 
+class MyFile:
+    def __fspath__(self):
+        return 'hello'
+
+def test_open_anypathlike():
+    ulm.open(MyFile())
+
 def test_ulm(ulmfile):
     with ulm.open(ulmfile) as r:
         assert r.y == 9
