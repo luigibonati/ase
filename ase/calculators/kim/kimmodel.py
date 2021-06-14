@@ -310,7 +310,7 @@ class KIMModelCalculator(Calculator):
 
     def check_state(self, atoms, tol=1e-15):
         return compare_atoms(self.atoms, atoms, excluded_properties={'initial_charges',
-            'initial_magmoms'})
+                                                                     'initial_magmoms'})
 
     def assemble_padding_forces(self):
         """
@@ -336,7 +336,7 @@ class KIMModelCalculator(Calculator):
         total_forces = np.array(self.forces[: self.num_contributing_particles])
 
         if self.padding_image_of.size != 0:
-            pad_forces = self.forces[self.num_contributing_particles :]
+            pad_forces = self.forces[self.num_contributing_particles:]
             for f, org_index in zip(pad_forces, self.padding_image_of):
                 total_forces[org_index] += f
 

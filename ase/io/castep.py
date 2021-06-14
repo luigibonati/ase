@@ -955,7 +955,7 @@ def read_castep_phonon(fd, index=None, read_vib_data=False,
             N = int(line.split()[3])
         elif 'Number of branches' in line:
             Nb = int(line.split()[3])
-        elif 'Number of wavevectors'in line:
+        elif 'Number of wavevectors' in line:
             Nq = int(line.split()[3])
         elif 'Unit cell vectors (A)' in line:
             for ll in range(3):

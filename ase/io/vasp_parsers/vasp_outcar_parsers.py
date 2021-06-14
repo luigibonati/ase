@@ -163,24 +163,36 @@ class SpeciesTypes(SimpleVaspHeaderParser):
         # We count the number of times we found the line,
         # as we only want to parse every second,
         # due to repeated entries in the OUTCAR
-        self.species_count = 0
         super().__init__(*args, **kwargs)
 
     @property
     def species(self) -> List[str]:
+        """Internal storage of each found line.
+        Will contain the double counting.
+        Use the get_species() method to get the un-doubled list."""
         return self._species
+
+    def get_species(self) -> List[str]:
+        """The OUTCAR will contain two 'POTCAR:' entries per species.
+        This method only returns the first half,
+        effectively removing the double counting.
+        """
+        # Get the index of the first half
+        # In case we have an odd number, we round up (for testing purposes)
+        # Tests like to just add species 1-by-1
+        # Having an odd number should never happen in a real OUTCAR
+        # For even length lists, this is just equivalent to idx = len(self.species) // 2
+        idx = sum(divmod(len(self.species), 2))
+        # Make a copy
+        return list(self.species[:idx])
 
     def _make_returnval(self) -> _RESULT:
         """Construct the return value for the "parse" method"""
-        return {'species': self.species}
+        return {'species': self.get_species()}
 
     def parse(self, cursor: _CURSOR, lines: _CHUNK) -> _RESULT:
         line = lines[cursor].strip()
-        self.species_count += 1
-        if self.species_count % 2 == 0:
-            # the 'POTCAR:' line always appears twice,
-            # so only parse every second occurence
-            return self._make_returnval()
+
         parts = line.split()
         # Determine in what position we'd expect to find the symbol
         if '1/r potential' in line:

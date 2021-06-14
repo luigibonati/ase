@@ -25,16 +25,13 @@ def test_vibrations_example(testdir):
     n2 = Atoms('N2', [(0, 0, 0), (0, 0, 1.1)],
                calculator=EMT())
     BFGS(n2).run(fmax=0.01)
- 
+
     vib = Vibrations(n2)
     vib.run()
 
-    with io.StringIO() as f:
-        vib.summary(log=f)
-        f.seek(0)
+    with io.StringIO() as fd:
+        vib.summary(log=fd)
+        fd.seek(0)
 
-        summary = f.read()
+        summary = fd.read()
         assert len(summary.split()) == len(expected_summary.split())
-
-
-    

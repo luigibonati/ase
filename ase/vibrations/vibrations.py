@@ -421,14 +421,13 @@ Please remove them and recalculate or run \
             energies = self.get_energies(method=method, direction=direction)
 
         summary_lines = VibrationsData._tabulate_from_energies(energies)
+        log_text = '\n'.join(summary_lines) + '\n'
 
-        if log is not None:
-            for line in summary_lines:
-                print(line, file=log)
-
-        elif isinstance(log, str):
+        if isinstance(log, str):
             with paropen(log, 'a') as log_file:
-                log_file.write('\n'.join(summary_lines) + '\n')
+                log_file.write(log_text)
+        else:
+            log.write(log_text)
 
     def get_zero_point_energy(self, freq=None):
         if freq:
@@ -449,7 +448,7 @@ Please remove them and recalculate or run \
             return
 
         else:
-            n = n % len(self.get_energies())
+            n %= len(self.get_energies())
 
         with ase.io.Trajectory('%s.%d.traj' % (self.name, n), 'w') as traj:
             for image in (self.get_vibrations()

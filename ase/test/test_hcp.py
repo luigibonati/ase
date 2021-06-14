@@ -6,7 +6,6 @@ from ase.build import bulk
 from ase.calculators.emt import EMT
 
 
-
 class NDPoly:
     def __init__(self, ndims=1, order=3):
         """Multivariate polynomium.
@@ -52,15 +51,14 @@ def test_hcp(testdir):
     c0 = np.sqrt(8 / 3.0) * a0
     print('%.4f %.3f' % (a0, c0 / a0))
     for i in range(3):
-        traj = Trajectory('Ni.traj', 'w')
-        eps = 0.01
-        for a in a0 * np.linspace(1 - eps, 1 + eps, 4):
-            for c in c0 * np.linspace(1 - eps, 1 + eps, 4):
-                ni = bulk('Ni', 'hcp', a=a, covera=c / a)
-                ni.calc = EMT()
-                ni.get_potential_energy()
-                traj.write(ni)
-        traj.close()
+        with Trajectory('Ni.traj', 'w') as traj:
+            eps = 0.01
+            for a in a0 * np.linspace(1 - eps, 1 + eps, 4):
+                for c in c0 * np.linspace(1 - eps, 1 + eps, 4):
+                    ni = bulk('Ni', 'hcp', a=a, covera=c / a)
+                    ni.calc = EMT()
+                    ni.get_potential_energy()
+                    traj.write(ni)
 
         configs = read('Ni.traj', index=':')
         energies = [config.get_potential_energy() for config in configs]

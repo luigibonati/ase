@@ -516,8 +516,8 @@ def test_write_gaussian_calc():
 
     # Test case where we have the basis set in a separate file:
     basisfilename = 'basis.txt'
-    with open(basisfilename, 'w+') as f:
-        f.write(_basis_set_text)
+    with open(basisfilename, 'w+') as fd:
+        fd.write(_basis_set_text)
     calc = Gaussian(basisfile=basisfilename, output_type='p',
                     mult=0, charge=1, basis='gen')
     atoms.calc = calc

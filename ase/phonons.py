@@ -206,6 +206,9 @@ class Displacement:
 
     def clean(self):
         """Delete generated files."""
+        if world.rank != 0:
+            return 0
+
         name = Path(self.name)
 
         n = 0
@@ -802,11 +805,8 @@ class Phonons(Displacement):
             # Repeat and multiply by Bloch phase factor
             mode_Nav = np.vstack(N * [mode_av]) * phase_Na[:, np.newaxis]
 
-            traj = Trajectory('%s.mode.%d.traj' % (self.name, l), 'w')
-
-            for x in np.linspace(0, 2 * pi, nimages, endpoint=False):
-                atoms.set_positions((pos_Nav + np.exp(1.j * x) *
-                                     mode_Nav).real)
-                traj.write(atoms)
-
-            traj.close()
+            with Trajectory('%s.mode.%d.traj' % (self.name, l), 'w') as traj:
+                for x in np.linspace(0, 2 * pi, nimages, endpoint=False):
+                    atoms.set_positions((pos_Nav + np.exp(1.j * x) *
+                                         mode_Nav).real)
+                    traj.write(atoms)

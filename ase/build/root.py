@@ -121,7 +121,7 @@ def _root_surface_analysis(primitive_slab, root, eps=1e-8):
     if len(valid_roots) == 0:
         raise ValueError("Invalid root {} for cell {}".format(root, cell_vectors))
     int_roots = np.array([int(this_root) for this_root in roots
-                      if this_root.is_integer() and this_root <= root])
+                          if this_root.is_integer() and this_root <= root])
     return cell_points, cell_points[np.nonzero(roots == root)[0][0]], set(int_roots[1:])
 
 
@@ -178,14 +178,13 @@ def root_surface(primitive_slab, root, eps=1e-8):
 
     # Rotate cell back to original orientation
     standard_rotation = [[cos(-root_angle), -sin(-root_angle), 0],
-                         [sin(-root_angle), cos(-root_angle),  0],
-                         [0,                0,                 1]]
+                         [sin(-root_angle), cos(-root_angle), 0],
+                         [0, 0, 1]]
 
     new_cell = np.array([np.dot(x, standard_rotation) for x in atoms.cell])
-    new_positions = np.array([np.dot(x, standard_rotation) for x in atoms.positions])
+    new_positions = np.array([np.dot(x, standard_rotation)
+                              for x in atoms.positions])
 
     atoms.cell = new_cell
     atoms.positions = new_positions
-
     return atoms
-                                                                            

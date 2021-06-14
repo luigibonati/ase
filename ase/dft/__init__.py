@@ -5,6 +5,7 @@ from ase.dft.kpoints import monkhorst_pack
 
 __all__ = ['DOS', 'monkhorst_pack']
 
+
 def get_distribution_moment(x, y, order=0):
     """Return the moment of nth order of distribution.
 

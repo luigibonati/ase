@@ -87,7 +87,6 @@ def parse_singletag(lines: List[str], line: str) -> Tuple[str, CIFDataValue]:
     return key, convert_value(value)
 
 
-
 def parse_cif_loop_headers(lines: List[str]) -> Iterator[str]:
     header_pattern = r'\s*(_\S*)'
 
@@ -421,8 +420,8 @@ class CIFBlock(collections.abc.Mapping):
         coordtype, coords = self._get_site_coordinates()
 
         atoms = Atoms(symbols=symbols,
-                     cell=self.get_cell(),
-                     masses=self._get_masses())
+                      cell=self.get_cell(),
+                      masses=self._get_masses())
 
         if coordtype == 'scaled':
             atoms.set_scaled_positions(coords)

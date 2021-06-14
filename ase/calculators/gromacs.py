@@ -400,8 +400,8 @@ class Gromacs(FileIOCalculator):
             '< inputGenergy.txt',
             '> {}.{}.log 2>&1'.format(self.label, subcmd)])
         self._execute_gromacs(command)
-        with open(self.label + '.Energy.xvg') as f:
-            lastline = f.readlines()[-1]
+        with open(self.label + '.Energy.xvg') as fd:
+            lastline = fd.readlines()[-1]
             energy = float(lastline.split()[1])
         #We go for ASE units !
         #self.energy = energy * units.kJ / units.mol
@@ -418,8 +418,8 @@ class Gromacs(FileIOCalculator):
             '< inputGtraj.txt',
             '> {}.{}.log 2>&1'.format(self.label, subcmd)])
         self._execute_gromacs(command)
-        with open(self.label + '.Force.xvg', 'r') as f:
-            lastline = f.readlines()[-1]
+        with open(self.label + '.Force.xvg', 'r') as fd:
+            lastline = fd.readlines()[-1]
             forces = np.array([float(f) for f in lastline.split()[1:]])
         #We go for ASE units !gromacsForce.xvg
         #self.forces = np.array(forces)/ units.nm * units.kJ / units.mol

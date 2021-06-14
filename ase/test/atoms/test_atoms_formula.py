@@ -21,7 +21,6 @@ def test_atoms_formula():
     assert slab.get_chemical_formula(mode='hill', empirical=True) == 'C2HAl6'
     assert slab.get_chemical_formula(mode='metal', empirical=True) == 'Al6C2H'
 
-
     # check for warning if empirical formula is not available
     for mode in ('all', 'reduce'):
         with warnings.catch_warnings(record=True) as w:

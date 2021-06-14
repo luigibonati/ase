@@ -98,10 +98,10 @@ class DOS:
             self.dos_dict[key + atom_and_orbital] = np.ndarray(number_of_lines)
             self.dos_dict[key + '_cum_' + atom_and_orbital] = \
                 np.ndarray(number_of_lines)
-        f = open(filename, 'r')
+        fd = open(filename, 'r')
         if spin_polarization:
             for i in range(number_of_lines):
-                line = f.readline()
+                line = fd.readline()
                 self.dos_dict[key + '_energies_' + atom_and_orbital][i] = \
                     read_nth_to_last_value(line, 5)
                 self.dos_dict[key + atom_and_orbital + 'up'][i] = \
@@ -114,7 +114,7 @@ class DOS:
                     read_nth_to_last_value(line)
         elif add:
             for i in range(number_of_lines):
-                line = f.readline()
+                line = fd.readline()
                 self.dos_dict[key + '_energies_' + atom_and_orbital][i] = \
                     read_nth_to_last_value(line, 5)
                 self.dos_dict[key + atom_and_orbital][i] = \
@@ -125,14 +125,14 @@ class DOS:
                     float(read_nth_to_last_value(line))
         else:
             for i in range(number_of_lines):
-                line = f.readline()
+                line = fd.readline()
                 self.dos_dict[key + '_energies_' + atom_and_orbital][i] = \
                     read_nth_to_last_value(line, 3)
                 self.dos_dict[key + atom_and_orbital][i] = \
                     read_nth_to_last_value(line, 2)
                 self.dos_dict[key + '_cum_' + atom_and_orbital][i] = \
                     read_nth_to_last_value(line)
-        f.close()
+        fd.close()
 
     def subplot_dos(self, axis, density=True, cum=False, pdos=False,
                     atom_index=1, orbital='', spin='',
@@ -381,11 +381,11 @@ class DOS:
         pdos_code = '1\n'
         if pdos:
             pdos_code = '2\n'
-        with open(os.path.join(self.calc.directory, 'std_dos.in'), 'w') as f:
-            f.write(method_code)
+        with open(os.path.join(self.calc.directory, 'std_dos.in'), 'w') as fd:
+            fd.write(method_code)
             if method == 'Gaussian':
-                f.write(str(gaussian_width) + '\n')
-            f.write(pdos_code)
+                fd.write(str(gaussian_width) + '\n')
+            fd.write(pdos_code)
             if pdos:
                 atoms_code = ''
                 if atom_index_list is None:
@@ -395,8 +395,8 @@ class DOS:
                     for i in atom_index_list:
                         atoms_code += str(i) + ' '
                 atoms_code += '\n'
-                f.write(atoms_code)
-            f.close()
+                fd.write(atoms_code)
+            fd.close()
         executable_name = 'DosMain'
         input_files = (self.calc.label + '.Dos.val', self.calc.label +
                        '.Dos.vec', os.path.join(self.calc.directory,
