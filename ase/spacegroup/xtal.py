@@ -44,6 +44,9 @@ def crystal(symbols=None, basis=None, occupancies=None, spacegroup=1, setting=1,
         Occupancies of the unique sites. Defaults to 1.0 and thus no mixed
         occupancies are considered if not explicitly asked for. If occupancies
         are given, the most dominant species will yield the atomic number.
+        The occupancies in the atoms.info['occupancy'] dictionary will have
+        integers keys converted to strings. The conversion is done in order
+        to avoid unexpected conversions when using the JSON serializer.
     spacegroup : int | string | Spacegroup instance
         Space group given either as its number in International Tables
         or as its Hermann-Mauguin symbol.
@@ -138,7 +141,7 @@ def crystal(symbols=None, basis=None, occupancies=None, spacegroup=1, setting=1,
                 else:
                     occ.update({symbols[index_dist]: occupancies[index_dist]})
             
-            occupancies_dict[index] = occ.copy()
+            occupancies_dict[str(index)] = occ.copy()
 
     sites, kinds = sg.equivalent_sites(basis_coords,
                                        onduplicates=onduplicates,
@@ -156,7 +159,7 @@ def crystal(symbols=None, basis=None, occupancies=None, spacegroup=1, setting=1,
         symbols = [symbols[i] for i in kinds]
     else:
         # make sure that we put the dominant species there
-        symbols = [sorted(occupancies_dict[i].items(), key=lambda x: x[1])[-1][0] for i in kinds]
+        symbols = [sorted(occupancies_dict[str(i)].items(), key=lambda x: x[1])[-1][0] for i in kinds]
 
     if cell is None:
         cell = cellpar_to_cell(cellpar, ab_normal, a_direction)
