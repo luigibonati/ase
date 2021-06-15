@@ -183,14 +183,13 @@ class BFGSLineSearch(Optimizer):
     def replay_trajectory(self, traj):
         """Initialize hessian from old trajectory."""
         self.replay = True
+        from ase.utils import IOContext
 
-        closelater = None
+        with IOContext() as files:
+            if isinstance(traj, str):
+                from ase.io.trajectory import Trajectory
+                traj = files.closelater(Trajectory(traj, mode='r'))
 
-        if isinstance(traj, str):
-            from ase.io.trajectory import Trajectory
-            traj = closelater = Trajectory(traj, 'r')
-
-        try:
             r0 = None
             g0 = None
             for i in range(0, len(traj) - 1):
@@ -202,9 +201,6 @@ class BFGSLineSearch(Optimizer):
                 g0 = g.copy()
             self.r0 = r0
             self.g0 = g0
-        finally:
-            if closelater is not None:
-                closelater.close()
 
     def log(self, forces=None):
         if self.logfile is None:

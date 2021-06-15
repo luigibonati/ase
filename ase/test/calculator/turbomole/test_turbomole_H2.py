@@ -31,8 +31,8 @@ def test_turbomole_H2_uhf_singlet(atoms):
     # check that it performed a DFT calculation (i.e. basic inputs were most
     # likely understood, cf. issue #735)
     dft_in_output = False
-    with open("ASE.TM.dscf.out") as f:
-        for line in f:
+    with open("ASE.TM.dscf.out") as fd:
+        for line in fd:
             if "density functional" in line:
                 dft_in_output = True
     assert dft_in_output

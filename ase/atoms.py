@@ -6,7 +6,6 @@
 This module defines the central object in the ASE package: the Atoms
 object.
 """
-
 import copy
 import numbers
 from math import cos, sin, pi
@@ -941,9 +940,11 @@ class Atoms:
             from ase.constraints import dict2constraint
             constraints = [dict2constraint(d) for d in constraints]
 
+        info = dct.pop('info', None)
+
         atoms = cls(constraint=constraints,
                     celldisp=dct.pop('celldisp', None),
-                    info=dct.pop('info', None), **kw)
+                    info=info, **kw)
         natoms = len(atoms)
 
         # Some arrays are named differently from the atoms __init__ keywords.
@@ -1553,7 +1554,6 @@ class Atoms:
             pbc = self.pbc
 
         return get_dihedrals(v0, v1, v2, cell=cell, pbc=pbc)
-
 
     def _masked_rotate(self, center, axis, diff, mask):
         # do rotation of subgroup by copying it to temporary atoms object

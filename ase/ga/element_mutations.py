@@ -430,7 +430,7 @@ class MoveRightMutation(ElementMutation):
 
     def __init__(self, element_pool, max_diff_elements=None,
                  min_percentage_elements=None, verbose=False, num_muts=1,
-                rng=np.random):
+                 rng=np.random):
         ElementMutation.__init__(self, element_pool, max_diff_elements,
                                  min_percentage_elements, verbose,
                                  num_muts=num_muts, rng=rng)

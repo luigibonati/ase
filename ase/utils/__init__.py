@@ -1,6 +1,7 @@
 import errno
 import functools
 import os
+import io
 import pickle
 import sys
 import time
@@ -8,7 +9,7 @@ import string
 import warnings
 from importlib import import_module
 from math import sin, cos, radians, atan2, degrees
-from contextlib import contextmanager
+from contextlib import contextmanager, ExitStack
 from math import gcd
 from pathlib import PurePath, Path
 import re
@@ -128,6 +129,9 @@ class DevNull:
 devnull = DevNull()
 
 
+@deprecated('convert_string_to_fd does not facilitate proper resource '
+            'management.  '
+            'Please use e.g. ase.utils.IOContext class instead.')
 def convert_string_to_fd(name, world=None):
     """Create a file-descriptor for text output.
 
@@ -205,6 +209,13 @@ def _opencew(filename, world=None):
         for fd in closelater:
             fd.close()
         raise
+
+
+def opencew_text(*args, **kwargs):
+    fd = opencew(*args, **kwargs)
+    if fd is None:
+        return None
+    return io.TextIOWrapper(fd)
 
 
 class Lock:
@@ -292,8 +303,8 @@ def search_current_git_hash(arg, world=None):
     HEAD_file = os.path.join(git_dpath, 'HEAD')
     if not os.path.isfile(HEAD_file):
         return None
-    with open(HEAD_file, 'r') as f:
-        line = f.readline().strip()
+    with open(HEAD_file, 'r') as fd:
+        line = fd.readline().strip()
     if line.startswith('ref: '):
         ref = line[5:]
         ref_file = os.path.join(git_dpath, ref)
@@ -302,8 +313,8 @@ def search_current_git_hash(arg, world=None):
         ref_file = HEAD_file
     if not os.path.isfile(ref_file):
         return None
-    with open(ref_file, 'r') as f:
-        line = f.readline().strip()
+    with open(ref_file, 'r') as fd:
+        line = fd.readline().strip()
     if all(c in string.hexdigits for c in line):
         return line
     return None
@@ -481,7 +492,6 @@ class iofunction:
         return iofunc
 
 
-
 def writer(func):
     return iofunction('w')(func)
 
@@ -597,3 +607,37 @@ def warn_legacy(feature_name):
 def lazyproperty(meth):
     """Decorator like lazymethod, but making item available as a property."""
     return property(lazymethod(meth))
+
+
+class IOContext:
+    @lazyproperty
+    def _exitstack(self):
+        return ExitStack()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
+    def closelater(self, fd):
+        return self._exitstack.enter_context(fd)
+
+    def close(self):
+        self._exitstack.close()
+
+    def openfile(self, file, comm=None, mode='w'):
+        from ase.parallel import world
+        if comm is None:
+            comm = world
+
+        if hasattr(file, 'close'):
+            return file  # File already opened, not for us to close.
+
+        if file is None or comm.rank != 0:
+            return self.closelater(open(os.devnull, mode=mode))
+
+        if file == '-':
+            return sys.stdout
+
+        return self.closelater(open(file, mode=mode))

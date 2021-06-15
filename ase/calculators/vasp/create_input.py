@@ -131,6 +131,7 @@ float_keys = [
     'auger_temp',  # Temperature for Auger calculation
     'dq',  # Finite difference displacement magnitude (NMR)
     'avgap',  # Average gap (Model GW)
+    'ch_sigma',  # Broadening of the core electron absorption spectrum
     'bpotim',  # Undocumented Bond-Boost parameter (GH patches)
     'qrr',  # Undocumented Bond-Boost parameter (GH patches)
     'prr',  # Undocumented Bond-Boost parameter (GH patches)
@@ -141,9 +142,9 @@ float_keys = [
     'efirst',  # Energy of first NEB image (GH patches)
     'elast',  # Energy of final NEB image (GH patches)
     'fmagval',  # Force magnitude convergence criterion (GH patches)
-    'cmbj',  # Undocumented MetaGGA parameter
-    'cmbja',  # Undocumented MetaGGA parameter
-    'cmbjb',  # Undocumented MetaGGA parameter
+    'cmbj',  # Modified Becke-Johnson MetaGGA c-parameter
+    'cmbja',  # Modified Becke-Johnson MetaGGA alpha-parameter
+    'cmbjb',  # Modified Becke-Johnson MetaGGA beta-parameter
     'sigma_nc_k',  # Width of ion gaussians (VASPsol)
     'sigma_k',  # Width of dielectric cavidty (VASPsol)
     'nc_k',  # Cavity turn-on density (VASPsol)
@@ -414,6 +415,7 @@ int_keys = [
     'nkoffopt',  # K-point "counter offset" for Optics
     'nbvalopt',  # Number of valence bands to write in OPTICS file
     'nbconopt',  # Number of conduction bands to write in OPTICS file
+    'ch_nedos',  # Number dielectric function calculation grid points for XAS
     'plevel',  # No timings for routines with "level" higher than this
     'qnl',  # Lanczos matrix size (instanton)
 ]
@@ -531,6 +533,7 @@ bool_keys = [
     'oddonlygw',  # Avoid gamma point in response function calc.
     'evenonlygw',  # Avoid even points in response function calc.
     'lspectralgw',  # More accurate self-energy calculation
+    'ch_lspec',  # Calculate matrix elements btw. core and conduction states
     'fletcher_reeves',  # Undocumented dimer parameter
     'lidm_selective',  # Undocumented dimer parameter
     'lblueout',  # Write output of blue-moon algorithm
@@ -801,6 +804,14 @@ class GenerateVaspInput:
             'metagga': 'SCAN',
             'luse_vdw': True,
             'bparam': 15.7
+        },
+        'mbj': {
+            # Modified Becke-Johnson
+            'metagga': 'MBJ',
+        },
+        'tb09': {
+            # Alias for MBJ
+            'metagga': 'MBJ',
         },
         # vdW-DFs
         'vdw-df': {
@@ -1695,7 +1706,7 @@ class GenerateVaspInput:
                         self.bool_params[key] = False
 
                 elif key in list_bool_keys:
-                    self.list_bool_keys[key] = [
+                    self.list_bool_params[key] = [
                         _from_vasp_bool(x)
                         for x in _args_without_comment(data[2:])
                     ]
@@ -1812,8 +1823,8 @@ class GenerateVaspInput:
 
         # Search for key 'LEXCH' in POTCAR
         xc_flag = None
-        with open(filename, 'r') as f:
-            for line in f:
+        with open(filename, 'r') as fd:
+            for line in fd:
                 key = line.split()[0].upper()
                 if key == 'LEXCH':
                     xc_flag = line.split()[-1].upper()

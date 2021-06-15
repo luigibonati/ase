@@ -10,6 +10,7 @@ from ase.calculators.turbomole import Turbomole
 from ase.constraints import FixInternals
 from ase.optimize import BFGS
 
+
 def test_turbomole_qmmm():
     """Test the Turbomole calculator in simple QMMM and
     explicit interaction QMMM simulations."""
@@ -58,9 +59,10 @@ def test_turbomole_qmmm():
             bonds=[(r, (0, 2)), (r, (1, 2)),
                    (r, (3, 5)), (r, (4, 5))],
             angles_deg=[(angleHOH, (0, 2, 1)), (angleHOH, (3, 5, 4))]))
-        opt = BFGS(dimer,
-                   trajectory=calc.name + '.traj', logfile=calc.name + 'd.log')
-        opt.run(0.01)
+        with BFGS(dimer,
+                  trajectory=calc.name + '.traj',
+                  logfile=calc.name + 'd.log') as opt:
+            opt.run(0.01)
 
         e0 = dimer.get_potential_energy()
         d0 = dimer.get_distance(2, 5)

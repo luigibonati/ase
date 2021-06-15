@@ -11,7 +11,7 @@ from ase.constraints import UnitCellFilter, ExpCellFilter
 @pytest.mark.slow
 def test_precon():
     cu0 = bulk("Cu") * (2, 2, 2)
-    lj = LennardJones(sigma=cu0.get_distance(0,1))
+    lj = LennardJones(sigma=cu0.get_distance(0, 1))
 
     cu = cu0.copy()
     cu.set_cell(1.2*cu.get_cell())

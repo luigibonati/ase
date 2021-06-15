@@ -5,6 +5,7 @@ import ase.lattice.compounds
 import ase.data
 import ase.io
 
+
 def test_eon_masses():
     # Error tolerance.
     TOL = 1e-8
@@ -14,7 +15,6 @@ def test_eon_masses():
 
     m_Cs = ase.data.atomic_masses[ase.data.atomic_numbers['Cs']]
     m_Cl = ase.data.atomic_masses[ase.data.atomic_numbers['Cl']]
-
 
     con_file = 'pos.con'
     # Write and read the .con file.

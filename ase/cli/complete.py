@@ -24,8 +24,7 @@ def match(word, *suffixes):
 # Beginning of computer generated data:
 commands = {
     'band-structure':
-        ['-q', '--quiet', '-k', '--path', '-n', '--points', '-o',
-         '--output', '-r', '--range'],
+        ['-o', '--output', '-r', '--range'],
     'build':
         ['-M', '--magnetic-moment', '--modify', '-V', '--vacuum', '-v',
          '--vacuum0', '--unit-cell', '--bond-length', '-x',
@@ -79,9 +78,7 @@ commands = {
     'nomad-upload':
         ['-t', '--token', '-n', '--no-save-token', '-0', '--dry-run'],
     'reciprocal':
-        ['-v', '--verbose', '-p', '--path', '-d', '--dimension',
-         '--no-vectors', '-k', '--k-points', '-i',
-         '--ibz-k-points'],
+        [],
     'run':
         ['-p', '--parameters', '-t', '--tag', '--properties', '-f',
          '--maximum-force', '--constrain-tags', '-s',

@@ -1,7 +1,6 @@
 def test_geometry():
     """Test the ase.geometry module and ase.build.cut() function."""
 
-
     import numpy as np
 
     from ase.build import cut, bulk, fcc111

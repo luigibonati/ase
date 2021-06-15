@@ -669,7 +669,6 @@ class ASEGUIWindow(MainWindow):
                                 outline=outline,
                                 width=width)
 
-
     def line(self, bbox, width=1):
         self.canvas.create_line(*tuple(int(x) for x in bbox), width=width)
 

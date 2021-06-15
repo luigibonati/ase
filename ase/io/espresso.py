@@ -13,6 +13,7 @@ ESPRESSO.
 
 import os
 import operator as op
+import re
 import warnings
 from collections import OrderedDict
 from os import path
@@ -424,12 +425,14 @@ def parse_pwo_start(lines, index=0):
                 [float(x) for x in lines[idx + 2].split()[3:6]],
                 [float(x) for x in lines[idx + 3].split()[3:6]]])
         elif 'positions (alat units)' in line:
-            info['symbols'] = [
-                label_to_symbol(at_line.split()[1])
-                for at_line in lines[idx + 1:idx + 1 + info['nat']]]
-            info['positions'] = [
-                [float(x) * info['celldm(1)'] for x in at_line.split()[6:9]]
-                for at_line in lines[idx + 1:idx + 1 + info['nat']]]
+            info['symbols'], info['positions'] = [], []
+
+            for at_line in lines[idx + 1:idx + 1 + info['nat']]:
+                sym, x, y, z = parse_position_line(at_line)
+                info['symbols'].append(label_to_symbol(sym))
+                info['positions'].append([x * info['celldm(1)'],
+                                          y * info['celldm(1)'],
+                                          z * info['celldm(1)']])
             # This should be the end of interesting info.
             # Break here to avoid dealing with large lists of kpoints.
             # Will need to be extended for DFTCalculator info.
@@ -441,6 +444,38 @@ def parse_pwo_start(lines, index=0):
                           cell=info['cell'], pbc=True)
 
     return info
+
+
+def parse_position_line(line):
+    """Parse a single line from a pw.x output file.
+
+    The line must contain information about the atomic symbol and the position,
+    e.g.
+
+    995           Sb  tau( 995) = (   1.4212023   0.7037863   0.1242640  )
+
+    Parameters
+    ----------
+    line : str
+        Line to be parsed.
+
+    Returns
+    -------
+    sym : str
+        Atomic symbol.
+    x : float
+        x-position.
+    y : float
+        y-position.
+    z : float
+        z-position.
+    """
+    pat = re.compile(r'\s*\d+\s*(\S+)\s*tau\(\s*\d+\)\s*='
+                     r'\s*\(\s*(\S+)\s+(\S+)\s+(\S+)\s*\)')
+    match = pat.match(line)
+    assert match is not None
+    sym, x, y, z = match.group(1, 2, 3, 4)
+    return sym, float(x), float(y), float(z)
 
 
 @iofunction('rU')

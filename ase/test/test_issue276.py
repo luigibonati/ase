@@ -7,7 +7,7 @@ from ase.calculators.emt import EMT
 from ase.build import bulk
 
 
-def test_issue276():
+def test_issue276(testdir):
     at = bulk("Cu")
     at.rattle()
     at.calc = EMT()

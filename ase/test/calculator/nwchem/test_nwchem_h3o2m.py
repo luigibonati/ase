@@ -55,21 +55,20 @@ def test_h3o2m(factory):
         image.set_constraint(constraint)
 
     # Relax initial and final states:
-    if 1:
-        dyn1 = QuasiNewton(images[0])
+    with QuasiNewton(images[0]) as dyn1:
         dyn1.run(fmax=0.10)
-        dyn2 = QuasiNewton(images[-1])
+    with QuasiNewton(images[-1]) as dyn2:
         dyn2.run(fmax=0.10)
 
     # Interpolate positions between initial and final states:
     neb.interpolate()
 
-    if 1:
-        for image in images:
-            print(image.get_distance(1, 2), image.get_potential_energy())
+    for image in images:
+        print(image.get_distance(1, 2), image.get_potential_energy())
 
-    dyn = BFGS(neb)
-    dyn.run(fmax=0.10)  # use better basis (e.g. aug-cc-pvdz) for NEB to converge
+    with BFGS(neb) as dyn:
+        # use better basis (e.g. aug-cc-pvdz) for NEB to converge
+        dyn.run(fmax=0.10)
 
     for image in images:
         print(image.get_distance(1, 2), image.get_potential_energy())

@@ -42,8 +42,8 @@ def test_siesta(siesta_factory):
     atoms = h.copy()
     atoms.calc = siesta
     siesta.write_input(atoms, properties=['energy'])
-    with open('test_label.fdf', 'r') as f:
-        lines = f.readlines()
+    with open('test_label.fdf', 'r') as fd:
+        lines = fd.readlines()
 
     assert 'MeshCutoff\t3000\teV\n' in lines
     assert 'DM.Tolerance\t0.001\n' in lines
@@ -54,8 +54,8 @@ def test_siesta(siesta_factory):
         {'DM.Tolerance': 1e-2,
          'ON.eta': (2, 'Ry')})
     siesta.write_input(atoms, properties=['energy'])
-    with open('test_label.fdf', 'r') as f:
-        lines = f.readlines()
+    with open('test_label.fdf', 'r') as fd:
+        lines = fd.readlines()
     assert 'MeshCutoff\t3000\teV\n' in lines
     assert 'DM.Tolerance\t0.01\n' in lines
     assert 'ON.eta\t2\tRy\n' in lines
@@ -75,8 +75,8 @@ def test_siesta(siesta_factory):
     assert all(numbers == np.array([1, 2, 2, 3, 2]))
     siesta = siesta_factory.calc(label='test_label', species=species)
     siesta.write_input(atoms, properties=['energy'])
-    with open('test_label.fdf', 'r') as f:
-        lines = f.readlines()
+    with open('test_label.fdf', 'r') as fd:
+        lines = fd.readlines()
     lines = [line.split() for line in lines]
     assert ['1', '6', 'C.lda.1'] in lines
     assert ['2', '1', 'H.lda.2'] in lines
@@ -97,8 +97,8 @@ def test_siesta(siesta_factory):
     species = Species(symbol='C', basis_set=basis_set)
     siesta = siesta_factory.calc(label='test_label', species=[species])
     siesta.write_input(atoms, properties=['energy'])
-    with open('test_label.fdf', 'r') as f:
-        lines = f.readlines()
+    with open('test_label.fdf', 'r') as fd:
+        lines = fd.readlines()
     lines = [line.split() for line in lines]
     assert ['%block', 'PAO.Basis'] in lines
     assert ['%endblock', 'PAO.Basis'] in lines

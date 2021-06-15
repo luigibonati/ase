@@ -130,8 +130,8 @@ def lammpsdata_file_extracted_sections(lammpsdata):
     StringIO object containing the file contents, or a file object
     """
     if isinstance(lammpsdata, str) or isinstance(lammpsdata, pathlib.Path):
-        with open(lammpsdata) as f:
-            raw_datafile_contents = f.read()
+        with open(lammpsdata) as fd:
+            raw_datafile_contents = fd.read()
 
     elif isinstance(lammpsdata, io.StringIO):
         raw_datafile_contents = lammpsdata.getvalue()

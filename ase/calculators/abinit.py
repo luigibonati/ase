@@ -71,7 +71,6 @@ class Abinit(FileIOCalculator):
         FileIOCalculator.__init__(self, restart, ignore_bad_restart_file,
                                   label, atoms, **kwargs)
 
-
     def write_input(self, atoms, properties, system_changes):
         """Write input parameters to files-file."""
         io.write_all_inputs(

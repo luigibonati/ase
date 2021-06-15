@@ -101,7 +101,7 @@ def write_struct(fd, atoms2=None, rmt=None, lattice='P', zza=None):
     if rmt is None:
         rmt = [2.0] * nat
         fd.write(lattice +
-                '   LATTICE,NONEQUIV.ATOMS:%3i\nMODE OF CALC=RELA\n' % nat)
+                 '   LATTICE,NONEQUIV.ATOMS:%3i\nMODE OF CALC=RELA\n' % nat)
     cell = atoms.get_cell()
     metT = np.dot(cell, np.transpose(cell))
     cell2 = cellconst(metT)
@@ -124,7 +124,7 @@ def write_struct(fd, atoms2=None, rmt=None, lattice='P', zza=None):
         else:
             ro = 0.0001
         fd.write('%-10s NPT=%5i  R0=%9.8f RMT=%10.4f   Z:%10.5f\n' %
-                (atoms.get_chemical_symbols()[ii], 781, ro, rmt[ii], zz))
+                 (atoms.get_chemical_symbols()[ii], 781, ro, rmt[ii], zz))
         fd.write('LOCAL ROT MATRIX:    %9.7f %9.7f %9.7f\n' % (1.0, 0.0, 0.0))
         fd.write('                     %9.7f %9.7f %9.7f\n' % (0.0, 1.0, 0.0))
         fd.write('                     %9.7f %9.7f %9.7f\n' % (0.0, 0.0, 1.0))

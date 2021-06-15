@@ -19,6 +19,20 @@ def test_attach_molecules():
     assert dmin == pytest.approx(distance, 1e-8)
 
 
+def test_pbc():
+    """Attach two molecules and check attachment considers pbc"""
+    m1 = molecule('C6H6')
+    m1.cell = (20, 1, 1)
+    m1.translate((16, 0, 0))
+    m1.pbc = (1, 0, 0)
+    m2 = molecule('NH3')
+    
+    distance = 2.
+    m12 = attach(m1, m2, distance)
+    for atom in m12[-4:]:
+        assert atom.position[0] < 2
+
+
 def test_attach_to_surface():
     """Attach a molecule to a surafce at a given distance"""
     slab = fcc111('Al', size=(3, 2, 2), vacuum=10.0)
@@ -26,7 +40,7 @@ def test_attach_to_surface():
     
     distance = 3.
     struct = attach(slab, mol, distance, (0, 0, 1))
-    dmin = np.linalg.norm(struct[10].position - struct[15].position)
+    dmin = np.linalg.norm(struct[6].position - struct[15].position)
     assert dmin == pytest.approx(distance, 1e-8)
    
 

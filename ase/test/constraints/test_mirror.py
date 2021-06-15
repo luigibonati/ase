@@ -5,7 +5,6 @@ def test_mirror():
     from ase.optimize import FIRE
     from ase.calculators.emt import EMT
 
-
     atoms = molecule('cyclobutene')
     dist = atoms.get_distance(0, 1)
     con1 = MirrorForce(2, 3, max_dist=5., fmax=0.05)

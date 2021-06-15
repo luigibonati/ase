@@ -26,8 +26,7 @@ def test_analysis():
         l2 = sum([len(x) for x in ana.unique_dihedrals[imi]])
         assert l1 == l2 * 2
 
-    assert len(ana.get_angles('C','C','H', unique=False)[0]) == len(ana.get_angles('C','C','H', unique=True)[0])*2
-
+    assert len(ana.get_angles('C', 'C', 'H', unique=False)[0]) == len(ana.get_angles('C', 'C', 'H', unique=True)[0])*2
 
     csixty = molecule('C60')
     mol = molecule('C7NH5')
@@ -47,7 +46,5 @@ def test_analysis():
         l2 = sum([len(x) for x in ana.unique_dihedrals[imI]])
         assert l1 == l2 * 2
 
-    assert len(ana2.get_angles('C','C','H', unique=False)[0]) == len(ana2.get_angles('C','C','H', unique=True)[0]) * 2
-    assert len(ana2.get_dihedrals('H','C','C','H',unique=False)[0]) == len(ana2.get_dihedrals('H','C','C','H',unique=True)[0]) * 2
-
-
+    assert len(ana2.get_angles('C', 'C', 'H', unique=False)[0]) == len(ana2.get_angles('C', 'C', 'H', unique=True)[0]) * 2
+    assert len(ana2.get_dihedrals('H', 'C', 'C', 'H', unique=False)[0]) == len(ana2.get_dihedrals('H', 'C', 'C', 'H', unique=True)[0]) * 2
