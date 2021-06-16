@@ -114,6 +114,7 @@ class NeighborList:
 
         return need_neigh_update
 
+
 class ASENeighborList(NeighborList):
     def __init__(
         self,
