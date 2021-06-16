@@ -1529,6 +1529,10 @@ def kspacing_to_grid(atoms, spacing, calculated_spacing=None):
                    int(r_y / spacing) + 1,
                    int(r_z / spacing) + 1]
 
+    for i, _ in enumerate(kpoint_grid):
+        if not atoms.pbc[i]:
+            kpoint_grid[i] = 1
+
     if calculated_spacing is not None:
         calculated_spacing[:] = [r_x / kpoint_grid[0],
                                  r_y / kpoint_grid[1],
