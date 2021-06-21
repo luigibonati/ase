@@ -118,6 +118,7 @@ class Formula:
                               for symb, n in count1.items()):
             count2[chr(c)] = n
             count3[symb] = n
+            assert c <= ord('Z')
             c += 1
         return self.from_dict(count2), self.from_dict(count3), N
 
@@ -129,6 +130,9 @@ class Formula:
         * ``'hill'``: alphabetically ordered with C and H first
         * ``'metal'``: alphabetically ordered with metals first
         * ``'abc'``: count ordered first then alphabetically ordered
+        * ``'anonymous'``: count ordered first then alphabetically ordered,
+          and finally anonymized by replacing real chemical symbols with
+          A, B, C, ...
         * ``'reduce'``: Reduce and keep order (ABBBC -> AB3C)
         * ``'latex'``: LaTeX representation
         * ``'html'``: HTML representation
@@ -150,7 +154,7 @@ class Formula:
         Example
         -------
         >>> f = Formula('OH2')
-        >>> '{f}, {f:hill}, {f:latex}'.format(f=f)
+        >>> f'{f}, {f:hill}, {f:latex}, {f:anonymous}'
         'OH2, H2O, OH$_{2}$'
         """
 
@@ -173,6 +177,10 @@ class Formula:
 
         if fmt == 'abc':
             _, f, N = self.stoichiometry()
+            return dict2str({symb: n * N for symb, n in f._count.items()})
+
+        if fmt == 'anonymous':
+            f, _, N = self.stoichiometry()
             return dict2str({symb: n * N for symb, n in f._count.items()})
 
         if fmt == 'reduce':
