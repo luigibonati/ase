@@ -155,7 +155,7 @@ class Formula:
         -------
         >>> f = Formula('OH2')
         >>> f'{f}, {f:hill}, {f:latex}, {f:anonymous}'
-        'OH2, H2O, OH$_{2}$'
+        'OH2, H2O, OH$_{2}$, AB2'
         """
 
         if fmt == 'hill':
