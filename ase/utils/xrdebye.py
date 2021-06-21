@@ -9,7 +9,7 @@ X-ray wavelength dict.
 """
 
 import warnings
-from math import exp, pi, sin, sqrt, cos, acos
+from math import exp, pi, sqrt, cos, acos
 
 import numpy as np
 
@@ -75,6 +75,53 @@ def get_waasmaier(symbol, s):
     return 0
 
 
+class XRDData:
+    mode = 'XRD'
+    xvalues_name = '2theta'
+
+    def __init__(self, twotheta, intensities):
+        self.twotheta = twotheta
+        self.intensities = intensities
+
+    @classmethod
+    def calculate(cls, xrd, twotheta):
+        if twotheta is None:
+            twotheta = np.linspace(15, 55, 100)
+        else:
+            twotheta = np.asarray(twotheta)
+
+        svalues = 2 * np.sin(twotheta * pi / 180 / 2.0) / xrd.wavelength
+        result = [xrd.get(s) for s in svalues]
+        return cls(twotheta, np.array(result))
+
+    def xvalues(self):
+        return self.twotheta.copy()
+
+
+class SAXSData:
+    mode = 'SAXS'
+    xvalues_name = 'q(1/Å)'
+
+    def __init__(self, qvalues, intensities):
+        self.qvalues = qvalues
+        self.intensities = intensities
+
+    @classmethod
+    def calculate(cls, xrd, qvalues):
+        if qvalues is None:
+            qvalues = np.logspace(-3, -0.3, 100)
+        else:
+            qvalues = np.asarray(qvalues)
+
+        result = []
+        for q in qvalues:
+            s = q / (2 * pi)
+            result.append(xrd.get(s))
+        return cls(qvalues, result)
+
+    def xvalues(self):
+        return self.qvalues.copy()
+
 
 class XrDebye:
     """
@@ -112,18 +159,16 @@ class XrDebye:
         warn: boolean
             flag to show warning if atomic factor can't be calculated
         """
+        # XXX deprecate warn
+
         self.wavelength = wavelength
-        self.damping = damping
-        self.mode = ''
         self.method = method
         self.alpha = alpha
-        self.warn = warn
 
-        self.twotheta_list = []
-        self.q_list = []
-        self.intensity_list = []
-
+        self.damping = damping
         self.atoms = atoms
+
+        self._xrddata = None
         # TODO: setup atomic form factors if method != 'Iwasa'
 
     def set_damping(self, damping):
@@ -190,7 +235,7 @@ class XrDebye:
         x: float array
             points where intensity will be calculated.
             XRD - 2theta values, in degrees;
-            SAXS - q values in 1/A
+            SAXS - q values in 1/Å
             (`q = 2 \pi \cdot s = 4 \pi \sin( \theta) / \lambda`).
             If ``x`` is ``None`` then default values will be used.
 
@@ -201,38 +246,29 @@ class XrDebye:
         Returns:
             list of intensities calculated for values given in ``x``.
         """
-        self.mode = mode.upper()
-        assert(mode in ['XRD', 'SAXS'])
+        assert mode in ['XRD', 'SAXS']
 
-        result = []
+        # result = []
+
         if mode == 'XRD':
-            if x is None:
-                self.twotheta_list = np.linspace(15, 55, 100)
-            else:
-                self.twotheta_list = x
-            self.q_list = []
-            if verbose:
-                print('#2theta\tIntensity')
-            for twotheta in self.twotheta_list:
-                s = 2 * sin(twotheta * pi / 180 / 2.0) / self.wavelength
-                result.append(self.get(s))
-                if verbose:
-                    print('%.3f\t%f' % (twotheta, result[-1]))
-        elif mode == 'SAXS':
-            if x is None:
-                self.twotheta_list = np.logspace(-3, -0.3, 100)
-            else:
-                self.q_list = x
-            self.twotheta_list = []
-            if verbose:
-                print('#q\tIntensity')
-            for q in self.q_list:
-                s = q / (2 * pi)
-                result.append(self.get(s))
-                if verbose:
-                    print('%.4f\t%f' % (q, result[-1]))
-        self.intensity_list = np.array(result)
-        return self.intensity_list
+            cls = XRDData
+        else:
+            assert mode == 'SAXS'
+            cls = SAXSData
+        self._xrddata = cls.calculate(self, x)
+        return self._xrddata.intensities
+
+        #if mode == 'XRD':
+        #elif mode == 'SAXS':
+        #    return SAXSData.calculate(self)
+        #intensity_list = np.array(result)
+        #xrd = XRDebyeData(mode, twotheta_list, q_list, intensity_list)
+        #self._xrddata = xrd
+        #return xrd
+
+    @property
+    def mode(self):
+        return self._xrddata.mode
 
     def write_pattern(self, filename):
         """ Save calculated data to file specified by ``filename`` string."""
@@ -240,18 +276,13 @@ class XrDebye:
             self._write_pattern(fd)
 
     def _write_pattern(self, fd):
-        fd.write('# Wavelength = %f\n' % self.wavelength)
-        if self.mode == 'XRD':
-            x, y = self.twotheta_list, self.intensity_list
-            fd.write('# 2theta \t Intesity\n')
-        elif self.mode == 'SAXS':
-            x, y = self.q_list, self.intensity_list
-            fd.write('# q(1/A)\tIntesity\n')
-        else:
-            raise Exception('No data available, call calc_pattern() first.')
+        data = self._xrddata
 
-        for i in range(len(x)):
-            fd.write('  %f\t%f\n' % (x[i], y[i]))
+        fd.write('# Wavelength = %f\n' % self.wavelength)
+        fd.write(f'# {data.xvalues_name}\tIntensity\n')
+
+        for xval, yval in zip(data.xvalues(), data.intensities):
+            fd.write('  %f\t%f\n' % (xval, yval))
 
     def plot_pattern(self, filename=None, show=False, ax=None):
         """ Plot XRD or SAXS depending on filled data
@@ -275,9 +306,10 @@ class XrDebye:
             ax.set_xlabel('2$\\theta$')
             ax.set_ylabel('Intensity')
         elif self.mode == 'SAXS':
-            x, y = np.array(self.q_list), np.array(self.intensity_list)
+            x = self._xrddata.xvalues()
+            y = np.array(self._xrddata.intensities)
             ax.loglog(x, y / np.max(y), '.-')
-            ax.set_xlabel('q, 1/Angstr.')
+            ax.set_xlabel('q, 1/Å')
             ax.set_ylabel('Intensity')
         else:
             raise Exception('No data available, call calc_pattern() first')
