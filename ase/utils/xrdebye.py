@@ -8,11 +8,13 @@ Also contains routine for calculation of atomic form factors and
 X-ray wavelength dict.
 """
 
+import warnings
 from math import exp, pi, sin, sqrt, cos, acos
+
 import numpy as np
 
-
 from ase.data import atomic_numbers
+
 
 # Table (1) of
 # D. WAASMAIER AND A. KIRFEL, Acta Cryst. (1995). A51, 416-431
@@ -39,6 +41,39 @@ wavelengths = {
     'WLa1': 1.47642,
     'WLa2': 1.48748
 }
+
+
+def get_waasmaier(symbol, s):
+    r"""Scattering factor for free atoms.
+
+    Parameters:
+
+    symbol: string
+        atom element symbol.
+
+    s: float, in inverse Angstrom
+        scattering vector value (`s = q / 2\pi`).
+
+    Returns:
+        Intensity at given scattering vector `s`.
+
+    Note:
+        for hydrogen will be returned zero value."""
+
+    if symbol == 'H':
+        # XXXX implement analytical H
+        return 0
+    elif symbol in waasmaier:
+        abc = waasmaier[symbol]
+        f = abc[10]
+        s2 = s * s
+        for i in range(5):
+            f += abc[2 * i] * exp(-abc[2 * i + 1] * s2)
+        return f
+
+    warnings.warn(f'xrdebye: Element {symbol} not available, assuming 0')
+    return 0
+
 
 
 class XrDebye:
@@ -126,7 +161,7 @@ class XrDebye:
             """
             if symbol not in f:
                 if self.method == 'Iwasa':
-                    f[symbol] = self.get_waasmaier(symbol, s)
+                    f[symbol] = get_waasmaier(symbol, s)
                 else:
                     f[symbol] = atomic_numbers[symbol]
             return f[symbol]
@@ -144,36 +179,6 @@ class XrDebye:
             I += np.sum(fa[i] * fa * np.sinc(2 * s * np.sqrt(np.sum(vr * vr, axis=1))))
 
         return pre * I
-
-    def get_waasmaier(self, symbol, s):
-        r"""Scattering factor for free atoms.
-
-        Parameters:
-
-        symbol: string
-            atom element symbol.
-
-        s: float, in inverse Angstrom
-            scattering vector value (`s = q / 2\pi`).
-
-        Returns:
-            Intensity at given scattering vector `s`.
-
-        Note:
-            for hydrogen will be returned zero value."""
-        if symbol == 'H':
-            # XXXX implement analytical H
-            return 0
-        elif symbol in waasmaier:
-            abc = waasmaier[symbol]
-            f = abc[10]
-            s2 = s * s
-            for i in range(5):
-                f += abc[2 * i] * exp(-abc[2 * i + 1] * s2)
-            return f
-        if self.warn:
-            print('<xrdebye::get_atomic> Element', symbol, 'not available')
-        return 0
 
     def calc_pattern(self, x=None, mode='XRD', verbose=False):
         r"""
