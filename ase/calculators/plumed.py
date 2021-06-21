@@ -1,0 +1,140 @@
+from ase.calculators.calculator import Calculator, all_changes
+from ase.io.trajectory import Trajectory
+from ase.parallel import broadcast
+from plumed import Plumed as pl
+from ase.parallel import world
+import numpy as np
+
+
+class Plumed(Calculator):
+    '''Plumed calculator for simulations of enhanced sampling methods
+    plumed.org
+    [1] The PLUMED consortium, Nat. Methods 16, 670 (2019)
+    [2] Tribello, Bonomi, Branduardi, Camilloni, and Bussi, 
+    Comput. Phys. Commun. 185, 604 (2014)'''
+
+    implemented_properties = ['energy', 'forces']
+    
+    def __init__(self, calculator1, input, timestep, atoms=None, kT=1., log='', prev_traj=None, prev_steps=None):
+        '''Plumed calculator. Plumed settings from input according to:
+        plumed.org
+
+        Parameters
+        ----------  
+        calculator1: ASE-calculator
+               It  calculates MD unbias forces
+        
+        input: List of strings
+               It contains the setup of plumed actions.
+
+        timestep: float
+               Timestep of the simulated dynamics
+        
+        atoms: Atoms
+               For this case, the calculator is defined strictly with the
+               object atoms inside. This is necessary for initializing the
+               Plumed object.
+
+        kT: float. Default 1.
+               Value of the thermic energy in eV units. I is important for
+               some of the methods of plumed like Well-Tempered Metadynamics.
+        
+        log: string
+               Log file of the plumed calculations
+              
+        prev_traj: .traj file
+               the trajectory of the previous run. This parameter is necessary
+               for restarting simulations. Since some enhanced sampling 
+               methods are history-dependent, it is necessary that the files
+               created by plumed in the previous simulation stay in the 
+               same directory.
+
+        prev_steps: int
+               The number of timesteps simulated previously. This parameter is
+               necessary for restarting simulations. In case prev_traj is
+               defined and this does not, it will be set to the number of
+               steps in the trajectory.
+               '''
+        if atoms is None:
+            raise TypeError('plumed calculator has to be defined with the object atoms inside.')
+        timestep *= 1.
+        if prev_traj is not None:
+            self.trajectory = Trajectory(prev_traj)
+            if prev_steps is None:
+                self.istep = len(self.trajectory) - 1
+            else:
+                self.istep = prev_steps
+            atoms.set_positions(self.trajectory[-1].get_positions())
+            atoms.set_momenta(self.trajectory[-1].get_momenta())
+        else:
+            self.istep = 0
+        Calculator.__init__(self, atoms=atoms)
+
+        if calculator1 == 'Dummy':
+            self.calculator1 = Dummy()
+        else:
+            self.calculator1 = calculator1
+        self.name = '{}+Plumed'.format(self.calculator1.name)
+        
+        if world.rank == 0:
+            natoms = len(atoms.get_positions())
+            self.plumed = pl()
+            self.plumed.cmd("setNatoms", natoms)
+            self.plumed.cmd("setMDEngine", "ASE")
+            self.plumed.cmd("setLogFile", log)
+            self.plumed.cmd("setTimestep", timestep)
+            self.plumed.cmd("setRestart", prev_traj is not None)
+            self.plumed.cmd("setKbT", kT)
+            self.plumed.cmd("init")
+            for line in input:
+                self.plumed.cmd("readInputLine", line)
+        self.atoms = atoms
+
+    def calculate(self, atoms=None, properties=['energy', 'forces'], system_changes=all_changes):
+        Calculator.calculate(self, atoms, properties, system_changes)
+        energy, forces = self.compute_energy_and_forces(self.atoms.get_positions(), self.istep)
+        self.istep += 1
+        self.results['energy'], self. results['forces'] = energy, forces
+
+    def compute_energy_and_forces(self, pos, istep):
+        if world.rank == 0:
+            ener_forc = self.compute_bias(pos, istep)
+        else:
+            ener_forc = None
+        energy_bias, forces_bias = broadcast(ener_forc)
+        energy = self.calculator1.get_potential_energy(self.atoms) + energy_bias
+        forces = self.calculator1.get_forces(self.atoms) + forces_bias
+        return energy, forces
+
+    def compute_bias(self, pos, istep):
+        self.plumed.cmd("setStep", istep)
+        self.plumed.cmd("setPositions", pos)
+        self.plumed.cmd("setMasses", self.atoms.get_masses())
+        forces_bias = np.zeros((self.atoms.get_positions()).shape)
+        self.plumed.cmd("setForces", forces_bias)
+        virial = np.zeros((3, 3))
+        self.plumed.cmd("setVirial", virial)
+        self.plumed.cmd("prepareCalc")
+        self.plumed.cmd("performCalc")
+        energy_bias = np.zeros((1,))
+        self.plumed.cmd("getBias", energy_bias)
+        return [energy_bias, forces_bias]
+    
+    def analysis(self, trajectory):
+        for i in range(len(trajectory)):
+            pos = trajectory[i].get_positions()
+            self.compute_energy_and_forces(pos, i)
+
+    def close(self):
+        self.plumed.finalize()
+
+
+class Dummy():
+    def __init__(self):
+        self.name = 'Dummy'
+    
+    def get_potential_energy(self, atoms):
+        return 0
+    
+    def get_forces(self, atoms):
+        return 0
