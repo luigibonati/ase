@@ -7,6 +7,7 @@ import re
 import warnings
 from time import time
 from typing import List, Dict, Any, NamedTuple
+from types import TracebackType
 
 import numpy as np
 
@@ -322,6 +323,13 @@ class Database:
 
     @property
     def metadata(self) -> Dict[str, Any]:
+        raise NotImplementedError
+
+    def __enter__(self) -> 'Database':
+        raise NotImplementedError
+
+    def __exit__(self,
+                 type: Exception, value: Exception, tb: TracebackType) -> None:
         raise NotImplementedError
 
     @parallel_function

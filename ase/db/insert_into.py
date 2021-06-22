@@ -48,9 +48,6 @@ def insert_into(*,
                 show_progress_bar: bool = False,
                 strip_data: bool = False) -> Tuple[int, int]:
 
-    progressbar = no_progress_bar
-    length = None
-
     if show_progress_bar:
         # Try to import the one from click.
         # People using ase.db will most likely have flask installed
@@ -58,7 +55,8 @@ def insert_into(*,
         try:
             from click import progressbar
         except ImportError:
-            pass
+            progressbar = no_progress_bar  # type: ignore
+            length = None
         else:
             length = source.count(query_parameters.query)
 
