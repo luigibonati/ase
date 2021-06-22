@@ -6,7 +6,7 @@ import os
 import re
 import warnings
 from time import time
-from typing import List, Dict, Any
+from typing import List, Dict, Any, NamedTuple
 
 import numpy as np
 
@@ -22,6 +22,13 @@ from ase.utils import Lock, PurePath
 
 T2000 = 946681200.0  # January 1. 2000
 YEAR = 31557600.0  # 365.25 days
+
+
+class QueryParameters(NamedTuple):
+    query: str
+    offset: int
+    limit: int
+    sort: str
 
 
 # Format of key description: ('short', 'long', 'unit')

@@ -1,15 +1,14 @@
 import json
 import sys
 from collections import defaultdict
-from contextlib import contextmanager
-from typing import Iterable, Iterator
 
 import ase.io
 from ase.db import connect
-from ase.db.core import convert_str_to_int_float_or_str
+from ase.db.core import convert_str_to_int_float_or_str, QueryParameters
 from ase.db.row import row2dct
 from ase.db.table import Table, all_columns
 from ase.utils import plural
+from ase.db.insert_into import insert_into
 
 
 class CLICommand:
@@ -210,61 +209,23 @@ def main(args):
         return
 
     if args.insert_into:
-        if args.limit == -1:
-            args.limit = 99999999999999
-
-        progressbar = no_progressbar
-        length = None
-
-        if args.progress_bar:
-            # Try to import the one from click.
-            # People using ase.db will most likely have flask installed
-            # and therfore also click.
-            try:
-                from click import progressbar
-            except ImportError:
-                pass
-            else:
-                length = db.count(query)
-
-        def block():
-            offset = args.offset
-            while True:
-                limit = min(args.limit, 100)
-                n = 0
-                for row in db.select(query,
-                                     sort=args.sort,
-                                     limit=limit,
-                                     offset=offset):
-                    yield row
-                    n += 1
-                if n < limit:
-                    return
-                args.limit -= n
-                if args.limit == 0:
-                    return
-                offset += n
-
-        nkvp = 0
-        nrows = 0
-        with connect(args.insert_into,
-                     use_lock_file=not args.no_lock_file) as db2:
-            with progressbar(block(), length=length) as rows:
-                for row in rows:
-                    kvp = row.get('key_value_pairs', {})
-                    nkvp -= len(kvp)
-                    kvp.update(add_key_value_pairs)
-                    nkvp += len(kvp)
-                    if args.strip_data:
-                        db2.write(row.toatoms(), **kvp)
-                    else:
-                        db2.write(row, data=row.get('data'), **kvp)
-                    nrows += 1
+        destination = connect(args.insert_into,
+                              use_lock_file=not args.no_lock_file)
+        nkvp, nrows = insert_into(source=db,
+                                  destination=destination,
+                                  query_parameters=QueryParameters(query,
+                                                                   args.offset,
+                                                                   args.limit,
+                                                                   args.sort),
+                                  add_key_value_pairs=add_key_value_pairs,
+                                  show_progress_bar=args.progress_bar,
+                                  strip_data=args.strip_data)
 
         out('Added %s (%s updated)' %
             (plural(nkvp, 'key-value pair'),
              plural(len(add_key_value_pairs) * nrows - nkvp, 'pair')))
         out('Inserted %s' % plural(nrows, 'row'))
+
         return
 
     if args.limit == -1:
@@ -437,13 +398,6 @@ def row2str(row) -> str:
         S.append('{:{}} | {:{}} | {}'
                  .format(key, width0, desc, width1, value))
     return '\n'.join(S)
-
-
-@contextmanager
-def no_progressbar(iterable: Iterable,
-                   length: int = None) -> Iterator[Iterable]:
-    """A do-nothing implementation."""
-    yield iterable
 
 
 def check_jsmol():
