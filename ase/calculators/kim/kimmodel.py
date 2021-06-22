@@ -48,9 +48,6 @@ class KIMModelData:
             padding_not_require_neigh,
         )
 
-    def __del__(self):
-        self.clean()
-
     def init_kim(self):
         """Create the KIM API Portable Model object and KIM API ComputeArguments
         object
@@ -120,30 +117,6 @@ class KIMModelData:
                 )
 
         return species_map
-
-    def clean_neigh(self):
-        """If the neighbor list method being used is the one in the
-        kimpy neighlist module, deallocate its memory
-        """
-        if self.neigh_initialized:
-            self.neigh.clean()
-            del self.neigh
-
-    def clean_kim(self):
-        """Deallocate the memory allocated to the KIM API Portable Model object
-        and KIM API ComputeArguments object
-        """
-        if self.kim_initialized:
-            self.kim_model.compute_arguments_destroy(self.compute_args)
-            self.kim_model.destroy()
-            del self.kim_model
-
-    def clean(self):
-        """Deallocate the KIM API Portable Model object, KIM API ComputeArguments
-        object, and, if applicable, the neighbor list object
-        """
-        self.clean_neigh()
-        self.clean_kim()
 
     @property
     def padding_image_of(self):
@@ -247,9 +220,7 @@ class KIMModelCalculator(Calculator):
         return self
 
     def __exit__(self, exc_type, value, traceback):
-        # Explicitly deallocate all three objects held by the KIMModelData
-        # instance referenced by our calculator
-        self.kimmodeldata.clean()
+        pass
 
     def __repr__(self):
         return "KIMModelCalculator(model_name={})".format(self.model_name)
