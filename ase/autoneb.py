@@ -5,6 +5,7 @@ from ase.optimize import BFGS
 from ase.optimize import FIRE
 from ase.calculators.singlepoint import SinglePointCalculator
 import ase.parallel as mpi
+from ase.parallel import parprint
 import numpy as np
 import shutil
 import os
@@ -300,8 +301,7 @@ class AutoNEB:
 
         n_non_valid_energies = len([e for e in energies if e != e])
 
-        if self.world.rank == 0:
-            print('Start of evaluation of the initial images')
+        parprint('Start of evaluation of the initial images')
 
         while n_non_valid_energies != 0:
             if isinstance(self.k, (float, int)):
@@ -314,8 +314,7 @@ class AutoNEB:
             energies = self.get_energies()
             n_non_valid_energies = len([e for e in energies if e != e])
 
-        if self.world.rank == 0:
-            print('Finished initialisation phase.')
+        parprint('Finished initialisation phase.')
 
         # Then add one image at a time until we have n_max images
         while n_cur < self.n_max:
@@ -558,7 +557,7 @@ class AutoNEB:
         nneb = min(nneb, n_cur - self.n_simul - 2)
         nneb = min(nneb, first_missing - 1)
         nneb = max(nneb + self.n_simul, last_missing) - self.n_simul
-        to_use = range(nneb, nneb + self.n_simul + 2)
+        to_use = list(range(nneb, nneb + self.n_simul + 2))
 
         while self.get_energies_one_image(self.all_images[to_use[0]]) != \
                 self.get_energies_one_image(self.all_images[to_use[0]]):
