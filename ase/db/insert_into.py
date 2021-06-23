@@ -43,7 +43,7 @@ def insert_into(*,
                 source: Database,
                 destination: Database,
                 query_parameters: QueryParameters,
-                add_key_value_pairs: Dict[str, ValueType] = None,
+                add_key_value_pairs: Dict[str, ValueType] = {},
                 blocksize: int = 100,
                 show_progress_bar: bool = False,
                 strip_data: bool = False) -> Tuple[int, int]:
