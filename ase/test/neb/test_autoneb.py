@@ -1,3 +1,4 @@
+import pytest
 from ase import Atoms
 from ase.autoneb import AutoNEB
 from ase.build import fcc211, add_adsorbate
@@ -60,27 +61,34 @@ def test_Au2Ag(testdir):
             images[i].calc = EMT()
 
     d = 4
-    initial = Atoms('Au2Ag', positions=((-d, 0, 0), (0, 0, 0), (d, 0, 1)))
+    initial = Atoms('Au2Ag',
+                    positions=((-d, 0, 0), (-d / 2, 0, 0), (d, 0, 0)))
+
     middle = initial.copy()
+    middle[1].position[0] = 0
+    
     final = initial.copy()
-    final[1].position[0] += d / 2
+    final[1].position[0] += d
 
     attach_calculators([initial, middle, final])
-
-    prefix = 'neb'
-    
-    fmax = 0.05
     for i, image in enumerate([initial, middle, final]):
         image.set_constraint(FixAtoms([0, 2]))
+
+    fmax = 0.05
+    for i, image in enumerate([initial, final]):
         opt = QuasiNewton(image)
         opt.run(fmax=fmax)
+    middle.get_forces()
+    
+    prefix = 'neb'
+    for i, image in enumerate([initial, middle, final]):
         image.write(f'neb00{i}.traj')
     
     autoneb = AutoNEB(attach_calculators,
                       prefix=prefix,
-                      optimizer='BFGS',
+                      optimizer='FIRE',
                       n_simul=1,
-                      n_max=7,
+                      n_max=5,
                       fmax=fmax,
                       k=0.5,
                       parallel=False,
@@ -90,5 +98,8 @@ def test_Au2Ag(testdir):
     from ase import io
     with io.Trajectory('all_images.traj', 'w') as traj:
         for im in autoneb.all_images:
+            im.get_forces()
             traj.write(im)
             
+    nebtools = NEBTools(autoneb.all_images)
+    assert nebtools.get_barrier()[0] == pytest.approx(4.185, 1e-3)
