@@ -31,7 +31,7 @@ def test_CO2_Au111(wrap, testdir):
         slab.set_scaled_positions(slab.get_scaled_positions() % 1.0)
     constraint = FixBondLengths([[-3, -2], [-3, -1]])
     slab.set_constraint(constraint)
-    dyn = BFGS(slab, trajectory='relax_%d.traj' % wrap)
-    dyn.run(fmax=0.05)
+    with BFGS(slab, trajectory='relax_%d.traj' % wrap) as dyn:
+        dyn.run(fmax=0.05)
     assert abs(slab.get_distance(-3, -2, mic=1) - d0) < 1e-9
     assert abs(slab.get_distance(-3, -1, mic=1) - d1) < 1e-9

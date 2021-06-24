@@ -36,8 +36,8 @@ def test_molecule(testdir):
                    ['tolinteg', '7 7 7 7 14'],
                    ['fmixing', '90']])
 
-    opt = BFGS(geom)
-    opt.run(fmax=0.05)
+    with BFGS(geom) as opt:
+        opt.run(fmax=0.05)
 
     final_energy = geom.get_potential_energy()
     assert abs(final_energy + 2047.34531091) < 1.0

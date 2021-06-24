@@ -1,9 +1,9 @@
 import functools
 import warnings
 
-from ase.utils import convert_string_to_fd
-
 import numpy as np
+
+from ase.utils import IOContext
 
 
 def get_band_gap(calc, direct=False, spin=None, output='-'):
@@ -76,7 +76,10 @@ def bandgap(calc=None, direct=False, spin=None, output='-',
 
     gap, (s1, k1, n1), (s2, k2, n2) = _bandgap(e_skn, spin, direct)
 
-    if output is not None:
+    with IOContext() as iocontext:
+        fd = iocontext.openfile(output)
+        p = functools.partial(print, file=fd)
+
         def skn(s, k, n):
             """Convert k or (s, k) to string."""
             if kpts is None:
@@ -84,7 +87,6 @@ def bandgap(calc=None, direct=False, spin=None, output='-',
             return '(s={}, k={}, n={}, [{:.2f}, {:.2f}, {:.2f}])'.format(
                 s, k, n, *kpts[k])
 
-        p = functools.partial(print, file=convert_string_to_fd(output))
         if spin is not None:
             p('spin={}: '.format(spin), end='')
         if gap == 0.0:

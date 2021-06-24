@@ -37,7 +37,7 @@ class KIMModelInitializationError(CalculatorError):
 
 class KimpyError(CalculatorError):
     """
-    A call to a kimpy function returned a non-zero error code
+    A call to a kimpy function resulted in a RuntimeError being raised
     """
 
     pass

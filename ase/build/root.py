@@ -121,7 +121,7 @@ def _root_surface_analysis(primitive_slab, root, eps=1e-8):
     if len(valid_roots) == 0:
         raise ValueError("Invalid root {} for cell {}".format(root, cell_vectors))
     int_roots = np.array([int(this_root) for this_root in roots
-                      if this_root.is_integer() and this_root <= root])
+                          if this_root.is_integer() and this_root <= root])
     return cell_points, cell_points[np.nonzero(roots == root)[0][0]], set(int_roots[1:])
 
 

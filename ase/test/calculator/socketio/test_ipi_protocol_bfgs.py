@@ -44,8 +44,8 @@ def run_server(launchclient=True, sockettype='unix'):
         if launchclient:
             thread = launch_client_thread(port=port, unixsocket=unixsocket)
         atoms.calc = calc
-        opt = BFGS(atoms)
-        opt.run()
+        with BFGS(atoms) as opt:
+            opt.run()
 
     if launchclient:
         thread.join()
@@ -72,8 +72,8 @@ def run_server(launchclient=True, sockettype='unix'):
 def run_normal():
     atoms = getatoms()
     atoms.calc = EMT()
-    opt = BFGS(atoms)
-    opt.run()
+    with BFGS(atoms) as opt:
+        opt.run()
     return atoms
 
 

@@ -466,32 +466,30 @@ def test_potcar_repeated_entry():
 
     lines = """
     POTCAR:    PAW_PBE Ni 02Aug2007
-    POTCAR:    PAW_PBE Ni 02Aug2007
-    POTCAR:    PAW_PBE H1.25 02Aug2007 
     POTCAR:    PAW_PBE H1.25 02Aug2007
     POTCAR:    PAW_PBE Au_GW 02Aug2007
+    POTCAR:    PAW_PBE Ni 02Aug2007
+    POTCAR:    PAW_PBE H1.25 02Aug2007 
     POTCAR:    PAW_PBE Au_GW 02Aug2007
     """
     # Prepare input as list of strings
-    lines = lines.split('\n')
+    lines = lines.splitlines()[1:]
 
     # Emulate the parser, reading the lines 1-by-1
     parser = vop.SpeciesTypes()
-    result = parser.parse(1, lines)
-    result2 = parser.parse(2, lines)
-    assert result == result2
-    assert result == {'species': ['Ni']}
-    result = parser.parse(3, lines)
-    result2 = parser.parse(4, lines)
-    assert result == result2
-    assert result == {'species': ['Ni', 'H']}
-    result = parser.parse(5, lines)
-    result2 = parser.parse(6, lines)
-    assert result == result2
-    assert result == {'species': ['Ni', 'H', 'Au']}
+    for line in lines:
+        if not line.strip():
+            # Blank line, just skip
+            continue
+        line = [line]
 
-    assert len(parser.species) == 3
-    assert parser.species_count == 6
+        assert parser.has_property(0, line)
+        parser.parse(0, line)
+    assert len(parser.species) == 6
+    assert parser.species == ['Ni', 'H', 'Au', 'Ni', 'H', 'Au']
+    assert len(parser.get_species()) == 3
+
+    assert parser.get_species() == ['Ni', 'H', 'Au']
 
 
 def test_default_header_parser_make_parsers():

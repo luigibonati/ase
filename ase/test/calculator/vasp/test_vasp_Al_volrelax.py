@@ -53,8 +53,8 @@ def test_vasp_Al_volrelax(factory):
 
         from ase.constraints import StrainFilter
         sf = StrainFilter(Al)
-        qn = BFGS(sf, logfile='relaxation.log')
-        qn.run(fmax=0.1, steps=5)
+        with BFGS(sf, logfile='relaxation.log') as qn:
+            qn.run(fmax=0.1, steps=5)
 
         print('Stress:\n', calc.read_stress())
         print('Al post ASE volume relaxation\n', calc.get_atoms().get_cell())

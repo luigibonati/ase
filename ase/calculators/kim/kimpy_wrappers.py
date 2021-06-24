@@ -12,46 +12,29 @@ import kimpy
 from .exceptions import KIMModelNotFound, KIMModelInitializationError, KimpyError
 
 
-def check_call(f, *args):
+def check_call(f, *args, **kwargs):
     """
-    Given a function that returns either an integer error code or a
-    tuple whose last element is an integer error code, call it with the
-    requested arguments.  If a non-zero error code was returned, raise
-    an exception.  Otherwise, pass along the rest of the objects
-    returned by the function call.
+    Call a kimpy function using its arguments and, if a RuntimeError is raised,
+    catch it and raise a KimpyError with the exception's message.
+
+    (Starting with kimpy 2.0.0, a RuntimeError is the only exception type raised
+    when something goes wrong.)
     """
-
-    def _check_error(error, msg):
-        if error != 0 and error is not None:
-            raise KimpyError('Calling "{}" failed.'.format(msg))
-
-    ret = f(*args)
-
-    if isinstance(ret, int):
-        # Only an error code was returned
-        _check_error(ret, f.__name__)
-    else:
-        # An error code plus other variables were returned
-        error = ret[-1]
-        _check_error(error, f.__name__)
-
-        if len(ret[:-1]) == 1:
-            # Pick the single remaining element out of the tuple
-            return ret[0]
-        else:
-            # Return the tuple containing the rest of the elements
-            return ret[:-1]
+    try:
+        return f(*args, **kwargs)
+    except RuntimeError as e:
+        raise KimpyError(f'Calling kimpy function "{f.__name__}" failed:\n  {str(e)}')
 
 
 def check_call_wrapper(func):
     @functools.wraps(func)
     def myfunc(*args, **kwargs):
-        return check_call(func, *args)
+        return check_call(func, *args, **kwargs)
 
     return myfunc
 
 
-# kimpy methods wrapped in ``check_error``
+# kimpy methods
 collections_create = functools.partial(check_call, kimpy.collections.create)
 model_create = functools.partial(check_call, kimpy.model.create)
 simulator_model_create = functools.partial(check_call, kimpy.simulator_model.create)
@@ -74,14 +57,11 @@ class ModelCollections:
     def __init__(self):
         self.collection = collections_create()
 
-    def __del__(self):
-        self.destroy()
-
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, value, traceback):
-        self.destroy()
+        pass
 
     def get_item_type(self, model_name):
         try:
@@ -97,19 +77,13 @@ class ModelCollections:
 
         return model_type
 
-    def destroy(self):
-        if self.initialized:
-            kimpy.collections.destroy(self.collection)
-            del self.collection
-
     @property
     def initialized(self):
         return hasattr(self, "collection")
 
 
 class PortableModel:
-    """ Creates a KIM API Portable Model object and provides a minimal interface to it
-    """
+    """Creates a KIM API Portable Model object and provides a minimal interface to it"""
 
     def __init__(self, model_name, debug):
         self.model_name = model_name
@@ -132,7 +106,9 @@ class PortableModel:
             )
 
         if self.debug:
-            l_unit, e_unit, c_unit, te_unit, ti_unit = self.kim_model.get_units()
+            l_unit, e_unit, c_unit, te_unit, ti_unit = check_call(
+                self.kim_model.get_units
+            )
             print("Length unit is: {}".format(l_unit))
             print("Energy unit is: {}".format(e_unit))
             print("Charge unit is: {}".format(c_unit))
@@ -140,14 +116,11 @@ class PortableModel:
             print("Time unit is: {}".format(ti_unit))
             print()
 
-    def __del__(self):
-        self.destroy()
-
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, value, traceback):
-        self.destroy()
+        pass
 
     def get_model_supported_species_and_codes(self):
         """Get all of the supported species for this model and their
@@ -185,22 +158,16 @@ class PortableModel:
     def get_species_support_and_code(self, species_name):
         return self.kim_model.get_species_support_and_code(species_name)
 
+    @check_call_wrapper
     def get_influence_distance(self):
         return self.kim_model.get_influence_distance()
 
+    @check_call_wrapper
     def get_neighbor_list_cutoffs_and_hints(self):
         return self.kim_model.get_neighbor_list_cutoffs_and_hints()
 
     def compute_arguments_create(self):
         return ComputeArguments(self, self.debug)
-
-    def compute_arguments_destroy(self, compute_args_wrapped):
-        compute_args_wrapped.destroy()
-
-    def destroy(self):
-        if self.initialized:
-            kimpy.model.destroy(self.kim_model)
-            del self.kim_model
 
     @property
     def initialized(self):
@@ -306,7 +273,7 @@ class ComputeArguments:
     def update(
         self, num_particles, species_code, particle_contributing, coords, energy, forces
     ):
-        """ Register model input and output in the kim_model object."""
+        """Register model input and output in the kim_model object."""
         compute_arg_name = kimpy.compute_argument_name
         set_argument_pointer = self.set_argument_pointer
 
@@ -323,15 +290,9 @@ class ComputeArguments:
             print("Debug: called update_kim")
             print()
 
-    @check_call_wrapper
-    def destroy(self):
-        return self.kim_model_wrapped.kim_model.compute_arguments_destroy(
-            self.compute_args
-        )
-
 
 class SimulatorModel:
-    """ Creates a KIM API Simulator Model object and provides a minimal
+    """Creates a KIM API Simulator Model object and provides a minimal
     interface to it.  This is only necessary in this package in order to
     extract any information about a given simulator model because it is
     generally embedded in a shared object.
@@ -345,19 +306,11 @@ class SimulatorModel:
         # Need to close template map in order to access simulator model metadata
         self.simulator_model.close_template_map()
 
-    def __del__(self):
-        self.destroy()
-
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, value, traceback):
-        self.destroy()
-
-    def destroy(self):
-        if self.initialized:
-            kimpy.simulator_model.destroy(self.simulator_model)
-            del self.simulator_model
+        pass
 
     @property
     def simulator_name(self):

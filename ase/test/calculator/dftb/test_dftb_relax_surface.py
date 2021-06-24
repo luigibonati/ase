@@ -22,8 +22,8 @@ def test_dftb_relax_surface(factory):
     atoms.set_constraint(FixAtoms(indices=range(4)))
     atoms.calc = calc
 
-    dyn = BFGS(atoms, logfile='-')
-    dyn.run(fmax=0.1)
+    with BFGS(atoms, logfile='-') as dyn:
+        dyn.run(fmax=0.1)
 
     e = atoms.get_potential_energy()
     assert abs(e - -214.036907) < 1., e

@@ -47,13 +47,13 @@ def write_cfg(fd, atoms):
                 if aux.shape[1] == 3:
                     for j in range(3):
                         fd.write('auxiliary[%i] = %s_%s [a.u.]\n' %
-                                (i, name, chr(ord('x') + j)))
+                                 (i, name, chr(ord('x') + j)))
                         i += 1
 
                 else:
                     for j in range(aux.shape[1]):
                         fd.write('auxiliary[%i] = %s_%1.1i [a.u.]\n' %
-                                (i, name, j))
+                                 (i, name, j))
                         i += 1
 
     # Distinct elements

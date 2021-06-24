@@ -15,8 +15,8 @@ def test_utilities():
     atoms.numbers[[0, 13, 15, 16, 18, 19, 21, 22, 24, 25, 27, 28, 30]] = 79
     atoms.center(vacuum=0.0)
     atoms.calc = EMT()
-    opt = FIRE(atoms, logfile=None)
-    opt.run(fmax=0.05)
+    with FIRE(atoms, logfile=None) as opt:
+        opt.run(fmax=0.05)
 
     rmax = 8.
     nbins = 5

@@ -59,9 +59,9 @@ def main():
     p = argparse.ArgumentParser(description='Generate new release of ASE.',
                                 epilog='Run from the root directory of ASE.')
     p.add_argument('version', nargs=1,
-                 help='version number for new release')
-    p.add_argument('nextversion', nargs=1,
-                   help='development version after release')
+                   help='version number for new release')
+    # p.add_argument('nextversion', nargs=1,
+    #                help='development version after release')
     p.add_argument('--clean', action='store_true',
                    help='delete release branch and tag')
     args = p.parse_args()
@@ -75,7 +75,6 @@ def main():
     print('Current version: {}'.format(current_version))
 
     version = args.version[0]
-    next_devel_version = args.nextversion[0]
 
     branchname = 'ase-{}'.format(version)
     current_version = get_version()
@@ -83,7 +82,7 @@ def main():
     if args.clean:
         print('Cleaning {}'.format(version))
         git('checkout master')
-        git('tag -d {}'.format(version), error_ok=True)
+        # git('tag -d {}'.format(version), error_ok=True)
         git('branch -D {}'.format(branchname), error_ok=True)
         git('branch -D {}'.format('web-page'), error_ok=True)
         return
@@ -114,7 +113,6 @@ def main():
     update_version(version)
 
     releasenotes = 'doc/releasenotes.rst'
-    lines = []
 
     searchtxt = re.escape("""\
 Git master branch
@@ -168,7 +166,7 @@ News
     replacetxt = replacetxt.format(version=version, date=date)
 
     frontpage = 'doc/index.rst'
-    lines = []
+
     print('Editing {}'.format(frontpage))
     with open(frontpage) as fd:
         txt = fd.read()
@@ -193,26 +191,10 @@ News
     with open(installdoc, 'w') as fd:
         fd.write(txt)
 
-    sphinxconf = 'doc/conf.py'
-    print('Editing {}'.format(sphinxconf))
-    comment = '# This line auto-edited by newrelease script'
-    line1 = "ase_dev_version = '{}'  {}\n".format(next_devel_version, comment)
-    line2 = "ase_stable_version = '{}'  {}\n".format(version, comment)
-    lines = []
-    with open(sphinxconf) as fd:
-        for line in fd:
-            if re.match('ase_dev_version = ', line):
-                line = line1
-            if re.match('ase_stable_version = ', line):
-                line = line2
-            lines.append(line)
-    with open(sphinxconf, 'w') as fd:
-        fd.write(''.join(lines))
-
-    git('add {}'.format(' '.join([versionfile, sphinxconf, installdoc,
+    git('add {}'.format(' '.join([versionfile, installdoc,
                                   frontpage, releasenotes])))
     git('commit -m "ASE version {}"'.format(version))
-    git('tag -s {0} -m "ase-{0}"'.format(version))
+    # git('tag -s {0} -m "ase-{0}"'.format(version))
 
     buildpath = Path('build')
     if buildpath.is_dir():
@@ -225,13 +207,6 @@ News
     py('setup.py sdist > setup_sdist.log')
     py('setup.py bdist_wheel > setup_bdist_wheel3.log')
     bash('gpg --armor --yes --detach-sign dist/ase-{}.tar.gz'.format(version))
-    git('checkout -b web-page')
-    git('branch --set-upstream-to=origin/web-page')
-    git('checkout {}'.format(branchname))
-    update_version(next_devel_version)
-    git('add {}'.format(versionfile))
-    git('branch --set-upstream-to=master')
-    git('commit -m "bump version number to {}"'.format(next_devel_version))
 
     print()
     print('Automatic steps done.')
@@ -251,8 +226,6 @@ News
           'dist/ase-{v}-py3-none-any.whl '
           'dist/ase-{v}.tar.gz.asc'.format(v=version))
     print('git push --tags origin master  # Assuming your remote is "origin"')
-    print('git checkout web-page')
-    print('git push --force origin web-page')
 
 
 if __name__ == '__main__':

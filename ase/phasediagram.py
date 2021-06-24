@@ -498,7 +498,7 @@ class PhaseDiagram:
                 from mpl_toolkits.mplot3d import Axes3D
                 Axes3D  # silence pyflakes
             fig = plt.figure()
-            ax = fig.gca(projection=projection)
+            ax = fig.add_subplot(projection=projection)
         else:
             if dims == 3 and not hasattr(ax, 'set_zlim'):
                 raise ValueError('Cannot make 3d plot unless axes projection '
