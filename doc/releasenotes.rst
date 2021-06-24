@@ -28,6 +28,14 @@ Calculators:
   together with :class:`~ase.calculators.socketio.SocketIOCalculator`.
   Requires Abinit 9.4+.
 
+* It is now possible to pass a function to
+  :class:`~ase.calculators.socketio.SocketIOCalculator` to customize
+  startup of a socket client.  This decouples socket I/O calculators
+  from :class:`~ase.calculators.calculator.FileIOCalculator`.
+
+* Added :class:`~ase.calculators.socketio.PySocketIOClient`, a helper class
+  for using the socket I/O calculator with Python clients.
+
 Algorithms:
 
 * Dedicated class :class:`ase.vibrations.VibrationsData` to improve
@@ -39,6 +47,13 @@ Algorithms:
 
 * :meth:`phonons.get_dos` now returns a DOS object based on the new
   framework in :mod:`ase.spectrum`.
+
+* :class:`ase.vibrations.Vibrations` and :class:`ase.phonons.Phonons`
+  now use a simplified caching system where forces for each
+  displacement are saved in JSON files inside a subdirectory.  This
+  breaks old cached calculations.  Old vibrations calculations can be
+  ported using a migration tool; see ``python3 -m
+  ase.vibrations.pickle2json --help``.
 
 * Contour exploration [MJW please add description]
 
@@ -75,7 +90,7 @@ I/O:
 * Parsing an OUTCAR file will now produce an Atoms object
   with periodic boundary conditions.
 
-Breaking change:
+Breaking changes:
 
 * For security, ASE no longer uses pickle for any kind of file I/O.
   This is because a maliciously crafted pickle file can execute
