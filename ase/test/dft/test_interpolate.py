@@ -9,4 +9,3 @@ def test_interpolate():
                                    [2, 2, 1], [0.25, 0.25, 0])
     print(x)
     assert abs(x - [0, 0.5]).max() < 1e-10
-

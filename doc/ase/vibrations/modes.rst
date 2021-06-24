@@ -19,3 +19,11 @@ list of displacements, one for each free atom that are used in the
 finite difference method to calculate the Hessian matrix. method is -1
 for backward differences, 0 for centered differences, and 1 for
 forward differences.
+
+Old calculations
+----------------
+
+The output format of vibrational calculations was changed from ``pickle``
+to ``json``. There is a tool to convert old ``pickle``-files::
+
+  > python3 -m ase.vibrations.pickle2json mydirectory/vib.*.pckl

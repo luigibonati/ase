@@ -10,7 +10,6 @@ def test_singlepointcalc(testdir):
     atoms.get_forces(apply_constraint=x), with x alternating between True and
     False, would get locked into the constrained variation."""
 
-
     def check_forces():
         """Makes sure the unconstrained forces stay that way."""
         forces = atoms.get_forces(apply_constraint=False)

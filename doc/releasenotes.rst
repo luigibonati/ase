@@ -105,6 +105,13 @@ Bug fixes:
   not trivial, users should in general verify carefully that simulations
   behave physically correctly.
 
+Web-page:
+
+* There used to be two versions of the ASE web-page which was quite
+  confusing.  The https://wiki.fysik.dtu.dk/ase/dev/ web-page has now been
+  dropped.  There is now only https://wiki.fysik.dtu.dk/ase/ and it documents
+  the use of the in development version of ASE.
+
 
 Version 3.21.1
 ==============

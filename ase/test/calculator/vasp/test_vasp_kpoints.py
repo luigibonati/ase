@@ -18,8 +18,8 @@ def atoms():
 
 def check_kpoints_line(n, contents):
     """Assert the contents of a line"""
-    with open('KPOINTS', 'r') as f:
-        lines = f.readlines()
+    with open('KPOINTS', 'r') as fd:
+        lines = fd.readlines()
     assert lines[n].strip() == contents
 
 
@@ -76,8 +76,8 @@ def test_kspacing_supress_kpoints_file(factory, write_kpoints):
     Al, calc = write_kpoints(factory, kspacing=0.23)
     calc.write_incar(Al)
     assert not os.path.isfile('KPOINTS')
-    with open('INCAR', 'r') as f:
-        assert ' KSPACING = 0.230000\n' in f.readlines()
+    with open('INCAR', 'r') as fd:
+        assert ' KSPACING = 0.230000\n' in fd.readlines()
 
 
 @calc('vasp')
@@ -94,8 +94,8 @@ def test_weighted(factory, write_kpoints):
                   kpts=[[0.1, 0.2, 0.3, 2], [0.0, 0.0, 0.0, 1],
                         [0.0, 0.5, 0.5, 2]])
 
-    with open('KPOINTS.ref', 'w') as f:
-        f.write("""KPOINTS created by Atomic Simulation Environment
+    with open('KPOINTS.ref', 'w') as fd:
+        fd.write("""KPOINTS created by Atomic Simulation Environment
     3 
     Cartesian
     0.100000 0.200000 0.300000 2.000000 
@@ -113,8 +113,8 @@ def test_explicit_auto_weight(factory, write_kpoints):
                   kpts=[(0.1, 0.2, 0.3), (0.0, 0.0, 0.0), (0.0, 0.5, 0.5)],
                   reciprocal=True)
 
-    with open('KPOINTS.ref', 'w') as f:
-        f.write("""KPOINTS created by Atomic Simulation Environment
+    with open('KPOINTS.ref', 'w') as fd:
+        fd.write("""KPOINTS created by Atomic Simulation Environment
     3 
     Reciprocal
     0.100000 0.200000 0.300000 1.0 

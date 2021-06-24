@@ -1823,8 +1823,8 @@ class GenerateVaspInput:
 
         # Search for key 'LEXCH' in POTCAR
         xc_flag = None
-        with open(filename, 'r') as f:
-            for line in f:
+        with open(filename, 'r') as fd:
+            for line in fd:
                 key = line.split()[0].upper()
                 if key == 'LEXCH':
                     xc_flag = line.split()[-1].upper()

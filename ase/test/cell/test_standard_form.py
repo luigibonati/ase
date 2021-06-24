@@ -3,7 +3,6 @@ def test_standard_form():
     from numpy.testing import assert_allclose
     from ase.cell import Cell
 
-
     TOL = 1E-10
     rng = np.random.RandomState(0)
 

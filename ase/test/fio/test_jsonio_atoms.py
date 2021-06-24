@@ -3,15 +3,6 @@ from ase.build import bulk, molecule
 import numpy as np
 
 
-def test_jsonio_atoms_info():
-    atoms_ref = bulk('Ti')
-    atoms_ref.info['any_name_for_a_dictionary'] = {0: 'anything'}
-    text = encode(atoms_ref)
-    atoms = decode(text)
-    key = next(iter(atoms.info['any_name_for_a_dictionary']))
-    assert isinstance(key, int)
-
-
 def test_jsonio_atoms():
 
     def assert_equal(atoms1, atoms2):

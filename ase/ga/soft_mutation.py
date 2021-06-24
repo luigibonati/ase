@@ -310,15 +310,15 @@ class SoftMutation(OffspringCreator):
 
     def read_used_modes(self, filename):
         """Read used modes from json file."""
-        with open(filename, 'r') as f:
-            modes = json.load(f)
+        with open(filename, 'r') as fd:
+            modes = json.load(fd)
             self.used_modes = {int(k): modes[k] for k in modes}
         return
 
     def write_used_modes(self, filename):
         """Dump used modes to json file."""
-        with open(filename, 'w') as f:
-            json.dump(self.used_modes, f)
+        with open(filename, 'w') as fd:
+            json.dump(self.used_modes, fd)
         return
 
     def get_new_individual(self, parents):

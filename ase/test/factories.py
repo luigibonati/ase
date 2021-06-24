@@ -185,8 +185,10 @@ class CastepFactory:
 
 @factory('dftb')
 class DFTBFactory:
-    def __init__(self, executable):
+    def __init__(self, executable, skt_paths):
         self.executable = executable
+        assert len(skt_paths) == 1
+        self.skt_path = skt_paths[0]
 
     def version(self):
         stdout = read_stdout([self.executable])
@@ -195,20 +197,15 @@ class DFTBFactory:
 
     def calc(self, **kwargs):
         from ase.calculators.dftb import Dftb
-        # XXX datafiles should be imported from datafiles project
-        # We should include more datafiles for DFTB there, and remove them
-        # from ASE's own datadir.
         command = f'{self.executable} > PREFIX.out'
-        datadir = Path(__file__).parent / 'testdata'
-        assert datadir.exists()
         return Dftb(
             command=command,
-            slako_dir=str(datadir) + '/',  # XXX not obvious
+            slako_dir=str(self.skt_path) + '/',  # XXX not obvious
             **kwargs)
 
     @classmethod
     def fromconfig(cls, config):
-        return cls(config.executables['dftb'])
+        return cls(config.executables['dftb'], config.datafiles['dftb'])
 
 
 @factory('dftd3')

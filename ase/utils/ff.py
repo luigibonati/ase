@@ -109,7 +109,7 @@ class Coulomb:
                               * units.m * units.J / units.C / units.C )
         elif chargei is not None and chargej is not None:
             self.chargeij = ( scale * chargei * chargej * 8.9875517873681764e9
-                            * units.m * units.J / units.C / units.C )
+                              * units.m * units.J / units.C / units.C )
         else:
             raise NotImplementedError("not implemented combination"
                                       "of Coulomb parameters.")
@@ -433,32 +433,32 @@ def get_angle_potential_hessian(atoms, angle, morses=None, spectral=False):
     if angle.cos and np.abs(sina) > 0.001:
         factor = 1.0-2.0*cosa*cosa+cosa*cosa0
         Hr[0:3,0:3] = ( angle.k*(factor*QijPkjQij/sina 
-                       - sina*da*(-ctga*QijPkjQij/sina+np.dot(Qij, Pki)
-                       -np.dot(Pij, Pki)*2.0+(Pik+P)))/sina/dij2 ) 
+                                 - sina*da*(-ctga*QijPkjQij/sina+np.dot(Qij, Pki)
+                                            -np.dot(Pij, Pki)*2.0+(Pik+P)))/sina/dij2 ) 
         Hr[0:3,3:6] = ( angle.k*(factor*QijPkiQkj/sina 
-                       - sina*da*(-ctga*QijPkiQkj/sina
-                       -np.dot(Qij, Qkj)))/sina/dijdkj )
+                                 - sina*da*(-ctga*QijPkiQkj/sina
+                                            -np.dot(Qij, Qkj)))/sina/dijdkj )
         Hr[3:6,0:3] = Hr[0:3,3:6].T
         Hr[3:6,3:6] = ( angle.k*(factor*QkjPijQkj/sina 
-                       - sina*da*(-ctga*QkjPijQkj/sina
-                       +np.dot(Qkj, Pik)-np.dot(Pkj, Pik)
-                       *2.0+(Pki+P)))/sina/dkj2 )
+                                 - sina*da*(-ctga*QkjPijQkj/sina
+                                            +np.dot(Qkj, Pik)-np.dot(Pkj, Pik)
+                                            *2.0+(Pki+P)))/sina/dkj2 )
     elif np.abs(sina) > 0.001:
         Hr[0:3,0:3] = ( angle.k*(QijPkjQij/sina 
-                       + da*(-ctga*QijPkjQij/sina+np.dot(Qij, Pki)
-                       -np.dot(Pij, Pki)*2.0+(Pik+P)))/sina/dij2 )
+                                 + da*(-ctga*QijPkjQij/sina+np.dot(Qij, Pki)
+                                       -np.dot(Pij, Pki)*2.0+(Pik+P)))/sina/dij2 )
         Hr[0:3,3:6] = ( angle.k*(QijPkiQkj/sina 
-                       + da*(-ctga*QijPkiQkj/sina
-                       -np.dot(Qij, Qkj)))/sina/dijdkj )
+                                 + da*(-ctga*QijPkiQkj/sina
+                                       -np.dot(Qij, Qkj)))/sina/dijdkj )
         Hr[3:6,0:3] = Hr[0:3,3:6].T
         Hr[3:6,3:6] = ( angle.k*(QkjPijQkj/sina 
-                       + da*(-ctga*QkjPijQkj/sina
-                       +np.dot(Qkj, Pik)-np.dot(Pkj, Pik)
-                       *2.0+(Pki+P)))/sina/dkj2 )
+                                 + da*(-ctga*QkjPijQkj/sina
+                                       +np.dot(Qkj, Pik)-np.dot(Pkj, Pik)
+                                       *2.0+(Pki+P)))/sina/dkj2 )
 
     if angle.alpha is not None:
         Hr *= ( np.exp(angle.alpha[0]*(angle.rref[0]**2-dij**2))
-               *np.exp(angle.alpha[1]*(angle.rref[1]**2-dkj**2)) )
+                *np.exp(angle.alpha[1]*(angle.rref[1]**2-dkj**2)) )
 
     if morses is not None:
         for m in range(len(morses)):
@@ -528,7 +528,7 @@ def get_angle_potential_reduced_hessian(atoms, angle, morses=None):
 
     if angle.alpha is not None:
         Hr *= ( np.exp(angle.alpha[0]*(angle.rref[0]**2-dij**2))
-               *np.exp(angle.alpha[1]*(angle.rref[1]**2-dkj**2)) )
+                *np.exp(angle.alpha[1]*(angle.rref[1]**2-dkj**2)) )
 
     if morses is not None:
         for m in range(len(morses)):
@@ -677,8 +677,8 @@ def get_dihedral_potential_hessian(atoms, dihedral, morses=None,
         rkl = rel_pos_pbc(atoms, k, l)
         dkl = linalg.norm(rkl)
         Hx *= ( np.exp(dihedral.alpha[0]*(dihedral.rref[0]**2-dij**2))
-               *np.exp(dihedral.alpha[1]*(dihedral.rref[1]**2-dkj**2))
-               *np.exp(dihedral.alpha[2]*(dihedral.rref[2]**2-dkl**2)) )
+                *np.exp(dihedral.alpha[1]*(dihedral.rref[1]**2-dkj**2))
+                *np.exp(dihedral.alpha[2]*(dihedral.rref[2]**2-dkl**2)) )
 
     if morses is not None:
         for m in range(len(morses)):
@@ -746,7 +746,7 @@ def get_dihedral_potential_reduced_hessian(atoms, dihedral, morses=None):
         Hx = dihedral.k*np.tensordot(gx,gx,axes=0)
     else:
         Hx = ( np.abs(-dihedral.k*dihedral.n**2
-              *np.cos(dihedral.n*d-dihedral.d0))*np.tensordot(gx,gx,axes=0) )
+                      *np.cos(dihedral.n*d-dihedral.d0))*np.tensordot(gx,gx,axes=0) )
 
     if dihedral.alpha is not None:
         rij = rel_pos_pbc(atoms, i, j)
@@ -756,8 +756,8 @@ def get_dihedral_potential_reduced_hessian(atoms, dihedral, morses=None):
         rkl = rel_pos_pbc(atoms, k, l)
         dkl = linalg.norm(rkl)
         Hx *= ( np.exp(dihedral.alpha[0]*(dihedral.rref[0]**2-dij**2))
-               *np.exp(dihedral.alpha[1]*(dihedral.rref[1]**2-dkj**2))
-               *np.exp(dihedral.alpha[2]*(dihedral.rref[2]**2-dkl**2)) )
+                *np.exp(dihedral.alpha[1]*(dihedral.rref[1]**2-dkj**2))
+                *np.exp(dihedral.alpha[2]*(dihedral.rref[2]**2-dkl**2)) )
 
     if morses is not None:
         for m in range(len(morses)):
@@ -785,7 +785,7 @@ def get_dihedral_potential_reduced_hessian_test(atoms, dihedral):
     else:
         arg = dihedral.n*dihedral.d - dihedral.d0
         Hx = ( np.tensordot(gx,gx,axes=0)/dihedral.k/np.sin(arg)/np.sin(arg)
-              *np.cos(arg) )
+               *np.cos(arg) )
 
     return i, j, k, l, Hx
 
@@ -830,7 +830,7 @@ def get_vdw_potential_hessian(atoms, vdw, spectral=False):
     Qij = np.eye(3)-Pij
 
     Hr = ( (156.0*vdw.Aij/dij**14-42.0*vdw.Bij/dij**8)*Pij
-          +(-12.0*vdw.Aij/dij**13+6.0*vdw.Bij/dij**7)/dij*Qij )
+           +(-12.0*vdw.Aij/dij**13+6.0*vdw.Bij/dij**7)/dij*Qij )
 
     Hx = np.dot(Bx.T, np.dot(Hr, Bx))
 
