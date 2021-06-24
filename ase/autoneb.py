@@ -77,9 +77,9 @@ class AutoNEB:
         'aseneb', standard ase NEB implementation
         'improvedtangent', published NEB implementation
         'eb', full spring force implementation (default)
-    optimizer: str
-        Which optimizer to use in the relaxation. Valid values are 'BFGS'
-        and 'FIRE' (default)
+    optimizer: object
+        Optimizer object, defaults to FIRE
+        Use of the valid strings 'BFGS' and 'FIRE' is deprecated.
     space_energy_ratio: float
         The preference for new images to be added in a big energy gab
         with a preference around the peak or in the biggest geometric gab.
@@ -103,7 +103,7 @@ class AutoNEB:
     def __init__(self, attach_calculators, prefix, n_simul, n_max,
                  iter_folder='AutoNEB_iter',
                  fmax=0.025, maxsteps=10000, k=0.1, climb=True, method='eb',
-                 optimizer='FIRE',
+                 optimizer=FIRE,
                  remove_rotation_and_translation=False, space_energy_ratio=0.5,
                  world=None,
                  parallel=True, smooth_curve=False, interpolate_method='idpp'):
@@ -132,12 +132,17 @@ class AutoNEB:
         self.world = world
         self.smooth_curve = smooth_curve
 
-        if optimizer == 'BFGS':
-            self.optimizer = BFGS
-        elif optimizer == 'FIRE':
-            self.optimizer = FIRE
+        if isinstance(optimizer, str):
+            raise DeprecationWarning(
+                'Please set optimizer as an object and not as string')
+            try:
+                self.optimizer = {
+                    'BFGS': BFGS, 'FIRE': FIRE}[optimizer]
+            except KeyError:
+                raise Exception('Optimizer needs to be BFGS or FIRE')
         else:
-            raise Exception('Optimizer needs to be BFGS or FIRE')
+            self.optimizer = optimizer
+
         self.iter_folder = Path(self.prefix.parent) / iter_folder
         self.iter_folder.mkdir(exist_ok=True)
 

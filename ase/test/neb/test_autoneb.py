@@ -5,7 +5,7 @@ from ase.autoneb import AutoNEB
 from ase.build import fcc211, add_adsorbate
 from ase.constraints import FixAtoms
 from ase.neb import NEBTools
-from ase.optimize import QuasiNewton
+from ase.optimize import QuasiNewton, BFGS
 from ase.calculators.emt import EMT
 
 
@@ -43,7 +43,7 @@ def test_autoneb(asap3, testdir):
 
     autoneb = AutoNEB(attach_calculators,
                       prefix='neb',
-                      optimizer='BFGS',
+                      optimizer=BFGS,
                       n_simul=3,
                       n_max=7,
                       fmax=fmax,
@@ -88,7 +88,7 @@ def test_Au2Ag(testdir):
     
     autoneb = AutoNEB(attach_calculators,
                       prefix=prefix,
-                      optimizer='FIRE',
+                      optimizer=QuasiNewton,
                       n_simul=1,
                       n_max=5,
                       fmax=fmax,
