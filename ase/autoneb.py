@@ -6,6 +6,7 @@ from math import log
 from math import exp
 from contextlib import ExitStack
 from pathlib import Path
+from warnings import warn
 
 from ase.io import Trajectory
 from ase.io import read
@@ -133,8 +134,8 @@ class AutoNEB:
         self.smooth_curve = smooth_curve
 
         if isinstance(optimizer, str):
-            raise DeprecationWarning(
-                'Please set optimizer as an object and not as string')
+            warn('Please set optimizer as an object and not as string',
+                 FutureWarning)
             try:
                 self.optimizer = {
                     'BFGS': BFGS, 'FIRE': FIRE}[optimizer]
