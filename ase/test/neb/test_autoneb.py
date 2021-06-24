@@ -1,4 +1,5 @@
 import pytest
+from pathlib import Path
 from ase import Atoms
 from ase.autoneb import AutoNEB
 from ase.build import fcc211, add_adsorbate
@@ -80,9 +81,10 @@ def test_Au2Ag(testdir):
         opt.run(fmax=fmax)
     middle.get_forces()
     
-    prefix = 'neb'
+    prefix = Path('subdir') / 'neb'
+    prefix.parent.mkdir()
     for i, image in enumerate([initial, middle, final]):
-        image.write(f'neb00{i}.traj')
+        image.write(f'{prefix}00{i}.traj')
     
     autoneb = AutoNEB(attach_calculators,
                       prefix=prefix,
@@ -95,11 +97,5 @@ def test_Au2Ag(testdir):
                       maxsteps=[20, 1000])
     autoneb.run()
     
-    from ase import io
-    with io.Trajectory('all_images.traj', 'w') as traj:
-        for im in autoneb.all_images:
-            im.get_forces()
-            traj.write(im)
-            
     nebtools = NEBTools(autoneb.all_images)
     assert nebtools.get_barrier()[0] == pytest.approx(4.185, 1e-3)

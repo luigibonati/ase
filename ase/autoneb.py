@@ -1,3 +1,12 @@
+import numpy as np
+import shutil
+import os
+import types
+from math import log
+from math import exp
+from contextlib import ExitStack
+from pathlib import Path
+
 from ase.io import Trajectory
 from ase.io import read
 from ase.neb import NEB
@@ -6,13 +15,6 @@ from ase.optimize import FIRE
 from ase.calculators.singlepoint import SinglePointCalculator
 import ase.parallel as mpi
 from ase.parallel import parprint
-import numpy as np
-import shutil
-import os
-import types
-from math import log
-from math import exp
-from contextlib import ExitStack
 
 
 class AutoNEB:
@@ -48,9 +50,9 @@ class AutoNEB:
 
     attach_calculators:
         Function which adds valid calculators to the list of images supplied.
-    prefix: string
+    prefix: string or path
         All files that the AutoNEB method reads and writes are prefixed with
-        this string
+        prefix
     n_simul: int
         The number of relaxations run in parallel.
     n_max: int
@@ -136,14 +138,20 @@ class AutoNEB:
             self.optimizer = FIRE
         else:
             raise Exception('Optimizer needs to be BFGS or FIRE')
-        self.iter_folder = iter_folder
-        if not os.path.exists(self.iter_folder) and self.world.rank == 0:
-            os.makedirs(self.iter_folder)
+        self.iter_folder = Path(self.prefix.parent) / iter_folder
+        self.iter_folder.mkdir(exist_ok=True)
 
     def execute_one_neb(self, n_cur, to_run, climb=False, many_steps=False):
         with ExitStack() as exitstack:
             self._execute_one_neb(exitstack, n_cur, to_run,
                                   climb=climb, many_steps=many_steps)
+
+    def iter_trajpath(self, i, iiter):
+        """When doing the i'th NEB optimization a set of files
+        prefixXXXiter00i.traj exists with XXX ranging from 000 to the N images
+        currently in the NEB."""
+        return (self.iter_folder /
+                (self.prefix.name + f'{i:03d}iter{iiter:03d}.traj'))
 
     def _execute_one_neb(self, exitstack, n_cur, to_run,
                          climb=False, many_steps=False):
@@ -161,9 +169,7 @@ class AutoNEB:
                     with Trajectory(filename, mode='w',
                                     atoms=self.all_images[i]) as traj:
                         traj.write()
-                    filename_ref = self.iter_folder + \
-                        '/%s%03diter%03d.traj' % (self.prefix, i,
-                                                  self.iteration)
+                    filename_ref = self.iter_trajpath(i, self.iteration)
                     if os.path.isfile(filename):
                         shutil.copy2(filename, filename_ref)
         if self.world.rank == 0:
@@ -179,12 +185,9 @@ class AutoNEB:
                   climb=climb)
 
         # Do the actual NEB calculation
-        qn = closelater(
-            self.optimizer(neb,
-                           logfile=self.iter_folder +
-                           '/%s_log_iter%03d.log' % (self.prefix,
-                                                     self.iteration))
-        )
+        logpath = (self.iter_folder
+            / f'{self.prefix.name}_log_iter{self.iteration:03d}.log')
+        qn = closelater(self.optimizer(neb, logfile=logpath))
 
         # Find the ranks which are masters for each their calculation
         if self.parallel:
@@ -198,9 +201,7 @@ class AutoNEB:
                 self.all_images[j + nneb],
                 master=(self.world.rank % n == 0)
             ))
-            filename_ref = self.iter_folder + \
-                '/%s%03diter%03d.traj' % (self.prefix,
-                                          j + nneb, self.iteration)
+            filename_ref = self.iter_trajpath(j + nneb, self.iteration)
             trajhist = closelater(Trajectory(
                 filename_ref, 'w',
                 self.all_images[j + nneb],
@@ -211,8 +212,7 @@ class AutoNEB:
         else:
             num = 1
             for i, j in enumerate(to_run[1: -1]):
-                filename_ref = self.iter_folder + \
-                    '/%s%03diter%03d.traj' % (self.prefix, j, self.iteration)
+                filename_ref = self.iter_trajpath(j, self.iteration)
                 trajhist = closelater(Trajectory(
                     filename_ref, 'w', self.all_images[j]
                 ))
@@ -480,11 +480,10 @@ class AutoNEB:
                                 'without gaps.')
         if self.world.rank == 0:
             for i in index_exists:
-                filename_ref = self.iter_folder + \
-                    '/%s%03diter000.traj' % (self.prefix, i)
+                filename_ref = self.iter_trajpath(i, 0)
                 if os.path.isfile(filename_ref):
                     try:
-                        os.rename(filename_ref, filename_ref + '.bak')
+                        os.rename(filename_ref, str(filename_ref) + '.bak')
                     except IOError:
                         pass
                 filename = '%s%03d.traj' % (self.prefix, i)
