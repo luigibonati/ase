@@ -11,7 +11,7 @@ if sys.version_info[0] == 2:
 
 
 __all__ = ['Atoms', 'Atom']
-__version__ = '3.22.0b1'
+__version__ = '3.22.0'
 
 
 from ase.atom import Atom
