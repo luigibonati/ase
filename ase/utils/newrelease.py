@@ -113,7 +113,6 @@ def main():
     update_version(version)
 
     releasenotes = 'doc/releasenotes.rst'
-    lines = []
 
     searchtxt = re.escape("""\
 Git master branch
@@ -167,7 +166,7 @@ News
     replacetxt = replacetxt.format(version=version, date=date)
 
     frontpage = 'doc/index.rst'
-    lines = []
+
     print('Editing {}'.format(frontpage))
     with open(frontpage) as fd:
         txt = fd.read()
