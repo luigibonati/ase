@@ -9,6 +9,14 @@ Git master branch
 
 :git:`master <>`.
 
+* No changes yet
+
+
+Version 3.22.0
+==============
+
+24 June 2021: :git:`3.22.0 <../3.22.0>`
+
 
 Calculators:
 
