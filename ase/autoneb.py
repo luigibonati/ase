@@ -108,7 +108,7 @@ class AutoNEB:
                  world=None,
                  parallel=True, smooth_curve=False, interpolate_method='idpp'):
         self.attach_calculators = attach_calculators
-        self.prefix = prefix
+        self.prefix = Path(prefix)
         self.n_simul = n_simul
         self.n_max = n_max
         self.climb = climb
