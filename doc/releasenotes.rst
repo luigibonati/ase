@@ -36,6 +36,10 @@ Calculators:
 * Added :class:`~ase.calculators.socketio.PySocketIOClient`, a helper class
   for using the socket I/O calculator with Python clients.
 
+* OpenKIM calculator updated to support kimpy 2.0.0.
+
+* DFTB+ calculator now reads dipole moments.
+
 Algorithms:
 
 * Dedicated class :class:`ase.vibrations.VibrationsData` to improve
@@ -131,6 +135,9 @@ Bug fixes:
   MD simulations.  As the interactions between MD and constraints are
   not trivial, users should in general verify carefully that simulations
   behave physically correctly.
+* Fix issue where occupancies in ``atoms.info`` would subtly change
+  type when saved to JSON and reloaded.
+
 
 Web-page:
 
