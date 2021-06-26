@@ -424,6 +424,17 @@ def minimize_tilt(atoms, order=range(3), fold_atoms=True):
                 minimize_tilt_ij(atoms, c1, c2, fold_atoms)
 
 
+def cellvector_products(cell):
+    g0 = np.empty(6, dtype=float)
+    g0[0] = cell[0] @ cell[0]
+    g0[1] = cell[1] @ cell[1]
+    g0[2] = cell[2] @ cell[2]
+    g0[3] = 2 * (cell[1] @ cell[2])
+    g0[4] = 2 * (cell[2] @ cell[0])
+    g0[5] = 2 * (cell[0] @ cell[1])
+    return g0
+
+
 def niggli_reduce_cell(cell, epsfactor=None):
     from ase.geometry import cellpar_to_cell
 
@@ -439,15 +450,9 @@ def niggli_reduce_cell(cell, epsfactor=None):
     C = I3.copy()
     D = I6.copy()
 
-    g0 = np.zeros(6, dtype=float)
-    g0[0] = np.dot(cell[0], cell[0])
-    g0[1] = np.dot(cell[1], cell[1])
-    g0[2] = np.dot(cell[2], cell[2])
-    g0[3] = 2 * np.dot(cell[1], cell[2])
-    g0[4] = 2 * np.dot(cell[0], cell[2])
-    g0[5] = 2 * np.dot(cell[0], cell[1])
+    g0 = cellvector_products(cell)
 
-    g = np.dot(D, g0)
+    g = D @ g0
 
     def lt(x, y, eps=eps):
         return x < y - eps
