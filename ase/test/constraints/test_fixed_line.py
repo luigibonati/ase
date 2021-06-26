@@ -6,7 +6,14 @@ import numpy as np
 import pytest
 
 
-@pytest.mark.parametrize('indices', [0, [0], [0, 1]])
+@pytest.mark.parametrize(
+    'indices', [
+        0,
+        [0],
+        [0, 1],
+        np.array([0, 1], dtype=np.int64),
+    ]
+)
 def test_valid_inputs_indices(indices):
     _ = FixedLine(indices, [1, 0, 0])
 
