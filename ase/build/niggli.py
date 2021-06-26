@@ -20,14 +20,26 @@ def niggli_reduce_cell(cell, epsfactor=None):
     eps = epsfactor * abs(np.linalg.det(cell))**(1./3.)
 
     cell = np.asarray(cell)
+    g0 = cellvector_products(cell)
+    g, C = _niggli_reduce(g0, eps)
 
+    abc = np.sqrt(g[:3])
+    # Prevent division by zero e.g. for cell==zeros((3, 3)):
+    abcprod = max(abc.prod(), 1e-100)
+    cosangles = abc * g[3:] / (2 * abcprod)
+    angles = 180 * np.arccos(cosangles) / np.pi
+    newcell = np.array(cellpar_to_cell(np.concatenate([abc, angles])),
+                       dtype=float)
+
+    return newcell, C
+
+
+def _niggli_reduce(g0, eps):
     I3 = np.eye(3, dtype=int)
     I6 = np.eye(6, dtype=int)
 
     C = I3.copy()
     D = I6.copy()
-
-    g0 = cellvector_products(cell)
 
     g = D @ g0
 
@@ -152,12 +164,4 @@ def niggli_reduce_cell(cell, epsfactor=None):
                            'operation={}'
                            .format(cell.tolist(), C.tolist()))
 
-    abc = np.sqrt(g[:3])
-    # Prevent division by zero e.g. for cell==zeros((3, 3)):
-    abcprod = max(abc.prod(), 1e-100)
-    cosangles = abc * g[3:] / (2 * abcprod)
-    angles = 180 * np.arccos(cosangles) / np.pi
-    newcell = np.array(cellpar_to_cell(np.concatenate([abc, angles])),
-                       dtype=float)
-
-    return newcell, C
+    return g, C
