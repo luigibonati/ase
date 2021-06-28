@@ -148,7 +148,6 @@ distribution-package:
   image: registry.gitlab.com/ase/ase:ase-main
   extends: .database-configuration
   script:
-    - apt-get install -y gettext  # For compiling ase gui translations
     - mkdir dist
     - python setup.py sdist | tee dist/setup_sdist.log
     - python setup.py bdist_wheel | tee dist/setup_bdist_wheel.log

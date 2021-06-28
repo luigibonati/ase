@@ -733,7 +733,7 @@ class FixCartesian(FixConstraintSingle):
 
     def todict(self):
         return {'name': 'FixCartesian',
-                'kwargs': {'a': self.a, 'mask': ~self.mask.tolist()}}
+                'kwargs': {'a': self.a, 'mask': (~self.mask).tolist()}}
 
 
 class FixScaled(FixConstraintSingle):
