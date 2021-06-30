@@ -11,11 +11,10 @@ from time import time
 t = time()
 
 
-''' This test calls plumed-ASE calculator for computing some CVs.
-Moreover, it computes those CVs directly from atoms.positions and
-compares them'''
-
 def test_CVs():
+    ''' This test calls plumed-ASE calculator for computing some CVs.
+    Moreover, it computes those CVs directly from atoms.positions and
+    compares them'''
     # plumed setting
     input = ["c1: COM ATOMS=1,2",
              "c2: CENTER ATOMS=1,2",
@@ -138,6 +137,7 @@ def test_restart():
             deltaPos2 < 0.01), "Error in the metadynamics simulation"
     assert (deltaForce < 0.01), "Error in the computation of Bias-forces"
 
+
 def test_postpro():
     input = ["d: DISTANCE ATOMS=1,2",
              "METAD ARG=d SIGMA=0.5 HEIGHT=2 PACE=20 FILE=HILLS_postpro{}".format(t)]
@@ -155,10 +155,11 @@ def test_postpro():
     postpr = np.loadtxt("HILLS_postpro{}".format(t))
     diff = direct-postpr
     
-    s=0
+    s = 0
     for i in diff.flatten():
         s += i**2
     assert (s == 0), "Error in postprocessing"
+
 
 def test_remove():
     # actually, it is not a test. It just removes the files creared in
@@ -178,4 +179,3 @@ if __name__ == '__main__':
     test_restart()
     test_postpro()
     test_remove()
-    
