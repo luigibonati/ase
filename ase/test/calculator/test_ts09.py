@@ -4,8 +4,8 @@ from ase.calculators.vdwcorrection import vdWTkatchenko09prl
 from ase.calculators.emt import EMT
 from ase.build import bulk, molecule
 
-def test_ts09(testdir):
 
+def test_ts09(testdir):
 
     # fake objects for the test
     class FakeHirshfeldPartitioning:
