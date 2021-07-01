@@ -6,6 +6,7 @@ from ase.build import bulk, molecule
 
 def test_ts09(testdir):
 
+
     # fake objects for the test
     class FakeHirshfeldPartitioning:
         def __init__(self, calculator):
@@ -23,7 +24,6 @@ def test_ts09(testdir):
     class FakeDFTcalculator(EMT):
         def get_xc_functional(self):
             return 'PBE'
-
 
     a = 4.05  # Angstrom lattice spacing
     al = bulk('Al', 'fcc', a=a)
@@ -66,9 +66,9 @@ def test_ts09_polarizability(testdir):
     class FakeDFTcalculator(EMT):
         def get_xc_functional(self):
             return 'PBE'
+
         def get_atoms(self):
             return atoms
-
 
     atoms = molecule('N2')
 
@@ -79,4 +79,3 @@ def test_ts09_polarizability(testdir):
     atoms.calc = c
     alpha = c.get_polarizability()
     assert alpha == pytest.approx(14.8, .5)
-
