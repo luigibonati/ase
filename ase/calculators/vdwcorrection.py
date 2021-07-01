@@ -366,6 +366,28 @@ class vdWTkatchenko09prl(Calculator, IOContext):
                       file=self.txt)
             self.txt.flush()
 
+    def get_polarizability(self, atoms=None):
+        if atoms is None:
+            atoms = self.calculator.get_atoms()
+        else:
+            self.atoms = atoms
+
+        volume_ratios = self.hirshfeld.get_effective_volume_ratios()
+
+        na = len(atoms)
+        alpha_a = np.empty((na))
+        C6eff_a = np.empty((na))
+        alpha_eff_a = np.empty((na))
+        for a, atom in enumerate(atoms):
+            # free atom values
+            alpha_a[a], C6eff_a[a] = self.vdWDB_alphaC6[atom.symbol]
+            # effective polarizability assuming linear combination
+            # of atomic polarizability from ts09
+            alpha_eff_a[a] = volume_ratios[a] * alpha_a[a]
+        alpha = np.sum(alpha_eff_a)
+        return alpha
+
+
     def damping(self, RAB, R0A, R0B,
                 d=20,   # steepness of the step function for PBE
                 sR=0.94):
