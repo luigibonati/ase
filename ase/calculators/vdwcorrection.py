@@ -387,7 +387,6 @@ class vdWTkatchenko09prl(Calculator, IOContext):
         alpha = np.sum(alpha_eff_a)
         return alpha
 
-
     def damping(self, RAB, R0A, R0B,
                 d=20,   # steepness of the step function for PBE
                 sR=0.94):
