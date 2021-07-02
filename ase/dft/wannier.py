@@ -367,8 +367,8 @@ def get_invkklst(kklst_dk):
     return invkklst_dk
 
 
-def choose_states(calc, fixedenergy, fixedstates, Nk, nwannier, log, spin):
-    fermi_level = calc.get_fermi_level()
+def choose_states(calcdata, fixedenergy, fixedstates, Nk, nwannier, log, spin):
+
     if fixedenergy is None and fixedstates is not None:
         if isinstance(fixedstates, int):
             fixedstates = [fixedstates] * Nk
@@ -377,17 +377,17 @@ def choose_states(calc, fixedenergy, fixedstates, Nk, nwannier, log, spin):
         # Setting number of fixed states and EDF from given energy cutoff.
         # All states below this energy cutoff are fixed.
         # The reference energy is Ef for metals and CBM for insulators.
-        if (bandgap(calc=calc, output=None)[0] < 0.01
-                or fixedenergy < 0.01):
-            cutoff = fixedenergy + fermi_level
+        if calcdata.gap < 0.01 or fixedenergy < 0.01:
+            cutoff = fixedenergy + calcdata.fermi_level
         else:
-            cutoff = fixedenergy + calc.get_homo_lumo()[1]
+            cutoff = fixedenergy + calcdata.lumo
 
         # Find the states below the energy cutoff at each k-point
         tmp_fixedstates_k = []
         for k in range(Nk):
-            tmp_fixedstates_k.append(
-                calc.get_eigenvalues(k, spin).searchsorted(cutoff))
+            eps_n = calcdata.eps_skn[spin, k]
+            kindex = eps_n.searchsorted(cutoff)
+            tmp_fixedstates_k.append(kindex)
         fixedstates_k = np.array(tmp_fixedstates_k, int)
     elif fixedenergy is not None and fixedstates is not None:
         raise RuntimeError(
@@ -402,9 +402,9 @@ def choose_states(calc, fixedenergy, fixedstates, Nk, nwannier, log, spin):
                 "energy cutoff.")
             tmp_fixedstates_k = []
             for k in range(Nk):
-                tmp_fixedstates_k.append(
-                    calc.get_eigenvalues(k, spin).searchsorted(fermi_level)
-                )
+                eps_n = calcdata.eps_skn[spin, k]
+                kindex = eps_n.searchsorted(calcdata.fermi_level)
+                tmp_fixedstates_k.append(kindex)
             fixedstates_k = np.array(tmp_fixedstates_k, int)
         nwannier = np.max(fixedstates_k)
 
@@ -413,6 +413,18 @@ def choose_states(calc, fixedenergy, fixedstates, Nk, nwannier, log, spin):
         fixedstates_k = np.array([nwannier] * Nk, int)
 
     return fixedstates_k, nwannier
+
+
+def get_eigenvalues(calc):
+    nspins = calc.get_number_of_spins()
+    nkpts = len(calc.get_ibz_k_points())
+    nbands = calc.get_number_of_bands()
+    eps_skn = np.empty((nspins, nkpts, nbands))
+
+    for ispin in range(nspins):
+        for ikpt in range(nkpts):
+            eps_skn[ispin, ikpt] = calc.get_eigenvalues(kpt=ikpt, spin=ispin)
+    return eps_skn
 
 
 class Wannier:
@@ -491,18 +503,42 @@ class Wannier:
 
         self.log = log
         self.calc = calc
-        self.atoms = calc.get_atoms()
+
         self.spin = spin
         self.functional = functional
         self.initialwannier = initialwannier
         self.log('Using functional:', functional)
-        self.kpt_kc = calc.get_bz_k_points()
+
+        class CalcData:
+            def __init__(self, kpt_kc, atoms, fermi_level, lumo, eps_skn,
+                         gap):
+                self.kpt_kc = kpt_kc
+                self.atoms = atoms
+                self.fermi_level = fermi_level
+                self.lumo = lumo
+                self.eps_skn = eps_skn
+                self.gap = gap
+
+        def get_calcdata(calc):
+            kpt_kc = calc.get_bz_k_points()
+            assert len(calc.get_ibz_k_points()) == len(kpt_kc)
+            lumo = calc.get_homo_lumo()[1]
+            gap = bandgap(calc=calc, output=None)[0]
+            return CalcData(
+                kpt_kc=kpt_kc,
+                atoms=calc.get_atoms(),
+                fermi_level=calc.get_fermi_level(),
+                lumo=lumo,
+                eps_skn=get_eigenvalues(calc),
+                gap=gap,
+            )
+
+        self.calcdata = get_calcdata(calc)
 
         # Make sure there is no symmetry reduction
-        assert len(calc.get_ibz_k_points()) == len(self.kpt_kc)
 
         self.kptgrid = get_monkhorst_pack_size_and_offset(self.kpt_kc)[0]
-        self.kpt_kc *= sign
+        self.calcdata.kpt_kc *= sign
 
         self.largeunitcell_cc = (self.unitcell_cc.T * self.kptgrid).T
         self.weight_d, self.Gdir_dc = calculate_weights(self.largeunitcell_cc)
@@ -513,7 +549,8 @@ class Wannier:
         self.nbands = nbands
 
         self.fixedstates_k, self.nwannier = choose_states(
-            calc, fixedenergy, fixedstates, self.Nk, nwannier, log, spin)
+            self.calcdata, fixedenergy, fixedstates, self.Nk, nwannier,
+            log, spin)
 
         # Compute the number of extra degrees of freedom (EDF)
         self.edf_k = self.nwannier - self.fixedstates_k
@@ -534,6 +571,14 @@ class Wannier:
         if file is None:
             self.Z_dknn = self.new_Z(calc, k0_dkc)
         self.initialize(file=file, initialwannier=initialwannier, rng=rng)
+
+    @property
+    def atoms(self):
+        return self.calcdata.atoms
+
+    @property
+    def kpt_kc(self):
+        return self.calcdata.kpt_kc
 
     @property
     def Ndir(self):
