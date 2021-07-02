@@ -91,4 +91,3 @@ class WannierState:
     def __init__(self, C_kul, U_kww):
         self.C_kul = C_kul
         self.U_kww = U_kww
-

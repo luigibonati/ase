@@ -646,7 +646,7 @@ class Wannier:
         elif initialwannier == 'scdm':
             wannier_state = spec.scdm(self.calc, self.kpt_kc, self.spin)
         else:
-            wannier_state = spec.initial_wannier(calc, self.kptgrid,
+            wannier_state = spec.initial_wannier(self.calc, self.kptgrid,
                                                  self.edf_k, self.spin)
 
         self.wannier_state = wannier_state
