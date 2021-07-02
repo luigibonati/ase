@@ -281,7 +281,7 @@ def arbitrary_s_orbitals(atoms, Ns, rng=np.random):
             # Use dummy H atom to measure distance from any other atom
             dists = tmp_atoms.get_distances(
                 a=-1,
-                indices=range(atoms.get_global_number_of_atoms()))
+                indices=range(len(atoms)))
 
             # Check if it is close to at least one atom
             if (dists < 1.5).any():
@@ -418,7 +418,6 @@ class Wannier:
         self.kpt_kc *= sign
 
         self.Nk = len(self.kpt_kc)
-        self.unitcell_cc = self.atoms.get_cell()
         self.largeunitcell_cc = (self.unitcell_cc.T * self.kptgrid).T
         self.weight_d, self.Gdir_dc = calculate_weights(self.largeunitcell_cc)
         self.Ndir = len(self.weight_d)  # Number of directions
@@ -538,6 +537,10 @@ class Wannier:
                         G_I=k0_c, spin=self.spin)
         self.initialize(file=file, initialwannier=initialwannier, rng=rng)
 
+    @property
+    def unitcell_cc(self):
+        return self.atoms.cell
+
     def initialize(self, file=None, initialwannier='random', rng=np.random):
         """Re-initialize current rotation matrix.
 
@@ -650,14 +653,11 @@ class Wannier:
             Nws = np.arange(max_number_fixedstates,
                             np.min([max_number_fixedstates + nwrange,
                                     self.nbands + 1]))
-            Nws[:] = Nws.astype(int)
         else:
             Nws = np.arange(min_range_value,
                             np.min([min_range_value + nwrange,
                                     self.nbands + 1]))
-            Nws[:] = Nws.astype(int)
-
-        print(Nws)
+        Nws[:] = Nws.astype(int)
 
         # If there is no randomness, there is no need to repeat
         random_initials = ['random', 'orbitals']
@@ -980,14 +980,14 @@ class Wannier:
 
         # Compute absolute value or complex angle
         if angle:
-            write(fname, atoms, data=np.angle(func), format='cube')
+            data = np.angle(func)
         else:
             if self.Nk == 1:
                 func *= np.exp(-1.j * np.angle(func.max()))
-                func = abs(func)
-            else:
-                func = abs(func)
-            write(fname, atoms, data=func, format='cube')
+            func = abs(func)
+            data = func
+
+        write(fname, atoms, data=data, format='cube')
 
     def localize(self, step=0.25, tolerance=1e-08,
                  updaterot=True, updatecoeff=True):
