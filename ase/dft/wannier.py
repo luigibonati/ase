@@ -367,6 +367,54 @@ def get_invkklst(kklst_dk):
     return invkklst_dk
 
 
+def choose_states(calc, fixedenergy, fixedstates, Nk, nwannier, log, spin):
+    fermi_level = calc.get_fermi_level()
+    if fixedenergy is None and fixedstates is not None:
+        if isinstance(fixedstates, int):
+            fixedstates = [fixedstates] * Nk
+        fixedstates_k = np.array(fixedstates, int)
+    elif fixedenergy is not None and fixedstates is None:
+        # Setting number of fixed states and EDF from given energy cutoff.
+        # All states below this energy cutoff are fixed.
+        # The reference energy is Ef for metals and CBM for insulators.
+        if (bandgap(calc=calc, output=None)[0] < 0.01
+                or fixedenergy < 0.01):
+            cutoff = fixedenergy + fermi_level
+        else:
+            cutoff = fixedenergy + calc.get_homo_lumo()[1]
+
+        # Find the states below the energy cutoff at each k-point
+        tmp_fixedstates_k = []
+        for k in range(Nk):
+            tmp_fixedstates_k.append(
+                calc.get_eigenvalues(k, spin).searchsorted(cutoff))
+        fixedstates_k = np.array(tmp_fixedstates_k, int)
+    elif fixedenergy is not None and fixedstates is not None:
+        raise RuntimeError(
+            'You can not set both fixedenergy and fixedstates')
+
+    if nwannier == 'auto':
+        if fixedenergy is None and fixedstates is None:
+            # Assume the fixedexergy parameter equal to 0 and
+            # find the states below the Fermi level at each k-point.
+            log("nwannier=auto but no 'fixedenergy' or 'fixedstates'",
+                "parameter was provided, using Fermi level as",
+                "energy cutoff.")
+            tmp_fixedstates_k = []
+            for k in range(Nk):
+                tmp_fixedstates_k.append(
+                    calc.get_eigenvalues(k, spin).searchsorted(fermi_level)
+                )
+            fixedstates_k = np.array(tmp_fixedstates_k, int)
+        nwannier = np.max(fixedstates_k)
+
+    # Without user choice just set nwannier fixed states without EDF
+    if fixedstates is None and fixedenergy is None:
+        fixedstates_k = np.array([nwannier] * Nk, int)
+
+    return fixedstates_k, nwannier
+
+
 class Wannier:
     """Partly occupied Wannier functions
 
@@ -462,56 +510,13 @@ class Wannier:
         assert len(self.weight_d) == len(self.Gdir_dc)
         self.Ndir = len(self.weight_d)  # Number of directions
 
-        if nbands is not None:
-            self.nbands = nbands
-        else:
-            self.nbands = calc.get_number_of_bands()
+        if nbands is None:
+            nbands = calc.get_number_of_bands()
+        self.nbands = nbands
 
-        fermi_level = calc.get_fermi_level()
-        if fixedenergy is None and fixedstates is not None:
-            if isinstance(fixedstates, int):
-                fixedstates = [fixedstates] * self.Nk
-            self.fixedstates_k = np.array(fixedstates, int)
-        elif fixedenergy is not None and fixedstates is None:
-            # Setting number of fixed states and EDF from given energy cutoff.
-            # All states below this energy cutoff are fixed.
-            # The reference energy is Ef for metals and CBM for insulators.
-            if (bandgap(calc=calc, output=None)[0] < 0.01
-                    or fixedenergy < 0.01):
-                cutoff = fixedenergy + fermi_level
-            else:
-                cutoff = fixedenergy + calc.get_homo_lumo()[1]
-
-            # Find the states below the energy cutoff at each k-point
-            tmp_fixedstates_k = []
-            for k in range(self.Nk):
-                tmp_fixedstates_k.append(
-                    calc.get_eigenvalues(k, spin).searchsorted(cutoff))
-            self.fixedstates_k = np.array(tmp_fixedstates_k, int)
-        elif fixedenergy is not None and fixedstates is not None:
-            raise RuntimeError(
-                'You can not set both fixedenergy and fixedstates')
-
-        if nwannier == 'auto':
-            if fixedenergy is None and fixedstates is None:
-                # Assume the fixedexergy parameter equal to 0 and
-                # find the states below the Fermi level at each k-point.
-                self.log("nwannier=auto but no 'fixedenergy' or 'fixedstates'",
-                         "parameter was provided, using Fermi level as",
-                         "energy cutoff.")
-                tmp_fixedstates_k = []
-                for k in range(self.Nk):
-                    tmp_fixedstates_k.append(
-                        calc.get_eigenvalues(k, spin).searchsorted(fermi_level)
-                    )
-                self.fixedstates_k = np.array(tmp_fixedstates_k, int)
-            nwannier = np.max(self.fixedstates_k)
-
-        self.nwannier = nwannier
-
-        # Without user choice just set nwannier fixed states without EDF
-        if fixedstates is None and fixedenergy is None:
-            self.fixedstates_k = np.array([self.nwannier] * self.Nk, int)
+        self.fixedstates_k, self.nwannier = choose_states(
+            calc, fixedenergy, fixedstates, self.Nk, nwannier, log,
+            spin)
 
         # Compute the number of extra degrees of freedom (EDF)
         self.edf_k = self.nwannier - self.fixedstates_k
