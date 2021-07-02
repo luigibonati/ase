@@ -551,7 +551,8 @@ class Wannier:
 
         if file is not None:
             with paropen(file, 'r') as fd:
-                self.Z_dknn, self.U_kww, self.C_kul = read_json(fd)
+                things = read_json(fd, always_array=False)
+                self.Z_dknn, self.U_kww, self.C_kul = things
 
         elif initialwannier == 'bloch':
             # Set U and C to pick the lowest Bloch states
