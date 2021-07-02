@@ -37,7 +37,7 @@ class TestNEB(object):
         cls.images_dummy = [cls.h_atom.copy(), cls.h_atom.copy(),
                             cls.h_atom.copy()]
 
-    def test_deprecations(self):
+    def test_deprecations(self, testdir):
         # future warning on deprecated class
         with warns(FutureWarning, match=r".*Please use.*"):
             deprecated_neb = neb.SingleCalculatorNEB(self.images_dummy)

@@ -26,13 +26,18 @@ commands = dict(
 
 
 calc = pytest.mark.calculator
+
+
 @calc('espresso', ecutwfc=200 / Ry)
 @calc('abinit', ecut=200, **abinit_boilerplate)
 def test_socketio_espresso(factory):
+    name = factory.name
+    if name == 'abinit':
+        factory.require_version('9.4')
+
     atoms = bulk('Si')
 
-    name = factory.name
-    exe = factory.factory.executable  # XXX ugly
+    exe = factory.factory.executable
     unixsocket = f'ase_test_socketio_{name}'
 
     espresso = factory.calc(
@@ -44,12 +49,11 @@ def test_socketio_espresso(factory):
 
     atoms.rattle(stdev=.2, seed=42)
 
-    opt = BFGS(ExpCellFilter(atoms))
-
-    with pytest.warns(UserWarning, match='Subprocess exited'):
-        with SocketIOCalculator(espresso, unixsocket=unixsocket) as calc:
-            atoms.calc = calc
-            for _ in opt.irun(fmax=0.05):
-                e = atoms.get_potential_energy()
-                fmax = max(np.linalg.norm(atoms.get_forces(), axis=0))
-                print(e, fmax)
+    with BFGS(ExpCellFilter(atoms)) as opt, \
+         pytest.warns(UserWarning, match='Subprocess exited'), \
+         SocketIOCalculator(espresso, unixsocket=unixsocket) as calc:
+        atoms.calc = calc
+        for _ in opt.irun(fmax=0.05):
+            e = atoms.get_potential_energy()
+            fmax = max(np.linalg.norm(atoms.get_forces(), axis=0))
+            print(e, fmax)

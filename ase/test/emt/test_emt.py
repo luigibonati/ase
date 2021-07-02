@@ -62,4 +62,3 @@ def test_emt():
     print((Atoms('Cu3', positions=R,
                  pbc=(1, 1, 0), cell=A,
                  calculator=EMT()).get_potential_energy() - 3 * e0) / 2)
-

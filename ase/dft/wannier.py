@@ -20,6 +20,10 @@ from ase.io.jsonio import read_json, write_json
 dag = dagger
 
 
+def silent(*args, **kwargs):
+    """Dummy logging function."""
+
+
 def gram_schmidt(U):
     """Orthonormalize columns of U according to the Gram-Schmidt procedure."""
     for i, col in enumerate(U.T):
@@ -48,9 +52,8 @@ def neighbor_k_search(k_c, G_c, kpt_kc, tol=1e-4):
             if np.linalg.norm(k1_c - k_c - G_c + k0_c) < tol:
                 return k1, k0_c
 
-    print('Wannier: Did not find matching kpoint for kpt=', k_c)
-    print('Probably non-uniform k-point grid')
-    raise NotImplementedError
+    raise ValueError(f'Wannier: Did not find matching kpoint for kpt={k_c}.  '
+                     'Probably non-uniform k-point grid')
 
 
 def calculate_weights(cell_cc, normalize=True):
@@ -80,25 +83,7 @@ def calculate_weights(cell_cc, normalize=True):
     return weight_d, Gdir_dc
 
 
-def random_orthogonal_matrix(dim, rng=np.random, real=False):
-    """Generate uniformly distributed random orthogonal matrices"""
-    if real:
-        from scipy.stats import special_ortho_group
-        ortho_m = special_ortho_group.rvs(dim=dim, random_state=rng)
-    else:
-        # The best method but not supported on old systems
-        # from scipy.stats import unitary_group
-        # ortho_m = unitary_group.rvs(dim=dim, random_state=rng)
-
-        # Alternative method from https://stackoverflow.com/questions/38426349
-        H = rng.rand(dim, dim)
-        Q, R = qr(H)
-        ortho_m = Q @ np.diag(np.sign(np.diag(R)))
-
-    return ortho_m
-
-
-def steepest_descent(func, step=.005, tolerance=1e-6, verbose=False, **kwargs):
+def steepest_descent(func, step=.005, tolerance=1e-6, log=silent, **kwargs):
     fvalueold = 0.
     fvalue = fvalueold + 10
     count = 0
@@ -108,15 +93,15 @@ def steepest_descent(func, step=.005, tolerance=1e-6, verbose=False, **kwargs):
         func.step(dF * step, **kwargs)
         fvalue = func.get_functional_value()
         count += 1
-        if verbose:
-            print('SteepestDescent: iter=%s, value=%s' % (count, fvalue))
+        log('SteepestDescent: iter=%s, value=%s' % (count, fvalue))
 
 
 def md_min(func, step=.25, tolerance=1e-6, max_iter=10000,
-           verbose=False, **kwargs):
-    if verbose:
-        print('Localize with step =', step, 'and tolerance =', tolerance)
-        finit = func.get_functional_value()
+           log=silent, **kwargs):
+
+    log('Localize with step =', step, 'and tolerance =', tolerance)
+    finit = func.get_functional_value()
+
     t = -time()
     fvalueold = 0.
     fvalue = fvalueold + 10
@@ -135,21 +120,18 @@ def md_min(func, step=.25, tolerance=1e-6, max_iter=10000,
         if fvalue < fvalueold:
             step *= 0.5
         count += 1
-        if verbose:
-            print('MDmin: iter=%s, step=%s, value=%0.4f'
-                  % (count, step, fvalue))
+        log(f'MDmin: iter={count}, step={step}, value={fvalue}')
         if count > max_iter:
             t += time()
             warnings.warn('Max iterations reached: '
                           'iters=%s, step=%s, seconds=%0.2f, value=%0.4f'
                           % (count, step, t, fvalue.real))
             break
-    if verbose:
-        t += time()
-        print('%d iterations in %0.2f seconds (%0.2f ms/iter), endstep = %s' %
-              (count, t, t * 1000. / count, step))
-        print('Initial value=%0.4f, Final value=%0.4f' %
-              (finit, fvalue))
+
+    t += time()
+    log('%d iterations in %0.2f seconds (%0.2f ms/iter), endstep = %s' %
+        (count, t, t * 1000. / count, step))
+    log(f'Initial value={finit}, Final value={fvalue}')
 
 
 def rotation_from_projection(proj_nw, fixed, ortho=True):
@@ -335,6 +317,145 @@ def square_modulus_of_Z_diagonal(Z_dww):
     return np.abs(Z_dww.diagonal(0, 1, 2))**2
 
 
+def get_kklst(kpt_kc, Gdir_dc):
+    # Set the list of neighboring k-points k1, and the "wrapping" k0,
+    # such that k1 - k - G + k0 = 0
+    #
+    # Example: kpoints = (-0.375,-0.125,0.125,0.375), dir=0
+    # G = [0.25,0,0]
+    # k=0.375, k1= -0.375 : -0.375-0.375-0.25 => k0=[1,0,0]
+    #
+    # For a gamma point calculation k1 = k = 0,  k0 = [1,0,0] for dir=0
+    Nk = len(kpt_kc)
+    Ndir = len(Gdir_dc)
+
+    if Nk == 1:
+        kklst_dk = np.zeros((Ndir, 1), int)
+        k0_dkc = Gdir_dc.reshape(-1, 1, 3)
+    else:
+        kklst_dk = np.empty((Ndir, Nk), int)
+        k0_dkc = np.empty((Ndir, Nk, 3), int)
+
+        # Distance between kpoints
+        kdist_c = np.empty(3)
+        for c in range(3):
+            # make a sorted list of the kpoint values in this direction
+            slist = np.argsort(kpt_kc[:, c], kind='mergesort')
+            skpoints_kc = np.take(kpt_kc, slist, axis=0)
+            kdist_c[c] = max([skpoints_kc[n + 1, c] - skpoints_kc[n, c]
+                              for n in range(Nk - 1)])
+
+        for d, Gdir_c in enumerate(Gdir_dc):
+            for k, k_c in enumerate(kpt_kc):
+                # setup dist vector to next kpoint
+                G_c = np.where(Gdir_c > 0, kdist_c, 0)
+                if max(G_c) < 1e-4:
+                    kklst_dk[d, k] = k
+                    k0_dkc[d, k] = Gdir_c
+                else:
+                    kklst_dk[d, k], k0_dkc[d, k] = \
+                        neighbor_k_search(k_c, G_c, kpt_kc)
+    return kklst_dk, k0_dkc
+
+
+def get_invkklst(kklst_dk):
+    Ndir, Nk = kklst_dk.shape
+    invkklst_dk = np.empty(kklst_dk.shape, int)
+    for d in range(Ndir):
+        for k1 in range(Nk):
+            invkklst_dk[d, k1] = kklst_dk[d].tolist().index(k1)
+    return invkklst_dk
+
+
+def choose_states(calcdata, fixedenergy, fixedstates, Nk, nwannier, log, spin):
+
+    if fixedenergy is None and fixedstates is not None:
+        if isinstance(fixedstates, int):
+            fixedstates = [fixedstates] * Nk
+        fixedstates_k = np.array(fixedstates, int)
+    elif fixedenergy is not None and fixedstates is None:
+        # Setting number of fixed states and EDF from given energy cutoff.
+        # All states below this energy cutoff are fixed.
+        # The reference energy is Ef for metals and CBM for insulators.
+        if calcdata.gap < 0.01 or fixedenergy < 0.01:
+            cutoff = fixedenergy + calcdata.fermi_level
+        else:
+            cutoff = fixedenergy + calcdata.lumo
+
+        # Find the states below the energy cutoff at each k-point
+        tmp_fixedstates_k = []
+        for k in range(Nk):
+            eps_n = calcdata.eps_skn[spin, k]
+            kindex = eps_n.searchsorted(cutoff)
+            tmp_fixedstates_k.append(kindex)
+        fixedstates_k = np.array(tmp_fixedstates_k, int)
+    elif fixedenergy is not None and fixedstates is not None:
+        raise RuntimeError(
+            'You can not set both fixedenergy and fixedstates')
+
+    if nwannier == 'auto':
+        if fixedenergy is None and fixedstates is None:
+            # Assume the fixedexergy parameter equal to 0 and
+            # find the states below the Fermi level at each k-point.
+            log("nwannier=auto but no 'fixedenergy' or 'fixedstates'",
+                "parameter was provided, using Fermi level as",
+                "energy cutoff.")
+            tmp_fixedstates_k = []
+            for k in range(Nk):
+                eps_n = calcdata.eps_skn[spin, k]
+                kindex = eps_n.searchsorted(calcdata.fermi_level)
+                tmp_fixedstates_k.append(kindex)
+            fixedstates_k = np.array(tmp_fixedstates_k, int)
+        nwannier = np.max(fixedstates_k)
+
+    # Without user choice just set nwannier fixed states without EDF
+    if fixedstates is None and fixedenergy is None:
+        fixedstates_k = np.array([nwannier] * Nk, int)
+
+    return fixedstates_k, nwannier
+
+
+def get_eigenvalues(calc):
+    nspins = calc.get_number_of_spins()
+    nkpts = len(calc.get_ibz_k_points())
+    nbands = calc.get_number_of_bands()
+    eps_skn = np.empty((nspins, nkpts, nbands))
+
+    for ispin in range(nspins):
+        for ikpt in range(nkpts):
+            eps_skn[ispin, ikpt] = calc.get_eigenvalues(kpt=ikpt, spin=ispin)
+    return eps_skn
+
+
+class CalcData:
+    def __init__(self, kpt_kc, atoms, fermi_level, lumo, eps_skn,
+                 gap):
+        self.kpt_kc = kpt_kc
+        self.atoms = atoms
+        self.fermi_level = fermi_level
+        self.lumo = lumo
+        self.eps_skn = eps_skn
+        self.gap = gap
+
+    @property
+    def nbands(self):
+        return self.eps_skn.shape[2]
+
+
+def get_calcdata(calc):
+    kpt_kc = calc.get_bz_k_points()
+    assert len(calc.get_ibz_k_points()) == len(kpt_kc)
+    lumo = calc.get_homo_lumo()[1]
+    gap = bandgap(calc=calc, output=None)[0]
+    return CalcData(
+        kpt_kc=kpt_kc,
+        atoms=calc.get_atoms(),
+        fermi_level=calc.get_fermi_level(),
+        lumo=lumo,
+        eps_skn=get_eigenvalues(calc),
+        gap=gap)
+
+
 class Wannier:
     """Partly occupied Wannier functions
 
@@ -351,7 +472,7 @@ class Wannier:
                  initialwannier='orbitals',
                  functional='std',
                  rng=np.random,
-                 verbose=False):
+                 log=silent):
         """
         Required arguments:
 
@@ -403,213 +524,132 @@ class Wannier:
 
           ``rng``: Random number generator for ``initialwannier``.
 
-          ``verbose``: True / False level of verbosity.
+          ``log``: Function which logs, such as print().
           """
         # Bloch phase sign convention.
         # May require special cases depending on which code is used.
         sign = -1
 
-        self.verbose = verbose
+        self.log = log
         self.calc = calc
-        self.atoms = calc.get_atoms()
+
         self.spin = spin
         self.functional = functional
         self.initialwannier = initialwannier
-        if self.verbose:
-            print('Using functional:', functional)
-        self.kpt_kc = calc.get_bz_k_points()
+        self.log('Using functional:', functional)
+
+        self.calcdata = get_calcdata(calc)
 
         # Make sure there is no symmetry reduction
-        assert len(calc.get_ibz_k_points()) == len(self.kpt_kc)
 
         self.kptgrid = get_monkhorst_pack_size_and_offset(self.kpt_kc)[0]
-        self.kpt_kc *= sign
+        self.calcdata.kpt_kc *= sign
 
-        self.Nk = len(self.kpt_kc)
         self.largeunitcell_cc = (self.unitcell_cc.T * self.kptgrid).T
         self.weight_d, self.Gdir_dc = calculate_weights(self.largeunitcell_cc)
-        self.Ndir = len(self.weight_d)  # Number of directions
+        assert len(self.weight_d) == len(self.Gdir_dc)
 
-        if nbands is not None:
-            self.nbands = nbands
-        else:
-            self.nbands = calc.get_number_of_bands()
+        if nbands is None:
+            # XXX Can work with other number of bands than calculator.
+            # Is this case properly tested, lest we confuse them?
+            nbands = self.calcdata.nbands
+        self.nbands = nbands
 
-        fermi_level = calc.get_fermi_level()
-        if fixedenergy is None and fixedstates is not None:
-            if isinstance(fixedstates, int):
-                fixedstates = [fixedstates] * self.Nk
-            self.fixedstates_k = np.array(fixedstates, int)
-        elif fixedenergy is not None and fixedstates is None:
-            # Setting number of fixed states and EDF from given energy cutoff.
-            # All states below this energy cutoff are fixed.
-            # The reference energy is Ef for metals and CBM for insulators.
-            if (bandgap(calc=calc, output=None)[0] < 0.01
-                    or fixedenergy < 0.01):
-                cutoff = fixedenergy + fermi_level
-            else:
-                cutoff = fixedenergy + calc.get_homo_lumo()[1]
-
-            # Find the states below the energy cutoff at each k-point
-            tmp_fixedstates_k = []
-            for k in range(self.Nk):
-                tmp_fixedstates_k.append(
-                    calc.get_eigenvalues(k, spin).searchsorted(cutoff))
-            self.fixedstates_k = np.array(tmp_fixedstates_k, int)
-        elif fixedenergy is not None and fixedstates is not None:
-            raise RuntimeError(
-                'You can not set both fixedenergy and fixedstates')
-
-        if nwannier == 'auto':
-            if fixedenergy is None and fixedstates is None:
-                # Assume the fixedexergy parameter equal to 0 and
-                # find the states below the Fermi level at each k-point.
-                if verbose:
-                    print("nwannier=auto but no 'fixedenergy' or 'fixedstates'",
-                          "parameter was provided, using Fermi level as",
-                          "energy cutoff.")
-                tmp_fixedstates_k = []
-                for k in range(self.Nk):
-                    tmp_fixedstates_k.append(
-                        calc.get_eigenvalues(k, spin).searchsorted(fermi_level)
-                    )
-                self.fixedstates_k = np.array(tmp_fixedstates_k, int)
-            nwannier = np.max(self.fixedstates_k)
-
-        self.nwannier = nwannier
-
-        # Without user choice just set nwannier fixed states without EDF
-        if fixedstates is None and fixedenergy is None:
-            self.fixedstates_k = np.array([self.nwannier] * self.Nk, int)
+        self.fixedstates_k, self.nwannier = choose_states(
+            self.calcdata, fixedenergy, fixedstates, self.Nk, nwannier,
+            log, spin)
 
         # Compute the number of extra degrees of freedom (EDF)
         self.edf_k = self.nwannier - self.fixedstates_k
 
-        if verbose:
-            print('Wannier: Fixed states            : %s' % self.fixedstates_k)
-            print('Wannier: Extra degrees of freedom: %s' % self.edf_k)
+        self.log('Wannier: Fixed states            : %s' % self.fixedstates_k)
+        self.log('Wannier: Extra degrees of freedom: %s' % self.edf_k)
 
-        # Set the list of neighboring k-points k1, and the "wrapping" k0,
-        # such that k1 - k - G + k0 = 0
-        #
-        # Example: kpoints = (-0.375,-0.125,0.125,0.375), dir=0
-        # G = [0.25,0,0]
-        # k=0.375, k1= -0.375 : -0.375-0.375-0.25 => k0=[1,0,0]
-        #
-        # For a gamma point calculation k1 = k = 0,  k0 = [1,0,0] for dir=0
-        if self.Nk == 1:
-            self.kklst_dk = np.zeros((self.Ndir, 1), int)
-            k0_dkc = self.Gdir_dc.reshape(-1, 1, 3)
-        else:
-            self.kklst_dk = np.empty((self.Ndir, self.Nk), int)
-            k0_dkc = np.empty((self.Ndir, self.Nk, 3), int)
-
-            # Distance between kpoints
-            kdist_c = np.empty(3)
-            for c in range(3):
-                # make a sorted list of the kpoint values in this direction
-                slist = np.argsort(self.kpt_kc[:, c], kind='mergesort')
-                skpoints_kc = np.take(self.kpt_kc, slist, axis=0)
-                kdist_c[c] = max([skpoints_kc[n + 1, c] - skpoints_kc[n, c]
-                                  for n in range(self.Nk - 1)])
-
-            for d, Gdir_c in enumerate(self.Gdir_dc):
-                for k, k_c in enumerate(self.kpt_kc):
-                    # setup dist vector to next kpoint
-                    G_c = np.where(Gdir_c > 0, kdist_c, 0)
-                    if max(G_c) < 1e-4:
-                        self.kklst_dk[d, k] = k
-                        k0_dkc[d, k] = Gdir_c
-                    else:
-                        self.kklst_dk[d, k], k0_dkc[d, k] = \
-                            neighbor_k_search(k_c, G_c, self.kpt_kc)
+        self.kklst_dk, k0_dkc = get_kklst(self.kpt_kc, self.Gdir_dc)
 
         # Set the inverse list of neighboring k-points
-        self.invkklst_dk = np.empty((self.Ndir, self.Nk), int)
-        for d in range(self.Ndir):
-            for k1 in range(self.Nk):
-                self.invkklst_dk[d, k1] = self.kklst_dk[d].tolist().index(k1)
+        self.invkklst_dk = get_invkklst(self.kklst_dk)
 
         Nw = self.nwannier
         Nb = self.nbands
         self.Z_dkww = np.empty((self.Ndir, self.Nk, Nw, Nw), complex)
         self.V_knw = np.zeros((self.Nk, Nb, Nw), complex)
+
         if file is None:
-            self.Z_dknn = np.empty((self.Ndir, self.Nk, Nb, Nb), complex)
-            for d, dirG in enumerate(self.Gdir_dc):
-                for k in range(self.Nk):
-                    k1 = self.kklst_dk[d, k]
-                    k0_c = k0_dkc[d, k]
-                    self.Z_dknn[d, k] = calc.get_wannier_localization_matrix(
-                        nbands=Nb, dirG=dirG, kpoint=k, nextkpoint=k1,
-                        G_I=k0_c, spin=self.spin)
+            self.Z_dknn = self.new_Z(calc, k0_dkc)
         self.initialize(file=file, initialwannier=initialwannier, rng=rng)
+
+    @property
+    def atoms(self):
+        return self.calcdata.atoms
+
+    @property
+    def kpt_kc(self):
+        return self.calcdata.kpt_kc
+
+    @property
+    def Ndir(self):
+        return len(self.weight_d)  # Number of directions
+
+    @property
+    def Nk(self):
+        return len(self.kpt_kc)
+
+    def new_Z(self, calc, k0_dkc):
+        Nb = self.nbands
+        Z_dknn = np.empty((self.Ndir, self.Nk, Nb, Nb), complex)
+        for d, dirG in enumerate(self.Gdir_dc):
+            for k in range(self.Nk):
+                k1 = self.kklst_dk[d, k]
+                k0_c = k0_dkc[d, k]
+                Z_dknn[d, k] = calc.get_wannier_localization_matrix(
+                    nbands=Nb, dirG=dirG, kpoint=k, nextkpoint=k1,
+                    G_I=k0_c, spin=self.spin)
+        return Z_dknn
 
     @property
     def unitcell_cc(self):
         return self.atoms.cell
+
+    @property
+    def U_kww(self):
+        return self.wannier_state.U_kww
+
+    @property
+    def C_kul(self):
+        return self.wannier_state.C_kul
 
     def initialize(self, file=None, initialwannier='random', rng=np.random):
         """Re-initialize current rotation matrix.
 
         Keywords are identical to those of the constructor.
         """
-        Nw = self.nwannier
-        Nb = self.nbands
+        from ase.dft.wannierstate import WannierState, WannierSpec
+
+        spec = WannierSpec(self.Nk, self.nwannier, self.nbands,
+                           self.fixedstates_k)
 
         if file is not None:
             with paropen(file, 'r') as fd:
-                things = read_json(fd, always_array=False)
-                self.Z_dknn, self.U_kww, self.C_kul = things
-
+                Z_dknn, U_kww, C_kul = read_json(fd, always_array=False)
+            self.Z_dknn = Z_dknn
+            wannier_state = WannierState(C_kul, U_kww)
         elif initialwannier == 'bloch':
             # Set U and C to pick the lowest Bloch states
-            self.U_kww = np.zeros((self.Nk, Nw, Nw), complex)
-            self.C_kul = []
-            for U, M, L in zip(self.U_kww, self.fixedstates_k, self.edf_k):
-                U[:] = np.identity(Nw, complex)
-                if L > 0:
-                    self.C_kul.append(
-                        np.identity(Nb - M, complex)[:, :L])
-                else:
-                    self.C_kul.append([])
+            wannier_state = spec.bloch(self.edf_k)
         elif initialwannier == 'random':
-            # Set U and C to random (orthogonal) matrices
-            self.U_kww = np.zeros((self.Nk, Nw, Nw), complex)
-            self.C_kul = []
-            for U, M, L in zip(self.U_kww, self.fixedstates_k, self.edf_k):
-                U[:] = random_orthogonal_matrix(Nw, rng, real=False)
-                if L > 0:
-                    self.C_kul.append(random_orthogonal_matrix(
-                        Nb - M, rng=rng, real=False)[:, :L])
-                else:
-                    self.C_kul.append(np.array([]))
+            wannier_state = spec.random(rng, self.edf_k)
         elif initialwannier == 'orbitals':
-            self.C_kul, self.U_kww = self.calc.initial_wannier(
-                init_orbitals(self.atoms, self.nwannier, rng),
-                self.kptgrid, self.fixedstates_k,
-                self.edf_k, self.spin, self.nbands)
+            orbitals = init_orbitals(self.atoms, self.nwannier, rng)
+            wannier_state = spec.initial_orbitals(
+                self.calc, orbitals, self.kptgrid, self.edf_k, self.spin)
         elif initialwannier == 'scdm':
-            # get the size of the grid and check if there are Nw bands
-            ps = self.calc.get_pseudo_wave_function(band=self.nwannier,
-                                                    kpt=0, spin=0)
-            Ng = ps.size
-            pseudo_nkG = np.zeros((self.nbands, self.Nk, Ng),
-                                  dtype=np.complex128)
-            for k in range(self.Nk):
-                for n in range(self.nbands):
-                    pseudo_nkG[n, k] = \
-                        self.calc.get_pseudo_wave_function(
-                            band=n, kpt=k, spin=self.spin).ravel()
-            self.C_kul, self.U_kww = scdm(pseudo_nkG,
-                                          kpts=self.kpt_kc,
-                                          fixed_k=self.fixedstates_k,
-                                          Nw=self.nwannier)
+            wannier_state = spec.scdm(self.calc, self.kpt_kc, self.spin)
         else:
-            # Use initial guess to determine U and C
-            self.C_kul, self.U_kww = self.calc.initial_wannier(
-                initialwannier, self.kptgrid, self.fixedstates_k,
-                self.edf_k, self.spin, self.nbands)
+            wannier_state = spec.initial_wannier(calc, self.kptgrid,
+                                                 self.edf_k, self.spin)
+
+        self.wannier_state = wannier_state
         self.update()
 
     def save(self, file):
@@ -673,12 +713,10 @@ class Wannier:
         if self.initialwannier not in random_initials:
             random_reps = 1
 
-        if self.verbose:
-            t = - time()
+        t = -time()
         avg_max_spreads = np.zeros(len(Nws))
         for j, Nw in enumerate(Nws):
-            if self.verbose:
-                print('Trying with Nw =', Nw)
+            self.log('Trying with Nw =', Nw)
 
             # Define once with the fastest 'initialwannier',
             # then initialize with random seeds in the for loop
@@ -688,7 +726,7 @@ class Wannier:
                           spin=self.spin,
                           functional=self.functional,
                           initialwannier='bloch',
-                          verbose=self.verbose,
+                          log=self.log,
                           rng=np.random)
             wan.fixedstates_k = self.fixedstates_k
             wan.edf_k = wan.nwannier - wan.fixedstates_k
@@ -701,10 +739,9 @@ class Wannier:
 
             avg_max_spreads[j] = max_spreads.mean()
 
-        if self.verbose:
-            print('Average spreads: ', avg_max_spreads)
-            t += time()
-            print(f'Execution time: {t:.1f}s')
+        self.log('Average spreads: ', avg_max_spreads)
+        t += time()
+        self.log(f'Execution time: {t:.1f}s')
 
         return Nws[np.argmin(avg_max_spreads)]
 
@@ -768,7 +805,7 @@ class Wannier:
         spec_kn = self.get_spectral_weight(w)
         dos = np.zeros(len(energies))
         for k, spec_n in enumerate(spec_kn):
-            eig_n = self.calc.get_eigenvalues(kpt=k, spin=self.spin)
+            eig_n = self.calcdata.eps_skn[self.spin, k]
             for weight, eig in zip(spec_n, eig_n):
                 # Add gaussian centered at the eigenvalue
                 x = ((energies - eig) / width)**2
@@ -791,7 +828,7 @@ class Wannier:
         trans = np.array(cell) - np.floor(scaled_c)
         self.translate(w, trans)
 
-    def translate_all_to_cell(self, cell=[0, 0, 0]):
+    def translate_all_to_cell(self, cell=(0, 0, 0)):
         r"""Translate all Wannier functions to specified cell.
 
         Move all Wannier orbitals to a specific unit cell.  There
@@ -869,7 +906,7 @@ class Wannier:
         """
         return self._get_hopping(R[0], R[1], R[2])
 
-    def get_hamiltonian(self, k=0):
+    def get_hamiltonian(self, k):
         """Get Hamiltonian at existing k-vector of index k
 
         ::
@@ -878,8 +915,9 @@ class Wannier:
           H(k) = V    diag(eps )  V
                   k           k    k
         """
-        eps_n = self.calc.get_eigenvalues(kpt=k, spin=self.spin)[:self.nbands]
-        return (dag(self.V_knw[k]) * eps_n) @ self.V_knw[k]
+        eps_n = self.calcdata.eps_skn[self.spin, k, :self.nbands]
+        V_nw = self.V_knw[k]
+        return (dag(V_nw) * eps_n) @ V_nw
 
     def get_hamiltonian_kpoint(self, kpt_c):
         """Get Hamiltonian at some new arbitrary k-vector
@@ -892,8 +930,7 @@ class Wannier:
 
         Warning: This method moves all Wannier functions to cell (0, 0, 0)
         """
-        if self.verbose:
-            print('Translating all Wannier functions to cell (0, 0, 0)')
+        self.log('Translating all Wannier functions to cell (0, 0, 0)')
         self.translate_all_to_cell()
         max = (self.kptgrid - 1) // 2
         N1, N2, N3 = max
@@ -1001,7 +1038,7 @@ class Wannier:
     def localize(self, step=0.25, tolerance=1e-08,
                  updaterot=True, updatecoeff=True):
         """Optimize rotation to give maximal localization"""
-        md_min(self, step=step, tolerance=tolerance, verbose=self.verbose,
+        md_min(self, step=step, tolerance=tolerance, log=self.log,
                updaterot=updaterot, updatecoeff=updatecoeff)
 
     def get_functional_value(self):
@@ -1026,9 +1063,8 @@ class Wannier:
             fun = np.sum(a_w)
         elif self.functional == 'var':
             fun = np.sum(a_w) - self.nwannier * np.var(a_w)
-            if self.verbose:
-                print(f'std: {np.sum(a_w):.4f}',
-                      f'\tvar: {self.nwannier * np.var(a_w):.4f}')
+            self.log(f'std: {np.sum(a_w):.4f}',
+                     f'\tvar: {self.nwannier * np.var(a_w):.4f}')
         return fun
 
     def get_gradients(self):

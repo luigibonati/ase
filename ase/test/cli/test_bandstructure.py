@@ -2,7 +2,7 @@ from ase.lattice import RHL
 from pathlib import Path
 
 
-def test_ase_bandstructure(cli, plt):
+def test_ase_bandstructure(cli, plt, testdir):
     lat = RHL(3., 70.0)
     path = lat.bandpath()
     bs = path.free_electron_band_structure()

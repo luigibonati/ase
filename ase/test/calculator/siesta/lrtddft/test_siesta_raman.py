@@ -4,6 +4,7 @@ from ase.vibrations.raman import StaticRamanCalculator
 from ase.vibrations.placzek import PlaczekStatic
 from ase.build import molecule
 
+
 def test_N2(siesta_factory):
 
     pynao = pytest.importorskip('pynao')

@@ -226,14 +226,14 @@ class MinimaHopping:
             if world.rank == 0:
                 if os.path.exists(self._logfile):
                     raise RuntimeError('File exists: %s' % self._logfile)
-            f = paropen(self._logfile, 'w')
-            f.write('par: %12s %12s %12s\n' % ('T (K)', 'Ediff (eV)',
-                                               'mdmin'))
-            f.write('ene: %12s %12s %12s\n' % ('E_current', 'E_previous',
-                                               'Difference'))
-            f.close()
+            fd = paropen(self._logfile, 'w')
+            fd.write('par: %12s %12s %12s\n' % ('T (K)', 'Ediff (eV)',
+                                                'mdmin'))
+            fd.write('ene: %12s %12s %12s\n' % ('E_current', 'E_previous',
+                                                'Difference'))
+            fd.close()
             return
-        f = paropen(self._logfile, 'a')
+        fd = paropen(self._logfile, 'a')
         if cat == 'msg':
             line = 'msg: %s' % message
         elif cat == 'par':
@@ -247,8 +247,8 @@ class MinimaHopping:
                         (current, previous, current - previous))
             else:
                 line = ('ene: %12.5f' % current)
-        f.write(line + '\n')
-        f.close()
+        fd.write(line + '\n')
+        fd.close()
 
     def _optimize(self):
         """Perform an optimization."""
@@ -613,9 +613,9 @@ class MHPlot:
             return
         energies = [self._data[step - 1][0]]
         file = os.path.join(self._rundirectory, 'md%05i.traj' % step)
-        traj = io.Trajectory(file, 'r')
-        for atoms in traj:
-            energies.append(atoms.get_potential_energy())
+        with io.Trajectory(file, 'r') as traj:
+            for atoms in traj:
+                energies.append(atoms.get_potential_energy())
         xi = step - 1 + .5
         if len(energies) > 2:
             xf = xi + (step + 0.25 - xi) * len(energies) / (len(energies) - 2.)
@@ -633,9 +633,9 @@ class MHPlot:
         file = os.path.join(self._rundirectory, 'qn%05i.traj' % index)
         if os.path.getsize(file) == 0:
             return
-        traj = io.Trajectory(file, 'r')
-        energies = [traj[0].get_potential_energy(),
-                    traj[-1].get_potential_energy()]
+        with io.Trajectory(file, 'r') as traj:
+            energies = [traj[0].get_potential_energy(),
+                        traj[-1].get_potential_energy()]
         if index > 0:
             file = os.path.join(self._rundirectory, 'md%05i.traj' % index)
             atoms = io.read(file, index=-3)

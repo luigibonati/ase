@@ -485,7 +485,7 @@ def write_lammps_data(fd, atoms, specorder=None, force_skew=False,
             q = convert(q, "charge", "ASE", units)
             s = species.index(symbols[i]) + 1
             fd.write("{0:>6} {1:>3} {2:>5} {3:23.17g} {4:23.17g} {5:23.17g}\n"
-                    .format(*(i + 1, s, q) + tuple(r)))
+                     .format(*(i + 1, s, q) + tuple(r)))
     elif atom_style == 'full':
         charges = atoms.get_initial_charges()
         # The label 'mol-id' has apparenlty been introduced in read earlier,
@@ -524,7 +524,7 @@ def write_lammps_data(fd, atoms, specorder=None, force_skew=False,
             q = convert(q, "charge", "ASE", units)
             s = species.index(symbols[i]) + 1
             fd.write("{0:>6} {1:>3} {2:>3} {3:>5} {4:23.17g} {5:23.17g} "
-                    "{6:23.17g}\n".format(*(i + 1, m, s, q) + tuple(r)))
+                     "{6:23.17g}\n".format(*(i + 1, m, s, q) + tuple(r)))
     else:
         raise NotImplementedError
 

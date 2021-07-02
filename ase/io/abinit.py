@@ -278,7 +278,7 @@ def write_abinit_in(fd, atoms, param=None, species=None, pseudos=None):
     fd.write('\n')
 
     if pseudos is not None:
-        listing = ', '.join(pseudos)
+        listing = ',\n'.join(pseudos)
         line = f'pseudos "{listing}"\n'
         fd.write(line)
 
@@ -576,7 +576,6 @@ Please note that stdin to Abinit should be the .files file until version 8
 but the main inputfile (conventionally abinit.in) from abinit9,
 which may require reconfiguring the ASE/Abinit shell command.
 """
-
 
 
 def write_all_inputs(atoms, properties, parameters,

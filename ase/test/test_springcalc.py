@@ -25,7 +25,6 @@ def test_springcalc():
     assert np.allclose(forces, forces_target)
     assert np.isclose(Epot, Epot_target)
 
-
     # numeric forces test
     atoms_ideal.calc = calc
     f, fn = gradient_test(atoms_ideal)

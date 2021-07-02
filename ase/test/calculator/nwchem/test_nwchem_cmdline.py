@@ -12,7 +12,7 @@ ase build O O.traj &&
 ase run nwchem O.traj -o nwchem_cmdline.json &&
 ase build O2 O2.traj &&
 ase run nwchem O2.traj -o nwchem_cmdline.json""",
-    'nwchem')
+              'nwchem')
     c = connect('nwchem_cmdline.json')
     dct = read_json('nwchem_cmdline.json')
     for name in ['O2', 'O']:

@@ -80,7 +80,7 @@ class VaspChargeDensity:
 
         """
         import ase.io.vasp as aiv
-        f = open(filename)
+        fd = open(filename)
         self.atoms = []
         self.chg = []
         self.chgdiff = []
@@ -88,35 +88,35 @@ class VaspChargeDensity:
         self.augdiff = ''
         while True:
             try:
-                atoms = aiv.read_vasp(f)
+                atoms = aiv.read_vasp(fd)
             except (IOError, ValueError, IndexError):
                 # Probably an empty line, or we tried to read the
                 # augmentation occupancies in CHGCAR
                 break
-            f.readline()
-            ngr = f.readline().split()
+            fd.readline()
+            ngr = fd.readline().split()
             ng = (int(ngr[0]), int(ngr[1]), int(ngr[2]))
             chg = np.empty(ng)
-            self._read_chg(f, chg, atoms.get_volume())
+            self._read_chg(fd, chg, atoms.get_volume())
             self.chg.append(chg)
             self.atoms.append(atoms)
             # Check if the file has a spin-polarized charge density part, and
             # if so, read it in.
-            fl = f.tell()
+            fl = fd.tell()
             # First check if the file has an augmentation charge part (CHGCAR
             # file.)
-            line1 = f.readline()
+            line1 = fd.readline()
             if line1 == '':
                 break
             elif line1.find('augmentation') != -1:
                 augs = [line1]
                 while True:
-                    line2 = f.readline()
+                    line2 = fd.readline()
                     if line2.split() == ngr:
                         self.aug = ''.join(augs)
                         augs = []
                         chgdiff = np.empty(ng)
-                        self._read_chg(f, chgdiff, atoms.get_volume())
+                        self._read_chg(fd, chgdiff, atoms.get_volume())
                         self.chgdiff.append(chgdiff)
                     elif line2 == '':
                         break
@@ -130,11 +130,11 @@ class VaspChargeDensity:
                     augs = []
             elif line1.split() == ngr:
                 chgdiff = np.empty(ng)
-                self._read_chg(f, chgdiff, atoms.get_volume())
+                self._read_chg(fd, chgdiff, atoms.get_volume())
                 self.chgdiff.append(chgdiff)
             else:
-                f.seek(fl)
-        f.close()
+                fd.seek(fl)
+        fd.close()
 
     def _write_chg(self, fobj, chg, volume, format='chg'):
         """Write charge density
@@ -204,34 +204,34 @@ class VaspChargeDensity:
                 format = 'chgcar'
             else:
                 format = 'chg'
-        with open(filename, 'w') as f:
+        with open(filename, 'w') as fd:
             for ii, chg in enumerate(self.chg):
                 if format == 'chgcar' and ii != len(self.chg) - 1:
                     continue  # Write only the last image for CHGCAR
-                aiv.write_vasp(f,
+                aiv.write_vasp(fd,
                                self.atoms[ii],
                                direct=True,
                                long_format=False)
-                f.write('\n')
+                fd.write('\n')
                 for dim in chg.shape:
-                    f.write(' %4i' % dim)
-                f.write('\n')
+                    fd.write(' %4i' % dim)
+                fd.write('\n')
                 vol = self.atoms[ii].get_volume()
-                self._write_chg(f, chg, vol, format)
+                self._write_chg(fd, chg, vol, format)
                 if format == 'chgcar':
-                    f.write(self.aug)
+                    fd.write(self.aug)
                 if self.is_spin_polarized():
                     if format == 'chg':
-                        f.write('\n')
+                        fd.write('\n')
                     for dim in chg.shape:
-                        f.write(' %4i' % dim)
-                    f.write('\n')  # a new line after dim is required
-                    self._write_chg(f, self.chgdiff[ii], vol, format)
+                        fd.write(' %4i' % dim)
+                    fd.write('\n')  # a new line after dim is required
+                    self._write_chg(fd, self.chgdiff[ii], vol, format)
                     if format == 'chgcar':
                         # a new line is always provided self._write_chg
-                        f.write(self.augdiff)
+                        fd.write(self.augdiff)
                 if format == 'chg' and len(self.chg) > 1:
-                    f.write('\n')
+                    fd.write('\n')
 
 
 class VaspDos:
@@ -343,32 +343,33 @@ class VaspDos:
 
     def read_doscar(self, fname="DOSCAR"):
         """Read a VASP DOSCAR file"""
-        f = open(fname)
-        natoms = int(f.readline().split()[0])
-        [f.readline() for nn in range(4)]  # Skip next 4 lines.
+        fd = open(fname)
+        natoms = int(fd.readline().split()[0])
+        [fd.readline() for nn in range(4)]  # Skip next 4 lines.
         # First we have a block with total and total integrated DOS
-        ndos = int(f.readline().split()[2])
+        ndos = int(fd.readline().split()[2])
         dos = []
         for nd in range(ndos):
-            dos.append(np.array([float(x) for x in f.readline().split()]))
+            dos.append(np.array([float(x) for x in fd.readline().split()]))
         self._total_dos = np.array(dos).T
         # Next we have one block per atom, if INCAR contains the stuff
         # necessary for generating site-projected DOS
         dos = []
         for na in range(natoms):
-            line = f.readline()
+            line = fd.readline()
             if line == '':
                 # No site-projected DOS
                 break
             ndos = int(line.split()[2])
-            line = f.readline().split()
+            line = fd.readline().split()
             cdos = np.empty((ndos, len(line)))
             cdos[0] = np.array(line)
             for nd in range(1, ndos):
-                line = f.readline().split()
+                line = fd.readline().split()
                 cdos[nd] = np.array([float(x) for x in line])
             dos.append(cdos.T)
         self._site_dos = np.array(dos)
+        fd.close()
 
 
 class xdat2traj:

@@ -14,7 +14,6 @@ def test_atoms_distance():
     a.set_cell((9, 2, 2))
     a.set_pbc((True, False, False))
 
-
     # Calculate indiviually with mic=True
     assert a.get_distance(0, 1, mic=True) == 2
     assert a.get_distance(1, 2, mic=True) == 3

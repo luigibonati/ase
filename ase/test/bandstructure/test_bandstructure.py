@@ -7,7 +7,7 @@ from ase.dft.kpoints import special_paths
 from ase.spectrum.band_structure import BandStructure
 
 
-def test_bandstructure(plt):
+def test_bandstructure(testdir, plt):
     atoms = bulk('Cu')
     path = special_paths['fcc']
     atoms.calc = FreeElectrons(nvalence=1,

@@ -1,12 +1,12 @@
 import numpy as np
 import ase.units as un
 
-class SiestaLRTDDFT:
-    """Interface for linear response TDDFT for Siesta via
-    [PyNAO](https://mbarbry.website.fr.to/pynao/doc/html/)
 
-    When using PyNAO please cite the papers indicated at in the PyNAO
-    [documentation](https://mbarbry.website.fr.to/pynao/doc/html/references.html)
+class SiestaLRTDDFT:
+    """Interface for linear response TDDFT for Siesta via `PyNAO`_
+
+    When using PyNAO please cite the papers indicated in the
+    `documentation <https://mbarbrywebsite.ddns.net/pynao/doc/html/references.html>`_
     """
     def __init__(self, initialize=False, **kw):
         """
@@ -26,7 +26,7 @@ class SiestaLRTDDFT:
             msg = "running lrtddft with Siesta calculator requires pynao package"
             raise ModuleNotFoundError(msg) from err
 
-        self.initialize=initialize
+        self.initialize = initialize
         self.lrtddft_params = kw
         self.tddft = None
 
@@ -60,7 +60,6 @@ class SiestaLRTDDFT:
         siesta = Siesta(**kw)
         atoms.calc = siesta
         atoms.get_potential_energy()
-
 
     def get_polarizability(self, omega, Eext=np.array([1.0, 1.0, 1.0]), inter=True):
         """
@@ -126,6 +125,7 @@ class SiestaLRTDDFT:
 
         return pmat
 
+
 class RamanCalculatorInterface(SiestaLRTDDFT):
     """Raman interface for Siesta calculator.
     When using the Raman calculator, please cite
@@ -146,7 +146,6 @@ class RamanCalculatorInterface(SiestaLRTDDFT):
 
         self.omega = omega
         super().__init__(**kw)
-
 
     def __call__(self, *args, **kwargs):
         """Shorthand for calculate"""
@@ -175,6 +174,7 @@ class RamanCalculatorInterface(SiestaLRTDDFT):
         # Convert from atomic units to e**2 Ang**2/eV
         return pmat[:, :, 0].real * (un.Bohr**2) / un.Ha
  
+
 def pol2cross_sec(p, omg):
     """
     Convert the polarizability in au to cross section in nm**2

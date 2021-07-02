@@ -24,7 +24,7 @@ dbnames = [
 
 @pytest.mark.slow
 @pytest.mark.parametrize('dbname', dbnames)
-def test_db(dbname, cli):
+def test_db(dbname, cli, testdir):
     def count(n, *args, **kwargs):
         m = len(list(con.select(columns=['id'], *args, **kwargs)))
         assert m == n, (m, n)

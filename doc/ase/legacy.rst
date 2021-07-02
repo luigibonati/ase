@@ -14,6 +14,12 @@ maintain, or has possible security problems.
 Below is a list of removed features.
 
 ====================================== ===== =============================
+Removed in 3.23.0                      MR    Comment
+====================================== ===== =============================
+``ase.io.gaussian_reader``             !2329 No tests or documentation
+====================================== ===== =============================
+
+====================================== ===== =============================
 Removed in 3.21.0                      MR    Comment
 ====================================== ===== =============================
 ``ase.calculators.ase_qmmm_manyqm``    !2092 Has docs but lacks real tests

@@ -17,14 +17,14 @@ def test_gs_minimum_energy():
     assert atoms.get_potential_energy() == -De
 
 
-def test_gs_vibrations():
+def test_gs_vibrations(testdir):
     # check ground state vibrations
     atoms = Atoms('H2', positions=[[0, 0, 0], [0, 0, Re]])
     atoms.calc = MorsePotential(epsilon=De, r0=Re, rho0=rho0)
     vib = Vibrations(atoms)
     vib.run()
-    
-    
+
+
 def test_cutoff():
     # check that fcut_d is the derivative of fcut
     r1 = 2.0

@@ -1,6 +1,7 @@
 import pytest
 
 import numpy as np
+from ase.io import ParseError
 import ase.io.vasp_parsers.vasp_outcar_parsers as vop
 
 
@@ -408,17 +409,38 @@ k-points in reciprocal lattice and weights: KPOINTS created by Atomic Simulation
     do_test_header_parser(cursor, lines, parser, expected)
 
 
-@pytest.mark.parametrize('line, expected', [
-    ('POSCAR: Mg Al', ('Mg', 'Al')),
-    ('POSCAR: Ir2 O4', ('Ir', 'O')),
-    ('POSCAR: Ir2 O4 Ir', ('Ir', 'O', 'Ir')),
-])
-def test_parse_symbols(line, expected, do_test_header_parser):
-    cursor = 0  # single line, cursor always starts at 0
+@pytest.mark.parametrize(
+    'line, expected',
+    [
+        (' POTCAR:    PAW_PBE Ni 02Aug2007', ['Ni']),
+        (' POTCAR:    PAW_PBE Fe_pv 02Aug2007', ['Fe']),
+        (' POTCAR:    H  1/r potential', ['H']),  # The H_AE POTCAR
+        (' POTCAR:    PAW_PBE H1.25 07Sep2000', ['H']),
+        # Non-PBE potential
+        (' POTCAR:    PAW Ca_sv_GW 31Mar2010', ['Ca']),
+    ])
+def test_parse_potcar_in_outcar(line, expected, do_test_header_parser):
+    cursor = 0
     lines = [line]
     parser = vop.SpeciesTypes()
     expected = {'species': expected}
     do_test_header_parser(cursor, lines, parser, expected)
+
+
+@pytest.mark.parametrize(
+    'line',
+    [
+        ' POTCAR:    PAW_PBE Nis 02Aug2007',  # Purely made-up typo in the element
+        ' POTCAR:    PAW_PBE M 02Aug2007',  # Purely made-up typo in the element
+    ])
+def test_parse_potcar_parse_error(line):
+    """Test that we raise a ParseError for a corrupted POTCAR line.
+    Note, that this line is purely made-up, just to test a crash"""
+    cursor = 0
+    lines = [line]
+    parser = vop.SpeciesTypes()
+    with pytest.raises(ParseError):
+        parser.parse(cursor, lines)
 
 
 @pytest.mark.parametrize(
@@ -435,3 +457,61 @@ def test_ions_per_species(line, expected, do_test_header_parser):
     parser = vop.IonsPerSpecies()
     expected = {'ion_types': expected}
     do_test_header_parser(cursor, lines, parser, expected)
+
+
+def test_potcar_repeated_entry():
+    """Test reading an OUTCAR where we have repeated "POTCAR:" entries.
+    We should only expect to insert every second entry.
+    """
+
+    lines = """
+    POTCAR:    PAW_PBE Ni 02Aug2007
+    POTCAR:    PAW_PBE H1.25 02Aug2007
+    POTCAR:    PAW_PBE Au_GW 02Aug2007
+    POTCAR:    PAW_PBE Ni 02Aug2007
+    POTCAR:    PAW_PBE H1.25 02Aug2007 
+    POTCAR:    PAW_PBE Au_GW 02Aug2007
+    """
+    # Prepare input as list of strings
+    lines = lines.splitlines()[1:]
+
+    # Emulate the parser, reading the lines 1-by-1
+    parser = vop.SpeciesTypes()
+    for line in lines:
+        if not line.strip():
+            # Blank line, just skip
+            continue
+        line = [line]
+
+        assert parser.has_property(0, line)
+        parser.parse(0, line)
+    assert len(parser.species) == 6
+    assert parser.species == ['Ni', 'H', 'Au', 'Ni', 'H', 'Au']
+    assert len(parser.get_species()) == 3
+
+    assert parser.get_species() == ['Ni', 'H', 'Au']
+
+
+def test_default_header_parser_make_parsers():
+    """Test we can make two sets of identical parsers,
+    but that we do not actually return the same parser
+    instances
+    """
+    parsers1 = vop.default_header_parsers.make_parsers()
+    parsers2 = vop.default_header_parsers.make_parsers()
+
+    assert len(parsers1) > 0
+    assert len(parsers1) == len(parsers2)
+    # Test we made all of the parsers
+    assert len(parsers1) == len(vop.default_header_parsers.parsers_dct)
+
+    # Compare parsers
+    for p1, p2 in zip(parsers1, parsers2):
+        # We should've made instances of the same type
+        assert type(p1) == type(p2)
+        assert p1.get_name() == p2.get_name()
+        assert p1.LINE_DELIMITER == p2.LINE_DELIMITER
+        assert p1.LINE_DELIMITER is not None
+        # However, they should not actually BE the same parser
+        # but separate instances, i.e. two separate memory addresses
+        assert p1 is not p2

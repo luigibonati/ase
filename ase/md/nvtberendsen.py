@@ -113,7 +113,7 @@ class NVTBerendsen(MolecularDynamics):
         atoms = self.atoms
 
         if forces is None:
-            forces = atoms.get_forces()
+            forces = atoms.get_forces(md=True)
 
         p = self.atoms.get_momenta()
         p += 0.5 * self.dt * forces
@@ -135,7 +135,7 @@ class NVTBerendsen(MolecularDynamics):
         # cannot use self.masses in the line above.
 
         self.atoms.set_momenta(p)
-        forces = self.atoms.get_forces()
+        forces = self.atoms.get_forces(md=True)
         atoms.set_momenta(self.atoms.get_momenta() + 0.5 * self.dt * forces)
 
         return forces

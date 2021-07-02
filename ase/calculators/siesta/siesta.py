@@ -488,8 +488,8 @@ class Siesta(FileIOCalculator):
         except RuntimeError as e:
             try:
                 fname = os.path.join(self.directory, self.label+'.out')
-                with open(fname, 'r') as f:
-                    lines = f.readlines()
+                with open(fname, 'r') as fd:
+                    lines = fd.readlines()
                 debug_lines = 10
                 print('##### %d last lines of the Siesta output' % debug_lines)
                 for line in lines[-20:]:
@@ -526,51 +526,49 @@ class Siesta(FileIOCalculator):
             self.remove_analysis()
 
         # Start writing the file.
-        with open(filename, 'w') as f:
+        with open(filename, 'w') as fd:
             # Write system name and label.
-            f.write(format_fdf('SystemName', self.prefix))
-            f.write(format_fdf('SystemLabel', self.prefix))
-            f.write("\n")
+            fd.write(format_fdf('SystemName', self.prefix))
+            fd.write(format_fdf('SystemLabel', self.prefix))
+            fd.write("\n")
 
             # Write explicitly given options first to
             # allow the user to override anything.
             fdf_arguments = self['fdf_arguments']
             keys = sorted(fdf_arguments.keys())
             for key in keys:
-                f.write(format_fdf(key, fdf_arguments[key]))
+                fd.write(format_fdf(key, fdf_arguments[key]))
 
             # Force siesta to return error on no convergence.
             # as default consistent with ASE expectations.
             if 'SCFMustConverge' not in fdf_arguments.keys():
-                f.write(format_fdf('SCFMustConverge', True))
-            f.write("\n")
+                fd.write(format_fdf('SCFMustConverge', True))
+            fd.write("\n")
 
             # Write spin level.
-            f.write(format_fdf('Spin     ', self['spin']))
+            fd.write(format_fdf('Spin     ', self['spin']))
             # Spin backwards compatibility.
             if self['spin'] == 'collinear':
-                f.write(format_fdf('SpinPolarized', (True, "# Backwards compatibility.")))
+                fd.write(format_fdf('SpinPolarized', (True, "# Backwards compatibility.")))
             elif self['spin'] == 'non-collinear':
-                f.write(format_fdf('NonCollinear', (True, "# Backwards compatibility.")))
-
-
+                fd.write(format_fdf('NonCollinear', (True, "# Backwards compatibility.")))
 
             # Write functional.
             functional, authors = self['xc']
-            f.write(format_fdf('XC.functional', functional))
-            f.write(format_fdf('XC.authors', authors))
-            f.write("\n")
+            fd.write(format_fdf('XC.functional', functional))
+            fd.write(format_fdf('XC.authors', authors))
+            fd.write("\n")
 
             # Write mesh cutoff and energy shift.
-            f.write(format_fdf('MeshCutoff',
-                               (self['mesh_cutoff'], 'eV')))
-            f.write(format_fdf('PAO.EnergyShift',
-                               (self['energy_shift'], 'eV')))
-            f.write("\n")
+            fd.write(format_fdf('MeshCutoff',
+                                (self['mesh_cutoff'], 'eV')))
+            fd.write(format_fdf('PAO.EnergyShift',
+                                (self['energy_shift'], 'eV')))
+            fd.write("\n")
 
             # Write the minimal arg
-            self._write_species(f, atoms)
-            self._write_structure(f, atoms)
+            self._write_species(fd, atoms)
+            self._write_structure(fd, atoms)
 
             # Use the saved density matrix if only 'cell' and 'positions'
             # have changed.
@@ -578,18 +576,18 @@ class Siesta(FileIOCalculator):
                 ('numbers' not in system_changes and
                  'initial_magmoms' not in system_changes and
                  'initial_charges' not in system_changes)):
-                f.write(format_fdf('DM.UseSaveDM', True))
+                fd.write(format_fdf('DM.UseSaveDM', True))
 
             # Save density.
             if 'density' in properties:
-                f.write(format_fdf('SaveRho', True))
+                fd.write(format_fdf('SaveRho', True))
 
-            self._write_kpts(f)
+            self._write_kpts(fd)
 
             if self['bandpath'] is not None:
                 lines = bandpath2bandpoints(self['bandpath'])
-                f.write(lines)
-                f.write('\n')
+                fd.write(lines)
+                fd.write('\n')
 
     def read(self, filename):
         """Read structural parameters from file .XV file
@@ -618,7 +616,7 @@ class Siesta(FileIOCalculator):
         if os.path.exists(filename):
             os.remove(filename)
 
-    def _write_structure(self, f, atoms):
+    def _write_structure(self, fd, atoms):
         """Translate the Atoms object to fdf-format.
 
         Parameters:
@@ -626,7 +624,7 @@ class Siesta(FileIOCalculator):
             - atoms: An atoms object.
         """
         cell = atoms.cell
-        f.write('\n')
+        fd.write('\n')
 
         if cell.rank in [1, 2]:
             raise ValueError('Expected 3D unit cell or no unit cell.  You may '
@@ -634,17 +632,17 @@ class Siesta(FileIOCalculator):
 
         # Write lattice vectors
         if np.any(cell):
-            f.write(format_fdf('LatticeConstant', '1.0 Ang'))
-            f.write('%block LatticeVectors\n')
+            fd.write(format_fdf('LatticeConstant', '1.0 Ang'))
+            fd.write('%block LatticeVectors\n')
             for i in range(3):
                 for j in range(3):
                     s = ('    %.15f' % cell[i, j]).rjust(16) + ' '
-                    f.write(s)
-                f.write('\n')
-            f.write('%endblock LatticeVectors\n')
-            f.write('\n')
+                    fd.write(s)
+                fd.write('\n')
+            fd.write('%endblock LatticeVectors\n')
+            fd.write('\n')
 
-        self._write_atomic_coordinates(f, atoms)
+        self._write_atomic_coordinates(fd, atoms)
 
         # Write magnetic moments.
         magmoms = atoms.get_initial_magnetic_moments()
@@ -655,21 +653,21 @@ class Siesta(FileIOCalculator):
         # atoms object.
         if magmoms is not None:
             if len(magmoms) == 0:
-                f.write('#Empty block forces ASE initialization.\n')
+                fd.write('#Empty block forces ASE initialization.\n')
 
-            f.write('%block DM.InitSpin\n')
+            fd.write('%block DM.InitSpin\n')
             if len(magmoms) != 0 and isinstance(magmoms[0], np.ndarray):
                 for n, M in enumerate(magmoms):
                     if M[0] != 0:
-                        f.write('    %d %.14f %.14f %.14f \n' % (n + 1, M[0], M[1], M[2]))
+                        fd.write('    %d %.14f %.14f %.14f \n' % (n + 1, M[0], M[1], M[2]))
             elif len(magmoms) != 0 and isinstance(magmoms[0], float):
                 for n, M in enumerate(magmoms):
                     if M != 0:
-                        f.write('    %d %.14f \n' % (n + 1, M))
-            f.write('%endblock DM.InitSpin\n')
-            f.write('\n')
+                        fd.write('    %d %.14f \n' % (n + 1, M))
+            fd.write('%endblock DM.InitSpin\n')
+            fd.write('\n')
 
-    def _write_atomic_coordinates(self, f, atoms):
+    def _write_atomic_coordinates(self, fd, atoms):
         """Write atomic coordinates.
 
         Parameters:
@@ -678,13 +676,13 @@ class Siesta(FileIOCalculator):
         """
         af = self.parameters.atomic_coord_format.lower()
         if af == 'xyz':
-            self._write_atomic_coordinates_xyz(f, atoms)
+            self._write_atomic_coordinates_xyz(fd, atoms)
         elif af == 'zmatrix':
-            self._write_atomic_coordinates_zmatrix(f, atoms)
+            self._write_atomic_coordinates_zmatrix(fd, atoms)
         else:
             raise RuntimeError('Unknown atomic_coord_format: {}'.format(af))
 
-    def _write_atomic_coordinates_xyz(self, f, atoms):
+    def _write_atomic_coordinates_xyz(self, fd, atoms):
         """Write atomic coordinates.
 
         Parameters:
@@ -692,27 +690,27 @@ class Siesta(FileIOCalculator):
             - atoms: An atoms object.
         """
         species, species_numbers = self.species(atoms)
-        f.write('\n')
-        f.write('AtomicCoordinatesFormat  Ang\n')
-        f.write('%block AtomicCoordinatesAndAtomicSpecies\n')
+        fd.write('\n')
+        fd.write('AtomicCoordinatesFormat  Ang\n')
+        fd.write('%block AtomicCoordinatesAndAtomicSpecies\n')
         for atom, number in zip(atoms, species_numbers):
             xyz = atom.position
             line = ('    %.9f' % xyz[0]).rjust(16) + ' '
             line += ('    %.9f' % xyz[1]).rjust(16) + ' '
             line += ('    %.9f' % xyz[2]).rjust(16) + ' '
             line += str(number) + '\n'
-            f.write(line)
-        f.write('%endblock AtomicCoordinatesAndAtomicSpecies\n')
-        f.write('\n')
+            fd.write(line)
+        fd.write('%endblock AtomicCoordinatesAndAtomicSpecies\n')
+        fd.write('\n')
 
         origin = tuple(-atoms.get_celldisp().flatten())
         if any(origin):
-            f.write('%block AtomicCoordinatesOrigin\n')
-            f.write('     %.4f  %.4f  %.4f\n' % origin)
-            f.write('%endblock AtomicCoordinatesOrigin\n')
-            f.write('\n')
+            fd.write('%block AtomicCoordinatesOrigin\n')
+            fd.write('     %.4f  %.4f  %.4f\n' % origin)
+            fd.write('%endblock AtomicCoordinatesOrigin\n')
+            fd.write('\n')
 
-    def _write_atomic_coordinates_zmatrix(self, f, atoms):
+    def _write_atomic_coordinates_zmatrix(self, fd, atoms):
         """Write atomic coordinates in Z-matrix format.
 
         Parameters:
@@ -720,10 +718,10 @@ class Siesta(FileIOCalculator):
             - atoms: An atoms object.
         """
         species, species_numbers = self.species(atoms)
-        f.write('\n')
-        f.write('ZM.UnitsLength   Ang\n')
-        f.write('%block Zmatrix\n')
-        f.write('  cartesian\n')
+        fd.write('\n')
+        fd.write('ZM.UnitsLength   Ang\n')
+        fd.write('%block Zmatrix\n')
+        fd.write('  cartesian\n')
         fstr = "{:5d}" + "{:20.10f}" * 3 + "{:3d}" * 3 + "{:7d} {:s}\n"
         a2constr = self.make_xyz_constraints(atoms)
         a2p, a2s = atoms.get_positions(), atoms.get_chemical_symbols()
@@ -731,17 +729,17 @@ class Siesta(FileIOCalculator):
                                                      a2p,
                                                      a2constr,
                                                      a2s)):
-            f.write(fstr.format(
+            fd.write(fstr.format(
                 sp, xyz[0], xyz[1], xyz[2], ccc[0],
                 ccc[1], ccc[2], ia + 1, sym))
-        f.write('%endblock Zmatrix\n')
+        fd.write('%endblock Zmatrix\n')
 
         origin = tuple(-atoms.get_celldisp().flatten())
         if any(origin):
-            f.write('%block AtomicCoordinatesOrigin\n')
-            f.write('     %.4f  %.4f  %.4f\n' % origin)
-            f.write('%endblock AtomicCoordinatesOrigin\n')
-            f.write('\n')
+            fd.write('%block AtomicCoordinatesOrigin\n')
+            fd.write('     %.4f  %.4f  %.4f\n' % origin)
+            fd.write('%endblock AtomicCoordinatesOrigin\n')
+            fd.write('\n')
 
     def make_xyz_constraints(self, atoms):
         """ Create coordinate-resolved list of constraints [natoms, 0:3]
@@ -777,7 +775,7 @@ class Siesta(FileIOCalculator):
                               .format(str(c), sys._getframe().f_code))
         return a2c
 
-    def _write_kpts(self, f):
+    def _write_kpts(self, fd):
         """Write kpts.
 
         Parameters:
@@ -786,9 +784,9 @@ class Siesta(FileIOCalculator):
         if self["kpts"] is None:
             return
         kpts = np.array(self['kpts'])
-        f.write('\n')
-        f.write('#KPoint grid\n')
-        f.write('%block kgrid_Monkhorst_Pack\n')
+        fd.write('\n')
+        fd.write('#KPoint grid\n')
+        fd.write('%block kgrid_Monkhorst_Pack\n')
 
         for i in range(3):
             s = ''
@@ -805,11 +803,11 @@ class Siesta(FileIOCalculator):
                     write_this = 0
                 s += '     %d  ' % write_this
             s += '%1.1f\n' % displace
-            f.write(s)
-        f.write('%endblock kgrid_Monkhorst_Pack\n')
-        f.write('\n')
+            fd.write(s)
+        fd.write('%endblock kgrid_Monkhorst_Pack\n')
+        fd.write('\n')
 
-    def _write_species(self, f, atoms):
+    def _write_species(self, fd, atoms):
         """Write input related the different species.
 
         Parameters:
@@ -826,8 +824,8 @@ class Siesta(FileIOCalculator):
             mess = "Please set the environment variable 'SIESTA_PP_PATH'"
             raise Exception(mess)
 
-        f.write(format_fdf('NumberOfSpecies', len(species)))
-        f.write(format_fdf('NumberOfAtoms', len(atoms)))
+        fd.write(format_fdf('NumberOfSpecies', len(species)))
+        fd.write(format_fdf('NumberOfAtoms', len(atoms)))
 
         pao_basis = []
         chemical_labels = []
@@ -905,7 +903,7 @@ class Siesta(FileIOCalculator):
                 synth_blocks.append(synth_block)
 
             if len(synth_blocks) > 0:
-                f.write(format_fdf('SyntheticAtoms', list(synth_blocks)))
+                fd.write(format_fdf('SyntheticAtoms', list(synth_blocks)))
 
             label = '.'.join(np.array(name.split('.'))[:-1])
             string = '    %d %d %s' % (species_number, atomic_number, label)
@@ -914,11 +912,11 @@ class Siesta(FileIOCalculator):
                 pao_basis.append(spec['basis_set'].script(label))
             else:
                 basis_sizes.append(("    " + label, spec['basis_set']))
-        f.write((format_fdf('ChemicalSpecieslabel', chemical_labels)))
-        f.write('\n')
-        f.write((format_fdf('PAO.Basis', pao_basis)))
-        f.write((format_fdf('PAO.BasisSizes', basis_sizes)))
-        f.write('\n')
+        fd.write((format_fdf('ChemicalSpecieslabel', chemical_labels)))
+        fd.write('\n')
+        fd.write((format_fdf('PAO.Basis', pao_basis)))
+        fd.write((format_fdf('PAO.BasisSizes', basis_sizes)))
+        fd.write('\n')
 
     def pseudo_qualifier(self):
         """Get the extra string used in the middle of the pseudopotential.
@@ -1088,8 +1086,8 @@ class Siesta(FileIOCalculator):
         """Read number of grid points from SIESTA's text-output file. """
 
         fname = self.getpath(ext='out')
-        with open(fname, 'r') as f:
-            for line in f:
+        with open(fname, 'r') as fd:
+            for line in fd:
                 line = line.strip().lower()
                 if line.startswith('initmesh: mesh ='):
                     n_points = [int(word) for word in line.split()[3:8:2]]
@@ -1102,8 +1100,8 @@ class Siesta(FileIOCalculator):
         """Read energy from SIESTA's text-output file.
         """
         fname = self.getpath(ext='out')
-        with open(fname, 'r') as f:
-            text = f.read().lower()
+        with open(fname, 'r') as fd:
+            text = fd.read().lower()
 
         assert 'final energy' in text
         lines = iter(text.split('\n'))
@@ -1124,8 +1122,8 @@ class Siesta(FileIOCalculator):
         """Read the forces and stress from the FORCE_STRESS file.
         """
         fname = self.getpath('FORCE_STRESS')
-        with open(fname, 'r') as f:
-            lines = f.readlines()
+        with open(fname, 'r') as fd:
+            lines = fd.readlines()
 
         stress_lines = lines[1:4]
         stress = np.empty((3, 3))
@@ -1153,11 +1151,11 @@ class Siesta(FileIOCalculator):
 
         fname = self.getpath(ext='EIG')
         try:
-            with open(fname, "r") as f:
-                self.results['fermi_energy'] = float(f.readline())
-                n, nspin, nkp = map(int, f.readline().split())
+            with open(fname, "r") as fd:
+                self.results['fermi_energy'] = float(fd.readline())
+                n, nspin, nkp = map(int, fd.readline().split())
                 _ee = np.split(
-                    np.array(f.read().split()).astype(float), nkp)
+                    np.array(fd.read().split()).astype(float), nkp)
         except (IOError):
             return 1
 
@@ -1203,8 +1201,8 @@ class Siesta(FileIOCalculator):
     def read_dipole(self):
         """Read dipole moment. """
         dipole = np.zeros([1, 3])
-        with open(self.getpath(ext='out'), 'r') as f:
-            for line in f:
+        with open(self.getpath(ext='out'), 'r') as fd:
+            for line in fd:
                 if line.rfind('Electric dipole (Debye)') > -1:
                     dipole = np.array([float(f) for f in line.split()[5:8]])
         # debye to e*Ang
@@ -1218,6 +1216,7 @@ class Siesta(FileIOCalculator):
 
     def get_ibz_k_points(self):
         return self.results['kpoints']
+
 
 class Siesta3_2(Siesta):
     def __init__(self, *args, **kwargs):

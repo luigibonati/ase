@@ -1,4 +1,3 @@
-import os
 import numpy as np
 import pytest
 from ase import Atoms
@@ -16,7 +15,7 @@ from ase.ga.standardmutations import (RattleMutation, PermutationMutation,
 
 
 @pytest.mark.slow
-def test_bulk_operators(seed):
+def test_bulk_operators(seed, tmp_path):
     # set up the random number generator
     rng = np.random.RandomState(seed)
 
@@ -90,7 +89,7 @@ def test_bulk_operators(seed):
         assert np.all(a3.numbers == a.numbers)
         assert not atoms_too_close(a3, blmin, use_tags=True)
 
-    modes_file = 'modes.txt'
+    modes_file = tmp_path / 'modes.txt'
     softmut_with = SoftMutation(blmin, bounds=[2., 5.], use_tags=True,
                                 used_modes_file=modes_file)  # no rng
     no_muts = 3
@@ -98,7 +97,6 @@ def test_bulk_operators(seed):
         softmut_with.get_new_individual([a1])
     softmut_with.read_used_modes(modes_file)
     assert len(list(softmut_with.used_modes.values())[0]) == no_muts
-    os.remove(modes_file)
 
     comparator = OFPComparator(recalculate=True)
     gold = bulk('Au') * (2, 2, 2)

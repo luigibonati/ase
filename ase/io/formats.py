@@ -13,6 +13,8 @@ read_xyz() generator and a write_xyz() function.  This and other
 information can be obtained from ioformats['xyz'].
 """
 
+import io
+import re
 import functools
 import inspect
 import os
@@ -26,6 +28,9 @@ from typing import (
 from ase.atoms import Atoms
 from importlib import import_module
 from ase.parallel import parallel_function, parallel_generator
+
+
+PEEK_BYTES = 50000
 
 
 class UnknownFileTypeError(Exception):
@@ -48,6 +53,7 @@ class IOFormat:
         self.extensions: List[str] = []
         self.globs: List[str] = []
         self.magic: List[str] = []
+        self.magic_regex: Optional[bytes] = None
 
     def open(self, fname, mode: str = 'r') -> IO:
         # We might want append mode, too
@@ -69,6 +75,41 @@ class IOFormat:
 
         path = Path(fname)
         return path.open(mode, encoding=self.encoding)
+
+    def _buf_as_filelike(self, data: Union[str, bytes]) -> IO:
+        encoding = self.encoding
+        if encoding is None:
+            encoding = 'utf-8'  # Best hacky guess.
+
+        if self.isbinary:
+            if isinstance(data, str):
+                data = data.encode(encoding)
+        else:
+            if isinstance(data, bytes):
+                data = data.decode(encoding)
+
+        return self._ioclass(data)
+
+    @property
+    def _ioclass(self):
+        if self.isbinary:
+            return io.BytesIO
+        else:
+            return io.StringIO
+
+    def parse_images(self, data: Union[str, bytes],
+                     **kwargs) -> Sequence[Atoms]:
+        with self._buf_as_filelike(data) as fd:
+            outputs = self.read(fd, **kwargs)
+            if self.single:
+                assert isinstance(outputs, Atoms)
+                return [outputs]
+            else:
+                return list(self.read(fd, **kwargs))
+
+    def parse_atoms(self, data: Union[str, bytes], **kwargs) -> Atoms:
+        images = self.parse_images(data, **kwargs)
+        return images[-1]
 
     @property
     def can_read(self) -> bool:
@@ -195,7 +236,11 @@ class IOFormat:
                    for pattern in self.globs)
 
     def match_magic(self, data: bytes) -> bool:
-        # XXX We should use a regex for this!
+        if self.magic_regex:
+            assert not self.magic, 'Define only one of magic and magic_regex'
+            match = re.match(self.magic_regex, data, re.M | re.S)
+            return match is not None
+
         from fnmatch import fnmatchcase
         return any(fnmatchcase(data, magic + b'*')  # type: ignore
                    for magic in self.magic)
@@ -210,7 +255,8 @@ format2modulename = {}  # Left for compatibility only.
 
 
 def define_io_format(name, desc, code, *, module=None, ext=None,
-                     glob=None, magic=None, encoding=None):
+                     glob=None, magic=None, encoding=None,
+                     magic_regex=None):
     if module is None:
         module = name.replace('-', '_')
         format2modulename[name] = module
@@ -229,6 +275,9 @@ def define_io_format(name, desc, code, *, module=None, ext=None,
     fmt.extensions = normalize_patterns(ext)
     fmt.globs = normalize_patterns(glob)
     fmt.magic = normalize_patterns(magic)
+
+    if magic_regex is not None:
+        fmt.magic_regex = magic_regex
 
     for ext in fmt.extensions:
         if ext in extension2format:
@@ -283,6 +332,8 @@ F('cmdft', 'CMDFT-file', '1F', glob='*I_info')
 F('cml', 'Chemical json file', '1F', ext='cml')
 F('cp2k-dcd', 'CP2K DCD file', '+B',
   module='cp2k', ext='dcd')
+F('cp2k-restart', 'CP2K restart file', '1F',
+  module='cp2k', ext='restart')
 F('crystal', 'Crystal fort.34 format', '1F',
   ext=['f34', '34'], glob=['f34', '34'])
 F('cube', 'CUBE file', '1F', ext='cube')
@@ -342,7 +393,7 @@ F('html', 'X3DOM HTML', '1F', module='x3d')
 F('json', 'ASE JSON database file', '+F', ext='json', module='db')
 F('jsv', 'JSV file format', '1F')
 F('lammps-dump-text', 'LAMMPS text dump file', '+F',
-  module='lammpsrun', magic=b'*\nITEM: TIMESTEP\n')
+  module='lammpsrun', magic_regex=b'.*?^ITEM: TIMESTEP$')
 F('lammps-dump-binary', 'LAMMPS binary dump file', '+B',
   module='lammpsrun')
 F('lammps-data', 'LAMMPS data file', '1F', module='lammpsdata',
@@ -784,6 +835,14 @@ def parse_filename(filename, index=None, do_not_split_by_at_sign=False):
     return newfilename, newindex
 
 
+def match_magic(data: bytes) -> IOFormat:
+    data = data[:PEEK_BYTES]
+    for ioformat in ioformats.values():
+        if ioformat.match_magic(data):
+            return ioformat
+    raise UnknownFileTypeError('Cannot guess file type from contents')
+
+
 def string2index(string: str) -> Union[int, slice, str]:
     """Convert index string to either int or slice"""
     if ':' not in string:
@@ -866,7 +925,7 @@ def filetype(
         if fd is sys.stdin:
             return 'json'
 
-    data = fd.read(50000)
+    data = fd.read(PEEK_BYTES)
     if fd is not filename:
         fd.close()
     else:
@@ -875,9 +934,10 @@ def filetype(
     if len(data) == 0:
         raise UnknownFileTypeError('Empty file: ' + filename)    # type: ignore
 
-    for ioformat in ioformats.values():
-        if ioformat.match_magic(data):
-            return ioformat.name
+    try:
+        return match_magic(data).name
+    except UnknownFileTypeError:
+        pass
 
     format = None
     if ext in extension2format:
