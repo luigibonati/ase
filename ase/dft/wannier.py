@@ -468,6 +468,21 @@ class Wannier:
         self.log('Wannier: Fixed states            : %s' % self.fixedstates_k)
         self.log('Wannier: Extra degrees of freedom: %s' % self.edf_k)
 
+        self.kklst_dk, k0_dkc = self.get_kklst()
+
+        # Set the inverse list of neighboring k-points
+        self.invkklst_dk = self.get_invkklst()
+
+        Nw = self.nwannier
+        Nb = self.nbands
+        self.Z_dkww = np.empty((self.Ndir, self.Nk, Nw, Nw), complex)
+        self.V_knw = np.zeros((self.Nk, Nb, Nw), complex)
+
+        if file is None:
+            self.Z_dknn = self.new_Z(calc, k0_dkc)
+        self.initialize(file=file, initialwannier=initialwannier, rng=rng)
+
+    def get_kklst(self):
         # Set the list of neighboring k-points k1, and the "wrapping" k0,
         # such that k1 - k - G + k0 = 0
         #
@@ -476,11 +491,12 @@ class Wannier:
         # k=0.375, k1= -0.375 : -0.375-0.375-0.25 => k0=[1,0,0]
         #
         # For a gamma point calculation k1 = k = 0,  k0 = [1,0,0] for dir=0
+
         if self.Nk == 1:
-            self.kklst_dk = np.zeros((self.Ndir, 1), int)
+            kklst_dk = np.zeros((self.Ndir, 1), int)
             k0_dkc = self.Gdir_dc.reshape(-1, 1, 3)
         else:
-            self.kklst_dk = np.empty((self.Ndir, self.Nk), int)
+            kklst_dk = np.empty((self.Ndir, self.Nk), int)
             k0_dkc = np.empty((self.Ndir, self.Nk, 3), int)
 
             # Distance between kpoints
@@ -497,23 +513,12 @@ class Wannier:
                     # setup dist vector to next kpoint
                     G_c = np.where(Gdir_c > 0, kdist_c, 0)
                     if max(G_c) < 1e-4:
-                        self.kklst_dk[d, k] = k
+                        kklst_dk[d, k] = k
                         k0_dkc[d, k] = Gdir_c
                     else:
-                        self.kklst_dk[d, k], k0_dkc[d, k] = \
+                        kklst_dk[d, k], k0_dkc[d, k] = \
                             neighbor_k_search(k_c, G_c, self.kpt_kc)
-
-        # Set the inverse list of neighboring k-points
-        self.invkklst_dk = self.get_invkklst()
-
-        Nw = self.nwannier
-        Nb = self.nbands
-        self.Z_dkww = np.empty((self.Ndir, self.Nk, Nw, Nw), complex)
-        self.V_knw = np.zeros((self.Nk, Nb, Nw), complex)
-
-        if file is None:
-            self.Z_dknn = self.new_Z(calc, k0_dkc)
-        self.initialize(file=file, initialwannier=initialwannier, rng=rng)
+        return kklst_dk, k0_dkc
 
     def get_invkklst(self):
         invkklst_dk = np.empty((self.Ndir, self.Nk), int)
