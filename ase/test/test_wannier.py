@@ -8,10 +8,11 @@ from ase.build import molecule, bulk
 from ase.io.cube import read_cube
 from ase.lattice import CUB, FCC, BCC, TET, BCT, ORC, ORCF, ORCI, ORCC, HEX, \
     RHL, MCL, MCLC, TRI, OBL, HEX2D, RECT, CRECT, SQR, LINE
-from ase.dft.wannier import gram_schmidt, lowdin, random_orthogonal_matrix, \
+from ase.dft.wannier import gram_schmidt, lowdin, \
     neighbor_k_search, calculate_weights, steepest_descent, md_min, \
     rotation_from_projection, init_orbitals, scdm, Wannier, \
     search_for_gamma_point, arbitrary_s_orbitals
+from ase.dft.wannierstate import random_orthogonal_matrix
 
 
 calc = pytest.mark.calculator

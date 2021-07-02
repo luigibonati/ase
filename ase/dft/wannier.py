@@ -80,24 +80,6 @@ def calculate_weights(cell_cc, normalize=True):
     return weight_d, Gdir_dc
 
 
-def random_orthogonal_matrix(dim, rng=np.random, real=False):
-    """Generate uniformly distributed random orthogonal matrices"""
-    if real:
-        from scipy.stats import special_ortho_group
-        ortho_m = special_ortho_group.rvs(dim=dim, random_state=rng)
-    else:
-        # The best method but not supported on old systems
-        # from scipy.stats import unitary_group
-        # ortho_m = unitary_group.rvs(dim=dim, random_state=rng)
-
-        # Alternative method from https://stackoverflow.com/questions/38426349
-        H = rng.rand(dim, dim)
-        Q, R = qr(H)
-        ortho_m = Q @ np.diag(np.sign(np.diag(R)))
-
-    return ortho_m
-
-
 def steepest_descent(func, step=.005, tolerance=1e-6, verbose=False, **kwargs):
     fvalueold = 0.
     fvalue = fvalueold + 10
@@ -549,67 +531,49 @@ class Wannier:
     def unitcell_cc(self):
         return self.atoms.cell
 
+    @property
+    def U_kww(self):
+        return self.wannier_state.U_kww
+
+    @property
+    def C_kul(self):
+        return self.wannier_state.C_kul
+
     def initialize(self, file=None, initialwannier='random', rng=np.random):
         """Re-initialize current rotation matrix.
 
         Keywords are identical to those of the constructor.
         """
+        from ase.dft.wannierstate import WannierState, WannierSpec
+
         Nw = self.nwannier
         Nb = self.nbands
 
+        spec = WannierSpec(self.Nk, Nw, Nb, self.fixedstates_k)
+
         if file is not None:
             with paropen(file, 'r') as fd:
-                things = read_json(fd, always_array=False)
-                self.Z_dknn, self.U_kww, self.C_kul = things
+                Z_dknn, U_kww, C_kul = read_json(fd, always_array=False)
+                self.Z_dknn = Z_dknn
+                self.wannier_state = WannierState(C_kul, U_kww)
 
         elif initialwannier == 'bloch':
             # Set U and C to pick the lowest Bloch states
-            self.U_kww = np.zeros((self.Nk, Nw, Nw), complex)
-            self.C_kul = []
-            for U, M, L in zip(self.U_kww, self.fixedstates_k, self.edf_k):
-                U[:] = np.identity(Nw, complex)
-                if L > 0:
-                    self.C_kul.append(
-                        np.identity(Nb - M, complex)[:, :L])
-                else:
-                    self.C_kul.append([])
+            self.wannier_state = spec.bloch(self.edf_k)
+
         elif initialwannier == 'random':
-            # Set U and C to random (orthogonal) matrices
-            self.U_kww = np.zeros((self.Nk, Nw, Nw), complex)
-            self.C_kul = []
-            for U, M, L in zip(self.U_kww, self.fixedstates_k, self.edf_k):
-                U[:] = random_orthogonal_matrix(Nw, rng, real=False)
-                if L > 0:
-                    self.C_kul.append(random_orthogonal_matrix(
-                        Nb - M, rng=rng, real=False)[:, :L])
-                else:
-                    self.C_kul.append(np.array([]))
+            self.wannier_state = spec.random(rng, self.edf_k)
+
         elif initialwannier == 'orbitals':
-            self.C_kul, self.U_kww = self.calc.initial_wannier(
-                init_orbitals(self.atoms, self.nwannier, rng),
-                self.kptgrid, self.fixedstates_k,
-                self.edf_k, self.spin, self.nbands)
+            orbitals = init_orbitals(self.atoms, self.nwannier, rng)
+            self.wannier_state = spec.initial_orbitals(
+                self.calc, orbitals, self.kptgrid, self.edf_k,
+                self.spin)
         elif initialwannier == 'scdm':
-            # get the size of the grid and check if there are Nw bands
-            ps = self.calc.get_pseudo_wave_function(band=self.nwannier,
-                                                    kpt=0, spin=0)
-            Ng = ps.size
-            pseudo_nkG = np.zeros((self.nbands, self.Nk, Ng),
-                                  dtype=np.complex128)
-            for k in range(self.Nk):
-                for n in range(self.nbands):
-                    pseudo_nkG[n, k] = \
-                        self.calc.get_pseudo_wave_function(
-                            band=n, kpt=k, spin=self.spin).ravel()
-            self.C_kul, self.U_kww = scdm(pseudo_nkG,
-                                          kpts=self.kpt_kc,
-                                          fixed_k=self.fixedstates_k,
-                                          Nw=self.nwannier)
+            self.wannier_state = spec.scdm(self.calc, self.kpt_kc, self.spin)
         else:
-            # Use initial guess to determine U and C
-            self.C_kul, self.U_kww = self.calc.initial_wannier(
-                initialwannier, self.kptgrid, self.fixedstates_k,
-                self.edf_k, self.spin, self.nbands)
+            self.wannier_state = spec.initial_wannier(calc, self.kptgrid,
+                                                      self.edf_k, self.spin)
         self.update()
 
     def save(self, file):
