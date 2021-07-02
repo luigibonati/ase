@@ -49,7 +49,7 @@ optclasses = [
 
 @pytest.mark.parametrize('optcls', optclasses)
 @pytest.mark.filterwarnings('ignore: estimate_mu')
-def test_optimize(optcls, atoms, ref_atoms):
+def test_optimize(optcls, atoms, ref_atoms, testdir):
     if optcls is Berny:
         pytest.importorskip('berny')  # check if pyberny installed
         optcls = partial(optcls, dihedral=False)
@@ -71,7 +71,8 @@ def test_optimize(optcls, atoms, ref_atoms):
     print()
     print('{:>20}: fmax={:.05f} eopt={:.06f}, err={:06e}'
           .format(optcls.__name__, final_fmax, e_opt, e_err))
-    return final_fmax, e_err
 
     assert final_fmax < fmax
-    assert e_err < 1e-5  # (This tolerance is arbitrary)
+    assert e_err < 1.75e-5  # (This tolerance is arbitrary)
+
+    return final_fmax, e_err

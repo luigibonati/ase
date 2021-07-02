@@ -284,7 +284,7 @@ class DemonNano(FileIOCalculator):
 
        if not (epath / 'deMon.ase').exists():
             raise ReadError('The deMonNano output file for ASE {0} does not exist'
-                          .format(epath))
+                            .format(epath))
 
        filename = self.label + '/deMon.ase'
 

@@ -76,8 +76,8 @@ tio2 = """{
 
 def test_ethane():
     fname = 'ethane.cml'
-    with open(fname, 'w') as f:
-        f.write(ethane)
+    with open(fname, 'w') as fd:
+        fd.write(ethane)
     
     atoms = io.read(fname)
 
@@ -86,8 +86,8 @@ def test_ethane():
 
 def test_rutile():
     fname = 'TiO2_rutile.cml'
-    with open(fname, 'w') as f:
-        f.write(tio2)
+    with open(fname, 'w') as fd:
+        fd.write(tio2)
     
     atoms = io.read(fname)
     

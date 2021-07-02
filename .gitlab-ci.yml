@@ -38,7 +38,6 @@ oldlibs:
       ase test --pytest --color=yes
       -W "ignore:can't resolve package"
       -W ignore::PendingDeprecationWarning
-      -m 'not lint'
 
 # For testing newest versions of libraries against standard images
 # on dockerhub.
@@ -86,7 +85,7 @@ main:
     - pip install --no-deps --editable .
     - ase info --calculators
     - cd $CI_PROJECT_DIR
-    - ase test --calculators asap,eam,ff,lj,morse,tip3p,tip4p --coverage --pytest --color=yes --durations 20 -m 'not lint'
+    - ase test --calculators asap,eam,ff,lj,morse,tip3p,tip4p --coverage --pytest --color=yes --durations 20
     - mv ase/test/coverage-html coverage-main
     - mv ase/test/.coverage coverage-main/coverage.dat
   artifacts:
@@ -140,12 +139,15 @@ doc:
     - cd $CI_PROJECT_DIR/doc
     - python -m ase.utils.sphinx run  # test scripts
     - sphinx-build -W . build
+  artifacts:
+    paths:
+      - $CI_PROJECT_DIR/doc/build/
+    expire_in: 1 week
 
 distribution-package:
   image: registry.gitlab.com/ase/ase:ase-main
   extends: .database-configuration
   script:
-    - apt-get install -y gettext  # For compiling ase gui translations
     - mkdir dist
     - python setup.py sdist | tee dist/setup_sdist.log
     - python setup.py bdist_wheel | tee dist/setup_bdist_wheel.log
@@ -179,13 +181,14 @@ pages:
   only:
     - master
 
+
 lint:
   image: registry.gitlab.com/ase/ase:ase-paperwork
   script:
     - cd $CI_PROJECT_DIR
     - mypy --color-output -p ase
-    - python ase/test/lint.py
     - python -We:invalid -m compileall -f -q ase/
+    - flake8 .
 
 
 coverage-combine:

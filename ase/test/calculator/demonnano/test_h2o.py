@@ -52,8 +52,8 @@ def test_h2o():
     assert(error < tol)
 
     # optimize geometry
-    dyn = BFGS(atoms)
-    dyn.run(fmax=0.01)
+    with BFGS(atoms) as dyn:
+        dyn.run(fmax=0.01)
 
     positions = atoms.get_positions()
 

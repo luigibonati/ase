@@ -3,11 +3,12 @@ import os.path as op
 import numpy as np
 from ase.units import Hartree
 
+
 def parse_xray(filename):
     #filename = self.label + '/deMon.xry'
     if op.isfile(filename):
-        with open(filename, 'r') as f:
-            lines = f.readlines()
+        with open(filename, 'r') as fd:
+            lines = fd.readlines()
             
         mode = lines[0].split()[0]
         ntrans = int(lines[0].split()[1])

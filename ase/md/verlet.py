@@ -3,6 +3,7 @@ import numpy as np
 from ase.md.md import MolecularDynamics
 import warnings
 
+
 class VelocityVerlet(MolecularDynamics):
     def __init__(self, atoms, timestep=None, trajectory=None, logfile=None,
                  loginterval=1, dt=None, append_trajectory=False):
@@ -52,7 +53,7 @@ class VelocityVerlet(MolecularDynamics):
         atoms = self.atoms
 
         if forces is None:
-            forces = atoms.get_forces()
+            forces = atoms.get_forces(md=True)
 
         p = atoms.get_momenta()
         p += 0.5 * self.dt * forces

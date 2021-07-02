@@ -145,60 +145,6 @@ def metric_from_cell(cell):
     return np.dot(cell, cell.T)
 
 
-def crystal_structure_from_cell(cell, eps=2e-4, niggli_reduce=True):
-    """Return the crystal structure as a string calculated from the cell.
-
-    Supply a cell (from atoms.get_cell()) and get a string representing
-    the crystal structure returned. Works exactly the opposite
-    way as ase.dft.kpoints.get_special_points().
-
-    Parameters:
-
-    cell : numpy.array or list
-        An array like atoms.get_cell()
-
-    Returns:
-
-    crystal structure : str
-        'cubic', 'fcc', 'bcc', 'tetragonal', 'orthorhombic',
-        'hexagonal' or 'monoclinic'
-    """
-    cellpar = cell_to_cellpar(cell)
-    abc = cellpar[:3]
-    angles = cellpar[3:] / 180 * pi
-    a, b, c = abc
-    alpha, beta, gamma = angles
-
-    if abc.ptp() < eps and abs(angles - pi / 2).max() < eps:
-        return 'cubic'
-    elif abc.ptp() < eps and abs(angles - pi / 3).max() < eps:
-        return 'fcc'
-    elif abc.ptp() < eps and abs(angles - np.arccos(-1 / 3)).max() < eps:
-        return 'bcc'
-    elif abs(a - b) < eps and abs(angles - pi / 2).max() < eps:
-        return 'tetragonal'
-    elif abs(angles - pi / 2).max() < eps:
-        return 'orthorhombic'
-    elif (abs(a - b) < eps and
-          (abs(gamma - pi / 3 * 2) < eps or abs(gamma - pi / 3) < eps) and
-          abs(angles[:2] - pi / 2).max() < eps):
-        return 'hexagonal'
-    elif (abs(angles - pi / 2) > eps).sum() == 1:
-        return 'monoclinic'
-    elif (abc.ptp() < eps and angles.ptp() < eps and
-          np.abs(angles).max() < pi / 2):
-        return 'rhombohedral type 1'
-    elif (abc.ptp() < eps and angles.ptp() < eps and
-          np.abs(angles).max() > pi / 2):
-        return 'rhombohedral type 2'
-    else:
-        if niggli_reduce:
-            from ase.build.tools import niggli_reduce_cell
-            cell, _ = niggli_reduce_cell(cell)
-            return crystal_structure_from_cell(cell, niggli_reduce=False)
-        raise ValueError('Cannot find crystal structure')
-
-
 def complete_cell(cell):
     """Calculate complete cell with missing lattice vectors.
 

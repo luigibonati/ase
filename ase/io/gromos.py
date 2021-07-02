@@ -20,7 +20,6 @@ def read_gromos(fileobj):
     tries to set atom types
     """
 
-
     lines = fileobj.readlines()
     read_pos = False
     read_box = False

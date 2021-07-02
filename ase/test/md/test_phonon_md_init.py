@@ -10,7 +10,7 @@ from ase.md.velocitydistribution import PhononHarmonics
 
 
 @pytest.mark.slow
-def test_phonon_md_init(asap3):
+def test_phonon_md_init(asap3, testdir):
     # Tests the phonon-based perturbation and velocity distribution
     # for thermal equilibration in MD.
 
@@ -25,8 +25,8 @@ def test_phonon_md_init(asap3):
     atoms.numbers[:] = rng.choice(avail, size=len(atoms))
     atoms.calc = EMT()
 
-    opt = FIRE(atoms, trajectory='relax.traj')
-    opt.run(fmax=0.001)
+    with FIRE(atoms, trajectory='relax.traj') as opt:
+        opt.run(fmax=0.001)
     positions0 = atoms.positions.copy()
 
     phonons = Phonons(atoms, EMT(), supercell=(1, 1, 1), delta=0.05)

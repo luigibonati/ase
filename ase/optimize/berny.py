@@ -1,5 +1,3 @@
-import logging
-
 from ase.optimize.optimize import Optimizer
 from ase.units import Ha, Bohr
 
@@ -48,7 +46,6 @@ class Berny(Optimizer):
             Defaults to True, which means that dihedral angles will be used.
         """
         from berny import Berny as _Berny, Geometry
-        from berny.berny import BernyAdapter
 
         self._restart_data = None  # Optimizer.__init__() may overwrite
         Optimizer.__init__(self, atoms, restart, logfile, trajectory, master)
@@ -64,10 +61,7 @@ class Berny(Optimizer):
             steprms=0.,
             dihedral=dihedral,
         )
-        # override the default logger to alower per-instance logfile
-        log = logging.getLogger('{}.{}'.format(__name__, id(self)))
-        log.addHandler(logging.StreamHandler(self.logfile))
-        self._berny._log = BernyAdapter(log, self._berny._log_extra)
+
         # Berny yields the initial geometry the first time because it is
         # typically used as a generator, see berny.optimize()
         next(self._berny)

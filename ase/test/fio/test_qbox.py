@@ -12,6 +12,7 @@ from ase.io import formats
 def qboxfile(datadir):
     return datadir / 'qbox_test.xml'
 
+
 @pytest.fixture
 def qballfile(datadir):
     return datadir / 'qbox_04_md_ntc.reference.xml'

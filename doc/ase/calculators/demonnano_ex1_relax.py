@@ -15,7 +15,7 @@ input_arguments = {'DFTB': 'SCC',
                    'CHARGE': '0.0',
                    'PARAM': 'PTYPE=BIO'}
 
-calc = DemonNano(label='rundir/',input_arguments=input_arguments)
+calc = DemonNano(label='rundir/', input_arguments=input_arguments)
 mol.calc = calc
 
 # optimize geometry
@@ -23,4 +23,3 @@ dyn = BFGS(mol, trajectory='test.traj')
 dyn.run(fmax=0.01)
 
 write('h2o_optimized.xyz', mol)
-
