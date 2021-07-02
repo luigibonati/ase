@@ -317,6 +317,56 @@ def square_modulus_of_Z_diagonal(Z_dww):
     return np.abs(Z_dww.diagonal(0, 1, 2))**2
 
 
+def get_kklst(kpt_kc, Gdir_dc):
+    # Set the list of neighboring k-points k1, and the "wrapping" k0,
+    # such that k1 - k - G + k0 = 0
+    #
+    # Example: kpoints = (-0.375,-0.125,0.125,0.375), dir=0
+    # G = [0.25,0,0]
+    # k=0.375, k1= -0.375 : -0.375-0.375-0.25 => k0=[1,0,0]
+    #
+    # For a gamma point calculation k1 = k = 0,  k0 = [1,0,0] for dir=0
+    Nk = len(kpt_kc)
+    Ndir = len(Gdir_dc)
+
+    if Nk == 1:
+        kklst_dk = np.zeros((Ndir, 1), int)
+        k0_dkc = Gdir_dc.reshape(-1, 1, 3)
+    else:
+        kklst_dk = np.empty((Ndir, Nk), int)
+        k0_dkc = np.empty((Ndir, Nk, 3), int)
+
+        # Distance between kpoints
+        kdist_c = np.empty(3)
+        for c in range(3):
+            # make a sorted list of the kpoint values in this direction
+            slist = np.argsort(kpt_kc[:, c], kind='mergesort')
+            skpoints_kc = np.take(kpt_kc, slist, axis=0)
+            kdist_c[c] = max([skpoints_kc[n + 1, c] - skpoints_kc[n, c]
+                              for n in range(Nk - 1)])
+
+        for d, Gdir_c in enumerate(Gdir_dc):
+            for k, k_c in enumerate(kpt_kc):
+                # setup dist vector to next kpoint
+                G_c = np.where(Gdir_c > 0, kdist_c, 0)
+                if max(G_c) < 1e-4:
+                    kklst_dk[d, k] = k
+                    k0_dkc[d, k] = Gdir_c
+                else:
+                    kklst_dk[d, k], k0_dkc[d, k] = \
+                        neighbor_k_search(k_c, G_c, kpt_kc)
+    return kklst_dk, k0_dkc
+
+
+def get_invkklst(kklst_dk):
+    Ndir, Nk = kklst_dk.shape
+    invkklst_dk = np.empty(kklst_dk.shape, int)
+    for d in range(Ndir):
+        for k1 in range(Nk):
+            invkklst_dk[d, k1] = kklst_dk[d].tolist().index(k1)
+    return invkklst_dk
+
+
 class Wannier:
     """Partly occupied Wannier functions
 
@@ -409,6 +459,7 @@ class Wannier:
         self.Nk = len(self.kpt_kc)
         self.largeunitcell_cc = (self.unitcell_cc.T * self.kptgrid).T
         self.weight_d, self.Gdir_dc = calculate_weights(self.largeunitcell_cc)
+        assert len(self.weight_d) == len(self.Gdir_dc)
         self.Ndir = len(self.weight_d)  # Number of directions
 
         if nbands is not None:
@@ -468,10 +519,10 @@ class Wannier:
         self.log('Wannier: Fixed states            : %s' % self.fixedstates_k)
         self.log('Wannier: Extra degrees of freedom: %s' % self.edf_k)
 
-        self.kklst_dk, k0_dkc = self.get_kklst()
+        self.kklst_dk, k0_dkc = get_kklst(self.kpt_kc, self.Gdir_dc)
 
         # Set the inverse list of neighboring k-points
-        self.invkklst_dk = self.get_invkklst()
+        self.invkklst_dk = get_invkklst(self.kklst_dk)
 
         Nw = self.nwannier
         Nb = self.nbands
@@ -481,51 +532,6 @@ class Wannier:
         if file is None:
             self.Z_dknn = self.new_Z(calc, k0_dkc)
         self.initialize(file=file, initialwannier=initialwannier, rng=rng)
-
-    def get_kklst(self):
-        # Set the list of neighboring k-points k1, and the "wrapping" k0,
-        # such that k1 - k - G + k0 = 0
-        #
-        # Example: kpoints = (-0.375,-0.125,0.125,0.375), dir=0
-        # G = [0.25,0,0]
-        # k=0.375, k1= -0.375 : -0.375-0.375-0.25 => k0=[1,0,0]
-        #
-        # For a gamma point calculation k1 = k = 0,  k0 = [1,0,0] for dir=0
-
-        if self.Nk == 1:
-            kklst_dk = np.zeros((self.Ndir, 1), int)
-            k0_dkc = self.Gdir_dc.reshape(-1, 1, 3)
-        else:
-            kklst_dk = np.empty((self.Ndir, self.Nk), int)
-            k0_dkc = np.empty((self.Ndir, self.Nk, 3), int)
-
-            # Distance between kpoints
-            kdist_c = np.empty(3)
-            for c in range(3):
-                # make a sorted list of the kpoint values in this direction
-                slist = np.argsort(self.kpt_kc[:, c], kind='mergesort')
-                skpoints_kc = np.take(self.kpt_kc, slist, axis=0)
-                kdist_c[c] = max([skpoints_kc[n + 1, c] - skpoints_kc[n, c]
-                                  for n in range(self.Nk - 1)])
-
-            for d, Gdir_c in enumerate(self.Gdir_dc):
-                for k, k_c in enumerate(self.kpt_kc):
-                    # setup dist vector to next kpoint
-                    G_c = np.where(Gdir_c > 0, kdist_c, 0)
-                    if max(G_c) < 1e-4:
-                        kklst_dk[d, k] = k
-                        k0_dkc[d, k] = Gdir_c
-                    else:
-                        kklst_dk[d, k], k0_dkc[d, k] = \
-                            neighbor_k_search(k_c, G_c, self.kpt_kc)
-        return kklst_dk, k0_dkc
-
-    def get_invkklst(self):
-        invkklst_dk = np.empty((self.Ndir, self.Nk), int)
-        for d in range(self.Ndir):
-            for k1 in range(self.Nk):
-                invkklst_dk[d, k1] = self.kklst_dk[d].tolist().index(k1)
-        return invkklst_dk
 
     def new_Z(self, calc, k0_dkc):
         Nb = self.nbands
