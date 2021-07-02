@@ -20,6 +20,10 @@ from ase.io.jsonio import read_json, write_json
 dag = dagger
 
 
+def silent(*args, **kwargs):
+    """Dummy logging function."""
+
+
 def gram_schmidt(U):
     """Orthonormalize columns of U according to the Gram-Schmidt procedure."""
     for i, col in enumerate(U.T):
@@ -48,9 +52,8 @@ def neighbor_k_search(k_c, G_c, kpt_kc, tol=1e-4):
             if np.linalg.norm(k1_c - k_c - G_c + k0_c) < tol:
                 return k1, k0_c
 
-    print('Wannier: Did not find matching kpoint for kpt=', k_c)
-    print('Probably non-uniform k-point grid')
-    raise NotImplementedError
+    raise ValueError(f'Wannier: Did not find matching kpoint for kpt={k_c}.  '
+                     'Probably non-uniform k-point grid')
 
 
 def calculate_weights(cell_cc, normalize=True):
@@ -80,7 +83,7 @@ def calculate_weights(cell_cc, normalize=True):
     return weight_d, Gdir_dc
 
 
-def steepest_descent(func, step=.005, tolerance=1e-6, verbose=False, **kwargs):
+def steepest_descent(func, step=.005, tolerance=1e-6, log=silent, **kwargs):
     fvalueold = 0.
     fvalue = fvalueold + 10
     count = 0
@@ -90,15 +93,15 @@ def steepest_descent(func, step=.005, tolerance=1e-6, verbose=False, **kwargs):
         func.step(dF * step, **kwargs)
         fvalue = func.get_functional_value()
         count += 1
-        if verbose:
-            print('SteepestDescent: iter=%s, value=%s' % (count, fvalue))
+        log('SteepestDescent: iter=%s, value=%s' % (count, fvalue))
 
 
 def md_min(func, step=.25, tolerance=1e-6, max_iter=10000,
-           verbose=False, **kwargs):
-    if verbose:
-        print('Localize with step =', step, 'and tolerance =', tolerance)
-        finit = func.get_functional_value()
+           log=silent, **kwargs):
+
+    log('Localize with step =', step, 'and tolerance =', tolerance)
+    finit = func.get_functional_value()
+
     t = -time()
     fvalueold = 0.
     fvalue = fvalueold + 10
@@ -117,21 +120,18 @@ def md_min(func, step=.25, tolerance=1e-6, max_iter=10000,
         if fvalue < fvalueold:
             step *= 0.5
         count += 1
-        if verbose:
-            print('MDmin: iter=%s, step=%s, value=%0.4f'
-                  % (count, step, fvalue))
+        log(f'MDmin: iter={count}, step={step}, value={fvalue}')
         if count > max_iter:
             t += time()
             warnings.warn('Max iterations reached: '
                           'iters=%s, step=%s, seconds=%0.2f, value=%0.4f'
                           % (count, step, t, fvalue.real))
             break
-    if verbose:
-        t += time()
-        print('%d iterations in %0.2f seconds (%0.2f ms/iter), endstep = %s' %
-              (count, t, t * 1000. / count, step))
-        print('Initial value=%0.4f, Final value=%0.4f' %
-              (finit, fvalue))
+
+    t += time()
+    log('%d iterations in %0.2f seconds (%0.2f ms/iter), endstep = %s' %
+        (count, t, t * 1000. / count, step))
+    log(f'Initial value={finit}, Final value={fvalue}')
 
 
 def rotation_from_projection(proj_nw, fixed, ortho=True):
@@ -333,7 +333,7 @@ class Wannier:
                  initialwannier='orbitals',
                  functional='std',
                  rng=np.random,
-                 verbose=False):
+                 log=silent):
         """
         Required arguments:
 
@@ -385,20 +385,19 @@ class Wannier:
 
           ``rng``: Random number generator for ``initialwannier``.
 
-          ``verbose``: True / False level of verbosity.
+          ``log``: Function which logs, such as print().
           """
         # Bloch phase sign convention.
         # May require special cases depending on which code is used.
         sign = -1
 
-        self.verbose = verbose
+        self.log = log
         self.calc = calc
         self.atoms = calc.get_atoms()
         self.spin = spin
         self.functional = functional
         self.initialwannier = initialwannier
-        if self.verbose:
-            print('Using functional:', functional)
+        self.log('Using functional:', functional)
         self.kpt_kc = calc.get_bz_k_points()
 
         # Make sure there is no symmetry reduction
@@ -446,10 +445,9 @@ class Wannier:
             if fixedenergy is None and fixedstates is None:
                 # Assume the fixedexergy parameter equal to 0 and
                 # find the states below the Fermi level at each k-point.
-                if verbose:
-                    print("nwannier=auto but no 'fixedenergy' or 'fixedstates'",
-                          "parameter was provided, using Fermi level as",
-                          "energy cutoff.")
+                self.log("nwannier=auto but no 'fixedenergy' or 'fixedstates'",
+                         "parameter was provided, using Fermi level as",
+                         "energy cutoff.")
                 tmp_fixedstates_k = []
                 for k in range(self.Nk):
                     tmp_fixedstates_k.append(
@@ -467,9 +465,8 @@ class Wannier:
         # Compute the number of extra degrees of freedom (EDF)
         self.edf_k = self.nwannier - self.fixedstates_k
 
-        if verbose:
-            print('Wannier: Fixed states            : %s' % self.fixedstates_k)
-            print('Wannier: Extra degrees of freedom: %s' % self.edf_k)
+        self.log('Wannier: Fixed states            : %s' % self.fixedstates_k)
+        self.log('Wannier: Extra degrees of freedom: %s' % self.edf_k)
 
         # Set the list of neighboring k-points k1, and the "wrapping" k0,
         # such that k1 - k - G + k0 = 0
@@ -633,12 +630,10 @@ class Wannier:
         if self.initialwannier not in random_initials:
             random_reps = 1
 
-        if self.verbose:
-            t = - time()
+        t = -time()
         avg_max_spreads = np.zeros(len(Nws))
         for j, Nw in enumerate(Nws):
-            if self.verbose:
-                print('Trying with Nw =', Nw)
+            self.log('Trying with Nw =', Nw)
 
             # Define once with the fastest 'initialwannier',
             # then initialize with random seeds in the for loop
@@ -648,7 +643,7 @@ class Wannier:
                           spin=self.spin,
                           functional=self.functional,
                           initialwannier='bloch',
-                          verbose=self.verbose,
+                          log=self.log,
                           rng=np.random)
             wan.fixedstates_k = self.fixedstates_k
             wan.edf_k = wan.nwannier - wan.fixedstates_k
@@ -661,10 +656,9 @@ class Wannier:
 
             avg_max_spreads[j] = max_spreads.mean()
 
-        if self.verbose:
-            print('Average spreads: ', avg_max_spreads)
-            t += time()
-            print(f'Execution time: {t:.1f}s')
+        self.log('Average spreads: ', avg_max_spreads)
+        t += time()
+        self.log(f'Execution time: {t:.1f}s')
 
         return Nws[np.argmin(avg_max_spreads)]
 
@@ -852,8 +846,7 @@ class Wannier:
 
         Warning: This method moves all Wannier functions to cell (0, 0, 0)
         """
-        if self.verbose:
-            print('Translating all Wannier functions to cell (0, 0, 0)')
+        self.log('Translating all Wannier functions to cell (0, 0, 0)')
         self.translate_all_to_cell()
         max = (self.kptgrid - 1) // 2
         N1, N2, N3 = max
@@ -961,7 +954,7 @@ class Wannier:
     def localize(self, step=0.25, tolerance=1e-08,
                  updaterot=True, updatecoeff=True):
         """Optimize rotation to give maximal localization"""
-        md_min(self, step=step, tolerance=tolerance, verbose=self.verbose,
+        md_min(self, step=step, tolerance=tolerance, log=self.log,
                updaterot=updaterot, updatecoeff=updatecoeff)
 
     def get_functional_value(self):
@@ -986,9 +979,8 @@ class Wannier:
             fun = np.sum(a_w)
         elif self.functional == 'var':
             fun = np.sum(a_w) - self.nwannier * np.var(a_w)
-            if self.verbose:
-                print(f'std: {np.sum(a_w):.4f}',
-                      f'\tvar: {self.nwannier * np.var(a_w):.4f}')
+            self.log(f'std: {np.sum(a_w):.4f}',
+                     f'\tvar: {self.nwannier * np.var(a_w):.4f}')
         return fun
 
     def get_gradients(self):

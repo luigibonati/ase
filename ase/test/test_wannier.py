@@ -265,7 +265,7 @@ def test_steepest_descent():
     tol = 1e-6
     step = 0.1
     func = Paraboloid(pos=np.array([10, 10, 10], dtype=float), shift=1.)
-    steepest_descent(func=func, step=step, tolerance=tol, verbose=False)
+    steepest_descent(func=func, step=step, tolerance=tol)
     assert func.get_functional_value() == pytest.approx(1, abs=1e-5)
 
 
@@ -274,7 +274,7 @@ def test_md_min():
     step = 0.1
     func = Paraboloid(pos=np.array([10, 10, 10], dtype=complex), shift=1.)
     md_min(func=func, step=step, tolerance=tol,
-           verbose=False, max_iter=1e6)
+           max_iter=1e6)
     assert func.get_functional_value() == pytest.approx(1, abs=1e-5)
 
 
