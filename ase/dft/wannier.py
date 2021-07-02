@@ -327,6 +327,14 @@ def init_orbitals(atoms, ntot, rng=np.random):
     return orbs
 
 
+def square_modulus_of_Z_diagonal(Z_dww):
+    """
+    Square modulus of the Z matrix diagonal, the diagonal is taken
+    for the indexes running on the WFs.
+    """
+    return np.abs(Z_dww.diagonal(0, 1, 2))**2
+
+
 class Wannier:
     """Partly occupied Wannier functions
 
@@ -742,7 +750,7 @@ class Wannier:
         """
         # compute weights without normalization, to keep physical dimension
         weight_d, _ = calculate_weights(self.largeunitcell_cc, normalize=False)
-        Z2_dw = self._square_modulus_of_Z_diagonal()
+        Z2_dw = square_modulus_of_Z_diagonal(self.Z_dww)
         spread_w = - (np.log(Z2_dw).T @ weight_d).real / (2 * np.pi)**2
         return spread_w
 
@@ -1129,18 +1137,12 @@ class Wannier:
 
         return np.concatenate(dU + dC)
 
-    def _square_modulus_of_Z_diagonal(self):
-        """
-        Square modulus of the Z matrix diagonal, the diagonal is taken
-        for the indexes running on the WFs.
-        """
-        return np.abs(self.Z_dww.diagonal(0, 1, 2))**2
-
     def _spread_contributions(self):
         """
         Compute the contribution of each WF to the spread functional.
         """
-        return (self._square_modulus_of_Z_diagonal().T @ self.weight_d).real
+        return (square_modulus_of_Z_diagonal(self.Z_dww).T
+                @ self.weight_d).real
 
     def step(self, dX, updaterot=True, updatecoeff=True):
         # dX is (A, dC) where U->Uexp(-A) and C->C+dC
