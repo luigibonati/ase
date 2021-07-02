@@ -519,6 +519,10 @@ class Wannier:
                 self.eps_skn = eps_skn
                 self.gap = gap
 
+            @property
+            def nbands(self):
+                return self.eps_skn.shape[2]
+
         def get_calcdata(calc):
             kpt_kc = calc.get_bz_k_points()
             assert len(calc.get_ibz_k_points()) == len(kpt_kc)
@@ -545,7 +549,9 @@ class Wannier:
         assert len(self.weight_d) == len(self.Gdir_dc)
 
         if nbands is None:
-            nbands = calc.get_number_of_bands()
+            # XXX Can work with other number of bands than calculator.
+            # Is this case properly tested, lest we confuse them?
+            nbands = self.calcdata.nbands
         self.nbands = nbands
 
         self.fixedstates_k, self.nwannier = choose_states(
@@ -798,7 +804,7 @@ class Wannier:
         spec_kn = self.get_spectral_weight(w)
         dos = np.zeros(len(energies))
         for k, spec_n in enumerate(spec_kn):
-            eig_n = self.calc.get_eigenvalues(kpt=k, spin=self.spin)
+            eig_n = self.calcdata.eps_skn[self.spin, k]
             for weight, eig in zip(spec_n, eig_n):
                 # Add gaussian centered at the eigenvalue
                 x = ((energies - eig) / width)**2
@@ -908,8 +914,9 @@ class Wannier:
           H(k) = V    diag(eps )  V
                   k           k    k
         """
-        eps_n = self.calc.get_eigenvalues(kpt=k, spin=self.spin)[:self.nbands]
-        return (dag(self.V_knw[k]) * eps_n) @ self.V_knw[k]
+        eps_n = self.calcdata.eps_skn[self.spin, k, :self.nbands]
+        V_nw = self.V_knw[k]
+        return (dag(V_nw) * eps_n) @ V_nw
 
     def get_hamiltonian_kpoint(self, kpt_c):
         """Get Hamiltonian at some new arbitrary k-vector
