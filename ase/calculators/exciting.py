@@ -17,6 +17,7 @@ from ase.calculators.calculator import PropertyNotImplementedError
 
 class Exciting:
     """Class for doing exciting calculations."""
+
     def __init__(
                 self,
                 dir: str = 'calc', paramdict: Optional[Dict] = None,
@@ -51,12 +52,16 @@ class Exciting:
             try:  # TODO: check whether this dir exists.
                 species_path = os.environ['EXCITINGROOT'] + '/species'
             except KeyError:
-                raise RuntimeError('No species path given and no EXCITINGROOT local var found')
+                raise RuntimeError(
+                    'No species path given and no EXCITINGROOT '
+                    'local var found')
         else:  # Try to see if the species path directory actually exists.
             try:
                 assert os.path.isdir(species_path)
             except KeyError:
-                raise RuntimeError('Species path given: %s, does not exist as a directory' % species_path)
+                raise RuntimeError(
+                    'Species path given: %s, '
+                    'does not exist as a directory' % species_path)
         self.species_path = species_path
         # We initialize our _calc.s+caconverged flag indicating
         # whether the calculation is finished to False.
@@ -79,7 +84,7 @@ class Exciting:
 
     def update(self, atoms: ase.Atoms):
         """Initialize calc if needed then run exciting calc.
-        
+
         Args:
             atoms: atom numbers, positions and
                 periodic boundary conditions in an ase.Atoms obj.
@@ -101,7 +106,7 @@ class Exciting:
 
     def initialize(self, atoms: ase.Atoms):
         """Initialize atomic information by writing input file.
-        
+
         Args:
             atoms: Holds geometry, atomic information about calculation.
         """
@@ -141,10 +146,10 @@ class Exciting:
 
     def get_stress(self, atoms: ase.Atoms):
         """Get the stress on the unit cell.
-        
+
         This method has not been implemented.
         TODO(dts): Talk to Alex and see if this has been implemented in exciting.
-        
+
         Args:
             atoms: Holds geometry, atomic information about calculation.
 
@@ -155,7 +160,7 @@ class Exciting:
 
     def calculate(self, atoms: ase.Atoms):
         """Run exciting calculation.
-        
+
         Args:
             atoms: Holds geometry, atomic information about calculation.
         """
@@ -195,7 +200,7 @@ class Exciting:
 
     def write(self, atoms: ase.Atoms):
         """Write atomic info inputs to an xml.
-        
+
         Write input parameters into an xml file that will be used by the exciting binary
         to run a calculation.
 
