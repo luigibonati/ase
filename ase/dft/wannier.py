@@ -546,34 +546,30 @@ class Wannier:
         """
         from ase.dft.wannierstate import WannierState, WannierSpec
 
-        Nw = self.nwannier
-        Nb = self.nbands
-
-        spec = WannierSpec(self.Nk, Nw, Nb, self.fixedstates_k)
+        spec = WannierSpec(self.Nk, self.nwannier, self.nbands,
+                           self.fixedstates_k)
 
         if file is not None:
             with paropen(file, 'r') as fd:
                 Z_dknn, U_kww, C_kul = read_json(fd, always_array=False)
-                self.Z_dknn = Z_dknn
-                self.wannier_state = WannierState(C_kul, U_kww)
-
+            self.Z_dknn = Z_dknn
+            wannier_state = WannierState(C_kul, U_kww)
         elif initialwannier == 'bloch':
             # Set U and C to pick the lowest Bloch states
-            self.wannier_state = spec.bloch(self.edf_k)
-
+            wannier_state = spec.bloch(self.edf_k)
         elif initialwannier == 'random':
-            self.wannier_state = spec.random(rng, self.edf_k)
-
+            wannier_state = spec.random(rng, self.edf_k)
         elif initialwannier == 'orbitals':
             orbitals = init_orbitals(self.atoms, self.nwannier, rng)
-            self.wannier_state = spec.initial_orbitals(
-                self.calc, orbitals, self.kptgrid, self.edf_k,
-                self.spin)
+            wannier_state = spec.initial_orbitals(
+                self.calc, orbitals, self.kptgrid, self.edf_k, self.spin)
         elif initialwannier == 'scdm':
-            self.wannier_state = spec.scdm(self.calc, self.kpt_kc, self.spin)
+            wannier_state = spec.scdm(self.calc, self.kpt_kc, self.spin)
         else:
-            self.wannier_state = spec.initial_wannier(calc, self.kptgrid,
-                                                      self.edf_k, self.spin)
+            wannier_state = spec.initial_wannier(calc, self.kptgrid,
+                                                 self.edf_k, self.spin)
+
+        self.wannier_state = wannier_state
         self.update()
 
     def save(self, file):
