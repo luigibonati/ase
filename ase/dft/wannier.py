@@ -427,6 +427,35 @@ def get_eigenvalues(calc):
     return eps_skn
 
 
+class CalcData:
+    def __init__(self, kpt_kc, atoms, fermi_level, lumo, eps_skn,
+                 gap):
+        self.kpt_kc = kpt_kc
+        self.atoms = atoms
+        self.fermi_level = fermi_level
+        self.lumo = lumo
+        self.eps_skn = eps_skn
+        self.gap = gap
+
+    @property
+    def nbands(self):
+        return self.eps_skn.shape[2]
+
+
+def get_calcdata(calc):
+    kpt_kc = calc.get_bz_k_points()
+    assert len(calc.get_ibz_k_points()) == len(kpt_kc)
+    lumo = calc.get_homo_lumo()[1]
+    gap = bandgap(calc=calc, output=None)[0]
+    return CalcData(
+        kpt_kc=kpt_kc,
+        atoms=calc.get_atoms(),
+        fermi_level=calc.get_fermi_level(),
+        lumo=lumo,
+        eps_skn=get_eigenvalues(calc),
+        gap=gap)
+
+
 class Wannier:
     """Partly occupied Wannier functions
 
@@ -508,34 +537,6 @@ class Wannier:
         self.functional = functional
         self.initialwannier = initialwannier
         self.log('Using functional:', functional)
-
-        class CalcData:
-            def __init__(self, kpt_kc, atoms, fermi_level, lumo, eps_skn,
-                         gap):
-                self.kpt_kc = kpt_kc
-                self.atoms = atoms
-                self.fermi_level = fermi_level
-                self.lumo = lumo
-                self.eps_skn = eps_skn
-                self.gap = gap
-
-            @property
-            def nbands(self):
-                return self.eps_skn.shape[2]
-
-        def get_calcdata(calc):
-            kpt_kc = calc.get_bz_k_points()
-            assert len(calc.get_ibz_k_points()) == len(kpt_kc)
-            lumo = calc.get_homo_lumo()[1]
-            gap = bandgap(calc=calc, output=None)[0]
-            return CalcData(
-                kpt_kc=kpt_kc,
-                atoms=calc.get_atoms(),
-                fermi_level=calc.get_fermi_level(),
-                lumo=lumo,
-                eps_skn=get_eigenvalues(calc),
-                gap=gap,
-            )
 
         self.calcdata = get_calcdata(calc)
 
