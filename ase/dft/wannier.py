@@ -444,6 +444,7 @@ class CalcData:
 
 def get_calcdata(calc):
     kpt_kc = calc.get_bz_k_points()
+    # Make sure there is no symmetry reduction
     assert len(calc.get_ibz_k_points()) == len(kpt_kc)
     lumo = calc.get_homo_lumo()[1]
     gap = bandgap(calc=calc, output=None)[0]
@@ -539,8 +540,6 @@ class Wannier:
         self.log('Using functional:', functional)
 
         self.calcdata = get_calcdata(calc)
-
-        # Make sure there is no symmetry reduction
 
         self.kptgrid = get_monkhorst_pack_size_and_offset(self.kpt_kc)[0]
         self.calcdata.kpt_kc *= sign
@@ -696,17 +695,12 @@ class Wannier:
         # Define the range of values to try based on the maximum number of fixed
         # states (that is the minimum number of WFs we need) and the number of
         # available bands we have.
-        min_range_value = self.nwannier - np.floor(nwrange / 2)
         max_number_fixedstates = np.max(self.fixedstates_k)
-        if min_range_value < max_number_fixedstates:
-            Nws = np.arange(max_number_fixedstates,
-                            np.min([max_number_fixedstates + nwrange,
-                                    self.nbands + 1]))
-        else:
-            Nws = np.arange(min_range_value,
-                            np.min([min_range_value + nwrange,
-                                    self.nbands + 1]))
-        Nws[:] = Nws.astype(int)
+
+        min_range_value = max(self.nwannier - int(np.floor(nwrange / 2)),
+                              max_number_fixedstates)
+        max_range_value = min(min_range_value + nwrange, self.nbands + 1)
+        Nws = np.arange(min_range_value, max_range_value)
 
         # If there is no randomness, there is no need to repeat
         random_initials = ['random', 'orbitals']
