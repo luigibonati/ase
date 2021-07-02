@@ -348,7 +348,7 @@ def test_get_centers(factory):
     assert np.abs(centers - [com, com]).max() < 1e-4
 
 
-def test_write_cube_default(wan, h2_calculator):
+def test_write_cube_default(wan, h2_calculator, testdir):
     # Chek the value saved in the CUBE file and the atoms object.
     # The default saved value is the absolute value of the Wannier function,
     # and the supercell is repeated per the number of k-points in each
@@ -366,7 +366,7 @@ def test_write_cube_default(wan, h2_calculator):
     assert pytest.approx(content['data']) == abs(wanf.get_function(index))
 
 
-def test_write_cube_angle(wan):
+def test_write_cube_angle(wan, testdir):
     # Check that the complex phase is correctly saved to the CUBE file, together
     # with the right atoms object.
     atoms = molecule('H2')
@@ -383,7 +383,7 @@ def test_write_cube_angle(wan):
     assert pytest.approx(content['data']) == np.angle(wanf.get_function(index))
 
 
-def test_write_cube_repeat(wan):
+def test_write_cube_repeat(wan, testdir):
     # Check that the repeated supercell and Wannier functions are correctly
     # saved to the CUBE file, together with the right atoms object.
     atoms = molecule('H2')
