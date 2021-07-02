@@ -504,25 +504,35 @@ class Wannier:
                             neighbor_k_search(k_c, G_c, self.kpt_kc)
 
         # Set the inverse list of neighboring k-points
-        self.invkklst_dk = np.empty((self.Ndir, self.Nk), int)
-        for d in range(self.Ndir):
-            for k1 in range(self.Nk):
-                self.invkklst_dk[d, k1] = self.kklst_dk[d].tolist().index(k1)
+        self.invkklst_dk = self.get_invkklst()
 
         Nw = self.nwannier
         Nb = self.nbands
         self.Z_dkww = np.empty((self.Ndir, self.Nk, Nw, Nw), complex)
         self.V_knw = np.zeros((self.Nk, Nb, Nw), complex)
+
         if file is None:
-            self.Z_dknn = np.empty((self.Ndir, self.Nk, Nb, Nb), complex)
-            for d, dirG in enumerate(self.Gdir_dc):
-                for k in range(self.Nk):
-                    k1 = self.kklst_dk[d, k]
-                    k0_c = k0_dkc[d, k]
-                    self.Z_dknn[d, k] = calc.get_wannier_localization_matrix(
-                        nbands=Nb, dirG=dirG, kpoint=k, nextkpoint=k1,
-                        G_I=k0_c, spin=self.spin)
+            self.Z_dknn = self.new_Z(calc, k0_dkc)
         self.initialize(file=file, initialwannier=initialwannier, rng=rng)
+
+    def get_invkklst(self):
+        invkklst_dk = np.empty((self.Ndir, self.Nk), int)
+        for d in range(self.Ndir):
+            for k1 in range(self.Nk):
+                invkklst_dk[d, k1] = self.kklst_dk[d].tolist().index(k1)
+        return invkklst_dk
+
+    def new_Z(self, calc, k0_dkc):
+        Nb = self.nbands
+        Z_dknn = np.empty((self.Ndir, self.Nk, Nb, Nb), complex)
+        for d, dirG in enumerate(self.Gdir_dc):
+            for k in range(self.Nk):
+                k1 = self.kklst_dk[d, k]
+                k0_c = k0_dkc[d, k]
+                Z_dknn[d, k] = calc.get_wannier_localization_matrix(
+                    nbands=Nb, dirG=dirG, kpoint=k, nextkpoint=k1,
+                    G_I=k0_c, spin=self.spin)
+        return Z_dknn
 
     @property
     def unitcell_cc(self):
