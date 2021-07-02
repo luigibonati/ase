@@ -504,19 +504,16 @@ class Wannier:
         self.kptgrid = get_monkhorst_pack_size_and_offset(self.kpt_kc)[0]
         self.kpt_kc *= sign
 
-        self.Nk = len(self.kpt_kc)
         self.largeunitcell_cc = (self.unitcell_cc.T * self.kptgrid).T
         self.weight_d, self.Gdir_dc = calculate_weights(self.largeunitcell_cc)
         assert len(self.weight_d) == len(self.Gdir_dc)
-        self.Ndir = len(self.weight_d)  # Number of directions
 
         if nbands is None:
             nbands = calc.get_number_of_bands()
         self.nbands = nbands
 
         self.fixedstates_k, self.nwannier = choose_states(
-            calc, fixedenergy, fixedstates, self.Nk, nwannier, log,
-            spin)
+            calc, fixedenergy, fixedstates, self.Nk, nwannier, log, spin)
 
         # Compute the number of extra degrees of freedom (EDF)
         self.edf_k = self.nwannier - self.fixedstates_k
@@ -537,6 +534,14 @@ class Wannier:
         if file is None:
             self.Z_dknn = self.new_Z(calc, k0_dkc)
         self.initialize(file=file, initialwannier=initialwannier, rng=rng)
+
+    @property
+    def Ndir(self):
+        return len(self.weight_d)  # Number of directions
+
+    @property
+    def Nk(self):
+        return len(self.kpt_kc)
 
     def new_Z(self, calc, k0_dkc):
         Nb = self.nbands
@@ -771,7 +776,7 @@ class Wannier:
         trans = np.array(cell) - np.floor(scaled_c)
         self.translate(w, trans)
 
-    def translate_all_to_cell(self, cell=[0, 0, 0]):
+    def translate_all_to_cell(self, cell=(0, 0, 0)):
         r"""Translate all Wannier functions to specified cell.
 
         Move all Wannier orbitals to a specific unit cell.  There
@@ -849,7 +854,7 @@ class Wannier:
         """
         return self._get_hopping(R[0], R[1], R[2])
 
-    def get_hamiltonian(self, k=0):
+    def get_hamiltonian(self, k):
         """Get Hamiltonian at existing k-vector of index k
 
         ::
