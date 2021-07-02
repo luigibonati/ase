@@ -721,7 +721,7 @@ class Wannier:
                           functional=self.functional,
                           initialwannier='bloch',
                           log=self.log,
-                          rng=np.random)
+                          rng=self.rng)
             wan.fixedstates_k = self.fixedstates_k
             wan.edf_k = wan.nwannier - wan.fixedstates_k
 
