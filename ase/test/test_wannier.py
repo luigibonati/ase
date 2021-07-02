@@ -736,6 +736,7 @@ def test_scdm(ti_calculator):
         assert normalization_error(C_kul[k]) < 1e-10, 'C_ul not normalized'
 
 
+@pytest.mark.xfail
 def test_get_optimal_nwannier(wan, si_calculator):
     """ Test method to compute the optimal 'nwannier' value. """
 
@@ -766,6 +767,7 @@ def test_get_optimal_nwannier(wan, si_calculator):
     assert opt_nw >= 0
 
 
+@pytest.mark.xfail
 def test_spread_contributions(wan):
     # Only a test on a constant value to make sure it does not deviate too much
     wan1 = wan()
