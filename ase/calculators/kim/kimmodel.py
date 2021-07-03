@@ -30,7 +30,7 @@ class KIMModelData:
         self.debug = debug
 
         # Initialize KIM API Portable Model object and ComputeArguments object
-        self._init_kim()
+        self.kim_model, self.compute_args = self._init_kim()
 
         self.species_map = self._create_species_map()
 
@@ -43,7 +43,7 @@ class KIMModelData:
         ) = self.get_model_neighbor_list_parameters()
 
         # Initialize neighbor list object
-        self._init_neigh(
+        self.neigh = self._init_neigh(
             neigh_skin_ratio,
             model_influence_dist,
             model_cutoffs,
@@ -57,11 +57,13 @@ class KIMModelData:
         if self.kim_initialized:
             return
 
-        self.kim_model = kimpy_wrappers.PortableModel(self.model_name, self.debug)
+        kim_model = kimpy_wrappers.PortableModel(self.model_name, self.debug)
 
         # KIM API model object is what actually creates/destroys the ComputeArguments
         # object, so we must pass it as a parameter
-        self.compute_args = self.kim_model.compute_arguments_create()
+        compute_args = kim_model.compute_arguments_create()
+
+        return kim_model, compute_args
 
     def _init_neigh(
         self,
@@ -78,7 +80,7 @@ class KIMModelData:
             if self.ase_neigh
             else neighborlist.KimpyNeighborList
         )
-        self.neigh = neigh_list_object_type(
+        return neigh_list_object_type(
             self.compute_args,
             neigh_skin_ratio,
             model_influence_dist,
