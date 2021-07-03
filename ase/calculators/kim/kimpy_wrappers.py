@@ -439,14 +439,14 @@ class KIMModelParameter:
         # is necessary because this is passed to kimpy.
         self._parameter_index = c_int(parameter_index)
 
-        @property
-        def metadata(self):
-            return {
-                "dtype": self._dtype,
-                "extent": self._extent,
-                "name": self._name,
-                "description": self._description,
-            }
+    @property
+    def metadata(self):
+        return {
+            "dtype": self._dtype,
+            "extent": self._extent,
+            "name": self._name,
+            "description": self._description,
+        }
 
     @c_int_args
     def _get_parameter_int(self, index_extent):
