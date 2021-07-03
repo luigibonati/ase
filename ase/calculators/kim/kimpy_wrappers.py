@@ -5,6 +5,7 @@ Daniel S. Karls
 University of Minnesota
 """
 
+from abc import ABC
 import functools
 
 import numpy as np
@@ -161,17 +162,31 @@ class PortableModel:
         return self.kim_model.get_number_of_parameters()
 
     def _create_parameters(self):
+        def _kim_model_parameter(**kwargs):
+            dtype = kwargs["dtype"]
+
+            if dtype == "Integer":
+                return KIMModelParameterInteger(**kwargs)
+            elif dtype == "Double":
+                return KIMModelParameterDouble(**kwargs)
+            else:
+                raise KIMModelParameterError(
+                    f"Invalid model parameter type {dtype}. Supported types "
+                    "'Integer' and 'Double'."
+                )
+
         self._parameters = {}
         num_params = self._get_number_of_parameters()
         for index_param in range(num_params):
             parameter_metadata = self._get_one_parameter_metadata(index_param)
             name = parameter_metadata["name"]
-            self._parameters[name] = KIMModelParameter(
-                self.kim_model,
-                parameter_metadata["dtype"],
-                parameter_metadata["extent"],
-                name,
-                parameter_metadata["description"],
+
+            self._parameters[name] = _kim_model_parameter(
+                kim_model=self.kim_model,
+                dtype=parameter_metadata["dtype"],
+                extent=parameter_metadata["extent"],
+                name=name,
+                description=parameter_metadata["description"],
                 parameter_index=index_param,
             )
 
@@ -427,7 +442,7 @@ class PortableModel:
         return hasattr(self, "kim_model")
 
 
-class KIMModelParameter:
+class KIMModelParameter(ABC):
     def __init__(self, kim_model, dtype, extent, name, description, parameter_index):
         self._kim_model = kim_model
         self._dtype = dtype
@@ -449,45 +464,19 @@ class KIMModelParameter:
         }
 
     @c_int_args
-    def _get_parameter_int(self, index_extent):
-        try:
-            return check_call(
-                self._kim_model.get_parameter_int, self._parameter_index, index_extent
-            )
-        except KimpyError as e:
-            raise KIMModelParameterError(
-                f"Failed to access component {index_extent} of model "
-                "parameter of type integer at parameter index "
-                f"{self._parameter_index}"
-            ) from e
-
-    @c_int_args
-    def _get_parameter_double(self, index_extent):
-        try:
-            return check_call(
-                self._kim_model.get_parameter_double,
-                self._parameter_index,
-                index_extent,
-            )
-        except KimpyError as e:
-            raise KIMModelParameterError(
-                f"Failed to access component {index_extent} of model "
-                "parameter of type double at parameter index "
-                f"{self._parameter_index}"
-            ) from e
-
     def _get_one_value(self, index_extent):
-        if self._dtype == "Double":
-            return self._get_parameter_double(index_extent)
-        elif self._dtype == "Integer":
-            return self._get_parameter_int(index_extent)
+        get_parameter = getattr(self._kim_model, self._dtype_accessor)
+        try:
+            return check_call(get_parameter, self._parameter_index, index_extent)
+        except KimpyError as exception:
+            raise KIMModelParameterError(
+                f"Failed to access component {index_extent} of model "
+                f"parameter of type '{self._dtype}' at parameter index "
+                f"{self._parameter_index}"
+            ) from exception
 
     def _set_one_value(self, index_extent, value):
-
-        if self._dtype == "Double":
-            value_typecast = c_double(value)
-        elif self._dtype == "Integer":
-            value_typecast = c_int(value)
+        value_typecast = self._dtype_c(value)
 
         try:
             check_call(
@@ -536,6 +525,16 @@ class KIMModelParameter:
                 "Index range must be an integer or a list containing a "
                 "single integer"
             )
+
+
+class KIMModelParameterInteger(KIMModelParameter):
+    _dtype_c = c_int
+    _dtype_accessor = "get_parameter_int"
+
+
+class KIMModelParameterDouble(KIMModelParameter):
+    _dtype_c = c_double
+    _dtype_accessor = "get_parameter_double"
 
 
 class ComputeArguments:
