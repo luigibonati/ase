@@ -362,13 +362,13 @@ class PortableModel:
             The requested indices and the corresponding values of the model
             parameter array.
         """
-        try:
-            return self._parameters[parameter_name].get_values(index_range)
-        except KeyError:
+        if parameter_name not in self._parameters:
             raise KIMModelParameterError(
-                "Parameter '{parameter_name}' is not supported by this model. "
+                f"Parameter '{parameter_name}' is not supported by this model. "
                 "Please check that the parameter name is spelled correctly."
             )
+
+        return self._parameters[parameter_name].get_values(index_range)
 
     def _set_one_parameter(self, parameter_name, index_range, values):
         """
@@ -386,13 +386,13 @@ class PortableModel:
             Value(s) to assign to the component(s) of the model parameter
             array specified by ``index_range``.
         """
-        try:
-            self._parameters[parameter_name].set_values(index_range, values)
-        except KeyError:
+        if parameter_name not in self._parameters:
             raise KIMModelParameterError(
-                "Parameter '{parameter_name}' is not supported by this model. "
+                f"Parameter '{parameter_name}' is not supported by this model. "
                 "Please check that the parameter name is spelled correctly."
             )
+
+        self._parameters[parameter_name].set_values(index_range, values)
 
     def _get_one_parameter_metadata(self, index_parameter):
         """
