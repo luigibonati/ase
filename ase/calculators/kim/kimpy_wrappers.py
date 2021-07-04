@@ -339,7 +339,7 @@ class PortableModel:
         for parameter_name, parameter_data in kwargs.items():
             index_range, values = parameter_data
             self._set_one_parameter(parameter_name, index_range, values)
-            parameters.update({parameter_name: parameter_data})
+            parameters[parameter_name] = parameter_data
 
         return parameters
 
