@@ -164,7 +164,7 @@ class RandomPermutation(Mutation):
         i2 = rng.choice(indices)
         while atoms[i1].symbol == atoms[i2].symbol:
             i2 = rng.choice(indices)
-        atoms.positions[[i1, i2]] = atoms.positions[[i2, i1]]
+        atoms.symbols[[i1, i2]] = atoms.symbols[[i2, i1]]
 
 
 class COM2surfPermutation(Mutation):
@@ -240,7 +240,7 @@ class COM2surfPermutation(Mutation):
                                                              shell)
         chosen = rng.randint(len(permuts))
         swap = list(permuts[chosen])
-        atoms.positions[swap] = atoms.positions[swap[::-1]]
+        atoms.symbols[swap] = atoms.symbols[swap[::-1]]
 
     @classmethod
     def get_core_indices(cls, atoms, atomic_conf, min_ratio, recurs=0):
@@ -377,7 +377,7 @@ class Poor2richPermutation(_NeighborhoodPermutation):
                 if atom.symbol not in elements]]
         permuts = _NP.get_possible_poor2rich_permutations(ac)
         swap = list(rng.choice(permuts))
-        atoms.positions[swap] = atoms.positions[swap[::-1]]
+        atoms.symbols[swap] = atoms.symbols[swap[::-1]]
 
 
 class Rich2poorPermutation(_NeighborhoodPermutation):
@@ -433,7 +433,7 @@ class Rich2poorPermutation(_NeighborhoodPermutation):
         permuts = _NP.get_possible_poor2rich_permutations(ac,
                                                           inverse=True)
         swap = list(rng.choice(permuts))
-        atoms.positions[swap] = atoms.positions[swap[::-1]]
+        atoms.symbols[swap] = atoms.symbols[swap[::-1]]
 
 
 class SymmetricSubstitute(Mutation):

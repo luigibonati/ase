@@ -488,7 +488,7 @@ class CIFBlock(collections.abc.Mapping):
                 # Compile an occupancies dictionary
                 occ_dict = {}
                 for i, sym in enumerate(atoms.symbols):
-                    occ_dict[i] = {sym: occupancies[i]}
+                    occ_dict[str(i)] = {sym: occupancies[i]}
                 atoms.info['occupancy'] = occ_dict
 
         return atoms
@@ -588,9 +588,12 @@ def read_cif(fileobj, index, store_tags=False, primitive_cell=False,
     cell.
 
     If *fractional_occupancies* is true, the resulting atoms object will be
-    tagged equipped with an array `occupancy`. Also, in case of mixed
-    occupancies, the atom's chemical symbol will be that of the most dominant
-    species.
+    tagged equipped with a dictionary `occupancy`. The keys of this dictionary
+    will be integers converted to strings. The conversion to string is done
+    in order to avoid troubles with JSON encoding/decoding of the dictionaries
+    with non-string keys.
+    Also, in case of mixed occupancies, the atom's chemical symbol will be
+    that of the most dominant species.
 
     String *reader* is used to select CIF reader. Value `ase` selects
     built-in CIF reader (default), while `pycodcif` selects CIF reader based
@@ -755,14 +758,14 @@ def expand_kinds(atoms, coords):
     kinds = atoms.arrays.get('spacegroup_kinds')
     if occ_info is not None and kinds is not None:
         for i, kind in enumerate(kinds):
-            occ_info_kind = occ_info[kind]
+            occ_info_kind = occ_info[str(kind)]
             symbol = symbols[i]
             if symbol not in occ_info_kind:
                 raise BadOccupancies('Occupancies present but no occupancy '
                                      'info for "{symbol}"')
             occupancies[i] = occ_info_kind[symbol]
             # extend the positions array in case of mixed occupancy
-            for sym, occ in occ_info[kind].items():
+            for sym, occ in occ_info[str(kind)].items():
                 if sym != symbols[i]:
                     symbols.append(sym)
                     coords.append(coords[i])

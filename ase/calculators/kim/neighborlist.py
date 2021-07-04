@@ -129,9 +129,6 @@ class NeighborList:
 
         return need_neigh_update
 
-    def clean(self):
-        pass
-
 
 class ASENeighborList(NeighborList):
     def __init__(

@@ -3,15 +3,6 @@ from ase.build import bulk, molecule
 import numpy as np
 
 
-def test_jsonio_atoms_info():
-    atoms_ref = bulk('Ti')
-    atoms_ref.info['any_name_for_a_dictionary'] = {0: 'anything'}
-    text = encode(atoms_ref)
-    atoms = decode(text)
-    key = next(iter(atoms.info['any_name_for_a_dictionary']))
-    assert isinstance(key, int)
-
-
 def test_jsonio_atoms():
 
     def assert_equal(atoms1, atoms2):
@@ -47,3 +38,20 @@ def test_jsonio_atoms():
     # Can we check constraint equality somehow?
     # Would make sense for FixAtoms
     assert np.array_equal(c1[0].index, c2[0].index)
+
+
+def test_jsonio_cartesian():
+
+    from ase.constraints import FixCartesian
+
+    atoms = bulk('Ag', cubic=True)
+    a = [0, 1]
+    mask = [[False, False, True], [False, False, True]]
+
+    atoms.constraints = FixCartesian(a, mask=mask)
+    new_atoms = decode(encode(atoms))
+    c1 = atoms.constraints
+    c2 = new_atoms.constraints
+    assert len(c1) == len(c2) == 1
+    assert np.array_equal(c1[0].a, c2[0].a)
+    assert np.array_equal(c1[0].mask, c2[0].mask)
