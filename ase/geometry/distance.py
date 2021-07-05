@@ -58,5 +58,3 @@ def distance(s1, s2, permute=True):
         dists.append(dd(s1, s2, permute))
    
     return min(dists)
-
-
