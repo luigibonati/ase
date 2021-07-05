@@ -70,4 +70,4 @@ def test_ts09_polarizability(testdir):
     # polarizability is a tensor
     assert alpha_cc.shape == (3, 3)
 
-    assert alpha_cc.diagonal() == pytest.approx(14.8, .5)
+    assert alpha_cc.diagonal() == pytest.approx(0.1523047, .5)

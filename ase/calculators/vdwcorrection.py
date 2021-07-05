@@ -381,6 +381,16 @@ class vdWTkatchenko09prl(Calculator, IOContext):
 
 class TS09Polarizability:
     def calculate(self, atoms):
+        """Calculate polarizability tensor
+
+        atoms: Atoms object
+
+        Returns
+        -------
+        polarizability tensor:
+          Unit (e^2 Angstrom^2 / eV).
+          Multiply with Bohr * Ha to get (Angstrom^3)
+        """
         calc = atoms.calc
         assert isinstance(calc, vdWTkatchenko09prl)
 
@@ -396,5 +406,5 @@ class TS09Polarizability:
             # of atomic polarizability from ts09
             alpha_eff_a[a] = volume_ratios[a] * alpha_a[a]
 
-        alpha = np.sum(alpha_eff_a)
+        alpha = np.sum(alpha_eff_a) * Bohr**2 / Hartree
         return np.diag([alpha] * 3)
