@@ -80,6 +80,12 @@ class FixConstraint:
     def copy(self):
         return dict2constraint(self.todict().copy())
 
+    def check_duplicates(self, indices):
+        """Check for duplicate indices"""
+        uniques, counts = np.unique(indices, return_counts=True)
+        duplicates = uniques[counts > 1]
+        return len(duplicates) > 0
+
 
 class FixConstraintSingle(FixConstraint):
     """Base class for classes that fix a single atom."""
@@ -140,14 +146,12 @@ class FixAtoms(FixConstraint):
         if mask is not None:
             indices = np.arange(len(mask))[np.asarray(mask, bool)]
         else:
-            # Check for duplicates:
-            srt = np.sort(indices)
-            if (np.diff(srt) == 0).any():
+            if self.check_duplicates(indices):
                 raise ValueError(
                     'FixAtoms: The indices array contained duplicates. '
                     'Perhaps you wanted to specify a mask instead, but '
                     'forgot the mask= keyword.')
-        self.index = np.asarray(indices, int)
+        self.index = np.atleast_1d(indices)
 
         if self.index.ndim != 1:
             raise ValueError('Wrong argument to FixAtoms class!')
@@ -689,12 +693,11 @@ class FixedPlane(FixConstraint):
         """
         self.index = np.atleast_1d(indices)
 
-        # Check for duplicates:
-        srt = np.sort(self.index)
-        if (np.diff(srt) == 0).any():
+        if self.check_duplicates(self.index):
             raise ValueError(
-                'FixAtoms: The indices array contained duplicates.'
+                'The indices array contained duplicates.'
             )
+
 
         if self.index.ndim != 1:
             raise ValueError('Wrong argument to FixedPlane class!')
@@ -762,11 +765,9 @@ class FixedLine(FixConstraint):
         """
         self.index = np.atleast_1d(indices)
 
-        # Check for duplicates:
-        srt = np.sort(self.index)
-        if (np.diff(srt) == 0).any():
+        if self.check_duplicates(self.index):
             raise ValueError(
-                'FixAtoms: The indices array contained duplicates.'
+                'The indices array contained duplicates.'
             )
 
         if self.index.ndim != 1:
