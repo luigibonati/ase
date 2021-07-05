@@ -8,7 +8,7 @@ from ase.optimize.fire import FIRE
 from ase.lattice.compounds import L1_2
 import timeit
 
-from ase.ga.utilities import get_rdf, CellIsNotLargeEnoughError, get_recommended_r_max
+from ase.geometry.rdf import get_rdf, get_recommended_r_max, CellIsNotLargeEnoughError
 
 
 def test_rdf_performance():
