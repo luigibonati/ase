@@ -156,8 +156,7 @@ class FixAtoms(FixConstraint):
         if self.index.ndim != 1:
             raise ValueError('Wrong argument to FixAtoms class!')
 
-    @property
-    def get_removed_dof(self):
+    def get_removed_dof(self, atoms):
         return 3 * len(self.index)
 
     def adjust_positions(self, atoms, new):
@@ -709,8 +708,7 @@ class FixedPlane(FixConstraint):
 
         self.stack_dir = np.stack((self.dir,) * len(self.index))
 
-    @property
-    def get_removed_dof(self):
+    def get_removed_dof(self, atoms):
         return 1 * len(self.index)
 
     def adjust_positions(self, atoms, newpositions):
@@ -792,8 +790,7 @@ class FixedLine(FixConstraint):
             forces[self.index], self.dir
         )[:, None]
 
-    @property
-    def get_removed_dof(self):
+    def get_removed_dof(self, atoms):
         return 2 * len(self.index)
 
     def __repr__(self):
