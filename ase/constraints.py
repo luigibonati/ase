@@ -698,7 +698,6 @@ class FixedPlane(FixConstraint):
                 'The indices array contained duplicates.'
             )
 
-
         if self.index.ndim != 1:
             raise ValueError('Wrong argument to FixedPlane class!')
 
