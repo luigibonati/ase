@@ -1,14 +1,21 @@
 """Various utility methods used troughout the GA."""
+from typing import List
 import os
 import time
 import math
 import itertools
 import numpy as np
 from scipy.spatial.distance import cdist
+from ase import Atoms
 from ase.io import write, read
 from ase.geometry.cell import cell_to_cellpar
 from ase.data import covalent_radii
 from ase.ga import get_neighbor_list
+from ase.cell import Cell
+
+
+class CellIsNotLargeEnoughError(Exception):
+    pass
 
 
 def closest_distances_generator(atom_numbers, ratio_of_covalent_radii):
@@ -236,6 +243,34 @@ def get_distance_matrix(atoms, self_distance=1000):
     return dm
 
 
+def get_recommended_r_max(cell: Cell, pbc: List[bool], vol: float) -> float:
+    recommended_r_max = 5.0
+    for i in range(3):
+        if pbc[i]:
+            axb = np.cross(cell[(i + 1) % 3, :], cell[(i + 2) % 3, :])
+            h = vol / np.linalg.norm(axb)
+            recommended_r_max = min(h / 2 * 0.99, recommended_r_max)
+    return recommended_r_max
+
+
+def check_cell_and_r_max(atoms: Atoms, rmax: float) -> None:
+    cell = atoms.get_cell()
+    vol = atoms.get_volume()
+    pbc = atoms.get_pbc()
+    recommended_r_max = get_recommended_r_max(cell, pbc, vol)
+
+    for i in range(3):
+        if pbc[i]:
+            axb = np.cross(cell[(i + 1) % 3, :], cell[(i + 2) % 3, :])
+            h = vol / np.linalg.norm(axb)
+            if h < 2 * rmax:
+                recommended_r_max = get_recommended_r_max(cell, pbc, vol)
+                raise CellIsNotLargeEnoughError(
+                    'The cell is not large enough in ' \
+                    f'direction {i}: {h:.3f} < 2*rmax={2 * rmax: .3f}. '
+                    f'Recommended rmax = {recommended_r_max}')
+
+
 def get_rdf(atoms, rmax, nbins, distance_matrix=None,
             elements=None, no_dists=False):
     """Returns two numpy arrays; the radial distribution function
@@ -270,55 +305,46 @@ def get_rdf(atoms, rmax, nbins, distance_matrix=None,
         If True then the second array with rdf distances will not be returned
     """
     # First check whether the cell is sufficiently large
-    cell = atoms.get_cell()
-    vol = atoms.get_volume()
-    pbc = atoms.get_pbc()
-    for i in range(3):
-        if pbc[i]:
-            axb = np.cross(cell[(i + 1) % 3, :], cell[(i + 2) % 3, :])
-            h = vol / np.linalg.norm(axb)
-            assert h > 2 * rmax, 'The cell is not large enough in ' \
-                 'direction %d: %.3f < 2*rmax=%.3f' % (i, h, 2 * rmax)
+    check_cell_and_r_max(atoms, rmax)
 
+    vol = atoms.get_volume()
     dm = distance_matrix
     if dm is None:
         dm = atoms.get_all_distances(mic=True)
+
     rdf = np.zeros(nbins + 1)
     dr = float(rmax / nbins)
 
+    indices = np.asarray(np.ceil(dm / dr), dtype=int)
+    natoms = len(atoms)
+
     if elements is None:
         # Coefficients to use for normalization
-        phi = len(atoms) / vol
+        phi = natoms / vol
         norm = 2.0 * math.pi * dr * phi * len(atoms)
 
-        for i in range(len(atoms)):
-            for j in range(i + 1, len(atoms)):
-                rij = dm[i][j]
-                index = int(math.ceil(rij / dr))
-                if index <= nbins:
-                    rdf[index] += 1
+        indices_triu = np.triu(indices)
+        for index in range(nbins + 1):
+           rdf[index] = np.count_nonzero(indices_triu == index)
+
     else:
         i_indices = np.where(atoms.numbers == elements[0])[0]
         phi = len(i_indices) / vol
-        norm = 4.0 * math.pi * dr * phi * len(atoms)
+        norm = 4.0 * math.pi * dr * phi * natoms
 
         for i in i_indices:
             for j in np.where(atoms.numbers == elements[1])[0]:
-                rij = dm[i][j]
-                index = int(math.ceil(rij / dr))
+                index = indices[i, j]
                 if index <= nbins:
                     rdf[index] += 1
 
-    dists = []
-    for i in range(1, nbins + 1):
-        rrr = (i - 0.5) * dr
-        dists.append(rrr)
-        # Normalize
-        rdf[i] /= (norm * ((rrr**2) + (dr**2) / 12.))
+    rr = np.arange(dr / 2, rmax, dr)
+    rdf[1:] /= norm * (rr * rr + (dr * dr / 12))
 
     if no_dists:
         return rdf[1:]
-    return rdf[1:], np.array(dists)
+
+    return rdf[1:], rr
 
 
 def get_nndist(atoms, distance_matrix):
