@@ -6,7 +6,7 @@ from ase import Atoms
 from ase.cell import Cell
 
 
-class CellIsNotLargeEnoughError(Exception):
+class CellTooSmall(Exception):
     pass
 
 
@@ -98,7 +98,7 @@ def check_cell_and_r_max(atoms: Atoms, rmax: float) -> None:
             h = vol / np.linalg.norm(axb)
             if h < 2 * rmax:
                 recommended_r_max = get_recommended_r_max(cell, pbc, vol)
-                raise CellIsNotLargeEnoughError(
+                raise CellTooSmall(
                     'The cell is not large enough in '
                     f'direction {i}: {h:.3f} < 2*rmax={2 * rmax: .3f}. '
                     f'Recommended rmax = {recommended_r_max}')
