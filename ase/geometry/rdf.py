@@ -64,7 +64,7 @@ def get_rdf(atoms: Atoms, rmax: float, nbins: int, distance_matrix=None,
 
         indices_triu = np.triu(indices)
         for index in range(nbins + 1):
-           rdf[index] = np.count_nonzero(indices_triu == index)
+            rdf[index] = np.count_nonzero(indices_triu == index)
 
     else:
         i_indices = np.where(atoms.numbers == elements[0])[0]
@@ -99,7 +99,7 @@ def check_cell_and_r_max(atoms: Atoms, rmax: float) -> None:
             if h < 2 * rmax:
                 recommended_r_max = get_recommended_r_max(cell, pbc, vol)
                 raise CellIsNotLargeEnoughError(
-                    'The cell is not large enough in ' \
+                    'The cell is not large enough in '
                     f'direction {i}: {h:.3f} < 2*rmax={2 * rmax: .3f}. '
                     f'Recommended rmax = {recommended_r_max}')
 

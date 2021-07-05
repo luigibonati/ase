@@ -8,21 +8,22 @@ from ase.optimize.fire import FIRE
 from ase.lattice.compounds import L1_2
 import timeit
 
-from ase.geometry.rdf import get_rdf, get_recommended_r_max, CellIsNotLargeEnoughError
+from ase.geometry.rdf import get_rdf, CellIsNotLargeEnoughError
 
 
 def test_rdf_performance():
     atoms = Icosahedron('Cu', 4)
     atoms.center(vacuum=0.0)
     rdf, dists = get_rdf(atoms, 8.0, 6)
-    rdf_ref = np.array([0., 0.81280406995,  0.716085965517, 0.835726863932,
-                        0.40215359365, 0.42679009693 ])
+    rdf_ref = np.array([0., 0.81280406995, 0.716085965517, 0.835726863932,
+                        0.40215359365, 0.42679009693])
     np.set_printoptions(precision=12)
-    dists_ref = np.array([0.66666667,  2., 3.33333333, 4.66666667, 6.,7.33333333])
+    dists_ref = np.array([0.66666667, 2., 3.33333333, 4.66666667, 6., 7.33333333])
     assert dists == pytest.approx(dists_ref)
     assert rdf == pytest.approx(rdf_ref)
     t100 = timeit.timeit(lambda: get_rdf(atoms, 8.0, 60, no_dists=True), number=100)
     print(t100)
+
 
 def test_rdf_exceptions():
     with pytest.raises(CellIsNotLargeEnoughError):
