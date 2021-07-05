@@ -80,9 +80,9 @@ def test_repr_fixedline(fixture_test_class, indices):
     ]
 )
 def test_removed_dof_fixedline(indices, expected):
+    mol = molecule("butadiene")  # `get_removed_dof` requires an `Atoms` object
     constraints = FixedLine(indices, direction=[1, 0, 0])
-    print(constraints.get_removed_dof)
-    assert constraints.get_removed_dof == expected
+    assert constraints.get_removed_dof(atoms=mol) == expected
     
 
 @pytest.mark.parametrize('indices', [[0], [0, 1]])
@@ -116,8 +116,9 @@ def test_repr_fixedplane(fixture_test_class, indices):
     ]
 )
 def test_removed_dof_fixedplane(indices, expected):
+    mol = molecule("butadiene")  # `get_removed_dof` requires an `Atoms` object
     constraints = FixedPlane(indices, direction=[1, 0, 0])
-    assert constraints.get_removed_dof == expected
+    assert constraints.get_removed_dof(atoms=mol) == expected
 
 
 @pytest.mark.parametrize('indices', [[0], [0, 1]])
