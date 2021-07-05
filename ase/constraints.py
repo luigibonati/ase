@@ -687,9 +687,7 @@ class FixedPlane(FixConstraint):
         >>> c = FixedPlane(indices=0, direction=[0, 0, 1])
         >>> atoms.set_constraint(c)
         """
-        if isinstance(indices, int):
-            indices = [indices]
-        self.index = np.asarray(indices, int)
+        self.index = np.atleast_1d(indices)
 
         # Check for duplicates:
         srt = np.sort(self.index)
@@ -705,7 +703,7 @@ class FixedPlane(FixConstraint):
             raise ValueError("len(direction) is {len(direction)}. Has to be 3")
         self.dir = np.asarray(direction) / sqrt(np.dot(direction, direction))
 
-        self.stack_dir = np.stack((self.dir,) * len(indices))
+        self.stack_dir = np.stack((self.dir,) * len(self.index))
 
     def get_removed_dof(self, atoms):
         return 1 * len(self.index)
@@ -762,9 +760,7 @@ class FixedLine(FixConstraint):
         >>> c = FixedLine(indices=0, direction=[0, 0, 1])
         >>> atoms.set_constraint(c)
         """
-        if isinstance(indices, int):
-            indices = [indices]
-        self.index = np.asarray(indices, int)
+        self.index = np.atleast_1d(indices)
 
         # Check for duplicates:
         srt = np.sort(self.index)
@@ -780,7 +776,7 @@ class FixedLine(FixConstraint):
             raise ValueError("len(direction) is {len(direction)}. Has to be 3")
         self.dir = np.asarray(direction) / sqrt(np.dot(direction, direction))
 
-        self.stack_dir = np.stack((self.dir,) * len(indices))
+        self.stack_dir = np.stack((self.dir,) * len(self.index))
 
     def adjust_positions(self, atoms, newpositions):
         step = newpositions[self.index] - atoms.positions[self.index]
