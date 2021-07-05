@@ -108,7 +108,7 @@ def get_recommended_r_max(cell: Cell, pbc: List[bool], vol: float) -> float:
     recommended_r_max = 5.0
     for i in range(3):
         if pbc[i]:
-            axb = np.cross(cell[(i + 1) % 3, :], cell[(i + 2) % 3, :])
+            axb = np.cross(cell[(i + 1) % 3, :], cell[(i + 2) % 3, :])  # type: ignore
             h = vol / np.linalg.norm(axb)
             recommended_r_max = min(h / 2 * 0.99, recommended_r_max)
     return recommended_r_max
