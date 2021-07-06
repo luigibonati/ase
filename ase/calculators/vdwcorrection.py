@@ -366,27 +366,6 @@ class vdWTkatchenko09prl(Calculator, IOContext):
                       file=self.txt)
             self.txt.flush()
 
-    def get_polarizability(self, atoms=None):
-        if atoms is None:
-            atoms = self.calculator.get_atoms()
-        else:
-            self.atoms = atoms
-
-        volume_ratios = self.hirshfeld.get_effective_volume_ratios()
-
-        na = len(atoms)
-        alpha_a = np.empty((na))
-        C6eff_a = np.empty((na))
-        alpha_eff_a = np.empty((na))
-        for a, atom in enumerate(atoms):
-            # free atom values
-            alpha_a[a], C6eff_a[a] = self.vdWDB_alphaC6[atom.symbol]
-            # effective polarizability assuming linear combination
-            # of atomic polarizability from ts09
-            alpha_eff_a[a] = volume_ratios[a] * alpha_a[a]
-        alpha = np.sum(alpha_eff_a)
-        return alpha
-
     def damping(self, RAB, R0A, R0B,
                 d=20,   # steepness of the step function for PBE
                 sR=0.94):
@@ -398,3 +377,35 @@ class vdWTkatchenko09prl(Calculator, IOContext):
         x = RAB * scale
         chi = np.exp(-d * (x - 1.0))
         return 1.0 / (1.0 + chi), d * scale * chi / (1.0 + chi)**2
+
+
+class TS09Polarizability:
+    def calculate(self, atoms):
+        """Calculate polarizability tensor
+
+        atoms: Atoms object
+
+        Returns
+        -------
+        polarizability tensor:
+          Unit (e^2 Angstrom^2 / eV).
+          Multiply with Bohr * Ha to get (Angstrom^3)
+        """
+        calc = atoms.calc
+        assert isinstance(calc, vdWTkatchenko09prl)
+        atoms.get_potential_energy()
+
+        volume_ratios = calc.hirshfeld.get_effective_volume_ratios()
+
+        na = len(atoms)
+        alpha_a = np.empty((na))
+        alpha_eff_a = np.empty((na))
+        for a, atom in enumerate(atoms):
+            # free atom values
+            alpha_a[a], _ = calc.vdWDB_alphaC6[atom.symbol]
+            # effective polarizability assuming linear combination
+            # of atomic polarizability from ts09
+            alpha_eff_a[a] = volume_ratios[a] * alpha_a[a]
+
+        alpha = np.sum(alpha_eff_a) * Bohr**2 / Hartree
+        return np.diag([alpha] * 3)

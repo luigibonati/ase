@@ -1,6 +1,7 @@
 import pytest
 from ase import io
-from ase.calculators.vdwcorrection import vdWTkatchenko09prl
+from ase.calculators.vdwcorrection import (vdWTkatchenko09prl,
+                                           TS09Polarizability)
 from ase.calculators.emt import EMT
 from ase.build import bulk, molecule
 
@@ -58,9 +59,13 @@ def test_ts09_polarizability(testdir):
     cc = FakeDFTcalculator(atoms)
     hp = FakeHirshfeldPartitioning(cc)
     c = vdWTkatchenko09prl(hp, [2, 2])
-
     atoms.calc = c
-    atoms.get_potential_energy()
     
-    alpha = c.get_polarizability()
-    assert alpha == pytest.approx(14.8, .5)
+    # interface to enable Raman calculations
+    pol = TS09Polarizability()
+    alpha_cc = pol.calculate(atoms)
+
+    # polarizability is a tensor
+    assert alpha_cc.shape == (3, 3)
+
+    assert alpha_cc.diagonal() == pytest.approx(0.1523047, .5)
