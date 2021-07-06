@@ -80,11 +80,16 @@ class FixConstraint:
     def copy(self):
         return dict2constraint(self.todict().copy())
 
-    def check_duplicates(self, indices):
+    def contain_duplicates(self, indices):
         """Check for duplicate indices"""
-        uniques, counts = np.unique(indices, return_counts=True)
-        duplicates = uniques[counts > 1]
-        return len(duplicates) > 0
+        return len(set(list(indices))) < len(indices)
+
+    def check_indices_dimension(self, indices):
+        if np.ndim(indices) > 1:
+            raise ValueError(
+                'indices has wrong amount of dimensions. '
+                f'Got {np.ndim(indices)}, expected ndim < 1'
+            )
 
 
 class FixConstraintSingle(FixConstraint):
@@ -146,15 +151,14 @@ class FixAtoms(FixConstraint):
         if mask is not None:
             indices = np.arange(len(mask))[np.asarray(mask, bool)]
         else:
-            if self.check_duplicates(indices):
+            if self.contain_duplicates(indices):
                 raise ValueError(
                     'FixAtoms: The indices array contained duplicates. '
                     'Perhaps you wanted to specify a mask instead, but '
                     'forgot the mask= keyword.')
         self.index = np.atleast_1d(indices)
 
-        if self.index.ndim != 1:
-            raise ValueError('Wrong argument to FixAtoms class!')
+        self.check_indices_dimension(self.index)
 
     def get_removed_dof(self, atoms):
         return 3 * len(self.index)
@@ -658,6 +662,27 @@ class FixedMode(FixConstraint):
         return 'FixedMode(%s)' % self.mode.tolist()
 
 
+def _sanitize_inputs(indices, direction):
+    """
+    Private function to sanitize the inputs for FixedLine and FixedPlane
+    """
+    indices = np.atleast_1d(indices)
+    FixConstraint().check_indices_dimension(indices)
+
+    if FixConstraint().contain_duplicates(indices):
+        raise ValueError(
+            'The indices array contained duplicates.'
+        )
+
+    if len(direction) != 3:
+        raise ValueError("len(direction) is {len(direction)}. Has to be 3")
+    direction = np.asarray(direction) / sqrt(np.dot(direction, direction))
+
+    stack_dir = np.stack((direction,) * len(indices))
+
+    return indices, stack_dir, direction
+
+
 class FixedPlane(FixConstraint):
     """
     Constraint object for fixing chosen atoms to only move in a plane.
@@ -691,24 +716,11 @@ class FixedPlane(FixConstraint):
         >>> c = FixedPlane(indices=0, direction=[0, 0, 1])
         >>> atoms.set_constraint(c)
         """
-        self.index = np.atleast_1d(indices)
 
-        if self.check_duplicates(self.index):
-            raise ValueError(
-                'The indices array contained duplicates.'
-            )
-
-        if self.index.ndim != 1:
-            raise ValueError('Wrong argument to FixedPlane class!')
-
-        if len(direction) != 3:
-            raise ValueError("len(direction) is {len(direction)}. Has to be 3")
-        self.dir = np.asarray(direction) / sqrt(np.dot(direction, direction))
-
-        self.stack_dir = np.stack((self.dir,) * len(self.index))
-
-    def get_removed_dof(self, atoms):
-        return 1 * len(self.index)
+        indices, stack_dir, direction = _sanitize_inputs(indices, direction)
+        self.index = indices
+        self.stack_dir = stack_dir
+        self.dir = direction
 
     def adjust_positions(self, atoms, newpositions):
         step = newpositions[self.index] - atoms.positions[self.index]
@@ -719,6 +731,9 @@ class FixedPlane(FixConstraint):
         forces[self.index] -= self.stack_dir * np.dot(
             forces[self.index], self.dir
         )[:, None]
+
+    def get_removed_dof(self, atoms):
+        return 1 * len(self.index)
 
     def todict(self):
         return {
@@ -762,21 +777,10 @@ class FixedLine(FixConstraint):
         >>> c = FixedLine(indices=0, direction=[0, 0, 1])
         >>> atoms.set_constraint(c)
         """
-        self.index = np.atleast_1d(indices)
-
-        if self.check_duplicates(self.index):
-            raise ValueError(
-                'The indices array contained duplicates.'
-            )
-
-        if self.index.ndim != 1:
-            raise ValueError('Wrong argument to FixedLine class!')
-
-        if len(direction) != 3:
-            raise ValueError("len(direction) is {len(direction)}. Has to be 3")
-        self.dir = np.asarray(direction) / sqrt(np.dot(direction, direction))
-
-        self.stack_dir = np.stack((self.dir,) * len(self.index))
+        indices, stack_dir, direction = _sanitize_inputs(indices, direction)
+        self.index = indices
+        self.stack_dir = stack_dir
+        self.dir = direction
 
     def adjust_positions(self, atoms, newpositions):
         step = newpositions[self.index] - atoms.positions[self.index]
