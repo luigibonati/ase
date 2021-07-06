@@ -59,9 +59,7 @@ def test_ts09_polarizability(testdir):
     cc = FakeDFTcalculator(atoms)
     hp = FakeHirshfeldPartitioning(cc)
     c = vdWTkatchenko09prl(hp, [2, 2])
-
     atoms.calc = c
-    atoms.get_potential_energy()
     
     # interface to enable Raman calculations
     pol = TS09Polarizability()

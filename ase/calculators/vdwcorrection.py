@@ -393,6 +393,7 @@ class TS09Polarizability:
         """
         calc = atoms.calc
         assert isinstance(calc, vdWTkatchenko09prl)
+        atoms.get_potential_energy()
 
         volume_ratios = calc.hirshfeld.get_effective_volume_ratios()
 
