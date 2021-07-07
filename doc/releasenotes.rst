@@ -9,7 +9,12 @@ Git master branch
 
 :git:`master <>`.
 
-* No changes yet
+Calculators:
+
+* :class:`ase.calculators.kim.kimmodel.KIMModelCalculator` updated to allow
+  users to change the parameters of OpenKIM portable models at run time (see
+  https://openkim.org/doc/repository/kim-content/ for an explanation of types
+  of OpenKIM models).
 
 
 Version 3.22.0
