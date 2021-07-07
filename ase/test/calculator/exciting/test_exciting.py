@@ -2,7 +2,6 @@
 import unittest
 import tempfile  # Used to create temporary directories for tests.
 
-import pytest
 
 from ase.build import bulk
 import ase.calculators.exciting as exciting
@@ -48,3 +47,7 @@ class TestExciting(unittest.TestCase):
         self.assertFalse(exciting_calc.autormt)
         # Should be true by default unless arg is passed to constructor.
         self.assertTrue(exciting_calc.tshift)
+
+    def test_write(self):
+        """Test the write method"""
+        pass
