@@ -1,7 +1,6 @@
 def test_match_magic():
     from ase.io.formats import ioformats
 
-
     text = b"""
 
       ___ ___ ___ _ _ _  
@@ -11,7 +10,6 @@ def test_match_magic():
      |___|_|             
 
     """
-
 
     gpaw = ioformats['gpaw-out']
     assert gpaw.match_magic(text)

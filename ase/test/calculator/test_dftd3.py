@@ -96,6 +96,7 @@ def test_d3_bjm(factory, system):
     system.calc = factory.calc(damping='bjm')
     close(system.get_potential_energy(), -1.4662085277005799)
 
+
 def test_alternative_tz(factory, system):
     system.calc = factory.calc(tz=True)
     close(system.get_potential_energy(), -0.6160295884482619)
@@ -104,6 +105,7 @@ def test_alternative_tz(factory, system):
 def test_d3_zero_abc(factory, system):
     system.calc = factory.calc(abc=True)
     close(system.get_potential_energy(), -0.6528640090262864)
+
 
 def test_d3_zero_revpbe(factory, system):
     system.calc = factory.calc(xc='revpbe')

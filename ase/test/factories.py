@@ -122,6 +122,7 @@ class AimsFactory:
     def fromconfig(cls, config):
         return cls(config.executables['aims'])
 
+
 @factory('asap')
 class AsapFactory:
     importname = 'asap3'
@@ -164,10 +165,30 @@ class CP2KFactory:
         return CP2KFactory(config.executables['cp2k'])
 
 
-@factory('dftb')
-class DFTBFactory:
+@factory('castep')
+class CastepFactory:
     def __init__(self, executable):
         self.executable = executable
+
+    def version(self):
+        from ase.calculators.castep import get_castep_version
+        return get_castep_version(self.executable)
+
+    def calc(self, **kwargs):
+        from ase.calculators.castep import Castep
+        return Castep(castep_command=self.executable, **kwargs)
+
+    @classmethod
+    def fromconfig(cls, config):
+        return cls(config.executables['castep'])
+
+
+@factory('dftb')
+class DFTBFactory:
+    def __init__(self, executable, skt_paths):
+        self.executable = executable
+        assert len(skt_paths) == 1
+        self.skt_path = skt_paths[0]
 
     def version(self):
         stdout = read_stdout([self.executable])
@@ -176,20 +197,15 @@ class DFTBFactory:
 
     def calc(self, **kwargs):
         from ase.calculators.dftb import Dftb
-        # XXX datafiles should be imported from datafiles project
-        # We should include more datafiles for DFTB there, and remove them
-        # from ASE's own datadir.
         command = f'{self.executable} > PREFIX.out'
-        datadir = Path(__file__).parent / 'testdata'
-        assert datadir.exists()
         return Dftb(
             command=command,
-            slako_dir=str(datadir) + '/',  # XXX not obvious
+            slako_dir=str(self.skt_path) + '/',  # XXX not obvious
             **kwargs)
 
     @classmethod
     def fromconfig(cls, config):
-        return cls(config.executables['dftb'])
+        return cls(config.executables['dftb'], config.datafiles['dftb'])
 
 
 @factory('dftd3')
@@ -538,7 +554,6 @@ class Factories:
         'ace',
         'aims',
         'amber',
-        'castep',
         'crystal',
         'demon',
         'demonnano',
@@ -689,6 +704,14 @@ class CalculatorInputs:
             parameters = {}
         self.parameters = parameters
         self.factory = factory
+
+    def require_version(self, version):
+        from ase.utils import tokenize_version
+        installed_version = self.factory.version()
+        old = tokenize_version(installed_version) < tokenize_version(version)
+        if old:
+            pytest.skip('Version too old: Requires {}; got {}'
+                        .format(version, installed_version))
 
     @property
     def name(self):

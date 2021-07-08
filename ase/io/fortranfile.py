@@ -59,6 +59,7 @@ except NameError:
     # For python3 compatibility
     from io import FileIO as file
 
+
 class FortranFile(file):
 
     """File with methods for dealing with fortran unformatted data files"""

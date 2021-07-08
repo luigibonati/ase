@@ -132,7 +132,7 @@ def test_rotate(gui):
     gui.rotate_window()
 
 
-def test_open_and_save(gui):
+def test_open_and_save(gui, testdir):
     mol = molecule('H2O')
     for i in range(3):
         mol.write('h2o.json')
@@ -144,7 +144,7 @@ def test_open_and_save(gui):
     None, 'output.png', 'output.eps',
     'output.pov', 'output.traj', 'output.traj@0',
 ])
-def test_export_graphics(gui, with_bulk_ti, monkeypatch, filename):
+def test_export_graphics(gui, testdir, with_bulk_ti, monkeypatch, filename):
     # Monkeypatch the blocking dialog:
     monkeypatch.setattr(ui.SaveFileDialog, 'go', lambda event: filename)
     gui.save()
@@ -153,16 +153,16 @@ def test_export_graphics(gui, with_bulk_ti, monkeypatch, filename):
         assert Path(realfilename).is_file()
 
 
-def test_fracocc(gui):
+def test_fracocc(gui, testdir):
     from ase.test.fio.test_cif import content
     with open('./fracocc.cif', 'w') as fd:
         fd.write(content)
     gui.open(filename='fracocc.cif')
 
 
-def test_povray(gui):
+def test_povray(gui, testdir):
     mol = molecule('H2O')
-    gui.new_atoms(mol) # not gui.set_atoms(mol)
+    gui.new_atoms(mol)  # not gui.set_atoms(mol)
     n = gui.render_window()
     assert n.basename_widget.value == 'H2O'
     n.run_povray_widget.check.deselect()
@@ -232,7 +232,7 @@ def test_repeat(gui):
 
     multiplier = [2, 3, 4]
     expected_atoms = fe * multiplier
-    natoms= np.prod(multiplier)
+    natoms = np.prod(multiplier)
     for i, value in enumerate(multiplier):
         repeat.repeat[i].value = value
 

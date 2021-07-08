@@ -9,7 +9,6 @@ import warnings
 import numpy as np
 
 from ase.cell import Cell
-from ase.dft.kpoints import monkhorst_pack
 from ase.outputs import Properties, all_outputs
 from ase.utils import jsonable
 from ase.calculators.abc import GetPropertiesMixin
@@ -337,6 +336,8 @@ class KPoints:
 
 
 def kpts2kpts(kpts, atoms=None):
+    from ase.dft.kpoints import monkhorst_pack
+
     if kpts is None:
         return KPoints()
 

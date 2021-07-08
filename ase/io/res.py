@@ -90,8 +90,8 @@ class Res:
         Returns:
             Res object.
         """
-        with open(filename, 'r') as f:
-            return Res.from_string(f.read())
+        with open(filename, 'r') as fd:
+            return Res.from_string(fd.read())
 
     @staticmethod
     def parse_title(line):
@@ -256,8 +256,8 @@ class Res:
         Writes Res to a file. The supported kwargs are the same as those for
         the Res.get_string method and are passed through directly.
         """
-        with open(filename, 'w') as f:
-            f.write(self.get_string(**kwargs) + '\n')
+        with open(filename, 'w') as fd:
+            fd.write(self.get_string(**kwargs) + '\n')
 
     def print_title(self):
         tokens = [self.name, self.pressure, self.atoms.get_volume(),

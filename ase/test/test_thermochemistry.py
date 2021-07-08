@@ -11,7 +11,7 @@ from ase.thermochemistry import (IdealGasThermo, HarmonicThermo,
 from ase.calculators.emt import EMT
 
 
-def test_ideal_gas_thermo():
+def test_ideal_gas_thermo(testdir):
     atoms = Atoms('N2',
                   positions=[(0, 0, 0), (0, 0, 1.1)])
     atoms.calc = EMT()
@@ -28,7 +28,8 @@ def test_ideal_gas_thermo():
 
     # Harmonic thermo.
 
-def test_harmonic_thermo():
+
+def test_harmonic_thermo(testdir):
     atoms = fcc100('Cu', (2, 2, 2), vacuum=10.)
     atoms.calc = EMT()
     add_adsorbate(atoms, 'Pt', 1.5, 'hollow')
@@ -47,7 +48,7 @@ def test_harmonic_thermo():
     thermo.get_helmholtz_energy(temperature=298.15)
 
 
-def test_crystal_thermo(asap3):
+def test_crystal_thermo(asap3, testdir):
     atoms = bulk('Al', 'fcc', a=4.05)
     calc = asap3.EMT()
     atoms.calc = calc
@@ -70,6 +71,7 @@ def test_crystal_thermo(asap3):
 
     # Hindered translator / rotor.
     # (Taken directly from the example given in the documentation.)
+
 
 def test_hindered_thermo():
     vibs = np.array([3049.060670,

@@ -533,8 +533,8 @@ class SparseCoeffPrecon(SparsePrecon):
         start_time = time.time()
         if self.apply_positions:
             # compute neighbour list
-            i, j, rij, fix = get_neighbours(atoms, self.r_cut,
-                                            neighbor_list=self.neighbor_list)
+            i, j, rij, fixed_atoms = get_neighbours(atoms, self.r_cut,
+                                                    neighbor_list=self.neighbor_list)
             logfile.write('--- neighbour list created in %s s --- \n' %
                           (time.time() - start_time))
 
@@ -542,7 +542,7 @@ class SparseCoeffPrecon(SparsePrecon):
             start_time = time.time()
             coeff = self.get_coeff(rij)
             diag_coeff = np.bincount(i, -coeff, minlength=N).astype(np.float64)
-            if force_stab or len(fix) == 0:
+            if force_stab or len(fixed_atoms) == 0:
                 logfile.write('adding stabilisation to precon')
                 diag_coeff += self.mu * self.c_stab
         else:
@@ -561,9 +561,9 @@ class SparseCoeffPrecon(SparsePrecon):
             # apply the constraints
             start_time = time.time()
             mask = np.ones(N)
-            mask[fix] = 0.0
+            mask[fixed_atoms] = 0.0
             coeff *= mask[i] * mask[j]
-            diag_coeff[fix] = 1.0
+            diag_coeff[fixed_atoms] = 1.0
             logfile.write('--- applied fixed_atoms in %s s ---\n' %
                           (time.time() - start_time))
 
@@ -810,6 +810,23 @@ def ijkl_to_x(i, j, k, l):
     return x
 
 
+def apply_fixed(atoms, P):
+    fixed_atoms = []
+    for constraint in atoms.constraints:
+        if isinstance(constraint, FixAtoms):
+            fixed_atoms.extend(list(constraint.index))
+        else:
+            raise TypeError(
+                'only FixAtoms constraints are supported by Precon class')        
+    if len(fixed_atoms) != 0:
+        P = P.tolil()
+    for i in fixed_atoms:
+        P[i, :] = 0.0
+        P[:, i] = 0.0
+        P[i, i] = 1.0
+    return P    
+
+
 class FF(SparsePrecon):
     """Creates matrix using morse/bond/angle/dihedral force field parameters.
     """
@@ -963,20 +980,7 @@ class FF(SparsePrecon):
         self.logfile.write('--- created CSC matrix in %s s ---\n' %
                            (time.time() - start_time))
 
-        fixed_atoms = []
-        for constraint in atoms.constraints:
-            if isinstance(constraint, FixAtoms):
-                fixed_atoms.extend(list(constraint.index))
-            else:
-                raise TypeError(
-                    'only FixAtoms constraints are supported by Precon class')
-        if len(fixed_atoms) != 0:
-            self.P.tolil()
-        for i in fixed_atoms:
-            self.P[i, :] = 0.0
-            self.P[:, i] = 0.0
-            self.P[i, i] = 1.0
-
+        self.P = apply_fixed(atoms, self.P)
         self.P = self.P.tocsr()
         self.logfile.write('--- N-dim precon created in %s s ---\n' %
                            (time.time() - start_time))
@@ -1173,12 +1177,7 @@ class Exp_FF(Exp, FF):
                            (time.time() - start_time))
 
         if not initial_assembly:
-            if len(fixed_atoms) != 0:
-                self.P.tolil()
-            for i in fixed_atoms:
-                self.P[i, :] = 0.0
-                self.P[:, i] = 0.0
-                self.P[i, i] = 1.0
+            self.P = apply_fixed(atoms, self.P)
 
         self.P = self.P.tocsr()
         self.create_solver()
@@ -1425,5 +1424,3 @@ class PreconImages:
         self._old_s = s
         self._old_x = x
         return self._spline
-    
-    

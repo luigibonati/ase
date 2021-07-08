@@ -1,7 +1,7 @@
-from distutils.version import LooseVersion
 import pytest
 
 from ase.build import bulk
+from ase.utils import tokenize_version
 
 
 @pytest.mark.skip('test is rather broken')
@@ -13,7 +13,7 @@ def test_dftb_bandstructure(dftb_factory):
     # cmd = os.environ['ASE_DFTB_COMMAND'].split()[0]
     # cmd = dftb_factory.ex
     version = dftb_factory.version()
-    if LooseVersion(version) < 17.1:
+    if tokenize_version(version) < tokenize_version('17.1'):
         pytest.skip('Band structure requires DFTB 17.1+')
 
     calc = dftb_factory.calc(
@@ -42,7 +42,7 @@ def test_dftb_bandstructure(dftb_factory):
     calc = dftb_factory.calc(
         atoms=atoms,
         label='dftb',
-        kpts={'path':'WGXWLG', 'npoints':50},
+        kpts={'path': 'WGXWLG', 'npoints': 50},
         Hamiltonian_SCC='Yes',
         Hamiltonian_MaxSCCIterations=1,
         Hamiltonian_ReadInitialCharges='Yes',

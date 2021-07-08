@@ -2,7 +2,7 @@ from ase.calculators.test import make_test_dft_calculation
 from ase.dft.stm import STM
 
 
-def test_stm():
+def test_stm(testdir):
     atoms = make_test_dft_calculation()
     stm = STM(atoms, [0, 1, 2])
     c = stm.get_averaged_current(-1.0, 4.5)

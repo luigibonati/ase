@@ -9,7 +9,7 @@ def atoms():
 
 
 @pytest.fixture
-def fname(atoms):
+def fname(atoms, testdir):
     filename = 'file.traj'
     write(filename, atoms)
     return filename
@@ -43,17 +43,17 @@ def images():
 
 
 @pytest.fixture
-def fnameimages(images):
+def fnameimages(images, testdir):
     filename = 'fileimgs.xyz'
     write(filename, images)
     return filename
 
 
 @pytest.fixture
-def execfilename():
+def execfilename(testdir):
     filename = 'execcode.py'
-    with open(filename, 'w') as f:
-        f.write('print(len(atoms))')
+    with open(filename, 'w') as fd:
+        fd.write('print(len(atoms))')
     return filename
 
 

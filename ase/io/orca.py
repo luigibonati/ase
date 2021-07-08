@@ -45,20 +45,20 @@ def write_orca(atoms, **params):
         params['orcablocks'] += pcstring
         pcpot.write_mmcharges(label)
 
-    with open(label + '.inp', 'w') as f:
-        f.write("! engrad %s \n" % params['orcasimpleinput'])
-        f.write("%s \n" % params['orcablocks'])
+    with open(label + '.inp', 'w') as fd:
+        fd.write("! engrad %s \n" % params['orcasimpleinput'])
+        fd.write("%s \n" % params['orcablocks'])
 
-        f.write('*xyz')
-        f.write(" %d" % charge)
-        f.write(" %d \n" % mult)
+        fd.write('*xyz')
+        fd.write(" %d" % charge)
+        fd.write(" %d \n" % mult)
         for atom in atoms:
             if atom.tag == 71:  # 71 is ascii G (Ghost)
                 symbol = atom.symbol + ' : '
             else:
                 symbol = atom.symbol + '   '
-            f.write(symbol +
-                    str(atom.position[0]) + ' ' +
-                    str(atom.position[1]) + ' ' +
-                    str(atom.position[2]) + '\n')
-        f.write('*\n')
+            fd.write(symbol +
+                     str(atom.position[0]) + ' ' +
+                     str(atom.position[1]) + ' ' +
+                     str(atom.position[2]) + '\n')
+        fd.write('*\n')

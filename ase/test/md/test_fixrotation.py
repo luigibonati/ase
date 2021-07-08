@@ -40,15 +40,16 @@ def test_fixrotation_asap(asap3):
                                      rng=rng)
         Stationary(atoms)
         check_inertia(atoms)
-        md = Langevin(
-            atoms,
-            timestep=20 * fs,
-            temperature_K=300,
-            friction=1e-3,
-            logfile='-',
-            loginterval=500,
-            rng=rng)
-        fx = FixRotation(atoms)
-        md.attach(fx)
-        md.run(steps=1000)
+        with Langevin(
+                atoms,
+                timestep=20 * fs,
+                temperature_K=300,
+                friction=1e-3,
+                logfile='-',
+                loginterval=500,
+                rng=rng
+        ) as md:
+            fx = FixRotation(atoms)
+            md.attach(fx)
+            md.run(steps=1000)
         check_inertia(atoms)

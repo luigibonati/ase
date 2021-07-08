@@ -16,16 +16,21 @@ def check_fractional_occupancies(atoms):
     assert list(atoms.arrays['spacegroup_kinds'])
 
     occupancies = atoms.info['occupancy']
+    for key in occupancies:
+        assert isinstance(key, str)
+
     kinds = atoms.arrays['spacegroup_kinds']
     for a in atoms:
+        a_index_str = str(kinds[a.index])
         if a.symbol == 'Na':
-            assert len(occupancies[kinds[a.index]]) == 2
-            assert occupancies[kinds[a.index]]['K'] == 0.25
-            assert occupancies[kinds[a.index]]['Na'] == 0.75
+
+            assert len(occupancies[a_index_str]) == 2
+            assert occupancies[a_index_str]['K'] == 0.25
+            assert occupancies[a_index_str]['Na'] == 0.75
         else:
-            assert len(occupancies[kinds[a.index]]) == 1
+            assert len(occupancies[a_index_str]) == 1
         if a.symbol == 'Cl':
-            assert occupancies[kinds[a.index]]['Cl'] == 0.3
+            assert occupancies[a_index_str]['Cl'] == 0.3
 
 
 content = """
@@ -534,3 +539,21 @@ def test_cif_roundtrip_mixed():
         atoms1.get_scaled_positions(), abs=1e-5)
     #assert pytest.approx(atoms.positions) == atoms1.positions
     #assert atoms1.cell.rank == 0
+
+
+cif_with_whitespace_after_loop = b"""\
+data_image0
+loop_
+ _hello
+ banana
+ 
+_potato 42
+"""
+
+
+def test_loop_with_space():
+    # Regression test for https://gitlab.com/ase/ase/-/issues/859 .
+    buf = io.BytesIO(cif_with_whitespace_after_loop)
+    blocks = list(parse_cif(buf))
+    assert len(blocks) == 1
+    assert blocks[0]['_potato'] == 42

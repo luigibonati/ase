@@ -29,16 +29,15 @@ def test_surface():
 
     # This test ensures that the default periodic behavior remains unchanged
     cubic_fcc = bulk("Al", a=4.05, cubic=True)
-    surface_fcc = surface(cubic_fcc, (1,1,1), 3)
+    surface_fcc = surface(cubic_fcc, (1, 1, 1), 3)
 
     assert list(surface_fcc.pbc) == [True, True, False]
     assert surface_fcc.cell[2][2] == 0
 
     # This test checks the new periodic option
     cubic_fcc = bulk("Al", a=4.05, cubic=True)
-    surface_fcc = surface(cubic_fcc, (1,1,1), 3, periodic=True)
+    surface_fcc = surface(cubic_fcc, (1, 1, 1), 3, periodic=True)
 
     assert (list(surface_fcc.pbc) == [True, True, True])
-    expected_length = 4.05*3**0.5 #for FCC with a=4.05
+    expected_length = 4.05*3**0.5  # for FCC with a=4.05
     assert math.isclose(surface_fcc.cell[2][2], expected_length)
-

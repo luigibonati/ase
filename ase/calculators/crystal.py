@@ -39,6 +39,7 @@ import numpy as np
 import os
 from ase.calculators.calculator import FileIOCalculator
 
+
 class CRYSTAL(FileIOCalculator):
     """ A crystal calculator with ase-FileIOCalculator nomenclature
     """
@@ -270,7 +271,7 @@ class CRYSTAL(FileIOCalculator):
             e_coul, f_coul = self.pcpot.coulomb_corrections
 
         energy = float(self.lines[index_energy].split()[pos_en]) * Hartree
-        energy -= e_coul # e_coul already in eV.
+        energy -= e_coul  # e_coul already in eV.
 
         self.results['energy'] = energy
         # Force line indexes
@@ -350,7 +351,6 @@ class CRYSTAL(FileIOCalculator):
         # debye to e*Ang
         self.results['dipole'] = dipole * 0.2081943482534
 
-
     def embed(self, mmcharges=None, directory='./'):
         """Embed atoms in point-charges (mmcharges)
         """
@@ -375,7 +375,7 @@ class PointChargePotential:
     def set_charges(self, mmcharges):
         self.mmcharges = mmcharges
 
-    def write_mmcharges(self, filename='POINTCHG.INP'):
+    def write_mmcharges(self, filename):
         """ mok all
         write external charges as monopoles for CRYSTAL.
 

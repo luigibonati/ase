@@ -495,7 +495,7 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
         self.read_sort()
 
         # Read atoms
-        self.atoms = self.read_atoms()
+        self.atoms = self.read_atoms(filename=self._indir('CONTCAR'))
 
         # Read parameters
         self.read_incar(filename=self._indir('INCAR'))
@@ -517,8 +517,8 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
         if os.path.isfile(sortfile):
             self.sort = []
             self.resort = []
-            with open(sortfile, 'r') as f:
-                for line in f:
+            with open(sortfile, 'r') as fd:
+                for line in fd:
                     sort, resort = line.split()
                     self.sort.append(int(sort))
                     self.resort.append(int(resort))
@@ -527,10 +527,9 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
             atoms = read(self._indir('CONTCAR'))
             self.initialize(atoms)
 
-    def read_atoms(self, filename='CONTCAR'):
+    def read_atoms(self, filename):
         """Read the atoms from file located in the VASP
-        working directory. Defaults to CONTCAR."""
-        filename = self._indir(filename)
+        working directory. Normally called CONTCAR."""
         return read(filename)[self.resort]
 
     def update_atoms(self, atoms):
@@ -652,16 +651,16 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
         >>> outcar = load_file('OUTCAR')
         """
         filename = self._indir(filename)
-        with open(filename, 'r') as f:
-            return f.readlines()
+        with open(filename, 'r') as fd:
+            return fd.readlines()
 
     @contextmanager
     def load_file_iter(self, filename):
         """Return a file iterator"""
 
         filename = self._indir(filename)
-        with open(filename, 'r') as f:
-            yield f
+        with open(filename, 'r') as fd:
+            yield fd
 
     def read_outcar(self, lines=None):
         """Read results from the OUTCAR file.
@@ -771,7 +770,8 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
         return nelect
 
     def get_k_point_weights(self):
-        return self.read_k_point_weights()
+        filename = self._indir('IBZKPT')
+        return self.read_k_point_weights(filename)
 
     def get_dos(self, spin=None, **kwargs):
         """
@@ -1081,8 +1081,8 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
                 converged = True
         return converged
 
-    def read_k_point_weights(self, filename='IBZKPT'):
-        """Read k-point weighting. Defaults to IBZKPT file."""
+    def read_k_point_weights(self, filename):
+        """Read k-point weighting. Normally named IBZKPT."""
 
         lines = self.load_file(filename)
 

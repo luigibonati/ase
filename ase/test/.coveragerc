@@ -26,24 +26,14 @@ omit =
     ../calculators/crystal.py
     ../calculators/demonnano.py
     ../calculators/qchem.py
-    ../calculators/gamess_us.py
-    ../calculators/orca.py
-    ../calculators/fleur.py
     ../calculators/amber.py
     ../calculators/turbomole.py
     ../calculators/onetep.py
     ../calculators/dmol.py
     ../calculators/mopac.py
-    ../calculators/castep.py
     ../calculators/gulp.py
     ../calculators/demon/demon.py
     ../calculators/demon/demon_io.py
-
-    # TODO: Improve IO format coverage and add include in coverage stats
-    ../io/fortranfile.py
-    ../io/turbomole.py
-    ../io/vtkxml.py
-    ../io/castep.py
 
 [html]
 directory = coverage-html

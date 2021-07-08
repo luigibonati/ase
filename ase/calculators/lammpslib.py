@@ -84,46 +84,59 @@ is still experimental code.
 
 **Arguments**
 
-====================  ==========================================================
+=======================  ======================================================
 Keyword                                  Description
-====================  ==========================================================
-``lmpcmds``           list of strings of LAMMPS commands. You need to supply
-                      enough to define the potential to be used e.g.
+=======================  ======================================================
+``lmpcmds``              list of strings of LAMMPS commands. You need to supply
+                         enough to define the potential to be used e.g.
 
-                      ["pair_style eam/alloy",
-                       "pair_coeff * * potentials/NiAlH_jea.eam.alloy Ni Al"]
+                         ["pair_style eam/alloy",
+                         "pair_coeff * * potentials/NiAlH_jea.eam.alloy Ni Al"]
 
-``atom_types``        dictionary of ``atomic_symbol :lammps_atom_type`` pairs,
-                      e.g. ``{'Cu':1}`` to bind copper to lammps atom type 1.
-                      If <None>, autocreated by assigning lammps atom types in
-                      order that they appear in the first used atoms object.
+``atom_types``           dictionary of ``atomic_symbol :lammps_atom_type``
+                         pairs, e.g. ``{'Cu':1}`` to bind copper to lammps
+                         atom type 1.  If <None>, autocreated by assigning
+                         lammps atom types in order that they appear in the
+                         first used atoms object.
 
-``atom_type_masses``  dictionary of ``atomic_symbol :mass`` pairs,
-                      e.g. ``{'Cu':63.546}`` to optionally assign masses that
-                      override default ase.data.atomic_masses.  Note that since
-                      unit conversion is done automatically in this module,
-                      these quantities must be given in the standard ase mass
-                      units (g/mol)
+``atom_type_masses``     dictionary of ``atomic_symbol :mass`` pairs, e.g.
+                         ``{'Cu':63.546}`` to optionally assign masses that
+                         override default ase.data.atomic_masses.  Note that
+                         since unit conversion is done automatically in this
+                         module, these quantities must be given in the
+                         standard ase mass units (g/mol)
 
-``log_file``          string
-                      path to the desired LAMMPS log file
+``log_file``             string
+                         path to the desired LAMMPS log file
 
-``lammps_header``     string to use for lammps setup. Default is to use
-                      metal units and simple atom simulation.
+``lammps_header``        string to use for lammps setup. Default is to use
+                         metal units and simple atom simulation.
 
-                      lammps_header=['units metal',
-                                  'atom_style atomic',
-                                  'atom_modify map array sort 0 0'])
+                         lammps_header=['units metal',
+                             'atom_style atomic',
+                             'atom_modify map array sort 0 0'])
 
-``amendments``        extra list of strings of LAMMPS commands to be run post
-                      post initialization. (Use: Initialization amendments) e.g.
+``amendments``           extra list of strings of LAMMPS commands to be run
+                         post initialization. (Use: Initialization amendments)
+                         e.g.
 
-                      ["mass 1 58.6934"]
+                         ["mass 1 58.6934"]
 
-``keep_alive``        Boolean
-                      whether to keep the lammps routine alive for more commands
+``post_changebox_cmds``  extra list of strings of LAMMPS commands to be run
+                         after any LAMMPS 'change_box' command is performed by
+                         the calculator.  This is relevant because some
+                         potentials either themselves depend on the geometry
+                         and boundary conditions of the simulation box, or are
+                         frequently coupled with other LAMMPS commands that
+                         do, e.g. the 'buck/coul/long' pair style is often
+                         used with the kspace_* commands, which are sensitive
+                         to the periodicity of the simulation box.
 
-====================  ==========================================================
+``keep_alive``           Boolean
+                         whether to keep the lammps routine alive for more
+                         commands
+
+=======================  ======================================================
 
 
 **Requirements**
@@ -251,6 +264,7 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
                        'atom_style atomic',
                        'atom_modify map array sort 0 0'],
         amendments=None,
+        post_changebox_cmds=None,
         boundary=True,
         create_box=True,
         create_atoms=True,
@@ -279,6 +293,9 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
                         'x final 0 {} y final 0 {} z final 0 {}      '
                         'xy final {} xz final {} yz final {} units box'
                         ''.format(xhi, yhi, zhi, xy, xz, yz))
+            if self.parameters.post_changebox_cmds is not None:
+                for cmd in self.parameters.post_changebox_cmds:
+                    self.lmp.command(cmd)
         else:
             # just in case we'll want to run with a funny shape box,
             # and here command will only happen once, and before
@@ -313,14 +330,17 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
     def set_lammps_pos(self, atoms):
         # Create local copy of positions that are wrapped along any periodic
         # directions
-        pos = wrap_positions(atoms.get_positions(), atoms.get_cell(),
-                             atoms.get_pbc())
-        pos = convert(pos, "distance", "ASE", self.units)
+        cell = convert(atoms.cell, "distance", "ASE", self.units)
+        pos = convert(atoms.positions, "distance", "ASE", self.units)
 
         # If necessary, transform the positions to new coordinate system
         if self.coord_transform is not None:
-            pos = np.dot(self.coord_transform, pos.transpose())
-            pos = pos.transpose()
+            pos = np.dot(pos, self.coord_transform.T)
+            cell = np.dot(cell, self.coord_transform.T)
+
+        # wrap only after scaling and rotating to reduce chances of
+        # lammps neighbor list bugs.
+        pos = wrap_positions(pos, cell, atoms.get_pbc())
 
         # Convert ase position matrix to lammps-style position array
         # contiguous in memory
@@ -358,10 +378,16 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
         if not self.initialized:
             self.initialise_lammps(atoms)
         else:  # still need to reset cell
-            # Apply only requested boundary condition changes.
-            # Note this needs to happen
-            # before the call to set_cell since 'change_box' will apply any
-            # shrink-wrapping *after* it's updated the cell dimensions
+            # NOTE: The whole point of ``post_changebox_cmds`` is that they're
+            # executed after any call to LAMMPS' change_box command.  Here, we
+            # rely on the fact that self.set_cell(), where we have currently
+            # placed the execution of ``post_changebox_cmds``, gets called
+            # after this initial change_box call.
+
+            # Apply only requested boundary condition changes.  Note this needs
+            # to happen before the call to set_cell since 'change_box' will
+            # apply any shrink-wrapping *after* it's updated the cell
+            # dimensions
             if 'pbc' in system_changes:
                 change_box_str = 'change_box all boundary {}'
                 change_box_cmd = change_box_str.format(self.lammpsbc(atoms))

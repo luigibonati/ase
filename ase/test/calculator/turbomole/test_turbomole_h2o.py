@@ -2,6 +2,7 @@
 from ase.calculators.turbomole import Turbomole
 from ase.build import molecule
 
+
 def test_turbomole_h2o():
     mol = molecule('H2O')
 

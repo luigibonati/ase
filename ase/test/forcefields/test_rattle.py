@@ -8,7 +8,7 @@ from ase.constraints import FixBondLengths
 
 
 @pytest.mark.slow
-def test_rattle():
+def test_rattle(testdir):
 
     i = LJInteractions({('O', 'O'): (epsilon0, sigma0)})
 
@@ -25,15 +25,15 @@ def test_rattle():
         fixOH1 = [(3 * i, 3 * i + 1) for i in range(2)]
         fixOH2 = [(3 * i, 3 * i + 2) for i in range(2)]
         fixHH = [(3 * i + 1, 3 * i + 2) for i in range(2)]
-        dimer.set_constraint(FixBondLengths(fixOH1+fixOH2+fixHH))
+        dimer.set_constraint(FixBondLengths(fixOH1 + fixOH2 + fixHH))
 
         dimer.calc = calc
 
         e = dimer.get_potential_energy()
-        md = VelocityVerlet(dimer, 8.0 * units.fs,
+        with VelocityVerlet(dimer, 8.0 * units.fs,
                             trajectory=calc.name + '.traj',
                             logfile=calc.name + '.log',
-                            loginterval=5)
-        md.run(25)
+                            loginterval=5) as md:
+            md.run(25)
         de = dimer.get_potential_energy() - e
         assert abs(de - -0.028) < 0.001

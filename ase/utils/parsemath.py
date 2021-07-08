@@ -138,6 +138,7 @@ def limit(max_=None):
 
     return decorator
 
+
 @limit(max_=max_value)
 def _eval(node):
     """Evaluate a mathematical expression string parsed by ast"""
@@ -184,6 +185,5 @@ def eval_expression(expression, param_dct=dict()):
 
     for key, val in param_dct.items():
         expression_rep = expression_rep.replace(key, str(val))
-
 
     return _eval(ast.parse(expression_rep, mode="eval").body)

@@ -8,19 +8,19 @@ Requirements
 ============
 
 * Python_ 3.6 or newer
-* NumPy_ 1.11 or newer (base N-dimensional array package)
-* SciPy_ 0.18 or newer (library for scientific computing)
+* NumPy_ (base N-dimensional array package)
+* SciPy_ (library for scientific computing)
 
 Optional but strongly recommended:
 
-* Matplotlib_ 2.0.0 or newer for plotting
+* Matplotlib_ for plotting
 * :mod:`tkinter` for :mod:`ase.gui`
 
 Optional:
 
 * Flask_ for :mod:`ase.db` web-interface
-* pytest_ 3.6.1 or newer for running tests
-* pytest-xdist_ 1.22.1 or newer for running tests in parallel
+* pytest_ for running tests
+* pytest-xdist_ for running tests in parallel
 * spglib_ for certain symmetry-related features
 
 .. _Python: https://www.python.org/
@@ -125,13 +125,13 @@ from Git.
 :Tar-file:
 
     You can get the source as a `tar-file <http://xkcd.com/1168/>`__ for the
-    latest stable release (ase-3.21.1.tar.gz_) or the latest
+    latest stable release (ase-3.22.0.tar.gz_) or the latest
     development snapshot (`<snapshot.tar.gz>`_).
 
     Unpack and make a soft link::
 
-        $ tar -xf ase-3.21.1.tar.gz
-        $ ln -s ase-3.21.1 ase
+        $ tar -xf ase-3.22.0.tar.gz
+        $ ln -s ase-3.22.0 ase
 
     Here is a `list of tarballs <https://pypi.org/simple/ase/>`__.
 
@@ -140,7 +140,7 @@ from Git.
     Alternatively, you can get the source for the latest stable release from
     https://gitlab.com/ase/ase like this::
 
-        $ git clone -b 3.21.1 https://gitlab.com/ase/ase.git
+        $ git clone -b 3.22.0 https://gitlab.com/ase/ase.git
 
     or if you want the development version::
 
@@ -171,7 +171,7 @@ Finally, please `run the tests`_.
     dates of older releases can be found there.
 
 
-.. _ase-3.21.1.tar.gz: https://pypi.org/packages/source/a/ase/ase-3.21.1.tar.gz
+.. _ase-3.22.0.tar.gz: https://pypi.org/packages/source/a/ase/ase-3.22.0.tar.gz
 
 
 Environment variables

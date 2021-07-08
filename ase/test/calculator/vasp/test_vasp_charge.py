@@ -45,7 +45,7 @@ def test_vasp_no_inputs(system, factory):
     calc = factory.calc()
     system.calc = calc
     system.get_potential_energy()
-    calc.read_incar()
+    calc.read_incar('INCAR')
     assert calc.float_params['nelect'] is None
 
 
@@ -63,7 +63,7 @@ def test_vasp_minus_charge(factory, system, expected_nelect_from_vasp):
                         charge=charge)
     calc.initialize(system)
     calc.write_input(system)
-    calc.read_incar()
+    calc.read_incar('INCAR')
     assert calc.float_params['nelect'] == expected_nelect_from_vasp - charge
 
 
@@ -97,7 +97,7 @@ def test_vasp_nelect_no_write(factory, system):
                         charge=0)
     calc.initialize(system)
     calc.write_input(system)
-    calc.read_incar()
+    calc.read_incar('INCAR')
     assert calc.float_params['nelect'] is None
 
 

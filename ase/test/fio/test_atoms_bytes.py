@@ -5,6 +5,7 @@ from ase.calculators.calculator import compare_atoms
 atoms = bulk('Ti')
 images = [bulk('Au'), bulk('Ti'), bulk('NaCl', 'rocksalt', 17)]
 
+
 def test_format():
     fmt = 'traj'  # TODO: parametrize?
     buf = to_bytes(atoms, format=fmt)
