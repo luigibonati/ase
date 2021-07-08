@@ -23,3 +23,6 @@ def test_magnetic_or_not():
     assert not hasmom('Fe', 'fcc', 4.0)
     assert not hasmom('Ti')
     assert not hasmom('Ti', 'bcc', 4.0)
+
+    assert hasmom('Co')
+    assert hasmom('Ni')

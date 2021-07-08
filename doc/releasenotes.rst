@@ -9,6 +9,9 @@ Git master branch
 
 :git:`master <>`.
 
+* :func:`ase.build.bulk` now assigns initial magnetic moments
+  to BCC Fe, Co, and Ni.
+
 Calculators:
 
 * :class:`ase.calculators.qmmm.ForceQMMM` was updated to enable correct
