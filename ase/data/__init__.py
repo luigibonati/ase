@@ -572,6 +572,9 @@ covalent_radii = np.array([
 # If the basis is None, it means it has a basis but we have not tabulated it.
 # For basis of RHL systems (represented here as basis_x) see page 127.
 # For TET systems see page 127, too.
+#
+# (Values for magnetic moments are not from A&M and indeed are not taken
+# from anywhere in particular.)
 reference_states = [
     None,  # X
     {'symmetry': 'diatom', 'd': 0.74},  # H
