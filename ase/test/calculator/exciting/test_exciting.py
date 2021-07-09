@@ -1,7 +1,9 @@
 """Test file for exciting ASE calculator."""
+from parameterized import parameterized
+from collections.abc import Sequence
+from typing import Tuple
 import unittest
 import tempfile  # Used to create temporary directories for tests.
-
 
 from ase.build import bulk
 import ase.calculators.exciting as exciting
@@ -24,23 +26,28 @@ class TestExciting(unittest.TestCase):
         """Code to use for all tests at runtime."""
         self.test_folder_name = tempfile.mkdtemp()
 
-    def test_exciting_constructor(self):
+    @parameterized.expand([[
+        (3, 3, 3), '/fshome/chm/git/exciting/bin/excitingser',
+        '3 3 3', '/fshome/chm/git/exciting/bin/excitingser'],
+        [(1, 2, 3), '/foo/bar',
+         '1 2 3', '/foo/bar']
+    ])
+    def test_exciting_constructor(self, kpts: Tuple[int], exciting_binary: str, expected_kpts: str,
+                                  expected_exciting_binary: str):
         """Test write an input for exciting."""
         calc_dir = 'ase/test/calculator/exciting'
-        exciting_binary = '/fshome/chm/git/exciting/bin/excitingser'
         exciting_calc = exciting.Exciting(
             dir=calc_dir,
-            kpts=(3, 3, 3),
+            kpts=kpts,
             species_path=self.test_folder_name,
             exciting_binary=exciting_binary,
             maxscl=3)
-        # Since we didn't pass any keyworded arguments to the calculator
-        # the ngridk should be set to '3 3 3'.
+        # groundstate attribute ngridk returns the calculator's kpts
         self.assertEqual(
-            exciting_calc.groundstate_attributes['ngridk'], '3 3 3')
+            exciting_calc.groundstate_attributes['ngridk'], expected_kpts)
         self.assertEqual(exciting_calc.dir, calc_dir)
         self.assertEqual(exciting_calc.species_path, self.test_folder_name)
-        self.assertEqual(exciting_calc.exciting_binary, exciting_binary)
+        self.assertEqual(exciting_calc.exciting_binary, expected_exciting_binary)
         # Should be set to False at initialization.
         self.assertFalse(exciting_calc.converged)
         # Should be false by default unless arg is passed to constructor.
