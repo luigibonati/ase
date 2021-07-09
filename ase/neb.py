@@ -277,8 +277,9 @@ class BaseNEB:
                 if pbc and np.any(np.abs(vc - vc0) > 1e-8):
                     cell_ok = False
             if not cell_ok:
-                raise NotImplementedError("Variable cell NEB is not "
-                                          "implemented yet")
+                raise NotImplementedError(
+                    "Variable cell in periodic directions "
+                    "is not implemented yet for NEB")
 
         self.emax = np.nan
 
