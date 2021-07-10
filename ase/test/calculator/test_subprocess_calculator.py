@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -63,13 +64,20 @@ def test_subprocess_calculator_optimize(atoms):
 @pytest.mark.calculator_lite
 @pytest.mark.calculator('gpaw')
 def test_subprocess_calculator_mpi(factory):
-    pytest.importorskip('mpi4py')
     atoms = molecule('H2', vacuum=2.0)
     atoms.pbc = 1
     nbands = 2
     pack = NamedPackedCalculator('gpaw', dict(mode='lcao',
                                               nbands=nbands))
-    mpi = MPICommand.parallel(2)
+    # XXX Currently we run this just in serial, but really we should
+    # make sure to run with proper MPI testing
+    #
+    # Also we shouldn't need to hardcode the subprocesscalculator
+    # entry point
+    args = [sys.executable, '-m', 'gpaw', 'python', '-m',
+            'ase.calculators.subprocesscalculator', 'standard']
+
+    mpi = MPICommand(args)
     with pack.calculator(mpi) as calc:
         atoms.calc = calc
         atoms.get_potential_energy()
