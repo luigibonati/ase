@@ -36,18 +36,19 @@ Below is a list of codes that can run as clients, and whether ASE
 provides a calculator that supports doing so.
 
 ================ =========================================
-Program name     Supported by ASE calculator
+Client program   Supported by ASE calculator
 ================ =========================================
-Quantum Espresso Yes
-FHI-aims         Yes
-Siesta           Yes
-DFTB+            Yes
-NWChem           Yes
-Yaff             No; there is no ASE calculator for Yaff
-cp2k             No; ASE uses cp2k shell instead
-Lammps           No; ASE uses lammpsrun/lammpslib instead
+Abinit           Yes
 ASE              Yes - ASE provides a client as well
+cp2k             No; ASE uses cp2k shell instead
+DFTB+            Yes
+FHI-aims         Yes
 GPAW             Yes, using the ASE client
+Lammps           No; ASE uses lammpsrun/lammpslib instead
+NWChem           Yes
+Quantum Espresso Yes
+Siesta           Yes
+Yaff             No; there is no ASE calculator for Yaff
 ================ =========================================
 
 The codes that are "not supported" by ASE can still be used as
@@ -94,6 +95,10 @@ Example using DFTB+
 Example using NWChem
 
 .. literalinclude:: example_nwchem.py
+
+Example using Abinit
+
+.. literalinclude:: example_abinit.py
 
 For codes other than these, see the next section.
 

@@ -26,19 +26,19 @@ install:
       {
         echo "install with conda"
         conda update -yq conda
-        conda install -yq pip wheel numpy scipy pyflakes matplotlib flask pytest
+        conda install -yq pip=21.0.1 wheel numpy scipy pyflakes matplotlib flask pytest pytest-mock
       }
       else
       {
         echo "install with pip"
         #pip install --upgrade pip
-        python.exe -m pip install --upgrade pip
-        pip install wheel pytest
+        python.exe -m pip install --upgrade pip==21.0.1
+        pip install wheel pytest --disable-pip-version-check
       }
   # install ase into the current python
   - "echo %cd%"
   - "where pip"
-  - "pip install ."
+  - "pip install .[test] --disable-pip-version-check"
 
 build: off
 
@@ -51,7 +51,6 @@ test_script:
 after_test:
   # This step builds distribution.
   - "cd %APPVEYOR_BUILD_FOLDER%"
-  # use pip as distutils doesn't implemet bdist_wheel
   - "pip wheel -w dist --no-deps ."
 
 artifacts:

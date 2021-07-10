@@ -3,7 +3,6 @@ def test_surface_stack():
     from ase.build import stack
     from ase.calculators.calculator import compare_atoms
 
-
     # The purpose of this test is to test the stack() function and verify
     # that the various surface builder functions produce configurations
     # consistent with stacking.

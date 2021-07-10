@@ -461,8 +461,11 @@ def write_lammps_data(fd, atoms, specorder=None, force_skew=False,
         )
     fd.write("\n\n")
 
+    # Write (unwrapped) atomic positions.  If wrapping of atoms back into the
+    # cell along periodic directions is desired, this should be done manually
+    # on the Atoms object itself beforehand.
     fd.write("Atoms \n\n")
-    pos = p.vector_to_lammps(atoms.get_positions(), wrap=True)
+    pos = p.vector_to_lammps(atoms.get_positions(), wrap=False)
 
     if atom_style == 'atomic':
         for i, r in enumerate(pos):
@@ -482,7 +485,7 @@ def write_lammps_data(fd, atoms, specorder=None, force_skew=False,
             q = convert(q, "charge", "ASE", units)
             s = species.index(symbols[i]) + 1
             fd.write("{0:>6} {1:>3} {2:>5} {3:23.17g} {4:23.17g} {5:23.17g}\n"
-                    .format(*(i + 1, s, q) + tuple(r)))
+                     .format(*(i + 1, s, q) + tuple(r)))
     elif atom_style == 'full':
         charges = atoms.get_initial_charges()
         # The label 'mol-id' has apparenlty been introduced in read earlier,
@@ -521,7 +524,7 @@ def write_lammps_data(fd, atoms, specorder=None, force_skew=False,
             q = convert(q, "charge", "ASE", units)
             s = species.index(symbols[i]) + 1
             fd.write("{0:>6} {1:>3} {2:>3} {3:>5} {4:23.17g} {5:23.17g} "
-                    "{6:23.17g}\n".format(*(i + 1, m, s, q) + tuple(r)))
+                     "{6:23.17g}\n".format(*(i + 1, m, s, q) + tuple(r)))
     else:
         raise NotImplementedError
 

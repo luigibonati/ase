@@ -2,7 +2,6 @@ def test_json_arrays():
     import numpy as np
     from ase.io.jsonio import encode, decode
 
-
     def check(obj):
         txt = encode(obj)
         newobj = decode(txt, always_array=False)

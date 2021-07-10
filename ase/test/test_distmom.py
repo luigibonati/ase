@@ -17,5 +17,5 @@ def test_distmom():
 
     x = np.linspace(-50., 50., 100)
     y = np.exp(-2. * (x - 7.)**2 / 10.) + np.exp(-2. * (x + 5.)**2 / 10.)
-    center=get_distribution_moment(x, y, 1)
+    center = get_distribution_moment(x, y, 1)
     assert abs(center - 1.) < precision 

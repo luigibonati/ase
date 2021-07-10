@@ -34,6 +34,7 @@ def run(atoms):
 
 @pytest.mark.calculator_lite
 @calc('abinit')
+@calc('abinit', v8_legacy_format=False)
 def test_si(factory):
     atoms = bulk('Si')
     atoms.calc = factory.calc(nbands=4 * len(atoms), kpts=[4, 4, 4])
@@ -66,10 +67,6 @@ def fe_atoms(abinit_factory):
                                kpts=[2, 2, 2])
     atoms.calc = calc
     return atoms
-    # The calculator base class thinks it is smart, returning 0 magmom
-    # automagically when not otherwise given.  This means we get bogus zeros
-    # if/when we didn't parse the magmoms.  This happens when the magmoms
-    # are fixed.  Not going to fix this right now though.
 
 
 def test_fe_fixed_magmom(fe_atoms):
@@ -83,15 +80,17 @@ def test_fe_any_magmom(fe_atoms):
     run(fe_atoms)
 
 
-def test_h2o(abinit_factory):
+@calc('abinit')
+def test_h2o(factory):
     atoms = molecule('H2O', vacuum=2.5)
-    atoms.calc = abinit_factory.calc(nbands=8)
+    atoms.calc = factory.calc(nbands=8)
     run(atoms)
 
 
-def test_o2(abinit_factory):
+@calc('abinit')
+def test_o2(factory):
     atoms = molecule('O2', vacuum=2.5)
-    atoms.calc = abinit_factory.calc(nbands=8, occopt=7)
+    atoms.calc = factory.calc(nbands=8, occopt=7)
     run(atoms)
     magmom = atoms.get_magnetic_moment()
     assert magmom == pytest.approx(2, 1e-2)
@@ -99,17 +98,19 @@ def test_o2(abinit_factory):
 
 
 @pytest.mark.skip('expensive')
-def test_manykpts(abinit_factory):
+@calc('abinit')
+def test_manykpts(factory):
     atoms = bulk('Au') * (2, 2, 2)
     atoms.rattle(stdev=0.01)
     atoms.symbols[:2] = 'Cu'
-    atoms.calc = abinit_factory.calc(nbands=len(atoms) * 7, kpts=[8, 8, 8])
+    atoms.calc = factory.calc(nbands=len(atoms) * 7, kpts=[8, 8, 8])
     run(atoms, 'manykpts')
 
 
 @pytest.mark.skip('expensive')
-def test_manyatoms(abinit_factory):
+@calc('abinit')
+def test_manyatoms(factory):
     atoms = bulk('Ne', cubic=True) * (4, 2, 2)
     atoms.rattle(stdev=0.01)
-    atoms.calc = abinit_factory.calc(nbands=len(atoms) * 5)
+    atoms.calc = factory.calc(nbands=len(atoms) * 5)
     run(atoms, 'manyatoms')

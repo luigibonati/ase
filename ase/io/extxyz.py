@@ -49,8 +49,9 @@ SPECIAL_3_3_KEYS = ['Lattice', 'virial', 'stress']
 
 # partition ase.calculators.calculator.all_properties into two lists:
 #  'per-atom' and 'per-config'
-per_atom_properties = ['forces',  'stresses', 'charges',  'magmoms', 'energies']
+per_atom_properties = ['forces', 'stresses', 'charges', 'magmoms', 'energies']
 per_config_properties = ['energy', 'stress', 'dipole', 'magmom', 'free_energy']
+
 
 def key_val_str_to_dict(string, sep=None):
     """
@@ -965,11 +966,11 @@ def write_xyz(fileobj, images, comment='', columns=None,
             if len(cnstr) > 0:
                 c0 = cnstr[0]
                 if isinstance(c0, FixAtoms):
-                    cnstr = np.ones((natoms,), dtype=np.bool)
+                    cnstr = np.ones((natoms,), dtype=bool)
                     for idx in c0.index:
                         cnstr[idx] = False
                 elif isinstance(c0, FixCartesian):
-                    masks = np.ones((natoms, 3), dtype=np.bool)
+                    masks = np.ones((natoms, 3), dtype=bool)
                     for i in range(len(cnstr)):
                         idx = cnstr[i].a
                         masks[idx] = cnstr[i].mask

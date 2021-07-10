@@ -14,7 +14,7 @@ names = ['testase.json', 'testase.db', 'postgresql', 'mysql', 'mariadb']
 
 
 @pytest.mark.parametrize('name', names)
-def test_db2(name):
+def test_db2(testdir, name):
     if name == 'postgresql':
         pytest.importorskip('psycopg2')
         if os.environ.get('POSTGRES_DB'):  # gitlab-ci
@@ -139,3 +139,8 @@ def test_db2(name):
     offset = 2
     assert next(c.select(offset=offset)).id == ids[offset]
 
+
+def test_sqlite_user(testdir):
+    """Make sure user=someone works.  Is called username in SQLite."""
+    db = connect('test_user.db')
+    assert list(db.select(user='someone')) == []

@@ -1,4 +1,3 @@
-from distutils.version import LooseVersion
 import numpy as np
 import pytest
 
@@ -6,11 +5,6 @@ from ase import Atoms
 from ase.io import read
 from ase.build import bulk
 from ase.atoms import symbols2numbers
-
-
-pytestmark = pytest.mark.skipif(LooseVersion(np.__version__) <
-                                LooseVersion("1.14"),
-                                reason="This test requires numpy >= 1.14")
 
 
 def make_STO_atoms():

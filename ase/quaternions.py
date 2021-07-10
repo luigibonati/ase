@@ -97,7 +97,7 @@ class Quaternion:
         if sinth_2 == 0:
             # The angle is zero
             theta = 0.0
-            n = np.array([0,0,1])
+            n = np.array([0, 0, 1])
         else:
             theta = np.arctan2(sinth_2, self.q[0])*2
             n = self.q[1:]/sinth_2

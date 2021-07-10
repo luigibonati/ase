@@ -4,8 +4,9 @@ from ase.calculators.acemolecule import ACE
 
 def test_ace():
     label = "test"
-    mol = Atoms('H2',[(0, 0, 0),(0, 0, 0.7)])
-    basic = [dict(Cell= '5.0')]
+    mol = Atoms('H2', [(0, 0, 0), (0, 0, 0.7)])
+    basic = [dict(Cell='5.0')]
     ace = ACE(label=label, BasicInformation=basic)
     mol.calc = ace
-    mol.get_forces()
+    forces = mol.get_forces()
+    print(forces)

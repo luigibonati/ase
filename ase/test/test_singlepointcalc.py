@@ -4,12 +4,11 @@ from ase.io import read
 from ase.constraints import FixAtoms
 
 
-def test_singlepointcalc():
+def test_singlepointcalc(testdir):
     """This test makes sure that the forces returned from a
     SinglePointCalculator are immutable. Previously, successive calls to
     atoms.get_forces(apply_constraint=x), with x alternating between True and
     False, would get locked into the constrained variation."""
-
 
     def check_forces():
         """Makes sure the unconstrained forces stay that way."""

@@ -84,6 +84,7 @@ class SimpleCubicFactory(Bravais):
 
 SimpleCubic = SimpleCubicFactory()
 
+
 class FaceCenteredCubicFactory(SimpleCubicFactory):
     "A factory for creating face-centered cubic lattices."
 
@@ -99,7 +100,9 @@ class FaceCenteredCubicFactory(SimpleCubicFactory):
 
     atoms_in_unit_cell = 4
 
+
 FaceCenteredCubic = FaceCenteredCubicFactory()
+
 
 class BodyCenteredCubicFactory(SimpleCubicFactory):
     "A factory for creating body-centered cubic lattices."
@@ -123,6 +126,7 @@ BodyCenteredCubic = BodyCenteredCubicFactory()
 class DiamondFactory(FaceCenteredCubicFactory):
     "A factory for creating diamond lattices."
     xtal_name = "diamond"
-    bravais_basis = [[0,0,0], [0.25, 0.25, 0.25]]
+    bravais_basis = [[0, 0, 0], [0.25, 0.25, 0.25]]
+
 
 Diamond = DiamondFactory()

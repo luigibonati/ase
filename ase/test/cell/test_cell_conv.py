@@ -1,32 +1,32 @@
-def test_cell_conv():
-    import numpy as np
-    from ase.geometry import cell_to_cellpar as c2p, cellpar_to_cell as p2c
+import numpy as np
+from ase.geometry import cell_to_cellpar as c2p, cellpar_to_cell as p2c
 
+
+eps = 2 * np.spacing(90., dtype=np.float64)
+
+
+def nearly_equal(a, b):
+    return np.all(np.abs(b - a) < eps)
+
+
+def assert_equal(a, b):
+    if not nearly_equal(a, b):
+        msg = 'this:\n'
+        msg += repr(a)
+        msg += '\nand that:\n'
+        msg += repr(b)
+        msg += '\nwere supposed to be equal but are not.'
+        raise AssertionError(msg)
+
+
+def test_cell_conv():
     # Make sure we get exactly zeros off-diagonal:
     assert (p2c([1, 1, 1, 90, 90, 90]) == np.eye(3)).all()
-
-    eps = 2 * np.spacing(90., dtype=np.float64)
-
-
-    def nearly_equal(a, b):
-        return np.all(np.abs(b - a) < eps)
-
-
-    def assert_equal(a, b):
-        if not nearly_equal(a, b):
-            msg = 'this:\n'
-            msg += repr(a)
-            msg += '\nand that:\n'
-            msg += repr(b)
-            msg += '\nwere supposed to be equal but are not.'
-            raise AssertionError(msg)
-
 
     # Constants
     a = 5.43
     d = a / 2.0
     h = a / np.sqrt(2.0)
-
 
     # Systems
     # Primitive cell, non-orthorhombic, non-cubic
@@ -41,7 +41,6 @@ def test_cell_conv():
                            [1.0, np.sqrt(3.0), 0.],
                            [1.0, np.sqrt(3.0) / 3.0, 2 * np.sqrt(2 / 3)]])
     si_prim_m2 *= h / 2.0
-
 
     # Orthorhombic cell, non-cubic
     # Parameters

@@ -24,8 +24,7 @@ def match(word, *suffixes):
 # Beginning of computer generated data:
 commands = {
     'band-structure':
-        ['-q', '--quiet', '-k', '--path', '-n', '--points', '-o',
-         '--output', '-r', '--range'],
+        ['-o', '--output', '-r', '--range'],
     'build':
         ['-M', '--magnetic-moment', '--modify', '-V', '--vacuum', '-v',
          '--vacuum0', '--unit-cell', '--bond-length', '-x',
@@ -49,7 +48,7 @@ commands = {
          '--sort', '--cut', '-p', '--plot', '--csv', '-w',
          '--open-web-browser', '--no-lock-file', '--analyse',
          '-j', '--json', '-m', '--show-metadata',
-         '--set-metadata', '--unique', '--strip-data',
+         '--set-metadata', '--strip-data', '--progress-bar',
          '--show-keys', '--show-values'],
     'diff':
         ['-r', '--rank-order', '-c', '--calculator-outputs',
@@ -60,6 +59,9 @@ commands = {
         ['--display-all', '--no-merge'],
     'eos':
         ['-p', '--plot', '-t', '--type'],
+    'exec':
+        ['-e', '--exec-code', '-E', '--exec-file', '-i', '--input-format',
+         '-n', '--image-number', '--read-args'],
     'find':
         ['-v', '--verbose', '-l', '--long', '-i', '--include', '-x',
          '--exclude'],
@@ -76,9 +78,7 @@ commands = {
     'nomad-upload':
         ['-t', '--token', '-n', '--no-save-token', '-0', '--dry-run'],
     'reciprocal':
-        ['-v', '--verbose', '-p', '--path', '-d', '--dimension',
-         '--no-vectors', '-k', '--k-points', '-i',
-         '--ibz-k-points'],
+        [],
     'run':
         ['-p', '--parameters', '-t', '--tag', '--properties', '-f',
          '--maximum-force', '--constrain-tags', '-s',

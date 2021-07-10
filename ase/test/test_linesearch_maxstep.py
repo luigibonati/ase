@@ -37,8 +37,8 @@ def atoms(positions):
 labels = [
     'BFGS',
     'BFGSLineSearch',
-    # 'PreconLBFGS_Armijo',   XXXX FAILS WITH PYAMG
-    # 'PreconLBFGS_Wolff'   XXXXX FAILS WITH PYAMG
+    'PreconLBFGS_Armijo',  # XXXX FAILS WITH PYAMG
+    'PreconLBFGS_Wolff'    # XXXXX FAILS WITH PYAMG
 ]
 optimizers = [BFGS, BFGSLineSearch, PreconLBFGS, PreconLBFGS]
 
@@ -54,8 +54,8 @@ def test_linesearch(optcls, name, atoms, positions):
         kwargs['precon'] = Exp(A=3)
         kwargs['use_armijo'] = 'Armijo' in name
 
-    opt = optcls(atoms, **kwargs)
-    opt.run(steps=1)
+    with optcls(atoms, **kwargs) as opt:
+        opt.run(steps=1)
 
     dr = atoms.get_positions() - positions
     steplengths = (dr**2).sum(1)**0.5

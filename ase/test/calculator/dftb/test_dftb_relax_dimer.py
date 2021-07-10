@@ -17,8 +17,8 @@ def test_dftb_relax_dimer(factory):
                   cell=[12.]*3, pbc=False)
     atoms.calc = calc
 
-    dyn = BFGS(atoms, logfile='-')
-    dyn.run(fmax=0.1)
+    with BFGS(atoms, logfile='-') as dyn:
+        dyn.run(fmax=0.1)
 
     e = atoms.get_potential_energy()
     assert abs(e - -64.830901) < 1., e

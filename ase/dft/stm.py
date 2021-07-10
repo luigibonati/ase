@@ -1,4 +1,5 @@
 import numpy as np
+from ase.io.jsonio import read_json, write_json
 
 
 class STM:
@@ -23,9 +24,6 @@ class STM:
         self.use_density = use_density
 
         if isinstance(atoms, str):
-            # XXX Importing in the beginning causes a cyclic import.
-            # We need to clean up the imports.
-            from ase.io.jsonio import read_json
             with open(atoms, 'r') as fd:
                 self.ldos, self.bias, self.cell = read_json(fd,
                                                             always_array=False)
@@ -38,7 +36,6 @@ class STM:
             assert not self.cell[2, :2].any() and not self.cell[:2, 2].any()
 
         self.symmetries = symmetries or []
-
 
     def calculate_ldos(self, bias):
         """Calculate local density of states for given bias."""
@@ -68,7 +65,7 @@ class STM:
                           for k in range(nkpts)]
                          for s in range(nspins)])
         eigs -= calc.get_fermi_level()
-        ldos = np.zeros(calc.get_pseudo_wave_function(0,0,0).shape)
+        ldos = np.zeros(calc.get_pseudo_wave_function(0, 0, 0).shape)
 
         for s in range(nspins):
             for k in range(nkpts):
@@ -95,14 +92,9 @@ class STM:
 
         self.ldos = ldos
 
-
-    def write(self, filename='stm.json'):
-        """Write local density of states to pickle file."""
-        from ase.io.jsonio import write_json
-        # XXX module-level import would cause cyclic error
-        with open(filename, 'w') as fd:
-            write_json(fd, (self.ldos, self.bias, self.cell))
-
+    def write(self, filename):
+        """Write local density of states to JSON file."""
+        write_json(filename, (self.ldos, self.bias, self.cell))
 
     def get_averaged_current(self, bias, z):
         """Calculate avarage current at height z (in Angstrom).
@@ -121,7 +113,6 @@ class STM:
         return ((1 - dn) * self.ldos[:, :, n].mean() +
                 dn * self.ldos[:, :, (n + 1) % nz].mean())
 
-
     def scan(self, bias, current, z0=None, repeat=(1, 1)):
         """Constant current 2-d scan.
 
@@ -130,7 +121,6 @@ class STM:
         matplotlibs contourf() function like this:
 
         >>> import matplotlib.pyplot as plt
-        >>> plt.gca(aspect='equal')
         >>> plt.contourf(x, y, z)
         >>> plt.show()
 
@@ -157,7 +147,6 @@ class STM:
 
         return x, y, heights
 
-
     def scan2(self, bias, z, repeat=(1, 1)):
         """Constant height 2-d scan.
 
@@ -166,7 +155,6 @@ class STM:
         matplotlibs contourf() function like this:
 
         >>> import matplotlib.pyplot as plt
-        >>> plt.gca(aspect='equal')
         >>> plt.contourf(x, y, I)
         >>> plt.show()
 
@@ -195,7 +183,6 @@ class STM:
         # Returing scan with axes in Angstrom.
         return x, y, I
 
-
     def linescan(self, bias, current, p1, p2, npoints=50, z0=None):
         """Constant current line scan.
 
@@ -223,7 +210,6 @@ class STM:
             q = np.dot(p, M) * shape
             line[i] = interpolate(q, heights)
         return np.linspace(0, s, npoints), line
-
 
     def pointcurrent(self, bias, x, y, z):
         """Current for a single x, y, z position for a given bias."""
@@ -255,7 +241,6 @@ class STM:
 
         return dos2current(bias, xyzldos)
 
-
     def sts(self, x, y, z, bias0, bias1, biasstep):
         """Returns the dI/dV curve for position x, y at height z (in Angstrom),
         for bias from bias0 to bias1 with step biasstep."""
@@ -267,10 +252,9 @@ class STM:
             print(b, biases[b])
             I[b] = self.pointcurrent(biases[b], x, y, z)
 
-        dIdV = np.gradient(I,biasstep)
+        dIdV = np.gradient(I, biasstep)
 
         return biases, I, dIdV
-
 
     def find_current(self, ldos, z):
         """ Finds current for given LDOS at height z."""

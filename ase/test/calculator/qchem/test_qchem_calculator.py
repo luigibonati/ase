@@ -25,6 +25,6 @@ def test_qchem_calculator():
                   [0.10132204, 0.05804009, -0.07538475]]),
         atol=0.05)
 
-    opt = LBFGS(mol)
-    opt.run()
+    with LBFGS(mol) as opt:
+        opt.run()
     assert opt.converged()

@@ -4,7 +4,7 @@ from ase.md import VelocityVerlet
 from ase.io import Trajectory
 
 
-def test_md():
+def test_md(testdir):
     a = 3.6
     b = a / 2
     fcc = Atoms('Cu', positions=[(0, 0, 0)],

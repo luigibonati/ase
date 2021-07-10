@@ -91,8 +91,7 @@ colors[322:328] = H  # Molecule H
 # write('test.png', large, rotation='-90x,-13y', radii=.9,
 #       show_unit_cell=0, colors=colors)
 write('transport_setup.pov', large,
-      generic_projection_settings=dict(
-          rotation='-90x,-13y', radii=1.06,
-          show_unit_cell=0),
+      rotation='-90x,-13y', radii=1.06,
+      show_unit_cell=0,
       povray_settings=dict(colors=colors,
                            transparent=False)).render()

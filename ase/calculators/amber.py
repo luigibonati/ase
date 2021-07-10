@@ -198,21 +198,28 @@ class Amber(FileIOCalculator):
 
         fin = netcdf.netcdf_file(filename, 'r')
         all_coordinates = fin.variables['coordinates'][:]
-        if all_coordinates.ndim == 3:
+        get_last_frame = False
+        if hasattr(all_coordinates, 'ndim'):
+            if all_coordinates.ndim == 3:
+                get_last_frame = True
+        elif hasattr(all_coordinates, 'shape'):
+            if len(all_coordinates.shape) == 3:
+                get_last_frame = True
+        if get_last_frame:
             all_coordinates = all_coordinates[-1]
         atoms.set_positions(all_coordinates)
         if 'velocities' in fin.variables:
             all_velocities = fin.variables['velocities'][:] / (1000 * units.fs)
-            if all_velocities.ndim == 3:
+            if get_last_frame:
                 all_velocities = all_velocities[-1]
             atoms.set_velocities(all_velocities)
         if 'cell_lengths' in fin.variables:
             all_abc = fin.variables['cell_lengths']
-            if all_abc.ndim == 2:
+            if get_last_frame:
                 all_abc = all_abc[-1]
             a, b, c = all_abc
             all_angles = fin.variables['cell_angles']
-            if all_angles.ndim == 2:
+            if get_last_frame:
                 all_angles = all_angles[-1]
             alpha, beta, gamma = all_angles
 
@@ -232,17 +239,20 @@ class Amber(FileIOCalculator):
 
     def read_energy(self, filename='mden'):
         """ read total energy from amber file """
-        lines = open(filename, 'r').readlines()
+        with open(filename, 'r') as fd:
+            lines = fd.readlines()
         self.results['energy'] = \
             float(lines[16].split()[2]) * units.kcal / units.mol
 
     def read_forces(self, filename='mdfrc'):
         """ read forces from amber file """
-        f = netcdf.netcdf_file(filename, 'r')
-        forces = f.variables['forces']
-        self.results['forces'] = forces[-1, :, :] \
-            / units.Ang * units.kcal / units.mol
-        f.close()
+        fd = netcdf.netcdf_file(filename, 'r')
+        try:
+            forces = fd.variables['forces']
+            self.results['forces'] = forces[-1, :, :] \
+                / units.Ang * units.kcal / units.mol
+        finally:
+            fd.close()
 
     def set_charges(self, selection, charges, parmed_filename=None):
         """ Modify amber topology charges to contain the updated
@@ -250,21 +260,21 @@ class Amber(FileIOCalculator):
             Using amber's parmed program to change charges.
         """
         qm_list = list(selection)
-        fout = open(parmed_filename, 'w')
-        fout.write('# update the following QM charges \n')
-        for i, charge in zip(qm_list, charges):
-            fout.write('change charge @' + str(i + 1) + ' ' +
-                       str(charge) + ' \n')
-        fout.write('# Output the topology file \n')
-        fout.write('outparm ' + self.topologyfile + ' \n')
-        fout.close()
+        with open(parmed_filename, 'w') as fout:
+            fout.write('# update the following QM charges \n')
+            for i, charge in zip(qm_list, charges):
+                fout.write('change charge @' + str(i + 1) + ' ' +
+                           str(charge) + ' \n')
+            fout.write('# Output the topology file \n')
+            fout.write('outparm ' + self.topologyfile + ' \n')
         parmed_command = ('parmed -O -i ' + parmed_filename +
                           ' -p ' + self.topologyfile +
                           ' > ' + self.topologyfile + '.log 2>&1')
         subprocess.check_call(parmed_command, shell=True, cwd=self.directory)
 
     def get_virtual_charges(self, atoms):
-        topology = open(self.topologyfile, 'r').readlines()
+        with open(self.topologyfile, 'r') as fd:
+            topology = fd.readlines()
         for n, line in enumerate(topology):
             if '%FLAG CHARGE' in line:
                 chargestart = n + 2

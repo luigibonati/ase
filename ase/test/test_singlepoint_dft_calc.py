@@ -29,5 +29,4 @@ def test_singlepoint_dft_calc():
             assert np.allclose(eps1, eps[s, k])
             assert np.allclose(occ1, occ[s, k])
 
-
     # XXX Should check more stuff.

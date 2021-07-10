@@ -9,42 +9,340 @@ Git master branch
 
 :git:`master <>`.
 
-* The linear interpolation (:meth:`ase.neb.interpolate`) between images
-  now supports cell-interpolation and the use of scaled positions.
+* :func:`ase.build.bulk` now assigns initial magnetic moments
+  to BCC Fe, Co, and Ni.
+
+Calculators:
+
+* :class:`ase.calculators.kim.kimmodel.KIMModelCalculator` updated to allow
+  users to change the parameters of OpenKIM portable models at run time (see
+  https://openkim.org/doc/repository/kim-content/ for an explanation of types
+  of OpenKIM models).
+
+
+Version 3.22.0
+==============
+
+24 June 2021: :git:`3.22.0 <../3.22.0>`
+
+
+Calculators:
+
+* :class:`ase.calculators.qmmm.ForceQMMM` was updated to enable correct
+  handling of various periodic boundary conditions.
+  Functions to import and export files with QM/MM mapping were also added.
+
+* It is now possible to use :class:`~ase.calculators.abinit.Abinit`
+  together with :class:`~ase.calculators.socketio.SocketIOCalculator`.
+  Requires Abinit 9.4+.
+
+* It is now possible to pass a function to
+  :class:`~ase.calculators.socketio.SocketIOCalculator` to customize
+  startup of a socket client.  This decouples socket I/O calculators
+  from :class:`~ase.calculators.calculator.FileIOCalculator`.
+
+* Added :class:`~ase.calculators.socketio.PySocketIOClient`, a helper class
+  for using the socket I/O calculator with Python clients.
+
+* OpenKIM calculator updated to support kimpy 2.0.0.
+
+* DFTB+ calculator now reads dipole moments.
+
+Algorithms:
+
+* Dedicated class :class:`ase.vibrations.VibrationsData` to improve
+  the representation of vibrational modes and associated data.
+
+* Major refactoring of :class:`ase.vibrations.Vibrations`.
+  The calculated vibrational data can now be exported as
+  a :class:`~ase.vibrations.VibrationsData` object.
+
+* :meth:`phonons.get_dos` now returns a DOS object based on the new
+  framework in :mod:`ase.spectrum`.
+
+* :class:`ase.vibrations.Vibrations` and :class:`ase.phonons.Phonons`
+  now use a simplified caching system where forces for each
+  displacement are saved in JSON files inside a subdirectory.  This
+  breaks old cached calculations.  Old vibrations calculations can be
+  ported using a migration tool; see ``python3 -m
+  ase.vibrations.pickle2json --help``.
+
+* Added :class:`ase.md.contour_exploration.ContourExploration`.
+  It evolves systems at fixed potential energy. This is useful for tracing
+  potential energy contour lines or rapidly exploring the potential
+  energy surface of a system and can be tuned to preferentially sample
+  highly curved regions of the potential energy surface.
+
+* :class:`ase.neb.NEB` has been overhauled and given support for
+  preconditioning via a new `precon` argument to its constructor,
+  and two newly supported methods, `spline` for spline-interpolated
+  tangets and `string` for the string method, both of which support
+  preconditioning. The default behaviour should be unchanged.
+
+* Interpolating NEB images on constrained atoms will now raise an
+  error if the interpolated positions would become different depending
+  on whether the constraints were applied.  Pass
+  ``apply_constraint=True`` or ``False`` to
+  :meth:`ase.neb.NEB.interpolate` or :func:`ase.neb.interpolate` to
+  choose a specific behaviour and silence the error.
+
+* 3D Brillouin zone plots are now guaranteed isometric with Matplotlib 3.3+.
+
+I/O:
+
+* Gaussian input file parsing has been greatly improved.  The parser now
+  extracts all variables from the input file.
+
+* Reading of "chemical json" file types with name ``*.cml`` is enabled.
+* LAMMPS dump: Reading of elements column added, with priority over types
+  if given. All four of the position specifier columns read correctly now.
+
+* Format readers that would by default read or write specific files
+  into current working directory no longer do so.  A path, whether
+  absolute or relative, is now mandatory for all I/O functions.
+
+* The Siesta .XV format is now a recognized I/O format, ``siesta-xv``.
+
+* Parsing an OUTCAR file will now produce an Atoms object
+  with periodic boundary conditions.
+
+Breaking changes:
+
+* For security, ASE no longer uses pickle for any kind of file I/O.
+  This is because a maliciously crafted pickle file can execute
+  arbitrary code.
+
+  Features that used pickle now either use JSON, no longer support
+  saving, or require a manual port of older pickle files using a
+  migration tool.  If you have many old calculations and rely on your
+  own old (trusted) pickle files which cannot be loaded now, consider
+  writing and contributing a migration tool for those files.
+
+  The old PickleTrajectory format can still be loaded
+  by manually overriding the security check.
+
+  Pickle is still used for communication between processes started by
+  ASE (such as plotting tools in the GUI), which is not a security problem
+  since an attacker cannot tamper with the data unless the system is
+  already compromised.
+
+GUI:
+
+* Added Finnish translation.
+
+Bug fixes:
+
+* Fix deadlock with DFTD3 calculator in MPI calculations.
+* Fix parsing of Quantum Espresso outputs with more than 1000 atoms.
+* Write netcdf trajectories compatible with Amber 20.
+* Fix bug where constraints could be applied inconsistently in MD
+  simulations.
+* Allow disabling thermostat and barostat in NPT molecular dynamics.
+* Fix problem with whitespace in CIF parser.
+* Fix a problem where constraints would be applied inconsistently in
+  MD simulations.  As the interactions between MD and constraints are
+  not trivial, users should in general verify carefully that simulations
+  behave physically correctly.
+* Fix issue where occupancies in ``atoms.info`` would subtly change
+  type when saved to JSON and reloaded.
+
+
+Web-page:
+
+* There used to be two versions of the ASE web-page which was quite
+  confusing.  The https://wiki.fysik.dtu.dk/ase/dev/ web-page has now been
+  dropped.  There is now only https://wiki.fysik.dtu.dk/ase/ and it documents
+  the use of the in development version of ASE.
+
+
+Version 3.21.1
+==============
+
+24 January 2021: :git:`3.21.1 <../3.21.1>`
+
+* Fix incorrect positions written to CIF files with mixed boundary
+  conditions.
+* Writing a CIF with only 1 or 2 lattice vectors will now raise an error since
+  CIF cannot represent those systems.
+* The name of the Vasp calculator is now ``'vasp'`` as intended.
+* Fix attribute error in :meth:`~ase.vibrations.Vibrations.write_jmol`.
+
+
+Version 3.21.0
+==============
+
+18 January 2021: :git:`3.21.0 <../3.21.0>`
+
+General changes:
+
+* :meth:`~ase.Atoms.center` now centers around 0 along directions which
+  do not have a cell vector.  Previously this operation had no effect
+  in those directions.
+
+* Deprecated the following methods on :class:`~ase.Atoms` as they can
+  be replaced by ``~ase.cell.Cell``:
+  ``atoms.get_cell_lengths_and_angles()``,
+  ``atoms.get_reciprocal_cell()``,
+  ``atoms.number_of_lattice_vectors``.
+  Instead use ``atoms.cell.cellpar()``, ``atoms.cell.reciprocal()``,
+  and ``atoms.cell.rank``, respectively.
+
+* Removed deprecated code on :class:`~ase.Atoms` for handling angles
+  in radians.
+
+* :meth:`~ase.Atoms.get_velocities` will now return zeros rather than ``None``
+  when there are no velocities, consistently with other optionals such as
+  momenta.
+
+* For security reasons, *pickle will no longer be used for persistent
+  file storage* in the future.  Pickle has so far been replaced with JSON in
+  :class:`ase.io.bundletrajectory.BundleTrajectory`
+  and :class:`ase.dft.stm.STM`.
+  All remaining use of pickle for persistent storage will be likewise replaced
+  in next release.  Users are advised as always not to open pickle-files
+  from untrusted sources.
+
+* :func:`ase.utils.opencew` to be replaced by
+  :func:`ase.utils.xwopen` which is a contextmanager and ensures
+  that the file is closed correctly.
+
+* Clusters created by :mod:`ase.cluster` will no longer have cell vectors
+  and will be centered around (0, 0, 0).
+  Previously they had a “tight” cell and coordinates
+  centered with zero vacuum.
+
+* Refactored external viewers in :mod:`ase.visualize.view`.
+  Viewers will now clean up their temporary files correctly on non-UNIX
+  platforms.
+
+* Band structure module moved to :mod:`ase.spectrum.band_structure`.
+
+* New objects for working with DOS and collections of DOS in
+  :mod:`ase.spectrum`.  To begin with, this will mostly be relevant
+  for format readers that want to retrieve such objects from
+  calculations.
+
+Command-line interface:
+
+* Added ``ase exec`` sub-command for the :ref:`ase <cli>`
+  command line interface.
+
+
+Algorithms:
 
 * Changed units for molecular dynamics modules.  They now accept the
   temperature in Kelvin as a keyword-only argument ``temperature_K``
-  and Berendsen NPT accepts the pressure in eV/Å^3 as a keyword-only
+  and Berendsen NPT accepts the pressure in eV/Å³ as a keyword-only
   argument ``pressure_au``. The previous arguments are still
   available and still take temperature and pressure in whatever unit
   the module used to accept, but now issue a warning.
 
 * Made Andersen thermostat available for molecular dynamics simulation.
 
-* Deprecated the following methods on :class:`~ase.Atoms` as they can
-  be replaced by ``~ase.cell.Cell``:
-  ``atoms.get_cell_lengths_and_angles()``,
-  ``atoms.get_reciprocal_cell()``,
-  ``atoms.number_of_lattice_vectors``, and ``atoms.get_volume()``.
-  Instead use ``atoms.cell.cellpar()``, ``atoms.cell.reciprocal()``,
-  ``atoms.cell.rank``, and ``atoms.cell.volume``, respectively.
+* Refactored :class:`ase.neb.NEB`.
 
-* Extended constraint `ase.constraints.FixInternals` by
+* The linear interpolation (:meth:`ase.neb.interpolate`) between images
+  now supports cell-interpolation and the use of scaled positions.
+
+* :class:`~ase.neb.SingleCalculatorNEB` is deprecated.  Use
+  ``ase.neb.NEB(allow_shared_calculator=True)`` instead.
+
+* Extended constraint :class:`ase.constraints.FixInternals` by
   possibility to fix linear combinations of bond lengths.
 
-* Cleaned up and fixed multiple issues with
-  :class:`~ase.calculators.elk.Elk` calculator.
+* :class:`~ase.constraints.FixInternals` constraints now support
+  constraining linear combinations of angles or dihedrals.
+  It is also possible to slice atoms objects with
+  :class:`~ase.constraints.FixInternals` constraints on them.
 
-* :meth:`~ase.Atoms.get_velocities` will now return an array of zeros
-  consistently with :meth:`~ase.Atoms.get_momenta` if not set.
-  It previously returned ``None``, which was an oversight.
+* Added :mod:`ase.build.connected` which finds groups of connected
+  atoms inside an :class:`~ase.Atoms` object.
+
+* Optimizers and molecular dynamics objects, which may open trajectories
+  or logfiles, can now be used as context managers.  Doing so ensures
+  correct closing of the files that they open.
+
+* Faster codepath for minimum-image convention (MIC) distance calculations
+  with “well-behaved” unit cells.
+  This improves the speed of neighbour lists and certain
+  constraints.
+
+* Cleanup and deprecations of certain methods on :class:`~ase.phonons.Phonons`.
+
+Calculators:
+
+* The ``ignore_bad_restart_file`` argument supported by many calculators
+  has been deprecated.  The user should choose this kind of behaviour
+  explicitly.
+
+* Cleaned up and fixed multiple issues with
+  :class:`~ase.calculators.elk.ELK` calculator.
+
+* Make-shift cleanup and fixes for
+  :class:`~ase.calculators.exciting.Exciting` calculator.
+
+* :class:`ase.calculators.abinit.Abinit` updated to work with Abinit 9.
+
+* Improved cleanup of old socket files under some types of failure with
+  :class:`ase.calculators.socketio.SocketIOCalculator`.
+
+* :class:`~ase.calculators.vasp.Vasp` now uses the newer implementation
+  formerly known as Vasp2.
+
+* Added smooth cutoff option to :class:`ase.calculators.lj.LennardJones`.
+  This makes the forces continuous as atoms move past the cutoff radius.
+
+* :class:`~ase.calculators.lj.LennardJones` is now much more efficient.
+
+* Many calculators would change the working directory in order to facilitate
+  work with files.  However doing so breaks threading.  This has been fixed
+  for most calculators (abinit, lammpsrun, )
+
+I/O:
 
 * Reads Wannier90 ``.wout`` files.
   See :func:`ase.io.wannier90.read_wout` and
   :func:`ase.io.wannier90.read_wout_all`.
 
-* :class:`~ase.neb.SingleCalculatorNEB` is deprecated.  Use
-  ``ase.neb.NEB(allow_shared_calculator=True)`` instead.
+* :func:`ase.io.pov.write_pov` no longer includes an option to run
+  povray on top of the written output.  Instead it returns a renderer
+  which can be used like this::
+
+    png_path = write_pov('myfile.pov').render()
+
+* Refactored CIF reader and writer, adding more extensive testing
+  and fixing multiple bugs.
+
+* CIF writer now uses up-to-date variable definitions from the CIF
+  standard instead of deprecated ones.  Also, it no longer writes columns
+  of dummy data that doesn't depend on the atoms.
+
+* Added :class:`ase.io.cif.CIFBlock` for direct access to data
+  inside a CIF, and :func:`ase.io.cif.parse_cif` to iterate over
+  such blocks from a CIF.
+
+* Fixed many cases of careless I/O handling where format readers or writers
+  would open files without necessarily closing them.
+
+* Vasp output formats return atoms with fully periodic boundary conditions
+  as appropriate.
+
+* Vasp POSCAR/CONTCAR writer will now use the Vasp5 format by default.
+
+Development:
+
+* Test suite now prints a descriptive header with dependency versions
+  including a list of installed/enabled calculators.
+
+* All tests with random numbers now use a specific seed so as to run
+  reproducibly.
+
+* CI now supports integration testing with many additional calculators.
+  The full list of external calculators that can be integration-tested via CI
+  is: Abinit, Asap, CP2K, DFTB, DFTD3, Elk, Espresso,
+  Exciting, GPAW, Gromacs, Lammpslib, Lammpsrun, NWChem, Octopus,
+  OpenMX, Siesta.
+
 
 Version 3.20.1
 ==============

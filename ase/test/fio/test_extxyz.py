@@ -14,7 +14,8 @@ from ase.build import bulk
 from ase.io.extxyz import escape
 from ase.calculators.calculator import compare_atoms
 from ase.calculators.emt import EMT
-from ase.constraints import FixAtoms, FixCartesian, full_3x3_to_voigt_6_stress
+from ase.constraints import FixAtoms, FixCartesian
+from ase.stress import full_3x3_to_voigt_6_stress
 from ase.build import molecule
 
 # array data of shape (N, 1) squeezed down to shape (N, ) -- bug fixed
@@ -313,7 +314,7 @@ def test_stress():
 def test_json_scalars():
     a = bulk('Si')
     a.info['val_1'] = 42.0
-    a.info['val_2'] = np.float(42.0)
+    a.info['val_2'] = 42.0  # was np.float but that's the same.  Can remove
     a.info['val_3'] = np.int64(42)
     a.write('tmp.xyz')
     with open('tmp.xyz', 'r') as fd:

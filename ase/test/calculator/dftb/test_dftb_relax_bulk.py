@@ -6,7 +6,7 @@ from ase.constraints import ExpCellFilter
 def test_dftb_relax_bulk(dftb_factory):
     calc = dftb_factory.calc(
         label='dftb',
-        kpts=(3,3,3),
+        kpts=(3, 3, 3),
         Hamiltonian_SCC='Yes'
     )
 
@@ -14,8 +14,8 @@ def test_dftb_relax_bulk(dftb_factory):
     atoms.calc = calc
 
     ecf = ExpCellFilter(atoms)
-    dyn = QuasiNewton(ecf)
-    dyn.run(fmax=0.01)
+    with QuasiNewton(ecf) as dyn:
+        dyn.run(fmax=0.01)
 
     e = atoms.get_potential_energy()
     assert abs(e - -73.150819) < 1., e

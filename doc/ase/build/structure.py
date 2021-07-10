@@ -24,5 +24,4 @@ gnr2 = graphene_nanoribbon(2, 6, type='zigzag', saturated=True,
 
 for i, a in enumerate([gnr1, gnr2]):
     write('gnr%d.pov' % (i + 1), a,
-          generic_projection_settings=dict(
-              rotation='90x')).render()
+          rotation='90x').render()

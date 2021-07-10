@@ -5,7 +5,6 @@ from ase.build import bulk
 from ase.md.nvtberendsen import NVTBerendsen
 from ase.md.nptberendsen import NPTBerendsen
 from ase.md.npt import NPT
-from ase.utils import seterr
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution, Stationary
 import numpy as np
 
@@ -25,67 +24,62 @@ def berendsenparams():
 def equilibrated(asap3, berendsenparams):
     """Make an atomic system with equilibrated temperature and pressure."""
     rng = np.random.RandomState(42)
-    with seterr(all='raise'):
-        print()
-        # Must be big enough to avoid ridiculous fluctuations
-        atoms = bulk('Au', cubic=True).repeat((3, 3, 3))
-        #a[5].symbol = 'Ag'
-        print(atoms)
-        atoms.calc = asap3.EMT()
-        MaxwellBoltzmannDistribution(atoms, temperature_K=100, force_temp=True,
-                                     rng=rng)
-        Stationary(atoms)
-        assert abs(atoms.get_temperature() - 100) < 0.0001
-        md = NPTBerendsen(atoms, timestep=20 * fs, logfile='-',
-                          loginterval=200,
-                          **berendsenparams['npt'])
+    # Must be big enough to avoid ridiculous fluctuations
+    atoms = bulk('Au', cubic=True).repeat((3, 3, 3))
+    #a[5].symbol = 'Ag'
+    atoms.calc = asap3.EMT()
+    MaxwellBoltzmannDistribution(atoms, temperature_K=100, force_temp=True,
+                                 rng=rng)
+    Stationary(atoms)
+    assert abs(atoms.get_temperature() - 100) < 0.0001
+    with NPTBerendsen(atoms, timestep=20 * fs, logfile='-',
+                      loginterval=200,
+                      **berendsenparams['npt']) as md:
         # Equilibrate for 20 ps
         md.run(steps=1000)
-        T = atoms.get_temperature()
-        pres = -atoms.get_stress(
-            include_ideal_gas=True)[:3].sum() / 3 / GPa * 10000
-        print("Temperature: {:.2f} K    Pressure: {:.2f} bar".format(T, pres))
-        return atoms
+    T = atoms.get_temperature()
+    pres = -atoms.get_stress(
+        include_ideal_gas=True)[:3].sum() / 3 / GPa * 10000
+    print("Temperature: {:.2f} K    Pressure: {:.2f} bar".format(T, pres))
+    return atoms
 
 
 def propagate(atoms, asap3, algorithm, algoargs):
-    with seterr(all='raise'):
-        print()
-        md = algorithm(
+    T = []
+    p = []
+    with algorithm(
             atoms,
             timestep=20 * fs,
             logfile='-',
             loginterval=1000,
-            **algoargs)
+            **algoargs) as md:
         # Gather data for 50 ps
-        T = []
-        p = []
         for i in range(500):
             md.run(5)
             T.append(atoms.get_temperature())
             pres = - atoms.get_stress(include_ideal_gas=True)[:3].sum() / 3
             p.append(pres)
-        Tmean = np.mean(T)
-        p = np.array(p)
-        pmean = np.mean(p)
-        print('Temperature: {:.2f} K +/- {:.2f} K  (N={})'.format(
-            Tmean, np.std(T), len(T)))
-        print('Center-of-mass corrected temperature: {:.2f} K'.format(
-            Tmean * len(atoms) / (len(atoms) - 1)))
-        print('Pressure: {:.2f} bar +/- {:.2f} bar  (N={})'.format(
-            pmean / bar, np.std(p) / bar, len(p)))
-        return Tmean, pmean
+    Tmean = np.mean(T)
+    p = np.array(p)
+    pmean = np.mean(p)
+    print('Temperature: {:.2f} K +/- {:.2f} K  (N={})'.format(
+        Tmean, np.std(T), len(T)))
+    print('Center-of-mass corrected temperature: {:.2f} K'.format(
+        Tmean * len(atoms) / (len(atoms) - 1)))
+    print('Pressure: {:.2f} bar +/- {:.2f} bar  (N={})'.format(
+        pmean / bar, np.std(p) / bar, len(p)))
+    return Tmean, pmean
 
 
 @pytest.mark.slow
-def test_nvtberendsen(asap3, equilibrated, berendsenparams):
+def test_nvtberendsen(asap3, equilibrated, berendsenparams, allraise):
     t, _ = propagate(Atoms(equilibrated), asap3,
                      NVTBerendsen, berendsenparams['nvt'])
     assert abs(t - berendsenparams['nvt']['temperature_K']) < 0.5
 
 
 @pytest.mark.slow
-def test_nptberendsen(asap3, equilibrated, berendsenparams):
+def test_nptberendsen(asap3, equilibrated, berendsenparams, allraise):
     t, p = propagate(Atoms(equilibrated), asap3,
                      NPTBerendsen, berendsenparams['npt'])
     assert abs(t - berendsenparams['npt']['temperature_K']) < 1.0
@@ -93,7 +87,7 @@ def test_nptberendsen(asap3, equilibrated, berendsenparams):
 
 
 @pytest.mark.slow
-def test_npt(asap3, equilibrated, berendsenparams):
+def test_npt(asap3, equilibrated, berendsenparams, allraise):
     params = berendsenparams['npt']
     # NPT uses different units.  The factor 1.3 is the bulk modulus of gold in
     # ev/Å^3

@@ -2,6 +2,7 @@ import pytest
 
 from ase import Atoms
 from ase.db import connect
+from ase.db.web import Session
 
 
 @pytest.fixture(scope='module')
@@ -30,6 +31,11 @@ def database(tmp_path_factory):
         yield db
 
 
+def handle_query(args) -> str:
+    """Converts request args to ase.db query string."""
+    return args['query']
+
+
 @pytest.fixture(scope='module')
 def client(database):
     pytest.importorskip('flask')
@@ -43,14 +49,14 @@ def client(database):
 def test_add_columns(database):
     """Test that all keys can be added also for row withous keys."""
     pytest.importorskip('flask')
-    from ase.db.web import Session
-    from ase.db.app import handle_query
+
     session = Session('name')
     project = {'default_columns': ['bar'],
                'handle_query_function': handle_query}
+
     session.update('query', '', {'query': 'id=2'}, project)
     table = session.create_table(database, 'id', ['foo'])
-    assert table.columns == []  # selected row doesn't have a foo key
+    assert table.columns == ['bar']  # selected row doesn't have a foo key
     assert 'foo' in table.addcolumns  # ... but we can add it
 
 
@@ -80,3 +86,26 @@ def test_db_web(client):
         atoms = read(io.StringIO(resp.data.decode()), format=type)
         print(atoms.numbers)
         assert (atoms.numbers == [1, 1, 8]).all()
+
+
+def test_paging(database):
+    """Test paging."""
+    pytest.importorskip('flask')
+
+    session = Session('name')
+    project = {'default_columns': ['bar'],
+               'handle_query_function': handle_query}
+
+    session.update('query', '', {'query': ''}, project)
+    table = session.create_table(database, 'id', ['foo'])
+    assert len(table.rows) == 2
+
+    session.update('limit', '1', {}, project)
+    session.update('page', '1', {}, project)
+    table = session.create_table(database, 'id', ['foo'])
+    assert len(table.rows) == 1
+
+    # We are now on page 2 and select something on page 1:
+    session.update('query', '', {'query': 'id=1'}, project)
+    table = session.create_table(database, 'id', ['foo'])
+    assert len(table.rows) == 1

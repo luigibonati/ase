@@ -14,6 +14,7 @@ import numpy as np
 from ase.units import Hartree, Bohr
 from ase.calculators.calculator import PropertyNotImplementedError
 
+
 class FLEUR:
     """Class for doing FLEUR calculations.
 
@@ -52,7 +53,6 @@ class FLEUR:
                  width=None, kmax=None, mixer=None, maxiter=None,
                  maxrelax=20, workdir=None, equivatoms=True, rmt=None,
                  lenergy=None):
-
         """Construct FLEUR-calculator object.
 
         Parameters
@@ -98,8 +98,8 @@ class FLEUR:
         self.nbands = nbands
         self.width = width
         self.kmax = kmax
-        self.itmax_step_default = 9 # SCF steps per run (default)
-        self.itmax_step = 5 # SCF steps per run
+        self.itmax_step_default = 9  # SCF steps per run (default)
+        self.itmax_step = 5  # SCF steps per run
         assert self.itmax_step_default <= 9
         assert self.itmax_step <= self.itmax_step_default
         self.itmax_default = 40
@@ -114,7 +114,7 @@ class FLEUR:
             self.convergence = convergence
             self.convergence['energy'] /= Hartree
         else:
-            self.convergence = {'energy' : 0.0001}
+            self.convergence = {'energy': 0.0001}
 
         self.start_dir = None
         self.workdir = workdir
@@ -139,7 +139,7 @@ class FLEUR:
 
         executable_use = executable
         if executable == 'FLEUR_SERIAL' and not os.environ.get(executable, ''):
-            executable_use = 'FLEUR' # use FLEUR if FLEUR_SERIAL not set
+            executable_use = 'FLEUR'  # use FLEUR if FLEUR_SERIAL not set
         try:
             code_exe = os.environ[executable_use]
         except KeyError:
@@ -159,7 +159,6 @@ class FLEUR:
             if stat != 0:
                 os.chdir(self.start_dir)
                 raise RuntimeError(executable_use + ' exited with a code %d' % stat)
-
 
     def update(self, atoms):
         """Update a FLEUR calculation."""
@@ -326,7 +325,6 @@ class FLEUR:
                 raise RuntimeError('Failed to relax in %d iterations' % self.maxrelax)
             self.converged = False
 
-
     def write_inp(self, atoms):
         """Write the *inp* input file of FLEUR.
 
@@ -339,7 +337,10 @@ class FLEUR:
         the FLEUR calculator object.
         """
 
-        fh = open('inp_simple', 'w')
+        with open('inp_simple', 'w') as fh:
+            self._write_inp(atoms, fh)
+
+    def _write_inp(self, atoms, fh):
         fh.write('FLEUR input generated with ASE\n')
         fh.write('\n')
 
@@ -376,7 +377,7 @@ class FLEUR:
                 # generate inequivalent atoms, by using non-integer Z
                 # (only the integer part will be used as Z of the atom)
                 # see http://www.flapw.de/pm/index.php?n=User-Documentation.InputFileForTheInputGenerator
-                fh.write('%3d.%04d' % (Z, n)) # MDTMP don't think one can calculate more that 10**4 atoms
+                fh.write('%3d.%04d' % (Z, n))  # MDTMP don't think one can calculate more that 10**4 atoms
             for el in pos:
                 fh.write(' %21.16f' % el)
             fh.write('\n')
@@ -384,7 +385,6 @@ class FLEUR:
         # avoid "STOP read_record: ERROR reading input"
         fh.write('&end /')
 
-        fh.close()
         try:
             inpgen = os.environ['FLEUR_INPGEN']
         except KeyError:
@@ -396,10 +396,8 @@ class FLEUR:
         os.system('%s -old < inp_simple' % inpgen)
 
         # read the whole inp-file for possible modifications
-        fh = open('inp', 'r')
-        lines = fh.readlines()
-        fh.close()
-
+        with open('inp', 'r') as fh:
+            lines = fh.readlines()
 
         window_ln = -1
         for ln, line in enumerate(lines):
@@ -490,15 +488,15 @@ class FLEUR:
                             lines[ln] = lines[ln].replace(rorig, ("%.6f" % r))
 
         # write everything back to inp
-        fh = open('inp', 'w')
-        for line in lines:
-            fh.write(line)
-        fh.close()
+        with open('inp', 'w') as fh:
+            for line in lines:
+                fh.write(line)
 
     def read(self):
         """Read results from FLEUR's text-output file `out`."""
 
-        lines = open('out', 'r').readlines()
+        with open('out', 'r') as fd:
+            lines = fd.readlines()
 
         # total energies
         self.total_energies = []
@@ -528,16 +526,16 @@ class FLEUR:
         # TODO check charge convergence
 
         # reduce the itmax in inp
-        lines = open('inp', 'r').readlines()
+        with open('inp', 'r') as fh:
+            lines = fh.readlines()
         pat = re.compile('(itmax=)([ 0-9]*)')
-        fh = open('inp', 'w')
-        for line in lines:
-            m = pat.match(line)
-            if m:
-                itmax = int(m.group(2))
-                self.niter += itmax
-                itmax_new = itmax // 2
-                itmax = max(self.itmax_step, itmax_new)
-                line = 'itmax=%2d' % itmax + line[8:]
-            fh.write(line)
-        fh.close()
+        with open('inp', 'w') as fh:
+            for line in lines:
+                m = pat.match(line)
+                if m:
+                    itmax = int(m.group(2))
+                    self.niter += itmax
+                    itmax_new = itmax // 2
+                    itmax = max(self.itmax_step, itmax_new)
+                    line = 'itmax=%2d' % itmax + line[8:]
+                fh.write(line)

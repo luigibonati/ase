@@ -4,7 +4,6 @@ import numpy as np
 from ase.build import molecule
 
 
-
 @pytest.fixture
 def atoms():
     return molecule('H2')

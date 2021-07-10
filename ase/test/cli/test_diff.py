@@ -9,6 +9,7 @@ from ase.cli.template import prec_round, slice_split, \
     Table, TableFormat
 from ase.io import read
 
+
 @pytest.fixture(scope="module")
 def traj(tmp_path_factory):
     slab = fcc100('Al', size=(2, 2, 3))
@@ -43,7 +44,7 @@ def test_singleFile_falseCalc_multipleImages(cli, traj):
 
 
 def test_singleFile_trueCalc_multipleImages(cli, traj):
-    cli.ase('diff', traj,  '-c')
+    cli.ase('diff', traj, '-c')
 
 
 def test_twoFiles_falseCalc_singleImage(cli, traj):

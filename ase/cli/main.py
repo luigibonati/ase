@@ -34,7 +34,8 @@ commands = [
     ('convert', 'ase.cli.convert'),
     ('reciprocal', 'ase.cli.reciprocal'),
     ('completion', 'ase.cli.completion'),
-    ('diff', 'ase.cli.diff')
+    ('diff', 'ase.cli.diff'),
+    ('exec', 'ase.cli.exec')
 ]
 
 
@@ -139,6 +140,7 @@ class Formatter(argparse.HelpFormatter):
                 out += textwrap.fill(block, width=width) + '\n'
             out += '\n'
         return out[:-1]
+
 
 def old():
     cmd = sys.argv[0].split('-')[-1]

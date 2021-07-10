@@ -149,7 +149,6 @@ _defineprop('magmoms', float, shape='natoms')
 # concepts to have a formalization outside the Atoms class.
 
 
-
 #def to_singlepoint(self, atoms):
 #    from ase.calculators.singlepoint import SinglePointDFTCalculator
 #    return SinglePointDFTCalculator(atoms,

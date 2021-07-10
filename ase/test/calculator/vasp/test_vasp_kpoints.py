@@ -1,89 +1,101 @@
-from ase.test.calculator.vasp.filecmp_ignore_whitespace import (
-    filecmp_ignore_whitespace)
+"""
+Check the many ways of specifying KPOINTS
+"""
+import os
+import pytest
 
-def test_vasp_kpoints(require_vasp):
-    """
+from ase.build import bulk
 
-    Check the many ways of specifying KPOINTS
+from .filecmp_ignore_whitespace import filecmp_ignore_whitespace
 
-    """
-
-    import os
-
-    from ase.calculators.vasp import Vasp
-    from ase.build import bulk
-    from ase.test.calculator.vasp import installed
-
-    assert installed()
-
-    Al = bulk('Al', 'fcc', a=4.5, cubic=True)
+calc = pytest.mark.calculator
 
 
-    def check_kpoints_line(n, contents):
-        """Assert the contents of a line"""
-        with open('KPOINTS', 'r') as f:
-            lines = f.readlines()
-            assert lines[n] == contents
+@pytest.fixture
+def atoms():
+    return bulk('Al', 'fcc', a=4.5, cubic=True)
 
+
+def check_kpoints_line(n, contents):
+    """Assert the contents of a line"""
+    with open('KPOINTS', 'r') as fd:
+        lines = fd.readlines()
+    assert lines[n].strip() == contents
+
+
+@pytest.fixture
+def write_kpoints(atoms):
+    """Helper fixture to write the input kpoints file"""
+    def _write_kpoints(factory, **kwargs):
+        calc = factory.calc(**kwargs)
+        calc.initialize(atoms)
+        calc.write_kpoints(atoms=atoms)
+        return atoms, calc
+
+    return _write_kpoints
+
+
+@calc('vasp')
+def test_vasp_kpoints_111(factory, write_kpoints):
     # Default to (1 1 1)
+    write_kpoints(factory, gamma=True)
+    check_kpoints_line(2, 'Gamma')
+    check_kpoints_line(3, '1 1 1')
 
-    calc = Vasp(gamma=True)
-    calc.write_kpoints()
-    check_kpoints_line(2, 'Gamma\n')
-    check_kpoints_line(3, '1 1 1 \n')
-    calc.clean()
+
+@calc('vasp')
+def test_vasp_kpoints_3_tuple(factory, write_kpoints):
 
     # 3-tuple prints mesh
-    calc = Vasp(gamma=False, kpts=(4, 4, 4))
-    calc.write_kpoints()
-    check_kpoints_line(2, 'Monkhorst-Pack\n')
-    check_kpoints_line(3, '4 4 4 \n')
-    calc.clean()
+    write_kpoints(factory, gamma=False, kpts=(4, 4, 4))
+    check_kpoints_line(2, 'Monkhorst-Pack')
+    check_kpoints_line(3, '4 4 4')
 
+
+@calc('vasp')
+def test_vasp_kpoints_auto(factory, write_kpoints):
     # Auto mode
-    calc = Vasp(kpts=20)
-    calc.write_kpoints()
-    check_kpoints_line(1, '0\n')
-    check_kpoints_line(2, 'Auto\n')
-    check_kpoints_line(3, '20 \n')
-    calc.clean()
+    write_kpoints(factory, kpts=20)
+    check_kpoints_line(1, '0')
+    check_kpoints_line(2, 'Auto')
+    check_kpoints_line(3, '20')
 
+
+@calc('vasp')
+def test_vasp_kpoints_1_element_list_gamma(factory, write_kpoints):
     # 1-element list ok, Gamma ok
-    calc = Vasp(kpts=[20], gamma=True)
-    calc.write_kpoints()
-    check_kpoints_line(1, '0\n')
-    check_kpoints_line(2, 'Auto\n')
-    check_kpoints_line(3, '20 \n')
-    calc.clean()
+    write_kpoints(factory, kpts=[20], gamma=True)
+    check_kpoints_line(1, '0')
+    check_kpoints_line(2, 'Auto')
+    check_kpoints_line(3, '20')
 
+
+@calc('vasp')
+def test_kspacing_supress_kpoints_file(factory, write_kpoints):
     # KSPACING suppresses KPOINTS file
-    calc = Vasp(kspacing=0.23)
-    calc.initialize(Al)
-    calc.write_kpoints()
+    Al, calc = write_kpoints(factory, kspacing=0.23)
     calc.write_incar(Al)
     assert not os.path.isfile('KPOINTS')
-    with open('INCAR', 'r') as f:
-        assert ' KSPACING = 0.230000\n' in f.readlines()
-    calc.clean()
+    with open('INCAR', 'r') as fd:
+        assert ' KSPACING = 0.230000\n' in fd.readlines()
 
+
+@calc('vasp')
+def test_negative_kspacing_error(factory, write_kpoints):
     # Negative KSPACING raises an error
-    calc = Vasp(kspacing=-0.5)
+    with pytest.raises(ValueError):
+        write_kpoints(factory, kspacing=-0.5)
 
-    try:
-        calc.write_kpoints()
-    except ValueError:
-        pass
-    else:
-        raise AssertionError("Negative KSPACING did not raise ValueError")
-    calc.clean()
 
+@calc('vasp')
+def test_weighted(factory, write_kpoints):
     # Explicit weighted points with nested lists, Cartesian if not specified
-    calc = Vasp(
-        kpts=[[0.1, 0.2, 0.3, 2], [0.0, 0.0, 0.0, 1], [0.0, 0.5, 0.5, 2]])
-    calc.write_kpoints()
+    write_kpoints(factory,
+                  kpts=[[0.1, 0.2, 0.3, 2], [0.0, 0.0, 0.0, 1],
+                        [0.0, 0.5, 0.5, 2]])
 
-    with open('KPOINTS.ref', 'w') as f:
-        f.write("""KPOINTS created by Atomic Simulation Environment
+    with open('KPOINTS.ref', 'w') as fd:
+        fd.write("""KPOINTS created by Atomic Simulation Environment
     3 
     Cartesian
     0.100000 0.200000 0.300000 2.000000 
@@ -92,15 +104,17 @@ def test_vasp_kpoints(require_vasp):
     """)
 
     assert filecmp_ignore_whitespace('KPOINTS', 'KPOINTS.ref')
-    os.remove('KPOINTS.ref')
 
+
+@calc('vasp')
+def test_explicit_auto_weight(factory, write_kpoints):
     # Explicit points as list of tuples, automatic weighting = 1.
-    calc = Vasp(
-        kpts=[(0.1, 0.2, 0.3), (0.0, 0.0, 0.0), (0.0, 0.5, 0.5)], reciprocal=True)
-    calc.write_kpoints()
+    write_kpoints(factory,
+                  kpts=[(0.1, 0.2, 0.3), (0.0, 0.0, 0.0), (0.0, 0.5, 0.5)],
+                  reciprocal=True)
 
-    with open('KPOINTS.ref', 'w') as f:
-        f.write("""KPOINTS created by Atomic Simulation Environment
+    with open('KPOINTS.ref', 'w') as fd:
+        fd.write("""KPOINTS created by Atomic Simulation Environment
     3 
     Reciprocal
     0.100000 0.200000 0.300000 1.0 
@@ -109,4 +123,3 @@ def test_vasp_kpoints(require_vasp):
     """)
 
     assert filecmp_ignore_whitespace('KPOINTS', 'KPOINTS.ref')
-    os.remove('KPOINTS.ref')

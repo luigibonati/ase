@@ -22,13 +22,15 @@ class SimpleMonoclinicFactory(TriclinicFactory):
             self.latticeconstant['gamma'] = 90
         else:
             if len(self.latticeconstant) == 4:
-                self.latticeconstant = self.latticeconstant + (90,90)
+                self.latticeconstant = self.latticeconstant + (90, 90)
             else:
                 raise ValueError("Improper lattice constants for monoclinic crystal.")
 
         TriclinicFactory.make_crystal_basis(self)
         
+
 SimpleMonoclinic = SimpleMonoclinicFactory()
+
 
 class BaseCenteredMonoclinicFactory(SimpleMonoclinicFactory):
     # The natural basis vectors of the crystal structure
@@ -42,5 +44,6 @@ class BaseCenteredMonoclinicFactory(SimpleMonoclinicFactory):
                               [-1, 1, 0],
                               [0, 0, 1]])
     inverse_basis_factor = 1.0
+
 
 BaseCenteredMonoclinic = BaseCenteredMonoclinicFactory()

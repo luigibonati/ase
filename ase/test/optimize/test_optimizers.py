@@ -4,9 +4,9 @@ import pytest
 
 from ase.calculators.emt import EMT
 from ase.optimize import (MDMin, FIRE, LBFGS, LBFGSLineSearch, BFGSLineSearch,
-                          BFGS, GoodOldQuasiNewton, GPMin, Berny)
+                          BFGS, GoodOldQuasiNewton, GPMin, Berny, ODE12r)
 from ase.optimize.sciopt import SciPyFminCG, SciPyFminBFGS
-from ase.optimize.precon import PreconFIRE, PreconLBFGS
+from ase.optimize.precon import PreconFIRE, PreconLBFGS, PreconODE12r
 from ase.cluster import Icosahedron
 from ase.build import bulk
 
@@ -43,12 +43,13 @@ def atoms(ref_atoms):
 optclasses = [
     MDMin, FIRE, LBFGS, LBFGSLineSearch, BFGSLineSearch,
     BFGS, GoodOldQuasiNewton, GPMin, SciPyFminCG, SciPyFminBFGS,
-    PreconLBFGS, PreconFIRE, Berny,
+    PreconLBFGS, PreconFIRE, Berny, ODE12r, PreconODE12r
 ]
 
 
 @pytest.mark.parametrize('optcls', optclasses)
-def test_optimize(optcls, atoms, ref_atoms):
+@pytest.mark.filterwarnings('ignore: estimate_mu')
+def test_optimize(optcls, atoms, ref_atoms, testdir):
     if optcls is Berny:
         pytest.importorskip('berny')  # check if pyberny installed
         optcls = partial(optcls, dihedral=False)
@@ -70,7 +71,8 @@ def test_optimize(optcls, atoms, ref_atoms):
     print()
     print('{:>20}: fmax={:.05f} eopt={:.06f}, err={:06e}'
           .format(optcls.__name__, final_fmax, e_opt, e_err))
-    return final_fmax, e_err
 
     assert final_fmax < fmax
-    assert e_err < 1e-5  # (This tolerance is arbitrary)
+    assert e_err < 1.75e-5  # (This tolerance is arbitrary)
+
+    return final_fmax, e_err

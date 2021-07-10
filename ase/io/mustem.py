@@ -12,7 +12,6 @@ from ase.atoms import Atoms, symbols2numbers
 from ase.data import chemical_symbols
 from ase.utils import reader, writer
 from .utils import verify_cell_for_export, verify_dictionary
-from .prismatic import check_numpy_version
 
 
 @reader
@@ -28,8 +27,6 @@ def read_mustem(fd):
         B = RMS * 8\pi^2
 
     """
-    check_numpy_version()
-
     from ase.geometry import cellpar_to_cell
 
     # Read comment:
@@ -179,7 +176,7 @@ class XtlmuSTEMWriter:
     def _get_position_array_single_atom_type(self, number):
         # Get the scaled (reduced) position for a single atom type
         return self.atoms.get_scaled_positions()[
-            self.atoms.numbers==number]
+            self.atoms.numbers == number]
 
     def _get_file_header(self):
         # 1st line: comment line
@@ -201,31 +198,31 @@ class XtlmuSTEMWriter:
     def _get_element_header(self, atom_type, number, atom_type_number,
                             occupancy, RMS):
         return "{0}\n{1} {2} {3} {4:.3g}\n".format(atom_type,
-                                                  number,
-                                                  atom_type_number,
-                                                  occupancy,
-                                                  RMS)
+                                                   number,
+                                                   atom_type_number,
+                                                   occupancy,
+                                                   RMS)
 
     def _get_file_end(self):
         return "Orientation\n   1 0 0\n   0 1 0\n   0 0 1\n"
 
-    def write_to_file(self, f):
-        if isinstance(f, str):
-            f = open(f, 'w')
+    def write_to_file(self, fd):
+        if isinstance(fd, str):
+            fd = open(fd, 'w')
 
-        f.write(self._get_file_header())
+        fd.write(self._get_file_header())
         for atom_type, number, occupancy in zip(self.atom_types,
                                                 self.numbers,
                                                 self.occupancies):
             positions = self._get_position_array_single_atom_type(number)
             atom_type_number = positions.shape[0]
-            f.write(self._get_element_header(atom_type, atom_type_number,
-                                             number,
-                                             self.occupancies[atom_type],
-                                             self.RMS[atom_type]))
-            np.savetxt(fname=f, X=positions, fmt='%.6g', newline='\n')
+            fd.write(self._get_element_header(atom_type, atom_type_number,
+                                              number,
+                                              self.occupancies[atom_type],
+                                              self.RMS[atom_type]))
+            np.savetxt(fname=fd, X=positions, fmt='%.6g', newline='\n')
 
-        f.write(self._get_file_end())
+        fd.write(self._get_file_end())
 
 
 @writer
@@ -262,7 +259,5 @@ def write_mustem(fd, *args, **kwargs):
         positions are positive. If `False` (default), the atoms positions and
         the cell are unchanged.
     """
-    check_numpy_version()
-
     writer = XtlmuSTEMWriter(*args, **kwargs)
     writer.write_to_file(fd)
