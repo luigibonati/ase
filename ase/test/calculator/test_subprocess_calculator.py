@@ -1,3 +1,6 @@
+from pathlib import Path
+
+import numpy as np
 import pytest
 from ase.calculators.subprocesscalculator import (NamedPackedCalculator,
                                                   MPICommand)
@@ -27,7 +30,7 @@ def assert_results_equal_to_ordinary_emt(atoms):
     assert atoms.get_stress() == pytest.approx(atoms1.get_stress())
 
 
-def test_subprocess_calculator(atoms):
+def test_subprocess_calculator_emt(atoms):
     pack = NamedPackedCalculator('emt')
 
     with pack.calculator() as atoms.calc:
@@ -63,14 +66,21 @@ def test_subprocess_calculator_mpi(factory):
     pytest.importorskip('mpi4py')
     atoms = molecule('H2', vacuum=2.0)
     atoms.pbc = 1
-    pack = NamedPackedCalculator('gpaw', dict(mode='lcao'))
+    nbands = 2
+    pack = NamedPackedCalculator('gpaw', dict(mode='lcao',
+                                              nbands=nbands))
     mpi = MPICommand.parallel(2)
-    with pack.calculator(mpi) as atoms.calc:
+    with pack.calculator(mpi) as calc:
+        atoms.calc = calc
         atoms.get_potential_energy()
+        gpaw = calc.backend()
+        assert gpaw.get_number_of_bands() == nbands
 
-        # props = atoms.get_properties(['energy', 'eigenvalues'])
+        gpw = Path('dumpfile.gpw')
+        gpaw.write(gpw)
+        assert gpw.exists()
 
-    # XXX Somehow figure out how to get this to work:
-    # eigs = atoms.calc.results['eigenvalues']
-    # eigs = atoms.calc.get_eigenvalues()
-    # print(eigs)
+        nt_g = gpaw.get_pseudo_density(spin=0)
+        assert isinstance(nt_g, np.ndarray)
+        assert nt_g.dtype == float
+        assert all(dim > 10 for dim in nt_g.shape)

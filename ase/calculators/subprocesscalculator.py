@@ -86,7 +86,7 @@ class MPICommand:
 
     @classmethod
     def serial(cls):
-        return MPICommand(cls.python_argv() + ['serial'])
+        return MPICommand(cls.python_argv() + ['standard'])
 
     def execute(self):
         # On this computer (Ubuntu 20.04 + OpenMPI) the subprocess crashes
@@ -182,7 +182,7 @@ class ParallelBackendInterface:
         return MockMethod(name, self.interface)
 
 
-run_modes = {'mpi4py', 'serial'}
+run_modes = {'standard', 'mpi4py'}
 
 
 def bad_mode():
