@@ -139,7 +139,7 @@ class PythonSubProcessCalculator(Calculator):
 
     def __exit__(self, *args):
         self._send('stop')
-        self.proc.wait()
+        self.proc.communicate()
         self.proc = None
 
     def _run_calculation(self, atoms, properties, system_changes):
