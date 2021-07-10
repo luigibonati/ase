@@ -79,7 +79,7 @@ class MPICommand:
 
     @classmethod
     def parallel(cls, nprocs, mpi_argv=tuple()):
-        return cls(['mpiexec', '-np', str(nprocs)]
+        return cls(['mpiexec', '-n', str(nprocs)]
                    + list(mpi_argv)
                    + cls.python_argv()
                    + ['mpi4py'])
@@ -154,6 +154,33 @@ class PythonSubProcessCalculator(Calculator):
         results = self._recv()
         self.results.update(results)
 
+    def backend(self):
+        return ParallelBackendInterface(self)
+
+
+class MockMethod:
+    def __init__(self, name, interface):
+        self.name = name
+        self.interface = interface
+
+    def __call__(self, *args, **kwargs):
+        ifc = self.interface
+        ifc._send('callmethod')
+        ifc._send([self.name, args, kwargs])
+        response_type, value = ifc._recv()
+        if response_type == 'exception':
+            raise value
+        elif response_type == 'return':
+            return value
+
+
+class ParallelBackendInterface:
+    def __init__(self, interface):
+        self.interface = interface
+
+    def __getattr__(self, name):
+        return MockMethod(name, self.interface)
+
 
 run_modes = {'mpi4py', 'serial'}
 
@@ -203,6 +230,18 @@ def main():
         instruction = recv()
         if instruction == 'stop':
             break
+        elif instruction == 'callmethod':
+            attrname, args, kwargs = recv()
+            try:
+                method = getattr(calc, attrname)
+                value = method(*args, **kwargs)
+            except Exception as ex:
+                response_type = 'exception'
+                value = ex
+            else:
+                response_type = 'return'
+            send((response_type, value))
+            continue
         elif instruction != 'calculate':
             raise ValueError('Bad instruction: {}'.format(instruction))
 
