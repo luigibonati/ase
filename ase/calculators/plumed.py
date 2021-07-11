@@ -57,7 +57,6 @@ class Plumed(Calculator):
                '''
         if atoms is None:
             raise TypeError('plumed calculator has to be defined with the object atoms inside.')
-        timestep *= 1.
         if prev_traj is not None:
             trajectory = Trajectory(prev_traj)
             if prev_steps is None:
@@ -80,9 +79,9 @@ class Plumed(Calculator):
             self.plumed.cmd("setNatoms", natoms)
             self.plumed.cmd("setMDEngine", "ASE")
             self.plumed.cmd("setLogFile", log)
-            self.plumed.cmd("setTimestep", timestep)
+            self.plumed.cmd("setTimestep", float(timestep))
             self.plumed.cmd("setRestart", prev_traj is not None)
-            self.plumed.cmd("setKbT", kT)
+            self.plumed.cmd("setKbT", float(kT))
             self.plumed.cmd("init")
             for line in input:
                 self.plumed.cmd("readInputLine", line)
