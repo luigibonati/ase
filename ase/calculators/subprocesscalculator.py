@@ -97,6 +97,15 @@ class MPICommand:
                      stdin=PIPE, env=os.environ)
 
 
+def gpaw_process(ncores=1, **kwargs):
+    packed = NamedPackedCalculator('gpaw', kwargs)
+    mpicommand = MPICommand([
+        sys.executable, '-m', 'gpaw', '-P', str(ncores), 'python', '-m',
+        'ase.calculators.subprocesscalculator', 'standard',
+    ])
+    return PythonSubProcessCalculator(packed, mpicommand)
+
+
 class PythonSubProcessCalculator(Calculator):
     """Calculator for running calculations in external processes.
 

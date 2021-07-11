@@ -64,23 +64,16 @@ def test_subprocess_calculator_optimize(atoms):
 @pytest.mark.calculator_lite
 @pytest.mark.calculator('gpaw')
 def test_subprocess_calculator_mpi(factory):
+    from ase.calculators.subprocesscalculator import gpaw_process
     atoms = molecule('H2', vacuum=2.0)
     atoms.pbc = 1
-    nbands = 2
-    pack = NamedPackedCalculator('gpaw', dict(mode='lcao',
-                                              nbands=nbands))
-    # XXX Currently we run this just in serial, but really we should
-    # make sure to run with proper MPI testing
-    #
-    # Also we shouldn't need to hardcode the subprocesscalculator
-    # entry point
-    args = [sys.executable, '-m', 'gpaw', 'python', '-m',
-            'ase.calculators.subprocesscalculator', 'standard']
+    nbands = 3
 
-    mpi = MPICommand(args)
-    with pack.calculator(mpi) as calc:
+    # Should test with actual parallel calculation.
+    with gpaw_process(mode='lcao', nbands=nbands, basis='dz(dzp)') as calc:
         atoms.calc = calc
         atoms.get_potential_energy()
+
         gpaw = calc.backend()
         assert gpaw.get_number_of_bands() == nbands
 
