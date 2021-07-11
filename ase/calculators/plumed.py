@@ -59,21 +59,19 @@ class Plumed(Calculator):
             raise TypeError('plumed calculator has to be defined with the object atoms inside.')
         timestep *= 1.
         if prev_traj is not None:
-            self.trajectory = Trajectory(prev_traj)
+            trajectory = Trajectory(prev_traj)
             if prev_steps is None:
-                self.istep = len(self.trajectory) - 1
+                self.istep = len(trajectory) - 1
             else:
                 self.istep = prev_steps
-            atoms.set_positions(self.trajectory[-1].get_positions())
-            atoms.set_momenta(self.trajectory[-1].get_momenta())
+            atoms.set_positions(trajectory[-1].get_positions())
+            atoms.set_momenta(trajectory[-1].get_momenta())
+            trajectory.close()
         else:
             self.istep = 0
         Calculator.__init__(self, atoms=atoms)
 
-        if calculator1 == 'Dummy':
-            self.calculator1 = Dummy()
-        else:
-            self.calculator1 = calculator1
+        self.calculator1 = calculator1
         self.name = '{}+Plumed'.format(self.calculator1.name)
         
         if world.rank == 0:
@@ -88,6 +86,9 @@ class Plumed(Calculator):
             self.plumed.cmd("init")
             for line in input:
                 self.plumed.cmd("readInputLine", line)
+        self.atoms = atoms
+    
+    def set_atoms(self, atoms):
         self.atoms = atoms
 
     def calculate(self, atoms=None, properties=['energy', 'forces'], system_changes=all_changes):
@@ -125,16 +126,8 @@ class Plumed(Calculator):
             pos = trajectory[i].get_positions()
             self.compute_energy_and_forces(pos, i)
 
-    def close(self):
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
         self.plumed.finalize()
-
-
-class Dummy():
-    def __init__(self):
-        self.name = 'Dummy'
-    
-    def get_potential_energy(self, atoms):
-        return 0
-    
-    def get_forces(self, atoms):
-        return 0
