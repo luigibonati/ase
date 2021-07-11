@@ -125,7 +125,13 @@ class PythonSubProcessCalculator(Calculator):
         self.proc.stdin.flush()
 
     def _recv(self):
-        return pickle.load(self.proc.stdout)
+        response_type, value = pickle.load(self.proc.stdout)
+
+        if response_type == 'raise':
+            raise value
+
+        assert response_type == 'return'
+        return value
 
     def __repr__(self):
         return '{}({})'.format(type(self).__name__,
@@ -167,11 +173,7 @@ class MockMethod:
         ifc = self.interface
         ifc._send('callmethod')
         ifc._send([self.name, args, kwargs])
-        response_type, value = ifc._recv()
-        if response_type == 'exception':
-            raise value
-        elif response_type == 'return':
-            return value
+        return ifc._recv()
 
 
 class ParallelBackendInterface:
@@ -183,6 +185,26 @@ class ParallelBackendInterface:
 
 
 run_modes = {'standard', 'mpi4py'}
+
+
+def callmethod(calc, attrname, args, kwargs):
+    method = getattr(calc, attrname)
+    value = method(*args, **kwargs)
+    return value
+
+
+def calculate(calc, atoms, properties, system_changes):
+    # Again we need formalization of the results/outputs, and
+    # a way to programmatically access all available properties.
+    # We do a wild hack for now:
+    calc.results.clear()
+    # If we don't clear(), the caching is broken!  For stress.
+    # But not for forces.  What dark magic from the depths of the
+    # underworld is at play here?
+    calc.calculate(atoms=atoms, properties=properties,
+                   system_changes=system_changes)
+    results = calc.results
+    return results
 
 
 def bad_mode():
@@ -229,35 +251,26 @@ def main():
     while True:
         instruction = recv()
         if instruction == 'stop':
-            break
-        elif instruction == 'callmethod':
-            attrname, args, kwargs = recv()
-            try:
-                method = getattr(calc, attrname)
-                value = method(*args, **kwargs)
-            except Exception as ex:
-                response_type = 'exception'
-                value = ex
-            else:
-                response_type = 'return'
-            send((response_type, value))
-            continue
-        elif instruction != 'calculate':
-            raise ValueError('Bad instruction: {}'.format(instruction))
+            return
 
-        atoms, properties, system_changes = recv()
+        if instruction == 'callmethod':
+            function = callmethod
+        elif instruction == 'calculate':
+            function = calculate
+        else:
+            raise RuntimeError(f'Bad instruction: {instruction}')
 
-        # Again we need formalization of the results/outputs, and
-        # a way to programmatically access all available properties.
-        # We do a wild hack for now:
-        calc.results.clear()
-        # If we don't clear(), the caching is broken!  For stress.
-        # But not for forces.  What dark magic from the depths of the
-        # underworld is at play here?
-        calc.calculate(atoms=atoms, properties=properties,
-                       system_changes=system_changes)
-        results = calc.results
-        send(results)
+        instruction_data = recv()
+
+        try:
+            value = function(calc, *instruction_data)
+        except Exception as ex:
+            response_type = 'raise'
+            value = ex
+        else:
+            response_type = 'return'
+
+        send((response_type, value))
 
 
 if __name__ == '__main__':
