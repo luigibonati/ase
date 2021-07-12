@@ -1,7 +1,7 @@
 import pytest
 from ase import io
 from ase.calculators.vdwcorrection import (vdWTkatchenko09prl,
-                                           calculate_ts09_polarizability)
+                                           TS09Polarizability)
 from ase.calculators.emt import EMT
 from ase.build import bulk, molecule
 
@@ -62,7 +62,8 @@ def test_ts09_polarizability(testdir):
     atoms.calc = c
 
     # interface to enable Raman calculations
-    alpha_cc = calculate_ts09_polarizability(atoms)
+    pol = TS09Polarizability()
+    alpha_cc = pol.calculate(atoms)
 
     # polarizability is a tensor
     assert alpha_cc.shape == (3, 3)
