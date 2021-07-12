@@ -380,10 +380,11 @@ class vdWTkatchenko09prl(Calculator, IOContext):
 
 
 class TS09Polarizability:
-    def calculate(self, atoms):
+    def calculate_ts09_polarizability(atoms):
         """Calculate polarizability tensor
 
         atoms: Atoms object
+        The atoms object must have a vdWTkatchenko90prl calculator attached.
 
         Returns
         -------
