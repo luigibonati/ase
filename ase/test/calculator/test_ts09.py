@@ -63,9 +63,9 @@ def test_ts09_polarizability(testdir):
     
     # interface to enable Raman calculations
     pol = TS09Polarizability()
-    alpha_cc = pol.calculate(atoms)
+    alpha_cc = pol.calculate_ts09_polarizability(atoms)
 
     # polarizability is a tensor
     assert alpha_cc.shape == (3, 3)
 
-    assert alpha_cc.diagonal() == pytest.approx(0.1523047, .5)
+    assert alpha_cc.diagonal() == pytest.approx(0.1523047, .005)
