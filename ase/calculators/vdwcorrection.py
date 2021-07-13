@@ -2,6 +2,7 @@
 import numpy as np
 from ase.units import Bohr, Hartree
 from ase.calculators.calculator import Calculator
+from ase.calculators.polarizability import StaticPolarizabilityCalculator
 from scipy.special import erfinv, erfc
 from ase.neighborlist import neighbor_list
 from ase.parallel import world
@@ -411,9 +412,7 @@ def calculate_ts09_polarizability(atoms):
     return np.diag([alpha] * 3)
 
 
-class TS09Polarizability:
-    """ This class is required for the interface with
-        Raman spectroscopy calculations.
-    """
+class TS09Polarizability(StaticPolarizabilityCalculator):
+    """Class interface as expected by Displacement"""
     def calculate(self, atoms):
         return calculate_ts09_polarizability(atoms)
