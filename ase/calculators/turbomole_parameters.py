@@ -1,4 +1,6 @@
+# type: ignore
 """turbomole parameters management classes and functions"""
+
 import re
 import os
 from math import log10, floor
