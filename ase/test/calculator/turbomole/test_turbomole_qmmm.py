@@ -20,7 +20,6 @@ def test_turbomole_qmmm():
     interaction = LJInteractions({('O', 'O'): (epsilon0, sigma0)})
     qm_par = {'esp fit': 'kollman', 'multiplicity': 1}
 
-
     calcs = [
             TIP3P(),
             SimpleQMMM([0, 1, 2], Turbomole(**qm_par), TIP3P(), TIP3P()),
@@ -77,6 +76,6 @@ def test_turbomole_qmmm():
         v2 = R[5] - (R[3] + R[4]) / 2
         a0 = np.arccos(np.dot(v1, v2) /
                        (np.dot(v1, v1) * np.dot(v2, v2))**0.5) / np.pi * 180
-        fmt = '{0:>20}: {1:.3f} {2:.3f} {3:.3f} {4:.1f}'
+        # fmt = '{0:>20}: {1:.3f} {2:.3f} {3:.3f} {4:.1f}'
         # print(fmt.format(calc.name, -min(E), -e0, d0, a0))
         assert np.allclose([-min(E), -e0, d0, a0], ref, rtol=0.01)

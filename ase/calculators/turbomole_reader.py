@@ -75,7 +75,7 @@ def read_runtime(path):
     return runtime
 
 
-def read_hostname():
+def read_hostname(path):
     """read the hostname of the computer on which the calc has run"""
     hostnames = read_output(r'hostname is\s+(.+)', path)
     if len(set(hostnames)) > 1:
@@ -724,6 +724,7 @@ def read_charges(filename, natoms):
             qm_charges = [float(line.split()[3]) for line in oklines]
             charges = np.array(qm_charges)
     return charges
+
 
 def read_point_charges():
     """read point charges from previous calculation"""

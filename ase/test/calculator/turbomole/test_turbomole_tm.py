@@ -1,16 +1,18 @@
 # type: ignore
 import pytest
-import numpy as np
 from ase.calculators.turbomole import Turbomole
+
 
 @pytest.fixture
 def default_params():
     return {'multiplicity': 1}
 
+
 def test_turbomole_empty():
     with pytest.raises(AssertionError) as err:
         assert Turbomole()
         assert str(err.value) == 'multiplicity not defined'
+
 
 def test_turbomole_default(default_params):
     calc = Turbomole(**default_params)

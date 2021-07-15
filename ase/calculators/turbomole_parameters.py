@@ -3,6 +3,7 @@
 
 import re
 import os
+import warnings
 from math import log10, floor
 import numpy as np
 from ase.units import Ha, Bohr

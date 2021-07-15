@@ -5,9 +5,11 @@ from ase.calculators.turbomole import TurbomoleOptimizer
 from ase.calculators.turbomole import Turbomole
 from ase.build import molecule
 
+
 @pytest.fixture
 def atoms():
     return molecule('H2O')
+
 
 @pytest.fixture
 def calc():
@@ -22,10 +24,12 @@ def calc():
     }
     return Turbomole(**params)
 
+
 def test_turbomole_optimizer_class(atoms, calc):
     optimizer = TurbomoleOptimizer(atoms, calc)
     optimizer.run(steps=1)
     assert isinstance(optimizer.todict(), dict)
+
 
 def test_turbomole_optimizer(atoms, calc):
     optimizer = calc.get_optimizer(atoms)
