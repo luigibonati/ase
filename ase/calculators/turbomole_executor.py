@@ -1,3 +1,8 @@
+"""
+Execution of turbomole binaries and scripts:
+define, dscf, dgrad, ridft, rdgrad, aoforce, eiger/eigerf, sdg, kdg, jobex,
+NumForce
+"""
 from subprocess import Popen, PIPE
 
 

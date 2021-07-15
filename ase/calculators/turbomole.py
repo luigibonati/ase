@@ -37,10 +37,10 @@ class TurbomoleOptimizer:
     def run(self, fmax=None, steps=None):
         if fmax is not None:
             self.calc.parameters['force convergence'] = fmax
-            self.calc.verify_parameters()
+            self.calc.parameters.verify()
         if steps is not None:
             self.calc.parameters['geometry optimization iterations'] = steps
-            self.calc.verify_parameters()
+            self.calc.parameters.verify()
         self.calc.calculate()
         self.atoms.positions[:] = self.calc.atoms.positions
         self.calc.parameters['task'] = 'energy'
@@ -94,15 +94,14 @@ class Turbomole(FileIOCalculator):
                  restart=False, define_str=None, control_kdg=None,
                  control_input=None, reset_tolerance=1e-2, **kwargs):
 
-        super().__init__()
+        super().__init__(label=label)
         self.parameters = TurbomoleParameters()
 
-        self.label = label
         self.calculate_energy = calculate_energy
         self.calculate_forces = calculate_forces
         self.post_HF = post_HF
         self.restart = restart
-        self.define_str = define_str
+        self.parameters.define_str = define_str
         self.control_kdg = control_kdg
         self.control_input = control_input
         self.reset_tolerance = reset_tolerance
@@ -112,7 +111,7 @@ class Turbomole(FileIOCalculator):
         else:
             self.parameters.update(kwargs)
             self.set_parameters()
-            self.verify_parameters()
+            self.parameters.verify()
             self.reset()
 
         if atoms is not None:
@@ -128,29 +127,18 @@ class Turbomole(FileIOCalculator):
 
         # read results, key parameters and non-key parameters
         self.read_restart()
-        params_old = self.parameters.read_parameters(self.atoms, self.results)
-
-        # filter out non-updateable parameters
-        for p in list(params_update.keys()):
-            if not self.parameters.is_updateable(p):
-                del params_update[p]
-                warnings.warn('"' + p + '"' + ' cannot be changed')
+        self.parameters.read_restart(self.atoms, self.results)
 
         # update and verify parameters
-        params_new = params_old.copy()
-        params_new.update(params_update)
-        self.parameters.update(params_new)
+        self.parameters.update_restart(params_update)
         self.set_parameters()
-        self.verify_parameters()
+        self.parameters.verify()
 
-        # if a define string is specified then run define
-        if self.define_str:
-            execute('define', input_str=self.define_str)
+        # if a define string is specified by user then run define
+        if self.parameters.define_str:
+            execute('define', input_str=self.parameters.define_str)
 
-        # updates data groups in the control file
-        if params_update or self.control_kdg or self.control_input:
-            self.parameters.update_data_groups(params_old, params_update)
-            self._set_post_define()
+        self._set_post_define()
 
         self.initialized = True
         # more precise convergence tests are necessary to set these flags:
@@ -183,20 +171,13 @@ class Turbomole(FileIOCalculator):
             self.calculate_energy = 'ridft'
             self.calculate_forces = 'rdgrad'
 
-    def verify_parameters(self):
-        if self.define_str:
-            assert isinstance(self.define_str, str)
-            assert len(self.define_str) != 0
-        else:
-            self.parameters.verify_parameters()
-
     def reset(self):
         """removes all turbomole input, output and scratch files,
         and deletes results dict and the atoms object"""
         self.atoms = None
         self.results = {}
         self.results['calculation parameters'] = {}
-        ase_files = [f for f in os.listdir('.') if f.startswith('ASE.TM.')]
+        ase_files = [f for f in os.listdir(self.directory) if f.startswith('ASE.TM.')]
         for f in self.tm_files + self.tm_tmp_files + ase_files:
             if os.path.exists(f):
                 os.remove(f)
@@ -237,23 +218,18 @@ class Turbomole(FileIOCalculator):
         self.update_geometry = True
         self.update_hessian = True
 
-
     def initialize(self):
         """prepare turbomole control file by running module 'define'"""
         if self.initialized:
             return
-        self.verify_parameters()
+        self.parameters.verify()
         if not self.atoms:
             raise RuntimeError('atoms missing during initialization')
         if not os.path.isfile('coord'):
             raise IOError('file coord not found')
 
-        if self.define_str is not None:
-            define_str = self.define_str
-        else:
-            define_str = self.parameters.get_define_str(len(self.atoms))
-
         # run define
+        define_str = self.parameters.get_define_str(len(self.atoms))
         execute('define', input_str=define_str)
 
         # process non-default initial guess
@@ -491,31 +467,31 @@ class Turbomole(FileIOCalculator):
     def get_version(self):
         """get the version of the installed turbomole package"""
         if not self.version:
-            self.version = turbomole_reader.read_version()
+            self.version = turbomole_reader.read_version(self.directory)
         return self.version
 
     def get_datetime(self):
         """get the timestamp of most recent calculation"""
         if not self.datetime:
-            self.datetime = turbomole_reader.read_datetime()
+            self.datetime = turbomole_reader.read_datetime(self.directory)
         return self.datetime
 
     def get_runtime(self):
         """get the total runtime of calculations"""
         if not self.runtime:
-            self.runtime = turbomole_reader.read_runtime()
+            self.runtime = turbomole_reader.read_runtime(self.directory)
         return self.runtime
 
     def get_hostname(self):
         """get the hostname of the computer on which the calc has run"""
         if not self.hostname:
-            self.hostname = turbomole_reader.read_hostname()
+            self.hostname = turbomole_reader.read_hostname(self.directory)
         return self.hostname
 
     def get_optimizer(self, atoms, trajectory=None, logfile=None):
         """returns a TurbomoleOptimizer object"""
         self.parameters['task'] = 'optimize'
-        self.verify_parameters()
+        self.parameters.verify()
         return TurbomoleOptimizer(atoms, self)
 
     def get_results(self):

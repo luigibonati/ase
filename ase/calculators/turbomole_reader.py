@@ -17,11 +17,11 @@ def read_data_group(data_group):
     return dg.strip()
 
 
-def read_output(regex): # not covered by any test
+def read_output(regex, path):
     """collects all matching strings from the output"""
     hitlist = []
     checkfiles = []
-    for filename in os.listdir('.'):
+    for filename in os.listdir(path):
         if filename.startswith('job.') or filename.endswith('.out'):
             checkfiles.append(filename)
     for filename in checkfiles:
@@ -34,9 +34,9 @@ def read_output(regex): # not covered by any test
     return hitlist
 
 
-def read_version():
+def read_version(path):
     """read the version from the tm output if stored in a file"""
-    versions = read_output(r'TURBOMOLE\s+V(\d+\.\d+)\s+')
+    versions = read_output(r'TURBOMOLE\s+V(\d+\.\d+)\s+', path)
     if len(set(versions)) > 1:
         warnings.warn('different turbomole versions detected')
         version = list(set(versions))
@@ -48,13 +48,13 @@ def read_version():
     return version
 
 
-def read_datetime():
+def read_datetime(path):
     """read the datetime of the most recent calculation
     from the tm output if stored in a file
     """
     datetimes = read_output(
         r'(\d{4}-[01]\d-[0-3]\d([T\s][0-2]\d:[0-5]'
-        r'\d:[0-5]\d\.\d+)?([+-][0-2]\d:[0-5]\d|Z)?)')
+        r'\d:[0-5]\d\.\d+)?([+-][0-2]\d:[0-5]\d|Z)?)', path)
     if len(datetimes) == 0:
         warnings.warn('no turbomole datetime detected')
         datetime = None
@@ -64,9 +64,9 @@ def read_datetime():
     return datetime
 
 
-def read_runtime():
+def read_runtime(path):
     """read the total runtime of calculations"""
-    hits = read_output(r'total wall-time\s+:\s+(\d+.\d+)\s+seconds')
+    hits = read_output(r'total wall-time\s+:\s+(\d+.\d+)\s+seconds', path)
     if len(hits) == 0:
         warnings.warn('no turbomole runtimes detected')
         runtime = None
@@ -77,7 +77,7 @@ def read_runtime():
 
 def read_hostname():
     """read the hostname of the computer on which the calc has run"""
-    hostnames = read_output(r'hostname is\s+(.+)')
+    hostnames = read_output(r'hostname is\s+(.+)', path)
     if len(set(hostnames)) > 1:
         warnings.warn('runs on different hosts detected')
         hostname = list(set(hostnames))

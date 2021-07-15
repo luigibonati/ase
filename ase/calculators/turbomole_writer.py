@@ -11,13 +11,12 @@ def add_data_group(data_group, string=None, raw=False):
         if string:
             data += ' ' + string
         data += '\n'
-    f = open('control', 'r+')
-    lines = f.readlines()
-    f.seek(0)
-    f.truncate()
-    lines.insert(2, data)
-    f.write(''.join(lines))
-    f.close()
+    with open('control', 'r+') as contr:
+        lines = contr.readlines()
+        contr.seek(0)
+        contr.truncate()
+        lines.insert(2, data)
+        contr.write(''.join(lines))
 
 
 def delete_data_group(data_group):

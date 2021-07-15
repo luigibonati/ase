@@ -437,7 +437,7 @@ class TurbomoleParameters(dict):
         for k, v in self.default_parameters.items():
             self[k] = v
 
-    def update_data_groups(self, params_old, params_update):
+    def update_data_groups(self, params_update):
         """updates data groups in the control file"""
         # construct a list of data groups to update
         grps = []
@@ -460,12 +460,12 @@ class TurbomoleParameters(dict):
                                 val = fun(params_update[p])
                             dgs[g] = val
                     else:
-                        if p in list(params_old.keys()):
-                            val = params_old[p]
+                        if p in list(self.params_old.keys()):
+                            val = self.params_old[p]
                             pmap = list(self.parameter_mapping.keys())
                             if val is not None and p in pmap:
                                 fun = self.parameter_mapping[p]['to_control']
-                                val = fun(params_old[p])
+                                val = fun(self.params_old[p])
                             dgs[g][self.parameter_key[p]] = val
                         if p in list(params_update.keys()):
                             val = params_update[p]
@@ -512,34 +512,41 @@ class TurbomoleParameters(dict):
                     else:
                         delete_data_group(self.parameter_group[p])
 
-    def verify_parameters(self):
+    def verify(self):
         """detect wrong or not implemented parameters"""
 
-        for par in self:
-            assert par in self.parameter_spec, 'invalid parameter: ' + par
+        if self.define_str is not None:
+            assert isinstance(self.define_str, str) and len(self.define_str) != 0
+        else:
+            for par in self:
+                assert par in self.parameter_spec, 'invalid parameter: ' + par
 
-        if self.get('use dft'):
-            func_list = [x.lower() for x in self.available_functionals]
-            func = self['density functional']
-            assert func.lower() in func_list, (
-                'density functional not available / not supported'
-            )
+            if self.get('use dft'):
+                func_list = [x.lower() for x in self.available_functionals]
+                func = self['density functional']
+                assert func.lower() in func_list, (
+                    'density functional not available / not supported'
+                )
 
-        assert self['multiplicity'], 'multiplicity not defined'
+            assert self['multiplicity'], 'multiplicity not defined'
 
-        if self.get('rohf'):
-            raise NotImplementedError('ROHF not implemented')
-        if self['initial guess'] not in ['eht', 'hcore']:
-            if not (isinstance(self['initial guess'], dict) and
-                    'use' in self['initial guess'].keys()):
-                raise ValueError('Wrong input for initial guess')
-        if not self['use basis set library']:
-            raise NotImplementedError('Explicit basis set definition')
-        if self['point group'] != 'c1':
-            raise NotImplementedError('Point group not impemeneted')
+            if self.get('rohf'):
+                raise NotImplementedError('ROHF not implemented')
+            if self['initial guess'] not in ['eht', 'hcore']:
+                if not (isinstance(self['initial guess'], dict) and
+                        'use' in self['initial guess'].keys()):
+                    raise ValueError('Wrong input for initial guess')
+            if not self['use basis set library']:
+                raise NotImplementedError('Explicit basis set definition')
+            if self['point group'] != 'c1':
+                raise NotImplementedError('Point group not impemeneted')
 
     def get_define_str(self, natoms):
         """construct a define string from the parameters dictionary"""
+
+        if self.define_str is not None:
+            return self.define_str
+
         define_str_tpl = (
             '\n__title__\na coord\n__inter__\n'
             'bb all __basis_set__\n*\neht\ny\n__charge_str____occ_str__'
@@ -655,7 +662,7 @@ class TurbomoleParameters(dict):
 
         return define_str
 
-    def read_parameters(self, atoms, results):
+    def read_restart(self, atoms, results):
         """read parameters from control file"""
 
         def parse_data_group(dg, dg_name):
@@ -780,7 +787,15 @@ class TurbomoleParameters(dict):
                 if 'AN OPTIMIZATION WITH MAX' in line:
                     cy = int(re.search(r'MAX. (\d+) CYCLES', line).group(1))
                     params['geometry optimization iterations'] = cy
-        return params
+        self.update(params)
+        self.params_old = params
 
-    def is_updateable(self, p):
-        return self.parameter_updateable[p]
+    def update_restart(self, params_update):
+        """update parameters after a restart"""
+        # first filter out non-updateable parameters
+        for p in list(params_update.keys()):
+            if not self.parameter_updateable[p]:
+                del params_update[p]
+                warnings.warn('"' + p + '"' + ' cannot be changed')
+        self.update(params_update)
+        self.update_data_groups(params_update)
