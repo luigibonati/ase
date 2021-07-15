@@ -67,13 +67,19 @@ def execute(args, input_str=None, error_test=True,
                 message += '\nSee file ' + stdout_file + ' for details.\n'
                 raise RuntimeError(message)
     except RuntimeError as err:
+        if stdout_tofile:
+            stdout.close()
         raise err
     except OSError as err:
+        if stdout_tofile:
+            stdout.close()
         raise OSError(err.args[1] + '\n' + message)
     else:
         print('TM command: "' + args[0] + '" successfully executed')
 
-    if not stdout_tofile:
+    if stdout_tofile:
+        stdout.close()
+    else:
         return res[0].decode()
 
 
