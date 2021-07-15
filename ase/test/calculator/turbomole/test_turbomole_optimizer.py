@@ -1,4 +1,5 @@
 # type: ignore
+import numpy as np
 from ase.calculators.turbomole import Turbomole
 from ase.build import molecule
 
@@ -18,3 +19,4 @@ def test_turbomole_optimizer():
     calc = Turbomole(**params)
     optimizer = calc.get_optimizer(water)
     optimizer.run(fmax=0.01, steps=5)
+    assert np.linalg.norm(calc.get_forces(water)) < 0.01
