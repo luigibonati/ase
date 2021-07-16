@@ -526,8 +526,9 @@ class TurbomoleParameters(dict):
     def verify(self):
         """detect wrong or not implemented parameters"""
 
-        if getattr(self, 'define_str', None):
-            assert isinstance(self.define_str, str) and len(self.define_str) != 0
+        if getattr(self, 'define_str', None) is not None:
+            assert isinstance(self.define_str, str), 'define_str must be str'
+            assert len(self.define_str) != 0, 'define_str may not be empty'
         else:
             for par in self:
                 assert par in self.parameter_spec, 'invalid parameter: ' + par
@@ -556,7 +557,7 @@ class TurbomoleParameters(dict):
     def get_define_str(self, natoms):
         """construct a define string from the parameters dictionary"""
 
-        if self.define_str is not None:
+        if getattr(self, 'define_str', None):
             return self.define_str
 
         define_str_tpl = (

@@ -46,9 +46,14 @@ def test_tm_parameters_restart_update(default_params):
 
 def test_tm_parameters_verify_empty_define_str():
     params = TurbomoleParameters()
-    params['define_str'] = ''
-    with pytest.raises(AssertionError):
+    params.define_str = {}
+    with pytest.raises(AssertionError) as err:
         assert params.verify()
+    assert str(err.value) == 'define_str must be str'
+    params.define_str = ''
+    with pytest.raises(AssertionError) as err:
+        assert params.verify()
+    assert str(err.value) == 'define_str may not be empty'
 
 
 def test_tm_parameters_verify_mult_ndefined():
@@ -92,3 +97,11 @@ def test_tm_parameters_verify_c2v(default_params):
     default_params.update({'point group': 'c2v'})
     with pytest.raises(NotImplementedError):
         assert default_params.verify()
+
+
+def test_tm_parameters_define_str(default_params):
+    ref = ('\n\na coord\n*\nno\nbb all def-SV(P)\n*\neht\ny\n0\ny\ndft\non'
+           '\n*\ndft\nfunc b-p\n*\ndft\ngrid m3\n*\nscf\niter\n60\n\nq\n')
+    assert default_params.get_define_str(5) == ref
+    default_params.define_str = 'invalid define string'
+    assert default_params.get_define_str(5) == 'invalid define string'
