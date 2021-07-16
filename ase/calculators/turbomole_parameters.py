@@ -7,7 +7,7 @@ from math import log10, floor
 import numpy as np
 from ase.units import Ha, Bohr
 from ase.calculators.turbomole_writer import add_data_group, delete_data_group
-from ase.calculators.turbomole_reader import read_data_group
+from ase.calculators.turbomole_reader import read_data_group, parse_data_group
 
 
 class TurbomoleParameters(dict):
@@ -676,29 +676,6 @@ class TurbomoleParameters(dict):
 
     def read_restart(self, atoms, results):
         """read parameters from control file"""
-
-        def parse_data_group(dg, dg_name):
-            """parse a data group"""
-            if len(dg) == 0:
-                return None
-            lsep = None
-            ksep = None
-            ndg = dg.replace('$' + dg_name, '').strip()
-            if '\n' in ndg:
-                lsep = '\n'
-            if '=' in ndg:
-                ksep = '='
-            if not lsep and not ksep:
-                return ndg
-            result = {}
-            lines = ndg.split(lsep)
-            for line in lines:
-                fields = line.strip().split(ksep)
-                if len(fields) == 2:
-                    result[fields[0]] = fields[1]
-                elif len(fields) == 1:
-                    result[fields[0]] = True
-            return result
 
         params = {}
         pdgs = {}
