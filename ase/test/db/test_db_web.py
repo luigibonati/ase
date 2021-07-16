@@ -99,7 +99,6 @@ def test_db_web(client):
         atoms = read(io.StringIO(txt), format=fmt)
         assert (atoms.numbers == [1, 1, 8]).all()
         tol = 1e-5 if type == 'cif' else 1e-10
-        ref_atoms = get_atoms()
         assert not compare_atoms(atoms, get_atoms(), tol), type
 
 
