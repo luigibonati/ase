@@ -3,7 +3,6 @@
 
 import re
 import os
-import warnings
 from math import log10, floor
 import numpy as np
 from ase.units import Ha, Bohr
@@ -41,7 +40,7 @@ class TurbomoleParameters(dict):
             'default': None,
             'group': 'basis',
             'key': None,
-            'type': dict,
+            'type': list,
             'units': None,
             'updateable': False
         },
@@ -123,7 +122,7 @@ class TurbomoleParameters(dict):
         },
         'fermi final temperature': {
             'comment': None,
-            'default': 300,
+            'default': 300.,
             'group': 'fermi',
             'key': 'tmend',
             'type': float,
@@ -145,7 +144,7 @@ class TurbomoleParameters(dict):
         },
         'fermi initial temperature': {
             'comment': None,
-            'default': 300,
+            'default': 300.,
             'group': 'fermi',
             'key': 'tmstrt',
             'type': float,
@@ -219,7 +218,7 @@ class TurbomoleParameters(dict):
             'default': 'eht',
             'group': None,
             'key': None,
-            'type': None,
+            'type': (str, dict),
             'units': None,
             'updateable': False
         },
@@ -426,17 +425,28 @@ class TurbomoleParameters(dict):
     parameter_mapping = {}
     parameter_no_define = {}
 
-    def __init__(self, *args, **kwargs):
-        """ """
-        # super().__init__(*args, **kwargs)
+    def __init__(self, **kwargs):
         # construct flat dictionaries with parameter attributes
         for p in self.parameter_spec:
             for k in self.spec_names:
                 if k in list(self.parameter_spec[p].keys()):
                     subdict = getattr(self, self.spec_names[k])
                     subdict.update({p: self.parameter_spec[p][k]})
-        for k, v in self.default_parameters.items():
-            self[k] = v
+        super().__init__(**self.default_parameters)
+        self.update(kwargs)
+
+    def update(self, dct):
+        """check the type of parameters in dct and then update"""
+        for par in dct.keys():
+            if par not in self.parameter_spec:
+                raise ValueError('invalid parameter: ' + par)
+
+        for key, val in dct.items():
+            correct_type = self.parameter_spec[key]['type']
+            if not isinstance(val, (correct_type, type(None))):
+                msg = str(key) + ' has wrong type: ' + str(type(val))
+                raise TypeError(msg)
+            self[key] = val
 
     def update_data_groups(self, params_update):
         """updates data groups in the control file"""
@@ -516,7 +526,7 @@ class TurbomoleParameters(dict):
     def verify(self):
         """detect wrong or not implemented parameters"""
 
-        if self.define_str is not None:
+        if getattr(self, 'define_str', None):
             assert isinstance(self.define_str, str) and len(self.define_str) != 0
         else:
             for par in self:
@@ -529,7 +539,8 @@ class TurbomoleParameters(dict):
                     'density functional not available / not supported'
                 )
 
-            assert self['multiplicity'], 'multiplicity not defined'
+            assert self['multiplicity'] is not None, 'multiplicity not defined'
+            assert self['multiplicity'] > 0, 'multiplicity has wrong value'
 
             if self.get('rohf'):
                 raise NotImplementedError('ROHF not implemented')
@@ -761,14 +772,14 @@ class TurbomoleParameters(dict):
             beta_occ = [o['occupancy'] for o in orbs if o['spin'] == 'beta']
             spin = (np.sum(alpha_occ) - np.sum(beta_occ)) * 0.5
             params['multiplicity'] = int(2 * spin + 1)
-            nuclear_charge = np.sum(atoms.numbers)
-            electron_charge = -int(np.sum(alpha_occ) + np.sum(beta_occ))
+            nuclear_charge = int(sum(atoms.numbers))
+            electron_charge = -int(sum(alpha_occ) + sum(beta_occ))
             electron_charge += core_charge
             params['total charge'] = nuclear_charge + electron_charge
         elif not params['rohf']:  # restricted HF (closed shell)
             params['multiplicity'] = 1
-            nuclear_charge = np.sum(atoms.numbers)
-            electron_charge = -int(np.sum([o['occupancy'] for o in orbs]))
+            nuclear_charge = int(sum(atoms.numbers))
+            electron_charge = -int(sum(o['occupancy'] for o in orbs))
             electron_charge += core_charge
             params['total charge'] = nuclear_charge + electron_charge
         else:
@@ -791,12 +802,10 @@ class TurbomoleParameters(dict):
         self.update(params)
         self.params_old = params
 
-    def update_restart(self, params_update):
+    def update_restart(self, dct):
         """update parameters after a restart"""
-        # first filter out non-updateable parameters
-        for p in list(params_update.keys()):
-            if not self.parameter_updateable[p]:
-                del params_update[p]
-                warnings.warn('"' + p + '"' + ' cannot be changed')
-        self.update(params_update)
-        self.update_data_groups(params_update)
+        nulst = [k for k in dct.keys() if not self.parameter_updateable[k]]
+        if len(nulst) != 0:
+            raise ValueError('parameters '+str(nulst)+' cannot be changed')
+        self.update(dct)
+        self.update_data_groups(dct)
