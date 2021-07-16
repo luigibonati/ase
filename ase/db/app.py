@@ -160,7 +160,7 @@ def new_app(projects):
 
         fd = io.StringIO()
         if type == 'xyz':
-            a.write(fd, 'xyz')
+            a.write(fd, format='extxyz')
         elif type == 'json':
             con = connect(fd, type='json')
             con.write(row,
