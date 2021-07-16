@@ -3,6 +3,17 @@ import pytest
 from ase import Atoms
 from ase.db import connect
 from ase.db.web import Session
+from ase.calculators.calculator import compare_atoms
+
+
+def get_atoms():
+    atoms = Atoms('H2O',
+                  [(0, 0, 0),
+                   (2, 0, 0),
+                   (1, 1, 0)])
+    atoms.center(vacuum=5)
+    atoms.set_pbc(True)
+    return atoms
 
 
 @pytest.fixture(scope='module')
@@ -13,13 +24,7 @@ def database(tmp_path_factory):
         t1 = [1, 2, 0]
         t2 = [[2, 3], [1, 1], [1, 0]]
 
-        atoms = Atoms('H2O',
-                      [(0, 0, 0),
-                       (2, 0, 0),
-                       (1, 1, 0)])
-        atoms.center(vacuum=5)
-        atoms.set_pbc(True)
-
+        atoms = get_atoms()
         db.write(atoms,
                  foo=42.0,
                  bar='abc',
@@ -83,9 +88,19 @@ def test_db_web(client):
         url = f'atoms/default/1/{type}'
         resp = c.get(url)
         assert resp.status_code == 200
-        atoms = read(io.StringIO(resp.data.decode()), format=type)
-        print(atoms.numbers)
+        txt = resp.data.decode()
+
+        print(type)
+        print(txt)
+
+        fmt = type
+        if fmt == 'xyz':
+            fmt = 'extxyz'
+        atoms = read(io.StringIO(txt), format=fmt)
         assert (atoms.numbers == [1, 1, 8]).all()
+        tol = 1e-5 if type == 'cif' else 1e-10
+        ref_atoms = get_atoms()
+        assert not compare_atoms(atoms, get_atoms(), tol), type
 
 
 def test_paging(database):
