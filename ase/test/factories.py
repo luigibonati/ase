@@ -541,6 +541,32 @@ class NWChemFactory:
     def fromconfig(cls, config):
         return cls(config.executables['nwchem'])
 
+@factory('plumed')
+class PlumedFactory:
+    def __init__(self):
+        import plumed
+        import subprocess
+        com = subprocess.Popen('plumed info --root', stdout=subprocess.PIPE, shell=True)
+        self.path = com.communicate()[0].decode("utf-8").strip('\n')
+        
+    def calc(self, **kwargs):
+        from ase.calculators.plumed import Plumed
+        return Plumed(**kwargs)
+
+    def version(self):
+        import subprocess
+        com = subprocess.Popen('plumed info --long-version', stdout=subprocess.PIPE, shell=True)
+        ver = com.communicate()[0].decode("utf-8")
+        return ver.strip('\n')
+    @classmethod
+    def fromconfig(cls, config):
+        import importlib
+        spec = importlib.util.find_spec('plumed')
+        # XXX should be made non-pytest dependent
+        if spec is None:
+            raise NotInstalled('plumed')
+        return cls()
+
 
 class NoSuchCalculator(Exception):
     pass

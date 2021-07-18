@@ -131,7 +131,7 @@ names = ['abinit', 'ace', 'aims', 'amber', 'asap', 'castep', 'cp2k',
          'gaussian', 'gpaw', 'gromacs', 'gulp', 'hotbit', 'kim',
          'lammpslib', 'lammpsrun', 'lj', 'mopac', 'morse', 'nwchem',
          'octopus', 'onetep', 'openmx', 'orca', 'psi4', 'qchem', 'siesta',
-         'tip3p', 'tip4p', 'turbomole', 'vasp']
+         'tip3p', 'tip4p', 'turbomole', 'vasp', 'plumed']
 
 
 special = {'cp2k': 'CP2K',

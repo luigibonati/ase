@@ -1,7 +1,6 @@
 from ase.calculators.calculator import Calculator, all_changes
 from ase.io.trajectory import Trajectory
 from ase.parallel import broadcast
-from plumed import Plumed as pl
 from ase.parallel import world
 import numpy as np
 
@@ -55,6 +54,8 @@ class Plumed(Calculator):
                defined and this does not, it will be set to the number of
                steps in the trajectory.
                '''
+        from plumed import Plumed as pl
+
         if atoms is None:
             raise TypeError('plumed calculator has to be defined with the object atoms inside.')
         if prev_traj is not None:

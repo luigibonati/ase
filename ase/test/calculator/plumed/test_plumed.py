@@ -2,14 +2,15 @@ from ase import Atoms
 from ase.calculators.emt import EMT
 from ase.calculators.idealgas import IdealGas
 from ase.md.verlet import VelocityVerlet
-from ase.calculators.plumed import Plumed
 from ase.calculators.lj import LennardJones
 import numpy as np
 from ase.io.trajectory import Trajectory
 from pytest import approx
+import pytest
 
 
-def test_CVs(testdir):
+@pytest.mark.calculator('plumed')
+def test_CVs(factory):
     ''' This test calls plumed-ASE calculator for computing some CVs.
     Moreover, it computes those CVs directly from atoms.positions and
     compares them'''
@@ -24,7 +25,10 @@ def test_CVs(testdir):
     # execution
     atoms = Atoms('CO', positions=[[0, 0, 0], [0, 0, 5]])  # CO molecule
     timestep = 5
-    with Plumed(EMT(), input, timestep, atoms) as calc:
+    with factory.calc(calculator1=EMT(),
+                      input=input,
+                      timestep=timestep,
+                      atoms=atoms) as atoms.calc:
         with VelocityVerlet(atoms, timestep) as dyn:
             dyn.run(100)
 
@@ -56,9 +60,10 @@ def test_CVs(testdir):
     centersPlumed = np.loadtxt('COLVAR_test1', usecols=3)
 
     assert centersASE == approx(centersPlumed)
-    
 
-def test_metadyn(testdir):
+
+@pytest.mark.calculator('plumed')
+def test_metadyn(factory):
     '''This test computes a Metadynamics calculation,
     This result is compared with the same calulation made externally'''
     input = ["d: DISTANCE ATOMS=1,2",
@@ -67,7 +72,10 @@ def test_metadyn(testdir):
     # Metadynamics simulation
     atoms = Atoms('CO', positions=[[0, 0, 0], [6.7, 0, 0]])
     timestep = 0.05
-    with Plumed(LennardJones(epsilon=10, sigma=6), input, timestep, atoms) as calc:
+    with factory.calc(calculator1=LennardJones(epsilon=10, sigma=6),
+                      input=input,
+                      timestep=timestep,
+                      atoms=atoms) as atoms.calc: 
         with VelocityVerlet(atoms, timestep, trajectory='test-direct.traj') as dyn:
             dyn.run(58)
        
@@ -80,7 +88,8 @@ def test_metadyn(testdir):
     assert atoms.get_forces()[0][0] == approx(forceWithBias, abs=0.01), "Error in the computation of Bias-forces"
 
 
-def test_restart(testdir):
+@pytest.mark.calculator('plumed')
+def test_restart(factory):
     input = ["d: DISTANCE ATOMS=1,2",
              "METAD ARG=d SIGMA=0.5 HEIGHT=2 PACE=20 FILE=HILLS"]
 
@@ -89,14 +98,20 @@ def test_restart(testdir):
     timestep = 0.05
 
     # first steps
-    with Plumed(LennardJones(epsilon=10, sigma=6), input, timestep, atoms) as calc:
+    with factory.calc(calculator1=LennardJones(epsilon=10, sigma=6), 
+                      input=input,
+                      timestep=timestep,
+                      atoms=atoms) as atoms.calc:
         with VelocityVerlet(atoms, timestep, trajectory='test-restart.traj') as dyn:
             dyn.run(29)
     
     # rest of steps with restart
     atoms1 = Atoms('CO')
-    with Plumed(LennardJones(epsilon=10, sigma=6), input, timestep, atoms1,
-                prev_traj='test-restart.traj') as calc:
+    with factory.calc(calculator1=LennardJones(epsilon=10, sigma=6),
+                      input=input,
+                      timestep=timestep,
+                      atoms=atoms1,
+                      prev_traj='test-restart.traj') as atoms.calc:
         with VelocityVerlet(atoms1, timestep,
                          trajectory='test-restart.traj',
                          append_trajectory=True) as dyn:
@@ -112,14 +127,18 @@ def test_restart(testdir):
     assert atoms1.get_forces()[0][0] == approx(forceWithBias, abs=0.01), "Error in the computation of Bias-forces"
 
 
-def test_postpro(testdir):
+@pytest.mark.calculator('plumed')
+def test_postpro(factory):
     # Metadynamics simulation
     input = ["d: DISTANCE ATOMS=1,2",
              "METAD ARG=d SIGMA=0.5 HEIGHT=2 PACE=20 FILE=HILLS_direct"]
 
     atoms = Atoms('CO', positions=[[0, 0, 0], [6.7, 0, 0]])
     timestep = 0.05
-    with Plumed(LennardJones(epsilon=10, sigma=6), input, timestep, atoms) as calc:
+    with factory.calc(calculator1=LennardJones(epsilon=10, sigma=6), 
+                      input=input,
+                      timestep=timestep,
+                      atoms=atoms) as atoms.calc:
         with VelocityVerlet(atoms, timestep, trajectory='test-direct.traj') as dyn:
             dyn.run(58)
     
@@ -128,7 +147,10 @@ def test_postpro(testdir):
              "METAD ARG=d SIGMA=0.5 HEIGHT=2 PACE=20 FILE=HILLS_postpro"]
     atoms = Atoms('CO', positions=[[0, 0, 0], [6.7, 0, 0]])
     timestep = 0.05
-    with Plumed(IdealGas(), input, timestep, atoms) as calc:
+    with factory.calc(calculator1=IdealGas(),
+                      input=input,
+                      timestep=timestep,
+                      atoms=atoms) as calc:
         traj = Trajectory('test-direct.traj')
         calc.analysis(traj)
         traj.close()
