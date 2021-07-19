@@ -1,18 +1,36 @@
 import numpy as np
 import pytest
 
+from ase.build.molecule import molecule
 from ase.build.bulk import bulk
 from ase.cluster import Icosahedron
 from ase.calculators.emt import EMT
 from ase.optimize.fire import FIRE
 from ase.lattice.compounds import L1_2
 
-from ase.geometry.rdf import get_rdf, CellTooSmall
+from ase.geometry.rdf import get_rdf, CellTooSmall, VolumeNotDefined, get_containing_volume
+
+@pytest.fixture
+def atoms_h2():
+    return molecule('H2')
 
 
-def test_rdf_exceptions():
+def test_rdf_volume_not_defined_exception(atoms_h2):
+    with pytest.raises(VolumeNotDefined):
+        get_rdf(atoms_h2, 2.0, 5)
+
+
+def test_rdf_cell_too_small_exception():
     with pytest.raises(CellTooSmall):
         get_rdf(bulk('Ag'), 2.0, 5)
+
+
+def test_rdf_rdf_for_a_molecule(atoms_h2):
+    containing_volume = get_containing_volume(atoms_h2)
+    assert containing_volume == pytest.approx(10.948664)
+    rdf, dist = get_rdf(atoms_h2, 2.0, 5, volume=containing_volume)
+    rdf_ref = [0.0, 2.91718861, 0.0, 0.0, 0.0]
+    assert rdf == pytest.approx(rdf)
 
 
 def test_rdf_compute():
