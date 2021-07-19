@@ -9,7 +9,15 @@ Git master branch
 
 :git:`master <>`.
 
-* No changes yet
+* :func:`ase.build.bulk` now assigns initial magnetic moments
+  to BCC Fe, Co, and Ni.
+
+Calculators:
+
+* :class:`ase.calculators.kim.kimmodel.KIMModelCalculator` updated to allow
+  users to change the parameters of OpenKIM portable models at run time (see
+  https://openkim.org/doc/repository/kim-content/ for an explanation of types
+  of OpenKIM models).
 
 
 Version 3.22.0

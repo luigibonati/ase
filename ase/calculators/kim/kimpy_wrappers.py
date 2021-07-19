@@ -5,11 +5,41 @@ Daniel S. Karls
 University of Minnesota
 """
 
+from abc import ABC
 import functools
 
+import numpy as np
 import kimpy
 
-from .exceptions import KIMModelNotFound, KIMModelInitializationError, KimpyError
+from .exceptions import (
+    KIMModelNotFound,
+    KIMModelInitializationError,
+    KimpyError,
+    KIMModelParameterError,
+)
+
+# Function used for casting parameter/extent indices to C-compatible ints
+c_int = np.intc
+
+# Function used for casting floating point parameter values to C-compatible
+# doubles
+c_double = np.double
+
+
+def c_int_args(func):
+    """
+    Decorator for instance methods that will cast all of the args passed,
+    excluding the first (which corresponds to 'self'), to C-compatible
+    integers.
+    """
+
+    @functools.wraps(func)
+    def myfunc(*args, **kwargs):
+        args_cast = [args[0]]
+        args_cast += map(c_int, args[1:])
+        return func(*args, **kwargs)
+
+    return myfunc
 
 
 def check_call(f, *args, **kwargs):
@@ -39,6 +69,9 @@ collections_create = functools.partial(check_call, kimpy.collections.create)
 model_create = functools.partial(check_call, kimpy.model.create)
 simulator_model_create = functools.partial(check_call, kimpy.simulator_model.create)
 get_species_name = functools.partial(check_call, kimpy.species_name.get_species_name)
+get_number_of_species_names = functools.partial(
+    check_call, kimpy.species_name.get_number_of_species_names
+)
 
 # kimpy attributes (here to avoid importing kimpy in higher-level modules)
 collection_item_type_portableModel = kimpy.collection_item_type.portableModel
@@ -68,10 +101,10 @@ class ModelCollections:
             model_type = check_call(self.collection.get_item_type, model_name)
         except KimpyError:
             msg = (
-                "Could not find model {} installed in any of the KIM API model "
-                "collections on this system.  See "
-                "https://openkim.org/doc/usage/obtaining-models/ for instructions on "
-                "installing models.".format(model_name)
+                "Could not find model {} installed in any of the KIM API "
+                "model collections on this system.  See "
+                "https://openkim.org/doc/usage/obtaining-models/ for "
+                "instructions on installing models.".format(model_name)
             )
             raise KIMModelNotFound(msg)
 
@@ -116,11 +149,46 @@ class PortableModel:
             print("Time unit is: {}".format(ti_unit))
             print()
 
+        self._create_parameters()
+
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, value, traceback):
         pass
+
+    @check_call_wrapper
+    def _get_number_of_parameters(self):
+        return self.kim_model.get_number_of_parameters()
+
+    def _create_parameters(self):
+        def _kim_model_parameter(**kwargs):
+            dtype = kwargs["dtype"]
+
+            if dtype == "Integer":
+                return KIMModelParameterInteger(**kwargs)
+            elif dtype == "Double":
+                return KIMModelParameterDouble(**kwargs)
+            else:
+                raise KIMModelParameterError(
+                    f"Invalid model parameter type {dtype}. Supported types "
+                    "'Integer' and 'Double'."
+                )
+
+        self._parameters = {}
+        num_params = self._get_number_of_parameters()
+        for index_param in range(num_params):
+            parameter_metadata = self._get_one_parameter_metadata(index_param)
+            name = parameter_metadata["name"]
+
+            self._parameters[name] = _kim_model_parameter(
+                kim_model=self.kim_model,
+                dtype=parameter_metadata["dtype"],
+                extent=parameter_metadata["extent"],
+                name=name,
+                description=parameter_metadata["description"],
+                parameter_index=index_param,
+            )
 
     def get_model_supported_species_and_codes(self):
         """Get all of the supported species for this model and their
@@ -138,17 +206,217 @@ class PortableModel:
         """
         species = []
         codes = []
-        num_kim_species = kimpy.species_name.get_number_of_species_names()
+        num_kim_species = get_number_of_species_names()
 
         for i in range(num_kim_species):
             species_name = get_species_name(i)
-            species_support, code = self.get_species_support_and_code(species_name)
 
-            if species_support:
+            species_is_supported, code = self.get_species_support_and_code(species_name)
+
+            if species_is_supported:
                 species.append(str(species_name))
                 codes.append(code)
 
         return species, codes
+
+    @check_call_wrapper
+    def clear_then_refresh(self):
+        self.kim_model.clear_then_refresh()
+
+    @c_int_args
+    def _get_parameter_metadata(self, index_parameter):
+        try:
+            dtype, extent, name, description = check_call(
+                self.kim_model.get_parameter_metadata, index_parameter
+            )
+        except KimpyError as e:
+            raise KIMModelParameterError(
+                "Failed to retrieve metadata for "
+                f"parameter at index {index_parameter}"
+            ) from e
+
+        return dtype, extent, name, description
+
+    def parameters_metadata(self):
+        """Metadata associated with all model parameters.
+
+        Returns
+        -------
+        dict
+            Metadata associated with all model parameters.
+        """
+        return {
+            param_name: param.metadata for param_name, param in self._parameters.items()
+        }
+
+    def parameter_names(self):
+        """Names of model parameters registered in the KIM API.
+
+        Returns
+        -------
+        tuple
+            Names of model parameters registered in the KIM API
+        """
+        return tuple(self._parameters.keys())
+
+    def get_parameters(self, **kwargs):
+        """
+        Get the values of one or more model parameter arrays.
+
+        Given the names of one or more model parameters and a set of indices
+        for each of them, retrieve the corresponding elements of the relevant
+        model parameter arrays.
+
+        Parameters
+        ----------
+        **kwargs
+            Names of the model parameters and the indices whose values should
+            be retrieved.
+
+        Returns
+        -------
+        dict
+            The requested indices and the values of the model's parameters.
+
+        Note
+        ----
+        The output of this method can be used as input of
+        ``set_parameters``.
+
+        Example
+        -------
+        To get `epsilons` and `sigmas` in the LJ universal model for Mo-Mo
+        (index 4879), Mo-S (index 2006) and S-S (index 1980) interactions::
+
+            >>> LJ = 'LJ_ElliottAkerson_2015_Universal__MO_959249795837_003'
+            >>> calc = KIM(LJ)
+            >>> calc.get_parameters(epsilons=[4879, 2006, 1980],
+            ...                     sigmas=[4879, 2006, 1980])
+            {'epsilons': [[4879, 2006, 1980],
+                          [4.47499, 4.421814057295943, 4.36927]],
+             'sigmas': [[4879, 2006, 1980],
+                        [2.74397, 2.30743, 1.87089]]}
+        """
+        parameters = {}
+        for parameter_name, index_range in kwargs.items():
+            parameters.update(self._get_one_parameter(parameter_name, index_range))
+        return parameters
+
+    def set_parameters(self, **kwargs):
+        """
+        Set the values of one or more model parameter arrays.
+
+        Given the names of one or more model parameters and a set of indices
+        and corresponding values for each of them, mutate the corresponding
+        elements of the relevant model parameter arrays.
+
+        Parameters
+        ----------
+        **kwargs
+            Names of the model parameters to mutate and the corresponding
+            indices and values to set.
+
+        Returns
+        -------
+        dict
+            The requested indices and the values of the model's parameters
+            that were set.
+
+        Example
+        -------
+        To set `epsilons` in the LJ universal model for Mo-Mo (index 4879),
+        Mo-S (index 2006) and S-S (index 1980) interactions to 5.0, 4.5, and
+        4.0, respectively::
+
+            >>> LJ = 'LJ_ElliottAkerson_2015_Universal__MO_959249795837_003'
+            >>> calc = KIM(LJ)
+            >>> calc.set_parameters(epsilons=[[4879, 2006, 1980],
+            ...                               [5.0, 4.5, 4.0]])
+            {'epsilons': [[4879, 2006, 1980],
+                          [5.0, 4.5, 4.0]]}
+        """
+        parameters = {}
+        for parameter_name, parameter_data in kwargs.items():
+            index_range, values = parameter_data
+            self._set_one_parameter(parameter_name, index_range, values)
+            parameters[parameter_name] = parameter_data
+
+        return parameters
+
+    def _get_one_parameter(self, parameter_name, index_range):
+        """
+        Retrieve the value of one or more components of a model parameter array.
+
+        Parameters
+        ----------
+        parameter_name : str
+            Name of model parameter registered in the KIM API.
+        index_range : int or list
+            Zero-based index (int) or indices (list of int) specifying the
+            component(s) of the corresponding model parameter array that are
+            to be retrieved.
+
+        Returns
+        -------
+        dict
+            The requested indices and the corresponding values of the model
+            parameter array.
+        """
+        if parameter_name not in self._parameters:
+            raise KIMModelParameterError(
+                f"Parameter '{parameter_name}' is not supported by this model. "
+                "Please check that the parameter name is spelled correctly."
+            )
+
+        return self._parameters[parameter_name].get_values(index_range)
+
+    def _set_one_parameter(self, parameter_name, index_range, values):
+        """
+        Set the value of one or more components of a model parameter array.
+
+        Parameters
+        ----------
+        parameter_name : str
+            Name of model parameter registered in the KIM API.
+        index_range : int or list
+            Zero-based index (int) or indices (list of int) specifying the
+            component(s) of the corresponding model parameter array that are
+            to be mutated.
+        values : int/float or list
+            Value(s) to assign to the component(s) of the model parameter
+            array specified by ``index_range``.
+        """
+        if parameter_name not in self._parameters:
+            raise KIMModelParameterError(
+                f"Parameter '{parameter_name}' is not supported by this model. "
+                "Please check that the parameter name is spelled correctly."
+            )
+
+        self._parameters[parameter_name].set_values(index_range, values)
+
+    def _get_one_parameter_metadata(self, index_parameter):
+        """
+        Get metadata associated with a single model parameter.
+
+        Parameters
+        ----------
+        index_parameter : int
+            Zero-based index used by the KIM API to refer to this model
+            parameter.
+
+        Returns
+        -------
+        dict
+            Metadata associated with the requested model parameter.
+        """
+        dtype, extent, name, description = self._get_parameter_metadata(index_parameter)
+        parameter_metadata = {
+            "name": name,
+            "dtype": repr(dtype),
+            "extent": extent,
+            "description": description,
+        }
+        return parameter_metadata
 
     @check_call_wrapper
     def compute(self, compute_args_wrapped, release_GIL):
@@ -172,6 +440,101 @@ class PortableModel:
     @property
     def initialized(self):
         return hasattr(self, "kim_model")
+
+
+class KIMModelParameter(ABC):
+    def __init__(self, kim_model, dtype, extent, name, description, parameter_index):
+        self._kim_model = kim_model
+        self._dtype = dtype
+        self._extent = extent
+        self._name = name
+        self._description = description
+
+        # Ensure that parameter_index is cast to a C-compatible integer. This
+        # is necessary because this is passed to kimpy.
+        self._parameter_index = c_int(parameter_index)
+
+    @property
+    def metadata(self):
+        return {
+            "dtype": self._dtype,
+            "extent": self._extent,
+            "name": self._name,
+            "description": self._description,
+        }
+
+    @c_int_args
+    def _get_one_value(self, index_extent):
+        get_parameter = getattr(self._kim_model, self._dtype_accessor)
+        try:
+            return check_call(get_parameter, self._parameter_index, index_extent)
+        except KimpyError as exception:
+            raise KIMModelParameterError(
+                f"Failed to access component {index_extent} of model "
+                f"parameter of type '{self._dtype}' at parameter index "
+                f"{self._parameter_index}"
+            ) from exception
+
+    def _set_one_value(self, index_extent, value):
+        value_typecast = self._dtype_c(value)
+
+        try:
+            check_call(
+                self._kim_model.set_parameter,
+                self._parameter_index,
+                c_int(index_extent),
+                value_typecast,
+            )
+        except KimpyError:
+            raise KIMModelParameterError(
+                f"Failed to set component {index_extent} at parameter index "
+                f"{self._parameter_index} to {self._dtype} value "
+                f"{value_typecast}"
+            )
+
+    def get_values(self, index_range):
+        index_range_dim = np.ndim(index_range)
+        if index_range_dim == 0:
+            values = self._get_one_value(index_range)
+        elif index_range_dim == 1:
+            values = []
+            for idx in index_range:
+                values.append(self._get_one_value(idx))
+        else:
+            raise KIMModelParameterError(
+                "Index range must be an integer or a list of integers"
+            )
+        return {self._name: [index_range, values]}
+
+    def set_values(self, index_range, values):
+        index_range_dim = np.ndim(index_range)
+        values_dim = np.ndim(values)
+
+        # Check the shape of index_range and values
+        msg = "index_range and values must have the same shape"
+        assert index_range_dim == values_dim, msg
+
+        if index_range_dim == 0:
+            self._set_one_value(index_range, values)
+        elif index_range_dim == 1:
+            assert len(index_range) == len(values), msg
+            for idx, value in zip(index_range, values):
+                self._set_one_value(idx, value)
+        else:
+            raise KIMModelParameterError(
+                "Index range must be an integer or a list containing a "
+                "single integer"
+            )
+
+
+class KIMModelParameterInteger(KIMModelParameter):
+    _dtype_c = c_int
+    _dtype_accessor = "get_parameter_int"
+
+
+class KIMModelParameterDouble(KIMModelParameter):
+    _dtype_c = c_double
+    _dtype_accessor = "get_parameter_double"
 
 
 class ComputeArguments:
@@ -322,12 +685,10 @@ class SimulatorModel:
         num_supported_species = self.simulator_model.get_number_of_supported_species()
         if num_supported_species == 0:
             raise KIMModelInitializationError(
-                "Unable to determine supported species of simulator model {}.".format(
-                    self.model_name
-                )
+                "Unable to determine supported species of "
+                "simulator model {}.".format(self.model_name)
             )
-        else:
-            return num_supported_species
+        return num_supported_species
 
     @property
     def supported_species(self):
@@ -364,9 +725,8 @@ class SimulatorModel:
             supported_units = self.metadata["units"][0]
         except (KeyError, IndexError):
             raise KIMModelInitializationError(
-                "Unable to determine supported units of simulator model {}.".format(
-                    self.model_name
-                )
+                "Unable to determine supported units of "
+                "simulator model {}.".format(self.model_name)
             )
 
         return supported_units
