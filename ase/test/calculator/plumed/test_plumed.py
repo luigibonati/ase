@@ -9,6 +9,7 @@ from pytest import approx
 import pytest
 
 
+@pytest.mark.calculator_lite
 @pytest.mark.calculator('plumed')
 def test_CVs(factory):
     ''' This test calls plumed-ASE calculator for computing some CVs.
@@ -61,7 +62,7 @@ def test_CVs(factory):
 
     assert centersASE == approx(centersPlumed)
 
-
+@pytest.mark.calculator_lite
 @pytest.mark.calculator('plumed')
 def test_metadyn(factory):
     '''This test computes a Metadynamics calculation,
@@ -87,7 +88,7 @@ def test_metadyn(factory):
             atoms.get_positions()[1][0] == approx(position2, abs=0.01)), "Error in the metadynamics simulation"
     assert atoms.get_forces()[0][0] == approx(forceWithBias, abs=0.01), "Error in the computation of Bias-forces"
 
-
+@pytest.mark.calculator_lite
 @pytest.mark.calculator('plumed')
 def test_restart(factory):
     input = ["d: DISTANCE ATOMS=1,2",
@@ -126,7 +127,7 @@ def test_restart(factory):
             atoms1.get_positions()[1][0] == approx(position2, abs=0.01)), "Error in the metadynamics simulation"
     assert atoms1.get_forces()[0][0] == approx(forceWithBias, abs=0.01), "Error in the computation of Bias-forces"
 
-
+@pytest.mark.calculator_lite
 @pytest.mark.calculator('plumed')
 def test_postpro(factory):
     # Metadynamics simulation
