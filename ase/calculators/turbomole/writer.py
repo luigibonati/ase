@@ -1,5 +1,5 @@
 """Module containing code to manupulate control file"""
-from ase.calculators.turbomole_executor import execute
+from ase.calculators.turbomole.executor import execute
 
 
 def add_data_group(data_group, string=None, raw=False):

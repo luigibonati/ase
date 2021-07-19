@@ -1,6 +1,6 @@
 # type: ignore
 import pytest
-from ase.calculators.turbomole_parameters import TurbomoleParameters
+from ase.calculators.turbomole import TurbomoleParameters
 
 
 @pytest.fixture

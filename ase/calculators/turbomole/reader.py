@@ -6,7 +6,7 @@ import warnings
 import numpy as np
 from ase import Atom, Atoms
 from ase.units import Ha, Bohr
-from ase.calculators.turbomole_executor import execute
+from ase.calculators.turbomole.executor import execute
 from ase.calculators.calculator import ReadError
 
 

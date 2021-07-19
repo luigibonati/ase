@@ -17,11 +17,11 @@ from ase.units import Ha, Bohr
 from ase.io import read, write
 from ase.calculators.calculator import FileIOCalculator
 from ase.calculators.calculator import PropertyNotImplementedError, ReadError
-from ase.calculators.turbomole_executor import execute
-from ase.calculators.turbomole_writer import add_data_group, delete_data_group
-from ase.calculators import turbomole_reader
-from ase.calculators.turbomole_reader import read_data_group, read_convergence
-from ase.calculators.turbomole_parameters import TurbomoleParameters
+from ase.calculators.turbomole.executor import execute
+from ase.calculators.turbomole.writer import add_data_group, delete_data_group
+from ase.calculators.turbomole import reader
+from ase.calculators.turbomole.reader import read_data_group, read_convergence
+from ase.calculators.turbomole.parameters import TurbomoleParameters
 
 
 class TurbomoleOptimizer:
@@ -398,94 +398,94 @@ class Turbomole(FileIOCalculator):
 
     def read_run_parameters(self):
         """read parameters set by define and not in self.parameters"""
-        turbomole_reader.read_run_parameters(self.results)
+        reader.read_run_parameters(self.results)
 
     def read_energy(self):
         """Read energy from Turbomole energy file."""
-        turbomole_reader.read_energy(self.results, self.post_HF)
+        reader.read_energy(self.results, self.post_HF)
         self.e_total = self.results['total energy']
 
     def read_forces(self):
         """Read forces from Turbomole gradient file."""
-        self.forces = turbomole_reader.read_forces(self.results, len(self.atoms))
+        self.forces = reader.read_forces(self.results, len(self.atoms))
 
     def read_occupation_numbers(self):
         """read occupation numbers"""
-        turbomole_reader.read_occupation_numbers(self.results)
+        reader.read_occupation_numbers(self.results)
 
     def read_mos(self):
         """read the molecular orbital coefficients and orbital energies
         from files mos, alpha and beta"""
 
-        ans = turbomole_reader.read_mos(self.results)
+        ans = reader.read_mos(self.results)
         if ans is not None:
             self.converged = ans
 
     def read_basis_set(self):
         """read the basis set"""
-        turbomole_reader.read_basis_set(self.results)
+        reader.read_basis_set(self.results)
 
     def read_ecps(self):
         """read the effective core potentials"""
-        turbomole_reader.read_ecps(self.results)
+        reader.read_ecps(self.results)
 
     def read_gradient(self):
         """read all information in file 'gradient'"""
-        turbomole_reader.read_gradient(self.results)
+        reader.read_gradient(self.results)
 
     def read_hessian(self):
         """Read in the hessian matrix"""
-        turbomole_reader.read_hessian(self.results)
+        reader.read_hessian(self.results)
 
     def read_normal_modes(self):
         """Read in vibrational normal modes"""
-        turbomole_reader.read_normal_modes(self.results)
+        reader.read_normal_modes(self.results)
 
     def read_vibrational_reduced_masses(self):
         """Read vibrational reduced masses"""
-        turbomole_reader.read_vibrational_reduced_masses(self.results)
+        reader.read_vibrational_reduced_masses(self.results)
 
     def read_vibrational_spectrum(self):
         """Read the vibrational spectrum"""
-        turbomole_reader.read_vibrational_spectrum(self.results)
+        reader.read_vibrational_spectrum(self.results)
 
     def read_ssquare(self):
         """Read the expectation value of S^2 operator"""
-        turbomole_reader.read_ssquare(self.results)
+        reader.read_ssquare(self.results)
 
     def read_dipole_moment(self):
         """Read the dipole moment"""
-        turbomole_reader.read_dipole_moment(self.results)
+        reader.read_dipole_moment(self.results)
         dip_vec = self.results['electric dipole moment']['vector']['array']
         self.dipole = np.array(dip_vec) * Bohr
 
     def read_charges(self):
         """read partial charges on atoms from an ESP fit"""
         filename = 'ASE.TM.' + self.calculate_energy + '.out'
-        self.charges = turbomole_reader.read_charges(filename, len(self.atoms))
+        self.charges = reader.read_charges(filename, len(self.atoms))
 
     def get_version(self):
         """get the version of the installed turbomole package"""
         if not self.version:
-            self.version = turbomole_reader.read_version(self.directory)
+            self.version = reader.read_version(self.directory)
         return self.version
 
     def get_datetime(self):
         """get the timestamp of most recent calculation"""
         if not self.datetime:
-            self.datetime = turbomole_reader.read_datetime(self.directory)
+            self.datetime = reader.read_datetime(self.directory)
         return self.datetime
 
     def get_runtime(self):
         """get the total runtime of calculations"""
         if not self.runtime:
-            self.runtime = turbomole_reader.read_runtime(self.directory)
+            self.runtime = reader.read_runtime(self.directory)
         return self.runtime
 
     def get_hostname(self):
         """get the hostname of the computer on which the calc has run"""
         if not self.hostname:
-            self.hostname = turbomole_reader.read_hostname(self.directory)
+            self.hostname = reader.read_hostname(self.directory)
         return self.hostname
 
     def get_optimizer(self, atoms, trajectory=None, logfile=None):
@@ -636,7 +636,7 @@ class Turbomole(FileIOCalculator):
 
     def read_point_charges(self):
         """read point charges from previous calculation"""
-        charges, positions = turbomole_reader.read_point_charges()
+        charges, positions = reader.read_point_charges()
         if len(charges) > 0:
             self.pcpot = PointChargePotential(charges, positions)
 
