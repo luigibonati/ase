@@ -542,20 +542,13 @@ class NWChemFactory:
 @factory('plumed')
 class PlumedFactory:
     def __init__(self):
-        import subprocess
-        com = subprocess.Popen('plumed info --root', stdout=subprocess.PIPE, shell=True)
-        self.path = com.communicate()[0].decode("utf-8").strip('\n')
+        import plumed
+        self.path = plumed.__spec__.origin
         
     def calc(self, **kwargs):
         from ase.calculators.plumed import Plumed
         return Plumed(**kwargs)
 
-    def version(self):
-        import subprocess
-        com = subprocess.Popen('plumed info --long-version', stdout=subprocess.PIPE, shell=True)
-        ver = com.communicate()[0].decode("utf-8")
-        return ver.strip('\n')
-    
     @classmethod
     def fromconfig(cls, config):
         import importlib
