@@ -14,7 +14,7 @@ class VolumeNotDefined(Exception):
     pass
 
 
-def get_rdf(atoms: Atoms, rmax: float, nbins: int, *,
+def get_rdf(atoms: Atoms, rmax: float, nbins: int,
             distance_matrix: Optional[np.ndarray] = None,
             elements : Optional[Union[List[int], Tuple]] = None,
             no_dists: Optional[bool] = False,
