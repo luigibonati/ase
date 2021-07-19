@@ -113,7 +113,7 @@ class Cell:
 
         """
         from ase.lattice import identify_lattice
-        pbc = self.any(1) & pbc2pbc(pbc)
+        pbc = self.mask & pbc2pbc(pbc)
         lat, op = identify_lattice(self, eps=eps, pbc=pbc)
         return lat
 
@@ -189,13 +189,16 @@ class Cell:
     def complete(self):
         """Convert missing cell vectors into orthogonal unit vectors."""
         from ase.geometry.cell import complete_cell
-        cell = Cell(complete_cell(self.array))
-        return cell
+        return Cell(complete_cell(self.array))
 
     def copy(self):
         """Return a copy of this cell."""
-        cell = Cell(self.array.copy())
-        return cell
+        return Cell(self.array.copy())
+
+    @property
+    def mask(self):
+        """Boolean mask of which cell vectors are nonzero."""
+        return self.any(1)
 
     @property
     def rank(self) -> int:
@@ -203,7 +206,7 @@ class Cell:
 
         Equal to the number of nonzero lattice vectors."""
         # The name ndim clashes with ndarray.ndim
-        return self.any(1).sum()  # type: ignore
+        return sum(self.mask)  # type: ignore
 
     @property
     def orthorhombic(self) -> bool:
@@ -264,8 +267,34 @@ class Cell:
     def reciprocal(self) -> 'Cell':
         """Get reciprocal lattice as a Cell object.
 
+        The reciprocal cell is defined such that
+
+            cell.reciprocal() @ cell.T == np.diag(cell.mask)
+
+        within machine precision.
+
         Does not include factor of 2 pi."""
-        return Cell(np.linalg.pinv(self).transpose())
+        icell = Cell(np.linalg.pinv(self).transpose())
+        icell[~self.mask] = 0
+        return icell
+
+    def normal(self, i):
+        """Normal vector of the two vectors with index different from i.
+
+        This is the cross product of those vectors in cyclic order from i."""
+        return np.cross(self[i - 2], self[i - 1])
+
+    def normals(self):
+        """Normal vectors of each axis as a 3x3 matrix."""
+        return np.array([self.normal(i) for i in range(3)])
+
+    def area(self, i):
+        """Area spanned by the two vectors with index different from i."""
+        return np.linalg.norm(self.normal(i))
+
+    def areas(self):
+        """Areas spanned by cell vector pairs (1, 2), (2, 0), and (0, 2)."""
+        return np.linalg.norm(self.normals(), axis=1)
 
     def __repr__(self):
         if self.orthorhombic:
@@ -289,7 +318,7 @@ class Cell:
 
         See also :func:`ase.geometry.minkowski_reduction.minkowski_reduce`."""
         from ase.geometry.minkowski_reduction import minkowski_reduce
-        cell, op = minkowski_reduce(self, self.any(1))
+        cell, op = minkowski_reduce(self, self.mask)
         result = Cell(cell)
         return result, op
 
