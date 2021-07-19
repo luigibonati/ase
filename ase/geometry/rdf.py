@@ -16,7 +16,7 @@ class VolumeNotDefined(Exception):
 
 def get_rdf(atoms: Atoms, rmax: float, nbins: int,
             distance_matrix: Optional[np.ndarray] = None,
-            elements : Optional[Union[List[int], Tuple]] = None,
+            elements: Optional[Union[List[int], Tuple]] = None,
             no_dists: Optional[bool] = False,
             volume: Optional[float] = None):
     """Returns two numpy arrays; the radial distribution function

@@ -1,7 +1,6 @@
 import numpy as np
 import pytest
 
-from ase import Atoms
 from ase.build.molecule import molecule
 from ase.build.bulk import bulk
 from ase.cluster import Icosahedron
@@ -10,6 +9,7 @@ from ase.optimize.fire import FIRE
 from ase.lattice.compounds import L1_2
 
 from ase.geometry.rdf import get_rdf, CellTooSmall, VolumeNotDefined, get_containing_volume
+
 
 @pytest.fixture
 def atoms_h2():
@@ -31,7 +31,7 @@ def test_rdf_rdf_for_a_molecule(atoms_h2):
     assert containing_volume == pytest.approx(10.948664)
     rdf, dist = get_rdf(atoms_h2, 2.0, 5, volume=containing_volume)
     rdf_ref = [0.0, 2.91718861, 0.0, 0.0, 0.0]
-    assert rdf == pytest.approx(rdf)
+    assert rdf == pytest.approx(rdf_ref)
 
 
 def test_rdf_compute():
