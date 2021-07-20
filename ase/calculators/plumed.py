@@ -14,13 +14,13 @@ class Plumed(Calculator):
 
     implemented_properties = ['energy', 'forces']
     
-    def __init__(self, calculator1, input, timestep, atoms=None, kT=1., log='', prev_traj=None, prev_steps=None):
+    def __init__(self, calc, input, timestep, atoms=None, kT=1., log='', prev_traj=None, prev_steps=None):
         '''Plumed calculator. Plumed settings from input according to:
         plumed.org
 
         Parameters
         ----------  
-        calculator1: ASE-calculator
+        calc: ASE-calculator
                It  calculates MD unbias forces
         
         input: List of strings
@@ -59,20 +59,19 @@ class Plumed(Calculator):
         if atoms is None:
             raise TypeError('plumed calculator has to be defined with the object atoms inside.')
         if prev_traj is not None:
-            trajectory = Trajectory(prev_traj)
-            if prev_steps is None:
-                self.istep = len(trajectory) - 1
-            else:
-                self.istep = prev_steps
-            atoms.set_positions(trajectory[-1].get_positions())
-            atoms.set_momenta(trajectory[-1].get_momenta())
-            trajectory.close()
+            with Trajectory(prev_traj) as traj:
+                if prev_steps is None:
+                    self.istep = len(traj) - 1
+                else:
+                    self.istep = prev_steps
+                atoms.set_positions(traj[-1].get_positions())
+                atoms.set_momenta(traj[-1].get_momenta())
         else:
             self.istep = 0
         Calculator.__init__(self, atoms=atoms)
 
-        self.calculator1 = calculator1
-        self.name = '{}+Plumed'.format(self.calculator1.name)
+        self.calc = calc
+        self.name = '{}+Plumed'.format(self.calc.name)
         
         if world.rank == 0:
             natoms = len(atoms.get_positions())
@@ -87,9 +86,6 @@ class Plumed(Calculator):
             for line in input:
                 self.plumed.cmd("readInputLine", line)
         self.atoms = atoms
-    
-    def set_atoms(self, atoms):
-        self.atoms = atoms
 
     def calculate(self, atoms=None, properties=['energy', 'forces'], system_changes=all_changes):
         Calculator.calculate(self, atoms, properties, system_changes)
@@ -103,8 +99,8 @@ class Plumed(Calculator):
         else:
             ener_forc = None
         energy_bias, forces_bias = broadcast(ener_forc)
-        energy = self.calculator1.get_potential_energy(self.atoms) + energy_bias
-        forces = self.calculator1.get_forces(self.atoms) + forces_bias
+        energy = self.calc.get_potential_energy(self.atoms) + energy_bias
+        forces = self.calc.get_forces(self.atoms) + forces_bias
         return energy, forces
 
     def compute_bias(self, pos, istep):
@@ -121,10 +117,16 @@ class Plumed(Calculator):
         self.plumed.cmd("getBias", energy_bias)
         return [energy_bias, forces_bias]
     
-    def analysis(self, trajectory):
+    def write_plumed_files(self, trajectory):
+        """ This function computes what is required in
+        plumed input for some trajectory.
+        
+        The outputs are saved in the typical files of
+        plumed such as COLVAR, HILLS """
         for i in range(len(trajectory)):
             pos = trajectory[i].get_positions()
             self.compute_energy_and_forces(pos, i)
+        print('Complete')
 
     def __enter__(self):
         return self
