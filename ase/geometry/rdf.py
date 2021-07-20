@@ -122,4 +122,3 @@ def get_recommended_r_max(cell: Cell, pbc: List[bool]) -> float:
             h = vol / np.linalg.norm(axb)
             recommended_r_max = min(h / 2 * 0.99, recommended_r_max)
     return recommended_r_max
-
