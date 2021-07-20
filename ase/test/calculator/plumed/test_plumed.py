@@ -26,7 +26,7 @@ def test_CVs(factory):
     # execution
     atoms = Atoms('CO', positions=[[0, 0, 0], [0, 0, 5]])  # CO molecule
     timestep = 5
-    with factory.calc(calculator1=EMT(),
+    with factory.calc(calc=EMT(),
                       input=input,
                       timestep=timestep,
                       atoms=atoms) as atoms.calc:
@@ -62,6 +62,7 @@ def test_CVs(factory):
 
     assert centersASE == approx(centersPlumed)
 
+
 @pytest.mark.calculator_lite
 @pytest.mark.calculator('plumed')
 def test_metadyn(factory):
@@ -73,7 +74,7 @@ def test_metadyn(factory):
     # Metadynamics simulation
     atoms = Atoms('CO', positions=[[0, 0, 0], [6.7, 0, 0]])
     timestep = 0.05
-    with factory.calc(calculator1=LennardJones(epsilon=10, sigma=6),
+    with factory.calc(calc=LennardJones(epsilon=10, sigma=6),
                       input=input,
                       timestep=timestep,
                       atoms=atoms) as atoms.calc: 
@@ -88,44 +89,26 @@ def test_metadyn(factory):
             atoms.get_positions()[1][0] == approx(position2, abs=0.01)), "Error in the metadynamics simulation"
     assert atoms.get_forces()[0][0] == approx(forceWithBias, abs=0.01), "Error in the computation of Bias-forces"
 
+
 @pytest.mark.calculator_lite
 @pytest.mark.calculator('plumed')
 def test_restart(factory):
-    input = ["d: DISTANCE ATOMS=1,2",
-             "METAD ARG=d SIGMA=0.5 HEIGHT=2 PACE=20 FILE=HILLS"]
-
-    # Metadynamics simulation
     atoms = Atoms('CO', positions=[[0, 0, 0], [6.7, 0, 0]])
-    timestep = 0.05
-
     # first steps
-    with factory.calc(calculator1=LennardJones(epsilon=10, sigma=6), 
-                      input=input,
-                      timestep=timestep,
-                      atoms=atoms) as atoms.calc:
-        with VelocityVerlet(atoms, timestep, trajectory='test-restart.traj') as dyn:
-            dyn.run(29)
+    run(atoms, factory)
     
     # rest of steps with restart
-    atoms1 = Atoms('CO')
-    with factory.calc(calculator1=LennardJones(epsilon=10, sigma=6),
-                      input=input,
-                      timestep=timestep,
-                      atoms=atoms1,
-                      prev_traj='test-restart.traj') as atoms.calc:
-        with VelocityVerlet(atoms1, timestep,
-                         trajectory='test-restart.traj',
-                         append_trajectory=True) as dyn:
-            dyn.run(29)
+    run(atoms, factory, 'test-restart.traj')
     
     # Values computed externally
     position1 = -0.0491871
     position2 = 6.73693
     forceWithBias = 0.28807
 
-    assert (atoms1.get_positions()[0][0] == approx(position1, abs=0.01) and
-            atoms1.get_positions()[1][0] == approx(position2, abs=0.01)), "Error in the metadynamics simulation"
-    assert atoms1.get_forces()[0][0] == approx(forceWithBias, abs=0.01), "Error in the computation of Bias-forces"
+    assert (atoms.get_positions()[0][0] == approx(position1, abs=0.01) and
+            atoms.get_positions()[1][0] == approx(position2, abs=0.01)), "Error in the metadynamics simulation"
+    assert atoms.get_forces()[0][0] == approx(forceWithBias, abs=0.01), "Error in the computation of Bias-forces"
+
 
 @pytest.mark.calculator_lite
 @pytest.mark.calculator('plumed')
@@ -136,7 +119,7 @@ def test_postpro(factory):
 
     atoms = Atoms('CO', positions=[[0, 0, 0], [6.7, 0, 0]])
     timestep = 0.05
-    with factory.calc(calculator1=LennardJones(epsilon=10, sigma=6), 
+    with factory.calc(calc=LennardJones(epsilon=10, sigma=6), 
                       input=input,
                       timestep=timestep,
                       atoms=atoms) as atoms.calc:
@@ -148,15 +131,27 @@ def test_postpro(factory):
              "METAD ARG=d SIGMA=0.5 HEIGHT=2 PACE=20 FILE=HILLS_postpro"]
     atoms = Atoms('CO', positions=[[0, 0, 0], [6.7, 0, 0]])
     timestep = 0.05
-    with factory.calc(calculator1=IdealGas(),
+    with factory.calc(calc=IdealGas(),
                       input=input,
                       timestep=timestep,
                       atoms=atoms) as calc:
-        traj = Trajectory('test-direct.traj')
-        calc.analysis(traj)
-        traj.close()
+        with Trajectory('test-direct.traj') as traj:
+            calc.write_plumed_files(traj)
 
     direct = np.loadtxt("HILLS_direct")
     postpr = np.loadtxt("HILLS_postpro")
 
     assert postpr == approx(direct)
+
+
+def run(atoms, factory, traj=None):
+    input = ["d: DISTANCE ATOMS=1,2",
+             "METAD ARG=d SIGMA=0.5 HEIGHT=2 PACE=20 FILE=HILLS"]
+    timestep = 0.05
+    with factory.calc(calc=LennardJones(epsilon=10, sigma=6), 
+                      input=input,
+                      timestep=timestep,
+                      atoms=atoms,
+                      prev_traj=traj) as atoms.calc:
+        with VelocityVerlet(atoms, timestep, trajectory='test-restart.traj') as dyn:
+            dyn.run(29)
