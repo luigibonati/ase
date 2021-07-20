@@ -17,8 +17,7 @@ class VolumeNotDefined(Exception):
 def get_rdf(atoms: Atoms, rmax: float, nbins: int,
             distance_matrix: Optional[np.ndarray] = None,
             elements: Optional[Union[List[int], Tuple]] = None,
-            no_dists: Optional[bool] = False,
-            volume: Optional[float] = None):
+            no_dists: Optional[bool] = False):
     """Returns two numpy arrays; the radial distribution function
     and the corresponding distances of the supplied atoms object.
     If no_dists = True then only the first array is returned.
@@ -52,12 +51,12 @@ def get_rdf(atoms: Atoms, rmax: float, nbins: int,
     """
 
     # First check whether the cell is sufficiently large
-    if volume is None and atoms.cell.volume < 1.0e-10:
+    vol = atoms.cell.volume
+    if vol < 1.0e-10:
         raise VolumeNotDefined
 
     check_cell_and_r_max(atoms, rmax)
 
-    vol = atoms.cell.volume if volume is None else volume
     dm = distance_matrix
     if dm is None:
         dm = atoms.get_all_distances(mic=True)
@@ -124,7 +123,3 @@ def get_recommended_r_max(cell: Cell, pbc: List[bool]) -> float:
             recommended_r_max = min(h / 2 * 0.99, recommended_r_max)
     return recommended_r_max
 
-
-def get_containing_volume(atoms: Atoms) -> float:
-    pos = atoms.get_positions()
-    return np.product(np.amax(pos, axis=0) - np.amin(pos, axis=0) + 2.0)
