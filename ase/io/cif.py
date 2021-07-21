@@ -800,7 +800,7 @@ def atoms_to_loop_data(atoms, wrap, labels, loop_keys):
 
     _coords = np.array(coords)
     for i, key in enumerate(coord_headers):
-        loopdata[key] = (_coords[:, i], '{:7.5f}')
+        loopdata[key] = (_coords[:, i], '{:7.6f}')
 
     loopdata['_atom_site_type_symbol'] = (symbols, '{:<2s}')
     loopdata['_atom_site_symmetry_multiplicity'] = (
