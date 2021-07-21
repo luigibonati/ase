@@ -99,6 +99,8 @@ main:
 # Please make sure these tests are cheap.
 calculators-lite:
   image: registry.gitlab.com/ase/ase:ase-full-monty
+  tags:
+    - camd-experimental
   script:
     - pip install --no-deps --editable .
     - ase test calculator --calculators=auto --coverage --pytest -m calculator_lite --color=yes --durations=20
