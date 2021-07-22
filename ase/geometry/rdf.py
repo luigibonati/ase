@@ -17,7 +17,8 @@ class VolumeNotDefined(Exception):
 def get_rdf(atoms: Atoms, rmax: float, nbins: int,
             distance_matrix: Optional[np.ndarray] = None,
             elements: Optional[Union[List[int], Tuple]] = None,
-            no_dists: Optional[bool] = False):
+            no_dists: Optional[bool] = False,
+            volume: Optional[float] = None):
     """Returns two numpy arrays; the radial distribution function
     and the corresponding distances of the supplied atoms object.
     If no_dists = True then only the first array is returned.
@@ -47,11 +48,15 @@ def get_rdf(atoms: Atoms, rmax: float, nbins: int,
         rdf for the supplied elements will be returned.
 
     no_dists : bool
-        If True then the second array with rdf distances will not be returned
+        If True then the second array with rdf distances will not be returned.
+
+    volume : float or None
+        Optionally specify the volume of the system. If specified, the volume
+        will be used instead atoms.cell.volume.
     """
 
     # First check whether the cell is sufficiently large
-    vol = atoms.cell.volume
+    vol = atoms.cell.volume if volume is None else volume
     if vol < 1.0e-10:
         raise VolumeNotDefined
 
@@ -98,8 +103,9 @@ def get_rdf(atoms: Atoms, rmax: float, nbins: int,
 
 def check_cell_and_r_max(atoms: Atoms, rmax: float) -> None:
     cell = atoms.get_cell()
-    vol = atoms.cell.volume
     pbc = atoms.get_pbc()
+
+    vol = atoms.cell.volume
 
     for i in range(3):
         if pbc[i]:
@@ -122,3 +128,12 @@ def get_recommended_r_max(cell: Cell, pbc: List[bool]) -> float:
             h = vol / np.linalg.norm(axb)
             recommended_r_max = min(h / 2 * 0.99, recommended_r_max)
     return recommended_r_max
+
+
+def get_containing_cell_length(atoms: Atoms) -> np.ndarray:
+    atom2xyz = atoms.get_positions()
+    return np.amax(atom2xyz, axis=0) - np.amin(atom2xyz, axis=0) + 2.0
+
+
+def get_volume_estimate(atoms: Atoms) -> float:
+    return np.product(get_containing_cell_length(atoms))
