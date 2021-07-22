@@ -162,7 +162,7 @@ class CombinedJSONCache(Mapping):
     def load(cls, path):
         # XXX Very hacky this one
         cache = cls(path, {})
-        dct = self.backend.read(cache._filename)
+        dct = CombinedJSONCache.backend.read(cache._filename)
         cache._dct.update(dct)
         return cache
 
