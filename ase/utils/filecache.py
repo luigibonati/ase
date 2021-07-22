@@ -29,17 +29,21 @@ class CacheLock:
             self.fd.close()
 
 
+class JSONBackend:
+    extension = '.json'
+
 class MultiFileJSONCache(MutableMapping):
     writable = True
+    backend = JSONBackend()
 
     def __init__(self, directory):
         self.directory = Path(directory)
 
     def _filename(self, key):
-        return self.directory / f'cache.{key}.json'
+        return self.directory / (f'cache.{key}' + self.backend.extension)
 
     def _glob(self):
-        return self.directory.glob('cache.*.json')
+        return self.directory.glob('cache.*' + self.backend.extension)
 
     def __iter__(self):
         for path in self._glob():
