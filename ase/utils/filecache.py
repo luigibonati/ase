@@ -32,6 +32,10 @@ class CacheLock:
 class JSONBackend:
     extension = '.json'
 
+    @staticmethod
+    def read(fname):
+        return read_json(fname, always_array=False)
+
 class MultiFileJSONCache(MutableMapping):
     writable = True
     backend = JSONBackend()
@@ -79,7 +83,7 @@ class MultiFileJSONCache(MutableMapping):
     def __getitem__(self, key):
         path = self._filename(key)
         try:
-            return read_json(path, always_array=False)
+            return self.backend.read(path)
         except FileNotFoundError:
             missing(key)
         except json.decoder.JSONDecodeError:
@@ -119,6 +123,7 @@ class MultiFileJSONCache(MutableMapping):
 
 class CombinedJSONCache(Mapping):
     writable = False
+    backend = JSONBackend()
 
     def __init__(self, directory, dct):
         self.directory = Path(directory)
@@ -129,7 +134,7 @@ class CombinedJSONCache(Mapping):
 
     @property
     def _filename(self):
-        return self.directory / 'combined.json'
+        return self.directory / ('combined' + self.backend.extension)
 
     def _dump_json(self):
         target = self._filename
@@ -157,7 +162,7 @@ class CombinedJSONCache(Mapping):
     def load(cls, path):
         # XXX Very hacky this one
         cache = cls(path, {})
-        dct = read_json(cache._filename, always_array=False)
+        dct = self.backend.read(cache._filename)
         cache._dct.update(dct)
         return cache
 
