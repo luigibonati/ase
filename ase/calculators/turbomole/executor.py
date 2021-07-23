@@ -6,46 +6,21 @@ NumForce
 from subprocess import Popen, PIPE
 
 
-def execute(args, input_str=None, error_test=True,
-            stdout_tofile=True):
-    """executes a turbomole executable and process the outputs"""
+def check_bad_output(stderr):
+    if 'abnormally' in stderr or 'ended normally' not in stderr:
+        raise OSError(f'Turbomole error: {stderr}')
 
+
+def execute(args, input_str=''):
+    """executes a turbomole executable and process the outputs"""
     if isinstance(args, str):
         args = args.split()
+    # XXX Can we remove this?  And only have lists of strings as input.
 
-    if stdout_tofile:
-        stdout_file = 'ASE.TM.' + args[0] + '.out'
-        stdout = open(stdout_file, 'w')
-    else:
-        stdout = PIPE
-
-    if input_str:
-        stdin = input_str.encode()
-    else:
-        stdin = None
-
-    message = 'TM command "' + args[0] + '" execution failed'
-    try:
-        proc = Popen(args, stdin=PIPE, stderr=PIPE, stdout=stdout)
-        res = proc.communicate(input=stdin)
-        if error_test:
-            error = res[1].decode()
-            if 'abnormally' in error or 'ended normally' not in error:
-                message += ' with error:\n' + error
-                message += '\nSee file ' + stdout_file + ' for details.\n'
-                raise RuntimeError(message)
-    except RuntimeError as err:
-        if stdout_tofile:
-            stdout.close()
-        raise err
-    except OSError as err:
-        if stdout_tofile:
-            stdout.close()
-        raise OSError(err.args[1] + '\n' + message)
-    else:
-        print('TM command: "' + args[0] + '" successfully executed')
-
-    if stdout_tofile:
-        stdout.close()
-    else:
-        return res[0].decode()
+    stdout_file = 'ASE.TM.' + args[0] + '.out'
+    with open(stdout_file, 'w') as stdout:
+        proc = Popen(args, stdin=PIPE, stderr=PIPE, stdout=stdout,
+                     encoding='ASCII')
+        stdout_txt, stderr_txt = proc.communicate(input=input_str)
+        check_bad_output(stderr_txt)
+    return stdout_file
