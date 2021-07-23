@@ -24,3 +24,12 @@ def execute(args, input_str=''):
         stdout_txt, stderr_txt = proc.communicate(input=input_str)
         check_bad_output(stderr_txt)
     return stdout_file
+
+
+def test_execute():
+    # XXX Move to test suite
+    python = sys.executable
+    msg = 'hello world'
+    stdout_file = execute([python, '-c', 'print("{}")'])
+    with open(stdout_file) as fd:
+        assert fd.read() == msg
