@@ -1,5 +1,5 @@
 """Module containing code to manupulate control file"""
-from ase.calculators.turbomole.executor import execute
+import subprocess
 
 
 def add_data_group(data_group, string=None, raw=False):
@@ -21,5 +21,4 @@ def add_data_group(data_group, string=None, raw=False):
 
 def delete_data_group(data_group):
     """delete a turbomole data group from control file"""
-    command = ['kdg', data_group]
-    execute(command, error_test=False, stdout_tofile=False)
+    subprocess.run(['kdg', data_group], check=True)
