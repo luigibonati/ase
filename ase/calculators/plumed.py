@@ -3,6 +3,7 @@ from ase.io.trajectory import Trajectory
 from ase.parallel import broadcast
 from ase.parallel import world
 import numpy as np
+from os.path import exists
 
 
 class Plumed(Calculator):
@@ -70,6 +71,7 @@ class Plumed(Calculator):
             self.istep = 0
         Calculator.__init__(self, atoms=atoms)
 
+        self.input = input
         self.calc = calc
         self.name = '{}+Plumed'.format(self.calc.name)
         
@@ -126,7 +128,26 @@ class Plumed(Calculator):
         for i in range(len(trajectory)):
             pos = trajectory[i].get_positions()
             self.compute_energy_and_forces(pos, i)
-        print('Complete')
+        return self.read_plumed_files()
+
+    def read_plumed_files(self, directory=''):
+        read_files = {}
+        for line in self.input:
+            if line.find('FILE') != -1:
+                ini = line.find('FILE')
+                end = line.find(' ', ini)
+                if end == -1:
+                    file_name = line[ini+5:]
+                else:
+                    file_name = line[ini+5:end]
+                read_files[file_name] = np.loadtxt(file_name, unpack=True)
+    
+        if len(read_files) == 0:
+            if exists('COLVAR'):
+                read_files['COLVAR'] = np.loadtxt('COLVAR', unpack=True)
+            if exists('HILLS'):
+                read_files['HILLS'] = np.loadtxt('HILLS', unpack=True)
+        return read_files
 
     def __enter__(self):
         return self
