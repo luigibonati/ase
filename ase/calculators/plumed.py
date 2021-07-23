@@ -147,6 +147,8 @@ class Plumed(Calculator):
                 read_files['COLVAR'] = np.loadtxt('COLVAR', unpack=True)
             if exists('HILLS'):
                 read_files['HILLS'] = np.loadtxt('HILLS', unpack=True)
+        
+        assert not len(read_files) == 0, "There are not files for reading"
         return read_files
 
     def __enter__(self):
