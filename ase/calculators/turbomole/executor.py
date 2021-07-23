@@ -32,4 +32,4 @@ def test_execute():
     msg = 'hello world'
     stdout_file = execute([python, '-c', 'print("{}")'])
     with open(stdout_file) as fd:
-        assert fd.read() == msg
+        assert fd.read() == msg + '\n'
