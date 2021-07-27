@@ -3,18 +3,23 @@
 import os
 import re
 import warnings
+import subprocess
 import numpy as np
 from ase import Atom, Atoms
 from ase.units import Ha, Bohr
-from ase.calculators.turbomole.executor import execute
 from ase.calculators.calculator import ReadError
+
+
+def execute_command(args):
+    """execute commands like sdg, eiger"""
+    proc = subprocess.Popen(args, stdout=subprocess.PIPE, encoding='ASCII')
+    stdout, stderr = proc.communicate()
+    return stdout
 
 
 def read_data_group(data_group):
     """read a turbomole data group from control file"""
-    args = ['sdg', data_group]
-    dg = execute(args, error_test=False, stdout_tofile=False)
-    return dg.strip()
+    return execute_command(['sdg', data_group]).strip()
 
 
 def parse_data_group(dg, dg_name):
@@ -210,9 +215,7 @@ def read_occupation_numbers(results):
     if 'molecular orbitals' not in results.keys():
         return
     mos = results['molecular orbitals']
-    args = ['eiger', '--all', '--pview']
-    output = execute(args, error_test=False, stdout_tofile=False)
-    lines = output.split('\n')
+    lines = execute_command(['eiger', '--all', '--pview']).split('\n')
     for line in lines:
         regex = (
             r'^\s+(\d+)\.*\s+(\w*)\s+(\d+)\s+(\S+)'
