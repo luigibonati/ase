@@ -1,7 +1,48 @@
 import numpy as np
 import pytest
-from ase.geometry.analysis import Analysis
+from ase.geometry.analysis import Analysis, get_max_volume_estimate
 from ase.build import molecule
+
+
+@pytest.fixture
+def images_without_cell():
+    atoms1 = molecule('CH3CH2OH')
+    atoms2 = molecule('CH3CH2OH')
+
+    pos2 = atoms2.get_positions()
+
+    xyz_argmin = np.argmin(pos2, axis=0)
+    pos2[xyz_argmin] = pos2[xyz_argmin] - 0.1
+
+    xyz_argmax = np.argmax(pos2, axis=0)
+    pos2[xyz_argmax] = pos2[xyz_argmax] + 0.1
+
+    atoms2.set_positions(pos2)
+    return [atoms1, atoms2]
+
+
+def test_analysis_max_volume_estimate(images_without_cell):
+    volume1 = get_max_volume_estimate([images_without_cell[0]])
+    volume2 = get_max_volume_estimate([images_without_cell[1]])
+    volume_max = get_max_volume_estimate(images_without_cell)
+
+    volume_max_ref = pytest.approx(110.61358934680972)
+
+    assert volume1 == pytest.approx(97.11594231219294)
+    assert volume2 == volume_max_ref
+    assert volume_max == volume_max_ref
+
+
+def test_analysis_rdf(images_without_cell):
+
+    analysis = Analysis(images_without_cell)
+    ls_rdf = analysis.get_rdf(
+        5.0, 5, volume=analysis.get_max_volume_estimate())
+
+    ls_rdf_ref = np.array(((0.65202591, 1.1177587, 0.54907445, 0.10573393, 0.01068895),
+                           (0.0, 1.1177587, 0.5833916, 0.10573393, 0.01068895)))
+
+    assert np.array(ls_rdf) == pytest.approx(ls_rdf_ref)
 
 
 @pytest.mark.filterwarnings('ignore:the matrix subclass')

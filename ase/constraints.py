@@ -80,6 +80,17 @@ class FixConstraint:
     def copy(self):
         return dict2constraint(self.todict().copy())
 
+    def contain_duplicates(self, indices):
+        """Check for duplicate indices"""
+        return len(set(list(indices))) < len(indices)
+
+    def check_indices_dimension(self, indices):
+        if np.ndim(indices) > 1:
+            raise ValueError(
+                'indices has wrong amount of dimensions. '
+                f'Got {np.ndim(indices)}, expected ndim < 1'
+            )
+
 
 class FixConstraintSingle(FixConstraint):
     """Base class for classes that fix a single atom."""
@@ -140,17 +151,14 @@ class FixAtoms(FixConstraint):
         if mask is not None:
             indices = np.arange(len(mask))[np.asarray(mask, bool)]
         else:
-            # Check for duplicates:
-            srt = np.sort(indices)
-            if (np.diff(srt) == 0).any():
+            if self.contain_duplicates(indices):
                 raise ValueError(
                     'FixAtoms: The indices array contained duplicates. '
                     'Perhaps you wanted to specify a mask instead, but '
                     'forgot the mask= keyword.')
-        self.index = np.asarray(indices, int)
+        self.index = np.atleast_1d(indices)
 
-        if self.index.ndim != 1:
-            raise ValueError('Wrong argument to FixAtoms class!')
+        self.check_indices_dimension(self.index)
 
     def get_removed_dof(self, atoms):
         return 3 * len(self.index)
@@ -654,59 +662,148 @@ class FixedMode(FixConstraint):
         return 'FixedMode(%s)' % self.mode.tolist()
 
 
-class FixedPlane(FixConstraintSingle):
-    """Constrain an atom index *a* to move in a given plane only.
+def _sanitize_inputs(indices, direction):
+    """
+    Private function to sanitize the inputs for FixedLine and FixedPlane
+    """
+    indices = np.atleast_1d(indices)
+    FixConstraint().check_indices_dimension(indices)
 
-    The plane is defined by its normal vector *direction*."""
+    if FixConstraint().contain_duplicates(indices):
+        raise ValueError(
+            'The indices array contained duplicates.'
+        )
 
-    def __init__(self, a, direction):
-        self.a = a
-        self.dir = np.asarray(direction) / sqrt(np.dot(direction, direction))
+    if len(direction) != 3:
+        raise ValueError("len(direction) is {len(direction)}. Has to be 3")
+    direction = np.asarray(direction) / sqrt(np.dot(direction, direction))
 
-    def get_removed_dof(self, atoms):
-        return 1
+    stack_dir = np.stack((direction,) * len(indices))
+
+    return indices, stack_dir, direction
+
+
+class FixedPlane(FixConstraint):
+    """
+    Constraint object for fixing chosen atoms to only move in a plane.
+
+    The plane is defined by its normal vector *direction*
+    """
+
+    def __init__(self, indices, direction):
+        """Constrain chosen atoms.
+
+        Parameters
+        ----------
+        indices : int or list of int
+            Index or indices for atoms that should be constrained
+        direction : list of 3 int
+            Direction of the normal vector
+
+        Examples
+        --------
+        Fix all Copper atoms to only move in the yz-plane:
+
+        >>> from ase.constraints import FixedPlane
+        >>> c = FixedPlane(
+        >>>     indices=[atom.index for atom in atoms if atom.symbol == 'Cu'],
+        >>>     direction=[1, 0, 0],
+        >>> )
+        >>> atoms.set_constraint(c)
+
+        or constrain a single atom with the index 0 to move in the xy-plane:
+
+        >>> c = FixedPlane(indices=0, direction=[0, 0, 1])
+        >>> atoms.set_constraint(c)
+        """
+
+        indices, stack_dir, direction = _sanitize_inputs(indices, direction)
+        self.index = indices
+        self.stack_dir = stack_dir
+        self.dir = direction
 
     def adjust_positions(self, atoms, newpositions):
-        step = newpositions[self.a] - atoms.positions[self.a]
-        newpositions[self.a] -= self.dir * np.dot(step, self.dir)
-
-    def adjust_forces(self, atoms, forces):
-        forces[self.a] -= self.dir * np.dot(forces[self.a], self.dir)
-
-    def todict(self):
-        return {'name': 'FixedPlane',
-                'kwargs': {'a': self.a, 'direction': self.dir.tolist()}}
-
-    def __repr__(self):
-        return 'FixedPlane(%d, %s)' % (self.a, self.dir.tolist())
-
-
-class FixedLine(FixConstraintSingle):
-    """Constrain an atom index *a* to move on a given line only.
-
-    The line is defined by its vector *direction*."""
-
-    def __init__(self, a, direction):
-        self.a = a
-        self.dir = np.asarray(direction) / sqrt(np.dot(direction, direction))
-
-    def get_removed_dof(self, atoms):
-        return 2
-
-    def adjust_positions(self, atoms, newpositions):
-        step = newpositions[self.a] - atoms.positions[self.a]
+        step = newpositions[self.index] - atoms.positions[self.index]
         x = np.dot(step, self.dir)
-        newpositions[self.a] = atoms.positions[self.a] + x * self.dir
+        newpositions[self.index] -= self.stack_dir * x[:, None]
 
     def adjust_forces(self, atoms, forces):
-        forces[self.a] = self.dir * np.dot(forces[self.a], self.dir)
+        forces[self.index] -= self.stack_dir * np.dot(
+            forces[self.index], self.dir
+        )[:, None]
 
-    def __repr__(self):
-        return 'FixedLine(%d, %s)' % (self.a, self.dir.tolist())
+    def get_removed_dof(self, atoms):
+        return 1 * len(self.index)
 
     def todict(self):
-        return {'name': 'FixedLine',
-                'kwargs': {'a': self.a, 'direction': self.dir.tolist()}}
+        return {
+            'name': 'FixedPlane',
+            'kwargs': {'indices': self.index, 'direction': self.dir.tolist()}
+        }
+
+    def __repr__(self):
+        return f'FixedPlane(indices={self.index}, {self.dir.tolist()})'
+
+
+class FixedLine(FixConstraint):
+    """
+    Constrain an atom index or a list of atom indices to move on a line only.
+
+    The line is defined by its vector *direction*
+    """
+    def __init__(self, indices, direction):
+        """Constrain chosen atoms.
+
+        Parameters
+        ----------
+        indices : int or list of int
+            Index or indices for atoms that should be constrained
+        direction : list of 3 int
+            Direction of the vector defining the line
+
+        Examples
+        --------
+        Fix all Copper atoms to only move in the x-direction:
+
+        >>> from ase.constraints import FixedLine
+        >>> c = FixedLine(
+        >>>     indices=[atom.index for atom in atoms if atom.symbol == 'Cu'],
+        >>>     direction=[1, 0, 0],
+        >>> )
+        >>> atoms.set_constraint(c)
+
+        or constrain a single atom with the index 0 to move in the z-direction:
+
+        >>> c = FixedLine(indices=0, direction=[0, 0, 1])
+        >>> atoms.set_constraint(c)
+        """
+        indices, stack_dir, direction = _sanitize_inputs(indices, direction)
+        self.index = indices
+        self.stack_dir = stack_dir
+        self.dir = direction
+
+    def adjust_positions(self, atoms, newpositions):
+        step = newpositions[self.index] - atoms.positions[self.index]
+        x = np.dot(step, self.dir)
+        newpositions[self.index] = atoms.positions[self.index] + \
+            self.stack_dir * x[:, None]
+
+    def adjust_forces(self, atoms, forces):
+        forces[self.index] = self.stack_dir * np.dot(
+            forces[self.index], self.dir
+        )[:, None]
+
+    def get_removed_dof(self, atoms):
+        return 2 * len(self.index)
+
+    def __repr__(self):
+        return f'FixedLine(indices={self.index}, {self.dir.tolist()})'
+
+    def todict(self):
+        return {
+            'name': 'FixedLine',
+            'kwargs': {'indices': self.index, 'direction': self.dir.tolist()}
+        }
 
 
 class FixCartesian(FixConstraintSingle):
@@ -733,7 +830,7 @@ class FixCartesian(FixConstraintSingle):
 
     def todict(self):
         return {'name': 'FixCartesian',
-                'kwargs': {'a': self.a, 'mask': ~self.mask.tolist()}}
+                'kwargs': {'a': self.a, 'mask': (~self.mask).tolist()}}
 
 
 class FixScaled(FixConstraintSingle):
