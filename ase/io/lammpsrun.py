@@ -1,14 +1,15 @@
 import gzip
 import struct
-from os.path import splitext
 from collections import deque
+from os.path import splitext
+
 import numpy as np
 
 from ase.atoms import Atoms
-from ase.quaternions import Quaternions
+from ase.calculators.lammps import convert
 from ase.calculators.singlepoint import SinglePointCalculator
 from ase.parallel import paropen
-from ase.calculators.lammps import convert
+from ase.quaternions import Quaternions
 
 
 def read_lammps_dump(infileobj, **kwargs):
@@ -76,7 +77,8 @@ def lammps_data_to_ase_atoms(
     :param celldisp: origin shift
     :param pbc: periodic boundaries
     :param atomsobj: function to create ase-Atoms object
-    :param order: sort atoms by id. Might be faster to turn off
+    :param order: sort atoms by id. Might be faster to turn off.
+    Disregarded in case `id` column is not given in file.
     :param specorder: list of species to map lammps types to ase-species
     (usually .dump files to not contain type to species mapping)
     :param prismobj: Coordinate transformation between lammps and ase
@@ -86,33 +88,60 @@ def lammps_data_to_ase_atoms(
     :rtype: Atoms
 
     """
-    # data array of doubles
-    ids = data[:, colnames.index("id")].astype(int)
-    types = data[:, colnames.index("type")].astype(int)
-    if order:
-        sort_order = np.argsort(ids)
-        ids = ids[sort_order]
-        data = data[sort_order, :]
-        types = types[sort_order]
 
-    # reconstruct types from given specorder
-    if specorder:
-        types = [specorder[t - 1] for t in types]
+    # read IDs if given and order if needed
+    if "id" in colnames:
+        ids = data[:, colnames.index("id")].astype(int)
+        if order:
+            sort_order = np.argsort(ids)
+            data = data[sort_order, :]
+
+    # determine the elements
+    if "element" in colnames:
+        # priority to elements written in file
+        elements = data[:, colnames.index("element")]
+    elif "type" in colnames:
+        # fall back to `types` otherwise
+        elements = data[:, colnames.index("type")].astype(int)
+
+        # reconstruct types from given specorder
+        if specorder:
+            elements = [specorder[t - 1] for t in elements]
+    else:
+        # todo: what if specorder give but no types?
+        # in principle the masses could work for atoms, but that needs
+        # lots of cases and new code I guess
+        raise ValueError("Cannot determine atom types form LAMMPS dump file")
 
     def get_quantity(labels, quantity=None):
         try:
             cols = [colnames.index(label) for label in labels]
             if quantity:
-                return convert(data[:, cols], quantity, units, "ASE")
+                return convert(data[:, cols].astype(float), quantity,
+                               units, "ASE")
 
-            return data[:, cols]
+            return data[:, cols].astype(float)
         except ValueError:
             return None
 
-    # slice data block into columns
-    # + perform necessary conversions to ASE units
-    positions = get_quantity(["x", "y", "z"], "distance")
-    scaled_positions = get_quantity(["xs", "ys", "zs"])
+    # Positions
+    positions = None
+    scaled_positions = None
+    if "x" in colnames:
+        # doc: x, y, z = unscaled atom coordinates
+        positions = get_quantity(["x", "y", "z"], "distance")
+    elif "xs" in colnames:
+        # doc: xs,ys,zs = scaled atom coordinates
+        scaled_positions = get_quantity(["xs", "ys", "zs"])
+    elif "xu" in colnames:
+        # doc: xu,yu,zu = unwrapped atom coordinates
+        positions = get_quantity(["xu", "yu", "zu"], "distance")
+    elif "xsu" in colnames:
+        # xsu,ysu,zsu = scaled unwrapped atom coordinates
+        scaled_positions = get_quantity(["xsu", "ysu", "zsu"])
+    else:
+        raise ValueError("No atomic positions found in LAMMPS output")
+
     velocities = get_quantity(["vx", "vy", "vz"], "velocity")
     charges = get_quantity(["q"], "charge")
     forces = get_quantity(["fx", "fy", "fz"], "force")
@@ -128,7 +157,7 @@ def lammps_data_to_ase_atoms(
 
     if quaternions:
         out_atoms = Quaternions(
-            symbols=types,
+            symbols=elements,
             positions=positions,
             cell=cell,
             celldisp=celldisp,
@@ -142,7 +171,7 @@ def lammps_data_to_ase_atoms(
             positions = prismobj.vector_to_ase(positions, wrap=True)
 
         out_atoms = atomsobj(
-            symbols=types,
+            symbols=elements,
             positions=positions,
             pbc=pbc,
             celldisp=celldisp,
@@ -150,7 +179,7 @@ def lammps_data_to_ase_atoms(
         )
     elif scaled_positions is not None:
         out_atoms = atomsobj(
-            symbols=types,
+            symbols=elements,
             scaled_positions=scaled_positions,
             pbc=pbc,
             celldisp=celldisp,
@@ -169,7 +198,8 @@ def lammps_data_to_ase_atoms(
         # !TODO: use another calculator if available (or move forces
         #        to atoms.property) (other problem: synchronizing
         #        parallel runs)
-        calculator = SinglePointCalculator(out_atoms, energy=0.0, forces=forces)
+        calculator = SinglePointCalculator(out_atoms, energy=0.0,
+                                           forces=forces)
         out_atoms.calc = calculator
 
     # process the extra columns of fixes, variables and computes
@@ -178,7 +208,8 @@ def lammps_data_to_ase_atoms(
         # determine if it is a compute or fix (but not the quaternian)
         if (colname.startswith('f_') or colname.startswith('v_') or
                 (colname.startswith('c_') and not colname.startswith('c_q['))):
-            out_atoms.new_array(colname, get_quantity([colname]), dtype='float')
+            out_atoms.new_array(colname, get_quantity([colname]),
+                                dtype='float')
 
     return out_atoms
 
@@ -225,11 +256,13 @@ def read_lammps_dump_text(fileobj, index=-1, **kwargs):
     """
     # Load all dumped timesteps into memory simultaneously
     lines = deque(fileobj.readlines())
-
     index_end = get_max_index(index)
 
     n_atoms = 0
     images = []
+
+    # avoid references before assignment in case of incorrect file structure
+    cell, celldisp, pbc = None, None, False
 
     while len(lines) > n_atoms:
         line = lines.popleft()
@@ -247,7 +280,6 @@ def read_lammps_dump_text(fileobj, index=-1, **kwargs):
         if "ITEM: BOX BOUNDS" in line:
             # save labels behind "ITEM: BOX BOUNDS" in triclinic case
             # (>=lammps-7Jul09)
-            # !TODO: handle periodic boundary conditions in tilt_items
             tilt_items = line.split()[3:]
             celldatarows = [lines.popleft() for _ in range(3)]
             celldata = np.loadtxt(celldatarows)
@@ -270,15 +302,18 @@ def read_lammps_dump_text(fileobj, index=-1, **kwargs):
             cell, celldisp = construct_cell(diagdisp, offdiag)
 
             # Handle pbc conditions
-            if len(tilt_items) > 3:
-                pbc = ["p" in d.lower() for d in tilt_items[3:]]
+            if len(tilt_items) == 3:
+                pbc_items = tilt_items
+            elif len(tilt_items) > 3:
+                pbc_items = tilt_items[3:6]
             else:
-                pbc = (False,) * 3
+                pbc_items = ["f", "f", "f"]
+            pbc = ["p" in d.lower() for d in pbc_items]
 
         if "ITEM: ATOMS" in line:
             colnames = line.split()[2:]
             datarows = [lines.popleft() for _ in range(n_atoms)]
-            data = np.loadtxt(datarows)
+            data = np.loadtxt(datarows, dtype=str)
             out_atoms = lammps_data_to_ase_atoms(
                 data=data,
                 colnames=colnames,
@@ -335,8 +370,41 @@ def read_lammps_dump_binary(
 
     while True:
         try:
+            # Assume that the binary dump file is in the old (pre-29Oct2020)
+            # format
+            magic_string = None
+
             # read header
             ntimestep, = read_variables("=" + bigformat)
+
+            # In the new LAMMPS binary dump format (version 29Oct2020 and
+            # onward), a negative timestep is used to indicate that the next
+            # few bytes will contain certain metadata
+            if ntimestep < 0:
+                # First bigint was actually encoding the negative of the format
+                # name string length (we call this 'magic_string' to
+                magic_string_len = -ntimestep
+
+                # The next `magic_string_len` bytes will hold a string
+                # indicating the format of the dump file
+                magic_string = b''.join(read_variables(
+                    "=" + str(magic_string_len) + "c"))
+
+                # Read endianness (integer). For now, we'll disregard the value
+                # and simply use the host machine's endianness (via '='
+                # character used with struct.calcsize).
+                #
+                # TODO: Use the endianness of the dump file in subsequent
+                #       read_variables rather than just assuming it will match
+                #       that of the host
+                endian, = read_variables("=i")
+
+                # Read revision number (integer)
+                revision, = read_variables("=i")
+
+                # Finally, read the actual timestep (bigint)
+                ntimestep, = read_variables("=" + bigformat)
+
             n_atoms, triclinic = read_variables("=" + bigformat + "i")
             boundary = read_variables("=6i")
             diagdisp = read_variables("=6d")
@@ -344,9 +412,33 @@ def read_lammps_dump_binary(
                 offdiag = read_variables("=3d")
             else:
                 offdiag = (0.0,) * 3
-            size_one, nchunk = read_variables("=2i")
+            size_one, = read_variables("=i")
+
             if len(colnames) != size_one:
                 raise ValueError("Provided columns do not match binary file")
+
+            if magic_string and revision > 1:
+                # New binary dump format includes units string, columns string, and
+                # time
+                units_str_len, = read_variables("=i")
+
+                if units_str_len > 0:
+                    # Read lammps units style
+                    _ = b''.join(
+                        read_variables("=" + str(units_str_len) + "c"))
+
+                flag, = read_variables("=c")
+                if flag != b'\x00':
+                    # Flag was non-empty string
+                    time, = read_variables("=d")
+
+                # Length of column string
+                columns_str_len, = read_variables("=i")
+
+                # Read column string (e.g., "id type x y z vx vy vz fx fy fz")
+                _ = b''.join(read_variables("=" + str(columns_str_len) + "c"))
+
+            nchunk, = read_variables("=i")
 
             # lammps cells/boxes can have different boundary conditions on each
             # sides (makes mainly sense for different non-periodic conditions

@@ -13,10 +13,13 @@ read_xyz() generator and a write_xyz() function.  This and other
 information can be obtained from ioformats['xyz'].
 """
 
+import io
+import re
 import functools
 import inspect
 import os
 import sys
+import numbers
 import warnings
 from pathlib import Path, PurePath
 from typing import (
@@ -25,6 +28,9 @@ from typing import (
 from ase.atoms import Atoms
 from importlib import import_module
 from ase.parallel import parallel_function, parallel_generator
+
+
+PEEK_BYTES = 50000
 
 
 class UnknownFileTypeError(Exception):
@@ -47,16 +53,17 @@ class IOFormat:
         self.extensions: List[str] = []
         self.globs: List[str] = []
         self.magic: List[str] = []
+        self.magic_regex: Optional[bytes] = None
 
     def open(self, fname, mode: str = 'r') -> IO:
         # We might want append mode, too
         # We can allow more flags as needed (buffering etc.)
         if mode not in list('rwa'):
             raise ValueError("Only modes allowed are 'r', 'w', and 'a'")
-        if mode == 'r' and self.can_read:
+        if mode == 'r' and not self.can_read:
             raise NotImplementedError('No reader implemented for {} format'
                                       .format(self.name))
-        if mode == 'w' and self.can_write:
+        if mode == 'w' and not self.can_write:
             raise NotImplementedError('No writer implemented for {} format'
                                       .format(self.name))
         if mode == 'a' and not self.can_append:
@@ -69,17 +76,53 @@ class IOFormat:
         path = Path(fname)
         return path.open(mode, encoding=self.encoding)
 
+    def _buf_as_filelike(self, data: Union[str, bytes]) -> IO:
+        encoding = self.encoding
+        if encoding is None:
+            encoding = 'utf-8'  # Best hacky guess.
+
+        if self.isbinary:
+            if isinstance(data, str):
+                data = data.encode(encoding)
+        else:
+            if isinstance(data, bytes):
+                data = data.decode(encoding)
+
+        return self._ioclass(data)
+
+    @property
+    def _ioclass(self):
+        if self.isbinary:
+            return io.BytesIO
+        else:
+            return io.StringIO
+
+    def parse_images(self, data: Union[str, bytes],
+                     **kwargs) -> Sequence[Atoms]:
+        with self._buf_as_filelike(data) as fd:
+            outputs = self.read(fd, **kwargs)
+            if self.single:
+                assert isinstance(outputs, Atoms)
+                return [outputs]
+            else:
+                return list(self.read(fd, **kwargs))
+
+    def parse_atoms(self, data: Union[str, bytes], **kwargs) -> Atoms:
+        images = self.parse_images(data, **kwargs)
+        return images[-1]
+
     @property
     def can_read(self) -> bool:
-        return self.read is not None
+        return self._readfunc() is not None
 
     @property
     def can_write(self) -> bool:
-        return self.write is not None
+        return self._writefunc() is not None
 
     @property
     def can_append(self) -> bool:
-        return self.can_write and 'append' in self.write.__code__.co_varnames
+        writefunc = self._writefunc()
+        return self.can_write and 'append' in writefunc.__code__.co_varnames
 
     def __repr__(self) -> str:
         tokens = ['{}={}'.format(name, repr(value))
@@ -102,40 +145,71 @@ class IOFormat:
     def _formatname(self) -> str:
         return self.name.replace('-', '_')
 
+    def _readfunc(self):
+        return getattr(self.module, 'read_' + self._formatname, None)
+
+    def _writefunc(self):
+        return getattr(self.module, 'write_' + self._formatname, None)
+
     @property
     def read(self):
-        read = getattr(self.module, 'read_' + self._formatname, None)
-        if read and not inspect.isgeneratorfunction(read):
-            read = functools.partial(wrap_read_function, read)
-        return read
+        if not self.can_read:
+            self._warn_none('read')
+            return None
+
+        return self._read_wrapper
+
+    def _read_wrapper(self, *args, **kwargs):
+        function = self._readfunc()
+        if function is None:
+            self._warn_none('read')
+            return None
+        if not inspect.isgeneratorfunction(function):
+            function = functools.partial(wrap_read_function, function)
+        return function(*args, **kwargs)
+
+    def _warn_none(self, action):
+        msg = ('Accessing the IOFormat.{action} property on a format '
+               'without {action} support will change behaviour in the '
+               'future and return a callable instead of None.  '
+               'Use IOFormat.can_{action} to check whether {action} '
+               'is supported.')
+        warnings.warn(msg.format(action=action), FutureWarning)
 
     @property
     def write(self):
-        return getattr(self.module, 'write_' + self._formatname, None)
+        if not self.can_write:
+            self._warn_none('write')
+            return None
+
+        return self._write_wrapper
+
+    def _write_wrapper(self, *args, **kwargs):
+        function = self._writefunc()
+        if function is None:
+            raise ValueError(f'Cannot write to {self.name}-format')
+        return function(*args, **kwargs)
 
     @property
     def modes(self) -> str:
         modes = ''
-        if self.read:
+        if self.can_read:
             modes += 'r'
-        if self.write:
+        if self.can_write:
             modes += 'w'
         return modes
 
     def full_description(self) -> str:
-        lines = ['Name:        {name}',
-                 'Description: {description}',
-                 'Modes:       {modes}',
-                 'Encoding:    {encoding}',
-                 'Module:      {module_name}',
-                 'Code:        {code}',
-                 'Extensions:  {extensions}',
-                 'Globs:       {globs}',
-                 'Magic:       {magic}']
-        desc = '\n'.join(lines)
-
-        myvars = {name: getattr(self, name) for name in dir(self)}
-        return desc.format(**myvars)
+        lines = [f'Name:        {self.name}',
+                 f'Description: {self.description}',
+                 f'Modes:       {self.modes}',
+                 f'Encoding:    {self.encoding}',
+                 f'Module:      {self.module_name}',
+                 f'Code:        {self.code}',
+                 f'Extensions:  {self.extensions}',
+                 f'Globs:       {self.globs}',
+                 f'Magic:       {self.magic}']
+        return '\n'.join(lines)
 
     @property
     def acceptsfd(self) -> bool:
@@ -153,8 +227,8 @@ class IOFormat:
         try:
             return import_module(self.module_name)
         except ImportError as err:
-            raise UnknownFileTypeError('File format not recognized: %s.  '
-                                       'Error: %s' % (format, err))
+            raise UnknownFileTypeError(
+                f'File format not recognized: {self.name}.  Error: {err}')
 
     def match_name(self, basename: str) -> bool:
         from fnmatch import fnmatch
@@ -162,7 +236,11 @@ class IOFormat:
                    for pattern in self.globs)
 
     def match_magic(self, data: bytes) -> bool:
-        # XXX We should use a regex for this!
+        if self.magic_regex:
+            assert not self.magic, 'Define only one of magic and magic_regex'
+            match = re.match(self.magic_regex, data, re.M | re.S)
+            return match is not None
+
         from fnmatch import fnmatchcase
         return any(fnmatchcase(data, magic + b'*')  # type: ignore
                    for magic in self.magic)
@@ -177,7 +255,8 @@ format2modulename = {}  # Left for compatibility only.
 
 
 def define_io_format(name, desc, code, *, module=None, ext=None,
-                     glob=None, magic=None, encoding=None):
+                     glob=None, magic=None, encoding=None,
+                     magic_regex=None):
     if module is None:
         module = name.replace('-', '_')
         format2modulename[name] = module
@@ -196,6 +275,9 @@ def define_io_format(name, desc, code, *, module=None, ext=None,
     fmt.extensions = normalize_patterns(ext)
     fmt.globs = normalize_patterns(glob)
     fmt.magic = normalize_patterns(magic)
+
+    if magic_regex is not None:
+        fmt.magic_regex = magic_regex
 
     for ext in fmt.extensions:
         if ext in extension2format:
@@ -245,13 +327,16 @@ F('castep-md', 'CASTEP molecular dynamics file', '+F',
 F('castep-phonon', 'CASTEP phonon file', '1F',
   module='castep', ext='phonon')
 F('cfg', 'AtomEye configuration', '1F')
-F('cif', 'CIF-file', '+B')
+F('cif', 'CIF-file', '+B', ext='cif')
 F('cmdft', 'CMDFT-file', '1F', glob='*I_info')
+F('cml', 'Chemical json file', '1F', ext='cml')
 F('cp2k-dcd', 'CP2K DCD file', '+B',
   module='cp2k', ext='dcd')
-F('crystal', 'Crystal fort.34 format', '1S',
+F('cp2k-restart', 'CP2K restart file', '1F',
+  module='cp2k', ext='restart')
+F('crystal', 'Crystal fort.34 format', '1F',
   ext=['f34', '34'], glob=['f34', '34'])
-F('cube', 'CUBE file', '1F')
+F('cube', 'CUBE file', '1F', ext='cube')
 F('dacapo-text', 'Dacapo text output', '1F',
   module='dacapo', magic=b'*&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&\n')
 F('db', 'ASE SQLite database file', '+S')
@@ -266,7 +351,9 @@ F('dmol-car', 'DMol3 structure file', '1S',
   module='dmol', ext='car')
 F('dmol-incoor', 'DMol3 structure file', '1S',
   module='dmol')
-F('elk', 'ELK atoms definition', '1S')
+F('elk', 'ELK atoms definition from GEOMETRY.OUT', '1F',
+  glob=['GEOMETRY.OUT'])
+F('elk-in', 'ELK input file', '1F', module='elk')
 F('eon', 'EON CON file', '+F',
   ext='con')
 F('eps', 'Encapsulated Postscript', '1S')
@@ -274,8 +361,8 @@ F('espresso-in', 'Quantum espresso in file', '1F',
   module='espresso', ext='pwi', magic=[b'*\n&system', b'*\n&SYSTEM'])
 F('espresso-out', 'Quantum espresso out file', '+F',
   module='espresso', ext=['pwo', 'out'], magic=b'*Program PWSCF')
-F('exciting', 'exciting input', '1S', glob='input.xml')
-F('extxyz', 'Extended XYZ file', '+F')
+F('exciting', 'exciting input', '1F', glob='input.xml')
+F('extxyz', 'Extended XYZ file', '+F', ext='xyz')
 F('findsym', 'FINDSYM-format', '+F')
 F('gamess-us-out', 'GAMESS-US output file', '1F',
   module='gamess_us', magic=b'*GAMESS')
@@ -299,14 +386,14 @@ F('gpaw-out', 'GPAW text output', '+F',
 F('gpumd', 'GPUMD input file', '1F', glob='xyz.in')
 F('gpw', 'GPAW restart-file', '1S',
   magic=[b'- of UlmGPAW', b'AFFormatGPAW'])
-F('gromacs', 'Gromacs coordinates', '1S',
+F('gromacs', 'Gromacs coordinates', '1F',
   ext='gro')
 F('gromos', 'Gromos96 geometry file', '1F', ext='g96')
 F('html', 'X3DOM HTML', '1F', module='x3d')
-F('json', 'ASE JSON database file', '+F', module='db')
+F('json', 'ASE JSON database file', '+F', ext='json', module='db')
 F('jsv', 'JSV file format', '1F')
 F('lammps-dump-text', 'LAMMPS text dump file', '+F',
-  module='lammpsrun', magic=b'*\nITEM: TIMESTEP\n')
+  module='lammpsrun', magic_regex=b'.*?^ITEM: TIMESTEP$')
 F('lammps-dump-binary', 'LAMMPS binary dump file', '+B',
   module='lammpsrun')
 F('lammps-data', 'LAMMPS data file', '1F', module='lammpsdata',
@@ -319,7 +406,8 @@ F('mustem', 'muSTEM xtl file', '1F',
   ext='xtl')
 F('mysql', 'ASE MySQL database file', '+S',
   module='db')
-F('netcdftrajectory', 'AMBER NetCDF trajectory file', '+S')
+F('netcdftrajectory', 'AMBER NetCDF trajectory file', '+S',
+  magic=b'CDF')
 F('nomad-json', 'JSON from Nomad archive', '+F',
   ext='nomad-json')
 F('nwchem-in', 'NWChem input file', '1F',
@@ -344,12 +432,12 @@ F('qbox', 'QBOX output file', '+F',
 F('res', 'SHELX format', '1S', ext='shelx')
 F('rmc6f', 'RMCProfile', '1S', ext='rmc6f')
 F('sdf', 'SDF format', '1F')
+F('siesta-xv', 'Siesta .XV file', '1F',
+  glob='*.XV', module='siesta')
 F('struct', 'WIEN2k structure file', '1S', module='wien2k')
 F('struct_out', 'SIESTA STRUCT file', '1F', module='siesta')
-F('traj', 'ASE trajectory', '+B', module='trajectory',
+F('traj', 'ASE trajectory', '+B', module='trajectory', ext='traj',
   magic=[b'- of UlmASE-Trajectory', b'AFFormatASE-Trajectory'])
-F('trj', 'Old ASE pickle trajectory', '+S',
-  module='pickletrajectory', magic=b'PickleTrajectory')
 F('turbomole', 'TURBOMOLE coord file', '1F', glob='coord',
   magic=b'$coord')
 F('turbomole-gradient', 'TURBOMOLE gradient file', '+F',
@@ -364,19 +452,17 @@ F('vasp-xdatcar', 'VASP XDATCAR file', '+F',
 F('vasp-xml', 'VASP vasprun.xml file', '+F',
   module='vasp', glob='*vasp*.xml')
 F('vti', 'VTK XML Image Data', '1F', module='vtkxml')
-F('vtu', 'VTK XML Unstructured Grid', '1F', module='vtkxml')
+F('vtu', 'VTK XML Unstructured Grid', '1F', module='vtkxml', ext='vtu')
+F('wout', 'Wannier90 output', '1F', module='wannier90')
 F('x3d', 'X3D', '1S')
 F('xsd', 'Materials Studio file', '1F')
 F('xsf', 'XCrySDen Structure File', '+F',
   magic=[b'*\nANIMSTEPS', b'*\nCRYSTAL', b'*\nSLAB', b'*\nPOLYMER',
          b'*\nMOLECULE', b'*\nATOMS'])
 F('xtd', 'Materials Studio file', '+F')
+# xyz: No `ext='xyz'` in the definition below.
+#      The .xyz files are handled by the extxyz module by default.
 F('xyz', 'XYZ-file', '+F')
-
-netcdfconventions2format = {
-    'http://www.etsf.eu/fileformats': 'etsf',
-    'AMBER': 'netcdftrajectory'
-}
 
 
 def get_compression(filename: str) -> Tuple[str, Optional[str]]:
@@ -451,21 +537,18 @@ def open_with_compression(filename: str, mode: str = 'r') -> IO:
 
     root, compression = get_compression(filename)
 
-    if compression is None:
-        return open(filename, mode)
-    elif compression == 'gz':
+    if compression == 'gz':
         import gzip
-        fd = gzip.open(filename, mode=mode)
+        return gzip.open(filename, mode=mode)  # type: ignore
     elif compression == 'bz2':
         import bz2
-        fd = bz2.open(filename, mode=mode)
+        return bz2.open(filename, mode=mode)
     elif compression == 'xz':
         import lzma
-        fd = lzma.open(filename, mode)
+        return lzma.open(filename, mode)
     else:
-        fd = open(filename, mode)
-
-    return fd
+        # Either None or unknown string
+        return open(filename, mode)
 
 
 def wrap_read_function(read, filename, index=None, **kwargs):
@@ -511,13 +594,16 @@ def write(
         might not be readable by any program! They will nevertheless be
         written without error message.
 
-    The use of additional keywords is format specific."""
+    The use of additional keywords is format specific. write() may
+    return an object after writing certain formats, but this behaviour
+    may change in the future.
+
+    """
 
     if isinstance(filename, PurePath):
         filename = str(filename)
 
     if isinstance(filename, str):
-        filename = os.path.expanduser(filename)
         fd = None
         if filename == '-':
             fd = sys.stdout
@@ -527,14 +613,20 @@ def write(
             assert isinstance(format, str)
     else:
         fd = filename  # type: ignore
+        if format is None:
+            try:
+                format = filetype(filename, read=False)
+                assert isinstance(format, str)
+            except UnknownFileTypeError:
+                format = None
         filename = None  # type: ignore
 
     format = format or 'json'  # default is json
 
     io = get_ioformat(format)
 
-    _write(filename, fd, format, io, images, parallel=parallel, append=append,
-           **kwargs)
+    return _write(filename, fd, format, io, images,
+                  parallel=parallel, append=append, **kwargs)
 
 
 @parallel_function
@@ -549,41 +641,42 @@ def _write(filename, fd, format, io, images, parallel=None, append=False,
                              .format(format))
         images = images[0]
 
-    if io.write is None:
+    if not io.can_write:
         raise ValueError("Can't write to {}-format".format(format))
 
     # Special case for json-format:
     if format == 'json' and (len(images) > 1 or append):
         if filename is not None:
-            io.write(filename, images, append=append, **kwargs)
-            return
+            return io.write(filename, images, append=append, **kwargs)
         raise ValueError("Can't write more than one image to file-descriptor "
                          'using json-format.')
 
     if io.acceptsfd:
         open_new = (fd is None)
-        if open_new:
-            mode = 'wb' if io.isbinary else 'w'
-            if append:
-                mode = mode.replace('w', 'a')
-            fd = open_with_compression(filename, mode)
-            # XXX remember to re-enable compressed open
-            # fd = io.open(filename, mode)
-        io.write(fd, images, **kwargs)
-        if open_new:
-            fd.close()
+        try:
+            if open_new:
+                mode = 'wb' if io.isbinary else 'w'
+                if append:
+                    mode = mode.replace('w', 'a')
+                fd = open_with_compression(filename, mode)
+                # XXX remember to re-enable compressed open
+                # fd = io.open(filename, mode)
+            return io.write(fd, images, **kwargs)
+        finally:
+            if open_new and fd is not None:
+                fd.close()
     else:
         if fd is not None:
             raise ValueError("Can't write {}-format to file-descriptor"
                              .format(format))
         if io.can_append:
-            io.write(filename, images, append=append, **kwargs)
+            return io.write(filename, images, append=append, **kwargs)
         elif append:
             raise ValueError("Cannot append to {}-format, write-function "
                              "does not support the append keyword."
                              .format(format))
         else:
-            io.write(filename, images, **kwargs)
+            return io.write(filename, images, **kwargs)
 
 
 def read(
@@ -633,7 +726,7 @@ def read(
     filename, index = parse_filename(filename, index, do_not_split_by_at_sign)
     if index is None:
         index = -1
-    format = format or filetype(filename)
+    format = format or filetype(filename, read=isinstance(filename, str))
 
     io = get_ioformat(format)
     if isinstance(index, (slice, str)):
@@ -671,7 +764,7 @@ def iread(
     if not isinstance(index, (slice, str)):
         index = slice(index, (index + 1) or None)
 
-    format = format or filetype(filename)
+    format = format or filetype(filename, read=isinstance(filename, str))
     io = get_ioformat(format)
 
     for atoms in _iread(filename, index, format, io, parallel=parallel,
@@ -682,10 +775,8 @@ def iread(
 @parallel_generator
 def _iread(filename, index, format, io, parallel=None, full_output=False,
            **kwargs):
-    if isinstance(filename, str):
-        filename = os.path.expanduser(filename)
 
-    if not io.read:
+    if not io.can_read:
         raise ValueError("Can't read from {}-format".format(format))
 
     if io.single:
@@ -744,6 +835,14 @@ def parse_filename(filename, index=None, do_not_split_by_at_sign=False):
     return newfilename, newindex
 
 
+def match_magic(data: bytes) -> IOFormat:
+    data = data[:PEEK_BYTES]
+    for ioformat in ioformats.values():
+        if ioformat.match_magic(data):
+            return ioformat
+    raise UnknownFileTypeError('Cannot guess file type from contents')
+
+
 def string2index(string: str) -> Union[int, slice, str]:
     """Convert index string to either int or slice"""
     if ':' not in string:
@@ -779,6 +878,10 @@ def filetype(
         $ ase info filename ...
     """
 
+    orig_filename = filename
+    if hasattr(filename, 'name'):
+        filename = filename.name  # type: ignore
+
     ext = None
     if isinstance(filename, str):
         if os.path.isdir(filename):
@@ -798,8 +901,6 @@ def filetype(
 
         if '.' in basename:
             ext = os.path.splitext(basename)[1].strip('.').lower()
-            if ext in ['xyz', 'cube', 'json', 'cif']:
-                return ext
 
         for fmt in ioformats.values():
             if fmt.match_name(basename):
@@ -815,13 +916,16 @@ def filetype(
             # askhl: This is strange, we don't know if ext is a format:
             return ext
 
-        fd = open_with_compression(filename, 'rb')
+        if orig_filename == filename:
+            fd = open_with_compression(filename, 'rb')
+        else:
+            fd = orig_filename  # type: ignore
     else:
         fd = filename    # type: ignore
         if fd is sys.stdin:
             return 'json'
 
-    data = fd.read(50000)
+    data = fd.read(PEEK_BYTES)
     if fd is not filename:
         fd.close()
     else:
@@ -830,28 +934,10 @@ def filetype(
     if len(data) == 0:
         raise UnknownFileTypeError('Empty file: ' + filename)    # type: ignore
 
-    if data.startswith(b'CDF'):
-        # We can only recognize these if we actually have the netCDF4 module.
-        try:
-            import netCDF4
-        except ImportError:
-            pass
-        else:
-            nc = netCDF4.Dataset(filename)
-            if 'Conventions' in nc.ncattrs():
-                if nc.Conventions in netcdfconventions2format:
-                    return netcdfconventions2format[nc.Conventions]
-                else:
-                    raise UnknownFileTypeError(
-                        "Unsupported NetCDF convention: "
-                        "'{}'".format(nc.Conventions))
-            else:
-                raise UnknownFileTypeError("NetCDF file does not have a "
-                                           "'Conventions' attribute.")
-
-    for ioformat in ioformats.values():
-        if ioformat.match_magic(data):
-            return ioformat.name
+    try:
+        return match_magic(data).name
+    except UnknownFileTypeError:
+        pass
 
     format = None
     if ext in extension2format:
@@ -863,43 +949,18 @@ def filetype(
         # Do quick xyz check:
         lines = data.splitlines()
         if lines and lines[0].strip().isdigit():
-            return 'xyz'
+            return extension2format['xyz'].name
 
         raise UnknownFileTypeError('Could not guess file type')
     assert isinstance(format, str)
     return format
 
 
-def index2range(index, nsteps):
-    """Method to convert a user given *index* option to a list of indices.
+def index2range(index, length):
+    """Convert slice or integer to range.
 
-    Returns a range.
-    """
-    if isinstance(index, int):
-        if index < 0:
-            tmpsnp = nsteps + index
-            trbl = range(tmpsnp, tmpsnp + 1, 1)
-        else:
-            trbl = range(index, index + 1, 1)
-    elif isinstance(index, slice):
-        start = index.start
-        stop = index.stop
-        step = index.step
-
-        if start is None:
-            start = 0
-        elif start < 0:
-            start = nsteps + start
-
-        if step is None:
-            step = 1
-
-        if stop is None:
-            stop = nsteps
-        elif stop < 0:
-            stop = nsteps + stop
-
-        trbl = range(start, stop, step)
-    else:
-        raise RuntimeError("index2range handles integers and slices only.")
-    return trbl
+    If index is an integer, range will contain only that integer."""
+    obj = range(length)[index]
+    if isinstance(obj, numbers.Integral):
+        obj = range(obj, obj + 1)
+    return obj

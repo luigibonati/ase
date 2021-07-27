@@ -6,7 +6,6 @@
 This module defines the central object in the ASE package: the Atoms
 object.
 """
-
 import copy
 import numbers
 from math import cos, sin, pi
@@ -16,11 +15,10 @@ import numpy as np
 import ase.units as units
 from ase.atom import Atom
 from ase.cell import Cell
-from ase.constraints import (FixConstraint, FixBondLengths, FixLinearTriatomic,
-                             voigt_6_to_full_3x3_stress,
-                             full_3x3_to_voigt_6_stress)
+from ase.stress import voigt_6_to_full_3x3_stress, full_3x3_to_voigt_6_stress
 from ase.data import atomic_masses, atomic_masses_common
-from ase.geometry import wrap_positions, find_mic, get_angles, get_distances
+from ase.geometry import (wrap_positions, find_mic, get_angles, get_distances,
+                          get_dihedrals)
 from ase.symbols import Symbols, symbols2numbers
 from ase.utils import deprecated
 
@@ -224,7 +222,7 @@ class Atoms:
             if scaled_positions is None:
                 positions = np.zeros((len(self.arrays['numbers']), 3))
             else:
-                assert self.number_of_lattice_vectors == 3
+                assert self.cell.rank == 3
                 positions = np.dot(scaled_positions, self.cell)
         else:
             if scaled_positions is not None:
@@ -243,8 +241,7 @@ class Atoms:
         self.set_momenta(default(momenta, (0.0, 0.0, 0.0)),
                          apply_constraint=False)
 
-        #                          V-- if instantiaed from list of Atom objs
-        if velocities is not None and None not in velocities:
+        if velocities is not None:
             if momenta is None:
                 self.set_velocities(velocities)
             else:
@@ -303,7 +300,8 @@ class Atoms:
     def calc(self):
         self._calc = None
 
-    @property
+    @property  # type: ignore
+    @deprecated('Please use atoms.cell.rank instead')
     def number_of_lattice_vectors(self):
         """Number of (non-zero) lattice vectors."""
         return self.cell.rank
@@ -410,6 +408,7 @@ class Atoms:
 
         return cell
 
+    @deprecated('Please use atoms.cell.cellpar() instead')
     def get_cell_lengths_and_angles(self):
         """Get unit cell parameters. Sequence of 6 numbers.
 
@@ -422,6 +421,7 @@ class Atoms:
         """
         return self.cell.cellpar()
 
+    @deprecated('Please use atoms.cell.reciprocal()')
     def get_reciprocal_cell(self):
         """Get the three reciprocal lattice vectors as a 3x3 ndarray.
 
@@ -473,7 +473,7 @@ class Atoms:
 
         if shape is not None and a.shape[1:] != shape:
             raise ValueError('Array "%s" has wrong shape %s != %s.' %
-                             (a.name, a.shape, (a.shape[0:1] + shape)))
+                             (name, a.shape, (a.shape[0:1] + shape)))
 
         self.arrays[name] = a
 
@@ -609,14 +609,13 @@ class Atoms:
                 masses = atomic_masses[self.arrays['numbers']]
             elif masses == 'most_common':
                 masses = atomic_masses_common[self.arrays['numbers']]
-        elif isinstance(masses, (list, tuple)):
-            newmasses = []
-            for m, Z in zip(masses, self.arrays['numbers']):
-                if m is None:
-                    newmasses.append(atomic_masses[Z])
-                else:
-                    newmasses.append(m)
-            masses = newmasses
+        elif masses is None:
+            pass
+        elif not isinstance(masses, np.ndarray):
+            masses = list(masses)
+            for i, mass in enumerate(masses):
+                if mass is None:
+                    masses[i] = atomic_masses[self.numbers[i]]
         self.set_array('masses', masses, float, ())
 
     def get_masses(self):
@@ -762,13 +761,9 @@ class Atoms:
 
     def get_velocities(self):
         """Get array of velocities."""
-        momenta = self.arrays.get('momenta')
-        if momenta is None:
-            return None
-        m = self.arrays.get('masses')
-        if m is None:
-            m = atomic_masses[self.arrays['numbers']]
-        return momenta / m.reshape(-1, 1)
+        momenta = self.get_momenta()
+        masses = self.get_masses()
+        return momenta / masses[:, np.newaxis]
 
     def get_total_energy(self):
         """Get the total energy - potential plus kinetic energy."""
@@ -945,9 +940,11 @@ class Atoms:
             from ase.constraints import dict2constraint
             constraints = [dict2constraint(d) for d in constraints]
 
+        info = dct.pop('info', None)
+
         atoms = cls(constraint=constraints,
                     celldisp=dct.pop('celldisp', None),
-                    info=dct.pop('info', None), **kw)
+                    info=info, **kw)
         natoms = len(atoms)
 
         # Some arrays are named differently from the atoms __init__ keywords.
@@ -1110,13 +1107,12 @@ class Atoms:
         conadd = []
         # Constraints need to be deepcopied, but only the relevant ones.
         for con in copy.deepcopy(self.constraints):
-            if isinstance(con, (FixConstraint, FixBondLengths,
-                                FixLinearTriatomic)):
-                try:
-                    con.index_shuffle(self, i)
-                    conadd.append(con)
-                except IndexError:
-                    pass
+            try:
+                con.index_shuffle(self, i)
+            except (IndexError, NotImplementedError):
+                pass
+            else:
+                conadd.append(con)
 
         atoms = self.__class__(cell=self.cell, pbc=self.pbc, info=self.info,
                                # should be communicated to the slice as well
@@ -1241,10 +1237,12 @@ class Atoms:
         # Find the orientations of the faces of the unit cell
         cell = self.cell.complete()
         dirs = np.zeros_like(cell)
+
+        lengths = cell.lengths()
         for i in range(3):
             dirs[i] = np.cross(cell[i - 1], cell[i - 2])
-            dirs[i] /= np.sqrt(np.dot(dirs[i], dirs[i]))  # normalize
-            if np.dot(dirs[i], cell[i]) < 0.0:
+            dirs[i] /= np.linalg.norm(dirs[i])
+            if dirs[i] @ cell[i] < 0.0:
                 dirs[i] *= -1
 
         if isinstance(axis, int):
@@ -1252,55 +1250,76 @@ class Atoms:
         else:
             axes = axis
 
-        # if vacuum and any(self.pbc[x] for x in axes):
-        #     warnings.warn(
-        #         'You are adding vacuum along a periodic direction!')
-
         # Now, decide how much each basis vector should be made longer
-        p = self.arrays['positions']
+        pos = self.positions
         longer = np.zeros(3)
         shift = np.zeros(3)
         for i in axes:
-            p0 = np.dot(p, dirs[i]).min() if len(p) else 0
-            p1 = np.dot(p, dirs[i]).max() if len(p) else 0
-            height = np.dot(cell[i], dirs[i])
+            if len(pos):
+                scalarprod = pos @ dirs[i]
+                p0 = scalarprod.min()
+                p1 = scalarprod.max()
+            else:
+                p0 = 0
+                p1 = 0
+            height = cell[i] @ dirs[i]
             if vacuum is not None:
                 lng = (p1 - p0 + 2 * vacuum) - height
             else:
                 lng = 0.0  # Do not change unit cell size!
             top = lng + height - p1
             shf = 0.5 * (top - p0)
-            cosphi = np.dot(cell[i], dirs[i]) / np.sqrt(np.dot(cell[i],
-                                                               cell[i]))
+            cosphi = cell[i] @ dirs[i] / lengths[i]
             longer[i] = lng / cosphi
             shift[i] = shf / cosphi
 
         # Now, do it!
         translation = np.zeros(3)
         for i in axes:
-            nowlen = np.sqrt(np.dot(cell[i], cell[i]))
-            if vacuum is not None or self.cell[i].any():
+            nowlen = lengths[i]
+            if vacuum is not None:
                 self.cell[i] = cell[i] * (1 + longer[i] / nowlen)
-                translation += shift[i] * cell[i] / nowlen
-        self.arrays['positions'] += translation
+            translation += shift[i] * cell[i] / nowlen
+
+            # We calculated translations using the completed cell,
+            # so directions without cell vectors will have been centered
+            # along a "fake" vector of length 1.
+            # Therefore, we adjust by -0.5:
+            if not any(self.cell[i]):
+                translation[i] -= 0.5
 
         # Optionally, translate to center about a point in space.
         if about is not None:
             for vector in self.cell:
-                self.positions -= vector / 2.0
-            self.positions += about
+                translation -= vector / 2.0
+            translation += about
+
+        self.positions += translation
 
     def get_center_of_mass(self, scaled=False):
         """Get the center of mass.
 
         If scaled=True the center of mass in scaled coordinates
         is returned."""
-        m = self.get_masses()
-        com = np.dot(m, self.arrays['positions']) / m.sum()
+        masses = self.get_masses()
+        com = masses @ self.positions / masses.sum()
         if scaled:
-            return np.linalg.solve(self.cell.T, com)
+            return self.cell.scaled_positions(com)
         else:
             return com
+
+    def set_center_of_mass(self, com, scaled=False):
+        """Set the center of mass.
+
+        If scaled=True the center of mass is expected in scaled coordinates.
+        Constraints are considered for scaled=False.
+        """
+        old_com = self.get_center_of_mass(scaled=scaled)
+        difference = old_com - com
+        if scaled:
+            self.set_scaled_positions(self.get_scaled_positions() + difference)
+        else:
+            self.set_positions(self.get_positions() + difference)
 
     def get_moments_of_inertia(self, vectors=False):
         """Get the moments of inertia along the principal axes.
@@ -1418,17 +1437,7 @@ class Atoms:
             elif s > 0:
                 v /= s
 
-        if isinstance(center, str):
-            if center.lower() == 'com':
-                center = self.get_center_of_mass()
-            elif center.lower() == 'cop':
-                center = self.get_positions().mean(axis=0)
-            elif center.lower() == 'cou':
-                center = self.get_cell().sum(axis=0) / 2
-            else:
-                raise ValueError('Cannot interpret center')
-        else:
-            center = np.array(center)
+        center = self._centering_as_array(center)
 
         p = self.arrays['positions'] - center
         self.arrays['positions'][:] = (c * p -
@@ -1441,6 +1450,20 @@ class Atoms:
                           np.cross(rotcell, s * v) +
                           np.outer(np.dot(rotcell, v), (1.0 - c) * v))
             self.set_cell(rotcell)
+
+    def _centering_as_array(self, center):
+        if isinstance(center, str):
+            if center.lower() == 'com':
+                center = self.get_center_of_mass()
+            elif center.lower() == 'cop':
+                center = self.get_positions().mean(axis=0)
+            elif center.lower() == 'cou':
+                center = self.get_cell().sum(axis=0) / 2
+            else:
+                raise ValueError('Cannot interpret center')
+        else:
+            center = np.array(center, float)
+        return center
 
     def euler_rotate(self, phi=0.0, theta=0.0, psi=0.0, center=(0, 0, 0)):
         """Rotate atoms via Euler angles (in degrees).
@@ -1461,17 +1484,7 @@ class Atoms:
             2nd rotation around the z axis.
 
         """
-        if isinstance(center, str):
-            if center.lower() == 'com':
-                center = self.get_center_of_mass()
-            elif center.lower() == 'cop':
-                center = self.get_positions().mean(axis=0)
-            elif center.lower() == 'cou':
-                center = self.get_cell().sum(axis=0) / 2
-            else:
-                raise ValueError('Cannot interpret center')
-        else:
-            center = np.array(center)
+        center = self._centering_as_array(center)
 
         phi *= pi / 180
         theta *= pi / 180
@@ -1500,40 +1513,47 @@ class Atoms:
         # Move back to the rotation point
         self.positions = np.transpose(rcoords) + center
 
-    def get_dihedral(self, a1, a2, a3, a4, mic=False):
+    def get_dihedral(self, a0, a1, a2, a3, mic=False):
         """Calculate dihedral angle.
 
-        Calculate dihedral angle (in degrees) between the vectors a1->a2
-        and a3->a4.
+        Calculate dihedral angle (in degrees) between the vectors a0->a1
+        and a2->a3.
 
         Use mic=True to use the Minimum Image Convention and calculate the
         angle across periodic boundaries.
         """
+        return self.get_dihedrals([[a0, a1, a2, a3]], mic=mic)[0]
 
-        # vector 1->2, 2->3, 3->4 and their normalized cross products:
-        a = self.positions[a2] - self.positions[a1]
-        b = self.positions[a3] - self.positions[a2]
-        c = self.positions[a4] - self.positions[a3]
+    def get_dihedrals(self, indices, mic=False):
+        """Calculate dihedral angles.
+
+        Calculate dihedral angles (in degrees) between the list of vectors
+        a0->a1 and a2->a3, where a0, a1, a2 and a3 are in each row of indices.
+
+        Use mic=True to use the Minimum Image Convention and calculate the
+        angles across periodic boundaries.
+        """
+        indices = np.array(indices)
+        assert indices.shape[1] == 4
+
+        a0s = self.positions[indices[:, 0]]
+        a1s = self.positions[indices[:, 1]]
+        a2s = self.positions[indices[:, 2]]
+        a3s = self.positions[indices[:, 3]]
+
+        # vectors 0->1, 1->2, 2->3
+        v0 = a1s - a0s
+        v1 = a2s - a1s
+        v2 = a3s - a2s
+
+        cell = None
+        pbc = None
+
         if mic:
-            a, b, c = find_mic([a, b, c], self.cell, self.pbc)[0]
-        bxa = np.cross(b, a)
-        cxb = np.cross(c, b)
-        bxanorm = np.linalg.norm(bxa)
-        cxbnorm = np.linalg.norm(cxb)
-        if bxanorm == 0 or cxbnorm == 0:
-            raise ZeroDivisionError('Undefined dihedral angle')
-        bxa /= bxanorm
-        cxb /= cxbnorm
-        angle = np.vdot(bxa, cxb)
-        # check for numerical trouble due to finite precision:
-        if angle < -1:
-            angle = -1
-        if angle > 1:
-            angle = 1
-        angle = np.arccos(angle) * 180 / pi
-        if np.vdot(bxa, c) > 0:
-            angle = 360 - angle
-        return angle
+            cell = self.cell
+            pbc = self.pbc
+
+        return get_dihedrals(v0, v1, v2, cell=cell, pbc=pbc)
 
     def _masked_rotate(self, center, axis, diff, mask):
         # do rotation of subgroup by copying it to temporary atoms object
@@ -1607,26 +1627,25 @@ class Atoms:
     def get_angle(self, a1, a2, a3, mic=False):
         """Get angle formed by three atoms.
 
-        calculate angle in degrees between the vectors a2->a1 and
+        Calculate angle in degrees between the vectors a2->a1 and
         a2->a3.
 
         Use mic=True to use the Minimum Image Convention and calculate the
         angle across periodic boundaries.
         """
-
         return self.get_angles([[a1, a2, a3]], mic=mic)[0]
 
     def get_angles(self, indices, mic=False):
         """Get angle formed by three atoms for multiple groupings.
 
-        calculate angle in degrees between vectors between atoms a2->a1
+        Calculate angle in degrees between vectors between atoms a2->a1
         and a2->a3, where a1, a2, and a3 are in each row of indices.
 
         Use mic=True to use the Minimum Image Convention and calculate
         the angle across periodic boundaries.
         """
-
         indices = np.array(indices)
+        assert indices.shape[1] == 3
 
         a1s = self.positions[indices[:, 0]]
         a2s = self.positions[indices[:, 1]]
@@ -1711,7 +1730,6 @@ class Atoms:
         Use mic=True to use the Minimum Image Convention.
         vector=True gives the distance vector (from a0 to a1).
         """
-
         return self.get_distances(a0, [a1], mic=mic, vector=vector)[0]
 
     def get_distances(self, a, indices, mic=False, vector=False):
@@ -1720,7 +1738,6 @@ class Atoms:
         Use mic=True to use the Minimum Image Convention.
         vector=True gives the distance vector (from a to self[indices]).
         """
-
         R = self.arrays['positions']
         p1 = [R[a]]
         p2 = R[indices]
@@ -1821,7 +1838,13 @@ class Atoms:
 
         If wrap is True, atoms outside the unit cell will be wrapped into
         the cell in those directions with periodic boundary conditions
-        so that the scaled coordinates are between zero and one."""
+        so that the scaled coordinates are between zero and one.
+
+        If any cell vectors are zero, the corresponding coordinates
+        are evaluated as if the cell were completed using
+        ``cell.complete()``.  This means coordinates will be Cartesian
+        as long as the non-zero cell vectors span a Cartesian axis or
+        plane."""
 
         fractional = self.cell.scaled_positions(self.positions)
 
@@ -1858,7 +1881,7 @@ class Atoms:
         """Get the temperature in Kelvin."""
         dof = len(self) * 3
         for constraint in self._constraints:
-            dof -= constraint.removed_dof
+            dof -= constraint.get_removed_dof(self)
         ekin = self.get_kinetic_energy()
         return 2 * ekin / (dof * units.kB)
 
@@ -1889,6 +1912,9 @@ class Atoms:
         else:
             return not eq
 
+    # @deprecated('Please use atoms.cell.volume')
+    # We kind of want to deprecate this, but the ValueError behaviour
+    # might be desirable.  Should we do this?
     def get_volume(self):
         """Get volume of unit cell."""
         if self.cell.rank != 3:

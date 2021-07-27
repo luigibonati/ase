@@ -19,9 +19,12 @@ class Dftb(FileIOCalculator):
     else:
         command = 'dftb+ > PREFIX.out'
 
-    implemented_properties = ['energy', 'forces', 'charges', 'stress']
+    implemented_properties = ['energy', 'forces', 'charges',
+                              'stress', 'dipole']
+    discard_results_on_any_change = True
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=FileIOCalculator._deprecated,
                  label='dftb', atoms=None, kpts=None,
                  slako_dir=None,
                  **kwargs):
@@ -90,14 +93,14 @@ class Dftb(FileIOCalculator):
         self.slako_dir = slako_dir
 
         self.default_parameters = dict(
-                Hamiltonian_='DFTB',
-                Hamiltonian_SlaterKosterFiles_='Type2FileNames',
-                Hamiltonian_SlaterKosterFiles_Prefix=self.slako_dir,
-                Hamiltonian_SlaterKosterFiles_Separator='"-"',
-                Hamiltonian_SlaterKosterFiles_Suffix='".skf"',
-                Hamiltonian_MaxAngularMomentum_='',
-                Options_='',
-                Options_WriteResultsTag='Yes')
+            Hamiltonian_='DFTB',
+            Hamiltonian_SlaterKosterFiles_='Type2FileNames',
+            Hamiltonian_SlaterKosterFiles_Prefix=self.slako_dir,
+            Hamiltonian_SlaterKosterFiles_Separator='"-"',
+            Hamiltonian_SlaterKosterFiles_Suffix='".skf"',
+            Hamiltonian_MaxAngularMomentum_='',
+            Options_='',
+            Options_WriteResultsTag='Yes')
 
         self.pcpot = None
         self.lines = None
@@ -154,7 +157,7 @@ class Dftb(FileIOCalculator):
             if mp_mesh is not None:
                 eps = 1e-10
                 for i in range(3):
-                    key = initkey + '_empty%03d'  % i
+                    key = initkey + '_empty%03d' % i
                     val = [mp_mesh[i] if j == i else 0 for j in range(3)]
                     self.parameters[key] = ' '.join(map(str, val))
                     offsets[i] *= mp_mesh[i]
@@ -169,7 +172,7 @@ class Dftb(FileIOCalculator):
 
             elif self.kpts_coord is not None:
                 for i, c in enumerate(self.kpts_coord):
-                    key = initkey + '_empty%09d'  % i
+                    key = initkey + '_empty%09d' % i
                     c_str = ' '.join(map(str, c))
                     if 'Klines' in self.parameters[initkey + '_']:
                         c_str = '1 ' + c_str
@@ -177,12 +180,11 @@ class Dftb(FileIOCalculator):
                         c_str += ' 1.0'
                     self.parameters[key] = c_str
 
-    def write_dftb_in(self, filename):
+    def write_dftb_in(self, outfile):
         """ Write the innput file for the dftb+ calculation.
             Geometry is taken always from the file 'geo_end.gen'.
         """
 
-        outfile = open(filename, 'w')
         outfile.write('Geometry = GenFormat { \n')
         outfile.write('    <<< "geo_end.gen" \n')
         outfile.write('} \n')
@@ -261,15 +263,6 @@ class Dftb(FileIOCalculator):
             outfile.write('   CalculateForces = Yes  \n')
             outfile.write('} \n')
 
-
-        outfile.close()
-
-    def set(self, **kwargs):
-        changed_parameters = FileIOCalculator.set(self, **kwargs)
-        if changed_parameters:
-            self.reset()
-        return changed_parameters
-
     def check_state(self, atoms):
         system_changes = FileIOCalculator.check_state(self, atoms)
         # Ignore unit cell for molecules:
@@ -286,8 +279,10 @@ class Dftb(FileIOCalculator):
                 self.do_forces = True
         FileIOCalculator.write_input(
             self, atoms, properties, system_changes)
-        self.write_dftb_in(os.path.join(self.directory, 'dftb_in.hsd'))
-        write(os.path.join(self.directory, 'geo_end.gen'), atoms)
+        with open(os.path.join(self.directory, 'dftb_in.hsd'), 'w') as fd:
+            self.write_dftb_in(fd)
+        write(os.path.join(self.directory, 'geo_end.gen'), atoms,
+              parallel=False)
         # self.atoms is none until results are read out,
         # then it is set to the ones at writing input
         self.atoms_input = atoms
@@ -300,15 +295,16 @@ class Dftb(FileIOCalculator):
             It will be destroyed after it is read to avoid
             reading it once again after some runtime error """
 
-        myfile = open(os.path.join(self.directory, 'results.tag'), 'r')
-        self.lines = myfile.readlines()
-        myfile.close()
+        with open(os.path.join(self.directory, 'results.tag'), 'r') as fd:
+            self.lines = fd.readlines()
 
         self.atoms = self.atoms_input
-        charges, energy = self.read_charges_and_energy()
+        charges, energy, dipole = self.read_charges_energy_dipole()
         if charges is not None:
             self.results['charges'] = charges
         self.results['energy'] = energy
+        if dipole is not None:
+            self.results['dipole'] = dipole
         if self.do_forces:
             forces = self.read_forces()
             self.results['forces'] = forces
@@ -369,13 +365,12 @@ class Dftb(FileIOCalculator):
 
         return np.array(gradients) * Hartree / Bohr
 
-    def read_charges_and_energy(self):
+    def read_charges_energy_dipole(self):
         """Get partial charges on atoms
             in case we cannot find charges they are set to None
         """
-        infile = open(os.path.join(self.directory, 'detailed.out'), 'r')
-        lines = infile.readlines()
-        infile.close()
+        with open(os.path.join(self.directory, 'detailed.out'), 'r') as fd:
+            lines = fd.readlines()
 
         for line in lines:
             if line.strip().startswith('Total energy:'):
@@ -390,13 +385,20 @@ class Dftb(FileIOCalculator):
         else:
             # print('Warning: did not find DFTB-charges')
             # print('This is ok if flag SCC=No')
-            return None, energy
+            return None, energy, None
 
         lines1 = lines[chargestart:(chargestart + len(self.atoms))]
         for line in lines1:
             qm_charges.append(float(line.split()[-1]))
 
-        return np.array(qm_charges), energy
+        dipole = None
+        for line in lines:
+            if 'Dipole moment:' in line and 'au' in line:
+                words = line.split()
+                dipole = np.array(
+                    [float(w) for w in words[-4:-1]]) * Bohr
+
+        return np.array(qm_charges), energy, dipole
 
     def get_charges(self, atoms):
         """ Get the calculated charges
@@ -498,7 +500,7 @@ class PointChargePotential:
     def set_charges(self, mmcharges):
         self.mmcharges = mmcharges
 
-    def write_mmcharges(self, filename='dftb_external_charges.dat'):
+    def write_mmcharges(self, filename):
         """ mok all
         write external charges as monopoles for dftb+.
 
@@ -506,12 +508,11 @@ class PointChargePotential:
         if self.mmcharges is None:
             print("DFTB: Warning: not writing exernal charges ")
             return
-        charge_file = open(os.path.join(self.directory, filename), 'w')
-        for [pos, charge] in zip(self.mmpositions, self.mmcharges):
-            [x, y, z] = pos
-            charge_file.write('%12.6f %12.6f %12.6f %12.6f \n'
-                              % (x, y, z, charge))
-        charge_file.close()
+        with open(os.path.join(self.directory, filename), 'w') as charge_file:
+            for [pos, charge] in zip(self.mmpositions, self.mmcharges):
+                [x, y, z] = pos
+                charge_file.write('%12.6f %12.6f %12.6f %12.6f \n'
+                                  % (x, y, z, charge))
 
     def get_forces(self, calc, get_forces=True):
         """ returns forces on point charges if the flag get_forces=True """
@@ -523,9 +524,8 @@ class PointChargePotential:
     def read_forces_on_pointcharges(self):
         """Read Forces from dftb output file (results.tag)."""
         from ase.units import Hartree, Bohr
-        infile = open(os.path.join(self.directory, 'detailed.out'), 'r')
-        lines = infile.readlines()
-        infile.close()
+        with open(os.path.join(self.directory, 'detailed.out'), 'r') as fd:
+            lines = fd.readlines()
 
         external_forces = []
         for n, line in enumerate(lines):

@@ -1,4 +1,27 @@
-def test_update_coords():
+import numpy as np
+from pytest import mark
+from ase import Atoms
+
+
+def squeeze_dimer(atoms, d):
+    """Squeeze the atoms together by the absolute distance ``d`` (Angstroms)
+    """
+    pos = atoms.get_positions()
+    pos[0] += np.asarray([d, 0, 0])
+    atoms.set_positions(pos)
+
+
+def set_positions_to_orig(atoms, box_len, dimer_separation):
+    pos0 = 0.5 * np.full(3, 0.5 * box_len)
+    displacement = np.array([0.5 * dimer_separation, 0, 0])
+
+    pos1 = pos0 - displacement
+    pos2 = pos0 + displacement
+    atoms.set_positions([pos1, pos2])
+
+
+@mark.calculator_lite
+def test_update_coords(KIM, testdir):
     """
     Check that the coordinates registered with the KIM API are updated
     appropriately when the atomic positions are updated.  This can go awry
@@ -6,30 +29,6 @@ def test_update_coords():
     reassigned to a new memory location -- a problem which was indeed
     occurring at one point (see https://gitlab.com/ase/ase/merge_requests/1442)!
     """
-    import numpy as np
-    from ase import Atoms
-    from pytest import importorskip
-    importorskip('kimpy')
-    from ase.calculators.kim import KIM
-
-
-    def squeeze_dimer(atoms, d):
-        """Squeeze the atoms together by the absolute distance ``d`` (Angstroms)
-        """
-        pos = atoms.get_positions()
-        pos[0] += np.asarray([d, 0, 0])
-        atoms.set_positions(pos)
-
-
-    def set_positions_to_orig(atoms, box_len, dimer_separation):
-        pos1 = np.asarray([box_len / 2.0, box_len / 2.0, box_len / 2.0]) - np.asarray(
-            [dimer_separation / 2.0, 0, 0]
-        )
-        pos2 = np.asarray([box_len / 2.0, box_len / 2.0, box_len / 2.0]) + np.asarray(
-            [dimer_separation / 2.0, 0, 0]
-        )
-        atoms.set_positions([pos1, pos2])
-
 
     # We know that ex_model_Ar_P_Morse_07C has a cutoff of 8.15 Angstroms
     model = "ex_model_Ar_P_Morse_07C"

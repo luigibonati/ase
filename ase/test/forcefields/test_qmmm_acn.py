@@ -1,15 +1,16 @@
-def test_qmmm_acn():
-    import numpy as np
+import numpy as np
 
-    import ase.units as units
-    from ase import Atoms
-    from ase.calculators.acn import (ACN, m_me, r_cn, r_mec,
-                                     sigma_me, sigma_c, sigma_n,
-                                     epsilon_me, epsilon_c, epsilon_n)
-    from ase.calculators.qmmm import SimpleQMMM, LJInteractionsGeneral, EIQMMM
-    from ase.constraints import FixLinearTriatomic
-    from ase.optimize import BFGS
+import ase.units as units
+from ase import Atoms
+from ase.calculators.acn import (ACN, m_me, r_cn, r_mec,
+                                 sigma_me, sigma_c, sigma_n,
+                                 epsilon_me, epsilon_c, epsilon_n)
+from ase.calculators.qmmm import SimpleQMMM, LJInteractionsGeneral, EIQMMM
+from ase.constraints import FixLinearTriatomic
+from ase.optimize import BFGS
 
+
+def test_qmmm_acn(testdir):
     # From https://www.sciencedirect.com/science/article/pii/S0166128099002079
     eref = 4.9 * units.kcal / units.mol
     dref = 3.368
@@ -43,9 +44,9 @@ def test_qmmm_acn():
 
         dimer.set_constraint(fixd)
 
-        opt = BFGS(dimer, maxstep=0.04,
-                   trajectory=calc.name + '.traj', logfile=calc.name + 'd.log')
-        opt.run(0.001, steps=1000)
+        with BFGS(dimer, maxstep=0.04, trajectory=calc.name + '.traj',
+                  logfile=calc.name + 'd.log') as opt:
+            opt.run(0.001, steps=1000)
 
         e0 = dimer.get_potential_energy()
         d0 = dimer.get_distance(1, 4)

@@ -8,100 +8,32 @@ source = ase
 [report]
 precision = 2
 omit =
+    # We don't include the unittests since that's "cheating":
     ./*
+
+    # Tools for releases and web page are not production code:
     ../utils/sphinx.py
-    ../utils/newrelease.py
     ../utils/build_web_page.py
-    ../visualize/fieldplotter.py
-    ../visualize/primiplotter.py
+    ../utils/newrelease.py
+
+    # The "optimizer tests" are used to generate part of GPAW's web page
+    # but we don't really consider it production code.
+    # Since we don't plan to test it as such, we exclude it from the listing.
+    ../optimize/test/*.py
 
     # TODO: Test external calculators and add to listing.
     ../calculators/gaussian.py
     ../calculators/crystal.py
     ../calculators/demonnano.py
-    ../calculators/dftb.py
-    ../calculators/exciting.py
-    ../calculators/lammpsrun.py
     ../calculators/qchem.py
-    ../calculators/aims.py
-    ../calculators/psi4.py
-    ../calculators/gamess_us.py
-    ../calculators/lammpslib.py
-    ../calculators/orca.py
-    ../calculators/gromacs.py
-    ../calculators/dftd3.py
-    ../calculators/fleur.py
     ../calculators/amber.py
     ../calculators/turbomole.py
     ../calculators/onetep.py
-    ../calculators/ase_qmmm_manyqm.py
     ../calculators/dmol.py
     ../calculators/mopac.py
-    ../calculators/acemolecule.py
-    ../calculators/elk.py
-    ../calculators/castep.py
     ../calculators/gulp.py
-    ../calculators/openmx/writer.py
-    ../calculators/openmx/default_settings.py
-    ../calculators/openmx/parameters.py
-    ../calculators/openmx/dos.py
-    ../calculators/openmx/reader.py
-    ../calculators/openmx/openmx.py
-    ../calculators/kim/kim.py
-    ../calculators/kim/exceptions.py
-    ../calculators/kim/kimmodel.py
-    ../calculators/kim/neighborlist.py
-    ../calculators/kim/calculators.py
-    ../calculators/kim/kimpy_wrappers.py
     ../calculators/demon/demon.py
     ../calculators/demon/demon_io.py
-    ../calculators/lammps/inputwriter.py
-    ../calculators/lammps/unitconvert_constants.py
-    ../calculators/lammps/unitconvert.py
-    ../calculators/lammps/coordinatetransform.py
-    ../calculators/vasp/create_input.py
-    ../calculators/vasp/vasp_data.py
-    ../calculators/vasp/setups.py
-    ../calculators/vasp/interactive.py
-    ../calculators/vasp/vasp2.py
-    ../calculators/vasp/vasp.py
-    ../calculators/siesta/mbpt_lcao.py
-    ../calculators/siesta/mbpt_lcao_utils.py
-    ../calculators/siesta/import_ion_xml.py
-    ../calculators/siesta/siesta_raman.py
-    ../calculators/siesta/mbpt_lcao_io.py
-    ../calculators/siesta/import_functions.py
-
-    # TODO: Improve IO format coverage and add include in coverage stats
-    ../io/gaussian.py
-    #../io/crystal.py
-    #../io/wien2k.py
-    #../io/gromos.py
-    ../io/dftb.py
-    #../io/exciting.py
-    ../io/bundletrajectory.py
-    #../io/opls.py
-    ../io/lammpsrun.py
-    #../io/aims.py
-    #../io/gamess_us.py
-    ../io/pov.py
-    ../io/pickletrajectory.py
-    #../io/orca.py
-    #../io/gromacs.py
-    ../io/dacapo.py
-    ../io/cp2k.py
-    ../io/fortranfile.py
-    ../io/bundlemanipulate.py
-    ../io/turbomole.py
-    ../io/gaussian_reader.py
-    ../io/acemolecule.py
-    ../io/vtkxml.py
-    ../io/vasp.py
-    ../io/elk.py
-    ../io/castep.py
-    ../io/gpw.py
-    ../io/cmdft.py
-
 
 [html]
 directory = coverage-html

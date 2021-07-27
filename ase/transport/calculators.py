@@ -308,63 +308,63 @@ class TransportCalculator:
         pl.axis('tight')
         pl.show()
 
-    def get_current(self, bias, T = 0., E=None, T_e=None, spinpol=False):
-       '''Returns the current as a function of the
-       bias voltage.
-   
-       **Parameters:**
-       bias : {float, (M,) ndarray}, units: V
-         Specifies the bias voltage.  
-       T : {float}, units: K, optional
-         Specifies the temperature.
-       E : {(N,) ndarray}, units: eV, optional
-         Contains energy grid of the transmission function.  
-       T_e {(N,) ndarray}, units: unitless, optional
-         Contains the transmission function.
-       spinpol: {bool}, optional
-         Specifies whether the current should be 
-         calculated assuming degenerate spins
-       
-       **Returns:** 
-       I : {float, (M,) ndarray}, units: 2e/h*eV
-         Contains the electric current.
+    def get_current(self, bias, T=0., E=None, T_e=None, spinpol=False):
+        '''Returns the current as a function of the
+        bias voltage.
 
-       Examples:
+        **Parameters:**
+        bias : {float, (M,) ndarray}, units: V
+          Specifies the bias voltage.  
+        T : {float}, units: K, optional
+          Specifies the temperature.
+        E : {(N,) ndarray}, units: eV, optional
+          Contains energy grid of the transmission function.  
+        T_e {(N,) ndarray}, units: unitless, optional
+          Contains the transmission function.
+        spinpol: {bool}, optional
+          Specifies whether the current should be 
+          calculated assuming degenerate spins
 
-       >> import numpy as np
-       >> import pylab as plt
-       >> from ase import units
-       >>
-       >> bias = np.arange(0, 2, .1)
-       >> current = calc.get_current(bias, T = 0.)
-       >> plt.plot(bias, 2.*units._e**2/units._hplanck*current)
-       >> plt.xlabel('U [V]')
-       >> plt.ylabel('I [A]')
-       >> plt.show()
+        **Returns:** 
+        I : {float, (M,) ndarray}, units: 2e/h*eV
+          Contains the electric current.
 
-       '''
-       if E is not None:
-           if T_e is None:
-               self.energies = E
-               self.uptodate = False
-               T_e = self.get_transmission().copy()
-       else:
-           assert self.uptodate, 'Energy grid and transmission function not defined.'
-           E = self.energies.copy()
-           T_e = self.T_e.copy()
- 
-       if not isinstance(bias, (int,float)):
-           bias = bias[np.newaxis]
-           E = E[:, np.newaxis]
-           T_e = T_e[:, np.newaxis]
+        Examples:
 
-       fl = fermidistribution(E - bias/2., kB * T)
-       fr = fermidistribution(E + bias/2., kB * T)
+        >> import numpy as np
+        >> import pylab as plt
+        >> from ase import units
+        >>
+        >> bias = np.arange(0, 2, .1)
+        >> current = calc.get_current(bias, T = 0.)
+        >> plt.plot(bias, 2.*units._e**2/units._hplanck*current)
+        >> plt.xlabel('U [V]')
+        >> plt.ylabel('I [A]')
+        >> plt.show()
 
-       if spinpol:
-           return .5 * np.trapz((fl - fr) * T_e, x=E, axis=0)
-       else:
-           return np.trapz((fl - fr) * T_e, x=E, axis=0)
+        '''
+        if E is not None:
+            if T_e is None:
+                self.energies = E
+                self.uptodate = False
+                T_e = self.get_transmission().copy()
+        else:
+            assert self.uptodate, 'Energy grid and transmission function not defined.'
+            E = self.energies.copy()
+            T_e = self.T_e.copy()
+
+        if not isinstance(bias, (int, float)):
+            bias = bias[np.newaxis]
+            E = E[:, np.newaxis]
+            T_e = T_e[:, np.newaxis]
+
+        fl = fermidistribution(E - bias/2., kB * T)
+        fr = fermidistribution(E + bias/2., kB * T)
+
+        if spinpol:
+            return .5 * np.trapz((fl - fr) * T_e, x=E, axis=0)
+        else:
+            return np.trapz((fl - fr) * T_e, x=E, axis=0)
 
     def get_transmission(self):
         self.initialize()

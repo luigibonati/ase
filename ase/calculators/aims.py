@@ -9,6 +9,7 @@ import os
 import warnings
 import time
 from typing import Optional
+import re
 
 import numpy as np
 
@@ -17,6 +18,11 @@ from ase.io.aims import write_aims, read_aims
 from ase.data import atomic_numbers
 from ase.calculators.calculator import FileIOCalculator, Parameters, kpts2mp, \
     ReadError, PropertyNotImplementedError
+
+
+def get_aims_version(string):
+    match = re.search(r'\s*FHI-aims version\s*:\s*(\S+)', string, re.M)
+    return match.group(1)
 
 
 float_keys = [
@@ -128,7 +134,8 @@ class Aims(FileIOCalculator):
     implemented_properties = ['energy', 'forces', 'stress', 'stresses',
                               'dipole', 'magmom']
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=FileIOCalculator._deprecated,
                  label=os.curdir, atoms=None, cubes=None, radmul=None,
                  tier=None, aims_command=None,
                  outfilename=None, **kwargs):
@@ -220,13 +227,12 @@ class Aims(FileIOCalculator):
             if command:
                 warnings.warn('Caution! Argument "command" overwrites "run_command.')
             else:
-                command=run_command
+                command = run_command
 
         # this is the fallback to the default value for empty init
         if np.all([i is None for i in (command, aims_command, outfilename)]):
             # we go for the FileIOCalculator default way (env variable) with the former default as fallback
             command = os.environ.get('ASE_AIMS_COMMAND', Aims.__command_default)
-
 
         # filter the command and set the member variables "aims_command" and "outfilename"
         self.__init_command(command=command,
@@ -434,7 +440,6 @@ class Aims(FileIOCalculator):
                 output.write(s)
         output.write(lim + '\n')
 
-
         assert not ('kpts' in self.parameters and 'k_grid' in self.parameters)
         assert not ('smearing' in self.parameters and
                     'occupation_type' in self.parameters)
@@ -510,11 +515,11 @@ class Aims(FileIOCalculator):
 
         if ('sc_accuracy_stress' in self.parameters or
                 ('compute_numerical_stress' in self.parameters
-                and self.parameters['compute_numerical_stress']) or
+                 and self.parameters['compute_numerical_stress']) or
                 ('compute_analytical_stress' in self.parameters
-                and self.parameters['compute_analytical_stress']) or
+                 and self.parameters['compute_analytical_stress']) or
                 ('compute_heat_flux' in self.parameters
-                and self.parameters['compute_heat_flux'])):
+                 and self.parameters['compute_heat_flux'])):
             self.read_stress()
 
         if ('compute_heat_flux' in self.parameters
@@ -525,7 +530,7 @@ class Aims(FileIOCalculator):
             not self.atoms.pbc.any()):
             self.read_dipole()
 
-    def write_species(self, atoms, filename='control.in'):
+    def write_species(self, atoms, filename):
         self.ctrlname = filename
         species_path = self.parameters.get('species_dir')
         if species_path is None:
@@ -609,7 +614,7 @@ class Aims(FileIOCalculator):
 
     def set_radial_multiplier(self):
         assert isinstance(self.radmul, int)
-        newctrl = self.ctrlname +'.new'
+        newctrl = self.ctrlname + '.new'
         fin = open(self.ctrlname, 'r')
         fout = open(newctrl, 'w')
         newline = "    radial_multiplier   %i\n" % self.radmul
@@ -689,14 +694,14 @@ class Aims(FileIOCalculator):
 
     def read_stresses(self):
         """ Read stress per atom """
-        with open(self.out) as f:
-            next(l for l in f if
+        with open(self.out) as fd:
+            next(l for l in fd if
                  'Per atom stress (eV) used for heat flux calculation' in l)
             # scroll to boundary
-            next(l for l in f if '-------------' in l)
+            next(l for l in fd if '-------------' in l)
 
             stresses = []
-            for l in [next(f) for _ in range(len(self.atoms))]:
+            for l in [next(fd) for _ in range(len(self.atoms))]:
                 # Read stresses and rearrange from
                 # (xx, yy, zz, xy, xz, yz) to (xx, yy, zz, yz, xz, xy)
                 xx, yy, zz, xy, xz, yz = [float(d) for d in l.split()[2:8]]
@@ -843,8 +848,8 @@ class Aims(FileIOCalculator):
         for n, line in enumerate(lines):
             if line.rfind('K-points in task') > -1:
                 kptsstart = n  # last occurrence of (
-        assert not kpts is None
-        assert not kptsstart is None
+        assert kpts is not None
+        assert kptsstart is not None
         text = lines[kptsstart + 1:]
         values = []
         for line in text[:kpts]:
@@ -869,7 +874,7 @@ class Aims(FileIOCalculator):
             if line.rfind('| Number of k-points') > -1:
                 kpts = int(line.split(':')[-1].strip())
                 break
-        assert not kpts is None
+        assert kpts is not None
         assert kpt + 1 <= kpts
         # find last (eigenvalues)
         eigvalstart = None
@@ -878,13 +883,13 @@ class Aims(FileIOCalculator):
             if line.rfind('Preliminary charge convergence reached') > -1:
                 eigvalstart = n
                 break
-        assert not eigvalstart is None
+        assert eigvalstart is not None
         lines = lines[eigvalstart:]
         for n, line in enumerate(lines):
             if line.rfind('Writing Kohn-Sham eigenvalues') > -1:
                 eigvalstart = n
                 break
-        assert not eigvalstart is None
+        assert eigvalstart is not None
         text = lines[eigvalstart + 1:]  # remove first 1 line
         # find the requested k-point
         nbands = self.read_number_of_bands()

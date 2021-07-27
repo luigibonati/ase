@@ -13,7 +13,7 @@ import numpy as np
 from ase.atoms import Atoms
 from ase.constraints import FixAtoms
 from ase.geometry import cellpar_to_cell, cell_to_cellpar
-from ase.parallel import paropen
+from ase.utils import writer
 
 
 def read_eon(fileobj, index=-1):
@@ -23,40 +23,40 @@ def read_eon(fileobj, index=-1):
         if (os.path.isdir(fileobj)):
             return read_states(fileobj)
         else:
-            f = open(fileobj)
+            fd = open(fileobj)
     else:
-        f = fileobj
+        fd = fileobj
 
     more_images_to_read = True
     images = []
 
-    first_line = f.readline()
+    first_line = fd.readline()
     while more_images_to_read:
 
         comment = first_line.strip()
-        f.readline()  # 0.0000 TIME  (??)
-        cell_lengths = f.readline().split()
-        cell_angles = f.readline().split()
+        fd.readline()  # 0.0000 TIME  (??)
+        cell_lengths = fd.readline().split()
+        cell_angles = fd.readline().split()
         # Different order of angles in EON.
         cell_angles = [cell_angles[2], cell_angles[1], cell_angles[0]]
         cellpar = [float(x) for x in cell_lengths + cell_angles]
-        f.readline()  # 0 0     (??)
-        f.readline()  # 0 0 0   (??)
-        ntypes = int(f.readline())  # number of atom types
-        natoms = [int(n) for n in f.readline().split()]
-        atommasses = [float(m) for m in f.readline().split()]
+        fd.readline()  # 0 0     (??)
+        fd.readline()  # 0 0 0   (??)
+        ntypes = int(fd.readline())  # number of atom types
+        natoms = [int(n) for n in fd.readline().split()]
+        atommasses = [float(m) for m in fd.readline().split()]
 
         symbols = []
         coords = []
         masses = []
         fixed = []
         for n in range(ntypes):
-            symbol = f.readline().strip()
+            symbol = fd.readline().strip()
             symbols.extend([symbol] * natoms[n])
             masses.extend([atommasses[n]] * natoms[n])
-            f.readline()  # Coordinates of Component n
+            fd.readline()  # Coordinates of Component n
             for i in range(natoms[n]):
-                row = f.readline().split()
+                row = fd.readline().split()
                 coords.append([float(x) for x in row[:3]])
                 fixed.append(bool(int(row[3])))
 
@@ -69,12 +69,12 @@ def read_eon(fileobj, index=-1):
 
         images.append(atoms)
 
-        first_line = f.readline()
+        first_line = fd.readline()
         if first_line == '':
             more_images_to_read = False
 
     if isinstance(fileobj, str):
-        f.close()
+        fd.close()
 
     if not index:
         return images
@@ -91,14 +91,10 @@ def read_states(states_dir):
     return images
 
 
+@writer
 def write_eon(fileobj, images):
     """Writes structure to EON reactant.con file
     Multiple snapshots are allowed."""
-    if isinstance(fileobj, str):
-        f = paropen(fileobj, 'w')
-    else:
-        f = fileobj
-
     if isinstance(images, Atoms):
         atoms = images
     elif len(images) == 1:
@@ -152,8 +148,5 @@ def write_eon(fileobj, images):
             out.append('%22.17f %22.17f %22.17f %d %4d' %
                        (tuple(xyz) + (fix, atom_id)))
             atom_id += 1
-    f.write('\n'.join(out))
-    f.write('\n')
-
-    if isinstance(fileobj, str):
-        f.close()
+    fileobj.write('\n'.join(out))
+    fileobj.write('\n')

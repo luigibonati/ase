@@ -10,7 +10,9 @@ import numpy as np
 
 from ase import io
 from ase import build
+from ase.io.espresso import parse_position_line
 
+from pytest import approx
 
 # This file is parsed correctly by pw.x, even though things are
 # scattered all over the place with some namelist edge cases
@@ -277,6 +279,25 @@ def test_pw_input():
 
     pw_input_atoms = io.read('pw_input.pwi', format='espresso-in')
     assert len(pw_input_atoms) == 8
+    assert (pw_input_atoms.get_initial_magnetic_moments()
+            == approx([5.12, 5.12, 5.12, 5.12, 5.12, 5.12, 0., 0.]))
+
+
+def test_get_atomic_species():
+    """Parser for atomic species section"""
+    from ase.io.espresso import get_atomic_species, read_fortran_namelist
+
+    with open('pw_input.pwi', 'w') as pw_input_f:
+        pw_input_f.write(pw_input_text)
+    with open('pw_input.pwi', 'r') as pw_input_f:
+        data, card_lines = read_fortran_namelist(pw_input_f)
+        species_card = get_atomic_species(card_lines,
+                                          n_species=data['system']['ntyp'])
+
+    assert len(species_card) == 2
+    assert species_card[0] == ("H", approx(1.008), "H.pbe-rrkjus_psl.0.1.UPF")
+    assert species_card[1] == ("Fe", approx(55.845),
+                               "Fe.pbe-spn-rrkjus_psl.0.2.1.UPF")
 
 
 def test_pw_output():
@@ -287,6 +308,37 @@ def test_pw_output():
     pw_output_traj = io.read('pw_output.pwo', index=':')
     assert len(pw_output_traj) == 2
     assert pw_output_traj[1].get_volume() > pw_output_traj[0].get_volume()
+
+
+def test_pw_parse_line():
+    """Parse a single position line from a pw.x output file."""
+    txt = """       994           Pt  tau( 994) = (   1.4749849   0.7329881   0.0719387  )
+       995           Sb  tau( 995) = (   1.4212023   0.7037863   0.1242640  )
+       996           Sb  tau( 996) = (   1.5430640   0.7699524   0.1700400  )
+       997           Sb  tau( 997) = (   1.4892815   0.7407506   0.2223653  )
+       998           Sb  tau( 998) = (   1.6111432   0.8069166   0.2681414  )
+       999           Sb  tau( 999) = (   1.5573606   0.7777148   0.3204667  )
+      1000           Sb  tau(1000) = (   1.6792223   0.8438809   0.3662427  )
+      1001           Sb  tau(1001) = (   1.6254398   0.8146791   0.4185680  )
+      1002           Sb  tau(1002) = (   1.7473015   0.8808452   0.4643440  )
+      1003           Sb  tau(1003) = (   1.6935189   0.8516434   0.5166693  )
+"""
+    x_result = [1.4749849, 1.4212023, 1.5430640, 1.4892815, 1.6111432,
+                1.5573606, 1.6792223, 1.6254398, 1.7473015, 1.6935189]
+    y_result = [0.7329881, 0.7037863, 0.7699524, 0.7407506, 0.8069166,
+                0.7777148, 0.8438809, 0.8146791, 0.8808452, 0.8516434]
+    z_result = [0.0719387, 0.1242640, 0.1700400, 0.2223653, 0.2681414,
+                0.3204667, 0.3662427, 0.4185680, 0.4643440, 0.5166693]
+
+    for i, line in enumerate(txt.splitlines()):
+        sym, x, y, z = parse_position_line(line)
+        if i == 0:
+            assert sym == "Pt"
+        else:
+            assert sym == "Sb"
+        assert abs(x - x_result[i]) < 1e-7
+        assert abs(y - y_result[i]) < 1e-7
+        assert abs(z - z_result[i]) < 1e-7
 
 
 def test_pw_results_required():

@@ -24,9 +24,22 @@ from shutil import which
 import numpy as np
 
 from ase import units
-from ase.calculators.calculator import EnvironmentError, FileIOCalculator, all_changes
-from ase.calculators.ase_qmmm_manyqm import get_qm_atoms
+from ase.calculators.calculator import (EnvironmentError,
+                                        FileIOCalculator,
+                                        all_changes)
 from ase.io.gromos import read_gromos, write_gromos
+
+
+def parse_gromacs_version(output):
+    import re
+    match = re.search(r'GROMACS version\:\s*(\S+)', output, re.M)
+    return match.group(1)
+
+
+def get_gromacs_version(executable):
+    output = subprocess.check_output([executable, '--version'],
+                                     encoding='utf-8')
+    return parse_gromacs_version(output)
 
 
 def do_clean(name='#*'):
@@ -61,6 +74,7 @@ class Gromacs(FileIOCalculator):
     """
 
     implemented_properties = ['energy', 'forces']
+    discard_results_on_any_change = True
 
     default_parameters = dict(
         define='-DFLEXIBLE',
@@ -80,9 +94,10 @@ class Gromacs(FileIOCalculator):
         rvdw_switch='0.75',
         DispCorr='Ener')
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=FileIOCalculator._deprecated,
                  label='gromacs', atoms=None,
-                 do_qmmm=False, freeze_qm=False, clean=True,
+                 do_qmmm=False, clean=True,
                  water_model='tip3p', force_field='oplsaa', command=None,
                  **kwargs):
         """Construct GROMACS-calculator object.
@@ -95,9 +110,6 @@ class Gromacs(FileIOCalculator):
 
         do_qmmm : bool
             Is gromacs used as mm calculator for a qm/mm calculation
-
-        freeze_qm : bool
-            In qm/mm are the qm atoms kept fixed at their initial positions
 
         clean :     bool
             Remove gromacs backup files
@@ -127,7 +139,6 @@ class Gromacs(FileIOCalculator):
                 self.missing_gmx = 'missing gromacs executable {}'.format(gmxes)
 
         self.do_qmmm = do_qmmm
-        self.freeze_qm = freeze_qm
         self.water_model = water_model
         self.force_field = force_field
         self.clean = clean
@@ -332,11 +343,6 @@ class Gromacs(FileIOCalculator):
         Add spaces to avoid errors """
         self.params_runs[key] = ' ' + value + ' '
 
-    def set(self, **kwargs):
-        changed_parameters = FileIOCalculator.set(self, **kwargs)
-        if changed_parameters:
-            self.reset()
-
     def write_input(self, atoms=None, properties=None, system_changes=None):
         """Write input parameters to input file."""
 
@@ -348,8 +354,6 @@ class Gromacs(FileIOCalculator):
                     docstring = self.params_doc.get(key, '')
                     myfile.write('%-35s = %s ; %s\n'
                                  % (key, val, ';' + docstring))
-        if self.freeze_qm:
-            self.add_freeze_group()
 
     def update(self, atoms):
         """ set atoms and do the calculation """
@@ -396,8 +400,8 @@ class Gromacs(FileIOCalculator):
             '< inputGenergy.txt',
             '> {}.{}.log 2>&1'.format(self.label, subcmd)])
         self._execute_gromacs(command)
-        with open(self.label + '.Energy.xvg') as f:
-            lastline = f.readlines()[-1]
+        with open(self.label + '.Energy.xvg') as fd:
+            lastline = fd.readlines()[-1]
             energy = float(lastline.split()[1])
         #We go for ASE units !
         #self.energy = energy * units.kJ / units.mol
@@ -414,8 +418,8 @@ class Gromacs(FileIOCalculator):
             '< inputGtraj.txt',
             '> {}.{}.log 2>&1'.format(self.label, subcmd)])
         self._execute_gromacs(command)
-        with open(self.label + '.Force.xvg', 'r') as f:
-            lastline = f.readlines()[-1]
+        with open(self.label + '.Force.xvg', 'r') as fd:
+            lastline = fd.readlines()[-1]
             forces = np.array([float(f) for f in lastline.split()[1:]])
         #We go for ASE units !gromacsForce.xvg
         #self.forces = np.array(forces)/ units.nm * units.kJ / units.mol
@@ -424,42 +428,3 @@ class Gromacs(FileIOCalculator):
         tmp_forces = np.reshape(tmp_forces, (-1, 3))
         self.results['forces'] = tmp_forces
         #self.forces = np.array(forces)
-
-    def add_freeze_group(self):
-        """
-        Add freeze group (all qm atoms) to the gromacs index file
-        and modify the 'self.base_filename'.mdp file to adopt for freeze group.
-        The qm regions are read from the file index.ndx
-
-        This is useful if one makes many moves in MM
-        and then only a few with both qm and mm moving.
-
-        qse-qm/mm indexing starts from 0
-        gromacs indexing starts from 1
-        """
-
-        index_filename = self.params_runs.get('index_filename')
-        qms = get_qm_atoms(index_filename)
-        with open(index_filename, 'r') as infile:
-            lines = infile.readlines()
-        with open(index_filename, 'w') as outfile:
-            found = False
-            for line in lines:
-                if ('freezeGroupQM' in line):
-                    found = True
-                outfile.write(line)
-            if not found:
-                outfile.write('[ freezeGroupQM ] \n')
-                for myqm in qms:
-                    for qmindex in myqm:
-                        outfile.write(str(qmindex + 1) + ' ')
-                outfile.write('\n')
-
-        with open(self.label + '.mdp', 'r') as infile:
-            lines = infile.readlines()
-        with open(self.label + '.mdp', 'w') as outfile:
-            for line in lines:
-                outfile.write(line)
-            outfile.write('freezegrps = freezeGroupQM \n')
-            outfile.write('freezedim  = Y Y Y  \n')
-        return

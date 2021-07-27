@@ -34,16 +34,20 @@ def test_langevin_switching():
     dF_theory = F2 - F1
 
     # switch_forward
-    dyn_forward = SwitchLangevin(atoms, calc1, calc2, dt * units.fs, T * units.kB, 0.01, n_steps, n_steps)
-    MaxwellBoltzmannDistribution(atoms, 2 * T * units.kB)
-    dyn_forward.run()
-    dF_forward = dyn_forward.get_free_energy_difference() / len(atoms)
+    with SwitchLangevin(atoms, calc1, calc2, dt * units.fs,
+                        temperature_K=T, friction=0.01,
+                        n_eq=n_steps, n_switch=n_steps) as dyn_forward:
+        MaxwellBoltzmannDistribution(atoms, temperature_K=2 * T)
+        dyn_forward.run()
+        dF_forward = dyn_forward.get_free_energy_difference() / len(atoms)
 
     # switch_backwards
-    dyn_backward = SwitchLangevin(atoms, calc2, calc1, dt * units.fs, T * units.kB, 0.01, n_steps, n_steps)
-    MaxwellBoltzmannDistribution(atoms, 2 * T * units.kB)
-    dyn_backward.run()
-    dF_backward = -dyn_backward.get_free_energy_difference() / len(atoms)
+    with SwitchLangevin(atoms, calc2, calc1, dt * units.fs,
+                        temperature_K=T, friction=0.01,
+                        n_eq=n_steps, n_switch=n_steps) as dyn_backward:
+        MaxwellBoltzmannDistribution(atoms, temperature_K=2 * T)
+        dyn_backward.run()
+        dF_backward = -dyn_backward.get_free_energy_difference() / len(atoms)
 
     # summary
     dF_switch = (dF_forward + dF_backward) / 2.0

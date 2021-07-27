@@ -1,3 +1,4 @@
+from pathlib import Path
 import numpy as np
 
 from ase.io import read, write
@@ -12,9 +13,8 @@ from ase.io import read, write
 
 def check(name, xsf_text, check_data):
     fname = '%s.xsf' % name
-    fd = open(fname, 'w')
-    fd.write(xsf_text)
-    fd.close()
+    with open(fname, 'w') as fd:
+        fd.write(xsf_text)
 
     print('Read: %s' % fname)
     images = read(fname, index=':', read_data=check_data)
@@ -53,7 +53,7 @@ def check(name, xsf_text, check_data):
         write(outfname2, images2, data=array2)
     else:
         write(outfname2, images2)
-    assert open(outfname).read() == open(outfname2).read()
+    assert Path(outfname).read_text() == Path(outfname2).read_text()
 
 
 def test_xsf_spec():

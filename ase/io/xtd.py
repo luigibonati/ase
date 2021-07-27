@@ -110,24 +110,29 @@ def write_xtd(filename, images, connectivity=None, moviespeed=10):
         farcname = filename[:-3] + 'arc'
     else:
         farcname = filename.name[:-3] + 'arc'
-    farc = open(farcname, 'w')
-    farc.write(s)
-    farc.close()
+
+    with open(farcname, 'w') as farc:
+        farc.write(s)
 
     # check if file is an object or not.
-    if isinstance(filename, str):
-        f = open(filename, 'w')
-    else:  # Assume it's a 'file-like object'
-        f = filename
+    openandclose = False
+    try:
+        if isinstance(filename, str):
+            fd = open(filename, 'w')
+            openandclose = True
+        else:  # Assume it's a 'file-like object'
+            fd = filename
 
-    # Return a pretty-printed XML string for the Element.
-    rough_string = ET.tostring(XSD, 'utf-8')
-    reparsed = minidom.parseString(rough_string)
-    Document = reparsed.toprettyxml(indent='\t')
+        # Return a pretty-printed XML string for the Element.
+        rough_string = ET.tostring(XSD, 'utf-8')
+        reparsed = minidom.parseString(rough_string)
+        Document = reparsed.toprettyxml(indent='\t')
 
-    # write
-    f.write(Document)
-    f.close()
+        # write
+        fd.write(Document)
+    finally:
+        if openandclose:
+            fd.close()
 
 
 def read_xtd(filename, index=-1):
@@ -138,29 +143,36 @@ def read_xtd(filename, index=-1):
     so only Arc file needs to be read
     """
     if isinstance(filename, str):
-        f = filename[:-3] + 'arc'
+        arcfilename = filename[:-3] + 'arc'
     else:
-        f = filename.name[:-3] + 'arc'
-    f = open(f, 'r')
-    images = list()
+        arcfilename = filename.name[:-3] + 'arc'
+
+    # This trick with opening a totally different file is a gross violation of
+    # common sense.
+    with open(arcfilename, 'r') as fd:
+        return read_arcfile(fd, index)
+
+
+def read_arcfile(fd, index):
+    images = []
 
     # the first line is comment
-    f.readline()
-    pbc = 'ON' in f.readline()
-    L = f.readline()
+    fd.readline()
+    pbc = 'ON' in fd.readline()
+    L = fd.readline()
     while L != '':
         if '!' not in L:  # flag for the start of an image
-            L = f.readline()
+            L = fd.readline()
             continue
         if pbc:
-            L = f.readline()
+            L = fd.readline()
             cell = [float(d) for d in L.split()[1:]]
         else:
-            f.readline()
+            fd.readline()
         symbols = []
         coords = []
         while True:
-            line = f.readline()
+            line = fd.readline()
             L = line.split()
             if not line or 'end' in L:
                 break
@@ -171,7 +183,7 @@ def read_xtd(filename, index=-1):
         else:
             image = Atoms(symbols, positions=coords, pbc=pbc)
         images.append(image)
-        L = f.readline()
+        L = fd.readline()
 
     if not index:
         return images

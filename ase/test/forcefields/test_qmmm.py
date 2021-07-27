@@ -1,19 +1,17 @@
-# XXXXXX grrr another qmmm test is a copy of this one!  FOR SHAME!
+from math import cos, sin, pi
 
-def test_qmmm():
-    from math import cos, sin, pi
+import numpy as np
 
-    import numpy as np
-    # import matplotlib.pyplot as plt
+import ase.units as units
+from ase import Atoms
+from ase.calculators.tip3p import TIP3P, epsilon0, sigma0, rOH, angleHOH
+from ase.calculators.qmmm import (SimpleQMMM, EIQMMM, LJInteractions,
+                                  LJInteractionsGeneral)
+from ase.constraints import FixInternals
+from ase.optimize import GPMin
 
-    import ase.units as units
-    from ase import Atoms
-    from ase.calculators.tip3p import TIP3P, epsilon0, sigma0, rOH, angleHOH
-    from ase.calculators.qmmm import (SimpleQMMM, EIQMMM, LJInteractions,
-                                      LJInteractionsGeneral)
-    from ase.constraints import FixInternals
-    from ase.optimize import GPMin
 
+def test_qmmm(testdir):
     r = rOH
     a = angleHOH * pi / 180
 
@@ -60,8 +58,6 @@ def test_qmmm():
 
         F = np.array(F)
 
-        # plt.plot(D, E)
-
         F1 = np.polyval(np.polyder(np.polyfit(D, E, 7)), D)
         F2 = F[:, :3, 0].sum(1)
         error = abs(F1 - F2).max()
@@ -70,10 +66,13 @@ def test_qmmm():
         dimer.constraints = FixInternals(
             bonds=[(r, (0, 2)), (r, (1, 2)),
                    (r, (3, 5)), (r, (4, 5))],
-            angles=[(a, (0, 2, 1)), (a, (3, 5, 4))])
-        opt = GPMin(dimer,
-                    trajectory=calc.name + '.traj', logfile=calc.name + 'd.log')
-        opt.run(0.01)
+            angles_deg=[(np.degrees(a), (0, 2, 1)), (np.degrees(a),
+                                                     (3, 5, 4))])
+
+        with GPMin(dimer,
+                   trajectory=calc.name + '.traj',
+                   logfile=calc.name + 'd.log') as opt:
+            opt.run(0.01)
 
         e0 = dimer.get_potential_energy()
         d0 = dimer.get_distance(2, 5)
@@ -89,5 +88,3 @@ def test_qmmm():
         assert abs(a0 - aexp) < 4
 
     print(fmt.format('reference', 9.999, eexp, dexp, aexp))
-
-    # plt.show()

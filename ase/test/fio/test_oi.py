@@ -61,14 +61,15 @@ def check(a, ref_atoms, format):
 
 @pytest.fixture
 def catch_warnings():
-    return warnings.catch_warnings()
+    with warnings.catch_warnings():
+        yield
 
 
 def all_tested_formats():
     skip = []
 
     # Someone should do something ...
-    skip += ['abinit', 'castep-cell', 'dftb', 'eon', 'gaussian', 'lammps-data']
+    skip += ['dftb', 'eon', 'lammps-data']
 
     # Standalone test used as not compatible with 1D periodicity
     skip += ['v-sim', 'mustem', 'prismatic']
@@ -93,8 +94,10 @@ def all_tested_formats():
 
 @pytest.mark.parametrize('format', all_tested_formats())
 def test_ioformat(format, atoms, catch_warnings):
-    if format in ['proteindatabank', 'netcdftrajectory']:
+    if format in ['proteindatabank', 'netcdftrajectory', 'castep-cell']:
         warnings.simplefilter('ignore', UserWarning)
+        # netCDF4 uses np.bool which may cause warnings in new numpy.
+        warnings.simplefilter('ignore', DeprecationWarning)
 
     if format == 'dlp4':
         atoms.pbc = (1, 1, 0)
@@ -103,18 +106,18 @@ def test_ioformat(format, atoms, catch_warnings):
 
     io = ioformats[format]
     print('{0:20}{1}{2}{3}{4}'.format(format,
-                                      ' R'[bool(io.read)],
-                                      ' W'[bool(io.write)],
+                                      ' R'[io.can_read],
+                                      ' W'[io.can_write],
                                       '+1'[io.single],
                                       'SF'[io.acceptsfd]))
     fname1 = 'io-test.1.{}'.format(format)
     fname2 = 'io-test.2.{}'.format(format)
-    if io.write:
+    if io.can_write:
         write(fname1, atoms, format=format)
         if not io.single:
             write(fname2, images, format=format)
 
-        if io.read:
+        if io.can_read:
             for a in [read(fname1, format=format), read(fname1)]:
                 check(a, atoms, format)
 

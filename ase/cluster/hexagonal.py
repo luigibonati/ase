@@ -6,6 +6,7 @@ import numpy as np
 from ase.cluster.factory import ClusterFactory
 from ase.data import reference_states as _refstate
 
+
 class HexagonalFactory(ClusterFactory):
     spacegroup = 191
 
@@ -47,12 +48,14 @@ class HexagonalFactory(ClusterFactory):
                 if a + b + c != 0:
                     raise ValueError(("(%d,%d,%d,%d) is not a valid hexagonal Miller " +
                                       "index, as the sum of the first three numbers " +
-                                      "should be zero.") % (a,b,c,d))
+                                      "should be zero.") % (a, b, c, d))
                 surfaces[i] = [a, b, d]
 
         ClusterFactory.set_surfaces_layers(self, surfaces, layers)
 
+
 Hexagonal = HexagonalFactory()
+
 
 class HexagonalClosedPackedFactory(HexagonalFactory):
     """A factory for creating HCP clusters."""
@@ -63,7 +66,9 @@ class HexagonalClosedPackedFactory(HexagonalFactory):
     atomic_basis = np.array([[0., 0., 0.],
                              [1./3., 2./3., .5]])
 
+
 HexagonalClosedPacked = HexagonalClosedPackedFactory()
+
 
 class GraphiteFactory(HexagonalFactory):
     """A factory for creating graphite clusters."""
@@ -74,5 +79,5 @@ class GraphiteFactory(HexagonalFactory):
                              [1./3., 2./3., .5],
                              [2./3., 1./3., .5]])
 
-Graphite = GraphiteFactory()
 
+Graphite = GraphiteFactory()

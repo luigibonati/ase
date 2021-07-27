@@ -38,7 +38,6 @@ def _calculate(code, name):
 @pytest.mark.parametrize(
     "spec",
     [
-        inputs('openmx', energy_cutoff=350),
         inputs('gamess_us', label='ch4'),
         inputs('gaussian', xc='lda', basis='3-21G'),
     ],
@@ -57,12 +56,20 @@ def test_ch4(tmp_path, spec):
 
 
 calc = pytest.mark.calculator
+filterwarnings = pytest.mark.filterwarnings
+
+
+@pytest.mark.calculator_lite
 @calc('abinit', ecut=300, chksymbreak=0, toldfe=1e-4)
+@calc('aims')
 @calc('cp2k')
 @calc('espresso', ecutwfc=300 / Ry)
-@calc('gpaw', symmetry='off', mode='pw', txt='gpaw.txt', mixer={'beta': 0.6})
+@calc('gpaw', symmetry='off', mode='pw', txt='gpaw.txt', mixer={'beta': 0.6},
+      marks=[filterwarnings('ignore:.*?ignore_bad_restart_file'),
+             filterwarnings('ignore:convert_string_to_fd')])
 @calc('nwchem')
 @calc('octopus', Spacing='0.4 * angstrom')
+@calc('openmx')
 @calc('siesta', marks=pytest.mark.xfail)
 def test_ch4_reaction(factory):
     e_ch4 = _calculate(factory, 'CH4')

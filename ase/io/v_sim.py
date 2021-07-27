@@ -5,9 +5,11 @@ Atoms object in V_Sim 3.5+ ascii format.
 """
 
 import numpy as np
+from ase.utils import reader, writer
 
 
-def read_v_sim(filename='demo.ascii'):
+@reader
+def read_v_sim(fd):
     """Import V_Sim input file.
 
     Reads cell, atom positions, etc. from v_sim ascii file
@@ -17,15 +19,10 @@ def read_v_sim(filename='demo.ascii'):
     from ase.geometry import cellpar_to_cell
     import re
 
-    if isinstance(filename, str):
-        f = open(filename)
-    else:  # Assume it's a file-like object
-        f = filename
-
     # Read comment:
-    f.readline()
+    fd.readline()
 
-    line = f.readline() + ' ' + f.readline()
+    line = fd.readline() + ' ' + fd.readline()
     box = line.split()
     for i in range(len(box)):
         box[i] = float(box[i])
@@ -38,8 +35,8 @@ def read_v_sim(filename='demo.ascii'):
     re_comment = re.compile(r'^\s*[#!]')
     re_node = re.compile(r'^\s*\S+\s+\S+\s+\S+\s+\S+')
 
-    while(True):
-        line = f.readline()
+    while True:
+        line = fd.readline()
 
         if line == '':
             break  # EOF
@@ -51,7 +48,7 @@ def read_v_sim(filename='demo.ascii'):
             if line[:8] == "keyword:":
                 keywords.extend(line[8:].split())
 
-        elif(re_node.match(line)):
+        elif re_node.match(line):
             unit = 1.0
             if not ("reduced" in keywords):
                 if (("bohr" in keywords) or ("bohrd0" in keywords) or
@@ -64,13 +61,11 @@ def read_v_sim(filename='demo.ascii'):
                               unit * float(fields[2])])
             symbols.append(fields[3])
 
-    f.close()
-
     if ("surface" in keywords) or ("freeBC" in keywords):
         raise NotImplementedError
 
     # create atoms object based on the information
-    if ("angdeg" in keywords):
+    if "angdeg" in keywords:
         cell = cellpar_to_cell(box)
     else:
         unit = 1.0
@@ -81,27 +76,22 @@ def read_v_sim(filename='demo.ascii'):
         cell.flat[[0, 3, 4, 6, 7, 8]] = box[:6]
         cell *= unit
 
-    if ("reduced" in keywords):
+    if "reduced" in keywords:
         atoms = Atoms(cell=cell, scaled_positions=positions)
     else:
         atoms = Atoms(cell=cell, positions=positions)
 
     atoms.set_chemical_symbols(symbols)
-
     return atoms
 
 
-def write_v_sim(filename, atoms):
+@writer
+def write_v_sim(fd, atoms):
     """Write V_Sim input file.
 
     Writes the atom positions and unit cell.
     """
     from ase.geometry import cellpar_to_cell, cell_to_cellpar
-
-    if isinstance(filename, str):
-        f = open(filename)
-    else:  # Assume it's a file-like object
-        f = filename
 
     # Convert the lattice vectors to triangular matrix by converting
     #   to and from a set of lengths and angles
@@ -110,20 +100,20 @@ def write_v_sim(filename, atoms):
     dyx, dyy = cell[1, 0:2]
     dzx, dzy, dzz = cell[2, 0:3]
 
-    f.write('===== v_sim input file created using the'
-            ' Atomic Simulation Environment (ASE) ====\n')
-    f.write('{0} {1} {2}\n'.format(dxx, dyx, dyy))
-    f.write('{0} {1} {2}\n'.format(dzx, dzy, dzz))
+    fd.write('===== v_sim input file created using the'
+             ' Atomic Simulation Environment (ASE) ====\n')
+    fd.write('{0} {1} {2}\n'.format(dxx, dyx, dyy))
+    fd.write('{0} {1} {2}\n'.format(dzx, dzy, dzz))
 
     # Use v_sim 3.5 keywords to indicate scaled positions, etc.
-    f.write('#keyword: reduced\n')
-    f.write('#keyword: angstroem\n')
+    fd.write('#keyword: reduced\n')
+    fd.write('#keyword: angstroem\n')
     if np.alltrue(atoms.pbc):
-        f.write('#keyword: periodic\n')
+        fd.write('#keyword: periodic\n')
     elif not np.any(atoms.pbc):
-        f.write('#keyword: freeBC\n')
+        fd.write('#keyword: freeBC\n')
     elif np.array_equiv(atoms.pbc, [True, False, True]):
-        f.write('#keyword: surface\n')
+        fd.write('#keyword: surface\n')
     else:
         raise Exception(
             'Only supported boundary conditions are full PBC,'
@@ -133,5 +123,5 @@ def write_v_sim(filename, atoms):
     # Add atoms (scaled positions)
     for position, symbol in zip(atoms.get_scaled_positions(),
                                 atoms.get_chemical_symbols()):
-        f.write('{0} {1} {2} {3}\n'.format(
+        fd.write('{0} {1} {2} {3}\n'.format(
             position[0], position[1], position[2], symbol))

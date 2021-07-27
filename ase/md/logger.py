@@ -1,12 +1,13 @@
 """Logging for molecular dynamics."""
 
 import weakref
-import sys
+
 import ase.units as units
-# ase.parallel imported in __init__
+from ase.parallel import world
+from ase.utils import IOContext
 
 
-class MDLogger:
+class MDLogger(IOContext):
     """Class for logging molecular dynamics simulations.
 
     Parameters:
@@ -22,26 +23,16 @@ class MDLogger:
 
     mode="a":      How the file is opened if logfile is a filename.
     """
+
     def __init__(self, dyn, atoms, logfile, header=True, stress=False,
                  peratom=False, mode="a"):
-        import ase.parallel
-        if ase.parallel.world.rank > 0:
-            logfile="/dev/null"  # Only log on master
         if hasattr(dyn, "get_time"):
             self.dyn = weakref.proxy(dyn)
         else:
             self.dyn = None
         self.atoms = atoms
         global_natoms = atoms.get_global_number_of_atoms()
-        if logfile == "-":
-            self.logfile = sys.stdout
-            self.ownlogfile = False
-        elif hasattr(logfile, "write"):
-            self.logfile = logfile
-            self.ownlogfile = False
-        else:
-            self.logfile = open(logfile, mode, 1)
-            self.ownlogfile = True
+        self.logfile = self.openfile(logfile, comm=world, mode='a')
         self.stress = stress
         self.peratom = peratom
         if self.dyn is not None:
@@ -66,37 +57,34 @@ class MDLogger:
                 digits = 2
             else:
                 digits = 1
-            self.fmt += 3*("%%12.%df " % (digits,)) + " %6.1f"
+            self.fmt += 3 * ("%%12.%df " % (digits,)) + " %6.1f"
         if self.stress:
-            self.hdr += "      ---------------------- stress [GPa] -----------------------"
-            self.fmt += 6*" %10.3f"
+            self.hdr += ('      ---------------------- stress [GPa] '
+                         '-----------------------')
+            self.fmt += 6 * " %10.3f"
         self.fmt += "\n"
         if header:
-            self.logfile.write(self.hdr+"\n")
+            self.logfile.write(self.hdr + "\n")
 
     def __del__(self):
         self.close()
 
-    def close(self):
-        if self.ownlogfile:
-            self.logfile.close()
-
     def __call__(self):
         epot = self.atoms.get_potential_energy()
         ekin = self.atoms.get_kinetic_energy()
+        temp = self.atoms.get_temperature()
         global_natoms = self.atoms.get_global_number_of_atoms()
-        temp = ekin / (1.5 * units.kB * global_natoms)
         if self.peratom:
             epot /= global_natoms
             ekin /= global_natoms
         if self.dyn is not None:
-            t = self.dyn.get_time() / (1000*units.fs)
+            t = self.dyn.get_time() / (1000 * units.fs)
             dat = (t,)
         else:
             dat = ()
-        dat += (epot+ekin, epot, ekin, temp)
+        dat += (epot + ekin, epot, ekin, temp)
         if self.stress:
-            dat += tuple(self.atoms.get_stress(include_ideal_gas=True) / units.GPa)
+            dat += tuple(self.atoms.get_stress(
+                include_ideal_gas=True) / units.GPa)
         self.logfile.write(self.fmt % dat)
         self.logfile.flush()
-

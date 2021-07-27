@@ -22,7 +22,8 @@ class ORCA(FileIOCalculator):
         orcasimpleinput='tightscf PBE def2-SVP',
         orcablocks='%scf maxiter 200 end')
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=FileIOCalculator._deprecated,
                  label='orca', atoms=None, **kwargs):
         """ ASE interface to ORCA 4
         by Ragnar Bjornsson, Based on NWchem interface but simplified.
@@ -149,7 +150,7 @@ class PointChargePotential:
     def set_charges(self, mmcharges):
         self.q_p = mmcharges
 
-    def write_mmcharges(self, filename='orca_mm'):
+    def write_mmcharges(self, filename):
         pc_file = open(os.path.join(self.directory,
                                     filename + '.pc'), 'w')
 
@@ -164,8 +165,8 @@ class PointChargePotential:
     def get_forces(self, calc):
         ''' reads forces on point charges from .pcgrad file '''
         with open(os.path.join(self.directory, self.label + '.pcgrad'),
-                  'r', encoding='utf-8') as f:
-            lines = f.readlines()
+                  'r', encoding='utf-8') as fd:
+            lines = fd.readlines()
         numpc = int(lines[0])
         forces = np.zeros((numpc, 3))
         for i in range(numpc):

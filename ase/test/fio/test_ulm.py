@@ -19,26 +19,39 @@ class A:
 @pytest.fixture
 def ulmfile(tmp_path):
     path = tmp_path / 'a.ulm'
-    w = ulm.open(path, 'w')
-    w.write(a=A(), y=9)
-    w.write(s='abc')
-    w.sync()
-    w.write(s='abc2')
-    w.sync()
-    w.write(s='abc3', z=np.ones(7, int))
-    w.close()
+
+    with ulm.open(path, 'w') as w:
+        w.write(a=A(), y=9)
+        w.write(s='abc')
+        w.sync()
+        w.write(s='abc2')
+        w.sync()
+        w.write(s='abc3', z=np.ones(7, int))
+
     return path
 
 
+class MyFile:
+    def __fspath__(self):
+        return 'hello'
+
+
+def test_open_anypathlike():
+    # File does not exist, but we still want to test that it is correctly
+    # converted into a (nonexistent) path
+    with pytest.raises(FileNotFoundError):
+        ulm.open(MyFile())
+
+
 def test_ulm(ulmfile):
-    r = ulm.open(ulmfile)
-    assert r.y == 9
-    assert r.s == 'abc'
-    assert (A.read(r.a).x == np.ones((2, 3))).all()
-    assert (r.a.x == np.ones((2, 3))).all()
-    assert r[1].s == 'abc2'
-    assert r[2].s == 'abc3'
-    assert (r[2].z == np.ones(7)).all()
+    with ulm.open(ulmfile) as r:
+        assert r.y == 9
+        assert r.s == 'abc'
+        assert (A.read(r.a).x == np.ones((2, 3))).all()
+        assert (r.a.x == np.ones((2, 3))).all()
+        assert r[1].s == 'abc2'
+        assert r[2].s == 'abc3'
+        assert (r[2].z == np.ones(7)).all()
 
 
 def test_append(ulmfile):
@@ -52,15 +65,19 @@ def test_append(ulmfile):
         w.fill(np.ones((1, 2)) * 2)
         w.fill(np.ones((2, 2)) * 3)
 
-    assert ulm.open(path, 'r', 3).d['h'] == [1, 'asdf']
-    assert (ulm.open(path)[2].z == np.ones(7)).all()
-    psi = ulm.open(path, index=3).proxy('psi')[0:3]
-    assert (psi == [[1, 1], [2, 2], [3, 3]]).all()
+    with ulm.open(path, 'r', 3) as r:
+        assert r.d['h'] == [1, 'asdf']
+    with ulm.open(path) as r:
+        assert (r[2].z == np.ones(7)).all()
+    with ulm.open(path, index=3) as r:
+        psi = r.proxy('psi')[0:3]
+        assert (psi == [[1, 1], [2, 2], [3, 3]]).all()
 
 
 def test_ulm_copy(ulmfile):
     path = ulmfile.with_name('c.ulm')
     ulm.copy(ulmfile, path, exclude={'.a'})
-    r = ulm.open(path)
-    assert 'a' not in r
-    assert 'y' in r
+
+    with ulm.open(path) as r:
+        assert 'a' not in r
+        assert 'y' in r

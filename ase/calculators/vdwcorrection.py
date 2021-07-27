@@ -2,10 +2,10 @@
 import numpy as np
 from ase.units import Bohr, Hartree
 from ase.calculators.calculator import Calculator
-from ase.utils import convert_string_to_fd
 from scipy.special import erfinv, erfc
 from ase.neighborlist import neighbor_list
 from ase.parallel import world
+from ase.utils import IOContext
 
 
 # dipole polarizabilities and C6 values from
@@ -138,7 +138,7 @@ def get_logging_file_descriptor(calculator):
         return calculator.txt
 
 
-class vdWTkatchenko09prl(Calculator):
+class vdWTkatchenko09prl(Calculator, IOContext):
     """vdW correction after Tkatchenko and Scheffler PRL 102 (2009) 073005."""
     def __init__(self,
                  hirshfeld=None, vdwradii=None, calculator=None,
@@ -165,7 +165,7 @@ class vdWTkatchenko09prl(Calculator):
             myworld = self.calculator.world
         else:
             myworld = world  # the best we know
-        self.txt = convert_string_to_fd(txt, myworld)
+        self.txt = self.openfile(txt, myworld)
 
         self.vdwradii = vdwradii
         self.vdWDB_alphaC6 = vdWDB_alphaC6

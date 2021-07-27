@@ -4,24 +4,21 @@ Atoms object in VASP POSCAR format.
 
 """
 
-import os
 import re
 
 import numpy as np
 
-import ase.units
-
 from ase import Atoms
 from ase.utils import reader, writer
-from ase.io.utils import ImageIterator, ImageChunk
+from ase.io.utils import ImageIterator
+from ase.io import ParseError
+from .vasp_parsers import vasp_outcar_parsers as vop
+from pathlib import Path
 
 __all__ = [
     'read_vasp', 'read_vasp_out', 'iread_vasp_out', 'read_vasp_xdatcar',
     'read_vasp_xml', 'write_vasp', 'write_vasp_xdatcar'
 ]
-
-# Denotes end of Ionic step for OUTCAR reading
-_OUTCAR_SCF_DELIM = 'FREE ENERGIE OF THE ION-ELECTRON SYSTEM'
 
 
 def get_atomtypes(fname):
@@ -32,18 +29,33 @@ def get_atomtypes(fname):
     bzip2.
 
     """
+    fpath = Path(fname)
+
     atomtypes = []
-    if fname.find('.gz') != -1:
+    atomtypes_alt = []
+    if fpath.suffix == '.gz':
         import gzip
-        f = gzip.open(fname)
-    elif fname.find('.bz2') != -1:
+        opener = gzip.open
+    elif fpath.suffix == '.bz2':
         import bz2
-        f = bz2.BZ2File(fname)
+        opener = bz2.BZ2File
     else:
-        f = open(fname)
-    for line in f:
-        if line.find('TITEL') != -1:
-            atomtypes.append(line.split()[3].split('_')[0].split('.')[0])
+        opener = open
+    with opener(fpath) as fd:
+        for line in fd:
+            if 'TITEL' in line:
+                atomtypes.append(line.split()[3].split('_')[0].split('.')[0])
+            elif 'POTCAR:' in line:
+                atomtypes_alt.append(line.split()[2].split('_')[0].split('.')[0])
+
+    if len(atomtypes) == 0 and len(atomtypes_alt) > 0:
+        # old VASP doesn't echo TITEL, but all versions print out species lines
+        # preceded by "POTCAR:", twice
+        if len(atomtypes_alt) % 2 != 0:
+            raise ParseError(f'Tried to get atom types from {len(atomtypes_alt)} "POTCAR": '
+                              'lines in OUTCAR, but expected an even number')
+        atomtypes = atomtypes_alt[0:len(atomtypes_alt)//2]
+
     return atomtypes
 
 
@@ -58,43 +70,32 @@ def atomtypes_outpot(posfname, numsyms):
     numsyms -- The number of symbols we must find
 
     """
-    import os.path as op
-    import glob
+    posfpath = Path(posfname)
 
-    # First check files with exactly same name except POTCAR/OUTCAR instead
+    # Check files with exactly same path except POTCAR/OUTCAR instead
     # of POSCAR/CONTCAR.
-    fnames = [
-        posfname.replace('POSCAR', 'POTCAR').replace('CONTCAR', 'POTCAR')
-    ]
-    fnames.append(
-        posfname.replace('POSCAR', 'OUTCAR').replace('CONTCAR', 'OUTCAR'))
+    fnames = [posfpath.with_name('POTCAR'),
+              posfpath.with_name('OUTCAR')]
     # Try the same but with compressed files
     fsc = []
-    for fn in fnames:
-        fsc.append(fn + '.gz')
-        fsc.append(fn + '.bz2')
+    for fnpath in fnames:
+        fsc.append(fnpath.parent / (fnpath.name + '.gz'))
+        fsc.append(fnpath.parent / (fnpath.name + '.bz2'))
     for f in fsc:
         fnames.append(f)
-    # Finally try anything with POTCAR or OUTCAR in the name
-    vaspdir = op.dirname(posfname)
-    fs = glob.glob(vaspdir + '*POTCAR*')
-    for f in fs:
-        fnames.append(f)
-    fs = glob.glob(vaspdir + '*OUTCAR*')
-    for f in fs:
-        fnames.append(f)
+    # Code used to try anything with POTCAR or OUTCAR in the name
+    # but this is no longer supported
 
     tried = []
-    files_in_dir = os.listdir('.')
     for fn in fnames:
-        if fn in files_in_dir:
+        if fn in posfpath.parent.iterdir():
             tried.append(fn)
             at = get_atomtypes(fn)
             if len(at) == numsyms:
                 return at
 
-    raise IOError('Could not determine chemical symbols. Tried files ' +
-                  str(tried))
+    raise ParseError('Could not determine chemical symbols. Tried files ' +
+                     str(tried))
 
 
 def get_atomtypes_from_formula(formula):
@@ -169,7 +170,6 @@ def read_vasp(filename='CONTCAR'):
         # Split the comment line (first in the file) into words and
         # try to compose a list of chemical symbols
         from ase.formula import Formula
-        import re
         atomtypes = []
         for word in line1.split():
             word_without_delims = re.sub(r"-|_|,|\.|=|[0-9]|^", "", word)
@@ -249,271 +249,9 @@ def read_vasp(filename='CONTCAR'):
     return atoms
 
 
-class OUTCARChunk(ImageChunk):
-    def __init__(self, lines, header_data):
-        self.lines = lines
-        self.header_data = header_data
-
-    def build(self):
-        return _read_outcar_frame(self.lines, self.header_data)
-
-
-def _read_outcar_frame(lines, header_data):
-    from ase.calculators.singlepoint import (SinglePointDFTCalculator,
-                                             SinglePointKPoint)
-
-    mag_x = None
-    mag_y = None
-    mag_z = None
-    magmoms = None
-    magmom = None
-    stress = None
-    efermi = None
-
-    symbols = header_data['symbols']
-    constraints = header_data['constraints']
-    natoms = header_data['natoms']
-    # nkpts = header_data['nkpts']
-    nbands = header_data['nbands']
-    kpt_weights = header_data['kpt_weights']
-    ibzkpts = header_data['ibzkpts']
-
-    atoms = Atoms(symbols=symbols, pbc=True, constraint=constraints)
-
-    cl = _outcar_check_line  # Aliasing
-
-    spinc = 0  # Spin component
-    kpts = []
-    forces = np.zeros((natoms, 3))
-    positions = np.zeros((natoms, 3))
-    f_n = np.zeros(nbands)  # kpt occupations
-    eps_n = np.zeros(nbands)  # kpt eigenvalues
-
-    # Parse each atoms object
-    for n, line in enumerate(lines):
-        line = line.strip()
-        if 'direct lattice vectors' in line:
-            cell = []
-            for i in range(3):
-                parts = cl(lines[n + i + 1]).split()
-                cell += [list(map(float, parts[0:3]))]
-            atoms.set_cell(cell)
-        elif 'magnetization (x)' in line:
-            # Magnetization in both collinear and non-collinear
-            nskip = 4  # Skip some lines
-            mag_x = [
-                float(cl(lines[n + i + nskip]).split()[-1])
-                for i in range(natoms)
-            ]
-
-        # XXX: !!!Uncomment these lines when non-collinear spin is supported!!!
-        # Remember to check that format fits!
-
-        # elif 'magnetization (y)' in line:
-        #     # Non-collinear spin
-        #     nskip = 4           # Skip some lines
-        #     mag_y = [float(cl(lines[n + i + nskip]).split()[-1])
-        #              for i in range(natoms)]
-        # elif 'magnetization (z)' in line:
-        #     # Non-collinear spin
-        #     nskip = 4           # Skip some lines
-        #     mag_z = [float(cl(lines[n + i + nskip]).split()[-1])
-        #              for i in range(natoms)]
-        elif 'number of electron' in line:
-            parts = cl(line).split()
-            if len(parts) > 5 and parts[0].strip() != "NELECT":
-                i = parts.index('magnetization') + 1
-                magmom = parts[i:]
-                if len(magmom) == 1:
-                    # Collinear spin
-                    magmom = float(magmom[0])
-                # !Uncomment these lines when non-collinear spin is supported!
-                # Remember to check that format fits!
-                # else:
-                #     # Non-collinear spin
-                #     # Make a (3,) dim array
-                #     magmom = np.array(list(map(float, magmom)))
-        elif 'in kB ' in line:
-            stress = -np.asarray([float(a) for a in cl(line).split()[2:]])
-            stress = stress[[0, 1, 2, 4, 5, 3]] * 1e-1 * ase.units.GPa
-        elif 'POSITION          ' in line:
-            nskip = 2
-            for i in range(natoms):
-                parts = list(map(float, cl(lines[n + i + nskip]).split()))
-                positions[i] = parts[0:3]
-                forces[i] = parts[3:6]
-            atoms.set_positions(positions, apply_constraint=False)
-        elif 'E-fermi :' in line:
-            parts = line.split()
-            efermi = float(parts[2])
-        elif 'spin component' in line:
-            # Update spin component for kpts
-            # Make spin be in [0, 1], VASP writes 1 or 2
-            tmp = int(line.split()[-1]) - 1
-            if tmp < spinc:
-                # if NWRITE=3, we write KPTS after every electronic step,
-                # so we just reset it, since we went from spin=2 to spin=1
-                # in the same ionic step.
-                # XXX: Only read it at last electronic step
-                kpts = []
-            spinc = tmp
-        elif 'k-point  ' in line:
-            if 'plane waves' in line:
-                # Can happen if we still have part of header
-                continue
-            # Parse all kpts and bands
-            parts = line.split()
-            ikpt = int(parts[1]) - 1  # Make kpt idx start from 0
-            w = kpt_weights[ikpt]
-
-            nskip = 2
-            for i in range(nbands):
-                parts = lines[n + i + nskip].split()
-                eps_n[i] = float(parts[1])
-                f_n[i] = float(parts[2])
-            kpts.append(SinglePointKPoint(w, spinc, ikpt, eps_n=eps_n,
-                                          f_n=f_n))
-        elif _OUTCAR_SCF_DELIM in line:
-            # Last section before next ionic step
-            nskip = 2
-            parts = cl(lines[n + nskip]).strip().split()
-            energy_free = float(parts[4])  # Force consistent
-
-            nskip = 4
-            parts = cl(lines[n + nskip]).strip().split()
-            energy_zero = float(parts[6])  # Extrapolated to 0 K
-
-            # For debugging
-            # assert len(kpts) == 0 or len(kpts) == (spinc + 1) * nkpts
-
-            if mag_x is not None:
-                if mag_y is not None:
-                    # Non-collinear
-                    assert len(mag_x) == len(mag_y) == len(mag_z)
-                    magmoms = np.zeros((len(atoms), 3))
-                    magmoms[:, 0] = mag_x
-                    magmoms[:, 1] = mag_y
-                    magmoms[:, 2] = mag_z
-                else:
-                    # Collinear
-                    magmoms = np.array(mag_x)
-
-            atoms.calc = SinglePointDFTCalculator(atoms,
-                                                  energy=energy_zero,
-                                                  free_energy=energy_free,
-                                                  ibzkpts=ibzkpts,
-                                                  forces=forces,
-                                                  efermi=efermi,
-                                                  magmom=magmom,
-                                                  magmoms=magmoms,
-                                                  stress=stress)
-            atoms.calc.name = 'vasp'
-            atoms.calc.kpts = kpts
-    return atoms
-
-
-def _outcar_check_line(line):
-    """Auxiliary check line function for OUTCAR numeric formatting.
-    See issue #179, https://gitlab.com/ase/ase/issues/179
-    Only call in cases we need the numeric values
-    """
-    if re.search('[0-9]-[0-9]', line):
-        line = re.sub('([0-9])-([0-9])', r'\1 -\2', line)
-    return line
-
-
-def _read_outcar_header(fd):
-
-    # Get the directory of the OUTCAR we are reading
-    wdir = os.path.dirname(fd.name)
-    # Try and see if we can get constraints
-    if os.path.isfile(os.path.join(wdir, 'CONTCAR')):
-        constraints = read_vasp(os.path.join(wdir, 'CONTCAR')).constraints
-    elif os.path.isfile(os.path.join(wdir, 'POSCAR')):
-        constraints = read_vasp(os.path.join(wdir, 'POSCAR')).constraints
-    else:
-        constraints = None
-
-    cl = _outcar_check_line  # Aliasing
-
-    species = []
-    natoms = 0
-    species_num = []
-    symbols = []
-    nkpts = 0
-    nbands = 0
-    kpt_weights = []
-    ibzkpts = []
-
-    # Get atomic species
-    for line in fd:
-        line = line.strip()
-        if 'POTCAR:' in line:
-            temp = line.split()[2]
-            for c in ['.', '_', '1']:
-                if c in temp:
-                    temp = temp[0:temp.find(c)]
-            species += [temp]
-        elif 'ions per type' in line:
-            species = species[:len(species) // 2]
-            parts = cl(line).split()
-            ntypes = min(len(parts) - 4, len(species))
-            for ispecies in range(ntypes):
-                species_num += [int(parts[ispecies + 4])]
-                natoms += species_num[-1]
-                for iatom in range(species_num[-1]):
-                    symbols += [species[ispecies]]
-        elif 'NKPTS' in line:
-            parts = cl(line).split()
-            nkpts = int(parts[3])
-            nbands = int(parts[-1])
-        elif 'k-points in reciprocal lattice and weights' in line:
-            # Get kpoint weights
-            for _ in range(nkpts):
-                parts = next(fd).strip().split()
-                ibzkpts.append(list(map(float, parts[0:3])))
-                kpt_weights.append(float(parts[-1]))
-
-        elif 'Iteration' in line:
-            # Start of SCF cycle
-            header_data = dict(natoms=natoms,
-                               symbols=symbols,
-                               constraints=constraints,
-                               nkpts=nkpts,
-                               nbands=nbands,
-                               kpt_weights=np.array(kpt_weights),
-                               ibzkpts=np.array(ibzkpts))
-            return header_data
-
-    # Incomplete OUTCAR, we can't determine atoms
-    raise IOError('Incomplete OUTCAR')
-
-
-def outcarchunks(fd):
-    # First we get header info
-    header_data = _read_outcar_header(fd)
-
-    while True:
-        try:
-            # Build chunk which contains 1 complete atoms object
-            lines = []
-            while True:
-                line = next(fd)
-                lines.append(line)
-                if _OUTCAR_SCF_DELIM in line:
-                    # Add 4 more lines to include energy
-                    for _ in range(4):
-                        lines.append(next(fd))
-                    break
-        except StopIteration:
-            # End of file
-            return
-        yield OUTCARChunk(lines, header_data)
-
-
 def iread_vasp_out(filename, index=-1):
     """Import OUTCAR type file, as a generator."""
-    it = ImageIterator(outcarchunks)
+    it = ImageIterator(vop.outcarchunks)
     return it(filename, index=index)
 
 
@@ -576,7 +314,7 @@ def read_vasp_xdatcar(filename='XDATCAR', index=-1):
             fd.readline()
 
         coords = [
-            np.array(fd.readline().split(), np.float) for ii in range(total)
+            np.array(fd.readline().split(), float) for ii in range(total)
         ]
 
         image = Atoms(atomic_formula, cell=cell, pbc=True)
@@ -727,7 +465,7 @@ def read_vasp_xml(filename='vasprun.xml', index=-1):
     except ET.ParseError as parse_error:
         if atoms_init is None:
             raise parse_error
-        if calculation and calculation[-1].find('energy') is None:
+        if calculation and calculation[-1].find("energy") is None:
             calculation = calculation[:-1]
         if not calculation:
             yield atoms_init
@@ -960,8 +698,9 @@ def write_vasp(filename,
                sort=None,
                symbol_count=None,
                long_format=True,
-               vasp5=False,
-               ignore_constraints=False):
+               vasp5=True,
+               ignore_constraints=False,
+               wrap=False):
     """Method to write VASP position (POSCAR/CONTCAR) files.
 
     Writes label, scalefactor, unitcell, # of various kinds of atoms,
@@ -982,16 +721,16 @@ def write_vasp(filename,
             atoms = atoms[0]
 
     # Check lattice vectors are finite
-    if np.any(atoms.get_cell_lengths_and_angles() == 0.):
+    if np.any(atoms.cell.cellpar() == 0.):
         raise RuntimeError(
             'Lattice vectors must be finite and not coincident. '
             'At least one lattice length or angle is zero.')
 
     # Write atom positions in scaled or cartesian coordinates
     if direct:
-        coord = atoms.get_scaled_positions()
+        coord = atoms.get_scaled_positions(wrap=wrap)
     else:
-        coord = atoms.get_positions()
+        coord = atoms.get_positions(wrap=wrap)
 
     constraints = atoms.constraints and not ignore_constraints
 

@@ -7,15 +7,18 @@ omx_par = {'definition_of_atomic_species': [['Al', 'Al8.0-p1', 'Al_CA13'],
                                             ['O', 'O6.0-p1', 'O_CA13']]}
 
 
-required = {'aims': dict(sc_accuracy_rho=5.e-3),
-            'elk': dict(tasks=0, rgkmax=5.0),
-            'openmx': omx_par}
+required = {'aims': dict(sc_accuracy_rho=5.e-3)}
 
 
 calc = pytest.mark.calculator
+
+
 @calc('abinit', ecut=200, toldfe=0.0001, chksymbreak=0)
+@calc('openmx', **omx_par)
+@calc('elk', rgkmax=5.0)
 def test_al(factory):
     run(factory)
+
 
 @pytest.mark.parametrize('name', sorted(required))
 def test_al_old(name):

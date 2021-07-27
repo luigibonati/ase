@@ -161,7 +161,6 @@ def lattice_loop(latcls, length_grid, angle_grid):
 def find_niggli_ops(latcls, length_grid, angle_grid):
     niggli_ops = {}
 
-
     for lat in lattice_loop(latcls, length_grid, angle_grid):
         cell = lat.tocell()
 

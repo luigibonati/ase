@@ -1,17 +1,12 @@
-def test_add_candidates():
-    import pytest
-    from ase.build import fcc111
-    from ase.ga.data import PrepareDB
-    from ase.ga.data import DataConnection
-    from ase.ga.offspring_creator import OffspringCreator
-    from ase.ga import set_raw_score
+import pytest
+from ase.build import fcc111
+from ase.ga.data import PrepareDB, DataConnection
+from ase.ga.offspring_creator import OffspringCreator
+from ase.ga import set_raw_score
 
-    import os
 
-    db_file = 'gadb.db'
-    if os.path.isfile(db_file):
-        os.remove(db_file)
-
+def test_add_candidates(tmp_path):
+    db_file = tmp_path / 'gadb.db'
     db = PrepareDB(db_file)
 
     slab1 = fcc111('Ag', size=(2, 2, 2))
@@ -56,5 +51,3 @@ def test_add_candidates():
         more_slabs.append(slab)
     db.add_more_relaxed_candidates(more_slabs)
     assert more_slabs[1].info['confid'] == 9
-
-    os.remove(db_file)

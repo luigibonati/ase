@@ -1,6 +1,6 @@
 """This module defines an ASE interface to NWchem
 
-http://www.nwchem-sw.org/
+https://nwchemgit.github.io
 """
 import os
 import numpy as np
@@ -15,8 +15,10 @@ class NWChem(FileIOCalculator):
     implemented_properties = ['energy', 'forces', 'stress', 'dipole']
     command = 'nwchem PREFIX.nwi > PREFIX.nwo'
     accepts_bandpath_keyword = True
+    discard_results_on_any_change = True
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=FileIOCalculator._deprecated,
                  label='nwchem', atoms=None, command=None, **kwargs):
         """
         NWChem keywords are specified using (potentially nested)
@@ -116,11 +118,6 @@ class NWChem(FileIOCalculator):
         FileIOCalculator.__init__(self, restart, ignore_bad_restart_file,
                                   label, atoms, command, **kwargs)
         self.calc = None
-
-    def set(self, **kwargs):
-        changed_parameters = FileIOCalculator.set(self, **kwargs)
-        if changed_parameters:
-            self.reset()
 
     def write_input(self, atoms, properties=None, system_changes=None):
         FileIOCalculator.write_input(self, atoms, properties, system_changes)

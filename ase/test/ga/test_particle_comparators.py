@@ -1,16 +1,24 @@
+import numpy as np
+from ase.cluster import Icosahedron
+from ase.ga.particle_comparator import NNMatComparator
+from ase.ga.utilities import get_nnmat
+from ase.ga.particle_mutations import RandomPermutation
+
+
+def make_ico(sym):
+    atoms = Icosahedron(sym, 4)
+    atoms.center(vacuum=4.0)
+    return atoms
+
+
 def test_particle_comparators(seed):
-    import numpy as np
-    from ase.cluster import Icosahedron
-    from ase.ga.particle_comparator import NNMatComparator
-    from ase.ga.utilities import get_nnmat
-    from ase.ga.particle_mutations import RandomPermutation
 
     # set up the random number generator
     rng = np.random.RandomState(seed)
 
-    ico1 = Icosahedron('Cu', 4)
+    ico1 = make_ico('Cu')
     ico1.info['confid'] = 1
-    ico2 = Icosahedron('Ni', 4)
+    ico2 = make_ico('Ni')
     ico1.numbers[:55] = [28] * 55
     ico2.numbers[:92] = [29] * 92
 

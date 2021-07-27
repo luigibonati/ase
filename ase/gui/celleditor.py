@@ -28,9 +28,9 @@ class CellEditor:
         angles = cell.angles()
         pbc = atoms.pbc
 
-        for i in [0, 1, 2]: # x_ y_ z_
+        for i in [0, 1, 2]:  # x_ y_ z_
             row = []
-            for j in [0, 1, 2]: # _x _y _z
+            for j in [0, 1, 2]:  # _x _y _z
                 row.append(ui.SpinBox(cell[i][j], -30, 30, 0.1,
                            self.apply_vectors, rounding=7, width=9))
             row.append(ui.SpinBox(mags[i], -30, 30, 0.1, self.apply_magnitudes,
@@ -128,7 +128,7 @@ class CellEditor:
     def apply_angles(self, *args):
         atoms = self.gui.atoms.copy()
 
-        cell_data = atoms.get_cell_lengths_and_angles()
+        cell_data = atoms.cell.cellpar()
         cell_data[3:7] = [self.angles[0].value, self.angles[1].value,
                           self.angles[2].value]
 
@@ -167,6 +167,4 @@ class CellEditor:
                 angles[i] = 0
             self.angles[i].value = angles[i]
 
-            print('GRRR', self.pbc[i].var.get())
             self.pbc[i].var.set(bool(pbc[i]))
-            print('GRRR2', self.pbc[i].var.get())

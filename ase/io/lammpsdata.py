@@ -2,10 +2,11 @@ import re
 import numpy as np
 
 from ase.atoms import Atoms
-from ase.parallel import paropen
 from ase.calculators.lammps import Prism, convert
+from ase.utils import reader, writer
 
 
+@reader
 def read_lammps_data(fileobj, Z_of_type=None, style="full",
                      sort_by_id=False, units="metal"):
     """Method which reads a LAMMPS data file.
@@ -14,13 +15,8 @@ def read_lammps_data(fileobj, Z_of_type=None, style="full",
     switch it off.
     Units are set by default to the style=metal setting in LAMMPS.
     """
-    if isinstance(fileobj, str):
-        fd = paropen(fileobj)
-    else:
-        fd = fileobj
-
     # load everything into memory
-    lines = fd.readlines()
+    lines = fileobj.readlines()
 
     # begin read_lammps_data
     comment = None
@@ -406,17 +402,11 @@ def read_lammps_data(fileobj, Z_of_type=None, style="full",
     return at
 
 
-def write_lammps_data(fileobj, atoms, specorder=None, force_skew=False,
+@writer
+def write_lammps_data(fd, atoms, specorder=None, force_skew=False,
                       prismobj=None, velocities=False, units="metal",
                       atom_style='atomic'):
     """Write atomic structure data to a LAMMPS data file."""
-    if isinstance(fileobj, str):
-        fd = paropen(fileobj, "w", encoding="ascii")
-        close_file = True
-    else:
-        # Presume fileobj acts like a fileobj
-        fd = fileobj
-        close_file = False
 
     # FIXME: We should add a check here that the encoding of the file object
     #        is actually ascii once the 'encoding' attribute of IOFormat objects
@@ -471,8 +461,11 @@ def write_lammps_data(fileobj, atoms, specorder=None, force_skew=False,
         )
     fd.write("\n\n")
 
+    # Write (unwrapped) atomic positions.  If wrapping of atoms back into the
+    # cell along periodic directions is desired, this should be done manually
+    # on the Atoms object itself beforehand.
     fd.write("Atoms \n\n")
-    pos = p.vector_to_lammps(atoms.get_positions(), wrap=True)
+    pos = p.vector_to_lammps(atoms.get_positions(), wrap=False)
 
     if atom_style == 'atomic':
         for i, r in enumerate(pos):
@@ -492,7 +485,7 @@ def write_lammps_data(fileobj, atoms, specorder=None, force_skew=False,
             q = convert(q, "charge", "ASE", units)
             s = species.index(symbols[i]) + 1
             fd.write("{0:>6} {1:>3} {2:>5} {3:23.17g} {4:23.17g} {5:23.17g}\n"
-                    .format(*(i + 1, s, q) + tuple(r)))
+                     .format(*(i + 1, s, q) + tuple(r)))
     elif atom_style == 'full':
         charges = atoms.get_initial_charges()
         # The label 'mol-id' has apparenlty been introduced in read earlier,
@@ -531,7 +524,7 @@ def write_lammps_data(fileobj, atoms, specorder=None, force_skew=False,
             q = convert(q, "charge", "ASE", units)
             s = species.index(symbols[i]) + 1
             fd.write("{0:>6} {1:>3} {2:>3} {3:>5} {4:23.17g} {5:23.17g} "
-                    "{6:23.17g}\n".format(*(i + 1, m, s, q) + tuple(r)))
+                     "{6:23.17g}\n".format(*(i + 1, m, s, q) + tuple(r)))
     else:
         raise NotImplementedError
 
@@ -548,5 +541,3 @@ def write_lammps_data(fileobj, atoms, specorder=None, force_skew=False,
             )
 
     fd.flush()
-    if close_file:
-        fd.close()

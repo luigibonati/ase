@@ -1,5 +1,4 @@
-"""Check that QE calculation can run."""
-
+import pytest
 from ase.build import bulk
 
 
@@ -11,6 +10,7 @@ def verify(calc):
     assert calc.get_k_point_weights() is not None
 
 
+@pytest.mark.calculator_lite
 def test_main(espresso_factory):
     atoms = bulk('Si')
     atoms.calc = espresso_factory.calc()
@@ -18,11 +18,12 @@ def test_main(espresso_factory):
     verify(atoms.calc)
 
 
+@pytest.mark.calculator_lite
 def test_smearing(espresso_factory):
     atoms = bulk('Cu')
-    input_data = {'system':{'occupations': 'smearing',
-                            'smearing': 'fermi-dirac',
-                            'degauss': 0.02}}
+    input_data = {'system': {'occupations': 'smearing',
+                             'smearing': 'fermi-dirac',
+                             'degauss': 0.02}}
     atoms.calc = espresso_factory.calc(input_data=input_data)
     atoms.get_potential_energy()
     verify(atoms.calc)

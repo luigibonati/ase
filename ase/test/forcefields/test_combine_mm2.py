@@ -11,12 +11,13 @@ def make_atoms():
     atoms = s22.create_s22_system('Water_dimer')
     # rotate down in x axis:
     center = atoms[0].position
-    atoms.translate(-center)  
-    h = atoms[3].position[1]-atoms[0].position[1]
+    atoms.translate(-center)
+    h = atoms[3].position[1] - atoms[0].position[1]
     l = np.linalg.norm(atoms[0].position - atoms[3].position)
-    angle = np.degrees(np.arcsin(h/l))
+    angle = np.degrees(np.arcsin(h / l))
     atoms.rotate(angle, '-z', center=center)
     return atoms
+
 
 def make_4mer():
     atoms = make_atoms()
@@ -29,10 +30,10 @@ def make_4mer():
 
 
 @pytest.mark.slow
-def test_combine_mm2():
-    # More biased initial positions for faster test. Set 
-    # to false for a slower, harder test. 
-    fast_test = True  
+def test_combine_mm2(testdir):
+    # More biased initial positions for faster test. Set
+    # to false for a slower, harder test.
+    fast_test = True
 
     atoms = make_4mer()
     atoms.constraints = FixBondLengths([(3 * i + j, 3 * i + (j + 1) % 3)
@@ -40,14 +41,14 @@ def test_combine_mm2():
                                         for j in [0, 1, 2]])
     atoms.calc = TIP3P(np.Inf)
     tag = '4mer_tip3_opt.'
-    opt = FIRE(atoms, logfile=tag+'log', trajectory=tag+'traj')
-    opt.run(fmax=0.05)
+    with FIRE(atoms, logfile=tag + 'log', trajectory=tag + 'traj') as opt:
+        opt.run(fmax=0.05)
     tip3_pos = atoms.get_positions()
 
-    sig = np.array([sigma0, 0, 0 ])
-    eps = np.array([epsilon0, 0, 0 ])
+    sig = np.array([sigma0, 0, 0])
+    eps = np.array([epsilon0, 0, 0])
     rc = np.Inf
-    idxes = [[0, 1, 2], [3, 4 ,5], [6, 7, 8], [9, 10, 11],
+    idxes = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [9, 10, 11],
              list(range(6)), list(range(9)), list(range(6, 12))]
 
     for ii, idx in enumerate(idxes):
@@ -62,7 +63,9 @@ def test_combine_mm2():
                                sig, eps, sig, eps, rc=rc)
 
         tag = '4mer_combtip3_opt_{0:02d}.'.format(ii)
-        opt = FIRE(atoms, logfile=tag+'log', trajectory=tag+'traj')
-        opt.run(fmax=0.05)
+        with FIRE(atoms, logfile=tag + 'log', trajectory=tag + 'traj') as opt:
+            opt.run(fmax=0.05)
         assert((abs(atoms.positions - tip3_pos) < 1e-8).all())
-        print('{0}: {1!s:>28s}: Same Geometry as TIP3P'.format(atoms.calc.name, idx))
+        print(
+            '{0}: {1!s:>28s}: Same Geometry as TIP3P'.format(
+                atoms.calc.name, idx))

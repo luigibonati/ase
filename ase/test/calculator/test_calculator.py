@@ -3,7 +3,6 @@ import pytest
 from ase.calculators.calculator import Calculator
 
 
-
 def test_directory_and_label():
     def normalize(path):
         """Helper function to normalize path"""
@@ -60,3 +59,10 @@ def test_directory_and_label():
         calc = Calculator(directory='.', label=label)
         assert calc.label == expected_label
         assert calc.directory == normalize(wdir)
+
+
+def test_deprecated_get_spin_polarized():
+    calc = Calculator()
+    with pytest.warns(FutureWarning):
+        spinpol = calc.get_spin_polarized()
+    assert spinpol is False

@@ -1,58 +1,104 @@
 """Berendsen NPT dynamics class."""
 
 import numpy as np
+import warnings
 
 from ase.md.nvtberendsen import NVTBerendsen
 import ase.units as units
 
 
 class NPTBerendsen(NVTBerendsen):
-    """Berendsen (constant N, P, T) molecular dynamics.
-
-    This dynamics scale the velocities and volumes to maintain a constant
-    pressure and temperature.  The shape of the simulation cell is not
-    altered, if that is desired use Inhomogenous_NPTBerendsen.
-
-    Usage: NPTBerendsen(atoms, timestep, temperature, taut, pressure, taup)
-
-    atoms
-        The list of atoms.
-
-    timestep
-        The time step.
-
-    temperature
-        The desired temperature, in Kelvin.
-
-    taut
-        Time constant for Berendsen temperature coupling.
-
-    fixcm
-        If True, the position and momentum of the center of mass is
-        kept unperturbed.  Default: True.
-
-    pressure
-        The desired pressure, in bar (1 bar = 1e5 Pa).
-
-    taup
-        Time constant for Berendsen pressure coupling.
-
-    compressibility
-        The compressibility of the material, water 4.57E-5 bar-1, in bar-1
-
-    """
-
-    def __init__(self, atoms, timestep, temperature, taut=0.5e3 *
-                 units.fs, pressure=1.01325, taup=1e3 * units.fs,
-                 compressibility=4.57e-5, fixcm=True, trajectory=None,
+    def __init__(self, atoms, timestep, temperature=None,
+                 *, temperature_K=None, pressure=None, pressure_au=None,
+                 taut=0.5e3 * units.fs, taup=1e3 * units.fs,
+                 compressibility=None, compressibility_au=None, fixcm=True,
+                 trajectory=None,
                  logfile=None, loginterval=1, append_trajectory=False):
+        """Berendsen (constant N, P, T) molecular dynamics.
 
-        NVTBerendsen.__init__(self, atoms, timestep, temperature,
-                              taut, fixcm, trajectory, logfile,
-                              loginterval, append_trajectory=append_trajectory)
+        This dynamics scale the velocities and volumes to maintain a constant
+        pressure and temperature.  The shape of the simulation cell is not
+        altered, if that is desired use Inhomogenous_NPTBerendsen.
+
+        Parameters:
+
+        atoms: Atoms object
+            The list of atoms.
+
+        timestep: float
+            The time step in ASE time units.
+
+        temperature: float
+            The desired temperature, in Kelvin.
+
+        temperature_K: float
+            Alias for ``temperature``.
+
+        pressure: float (deprecated)
+            The desired pressure, in bar (1 bar = 1e5 Pa).  Deprecated,
+            use ``pressure_au`` instead.
+
+        pressure: float
+            The desired pressure, in atomic units (eV/Å^3).
+
+        taut: float
+            Time constant for Berendsen temperature coupling in ASE
+            time units.  Default: 0.5 ps.
+
+        taup: float
+            Time constant for Berendsen pressure coupling.  Default: 1 ps.
+
+        compressibility: float (deprecated)
+            The compressibility of the material, in bar-1.  Deprecated,
+            use ``compressibility_au`` instead.
+
+        compressibility_au: float
+            The compressibility of the material, in atomic units (Å^3/eV).
+
+        fixcm: bool (optional)
+            If True, the position and momentum of the center of mass is
+            kept unperturbed.  Default: True.
+
+        trajectory: Trajectory object or str (optional)
+            Attach trajectory object.  If *trajectory* is a string a
+            Trajectory will be constructed.  Use *None* for no
+            trajectory.
+
+        logfile: file object or str (optional)
+            If *logfile* is a string, a file with that name will be opened.
+            Use '-' for stdout.
+
+        loginterval: int (optional)
+            Only write a log line for every *loginterval* time steps.  
+            Default: 1
+
+        append_trajectory: boolean (optional)
+            Defaults to False, which causes the trajectory file to be
+            overwriten each time the dynamics is restarted from scratch.
+            If True, the new structures are appended to the trajectory
+            file instead.
+
+
+        """
+
+        NVTBerendsen.__init__(self, atoms, timestep, temperature=temperature,
+                              temperature_K=temperature_K,
+                              taut=taut, fixcm=fixcm, trajectory=trajectory,
+                              logfile=logfile, loginterval=loginterval,
+                              append_trajectory=append_trajectory)
         self.taup = taup
-        self.pressure = pressure
-        self.compressibility = compressibility
+        self.pressure = self._process_pressure(pressure, pressure_au)
+        if compressibility is not None and compressibility_au is not None:
+            raise TypeError(
+                "Do not give both 'compressibility' and 'compressibility_au'")
+        if compressibility is not None:
+            # Specified in bar, convert to atomic units
+            warnings.warn(FutureWarning(
+                "Specify the compressibility in atomic units."))
+            self.set_compressibility(
+                compressibility_au=compressibility / (1e5 * units.Pascal))
+        else:
+            self.set_compressibility(compressibility_au=compressibility_au)
 
     def set_taup(self, taup):
         self.taup = taup
@@ -60,14 +106,16 @@ class NPTBerendsen(NVTBerendsen):
     def get_taup(self):
         return self.taup
 
-    def set_pressure(self, pressure):
-        self.pressure = pressure
+    def set_pressure(self, pressure=None, *, pressure_au=None,
+                     pressure_bar=None):
+        self.pressure = self._process_pressure(pressure, pressure_bar,
+                                               pressure_au)
 
     def get_pressure(self):
         return self.pressure
 
-    def set_compressibility(self, compressibility):
-        self.compressibility = compressibility
+    def set_compressibility(self, *, compressibility_au):
+        self.compressibility = compressibility_au
 
     def get_compressibility(self):
         return self.compressibility
@@ -84,33 +132,33 @@ class NPTBerendsen(NVTBerendsen):
 
         taupscl = self.dt / self.taup
         stress = self.atoms.get_stress(voigt=False, include_ideal_gas=True)
-        old_pressure = -stress.trace() / 3 * 1e-5 / units.Pascal
+        old_pressure = -stress.trace() / 3
         scl_pressure = (1.0 - taupscl * self.compressibility / 3.0 *
                         (self.pressure - old_pressure))
 
-        #print "old_pressure", old_pressure
-        #print "volume scaling by:", scl_pressure
+        #print("old_pressure", old_pressure, self.pressure)
+        #print("volume scaling by:", scl_pressure)
 
         cell = self.atoms.get_cell()
         cell = scl_pressure * cell
         self.atoms.set_cell(cell, scale_atoms=True)
 
-    def step(self, f=None):
+    def step(self, forces=None):
         """ move one timestep forward using Berenden NPT molecular dynamics."""
 
         NVTBerendsen.scale_velocities(self)
         self.scale_positions_and_cell()
 
-        #one step velocity verlet
+        # one step velocity verlet
         atoms = self.atoms
 
-        if f is None:
-            f = atoms.get_forces()
+        if forces is None:
+            forces = atoms.get_forces(md=True)
 
         p = self.atoms.get_momenta()
-        p += 0.5 * self.dt * f
+        p += 0.5 * self.dt * forces
 
-        if self.fixcm:
+        if self.fix_com:
             # calculate the center of mass
             # momentum and subtract it
             psum = p.sum(axis=0) / float(len(p))
@@ -127,10 +175,44 @@ class NPTBerendsen(NVTBerendsen):
         # cannot use self.masses in the line above.
 
         self.atoms.set_momenta(p)
-        f = self.atoms.get_forces()
-        atoms.set_momenta(self.atoms.get_momenta() + 0.5 * self.dt * f)
+        forces = self.atoms.get_forces(md=True)
+        atoms.set_momenta(self.atoms.get_momenta() + 0.5 * self.dt * forces)
 
-        return f
+        return forces
+
+    def _process_pressure(self, pressure, pressure_au):
+        """Handle that pressure can be specified in multiple units.
+
+        For at least a transition period, Berendsen NPT dynamics in ASE can
+        have the pressure specified in either bar or atomic units (eV/Å^3).
+
+        Two parameters:
+
+        pressure: None or float
+            The original pressure specification in bar.
+            A warning is issued if this is not None.
+
+        pressure_au: None or float
+            Pressure in ev/Å^3.
+
+        Exactly one of the two pressure parameters must be different from 
+        None, otherwise an error is issued.
+
+        Return value: Pressure in eV/Å^3.
+        """
+        if (pressure is not None) + (pressure_au is not None) != 1:
+            raise TypeError("Exactly one of the parameters 'pressure',"
+                            + " and 'pressure_au' must"
+                            + " be given")
+
+        if pressure is not None:
+            w = ("The 'pressure' parameter is deprecated, please"
+                 + " specify the pressure in atomic units (eV/Å^3)"
+                 + " using the 'pressure_au' parameter.")
+            warnings.warn(FutureWarning(w))
+            return pressure * (1e5 * units.Pascal)
+        else:
+            return pressure_au
 
 
 class Inhomogeneous_NPTBerendsen(NPTBerendsen):
@@ -172,16 +254,23 @@ class Inhomogeneous_NPTBerendsen(NPTBerendsen):
         means that all axes participate, set any of them to zero to disable
         the barostat in that direction.
     """
-    def __init__(self, atoms, timestep, temperature,
-                 taut=0.5e3 * units.fs, pressure=1.01325, taup=1e3 * units.fs,
-                 compressibility=4.57e-5, mask=(1, 1, 1),
-                 fixcm=True, trajectory=None,
+
+    def __init__(self, atoms, timestep, temperature=None,
+                 *, temperature_K=None,
+                 taut=0.5e3 * units.fs, pressure=None,
+                 pressure_au=None, taup=1e3 * units.fs,
+                 compressibility=None, compressibility_au=None,
+                 mask=(1, 1, 1), fixcm=True, trajectory=None,
                  logfile=None, loginterval=1):
 
-        NPTBerendsen.__init__(self, atoms, timestep, temperature,
-                              taut, pressure, taup, compressibility,
-                              fixcm, trajectory, logfile,
-                              loginterval)
+        NPTBerendsen.__init__(self, atoms, timestep, temperature=temperature,
+                              temperature_K=temperature_K,
+                              taut=taut, taup=taup, pressure=pressure,
+                              pressure_au=pressure_au,
+                              compressibility=compressibility,
+                              compressibility_au=compressibility_au,
+                              fixcm=fixcm, trajectory=trajectory,
+                              logfile=logfile, loginterval=loginterval)
         self.mask = mask
 
     def scale_positions_and_cell(self):
@@ -189,7 +278,7 @@ class Inhomogeneous_NPTBerendsen(NPTBerendsen):
         scale the atom position and the simulation cell."""
 
         taupscl = self.dt * self.compressibility / self.taup / 3.0
-        stress = - self.atoms.get_stress(include_ideal_gas=True) * 1e-5 / units.Pascal
+        stress = - self.atoms.get_stress(include_ideal_gas=True)
         if stress.shape == (6,):
             stress = stress[:3]
         elif stress.shape == (3, 3):
@@ -199,11 +288,11 @@ class Inhomogeneous_NPTBerendsen(NPTBerendsen):
                              str(stress.shape))
         pbc = self.atoms.get_pbc()
         scl_pressurex = 1.0 - taupscl * (self.pressure - stress[0]) \
-                        * pbc[0] * self.mask[0]
+            * pbc[0] * self.mask[0]
         scl_pressurey = 1.0 - taupscl * (self.pressure - stress[1]) \
-                        * pbc[1] * self.mask[1]
+            * pbc[1] * self.mask[1]
         scl_pressurez = 1.0 - taupscl * (self.pressure - stress[2]) \
-                        * pbc[2] * self.mask[2]
+            * pbc[2] * self.mask[2]
         cell = self.atoms.get_cell()
         cell = np.array([scl_pressurex * cell[0],
                          scl_pressurey * cell[1],

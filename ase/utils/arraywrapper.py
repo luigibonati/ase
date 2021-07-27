@@ -1,5 +1,3 @@
-import numpy as np
-
 """Module for wrapping an array without being an array.
 
 This can be desirable because we would like atoms.cell to be like an array,
@@ -23,6 +21,10 @@ rather than the array though:
 This module provides the @arraylike decorator which does these things
 for all the interesting ndarray methods.
 """
+
+
+from functools import update_wrapper
+import numpy as np
 
 
 inplace_methods = ['__iadd__', '__imul__', '__ipow__', '__isub__',
@@ -50,9 +52,8 @@ def forward_inplace_call(name):
         a = self.__array__()
         arraymeth(a, obj)
         return self
-    # use update_wrapper()?
-    f.__name__ = name
-    f.__qualname__ = name
+
+    update_wrapper(f, arraymeth)
     return f
 
 
@@ -65,8 +66,15 @@ def wrap_array_attribute(name):
     def attr(self):
         array = np.asarray(self)
         return getattr(array, name)
-    attr.__name__ = wrappee.__name__
-    attr.__qualname__ = wrappee.__qualname__
+
+    update_wrapper(attr, wrappee)
+
+    # We don't want to encourage too liberal use of the numpy methods,
+    # nor do we want the web docs to explode with numpy docstrings or
+    # break our own doctests.
+    #
+    # Therefore we cheat and remove the docstring:
+    attr.__doc__ = None
     return property(attr)
 
 

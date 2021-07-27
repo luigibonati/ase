@@ -28,7 +28,7 @@ def test_atoms_angle():
     diff = old - new - 10
     assert abs(diff) < 10e-3
 
-    #don't actually change angle using indices
+    # don't actually change angle using indices
     old = atoms.get_angle(1, 0, 2, mic=False)
     atoms.set_angle(1, 0, 2, -10, indices=[2, 1], add=True)
     new = atoms.get_angle(1, 0, 2, mic=False)
@@ -37,7 +37,7 @@ def test_atoms_angle():
 
     # Simple tetrahedron
     tetra_pos = np.array([[0, 0, 0], [1, 0, 0], [.5, np.sqrt(3) * .5, 0],
-                          [.5, np.sqrt(1/3.) * .5, np.sqrt(2/3.)]])
+                          [.5, np.sqrt(1 / 3.) * .5, np.sqrt(2 / 3.)]])
     atoms = Atoms(['H', 'H', 'H', 'H'],
                   positions=tetra_pos - np.array([.2, 0, 0]))
     angle = 70.5287793655
@@ -47,5 +47,3 @@ def test_atoms_angle():
     atoms.set_pbc(True)
     atoms.wrap()
     assert abs(atoms.get_dihedral(0, 1, 2, 3, mic=True) - angle) < 1e-3
-
-

@@ -1,6 +1,6 @@
+import re
 import numpy as np
 from xml.dom import minidom
-from ase.calculators.siesta.mbpt_lcao_utils import str2int, str2float
 
 
 def get_ion(fname):
@@ -173,3 +173,43 @@ def extract_projector(pro_xml):
     pro['ref_energy'] = str2float(pro_xml.attributes['ref_energy'].value)[0]
 
     return pro
+
+
+def str2float(string):
+    numeric_const_pattern = r"""
+  [-+]? # optional sign
+  (?:
+    (?: \d* \. \d+ ) # .1 .12 .123 etc 9.1 etc 98.1 etc
+    |
+    (?: \d+ \.? ) # 1. 12. 123. etc 1 12 123 etc
+  )
+  # followed by optional exponent part if desired
+  (?: [Ee] [+-]? \d+ ) ?
+  """
+    rx = re.compile(numeric_const_pattern, re.VERBOSE)
+
+    nb = rx.findall(string)
+    for i in enumerate(nb):
+        nb[i[0]] = float(i[1])
+
+    return np.array(nb)
+
+
+def str2int(string):
+    numeric_const_pattern = r"""
+  [-+]? # optional sign
+  (?:
+    (?: \d* \. \d+ ) # .1 .12 .123 etc 9.1 etc 98.1 etc
+    |
+    (?: \d+ \.? ) # 1. 12. 123. etc 1 12 123 etc
+  )
+  # followed by optional exponent part if desired
+  (?: [Ee] [+-]? \d+ ) ?
+  """
+    rx = re.compile(numeric_const_pattern, re.VERBOSE)
+
+    nb = rx.findall(string)
+    for i in enumerate(nb):
+        nb[i[0]] = int(i[1])
+
+    return np.array(nb)

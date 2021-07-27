@@ -26,11 +26,7 @@ class Octopus(FileIOCalculator, EigenvalOccupationMixin):
 
     The label is always assumed to be a directory."""
 
-    implemented_properties = ['energy', 'forces',
-                              'dipole', 'stress',
-                              #'magmom', 'magmoms'
-    ]
-
+    implemented_properties = ['energy', 'forces', 'dipole', 'stress']
     command = 'octopus'
 
     def __init__(self,
@@ -60,7 +56,6 @@ class Octopus(FileIOCalculator, EigenvalOccupationMixin):
         self.kwargs = {}
 
         FileIOCalculator.__init__(self, restart=restart,
-                                  ignore_bad_restart_file=False,
                                   directory=directory,
                                   atoms=atoms,
                                   command=command, **kwargs)
@@ -161,8 +156,8 @@ class Octopus(FileIOCalculator, EigenvalOccupationMixin):
 
     def read_results(self):
         """Read octopus output files and extract data."""
-        fd = open(self._getpath('static/info', check=True))
-        self.results.update(read_static_info(fd))
+        with open(self._getpath('static/info', check=True)) as fd:
+            self.results.update(read_static_info(fd))
 
         # If the eigenvalues file exists, we get the eigs/occs from that one.
         # This probably means someone ran Octopus in 'unocc' mode to
@@ -184,9 +179,8 @@ class Octopus(FileIOCalculator, EigenvalOccupationMixin):
         FileIOCalculator.write_input(self, atoms, properties=properties,
                                      system_changes=system_changes)
         txt = generate_input(atoms, process_special_kwargs(atoms, self.kwargs))
-        fd = open(self._getpath('inp'), 'w')
-        fd.write(txt)
-        fd.close()
+        with open(self._getpath('inp'), 'w') as fd:
+            fd.write(txt)
 
     def read(self, directory):
         # XXX label of restart file may not be the same as actual label!
@@ -196,13 +190,12 @@ class Octopus(FileIOCalculator, EigenvalOccupationMixin):
         self.directory = directory
 
         inp_path = self._getpath('inp')
-        fd = open(inp_path)
-        kwargs = parse_input_file(fd)
+        with open(inp_path) as fd:
+            kwargs = parse_input_file(fd)
 
         self.atoms, kwargs = kwargs2atoms(kwargs)
         self.kwargs.update(kwargs)
 
-        fd.close()
         self.read_results()
 
     @classmethod

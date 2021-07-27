@@ -28,8 +28,8 @@ def test_optimizer(atoms):
 
     atoms.positions[:] = pos
     atoms.calc.set_label('sp')
-    opt_ase = LBFGS(atoms, trajectory='ase_opt.traj')
-    opt_ase.run(fmax=1e-2)
+    with LBFGS(atoms) as opt_ase:
+        opt_ase.run(fmax=1e-2)
     e_aseopt = atoms.get_potential_energy()
     assert e_gaussopt - e_aseopt == pytest.approx(0., abs=1e-3)
 

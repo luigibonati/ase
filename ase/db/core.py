@@ -6,7 +6,7 @@ import os
 import re
 import warnings
 from time import time
-from typing import List, Any
+from typing import List, Dict, Any
 
 import numpy as np
 
@@ -243,7 +243,7 @@ def parse_selection(selection, **kwargs):
         for op in ['!=', '<=', '>=', '<', '>', '=']:
             if op in expression:
                 break
-        else:
+        else:  # no break
             if expression in atomic_numbers:
                 comparisons.append((expression, '>', 0))
             else:
@@ -309,7 +309,13 @@ class Database:
         else:
             self.lock = None
         self.serial = serial
-        self._metadata = None  # decription of columns and other stuff
+
+        # Decription of columns and other stuff:
+        self._metadata: Dict[str, Any] = None
+
+    @property
+    def metadata(self) -> Dict[str, Any]:
+        raise NotImplementedError
 
     @parallel_function
     @lock

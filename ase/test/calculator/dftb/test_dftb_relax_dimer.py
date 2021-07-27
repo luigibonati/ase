@@ -1,9 +1,13 @@
+import pytest
+
 from ase import Atoms
 from ase.optimize import BFGS
 
 
-def test_dftb_relax_dimer(dftb_factory):
-    calc = dftb_factory.calc(
+@pytest.mark.calculator_lite
+@pytest.mark.calculator('dftb')
+def test_dftb_relax_dimer(factory):
+    calc = factory.calc(
         label='dftb',
         Hamiltonian_SCC='No',
         Hamiltonian_PolynomialRepulsive='SetForAll {Yes}',
@@ -13,8 +17,8 @@ def test_dftb_relax_dimer(dftb_factory):
                   cell=[12.]*3, pbc=False)
     atoms.calc = calc
 
-    dyn = BFGS(atoms, logfile='-')
-    dyn.run(fmax=0.1)
+    with BFGS(atoms, logfile='-') as dyn:
+        dyn.run(fmax=0.1)
 
     e = atoms.get_potential_energy()
     assert abs(e - -64.830901) < 1., e

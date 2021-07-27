@@ -22,7 +22,7 @@ def test_h2o():
 
     # energy
     energy = atoms.get_potential_energy()
-    ref = -4.08209*Hartree
+    ref = -4.08209 * Hartree
 
     print('energy')
     print(energy)
@@ -36,11 +36,11 @@ def test_h2o():
 
     # analytical forces
     forces_an = atoms.get_forces()
-    ref = np.array([[ 0.11381E-01,    -0.16761E-01,     0.00000E+00 ],
-                    [-0.19688E-01,     0.47899E-02,     0.00000E+00 ],
-                    [ 0.83062E-02,     0.11971E-01,     0.00000E+00 ]])
+    ref = np.array([[0.11381E-01, -0.16761E-01, 0.0],
+                    [-0.19688E-01, 0.47899E-02, 0.0],
+                    [0.83062E-02, 0.11971E-01, 0.0]])
 
-    ref*=-Hartree/Bohr
+    ref *= -Hartree / Bohr
 
     error = np.sqrt(np.sum((forces_an - ref)**2))
     print('forces_an')
@@ -52,14 +52,14 @@ def test_h2o():
     assert(error < tol)
 
     # optimize geometry
-    dyn = BFGS(atoms)
-    dyn.run(fmax=0.01)
+    with BFGS(atoms) as dyn:
+        dyn.run(fmax=0.01)
 
     positions = atoms.get_positions()
 
-    ref = np.array([[ 0.943765,   0.046188,   0.000000],
-                    [-0.287409,   0.900126,   0.000000],
-                    [-0.021346,  -0.030774,   0.000000]])
+    ref = np.array([[0.943765, 0.046188, 0.0],
+                    [-0.287409, 0.900126, 0.0],
+                    [-0.021346, -0.030774, 0.0]])
 
     error = np.sqrt(np.sum((positions - ref)**2))
     print('positions')

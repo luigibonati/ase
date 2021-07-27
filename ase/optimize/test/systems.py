@@ -83,10 +83,10 @@ systems.append((slab, 'C/Cu(100)'))
 
 #
 surfaces = [(1, 0, 0), (1, 1, 0), (1, 1, 1)]
-esurf = [0.9151, 0.9771, 0.7953] #Surface energies
-size = 10    #number of atoms
-atoms = wulff_construction('Al', surfaces, esurf, size, 'fcc', 
-                                 rounding = 'above')
+esurf = [0.9151, 0.9771, 0.7953]  # Surface energies
+size = 10  # number of atoms
+atoms = wulff_construction('Al', surfaces, esurf, size, 'fcc',
+                           rounding='above')
 atoms.center(vacuum=6)
 atoms.rattle(0.2)
 systems.append((atoms, 'Alumninum cluster'))

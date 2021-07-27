@@ -14,6 +14,7 @@ from ase.io import Trajectory
 all_optimizers = ase.optimize.__all__ + ['PreconLBFGS', 'PreconFIRE',
                                          'SciPyFminCG', 'SciPyFminBFGS']
 all_optimizers.remove('QuasiNewton')
+all_optimizers.remove('RestartError')
 
 
 def get_optimizer(name):
@@ -29,6 +30,7 @@ def get_optimizer(name):
 
 class Wrapper:
     """Atoms-object wrapper that can count number of moves."""
+
     def __init__(self, atoms, gridspacing=0.2, eggbox=0.0):
         # types: (Atoms, float, float) -> None
         self.t0 = time()

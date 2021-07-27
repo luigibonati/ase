@@ -485,6 +485,7 @@ You can also write/read to/from JSON using::
     $ ase db proj1.db --set-metadata metadata.json
     $ ase db proj1.db --show-metadata > metadata.json
 
+
 External Tables
 ----------------
 

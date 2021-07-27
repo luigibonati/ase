@@ -1,6 +1,8 @@
 from ase.atoms import Atoms
 import pytest
 
+
+@pytest.mark.calculator_lite
 @pytest.mark.calculator('lammpsrun')
 def test_no_data_file_wrap(factory):
     """

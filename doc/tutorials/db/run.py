@@ -26,9 +26,9 @@ runpy.run_path('ea.py')
 for n in [1, 2, 3]:
     a = read('ads.db@Cu{}O'.format(n))[0]
     a *= (2, 2, 1)
-    write('cu{}o.pov'.format(n), a,
-          rotation='-80x',
-          run_povray=True)
+    renderer = write('cu{}o.pov'.format(n), a,
+                     rotation='-80x')
+    renderer.render()
 
 # A bit of testing:
 row = connect('ads.db').get(surf='Pt', layers=3, ads='O')

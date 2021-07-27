@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+import warnings
 
 from ase import Atom, Atoms
 from ase.io import read
@@ -9,6 +10,15 @@ from ase.io import NetCDFTrajectory
 @pytest.fixture(scope='module')
 def netCDF4():
     return pytest.importorskip('netCDF4')
+
+
+@pytest.fixture(autouse=True)
+def catch_netcdf4_warning():
+    with warnings.catch_warnings():
+        # XXX Ignore deprecation warning from numpy over how netCDF4
+        # uses numpy.  We can't really do anything about that.
+        warnings.simplefilter('ignore', DeprecationWarning)
+        yield
 
 
 @pytest.fixture
@@ -135,6 +145,7 @@ def test_netcdftrajectory(co):
     a = read('5.nc')
     assert(len(a) == 2)
 
+
 def test_netcdf_with_variable_atomic_numbers(netCDF4):
     # Create a NetCDF file with a per-file definition of atomic numbers. ASE
     # NetCDFTrajectory can read but not write these types of files.
@@ -150,7 +161,7 @@ def test_netcdf_with_variable_atomic_numbers(netCDF4):
     nc.createVariable('cell_lengths', 'f4', ('frame', 'cell_spatial',))
     nc.createVariable('cell_angles', 'f4', ('frame', 'cell_angular',))
 
-    r0 = np.array([[1, 2, 3], [4, 5, 6]], dtype=np.float)
+    r0 = np.array([[1, 2, 3], [4, 5, 6]], dtype=float)
     r1 = 2 * r0
 
     nc.variables['atom_types'][:] = [1, 2]
@@ -181,7 +192,7 @@ def test_netcdf_with_nonconsecutive_index(netCDF4):
     nc.createVariable('cell_angles', 'f4', ('frame', 'cell_angular',))
     nc.createVariable('id', 'i', ('frame', 'atom',))
 
-    r0 = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype=np.float)
+    r0 = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype=float)
     r1 = 2 * r0
 
     nc.variables['atom_types'][:] = [1, 2, 3]

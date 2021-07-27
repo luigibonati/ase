@@ -74,8 +74,6 @@ class OPLSff:
             self.read(fileobj)
 
     def read(self, fileobj, comments='#'):
-        if isinstance(fileobj, str):
-            fileobj = open(fileobj)
 
         def read_block(name, symlen, nvalues):
             """Read a data block.
@@ -143,9 +141,10 @@ class OPLSff:
         self.write_lammps_atoms(atoms, connectivities)
 
     def write_lammps_in(self):
-        fileobj = self.prefix + '_in'
-        if isinstance(fileobj, str):
-            fileobj = open(fileobj, 'w')
+        with open(self.prefix + '_in', 'w') as fileobj:
+            self._write_lammps_in(fileobj)
+
+    def _write_lammps_in(self, fileobj):
         fileobj.write("""# LAMMPS relaxation (written by ASE)
 
 units           metal
@@ -174,14 +173,13 @@ restart         100000 test_relax
 min_style       fire
 minimize        1.0e-14 1.0e-5 100000 100000
 """)  # noqa: E501
-        fileobj.close()
 
     def write_lammps_atoms(self, atoms, connectivities):
         """Write atoms input for LAMMPS"""
+        with open(self.prefix + '_atoms', 'w') as fileobj:
+            self._write_lammps_atoms(fileobj, atoms, connectivities)
 
-        fname = self.prefix + '_atoms'
-        fileobj = open(fname, 'w')
-
+    def _write_lammps_atoms(self, fileobj, atoms, connectivities):
         # header
         fileobj.write(fileobj.name + ' (by ' + str(self.__class__) + ')\n\n')
         fileobj.write(str(len(atoms)) + ' atoms\n')
@@ -204,10 +202,13 @@ minimize        1.0e-14 1.0e-5 100000 100000
 
         # cell
         p = Prism(atoms.get_cell())
-        xhi, yhi, zhi, xy, xz, yz = p.get_lammps_prism_str()
+        xhi, yhi, zhi, xy, xz, yz = p.get_lammps_prism()
         fileobj.write('\n0.0 %s  xlo xhi\n' % xhi)
         fileobj.write('0.0 %s  ylo yhi\n' % yhi)
         fileobj.write('0.0 %s  zlo zhi\n' % zhi)
+
+        if p.is_skewed():
+            fileobj.write(f"{xy} {xz} {yz}  xy xz yz\n")
 
         # atoms
         fileobj.write('\nAtoms\n\n')
@@ -217,7 +218,7 @@ minimize        1.0e-14 1.0e-5 100000 100000
         else:
             molid = [1] * len(atoms)
         for i, r in enumerate(
-                p.positions_to_lammps_strs(atoms.get_positions())):
+                p.vector_to_lammps(atoms.get_positions())):
             atype = atoms.types[tag[i]]
             if len(atype) < 2:
                 atype = atype + ' '
@@ -230,6 +231,7 @@ minimize        1.0e-14 1.0e-5 100000 100000
         # velocities
         velocities = atoms.get_velocities()
         if velocities is not None:
+            velocities = p.vector_to_lammps(atoms.get_velocities())
             fileobj.write('\nVelocities\n\n')
             for i, v in enumerate(velocities):
                 fileobj.write('%6d %g %g %g\n' %
@@ -447,11 +449,11 @@ minimize        1.0e-14 1.0e-5 100000 100000
 
     def write_lammps_definitions(self, atoms, btypes, atypes, dtypes):
         """Write force field definitions for LAMMPS."""
+        with open(self.prefix + '_opls', 'w') as fd:
+            self._write_lammps_definitions(fd, atoms, btypes, atypes, dtypes)
 
-        fileobj = self.prefix + '_opls'
-        if isinstance(fileobj, str):
-            fileobj = open(fileobj, 'w')
-
+    def _write_lammps_definitions(self, fileobj, atoms, btypes, atypes,
+                                  dtypes):
         fileobj.write('# OPLS potential\n')
         fileobj.write('# write_lammps' +
                       str(time.asctime(time.localtime(time.time()))))
@@ -605,9 +607,6 @@ class OPLSStructure(Atoms):
 
         update_types: update atom types from the masses
         """
-        if isinstance(fileobj, str):
-            fileobj = open(fileobj, 'r')
-
         lines = fileobj.readlines()
         lines.pop(0)
 
@@ -626,7 +625,7 @@ class OPLSStructure(Atoms):
 
         next_entry()
         header = {}
-        while(True):
+        while True:
             line = lines.pop(0).strip()
             if len(line):
                 w = line.split()
@@ -637,7 +636,7 @@ class OPLSStructure(Atoms):
             else:
                 break
 
-        while(not lines.pop(0).startswith('Atoms')):
+        while not lines.pop(0).startswith('Atoms'):
             pass
         lines.pop(0)
 

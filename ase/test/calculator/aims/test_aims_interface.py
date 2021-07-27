@@ -1,10 +1,13 @@
+import tempfile
+import os
+
+import pytest
+from ase.calculators.aims import Aims
+from ase import Atoms
+
+
+@pytest.mark.skip('legacy test with hardcoded paths and commands')
 def test_aims_interface():
-    import tempfile
-    import os
-
-    from ase.calculators.aims import Aims
-    from ase import Atoms
-
     # test the new command handling + legacy behavior
     aims_command = 'aims.x'
     aims_command_alternative = 'mpirun -np 4 fhiaims.x'
@@ -77,7 +80,6 @@ def test_aims_interface():
     assert calc.aims_command == aims_command_alternative
     assert calc.outfilename == outfilename
 
-
     # test writing files
     tmp_dir = tempfile.mkdtemp()
     water = Atoms('HOH', [(1, 0, 0), (0, 0, 0), (0, 1, 0)])
@@ -99,4 +101,4 @@ def test_aims_interface():
     calc.atoms = water
     calc.prepare_input_files()
     for f in ['control.in', 'geometry.in']:
-        assert os.path.isfile(os.path.join(tmp_dir,f))
+        assert os.path.isfile(os.path.join(tmp_dir, f))

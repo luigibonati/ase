@@ -15,4 +15,5 @@ wire.cell[0, 0] = d
 #view(wire, block=1)
 write('Au-wire.pov', wire,
       rotation='12x,6y',
-      transparent=False, run_povray=True)
+      povray_settings=dict(
+          transparent=False)).render()

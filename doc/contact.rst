@@ -31,6 +31,13 @@ Please join one of the ASE chats if you have any questions:
 .. _Freenode: https://webchat.freenode.net/#ase?nick=Guest_?
 
 
+Forum
+=====
+
+There is an `ASE forum <https://matsci.org/c/ase/36>`_ on the
+`Materials Science Community Forum <https://matsci.org/>`_.
+
+
 GitLab
 ======
 

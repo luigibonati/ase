@@ -30,7 +30,7 @@ qn = QuasiNewton(atoms)
 qn.run(0.001, 10)
 
 # Set the momenta corresponding to T=1200K
-MaxwellBoltzmannDistribution(atoms, 1200 * units.kB)
+MaxwellBoltzmannDistribution(atoms, temperature_K=1200)
 Stationary(atoms)  # zero linear momentum
 ZeroRotation(atoms)  # zero angular momentum
 
@@ -46,6 +46,7 @@ def printenergy(a=atoms):  # store a reference to atoms in the definition.
     ekin = a.get_kinetic_energy() / len(a)
     print('Energy per atom: Epot = %.3feV  Ekin = %.3feV (T=%3.0fK)  '
           'Etot = %.3feV' % (epot, ekin, ekin / (1.5 * units.kB), epot + ekin))
+
 
 dyn.attach(printenergy, interval=10)
 

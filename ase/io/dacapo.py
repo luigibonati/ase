@@ -3,13 +3,12 @@ import numpy as np
 from ase.calculators.singlepoint import SinglePointCalculator
 from ase.atom import Atom
 from ase.atoms import Atoms
+from ase.utils import reader
 
 
-def read_dacapo_text(fileobj):
-    if isinstance(fileobj, str):
-        fileobj = open(fileobj)
-
-    lines = fileobj.readlines()
+@reader
+def read_dacapo_text(fd):
+    lines = fd.readlines()
     i = lines.index(' Structure:             A1           A2            A3\n')
     cell = np.array([[float(w) for w in line.split()[2:5]]
                      for line in lines[i + 1:i + 4]]).transpose()

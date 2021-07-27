@@ -4,7 +4,7 @@ from ase.calculators.eam import EAM
 from ase.build import bulk
 
 
-def test_eam():
+def test_eam(testdir):
     # test to generate an EAM potential file using a simplified
     # approximation to the Mishin potential Al99.eam.alloy data
 

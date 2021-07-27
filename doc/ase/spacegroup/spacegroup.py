@@ -7,13 +7,14 @@ for name in ['al', 'mg', 'fe', 'diamond', 'nacl', 'rutile', 'skutterudite']:
     py = 'spacegroup-{0}.py'.format(name)
     dct = runpy.run_path(py)
     atoms = dct[name]
-    ase.io.write('spacegroup-%s.pov' % name,
-                 atoms,
-                 transparent=False,
-                 run_povray=True,
-                 # canvas_width=128,
-                 rotation='10x,-10y',
-                 # celllinewidth=0.02,
-                 celllinewidth=0.05)
+    renderer = ase.io.write('spacegroup-%s.pov' % name,
+                            atoms,
+                            rotation='10x,-10y',
+                            povray_settings=dict(
+                                transparent=False,
+                                # canvas_width=128,
+                                # celllinewidth=0.02,
+                                celllinewidth=0.05))
+    renderer.render()
 
 runpy.run_path('spacegroup-cosb3.py')

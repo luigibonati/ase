@@ -111,6 +111,7 @@ class PlottingVariables:
         self.cell_vertices = cell_vertices
         self.natoms = natoms
         self.d = 2 * scale * radii
+        self.constraints = atoms.constraints
 
         # extension for partial occupancies
         self.frac_occ = False
@@ -166,7 +167,7 @@ def make_patch_list(writer):
         if a < writer.natoms:
             r = writer.d[a] / 2
             if writer.frac_occ:
-                site_occ = writer.occs[writer.tags[a]]
+                site_occ = writer.occs[str(writer.tags[a])]
                 # first an empty circle if a site is not fully occupied
                 if (np.sum([v for v in site_occ.values()])) < 1.0:
                     # fill with white
@@ -227,6 +228,7 @@ class ImageIterator:
     Assumes ``ichunks`` is in iterator, which returns ``ImageChunk``
     type objects. See extxyz.py:iread_xyz as an example.
     """
+
     def __init__(self, ichunks):
         self.ichunks = ichunks
 

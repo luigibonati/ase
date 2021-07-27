@@ -246,6 +246,7 @@ def parse_gto_chunk(chunk):
     # SinglePointDFTCalculator doesn't support quadrupole moment currently
     calc = SinglePointDFTCalculator(atoms=atoms,
                                     energy=energy,
+                                    free_energy=energy,  # XXX Is this right?
                                     forces=forces,
                                     dipole=dipole,
                                     # quadrupole=quadrupole,

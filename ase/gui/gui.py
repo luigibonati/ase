@@ -1,8 +1,6 @@
-import os
 import pickle
 import subprocess
 import sys
-import tempfile
 import weakref
 from functools import partial
 from ase.gui.i18n import _
@@ -207,8 +205,8 @@ class GUI(View, Status):
     def delete_selected_atoms(self, widget=None, data=None):
         import ase.gui.ui as ui
         nselected = sum(self.images.selected)
-        if nselected and ui.ask_question('Delete atoms',
-                                         'Delete selected atoms?'):
+        if nselected and ui.ask_question(_('Delete atoms'),
+                                         _('Delete selected atoms?')):
             self.really_delete_selected_atoms()
 
     def really_delete_selected_atoms(self):
@@ -298,7 +296,7 @@ class GUI(View, Status):
             self.pipe('eos', plotdata)
 
     def reciprocal(self):
-        if self.atoms.number_of_lattice_vectors != 3:
+        if self.atoms.cell.rank != 3:
             self.bad_plot(_('Requires 3D cell.'))
             return
 
@@ -400,13 +398,8 @@ class GUI(View, Status):
         return save_dialog(self)
 
     def external_viewer(self, name):
-        command = {'xmakemol': 'xmakemol -f',
-                   'rasmol': 'rasmol -xyz'}.get(name, name)
-        fd, filename = tempfile.mkstemp('.xyz', 'ase.gui-')
-        os.close(fd)
-        self.images.write(filename)
-        os.system('(%s %s &); (sleep 60; rm %s) &' %
-                  (command, filename, filename))
+        from ase.visualize import view
+        return view(list(self.images), viewer=name)
 
     def selected_atoms(self):
         selection_mask = self.images.selected[:len(self.atoms)]

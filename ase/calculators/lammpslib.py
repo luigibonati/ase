@@ -2,7 +2,6 @@
 
 
 import ctypes
-import operator
 
 import numpy as np
 from numpy.linalg import norm
@@ -23,7 +22,7 @@ from ase.geometry import wrap_positions
 #   into a python function that can be called
 # 8. make matscipy as fallback
 # 9. keep_alive not needed with no system changes
-#10. it may be a good idea to unify the cell handling with the one found in
+# 10. it may be a good idea to unify the cell handling with the one found in
 #    lammpsrun.py
 
 
@@ -85,46 +84,59 @@ is still experimental code.
 
 **Arguments**
 
-====================  ==========================================================
+=======================  ======================================================
 Keyword                                  Description
-====================  ==========================================================
-``lmpcmds``           list of strings of LAMMPS commands. You need to supply
-                      enough to define the potential to be used e.g.
+=======================  ======================================================
+``lmpcmds``              list of strings of LAMMPS commands. You need to supply
+                         enough to define the potential to be used e.g.
 
-                      ["pair_style eam/alloy",
-                       "pair_coeff * * potentials/NiAlH_jea.eam.alloy Ni Al"]
+                         ["pair_style eam/alloy",
+                         "pair_coeff * * potentials/NiAlH_jea.eam.alloy Ni Al"]
 
-``atom_types``        dictionary of ``atomic_symbol :lammps_atom_type`` pairs,
-                      e.g. ``{'Cu':1}`` to bind copper to lammps atom type 1.
-                      If <None>, autocreated by assigning lammps atom types in
-                      order that they appear in the first used atoms object.
+``atom_types``           dictionary of ``atomic_symbol :lammps_atom_type``
+                         pairs, e.g. ``{'Cu':1}`` to bind copper to lammps
+                         atom type 1.  If <None>, autocreated by assigning
+                         lammps atom types in order that they appear in the
+                         first used atoms object.
 
-``atom_type_masses``  dictionary of ``atomic_symbol :mass`` pairs,
-                      e.g. ``{'Cu':63.546}`` to optionally assign masses that
-                      override default ase.data.atomic_masses.  Note that since
-                      unit conversion is done automatically in this module,
-                      these quantities must be given in the standard ase mass
-                      units (g/mol)
+``atom_type_masses``     dictionary of ``atomic_symbol :mass`` pairs, e.g.
+                         ``{'Cu':63.546}`` to optionally assign masses that
+                         override default ase.data.atomic_masses.  Note that
+                         since unit conversion is done automatically in this
+                         module, these quantities must be given in the
+                         standard ase mass units (g/mol)
 
-``log_file``          string
-                      path to the desired LAMMPS log file
+``log_file``             string
+                         path to the desired LAMMPS log file
 
-``lammps_header``     string to use for lammps setup. Default is to use
-                      metal units and simple atom simulation.
+``lammps_header``        string to use for lammps setup. Default is to use
+                         metal units and simple atom simulation.
 
-                      lammps_header=['units metal',
-                                  'atom_style atomic',
-                                  'atom_modify map array sort 0 0'])
+                         lammps_header=['units metal',
+                             'atom_style atomic',
+                             'atom_modify map array sort 0 0'])
 
-``amendments``        extra list of strings of LAMMPS commands to be run post
-                      post initialization. (Use: Initialization amendments) e.g.
+``amendments``           extra list of strings of LAMMPS commands to be run
+                         post initialization. (Use: Initialization amendments)
+                         e.g.
 
-                      ["mass 1 58.6934"]
+                         ["mass 1 58.6934"]
 
-``keep_alive``        Boolean
-                      whether to keep the lammps routine alive for more commands
+``post_changebox_cmds``  extra list of strings of LAMMPS commands to be run
+                         after any LAMMPS 'change_box' command is performed by
+                         the calculator.  This is relevant because some
+                         potentials either themselves depend on the geometry
+                         and boundary conditions of the simulation box, or are
+                         frequently coupled with other LAMMPS commands that
+                         do, e.g. the 'buck/coul/long' pair style is often
+                         used with the kspace_* commands, which are sensitive
+                         to the periodicity of the simulation box.
 
-====================  ==========================================================
+``keep_alive``           Boolean
+                         whether to keep the lammps routine alive for more
+                         commands
+
+=======================  ======================================================
 
 
 **Requirements**
@@ -252,6 +264,7 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
                        'atom_style atomic',
                        'atom_modify map array sort 0 0'],
         amendments=None,
+        post_changebox_cmds=None,
         boundary=True,
         create_box=True,
         create_atoms=True,
@@ -272,7 +285,7 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
         lammps_cell, self.coord_transform = convert_cell(atoms.get_cell())
 
         xhi, xy, xz, _, yhi, yz, _, _, zhi = convert(
-                lammps_cell.flatten(order='C'), "distance", "ASE", self.units)
+            lammps_cell.flatten(order='C'), "distance", "ASE", self.units)
         box_hi = [xhi, yhi, zhi]
 
         if change:
@@ -280,6 +293,9 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
                         'x final 0 {} y final 0 {} z final 0 {}      '
                         'xy final {} xz final {} yz final {} units box'
                         ''.format(xhi, yhi, zhi, xy, xz, yz))
+            if self.parameters.post_changebox_cmds is not None:
+                for cmd in self.parameters.post_changebox_cmds:
+                    self.lmp.command(cmd)
         else:
             # just in case we'll want to run with a funny shape box,
             # and here command will only happen once, and before
@@ -287,9 +303,10 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
             if self.parameters.create_box:
                 self.lmp.command('box tilt large')
 
-            # Check if there are any indefinite boundaries. If so, shrink-wrapping will
-            # end up being used, but we want to define the LAMMPS region and box fairly
-            # tight around the atoms to avoid losing any
+            # Check if there are any indefinite boundaries. If so,
+            # shrink-wrapping will end up being used, but we want to
+            # define the LAMMPS region and box fairly tight around the
+            # atoms to avoid losing any
             lammps_boundary_conditions = self.lammpsbc(atoms).split()
             if 's' in lammps_boundary_conditions:
                 pos = atoms.get_positions()
@@ -299,9 +316,9 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
                 posmin = np.amin(pos, axis=0)
                 posmax = np.amax(pos, axis=0)
 
-                for i in range(0,3):
+                for i in range(0, 3):
                     if lammps_boundary_conditions[i] == 's':
-                        box_hi[i] = 1.05*abs(posmax[i] - posmin[i])
+                        box_hi[i] = 1.05 * abs(posmax[i] - posmin[i])
 
             cell_cmd = ('region cell prism    '
                         '0 {} 0 {} 0 {}     '
@@ -313,14 +330,17 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
     def set_lammps_pos(self, atoms):
         # Create local copy of positions that are wrapped along any periodic
         # directions
-        pos = wrap_positions(atoms.get_positions(), atoms.get_cell(),
-                             atoms.get_pbc())
-        pos = convert(pos, "distance", "ASE", self.units)
+        cell = convert(atoms.cell, "distance", "ASE", self.units)
+        pos = convert(atoms.positions, "distance", "ASE", self.units)
 
         # If necessary, transform the positions to new coordinate system
         if self.coord_transform is not None:
-            pos = np.dot(self.coord_transform, pos.transpose())
-            pos = pos.transpose()
+            pos = np.dot(pos, self.coord_transform.T)
+            cell = np.dot(cell, self.coord_transform.T)
+
+        # wrap only after scaling and rotating to reduce chances of
+        # lammps neighbor list bugs.
+        pos = wrap_positions(pos, cell, atoms.get_pbc())
 
         # Convert ase position matrix to lammps-style position array
         # contiguous in memory
@@ -358,9 +378,16 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
         if not self.initialized:
             self.initialise_lammps(atoms)
         else:  # still need to reset cell
-            # Apply only requested boundary condition changes. Note this needs to happen
-            # before the call to set_cell since 'change_box' will apply any
-            # shrink-wrapping *after* it's updated the cell dimensions
+            # NOTE: The whole point of ``post_changebox_cmds`` is that they're
+            # executed after any call to LAMMPS' change_box command.  Here, we
+            # rely on the fact that self.set_cell(), where we have currently
+            # placed the execution of ``post_changebox_cmds``, gets called
+            # after this initial change_box call.
+
+            # Apply only requested boundary condition changes.  Note this needs
+            # to happen before the call to set_cell since 'change_box' will
+            # apply any shrink-wrapping *after* it's updated the cell
+            # dimensions
             if 'pbc' in system_changes:
                 change_box_str = 'change_box all boundary {}'
                 change_box_cmd = change_box_str.format(self.lammpsbc(atoms))
@@ -379,7 +406,8 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
         if self.parameters.atom_types is None:
             raise NameError("atom_types are mandatory.")
 
-        do_rebuild = (not np.array_equal(atoms.numbers, self.previous_atoms_numbers)
+        do_rebuild = (not np.array_equal(atoms.numbers,
+                                         self.previous_atoms_numbers)
                       or ("numbers" in system_changes))
         if not do_rebuild:
             do_redo_atom_types = not np.array_equal(
@@ -402,9 +430,14 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
 
         if n_steps > 0:
             if velocity_field is None:
-                vel = convert(atoms.get_velocities(), "velocity", "ASE", self.units)
+                vel = convert(
+                    atoms.get_velocities(),
+                    "velocity",
+                    "ASE",
+                    self.units)
             else:
-                # FIXME: Do we need to worry about converting to lammps units here?
+                # FIXME: Do we need to worry about converting to lammps units
+                # here?
                 vel = atoms.arrays[velocity_field]
 
             # If necessary, transform the velocities to new coordinate system
@@ -449,8 +482,10 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
                                              'ASE'))
 
         # Extract the forces and energy
-        self.results['energy'] = convert(self.lmp.extract_variable('pe', None, 0),
-                                         "energy", self.units, "ASE")
+        self.results['energy'] = convert(
+            self.lmp.extract_variable('pe', None, 0),
+            "energy", self.units, "ASE"
+        )
         self.results['free_energy'] = self.results['energy']
 
         stress = np.empty(6)
@@ -482,7 +517,7 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
         self.results['stress'] = convert(-stress, "pressure", self.units, "ASE")
 
         # definitely yields atom-id ordered force array
-        f = convert(np.array(self.lmp.gather_atoms("f", 1, 3)).reshape(-1,3),
+        f = convert(np.array(self.lmp.gather_atoms("f", 1, 3)).reshape(-1, 3),
                     "force", self.units, "ASE")
 
         if self.coord_transform is not None:
@@ -497,11 +532,11 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
             self.lmp.close()
 
     def lammpsbc(self, atoms):
-        """
-        Determine LAMMPS boundary types based on ASE pbc settings. For non-periodic
-        dimensions, if the cell length is finite then fixed BCs ('f') are used; if the
-        cell length is approximately zero, shrink-wrapped BCs ('s') are used.
-        """
+        """Determine LAMMPS boundary types based on ASE pbc settings. For
+        non-periodic dimensions, if the cell length is finite then
+        fixed BCs ('f') are used; if the cell length is approximately
+        zero, shrink-wrapped BCs ('s') are used."""
+
         retval = ''
         pbc = atoms.get_pbc()
         if np.all(pbc):
@@ -512,7 +547,8 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
                 if pbc[i]:
                     retval += 'p '
                 else:
-                    # See if we're using indefinite ASE boundaries along this direction
+                    # See if we're using indefinite ASE boundaries along this
+                    # direction
                     if np.linalg.norm(cell[i]) < np.finfo(cell[i][0]).tiny:
                         retval += 's '
                     else:
@@ -523,7 +559,7 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
     def rebuild(self, atoms):
         try:
             n_diff = len(atoms.numbers) - len(self.previous_atoms_numbers)
-        except:
+        except Exception:  # XXX Which kind of exception?
             n_diff = len(atoms.numbers)
 
         if n_diff > 0:
@@ -556,7 +592,7 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
             previous_types = set(
                 (i + 1, self.parameters.atom_types[ase_chemical_symbols[Z]])
                 for i, Z in enumerate(self.previous_atoms_numbers))
-        except:
+        except Exception:  # XXX which kind of exception?
             previous_types = set()
 
         for (i, i_type) in current_types - previous_types:
@@ -684,59 +720,3 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
         self.lmp.command("neigh_modify delay 0 every 1 check yes")
 
         self.initialized = True
-
-
-# keep this one for the moment being...
-def write_lammps_data(filename, atoms, atom_types, comment=None, cutoff=None,
-                      molecule_ids=None, charges=None, units='metal'):
-
-    if isinstance(filename, str):
-        fh = open(filename, 'w')
-    else:
-        fh = filename
-
-    if comment is None:
-        comment = 'lammpslib autogenerated data file'
-    fh.write(comment.strip() + '\n\n')
-
-    fh.write('{0} atoms\n'.format(len(atoms)))
-    fh.write('{0} atom types\n'.format(len(atom_types)))
-
-    fh.write('\n')
-    cell, coord_transform = convert_cell(atoms.get_cell())
-    fh.write('{0:16.8e} {1:16.8e} xlo xhi\n'.format(0.0, cell[0, 0]))
-    fh.write('{0:16.8e} {1:16.8e} ylo yhi\n'.format(0.0, cell[1, 1]))
-    fh.write('{0:16.8e} {1:16.8e} zlo zhi\n'.format(0.0, cell[2, 2]))
-    fh.write('{0:16.8e} {1:16.8e} {2:16.8e} xy xz yz\n'
-             ''.format(cell[0, 1], cell[0, 2], cell[1, 2]))
-
-    fh.write('\nMasses\n\n')
-    sym_mass = {}
-    masses = atoms.get_masses()
-    symbols = atoms.get_chemical_symbols()
-    for sym in atom_types:
-        for i in range(len(atoms)): # TODO: Make this more efficient
-            if symbols[i] == sym:
-                sym_mass[sym] = convert(masses[i], "mass", "ASE", units)
-                break
-            else:
-                sym_mass[sym] = convert(
-                        ase_atomic_masses[ase_chemical_symbols.index(sym)],
-                        "mass", "ASE", units)
-
-    for (sym, typ) in sorted(atom_types.items(), key=operator.itemgetter(1)):
-        fh.write('{0} {1}\n'.format(typ, sym_mass[sym]))
-
-    fh.write('\nAtoms # full\n\n')
-    if molecule_ids is None:
-        molecule_ids = np.zeros(len(atoms), dtype=int)
-    if charges is None:
-        charges = atoms.get_initial_charges()
-    for i, (sym, mol, q, pos) in enumerate(
-            zip(symbols, molecule_ids, charges, atoms.get_positions())):
-        typ = atom_types[sym]
-        fh.write('{0} {1} {2} {3:16.8e} {4:16.8e} {5:16.8e} {6:16.8e}\n'
-                 .format(i + 1, mol, typ, q, pos[0], pos[1], pos[2]))
-
-    if isinstance(filename, str):
-        fh.close()

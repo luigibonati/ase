@@ -54,11 +54,11 @@ class SimpleOrthorhombicFactory(Bravais):
                 c = a * lattice['c/a']
         else:
             if len(lattice) == 3:
-                (a,b,c) = lattice
+                (a, b, c) = lattice
             else:
                 raise ValueError("Improper lattice constants for orthorhombic crystal.")
 
-        lattice = np.array([[a,0,0],[0,b,0],[0,0,c]])
+        lattice = np.array([[a, 0, 0], [0, b, 0], [0, 0, c]])
         self.latticeconstant = lattice
         self.miller_basis = lattice
         self.crystal_basis = (self.basis_factor *
@@ -75,7 +75,9 @@ class SimpleOrthorhombicFactory(Bravais):
         if abs(vol1-vol2) > 1e-5:
             print("WARNING: Got volume %f, expected %f" % (vol1, vol2))
 
+
 SimpleOrthorhombic = SimpleOrthorhombicFactory()
+
 
 class BaseCenteredOrthorhombicFactory(SimpleOrthorhombicFactory):
     "A factory for creating base-centered orthorhombic lattices."
@@ -99,7 +101,9 @@ class BaseCenteredOrthorhombicFactory(SimpleOrthorhombicFactory):
         if abs(vol1-vol2) > 1e-5:
             print("WARNING: Got volume %f, expected %f" % (vol1, vol2))
 
+
 BaseCenteredOrthorhombic = BaseCenteredOrthorhombicFactory()
+
 
 class BodyCenteredOrthorhombicFactory(SimpleOrthorhombicFactory):
     "A factory for creating body-centered orthorhombic lattices."
@@ -120,7 +124,10 @@ class BodyCenteredOrthorhombicFactory(SimpleOrthorhombicFactory):
         if abs(vol1-vol2) > 1e-5:
             print("WARNING: Got volume %f, expected %f" % (vol1, vol2))
 
+
 BodyCenteredOrthorhombic = BodyCenteredOrthorhombicFactory()
+
+
 class FaceCenteredOrthorhombicFactory(SimpleOrthorhombicFactory):
     "A factory for creating face-centered orthorhombic lattices."
 
@@ -140,5 +147,5 @@ class FaceCenteredOrthorhombicFactory(SimpleOrthorhombicFactory):
         if abs(vol1-vol2) > 1e-5:
             print("WARNING: Got volume %f, expected %f" % (vol1, vol2))
 
-FaceCenteredOrthorhombic = FaceCenteredOrthorhombicFactory()
 
+FaceCenteredOrthorhombic = FaceCenteredOrthorhombicFactory()

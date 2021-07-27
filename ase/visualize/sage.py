@@ -5,7 +5,7 @@ from ase.data import covalent_radii
 def view_sage_jmol(atoms):
     try:
         from .sage.plot.plot3d.shapes import ColorCube, Sphere
-    except:
+    except Exception:  # XXX Which kind of exception exactly?
         raise ImportError(
             'view_sage_jmol requires sage (http://www.sagemath.org/) ' +
             'and is intended to be used directly in the browser')

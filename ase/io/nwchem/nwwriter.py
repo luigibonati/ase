@@ -27,7 +27,7 @@ def _get_geom(atoms, **params):
             if pbci:
                 outpos[:, i] = scpos[:, i]
         npbc = pbc.sum()
-        cellpars = atoms.get_cell_lengths_and_angles()
+        cellpars = atoms.cell.cellpar()
         geom.append('  system {} units angstrom'.format(_system_type[npbc]))
         if npbc == 3:
             geom.append('    lattice_vectors')
@@ -255,7 +255,25 @@ def _get_kpts(atoms, **params):
     return params
 
 
-def write_nwchem_in(fd, atoms, properties=None, **params):
+def write_nwchem_in(fd, atoms, properties=None, echo=False, **params):
+    """Writes NWChem input file.
+
+    Parameters
+    ----------
+    fd
+        file descriptor
+    atoms
+        atomic configuration
+    properties
+        list of properties to compute; by default only the
+        calculation of the energy is requested
+    echo
+        if True include the `echo` keyword at the top of the file,
+        which causes the content of the input file to be included
+        in the output file
+    params
+        dict of instructions blocks to be included
+    """
     params = deepcopy(params)
 
     if properties is None:
@@ -295,19 +313,24 @@ def write_nwchem_in(fd, atoms, properties=None, **params):
     label = params.get('label', 'nwchem')
     perm = os.path.abspath(params.pop('perm', label))
     scratch = os.path.abspath(params.pop('scratch', label))
-    restart_kw = params.get('restart_kw','start')
-    if restart_kw not in ('start','restart'):
-       raise ValueError("Unrecognised restart keyword: {}!".format(restart_kw))
+    restart_kw = params.get('restart_kw', 'start')
+    if restart_kw not in ('start', 'restart'):
+        raise ValueError("Unrecognised restart keyword: {}!"
+                         .format(restart_kw))
     short_label = label.rsplit('/', 1)[-1]
-    out = ['title "{}"'.format(short_label),
-           'permanent_dir {}'.format(perm),
-           'scratch_dir {}'.format(scratch),
-           '{} {}'.format(restart_kw, short_label),
-           '\n'.join(_get_geom(atoms, **params)),
-           '\n'.join(_get_basis(**params)),
-           '\n'.join(_get_other(**params)),
-           '\n'.join(_get_set(**params.get('set', dict()))),
-           'task {} {}'.format(theory, task),
-           '\n'.join(_get_bandpath(params.get('bandpath', None)))]
+    if echo:
+        out = ['echo']
+    else:
+        out = []
+    out.extend(['title "{}"'.format(short_label),
+                'permanent_dir {}'.format(perm),
+                'scratch_dir {}'.format(scratch),
+                '{} {}'.format(restart_kw, short_label),
+                '\n'.join(_get_geom(atoms, **params)),
+                '\n'.join(_get_basis(**params)),
+                '\n'.join(_get_other(**params)),
+                '\n'.join(_get_set(**params.get('set', dict()))),
+                'task {} {}'.format(theory, task),
+                '\n'.join(_get_bandpath(params.get('bandpath', None)))])
 
     fd.write('\n\n'.join(out))

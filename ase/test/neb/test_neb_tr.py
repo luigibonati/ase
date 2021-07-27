@@ -1,12 +1,13 @@
 import pytest
-from ase.calculators.lj import LennardJones
-from ase.optimize import FIRE, BFGS
-from ase.neb import NEB, NEBTools, idpp_interpolate
+
 from ase import Atoms
+from ase.calculators.lj import LennardJones
+from ase.neb import NEB, NEBTools, idpp_interpolate
+from ase.optimize import FIRE, BFGS
 
 
 @pytest.mark.slow
-def test_neb_tr():
+def test_neb_tr(testdir):
     nimages = 3
     fmax = 0.01
 
@@ -53,7 +54,7 @@ def test_neb_tr():
         qn.run(steps=20)
 
         # Switch to CI-NEB, still removing the external degrees of freedom
-        # Also spesify the linearly varying spring constants
+        # Also specify the linearly varying spring constants
         neb = NEB(images, climb=True,
                   remove_rotation_and_translation=remove_rotation_and_translation)
         qn = FIRE(neb, dt=0.005, maxstep=0.05, dtmax=0.1)

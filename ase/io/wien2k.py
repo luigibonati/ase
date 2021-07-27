@@ -2,25 +2,25 @@ import numpy as np
 
 from ase import Atoms
 from ase.units import Bohr, Ry
+from ase.utils import reader, writer
 
 
 def read_scf(filename):
     try:
-        f = open(filename + '.scf', 'r')
-        pip = f.readlines()
+        with open(filename + '.scf', 'r') as fd:
+            pip = fd.readlines()
         ene = []
         for line in pip:
             if line[0:4] == ':ENE':
                 ene.append(float(line[43:59]) * Ry)
-        f.close()
         return ene
-    except:
+    except Exception:  # XXX Which kind of exception exactly?
         return None
 
 
-def read_struct(filename, ase=True):
-    f = open(filename, 'r')
-    pip = f.readlines()
+@reader
+def read_struct(fd, ase=True):
+    pip = fd.readlines()
     lattice = pip[1][0:3]
     nat = int(pip[1][27:30])
     cell = np.zeros(6)
@@ -92,28 +92,28 @@ def read_struct(filename, ase=True):
         return cell, lattice, pos, atomtype, rmt
 
 
-def write_struct(filename, atoms2=None, rmt=None, lattice='P', zza=None):
+@writer
+def write_struct(fd, atoms2=None, rmt=None, lattice='P', zza=None):
     atoms = atoms2.copy()
     atoms.wrap()
-    f = open(filename, 'w')
-    f.write('ASE generated\n')
+    fd.write('ASE generated\n')
     nat = len(atoms)
     if rmt is None:
         rmt = [2.0] * nat
-        f.write(lattice +
-                '   LATTICE,NONEQUIV.ATOMS:%3i\nMODE OF CALC=RELA\n' % nat)
+        fd.write(lattice +
+                 '   LATTICE,NONEQUIV.ATOMS:%3i\nMODE OF CALC=RELA\n' % nat)
     cell = atoms.get_cell()
     metT = np.dot(cell, np.transpose(cell))
     cell2 = cellconst(metT)
     cell2[0:3] = cell2[0:3] / Bohr
-    f.write(('%10.6f' * 6) % tuple(cell2) + '\n')
+    fd.write(('%10.6f' * 6) % tuple(cell2) + '\n')
     if zza is None:
         zza = atoms.get_atomic_numbers()
     for ii in range(nat):
-        f.write('ATOM %3i: ' % (ii + 1))
+        fd.write('ATOM %3i: ' % (ii + 1))
         pos = atoms.get_scaled_positions()[ii]
-        f.write('X=%10.8f Y=%10.8f Z=%10.8f\n' % tuple(pos))
-        f.write('          MULT= 1          ISPLIT= 1\n')
+        fd.write('X=%10.8f Y=%10.8f Z=%10.8f\n' % tuple(pos))
+        fd.write('          MULT= 1          ISPLIT= 1\n')
         zz = zza[ii]
         if zz > 71:
             ro = 0.000005
@@ -123,12 +123,12 @@ def write_struct(filename, atoms2=None, rmt=None, lattice='P', zza=None):
             ro = 0.00005
         else:
             ro = 0.0001
-        f.write('%-10s NPT=%5i  R0=%9.8f RMT=%10.4f   Z:%10.5f\n' %
-                (atoms.get_chemical_symbols()[ii], 781, ro, rmt[ii], zz))
-        f.write('LOCAL ROT MATRIX:    %9.7f %9.7f %9.7f\n' % (1.0, 0.0, 0.0))
-        f.write('                     %9.7f %9.7f %9.7f\n' % (0.0, 1.0, 0.0))
-        f.write('                     %9.7f %9.7f %9.7f\n' % (0.0, 0.0, 1.0))
-    f.write('   0\n')
+        fd.write('%-10s NPT=%5i  R0=%9.8f RMT=%10.4f   Z:%10.5f\n' %
+                 (atoms.get_chemical_symbols()[ii], 781, ro, rmt[ii], zz))
+        fd.write('LOCAL ROT MATRIX:    %9.7f %9.7f %9.7f\n' % (1.0, 0.0, 0.0))
+        fd.write('                     %9.7f %9.7f %9.7f\n' % (0.0, 1.0, 0.0))
+        fd.write('                     %9.7f %9.7f %9.7f\n' % (0.0, 0.0, 1.0))
+    fd.write('   0\n')
 
 
 def cellconst(metT):

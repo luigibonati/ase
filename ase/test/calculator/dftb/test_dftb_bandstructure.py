@@ -1,9 +1,7 @@
-import subprocess
-from unittest import SkipTest
-
 import pytest
 
 from ase.build import bulk
+from ase.utils import tokenize_version
 
 
 @pytest.mark.skip('test is rather broken')
@@ -12,30 +10,15 @@ def test_dftb_bandstructure(dftb_factory):
     # whether to skip this test or not.
     # For this, we need to run DFTB+ and grep
     # the version from the output header.
-    #cmd = os.environ['ASE_DFTB_COMMAND'].split()[0]
-    #cmd = dftb_factory.ex
+    # cmd = os.environ['ASE_DFTB_COMMAND'].split()[0]
+    # cmd = dftb_factory.ex
+    version = dftb_factory.version()
+    if tokenize_version(version) < tokenize_version('17.1'):
+        pytest.skip('Band structure requires DFTB 17.1+')
 
-    if 0:
-        cmd = 'xxxxx'
-        proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-        lines = ''
-        for line in proc.stdout:
-            l = line.decode()
-            if 'DFTB+' in l and ('version' in l.lower() or 'release' in l.lower()):
-                version = l[l.index('DFTB+'):]
-                break
-            lines += l + '\n'
-        else:
-            raise RuntimeError('Could not parse DFTB+ version ' + lines)
-
-        if '17.1' not in version:
-            msg = 'Band structure properties not present in results.tag for ' + version
-            raise SkipTest(msg)
-
-    # The actual testing starts here
     calc = dftb_factory.calc(
         label='dftb',
-        kpts=(3,3,3),
+        kpts=(3, 3, 3),
         Hamiltonian_SCC='Yes',
         Hamiltonian_SCCTolerance=1e-5,
         Hamiltonian_MaxAngularMomentum_Si='d'
@@ -59,7 +42,7 @@ def test_dftb_bandstructure(dftb_factory):
     calc = dftb_factory.calc(
         atoms=atoms,
         label='dftb',
-        kpts={'path':'WGXWLG', 'npoints':50},
+        kpts={'path': 'WGXWLG', 'npoints': 50},
         Hamiltonian_SCC='Yes',
         Hamiltonian_MaxSCCIterations=1,
         Hamiltonian_ReadInitialCharges='Yes',

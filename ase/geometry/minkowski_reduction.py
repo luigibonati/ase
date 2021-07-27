@@ -1,9 +1,11 @@
 import itertools
 import numpy as np
 from ase.utils import pbc2pbc
+from ase.cell import Cell
 
 
-max_it = 100000    # in practice this is not exceeded
+TOL = 1E-12
+MAX_IT = 100000    # in practice this is not exceeded
 
 
 class CycleChecker:
@@ -37,7 +39,7 @@ def reduction_gauss(B, hu, hv):
     u = hu @ B
     v = hv @ B
 
-    for it in range(max_it):
+    for it in range(MAX_IT):
         x = int(round(np.dot(u, v) / np.dot(u, u)))
         hu, hv = hv - x * hu, hu
         u = hu @ B
@@ -46,7 +48,7 @@ def reduction_gauss(B, hu, hv):
         if np.dot(u, u) >= np.dot(v, v) or cycle_checker.add_site(site):
             return hv, hu
 
-    raise RuntimeError(f"Gaussian basis not found after {max_it} iterations")
+    raise RuntimeError(f"Gaussian basis not found after {MAX_IT} iterations")
 
 
 def relevant_vectors_2D(u, v):
@@ -62,7 +64,7 @@ def closest_vector(t0, u, v):
     rs, cs = relevant_vectors_2D(u, v)
 
     dprev = float("inf")
-    for it in range(max_it):
+    for it in range(MAX_IT):
         ds = np.linalg.norm(rs + t, axis=1)
         index = np.argmin(ds)
         if index == 0 or ds[index] >= dprev:
@@ -74,7 +76,7 @@ def closest_vector(t0, u, v):
         a += kopt * cs[index]
         t = t0 + a[0] * u + a[1] * v
 
-    raise RuntimeError(f"Closest vector not found after {max_it} iterations")
+    raise RuntimeError(f"Closest vector not found after {MAX_IT} iterations")
 
 
 def reduction_full(B):
@@ -83,7 +85,7 @@ def reduction_full(B):
     H = np.eye(3, dtype=int)
     norms = np.linalg.norm(B, axis=1)
 
-    for it in range(max_it):
+    for it in range(MAX_IT):
         # Sort vectors by norm
         H = H[np.argsort(norms, kind='merge')]
 
@@ -111,7 +113,86 @@ def reduction_full(B):
         if norms[2] >= norms[1] or cycle_checker.add_site(H):
             return R, H
 
-    raise RuntimeError(f"Reduced basis not found after {max_it} iterations")
+    raise RuntimeError(f"Reduced basis not found after {MAX_IT} iterations")
+
+
+def is_minkowski_reduced(cell, pbc=True):
+    """Tests if a cell is Minkowski-reduced.
+
+    Parameters:
+
+    cell: array
+        The lattice basis to test (in row-vector format).
+    pbc: array, optional
+        The periodic boundary conditions of the cell (Default `True`).
+        If `pbc` is provided, only periodic cell vectors are tested.
+
+    Returns:
+
+    is_reduced: bool
+        True if cell is Minkowski-reduced, False otherwise.
+    """
+
+    """These conditions are due to Minkowski, but a nice description in English
+    can be found in the thesis of Carine Jaber: "Algorithmic approaches to
+    Siegel's fundamental domain", https://www.theses.fr/2017UBFCK006.pdf
+    This is also good background reading for Minkowski reduction.
+
+    0D and 1D cells are trivially reduced. For 2D cells, the conditions which
+    an already-reduced basis fulfil are:
+    |b1| ≤ |b2|
+    |b2| ≤ |b1 - b2|
+    |b2| ≤ |b1 + b2|
+
+    For 3D cells, the conditions which an already-reduced basis fulfil are:
+    |b1| ≤ |b2| ≤ |b3|
+
+    |b1 + b2|      ≥ |b2|
+    |b1 + b3|      ≥ |b3|
+    |b2 + b3|      ≥ |b3|
+    |b1 - b2|      ≥ |b2|
+    |b1 - b3|      ≥ |b3|
+    |b2 - b3|      ≥ |b3|
+    |b1 + b2 + b3| ≥ |b3|
+    |b1 - b2 + b3| ≥ |b3|
+    |b1 + b2 - b3| ≥ |b3|
+    |b1 - b2 - b3| ≥ |b3|
+    """
+    pbc = pbc2pbc(pbc)
+    dim = pbc.sum()
+    if dim <= 1:
+        return True
+
+    if dim == 2:
+        # reorder cell vectors to [shortest, longest, aperiodic]
+        cell = cell.copy()
+        cell[np.argmin(pbc)] = 0
+        norms = np.linalg.norm(cell, axis=1)
+        cell = cell[np.argsort(norms)[[1, 2, 0]]]
+
+        A = [[0, 1, 0],
+             [1, -1, 0],
+             [1, 1, 0]]
+        lhs = np.linalg.norm(A @ cell, axis=1)
+        norms = np.linalg.norm(cell, axis=1)
+        rhs = norms[[0, 1, 1]]
+    else:
+        A = [[0, 1, 0],
+             [0, 0, 1],
+             [1, 1, 0],
+             [1, 0, 1],
+             [0, 1, 1],
+             [1, -1, 0],
+             [1, 0, -1],
+             [0, 1, -1],
+             [1, 1, 1],
+             [1, -1, 1],
+             [1, 1, -1],
+             [1, -1, -1]]
+        lhs = np.linalg.norm(A @ cell, axis=1)
+        norms = np.linalg.norm(cell, axis=1)
+        rhs = norms[[0, 1, 1, 2, 2, 1, 2, 2, 2, 2, 2, 2]]
+    return (lhs >= rhs - TOL).all()
 
 
 def minkowski_reduce(cell, pbc=True):
@@ -141,46 +222,51 @@ def minkowski_reduce(cell, pbc=True):
     op: array
         The unimodular matrix transformation (rcell = op @ cell).
     """
+    cell = Cell(cell)
     pbc = pbc2pbc(pbc)
     dim = pbc.sum()
-
     op = np.eye(3, dtype=int)
+    if is_minkowski_reduced(cell, pbc):
+        return cell, op
+
     if dim == 2:
+        # permute cell so that first two vectors are the periodic ones
         perm = np.argsort(pbc, kind='merge')[::-1]    # stable sort
         pcell = cell[perm][:, perm]
 
+        # perform gauss reduction
         norms = np.linalg.norm(pcell, axis=1)
         norms[2] = float("inf")
         indices = np.argsort(norms)
         op = op[indices]
-
         hu, hv = reduction_gauss(pcell, op[0], op[1])
-
         op[0] = hu
         op[1] = hv
+
+        # undo above permutation
         invperm = np.argsort(perm)
         op = op[invperm][:, invperm]
 
+        # maintain cell handedness
+        index = np.argmin(pbc)
+        normal = np.cross(cell[index - 2], cell[index - 1])
+        normal /= np.linalg.norm(normal)
+
+        _cell = cell.copy()
+        _cell[index] = normal
+        _rcell = op @ cell
+        _rcell[index] = normal
+        if _cell.handedness != Cell(_rcell).handedness:
+            op[index - 1] *= -1
+
     elif dim == 3:
         _, op = reduction_full(cell)
-
-    # maintain cell handedness
-    if dim == 3:
-        if np.sign(np.linalg.det(cell)) != np.sign(np.linalg.det(op @ cell)):
+        # maintain cell handedness
+        if cell.handedness != Cell(op @ cell).handedness:
             op = -op
-    elif dim == 2:
-        index = np.argmin(pbc)
-        _cell = cell.copy()
-        _cell[index] = (1, 1, 1)
-        _rcell = op @ cell
-        _rcell[index] = (1, 1, 1)
-
-        if np.sign(np.linalg.det(_cell)) != np.sign(np.linalg.det(_rcell)):
-            index = np.argmax(pbc)
-            op[index] *= -1
 
     norms1 = np.sort(np.linalg.norm(cell, axis=1))
     norms2 = np.sort(np.linalg.norm(op @ cell, axis=1))
-    if not (norms2 <= norms1 + 1E-12).all():
+    if (norms2 > norms1 + TOL).any():
         raise RuntimeError("Minkowski reduction failed")
     return op @ cell, op

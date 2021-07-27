@@ -19,13 +19,16 @@ warn_template = 'Property "%s" is None. Typically, this is because the ' \
                 'Espresso at a "low" verbosity level (the default). ' \
                 'Please try running Quantum Espresso with "high" verbosity.'
 
+
 class Espresso(FileIOCalculator):
     """
     """
     implemented_properties = ['energy', 'forces', 'stress', 'magmoms']
     command = 'pw.x -in PREFIX.pwi > PREFIX.pwo'
+    discard_results_on_any_change = True
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=FileIOCalculator._deprecated,
                  label='espresso', atoms=None, **kwargs):
         """
         All options for pw.x are copied verbatim to the input file, and put
@@ -103,11 +106,6 @@ class Espresso(FileIOCalculator):
         FileIOCalculator.__init__(self, restart, ignore_bad_restart_file,
                                   label, atoms, **kwargs)
         self.calc = None
-
-    def set(self, **kwargs):
-        changed_parameters = FileIOCalculator.set(self, **kwargs)
-        if changed_parameters:
-            self.reset()
 
     def write_input(self, atoms, properties=None, system_changes=None):
         FileIOCalculator.write_input(self, atoms, properties, system_changes)

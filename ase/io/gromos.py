@@ -5,25 +5,20 @@ its procedure src/gmxlib/confio.c (write_g96_conf)
 """
 
 import numpy as np
-from ase.parallel import paropen
+
+from ase import Atoms
+from ase.data import chemical_symbols
+from ase.utils import reader, writer
 
 
-def read_gromos(fileobj, index=-1):
+@reader
+def read_gromos(fileobj):
     """Read gromos geometry files (.g96).
     Reads:
     atom positions,
     and simulation cell (if present)
     tries to set atom types
     """
-
-    from ase import Atoms
-    from ase.data import chemical_symbols
-
-    if isinstance(fileobj, str):
-        fileobj = paropen(fileobj, 'r')
-
-    if (index != -1):
-        raise ValueError("The Gromos reader only supports index=-1")
 
     lines = fileobj.readlines()
     read_pos = False
@@ -72,7 +67,8 @@ def read_gromos(fileobj, index=-1):
     return gmx_system
 
 
-def write_gromos(fileobj, images):
+@writer
+def write_gromos(fileobj, atoms):
     """Write gromos geometry files (.g96).
     Writes:
     atom positions,
@@ -81,28 +77,22 @@ def write_gromos(fileobj, images):
 
     from ase import units
 
-    if isinstance(fileobj, str):
-        fileobj = paropen(fileobj, 'w')
-
-    if not isinstance(images, (list, tuple)):
-        images = [images]
-
-    natoms = len(images[-1])
+    natoms = len(atoms)
     try:
-        gromos_residuenames = images[-1].get_array('residuenames')
+        gromos_residuenames = atoms.get_array('residuenames')
     except KeyError:
         gromos_residuenames = []
         for idum in range(natoms):
             gromos_residuenames.append('1DUM')
     try:
-        gromos_atomtypes = images[-1].get_array('atomtypes')
+        gromos_atomtypes = atoms.get_array('atomtypes')
     except KeyError:
-        gromos_atomtypes = images[-1].get_chemical_symbols()
+        gromos_atomtypes = atoms.get_chemical_symbols()
 
-    pos = images[-1].get_positions()
+    pos = atoms.get_positions()
     pos = pos / 10.0
 
-    vel = images[-1].get_velocities()
+    vel = atoms.get_velocities()
     if vel is None:
         vel = pos * 0.0
     else:
@@ -128,10 +118,9 @@ def write_gromos(fileobj, images):
         count = count + 1
     fileobj.write('END\n')
 
-    if images[-1].get_pbc().any():
+    if atoms.get_pbc().any():
         fileobj.write('BOX\n')
-        mycell = images[-1].get_cell()
+        mycell = atoms.get_cell()
         grocell = mycell.flat[[0, 4, 8, 1, 2, 3, 5, 6, 7]] * 0.1
         fileobj.write(''.join(['{:15.9f}'.format(x) for x in grocell]))
         fileobj.write('\nEND\n')
-    return

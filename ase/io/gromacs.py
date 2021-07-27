@@ -3,14 +3,15 @@ read and write gromacs geometry files
 """
 
 from ase.atoms import Atoms
-from ase.parallel import paropen
 import numpy as np
 
 from ase.data import atomic_numbers
 from ase import units
+from ase.utils import reader, writer
 
 
-def read_gromacs(filename):
+@reader
+def read_gromacs(fd):
     """ From:
     http://manual.gromacs.org/current/online/gro.html
     C format
@@ -25,9 +26,7 @@ def read_gromacs(filename):
     """
 
     atoms = Atoms()
-    filed = open(filename, 'r')
-    lines = filed.readlines()
-    filed.close()
+    lines = fd.readlines()
     positions = []
     gromacs_velocities = []
     symbols = []
@@ -131,7 +130,8 @@ def read_gromacs(filename):
     return atoms
 
 
-def write_gromacs(fileobj, images):
+@writer
+def write_gromacs(fileobj, atoms):
     """Write gromacs geometry files (.gro).
 
     Writes:
@@ -141,33 +141,27 @@ def write_gromacs(fileobj, images):
     * simulation cell (if present)
     """
 
-    if isinstance(fileobj, str):
-        fileobj = paropen(fileobj, 'w')
-
-    if not isinstance(images, (list, tuple)):
-        images = [images]
-
-    natoms = len(images[-1])
+    natoms = len(atoms)
     try:
-        gromacs_residuenames = images[-1].get_array('residuenames')
+        gromacs_residuenames = atoms.get_array('residuenames')
     except KeyError:
         gromacs_residuenames = []
         for idum in range(natoms):
             gromacs_residuenames.append('1DUM')
     try:
-        gromacs_atomtypes = images[-1].get_array('atomtypes')
+        gromacs_atomtypes = atoms.get_array('atomtypes')
     except KeyError:
-        gromacs_atomtypes = images[-1].get_chemical_symbols()
+        gromacs_atomtypes = atoms.get_chemical_symbols()
 
     try:
-        residuenumbers = images[-1].get_array('residuenumbers')
+        residuenumbers = atoms.get_array('residuenumbers')
     except KeyError:
         residuenumbers = np.ones(natoms, int)
 
-    pos = images[-1].get_positions()
+    pos = atoms.get_positions()
     pos = pos / 10.0
 
-    vel = images[-1].get_velocities()
+    vel = atoms.get_velocities()
     if vel is None:
         vel = pos * 0.0
     else:
@@ -175,7 +169,7 @@ def write_gromacs(fileobj, images):
 
     # No "#" in the first line to prevent read error in VMD
     fileobj.write('A Gromacs structure file written by ASE \n')
-    fileobj.write('%5d\n' % len(images[-1]))
+    fileobj.write('%5d\n' % len(atoms))
     count = 1
 
     # gromacs line see
@@ -198,8 +192,7 @@ def write_gromacs(fileobj, images):
         count += 1
 
     # write box geometry
-    if images[-1].get_pbc().any():
-        mycell = images[-1].get_cell()
+    if atoms.get_pbc().any():
         # gromacs manual (manual.gromacs.org/online/gro.html) says:
         # v1(x) v2(y) v3(z) v1(y) v1(z) v2(x) v2(z) v3(x) v3(y)
         #
@@ -207,7 +200,7 @@ def write_gromacs(fileobj, images):
         # cell[0,0] cell[1,1] cell[2,2] v1(x) v2(y) v3(z) fv0[0 1 2]
         # cell[0,1] cell[0,2] cell[1,0] v1(y) v1(z) v2(x) fv1[0 1 2]
         # cell[1,2] cell[2,0] cell[2,1] v2(z) v3(x) v3(y) fv2[0 1 2]
-        grocell = mycell.flat[[0, 4, 8, 1, 2, 3, 5, 6, 7]] * 0.1
+        grocell = atoms.cell.flat[[0, 4, 8, 1, 2, 3, 5, 6, 7]] * 0.1
         fileobj.write(''.join(['{:10.5f}'.format(x) for x in grocell]))
     else:
         # When we do not have a cell, the cell is specified as an empty line

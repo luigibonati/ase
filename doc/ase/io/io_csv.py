@@ -5,9 +5,9 @@ with open('io.csv', 'w') as fd:
     for format in sorted(all_formats):
         io = get_ioformat(format)
         c = ''
-        if io.read:
+        if io.can_read:
             c = 'R'
-        if io.write:
+        if io.can_write:
             c += 'W'
         if not io.single:
             c += '+'

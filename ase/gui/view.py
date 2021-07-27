@@ -442,7 +442,7 @@ class View:
                 if visible[a]:
                     try:
                         kinds = self.atoms.arrays['spacegroup_kinds']
-                        site_occ = self.atoms.info['occupancy'][kinds[a]]
+                        site_occ = self.atoms.info['occupancy'][str(kinds[a])]
                         # first an empty circle if a site is not fully occupied
                         if (np.sum([v for v in site_occ.values()])) < 1.0:
                             fill = '#ffffff'
@@ -663,7 +663,7 @@ class View:
         self.draw(status=False)
 
     def render_window(self):
-        Render(self)
+        return Render(self)
 
     def resize(self, event):
         w, h = self.window.size

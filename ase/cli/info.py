@@ -48,12 +48,14 @@ class CLICommand:
             return
 
         n = max(len(filename) for filename in args.filename) + 2
+        nfiles_not_found = 0
         for filename in args.filename:
             try:
                 format = filetype(filename)
             except FileNotFoundError:
                 format = '?'
                 description = 'No such file'
+                nfiles_not_found += 1
             except UnknownFileTypeError:
                 format = '?'
                 description = '?'
@@ -70,6 +72,8 @@ class CLICommand:
                     print_ulm_info(filename)
                 elif format == 'bundletrajectory':
                     print_bundletrajectory_info(filename)
+
+        raise SystemExit(nfiles_not_found)
 
 
 def print_info():

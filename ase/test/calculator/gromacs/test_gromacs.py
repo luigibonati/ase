@@ -1,8 +1,32 @@
 """ test run for gromacs calculator """
 
-import unittest
+import pytest
 
-from ase.calculators.gromacs import Gromacs
+from ase.calculators.gromacs import parse_gromacs_version, get_gromacs_version
+
+
+sample_header = """\
+blahblah...
+Command line:
+  gmx --version
+
+GROMACS version:    2020.1-Ubuntu-2020.1-1
+Precision:          single
+blahblah...
+"""
+
+
+def test_parse_gromacs_version():
+    assert parse_gromacs_version(sample_header) == '2020.1-Ubuntu-2020.1-1'
+
+
+@pytest.mark.calculator('gromacs')
+def test_get_gromacs_version(factory):
+    exe = factory.factory.executable
+    # XXX Can we do this in a different way?
+    version = get_gromacs_version(exe)
+    # Hmm.  Version could be any string.
+    assert isinstance(version, str) and len(version) > 0
 
 
 data = """HISE for testing
@@ -30,20 +54,16 @@ data = """HISE for testing
    4.00000   4.00000   4.00000"""
 
 
-
-def test_gromacs():
-    g = Gromacs()
-    if g.command is None:
-        raise unittest.SkipTest(getattr(g, "missing_gmx", "missing gromacs"))
-
+@pytest.mark.calculator_lite
+@pytest.mark.calculator('gromacs')
+def test_gromacs(factory):
     GRO_INIT_FILE = 'hise_box.gro'
 
     # write structure file
     with open(GRO_INIT_FILE, 'w') as outfile:
         outfile.write(data)
 
-
-    CALC_MM_RELAX = Gromacs(
+    calc = factory.calc(
         force_field='charmm27',
         define='-DFLEXIBLE',
         integrator='cg',
@@ -61,14 +81,14 @@ def test_gromacs():
         rvdw='0.6',
         rvdw_switch='0.55',
         DispCorr='Ener')
-    CALC_MM_RELAX.set_own_params_runs(
+    calc.set_own_params_runs(
         'init_structure', GRO_INIT_FILE)
-    CALC_MM_RELAX.generate_topology_and_g96file()
-    CALC_MM_RELAX.write_input()
-    CALC_MM_RELAX.generate_gromacs_run_file()
-    CALC_MM_RELAX.run()
-    atoms = CALC_MM_RELAX.get_atoms()
-    final_energy = CALC_MM_RELAX.get_potential_energy(atoms)
+    calc.generate_topology_and_g96file()
+    calc.write_input()
+    calc.generate_gromacs_run_file()
+    calc.run()
+    atoms = calc.get_atoms()
+    final_energy = calc.get_potential_energy(atoms)
 
     # e.g., -4.17570101 eV = -402.893902 kJ / mol by Gromacs 2019.1 double precision
     final_energy_ref = -4.175

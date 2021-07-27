@@ -268,9 +268,9 @@ END
 
 def test_res():
     filepath = 'test.res'
-    f = open(filepath, 'w')
-    f.write(testdata)
-    f.close()
+
+    with open(filepath, 'w') as fd:
+        fd.write(testdata)
 
     res = Res.from_file(filepath)
     assert res.atoms.get_chemical_formula() == 'C194H60'

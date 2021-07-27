@@ -3,7 +3,6 @@ import numpy as np
 
 from ase.collections import g2
 from ase.build import bulk, graphene_nanoribbon
-from ase.calculators.interfacechecker import check_interface
 
 
 def calculate(factory, system, **kwargs):
@@ -11,11 +10,11 @@ def calculate(factory, system, **kwargs):
     system.calc = calc
     system.get_potential_energy()
     calc.get_eigenvalues()
-    check_interface(calc)
     return calc
 
 
 calc = pytest.mark.calculator
+
 
 @calc('octopus', Spacing='0.25 * angstrom')
 @pytest.mark.xfail
@@ -39,6 +38,7 @@ def test_h2o(factory):
     #energy_err = abs(-463.5944954 - E)
     #assert energy_err < 0.01, energy_err
 
+
 @calc('octopus', Spacing='0.2 * angstrom')
 def test_o2(factory):
     atoms = g2['O2']
@@ -53,10 +53,11 @@ def test_o2(factory):
     #print('magmom', magmom)
     #print('magmoms', magmoms)
 
+
 @calc('octopus')
 def test_si(factory):
     calc = calculate(factory,
-                     bulk('Si'), #, orthorhombic=True),
+                     bulk('Si'),  # , orthorhombic=True),
                      KPointsGrid=[[4, 4, 4]],
                      KPointsUseSymmetries=True,
                      SmearingFunction='fermi_dirac',
@@ -90,7 +91,7 @@ if 0:
     # Experimental feature: mixed periodicity.  Let us not do this for now...
     graphene = graphene_nanoribbon(2, 2, sheet=True)
     graphene.positions = graphene.positions[:, [0, 2, 1]]
-    graphene.pbc = [1, 1, 0] # from 1, 0, 1
+    graphene.pbc = [1, 1, 0]  # from 1, 0, 1
     calc = calculate('graphene',
                      graphene,
                      KPointsGrid=[[2, 1, 2]],

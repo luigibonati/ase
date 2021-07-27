@@ -257,6 +257,13 @@ For a complete example using GPAW_, see here_.
 .. _gpaw-python: https://wiki.fysik.dtu.dk/gpaw/documentation/manual.html#parallel-calculations
 .. _here: https://wiki.fysik.dtu.dk/gpaw/tutorials/neb/neb.html
 
+Using Shared Calculators
+========================
+
+Some calculators may parallelize well outside of ASE, or constructing them
+consumes resources, for this purpose the user can allow the usage of shared
+calculators with the `allow_shared_calculator` parameter of NEB.
+
 
 .. _nebtools:
 

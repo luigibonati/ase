@@ -3,6 +3,7 @@ import xml.etree.ElementTree as ET
 from xml.dom import minidom
 
 from ase import Atoms
+from ase.utils import writer
 
 
 def read_xsd(fd):
@@ -453,7 +454,8 @@ def _write_xsd_html(images, connectivity=None):
     return XSD, ATR
 
 
-def write_xsd(filename, images, connectivity=None):
+@writer
+def write_xsd(fd, images, connectivity=None):
     """Takes Atoms object, and write materials studio file
     atoms: Atoms object
     filename: path of the output file
@@ -468,15 +470,9 @@ def write_xsd(filename, images, connectivity=None):
 
     XSD, ATR = _write_xsd_html(images, connectivity)
 
-    # check if file is an object or not.
-    if isinstance(filename, str):
-        f = open(filename, 'w')
-    else:  # Assume it's a 'file-like object'
-        f = filename
-
     # Return a pretty-printed XML string for the Element.
     rough_string = ET.tostring(XSD, 'utf-8')
     reparsed = minidom.parseString(rough_string)
     Document = reparsed.toprettyxml(indent='\t')
 
-    f.write(Document)
+    fd.write(Document)

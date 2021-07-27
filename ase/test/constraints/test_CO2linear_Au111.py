@@ -8,7 +8,7 @@ from ase.build import fcc111, add_adsorbate
 
 
 @pytest.mark.parametrize('wrap', [False, True])
-def test_au111(wrap):
+def test_au111(wrap, testdir):
     zpos = cos(134.3 / 2.0 * pi / 180.0) * 1.197
     xpos = sin(134.3 / 2.0 * pi / 180.0) * 1.19
     co2 = Atoms('COO', positions=[(-xpos + 1.2, 0, -zpos),
@@ -31,8 +31,8 @@ def test_au111(wrap):
     constraint = FixLinearTriatomic(triples=[(-2, -3, -1)])
     slab.set_constraint(constraint)
 
-    dyn = BFGS(slab, trajectory='relax_%d.traj' % wrap)
-    dyn.run(fmax=0.05)
+    with BFGS(slab, trajectory='relax_%d.traj' % wrap) as dyn:
+        dyn.run(fmax=0.05)
     assert abs(slab.get_distance(-3, -2, mic=1) - d0) < 1e-9
     assert abs(slab.get_distance(-3, -1, mic=1) - d1) < 1e-9
     assert abs(slab.get_distance(-2, -1, mic=1) - d2) < 1e-9

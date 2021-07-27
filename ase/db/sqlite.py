@@ -19,9 +19,9 @@ import numbers
 import os
 import sqlite3
 import sys
+from contextlib import contextmanager
 
 import numpy as np
-from contextlib import contextmanager
 
 import ase.io.jsonio
 from ase.data import atomic_numbers
@@ -557,7 +557,7 @@ class SQLite3Database(Database):
             if key in ['id', 'energy', 'magmom', 'ctime', 'user',
                        'calculator', 'natoms', 'pbc', 'unique_id',
                        'fmax', 'smax', 'volume', 'mass', 'charge']:
-                if key == 'user' and self.version >= 2:
+                if key == 'user':
                     key = 'username'
                 elif key == 'pbc':
                     assert op in ['=', '!=']

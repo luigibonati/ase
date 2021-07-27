@@ -6,33 +6,31 @@ environment variables
 """
 
 import numpy as np
+import pytest
 
-from ase.test.calculator.vasp import installed
-from ase import Atoms
-from ase.calculators.vasp import Vasp
 from ase.io import read
 
+calc = pytest.mark.calculator
 
-def test_main(require_vasp):
-    assert installed()
+
+@calc('vasp')
+def test_main(factory, atoms_co):
 
     # simple test calculation of CO molecule
-    d = 1.14
-    co = Atoms('CO', positions=[(0, 0, 0), (0, 0, d)],
-               pbc=True)
-    co.center(vacuum=5.)
+    co = atoms_co  # aliasing
 
-    calc = Vasp(xc='LDA',
-                prec='Low',
-                algo='Fast',
-                ismear=0,
-                sigma=1.,
-                nbands=12,
-                istart=0,
-                nelm=3,
-                lwave=False,
-                lcharg=False,
-                ldipol=True)
+    calc = factory.calc(xc='LDA',
+                        prec='Low',
+                        algo='Fast',
+                        lorbit=11,
+                        ismear=0,
+                        sigma=1.,
+                        nbands=12,
+                        istart=0,
+                        nelm=3,
+                        lwave=False,
+                        lcharg=False,
+                        ldipol=True)
 
     co.calc = calc
     energy = co.get_potential_energy()

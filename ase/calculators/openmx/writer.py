@@ -21,8 +21,7 @@ import os
 import numpy as np
 from ase.units import Bohr, Ha, Ry, fs, m, s
 from ase.calculators.calculator import kpts2sizeandoffsets
-from ase.calculators.openmx.reader import (read_electron_valency, get_file_name
-                                           , get_standard_key)
+from ase.calculators.openmx.reader import (read_electron_valency, get_file_name, get_standard_key)
 from ase.calculators.openmx import parameters as param
 
 keys = [param.tuple_integer_keys, param.tuple_float_keys,
@@ -54,7 +53,7 @@ def write_openmx(label=None, atoms=None, parameters=None, properties=None,
             'matrix', 'list_int', 'list_bool', 'list_float']
     # Start writing the file
     filename = get_file_name('.dat', label)
-    with open(filename, 'w') as f:
+    with open(filename, 'w') as fd:
         # Write 1-line keywords
         for fltrd_keyword in filtered_keywords.keys():
             for key in keys:
@@ -62,7 +61,7 @@ def write_openmx(label=None, atoms=None, parameters=None, properties=None,
                 write = globals()['write_'+key]
                 for omx_keyword in openmx_keywords:
                     if fltrd_keyword == get_standard_key(omx_keyword):
-                        write(f, omx_keyword, filtered_keywords[fltrd_keyword])
+                        write(fd, omx_keyword, filtered_keywords[fltrd_keyword])
 
 
 def parameters_to_keywords(label=None, atoms=None, parameters=None,
@@ -160,6 +159,8 @@ def parameters_to_keywords(label=None, atoms=None, parameters=None,
 
     # keywords['scf_stress_tensor'] = 'stress' in properties
     # This is not working due to the UnitCellFilter method.
+    if 'energies' in properties:
+        keywords['energy_decomposition'] = True
     if 'stress' in properties:
         keywords['scf_stress_tensor'] = True
 
@@ -530,132 +531,132 @@ def get_wannier_initial_projectors(atoms, parameters):
 
 
 def get_kpath(self, kpts=None, symbols=None, band_kpath=None, eps=1e-5):
-        """
-        Convert band_kpath <-> kpts. Symbols will be guess automatically
-        by using dft space group method
-        For example,
-        kpts  = [(0, 0, 0), (0.125, 0, 0) ... (0.875, 0, 0),
-                 (1, 0, 0), (1, 0.0625, 0) .. (1, 0.4375,0),
-                 (1, 0.5,0),(0.9375, 0.5,0).. (    ...    ),
-                 (0.5, 0.5, 0.5) ...               ...     ,
-                    ...          ...               ...     ,
-                    ...        (0.875, 0, 0),(1.0, 0.0, 0.0)]
-        band_kpath =
-        [['15','0.0','0.0','0.0','1.0','0.0','0.0','g','X'],
-         ['15','1.0','0.0','0.0','1.0','0.5','0.0','X','W'],
-         ['15','1.0','0.5','0.0','0.5','0.5','0.5','W','L'],
-         ['15','0.5','0.5','0.5','0.0','0.0','0.0','L','g'],
-         ['15','0.0','0.0','0.0','1.0','0.0','0.0','g','X']]
-        where, it will be written as
-         <Band.kpath
-          15  0.0 0.0 0.0   1.0 0.0 0.0   g X
-          15  1.0 0.0 0.0   1.0 0.5 0.0   X W
-          15  1.0 0.5 0.0   0.5 0.5 0.5   W L
-          15  0.5 0.5 0.5   0.0 0.0 0.0   L g
-          15  0.0 0.0 0.0   1.0 0.0 0.0   g X
-         Band.kpath>
-        """
-        if kpts is None:
-            kx_linspace = np.linspace(band_kpath[0]['start_point'][0],
-                                      band_kpath[0]['end_point'][0],
-                                      band_kpath[0][0])
-            ky_linspace = np.linspace(band_kpath[0]['start_point'][1],
-                                      band_kpath[0]['end_point'][1],
-                                      band_kpath[0]['kpts'])
-            kz_linspace = np.linspace(band_kpath[0]['start_point'][2],
-                                      band_kpath[0]['end_point'][2],
-                                      band_kpath[0]['kpts'])
-            kpts = np.array([kx_linspace, ky_linspace, kz_linspace]).T
-            for path in band_kpath[1:]:
-                kx_linspace = np.linspace(path['start_point'][0],
-                                          path['end_point'][0],
-                                          path['kpts'])
-                ky_linspace = np.linspace(path['start_point'][1],
-                                          path['end_point'][1],
-                                          path['kpts'])
-                kz_linspace = np.linspace(path['start_point'][2],
-                                          path['end_point'][2],
-                                          path['kpts'])
-                k_lin = np.array([kx_linspace, ky_linspace, kz_linspace]).T
-                kpts = np.append(kpts, k_lin, axis=0)
-            return kpts
-        elif band_kpath is None:
-            band_kpath = []
-            points = np.asarray(kpts)
-            diffs = points[1:] - points[:-1]
-            kinks = abs(diffs[1:] - diffs[:-1]).sum(1) > eps
-            N = len(points)
-            indices = [0]
-            indices.extend(np.arange(1, N - 1)[kinks])
-            indices.append(N - 1)
-            for start, end, s_sym, e_sym in zip(indices[1:], indices[:-1],
-                                                symbols[1:], symbols[:-1]):
-                band_kpath.append({'start_point': start, 'end_point': end,
-                                   'kpts': 20,
-                                   'path_symbols': (s_sym, e_sym)})
-        else:
-            raise KeyError('You should specify band_kpath or kpts')
-            return band_kpath
+    """
+    Convert band_kpath <-> kpts. Symbols will be guess automatically
+    by using dft space group method
+    For example,
+    kpts  = [(0, 0, 0), (0.125, 0, 0) ... (0.875, 0, 0),
+             (1, 0, 0), (1, 0.0625, 0) .. (1, 0.4375,0),
+             (1, 0.5,0),(0.9375, 0.5,0).. (    ...    ),
+             (0.5, 0.5, 0.5) ...               ...     ,
+                ...          ...               ...     ,
+                ...        (0.875, 0, 0),(1.0, 0.0, 0.0)]
+    band_kpath =
+    [['15','0.0','0.0','0.0','1.0','0.0','0.0','g','X'],
+     ['15','1.0','0.0','0.0','1.0','0.5','0.0','X','W'],
+     ['15','1.0','0.5','0.0','0.5','0.5','0.5','W','L'],
+     ['15','0.5','0.5','0.5','0.0','0.0','0.0','L','g'],
+     ['15','0.0','0.0','0.0','1.0','0.0','0.0','g','X']]
+    where, it will be written as
+     <Band.kpath
+      15  0.0 0.0 0.0   1.0 0.0 0.0   g X
+      15  1.0 0.0 0.0   1.0 0.5 0.0   X W
+      15  1.0 0.5 0.0   0.5 0.5 0.5   W L
+      15  0.5 0.5 0.5   0.0 0.0 0.0   L g
+      15  0.0 0.0 0.0   1.0 0.0 0.0   g X
+     Band.kpath>
+    """
+    if kpts is None:
+        kx_linspace = np.linspace(band_kpath[0]['start_point'][0],
+                                  band_kpath[0]['end_point'][0],
+                                  band_kpath[0][0])
+        ky_linspace = np.linspace(band_kpath[0]['start_point'][1],
+                                  band_kpath[0]['end_point'][1],
+                                  band_kpath[0]['kpts'])
+        kz_linspace = np.linspace(band_kpath[0]['start_point'][2],
+                                  band_kpath[0]['end_point'][2],
+                                  band_kpath[0]['kpts'])
+        kpts = np.array([kx_linspace, ky_linspace, kz_linspace]).T
+        for path in band_kpath[1:]:
+            kx_linspace = np.linspace(path['start_point'][0],
+                                      path['end_point'][0],
+                                      path['kpts'])
+            ky_linspace = np.linspace(path['start_point'][1],
+                                      path['end_point'][1],
+                                      path['kpts'])
+            kz_linspace = np.linspace(path['start_point'][2],
+                                      path['end_point'][2],
+                                      path['kpts'])
+            k_lin = np.array([kx_linspace, ky_linspace, kz_linspace]).T
+            kpts = np.append(kpts, k_lin, axis=0)
+        return kpts
+    elif band_kpath is None:
+        band_kpath = []
+        points = np.asarray(kpts)
+        diffs = points[1:] - points[:-1]
+        kinks = abs(diffs[1:] - diffs[:-1]).sum(1) > eps
+        N = len(points)
+        indices = [0]
+        indices.extend(np.arange(1, N - 1)[kinks])
+        indices.append(N - 1)
+        for start, end, s_sym, e_sym in zip(indices[1:], indices[:-1],
+                                            symbols[1:], symbols[:-1]):
+            band_kpath.append({'start_point': start, 'end_point': end,
+                               'kpts': 20,
+                               'path_symbols': (s_sym, e_sym)})
+    else:
+        raise KeyError('You should specify band_kpath or kpts')
+        return band_kpath
 
 
-def write_string(f, key, value):
-    f.write("        ".join([key, value]))
-    f.write("\n")
+def write_string(fd, key, value):
+    fd.write("        ".join([key, value]))
+    fd.write("\n")
 
 
-def write_tuple_integer(f, key, value):
-    f.write("        ".join([key, "%d %d %d" % value]))
-    f.write("\n")
+def write_tuple_integer(fd, key, value):
+    fd.write("        ".join([key, "%d %d %d" % value]))
+    fd.write("\n")
 
 
-def write_tuple_float(f, key, value):
-    f.write("        ".join([key, "%.4f %.4f %.4f" % value]))
-    f.write("\n")
+def write_tuple_float(fd, key, value):
+    fd.write("        ".join([key, "%.4f %.4f %.4f" % value]))
+    fd.write("\n")
 
 
-def write_tuple_bool(f, key, value):
+def write_tuple_bool(fd, key, value):
     omx_bl = {True: 'On', False: 'Off'}
-    f.write("        ".join([key, "%s %s %s" % [omx_bl[bl] for bl in value]]))
-    f.write("\n")
+    fd.write("        ".join([key, "%s %s %s" % [omx_bl[bl] for bl in value]]))
+    fd.write("\n")
 
 
-def write_integer(f, key, value):
-    f.write("        ".join([key, "%d" % value]))
-    f.write("\n")
+def write_integer(fd, key, value):
+    fd.write("        ".join([key, "%d" % value]))
+    fd.write("\n")
 
 
-def write_float(f, key, value):
-    f.write("        ".join([key, "%.8g" % value]))
-    f.write("\n")
+def write_float(fd, key, value):
+    fd.write("        ".join([key, "%.8g" % value]))
+    fd.write("\n")
 
 
-def write_bool(f, key, value):
+def write_bool(fd, key, value):
     omx_bl = {True: 'On', False: 'Off'}
-    f.write("        ".join([key, "%s" % omx_bl[value]]))
-    f.write("\n")
+    fd.write("        ".join([key, "%s" % omx_bl[value]]))
+    fd.write("\n")
 
 
-def write_list_int(f, key, value):
-    f.write("".join(key) + ' ' + "     ".join(map(str, value)))
+def write_list_int(fd, key, value):
+    fd.write("".join(key) + ' ' + "     ".join(map(str, value)))
 
 
-def write_list_bool(f, key, value):
+def write_list_bool(fd, key, value):
     omx_bl = {True: 'On', False: 'Off'}
-    f.write("".join(key) + ' ' + "     ".join([omx_bl[bl] for bl in value]))
+    fd.write("".join(key) + ' ' + "     ".join([omx_bl[bl] for bl in value]))
 
 
-def write_list_float(f, key, value):
-    f.write("".join(key) + ' ' + "     ".join(map(str, value)))
+def write_list_float(fd, key, value):
+    fd.write("".join(key) + ' ' + "     ".join(map(str, value)))
 
 
-def write_matrix(f, key, value):
-    f.write('<' + key)
-    f.write("\n")
+def write_matrix(fd, key, value):
+    fd.write('<' + key)
+    fd.write("\n")
     for line in value:
-        f.write("    " + "  ".join(map(str, line)))
-        f.write("\n")
-    f.write(key + '>')
-    f.write("\n\n")
+        fd.write("    " + "  ".join(map(str, line)))
+        fd.write("\n")
+    fd.write(key + '>')
+    fd.write("\n\n")
 
 
 def get_openmx_key(key):

@@ -37,7 +37,7 @@ BFGS:   3  19:10:51    -31.492848     0.0023
 Supported :mod:`Calculators <ase.calculators>`
 ==============================================
 
-|abinit| |Asap| |Atomistica| |CASTEP| |CP2K| |CRYSTAL| |deMon| |dftb|
+|abinit| |Asap| |Atomistica| |BigDFT| |CASTEP| |CP2K| |CRYSTAL| |deMon| |dftb|
 |dftd4| |DFTK| |elk| |exciting| |EMT|
 |fhi-aims| |fleur| |gamess_us| |gpaw| |gromacs|
 |hotbit| |jdftx| |kim| |lammps| |nwchem|
@@ -62,6 +62,12 @@ Mopac_
 
 News
 ====
+
+* :ref:`ASE version 3.22.0 <releasenotes>` released (24 June 2021).
+
+* :ref:`ASE version 3.21.1 <releasenotes>` released (24 January 2021).
+
+* :ref:`ASE version 3.21.0 <releasenotes>` released (18 January 2021).
 
 * New bugfix releases :ref:`3.20.1 <releasenotes>` and :ref:`3.19.3
   <releasenotes>` (11 August 2020).
@@ -180,7 +186,7 @@ Contents
     gallery/gallery
     releasenotes
     contact
-    otherprojects
+    ecosystem
     development/development
     faq
     ASE Workshop 2019 <workshop/workshop>
@@ -193,6 +199,9 @@ Contents
    :align: middle
 .. |Atomistica| image:: static/atomistica.png
    :target: https://github.com/Atomistica/atomistica
+   :align: middle
+.. |BigDFT| image:: static/bigdft.png
+   :target: https://bigdft.org/
    :align: middle
 .. |CASTEP| image:: static/castep.png
    :target: ase/calculators/castep.html

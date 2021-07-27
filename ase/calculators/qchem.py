@@ -20,7 +20,8 @@ class QChem(FileIOCalculator):
                           'jobtype': None,
                           'charge': 0}
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=FileIOCalculator._deprecated,
                  label='qchem', scratch=None, np=1, nt=1, pbs=False,
                  basisfile=None, ecpfile=None, atoms=None, **kwargs):
         """

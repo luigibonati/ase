@@ -198,7 +198,7 @@ class EMT(Calculator):
         self.results['forces'] = self.forces
 
         if 'stress' in properties:
-            if self.atoms.number_of_lattice_vectors == 3:
+            if self.atoms.cell.rank == 3:
                 self.stress += self.stress.T.copy()
                 self.stress *= -0.5 / self.atoms.get_volume()
                 self.results['stress'] = self.stress.flat[[0, 4, 8, 5, 2, 1]]

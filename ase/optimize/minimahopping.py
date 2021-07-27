@@ -226,14 +226,14 @@ class MinimaHopping:
             if world.rank == 0:
                 if os.path.exists(self._logfile):
                     raise RuntimeError('File exists: %s' % self._logfile)
-            f = paropen(self._logfile, 'w')
-            f.write('par: %12s %12s %12s\n' % ('T (K)', 'Ediff (eV)',
-                                               'mdmin'))
-            f.write('ene: %12s %12s %12s\n' % ('E_current', 'E_previous',
-                                               'Difference'))
-            f.close()
+            fd = paropen(self._logfile, 'w')
+            fd.write('par: %12s %12s %12s\n' % ('T (K)', 'Ediff (eV)',
+                                                'mdmin'))
+            fd.write('ene: %12s %12s %12s\n' % ('E_current', 'E_previous',
+                                                'Difference'))
+            fd.close()
             return
-        f = paropen(self._logfile, 'a')
+        fd = paropen(self._logfile, 'a')
         if cat == 'msg':
             line = 'msg: %s' % message
         elif cat == 'par':
@@ -247,23 +247,23 @@ class MinimaHopping:
                         (current, previous, current - previous))
             else:
                 line = ('ene: %12.5f' % current)
-        f.write(line + '\n')
-        f.close()
+        fd.write(line + '\n')
+        fd.close()
 
     def _optimize(self):
         """Perform an optimization."""
         self._atoms.set_momenta(np.zeros(self._atoms.get_momenta().shape))
-        opt = self._optimizer(self._atoms,
-                              trajectory='qn%05i.traj' % self._counter,
-                              logfile='qn%05i.log' % self._counter)
-        self._log('msg', 'Optimization: qn%05i' % self._counter)
-        opt.run(fmax=self._fmax)
-        self._log('ene')
+        with self._optimizer(self._atoms,
+                             trajectory='qn%05i.traj' % self._counter,
+                             logfile='qn%05i.log' % self._counter) as opt:
+            self._log('msg', 'Optimization: qn%05i' % self._counter)
+            opt.run(fmax=self._fmax)
+            self._log('ene')
 
     def _record_minimum(self):
         """Adds the current atoms configuration to the minima list."""
-        traj = io.Trajectory(self._minima_traj, 'a')
-        traj.write(self._atoms)
+        with io.Trajectory(self._minima_traj, 'a') as traj:
+            traj.write(self._atoms)
         self._read_minima()
         self._log('msg', 'Recorded minima #%i.' % (len(self._minima) - 1))
 
@@ -273,8 +273,8 @@ class MinimaHopping:
         if exists:
             empty = os.path.getsize(self._minima_traj) == 0
             if not empty:
-                traj = io.Trajectory(self._minima_traj, 'r')
-                self._minima = [atoms for atoms in traj]
+                with io.Trajectory(self._minima_traj, 'r') as traj:
+                    self._minima = [atoms for atoms in traj]
             else:
                 self._minima = []
             return True
@@ -296,13 +296,13 @@ class MinimaHopping:
                           'qn%05i.traj.' % (resume, resume - 1))
                 atoms = io.read('qn%05i.traj' % (resume - 1), index=-1)
             else:
-                images = io.Trajectory('md%05i.traj' % resume, 'r')
-                for atoms in images:
-                    energies.append(atoms.get_potential_energy())
-                    oldpositions.append(atoms.positions.copy())
-                    passedmin = self._passedminimum(energies)
-                    if passedmin:
-                        mincount += 1
+                with io.Trajectory('md%05i.traj' % resume, 'r') as images:
+                    for atoms in images:
+                        energies.append(atoms.get_potential_energy())
+                        oldpositions.append(atoms.positions.copy())
+                        passedmin = self._passedminimum(energies)
+                        if passedmin:
+                            mincount += 1
                 self._atoms.set_momenta(atoms.get_momenta())
                 thermalized = True
             self._atoms.positions = atoms.get_positions()
@@ -310,24 +310,26 @@ class MinimaHopping:
                       len(energies))
         if not thermalized:
             MaxwellBoltzmannDistribution(self._atoms,
-                                         temp=self._temperature * units.kB,
+                                         temperature_K=self._temperature,
                                          force_temp=True)
         traj = io.Trajectory('md%05i.traj' % self._counter, 'a',
                              self._atoms)
         dyn = VelocityVerlet(self._atoms, timestep=self._timestep * units.fs)
         log = MDLogger(dyn, self._atoms, 'md%05i.log' % self._counter,
                        header=True, stress=False, peratom=False)
-        dyn.attach(log, interval=1)
-        dyn.attach(traj, interval=1)
-        while mincount < self._mdmin:
-            dyn.run(1)
-            energies.append(self._atoms.get_potential_energy())
-            passedmin = self._passedminimum(energies)
-            if passedmin:
-                mincount += 1
-            oldpositions.append(self._atoms.positions.copy())
-        # Reset atoms to minimum point.
-        self._atoms.positions = oldpositions[passedmin[0]]
+
+        with traj, dyn, log:
+            dyn.attach(log, interval=1)
+            dyn.attach(traj, interval=1)
+            while mincount < self._mdmin:
+                dyn.run(1)
+                energies.append(self._atoms.get_potential_energy())
+                passedmin = self._passedminimum(energies)
+                if passedmin:
+                    mincount += 1
+                oldpositions.append(self._atoms.positions.copy())
+            # Reset atoms to minimum point.
+            self._atoms.positions = oldpositions[passedmin[0]]
 
     def _unique_minimum_position(self):
         """Identifies if the current position of the atoms, which should be
@@ -495,9 +497,10 @@ class MHPlot:
     def _read_log(self):
         """Reads relevant parts of the log file."""
         data = []  # format: [energy, status, temperature, ediff]
-        f = open(os.path.join(self._rundirectory, self._logname), 'r')
-        lines = f.read().splitlines()
-        f.close()
+
+        with open(os.path.join(self._rundirectory, self._logname), 'r') as fd:
+            lines = fd.read().splitlines()
+
         step_almost_over = False
         step_over = False
         for line in lines:
@@ -610,9 +613,9 @@ class MHPlot:
             return
         energies = [self._data[step - 1][0]]
         file = os.path.join(self._rundirectory, 'md%05i.traj' % step)
-        traj = io.Trajectory(file, 'r')
-        for atoms in traj:
-            energies.append(atoms.get_potential_energy())
+        with io.Trajectory(file, 'r') as traj:
+            for atoms in traj:
+                energies.append(atoms.get_potential_energy())
         xi = step - 1 + .5
         if len(energies) > 2:
             xf = xi + (step + 0.25 - xi) * len(energies) / (len(energies) - 2.)
@@ -630,9 +633,9 @@ class MHPlot:
         file = os.path.join(self._rundirectory, 'qn%05i.traj' % index)
         if os.path.getsize(file) == 0:
             return
-        traj = io.Trajectory(file, 'r')
-        energies = [traj[0].get_potential_energy(),
-                    traj[-1].get_potential_energy()]
+        with io.Trajectory(file, 'r') as traj:
+            energies = [traj[0].get_potential_energy(),
+                        traj[-1].get_potential_energy()]
         if index > 0:
             file = os.path.join(self._rundirectory, 'md%05i.traj' % index)
             atoms = io.read(file, index=-3)

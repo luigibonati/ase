@@ -56,7 +56,6 @@ def test_h2o():
     tol = 1.0e-4
     assert(error < tol)
 
-
     # numerical forces
     forces_num = calc.calculate_numerical_forces(atoms, d=0.001)
 
@@ -72,7 +71,6 @@ def test_h2o():
 
     tol = 1.0e-4
     assert(error < tol)
-
 
     # analytical forces
     forces_an = atoms.get_forces()
@@ -91,14 +89,14 @@ def test_h2o():
     assert(error < tol)
 
     # optimize geometry
-    dyn = BFGS(atoms)
-    dyn.run(fmax=0.01)
+    with BFGS(atoms) as dyn:
+        dyn.run(fmax=0.01)
 
     positions = atoms.get_positions()
 
-    ref = np.array([[  9.61364579e-01, 2.81689367e-02, -1.58730770e-06],
-                    [ -3.10444398e-01, 9.10289261e-01, -5.66399075e-06],
-                    [ -1.56957763e-02, -2.26044053e-02, -2.34155615e-06]])
+    ref = np.array([[9.61364579e-01, 2.81689367e-02, -1.58730770e-06],
+                    [-3.10444398e-01, 9.10289261e-01, -5.66399075e-06],
+                    [-1.56957763e-02, -2.26044053e-02, -2.34155615e-06]])
 
     error = np.sqrt(np.sum((positions - ref)**2))
     print('positions')
@@ -110,6 +108,3 @@ def test_h2o():
     assert(error < tol)
 
     print('tests passed')
-
-
-

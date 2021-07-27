@@ -13,6 +13,7 @@ ESPRESSO.
 
 import os
 import operator as op
+import re
 import warnings
 from collections import OrderedDict
 from os import path
@@ -27,6 +28,7 @@ from ase.dft.kpoints import kpoint_convert
 from ase.constraints import FixAtoms, FixCartesian
 from ase.data import chemical_symbols, atomic_numbers
 from ase.units import create_units
+from ase.utils import iofunction
 
 
 # Quantum ESPRESSO uses CODATA 2006 internally
@@ -67,6 +69,7 @@ class Namelist(OrderedDict):
         return super(Namelist, self).get(key.lower(), default)
 
 
+@iofunction('rU')
 def read_espresso_out(fileobj, index=-1, results_required=True):
     """Reads Quantum ESPRESSO output files.
 
@@ -97,9 +100,6 @@ def read_espresso_out(fileobj, index=-1, results_required=True):
 
 
     """
-    if isinstance(fileobj, str):
-        fileobj = open(fileobj, 'rU')
-
     # work with a copy in memory for faster random access
     pwo_lines = fileobj.readlines()
 
@@ -217,12 +217,8 @@ def read_espresso_out(fileobj, index=-1, results_required=True):
             symbols = [label_to_symbol(position[0]) for position in
                        positions_card]
             positions = [position[1] for position in positions_card]
-
-            constraint_idx = [position[2] for position in positions_card]
-            constraint = get_constraint(constraint_idx)
-
             structure = Atoms(symbols=symbols, positions=positions, cell=cell,
-                              constraint=constraint, pbc=True)
+                              pbc=True)
 
         # Extract calculation results
         # Energy
@@ -323,7 +319,12 @@ def read_espresso_out(fileobj, index=-1, results_required=True):
 
         for bands_index in indexes[_PW_BANDS] + indexes[_PW_BANDSTRUCTURE]:
             if image_index < bands_index < next_index:
-                bands_index += 2
+                bands_index += 1
+                # skip over the lines with DFT+U occupation matrices
+                if 'enter write_ns' in pwo_lines[bands_index]:
+                    while 'exit write_ns' not in pwo_lines[bands_index]:
+                        bands_index += 1
+                bands_index += 1
 
                 if pwo_lines[bands_index].strip() == kpoints_warning:
                     continue
@@ -364,7 +365,11 @@ def read_espresso_out(fileobj, index=-1, results_required=True):
                         kpts.append(kpt)
 
         # Put everything together
+        #
+        # I have added free_energy.  Can and should we distinguish
+        # energy and free_energy?  --askhl
         calc = SinglePointDFTCalculator(structure, energy=energy,
+                                        free_energy=energy,
                                         forces=forces, stress=stress,
                                         magmoms=magmoms, efermi=efermi,
                                         ibzkpts=ibzkpts)
@@ -425,12 +430,14 @@ def parse_pwo_start(lines, index=0):
                 [float(x) for x in lines[idx + 2].split()[3:6]],
                 [float(x) for x in lines[idx + 3].split()[3:6]]])
         elif 'positions (alat units)' in line:
-            info['symbols'] = [
-                label_to_symbol(at_line.split()[1])
-                for at_line in lines[idx + 1:idx + 1 + info['nat']]]
-            info['positions'] = [
-                [float(x) * info['celldm(1)'] for x in at_line.split()[6:9]]
-                for at_line in lines[idx + 1:idx + 1 + info['nat']]]
+            info['symbols'], info['positions'] = [], []
+
+            for at_line in lines[idx + 1:idx + 1 + info['nat']]:
+                sym, x, y, z = parse_position_line(at_line)
+                info['symbols'].append(label_to_symbol(sym))
+                info['positions'].append([x * info['celldm(1)'],
+                                          y * info['celldm(1)'],
+                                          z * info['celldm(1)']])
             # This should be the end of interesting info.
             # Break here to avoid dealing with large lists of kpoints.
             # Will need to be extended for DFTCalculator info.
@@ -444,6 +451,39 @@ def parse_pwo_start(lines, index=0):
     return info
 
 
+def parse_position_line(line):
+    """Parse a single line from a pw.x output file.
+
+    The line must contain information about the atomic symbol and the position,
+    e.g.
+
+    995           Sb  tau( 995) = (   1.4212023   0.7037863   0.1242640  )
+
+    Parameters
+    ----------
+    line : str
+        Line to be parsed.
+
+    Returns
+    -------
+    sym : str
+        Atomic symbol.
+    x : float
+        x-position.
+    y : float
+        y-position.
+    z : float
+        z-position.
+    """
+    pat = re.compile(r'\s*\d+\s*(\S+)\s*tau\(\s*\d+\)\s*='
+                     r'\s*\(\s*(\S+)\s+(\S+)\s+(\S+)\s*\)')
+    match = pat.match(line)
+    assert match is not None
+    sym, x, y, z = match.group(1, 2, 3, 4)
+    return sym, float(x), float(y), float(z)
+
+
+@iofunction('rU')
 def read_espresso_in(fileobj):
     """Parse a Quantum ESPRESSO input files, '.in', '.pwi'.
 
@@ -467,10 +507,6 @@ def read_espresso_in(fileobj):
     KeyError
         Raised for missing keys that are required to process the file
     """
-    # TODO: use ase opening mechanisms
-    if isinstance(fileobj, str):
-        fileobj = open(fileobj, 'rU')
-
     # parse namelist section and extract remaining lines
     data, card_lines = read_fortran_namelist(fileobj)
 
@@ -492,18 +528,30 @@ def read_espresso_in(fileobj):
     else:
         alat, cell = ibrav_to_cell(data['system'])
 
+    # species_info holds some info for each element
+    species_card = get_atomic_species(card_lines, n_species=data['system']['ntyp'])
+    species_info = {}
+    for ispec, (label, weight, pseudo) in enumerate(species_card):
+        symbol = label_to_symbol(label)
+        valence = get_valence_electrons(symbol, data, pseudo)
+
+        # starting_magnetization is in fractions of valence electrons
+        magnet_key = "starting_magnetization({0})".format(ispec + 1)
+        magmom = valence * data["system"].get(magnet_key, 0.0)
+        species_info[symbol] = {"weight": weight, "pseudo": pseudo,
+                                "valence": valence, "magmom": magmom}
+
     positions_card = get_atomic_positions(
         card_lines, n_atoms=data['system']['nat'], cell=cell, alat=alat)
 
     symbols = [label_to_symbol(position[0]) for position in positions_card]
     positions = [position[1] for position in positions_card]
-    constraint_idx = [position[2] for position in positions_card]
-    constraint = get_constraint(constraint_idx)
+    magmoms = [species_info[symbol]["magmom"] for symbol in symbols]
 
     # TODO: put more info into the atoms object
     # e.g magmom, forces.
-    atoms = Atoms(symbols=symbols, positions=positions, cell=cell,
-                  constraint=constraint, pbc=True)
+    atoms = Atoms(symbols=symbols, positions=positions, cell=cell, pbc=True,
+                  magmoms=magmoms)
 
     return atoms
 
@@ -652,6 +700,55 @@ def ibrav_to_cell(system):
     return alat, cell
 
 
+def get_pseudo_dirs(data):
+    """Guess a list of possible locations for pseudopotential files.
+
+    Parameters
+    ----------
+    data : Namelist
+        Namelist representing the quantum espresso input parameters
+
+    Returns
+    -------
+    pseudo_dirs : list[str]
+        A list of directories where pseudopotential files could be located.
+    """
+    pseudo_dirs = []
+    if 'pseudo_dir' in data['control']:
+        pseudo_dirs.append(data['control']['pseudo_dir'])
+    if 'ESPRESSO_PSEUDO' in os.environ:
+        pseudo_dirs.append(os.environ['ESPRESSO_PSEUDO'])
+    pseudo_dirs.append(path.expanduser('~/espresso/pseudo/'))
+    return pseudo_dirs
+
+
+def get_valence_electrons(symbol, data, pseudo=None):
+    """The number of valence electrons for a atomic symbol.
+
+    Parameters
+    ----------
+    symbol : str
+        Chemical symbol
+
+    data : Namelist
+        Namelist representing the quantum espresso input parameters
+
+    pseudo : str, optional
+        File defining the pseudopotential to be used. If missing a fallback
+        to the number of valence electrons recommended at
+        http://materialscloud.org/sssp/ is employed.
+    """
+    if pseudo is None:
+        pseudo = '{}_dummy.UPF'.format(symbol)
+    for pseudo_dir in get_pseudo_dirs(data):
+        if path.exists(path.join(pseudo_dir, pseudo)):
+            valence = grep_valence(path.join(pseudo_dir, pseudo))
+            break
+    else:  # not found in a file
+        valence = SSSP_VALENCE[atomic_numbers[symbol]]
+    return valence
+
+
 def get_atomic_positions(lines, n_atoms, cell=None, alat=None):
     """Parse atom positions from ATOMIC_POSITIONS card.
 
@@ -725,6 +822,46 @@ def get_atomic_positions(lines, n_atoms, cell=None, alat=None):
                 positions.append((split_line[0], position, force_mult))
 
     return positions
+
+
+def get_atomic_species(lines, n_species):
+    """Parse atomic species from ATOMIC_SPECIES card.
+
+    Parameters
+    ----------
+    lines : list[str]
+        A list of lines containing the ATOMIC_POSITIONS card.
+    n_species : int
+        Expected number of atom types. Only this many lines will be parsed.
+
+    Returns
+    -------
+    species : list[(str, float, str)]
+
+    Raises
+    ------
+    ValueError
+        Any problems parsing the data result in ValueError
+    """
+
+    species = None
+    # no blanks or comment lines, can the consume n_atoms lines for positions
+    trimmed_lines = (line.strip() for line in lines
+                     if line.strip() and not line.startswith('#'))
+
+    for line in trimmed_lines:
+        if line.startswith('ATOMIC_SPECIES'):
+            if species is not None:
+                raise ValueError('Multiple ATOMIC_SPECIES specified')
+
+            species = []
+            for _dummy in range(n_species):
+                label_weight_pseudo = next(trimmed_lines).split()
+                species.append((label_weight_pseudo[0],
+                                float(label_weight_pseudo[1]),
+                                label_weight_pseudo[2]))
+
+    return species
 
 
 def get_cell_parameters(lines, alat=None):
@@ -1391,11 +1528,15 @@ def kspacing_to_grid(atoms, spacing, calculated_spacing=None):
     """
     # No factor of 2pi in ase, everything in A^-1
     # reciprocal dimensions
-    r_x, r_y, r_z = np.linalg.norm(atoms.get_reciprocal_cell(), axis=1)
+    r_x, r_y, r_z = np.linalg.norm(atoms.cell.reciprocal(), axis=1)
 
     kpoint_grid = [int(r_x / spacing) + 1,
                    int(r_y / spacing) + 1,
                    int(r_z / spacing) + 1]
+
+    for i, _ in enumerate(kpoint_grid):
+        if not atoms.pbc[i]:
+            kpoint_grid[i] = 1
 
     if calculated_spacing is not None:
         calculated_spacing[:] = [r_x / kpoint_grid[0],
@@ -1498,32 +1639,17 @@ def write_espresso_in(fd, atoms, input_data=None, pseudopotentials=None,
         else:
             warnings.warn('Ignored unknown constraint {}'.format(constraint))
 
-    # Deal with pseudopotentials
-    # Look in all possible locations for the pseudos and try to figure
-    # out the number of valence electrons
-    pseudo_dirs = []
-    if 'pseudo_dir' in input_parameters['control']:
-        pseudo_dirs.append(input_parameters['control']['pseudo_dir'])
-    if 'ESPRESSO_PSEUDO' in os.environ:
-        pseudo_dirs.append(os.environ['ESPRESSO_PSEUDO'])
-    pseudo_dirs.append(path.expanduser('~/espresso/pseudo/'))
-
     # Species info holds the information on the pseudopotential and
     # associated for each element
     if pseudopotentials is None:
         pseudopotentials = {}
     species_info = {}
     for species in set(atoms.get_chemical_symbols()):
-        pseudo = pseudopotentials.get(species, '{}_dummy.UPF'.format(species))
-        for pseudo_dir in pseudo_dirs:
-            if path.exists(path.join(pseudo_dir, pseudo)):
-                valence = grep_valence(path.join(pseudo_dir, pseudo))
-                break
-        else:  # not found in a file
-            valence = SSSP_VALENCE[atomic_numbers[species]]
-
-        species_info[species] = {'pseudo': pseudo,
-                                 'valence': valence}
+        # Look in all possible locations for the pseudos and try to figure
+        # out the number of valence electrons
+        pseudo = pseudopotentials.get(species, None)
+        valence = get_valence_electrons(species, input_parameters, pseudo)
+        species_info[species] = {'pseudo': pseudo, 'valence': valence}
 
     # Convert atoms into species.
     # Each different magnetic moment needs to be a separate type even with
@@ -1699,21 +1825,3 @@ def write_espresso_in(fd, atoms, input_data=None, pseudopotentials=None,
 
     # DONE!
     fd.write(''.join(pwi))
-
-
-def get_constraint(constraint_idx):
-    """
-    Map constraints from QE input/output to FixAtoms or FixCartesian constraint
-    """
-    if not np.any(constraint_idx):
-        return None
-
-    a = [a for a, c in enumerate(constraint_idx) if np.all(c is not None)]
-    mask = [[(ic + 1) % 2 for ic in c] for c in constraint_idx
-            if np.all(c is not None)]
-
-    if np.all(np.array(mask)) == 1:
-        constraint = FixAtoms(a)
-    else:
-        constraint = FixCartesian(a, mask)
-    return constraint

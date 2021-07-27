@@ -1,16 +1,15 @@
 import os
-from warnings import warn
 import subprocess
-import numpy as np
+from warnings import warn
 
-from ase.calculators.calculator import (Calculator,
-                                        FileIOCalculator,
-                                        all_changes,
-                                        PropertyNotImplementedError)
-from ase.units import Bohr, Hartree
-from ase.io.xyz import write_xyz
+import numpy as np
+from ase.calculators.calculator import (Calculator, FileIOCalculator,
+                                        PropertyNotImplementedError,
+                                        all_changes)
+from ase.io import write
 from ase.io.vasp import write_vasp
 from ase.parallel import world
+from ase.units import Bohr, Hartree
 
 
 class DFTD3(FileIOCalculator):
@@ -51,7 +50,6 @@ class DFTD3(FileIOCalculator):
 
         self.dft = None
         FileIOCalculator.__init__(self, restart=None,
-                                  ignore_bad_restart_file=False,
                                   label=label,
                                   atoms=atoms,
                                   command=command,
@@ -218,9 +216,9 @@ class DFTD3(FileIOCalculator):
         # so we only need it to run on 1 core
         errorcode = 0
         if self.comm.rank == 0:
-            with open(self.label + '.out', 'w') as f:
+            with open(self.label + '.out', 'w') as fd:
                 errorcode = subprocess.call(command,
-                                            cwd=self.directory, stdout=f)
+                                            cwd=self.directory, stdout=fd)
 
         errorcode = self.comm.sum(errorcode)
 
@@ -257,7 +255,7 @@ class DFTD3(FileIOCalculator):
             else:
                 fname = os.path.join(
                     self.directory, '{}.xyz'.format(self.label))
-                write_xyz(fname, atoms, plain=True)
+                write(fname, atoms, format='xyz', parallel=False)
 
         # Generate custom damping parameters file. This is kind of ugly, but
         # I don't know of a better way of doing this.
@@ -295,16 +293,16 @@ class DFTD3(FileIOCalculator):
 
             damp_fname = os.path.join(self.directory, '.dftd3par.local')
             if self.comm.rank == 0:
-                with open(damp_fname, 'w') as f:
-                    f.write(' '.join(damppars))
+                with open(damp_fname, 'w') as fd:
+                    fd.write(' '.join(damppars))
 
     def read_results(self):
         # parse the energy
         outname = os.path.join(self.directory, self.label + '.out')
         energy = 0.0
         if self.comm.rank == 0:
-            with open(outname, 'r') as f:
-                for line in f:
+            with open(outname, 'r') as fd:
+                for line in fd:
                     if line.startswith(' program stopped'):
                         if 'functional name unknown' in line:
                             message = 'Unknown DFTD3 functional name "{}". ' \
@@ -357,8 +355,8 @@ class DFTD3(FileIOCalculator):
             forces = np.zeros((len(self.atoms), 3))
             forcename = os.path.join(self.directory, 'dftd3_gradient')
             if self.comm.rank == 0:
-                with open(forcename, 'r') as f:
-                    for i, line in enumerate(f):
+                with open(forcename, 'r') as fd:
+                    for i, line in enumerate(fd):
                         forces[i] = np.array([float(x) for x in line.split()])
                 forces *= -Hartree / Bohr
             self.comm.broadcast(forces, 0)
@@ -372,8 +370,8 @@ class DFTD3(FileIOCalculator):
                 stress = np.zeros((3, 3))
                 stressname = os.path.join(self.directory, 'dftd3_cellgradient')
                 if self.comm.rank == 0:
-                    with open(stressname, 'r') as f:
-                        for i, line in enumerate(f):
+                    with open(stressname, 'r') as fd:
+                        for i, line in enumerate(fd):
                             for j, x in enumerate(line.split()):
                                 stress[i, j] = float(x)
                     stress *= Hartree / Bohr / self.atoms.get_volume()

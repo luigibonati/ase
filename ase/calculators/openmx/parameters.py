@@ -116,7 +116,8 @@ bool_keys = [
     'HS.fileout',
     'Voronoi.charge',
     'scf.NC.Zeeman.Spin',
-    'scf.stress.tensor'
+    'scf.stress.tensor',
+    'Energy.Decomposition'
 ]
 list_int_keys: List[str] = []
 list_bool_keys: List[str] = []
@@ -236,6 +237,7 @@ omx_parameter_defaults: Dict[str, Any] = dict(
     voronoi_charge=None,
     scf_nc_zeeman_spin=None,
     scf_stress_tensor=None,
+    energy_decomposition=None,
     dos_erange=None,
     definition_of_atomic_species=None,
     atoms_speciesandcoordinates=None,

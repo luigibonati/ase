@@ -158,7 +158,7 @@ def create_units(codata_version):
         u = Units(CODATA[codata_version])
     except KeyError:
         raise NotImplementedError('CODATA version "{0}" not implemented'
-                                  .format(__codata_version__))
+                                  .format(codata_version))
 
     # derived from the CODATA values
     u['_eps0'] = (1 / u['_mu0'] / u['_c']**2)  # permittivity of vacuum
@@ -186,6 +186,7 @@ def create_units(codata_version):
 
     u['Pascal'] = (1 / u['_e']) / 1e30  # J/m^3
     u['GPa'] = 1e9 * u['Pascal']
+    u['bar'] = 1e5 * u['Pascal']
 
     u['Debye'] = 1.0 / 1e11 / u['_e'] / u['_c']
     u['alpha'] = (u['_e']**2 / (4 * pi * u['_eps0']) /
@@ -224,7 +225,7 @@ def create_units(codata_version):
 (_Grav, _Nav, _amu, _auf, _aup, _aut, _auv, _c, _e, _eps0,
  _hbar, _hplanck, _k, _me, _mp, _mu0, alpha, eV, fs, invcm,
  kB, kJ, kcal, kg, m, mol, nm, s, second, A, AUT, Ang, Angstrom,
- Bohr, C, Debye, GPa, Ha, Hartree, J, Pascal, Ry, Rydberg) = [0.0] * 43
+ Bohr, C, Debye, GPa, Ha, Hartree, J, Pascal, bar, Ry, Rydberg) = [0.0] * 44
 
 # Now update the module scope:
 globals().update(create_units(__codata_version__))

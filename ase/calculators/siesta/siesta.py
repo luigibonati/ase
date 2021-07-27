@@ -20,7 +20,8 @@ import numpy as np
 
 from ase.units import Ry, eV, Bohr
 from ase.data import atomic_numbers
-from ase.calculators.siesta.import_functions import read_rho, xv_to_atoms
+from ase.io.siesta import read_siesta_xv
+from ase.calculators.siesta.import_functions import read_rho
 from ase.calculators.siesta.import_functions import \
     get_valence_charge, read_vca_synth_block
 from ase.calculators.calculator import FileIOCalculator, ReadError
@@ -156,7 +157,6 @@ class SiestaParameters(Parameters):
             symlink_pseudos=None,
             atoms=None,
             restart=None,
-            ignore_bad_restart_file=False,
             fdf_arguments=None,
             atomic_coord_format='xyz',
             bandpath=None):
@@ -246,10 +246,6 @@ class Siesta(FileIOCalculator):
            - restart      : str.  Prefix for restart file.
                             May contain a directory.
                             Default is  None, don't restart.
-           - ignore_bad_restart_file: bool.
-                            Ignore broken or missing restart file.
-                            By default, it is an error if the restart
-                            file is missing or broken.
            - fdf_arguments: Explicitly given fdf arguments. Dictonary using
                             Siesta keywords as given in the manual. List values
                             are written as fdf blocks with each element on a
@@ -492,8 +488,8 @@ class Siesta(FileIOCalculator):
         except RuntimeError as e:
             try:
                 fname = os.path.join(self.directory, self.label+'.out')
-                with open(fname, 'r') as f:
-                    lines = f.readlines()
+                with open(fname, 'r') as fd:
+                    lines = fd.readlines()
                 debug_lines = 10
                 print('##### %d last lines of the Siesta output' % debug_lines)
                 for line in lines[-20:]:
@@ -530,51 +526,49 @@ class Siesta(FileIOCalculator):
             self.remove_analysis()
 
         # Start writing the file.
-        with open(filename, 'w') as f:
+        with open(filename, 'w') as fd:
             # Write system name and label.
-            f.write(format_fdf('SystemName', self.prefix))
-            f.write(format_fdf('SystemLabel', self.prefix))
-            f.write("\n")
+            fd.write(format_fdf('SystemName', self.prefix))
+            fd.write(format_fdf('SystemLabel', self.prefix))
+            fd.write("\n")
 
             # Write explicitly given options first to
             # allow the user to override anything.
             fdf_arguments = self['fdf_arguments']
             keys = sorted(fdf_arguments.keys())
             for key in keys:
-                f.write(format_fdf(key, fdf_arguments[key]))
+                fd.write(format_fdf(key, fdf_arguments[key]))
 
             # Force siesta to return error on no convergence.
             # as default consistent with ASE expectations.
             if 'SCFMustConverge' not in fdf_arguments.keys():
-                f.write(format_fdf('SCFMustConverge', True))
-            f.write("\n")
+                fd.write(format_fdf('SCFMustConverge', True))
+            fd.write("\n")
 
             # Write spin level.
-            f.write(format_fdf('Spin     ', self['spin']))
+            fd.write(format_fdf('Spin     ', self['spin']))
             # Spin backwards compatibility.
             if self['spin'] == 'collinear':
-                f.write(format_fdf('SpinPolarized', (True, "# Backwards compatibility.")))
+                fd.write(format_fdf('SpinPolarized', (True, "# Backwards compatibility.")))
             elif self['spin'] == 'non-collinear':
-                f.write(format_fdf('NonCollinear', (True, "# Backwards compatibility.")))
-
-
+                fd.write(format_fdf('NonCollinear', (True, "# Backwards compatibility.")))
 
             # Write functional.
             functional, authors = self['xc']
-            f.write(format_fdf('XC.functional', functional))
-            f.write(format_fdf('XC.authors', authors))
-            f.write("\n")
+            fd.write(format_fdf('XC.functional', functional))
+            fd.write(format_fdf('XC.authors', authors))
+            fd.write("\n")
 
             # Write mesh cutoff and energy shift.
-            f.write(format_fdf('MeshCutoff',
-                               (self['mesh_cutoff'], 'eV')))
-            f.write(format_fdf('PAO.EnergyShift',
-                               (self['energy_shift'], 'eV')))
-            f.write("\n")
+            fd.write(format_fdf('MeshCutoff',
+                                (self['mesh_cutoff'], 'eV')))
+            fd.write(format_fdf('PAO.EnergyShift',
+                                (self['energy_shift'], 'eV')))
+            fd.write("\n")
 
             # Write the minimal arg
-            self._write_species(f, atoms)
-            self._write_structure(f, atoms)
+            self._write_species(fd, atoms)
+            self._write_structure(fd, atoms)
 
             # Use the saved density matrix if only 'cell' and 'positions'
             # have changed.
@@ -582,18 +576,18 @@ class Siesta(FileIOCalculator):
                 ('numbers' not in system_changes and
                  'initial_magmoms' not in system_changes and
                  'initial_charges' not in system_changes)):
-                f.write(format_fdf('DM.UseSaveDM', True))
+                fd.write(format_fdf('DM.UseSaveDM', True))
 
             # Save density.
             if 'density' in properties:
-                f.write(format_fdf('SaveRho', True))
+                fd.write(format_fdf('SaveRho', True))
 
-            self._write_kpts(f)
+            self._write_kpts(fd)
 
             if self['bandpath'] is not None:
                 lines = bandpath2bandpoints(self['bandpath'])
-                f.write(lines)
-                f.write('\n')
+                fd.write(lines)
+                fd.write('\n')
 
     def read(self, filename):
         """Read structural parameters from file .XV file
@@ -604,7 +598,8 @@ class Siesta(FileIOCalculator):
         fname = self.getpath(filename)
         if not os.path.exists(fname):
             raise ReadError("The restart file '%s' does not exist" % fname)
-        self.atoms = xv_to_atoms(fname)
+        with open(fname) as fd:
+            self.atoms = read_siesta_xv(fd)
         self.read_results()
 
     def getpath(self, fname=None, ext=None):
@@ -621,7 +616,7 @@ class Siesta(FileIOCalculator):
         if os.path.exists(filename):
             os.remove(filename)
 
-    def _write_structure(self, f, atoms):
+    def _write_structure(self, fd, atoms):
         """Translate the Atoms object to fdf-format.
 
         Parameters:
@@ -629,7 +624,7 @@ class Siesta(FileIOCalculator):
             - atoms: An atoms object.
         """
         cell = atoms.cell
-        f.write('\n')
+        fd.write('\n')
 
         if cell.rank in [1, 2]:
             raise ValueError('Expected 3D unit cell or no unit cell.  You may '
@@ -637,17 +632,17 @@ class Siesta(FileIOCalculator):
 
         # Write lattice vectors
         if np.any(cell):
-            f.write(format_fdf('LatticeConstant', '1.0 Ang'))
-            f.write('%block LatticeVectors\n')
+            fd.write(format_fdf('LatticeConstant', '1.0 Ang'))
+            fd.write('%block LatticeVectors\n')
             for i in range(3):
                 for j in range(3):
                     s = ('    %.15f' % cell[i, j]).rjust(16) + ' '
-                    f.write(s)
-                f.write('\n')
-            f.write('%endblock LatticeVectors\n')
-            f.write('\n')
+                    fd.write(s)
+                fd.write('\n')
+            fd.write('%endblock LatticeVectors\n')
+            fd.write('\n')
 
-        self._write_atomic_coordinates(f, atoms)
+        self._write_atomic_coordinates(fd, atoms)
 
         # Write magnetic moments.
         magmoms = atoms.get_initial_magnetic_moments()
@@ -658,21 +653,21 @@ class Siesta(FileIOCalculator):
         # atoms object.
         if magmoms is not None:
             if len(magmoms) == 0:
-                f.write('#Empty block forces ASE initialization.\n')
+                fd.write('#Empty block forces ASE initialization.\n')
 
-            f.write('%block DM.InitSpin\n')
+            fd.write('%block DM.InitSpin\n')
             if len(magmoms) != 0 and isinstance(magmoms[0], np.ndarray):
                 for n, M in enumerate(magmoms):
                     if M[0] != 0:
-                        f.write('    %d %.14f %.14f %.14f \n' % (n + 1, M[0], M[1], M[2]))
+                        fd.write('    %d %.14f %.14f %.14f \n' % (n + 1, M[0], M[1], M[2]))
             elif len(magmoms) != 0 and isinstance(magmoms[0], float):
                 for n, M in enumerate(magmoms):
                     if M != 0:
-                        f.write('    %d %.14f \n' % (n + 1, M))
-            f.write('%endblock DM.InitSpin\n')
-            f.write('\n')
+                        fd.write('    %d %.14f \n' % (n + 1, M))
+            fd.write('%endblock DM.InitSpin\n')
+            fd.write('\n')
 
-    def _write_atomic_coordinates(self, f, atoms):
+    def _write_atomic_coordinates(self, fd, atoms):
         """Write atomic coordinates.
 
         Parameters:
@@ -681,13 +676,13 @@ class Siesta(FileIOCalculator):
         """
         af = self.parameters.atomic_coord_format.lower()
         if af == 'xyz':
-            self._write_atomic_coordinates_xyz(f, atoms)
+            self._write_atomic_coordinates_xyz(fd, atoms)
         elif af == 'zmatrix':
-            self._write_atomic_coordinates_zmatrix(f, atoms)
+            self._write_atomic_coordinates_zmatrix(fd, atoms)
         else:
             raise RuntimeError('Unknown atomic_coord_format: {}'.format(af))
 
-    def _write_atomic_coordinates_xyz(self, f, atoms):
+    def _write_atomic_coordinates_xyz(self, fd, atoms):
         """Write atomic coordinates.
 
         Parameters:
@@ -695,27 +690,27 @@ class Siesta(FileIOCalculator):
             - atoms: An atoms object.
         """
         species, species_numbers = self.species(atoms)
-        f.write('\n')
-        f.write('AtomicCoordinatesFormat  Ang\n')
-        f.write('%block AtomicCoordinatesAndAtomicSpecies\n')
+        fd.write('\n')
+        fd.write('AtomicCoordinatesFormat  Ang\n')
+        fd.write('%block AtomicCoordinatesAndAtomicSpecies\n')
         for atom, number in zip(atoms, species_numbers):
             xyz = atom.position
             line = ('    %.9f' % xyz[0]).rjust(16) + ' '
             line += ('    %.9f' % xyz[1]).rjust(16) + ' '
             line += ('    %.9f' % xyz[2]).rjust(16) + ' '
             line += str(number) + '\n'
-            f.write(line)
-        f.write('%endblock AtomicCoordinatesAndAtomicSpecies\n')
-        f.write('\n')
+            fd.write(line)
+        fd.write('%endblock AtomicCoordinatesAndAtomicSpecies\n')
+        fd.write('\n')
 
         origin = tuple(-atoms.get_celldisp().flatten())
         if any(origin):
-            f.write('%block AtomicCoordinatesOrigin\n')
-            f.write('     %.4f  %.4f  %.4f\n' % origin)
-            f.write('%endblock AtomicCoordinatesOrigin\n')
-            f.write('\n')
+            fd.write('%block AtomicCoordinatesOrigin\n')
+            fd.write('     %.4f  %.4f  %.4f\n' % origin)
+            fd.write('%endblock AtomicCoordinatesOrigin\n')
+            fd.write('\n')
 
-    def _write_atomic_coordinates_zmatrix(self, f, atoms):
+    def _write_atomic_coordinates_zmatrix(self, fd, atoms):
         """Write atomic coordinates in Z-matrix format.
 
         Parameters:
@@ -723,10 +718,10 @@ class Siesta(FileIOCalculator):
             - atoms: An atoms object.
         """
         species, species_numbers = self.species(atoms)
-        f.write('\n')
-        f.write('ZM.UnitsLength   Ang\n')
-        f.write('%block Zmatrix\n')
-        f.write('  cartesian\n')
+        fd.write('\n')
+        fd.write('ZM.UnitsLength   Ang\n')
+        fd.write('%block Zmatrix\n')
+        fd.write('  cartesian\n')
         fstr = "{:5d}" + "{:20.10f}" * 3 + "{:3d}" * 3 + "{:7d} {:s}\n"
         a2constr = self.make_xyz_constraints(atoms)
         a2p, a2s = atoms.get_positions(), atoms.get_chemical_symbols()
@@ -734,17 +729,17 @@ class Siesta(FileIOCalculator):
                                                      a2p,
                                                      a2constr,
                                                      a2s)):
-            f.write(fstr.format(
+            fd.write(fstr.format(
                 sp, xyz[0], xyz[1], xyz[2], ccc[0],
                 ccc[1], ccc[2], ia + 1, sym))
-        f.write('%endblock Zmatrix\n')
+        fd.write('%endblock Zmatrix\n')
 
         origin = tuple(-atoms.get_celldisp().flatten())
         if any(origin):
-            f.write('%block AtomicCoordinatesOrigin\n')
-            f.write('     %.4f  %.4f  %.4f\n' % origin)
-            f.write('%endblock AtomicCoordinatesOrigin\n')
-            f.write('\n')
+            fd.write('%block AtomicCoordinatesOrigin\n')
+            fd.write('     %.4f  %.4f  %.4f\n' % origin)
+            fd.write('%endblock AtomicCoordinatesOrigin\n')
+            fd.write('\n')
 
     def make_xyz_constraints(self, atoms):
         """ Create coordinate-resolved list of constraints [natoms, 0:3]
@@ -780,7 +775,7 @@ class Siesta(FileIOCalculator):
                               .format(str(c), sys._getframe().f_code))
         return a2c
 
-    def _write_kpts(self, f):
+    def _write_kpts(self, fd):
         """Write kpts.
 
         Parameters:
@@ -789,9 +784,9 @@ class Siesta(FileIOCalculator):
         if self["kpts"] is None:
             return
         kpts = np.array(self['kpts'])
-        f.write('\n')
-        f.write('#KPoint grid\n')
-        f.write('%block kgrid_Monkhorst_Pack\n')
+        fd.write('\n')
+        fd.write('#KPoint grid\n')
+        fd.write('%block kgrid_Monkhorst_Pack\n')
 
         for i in range(3):
             s = ''
@@ -808,11 +803,11 @@ class Siesta(FileIOCalculator):
                     write_this = 0
                 s += '     %d  ' % write_this
             s += '%1.1f\n' % displace
-            f.write(s)
-        f.write('%endblock kgrid_Monkhorst_Pack\n')
-        f.write('\n')
+            fd.write(s)
+        fd.write('%endblock kgrid_Monkhorst_Pack\n')
+        fd.write('\n')
 
-    def _write_species(self, f, atoms):
+    def _write_species(self, fd, atoms):
         """Write input related the different species.
 
         Parameters:
@@ -829,8 +824,8 @@ class Siesta(FileIOCalculator):
             mess = "Please set the environment variable 'SIESTA_PP_PATH'"
             raise Exception(mess)
 
-        f.write(format_fdf('NumberOfSpecies', len(species)))
-        f.write(format_fdf('NumberOfAtoms', len(atoms)))
+        fd.write(format_fdf('NumberOfSpecies', len(species)))
+        fd.write(format_fdf('NumberOfAtoms', len(atoms)))
 
         pao_basis = []
         chemical_labels = []
@@ -908,7 +903,7 @@ class Siesta(FileIOCalculator):
                 synth_blocks.append(synth_block)
 
             if len(synth_blocks) > 0:
-                f.write(format_fdf('SyntheticAtoms', list(synth_blocks)))
+                fd.write(format_fdf('SyntheticAtoms', list(synth_blocks)))
 
             label = '.'.join(np.array(name.split('.'))[:-1])
             string = '    %d %d %s' % (species_number, atomic_number, label)
@@ -917,11 +912,11 @@ class Siesta(FileIOCalculator):
                 pao_basis.append(spec['basis_set'].script(label))
             else:
                 basis_sizes.append(("    " + label, spec['basis_set']))
-        f.write((format_fdf('ChemicalSpecieslabel', chemical_labels)))
-        f.write('\n')
-        f.write((format_fdf('PAO.Basis', pao_basis)))
-        f.write((format_fdf('PAO.BasisSizes', basis_sizes)))
-        f.write('\n')
+        fd.write((format_fdf('ChemicalSpecieslabel', chemical_labels)))
+        fd.write('\n')
+        fd.write((format_fdf('PAO.Basis', pao_basis)))
+        fd.write((format_fdf('PAO.BasisSizes', basis_sizes)))
+        fd.write('\n')
 
     def pseudo_qualifier(self):
         """Get the extra string used in the middle of the pseudopotential.
@@ -976,7 +971,8 @@ class Siesta(FileIOCalculator):
         return self.results['bandstructure']
 
     def read_ion(self, atoms):
-        """Read the ion.xml file of each specie
+        """
+        Read the ion.xml file of each specie
         """
         from ase.calculators.siesta.import_ion_xml import get_ion
 
@@ -1090,8 +1086,8 @@ class Siesta(FileIOCalculator):
         """Read number of grid points from SIESTA's text-output file. """
 
         fname = self.getpath(ext='out')
-        with open(fname, 'r') as f:
-            for line in f:
+        with open(fname, 'r') as fd:
+            for line in fd:
                 line = line.strip().lower()
                 if line.startswith('initmesh: mesh ='):
                     n_points = [int(word) for word in line.split()[3:8:2]]
@@ -1104,8 +1100,8 @@ class Siesta(FileIOCalculator):
         """Read energy from SIESTA's text-output file.
         """
         fname = self.getpath(ext='out')
-        with open(fname, 'r') as f:
-            text = f.read().lower()
+        with open(fname, 'r') as fd:
+            text = fd.read().lower()
 
         assert 'final energy' in text
         lines = iter(text.split('\n'))
@@ -1126,8 +1122,8 @@ class Siesta(FileIOCalculator):
         """Read the forces and stress from the FORCE_STRESS file.
         """
         fname = self.getpath('FORCE_STRESS')
-        with open(fname, 'r') as f:
-            lines = f.readlines()
+        with open(fname, 'r') as fd:
+            lines = fd.readlines()
 
         stress_lines = lines[1:4]
         stress = np.empty((3, 3))
@@ -1155,11 +1151,11 @@ class Siesta(FileIOCalculator):
 
         fname = self.getpath(ext='EIG')
         try:
-            with open(fname, "r") as f:
-                self.results['fermi_energy'] = float(f.readline())
-                n, nspin, nkp = map(int, f.readline().split())
+            with open(fname, "r") as fd:
+                self.results['fermi_energy'] = float(fd.readline())
+                n, nspin, nkp = map(int, fd.readline().split())
                 _ee = np.split(
-                    np.array(f.read().split()).astype(np.float), nkp)
+                    np.array(fd.read().split()).astype(float), nkp)
         except (IOError):
             return 1
 
@@ -1205,518 +1201,12 @@ class Siesta(FileIOCalculator):
     def read_dipole(self):
         """Read dipole moment. """
         dipole = np.zeros([1, 3])
-        with open(self.getpath(ext='out'), 'r') as f:
-            for line in f:
+        with open(self.getpath(ext='out'), 'r') as fd:
+            for line in fd:
                 if line.rfind('Electric dipole (Debye)') > -1:
                     dipole = np.array([float(f) for f in line.split()[5:8]])
         # debye to e*Ang
         self.results['dipole'] = dipole * 0.2081943482534
-
-    def pyscf_tddft(
-            self,
-            Edir=np.array([1.0, 0.0, 0.0]),
-            freq=np.arange(0.0, 10.0, 0.1),
-            units='au',
-            run_tddft=True,
-            save_kernel=True,
-            kernel_name="tddft_kernel.npy",
-            fname="pol_tensor.npy",
-            fname_nonin="noninpol_tensor.npy", **kw):
-        """
-        Perform TDDFT calculation using the pyscf.nao module for a molecule.
-
-        Parameters
-        ----------
-        freq: array like
-            frequency range for which the polarizability should
-            be computed, in eV
-        units : str, optional
-            unit for the returned polarizability, can be au (atomic units)
-            or nm**2
-        run_tddft: to run the tddft_calculation or not
-        fname: str
-            Name of input file name for polariazbility tensor.
-            if run_tddft is True: output file
-            if run_tddft is False: input file
-
-        kw: keywords for the tddft_iter function from pyscf
-
-        Returns
-        -------
-            Add to the self.results dict the following items:
-        freq range: array like
-            array of dimension (nff) containing the frequency range in eV.
-
-        polarizability nonin: array like (complex)
-            array of dimension (nff, 3, 3) with nff the frequency number,
-            the second and third dimension are the matrix elements of the
-            non-interactive polarizability::
-
-                P_xx, P_xy, P_xz, Pyx, .......
-
-
-        polarizability: array like (complex)
-            array of dimension (nff, 3, 3) with nff the frequency number,
-            the second and third dimension are the matrix elements of the
-            interactive polarizability::
-
-                P_xx, P_xy, P_xz, Pyx, .......
-
-        density change nonin: array like (complex)
-            contains the non interacting density change in product basis
-
-        density change inter: array like (complex)
-            contains the interacting density change in product basis
-
-        References
-        ----------
-        https://github.com/cfm-mpc/pyscf/tree/nao
-
-        Example
-        -------
-        from ase.units import Ry, eV, Ha
-        from ase.calculators.siesta import Siesta
-        from ase import Atoms
-        import numpy as np
-        import matplotlib.pyplot as plt
-
-        # Define the systems
-        Na8 = Atoms('Na8',
-                     positions=[[-1.90503810, 1.56107288, 0.00000000],
-                                [1.90503810, 1.56107288, 0.00000000],
-                                [1.90503810, -1.56107288, 0.00000000],
-                                [-1.90503810, -1.56107288, 0.00000000],
-                                [0.00000000, 0.00000000, 2.08495836],
-                                [0.00000000, 0.00000000, -2.08495836],
-                                [0.00000000, 3.22798122, 2.08495836],
-                                [0.00000000, 3.22798122, -2.08495836]],
-                     cell=[20, 20, 20])
-
-        # Siesta input
-        siesta = Siesta(
-                    mesh_cutoff=150 * Ry,
-                    basis_set='DZP',
-                    pseudo_qualifier='',
-                    energy_shift=(10 * 10**-3) * eV,
-                    fdf_arguments={
-                        'SCFMustConverge': False,
-                        'COOP.Write': True,
-                        'WriteDenchar': True,
-                        'PAO.BasisType': 'split',
-                        'DM.Tolerance': 1e-4,
-                        'DM.MixingWeight': 0.01,
-                        'MaxSCFIterations': 300,
-                        'DM.NumberPulay': 4,
-                        'XML.Write': True})
-
-        Na8.calc = siesta
-        e = Na8.get_potential_energy()
-        freq, pol = siesta.get_polarizability_pyscf_inter(
-            label="siesta",
-            jcutoff=7,
-            iter_broadening=0.15/Ha,
-            xc_code='LDA,PZ',
-            tol_loc=1e-6,
-            tol_biloc=1e-7,
-            freq = np.arange(0.0, 5.0, 0.05))
-        # plot polarizability
-        plt.plot(freq, pol[:, 0, 0].imag)
-        plt.show()
-        """
-
-        from ase.calculators.siesta.mbpt_lcao_utils import pol2cross_sec
-        assert units in ["nm**2", "au"]
-
-        if run_tddft:
-            from pyscf.nao import tddft_iter
-            from ase.units import Ha
-
-            tddft = tddft_iter(**kw)
-            if save_kernel:
-                np.save(kernel_name, tddft.kernel)
-
-            omegas = freq / Ha + 1j * tddft.eps
-            tddft.comp_dens_nonin_along_Eext(omegas, Eext=Edir)
-            tddft.comp_dens_inter_along_Eext(omegas, Eext=Edir)
-
-            # save polarizability tensor and density change to files
-            self.results["freq range"] = freq
-            self.results['polarizability nonin'] = np.zeros(
-                (freq.size, 3, 3),
-                dtype=tddft.p0_mat.dtype)
-            self.results['polarizability inter'] = np.zeros(
-                (freq.size, 3, 3),
-                dtype=tddft.p_mat.dtype)
-            self.results["density change nonin"] = tddft.dn0
-            self.results["density change inter"] = tddft.dn
-            for xyz1 in range(3):
-                for xyz2 in range(3):
-                    if units == 'nm**2':
-                        p0 = pol2cross_sec(-tddft.p0_mat[xyz1, xyz2, :], freq)
-                        p = pol2cross_sec(-tddft.p_mat[xyz1, xyz2, :], freq)
-                        self.results['polarizability nonin'][:, xyz1, xyz2] = \
-                            p0
-                        self.results['polarizability inter'][:, xyz1, xyz2] = \
-                            p
-                    else:
-                        self.results['polarizability nonin'][:, xyz1, xyz2] = \
-                            -tddft.p0_mat[xyz1, xyz2, :]
-                        self.results['polarizability inter'][:, xyz1, xyz2] = \
-                            -tddft.p_mat[xyz1, xyz2, :]
-
-        else:
-            # load polarizability tensor from previous calculations
-            p0_mat = np.load(fname_nonin)
-            p_mat = np.load(fname)
-
-            self.results['polarizability nonin'] = np.zeros(
-                (freq.size, 3, 3),
-                dtype=p0_mat.dtype)
-            self.results['polarizability inter'] = np.zeros(
-                (freq.size, 3, 3),
-                dtype=p_mat.dtype)
-
-            for xyz1 in range(3):
-                for xyz2 in range(3):
-                    if units == 'nm**2':
-                        p0 = pol2cross_sec(-p0_mat[xyz1, xyz2, :], freq)
-                        p = pol2cross_sec(-p_mat[xyz1, xyz2, :], freq)
-
-                        self.results['polarizability nonin'][:, xyz1, xyz2] = \
-                            p0
-                        self.results['polarizability inter'][:, xyz1, xyz2] = \
-                            p
-                    else:
-                        self.results['polarizability nonin'][:, xyz1, xyz2] = \
-                            -p0_mat[xyz1, xyz2, :]
-                        self.results['polarizability inter'][:, xyz1, xyz2] = \
-                            -p_mat[xyz1, xyz2, :]
-
-    def pyscf_tddft_eels(
-            self,
-            velec=np.array([20.0, 0.0, 0.0]),
-            b=np.array([0.0, 0.0, 0.0]),
-            freq=np.arange(0.0, 10.0, 0.1),
-            tddft=None,
-            save_kernel=True,
-            kernel_name="tddft_kernel.npy",
-            tmp_fname=None,
-            **kw):
-        r"""
-        Perform TDDFT calculation using the pyscf.nao module for a molecule.
-        The external perturbation is created by a electron moving at
-        the velocity velec and with an impact parameter b.
-
-        Parameters
-        ----------
-        freq: array like
-            frequency range for which the polarizability should
-            be computed, in eV
-        velec: array like
-            velocity vector of the projectile
-        b: array like
-            offset vector of the projectile
-        tddft: tddft_tem class from a previous calculation
-        save_kernel: save the kernel for future use
-        kernel_name: name of the file for the kernel
-        tmp_fname: temporary name to save the eels spectra
-        while running the calculations.
-        kw: keywords for the tddft_tem function from pyscf
-
-        Returns
-        -------
-        tddft:
-            if running pyscf_tddft_eels in a loop over the velocity or the
-            impact parameter, there is no point to initialize again the tddft
-            calculation (vertex and kernel will be the same)
-
-            Add to the self.results dict the following items:
-        freq range: array like
-            array of dimension (nff) containing the frequency range in eV.
-
-        eel spectra nonin: array like (complex)
-            array of dimension (nff) with nff the frequency number,
-
-
-        eel spectra inter: array like (complex)
-            array of dimension (nff) with nff the frequency number,
-
-        density change eels nonin: array like (complex)
-            contains the non interacting density change in product basis
-
-        density change eels inter: array like (complex)
-            contains the interacting density change in product basis
-
-        References
-        ----------
-        https://github.com/cfm-mpc/pyscf/tree/nao
-
-        Example
-        -------
-        from ase.units import Ry, eV, Ha
-        from ase.calculators.siesta import Siesta
-        from ase import Atoms
-        import numpy as np
-        import matplotlib.pyplot as plt
-
-        # Define the systems
-        Na8 = Atoms('Na8',
-                    positions=[[-1.90503810, 1.56107288, 0.00000000],
-                               [1.90503810, 1.56107288, 0.00000000],
-                               [1.90503810, -1.56107288, 0.00000000],
-                               [-1.90503810, -1.56107288, 0.00000000],
-                               [0.00000000, 0.00000000, 2.08495836],
-                               [0.00000000, 0.00000000, -2.08495836],
-                               [0.00000000, 3.22798122, 2.08495836],
-                               [0.00000000, 3.22798122, -2.08495836]],
-                    cell=[20, 20, 20])
-
-        # enter siesta input
-        siesta = Siesta(
-            mesh_cutoff=150 * Ry,
-            basis_set='DZP',
-            pseudo_qualifier='',
-            energy_shift=(10 * 10**-3) * eV,
-            fdf_arguments={
-                'SCFMustConverge': False,
-                'COOP.Write': True,
-                'WriteDenchar': True,
-                'PAO.BasisType': 'split',
-                'DM.Tolerance': 1e-4,
-                'DM.MixingWeight': 0.01,
-                'MaxSCFIterations': 300,
-                'DM.NumberPulay': 4,
-                'XML.Write': True})
-
-
-        Na8.calc = siesta
-        e = Na8.get_potential_energy()
-        tddft = siesta.pyscf_tddft_eels(
-            label="siesta", jcutoff=7, iter_broadening=0.15/Ha,
-            xc_code='LDA,PZ', tol_loc=1e-6, tol_biloc=1e-7,
-            freq=np.arange(0.0, 5.0, 0.05))
-
-        # plot eel spectra
-        fig = plt.figure(1)
-        ax1 = fig.add_subplot(121)
-        ax2 = fig.add_subplot(122)
-        ax1.plot(siesta.results["freq range"],
-                 siesta.results["eel spectra nonin"].imag)
-        ax2.plot(siesta.results["freq range"],
-                 siesta.results["eel spectra inter"].imag)
-
-        ax1.set_xlabel(r"$\omega$ (eV)")
-        ax2.set_xlabel(r"$\omega$ (eV)")
-
-        ax1.set_ylabel(r"Im($P_{xx}$) (au)")
-        ax2.set_ylabel(r"Im($P_{xx}$) (au)")
-
-        ax1.set_title(r"Non interacting")
-        ax2.set_title(r"Interacting")
-
-        fig.tight_layout()
-        plt.show()
-        """
-        from pyscf.nao import tddft_tem
-        from ase.units import Ha
-
-        assert velec.size == 3
-        assert b.size == 3
-
-        if tddft is None:
-            self.results["freq range"] = freq
-            omegas = freq / Ha
-
-            # for eels, omega is real array
-            tddft = tddft_tem(freq=omegas, **kw)
-            if save_kernel:
-                np.save(kernel_name, tddft.kernel)
-
-        self.results['eel spectra nonin'] = \
-            tddft.get_spectrum_nonin(velec=velec,
-                                     beam_offset=b,
-                                     tmp_fname=tmp_fname)
-
-        self.results['eel spectra inter'] = \
-            tddft.get_spectrum_inter(velec=velec,
-                                     beam_offset=b,
-                                     tmp_fname=tmp_fname)
-
-        self.results["density change eels nonin"] = tddft.dn0
-        self.results["density change eels inter"] = tddft.dn
-
-        return tddft
-
-    def get_polarizability_mbpt(self, mbpt_inp=None,
-                                output_name='mbpt_lcao.out',
-                                format_output='hdf5', units='au'):
-        """
-        Warning!!
-            Out dated version, try get_polarizability_pyscf
-
-
-        Calculate the polarizability by running the mbpt_lcao program.
-        The mbpt_lcao program need the siesta output, therefore siesta need
-        to be run first.
-
-        Parameters
-        ----------
-        mbpt_inp : dict, optional
-            dictionary of the input for the mbpt_lcao program
-            (http://mbpt-domiprod.wikidot.com/list-of-parameters)
-            if mbpt_inp is None, the function read the output file
-            from a previous mbpt_lcao run.
-        output_name : str, optional
-            Name of the mbpt_lcao output
-        format_output : str, optional
-            Format of the mbpt_lcao output data,
-            if hdf5, the output name is tddft_iter_output.hdf5 if
-            do_tddft_iter is set to 1 the output name is
-            tddft_tem_output.hdf5 if do_tddft_tem is set to 1
-            if txt, a lot of output data files are produced depending on
-            the input, in the text and fortran binaries format
-        units : str, optional
-            unit for the returned polarizability, can be au (atomic units)
-            or nm**2
-
-        Returns
-        -------
-        freq : array like
-            array of dimension (nff) containing the frequency range in eV.
-
-        self.results['polarizability'], array like
-            array of dimension (nff, 3, 3) with nff the frequency number,
-            the second and third dimension are the matrix elements of the
-            polarizability::
-
-                P_xx, P_xy, P_xz, Pyx, .......
-
-        References
-        ----------
-        http://mbpt-domiprod.wikidot.com
-
-        Example
-        -------
-        import os
-        from ase.units import Ry, eV
-        from ase.calculators.siesta import Siesta
-        from ase import Atoms
-        import numpy as np
-        import matplotlib.pyplot as plt
-
-        #Define the systems
-        Na8 = Atoms('Na8',
-        positions=[[-1.90503810, 1.56107288, 0.00000000],
-                    [1.90503810, 1.56107288, 0.00000000],
-                    [1.90503810, -1.56107288, 0.00000000],
-                    [-1.90503810, -1.56107288, 0.00000000],
-                    [0.00000000, 0.00000000, 2.08495836],
-                    [0.00000000, 0.00000000, -2.08495836],
-                    [0.00000000, 3.22798122, 2.08495836],
-                    [0.00000000, 3.22798122, -2.08495836]],
-                    cell=[20, 20, 20])
-
-        #enter siesta input
-        siesta = Siesta(
-            mesh_cutoff=150 * Ry,
-            basis_set='DZP',
-            pseudo_qualifier='',
-            energy_shift=(10 * 10**-3) * eV,
-            fdf_arguments={
-            'SCFMustConverge': False,
-            'COOP.Write': True,
-            'WriteDenchar': True,
-            'PAO.BasisType': 'split',
-            'DM.Tolerance': 1e-4,
-            'DM.MixingWeight': 0.01,
-            'MaxSCFIterations': 300,
-            'DM.NumberPulay': 4})
-
-
-        #mbpt_lcao input
-        mbpt_inp = {'prod_basis_type' : 'MIXED',
-                    'solver_type' : 1,
-                    'gmres_eps' : 0.001,
-                    'gmres_itermax':256,
-                    'gmres_restart':250,
-                    'gmres_verbose':20,
-                    'xc_ord_lebedev':14,
-                    'xc_ord_gl':48,
-                    'nr':512,
-                    'akmx':100,
-                    'eigmin_local':1e-06,
-                    'eigmin_bilocal':1e-08,
-                    'freq_eps_win1':0.15,
-                    'd_omega_win1':0.05,
-                    'dt':0.1,
-                    'omega_max_win1':5.0,
-                    'ext_field_direction':2,
-                    'dr':np.array([0.3, 0.3, 0.3]),
-                    'para_type':'MATRIX',
-                    'chi0_v_algorithm':14,
-                    'format_output':'text',
-                    'comp_dens_chng_and_polarizability':1,
-                    'store_dens_chng':1,
-                    'enh_given_volume_and_freq':0,
-                    'diag_hs':0,
-                    'do_tddft_tem':0,
-                    'do_tddft_iter':1,
-                    'plot_freq':3.02,
-                    'gwa_initialization':'SIESTA_PB'}
-
-
-        Na8.calc = siesta
-        e = Na8.get_potential_energy() #run siesta
-        freq, pol = siesta.get_polarizability_siesta(mbpt_inp,
-                                                     format_output='txt',
-                                                     units='nm**2')
-
-        #plot polarizability
-        plt.plot(freq, pol[:, 0, 0])
-
-        plt.show()
-        """
-        from ase.calculators.siesta.mbpt_lcao import MBPT_LCAO
-        from ase.calculators.siesta.mbpt_lcao_io import read_mbpt_lcao_output
-
-        warnings.warn("Out dated version, try get_polarizability_pyscf")
-
-        if mbpt_inp is not None:
-            tddft = MBPT_LCAO(mbpt_inp)
-            tddft.run_mbpt_lcao(output_name, True)
-
-        r = read_mbpt_lcao_output()
-
-        r.args.format_input = format_output
-
-        # read real part
-        r.args.ReIm = 're'
-        data = r.Read()
-        self.results['polarizability'] = data.Array
-
-        # read imaginary part
-        r.args.ReIm = 'im'
-        data = r.Read()
-        self.results['polarizability'] = (self.results['polarizability'] +
-                                          complex(0.0, 1.0) * data.Array)
-
-        if units == 'nm**2':
-            from ase.calculators.siesta.mbpt_lcao_utils import pol2cross_sec
-            for i in range(2):
-                for j in range(2):
-                    p = pol2cross_sec(self.results['polarizability'][:, i, j],
-                                      data.freq)
-                    self.results['polarizability'][:, i, j] = p
-
-            print('unit nm**2')
-            # self.results['polarizability'] = data.Array
-        elif units == 'au':
-            print('unit au')
-            # self.results['polarizability'] = data.Array
-        else:
-            raise ValueError('units can be only au or nm**2')
-
-        return data.freq, self.results['polarizability']
 
     def get_fermi_level(self):
         return self.results['fermi_energy']

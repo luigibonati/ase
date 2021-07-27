@@ -34,7 +34,7 @@ class NGLDisplay:
         self.view.add_unitcell()
         self.view.add_spacefill()
         self.view.camera = 'orthographic'
-        self.view.parameters = { "clipDist": 0 }
+        self.view.parameters = {"clipDist": 0}
 
         self.view.center()
 

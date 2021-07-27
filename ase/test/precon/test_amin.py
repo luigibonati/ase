@@ -6,17 +6,18 @@ from ase.calculators.lj import LennardJones
 from ase.optimize.precon import Exp, PreconLBFGS
 
 
+#@pytest.mark.skip('FAILS WITH PYAMG')
 @pytest.mark.slow
 def test_precon_amin():
     cu0 = bulk("Cu") * (2, 2, 2)
-    sigma = cu0.get_distance(0,1)*(2.**(-1./6))
+    sigma = cu0.get_distance(0, 1) * (2. ** (-1. / 6))
     lj = LennardJones(sigma=sigma)
 
     # perturb the cell
     cell = cu0.get_cell()
     cell *= 0.95
-    cell[1,0] += 0.2
-    cell[2,1] += 0.5
+    cell[1, 0] += 0.2
+    cell[2, 1] += 0.5
     cu0.set_cell(cell, scale_atoms=True)
 
     energies = []

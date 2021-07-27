@@ -11,29 +11,33 @@ from ase.dft.wannier import gram_schmidt, lowdin, random_orthogonal_matrix, \
     rotation_from_projection, Wannier
 
 
-@pytest.fixture(scope='module')
+calc = pytest.mark.calculator
+
+
+@pytest.fixture()
 def rng():
     return np.random.RandomState(0)
 
 
 @pytest.fixture(scope='module')
-def _std_calculator(tmp_path_factory):
+def _std_calculator_gpwfile(tmp_path_factory, factories):
+    factories.require('gpaw')
+    import gpaw
     atoms = molecule('H2', pbc=True)
     atoms.center(vacuum=3.)
-    gpaw = pytest.importorskip('gpaw')
-    gpw = tmp_path_factory.mktemp('sub') / 'dumpfile.gpw'
+    gpw_path = tmp_path_factory.mktemp('sub') / 'dumpfile.gpw'
     calc = gpaw.GPAW(gpts=(8, 8, 8), nbands=4, kpts=(2, 2, 2),
                      symmetry='off', txt=None)
     atoms.calc = calc
     atoms.get_potential_energy()
-    calc.write(gpw, mode='all')
-    return gpw
+    calc.write(gpw_path, mode='all')
+    return gpw_path
 
 
 @pytest.fixture(scope='module')
-def std_calculator(_std_calculator):
-    gpaw = pytest.importorskip('gpaw')
-    return gpaw.GPAW(_std_calculator, txt=None)
+def std_calculator(_std_calculator_gpwfile):
+    import gpaw
+    return gpaw.GPAW(_std_calculator_gpwfile, txt=None)
 
 
 @pytest.fixture
@@ -227,7 +231,8 @@ def test_get_functional_value(wan):
     assert f1 < f2
 
 
-def test_get_centers():
+@calc('gpaw')
+def test_get_centers(factory):
     # Rough test on the position of the Wannier functions' centers
     gpaw = pytest.importorskip('gpaw')
     calc = gpaw.GPAW(gpts=(32, 32, 32), nbands=4, txt=None)

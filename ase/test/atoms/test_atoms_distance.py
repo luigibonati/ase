@@ -1,6 +1,10 @@
-def test_atoms_distance():
-    from ase import Atoms
+import itertools
+from ase import Atoms
+from ase.geometry import get_distances
+from ase.lattice.cubic import FaceCenteredCubic
 
+
+def test_atoms_distance():
     # Setup a chain of H,O,C
     # H-O Dist = 2
     # O-C Dist = 3
@@ -9,7 +13,6 @@ def test_atoms_distance():
     a = Atoms('HOC', positions=[(1, 1, 1), (3, 1, 1), (6, 1, 1)])
     a.set_cell((9, 2, 2))
     a.set_pbc((True, False, False))
-
 
     # Calculate indiviually with mic=True
     assert a.get_distance(0, 1, mic=True) == 2
@@ -50,3 +53,19 @@ def test_atoms_distance():
     new = a.get_distance(0, 1)
     diff = new - old - 0.9
     assert abs(diff) < 10e-6
+
+
+def test_antisymmetry():
+    size = 2
+    atoms = FaceCenteredCubic(size=[size, size, size],
+                              symbol='Cu',
+                              latticeconstant=2,
+                              pbc=(1, 1, 1))
+
+    vmin, vlen = get_distances(atoms.get_positions(),
+                               cell=atoms.cell,
+                               pbc=True)
+    assert (vlen == vlen.T).all()
+
+    for i, j in itertools.combinations(range(len(atoms)), 2):
+        assert (vmin[i, j] == -vmin[j, i]).all()

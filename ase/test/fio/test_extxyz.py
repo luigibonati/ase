@@ -3,6 +3,7 @@
 # (which is also included in oi.py test case)
 # maintained by James Kermode <james.kermode@gmail.com>
 
+from pathlib import Path
 import numpy as np
 import pytest
 
@@ -11,8 +12,10 @@ from ase.io import extxyz
 from ase.atoms import Atoms
 from ase.build import bulk
 from ase.io.extxyz import escape
+from ase.calculators.calculator import compare_atoms
 from ase.calculators.emt import EMT
-from ase.constraints import full_3x3_to_voigt_6_stress
+from ase.constraints import FixAtoms, FixCartesian
+from ase.stress import full_3x3_to_voigt_6_stress
 from ase.build import molecule
 
 # array data of shape (N, 1) squeezed down to shape (N, ) -- bug fixed
@@ -75,8 +78,7 @@ def test_vec_cell(at, images):
     read_images = ase.io.read('multi.xyz', index=':')
     assert read_images == images
     # also test for vec_cell with whitespaces
-    f = open('structure.xyz', 'w')
-    f.write("""1
+    Path('structure.xyz').write_text("""1
     Coordinates
     C         -7.28250        4.71303       -3.82016
       VEC1 1.0 0.1 1.1
@@ -85,15 +87,14 @@ def test_vec_cell(at, images):
     C         -7.28250        4.71303       -3.82016
     VEC1 1.0 0.1 1.1
     """)
-    f.close()
+
     a = ase.io.read('structure.xyz', index=0)
     b = ase.io.read('structure.xyz', index=1)
     assert a == b
 
     # read xyz containing trailing blank line
     # also test for upper case elements
-    f = open('structure.xyz', 'w')
-    f.write("""4
+    Path('structure.xyz').write_text("""4
     Coordinates
     MG        -4.25650        3.79180       -2.54123
     C         -1.15405        2.86652       -1.26699
@@ -101,22 +102,21 @@ def test_vec_cell(at, images):
     C         -7.28250        4.71303       -3.82016
 
     """)
-    f.close()
+
     a = ase.io.read('structure.xyz')
     assert a[0].symbol == 'Mg'
 
 
 # read xyz with / and @ signs in key value
 def test_read_slash():
-    f = open('slash.xyz', 'w')
-    f.write("""4
+    Path('slash.xyz').write_text("""4
     key1=a key2=a/b key3=a@b key4="a@b"
     Mg        -4.25650        3.79180       -2.54123
     C         -1.15405        2.86652       -1.26699
     C         -5.53758        3.70936        0.63504
     C         -7.28250        4.71303       -3.82016
     """)
-    f.close()
+
     a = ase.io.read('slash.xyz')
     assert a.info['key1'] == r'a'
     assert a.info['key2'] == r'a/b'
@@ -187,7 +187,6 @@ def test_complex_key_val():
         'f_int_array="_JSON [[1, 2], [3, 4]]" '
         'f_bool_bare '
         'f_bool_value=F '
-        'f_irregular_shape="_JSON [[1, 2, 3], [4, 5]]" '
         'f_dict={_JSON {"a" : 1}} '
     )
 
@@ -232,7 +231,6 @@ def test_complex_key_val():
         'f_int_array': np.array([[1, 2], [3, 4]]),
         'f_bool_bare': True,
         'f_bool_value': False,
-        'f_irregular_shape': np.array([[1, 2, 3], [4, 5]], object),
         'f_dict': {"a": 1}
     }
 
@@ -273,15 +271,14 @@ def test_write_multiple(at, images):
 
 # read xyz with blank comment line
 def test_blank_comment():
-    f = open('blankcomment.xyz', 'w')
-    f.write("""4
+    Path('blankcomment.xyz').write_text("""4
 
     Mg        -4.25650        3.79180       -2.54123
     C         -1.15405        2.86652       -1.26699
     C         -5.53758        3.70936        0.63504
     C         -7.28250        4.71303       -3.82016
     """)
-    f.close()
+
     a = ase.io.read('blankcomment.xyz')
     assert a.info == {}
 
@@ -302,7 +299,8 @@ def test_stress():
     atoms.cell = [10, 10, 10]
     atoms.pbc = True
 
-    atoms.new_array('stress', np.arange(6, dtype=float))  # array with clashing name
+    # array with clashing name
+    atoms.new_array('stress', np.arange(6, dtype=float))
     atoms.calc = EMT()
     a_stress = atoms.get_stress()
     atoms.write('tmp.xyz')
@@ -312,15 +310,49 @@ def test_stress():
     b_stress = b.info['stress']
     assert abs(full_3x3_to_voigt_6_stress(b_stress) - a_stress).max() < 1e-6
 
+
 def test_json_scalars():
     a = bulk('Si')
     a.info['val_1'] = 42.0
-    a.info['val_2'] = np.float(42.0)
+    a.info['val_2'] = 42.0  # was np.float but that's the same.  Can remove
     a.info['val_3'] = np.int64(42)
     a.write('tmp.xyz')
-    comment_line = open('tmp.xyz', 'r').readlines()[1]
+    with open('tmp.xyz', 'r') as fd:
+        comment_line = fd.readlines()[1]
     assert "val_1=42.0" in comment_line and "val_2=42.0" in comment_line and "val_3=42" in comment_line
     b = ase.io.read('tmp.xyz')
     assert abs(b.info['val_1'] - 42.0) < 1e-6
     assert abs(b.info['val_2'] - 42.0) < 1e-6
-    assert abs(b.info['val_3'] - 42)  == 0
+    assert abs(b.info['val_3'] - 42) == 0
+
+
+@pytest.mark.parametrize('constraint', [FixAtoms(indices=(0, 2)),
+                                        FixCartesian(1, mask=(1, 0, 1)),
+                                        [FixCartesian(0), FixCartesian(2)]])
+def test_constraints(constraint):
+    atoms = molecule('H2O')
+    atoms.set_constraint(constraint)
+
+    columns = ['symbols', 'positions', 'move_mask']
+    ase.io.write('tmp.xyz', atoms, columns=columns)
+
+    atoms2 = ase.io.read('tmp.xyz')
+    assert not compare_atoms(atoms, atoms2)
+
+    constraint2 = atoms2.constraints
+    cls = type(constraint)
+    if cls == FixAtoms:
+        assert len(constraint2) == 1
+        assert isinstance(constraint2[0], cls)
+        assert np.all(constraint2[0].index == constraint.index)
+    elif cls == FixCartesian:
+        assert len(constraint2) == len(atoms)
+        assert isinstance(constraint2[0], cls)
+        assert np.all(constraint2[0].mask)
+        assert np.all(constraint2[1].mask == constraint.mask)
+        assert np.all(constraint2[2].mask)
+    elif cls == list:
+        assert len(constraint2) == len(atoms)
+        assert np.all(constraint2[0].mask == constraint[0].mask)
+        assert np.all(constraint2[1].mask)
+        assert np.all(constraint2[2].mask == constraint[1].mask)
