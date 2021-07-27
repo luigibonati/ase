@@ -1,10 +1,8 @@
-import sys
 from pathlib import Path
 
 import numpy as np
 import pytest
-from ase.calculators.subprocesscalculator import (NamedPackedCalculator,
-                                                  MPICommand)
+from ase.calculators.subprocesscalculator import NamedPackedCalculator
 from ase.calculators.emt import EMT
 from ase.build import molecule, bulk
 from ase.optimize import BFGS
