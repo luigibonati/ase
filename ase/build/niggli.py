@@ -13,13 +13,13 @@ def cellvector_products(cell):
 
 
 def niggli_reduce_cell(cell, epsfactor=None):
-    from ase.geometry import cellpar_to_cell
+    from ase.cell import Cell
+    cell = Cell.ascell(cell)
 
     if epsfactor is None:
         epsfactor = 1e-5
-    eps = epsfactor * abs(np.linalg.det(cell))**(1./3.)
+    eps = epsfactor * cell.volume**(1. / 3.)
 
-    cell = np.asarray(cell)
     g0 = cellvector_products(cell)
     g, C = _niggli_reduce(g0, eps)
 
@@ -28,9 +28,7 @@ def niggli_reduce_cell(cell, epsfactor=None):
     abcprod = max(abc.prod(), 1e-100)
     cosangles = abc * g[3:] / (2 * abcprod)
     angles = 180 * np.arccos(cosangles) / np.pi
-    newcell = np.array(cellpar_to_cell(np.concatenate([abc, angles])),
-                       dtype=float)
-
+    newcell = Cell.fromcellpar(np.concatenate([abc, angles]))
     return newcell, C
 
 
