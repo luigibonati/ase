@@ -55,15 +55,15 @@ def _niggli_reduce(g0, eps):
     for _ in range(10000):
         if (gt(g[0], g[1])
                 or (eq(g[0], g[1]) and gt(abs(g[3]), abs(g[4])))):
-            C = np.dot(C, -I3[[1, 0, 2]])
-            D = np.dot(I6[[1, 0, 2, 4, 3, 5]], D)
-            g = np.dot(D, g0)
+            C = C @ (-I3[[1, 0, 2]])
+            D = I6[[1, 0, 2, 4, 3, 5]] @ D
+            g = D @ g0
             continue
         elif (gt(g[1], g[2])
                 or (eq(g[1], g[2]) and gt(abs(g[4]), abs(g[5])))):
-            C = np.dot(C, -I3[[0, 2, 1]])
-            D = np.dot(I6[[0, 2, 1, 3, 5, 4]], D)
-            g = np.dot(D, g0)
+            C = C @ (-I3[[0, 2, 1]])
+            D = I6[[0, 2, 1, 3, 5, 4]] @ D
+            g = D @ g0
             continue
 
         lmn = np.array(gt(g[3:], 0, eps=eps/2), dtype=int)
@@ -91,7 +91,7 @@ def _niggli_reduce(g0, eps):
         D[3] *= ijk[1] * ijk[2]
         D[4] *= ijk[0] * ijk[2]
         D[5] *= ijk[0] * ijk[1]
-        g = np.dot(D, g0)
+        g = D @ g0
 
         if (gt(abs(g[3]), g[1])
                 or (eq(g[3], g[1]) and lt(2 * g[4], g[5]))
@@ -100,15 +100,15 @@ def _niggli_reduce(g0, eps):
 
             A = I3.copy()
             A[1, 2] = -s
-            C = np.dot(C, A)
+            C = C @ A
 
             B = I6.copy()
             B[2, 1] = 1
             B[2, 3] = -s
             B[3, 1] = -2 * s
             B[4, 5] = -s
-            D = np.dot(B, D)
-            g = np.dot(D, g0)
+            D = B @ D
+            g = D @ g0
         elif (gt(abs(g[4]), g[0])
                 or (eq(g[4], g[0]) and lt(2 * g[3], g[5]))
                 or (eq(g[4], -g[0]) and lt(g[5], 0))):
@@ -116,15 +116,15 @@ def _niggli_reduce(g0, eps):
 
             A = I3.copy()
             A[0, 2] = -s
-            C = np.dot(C, A)
+            C = C @ A
 
             B = I6.copy()
             B[2, 0] = 1
             B[2, 4] = -s
             B[3, 5] = -s
             B[4, 0] = -2 * s
-            D = np.dot(B, D)
-            g = np.dot(D, g0)
+            D = B @ D
+            g = D @ g0
         elif (gt(abs(g[5]), g[0])
                 or (eq(g[5], g[0]) and lt(2 * g[3], g[4]))
                 or (eq(g[5], -g[0]) and lt(g[4], 0))):
@@ -132,21 +132,21 @@ def _niggli_reduce(g0, eps):
 
             A = I3.copy()
             A[0, 1] = -s
-            C = np.dot(C, A)
+            C = C @ A
 
             B = I6.copy()
             B[1, 0] = 1
             B[1, 5] = -s
             B[3, 4] = -s
             B[5, 0] = -2 * s
-            D = np.dot(B, D)
-            g = np.dot(D, g0)
+            D = B @ D
+            g = D @ g0
         elif (lt(g[[0, 1, 3, 4, 5]].sum(), 0)
                 or (eq(g[[0, 1, 3, 4, 5]].sum(), 0)
                     and gt(2 * (g[0] + g[4]) + g[5], 0))):
             A = I3.copy()
             A[:, 2] = 1
-            C = np.dot(C, A)
+            C = C @ A
 
             B = I6.copy()
             B[2, :] = 1
@@ -154,8 +154,8 @@ def _niggli_reduce(g0, eps):
             B[3, 5] = 1
             B[4, 0] = 2
             B[4, 5] = 1
-            D = np.dot(B, D)
-            g = np.dot(D, g0)
+            D = B @ D
+            g = D @ g0
         else:
             break
     else:
