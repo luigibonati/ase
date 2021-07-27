@@ -414,5 +414,5 @@ def calculate_ts09_polarizability(atoms):
 
 class TS09Polarizability(StaticPolarizabilityCalculator):
     """Class interface as expected by Displacement"""
-    def calculate(self, atoms):
+    def __call__(self, atoms):
         return calculate_ts09_polarizability(atoms)
