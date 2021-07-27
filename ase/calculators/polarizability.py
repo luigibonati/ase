@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 
 class StaticPolarizabilityCalculator(ABC):
     @abstractmethod
-    def calculate(self, atoms):
+    def __call__(self, atoms, *args, **kwargs):
         """Calculate the polarizability tensor
 
         atoms: Atoms object
