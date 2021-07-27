@@ -34,6 +34,26 @@ def niggli_reduce_cell(cell, epsfactor=None):
     return newcell, C
 
 
+def lmn_to_ijk(lmn):
+    if lmn.prod() == 1:
+        ijk = lmn.copy()
+        for idx in range(3):
+            if ijk[idx] == 0:
+                ijk[idx] = 1
+    else:
+        ijk = np.ones(3, dtype=int)
+        if np.any(lmn != -1):
+            r = None
+            for idx in range(3):
+                if lmn[idx] == 1:
+                    ijk[idx] = -1
+                elif lmn[idx] == 0:
+                    r = idx
+            if ijk.prod() == -1:
+                ijk[r] = -1
+    return ijk
+
+
 def _niggli_reduce(g0, eps):
     I3 = np.eye(3, dtype=int)
     I6 = np.eye(6, dtype=int)
@@ -69,22 +89,7 @@ def _niggli_reduce(g0, eps):
         lmn = np.array(gt(g[3:], 0, eps=eps/2), dtype=int)
         lmn -= np.array(lt(g[3:], 0, eps=eps/2), dtype=int)
 
-        if lmn.prod() == 1:
-            ijk = lmn.copy()
-            for idx in range(3):
-                if ijk[idx] == 0:
-                    ijk[idx] = 1
-        else:
-            ijk = np.ones(3, dtype=int)
-            if np.any(lmn != -1):
-                r = None
-                for idx in range(3):
-                    if lmn[idx] == 1:
-                        ijk[idx] = -1
-                    elif lmn[idx] == 0:
-                        r = idx
-                if ijk.prod() == -1:
-                    ijk[r] = -1
+        ijk = lmn_to_ijk(lmn)
 
         C *= ijk[np.newaxis]
 
