@@ -2,6 +2,7 @@ import numpy as np
 
 
 def cellvector_products(cell):
+    cell = _pad_nonpbc(cell)
     g0 = np.empty(6, dtype=float)
     g0[0] = cell[0] @ cell[0]
     g0[1] = cell[1] @ cell[1]
@@ -12,9 +13,20 @@ def cellvector_products(cell):
     return g0
 
 
+def _pad_nonpbc(cell):
+    # Add "infinitely long" lattice vectors for non-periodic directions,
+    # perpendicular to the periodic ones.
+    maxlen = max(cell.lengths())
+    mask = cell.any(1)
+    cell = cell.complete()
+    cell[~mask] *= 2 * maxlen
+    return cell
+
+
 def niggli_reduce_cell(cell, epsfactor=None):
     from ase.cell import Cell
-    cell = Cell.ascell(cell)
+    cell = Cell.new(cell)
+    npbc = cell.any(1).sum()
 
     if epsfactor is None:
         epsfactor = 1e-5
@@ -28,7 +40,14 @@ def niggli_reduce_cell(cell, epsfactor=None):
     abcprod = max(abc.prod(), 1e-100)
     cosangles = abc * g[3:] / (2 * abcprod)
     angles = 180 * np.arccos(cosangles) / np.pi
+
+    # Non-periodic directions have artificial infinitely long lattice vectors.
+    # We re-zero their lengths before returning:
+    abc[npbc:] = 0.0
+
     newcell = Cell.fromcellpar(np.concatenate([abc, angles]))
+
+    newcell[npbc:] = 0.0
     return newcell, C
 
 
