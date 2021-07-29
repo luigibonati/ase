@@ -55,6 +55,7 @@ def test_singlepoint_roundtrip(props):
     kpts = arrays_to_kpoints(props['eigenvalues'], props['occupations'],
                              props['kpoint_weights'])
     calc = SinglePointDFTCalculator(atoms=atoms, kpts=kpts,
+                                    efermi=0.5,
                                     forces=props['forces'])
 
     props1 = calc.properties()
