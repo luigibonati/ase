@@ -12,8 +12,8 @@ Git master branch
 * :func:`ase.build.bulk` now assigns initial magnetic moments
   to BCC Fe, Co, and Ni.
 
-* :meth:`~ase.cell.Cell.mask` is the mask of nonzero cell vectors,
-  and array of three booleans.
+* :meth:`~ase.cell.Cell.mask` returns the mask of nonzero cell vectors,
+  an array of three booleans.
 
 * :meth:`~ase.cell.Cell.reciprocal` now guarantees that cell vectors
   which are zero correspond to reciprocal cell vectors that are also
