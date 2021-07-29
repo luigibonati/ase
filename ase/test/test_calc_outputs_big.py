@@ -30,6 +30,10 @@ def props(rng):
         fermi_level=rng.rand(),
         ibz_kpoints=rng.rand(nkpts, 3),
         kpoint_weights=rng.rand(nkpts),
+        dipole=rng.rand(3),
+        charges=rng.rand(natoms),
+        magmom=rng.rand(),
+        magmoms=rng.rand(natoms),
     )
     return Properties(results)
 
