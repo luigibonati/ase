@@ -231,8 +231,6 @@ class Cell:
     def __bool__(self):
         return bool(self.any())  # need to convert from np.bool_
 
-    __nonzero__ = __bool__
-
     @property
     def volume(self) -> float:
         """Get the volume of this cell.
@@ -345,8 +343,7 @@ class Cell:
             is the input cell and rcell is the lower triangular (output) cell.
         """
 
-        # get cell handedness (right or left)
-        sign = np.sign(np.linalg.det(self))
+        sign = self.handedness
         if sign == 0:
             sign = 1
 
