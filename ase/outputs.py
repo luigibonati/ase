@@ -117,6 +117,8 @@ def _defineprop(
         prop = ScalarProperty(name, dtype)
     else:
         prop = ArrayProperty(name, dtype, shape)
+
+    assert name not in all_outputs, name
     all_outputs[name] = prop
     return prop
 
