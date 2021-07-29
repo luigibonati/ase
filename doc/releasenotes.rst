@@ -26,7 +26,7 @@ Git master branch
   Also added
   :meth:`~ase.cell.Cell.area` and
   :meth:`~ase.cell.Cell.areas`, which return the area spanned by one
-        or all pairs of cell vectors.
+  or all pairs of cell vectors.
 
 Calculators:
 
