@@ -385,7 +385,6 @@ class EigenvalOccupationMixin:
         return OutputPropertyWrapper(self)
 
 
-
 class Parameters(dict):
     """Dictionary for parameters.
 
