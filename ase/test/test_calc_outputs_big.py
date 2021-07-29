@@ -55,11 +55,14 @@ def test_singlepoint_roundtrip(props):
     kpts = arrays_to_kpoints(props['eigenvalues'], props['occupations'],
                              props['kpoint_weights'])
     calc = SinglePointDFTCalculator(atoms=atoms, kpts=kpts,
-                                    efermi=0.5,
+                                    efermi=props['fermi_level'],
                                     forces=props['forces'])
 
     props1 = calc.properties()
     print(props1)
 
-    for prop in ['eigenvalues', 'occupations', 'kpoint_weights']:
+    assert set(props1) >= {
+        'eigenvalues', 'occupations', 'kpoint_weights', 'fermi_level'}
+
+    for prop in props1:
         assert props[prop] == pytest.approx(props1[prop])
