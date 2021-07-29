@@ -113,7 +113,7 @@ class Cell:
 
         """
         from ase.lattice import identify_lattice
-        pbc = self.mask & pbc2pbc(pbc)
+        pbc = self.mask() & pbc2pbc(pbc)
         lat, op = identify_lattice(self, eps=eps, pbc=pbc)
         return lat
 
@@ -195,7 +195,6 @@ class Cell:
         """Return a copy of this cell."""
         return Cell(self.array.copy())
 
-    @property
     def mask(self):
         """Boolean mask of which cell vectors are nonzero."""
         return self.any(1)
@@ -206,7 +205,7 @@ class Cell:
 
         Equal to the number of nonzero lattice vectors."""
         # The name ndim clashes with ndarray.ndim
-        return sum(self.mask)  # type: ignore
+        return sum(self.mask())  # type: ignore
 
     @property
     def orthorhombic(self) -> bool:
@@ -267,13 +266,13 @@ class Cell:
 
         The reciprocal cell is defined such that
 
-            cell.reciprocal() @ cell.T == np.diag(cell.mask)
+            cell.reciprocal() @ cell.T == np.diag(cell.mask())
 
         within machine precision.
 
         Does not include factor of 2 pi."""
         icell = Cell(np.linalg.pinv(self).transpose())
-        icell[~self.mask] = 0
+        icell[~self.mask()] = 0
         return icell
 
     def normal(self, i):
@@ -316,7 +315,7 @@ class Cell:
 
         See also :func:`ase.geometry.minkowski_reduction.minkowski_reduce`."""
         from ase.geometry.minkowski_reduction import minkowski_reduce
-        cell, op = minkowski_reduce(self, self.mask)
+        cell, op = minkowski_reduce(self, self.mask())
         result = Cell(cell)
         return result, op
 
