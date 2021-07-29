@@ -1,7 +1,9 @@
 import numpy as np
 
-from ase.calculators.calculator import Calculator, all_properties
-from ase.calculators.calculator import PropertyNotImplementedError
+from ase.outputs import Properties
+from ase.calculators.calculator import (Calculator, all_properties,
+                                        PropertyNotImplementedError)
+from ase.utils import lazyproperty
 
 
 class SinglePointCalculator(Calculator):
@@ -54,11 +56,15 @@ class SinglePointCalculator(Calculator):
 
 
 class SinglePointKPoint:
-    def __init__(self, weight, s, k, eps_n=[], f_n=[]):
+    def __init__(self, weight, s, k, eps_n=None, f_n=None):
         self.weight = weight
         self.s = s  # spin index
         self.k = k  # k-point index
+        if eps_n is None:
+            eps_n = []
         self.eps_n = eps_n
+        if f_n is None:
+            f_n = []
         self.f_n = f_n
 
 
@@ -83,6 +89,7 @@ def arrays_to_kpoints(eigenvalues, occupations, weights):
 class SinglePointDFTCalculator(SinglePointCalculator):
     def __init__(self, atoms,
                  efermi=None, bzkpts=None, ibzkpts=None, bz2ibz=None,
+                 kpts=None,
                  **results):
         self.bz_kpts = bzkpts
         self.ibz_kpts = ibzkpts
@@ -90,7 +97,7 @@ class SinglePointDFTCalculator(SinglePointCalculator):
         self.eFermi = efermi
 
         SinglePointCalculator.__init__(self, atoms, **results)
-        self.kpts = None
+        self.kpts = kpts
 
     def get_fermi_level(self):
         """Return the Fermi-level(s)."""
@@ -113,6 +120,15 @@ class SinglePointDFTCalculator(SinglePointCalculator):
                 nspin.add(kpt.s)
             return len(nspin)
         return None
+
+    def get_number_of_bands(self):
+        values = set(len(kpt.eps_n) for kpt in self.kpts)
+        if not values:
+            return None
+        elif len(values) == 1:
+            return values.pop()
+        else:
+            raise RuntimeError('Multiple array sizes')
 
     def get_spin_polarized(self):
         """Is it a spin-polarized calculation?"""
@@ -192,3 +208,63 @@ class SinglePointDFTCalculator(SinglePointCalculator):
                     else:
                         eL = min(eL, e)
         return eH, eL
+
+    def properties(self) -> Properties:
+        return OutputPropertyWrapper(self).properties()
+
+
+class OutputPropertyWrapper:
+    def __init__(self, calc):
+        self.calc = calc
+
+    @lazyproperty
+    def nspins(self):
+        return self.calc.get_number_of_spins()
+
+    @lazyproperty
+    def nbands(self):
+        return self.calc.get_number_of_bands()
+
+    @lazyproperty
+    def nkpts(self):
+        return len(self.calc.kpts) // self.nspins
+
+    def _build_eig_occ_array(self, getter):
+        arr = np.empty((self.nspins, self.nkpts, self.nbands))
+        for s in range(self.nspins):
+            for k in range(self.nkpts):
+                arr[s, k, :] = getter(spin=s, kpt=k)
+        return arr
+
+    @lazyproperty
+    def eigenvalues(self):
+        return self._build_eig_occ_array(self.calc.get_eigenvalues)
+
+    @lazyproperty
+    def occupations(self):
+        return self._build_eig_occ_array(self.calc.get_occupation_numbers)
+
+    @lazyproperty
+    def fermi_level(self):
+        return self.calc.get_fermi_level()
+
+    @lazyproperty
+    def kpoint_weights(self):
+        return self.calc.get_k_point_weights()
+
+    @lazyproperty
+    def ibz_kpoints(self):
+        return self.calc.get_ibz_k_points()
+
+    def properties(self) -> Properties:
+        dct = {}
+        for name in ['eigenvalues', 'occupations', 'fermi_level',
+                     'kpoint_weights', 'ibz_kpoints']:
+            value = getattr(self, name)
+            if value is not None:
+                dct[name] = value
+
+        for name, value in self.calc.results.items():
+            dct[name] = value
+
+        return Properties(dct)
