@@ -142,6 +142,12 @@ _defineprop('ibz_kpoints', float, shape=('nkpts', 3))
 _defineprop('eigenvalues', float, shape=('nspins', 'nkpts', 'nbands'))
 _defineprop('occupations', float, shape=('nspins', 'nkpts', 'nbands'))
 
+# Miscellaneous:
+_defineprop('dipole', float, shape=3)
+_defineprop('charges', float, shape='natoms')
+_defineprop('magmom', float)
+_defineprop('magmoms', float, shape='natoms')  # XXX spinors?
+
 # We might want to allow properties that are part of Atoms, such as
 # positions, numbers, pbc, cell.  It would be reasonable for those
 # concepts to have a formalization outside the Atoms class.

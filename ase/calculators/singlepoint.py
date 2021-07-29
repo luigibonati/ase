@@ -263,4 +263,8 @@ class OutputPropertyWrapper:
             value = getattr(self, name)
             if value is not None:
                 dct[name] = value
+
+        for name, value in self.calc.results.items():
+            dct[name] = value
+
         return Properties(dct)
