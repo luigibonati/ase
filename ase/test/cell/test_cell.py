@@ -79,3 +79,13 @@ def test_reciprocal_ndim(randcell, zeromask):
     ref = np.identity(3)
     ref[zeromask] = 0
     assert reciprocal @ randcell.T == pytest.approx(ref)
+
+
+def test_total_area(randcell):
+    lengths = randcell.lengths()
+    sin_angles = np.sin(np.radians(randcell.angles()))
+    areas = randcell.areas()
+
+    for i in range(3):
+        area = lengths[i - 2] * lengths[i - 1] * sin_angles[i]
+        assert area == pytest.approx(areas[i])
