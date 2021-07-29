@@ -272,7 +272,7 @@ class Cell:
 
         Does not include factor of 2 pi."""
         icell = Cell(np.linalg.pinv(self).transpose())
-        icell[~self.mask()] = 0
+        icell[~self.mask()] = 0.0  # type: ignore
         return icell
 
     def normal(self, i):
