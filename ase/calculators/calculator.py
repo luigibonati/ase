@@ -374,21 +374,15 @@ class EigenvalOccupationMixin:
 
     @property
     def eigenvalues(self):
-        return self.build_eig_occ_array(self.get_eigenvalues)
+        return self._propwrapper().eigenvalues
 
     @property
     def occupations(self):
-        return self.build_eig_occ_array(self.get_occupation_numbers)
+        return self._propwrapper().occupations
 
-    def build_eig_occ_array(self, getter):
-        nspins = self.get_number_of_spins()
-        nkpts = len(self.get_ibz_k_points())
-        nbands = self.get_number_of_bands()
-        arr = np.zeros((nspins, nkpts, nbands))
-        for s in range(nspins):
-            for k in range(nkpts):
-                arr[s, k, :] = getter(spin=s, kpt=k)
-        return arr
+    def _propwrapper(self):
+        from ase.calculator.singlepoint import OutputPropertyWrapper
+        return OutputPropertyWrapper(self)
 
 
 class Parameters(dict):
