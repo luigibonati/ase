@@ -572,6 +572,9 @@ covalent_radii = np.array([
 # If the basis is None, it means it has a basis but we have not tabulated it.
 # For basis of RHL systems (represented here as basis_x) see page 127.
 # For TET systems see page 127, too.
+#
+# (Values for magnetic moments are not from A&M and indeed are not taken
+# from anywhere in particular.)
 reference_states = [
     None,  # X
     {'symmetry': 'diatom', 'd': 0.74},  # H
@@ -604,9 +607,9 @@ reference_states = [
     {'symmetry': 'bcc', 'a': 2.88},  # Cr
     {'symmetry': 'cubic', 'a': 8.89,  # Mn
      'basis': None},
-    {'symmetry': 'bcc', 'a': 2.87},  # Fe
-    {'symmetry': 'hcp', 'c/a': 1.622, 'a': 2.51},  # Co
-    {'symmetry': 'fcc', 'a': 3.52},  # Ni
+    {'symmetry': 'bcc', 'a': 2.87, 'magmom_per_atom': 2.3},  # Fe
+    {'symmetry': 'hcp', 'c/a': 1.622, 'a': 2.51, 'magmom_per_atom': 1.2},  # Co
+    {'symmetry': 'fcc', 'a': 3.52, 'magmom_per_atom': 0.6},  # Ni
     {'symmetry': 'fcc', 'a': 3.61},  # Cu
     {'symmetry': 'hcp', 'c/a': 1.856, 'a': 2.66},  # Zn
     {'symmetry': 'orthorhombic', 'c/a': 1.695, 'a': 4.51, 'b/a': 1.001,  # Ga
