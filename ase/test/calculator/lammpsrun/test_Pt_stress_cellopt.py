@@ -25,9 +25,9 @@ def test_Pt_stress_cellopt(factory, pt_eam_potential_file):
         assert_allclose(atoms.get_stress(), calc.calculate_numerical_stress(atoms),
                         atol=1e-4, rtol=1e-4)
 
-        opt = BFGS(ExpCellFilter(atoms), trajectory='opt.traj')
-        for i, _ in enumerate(opt.irun(fmax=0.001)):
-            pass
+        with BFGS(ExpCellFilter(atoms)) as opt:
+            for i, _ in enumerate(opt.irun(fmax=0.001)):
+                pass
 
         cell1_ref = np.array(
             [[0.16524, 3.8999, 3.92855],
@@ -35,8 +35,10 @@ def test_Pt_stress_cellopt(factory, pt_eam_potential_file):
              [4.429529, 3.293805, 0.447377]]
         )
 
-        assert_allclose(np.asarray(atoms.cell), cell1_ref, atol=3e-4, rtol=3e-4)
-        assert_allclose(atoms.get_stress(), calc.calculate_numerical_stress(atoms),
+        assert_allclose(np.asarray(atoms.cell), cell1_ref,
+                        atol=3e-4, rtol=3e-4)
+        assert_allclose(atoms.get_stress(),
+                        calc.calculate_numerical_stress(atoms),
                         atol=1e-4, rtol=1e-4)
 
         assert i < 80, 'Expected 59 iterations, got many more: {}'.format(i)

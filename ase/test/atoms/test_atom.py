@@ -1,5 +1,6 @@
 from ase import Atom, Atoms
 
+
 def test_atom():
     m = Atoms('H2')
     a = m[0]
@@ -15,7 +16,7 @@ def test_atom():
         assert c.number == 26
         c.tag = 42
         assert c.tag == 42
-        c.momentum = (1,2,3)
+        c.momentum = (1, 2, 3)
     assert m[0].tag == 42
     momenta = m.get_momenta()
     assert abs(momenta).sum() > 0

@@ -1,16 +1,17 @@
-def test_rattle_linear():
+import numpy as np
+
+from ase import Atoms
+from ase.calculators.acn import (ACN, m_me, r_cn, r_mec,
+                                 sigma_me, sigma_c, sigma_n,
+                                 epsilon_me, epsilon_c, epsilon_n)
+from ase.calculators.qmmm import SimpleQMMM, EIQMMM, LJInteractionsGeneral
+from ase.md.verlet import VelocityVerlet
+from ase.constraints import FixLinearTriatomic
+import ase.units as units
+
+
+def test_rattle_linear(testdir):
     """Test RATTLE and QM/MM for rigid linear acetonitrile."""
-
-    import numpy as np
-
-    from ase import Atoms
-    from ase.calculators.acn import (ACN, m_me, r_cn, r_mec,
-                                     sigma_me, sigma_c, sigma_n, 
-                                     epsilon_me, epsilon_c, epsilon_n)
-    from ase.calculators.qmmm import SimpleQMMM, EIQMMM, LJInteractionsGeneral
-    from ase.md.verlet import VelocityVerlet
-    from ase.constraints import FixLinearTriatomic 
-    import ase.units as units
 
     sigma = np.array([sigma_me, sigma_c, sigma_n])
     epsilon = np.array([epsilon_me, epsilon_c, epsilon_n])
@@ -42,11 +43,11 @@ def test_rattle_linear():
         d2 = dimer[3:].get_all_distances()
         e = dimer.get_potential_energy()
 
-        md = VelocityVerlet(dimer, 2.0 * units.fs,
+        with VelocityVerlet(dimer, 2.0 * units.fs,
                             trajectory=calc.name + '.traj',
                             logfile=calc.name + '.log',
-                            loginterval=20)
-        md.run(100)
+                            loginterval=20) as md:
+            md.run(100)
 
         de = dimer.get_potential_energy() - e
 

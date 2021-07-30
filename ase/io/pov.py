@@ -3,14 +3,16 @@ Module for povray file format support.
 
 See http://www.povray.org/ for details on the format.
 """
+from collections.abc import Mapping, Sequence
+from subprocess import check_call, DEVNULL
+from os import unlink
+from pathlib import Path
+
 import numpy as np
 
 from ase.io.utils import PlottingVariables
 from ase.constraints import FixAtoms
 from ase import Atoms
-from subprocess import check_call, DEVNULL
-from os import unlink
-from pathlib import Path
 
 
 def pa(array):
@@ -290,7 +292,8 @@ class POVRAY:
     def write_ini(self, path):
         """Write ini file."""
 
-        ini_str = f"""Input_File_Name={path.with_suffix('.pov').name}
+        ini_str = f"""\
+Input_File_Name={path.with_suffix('.pov').name}
 Output_to_File=True
 Output_File_Type=N
 Output_Alpha={'on' if self.transparent else 'off'}
@@ -304,8 +307,8 @@ Display={self.display}
 Pause_When_Done={self.pause}
 Verbose=False
 """
-        with open(path, 'w') as _:
-            _.write(ini_str)
+        with open(path, 'w') as fd:
+            fd.write(ini_str)
         return path
 
     def write_pov(self, path):
@@ -530,49 +533,48 @@ union{{torus{{R, Rcell rotate 45*z texture{{pigment{{color COL transmit TRANS}} 
 {constraints if constraints != '' else '// no constraints'}
 """  # noqa: E501
 
-        with open(path, 'w') as _:
-            _.write(pov)
+        with open(path, 'w') as fd:
+            fd.write(pov)
 
         return path
 
-    def write(self, filename):
-        path = Path(filename).with_suffix('')
-        self.write_ini(path.with_suffix('.ini'))
-        self.write_pov(path.with_suffix('.pov'))
+    def write(self, pov_path):
+        pov_path = require_pov(pov_path)
+        ini_path = pov_path.with_suffix('.ini')
+        self.write_ini(ini_path)
+        self.write_pov(pov_path)
         if self.isosurfaces is not None:
-            with open(path.with_suffix('.pov'), 'a') as _:
+            with open(pov_path, 'a') as fd:
                 for iso in self.isosurfaces:
-                    _.write(iso.format_mesh())
-        return POVRAYInputs(path)
+                    fd.write(iso.format_mesh())
+        return POVRAYInputs(ini_path)
+
+
+def require_pov(path):
+    path = Path(path)
+    if path.suffix != '.pov':
+        raise ValueError(f'Expected .pov path, got {path}')
+    return path
 
 
 class POVRAYInputs:
     def __init__(self, path):
-        if isinstance(path, str):
-            path = Path(path).with_suffix('')
         self.path = path
 
-    def render(self, povray_executable='povray', stderr=None, clean_up=False):
-        pov_path = self.path.with_suffix('.ini')
-        cmd = [povray_executable, pov_path.as_posix()]
-        if stderr is None:
-            out = DEVNULL
-        elif stderr == '-':
-            out = open(stderr, 'w')
-        else:
-            out = None
+    def render(self, povray_executable='povray', stderr=DEVNULL,
+               clean_up=False):
+        cmd = [povray_executable, str(self.path)]
 
-        try:
-            check_call(cmd, stderr=out)
-        finally:
-            if stderr == '-':
-                out.close()
+        check_call(cmd, stderr=stderr)
+        png_path = self.path.with_suffix('.png').absolute()
+        if not png_path.is_file():
+            raise RuntimeError(f'Povray left no output PNG file "{png_path}"')
 
         if clean_up:
-            unlink(self.path.with_suffix('.ini'))
+            unlink(self.path)
             unlink(self.path.with_suffix('.pov'))
 
-        return self.path.with_suffix('.png')
+        return png_path
 
 
 class POVRAYIsosurface:
@@ -794,20 +796,32 @@ class POVRAYIsosurface:
         return mesh2
 
 
-def write_pov(filename, atoms, generic_projection_settings={},
-              povray_settings={}, isosurface_data=None):
+def pop_deprecated(dct, name):
+    import warnings
+    if name in dct:
+        del dct[name]
+        warnings.warn(f'The "{name}" keyword of write_pov() is deprecated '
+                      'and has no effect; this will raise an error in the '
+                      'future.', FutureWarning)
 
-    if isinstance(atoms, list):
-        assert len(atoms) == 1
-        atoms = atoms[0]
+
+def write_pov(filename, atoms, *,
+              povray_settings=None, isosurface_data=None,
+              **generic_projection_settings):
+
+    for name in ['run_povray', 'povray_path', 'stderr', 'extras']:
+        pop_deprecated(generic_projection_settings, name)
+
+    if povray_settings is None:
+        povray_settings = {}
 
     pvars = PlottingVariables(atoms, scale=1.0, **generic_projection_settings)
     pov_obj = POVRAY.from_PlottingVariables(pvars, **povray_settings)
 
-    if type(isosurface_data) is dict:
+    if isinstance(isosurface_data, Mapping):
         pov_obj.isosurfaces = [POVRAYIsosurface.from_POVRAY(
             pov_obj, **isosurface_data)]
-    elif type(isosurface_data) is list:
+    elif isinstance(isosurface_data, Sequence):
         pov_obj.isosurfaces = [POVRAYIsosurface.from_POVRAY(
             pov_obj, **isodata) for isodata in isosurface_data]
 

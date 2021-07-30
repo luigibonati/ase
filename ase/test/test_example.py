@@ -1,10 +1,11 @@
-def test_example():
-    from ase import Atoms
-    from ase.constraints import FixAtoms
-    from ase.io import Trajectory
-    from ase.optimize import QuasiNewton
-    from ase.calculators.morse import MorsePotential
+from ase import Atoms
+from ase.constraints import FixAtoms
+from ase.io import Trajectory
+from ase.optimize import QuasiNewton
+from ase.calculators.morse import MorsePotential
 
+
+def test_example(testdir):
     atoms = Atoms('H7',
                   positions=[(0, 0, 0),
                              (1, 0, 0),
@@ -16,10 +17,10 @@ def test_example():
                   constraint=[FixAtoms(range(6))],
                   calculator=MorsePotential())
 
-    traj = Trajectory('H.traj', 'w', atoms)
-    dyn = QuasiNewton(atoms, maxstep=0.2)
-    dyn.attach(traj.write)
-    dyn.run(fmax=0.01, steps=100)
+    with Trajectory('H.traj', 'w', atoms) as traj, \
+         QuasiNewton(atoms, maxstep=0.2) as dyn:
+        dyn.attach(traj.write)
+        dyn.run(fmax=0.01, steps=100)
 
     print(atoms)
     del atoms[-1]

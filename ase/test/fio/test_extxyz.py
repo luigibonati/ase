@@ -12,8 +12,10 @@ from ase.io import extxyz
 from ase.atoms import Atoms
 from ase.build import bulk
 from ase.io.extxyz import escape
+from ase.calculators.calculator import compare_atoms
 from ase.calculators.emt import EMT
-from ase.constraints import full_3x3_to_voigt_6_stress
+from ase.constraints import FixAtoms, FixCartesian
+from ase.stress import full_3x3_to_voigt_6_stress
 from ase.build import molecule
 
 # array data of shape (N, 1) squeezed down to shape (N, ) -- bug fixed
@@ -185,7 +187,6 @@ def test_complex_key_val():
         'f_int_array="_JSON [[1, 2], [3, 4]]" '
         'f_bool_bare '
         'f_bool_value=F '
-        'f_irregular_shape="_JSON [[1, 2, 3], [4, 5]]" '
         'f_dict={_JSON {"a" : 1}} '
     )
 
@@ -230,7 +231,6 @@ def test_complex_key_val():
         'f_int_array': np.array([[1, 2], [3, 4]]),
         'f_bool_bare': True,
         'f_bool_value': False,
-        'f_irregular_shape': np.array([[1, 2, 3], [4, 5]], object),
         'f_dict': {"a": 1}
     }
 
@@ -314,7 +314,7 @@ def test_stress():
 def test_json_scalars():
     a = bulk('Si')
     a.info['val_1'] = 42.0
-    a.info['val_2'] = np.float(42.0)
+    a.info['val_2'] = 42.0  # was np.float but that's the same.  Can remove
     a.info['val_3'] = np.int64(42)
     a.write('tmp.xyz')
     with open('tmp.xyz', 'r') as fd:
@@ -324,3 +324,35 @@ def test_json_scalars():
     assert abs(b.info['val_1'] - 42.0) < 1e-6
     assert abs(b.info['val_2'] - 42.0) < 1e-6
     assert abs(b.info['val_3'] - 42) == 0
+
+
+@pytest.mark.parametrize('constraint', [FixAtoms(indices=(0, 2)),
+                                        FixCartesian(1, mask=(1, 0, 1)),
+                                        [FixCartesian(0), FixCartesian(2)]])
+def test_constraints(constraint):
+    atoms = molecule('H2O')
+    atoms.set_constraint(constraint)
+
+    columns = ['symbols', 'positions', 'move_mask']
+    ase.io.write('tmp.xyz', atoms, columns=columns)
+
+    atoms2 = ase.io.read('tmp.xyz')
+    assert not compare_atoms(atoms, atoms2)
+
+    constraint2 = atoms2.constraints
+    cls = type(constraint)
+    if cls == FixAtoms:
+        assert len(constraint2) == 1
+        assert isinstance(constraint2[0], cls)
+        assert np.all(constraint2[0].index == constraint.index)
+    elif cls == FixCartesian:
+        assert len(constraint2) == len(atoms)
+        assert isinstance(constraint2[0], cls)
+        assert np.all(constraint2[0].mask)
+        assert np.all(constraint2[1].mask == constraint.mask)
+        assert np.all(constraint2[2].mask)
+    elif cls == list:
+        assert len(constraint2) == len(atoms)
+        assert np.all(constraint2[0].mask == constraint[0].mask)
+        assert np.all(constraint2[1].mask)
+        assert np.all(constraint2[2].mask == constraint[1].mask)

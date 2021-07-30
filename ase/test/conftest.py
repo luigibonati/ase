@@ -8,7 +8,7 @@ import pytest
 import numpy as np
 
 import ase
-from ase.utils import workdir
+from ase.utils import workdir, seterr
 from ase.test.factories import (CalculatorInputs,
                                 factory_classes,
                                 NoSuchCalculator,
@@ -119,25 +119,50 @@ def calculators_header(config):
                         'to install calculators')
 
 
-@pytest.fixture(scope='session')
-def require_vasp(factories):
-    factories.require('vasp')
-
-
 @pytest.fixture(scope='session', autouse=True)
 def monkeypatch_disabled_calculators(request, factories):
     # XXX Replace with another mechanism.
     factories.monkeypatch_disabled_calculators()
 
 
-@pytest.fixture(autouse=True)
-def use_tmp_workdir(tmp_path):
+@pytest.fixture(scope='session', autouse=True)
+def sessionlevel_testing_path():
+    # We cd into a tempdir so tests and fixtures won't create files
+    # elsewhere (e.g. in the unsuspecting user's directory).
+    #
+    # However we regard it as an error if the tests leave files there,
+    # because they can access each others' files and hence are not
+    # independent.  Therefore we want them to explicitly use the
+    # "testdir" fixture which ensures that each has a clean directory.
+    #
+    # To prevent tests from writing files, we chmod the directory.
+    # But if the tests are killed, we cannot clean it up and it will
+    # disturb other pytest runs if we use the pytest tempdir factory.
+    #
+    # So we use the tempfile module for this temporary directory.
+    import tempfile
+    with tempfile.TemporaryDirectory(prefix='ase-test-workdir-') as tempdir:
+        path = Path(tempdir)
+        path.chmod(0o555)
+        with workdir(path):
+            yield path
+        path.chmod(0o755)
+
+
+@pytest.fixture(autouse=False)
+def testdir(tmp_path):
     # Pytest can on some systems provide a Path from pathlib2.  Normalize:
     path = Path(str(tmp_path))
     with workdir(path, mkdir=True):
         yield tmp_path
     # We print the path so user can see where test failed, if it failed.
-    print(f'Testpath: {path}')
+    print(f'Testdir: {path}')
+
+
+@pytest.fixture
+def allraise():
+    with seterr(all='raise'):
+        yield
 
 
 @pytest.fixture
@@ -325,7 +350,9 @@ def arbitrarily_seed_rng(request):
     state = np.random.get_state()
     np.random.seed(seed)
     yield
+    print(f'Global seed for "{hashable_string}" was: {seed}')
     np.random.set_state(state)
+
 
 @pytest.fixture(scope='session')
 def povray_executable():
@@ -334,6 +361,7 @@ def povray_executable():
     if exe is None:
         pytest.skip('povray not installed')
     return exe
+
 
 def pytest_addoption(parser):
     parser.addoption('--calculators', metavar='NAMES', default='',

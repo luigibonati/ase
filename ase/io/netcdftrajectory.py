@@ -328,14 +328,11 @@ class NetCDFTrajectory:
         self._close()
 
     def _define_file_structure(self, atoms):
-        if not hasattr(self.nc, 'Conventions'):
-            self.nc.Conventions = 'AMBER'
-        if not hasattr(self.nc, 'ConventionVersion'):
-            self.nc.ConventionVersion = '1.0'
-        if not hasattr(self.nc, 'program'):
-            self.nc.program = 'ASE'
-        if not hasattr(self.nc, 'programVersion'):
-            self.nc.programVersion = ase.__version__
+        self.nc.Conventions = 'AMBER'
+        self.nc.ConventionVersion = '1.0'
+        self.nc.program = 'ASE'
+        self.nc.programVersion = ase.__version__
+        self.nc.title = "MOL"
 
         if self._frame_dim not in self.nc.dimensions:
             self.nc.createDimension(self._frame_dim, None)
@@ -480,6 +477,12 @@ class NetCDFTrajectory:
                                min((i + 1) * self.chunk_size, s))
                     data[index[sl]] = var[sl]
         return data
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
 
     def close(self):
         """Close the trajectory file."""
@@ -643,16 +646,14 @@ class NetCDFTrajectory:
 
 
 def read_netcdftrajectory(filename, index=-1):
-    traj = NetCDFTrajectory(filename, mode='r')
-    return traj[index]
+    with NetCDFTrajectory(filename, mode='r') as traj:
+        return traj[index]
 
 
 def write_netcdftrajectory(filename, images):
-    traj = NetCDFTrajectory(filename, mode='w')
-
     if hasattr(images, 'get_positions'):
         images = [images]
 
-    for atoms in images:
-        traj.write(atoms)
-    traj.close()
+    with NetCDFTrajectory(filename, mode='w') as traj:
+        for atoms in images:
+            traj.write(atoms)

@@ -44,7 +44,9 @@ class Abinit(FileIOCalculator):
 
     def __init__(self, restart=None,
                  ignore_bad_restart_file=FileIOCalculator._deprecated,
-                 label='abinit', atoms=None, pp_paths=None, **kwargs):
+                 label='abinit', atoms=None, pp_paths=None,
+                 v8_legacy_format=None,
+                 **kwargs):
         """Construct ABINIT-calculator object.
 
         Parameters
@@ -63,16 +65,18 @@ class Abinit(FileIOCalculator):
 
         """
 
+        self.v8_legacy_format = v8_legacy_format
+        self.pp_paths = pp_paths
+
         FileIOCalculator.__init__(self, restart, ignore_bad_restart_file,
                                   label, atoms, **kwargs)
-        self.pp_paths = pp_paths
 
     def write_input(self, atoms, properties, system_changes):
         """Write input parameters to files-file."""
         io.write_all_inputs(
             atoms, properties, parameters=self.parameters,
             pp_paths=self.pp_paths,
-            label=self.label)
+            label=self.label, v8_legacy_format=self.v8_legacy_format)
 
     def read(self, label):
         """Read results from ABINIT's text-output file."""
@@ -95,10 +99,17 @@ class Abinit(FileIOCalculator):
         # where basefile determines the file tree.
         FileIOCalculator.read(self, label)
         self.atoms, self.parameters = io.read_ase_and_abinit_inputs(self.label)
-        self.results = io.read_results(self.label)
+        self.results = io.read_results(self.label, self._output_filename())
+
+    def _output_filename(self):
+        if self.v8_legacy_format:
+            ext = '.txt'
+        else:
+            ext = '.abo'
+        return self.label + ext
 
     def read_results(self):
-        self.results = io.read_results(self.label)
+        self.results = io.read_results(self.label, self._output_filename())
 
     def get_number_of_iterations(self):
         return self.results['niter']

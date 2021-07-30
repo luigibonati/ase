@@ -36,17 +36,15 @@ def fmax(forces):
 
 
 @pytest.mark.parametrize('cls', [FIRE, BFGS])
-def test_optimization_log_and_trajectory_length(cls):
+def test_optimization_log_and_trajectory_length(cls, testdir):
     logfile = 'opt.log'
     trajectory = 'opt.traj'
     atoms = make_dimer()
 
     print("Testing", str(cls))
-    opt = cls(atoms, logfile=logfile, trajectory=trajectory)
-
-    # Run optimizer two times
-    opt.run(0.2)
-    opt.run(0.1)
+    with cls(atoms, logfile=logfile, trajectory=trajectory) as opt:
+        opt.run(0.2)
+        opt.run(0.1)
 
     # Test number of lines in log file matches number of frames in trajectory
     with open(logfile, 'rt') as lf:
@@ -64,7 +62,7 @@ def test_optimization_log_and_trajectory_length(cls):
 
 @pytest.mark.parametrize('loginterval', [1, 2])
 @pytest.mark.parametrize('cls, kwargs', md_cls_and_kwargs)
-def test_md_log_and_trajectory_length(cls, kwargs, loginterval):
+def test_md_log_and_trajectory_length(cls, testdir, kwargs, loginterval):
     timestep = 1 * units.fs
     trajectory = 'md.traj'
     logfile = 'md.log'
@@ -73,16 +71,14 @@ def test_md_log_and_trajectory_length(cls, kwargs, loginterval):
     assert not atoms.constraints
 
     print("Testing", str(cls))
-    md = cls(atoms, logfile=logfile, timestep=timestep,
-             trajectory=trajectory, loginterval=loginterval, **kwargs)
-
-    # run md two times
-    md.run(steps=5)
-    md.run(steps=5)
+    with cls(atoms, logfile=logfile, timestep=timestep,
+             trajectory=trajectory, loginterval=loginterval, **kwargs) as md:
+        md.run(steps=5)
+        md.run(steps=5)
 
     # Test number of lines in log file matches number of frames in trajectory
-    with open(logfile, 'rt') as lf:
-        lines = [l for l in lf]
+    with open(logfile, 'rt') as fd:
+        lines = list(fd)
     loglines = len(lines)
     print("Number of lines in log file:", loglines)
 

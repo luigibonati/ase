@@ -10,11 +10,11 @@ add_adsorbate(slab, 'Au', 1.7, 'hollow')
 slab.center(axis=2, vacuum=4.0)
 
 # Make sure the structure is correct:
-#view(slab)
+# view(slab)
 
 # Fix second and third layers:
 mask = [atom.tag > 1 for atom in slab]
-#print(mask)
+# print(mask)
 slab.set_constraint(FixAtoms(mask=mask))
 
 # Use EMT potential:

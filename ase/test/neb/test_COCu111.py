@@ -8,7 +8,7 @@ from ase.neb import NEB
 from ase.optimize import BFGS, QuasiNewton
 
 
-def test_COCu111():
+def test_COCu111(testdir):
     # Distance between Cu atoms on a (111) surface:
     a = 3.6
     d = a / sqrt(2)
@@ -25,8 +25,8 @@ def test_COCu111():
     indices = [i for i, z in enumerate(Z) if z < Z.mean()]
     constraint = FixAtoms(indices=indices)
     slab.set_constraint(constraint)
-    dyn = QuasiNewton(slab)
-    dyn.run(fmax=0.05)
+    with QuasiNewton(slab) as dyn:
+        dyn.run(fmax=0.05)
     Z = slab.get_positions()[:, 2]
     print(Z[0] - Z[1])
     print(Z[1] - Z[2])
@@ -36,8 +36,8 @@ def test_COCu111():
     h = 1.5
     slab += Atom('C', (d / 2, -b / 2, h))
     slab += Atom('O', (d / 2, +b / 2, h))
-    dyn = QuasiNewton(slab)
-    dyn.run(fmax=0.05)
+    with QuasiNewton(slab) as dyn:
+        dyn.run(fmax=0.05)
 
     # Make band:
     images = [slab]
@@ -54,8 +54,8 @@ def test_COCu111():
     image[-1].x = d
     image[-1].y = d / sqrt(3)
 
-    dyn = QuasiNewton(images[-1])
-    dyn.run(fmax=0.05)
+    with QuasiNewton(images[-1]) as dyn:
+        dyn.run(fmax=0.05)
     neb = NEB(images, climb=not True)
 
     # Interpolate positions between initial and final states:
@@ -64,15 +64,15 @@ def test_COCu111():
     for image in images:
         print(image.positions[-1], image.get_potential_energy())
 
-    dyn = BFGS(neb, maxstep=0.04, trajectory='mep.traj')
-    dyn.run(fmax=0.1)
+    with BFGS(neb, maxstep=0.04, trajectory='mep.traj') as dyn:
+        dyn.run(fmax=0.1)
 
     for image in images:
         print(image.positions[-1], image.get_potential_energy())
 
     # Trying to read description of optimization from trajectory
-    traj = Trajectory('mep.traj')
-    assert traj.description['optimizer'] == 'BFGS'
-    for key, value in traj.description.items():
-        print(key, value)
-    print(traj.ase_version)
+    with Trajectory('mep.traj') as traj:
+        assert traj.description['optimizer'] == 'BFGS'
+        for key, value in traj.description.items():
+            print(key, value)
+        print(traj.ase_version)

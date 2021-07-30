@@ -11,7 +11,6 @@ from numpy import eye, absolute, sqrt, isinf
 from ase.utils.linesearch import LineSearch
 from ase.optimize.optimize import Optimizer
 
-
 # These have been copied from Numeric's MLab.py
 # I don't think they made the transition to scipy_core
 
@@ -90,7 +89,6 @@ class BFGSLineSearch(Optimizer):
         self.load_restart = True
 
     def reset(self):
-        print('reset')
         self.H = None
         self.r0 = None
         self.g0 = None
@@ -185,20 +183,24 @@ class BFGSLineSearch(Optimizer):
     def replay_trajectory(self, traj):
         """Initialize hessian from old trajectory."""
         self.replay = True
-        if isinstance(traj, str):
-            from ase.io.trajectory import Trajectory
-            traj = Trajectory(traj, 'r')
-        r0 = None
-        g0 = None
-        for i in range(0, len(traj) - 1):
-            r = traj[i].get_positions().ravel()
-            g = - traj[i].get_forces().ravel() / self.alpha
-            self.update(r, g, r0, g0, self.p)
-            self.p = -np.dot(self.H, g)
-            r0 = r.copy()
-            g0 = g.copy()
-        self.r0 = r0
-        self.g0 = g0
+        from ase.utils import IOContext
+
+        with IOContext() as files:
+            if isinstance(traj, str):
+                from ase.io.trajectory import Trajectory
+                traj = files.closelater(Trajectory(traj, mode='r'))
+
+            r0 = None
+            g0 = None
+            for i in range(0, len(traj) - 1):
+                r = traj[i].get_positions().ravel()
+                g = - traj[i].get_forces().ravel() / self.alpha
+                self.update(r, g, r0, g0, self.p)
+                self.p = -np.dot(self.H, g)
+                r0 = r.copy()
+                g0 = g.copy()
+            self.r0 = r0
+            self.g0 = g0
 
     def log(self, forces=None):
         if self.logfile is None:

@@ -1,12 +1,13 @@
-def test_replay():
-    from math import sqrt
-    from ase import Atoms, Atom
-    from ase.constraints import FixAtoms
-    from ase.calculators.emt import EMT
-    from ase.optimize import QuasiNewton
-    from ase.io import read
-    from ase.visualize import view
+from math import sqrt
+from ase import Atoms, Atom
+from ase.constraints import FixAtoms
+from ase.calculators.emt import EMT
+from ase.optimize import QuasiNewton
+from ase.io import read
+from ase.visualize import view
 
+
+def test_replay(testdir):
     # Distance between Cu atoms on a (100) surface:
     d = 3.6 / sqrt(2)
     a = Atoms('Cu',
@@ -25,12 +26,14 @@ def test_replay():
     constraint = FixAtoms(range(len(a) - 1))
     a.calc = EMT()
     a.set_constraint(constraint)
-    dyn1 = QuasiNewton(a, trajectory='AgCu1.traj', logfile='AgCu1.log')
-    dyn1.run(fmax=0.1)
+
+    with QuasiNewton(a, trajectory='AgCu1.traj', logfile='AgCu1.log') as dyn1:
+        dyn1.run(fmax=0.1)
 
     a = read('AgCu1.traj')
     a.calc = EMT()
     print(a.constraints)
-    dyn2 = QuasiNewton(a, trajectory='AgCu2.traj', logfile='AgCu2.log')
-    dyn2.replay_trajectory('AgCu1.traj')
-    dyn2.run(fmax=0.01)
+
+    with QuasiNewton(a, trajectory='AgCu2.traj', logfile='AgCu2.log') as dyn2:
+        dyn2.replay_trajectory('AgCu1.traj')
+        dyn2.run(fmax=0.01)

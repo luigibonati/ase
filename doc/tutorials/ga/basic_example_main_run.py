@@ -70,7 +70,7 @@ for i in range(n_to_test):
         if a3_mut is not None:
             da.add_unrelaxed_step(a3_mut, desc)
             a3 = a3_mut
-        
+
     # Relax the new candidate
     a3.calc = EMT()
     dyn = BFGS(a3, trajectory=None, logfile=None)

@@ -4,7 +4,7 @@
 NWChem
 ======
 
-`NWChem <http://www.nwchem-sw.org/index.php/Main_Page>`_ is a computational chemistry code
+`NWChem <https://nwchemgit.github.io>`_ is a computational chemistry code
 based on gaussian basis functions or plane-waves.
 
 
@@ -14,7 +14,7 @@ Setup
 .. highlight:: bash
 
 You first need to install a working copy of NWChem for ASE to call;
-follow the instructions on the `NWChem website <http://www.nwchem-sw.org/index.php/Main_Page>`_.
+follow the instructions on the `NWChem website <https://nwchemgit.github.io>`_.
 
 The default command that ASE will use to start NWChem is
 ``nwchem PREFIX.nwi > PREFIX.nwo``. You can change this command by setting the

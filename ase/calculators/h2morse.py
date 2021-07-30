@@ -37,7 +37,7 @@ def H2Morse(state=0):
     """Return H2 as a Morse-Potential with calculator attached."""
     atoms = Atoms('H2', positions=np.zeros((2, 3)))
     atoms[1].position[2] = Re[state]
-    atoms.calc = H2MorseCalculator(state)
+    atoms.calc = H2MorseCalculator(state=state)
     atoms.get_potential_energy()
     return atoms
 
@@ -46,8 +46,10 @@ class H2MorseCalculator(MorsePotential):
     """H2 ground or excited state as Morse potential"""
     _count = count(0)
 
-    def __init__(self, state):
+    def __init__(self, restart=None, state=0, rng=np.random):
+        self.rng = rng
         MorsePotential.__init__(self,
+                                restart=restart,
                                 epsilon=De[state],
                                 r0=Re[state], rho0=rho0[state])
 
@@ -61,43 +63,39 @@ class H2MorseCalculator(MorsePotential):
         # Berry phase (arbitrary sign) and
         # random orientation of wave functions perpendicular
         # to the molecular axis
-        
+
         # molecular axis
         vr = atoms[1].position - atoms[0].position
         r = np.linalg.norm(vr)
         hr = vr / r
-        # defined seed for tests
-        seed = next(self._count)
-        np.random.seed(seed)
         # perpendicular axes
-        vrand = np.random.rand(3)
+        vrand = self.rng.rand(3)
         hx = np.cross(hr, vrand)
         hx /= np.linalg.norm(hx)
         hy = np.cross(hr, hx)
         hy /= np.linalg.norm(hy)
         wfs = [1, hr, hx, hy]
         # Berry phase
-        berry = (-1)**np.random.randint(0, 2, 4)
+        berry = (-1)**self.rng.randint(0, 2, 4)
         self.wfs = [wf * b for wf, b in zip(wfs, berry)]
 
-    @classmethod
-    def read(cls, filename):
-        ms = cls(3)
-        with open(filename) as f:
-            ms.wfs = [int(f.readline().split()[0])]
+    def read(self, filename):
+        ms = self
+        with open(filename) as fd:
+            ms.wfs = [int(fd.readline().split()[0])]
             for i in range(1, 4):
                 ms.wfs.append(
                     np.array([float(x)
-                              for x in f.readline().split()[:4]]))
+                              for x in fd.readline().split()[:4]]))
         ms.filename = filename
         return ms
-        
+
     def write(self, filename, option=None):
         """write calculated state to a file"""
-        with open(filename, 'w') as f:
-            f.write('{}\n'.format(self.wfs[0]))
+        with open(filename, 'w') as fd:
+            fd.write('{}\n'.format(self.wfs[0]))
             for wf in self.wfs[1:]:
-                f.write('{0:g} {1:g} {2:g}\n'.format(*wf))
+                fd.write('{0:g} {1:g} {2:g}\n'.format(*wf))
 
     def overlap(self, other):
         ov = np.zeros((4, 4))
@@ -135,12 +133,12 @@ class H2MorseExcitedStatesCalculator():
         cgs = atoms.calc
         r = atoms.get_distance(0, 1)
         E0 = cgs.get_potential_energy(atoms)
-        
+
         exl = H2MorseExcitedStates()
         for i in range(1, self.nstates + 1):
             hvec = cgs.wfs[0] * cgs.wfs[i]
             energy = Ha * (0.5 - 1. / 8) - E0
-            calc = H2MorseCalculator(i)
+            calc = H2MorseCalculator(state=i)
             calc.calculate(atoms)
             energy += calc.get_potential_energy()
 
@@ -171,18 +169,18 @@ class H2MorseExcitedStates(ExcitationList):
     def read(cls, filename, nstates=3):
         """Read myself from a file"""
         exl = cls(nstates)
-        with open(filename, 'r') as f:
+        with open(filename, 'r') as fd:
             exl.filename = filename
-            n = int(f.readline().split()[0])
+            n = int(fd.readline().split()[0])
             for i in range(min(n, exl.nstates)):
-                exl.append(H2Excitation.fromstring(f.readline()))
+                exl.append(H2Excitation.fromstring(fd.readline()))
         return exl
 
     def write(self, fname):
-        with open(fname, 'w') as f:
-            f.write('{0}\n'.format(len(self)))
+        with open(fname, 'w') as fd:
+            fd.write('{0}\n'.format(len(self)))
             for ex in self:
-                f.write(ex.outstring())
+                fd.write(ex.outstring())
 
 
 class H2Excitation(Excitation):

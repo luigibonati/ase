@@ -11,11 +11,11 @@ slab.center(axis=2, vacuum=4.0)
 
 # Make sure the structure is correct:
 #from ase.visualize import view
-#view(slab)
+# view(slab)
 
 # Fix second and third layers:
 mask = [atom.tag > 1 for atom in slab]
-#print(mask)
+# print(mask)
 fixlayers = FixAtoms(mask=mask)
 
 # Constrain the last atom (Au atom) to move only in the yz-plane:

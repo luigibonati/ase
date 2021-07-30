@@ -1,7 +1,8 @@
 import json
 import sys
 from collections import defaultdict
-from random import randint
+from contextlib import contextmanager
+from typing import Iterable, Iterator
 
 import ase.io
 from ase.db import connect
@@ -105,12 +106,10 @@ class CLICommand:
             help='Show metadata as json.')
         add('--set-metadata', metavar='something.json',
             help='Set metadata from a json file.')
-        add('-M', '--metadata-from-python-script', metavar='something.py',
-            help='Use metadata from a Python file.')
-        add('--unique', action='store_true',
-            help='Give rows a new unique id when using --insert-into.')
         add('--strip-data', action='store_true',
             help='Strip data when using --insert-into.')
+        add('--progress-bar', action='store_true',
+            help='Show a progress bar when using --insert-into.')
         add('--show-keys', action='store_true',
             help='Show all keys.')
         add('--show-values', metavar='key1,key2,...',
@@ -119,6 +118,18 @@ class CLICommand:
     @staticmethod
     def run(args):
         main(args)
+
+
+def count_keys(db, query):
+    keys = defaultdict(int)
+    for row in db.select(query):
+        for key in row._keys:
+            keys[key] += 1
+
+    n = max(len(key) for key in keys) + 1
+    for key, number in keys.items():
+        print('{:{}} {}'.format(key + ':', n, number))
+    return
 
 
 def main(args):
@@ -154,14 +165,7 @@ def main(args):
         return
 
     if args.show_keys:
-        keys = defaultdict(int)
-        for row in db.select(query):
-            for key in row._keys:
-                keys[key] += 1
-
-        n = max(len(key) for key in keys) + 1
-        for key, number in keys.items():
-            print('{:{}} {}'.format(key + ':', n, number))
+        count_keys(db, query)
         return
 
     if args.show_values:
@@ -208,25 +212,40 @@ def main(args):
     if args.insert_into:
         if args.limit == -1:
             args.limit = 0
+
+        progressbar = no_progressbar
+        length = None
+
+        if args.progress_bar:
+            # Try to import the one from click.
+            # People using ase.db will most likely have flask installed
+            # and therfore also click.
+            try:
+                from click import progressbar
+            except ImportError:
+                pass
+            else:
+                length = db.count(query)
+
         nkvp = 0
         nrows = 0
         with connect(args.insert_into,
                      use_lock_file=not args.no_lock_file) as db2:
-            for row in db.select(query,
-                                 sort=args.sort,
-                                 limit=args.limit,
-                                 offset=args.offset):
-                kvp = row.get('key_value_pairs', {})
-                nkvp -= len(kvp)
-                kvp.update(add_key_value_pairs)
-                nkvp += len(kvp)
-                if args.unique:
-                    row['unique_id'] = '%x' % randint(16**31, 16**32 - 1)
-                if args.strip_data:
-                    db2.write(row.toatoms(), **kvp)
-                else:
-                    db2.write(row, data=row.get('data'), **kvp)
-                nrows += 1
+            with progressbar(db.select(query,
+                                       sort=args.sort,
+                                       limit=args.limit,
+                                       offset=args.offset),
+                             length=length) as rows:
+                for row in rows:
+                    kvp = row.get('key_value_pairs', {})
+                    nkvp -= len(kvp)
+                    kvp.update(add_key_value_pairs)
+                    nkvp += len(kvp)
+                    if args.strip_data:
+                        db2.write(row.toatoms(), **kvp)
+                    else:
+                        db2.write(row, data=row.get('data'), **kvp)
+                    nrows += 1
 
         out('Added %s (%s updated)' %
             (plural(nkvp, 'key-value pair'),
@@ -404,6 +423,13 @@ def row2str(row) -> str:
         S.append('{:{}} | {:{}} | {}'
                  .format(key, width0, desc, width1, value))
     return '\n'.join(S)
+
+
+@contextmanager
+def no_progressbar(iterable: Iterable,
+                   length: int = None) -> Iterator[Iterable]:
+    """A do-nothing implementation."""
+    yield iterable
 
 
 def check_jsmol():

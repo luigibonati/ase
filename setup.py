@@ -7,7 +7,7 @@ import os
 import re
 import sys
 from setuptools import setup, find_packages
-from distutils.command.build_py import build_py as _build_py
+from setuptools.command.build_py import build_py as _build_py
 from glob import glob
 from os.path import join
 
@@ -20,9 +20,9 @@ if sys.version_info < python_min_version:
 
 
 install_requires = [
-    'numpy>=1.11.3',
-    'scipy>=0.18.1',
-    'matplotlib>=2.0.0',
+    'numpy>=1.15.0',  # July 2018
+    'scipy>=1.1.0',  # May 2018
+    'matplotlib>=3.1.0',  # May 2019
 ]
 
 
@@ -35,7 +35,7 @@ extras_require = {
     'test': [
         'pytest>=5.0.0',  # required by pytest-mock
         'pytest-mock>=3.3.0',
-        'pytest-xdist>=1.22.1',
+        'pytest-xdist>=1.30.0',
     ]
 }
 
@@ -59,7 +59,7 @@ package_data = {'ase': ['spacegroup/spacegroup.dat',
 
 
 class build_py(_build_py):
-    """Custom distutils command to build translations."""
+    """Custom command to build translations."""
     def __init__(self, *args, **kwargs):
         _build_py.__init__(self, *args, **kwargs)
         # Keep list of files to appease bdist_rpm.  We have to keep track of

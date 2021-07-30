@@ -1,6 +1,7 @@
 import errno
 import functools
 import os
+import io
 import pickle
 import sys
 import time
@@ -8,9 +9,10 @@ import string
 import warnings
 from importlib import import_module
 from math import sin, cos, radians, atan2, degrees
-from contextlib import contextmanager
+from contextlib import contextmanager, ExitStack
 from math import gcd
 from pathlib import PurePath, Path
+import re
 
 import numpy as np
 
@@ -20,7 +22,26 @@ __all__ = ['exec_', 'basestring', 'import_module', 'seterr', 'plural',
            'devnull', 'gcd', 'convert_string_to_fd', 'Lock',
            'opencew', 'OpenLock', 'rotate', 'irotate', 'pbc2pbc', 'givens',
            'hsv2rgb', 'hsv', 'pickleload', 'FileNotFoundError',
-           'formula_hill', 'formula_metal', 'PurePath']
+           'formula_hill', 'formula_metal', 'PurePath', 'xwopen',
+           'tokenize_version']
+
+
+def tokenize_version(version_string: str):
+    """Parse version string into a tuple for version comparisons.
+
+    Usage: tokenize_version('3.8') < tokenize_version('3.8.1').
+    """
+    tokens = []
+    for component in version_string.split('.'):
+        match = re.match(r'(\d*)(.*)', component)
+        assert match is not None, f'Cannot parse component {component}'
+        number_str, tail = match.group(1, 2)
+        try:
+            number = int(number_str)
+        except ValueError:
+            number = -1
+        tokens += [number, tail]
+    return tuple(tokens)
 
 
 # Python 2+3 compatibility stuff (let's try to remove these things):
@@ -108,6 +129,9 @@ class DevNull:
 devnull = DevNull()
 
 
+@deprecated('convert_string_to_fd does not facilitate proper resource '
+            'management.  '
+            'Please use e.g. ase.utils.IOContext class instead.')
 def convert_string_to_fd(name, world=None):
     """Create a file-descriptor for text output.
 
@@ -129,7 +153,8 @@ def convert_string_to_fd(name, world=None):
 CEW_FLAGS = os.O_CREAT | os.O_EXCL | os.O_WRONLY | getattr(os, 'O_BINARY', 0)
 
 
-def opencew(filename, world=None):
+@contextmanager
+def xwopen(filename, world=None):
     """Create and open filename exclusively for writing.
 
     If master cpu gets exclusive write access to filename, a file
@@ -137,28 +162,60 @@ def opencew(filename, world=None):
     slaves).  If the master cpu does not get write access, None is
     returned on all processors."""
 
+    fd = opencew(filename, world)
+    try:
+        yield fd
+    finally:
+        if fd is not None:
+            fd.close()
+
+
+#@deprecated('use "with xwopen(...) as fd: ..." to prevent resource leak')
+def opencew(filename, world=None):
+    return _opencew(filename, world)
+
+
+def _opencew(filename, world=None):
     if world is None:
         from ase.parallel import world
 
-    if world.rank == 0:
-        try:
-            fd = os.open(filename, CEW_FLAGS)
-        except OSError as ex:
-            error = ex.errno
-        else:
-            error = 0
-            fd = os.fdopen(fd, 'wb')
-    else:
-        error = 0
-        fd = open(os.devnull, 'wb')
+    closelater = []
 
-    # Syncronize:
-    error = world.sum(error)
-    if error == errno.EEXIST:
+    def opener(file, flags):
+        return os.open(file, flags | CEW_FLAGS)
+
+    try:
+        error = 0
+        if world.rank == 0:
+            try:
+                fd = open(filename, 'wb', opener=opener)
+            except OSError as ex:
+                error = ex.errno
+            else:
+                closelater.append(fd)
+        else:
+            fd = open(os.devnull, 'wb')
+            closelater.append(fd)
+
+        # Synchronize:
+        error = world.sum(error)
+        if error == errno.EEXIST:
+            return None
+        if error:
+            raise OSError(error, 'Error', filename)
+
+        return fd
+    except BaseException:
+        for fd in closelater:
+            fd.close()
+        raise
+
+
+def opencew_text(*args, **kwargs):
+    fd = opencew(*args, **kwargs)
+    if fd is None:
         return None
-    if error:
-        raise OSError(error, 'Error', filename)
-    return fd
+    return io.TextIOWrapper(fd)
 
 
 class Lock:
@@ -246,8 +303,8 @@ def search_current_git_hash(arg, world=None):
     HEAD_file = os.path.join(git_dpath, 'HEAD')
     if not os.path.isfile(HEAD_file):
         return None
-    with open(HEAD_file, 'r') as f:
-        line = f.readline().strip()
+    with open(HEAD_file, 'r') as fd:
+        line = fd.readline().strip()
     if line.startswith('ref: '):
         ref = line[5:]
         ref_file = os.path.join(git_dpath, ref)
@@ -256,8 +313,8 @@ def search_current_git_hash(arg, world=None):
         ref_file = HEAD_file
     if not os.path.isfile(ref_file):
         return None
-    with open(ref_file, 'r') as f:
-        line = f.readline().strip()
+    with open(ref_file, 'r') as fd:
+        line = fd.readline().strip()
     if all(c in string.hexdigits for c in line):
         return line
     return None
@@ -435,7 +492,6 @@ class iofunction:
         return iofunc
 
 
-
 def writer(func):
     return iofunction('w')(func)
 
@@ -551,3 +607,37 @@ def warn_legacy(feature_name):
 def lazyproperty(meth):
     """Decorator like lazymethod, but making item available as a property."""
     return property(lazymethod(meth))
+
+
+class IOContext:
+    @lazyproperty
+    def _exitstack(self):
+        return ExitStack()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
+    def closelater(self, fd):
+        return self._exitstack.enter_context(fd)
+
+    def close(self):
+        self._exitstack.close()
+
+    def openfile(self, file, comm=None, mode='w'):
+        from ase.parallel import world
+        if comm is None:
+            comm = world
+
+        if hasattr(file, 'close'):
+            return file  # File already opened, not for us to close.
+
+        if file is None or comm.rank != 0:
+            return self.closelater(open(os.devnull, mode=mode))
+
+        if file == '-':
+            return sys.stdout
+
+        return self.closelater(open(file, mode=mode))

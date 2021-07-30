@@ -241,8 +241,8 @@ def get_userscr(prefix, command):
             pass
 
         try:
-            with open(prefix_test + '.log') as f:
-                for line in f:
+            with open(prefix_test + '.log') as fd:
+                for line in fd:
                     if line.startswith('GAMESS supplementary output files'):
                         return ' '.join(line.split(' ')[8:]).strip()
         except FileNotFoundError:

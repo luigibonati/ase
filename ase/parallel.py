@@ -24,14 +24,16 @@ def get_txt(txt, rank):
         return open(os.devnull, 'w')
 
 
-def paropen(name, mode='r', buffering=-1, encoding=None):
+def paropen(name, mode='r', buffering=-1, encoding=None, comm=None):
     """MPI-safe version of open function.
 
     In read mode, the file is opened on all nodes.  In write and
     append mode, the file is opened on the master only, and /dev/null
     is opened on all other nodes.
     """
-    if world.rank > 0 and mode[0] != 'r':
+    if comm is None:
+        comm = world
+    if comm.rank > 0 and mode[0] != 'r':
         name = os.devnull
     return open(name, mode, buffering, encoding)
 
@@ -97,6 +99,10 @@ def _get_comm():
         import _gpaw
         if hasattr(_gpaw, 'Communicator'):
             return _gpaw.Communicator()
+    if '_asap' in sys.modules:
+        import _asap
+        if hasattr(_asap, 'Communicator'):
+            return _asap.Communicator()
     return DummyMPI()
 
 

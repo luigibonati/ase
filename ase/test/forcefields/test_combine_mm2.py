@@ -30,7 +30,7 @@ def make_4mer():
 
 
 @pytest.mark.slow
-def test_combine_mm2():
+def test_combine_mm2(testdir):
     # More biased initial positions for faster test. Set
     # to false for a slower, harder test.
     fast_test = True
@@ -41,8 +41,8 @@ def test_combine_mm2():
                                         for j in [0, 1, 2]])
     atoms.calc = TIP3P(np.Inf)
     tag = '4mer_tip3_opt.'
-    opt = FIRE(atoms, logfile=tag + 'log', trajectory=tag + 'traj')
-    opt.run(fmax=0.05)
+    with FIRE(atoms, logfile=tag + 'log', trajectory=tag + 'traj') as opt:
+        opt.run(fmax=0.05)
     tip3_pos = atoms.get_positions()
 
     sig = np.array([sigma0, 0, 0])
@@ -63,8 +63,8 @@ def test_combine_mm2():
                                sig, eps, sig, eps, rc=rc)
 
         tag = '4mer_combtip3_opt_{0:02d}.'.format(ii)
-        opt = FIRE(atoms, logfile=tag + 'log', trajectory=tag + 'traj')
-        opt.run(fmax=0.05)
+        with FIRE(atoms, logfile=tag + 'log', trajectory=tag + 'traj') as opt:
+            opt.run(fmax=0.05)
         assert((abs(atoms.positions - tip3_pos) < 1e-8).all())
         print(
             '{0}: {1!s:>28s}: Same Geometry as TIP3P'.format(

@@ -87,7 +87,6 @@ def parse_singletag(lines: List[str], line: str) -> Tuple[str, CIFDataValue]:
     return key, convert_value(value)
 
 
-
 def parse_cif_loop_headers(lines: List[str]) -> Iterator[str]:
     header_pattern = r'\s*(_\S*)'
 
@@ -173,13 +172,13 @@ def parse_loop(lines: List[str]) -> Dict[str, List[CIFDataValue]]:
 def parse_items(lines: List[str], line: str) -> Dict[str, CIFData]:
     """Parse a CIF data items and return a dict with all tags."""
     tags: Dict[str, CIFData] = {}
+
     while True:
         if not lines:
             break
-        line = lines.pop()
+        line = lines.pop().strip()
         if not line:
-            break
-        line = line.strip()
+            continue
         lowerline = line.lower()
         if not line or line.startswith('#'):
             continue
@@ -247,6 +246,8 @@ class CIFBlock(collections.abc.Mapping):
         coords = [self.get(name) for name in ['_atom_site_fract_x',
                                               '_atom_site_fract_y',
                                               '_atom_site_fract_z']]
+        # XXX Shall we try to handle mixed coordinates?
+        # (Some scaled vs others fractional)
         if None in coords:
             return None
         return np.array(coords).T
@@ -259,15 +260,18 @@ class CIFBlock(collections.abc.Mapping):
             return None
         return np.array(coords).T
 
-    def get_scaled_positions(self):
-        scaled_positions = self._raw_scaled_positions()
-        if scaled_positions is None:
-            positions = self._raw_positions()
-            if positions is None:
-                raise NoStructureData('No positions found in structure')
-            cell = self.get_cell()
-            scaled_positions = cell.scaled_positions(positions)
-        return scaled_positions
+    def _get_site_coordinates(self):
+        scaled = self._raw_scaled_positions()
+
+        if scaled is not None:
+            return 'scaled', scaled
+
+        cartesian = self._raw_positions()
+
+        if cartesian is None:
+            raise NoStructureData('No positions found in structure')
+
+        return 'cartesian', cartesian
 
     def _get_symbols_with_deuterium(self):
         labels = self._get_any(['_atom_site_type_symbol',
@@ -319,10 +323,10 @@ class CIFBlock(collections.abc.Mapping):
                               '_symmetry_int_tables_number'])
 
     def _get_spacegroup_name(self):
-        hm_symbol = self._get_any(['_space_group.Patterson_name_h-m',
-                                   '_space_group.patterson_name_h-m',
+        hm_symbol = self._get_any(['_space_group_name_h-m_alt',
                                    '_symmetry_space_group_name_h-m',
-                                   '_space_group_name_h-m_alt'])
+                                   '_space_group.Patterson_name_h-m',
+                                   '_space_group.patterson_name_h-m'])
 
         hm_symbol = old_spacegroup_names.get(hm_symbol, hm_symbol)
         return hm_symbol
@@ -399,27 +403,43 @@ class CIFBlock(collections.abc.Mapping):
                     'This may result in wrong setting!' % (
                         setting_name, spacegroup))
 
-        spg = Spacegroup(spacegroup)
+        spg = Spacegroup(spacegroup, setting)
         if no is not None:
             assert int(spg) == no, (int(spg), no)
-        assert spg.setting == setting, (spg.setting, setting)
         return spg
 
     def get_unsymmetrized_structure(self) -> Atoms:
-        return Atoms(symbols=self.get_symbols(),
-                     cell=self.get_cell(),
-                     masses=self._get_masses(),
-                     scaled_positions=self.get_scaled_positions())
+        """Return Atoms without symmetrizing coordinates.
+
+        This returns a (normally) unphysical Atoms object
+        corresponding only to those coordinates included
+        in the CIF file, useful for e.g. debugging.
+
+        This method may change behaviour in the future."""
+        symbols = self.get_symbols()
+        coordtype, coords = self._get_site_coordinates()
+
+        atoms = Atoms(symbols=symbols,
+                      cell=self.get_cell(),
+                      masses=self._get_masses())
+
+        if coordtype == 'scaled':
+            atoms.set_scaled_positions(coords)
+        else:
+            assert coordtype == 'cartesian'
+            atoms.positions[:] = coords
+
+        return atoms
 
     def has_structure(self):
         """Whether this CIF block has an atomic configuration."""
         try:
-            symbols = self.get_symbols()
-            coords = self.get_scaled_positions()
+            self.get_symbols()
+            self._get_site_coordinates()
         except NoStructureData:
             return False
         else:
-            return symbols is not None and coords is not None
+            return True
 
     def get_atoms(self, store_tags=False, primitive_cell=False,
                   subtrans_included=True, fractional_occupancies=True) -> Atoms:
@@ -468,7 +488,7 @@ class CIFBlock(collections.abc.Mapping):
                 # Compile an occupancies dictionary
                 occ_dict = {}
                 for i, sym in enumerate(atoms.symbols):
-                    occ_dict[i] = {sym: occupancies[i]}
+                    occ_dict[str(i)] = {sym: occupancies[i]}
                 atoms.info['occupancy'] = occ_dict
 
         return atoms
@@ -568,9 +588,12 @@ def read_cif(fileobj, index, store_tags=False, primitive_cell=False,
     cell.
 
     If *fractional_occupancies* is true, the resulting atoms object will be
-    tagged equipped with an array `occupancy`. Also, in case of mixed
-    occupancies, the atom's chemical symbol will be that of the most dominant
-    species.
+    tagged equipped with a dictionary `occupancy`. The keys of this dictionary
+    will be integers converted to strings. The conversion to string is done
+    in order to avoid troubles with JSON encoding/decoding of the dictionaries
+    with non-string keys.
+    Also, in case of mixed occupancies, the atom's chemical symbol will be
+    that of the most dominant species.
 
     String *reader* is used to select CIF reader. Value `ase` selects
     built-in CIF reader (default), while `pycodcif` selects CIF reader based
@@ -605,11 +628,11 @@ def format_cell(cell: Cell) -> str:
 def format_generic_spacegroup_info() -> str:
     # We assume no symmetry whatsoever
     return '\n'.join([
-        '_symmetry_space_group_name_H-M    "P 1"',
-        '_symmetry_int_tables_number       1',
+        '_space_group_name_H-M_alt    "P 1"',
+        '_space_group_IT_number       1',
         '',
         'loop_',
-        '  _symmetry_equiv_pos_as_xyz',
+        '  _space_group_symop_operation_xyz',
         "  'x, y, z'",
         '',
     ])
@@ -735,15 +758,14 @@ def expand_kinds(atoms, coords):
     kinds = atoms.arrays.get('spacegroup_kinds')
     if occ_info is not None and kinds is not None:
         for i, kind in enumerate(kinds):
-            occ_info_kind = occ_info[kind]
+            occ_info_kind = occ_info[str(kind)]
             symbol = symbols[i]
-            print('ARGH', symbol)
             if symbol not in occ_info_kind:
                 raise BadOccupancies('Occupancies present but no occupancy '
                                      'info for "{symbol}"')
             occupancies[i] = occ_info_kind[symbol]
             # extend the positions array in case of mixed occupancy
-            for sym, occ in occ_info[kind].items():
+            for sym, occ in occ_info[str(kind)].items():
                 if sym != symbols[i]:
                     symbols.append(sym)
                     coords.append(coords[i])
@@ -752,7 +774,7 @@ def expand_kinds(atoms, coords):
 
 
 def atoms_to_loop_data(atoms, wrap, labels, loop_keys):
-    if all(atoms.pbc):
+    if atoms.cell.rank == 3:
         coord_type = 'fract'
         coords = atoms.get_scaled_positions(wrap).tolist()
     else:
@@ -778,7 +800,7 @@ def atoms_to_loop_data(atoms, wrap, labels, loop_keys):
 
     _coords = np.array(coords)
     for i, key in enumerate(coord_headers):
-        loopdata[key] = (_coords[:, i], '{:7.5f}')
+        loopdata[key] = (_coords[:, i], '{:7.6f}')
 
     loopdata['_atom_site_type_symbol'] = (symbols, '{:<2s}')
     loopdata['_atom_site_symmetry_multiplicity'] = (
@@ -798,11 +820,15 @@ def write_cif_image(blockname, atoms, fd, *, wrap,
     fd.write(blockname)
     fd.write(chemical_formula_header(atoms))
 
-    if atoms.cell.rank == 3:
+    rank = atoms.cell.rank
+    if rank == 3:
         fd.write(format_cell(atoms.cell))
         fd.write('\n')
         fd.write(format_generic_spacegroup_info())
         fd.write('\n')
+    elif rank != 0:
+        raise ValueError('CIF format can only represent systems with '
+                         f'0 or 3 lattice vectors.  Got {rank}.')
 
     loopdata, coord_headers = atoms_to_loop_data(atoms, wrap, labels,
                                                  loop_keys)

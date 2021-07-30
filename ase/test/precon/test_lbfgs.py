@@ -7,7 +7,7 @@ from ase.optimize.precon import Exp, PreconLBFGS, PreconFIRE
 from ase.constraints import FixBondLength, FixAtoms
 
 
-@pytest.mark.skip('FAILS WITH PYAMG')
+#@pytest.mark.skip('FAILS WITH PYAMG')
 @pytest.mark.slow
 def test_preconlbfgs():
     N = 1
@@ -37,7 +37,7 @@ def test_preconlbfgs():
     cu0 = bulk("Cu") * (2, 2, 2)
     cu0.rattle(0.01)
     a0 = cu0.get_distance(0, 1)
-    cons = [FixBondLength(0,1), FixAtoms([2,3])]
+    cons = [FixBondLength(0, 1), FixAtoms([2, 3])]
     for precon in [None, Exp(mu=1.0)]:
         cu = cu0.copy()
         cu.calc = EMT()

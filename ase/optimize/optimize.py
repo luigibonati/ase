@@ -1,18 +1,22 @@
 """Structure optimization. """
 
-import sys
-import pickle
 import time
 from math import sqrt
 from os.path import isfile
 
+from ase.io.jsonio import read_json, write_json
 from ase.calculators.calculator import PropertyNotImplementedError
 from ase.parallel import world, barrier
 from ase.io.trajectory import Trajectory
+from ase.utils import IOContext
 import collections.abc
 
 
-class Dynamics:
+class RestartError(RuntimeError):
+    pass
+
+
+class Dynamics(IOContext):
     """Base-class for all MD and structure optimization classes."""
 
     def __init__(
@@ -46,17 +50,7 @@ class Dynamics:
         """
 
         self.atoms = atoms
-        if master is None:
-            master = world.rank == 0
-        if not master:
-            logfile = None
-        elif isinstance(logfile, str):
-            if logfile == "-":
-                logfile = sys.stdout
-            else:
-                logfile = open(logfile, "a")
-        self.logfile = logfile
-
+        self.logfile = self.openfile(logfile, mode='a', comm=world)
         self.observers = []
         self.nsteps = 0
         # maximum number of steps placeholder with maxint
@@ -65,9 +59,9 @@ class Dynamics:
         if trajectory is not None:
             if isinstance(trajectory, str):
                 mode = "a" if append_trajectory else "w"
-                trajectory = Trajectory(
+                trajectory = self.closelater(Trajectory(
                     trajectory, mode=mode, atoms=atoms, master=master
-                )
+                ))
             self.attach(trajectory)
 
     def get_number_of_steps(self):
@@ -312,12 +306,17 @@ class Optimizer(Dynamics):
 
     def dump(self, data):
         if world.rank == 0 and self.restart is not None:
-            with open(self.restart, "wb") as fd:
-                pickle.dump(data, fd, protocol=2)
+            with open(self.restart, 'w') as fd:
+                write_json(fd, data)
 
     def load(self):
-        with open(self.restart, "rb") as fd:
-            return pickle.load(fd)
+        with open(self.restart) as fd:
+            try:
+                return read_json(fd, always_array=False)
+            except Exception as ex:
+                msg = ('Could not decode restart file as JSON.  '
+                       f'You may need to delete the restart file {self.restart}')
+                raise RestartError(msg) from ex
 
     def set_force_consistent(self):
         """Automatically sets force_consistent to True if force_consistent

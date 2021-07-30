@@ -10,7 +10,8 @@ from ase.constraints import UnitCellFilter
 from ase.utils.linesearch import LineSearch
 from ase.utils.linesearcharmijo import LineSearchArmijo
 
-from ase.optimize.precon import Exp, C1, Pfrommer
+from ase.optimize.precon.precon import make_precon
+
 
 class PreconLBFGS(Optimizer):
     """Preconditioned version of the Limited memory BFGS optimizer, to
@@ -129,10 +130,10 @@ class PreconLBFGS(Optimizer):
         if precon == 'auto':
             if len(atoms) < 100:
                 precon = None
-                warnings.warn('The system is likely too small to benefit from ' +
-                              'the standard preconditioner, hence it is ' +
-                              'disabled. To re-enable preconditioning, call' +
-                              '`PreconLBFGS` by explicitly providing the ' +
+                warnings.warn('The system is likely too small to benefit from '
+                              'the standard preconditioner, hence it is '
+                              'disabled. To re-enable preconditioning, call '
+                              '`PreconLBFGS` by explicitly providing the '
                               'kwarg `precon`')
             else:
                 precon = 'Exp'
@@ -155,18 +156,7 @@ class PreconLBFGS(Optimizer):
         self.p = None
 
         # construct preconditioner if passed as a string
-        if isinstance(precon, str):
-            if precon == 'C1':
-                precon = C1()
-            if precon == 'Exp':
-                precon = Exp()
-            elif precon == 'Pfrommer':
-                precon = Pfrommer()
-            elif precon == 'ID':
-                precon = None
-            else:
-                raise ValueError('Unknown preconditioner "{0}"'.format(precon))
-        self.precon = precon
+        self.precon = make_precon(precon)
         self.use_armijo = use_armijo
         self.c1 = c1
         self.c2 = c2

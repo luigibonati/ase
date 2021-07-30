@@ -94,6 +94,7 @@ def creates():
 
 
 def create_png_files(raise_exceptions=False):
+    from ase.utils import workdir
     try:
         check_call(['povray', '-h'], stderr=DEVNULL)
     except (FileNotFoundError, CalledProcessError):
@@ -102,8 +103,9 @@ def create_png_files(raise_exceptions=False):
         from ase.io import pov
         from ase.io.png import write_png
 
-        def write_pov(filename, atoms, generic_projection_settings={},
-                      povray_settings={}, isosurface_data=None):
+        def write_pov(filename, atoms,
+                      povray_settings={}, isosurface_data=None,
+                      **generic_projection_settings):
 
             write_png(Path(filename).with_suffix('.png'), atoms,
                       **generic_projection_settings)
@@ -115,8 +117,6 @@ def create_png_files(raise_exceptions=False):
             return DummyRenderer()
 
         pov.write_pov = write_pov
-
-    olddir = os.getcwd()
 
     for dir, pyname, outnames in creates():
         path = join(dir, pyname)
@@ -134,20 +134,18 @@ def create_png_files(raise_exceptions=False):
                     break
         if run:
             print('running:', path)
-            os.chdir(dir)
-            import matplotlib.pyplot as plt
-            plt.figure()
-            try:
-                runpy.run_path(pyname)
-            except KeyboardInterrupt:
-                return
-            except Exception:
-                if raise_exceptions:
-                    raise
-                else:
-                    traceback.print_exc()
-            finally:
-                os.chdir(olddir)
+            with workdir(dir):
+                import matplotlib.pyplot as plt
+                plt.figure()
+                try:
+                    runpy.run_path(pyname)
+                except KeyboardInterrupt:
+                    return
+                except Exception:
+                    if raise_exceptions:
+                        raise
+                    else:
+                        traceback.print_exc()
 
             for n in plt.get_fignums():
                 plt.close(n)

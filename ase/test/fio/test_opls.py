@@ -27,7 +27,8 @@ def opls_force_field_file_name(datadir):
     return str(datadir / "172_defs.par")
 
 
-def test_opls_write_lammps(opls_structure_file_name, opls_force_field_file_name):
+def test_opls_write_lammps(opls_structure_file_name,
+                           opls_force_field_file_name):
 
     LAMMPS_FILES_PREFIX = "lmp"
 
@@ -35,14 +36,15 @@ def test_opls_write_lammps(opls_structure_file_name, opls_force_field_file_name)
     atoms = OPLSStructure(opls_structure_file_name)
 
     # Set up force field object
-    opls_force_field = OPLSff(opls_force_field_file_name)
+    with open(opls_force_field_file_name) as fd:
+        opls_force_field = OPLSff(fd)
 
     # Write input files for lammps to current directory
     opls_force_field.write_lammps(atoms, prefix=LAMMPS_FILES_PREFIX)
 
     # Read the lammps data file
-    with open(LAMMPS_FILES_PREFIX + "_atoms") as f:
-        lammps_data = f.readlines()
+    with open(LAMMPS_FILES_PREFIX + "_atoms") as fd:
+        lammps_data = fd.readlines()
 
     # Locate Atoms block and extract the data for the three atoms in the
     # input structure
@@ -55,9 +57,9 @@ def test_opls_write_lammps(opls_structure_file_name, opls_force_field_file_name)
 
     # Grab positions from data
     pos_indices = slice(4, 7)
-    atom1_pos = np.array(atom1_data.split()[pos_indices], dtype=np.float)
-    atom2_pos = np.array(atom2_data.split()[pos_indices], dtype=np.float)
-    atom3_pos = np.array(atom3_data.split()[pos_indices], dtype=np.float)
+    atom1_pos = np.array(atom1_data.split()[pos_indices], dtype=float)
+    atom2_pos = np.array(atom2_data.split()[pos_indices], dtype=float)
+    atom3_pos = np.array(atom3_data.split()[pos_indices], dtype=float)
 
     # Check that positions match expected values
     assert atom1_pos == pytest.approx(np.array([1.6139, -0.7621, 0.0]), abs=1e-4)

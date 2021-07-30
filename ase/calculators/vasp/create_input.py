@@ -131,6 +131,7 @@ float_keys = [
     'auger_temp',  # Temperature for Auger calculation
     'dq',  # Finite difference displacement magnitude (NMR)
     'avgap',  # Average gap (Model GW)
+    'ch_sigma',  # Broadening of the core electron absorption spectrum
     'bpotim',  # Undocumented Bond-Boost parameter (GH patches)
     'qrr',  # Undocumented Bond-Boost parameter (GH patches)
     'prr',  # Undocumented Bond-Boost parameter (GH patches)
@@ -141,9 +142,9 @@ float_keys = [
     'efirst',  # Energy of first NEB image (GH patches)
     'elast',  # Energy of final NEB image (GH patches)
     'fmagval',  # Force magnitude convergence criterion (GH patches)
-    'cmbj',  # Undocumented MetaGGA parameter
-    'cmbja',  # Undocumented MetaGGA parameter
-    'cmbjb',  # Undocumented MetaGGA parameter
+    'cmbj',  # Modified Becke-Johnson MetaGGA c-parameter
+    'cmbja',  # Modified Becke-Johnson MetaGGA alpha-parameter
+    'cmbjb',  # Modified Becke-Johnson MetaGGA beta-parameter
     'sigma_nc_k',  # Width of ion gaussians (VASPsol)
     'sigma_k',  # Width of dielectric cavidty (VASPsol)
     'nc_k',  # Cavity turn-on density (VASPsol)
@@ -321,7 +322,8 @@ int_keys = [
     'nedos',  # Number of grid points in DOS
     'turbo',  # Ewald, 0 = Normal, 1 = PME
     'omegapar',  # Number of groups for response function calc.
-    'taupar',  # Number of groups in real time for response function calc.
+    'taupar',  # (Possibly Depricated) Number of groups in real time for response function calc.
+    'ntaupar',  # Number of groups in real time for response function calc.
     'antires',  # How to treat antiresonant part of response function
     'magatom',  # Index of atom at which to place magnetic field (NMR)
     'jatom',  # Index of atom at which magnetic moment is evaluated (NMR)
@@ -413,6 +415,7 @@ int_keys = [
     'nkoffopt',  # K-point "counter offset" for Optics
     'nbvalopt',  # Number of valence bands to write in OPTICS file
     'nbconopt',  # Number of conduction bands to write in OPTICS file
+    'ch_nedos',  # Number dielectric function calculation grid points for XAS
     'plevel',  # No timings for routines with "level" higher than this
     'qnl',  # Lanczos matrix size (instanton)
 ]
@@ -530,6 +533,7 @@ bool_keys = [
     'oddonlygw',  # Avoid gamma point in response function calc.
     'evenonlygw',  # Avoid even points in response function calc.
     'lspectralgw',  # More accurate self-energy calculation
+    'ch_lspec',  # Calculate matrix elements btw. core and conduction states
     'fletcher_reeves',  # Undocumented dimer parameter
     'lidm_selective',  # Undocumented dimer parameter
     'lblueout',  # Write output of blue-moon algorithm
@@ -796,10 +800,24 @@ class GenerateVaspInput:
         'scan': {
             'metagga': 'SCAN'
         },
+        'rscan': {
+            'metagga': 'RSCAN'
+        },
+        'r2scan': {
+            'metagga': 'R2SCAN'
+        },
         'scan-rvv10': {
             'metagga': 'SCAN',
             'luse_vdw': True,
             'bparam': 15.7
+        },
+        'mbj': {
+            # Modified Becke-Johnson
+            'metagga': 'MBJ',
+        },
+        'tb09': {
+            # Alias for MBJ
+            'metagga': 'MBJ',
         },
         # vdW-DFs
         'vdw-df': {
@@ -891,8 +909,52 @@ class GenerateVaspInput:
             'gga': 'PS',
             'lhfcalc': True,
             'hfscreen': 0.2
+        },
+        # MN-VFM functionals
+        'sogga': {
+            'gga': 'SA'
+        },
+        'sogga11': {
+            'gga': 'S1'
+        },
+        'sogga11-x': {
+            'gga': 'SX',
+            'lhfcalc': True,
+            'aexx': 0.401
+        },
+        'n12': {
+            'gga': 'N2'
+        },
+        'n12-sx': {
+            'gga': 'NX',
+            'lhfcalc': True,
+            'lhfscreen': 0.2
+        },
+        'mn12l': {
+            'metagga': 'MN12L'
+        },
+        'gam': {
+            'gga': 'GA'
+        },
+        'mn15l': {
+            'metagga': 'MN15L'
+        },
+        'hle17': {
+            'metagga': 'HLE17'
+        },
+        'revm06l': {
+            'metagga': 'revM06L'
+        },
+        'm06sx': {
+            'metagga': 'M06SX',
+            'lhfcalc': True,
+            'hfscreen': 0.189,
+            'aexx': 0.335
         }
     }
+
+    # environment variable for PP paths
+    VASP_PP_PATH = 'VASP_PP_PATH'
 
     def __init__(self, restart=None):
         self.float_params = {}
@@ -969,8 +1031,8 @@ class GenerateVaspInput:
 
     def set(self, **kwargs):
 
-        if (('ldauu' in kwargs) and ('ldaul' in kwargs)
-             and ('ldauj' in kwargs) and ('ldau_luj' in kwargs)):
+        if (('ldauu' in kwargs) and ('ldaul' in kwargs) and ('ldauj' in kwargs)
+                and ('ldau_luj' in kwargs)):
             raise NotImplementedError(
                 'You can either specify ldaul, ldauu, and ldauj OR '
                 'ldau_luj. ldau_luj is not a VASP keyword. It is a '
@@ -1091,8 +1153,8 @@ class GenerateVaspInput:
         else:
             pp_folder = p['pp']
 
-        if 'VASP_PP_PATH' in os.environ:
-            pppaths = os.environ['VASP_PP_PATH'].split(':')
+        if self.VASP_PP_PATH in os.environ:
+            pppaths = os.environ[self.VASP_PP_PATH].split(':')
         else:
             pppaths = []
         ppp_list = []
@@ -1215,6 +1277,7 @@ class GenerateVaspInput:
         """
 
         self.check_xc()
+        self.atoms = atoms
         self.all_symbols = atoms.get_chemical_symbols()
         self.natoms = len(atoms)
 
@@ -1255,10 +1318,9 @@ class GenerateVaspInput:
         """
         symbol_valences = []
         for filename in self.ppp_list:
-            ppp_file = open_potcar(filename=filename)
-            r = read_potcar_numbers_of_electrons(ppp_file)
-            symbol_valences.extend(r)
-            ppp_file.close()
+            with open_potcar(filename=filename) as ppp_file:
+                r = read_potcar_numbers_of_electrons(ppp_file)
+                symbol_valences.extend(r)
         assert len(self.symbol_count) == len(symbol_valences)
         default_nelect = 0
         for ((symbol1, count),
@@ -1275,7 +1337,7 @@ class GenerateVaspInput:
                    ignore_constraints=self.input_params['ignore_constraints'])
         self.write_incar(atoms, directory=directory)
         self.write_potcar(directory=directory)
-        self.write_kpoints(directory=directory)
+        self.write_kpoints(atoms=atoms, directory=directory)
         self.write_sort_file(directory=directory)
         self.copy_vdw_kernel(directory=directory)
 
@@ -1517,8 +1579,11 @@ class GenerateVaspInput:
                 key.upper(), value))
         incar.close()
 
-    def write_kpoints(self, directory='./', **kwargs):
+    def write_kpoints(self, atoms=None, directory='./', **kwargs):
         """Writes the KPOINTS file."""
+
+        if atoms is None:
+            atoms = self.atoms
 
         # Don't write anything if KSPACING is being used
         if self.float_params['kspacing'] is not None:
@@ -1530,53 +1595,51 @@ class GenerateVaspInput:
                                  "".format(self.float_params['kspacing']))
 
         p = self.input_params
-        kpoints = open(join(directory, 'KPOINTS'), 'w')
-        kpoints.write('KPOINTS created by Atomic Simulation Environment\n')
+        with open(join(directory, 'KPOINTS'), 'w') as kpoints:
+            kpoints.write('KPOINTS created by Atomic Simulation Environment\n')
 
-        if isinstance(p['kpts'], dict):
-            p['kpts'] = kpts2ndarray(p['kpts'], atoms=self.atoms)
-            p['reciprocal'] = True
+            if isinstance(p['kpts'], dict):
+                p['kpts'] = kpts2ndarray(p['kpts'], atoms=atoms)
+                p['reciprocal'] = True
 
-        shape = np.array(p['kpts']).shape
+            shape = np.array(p['kpts']).shape
 
-        # Wrap scalar in list if necessary
-        if shape == ():
-            p['kpts'] = [p['kpts']]
-            shape = (1, )
+            # Wrap scalar in list if necessary
+            if shape == ():
+                p['kpts'] = [p['kpts']]
+                shape = (1, )
 
-        if len(shape) == 1:
-            kpoints.write('0\n')
-            if shape == (1, ):
-                kpoints.write('Auto\n')
-            elif p['gamma']:
-                kpoints.write('Gamma\n')
-            else:
-                kpoints.write('Monkhorst-Pack\n')
-            [kpoints.write('%i ' % kpt) for kpt in p['kpts']]
-            kpoints.write('\n0 0 0\n')
-        elif len(shape) == 2:
-            kpoints.write('%i \n' % (len(p['kpts'])))
-            if p['reciprocal']:
-                kpoints.write('Reciprocal\n')
-            else:
-                kpoints.write('Cartesian\n')
-            for n in range(len(p['kpts'])):
-                [kpoints.write('%f ' % kpt) for kpt in p['kpts'][n]]
-                if shape[1] == 4:
-                    kpoints.write('\n')
-                elif shape[1] == 3:
-                    kpoints.write('1.0 \n')
-        kpoints.close()
+            if len(shape) == 1:
+                kpoints.write('0\n')
+                if shape == (1, ):
+                    kpoints.write('Auto\n')
+                elif p['gamma']:
+                    kpoints.write('Gamma\n')
+                else:
+                    kpoints.write('Monkhorst-Pack\n')
+                [kpoints.write('%i ' % kpt) for kpt in p['kpts']]
+                kpoints.write('\n0 0 0\n')
+            elif len(shape) == 2:
+                kpoints.write('%i \n' % (len(p['kpts'])))
+                if p['reciprocal']:
+                    kpoints.write('Reciprocal\n')
+                else:
+                    kpoints.write('Cartesian\n')
+                for n in range(len(p['kpts'])):
+                    [kpoints.write('%f ' % kpt) for kpt in p['kpts'][n]]
+                    if shape[1] == 4:
+                        kpoints.write('\n')
+                    elif shape[1] == 3:
+                        kpoints.write('1.0 \n')
 
     def write_potcar(self, suffix="", directory='./'):
         """Writes the POTCAR file."""
-        potfile = open(join(directory, 'POTCAR' + suffix), 'w')
-        for filename in self.ppp_list:
-            ppp_file = open_potcar(filename=filename)
-            for line in ppp_file:
-                potfile.write(line)
-            ppp_file.close()
-        potfile.close()
+
+        with open(join(directory, 'POTCAR' + suffix), 'w') as potfile:
+            for filename in self.ppp_list:
+                with open_potcar(filename=filename) as ppp_file:
+                    for line in ppp_file:
+                        potfile.write(line)
 
     def write_sort_file(self, directory='./'):
         """Writes a sortings file.
@@ -1592,8 +1655,10 @@ class GenerateVaspInput:
 
     # The below functions are used to restart a calculation
 
-    def read_incar(self, filename='INCAR'):
-        """Method that imports settings from INCAR file."""
+    def read_incar(self, filename):
+        """Method that imports settings from INCAR file.
+
+        Typically named INCAR."""
 
         self.spinpol = False
         with open(filename, 'r') as fd:
@@ -1647,7 +1712,7 @@ class GenerateVaspInput:
                         self.bool_params[key] = False
 
                 elif key in list_bool_keys:
-                    self.list_bool_keys[key] = [
+                    self.list_bool_params[key] = [
                         _from_vasp_bool(x)
                         for x in _args_without_comment(data[2:])
                     ]
@@ -1730,7 +1795,8 @@ class GenerateVaspInput:
             except IndexError:
                 raise IOError('Value missing for keyword "%s".' % key)
 
-    def read_kpoints(self, filename='KPOINTS'):
+    def read_kpoints(self, filename):
+        """Read kpoints file, typically named KPOINTS."""
         # If we used VASP builtin kspacing,
         if self.float_params['kspacing'] is not None:
             # Don't update kpts array
@@ -1757,14 +1823,14 @@ class GenerateVaspInput:
                 [list(map(float, line.split())) for line in lines[3:]])
         self.set(kpts=kpts)
 
-    def read_potcar(self, filename='POTCAR'):
+    def read_potcar(self, filename):
         """ Read the pseudopotential XC functional from POTCAR file.
         """
 
         # Search for key 'LEXCH' in POTCAR
         xc_flag = None
-        with open(filename, 'r') as f:
-            for line in f:
+        with open(filename, 'r') as fd:
+            for line in fd:
                 key = line.split()[0].upper()
                 if key == 'LEXCH':
                     xc_flag = line.split()[-1].upper()

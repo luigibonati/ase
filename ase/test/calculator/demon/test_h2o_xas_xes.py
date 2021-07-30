@@ -17,13 +17,12 @@ def test_h2o_xas_xes():
     basis = {'all': 'aug-cc-pvdz'}
     auxis = {'all': 'GEN-A2*'}
 
-
     # XAS hch
     input_arguments = {'GRID': 'FINE',
-                       'MOMODIFY': [[1,0],
-                                    [1,0.5]], 
-                       'CHARGE':0,
-                       'XRAY':'XAS'}
+                       'MOMODIFY': [[1, 0],
+                                    [1, 0.5]], 
+                       'CHARGE': 0,
+                       'XRAY': 'XAS'}
 
     calc = demon.Demon(basis=basis,
                        auxis=auxis,
@@ -39,7 +38,7 @@ def test_h2o_xas_xes():
     print('energy')
     energy = atoms.get_potential_energy()
     print(energy)
-    ref = -1815.44708987 #-469.604737006
+    ref = -1815.44708987  # -469.604737006
     error = np.sqrt(np.sum((energy - ref)**2))
     print('diff from reference:')
     print(error)
@@ -51,10 +50,10 @@ def test_h2o_xas_xes():
     results = calc.results
 
     print('xray, first transition, energy')
-    value =results['xray']['E_trans'][0]
+    value = results['xray']['E_trans'][0]
     print(value)
     ref = 539.410015646
-    error = np.sqrt(np.sum((value- ref)**2))
+    error = np.sqrt(np.sum((value - ref)**2))
     print('diff from reference:')
     print(error)
 
@@ -65,18 +64,17 @@ def test_h2o_xas_xes():
     value = results['xray']['trans_dip'][0]
     print(value)
     ref = np.array([1.11921906e-02, 1.61393975e-02, 1.70983631e-07])
-    error = np.sqrt(np.sum((value- ref)**2))
+    error = np.sqrt(np.sum((value - ref)**2))
     print('diff from reference:')
     print(error)
 
     tol = 1.0e-4
     assert(error < tol)
 
-
     # XES
     input_arguments = {'GRID': 'FINE',
-                       'CHARGE':0,
-                       'XRAY':'XES ALPHA=1-1'}
+                       'CHARGE': 0,
+                       'XRAY': 'XES ALPHA=1-1'}
 
     calc = demon.Demon(basis=basis,
                        auxis=auxis,
@@ -105,10 +103,10 @@ def test_h2o_xas_xes():
     results = calc.results
 
     print('xray, first transition, energy')
-    value =results['xray']['E_trans'][0]
+    value = results['xray']['E_trans'][0]
     print(value)
-    ref = 486.862715888 #539.410015646
-    error = np.sqrt(np.sum((value- ref)**2))
+    ref = 486.862715888  # 539.410015646
+    error = np.sqrt(np.sum((value - ref)**2))
     print('diff from reference:')
     print(error)
 
@@ -119,7 +117,7 @@ def test_h2o_xas_xes():
     value = results['xray']['trans_dip'][0]
     print(value)
     ref = np.array([6.50528073e-03, 9.37895253e-03, 6.99433480e-09])
-    error = np.sqrt(np.sum((value- ref)**2))
+    error = np.sqrt(np.sum((value - ref)**2))
     print('diff from reference:')
     print(error)
 
@@ -128,10 +126,10 @@ def test_h2o_xas_xes():
 
     # and XPS
     input_arguments = {'GRID': 'FINE',
-                       'MOMODIFY': [[1,0],
-                                    [1,0.0]], 
-                       'CHARGE':0,
-                       'XRAY':'XAS'}
+                       'MOMODIFY': [[1, 0],
+                                    [1, 0.0]], 
+                       'CHARGE': 0,
+                       'XRAY': 'XAS'}
 
     calc = demon.Demon(basis=basis,
                        auxis=auxis,
@@ -141,7 +139,6 @@ def test_h2o_xas_xes():
                        input_arguments=input_arguments)
 
     atoms.calc = calc
-
 
     # energy
     print('')
@@ -159,9 +156,9 @@ def test_h2o_xas_xes():
 
     # First excited state
     input_arguments = {'GRID': 'FINE',
-                       'MOMODIFY': [[1,0],
-                                    [1,0.0]], 
-                       'CHARGE':-1}
+                       'MOMODIFY': [[1, 0],
+                                    [1, 0.0]], 
+                       'CHARGE': -1}
 
     calc = demon.Demon(basis=basis,
                        auxis=auxis,
@@ -171,7 +168,6 @@ def test_h2o_xas_xes():
                        input_arguments=input_arguments)
 
     atoms.calc = calc
-
 
     # energy
     print('')
@@ -187,7 +183,4 @@ def test_h2o_xas_xes():
     tol = 1.0e-4
     assert(error < tol)
 
-
     print('tests passed')
-
-

@@ -1,6 +1,6 @@
 """This module defines an ASE interface to NWchem
 
-http://www.nwchem-sw.org/
+https://nwchemgit.github.io
 """
 import os
 import numpy as np

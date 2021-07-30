@@ -424,6 +424,12 @@ class Writer:
 
 
 class DummyWriter:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, tb):
+        self.close()
+
     def add_array(self, name, shape, dtype=float):
         pass
 
@@ -467,10 +473,8 @@ class Reader:
 
         self._little_endian = _little_endian
 
-        if isinstance(fd, str):
-            fd = Path(fd)
-        if isinstance(fd, Path):
-            fd = fd.open('rb')
+        if not hasattr(fd, 'read'):
+            fd = Path(fd).open('rb')
 
         self._fd = fd
         self._index = index

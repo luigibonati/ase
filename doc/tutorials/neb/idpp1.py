@@ -21,7 +21,7 @@ for i in range(9):
 
 for image in images:
     image.calc = EMT()
-   
+
 images.append(final)
 
 # Run linear interpolation.
