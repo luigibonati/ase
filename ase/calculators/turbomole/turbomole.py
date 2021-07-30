@@ -17,7 +17,7 @@ from ase.units import Ha, Bohr
 from ase.io import read, write
 from ase.calculators.calculator import FileIOCalculator
 from ase.calculators.calculator import PropertyNotImplementedError, ReadError
-from ase.calculators.turbomole.executor import execute
+from ase.calculators.turbomole.executor import execute, get_output_filename
 from ase.calculators.turbomole.writer import add_data_group, delete_data_group
 from ase.calculators.turbomole import reader
 from ase.calculators.turbomole.reader import read_data_group, read_convergence
@@ -136,7 +136,7 @@ class Turbomole(FileIOCalculator):
 
         # if a define string is specified by user then run define
         if self.parameters.define_str:
-            execute('define', input_str=self.parameters.define_str)
+            execute(['define'], input_str=self.parameters.define_str)
 
         self._set_post_define()
 
@@ -230,7 +230,7 @@ class Turbomole(FileIOCalculator):
 
         # run define
         define_str = self.parameters.get_define_str(len(self.atoms))
-        execute('define', input_str=define_str)
+        execute(['define'], input_str=define_str)
 
         # process non-default initial guess
         iguess = self.parameters['initial guess']
@@ -240,7 +240,7 @@ class Turbomole(FileIOCalculator):
                 define_str = '\n\n\ny\nuse ' + iguess['use'] + '\nn\nn\nq\n'
             else:
                 define_str = '\n\n\ny\nuse ' + iguess['use'] + '\nn\nq\n'
-            execute('define', input_str=define_str)
+            execute(['define'], input_str=define_str)
         elif self.parameters['initial guess'] == 'hcore':
             # "hcore" initial guess
             if self.parameters['multiplicity'] != 1 or self.parameters['uhf']:
@@ -289,23 +289,23 @@ class Turbomole(FileIOCalculator):
         if self.converged and not self.update_geometry:
             return
         self.initialize()
-        jobex_flags = ''
+        jobex_command = ['jobex']
         if self.parameters['use resolution of identity']:
-            jobex_flags += ' -ri'
+            jobex_command.append('-ri')
         if self.parameters['force convergence']:
             par = self.parameters['force convergence']
             conv = floor(-log10(par / Ha * Bohr))
-            jobex_flags += ' -gcart ' + str(int(conv))
+            jobex_command.extend(['-gcart', str(int(conv))])
         if self.parameters['energy convergence']:
             par = self.parameters['energy convergence']
             conv = floor(-log10(par / Ha))
-            jobex_flags += ' -energy ' + str(int(conv))
+            jobex_command.extend(['-energy', str(int(conv))])
         geom_iter = self.parameters['geometry optimization iterations']
         if geom_iter is not None:
             assert isinstance(geom_iter, int)
-            jobex_flags += ' -c ' + str(geom_iter)
+            jobex_command.extend(['-c', str(geom_iter)])
         self.converged = False
-        execute('jobex' + jobex_flags)
+        execute(jobex_command)
         # check convergence
         self.converged = read_convergence(self.restart, self.parameters)
         if self.converged:
@@ -341,26 +341,26 @@ class Turbomole(FileIOCalculator):
                     for index in fixatoms:
                         define_str += 'm ' + str(index + 1) + ' 999.99999999\n'
                     define_str += '*\n*\nn\nq\n'
-                    execute('define', input_str=define_str)
+                    execute(['define'], input_str=define_str)
                     dg = read_data_group('atoms')
                     regex = r'(mass\s*=\s*)999.99999999'
                     dg = re.sub(regex, r'\g<1>9999999999.9', dg)
                     dg += '\n'
                     delete_data_group('atoms')
                     add_data_group(dg, raw=True)
-                execute('aoforce')
+                execute(['aoforce'])
             else:
-                optstr = ''
+                nforce_cmd = ['NumForce']
                 pdict = self.parameters['numerical hessian']
                 if self.parameters['use resolution of identity']:
-                    optstr += ' -ri'
+                    nforce_cmd.append('-ri')
                 if len(fixatoms) > 0:
-                    optstr += ' -frznuclei -central -c'
+                    nforce_cmd.extend(['-frznuclei', '-central', '-c'])
                 if 'central' in pdict.keys():
-                    optstr += ' -central'
+                    nforce_cmd.append('-central')
                 if 'delta' in pdict.keys():
-                    optstr += ' -d ' + str(pdict['delta'] / Bohr)
-                execute('NumForce' + optstr)
+                    nforce_cmd.extend(['-d', str(pdict['delta'] / Bohr)])
+                execute(nforce_cmd)
             self.update_hessian = False
 
     def read_restart(self):
@@ -461,7 +461,7 @@ class Turbomole(FileIOCalculator):
 
     def read_charges(self):
         """read partial charges on atoms from an ESP fit"""
-        filename = 'ASE.TM.' + self.calculate_energy + '.out'
+        filename = get_output_filename(self.calculate_energy)
         self.charges = reader.read_charges(filename, len(self.atoms))
 
     def get_version(self):
@@ -506,7 +506,7 @@ class Turbomole(FileIOCalculator):
         # if update of energy is necessary
         if self.update_energy:
             # calculate energy
-            execute(self.calculate_energy)
+            execute([self.calculate_energy])
             # check convergence
             self.converged = read_convergence(self.restart, self.parameters)
             if not self.converged:
@@ -527,7 +527,7 @@ class Turbomole(FileIOCalculator):
         # if update of forces is necessary
         if self.update_forces:
             # calculate forces
-            execute(self.calculate_forces)
+            execute([self.calculate_forces])
             # read forces
             self.read_forces()
 

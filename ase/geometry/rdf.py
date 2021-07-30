@@ -1,5 +1,5 @@
 import math
-from typing import List
+from typing import List, Optional, Tuple, Union
 
 import numpy as np
 from ase import Atoms
@@ -10,8 +10,15 @@ class CellTooSmall(Exception):
     pass
 
 
-def get_rdf(atoms: Atoms, rmax: float, nbins: int, distance_matrix=None,
-            elements=None, no_dists=False):
+class VolumeNotDefined(Exception):
+    pass
+
+
+def get_rdf(atoms: Atoms, rmax: float, nbins: int,
+            distance_matrix: Optional[np.ndarray] = None,
+            elements: Optional[Union[List[int], Tuple]] = None,
+            no_dists: Optional[bool] = False,
+            volume: Optional[float] = None):
     """Returns two numpy arrays; the radial distribution function
     and the corresponding distances of the supplied atoms object.
     If no_dists = True then only the first array is returned.
@@ -41,12 +48,20 @@ def get_rdf(atoms: Atoms, rmax: float, nbins: int, distance_matrix=None,
         rdf for the supplied elements will be returned.
 
     no_dists : bool
-        If True then the second array with rdf distances will not be returned
+        If True then the second array with rdf distances will not be returned.
+
+    volume : float or None
+        Optionally specify the volume of the system. If specified, the volume
+        will be used instead atoms.cell.volume.
     """
+
     # First check whether the cell is sufficiently large
+    vol = atoms.cell.volume if volume is None else volume
+    if vol < 1.0e-10:
+        raise VolumeNotDefined
+
     check_cell_and_r_max(atoms, rmax)
 
-    vol = atoms.get_volume()
     dm = distance_matrix
     if dm is None:
         dm = atoms.get_all_distances(mic=True)
@@ -88,27 +103,37 @@ def get_rdf(atoms: Atoms, rmax: float, nbins: int, distance_matrix=None,
 
 def check_cell_and_r_max(atoms: Atoms, rmax: float) -> None:
     cell = atoms.get_cell()
-    vol = atoms.get_volume()
     pbc = atoms.get_pbc()
-    recommended_r_max = get_recommended_r_max(cell, pbc, vol)
+
+    vol = atoms.cell.volume
 
     for i in range(3):
         if pbc[i]:
             axb = np.cross(cell[(i + 1) % 3, :], cell[(i + 2) % 3, :])
             h = vol / np.linalg.norm(axb)
             if h < 2 * rmax:
-                recommended_r_max = get_recommended_r_max(cell, pbc, vol)
+                recommended_r_max = get_recommended_r_max(cell, pbc)
                 raise CellTooSmall(
                     'The cell is not large enough in '
                     f'direction {i}: {h:.3f} < 2*rmax={2 * rmax: .3f}. '
                     f'Recommended rmax = {recommended_r_max}')
 
 
-def get_recommended_r_max(cell: Cell, pbc: List[bool], vol: float) -> float:
+def get_recommended_r_max(cell: Cell, pbc: List[bool]) -> float:
     recommended_r_max = 5.0
+    vol = cell.volume
     for i in range(3):
         if pbc[i]:
             axb = np.cross(cell[(i + 1) % 3, :], cell[(i + 2) % 3, :])  # type: ignore
             h = vol / np.linalg.norm(axb)
             recommended_r_max = min(h / 2 * 0.99, recommended_r_max)
     return recommended_r_max
+
+
+def get_containing_cell_length(atoms: Atoms) -> np.ndarray:
+    atom2xyz = atoms.get_positions()
+    return np.amax(atom2xyz, axis=0) - np.amin(atom2xyz, axis=0) + 2.0
+
+
+def get_volume_estimate(atoms: Atoms) -> float:
+    return np.product(get_containing_cell_length(atoms))
