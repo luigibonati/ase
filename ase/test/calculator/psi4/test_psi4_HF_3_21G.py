@@ -3,6 +3,7 @@ import pytest
 from ase.build import molecule
 
 
+@pytest.mark.filterwarnings('once::DeprecationWarning')
 @pytest.mark.calculator_lite
 @pytest.mark.calculator('psi4')
 def test_main(factory):
