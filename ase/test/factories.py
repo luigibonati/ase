@@ -379,6 +379,7 @@ class Psi4Factory:
             raise NotInstalled('psi4')
         return cls()
 
+
 @factory('gromacs')
 class GromacsFactory:
     def __init__(self, executable):
