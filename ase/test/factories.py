@@ -363,6 +363,23 @@ class GPAWFactory:
         return cls()
 
 
+@factory('psi4')
+class Psi4Factory:
+    importname = 'psi4'
+
+    def calc(self, **kwargs):
+        from ase.calculators.psi4 import Psi4
+        return Psi4(**kwargs)
+
+    @classmethod
+    def fromconfig(cls, config):
+        try:
+            import psi4  # noqa
+        except ModuleNotFoundError:
+            raise NotInstalled('psi4')
+        return cls()
+
+
 @factory('gromacs')
 class GromacsFactory:
     def __init__(self, executable):
@@ -569,7 +586,6 @@ class Factories:
         'mopac',
         'onetep',
         'orca',
-        'Psi4',
         'qchem',
         'turbomole',
     }
