@@ -249,6 +249,10 @@ class Optimizer(Dynamics):
             "type": "optimization",
             "optimizer": self.__class__.__name__,
         }
+        # add custom attributes from subclasses
+        for attr in ('maxstep', 'alpha', 'max_steps', 'restart'):
+            if hasattr(self, attr):
+                description.update({attr: getattr(self, attr)})
         return description
 
     def initialize(self):
