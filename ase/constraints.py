@@ -703,17 +703,14 @@ class FixedPlane(IndexedConstraint):
         >>> atoms.set_constraint(c)
         """
         super().__init__(indices=indices)
-        direction = _sanitize_inputs(direction)
-        self.dir = direction
+        self.dir = _sanitize_inputs(direction)
 
     def adjust_positions(self, atoms, newpositions):
         step = newpositions[self.index] - atoms.positions[self.index]
-        x = np.dot(step, self.dir)
-        newpositions[self.index] -= self.dir[None, :] * x[:, None]
+        newpositions[self.index] -= _projection(step, self.dir)
 
     def adjust_forces(self, atoms, forces):
-        projection = forces[self.index] @ self.dir[:, None]
-        forces[self.index] -= self.dir[None, :] * projection
+        forces[self.index] -= _projection(forces[self.index], self.dir)
 
     def get_removed_dof(self, atoms):
         return len(self.index)
@@ -726,6 +723,12 @@ class FixedPlane(IndexedConstraint):
 
     def __repr__(self):
         return f'FixedPlane(indices={self.index}, {self.dir.tolist()})'
+
+
+def _projection(vectors, direction):
+    dotprods = vectors @ direction
+    projection = direction[None, :] * dotprods[:, None]
+    return projection
 
 
 class FixedLine(IndexedConstraint):
@@ -763,19 +766,13 @@ class FixedLine(IndexedConstraint):
         super().__init__(indices)
         self.dir = _sanitize_inputs(direction)
 
-    def _projection(self, vectors):
-        dotprods = vectors @ self.dir
-        projection = self.dir[None, :] * dotprods[:, None]
-        assert projection.shape == (len(self.index), 3)
-        return projection
-
     def adjust_positions(self, atoms, newpositions):
         step = newpositions[self.index] - atoms.positions[self.index]
-        projection = self._projection(step)
+        projection = _projection(step, self.dir)
         newpositions[self.index] = atoms.positions[self.index] + projection
 
     def adjust_forces(self, atoms, forces):
-        forces[self.index] = self._projection(forces[self.index])
+        forces[self.index] = _projection(forces[self.index], self.dir)
 
     def get_removed_dof(self, atoms):
         return 2 * len(self.index)
