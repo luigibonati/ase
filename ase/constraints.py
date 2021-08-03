@@ -127,7 +127,7 @@ class IndexedConstraint(FixConstraint):
 
         if indices.dtype == bool:
             indices = np.arange(len(indices))[indices]
-        elif indices.dtype != int:
+        elif not np.issubdtype(indices.dtype, np.integer):
             raise ValueError('Indices must be integers or boolean mask, '
                              f'not dtype={indices.dtype}')
 
