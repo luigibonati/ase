@@ -142,8 +142,12 @@ class IndexedConstraint(FixConstraint):
     def index_shuffle(self, atoms, ind):
         # See docstring of superclass
         index = []
+
+        # Resolve negative indices:
+        actual_indices = set(np.arange(len(atoms))[self.index])
+
         for new, old in slice2enlist(ind, len(atoms)):
-            if old in self.index:
+            if old in actual_indices:
                 index.append(new)
         if len(index) == 0:
             raise IndexError('All indices in FixAtoms not part of slice')
@@ -817,42 +821,41 @@ class FixCartesian(IndexedConstraint):
                 'kwargs': {'a': self.index, 'mask': (~self.mask).tolist()}}
 
 
-class FixScaled(FixConstraintSingle):
+class FixScaled(IndexedConstraint):
     'Fix an atom index *a* in the directions of the unit vectors.'
 
-    def __init__(self, cell, a, mask=(1, 1, 1)):
-        self.cell = np.asarray(cell)
-        self.a = a
+    def __init__(self, a, mask=(1, 1, 1), cell=None):
+        # XXX The unused cell keyword is there for compatibility
+        # with old trajectory files.
+        super().__init__(a)
         self.mask = np.array(mask, bool)
 
     def get_removed_dof(self, atoms):
         return self.mask.sum()
 
     def adjust_positions(self, atoms, new):
-        scaled_old = atoms.cell.scaled_positions(atoms.positions)
-        scaled_new = atoms.cell.scaled_positions(new)
-        for n in range(3):
-            if self.mask[n]:
-                scaled_new[self.a, n] = scaled_old[self.a, n]
-        new[self.a] = atoms.cell.cartesian_positions(scaled_new)[self.a]
+        cell = atoms.cell
+        scaled_old = cell.scaled_positions(atoms.positions[self.index])
+        scaled_new = cell.scaled_positions(new[self.index])
+        scaled_new[:, self.mask] = scaled_old[:, self.mask]
+        new[self.index] = cell.cartesian_positions(scaled_new)
 
     def adjust_forces(self, atoms, forces):
-        # Forces are covarient to the coordinate transformation,
+        # Forces are covariant to the coordinate transformation,
         # use the inverse transformations
-        scaled_forces = atoms.cell.cartesian_positions(forces)
-        scaled_forces[self.a] *= -(self.mask - 1)
-        forces[self.a] = atoms.cell.scaled_positions(scaled_forces)[self.a]
+        cell = atoms.cell
+        scaled_forces = cell.cartesian_positions(forces[self.index])
+        scaled_forces *= -(self.mask - 1)
+        forces[self.index] = cell.scaled_positions(scaled_forces)
 
     def todict(self):
         return {'name': 'FixScaled',
                 'kwargs': {'a': self.a,
-                           'cell': self.cell.tolist(),
                            'mask': self.mask.tolist()}}
 
     def __repr__(self):
-        return 'FixScaled(%s, %d, %s)' % (repr(self.cell),
-                                          self.a,
-                                          repr(self.mask))
+        return 'FixScaled(%d, %s)' % (self.a,
+                                      repr(self.mask))
 
 
 # TODO: Better interface might be to use dictionaries in place of very
