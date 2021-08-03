@@ -80,17 +80,6 @@ class FixConstraint:
     def copy(self):
         return dict2constraint(self.todict().copy())
 
-    def contain_duplicates(self, indices):
-        """Check for duplicate indices"""
-        return len(set(list(indices))) < len(indices)
-
-    def check_indices_dimension(self, indices):
-        if np.ndim(indices) > 1:
-            raise ValueError(
-                'indices has wrong amount of dimensions. '
-                f'Got {np.ndim(indices)}, expected ndim < 1'
-            )
-
 
 class FixConstraintSingle(FixConstraint):
     """Base class for classes that fix a single atom."""
@@ -115,32 +104,17 @@ class FixConstraintSingle(FixConstraint):
         return [self.a]
 
 
-class FixAtoms(FixConstraint):
-    """Constraint object for fixing some chosen atoms."""
-
+class IndexedConstraint(FixConstraint):
     def __init__(self, indices=None, mask=None):
         """Constrain chosen atoms.
 
         Parameters
         ----------
-        indices : list of int
+        indices : sequence of int
            Indices for those atoms that should be constrained.
-        mask : list of bool
+        mask : sequence of bool
            One boolean per atom indicating if the atom should be
            constrained or not.
-
-        Examples
-        --------
-        Fix all Copper atoms:
-
-        >>> mask = [s == 'Cu' for s in atoms.get_chemical_symbols()]
-        >>> c = FixAtoms(mask=mask)
-        >>> atoms.set_constraint(c)
-
-        Fix all atoms with z-coordinate less than 1.0 Angstrom:
-
-        >>> c = FixAtoms(mask=atoms.positions[:, 2] < 1.0)
-        >>> atoms.set_constraint(c)
         """
 
         if indices is None and mask is None:
@@ -160,14 +134,16 @@ class FixAtoms(FixConstraint):
 
         self.check_indices_dimension(self.index)
 
-    def get_removed_dof(self, atoms):
-        return 3 * len(self.index)
+    def contain_duplicates(self, indices):
+        """Check for duplicate indices"""
+        return len(set(indices)) < len(indices)
 
-    def adjust_positions(self, atoms, new):
-        new[self.index] = atoms.positions[self.index]
-
-    def adjust_forces(self, atoms, forces):
-        forces[self.index] = 0.0
+    def check_indices_dimension(self, indices):
+        if np.ndim(indices) > 1:
+            raise ValueError(
+                'indices has wrong amount of dimensions. '
+                f'Got {np.ndim(indices)}, expected ndim < 1'
+            )
 
     def index_shuffle(self, atoms, ind):
         # See docstring of superclass
@@ -181,13 +157,6 @@ class FixAtoms(FixConstraint):
 
     def get_indices(self):
         return self.index
-
-    def __repr__(self):
-        return 'FixAtoms(indices=%s)' % ints2string(self.index)
-
-    def todict(self):
-        return {'name': 'FixAtoms',
-                'kwargs': {'indices': self.index.tolist()}}
 
     def repeat(self, m, n):
         i0 = 0
@@ -219,6 +188,42 @@ class FixAtoms(FixConstraint):
         if len(self.index) == 0:
             return None
         return self
+
+
+class FixAtoms(IndexedConstraint):
+    """Fix chosen atoms.
+
+    Examples
+    --------
+    Fix all Copper atoms:
+
+    >>> mask = (atoms.symbols == 'Cu')
+    >>> c = FixAtoms(mask=mask)
+    >>> atoms.set_constraint(c)
+
+    Fix all atoms with z-coordinate less than 1.0 Angstrom:
+
+    >>> c = FixAtoms(mask=atoms.positions[:, 2] < 1.0)
+    >>> atoms.set_constraint(c)
+    """
+
+    def get_removed_dof(self, atoms):
+        return 3 * len(self.index)
+
+    def adjust_positions(self, atoms, new):
+        new[self.index] = atoms.positions[self.index]
+
+    def adjust_forces(self, atoms, forces):
+        forces[self.index] = 0.0
+
+    def __repr__(self):
+        clsname = type(self).__name__
+        indices = ints2string(self.index)
+        return f'{clsname}(indices={indices})'
+
+    def todict(self):
+        return {'name': 'FixAtoms',
+                'kwargs': {'indices': self.index.tolist()}}
 
 
 class FixCom(FixConstraint):
