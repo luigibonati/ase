@@ -9,13 +9,15 @@ def atoms():
 
 
 def test_fixcartesian_misc():
-    mask = np.array([0, 1, 0], bool)
+    mask = np.array([1, 1, 0], bool)
     constraint = FixCartesian(3, mask=mask)
     assert '3' in str(constraint)
     dct = constraint.todict()['kwargs']
 
     assert dct['a'] == 3
     assert all(dct['mask'] == mask)
+
+    assert constraint.get_removed_dof(None) == 2  # XXX atoms
 
 
 def test_fixcartesian_adjust(atoms):
