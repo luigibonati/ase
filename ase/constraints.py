@@ -117,33 +117,27 @@ class IndexedConstraint(FixConstraint):
            constrained or not.
         """
 
-        if indices is None and mask is None:
-            raise ValueError('Use "indices" or "mask".')
-        if indices is not None and mask is not None:
-            raise ValueError('Use only one of "indices" and "mask".')
-
         if mask is not None:
-            indices = np.arange(len(mask))[np.asarray(mask, bool)]
-        else:
-            if self.contain_duplicates(indices):
-                raise ValueError(
-                    'FixAtoms: The indices array contained duplicates. '
-                    'Perhaps you wanted to specify a mask instead, but '
-                    'forgot the mask= keyword.')
-        self.index = np.atleast_1d(indices)
-
-        self.check_indices_dimension(self.index)
-
-    def contain_duplicates(self, indices):
-        """Check for duplicate indices"""
-        return len(set(indices)) < len(indices)
-
-    def check_indices_dimension(self, indices):
+            if indices is not None:
+                raise ValueError('Use only one of "indices" and "mask".')
+            indices = mask
+        indices = np.atleast_1d(indices)
         if np.ndim(indices) > 1:
+            raise ValueError('indices has wrong amount of dimensions. '
+                             f'Got {np.ndim(indices)}, expected ndim <= 1')
+
+        if indices.dtype == bool:
+            indices = np.arange(len(indices))[indices]
+        elif indices.dtype != int:
+            raise ValueError('Indices must be integers or boolean mask.')
+
+        if len(set(indices)) < len(indices):
             raise ValueError(
-                'indices has wrong amount of dimensions. '
-                f'Got {np.ndim(indices)}, expected ndim < 1'
-            )
+                'The indices array contains duplicates. '
+                'Perhaps you want to specify a mask instead, but '
+                'forgot the mask= keyword.')
+
+        self.index = indices
 
     def index_shuffle(self, atoms, ind):
         # See docstring of superclass
@@ -175,9 +169,9 @@ class IndexedConstraint(FixConstraint):
         return self
 
     def delete_atoms(self, indices, natoms):
-        """Removes atom number ind from the index array, if present.
+        """Removes atoms from the index array, if present.
 
-        Required for removing atoms with existing FixAtoms constraints.
+        Required for removing atoms with existing constraint.
         """
 
         i = np.zeros(natoms, int) - 1
@@ -667,28 +661,15 @@ class FixedMode(FixConstraint):
         return 'FixedMode(%s)' % self.mode.tolist()
 
 
-def _sanitize_inputs(indices, direction):
-    """
-    Private function to sanitize the inputs for FixedLine and FixedPlane
-    """
-    indices = np.atleast_1d(indices)
-    FixConstraint().check_indices_dimension(indices)
-
-    if FixConstraint().contain_duplicates(indices):
-        raise ValueError(
-            'The indices array contained duplicates.'
-        )
-
+def _sanitize_inputs(direction):
     if len(direction) != 3:
         raise ValueError("len(direction) is {len(direction)}. Has to be 3")
-    direction = np.asarray(direction) / sqrt(np.dot(direction, direction))
 
-    stack_dir = np.stack((direction,) * len(indices))
-
-    return indices, stack_dir, direction
+    direction = np.asarray(direction) / np.linalg.norm(direction)
+    return direction
 
 
-class FixedPlane(FixConstraint):
+class FixedPlane(IndexedConstraint):
     """
     Constraint object for fixing chosen atoms to only move in a plane.
 
@@ -721,24 +702,21 @@ class FixedPlane(FixConstraint):
         >>> c = FixedPlane(indices=0, direction=[0, 0, 1])
         >>> atoms.set_constraint(c)
         """
-
-        indices, stack_dir, direction = _sanitize_inputs(indices, direction)
-        self.index = indices
-        self.stack_dir = stack_dir
+        super().__init__(indices=indices)
+        direction = _sanitize_inputs(direction)
         self.dir = direction
 
     def adjust_positions(self, atoms, newpositions):
         step = newpositions[self.index] - atoms.positions[self.index]
         x = np.dot(step, self.dir)
-        newpositions[self.index] -= self.stack_dir * x[:, None]
+        newpositions[self.index] -= self.dir[None, :] * x[:, None]
 
     def adjust_forces(self, atoms, forces):
-        forces[self.index] -= self.stack_dir * np.dot(
-            forces[self.index], self.dir
-        )[:, None]
+        projection = forces[self.index] @ self.dir[:, None]
+        forces[self.index] -= self.dir[None, :] * projection
 
     def get_removed_dof(self, atoms):
-        return 1 * len(self.index)
+        return len(self.index)
 
     def todict(self):
         return {
@@ -750,7 +728,7 @@ class FixedPlane(FixConstraint):
         return f'FixedPlane(indices={self.index}, {self.dir.tolist()})'
 
 
-class FixedLine(FixConstraint):
+class FixedLine(IndexedConstraint):
     """
     Constrain an atom index or a list of atom indices to move on a line only.
 
@@ -782,21 +760,18 @@ class FixedLine(FixConstraint):
         >>> c = FixedLine(indices=0, direction=[0, 0, 1])
         >>> atoms.set_constraint(c)
         """
-        indices, stack_dir, direction = _sanitize_inputs(indices, direction)
-        self.index = indices
-        self.stack_dir = stack_dir
-        self.dir = direction
+        super().__init__(indices)
+        self.dir = _sanitize_inputs(direction)
 
     def adjust_positions(self, atoms, newpositions):
         step = newpositions[self.index] - atoms.positions[self.index]
-        x = np.dot(step, self.dir)
+        projection = step @ self.dir
         newpositions[self.index] = atoms.positions[self.index] + \
-            self.stack_dir * x[:, None]
+            self.dir[None, :] * projection[:, None]
 
     def adjust_forces(self, atoms, forces):
-        forces[self.index] = self.stack_dir * np.dot(
-            forces[self.index], self.dir
-        )[:, None]
+        projection = forces[self.index] @ self.dir
+        forces[self.index] = self.dir[None, :] * projection[:, None]
 
     def get_removed_dof(self, atoms):
         return 2 * len(self.index)
