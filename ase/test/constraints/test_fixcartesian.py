@@ -51,3 +51,7 @@ def test_fixcartesian_adjust(atoms):
     newforces_expected = oldforces.copy()
     newforces_expected[fixmask] = 0.0
     assert newforces == pytest.approx(newforces_expected, abs=1e-14)
+
+    nzeros = sum(abs(newforces_expected.ravel()) < 1e-14)
+    ndof = constraint.get_removed_dof(atoms)
+    assert nzeros == ndof == sum(cart_mask) * len(atom_index)
