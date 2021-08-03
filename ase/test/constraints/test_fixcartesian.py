@@ -10,25 +10,28 @@ def atoms():
 
 def test_fixcartesian_misc():
     mask = np.array([1, 1, 0], bool)
-    constraint = FixCartesian(3, mask=mask)
+    indices = [2, 3]
+    constraint = FixCartesian(indices, mask=mask)
     assert '3' in str(constraint)
     dct = constraint.todict()['kwargs']
 
-    assert dct['a'] == 3
+    assert all(dct['a'] == indices)
     assert all(dct['mask'] == mask)
 
-    assert constraint.get_removed_dof(None) == 2  # XXX atoms
+    # 2 atoms x 2 directions == 4 DOFs constrained
+    assert constraint.get_removed_dof(atoms=None) == 4  # XXX atoms
 
 
 def test_fixcartesian_adjust(atoms):
+    np.set_printoptions(suppress=1, precision=2)
     cart_mask = np.array([False, True, True])
-    atom_index = 3
+    atom_index = [2, 3, 5, 6]  # Arbitrary subset of atoms
 
     fixmask = np.zeros((len(atoms), 3), bool)
-    fixmask[atom_index, cart_mask] = True
+    fixmask[atom_index] = cart_mask[None, :]
 
     oldpos = atoms.get_positions()
-    constraint = FixCartesian(3, mask=cart_mask)
+    constraint = FixCartesian(atom_index, mask=cart_mask)
 
     rng = np.random.RandomState(42)
     deviation = 1.0 + rng.rand(len(atoms), 3)
