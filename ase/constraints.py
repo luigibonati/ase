@@ -12,7 +12,7 @@ from ase.stress import (full_3x3_to_voigt_6_stress,
 
 __all__ = [
     'FixCartesian', 'FixBondLength', 'FixedMode',
-    'FixConstraintSingle', 'FixAtoms', 'UnitCellFilter', 'ExpCellFilter',
+    'FixAtoms', 'UnitCellFilter', 'ExpCellFilter',
     'FixScaled', 'StrainFilter', 'FixCom', 'FixedPlane', 'Filter',
     'FixConstraint', 'FixedLine', 'FixBondLengths', 'FixLinearTriatomic',
     'FixInternals', 'Hookean', 'ExternalForce', 'MirrorForce', 'MirrorTorque',
@@ -78,29 +78,6 @@ class FixConstraint:
 
     def copy(self):
         return dict2constraint(self.todict().copy())
-
-
-class FixConstraintSingle(FixConstraint):
-    """Base class for classes that fix a single atom."""
-
-    def __init__(self, a):
-        self.a = a
-
-    def index_shuffle(self, atoms, ind):
-        """The atom index must be stored as self.a."""
-        newa = None   # Signal error
-        if self.a < 0:
-            self.a += len(atoms)
-        for new, old in slice2enlist(ind, len(atoms)):
-            if old == self.a:
-                newa = new
-                break
-        if newa is None:
-            raise IndexError('Constraint not part of slice')
-        self.a = newa
-
-    def get_indices(self):
-        return [self.a]
 
 
 class IndexedConstraint(FixConstraint):
