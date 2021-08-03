@@ -3,6 +3,7 @@ import numpy as np
 from ase.constraints import FixCartesian
 from ase.build import molecule
 
+
 @pytest.fixture
 def atoms():
     return molecule('CH3CH2OH')
