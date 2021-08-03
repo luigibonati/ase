@@ -763,15 +763,19 @@ class FixedLine(IndexedConstraint):
         super().__init__(indices)
         self.dir = _sanitize_inputs(direction)
 
+    def _projection(self, vectors):
+        dotprods = vectors @ self.dir
+        projection = self.dir[None, :] * dotprods[:, None]
+        assert projection.shape == (len(self.index), 3)
+        return projection
+
     def adjust_positions(self, atoms, newpositions):
         step = newpositions[self.index] - atoms.positions[self.index]
-        projection = step @ self.dir
-        newpositions[self.index] = atoms.positions[self.index] + \
-            self.dir[None, :] * projection[:, None]
+        projection = self._projection(step)
+        newpositions[self.index] = atoms.positions[self.index] + projection
 
     def adjust_forces(self, atoms, forces):
-        projection = forces[self.index] @ self.dir
-        forces[self.index] = self.dir[None, :] * projection[:, None]
+        forces[self.index] = self._projection(forces[self.index])
 
     def get_removed_dof(self, atoms):
         return 2 * len(self.index)
