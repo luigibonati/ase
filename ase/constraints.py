@@ -148,9 +148,10 @@ class IndexedConstraint(FixConstraint):
         if len(index) == 0:
             raise IndexError('All indices in FixAtoms not part of slice')
         self.index = np.asarray(index, int)
+        # XXX make immutable
 
     def get_indices(self):
-        return self.index
+        return self.index.copy()
 
     def repeat(self, m, n):
         i0 = 0
@@ -166,6 +167,7 @@ class IndexedConstraint(FixConstraint):
                     i0 = i1
                     natoms += n
         self.index = np.asarray(index_new, int)
+        # XXX make immutable
         return self
 
     def delete_atoms(self, indices, natoms):
@@ -179,6 +181,7 @@ class IndexedConstraint(FixConstraint):
         i[new] = np.arange(len(new))
         index = i[self.index]
         self.index = index[index >= 0]
+        # XXX make immutable
         if len(self.index) == 0:
             return None
         return self
