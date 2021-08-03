@@ -661,8 +661,8 @@ class FixedMode(FixConstraint):
         return 'FixedMode(%s)' % self.mode.tolist()
 
 
-def _sanitize_inputs(direction):
-    if len(direction) != 3:
+def _normalize(direction):
+    if np.shape(direction) != (3,):
         raise ValueError("len(direction) is {len(direction)}. Has to be 3")
 
     direction = np.asarray(direction) / np.linalg.norm(direction)
@@ -703,7 +703,7 @@ class FixedPlane(IndexedConstraint):
         >>> atoms.set_constraint(c)
         """
         super().__init__(indices=indices)
-        self.dir = _sanitize_inputs(direction)
+        self.dir = _normalize(direction)
 
     def adjust_positions(self, atoms, newpositions):
         step = newpositions[self.index] - atoms.positions[self.index]
@@ -764,7 +764,7 @@ class FixedLine(IndexedConstraint):
         >>> atoms.set_constraint(c)
         """
         super().__init__(indices)
-        self.dir = _sanitize_inputs(direction)
+        self.dir = _normalize(direction)
 
     def adjust_positions(self, atoms, newpositions):
         step = newpositions[self.index] - atoms.positions[self.index]
