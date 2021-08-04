@@ -811,7 +811,7 @@ class FixScaled(IndexedConstraint):
         self.mask = np.array(mask, bool)
 
     def get_removed_dof(self, atoms):
-        return self.mask.sum() * len(self.indices)
+        return self.mask.sum() * len(self.index)
 
     def adjust_positions(self, atoms, new):
         cell = atoms.cell
@@ -834,8 +834,7 @@ class FixScaled(IndexedConstraint):
                            'mask': self.mask.tolist()}}
 
     def __repr__(self):
-        return 'FixScaled(%d, %s)' % (self.index.tolist(),
-                                      repr(self.mask))
+        return 'FixScaled({}, {})'.format(self.index.tolist(), self.mask)
 
 
 # TODO: Better interface might be to use dictionaries in place of very
