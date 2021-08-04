@@ -12,7 +12,7 @@ from ase.stress import (full_3x3_to_voigt_6_stress,
 
 __all__ = [
     'FixCartesian', 'FixBondLength', 'FixedMode',
-    'FixConstraintSingle', 'FixAtoms', 'UnitCellFilter', 'ExpCellFilter',
+    'FixAtoms', 'UnitCellFilter', 'ExpCellFilter',
     'FixScaled', 'StrainFilter', 'FixCom', 'FixedPlane', 'Filter',
     'FixConstraint', 'FixedLine', 'FixBondLengths', 'FixLinearTriatomic',
     'FixInternals', 'Hookean', 'ExternalForce', 'MirrorForce', 'MirrorTorque',
@@ -80,29 +80,6 @@ class FixConstraint:
         return dict2constraint(self.todict().copy())
 
 
-class FixConstraintSingle(FixConstraint):
-    """Base class for classes that fix a single atom."""
-
-    def __init__(self, a):
-        self.a = a
-
-    def index_shuffle(self, atoms, ind):
-        """The atom index must be stored as self.a."""
-        newa = None   # Signal error
-        if self.a < 0:
-            self.a += len(atoms)
-        for new, old in slice2enlist(ind, len(atoms)):
-            if old == self.a:
-                newa = new
-                break
-        if newa is None:
-            raise IndexError('Constraint not part of slice')
-        self.a = newa
-
-    def get_indices(self):
-        return [self.a]
-
-
 class IndexedConstraint(FixConstraint):
     def __init__(self, indices=None, mask=None):
         """Constrain chosen atoms.
@@ -142,15 +119,20 @@ class IndexedConstraint(FixConstraint):
     def index_shuffle(self, atoms, ind):
         # See docstring of superclass
         index = []
+
+        # Resolve negative indices:
+        actual_indices = set(np.arange(len(atoms))[self.index])
+
         for new, old in slice2enlist(ind, len(atoms)):
-            if old in self.index:
+            if old in actual_indices:
                 index.append(new)
         if len(index) == 0:
             raise IndexError('All indices in FixAtoms not part of slice')
         self.index = np.asarray(index, int)
+        # XXX make immutable
 
     def get_indices(self):
-        return self.index
+        return self.index.copy()
 
     def repeat(self, m, n):
         i0 = 0
@@ -166,6 +148,7 @@ class IndexedConstraint(FixConstraint):
                     i0 = i1
                     natoms += n
         self.index = np.asarray(index_new, int)
+        # XXX make immutable
         return self
 
     def delete_atoms(self, indices, natoms):
@@ -179,6 +162,7 @@ class IndexedConstraint(FixConstraint):
         i[new] = np.arange(len(new))
         index = i[self.index]
         self.index = index[index >= 0]
+        # XXX make immutable
         if len(self.index) == 0:
             return None
         return self
@@ -661,8 +645,8 @@ class FixedMode(FixConstraint):
         return 'FixedMode(%s)' % self.mode.tolist()
 
 
-def _sanitize_inputs(direction):
-    if len(direction) != 3:
+def _normalize(direction):
+    if np.shape(direction) != (3,):
         raise ValueError("len(direction) is {len(direction)}. Has to be 3")
 
     direction = np.asarray(direction) / np.linalg.norm(direction)
@@ -703,7 +687,7 @@ class FixedPlane(IndexedConstraint):
         >>> atoms.set_constraint(c)
         """
         super().__init__(indices=indices)
-        self.dir = _sanitize_inputs(direction)
+        self.dir = _normalize(direction)
 
     def adjust_positions(self, atoms, newpositions):
         step = newpositions[self.index] - atoms.positions[self.index]
@@ -764,7 +748,7 @@ class FixedLine(IndexedConstraint):
         >>> atoms.set_constraint(c)
         """
         super().__init__(indices)
-        self.dir = _sanitize_inputs(direction)
+        self.dir = _normalize(direction)
 
     def adjust_positions(self, atoms, newpositions):
         step = newpositions[self.index] - atoms.positions[self.index]
@@ -787,69 +771,68 @@ class FixedLine(IndexedConstraint):
         }
 
 
-class FixCartesian(FixConstraintSingle):
+class FixCartesian(IndexedConstraint):
     'Fix an atom index *a* in the directions of the cartesian coordinates.'
 
     def __init__(self, a, mask=(1, 1, 1)):
-        self.a = a
+        super().__init__(indices=a)
         self.mask = ~np.asarray(mask, bool)
 
     def get_removed_dof(self, atoms):
-        return 3 - self.mask.sum()
+        return (3 - self.mask.sum()) * len(self.index)
 
     def adjust_positions(self, atoms, new):
-        step = new[self.a] - atoms.positions[self.a]
-        step *= self.mask
-        new[self.a] = atoms.positions[self.a] + step
+        step = new[self.index] - atoms.positions[self.index]
+        step *= self.mask[None, :]
+        new[self.index] = atoms.positions[self.index] + step
 
     def adjust_forces(self, atoms, forces):
-        forces[self.a] *= self.mask
+        forces[self.index] *= self.mask[None, :]
 
     def __repr__(self):
-        return 'FixCartesian(a={0}, mask={1})'.format(self.a,
-                                                      list(~self.mask))
+        return 'FixCartesian(indices={}, mask={})'.format(
+            self.index.tolist(), list(~self.mask))
 
     def todict(self):
         return {'name': 'FixCartesian',
-                'kwargs': {'a': self.a, 'mask': (~self.mask).tolist()}}
+                'kwargs': {'a': self.index, 'mask': (~self.mask).tolist()}}
 
 
-class FixScaled(FixConstraintSingle):
+class FixScaled(IndexedConstraint):
     'Fix an atom index *a* in the directions of the unit vectors.'
 
-    def __init__(self, cell, a, mask=(1, 1, 1)):
-        self.cell = np.asarray(cell)
-        self.a = a
+    def __init__(self, a, mask=(1, 1, 1), cell=None):
+        # XXX The unused cell keyword is there for compatibility
+        # with old trajectory files.
+        super().__init__(a)
         self.mask = np.array(mask, bool)
 
     def get_removed_dof(self, atoms):
         return self.mask.sum()
 
     def adjust_positions(self, atoms, new):
-        scaled_old = atoms.cell.scaled_positions(atoms.positions)
-        scaled_new = atoms.cell.scaled_positions(new)
-        for n in range(3):
-            if self.mask[n]:
-                scaled_new[self.a, n] = scaled_old[self.a, n]
-        new[self.a] = atoms.cell.cartesian_positions(scaled_new)[self.a]
+        cell = atoms.cell
+        scaled_old = cell.scaled_positions(atoms.positions[self.index])
+        scaled_new = cell.scaled_positions(new[self.index])
+        scaled_new[:, self.mask] = scaled_old[:, self.mask]
+        new[self.index] = cell.cartesian_positions(scaled_new)
 
     def adjust_forces(self, atoms, forces):
-        # Forces are covarient to the coordinate transformation,
+        # Forces are covariant to the coordinate transformation,
         # use the inverse transformations
-        scaled_forces = atoms.cell.cartesian_positions(forces)
-        scaled_forces[self.a] *= -(self.mask - 1)
-        forces[self.a] = atoms.cell.scaled_positions(scaled_forces)[self.a]
+        cell = atoms.cell
+        scaled_forces = cell.cartesian_positions(forces[self.index])
+        scaled_forces *= -(self.mask - 1)
+        forces[self.index] = cell.scaled_positions(scaled_forces)
 
     def todict(self):
         return {'name': 'FixScaled',
                 'kwargs': {'a': self.a,
-                           'cell': self.cell.tolist(),
                            'mask': self.mask.tolist()}}
 
     def __repr__(self):
-        return 'FixScaled(%s, %d, %s)' % (repr(self.cell),
-                                          self.a,
-                                          repr(self.mask))
+        return 'FixScaled(%d, %s)' % (self.a,
+                                      repr(self.mask))
 
 
 # TODO: Better interface might be to use dictionaries in place of very

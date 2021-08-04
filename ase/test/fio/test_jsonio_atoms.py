@@ -53,5 +53,5 @@ def test_jsonio_cartesian():
     c1 = atoms.constraints
     c2 = new_atoms.constraints
     assert len(c1) == len(c2) == 1
-    assert np.array_equal(c1[0].a, c2[0].a)
+    assert np.array_equal(c1[0].index, c2[0].index)
     assert np.array_equal(c1[0].mask, c2[0].mask)
