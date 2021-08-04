@@ -702,7 +702,8 @@ class FixedPlane(IndexedConstraint):
     def todict(self):
         return {
             'name': 'FixedPlane',
-            'kwargs': {'indices': self.index, 'direction': self.dir.tolist()}
+            'kwargs': {'indices': self.index.tolist(),
+                       'direction': self.dir.tolist()}
         }
 
     def __repr__(self):
@@ -767,7 +768,8 @@ class FixedLine(IndexedConstraint):
     def todict(self):
         return {
             'name': 'FixedLine',
-            'kwargs': {'indices': self.index, 'direction': self.dir.tolist()}
+            'kwargs': {'indices': self.index.tolist(),
+                       'direction': self.dir.tolist()}
         }
 
 
@@ -795,7 +797,8 @@ class FixCartesian(IndexedConstraint):
 
     def todict(self):
         return {'name': 'FixCartesian',
-                'kwargs': {'a': self.index, 'mask': (~self.mask).tolist()}}
+                'kwargs': {'a': self.index.tolist(),
+                           'mask': (~self.mask).tolist()}}
 
 
 class FixScaled(IndexedConstraint):
@@ -808,7 +811,7 @@ class FixScaled(IndexedConstraint):
         self.mask = np.array(mask, bool)
 
     def get_removed_dof(self, atoms):
-        return self.mask.sum()
+        return self.mask.sum() * len(self.indices)
 
     def adjust_positions(self, atoms, new):
         cell = atoms.cell
@@ -827,11 +830,11 @@ class FixScaled(IndexedConstraint):
 
     def todict(self):
         return {'name': 'FixScaled',
-                'kwargs': {'a': self.a,
+                'kwargs': {'a': self.index.tolist(),
                            'mask': self.mask.tolist()}}
 
     def __repr__(self):
-        return 'FixScaled(%d, %s)' % (self.a,
+        return 'FixScaled(%d, %s)' % (self.index.tolist(),
                                       repr(self.mask))
 
 
