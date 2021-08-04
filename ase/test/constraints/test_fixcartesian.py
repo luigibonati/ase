@@ -16,7 +16,7 @@ def test_fixcartesian_misc():
     assert '3' in str(constraint)
     dct = constraint.todict()['kwargs']
 
-    assert all(dct['a'] == indices)
+    assert dct['a'] == indices
     assert all(dct['mask'] == mask)
 
     # 2 atoms x 2 directions == 4 DOFs constrained
