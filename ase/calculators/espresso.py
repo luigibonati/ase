@@ -1,14 +1,19 @@
 """Quantum ESPRESSO Calculator
 
-export ASE_ESPRESSO_COMMAND="/path/to/pw.x -in PREFIX.pwi > PREFIX.pwo"
-
 Run pw.x jobs.
 """
 
 
+import os
 from ase.calculators.genericfileio import (GenericFileIOCalculator,
                                            get_espresso_template,
                                            read_stdout)
+
+
+compatibility_msg = (
+    'Espresso calculator is being restructured.  Please use e.g. '
+    'Espresso(profile=EspressoProfile(argv=[\'mpiexec\', \'pw.x\'])) '
+    'to customize command-line arguments.')
 
 
 # XXX We should find a way to display this warning.
@@ -50,7 +55,10 @@ class EspressoProfile:
 class Espresso(GenericFileIOCalculator):
     implemented_properties = ['energy', 'forces', 'stress', 'magmoms']
 
-    def __init__(self, profile=None, **kwargs):
+    def __init__(self, *, profile=None,
+                 command=GenericFileIOCalculator._deprecated,
+                 label=GenericFileIOCalculator._deprecated,
+                 **kwargs):
         """
         All options for pw.x are copied verbatim to the input file, and put
         into the correct section. Use ``input_data`` for parameters that are
@@ -124,6 +132,19 @@ class Espresso(GenericFileIOCalculator):
               >>> bs.plot()
 
         """
+
+        if command is not self._deprecated:
+            raise RuntimeError(compatibility_msg)
+
+        if label is not self._deprecated:
+            import warnings
+            warnings.warn('Ignoring label, please use directory instead',
+                          FutureWarning)
+
+        if 'ASE_ESPRESSO_COMMAND' in os.environ and profile is None:
+            import warnings
+            warnings.warn(compatibility_msg, FutureWarning)
+
         template = get_espresso_template()
         if profile is None:
             profile = EspressoProfile(argv=['pw.x'])

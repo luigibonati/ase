@@ -1,6 +1,6 @@
 import pytest
 from ase.build import bulk
-from ase.calculators.espresso import EspressoProfile
+from ase.calculators.espresso import EspressoProfile, Espresso
 
 
 def test_version():
@@ -37,3 +37,13 @@ def test_smearing(espresso_factory):
     atoms.calc = espresso_factory.calc(input_data=input_data)
     atoms.get_potential_energy()
     verify(atoms.calc)
+
+
+def test_warn_label():
+    with pytest.warns(FutureWarning):
+        Espresso(label='hello')
+
+
+def test_error_command():
+    with pytest.raises(RuntimeError):
+        Espresso(command='hello')
