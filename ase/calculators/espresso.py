@@ -20,12 +20,25 @@ warn_template = 'Property "%s" is None. Typically, this is because the ' \
                 'Espresso at a "low" verbosity level (the default). ' \
                 'Please try running Quantum Espresso with "high" verbosity.'
 
+class EspressoProfile:
+    def __init__(self, argv):
+        self.argv = list(argv)
+
+    def run(self, directory, inputfile, outputfile):
+        from subprocess import check_call
+        argv = list(self.argv)
+        argv += ['-in', str(inputfile)]
+        with open(outputfile, 'wb') as fd:
+            check_call(argv, stdout=fd, cwd=directory)
+
 
 class Espresso1(GenericFileIOCalculator):
     implemented_properties = ['energy', 'forces', 'stress', 'magmoms']
 
-    def __init__(self, profile, **kwargs):
+    def __init__(self, profile=None, **kwargs):
         template = get_espresso_template()
+        if profile is None:
+            profile = EspressoProfile(argv=['pw.x'])
         super().__init__(profile=profile, template=template, **kwargs)
 
 
