@@ -6,19 +6,15 @@ Run pw.x jobs.
 """
 
 
-import warnings
-from ase import io
-from ase.calculators.calculator import FileIOCalculator, PropertyNotPresent
 from ase.calculators.genericfileio import (GenericFileIOCalculator,
                                            get_espresso_template)
 
-error_template = 'Property "%s" not available. Please try running Quantum\n' \
-                 'Espresso first by calling Atoms.get_potential_energy().'
 
-warn_template = 'Property "%s" is None. Typically, this is because the ' \
-                'required information has not been printed by Quantum ' \
-                'Espresso at a "low" verbosity level (the default). ' \
-                'Please try running Quantum Espresso with "high" verbosity.'
+# XXX We should find a way to display this warning.
+# warn_template = 'Property "%s" is None. Typically, this is because the ' \
+#                 'required information has not been printed by Quantum ' \
+#                 'Espresso at a "low" verbosity level (the default). ' \
+#                 'Please try running Quantum Espresso with "high" verbosity.'
 
 
 class EspressoProfile:
@@ -36,7 +32,7 @@ class EspressoProfile:
         template = get_espresso_template()
         # It makes sense to know the template for this kind of choices,
         # but is there a better way?
-        return self.argv + ['--ipi', f'{socket}:UNIX' ,'-in',
+        return self.argv + ['--ipi', f'{socket}:UNIX', '-in',
                             template.input_file]
 
 

@@ -249,5 +249,6 @@ def main():
     atoms.get_stress()
     write(outputfile, atoms)
 
+
 if __name__ == '__main__':
     main()

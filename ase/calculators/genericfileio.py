@@ -43,7 +43,6 @@ def get_espresso_template():
     return CalculatorTemplate(
         name='espresso',
         implemented_properties=Espresso.implemented_properties,
-        # command='pw.x -in {} > {}'.format(infile, outfile),
         input_file=infile,
         output_file=outfile,
         input_format='espresso-in',
@@ -60,8 +59,9 @@ def get_emt_template():
         command=('{} -m ase.calculators.emt {} {}'
                  .format(sys.executable, infile, outfile)),
         input_file=infile,
+        output_file=outfile,
         input_format='traj',
-        reader=SingleFileReader(outfile, 'traj'))
+        reader=SingleFileReader('traj'))
 
 
 def new_espresso(**kwargs):

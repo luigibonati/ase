@@ -935,7 +935,6 @@ class FileIOCalculator(Calculator):
                                                   path, errorcode))
             raise CalculationFailed(msg)
 
-
     def write_input(self, atoms, properties=None, system_changes=None):
         """Write input file(s).
 
