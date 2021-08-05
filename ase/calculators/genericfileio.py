@@ -109,7 +109,14 @@ class GenericFileIOCalculator(FileIOCalculator):
 
     @property
     def results(self):
+        if self.cache is None:
+            return {}
         return self.cache.results
+
+    @results.setter
+    def results(self, value):
+        assert value == {}
+        self.cache = None
 
     def get_fermi_level(self):
         return self.cache.get_fermi_level()
