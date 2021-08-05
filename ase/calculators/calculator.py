@@ -903,6 +903,10 @@ class FileIOCalculator(Calculator):
                   system_changes=all_changes):
         Calculator.calculate(self, atoms, properties, system_changes)
         self.write_input(self.atoms, properties, system_changes)
+        self.execute()
+        self.read_results()
+
+    def execute(self):
         if self.command is None:
             raise CalculatorSetupError(
                 'Please set ${} environment variable '
@@ -930,8 +934,6 @@ class FileIOCalculator(Calculator):
                    '{} with error code {}'.format(self.name, command,
                                                   path, errorcode))
             raise CalculationFailed(msg)
-
-        self.read_results()
 
     def write_input(self, atoms, properties=None, system_changes=None):
         """Write input file(s).

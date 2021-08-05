@@ -237,3 +237,18 @@ class EMT(Calculator):
         self.forces[a1] -= f
         self.forces[a2] += f
         self.stress += np.outer(f, d)
+
+
+def main():
+    import sys
+    from ase.io import read, write
+    inputfile = sys.argv[1]
+    outputfile = sys.argv[2]
+    atoms = read(inputfile)
+    atoms.calc = EMT()
+    atoms.get_stress()
+    write(outputfile, atoms)
+
+
+if __name__ == '__main__':
+    main()

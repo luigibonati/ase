@@ -8,6 +8,7 @@ import pytest
 
 from ase.calculators.calculator import (names as calculator_names,
                                         get_calculator_class)
+from ase.calculators.genericfileio import read_stdout
 
 
 class NotInstalled(Exception):
@@ -222,24 +223,6 @@ class DFTD3Factory:
         return cls(config.executables['dftd3'])
 
 
-def read_stdout(args, createfile=None):
-    import tempfile
-    from subprocess import Popen, PIPE
-    with tempfile.TemporaryDirectory() as directory:
-        if createfile is not None:
-            path = Path(directory) / createfile
-            path.touch()
-        proc = Popen(args,
-                     stdout=PIPE,
-                     stderr=PIPE,
-                     stdin=PIPE,
-                     cwd=directory,
-                     encoding='ascii')
-        stdout, _ = proc.communicate()
-        # Exit code will be != 0 because there isn't an input file
-    return stdout
-
-
 @factory('elk')
 class ElkFactory:
     def __init__(self, executable, species_dir):
@@ -271,15 +254,16 @@ class EspressoFactory:
         from ase.units import Ry
         return dict(ecutwfc=300 / Ry)
 
+    def _profile(self):
+        from ase.calculators.espresso import EspressoProfile
+        return EspressoProfile([self.executable])
+
     def version(self):
-        stdout = read_stdout([self.executable])
-        match = re.match(r'\s*Program PWSCF\s*(\S+)', stdout, re.M)
-        assert match is not None
-        return match.group(1)
+        self._profile().version()
 
     def calc(self, **kwargs):
         from ase.calculators.espresso import Espresso
-        command = '{} -in PREFIX.pwi > PREFIX.pwo'.format(self.executable)
+
         pseudopotentials = {}
         for path in self.pseudo_dir.glob('*.UPF'):
             fname = path.name
@@ -289,7 +273,7 @@ class EspressoFactory:
 
         kw = self._base_kw()
         kw.update(kwargs)
-        return Espresso(command=command,
+        return Espresso(profile=self._profile(),
                         pseudo_dir=str(self.pseudo_dir),
                         pseudopotentials=pseudopotentials,
                         **kw)
