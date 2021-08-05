@@ -20,6 +20,7 @@ warn_template = 'Property "%s" is None. Typically, this is because the ' \
                 'Espresso at a "low" verbosity level (the default). ' \
                 'Please try running Quantum Espresso with "high" verbosity.'
 
+
 class EspressoProfile:
     def __init__(self, argv):
         self.argv = list(argv)
@@ -30,6 +31,13 @@ class EspressoProfile:
         argv += ['-in', str(inputfile)]
         with open(outputfile, 'wb') as fd:
             check_call(argv, stdout=fd, cwd=directory)
+
+    def socketio_argv_unix(self, socket):
+        template = get_espresso_template()
+        # It makes sense to know the template for this kind of choices,
+        # but is there a better way?
+        return self.argv + ['--ipi', f'{socket}:UNIX' ,'-in',
+                            template.input_file]
 
 
 class Espresso1(GenericFileIOCalculator):
