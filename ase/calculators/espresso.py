@@ -7,7 +7,8 @@ Run pw.x jobs.
 
 
 from ase.calculators.genericfileio import (GenericFileIOCalculator,
-                                           get_espresso_template)
+                                           get_espresso_template,
+                                           read_stdout)
 
 
 # XXX We should find a way to display this warning.
@@ -19,12 +20,22 @@ from ase.calculators.genericfileio import (GenericFileIOCalculator,
 
 class EspressoProfile:
     def __init__(self, argv):
-        self.argv = list(argv)
+        self.argv = tuple(argv)
+
+    @staticmethod
+    def parse_version(stdout):
+        import re
+        match = re.match(r'\s*Program PWSCF\s*v\.(\S+)', stdout, re.M)
+        assert match is not None
+        return match.group(1)
+
+    def version(self):
+        stdout = read_stdout(self.argv)
+        return self.parse_version(stdout)
 
     def run(self, directory, inputfile, outputfile):
         from subprocess import check_call
-        argv = list(self.argv)
-        argv += ['-in', str(inputfile)]
+        argv = list(self.argv) + ['-in', str(inputfile)]
         with open(outputfile, 'wb') as fd:
             check_call(argv, stdout=fd, cwd=directory)
 
@@ -32,8 +43,8 @@ class EspressoProfile:
         template = get_espresso_template()
         # It makes sense to know the template for this kind of choices,
         # but is there a better way?
-        return self.argv + ['--ipi', f'{socket}:UNIX', '-in',
-                            template.input_file]
+        return list(self.argv) + ['--ipi', f'{socket}:UNIX', '-in',
+                                  template.input_file]
 
 
 class Espresso(GenericFileIOCalculator):
