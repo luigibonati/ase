@@ -9,7 +9,8 @@ Run pw.x jobs.
 import warnings
 from ase import io
 from ase.calculators.calculator import FileIOCalculator, PropertyNotPresent
-
+from ase.calculators.genericfileio import (GenericFileIOCalculator,
+                                           get_espresso_template)
 
 error_template = 'Property "%s" not available. Please try running Quantum\n' \
                  'Espresso first by calling Atoms.get_potential_energy().'
@@ -20,9 +21,15 @@ warn_template = 'Property "%s" is None. Typically, this is because the ' \
                 'Please try running Quantum Espresso with "high" verbosity.'
 
 
+class Espresso1(GenericFileIOCalculator):
+    implemented_properties = ['energy', 'forces', 'stress', 'magmoms']
+
+    def __init__(self, profile, **kwargs):
+        template = get_espresso_template()
+        super().__init__(profile=profile, template=template, **kwargs)
+
+
 class Espresso(FileIOCalculator):
-    """
-    """
     implemented_properties = ['energy', 'forces', 'stress', 'magmoms']
     command = 'pw.x -in PREFIX.pwi > PREFIX.pwo'
     discard_results_on_any_change = True

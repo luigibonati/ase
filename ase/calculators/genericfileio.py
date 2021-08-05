@@ -1,30 +1,31 @@
 import sys
+from pathlib import Path
+
 from ase.io import read, write
 from ase.io.formats import ioformats
 from ase.calculators.calculator import FileIOCalculator
 
 
 class SingleFileReader:
-    def __init__(self, output_file, fmt):
-        self.output_file = output_file
+    def __init__(self, fmt):
         self.fmt = fmt
 
-    def read(self):
-        output = read(self.output_file, format=self.fmt)
+    def read(self, path):
+        output = read(path, format=self.fmt)
         cache = output.calc
         return cache
 
 
 class CalculatorTemplate:
-    def __init__(self, name, implemented_properties, command,
-                 input_file, input_format, reader):
+    def __init__(self, name, implemented_properties,
+                 input_file, output_file, input_format, reader):
         self.name = name
         self.implemented_properties = implemented_properties
-        self.command = command
 
         # Generalize: We need some kind of Writer and Reader
         # to handle multiple files at a time.
         self.input_file = input_file
+        self.output_file = output_file
         self.input_format = input_format
         self.reader = reader
 
@@ -42,11 +43,11 @@ def get_espresso_template():
     return CalculatorTemplate(
         name='espresso',
         implemented_properties=Espresso.implemented_properties,
-        command='pw.x -in {} > {}'.format(infile, outfile),
+        # command='pw.x -in {} > {}'.format(infile, outfile),
         input_file=infile,
-        #output_file=outfile,
+        output_file=outfile,
         input_format='espresso-in',
-        reader=SingleFileReader(outfile, 'espresso-out'))
+        reader=SingleFileReader('espresso-out'))
 
 
 def get_emt_template():
@@ -75,12 +76,14 @@ class GenericFileIOCalculator(FileIOCalculator):
     command = None
     discard_results_on_any_change = True
 
-    def __init__(self, template, **kwargs):
+    def __init__(self, template, profile, **kwargs):
         self.template = template
+        self.profile = profile
         self.cache = None
 
-        super().__init__(label=None,
-                         command=template.command,
+        super().__init__(restart=None,
+                         label=None,
+                         atoms=None,
                          **kwargs)
 
     def __repr__(self):
@@ -104,8 +107,14 @@ class GenericFileIOCalculator(FileIOCalculator):
         write(self.template.input_file, atoms, format=fmt.name,
               **kwargs)
 
+    def execute(self):
+        self.profile.run(self.directory,
+                         self.template.input_file,
+                         self.template.output_file)
+
     def read_results(self):
-        self.cache = self.template.reader.read()
+        path = Path(self.directory) / self.template.output_file
+        self.cache = self.template.reader.read(path)
 
     @property
     def results(self):
