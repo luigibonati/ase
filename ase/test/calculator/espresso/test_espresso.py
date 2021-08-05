@@ -2,6 +2,7 @@ import pytest
 from ase.build import bulk
 from ase.calculators.espresso import EspressoProfile
 
+
 def test_version():
     txt = """
      Program PWSCF v.6.4.1 starts on  5Aug2021 at 11: 2:26
@@ -10,6 +11,7 @@ def test_version():
     """
     assert EspressoProfile.parse_version(txt) == '6.4.1'
 
+    
 def verify(calc):
     assert calc.get_fermi_level() is not None
     assert calc.get_ibz_k_points() is not None
