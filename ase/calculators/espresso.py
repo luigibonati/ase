@@ -40,24 +40,10 @@ class EspressoProfile:
                             template.input_file]
 
 
-class Espresso1(GenericFileIOCalculator):
+class Espresso(GenericFileIOCalculator):
     implemented_properties = ['energy', 'forces', 'stress', 'magmoms']
 
     def __init__(self, profile=None, **kwargs):
-        template = get_espresso_template()
-        if profile is None:
-            profile = EspressoProfile(argv=['pw.x'])
-        super().__init__(profile=profile, template=template, **kwargs)
-
-
-class Espresso(FileIOCalculator):
-    implemented_properties = ['energy', 'forces', 'stress', 'magmoms']
-    command = 'pw.x -in PREFIX.pwi > PREFIX.pwo'
-    discard_results_on_any_change = True
-
-    def __init__(self, restart=None,
-                 ignore_bad_restart_file=FileIOCalculator._deprecated,
-                 label='espresso', atoms=None, **kwargs):
         """
         All options for pw.x are copied verbatim to the input file, and put
         into the correct section. Use ``input_data`` for parameters that are
@@ -131,52 +117,7 @@ class Espresso(FileIOCalculator):
               >>> bs.plot()
 
         """
-        FileIOCalculator.__init__(self, restart, ignore_bad_restart_file,
-                                  label, atoms, **kwargs)
-        self.calc = None
-
-    def write_input(self, atoms, properties=None, system_changes=None):
-        FileIOCalculator.write_input(self, atoms, properties, system_changes)
-        io.write(self.label + '.pwi', atoms, **self.parameters)
-
-    def read_results(self):
-        output = io.read(self.label + '.pwo')
-        self.calc = output.calc
-        self.results = output.calc.results
-
-    def get_fermi_level(self):
-        if self.calc is None:
-            raise PropertyNotPresent(error_template % 'Fermi level')
-        return self.calc.get_fermi_level()
-
-    def get_ibz_k_points(self):
-        if self.calc is None:
-            raise PropertyNotPresent(error_template % 'IBZ k-points')
-        ibzkpts = self.calc.get_ibz_k_points()
-        if ibzkpts is None:
-            warnings.warn(warn_template % 'IBZ k-points')
-        return ibzkpts
-
-    def get_k_point_weights(self):
-        if self.calc is None:
-            raise PropertyNotPresent(error_template % 'K-point weights')
-        k_point_weights = self.calc.get_k_point_weights()
-        if k_point_weights is None:
-            warnings.warn(warn_template % 'K-point weights')
-        return k_point_weights
-
-    def get_eigenvalues(self, **kwargs):
-        if self.calc is None:
-            raise PropertyNotPresent(error_template % 'Eigenvalues')
-        eigenvalues = self.calc.get_eigenvalues(**kwargs)
-        if eigenvalues is None:
-            warnings.warn(warn_template % 'Eigenvalues')
-        return eigenvalues
-
-    def get_number_of_spins(self):
-        if self.calc is None:
-            raise PropertyNotPresent(error_template % 'Number of spins')
-        nspins = self.calc.get_number_of_spins()
-        if nspins is None:
-            warnings.warn(warn_template % 'Number of spins')
-        return nspins
+        template = get_espresso_template()
+        if profile is None:
+            profile = EspressoProfile(argv=['pw.x'])
+        super().__init__(profile=profile, template=template, **kwargs)

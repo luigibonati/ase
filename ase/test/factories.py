@@ -277,13 +277,9 @@ class EspressoFactory:
         assert match is not None
         return match.group(1)
 
-    def socketio(self, unixsocket, **kwargs):
-        ...
-
     def calc(self, **kwargs):
-        from ase.calculators.espresso import (Espresso, Espresso1,
-                                              EspressoProfile)
-        # command = '{} -in PREFIX.pwi > PREFIX.pwo'.format(self.executable)
+        from ase.calculators.espresso import Espresso, EspressoProfile
+
         pseudopotentials = {}
         for path in self.pseudo_dir.glob('*.UPF'):
             fname = path.name
@@ -295,10 +291,10 @@ class EspressoFactory:
 
         kw = self._base_kw()
         kw.update(kwargs)
-        return Espresso1(profile=profile, #command=command,
-                         pseudo_dir=str(self.pseudo_dir),
-                         pseudopotentials=pseudopotentials,
-                         **kw)
+        return Espresso(profile=profile,
+                        pseudo_dir=str(self.pseudo_dir),
+                        pseudopotentials=pseudopotentials,
+                        **kw)
 
     @classmethod
     def fromconfig(cls, config):
