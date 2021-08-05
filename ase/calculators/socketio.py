@@ -245,14 +245,6 @@ class FileIOSocketClientLauncher:
             return Popen(cmd, shell=True, cwd=cwd)
 
 
-#class ProfileBasedLauncher:
-#    def __init__(self, calc):
-#        self.calc = calc
-
-#    def __call__(self, atoms, properties=None, port=None, unixsocket=None):
-#        profile = self.calc.profile
-
-
 class SocketServer(IOContext):
     default_port = 31415
 
