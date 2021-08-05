@@ -36,9 +36,10 @@ class JSONBackend:
     def read(fname):
         return read_json(fname, always_array=False)
 
-class MultiFileJSONCache(MutableMapping):
+
+class _MultiFileCacheTemplate(MutableMapping):
     writable = True
-    backend = JSONBackend()
+    backend = None
 
     def __init__(self, directory):
         self.directory = Path(directory)
@@ -86,14 +87,6 @@ class MultiFileJSONCache(MutableMapping):
             return self.backend.read(path)
         except FileNotFoundError:
             missing(key)
-        except json.decoder.JSONDecodeError:
-            # May be partially written, which typically means empty
-            # because the file was locked with exclusive-write-open.
-            #
-            # Since we decide what keys we have based on which files exist,
-            # we are obligated to return a value for this case too.
-            # So we return None.
-            return None
 
     def __delitem__(self, key):
         try:
@@ -102,11 +95,7 @@ class MultiFileJSONCache(MutableMapping):
             missing(key)
 
     def combine(self):
-        cache = CombinedJSONCache.dump_cache(self.directory, dict(self))
-        assert set(cache) == set(self)
-        self.clear()
-        assert len(self) == 0
-        return cache
+        raise NotImplementedError
 
     def split(self):
         return self
@@ -121,9 +110,9 @@ class MultiFileJSONCache(MutableMapping):
         return len(empties)
 
 
-class CombinedJSONCache(Mapping):
+class _CombinedCacheTemplate(Mapping):
     writable = False
-    backend = JSONBackend()
+    backend = None
 
     def __init__(self, directory, dct):
         self.directory = Path(directory)
@@ -136,13 +125,6 @@ class CombinedJSONCache(Mapping):
     def _filename(self):
         return self.directory / ('combined' + self.backend.extension)
 
-    def _dump_json(self):
-        target = self._filename
-        if target.exists():
-            raise RuntimeError(f'Already exists: {target}')
-        self.directory.mkdir(exist_ok=True, parents=True)
-        write_json(target, self._dct)
-
     def __len__(self):
         return len(self._dct)
 
@@ -154,6 +136,61 @@ class CombinedJSONCache(Mapping):
 
     @classmethod
     def dump_cache(cls, path, dct):
+        raise NotImplementedError
+
+    @classmethod
+    def load(cls, path):
+        raise NotImplementedError
+
+    def clear(self):
+        self._filename.unlink()
+        self._dct.clear()
+
+    def combine(self):
+        return self
+
+    def split(self):
+        raise NotImplementedError
+
+
+class MultiFileJSONCache(_MultiFileCacheTemplate):
+    backend = JSONBackend()
+
+    def __getitem__(self, key):
+        path = self._filename(key)
+        try:
+            return self.backend.read(path)
+        except FileNotFoundError:
+            missing(key)
+        except json.decoder.JSONDecodeError:
+            # May be partially written, which typically means empty
+            # because the file was locked with exclusive-write-open.
+            #
+            # Since we decide what keys we have based on which files exist,
+            # we are obligated to return a value for this case too.
+            # So we return None.
+            return None
+
+    def combine(self):
+        cache = CombinedJSONCache.dump_cache(self.directory, dict(self))
+        assert set(cache) == set(self)
+        self.clear()
+        assert len(self) == 0
+        return cache
+
+
+class CombinedJSONCache(_CombinedCacheTemplate):
+    backend = JSONBackend()
+
+    def _dump_json(self):
+        target = self._filename
+        if target.exists():
+            raise RuntimeError(f'Already exists: {target}')
+        self.directory.mkdir(exist_ok=True, parents=True)
+        write_json(target, self._dct)
+
+    @classmethod
+    def dump_cache(cls, path, dct):
         cache = cls(path, dct)
         cache._dump_json()
         return cache
@@ -162,16 +199,9 @@ class CombinedJSONCache(Mapping):
     def load(cls, path):
         # XXX Very hacky this one
         cache = cls(path, {})
-        dct = CombinedJSONCache.backend.read(cache._filename)
+        dct = CombinedJSONCache.backend.read(cache._filename)  # ???
         cache._dct.update(dct)
         return cache
-
-    def clear(self):
-        self._filename.unlink()
-        self._dct.clear()
-
-    def combine(self):
-        return self
 
     def split(self):
         cache = MultiFileJSONCache(self.directory)
