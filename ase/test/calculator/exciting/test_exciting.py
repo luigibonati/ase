@@ -2,12 +2,12 @@
 from parameterized import parameterized
 from collections.abc import Sequence
 from typing import Tuple
-import unittest
 import tempfile  # Used to create temporary directories for tests.
-
+import xml.etree.ElementTree as ET
+from xml.dom import minidom
 from ase.build import bulk
 import ase.calculators.exciting as exciting
-
+import pytest
 
 # @pytest.mark.calculator_lite
 # @pytest.mark.calculator('exciting')
@@ -19,12 +19,17 @@ import ase.calculators.exciting as exciting
 #     print(energy)
 
 
-class TestExciting(unittest.TestCase):
+class TestExciting:
     """Test class for all exciting unit tests."""
 
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def set_up(self):
         """Code to use for all tests at runtime."""
         self.test_folder_name = tempfile.mkdtemp()
+
+    @pytest.fixture
+    def calculator(self):
+        return exciting.Exciting(species_path=self.test_folder_name)
 
     @parameterized.expand([[
         (3, 3, 3), '/fshome/chm/git/exciting/bin/excitingser',
@@ -43,18 +48,63 @@ class TestExciting(unittest.TestCase):
             exciting_binary=exciting_binary,
             maxscl=3)
         # groundstate attribute ngridk returns the calculator's kpts
-        self.assertEqual(
-            exciting_calc.groundstate_attributes['ngridk'], expected_kpts)
-        self.assertEqual(exciting_calc.dir, calc_dir)
-        self.assertEqual(exciting_calc.species_path, self.test_folder_name)
-        self.assertEqual(exciting_calc.exciting_binary, expected_exciting_binary)
+        assert exciting_calc.groundstate_attributes['ngridk'] == expected_kpts
+        assert exciting_calc.dir == calc_dir
+        assert exciting_calc.species_path == self.test_folder_name
+        assert exciting_calc.exciting_binary == expected_exciting_binary
         # Should be set to False at initialization.
-        self.assertFalse(exciting_calc.converged)
+        assert not exciting_calc.converged
         # Should be false by default unless arg is passed to constructor.
-        self.assertFalse(exciting_calc.autormt)
+        assert not exciting_calc.autormt
         # Should be true by default unless arg is passed to constructor.
-        self.assertTrue(exciting_calc.tshift)
+        assert exciting_calc.tshift
 
     def test_write(self):
         """Test the write method"""
         pass
+
+    def test_dicttoxml_1(self, calculator):
+        element = ET.Element('root')
+        dictionary = {'text()': 'test'}
+        calculator.dicttoxml(dictionary, element)
+        assert element.text.__eq__('test')
+
+    def test_dicttoxml_2(self, calculator):
+        element = ET.Element('root')
+        dictionary = {'number': '2'}
+        calculator.dicttoxml(dictionary, element)
+        assert element.attrib.get('number') == '2'
+
+    def test_dicttoxml_3(self, calculator):
+        element = ET.Element('root')
+        dictionary = {'sub': [{'text()': 'test', 'number': '2'}]}
+        calculator.dicttoxml(dictionary, element)
+        assert isinstance(element.find('./sub'), ET.Element)
+        assert element.find('./sub').text == 'test'
+        assert element.find('./sub').attrib.get('number') == '2'
+
+    def test_dicttoxml_4(self, calculator):
+        element = ET.Element('root')
+        dictionary = {'sub': {'number': '2'}}
+        calculator.dicttoxml(dictionary, element)
+        assert isinstance(element.find('./sub'), ET.Element)
+        assert element.find('./sub').attrib.get('number') == '2'
+
+    def test_dicttoxml_4(self, calculator):
+        element = ET.Element('root')
+        ET.SubElement(element, 'sub')
+        ET.SubElement(element, 'sub')
+        dictionary = {'sub': {'number': '2'}}
+        calculator.dicttoxml(dictionary, element)
+        sub_elements = element.findall('./sub')
+        assert len(sub_elements) == 2
+        assert sub_elements[0].attrib.get('number') == '2'
+        assert len(sub_elements[1].keys()) == 0
+
+    def test_dicttoxml_5(self, calculator, capsys):
+        element = ET.Element('root')
+        dictionary = {'sub': 1}
+        calculator.dicttoxml(dictionary, element)
+        captured = capsys.readouterr()
+        print(captured.out)
+        assert captured.out.startswith('cannot deal with sub = 1')
