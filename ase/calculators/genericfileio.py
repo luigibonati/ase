@@ -3,7 +3,7 @@ from pathlib import Path
 
 from ase.io import read, write
 from ase.io.formats import ioformats
-from ase.calculators.calculator import FileIOCalculator
+from ase.calculators.calculator import Calculator
 
 
 def read_stdout(args, createfile=None):
@@ -53,6 +53,26 @@ class CalculatorTemplate:
         self.input_format = input_format
         self.reader = reader
 
+    def write_input(self, directory, atoms, parameters, properties):
+        fmt = ioformats[self.input_format]
+        if 'properties' in fmt.write.__code__.co_varnames:
+            parameters = dict(parameters)
+            parameters['properties'] = properties
+
+        directory.mkdir(exist_ok=True, parents=True)
+
+        path = directory / self.input_file
+        write(path, atoms, format=fmt.name, **parameters)
+        return path
+
+    def execute(self, profile, directory):
+        profile.run(directory,
+                    self.input_file,
+                    self.output_file)
+
+    def read_results(self, directory):
+        return self.reader.read(directory / self.output_file)
+
     def __repr__(self):
         return 'CalculatorTemplate({})'.format(vars(self))
 
@@ -96,22 +116,38 @@ def new_emt(**kwargs):
     return get_emt_template().new(**kwargs)
 
 
-class GenericFileIOCalculator(FileIOCalculator):
-    command = None
-    discard_results_on_any_change = True
-
-    def __init__(self, template, profile, **kwargs):
+class GenericFileIOCalculator(Calculator):
+    def __init__(self, template, profile, directory='.', parameters=None):
         self.template = template
         self.profile = profile
-        self.cache = None
 
-        super().__init__(restart=None,
-                         label=None,
-                         atoms=None,
-                         **kwargs)
+        # Maybe we should allow directory to be a factory, so
+        # calculators e.g. produce new directories on demand.
+        self._directory = Path(directory)
+
+        if parameters is None:
+            parameters = {}
+        self.parameters = dict(parameters)
+
+        self.atoms = None
+        self.cache = None
+        # XXX We are very naughty and do not call super constructor!
+
+    @property
+    def directory(self):
+        return self._directory
+
+    def set(self, *args, **kwargs):
+        raise RuntimeError('No setting parameters for now, please.  '
+                           'Just create new calculators.')
 
     def __repr__(self):
         return '{}({})'.format(type(self).__name__, self.template.name)
+
+    def write_input(self, atoms, properties, system_changes):
+        # XXX for socketio compatibility; remove later
+        self.template.write_input(self.directory, atoms,
+                                  self.parameters, properties)
 
     @property
     def implemented_properties(self):
@@ -121,24 +157,16 @@ class GenericFileIOCalculator(FileIOCalculator):
     def name(self):
         return self.template.name
 
-    def write_input(self, atoms, properties, system_changes):
-        super().write_input(atoms, properties, system_changes)
-        fmt = ioformats[self.template.input_format]
-        kwargs = self.parameters
-        if 'properties' in fmt.write.__code__.co_varnames:
-            kwargs = dict(kwargs)
-            kwargs['properties'] = properties
-        write(self.template.input_file, atoms, format=fmt.name,
-              **kwargs)
+    def calculate(self, atoms, properties, system_changes):
+        self.atoms = atoms.copy()
 
-    def execute(self):
-        self.profile.run(self.directory,
-                         self.template.input_file,
-                         self.template.output_file)
+        directory = self.directory
 
-    def read_results(self):
-        path = Path(self.directory) / self.template.output_file
-        self.cache = self.template.reader.read(path)
+        self.template.write_input(directory, atoms, self.parameters,
+                                  properties)
+        self.template.execute(self.profile, directory)
+        self.cache = self.template.read_results(directory)
+        # XXX Return something useful?
 
     @property
     def results(self):
