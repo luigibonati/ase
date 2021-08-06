@@ -20,7 +20,7 @@ class GetPropertiesMixin(ABC):
         from ase.calculators.calculator import PropertyNotImplementedError
         if force_consistent:
             try:
-                value = self.get_property('free_energy', atoms)
+                return self.get_property('free_energy', atoms)
             except PropertyNotImplementedError:
                 pass
         return self.get_property('energy', atoms)
