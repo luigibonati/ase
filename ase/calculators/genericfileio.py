@@ -3,6 +3,7 @@ from pathlib import Path
 
 from ase.io import read, write
 from ase.io.formats import ioformats
+from ase.calculators.abc import GetOutputsMixin
 from ase.calculators.calculator import Calculator
 
 
@@ -116,7 +117,7 @@ def new_emt(**kwargs):
     return get_emt_template().new(**kwargs)
 
 
-class GenericFileIOCalculator(Calculator):
+class GenericFileIOCalculator(Calculator, GetOutputsMixin):
     def __init__(self, template, profile, directory='.', parameters=None):
         self.template = template
         self.profile = profile
@@ -130,7 +131,7 @@ class GenericFileIOCalculator(Calculator):
         self.parameters = dict(parameters)
 
         self.atoms = None
-        self.cache = None
+        #self.cache = None
         # XXX We are very naughty and do not call super constructor!
 
     @property
@@ -165,31 +166,9 @@ class GenericFileIOCalculator(Calculator):
         self.template.write_input(directory, atoms, self.parameters,
                                   properties)
         self.template.execute(self.profile, directory)
-        self.cache = self.template.read_results(directory)
+        cache = self.template.read_results(directory)
+        self.results = cache.properties()
         # XXX Return something useful?
 
-    @property
-    def results(self):
-        if self.cache is None:
-            return {}
-        return self.cache.results
-
-    @results.setter
-    def results(self, value):
-        assert value == {}
-        self.cache = None
-
-    def get_fermi_level(self):
-        return self.cache.get_fermi_level()
-
-    def get_ibz_k_points(self):
-        return self.cache.get_ibz_k_points()
-
-    def get_k_point_weights(self):
-        return self.cache.get_k_point_weights()
-
-    def get_eigenvalues(self, **kwargs):
-        return self.cache.get_eigenvalues(**kwargs)
-
-    def get_number_of_spins(self):
-        return self.cache.get_number_of_spins()
+    def _outputmixin_get_results(self):
+        return self.results
