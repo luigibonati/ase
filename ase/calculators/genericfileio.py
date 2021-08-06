@@ -124,7 +124,7 @@ class GenericFileIOCalculator(Calculator, GetOutputsMixin):
 
         # Maybe we should allow directory to be a factory, so
         # calculators e.g. produce new directories on demand.
-        self._directory = Path(directory)
+        self.directory = directory
 
         if parameters is None:
             parameters = {}
@@ -137,6 +137,10 @@ class GenericFileIOCalculator(Calculator, GetOutputsMixin):
     @property
     def directory(self):
         return self._directory
+
+    @directory.setter
+    def directory(self, value):
+        self._directory = Path(value)
 
     def set(self, *args, **kwargs):
         raise RuntimeError('No setting parameters for now, please.  '
