@@ -4,7 +4,7 @@ from pathlib import Path
 from ase.io import read, write
 from ase.io.formats import ioformats
 from ase.calculators.abc import GetOutputsMixin
-from ase.calculators.calculator import Calculator
+from ase.calculators.calculator import BaseCalculator
 
 
 def read_stdout(args, createfile=None):
@@ -117,7 +117,7 @@ def new_emt(**kwargs):
     return get_emt_template().new(**kwargs)
 
 
-class GenericFileIOCalculator(Calculator, GetOutputsMixin):
+class GenericFileIOCalculator(BaseCalculator, GetOutputsMixin):
     def __init__(self, template, profile, directory='.', parameters=None):
         self.template = template
         self.profile = profile
