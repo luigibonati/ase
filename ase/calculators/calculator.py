@@ -486,7 +486,9 @@ class BaseCalculator(GetPropertiesMixin):
         else:
             system_changes = self.check_state(atoms)
             if system_changes:
-                self.reset()
+                self.atoms = None
+                self.results = {}
+
         if name not in self.results:
             if not allow_calculation:
                 return None
@@ -775,20 +777,6 @@ class Calculator(BaseCalculator):
         """Check for any system changes since last calculation."""
         return compare_atoms(self.atoms, atoms, tol=tol,
                              excluded_properties=set(self.ignored_changes))
-
-    def get_potential_energy(self, atoms=None, force_consistent=False):
-        energy = self.get_property('energy', atoms)
-        if force_consistent:
-            if 'free_energy' not in self.results:
-                name = self.__class__.__name__
-                # XXX but we don't know why the energy is not there.
-                # We should raise PropertyNotPresent.  Discuss
-                raise PropertyNotImplementedError(
-                    'Force consistent/free energy ("free_energy") '
-                    'not provided by {0} calculator'.format(name))
-            return self.results['free_energy']
-        else:
-            return energy
 
     def calculate(self, atoms=None, properties=['energy'],
                   system_changes=all_changes):

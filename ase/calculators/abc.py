@@ -16,6 +16,15 @@ class GetPropertiesMixin(ABC):
     def get_property(self, name, atoms=None, allow_calculation=True):
         """Get the named property."""
 
+    def get_potential_energy(self, atoms=None, force_consistent=False):
+        from ase.calculators.calculator import PropertyNotImplementedError
+        if force_consistent:
+            try:
+                value = self.get_property('free_energy', atoms)
+            except PropertyNotImplementedError:
+                pass
+        return self.get_property('energy', atoms)
+
     def get_potential_energies(self, atoms=None):
         return self.get_property('energies', atoms)
 
