@@ -148,4 +148,4 @@ class Espresso(GenericFileIOCalculator):
         template = get_espresso_template()
         if profile is None:
             profile = EspressoProfile(argv=['pw.x'])
-        super().__init__(profile=profile, template=template, **kwargs)
+        super().__init__(profile=profile, template=template, parameters=kwargs)
