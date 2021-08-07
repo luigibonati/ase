@@ -561,28 +561,10 @@ def get_default_abinit_pp_paths():
     return os.environ.get('ABINIT_PP_PATH', '.').split(':')
 
 
-abinit_input_version_warning = """\
-Abinit input format has changed in Abinit9.
-
-ASE will currently write inputs for Abinit8 by default.  Please
-silence this warning passing either Abinit(v8_legacy_format=True) to
-write the old Abinit8 format, or False for writing
-the new Abinit9+ format.
-
-The default will change to Abinit9+ format from ase-3.22, and this
-warning will be removed.
-
-Please note that stdin to Abinit should be the .files file until version 8
-but the main inputfile (conventionally abinit.in) from abinit9,
-which may require reconfiguring the ASE/Abinit shell command.
-"""
-
-
 def write_all_inputs(atoms, properties, parameters,
                      pp_paths=None,
                      raise_exception=True,
-                     label='abinit',
-                     *, v8_legacy_format=True):
+                     label='abinit'):
     species = sorted(set(atoms.numbers))
     if pp_paths is None:
         pp_paths = get_default_abinit_pp_paths()
@@ -592,22 +574,8 @@ def write_all_inputs(atoms, properties, parameters,
                        pps=parameters.pps,
                        search_paths=pp_paths)
 
-    if v8_legacy_format is None:
-        warnings.warn(abinit_input_version_warning,
-                      FutureWarning)
-        v8_legacy_format = True
-
-    if v8_legacy_format:
-        with open(label + '.files', 'w') as fd:
-            write_files_file(fd, label, ppp)
-        pseudos = None
-
-        # XXX here we build the txt filename again, which is bad
-        # (also defined in the calculator)
-        output_filename = label + '.txt'
-    else:
-        pseudos = ppp  # Include pseudopotentials in inputfile
-        output_filename = label + '.abo'
+    pseudos = ppp  # Include pseudopotentials in inputfile
+    output_filename = label + '.abo'
 
     # Abinit will write to label.txtA if label.txt already exists,
     # so we remove it if it's there:

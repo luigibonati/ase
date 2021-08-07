@@ -34,7 +34,6 @@ def run(atoms):
 
 @pytest.mark.calculator_lite
 @calc('abinit')
-@calc('abinit', v8_legacy_format=False)
 def test_si(factory):
     atoms = bulk('Si')
     atoms.calc = factory.calc(nbands=4 * len(atoms), kpts=[4, 4, 4])
