@@ -161,7 +161,8 @@ def write_abinit_in(fd, atoms, param=None, species=None, pseudos=None):
         species = sorted(set(atoms.numbers))
 
     inp = dict(param)
-    for key in ['xc', 'smearing', 'kpts', 'pps', 'raw']:
+    xc = inp.pop('xc', 'LDA')
+    for key in ['smearing', 'kpts', 'pps', 'raw']:
         inp.pop(key, None)
 
     smearing = param.get('smearing')
@@ -186,7 +187,7 @@ def write_abinit_in(fd, atoms, param=None, species=None, pseudos=None):
                           'PBE': 11,
                           'revPBE': 14,
                           'RPBE': 15,
-                          'WC': 23}[param['xc']]
+                          'WC': 23}[xc]
 
     magmoms = atoms.get_initial_magnetic_moments()
     if magmoms.any():
@@ -197,7 +198,7 @@ def write_abinit_in(fd, atoms, param=None, species=None, pseudos=None):
     else:
         inp['nsppol'] = 1
 
-    if param['kpts'] is not None:
+    if param.get('kpts') is not None:
         mp = kpts2mp(atoms, param['kpts'])
         fd.write('kptopt 1\n')
         fd.write('ngkpt %d %d %d\n' % tuple(mp))
@@ -228,7 +229,7 @@ def write_abinit_in(fd, atoms, param=None, species=None, pseudos=None):
             else:
                 fd.write("{} {} {}\n".format(key, value, unit))
 
-    if param['raw'] is not None:
+    if param.get('raw') is not None:
         if isinstance(param['raw'], str):
             raise TypeError('The raw parameter is a single string; expected '
                             'a sequence of lines')
