@@ -80,9 +80,6 @@ class CalculatorTemplate:
     def __repr__(self):
         return 'CalculatorTemplate({})'.format(vars(self))
 
-    def new(self, **kwargs):
-        return GenericFileIOCalculator(template=self, **kwargs)
-
 
 def get_espresso_template():
     from ase.calculators.espresso import Espresso
@@ -95,29 +92,6 @@ def get_espresso_template():
         output_file=outfile,
         input_format='espresso-in',
         reader=SingleFileReader('espresso-out'))
-
-
-def get_emt_template():
-    from ase.calculators.emt import EMT
-    infile = 'input.traj'
-    outfile = 'output.traj'
-    return CalculatorTemplate(
-        name='emt',
-        implemented_properties=EMT.implemented_properties,
-        command=('{} -m ase.calculators.emt {} {}'
-                 .format(sys.executable, infile, outfile)),
-        input_file=infile,
-        output_file=outfile,
-        input_format='traj',
-        reader=SingleFileReader('traj'))
-
-
-def new_espresso(**kwargs):
-    return get_espresso_template().new(**kwargs)
-
-
-def new_emt(**kwargs):
-    return get_emt_template().new(**kwargs)
 
 
 class GenericFileIOCalculator(BaseCalculator, GetOutputsMixin):

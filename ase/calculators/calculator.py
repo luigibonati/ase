@@ -2,7 +2,7 @@ import os
 import copy
 import subprocess
 from math import pi, sqrt
-import pathlib
+from pathlib import Path
 from typing import Union, Optional, List, Set, Dict, Any
 import warnings
 from abc import abstractmethod
@@ -372,6 +372,8 @@ class EigenvalOccupationMixin:
 
     Classes must implement the old-fashioned get_eigenvalues and
     get_occupations methods."""
+    # We should maybe deprecate this and rely on the new
+    # Properties object for eigenvalues/occupations.
 
     @property
     def eigenvalues(self):
@@ -434,7 +436,7 @@ class Parameters(dict):
             '{}={!r}'.format(key, self[key]) for key in keys) + ')\n'
 
     def write(self, filename):
-        pathlib.Path(filename).write_text(self.tostring())
+        Path(filename).write_text(self.tostring())
 
 
 class BaseCalculator(GetPropertiesMixin):
@@ -446,8 +448,10 @@ class BaseCalculator(GetPropertiesMixin):
     # any other object (such as None).
     _deprecated = object()
 
-    def __init__(self, parameters):
-        self.parameters = parameters
+    def __init__(self, parameters=None):
+        if parameters is None:
+            parameters = {}
+        self.parameters = dict(parameters)
         self.atoms = None
         self.results = {}
 
@@ -639,8 +643,8 @@ class Calculator(BaseCalculator):
         return self._directory
 
     @directory.setter
-    def directory(self, directory: Union[str, pathlib.PurePath]):
-        self._directory = str(pathlib.Path(directory))  # Normalize path.
+    def directory(self, directory: Union[str, os.PathLike]):
+        self._directory = str(Path(directory))  # Normalize path.
 
     @property
     def label(self):
