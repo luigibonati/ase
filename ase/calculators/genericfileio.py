@@ -38,7 +38,10 @@ class SingleFileReader:
     def read(self, path):
         output = read(path, format=self.fmt)
         cache = output.calc
-        return cache
+        # XXX This is specially for things that
+        # return Atoms + SinglePoint calculator
+        # (Espresso)
+        return dict(cache.properties())
 
 
 class CalculatorTemplate:
@@ -138,23 +141,15 @@ class GenericFileIOCalculator(BaseCalculator, GetOutputsMixin):
 
         # Maybe we should allow directory to be a factory, so
         # calculators e.g. produce new directories on demand.
-        self.directory = directory
+        self.directory = Path(directory)
 
         if parameters is None:
             parameters = {}
         self.parameters = dict(parameters)
 
         self.atoms = None
-        #self.cache = None
+        self.results = {}
         # XXX We are very naughty and do not call super constructor!
-
-    @property
-    def directory(self):
-        return self._directory
-
-    @directory.setter
-    def directory(self, value):
-        self._directory = Path(value)
 
     def set(self, *args, **kwargs):
         raise RuntimeError('No setting parameters for now, please.  '
@@ -184,8 +179,7 @@ class GenericFileIOCalculator(BaseCalculator, GetOutputsMixin):
         self.template.write_input(directory, atoms, self.parameters,
                                   properties)
         self.template.execute(self.profile, directory)
-        cache = self.template.read_results(directory)
-        self.results = cache.properties()
+        self.results = self.template.read_results(directory)
         # XXX Return something useful?
 
     def _outputmixin_get_results(self):
