@@ -3,6 +3,7 @@ from os.path import join
 import re
 from glob import glob
 import warnings
+from pathlib import Path
 
 import numpy as np
 
@@ -561,10 +562,10 @@ def get_default_abinit_pp_paths():
     return os.environ.get('ABINIT_PP_PATH', '.').split(':')
 
 
-def write_all_inputs(atoms, properties, parameters,
-                     pp_paths=None,
-                     raise_exception=True,
-                     label='abinit'):
+def prepare_abinit_input(directory, atoms, properties, parameters,
+                         pp_paths=None,
+                         raise_exception=True):
+    directory = Path(directory)
     species = sorted(set(atoms.numbers))
     if pp_paths is None:
         pp_paths = get_default_abinit_pp_paths()
@@ -574,29 +575,34 @@ def write_all_inputs(atoms, properties, parameters,
                        pps=parameters.pps,
                        search_paths=pp_paths)
 
-    pseudos = ppp  # Include pseudopotentials in inputfile
-    output_filename = label + '.abo'
+    inputfile = directory / 'abinit.in'
+
+    # XXX inappropriate knowledge about choice of outputfile
+    outputfile = directory / 'abinit.abo'
 
     # Abinit will write to label.txtA if label.txt already exists,
     # so we remove it if it's there:
-    if os.path.isfile(output_filename):
-        os.remove(output_filename)
+    if outputfile.exists():
+        outputfile.unlink()
 
-    with open(label + '.in', 'w') as fd:
+    with open(inputfile, 'w') as fd:
         write_abinit_in(fd, atoms, param=parameters, species=species,
-                        pseudos=pseudos)
+                        pseudos=ppp)
 
 
-def read_results(label, textfilename):
-    # filename = label + '.txt'
+def read_abinit_outputs(directory):
+    directory = Path(directory)
+    label = 'abinit'
+    textfilename = directory / f'{label}.abo'
     results = {}
     with open(textfilename) as fd:
         dct = read_abinit_out(fd)
         results.update(dct)
+
     # The eigenvalues section in the main file is shortened to
     # a limited number of kpoints.  We read the complete one from
     # the EIG file then:
-    with open('{}o_EIG'.format(label)) as fd:
+    with open(directory / f'{label}o_EIG') as fd:
         dct = read_eig(fd)
         results.update(dct)
     return results

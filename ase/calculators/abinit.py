@@ -71,16 +71,14 @@ class Abinit(FileIOCalculator):
 
     def write_input(self, atoms, properties, system_changes):
         """Write input parameters to files-file."""
-        io.write_all_inputs(
-            atoms, properties, parameters=self.parameters,
-            pp_paths=self.pp_paths,
-            label=self.label)
 
-    def _output_filename(self):
-        return self.label + '.abo'
+        io.prepare_abinit_input(
+            directory=self.directory,
+            atoms=atoms, properties=properties, parameters=self.parameters,
+            pp_paths=self.pp_paths)
 
     def read_results(self):
-        self.results = io.read_results(self.label, self._output_filename())
+        self.results = io.read_abinit_outputs(self.directory)
 
     def get_number_of_iterations(self):
         return self.results['niter']
