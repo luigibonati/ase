@@ -6,7 +6,6 @@ http://www.abinit.org/
 import re
 
 import ase.io.abinit as io
-from ase.calculators.calculator import FileIOCalculator
 from ase.calculators.genericfileio import (CalculatorTemplate,
                                            GenericFileIOCalculator)
 from subprocess import check_output
@@ -44,7 +43,7 @@ class AbinitTemplate(CalculatorTemplate):
 
     def __init__(self):
         self.name = 'abinit'  # XXX
-        self.implemented_properties = Abinit.implemented_properties
+        self.implemented_properties = ['energy', 'forces', 'stress', 'magmom']
         self.input_file = 'abinit.in'
         self.output_file = 'abinit.xxxxxxx'
         # XXXXXXXXX constructor or something?
@@ -73,7 +72,6 @@ class AbinitTemplate(CalculatorTemplate):
         return io.read_abinit_outputs(directory)
 
 
-
 class Abinit(GenericFileIOCalculator):
     """Class for doing ABINIT calculations.
 
@@ -83,24 +81,7 @@ class Abinit(GenericFileIOCalculator):
       calc = Abinit(label='abinit', xc='LDA', ecut=400, toldfe=1e-5)
     """
 
-    implemented_properties = ['energy', 'forces', 'stress', 'magmom']
-    #ignored_changes = {'pbc'}  # In abinit, pbc is always effectively True.
-    #command = 'abinit < PREFIX.files > PREFIX.log'
-    #discard_results_on_any_change = True
-
-    #default_parameters = dict(
-    #    xc='LDA',
-    #    smearing=None,
-    #    kpts=None,
-    #    raw=None,
-    #    pps='fhi')
-
-    def __init__(self, *, # restart=None,
-                 profile=None,
-                 directory='.',
-                 # ignore_bad_restart_file=FileIOCalculator._deprecated,
-                 # label='abinit', atoms=None, pp_paths=None,
-                 **kwargs):
+    def __init__(self, *, profile=None, directory='.', **kwargs):
         """Construct ABINIT-calculator object.
 
         Parameters
@@ -122,59 +103,7 @@ class Abinit(GenericFileIOCalculator):
         if profile is None:
             profile = AbinitProfile(['abinit'])
 
-        assert 'pp_paths' in kwargs
-
         super().__init__(template=AbinitTemplate(),
                          profile=profile,
                          directory=directory,
                          parameters=kwargs)
-
-        # FileIOCalculator.__init__(self, restart, ignore_bad_restart_file,
-        #                           label, atoms, **kwargs)
-
-    #def write_input(self, atoms, properties, system_changes):
-    #    """Write input parameters to files-file."""
-
-    #    io.prepare_abinit_input(
-    #        directory=self.directory,
-    #        atoms=atoms, properties=properties, parameters=self.parameters,
-    #        pp_paths=self.pp_paths)
-
-    #def read_results(self):
-    #    self.results = io.read_abinit_outputs(self.directory)
-
-    #def get_number_of_iterations(self):
-    #    return self.results['niter']
-
-    #def get_electronic_temperature(self):
-    #    return self.results['width']
-
-    #def get_number_of_electrons(self):
-    #    return self.results['nelect']
-
-    #def get_number_of_bands(self):
-    #    return self.results['nbands']
-
-    #def get_k_point_weights(self):
-    #    return self.results['kpoint_weights']
-
-    #def get_bz_k_points(self):
-    #    raise NotImplementedError
-
-    #def get_ibz_k_points(self):
-    #    return self.results['ibz_kpoints']
-
-    #def get_spin_polarized(self):
-    #    return self.results['eigenvalues'].shape[0] == 2
-
-    #def get_number_of_spins(self):
-    #    return len(self.results['eigenvalues'])
-
-    #def get_fermi_level(self):
-    #    return self.results['fermilevel']
-
-    #def get_eigenvalues(self, kpt=0, spin=0):
-    #    return self.results['eigenvalues'][spin, kpt]
-
-    #def get_occupations(self, kpt=0, spin=0):
-    #    raise NotImplementedError

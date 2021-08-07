@@ -2,7 +2,6 @@ import os
 from os.path import join
 import re
 from glob import glob
-import warnings
 from pathlib import Path
 
 import numpy as np
@@ -10,7 +9,6 @@ import numpy as np
 from ase import Atoms
 from ase.data import chemical_symbols
 from ase.units import Hartree, Bohr, fs
-from ase.calculators.calculator import Parameters
 
 
 def read_abinit_in(fd):
@@ -154,16 +152,10 @@ keys_with_units = {
 
 
 def write_abinit_in(fd, atoms, param=None, species=None, pseudos=None):
-    import copy
     from ase.calculators.calculator import kpts2mp
-    from ase.calculators.abinit import Abinit
 
     if param is None:
         param = {}
-
-    #_param = copy.deepcopy(Abinit.default_parameters)
-    #_param.update(param)
-    #param = _param
 
     if species is None:
         species = sorted(set(atoms.numbers))

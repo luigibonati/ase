@@ -84,21 +84,6 @@ class CalculatorTemplate:
         return GenericFileIOCalculator(template=self, **kwargs)
 
 
-def get_abinit_template():
-    from ase.calculators.abinit import Abinit
-    from ase.io import AbinitReader
-    infile = 'abinit.in'
-    outfile = 'abinit.abo'
-    CalculatorTemplate(
-        name='abinit',
-        implemented_properties=Abinit.implemented_properties,
-        input_file=infile,
-        input_format='abinit-in',
-        output_file=outfile,
-        output_format='abinit-out',
-        reader=AbinitReader(outfile),
-    )
-
 def get_espresso_template():
     from ase.calculators.espresso import Espresso
     infile = 'espresso.pwi'
