@@ -160,10 +160,9 @@ def write_abinit_in(fd, atoms, param=None, species=None, pseudos=None):
     if species is None:
         species = sorted(set(atoms.numbers))
 
-    inp = {}
-    inp.update(param)
+    inp = dict(param)
     for key in ['xc', 'smearing', 'kpts', 'pps', 'raw']:
-        del inp[key]
+        inp.pop(key, None)
 
     smearing = param.get('smearing')
     if 'tsmear' in param or 'occopt' in param:
