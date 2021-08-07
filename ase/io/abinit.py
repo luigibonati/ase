@@ -582,18 +582,9 @@ def write_all_inputs(atoms, properties, parameters,
     if os.path.isfile(output_filename):
         os.remove(output_filename)
 
-    parameters.write(label + '.ase')
-
     with open(label + '.in', 'w') as fd:
         write_abinit_in(fd, atoms, param=parameters, species=species,
                         pseudos=pseudos)
-
-
-def read_ase_and_abinit_inputs(label):
-    with open(label + '.in') as fd:
-        atoms = read_abinit_in(fd)
-    parameters = Parameters.read(label + '.ase')
-    return atoms, parameters
 
 
 def read_results(label, textfilename):

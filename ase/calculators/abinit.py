@@ -76,29 +76,6 @@ class Abinit(FileIOCalculator):
             pp_paths=self.pp_paths,
             label=self.label)
 
-    def read(self, label):
-        """Read results from ABINIT's text-output file."""
-        # XXX I think we should redo the concept of 'restarting'.
-        # It makes sense to load a previous calculation as
-        #
-        #  * static, calculator-independent results
-        #  * an actual calculator capable of calculating
-        #
-        # Either of which is simpler than our current mechanism which
-        # implies both at the same time.  Moreover, we don't need
-        # something like calc.read(label).
-        #
-        # What we need for these two purposes is
-        #
-        #  * calc = MyCalculator.read(basefile)
-        #      (or maybe it should return Atoms with calc attached)
-        #  * results = read_results(basefile, format='abinit')
-        #
-        # where basefile determines the file tree.
-        FileIOCalculator.read(self, label)
-        self.atoms, self.parameters = io.read_ase_and_abinit_inputs(self.label)
-        self.results = io.read_results(self.label, self._output_filename())
-
     def _output_filename(self):
         return self.label + '.abo'
 
