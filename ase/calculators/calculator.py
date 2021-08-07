@@ -637,6 +637,7 @@ class Calculator(BaseCalculator):
 
         if not hasattr(self, 'get_spin_polarized'):
             self.get_spin_polarized = self._deprecated_get_spin_polarized
+        # XXX We are very naughty and do not call super constructor!
 
     @property
     def directory(self) -> str:

@@ -1,4 +1,3 @@
-import sys
 from pathlib import Path
 
 from ase.io import read, write
@@ -103,13 +102,7 @@ class GenericFileIOCalculator(BaseCalculator, GetOutputsMixin):
         # calculators e.g. produce new directories on demand.
         self.directory = Path(directory)
 
-        if parameters is None:
-            parameters = {}
-        self.parameters = dict(parameters)
-
-        self.atoms = None
-        self.results = {}
-        # XXX We are very naughty and do not call super constructor!
+        super().__init__(parameters)
 
     def set(self, *args, **kwargs):
         raise RuntimeError('No setting parameters for now, please.  '
