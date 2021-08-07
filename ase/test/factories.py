@@ -71,22 +71,25 @@ class AbinitFactory:
         return major_ver < 9
 
     def _base_kw(self):
-        command = f'{self.executable} PREFIX.in > PREFIX.log'
-        return dict(command=command,
-                    pp_paths=self.pp_paths,
+        #command = f'{self.executable} PREFIX.in > PREFIX.log'
+        return dict(pp_paths=self.pp_paths,
                     ecut=150,
                     chksymbreak=0,
                     toldfe=1e-3)
 
     def calc(self, **kwargs):
-        from ase.calculators.abinit import Abinit
+        from ase.calculators.abinit import Abinit, AbinitProfile
+
+        profile = AbinitProfile([self.executable])
 
         if self.is_legacy_version():
             raise RuntimeError('Sorry, Abinit 9+ is required.')
 
         kw = self._base_kw()
+        assert kw['pp_paths'] is not None
         kw.update(kwargs)
-        return Abinit(**kw)
+        assert kw['pp_paths'] is not None
+        return Abinit(profile=profile, **kw)
 
     @classmethod
     def fromconfig(cls, config):

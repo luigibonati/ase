@@ -35,7 +35,7 @@ class SingleFileReader:
     def __init__(self, fmt):
         self.fmt = fmt
 
-    def read(self, path):
+    def __call__(self, path):
         output = read(path, format=self.fmt)
         cache = output.calc
         # XXX This is specially for things that
@@ -75,7 +75,7 @@ class CalculatorTemplate:
                     self.output_file)
 
     def read_results(self, directory):
-        return self.reader.read(directory / self.output_file)
+        return self.reader(directory / self.output_file)
 
     def __repr__(self):
         return 'CalculatorTemplate({})'.format(vars(self))
@@ -95,6 +95,7 @@ def get_abinit_template():
         input_file=infile,
         input_format='abinit-in',
         output_file=outfile,
+        output_format='abinit-out',
         reader=AbinitReader(outfile),
     )
 

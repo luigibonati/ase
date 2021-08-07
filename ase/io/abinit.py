@@ -161,9 +161,9 @@ def write_abinit_in(fd, atoms, param=None, species=None, pseudos=None):
     if param is None:
         param = {}
 
-    _param = copy.deepcopy(Abinit.default_parameters)
-    _param.update(param)
-    param = _param
+    #_param = copy.deepcopy(Abinit.default_parameters)
+    #_param.update(param)
+    #param = _param
 
     if species is None:
         species = sorted(set(atoms.numbers))
@@ -558,8 +558,8 @@ def prepare_abinit_input(directory, atoms, properties, parameters,
         pp_paths = get_default_abinit_pp_paths()
     ppp = get_ppp_list(atoms, species,
                        raise_exception=raise_exception,
-                       xc=parameters.xc,
-                       pps=parameters.pps,
+                       xc=parameters['xc'],
+                       pps=parameters['pps'],
                        search_paths=pp_paths)
 
     inputfile = directory / 'abinit.in'
@@ -579,6 +579,7 @@ def prepare_abinit_input(directory, atoms, properties, parameters,
 
 def read_abinit_outputs(directory):
     directory = Path(directory)
+    # XXX hardcoded label
     label = 'abinit'
     textfilename = directory / f'{label}.abo'
     results = {}
@@ -680,8 +681,8 @@ def get_ppp_list(atoms, species, raise_exception, xc, pps,
         if not found:
             ppp_list.append("Provide {}.{}.{}?".format(symbol, '*', pps))
             if raise_exception:
-                msg = ('Could not find {} pseudopotential {} for {}'
-                       .format(xcname.lower(), pps, symbol))
+                msg = ('Could not find {} pseudopotential {} for {} in {}'
+                       .format(xcname.lower(), pps, symbol, search_paths))
                 raise RuntimeError(msg)
 
     return ppp_list
