@@ -1,4 +1,7 @@
+from os import PathLike
 from pathlib import Path
+from typing import Iterable, Mapping, Any
+from abc import ABC, abstractmethod
 
 from ase.io import read, write
 from ase.io.formats import ioformats
@@ -30,67 +33,47 @@ def read_stdout(args, createfile=None):
     return stdout
 
 
-class SingleFileReader:
-    def __init__(self, fmt):
-        self.fmt = fmt
-
-    def __call__(self, path):
-        output = read(path, format=self.fmt)
-        cache = output.calc
-        # XXX This is specially for things that
-        # return Atoms + SinglePoint calculator
-        # (Espresso)
-        return dict(cache.properties())
-
-
-class CalculatorTemplate:
-    def __init__(self, name, implemented_properties,
-                 input_file, output_file, input_format, reader):
+class CalculatorTemplate(ABC):
+    def __init__(self, name: str, implemented_properties: Iterable[str]):
         self.name = name
-        self.implemented_properties = implemented_properties
+        self.implemented_properties = set(implemented_properties)
 
-        # Generalize: We need some kind of Writer and Reader
-        # to handle multiple files at a time.
-        self.input_file = input_file
-        self.output_file = output_file
-        self.input_format = input_format
-        self.reader = reader
-
+    @abstractmethod
     def write_input(self, directory, atoms, parameters, properties):
-        fmt = ioformats[self.input_format]
-        if 'properties' in fmt.write.__code__.co_varnames:
-            parameters = dict(parameters)
-            parameters['properties'] = properties
+        ...
 
-        directory.mkdir(exist_ok=True, parents=True)
-
-        path = directory / self.input_file
-        write(path, atoms, format=fmt.name, **parameters)
-        return path
-
-    def execute(self, profile, directory):
+    def execute(self, profile, directory: PathLike) -> None:
+        # Should be abstract?
         profile.run(directory,
                     self.input_file,
                     self.output_file)
 
+    @abstractmethod
+    def read_results(self, directory: PathLike) -> Mapping[str, Any]:
+        ...
+
+
+class EspressoTemplate(CalculatorTemplate):
+    def __init__(self):
+        super().__init__('espresso', ['energy', 'forces', 'stress', 'magmoms'])
+        self.inputname = 'espresso.pwi'
+        self.outputname = 'espresso.pwo'
+
+    def write_input(self, directory, atoms, parameters, properties):
+        directory.mkdir(exist_ok=True, parents=True)
+        dst = directory / self.inputname
+        write(dst, atoms, format='espresso-in', properties=properties,
+              **parameters)
+
+    def execute(self, profile, directory):
+        profile.run(directory,
+                    self.inputname,
+                    self.outputname)
+
     def read_results(self, directory):
-        return self.reader(directory / self.output_file)
-
-    def __repr__(self):
-        return 'CalculatorTemplate({})'.format(vars(self))
-
-
-def get_espresso_template():
-    from ase.calculators.espresso import Espresso
-    infile = 'espresso.pwi'
-    outfile = 'espresso.pwo'
-    return CalculatorTemplate(
-        name='espresso',
-        implemented_properties=Espresso.implemented_properties,
-        input_file=infile,
-        output_file=outfile,
-        input_format='espresso-in',
-        reader=SingleFileReader('espresso-out'))
+        path = directory / self.outputname
+        atoms = read(path, format='espresso-out')
+        return dict(atoms.calc.properties())
 
 
 class GenericFileIOCalculator(BaseCalculator, GetOutputsMixin):
