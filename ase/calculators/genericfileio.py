@@ -41,12 +41,6 @@ class CalculatorTemplate(ABC):
     def write_input(self, directory, atoms, parameters, properties):
         ...
 
-    def execute(self, profile, directory: PathLike) -> None:
-        # Should be abstract?
-        profile.run(directory,
-                    self.input_file,
-                    self.output_file)
-
     @abstractmethod
     def read_results(self, directory: PathLike) -> Mapping[str, Any]:
         ...

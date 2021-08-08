@@ -569,10 +569,8 @@ def prepare_abinit_input(directory, atoms, properties, parameters,
                         pseudos=ppp)
 
 
-def read_abinit_outputs(directory):
+def read_abinit_outputs(directory, label):
     directory = Path(directory)
-    # XXX hardcoded label
-    label = 'abinit'
     textfilename = directory / f'{label}.abo'
     results = {}
     with open(textfilename) as fd:

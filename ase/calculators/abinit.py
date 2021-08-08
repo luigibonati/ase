@@ -3,6 +3,7 @@
 http://www.abinit.org/
 """
 
+from os import PathLike
 import re
 
 import ase.io.abinit as io
@@ -42,11 +43,16 @@ class AbinitTemplate(CalculatorTemplate):
     _label = 'abinit'  # Controls naming of files within calculation directory
 
     def __init__(self):
-        self.name = 'abinit'  # XXX
+        self.name = 'abinit'
         self.implemented_properties = ['energy', 'forces', 'stress', 'magmom']
-        self.input_file = 'abinit.in'
-        self.output_file = 'abinit.xxxxxxx'
-        # XXXXXXXXX constructor or something?
+        self.input_file = f'{self._label}.in'
+        self.output_file = f'{self._label}.log'
+
+    def execute(self, profile, directory: PathLike) -> None:
+        # Should be abstract?
+        profile.run(directory,
+                    self.input_file,
+                    self.output_file)
 
     def write_input(self, directory, atoms, parameters, properties):
         directory = Path(directory)
@@ -69,7 +75,7 @@ class AbinitTemplate(CalculatorTemplate):
             pp_paths=pp_paths)
 
     def read_results(self, directory):
-        return io.read_abinit_outputs(directory)
+        return io.read_abinit_outputs(directory, self._label)
 
 
 class Abinit(GenericFileIOCalculator):
