@@ -4,7 +4,6 @@ from typing import Iterable, Mapping, Any
 from abc import ABC, abstractmethod
 
 from ase.io import read, write
-from ase.io.formats import ioformats
 from ase.calculators.abc import GetOutputsMixin
 from ase.calculators.calculator import BaseCalculator
 
