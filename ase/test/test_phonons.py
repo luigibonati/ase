@@ -32,7 +32,7 @@ def test_check_eq_forces(testdir):
     atoms = ase.build.bulk('C')
     atoms.calc = EMT()
 
-    phonons = Phonons(atoms, EMT(), supercell=(2, 2, 2))
+    phonons = Phonons(atoms, EMT(), supercell=(1, 2, 1))
     phonons.run()
     fmin, fmax, _i_min, _i_max = phonons.check_eq_forces()
     assert fmin < fmax
