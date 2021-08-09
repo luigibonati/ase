@@ -3,11 +3,14 @@
 http://www.abinit.org/
 """
 
+from os import PathLike
 import re
 
 import ase.io.abinit as io
-from ase.calculators.calculator import FileIOCalculator
+from ase.calculators.genericfileio import (CalculatorTemplate,
+                                           GenericFileIOCalculator)
 from subprocess import check_output
+from pathlib import Path
 
 
 def get_abinit_version(command):
@@ -21,7 +24,61 @@ def get_abinit_version(command):
     return m.group(1)
 
 
-class Abinit(FileIOCalculator):
+class AbinitProfile:
+    def __init__(self, argv):
+        self.argv = argv
+
+    def version(self):
+        from subprocess import check_output
+        return check_output(self.argv + ['--version'])
+
+    def run(self, directory, inputfile, outputfile):
+        from subprocess import check_call
+        with open(outputfile, 'w') as fd:
+            check_call(self.argv + [str(inputfile)], stdout=fd,
+                       cwd=directory)
+
+
+class AbinitTemplate(CalculatorTemplate):
+    _label = 'abinit'  # Controls naming of files within calculation directory
+
+    def __init__(self):
+        self.name = 'abinit'
+        self.implemented_properties = ['energy', 'forces', 'stress', 'magmom']
+        self.input_file = f'{self._label}.in'
+        self.output_file = f'{self._label}.log'
+
+    def execute(self, profile, directory: PathLike) -> None:
+        # Should be abstract?
+        profile.run(directory,
+                    self.input_file,
+                    self.output_file)
+
+    def write_input(self, directory, atoms, parameters, properties):
+        directory = Path(directory)
+        directory.mkdir(exist_ok=True, parents=True)
+        parameters = dict(parameters)
+        pp_paths = parameters.pop('pp_paths', None)
+        assert pp_paths is not None
+
+        kw = dict(
+            xc='LDA',
+            smearing=None,
+            kpts=None,
+            raw=None,
+            pps='fhi')
+        kw.update(parameters)
+
+        io.prepare_abinit_input(
+            directory=directory,
+            atoms=atoms, properties=properties, parameters=kw,
+            pp_paths=pp_paths)
+
+    def read_results(self, directory):
+        return io.read_abinit_outputs(directory, self._label)
+
+
+class Abinit(GenericFileIOCalculator):
     """Class for doing ABINIT calculations.
 
     The default parameters are very close to those that the ABINIT
@@ -30,23 +87,7 @@ class Abinit(FileIOCalculator):
       calc = Abinit(label='abinit', xc='LDA', ecut=400, toldfe=1e-5)
     """
 
-    implemented_properties = ['energy', 'forces', 'stress', 'magmom']
-    ignored_changes = {'pbc'}  # In abinit, pbc is always effectively True.
-    command = 'abinit < PREFIX.files > PREFIX.log'
-    discard_results_on_any_change = True
-
-    default_parameters = dict(
-        xc='LDA',
-        smearing=None,
-        kpts=None,
-        raw=None,
-        pps='fhi')
-
-    def __init__(self, restart=None,
-                 ignore_bad_restart_file=FileIOCalculator._deprecated,
-                 label='abinit', atoms=None, pp_paths=None,
-                 v8_legacy_format=None,
-                 **kwargs):
+    def __init__(self, *, profile=None, directory='.', **kwargs):
         """Construct ABINIT-calculator object.
 
         Parameters
@@ -65,84 +106,10 @@ class Abinit(FileIOCalculator):
 
         """
 
-        self.v8_legacy_format = v8_legacy_format
-        self.pp_paths = pp_paths
+        if profile is None:
+            profile = AbinitProfile(['abinit'])
 
-        FileIOCalculator.__init__(self, restart, ignore_bad_restart_file,
-                                  label, atoms, **kwargs)
-
-    def write_input(self, atoms, properties, system_changes):
-        """Write input parameters to files-file."""
-        io.write_all_inputs(
-            atoms, properties, parameters=self.parameters,
-            pp_paths=self.pp_paths,
-            label=self.label, v8_legacy_format=self.v8_legacy_format)
-
-    def read(self, label):
-        """Read results from ABINIT's text-output file."""
-        # XXX I think we should redo the concept of 'restarting'.
-        # It makes sense to load a previous calculation as
-        #
-        #  * static, calculator-independent results
-        #  * an actual calculator capable of calculating
-        #
-        # Either of which is simpler than our current mechanism which
-        # implies both at the same time.  Moreover, we don't need
-        # something like calc.read(label).
-        #
-        # What we need for these two purposes is
-        #
-        #  * calc = MyCalculator.read(basefile)
-        #      (or maybe it should return Atoms with calc attached)
-        #  * results = read_results(basefile, format='abinit')
-        #
-        # where basefile determines the file tree.
-        FileIOCalculator.read(self, label)
-        self.atoms, self.parameters = io.read_ase_and_abinit_inputs(self.label)
-        self.results = io.read_results(self.label, self._output_filename())
-
-    def _output_filename(self):
-        if self.v8_legacy_format:
-            ext = '.txt'
-        else:
-            ext = '.abo'
-        return self.label + ext
-
-    def read_results(self):
-        self.results = io.read_results(self.label, self._output_filename())
-
-    def get_number_of_iterations(self):
-        return self.results['niter']
-
-    def get_electronic_temperature(self):
-        return self.results['width']
-
-    def get_number_of_electrons(self):
-        return self.results['nelect']
-
-    def get_number_of_bands(self):
-        return self.results['nbands']
-
-    def get_k_point_weights(self):
-        return self.results['kpoint_weights']
-
-    def get_bz_k_points(self):
-        raise NotImplementedError
-
-    def get_ibz_k_points(self):
-        return self.results['ibz_kpoints']
-
-    def get_spin_polarized(self):
-        return self.results['eigenvalues'].shape[0] == 2
-
-    def get_number_of_spins(self):
-        return len(self.results['eigenvalues'])
-
-    def get_fermi_level(self):
-        return self.results['fermilevel']
-
-    def get_eigenvalues(self, kpt=0, spin=0):
-        return self.results['eigenvalues'][spin, kpt]
-
-    def get_occupations(self, kpt=0, spin=0):
-        raise NotImplementedError
+        super().__init__(template=AbinitTemplate(),
+                         profile=profile,
+                         directory=directory,
+                         parameters=kwargs)

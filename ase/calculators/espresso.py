@@ -6,7 +6,7 @@ Run pw.x jobs.
 
 import os
 from ase.calculators.genericfileio import (GenericFileIOCalculator,
-                                           get_espresso_template,
+                                           EspressoTemplate,
                                            read_stdout)
 
 
@@ -45,16 +45,14 @@ class EspressoProfile:
             check_call(argv, stdout=fd, cwd=directory)
 
     def socketio_argv_unix(self, socket):
-        template = get_espresso_template()
+        template = EspressoTemplate()
         # It makes sense to know the template for this kind of choices,
         # but is there a better way?
         return list(self.argv) + ['--ipi', f'{socket}:UNIX', '-in',
-                                  template.input_file]
+                                  template.inputname]
 
 
 class Espresso(GenericFileIOCalculator):
-    implemented_properties = ['energy', 'forces', 'stress', 'magmoms']
-
     def __init__(self, *, profile=None,
                  command=GenericFileIOCalculator._deprecated,
                  label=GenericFileIOCalculator._deprecated,
@@ -145,7 +143,7 @@ class Espresso(GenericFileIOCalculator):
             import warnings
             warnings.warn(compatibility_msg, FutureWarning)
 
-        template = get_espresso_template()
+        template = EspressoTemplate()
         if profile is None:
             profile = EspressoProfile(argv=['pw.x'])
         super().__init__(profile=profile, template=template, parameters=kwargs)
