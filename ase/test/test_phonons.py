@@ -1,38 +1,32 @@
-import ase.build
+from ase.build import bulk, molecule
 from ase.phonons import Phonons
 from ase.calculators.emt import EMT
 
 
-def test_set_atoms_indices(testdir):
-    atoms = ase.build.molecule('CO2')
+def check_set_atoms(atoms, set_atoms, expected_atoms):
+    """ Perform a test that .set_atoms() only displaces the expected atoms. """
     atoms.calc = EMT()
-
     phonons = Phonons(atoms, EMT())
-    phonons.set_atoms([0, 1])
-    # Check that atom 2 was skipped.
-    # TODO: This check is incomplete.
-    #       Once there is a public API to iterate over/inspect displacements, we can
-    #       get rid of the .run() call and look directly at the atom indices instead.
+    phonons.set_atoms(set_atoms)
+
+    # TODO: For now, because there is no public API to iterate over/inspect
+    #       displacements, we run and check the number of files in the cache.
+    #       Later when the requisite API exists, we should use it both to
+    #       check the actual atom indices and to avoid computation.
     phonons.run()
-    assert len(phonons.cache) == 2 * 6 + 1
+    assert len(phonons.cache) == 6 * len(expected_atoms) + 1
+
+
+def test_set_atoms_indices(testdir):
+    check_set_atoms(molecule('CO2'), set_atoms=[0, 1], expected_atoms=[0, 1])
 
 
 def test_set_atoms_symbol(testdir):
-    atoms = ase.build.molecule('CO2')
-    atoms.calc = EMT()
-
-    phonons = Phonons(atoms, EMT())
-    phonons.set_atoms(['O'])
-    # Check that atom 0 was skipped.
-    # TODO: This check is incomplete.
-    #       Once there is a public API to iterate over/inspect displacements, we can
-    #       get rid of the .run() call and look directly at the atom indices instead.
-    phonons.run()
-    assert len(phonons.cache) == 2 * 6 + 1
+    check_set_atoms(molecule('CO2'), set_atoms=['O'], expected_atoms=[1, 2])
 
 
 def test_check_eq_forces(testdir):
-    atoms = ase.build.bulk('C')
+    atoms = bulk('C')
     atoms.calc = EMT()
 
     phonons = Phonons(atoms, EMT(), supercell=(1, 2, 1))
@@ -43,7 +37,7 @@ def test_check_eq_forces(testdir):
 
 # Regression test for #953;  data stored for eq should resemble data for displacements
 def test_check_consistent_format(testdir):
-    atoms = ase.build.molecule('H2')
+    atoms = molecule('H2')
     atoms.calc = EMT()
 
     phonons = Phonons(atoms, EMT())
