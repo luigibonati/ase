@@ -48,7 +48,7 @@ def test_bulk(Cbulk, testdir):
     assert i_vib[3:] == approx(i_phonons[3:], 1)
     pz.summary()
 
-    assert rm.clean() == 25
+    assert rm.clean() == 26
 
 
 def test_bulk_kpts(Cbulk, testdir):

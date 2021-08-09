@@ -2,6 +2,7 @@ import ase.build
 from ase.phonons import Phonons
 from ase.calculators.emt import EMT
 
+
 def test_set_atoms_indices(testdir):
     atoms = ase.build.molecule('CO2')
     atoms.calc = EMT()
@@ -14,6 +15,7 @@ def test_set_atoms_indices(testdir):
     #       get rid of the .run() call and look directly at the atom indices instead.
     phonons.run()
     assert len(phonons.cache) == 2 * 6 + 1
+
 
 def test_set_atoms_symbol(testdir):
     atoms = ase.build.molecule('CO2')
@@ -28,6 +30,7 @@ def test_set_atoms_symbol(testdir):
     phonons.run()
     assert len(phonons.cache) == 2 * 6 + 1
 
+
 def test_check_eq_forces(testdir):
     atoms = ase.build.bulk('C')
     atoms.calc = EMT()
@@ -36,6 +39,7 @@ def test_check_eq_forces(testdir):
     phonons.run()
     fmin, fmax, _i_min, _i_max = phonons.check_eq_forces()
     assert fmin < fmax
+
 
 # Regression test for #953;  data stored for eq should resemble data for displacements
 def test_check_consistent_format(testdir):
@@ -52,4 +56,3 @@ def test_check_consistent_format(testdir):
     assert set(eq_data) == set(disp_data), "dict keys mismatch"
     for array_key in eq_data:
         assert eq_data[array_key].shape == disp_data[array_key].shape, array_key
-
