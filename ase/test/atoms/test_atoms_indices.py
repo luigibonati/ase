@@ -10,6 +10,9 @@ def test_species_index():
     assert a.get_index_in_species(3) == 1
     assert a.get_index_in_species(4) == 2
 
+    with pytest.raises(ValueError, match='Invalid index'): 
+        a.get_index_in_species(10)
+
     assert a.get_global_index('C', 0) == 2
 
     with pytest.raises(RuntimeError, match='combination not found'): 

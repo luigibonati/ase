@@ -532,6 +532,9 @@ class Atoms:
     def get_index_in_species(self, i):
         """Get the index of atom i among those of its own species."""
 
+        if i >= len(self) or i < 0:
+            raise ValueError('Invalid index')
+
         numbers = self.arrays['numbers']
         n = numbers[i]
         unique, counts = np.unique(numbers[:i+1], return_counts=True)
