@@ -56,6 +56,7 @@ class Espresso(GenericFileIOCalculator):
     def __init__(self, *, profile=None,
                  command=GenericFileIOCalculator._deprecated,
                  label=GenericFileIOCalculator._deprecated,
+                 directory='.',
                  **kwargs):
         """
         All options for pw.x are copied verbatim to the input file, and put
@@ -146,4 +147,6 @@ class Espresso(GenericFileIOCalculator):
         template = EspressoTemplate()
         if profile is None:
             profile = EspressoProfile(argv=['pw.x'])
-        super().__init__(profile=profile, template=template, parameters=kwargs)
+        super().__init__(profile=profile, template=template,
+                         directory=directory,
+                         parameters=kwargs)
