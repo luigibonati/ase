@@ -529,6 +529,28 @@ class Atoms:
         Equivalent to ``list(atoms.symbols)``."""
         return list(self.symbols)
 
+    def get_index_in_species(self, i):
+        """Get the index of atom i among those of its own species."""
+
+        numbers = self.arrays['numbers']
+        n = numbers[i]
+        unique, counts = np.unique(numbers[:i+1], return_counts=True)
+        return counts[unique.tolist().index(n)]-1
+
+    def get_global_index(self, species, si):
+        """Reverse of get_index_in_species; returns global index from species
+        and index-in-species si"""
+
+        sj = -1
+        for i, el in enumerate(self.get_chemical_symbols()): 
+            if el == species: 
+                sj += 1
+            if (sj == si): 
+                return i
+
+        # Not found
+        raise RuntimeError('Species and index combination not found')
+
     def set_chemical_symbols(self, symbols):
         """Set chemical symbols."""
         self.set_array('numbers', symbols2numbers(symbols), int, ())

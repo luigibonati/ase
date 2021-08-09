@@ -250,10 +250,9 @@ def write_castep_cell(fd, atoms, positions_frac=False, force_write=False,
                 break
             if isinstance(constr, FixAtoms):
                 for i in constr.index:
-
                     try:
                         symbol = atoms.get_chemical_symbols()[i]
-                        nis = atoms.calc._get_number_in_species(i)
+                        nis = atoms.get_index_in_species(i)+1
                     except KeyError:
                         raise UserWarning('Unrecognized index in'
                                           + ' constraint %s' % constr)
@@ -267,7 +266,7 @@ def write_castep_cell(fd, atoms, positions_frac=False, force_write=False,
             elif isinstance(constr, FixCartesian):
                 n = constr.a
                 symbol = atoms.get_chemical_symbols()[n]
-                nis = atoms.calc._get_number_in_species(n)
+                nis = atoms.get_index_in_species(n)+1
 
                 for i, m in enumerate(constr.mask):
                     if m == 1:
@@ -279,7 +278,7 @@ def write_castep_cell(fd, atoms, positions_frac=False, force_write=False,
             elif isinstance(constr, FixedPlane):
                 n = constr.a
                 symbol = atoms.get_chemical_symbols()[n]
-                nis = atoms.calc._get_number_in_species(n)
+                nis = atoms.get_index_in_species(n)+1
 
                 L = '%6d %3s %3d   ' % (len(constr_block) + 1, symbol, nis)
                 L += ' '.join([str(d) for d in constr.dir])
@@ -288,7 +287,7 @@ def write_castep_cell(fd, atoms, positions_frac=False, force_write=False,
             elif isinstance(constr, FixedLine):
                 n = constr.a
                 symbol = atoms.get_chemical_symbols()[n]
-                nis = atoms.calc._get_number_in_species(n)
+                nis = atoms.get_index_in_species(n)+1
 
                 direction = constr.dir
                 ((i1, v1), (i2, v2)) = sorted(enumerate(direction),
@@ -648,7 +647,7 @@ def read_castep_cell(fd, index=None, calculator_args={}, find_spg=False,
     fixed_atoms = []
     constraints = []
     for (species, nic), value in raw_constraints.items():
-        absolute_nr = atoms.calc._get_absolute_number(species, nic)
+        absolute_nr = atoms.get_global_index(species, nic-1)
         if len(value) == 3:
             # Check if they are linearly independent
             if np.linalg.det(value) == 0:
