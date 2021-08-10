@@ -48,7 +48,9 @@ class CalculatorTemplate(ABC):
 
 class EspressoTemplate(CalculatorTemplate):
     def __init__(self):
-        super().__init__('espresso', ['energy', 'forces', 'stress', 'magmoms'])
+        super().__init__(
+            'espresso',
+            ['energy', 'free_energy', 'forces', 'stress', 'magmoms'])
         self.inputname = 'espresso.pwi'
         self.outputname = 'espresso.pwo'
 
