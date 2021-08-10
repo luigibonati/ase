@@ -189,6 +189,7 @@ class Siesta(FileIOCalculator):
     command = 'siesta < PREFIX.fdf > PREFIX.out'
     implemented_properties = [
         'energy',
+        'free_energy',
         'forces',
         'stress',
         'dipole',
