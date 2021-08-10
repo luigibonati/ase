@@ -43,8 +43,10 @@ class AbinitTemplate(CalculatorTemplate):
     _label = 'abinit'  # Controls naming of files within calculation directory
 
     def __init__(self):
-        self.name = 'abinit'
-        self.implemented_properties = ['energy', 'forces', 'stress', 'magmom']
+        super().__init__(
+            name='abinit',
+            implemented_properties=['energy', 'forces', 'stress', 'magmom'])
+
         self.input_file = f'{self._label}.in'
         self.output_file = f'{self._label}.log'
 

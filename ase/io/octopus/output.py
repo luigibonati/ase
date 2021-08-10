@@ -157,7 +157,7 @@ def read_static_info_eigenvalues(fd, energy_unit):
              eigenvalues=eps_skn,
              occupations=occ_skn)
     if fermilevel is not None:
-        d.update(efermi=fermilevel)
+        d.update(fermi_level=fermilevel)
     return d
 
 
