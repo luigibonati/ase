@@ -25,13 +25,12 @@ def get_aims_version(string):
 
 
 class Aims(FileIOCalculator):
-    # was "command" before the refactoring to dynamical commands
-
     implemented_properties = ['energy', 'free_energy',
                               'forces', 'stress', 'stresses',
                               'dipole', 'magmom']
 
-    def __init__(self, cubes=None, radmul=None, tier=None, **kwargs):
+    def __init__(self, cubes=None, radmul=None, tier=None,
+                 xc='LDA', **kwargs):
         """Construct the FHI-aims calculator.
 
         The keyword arguments (kwargs) can be one of the ASE standard
@@ -58,7 +57,11 @@ class Aims(FileIOCalculator):
 
         """
 
-        super().__init__(**kwargs)
+        if xc == 'LDA':
+            xc = 'pw-lda'
+            # We can also include 'PBE' ~ 'pbe'
+
+        super().__init__(**kwargs, xc=xc)
 
         self.cubes = cubes
         self.radmul = radmul
@@ -67,17 +70,6 @@ class Aims(FileIOCalculator):
     @property
     def out(self):
         return Path(self.directory) / 'aims.out'
-
-    def set(self, **kwargs):
-        xc = kwargs.get('xc')
-        if xc:
-            kwargs['xc'] = {'LDA': 'pw-lda', 'PBE': 'pbe'}.get(xc, xc)
-
-        changed_parameters = FileIOCalculator.set(self, **kwargs)
-
-        if changed_parameters:
-            self.reset()
-        return changed_parameters
 
     def write_input(self, atoms, properties=None, system_changes=None,
                     ghosts=None, geo_constrain=None, scaled=None, velocities=None):
@@ -108,16 +100,6 @@ class Aims(FileIOCalculator):
         )
         self.write_control(atoms, os.path.join(self.directory, 'control.in'))
         self.write_species(atoms, os.path.join(self.directory, 'control.in'))
-        self.parameters.write(os.path.join(self.directory, 'parameters.ase'))
-
-    def prepare_input_files(self):
-        """
-        Wrapper function to prepare input filesi, e.g., to a run on a remote
-        machine
-        """
-        if self.atoms is None:
-            raise ValueError('No atoms object attached')
-        self.write_input(self.atoms)
 
     def write_control(self, atoms, filename, debug=False):
         lim = '#' + '='*79
@@ -178,31 +160,10 @@ class Aims(FileIOCalculator):
         output.write(lim + '\n\n')
         output.close()
 
-    def read(self, label=None):
-        if label is None:
-            label = self.label
-        FileIOCalculator.read(self, label)
-        geometry = os.path.join(self.directory, 'geometry.in')
-        control = os.path.join(self.directory, 'control.in')
-
-        for filename in [geometry, control, self.out]:
-            if not os.path.isfile(filename):
-                raise ReadError
-
-        self.atoms, symmetry_block = read_aims(geometry, True)
-        self.parameters = Parameters.read(os.path.join(self.directory,
-                                                       'parameters.ase'))
-        if symmetry_block:
-            self.parameters["symmetry_block"] = symmetry_block
-        self.read_results()
-
     def read_results(self):
         converged = self.read_convergence()
         if not converged:
-            os.system('tail -20 ' + self.out)
-            raise RuntimeError('FHI-aims did not converge!\n' +
-                               'The last lines of output are printed above ' +
-                               'and should give an indication why.')
+            raise RuntimeError('FHI-aims did not converge!')
         self.read_energy()
         if ('compute_forces' in self.parameters or
             'sc_accuracy_forces' in self.parameters):
