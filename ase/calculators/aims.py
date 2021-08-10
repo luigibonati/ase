@@ -29,7 +29,7 @@ class Aims(FileIOCalculator):
                               'forces', 'stress', 'stresses',
                               'dipole', 'magmom']
 
-    def __init__(self, cubes=None, radmul=None, tier=None,
+    def __init__(self, cubes=None, tier=None,
                  xc='LDA', **kwargs):
         """Construct the FHI-aims calculator.
 
@@ -42,9 +42,6 @@ class Aims(FileIOCalculator):
 
         cubes: AimsCube object
             Cube file specification.
-
-        radmul: int
-            Set radial multiplier for the basis set of all atomic species.
 
         tier: int or array of ints
             Set basis set tier for all atomic species.
@@ -64,7 +61,6 @@ class Aims(FileIOCalculator):
         super().__init__(**kwargs, xc=xc)
 
         self.cubes = cubes
-        self.radmul = radmul
         self.tier = tier
 
     @property
@@ -230,9 +226,6 @@ class Aims(FileIOCalculator):
                                   self.parameters.plus_u[symbol])
         control.close()
 
-        if self.radmul is not None:
-            self.set_radial_multiplier()
-
     def format_tiers(self, line):
         if 'meV' in line:
             assert line[0] == '#'
@@ -265,21 +258,6 @@ class Aims(FileIOCalculator):
             return 4
         else:
             return -1
-
-    def set_radial_multiplier(self):
-        assert isinstance(self.radmul, int)
-        newctrl = self.ctrlname + '.new'
-        fin = open(self.ctrlname, 'r')
-        fout = open(newctrl, 'w')
-        newline = "    radial_multiplier   %i\n" % self.radmul
-        for line in fin:
-            if '    radial_multiplier' in line:
-                fout.write(newline)
-            else:
-                fout.write(line)
-        fin.close()
-        fout.close()
-        os.rename(newctrl, self.ctrlname)
 
     def get_dipole_moment(self, atoms):
         if ('dipole' not in self.parameters.get('output', []) or
