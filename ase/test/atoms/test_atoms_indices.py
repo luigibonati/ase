@@ -1,4 +1,5 @@
 import pytest
+import numpy as np
 from ase import Atoms
 
 
@@ -6,14 +7,12 @@ def test_species_index():
 
     a = Atoms(['H', 'H', 'C', 'C', 'H'])
 
-    assert a.get_index_in_species(3) == 1
-    assert a.get_index_in_species(4) == 2
+    spind = a.symbols.species_indices()
 
-    with pytest.raises(ValueError, match='Invalid index'): 
-        a.get_index_in_species(10)
+    assert (np.array(spind) == [0, 1, 0, 1, 2]).all()
 
-    assert a.get_global_index('C', 0) == 2
+    # It should work as the inverse to this
+    allind = a.symbols.indices()
 
-    with pytest.raises(RuntimeError, match='combination not found'): 
-        a.get_global_index('O', 1)
-        a.get_global_index('C', 2)
+    for i, s in enumerate(a.symbols):
+        assert (list(allind[s]).index(i) == spind[i])
