@@ -20,6 +20,7 @@ calc = pytest.mark.calculator
 def test_h2dft(factory):
     run(factory)
 
+
 def run(factory):
     name = factory.name
     calc = factory.calc(label=name, xc='LDA')

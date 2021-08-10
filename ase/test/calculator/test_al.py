@@ -1,6 +1,5 @@
 import pytest
 from ase.build import bulk
-from ase.test.factories import ObsoleteFactoryWrapper
 
 
 omx_par = {'definition_of_atomic_species': [['Al', 'Al8.0-p1', 'Al_CA13'],
