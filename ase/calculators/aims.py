@@ -15,8 +15,7 @@ import numpy as np
 from ase.units import Hartree
 from ase.io.aims import write_aims
 from ase.data import atomic_numbers
-from ase.calculators.calculator import (FileIOCalculator, kpts2mp,
-                                        PropertyNotImplementedError)
+from ase.calculators.calculator import kpts2mp
 from ase.calculators.genericfileio import (GenericFileIOCalculator,
                                            CalculatorTemplate)
 
