@@ -1,6 +1,8 @@
 import time
 import warnings
 
+import numpy as np
+
 from ase.units import Ang, fs
 from ase.utils import reader, writer
 
@@ -32,7 +34,6 @@ def parse_geometry_lines(lines, apply_constraints=True):
         FixScaledParametricRelations,
         FixCartesianParametricRelations,
     )
-    import numpy as np
 
     atoms = Atoms()
 
@@ -225,8 +226,6 @@ def write_aims(
 
     from ase.constraints import FixAtoms, FixCartesian
 
-    import numpy as np
-
     if geo_constrain:
         if not scaled:
             warnings.warn(
@@ -325,8 +324,6 @@ def write_aims(
 
 def get_sym_block(atoms):
     """Get symmetry block for Parametric constraints in atoms.constraints"""
-    import numpy as np
-
     from ase.constraints import (
         FixScaledParametricRelations,
         FixCartesianParametricRelations,
@@ -449,7 +446,7 @@ def read_aims_output(fd, index=-1):
     """Import FHI-aims output files with all data available, i.e.
     relaxations, MD information, force information etc etc etc."""
     from ase import Atoms, Atom
-    from ase.calculators.singlepoint import SinglePointCalculator
+    from ase.calculators.singlepoint import SinglePointDFTCalculator
     from ase.constraints import FixAtoms, FixCartesian
 
     molecular_dynamics = False
@@ -537,7 +534,7 @@ def read_aims_output(fd, index=-1):
             # and forces that were already collected
             atoms = _parse_atoms(fd, n_atoms=n_atoms)
             results = images[-1].calc.results
-            atoms.calc = SinglePointCalculator(atoms, **results)
+            atoms.calc = SinglePointDFTCalculator(atoms, **results)
 
             # replace last image with updated atoms
             images[-1] = atoms
@@ -566,9 +563,9 @@ def read_aims_output(fd, index=-1):
                 e = images[-1].get_potential_energy()
                 # FlK: Add the stress if it has been computed
                 if stress is None:
-                    calc = SinglePointCalculator(atoms, energy=e, forces=f)
+                    calc = SinglePointDFTCalculator(atoms, energy=e, forces=f)
                 else:
-                    calc = SinglePointCalculator(
+                    calc = SinglePointDFTCalculator(
                         atoms, energy=e, forces=f, stress=stress
                     )
                 images[-1].calc = calc
@@ -581,7 +578,7 @@ def read_aims_output(fd, index=-1):
                 atoms.set_cell(cell)
                 atoms.pbc = True
             if not found_aims_calculator:
-                atoms.calc = SinglePointCalculator(atoms, energy=e)
+                atoms.calc = SinglePointDFTCalculator(atoms, energy=e)
             if not molecular_dynamics:
                 if len(fix):
                     atoms.set_constraint([FixAtoms(indices=fix)] + fix_cart)
@@ -609,12 +606,11 @@ def read_aims_output(fd, index=-1):
                 f = images[-1].get_forces()
                 stress = images[-1].get_stress(voigt=False)
 
-                calc = SinglePointCalculator(
+                calc = SinglePointDFTCalculator(
                     atoms, energy=e, forces=f, stress=stress, stresses=stresses
                 )
                 images[-1].calc = calc
 
-    fd.close()
     if molecular_dynamics:
         images = images[1:]
 
