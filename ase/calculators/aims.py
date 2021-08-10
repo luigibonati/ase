@@ -13,10 +13,12 @@ from pathlib import Path
 import numpy as np
 
 from ase.units import Hartree
-from ase.io.aims import write_aims, read_aims
+from ase.io.aims import write_aims
 from ase.data import atomic_numbers
-from ase.calculators.calculator import FileIOCalculator, Parameters, kpts2mp, \
-    ReadError, PropertyNotImplementedError
+from ase.calculators.calculator import (FileIOCalculator, kpts2mp,
+                                        PropertyNotImplementedError)
+from ase.calculators.genericfileio import (GenericFileIOCalculator,
+                                           CalculatorTemplate)
 
 
 def get_aims_version(string):
@@ -24,13 +26,243 @@ def get_aims_version(string):
     return match.group(1)
 
 
-class Aims(FileIOCalculator):
-    implemented_properties = ['energy', 'free_energy',
-                              'forces', 'stress', 'stresses',
-                              'dipole', 'magmom']
+def write_control(fd, atoms, parameters, debug=False):
+    parameters = dict(parameters)
+    lim = '#' + '=' * 79
 
-    def __init__(self, cubes=None, tier=None,
-                 xc='LDA', **kwargs):
+    if parameters['xc'] == 'LDA':
+        parameters['xc'] = 'pw-lda'
+
+    cubes = parameters.pop('cubes', None)
+
+    fd.write(lim + '\n')
+    for line in ['FHI-aims file',
+                 'Created using the Atomic Simulation Environment (ASE)',
+                 time.asctime(),
+                 ]:
+        fd.write('# ' + line + '\n')
+    if debug:
+        fd.write(
+            '# \n# List of parameters used to initialize the calculator:')
+        for p, v in parameters.items():
+            s = '#     {} : {}\n'.format(p, v)
+            fd.write(s)
+    fd.write(lim + '\n')
+
+    assert not ('kpts' in parameters and 'k_grid' in parameters)
+    assert not ('smearing' in parameters and
+                'occupation_type' in parameters)
+
+    for key, value in parameters.items():
+        if key == 'kpts':
+            mp = kpts2mp(atoms, parameters['kpts'])
+            fd.write('%-35s%d %d %d\n' % (('k_grid',) + tuple(mp)))
+            dk = 0.5 - 0.5 / np.array(mp)
+            fd.write('%-35s%f %f %f\n' % (('k_offset',) + tuple(dk)))
+        elif key == 'species_dir':
+            continue
+        elif key == 'plus_u':
+            continue
+        elif key == 'smearing':
+            name = parameters.smearing[0].lower()
+            if name == 'fermi-dirac':
+                name = 'fermi'
+            width = parameters['smearing'][1]
+            fd.write('%-35s%s %f' % ('occupation_type', name, width))
+            if name == 'methfessel-paxton':
+                order = parameters['smearing'][2]
+                fd.write(' %d' % order)
+            fd.write('\n' % order)
+        elif key == 'output':
+            for output_type in value:
+                fd.write('%-35s%s\n' % (key, output_type))
+        elif key == 'vdw_correction_hirshfeld' and value:
+            fd.write('%-35s\n' % key)
+        elif isinstance(value, bool):
+            fd.write('%-35s.%s.\n' % (key, value).lower())
+        elif isinstance(value, (tuple, list)):
+            fd.write('%-35s%s\n' %
+                         (key, ' '.join(str(x) for x in value)))
+        elif isinstance(value, str):
+            fd.write('%-35s%s\n' % (key, value))
+        else:
+            fd.write('%-35s%r\n' % (key, value))
+
+    if cubes:
+        cubes.write(fd)
+
+    fd.write(lim + '\n\n')
+
+
+def write_species(fd, atoms, parameters):
+    parameters = dict(parameters)
+    species_path = parameters.get('species_dir')
+    if species_path is None:
+        species_path = os.environ.get('AIMS_SPECIES_DIR')
+    if species_path is None:
+        raise RuntimeError(
+            'Missing species directory!  Use species_dir ' +
+            'parameter or set $AIMS_SPECIES_DIR environment variable.')
+
+    species_path = Path(species_path)
+
+    species = set(atoms.symbols)
+
+    tier = parameters.pop('tier', None)
+
+    if tier is not None:
+        if isinstance(tier, int):
+            tierlist = np.ones(len(species), 'int') * tier
+        elif isinstance(tier, list):
+            assert len(tier) == len(species)
+            tierlist = tier
+
+    for i, symbol in enumerate(species):
+        path = species_path / ('%02i_%s_default' % (
+            atomic_numbers[symbol], symbol))
+        reached_tiers = False
+        with open(path) as species_fd:
+            for line in species_fd:
+                if tier is not None:
+                    if 'First tier' in line:
+                        reached_tiers = True
+                        targettier = tierlist[i]
+                        foundtarget = False
+                        do_uncomment = True
+                    if reached_tiers:
+                        line, foundtarget, do_uncomment = format_tiers(
+                            line, targettier, foundtarget, do_uncomment)
+                fd.write(line)
+
+        if tier is not None and not foundtarget:
+            raise RuntimeError(
+                "Basis tier %i not found for element %s" %
+                (targettier, symbol))
+
+        if parameters.get('plus_u') is not None:
+            if symbol in parameters.plus_u:
+                fd.write('plus_u %s \n' %
+                         parameters.plus_u[symbol])
+
+
+def format_tiers(line, targettier, foundtarget, do_uncomment):
+    if 'meV' in line:
+        assert line[0] == '#'
+        if 'tier' in line and 'Further' not in line:
+            tier = line.split(" tier")[0]
+            tier = tier.split('"')[-1]
+            current_tier = translate_tier(tier)
+            if current_tier == targettier:
+                foundtarget = True
+            elif current_tier > targettier:
+                do_uncomment = False
+        else:
+            do_uncomment = False
+        outputline = line
+    elif do_uncomment and line[0] == '#':
+        outputline = line[1:]
+    elif not do_uncomment and line[0] != '#':
+        outputline = '#' + line
+    else:
+        outputline = line
+    return outputline, foundtarget, do_uncomment
+
+
+class AimsProfile:
+    def __init__(self, argv):
+        self.argv = argv
+
+    def run(self, directory, outputname):
+        from subprocess import check_call
+        with open(directory / outputname, 'w') as fd:
+            check_call(self.argv, stdout=fd, cwd=directory)
+
+
+class AimsTemplate(CalculatorTemplate):
+    def __init__(self):
+        super().__init__(
+            'aims',
+            ['energy', 'free_energy',
+             'forces', 'stress', 'stresses',
+             'dipole', 'magmom'])
+
+        self.outputname = 'aims.out'
+
+    def write_input(self, directory, atoms, parameters, properties):
+        parameters = dict(parameters)
+        ghosts = parameters.pop('ghosts', None)
+        geo_constrain = parameters.pop('geo_constrain', None)
+        scaled = parameters.pop('scaled', None)
+        velocities = parameters.pop('velocities', None)
+
+        if geo_constrain is None:
+            geo_constrain = 'relax_geometry' in parameters
+
+        if scaled is None:
+            scaled = np.all(atoms.pbc)
+        if velocities is None:
+            velocities = atoms.has('momenta')
+
+        have_lattice_vectors = atoms.pbc.any()
+        have_k_grid = ('k_grid' in parameters or
+                       'kpts' in parameters)
+        if have_lattice_vectors and not have_k_grid:
+            raise RuntimeError('Found lattice vectors but no k-grid!')
+        if not have_lattice_vectors and have_k_grid:
+            raise RuntimeError('Found k-grid but no lattice vectors!')
+
+        geometry_in = directory / 'geometry.in'
+
+        write_aims(
+            geometry_in,
+            atoms,
+            scaled,
+            geo_constrain,
+            velocities=velocities,
+            ghosts=ghosts
+        )
+
+        control = directory / 'control.in'
+        with open(control, 'w') as fd:
+            write_control(fd, atoms, parameters)
+            write_species(fd, atoms, parameters)
+
+    def execute(self, profile, directory):
+        profile.run(directory, self.outputname)
+
+    def read_results(self, directory):
+        from ase.io.aims import read_aims_output
+
+        dst = directory / self.outputname
+        atoms = read_aims_output(dst, index=-1)
+        return atoms.calc.properties()
+        #converged = self.read_convergence()
+        #if not converged:
+        #    raise RuntimeError('FHI-aims did not converge!')
+        #self.read_energy()
+        # if ('compute_forces' in self.parameters or
+        #    'sc_accuracy_forces' in self.parameters):
+        #    self.read_forces()
+
+        # if ('sc_accuracy_stress' in self.parameters or
+        #        ('compute_numerical_stress' in self.parameters
+        #         and self.parameters['compute_numerical_stress']) or
+        #        ('compute_analytical_stress' in self.parameters
+        #         and self.parameters['compute_analytical_stress']) or
+        #        ('compute_heat_flux' in self.parameters
+        #         and self.parameters['compute_heat_flux'])):
+        #    self.read_stress()
+
+        # if ('compute_heat_flux' in self.parameters
+        #    and self.parameters['compute_heat_flux']):
+        #    self.read_stresses()
+
+        # if ('dipole' in self.parameters.get('output', []) and
+        #    not self.atoms.pbc.any()):
+        #    self.read_dipole()
+
+class Aims(GenericFileIOCalculator):
+    def __init__(self, profile=None, **kwargs):
         """Construct the FHI-aims calculator.
 
         The keyword arguments (kwargs) can be one of the ASE standard
@@ -54,198 +286,11 @@ class Aims(FileIOCalculator):
 
         """
 
-        if xc == 'LDA':
-            xc = 'pw-lda'
-            # We can also include 'PBE' ~ 'pbe'
+        if profile is None:
+            profile = AimsProfile(['aims'])
 
-        super().__init__(**kwargs, xc=xc)
-
-        self.cubes = cubes
-        self.tier = tier
-
-    @property
-    def out(self):
-        return Path(self.directory) / 'aims.out'
-
-    def write_input(self, atoms, properties=None, system_changes=None,
-                    ghosts=None, geo_constrain=None, scaled=None, velocities=None):
-        FileIOCalculator.write_input(self, atoms, properties, system_changes)
-
-        if geo_constrain is None:
-            geo_constrain = "relax_geometry" in self.parameters
-
-        if scaled is None:
-            scaled = np.all(atoms.get_pbc())
-        if velocities is None:
-            velocities = atoms.has('momenta')
-
-        have_lattice_vectors = atoms.pbc.any()
-        have_k_grid = ('k_grid' in self.parameters or
-                       'kpts' in self.parameters)
-        if have_lattice_vectors and not have_k_grid:
-            raise RuntimeError('Found lattice vectors but no k-grid!')
-        if not have_lattice_vectors and have_k_grid:
-            raise RuntimeError('Found k-grid but no lattice vectors!')
-        write_aims(
-            os.path.join(self.directory, 'geometry.in'),
-            atoms,
-            scaled,
-            geo_constrain,
-            velocities=velocities,
-            ghosts=ghosts
-        )
-        self.write_control(atoms, os.path.join(self.directory, 'control.in'))
-        self.write_species(atoms, os.path.join(self.directory, 'control.in'))
-
-    def write_control(self, atoms, filename, debug=False):
-        lim = '#' + '='*79
-        output = open(filename, 'w')
-        output.write(lim + '\n')
-        for line in ['FHI-aims file: ' + filename,
-                     'Created using the Atomic Simulation Environment (ASE)',
-                     time.asctime(),
-                     ]:
-            output.write('# ' + line + '\n')
-        if debug:
-            output.write('# \n# List of parameters used to initialize the calculator:',)
-            for p, v in self.parameters.items():
-                s = '#     {} : {}\n'.format(p, v)
-                output.write(s)
-        output.write(lim + '\n')
-
-        assert not ('kpts' in self.parameters and 'k_grid' in self.parameters)
-        assert not ('smearing' in self.parameters and
-                    'occupation_type' in self.parameters)
-
-        for key, value in self.parameters.items():
-            if key == 'kpts':
-                mp = kpts2mp(atoms, self.parameters.kpts)
-                output.write('%-35s%d %d %d\n' % (('k_grid',) + tuple(mp)))
-                dk = 0.5 - 0.5 / np.array(mp)
-                output.write('%-35s%f %f %f\n' % (('k_offset',) + tuple(dk)))
-            elif key == 'species_dir' or key == 'run_command':
-                continue
-            elif key == 'plus_u':
-                continue
-            elif key == 'smearing':
-                name = self.parameters.smearing[0].lower()
-                if name == 'fermi-dirac':
-                    name = 'fermi'
-                width = self.parameters.smearing[1]
-                output.write('%-35s%s %f' % ('occupation_type', name, width))
-                if name == 'methfessel-paxton':
-                    order = self.parameters.smearing[2]
-                    output.write(' %d' % order)
-                output.write('\n' % order)
-            elif key == 'output':
-                for output_type in value:
-                    output.write('%-35s%s\n' % (key, output_type))
-            elif key == 'vdw_correction_hirshfeld' and value:
-                output.write('%-35s\n' % key)
-            elif isinstance(value, bool):
-                output.write('%-35s.%s.\n' % (key, value).lower())
-            elif isinstance(value, (tuple, list)):
-                output.write('%-35s%s\n' %
-                             (key, ' '.join(str(x) for x in value)))
-            elif isinstance(value, str):
-                output.write('%-35s%s\n' % (key, value))
-            else:
-                output.write('%-35s%r\n' % (key, value))
-        if self.cubes:
-            self.cubes.write(output)
-        output.write(lim + '\n\n')
-        output.close()
-
-    def read_results(self):
-        converged = self.read_convergence()
-        if not converged:
-            raise RuntimeError('FHI-aims did not converge!')
-        self.read_energy()
-        if ('compute_forces' in self.parameters or
-            'sc_accuracy_forces' in self.parameters):
-            self.read_forces()
-
-        if ('sc_accuracy_stress' in self.parameters or
-                ('compute_numerical_stress' in self.parameters
-                 and self.parameters['compute_numerical_stress']) or
-                ('compute_analytical_stress' in self.parameters
-                 and self.parameters['compute_analytical_stress']) or
-                ('compute_heat_flux' in self.parameters
-                 and self.parameters['compute_heat_flux'])):
-            self.read_stress()
-
-        if ('compute_heat_flux' in self.parameters
-            and self.parameters['compute_heat_flux']):
-            self.read_stresses()
-
-        if ('dipole' in self.parameters.get('output', []) and
-            not self.atoms.pbc.any()):
-            self.read_dipole()
-
-    def write_species(self, atoms, filename):
-        self.ctrlname = filename
-        species_path = self.parameters.get('species_dir')
-        if species_path is None:
-            species_path = os.environ.get('AIMS_SPECIES_DIR')
-        if species_path is None:
-            raise RuntimeError(
-                'Missing species directory!  Use species_dir ' +
-                'parameter or set $AIMS_SPECIES_DIR environment variable.')
-        control = open(filename, 'a')
-
-        species = set(atoms.symbols)
-
-        if self.tier is not None:
-            if isinstance(self.tier, int):
-                self.tierlist = np.ones(len(species), 'int') * self.tier
-            elif isinstance(self.tier, list):
-                assert len(self.tier) == len(species)
-                self.tierlist = self.tier
-
-        for i, symbol in enumerate(species):
-            fd = os.path.join(species_path, '%02i_%s_default' %
-                              (atomic_numbers[symbol], symbol))
-            reached_tiers = False
-            for line in open(fd, 'r'):
-                if self.tier is not None:
-                    if 'First tier' in line:
-                        reached_tiers = True
-                        self.targettier = self.tierlist[i]
-                        self.foundtarget = False
-                        self.do_uncomment = True
-                    if reached_tiers:
-                        line = self.format_tiers(line)
-                control.write(line)
-            if self.tier is not None and not self.foundtarget:
-                raise RuntimeError(
-                    "Basis tier %i not found for element %s" %
-                    (self.targettier, symbol))
-            if self.parameters.get('plus_u') is not None:
-                if symbol in self.parameters.plus_u.keys():
-                    control.write('plus_u %s \n' %
-                                  self.parameters.plus_u[symbol])
-        control.close()
-
-    def format_tiers(self, line):
-        if 'meV' in line:
-            assert line[0] == '#'
-            if 'tier' in line and 'Further' not in line:
-                tier = line.split(" tier")[0]
-                tier = tier.split('"')[-1]
-                current_tier = self.translate_tier(tier)
-                if current_tier == self.targettier:
-                    self.foundtarget = True
-                elif current_tier > self.targettier:
-                    self.do_uncomment = False
-            else:
-                self.do_uncomment = False
-            return line
-        elif self.do_uncomment and line[0] == '#':
-            return line[1:]
-        elif not self.do_uncomment and line[0] != '#':
-            return '#' + line
-        else:
-            return line
+        super().__init__(template=AimsTemplate(),
+                         profile=profile, parameters=kwargs)
 
     def translate_tier(self, tier):
         if tier.lower() == 'first':
