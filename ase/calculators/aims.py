@@ -27,7 +27,8 @@ def get_aims_version(string):
 class Aims(FileIOCalculator):
     # was "command" before the refactoring to dynamical commands
 
-    implemented_properties = ['energy', 'forces', 'stress', 'stresses',
+    implemented_properties = ['energy', 'free_energy',
+                              'forces', 'stress', 'stresses',
                               'dipole', 'magmom']
 
     def __init__(self, cubes=None, radmul=None, tier=None, **kwargs):
