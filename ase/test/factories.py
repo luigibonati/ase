@@ -473,15 +473,16 @@ class OctopusFactory:
     def __init__(self, executable):
         self.executable = executable
 
+    def _profile(self):
+        from ase.calculators.octopus import OctopusProfile
+        return OctopusProfile([self.executable])
+
     def version(self):
-        stdout = read_stdout([self.executable, '--version'])
-        match = re.match(r'octopus\s*(.+)', stdout)
-        return match.group(1)
+        return self._profile().version()
 
     def calc(self, **kwargs):
         from ase.calculators.octopus import Octopus
-        command = f'{self.executable} > stdout.log'
-        return Octopus(command=command, **kwargs)
+        return Octopus(profile=self._profile(), **kwargs)
 
     @classmethod
     def fromconfig(cls, config):

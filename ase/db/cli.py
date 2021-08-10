@@ -322,7 +322,7 @@ def main(args):
                 plots[name].append([x] + [row.get(key) for key in keys[1:]])
         import matplotlib.pyplot as plt
         for name, plot in plots.items():
-            xyy = zip(*plot)
+            xyy = list(zip(*plot))
             x = xyy[0]
             for y, key in zip(xyy[1:], keys[1:]):
                 plt.plot(x, y, label=name + ':' + key)

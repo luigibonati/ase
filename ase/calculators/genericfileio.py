@@ -70,7 +70,7 @@ class EspressoTemplate(CalculatorTemplate):
 
 
 class GenericFileIOCalculator(BaseCalculator, GetOutputsMixin):
-    def __init__(self, template, profile, directory='.', parameters=None):
+    def __init__(self, *, template, profile, directory='.', parameters=None):
         self.template = template
         self.profile = profile
 
