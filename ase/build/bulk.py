@@ -23,7 +23,7 @@ def bulk(name, crystalstructure=None, a=None, b=None, c=None, *, alpha=None,
         Chemical symbol or symbols as in 'MgO' or 'NaCl'.
     crystalstructure: str
         Must be one of sc, fcc, bcc, tetragonal, bct, hcp, rhombohedral,
-        orthorhombic, mlc, diamond, zincblende, rocksalt, cesiumchloride,
+        orthorhombic, mcl, diamond, zincblende, rocksalt, cesiumchloride,
         fluorite or wurtzite.
     a: float
         Lattice constant.
