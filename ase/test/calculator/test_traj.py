@@ -5,8 +5,6 @@ from ase.build import molecule
 from ase.test.factories import ObsoleteFactoryWrapper
 
 parameters = {
-    'aims': dict(sc_accuracy_rho=5.e-3, sc_accuracy_forces=1e-4, xc='LDA',
-                 kpts=(1, 1, 1)),
     'crystal': dict(basis='sto-3g'),
     'gamess_us': dict(label='test_traj'),
     #'elk': dict(tasks=0, rgkmax=5.0, epsengy=1.0, epspot=1.0, tforce=True,
@@ -16,6 +14,8 @@ parameters = {
 calc = pytest.mark.calculator
 
 
+@calc('aims', sc_accuracy_rho=5.e-3, sc_accuracy_forces=1e-4, xc='LDA',
+      kpts=(1, 1, 1))
 @calc('gpaw',
       mode='lcao',
       basis='sz(dzp)',
