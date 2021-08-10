@@ -369,7 +369,7 @@ class Aims(FileIOCalculator):
             elif key == 'vdw_correction_hirshfeld' and value:
                 output.write('%-35s\n' % key)
             elif isinstance(value, bool):
-                output.write('%-35s.%s.\n' % (key, value).lower()))
+                output.write('%-35s.%s.\n' % (key, value).lower())
             elif isinstance(value, (tuple, list)):
                 output.write('%-35s%s\n' %
                              (key, ' '.join(str(x) for x in value)))
@@ -439,19 +439,17 @@ class Aims(FileIOCalculator):
                 'Missing species directory!  Use species_dir ' +
                 'parameter or set $AIMS_SPECIES_DIR environment variable.')
         control = open(filename, 'a')
-        symbols = atoms.get_chemical_symbols()
-        symbols2 = []
-        for n, symbol in enumerate(symbols):
-            if symbol not in symbols2:
-                symbols2.append(symbol)
+
+        species = set(atoms.symbols)
+
         if self.tier is not None:
             if isinstance(self.tier, int):
-                self.tierlist = np.ones(len(symbols2), 'int') * self.tier
+                self.tierlist = np.ones(len(species), 'int') * self.tier
             elif isinstance(self.tier, list):
-                assert len(self.tier) == len(symbols2)
+                assert len(self.tier) == len(species)
                 self.tierlist = self.tier
 
-        for i, symbol in enumerate(symbols2):
+        for i, symbol in enumerate(species):
             fd = os.path.join(species_path, '%02i_%s_default' %
                               (atomic_numbers[symbol], symbol))
             reached_tiers = False
