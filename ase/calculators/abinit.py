@@ -51,11 +51,8 @@ class AbinitTemplate(CalculatorTemplate):
         self.input_file = f'{self._label}.in'
         self.output_file = f'{self._label}.log'
 
-    def execute(self, profile, directory: PathLike) -> None:
-        # Should be abstract?
-        profile.run(directory,
-                    self.input_file,
-                    self.output_file)
+    def execute(self, directory, profile) -> None:
+        profile.run(directory, self.input_file, self.output_file)
 
     def write_input(self, directory, atoms, parameters, properties):
         directory = Path(directory)

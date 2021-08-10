@@ -66,7 +66,7 @@ class EspressoTemplate(CalculatorTemplate):
         write(dst, atoms, format='espresso-in', properties=properties,
               **parameters)
 
-    def execute(self, profile, directory):
+    def execute(self, directory, profile):
         profile.run(directory,
                     self.inputname,
                     self.outputname)

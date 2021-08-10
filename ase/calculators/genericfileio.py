@@ -41,6 +41,10 @@ class CalculatorTemplate(ABC):
         ...
 
     @abstractmethod
+    def execute(self, directory, profile):
+        ...
+
+    @abstractmethod
     def read_results(self, directory: PathLike) -> Mapping[str, Any]:
         ...
 
@@ -83,7 +87,7 @@ class GenericFileIOCalculator(BaseCalculator, GetOutputsMixin):
 
         self.template.write_input(directory, atoms, self.parameters,
                                   properties)
-        self.template.execute(self.profile, directory)
+        self.template.execute(directory, self.profile)
         self.results = self.template.read_results(directory)
         # XXX Return something useful?
 
