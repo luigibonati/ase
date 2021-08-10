@@ -184,10 +184,11 @@ class Symbols(collections.abc.Sequence):
         >>> from ase.build import molecule
         >>> atoms = molecule('CH3CH2OH')
         >>> atoms.symbols.species_indices()
-        [0, 0, 1, 2, 1, 3, 4, 0, 5]
+        [0, 1, 0, 0, 1, 2, 3, 4, 5]
+
         """ 
 
-        counts = {}
+        counts: Dict[str, int] = {}
         result = []
         for i, n in enumerate(self.numbers): 
             counts[n] = counts.get(n, -1) + 1
