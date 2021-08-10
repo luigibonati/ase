@@ -552,6 +552,9 @@ def read_aims_output(fd, index=-1):
                 inp = next(fd)
                 stress.append([float(i) for i in inp.split()[2:5]])
 
+            from ase.stress import full_3x3_to_voigt_6_stress
+            stress = full_3x3_to_voigt_6_stress(stress)
+
         if "Total atomic forces" in line:
             f = []
             for i in range(n_atoms):

@@ -79,7 +79,7 @@ def write_control(fd, atoms, parameters, debug=False):
         elif key == 'vdw_correction_hirshfeld' and value:
             fd.write('%-35s\n' % key)
         elif isinstance(value, bool):
-            fd.write('%-35s.%s.\n' % (key, value).lower())
+            fd.write('%-35s.%s.\n' % (key, str(value).lower()))
         elif isinstance(value, (tuple, list)):
             fd.write('%-35s%s\n' %
                          (key, ' '.join(str(x) for x in value)))
@@ -306,70 +306,54 @@ class Aims(GenericFileIOCalculator):
         super().__init__(template=AimsTemplate(),
                          profile=profile, parameters=kwargs)
 
-    def get_dipole_moment(self, atoms):
-        if ('dipole' not in self.parameters.get('output', []) or
-            atoms.pbc.any()):
-            raise PropertyNotImplementedError
-        return FileIOCalculator.get_dipole_moment(self, atoms)
+    # def get_dipole_moment(self, atoms):
+    #    if ('dipole' not in self.parameters.get('output', []) or
+    #        atoms.pbc.any()):
+    #        raise PropertyNotImplementedError
+    #    return FileIOCalculator.get_dipole_moment(self, atoms)
 
-    def get_stress(self, atoms):
-        if ('compute_numerical_stress' not in self.parameters and
-            'compute_analytical_stress' not in self.parameters):
-            raise PropertyNotImplementedError
-        return FileIOCalculator.get_stress(self, atoms)
+    # def _get_stress(self, atoms):
+    #    if ('compute_numerical_stress' not in self.parameters and
+    #        'compute_analytical_stress' not in self.parameters):
+    #        raise PropertyNotImplementedError
+    #    return FileIOCalculator.get_stress(self, atoms)
 
-    def get_forces(self, atoms):
-        if ('compute_forces' not in self.parameters and
-            'sc_accuracy_forces' not in self.parameters):
-            raise PropertyNotImplementedError
-        return FileIOCalculator.get_forces(self, atoms)
+    # def get_forces(self, atoms):
+    #    if ('compute_forces' not in self.parameters and
+    #        'sc_accuracy_forces' not in self.parameters):
+    #        raise PropertyNotImplementedError
+    #    return FileIOCalculator.get_forces(self, atoms)
 
-    def read_dipole(self):
-        "Method that reads the electric dipole moment from the output file."
-        for line in open(self.out, 'r'):
-            if line.rfind('Total dipole moment [eAng]') > -1:
-                dipolemoment = np.array([float(f)
-                                         for f in line.split()[6:9]])
-        self.results['dipole'] = dipolemoment
+    # def read_dipole(self):
+    #    "Method that reads the electric dipole moment from the output file."
+    #    for line in open(self.out, 'r'):
+    #        if line.rfind('Total dipole moment [eAng]') > -1:
+    #            dipolemoment = np.array([float(f)
+    #                                     for f in line.split()[6:9]])
+    #    self.results['dipole'] = dipolemoment
 
-    def read_energy(self):
-        for line in open(self.out, 'r'):
-            if line.rfind('Total energy corrected') > -1:
-                E0 = float(line.split()[5])
-            elif line.rfind('Total energy uncorrected') > -1:
-                F = float(line.split()[5])
-        self.results['free_energy'] = F
-        self.results['energy'] = E0
+    # def read_energy(self):
+    #    for line in open(self.out, 'r'):
+    #        if line.rfind('Total energy corrected') > -1:
+    #            E0 = float(line.split()[5])
+    #        elif line.rfind('Total energy uncorrected') > -1:
+    #            F = float(line.split()[5])
+    #    self.results['free_energy'] = F
+    #    self.results['energy'] = E0
 
-    def read_forces(self):
-        """Method that reads forces from the output file.
-
-        If 'all' is switched on, the forces for all ionic steps
-        in the output file will be returned, in other case only the
-        forces for the last ionic configuration are returned."""
-        lines = open(self.out, 'r').readlines()
-        forces = np.zeros([len(self.atoms), 3])
-        for n, line in enumerate(lines):
-            if line.rfind('Total atomic forces') > -1:
-                for iatom in range(len(self.atoms)):
-                    data = lines[n + iatom + 1].split()
-                    for iforce in range(3):
-                        forces[iatom, iforce] = float(data[2 + iforce])
-        self.results['forces'] = forces
-
-    def read_stress(self):
-        lines = open(self.out, 'r').readlines()
-        stress = None
-        for n, line in enumerate(lines):
-            if (line.rfind('|              Analytical stress tensor') > -1 or
-                line.rfind('Numerical stress tensor') > -1):
-                stress = []
-                for i in [n + 5, n + 6, n + 7]:
-                    data = lines[i].split()
-                    stress += [float(data[2]), float(data[3]), float(data[4])]
-        # rearrange in 6-component form and return
-        self.results['stress'] = np.array([stress[0], stress[4], stress[8],
-                                           stress[5], stress[2], stress[1]])
+    # def read_stress(self):
+    #    lines = open(self.out, 'r').readlines()
+    #    stress = None
+    #    for n, line in enumerate(lines):
+    #        if (line.rfind('|              Analytical stress tensor') > -1 or
+    #            line.rfind('Numerical stress tensor') > -1):
+    #            stress = []
+    #            for i in [n + 5, n + 6, n + 7]:
+    #                data = lines[i].split()
+    #                stress += [float(data[2]), float(data[3]), float(data[4])]
+    #    # rearrange in 6-component form and return
+    #    self.results['stress'] = np.array([stress[0], stress[4], stress[8],
+    #                                       stress[5], stress[2], stress[1]])
 
     def read_stresses(self):
         """ Read stress per atom """
@@ -388,26 +372,26 @@ class Aims(GenericFileIOCalculator):
 
             self.results['stresses'] = np.array(stresses)
 
-    def get_stresses(self, voigt=False):
-        """ Return stress per atom
+    # def get_stresses(self, voigt=False):
+    #    """ Return stress per atom
 
-        Returns an array of the six independent components of the
-        symmetric stress tensor per atom, in the traditional Voigt order
-        (xx, yy, zz, yz, xz, xy) or as a 3x3 matrix.  Default is 3x3 matrix.
-        """
+    #    Returns an array of the six independent components of the
+    #    symmetric stress tensor per atom, in the traditional Voigt order
+    #    (xx, yy, zz, yz, xz, xy) or as a 3x3 matrix.  Default is 3x3 matrix.
+    #    """
 
-        voigt_stresses = self.results['stresses']
+    #    voigt_stresses = self.results['stresses']
 
-        if voigt:
-            return voigt_stresses
-        else:
-            stresses = np.zeros((len(self.atoms), 3, 3))
-            for ii, stress in enumerate(voigt_stresses):
-                xx, yy, zz, yz, xz, xy = stress
-                stresses[ii] = np.array([(xx, xy, xz),
-                                         (xy, yy, yz),
-                                         (xz, yz, zz)])
-            return stresses
+    #    if voigt:
+    #        return voigt_stresses
+    #    else:
+    #        stresses = np.zeros((len(self.atoms), 3, 3))
+    #        for ii, stress in enumerate(voigt_stresses):
+    #            xx, yy, zz, yz, xz, xy = stress
+    #            stresses[ii] = np.array([(xx, xy, xz),
+    #                                     (xy, yy, yz),
+    #                                     (xz, yz, zz)])
+    #        return stresses
 
     def read_convergence(self):
         converged = False
@@ -417,8 +401,8 @@ class Aims(GenericFileIOCalculator):
                 converged = True
         return converged
 
-    def get_number_of_iterations(self):
-        return self.read_number_of_iterations()
+    # def get_number_of_iterations(self):
+    #    return self.read_number_of_iterations()
 
     def read_number_of_iterations(self):
         niter = None
@@ -428,8 +412,8 @@ class Aims(GenericFileIOCalculator):
                 niter = int(line.split(':')[-1].strip())
         return niter
 
-    def get_electronic_temperature(self):
-        return self.read_electronic_temperature()
+    # def get_electronic_temperature(self):
+    #      return self.read_electronic_temperature()
 
     def read_electronic_temperature(self):
         width = None
@@ -439,8 +423,8 @@ class Aims(GenericFileIOCalculator):
                 width = float(line.split('=')[-1].strip().split()[0])
         return width
 
-    def get_number_of_electrons(self):
-        return self.read_number_of_electrons()
+    # def get_number_of_electrons(self):
+    #    return self.read_number_of_electrons()
 
     def read_number_of_electrons(self):
         nelect = None
@@ -450,8 +434,8 @@ class Aims(GenericFileIOCalculator):
                 nelect = float(line.split()[-2].strip())
         return nelect
 
-    def get_number_of_bands(self):
-        return self.read_number_of_bands()
+    # def get_number_of_bands(self):
+    #    return self.read_number_of_bands()
 
     def read_number_of_bands(self):
         nband = None
@@ -461,23 +445,23 @@ class Aims(GenericFileIOCalculator):
                 nband = int(line.split(':')[-1].strip())
         return nband
 
-    def get_k_point_weights(self):
-        return self.read_kpts(mode='k_point_weights')
+    # def get_k_point_weights(self):
+    #    return self.read_kpts(mode='k_point_weights')
 
-    def get_bz_k_points(self):
-        raise NotImplementedError
+    # def get_bz_k_points(self):
+    #    raise NotImplementedError
 
-    def get_ibz_k_points(self):
-        return self.read_kpts(mode='ibz_k_points')
+    # def get_ibz_k_points(self):
+    #    return self.read_kpts(mode='ibz_k_points')
 
-    def get_spin_polarized(self):
-        return self.read_number_of_spins()
+    # def get_spin_polarized(self):
+    #    return self.read_number_of_spins()
 
-    def get_number_of_spins(self):
-        return 1 + self.get_spin_polarized()
+    # def get_number_of_spins(self):
+    #    return 1 + self.get_spin_polarized()
 
-    def get_magnetic_moment(self, atoms=None):
-        return self.read_magnetic_moment()
+    # def get_magnetic_moment(self, atoms=None):
+    #    return self.read_magnetic_moment()
 
     def read_number_of_spins(self):
         spinpol = None
@@ -497,14 +481,14 @@ class Aims(GenericFileIOCalculator):
                     magmom = float(line.split(':')[-1].strip())
         return magmom
 
-    def get_fermi_level(self):
-        return self.read_fermi()
+    # def get_fermi_level(self):
+    #     return self.read_fermi()
 
-    def get_eigenvalues(self, kpt=0, spin=0):
-        return self.read_eigenvalues(kpt, spin, 'eigenvalues')
+    # def get_eigenvalues(self, kpt=0, spin=0):
+    #    return self.read_eigenvalues(kpt, spin, 'eigenvalues')
 
-    def get_occupations(self, kpt=0, spin=0):
-        return self.read_eigenvalues(kpt, spin, 'occupations')
+    # def get_occupations(self, kpt=0, spin=0):
+    #    return self.read_eigenvalues(kpt, spin, 'occupations')
 
     def read_fermi(self):
         E_f = None
@@ -605,7 +589,7 @@ class AimsCube:
     "Object to ensure the output of cube files, can be attached to Aims object"
     def __init__(self, origin=(0, 0, 0),
                  edges=[(0.1, 0.0, 0.0), (0.0, 0.1, 0.0), (0.0, 0.0, 0.1)],
-                 points=(50, 50, 50), plots=None):
+                 points=(50, 50, 50), plots=tuple()):
         """parameters:
 
         origin, edges, points:
@@ -621,15 +605,7 @@ class AimsCube:
 
     def ncubes(self):
         """returns the number of cube files to output """
-        if self.plots:
-            number = len(self.plots)
-        else:
-            number = 0
-        return number
-
-    def set(self, **kwargs):
-        """ set any of the parameters ... """
-        # NOT IMPLEMENTED AT THE MOMENT!
+        return len(self.plots)
 
     def move_to_base_name(self, basename):
         """ when output tracking is on or the base namem is not standard,
