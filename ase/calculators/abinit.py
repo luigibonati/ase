@@ -45,7 +45,8 @@ class AbinitTemplate(CalculatorTemplate):
     def __init__(self):
         super().__init__(
             name='abinit',
-            implemented_properties=['energy', 'forces', 'stress', 'magmom'])
+            implemented_properties=['energy', 'free_energy',
+                                    'forces', 'stress', 'magmom'])
 
         self.input_file = f'{self._label}.in'
         self.output_file = f'{self._label}.log'
