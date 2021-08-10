@@ -6,17 +6,12 @@ Carlos de Armas
 http://tddft.org/programs/octopus/
 """
 
-import os
 import numpy as np
-from ase.io.octopus.input import (
-    process_special_kwargs, kwargs2atoms,
-    generate_input, parse_input_file,
-    normalize_keywords)
+from ase.io.octopus.input import process_special_kwargs, generate_input
 from ase.io.octopus.output import read_eigenvalues_file, read_static_info
-from ase.calculators.calculator import (
-    FileIOCalculator, EigenvalOccupationMixin, PropertyNotImplementedError)
 from ase.calculators.genericfileio import (CalculatorTemplate,
                                            GenericFileIOCalculator)
+
 
 class OctopusIOError(IOError):
     pass
@@ -30,7 +25,7 @@ class OctopusProfile:
         from subprocess import check_output
         import re
         txt = check_output(self.argv + ['--version']).decode('ascii')
-        match = re.match(r'octopus\s*(.+)', stdout)
+        match = re.match(r'octopus\s*(.+)', txt)
         # With MPI it prints the line for each rank, but we just match
         # the first line.
         return match.group(1)
