@@ -94,6 +94,19 @@ def write_control(fd, atoms, parameters, debug=False):
     fd.write(lim + '\n\n')
 
 
+def translate_tier(tier):
+    if tier.lower() == 'first':
+        return 1
+    elif tier.lower() == 'second':
+        return 2
+    elif tier.lower() == 'third':
+        return 3
+    elif tier.lower() == 'fourth':
+        return 4
+    else:
+        return -1
+
+
 def write_species(fd, atoms, parameters):
     parameters = dict(parameters)
     species_path = parameters.get('species_dir')
@@ -261,6 +274,7 @@ class AimsTemplate(CalculatorTemplate):
         #    not self.atoms.pbc.any()):
         #    self.read_dipole()
 
+
 class Aims(GenericFileIOCalculator):
     def __init__(self, profile=None, **kwargs):
         """Construct the FHI-aims calculator.
@@ -291,18 +305,6 @@ class Aims(GenericFileIOCalculator):
 
         super().__init__(template=AimsTemplate(),
                          profile=profile, parameters=kwargs)
-
-    def translate_tier(self, tier):
-        if tier.lower() == 'first':
-            return 1
-        elif tier.lower() == 'second':
-            return 2
-        elif tier.lower() == 'third':
-            return 3
-        elif tier.lower() == 'fourth':
-            return 4
-        else:
-            return -1
 
     def get_dipole_moment(self, atoms):
         if ('dipole' not in self.parameters.get('output', []) or
