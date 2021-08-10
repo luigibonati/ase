@@ -3,7 +3,6 @@
 http://www.abinit.org/
 """
 
-from os import PathLike
 import re
 
 import ase.io.abinit as io
