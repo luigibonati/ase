@@ -110,7 +110,8 @@ class AimsFactory:
         from ase.calculators.aims import Aims
         kwargs1 = dict(xc='LDA')
         kwargs1.update(kwargs)
-        return Aims(command=self.executable, **kwargs1)
+        command = f'{self.executable} > aims.out'
+        return Aims(command=command, **kwargs1)
 
     def version(self):
         from ase.calculators.aims import get_aims_version
