@@ -58,7 +58,7 @@ class Exciting:
         else:  # Try to see if the species path directory actually exists.
             try:
                 assert os.path.isdir(species_path)
-            except KeyError:
+            except AssertionError:
                 raise RuntimeError(
                     'Species path given: %s, '
                     'does not exist as a directory' % species_path)
