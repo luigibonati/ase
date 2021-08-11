@@ -8,6 +8,8 @@ from xml.dom import minidom
 from ase.build import bulk
 import ase.calculators.exciting as exciting
 import pytest
+import os
+import shutil
 
 # @pytest.mark.calculator_lite
 # @pytest.mark.calculator('exciting')
@@ -26,6 +28,8 @@ class TestExciting:
     def set_up(self):
         """Code to use for all tests at runtime."""
         self.test_folder_name = tempfile.mkdtemp()
+        yield
+        shutil.rmtree(self.test_folder_name)
 
     @pytest.fixture
     def calculator(self):
@@ -58,6 +62,25 @@ class TestExciting:
         assert not exciting_calc.autormt
         # Should be true by default unless arg is passed to constructor.
         assert exciting_calc.tshift
+
+    def test_exciting_constructor_2(self):
+        with pytest.raises(RuntimeError, match='No species path given and no EXCITINGROOT '
+                    'local var found'):
+            exciting.Exciting()
+
+    def test_exciting_constructor_3(self):
+        os.mkdir(self.test_folder_name + '/species')
+        os.environ['EXCITINGROOT'] = self.test_folder_name
+        calc = exciting.Exciting()
+        assert calc.species_path == self.test_folder_name + '/species'
+
+    def test_exciting_constructor_4(self):
+        with pytest.raises(RuntimeError, match='Species path given'):
+            calc = exciting.Exciting(species_path=self.test_folder_name + '/species')
+
+    def test_exciting_constructor_5(self):
+        calc = exciting.Exciting(ngridk='1 2 3')
+        assert calc.groundstate_attributes['ngridk'] == '1 2 3'
 
     def test_write(self):
         """Test the write method"""
