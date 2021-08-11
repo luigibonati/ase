@@ -225,7 +225,7 @@ class Exciting:
             self.tshift).lower()
 
         def prettify(elem):
-            "Make the element prettier to read."
+            """Make the element prettier to read."""
             rough_string = ET.tostring(elem, 'utf-8')
             reparsed = minidom.parseString(rough_string)
             return reparsed.toprettyxml(indent="\t")
