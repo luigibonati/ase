@@ -3,7 +3,6 @@
 http://www.abinit.org/
 """
 
-from os import PathLike
 import re
 
 import ase.io.abinit as io
@@ -45,16 +44,14 @@ class AbinitTemplate(CalculatorTemplate):
     def __init__(self):
         super().__init__(
             name='abinit',
-            implemented_properties=['energy', 'forces', 'stress', 'magmom'])
+            implemented_properties=['energy', 'free_energy',
+                                    'forces', 'stress', 'magmom'])
 
         self.input_file = f'{self._label}.in'
         self.output_file = f'{self._label}.log'
 
-    def execute(self, profile, directory: PathLike) -> None:
-        # Should be abstract?
-        profile.run(directory,
-                    self.input_file,
-                    self.output_file)
+    def execute(self, directory, profile) -> None:
+        profile.run(directory, self.input_file, self.output_file)
 
     def write_input(self, directory, atoms, parameters, properties):
         directory = Path(directory)
