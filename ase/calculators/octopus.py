@@ -30,7 +30,7 @@ class OctopusProfile:
         # the first line.
         return match.group(1)
 
-    def run(self, directory, inputfile, outputfile):
+    def run(self, directory, outputfile):
         from subprocess import check_call
         with open(directory / outputfile, 'w') as fd:
             check_call(self.argv, stdout=fd, cwd=directory)
@@ -64,8 +64,8 @@ class OctopusTemplate(CalculatorTemplate):
                            k_point_weights=kpt_weights)
         return results
 
-    def execute(self, profile, directory):
-        profile.run(directory, None, 'octopus.out')
+    def execute(self, directory, profile):
+        profile.run(directory, 'octopus.out')
 
     def write_input(self, directory, atoms, parameters, properties):
         txt = generate_input(atoms, process_special_kwargs(atoms, parameters))

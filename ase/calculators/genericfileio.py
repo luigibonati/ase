@@ -3,7 +3,6 @@ from pathlib import Path
 from typing import Iterable, Mapping, Any
 from abc import ABC, abstractmethod
 
-from ase.io import read, write
 from ase.calculators.abc import GetOutputsMixin
 from ase.calculators.calculator import BaseCalculator
 
@@ -42,33 +41,12 @@ class CalculatorTemplate(ABC):
         ...
 
     @abstractmethod
-    def read_results(self, directory: PathLike) -> Mapping[str, Any]:
+    def execute(self, directory, profile):
         ...
 
-
-class EspressoTemplate(CalculatorTemplate):
-    def __init__(self):
-        super().__init__(
-            'espresso',
-            ['energy', 'free_energy', 'forces', 'stress', 'magmoms'])
-        self.inputname = 'espresso.pwi'
-        self.outputname = 'espresso.pwo'
-
-    def write_input(self, directory, atoms, parameters, properties):
-        directory.mkdir(exist_ok=True, parents=True)
-        dst = directory / self.inputname
-        write(dst, atoms, format='espresso-in', properties=properties,
-              **parameters)
-
-    def execute(self, profile, directory):
-        profile.run(directory,
-                    self.inputname,
-                    self.outputname)
-
-    def read_results(self, directory):
-        path = directory / self.outputname
-        atoms = read(path, format='espresso-out')
-        return dict(atoms.calc.properties())
+    @abstractmethod
+    def read_results(self, directory: PathLike) -> Mapping[str, Any]:
+        ...
 
 
 class GenericFileIOCalculator(BaseCalculator, GetOutputsMixin):
@@ -109,7 +87,7 @@ class GenericFileIOCalculator(BaseCalculator, GetOutputsMixin):
 
         self.template.write_input(directory, atoms, self.parameters,
                                   properties)
-        self.template.execute(self.profile, directory)
+        self.template.execute(directory, self.profile)
         self.results = self.template.read_results(directory)
         # XXX Return something useful?
 
