@@ -239,7 +239,7 @@ class AimsTemplate(CalculatorTemplate):
             write_control(fd, atoms, parameters)
             write_species(fd, atoms, parameters)
 
-    def execute(self, profile, directory):
+    def execute(self, directory, profile):
         profile.run(directory, self.outputname)
 
     def read_results(self, directory):
