@@ -181,7 +181,7 @@ class Exciting:
         # Read the input and print it to the console.
         print(xmlfile.read_text())
         # Use subprocess to call the exciting binary and tell it to use input.xml as a first argument.
-        argv = [self.excitingbinary, 'input.xml']
+        argv = [self.exciting_binary, 'input.xml']
         subprocess.check_call(argv, cwd=self.dir)
         # Ensure that the calculation created output files INFO.OUT which is the
         # the text based output of excicing and info.xml which is the 
