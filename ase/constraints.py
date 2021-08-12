@@ -104,7 +104,7 @@ class IndexedConstraint(FixConstraint):
                 if set(mask) <= {0, 1}:
                     mask = mask.astype(bool)
                 else:
-                    raise ValueError('"mask" should be an array of booleans, '+
+                    raise ValueError('"mask" should be an array of booleans, ' +
                                      f'not dtype={mask.dtype}')
             indices = np.arange(len(mask))[mask]
         else:
