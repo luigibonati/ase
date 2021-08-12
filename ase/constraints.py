@@ -96,16 +96,27 @@ class IndexedConstraint(FixConstraint):
         if mask is not None:
             if indices is not None:
                 raise ValueError('Use only one of "indices" and "mask".')
-            indices = mask
-        indices = np.atleast_1d(indices)
+            mask = np.atleast_1d(mask)
+            if np.ndim(mask) > 1:
+                raise ValueError('mask should be a 1D array')
+            if mask.dtype != bool:
+                # Mask is expected to be booleans, but integers 0 and 1 are acceptable
+                if set(mask) <= {0, 1}:
+                    mask = mask.astype(bool)
+                else:
+                    raise ValueError('"mask" should be an array of booleans, '+
+                                     f'not dtype={mask.dtype}')
+            indices = np.arange(len(mask))[mask]
+        else:
+            if indices is None:
+                raise ValueError('You must give either "indices" or "mask".')
+            indices = np.atleast_1d(indices)
         if np.ndim(indices) > 1:
             raise ValueError('indices has wrong amount of dimensions. '
                              f'Got {np.ndim(indices)}, expected ndim <= 1')
 
-        if indices.dtype == bool:
-            indices = np.arange(len(indices))[indices]
         elif not np.issubdtype(indices.dtype, np.integer):
-            raise ValueError('Indices must be integers or boolean mask, '
+            raise ValueError('Indices must be integers, '
                              f'not dtype={indices.dtype}')
 
         if len(set(indices)) < len(indices):
