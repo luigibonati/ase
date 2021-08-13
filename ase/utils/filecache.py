@@ -3,6 +3,7 @@ import json
 from collections.abc import MutableMapping, Mapping
 from contextlib import contextmanager
 from ase.io.jsonio import read_json, write_json, encode
+from ase.io.ulm import ulmopen
 from ase.utils import opencew
 
 
@@ -29,12 +30,38 @@ class CacheLock:
             self.fd.close()
 
 
+class CacheLockUlm:
+    def __init__(self, fd, key):
+        self.fd = fd
+        self.key = key
+
+    def save(self, value):
+        print(value)
+        try:
+            #for n, v in value.items():
+            self.fd.write("bla", value)
+        except Exception as ex:
+            raise RuntimeError(f'Failed to save {value} to cache') from ex
+        finally:
+            self.fd.close()
+
+
 class JSONBackend:
     extension = '.json'
 
     @staticmethod
     def read(fname):
         return read_json(fname, always_array=False)
+
+
+class ULMBackend:
+    extension = '.ulm'
+
+    @staticmethod
+    def read(fname):
+        with ulmopen(fname, 'r') as r:
+            data = r._data
+        return data
 
 
 class _MultiFileCacheTemplate(MutableMapping):
@@ -63,17 +90,7 @@ class _MultiFileCacheTemplate(MutableMapping):
 
     @contextmanager
     def lock(self, key):
-        self.directory.mkdir(exist_ok=True, parents=True)
-        path = self._filename(key)
-        fd = opencew(path)
-        try:
-            if fd is None:
-                yield None
-            else:
-                yield CacheLock(fd, key)
-        finally:
-            if fd is not None:
-                fd.close()
+        raise NotImplementedError
 
     def __setitem__(self, key, value):
         with self.lock(key) as handle:
@@ -87,6 +104,9 @@ class _MultiFileCacheTemplate(MutableMapping):
             return self.backend.read(path)
         except FileNotFoundError:
             missing(key)
+        except IOError:
+            return None
+        # Exception for decode error not available for all formats
 
     def __delitem__(self, key):
         try:
@@ -171,8 +191,47 @@ class MultiFileJSONCache(_MultiFileCacheTemplate):
             # So we return None.
             return None
 
+    @contextmanager
+    def lock(self, key):
+        self.directory.mkdir(exist_ok=True, parents=True)
+        path = self._filename(key)
+        fd = opencew(path)
+        try:
+            if fd is None:
+                yield None
+            else:
+                yield CacheLock(fd, key)
+        finally:
+            if fd is not None:
+                fd.close()
+
     def combine(self):
         cache = CombinedJSONCache.dump_cache(self.directory, dict(self))
+        assert set(cache) == set(self)
+        self.clear()
+        assert len(self) == 0
+        return cache
+
+
+class MultiFileULMCache(_MultiFileCacheTemplate):
+    backend = ULMBackend()
+
+    @contextmanager
+    def lock(self, key):
+        self.directory.mkdir(exist_ok=True, parents=True)
+        path = self._filename(key)
+        fd = ulmopen(path, 'w')
+        try:
+            if fd is None:
+                yield None
+            else:
+                yield CacheLockUlm(fd, key)
+        finally:
+            if fd is not None:
+                fd.close()
+
+    def combine(self):
+        cache = CombinedULMCache.dump_cache(self.directory, dict(self))
         assert set(cache) == set(self)
         self.clear()
         assert len(self) == 0
@@ -205,6 +264,39 @@ class CombinedJSONCache(_CombinedCacheTemplate):
 
     def split(self):
         cache = MultiFileJSONCache(self.directory)
+        assert len(cache) == 0
+        cache.update(self)
+        assert set(cache) == set(self)
+        self.clear()
+        return cache
+
+
+class CombinedULMCache(_CombinedCacheTemplate):
+    backend = ULMBackend()
+
+    def _dump_ulm(self):
+        target = self._filename
+        if target.exists():
+            raise RuntimeError(f'Already exists: {target}')
+        self.directory.mkdir(exist_ok=True, parents=True)
+        write_ulm(target, self._dct)
+
+    @classmethod
+    def dump_cache(cls, path, dct):
+        cache = cls(path, dct)
+        cache._dump_ulm()
+        return cache
+
+    @classmethod
+    def load(cls, path):
+        # XXX Very hacky this one
+        cache = cls(path, {})
+        dct = CombinedULMCache.backend.read(cache._filename)  # ???
+        cache._dct.update(dct)
+        return cache
+
+    def split(self):
+        cache = MultiFileULMCache(self.directory)
         assert len(cache) == 0
         cache.update(self)
         assert set(cache) == set(self)
