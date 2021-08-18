@@ -36,10 +36,8 @@ class CacheLockUlm:
         self.key = key
 
     def save(self, value):
-        print(value)
         try:
-            #for n, v in value.items():
-            self.fd.write("bla", value)
+            self.fd.write("cache", value)
         except Exception as ex:
             raise RuntimeError(f'Failed to save {value} to cache') from ex
         finally:
@@ -60,7 +58,7 @@ class ULMBackend:
     @staticmethod
     def read(fname):
         with ulmopen(fname, 'r') as r:
-            data = r._data
+            data = r._data['cache']
         return data
 
 
@@ -279,7 +277,8 @@ class CombinedULMCache(_CombinedCacheTemplate):
         if target.exists():
             raise RuntimeError(f'Already exists: {target}')
         self.directory.mkdir(exist_ok=True, parents=True)
-        write_ulm(target, self._dct)
+        with ulmopen(target, 'w') as w:
+            w.write('cache', self._dct)
 
     @classmethod
     def dump_cache(cls, path, dct):
