@@ -43,7 +43,7 @@ def build():
 def build_all():
     assert build() == 'ok'
     tar = next(
-        Path('/tmp/ase-docs--ok/ase/dist/').glob('ase-*.tar.gz'))
+        Path('/tmp/ase-docs-ok/ase/dist/').glob('ase-*.tar.gz'))
     webpage = Path('/tmp/ase-docs-ok/ase/doc/ase-web-page')
     home = Path.home() / 'web-pages'
     cmds = ' && '.join(
