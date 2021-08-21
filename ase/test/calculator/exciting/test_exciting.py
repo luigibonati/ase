@@ -10,7 +10,9 @@ import ase.calculators.exciting as exciting
 import pytest
 import os
 import shutil
+from ase.calculators.calculator import PropertyNotImplementedError
 
+import unittest.mock as mock
 # @pytest.mark.calculator_lite
 # @pytest.mark.calculator('exciting')
 # def test_exciting_bulk(factory):
@@ -19,6 +21,10 @@ import shutil
 #     atoms.calc = factory.calc()
 #     energy = atoms.get_potential_energy()
 #     print(energy)
+
+
+# skips tests which need the exciting calculator if the environment variable 'EXCITINGROOT' is not set
+need_exciting = pytest.mark.skipif('EXCITINGROOT' not in os.environ.keys(), reason='exciting is not available')
 
 
 class TestExciting:
@@ -33,7 +39,7 @@ class TestExciting:
 
     @pytest.fixture
     def calculator(self):
-        return exciting.Exciting(species_path=self.test_folder_name)
+        return exciting.Exciting(dir=self.test_folder_name, species_path=self.test_folder_name, exciting_binary='cat')
 
     @parameterized.expand([[
         (3, 3, 3), '/fshome/chm/git/exciting/bin/excitingser',
@@ -131,3 +137,41 @@ class TestExciting:
         captured = capsys.readouterr()
         print(captured.out)
         assert captured.out.startswith('cannot deal with sub = 1')
+
+    def test_init(self, calculator):
+        atoms = bulk('Fe')
+        calculator.initialize(atoms)
+        assert calculator.numbers.all() == atoms.get_atomic_numbers().all()
+
+    def test_get_stress(self, calculator):
+        atoms = bulk('Fe')
+        with pytest.raises(PropertyNotImplementedError):
+            calculator.get_stress(atoms)
+
+    def test_update(self, calculator):
+        with open(calculator.dir + '/INFO.OUT', mode='w') as file:
+            file.write('test')
+        with open(calculator.dir + '/info.xml', mode='w') as file:
+            file.write('test')
+        calculator.read = mock.MagicMock()
+        atoms = bulk('Fe')
+        calculator.update(atoms)
+        calculator.converged = True
+        assert calculator.read.call_count == 1
+        calculator.update(atoms)
+        assert calculator.read.call_count == 1
+        calculator.positions = [[1.0, 2.0, 5.0]]
+        calculator.update(atoms)
+        assert calculator.read.call_count == 2
+
+    @need_exciting
+    def test_calculate(self):
+        calc = exciting.Exciting(species_path=self.test_folder_name)
+        atoms = bulk('Fe')
+        calc.get_potential_energy(atoms)
+        calc.get_forces(atoms)
+        assert calc.positions.all() == atoms.get_positions().all()
+        assert calc.cell.all() == atoms.get_cell().all()
+        assert calc.pbc == atoms.get_pbc()
+        assert calc.energy
+        assert calc.forces
