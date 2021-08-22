@@ -234,8 +234,6 @@ class Exciting:
         if self.paramdict:
             # Assign dict key values to XML dom object root.
             self.dicttoxml(self.paramdict, root)
-            with open(self.dir + '/input.xml', 'w') as fd:
-                fd.write(prettify(root))
         else:  # For undefined paramdict.
             groundstate = ET.SubElement(root, 'groundstate', tforce='true')
             for key, value in self.groundstate_attributes.items():
@@ -243,9 +241,8 @@ class Exciting:
                     root.findall('title')[0].text = value
                 else:
                     groundstate.attrib[key] = str(value)
-            with open(self.dir + '/input.xml', 'w') as fd:
-                fd.write(prettify(root))
-                fd.close()
+        with open(self.dir + '/input.xml', 'w') as fd:
+            fd.write(prettify(root))
 
     def dicttoxml(self, pdict: Dict, element: ET.Element):
         """Write dictionary k,v paris to XML DOM object.
