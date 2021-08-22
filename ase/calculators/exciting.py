@@ -247,7 +247,7 @@ class Exciting:
                 fd.write(prettify(root))
                 fd.close()
 
-    def dicttoxml(self, pdict: Dict, element):
+    def dicttoxml(self, pdict: Dict, element: ET.Element):
         """Write dictionary k,v paris to XML DOM object.
 
         Args:
@@ -287,7 +287,7 @@ class Exciting:
         except IOError:
             raise RuntimeError(
                 "Output file %s doesn't exist" % output_file)
-        info = ET.parse(outfile)
+        info = parsed_output
         # Find the last istance of 'totalEnergy'.
         self.energy = float(parsed_output.findall(
             'groundstate/scl/iter/energies')[-1].attrib[
