@@ -101,9 +101,15 @@ class TestExciting:
         calc = exciting.Exciting(ngridk='1 2 3')
         assert calc.groundstate_attributes['ngridk'] == '1 2 3'
 
-    def test_write(self):
+    def test_write(self, calculator):
         """Test the write method"""
-        pass
+        calculator.dir = calculator.dir + '/test'
+        calculator.paramdict = {'number': '2'}
+        calculator.write(bulk('Fe'))
+
+    def test_write_2(self):
+        calculator = exciting.Exciting(dir=self.test_folder_name, species_path=self.test_folder_name, title='Test')
+        calculator.write(bulk('Fe'))
 
     def test_dicttoxml_1(self, calculator):
         element = ET.Element('root')
@@ -132,7 +138,7 @@ class TestExciting:
         assert isinstance(element.find('./sub'), ET.Element)
         assert element.find('./sub').attrib.get('number') == '2'
 
-    def test_dicttoxml_4(self, calculator):
+    def test_dicttoxml_5(self, calculator):
         element = ET.Element('root')
         ET.SubElement(element, 'sub')
         ET.SubElement(element, 'sub')
@@ -143,7 +149,7 @@ class TestExciting:
         assert sub_elements[0].attrib.get('number') == '2'
         assert len(sub_elements[1].keys()) == 0
 
-    def test_dicttoxml_5(self, calculator, capsys):
+    def test_dicttoxml_6(self, calculator, capsys):
         element = ET.Element('root')
         dictionary = {'sub': 1}
         calculator.dicttoxml(dictionary, element)
@@ -160,6 +166,16 @@ class TestExciting:
         atoms = bulk('Fe')
         with pytest.raises(PropertyNotImplementedError):
             calculator.get_stress(atoms)
+
+    def test_get_energy(self, calculator):
+        calculator.update = mock.MagicMock()
+        calculator.energy = -186.678769835 * Hartree
+        assert calculator.get_potential_energy(bulk('Fe')) == -186.678769835 * Hartree
+
+    def test_get_forces(self, calculator):
+        calculator.update = mock.MagicMock()
+        calculator.forces = np.array([0.246194007063E-04 * Bohr / Hartree, 0, 0])
+        assert calculator.get_forces(bulk('Fe')).all() == calculator.forces.all()
 
     def test_update(self, calculator):
         with open(calculator.dir + '/INFO.OUT', mode='w') as file:
@@ -197,7 +213,7 @@ class TestExciting:
 
     @need_exciting
     def test_calculate(self):
-        calc = exciting.Exciting(species_path=self.test_folder_name)
+        calc = exciting.Exciting(dir=self.test_folder_name, species_path=self.test_folder_name)
         atoms = bulk('Fe')
         calc.get_potential_energy(atoms)
         calc.get_forces(atoms)
