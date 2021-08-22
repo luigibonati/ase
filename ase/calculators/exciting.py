@@ -43,7 +43,7 @@ class Exciting:
             kwargs: List of key, value pairs to be
                 converted into groundstate attributes.
         """
-        # Assign member variables using contructor arguments.
+        # Assign member variables using constructor arguments.
         self.dir = dir
         self.energy = None
         self.paramdict = paramdict
@@ -72,12 +72,12 @@ class Exciting:
         # TODO(dts): find out what this does, add comment.
         self.tshift = tshift
         # Instead of defining paramdict you can also define
-        # kwargs seperately._calc.ss+ca
+        # kwargs separately._calc.ss+ca
         self.groundstate_attributes = kwargs
         # If we can't find ngrik in kwargs and paramdict=None
         if ('ngridk' not in kwargs.keys() and not (self.paramdict)):
             # Set the groundstate attributes ngridk value
-            # using the kpts constructure param. The join and map
+            # using the kpts constructor param. The join and map
             # convert [2, 2, 2] into '2 2 2'.
             self.groundstate_attributes[
                 'ngridk'] = ' '.join(map(str, kpts))
@@ -90,7 +90,7 @@ class Exciting:
                 periodic boundary conditions in an ase.Atoms obj.
         """
         # If the calculation is not over or the numbers
-        # member variable hasn't been initalized we initalize
+        # member variable hasn't been initialized we initialize
         # the atoms input.
         if (
                 not self.converged or
@@ -176,7 +176,7 @@ class Exciting:
         #TODO(dts): This code portion needs a rewrite for readability.
 
         xmlfile = pathlib.Path(self.dir) / 'input.xml'
-        # CHeck that the xml file exists in this location: self.dir/input.xml 
+        # Check that the xml file exists in this location: self.dir/input.xml
         assert xmlfile.is_file()
         # Read the input and print it to the console.
         print(xmlfile.read_text())
@@ -184,7 +184,7 @@ class Exciting:
         argv = [self.exciting_binary, 'input.xml']
         subprocess.check_call(argv, cwd=self.dir)
         # Ensure that the calculation created output files INFO.OUT which is the
-        # the text based output of excicing and info.xml which is the 
+        # the text based output of exciting and info.xml which is the
         assert (pathlib.Path(self.dir) / 'INFO.OUT').is_file()
         assert (pathlib.Path(self.dir) / 'info.xml').exists()
 
@@ -277,7 +277,7 @@ class Exciting:
     def read(self):
         """ Read total energy and forces from the info.xml output file."""
         # Define where to find output file which is called
-        # info.xml in exciing.
+        # info.xml in exciting.
         output_file = self.dir + '/info.xml'
         # Try to open the output file.
         try:
@@ -288,7 +288,7 @@ class Exciting:
             raise RuntimeError(
                 "Output file %s doesn't exist" % output_file)
         info = parsed_output
-        # Find the last istance of 'totalEnergy'.
+        # Find the last instance of 'totalEnergy'.
         self.energy = float(parsed_output.findall(
             'groundstate/scl/iter/energies')[-1].attrib[
                 'totalEnergy']) * Hartree
@@ -300,7 +300,7 @@ class Exciting:
                     'species/atom/forces/totalforce')
         # Go through each force in the found instances of 'total force'.
         for force in forcesnodes:
-            # Apend the total force to the forces list.
+            # Append the total force to the forces list.
             forces.append(np.array(list(force.attrib.values())).astype(float))
         # Reshape forces so we get three columns (x,y,z) and scale units.
         self.forces = np.reshape(forces, (-1, 3)) * Hartree / Bohr
