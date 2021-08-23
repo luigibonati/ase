@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 from ase.utils.filecache import MultiFileJSONCache, CombinedJSONCache, Locked
 
@@ -24,6 +25,16 @@ def test_basic(cache):
     grumble = cache.pop('hello')
     assert grumble == 'grumble'
     assert 'hello' not in cache
+    assert len(cache) == 0
+
+
+def test_numpy_array(cache):
+    assert len(cache) == 0
+    cache['a'] = np.array([3.4, 2.4, 1.4j])
+    assert len(cache) == 1
+    assert 'a' in cache
+    aa = cache.pop('a')
+    assert (aa == np.array([3.4, 2.4, 1.4j])).all()  # isclose?
     assert len(cache) == 0
 
 
