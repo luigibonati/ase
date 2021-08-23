@@ -3,7 +3,7 @@ import json
 from collections.abc import MutableMapping, Mapping
 from contextlib import contextmanager
 from ase.io.jsonio import read_json, write_json, encode
-from ase.io.ulm import ulmopen
+from ase.io.ulm import ulmopen, NDArrayReader
 from ase.utils import opencew
 
 
@@ -78,6 +78,8 @@ class ULMBackend:
     def read(fname):
         with ulmopen(fname, 'r') as r:
             data = r._data['cache']
+            if isinstance(data, NDArrayReader):
+                data = data.read()
         return data
 
     @staticmethod
@@ -147,7 +149,8 @@ class _MultiFileCacheTemplate(MutableMapping):
             missing(key)
 
     def combine(self):
-        cache = globals()[self.backend.CombinedCache].dump_cache(self.directory, dict(self))
+        CC = globals()[self.backend.CombinedCache]
+        cache = CC.dump_cache(self.directory, dict(self))
         assert set(cache) == set(self)
         self.clear()
         assert len(self) == 0

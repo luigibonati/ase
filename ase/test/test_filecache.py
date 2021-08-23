@@ -1,21 +1,29 @@
 import numpy as np
 import pytest
-from ase.utils.filecache import MultiFileJSONCache, CombinedJSONCache, Locked
+from ase.utils.filecache import (MultiFileJSONCache, CombinedJSONCache,
+                                 MultiFileULMCache,
+                                 Locked)
 
 
 pytestmark = pytest.mark.usefixtures('testdir')
 
 
+cache_types = ['json', 'ulm']
+
+
 @pytest.fixture
-def cache():
-    return MultiFileJSONCache('cache')
+def caches(cache_type=None):
+    return {'json': MultiFileJSONCache('cache_json'),
+            'ulm': MultiFileULMCache('cache_ulm')}
 
 
 def sample_dict():
     return {'hello': [1, 2, 3], 'world': 'grumble'}
 
 
-def test_basic(cache):
+@pytest.mark.parametrize('cache_type', cache_types)
+def test_basic(caches, cache_type):
+    cache = caches[cache_type]
     assert len(cache) == 0
 
     cache['hello'] = 'grumble'
@@ -28,26 +36,32 @@ def test_basic(cache):
     assert len(cache) == 0
 
 
-def test_numpy_array(cache):
+@pytest.mark.parametrize('cache_type', cache_types)
+def test_numpy_array(caches, cache_type):
+    cache = caches[cache_type]
     assert len(cache) == 0
     cache['a'] = np.array([3.4, 2.4, 1.4j])
-    assert len(cache) == 1
+    cache['b'] = np.array([3.4, 2.4, 1.4])
+    assert len(cache) == 2
     assert 'a' in cache
     aa = cache.pop('a')
-    assert (aa == np.array([3.4, 2.4, 1.4j])).all()  # isclose?
+    bb = cache.pop('b')
+    assert np.allclose(aa, np.array([3.4, 2.4, 1.4j]))
+    assert np.allclose(bb, np.array([3.4, 2.4, 1.4]))
     assert len(cache) == 0
 
 
-@pytest.mark.parametrize('dct', [
-    {},
-    sample_dict(),
-])
-def test_cache(dct, cache):
+@pytest.mark.parametrize('dct', [{}, sample_dict()])
+@pytest.mark.parametrize('cache_type', cache_types)
+def test_cache(dct, caches, cache_type):
+    cache = caches[cache_type]
     cache.update(dct)
     assert dict(cache) == dct
 
 
-def test_combine(cache):
+@pytest.mark.parametrize('cache_type', cache_types)
+def test_combine(caches, cache_type):
+    cache = caches[cache_type]
     dct = sample_dict()
     cache.update(dct)
     combined = cache.combine()
@@ -63,7 +77,9 @@ def test_split():
     assert len(combined) == 0
 
 
-def test_lock(cache):
+@pytest.mark.parametrize('cache_type', cache_types)
+def test_lock(caches, cache_type):
+    cache = caches[cache_type]
     with cache.lock('hello'):
         # When element is locked but nothing is written, the
         # cache is defined to "contain" None
@@ -75,7 +91,9 @@ def test_lock(cache):
         assert cache['xx'] == 1
 
 
-def test_already_locked(cache):
+@pytest.mark.parametrize('cache_type', cache_types)
+def test_already_locked(caches, cache_type):
+    cache = caches[cache_type]
     with cache.lock('hello') as handle:
         assert handle is not None
         with cache.lock('hello') as otherhandle:
@@ -85,7 +103,9 @@ def test_already_locked(cache):
             cache['hello'] = 'world'
 
 
-def test_no_overwrite_combine(cache):
+@pytest.mark.parametrize('cache_type', cache_types)
+def test_no_overwrite_combine(caches, cache_type):
+    cache = caches[cache_type]
     cache.combine()
     with pytest.raises(RuntimeError, match='Already exists'):
         cache.combine()
