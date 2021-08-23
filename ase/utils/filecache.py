@@ -3,7 +3,7 @@ import json
 from collections.abc import MutableMapping, Mapping
 from contextlib import contextmanager
 from ase.io.jsonio import read_json, write_json, encode
-from ase.io.ulm import ulmopen, NDArrayReader
+from ase.io.ulm import ulmopen, NDArrayReader, Writer
 from ase.utils import opencew
 
 
@@ -72,7 +72,9 @@ class ULMBackend:
 
     @staticmethod
     def open_for_writing(path):
-        return ulmopen(path, 'w')
+        fd = opencew(path)
+        if fd is not None:
+            return Writer(fd, 'w', '')
 
     @staticmethod
     def read(fname):
