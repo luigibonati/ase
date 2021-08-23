@@ -44,7 +44,7 @@ The calculators can be divided in four groups:
 interfaces.
 
 2) ABINIT, AMBER, CP2K, CASTEP, deMon2k, DFTB+, ELK, EXCITING, FHI-aims, FLEUR, GAUSSIAN,
-   Gromacs, LAMMPS, MOPAC, NWChem, Octopus, ONETEP, psi4, Q-Chem, Quantum ESPRESSO, SIESTA,
+   Gromacs, LAMMPS, MOPAC, NWChem, Octopus, ONETEP, PLUMED, psi4, Q-Chem, Quantum ESPRESSO, SIESTA,
    TURBOMOLE and VASP, have Python wrappers in the ASE package, but the actual
    FORTRAN/C/C++ codes are not part of ASE.
 
@@ -93,6 +93,7 @@ elk                                       Full Potential LAPW code
 :mod:`~ase.calculators.onetep`            Linear-scaling pseudopotential code
 :mod:`~ase.calculators.openmx`            LCAO pseudopotential code
 :mod:`~ase.calculators.orca`              Gaussian based electronic structure code
+:mod:`~ase.calculators.plumed`            Enhanced sampling method library
 :mod:`~ase.calculators.psi4`              Gaussian based electronic structure code
 :mod:`~ase.calculators.qchem`             Gaussian based electronic structure code
 :mod:`~ase.calculators.siesta`            LCAO pseudopotential code
@@ -234,6 +235,7 @@ the :meth:`set` method:
    onetep
    openmx
    orca
+   plumed
    psi4
    qchem
    siesta

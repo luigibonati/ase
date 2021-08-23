@@ -7,14 +7,15 @@ import numpy as np
 from ase.io.trajectory import Trajectory
 from pytest import approx
 import pytest
+from ase.calculators.plumed import restart_from_trajectory
 
 
 @pytest.mark.calculator_lite
 @pytest.mark.calculator('plumed')
 def test_CVs(factory):
-    ''' This test calls plumed-ASE calculator for computing some CVs.
+    """ This test calls plumed-ASE calculator for computing some CVs.
     Moreover, it computes those CVs directly from atoms.positions and
-    compares them'''
+    compares them"""
     # plumed setting
     set_plumed = ["c1: COM ATOMS=1,2",
                   "c2: CENTER ATOMS=1,2",
@@ -60,8 +61,8 @@ def test_CVs(factory):
 @pytest.mark.calculator_lite
 @pytest.mark.calculator('plumed')
 def test_metadyn(factory):
-    '''This test computes a Metadynamics calculation,
-    This result is compared with the same calulation made externally'''
+    """This test computes a Metadynamics calculation,
+    This result is compared with the same calulation made externally"""
     params = setups()
     atoms, _ = run(factory, params, steps=58)
     
@@ -79,19 +80,30 @@ def test_metadyn(factory):
 def test_restart(factory):
     ins = setups()
     # first steps
-    run(factory, ins, name='restart')
-    
+    _, res = run(factory, ins, name='restart')
+
     # rest of steps with restart
-    atoms, _ = run(factory, ins, traj='test-restart.traj')
-    
+    input, atoms1, timestep = setups()
+    primer = atoms1.get_positions()[0][0].copy(), atoms1.get_positions()[1][0].copy()
+    with restart_from_trajectory('test-restart.traj',
+                                 calc=LennardJones(epsilon=10, sigma=6), 
+                                 input=input,
+                                 timestep=timestep,
+                                 atoms=atoms1) as atoms1.calc:
+        with VelocityVerlet(atoms1, timestep) as dyn:
+            dyn.run(30)
+        res = atoms1.calc.read_plumed_files()
+      
     # Values computed externally
     position1 = -0.0491871
     position2 = 6.73693
     forceWithBias = 0.28807
 
-    assert (atoms.get_positions()[0][0] == approx(position1, abs=0.01) and
-            atoms.get_positions()[1][0] == approx(position2, abs=0.01)), "Error in the metadynamics simulation"
-    assert atoms.get_forces()[0][0] == approx(forceWithBias, abs=0.01), "Error in the computation of Bias-forces"
+    assert atoms1.get_forces()[0][0] == approx(forceWithBias, abs=0.01), "Error in restart for the computation of Bias-forces"
+
+    assert (atoms1.get_positions()[0][0] == approx(position1, abs=0.01) and
+            atoms1.get_positions()[1][0] == approx(position2, abs=0.01)), "Error in the restart of metadynamics simulation"
+    
 
 
 @pytest.mark.calculator_lite
@@ -112,7 +124,6 @@ def test_postpro(factory):
 
     assert postpr == approx(direct['HILLS_direct'])
 
-
 def run(factory, inputs, name='', 
         calc=LennardJones(epsilon=10, sigma=6),
         traj=None, steps=29):
@@ -120,8 +131,7 @@ def run(factory, inputs, name='',
     with factory.calc(calc=calc, 
                       input=input,
                       timestep=timestep,
-                      atoms=atoms,
-                      prev_traj=traj) as atoms.calc:
+                      atoms=atoms) as atoms.calc:
         with VelocityVerlet(atoms, timestep, trajectory='test-{}.traj'.format(name)) as dyn:
             dyn.run(steps)
         res = atoms.calc.read_plumed_files()

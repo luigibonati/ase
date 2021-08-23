@@ -14,11 +14,16 @@ Git master branch
 
 Calculators:
 
+* Created new :class:`ase.calculators.plumed.Plumed` that is an interface
+  between ASE and Plumed_ for carrying out enhanced sampling methods and MD
+  postprocessing.
+
 * :class:`ase.calculators.kim.kimmodel.KIMModelCalculator` updated to allow
   users to change the parameters of OpenKIM portable models at run time (see
   https://openkim.org/doc/repository/kim-content/ for an explanation of types
   of OpenKIM models).
 
+.. _Plumed: https://www.plumed.org/
 
 Version 3.22.0
 ==============
