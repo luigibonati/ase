@@ -59,12 +59,12 @@ class TestExciting(unittest.TestCase):
             species_path=self.test_folder_name,
             exciting_binary=exciting_binary,
             maxscl=3)
-        # groundstate_attributes['ngridk'] gets kpoints.
+        # groundstate attribute ngridk returns the calculator's kpts
         self.assertEqual(
             exciting_calc.groundstate_attributes['ngridk'], expected_kpts)
         self.assertEqual(exciting_calc.dir, calc_dir)
         self.assertEqual(exciting_calc.species_path, self.test_folder_name)
-        self.assertEqual(exciting_calc.exciting_binary, exciting_binary)
+        self.assertEqual(exciting_calc.exciting_binary, expected_exciting_binary)
         # Should be set to False at initialization.
         self.assertFalse(exciting_calc.converged)
         # Should be false by default unless arg is passed to constructor.
@@ -215,5 +215,4 @@ class TestExciting(unittest.TestCase):
         # Now read the file, it should find the info.xml file automatically.
         self.exciting_calc_obj.read()
         expected_energy = -2543.25348773*Hartree
-        print(self.exciting_calc_obj.energy)
         self.assertAlmostEqual(self.exciting_calc_obj.energy, expected_energy)
