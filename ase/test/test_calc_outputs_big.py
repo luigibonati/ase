@@ -9,7 +9,8 @@ def rng():
     return np.random.RandomState(17)
 
 
-def test_properties_big(rng):
+@pytest.fixture
+def props(rng):
     nspins, nkpts, nbands = 2, 3, 5
     natoms = 4
 
@@ -29,13 +30,39 @@ def test_properties_big(rng):
         fermi_level=rng.rand(),
         ibz_kpoints=rng.rand(nkpts, 3),
         kpoint_weights=rng.rand(nkpts),
+        dipole=rng.rand(3),
+        charges=rng.rand(natoms),
+        magmom=rng.rand(),
+        magmoms=rng.rand(natoms),
     )
+    return Properties(results)
 
-    props = Properties(results)
-    #assert set(out) == all_outputs, all_outputs ^ set(out)
 
+def test_properties_big(props):
     for name in all_outputs:
         assert name in props, name
         obj = props[name]
-        #obj = getattr(out, name)
         print(name, obj)
+
+
+def test_singlepoint_roundtrip(props):
+    from ase.build import bulk
+    from ase.calculators.singlepoint import (SinglePointDFTCalculator,
+                                             arrays_to_kpoints)
+
+    atoms = bulk('Au') * (1, 1, props['natoms'])
+
+    kpts = arrays_to_kpoints(props['eigenvalues'], props['occupations'],
+                             props['kpoint_weights'])
+    calc = SinglePointDFTCalculator(atoms=atoms, kpts=kpts,
+                                    efermi=props['fermi_level'],
+                                    forces=props['forces'])
+
+    props1 = calc.properties()
+    print(props1)
+
+    assert set(props1) >= {
+        'eigenvalues', 'occupations', 'kpoint_weights', 'fermi_level'}
+
+    for prop in props1:
+        assert props[prop] == pytest.approx(props1[prop])

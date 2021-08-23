@@ -69,7 +69,7 @@ class Displacement(namedtuple('Displacement', ['a', 'i', 'sign', 'ndisp',
 
     def calculate_and_save_static_polarizability(self, atoms):
         exobj = self.vib._new_exobj()
-        excitation_data = exobj.calculate(atoms)
+        excitation_data = exobj(atoms)
         np.savetxt(self._exname, excitation_data)
 
     def load_static_polarizability(self):

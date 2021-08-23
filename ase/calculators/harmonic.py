@@ -23,7 +23,7 @@ class SpringCalculator(Calculator):
     k : float
         spring constant in eV/Angstrom
     """
-    implemented_properties = ['forces', 'energy']
+    implemented_properties = ['forces', 'energy', 'free_energy']
 
     def __init__(self, ideal_positions, k):
         Calculator.__init__(self)
