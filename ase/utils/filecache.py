@@ -41,8 +41,8 @@ class JSONBackend:
         fd.write(value)
 
     @classmethod
-    def get_combined_cache_class(cls):
-        return CombinedJSONCache
+    def dump_cache(cls, path, dct):
+        return CombinedJSONCache.dump_cache(path, dct)
 
     @classmethod
     def create_multifile_cache(cls, directory):
@@ -81,8 +81,8 @@ class ULMBackend:
         fd.write('cache', value)
 
     @classmethod
-    def get_combined_cache_class(cls):
-        return CombinedULMCache
+    def dump_cache(cls, path, dct):
+        return CombinedULMCache.dump_cache(path, dct)
 
     @classmethod
     def create_multifile_cache(cls, directory):
@@ -170,8 +170,7 @@ class _MultiFileCacheTemplate(MutableMapping):
             missing(key)
 
     def combine(self):
-        CC = self.backend.get_combined_cache_class()
-        cache = CC.dump_cache(self.directory, dict(self))
+        cache = self.backend.dump_cache(self.directory, dict(self))
         assert set(cache) == set(self)
         self.clear()
         assert len(self) == 0
