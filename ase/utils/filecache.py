@@ -18,8 +18,8 @@ class Locked(Exception):
 
 class JSONBackend:
     extension = '.json'
-    MultiFileCache = 'MultiFileJSONCache'
-    CombinedCache = 'CombinedJSONCache'
+    # MultiFileCache = MultiFileJSONCache
+    # CombinedCache = CombinedJSONCache
     DecodeError = json.decoder.JSONDecodeError
 
     @staticmethod
@@ -42,11 +42,19 @@ class JSONBackend:
     def write(fd, value):
         fd.write(value)
 
+    @classmethod
+    def get_combined_cache_class(cls):
+        return CombinedJSONCache
+
+    @classmethod
+    def create_multifile_cache(cls, directory):
+        return MultiFileJSONCache(directory)
+
 
 class ULMBackend:
     extension = '.ulm'
-    MultiFileCache = 'MultiFileULMCache'
-    CombinedCache = 'CombinedULMCache'
+    # MultiFileCache = MultiFileULMCache
+    # CombinedCache = CombinedULMCache
     DecodeError = InvalidULMFileError
 
     @staticmethod
@@ -75,6 +83,14 @@ class ULMBackend:
     @staticmethod
     def write(fd, value):
         fd.write('cache', value)
+
+    @classmethod
+    def get_combined_cache_class(cls):
+        return CombinedULMCache
+
+    @classmethod
+    def create_multifile_cache(cls, directory):
+        return MultiFileULMCache(directory)
 
 
 class CacheLock:
@@ -158,7 +174,7 @@ class _MultiFileCacheTemplate(MutableMapping):
             missing(key)
 
     def combine(self):
-        CC = globals()[self.backend.CombinedCache]
+        CC = self.backend.get_combined_cache_class()
         cache = CC.dump_cache(self.directory, dict(self))
         assert set(cache) == set(self)
         self.clear()
@@ -230,7 +246,7 @@ class _CombinedCacheTemplate(Mapping):
         return self
 
     def split(self):
-        cache = globals()[self.backend.MultiFileCache](self.directory)
+        cache = self.backend.create_multifile_cache(self.directory)
         assert len(cache) == 0
         cache.update(self)
         assert set(cache) == set(self)
