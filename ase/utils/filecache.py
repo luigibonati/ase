@@ -18,8 +18,6 @@ class Locked(Exception):
 
 class JSONBackend:
     extension = '.json'
-    # MultiFileCache = MultiFileJSONCache
-    # CombinedCache = CombinedJSONCache
     DecodeError = json.decoder.JSONDecodeError
 
     @staticmethod
@@ -53,8 +51,6 @@ class JSONBackend:
 
 class ULMBackend:
     extension = '.ulm'
-    # MultiFileCache = MultiFileULMCache
-    # CombinedCache = CombinedULMCache
     DecodeError = InvalidULMFileError
 
     @staticmethod
@@ -68,7 +64,7 @@ class ULMBackend:
         with ulmopen(fname, 'r') as r:
             data = r._data['cache']
             if isinstance(data, NDArrayReader):
-                data = data.read()
+                return data.read()
         return data
 
     @staticmethod
