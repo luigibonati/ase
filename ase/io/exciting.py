@@ -86,29 +86,31 @@ def write_exciting(fileobj, images):
     Returns
     -------
     """
-    root = atoms2etree(images)
+    root = atoms_to_etree(images)
+    # The rest of this is the prettify function.
     rough_string = ET.tostring(root, 'utf-8')
     reparsed = minidom.parseString(rough_string)
     pretty = reparsed.toprettyxml(indent="\t")
     fileobj.write(pretty)
 
 
-def atoms2etree(images):
+# I need to test this thing right here. It's the main piece.
+def atoms_to_etree(ase_atoms_obj):
     """This function creates the XML DOM corresponding
      to the structure for use in write and calculator
 
     Parameters
     ----------
 
-    images : Atom Object or List of Atoms objects
+    ase_atoms_obj : Atom Object or List of Atoms objects
 
     Returns
     -------
     root : etree object
         Element tree of exciting input file containing the structure
     """
-    if not isinstance(images, (list, tuple)):
-        images = [images]
+    if not isinstance(ase_atoms_obj, (list, tuple)):
+        ase_atoms_obj_list = [ase_atoms_obj]
 
     root = ET.Element('input')
     root.set(
@@ -119,16 +121,18 @@ def atoms2etree(images):
     title.text = ''
     structure = ET.SubElement(root, 'structure')
     crystal = ET.SubElement(structure, 'crystal')
-    atoms = images[0]
+    atoms = ase_atoms_obj_list[0]
     for vec in atoms.cell:
         basevect = ET.SubElement(crystal, 'basevect')
+        # use f string here and fix this.
         basevect.text = '%.14f %.14f %.14f' % tuple(vec / Bohr)
 
     oldsymbol = ''
-    oldrmt = -1
+    oldrmt = -1  # The old radius of the muffin tin (rmt)
     newrmt = -1
     scaled = atoms.get_scaled_positions()
     for aindex, symbol in enumerate(atoms.get_chemical_symbols()):
+        # What is atoms.arrays?
         if 'rmt' in atoms.arrays:
             newrmt = atoms.get_array('rmt')[aindex] / Bohr
         if symbol != oldsymbol or newrmt != oldrmt:

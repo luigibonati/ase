@@ -10,17 +10,22 @@ import subprocess
 import numpy as np
 import ase
 # TODO(dts): use import ase for all of these imports, no need for simplifying path.
-from ase.io.exciting import atoms2etree
+import ase.io.exciting
 from ase.units import Bohr, Hartree
 from ase.calculators.calculator import PropertyNotImplementedError
 
 
 class Exciting:
-    """Class for doing exciting calculations."""
+    """Class for doing exciting calculations.
+
+    You can find lots of information regarding the XML schema for exciting
+    in the appendix of this thesis:
+    https://pure.unileoben.ac.at/portal/files/1842879/AC08976214n01vt.pdf
+    """
 
     def __init__(
                 self,
-                dir: str = 'calc', paramdict: Optional[Dict] = None,
+                dir: str = 'calc', param_dict: Optional[Dict] = None,
                 species_path: Optional[str] = None,
                 exciting_binary='excitingser', kpts=(1, 1, 1),
                 autormt=False, tshift=True, **kwargs):
@@ -28,11 +33,12 @@ class Exciting:
 
         Args:
             dir: directory in which to execute exciting.
-            paramdict: Dictionary containing XML parameters. String
+            param_dict: Dictionary containing XML parameters. String
                 values are translated to attributes, nested dictionaries are
                 translated to sub elements. A list of dictionaries is
                 translated to a  list of sub elements named after the key
-                of which the list is the value. Default: None
+                of which the list is the value. The keys of the dict should
+                be a list of strings not floats.
             species_path: string
                 Directory or URL to look up species files folder.
             exciting_binary: Path to executable of exciting code.
@@ -46,7 +52,7 @@ class Exciting:
         # Assign member variables using constructor arguments.
         self.dir = dir
         self.energy = None
-        self.paramdict = paramdict
+        self.param_dict = param_dict
         # If the speciespath is not given, try to locate it.
         if species_path is None:
             try:  # TODO: check whether this dir exists.
@@ -67,15 +73,16 @@ class Exciting:
         # whether the calculation is finished to False.
         self.converged = False
         self.exciting_binary = exciting_binary
-        # TODO(dts): find out what this does? Add comment.
+        # If true, the radius of the muffin tin is set automatically.
         self.autormt = autormt
-        # TODO(dts): find out what this does, add comment.
+        # If tshift is "true", the crystal is shifted such that the atom
+        # closest to the origin is exactly at the origin.
         self.tshift = tshift
-        # Instead of defining paramdict you can also define
-        # kwargs separately._calc.ss+ca
+        # Instead of defining param_dict you can also define
+        # kwargs seperately._calc.ss+ca
         self.groundstate_attributes = kwargs
-        # If we can't find ngrik in kwargs and paramdict=None
-        if ('ngridk' not in kwargs.keys() and not (self.paramdict)):
+        # If we can't find ngrik in kwargs and param_dict=None
+        if ('ngridk' not in kwargs.keys() and not (self.param_dict)):
             # Set the groundstate attributes ngridk value
             # using the kpts constructor param. The join and map
             # convert [2, 2, 2] into '2 2 2'.
@@ -198,23 +205,26 @@ class Exciting:
         # Read the results of the calculation.
         self.read()
 
-    def write(self, atoms: ase.Atoms):
-        """Write atomic info inputs to an xml.
+    def add_attributes_to_element_tree(self, atoms: ase.Atoms):
+        """Adds attributes to the element tree.
 
-        Write input parameters into an xml file that will be used by the exciting binary
-        to run a calculation.
+        The element tree created with ase.io.exciting.atoms_to_tree
+        is missing a few attributes that are specified in the __init__()
+        method of this class. We add them to our element tree.
 
         Args:
-            atoms: Holds geometry and atomic information of the unit cell of atoms.
+            atoms: Holds geometry and atomic information of the unit cell.
+
+        Returns:
+            An xml element tree.
         """
-        # Check if the directory where we want to save our file exists.
-        # If not, create the directory.
-        if not os.path.isdir(self.dir):
-            os.mkdir(self.dir)
         # Create an XML Document Object Model (DOM) where we can
-        # then assign different attributes of the DOM.
-        root = atoms2etree(atoms)
-        # Assign the species path to the XML DOM.
+        # then assign different attributes of the DOM. `root` holds the root
+        # of the element tree that is populated with basis vectors, chemical
+        # symbols and the like.
+        root = ase.io.exciting.atoms_to_etree(atoms)
+        # We have to add a few more attributes to the element tree before
+        # writing the xml input file. Assign the species path.
         root.find('structure').attrib['speciespath'] = self.species_path
         # Assign the autormt boolean.
         root.find('structure').attrib['autormt'] = str(
@@ -223,53 +233,64 @@ class Exciting:
         # closest atom to origin is now at origin.
         root.find('structure').attrib['tshift'] = str(
             self.tshift).lower()
-
-        def prettify(elem):
-            """Make the element prettier to read."""
-            rough_string = ET.tostring(elem, 'utf-8')
-            reparsed = minidom.parseString(rough_string)
-            return reparsed.toprettyxml(indent="\t")
-
-        # Check if paramdict is not None.
-        if self.paramdict:
+        # Check if param_dict is not None.
+        if self.param_dict:
             # Assign dict key values to XML dom object root.
-            self.dicttoxml(self.paramdict, root)
-        else:  # For undefined paramdict.
+            self.dict_to_xml(self.param_dict, root)
+        else:  # For an undefined param_dict.
             groundstate = ET.SubElement(root, 'groundstate', tforce='true')
             for key, value in self.groundstate_attributes.items():
                 if key == 'title':
                     root.findall('title')[0].text = value
                 else:
                     groundstate.attrib[key] = str(value)
-        with open(self.dir + '/input.xml', 'w') as fd:
+        return root
+
+    def write(self, atoms: ase.Atoms):
+        """Write atomic info inputs to an xml.
+
+        Write input parameters into an xml file that will be used by the
+        exciting binary to run a calculation.
+
+        Args:
+            atoms: Holds geometry and atomic information of the unit cell.
+        """
+        # Check if the directory where we want to save our file exists.
+        # If not, create the directory.
+        if not os.path.isdir(self.dir):
+            os.mkdir(self.dir)
+        root = self.add_attributes_to_element_tree(atoms=atoms)
+        with open(os.path.join(self.dir, 'input.xml'), 'w') as fd:
+            # Prettify makes the output alot nicer to read.
             fd.write(prettify(root))
 
-    def dicttoxml(self, pdict: Dict, element: ET.Element):
+    def dict_to_xml(self, pdict: Dict, element):
         """Write dictionary k,v paris to XML DOM object.
 
         Args:
-            pdict: Dictionary with k,v pairs that go into the xml like file.
-            element: The XML object (XML DOM object) that we want to modify using dict k,v pairs.
+            pdict: k,v pairs that go into the xml like file.
+            element: The XML object (XML DOM object) that we want to modify
+                using dictionary's k,v pairs.
         """
         for key, value in pdict.items():
             if (isinstance(value, str) and key == 'text()'):
                 element.text = value
             elif (isinstance(value, str)):
                 element.attrib[key] = value
+            # if the value is a list, recursively call this
+            # method to add each member of the list with the
+            # same key for all of them.
             elif (isinstance(value, list)):
-                # if the value is a list, recursively call this
-                # method to add each member of the list with the
-                # same key for all of them.
                 for item in value:
-                    self.dicttoxml(item, ET.SubElement(element, key))
-            # TODO: understand what this does.
+                    self.dict_to_xml(item, ET.SubElement(element, key))
+            # Otherwise if the value is a dictionary.
             elif (isinstance(value, dict)):
                 if(element.findall(key) == []):
-                    self.dicttoxml(value, ET.SubElement(element, key))
+                    self.dict_to_xml(value, ET.SubElement(element, key))
                 else:
-                    self.dicttoxml(value, element.findall(key)[0])
+                    self.dict_to_xml(value, element.findall(key)[0])
             else:
-                print('cannot deal with', key, '=', value)
+                raise TypeError(f'cannot deal with key: {key}, val: {value}')
 
     def read(self):
         """ Read total energy and forces from the info.xml output file."""
@@ -284,15 +305,15 @@ class Exciting:
         except IOError:
             raise RuntimeError(
                 "Output file %s doesn't exist" % output_file)
-        info = parsed_output
-        # Find the last instance of 'totalEnergy'.
+
+        # Find the last istance of 'totalEnergy'.
         self.energy = float(parsed_output.findall(
             'groundstate/scl/iter/energies')[-1].attrib[
                 'totalEnergy']) * Hartree
         # Initialize forces list.
         forces = []
         # final all instances of 'totalforce'.
-        forcesnodes = info.findall(
+        forcesnodes = parsed_output.findall(
                 'groundstate/scl/structure')[-1].findall(
                     'species/atom/forces/totalforce')
         # Go through each force in the found instances of 'total force'.
@@ -302,7 +323,15 @@ class Exciting:
         # Reshape forces so we get three columns (x,y,z) and scale units.
         self.forces = np.reshape(forces, (-1, 3)) * Hartree / Bohr
         # Check if the calculation converged.
-        if str(info.find('groundstate').attrib['status']) == 'finished':
+        if str(parsed_output.find('groundstate').attrib[
+                'status']) == 'finished':
             self.converged = True
         else:
             raise RuntimeError('Calculation did not converge.')
+
+
+def prettify(elem):
+    """Make the XML elements prettier to read."""
+    rough_string = ET.tostring(elem, 'utf-8')
+    reparsed = minidom.parseString(rough_string)
+    return reparsed.toprettyxml(indent="\t")
