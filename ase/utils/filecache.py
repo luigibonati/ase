@@ -92,7 +92,6 @@ class ULMBackend:
 
 class _MultiFileCacheTemplate(MutableMapping):
     writable = True
-    backend = None
 
     def __init__(self, directory):
         self.directory = Path(directory)
@@ -173,7 +172,6 @@ class _MultiFileCacheTemplate(MutableMapping):
 
 class _CombinedCacheTemplate(Mapping):
     writable = False
-    backend = None
 
     def __init__(self, directory, dct):
         self.directory = Path(directory)
