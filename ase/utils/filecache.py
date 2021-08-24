@@ -2,7 +2,8 @@ from pathlib import Path
 import json
 from collections.abc import MutableMapping, Mapping
 from contextlib import contextmanager
-from ase.io.jsonio import read_json, write_json, encode
+from ase.io.jsonio import read_json, write_json
+from ase.io.jsonio import encode as encode_json
 from ase.io.ulm import ulmopen, NDArrayReader, Writer
 from ase.utils import opencew
 
@@ -15,41 +16,10 @@ class Locked(Exception):
     pass
 
 
-class CacheLock:
-    def __init__(self, fd, key):
-        self.fd = fd
-        self.key = key
-
-    def save(self, value):
-        json_utf8 = encode(value).encode('utf-8')
-        try:
-            self.fd.write(json_utf8)
-        except Exception as ex:
-            raise RuntimeError(f'Failed to save {value} to cache') from ex
-        finally:
-            self.fd.close()
-
-
-# TODO: This is way hacky.
-class CacheLockUlm:
-    def __init__(self, fd, key):
-        self.fd = fd
-        self.key = key
-
-    def save(self, value):
-        try:
-            self.fd.write("cache", value)
-        except Exception as ex:
-            raise RuntimeError(f'Failed to save {value} to cache') from ex
-        finally:
-            self.fd.close()
-
-
 class JSONBackend:
     extension = '.json'
     MultiFileCache = 'MultiFileJSONCache'
     CombinedCache = 'CombinedJSONCache'
-    CL = CacheLock
 
     @staticmethod
     def open_for_writing(path):
@@ -60,15 +30,22 @@ class JSONBackend:
         return read_json(fname, always_array=False)
 
     @staticmethod
-    def write(target, data):
+    def open_and_write(target, data):
         write_json(target, data)
+
+    @staticmethod
+    def encode(data):
+        return encode_json(data).encode('utf-8')
+
+    @staticmethod
+    def write(fd, value):
+        fd.write(value)
 
 
 class ULMBackend:
     extension = '.ulm'
     MultiFileCache = 'MultiFileULMCache'
     CombinedCache = 'CombinedULMCache'
-    CL = CacheLockUlm
 
     @staticmethod
     def open_for_writing(path):
@@ -85,9 +62,33 @@ class ULMBackend:
         return data
 
     @staticmethod
-    def write(target, data):
+    def open_and_write(target, data):
         with ulmopen(target, 'w') as w:
             w.write('cache', data)
+
+    @staticmethod
+    def encode(data):
+        return data
+
+    @staticmethod
+    def write(fd, value):
+        fd.write('cache', value)
+
+
+class CacheLock:
+    def __init__(self, fd, key, backend):
+        self.fd = fd
+        self.key = key
+        self.backend = backend
+
+    def save(self, value):
+        encoded = self.backend.encode(value)
+        try:
+            self.backend.write(self.fd, encoded)
+        except Exception as ex:
+            raise RuntimeError(f'Failed to save {value} to cache') from ex
+        finally:
+            self.fd.close()
 
 
 class _MultiFileCacheTemplate(MutableMapping):
@@ -122,7 +123,7 @@ class _MultiFileCacheTemplate(MutableMapping):
             if fd is None:
                 yield None
             else:
-                yield self.backend.CL(fd, key)
+                yield CacheLock(fd, key, self.backend)
         finally:
             if fd is not None:
                 fd.close()
@@ -198,7 +199,7 @@ class _CombinedCacheTemplate(Mapping):
         if target.exists():
             raise RuntimeError(f'Already exists: {target}')
         self.directory.mkdir(exist_ok=True, parents=True)
-        self.backend.write(target, self._dct)
+        self.backend.open_and_write(target, self._dct)
 
     @classmethod
     def dump_cache(cls, path, dct):
