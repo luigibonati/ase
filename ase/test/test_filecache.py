@@ -8,22 +8,18 @@ from ase.utils.filecache import (MultiFileJSONCache, CombinedJSONCache,
 pytestmark = pytest.mark.usefixtures('testdir')
 
 
-cache_types = ['json', 'ulm']
-
-
-@pytest.fixture
-def caches(cache_type=None):
-    return {'json': MultiFileJSONCache('cache_json'),
-            'ulm': MultiFileULMCache('cache_ulm')}
+@pytest.fixture(params=['json', 'ulm'])
+def cache(request):
+    caches = {'json': MultiFileJSONCache('cache_json'),
+              'ulm': MultiFileULMCache('cache_ulm')}
+    return caches[request.param]
 
 
 def sample_dict():
     return {'hello': [1, 2, 3], 'world': 'grumble'}
 
 
-@pytest.mark.parametrize('cache_type', cache_types)
-def test_basic(caches, cache_type):
-    cache = caches[cache_type]
+def test_basic(cache):
     assert len(cache) == 0
 
     cache['hello'] = 'grumble'
@@ -36,9 +32,7 @@ def test_basic(caches, cache_type):
     assert len(cache) == 0
 
 
-@pytest.mark.parametrize('cache_type', cache_types)
-def test_numpy_array(caches, cache_type):
-    cache = caches[cache_type]
+def test_numpy_array(cache):
     assert len(cache) == 0
     cache['a'] = np.array([3.4, 2.4, 1.4j])
     cache['b'] = np.array([3.4, 2.4, 1.4])
@@ -52,16 +46,12 @@ def test_numpy_array(caches, cache_type):
 
 
 @pytest.mark.parametrize('dct', [{}, sample_dict()])
-@pytest.mark.parametrize('cache_type', cache_types)
-def test_cache(dct, caches, cache_type):
-    cache = caches[cache_type]
+def test_cache(dct, cache):
     cache.update(dct)
     assert dict(cache) == dct
 
 
-@pytest.mark.parametrize('cache_type', cache_types)
-def test_combine(caches, cache_type):
-    cache = caches[cache_type]
+def test_combine(cache):
     dct = sample_dict()
     cache.update(dct)
     combined = cache.combine()
@@ -77,9 +67,7 @@ def test_split():
     assert len(combined) == 0
 
 
-@pytest.mark.parametrize('cache_type', cache_types)
-def test_lock(caches, cache_type):
-    cache = caches[cache_type]
+def test_lock(cache):
     with cache.lock('hello'):
         # When element is locked but nothing is written, the
         # cache is defined to "contain" None
@@ -91,9 +79,7 @@ def test_lock(caches, cache_type):
         assert cache['xx'] == 1
 
 
-@pytest.mark.parametrize('cache_type', cache_types)
-def test_already_locked(caches, cache_type):
-    cache = caches[cache_type]
+def test_already_locked(cache):
     with cache.lock('hello') as handle:
         assert handle is not None
         with cache.lock('hello') as otherhandle:
@@ -103,9 +89,7 @@ def test_already_locked(caches, cache_type):
             cache['hello'] = 'world'
 
 
-@pytest.mark.parametrize('cache_type', cache_types)
-def test_no_overwrite_combine(caches, cache_type):
-    cache = caches[cache_type]
+def test_no_overwrite_combine(cache):
     cache.combine()
     with pytest.raises(RuntimeError, match='Already exists'):
         cache.combine()
