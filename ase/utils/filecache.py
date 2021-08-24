@@ -33,12 +33,8 @@ class JSONBackend:
         write_json(target, data)
 
     @staticmethod
-    def encode(data):
-        return encode_json(data).encode('utf-8')
-
-    @staticmethod
     def write(fd, value):
-        fd.write(value)
+        fd.write(encode_json(value).encode('utf-8'))
 
     @classmethod
     def dump_cache(cls, path, dct):
@@ -73,10 +69,6 @@ class ULMBackend:
             w.write('cache', data)
 
     @staticmethod
-    def encode(data):
-        return data
-
-    @staticmethod
     def write(fd, value):
         fd.write('cache', value)
 
@@ -96,9 +88,8 @@ class CacheLock:
         self.backend = backend
 
     def save(self, value):
-        encoded = self.backend.encode(value)
         try:
-            self.backend.write(self.fd, encoded)
+            self.backend.write(self.fd, value)
         except Exception as ex:
             raise RuntimeError(f'Failed to save {value} to cache') from ex
         finally:
