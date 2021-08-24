@@ -4,7 +4,7 @@ from collections.abc import MutableMapping, Mapping
 from contextlib import contextmanager
 from ase.io.jsonio import read_json, write_json
 from ase.io.jsonio import encode as encode_json
-from ase.io.ulm import ulmopen, NDArrayReader, Writer
+from ase.io.ulm import ulmopen, NDArrayReader, Writer, InvalidULMFileError
 from ase.utils import opencew
 
 
@@ -20,6 +20,7 @@ class JSONBackend:
     extension = '.json'
     MultiFileCache = 'MultiFileJSONCache'
     CombinedCache = 'CombinedJSONCache'
+    DecodeError = json.decoder.JSONDecodeError
 
     @staticmethod
     def open_for_writing(path):
@@ -46,6 +47,7 @@ class ULMBackend:
     extension = '.ulm'
     MultiFileCache = 'MultiFileULMCache'
     CombinedCache = 'CombinedULMCache'
+    DecodeError = InvalidULMFileError
 
     @staticmethod
     def open_for_writing(path):
@@ -140,9 +142,14 @@ class _MultiFileCacheTemplate(MutableMapping):
             return self.backend.read(path)
         except FileNotFoundError:
             missing(key)
-        except IOError:
+        except self.backend.DecodeError:
+            # May be partially written, which typically means empty
+            # because the file was locked with exclusive-write-open.
+            #
+            # Since we decide what keys we have based on which files exist,
+            # we are obligated to return a value for this case too.
+            # So we return None.
             return None
-        # Exception for decode error not available for all formats
 
     def __delitem__(self, key):
         try:
@@ -233,21 +240,6 @@ class _CombinedCacheTemplate(Mapping):
 
 class MultiFileJSONCache(_MultiFileCacheTemplate):
     backend = JSONBackend()
-
-    def __getitem__(self, key):
-        path = self._filename(key)
-        try:
-            return self.backend.read(path)
-        except FileNotFoundError:
-            missing(key)
-        except json.decoder.JSONDecodeError:
-            # May be partially written, which typically means empty
-            # because the file was locked with exclusive-write-open.
-            #
-            # Since we decide what keys we have based on which files exist,
-            # we are obligated to return a value for this case too.
-            # So we return None.
-            return None
 
 
 class MultiFileULMCache(_MultiFileCacheTemplate):
