@@ -2,9 +2,10 @@ import os
 import copy
 import subprocess
 from math import pi, sqrt
-import pathlib
+from pathlib import Path
 from typing import Union, Optional, List, Set, Dict, Any
 import warnings
+from abc import abstractmethod
 
 import numpy as np
 
@@ -371,6 +372,8 @@ class EigenvalOccupationMixin:
 
     Classes must implement the old-fashioned get_eigenvalues and
     get_occupations methods."""
+    # We should maybe deprecate this and rely on the new
+    # Properties object for eigenvalues/occupations.
 
     @property
     def eigenvalues(self):
@@ -433,10 +436,94 @@ class Parameters(dict):
             '{}={!r}'.format(key, self[key]) for key in keys) + ')\n'
 
     def write(self, filename):
-        pathlib.Path(filename).write_text(self.tostring())
+        Path(filename).write_text(self.tostring())
 
 
-class Calculator(GetPropertiesMixin):
+class BaseCalculator(GetPropertiesMixin):
+    implemented_properties: List[str] = []
+    'Properties calculator can handle (energy, forces, ...)'
+
+    # Placeholder object for deprecated arguments.  Let deprecated keywords
+    # default to _deprecated and then issue a warning if the user passed
+    # any other object (such as None).
+    _deprecated = object()
+
+    def __init__(self, parameters=None):
+        if parameters is None:
+            parameters = {}
+        self.parameters = dict(parameters)
+        self.atoms = None
+        self.results = {}
+
+    def calculate_properties(self, atoms, properties):
+        """This method is experimental; currently for internal use."""
+        for name in properties:
+            if name not in all_outputs:
+                raise ValueError(f'No such property: {name}')
+
+        # We ignore system changes for now.
+        self.calculate(atoms, properties, system_changes=all_changes)
+
+        props = self.export_properties()
+
+        for name in properties:
+            if name not in props:
+                raise PropertyNotPresent(name)
+        return props
+
+    @abstractmethod
+    def calculate(self, atoms, properties, system_changes):
+        ...
+
+    def check_state(self, atoms, tol=1e-15):
+        """Check for any system changes since last calculation."""
+        return compare_atoms(self.atoms, atoms, tol=tol)
+
+    def get_property(self, name, atoms=None, allow_calculation=True):
+        if name not in self.implemented_properties:
+            raise PropertyNotImplementedError('{} property not implemented'
+                                              .format(name))
+
+        if atoms is None:
+            atoms = self.atoms
+            system_changes = []
+        else:
+            system_changes = self.check_state(atoms)
+            if system_changes:
+                self.atoms = None
+                self.results = {}
+
+        if name not in self.results:
+            if not allow_calculation:
+                return None
+            self.calculate(atoms, [name], system_changes)
+
+        if name not in self.results:
+            # For some reason the calculator was not able to do what we want,
+            # and that is OK.
+            raise PropertyNotImplementedError('{} not present in this '
+                                              'calculation'.format(name))
+
+        result = self.results[name]
+        if isinstance(result, np.ndarray):
+            result = result.copy()
+        return result
+
+    def calculation_required(self, atoms, properties):
+        assert not isinstance(properties, str)
+        system_changes = self.check_state(atoms)
+        if system_changes:
+            return True
+        for name in properties:
+            if name not in self.results:
+                return True
+        return False
+
+    def export_properties(self):
+        return Properties(self.results)
+
+
+class Calculator(BaseCalculator):
     """Base-class for all ASE calculators.
 
     A calculator must raise PropertyNotImplementedError if asked for a
@@ -449,9 +536,6 @@ class Calculator(GetPropertiesMixin):
     'magmom' and 'magmoms'.
     """
 
-    implemented_properties: List[str] = []
-    'Properties calculator can handle (energy, forces, ...)'
-
     default_parameters: Dict[str, Any] = {}
     'Default parameters'
 
@@ -463,9 +547,8 @@ class Calculator(GetPropertiesMixin):
     'Whether we purge the results following any change in the set() method.  '
     'Most (file I/O) calculators will probably want this.'
 
-    _deprecated = object()
-
-    def __init__(self, restart=None, ignore_bad_restart_file=_deprecated,
+    def __init__(self, restart=None,
+                 ignore_bad_restart_file=BaseCalculator._deprecated,
                  label=None, atoms=None, directory='.',
                  **kwargs):
         """Basic calculator implementation.
@@ -554,14 +637,15 @@ class Calculator(GetPropertiesMixin):
 
         if not hasattr(self, 'get_spin_polarized'):
             self.get_spin_polarized = self._deprecated_get_spin_polarized
+        # XXX We are very naughty and do not call super constructor!
 
     @property
     def directory(self) -> str:
         return self._directory
 
     @directory.setter
-    def directory(self, directory: Union[str, pathlib.PurePath]):
-        self._directory = str(pathlib.Path(directory))  # Normalize path.
+    def directory(self, directory: Union[str, os.PathLike]):
+        self._directory = str(Path(directory))  # Normalize path.
 
     @property
     def label(self):
@@ -699,58 +783,6 @@ class Calculator(GetPropertiesMixin):
         return compare_atoms(self.atoms, atoms, tol=tol,
                              excluded_properties=set(self.ignored_changes))
 
-    def get_potential_energy(self, atoms=None, force_consistent=False):
-        energy = self.get_property('energy', atoms)
-        if force_consistent:
-            if 'free_energy' not in self.results:
-                name = self.__class__.__name__
-                # XXX but we don't know why the energy is not there.
-                # We should raise PropertyNotPresent.  Discuss
-                raise PropertyNotImplementedError(
-                    'Force consistent/free energy ("free_energy") '
-                    'not provided by {0} calculator'.format(name))
-            return self.results['free_energy']
-        else:
-            return energy
-
-    def get_property(self, name, atoms=None, allow_calculation=True):
-        if name not in self.implemented_properties:
-            raise PropertyNotImplementedError('{} property not implemented'
-                                              .format(name))
-
-        if atoms is None:
-            atoms = self.atoms
-            system_changes = []
-        else:
-            system_changes = self.check_state(atoms)
-            if system_changes:
-                self.reset()
-        if name not in self.results:
-            if not allow_calculation:
-                return None
-            self.calculate(atoms, [name], system_changes)
-
-        if name not in self.results:
-            # For some reason the calculator was not able to do what we want,
-            # and that is OK.
-            raise PropertyNotImplementedError('{} not present in this '
-                                              'calculation'.format(name))
-
-        result = self.results[name]
-        if isinstance(result, np.ndarray):
-            result = result.copy()
-        return result
-
-    def calculation_required(self, atoms, properties):
-        assert not isinstance(properties, str)
-        system_changes = self.check_state(atoms)
-        if system_changes:
-            return True
-        for name in properties:
-            if name not in self.results:
-                return True
-        return False
-
     def calculate(self, atoms=None, properties=['energy'],
                   system_changes=all_changes):
         """Do the calculation.
@@ -855,25 +887,6 @@ class Calculator(GetPropertiesMixin):
         # from the selfconsistent calculation.
         return get_band_structure(calc=self)
 
-    def calculate_properties(self, atoms, properties):
-        """This method is experimental; currently for internal use."""
-        for name in properties:
-            if name not in all_outputs:
-                raise ValueError(f'No such property: {name}')
-
-        # We ignore system changes for now.
-        self.calculate(atoms, properties, system_changes=all_changes)
-
-        props = self.export_properties()
-
-        for name in properties:
-            if name not in props:
-                raise PropertyNotPresent(name)
-        return props
-
-    def export_properties(self):
-        return Properties(self.results)
-
 
 class FileIOCalculator(Calculator):
     """Base class for calculators that write/read input/output files."""
@@ -903,6 +916,10 @@ class FileIOCalculator(Calculator):
                   system_changes=all_changes):
         Calculator.calculate(self, atoms, properties, system_changes)
         self.write_input(self.atoms, properties, system_changes)
+        self.execute()
+        self.read_results()
+
+    def execute(self):
         if self.command is None:
             raise CalculatorSetupError(
                 'Please set ${} environment variable '
@@ -930,8 +947,6 @@ class FileIOCalculator(Calculator):
                    '{} with error code {}'.format(self.name, command,
                                                   path, errorcode))
             raise CalculationFailed(msg)
-
-        self.read_results()
 
     def write_input(self, atoms, properties=None, system_changes=None):
         """Write input file(s).

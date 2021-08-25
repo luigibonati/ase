@@ -2,7 +2,8 @@ import numpy as np
 
 from ase.outputs import Properties
 from ase.calculators.calculator import (Calculator, all_properties,
-                                        PropertyNotImplementedError)
+                                        PropertyNotImplementedError,
+                                        PropertyNotPresent)
 from ase.utils import lazyproperty
 
 
@@ -165,7 +166,8 @@ class SinglePointDFTCalculator(SinglePointCalculator):
         """Return occupation number array."""
         kpoint = self.get_kpt(kpt, spin)
         if kpoint is not None:
-            return kpoint.f_n
+            if len(kpoint.f_n):
+                return kpoint.f_n
         return None
 
     def get_eigenvalues(self, kpt=0, spin=0):
@@ -213,19 +215,31 @@ class SinglePointDFTCalculator(SinglePointCalculator):
         return OutputPropertyWrapper(self).properties()
 
 
+def propertygetter(func):
+    from functools import wraps
+
+    @wraps(func)
+    def getter(self):
+        value = func(self)
+        if value is None:
+            raise PropertyNotPresent(func.__name__)
+        return value
+    return lazyproperty(getter)
+
+
 class OutputPropertyWrapper:
     def __init__(self, calc):
         self.calc = calc
 
-    @lazyproperty
+    @propertygetter
     def nspins(self):
         return self.calc.get_number_of_spins()
 
-    @lazyproperty
+    @propertygetter
     def nbands(self):
         return self.calc.get_number_of_bands()
 
-    @lazyproperty
+    @propertygetter
     def nkpts(self):
         return len(self.calc.kpts) // self.nspins
 
@@ -233,26 +247,29 @@ class OutputPropertyWrapper:
         arr = np.empty((self.nspins, self.nkpts, self.nbands))
         for s in range(self.nspins):
             for k in range(self.nkpts):
-                arr[s, k, :] = getter(spin=s, kpt=k)
+                value = getter(spin=s, kpt=k)
+                if value is None:
+                    return None
+                arr[s, k, :] = value
         return arr
 
-    @lazyproperty
+    @propertygetter
     def eigenvalues(self):
         return self._build_eig_occ_array(self.calc.get_eigenvalues)
 
-    @lazyproperty
+    @propertygetter
     def occupations(self):
         return self._build_eig_occ_array(self.calc.get_occupation_numbers)
 
-    @lazyproperty
+    @propertygetter
     def fermi_level(self):
         return self.calc.get_fermi_level()
 
-    @lazyproperty
+    @propertygetter
     def kpoint_weights(self):
         return self.calc.get_k_point_weights()
 
-    @lazyproperty
+    @propertygetter
     def ibz_kpoints(self):
         return self.calc.get_ibz_k_points()
 
@@ -260,8 +277,11 @@ class OutputPropertyWrapper:
         dct = {}
         for name in ['eigenvalues', 'occupations', 'fermi_level',
                      'kpoint_weights', 'ibz_kpoints']:
-            value = getattr(self, name)
-            if value is not None:
+            try:
+                value = getattr(self, name)
+            except PropertyNotPresent:
+                pass
+            else:
                 dct[name] = value
 
         for name, value in self.calc.results.items():

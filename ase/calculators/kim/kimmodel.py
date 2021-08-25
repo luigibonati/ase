@@ -197,7 +197,7 @@ class KIMModelCalculator(Calculator):
       False)
     """
 
-    implemented_properties = ["energy", "forces", "stress"]
+    implemented_properties = ["energy", "free_energy", "forces", "stress"]
 
     ignored_changes = {"initial_charges", "initial_magmoms"}
 

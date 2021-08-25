@@ -131,7 +131,8 @@ class Aims(FileIOCalculator):
     __command_default = 'aims.version.serial.x > aims.out'
     __outfilename_default = 'aims.out'
 
-    implemented_properties = ['energy', 'forces', 'stress', 'stresses',
+    implemented_properties = ['energy', 'free_energy',
+                              'forces', 'stress', 'stresses',
                               'dipole', 'magmom']
 
     def __init__(self, restart=None,

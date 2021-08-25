@@ -293,11 +293,15 @@ class Optimizer(Dynamics):
                 msg = "%s  %4s %8s %15s %12s\n" % args
                 self.logfile.write(msg)
 
-                if self.force_consistent:
-                    msg = "*Force-consistent energies used in optimization.\n"
-                    self.logfile.write(msg)
+                # if self.force_consistent:
+                #     msg = "*Force-consistent energies used in optimization.\n"
+                #     self.logfile.write(msg)
 
-            ast = {1: "*", 0: ""}[self.force_consistent]
+            # XXX The "force consistent" handling is really arbitrary.
+            # Let's disable the special printing for now.
+            #
+            # ast = {1: "*", 0: ""}[self.force_consistent]
+            ast = ''
             args = (name, self.nsteps, T[3], T[4], T[5], e, ast, fmax)
             msg = "%s:  %3d %02d:%02d:%02d %15.6f%1s %12.4f\n" % args
             self.logfile.write(msg)

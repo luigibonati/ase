@@ -249,7 +249,7 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
 
 """
 
-    implemented_properties = ['energy', 'forces', 'stress']
+    implemented_properties = ['energy', 'free_energy', 'forces', 'stress']
 
     started = False
     initialized = False
