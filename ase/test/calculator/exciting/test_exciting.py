@@ -214,6 +214,7 @@ class Test_pytest_Exciting:
             assert calculator.energy - (-186.678769835 * Hartree) < 0.000000001
             assert calculator.forces.all() == np.array([0.246194007063E-04 * Bohr / Hartree, 0, 0]).all()
 
+    @pytest.mark.slow
     @need_exciting
     def test_calculate(self):
         calc = ase.calculators.exciting.Exciting(dir=self.test_folder_name)
@@ -222,7 +223,7 @@ class Test_pytest_Exciting:
         calc.get_forces(atoms)
         assert calc.positions.all() == atoms.get_positions().all()
         assert calc.cell.all() == atoms.get_cell().all()
-        assert calc.pbc == atoms.get_pbc()
+        assert calc.pbc.all() == atoms.get_pbc().all()
         assert calc.energy
 
 
