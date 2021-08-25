@@ -80,6 +80,7 @@ class Test_pytest_Exciting:
         assert exciting_calc.tshift
 
     def test_exciting_constructor_2(self):
+        os.environ.pop('EXCITINGROOT',default=None)
         with pytest.raises(RuntimeError, match='No species path given and no EXCITINGROOT '
                     'local var found'):
             ase.calculators.exciting.Exciting()
@@ -208,7 +209,7 @@ class Test_pytest_Exciting:
 
     @need_exciting
     def test_calculate(self):
-        calc = ase.calculators.exciting.Exciting(dir=self.test_folder_name, species_path=self.test_folder_name)
+        calc = ase.calculators.exciting.Exciting(dir=self.test_folder_name)
         atoms = bulk('Fe')
         calc.get_potential_energy(atoms)
         calc.get_forces(atoms)
