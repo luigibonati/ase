@@ -80,16 +80,23 @@ class Test_pytest_Exciting:
         assert exciting_calc.tshift
 
     def test_exciting_constructor_2(self):
-        os.environ.pop('EXCITINGROOT',default=None)
+        exciting_root = os.environ.pop('EXCITINGROOT', default=None)
         with pytest.raises(RuntimeError, match='No species path given and no EXCITINGROOT '
                     'local var found'):
             ase.calculators.exciting.Exciting()
+        if exciting_root is not None:
+            os.environ['EXCITINGROOT'] =exciting_root
 
     def test_exciting_constructor_3(self):
         os.mkdir(self.test_folder_name + '/species')
+        exciting_root = os.environ.pop('EXCITINGROOT', default=None)
         os.environ['EXCITINGROOT'] = self.test_folder_name
         calc = ase.calculators.exciting.Exciting()
         assert calc.species_path == self.test_folder_name + '/species'
+        if exciting_root is not None:
+            os.environ['EXCITINGROOT'] =exciting_root
+        else:
+            os.environ.pop('EXCITINGROOT', default=None)
 
     def test_exciting_constructor_4(self):
         with pytest.raises(RuntimeError, match='Species path given'):
