@@ -13,7 +13,6 @@ required = {'aims': dict(sc_accuracy_rho=5.e-3)}
 calc = pytest.mark.calculator
 
 
-@calc('abinit', ecut=200, toldfe=0.0001, chksymbreak=0)
 @calc('openmx', **omx_par)
 @calc('elk', rgkmax=5.0)
 def test_al(factory):

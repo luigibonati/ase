@@ -1,5 +1,15 @@
 import pytest
 from ase.build import bulk
+from ase.calculators.espresso import EspressoProfile, Espresso
+
+
+def test_version():
+    txt = """
+     Program PWSCF v.6.4.1 starts on  5Aug2021 at 11: 2:26
+
+     This program is part of the open-source Quantum ESPRESSO suite
+    """
+    assert EspressoProfile.parse_version(txt) == '6.4.1'
 
 
 def verify(calc):
@@ -27,3 +37,13 @@ def test_smearing(espresso_factory):
     atoms.calc = espresso_factory.calc(input_data=input_data)
     atoms.get_potential_energy()
     verify(atoms.calc)
+
+
+def test_warn_label():
+    with pytest.warns(FutureWarning):
+        Espresso(label='hello')
+
+
+def test_error_command():
+    with pytest.raises(RuntimeError):
+        Espresso(command='hello')

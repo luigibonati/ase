@@ -12,7 +12,8 @@ from ase.spectrum.band_structure import BandStructure
 
 
 class NWChem(FileIOCalculator):
-    implemented_properties = ['energy', 'forces', 'stress', 'dipole']
+    implemented_properties = ['energy', 'free_energy',
+                              'forces', 'stress', 'dipole']
     command = 'nwchem PREFIX.nwi > PREFIX.nwo'
     accepts_bandpath_keyword = True
     discard_results_on_any_change = True

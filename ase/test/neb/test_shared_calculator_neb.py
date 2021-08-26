@@ -108,7 +108,9 @@ class TestNEB(object):
         with raises(ValueError, match=r".*atoms in different orders.*"):
             _ = neb.NEB(mismatch_numbers)
 
-        mismatch_cell = [self.h_atom.copy(), self.h_atom.copy()]
+        h_atom = self.h_atom.copy()
+        h_atom.set_pbc(True)
+        mismatch_cell = [h_atom.copy(), h_atom.copy()]
         mismatch_cell[-1].set_cell(mismatch_cell[-1].get_cell() + 0.00001)
         with raises(NotImplementedError, match=r".*Variable cell.*"):
             _ = neb.NEB(mismatch_cell)

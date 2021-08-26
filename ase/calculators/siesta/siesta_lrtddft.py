@@ -1,5 +1,6 @@
 import numpy as np
 import ase.units as un
+from ase.calculators.polarizability import StaticPolarizabilityCalculator
 
 
 class SiestaLRTDDFT:
@@ -126,7 +127,7 @@ class SiestaLRTDDFT:
         return pmat
 
 
-class RamanCalculatorInterface(SiestaLRTDDFT):
+class RamanCalculatorInterface(SiestaLRTDDFT, StaticPolarizabilityCalculator):
     """Raman interface for Siesta calculator.
     When using the Raman calculator, please cite
 
@@ -146,10 +147,6 @@ class RamanCalculatorInterface(SiestaLRTDDFT):
 
         self.omega = omega
         super().__init__(**kw)
-
-    def __call__(self, *args, **kwargs):
-        """Shorthand for calculate"""
-        return self.calculate(*args, **kwargs)
 
     def calculate(self, atoms):
         """
