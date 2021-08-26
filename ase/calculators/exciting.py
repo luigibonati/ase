@@ -24,11 +24,11 @@ class Exciting:
     """
 
     def __init__(
-                self,
-                dir: str = 'calc', param_dict: Optional[Dict] = None,
-                species_path: Optional[str] = None,
-                exciting_binary='excitingser', kpts=(1, 1, 1),
-                autormt=False, tshift=True, **kwargs):
+            self,
+            dir: str = 'calc', param_dict: Optional[Dict] = None,
+            species_path: Optional[str] = None,
+            exciting_binary='excitingser', kpts=(1, 1, 1),
+            autormt=False, tshift=True, **kwargs):
         """Construct exciting-calculator object.
 
         Args:
@@ -87,6 +87,9 @@ class Exciting:
             # convert [2, 2, 2] into '2 2 2'.
             self.groundstate_attributes[
                 'ngridk'] = ' '.join(map(str, kpts))
+        # Initialize other attributes
+        self.numbers = []
+        self.cell = None
 
     def update(self, atoms: ase.Atoms):
         """Initialize calc if needed then run exciting calc.
@@ -98,20 +101,16 @@ class Exciting:
         # If the calculation is not over or the numbers
         # member variable hasn't been initialized we initialize
         # the atoms input.
-        if (
-                not self.converged or
+        if (not self.converged or
                 len(self.numbers) != len(atoms) or
-                (self.numbers != atoms.get_atomic_numbers()).any()):
-            self.initialize(atoms)
-            self.calculate(atoms)
-        # Otherwise run the calculations with this ASE atoms object.
-        elif ((self.positions != atoms.get_positions()).any() or
-              (self.pbc != atoms.get_pbc()).any() or
-              (self.cell != atoms.get_cell()).any()):
+                (self.numbers != atoms.get_atomic_numbers()).any() or
+                (self.positions != atoms.get_positions()).any() or
+                (self.pbc != atoms.get_pbc()).any() or
+                (self.cell != atoms.get_cell()).any()):
             self.calculate(atoms)
 
     def initialize(self, atoms: ase.Atoms):
-        """Initialize atomic information by writing input file.
+        """Initialize atomic information by writing input file and saving data in calculator object.
 
         Args:
             atoms: Holds geometry, atomic information about calculation.
@@ -119,6 +118,12 @@ class Exciting:
         # Get a list of the atomic numbers (a.m.u) save
         # it to the member variable called self.numbers.
         self.numbers = atoms.get_atomic_numbers().copy()
+        # Get positions of the ASE Atoms object atom positions.
+        self.positions = atoms.get_positions().copy()
+        # Get the ASE Atoms object cell vectors.
+        self.cell = atoms.get_cell().copy()
+        # Get the periodic boundary conditions.
+        self.pbc = atoms.get_pbc().copy()
         # Write ASE atoms information into input.
         self.write(atoms)
 
@@ -170,16 +175,10 @@ class Exciting:
         Args:
             atoms: Holds geometry, atomic information about calculation.
         """
-        # Get positions of the ASE Atoms object atom positions.
-        self.positions = atoms.get_positions().copy()
-        # Get the ASE Atoms object cell vectors.
-        self.cell = atoms.get_cell().copy()
-        # Get the periodic boundary conditions.
-        self.pbc = atoms.get_pbc().copy()
         # Write input file.
         self.initialize(atoms)
 
-        #TODO(dts): This code portion needs a rewrite for readability.
+        # TODO(dts): This code portion needs a rewrite for readability.
 
         xmlfile = pathlib.Path(self.dir) / 'input.xml'
         # Check that the xml file exists in this location: self.dir/input.xml
@@ -284,7 +283,7 @@ class Exciting:
                     self.dict_to_xml(item, ET.SubElement(element, key))
             # Otherwise if the value is a dictionary.
             elif (isinstance(value, dict)):
-                if(element.findall(key) == []):
+                if (element.findall(key) == []):
                     self.dict_to_xml(value, ET.SubElement(element, key))
                 else:
                     self.dict_to_xml(value, element.findall(key)[0])
@@ -308,13 +307,13 @@ class Exciting:
         # Find the last istance of 'totalEnergy'.
         self.energy = float(parsed_output.findall(
             'groundstate/scl/iter/energies')[-1].attrib[
-                'totalEnergy']) * Hartree
+                                'totalEnergy']) * Hartree
         # Initialize forces list.
         forces = []
         # final all instances of 'totalforce'.
         forcesnodes = parsed_output.findall(
-                'groundstate/scl/structure')[-1].findall(
-                    'species/atom/forces/totalforce')
+            'groundstate/scl/structure')[-1].findall(
+            'species/atom/forces/totalforce')
         # Go through each force in the found instances of 'total force'.
         for force in forcesnodes:
             # Append the total force to the forces list.
@@ -323,7 +322,7 @@ class Exciting:
         self.forces = np.reshape(forces, (-1, 3)) * Hartree / Bohr
         # Check if the calculation converged.
         if str(parsed_output.find('groundstate').attrib[
-                'status']) == 'finished':
+                   'status']) == 'finished':
             self.converged = True
         else:
             raise RuntimeError('Calculation did not converge.')

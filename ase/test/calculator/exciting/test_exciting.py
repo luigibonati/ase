@@ -184,6 +184,13 @@ class TestPytestExciting:
         atoms = bulk('Fe')
         calculator.initialize(atoms)
         assert all([act == exp for act, exp in zip(calculator.numbers, atoms.get_atomic_numbers())])
+        for act, exp in zip(calculator.positions, atoms.get_positions()):
+            for act_val, exp_val in zip(act, exp):
+                assert act_val == exp_val
+        for act, exp in zip(calculator.cell, atoms.get_cell()):
+            for act_val, exp_val in zip(act, exp):
+                assert act_val == exp_val
+        assert all([act == exp for act, exp in zip(calculator.pbc, atoms.get_pbc())])
 
     def test_get_stress(self, calculator):
         """Tests get stress method."""
@@ -214,9 +221,11 @@ class TestPytestExciting:
         calculator.update(atoms)
         calculator.converged = True
         assert calculator.read.call_count == 1
+        # read is not called another time because self.converged==True -> calculate is not called
         calculator.update(atoms)
         assert calculator.read.call_count == 1
         calculator.positions = [[1.0, 2.0, 5.0]]
+        # read is called another time because positions canged -> calculate is called
         calculator.update(atoms)
         assert calculator.read.call_count == 2
 
