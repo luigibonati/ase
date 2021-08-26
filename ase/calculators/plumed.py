@@ -5,17 +5,30 @@ from ase.parallel import world
 import numpy as np
 from os.path import exists
 
+
 def restart_from_trajectory(prev_traj, *args, prev_steps=None, atoms=None, **kwargs):
     atoms.calc = Plumed(*args, atoms=atoms, restart=True, **kwargs)
+
+    """ This function helps the user to restart a plumed simulation 
+    from a trajectory file. 
+
+    Parameters
+        ----------  
+        calc: Calculator object
+            It  computes the unbiased forces
     
+    .. note:: As alternative for restarting a plumed simulation, the user
+            has to fix the positions, momenta and Plumed.istep
+    """
     with Trajectory(prev_traj) as traj:
         if prev_steps is None:
             atoms.calc.istep = len(traj) - 1
         else:
             atoms.calc.istep = prev_steps
-        atoms.set_positions( traj[-1].get_positions() )
-        atoms.set_momenta( traj[-1].get_momenta() )
+        atoms.set_positions(traj[-1].get_positions())
+        atoms.set_momenta(traj[-1].get_momenta())
     return atoms.calc
+
 
 class Plumed(Calculator):
     """Plumed calculator is used for simulations of enhanced sampling methods
@@ -57,9 +70,12 @@ class Plumed(Calculator):
             Log file of the plumed calculations
         
         restart: boolean. Default False
-            True if the simulation is restarted. The user have to fix momentum 
-            and positions. This can be done using 
-            ase.calculators.plumed.restart_from_trajectory
+            True if the simulation is restarted. 
+        .. note:: In order to guarantee a well restart, the user has to fix momenta,
+            positions and Plumed.istep, where the positions and momenta corresponds
+            to the last coniguration in the previous simulation, while Plumed.istep 
+            is the number of timesteps performed previously. This can be done 
+            using ase.calculators.plumed.restart_from_trajectory.
         """
         from plumed import Plumed as pl
 
@@ -123,15 +139,15 @@ class Plumed(Calculator):
         
         The outputs are saved in the typical files of
         plumed such as COLVAR, HILLS """
-        for i,image in enumerate(images):
+        for i, image in enumerate(images):
             pos = image.get_positions()
             self.compute_energy_and_forces(pos, i)
         return self.read_plumed_files()
 
-    def read_plumed_files(self, file=None):
+    def read_plumed_files(self, file_name=None):
         read_files = {}
-        if file is not None:
-            read_files[file] = np.loadtxt(file_name, unpack=True)
+        if file_name is not None:
+            read_files[file_name] = np.loadtxt(file_name, unpack=True)
         else:
             for line in self.input:
                 if line.find('FILE') != -1:

@@ -84,7 +84,6 @@ def test_restart(factory):
 
     # rest of steps with restart
     input, atoms1, timestep = setups()
-    primer = atoms1.get_positions()[0][0].copy(), atoms1.get_positions()[1][0].copy()
     with restart_from_trajectory('test-restart.traj',
                                  calc=LennardJones(epsilon=10, sigma=6), 
                                  input=input,
@@ -92,7 +91,6 @@ def test_restart(factory):
                                  atoms=atoms1) as atoms1.calc:
         with VelocityVerlet(atoms1, timestep) as dyn:
             dyn.run(30)
-        res = atoms1.calc.read_plumed_files()
       
     # Values computed externally
     position1 = -0.0491871
@@ -104,7 +102,6 @@ def test_restart(factory):
     assert (atoms1.get_positions()[0][0] == approx(position1, abs=0.01) and
             atoms1.get_positions()[1][0] == approx(position2, abs=0.01)), "Error in the restart of metadynamics simulation"
     
-
 
 @pytest.mark.calculator_lite
 @pytest.mark.calculator('plumed')
@@ -123,6 +120,7 @@ def test_postpro(factory):
             postpr = calc.write_plumed_files(traj)['HILLS_postpro']
 
     assert postpr == approx(direct['HILLS_direct'])
+
 
 def run(factory, inputs, name='', 
         calc=LennardJones(epsilon=10, sigma=6),
