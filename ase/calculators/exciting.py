@@ -39,8 +39,7 @@ class Exciting:
                 translated to a  list of sub elements named after the key
                 of which the list is the value. The keys of the dict should
                 be a list of strings not floats.
-            species_path: string
-                Directory or URL to look up species files folder.
+            species_path: Directory or URL to look up species files folder.
             exciting_binary: Path to executable of exciting code.
                 Default: 'excitingser'
             kpts: Number of k-points. List len should be 3.
