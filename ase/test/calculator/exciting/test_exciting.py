@@ -261,8 +261,12 @@ class TestPytestExciting:
         atoms = bulk('Fe')
         calc.get_potential_energy(atoms)
         calc.get_forces(atoms)
-        assert all([act == exp for act, exp in zip(calc.positions, atoms.get_positions())])
-        assert all([act == exp for act, exp in zip(calc.cell, atoms.get_cell())])
+        for act, exp in zip(calc.positions, atoms.get_positions()):
+            for act_val, exp_val in zip(act, exp):
+                assert act_val == exp_val
+        for act, exp in zip(calc.cell, atoms.get_cell()):
+            for act_val, exp_val in zip(act, exp):
+                assert act_val == exp_val
         assert all([act == exp for act, exp in zip(calc.pbc, atoms.get_pbc())])
         assert calc.energy
 
