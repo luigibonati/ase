@@ -32,11 +32,13 @@ def restart_from_trajectory(prev_traj, *args, prev_steps=None, atoms=None, **kwa
 
 class Plumed(Calculator):
     """Plumed calculator is used for simulations of enhanced sampling methods
-    with the open-source code PLUMED (plumed.org):
+    with the open-source code PLUMED (plumed.org).
     
-    [1] The PLUMED consortium, Nat. Methods 16, 670 (2019)
-    [2] Tribello, Bonomi, Branduardi, Camilloni, and Bussi, 
-    Comput. Phys. Commun. 185, 604 (2014)
+    See:
+
+     * The PLUMED consortium, Nat. Methods 16, 670 (2019)
+     * Tribello, Bonomi, Branduardi, Camilloni, and Bussi,
+       Comput. Phys. Commun. 185, 604 (2014).
     """
 
     implemented_properties = ['energy', 'forces']
