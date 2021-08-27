@@ -9,7 +9,7 @@ from os.path import exists
 def restart_from_trajectory(prev_traj, *args, prev_steps=None, atoms=None, **kwargs):
     atoms.calc = Plumed(*args, atoms=atoms, restart=True, **kwargs)
 
-    """ This function helps the user to restart a plumed simulation 
+    """This function helps the user to restart a plumed simulation 
     from a trajectory file. 
 
     Parameters
@@ -31,7 +31,15 @@ def restart_from_trajectory(prev_traj, *args, prev_steps=None, atoms=None, **kwa
 
 
 class Plumed(Calculator):
+    """Plumed calculator is used for simulations of enhanced sampling methods
+    with the open-source code PLUMED (plumed.org).
     
+
+    [1] The PLUMED consortium, Nat. Methods 16, 670 (2019)
+    [2] Tribello, Bonomi, Branduardi, Camilloni, and Bussi,
+    Comput. Phys. Commun. 185, 604 (2014).
+    """
+
     implemented_properties = ['energy', 'forces']
     
     def __init__(self, calc, input, timestep, atoms=None, kT=1., log='', restart=False):
