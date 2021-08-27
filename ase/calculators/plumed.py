@@ -31,17 +31,17 @@ def restart_from_trajectory(prev_traj, *args, prev_steps=None, atoms=None, **kwa
 
 
 class Plumed(Calculator):
-    """Plumed calculator is used for simulations of enhanced sampling methods
-    with the open-source code PLUMED (plumed.org).
     
-    [1] The PLUMED consortium, Nat. Methods 16, 670 (2019)
-    [2] Tribello, Bonomi, Branduardi, Camilloni, and Bussi, 
-    Comput. Phys. Commun. 185, 604 (2014)"""
-
     implemented_properties = ['energy', 'forces']
     
     def __init__(self, calc, input, timestep, atoms=None, kT=1., log='', restart=False):
-        """Plumed calculator. 
+        """
+        Plumed calculator is used for simulations of enhanced sampling methods
+        with the open-source code PLUMED (plumed.org).
+        
+        [1] The PLUMED consortium, Nat. Methods 16, 670 (2019)
+        [2] Tribello, Bonomi, Branduardi, Camilloni, and Bussi, 
+        Comput. Phys. Commun. 185, 604 (2014)
 
         Parameters
         ----------  
@@ -57,6 +57,7 @@ class Plumed(Calculator):
         atoms: Atoms
             Atoms object to be attached
 
+
         .. note:: For this case, the calculator is defined strictly with the
             object atoms inside. This is necessary for initializing the
             Plumed object. For conserving ASE convention, it can be initialized as
@@ -71,11 +72,14 @@ class Plumed(Calculator):
         
         restart: boolean. Default False
             True if the simulation is restarted. 
+
+
         .. note:: In order to guarantee a well restart, the user has to fix momenta,
             positions and Plumed.istep, where the positions and momenta corresponds
             to the last coniguration in the previous simulation, while Plumed.istep 
             is the number of timesteps performed previously. This can be done 
             using ase.calculators.plumed.restart_from_trajectory.
+        
         """
         from plumed import Plumed as pl
 
