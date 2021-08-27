@@ -34,11 +34,10 @@ class Plumed(Calculator):
     """Plumed calculator is used for simulations of enhanced sampling methods
     with the open-source code PLUMED (plumed.org).
     
-    See:
 
-     * The PLUMED consortium, Nat. Methods 16, 670 (2019)
-     * Tribello, Bonomi, Branduardi, Camilloni, and Bussi,
-       Comput. Phys. Commun. 185, 604 (2014).
+    [1] The PLUMED consortium, Nat. Methods 16, 670 (2019)
+    [2] Tribello, Bonomi, Branduardi, Camilloni, and Bussi,
+    Comput. Phys. Commun. 185, 604 (2014).
     """
 
     implemented_properties = ['energy', 'forces']
@@ -74,7 +73,10 @@ class Plumed(Calculator):
         
         restart: boolean. Default False
             True if the simulation is restarted. 
-        .. note:: In order to guarantee a well restart, the user has to fix momenta,
+
+        .. note::
+
+            In order to guarantee a well restart, the user has to fix momenta,
             positions and Plumed.istep, where the positions and momenta corresponds
             to the last coniguration in the previous simulation, while Plumed.istep 
             is the number of timesteps performed previously. This can be done 
