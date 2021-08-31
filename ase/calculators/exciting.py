@@ -10,7 +10,7 @@ import subprocess
 import numpy as np
 import ase
 # TODO(dts): use import ase for all of these imports, no need for simplifying path.
-import ase.io.exciting
+# import ase.io.exciting
 from ase.units import Bohr, Hartree
 from ase.calculators.calculator import PropertyNotImplementedError
 
@@ -220,7 +220,7 @@ class Exciting:
         # then assign different attributes of the DOM. `root` holds the root
         # of the element tree that is populated with basis vectors, chemical
         # symbols and the like.
-        root = ase.io.exciting.atoms_to_etree(atoms)
+        root = atoms_to_etree(atoms)
         # We have to add a few more attributes to the element tree before
         # writing the xml input file. Assign the species path.
         root.find('structure').attrib['speciespath'] = self.species_path
@@ -333,3 +333,63 @@ def prettify(elem):
     rough_string = ET.tostring(elem, 'utf-8')
     reparsed = minidom.parseString(rough_string)
     return reparsed.toprettyxml(indent="\t")
+
+
+def atoms_to_etree(ase_atoms_obj) -> ET.Element:
+    """This function creates the XML DOM corresponding
+     to the structure for use in write and calculator
+
+    Parameters
+    ----------
+
+    ase_atoms_obj : Atom Object or List of Atoms objects
+
+    Returns
+    -------
+    root : etree object
+        Element tree of exciting input file containing the structure
+    """
+    if not isinstance(ase_atoms_obj, (list, tuple)):
+        ase_atoms_obj_list = [ase_atoms_obj]
+    else:
+        ase_atoms_obj_list = ase_atoms_obj
+    root = ET.Element('input')
+    root.set(
+        '{http://www.w3.org/2001/XMLSchema-instance}noNamespaceSchemaLocation',
+        'http://xml.exciting-code.org/excitinginput.xsd')
+
+    title = ET.SubElement(root, 'title')
+    title.text = ''
+    structure = ET.SubElement(root, 'structure')
+    crystal = ET.SubElement(structure, 'crystal')
+    atoms = ase_atoms_obj_list[0]
+    for vec in atoms.cell:
+        basevect = ET.SubElement(crystal, 'basevect')
+        # use f string here and fix this.
+        basevect.text = '%.14f %.14f %.14f' % tuple(vec / Bohr)
+
+    oldsymbol = ''
+    oldrmt = -1  # The old radius of the muffin tin (rmt)
+    newrmt = -1
+    scaled = atoms.get_scaled_positions()
+    for aindex, symbol in enumerate(atoms.get_chemical_symbols()):
+        # What is atoms.arrays?
+        if 'rmt' in atoms.arrays:
+            newrmt = atoms.get_array('rmt')[aindex] / Bohr
+        if symbol != oldsymbol or newrmt != oldrmt:
+            speciesnode = ET.SubElement(structure, 'species',
+                                        speciesfile='%s.xml' % symbol,
+                                        chemicalSymbol=symbol)
+            oldsymbol = symbol
+            if 'rmt' in atoms.arrays:
+                oldrmt = atoms.get_array('rmt')[aindex] / Bohr
+                if oldrmt > 0:
+                    speciesnode.attrib['rmt'] = '%.4f' % oldrmt
+
+        atom = ET.SubElement(speciesnode, 'atom',
+                             coord='%.14f %.14f %.14f' % tuple(scaled[aindex]))
+        if 'momenta' in atoms.arrays:
+            atom.attrib['bfcmt'] = '%.14f %.14f %.14f' % tuple(
+                atoms.get_array('momenta')[aindex])
+
+    return root

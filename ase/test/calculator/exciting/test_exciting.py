@@ -270,6 +270,31 @@ class TestPytestExciting:
         assert all([act == exp for act, exp in zip(calc.pbc, atoms.get_pbc())])
         assert calc.energy
 
+    def test_atoms_to_etree_list(self):
+        """Tests atoms_to_etree method if atoms_obj is a list."""
+        atoms = ase.Atoms("H")
+        root = ase.calculators.exciting.atoms_to_etree([atoms])
+
+
+    def test_atoms_to_etree_rmt(self):
+        """Tests assigning rmt values in atoms_to_etree_method."""
+        atoms = ase.Atoms("CO2")
+        atoms.new_array('rmt', np.array(np.multiply([-1.0, 10.0, 2.3], Bohr)))
+        root = ase.calculators.exciting.atoms_to_etree(atoms)
+        atom_list = root.findall('./structure/species')
+        assert 'rmt' not in atom_list[0].attrib.keys()
+        assert atom_list[1].attrib.get('rmt') == '10.0000'
+        assert atom_list[2].attrib.get('rmt') == '2.3000'
+
+    def test_atoms_to_etree_momenta(self):
+        """Tests getting the momentum in atoms_to_etree method"""
+        atoms = ase.Atoms("H")
+        expected_momentum = '1.00000000000000 2.00000000000000 3.00000000000000'
+        atoms.set_momenta([[1.0, 2.0, 3.0]])
+        root = ase.calculators.exciting.atoms_to_etree(atoms)
+        atom_list = root.findall('./structure/species/atom')
+        momentum = atom_list[0].attrib.get('bfcmt')
+        assert momentum == expected_momentum
 
 class TestExciting(unittest.TestCase):
     """Test class for all exciting unit tests."""
@@ -436,3 +461,34 @@ class TestExciting(unittest.TestCase):
         self.exciting_calc_obj.read()
         expected_energy = -2543.25348773 * Hartree
         self.assertAlmostEqual(self.exciting_calc_obj.energy, expected_energy)
+
+    def test_atoms_to_etree(self):
+        """Test ability to convert ase.Atoms obj to xml element tree."""
+        root = ase.calculators.exciting.atoms_to_etree(
+            ase_atoms_obj=self.nitrous_oxide_atoms_obj)
+        expected_base_vecs = [
+            list(np.divide([0, 0, 1], Bohr)),
+            list(np.divide([0, 1, 0], Bohr)),
+            list(np.divide([1, 0, 0], Bohr))]
+        basis_vecs = root.findall(
+            "structure/crystal/basevect")
+        basis_vecs = [
+            [float(x) for x in basis_vecs[i].text.split()] for i in range(
+                len(basis_vecs))]
+        print(basis_vecs)
+
+        for i in range(len(expected_base_vecs)):
+            for j in range(len(expected_base_vecs[i])):
+                self.assertAlmostEqual(
+                        basis_vecs[i][j], expected_base_vecs[i][j])
+
+        species = root.findall(
+            "structure/species")
+        species = [species[i].attrib for i in range(len(species))]
+        symbols = [attribute['chemicalSymbol'] for attribute in species]
+        species_files = [attribute['speciesfile'] for attribute in species]
+        print(symbols)
+        expected_chemical_symbols = ['N', 'O']
+        expected_species_files = ['N.xml', 'O.xml']
+        self.assertListEqual(symbols, expected_chemical_symbols)
+        self.assertListEqual(species_files, expected_species_files)
