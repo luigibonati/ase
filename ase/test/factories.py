@@ -107,10 +107,11 @@ class AimsFactory:
         # XXX pseudo_dir
 
     def calc(self, **kwargs):
-        from ase.calculators.aims import Aims
+        from ase.calculators.aims import Aims, AimsProfile
         kwargs1 = dict(xc='LDA')
         kwargs1.update(kwargs)
-        return Aims(command=self.executable, **kwargs1)
+        profile = AimsProfile([self.executable])
+        return Aims(profile=profile, **kwargs1)
 
     def version(self):
         from ase.calculators.aims import get_aims_version
@@ -537,6 +538,26 @@ class NWChemFactory:
     @classmethod
     def fromconfig(cls, config):
         return cls(config.executables['nwchem'])
+
+
+@factory('plumed')
+class PlumedFactory:
+    def __init__(self):
+        import plumed
+        self.path = plumed.__spec__.origin
+        
+    def calc(self, **kwargs):
+        from ase.calculators.plumed import Plumed
+        return Plumed(**kwargs)
+
+    @classmethod
+    def fromconfig(cls, config):
+        import importlib
+        spec = importlib.util.find_spec('plumed')
+        # XXX should be made non-pytest dependent
+        if spec is None:
+            raise NotInstalled('plumed')
+        return cls()
 
 
 class NoSuchCalculator(Exception):

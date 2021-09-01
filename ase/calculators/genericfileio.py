@@ -34,7 +34,7 @@ def read_stdout(args, createfile=None):
 class CalculatorTemplate(ABC):
     def __init__(self, name: str, implemented_properties: Iterable[str]):
         self.name = name
-        self.implemented_properties = set(implemented_properties)
+        self.implemented_properties = frozenset(implemented_properties)
 
     @abstractmethod
     def write_input(self, directory, atoms, parameters, properties):
@@ -66,11 +66,6 @@ class GenericFileIOCalculator(BaseCalculator, GetOutputsMixin):
 
     def __repr__(self):
         return '{}({})'.format(type(self).__name__, self.template.name)
-
-    def write_input(self, atoms, properties, system_changes):
-        # XXX for socketio compatibility; remove later
-        self.template.write_input(self.directory, atoms,
-                                  self.parameters, properties)
 
     @property
     def implemented_properties(self):
