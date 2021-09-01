@@ -1,13 +1,18 @@
+import numpy as np
 import pytest
-from ase.utils.filecache import MultiFileJSONCache, CombinedJSONCache, Locked
+from ase.utils.filecache import (MultiFileJSONCache, CombinedJSONCache,
+                                 MultiFileULMCache,
+                                 Locked)
 
 
 pytestmark = pytest.mark.usefixtures('testdir')
 
 
-@pytest.fixture
-def cache():
-    return MultiFileJSONCache('cache')
+@pytest.fixture(params=['json', 'ulm'])
+def cache(request):
+    caches = {'json': MultiFileJSONCache('cache_json'),
+              'ulm': MultiFileULMCache('cache_ulm')}
+    return caches[request.param]
 
 
 def sample_dict():
@@ -27,10 +32,20 @@ def test_basic(cache):
     assert len(cache) == 0
 
 
-@pytest.mark.parametrize('dct', [
-    {},
-    sample_dict(),
-])
+def test_numpy_array(cache):
+    assert len(cache) == 0
+    cache['a'] = np.array([3.4, 2.4, 1.4j])
+    cache['b'] = np.array([3.4, 2.4, 1.4])
+    assert len(cache) == 2
+    assert 'a' in cache
+    aa = cache.pop('a')
+    bb = cache.pop('b')
+    assert np.allclose(aa, np.array([3.4, 2.4, 1.4j]))
+    assert np.allclose(bb, np.array([3.4, 2.4, 1.4]))
+    assert len(cache) == 0
+
+
+@pytest.mark.parametrize('dct', [{}, sample_dict()])
 def test_cache(dct, cache):
     cache.update(dct)
     assert dict(cache) == dct

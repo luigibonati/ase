@@ -540,6 +540,26 @@ class NWChemFactory:
         return cls(config.executables['nwchem'])
 
 
+@factory('plumed')
+class PlumedFactory:
+    def __init__(self):
+        import plumed
+        self.path = plumed.__spec__.origin
+        
+    def calc(self, **kwargs):
+        from ase.calculators.plumed import Plumed
+        return Plumed(**kwargs)
+
+    @classmethod
+    def fromconfig(cls, config):
+        import importlib
+        spec = importlib.util.find_spec('plumed')
+        # XXX should be made non-pytest dependent
+        if spec is None:
+            raise NotInstalled('plumed')
+        return cls()
+
+
 class NoSuchCalculator(Exception):
     pass
 

@@ -49,6 +49,9 @@ def read_gpw(filename):
                     SinglePointKPoint(weight, spin, kpt, eps_n, f_n))
                 kpt += 1
             spin += 1
+
+    reader.close()
+
     return atoms
 
 
