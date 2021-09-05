@@ -492,8 +492,11 @@ class StrainMutation(OffspringCreator):
             # applying the strain:
             cell_new = np.dot(strain, cell_ref)
 
-            # convert to lower triangular form
+            # convert the submatrix with the variable cell vectors
+            # to a lower triangular form
             cell_new = convert_cell(cell_new)[0].T
+            for i in range(self.number_of_variable_cell_vectors, 3):
+                cell_new[i] = cell_ref[i]
 
             # volume scaling:
             if self.number_of_variable_cell_vectors > 0:
