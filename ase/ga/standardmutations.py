@@ -1,6 +1,7 @@
 """A collection of mutations that can be used."""
 import numpy as np
 from math import cos, sin, pi
+from ase.cell import Cell
 from ase.calculators.lammpslib import convert_cell
 from ase.ga.utilities import (atoms_too_close,
                               atoms_too_close_two_sets,
@@ -504,10 +505,11 @@ class StrainMutation(OffspringCreator):
             for i in range(self.number_of_variable_cell_vectors, 3):
                 cell_new[i] = cell_ref[i]
 
+            cell_new = Cell(cell_new)
+
             # volume scaling:
             if self.number_of_variable_cell_vectors > 0:
-                volume = abs(np.linalg.det(cell_new))
-                scaling = vol_ref / volume
+                scaling = vol_ref / cell_new.volume
                 scaling **= 1. / self.number_of_variable_cell_vectors
                 cell_new[:self.number_of_variable_cell_vectors] *= scaling
 
@@ -520,7 +522,7 @@ class StrainMutation(OffspringCreator):
                 assert np.allclose(cell_new[i], cell_ref[i])
 
             # check that the volume is correct
-            assert np.allclose(vol_ref, abs(np.linalg.det(cell_new)))
+            assert np.allclose(vol_ref, cell_new.volume)
 
             # apply the new unit cell and scale
             # the atomic positions accordingly
