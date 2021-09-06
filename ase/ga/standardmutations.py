@@ -522,7 +522,7 @@ class StrainMutation(OffspringCreator):
                 assert np.allclose(cell_new[i], cell_ref[i])
 
             # check that the volume is correct
-            assert np.allclose(vol_ref, cell_new.volume)
+            assert np.isclose(vol_ref, cell_new.volume)
 
             # apply the new unit cell and scale
             # the atomic positions accordingly
