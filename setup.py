@@ -23,7 +23,7 @@ install_requires = [
     'numpy>=1.15.0',  # July 2018
     'scipy>=1.1.0',  # May 2018
     'matplotlib>=3.1.0',  # May 2019
-    'importlib-metadata>=0.12'
+    'importlib-metadata>=0.12;python_version<"3.8"'
 ]
 
 
