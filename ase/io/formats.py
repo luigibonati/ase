@@ -25,7 +25,10 @@ from pathlib import Path, PurePath
 from typing import (
     IO, List, Any, Iterable, Tuple, Union, Sequence, Dict, Optional)
 
+from importlib_metadata import entry_points
+
 from ase.atoms import Atoms
+from ase.utils.plugins import ExternalIOFormat
 from importlib import import_module
 from ase.parallel import parallel_function, parallel_generator
 
@@ -221,9 +224,9 @@ class IOFormat:
 
     @property
     def module(self):
-        if not self.module_name.startswith('ase.io.'):
-            raise ValueError('Will only import modules from ase.io, '
-                             'not {}'.format(self.module_name))
+        # if not self.module_name.startswith('ase.io.'):
+        #     raise ValueError('Will only import modules from ase.io, '
+        #                      'not {}'.format(self.module_name))
         try:
             return import_module(self.module_name)
         except ImportError as err:
@@ -256,10 +259,13 @@ format2modulename = {}  # Left for compatibility only.
 
 def define_io_format(name, desc, code, *, module=None, ext=None,
                      glob=None, magic=None, encoding=None,
-                     magic_regex=None):
+                     magic_regex=None, external=False):
     if module is None:
         module = name.replace('-', '_')
         format2modulename[name] = module
+
+    if not external:
+        module = 'ase.io.' + module
 
     def normalize_patterns(strings):
         if strings is None:
@@ -270,7 +276,7 @@ def define_io_format(name, desc, code, *, module=None, ext=None,
             strings = list(strings)
         return strings
 
-    fmt = IOFormat(name, desc, code, module_name='ase.io.' + module,
+    fmt = IOFormat(name, desc, code, module_name=module,
                    encoding=encoding)
     fmt.extensions = normalize_patterns(ext)
     fmt.globs = normalize_patterns(glob)
@@ -463,6 +469,14 @@ F('xtd', 'Materials Studio file', '+F')
 # xyz: No `ext='xyz'` in the definition below.
 #      The .xyz files are handled by the extxyz module by default.
 F('xyz', 'XYZ-file', '+F')
+
+#Register IO formats exposed through the ase.ioformats entry point
+for entry_point in entry_points().select(group='ase.ioformats'):
+    fmt = entry_point.load()
+    if entry_point.name in ioformats:
+        raise ValueError(f'Format {entry_point.name} already defined')
+    assert isinstance(fmt, ExternalIOFormat), f'Wrong type for registering external IO formats in format {entry_point.name}, expected ExternalIOFormat'
+    F(entry_point.name, **fmt._asdict(), external=True)
 
 
 def get_compression(filename: str) -> Tuple[str, Optional[str]]:
