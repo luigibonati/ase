@@ -471,7 +471,8 @@ F('xtd', 'Materials Studio file', '+F')
 F('xyz', 'XYZ-file', '+F')
 
 #Register IO formats exposed through the ase.ioformats entry point
-for entry_point in entry_points().select(group='ase.ioformats'):
+
+for entry_point in entry_points()['ase.ioformats']:
     fmt = entry_point.load()
     if entry_point.name in ioformats:
         raise ValueError(f'Format {entry_point.name} already defined')
