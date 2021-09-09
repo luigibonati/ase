@@ -481,7 +481,7 @@ for entry_point in entry_points().get('ase.ioformats', []):
         raise ValueError(f'Format {entry_point.name} already defined')
     if not isinstance(fmt, ExternalIOFormat):
         raise TypeError(f'Wrong type for registering external IO formats in format {entry_point.name}, expected ExternalIOFormat')
-    F(entry_point.name, **fmt._asdict(), external=True)
+    F(entry_point.name, **fmt._asdict(), external=True) #type: ignore
 
 
 def get_compression(filename: str) -> Tuple[str, Optional[str]]:
