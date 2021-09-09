@@ -181,13 +181,14 @@ def read_proteindatabank(fileobj, index=-1, read_arrays=True):
 @writer
 def write_proteindatabank(fileobj, images, write_arrays=True):
     """Write images to PDB-file."""
+    rot_t = None
     if hasattr(images, 'get_positions'):
         images = [images]
 
     if images[0].get_pbc().any():
         currentcell = images[0].get_cell()
         cellpar = currentcell.cellpar()
-        exportedcell, rot_t = currentcell.standard_form()
+        _, rot_t = currentcell.standard_form()
         # ignoring Z-value, using P1 since we have all atoms defined explicitly
         format = 'CRYST1%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f P 1\n'
         fileobj.write(format % (cellpar[0], cellpar[1], cellpar[2],
@@ -207,7 +208,8 @@ def write_proteindatabank(fileobj, images, write_arrays=True):
     for n, atoms in enumerate(images):
         fileobj.write('MODEL     ' + str(n + 1) + '\n')
         p = atoms.get_positions()
-        p = p.dot(rot_t.T)
+        if rot_t is not None:
+            p = p.dot(rot_t.T)
         occupancy = np.ones(len(atoms))
         bfactor = np.zeros(len(atoms))
         if write_arrays:
