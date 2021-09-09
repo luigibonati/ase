@@ -4,6 +4,7 @@ Utilities for plugins to ase
 
 from typing import NamedTuple, Union, List, Optional
 
+
 # Name is defined in the entry point
 class ExternalIOFormat(NamedTuple):
     desc: str
