@@ -121,3 +121,17 @@ def test_pdb_nonbulk_read():
 
     np.testing.assert_allclose(atoms1.get_atomic_numbers(), atoms2.get_atomic_numbers())
     np.testing.assert_allclose(spos1, spos2, rtol=0, atol=2e-4)
+
+
+def test_pdb_no_periodic():
+    atoms1 = Atoms('H')
+    atoms1.center(vacuum=1)
+    atoms1.write('h.pdb')
+
+    atoms2 = read('h.pdb')
+
+    spos1 = atoms1.get_positions()
+    spos2 = atoms2.get_positions()
+
+    np.testing.assert_allclose(atoms1.get_atomic_numbers(), atoms2.get_atomic_numbers())
+    np.testing.assert_allclose(spos1, spos2, rtol=0, atol=2e-4)
