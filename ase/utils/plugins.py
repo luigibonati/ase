@@ -2,15 +2,14 @@
 Utilities for plugins to ase
 """
 
-from typing import NamedTuple,Union,List
+from typing import NamedTuple, Union, List, Optional
 
-#Name is defined in the entry point
+# Name is defined in the entry point
 class ExternalIOFormat(NamedTuple):
     desc: str
     code: str
-    module: str=None
-    glob: Union[str,List[str]]=None
-    ext: Union[str,List[str]]=None
-    magic: Union[bytes,List[bytes]]=None
-    magic_regex: bytes=None
-    
+    module: Optional[str] = None
+    glob: Optional[Union[str, List[str]]] = None
+    ext: Optional[Union[str, List[str]]] = None
+    magic: Optional[Union[bytes, List[bytes]]] = None
+    magic_regex: Optional[bytes] = None

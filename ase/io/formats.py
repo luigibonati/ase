@@ -475,11 +475,12 @@ F('xyz', 'XYZ-file', '+F')
 
 #Register IO formats exposed through the ase.ioformats entry point
 
-for entry_point in entry_points()['ase.ioformats']:
+for entry_point in entry_points().get('ase.ioformats', []):
     fmt = entry_point.load()
     if entry_point.name in ioformats:
         raise ValueError(f'Format {entry_point.name} already defined')
-    assert isinstance(fmt, ExternalIOFormat), f'Wrong type for registering external IO formats in format {entry_point.name}, expected ExternalIOFormat'
+    if not isinstance(fmt, ExternalIOFormat):
+        raise TypeError(f'Wrong type for registering external IO formats in format {entry_point.name}, expected ExternalIOFormat')
     F(entry_point.name, **fmt._asdict(), external=True)
 
 
