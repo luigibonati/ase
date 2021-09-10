@@ -128,7 +128,9 @@ class Formula:
 
         * ``'hill'``: alphabetically ordered with C and H first
         * ``'metal'``: alphabetically ordered with metals first
-        * ``'abc'``: count ordered first then alphabetically ordered
+        * ``'ab2'``: count-ordered first then alphabetically ordered
+        * ``'a2b'``: reverse count-ordered first then alphabetically ordered
+        * ``'periodic'``: periodic-table ordered: period first then group
         * ``'reduce'``: Reduce and keep order (ABBBC -> AB3C)
         * ``'latex'``: LaTeX representation
         * ``'html'``: HTML representation
@@ -461,6 +463,16 @@ non_metals = ['H', 'He', 'B', 'C', 'N', 'O', 'F', 'Ne',
               'Ge', 'As', 'Se', 'Br', 'Kr',
               'Sb', 'Te', 'I', 'Xe',
               'Po', 'At', 'Rn']
+
+
+def periodic_table_order():
+    return {symbol: n for n, symbol in enumerate(chemical_symbols[87:] +
+                                                 chemical_symbols[55:87] +
+                                                 chemical_symbols[37:55] +
+                                                 chemical_symbols[19:37] +
+                                                 chemical_symbols[11:19] +
+                                                 chemical_symbols[3:11] +
+                                                 chemical_symbols[1:3])}
 
 
 # Backwards compatibility:
