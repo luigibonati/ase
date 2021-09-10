@@ -2081,7 +2081,7 @@ End CASTEP Interface Documentation
         if attr in ['__repr__', '__str__']:
             raise AttributeError
         elif attr not in self.__dict__:
-            raise AttributeError
+            raise AttributeError('Attribute {0} not found'.format(attr))
         else:
             return self.__dict__[attr]
 
