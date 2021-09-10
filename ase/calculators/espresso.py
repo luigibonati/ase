@@ -5,9 +5,9 @@ Run pw.x jobs.
 
 
 import os
-from ase.calculators.genericfileio import (GenericFileIOCalculator,
-                                           get_espresso_template,
-                                           read_stdout)
+from ase.calculators.genericfileio import (
+    GenericFileIOCalculator, CalculatorTemplate, read_stdout)
+from ase.io import read, write
 
 
 compatibility_msg = (
@@ -45,19 +45,43 @@ class EspressoProfile:
             check_call(argv, stdout=fd, cwd=directory)
 
     def socketio_argv_unix(self, socket):
-        template = get_espresso_template()
+        template = EspressoTemplate()
         # It makes sense to know the template for this kind of choices,
         # but is there a better way?
         return list(self.argv) + ['--ipi', f'{socket}:UNIX', '-in',
-                                  template.input_file]
+                                  template.inputname]
+
+
+class EspressoTemplate(CalculatorTemplate):
+    def __init__(self):
+        super().__init__(
+            'espresso',
+            ['energy', 'free_energy', 'forces', 'stress', 'magmoms'])
+        self.inputname = 'espresso.pwi'
+        self.outputname = 'espresso.pwo'
+
+    def write_input(self, directory, atoms, parameters, properties):
+        directory.mkdir(exist_ok=True, parents=True)
+        dst = directory / self.inputname
+        write(dst, atoms, format='espresso-in', properties=properties,
+              **parameters)
+
+    def execute(self, directory, profile):
+        profile.run(directory,
+                    self.inputname,
+                    self.outputname)
+
+    def read_results(self, directory):
+        path = directory / self.outputname
+        atoms = read(path, format='espresso-out')
+        return dict(atoms.calc.properties())
 
 
 class Espresso(GenericFileIOCalculator):
-    implemented_properties = ['energy', 'forces', 'stress', 'magmoms']
-
     def __init__(self, *, profile=None,
                  command=GenericFileIOCalculator._deprecated,
                  label=GenericFileIOCalculator._deprecated,
+                 directory='.',
                  **kwargs):
         """
         All options for pw.x are copied verbatim to the input file, and put
@@ -145,7 +169,9 @@ class Espresso(GenericFileIOCalculator):
             import warnings
             warnings.warn(compatibility_msg, FutureWarning)
 
-        template = get_espresso_template()
+        template = EspressoTemplate()
         if profile is None:
             profile = EspressoProfile(argv=['pw.x'])
-        super().__init__(profile=profile, template=template, parameters=kwargs)
+        super().__init__(profile=profile, template=template,
+                         directory=directory,
+                         parameters=kwargs)

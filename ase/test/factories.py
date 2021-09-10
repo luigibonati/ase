@@ -70,28 +70,26 @@ class AbinitFactory:
         major_ver = int(version.split('.')[0])
         return major_ver < 9
 
-    def _base_kw(self, v8_legacy_format):
-        if v8_legacy_format:
-            command = f'{self.executable} < PREFIX.files > PREFIX.log'
-        else:
-            command = f'{self.executable} PREFIX.in > PREFIX.log'
-
-        return dict(command=command,
-                    v8_legacy_format=v8_legacy_format,
-                    pp_paths=self.pp_paths,
+    def _base_kw(self):
+        #command = f'{self.executable} PREFIX.in > PREFIX.log'
+        return dict(pp_paths=self.pp_paths,
                     ecut=150,
                     chksymbreak=0,
                     toldfe=1e-3)
 
     def calc(self, **kwargs):
-        from ase.calculators.abinit import Abinit
-        legacy = kwargs.pop('v8_legacy_format', None)
-        if legacy is None:
-            legacy = self.is_legacy_version()
+        from ase.calculators.abinit import Abinit, AbinitProfile
 
-        kw = self._base_kw(legacy)
+        profile = AbinitProfile([self.executable])
+
+        if self.is_legacy_version():
+            raise RuntimeError('Sorry, Abinit 9+ is required.')
+
+        kw = self._base_kw()
+        assert kw['pp_paths'] is not None
         kw.update(kwargs)
-        return Abinit(**kw)
+        assert kw['pp_paths'] is not None
+        return Abinit(profile=profile, **kw)
 
     @classmethod
     def fromconfig(cls, config):
@@ -109,10 +107,11 @@ class AimsFactory:
         # XXX pseudo_dir
 
     def calc(self, **kwargs):
-        from ase.calculators.aims import Aims
+        from ase.calculators.aims import Aims, AimsProfile
         kwargs1 = dict(xc='LDA')
         kwargs1.update(kwargs)
-        return Aims(command=self.executable, **kwargs1)
+        profile = AimsProfile([self.executable])
+        return Aims(profile=profile, **kwargs1)
 
     def version(self):
         from ase.calculators.aims import get_aims_version
@@ -474,15 +473,16 @@ class OctopusFactory:
     def __init__(self, executable):
         self.executable = executable
 
+    def _profile(self):
+        from ase.calculators.octopus import OctopusProfile
+        return OctopusProfile([self.executable])
+
     def version(self):
-        stdout = read_stdout([self.executable, '--version'])
-        match = re.match(r'octopus\s*(.+)', stdout)
-        return match.group(1)
+        return self._profile().version()
 
     def calc(self, **kwargs):
         from ase.calculators.octopus import Octopus
-        command = f'{self.executable} > stdout.log'
-        return Octopus(command=command, **kwargs)
+        return Octopus(profile=self._profile(), **kwargs)
 
     @classmethod
     def fromconfig(cls, config):
@@ -538,6 +538,26 @@ class NWChemFactory:
     @classmethod
     def fromconfig(cls, config):
         return cls(config.executables['nwchem'])
+
+
+@factory('plumed')
+class PlumedFactory:
+    def __init__(self):
+        import plumed
+        self.path = plumed.__spec__.origin
+        
+    def calc(self, **kwargs):
+        from ase.calculators.plumed import Plumed
+        return Plumed(**kwargs)
+
+    @classmethod
+    def fromconfig(cls, config):
+        import importlib
+        spec = importlib.util.find_spec('plumed')
+        # XXX should be made non-pytest dependent
+        if spec is None:
+            raise NotInstalled('plumed')
+        return cls()
 
 
 class NoSuchCalculator(Exception):

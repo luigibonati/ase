@@ -113,7 +113,8 @@ potentials)
     """
 
     name = "lammpsrun"
-    implemented_properties = ["energy", "forces", "stress", "energies"]
+    implemented_properties = ["energy", "free_energy", "forces", "stress",
+                              "energies"]
 
     # parameters to choose options in LAMMPSRUN
     ase_parameters: Dict[str, Any] = dict(
