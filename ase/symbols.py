@@ -181,10 +181,13 @@ class Symbols(collections.abc.Sequence):
     def species_indices(self) -> Sequence[int]:
         """Return the indices of each atom within their individual species.
     
-        >>> from ase.build import molecule
-        >>> atoms = molecule('CH3CH2OH')
+        >>> from ase import Atoms
+        >>> atoms = Atoms('CH3CH2OH')
         >>> atoms.symbols.species_indices()
-        [0, 1, 0, 0, 1, 2, 3, 4, 5]
+        [0, 0, 1, 2, 1, 3, 4, 0, 5]
+
+         ^  ^  ^  ^  ^  ^  ^  ^  ^
+         C  H  H  H  C  H  H  O  H
 
         """ 
 
