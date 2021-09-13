@@ -1,6 +1,7 @@
 """A collection of mutations that can be used."""
 import numpy as np
 from math import cos, sin, pi
+from ase.cell import Cell
 from ase.calculators.lammpslib import convert_cell
 from ase.ga.utilities import (atoms_too_close,
                               atoms_too_close_two_sets,
@@ -462,7 +463,13 @@ class StrainMutation(OffspringCreator):
         """ Does the actual mutation. """
         cell_ref = atoms.get_cell()
         pos_ref = atoms.get_positions()
-        vol_ref = atoms.get_volume()
+
+        if self.scaling_volume is None:
+            # The scaling_volume has not been set (yet),
+            # so we give it the same volume as the parent
+            vol_ref = atoms.get_volume()
+        else:
+            vol_ref = self.scaling_volume
 
         if self.use_tags:
             tags = atoms.get_tags()
@@ -492,18 +499,17 @@ class StrainMutation(OffspringCreator):
             # applying the strain:
             cell_new = np.dot(strain, cell_ref)
 
-            # convert to lower triangular form
+            # convert the submatrix with the variable cell vectors
+            # to a lower triangular form
             cell_new = convert_cell(cell_new)[0].T
+            for i in range(self.number_of_variable_cell_vectors, 3):
+                cell_new[i] = cell_ref[i]
+
+            cell_new = Cell(cell_new)
 
             # volume scaling:
             if self.number_of_variable_cell_vectors > 0:
-                volume = abs(np.linalg.det(cell_new))
-                if self.scaling_volume is None:
-                    # The scaling_volume has not been set (yet),
-                    # so we give it the same volume as the parent
-                    scaling = vol_ref / volume
-                else:
-                    scaling = self.scaling_volume / volume
+                scaling = vol_ref / cell_new.volume
                 scaling **= 1. / self.number_of_variable_cell_vectors
                 cell_new[:self.number_of_variable_cell_vectors] *= scaling
 
@@ -514,6 +520,9 @@ class StrainMutation(OffspringCreator):
             # ensure non-variable cell vectors are indeed unchanged
             for i in range(self.number_of_variable_cell_vectors, 3):
                 assert np.allclose(cell_new[i], cell_ref[i])
+
+            # check that the volume is correct
+            assert np.isclose(vol_ref, cell_new.volume)
 
             # apply the new unit cell and scale
             # the atomic positions accordingly
