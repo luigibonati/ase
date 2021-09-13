@@ -54,7 +54,8 @@ class Formula:
         """
         if format:
             assert _tree is None and _count is None
-            if format not in {'hill', 'metal', 'abc', 'reduce'}:
+            if format not in {'hill', 'metal', 'abc', 'reduce', 'ab2', 'a2b',
+                              'periodic'}:
                 raise ValueError(f'Illegal format: {format}')
             formula = Formula(formula).format(format)
         self._formula = formula
@@ -179,16 +180,18 @@ class Formula:
 
         if fmt == 'a2b':
             _, f, N = self.stoichiometry()
-            return dict2str({symb: n * N
-                             for symb, n in reversed(f._count.items())})
+            return dict2str({symb: -n * N
+                             for n, symb
+                             in sorted([(-n, symb) for symb, n
+                                        in f._count.items()])})
 
         if fmt == 'periodic':
             count = self.count()
             order = periodic_table_order()
+            items = sorted(count.items(),
+                           key=lambda item: order.get(item[0], 0))
             return ''.join(symb + (str(n) if n > 1 else '')
-                           for symb, n
-                           in sorted(count.items(),
-                                     key=lambda n, symb: order.get(symb, 0)))
+                           for symb, n in items)
 
         if fmt == 'reduce':
             symbols = list(self)
@@ -479,7 +482,7 @@ non_metals = ['H', 'He', 'B', 'C', 'N', 'O', 'F', 'Ne',
 
 
 @lru_cache()
-def periodic_table_order():
+def periodic_table_order() -> Dict[str, int]:
     return {symbol: n for n, symbol in enumerate(chemical_symbols[87:] +
                                                  chemical_symbols[55:87] +
                                                  chemical_symbols[37:55] +
