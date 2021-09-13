@@ -3,9 +3,10 @@
 Chemical formula type
 =====================
 
-.. warning::
+Formats:
 
-    This module is preliminary!  API may change or disappear in the future.
+.. csv-table::
+   :file: formats.csv
 
 .. autoclass:: Formula
     :members:

@@ -214,7 +214,7 @@ class Formula:
             return self._tostr('<sub>', '</sub>')
 
         if fmt == 'rest':
-            return self._tostr(r'\ :sub`', r'`\ ')
+            return self._tostr(r'\ :sub:`', r'`\ ')
 
         if fmt == '':
             return self._formula
