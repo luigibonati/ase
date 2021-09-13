@@ -6,13 +6,8 @@ formats = ['hill', 'metal', 'abc', 'reduce', 'ab2', 'a2b', 'periodic',
            'latex', 'html', 'rest']
 
 
-def main():
-    with open('formats.csv', 'w') as fd:
-        print('# ' + ', '.join(formats), file=fd)
-        for f in formulas:
-            formula = Formula(f)
-            print(', '.join(formula.format(fmt) for fmt in formats), file=fd)
-
-
-if __name__ == '__main__':
-    main()
+with open('formats.csv', 'w') as fd:
+    print('# ' + ', '.join(formats), file=fd)
+    for f in formulas:
+        formula = Formula(f)
+        print(', '.join(formula.format(fmt) for fmt in formats), file=fd)
