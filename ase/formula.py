@@ -1,9 +1,9 @@
-from math import gcd
 import re
-from typing import Dict, Tuple, List, Sequence, Union
+from functools import lru_cache
+from math import gcd
+from typing import Dict, List, Sequence, Tuple, Union
 
-from ase.data import chemical_symbols, atomic_numbers
-
+from ase.data import atomic_numbers, chemical_symbols
 
 # For type hints (A, A2, A+B):
 Tree = Union[str, Tuple['Tree', int], List['Tree']]  # type: ignore
@@ -173,9 +173,22 @@ class Formula:
             result += sorted(result2)
             return dict2str(dict(result))
 
-        if fmt == 'abc':
+        if fmt == 'abc' or fmt == 'ab2':
             _, f, N = self.stoichiometry()
             return dict2str({symb: n * N for symb, n in f._count.items()})
+
+        if fmt == 'a2b':
+            _, f, N = self.stoichiometry()
+            return dict2str({symb: n * N
+                             for symb, n in reversed(f._count.items())})
+
+        if fmt == 'periodic':
+            count = self.count()
+            order = periodic_table_order()
+            return ''.join(symb + (str(n) if n > 1 else '')
+                           for symb, n
+                           in sorted(count.items(),
+                                     key=lambda n, symb: order.get(symb, 0)))
 
         if fmt == 'reduce':
             symbols = list(self)
@@ -465,6 +478,7 @@ non_metals = ['H', 'He', 'B', 'C', 'N', 'O', 'F', 'Ne',
               'Po', 'At', 'Rn']
 
 
+@lru_cache()
 def periodic_table_order():
     return {symbol: n for n, symbol in enumerate(chemical_symbols[87:] +
                                                  chemical_symbols[55:87] +
