@@ -110,7 +110,7 @@ class Amber(FileIOCalculator):
         self.read_energy()
         self.read_forces()
 
-    def write_coordinates(self, atoms, filename=''):
+    def write_coordinates(self, atoms, filename):
         """ write amber coordinates in netCDF format,
             only rectangular unit cells are allowed"""
         if filename == '':
@@ -178,7 +178,7 @@ class Amber(FileIOCalculator):
         cell_angles.units = 'degree'
         fout.close()
 
-    def read_coordinates(self, atoms, filename=''):
+    def read_coordinates(self, atoms, filename):
         """Import AMBER16 netCDF restart files.
 
         Reads atom positions and
@@ -237,14 +237,14 @@ class Amber(FileIOCalculator):
         else:
             atoms.set_pbc(False)
 
-    def read_energy(self, filename='mden'):
+    def read_energy(self, filename):
         """ read total energy from amber file """
         with open(filename, 'r') as fd:
             lines = fd.readlines()
         self.results['energy'] = \
             float(lines[16].split()[2]) * units.kcal / units.mol
 
-    def read_forces(self, filename='mdfrc'):
+    def read_forces(self, filename):
         """ read forces from amber file """
         fd = netcdf.netcdf_file(filename, 'r')
         try:
