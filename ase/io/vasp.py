@@ -112,7 +112,7 @@ def get_atomtypes_from_formula(formula):
 
 
 @reader
-def read_vasp(filename='CONTCAR'):
+def read_vasp(filename):
     """Import POSCAR/CONTCAR type file.
 
     Reads unitcell, atom positions and constraints from the POSCAR/CONTCAR
@@ -256,7 +256,7 @@ def iread_vasp_out(filename, index=-1):
 
 
 @reader
-def read_vasp_out(filename='OUTCAR', index=-1):
+def read_vasp_out(filename, index=-1):
     """Import OUTCAR type file.
 
     Reads unitcell, atom positions, energies, and forces from the OUTCAR file
@@ -274,7 +274,7 @@ def read_vasp_out(filename='OUTCAR', index=-1):
 
 
 @reader
-def read_vasp_xdatcar(filename='XDATCAR', index=-1):
+def read_vasp_xdatcar(filename, index=-1):
     """Import XDATCAR file
 
        Reads all positions from the XDATCAR and returns a list of
@@ -358,7 +358,7 @@ def __get_xml_parameter(par):
         return None
 
 
-def read_vasp_xml(filename='vasprun.xml', index=-1):
+def read_vasp_xml(filename, index=-1):
     """Parse vasprun.xml file.
 
     Reads unit cell, atom positions, energies, forces, and constraints
