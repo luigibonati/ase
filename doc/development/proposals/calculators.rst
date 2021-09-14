@@ -92,8 +92,7 @@ ABC calculator example
 
 The constructor will look like this::
 
-  ABC(restart=None, ignore_bad_restart=False, label=None,
-      atoms=None, **kwargs)
+  ABC(restart=None, ignore_bad_restart=False, label=None,**kwargs)
 
 A calculator should be able to prefix all output files with a given
 label or run the calculation in a directory with a specified name.
