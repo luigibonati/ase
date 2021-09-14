@@ -139,7 +139,7 @@ Calculator keywords
 Example for a hypothetical ABC calculator:
 
 .. class:: ABC(restart=None, ignore_bad_restart_file=False, label=None,
-               atoms=None, parameters=None, command='abc > PREFIX.abc',
+               parameters=None, command='abc > PREFIX.abc',
                xc=None, kpts=[1, 1, 1], smearing=None,
                charge=0.0, nbands=None, **kwargs)
 
@@ -153,10 +153,6 @@ Example for a hypothetical ABC calculator:
        error if the restart file is missing or broken.
    label: str
        Name used for all files.  May contain a directory.
-   atoms: Atoms object
-       Optional Atoms object to which the calculator will be
-       attached.  When restarting, atoms will get its positions and
-       unit-cell updated from file.
    command: str
        Command used to start calculation.  This will override any value
        in an :envvar:`ASE_ABC_COMMAND` environment variable.
