@@ -92,13 +92,6 @@ calculator and associating it with an atoms object, e.g.:
     mol.calc = calc
     calc.initialize()
 
-Optionally the calculator will be associated with the atoms object in one step
-with constructing the calculator:
-
-.. code:: python
-
-    calc = Turbomole(atoms=mol, **params)
-
 
 
 
