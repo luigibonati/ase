@@ -4,7 +4,7 @@ from ase.atoms import Atoms
 calc = pytest.mark.calculator
 
 
-def check_potcar(setups):
+def check_potcar(setups, filename):
     """Return true if labels in setups are found in POTCAR"""
 
     pp = []
