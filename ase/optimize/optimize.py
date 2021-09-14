@@ -10,7 +10,7 @@ from ase.parallel import world, barrier
 from ase.io.trajectory import Trajectory
 from ase.utils import IOContext
 import collections.abc
-
+from pathlib import Path
 
 class RestartError(RuntimeError):
     pass
@@ -57,6 +57,9 @@ class Dynamics(IOContext):
         self.max_steps = 100000000
 
         if trajectory is not None:
+            if isinstance(trajectory, Path):
+               trajectory = str(trajectory.absolute())
+
             if isinstance(trajectory, str):
                 mode = "a" if append_trajectory else "w"
                 trajectory = self.closelater(Trajectory(
