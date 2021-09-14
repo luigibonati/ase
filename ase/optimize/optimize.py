@@ -58,7 +58,7 @@ class Dynamics(IOContext):
 
         if trajectory is not None:
             if isinstance(trajectory, Path):
-               trajectory = str(trajectory.absolute())
+                trajectory = str(trajectory.absolute())
 
             if isinstance(trajectory, str):
                 mode = "a" if append_trajectory else "w"
