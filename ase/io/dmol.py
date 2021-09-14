@@ -81,11 +81,11 @@ def write_dmol_car(fd, atoms):
         positions = np.dot(atoms.positions, R)
 
         fd.write('PBC=ON\n\n')
-        fd.write('!DATE     %s\n' % dt.strftime('%b %d %H:%m:%S %Y'))
+        fd.write('!DATE     %s\n' % dt.strftime('%b %d %H:%M:%S %Y'))
         fd.write('PBC %9.5f %9.5f %9.5f %9.5f %9.5f %9.5f\n' % tuple(cellpar))
     elif not np.any(atoms.pbc):  # [False,False,False]
         fd.write('PBC=OFF\n\n')
-        fd.write('!DATE     %s\n' % dt.strftime('%b %d %H:%m:%S %Y'))
+        fd.write('!DATE     %s\n' % dt.strftime('%b %d %H:%M:%S %Y'))
         positions = atoms.positions
     else:
         raise ValueError('PBC must be all true or all false for .car format')
