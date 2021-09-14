@@ -1673,6 +1673,11 @@ class Hookean(FixConstraint):
         If the atom has z > 7, then a downward force would be applied of
         k * (atom.z - 7). The same plane with the normal vector pointing in
         the -z direction would be given by (A, B, C, D) = (0, 0, -1, 7).
+
+        References:
+
+           Andrew A. Peterson,  Topics in Catalysis volume 57, pages40–53 (2014)
+           https://link.springer.com/article/10.1007%2Fs11244-013-0161-8
         """
 
         if isinstance(a2, int):
