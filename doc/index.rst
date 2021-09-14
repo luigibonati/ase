@@ -37,23 +37,106 @@ BFGS:   3  19:10:51    -31.492848     0.0023
 Supported :mod:`Calculators <ase.calculators>`
 ==============================================
 
-|abinit| |Asap| |Atomistica| |BigDFT| |CASTEP| |CP2K| |CRYSTAL| |deMon| |dftb|
-|dftd4| |DFTK| |elk| |exciting| |EMT|
-|fhi-aims| |fleur| |gamess_us| |gpaw| |gromacs|
-|hotbit| |jdftx| |kim| |lammps| |nwchem|
-|octopus| |onetep| |openmx| |plumed|  |psi4| |qchem| |q_espresso| |siesta| |turbomole| |vasp|
-|xtb| |orca|
-:mod:`ACE-Molecule <ase.calculators.acemolecule>`
-:mod:`~ase.calculators.amber`
-:mod:`DMol³ <ase.calculators.dmol>`
-:mod:`Gaussian <ase.calculators.gaussian>`
-:mod:`Grimme DFT-D3 <ase.calculators.dftd3>`
-:mod:`~ase.calculators.gulp`
-Mopac_
-:mod:`~ase.calculators.qmmm`
-:mod:`~ase.calculators.tip3p`
-:mod:`~deMon-Nano <ase.calculators.demonnano>`
+.. list-table::
+    :widths: 50 50
 
+    * - abinit
+      - |abinit|
+    * - Asap
+      - |Asap|
+    * - Atomistica
+      - |Atomistica|
+    * - BigDFT
+      - |BigDFT|
+    * - CASTEP
+      - |CASTEP|
+    * - CP2K
+      - |CP2K|
+    * - CRYSTAL
+      - |CRYSTAL|
+    * - deMon
+      - |deMon|
+    * - dftb
+      - |dftb|
+    * - dftd4
+      - |dftd4|
+    * - DFTK
+      - |DFTK|
+    * - elk
+      - |elk|
+    * - exciting
+      - |exciting|
+    * - EMT
+      - |EMT|
+    * - fhi-aims
+      - |fhi-aims|
+    * - fleur
+      - |fleur|
+    * - gamess_us
+      - |gamess_us|
+    * - gpaw
+      - |gpaw|
+    * - gromacs
+      - |gromacs|
+    * - hotbit
+      - |hotbit|
+    * - jdftx
+      - |jdftx|
+    * - kim
+      - |kim|
+    * - lammps
+      - |lammps|
+    * - nwchem
+      - |nwchem|
+    * - octopus
+      - |octopus|
+    * - onetep
+      - |onetep|
+    * - openmx
+      - |openmx|
+    * - plumed
+      - |plumed|
+    * - psi4
+      - |psi4|
+    * - qchem
+      - |qchem|
+    * - q_espresso
+      - |q_espresso|
+    * - siesta
+      - |siesta|
+    * - turbomole
+      - |turbomole|
+    * - vasp
+      - |vasp|
+    * - xtb
+      - |xtb|
+    * - orca
+      - |orca|
+    * - 
+      - :mod:`ACE-Molecule <ase.calculators.acemolecule>`
+    * -
+      - :mod:`ACE-Molecule <ase.calculators.acemolecule>`
+    * - 
+      - :mod:`~ase.calculators.amber`
+    * -
+      - :mod:`DMol³ <ase.calculators.dmol>`
+    * -
+      - :mod:`Gaussian <ase.calculators.gaussian>`
+    * -
+      - :mod:`Grimme DFT-D3 <ase.calculators.dftd3>`
+    * - 
+      - :mod:`~ase.calculators.gulp`
+    * -
+      - Mopac_
+    * - 
+      - :mod:`~ase.calculators.qmmm`
+    * -
+      - :mod:`~ase.calculators.tip3p`
+    * -
+      - :mod:`~deMon-Nano <ase.calculators.demonnano>`
+    
+
+    
 
 `Reference publication on ASE <https://iopscience.iop.org/article/10.1088/1361-648X/aa680e/meta>`__
 
