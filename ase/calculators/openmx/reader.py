@@ -385,7 +385,7 @@ def read_band_file(filename=None):
     return band_data
 
 
-def read_electron_valency(filename='H_CA13'):
+def read_electron_valency(filename):
     array = []
     with open(filename, 'r') as fd:
         array = fd.readlines()
