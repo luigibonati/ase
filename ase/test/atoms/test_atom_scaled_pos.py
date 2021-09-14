@@ -11,7 +11,7 @@ def get_spos(atoms):
 def atoms():
     rng = np.random.RandomState(0)
     atoms = bulk('Ti') * (2, 2, 1)
-    atoms.cell *= 0.9 + 0.2 * rng.rand(3, 3)
+    atoms.cell *= 0.9 + 0.2 * rng.random(3, 3)
     atoms.rattle(stdev=0.05, rng=rng)
     return atoms
 
@@ -19,7 +19,7 @@ def atoms():
 @pytest.fixture
 def displacement(atoms):
     rng = np.random.RandomState(12345)
-    return 0.1 * (rng.rand(len(atoms), 3) - 0.5)
+    return 0.1 * (rng.random(len(atoms), 3) - 0.5)
 
 
 @pytest.fixture

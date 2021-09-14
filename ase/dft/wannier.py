@@ -81,7 +81,7 @@ def calculate_weights(cell_cc, normalize=True):
 def random_orthogonal_matrix(dim, rng=np.random, real=False):
     """Generate a random orthogonal matrix"""
 
-    H = rng.rand(dim, dim)
+    H = rng.random(dim, dim)
     np.add(dag(H), H, H)
     np.multiply(.5, H, H)
 
