@@ -152,7 +152,8 @@ then the :file:`si.abc` will be overwritten or maybe appended to.
 An alternative way to connect atoms and calculator:
 
 >>> atoms = ...
->>> calc = ABC(restart='si.abc', label='si.abc', atoms=atoms)
+>>> calc = ABC(restart='si.abc', label='si.abc')
+>>> atoms.calc = calc
 >>> atoms.get_potential_energy()
 -0.7
 
