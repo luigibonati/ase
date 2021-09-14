@@ -394,7 +394,8 @@ QM system:
     params = {'esp fit': 'kollman', 'multiplicity': 1}
     dimer = s22['Water_dimer']
     qm_mol = dimer[0:3]
-    calc = Turbomole(atoms=qm_mol, **params)
+    calc = Turbomole(**params)
+    atoms.calc = calc
     calc.embed(
         charges=[-0.76, 0.38,  0.38],
         positions=dimer.positions[3:6]
