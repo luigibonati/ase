@@ -12,6 +12,7 @@ from ase.utils import IOContext
 import collections.abc
 from pathlib import Path
 
+
 class RestartError(RuntimeError):
     pass
 
