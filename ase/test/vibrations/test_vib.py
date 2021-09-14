@@ -24,7 +24,7 @@ class TestHarmonicVibrations:
         d = 1 + 0.5 * rng.random()
         z_values = rng.randint(1, high=50, size=2)
 
-        hessian = rng.random(6, 6)
+        hessian = rng.random((6, 6))
         hessian += hessian.T  # Ensure the random Hessian is symmetric
 
         atoms = Atoms(z_values, [[0, 0, 0], [0, 0, d]])
@@ -260,7 +260,7 @@ class TestVibrationsData:
         d = 1 + 0.5 * rng.random()
         z_values = rng.randint(1, high=50, size=2)
 
-        hessian = rng.random(6, 6)
+        hessian = rng.random((6, 6))
         hessian += hessian.T  # Ensure the random Hessian is symmetric
 
         atoms = Atoms(z_values, [[0, 0, 0], [0, 0, d]])

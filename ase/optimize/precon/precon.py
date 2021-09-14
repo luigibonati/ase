@@ -283,7 +283,7 @@ class SparsePrecon(Precon):
     def solve(self, x):
         start_time = time.time()
         if self.use_pyamg and have_pyamg:
-            y = self.ml.solve(x, x0=self.rng.random(self.P.shape[0]),
+            y = self.ml.solve(x, x0=self.rng.random((self.P.shape[0])),
                               tol=self.solve_tol,
                               accel='cg',
                               maxiter=300,

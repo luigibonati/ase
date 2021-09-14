@@ -35,7 +35,7 @@ def test_fixcartesian_adjust(atoms):
     constraint = FixCartesian(atom_index, mask=cart_mask)
 
     rng = np.random.RandomState(42)
-    deviation = 1.0 + rng.random(len(atoms), 3)
+    deviation = 1.0 + rng.random((len(atoms), 3))
 
     newpos = oldpos + deviation
     constraint.adjust_positions(atoms, newpos)

@@ -121,14 +121,14 @@ def normalization_error(matrix):
 
 
 def test_gram_schmidt(rng):
-    matrix = rng.random(4, 4)
+    matrix = rng.random((4, 4))
     assert orthonormality_error(matrix) > 1
     gram_schmidt(matrix)
     assert orthonormality_error(matrix) < 1e-12
 
 
 def test_lowdin(rng):
-    matrix = rng.random(4, 4)
+    matrix = rng.random((4, 4))
     assert orthonormality_error(matrix) > 1
     lowdin(matrix)
     assert orthonormality_error(matrix) < 1e-12
@@ -188,7 +188,7 @@ def test_md_min():
 
 
 def test_rotation_from_projection(rng):
-    proj_nw = rng.random(6, 4)
+    proj_nw = rng.random((6, 4))
     assert orthonormality_error(proj_nw[:int(min(proj_nw.shape))]) > 1
     U_ww, C_ul = rotation_from_projection(proj_nw, fixed=2, ortho=True)
     assert orthonormality_error(U_ww) < 1e-10, 'U_ww not unitary'
