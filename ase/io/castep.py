@@ -1196,11 +1196,10 @@ def read_castep_md(fd, index=None, return_scalars=False,
 
 # Routines that only the calculator requires
 
-def read_param(filename='', calc=None, fd=None, get_interface_options=False):
+def read_param(filename, calc=None, fd=None, get_interface_options=False):
 
     if fd is None:
-        if filename == '':
-            raise ValueError('One between filename and fd must be provided')
+        raise ValueError('fd must be provided')
         fd = open(filename)
     elif filename:
         warnings.warn('Filestream used to read param, file name will be '
@@ -1243,8 +1242,7 @@ def write_param(filename, param, check_checkfile=False,
 
     Parameters:
         filename: the location of the file to write to. If it
-        exists it will be overwritten without warning. If it
-        doesn't it will be created.
+        exists it will be overwritten without warning.
         param: a CastepParam instance
         check_checkfile : if set to True, write_param will
         only write continuation or reuse statement
@@ -1348,7 +1346,7 @@ def read_seed(seed, new_seed=None, ignore_internal_keys=False):
     return atoms
 
 
-def read_bands(filename='', fd=None, units=units_CODATA2002):
+def read_bands(filename, fd=None, units=units_CODATA2002):
     """Read Castep.bands file to kpoints, weights and eigenvalues
 
     Args:
@@ -1370,8 +1368,7 @@ def read_bands(filename='', fd=None, units=units_CODATA2002):
     Hartree = units['Eh']
 
     if fd is None:
-        if filename == '':
-            raise ValueError('One between filename and fd must be provided')
+        raise ValueError('fd must be provided')
         fd = open(filename)
     elif filename:
         warnings.warn('Filestream used to read param, file name will be '
