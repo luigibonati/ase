@@ -3,8 +3,7 @@ from ase.io import write, read
 from ase.build import molecule
 
 atoms = molecule('H2O')
-calc = Dftb(atoms=atoms,
-            label='h2o',
+calc = Dftb(label='h2o',
             Driver_='ConjugateGradient',
             Driver_MaxForceComponent=1e-4,
             Driver_MaxSteps=1000,
