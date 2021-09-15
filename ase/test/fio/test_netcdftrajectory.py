@@ -113,7 +113,7 @@ def test_netcdftrajectory(co):
     # Append something in Voigt notation
     t = NetCDFTrajectory(fname, 'a')
     for frame, a in enumerate(t):
-        test = rng.random(([len(a), 6]))
+        test = rng.random((len(a), 6))
         a.set_array('test', test)
         t.write_arrays(a, frame, ['test'])
     del t

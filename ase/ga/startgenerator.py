@@ -311,7 +311,7 @@ class StartGenerator:
 
                     if len(atoms) > 1:
                         # Apply a random rotation to multi-atom blocks
-                        phi, theta, psi = 360 * self.rng.random((3))
+                        phi, theta, psi = 360 * self.rng.random(3)
                         atoms.euler_rotate(phi=phi, theta=0.5 * theta, psi=psi,
                                            center=pos)
 

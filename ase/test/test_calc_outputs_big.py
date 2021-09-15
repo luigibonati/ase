@@ -20,7 +20,7 @@ def props(rng):
         free_energy=rng.random(),
         energies=rng.random(natoms),
         forces=rng.random((natoms, 3)),
-        stress=rng.random((6)),
+        stress=rng.random(6),
         stresses=rng.random((natoms, 6)),
         nspins=nspins,
         nkpts=nkpts,
@@ -29,11 +29,11 @@ def props(rng):
         occupations=rng.random((nspins, nkpts, nbands)),
         fermi_level=rng.random(),
         ibz_kpoints=rng.random((nkpts, 3)),
-        kpoint_weights=rng.random((nkpts)),
-        dipole=rng.random((3)),
-        charges=rng.random((natoms)),
+        kpoint_weights=rng.random(nkpts),
+        dipole=rng.random(3),
+        charges=rng.random(natoms),
         magmom=rng.random(),
-        magmoms=rng.random((natoms)),
+        magmoms=rng.random(natoms),
     )
     return Properties(results)
 

@@ -10,4 +10,4 @@ class RandomCalculator:
         return self.rng.random((len(atoms), 3))
 
     def get_dipole_moment(self, atoms):
-        return self.rng.random((3))
+        return self.rng.random(3)

@@ -69,7 +69,7 @@ class H2MorseCalculator(MorsePotential):
         r = np.linalg.norm(vr)
         hr = vr / r
         # perpendicular axes
-        vrand = self.rng.random((3))
+        vrand = self.rng.random(3)
         hx = np.cross(hr, vrand)
         hx /= np.linalg.norm(hx)
         hy = np.cross(hr, hx)
