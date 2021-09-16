@@ -11,8 +11,8 @@ def random_unit_vector(rng):
     ---------
     rng: random number generator object
     """
-    ct = -1 + 2 * rng.rand()
-    phi = 2 * np.pi * rng.rand()
+    ct = -1 + 2 * rng.random()
+    phi = 2 * np.pi * rng.random()
     st = np.sqrt(1 - ct**2)
     return np.array([st * np.cos(phi), st * np.sin(phi), ct])
 

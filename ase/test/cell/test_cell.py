@@ -38,7 +38,7 @@ def test_handedness(cell):
 @pytest.fixture
 def randcell():
     rng = np.random.RandomState(42)
-    return Cell(rng.rand(3, 3))
+    return Cell(rng.random((3, 3)))
 
 
 def test_normal(randcell):

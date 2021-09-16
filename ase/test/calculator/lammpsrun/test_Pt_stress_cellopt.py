@@ -19,7 +19,7 @@ def test_Pt_stress_cellopt(factory, pt_eam_potential_file):
 
         atoms = bulk('Pt') * (2, 2, 2)
         atoms.rattle(stdev=0.1)
-        atoms.cell += 2 * rng.rand(3, 3)
+        atoms.cell += 2 * rng.random((3, 3))
         atoms.calc = calc
 
         assert_allclose(atoms.get_stress(), calc.calculate_numerical_stress(atoms),
