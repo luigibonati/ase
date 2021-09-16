@@ -85,8 +85,9 @@ def _parse_tss_block(value, scaled=False):
             raise TypeError('castep.cell.positions_abs/frac_intermediate/'
                             'product expects Atoms object or list of strings')
 
-        # First line must be Angstroms!
-        if (not scaled) and value[0].strip() != 'ang':
+        # First line must be Angstroms, or nothing
+        has_units = len(value[0].strip().split()) == 1
+        if (not scaled) and has_units and value[0].strip() != 'ang':
             raise RuntimeError('Only ang units currently supported in castep.'
                                'cell.positions_abs_intermediate/product')
         return '\n'.join(map(str.strip, value))
@@ -2080,7 +2081,7 @@ End CASTEP Interface Documentation
         if attr in ['__repr__', '__str__']:
             raise AttributeError
         elif attr not in self.__dict__:
-            raise AttributeError
+            raise AttributeError('Attribute {0} not found'.format(attr))
         else:
             return self.__dict__[attr]
 
