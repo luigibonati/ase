@@ -28,6 +28,10 @@ Git master branch
   :meth:`~ase.cell.Cell.areas`, which return the area spanned by one
   or all pairs of cell vectors.
 
+* New ``a2b`` and ``periodic`` formats for :class:`~ase.formula.Formula`
+  objects.  See :meth:`ase.formula.Formula.format`.  The ``abc`` format
+  has been renamed to ``ab2``.
+
 Calculators:
 
 * Created new :class:`ase.calculators.plumed.Plumed` that is an interface
@@ -832,9 +836,6 @@ Algorithms:
 I/O:
 
 * Database supports user defined tables
-
-* Preliminary :class:`~ase.formula.Formula` type added.  Collects all
-  formula manipulation functionality in one place.
 
 * Support for reading and writing DL_POLY format.
 
