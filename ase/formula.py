@@ -102,7 +102,7 @@ class Formula:
         return self.from_dict(dct), N
 
     def stoichiometry(self) -> Tuple['Formula', 'Formula', int]:
-        """Reduce to unique stoichiomerty using "chemical symbols" A, B, C, ...
+        """Reduce to unique stoichiometry using "chemical symbols" A, B, C, ...
 
         Examples
         --------
