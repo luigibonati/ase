@@ -28,7 +28,7 @@ class Formula:
             Only allow real chemical symbols.
         format: str
             Reorder according to *format*.  Must be one of hill, metal,
-            abc or reduce.
+            ab2, a2b, periodic or reduce.
 
         Examples
         --------
@@ -130,6 +130,7 @@ class Formula:
         * ``'hill'``: alphabetically ordered with C and H first
         * ``'metal'``: alphabetically ordered with metals first
         * ``'ab2'``: count-ordered first then alphabetically ordered
+        * ``'abc'``: old name for ``'ab2'``
         * ``'a2b'``: reverse count-ordered first then alphabetically ordered
         * ``'periodic'``: periodic-table ordered: period first then group
         * ``'reduce'``: Reduce and keep order (ABBBC -> AB3C)
@@ -387,12 +388,22 @@ class Formula:
         return '+'.join(parts)
 
 
-def dict2str(dct):
+def dict2str(dct: Dict[str, int]) -> str:
+    """Convert symbol-to-number dict to str.
+
+    >>> dict2str({'A': 1, 'B': 2})
+    'AB2'
+    """
     return ''.join(symb + (str(n) if n > 1 else '')
                    for symb, n in dct.items())
 
 
-def parse(f: str):  # -> Tree
+def parse(f: str) -> Tree:
+    """Convert formula string to tree structure.
+
+    >>> parse('2A+BC2')
+    [('A', 2), (['B', ('C', 2)], 1)]
+    """
     if not f:
         return []
     parts = f.split('+')
@@ -404,6 +415,11 @@ def parse(f: str):  # -> Tree
 
 
 def parse2(f: str) -> Tree:
+    """Convert formula string to tree structure (no "+" symbols).
+
+    >>> parse('10(H2O)')
+    [(([('H', 2), 'O'], 1), 10)]
+    """
     units = []
     while f:
         unit: Union[str, Tuple[str, int], Tree]
@@ -439,6 +455,13 @@ def parse2(f: str) -> Tree:
 
 
 def strip_number(s: str) -> Tuple[int, str]:
+    """Strip leading nuimber.
+
+    >>> strip_number('10AB2')
+    (10, 'AB2')
+    >>> strip_number('AB2')
+    (1, 'AB2')
+    """
     m = re.match('[0-9]*', s)
     assert m is not None
     return int(m.group() or 1), s[m.end():]
@@ -446,6 +469,7 @@ def strip_number(s: str) -> Tuple[int, str]:
 
 def tree2str(tree: Tree,
              sub1: str, sub2: str) -> str:
+    """Helper function for html, latex and rest formats."""
     if isinstance(tree, str):
         return tree
     if isinstance(tree, tuple):
@@ -483,6 +507,7 @@ non_metals = ['H', 'He', 'B', 'C', 'N', 'O', 'F', 'Ne',
 
 @lru_cache()
 def periodic_table_order() -> Dict[str, int]:
+    """Create dict for sorting after period first then row."""
     return {symbol: n for n, symbol in enumerate(chemical_symbols[87:] +
                                                  chemical_symbols[55:87] +
                                                  chemical_symbols[37:55] +

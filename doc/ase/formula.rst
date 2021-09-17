@@ -3,10 +3,14 @@
 Chemical formula type
 =====================
 
-Formats:
+The :class:`~Formula` type collects all formula manipulation functionality
+in one place (see examples below).
+
+The following string formats are supported:
 
 .. csv-table::
    :file: formats.csv
+   :header-rows: 1
 
 .. autoclass:: Formula
     :members:

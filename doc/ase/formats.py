@@ -7,7 +7,7 @@ formats = ['hill', 'metal', 'abc', 'reduce', 'ab2', 'a2b', 'periodic',
 
 
 with open('formats.csv', 'w') as fd:
-    print('# ' + ', '.join(formats), file=fd)
+    print(', '.join(formats), file=fd)
     for f in formulas:
         formula = Formula(f)
         print(', '.join(formula.format(fmt) for fmt in formats), file=fd)
