@@ -177,3 +177,24 @@ class Symbols(collections.abc.Sequence):
         for i, symbol in enumerate(self):
             dct.setdefault(symbol, []).append(i)
         return {key: np.array(value, int) for key, value in dct.items()}
+
+    def species_indices(self) -> Sequence[int]:
+        """Return the indices of each atom within their individual species.
+    
+        >>> from ase import Atoms
+        >>> atoms = Atoms('CH3CH2OH')
+        >>> atoms.symbols.species_indices()
+        [0, 0, 1, 2, 1, 3, 4, 0, 5]
+
+         ^  ^  ^  ^  ^  ^  ^  ^  ^
+         C  H  H  H  C  H  H  O  H
+
+        """ 
+
+        counts: Dict[str, int] = {}
+        result = []
+        for i, n in enumerate(self.numbers): 
+            counts[n] = counts.get(n, -1) + 1
+            result.append(counts[n])
+
+        return result

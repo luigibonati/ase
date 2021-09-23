@@ -166,6 +166,7 @@ Example of use::
 The Hookean class
 =================
 
+
 This class of constraints, based on Hooke's Law, is generally used to
 conserve molecular identity in optimization schemes and can be used in three
 different ways. In the first, it applies a Hookean restorative force between
@@ -174,6 +175,8 @@ maintain the identity of molecules in quenched molecular dynamics, without
 changing the degrees of freedom or violating conservation of energy. When the
 distance between the two atoms is less than the threshold length, this
 constraint is completely inactive.
+
+.. autoclass:: Hookean
 
 The below example tethers atoms at indices 3 and 4 together::
 

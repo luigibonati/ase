@@ -211,14 +211,14 @@ def normalization_error(matrix):
 
 
 def test_gram_schmidt(rng):
-    matrix = rng.rand(4, 4)
+    matrix = rng.random((4, 4))
     assert unitarity_error(matrix) > 1
     gram_schmidt(matrix)
     assert unitarity_error(matrix) < 1e-12
 
 
 def test_lowdin(rng):
-    matrix = rng.rand(4, 4)
+    matrix = rng.random((4, 4))
     assert unitarity_error(matrix) > 1
     lowdin(matrix)
     assert unitarity_error(matrix) < 1e-12
@@ -279,7 +279,7 @@ def test_md_min():
 
 
 def test_rotation_from_projection(rng):
-    proj_nw = rng.rand(6, 4)
+    proj_nw = rng.random((6, 4))
     assert unitarity_error(proj_nw[:int(min(proj_nw.shape))]) > 1
     U_ww, C_ul = rotation_from_projection(proj_nw, fixed=2, ortho=True)
     assert unitarity_error(U_ww) < 1e-10, 'U_ww not unitary'
@@ -602,8 +602,8 @@ def test_get_gradients(fun, wan, rng):
     wanf = wan(nwannier=4, fixedstates=2, kpts=(1, 1, 1),
                initialwannier='bloch', functional=fun)
     # create an anti-hermitian array/matrix
-    step = rng.rand(wanf.get_gradients().size) + \
-        1.j * rng.rand(wanf.get_gradients().size)
+    step = rng.random(wanf.get_gradients().size) + \
+        1.j * rng.random(wanf.get_gradients().size)
     step *= 1e-8
     step -= dagger(step)
     f1 = wanf.get_functional_value()
