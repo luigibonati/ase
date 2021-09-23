@@ -78,7 +78,7 @@ def test_pdb_filled_optional_fields():
 def test_pdb_unfilled_optional_fields():
     atoms = read_proteindatabank(StringIO(body3))
 
-    assert ('occupancy' in atoms.__dict__['arrays']) == False
+    assert not ('occupancy' in atoms.__dict__['arrays'])
     assert all(atoms.get_array('bfactor') == np.array([0., 0.]))
     assert all(atoms.get_array('atomtypes') == np.array(['', '']))
     assert all(atoms.get_array('residuenames') == np.array(['    ', '    ']))
