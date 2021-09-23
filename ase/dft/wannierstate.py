@@ -13,7 +13,7 @@ def random_orthogonal_matrix(dim, rng=np.random, real=False):
         # ortho_m = unitary_group.rvs(dim=dim, random_state=rng)
 
         # Alternative method from https://stackoverflow.com/questions/38426349
-        H = rng.rand(dim, dim)
+        H = rng.random((dim, dim))
         Q, R = qr(H)
         ortho_m = Q @ np.diag(np.sign(np.diag(R)))
 
