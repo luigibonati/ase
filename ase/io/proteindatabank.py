@@ -35,7 +35,11 @@ def read_atom_line(line_full):
         resname = line[17:21]
         # chainid = line[21]        # Not used
 
-        resseq = int(line[22:26].split()[0])  # sequence identifier
+        seq = line[22:26].split()
+        if len(seq) == 0:
+            resseq = 1
+        else:
+            resseq = int(seq[0])  # sequence identifier
         # icode = line[26]          # insertion code, not used
 
         # atomic coordinates
