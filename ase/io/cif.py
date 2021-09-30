@@ -619,7 +619,7 @@ def format_cell(cell: Cell) -> str:
     assert cell.rank == 3
     lines = []
     for name, value in zip(CIFBlock.cell_tags, cell.cellpar()):
-        line = '{:20} {:g}\n'.format(name, value)
+        line = '{:20} {}\n'.format(name, value)
         lines.append(line)
     assert len(lines) == 6
     return ''.join(lines)
@@ -800,7 +800,7 @@ def atoms_to_loop_data(atoms, wrap, labels, loop_keys):
 
     _coords = np.array(coords)
     for i, key in enumerate(coord_headers):
-        loopdata[key] = (_coords[:, i], '{:7.6f}')
+        loopdata[key] = (_coords[:, i], '{}')
 
     loopdata['_atom_site_type_symbol'] = (symbols, '{:<2s}')
     loopdata['_atom_site_symmetry_multiplicity'] = (
