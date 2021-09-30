@@ -38,8 +38,7 @@ class Plumed(Calculator):
 
     [1] The PLUMED consortium, Nat. Methods 16, 670 (2019)
     [2] Tribello, Bonomi, Branduardi, Camilloni, and Bussi,
-    Comput. Phys. Commun. 185, 604 (2014).  
-    
+    Comput. Phys. Commun. 185, 604 (2014).
     """
     
     implemented_properties = ['energy', 'forces']
