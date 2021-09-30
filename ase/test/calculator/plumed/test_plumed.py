@@ -8,6 +8,7 @@ from ase.io.trajectory import Trajectory
 from pytest import approx
 import pytest
 from ase.calculators.plumed import restart_from_trajectory
+from ase import units
 
 
 @pytest.mark.calculator_lite
@@ -17,7 +18,8 @@ def test_CVs(factory):
     Moreover, it computes those CVs directly from atoms.positions and
     compares them"""
     # plumed setting
-    set_plumed = ["c1: COM ATOMS=1,2",
+    set_plumed = [f"UNITS LENGTH=A TIME={1/(1000 * units.fs)} ENERGY={units.mol/units.kJ}",
+                  "c1: COM ATOMS=1,2",
                   "c2: CENTER ATOMS=1,2",
                   "l: DISTANCE ATOMS=c1,c2",
                   "d: DISTANCE ATOMS=1,2",
@@ -137,7 +139,8 @@ def run(factory, inputs, name='',
 
 
 def setups(name=''):
-    set_plumed = ["d: DISTANCE ATOMS=1,2",
+    set_plumed = [f"UNITS LENGTH=A TIME=0.010180505671156723 ENERGY={units.mol/units.kJ}",
+                  "d: DISTANCE ATOMS=1,2",
                   "FLUSH STRIDE=1",
                   "METAD ARG=d SIGMA=0.5 HEIGHT=2 PACE=20 FILE=HILLS_{}".format(name)]
     atoms = Atoms('CO', positions=[[0, 0, 0], [6.7, 0, 0]])

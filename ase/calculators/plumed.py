@@ -4,12 +4,11 @@ from ase.parallel import broadcast
 from ase.parallel import world
 import numpy as np
 from os.path import exists
+from ase.units import fs, mol, kJ
 
 
 def restart_from_trajectory(prev_traj, *args, prev_steps=None, atoms=None, **kwargs):
-    atoms.calc = Plumed(*args, atoms=atoms, restart=True, **kwargs)
-
-    """This function helps the user to restart a plumed simulation 
+    """ This function helps the user to restart a plumed simulation 
     from a trajectory file. 
 
     Parameters
@@ -20,6 +19,8 @@ def restart_from_trajectory(prev_traj, *args, prev_steps=None, atoms=None, **kwa
     .. note:: As alternative for restarting a plumed simulation, the user
             has to fix the positions, momenta and Plumed.istep
     """
+    atoms.calc = Plumed(*args, atoms=atoms, restart=True, **kwargs)
+
     with Trajectory(prev_traj) as traj:
         if prev_steps is None:
             atoms.calc.istep = len(traj) - 1
@@ -32,24 +33,16 @@ def restart_from_trajectory(prev_traj, *args, prev_steps=None, atoms=None, **kwa
 
 class Plumed(Calculator):
     """Plumed calculator is used for simulations of enhanced sampling methods
-    with the open-source code PLUMED (plumed.org).
+    with the open-source code PLUMED (plumed.org):
     
-
     [1] The PLUMED consortium, Nat. Methods 16, 670 (2019)
-    [2] Tribello, Bonomi, Branduardi, Camilloni, and Bussi,
-    Comput. Phys. Commun. 185, 604 (2014).
-    """
+    [2] Tribello, Bonomi, Branduardi, Camilloni, and Bussi, 
+    Comput. Phys. Commun. 185, 604 (2014)"""
 
     implemented_properties = ['energy', 'forces']
     
     def __init__(self, calc, input, timestep, atoms=None, kT=1., log='', restart=False):
-        """
-        Plumed calculator is used for simulations of enhanced sampling methods
-        with the open-source code PLUMED (plumed.org).
-        
-        [1] The PLUMED consortium, Nat. Methods 16, 670 (2019)
-        [2] Tribello, Bonomi, Branduardi, Camilloni, and Bussi, 
-        Comput. Phys. Commun. 185, 604 (2014)
+        """Plumed calculator. 
 
         Parameters
         ----------  
@@ -65,7 +58,6 @@ class Plumed(Calculator):
         atoms: Atoms
             Atoms object to be attached
 
-
         .. note:: For this case, the calculator is defined strictly with the
             object atoms inside. This is necessary for initializing the
             Plumed object. For conserving ASE convention, it can be initialized as
@@ -80,14 +72,11 @@ class Plumed(Calculator):
         
         restart: boolean. Default False
             True if the simulation is restarted. 
-
-
         .. note:: In order to guarantee a well restart, the user has to fix momenta,
             positions and Plumed.istep, where the positions and momenta corresponds
             to the last coniguration in the previous simulation, while Plumed.istep 
             is the number of timesteps performed previously. This can be done 
             using ase.calculators.plumed.restart_from_trajectory.
-        
         """
         from plumed import Plumed as pl
 
@@ -104,6 +93,13 @@ class Plumed(Calculator):
         if world.rank == 0:
             natoms = len(atoms.get_positions())
             self.plumed = pl()
+            
+            # Units setup
+            ps = 1000 * fs
+            self.plumed.cmd("setMDEnergyUnits", mol/kJ)  # EV to kjoule/mol
+            self.plumed.cmd("setMDLengthUnits", 1/10)  # Angstrom to nm
+            self.plumed.cmd("setMDTimeUnits", 1/ps)  # ASE time units to ps
+
             self.plumed.cmd("setNatoms", natoms)
             self.plumed.cmd("setMDEngine", "ASE")
             self.plumed.cmd("setLogFile", log)
@@ -176,7 +172,6 @@ class Plumed(Calculator):
                     read_files['COLVAR'] = np.loadtxt('COLVAR', unpack=True)
                 if exists('HILLS'):
                     read_files['HILLS'] = np.loadtxt('HILLS', unpack=True)
-        
         assert not len(read_files) == 0, "There are not files for reading"
         return read_files
 
