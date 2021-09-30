@@ -44,7 +44,8 @@ class Plumed(Calculator):
     implemented_properties = ['energy', 'forces']
     
     def __init__(self, calc, input, timestep, atoms=None, kT=1., log='', restart=False):
-        """Plumed calculator. 
+        """
+        Plumed calculator. 
 
         Parameters
         ----------  
