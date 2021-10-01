@@ -13,6 +13,73 @@ from ase import units
 
 @pytest.mark.calculator_lite
 @pytest.mark.calculator('plumed')
+def test_units(factory):
+    """
+    Note: if this test fails, plumed or ASE changed some units.
+    It has to be fixed in the contructor of the plumed calculator.
+
+    In this test is considered two atoms interacting through a potential with the form:
+
+    (lower wall in plumed setup)
+    V = k (r - r0)^2
+
+    The values are fixed as follow:
+    
+    time = 1 ASE time units
+    k = 1 kJ/(mol*nm^2)
+    r = 1 Angstrom
+    r0 = 1.1 nm 
+    
+    considering r in nm, V = 1 kJ/mol and the forces F(r) = 2 kJ/(mol*nm) """
+
+    set_plumed = ["e: ENERGY",                          # check energy units
+                  "d: DISTANCE ATOMS=1,2",              # check distance units
+                  "LOWER_WALLS ARG=d AT=1.1 KAPPA=1",   # check forces recieved
+                  "DUMPMASSCHARGE FILE=mass_charge",    # check mass and charges
+                  "PRINT ARG=e,d FILE=COLVAR",
+                  "FLUSH STRIDE=1"]
+
+    
+    # execution
+    atoms = Atoms('CO', positions=[[0, 0, 0], [0, 0, 1]], charges=[0,1])  # CO molecule
+
+    timestep = 1
+    steps = 10
+    calc = IdealGas()
+    with factory.calc(calc=calc, 
+                input=set_plumed,
+                timestep=timestep,
+                atoms=atoms) as calc:
+        ener, forces = atoms.calc.compute_bias(atoms.get_positions(), 1, atoms.get_potential_energy())
+        files = calc.read_plumed_files()
+    
+    # the next values are in ase units
+    ase_values = {'time' : 1,
+                  'energy' : ener,
+                  'distance' : 1,
+                  'masses' : atoms.get_masses(),
+                  'charges' : atoms.get_initial_charges(),
+                  'forces' : forces}
+    
+    # The next values are in plumed units.
+    plumed_values = {'time' : files['COLVAR'][0][-1],
+                     'energy' : files['COLVAR'][1][-1],
+                     'distance' : files['COLVAR'][2][-1],
+                     'masses' : files['mass_charge'][1],
+                     'charges' : files['mass_charge'][2],
+                     'forces' : np.array([[0,0,-2],[0,0,2]])}
+    
+
+    assert ase_values['time'] * 1/(1000*units.fs) == approx(plumed_values['time'], abs=1E-5), "error in time units"
+    assert ase_values['energy'] * units.mol/units.kJ == approx(plumed_values['energy'], abs=1E-5), "error in energy units"
+    assert ase_values['distance'] * 1/units.nm == approx(plumed_values['distance'], abs=1E-5), "error in distance units"
+    assert ase_values['forces'] * units.nm * units.mol/units.kJ== approx(plumed_values['forces'], abs=1E-5), "error in forces units"
+    assert ase_values['masses'] == approx(plumed_values['masses'], abs=1E-5), "error in masses units"
+    assert ase_values['charges'] == approx(plumed_values['charges'], abs=1E-5), "error in charges units"
+
+
+@pytest.mark.calculator_lite
+@pytest.mark.calculator('plumed')
 def test_CVs(factory):
     """ This test calls plumed-ASE calculator for computing some CVs.
     Moreover, it computes those CVs directly from atoms.positions and

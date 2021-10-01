@@ -4,7 +4,7 @@ from ase.parallel import broadcast
 from ase.parallel import world
 import numpy as np
 from os.path import exists
-from ase.units import fs, mol, kJ
+from ase.units import fs, mol, kJ, nm
 
 
 def restart_from_trajectory(prev_traj, *args, prev_steps=None, atoms=None, **kwargs):
@@ -32,18 +32,16 @@ def restart_from_trajectory(prev_traj, *args, prev_steps=None, atoms=None, **kwa
 
 
 class Plumed(Calculator):
-    """Plumed calculator is used for simulations of enhanced sampling methods
-    with the open-source code PLUMED (plumed.org):
-    
-    
-    [1] The PLUMED consortium, Nat. Methods 16, 670 (2019)
-    [2] Tribello, Bonomi, Branduardi, Camilloni, and Bussi, 
-    Comput. Phys. Commun. 185, 604 (2014)"""
-
     implemented_properties = ['energy', 'forces']
     
     def __init__(self, calc, input, timestep, atoms=None, kT=1., log='', restart=False):
-        """Plumed calculator. 
+        """
+        Plumed calculator is used for simulations of enhanced sampling methods
+        with the open-source code PLUMED (plumed.org).
+        
+        [1] The PLUMED consortium, Nat. Methods 16, 670 (2019)
+        [2] Tribello, Bonomi, Branduardi, Camilloni, and Bussi, 
+        Comput. Phys. Commun. 185, 604 (2014)
 
         Parameters
         ----------  
@@ -59,6 +57,7 @@ class Plumed(Calculator):
         atoms: Atoms
             Atoms object to be attached
 
+
         .. note:: For this case, the calculator is defined strictly with the
             object atoms inside. This is necessary for initializing the
             Plumed object. For conserving ASE convention, it can be initialized as
@@ -73,12 +72,16 @@ class Plumed(Calculator):
         
         restart: boolean. Default False
             True if the simulation is restarted. 
+
+
         .. note:: In order to guarantee a well restart, the user has to fix momenta,
             positions and Plumed.istep, where the positions and momenta corresponds
             to the last coniguration in the previous simulation, while Plumed.istep 
             is the number of timesteps performed previously. This can be done 
             using ase.calculators.plumed.restart_from_trajectory.
+        
         """
+
         from plumed import Plumed as pl
 
         if atoms is None:
@@ -96,10 +99,14 @@ class Plumed(Calculator):
             self.plumed = pl()
             
             # Units setup
+            # warning: outputs from plumed will still be in plumed units.
+
             ps = 1000 * fs
-            self.plumed.cmd("setMDEnergyUnits", mol/kJ)  # EV to kjoule/mol
-            self.plumed.cmd("setMDLengthUnits", 1/10)  # Angstrom to nm
-            self.plumed.cmd("setMDTimeUnits", 1/ps)  # ASE time units to ps
+            self.plumed.cmd("setMDEnergyUnits", mol/kJ) # kjoule/mol to eV
+            self.plumed.cmd("setMDLengthUnits", 1/nm)   # nm to Angstrom
+            self.plumed.cmd("setMDTimeUnits", 1/ps)     # ps to ASE time units 
+            self.plumed.cmd("setMDChargeUnits", 1.)      # ASE and plumed - charge unit is in e units
+            self.plumed.cmd("setMDMassUnits", 1.)        # ASE and plumed - mass unit is in e units
 
             self.plumed.cmd("setNatoms", natoms)
             self.plumed.cmd("setMDEngine", "ASE")
@@ -119,18 +126,28 @@ class Plumed(Calculator):
         self.results['energy'], self. results['forces'] = energy, forces
 
     def compute_energy_and_forces(self, pos, istep):
+        unbiased_energy = self.calc.get_potential_energy(self.atoms)
+        unbiased_forces = self.calc.get_forces(self.atoms)
+
         if world.rank == 0:
-            ener_forc = self.compute_bias(pos, istep)
+            ener_forc = self.compute_bias(pos, istep, unbiased_energy)
         else:
             ener_forc = None
         energy_bias, forces_bias = broadcast(ener_forc)
-        energy = self.calc.get_potential_energy(self.atoms) + energy_bias
-        forces = self.calc.get_forces(self.atoms) + forces_bias
+        energy = unbiased_energy + energy_bias
+        forces = unbiased_forces + forces_bias
         return energy, forces
 
-    def compute_bias(self, pos, istep):
+    def compute_bias(self, pos, istep, unbiased_energy):
+        if 'charges' in self.calc.implemented_properties:
+            charges = self.calc.get_charges(atoms=self.atoms)
+        else:
+            charges = self.atoms.get_initial_charges()
+        
         self.plumed.cmd("setStep", istep)
         self.plumed.cmd("setPositions", pos)
+        self.plumed.cmd("setCharges", charges)
+        self.plumed.cmd("setEnergy", unbiased_energy)
         self.plumed.cmd("setMasses", self.atoms.get_masses())
         forces_bias = np.zeros((self.atoms.get_positions()).shape)
         self.plumed.cmd("setForces", forces_bias)
@@ -140,7 +157,7 @@ class Plumed(Calculator):
         self.plumed.cmd("performCalc")
         energy_bias = np.zeros((1,))
         self.plumed.cmd("getBias", energy_bias)
-        return [energy_bias, forces_bias]
+        return [energy_bias, forces_bias ]
     
     def write_plumed_files(self, images):
         """ This function computes what is required in
