@@ -39,12 +39,10 @@ def test_units(factory):
                   "PRINT ARG=e,d FILE=COLVAR",
                   "FLUSH STRIDE=1"]
 
-    
     # execution
-    atoms = Atoms('CO', positions=[[0, 0, 0], [0, 0, 1]], charges=[0,1])  # CO molecule
+    atoms = Atoms('CO', positions=[[0, 0, 0], [0, 0, 1]], charges=[0, 1])  # CO molecule
 
     timestep = 1
-    steps = 10
     calc = IdealGas()
     with factory.calc(calc=calc, 
                 input=set_plumed,
@@ -54,26 +52,25 @@ def test_units(factory):
         files = calc.read_plumed_files()
     
     # the next values are in ase units
-    ase_values = {'time' : 1,
-                  'energy' : ener,
-                  'distance' : 1,
-                  'masses' : atoms.get_masses(),
-                  'charges' : atoms.get_initial_charges(),
-                  'forces' : forces}
+    ase_values = {'time': 1, 
+                  'energy': ener, 
+                  'distance': 1, 
+                  'masses': atoms.get_masses(), 
+                  'charges': atoms.get_initial_charges(), 
+                  'forces': forces}
     
     # The next values are in plumed units.
-    plumed_values = {'time' : files['COLVAR'][0][-1],
-                     'energy' : files['COLVAR'][1][-1],
-                     'distance' : files['COLVAR'][2][-1],
-                     'masses' : files['mass_charge'][1],
-                     'charges' : files['mass_charge'][2],
-                     'forces' : np.array([[0,0,-2],[0,0,2]])}
+    plumed_values = {'time': files['COLVAR'][0][-1], 
+                     'energy': files['COLVAR'][1][-1], 
+                     'distance': files['COLVAR'][2][-1], 
+                     'masses': files['mass_charge'][1], 
+                     'charges': files['mass_charge'][2], 
+                     'forces': np.array([[0, 0, -2], [0, 0, 2]])}
     
-
     assert ase_values['time'] * 1/(1000*units.fs) == approx(plumed_values['time'], abs=1E-5), "error in time units"
     assert ase_values['energy'] * units.mol/units.kJ == approx(plumed_values['energy'], abs=1E-5), "error in energy units"
     assert ase_values['distance'] * 1/units.nm == approx(plumed_values['distance'], abs=1E-5), "error in distance units"
-    assert ase_values['forces'] * units.nm * units.mol/units.kJ== approx(plumed_values['forces'], abs=1E-5), "error in forces units"
+    assert ase_values['forces'] * units.nm * units.mol/units.kJ == approx(plumed_values['forces'], abs=1E-5), "error in forces units"
     assert ase_values['masses'] == approx(plumed_values['masses'], abs=1E-5), "error in masses units"
     assert ase_values['charges'] == approx(plumed_values['charges'], abs=1E-5), "error in charges units"
 

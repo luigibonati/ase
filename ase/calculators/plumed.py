@@ -102,9 +102,9 @@ class Plumed(Calculator):
             # warning: outputs from plumed will still be in plumed units.
 
             ps = 1000 * fs
-            self.plumed.cmd("setMDEnergyUnits", mol/kJ) # kjoule/mol to eV
-            self.plumed.cmd("setMDLengthUnits", 1/nm)   # nm to Angstrom
-            self.plumed.cmd("setMDTimeUnits", 1/ps)     # ps to ASE time units 
+            self.plumed.cmd("setMDEnergyUnits", mol/kJ)  # kjoule/mol to eV
+            self.plumed.cmd("setMDLengthUnits", 1/nm)    # nm to Angstrom
+            self.plumed.cmd("setMDTimeUnits", 1/ps)      # ps to ASE time units 
             self.plumed.cmd("setMDChargeUnits", 1.)      # ASE and plumed - charge unit is in e units
             self.plumed.cmd("setMDMassUnits", 1.)        # ASE and plumed - mass unit is in e units
 
@@ -157,7 +157,7 @@ class Plumed(Calculator):
         self.plumed.cmd("performCalc")
         energy_bias = np.zeros((1,))
         self.plumed.cmd("getBias", energy_bias)
-        return [energy_bias, forces_bias ]
+        return [energy_bias, forces_bias]
     
     def write_plumed_files(self, images):
         """ This function computes what is required in
