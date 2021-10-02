@@ -34,7 +34,7 @@ def restart_from_trajectory(prev_traj, *args, prev_steps=None, atoms=None, **kwa
 class Plumed(Calculator):
     implemented_properties = ['energy', 'forces']
     
-    def __init__(self, calc, input, timestep, atoms=None, kT=1., log='', restart=False):
+    def __init__(self, calc, input, timestep, atoms=None, kT=1., log='', restart=False, charge=False):
         """
         Plumed calculator is used for simulations of enhanced sampling methods
         with the open-source code PLUMED (plumed.org).
@@ -71,7 +71,11 @@ class Plumed(Calculator):
             Log file of the plumed calculations
         
         restart: boolean. Default False
-            True if the simulation is restarted. 
+            True if the simulation is restarted.
+
+        charge: boolean. Default False
+            True is you use some collective variable which needs to compute
+            charges each timestep.
 
 
         .. note:: In order to guarantee a well restart, the user has to fix momenta,
@@ -92,6 +96,7 @@ class Plumed(Calculator):
 
         self.input = input
         self.calc = calc
+        self.charge = charge
         self.name = '{}+Plumed'.format(self.calc.name)
         
         if world.rank == 0:
@@ -139,7 +144,7 @@ class Plumed(Calculator):
         return energy, forces
 
     def compute_bias(self, pos, istep, unbiased_energy):
-        if 'charges' in self.calc.implemented_properties:
+        if 'charges' in self.calc.implemented_properties and self.charge:
             charges = self.calc.get_charges(atoms=self.atoms)
         else:
             charges = self.atoms.get_initial_charges()

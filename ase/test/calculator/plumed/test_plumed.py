@@ -47,7 +47,8 @@ def test_units(factory):
     with factory.calc(calc=calc, 
                 input=set_plumed,
                 timestep=timestep,
-                atoms=atoms) as calc:
+                atoms=atoms,
+                charge=True) as calc:
         ener, forces = atoms.calc.compute_bias(atoms.get_positions(), 1, atoms.get_potential_energy())
         files = calc.read_plumed_files()
     
