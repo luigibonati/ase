@@ -10,7 +10,7 @@ import subprocess
 import numpy as np
 import ase
 # TODO(dts): use import ase for all of these imports, no need for simplifying path.
-import ase.io.exciting
+# import ase.io.exciting
 from ase.units import Bohr, Hartree
 from ase.calculators.calculator import PropertyNotImplementedError
 
@@ -24,11 +24,11 @@ class Exciting:
     """
 
     def __init__(
-                self,
-                dir: str = 'calc', param_dict: Optional[Dict] = None,
-                species_path: Optional[str] = None,
-                exciting_binary='excitingser', kpts=(1, 1, 1),
-                autormt=False, tshift=True, **kwargs):
+            self,
+            dir: str = 'calc', param_dict: Optional[Dict] = None,
+            species_path: Optional[str] = None,
+            exciting_binary='excitingser', kpts=(1, 1, 1),
+            autormt=False, tshift=True, **kwargs):
         """Construct exciting-calculator object.
 
         Args:
@@ -39,8 +39,7 @@ class Exciting:
                 translated to a  list of sub elements named after the key
                 of which the list is the value. The keys of the dict should
                 be a list of strings not floats.
-            species_path: string
-                Directory or URL to look up species files folder.
+            species_path: Directory or URL to look up species files folder.
             exciting_binary: Path to executable of exciting code.
                 Default: 'excitingser'
             kpts: Number of k-points. List len should be 3.
@@ -49,7 +48,7 @@ class Exciting:
             kwargs: List of key, value pairs to be
                 converted into groundstate attributes.
         """
-        # Assign member variables using contructor arguments.
+        # Assign member variables using constructor arguments.
         self.dir = dir
         self.energy = None
         self.param_dict = param_dict
@@ -64,7 +63,7 @@ class Exciting:
         else:  # Try to see if the species path directory actually exists.
             try:
                 assert os.path.isdir(species_path)
-            except KeyError:
+            except AssertionError:
                 raise RuntimeError(
                     'Species path given: %s, '
                     'does not exist as a directory' % species_path)
@@ -84,10 +83,13 @@ class Exciting:
         # If we can't find ngrik in kwargs and param_dict=None
         if ('ngridk' not in kwargs.keys() and not (self.param_dict)):
             # Set the groundstate attributes ngridk value
-            # using the kpts constructure param. The join and map
+            # using the kpts constructor param. The join and map
             # convert [2, 2, 2] into '2 2 2'.
             self.groundstate_attributes[
                 'ngridk'] = ' '.join(map(str, kpts))
+        # Initialize other attributes
+        self.numbers = []
+        self.cell = None
 
     def update(self, atoms: ase.Atoms):
         """Initialize calc if needed then run exciting calc.
@@ -97,22 +99,18 @@ class Exciting:
                 periodic boundary conditions in an ase.Atoms obj.
         """
         # If the calculation is not over or the numbers
-        # member variable hasn't been initalized we initalize
+        # member variable hasn't been initialized we initialize
         # the atoms input.
-        if (
-                not self.converged or
+        if (not self.converged or
                 len(self.numbers) != len(atoms) or
-                (self.numbers != atoms.get_atomic_numbers()).any()):
-            self.initialize(atoms)
-            self.calculate(atoms)
-        # Otherwise run the calculations with this ASE atoms object.
-        elif ((self.positions != atoms.get_positions()).any() or
-              (self.pbc != atoms.get_pbc()).any() or
-              (self.cell != atoms.get_cell()).any()):
+                (self.numbers != atoms.get_atomic_numbers()).any() or
+                (self.positions != atoms.get_positions()).any() or
+                (self.pbc != atoms.get_pbc()).any() or
+                (self.cell != atoms.get_cell()).any()):
             self.calculate(atoms)
 
     def initialize(self, atoms: ase.Atoms):
-        """Initialize atomic information by writing input file.
+        """Initialize atomic information by writing input file and saving data in calculator object.
 
         Args:
             atoms: Holds geometry, atomic information about calculation.
@@ -120,6 +118,12 @@ class Exciting:
         # Get a list of the atomic numbers (a.m.u) save
         # it to the member variable called self.numbers.
         self.numbers = atoms.get_atomic_numbers().copy()
+        # Get positions of the ASE Atoms object atom positions.
+        self.positions = atoms.get_positions().copy()
+        # Get the ASE Atoms object cell vectors.
+        self.cell = atoms.get_cell().copy()
+        # Get the periodic boundary conditions.
+        self.pbc = atoms.get_pbc().copy()
         # Write ASE atoms information into input.
         self.write(atoms)
 
@@ -171,27 +175,21 @@ class Exciting:
         Args:
             atoms: Holds geometry, atomic information about calculation.
         """
-        # Get positions of the ASE Atoms object atom positions.
-        self.positions = atoms.get_positions().copy()
-        # Get the ASE Atoms object cell vectors.
-        self.cell = atoms.get_cell().copy()
-        # Get the periodic boundary conditions.
-        self.pbc = atoms.get_pbc().copy()
         # Write input file.
         self.initialize(atoms)
 
-        #TODO(dts): This code portion needs a rewrite for readability.
+        # TODO(dts): This code portion needs a rewrite for readability.
 
         xmlfile = pathlib.Path(self.dir) / 'input.xml'
-        # CHeck that the xml file exists in this location: self.dir/input.xml 
+        # Check that the xml file exists in this location: self.dir/input.xml
         assert xmlfile.is_file()
         # Read the input and print it to the console.
         print(xmlfile.read_text())
         # Use subprocess to call the exciting binary and tell it to use input.xml as a first argument.
-        argv = [self.excitingbinary, 'input.xml']
+        argv = [self.exciting_binary, 'input.xml']
         subprocess.check_call(argv, cwd=self.dir)
         # Ensure that the calculation created output files INFO.OUT which is the
-        # the text based output of excicing and info.xml which is the 
+        # the text based output of exciting and info.xml which is the
         assert (pathlib.Path(self.dir) / 'INFO.OUT').is_file()
         assert (pathlib.Path(self.dir) / 'info.xml').exists()
 
@@ -222,7 +220,7 @@ class Exciting:
         # then assign different attributes of the DOM. `root` holds the root
         # of the element tree that is populated with basis vectors, chemical
         # symbols and the like.
-        root = ase.io.exciting.atoms_to_etree(atoms)
+        root = atoms_to_etree(atoms)
         # We have to add a few more attributes to the element tree before
         # writing the xml input file. Assign the species path.
         root.find('structure').attrib['speciespath'] = self.species_path
@@ -285,7 +283,7 @@ class Exciting:
                     self.dict_to_xml(item, ET.SubElement(element, key))
             # Otherwise if the value is a dictionary.
             elif (isinstance(value, dict)):
-                if(element.findall(key) == []):
+                if (element.findall(key) == []):
                     self.dict_to_xml(value, ET.SubElement(element, key))
                 else:
                     self.dict_to_xml(value, element.findall(key)[0])
@@ -295,7 +293,7 @@ class Exciting:
     def read(self):
         """ Read total energy and forces from the info.xml output file."""
         # Define where to find output file which is called
-        # info.xml in exciing.
+        # info.xml in exciting.
         output_file = self.dir + '/info.xml'
         # Try to open the output file.
         try:
@@ -305,25 +303,26 @@ class Exciting:
         except IOError:
             raise RuntimeError(
                 "Output file %s doesn't exist" % output_file)
+
         # Find the last istance of 'totalEnergy'.
         self.energy = float(parsed_output.findall(
             'groundstate/scl/iter/energies')[-1].attrib[
-                'totalEnergy']) * Hartree
+                                'totalEnergy']) * Hartree
         # Initialize forces list.
         forces = []
         # final all instances of 'totalforce'.
         forcesnodes = parsed_output.findall(
-                'groundstate/scl/structure')[-1].findall(
-                    'species/atom/forces/totalforce')
+            'groundstate/scl/structure')[-1].findall(
+            'species/atom/forces/totalforce')
         # Go through each force in the found instances of 'total force'.
         for force in forcesnodes:
-            # Apend the total force to the forces list.
+            # Append the total force to the forces list.
             forces.append(np.array(list(force.attrib.values())).astype(float))
         # Reshape forces so we get three columns (x,y,z) and scale units.
         self.forces = np.reshape(forces, (-1, 3)) * Hartree / Bohr
         # Check if the calculation converged.
         if str(parsed_output.find('groundstate').attrib[
-                'status']) == 'finished':
+                   'status']) == 'finished':
             self.converged = True
         else:
             raise RuntimeError('Calculation did not converge.')
@@ -334,3 +333,63 @@ def prettify(elem):
     rough_string = ET.tostring(elem, 'utf-8')
     reparsed = minidom.parseString(rough_string)
     return reparsed.toprettyxml(indent="\t")
+
+
+def atoms_to_etree(ase_atoms_obj) -> ET.Element:
+    """This function creates the XML DOM corresponding
+     to the structure for use in write and calculator
+
+    Parameters
+    ----------
+
+    ase_atoms_obj : Atom Object or List of Atoms objects
+
+    Returns
+    -------
+    root : etree object
+        Element tree of exciting input file containing the structure
+    """
+    if not isinstance(ase_atoms_obj, (list, tuple)):
+        ase_atoms_obj_list = [ase_atoms_obj]
+    else:
+        ase_atoms_obj_list = ase_atoms_obj
+    root = ET.Element('input')
+    root.set(
+        '{http://www.w3.org/2001/XMLSchema-instance}noNamespaceSchemaLocation',
+        'http://xml.exciting-code.org/excitinginput.xsd')
+
+    title = ET.SubElement(root, 'title')
+    title.text = ''
+    structure = ET.SubElement(root, 'structure')
+    crystal = ET.SubElement(structure, 'crystal')
+    atoms = ase_atoms_obj_list[0]
+    for vec in atoms.cell:
+        basevect = ET.SubElement(crystal, 'basevect')
+        # use f string here and fix this.
+        basevect.text = '%.14f %.14f %.14f' % tuple(vec / Bohr)
+
+    oldsymbol = ''
+    oldrmt = -1  # The old radius of the muffin tin (rmt)
+    newrmt = -1
+    scaled = atoms.get_scaled_positions()
+    for aindex, symbol in enumerate(atoms.get_chemical_symbols()):
+        # What is atoms.arrays?
+        if 'rmt' in atoms.arrays:
+            newrmt = atoms.get_array('rmt')[aindex] / Bohr
+        if symbol != oldsymbol or newrmt != oldrmt:
+            speciesnode = ET.SubElement(structure, 'species',
+                                        speciesfile='%s.xml' % symbol,
+                                        chemicalSymbol=symbol)
+            oldsymbol = symbol
+            if 'rmt' in atoms.arrays:
+                oldrmt = atoms.get_array('rmt')[aindex] / Bohr
+                if oldrmt > 0:
+                    speciesnode.attrib['rmt'] = '%.4f' % oldrmt
+
+        atom = ET.SubElement(speciesnode, 'atom',
+                             coord='%.14f %.14f %.14f' % tuple(scaled[aindex]))
+        if 'momenta' in atoms.arrays:
+            atom.attrib['bfcmt'] = '%.14f %.14f %.14f' % tuple(
+                atoms.get_array('momenta')[aindex])
+
+    return root
