@@ -34,7 +34,8 @@ def restart_from_trajectory(prev_traj, *args, prev_steps=None, atoms=None, **kwa
 class Plumed(Calculator):
     implemented_properties = ['energy', 'forces']
     
-    def __init__(self, calc, input, timestep, atoms=None, kT=1., log='', restart=False, charge=False):
+    def __init__(self, calc, input, timestep, atoms=None, kT=1., log='', 
+                 restart=False, use_charge=False, update_charge=False):
         """
         Plumed calculator is used for simulations of enhanced sampling methods
         with the open-source code PLUMED (plumed.org).
@@ -73,9 +74,14 @@ class Plumed(Calculator):
         restart: boolean. Default False
             True if the simulation is restarted.
 
-        charge: boolean. Default False
-            True is you use some collective variable which needs to compute
-            charges each timestep.
+        use_charge: boolean. Default False
+            True if you use some collective variable which needs charges. If 
+            use_charges is True and update_charge is False, you have to define 
+            initial charges and then this charge will be used during all simulation.
+
+        update_charge: boolean. Default False
+            True if you want the carges to be updated each time step. This will
+            fail in case that calc does not have 'charges' in its properties. 
 
 
         .. note:: In order to guarantee a well restart, the user has to fix momenta,
@@ -96,7 +102,8 @@ class Plumed(Calculator):
 
         self.input = input
         self.calc = calc
-        self.charge = charge
+        self.use_charge = use_charge
+        self.update_charge = update_charge
         self.name = '{}+Plumed'.format(self.calc.name)
         
         if world.rank == 0:
@@ -144,14 +151,22 @@ class Plumed(Calculator):
         return energy, forces
 
     def compute_bias(self, pos, istep, unbiased_energy):
-        if 'charges' in self.calc.implemented_properties and self.charge:
-            charges = self.calc.get_charges(atoms=self.atoms)
-        else:
-            charges = self.atoms.get_initial_charges()
-        
         self.plumed.cmd("setStep", istep)
+
+        if self.use_charge:
+            if 'charges' in self.calc.implemented_properties and self.update_charge:
+                charges = self.calc.get_charges(atoms=self.atoms.copy()) 
+
+            elif self.atoms.has('initial_charges') and not self.update_charge:
+                charges = self.atoms.get_initial_charges()
+
+            else:
+                assert not self.update_charge, "Charges cannot be updated"
+                assert self.update_charge, "Not initial charges in Atoms"
+
+            self.plumed.cmd("setCharges", charges)
+        
         self.plumed.cmd("setPositions", pos)
-        self.plumed.cmd("setCharges", charges)
         self.plumed.cmd("setEnergy", unbiased_energy)
         self.plumed.cmd("setMasses", self.atoms.get_masses())
         forces_bias = np.zeros((self.atoms.get_positions()).shape)

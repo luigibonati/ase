@@ -48,8 +48,9 @@ def test_units(factory):
                 input=set_plumed,
                 timestep=timestep,
                 atoms=atoms,
-                charge=True) as calc:
-        ener, forces = atoms.calc.compute_bias(atoms.get_positions(), 1, atoms.get_potential_energy())
+                use_charge=True) as calc:
+        ener, forces = atoms.calc.compute_bias(atoms.get_positions(), 1, 
+                                               atoms.get_potential_energy())
         files = calc.read_plumed_files()
     
     # the next values are in ase units
@@ -68,12 +69,22 @@ def test_units(factory):
                      'charges': files['mass_charge'][2], 
                      'forces': np.array([[0, 0, -2], [0, 0, 2]])}
     
-    assert ase_values['time'] * 1/(1000*units.fs) == approx(plumed_values['time'], abs=1E-5), "error in time units"
-    assert ase_values['energy'] * units.mol/units.kJ == approx(plumed_values['energy'], abs=1E-5), "error in energy units"
-    assert ase_values['distance'] * 1/units.nm == approx(plumed_values['distance'], abs=1E-5), "error in distance units"
-    assert ase_values['forces'] * units.nm * units.mol/units.kJ == approx(plumed_values['forces'], abs=1E-5), "error in forces units"
-    assert ase_values['masses'] == approx(plumed_values['masses'], abs=1E-5), "error in masses units"
-    assert ase_values['charges'] == approx(plumed_values['charges'], abs=1E-5), "error in charges units"
+    assert ase_values['time'] * 1/(1000*units.fs) == \
+           approx(plumed_values['time'], abs=1E-5), \
+           "error in time units"
+    assert ase_values['energy'] * units.mol/units.kJ == \
+           approx(plumed_values['energy'], abs=1E-5), \
+           "error in energy units"
+    assert ase_values['distance'] * 1/units.nm == \
+           approx(plumed_values['distance'], abs=1E-5), \
+           "error in distance units"
+    assert ase_values['forces'] * units.nm * units.mol/units.kJ == \
+           approx(plumed_values['forces'], abs=1E-5), \
+           "error in forces units"
+    assert ase_values['masses'] == approx(plumed_values['masses'], abs=1E-5),\
+           "error in masses units"
+    assert ase_values['charges'] == approx(plumed_values['charges'], abs=1E-5),\
+           "error in charges units"
 
 
 @pytest.mark.calculator_lite
@@ -83,7 +94,8 @@ def test_CVs(factory):
     Moreover, it computes those CVs directly from atoms.positions and
     compares them"""
     # plumed setting
-    set_plumed = [f"UNITS LENGTH=A TIME={1/(1000 * units.fs)} ENERGY={units.mol/units.kJ}",
+    ps = 1000 * units.fs
+    set_plumed = [f"UNITS LENGTH=A TIME={1/ps} ENERGY={units.mol/units.kJ}",
                   "c1: COM ATOMS=1,2",
                   "c2: CENTER ATOMS=1,2",
                   "l: DISTANCE ATOMS=c1,c2",
@@ -138,8 +150,10 @@ def test_metadyn(factory):
     forceWithBias = 0.28807
 
     assert (atoms.get_positions()[0][0] == approx(position1, abs=0.01) and
-            atoms.get_positions()[1][0] == approx(position2, abs=0.01)), "Error in the metadynamics simulation"
-    assert atoms.get_forces()[0][0] == approx(forceWithBias, abs=0.01), "Error in the computation of Bias-forces"
+            atoms.get_positions()[1][0] == approx(position2, abs=0.01)), \
+           "Error in the metadynamics simulation"
+    assert atoms.get_forces()[0][0] == approx(forceWithBias, abs=0.01), \
+           "Error in the computation of Bias-forces"
 
 
 @pytest.mark.calculator_lite
@@ -164,10 +178,12 @@ def test_restart(factory):
     position2 = 6.73693
     forceWithBias = 0.28807
 
-    assert atoms1.get_forces()[0][0] == approx(forceWithBias, abs=0.01), "Error in restart for the computation of Bias-forces"
+    assert atoms1.get_forces()[0][0] == approx(forceWithBias, abs=0.01), \
+           "Error in restart for the computation of Bias-forces"
 
     assert (atoms1.get_positions()[0][0] == approx(position1, abs=0.01) and
-            atoms1.get_positions()[1][0] == approx(position2, abs=0.01)), "Error in the restart of metadynamics simulation"
+            atoms1.get_positions()[1][0] == approx(position2, abs=0.01)), \
+           "Error in the restart of metadynamics simulation"
     
 
 @pytest.mark.calculator_lite
@@ -204,10 +220,11 @@ def run(factory, inputs, name='',
 
 
 def setups(name=''):
-    set_plumed = [f"UNITS LENGTH=A TIME=0.010180505671156723 ENERGY={units.mol/units.kJ}",
+    ps = 1000 * units.fs
+    set_plumed = [f"UNITS LENGTH=A TIME={1/ps} ENERGY={units.mol/units.kJ}",
                   "d: DISTANCE ATOMS=1,2",
                   "FLUSH STRIDE=1",
-                  "METAD ARG=d SIGMA=0.5 HEIGHT=2 PACE=20 FILE=HILLS_{}".format(name)]
+                  f"METAD ARG=d SIGMA=0.5 HEIGHT=2 PACE=20 FILE=HILLS_{name}"]
     atoms = Atoms('CO', positions=[[0, 0, 0], [6.7, 0, 0]])
     timestep = 0.05
     return set_plumed, atoms, timestep
