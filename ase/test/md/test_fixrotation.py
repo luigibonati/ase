@@ -57,4 +57,3 @@ def test_fixrotation_asap(asap3):
         delta = np.linalg.norm(atoms.get_center_of_mass() - com)
         print("Change in center of mass:", delta)
         assert delta < 1e-9
-        
