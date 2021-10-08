@@ -140,6 +140,11 @@ class Langevin(MolecularDynamics):
         self.xi = self.rng.standard_normal(size=(natoms, 3))
         self.eta = self.rng.standard_normal(size=(natoms, 3))
 
+        # To keep the center of mass stationary, the random arrays should add to (0,0,0)
+        if self.fix_com:
+            self.xi -= self.xi.sum(axis=0) / natoms
+            self.eta -= self.eta.sum(axis=0) / natoms
+
         # When holonomic constraints for rigid linear triatomic molecules are
         # present, ask the constraints to redistribute xi and eta within each
         # triple defined in the constraints. This is needed to achieve the
@@ -158,12 +163,9 @@ class Langevin(MolecularDynamics):
 
         # Full step in positions
         x = atoms.get_positions()
-        if self.fix_com:
-            old_com = atoms.get_center_of_mass()
+
         # Step: x^n -> x^(n+1) - this applies constraints if any.
         atoms.set_positions(x + self.dt * self.v + self.c5 * self.eta)
-        if self.fix_com:
-            atoms.set_center_of_mass(old_com)
 
         # recalc velocities after RATTLE constraints are applied
         self.v = (self.atoms.get_positions() - x -
@@ -173,9 +175,6 @@ class Langevin(MolecularDynamics):
         # Update the velocities
         self.v += (self.c1 * forces / self.masses - self.c2 * self.v +
                    self.c3 * self.xi - self.c4 * self.eta)
-
-        if self.fix_com:  # subtract center of mass vel
-            self.v -= self._get_com_velocity(self.v)
 
         # Second part of RATTLE taken care of here
         atoms.set_momenta(self.v * self.masses)
