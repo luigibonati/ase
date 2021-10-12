@@ -76,9 +76,7 @@ class DefectBuilder():
         return vacancies
 
 
-    def create_antisites(self, intrinsic=True, extrinsic=None):
-        spg_host = self.setup_spg_cell()
-        eq_pos = self.get_equivalent_atoms(spg_host)
+    def get_kindlist(self, intrinsic=True, extrinsic=None):
         defect_list = []
         if intrinsic:
             for i in range(len(self.atoms)):
@@ -90,6 +88,14 @@ class DefectBuilder():
                 if element not in defect_list:
                     defect_list.append(extrinsic[i])
 
+        return defect_list
+
+
+    def create_antisites(self, intrinsic=True, extrinsic=None):
+        spg_host = self.setup_spg_cell()
+        eq_pos = self.get_equivalent_atoms(spg_host)
+        defect_list = self.get_kindlist(intrinsic=intrinsic,
+                                        extrinsic=extrinsic)
         antisites = []
         finished_list = []
         for i in range(len(self.atoms)):
@@ -105,7 +111,7 @@ class DefectBuilder():
         return antisites
 
 
-    def create_interstitials(self):
+    def create_interstitials(self, intrinsic=True, extrinsic=None):
         # add elemental dependency
         vor = self.get_voronoi_object()
         vertices = self.get_voronoi_points(vor)
@@ -117,16 +123,21 @@ class DefectBuilder():
         spg_host = self.setup_spg_cell()
         host_wyckoffs = self.get_wyckoff_symbols(spg_host)
         wyckoffs = []
+        interstitials = []
+        defect_list = self.get_kindlist(intrinsic=intrinsic,
+                                        extrinsic=extrinsic)
         for position in voronoi_positions:
-            spg_temp = self.setup_spg_cell([position], [10])
-            wyckoff = self.get_wyckoff_symbols(spg_temp)
-            if wyckoff[0] not in wyckoffs:
-                print(position, wyckoff)
-                def_atoms = self.atoms.copy()
-                newatom = Atom(10, position)
-                def_atoms.append(newatom)
-                wyckoffs.append(wyckoff[0])
-                view(def_atoms)
+            for kind in defect_list:
+                spg_temp = self.setup_spg_cell([position], [1])
+                wyckoff = self.get_wyckoff_symbols(spg_temp)
+                if wyckoff[0] not in wyckoffs:
+                    interstitial = self.atoms.copy()
+                    newatom = Atom(kind, position)
+                    interstitial.append(newatom)
+                    interstitials.append(interstitial)
+            wyckoffs.append(wyckoff[0])
+
+        return interstitials
 
 
     def get_voronoi_object(self):
