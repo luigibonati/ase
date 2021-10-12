@@ -88,7 +88,7 @@ class FranckCondonRecursive:
 
     Notes
     -----
-    The ovelaps are signed according to the sign of the displacements.
+    The overlaps are signed according to the sign of the displacements.
 
     Reference
     ---------

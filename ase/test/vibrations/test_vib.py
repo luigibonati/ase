@@ -21,10 +21,10 @@ class TestHarmonicVibrations:
     def random_dimer(self):
         rng = np.random.RandomState(42)
 
-        d = 1 + 0.5 * rng.rand()
+        d = 1 + 0.5 * rng.random()
         z_values = rng.randint(1, high=50, size=2)
 
-        hessian = rng.rand(6, 6)
+        hessian = rng.random((6, 6))
         hessian += hessian.T  # Ensure the random Hessian is symmetric
 
         atoms = Atoms(z_values, [[0, 0, 0], [0, 0, d]])
@@ -38,7 +38,7 @@ class TestHarmonicVibrations:
         """Check the numerics with a trivial case: one atom in harmonic well"""
         rng = np.random.RandomState(42)
 
-        k = rng.rand()
+        k = rng.random()
 
         ref_atoms = Atoms('H', positions=np.zeros([1, 3]))
         atoms = ref_atoms.copy()
@@ -257,10 +257,10 @@ class TestVibrationsData:
     def random_dimer(self):
         rng = np.random.RandomState(42)
 
-        d = 1 + 0.5 * rng.rand()
+        d = 1 + 0.5 * rng.random()
         z_values = rng.randint(1, high=50, size=2)
 
-        hessian = rng.rand(6, 6)
+        hessian = rng.random((6, 6))
         hessian += hessian.T  # Ensure the random Hessian is symmetric
 
         atoms = Atoms(z_values, [[0, 0, 0], [0, 0, d]])

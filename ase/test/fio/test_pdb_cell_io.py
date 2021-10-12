@@ -1,6 +1,7 @@
 from ase.io import read, write
 import numpy as np
 from ase import Atoms
+from ase.build import fcc111
 
 # Check that saving/loading pdb files correctly reproduces the atoms object.
 #
@@ -105,9 +106,32 @@ def test_pdb_cell_io():
     spos1 = (atoms1.get_scaled_positions() + 0.5) % 1.0
     spos2 = (atoms2.get_scaled_positions() + 0.5) % 1.0
 
-    for a, b in zip(spos1, spos2):
-        print(a, b)
+    np.testing.assert_allclose(atoms1.get_atomic_numbers(), atoms2.get_atomic_numbers())
+    np.testing.assert_allclose(spos1, spos2, rtol=0, atol=2e-4)
 
-    err = np.abs(spos1 - spos2).max()
-    print(err)
-    assert err < 2e-4
+
+def test_pdb_nonbulk_read():
+    atoms1 = fcc111('Au', size=(3, 3, 1))
+    atoms1.symbols[4:10] = 'Ag'
+    atoms1.write('test.pdb')
+    atoms2 = read('test.pdb')
+
+    spos1 = (atoms1.get_scaled_positions() + 0.5) % 1.0
+    spos2 = (atoms2.get_scaled_positions() + 0.5) % 1.0
+
+    np.testing.assert_allclose(atoms1.get_atomic_numbers(), atoms2.get_atomic_numbers())
+    np.testing.assert_allclose(spos1, spos2, rtol=0, atol=2e-4)
+
+
+def test_pdb_no_periodic():
+    atoms1 = Atoms('H')
+    atoms1.center(vacuum=1)
+    atoms1.write('h.pdb')
+
+    atoms2 = read('h.pdb')
+
+    spos1 = atoms1.get_positions()
+    spos2 = atoms2.get_positions()
+
+    np.testing.assert_allclose(atoms1.get_atomic_numbers(), atoms2.get_atomic_numbers())
+    np.testing.assert_allclose(spos1, spos2, rtol=0, atol=2e-4)

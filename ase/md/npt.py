@@ -619,7 +619,8 @@ class NPT(MolecularDynamics):
                          (0, sixvector[1], sixvector[3]),
                          (0, 0, sixvector[2])))
 
-    def _isuppertriangular(self, m):
+    @staticmethod
+    def _isuppertriangular(m) -> bool:
         "Check that a matrix is on upper triangular form."
         return m[1, 0] == m[2, 0] == m[2, 1] == 0.0
 
