@@ -50,9 +50,30 @@ class DefectBuilder():
 
     def get_wyckoff_symbols(self, spg_cell):
         dataset = spg.get_symmetry_dataset(spg_cell)
-        wyckoffs = dataset['wyckoffs']
 
-        return wyckoffs
+        return dataset['wyckoffs']
+
+
+    def get_equivalent_atoms(self, spg_cell):
+        dataset = spg.get_symmetry_dataset(spg_cell)
+
+        return dataset['equivalent_atoms']
+
+
+    def create_vacancies(self):
+        spg_host = self.setup_spg_cell()
+        eq_pos = self.get_equivalent_atoms(spg_host)
+        finished_list = []
+        vacancies = []
+        for i in range(len(self.atoms)):
+            if not eq_pos[i] in finished_list:
+                vac = self.atoms.copy()
+                sitename = vac.get_chemical_symbols()[i]
+                vac.pop(i)
+                finished_list.append(eq_pos[i])
+                vacancies.append(vac)
+
+        return vacancies
 
 
     def create_interstitials(self):
