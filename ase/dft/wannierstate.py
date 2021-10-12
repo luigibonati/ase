@@ -60,7 +60,6 @@ class WannierSpec:
         return WannierState(C_kul, U_kww)
 
     def initial_wannier(self, calc, method, kptgrid, edf_k, spin):
-        print(method, self.fixedstates_k, edf_k, spin, self.Nb)
         C_kul, U_kww = calc.initial_wannier(
             method, kptgrid, self.fixedstates_k,
             edf_k, spin, self.Nb)
