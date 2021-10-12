@@ -76,6 +76,35 @@ class DefectBuilder():
         return vacancies
 
 
+    def create_antisites(self, intrinsic=True, extrinsic=None):
+        spg_host = self.setup_spg_cell()
+        eq_pos = self.get_equivalent_atoms(spg_host)
+        defect_list = []
+        if intrinsic:
+            for i in range(len(self.atoms)):
+                symbol = self.atoms[i].symbol
+                if symbol not in defect_list:
+                    defect_list.append(symbol)
+        if extrinsic is not None:
+            for i, element in enumerate(extrinsic):
+                if element not in defect_list:
+                    defect_list.append(extrinsic[i])
+
+        antisites = []
+        finished_list = []
+        for i in range(len(self.atoms)):
+            if not eq_pos[i] in finished_list:
+                for element in defect_list:
+                    if not self.atoms[i].symbol == element:
+                        antisite = self.atoms.copy()
+                        sitename = antisite.get_chemical_symbols()[i]
+                        antisite[i].symbol = element
+                        antisites.append(antisite)
+                finished_list.append(eq_pos[i])
+
+        return antisites
+
+
     def create_interstitials(self):
         # add elemental dependency
         vor = self.get_voronoi_object()
