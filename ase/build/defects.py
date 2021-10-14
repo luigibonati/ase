@@ -1,6 +1,7 @@
 """Helper utilities for creating defect structures."""
 import numpy as np
 from ase.visualize import view
+from ase.spacegroup.wyckoff import Wyckoff
 from scipy.spatial import Voronoi
 from ase import Atoms, Atom
 import spglib as spg
@@ -51,6 +52,10 @@ class DefectBuilder():
         dataset = spg.get_symmetry_dataset(spg_cell)
 
         return dataset['wyckoffs']
+
+
+    def get_wyckoff_object(self, sg):
+        return Wyckoff(sg)
 
 
     def get_equivalent_atoms(self, spg_cell):
@@ -147,33 +152,35 @@ class DefectBuilder():
         interstitials = []
         defect_list = self.get_kindlist(intrinsic=intrinsic,
                                         extrinsic=extrinsic)
-        for i, position in enumerate(voronoi_positions):
-            cell = atoms.get_cell()
-            # position = [0.25 * cell[0][0], 0.5 * (cell[1][0] + cell[1][1]), 0]
-            # position = [1, 2, 3]
-            for kind in defect_list:
-                interstitial = atoms.copy()
-                positions = interstitial.get_positions()
-                positions = np.append(positions, [position], axis=0)
-                symbols = interstitial.get_chemical_symbols()
-                symbols.append(kind)
-                interstitial = Atoms(symbols,
-                                     positions,
-                                     cell=cell)
-                spg_temp = self.setup_spg_cell(interstitial)
-                wyckoff = self.get_wyckoff_symbols(spg_temp)
-                dataset = spg.get_symmetry_dataset(spg_temp)
-                pointgroup = dataset['number']
-                # view(interstitial)
-                print(wyckoff, pointgroup)
-                # if wyckoff[-1] not in wyckoffs:
-                overlap = False
-                for element in atoms.get_positions():
-                    if np.sum(abs(element - position)) < 0.1:
-                        overlap = True
-                if not overlap:
-                    interstitials.append(interstitial)
-            wyckoffs.append(wyckoff[-1])
+        wyckoff = self.get_wyckoff_object(dataset['number'])
+        print(wyckoff, wyckoff.wyckoff)
+        # for i, position in enumerate(voronoi_positions):
+        #     cell = atoms.get_cell()
+        #     # position = [0.25 * cell[0][0], 0.5 * (cell[1][0] + cell[1][1]), 0]
+        #     # position = [1, 2, 3]
+        #     for kind in defect_list:
+        #         interstitial = atoms.copy()
+        #         positions = interstitial.get_positions()
+        #         positions = np.append(positions, [position], axis=0)
+        #         symbols = interstitial.get_chemical_symbols()
+        #         symbols.append(kind)
+        #         interstitial = Atoms(symbols,
+        #                              positions,
+        #                              cell=cell)
+        #         spg_temp = self.setup_spg_cell(interstitial)
+        #         wyckoff = self.get_wyckoff_symbols(spg_temp)
+        #         dataset = spg.get_symmetry_dataset(spg_temp)
+        #         pointgroup = dataset['number']
+        #         # view(interstitial)
+        #         print(wyckoff, pointgroup)
+        #         # if wyckoff[-1] not in wyckoffs:
+        #         overlap = False
+        #         for element in atoms.get_positions():
+        #             if np.sum(abs(element - position)) < 0.1:
+        #                 overlap = True
+        #         if not overlap:
+        #             interstitials.append(interstitial)
+        #     wyckoffs.append(wyckoff[-1])
 
         return interstitials
 
