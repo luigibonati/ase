@@ -132,17 +132,26 @@ class DefectBuilder():
         return antisites
 
 
+    def draw_voronoi(self, voronoi):
+        from scipy.spatial import voronoi_plot_2d
+        import matplotlib.pyplot as plt
+        fig = voronoi_plot_2d(voronoi)
+        plt.show()
+
+
     def create_interstitials(self, intrinsic=True, extrinsic=None):
         # add elemental dependency
         atoms = self.get_input_structure()
         dim = self.get_dimension()
         vor = self.get_voronoi_object()
+        self.draw_voronoi(vor)
         vertices = self.get_voronoi_points(vor)
         ridges = self.get_voronoi_ridges(vor)
         regions = self.get_voronoi_regions(vor)
         middle = self.get_voronoi_middle(vertices, ridges)
         center = self.get_voronoi_center(vertices, regions)
-        voronoi_positions = self.get_voronoi_all(vertices, middle, center)
+        ridge = self.get_voronoi_ridge_points(vor)
+        voronoi_positions = self.get_voronoi_all(vertices, middle, center, ridge)
         # voronoi_positions = vertices
         spg_host = self.setup_spg_cell()
         dataset = spg.get_symmetry_dataset(spg_host)
@@ -153,34 +162,45 @@ class DefectBuilder():
         defect_list = self.get_kindlist(intrinsic=intrinsic,
                                         extrinsic=extrinsic)
         wyckoff = self.get_wyckoff_object(dataset['number'])
-        print(wyckoff, wyckoff.wyckoff)
-        # for i, position in enumerate(voronoi_positions):
-        #     cell = atoms.get_cell()
-        #     # position = [0.25 * cell[0][0], 0.5 * (cell[1][0] + cell[1][1]), 0]
-        #     # position = [1, 2, 3]
-        #     for kind in defect_list:
-        #         interstitial = atoms.copy()
-        #         positions = interstitial.get_positions()
-        #         positions = np.append(positions, [position], axis=0)
-        #         symbols = interstitial.get_chemical_symbols()
-        #         symbols.append(kind)
-        #         interstitial = Atoms(symbols,
-        #                              positions,
-        #                              cell=cell)
-        #         spg_temp = self.setup_spg_cell(interstitial)
-        #         wyckoff = self.get_wyckoff_symbols(spg_temp)
-        #         dataset = spg.get_symmetry_dataset(spg_temp)
-        #         pointgroup = dataset['number']
-        #         # view(interstitial)
-        #         print(wyckoff, pointgroup)
-        #         # if wyckoff[-1] not in wyckoffs:
-        #         overlap = False
-        #         for element in atoms.get_positions():
-        #             if np.sum(abs(element - position)) < 0.1:
-        #                 overlap = True
-        #         if not overlap:
-        #             interstitials.append(interstitial)
-        #     wyckoffs.append(wyckoff[-1])
+        # print(wyckoff, wyckoff.wyckoff)
+        cell = atoms.get_cell()
+        interstitial = atoms.copy()
+        for i, position in enumerate(voronoi_positions):
+            # if (position[0] < 1/3. * cell[0][0]) and (1/3. * position[1] < cell[1][1]) and (1/3. * position[2] < cell[2][2]):
+                print(i, position)
+                # position = [0.25 * cell[0][0], 0.5 * (cell[1][0] + cell[1][1]), 0]
+                # position = [1, 2, 3]
+                for kind in defect_list:
+                    # interstitial = atoms.copy()
+                    positions = interstitial.get_positions()
+                    symbols = interstitial.get_chemical_symbols()
+                    flag = True
+                    for element in positions:
+                        print(position, element)
+                        print(abs(np.sum(position - element, axis=0)))
+                        if abs(np.sum(position - element, axis=0)) < 0.1:
+                            flag = False
+                    if flag:
+                        positions = np.append(positions, [position], axis=0)
+                        symbols.append(kind)
+                        interstitial = Atoms(symbols,
+                                             positions,
+                                             cell=cell)
+                #     spg_temp = self.setup_spg_cell(interstitial)
+                #     wyckoff = self.get_wyckoff_symbols(spg_temp)
+                #     dataset = spg.get_symmetry_dataset(spg_temp)
+                #     pointgroup = dataset['number']
+                #     # view(interstitial)
+                #     print(wyckoff, pointgroup)
+                #     # if wyckoff[-1] not in wyckoffs:
+                #     overlap = False
+                #     for element in atoms.get_positions():
+                #         if np.sum(abs(element - position)) < 0.1:
+                #             overlap = True
+                #     # if not overlap:
+                #         # interstitials.append(interstitial)
+                # wyckoffs.append(wyckoff[-1])
+        interstitials.append(interstitial)
 
         return interstitials
 
@@ -207,20 +227,27 @@ class DefectBuilder():
         return Voronoi(points)
 
 
-    def get_voronoi_all(self, vertices, middle, center):
-        voronoi_positions = np.empty((len(vertices) + len(middle) + len(center), 3))
+    def get_voronoi_all(self, vertices, middle, center, ridge):
+        voronoi_positions = np.empty((len(vertices) + len(middle) + len(center) + len(ridge), 3))
         for i, element in enumerate(vertices):
             voronoi_positions[i] = np.array((element[0],
                                              element[1],
                                              element[2]))
+        off = len(vertices)
         for i, element in enumerate(middle):
-            voronoi_positions[i + len(vertices)] = np.array((element[0],
-                                                             element[1],
-                                                             element[2]))
+            voronoi_positions[i + off] = np.array((element[0],
+                                                   element[1],
+                                                   element[2]))
+        off = len(vertices) + len(middle)
         for i, element in enumerate(center):
-            voronoi_positions[i + len(vertices) + len(middle)] = np.array((element[0],
-                                                                           element[1],
-                                                                           element[2]))
+            voronoi_positions[i + off] = np.array((element[0],
+                                                   element[1],
+                                                   element[2]))
+        off = len(vertices) + len(middle) + len(center)
+        for i, element in enumerate(ridge):
+            voronoi_positions[i + off] = np.array((element[0],
+                                                   element[1],
+                                                   element[2]))
 
         return voronoi_positions
 
@@ -306,3 +333,22 @@ class DefectBuilder():
         middle = np.delete(middle, remove, axis=0)
 
         return middle
+
+
+    def get_voronoi_ridge_points(self, voronoi):
+        ridge_points = voronoi.ridge_points
+        points = self.get_input_structure().get_positions()
+        middle = np.zeros((len(ridge_points), 3))
+        for i, ridge in enumerate(ridge_points):
+            p1 = [points[ridge[0]][0],
+                  points[ridge[0]][1],
+                  points[ridge[0]][2]]
+            p2 = [points[ridge[1]][0],
+                  points[ridge[1]][1],
+                  points[ridge[1]][2]]
+            middle[i] = get_middle_point(p1, p2)
+
+        return middle
+
+
+
