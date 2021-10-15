@@ -26,6 +26,7 @@ class DefectBuilder():
     """
     Builder for setting up defect structures.
     """
+    # todo: automtatic handling of supercell in 2D and 3D
     from .defects import get_middle_point
 
     def __init__(self, atoms):
@@ -132,10 +133,13 @@ class DefectBuilder():
         return antisites
 
 
-    def draw_voronoi(self, voronoi):
+    def draw_voronoi(self, voronoi, pos):
         from scipy.spatial import voronoi_plot_2d
         import matplotlib.pyplot as plt
         fig = voronoi_plot_2d(voronoi)
+        pos = pos[:, :2]
+        print(pos[:, 0], pos[:, 1])
+        plt.scatter(pos[:, 0], pos[:, 1], marker='s', color='C2')
         plt.show()
 
 
@@ -144,7 +148,6 @@ class DefectBuilder():
         atoms = self.get_input_structure()
         dim = self.get_dimension()
         vor = self.get_voronoi_object()
-        self.draw_voronoi(vor)
         vertices = self.get_voronoi_points(vor)
         ridges = self.get_voronoi_ridges(vor)
         regions = self.get_voronoi_regions(vor)
@@ -152,7 +155,8 @@ class DefectBuilder():
         center = self.get_voronoi_center(vertices, regions)
         ridge = self.get_voronoi_ridge_points(vor)
         voronoi_positions = self.get_voronoi_all(vertices, middle, center, ridge)
-        # voronoi_positions = vertices
+        # voronoi_positions = middle
+        # self.draw_voronoi(vor, voronoi_positions)
         spg_host = self.setup_spg_cell()
         dataset = spg.get_symmetry_dataset(spg_host)
         # print(dataset['number'])
@@ -167,7 +171,7 @@ class DefectBuilder():
         interstitial = atoms.copy()
         for i, position in enumerate(voronoi_positions):
             # if (position[0] < 1/3. * cell[0][0]) and (1/3. * position[1] < cell[1][1]) and (1/3. * position[2] < cell[2][2]):
-                print(i, position)
+                # print(i, position)
                 # position = [0.25 * cell[0][0], 0.5 * (cell[1][0] + cell[1][1]), 0]
                 # position = [1, 2, 3]
                 for kind in defect_list:
@@ -176,9 +180,9 @@ class DefectBuilder():
                     symbols = interstitial.get_chemical_symbols()
                     flag = True
                     for element in positions:
-                        print(position, element)
-                        print(abs(np.sum(position - element, axis=0)))
-                        if abs(np.sum(position - element, axis=0)) < 0.1:
+                        # print(position, element)
+                        # print(abs(np.sum(position - element, axis=0)))
+                        if abs(np.sum(position - element, axis=0)) < 0.01:
                             flag = False
                     if flag:
                         positions = np.append(positions, [position], axis=0)
@@ -200,9 +204,69 @@ class DefectBuilder():
                 #     # if not overlap:
                 #         # interstitials.append(interstitial)
                 # wyckoffs.append(wyckoff[-1])
+        newcell = self.get_newcell(cell)
+        newpos = self.shift_positions(interstitial.get_positions(), newcell)
+        interstitial.set_cell(newcell)
+        interstitial.set_positions(newpos, newcell)
+        interstitial = self.cut_positions(interstitial)
         interstitials.append(interstitial)
 
         return interstitials
+
+
+    def get_newcell(self, cell, N=3):
+        a = np.empty((3, 3))
+        dim = self.get_dimension()
+        if dim == 3:
+            for i in range(3):
+                a[i] = 1. / N * np.array([cell[i][0], cell[i][1], cell[i][2]])
+        elif dim == 2:
+            for i in range(2):
+                a[i] = 1. / N * np.array([cell[i][0], cell[i][1], cell[i][2]])
+            a[2] = np.array([cell[2][0], cell[2][1], cell[2][2]])
+
+        return a
+
+
+    def shift_positions(self, positions, cell):
+        a = positions.copy()
+        dim = self.get_dimension()
+        if dim == 3:
+            for i, pos in enumerate(positions):
+                for j in range(3):
+                    a[i][j] = pos[j] - (cell[0][j] + cell[1][j] + cell[2][j])
+        elif dim == 2:
+            for i, pos in enumerate(positions):
+                for j in range(2):
+                    a[i][j] = pos[j] - (cell[0][j] + cell[1][j])
+
+        return a
+
+
+    def remove_atoms(self, atoms, indexlist):
+        indices = np.array(indexlist)
+        indices = np.sort(indices)[::-1]
+        for element in indices:
+            atoms.pop(element)
+
+        return atoms
+
+
+
+    def cut_positions(self, atoms, tolerance=0.01):
+        positions = atoms.get_scaled_positions()
+        indexlist = []
+        for i, pos in enumerate(positions):
+            if (pos[0] >= 1 or
+               pos[0] < 0 or
+               pos[1] >= 1 or
+               pos[1] < 0 or
+               pos[2] >= 1 or
+               pos[2] < 0):
+                indexlist.append(i)
+        atoms = self.remove_atoms(atoms, indexlist)
+
+        return atoms
 
 
     def get_voronoi_object(self):
