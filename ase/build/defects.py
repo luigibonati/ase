@@ -30,8 +30,16 @@ class DefectBuilder():
     from .defects import get_middle_point
 
     def __init__(self, atoms):
-        self.atoms = atoms
         self.dim = np.sum(atoms.get_pbc())
+        self.atoms = self._set_construction_cell(atoms)
+
+
+    def _set_construction_cell(self, atoms):
+        dim = self.get_dimension()
+        if dim == 3:
+            return atoms.repeat((3, 3, 3))
+        elif dim == 2:
+            return atoms.repeat((3, 3, 1))
 
 
     def setup_spg_cell(self,
@@ -136,82 +144,68 @@ class DefectBuilder():
     def draw_voronoi(self, voronoi, pos):
         from scipy.spatial import voronoi_plot_2d
         import matplotlib.pyplot as plt
+        assert self.is_planar(), 'Can only be plotted for planar 2D structures!'
         fig = voronoi_plot_2d(voronoi)
-        pos = pos[:, :2]
-        print(pos[:, 0], pos[:, 1])
-        plt.scatter(pos[:, 0], pos[:, 1], marker='s', color='C2')
         plt.show()
 
 
-    def create_interstitials(self, intrinsic=True, extrinsic=None):
-        # add elemental dependency
+    def get_voronoi_positions(self):
         atoms = self.get_input_structure()
         dim = self.get_dimension()
         vor = self.get_voronoi_object()
-        vertices = self.get_voronoi_points(vor)
-        ridges = self.get_voronoi_ridges(vor)
-        regions = self.get_voronoi_regions(vor)
-        middle = self.get_voronoi_middle(vertices, ridges)
-        center = self.get_voronoi_center(vertices, regions)
-        ridge = self.get_voronoi_ridge_points(vor)
-        voronoi_positions = self.get_voronoi_all(vertices, middle, center, ridge)
-        # voronoi_positions = middle
-        # self.draw_voronoi(vor, voronoi_positions)
-        spg_host = self.setup_spg_cell()
-        dataset = spg.get_symmetry_dataset(spg_host)
-        # print(dataset['number'])
-        host_wyckoffs = self.get_wyckoff_symbols(spg_host)
-        wyckoffs = []
-        interstitials = []
-        defect_list = self.get_kindlist(intrinsic=intrinsic,
-                                        extrinsic=extrinsic)
-        wyckoff = self.get_wyckoff_object(dataset['number'])
-        # print(wyckoff, wyckoff.wyckoff)
+        v1 = self.get_voronoi_points(vor)
+        v2 = self.get_voronoi_lines(vor, v1)
+        v3 = self.get_voronoi_faces(vor, v1)
+        v4 = self.get_voronoi_ridges(vor)
+        positions = np.concatenate([v1, v2, v3, v4], axis=0)
+
+        return positions
+
+
+    def get_interstitial_mock(self, view=False):
+        atoms = self.get_input_structure()
+        dim = self.get_dimension()
+        voronoi_positions = self.get_voronoi_positions()
         cell = atoms.get_cell()
         interstitial = atoms.copy()
         for i, position in enumerate(voronoi_positions):
-            # if (position[0] < 1/3. * cell[0][0]) and (1/3. * position[1] < cell[1][1]) and (1/3. * position[2] < cell[2][2]):
-                # print(i, position)
-                # position = [0.25 * cell[0][0], 0.5 * (cell[1][0] + cell[1][1]), 0]
-                # position = [1, 2, 3]
-                for kind in defect_list:
-                    # interstitial = atoms.copy()
-                    positions = interstitial.get_positions()
-                    symbols = interstitial.get_chemical_symbols()
-                    flag = True
-                    for element in positions:
-                        # print(position, element)
-                        # print(abs(np.sum(position - element, axis=0)))
-                        if abs(np.sum(position - element, axis=0)) < 0.01:
-                            flag = False
-                    if flag:
-                        positions = np.append(positions, [position], axis=0)
-                        symbols.append(kind)
-                        interstitial = Atoms(symbols,
-                                             positions,
-                                             cell=cell)
-                #     spg_temp = self.setup_spg_cell(interstitial)
-                #     wyckoff = self.get_wyckoff_symbols(spg_temp)
-                #     dataset = spg.get_symmetry_dataset(spg_temp)
-                #     pointgroup = dataset['number']
-                #     # view(interstitial)
-                #     print(wyckoff, pointgroup)
-                #     # if wyckoff[-1] not in wyckoffs:
-                #     overlap = False
-                #     for element in atoms.get_positions():
-                #         if np.sum(abs(element - position)) < 0.1:
-                #             overlap = True
-                #     # if not overlap:
-                #         # interstitials.append(interstitial)
-                # wyckoffs.append(wyckoff[-1])
+            positions = interstitial.get_positions()
+            symbols = interstitial.get_chemical_symbols()
+            flag = True
+            for element in positions:
+                if abs(np.sum(position - element, axis=0)) < 0.01:
+                    flag = False
+            if flag:
+                positions = np.append(positions, [position], axis=0)
+                symbols.append('X')
+                interstitial = Atoms(symbols,
+                                     positions,
+                                     cell=cell)
+        interstitial = self.cut_positions(interstitial)
+        if view:
+            view(interstitial)
+
+        return interstitial
+
+
+    def cut_positions(self, interstitial):
+        cell = interstitial.get_cell()
         newcell = self.get_newcell(cell)
-        newpos = self.shift_positions(interstitial.get_positions(), newcell)
+        newpos = self.shift_positions(interstitial.get_positions(),
+                                      newcell)
         interstitial.set_cell(newcell)
         interstitial.set_positions(newpos, newcell)
-        interstitial = self.cut_positions(interstitial)
-        interstitials.append(interstitial)
 
-        return interstitials
+        positions = interstitial.get_scaled_positions()
+        indexlist = []
+        for i, pos in enumerate(positions):
+            if (pos[0] >= 1 or pos[0] < 0 or
+               pos[1] >= 1 or pos[1] < 0 or
+               pos[2] >= 1 or pos[2] < 0):
+                indexlist.append(i)
+        interstitial = self.remove_atoms(interstitial, indexlist)
+
+        return interstitial
 
 
     def get_newcell(self, cell, N=3):
@@ -219,11 +213,17 @@ class DefectBuilder():
         dim = self.get_dimension()
         if dim == 3:
             for i in range(3):
-                a[i] = 1. / N * np.array([cell[i][0], cell[i][1], cell[i][2]])
+                a[i] = 1. / N * np.array([cell[i][0],
+                                          cell[i][1],
+                                          cell[i][2]])
         elif dim == 2:
             for i in range(2):
-                a[i] = 1. / N * np.array([cell[i][0], cell[i][1], cell[i][2]])
-            a[2] = np.array([cell[2][0], cell[2][1], cell[2][2]])
+                a[i] = 1. / N * np.array([cell[i][0],
+                                          cell[i][1],
+                                          cell[i][2]])
+            a[2] = np.array([cell[2][0],
+                             cell[2][1],
+                             cell[2][2]])
 
         return a
 
@@ -252,70 +252,6 @@ class DefectBuilder():
         return atoms
 
 
-
-    def cut_positions(self, atoms, tolerance=0.01):
-        positions = atoms.get_scaled_positions()
-        indexlist = []
-        for i, pos in enumerate(positions):
-            if (pos[0] >= 1 or
-               pos[0] < 0 or
-               pos[1] >= 1 or
-               pos[1] < 0 or
-               pos[2] >= 1 or
-               pos[2] < 0):
-                indexlist.append(i)
-        atoms = self.remove_atoms(atoms, indexlist)
-
-        return atoms
-
-
-    def get_voronoi_object(self):
-        # TODO: choose reasonable out of plane distance
-        atoms = self.get_input_structure()
-        dist = 3
-        points = atoms.get_positions()
-        if self.dim == 2 and self.is_planar(atoms):
-            print('INFO: planar 2D structure.')
-            # i_max = len(points)
-            # for i, point in enumerate(points):
-            #     if i > i_max:
-            #         break
-            #     elif i <= i_max:
-            #         points = np.append(points,
-            #                            [point + [0, 0, dist],
-            #                             point - [0, 0, dist]],
-            #                            axis=0)
-            points = points[:, :2]
-        elif self.dim == 1:
-            raise NotImplementedError("Not implemented for 1D structures.")
-        return Voronoi(points)
-
-
-    def get_voronoi_all(self, vertices, middle, center, ridge):
-        voronoi_positions = np.empty((len(vertices) + len(middle) + len(center) + len(ridge), 3))
-        for i, element in enumerate(vertices):
-            voronoi_positions[i] = np.array((element[0],
-                                             element[1],
-                                             element[2]))
-        off = len(vertices)
-        for i, element in enumerate(middle):
-            voronoi_positions[i + off] = np.array((element[0],
-                                                   element[1],
-                                                   element[2]))
-        off = len(vertices) + len(middle)
-        for i, element in enumerate(center):
-            voronoi_positions[i + off] = np.array((element[0],
-                                                   element[1],
-                                                   element[2]))
-        off = len(vertices) + len(middle) + len(center)
-        for i, element in enumerate(ridge):
-            voronoi_positions[i + off] = np.array((element[0],
-                                                   element[1],
-                                                   element[2]))
-
-        return voronoi_positions
-
-
     def get_z_position(self, atoms):
         assert self.is_planar(atoms), 'No planar structure.'
 
@@ -338,71 +274,61 @@ class DefectBuilder():
         return vertices
 
 
-    def get_voronoi_regions(self, voronoi):
-        return voronoi.regions
+    def get_voronoi_object(self):
+        atoms = self.get_input_structure()
+        dist = 3
+        points = atoms.get_positions()
+        if self.dim == 2 and self.is_planar(atoms):
+            points = points[:, :2]
+        elif self.dim == 1:
+            raise NotImplementedError("Not implemented for 1D structures.")
+
+        return Voronoi(points)
 
 
-    def get_voronoi_ridges(self, voronoi):
-        return voronoi.ridge_vertices
+    def get_voronoi_lines(self, voronoi, points):
+        ridges = voronoi.ridge_vertices
+        lines = np.zeros((len(ridges), 3))
+        remove = []
+        for i, ridge in enumerate(ridges):
+            if not ridge[0] == -1:
+                p1 = [points[ridge[0]][0],
+                      points[ridge[0]][1],
+                      points[ridge[0]][2]]
+                p2 = [points[ridge[1]][0],
+                      points[ridge[1]][1],
+                      points[ridge[1]][2]]
+                lines[i] = get_middle_point(p1, p2)
+            else:
+                remove.append(i)
+        lines = np.delete(lines, remove, axis=0)
+
+        return lines
 
 
-    def get_voronoi_center(self, vertices, regions, dim=3):
-        if True:
-            centers = np.zeros((len(regions), 3))
-            remove = []
-            for i, region in enumerate(regions):
-                if -1 not in region and len(region) > 1:
-                    array = np.zeros((len(region), 3))
-                    for j, element in enumerate(region):
-                        array[j][0] = vertices[element][0]
-                        array[j][1] = vertices[element][1]
-                        array[j][2] = vertices[element][2]
-                    centers[i] = centeroidnp(array)
-                else:
-                    remove.append(i)
-            centers = np.delete(centers, remove, axis=0)
-        # elif dim == 2:
-        #     centers = np.zeros((len(regions), 2))
-        #     remove = []
-        #     for i, region in enumerate(regions):
-        #         if -1 not in region and len(region) > 1:
-        #             array = np.zeros((len(region), 2))
-        #             for j, element in enumerate(region):
-        #                 array[j][0] = vertices[element][0]
-        #                 array[j][1] = vertices[element][1]
-        #             centers[i] = centeroidnp(array)
-        #         else:
-        #             remove.append(i)
-        #     centers = np.delete(centers, remove, axis=0)
+    def get_voronoi_faces(self, voronoi, points):
+        regions = voronoi.regions
+        centers = np.zeros((len(regions), 3))
+        remove = []
+        for i, region in enumerate(regions):
+            if -1 not in region and len(region) > 1:
+                array = np.zeros((len(region), 3))
+                for j, element in enumerate(region):
+                    array[j][0] = points[element][0]
+                    array[j][1] = points[element][1]
+                    array[j][2] = points[element][2]
+                centers[i] = centeroidnp(array)
+            else:
+                remove.append(i)
+        centers = np.delete(centers, remove, axis=0)
 
         return centers
 
 
-    def get_voronoi_middle(self, vertices, ridge_vertices):
-        middle = np.zeros((len(ridge_vertices), 3))
-        remove = []
-        for i, ridge in enumerate(ridge_vertices):
-            if not ridge[0] == -1:
-                p1 = [vertices[ridge[0]][0],
-                      vertices[ridge[0]][1],
-                      vertices[ridge[0]][2]]
-                p2 = [vertices[ridge[1]][0],
-                      vertices[ridge[1]][1],
-                      vertices[ridge[1]][2]]
-                middle[i] = get_middle_point(p1, p2)
-                # print(middle[i])
-            else:
-                remove.append(i)
-        # print(middle)
-        middle = np.delete(middle, remove, axis=0)
-
-        return middle
-
-
-    def get_voronoi_ridge_points(self, voronoi):
+    def get_voronoi_ridges(self, voronoi):
         ridge_points = voronoi.ridge_points
         points = self.get_input_structure().get_positions()
-        middle = np.zeros((len(ridge_points), 3))
+        array = np.zeros((len(ridge_points), 3))
         for i, ridge in enumerate(ridge_points):
             p1 = [points[ridge[0]][0],
                   points[ridge[0]][1],
@@ -410,9 +336,6 @@ class DefectBuilder():
             p2 = [points[ridge[1]][0],
                   points[ridge[1]][1],
                   points[ridge[1]][2]]
-            middle[i] = get_middle_point(p1, p2)
+            array[i] = get_middle_point(p1, p2)
 
-        return middle
-
-
-
+        return array
