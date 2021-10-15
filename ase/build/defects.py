@@ -26,11 +26,11 @@ class DefectBuilder():
     """
     Builder for setting up defect structures.
     """
-    # todo: automtatic handling of supercell in 2D and 3D
     from .defects import get_middle_point
 
     def __init__(self, atoms):
         self.dim = np.sum(atoms.get_pbc())
+        self.primitive = atoms
         self.atoms = self._set_construction_cell(atoms)
 
 
@@ -40,6 +40,10 @@ class DefectBuilder():
             return atoms.repeat((3, 3, 3))
         elif dim == 2:
             return atoms.repeat((3, 3, 1))
+
+
+    def get_primitive_structure(self):
+        return self.primitive
 
 
     def setup_spg_cell(self,
@@ -186,6 +190,30 @@ class DefectBuilder():
             view(interstitial)
 
         return interstitial
+
+
+    def get_spg_cell(self, atoms):
+        return (atoms.get_cell(),
+                atoms.get_scaled_positions(),
+                atoms.get_atomic_numbers())
+
+
+    def get_host_symmetry(self):
+        atoms = self.get_primitive_structure()
+        spg_cell = self.get_spg_cell(atoms)
+        dataset = spg.get_symmetry_dataset(spg_cell)
+
+        return dataset
+
+
+    def get_wyckoff_data(self, number):
+        wyckoff = Wyckoff(number)
+
+        return wyckoff.wyckoff
+
+
+    # def allowed_positions(self, position, wyckoff):
+    #     
 
 
     def cut_positions(self, interstitial):
