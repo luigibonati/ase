@@ -197,11 +197,17 @@ class DefectBuilder():
         interstitial.set_positions(newpos, newcell)
 
         positions = interstitial.get_scaled_positions()
+        symbols = interstitial.get_chemical_symbols()
         indexlist = []
-        for i, pos in enumerate(positions):
-            if (pos[0] >= 1 or pos[0] < 0 or
-               pos[1] >= 1 or pos[1] < 0 or
-               pos[2] >= 1 or pos[2] < 0):
+        for i, symbol in enumerate(symbols):
+            if symbol == 'X':
+                th = 0.01
+            else:
+                th = 0
+            pos = positions[i]
+            if (pos[0] >= (1 + th) or pos[0] < (0 - th) or
+               pos[1] >= (1 + th) or pos[1] < (0 - th) or
+               pos[2] >= (1 + th) or pos[2] < (0 - th)):
                 indexlist.append(i)
         interstitial = self.remove_atoms(interstitial, indexlist)
 
