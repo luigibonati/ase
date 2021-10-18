@@ -207,13 +207,55 @@ class DefectBuilder():
 
 
     def get_wyckoff_data(self, number):
-        wyckoff = Wyckoff(number)
+        wyckoff = Wyckoff(number).wyckoff
+        coordinates = {}
+        for element in wyckoff['letters']:
+            coordinates[element] = wyckoff[element]['coordinates']
 
-        return wyckoff.wyckoff
+        return coordinates
 
 
-    # def allowed_positions(self, position, wyckoff):
-    #     
+    def allowed_position(self, scaled_position, coordinates, letter='a'):
+        import numexpr
+        import math
+
+        x = scaled_position[0]
+        y = scaled_position[1]
+        z = scaled_position[2]
+
+        fit = True
+        for coordinate in coordinates[letter]:
+            for i in range(3):
+                val = numexpr.evaluate(coordinate.split(',')[i])
+                if math.isclose(val, scaled_position[i], abs_tol=1e-4):
+                    continue
+                else:
+                    fit = False
+            if fit:
+                break
+
+        return fit
+
+
+    def map_positions(self, coordinates):
+        interstitial = self.get_interstitial_mock()
+        scaled_positions = interstitial.get_scaled_positions()
+
+        mapped = np.empty((len(scaled_positions), 4))
+        for element in coordinates:
+            print(f'Wyckoff position: {element}')
+            for i, pos in enumerate(scaled_positions):
+                if interstitial.get_chemical_symbols()[i] == 'X':
+                    if self.allowed_position(pos, coordinates, element):
+                        print(f'Position: {pos} matched {element}!')
+                        mapped[i][0] = pos[0]
+                        mapped[i][1] = pos[1]
+                        mapped[i][2] = pos[2]
+                        mapped[i][3] = 0
+
+        return mapped
+
+
 
 
     def cut_positions(self, interstitial):
