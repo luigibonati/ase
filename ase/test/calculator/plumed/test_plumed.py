@@ -8,6 +8,83 @@ from ase.io.trajectory import Trajectory
 from pytest import approx
 import pytest
 from ase.calculators.plumed import restart_from_trajectory
+from ase import units
+
+
+@pytest.mark.calculator_lite
+@pytest.mark.calculator('plumed')
+def test_units(factory):
+    """
+    Note: if this test fails, plumed or ASE changed some units.
+    It has to be fixed in the contructor of the plumed calculator.
+
+    In this test is considered two atoms interacting through a potential with the form:
+
+    (lower wall in plumed setup)
+    V = k (r - r0)^2
+
+    The values are fixed as follow:
+    
+    time = 1 ASE time units
+    k = 1 kJ/(mol*nm^2)
+    r = 1 Angstrom
+    r0 = 1.1 nm 
+    
+    considering r in nm, V = 1 kJ/mol and the forces F(r) = 2 kJ/(mol*nm) """
+
+    set_plumed = ["e: ENERGY",                          # check energy units
+                  "d: DISTANCE ATOMS=1,2",              # check distance units
+                  "LOWER_WALLS ARG=d AT=1.1 KAPPA=1",   # check forces recieved
+                  "DUMPMASSCHARGE FILE=mass_charge",    # check mass and charges
+                  "PRINT ARG=e,d FILE=COLVAR",
+                  "FLUSH STRIDE=1"]
+
+    # execution
+    atoms = Atoms('CO', positions=[[0, 0, 0], [0, 0, 1]], charges=[0, 1])  # CO molecule
+
+    timestep = 1
+    calc = IdealGas()
+    with factory.calc(calc=calc, 
+                input=set_plumed,
+                timestep=timestep,
+                atoms=atoms,
+                use_charge=True) as calc:
+        ener, forces = atoms.calc.compute_bias(atoms.get_positions(), 1, 
+                                               atoms.get_potential_energy())
+        files = calc.read_plumed_files()
+    
+    # the next values are in ase units
+    ase_values = {'time': 1, 
+                  'energy': ener, 
+                  'distance': 1, 
+                  'masses': atoms.get_masses(), 
+                  'charges': atoms.get_initial_charges(), 
+                  'forces': forces}
+    
+    # The next values are in plumed units.
+    plumed_values = {'time': files['COLVAR'][0][-1], 
+                     'energy': files['COLVAR'][1][-1], 
+                     'distance': files['COLVAR'][2][-1], 
+                     'masses': files['mass_charge'][1], 
+                     'charges': files['mass_charge'][2], 
+                     'forces': np.array([[0, 0, -2], [0, 0, 2]])}
+    
+    assert ase_values['time'] * 1/(1000*units.fs) == \
+           approx(plumed_values['time'], abs=1E-5), \
+           "error in time units"
+    assert ase_values['energy'] * units.mol/units.kJ == \
+           approx(plumed_values['energy'], abs=1E-5), \
+           "error in energy units"
+    assert ase_values['distance'] * 1/units.nm == \
+           approx(plumed_values['distance'], abs=1E-5), \
+           "error in distance units"
+    assert ase_values['forces'] * units.nm * units.mol/units.kJ == \
+           approx(plumed_values['forces'], abs=1E-5), \
+           "error in forces units"
+    assert ase_values['masses'] == approx(plumed_values['masses'], abs=1E-5),\
+           "error in masses units"
+    assert ase_values['charges'] == approx(plumed_values['charges'], abs=1E-5),\
+           "error in charges units"
 
 
 @pytest.mark.calculator_lite
@@ -17,7 +94,9 @@ def test_CVs(factory):
     Moreover, it computes those CVs directly from atoms.positions and
     compares them"""
     # plumed setting
-    set_plumed = ["c1: COM ATOMS=1,2",
+    ps = 1000 * units.fs
+    set_plumed = [f"UNITS LENGTH=A TIME={1/ps} ENERGY={units.mol/units.kJ}",
+                  "c1: COM ATOMS=1,2",
                   "c2: CENTER ATOMS=1,2",
                   "l: DISTANCE ATOMS=c1,c2",
                   "d: DISTANCE ATOMS=1,2",
@@ -71,8 +150,10 @@ def test_metadyn(factory):
     forceWithBias = 0.28807
 
     assert (atoms.get_positions()[0][0] == approx(position1, abs=0.01) and
-            atoms.get_positions()[1][0] == approx(position2, abs=0.01)), "Error in the metadynamics simulation"
-    assert atoms.get_forces()[0][0] == approx(forceWithBias, abs=0.01), "Error in the computation of Bias-forces"
+            atoms.get_positions()[1][0] == approx(position2, abs=0.01)), \
+           "Error in the metadynamics simulation"
+    assert atoms.get_forces()[0][0] == approx(forceWithBias, abs=0.01), \
+           "Error in the computation of Bias-forces"
 
 
 @pytest.mark.calculator_lite
@@ -97,10 +178,12 @@ def test_restart(factory):
     position2 = 6.73693
     forceWithBias = 0.28807
 
-    assert atoms1.get_forces()[0][0] == approx(forceWithBias, abs=0.01), "Error in restart for the computation of Bias-forces"
+    assert atoms1.get_forces()[0][0] == approx(forceWithBias, abs=0.01), \
+           "Error in restart for the computation of Bias-forces"
 
     assert (atoms1.get_positions()[0][0] == approx(position1, abs=0.01) and
-            atoms1.get_positions()[1][0] == approx(position2, abs=0.01)), "Error in the restart of metadynamics simulation"
+            atoms1.get_positions()[1][0] == approx(position2, abs=0.01)), \
+           "Error in the restart of metadynamics simulation"
     
 
 @pytest.mark.calculator_lite
@@ -137,9 +220,11 @@ def run(factory, inputs, name='',
 
 
 def setups(name=''):
-    set_plumed = ["d: DISTANCE ATOMS=1,2",
+    ps = 1000 * units.fs
+    set_plumed = [f"UNITS LENGTH=A TIME={1/ps} ENERGY={units.mol/units.kJ}",
+                  "d: DISTANCE ATOMS=1,2",
                   "FLUSH STRIDE=1",
-                  "METAD ARG=d SIGMA=0.5 HEIGHT=2 PACE=20 FILE=HILLS_{}".format(name)]
+                  f"METAD ARG=d SIGMA=0.5 HEIGHT=2 PACE=20 FILE=HILLS_{name}"]
     atoms = Atoms('CO', positions=[[0, 0, 0], [6.7, 0, 0]])
     timestep = 0.05
     return set_plumed, atoms, timestep
