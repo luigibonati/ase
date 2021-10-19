@@ -176,15 +176,17 @@ class DefectBuilder():
         atoms = self.get_input_structure()
         dim = self.get_dimension()
         voronoi_positions = self.get_voronoi_positions()
+        voronoi_positions = voronoi_positions[voronoi_positions[:,2].argsort()]
+        # print(voronoi_positions)
         cell = atoms.get_cell()
         interstitial = atoms.copy()
         for i, position in enumerate(voronoi_positions):
             positions = interstitial.get_positions()
             symbols = interstitial.get_chemical_symbols()
             flag = True
-            for element in positions:
-                if abs(np.sum(position - element, axis=0)) < 0.01:
-                    flag = False
+            # for element in positions:
+            #     if abs(np.sum(position - element, axis=0)) < 0.01:
+            #         flag = False
             if flag:
                 positions = np.append(positions, [position], axis=0)
                 symbols.append('X')
@@ -215,7 +217,8 @@ class DefectBuilder():
     def get_wyckoff_data(self, number):
         wyckoff = Wyckoff(number).wyckoff
         coordinates = {}
-        for element in wyckoff['letters']:
+        # for element in wyckoff['letters']:
+        for element in ['a']:
             coordinates[element] = wyckoff[element]['coordinates']
 
         return coordinates
@@ -255,30 +258,156 @@ class DefectBuilder():
                 else:
                     fit = False
             if fit:
+                print(f'INFO: {scaled_position} matched {coordinate}!')
                 break
 
         return fit
 
 
+    def allowed_position_tmp(self, scaled_position, coordinate):
+        import numexpr
+        import math
+
+        x = scaled_position[0]
+        y = scaled_position[1]
+        z = scaled_position[2]
+
+        fit = True
+        for i in range(3):
+            string = coordinate.split(',')[i]
+            try:
+                val = numexpr.evaluate(string)
+            except SyntaxError:
+                N = len(string)
+                for j in range(N):
+                    if string[j] == '-':
+                        tmpstr = ''.join(string[:j + 2])
+                        insert = j + 2
+                    else:
+                        tmpstr = ''.join(string[:j + 1])
+                        insert = j + 1
+                    try:
+                        val = numexpr.evaluate(coordinate.split(',')[i])
+                    except SyntaxError:
+                        string = ''.join(string[:insert]) + '*' + ''.join(string[insert:])
+                        break
+            val = numexpr.evaluate(string)
+            if math.isclose(val, scaled_position[i], abs_tol=1e-6):
+                continue
+            else:
+                fit = False
+
+        return fit
+
+
     def map_positions(self, coordinates):
+        from ase.geometry.geometry import get_distances
         interstitial = self.get_interstitial_mock()
         scaled_positions = interstitial.get_scaled_positions()
+        abs_positions = interstitial.get_positions()
 
-        mapped = np.empty((len(scaled_positions), 4))
+        map_dict = {}
         for element in coordinates:
-            print(f'Wyckoff position: {element}')
-            for i, pos in enumerate(scaled_positions):
-                if interstitial.get_chemical_symbols()[i] == 'X':
-                    if self.allowed_position(pos, coordinates, element):
-                        print(f'Position {pos} matched {element}!')
-                        mapped[i][0] = pos[0]
-                        mapped[i][1] = pos[1]
-                        mapped[i][2] = pos[2]
-                        mapped[i][3] = 0
+            map_dict[f'{element}'] = []
+        for pos in scaled_positions:
+            for element in coordinates:
+                for wyck in coordinates[element]:
+                    if self.allowed_position_tmp(pos, wyck):
+                        previous = map_dict[element]
+                        all_list = self.get_all_pos(pos, coordinates[element])
+                        all_list = self.return_new_values(all_list, previous)
+                        map_dict[f'{element}'] = all_list
+                        break
+                break
 
-        return mapped
+        for element in map_dict:
+            print(element)
+            for coord in map_dict[element]:
+                print(coord)
+            print('===========================================')
 
 
+    def return_new_values(self, list1, list2):
+        import math
+        newlist = list2
+        for i, el1 in enumerate(list1):
+            if len(list2) == 0:
+                newlist.append(el1)
+            else:
+                cond = np.any([math.isclose(el1[0], list2[j][0]) and
+                               math.isclose(el1[1], list2[j][1]) and
+                               math.isclose(el1[2], list2[j][2]) for j in range(len(list2))])
+                if cond:
+                    continue
+                else:
+                    newlist.append(el1)
+        return newlist
+
+
+
+    def get_all_pos(self, pos, coordinates):
+        import numexpr
+        import math
+        x = pos[0]
+        y = pos[1]
+        z = pos[2]
+        positions = []
+        for coordinate in coordinates:
+            value = np.empty(3)
+            for i in range(3):
+                string = coordinate.split(',')[i]
+                val = numexpr.evaluate(string)
+                try:
+                    val = numexpr.evaluate(string)
+                except SyntaxError:
+                    N = len(string)
+                    for j in range(N):
+                        if string[j] == '-':
+                            tmpstr = ''.join(string[:j + 2])
+                            insert = j + 2
+                        else:
+                            tmpstr = ''.join(string[:j + 1])
+                            insert = j + 1
+                        try:
+                            val = numexpr.evaluate(coordinate.split(',')[i])
+                        except SyntaxError:
+                            string = ''.join(string[:insert]) + '*' + ''.join(string[insert:])
+                            break
+                value[i] = numexpr.evaluate(string)
+            if value[0] < 1 and value[1] < 1 and value[2] < 1:
+                positions.append(value)
+
+        return positions
+
+
+        # tmp_atoms = self.get_primitive_structure()
+        # mapped = np.zeros((len(scaled_positions), 4))
+        # for element in coordinates:
+        #     # print(f'Wyckoff position: {element}')
+        #     for i, pos in enumerate(scaled_positions):
+        #         if interstitial.get_chemical_symbols()[i] == 'X':
+        #             if self.allowed_position(pos, coordinates, element):
+        #                 oldpos = tmp_atoms.get_positions()
+        #                 cell = tmp_atoms.get_cell()
+        #                 symbols = tmp_atoms.get_chemical_symbols()
+        #                 distances = get_distances(oldpos, abs_positions[i],
+        #                                           cell=cell, pbc=True)
+        #                 # print(min(distances[1]))
+        #                 if min(distances[1]) > 0.5:
+        #    #                  print(f'Position {pos} matched {element}!')
+        #                     mapped[i][0] = pos[0]
+        #                     mapped[i][1] = pos[1]
+        #                     mapped[i][2] = pos[2]
+        #                     mapped[i][3] = 0
+        #                     positions = np.append(tmp_atoms.get_scaled_positions(),
+        #                                           [pos], axis=0)
+        #                     symbols.append('X')
+        #                     tmp_atoms = Atoms(symbols,
+        #                                       positions,
+        #                                       cell=cell)
+        #                     tmp_atoms.set_scaled_positions(positions)
+        # # print(tmp_atoms)
+        # # view(tmp_atoms)
 
 
     def cut_positions(self, interstitial):
