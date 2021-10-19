@@ -6,12 +6,18 @@ from scipy.spatial import Voronoi
 from ase import Atoms, Atom
 import spglib as spg
 
+
+def split(word):
+    return [char for char in word]
+
+
 def get_middle_point(p1, p2):
     coords = np.zeros(3)
     for i in range(3):
         coords[i] = (p1[i] + p2[i]) / 2.
 
     return coords
+
 
 def centeroidnp(arr):
     length = arr.shape[0]
@@ -226,7 +232,24 @@ class DefectBuilder():
         fit = True
         for coordinate in coordinates[letter]:
             for i in range(3):
-                val = numexpr.evaluate(coordinate.split(',')[i])
+                string = coordinate.split(',')[i]
+                try:
+                    val = numexpr.evaluate(string)
+                except SyntaxError:
+                    N = len(string)
+                    for j in range(N):
+                        if string[j] == '-':
+                            tmpstr = ''.join(string[:j + 2])
+                            insert = j + 2
+                        else:
+                            tmpstr = ''.join(string[:j + 1])
+                            insert = j + 1
+                        try:
+                            val = numexpr.evaluate(coordinate.split(',')[i])
+                        except SyntaxError:
+                            string = ''.join(string[:insert]) + '*' + ''.join(string[insert:])
+                            break
+                val = numexpr.evaluate(string)
                 if math.isclose(val, scaled_position[i], abs_tol=1e-4):
                     continue
                 else:
@@ -247,7 +270,7 @@ class DefectBuilder():
             for i, pos in enumerate(scaled_positions):
                 if interstitial.get_chemical_symbols()[i] == 'X':
                     if self.allowed_position(pos, coordinates, element):
-                        print(f'Position: {pos} matched {element}!')
+                        print(f'Position {pos} matched {element}!')
                         mapped[i][0] = pos[0]
                         mapped[i][1] = pos[1]
                         mapped[i][2] = pos[2]
