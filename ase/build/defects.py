@@ -168,6 +168,7 @@ class DefectBuilder():
         v3 = self.get_voronoi_faces(vor, v1)
         v4 = self.get_voronoi_ridges(vor)
         positions = np.concatenate([v1, v2, v3, v4], axis=0)
+        # positions = self.remove_duplicates(positions)
 
         return positions
 
@@ -218,7 +219,7 @@ class DefectBuilder():
         wyckoff = Wyckoff(number).wyckoff
         coordinates = {}
         # for element in wyckoff['letters']:
-        for element in ['a']:
+        for element in ['a', 'b']:
             coordinates[element] = wyckoff[element]['coordinates']
 
         return coordinates
@@ -307,21 +308,43 @@ class DefectBuilder():
         abs_positions = interstitial.get_positions()
 
         map_dict = {}
+        uni_dict = {}
         for element in coordinates:
             map_dict[f'{element}'] = []
+            uni_dict[f'{element}'] = []
         for pos in scaled_positions:
             for element in coordinates:
                 for wyck in coordinates[element]:
                     if self.allowed_position_tmp(pos, wyck):
                         previous = map_dict[element]
+                        uni = uni_dict[element]
+                        new_uni = self.get_unique(pos, previous, uni)
+                        uni_dict[f'{element}'] = new_uni
                         all_list = self.get_all_pos(pos, coordinates[element])
                         all_list = self.return_new_values(all_list, previous)
                         map_dict[f'{element}'] = all_list
                         break
-                break
+                # break
 
+
+        # for pos in scaled_positions:
+        #     for element in coordinates:
+        #         for wyck in coordinates[element]:
+        #             if self.allowed_position_tmp(pos, wyck):
+        #                 all_list = map_dict[element]
+        #                 uni = uni_dict[element]
+        #                 new_uni = self.get_unique(pos, all_list, uni)
+        #                 uni_dict[f'{element}'] = new_uni
+        #                 break
+        #         break
+
+        for element in uni_dict:
+            print(f'Unique elements: {element}')
+            for coord in uni_dict[element]:
+                print(coord)
+            print('===========================================')
         for element in map_dict:
-            print(element)
+            print(f'All elements: {element}')
             for coord in map_dict[element]:
                 print(coord)
             print('===========================================')
@@ -334,15 +357,27 @@ class DefectBuilder():
             if len(list2) == 0:
                 newlist.append(el1)
             else:
-                cond = np.any([math.isclose(el1[0], list2[j][0]) and
-                               math.isclose(el1[1], list2[j][1]) and
-                               math.isclose(el1[2], list2[j][2]) for j in range(len(list2))])
+                cond = np.any([math.isclose(el1[0], list2[j][0], abs_tol=1e-15) and
+                               math.isclose(el1[1], list2[j][1], abs_tol=1e-15) and
+                               math.isclose(el1[2], list2[j][2], abs_tol=1e-15) for j in range(len(list2))])
                 if cond:
                     continue
                 else:
                     newlist.append(el1)
         return newlist
 
+
+    def get_unique(self, new, list1, list2):
+        import math
+        if len(list2) == 0:
+            list2.append(new)
+        else:
+            cond = np.any([math.isclose(new[0], list1[j][0], abs_tol=1e-15) and
+                           math.isclose(new[1], list1[j][1], abs_tol=1e-15) and
+                           math.isclose(new[2], list1[j][2], abs_tol=1e-15) for j in range(len(list1))])
+            if not cond:
+                list2.append(new)
+        return list2
 
 
     def get_all_pos(self, pos, coordinates):
@@ -353,31 +388,36 @@ class DefectBuilder():
         z = pos[2]
         positions = []
         for coordinate in coordinates:
-            value = np.empty(3)
+            value = np.zeros(3)
             for i in range(3):
                 string = coordinate.split(',')[i]
-                val = numexpr.evaluate(string)
                 try:
-                    val = numexpr.evaluate(string)
+                    value[i] = numexpr.evaluate(string)
                 except SyntaxError:
-                    N = len(string)
-                    for j in range(N):
-                        if string[j] == '-':
-                            tmpstr = ''.join(string[:j + 2])
-                            insert = j + 2
-                        else:
-                            tmpstr = ''.join(string[:j + 1])
-                            insert = j + 1
-                        try:
-                            val = numexpr.evaluate(coordinate.split(',')[i])
-                        except SyntaxError:
-                            string = ''.join(string[:insert]) + '*' + ''.join(string[insert:])
-                            break
+                    string = self.reconstruct_string(string)
                 value[i] = numexpr.evaluate(string)
             if value[0] < 1 and value[1] < 1 and value[2] < 1:
                 positions.append(value)
 
         return positions
+
+
+    def reconstruct_string(self, string):
+        import numexpr
+        N = len(string)
+        for j in range(N):
+            if string[j] == '-':
+                tmpstr = ''.join(string[:j + 2])
+                insert = j + 2
+            else:
+                tmpstr = ''.join(string[:j + 1])
+                insert = j + 1
+            try:
+                val = numexpr.evaluate(string)
+            except SyntaxError:
+                string = ''.join(string[:insert]) + '*' + ''.join(string[insert:])
+                break
+        return string
 
 
         # tmp_atoms = self.get_primitive_structure()
