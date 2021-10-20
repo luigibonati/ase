@@ -2,6 +2,7 @@
 import numpy as np
 from ase.visualize import view
 from ase.spacegroup.wyckoff import Wyckoff
+from ase.geometry.geometry import get_distances
 from scipy.spatial import Voronoi
 from ase import Atoms, Atom
 import spglib as spg
@@ -168,9 +169,11 @@ class DefectBuilder():
         v3 = self.get_voronoi_faces(vor, v1)
         v4 = self.get_voronoi_ridges(vor)
         positions = np.concatenate([v1, v2, v3, v4], axis=0)
-        # positions = self.remove_duplicates(positions)
+        # positions = self.cleanup_voronoi(positions)
+        # positions = np.unique(positions, axis=0)
 
         return positions
+
 
 
     def get_interstitial_mock(self, view=False):
@@ -185,9 +188,9 @@ class DefectBuilder():
             positions = interstitial.get_positions()
             symbols = interstitial.get_chemical_symbols()
             flag = True
-            # for element in positions:
-            #     if abs(np.sum(position - element, axis=0)) < 0.01:
-            #         flag = False
+            distances = get_distances(position, positions, cell=cell, pbc=True)
+            # if min(distances[1][0]) <= 0.5:
+            #     flag = False
             if flag:
                 positions = np.append(positions, [position], axis=0)
                 symbols.append('X')
@@ -219,7 +222,7 @@ class DefectBuilder():
         wyckoff = Wyckoff(number).wyckoff
         coordinates = {}
         # for element in wyckoff['letters']:
-        for element in ['a', 'b']:
+        for element in ['a', 'b', 'c']:
             coordinates[element] = wyckoff[element]['coordinates']
 
         return coordinates
@@ -279,21 +282,9 @@ class DefectBuilder():
             try:
                 val = numexpr.evaluate(string)
             except SyntaxError:
-                N = len(string)
-                for j in range(N):
-                    if string[j] == '-':
-                        tmpstr = ''.join(string[:j + 2])
-                        insert = j + 2
-                    else:
-                        tmpstr = ''.join(string[:j + 1])
-                        insert = j + 1
-                    try:
-                        val = numexpr.evaluate(coordinate.split(',')[i])
-                    except SyntaxError:
-                        string = ''.join(string[:insert]) + '*' + ''.join(string[insert:])
-                        break
+                string = self.reconstruct_string(string)
             val = numexpr.evaluate(string)
-            if math.isclose(val, scaled_position[i], abs_tol=1e-6):
+            if math.isclose(val, scaled_position[i], abs_tol=1e-10):
                 continue
             else:
                 fit = False
@@ -302,10 +293,10 @@ class DefectBuilder():
 
 
     def map_positions(self, coordinates):
-        from ase.geometry.geometry import get_distances
         interstitial = self.get_interstitial_mock()
         scaled_positions = interstitial.get_scaled_positions()
         abs_positions = interstitial.get_positions()
+        prim = self.get_primitive_structure()
 
         map_dict = {}
         uni_dict = {}
@@ -315,7 +306,7 @@ class DefectBuilder():
         for pos in scaled_positions:
             for element in coordinates:
                 for wyck in coordinates[element]:
-                    if self.allowed_position_tmp(pos, wyck):
+                    if self.allowed_position_tmp(pos, wyck) and not self.in_atoms(pos):
                         previous = map_dict[element]
                         uni = uni_dict[element]
                         new_uni = self.get_unique(pos, previous, uni)
@@ -343,11 +334,37 @@ class DefectBuilder():
             for coord in uni_dict[element]:
                 print(coord)
             print('===========================================')
-        for element in map_dict:
-            print(f'All elements: {element}')
-            for coord in map_dict[element]:
-                print(coord)
-            print('===========================================')
+        prim = self.get_primitive_structure()
+        cell = prim.get_cell()
+        positions = prim.get_scaled_positions()
+        symbols = prim.get_chemical_symbols()
+        for element in uni_dict:
+            for coord in uni_dict[element]:
+                positions = np.append(positions, [coord], axis=0)
+                symbols.append('X')
+
+        newstruc = Atoms(symbols, positions, cell=cell)
+        view(newstruc)
+        newstruc.set_scaled_positions(positions)
+        view(newstruc)
+        # for element in map_dict:
+        #     print(f'All elements: {element}')
+        #     for coord in map_dict[element]:
+        #         print(coord)
+        #     print('===========================================')
+
+
+    def in_atoms(self, pos):
+        prim = self.get_primitive_structure()
+        positions = prim.get_scaled_positions()
+        cell = prim.get_cell()
+        distances = get_distances(pos, positions, cell=cell, pbc=True)
+        if min(distances[1][0]) < 0.01:
+            return True
+        else:
+            return False
+
+
 
 
     def return_new_values(self, list1, list2):
@@ -418,36 +435,6 @@ class DefectBuilder():
                 string = ''.join(string[:insert]) + '*' + ''.join(string[insert:])
                 break
         return string
-
-
-        # tmp_atoms = self.get_primitive_structure()
-        # mapped = np.zeros((len(scaled_positions), 4))
-        # for element in coordinates:
-        #     # print(f'Wyckoff position: {element}')
-        #     for i, pos in enumerate(scaled_positions):
-        #         if interstitial.get_chemical_symbols()[i] == 'X':
-        #             if self.allowed_position(pos, coordinates, element):
-        #                 oldpos = tmp_atoms.get_positions()
-        #                 cell = tmp_atoms.get_cell()
-        #                 symbols = tmp_atoms.get_chemical_symbols()
-        #                 distances = get_distances(oldpos, abs_positions[i],
-        #                                           cell=cell, pbc=True)
-        #                 # print(min(distances[1]))
-        #                 if min(distances[1]) > 0.5:
-        #    #                  print(f'Position {pos} matched {element}!')
-        #                     mapped[i][0] = pos[0]
-        #                     mapped[i][1] = pos[1]
-        #                     mapped[i][2] = pos[2]
-        #                     mapped[i][3] = 0
-        #                     positions = np.append(tmp_atoms.get_scaled_positions(),
-        #                                           [pos], axis=0)
-        #                     symbols.append('X')
-        #                     tmp_atoms = Atoms(symbols,
-        #                                       positions,
-        #                                       cell=cell)
-        #                     tmp_atoms.set_scaled_positions(positions)
-        # # print(tmp_atoms)
-        # # view(tmp_atoms)
 
 
     def cut_positions(self, interstitial):
