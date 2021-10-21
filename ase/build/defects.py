@@ -169,7 +169,8 @@ class DefectBuilder():
         v3 = self.get_voronoi_faces(vor, v1)
         v4 = self.get_voronoi_ridges(vor)
         # positions = np.concatenate([v1, v2, v3, v4], axis=0)
-        positions = v1
+        # positions = np.concatenate([v1, v4], axis=0)
+        positions = v4
         # positions = self.cleanup_voronoi(positions)
         # positions = np.unique(positions, axis=0)
 
@@ -218,7 +219,7 @@ class DefectBuilder():
         wyckoff = Wyckoff(number).wyckoff
         coordinates = {}
         # for element in wyckoff['letters']:
-        for element in ['a']:
+        for element in ['a', 'b']:
             coordinates[element] = wyckoff[element]['coordinates']
 
         return coordinates
@@ -240,7 +241,6 @@ class DefectBuilder():
             except SyntaxError:
                 string = self.reconstruct_string(string)
             val = numexpr.evaluate(string)
-            print(val, scaled_position[i])
             if math.isclose(val, scaled_position[i], abs_tol=1e-5):
                 continue
             else:
@@ -260,10 +260,12 @@ class DefectBuilder():
         for element in coordinates:
             map_dict[f'{element}'] = []
             uni_dict[f'{element}'] = []
-        for pos in scaled_positions:
+        for x, pos in enumerate(scaled_positions):
             for element in coordinates:
                 for wyck in coordinates[element]:
                     if self.allowed_position(pos, wyck) and not self.in_atoms(pos):
+                    # if self.allowed_position(pos, wyck):
+                    # if not self.in_atoms(pos):
                         previous = map_dict[element]
                         uni = uni_dict[element]
                         new_uni = self.get_unique(pos, previous, uni)
@@ -302,7 +304,6 @@ class DefectBuilder():
 
         newstruc = Atoms(symbols, positions, cell=cell)
         newstruc.set_scaled_positions(positions)
-        view(newstruc)
         for element in map_dict:
             print(f'All elements: {element}')
             for coord in map_dict[element]:
