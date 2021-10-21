@@ -168,7 +168,8 @@ class DefectBuilder():
         v2 = self.get_voronoi_lines(vor, v1)
         v3 = self.get_voronoi_faces(vor, v1)
         v4 = self.get_voronoi_ridges(vor)
-        positions = np.concatenate([v1, v2, v3, v4], axis=0)
+        # positions = np.concatenate([v1, v2, v3, v4], axis=0)
+        positions = v1
         # positions = self.cleanup_voronoi(positions)
         # positions = np.unique(positions, axis=0)
 
@@ -176,12 +177,11 @@ class DefectBuilder():
 
 
 
-    def get_interstitial_mock(self, view=False):
+    def get_interstitial_mock(self):
         atoms = self.get_input_structure()
         dim = self.get_dimension()
         voronoi_positions = self.get_voronoi_positions()
         voronoi_positions = voronoi_positions[voronoi_positions[:,2].argsort()]
-        # print(voronoi_positions)
         cell = atoms.get_cell()
         interstitial = atoms.copy()
         for i, position in enumerate(voronoi_positions):
@@ -189,8 +189,6 @@ class DefectBuilder():
             symbols = interstitial.get_chemical_symbols()
             flag = True
             distances = get_distances(position, positions, cell=cell, pbc=True)
-            # if min(distances[1][0]) <= 0.5:
-            #     flag = False
             if flag:
                 positions = np.append(positions, [position], axis=0)
                 symbols.append('X')
@@ -198,8 +196,6 @@ class DefectBuilder():
                                      positions,
                                      cell=cell)
         interstitial = self.cut_positions(interstitial)
-        if view:
-            view(interstitial)
 
         return interstitial
 
@@ -213,7 +209,7 @@ class DefectBuilder():
     def get_host_symmetry(self):
         atoms = self.get_primitive_structure()
         spg_cell = self.get_spg_cell(atoms)
-        dataset = spg.get_symmetry_dataset(spg_cell)
+        dataset = spg.get_symmetry_dataset(spg_cell, symprec=1e-2)
 
         return dataset
 
@@ -222,53 +218,13 @@ class DefectBuilder():
         wyckoff = Wyckoff(number).wyckoff
         coordinates = {}
         # for element in wyckoff['letters']:
-        for element in ['a', 'b', 'c']:
+        for element in ['a']:
             coordinates[element] = wyckoff[element]['coordinates']
 
         return coordinates
 
 
-    def allowed_position(self, scaled_position, coordinates, letter='a'):
-        import numexpr
-        import math
-
-        x = scaled_position[0]
-        y = scaled_position[1]
-        z = scaled_position[2]
-
-        fit = True
-        for coordinate in coordinates[letter]:
-            for i in range(3):
-                string = coordinate.split(',')[i]
-                try:
-                    val = numexpr.evaluate(string)
-                except SyntaxError:
-                    N = len(string)
-                    for j in range(N):
-                        if string[j] == '-':
-                            tmpstr = ''.join(string[:j + 2])
-                            insert = j + 2
-                        else:
-                            tmpstr = ''.join(string[:j + 1])
-                            insert = j + 1
-                        try:
-                            val = numexpr.evaluate(coordinate.split(',')[i])
-                        except SyntaxError:
-                            string = ''.join(string[:insert]) + '*' + ''.join(string[insert:])
-                            break
-                val = numexpr.evaluate(string)
-                if math.isclose(val, scaled_position[i], abs_tol=1e-4):
-                    continue
-                else:
-                    fit = False
-            if fit:
-                print(f'INFO: {scaled_position} matched {coordinate}!')
-                break
-
-        return fit
-
-
-    def allowed_position_tmp(self, scaled_position, coordinate):
+    def allowed_position(self, scaled_position, coordinate):
         import numexpr
         import math
 
@@ -284,7 +240,8 @@ class DefectBuilder():
             except SyntaxError:
                 string = self.reconstruct_string(string)
             val = numexpr.evaluate(string)
-            if math.isclose(val, scaled_position[i], abs_tol=1e-10):
+            print(val, scaled_position[i])
+            if math.isclose(val, scaled_position[i], abs_tol=1e-5):
                 continue
             else:
                 fit = False
@@ -306,7 +263,7 @@ class DefectBuilder():
         for pos in scaled_positions:
             for element in coordinates:
                 for wyck in coordinates[element]:
-                    if self.allowed_position_tmp(pos, wyck) and not self.in_atoms(pos):
+                    if self.allowed_position(pos, wyck) and not self.in_atoms(pos):
                         previous = map_dict[element]
                         uni = uni_dict[element]
                         new_uni = self.get_unique(pos, previous, uni)
@@ -315,7 +272,7 @@ class DefectBuilder():
                         all_list = self.return_new_values(all_list, previous)
                         map_dict[f'{element}'] = all_list
                         break
-                # break
+                break
 
 
         # for pos in scaled_positions:
@@ -344,14 +301,13 @@ class DefectBuilder():
                 symbols.append('X')
 
         newstruc = Atoms(symbols, positions, cell=cell)
-        view(newstruc)
         newstruc.set_scaled_positions(positions)
         view(newstruc)
-        # for element in map_dict:
-        #     print(f'All elements: {element}')
-        #     for coord in map_dict[element]:
-        #         print(coord)
-        #     print('===========================================')
+        for element in map_dict:
+            print(f'All elements: {element}')
+            for coord in map_dict[element]:
+                print(coord)
+            print('===========================================')
 
 
     def in_atoms(self, pos):
