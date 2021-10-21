@@ -252,6 +252,53 @@ class DefectBuilder():
 
         return fit
 
+    def get_all_pos(self, pos, coordinates):
+        import numexpr
+        import math
+        x = pos[0]
+        y = pos[1]
+        z = pos[2]
+        positions = []
+        for coordinate in coordinates:
+            value = np.zeros(3)
+            for i in range(3):
+                string = coordinate.split(',')[i]
+                try:
+                    value[i] = numexpr.evaluate(string)
+                except SyntaxError:
+                    string = self.reconstruct_string(string)
+                value[i] = numexpr.evaluate(string)
+            if value[0] < 1 and value[1] < 1 and value[2] < 1:
+                positions.append(value)
+
+        return positions
+
+
+    def create_copies(self, scaled_position, coordinates, tmp_struc):
+        import numexpr
+        import math
+        new_struc = tmp_struc.copy()
+        x = scaled_position[0]
+        y = scaled_position[1]
+        z = scaled_position[2]
+        for coordinate in coordinates:
+            value = np.zeros(3)
+            for i in range(3):
+                string = coordinate.split(',')[i]
+                try:
+                    value[i] = numexpr.evaluate(string)
+                except SyntaxError:
+                    string = self.reconstruct_string(string)
+                value[i] = numexpr.evaluate(string)
+            if value[0] <= 1 and value[0] >= 0 and value[1] <= 1 and value[1] >= 0 and value[2] <= 1 and value[2] >= 0:
+                dist, new_struc = self.check_distances(tmp_struc, value)
+                if dist:
+                    tmp_struc = new_struc
+                    print(f'Copy matched to {coordinate}: {value}.')
+
+        return new_struc
+
+
 
     def map_positions(self, coordinates, structure=None):
         if structure is None:
@@ -264,32 +311,42 @@ class DefectBuilder():
             for element in coordinates:
                 for wyck in coordinates[element]:
                     if self.is_mapped(pos, wyck):
-                        symbols = structure.get_chemical_symbols()
-                        symbols.append('X')
                         tmp_struc = structure.copy()
-                        tmp_pos = tmp_struc.get_scaled_positions()
-                        tmp_pos = np.append(tmp_pos, [pos], axis=0)
-                        tmp_struc = Atoms(symbols=symbols,
-                                          scaled_positions=tmp_pos,
-                                          cell=structure.get_cell())
-
-                        distances = get_distances(tmp_struc.get_positions(),
-                                                  tmp_struc.get_positions()[-1],
-                                                  cell=structure.get_cell(),
-                                                  pbc=True)
-                        min_dist = min(distances[1][0])
-                        if min_dist > 0.5:
-                            structure = tmp_struc.copy()
+                        dist, tmp_struc = self.check_distances(tmp_struc, pos)
+                        if dist:
+                            print(f'Mapped {pos} onto {wyck} ({element}).')
+                            equivalent = self.create_copies(pos, coordinates[element], tmp_struc)
+                            structure = equivalent.copy()
                             ### TODO
                             ### UPDATE COPIES OF THAT POSITION
                             ### TODO
                             mapped = True
-                            print(f'Mapped {pos} onto {wyck} ({element}).')
+                            print('------------------------------------------------------------')
                             break
                 if mapped:
                     break
 
         return structure
+
+
+    def check_distances(self, structure, pos):
+        symbols = structure.get_chemical_symbols()
+        symbols.append('X')
+        tmp_pos = structure.get_scaled_positions()
+        tmp_pos = np.append(tmp_pos, [pos], axis=0)
+        tmp_struc = Atoms(symbols=symbols,
+                          scaled_positions=tmp_pos,
+                          cell=structure.get_cell())
+        distances = get_distances(tmp_struc.get_positions()[-1],
+                                  tmp_struc.get_positions()[:-1],
+                                  cell=structure.get_cell(),
+                                  pbc=True)
+        min_dist = min(distances[1][0])
+        if min_dist > 0.5:
+            return True, tmp_struc
+        else:
+            return False, structure
+
 
 
     def in_atoms(self, pos):
@@ -333,26 +390,6 @@ class DefectBuilder():
         return list2
 
 
-    def get_all_pos(self, pos, coordinates):
-        import numexpr
-        import math
-        x = pos[0]
-        y = pos[1]
-        z = pos[2]
-        positions = []
-        for coordinate in coordinates:
-            value = np.zeros(3)
-            for i in range(3):
-                string = coordinate.split(',')[i]
-                try:
-                    value[i] = numexpr.evaluate(string)
-                except SyntaxError:
-                    string = self.reconstruct_string(string)
-                value[i] = numexpr.evaluate(string)
-            if value[0] < 1 and value[1] < 1 and value[2] < 1:
-                positions.append(value)
-
-        return positions
 
 
     def reconstruct_string(self, string):
