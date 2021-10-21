@@ -160,7 +160,7 @@ class DefectBuilder():
         plt.show()
 
 
-    def get_voronoi_positions(self):
+    def get_voronoi_positions(self, kind='all'):
         atoms = self.get_input_structure()
         dim = self.get_dimension()
         vor = self.get_voronoi_object()
@@ -168,37 +168,39 @@ class DefectBuilder():
         v2 = self.get_voronoi_lines(vor, v1)
         v3 = self.get_voronoi_faces(vor, v1)
         v4 = self.get_voronoi_ridges(vor)
-        # positions = np.concatenate([v1, v2, v3, v4], axis=0)
-        # positions = np.concatenate([v4, v1], axis=0)
-        positions = v4
-        # positions = self.cleanup_voronoi(positions)
-        # positions = np.unique(positions, axis=0)
+        if kind == 'all':
+            positions = np.concatenate([v1, v2, v3, v4], axis=0)
+        elif kind == 'points':
+            positions = np.concatenate([v4, v1], axis=0)
+        elif kind == 'lines':
+            positions = v2
+        elif kind == 'faces':
+            positions = v3
 
-        return positions
+        scaled_pos = self.get_interstitial_mock(positions)
+
+        return scaled_pos
 
 
-
-    def get_interstitial_mock(self):
+    def get_interstitial_mock(self, positions):
         atoms = self.get_input_structure()
-        dim = self.get_dimension()
-        voronoi_positions = self.get_voronoi_positions()
-        voronoi_positions = voronoi_positions[voronoi_positions[:,2].argsort()]
         cell = atoms.get_cell()
+        dim = self.get_dimension()
+        positions = positions[positions[:,2].argsort()]
         interstitial = atoms.copy()
-        for i, position in enumerate(voronoi_positions):
-            positions = interstitial.get_positions()
-            symbols = interstitial.get_chemical_symbols()
-            flag = True
-            distances = get_distances(position, positions, cell=cell, pbc=True)
-            if flag:
-                positions = np.append(positions, [position], axis=0)
+        abs_positions = interstitial.get_positions()
+        symbols = interstitial.get_chemical_symbols()
+        for i, pos in enumerate(positions):
+            distances = get_distances(pos, abs_positions, cell=cell, pbc=True)
+            if min(distances[1][0]) > 0.5:
+                abs_positions = np.append(abs_positions, [pos], axis=0)
                 symbols.append('X')
-                interstitial = Atoms(symbols,
-                                     positions,
-                                     cell=cell)
+        interstitial = Atoms(symbols,
+                             abs_positions,
+                             cell=cell)
         interstitial = self.cut_positions(interstitial)
 
-        return interstitial
+        return interstitial.get_scaled_positions()
 
 
     def get_spg_cell(self, atoms):
@@ -225,83 +227,69 @@ class DefectBuilder():
         return coordinates
 
 
-    # def allowed_position(self, scaled_position, map_dict):
-    #     import numexpr
-    #     import math
-    #     prim = self.get_primitive_structure()
-    #     cell = prim.get_cell()
-    #     for element in map_dict:
-
-
-    #     x = scaled_position[0]
-    #     y = scaled_position[1]
-    #     z = scaled_position[2]
-
-    #     fit = True
-    #     for i in range(3):
-    #         string = coordinate.split(',')[i]
-    #         try:
-    #             val = numexpr.evaluate(string)
-    #         except SyntaxError:
-    #             string = self.reconstruct_string(string)
-    #         val = numexpr.evaluate(string)
-    #         if math.isclose(val, scaled_position[i], abs_tol=1e-5):
-    #             continue
-    #         else:
-    #             fit = False
-
-    #     return fit
-
-
-    def map_positions(self, coordinates):
-        interstitial = self.get_interstitial_mock()
-        scaled_positions = interstitial.get_scaled_positions()
-        abs_positions = interstitial.get_positions()
-        prim = self.get_primitive_structure()
-
-        map_dict = {}
-        uni_dict = {}
-        for element in coordinates:
-            map_dict[f'{element}'] = []
-            uni_dict[f'{element}'] = []
-        for x, pos in enumerate(scaled_positions):
-            for element in coordinates:
-                print(pos, element)
-                for wyck in coordinates[element]:
-                    # if self.allowed_position(pos, map_dict) and not self.in_atoms(pos):
-                    # if self.allowed_position(pos, wyck):
-                    if not self.in_atoms(pos):
-                        previous = map_dict[element]
-                        uni = uni_dict[element]
-                        new_uni = self.get_unique(pos, previous, uni)
-                        uni_dict[f'{element}'] = new_uni
-                        all_list = self.get_all_pos(pos, coordinates[element])
-                        all_list = self.return_new_values(all_list, previous)
-                        map_dict[f'{element}'] = all_list
-                        break
-
-        for element in uni_dict:
-            print(f'Unique elements: {element}')
-            for coord in uni_dict[element]:
-                print(coord)
-            print('===========================================')
+    def is_mapped(self, scaled_position, coordinate):
+        import numexpr
+        import math
         prim = self.get_primitive_structure()
         cell = prim.get_cell()
-        positions = prim.get_scaled_positions()
-        symbols = prim.get_chemical_symbols()
-        for element in uni_dict:
-            for coord in uni_dict[element]:
-                positions = np.append(positions, [coord], axis=0)
-                symbols.append('X')
 
-        newstruc = Atoms(symbols, positions, cell=cell)
-        newstruc.set_scaled_positions(positions)
-        view(newstruc)
-        for element in map_dict:
-            print(f'All elements: {element}')
-            for coord in map_dict[element]:
-                print(coord)
-            print('===========================================')
+        x = scaled_position[0]
+        y = scaled_position[1]
+        z = scaled_position[2]
+
+        fit = True
+        for i in range(3):
+            string = coordinate.split(',')[i]
+            try:
+                val = numexpr.evaluate(string)
+            except SyntaxError:
+                string = self.reconstruct_string(string)
+            val = numexpr.evaluate(string)
+            if math.isclose(val, scaled_position[i], abs_tol=1e-10):
+                continue
+            else:
+                fit = False
+
+        return fit
+
+
+    def map_positions(self, coordinates, structure=None):
+        if structure is None:
+            structure = self.get_primitive_structure()
+
+        scaled_positions = self.get_voronoi_positions(kind='points')
+
+        for pos in scaled_positions:
+            mapped = False
+            for element in coordinates:
+                for wyck in coordinates[element]:
+                    if self.is_mapped(pos, wyck):
+                        symbols = structure.get_chemical_symbols()
+                        symbols.append('X')
+                        tmp_struc = structure.copy()
+                        tmp_pos = tmp_struc.get_scaled_positions()
+                        tmp_pos = np.append(tmp_pos, [pos], axis=0)
+                        tmp_struc = Atoms(symbols=symbols,
+                                          scaled_positions=tmp_pos,
+                                          cell=structure.get_cell())
+
+                        distances = get_distances(tmp_struc.get_positions(),
+                                                  tmp_struc.get_positions()[-1],
+                                                  cell=structure.get_cell(),
+                                                  pbc=True)
+                        min_dist = min(distances[1][0])
+                        if min_dist > 0.5:
+                            structure = tmp_struc.copy()
+                            ### TODO
+                            ### UPDATE COPIES OF THAT POSITION
+                            ### TODO
+                            mapped = True
+                            print(f'Mapped {pos} onto {wyck} ({element}).')
+                            break
+                if mapped:
+                    break
+
+        return structure
 
 
     def in_atoms(self, pos):
