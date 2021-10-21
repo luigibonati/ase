@@ -169,7 +169,7 @@ class DefectBuilder():
         v3 = self.get_voronoi_faces(vor, v1)
         v4 = self.get_voronoi_ridges(vor)
         # positions = np.concatenate([v1, v2, v3, v4], axis=0)
-        # positions = np.concatenate([v1, v4], axis=0)
+        # positions = np.concatenate([v4, v1], axis=0)
         positions = v4
         # positions = self.cleanup_voronoi(positions)
         # positions = np.unique(positions, axis=0)
@@ -219,34 +219,38 @@ class DefectBuilder():
         wyckoff = Wyckoff(number).wyckoff
         coordinates = {}
         # for element in wyckoff['letters']:
-        for element in ['a', 'b']:
+        for element in ['a', 'b', 'c']:
             coordinates[element] = wyckoff[element]['coordinates']
 
         return coordinates
 
 
-    def allowed_position(self, scaled_position, coordinate):
-        import numexpr
-        import math
+    # def allowed_position(self, scaled_position, map_dict):
+    #     import numexpr
+    #     import math
+    #     prim = self.get_primitive_structure()
+    #     cell = prim.get_cell()
+    #     for element in map_dict:
 
-        x = scaled_position[0]
-        y = scaled_position[1]
-        z = scaled_position[2]
 
-        fit = True
-        for i in range(3):
-            string = coordinate.split(',')[i]
-            try:
-                val = numexpr.evaluate(string)
-            except SyntaxError:
-                string = self.reconstruct_string(string)
-            val = numexpr.evaluate(string)
-            if math.isclose(val, scaled_position[i], abs_tol=1e-5):
-                continue
-            else:
-                fit = False
+    #     x = scaled_position[0]
+    #     y = scaled_position[1]
+    #     z = scaled_position[2]
 
-        return fit
+    #     fit = True
+    #     for i in range(3):
+    #         string = coordinate.split(',')[i]
+    #         try:
+    #             val = numexpr.evaluate(string)
+    #         except SyntaxError:
+    #             string = self.reconstruct_string(string)
+    #         val = numexpr.evaluate(string)
+    #         if math.isclose(val, scaled_position[i], abs_tol=1e-5):
+    #             continue
+    #         else:
+    #             fit = False
+
+    #     return fit
 
 
     def map_positions(self, coordinates):
@@ -262,10 +266,11 @@ class DefectBuilder():
             uni_dict[f'{element}'] = []
         for x, pos in enumerate(scaled_positions):
             for element in coordinates:
+                print(pos, element)
                 for wyck in coordinates[element]:
-                    if self.allowed_position(pos, wyck) and not self.in_atoms(pos):
+                    # if self.allowed_position(pos, map_dict) and not self.in_atoms(pos):
                     # if self.allowed_position(pos, wyck):
-                    # if not self.in_atoms(pos):
+                    if not self.in_atoms(pos):
                         previous = map_dict[element]
                         uni = uni_dict[element]
                         new_uni = self.get_unique(pos, previous, uni)
@@ -274,19 +279,6 @@ class DefectBuilder():
                         all_list = self.return_new_values(all_list, previous)
                         map_dict[f'{element}'] = all_list
                         break
-                break
-
-
-        # for pos in scaled_positions:
-        #     for element in coordinates:
-        #         for wyck in coordinates[element]:
-        #             if self.allowed_position_tmp(pos, wyck):
-        #                 all_list = map_dict[element]
-        #                 uni = uni_dict[element]
-        #                 new_uni = self.get_unique(pos, all_list, uni)
-        #                 uni_dict[f'{element}'] = new_uni
-        #                 break
-        #         break
 
         for element in uni_dict:
             print(f'Unique elements: {element}')
@@ -304,6 +296,7 @@ class DefectBuilder():
 
         newstruc = Atoms(symbols, positions, cell=cell)
         newstruc.set_scaled_positions(positions)
+        view(newstruc)
         for element in map_dict:
             print(f'All elements: {element}')
             for coord in map_dict[element]:
@@ -320,8 +313,6 @@ class DefectBuilder():
             return True
         else:
             return False
-
-
 
 
     def return_new_values(self, list1, list2):
