@@ -186,7 +186,8 @@ class DefectBuilder():
         atoms = self.get_input_structure()
         cell = atoms.get_cell()
         dim = self.get_dimension()
-        positions = positions[positions[:,2].argsort()]
+        # positions = positions[positions[:,0].argsort()]
+        positions = positions[np.lexsort((positions[:,2], positions[:,0],positions[:,1]))]
         interstitial = atoms.copy()
         abs_positions = interstitial.get_positions()
         symbols = interstitial.get_chemical_symbols()
@@ -220,8 +221,8 @@ class DefectBuilder():
     def get_wyckoff_data(self, number):
         wyckoff = Wyckoff(number).wyckoff
         coordinates = {}
-        # for element in wyckoff['letters']:
-        for element in ['a', 'b', 'c']:
+        for element in wyckoff['letters']:
+        # for element in ['a', 'b', 'c']:
             coordinates[element] = wyckoff[element]['coordinates']
 
         return coordinates
@@ -290,6 +291,10 @@ class DefectBuilder():
                 except SyntaxError:
                     string = self.reconstruct_string(string)
                 value[i] = numexpr.evaluate(string)
+                if value[i] < 0:
+                    value[i] = value[i] + 1
+                if value[i] > 1:
+                    value[i] = value[i] - 1
             if value[0] <= 1 and value[0] >= 0 and value[1] <= 1 and value[1] >= 0 and value[2] <= 1 and value[2] >= 0:
                 dist, new_struc = self.check_distances(tmp_struc, value)
                 if dist:
@@ -303,30 +308,45 @@ class DefectBuilder():
     def map_positions(self, coordinates, structure=None):
         if structure is None:
             structure = self.get_primitive_structure()
+        equivalent = structure.copy()
+        unique = structure.copy()
 
-        scaled_positions = self.get_voronoi_positions(kind='points')
+        kinds = ['points', 'lines', 'faces']
+        # kinds = ['points']
+        for kind in kinds:
+            scaled_positions = self.get_voronoi_positions(kind=kind)
+            for pos in scaled_positions:
+                mapped = False
+                for element in coordinates:
+                    for wyck in coordinates[element]:
+                        if self.is_mapped(pos, wyck):
+                            tmp_eq = equivalent.copy()
+                            tmp_un = unique.copy()
+                            dist, tmp_eq = self.check_distances(tmp_eq, pos)
+                            if dist:
+                                print(f'Mapped {pos} onto {wyck} ({element}).')
+                                unique = self.create_unique(pos, tmp_un)
+                                equivalent = self.create_copies(pos, coordinates[element], tmp_eq)
+                                mapped = True
+                                print('------------------------------------------------------------')
+                                break
+                    if mapped:
+                        break
 
-        for pos in scaled_positions:
-            mapped = False
-            for element in coordinates:
-                for wyck in coordinates[element]:
-                    if self.is_mapped(pos, wyck):
-                        tmp_struc = structure.copy()
-                        dist, tmp_struc = self.check_distances(tmp_struc, pos)
-                        if dist:
-                            print(f'Mapped {pos} onto {wyck} ({element}).')
-                            equivalent = self.create_copies(pos, coordinates[element], tmp_struc)
-                            structure = equivalent.copy()
-                            ### TODO
-                            ### UPDATE COPIES OF THAT POSITION
-                            ### TODO
-                            mapped = True
-                            print('------------------------------------------------------------')
-                            break
-                if mapped:
-                    break
+        return unique, equivalent
 
-        return structure
+
+    def create_unique(self, pos, unique):
+        positions = unique.get_scaled_positions()
+        cell = unique.get_cell()
+        symbols = unique.get_chemical_symbols()
+        symbols.append('X')
+        positions = np.append(positions, [pos], axis=0)
+        unique = Atoms(symbols=symbols,
+                       scaled_positions=positions,
+                       cell=cell)
+
+        return unique
 
 
     def check_distances(self, structure, pos):
