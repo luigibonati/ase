@@ -182,12 +182,19 @@ class DefectBuilder():
         return scaled_pos
 
 
+    def sort_array(self, a):
+        """First, x, then y, then z."""
+        a = a.astype('f8')
+        return a[np.lexsort((a[:,2], a[:,1], a[:,0]))]
+
+
     def get_interstitial_mock(self, positions):
         atoms = self.get_input_structure()
         cell = atoms.get_cell()
         dim = self.get_dimension()
-        # positions = positions[positions[:,0].argsort()]
-        positions = positions[np.lexsort((positions[:,2], positions[:,0],positions[:,1]))]
+        # positions = positions[positions[:,1].argsort()]
+        positions = self.sort_array(positions)
+        # positions = positions[np.lexsort((positions[:,2], positions[:,1],positions[:,0]))]
         interstitial = atoms.copy()
         abs_positions = interstitial.get_positions()
         symbols = interstitial.get_chemical_symbols()
@@ -312,9 +319,9 @@ class DefectBuilder():
         unique = structure.copy()
 
         kinds = ['points', 'lines', 'faces']
-        # kinds = ['points']
         for kind in kinds:
             scaled_positions = self.get_voronoi_positions(kind=kind)
+            print(scaled_positions)
             for pos in scaled_positions:
                 mapped = False
                 for element in coordinates:
@@ -366,50 +373,6 @@ class DefectBuilder():
             return True, tmp_struc
         else:
             return False, structure
-
-
-
-    def in_atoms(self, pos):
-        prim = self.get_primitive_structure()
-        positions = prim.get_scaled_positions()
-        cell = prim.get_cell()
-        distances = get_distances(pos, positions, cell=cell, pbc=True)
-        if min(distances[1][0]) < 0.01:
-            return True
-        else:
-            return False
-
-
-    def return_new_values(self, list1, list2):
-        import math
-        newlist = list2
-        for i, el1 in enumerate(list1):
-            if len(list2) == 0:
-                newlist.append(el1)
-            else:
-                cond = np.any([math.isclose(el1[0], list2[j][0], abs_tol=1e-15) and
-                               math.isclose(el1[1], list2[j][1], abs_tol=1e-15) and
-                               math.isclose(el1[2], list2[j][2], abs_tol=1e-15) for j in range(len(list2))])
-                if cond:
-                    continue
-                else:
-                    newlist.append(el1)
-        return newlist
-
-
-    def get_unique(self, new, list1, list2):
-        import math
-        if len(list2) == 0:
-            list2.append(new)
-        else:
-            cond = np.any([math.isclose(new[0], list1[j][0], abs_tol=1e-15) and
-                           math.isclose(new[1], list1[j][1], abs_tol=1e-15) and
-                           math.isclose(new[2], list1[j][2], abs_tol=1e-15) for j in range(len(list1))])
-            if not cond:
-                list2.append(new)
-        return list2
-
-
 
 
     def reconstruct_string(self, string):
