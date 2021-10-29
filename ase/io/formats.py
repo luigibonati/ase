@@ -304,6 +304,33 @@ def get_ioformat(name: str) -> IOFormat:
     return ioformats[name]
 
 
+def register_external_io_formats(group):
+    if hasattr(entry_points(), 'select'):
+        fmt_entry_points = entry_points().select(group=group)  # type: ignore
+    else:
+        fmt_entry_points = entry_points().get(group, ())
+
+    for entry_point in fmt_entry_points:
+        try:
+            define_external_io_format(entry_point)
+        except (ValueError, TypeError, ImportError) as exc:
+            warnings.warn(
+                f'Failed to register IO format {entry_point.name}: {exc}'
+            )
+
+
+def define_external_io_format(entry_point):
+
+    fmt = entry_point.load()
+    if entry_point.name in ioformats:
+        raise ValueError(f'Format {entry_point.name} already defined')
+    if not isinstance(fmt, ExternalIOFormat):
+        raise TypeError('Wrong type for registering external IO formats '
+                        f'in format {entry_point.name}, expected '
+                        'ExternalIOFormat')
+    F(entry_point.name, **fmt._asdict(), external=True)  # type: ignore
+
+
 # We define all the IO formats below.  Each IO format has a code,
 # such as '1F', which defines some of the format's properties:
 #
@@ -471,18 +498,7 @@ F('xtd', 'Materials Studio file', '+F')
 F('xyz', 'XYZ-file', '+F')
 
 #Register IO formats exposed through the ase.ioformats entry point
-if hasattr(entry_points(), 'select'):
-    fmt_entry_points = entry_points().select(group='ase.ioformats')  # type: ignore
-else:
-    fmt_entry_points = entry_points().get('ase.ioformats', ())
-
-for entry_point in fmt_entry_points:
-    fmt = entry_point.load()
-    if entry_point.name in ioformats:
-        raise ValueError(f'Format {entry_point.name} already defined')
-    if not isinstance(fmt, ExternalIOFormat):
-        raise TypeError(f'Wrong type for registering external IO formats in format {entry_point.name}, expected ExternalIOFormat')
-    F(entry_point.name, **fmt._asdict(), external=True)  # type: ignore
+register_external_io_formats('ase.ioformats')
 
 
 def get_compression(filename: str) -> Tuple[str, Optional[str]]:
