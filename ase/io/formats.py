@@ -227,9 +227,6 @@ class IOFormat:
 
     @property
     def module(self):
-        # if not self.module_name.startswith('ase.io.'):
-        #     raise ValueError('Will only import modules from ase.io, '
-        #                      'not {}'.format(self.module_name))
         try:
             return import_module(self.module_name)
         except ImportError as err:
