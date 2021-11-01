@@ -313,9 +313,10 @@ def register_external_io_formats(group):
     for entry_point in fmt_entry_points:
         try:
             define_external_io_format(entry_point)
-        except (ValueError, TypeError, ImportError, AttributeError) as exc:
+        except Exception as exc:
             warnings.warn(
-                f'Failed to register IO format {entry_point.name}: {exc}'
+                'Failed to register external '
+                f'IO format {entry_point.name}: {exc}'
             )
 
 
