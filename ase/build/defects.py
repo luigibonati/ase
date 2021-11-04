@@ -192,9 +192,7 @@ class DefectBuilder():
         atoms = self.get_input_structure()
         cell = atoms.get_cell()
         dim = self.get_dimension()
-        # positions = positions[positions[:,1].argsort()]
         positions = self.sort_array(positions)
-        # positions = positions[np.lexsort((positions[:,2], positions[:,1],positions[:,0]))]
         interstitial = atoms.copy()
         abs_positions = interstitial.get_positions()
         symbols = interstitial.get_chemical_symbols()
@@ -306,7 +304,6 @@ class DefectBuilder():
                 dist, new_struc = self.check_distances(tmp_struc, value)
                 if dist:
                     tmp_struc = new_struc
-                    print(f'Copy matched to {coordinate}: {value}.')
 
         return new_struc
 
@@ -321,7 +318,6 @@ class DefectBuilder():
         kinds = ['points', 'lines', 'faces']
         for kind in kinds:
             scaled_positions = self.get_voronoi_positions(kind=kind)
-            print(scaled_positions)
             for pos in scaled_positions:
                 mapped = False
                 for element in coordinates:
@@ -331,11 +327,9 @@ class DefectBuilder():
                             tmp_un = unique.copy()
                             dist, tmp_eq = self.check_distances(tmp_eq, pos)
                             if dist:
-                                print(f'Mapped {pos} onto {wyck} ({element}).')
                                 unique = self.create_unique(pos, tmp_un)
                                 equivalent = self.create_copies(pos, coordinates[element], tmp_eq)
                                 mapped = True
-                                print('------------------------------------------------------------')
                                 break
                     if mapped:
                         break
