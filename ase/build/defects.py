@@ -35,10 +35,11 @@ class DefectBuilder():
     """
     from .defects import get_middle_point
 
-    def __init__(self, atoms):
+    def __init__(self, atoms, min_dist=0.5):
         self.dim = np.sum(atoms.get_pbc())
         self.primitive = atoms
         self.atoms = self._set_construction_cell(atoms)
+        self.min_dist = min_dist
 
 
     def _set_construction_cell(self, atoms):
@@ -198,7 +199,7 @@ class DefectBuilder():
         symbols = interstitial.get_chemical_symbols()
         for i, pos in enumerate(positions):
             distances = get_distances(pos, abs_positions, cell=cell, pbc=True)
-            if min(distances[1][0]) > 0.5:
+            if min(distances[1][0]) > self.min_dist:
                 abs_positions = np.append(abs_positions, [pos], axis=0)
                 symbols.append('X')
         interstitial = Atoms(symbols,
@@ -363,7 +364,7 @@ class DefectBuilder():
                                   cell=structure.get_cell(),
                                   pbc=True)
         min_dist = min(distances[1][0])
-        if min_dist > 0.5:
+        if min_dist > self.min_dist:
             return True, tmp_struc
         else:
             return False, structure
