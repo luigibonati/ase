@@ -758,6 +758,14 @@ class GenerateVaspInput:
             'pp': 'LDA'
         },
         # GGAs
+        'blyp': {  # https://www.vasp.at/forum/viewtopic.php?p=17234
+            'pp': 'PBE',
+            'gga': 'B5',
+            'aldax': 1.00,
+            'aggax': 1.00,
+            'aggac': 1.00,
+            'aldac': 0.00
+        },
         'pw91': {
             'pp': 'PW91',
             'gga': '91'
