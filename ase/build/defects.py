@@ -161,14 +161,17 @@ class DefectBuilder():
         plt.show()
 
 
-    def get_voronoi_positions(self, kind='all'):
-        atoms = self.get_input_structure()
+    def get_voronoi_positions(self, kind='all', atoms=None):
+        if atoms is None:
+            atoms = self.get_input_structure()
+        else:
+            atoms = self._set_construction_cell(atoms)
         dim = self.get_dimension()
-        vor = self.get_voronoi_object()
-        v1 = self.get_voronoi_points(vor)
+        vor = self.get_voronoi_object(atoms)
+        v1 = self.get_voronoi_points(vor, atoms)
         v2 = self.get_voronoi_lines(vor, v1)
         v3 = self.get_voronoi_faces(vor, v1)
-        v4 = self.get_voronoi_ridges(vor)
+        v4 = self.get_voronoi_ridges(vor, atoms)
         if kind == 'all':
             positions = np.concatenate([v1, v2, v3, v4], axis=0)
         elif kind == 'points':
@@ -178,7 +181,7 @@ class DefectBuilder():
         elif kind == 'faces':
             positions = v3
 
-        scaled_pos = self.get_interstitial_mock(positions)
+        scaled_pos = self.get_interstitial_mock(positions, atoms)
 
         return scaled_pos
 
@@ -189,8 +192,9 @@ class DefectBuilder():
         return a[np.lexsort((a[:,2], a[:,1], a[:,0]))]
 
 
-    def get_interstitial_mock(self, positions):
-        atoms = self.get_input_structure()
+    def get_interstitial_mock(self, positions, atoms=None):
+        if atoms is None:
+            atoms = self.get_input_structure()
         cell = atoms.get_cell()
         dim = self.get_dimension()
         positions = self.sort_array(positions)
@@ -228,7 +232,6 @@ class DefectBuilder():
         wyckoff = Wyckoff(number).wyckoff
         coordinates = {}
         for element in wyckoff['letters']:
-        # for element in ['a', 'b', 'c']:
             coordinates[element] = wyckoff[element]['coordinates']
 
         return coordinates
@@ -258,6 +261,7 @@ class DefectBuilder():
                 fit = False
 
         return fit
+
 
     def get_all_pos(self, pos, coordinates):
         import numexpr
@@ -289,6 +293,7 @@ class DefectBuilder():
         y = scaled_position[1]
         z = scaled_position[2]
         for coordinate in coordinates:
+            copy = True
             value = np.zeros(3)
             for i in range(3):
                 string = coordinate.split(',')[i]
@@ -301,7 +306,11 @@ class DefectBuilder():
                     value[i] = value[i] + 1
                 if value[i] > 1:
                     value[i] = value[i] - 1
-            if value[0] <= 1 and value[0] >= 0 and value[1] <= 1 and value[1] >= 0 and value[2] <= 1 and value[2] >= 0:
+            if self.is_planar(new_struc) and value[2] != z:
+                copy = False
+            if (value[0] <= 1 and value[0] >= 0
+               and value[1] <= 1 and value[1] >= 0
+               and value[2] <= 1 and value[2] >= 0 and copy):
                 dist, new_struc = self.check_distances(tmp_struc, value)
                 if dist:
                     tmp_struc = new_struc
@@ -309,16 +318,90 @@ class DefectBuilder():
         return new_struc
 
 
+    def get_top_layer(self):
+        atoms = self.get_primitive_structure()
+        zs = []
+        for i in range(len(atoms)):
+            zs.append(atoms.get_positions()[i][2])
+        tops = []
+        for i in range(len(zs)):
+            if zs[i] == max(zs):
+                tops.append(i)
+        positions = np.empty((len(tops), 3))
+        symbols = []
+        for j, i in enumerate(tops):
+            symbol = atoms.get_chemical_symbols()[i]
+            positions[j] = atoms.get_positions()[i]
+            symbols.append(symbol)
+        cell = atoms.get_cell()
+
+        return Atoms(symbols=symbols,
+                     cell=cell,
+                     positions=positions,
+                     pbc=atoms.get_pbc())
+
+
+    def create_interstitials(self, atoms=None):
+        if atoms is None:
+            atoms = self.get_primitive_structure()
+        sym = self.get_host_symmetry()
+        wyck = self.get_wyckoff_data(sym['number'])
+        un, struc = self.map_positions(wyck, structure=atoms)
+
+        return un, struc
+
+
+    def create_adsorption_sites(self):
+        assert self.get_dimension() == 2, "Adsorption site creation only for 2D materials"
+
+        atoms = self.get_top_layer()
+        un, struc = self.create_interstitials(atoms)
+        view(un)
+        prim = self.get_primitive_structure()
+        positions = prim.get_positions()
+        symbols = prim.get_chemical_symbols()
+        for i, pos in enumerate(atoms.get_positions()):
+            positions = np.append(positions, [pos + [0, 0, 2]], axis=0)
+            symbols.append('X')
+        cell = prim.get_cell()
+        distances = []
+        for i, atom in enumerate(un):
+            if un.get_chemical_symbols()[i] == 'X':
+                pos = un.get_positions()[i]
+                distance = min(get_distances(pos,
+                                             prim.get_positions(),
+                                             cell=cell,
+                                             pbc=True)[1][0])
+                distances.append(i)
+        for i, distance in enumerate(distances):
+            if distance == max(distances):
+                index = i
+        j = 0
+        for i, atom in enumerate(un):
+            if un.get_chemical_symbols()[i] == 'X':
+                pos = un.get_positions()[i]
+                if j == index:
+                    positions = np.append(positions, [pos + [0, 0, 2]], axis=0)
+                    symbols.append('X')
+                j += 1
+
+        return Atoms(symbols=symbols,
+                     positions=positions,
+                     cell=cell,
+                     pbc=prim.get_pbc())
+
 
     def map_positions(self, coordinates, structure=None):
         if structure is None:
             structure = self.get_primitive_structure()
+
         equivalent = structure.copy()
         unique = structure.copy()
 
         kinds = ['points', 'lines', 'faces']
         for kind in kinds:
-            scaled_positions = self.get_voronoi_positions(kind=kind)
+            scaled_positions = self.get_voronoi_positions(kind=kind,
+                                                          atoms=structure)
             for pos in scaled_positions:
                 mapped = False
                 for element in coordinates:
@@ -464,8 +547,7 @@ class DefectBuilder():
         return atoms.get_positions()[0, 2]
 
 
-    def get_voronoi_points(self, voronoi):
-        atoms = self.get_input_structure()
+    def get_voronoi_points(self, voronoi, atoms):
         dim = self.get_dimension()
         vertices = voronoi.vertices
         if dim == 2 and self.is_planar(atoms):
@@ -480,8 +562,9 @@ class DefectBuilder():
         return vertices
 
 
-    def get_voronoi_object(self):
-        atoms = self.get_input_structure()
+    def get_voronoi_object(self, atoms=None):
+        if atoms is None:
+            atoms = self.get_input_structure()
         dist = 3
         points = atoms.get_positions()
         if self.dim == 2 and self.is_planar(atoms):
@@ -531,9 +614,11 @@ class DefectBuilder():
         return centers
 
 
-    def get_voronoi_ridges(self, voronoi):
+    def get_voronoi_ridges(self, voronoi, atoms=None):
+        if atoms is None:
+            atoms = self.get_input_structure()
         ridge_points = voronoi.ridge_points
-        points = self.get_input_structure().get_positions()
+        points = atoms.get_positions()
         array = np.zeros((len(ridge_points), 3))
         for i, ridge in enumerate(ridge_points):
             p1 = [points[ridge[0]][0],
