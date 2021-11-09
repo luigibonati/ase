@@ -995,7 +995,8 @@ def get_subset_points(names, points):
               ndim=2)
 class OBL(BravaisLattice):
     def __init__(self, a, b, alpha, **kwargs):
-        BravaisLattice.__init__(self, a=a, b=b, alpha=alpha, **kwargs)
+        check_rect(a, b)
+        super().__init__(a=a, b=b, alpha=alpha, **kwargs)
 
     def _cell(self, a, b, alpha):
         cosa = np.cos(alpha * _degrees)
@@ -1050,6 +1051,12 @@ class HEX2D(BravaisLattice):
                          [0., 0., 0.]])
 
 
+def check_rect(a, b):
+    return  # XXX enable check
+    if a >= b:
+        raise UnconventionalLattice(f'Expected a < b, got a={a}, b={b}')
+
+
 @bravaisclass('primitive rectangular', 'orthorhombic', None, 'op', 'ab',
               [['RECT', 'GXSY', 'GXSYGS',
                 get_subset_points('GXSY',
@@ -1057,7 +1064,8 @@ class HEX2D(BravaisLattice):
               ndim=2)
 class RECT(BravaisLattice):
     def __init__(self, a, b, **kwargs):
-        BravaisLattice.__init__(self, a=a, b=b, **kwargs)
+        check_rect(a, b)
+        super().__init__(a=a, b=b, **kwargs)
 
     def _cell(self, a, b):
         return np.array([[a, 0, 0],
@@ -1135,8 +1143,10 @@ def celldiff(cell1, cell2):
     cell1 = Cell.ascell(cell1).complete()
     cell2 = Cell.ascell(cell2).complete()
     v1v2 = cell1.volume * cell2.volume
-    if v1v2 == 0:
-        raise ZeroDivisionError('Cell volumes are zero')
+    if v1v2 < 1e-10:
+        # (Proposed cell may be linearly dependent)
+        return np.inf
+
     scale = v1v2**(-1. / 3.)  # --> 1/Ang^2
     x1 = cell1 @ cell1.T
     x2 = cell2 @ cell2.T
@@ -1203,7 +1213,7 @@ def identify_lattice(cell, eps=2e-4, *, pbc=True):
 
     # We loop through the most symmetric kinds (CUB etc.) and return
     # the first one we find:
-    for latname in LatticeChecker.check_order:
+    for latname in LatticeChecker.check_orders[npbc]:
         # There may be multiple Niggli operations that produce valid
         # lattices, at least for MCL.  In that case we will pick the
         # one whose angle is closest to 90, but it means we cannot
@@ -1232,7 +1242,8 @@ def identify_lattice(cell, eps=2e-4, *, pbc=True):
         for lat, op in matching_lattices:
             cell = lat.tocell()
             lengths = cell.lengths()
-            defect = np.prod(lengths) / cell.volume
+            generalized_volume = cell.complete().volume
+            defect = np.prod(lengths) / generalized_volume
             if defect < best_defect:
                 best = lat, op
                 best_defect = defect
@@ -1244,8 +1255,11 @@ def identify_lattice(cell, eps=2e-4, *, pbc=True):
 class LatticeChecker:
     # The check order is slightly different than elsewhere listed order
     # as we need to check HEX/RHL before the ORCx family.
-    check_order = ['CUB', 'FCC', 'BCC', 'TET', 'BCT', 'HEX', 'RHL',
-                   'ORC', 'ORCF', 'ORCI', 'ORCC', 'MCL', 'MCLC', 'TRI']
+    check_orders = {
+        1: ['LINE'],
+        2: ['SQR', 'RECT', 'HEX2D', 'CRECT', 'OBL'],
+        3: ['CUB', 'FCC', 'BCC', 'TET', 'BCT', 'HEX', 'RHL',
+            'ORC', 'ORCF', 'ORCI', 'ORCC', 'MCL', 'MCLC', 'TRI']}
 
     def __init__(self, cell, eps=2e-4):
         """Generate Bravais lattices that look (or not) like the given cell.
@@ -1290,7 +1304,7 @@ class LatticeChecker:
         """Match cell against all lattices, returning most symmetric match.
 
         Returns the lattice object.  Raises RuntimeError on failure."""
-        for name in self.check_order:
+        for name in self.check_orders[self.cell.rank]:
             lat = self.query(name)
             if lat:
                 return lat
@@ -1306,6 +1320,23 @@ class LatticeChecker:
         meth = getattr(self, latname)
         lat = meth()
         return lat
+
+    def SQR(self):
+        return self._check(SQR, self.lengths[0])
+
+    def RECT(self):
+        return self._check(RECT, *self.lengths[:2])
+
+    def CRECT(self):
+        return self._check(CRECT, self.lengths[0], self.angles[2])
+
+    def HEX2D(self):
+        print('CHECK HEX')
+        return self._check(HEX2D, self.lengths[0])
+
+    def OBL(self):
+        # xxxxxxxxx
+        return None
 
     def CUB(self):
         # These methods (CUB, FCC, ...) all return a lattice object if
