@@ -1184,7 +1184,7 @@ def identify_lattice(cell, eps=2e-4, *, pbc=True):
     pbc = cell.any(1) & pbc2pbc(pbc)
     npbc = sum(pbc)
 
-    if npbc == 1:
+    if 0: # npbc == 1:
         i = np.argmax(pbc)  # index of periodic axis
         a = cell[i, i]
         if a < 0 or cell[i, [i - 1, i - 2]].any():
@@ -1319,6 +1319,9 @@ class LatticeChecker:
         meth = getattr(self, latname)
         lat = meth()
         return lat
+
+    def LINE(self):
+        return self._check(LINE, self.lengths[0])
 
     def SQR(self):
         return self._check(SQR, self.lengths[0])
