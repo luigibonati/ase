@@ -363,7 +363,7 @@ class Cubic(BravaisLattice):
     conventional_cls = 'CUB'
 
     def __init__(self, a):
-        BravaisLattice.__init__(self, a=a)
+        super().__init__(a=a)
 
 
 @bravaisclass('primitive cubic', 'cubic', 'cubic', 'cP', 'a',
@@ -401,7 +401,7 @@ class TET(BravaisLattice):
     conventional_cellmap = _identity
 
     def __init__(self, a, c):
-        BravaisLattice.__init__(self, a=a, c=c)
+        super().__init__(a=a, c=c)
 
     def _cell(self, a, c):
         return np.diag(np.array([a, a, c]))
@@ -418,7 +418,7 @@ class BCT(BravaisLattice):
     conventional_cellmap = _fcc_map
 
     def __init__(self, a, c):
-        BravaisLattice.__init__(self, a=a, c=c)
+        super().__init__(a=a, c=c)
 
     def _cell(self, a, c):
         return 0.5 * np.array([[-a, a, c], [a, -a, c], [a, a, -c]])
@@ -467,7 +467,7 @@ class Orthorhombic(BravaisLattice):
 
     def __init__(self, a, b, c):
         check_orc(a, b, c)
-        BravaisLattice.__init__(self, a=a, b=b, c=c)
+        super().__init__(a=a, b=b, c=c)
 
 
 @bravaisclass('primitive orthorhombic', 'orthorhombic', 'orthorhombic', 'oP',
@@ -588,7 +588,7 @@ class ORCC(BravaisLattice):
         # ORCC is the only ORCx lattice with a<b and not a<b<c
         if a >= b:
             raise UnconventionalLattice(f'Expected a < b, got a={a}, b={b}')
-        BravaisLattice.__init__(self, a=a, b=b, c=c)
+        super().__init__(a=a, b=b, c=c)
 
     def _cell(self, a, b, c):
         return np.array([[0.5 * a, -0.5 * b, 0], [0.5 * a, 0.5 * b, 0],
@@ -618,7 +618,7 @@ class HEX(BravaisLattice):
     conventional_cellmap = _identity
 
     def __init__(self, a, c):
-        BravaisLattice.__init__(self, a=a, c=c)
+        super().__init__(a=a, c=c)
 
     def _cell(self, a, c):
         x = 0.5 * np.sqrt(3)
@@ -638,7 +638,7 @@ class RHL(BravaisLattice):
         if alpha >= 120:
             raise UnconventionalLattice('Need alpha < 120 degrees, got {}'
                                         .format(alpha))
-        BravaisLattice.__init__(self, a=a, alpha=alpha)
+        super().__init__(a=a, alpha=alpha)
 
     def _cell(self, a, alpha):
         alpha *= np.pi / 180
@@ -701,7 +701,7 @@ class MCL(BravaisLattice):
 
     def __init__(self, a, b, c, alpha):
         check_mcl(a, b, c, alpha)
-        BravaisLattice.__init__(self, a=a, b=b, c=c, alpha=alpha)
+        super().__init__(a=a, b=b, c=c, alpha=alpha)
 
     def _cell(self, a, b, c, alpha):
         alpha *= _degrees
@@ -754,7 +754,7 @@ class MCLC(BravaisLattice):
 
     def __init__(self, a, b, c, alpha):
         check_mcl(a, b, c, alpha)
-        BravaisLattice.__init__(self, a=a, b=b, c=c, alpha=alpha)
+        super().__init__(a=a, b=b, c=c, alpha=alpha)
 
     def _cell(self, a, b, c, alpha):
         alpha *= np.pi / 180
@@ -910,8 +910,8 @@ class TRI(BravaisLattice):
     conventional_cellmap = _identity
 
     def __init__(self, a, b, c, alpha, beta, gamma):
-        BravaisLattice.__init__(self, a=a, b=b, c=c, alpha=alpha, beta=beta,
-                                gamma=gamma)
+        super().__init__(a=a, b=b, c=c, alpha=alpha, beta=beta,
+                         gamma=gamma)
 
     def _cell(self, a, b, c, alpha, beta, gamma):
         alpha, beta, gamma = np.array([alpha, beta, gamma])
@@ -1042,7 +1042,7 @@ class OBL(BravaisLattice):
               ndim=2)
 class HEX2D(BravaisLattice):
     def __init__(self, a, **kwargs):
-        BravaisLattice.__init__(self, a=a, **kwargs)
+        super().__init__(a=a, **kwargs)
 
     def _cell(self, a):
         x = 0.5 * np.sqrt(3)
@@ -1077,7 +1077,7 @@ class RECT(BravaisLattice):
               ('a', 'alpha'), [['CRECT', 'GXA1Y', 'GXA1YG', None]], ndim=2)
 class CRECT(BravaisLattice):
     def __init__(self, a, alpha, **kwargs):
-        BravaisLattice.__init__(self, a=a, alpha=alpha, **kwargs)
+        super().__init__(a=a, alpha=alpha, **kwargs)
 
     def _cell(self, a, alpha):
         x = np.cos(alpha * _degrees)
@@ -1117,7 +1117,7 @@ class CRECT(BravaisLattice):
               ndim=2)
 class SQR(BravaisLattice):
     def __init__(self, a, **kwargs):
-        BravaisLattice.__init__(self, a=a, **kwargs)
+        super().__init__(a=a, **kwargs)
 
     def _cell(self, a):
         return np.array([[a, 0, 0],
@@ -1130,7 +1130,7 @@ class SQR(BravaisLattice):
               ndim=1)
 class LINE(BravaisLattice):
     def __init__(self, a, **kwargs):
-        BravaisLattice.__init__(self, a=a, **kwargs)
+        super().__init__(a=a, **kwargs)
 
     def _cell(self, a):
         return np.array([[a, 0.0, 0.0],
