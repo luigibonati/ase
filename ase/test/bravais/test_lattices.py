@@ -1,15 +1,19 @@
-def test_bravais_lattices():
-    import numpy as np
-    from ase.lattice import (bravais_lattices, all_variants,
-                             get_lattice_from_canonical_cell)
+import pytest
+import numpy as np
+from ase.lattice import (bravais_lattices, all_variants,
+                         get_lattice_from_canonical_cell)
 
-    for name in bravais_lattices:
-        latcls = bravais_lattices[name]
-        assert latcls.name == name
-        assert latcls.longname is not None
-        for par in latcls.parameters:
-            assert par in ['a', 'b', 'c', 'alpha', 'beta', 'gamma']
 
+@pytest.mark.parametrize('name', list(bravais_lattices))
+def test_bravais_lattices(name):
+    latcls = bravais_lattices[name]
+    assert latcls.name == name
+    assert latcls.longname is not None
+    for par in latcls.parameters:
+        assert par in ['a', 'b', 'c', 'alpha', 'beta', 'gamma']
+
+
+def test_variants():
     for lat in all_variants():
         print(lat.variant)
         for par in lat.parameters:
