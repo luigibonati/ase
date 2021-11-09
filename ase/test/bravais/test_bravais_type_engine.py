@@ -7,7 +7,7 @@ ref_info = {
     'LINE': 1,
     'SQR': 1,
     'RECT': 2,  # XXX should be 1 (requiring a < b)
-    'CRECT': 8,
+    'CRECT': 4,
     'HEX2D': 1,
     'OBL': 20,  # XXX should be 10
     'FCC': 1,

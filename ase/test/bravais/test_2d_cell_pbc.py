@@ -1,16 +1,25 @@
-def test_bravais_2d_cell_pbc():
-    """Verify 2D Bravais lattice and band path versus pbc information."""
+import numpy as np
+import pytest
+from ase.cell import Cell
+from ase.lattice import CRECT
 
-    from ase.cell import Cell
 
-    cell = Cell([[1., 0., 0.],
+@pytest.fixture
+def cell():
+    return Cell([[1., 0., 0.],
                  [.1, 1., 0.],
                  [0., 0., 0.]])
+
+
+def test_obl(cell):
+    """Verify 2D Bravais lattice and band path versus pbc information."""
     lat = cell.get_bravais_lattice()
     print(cell.cellpar())
     print(lat)
     assert lat.name == 'OBL'
 
+
+def test_mcl_obl(cell):
     cell[2, 2] = 7
     lat3d = cell.get_bravais_lattice()
     print(lat3d)

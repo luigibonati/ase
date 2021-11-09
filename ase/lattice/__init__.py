@@ -1077,8 +1077,17 @@ class RECT(BravaisLattice):
               ('a', 'alpha'), [['CRECT', 'GXA1Y', 'GXA1YG', None]], ndim=2)
 class CRECT(BravaisLattice):
     def __init__(self, a, alpha, **kwargs):
+        # It would probably be better to define the CRECT cell
+        # by (a, b) rather than (a, alpha).  Then we can require a < b
+        # like in ordinary RECT.
+        #
+        # In 3D, all lattices in the same family generally take
+        # identical parameters.
+        if alpha >= 90:
+            raise UnconventionalLattice(
+                f'Expected alpha < 90.  Got alpha={alpha}')
         super().__init__(a=a, alpha=alpha, **kwargs)
-
+        cell = self.tocell()
     def _cell(self, a, alpha):
         x = np.cos(alpha * _degrees)
         y = np.sin(alpha * _degrees)
@@ -1189,21 +1198,9 @@ def identify_lattice(cell, eps=2e-4, *, pbc=True):
             op = np.array([[0, 0, 1], [0, 1, 0], [1, 0, 0]])
         return LINE(a), op
 
-    if npbc == 2:
-        lat, op = get_2d_bravais_lattice(cell, eps, pbc=pbc)
-        return lat, op
-
-    if npbc != 3:
-        raise ValueError('System must be periodic either '
-                         'along all three axes, '
-                         'along two first axes or, '
-                         'along the third axis.  '
-                         'Got pbc={}'.format(pbc))
-
     from ase.geometry.bravais_type_engine import niggli_op_table
 
-    if cell.rank < 3:
-        raise ValueError('Expected 3 linearly independent cell vectors')
+    cell = cell.uncomplete(pbc)
     rcell, reduction_op = cell.niggli_reduce(eps=eps)
 
     # We tabulate the cell's Niggli-mapped versions so we don't need to
@@ -1241,7 +1238,7 @@ def identify_lattice(cell, eps=2e-4, *, pbc=True):
         best_defect = np.inf
         for lat, op in matching_lattices:
             cell = lat.tocell()
-            lengths = cell.lengths()
+            lengths = cell.lengths()[pbc]
             generalized_volume = cell.complete().volume
             defect = np.prod(lengths) / generalized_volume
             if defect < best_defect:
@@ -1250,6 +1247,8 @@ def identify_lattice(cell, eps=2e-4, *, pbc=True):
 
         if best is not None:
             return best
+
+    raise RuntimeError('Failed to recognize lattice')
 
 
 class LatticeChecker:
@@ -1331,12 +1330,10 @@ class LatticeChecker:
         return self._check(CRECT, self.lengths[0], self.angles[2])
 
     def HEX2D(self):
-        print('CHECK HEX')
         return self._check(HEX2D, self.lengths[0])
 
     def OBL(self):
-        # xxxxxxxxx
-        return None
+        return self._check(OBL, *self.lengths[:2], self.angles[2])
 
     def CUB(self):
         # These methods (CUB, FCC, ...) all return a lattice object if
@@ -1603,7 +1600,10 @@ def all_variants(include_blunt_angles=True):
     assert tri2b.variant == 'TRI2b'
     yield tri2b
 
-    yield OBL(a, b, alpha=alpha)
+    # Choose an OBL lattice that round-trip-converts to itself.
+    # The default a/b/alpha parameters result in another representation
+    # of the same lattice.
+    yield OBL(a=3.0, b=3.35, alpha=77.85)
     yield RECT(a, b)
     yield CRECT(a, alpha=alpha)
     yield HEX2D(a)
@@ -1613,4 +1613,3 @@ def all_variants(include_blunt_angles=True):
     if include_blunt_angles:
         beta = 110
         yield OBL(a, b, alpha=beta)
-        yield CRECT(a, alpha=beta)
