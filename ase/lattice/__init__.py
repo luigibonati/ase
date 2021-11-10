@@ -1052,7 +1052,6 @@ class HEX2D(BravaisLattice):
 
 
 def check_rect(a, b):
-    return  # XXX enable check
     if a >= b:
         raise UnconventionalLattice(f'Expected a < b, got a={a}, b={b}')
 
