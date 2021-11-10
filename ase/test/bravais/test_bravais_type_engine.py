@@ -9,7 +9,7 @@ ref_info = {
     'RECT': 1,
     'CRECT': 4,
     'HEX2D': 1,
-    'OBL': 10,
+    'OBL': 5,
     'FCC': 1,
     'BCC': 1,
     'CUB': 1,

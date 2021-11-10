@@ -97,15 +97,6 @@ class BravaisLattice(ABC):
         cell = self._cell(**self._parameters)
         return Cell(cell)
 
-    def get_transformation(self, cell, eps=1e-8):
-        # Get transformation matrix relating input cell to canonical cell
-        T = cell.dot(np.linalg.pinv(self.tocell()))
-        msg = 'This transformation changes the length/area/volume of the cell'
-        assert np.isclose(np.abs(np.linalg.det(T[:self.ndim,
-                                                 :self.ndim])), 1,
-                          atol=eps), msg
-        return T
-
     def cellpar(self) -> np.ndarray:
         """Get cell lengths and angles as array of length 6.
 
@@ -172,7 +163,7 @@ class BravaisLattice(ABC):
         return bandpath.plot(dimension=self.ndim, **plotkwargs)
 
     def bandpath(self, path=None, npoints=None, special_points=None,
-                 density=None, transformation=None) -> BandPath:
+                 density=None) -> BandPath:
         """Return a :class:`~ase.dft.kpoints.BandPath` for this lattice.
 
         See :meth:`ase.cell.Cell.bandpath` for description of parameters.
@@ -199,9 +190,6 @@ special_points={GNPSS1XYY1Z}, kpts=[51x3])
                                                          self._eps)
 
         cell = self.tocell()
-        if transformation is not None:
-            cell = transformation.dot(cell)
-
         bandpath = BandPath(cell=cell, path=path,
                             special_points=special_points)
         return bandpath.interpolate(npoints=npoints, density=density)
@@ -211,7 +199,6 @@ special_points={GNPSS1XYY1Z}, kpts=[51x3])
         """Return a Cell object from this Bravais lattice.
 
         Arguments are the dictionary of Bravais parameters."""
-        pass
 
     def _special_points(self, **kwargs):
         """Return the special point coordinates as an npoints x 3 sequence.
@@ -996,6 +983,9 @@ def get_subset_points(names, points):
 class OBL(BravaisLattice):
     def __init__(self, a, b, alpha, **kwargs):
         check_rect(a, b)
+        if alpha >= 90:
+            raise UnconventionalLattice(
+                f'Expected alpha < 90, got alpha={alpha}')
         super().__init__(a=a, b=b, alpha=alpha, **kwargs)
 
     def _cell(self, a, b, alpha):
@@ -1007,15 +997,8 @@ class OBL(BravaisLattice):
                          [0., 0., 0.]])
 
     def _special_points(self, a, b, alpha, variant):
-        # XXX Check me
-        if alpha > 90:
-            _alpha = 180 - alpha
-            a, b = b, a
-        else:
-            _alpha = alpha
-
-        cosa = np.cos(_alpha * _degrees)
-        eta = (1 - a * cosa / b) / (2 * np.sin(_alpha * _degrees)**2)
+        cosa = np.cos(alpha * _degrees)
+        eta = (1 - a * cosa / b) / (2 * np.sin(alpha * _degrees)**2)
         nu = .5 - eta * b * cosa / a
 
         points = [[0, 0, 0],
@@ -1024,13 +1007,6 @@ class OBL(BravaisLattice):
                   [.5, .5, 0],
                   [1 - eta, nu, 0],
                   [.5, 0, 0]]
-
-        if alpha > 90:
-            # Then we map the special points back
-            op = np.array([[0, 1, 0],
-                           [-1, 0, 0],
-                           [0, 0, 1]])
-            points = np.dot(points, op.T)
 
         return points
 
@@ -1095,14 +1071,10 @@ class CRECT(BravaisLattice):
                          [0, 0, 0.]])
 
     def _special_points(self, a, alpha, variant):
-        if alpha > 90:
-            _alpha = 180 - alpha
-        else:
-            _alpha = alpha
-        sina2 = np.sin(_alpha / 2 * _degrees)**2
-        sina = np.sin(_alpha * _degrees)**2
+        sina2 = np.sin(alpha / 2 * _degrees)**2
+        sina = np.sin(alpha * _degrees)**2
         eta = sina2 / sina
-        cosa = np.cos(_alpha * _degrees)
+        cosa = np.cos(alpha * _degrees)
         xi = eta * cosa
 
         points = [[0, 0, 0],
@@ -1110,12 +1082,6 @@ class CRECT(BravaisLattice):
                   [0.5 + xi, 0.5 - xi, 0],
                   [0.5, 0.5, 0]]
 
-        if alpha > 90:
-            # Then we map the special points back
-            op = np.array([[0, 1, 0],
-                           [-1, 0, 0],
-                           [0, 0, 1]])
-            points = np.dot(points, op.T)
         return points
 
 
