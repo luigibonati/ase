@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 from ase.cell import Cell
-from ase.lattice import bravais_lattices, UnsupportedLattice
+from ase.lattice import bravais_lattices
 from ase.build import bulk, fcc111
 
 
