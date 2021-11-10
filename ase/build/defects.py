@@ -394,6 +394,91 @@ class DefectBuilder():
                      pbc=prim.get_pbc())
 
 
+    def get_intrinsic_types(self):
+        atoms = self.get_primitive_structure()
+        symbols = []
+        for i in range(len(atoms)):
+            symbol = atoms.get_chemical_symbols()[i]
+            if not symbol in symbols:
+                symbols.append(symbol)
+
+        return symbols
+
+
+    def get_adsorbate_structures(self, atoms=None, kindlist=None,
+                                 sc=3, mechanism='chemisorption'):
+        if atoms is None:
+            atoms = self.create_adsorption_sites()
+        if kindlist is None:
+            kindlist = self.get_intrinsic_types()
+
+        structures = []
+        primitive = self.get_primitive_structure()
+        for i in range(len(atoms)):
+            if atoms.get_chemical_symbols()[i] == 'X':
+                for kind in kindlist:
+                    structure = primitive.repeat((sc, sc, 1))
+                    positions = structure.get_positions()
+                    symbols = structure.get_chemical_symbols()
+                    cell = structure.get_cell()
+                    for z in np.arange(-2, 6, 0.1):
+                        pos = atoms.get_positions()[i] + [0, 0, z]
+                        if self.check_distance(primitive, pos, kind, mechanism):
+                            positions = np.append(positions, [pos], axis=0)
+                            symbols.append(kind)
+                            structures.append(Atoms(symbols=symbols,
+                                                    positions=positions,
+                                                    cell=cell,
+                                                    pbc=structure.get_pbc()))
+                            break
+
+        return structures
+
+
+    def check_distance(self, atoms, position, symbol, mechanism):
+        for i in range(len(atoms)):
+            host_position = atoms.get_positions()[i]
+            host_symbol = atoms.get_chemical_symbols()[i]
+            distance = get_distances(position,
+                                     host_position,
+                                     atoms.get_cell(),
+                                     pbc=True)[1][0][0]
+            threshold = self.get_minimum_distance(host_symbol,
+                                                  symbol,
+                                                  mechanism)
+            if distance < threshold:
+                return False
+
+        return True
+
+
+    def get_minimum_distance(self, el1, el2, mechanism):
+        from ase.data import (vdw_radii,
+                              covalent_radii,
+                              atomic_numbers)
+        N1 = atomic_numbers[el1]
+        N2 = atomic_numbers[el2]
+        if mechanism == 'physisorption':
+            R1 = vdw_radii[N1]
+            R2 = vdw_radii[N2]
+            if str(R1) == 'nan':
+                R1 = 2
+            if str(R2) == 'nan':
+                R2 = 2
+        elif mechanism == 'chemisorption':
+            R1 = covalent_radii[N1]
+            R2 = covalent_radii[N2]
+            if str(R1) == 'nan':
+                R1 = 1.9
+            if str(R2) == 'nan':
+                R2 = 1.9
+        else:
+            raise ValueError(f'No adsorption mechanism "{mechanism}" known! '
+                             'Choose "physisorption" or "chemisorption".')
+
+        return R1 + R2
+
+
     def map_positions(self, coordinates, structure=None):
         if structure is None:
             structure = self.get_primitive_structure()
