@@ -1086,7 +1086,7 @@ class CRECT(BravaisLattice):
             raise UnconventionalLattice(
                 f'Expected alpha < 90.  Got alpha={alpha}')
         super().__init__(a=a, alpha=alpha, **kwargs)
-        cell = self.tocell()
+
     def _cell(self, a, alpha):
         x = np.cos(alpha * _degrees)
         y = np.sin(alpha * _degrees)
