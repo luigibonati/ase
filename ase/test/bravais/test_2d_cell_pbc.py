@@ -1,7 +1,5 @@
-import numpy as np
 import pytest
 from ase.cell import Cell
-from ase.lattice import CRECT
 
 
 @pytest.fixture
