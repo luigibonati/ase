@@ -6,10 +6,10 @@ from ase.geometry.bravais_type_engine import generate_niggli_op_table
 ref_info = {
     'LINE': 1,
     'SQR': 1,
-    'RECT': 2,  # XXX should be 1 (requiring a < b)
+    'RECT': 1,
     'CRECT': 4,
     'HEX2D': 1,
-    'OBL': 20,  # XXX should be 10
+    'OBL': 10,
     'FCC': 1,
     'BCC': 1,
     'CUB': 1,
