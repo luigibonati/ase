@@ -356,7 +356,6 @@ class DefectBuilder():
 
         atoms = self.get_top_layer()
         un, struc = self.create_interstitials(atoms)
-        view(un)
         prim = self.get_primitive_structure()
         positions = prim.get_positions()
         symbols = prim.get_chemical_symbols()
@@ -372,7 +371,7 @@ class DefectBuilder():
                                              prim.get_positions(),
                                              cell=cell,
                                              pbc=True)[1][0])
-                distances.append(i)
+                distances.append(distance)
         for i, distance in enumerate(distances):
             if distance == max(distances):
                 index = i
