@@ -359,9 +359,13 @@ class DefectBuilder():
         prim = self.get_primitive_structure()
         positions = prim.get_positions()
         symbols = prim.get_chemical_symbols()
+        occ_sites = []
         for i, pos in enumerate(atoms.get_positions()):
-            positions = np.append(positions, [pos + [0, 0, 2]], axis=0)
-            symbols.append('X')
+            kind = atoms.get_chemical_symbols()[i]
+            if not kind in occ_sites:
+                positions = np.append(positions, [pos + [0, 0, 2]], axis=0)
+                symbols.append('X')
+                occ_sites.append(kind)
         cell = prim.get_cell()
         distances = []
         for i, atom in enumerate(un):
