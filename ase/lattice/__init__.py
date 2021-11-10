@@ -1179,25 +1179,10 @@ def identify_lattice(cell, eps=2e-4, *, pbc=True):
     Returns Bravais lattice object representing the cell along with
     an operation that, applied to the cell, yields the same lengths
     and angles as the Bravais lattice object."""
+    from ase.geometry.bravais_type_engine import niggli_op_table
 
     pbc = cell.any(1) & pbc2pbc(pbc)
     npbc = sum(pbc)
-
-    if 0: # npbc == 1:
-        i = np.argmax(pbc)  # index of periodic axis
-        a = cell[i, i]
-        if a < 0 or cell[i, [i - 1, i - 2]].any():
-            raise ValueError('Not a 1-d cell ASE can handle: {cell}.'
-                             .format(cell=cell))
-        if i == 0:
-            op = np.eye(3)
-        elif i == 1:
-            op = np.array([[0, 1, 0], [1, 0, 0], [0, 0, 1]])
-        else:
-            op = np.array([[0, 0, 1], [0, 1, 0], [1, 0, 0]])
-        return LINE(a), op
-
-    from ase.geometry.bravais_type_engine import niggli_op_table
 
     cell = cell.uncomplete(pbc)
     rcell, reduction_op = cell.niggli_reduce(eps=eps)
