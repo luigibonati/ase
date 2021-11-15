@@ -360,18 +360,13 @@ class DefectBuilder():
                      pbc=atoms.get_pbc())
 
 
-    def create_interstitials(self, atoms=None, adsorption=False):
+    def create_interstitials(self, atoms=None):
         if atoms is None:
             atoms = self.get_primitive_structure()
         sym = self.get_host_symmetry()
         wyck = self.get_wyckoff_data(sym['number'])
-        if self.get_dimension() == 2 and adsorption:
-            un, struc = self.map_positions(wyck,
-                                           structure=atoms,
-                                           adsorption=adsorption)
-        else:
-            un, struc = self.map_positions(wyck,
-                                           structure=atoms)
+        un, struc = self.map_positions(wyck,
+                                       structure=atoms)
 
         return un, struc
 
@@ -504,7 +499,7 @@ class DefectBuilder():
         return R1 + R2
 
 
-    def map_positions(self, coordinates, structure=None, adsorption=False):
+    def map_positions(self, coordinates, structure=None):
         if structure is None:
             structure = self.get_primitive_structure()
 
@@ -524,7 +519,7 @@ class DefectBuilder():
                             tmp_eq = equivalent.copy()
                             tmp_un = unique.copy()
                             dist, tmp_eq = self.check_distances(tmp_eq, pos)
-                            true_int = self.is_true_interstitial(pos, adsorption)
+                            true_int = self.is_true_interstitial(pos)
                             if dist and true_int:
                                 unique = self.create_unique(pos, tmp_un)
                                 equivalent = self.create_copies(pos, coordinates[element], tmp_eq)
@@ -536,14 +531,12 @@ class DefectBuilder():
         return unique, equivalent
 
 
-    def is_true_interstitial(self, pos, adsorption):
+    def is_true_interstitial(self, pos):
         dim = self.get_dimension()
         atoms = self.get_primitive_structure()
         if dim == 3:
             return True
-        elif dim == 2 and not adsorption:
-            return True
-        elif dim == 2 and adsorption:
+        elif dim == 2:
             top, bottom = get_top_bottom(atoms)
             if pos[2] <= top and pos[2] >= bottom:
                 return True
