@@ -29,6 +29,20 @@ def centeroidnp(arr):
     return np.array((sum_x/length, sum_y/length, sum_z/length))
 
 
+def get_top_bottom(atoms, dim=2):
+    positions = atoms.get_scaled_positions()
+    assert dim == 2, "Can only be used for 2D structures."
+
+    zs = positions[:, 2]
+    for z in zs:
+        if z == max(zs):
+            top = z
+        if z == min(zs):
+            bottom = z
+
+    return top, bottom
+
+
 class DefectBuilder():
     """
     Builder for setting up defect structures.
@@ -341,12 +355,18 @@ class DefectBuilder():
                      pbc=atoms.get_pbc())
 
 
-    def create_interstitials(self, atoms=None):
+    def create_interstitials(self, atoms=None, adsorption=False):
         if atoms is None:
             atoms = self.get_primitive_structure()
         sym = self.get_host_symmetry()
         wyck = self.get_wyckoff_data(sym['number'])
-        un, struc = self.map_positions(wyck, structure=atoms)
+        if self.get_dimension() == 2 and adsorption:
+            un, struc = self.map_positions(wyck,
+                                           structure=atoms,
+                                           adsorption=adsorption)
+        else:
+            un, struc = self.map_positions(wyck,
+                                           structure=atoms)
 
         return un, struc
 
@@ -479,7 +499,7 @@ class DefectBuilder():
         return R1 + R2
 
 
-    def map_positions(self, coordinates, structure=None):
+    def map_positions(self, coordinates, structure=None, adsorption=False):
         if structure is None:
             structure = self.get_primitive_structure()
 
@@ -494,11 +514,13 @@ class DefectBuilder():
                 mapped = False
                 for element in coordinates:
                     for wyck in coordinates[element]:
+                        true_int = False
                         if self.is_mapped(pos, wyck):
                             tmp_eq = equivalent.copy()
                             tmp_un = unique.copy()
                             dist, tmp_eq = self.check_distances(tmp_eq, pos)
-                            if dist:
+                            true_int = self.is_true_interstitial(pos, adsorption)
+                            if dist and true_int:
                                 unique = self.create_unique(pos, tmp_un)
                                 equivalent = self.create_copies(pos, coordinates[element], tmp_eq)
                                 mapped = True
@@ -507,6 +529,23 @@ class DefectBuilder():
                         break
 
         return unique, equivalent
+
+
+    def is_true_interstitial(self, pos, adsorption):
+        dim = self.get_dimension()
+        atoms = self.get_primitive_structure()
+        if dim == 3:
+            return True
+        elif dim == 2 and not adsorption:
+            return True
+        elif dim == 2 and adsorption:
+            top, bottom = get_top_bottom(atoms)
+            if pos <= top and pos >= bottom:
+                return True
+            else:
+                return False
+        else:
+            return True
 
 
     def create_unique(self, pos, unique):
