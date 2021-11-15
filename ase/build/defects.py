@@ -322,6 +322,11 @@ class DefectBuilder():
                     value[i] = value[i] - 1
             if self.is_planar(new_struc) and value[2] != z:
                 copy = False
+            if self.get_dimension() == 2 and not self.is_planar(new_struc):
+                top, bottom = get_top_bottom(self.get_primitive_structure())
+                if value[2] <= bottom or value[2] >= top:
+                    copy = False
+                # print(top, bottom, value[2], copy)
             if (value[0] <= 1 and value[0] >= 0
                and value[1] <= 1 and value[1] >= 0
                and value[2] <= 1 and value[2] >= 0 and copy):
@@ -540,7 +545,7 @@ class DefectBuilder():
             return True
         elif dim == 2 and adsorption:
             top, bottom = get_top_bottom(atoms)
-            if pos <= top and pos >= bottom:
+            if pos[2] <= top and pos[2] >= bottom:
                 return True
             else:
                 return False
