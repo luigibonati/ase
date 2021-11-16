@@ -33,6 +33,18 @@ Listed in alphabetical order, for want of a better approach.
    identification and symmetrization of structures with inversion
    pseudosymmetry.
 
+ * `FHI-vibes <https://vibes-developers.gitlab.io/vibes/>`_:
+   A python package for calculating and analyzing the vibrational properties
+   of solids from first principles. FHI-vibes bridges between the harmonic
+   approximation and fully anharmonic molecular dynamics simulations.
+   FHI-vibes builds on several existing packages including ASE, and provides
+   a consistent and user-friendly interface.
+
+ * `gpatom <https://gitlab.com/gpatom/ase-gpatom>`_: APython package
+   which provides several tools for geometry optimisation and related
+   tasks in atomistic systems using machine learning surrogate models.
+   gpatom is an extension to the Atomic Simulation Environment.
+
  * `hiphive <https://hiphive.materialsmodeling.org>`_:
    hiPhive is a tool for efficiently extracting high-order force
    constants. It is interfaced with ASE to enable easy integration
@@ -59,10 +71,3 @@ Listed in alphabetical order, for want of a better approach.
    equilibrium shapes of nanoparticles. WulffPack constructs both continuum
    models and atomistic structures for further modeling with, e.g., molecular
    dynamics or density functional theory.
-
- * `FHI-vibes <https://vibes-developers.gitlab.io/vibes/>`_:
-   A python package for calculating and analyzing the vibrational properties 
-   of solids from first principles. FHI-vibes bridges between the harmonic 
-   approximation and fully anharmonic molecular dynamics simulations. 
-   FHI-vibes builds on several existing packages including ASE, and provides 
-   a consistent and user-friendly interface.
