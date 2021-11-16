@@ -12,6 +12,33 @@ def split(word):
     return [char for char in word]
 
 
+def get_wyckoff_data(number):
+    wyckoff = Wyckoff(number).wyckoff
+    coordinates = {}
+    for element in wyckoff['letters']:
+        coordinates[element] = wyckoff[element]['coordinates']
+
+    return coordinates
+
+
+def get_spg_cell(atoms):
+    return (atoms.get_cell(),
+            atoms.get_scaled_positions(),
+            atoms.get_atomic_numbers())
+
+
+def get_equivalent_atoms(spg_cell):
+    dataset = spg.get_symmetry_dataset(spg_cell)
+
+    return dataset['equivalent_atoms']
+
+
+def sort_array(a):
+    """First, x, then y, then z."""
+    a = a.astype('f8')
+    return a[np.lexsort((a[:,2], a[:,1], a[:,0]))]
+
+
 def get_middle_point(p1, p2):
     coords = np.zeros(3)
     for i in range(3):
@@ -93,12 +120,6 @@ class DefectBuilder():
         return Wyckoff(sg)
 
 
-    def get_equivalent_atoms(self, spg_cell):
-        dataset = spg.get_symmetry_dataset(spg_cell)
-
-        return dataset['equivalent_atoms']
-
-
     def get_input_structure(self):
         return self.atoms
 
@@ -116,7 +137,7 @@ class DefectBuilder():
     def create_vacancies(self):
         atoms = self.get_input_structure()
         spg_host = self.setup_spg_cell()
-        eq_pos = self.get_equivalent_atoms(spg_host)
+        eq_pos = get_equivalent_atoms(spg_host)
         finished_list = []
         vacancies = []
         for i in range(len(atoms)):
@@ -149,7 +170,7 @@ class DefectBuilder():
     def create_antisites(self, intrinsic=True, extrinsic=None):
         atoms = self.get_input_structure().copy()
         spg_host = self.setup_spg_cell()
-        eq_pos = self.get_equivalent_atoms(spg_host)
+        eq_pos = get_equivalent_atoms(spg_host)
         defect_list = self.get_kindlist(intrinsic=intrinsic,
                                         extrinsic=extrinsic)
         antisites = []
@@ -200,18 +221,12 @@ class DefectBuilder():
         return scaled_pos
 
 
-    def sort_array(self, a):
-        """First, x, then y, then z."""
-        a = a.astype('f8')
-        return a[np.lexsort((a[:,2], a[:,1], a[:,0]))]
-
-
     def get_interstitial_mock(self, positions, atoms=None):
         if atoms is None:
             atoms = self.get_input_structure()
         cell = atoms.get_cell()
         dim = self.get_dimension()
-        positions = self.sort_array(positions)
+        positions = sort_array(positions)
         interstitial = atoms.copy()
         abs_positions = interstitial.get_positions()
         symbols = interstitial.get_chemical_symbols()
@@ -228,27 +243,14 @@ class DefectBuilder():
         return interstitial.get_scaled_positions()
 
 
-    def get_spg_cell(self, atoms):
-        return (atoms.get_cell(),
-                atoms.get_scaled_positions(),
-                atoms.get_atomic_numbers())
-
-
     def get_host_symmetry(self):
         atoms = self.get_primitive_structure()
-        spg_cell = self.get_spg_cell(atoms)
+        spg_cell = get_spg_cell(atoms)
         dataset = spg.get_symmetry_dataset(spg_cell, symprec=1e-2)
 
         return dataset
 
 
-    def get_wyckoff_data(self, number):
-        wyckoff = Wyckoff(number).wyckoff
-        coordinates = {}
-        for element in wyckoff['letters']:
-            coordinates[element] = wyckoff[element]['coordinates']
-
-        return coordinates
 
 
     def is_mapped(self, scaled_position, coordinate):
@@ -326,7 +328,6 @@ class DefectBuilder():
                 top, bottom = get_top_bottom(self.get_primitive_structure())
                 if value[2] <= bottom or value[2] >= top:
                     copy = False
-                # print(top, bottom, value[2], copy)
             if (value[0] <= 1 and value[0] >= 0
                and value[1] <= 1 and value[1] >= 0
                and value[2] <= 1 and value[2] >= 0 and copy):
@@ -364,7 +365,7 @@ class DefectBuilder():
         if atoms is None:
             atoms = self.get_primitive_structure()
         sym = self.get_host_symmetry()
-        wyck = self.get_wyckoff_data(sym['number'])
+        wyck = get_wyckoff_data(sym['number'])
         un, struc = self.map_positions(wyck,
                                        structure=atoms)
 
