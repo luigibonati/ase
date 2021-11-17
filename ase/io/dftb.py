@@ -1,3 +1,4 @@
+import os
 import numpy as np
 from ase.atoms import Atoms
 from ase.utils import reader, writer
@@ -14,9 +15,9 @@ def prepare_dftb_input(outfile, atoms, parameters, directory):
     outfile.write(' \n')
 
     params = parameters.copy()
-    slako_dir = params.pop('slako_dir')
-    pcpot = params.pop('pcpot')
-    do_forces = params.pop('do_forces')
+    slako_dir = params.pop('slako_dir') if 'slako_dir' in params else ''
+    pcpot = params.pop('pcpot') if 'pcpot' in params else None
+    do_forces = params.pop('do_forces') if 'do_forces' in params else False
 
     s = 'Hamiltonian_MaxAngularMomentum_'
     for key in params:
@@ -89,8 +90,118 @@ def prepare_dftb_input(outfile, atoms, parameters, directory):
         outfile.write('   CalculateForces = Yes  \n')
         outfile.write('} \n')
 
+def read_dftb_outputs(directory, label):
+    """ all results are read from results.tag file
+        It will be destroyed after it is read to avoid
+        reading it once again after some runtime error """
+    results = {}
 
+    with open(os.path.join(directory, 'results.tag'), 'r') as fd:
+        lines = fd.readlines()
 
+    with open(os.path.join(directory, f'{label}_pin.hsd'), 'r') as fd:
+        atoms = read_dftb(fd)
+
+    charges, energy, dipole = read_charges_energy_dipole()
+    if charges is not None:
+        self.results['charges'] = charges
+    self.results['energy'] = energy
+    if dipole is not None:
+        results['dipole'] = dipole
+    if self.do_forces:
+        forces = self.read_forces()
+        self.results['forces'] = forces
+    self.mmpositions = None
+
+    # stress stuff begins
+    sstring = 'stress'
+    have_stress = False
+    stress = list()
+    for iline, line in enumerate(self.lines):
+        if sstring in line:
+            have_stress = True
+            start = iline + 1
+            end = start + 3
+            for i in range(start, end):
+                cell = [float(x) for x in self.lines[i].split()]
+                stress.append(cell)
+    if have_stress:
+        stress = -np.array(stress) * Hartree / Bohr**3
+        self.results['stress'] = stress.flat[[0, 4, 8, 5, 2, 1]]
+    # stress stuff ends
+
+    # eigenvalues and fermi levels
+    fermi_levels = self.read_fermi_levels()
+    if fermi_levels is not None:
+        self.results['fermi_levels'] = fermi_levels
+
+    eigenvalues = self.read_eigenvalues()
+    if eigenvalues is not None:
+        self.results['eigenvalues'] = eigenvalues
+
+    # calculation was carried out with atoms written in write_input
+    os.remove(os.path.join(self.directory, 'results.tag'))
+
+def read_max_angular_momentum(path):
+    """Read maximum angular momentum from .skf file.
+
+    See dftb.org for A detailed description of the Slater-Koster file format.
+    """
+    with open(path, 'r') as fd:
+        line = fd.readline()
+        if line[0] == '@':
+            # Extended format
+            fd.readline()
+            l = 3
+            pos = 9
+        else:
+            # Simple format:
+            l = 2
+            pos = 7
+
+        # Sometimes there ar commas, sometimes not:
+        line = fd.readline().replace(',', ' ')
+
+        occs = [float(f) for f in line.split()[pos:pos + l + 1]]
+        for f in occs:
+            if f > 0.0:
+                return l
+            l -= 1
+
+def read_charges_energy_dipole():
+    """Get partial charges on atoms
+        in case we cannot find charges they are set to None
+    """
+    with open(os.path.join(directory, 'detailed.out'), 'r') as fd:
+        lines = fd.readlines()
+
+    for line in lines:
+        if line.strip().startswith('Total energy:'):
+            energy = float(line.split()[2]) * Hartree
+            break
+
+    qm_charges = []
+    for n, line in enumerate(lines):
+        if ('Atom' and 'Charge' in line):
+            chargestart = n + 1
+            break
+    else:
+        # print('Warning: did not find DFTB-charges')
+        # print('This is ok if flag SCC=No')
+        return None, energy, None
+
+    lines1 = lines[chargestart:(chargestart + len(self.atoms))]
+    for line in lines1:
+        qm_charges.append(float(line.split()[-1]))
+
+    dipole = None
+    for line in lines:
+        if 'Dipole moment:' in line and 'au' in line:
+            words = line.split()
+            dipole = np.array(
+                [float(w) for w in words[-4:-1]]) * Bohr
+
+    return np.array(qm_charges), energy, dipole
 
 
 

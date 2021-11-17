@@ -50,17 +50,19 @@ class DftbTemplate(CalculatorTemplate):
     def execute(self, directory, profile) -> None:
         profile.run(directory, self.output_file)
 
-    def write_input(self, directory, atoms, parameters):
+    def write_input(self, directory, atoms, parameters, properties):
         directory = Path(directory)
         directory.mkdir(exist_ok=True, parents=True)
         parameters = dict(parameters)
 
-        io.prepare_dftb_input(
-            directory=directory,
-            atoms=atoms, parameters=parameters)
+        with open(self.input_file, 'w') as infile:
+            io.prepare_dftb_input(
+                outfile=infile,
+                directory=directory,
+                atoms=atoms, parameters=parameters)
 
     def read_results(self, directory):
-        return io.read_abinit_outputs(directory, self._label)
+        return io.read_dftb_outputs(directory, self._label)
 
 
 class Dftb(GenericFileIOCalculator):
