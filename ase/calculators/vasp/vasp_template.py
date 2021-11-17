@@ -1,7 +1,6 @@
 """Vasp calculator based on the GenericFileIOCalculator"""
 from typing import Mapping, Any
 from subprocess import check_call
-from pathlib import Path
 
 from ase.calculators.genericfileio import (CalculatorTemplate,
                                            GenericFileIOCalculator)
