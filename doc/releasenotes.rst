@@ -32,6 +32,11 @@ Git master branch
   objects.  See :meth:`ase.formula.Formula.format`.  The ``abc`` format
   has been renamed to ``ab2``.
 
+* IO formats can now be implemented in separate packages and registered
+  in ase with the entry point ``ase.ioformats`` in the external package
+  configuration. This entry point only accepts objects of the type
+  :class:`~ase.utils.plugins.ExternalIOFormat`.
+
 Calculators:
 
 * Created new :class:`ase.calculators.plumed.Plumed` that is an interface
