@@ -22,8 +22,7 @@ class BFGSClimbFixInternals(BFGS):
     constraints.
     This has been tested with the :class:`~ase.constraints.FixAtoms` constraint.
 
-    Inspired by concepts described by P. N. Plessow, [1]_
-    implemented by J. Amsler.
+    Inspired by concepts described by P. N. Plessow. [1]_
 
     .. [1] P. N. Plessow, Efficient Transition State Optimization of Periodic
            Structures through Automated Relaxed Potential Energy Surface Scans.
