@@ -7,6 +7,10 @@ Initial development: markus.kaukonen@iki.fi
 """
 
 import os
+from pathlib import Path
+
+import ase.io.dftb as io
+
 import numpy as np
 from ase.calculators.calculator import (FileIOCalculator, kpts2ndarray,
                                         kpts2sizeandoffsets)
@@ -38,7 +42,7 @@ class DftbTemplate(CalculatorTemplate):
         super().__init__(
             name='dftb',
             implemented_properties = ['energy', 'forces', 'charges',
-                                      'stress', 'dipole']
+                                      'stress', 'dipole'])
 
         self.input_file = f'{self._label}_in.hsd'
         self.output_file = f'{self._label}.out'
