@@ -1,11 +1,9 @@
 """Test file for exciting ASE calculator."""
-from parameterized import parameterized
 import os
 import shutil
 import numpy as np
 import pytest
 import tempfile  # Used to create temporary directories for tests.
-import unittest
 import ase
 from ase.build import bulk
 import ase.calculators.exciting
@@ -60,14 +58,14 @@ class TestPytestExciting:
             file.write(
                 '<?xml version="1.0"?><?xml-stylesheet href="http://xml.exciting-code.org/info.xsl" type="text/xsl"?><info date="2021-05-20" time="10:19:47" versionhash="" title="CO2 molecule">  <groundstate status="not finished"><scl>  <iter iteration="13" rms="9.5700833536992441E-012" rmslog10="-11.0190842796" deltae="2.0959589619451435E-009" deltaelog10="-8.67861722492" dforcemax="7.3038805059599810E-008" dforcemaxlog10="-7.13644634063" chgdst="1.3346933466055611E-010" chgdstlog10="-9.87461850447" fermidos="0.00000000000"><energies totalEnergy="-186.678769835" fermiEnergy="0.831408797965E-01" sum-of-eigenvalues="-98.0578551862" electronic-kinetic="186.958679233" core-electron-kinetic="0.00000000000" Coulomb="-352.438117832" Coulomb-potential="-257.082144217" nuclear-nuclear="-33.5493288534" electron-nuclear="-380.695433741" Hartree="61.8066447622" Madelung="-223.897045724" xc-potential="-27.9343902019" exchange="-19.6754841392" correlation="-1.52384709605"/><charges totalcharge="22.00000000" core="6.000000000" core_leakage="0.4018153924E-02" valence="16.00000000" interstitial="9.452679627" muffin-tin-total="12.54732037">  <atom species="C" muffin-tin="3.115544983"/>  <atom species="O" muffin-tin="4.715887695"/>  <atom species="O" muffin-tin="4.715887695"/></charges><timing itertime="283.082942876" timetot="485.344225137" timeinit="6.07864083606" timemat="16.3713530090" timefv="6.39339693938" timesv="0.00000000000" timerho="8.88467625412" timepot="445.271292400" timefor="2.34486569837"/>  </iter>  <structure forceMax="0.246194007063E-04"><crystal unitCellVolume="250.0000000" BrillouinZoneVolume="0.9922008538" nktot="0" ngridk="111">  <basevect>10.00000000   0.000000000   0.000000000</basevect>  <basevect>0.000000000   5.000000000   0.000000000</basevect>  <basevect>0.000000000   0.000000000   5.000000000</basevect>  <reciprvect>0.6283185307   0.000000000   0.000000000</reciprvect>  <reciprvect>0.000000000   1.256637061   0.000000000</reciprvect>  <reciprvect>0.000000000   0.000000000   1.256637061</reciprvect></crystal><species chemicalSymbol="C">  <atom x="0.00000000000" y="0.00000000000" z="0.00000000000"><forces Magnitude="0.00000000000">  <Hellmann-Feynman x="-0.740148683083E-16" y="0.00000000000" z="-0.205432527401E-32"/>  <core-correction x="0.185037170771E-16" y="0.00000000000" z="-0.154074395551E-32"/>  <IBS x="-0.394430452611E-30" y="0.00000000000" z="-0.924446373306E-32"/>  <totalforce x="0.00000000000" y="0.00000000000" z="0.00000000000"/></forces>  </atom></species><species chemicalSymbol="O">  <atom x="0.215273901043" y="0.00000000000" z="0.00000000000"><forces Magnitude="0.246194007063E-04">  <Hellmann-Feynman x="0.561661217052" y="0.00000000000" z="0.410865054803E-32"/>  <core-correction x="-0.417901848779" y="-0.308148791102E-32" z="0.00000000000"/>  <IBS x="-0.143783987673" y="0.00000000000" z="0.462223186653E-32"/>  <totalforce x="-0.246194007063E-04" y="0.00000000000" z="0.00000000000"/></forces>  </atom>  <atom x="0.784726098957" y="0.00000000000" z="0.00000000000"><forces Magnitude="0.246194007063E-04">  <Hellmann-Feynman x="-0.561661217052" y="0.00000000000" z="-0.205432527401E-32"/>  <core-correction x="0.417901848779" y="0.308148791102E-32" z="0.154074395551E-32"/>  <IBS x="0.143783987673" y="0.00000000000" z="0.462223186653E-32"/>  <totalforce x="0.246194007063E-04" y="0.00000000000" z="0.00000000000"/></forces>  </atom></species>  </structure></scl>  </groundstate></info>')
 
-    @parameterized.expand([[
-        (3, 3, 3), '/fshome/chm/git/exciting/bin/excitingser',
-        '3 3 3', '/fshome/chm/git/exciting/bin/excitingser']])
-    def test_exciting_constructor(
-            self, kpts, exciting_binary: str,
-            expected_kpts, expected_exciting_binary: str):
+    @pytest.mark.parametrize("kpts", [(3, 3, 3)])
+    def test_exciting_constructor(self, kpts):
         """Test write an input for exciting."""
         calc_dir = 'ase/test/calculator/exciting'
+
+        # Doesn't use - needs refactoring
+        exciting_binary = 'path/2/exciting_smp'
+
         exciting_calc = ase.calculators.exciting.Exciting(
             dir=calc_dir,
             kpts=kpts,
@@ -75,10 +73,10 @@ class TestPytestExciting:
             exciting_binary=exciting_binary,
             maxscl=3)
         # groundstate attribute ngridk returns the calculator's kpts
-        assert exciting_calc.groundstate_attributes['ngridk'] == expected_kpts
+        assert exciting_calc.groundstate_attributes['ngridk'] == '3 3 3'
         assert exciting_calc.dir == calc_dir
         assert exciting_calc.species_path == self.test_folder_name
-        assert exciting_calc.exciting_binary == expected_exciting_binary
+        assert exciting_calc.exciting_binary == exciting_binary
         # Should be set to False at initialization.
         assert not exciting_calc.converged
         # Should be false by default unless arg is passed to constructor.
