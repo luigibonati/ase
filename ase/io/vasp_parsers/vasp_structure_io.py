@@ -1,117 +1,23 @@
 """
-This module contains functionality for reading and writing an ASE
-Atoms object in VASP POSCAR format.
-
+=======
+Module for reading and writing structure files for VASP.
+POSCAR, CONTCAR
+=======
 """
-
-import re
-
 import numpy as np
-
+import re
+import numpy as np
 from ase import Atoms
 from ase.utils import reader, writer
-from ase.io.utils import ImageIterator
 from ase.io import ParseError
-from . import vasp_outcar_parsers as vop
 from pathlib import Path
 
 __all__ = [
-    'read_structure', 'write_structure'
+    'read_vasp_structure', 'write_vasp_structure'
 ]
 
-
-def get_atomtypes(fname):
-    """Given a file name, get the atomic symbols.
-
-    The function can get this information from OUTCAR and POTCAR
-    format files.  The files can also be compressed with gzip or
-    bzip2.
-
-    """
-    fpath = Path(fname)
-
-    atomtypes = []
-    atomtypes_alt = []
-    if fpath.suffix == '.gz':
-        import gzip
-        opener = gzip.open
-    elif fpath.suffix == '.bz2':
-        import bz2
-        opener = bz2.BZ2File
-    else:
-        opener = open
-    with opener(fpath) as fd:
-        for line in fd:
-            if 'TITEL' in line:
-                atomtypes.append(line.split()[3].split('_')[0].split('.')[0])
-            elif 'POTCAR:' in line:
-                atomtypes_alt.append(line.split()[2].split('_')[0].split('.')[0])
-
-    if len(atomtypes) == 0 and len(atomtypes_alt) > 0:
-        # old VASP doesn't echo TITEL, but all versions print out species lines
-        # preceded by "POTCAR:", twice
-        if len(atomtypes_alt) % 2 != 0:
-            raise ParseError(f'Tried to get atom types from {len(atomtypes_alt)} "POTCAR": '
-                              'lines in OUTCAR, but expected an even number')
-        atomtypes = atomtypes_alt[0:len(atomtypes_alt)//2]
-
-    return atomtypes
-
-
-def atomtypes_outpot(posfname, numsyms):
-    """Try to retrieve chemical symbols from OUTCAR or POTCAR
-
-    If getting atomtypes from the first line in POSCAR/CONTCAR fails, it might
-    be possible to find the data in OUTCAR or POTCAR, if these files exist.
-
-    posfname -- The filename of the POSCAR/CONTCAR file we're trying to read
-
-    numsyms -- The number of symbols we must find
-
-    """
-    posfpath = Path(posfname)
-
-    # Check files with exactly same path except POTCAR/OUTCAR instead
-    # of POSCAR/CONTCAR.
-    fnames = [posfpath.with_name('POTCAR'),
-              posfpath.with_name('OUTCAR')]
-    # Try the same but with compressed files
-    fsc = []
-    for fnpath in fnames:
-        fsc.append(fnpath.parent / (fnpath.name + '.gz'))
-        fsc.append(fnpath.parent / (fnpath.name + '.bz2'))
-    for f in fsc:
-        fnames.append(f)
-    # Code used to try anything with POTCAR or OUTCAR in the name
-    # but this is no longer supported
-
-    tried = []
-    for fn in fnames:
-        if fn in posfpath.parent.iterdir():
-            tried.append(fn)
-            at = get_atomtypes(fn)
-            if len(at) == numsyms:
-                return at
-
-    raise ParseError('Could not determine chemical symbols. Tried files ' +
-                     str(tried))
-
-
-def get_atomtypes_from_formula(formula):
-    """Return atom types from chemical formula (optionally prepended
-    with and underscore).
-    """
-    from ase.symbols import string2symbols
-    symbols = string2symbols(formula.split('_')[0])
-    atomtypes = [symbols[0]]
-    for s in symbols[1:]:
-        if s != atomtypes[-1]:
-            atomtypes.append(s)
-    return atomtypes
-
-
 @reader
-def read_structure(filename='CONTCAR'):
+def read_vasp_structure(filename='CONTCAR'):
     """Import POSCAR/CONTCAR type file.
 
     Reads unitcell, atom positions and constraints from the POSCAR/CONTCAR
@@ -247,64 +153,107 @@ def read_structure(filename='CONTCAR'):
             atoms.set_constraint(constraints)
     return atoms
 
-def _symbol_count_from_symbols(symbols):
-    """Reduce list of chemical symbols into compact VASP notation
 
-    args:
-        symbols (iterable of str)
+def get_atomtypes(fname):
+    """Given a file name, get the atomic symbols.
 
-    returns:
-        list of pairs [(el1, c1), (el2, c2), ...]
-    """
-    sc = []
-    psym = symbols[0]
-    count = 0
-    for sym in symbols:
-        if sym != psym:
-            sc.append((psym, count))
-            psym = sym
-            count = 1
-        else:
-            count += 1
-    sc.append((psym, count))
-    return sc
-
-
-def _write_symbol_count(fd, sc, vasp5=True):
-    """Write the symbols and numbers block for POSCAR or XDATCAR
-
-    Args:
-        f (fd): Descriptor for writable file
-        sc (list of 2-tuple): list of paired elements and counts
-        vasp5 (bool): if False, omit symbols and only write counts
-
-    e.g. if sc is [(Sn, 4), (S, 6)] then write::
-
-      Sn   S
-       4   6
+    The function can get this information from OUTCAR and POTCAR
+    format files.  The files can also be compressed with gzip or
+    bzip2.
 
     """
-    if vasp5:
-        for sym, _ in sc:
-            fd.write(' {:3s}'.format(sym))
-        fd.write('\n')
+    fpath = Path(fname)
 
-    for _, count in sc:
-        fd.write(' {:3d}'.format(count))
-    fd.write('\n')
+    atomtypes = []
+    atomtypes_alt = []
+    if fpath.suffix == '.gz':
+        import gzip
+        opener = gzip.open
+    elif fpath.suffix == '.bz2':
+        import bz2
+        opener = bz2.BZ2File
+    else:
+        opener = open
+    with opener(fpath) as fd:
+        for line in fd:
+            if 'TITEL' in line:
+                atomtypes.append(line.split()[3].split('_')[0].split('.')[0])
+            elif 'POTCAR:' in line:
+                atomtypes_alt.append(line.split()[2].split('_')[0].split('.')[0])
 
+    if len(atomtypes) == 0 and len(atomtypes_alt) > 0:
+        # old VASP doesn't echo TITEL, but all versions print out species lines
+        # preceded by "POTCAR:", twice
+        if len(atomtypes_alt) % 2 != 0:
+            raise ParseError(f'Tried to get atom types from {len(atomtypes_alt)} "POTCAR": '
+                              'lines in OUTCAR, but expected an even number')
+        atomtypes = atomtypes_alt[0:len(atomtypes_alt)//2]
+
+    return atomtypes
+
+
+def atomtypes_outpot(posfname, numsyms):
+    """Try to retrieve chemical symbols from OUTCAR or POTCAR
+
+    If getting atomtypes from the first line in POSCAR/CONTCAR fails, it might
+    be possible to find the data in OUTCAR or POTCAR, if these files exist.
+
+    posfname -- The filename of the POSCAR/CONTCAR file we're trying to read
+
+    numsyms -- The number of symbols we must find
+
+    """
+    posfpath = Path(posfname)
+
+    # Check files with exactly same path except POTCAR/OUTCAR instead
+    # of POSCAR/CONTCAR.
+    fnames = [posfpath.with_name('POTCAR'),
+              posfpath.with_name('OUTCAR')]
+    # Try the same but with compressed files
+    fsc = []
+    for fnpath in fnames:
+        fsc.append(fnpath.parent / (fnpath.name + '.gz'))
+        fsc.append(fnpath.parent / (fnpath.name + '.bz2'))
+    for f in fsc:
+        fnames.append(f)
+    # Code used to try anything with POTCAR or OUTCAR in the name
+    # but this is no longer supported
+
+    tried = []
+    for fn in fnames:
+        if fn in posfpath.parent.iterdir():
+            tried.append(fn)
+            at = get_atomtypes(fn)
+            if len(at) == numsyms:
+                return at
+
+    raise ParseError('Could not determine chemical symbols. Tried files ' +
+                     str(tried))
+
+
+def get_atomtypes_from_formula(formula):
+    """Return atom types from chemical formula (optionally prepended
+    with and underscore).
+    """
+    from ase.symbols import string2symbols
+    symbols = string2symbols(formula.split('_')[0])
+    atomtypes = [symbols[0]]
+    for s in symbols[1:]:
+        if s != atomtypes[-1]:
+            atomtypes.append(s)
+    return atomtypes
 
 @writer
-def write_structure(filename,
-               atoms,
-               label=None,
-               direct=False,
-               sort=None,
-               symbol_count=None,
-               long_format=True,
-               vasp5=True,
-               ignore_constraints=False,
-               wrap=False):
+def write_vasp_structure(filename,
+                         atoms,
+                         label=None,
+                         direct=False,
+                         sort=None,
+                         symbol_count=None,
+                         long_format=True,
+                         vasp5=True,
+                         ignore_constraints=False,
+                         wrap=False):
     """Method to write VASP position (POSCAR/CONTCAR) files.
 
     Writes label, scalefactor, unitcell, # of various kinds of atoms,
@@ -425,3 +374,50 @@ def write_structure(filename,
                     s = 'T'
                 fd.write('%4s' % s)
         fd.write('\n')
+
+
+def _symbol_count_from_symbols(symbols):
+    """Reduce list of chemical symbols into compact VASP notation
+
+    args:
+        symbols (iterable of str)
+
+    returns:
+        list of pairs [(el1, c1), (el2, c2), ...]
+    """
+    sc = []
+    psym = symbols[0]
+    count = 0
+    for sym in symbols:
+        if sym != psym:
+            sc.append((psym, count))
+            psym = sym
+            count = 1
+        else:
+            count += 1
+    sc.append((psym, count))
+    return sc
+
+
+def _write_symbol_count(fd, sc, vasp5=True):
+    """Write the symbols and numbers block for POSCAR or XDATCAR
+
+    Args:
+        f (fd): Descriptor for writable file
+        sc (list of 2-tuple): list of paired elements and counts
+        vasp5 (bool): if False, omit symbols and only write counts
+
+    e.g. if sc is [(Sn, 4), (S, 6)] then write::
+
+      Sn   S
+       4   6
+
+    """
+    if vasp5:
+        for sym, _ in sc:
+            fd.write(' {:3s}'.format(sym))
+        fd.write('\n')
+
+    for _, count in sc:
+        fd.write(' {:3d}'.format(count))
+    fd.write('\n')
