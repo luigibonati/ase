@@ -3,6 +3,115 @@ from ase.atoms import Atoms
 from ase.utils import reader, writer
 
 
+def prepare_dftb_input(outfile, atoms, parameters, directory):
+    """ Write the innput file for the dftb+ calculation.
+        Geometry is taken always from the file 'geo_end.gen'.
+    """
+
+    outfile.write('Geometry = GenFormat { \n')
+    outfile.write('    <<< "geo_end.gen" \n')
+    outfile.write('} \n')
+    outfile.write(' \n')
+
+    params = parameters.copy()
+    slako_dir = params.pop('slako_dir')
+    pcpot = params.pop('pcpot')
+    do_forces = params.pop('do_forces')
+
+    s = 'Hamiltonian_MaxAngularMomentum_'
+    for key in params:
+        if key.startswith(s) and len(key) > len(s):
+            break
+    else:
+        # User didn't specify max angular mometa.  Get them from
+        # the .skf files:
+        symbols = set(atoms.get_chemical_symbols())
+        for symbol in symbols:
+            path = os.path.join(slako_dir,
+                                '{0}-{0}.skf'.format(symbol))
+            l = read_max_angular_momentum(path)
+            params[s + symbol] = '"{}"'.format('spdf'[l])
+
+    # --------MAIN KEYWORDS-------
+    previous_key = 'dummy_'
+    myspace = ' '
+    for key, value in sorted(params.items()):
+        current_depth = key.rstrip('_').count('_')
+        previous_depth = previous_key.rstrip('_').count('_')
+        for my_backsclash in reversed(
+                range(previous_depth - current_depth)):
+            outfile.write(3 * (1 + my_backsclash) * myspace + '} \n')
+        outfile.write(3 * current_depth * myspace)
+        if key.endswith('_') and len(value) > 0:
+            outfile.write(key.rstrip('_').rsplit('_')[-1] +
+                          ' = ' + str(value) + '{ \n')
+        elif (key.endswith('_') and (len(value) == 0)
+              and current_depth == 0):  # E.g. 'Options {'
+            outfile.write(key.rstrip('_').rsplit('_')[-1] +
+                          ' ' + str(value) + '{ \n')
+        elif (key.endswith('_') and (len(value) == 0)
+              and current_depth > 0):  # E.g. 'Hamiltonian_Max... = {'
+            outfile.write(key.rstrip('_').rsplit('_')[-1] +
+                          ' = ' + str(value) + '{ \n')
+        elif key.count('_empty') == 1:
+            outfile.write(str(value) + ' \n')
+        elif ((key == 'Hamiltonian_ReadInitialCharges') and
+              (str(value).upper() == 'YES')):
+            f1 = os.path.isfile(directory + os.sep + 'charges.dat')
+            f2 = os.path.isfile(directory + os.sep + 'charges.bin')
+            if not (f1 or f2):
+                print('charges.dat or .bin not found, switching off guess')
+                value = 'No'
+            outfile.write(key.rsplit('_')[-1] + ' = ' + str(value) + ' \n')
+        else:
+            outfile.write(key.rsplit('_')[-1] + ' = ' + str(value) + ' \n')
+        if pcpot is not None and ('DFTB' in str(value)):
+            outfile.write('   ElectricField = { \n')
+            outfile.write('      PointCharges = { \n')
+            outfile.write(
+                '         CoordsAndCharges [Angstrom] = DirectRead { \n')
+            outfile.write('            Records = ' +
+                          str(len(pcpot.mmcharges)) + ' \n')
+            outfile.write(
+                '            File = "dftb_external_charges.dat" \n')
+            outfile.write('         } \n')
+            outfile.write('      } \n')
+            outfile.write('   } \n')
+        previous_key = key
+    current_depth = key.rstrip('_').count('_')
+    for my_backsclash in reversed(range(current_depth)):
+        outfile.write(3 * my_backsclash * myspace + '} \n')
+    outfile.write('ParserOptions { \n')
+    outfile.write('   IgnoreUnprocessedNodes = Yes  \n')
+    outfile.write('} \n')
+    if do_forces:
+        outfile.write('Analysis { \n')
+        outfile.write('   CalculateForces = Yes  \n')
+        outfile.write('} \n')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 @reader
 def read_dftb(fd):
     """Method to read coordinates from the Geometry section
