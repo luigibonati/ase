@@ -125,7 +125,7 @@ class Exciting:
         # Get the periodic boundary conditions.
         self.pbc = atoms.get_pbc().copy()
         # Write ASE atoms information into input.
-        self.write(atoms)
+        self.write_input(atoms)
 
     def get_potential_energy(self, atoms: ase.Atoms):
         """Get potential energy.
@@ -244,7 +244,7 @@ class Exciting:
                     groundstate.attrib[key] = str(value)
         return root
 
-    def write(self, atoms: ase.Atoms):
+    def write_input(self, atoms: ase.Atoms) -> str:
         """Write atomic info inputs to an xml.
 
         Write input parameters into an xml file that will be used by the
@@ -252,15 +252,19 @@ class Exciting:
 
         Args:
             atoms: Holds geometry and atomic information of the unit cell.
+        Returns:
+            Returns the output file path name.
         """
         # Check if the directory where we want to save our file exists.
         # If not, create the directory.
         if not os.path.isdir(self.dir):
             os.mkdir(self.dir)
         root = self.add_attributes_to_element_tree(atoms=atoms)
-        with open(os.path.join(self.dir, 'input.xml'), 'w') as fd:
-            # Prettify makes the output alot nicer to read.
+        output_file_path = os.path.join(self.dir, 'input.xml')
+        with open(output_file_path, 'w') as fd:
+            # Prettify makes the output a lot nicer to read.
             fd.write(prettify(root))
+        return output_file_path
 
     def dict_to_xml(self, pdict: Dict, element):
         """Write dictionary k,v paris to XML DOM object.

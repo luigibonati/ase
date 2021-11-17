@@ -118,14 +118,18 @@ class TestPytestExciting:
     def test_write(self, calculator):
         """Test the write method if it has to create a directory."""
         calculator.dir = calculator.dir + '/test'
+        expected_output_file_path = calculator.dir + '/input.xml'
         calculator.paramdict = {'number': '2'}
-        calculator.write(bulk('Fe'))
+        output_file_path = calculator.write_input(bulk('Fe'))
+        assert expected_output_file_path == output_file_path
 
     def test_write_2(self):
         """Tests write method with title keyword argument."""
+        expected_output_file_path = self.test_folder_name + '/input.xml'
         calculator = ase.calculators.exciting.Exciting(dir=self.test_folder_name, species_path=self.test_folder_name,
                                                        title='Test')
-        calculator.write(bulk('Fe'))
+        output_file_path = calculator.write_input(bulk('Fe'))
+        assert expected_output_file_path == output_file_path
 
     def test_dict_to_xml_adding_text(self, calculator):
         """Tests setting text of an element with dict_to_xml method."""
