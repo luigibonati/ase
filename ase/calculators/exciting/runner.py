@@ -66,7 +66,7 @@ class SimpleBinaryRunner:
         For example, given:
           ['mpirun', '-np, '2'] + ['binary.exe'] + ['>', 'std.out']
 
-        return "mpirun -np 2 binary.exe > std.out"
+        return ['mpirun', '-np, '2', 'binary.exe', '>', 'std.out']
         """
         return self.run_cmd + [self.binary] + self.args
 
@@ -110,29 +110,32 @@ class ExcitingRunner(SimpleBinaryRunner):
     binary_exts = ['serial', 'purempi', 'smp', 'mpismp']
     binaries = ['exciting_' + ext for ext in binary_exts]
 
-    # TODO(Alex) Defaults - consider removing
-    default_run_cmd = {'serial': ['./'],
-                       'purempi': ['mpirun', '-np', '2'],
-                       'smp': ['./'] ,
-                       'mpismp': ['mpirun', '-np', '2']
+    default_run_cmd = {'exciting_serial': ['./'],
+                       'exciting_purempi': ['mpirun', '-np', '2'],
+                       'exciting_smp': ['./'] ,
+                       'exciting_mpismp': ['mpirun', '-np', '2']
                        }
 
-    default_omp_threads = {'serial': 1,
-                           'purempi': 1,
-                           'smp': 4,
-                           'mpismp': 2
+    default_omp_threads = {'exciting_serial': 1,
+                           'exciting_purempi': 1,
+                           'exciting_smp': 4,
+                           'exciting_mpismp': 2
                            }
-
-    default_calculation_type = 'serial'
 
     def __init__(self,
                  binary: str,
-                 run_cmd: Optional[List[str]] = default_run_cmd[default_calculation_type],
-                 omp_num_threads: Optional[int] = default_omp_threads[default_calculation_type],
+                 run_cmd: Optional[List[str]] = None,
+                 omp_num_threads: Optional[int] = None,
                  time_out: Optional[int] = 600,
                  directory: Optional[str] = './',
                  args: Optional[List[str]] = [''],
                  ) -> None:
+
+        if run_cmd is None:
+            run_cmd = self.default_run_cmd[binary]
+
+        if omp_num_threads is None:
+            omp_num_threads = self.default_omp_threads[binary]
 
         assert binary in self.binaries, "binary string is not a valid choice"
         super().__init__(binary, run_cmd, omp_num_threads, time_out, directory, args)
