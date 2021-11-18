@@ -29,7 +29,7 @@ class ExcitingProfile:
     for a given machine or platform.
 
     TODO(Alex) Considered inheriting a runner but decided against it
-    TODO(Alex) USE THIS IN CALCULATOR
+    TODO(Alex) USE THIS IN CALCULATOR? Currently not used
     """
     def __init__(self, exciting_root, species_path):
         self.species_path = species_path
@@ -53,7 +53,6 @@ class ExcitingGroundStateTemplate(CalculatorTemplate):
         Initialise with constant class attributes.
         """
         super().__init__(self.program_name, self.implemented_properties)
-        self.results = {}
 
     def write_input(self,
                     directory: Path,
@@ -72,6 +71,7 @@ class ExcitingGroundStateTemplate(CalculatorTemplate):
         # Convert exciting inputs and ase.Atoms into an xml string
         # input_xml = 'Add functions to compose and return me'
         # Write the XML string to file
+        # Do something or nothing with properties (maybe check against input?)
         return
 
     def execute(self, directory, exciting_calculation: ExcitingRunner) -> SubprocessRunResults:
@@ -86,28 +86,25 @@ class ExcitingGroundStateTemplate(CalculatorTemplate):
         """
         return exciting_calculation.run(directory)
 
-    def read_results(self, directory: Path):
+    def read_results(self, directory: Path) -> dict:
         """
         Parse results from each ground state output file
         """
+        results = {}
         for file_name in self.output_names:
             full_file_path = directory / file_name
             result: dict = self.parser[file_name](full_file_path)
-            self.results.update(result)
+            results.update(result)
+        return results
 
 
-class Exciting(GenericFileIOCalculator):
+class ExcitingGroundState(GenericFileIOCalculator):
     """
-    Exciting Calculator Class.
+    Exciting Ground StateCalculator Class.
 
-    Only need to initialise, as the base class implements the calculate method.
+    Base class implements the calculate method.
 
     Must supply to the constructor:
-        * template: CalculatorTemplate
-          Should write specialisation for each exciting method.
-           i.e. class ExcitingGroundState(Exciting)
-                 self.template = ExcitingGroundStateTemplate()
-
         * runner: ExcitingRunner: This should be a `profile` which is the machine-specific
           settings (run command, species paths, etc), however in exciting's case, this doesn't
           make sense. The species path is specified in the input file, and should therefore be
@@ -132,13 +129,14 @@ class Exciting(GenericFileIOCalculator):
                          of the specialised write method.
 
     TODO(Alex) What methods do we need from our old calculator, and what exist in the base classes?
+     Things to get results, based on properties
     """
-
     def __init__(self, *,
-                 template: CalculatorTemplate,
                  runner: ExcitingRunner,
                  exciting_input: ExcitingInput,
                  directory='./'):
+
+        template = ExcitingGroundStateTemplate()
 
         super().__init__(profile=runner,
                          template=template,
@@ -147,20 +145,11 @@ class Exciting(GenericFileIOCalculator):
                          )
 
 
-class ExcitingGroundState(Exciting):
-    """
-    Exciting Ground State Calculator Class.
-    """
-    def __init__(self,
-                 runner: ExcitingRunner,
-                 parameters: ExcitingInput,
-                 directory='./'):
 
-        template = ExcitingGroundStateTemplate()
-        # TODO(Alex) What is the complaint here?
-        super().__init__(
-                         template,
-                         runner,
-                         parameters,
-                         directory=directory)
 
+
+# exciting_runner = ExcitingRunner('exciting_serial', directory="./")
+# input = ExcitingInput(species_path)
+# exciting_calc = ExcitingGroundState(exciting_runner, input)
+# exciting_calc.calculate(atoms, [], [])
+# forces = exciting_calc.get_forces()
