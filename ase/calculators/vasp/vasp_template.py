@@ -2,8 +2,8 @@
 from typing import Mapping, Any
 from subprocess import check_call
 
-from ase.calculators.genericfileio import (CalculatorTemplate,
-                                           GenericFileIOCalculator)
+from ase.calculators.genericfileio import CalculatorTemplate, GenericFileIOCalculator
+import ase.io.vasp_parsers.incar_writer as incar
 
 
 class VaspProfile:
@@ -11,25 +11,25 @@ class VaspProfile:
         self.argv = argv
 
     def version(self):
-        raise NotImplementedError('Cannot check VASP version.')
+        raise NotImplementedError("Cannot check VASP version.")
 
     def run(self, directory, inputfile, outputfile):
-        with open(outputfile, 'w') as fd:
+        with open(outputfile, "w") as fd:
             check_call(self.argv, stdout=fd, cwd=directory)
 
 
 class VaspTemplate(CalculatorTemplate):
-    _label = 'vasp'
+    _label = "vasp"
 
-    def __init__(self,
-                 name='vasp',
-                 implemented_properties=[
-                     'energy', 'free_energy', 'forces', 'stress', 'magmom'
-                 ]):
+    def __init__(
+        self,
+        name="vasp",
+        implemented_properties=["energy", "free_energy", "forces", "stress", "magmom"],
+    ):
         super().__init__(name, implemented_properties)
 
     def write_input(self, directory, atoms, parameters, properties):
-        raise NotImplementedError
+        incar.write_incar(parameters)
 
     def execute(self, directory, profile):
         raise NotImplementedError
@@ -41,14 +41,17 @@ class VaspTemplate(CalculatorTemplate):
 class Vasp(GenericFileIOCalculator):
     """Class for doing VASP calculations.
     """
-    def __init__(self, *, profile=None, directory='.', **kwargs):
+
+    def __init__(self, *, profile=None, directory=".", **kwargs):
         """Construct VASP-calculator object.
         """
 
         if profile is None:
-            profile = VaspProfile(['vasp'])
+            profile = VaspProfile(["vasp"])
 
-        super().__init__(template=VaspTemplate(),
-                         profile=profile,
-                         directory=directory,
-                         parameters=kwargs)
+        super().__init__(
+            template=VaspTemplate(),
+            profile=profile,
+            directory=directory,
+            parameters=kwargs,
+        )
