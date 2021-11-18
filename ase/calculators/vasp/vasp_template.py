@@ -42,9 +42,17 @@ class VaspTemplate(CalculatorTemplate):
         profile.run(directory, None, self.output_file)
 
     def read_results(self, directory) -> Mapping[str, Any]:
-        import py4vasp
+        try:
+            import py4vasp
 
-        calc = py4vasp.Calculation.from_path(directory)
+            calc = py4vasp.Calculation.from_path(directory)
+            return read_from_py4vasp(calc)
+        except ModuleNotFoundError:
+            raise NotImplementedError
+
+
+def read_from_py4vasp(calc):
+    pass
 
 
 class Vasp(GenericFileIOCalculator):

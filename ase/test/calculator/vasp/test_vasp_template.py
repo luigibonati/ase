@@ -1,5 +1,6 @@
 from ase.calculators.vasp.vasp_template import VaspTemplate
 from unittest.mock import patch, MagicMock
+import pytest
 
 
 @patch("ase.io.vasp_parsers.vasp_structure_io.write_vasp_structure", autospec=True)
@@ -45,3 +46,9 @@ def test_read_results_from_p4vasp():
         template = VaspTemplate()
         template.read_results("directory")
         py4vasp.Calculation.from_path.assert_called_once_with("directory")
+
+
+def test_read_results_without_py4vasp():
+    template = VaspTemplate()
+    with pytest.raises(NotImplementedError):
+        template.read_results("directory")
