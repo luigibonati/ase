@@ -246,11 +246,9 @@ def get_atomtypes_from_formula(formula):
 @writer
 def write_vasp_structure(filename,
                          atoms,
-                         label=None,
                          direct=False,
                          sort=None,
                          symbol_count=None,
-                         long_format=True,
                          vasp5=True,
                          ignore_constraints=False,
                          wrap=False):
@@ -327,25 +325,21 @@ def write_vasp_structure(filename,
         sc = _symbol_count_from_symbols(symbols)
 
     # Create the label
-    if label is None:
-        label = ''
-        for sym, c in sc:
-            label += '%2s ' % sym
+    label = ''
+    for sym, c in sc:
+        label += f'{sym:2s} '
     fd.write(label + '\n')
 
     # Write unitcell in real coordinates and adapt to VASP convention
     # for unit cell
     # ase Atoms doesn't store the lattice constant separately, so always
     # write 1.0.
-    fd.write('%19.16f\n' % 1.0)
-    if long_format:
-        latt_form = ' %21.16f'
-    else:
-        latt_form = ' %11.6f'
+    fd.write(f'{1.0:19.16f}\n')
+    
     for vec in atoms.get_cell():
         fd.write(' ')
-        for el in vec:
-            fd.write(latt_form % el)
+        for el in vec: 
+            fd.write(f' {el:21.16f}')
         fd.write('\n')
 
     # Write out symbols (if VASP 5.x) and counts of atoms
@@ -359,20 +353,16 @@ def write_vasp_structure(filename,
     else:
         fd.write('Cartesian\n')
 
-    if long_format:
-        cform = ' %19.16f'
-    else:
-        cform = ' %9.6f'
     for iatom, atom in enumerate(coord):
         for dcoord in atom:
-            fd.write(cform % dcoord)
+            fd.write(f' {dcoord:19.16f}')
         if constraints:
             for flag in sflags[iatom]:
                 if flag:
                     s = 'F'
                 else:
                     s = 'T'
-                fd.write('%4s' % s)
+                fd.write(f'{s:4s}')
         fd.write('\n')
 
 
@@ -415,9 +405,9 @@ def _write_symbol_count(fd, sc, vasp5=True):
     """
     if vasp5:
         for sym, _ in sc:
-            fd.write(' {:3s}'.format(sym))
+            fd.write(f' {sym:3s}')
         fd.write('\n')
 
     for _, count in sc:
-        fd.write(' {:3d}'.format(count))
+        fd.write(f' {count:3d}')
     fd.write('\n')
