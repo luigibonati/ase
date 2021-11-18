@@ -5,8 +5,6 @@ from ase.optimize import BFGS
 
 calc = pytest.mark.calculator
 
-# put the unit tests here
-
 
 @pytest.fixture
 def txt1():
