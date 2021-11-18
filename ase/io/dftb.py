@@ -21,12 +21,17 @@ def prepare_dftb_input(outfile, atoms, parameters, properties, directory):
 
     # TODO: this is just a hack. Need to be cleaned up!
     params = parameters.copy()
-    slako_dir = params.pop('slako_dir') if 'slako_dir' in params else ''
-    pcpot = params.pop('pcpot') if 'pcpot' in params else None
+
+    assert 'skt_path' in params.keys()
+    slako_dir = params.pop('skt_path')
+
+    pcpot = params.pop('pcpot') if 'pcpot' in params else None  # TODO: What does this do, needed?
+
     do_forces = False
     if properties is not None:
         if 'forces' in properties or 'stress' in properties:
             do_forces = True
+
     kpts = params.pop('kpts') if 'kpts' in params else None
     params.update(dict(
             Hamiltonian_='DFTB',
