@@ -28,7 +28,6 @@ def prepare_dftb_input(outfile, atoms, parameters, properties, directory):
         if 'forces' in properties or 'stress' in properties:
             do_forces = True
     kpts = params.pop('kpts') if 'kpts' in params else None
-    comamnd = params.pop('command') # TODO: where does 'command' actually come from
     params.update(dict(
             Hamiltonian_='DFTB',
             Hamiltonian_SlaterKosterFiles_='Type2FileNames',

@@ -195,13 +195,19 @@ class DFTBFactory:
         match = re.search(r'DFTB\+ release\s*(\S+)', stdout, re.M)
         return match.group(1)
 
+    def _base_kw(self):
+        return dict(skt_path=str(self.skt_path) + '/')  # XXX not obvious
+
     def calc(self, **kwargs):
-        from ase.calculators.dftb import Dftb
-        command = f'{self.executable} > PREFIX.out'
-        return Dftb(
-            command=command,
-            slako_dir=str(self.skt_path) + '/',  # XXX not obvious
-            **kwargs)
+        from ase.calculators.dftb import Dftb, DftbProfile
+
+        profile = DftbProfile([self.executable])
+
+        kw = self._base_kw()
+        assert kw['skt_path'] is not None
+        kw.update(kwargs)
+        return Dftb(profile=profile, **kw)
+
 
     @classmethod
     def fromconfig(cls, config):
