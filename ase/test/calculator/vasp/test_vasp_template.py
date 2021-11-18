@@ -9,8 +9,8 @@ def test_write_input(write_incar,write_kpoints,write_poscar):
     template = VaspTemplate()
     parameters = {"incar": "foo" , "kpoints": "bar"}
     template.write_input("directory", "atoms", parameters, "properties")
-    write_incar.assert_called_once_with(parameters["incar"])
-    write_kpoints.assert_called_once_with(parameters["kpoints"]) 
-    write_poscar.assert_called_once_with("POSCAR","atoms")
+    write_incar.assert_called_once_with("directory", parameters["incar"])
+    write_kpoints.assert_called_once_with("directory", parameters["kpoints"])
+    write_poscar.assert_called_once_with("directory/POSCAR","atoms")
 
 
