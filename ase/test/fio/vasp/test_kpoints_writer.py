@@ -48,3 +48,35 @@ Monkhorst
     check_write_kpoints_file(parameters, expected_output)
     parameters = {"MONKHORST": [4, 4, 4]}
     check_write_kpoints_file(parameters, expected_output)
+
+
+def test_kpoints_Line_Rec_mode():
+    expected_output = """KPOINTS created by Atomic Simulation Environment
+40
+Line
+Reciprocal
+0 0 0
+0.5 0.5 0
+0.5 0.5 0
+0.5 0.75 0.25
+0.5 0.75 0.25
+0 0 0"""
+    parameters = {"Line": 40,
+                  "reciprocal" :[[0, 0, 0,],[0.5, 0.5, 0],[0.5, 0.5, 0,],[0.5, 0.75, 0.25],[0.5, 0.75, 0.25],[0, 0, 0]] }
+    check_write_kpoints_file(parameters, expected_output)
+
+
+def test_kpoints_Line_Rec_mode():
+    expected_output = """KPOINTS created by Atomic Simulation Environment
+40
+Line
+Cartesian
+0 0 0
+0.5 0.5 0
+0.5 0.5 0
+0.5 0.75 0.25
+0.5 0.75 0.25
+0 0 0"""
+    parameters = {"Line": 40,
+                  "CaRTESIAN" :[[0, 0, 0,],[0.5, 0.5, 0],[0.5, 0.5, 0,],[0.5, 0.75, 0.25],[0.5, 0.75, 0.25],[0, 0, 0]] }
+    check_write_kpoints_file(parameters, expected_output)
