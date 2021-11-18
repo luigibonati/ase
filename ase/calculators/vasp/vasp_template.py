@@ -4,7 +4,7 @@ from subprocess import check_call
 
 from ase.calculators.genericfileio import CalculatorTemplate, GenericFileIOCalculator
 import ase.io.vasp_parsers.incar_writer as incar
-
+import ase.io.vasp_parsers.vasp_structure_io as structure_io
 
 class VaspProfile:
     def __init__(self, argv):
@@ -30,6 +30,7 @@ class VaspTemplate(CalculatorTemplate):
 
     def write_input(self, directory, atoms, parameters, properties):
         incar.write_incar(parameters)
+        structure_io.write_vasp_structure("POSCAR", atoms)
 
     def execute(self, directory, profile):
         raise NotImplementedError
