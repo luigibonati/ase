@@ -11,30 +11,40 @@ class _State:
 
 def write_kpoints(parameters):
     state = _State()
-    for key, value in parameters.items():
-        key = key.capitalize()
-        if key == "Auto":
-            state.mode = key
-            state.specification = [str(value)]
-        elif key in ("Gamma", "Monkhorst"):
-            state.mode = key
-            state.specification = [" ".join(str(x) for x in value)]
-        elif key == "Line":
-            state.mode = key
-            state.number_kpoints = value
-        elif key in ("Reciprocal", "Cartesian"):
-            if state.number_kpoints == 0:
-                state.number_kpoints = len(value)
-            state.coordinate = key
-            state.specification = [" ".join(str(x) for x in kpt) for kpt in value]
-        else:
-            raise NotImplementedError
-    header = ["KPOINTS created by Atomic Simulation Environment"]
-    number_kpoints = [str(state.number_kpoints)]
-    mode = [] if state.mode is None else [state.mode]
-    coordinate = [] if state.coordinate is None else [state.coordinate]
-    kpoints_string = "\n".join(
-        header + number_kpoints + mode + coordinate + state.specification
-    )
+    for item in parameters.items():
+        state = update_state(state, *item)
+    kpoint_lines = list(prepare_lines(state))
     with open("KPOINTS", "w") as kpoints:
-        kpoints.write(kpoints_string)
+        kpoints.write("\n".join(kpoint_lines))
+
+
+def update_state(state, key, value):
+    key = key.capitalize()
+    if key == "Auto":
+        state.mode = key
+        state.specification = [str(value)]
+    elif key in ("Gamma", "Monkhorst"):
+        state.mode = key
+        state.specification = [" ".join(str(x) for x in value)]
+    elif key == "Line":
+        state.mode = key
+        state.number_kpoints = value
+    elif key in ("Reciprocal", "Cartesian"):
+        if state.number_kpoints == 0:
+            state.number_kpoints = len(value)
+        state.coordinate = key
+        state.specification = [" ".join(str(x) for x in kpt) for kpt in value]
+    else:
+        raise NotImplementedError
+    return state
+
+
+def prepare_lines(state):
+    yield "KPOINTS created by Atomic Simulation Environment"
+    yield str(state.number_kpoints)
+    if state.mode is not None:
+        yield state.mode
+    if state.coordinate is not None:
+        yield state.coordinate
+    for line in state.specification:
+        yield line
