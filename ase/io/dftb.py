@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import ase.io
 from ase.atoms import Atoms
 from ase.calculators.calculator import kpts2ndarray, kpts2sizeandoffsets
 from ase.utils import reader, writer
@@ -10,8 +11,7 @@ def prepare_dftb_input(outfile, atoms, parameters, properties, directory):
     """ Write the innput file for the dftb+ calculation.
         Geometry is taken always from the file 'geo_end.gen'.
     """
-    # TODO: clean this part; where to do writting of geo_end.gen properly?
-    import ase.io
+    # Write geometry information
     ase.io.write(f'{directory}/geo_end.gen', atoms)
 
     outfile.write('Geometry = GenFormat { \n')
