@@ -8,16 +8,31 @@ def prepare_dftb_input(outfile, atoms, parameters, directory):
     """ Write the innput file for the dftb+ calculation.
         Geometry is taken always from the file 'geo_end.gen'.
     """
+    # TODO: clean this part; where to do writting of geo_end.gen properly?
+    import ase.io
+    ase.io.write(f'{directory}/geo_end.gen', atoms)
 
     outfile.write('Geometry = GenFormat { \n')
     outfile.write('    <<< "geo_end.gen" \n')
     outfile.write('} \n')
     outfile.write(' \n')
 
+    # TOD: this is just a hack. Need to be cleaned up!
     params = parameters.copy()
     slako_dir = params.pop('slako_dir') if 'slako_dir' in params else ''
     pcpot = params.pop('pcpot') if 'pcpot' in params else None
     do_forces = params.pop('do_forces') if 'do_forces' in params else False
+    comamnd = params.pop('command')
+    params.update(dict(
+            Hamiltonian_='DFTB',
+            Hamiltonian_SlaterKosterFiles_='Type2FileNames',
+            Hamiltonian_SlaterKosterFiles_Prefix=slako_dir,
+            Hamiltonian_SlaterKosterFiles_Separator='"-"',
+            Hamiltonian_SlaterKosterFiles_Suffix='".skf"',
+            Hamiltonian_MaxAngularMomentum_='',
+            Options_='',
+            Options_WriteResultsTag='Yes')
+        )
 
     s = 'Hamiltonian_MaxAngularMomentum_'
     for key in params:
@@ -99,48 +114,55 @@ def read_dftb_outputs(directory, label):
     with open(os.path.join(directory, 'results.tag'), 'r') as fd:
         lines = fd.readlines()
 
-    with open(os.path.join(directory, f'{label}_pin.hsd'), 'r') as fd:
-        atoms = read_dftb(fd)
+    do_forces = False
+    for li in lines:
+        if li.startswith('forces'):
+            do_forces = True
 
-    charges, energy, dipole = read_charges_energy_dipole()
+    with open(f'{directory}/{label}_pin.hsd'), 'r') as fd:
+        results['atoms'] = read_dftb(fd)
+
+    charges, energy, dipole = read_charges_energy_dipole(directory, len(results['atoms']))
     if charges is not None:
-        self.results['charges'] = charges
-    self.results['energy'] = energy
+        results['charges'] = charges
+    results['energy'] = energy
     if dipole is not None:
         results['dipole'] = dipole
-    if self.do_forces:
-        forces = self.read_forces()
-        self.results['forces'] = forces
-    self.mmpositions = None
+    if do_forces:
+        forces = read_forces(lines)
+        results['forces'] = forces
+    mmpositions = None
 
     # stress stuff begins
     sstring = 'stress'
     have_stress = False
     stress = list()
-    for iline, line in enumerate(self.lines):
+    for iline, line in enumerate(lines):
         if sstring in line:
             have_stress = True
             start = iline + 1
             end = start + 3
             for i in range(start, end):
-                cell = [float(x) for x in self.lines[i].split()]
+                cell = [float(x) for x in lines[i].split()]
                 stress.append(cell)
     if have_stress:
         stress = -np.array(stress) * Hartree / Bohr**3
-        self.results['stress'] = stress.flat[[0, 4, 8, 5, 2, 1]]
+        results['stress'] = stress.flat[[0, 4, 8, 5, 2, 1]]
     # stress stuff ends
 
     # eigenvalues and fermi levels
-    fermi_levels = self.read_fermi_levels()
+    fermi_levels = read_fermi_levels(lines)
     if fermi_levels is not None:
-        self.results['fermi_levels'] = fermi_levels
+        results['fermi_levels'] = fermi_levels
 
-    eigenvalues = self.read_eigenvalues()
+    eigenvalues = read_eigenvalues()
     if eigenvalues is not None:
-        self.results['eigenvalues'] = eigenvalues
+        results['eigenvalues'] = eigenvalues
 
     # calculation was carried out with atoms written in write_input
-    os.remove(os.path.join(self.directory, 'results.tag'))
+    os.remove(os.path.join(directory, 'results.tag'))
+
+    return results
 
 def read_max_angular_momentum(path):
     """Read maximum angular momentum from .skf file.
@@ -168,7 +190,7 @@ def read_max_angular_momentum(path):
                 return l
             l -= 1
 
-def read_charges_energy_dipole():
+def read_charges_energy_dipole(directory, num_atoms):
     """Get partial charges on atoms
         in case we cannot find charges they are set to None
     """
@@ -190,7 +212,7 @@ def read_charges_energy_dipole():
         # print('This is ok if flag SCC=No')
         return None, energy, None
 
-    lines1 = lines[chargestart:(chargestart + len(self.atoms))]
+    lines1 = lines[chargestart:(chargestart + num_atoms)]
     for line in lines1:
         qm_charges.append(float(line.split()[-1]))
 
@@ -203,6 +225,56 @@ def read_charges_energy_dipole():
 
     return np.array(qm_charges), energy, dipole
 
+def read_forces(lines):  # TODO: pass lines (?), as self.lines is not available
+    """Read Forces from dftb output file (results.tag)."""
+    from ase.units import Hartree, Bohr
+
+    # Initialise the indices so their scope
+    # reaches outside of the for loop
+    index_force_begin = -1
+    index_force_end = -1
+
+    # Force line indexes
+    for iline, line in enumerate(lines):
+        fstring = 'forces   '
+        if line.find(fstring) >= 0:
+            index_force_begin = iline + 1
+            line1 = line.replace(':', ',')
+            index_force_end = iline + 1 + \
+                int(line1.split(',')[-1])
+            break
+
+    gradients = []
+    for j in range(index_force_begin, index_force_end):
+        word = lines[j].split()
+        gradients.append([float(word[k]) for k in range(0, 3)])
+
+    return np.array(gradients) * Hartree / Bohr
+
+def read_fermi_levels(lines):
+    """ Read Fermi level(s) from dftb output file (results.tag). """
+    # Fermi level line indexes
+    for iline, line in enumerate(lines):
+        fstring = 'fermi_level   '
+        if line.find(fstring) >= 0:
+            index_fermi = iline + 1
+            break
+    else:
+        return None
+
+    fermi_levels = []
+    words = lines[index_fermi].split()
+    assert len(words) in [1, 2], 'Expected either 1 or 2 Fermi levels'
+
+    for word in words:
+        e = float(word)
+        # In non-spin-polarized calculations with DFTB+ v17.1,
+        # two Fermi levels are given, with the second one being 0,
+        # but we don't want to add that one to the list
+        if abs(e) > 1e-8:
+            fermi_levels.append(e)
+
+    return np.array(fermi_levels) * Hartree
 
 
 
