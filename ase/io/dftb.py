@@ -1,6 +1,7 @@
 import os
 import numpy as np
 from ase.atoms import Atoms
+from ase.calculators.calculator import kpts2ndarray, kpts2sizeandoffsets
 from ase.utils import reader, writer
 from ase.units import Hartree, Bohr
 
@@ -48,12 +49,12 @@ def prepare_dftb_input(outfile, atoms, parameters, properties, directory):
             if 'path' in kpts:
                 # kpts is path in Brillouin zone
                 params[initkey + '_'] = 'Klines '
-                kpts_coord = kpts2ndarray(kpts, atoms=atoms)  # TODO: we have no 'atoms' and not (yet) kpts2ndarray
+                kpts_coord = kpts2ndarray(kpts, atoms=atoms)
             else:
                 # kpts is (implicit) definition of
                 # Monkhorst-Pack grid
                 params[initkey + '_'] = 'SupercellFolding '
-                mp_mesh, offsets = kpts2sizeandoffsets(atoms=atoms, # TODO: we have no 'atoms' and not (yet) kpts2sizeandoffsets
+                mp_mesh, offsets = kpts2sizeandoffsets(atoms=atoms,
                                                        **kpts)
         elif np.array(kpts).ndim == 1:
             # kpts is Monkhorst-Pack grid
