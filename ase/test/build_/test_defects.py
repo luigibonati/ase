@@ -1,4 +1,21 @@
-### TODO: test interstitial creation and adsorption site creation
+
+def test_input_structure():
+    from ase.build import bulk, mx2
+    from ase.build.defects import DefectBuilder
+    structures = [mx2(formula='MoS2'),
+                  mx2(formula='WSSe'),
+                  bulk('Fe'),
+                  bulk('Ag')]
+
+    primitive = [3, 3, 1, 1]
+    construction_list = [27, 27, 27, 27]
+    for i, structure in enumerate(structures):
+        builder = DefectBuilder(structure)
+        prim = builder.get_primitive_structure()
+        construction = builder.get_input_structure()
+        assert len(prim) == primitive[i]
+        assert len(construction) == construction_list[i]
+
 
 def test_spg():
     from ase.build import bulk
@@ -90,3 +107,51 @@ def test_create_interstitials():
             counter += 1
 
     assert counter == 11
+
+
+def test_create_adsorption():
+    from ase.build import mx2
+    from ase.build.defects import DefectBuilder
+
+    formulas = ['MoS2', 'MoSSe']
+    lengths = [4, 8]
+    structures = []
+    for formula in formulas:
+        structure = mx2(formula=formula, kind='2H',
+                        vacuum=10)
+        structures.append(structure)
+
+    for i, structure in enumerate(structures):
+        builder = DefectBuilder(structure)
+        counter = 0
+        adsorbates = builder.get_adsorbate_structures(
+            kindlist=['H', 'He'])
+        assert len(adsorbates) == lengths[i]
+
+        for ad in adsorbates:
+            symbols = ad.get_chemical_symbols()
+            for sym in symbols:
+                assert sym in ['Mo', 'S', 'Se', 'H', 'He']
+
+
+def test_intrinsic_types():
+    from ase.build import mx2, bulk
+    from ase.build.defects import DefectBuilder
+
+    structures = [mx2(formula='MoS2'),
+                  mx2(formula='WSSe'),
+                  bulk('Fe'),
+                  bulk('Ag')]
+
+    ref_dict = {'MoS2': ['Mo', 'S'],
+                'WSSe': ['W', 'S', 'Se'],
+                'Fe': ['Fe'],
+                'Ag': ['Ag']}
+
+    for structure in structures:
+        formula = structure.get_chemical_formula(mode='metal')
+        ref = ref_dict[f'{formula}']
+        builder = DefectBuilder(structure)
+        symbols = builder.get_intrinsic_types()
+        for symbol in symbols:
+            assert symbol in ref
