@@ -1,16 +1,15 @@
 """
-ASE Calculator for the exciting DFT code
-
-TODO(Alex) File name is a place-holder
+ASE Calculator for the ground state exciting DFT code
 """
-import ase
 from typing import Union, List
 from pathlib import Path
 
+import ase
 from ase.calculators.genericfileio import (GenericFileIOCalculator, CalculatorTemplate)
 from ase.calculators.exciting.runner import ExcitingRunner, SubprocessRunResults
 
 
+# TODO Move me
 class ExcitingInput:
     """
     Base class for exciting inputs
@@ -18,8 +17,8 @@ class ExcitingInput:
     pass
 
 
-def query_exciting_version(query_exciting_version):
-    # TODO. Implement me
+# TODO. Implement me and move me
+def query_exciting_version():
     return 'None'
 
 
@@ -28,8 +27,8 @@ class ExcitingProfile:
     A profile defines all quantities that are configurable (variable)
     for a given machine or platform.
 
-    TODO(Alex) Considered inheriting a runner but decided against it
-    TODO(Alex) USE THIS IN CALCULATOR? Currently not used
+    Considered inheriting a runner but decided against it
+    This is not used by
     """
     def __init__(self, exciting_root, species_path):
         self.species_path = species_path
@@ -43,7 +42,8 @@ class ExcitingGroundStateTemplate(CalculatorTemplate):
     """
 
     program_name = 'exciting'
-    # TODO(Alex) Add parser here
+    # TODO(Alex) Add parsers here i.e.
+    # parser = {'info.xml': Callable[str, dict]}
     parser = {'info.xml': lambda file_name: {}}
     output_names = list(parser)
     implemented_properties = ['energy', 'forces']
@@ -60,13 +60,14 @@ class ExcitingGroundStateTemplate(CalculatorTemplate):
                     input_parameters: Union[dict, ExcitingInput],
                     properties: List[str]):
         """
-        TODO Implement
+        Write an exciting input.xml file
 
         :param Path directory: Directory in which to run calculator.
         :param ase.Atoms atoms: ASE atoms object.
         :param Union[dict, ExcitingInput] input_parameters: exciting groundstate input parameters
         :param List[str] properties: List of output properties.
         """
+        #TODO Implement
         # directory.mkdir(exist_ok=True, parents=True)
         # Convert exciting inputs and ase.Atoms into an xml string
         # input_xml = 'Add functions to compose and return me'
@@ -133,7 +134,7 @@ class ExcitingGroundState(GenericFileIOCalculator):
     """
     def __init__(self, *,
                  runner: ExcitingRunner,
-                 exciting_input: ExcitingInput,
+                 exciting_input: Union[ExcitingInput, dict],
                  directory='./'):
 
         template = ExcitingGroundStateTemplate()
@@ -143,13 +144,3 @@ class ExcitingGroundState(GenericFileIOCalculator):
                          parameters=exciting_input,
                          directory=directory
                          )
-
-
-
-
-
-# exciting_runner = ExcitingRunner('exciting_serial', directory="./")
-# input = ExcitingInput(species_path)
-# exciting_calc = ExcitingGroundState(exciting_runner, input)
-# exciting_calc.calculate(atoms, [], [])
-# forces = exciting_calc.get_forces()
