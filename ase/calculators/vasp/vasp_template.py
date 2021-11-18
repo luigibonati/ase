@@ -5,6 +5,7 @@ from subprocess import check_call
 from ase.calculators.genericfileio import CalculatorTemplate, GenericFileIOCalculator
 import ase.io.vasp_parsers.incar_writer as incar
 import ase.io.vasp_parsers.kpoints_writer as kpoints
+import ase.io.vasp_parsers.potcar_writer as potcar
 import ase.io.vasp_parsers.vasp_structure_io as structure_io
 
 class VaspProfile:
@@ -32,6 +33,7 @@ class VaspTemplate(CalculatorTemplate):
     def write_input(self, directory, atoms, parameters, properties):
         incar.write_incar(directory, parameters["incar"])
         kpoints.write_kpoints(directory, parameters["kpoints"])
+        potcar.write_potcar(directory,parameters["potcar"])
         structure_io.write_vasp_structure(f"{directory}/POSCAR", atoms)
 
     def execute(self, directory, profile):
