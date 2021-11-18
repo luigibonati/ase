@@ -119,7 +119,7 @@ def read_dftb_outputs(directory, label):
         if li.startswith('forces'):
             do_forces = True
 
-    with open(f'{directory}/{label}_pin.hsd'), 'r') as fd:
+    with open(f'{directory}/{label}_pin.hsd', 'r') as fd:
         results['atoms'] = read_dftb(fd)
 
     charges, energy, dipole = read_charges_energy_dipole(directory, len(results['atoms']))
