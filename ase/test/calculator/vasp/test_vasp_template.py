@@ -44,8 +44,21 @@ def test_read_results_from_p4vasp():
     py4vasp = MagicMock()
     with patch.dict("sys.modules", py4vasp=py4vasp):
         template = VaspTemplate()
-        template.read_results("directory")
+        results = template.read_results("directory")
         py4vasp.Calculation.from_path.assert_called_once_with("directory")
+    calc = py4vasp.Calculation.from_path.return_value
+    properties = ["energy","force","stress","magnetism"] 
+    for prop in properties:
+        exp_value = check_if_prop_is_read(calc,prop)    
+        assert prop in results
+        assert results[prop] == exp_value
+
+
+def check_if_prop_is_read(calc,prop):
+    prop = getattr(calc,prop)
+    prop.__getitem__.assert_called_once_with(slice(None))
+    prop.__getitem__().to_dict.assert_called_once_with()
+    return prop.__getitem__().to_dict()
 
 
 def test_read_results_without_py4vasp():

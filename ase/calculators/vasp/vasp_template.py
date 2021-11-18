@@ -52,7 +52,11 @@ class VaspTemplate(CalculatorTemplate):
 
 
 def read_from_py4vasp(calc):
-    pass
+    properties = ["energy","force","stress","magnetism"]
+    return {prop: read_prop(calc,prop) for prop in properties}
+
+def read_prop(calc,prop):
+    return getattr(calc,prop)[:].to_dict()
 
 
 class Vasp(GenericFileIOCalculator):
