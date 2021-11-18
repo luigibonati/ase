@@ -153,7 +153,7 @@ class BFGSClimbFixInternals(BFGS):
         self.constr2climb.adjust_positions(pos, pos + dpos)  # update sigma
         self.targetvalue += self.constr2climb.sigma          # climb constraint
         self.constr2climb.targetvalue = self.targetvalue     # adjust positions
-        self.atoms.set_positions(self.atoms.get_positions())  #  to targetvalue
+        self.atoms.set_positions(self.atoms.get_positions())   # to targetvalue
 
     def relax_remaining_dof(self, optB):
         """Optimize remaining degrees of freedom with optimizer 'B'."""

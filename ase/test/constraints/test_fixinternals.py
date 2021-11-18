@@ -167,7 +167,6 @@ def test_zero_distance_error():
             print(atoms.get_distance(1, 2))
 
 
-
 def test_planar_angle_error():
     """Support for planar angles could be added in the future using
        dummy/ghost atoms. See issue #868."""
