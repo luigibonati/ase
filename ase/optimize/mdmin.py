@@ -45,7 +45,8 @@ class MDMin(Optimizer):
     def step(self, forces=None):
         atoms = self.atoms
 
-        forces = forces or atoms.get_forces()
+        if forces is None:
+            forces = atoms.get_forces()
 
         if self.v is None:
             self.v = np.zeros((len(atoms), 3))

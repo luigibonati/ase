@@ -164,7 +164,7 @@ def test_zero_distance_error():
     opt = BFGS(atoms)
     with pytest.raises(ZeroDivisionError):
         for i in opt.irun():
-            print(atoms.get_distance(1, 2))
+            atoms.get_distance(1, 2)
 
 
 def test_planar_angle_error():

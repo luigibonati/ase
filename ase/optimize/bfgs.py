@@ -45,13 +45,17 @@ class BFGS(Optimizer):
             steps to converge might be less if a lower value is used. However,
             a lower value also means risk of instability.
         """
-        self.maxstep = maxstep or self.defaults['maxstep']
+        self.maxstep = maxstep
+        if self.maxstep is None:
+            self.maxstep = self.defaults['maxstep']
 
         if self.maxstep > 1.0:
             warnings.warn('You are using a *very* large value for '
                           'the maximum step size: %.1f Å' % maxstep)
 
-        self.alpha = alpha or self.defaults['alpha']
+        self.alpha = alpha
+        if self.alpha is None:
+            self.alpha = self.defaults['alpha']
 
         Optimizer.__init__(self, atoms, restart, logfile, trajectory, master)
 
@@ -69,7 +73,8 @@ class BFGS(Optimizer):
     def step(self, forces=None):
         atoms = self.atoms
 
-        forces = forces or atoms.get_forces()
+        if forces is None:
+            forces = atoms.get_forces()
 
         pos = atoms.get_positions()
         dpos, steplengths = self.prepare_step(pos, forces)

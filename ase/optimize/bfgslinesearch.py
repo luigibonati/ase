@@ -98,7 +98,8 @@ class BFGSLineSearch(Optimizer):
     def step(self, forces=None):
         atoms = self.atoms
 
-        forces = forces or atoms.get_forces()
+        if forces is None:
+            forces = atoms.get_forces()
 
         from ase.neb import NEB
         if isinstance(atoms, NEB):
@@ -204,7 +205,8 @@ class BFGSLineSearch(Optimizer):
     def log(self, forces=None):
         if self.logfile is None:
             return
-        forces = forces or self.atoms.get_forces()
+        if forces is None:
+            forces = self.atoms.get_forces()
         fmax = sqrt((forces**2).sum(axis=1).max())
         e = self.atoms.get_potential_energy(
             force_consistent=self.force_consistent)

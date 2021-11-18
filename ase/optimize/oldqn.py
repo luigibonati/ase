@@ -270,7 +270,8 @@ class GoodOldQuasiNewton(Optimizer):
         """ Do one QN step
         """
 
-        forces = forces or self.atoms.get_forces()
+        if forces is None:
+            forces = self.atoms.get_forces()
 
         pos = self.atoms.get_positions().ravel()
         G = -self.atoms.get_forces().ravel()
