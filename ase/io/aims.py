@@ -752,7 +752,8 @@ def read_aims_output(fd, index=-1):
     chunks = [initial_chunk] + list(
         get_aims_out_chunks(fd, initial_chunk.n_atoms, initial_chunk.constraints)
     )
-    return chunks[index].atoms
+    images = [chunk.atoms for chunks in chunks]
+    return images[index]
 
 
 @reader
