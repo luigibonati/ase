@@ -57,7 +57,7 @@ def bz_plot(cell, vectors=False, paths=None, points=None,
             # artists have changed and all 3D artists now need
             # "do_3d_projection". Since this class is a hack that manually
             # projects onto the 3D axes we don't need to do anything in this
-            # method.
+            # method. Ideally we shouldn't resort to a hack like this.
             def do_3d_projection(self, *_, **__):
                 return 0
 
