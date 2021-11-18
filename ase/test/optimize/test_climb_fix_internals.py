@@ -1,3 +1,4 @@
+import pytest
 import numpy as np
 from ase.build import fcc100, add_adsorbate
 from ase.constraints import FixAtoms, FixInternals
@@ -15,7 +16,8 @@ def setup_atoms():
     return atoms
 
 
-def test_climb_fix_internals(testdir):
+@pytest.mark.parametrize('scaling', [0.0, 0.01])
+def test_climb_fix_internals(scaling, testdir):
     """Climb along the constrained bondcombo coordinate while optimizing the
     remaining degrees of freedom after each climbing step.
     For the definition of constrained internal coordinates see the
@@ -30,7 +32,8 @@ def test_climb_fix_internals(testdir):
     atoms.set_constraint([FixInternals(bondcombos=[bondcombo])] + atoms.constraints)
 
     # Optimizer for transition state search along reaction coordinate
-    opt = BFGSClimbFixInternals(atoms, climb_coordinate=reaction_coord)
+    opt = BFGSClimbFixInternals(atoms, climb_coordinate=reaction_coord,
+                                optB_fmax_scaling=scaling)
     opt.run(fmax=0.05)  # Converge to a saddle point
 
     # Validate transition state by one imaginary vibrational mode

@@ -1141,9 +1141,9 @@ class FixInternals(FixConstraint):
             newpos += dnewpos.reshape(newpos.shape)
 
         def adjust_forces(self, positions, forces):
-            self.jacobian /= np.linalg.norm(self.jacobian)
             self.projected_forces = ((self.jacobian @ forces.ravel())
                                      * self.jacobian)
+            self.jacobian /= np.linalg.norm(self.jacobian)
 
     class FixBondCombo(FixInternalsBase):
         """Constraint subobject for fixing linear combination of bond lengths
