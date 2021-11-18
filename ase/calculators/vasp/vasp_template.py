@@ -31,9 +31,9 @@ class VaspTemplate(CalculatorTemplate):
         super().__init__(name, implemented_properties)
 
     def write_input(self, directory, atoms, parameters, properties):
-        incar.write_incar(directory, parameters["incar"])
-        kpoints.write_kpoints(directory, parameters["kpoints"])
-        potcar.write_potcar(directory,parameters["potcar"])
+        incar.write_incar(directory, parameters.get("incar"))
+        kpoints.write_kpoints(directory, parameters.get("kpoints"))
+        potcar.write_potcar(directory,parameters.get("potcar"))
         structure_io.write_vasp_structure(f"{directory}/POSCAR", atoms)
 
     def execute(self, directory, profile):
