@@ -30,15 +30,13 @@ def test_climb_fix_internals():
     atoms.set_constraint([FixInternals(bondcombos=[bondcombo])] + atoms.constraints)
 
     # Optimizer for transition state search along reaction coordinate
-    dyn = BFGSClimbFixInternals(atoms, climb_coordinate=reaction_coord)
-
-    # Converge to a saddle point
-    dyn.run(fmax=0.05)
+    with BFGSClimbFixInternals(atoms, climb_coordinate=reaction_coord) as opt:
+        opt.run(fmax=0.05)  # Converge to a saddle point
 
     # Validate transition state by one imaginary vibrational mode
-    vib = Vibrations(atoms, indices=[4])
-    vib.run()
-    assert ((np.imag(vib.get_energies()) > 0) == [True, False, False]).all()
+    with Vibrations(atoms, indices=[4]) as vib:
+        vib.run()
+        assert ((np.imag(vib.get_energies()) > 0) == [True, False, False]).all()
 # end example for documentation
 
 
