@@ -18,12 +18,13 @@ def prepare_dftb_input(outfile, atoms, parameters, directory):
     outfile.write('} \n')
     outfile.write(' \n')
 
-    # TOD: this is just a hack. Need to be cleaned up!
+    # TODO: this is just a hack. Need to be cleaned up!
     params = parameters.copy()
     slako_dir = params.pop('slako_dir') if 'slako_dir' in params else ''
     pcpot = params.pop('pcpot') if 'pcpot' in params else None
-    do_forces = params.pop('do_forces') if 'do_forces' in params else False
-    comamnd = params.pop('command')
+    do_forces = params.pop('do_forces') if 'do_forces' in params else True  # TODO: currently do_forces is basically hardcoded to True!
+    kpts = params.pop('kpts') if 'kpts' in params else None
+    comamnd = params.pop('command') # TODO: where does 'command' actually come from
     params.update(dict(
             Hamiltonian_='DFTB',
             Hamiltonian_SlaterKosterFiles_='Type2FileNames',
@@ -34,6 +35,61 @@ def prepare_dftb_input(outfile, atoms, parameters, directory):
             Options_='',
             Options_WriteResultsTag='Yes')
         )
+
+    if kpts is not None:
+        initkey = 'Hamiltonian_KPointsAndWeights'
+        mp_mesh = None
+        offsets = None
+
+        if isinstance(kpts, dict):
+            if 'path' in kpts:
+                # kpts is path in Brillouin zone
+                params[initkey + '_'] = 'Klines '
+                kpts_coord = kpts2ndarray(kpts, atoms=atoms)  # TODO: we have no 'atoms' and not (yet) kpts2ndarray
+            else:
+                # kpts is (implicit) definition of
+                # Monkhorst-Pack grid
+                params[initkey + '_'] = 'SupercellFolding '
+                mp_mesh, offsets = kpts2sizeandoffsets(atoms=atoms, # TODO: we have no 'atoms' and not (yet) kpts2sizeandoffsets
+                                                       **kpts)
+        elif np.array(kpts).ndim == 1:
+            # kpts is Monkhorst-Pack grid
+            params[initkey + '_'] = 'SupercellFolding '
+            mp_mesh = kpts
+            offsets = [0.] * 3
+        elif np.array(kpts).ndim == 2:
+            # kpts is (N x 3) list/array of k-point coordinates
+            # each will be given equal weight
+            params[initkey + '_'] = ''
+            kpts_coord = np.array(kpts)
+        else:
+            raise ValueError('Illegal kpts definition:' + str(kpts))
+
+        if mp_mesh is not None:
+            eps = 1e-10
+            for i in range(3):
+                key = initkey + '_empty%03d' % i
+                val = [mp_mesh[i] if j == i else 0 for j in range(3)]
+                params[key] = ' '.join(map(str, val))
+                offsets[i] *= mp_mesh[i]
+                assert abs(offsets[i]) < eps or abs(offsets[i] - 0.5) < eps
+                # DFTB+ uses a different offset convention, where
+                # the k-point mesh is already Gamma-centered prior
+                # to the addition of any offsets
+                if mp_mesh[i] % 2 == 0:
+                    offsets[i] += 0.5
+            key = initkey + '_empty%03d' % 3
+            params[key] = ' '.join(map(str, offsets))
+
+        elif kpts_coord is not None:
+            for i, c in enumerate(kpts_coord):
+                key = initkey + '_empty%09d' % i
+                c_str = ' '.join(map(str, c))
+                if 'Klines' in params[initkey + '_']:
+                    c_str = '1 ' + c_str
+                else:
+                    c_str += ' 1.0'
+                params[key] = c_str
 
     s = 'Hamiltonian_MaxAngularMomentum_'
     for key in params:
