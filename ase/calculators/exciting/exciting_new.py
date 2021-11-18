@@ -1,128 +1,26 @@
-# """ASE Calculator for the exciting DFT code."""
+"""
+ASE Calculator for the exciting DFT code
 
 # TODO(Alex) File name is a place-holder
-
-import os
+# Profile = all things configurable on a machine basis
+# Query the version of exciting
+# Add the species default path
+# TODO(Alex) Extend, by adding path to species =>
+# Either need to copy them OR specify in input.xml
+"""
 import ase
 from typing import Union, List, Optional
 from pathlib import Path
-import subprocess
 
 from ase.calculators.genericfileio import (GenericFileIOCalculator, CalculatorTemplate)
-
-
-# TODO(Alex) Move
-class SubprocessRunResults:
-    def __init__(self, stdout, stderr, return_code: int):
-        self.stdout = stdout
-        self.stderr = stderr
-        self.return_code = return_code
-        self.success = return_code == 0
-
-
-# TODO(Alex) Move
-class SimpleBinaryRunner:
-    """
-    Compose a run command and run a binary
-    # TODO(Alex) Remove all defaults
-    """
-
-    def __init__(self,
-                 binary: str,
-                 run_cmd: Optional[List[str]],
-                 omp_num_threads: Optional[int],
-                 args: Optional[List[str]] = [''],
-                 time_out: Optional[int] = 600
-                 ) -> None:
-        """
-
-        :param List[str] run_cmd: List of run commands, for example:
-          * For serial: ['./']
-          * For MPI:   ['mpirun', '-np', '2']
-
-        """
-        self.binary = binary
-        self.run_cmd = run_cmd
-        self.omp_num_threads = omp_num_threads
-        self.args = args
-        self.time_out = time_out
-
-        assert omp_num_threads > 0, "Number of OMP threads must be > 0"
-
-        try:
-            i = run_cmd.index('np')
-            mpi_processes = eval(run_cmd[i + 1])
-            assert type(mpi_processes) == int, "Number of MPI processes should be an int"
-            assert mpi_processes > 0, "Number of MPI processes must be > 0"
-        except ValueError:
-            pass
-
-    def compose_execution_list(self) -> list:
-        """
-        Generate a complete list of strings to pass to subprocess.run to execute the calculation
-
-        """
-        return self.run_cmd + [self.binary] + self.args
-
-    def run(self, directory: str, execution_list: Optional[list] = None) -> SubprocessRunResults:
-        """
-        Run a binary
-
-        :param str directory: Directory in which to run the execute command.
-        :param Optional[list] execution_list: List of arguments required by subprocess.run.
-               Defaults to None.
-        """
-
-        # TODO(Alex) Change to directory
-
-        if execution_list is None:
-            execution_list = self.compose_execution_list()
-
-        my_env = {**os.environ, "OMP_NUM_THREADS": str(self.omp_num_threads)}
-        result = subprocess.run(execution_list,
-                                env=my_env,
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE,
-                                timeout=self.time_out)
-
-        return SubprocessRunResults(result.stdout, result.stderr, result.returncode)
-
-
-class ExcitingRunner(SimpleBinaryRunner):
-    """
-    Execute an exciting calculation using a simple binary runner.
-
-    Note, this class replaces "profile = ExcitingProfile", which is fucking
-    meaningless, and in the case of EspressoProfile, mixed responsibilities.
-    """
-
-    # TODO(Alex) Check these
-    binaries = ['exciting_serial', 'exciting_mpi', 'exciting_smp', 'exciting_mpiandsmp']
-    input_name = 'input.xml'
-
-    # TODO(Alex) Extend, by adding path to species =>
-    # Either need to copy them OR specify in input.xml
-
-    def __init__(self,
-                 binary: str,
-                 directory: str,
-                 run_cmd: Optional[List[str]] = ['./'],
-                 omp_num_threads: Optional[int] = 1,
-                 args: Optional[List[str]] = [''],
-                 time_out: Optional[int] = 600
-                 ) -> None:
-        # TODO(Alex) Pass directory
-        assert binary in self.binaries, "binary string is not a valid choice"
-        super().__init__(binary, run_cmd, omp_num_threads, args, time_out)
+from ase.calculators.exciting.runner import ExcitingRunner, SubprocessRunResults
 
 
 class ExcitingInput:
+    """
+    Base class for exciting inputs
+    """
     pass
-
-
-class ExcitingGroundStateInput(ExcitingInput):
-    # STUB
-    rgkmax: float = 6.0
 
 
 class ExcitingGroundStateTemplate(CalculatorTemplate):
@@ -133,7 +31,7 @@ class ExcitingGroundStateTemplate(CalculatorTemplate):
     # TODO(Alex) Consider injecting our parsers here else use existing routines
     name = 'exciting'
     parser = {'info.xml': lambda file_name: {}}
-    output_names = list(parser.keys())
+    output_names = list(parser)
     implemented_properties = ['energy', 'forces']
 
     def __init__(self):
@@ -143,7 +41,7 @@ class ExcitingGroundStateTemplate(CalculatorTemplate):
     def write_input(self,
                     directory: Path,
                     atoms: ase.Atoms,
-                    input_parameters: Union[dict, ExcitingGroundStateInput],
+                    input_parameters: Union[dict, ExcitingInput],
                     properties):
         """
         TODO Compose this around free functions
@@ -206,12 +104,53 @@ class Exciting(GenericFileIOCalculator):
                  template: CalculatorTemplate,
                  runner: ExcitingRunner,
                  parameters: ExcitingInput,
-                 directory='.'):
+                 directory='./'):
         super().__init__(profile=runner,
                          template=template,
                          parameters=parameters,
                          directory=directory
                          )
+
+
+
+inputs = {'rgkmax': 8, "kpts": (1,1,1)}
+runner = ExcitingRunner(['mpirun', '-np', '2'], 'exciting_binary')
+
+# Just conform to this
+# exciting_calc = ExcitingGroundState(inputs, runner)
+# exciting_calc.calculate(atoms)
+
+# results: dict = exciting_calc.results
+# forces = results['forces']
+# forces = exciting_calc.get_forces()
+
+
+# See what the atoms object contains:
+# exciting_calc.update_atoms(atoms)
+
+#
+
+
+
+class ExcitingGroundState(Exciting):
+    def __init__(self,
+                 runner: ExcitingRunner,
+                 parameters: ExcitingInput,
+                 directory='./'):
+
+        template = ExcitingGroundStateTemplate()
+        super().__init__(template,
+                         runner,
+                         parameters,
+                         directory=directory)
+
+
+
+
+
+
+
+
 
 # How I envision it being called
 # run_settings = ExcitingRunner('exciting_mpiandsmp',
@@ -219,7 +158,7 @@ class Exciting(GenericFileIOCalculator):
 #                               omp_num_threads = 2,
 #                               directory: './')
 #
-# gs_input = ExcitingGroundStateInput(stuff, fill_defaults=False)
+# gs_input = ExcitingInput(stuff, fill_defaults=False)
 # exciting_calculator = ExcitingGroundState(run_settings, gs_input, atoms=atoms)
 # results = exciting_calculator.calculate()
 
