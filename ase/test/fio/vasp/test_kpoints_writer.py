@@ -50,7 +50,7 @@ Monkhorst
     check_write_kpoints_file(parameters, expected_output)
 
 
-def test_kpoints_Line_Rec_mode():
+def test_kpoints_Line_reciprocal_mode():
     expected_output = """KPOINTS created by Atomic Simulation Environment
 40
 Line
@@ -75,7 +75,7 @@ Reciprocal
     check_write_kpoints_file(parameters, expected_output)
 
 
-def test_kpoints_Line_Rec_mode():
+def test_kpoints_Line_cartesian_mode():
     expected_output = """KPOINTS created by Atomic Simulation Environment
 40
 Line
