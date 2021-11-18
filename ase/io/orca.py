@@ -1,7 +1,10 @@
 from io import StringIO
 from ase.io import read
 from ase.utils import reader
-
+from ase.units import Hartree, Bohr
+from pathlib import Path
+import re
+import numpy as np
 # Made from NWChem interface
 
 
@@ -62,3 +65,51 @@ def write_orca(atoms, **params):
                      str(atom.position[1]) + ' ' +
                      str(atom.position[2]) + '\n')
         fd.write('*\n')
+        
+def read_orca_out(label):
+    results = {}
+    """Read Energy from ORCA output file."""
+    with open(label + '.out', mode='r', encoding='utf-8') as fd:
+        text = fd.read()
+    # Energy:
+    re_energy = re.compile(r"FINAL SINGLE POINT ENERGY.*\n")
+    re_not_converged = re.compile(r"Wavefunction not fully converged")
+    found_line = re_energy.search(text)
+    if found_line and not re_not_converged.search(found_line.group()):
+        results['energy'] = float(found_line.group().split()[-1]) * Hartree
+    
+    
+    """Read Forces from ORCA output file."""
+    with open(f'{label}.engrad', 'r') as fd:
+        lines = fd.readlines()
+    getgrad = False
+    gradients = []
+    tempgrad = []
+    for i, line in enumerate(lines):
+        if line.find('# The current gradient') >= 0:
+            getgrad = True
+            gradients = []
+            tempgrad = []
+            continue
+        if getgrad and "#" not in line:
+            grad = line.split()[-1]
+            tempgrad.append(float(grad))
+            if len(tempgrad) == 3:
+                gradients.append(tempgrad)
+                tempgrad = []
+        if '# The at' in line:
+            getgrad = False
+    results['forces'] = -np.array(gradients) * Hartree / Bohr
+
+    return results
+
+
+def read_orca_outputs(directory, label):
+    label=label
+    directory = Path(directory)
+    textfilename = directory / f'{label}.out'
+    results = {}
+    # with open(textfilename) as fd:
+    dct = read_orca_out(label)
+    results.update(dct)
+    return results
