@@ -8,6 +8,7 @@ import ase.io.vasp_parsers.kpoints_writer as kpoints
 import ase.io.vasp_parsers.potcar_writer as potcar
 import ase.io.vasp_parsers.vasp_structure_io as structure_io
 
+
 class VaspProfile:
     def __init__(self, argv):
         self.argv = argv
@@ -29,15 +30,16 @@ class VaspTemplate(CalculatorTemplate):
         implemented_properties=["energy", "free_energy", "forces", "stress", "magmom"],
     ):
         super().__init__(name, implemented_properties)
+        self.output_file = f"{self._label}.log"
 
     def write_input(self, directory, atoms, parameters, properties):
         incar.write_incar(directory, parameters.get("incar"))
         kpoints.write_kpoints(directory, parameters.get("kpoints"))
-        potcar.write_potcar(directory,parameters.get("potcar"))
+        potcar.write_potcar(directory, parameters.get("potcar"))
         structure_io.write_vasp_structure(f"{directory}/POSCAR", atoms)
 
     def execute(self, directory, profile):
-        raise NotImplementedError
+        profile.run(directory, None, self.output_file)
 
     def read_results(self, directory) -> Mapping[str, Any]:
         raise NotImplementedError
