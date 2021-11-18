@@ -2,6 +2,7 @@ import os
 import numpy as np
 from ase.atoms import Atoms
 from ase.utils import reader, writer
+from ase.units import Hartree, Bohr
 
 
 def prepare_dftb_input(outfile, atoms, parameters, directory):
@@ -155,7 +156,7 @@ def read_dftb_outputs(directory, label):
     if fermi_levels is not None:
         results['fermi_levels'] = fermi_levels
 
-    eigenvalues = read_eigenvalues()
+    eigenvalues = read_eigenvalues(lines)
     if eigenvalues is not None:
         results['eigenvalues'] = eigenvalues
 
@@ -275,6 +276,36 @@ def read_fermi_levels(lines):
             fermi_levels.append(e)
 
     return np.array(fermi_levels) * Hartree
+
+def read_eigenvalues(lines):
+    """ Read Eigenvalues from dftb output file (results.tag).
+        Unfortunately, the order seems to be scrambled. """
+    # Eigenvalue line indexes
+    index_eig_begin = None
+    for iline, line in enumerate(lines):
+        fstring = 'eigenvalues   '
+        if line.find(fstring) >= 0:
+            index_eig_begin = iline + 1
+            line1 = line.replace(':', ',')
+            ncol, nband, nkpt, nspin = map(int, line1.split(',')[-4:])
+            break
+    else:
+        return None
+
+    # Take into account that the last row may lack
+    # columns if nkpt * nspin * nband % ncol != 0
+    nrow = int(np.ceil(nkpt * nspin * nband * 1. / ncol))
+    index_eig_end = index_eig_begin + nrow
+    ncol_last = len(lines[index_eig_end - 1].split())
+    lines[index_eig_end - 1] += ' 0.0 ' * (ncol - ncol_last)
+
+    eig = np.loadtxt(lines[index_eig_begin:index_eig_end]).flatten()
+    eig *= Hartree
+    N = nkpt * nband
+    eigenvalues = [eig[i * N:(i + 1) * N].reshape((nkpt, nband))
+                   for i in range(nspin)]
+
+    return eigenvalues
 
 
 
