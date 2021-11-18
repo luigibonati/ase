@@ -163,6 +163,16 @@ Cartesian
     check_write_kpoints_file(expected_output, expected_output)
 
 
+def test_kpoints_empty_parameters():
+    mock = mock_open()
+    with patch("ase.io.vasp_parsers.kpoints_writer.open", mock):
+        write_kpoints("directory", None)
+        mock.assert_not_called()
+
+
+
+
+
 
 
 

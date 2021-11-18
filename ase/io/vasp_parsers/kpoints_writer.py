@@ -12,6 +12,8 @@ class _State:
 def write_kpoints(directory, parameters):
     if isinstance(parameters,str):
         kpoints_str = parameters
+    elif parameters is None:
+        return
     else:
         state = _State()
         for item in parameters.items():
