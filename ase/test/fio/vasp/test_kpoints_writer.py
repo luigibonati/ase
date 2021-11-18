@@ -6,8 +6,8 @@ from collections import OrderedDict
 def check_write_kpoints_file(parameters, expected_output):
     mock = mock_open()
     with patch("ase.io.vasp_parsers.kpoints_writer.open", mock):
-        write_kpoints(parameters)
-        mock.assert_called_once_with("KPOINTS", "w")
+        write_kpoints("directory", parameters)
+        mock.assert_called_once_with("directory/KPOINTS", "w")
         kpoints = mock()
         kpoints.write.assert_called_once_with(expected_output)
 

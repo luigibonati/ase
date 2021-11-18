@@ -30,9 +30,9 @@ class VaspTemplate(CalculatorTemplate):
         super().__init__(name, implemented_properties)
 
     def write_input(self, directory, atoms, parameters, properties):
-        incar.write_incar(parameters["incar"])
-        kpoints.write_kpoints(parameters["kpoints"])
-        structure_io.write_vasp_structure("POSCAR", atoms)
+        incar.write_incar(directory, parameters["incar"])
+        kpoints.write_kpoints(directory, parameters["kpoints"])
+        structure_io.write_vasp_structure(f"{directory}/POSCAR", atoms)
 
     def execute(self, directory, profile):
         raise NotImplementedError

@@ -9,7 +9,7 @@ class _State:
     specification: list = None
 
 
-def write_kpoints(parameters):
+def write_kpoints(directory, parameters):
     if isinstance(parameters,str):
         kpoints_str = parameters
     else:
@@ -17,7 +17,7 @@ def write_kpoints(parameters):
         for item in parameters.items():
             state = update_state(state, *item)
         kpoints_str = "\n".join(prepare_lines(state))
-    with open("KPOINTS", "w") as kpoints:
+    with open(f"{directory}/KPOINTS", "w") as kpoints:
         kpoints.write(kpoints_str)
 
 
