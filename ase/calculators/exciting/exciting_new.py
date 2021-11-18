@@ -1,5 +1,7 @@
 # """ASE Calculator for the exciting DFT code."""
 
+# TODO(Alex) File name is a place-holder
+
 import os
 import ase
 from typing import Union, List, Optional
@@ -98,6 +100,9 @@ class ExcitingRunner(SimpleBinaryRunner):
     binaries = ['exciting_serial', 'exciting_mpi', 'exciting_smp', 'exciting_mpiandsmp']
     input_name = 'input.xml'
 
+    # TODO(Alex) Extend, by adding path to species =>
+    # Either need to copy them OR specify in input.xml
+
     def __init__(self,
                  binary: str,
                  directory: str,
@@ -150,7 +155,7 @@ class ExcitingGroundStateTemplate(CalculatorTemplate):
         # Write the XML string to file
         return
 
-    # TODO(Alex) The generic calculate method should return SubprocessRunResults,
+    # TODO(Alex) The generic calculate method call to execute should return SubprocessRunResults,
     #            such that one can a) capture stdout cleanly and b) capture stderr, such that it can be
     #            returned in results
     @staticmethod
