@@ -194,22 +194,10 @@ def read_dftb_outputs(directory, label):
         results['forces'] = forces
     mmpositions = None
 
-    # stress stuff begins
-    sstring = 'stress'
-    have_stress = False
-    stress = list()
-    for iline, line in enumerate(lines):
-        if sstring in line:
-            have_stress = True
-            start = iline + 1
-            end = start + 3
-            for i in range(start, end):
-                cell = [float(x) for x in lines[i].split()]
-                stress.append(cell)
-    if have_stress:
-        stress = -np.array(stress) * Hartree / Bohr**3
-        results['stress'] = stress.flat[[0, 4, 8, 5, 2, 1]]
-    # stress stuff ends
+    stress = read_stress(lines)
+    if stress is not None:
+        results['stress'] = stress
+
 
     # eigenvalues and fermi levels
     fermi_levels = read_fermi_levels(lines)
@@ -366,6 +354,26 @@ def read_eigenvalues(lines):
                    for i in range(nspin)]
 
     return eigenvalues
+
+def read_stress(lines):
+    """DOC"""
+    # stress stuff begins
+    sstring = 'stress'
+    have_stress = False
+    stress = list()
+    for iline, line in enumerate(lines):
+        if sstring in line:
+            have_stress = True
+            start = iline + 1
+            end = start + 3
+            for i in range(start, end):
+                cell = [float(x) for x in lines[i].split()]
+                stress.append(cell)
+    if have_stress:
+        stress = -np.array(stress) * Hartree / Bohr**3
+        return stress.flat[[0, 4, 8, 5, 2, 1]]
+    else:
+        return None
 
 
 
