@@ -78,7 +78,7 @@ class SimpleBinaryRunner:
         :param Optional[list] execution_list: Optional List of arguments required by subprocess.run. Defaults to None.
         """
 
-        if not directory:
+        if directory is not None:
             directory = self.directory
 
         # TODO(Alex) What is the best thing to do in this case?
