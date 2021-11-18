@@ -1,16 +1,17 @@
 from dataclasses import dataclass
+from typing import Union, List
 
 
 @dataclass
 class _State:
     number_kpoints: int = 0
-    mode: str = None
-    coordinate: str = None
-    specification: list = None
+    mode: Union[str, None] = None
+    coordinate: Union[str, None] = None
+    specification: Union[List[str], None] = None
 
 
 def write_kpoints(directory, parameters):
-    if isinstance(parameters,str):
+    if isinstance(parameters, str):
         kpoints_str = parameters
     elif parameters is None:
         return
